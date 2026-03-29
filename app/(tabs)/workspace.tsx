@@ -1,13 +1,10 @@
 import { useState } from 'react';
-import type { FileNode } from '@opencode-ai/sdk/client';
 import { RefreshControl, StyleSheet } from 'react-native';
 import {
   Button,
   ButtonText,
   Heading,
   HStack,
-  Input,
-  InputField,
   Pressable,
   ScrollView,
   Spinner,
@@ -51,15 +48,11 @@ export default function WorkspaceScreen() {
   const palette = Colors[colorScheme];
   const {
     activeProject,
-    browserEntries,
-    browserError,
-    browserPath,
-    browseServerPath,
     connection,
     createSession,
     currentProjectPath,
     currentSessionId,
-    isBrowsingServer,
+    
     isRefreshingSessions,
     isRefreshingWorkspaceCatalog,
     openSession,
@@ -73,36 +66,17 @@ export default function WorkspaceScreen() {
     sessions,
   } = useOpencode();
   const [isCreating, setIsCreating] = useState(false);
-  const [pathInput, setPathInput] = useState(browserPath || '/home/');
-  const [suggestions, setSuggestions] = useState<FileNode[]>([]);
 
   const isRefreshing = isRefreshingSessions || isRefreshingWorkspaceCatalog;
-  const parentPath = getParentPath(browserPath);
+  // browse server UI removed
 
   async function handleRefresh() {
     await Promise.all([
       refreshWorkspaceCatalog(),
       refreshSessions(),
-      browseServerPath(browserPath || currentProjectPath || serverRootPath, true),
     ]);
   }
 
-  // update suggestions when pathInput changes
-  async function handlePathInputChange(value: string) {
-    setPathInput(value);
-    // If user added a slash at the end, fetch children for the new path
-    if (value.endsWith('/')) {
-      const list = await browseServerPath(value, true);
-      if (Array.isArray(list)) {
-        setSuggestions(list as any);
-      } else {
-        setSuggestions([]);
-      }
-    } else {
-      // clear suggestions until user types a slash
-      setSuggestions([]);
-    }
-  }
 
   async function handleNewChat() {
     setIsCreating(true);
@@ -138,23 +112,22 @@ export default function WorkspaceScreen() {
           </Text>
         </VStack>
 
-        <HStack style={styles.actionRow}>
-          <Button
-            flex={1}
-            onPress={() => void refreshWorkspaceCatalog()}
-            style={[styles.secondaryButton, { backgroundColor: palette.surfaceAlt, borderColor: palette.border }]}
-            sx={{ ':disabled': { opacity: 0.55 } }}>
-            <ButtonText style={[styles.secondaryButtonText, { color: palette.text }]}>Sync projects</ButtonText>
-          </Button>
-          <Button
-            flex={1}
-            isDisabled={!browserPath && !currentProjectPath && !serverRootPath}
-            onPress={() => void browseServerPath(browserPath || currentProjectPath || serverRootPath)}
-            style={[styles.actionButton, { backgroundColor: palette.tint }]}
-            sx={{ ':disabled': { opacity: 0.55 } }}>
-            <ButtonText style={[styles.actionButtonText, { color: palette.background }]}>Refresh browser</ButtonText>
-          </Button>
-        </HStack>
+          <HStack style={styles.actionRow}>
+            <Button
+              flex={1}
+              onPress={() => void refreshWorkspaceCatalog()}
+              style={[styles.secondaryButton, { backgroundColor: palette.surfaceAlt, borderColor: palette.border }]}
+              sx={{ ':disabled': { opacity: 0.55 } }}>
+              <ButtonText style={[styles.secondaryButtonText, { color: palette.text }]}>Sync projects</ButtonText>
+            </Button>
+            <Button
+              flex={1}
+              onPress={() => void handleRefresh()}
+              style={[styles.actionButton, { backgroundColor: palette.tint }]}
+              sx={{ ':disabled': { opacity: 0.55 } }}>
+              <ButtonText style={[styles.actionButtonText, { color: palette.background }]}>Refresh server</ButtonText>
+            </Button>
+          </HStack>
       </VStack>
 
       <VStack style={[styles.sectionCard, { backgroundColor: palette.card, borderColor: palette.border }]} space="md">
@@ -199,93 +172,7 @@ export default function WorkspaceScreen() {
         })}
       </VStack>
 
-      <VStack style={[styles.sectionCard, { backgroundColor: palette.card, borderColor: palette.border }]} space="md">
-        <HStack justifyContent="space-between" alignItems="center" gap={12}>
-          <VStack flex={1} space="xs">
-            <Heading style={[styles.sectionTitle, { color: palette.text }]}>Browse server folders</Heading>
-            <Text style={[styles.copy, { color: palette.muted }]}>Navigate directories on the server, then use any folder as the active project context.</Text>
-          </VStack>
-          {isBrowsingServer ? <Spinner color={palette.tint} /> : null}
-        </HStack>
-
-        <VStack style={[styles.browserPanel, { backgroundColor: palette.surface, borderColor: palette.border }]} space="md">
-          <VStack space="xs">
-            <Text style={[styles.browserLabel, { color: palette.muted }]}>Path (type and press / to load)</Text>
-            <Input style={[styles.pathInput, { borderColor: palette.border, backgroundColor: palette.surfaceAlt }]}>
-              <InputField
-                value={pathInput}
-                onChangeText={setPathInput}
-                placeholder="/home/"
-                placeholderTextColor={palette.icon}
-                color={palette.text}
-                autoCapitalize="none"
-                autoCorrect={false}
-                onSubmitEditing={() => void browseServerPath(pathInput)}
-              />
-            </Input>
-          </VStack>
-
-          <HStack style={styles.actionRow}>
-            <Button
-              flex={1}
-              isDisabled={!parentPath}
-              onPress={() => void browseServerPath(parentPath)}
-              style={[styles.secondaryButton, { backgroundColor: palette.surfaceAlt, borderColor: palette.border }]}
-              sx={{ ':disabled': { opacity: 0.55 } }}>
-              <ButtonText style={[styles.secondaryButtonText, { color: palette.text }]}>Up one level</ButtonText>
-            </Button>
-            <Button
-              flex={1}
-              isDisabled={!pathInput}
-              onPress={() => selectProject(pathInput.replace(/\/$/, ''))}
-              style={[styles.actionButton, { backgroundColor: palette.tint }]}
-              sx={{ ':disabled': { opacity: 0.55 } }}>
-              <ButtonText style={[styles.actionButtonText, { color: palette.background }]}>Use this folder</ButtonText>
-            </Button>
-          </HStack>
-
-          {browserError ? <Text style={[styles.browserError, { color: palette.danger }]}>{browserError}</Text> : null}
-
-          {suggestions.length === 0 && browserEntries.length === 0 ? (
-            <Text style={[styles.emptyCopy, { color: palette.muted }]}>No directories found for this location.</Text>
-          ) : null}
-
-          {(suggestions.length > 0 ? suggestions : browserEntries).map((entry) => {
-            const abs = 'absolute' in entry ? entry.absolute : entry.path || '';
-            const name = 'name' in entry ? entry.name : abs.split('/').pop() || abs;
-            const isActive = abs === activeProject?.path;
-
-            return (
-              <Pressable
-                key={abs}
-                onPress={() => {
-                  const next = abs.replace(/\/?$/, '/') ;
-                  setPathInput(next);
-                  void browseServerPath(next);
-                }}
-                style={({ pressed }) => [
-                  styles.browserRow,
-                  {
-                    backgroundColor: palette.card,
-                    borderColor: isActive ? palette.tint : palette.border,
-                    opacity: pressed ? 0.92 : 1,
-                  },
-                ]}>
-                <VStack space="xs" flex={1}>
-                  <Text style={[styles.projectTitle, { color: palette.text }]} numberOfLines={1}>{name}</Text>
-                  <Text style={[styles.projectPath, { color: palette.muted }]} numberOfLines={2}>{abs}</Text>
-                </VStack>
-                <Button
-                  onPress={() => selectProject(abs)}
-                  style={[styles.inlineButton, { backgroundColor: palette.surfaceAlt, borderColor: palette.border }]}
-                  sx={{ ':disabled': { opacity: 0.55 } }}>
-                  <ButtonText style={[styles.inlineButtonText, { color: isActive ? palette.tint : palette.text }]}>Use</ButtonText>
-                </Button>
-              </Pressable>
-            );
-          })}
-        </VStack>
-      </VStack>
+        {/* Browse server folders removed: functionality was non-working and cleaned up */}
 
       <VStack style={[styles.sectionCard, { backgroundColor: palette.card, borderColor: palette.border }]} space="md">
         <HStack justifyContent="space-between" alignItems="center" gap={12}>
@@ -369,8 +256,6 @@ const styles = StyleSheet.create({
   emptyCopy: { fontSize: 15, lineHeight: 22 },
   browserPanel: { borderWidth: 1, borderRadius: 20, padding: 16 },
   browserLabel: { fontSize: 12, textTransform: 'uppercase', letterSpacing: 0.6, fontWeight: '700' },
-  browserPath: { fontSize: 14, lineHeight: 20 },
-  browserError: { fontSize: 13, lineHeight: 18 },
   browserRow: { borderWidth: 1, borderRadius: 18, padding: 14, flexDirection: 'row', alignItems: 'center', gap: 10 },
   projectRow: { borderWidth: 1, borderRadius: 20, padding: 16, flexDirection: 'row', alignItems: 'center', gap: 12 },
   projectTitle: { flex: 1, fontSize: 17, fontWeight: '700' },

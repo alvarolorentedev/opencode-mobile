@@ -1,5 +1,6 @@
 import { useMemo, useRef, useState } from 'react';
 import { Platform, StyleSheet } from 'react-native';
+import type { FileDiff } from '@opencode-ai/sdk/client';
 import {
   Box,
   Button,
@@ -25,7 +26,12 @@ import {
   type TranscriptDetail,
   type TranscriptEntry,
 } from '@/lib/opencode/format';
-import { useOpencode } from '@/providers/opencode-provider';
+import {
+  type AgentOption,
+  type ModelOption,
+  type ReasoningLevel,
+  useOpencode,
+} from '@/providers/opencode-provider';
 
 const STARTER_PROMPTS = [
   'Build a polished onboarding flow for this Expo app.',
@@ -33,23 +39,60 @@ const STARTER_PROMPTS = [
   'Connect the current app to a real backend with loading and error states.',
 ];
 
+const REASONING_OPTIONS: { id: ReasoningLevel; label: string; description: string }[] = [
+  { id: 'low', label: 'Low', description: 'Move faster with lighter planning.' },
+  { id: 'default', label: 'Default', description: 'Use the normal OpenCode balance.' },
+  { id: 'high', label: 'High', description: 'Spend longer reasoning before acting.' },
+];
+
+function formatControlLabel(value: string) {
+  return value.charAt(0).toUpperCase() + value.slice(1);
+}
+
+function getModelLabel(models: ModelOption[], modelId?: string) {
+  return models.find((model) => model.id === modelId)?.label || 'Model';
+}
+
+function clipBlock(value: string, limit = 18) {
+  const trimmed = value.trim();
+  if (!trimmed) {
+    return 'No content';
+  }
+
+  const lines = trimmed.split('\n');
+  if (lines.length <= limit) {
+    return trimmed;
+  }
+
+  return `${lines.slice(0, limit).join('\n')}\n...`;
+}
+
 export function ChatView() {
   const colorScheme = useColorScheme() ?? 'light';
   const palette = Colors[colorScheme];
   const scrollRef = useRef<any>(null);
   const {
     activeSession,
+    availableAgents,
+    availableModels,
+    chatPreferences,
     connection,
+    currentDiffs,
     currentSessionId,
     currentTranscript,
+    isRefreshingDiffs,
     isBootstrappingChat,
     isRefreshingMessages,
+    setAutoApprove,
     sendPrompt,
     sendingState,
     sessionStatuses,
+    updateChatPreferences,
   } = useOpencode();
   const [draft, setDraft] = useState('');
-  const [activeTab, setActiveTab] = useState<'chat' | 'diffs'>('chat');
+  const [activeTab, setActiveTab] = useState<'session' | 'changes'>('session');
+  const [activePicker, setActivePicker] = useState<'mode' | 'model' | 'reasoning' | undefined>();
+  const [isUpdatingAutoApprove, setIsUpdatingAutoApprove] = useState(false);
 
   const status = currentSessionId ? sessionStatuses[currentSessionId] : undefined;
   const sessionMeta = useMemo(() => {
@@ -67,6 +110,10 @@ export function ChatView() {
       ),
     [currentTranscript],
   );
+  const selectedModelLabel = useMemo(
+    () => getModelLabel(availableModels, chatPreferences.modelId),
+    [availableModels, chatPreferences.modelId],
+  );
 
   async function handleSendPrompt(promptOverride?: string) {
     const prompt = (promptOverride ?? draft).trim();
@@ -74,6 +121,7 @@ export function ChatView() {
       return;
     }
 
+    setActivePicker(undefined);
     setDraft('');
     await sendPrompt(currentSessionId, prompt);
     setTimeout(() => {
@@ -87,14 +135,14 @@ export function ChatView() {
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
       <HStack style={[styles.segmentRow, { backgroundColor: palette.background }]}> 
         <SegmentButton
-          active={activeTab === 'chat'}
-          label="Chat"
-          onPress={() => setActiveTab('chat')}
+          active={activeTab === 'session'}
+          label="Session"
+          onPress={() => setActiveTab('session')}
         />
         <SegmentButton
-          active={activeTab === 'diffs'}
-          label="Diffs"
-          onPress={() => setActiveTab('diffs')}
+          active={activeTab === 'changes'}
+          label={`Changes${currentDiffs.length > 0 ? ` (${currentDiffs.length})` : ''}`}
+          onPress={() => setActiveTab('changes')}
         />
       </HStack>
 
@@ -106,7 +154,7 @@ export function ChatView() {
           </VStack>
           ) : null}
 
-        {activeTab === 'chat' && currentTranscript.length === 0 ? (
+        {activeTab === 'session' && currentTranscript.length === 0 ? (
           <VStack style={styles.emptyState}>
             <VStack style={[styles.assistantIntro, { backgroundColor: palette.card, borderColor: palette.border }]}> 
               <Text style={[styles.assistantIntroEyebrow, { color: palette.accent }]}>New chat</Text>
@@ -133,36 +181,43 @@ export function ChatView() {
           </VStack>
         ) : null}
 
-        {activeTab === 'chat'
+        {activeTab === 'session'
           ? currentTranscript.map((entry) => <TranscriptMessage key={entry.id} entry={entry} />)
           : null}
 
-        {activeTab === 'diffs' ? (
+        {activeTab === 'changes' ? (
           <VStack style={styles.diffStack}>
             <VStack style={[styles.diffSummaryCard, { backgroundColor: palette.card, borderColor: palette.border }]}> 
               <Text style={[styles.diffSummaryEyebrow, { color: palette.accent }]}>Current changes</Text>
-              <Heading style={[styles.diffSummaryTitle, { color: palette.text }]}>Session diff</Heading>
-              <Text style={[styles.diffSummaryCopy, { color: palette.muted }]}>
+              <Heading style={[styles.diffSummaryTitle, { color: palette.text }]}>Session changes</Heading>
+              <Text style={[styles.diffSummaryCopy, { color: palette.muted }]}> 
                 {activeSession ? getSessionSubtitle(activeSession) : sessionMeta}
               </Text>
               <HStack style={styles.diffMetaRow}>
                 <Text style={[styles.diffMetaText, { color: palette.muted }]}>{sessionMeta}</Text>
-                <Text style={[styles.diffMetaText, { color: palette.accent }]}>{status?.type || 'idle'}</Text>
+                <Text style={[styles.diffMetaText, { color: palette.accent }]}>
+                  {isRefreshingDiffs ? 'syncing' : status?.type || 'idle'}
+                </Text>
               </HStack>
             </VStack>
 
-            {diffDetails.length === 0 ? (
+            {currentDiffs.length === 0 && diffDetails.length === 0 ? (
               <VStack style={[styles.diffEmptyCard, { backgroundColor: palette.surface, borderColor: palette.border }]}> 
-                <Text style={[styles.diffEmptyTitle, { color: palette.text }]}>No diff artifacts yet</Text>
-                <Text style={[styles.diffEmptyCopy, { color: palette.muted }]}>Ask OpenCode to edit files and patch details will appear here.</Text>
+                <Text style={[styles.diffEmptyTitle, { color: palette.text }]}>No file changes yet</Text>
+                <Text style={[styles.diffEmptyCopy, { color: palette.muted }]}>Ask OpenCode to edit files and this tab will show the session changes here.</Text>
               </VStack>
             ) : (
-              diffDetails.map((detail) => <DiffCard key={detail.id} detail={detail} />)
+              <>
+                {currentDiffs.map((diff) => (
+                  <SessionDiffCard key={diff.file} diff={diff} />
+                ))}
+                {currentDiffs.length === 0 ? diffDetails.map((detail) => <DiffCard key={detail.id} detail={detail} />) : null}
+              </>
             )}
           </VStack>
         ) : null}
 
-        {activeTab === 'chat' && (sendingState.active || isBootstrappingChat || isRefreshingMessages) && currentTranscript.length > 0 ? (
+        {activeTab === 'session' && (sendingState.active || isBootstrappingChat || isRefreshingMessages) && currentTranscript.length > 0 ? (
           <HStack style={styles.assistantRow}>
             <Box style={[styles.avatar, { backgroundColor: palette.surfaceAlt, borderColor: palette.border }]}> 
               <Text style={[styles.avatarText, { color: palette.text }]}>O</Text>
@@ -177,6 +232,29 @@ export function ChatView() {
 
       <Box style={[styles.composerWrap, { borderTopColor: palette.border, backgroundColor: palette.background }]}> 
         <VStack style={[styles.composerCard, { backgroundColor: palette.surface, borderColor: palette.border }]}> 
+          {activePicker ? (
+            <PickerPanel
+              activePicker={activePicker}
+              agents={availableAgents}
+              modelId={chatPreferences.modelId}
+              models={availableModels}
+              mode={chatPreferences.mode}
+              onClose={() => setActivePicker(undefined)}
+              onSelectAgent={(mode) => {
+                updateChatPreferences({ mode });
+                setActivePicker(undefined);
+              }}
+              onSelectModel={(modelId) => {
+                updateChatPreferences({ modelId });
+                setActivePicker(undefined);
+              }}
+              onSelectReasoning={(reasoning) => {
+                updateChatPreferences({ reasoning });
+                setActivePicker(undefined);
+              }}
+              reasoning={chatPreferences.reasoning}
+            />
+          ) : null}
           <Input style={[styles.composerInputShell, { borderColor: palette.border, backgroundColor: palette.surface }]}> 
             <InputField
               value={draft}
@@ -200,6 +278,32 @@ export function ChatView() {
               sx={{ ':disabled': { opacity: 0.55 } }}>
               <ButtonText style={[styles.sendButtonText, { color: draft.trim() ? palette.background : palette.muted }]}>Send</ButtonText>
             </Button>
+          </HStack>
+          <HStack style={styles.controlRow}>
+            <ComposerControl
+              active={activePicker === 'mode'}
+              label={formatControlLabel(chatPreferences.mode)}
+              onPress={() => setActivePicker((current) => (current === 'mode' ? undefined : 'mode'))}
+            />
+            <ComposerControl
+              active={activePicker === 'model'}
+              label={selectedModelLabel}
+              onPress={() => setActivePicker((current) => (current === 'model' ? undefined : 'model'))}
+            />
+            <ComposerControl
+              active={activePicker === 'reasoning'}
+              label={formatControlLabel(chatPreferences.reasoning)}
+              onPress={() => setActivePicker((current) => (current === 'reasoning' ? undefined : 'reasoning'))}
+            />
+            <ComposerControl
+              active={chatPreferences.autoApprove}
+              disabled={isUpdatingAutoApprove}
+              label={chatPreferences.autoApprove ? 'Auto-approve' : 'Ask first'}
+              onPress={() => {
+                setIsUpdatingAutoApprove(true);
+                void setAutoApprove(!chatPreferences.autoApprove).finally(() => setIsUpdatingAutoApprove(false));
+              }}
+            />
           </HStack>
         </VStack>
       </Box>
@@ -232,6 +336,178 @@ function SegmentButton({
       ]}>
       <Text style={[styles.segmentLabel, { color: active ? palette.text : palette.muted }]}>{label}</Text>
     </Pressable>
+  );
+}
+
+function ComposerControl({
+  active,
+  disabled,
+  label,
+  onPress,
+}: {
+  active?: boolean;
+  disabled?: boolean;
+  label: string;
+  onPress: () => void;
+}) {
+  const colorScheme = useColorScheme() ?? 'light';
+  const palette = Colors[colorScheme];
+
+  return (
+    <Pressable
+      disabled={disabled}
+      onPress={onPress}
+      style={({ pressed }) => [
+        styles.controlChip,
+        {
+          backgroundColor: active ? palette.surfaceAlt : palette.surface,
+          borderColor: active ? palette.tint : palette.border,
+          opacity: disabled ? 0.45 : pressed ? 0.88 : 1,
+        },
+      ]}>
+      <Text style={[styles.controlChipLabel, { color: active ? palette.text : palette.muted }]} numberOfLines={1}>
+        {label}
+      </Text>
+    </Pressable>
+  );
+}
+
+function PickerPanel({
+  activePicker,
+  agents,
+  mode,
+  modelId,
+  models,
+  onClose,
+  onSelectAgent,
+  onSelectModel,
+  onSelectReasoning,
+  reasoning,
+}: {
+  activePicker: 'mode' | 'model' | 'reasoning';
+  agents: AgentOption[];
+  mode: string;
+  modelId?: string;
+  models: ModelOption[];
+  onClose: () => void;
+  onSelectAgent: (mode: string) => void;
+  onSelectModel: (modelId: string) => void;
+  onSelectReasoning: (reasoning: ReasoningLevel) => void;
+  reasoning: ReasoningLevel;
+}) {
+  const colorScheme = useColorScheme() ?? 'light';
+  const palette = Colors[colorScheme];
+
+  return (
+    <VStack style={[styles.pickerPanel, { backgroundColor: palette.card, borderColor: palette.border }]}>
+      <HStack style={styles.pickerHeader}>
+        <Text style={[styles.pickerTitle, { color: palette.text }]}>Select {activePicker}</Text>
+        <Pressable onPress={onClose}>
+          <Text style={[styles.pickerClose, { color: palette.accent }]}>Done</Text>
+        </Pressable>
+      </HStack>
+
+      {activePicker === 'mode'
+        ? agents.map((agent) => (
+            <PickerOption
+              key={agent.id}
+              active={agent.id === mode}
+              description={agent.description}
+              label={agent.label}
+              onPress={() => onSelectAgent(agent.id)}
+            />
+          ))
+        : null}
+
+      {activePicker === 'model'
+        ? models.map((model) => (
+            <PickerOption
+              key={model.id}
+              active={model.id === modelId}
+              description={model.supportsReasoning ? 'Supports reasoning controls' : 'Standard model'}
+              label={model.label}
+              onPress={() => onSelectModel(model.id)}
+            />
+          ))
+        : null}
+
+      {activePicker === 'reasoning'
+        ? REASONING_OPTIONS.map((option) => (
+            <PickerOption
+              key={option.id}
+              active={option.id === reasoning}
+              description={option.description}
+              label={option.label}
+              onPress={() => onSelectReasoning(option.id)}
+            />
+          ))
+        : null}
+    </VStack>
+  );
+}
+
+function PickerOption({
+  active,
+  description,
+  label,
+  onPress,
+}: {
+  active: boolean;
+  description?: string;
+  label: string;
+  onPress: () => void;
+}) {
+  const colorScheme = useColorScheme() ?? 'light';
+  const palette = Colors[colorScheme];
+
+  return (
+    <Pressable
+      onPress={onPress}
+      style={({ pressed }) => [
+        styles.pickerOption,
+        {
+          backgroundColor: active ? palette.surfaceAlt : palette.surface,
+          borderColor: active ? palette.tint : palette.border,
+          opacity: pressed ? 0.9 : 1,
+        },
+      ]}>
+      <Text style={[styles.pickerOptionLabel, { color: palette.text }]}>{label}</Text>
+      {description ? <Text style={[styles.pickerOptionDescription, { color: palette.muted }]}>{description}</Text> : null}
+    </Pressable>
+  );
+}
+
+function SessionDiffCard({ diff }: { diff: FileDiff }) {
+  const colorScheme = useColorScheme() ?? 'light';
+  const palette = Colors[colorScheme];
+  const [expanded, setExpanded] = useState(false);
+
+  return (
+    <VStack style={[styles.diffCard, { backgroundColor: palette.card, borderColor: palette.border }]}> 
+      <Pressable onPress={() => setExpanded((current) => !current)} style={styles.detailHeader}>
+        <VStack style={styles.diffFileMeta}>
+          <Text style={[styles.diffCardLabel, { color: palette.accent }]}>Modified file</Text>
+          <Heading style={[styles.diffCardTitle, { color: palette.text }]}>{diff.file}</Heading>
+        </VStack>
+        <Text style={[styles.detailToggle, { color: palette.accent }]}>{expanded ? 'Hide' : 'Open'}</Text>
+      </Pressable>
+      <HStack style={styles.diffStatRow}>
+        <Text style={[styles.diffStatText, { color: palette.success }]}>+{diff.additions}</Text>
+        <Text style={[styles.diffStatText, { color: palette.danger }]}>-{diff.deletions}</Text>
+      </HStack>
+      {expanded ? (
+        <VStack style={styles.diffPreviewStack}>
+          <VStack style={[styles.diffPreviewCard, { backgroundColor: palette.surfaceAlt }]}> 
+            <Text style={[styles.diffPreviewLabel, { color: palette.muted }]}>Before</Text>
+            <Text style={[styles.diffCardBody, { color: palette.text }]}>{clipBlock(diff.before)}</Text>
+          </VStack>
+          <VStack style={[styles.diffPreviewCard, { backgroundColor: palette.surfaceAlt }]}> 
+            <Text style={[styles.diffPreviewLabel, { color: palette.muted }]}>After</Text>
+            <Text style={[styles.diffCardBody, { color: palette.text }]}>{clipBlock(diff.after)}</Text>
+          </VStack>
+        </VStack>
+      ) : null}
+    </VStack>
   );
 }
 
@@ -346,9 +622,15 @@ const styles = StyleSheet.create({
   diffEmptyTitle: { fontSize: 18, fontWeight: '700' },
   diffEmptyCopy: { fontSize: 15, lineHeight: 22 },
   diffCard: { borderWidth: 1, borderRadius: 22, padding: 18, gap: 8 },
+  diffFileMeta: { flex: 1, gap: 4 },
   diffCardLabel: { fontSize: 11, textTransform: 'uppercase', letterSpacing: 1.1, fontWeight: '700' },
   diffCardTitle: { fontSize: 18, lineHeight: 22, fontFamily: Fonts.display },
   diffCardBody: { fontSize: 13, lineHeight: 20, fontFamily: Fonts.mono },
+  diffStatRow: { gap: 12 },
+  diffStatText: { fontSize: 13, fontWeight: '700' },
+  diffPreviewStack: { gap: 10 },
+  diffPreviewCard: { borderRadius: 16, padding: 12, gap: 6 },
+  diffPreviewLabel: { fontSize: 12, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.8 },
   assistantRow: { flexDirection: 'row', gap: 12, alignItems: 'flex-start' },
   userRow: { alignItems: 'flex-end' },
   avatar: { width: 30, height: 30, borderRadius: 15, alignItems: 'center', justifyContent: 'center', marginTop: 6, borderWidth: 1 },
@@ -370,10 +652,20 @@ const styles = StyleSheet.create({
   typingText: { fontSize: 14 },
   composerWrap: { borderTopWidth: 1, paddingHorizontal: 12, paddingTop: 10, paddingBottom: Platform.select({ ios: 24, default: 16 }) },
   composerCard: { borderWidth: 1, borderRadius: 28, paddingTop: 10, paddingHorizontal: 12, paddingBottom: 10, gap: 12 },
+  pickerPanel: { borderWidth: 1, borderRadius: 22, padding: 12, gap: 10 },
+  pickerHeader: { justifyContent: 'space-between', alignItems: 'center' },
+  pickerTitle: { fontSize: 14, fontWeight: '700' },
+  pickerClose: { fontSize: 13, fontWeight: '700' },
+  pickerOption: { borderWidth: 1, borderRadius: 18, paddingHorizontal: 14, paddingVertical: 12, gap: 3 },
+  pickerOptionLabel: { fontSize: 14, fontWeight: '700' },
+  pickerOptionDescription: { fontSize: 12, lineHeight: 18 },
   composerInputShell: { borderWidth: 0 },
   composerInput: { minHeight: 52, maxHeight: 160, fontSize: 16, lineHeight: 22, paddingHorizontal: 6 },
   composerFooter: { justifyContent: 'space-between', gap: 12 },
   composerMeta: { flex: 1, fontSize: 12, lineHeight: 18 },
+  controlRow: { gap: 8, flexWrap: 'wrap' },
+  controlChip: { borderWidth: 1, borderRadius: 999, paddingHorizontal: 12, paddingVertical: 9, maxWidth: '48%' },
+  controlChipLabel: { fontSize: 13, fontWeight: '700' },
   sendButton: { minWidth: 82, minHeight: 40, borderRadius: 999, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 16 },
   sendButtonText: { fontSize: 15, fontWeight: '700' },
 });

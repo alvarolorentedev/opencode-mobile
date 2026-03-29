@@ -1,5 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import type { FileNode, Project, Session, SessionStatus } from '@opencode-ai/sdk/client';
+import type { Agent, Config, FileDiff, Project, Session, SessionStatus } from '@opencode-ai/sdk/client';
 import {
   createContext,
   useCallback,
@@ -25,6 +25,38 @@ import {
 } from '@/lib/opencode/format';
 
 const SETTINGS_STORAGE_KEY = 'opencode-mobile.settings';
+const CHAT_PREFERENCES_STORAGE_KEY = 'opencode-mobile.chat-preferences';
+
+export type ModelOption = {
+  id: string;
+  label: string;
+  providerID: string;
+  modelID: string;
+  supportsReasoning: boolean;
+};
+
+export type AgentOption = {
+  id: string;
+  label: string;
+  description?: string;
+};
+
+// Browser/server-folder browsing removed
+
+export type ReasoningLevel = 'low' | 'default' | 'high';
+
+export type ChatPreferences = {
+  mode: string;
+  modelId?: string;
+  reasoning: ReasoningLevel;
+  autoApprove: boolean;
+};
+
+const defaultChatPreferences: ChatPreferences = {
+  mode: 'build',
+  reasoning: 'default',
+  autoApprove: false,
+};
 
 export type OpencodeProject = {
   id?: string;
@@ -62,21 +94,25 @@ type OpencodeContextValue = {
   serverRootPath?: string;
   isRefreshingWorkspaceCatalog: boolean;
   refreshWorkspaceCatalog: (silent?: boolean) => Promise<void>;
-  browserPath?: string;
-  browserEntries: FileNode[];
-  browserError?: string;
-  isBrowsingServer: boolean;
-  browseServerPath: (path?: string, silent?: boolean) => Promise<import('@opencode-ai/sdk/client').FileNode[] | undefined>;
+  // browsing server folders removed
   sessions: Session[];
   sessionStatuses: Record<string, SessionStatus>;
   currentSessionId?: string;
   activeSession?: Session;
   currentMessages: SessionMessageRecord[];
   currentTranscript: TranscriptEntry[];
+  currentDiffs: FileDiff[];
   sessionPreviewById: Record<string, string>;
   isRefreshingSessions: boolean;
   isRefreshingMessages: boolean;
+  isRefreshingDiffs: boolean;
   isBootstrappingChat: boolean;
+  currentConfig?: Config;
+  availableModels: ModelOption[];
+  availableAgents: AgentOption[];
+  chatPreferences: ChatPreferences;
+  updateChatPreferences: (patch: Partial<ChatPreferences>) => void;
+  setAutoApprove: (enabled: boolean) => Promise<void>;
   sendingState: {
     sessionId?: string;
     active: boolean;
@@ -120,6 +156,77 @@ function getParentPath(path: string) {
   return `/${segments.slice(0, -1).join('/')}`;
 }
 
+function toAgentOption(agent: Agent): AgentOption {
+  return {
+    id: agent.name,
+    label: agent.name.charAt(0).toUpperCase() + agent.name.slice(1),
+    description: agent.description,
+  };
+}
+
+function getInitialMode(agents: AgentOption[], config?: Config, storedMode?: string) {
+  if (storedMode && agents.some((agent) => agent.id === storedMode)) {
+    return storedMode;
+  }
+
+  const configuredAgent = config?.agent
+    ? Object.entries(config.agent).find(([, value]) => value && value.disable !== true)?.[0]
+    : undefined;
+  if (configuredAgent && agents.some((agent) => agent.id === configuredAgent)) {
+    return configuredAgent;
+  }
+
+  const preferred = agents.find((agent) => agent.id === 'build') || agents.find((agent) => agent.id === 'general');
+  return preferred?.id || agents[0]?.id || defaultChatPreferences.mode;
+}
+
+function getInitialModelId(models: ModelOption[], config?: Config, storedModelId?: string) {
+  if (storedModelId && models.some((model) => model.id === storedModelId)) {
+    return storedModelId;
+  }
+
+  if (config?.model && models.some((model) => model.id === config.model)) {
+    return config.model;
+  }
+
+  return models[0]?.id;
+}
+
+function isAutoApproveEnabled(config?: Config) {
+  if (!config?.permission) {
+    return false;
+  }
+
+  const { bash, doom_loop, edit, external_directory, webfetch } = config.permission;
+  return edit === 'allow' && bash === 'allow' && webfetch === 'allow' && doom_loop === 'allow' && external_directory === 'allow';
+}
+
+function buildReasoningSystemPrompt(level: ReasoningLevel) {
+  if (level === 'default') {
+    return undefined;
+  }
+
+  if (level === 'low') {
+    return 'Reasoning effort: low. Keep the solution direct, concise, and avoid unnecessary exploration unless needed.';
+  }
+
+  return 'Reasoning effort: high. Spend extra time planning, evaluating tradeoffs, and verifying the best path before acting.';
+}
+
+function mergePermissionConfig(config: Config | undefined, enabled: boolean): Config {
+  return {
+    ...(config || {}),
+    permission: {
+      ...config?.permission,
+      edit: enabled ? 'allow' : 'ask',
+      bash: enabled ? 'allow' : 'ask',
+      webfetch: enabled ? 'allow' : 'ask',
+      doom_loop: enabled ? 'allow' : 'ask',
+      external_directory: enabled ? 'allow' : 'ask',
+    },
+  };
+}
+
 export function OpencodeProvider({ children }: PropsWithChildren) {
   const [isHydrated, setIsHydrated] = useState(false);
   const [settings, setSettings] = useState<OpencodeConnectionSettings>(defaultConnectionSettings);
@@ -132,18 +239,22 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
   const [sessionStatuses, setSessionStatuses] = useState<Record<string, SessionStatus>>({});
   const [currentSessionId, setCurrentSessionId] = useState<string>();
   const [messagesBySession, setMessagesBySession] = useState<Record<string, SessionMessageRecord[]>>({});
+  const [diffsBySession, setDiffsBySession] = useState<Record<string, FileDiff[]>>({});
   const [serverProjects, setServerProjects] = useState<Project[]>([]);
   const [currentProjectPath, setCurrentProjectPath] = useState<string>();
   const [serverRootPath, setServerRootPath] = useState<string>();
-  const [browserPath, setBrowserPath] = useState<string>();
-  const [browserEntries, setBrowserEntries] = useState<FileNode[]>([]);
-  const [browserError, setBrowserError] = useState<string>();
+  // browsing server folders removed
   const [isRefreshingSessions, setIsRefreshingSessions] = useState(false);
   const [isRefreshingMessages, setIsRefreshingMessages] = useState(false);
+  const [isRefreshingDiffs, setIsRefreshingDiffs] = useState(false);
   const [isRefreshingWorkspaceCatalog, setIsRefreshingWorkspaceCatalog] = useState(false);
-  const [isBrowsingServer, setIsBrowsingServer] = useState(false);
+  // browsing removed
   const [isBootstrappingChat, setIsBootstrappingChat] = useState(false);
   const [sendingState, setSendingState] = useState<{ sessionId?: string; active: boolean }>({ active: false });
+  const [currentConfig, setCurrentConfig] = useState<Config>();
+  const [availableModels, setAvailableModels] = useState<ModelOption[]>([]);
+  const [availableAgents, setAvailableAgents] = useState<AgentOption[]>([]);
+  const [chatPreferences, setChatPreferences] = useState<ChatPreferences>(defaultChatPreferences);
 
   const settingsRef = useRef(settings);
   const bootstrapPromiseRef = useRef<Promise<string | undefined> | null>(null);
@@ -158,6 +269,15 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
           const parsed = JSON.parse(storedSettings) as Partial<OpencodeConnectionSettings>;
           setSettings({
             ...defaultConnectionSettings,
+            ...parsed,
+          });
+        }
+
+        const storedChatPreferences = await AsyncStorage.getItem(CHAT_PREFERENCES_STORAGE_KEY);
+        if (storedChatPreferences) {
+          const parsed = JSON.parse(storedChatPreferences) as Partial<ChatPreferences>;
+          setChatPreferences({
+            ...defaultChatPreferences,
             ...parsed,
           });
         }
@@ -178,6 +298,14 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
 
     void AsyncStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(settings));
   }, [isHydrated, settings]);
+
+  useEffect(() => {
+    if (!isHydrated) {
+      return;
+    }
+
+    void AsyncStorage.setItem(CHAT_PREFERENCES_STORAGE_KEY, JSON.stringify(chatPreferences));
+  }, [chatPreferences, isHydrated]);
 
   const projects = useMemo<OpencodeProject[]>(() => {
     const entries = new Map<string, OpencodeProject>();
@@ -216,50 +344,7 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
   );
   const catalogClient = useMemo(() => buildClient({ ...settings, directory: '' }), [settings]);
 
-  const browseServerPath = useCallback(
-    async (path?: string, silent = false) => {
-      const targetPath = path?.trim() || browserPath || currentProjectPath || serverRootPath;
-      if (!targetPath) {
-        return;
-      }
-
-      if (!silent) {
-        setIsBrowsingServer(true);
-      }
-
-      try {
-        const browserClient = buildClient({ ...settingsRef.current, directory: getParentPath(targetPath) || targetPath });
-        // If the input ends with a slash, list children of that path
-        const listPath = targetPath.endsWith('/') ? '.' : targetPath.split('/').pop() || '.';
-        const response = await browserClient.file.list({ throwOnError: true, query: { path: listPath } });
-
-        const nextEntries = response.data
-          .filter((entry) => entry.type === 'directory')
-          .sort((left, right) => left.name.localeCompare(right.name));
-
-        // If user typed a partial path (no trailing slash), use suggestions instead of replacing the path
-        if (!targetPath.endsWith('/')) {
-          // suggest directories that start with the last segment
-          const last = targetPath.split('/').pop() || '';
-          const filtered = nextEntries.filter((e) => e.name.startsWith(last));
-          setBrowserEntries(nextEntries);
-          setBrowserError(undefined);
-          return filtered;
-        }
-
-        setBrowserPath(targetPath);
-        setBrowserEntries(nextEntries);
-        setBrowserError(undefined);
-      } catch (error) {
-        setBrowserError(getErrorMessage(error));
-      } finally {
-        if (!silent) {
-          setIsBrowsingServer(false);
-        }
-      }
-    },
-    [browserPath, currentProjectPath, serverRootPath],
-  );
+  // browseServerPath stub removed
 
   const loadWorkspaceCatalog = useCallback(
     async (silent = false): Promise<WorkspaceCatalog> => {
@@ -294,7 +379,6 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
         setCurrentProjectPath(currentProject?.worktree);
         setServerRootPath(pathResponse.data.directory);
         setActiveProjectPath((current) => current || currentProject?.worktree || nextProjects[0]?.worktree);
-        setBrowserPath((current) => current || currentProject?.worktree || pathResponse.data.directory);
 
         return {
           currentProjectPath: currentProject?.worktree,
@@ -385,12 +469,78 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
     [client],
   );
 
+  const refreshSessionDiff = useCallback(
+    async (sessionId: string, silent = false) => {
+      if (!silent) {
+        setIsRefreshingDiffs(true);
+      }
+
+      try {
+        const response = await client.session.diff({
+          throwOnError: true,
+          path: { id: sessionId },
+        });
+
+        setDiffsBySession((current) => ({
+          ...current,
+          [sessionId]: response.data,
+        }));
+
+        return response.data;
+      } finally {
+        if (!silent) {
+          setIsRefreshingDiffs(false);
+        }
+      }
+    },
+    [client],
+  );
+
+  const refreshChatCapabilities = useCallback(async () => {
+    if (!activeProjectPath) {
+      setCurrentConfig(undefined);
+      setAvailableModels([]);
+      setAvailableAgents([]);
+      return;
+    }
+
+    const [configResponse, providersResponse, agentsResponse] = await Promise.all([
+      client.config.get({ throwOnError: true }),
+      client.provider.list({ throwOnError: true }),
+      client.app.agents({ throwOnError: true }),
+    ]);
+
+    const nextConfig = configResponse.data;
+    const nextModels = providersResponse.data.all
+      .flatMap((provider) =>
+        Object.values(provider.models).map((model) => ({
+          id: `${provider.id}/${model.id}`,
+          label: model.name,
+          providerID: provider.id,
+          modelID: model.id,
+          supportsReasoning: model.reasoning,
+        })),
+      )
+      .sort((left, right) => left.label.localeCompare(right.label));
+    const nextAgents = agentsResponse.data.map(toAgentOption);
+
+    setCurrentConfig(nextConfig);
+    setAvailableModels(nextModels);
+    setAvailableAgents(nextAgents);
+    setChatPreferences((current) => ({
+      ...current,
+      mode: getInitialMode(nextAgents, nextConfig, current.mode),
+      modelId: getInitialModelId(nextModels, nextConfig, current.modelId),
+      autoApprove: isAutoApproveEnabled(nextConfig),
+    }));
+  }, [activeProjectPath, client]);
+
   const openSession = useCallback(
     async (sessionId: string) => {
       setCurrentSessionId(sessionId);
-      await refreshMessages(sessionId);
+      await Promise.all([refreshMessages(sessionId), refreshSessionDiff(sessionId, true)]);
     },
-    [refreshMessages],
+    [refreshMessages, refreshSessionDiff],
   );
 
   const createSession = useCallback(
@@ -431,7 +581,7 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
         const nextSessions = sessions.length > 0 ? sessions : await fetchSessions(true);
         const targetSession = nextSessions[0] ?? (await createSession());
         setCurrentSessionId(targetSession.id);
-        await refreshMessages(targetSession.id, true);
+        await Promise.all([refreshMessages(targetSession.id, true), refreshSessionDiff(targetSession.id, true)]);
         return targetSession.id;
       } finally {
         setIsBootstrappingChat(false);
@@ -449,6 +599,7 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
     fetchSessions,
     messagesBySession,
     refreshMessages,
+    refreshSessionDiff,
     sessions,
   ]);
 
@@ -479,20 +630,21 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
         projectDirectory,
       });
 
-      await browseServerPath(projectDirectory, true);
+      // browsing removed
 
       if (activeProjectPath || catalog.currentProjectPath || catalog.serverProjects[0]?.worktree) {
-        await fetchSessions(true);
+        await Promise.all([fetchSessions(true), refreshChatCapabilities()]);
       } else {
         setSessions([]);
         setSessionStatuses({});
+        setCurrentConfig(undefined);
+        setAvailableModels([]);
+        setAvailableAgents([]);
       }
     } catch (error) {
       setServerProjects([]);
       setCurrentProjectPath(undefined);
       setServerRootPath(undefined);
-      setBrowserEntries([]);
-      setBrowserError(undefined);
       setConnection({
         status: 'error',
         message: getErrorMessage(error),
@@ -500,8 +652,11 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
       });
       setSessions([]);
       setSessionStatuses({});
+      setCurrentConfig(undefined);
+      setAvailableModels([]);
+      setAvailableAgents([]);
     }
-  }, [activeProjectPath, browseServerPath, fetchSessions, loadWorkspaceCatalog]);
+  }, [activeProjectPath, fetchSessions, loadWorkspaceCatalog, refreshChatCapabilities]);
 
   useEffect(() => {
     if (!isHydrated) {
@@ -525,9 +680,34 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
         return;
       }
 
-      await Promise.all([refreshSessions(silent), refreshMessages(currentSessionId, silent)]);
+      await Promise.all([refreshSessions(silent), refreshMessages(currentSessionId, silent), refreshSessionDiff(currentSessionId, true)]);
     },
-    [currentSessionId, refreshMessages, refreshSessions],
+    [currentSessionId, refreshMessages, refreshSessionDiff, refreshSessions],
+  );
+
+  const updateChatPreferences = useCallback((patch: Partial<ChatPreferences>) => {
+    setChatPreferences((current) => ({
+      ...current,
+      ...patch,
+    }));
+  }, []);
+
+  const setAutoApprove = useCallback(
+    async (enabled: boolean) => {
+      const latestConfig = currentConfig || (await client.config.get({ throwOnError: true })).data;
+      const nextConfig = mergePermissionConfig(latestConfig, enabled);
+      const response = await client.config.update({
+        throwOnError: true,
+        body: nextConfig,
+      });
+
+      setCurrentConfig(response.data);
+      setChatPreferences((current) => ({
+        ...current,
+        autoApprove: enabled,
+      }));
+    },
+    [client, currentConfig],
   );
 
   const sendPrompt = useCallback(
@@ -544,6 +724,14 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
           throwOnError: true,
           path: { id: sessionId },
           body: {
+            agent: chatPreferences.mode,
+            model: chatPreferences.modelId
+              ? {
+                  providerID: chatPreferences.modelId.split('/')[0],
+                  modelID: chatPreferences.modelId.split('/').slice(1).join('/'),
+                }
+              : undefined,
+            system: buildReasoningSystemPrompt(chatPreferences.reasoning),
             parts: [
               {
                 type: 'text',
@@ -554,12 +742,12 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
         });
 
         setCurrentSessionId(sessionId);
-        await Promise.all([refreshSessions(true), refreshMessages(sessionId, true)]);
+        await Promise.all([refreshSessions(true), refreshMessages(sessionId, true), refreshSessionDiff(sessionId, true)]);
       } finally {
         setSendingState({ active: false, sessionId: undefined });
       }
     },
-    [client, refreshMessages, refreshSessions],
+    [chatPreferences.mode, chatPreferences.modelId, chatPreferences.reasoning, client, refreshMessages, refreshSessionDiff, refreshSessions],
   );
 
   useEffect(() => {
@@ -575,12 +763,12 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
     const interval = setInterval(() => {
       void refreshSessions(true);
       if (currentSessionId) {
-        void refreshMessages(currentSessionId, true);
+        void Promise.all([refreshMessages(currentSessionId, true), refreshSessionDiff(currentSessionId, true)]);
       }
     }, 3000);
 
     return () => clearInterval(interval);
-  }, [activeProjectPath, connection.status, currentSessionId, refreshMessages, refreshSessions, sendingState.active, sessionStatuses]);
+  }, [activeProjectPath, connection.status, currentSessionId, refreshMessages, refreshSessionDiff, refreshSessions, sendingState.active, sessionStatuses]);
 
   const updateSettings = useCallback((patch: Partial<OpencodeConnectionSettings>) => {
     setSettings((current) => ({
@@ -607,6 +795,7 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
   );
 
   const currentMessages = currentSessionId ? messagesBySession[currentSessionId] || [] : [];
+  const currentDiffs = currentSessionId ? diffsBySession[currentSessionId] || [] : [];
   const currentTranscript = useMemo(() => currentMessages.map(toTranscriptEntry), [currentMessages]);
   const sessionPreviewById = useMemo(
     () =>
@@ -631,21 +820,25 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
       serverRootPath,
       isRefreshingWorkspaceCatalog,
       refreshWorkspaceCatalog,
-      browserPath,
-      browserEntries,
-      browserError,
-      isBrowsingServer,
-      browseServerPath,
+      // browsing removed
       sessions,
       sessionStatuses,
       currentSessionId,
       activeSession,
       currentMessages,
+      currentDiffs,
       currentTranscript,
       sessionPreviewById,
       isRefreshingSessions,
       isRefreshingMessages,
+      isRefreshingDiffs,
       isBootstrappingChat,
+      currentConfig,
+      availableModels,
+      availableAgents,
+      chatPreferences,
+      updateChatPreferences,
+      setAutoApprove,
       sendingState,
       connect,
       refreshSessions,
@@ -659,19 +852,20 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
       activeSession,
       activeProject,
       activeProjectPath,
-      browseServerPath,
-      browserEntries,
-      browserError,
-      browserPath,
       connect,
       connection,
+      currentConfig,
+      currentDiffs,
       createSession,
       currentMessages,
       currentSessionId,
       currentTranscript,
+      chatPreferences,
       ensureActiveSession,
-      isBrowsingServer,
+      availableAgents,
+      availableModels,
       isBootstrappingChat,
+      isRefreshingDiffs,
       isHydrated,
       isRefreshingMessages,
       isRefreshingWorkspaceCatalog,
@@ -683,6 +877,7 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
       refreshWorkspaceCatalog,
       refreshSessions,
       selectProject,
+      setAutoApprove,
       sendPrompt,
       sendingState,
       serverRootPath,
@@ -691,6 +886,7 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
       sessions,
       serverProjects,
       settings,
+      updateChatPreferences,
       updateSettings,
     ],
   );
