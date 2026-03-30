@@ -1,8 +1,9 @@
 import { useEffect } from 'react';
-import { Center, Heading, Spinner, Text, VStack } from '@gluestack-ui/themed';
+import { StyleSheet, View } from 'react-native';
+import { ActivityIndicator, Surface, Text } from 'react-native-paper';
 
 import { ChatView } from '@/components/chat/chat-view';
-import { Colors, Fonts } from '@/constants/theme';
+import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useOpencode } from '@/providers/opencode-provider';
 
@@ -19,13 +20,7 @@ export default function ChatLandingScreen() {
   } = useOpencode();
 
   useEffect(() => {
-    if (
-      !isHydrated ||
-      !activeProject ||
-      connection.status !== 'connected' ||
-      isBootstrappingChat ||
-      currentSessionId
-    ) {
+    if (!isHydrated || !activeProject || connection.status !== 'connected' || isBootstrappingChat || currentSessionId) {
       return;
     }
 
@@ -38,54 +33,47 @@ export default function ChatLandingScreen() {
 
   if (!activeProject) {
     return (
-      <Center flex={1} px={24} bg={palette.background}>
-        <VStack
-          w="$full"
-          space="md"
-          borderWidth={1}
-          borderColor={palette.border}
-          borderRadius={28}
-          p={24}
-          alignItems="center"
-          bg={palette.card}>
-          <Heading style={[styles.title, { color: palette.text }]}>Choose a project</Heading>
-          <Text style={[styles.copy, { color: palette.muted }]}>Select a server project or folder in the `Workspaces` tab to load chats for that context.</Text>
-        </VStack>
-      </Center>
+      <View style={[styles.center, { backgroundColor: palette.background }]}>
+        <Surface style={[styles.panel, { backgroundColor: palette.surface }]} elevation={1}>
+          <Text variant="headlineSmall" style={[styles.title, { color: palette.text }]}>Choose a workspace</Text>
+          <Text variant="bodyMedium" style={[styles.copy, { color: palette.muted }]}>Select a project in the Workspaces tab to open its chat context.</Text>
+        </Surface>
+      </View>
     );
   }
 
   return (
-    <Center flex={1} px={24} bg={palette.background}>
-      <VStack
-        w="$full"
-        space="md"
-        borderWidth={1}
-        borderColor={palette.border}
-        borderRadius={28}
-        p={24}
-        alignItems="center"
-        bg={palette.card}>
-        <Spinner size="large" color={palette.tint} />
-        <Heading style={[styles.title, { color: palette.text }]}>Opening your latest chat</Heading>
-        <Text style={[styles.copy, { color: palette.muted }]}> 
-          {connection.status === 'error'
-            ? connection.message
-            : 'Fetching history from OpenCode and preparing the conversation view.'}
+    <View style={[styles.center, { backgroundColor: palette.background }]}>
+      <Surface style={[styles.panel, { backgroundColor: palette.surface }]} elevation={1}>
+        <ActivityIndicator size="large" color={palette.tint} />
+        <Text variant="headlineSmall" style={[styles.title, { color: palette.text }]}>Opening chat</Text>
+        <Text variant="bodyMedium" style={[styles.copy, { color: palette.muted }]}>
+          {connection.status === 'error' ? connection.message : 'Loading the latest session for this workspace.'}
         </Text>
-      </VStack>
-    </Center>
+      </Surface>
+    </View>
   );
 }
 
-const styles = {
+const styles = StyleSheet.create({
+  center: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 24,
+  },
+  panel: {
+    width: '100%',
+    padding: 24,
+    gap: 12,
+    borderRadius: 16,
+  },
   title: {
-    fontSize: 28,
-    fontFamily: Fonts.display,
+    textAlign: 'center',
+    fontWeight: '600',
   },
   copy: {
-    fontSize: 15,
-    lineHeight: 22,
     textAlign: 'center',
+    lineHeight: 22,
   },
-} as const;
+});

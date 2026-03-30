@@ -23,9 +23,12 @@ import {
   type SessionMessageRecord,
   type TranscriptEntry,
 } from '@/lib/opencode/format';
+import { notifyTaskFinished } from '@/lib/notifications';
 
 const SETTINGS_STORAGE_KEY = 'opencode-mobile.settings';
 const CHAT_PREFERENCES_STORAGE_KEY = 'opencode-mobile.chat-preferences';
+const ACTIVE_PROJECT_STORAGE_KEY = 'opencode-mobile.active-project';
+const LAST_SESSION_BY_PROJECT_STORAGE_KEY = 'opencode-mobile.last-session-by-project';
 
 export type ModelOption = {
   id: string;
@@ -309,11 +312,13 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
   // browsing removed
   const [isBootstrappingChat, setIsBootstrappingChat] = useState(false);
   const [sendingState, setSendingState] = useState<{ sessionId?: string; active: boolean }>({ active: false });
+  const pendingNotificationSessionIdsRef = useRef<Set<string>>(new Set());
   const [currentConfig, setCurrentConfig] = useState<Config>();
   const [availableProviders, setAvailableProviders] = useState<ProviderOption[]>([]);
   const [availableModels, setAvailableModels] = useState<ModelOption[]>([]);
   const [availableAgents, setAvailableAgents] = useState<AgentOption[]>([]);
   const [chatPreferences, setChatPreferences] = useState<ChatPreferences>(defaultChatPreferences);
+  const [lastSessionByProject, setLastSessionByProject] = useState<Record<string, string>>({});
 
   const settingsRef = useRef(settings);
   const bootstrapPromiseRef = useRef<Promise<string | undefined> | null>(null);
@@ -340,6 +345,16 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
             ...parsed,
           });
         }
+
+        const storedActiveProjectPath = await AsyncStorage.getItem(ACTIVE_PROJECT_STORAGE_KEY);
+        if (storedActiveProjectPath) {
+          setActiveProjectPath(storedActiveProjectPath);
+        }
+
+        const storedLastSessionByProject = await AsyncStorage.getItem(LAST_SESSION_BY_PROJECT_STORAGE_KEY);
+        if (storedLastSessionByProject) {
+          setLastSessionByProject(JSON.parse(storedLastSessionByProject) as Record<string, string>);
+        }
       } catch {
         // Ignore hydration issues and keep defaults.
       } finally {
@@ -365,6 +380,27 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
 
     void AsyncStorage.setItem(CHAT_PREFERENCES_STORAGE_KEY, JSON.stringify(chatPreferences));
   }, [chatPreferences, isHydrated]);
+
+  useEffect(() => {
+    if (!isHydrated) {
+      return;
+    }
+
+    if (activeProjectPath) {
+      void AsyncStorage.setItem(ACTIVE_PROJECT_STORAGE_KEY, activeProjectPath);
+      return;
+    }
+
+    void AsyncStorage.removeItem(ACTIVE_PROJECT_STORAGE_KEY);
+  }, [activeProjectPath, isHydrated]);
+
+  useEffect(() => {
+    if (!isHydrated) {
+      return;
+    }
+
+    void AsyncStorage.setItem(LAST_SESSION_BY_PROJECT_STORAGE_KEY, JSON.stringify(lastSessionByProject));
+  }, [isHydrated, lastSessionByProject]);
 
   const projects = useMemo<OpencodeProject[]>(() => {
     const entries = new Map<string, OpencodeProject>();
@@ -637,9 +673,15 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
   const openSession = useCallback(
     async (sessionId: string) => {
       setCurrentSessionId(sessionId);
+      if (activeProjectPath) {
+        setLastSessionByProject((current) => ({
+          ...current,
+          [activeProjectPath]: sessionId,
+        }));
+      }
       await Promise.all([refreshMessages(sessionId), refreshSessionDiff(sessionId, true), refreshSessionTodos(sessionId)]);
     },
-    [refreshMessages, refreshSessionDiff, refreshSessionTodos],
+    [activeProjectPath, refreshMessages, refreshSessionDiff, refreshSessionTodos],
   );
 
   const createSession = useCallback(
@@ -678,8 +720,18 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
 
       try {
         const nextSessions = sessions.length > 0 ? sessions : await fetchSessions(true);
-        const targetSession = nextSessions[0] ?? (await createSession());
+        const rememberedSessionId = activeProjectPath ? lastSessionByProject[activeProjectPath] : undefined;
+        const targetSession =
+          nextSessions.find((session) => session.id === rememberedSessionId) ??
+          nextSessions[0] ??
+          (await createSession());
         setCurrentSessionId(targetSession.id);
+        if (activeProjectPath) {
+          setLastSessionByProject((current) => ({
+            ...current,
+            [activeProjectPath]: targetSession.id,
+          }));
+        }
         await Promise.all([
           refreshMessages(targetSession.id, true),
           refreshSessionDiff(targetSession.id, true),
@@ -700,6 +752,7 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
     createSession,
     currentSessionId,
     fetchSessions,
+    lastSessionByProject,
     messagesBySession,
     refreshMessages,
     refreshSessionDiff,
@@ -895,9 +948,43 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
         return;
       }
 
+      pendingNotificationSessionIdsRef.current.add(sessionId);
       setSendingState({ active: true, sessionId });
 
       try {
+        // Prepare file parts. For local URIs (file://, content://, asset://) try to read
+        // the file and convert to a data URL (base64). This makes the bytes available
+        // to the server even when it cannot fetch local device URIs.
+        const preparedFileParts: { type: 'file'; mime: string; filename?: string; url: string }[] = [];
+
+        if (attachments && attachments.length > 0) {
+          for (const att of attachments) {
+            const filename = att.filename || att.uri.split('/').pop();
+            const mime = att.mime || 'application/octet-stream';
+
+            // If it's already a remote URL, use as-is.
+            if (/^https?:\/\//i.test(att.uri)) {
+              preparedFileParts.push({ type: 'file', mime, filename, url: att.uri });
+              continue;
+            }
+
+            // Attempt to read local file and encode as data URL. Use dynamic import to
+            // avoid requiring expo-file-system in environments that don't have it.
+            try {
+              // eslint-disable-next-line @typescript-eslint/no-var-requires
+              const FileSystem = await import('expo-file-system/legacy');
+              // readAsStringAsync supports file:// and content:// URIs on React Native
+              const base64 = await FileSystem.readAsStringAsync(att.uri, { encoding: 'base64' });
+              const dataUrl = `data:${mime};base64,${base64}`;
+              preparedFileParts.push({ type: 'file', mime, filename, url: dataUrl });
+            } catch (err) {
+              // If reading fails, fall back to passing the original URI. The server
+              // may still support some schemes or an MCP server may be able to fetch.
+              preparedFileParts.push({ type: 'file', mime, filename, url: att.uri });
+            }
+          }
+        }
+
         await client.session.prompt({
           throwOnError: true,
           path: { id: sessionId },
@@ -916,12 +1003,7 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
                 text: trimmedPrompt,
               },
               // append any file parts
-              ...(attachments || []).map((att) => ({
-                type: 'file',
-                mime: att.mime || 'application/octet-stream',
-                filename: att.filename || att.uri.split('/').pop(),
-                url: att.uri,
-              } as any)),
+              ...preparedFileParts,
             ],
           },
         });
@@ -942,6 +1024,7 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
 
   const abortSession = useCallback(
     async (sessionId: string) => {
+      pendingNotificationSessionIdsRef.current.delete(sessionId);
       await client.session.abort({
         throwOnError: true,
         path: { id: sessionId },
@@ -981,6 +1064,25 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
     return () => clearInterval(interval);
   }, [activeProjectPath, connection.status, currentSessionId, refreshMessages, refreshSessionDiff, refreshSessionTodos, refreshSessions, sendingState.active, sessionStatuses]);
 
+  useEffect(() => {
+    const pendingIds = [...pendingNotificationSessionIdsRef.current];
+    if (pendingIds.length === 0) {
+      return;
+    }
+
+    pendingIds.forEach((sessionId) => {
+      const status = sessionStatuses[sessionId];
+      if ((status && status.type !== 'idle') || (sendingState.active && sendingState.sessionId === sessionId)) {
+        return;
+      }
+
+      pendingNotificationSessionIdsRef.current.delete(sessionId);
+      const session = sessions.find((item) => item.id === sessionId);
+      const title = session?.title || 'Task complete';
+      void notifyTaskFinished('OpenCode finished a task', title);
+    });
+  }, [sendingState.active, sendingState.sessionId, sessionStatuses, sessions]);
+
   const updateSettings = useCallback((patch: Partial<OpencodeConnectionSettings>) => {
     setSettings((current) => ({
       ...current,
@@ -997,8 +1099,10 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
       return;
     }
 
-    setCurrentSessionId(sessions[0]?.id);
-  }, [currentSessionId, sessions]);
+    const rememberedSessionId = activeProjectPath ? lastSessionByProject[activeProjectPath] : undefined;
+    const fallbackSessionId = sessions.find((session) => session.id === rememberedSessionId)?.id || sessions[0]?.id;
+    setCurrentSessionId(fallbackSessionId);
+  }, [activeProjectPath, currentSessionId, lastSessionByProject, sessions]);
 
   const activeSession = useMemo(
     () => sessions.find((session) => session.id === currentSessionId),

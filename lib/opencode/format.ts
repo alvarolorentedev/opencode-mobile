@@ -10,7 +10,11 @@ export type TranscriptDetail =
   | { id: string; kind: 'tool'; label: string; body: string; status: string }
   | { id: string; kind: 'patch'; label: string; body: string }
   | { id: string; kind: 'file'; label: string; body: string }
-  | { id: string; kind: 'subtask'; label: string; body: string };
+  | { id: string; kind: 'subtask'; label: string; body: string }
+  | { id: string; kind: 'step'; label: string; body: string }
+  | { id: string; kind: 'agent'; label: string; body: string }
+  | { id: string; kind: 'retry'; label: string; body: string }
+  | { id: string; kind: 'compaction'; label: string; body: string };
 
 export type TranscriptEntry = {
   id: string;
@@ -221,6 +225,56 @@ export function toTranscriptEntry(record: SessionMessageRecord): TranscriptEntry
         kind: 'subtask',
         label: 'Subtask',
         body: part.description,
+      });
+      return;
+    }
+
+    if (part.type === 'step-start') {
+      details.push({
+        id,
+        kind: 'step',
+        label: 'Step started',
+        body: part.snapshot || 'OpenCode started a new step.',
+      });
+      return;
+    }
+
+    if (part.type === 'step-finish') {
+      details.push({
+        id,
+        kind: 'step',
+        label: 'Step finished',
+        body: `${part.reason}${part.snapshot ? `\n\n${part.snapshot}` : ''}`,
+      });
+      return;
+    }
+
+    if (part.type === 'agent') {
+      details.push({
+        id,
+        kind: 'agent',
+        label: 'Agent',
+        body: part.name,
+      });
+      return;
+    }
+
+    if (part.type === 'retry') {
+      details.push({
+        id,
+        kind: 'retry',
+        label: `Retry ${part.attempt}`,
+        body: 'data' in part.error && part.error.data && 'message' in part.error.data ? String(part.error.data.message) : 'Request failed',
+      });
+      return;
+    }
+
+    if (part.type === 'compaction') {
+      details.push({
+        id,
+        kind: 'compaction',
+        label: 'Context compaction',
+        body: part.auto ? 'OpenCode compacted the session automatically.' : 'OpenCode compacted the session.',
       });
     }
   });

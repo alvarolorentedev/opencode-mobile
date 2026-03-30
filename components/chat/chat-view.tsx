@@ -22,6 +22,7 @@ import {
   TextInput,
   TouchableRipple,
 } from 'react-native-paper';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Colors, Fonts } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
@@ -48,6 +49,8 @@ const REASONING_OPTIONS: { id: ReasoningLevel; label: string }[] = [
   { id: 'default', label: 'Default' },
   { id: 'high', label: 'High' },
 ];
+
+const TRANSCRIPT_PAGE_SIZE = 20;
 
 function getModelLabel(models: ModelOption[], modelId?: string) {
   const match = models.find((model) => model.id === modelId);
@@ -101,10 +104,162 @@ function getTodoTone(priority: string, palette: (typeof Colors)['light']) {
   return palette.tint;
 }
 
+function summarizeDetails(details: TranscriptDetail[]) {
+  const patches = details.filter((detail) => detail.kind === 'patch').length;
+  const files = details.filter((detail) => detail.kind === 'file').length;
+  const runningTool = details.find((detail) => detail.kind === 'tool' && detail.status === 'running');
+  const failedRetry = details.find((detail) => detail.kind === 'retry');
+  const summaries: string[] = [];
+
+  if (runningTool) {
+    summaries.push(runningTool.label);
+  }
+
+  if (patches > 0) {
+    summaries.push(`Updated ${patches} patch${patches === 1 ? '' : 'es'}`);
+  }
+
+  if (files > 0) {
+    summaries.push(`${files} file${files === 1 ? '' : 's'}`);
+  }
+
+  if (failedRetry) {
+    summaries.push(failedRetry.label);
+  }
+
+  return summaries;
+}
+
+function renderInlineMarkdown(text: string, color: string, codeColor: string): ReactNode[] {
+  const parts = text.split(/(`[^`]+`|\*\*[^*]+\*\*)/g).filter(Boolean);
+
+  return parts.map((part, index) => {
+    if (part.startsWith('`') && part.endsWith('`')) {
+      return (
+        <Text key={`inline-${index}`} style={[styles.inlineCode, { color: codeColor }]}> 
+          {part.slice(1, -1)}
+        </Text>
+      );
+    }
+
+    if (part.startsWith('**') && part.endsWith('**')) {
+      return (
+        <Text key={`inline-${index}`} style={{ color, fontWeight: '700' }}>
+          {part.slice(2, -2)}
+        </Text>
+      );
+    }
+
+    return (
+      <Text key={`inline-${index}`} style={{ color }}>
+        {part}
+      </Text>
+    );
+  });
+}
+
+function MarkdownText({ text, color, mutedColor }: { text: string; color: string; mutedColor: string }) {
+  const lines = text.split('\n');
+  const blocks: ReactNode[] = [];
+  let paragraph: string[] = [];
+  let codeBlock: string[] = [];
+  let inCodeBlock = false;
+
+  function pushParagraph() {
+    if (paragraph.length === 0) {
+      return;
+    }
+
+    const content = paragraph.join(' ').trim();
+    if (content) {
+      blocks.push(
+        <Text key={`p-${blocks.length}`} variant="bodyLarge" style={{ color, lineHeight: 26 }}>
+          {renderInlineMarkdown(content, color, mutedColor)}
+        </Text>,
+      );
+    }
+    paragraph = [];
+  }
+
+  function pushCodeBlock() {
+    if (codeBlock.length === 0) {
+      return;
+    }
+
+    blocks.push(
+      <View key={`code-${blocks.length}`} style={styles.codeBlock}>
+        <Text variant="bodySmall" style={[styles.code, { color }]}>
+          {codeBlock.join('\n')}
+        </Text>
+      </View>,
+    );
+    codeBlock = [];
+  }
+
+  lines.forEach((line) => {
+    if (line.trim().startsWith('```')) {
+      if (inCodeBlock) {
+        pushCodeBlock();
+      } else {
+        pushParagraph();
+      }
+      inCodeBlock = !inCodeBlock;
+      return;
+    }
+
+    if (inCodeBlock) {
+      codeBlock.push(line);
+      return;
+    }
+
+    const heading = line.match(/^(#{1,3})\s+(.*)$/);
+    if (heading) {
+      pushParagraph();
+      blocks.push(
+        <Text
+          key={`h-${blocks.length}`}
+          variant={heading[1].length === 1 ? 'headlineSmall' : 'titleMedium'}
+          style={{ color, fontWeight: '700' }}>
+          {heading[2]}
+        </Text>,
+      );
+      return;
+    }
+
+    const bullet = line.match(/^[-*]\s+(.*)$/);
+    if (bullet) {
+      pushParagraph();
+      blocks.push(
+        <View key={`b-${blocks.length}`} style={styles.markdownBulletRow}>
+          <Text style={{ color }}>{'\u2022'}</Text>
+          <Text variant="bodyLarge" style={[styles.markdownBulletText, { color, lineHeight: 26 }]}>
+            {renderInlineMarkdown(bullet[1], color, mutedColor)}
+          </Text>
+        </View>,
+      );
+      return;
+    }
+
+    if (!line.trim()) {
+      pushParagraph();
+      return;
+    }
+
+    paragraph.push(line.trim());
+  });
+
+  pushParagraph();
+  pushCodeBlock();
+
+  return <View style={styles.markdownStack}>{blocks}</View>;
+}
+
 export function ChatView() {
   const colorScheme = useColorScheme() ?? 'light';
   const palette = Colors[colorScheme];
+  const insets = useSafeAreaInsets();
   const scrollRef = useRef<ScrollView>(null);
+  const isPaginatingRef = useRef(false);
   const {
     activeProject,
     activeSession,
@@ -139,6 +294,7 @@ export function ChatView() {
   const [isCreatingSession, setIsCreatingSession] = useState(false);
   const [isStoppingSession, setIsStoppingSession] = useState(false);
   const [todosExpanded, setTodosExpanded] = useState(true);
+  const [visibleTranscriptCount, setVisibleTranscriptCount] = useState(TRANSCRIPT_PAGE_SIZE);
 
   const status = currentSessionId ? sessionStatuses[currentSessionId] : undefined;
   const running = sendingState.active || (!!status && status.type !== 'idle');
@@ -156,18 +312,49 @@ export function ChatView() {
   );
   const completedTodos = currentTodos.filter((todo) => todo.status === 'completed').length;
   const pendingTodos = currentTodos.filter((todo) => todo.status !== 'completed' && todo.status !== 'cancelled').length;
+  const visibleTranscript = useMemo(
+    () => currentTranscript.slice(Math.max(0, currentTranscript.length - visibleTranscriptCount)),
+    [currentTranscript, visibleTranscriptCount],
+  );
+  const hasMoreTranscript = visibleTranscript.length < currentTranscript.length;
 
   useEffect(() => {
+    setVisibleTranscriptCount(TRANSCRIPT_PAGE_SIZE);
+  }, [currentSessionId]);
+
+  useEffect(() => {
+    if (currentTranscript.length <= visibleTranscriptCount) {
+      return;
+    }
+
+    const latestVisibleId = visibleTranscript[0]?.id;
+    const nextWindow = currentTranscript.slice(Math.max(0, currentTranscript.length - visibleTranscriptCount));
+    if (latestVisibleId && !nextWindow.some((entry) => entry.id === latestVisibleId)) {
+      setVisibleTranscriptCount((current) => current + TRANSCRIPT_PAGE_SIZE);
+    }
+  }, [currentTranscript, visibleTranscript, visibleTranscriptCount]);
+
+  useEffect(() => {
+    if (isPaginatingRef.current) {
+      isPaginatingRef.current = false;
+      return;
+    }
+
     const timer = setTimeout(() => {
-      scrollRef.current?.scrollToEnd({ animated: currentTranscript.length > 1 });
+      scrollRef.current?.scrollToEnd({ animated: visibleTranscript.length > 1 });
     }, 80);
 
     return () => clearTimeout(timer);
-  }, [activeTab, currentTranscript, currentTodos, running]);
+  }, [activeTab, currentTodos, running, visibleTranscript]);
+
+  function handleLoadEarlier() {
+    isPaginatingRef.current = true;
+    setVisibleTranscriptCount((current) => current + TRANSCRIPT_PAGE_SIZE);
+  }
 
   async function handleSendPrompt(promptOverride?: string) {
     const prompt = (promptOverride ?? draft).trim();
-    if (!prompt || connection.status !== 'connected') {
+    if ((!prompt && attachments.length === 0) || connection.status !== 'connected') {
       return;
     }
 
@@ -177,7 +364,40 @@ export function ChatView() {
     }
 
     setDraft('');
-    await sendPrompt(sessionId, prompt);
+    await sendPrompt(sessionId, prompt, attachments);
+    setAttachments([]);
+  }
+
+  async function handleAttach() {
+    try {
+      const picker = await import('expo-document-picker');
+      const result = await picker.getDocumentAsync({
+        multiple: true,
+        copyToCacheDirectory: true,
+      });
+
+      if (result.canceled || !result.assets?.length) {
+        return;
+      }
+
+      setAttachments((current) => {
+        const next = [...current];
+
+        result.assets.forEach((asset) => {
+          if (!next.some((attachment) => attachment.uri === asset.uri)) {
+            next.push({
+              uri: asset.uri,
+              mime: asset.mimeType || 'application/octet-stream',
+              filename: asset.name,
+            });
+          }
+        });
+
+        return next;
+      });
+    } catch (error) {
+      console.warn('Attachment picker error', error);
+    }
   }
 
   async function handleNewSession() {
@@ -208,8 +428,11 @@ export function ChatView() {
     <KeyboardAvoidingView
       style={[styles.screen, { backgroundColor: palette.background }]}
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 56}>
-      <Appbar.Header style={[styles.header, { backgroundColor: palette.surface }]} statusBarHeight={0} elevated>
+      keyboardVerticalOffset={Platform.OS === 'ios' ? insets.top : 0}>
+      <Appbar.Header
+        style={[styles.header, { backgroundColor: palette.surface, paddingTop: insets.top, height: 64 + insets.top }]}
+        statusBarHeight={0}
+        elevated>
         <Appbar.Content
           title={activeSession?.title || 'OpenCode'}
           subtitle={activeSession ? getSessionSubtitle(activeSession) : activeProject?.label || 'Chat'}
@@ -273,7 +496,15 @@ export function ChatView() {
           </Card>
         ) : null}
 
-        {activeTab === 'session' ? currentTranscript.map((entry) => <TranscriptMessage key={entry.id} entry={entry} />) : null}
+        {activeTab === 'session' && hasMoreTranscript ? (
+          <View style={styles.paginationRow}>
+            <Button mode="text" onPress={handleLoadEarlier}>
+              Load earlier messages
+            </Button>
+          </View>
+        ) : null}
+
+        {activeTab === 'session' ? visibleTranscript.map((entry) => <TranscriptMessage key={entry.id} entry={entry} />) : null}
 
         {activeTab === 'changes' ? (
           <View style={styles.sectionStack}>
@@ -310,7 +541,9 @@ export function ChatView() {
         ) : null}
       </ScrollView>
 
-      <Surface style={[styles.composer, { backgroundColor: palette.surface, borderTopColor: palette.border }]} elevation={4}>
+      <Surface
+        style={[styles.composer, { backgroundColor: palette.surface, borderTopColor: palette.border, paddingBottom: Math.max(insets.bottom, 12) }]}
+        elevation={4}>
         {currentTodos.length > 0 && pendingTodos > 0 ? (
           <TodoPanel
             completedCount={completedTodos}
@@ -319,6 +552,85 @@ export function ChatView() {
             pendingCount={pendingTodos}
             todos={currentTodos}
           />
+        ) : null}
+
+        <View style={styles.controlsRow}>
+          <MenuControl
+            active={menu === 'mode'}
+            label={selectedAgentLabel}
+            onClose={() => setMenu(undefined)}
+            onOpen={() => setMenu('mode')}>
+            {availableAgents.map((agent) => (
+              <Menu.Item
+                key={agent.id}
+                onPress={() => {
+                  updateChatPreferences({ mode: agent.id });
+                  setMenu(undefined);
+                }}
+                title={agent.label}
+              />
+            ))}
+          </MenuControl>
+          <MenuControl
+            active={menu === 'model'}
+            label={getModelLabel(visibleModels, chatPreferences.modelId)}
+            onClose={() => setMenu(undefined)}
+            onOpen={() => setMenu('model')}>
+            {visibleModels.map((model) => (
+              <Menu.Item
+                key={model.id}
+                onPress={() => {
+                  updateChatPreferences({ providerId: model.providerID, modelId: model.id });
+                  setMenu(undefined);
+                }}
+                title={model.label}
+              />
+            ))}
+          </MenuControl>
+          <MenuControl
+            active={menu === 'reasoning'}
+            label={chatPreferences.reasoning}
+            onClose={() => setMenu(undefined)}
+            onOpen={() => setMenu('reasoning')}>
+            {REASONING_OPTIONS.map((option) => (
+              <Menu.Item
+                key={option.id}
+                onPress={() => {
+                  updateChatPreferences({ reasoning: option.id });
+                  setMenu(undefined);
+                }}
+                title={option.label}
+              />
+            ))}
+          </MenuControl>
+          <Button
+            mode={chatPreferences.autoApprove ? 'contained-tonal' : 'outlined'}
+            compact
+            loading={isUpdatingAutoApprove}
+            onPress={() => {
+              setIsUpdatingAutoApprove(true);
+              void setAutoApprove(!chatPreferences.autoApprove).finally(() => setIsUpdatingAutoApprove(false));
+            }}>
+            {chatPreferences.autoApprove ? 'Auto' : 'Ask first'}
+          </Button>
+          <Button mode="outlined" compact icon="paperclip" onPress={() => void handleAttach()}>
+            Files
+          </Button>
+        </View>
+
+        {attachments.length > 0 ? (
+          <View style={styles.attachmentRow}>
+            {attachments.map((att, idx) => (
+              <Chip
+                key={`${att.uri}-${idx}`}
+                compact
+                mode="flat"
+                style={[styles.attachmentChip, { backgroundColor: palette.background }]}
+                onClose={() => setAttachments((current) => current.filter((_, index) => index !== idx))}>
+                {att.filename || att.uri}
+              </Chip>
+            ))}
+          </View>
         ) : null}
 
         <View style={[styles.inputShell, { borderColor: palette.border, backgroundColor: palette.background }]}> 
@@ -330,95 +642,10 @@ export function ChatView() {
             placeholder="Ask anything..."
             placeholderTextColor={palette.muted}
             style={[styles.input, { backgroundColor: 'transparent' }]}
+            contentStyle={styles.inputContentCompact}
             underlineColor="transparent"
             activeUnderlineColor="transparent"
           />
-          {attachments.length > 0 ? (
-            <View style={{ marginTop: 8, flexDirection: 'row', gap: 8 }}>
-              {attachments.map((att, idx) => (
-                <Chip key={att.uri + idx} onClose={() => setAttachments((cur) => cur.filter((_, i) => i !== idx))}>
-                  {att.filename || att.uri}
-                </Chip>
-              ))}
-            </View>
-          ) : null}
-          <View style={styles.controlsRow}>
-            <MenuControl
-              active={menu === 'mode'}
-              label={selectedAgentLabel}
-              onClose={() => setMenu(undefined)}
-              onOpen={() => setMenu('mode')}>
-              {availableAgents.map((agent) => (
-                <Menu.Item
-                  key={agent.id}
-                  onPress={() => {
-                    updateChatPreferences({ mode: agent.id });
-                    setMenu(undefined);
-                  }}
-                  title={agent.label}
-                />
-              ))}
-            </MenuControl>
-            <MenuControl
-              active={menu === 'model'}
-              label={getModelLabel(visibleModels, chatPreferences.modelId)}
-              onClose={() => setMenu(undefined)}
-              onOpen={() => setMenu('model')}>
-              {visibleModels.map((model) => (
-                <Menu.Item
-                  key={model.id}
-                  onPress={() => {
-                    updateChatPreferences({ providerId: model.providerID, modelId: model.id });
-                    setMenu(undefined);
-                  }}
-                  title={model.label}
-                />
-              ))}
-            </MenuControl>
-            <MenuControl
-              active={menu === 'reasoning'}
-              label={chatPreferences.reasoning}
-              onClose={() => setMenu(undefined)}
-              onOpen={() => setMenu('reasoning')}>
-              {REASONING_OPTIONS.map((option) => (
-                <Menu.Item
-                  key={option.id}
-                  onPress={() => {
-                    updateChatPreferences({ reasoning: option.id });
-                    setMenu(undefined);
-                  }}
-                  title={option.label}
-                />
-              ))}
-            </MenuControl>
-            <Button
-              mode={chatPreferences.autoApprove ? 'contained-tonal' : 'outlined'}
-              compact
-              loading={isUpdatingAutoApprove}
-              onPress={() => {
-                setIsUpdatingAutoApprove(true);
-                void setAutoApprove(!chatPreferences.autoApprove).finally(() => setIsUpdatingAutoApprove(false));
-              }}>
-              {chatPreferences.autoApprove ? 'Auto' : 'Ask first'}
-            </Button>
-            <Button
-              compact
-              onPress={async () => {
-                // open image picker
-                try {
-                  const result = await import('expo-image-picker').then((m) => m.launchImageLibraryAsync({ mediaTypes: m.MediaTypeOptions.All, quality: 0.8 }));
-                  if (!result.cancelled) {
-                    const uri = result.assets ? result.assets[0].uri : (result as any).uri;
-                    const mime = (result as any).type || 'image';
-                    setAttachments((cur) => [...cur, { uri, mime, filename: uri.split('/').pop() }]);
-                  }
-                } catch (e) {
-                  console.warn('Picker error', e);
-                }
-              }}>
-              Attach
-            </Button>
-          </View>
 
           <View style={styles.composerFooter}>
             <Text variant="bodySmall" style={{ color: palette.muted }}>
@@ -432,7 +659,7 @@ export function ChatView() {
               ) : null}
               <Button
                 mode="contained"
-                disabled={!draft.trim() || connection.status !== 'connected' || isCreatingSession}
+                disabled={(!draft.trim() && attachments.length === 0) || connection.status !== 'connected' || isCreatingSession}
                 onPress={() => void handleSendPrompt()}>
                 Send
               </Button>
@@ -587,26 +814,42 @@ function TranscriptMessage({ entry }: { entry: TranscriptEntry }) {
   const colorScheme = useColorScheme() ?? 'light';
   const palette = Colors[colorScheme];
   const isUser = entry.role === 'user';
+  const detailSummary = summarizeDetails(entry.details);
 
   return (
     <View style={[styles.messageRow, isUser && styles.messageRowUser]}>
       <Surface
         style={[
           styles.messageBubble,
+          isUser ? styles.messageBubbleUser : styles.messageBubbleAssistant,
           {
-            backgroundColor: isUser ? palette.bubbleUser : palette.surface,
+            backgroundColor: isUser ? palette.bubbleUser : palette.bubbleAssistant,
             borderColor: isUser ? palette.bubbleUser : palette.border,
           },
         ]}
         elevation={1}>
         <View style={styles.messageMeta}>
-          <Text variant="labelMedium" style={{ color: isUser ? palette.surface : palette.tint }}>{isUser ? 'You' : 'OpenCode'}</Text>
-          <Text variant="labelSmall" style={{ color: isUser ? palette.surfaceAlt : palette.muted }}>{formatTimestamp(entry.createdAt)}</Text>
+          <Text variant="labelMedium" style={{ color: isUser ? palette.onBubbleUser : palette.muted }}>{isUser ? 'You' : 'OpenCode'}</Text>
+          <Text variant="labelSmall" style={{ color: isUser ? palette.onBubbleUser : palette.muted, opacity: isUser ? 0.82 : 1 }}>
+            {formatTimestamp(entry.createdAt)}
+          </Text>
         </View>
-        {entry.text ? <Text variant="bodyLarge" style={{ color: isUser ? '#FFFFFF' : palette.text }}>{entry.text}</Text> : null}
+        {entry.text ? (
+          <MarkdownText
+            text={entry.text}
+            color={isUser ? palette.onBubbleUser : palette.onBubbleAssistant}
+            mutedColor={isUser ? palette.onBubbleUser : palette.muted}
+          />
+        ) : null}
         {entry.error ? <Text variant="bodyMedium" style={{ color: palette.danger }}>{entry.error}</Text> : null}
-        {!isUser && entry.details.length > 0 ? (
-          <View style={styles.detailStack}>{entry.details.map((detail) => <DetailCard key={detail.id} detail={detail} />)}</View>
+        {!isUser && detailSummary.length > 0 ? (
+          <View style={styles.summaryRow}>
+            {detailSummary.map((item) => (
+              <Chip key={item} compact mode="flat" style={[styles.summaryChip, { backgroundColor: palette.background }]}>
+                {item}
+              </Chip>
+            ))}
+          </View>
         ) : null}
       </Surface>
     </View>
@@ -620,9 +863,9 @@ function DetailCard({ detail }: { detail: TranscriptDetail }) {
   const [open, setOpen] = useState(startsOpen);
 
   return (
-    <Card mode="outlined" style={[styles.detailCard, { borderColor: palette.border }]}> 
-      <TouchableRipple onPress={() => setOpen((current) => !current)}>
-        <Card.Content style={styles.detailContent}>
+    <Surface style={[styles.detailCard, { backgroundColor: palette.background, borderColor: palette.border }]} elevation={0}>
+      <TouchableRipple borderless onPress={() => setOpen((current) => !current)}>
+        <View style={styles.detailContent}>
           <View style={styles.detailHeader}>
             <View style={styles.detailTitleWrap}>
               <Text variant="labelLarge" style={{ color: palette.muted }}>{getDetailKindLabel(detail)}</Text>
@@ -635,9 +878,9 @@ function DetailCard({ detail }: { detail: TranscriptDetail }) {
             )}
           </View>
           {open ? <Text variant="bodySmall" style={[styles.code, { color: palette.muted }]}>{detail.body}</Text> : null}
-        </Card.Content>
+        </View>
       </TouchableRipple>
-    </Card>
+    </Surface>
   );
 }
 
@@ -660,6 +903,7 @@ const styles = StyleSheet.create({
   sectionStack: { gap: 12 },
   sectionCard: { borderRadius: 18 },
   sectionHeaderCard: { flexDirection: 'row', justifyContent: 'space-between', gap: 12, alignItems: 'center' },
+  paginationRow: { alignItems: 'center', paddingVertical: 4 },
   loadingRow: { flexDirection: 'row', gap: 10, alignItems: 'center', paddingHorizontal: 8, paddingBottom: 8 },
   composer: {
     paddingHorizontal: 12,
@@ -678,13 +922,25 @@ const styles = StyleSheet.create({
   todoTextWrap: { flex: 1, gap: 2 },
   inputShell: { borderWidth: 1, borderRadius: 24, padding: 14, gap: 12 },
   input: { minHeight: 92, maxHeight: 180, fontSize: 18 },
-  controlsRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  inputContentCompact: { paddingHorizontal: 8, paddingTop: 6, paddingBottom: 6, fontFamily: Fonts.sans },
+  controlsRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, paddingHorizontal: 2 },
+  attachmentRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, paddingHorizontal: 2 },
+  attachmentChip: { alignSelf: 'flex-start' },
   composerFooter: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 12 },
   composerActions: { flexDirection: 'row', gap: 10, alignItems: 'center' },
-  messageRow: { alignItems: 'flex-start' },
+  messageRow: { alignItems: 'stretch' },
   messageRowUser: { alignItems: 'flex-end' },
-  messageBubble: { maxWidth: '96%', padding: 16, borderRadius: 22, gap: 12, borderWidth: 1 },
+  messageBubble: { maxWidth: '100%', padding: 16, borderRadius: 22, gap: 12, borderWidth: 1 },
+  messageBubbleUser: { maxWidth: '88%' },
+  messageBubbleAssistant: { width: '100%' },
   messageMeta: { flexDirection: 'row', justifyContent: 'space-between', gap: 12, alignItems: 'center' },
+  markdownStack: { gap: 10 },
+  markdownBulletRow: { flexDirection: 'row', gap: 10, alignItems: 'flex-start' },
+  markdownBulletText: { flex: 1 },
+  inlineCode: { fontFamily: Platform.select({ ios: Fonts.mono, default: 'monospace' }), fontSize: 15 },
+  codeBlock: { borderRadius: 12, padding: 12, backgroundColor: 'rgba(127,127,127,0.12)' },
+  summaryRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  summaryChip: { alignSelf: 'flex-start' },
   detailStack: { gap: 8 },
   detailCard: { borderRadius: 16 },
   detailContent: { gap: 8 },
