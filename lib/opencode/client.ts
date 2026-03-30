@@ -1,9 +1,7 @@
-import { createOpencodeClient, type OpencodeClient } from '@opencode-ai/sdk/client';
+import { createOpencodeClient } from '@opencode-ai/sdk/client';
 import { encode as encodeBase64 } from 'base-64';
 
-// Simplified local types for pending permission/question requests.
-// These avoid tight coupling to SDK-generated types and keep a single
-// shared shape used by the app UI.
+// Small exported shapes used by the UI for pending requests.
 export type PendingPermissionRequest = {
   id: string;
   sessionID: string;
@@ -14,21 +12,11 @@ export type PendingPermissionRequest = {
   tool?: { messageID: string; callID: string };
 };
 
-export type QuestionOption = {
-  label: string;
-  description?: string;
-};
-
+export type QuestionOption = { label: string; description?: string };
 export type PendingQuestionRequest = {
   id: string;
   sessionID: string;
-  questions: Array<{
-    question: string;
-    header: string;
-    options: QuestionOption[];
-    multiple?: boolean;
-    custom?: boolean;
-  }>;
+  questions: Array<{ question: string; header: string; options: QuestionOption[]; multiple?: boolean; custom?: boolean }>;
   tool?: { messageID: string; callID: string };
 };
 
@@ -68,9 +56,10 @@ function createAuthHeader(settings: OpencodeConnectionSettings) {
   return `Basic ${encodeBase64(`${username}:${password}`)}`;
 }
 
-export function buildClient(settings: OpencodeConnectionSettings): OpencodeClient {
+export function buildClient(settings: OpencodeConnectionSettings): any {
   const authHeader = createAuthHeader(settings);
 
+  // return a runtime client; type is kept as `any` to avoid coupling to generated SDK types
   return createOpencodeClient({
     baseUrl: normalizeServerUrl(settings.serverUrl),
     directory: settings.directory.trim() || undefined,
@@ -79,8 +68,7 @@ export function buildClient(settings: OpencodeConnectionSettings): OpencodeClien
           Authorization: authHeader,
         }
       : undefined,
-    throwOnError: true,
-  });
+  }) as any;
 }
 
 export function getNormalizedServerUrl(serverUrl: string) {
