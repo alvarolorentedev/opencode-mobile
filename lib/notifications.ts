@@ -1,19 +1,43 @@
-import * as Notifications from 'expo-notifications';
+import Constants from 'expo-constants';
 import { Platform } from 'react-native';
 
 let initialized = false;
 
-Notifications.setNotificationHandler({
-  handleNotification: async () => ({
-    shouldShowBanner: true,
-    shouldShowList: true,
-    shouldPlaySound: true,
-    shouldSetBadge: false,
-  }),
-});
+let notificationsModulePromise: Promise<typeof import('expo-notifications') | null> | null = null;
+
+function canUseNotifications() {
+  return Constants.appOwnership !== 'expo';
+}
+
+async function getNotificationsModule() {
+  if (!canUseNotifications()) {
+    return null;
+  }
+
+  if (!notificationsModulePromise) {
+    notificationsModulePromise = import('expo-notifications').then((mod) => {
+      mod.setNotificationHandler({
+        handleNotification: async () => ({
+          shouldShowBanner: true,
+          shouldShowList: true,
+          shouldPlaySound: true,
+          shouldSetBadge: false,
+        }),
+      });
+      return mod;
+    });
+  }
+
+  return notificationsModulePromise;
+}
 
 export async function initializeNotifications() {
-  if (initialized) {
+  if (initialized || !canUseNotifications()) {
+    return;
+  }
+
+  const Notifications = await getNotificationsModule();
+  if (!Notifications) {
     return;
   }
 
@@ -34,6 +58,11 @@ export async function initializeNotifications() {
 }
 
 export async function notifyTaskFinished(title: string, body: string) {
+  const Notifications = await getNotificationsModule();
+  if (!Notifications) {
+    return;
+  }
+
   await Notifications.scheduleNotificationAsync({
     content: {
       title,

@@ -1,5 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import type { Agent, Config, FileDiff, Project, Session, SessionStatus, Todo } from '@opencode-ai/sdk/v2/client';
+import type { Agent, Config, FileDiff, Project, Session, SessionStatus, Todo } from '@/lib/opencode/types';
 import {
   createContext,
   useCallback,
@@ -11,7 +11,20 @@ import {
   type PropsWithChildren,
 } from 'react';
 
-import { buildClient, defaultConnectionSettings, getNormalizedServerUrl, type PendingPermissionRequest, type PendingQuestionAnswer, type PendingQuestionRequest, type OpencodeConnectionSettings, } from '@/lib/opencode/client';
+import {
+  buildClient,
+  defaultConnectionSettings,
+  getNormalizedServerUrl,
+  listPendingPermissions,
+  listPendingQuestions,
+  rejectPendingQuestion,
+  replyToPendingPermission,
+  replyToPendingQuestion,
+  type PendingPermissionRequest,
+  type PendingQuestionAnswer,
+  type PendingQuestionRequest,
+  type OpencodeConnectionSettings,
+} from '@/lib/opencode/client';
 import {
   getHistoryPreview,
   toTranscriptEntry,
@@ -177,7 +190,7 @@ function getInitialMode(agents: AgentOption[], config?: Config, storedMode?: str
   }
 
   const configuredAgent = config?.agent
-    ? Object.entries(config.agent).find(([, value]) => value && value.disable !== true)?.[0]
+    ? Object.entries(config.agent).find(([, value]) => value && (value as any).disable !== true)?.[0]
     : undefined;
   if (configuredAgent && agents.some((agent) => agent.id === configuredAgent)) {
     return configuredAgent;
@@ -240,7 +253,7 @@ function getConfiguredProviderIds(config: Config | undefined, connected: string[
   const configured = new Set<string>([
     ...(config?.enabled_providers || []),
     ...connected,
-    ...Object.keys(config?.provider || {}),
+    ...Object.keys((config?.provider as any) || {}),
   ]);
 
   if (config?.model) {
@@ -441,6 +454,7 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
     [activeProjectPath, settings],
   );
   // v2 client for permissions/questions (cleaned up: use same exported client)
+  // keep single client instance; runtime client is permissive
   const v2Client = client;
   const catalogClient = useMemo(() => buildClient({ ...settings, directory: '' }), [settings]);
 
@@ -454,9 +468,9 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
 
       try {
         const [pathResponse, projectsResponse, currentProjectResponse] = await Promise.all([
-          catalogClient.path.get<true>(),
-          catalogClient.project.list<true>().catch(() => undefined),
-          catalogClient.project.current<true>().catch(() => undefined),
+          catalogClient.path.get(),
+          catalogClient.project.list().catch(() => undefined),
+          catalogClient.project.current().catch(() => undefined),
         ]);
 
         const discoveredProjects = projectsResponse?.data || [];
@@ -467,7 +481,7 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
           dedupedProjects.set(currentProject.worktree, currentProject);
         }
 
-        discoveredProjects.forEach((project) => {
+        discoveredProjects.forEach((project: any) => {
           dedupedProjects.set(project.worktree, project);
         });
 
@@ -515,8 +529,8 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
 
       try {
         const [sessionsResponse, statusesResponse] = await Promise.all([
-          client.session.list<true>(),
-          client.session.status<true>(),
+          client.session.list(),
+          client.session.status(),
         ]);
 
         const nextSessions = [...sessionsResponse.data].sort(
@@ -549,10 +563,7 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
       }
 
       try {
-        const response = await client.session.messages({
-          throwOnError: true,
-          path: { id: sessionId },
-        });
+        const response = await client.session.messages({ path: { id: sessionId } });
 
         setMessagesBySession((current) => ({
           ...current,
@@ -576,10 +587,7 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
       }
 
       try {
-        const response = await client.session.diff({
-          throwOnError: true,
-          path: { id: sessionId },
-        });
+        const response = await client.session.diff({ path: { id: sessionId } });
 
         setDiffsBySession((current) => ({
           ...current,
@@ -598,10 +606,7 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
 
   const refreshSessionTodos = useCallback(
     async (sessionId: string) => {
-      const response = await client.session.todo({
-        throwOnError: true,
-        path: { id: sessionId },
-      });
+        const response = await client.session.todo({ path: { id: sessionId } });
 
       setTodosBySession((current) => ({
         ...current,
@@ -623,15 +628,15 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
     }
 
     const [configResponse, providersResponse, agentsResponse] = await Promise.all([
-      client.config.get({ throwOnError: true }),
-      client.provider.list({ throwOnError: true }),
-      client.app.agents({ throwOnError: true }),
+      client.config.get(),
+      client.provider.list(),
+      client.app.agents(),
     ]);
 
     const nextConfig = configResponse.data;
-    const nextModels: ModelOption[] = providersResponse.data.all
-      .flatMap((provider) =>
-        Object.values(provider.models).map((model) => ({
+    const nextModels: ModelOption[] = (providersResponse.data.all as any[])
+      .flatMap((provider: any) =>
+        Object.values(provider.models).map((model: any) => ({
           id: `${provider.id}/${model.id}`,
           label: model.name,
           providerID: provider.id,
@@ -640,17 +645,17 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
           supportsReasoning: model.reasoning,
         })),
       )
-      .sort((left, right) => left.label.localeCompare(right.label));
+      .sort((left: ModelOption, right: ModelOption) => left.label.localeCompare(right.label));
     const configuredProviderIds = getConfiguredProviderIds(nextConfig, providersResponse.data.connected, nextModels);
     const configuredModels = nextModels.filter((model) => configuredProviderIds.has(model.providerID));
-    const nextProviders: ProviderOption[] = providersResponse.data.all
-      .map((provider) => ({
+    const nextProviders: ProviderOption[] = (providersResponse.data.all as any[])
+      .map((provider: any) => ({
         id: provider.id,
         label: provider.name,
         modelCount: Object.keys(provider.models).length,
         configured: configuredProviderIds.has(provider.id),
       }))
-      .sort((left, right) => left.label.localeCompare(right.label));
+      .sort((left: ProviderOption, right: ProviderOption) => left.label.localeCompare(right.label));
     const nextAgents = agentsResponse.data.map(toAgentOption);
 
     setCurrentConfig(nextConfig);
@@ -691,12 +696,7 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
 
   const createSession = useCallback(
     async (title?: string) => {
-      const response = await client.session.create({
-        throwOnError: true,
-        body: {
-          title: title?.trim() || 'New chat',
-        },
-      });
+        const response = await client.session.create({ body: { title: title?.trim() || 'New chat' } });
 
       await refreshSessions(true);
       return response.data;
@@ -873,16 +873,21 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
         return;
       }
 
-      const [permissionsResponse, questionsResponse] = await Promise.all([v2Client.permission.list(), v2Client.question.list()]);
-      const permissions = permissionsResponse.data || [];
-      const questions = questionsResponse.data || [];
+      const [permissions, questions] = await Promise.all([
+        listPendingPermissions(v2Client),
+        listPendingQuestions(v2Client),
+      ]);
 
-      const nextPermissionsBySession = permissions.reduce<Record<string, PendingPermissionRequest[]>>((acc, request) => {
-        acc[request.sessionID] = [...(acc[request.sessionID] || []), request];
+      const nextPermissionsBySession = (permissions as any[]).reduce<Record<string, PendingPermissionRequest[]>>((acc: Record<string, PendingPermissionRequest[]>, request: any) => {
+        const sessionID = request.sessionID || request.sessionId || request.session;
+        if (!sessionID) return acc;
+        acc[sessionID] = [...(acc[sessionID] || []), request as PendingPermissionRequest];
         return acc;
       }, {});
-      const nextQuestionsBySession = questions.reduce<Record<string, PendingQuestionRequest[]>>((acc, request) => {
-        acc[request.sessionID] = [...(acc[request.sessionID] || []), request];
+      const nextQuestionsBySession = (questions as any[]).reduce<Record<string, PendingQuestionRequest[]>>((acc: Record<string, PendingQuestionRequest[]>, request: any) => {
+        const sessionID = request.sessionID || request.sessionId || request.session;
+        if (!sessionID) return acc;
+        acc[sessionID] = [...(acc[sessionID] || []), request as PendingQuestionRequest];
         return acc;
       }, {});
 
@@ -894,7 +899,7 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
 
   const replyToPermission = useCallback(
     async (requestId: string, reply: 'once' | 'always' | 'reject', message?: string) => {
-      await v2Client.permission.reply({ requestID: requestId, reply, message });
+      await replyToPendingPermission(v2Client, requestId, reply, message);
       await refreshPendingRequests(true);
       if (currentSessionId) {
         await refreshMessages(currentSessionId, true);
@@ -905,7 +910,7 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
 
   const replyToQuestion = useCallback(
     async (requestId: string, answers: PendingQuestionAnswer[]) => {
-      await v2Client.question.reply({ requestID: requestId, answers });
+      await replyToPendingQuestion(v2Client, requestId, answers);
       await refreshPendingRequests(true);
       if (currentSessionId) {
         await refreshMessages(currentSessionId, true);
@@ -916,7 +921,7 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
 
   const rejectQuestion = useCallback(
     async (requestId: string) => {
-      await v2Client.question.reject({ requestID: requestId });
+      await rejectPendingQuestion(v2Client, requestId);
       await refreshPendingRequests(true);
       if (currentSessionId) {
         await refreshMessages(currentSessionId, true);
@@ -962,17 +967,11 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
 
   const configureProvider = useCallback(
     async (providerId: string) => {
-      const latestConfig = currentConfig || (await client.config.get({ throwOnError: true })).data;
+      const latestConfig = currentConfig || (await client.config.get()).data;
       const enabledProviders = new Set(latestConfig.enabled_providers || []);
       enabledProviders.add(providerId);
 
-      const response = await client.config.update({
-        throwOnError: true,
-        body: {
-          ...latestConfig,
-          enabled_providers: [...enabledProviders].sort(),
-        },
-      });
+      const response = await client.config.update({ body: { ...latestConfig, enabled_providers: [...enabledProviders].sort() } });
 
       setCurrentConfig(response.data);
       await refreshChatCapabilities();
@@ -986,12 +985,9 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
 
   const setAutoApprove = useCallback(
     async (enabled: boolean) => {
-      const latestConfig = currentConfig || (await client.config.get({ throwOnError: true })).data;
+      const latestConfig = currentConfig || (await client.config.get()).data;
       const nextConfig = mergePermissionConfig(latestConfig, enabled);
-      const response = await client.config.update({
-        throwOnError: true,
-        body: nextConfig,
-      });
+      const response = await client.config.update({ body: nextConfig });
 
       setCurrentConfig(response.data);
       setChatPreferences((current) => ({
@@ -1051,7 +1047,6 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
         }
 
         await client.session.prompt({
-          throwOnError: true,
           path: { id: sessionId },
           body: {
             agent: chatPreferences.mode,
@@ -1091,10 +1086,7 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
   const abortSession = useCallback(
     async (sessionId: string) => {
       pendingNotificationSessionIdsRef.current.delete(sessionId);
-      await client.session.abort({
-        throwOnError: true,
-        path: { id: sessionId },
-      });
+        await client.session.abort({ path: { id: sessionId } });
 
       await Promise.all([
         refreshSessions(true),

@@ -8,7 +8,7 @@ import {
   StyleSheet,
   View,
 } from 'react-native';
-import type { FileDiff, Todo } from '@opencode-ai/sdk/client';
+import type { FileDiff, Todo } from '@/lib/opencode/types';
 import {
   ActivityIndicator,
   Appbar,
@@ -113,6 +113,43 @@ function summarizeDetails(details: TranscriptDetail[]) {
   }
 
   return summaries;
+}
+
+function getActivityLabel(entry: TranscriptEntry) {
+  const runningTool = entry.details.find((detail) => detail.kind === 'tool' && detail.status === 'running');
+  if (runningTool) {
+    return runningTool.label;
+  }
+
+  const latestTool = [...entry.details].reverse().find((detail) => detail.kind === 'tool');
+  if (latestTool) {
+    return latestTool.label;
+  }
+
+  const latestPatch = [...entry.details].reverse().find((detail) => detail.kind === 'patch');
+  if (latestPatch) {
+    return latestPatch.label;
+  }
+
+  const latestReasoning = [...entry.details].reverse().find((detail) => detail.kind === 'reasoning');
+  if (latestReasoning) {
+    return latestReasoning.label;
+  }
+
+  const latestStep = [...entry.details].reverse().find((detail) => detail.kind === 'step' || detail.kind === 'subtask');
+  if (latestStep) {
+    return latestStep.label;
+  }
+
+  return undefined;
+}
+
+function isDisplayMessage(entry: TranscriptEntry) {
+  if (entry.role === 'user') {
+    return true;
+  }
+
+  return Boolean(entry.text.trim() || entry.error);
 }
 
 function renderInlineMarkdown(text: string, color: string, codeColor: string): ReactNode[] {
@@ -301,27 +338,46 @@ export function ChatView() {
   );
   const completedTodos = currentTodos.filter((todo) => todo.status === 'completed').length;
   const pendingTodos = currentTodos.filter((todo) => todo.status !== 'completed' && todo.status !== 'cancelled').length;
-  const visibleTranscript = useMemo(
-    () => currentTranscript.slice(Math.max(0, currentTranscript.length - visibleTranscriptCount)),
-    [currentTranscript, visibleTranscriptCount],
+  const displayTranscript = useMemo(
+    () => currentTranscript.filter(isDisplayMessage),
+    [currentTranscript],
   );
-  const hasMoreTranscript = visibleTranscript.length < currentTranscript.length;
+  const visibleTranscript = useMemo(
+    () => displayTranscript.slice(Math.max(0, displayTranscript.length - visibleTranscriptCount)),
+    [displayTranscript, visibleTranscriptCount],
+  );
+  const hasMoreTranscript = visibleTranscript.length < displayTranscript.length;
+  const currentActivityLabel = useMemo(() => {
+    for (let index = currentTranscript.length - 1; index >= 0; index -= 1) {
+      const entry = currentTranscript[index];
+      if (isDisplayMessage(entry)) {
+        continue;
+      }
+
+      const label = getActivityLabel(entry);
+      if (label) {
+        return label;
+      }
+    }
+
+    return undefined;
+  }, [currentTranscript]);
 
   useEffect(() => {
     setVisibleTranscriptCount(TRANSCRIPT_PAGE_SIZE);
   }, [currentSessionId]);
 
   useEffect(() => {
-    if (currentTranscript.length <= visibleTranscriptCount) {
+    if (displayTranscript.length <= visibleTranscriptCount) {
       return;
     }
 
     const latestVisibleId = visibleTranscript[0]?.id;
-    const nextWindow = currentTranscript.slice(Math.max(0, currentTranscript.length - visibleTranscriptCount));
+    const nextWindow = displayTranscript.slice(Math.max(0, displayTranscript.length - visibleTranscriptCount));
     if (latestVisibleId && !nextWindow.some((entry) => entry.id === latestVisibleId)) {
       setVisibleTranscriptCount((current) => current + TRANSCRIPT_PAGE_SIZE);
     }
-  }, [currentTranscript, visibleTranscript, visibleTranscriptCount]);
+  }, [displayTranscript, visibleTranscript, visibleTranscriptCount]);
 
   useEffect(() => {
     if (isPaginatingRef.current) {
@@ -461,7 +517,7 @@ export function ChatView() {
           </Card>
         ) : null}
 
-        {activeTab === 'session' && currentTranscript.length === 0 ? (
+        {activeTab === 'session' && displayTranscript.length === 0 ? (
           <Card mode="contained" style={[styles.emptyCard, { backgroundColor: palette.surface }]}> 
             <Card.Content style={styles.emptyContent}>
               <Text variant="headlineSmall" style={[styles.emptyTitle, { color: palette.text }]}>Start a new task</Text>
@@ -522,10 +578,12 @@ export function ChatView() {
           </View>
         ) : null}
 
-        {activeTab === 'session' && running && currentTranscript.length > 0 ? (
+        {activeTab === 'session' && running ? (
           <View style={styles.loadingRow}>
             <ActivityIndicator color={palette.tint} />
-            <Text style={{ color: palette.muted }}>OpenCode is working through the current step...</Text>
+            <Text style={{ color: palette.muted }}>
+              {currentActivityLabel ? `OpenCode is ${currentActivityLabel.toLowerCase()}...` : 'OpenCode is working through the current step...'}
+            </Text>
           </View>
         ) : null}
       </ScrollView>

@@ -1,4 +1,4 @@
-import type { Message, Part, Session, ToolPart } from '@opencode-ai/sdk/client';
+import type { Message, Part, Session, ToolPart } from '@/lib/opencode/types';
 
 export type SessionMessageRecord = {
   info: Message;
