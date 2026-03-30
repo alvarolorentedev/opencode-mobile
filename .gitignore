@@ -42,6 +42,17 @@ app-example
 /ios
 /android
 
-# Local environment files (do not commit secrets)
+# Expo / EAS local config
+app.json
+eas.json
+.easignore
+credentials.json
+
+# Local environment files
+# By default we ignore `.env` (local secrets). If you want to commit a safe
+# environment file containing non-secret values (like `EXPO_EAS_PROJECT_ID`),
+# add and commit `.env.commit` and remove `.env` from this list.
 .env
 .env.*
+# Allow explicitly committed safe env file
+#.env.commit
