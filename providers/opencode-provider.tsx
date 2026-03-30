@@ -1284,12 +1284,22 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
     [currentSessionId, todosBySession],
   );
   const currentPendingPermissions = useMemo(
-    () => (currentSessionId ? pendingPermissionsBySession[currentSessionId] || [] : []),
-    [currentSessionId, pendingPermissionsBySession],
+    () => {
+      const candidateSessionIds = [...new Set([currentSessionId, sendingState.sessionId].filter(Boolean))] as string[];
+      const matches = candidateSessionIds.flatMap((sessionId) => pendingPermissionsBySession[sessionId] || []);
+
+      return matches.length > 0 ? matches : Object.values(pendingPermissionsBySession).flat();
+    },
+    [currentSessionId, pendingPermissionsBySession, sendingState.sessionId],
   );
   const currentPendingQuestions = useMemo(
-    () => (currentSessionId ? pendingQuestionsBySession[currentSessionId] || [] : []),
-    [currentSessionId, pendingQuestionsBySession],
+    () => {
+      const candidateSessionIds = [...new Set([currentSessionId, sendingState.sessionId].filter(Boolean))] as string[];
+      const matches = candidateSessionIds.flatMap((sessionId) => pendingQuestionsBySession[sessionId] || []);
+
+      return matches.length > 0 ? matches : Object.values(pendingQuestionsBySession).flat();
+    },
+    [currentSessionId, pendingQuestionsBySession, sendingState.sessionId],
   );
   const configuredProviders = useMemo(
     () => availableProviders.filter((provider) => provider.configured),
