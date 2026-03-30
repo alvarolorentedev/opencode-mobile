@@ -1,5 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import type { Agent, Config, FileDiff, Project, Session, SessionStatus, Todo } from '@opencode-ai/sdk/client';
+import type { Agent, Config, FileDiff, Project, Session, SessionStatus, Todo } from '@opencode-ai/sdk/v2/client';
 import {
   createContext,
   useCallback,
@@ -11,16 +11,7 @@ import {
   type PropsWithChildren,
 } from 'react';
 
-import {
-  buildV2Client,
-  buildClient,
-  defaultConnectionSettings,
-  getNormalizedServerUrl,
-  type PendingPermissionRequest,
-  type PendingQuestionAnswer,
-  type PendingQuestionRequest,
-  type OpencodeConnectionSettings,
-} from '@/lib/opencode/client';
+import { buildClient, defaultConnectionSettings, getNormalizedServerUrl, type PendingPermissionRequest, type PendingQuestionAnswer, type PendingQuestionRequest, type OpencodeConnectionSettings, } from '@/lib/opencode/client';
 import {
   getHistoryPreview,
   toTranscriptEntry,

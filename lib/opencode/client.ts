@@ -1,9 +1,38 @@
-import { createOpencodeClient, type OpencodeClient, type PermissionRequest, type QuestionAnswer, type QuestionRequest } from '@opencode-ai/sdk/client';
+import { createOpencodeClient, type OpencodeClient } from '@opencode-ai/sdk/client';
 import { encode as encodeBase64 } from 'base-64';
 
-export type PendingPermissionRequest = PermissionRequest;
-export type PendingQuestionRequest = QuestionRequest;
-export type PendingQuestionAnswer = QuestionAnswer;
+// Simplified local types for pending permission/question requests.
+// These avoid tight coupling to SDK-generated types and keep a single
+// shared shape used by the app UI.
+export type PendingPermissionRequest = {
+  id: string;
+  sessionID: string;
+  permission: string;
+  patterns: string[];
+  metadata?: Record<string, unknown>;
+  always: string[];
+  tool?: { messageID: string; callID: string };
+};
+
+export type QuestionOption = {
+  label: string;
+  description?: string;
+};
+
+export type PendingQuestionRequest = {
+  id: string;
+  sessionID: string;
+  questions: Array<{
+    question: string;
+    header: string;
+    options: QuestionOption[];
+    multiple?: boolean;
+    custom?: boolean;
+  }>;
+  tool?: { messageID: string; callID: string };
+};
+
+export type PendingQuestionAnswer = string[];
 
 export type OpencodeConnectionSettings = {
   serverUrl: string;
