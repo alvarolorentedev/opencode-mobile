@@ -1,5 +1,9 @@
-import { createOpencodeClient, type OpencodeClient } from '@opencode-ai/sdk/client';
+import { createOpencodeClient, type OpencodeClient, type PermissionRequest, type QuestionAnswer, type QuestionRequest } from '@opencode-ai/sdk/client';
 import { encode as encodeBase64 } from 'base-64';
+
+export type PendingPermissionRequest = PermissionRequest;
+export type PendingQuestionRequest = QuestionRequest;
+export type PendingQuestionAnswer = QuestionAnswer;
 
 export type OpencodeConnectionSettings = {
   serverUrl: string;

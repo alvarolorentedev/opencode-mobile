@@ -25,6 +25,48 @@ In the output, you'll find options to open the app in a
 
 You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
 
+## EAS builds
+
+This project includes a basic `eas.json` and a tracked `app.config.ts` so it can build with Expo Application Services without committing machine-specific app identifiers.
+
+Copy `.env.example` to `.env` and fill in the values Expo should inject into the config:
+
+```bash
+EXPO_OWNER=alvarolorentedev
+EXPO_EAS_PROJECT_ID=your-eas-project-id
+EXPO_IOS_BUNDLE_IDENTIFIER=com.example.opencodemobile
+EXPO_ANDROID_PACKAGE=com.example.opencodemobile
+```
+
+1. Install the Expo tooling if needed:
+
+   ```bash
+   npm install
+   npm install -g eas-cli
+   ```
+
+2. Log in and link the project:
+
+   ```bash
+   eas login
+   eas init
+   ```
+
+3. Add the values from `eas init` and your native app identifiers to `.env`:
+
+   - `EXPO_EAS_PROJECT_ID`
+   - `EXPO_ANDROID_PACKAGE`
+   - `EXPO_IOS_BUNDLE_IDENTIFIER`
+
+4. Run a build:
+
+   ```bash
+   npm run build:android
+   npm run build:ios
+   ```
+
+For internal test builds, use `npm run build:preview:android` or `npm run build:preview:ios`.
+
 ## Get a fresh project
 
 When you're ready, run:

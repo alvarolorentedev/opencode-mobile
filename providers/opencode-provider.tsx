@@ -12,9 +12,13 @@ import {
 } from 'react';
 
 import {
+  buildV2Client,
   buildClient,
   defaultConnectionSettings,
   getNormalizedServerUrl,
+  type PendingPermissionRequest,
+  type PendingQuestionAnswer,
+  type PendingQuestionRequest,
   type OpencodeConnectionSettings,
 } from '@/lib/opencode/client';
 import {
@@ -117,6 +121,8 @@ type OpencodeContextValue = {
   currentTranscript: TranscriptEntry[];
   currentDiffs: FileDiff[];
   currentTodos: Todo[];
+  currentPendingPermissions: PendingPermissionRequest[];
+  currentPendingQuestions: PendingQuestionRequest[];
   sessionPreviewById: Record<string, string>;
   isRefreshingSessions: boolean;
   isRefreshingMessages: boolean;
@@ -140,10 +146,14 @@ type OpencodeContextValue = {
   openSession: (sessionId: string) => Promise<void>;
   refreshCurrentSession: (silent?: boolean) => Promise<void>;
   refreshCurrentTodos: (silent?: boolean) => Promise<void>;
+  refreshPendingRequests: (silent?: boolean) => Promise<void>;
   ensureActiveSession: () => Promise<string | undefined>;
   createSession: (title?: string) => Promise<Session>;
   sendPrompt: (sessionId: string, prompt: string, attachments?: { uri: string; mime?: string; filename?: string }[]) => Promise<void>;
   abortSession: (sessionId: string) => Promise<void>;
+  replyToPermission: (requestId: string, reply: 'once' | 'always' | 'reject', message?: string) => Promise<void>;
+  replyToQuestion: (requestId: string, answers: PendingQuestionAnswer[]) => Promise<void>;
+  rejectQuestion: (requestId: string) => Promise<void>;
 };
 
 const OpencodeContext = createContext<OpencodeContextValue | null>(null);
@@ -301,6 +311,8 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
   const [messagesBySession, setMessagesBySession] = useState<Record<string, SessionMessageRecord[]>>({});
   const [diffsBySession, setDiffsBySession] = useState<Record<string, FileDiff[]>>({});
   const [todosBySession, setTodosBySession] = useState<Record<string, Todo[]>>({});
+  const [pendingPermissionsBySession, setPendingPermissionsBySession] = useState<Record<string, PendingPermissionRequest[]>>({});
+  const [pendingQuestionsBySession, setPendingQuestionsBySession] = useState<Record<string, PendingQuestionRequest[]>>({});
   const [serverProjects, setServerProjects] = useState<Project[]>([]);
   const [currentProjectPath, setCurrentProjectPath] = useState<string>();
   const [serverRootPath, setServerRootPath] = useState<string>();
@@ -437,6 +449,8 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
     () => buildClient({ ...settings, directory: activeProjectPath || '' }),
     [activeProjectPath, settings],
   );
+  // v2 client for permissions/questions (cleaned up: use same exported client)
+  const v2Client = client;
   const catalogClient = useMemo(() => buildClient({ ...settings, directory: '' }), [settings]);
 
   // browseServerPath stub removed
@@ -860,6 +874,66 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
     [currentSessionId, refreshSessionTodos],
   );
 
+  const refreshPendingRequests = useCallback(
+    async (_silent = false) => {
+      if (!activeProjectPath) {
+        setPendingPermissionsBySession({});
+        setPendingQuestionsBySession({});
+        return;
+      }
+
+      const [permissionsResponse, questionsResponse] = await Promise.all([v2Client.permission.list(), v2Client.question.list()]);
+      const permissions = permissionsResponse.data || [];
+      const questions = questionsResponse.data || [];
+
+      const nextPermissionsBySession = permissions.reduce<Record<string, PendingPermissionRequest[]>>((acc, request) => {
+        acc[request.sessionID] = [...(acc[request.sessionID] || []), request];
+        return acc;
+      }, {});
+      const nextQuestionsBySession = questions.reduce<Record<string, PendingQuestionRequest[]>>((acc, request) => {
+        acc[request.sessionID] = [...(acc[request.sessionID] || []), request];
+        return acc;
+      }, {});
+
+      setPendingPermissionsBySession(nextPermissionsBySession);
+      setPendingQuestionsBySession(nextQuestionsBySession);
+    },
+    [activeProjectPath, v2Client],
+  );
+
+  const replyToPermission = useCallback(
+    async (requestId: string, reply: 'once' | 'always' | 'reject', message?: string) => {
+      await v2Client.permission.reply({ requestID: requestId, reply, message });
+      await refreshPendingRequests(true);
+      if (currentSessionId) {
+        await refreshMessages(currentSessionId, true);
+      }
+    },
+    [currentSessionId, refreshMessages, refreshPendingRequests, v2Client],
+  );
+
+  const replyToQuestion = useCallback(
+    async (requestId: string, answers: PendingQuestionAnswer[]) => {
+      await v2Client.question.reply({ requestID: requestId, answers });
+      await refreshPendingRequests(true);
+      if (currentSessionId) {
+        await refreshMessages(currentSessionId, true);
+      }
+    },
+    [currentSessionId, refreshMessages, refreshPendingRequests, v2Client],
+  );
+
+  const rejectQuestion = useCallback(
+    async (requestId: string) => {
+      await v2Client.question.reject({ requestID: requestId });
+      await refreshPendingRequests(true);
+      if (currentSessionId) {
+        await refreshMessages(currentSessionId, true);
+      }
+    },
+    [currentSessionId, refreshMessages, refreshPendingRequests, v2Client],
+  );
+
   const updateChatPreferences = useCallback((patch: Partial<ChatPreferences>) => {
     setChatPreferences((current) => {
       const configuredProviderIds = new Set(availableProviders.filter((provider) => provider.configured).map((provider) => provider.id));
@@ -1014,12 +1088,13 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
           refreshMessages(sessionId, true),
           refreshSessionDiff(sessionId, true),
           refreshSessionTodos(sessionId),
+          refreshPendingRequests(true),
         ]);
       } finally {
         setSendingState({ active: false, sessionId: undefined });
       }
     },
-    [chatPreferences.mode, chatPreferences.modelId, chatPreferences.reasoning, client, refreshMessages, refreshSessionDiff, refreshSessionTodos, refreshSessions],
+    [chatPreferences.mode, chatPreferences.modelId, chatPreferences.reasoning, client, refreshMessages, refreshPendingRequests, refreshSessionDiff, refreshSessionTodos, refreshSessions],
   );
 
   const abortSession = useCallback(
@@ -1035,9 +1110,10 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
         refreshMessages(sessionId, true),
         refreshSessionDiff(sessionId, true),
         refreshSessionTodos(sessionId),
+        refreshPendingRequests(true),
       ]);
     },
-    [client, refreshMessages, refreshSessionDiff, refreshSessionTodos, refreshSessions],
+    [client, refreshMessages, refreshPendingRequests, refreshSessionDiff, refreshSessionTodos, refreshSessions],
   );
 
   useEffect(() => {
@@ -1057,12 +1133,13 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
           refreshMessages(currentSessionId, true),
           refreshSessionDiff(currentSessionId, true),
           refreshSessionTodos(currentSessionId),
+          refreshPendingRequests(true),
         ]);
       }
     }, 1500);
 
     return () => clearInterval(interval);
-  }, [activeProjectPath, connection.status, currentSessionId, refreshMessages, refreshSessionDiff, refreshSessionTodos, refreshSessions, sendingState.active, sessionStatuses]);
+  }, [activeProjectPath, connection.status, currentSessionId, refreshMessages, refreshPendingRequests, refreshSessionDiff, refreshSessionTodos, refreshSessions, sendingState.active, sessionStatuses]);
 
   useEffect(() => {
     const pendingIds = [...pendingNotificationSessionIdsRef.current];
@@ -1089,6 +1166,16 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
       ...patch,
     }));
   }, []);
+
+  useEffect(() => {
+    if (connection.status !== 'connected' || !activeProjectPath || !currentSessionId) {
+      setPendingPermissionsBySession({});
+      setPendingQuestionsBySession({});
+      return;
+    }
+
+    void refreshPendingRequests(true);
+  }, [activeProjectPath, connection.status, currentSessionId, refreshPendingRequests]);
 
   useEffect(() => {
     if (!currentSessionId) {
@@ -1120,6 +1207,14 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
   const currentTodos = useMemo(
     () => (currentSessionId ? todosBySession[currentSessionId] || [] : []),
     [currentSessionId, todosBySession],
+  );
+  const currentPendingPermissions = useMemo(
+    () => (currentSessionId ? pendingPermissionsBySession[currentSessionId] || [] : []),
+    [currentSessionId, pendingPermissionsBySession],
+  );
+  const currentPendingQuestions = useMemo(
+    () => (currentSessionId ? pendingQuestionsBySession[currentSessionId] || [] : []),
+    [currentSessionId, pendingQuestionsBySession],
   );
   const configuredProviders = useMemo(
     () => availableProviders.filter((provider) => provider.configured),
@@ -1158,6 +1253,8 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
       currentDiffs,
       currentTranscript,
       currentTodos,
+      currentPendingPermissions,
+      currentPendingQuestions,
       sessionPreviewById,
       isRefreshingSessions,
       isRefreshingMessages,
@@ -1178,10 +1275,14 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
       openSession,
       refreshCurrentSession,
       refreshCurrentTodos,
+      refreshPendingRequests,
       ensureActiveSession,
       createSession,
       sendPrompt,
       abortSession,
+      replyToPermission,
+      replyToQuestion,
+      rejectQuestion,
     }),
     [
       activeSession,
@@ -1199,6 +1300,8 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
       currentSessionId,
       currentTranscript,
       currentTodos,
+      currentPendingPermissions,
+      currentPendingQuestions,
       chatPreferences,
       ensureActiveSession,
       availableAgents,
@@ -1214,8 +1317,12 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
       projects,
       refreshCurrentSession,
       refreshCurrentTodos,
+      refreshPendingRequests,
       refreshWorkspaceCatalog,
       refreshSessions,
+      rejectQuestion,
+      replyToPermission,
+      replyToQuestion,
       selectProject,
       setAutoApprove,
       sendPrompt,

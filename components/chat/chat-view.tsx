@@ -16,6 +16,7 @@ import {
   Card,
   Chip,
   Divider,
+  IconButton,
   Menu,
   Surface,
   Text,
@@ -26,6 +27,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Colors, Fonts } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
+import type { PendingPermissionRequest, PendingQuestionAnswer, PendingQuestionRequest } from '@/lib/opencode/client';
 import {
   formatTimestamp,
   getSessionSubtitle,
@@ -67,29 +69,12 @@ function clipBlock(value: string, limit = 18) {
   return lines.length <= limit ? trimmed : `${lines.slice(0, limit).join('\n')}\n...`;
 }
 
-function getDetailKindLabel(detail: TranscriptDetail) {
-  switch (detail.kind) {
-    case 'reasoning':
-      return 'Thinking';
-    case 'tool':
-      return 'Tool';
-    case 'patch':
-      return 'Patch';
-    case 'file':
-      return 'File';
-    case 'subtask':
-      return 'Task';
-    case 'step':
-      return 'Step';
-    case 'agent':
-      return 'Agent';
-    case 'retry':
-      return 'Retry';
-    case 'compaction':
-      return 'Context';
-    default:
-      return 'Detail';
-  }
+function getPermissionTitle(request: PendingPermissionRequest) {
+  return request.permission
+    .split(/[._-]/g)
+    .filter(Boolean)
+    .map((part: string) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(' ');
 }
 
 function getTodoTone(priority: string, palette: (typeof Colors)['light']) {
@@ -269,15 +254,19 @@ export function ChatView() {
     connection,
     createSession,
     currentDiffs,
+    currentPendingPermissions,
+    currentPendingQuestions,
     currentSessionId,
     currentTodos,
     currentTranscript,
     ensureActiveSession,
-    isBootstrappingChat,
     isRefreshingDiffs,
     isRefreshingMessages,
     openSession,
     refreshCurrentSession,
+    replyToPermission,
+    replyToQuestion,
+    rejectQuestion,
     sendPrompt,
     sendingState,
     sessionStatuses,
@@ -554,6 +543,23 @@ export function ChatView() {
           />
         ) : null}
 
+        {currentPendingPermissions.map((request) => (
+          <PermissionRequestCard
+            key={request.id}
+            request={request}
+            onReply={(reply: 'once' | 'always' | 'reject') => void replyToPermission(request.id, reply)}
+          />
+        ))}
+
+        {currentPendingQuestions.map((request) => (
+          <QuestionRequestCard
+            key={request.id}
+            request={request}
+            onReject={() => void rejectQuestion(request.id)}
+            onSubmit={(answers: PendingQuestionAnswer[]) => void replyToQuestion(request.id, answers)}
+          />
+        ))}
+
         <View style={styles.controlsRow}>
           <MenuControl
             active={menu === 'mode'}
@@ -634,36 +640,40 @@ export function ChatView() {
         ) : null}
 
         <View style={[styles.inputShell, { borderColor: palette.border, backgroundColor: palette.background }]}> 
-          <TextInput
-            mode="flat"
-            value={draft}
-            onChangeText={setDraft}
-            multiline
-            placeholder="Ask anything..."
-            placeholderTextColor={palette.muted}
-            style={[styles.input, { backgroundColor: 'transparent' }]}
-            contentStyle={styles.inputContentCompact}
-            underlineColor="transparent"
-            activeUnderlineColor="transparent"
-          />
+          <View style={styles.composerRow}>
+            <TextInput
+              mode="flat"
+              value={draft}
+              onChangeText={setDraft}
+              multiline
+              placeholder="Ask anything..."
+              placeholderTextColor={palette.muted}
+              style={[styles.input, { backgroundColor: 'transparent', color: palette.text }]}
+              contentStyle={styles.inputContentCompact}
+              underlineColor="transparent"
+              activeUnderlineColor="transparent"
+            />
 
-          <View style={styles.composerFooter}>
-            <Text variant="bodySmall" style={{ color: palette.muted }}>
-              {running ? 'Streaming updates' : isBootstrappingChat ? 'Preparing session' : 'Ready'}
-            </Text>
-            <View style={styles.composerActions}>
-              {running ? (
-                <Button mode="outlined" onPress={() => void handleAbort()} loading={isStoppingSession}>
-                  Stop
-                </Button>
-              ) : null}
-              <Button
-                mode="contained"
-                disabled={(!draft.trim() && attachments.length === 0) || connection.status !== 'connected' || isCreatingSession}
-                onPress={() => void handleSendPrompt()}>
-                Send
-              </Button>
-            </View>
+            <IconButton
+              mode="contained"
+              icon={running ? 'stop' : 'send'}
+              size={20}
+              style={styles.composerActionButton}
+              loading={isStoppingSession}
+              disabled={
+                running
+                  ? !currentSessionId || isStoppingSession
+                  : ((!draft.trim() && attachments.length === 0) || connection.status !== 'connected' || isCreatingSession)
+              }
+              onPress={() => {
+                if (running) {
+                  void handleAbort();
+                  return;
+                }
+
+                void handleSendPrompt();
+              }}
+            />
           </View>
         </View>
       </Surface>
@@ -856,31 +866,130 @@ function TranscriptMessage({ entry }: { entry: TranscriptEntry }) {
   );
 }
 
-function DetailCard({ detail }: { detail: TranscriptDetail }) {
+function PermissionRequestCard({
+  onReply,
+  request,
+}: {
+  onReply: (reply: 'once' | 'always' | 'reject') => void;
+  request: PendingPermissionRequest;
+}) {
   const colorScheme = useColorScheme() ?? 'light';
   const palette = Colors[colorScheme];
-  const startsOpen = detail.kind === 'tool' && detail.status === 'running';
-  const [open, setOpen] = useState(startsOpen);
 
   return (
-    <Surface style={[styles.detailCard, { backgroundColor: palette.background, borderColor: palette.border }]} elevation={0}>
-      <TouchableRipple borderless onPress={() => setOpen((current) => !current)}>
-        <View style={styles.detailContent}>
-          <View style={styles.detailHeader}>
-            <View style={styles.detailTitleWrap}>
-              <Text variant="labelLarge" style={{ color: palette.muted }}>{getDetailKindLabel(detail)}</Text>
-              <Text variant="bodyLarge" style={{ color: palette.text }}>{detail.label}</Text>
-            </View>
-            {'status' in detail && detail.status ? (
-              <Chip compact mode="flat">{detail.status}</Chip>
-            ) : (
-              <Text variant="labelMedium" style={{ color: palette.tint }}>{open ? 'Hide' : 'Show'}</Text>
-            )}
-          </View>
-          {open ? <Text variant="bodySmall" style={[styles.code, { color: palette.muted }]}>{detail.body}</Text> : null}
+    <Card mode="contained" style={[styles.requestCard, { backgroundColor: palette.background }]}> 
+      <Card.Content style={styles.requestCardContent}>
+        <Text variant="labelLarge" style={{ color: palette.warning }}>Permission request</Text>
+        <Text variant="titleMedium" style={{ color: palette.text }}>{getPermissionTitle(request)}</Text>
+        {request.patterns.length > 0 ? (
+          <Text variant="bodySmall" style={{ color: palette.muted }}>{request.patterns.join('\n')}</Text>
+        ) : null}
+        <View style={styles.requestActionsRow}>
+          <Button mode="contained" compact onPress={() => onReply('once')}>Allow once</Button>
+          <Button mode="contained-tonal" compact onPress={() => onReply('always')}>Always allow</Button>
+          <Button mode="text" compact textColor={palette.danger} onPress={() => onReply('reject')}>Deny</Button>
         </View>
-      </TouchableRipple>
-    </Surface>
+      </Card.Content>
+    </Card>
+  );
+}
+
+function QuestionRequestCard({
+  onReject,
+  onSubmit,
+  request,
+}: {
+  onReject: () => void;
+  onSubmit: (answers: PendingQuestionAnswer[]) => void;
+  request: PendingQuestionRequest;
+}) {
+  const colorScheme = useColorScheme() ?? 'light';
+  const palette = Colors[colorScheme];
+  const [answers, setAnswers] = useState<PendingQuestionAnswer[]>(() => request.questions.map(() => []));
+  const [customAnswers, setCustomAnswers] = useState<string[]>(() => request.questions.map(() => ''));
+
+  function toggleOption(questionIndex: number, label: string, multiple?: boolean) {
+    setAnswers((current) =>
+      current.map((answer, index) => {
+        if (index !== questionIndex) {
+          return answer;
+        }
+
+        if (!multiple) {
+          return answer[0] === label ? [] : [label];
+        }
+
+        return answer.includes(label) ? answer.filter((item) => item !== label) : [...answer, label];
+      }),
+    );
+  }
+
+  function updateCustomAnswer(questionIndex: number, value: string) {
+    setCustomAnswers((current) => current.map((answer, index) => (index === questionIndex ? value : answer)));
+  }
+
+  function handleSubmit() {
+    const nextAnswers = request.questions.map((question, index) => {
+      const trimmedCustom = customAnswers[index]?.trim();
+      const selected = answers[index] || [];
+      return trimmedCustom && question.custom !== false ? [...selected, trimmedCustom] : selected;
+    });
+
+    void onSubmit(nextAnswers);
+  }
+
+  const canSubmit = request.questions.every((question, index) => {
+    const selectedCount = answers[index]?.length || 0;
+    const hasCustom = Boolean(customAnswers[index]?.trim()) && question.custom !== false;
+    return selectedCount > 0 || hasCustom;
+  });
+
+  return (
+    <Card mode="contained" style={[styles.requestCard, { backgroundColor: palette.background }]}> 
+      <Card.Content style={styles.requestCardContent}>
+        <Text variant="labelLarge" style={{ color: palette.tint }}>Question</Text>
+        <View style={styles.questionList}>
+          {request.questions.map((question, questionIndex) => (
+            <View key={`${request.id}-${question.header}-${questionIndex}`} style={styles.questionBlock}>
+              <View style={styles.questionHeader}>
+                <Text variant="titleMedium" style={{ color: palette.text }}>{question.header}</Text>
+                <Text variant="bodySmall" style={{ color: palette.muted }}>{question.multiple ? 'Choose one or more' : 'Choose one'}</Text>
+              </View>
+              <Text variant="bodyMedium" style={{ color: palette.text }}>{question.question}</Text>
+              <View style={styles.questionOptions}>
+                {question.options.map((option) => {
+                  const selected = answers[questionIndex]?.includes(option.label);
+                  return (
+                    <Chip
+                      key={`${question.header}-${option.label}`}
+                      compact
+                      mode={selected ? 'flat' : 'outlined'}
+                      selected={selected}
+                      style={styles.questionChip}
+                      onPress={() => toggleOption(questionIndex, option.label, question.multiple)}>
+                      {option.label}
+                    </Chip>
+                  );
+                })}
+              </View>
+              {question.custom !== false ? (
+                <TextInput
+                  mode="outlined"
+                  dense
+                  placeholder="Type your answer"
+                  value={customAnswers[questionIndex] || ''}
+                  onChangeText={(value) => updateCustomAnswer(questionIndex, value)}
+                />
+              ) : null}
+            </View>
+          ))}
+        </View>
+        <View style={styles.requestActionsRow}>
+          <Button mode="contained" compact disabled={!canSubmit} onPress={handleSubmit}>Submit</Button>
+          <Button mode="text" compact textColor={palette.danger} onPress={onReject}>Reject</Button>
+        </View>
+      </Card.Content>
+    </Card>
   );
 }
 
@@ -914,20 +1023,28 @@ const styles = StyleSheet.create({
   },
   todoCard: { borderRadius: 22 },
   todoCardContent: { gap: 12 },
+  requestCard: { borderRadius: 22 },
+  requestCardContent: { gap: 12 },
+  requestActionsRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  questionList: { gap: 14 },
+  questionBlock: { gap: 10 },
+  questionHeader: { gap: 2 },
+  questionOptions: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  questionChip: { alignSelf: 'flex-start' },
   todoHeader: { flexDirection: 'row', justifyContent: 'space-between', gap: 12, alignItems: 'center' },
   todoHeaderText: { flex: 1, gap: 4 },
   todoList: { gap: 12 },
   todoRow: { flexDirection: 'row', gap: 12, alignItems: 'flex-start' },
   todoState: { width: 18, height: 18, borderRadius: 6, borderWidth: 1.5, marginTop: 2 },
   todoTextWrap: { flex: 1, gap: 2 },
-  inputShell: { borderWidth: 1, borderRadius: 24, padding: 14, gap: 12 },
-  input: { minHeight: 92, maxHeight: 180, fontSize: 18 },
-  inputContentCompact: { paddingHorizontal: 8, paddingTop: 6, paddingBottom: 6, fontFamily: Fonts.sans },
+  inputShell: { borderWidth: 1, borderRadius: 22, paddingLeft: 12, paddingRight: 6, paddingVertical: 6 },
+  composerRow: { flexDirection: 'row', alignItems: 'flex-end', gap: 4 },
+  input: { flex: 1, minHeight: 22, maxHeight: 120, fontSize: 17, marginHorizontal: -4 },
+  inputContentCompact: { paddingHorizontal: 0, paddingTop: 6, paddingBottom: 6, fontFamily: Fonts.sans },
   controlsRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, paddingHorizontal: 2 },
   attachmentRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, paddingHorizontal: 2 },
   attachmentChip: { alignSelf: 'flex-start' },
-  composerFooter: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 12 },
-  composerActions: { flexDirection: 'row', gap: 10, alignItems: 'center' },
+  composerActionButton: { margin: 0 },
   messageRow: { alignItems: 'stretch' },
   messageRowUser: { alignItems: 'flex-end' },
   messageBubble: { maxWidth: '100%', padding: 16, borderRadius: 22, gap: 12, borderWidth: 1 },
