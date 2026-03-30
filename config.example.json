@@ -1,0 +1,37 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "command": {},
+  "plugin": [
+    "file:///home/<user>/.config/opencode/plugins/superpowers.js"
+  ],
+  "enabled_providers": [
+    "gitlab"
+  ],
+  "username": "<username>",
+  "mode": {},
+  "agent": {},
+  "mcp": {
+    "canva": {
+      "type": "remote",
+      "url": "https://mcp.canva.com/mcp"
+    },
+    "github": {
+      "type": "remote",
+      "url": "https://api.githubcopilot.com/mcp/",
+      "headers": {
+        "Authorization": "Bearer <YOUR_GITHUB_TOKEN>"
+      }
+    },
+    "notion": {
+      "type": "remote",
+      "url": "https://mcp.notion.com/mcp"
+    }
+  },
+  "permission": {
+    "edit": "ask",
+    "bash": "ask",
+    "webfetch": "ask",
+    "doom_loop": "ask",
+    "external_directory": "ask"
+  }
+}
