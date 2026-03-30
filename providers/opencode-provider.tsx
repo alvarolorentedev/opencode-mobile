@@ -1,5 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import type { Agent, Config, FileDiff, Project, Session, SessionStatus } from '@opencode-ai/sdk/client';
+import type { Agent, Config, FileDiff, Project, Session, SessionStatus, Todo } from '@opencode-ai/sdk/client';
 import {
   createContext,
   useCallback,
@@ -31,8 +31,16 @@ export type ModelOption = {
   id: string;
   label: string;
   providerID: string;
+  providerLabel: string;
   modelID: string;
   supportsReasoning: boolean;
+};
+
+export type ProviderOption = {
+  id: string;
+  label: string;
+  modelCount: number;
+  configured: boolean;
 };
 
 export type AgentOption = {
@@ -47,13 +55,16 @@ export type ReasoningLevel = 'low' | 'default' | 'high';
 
 export type ChatPreferences = {
   mode: string;
+  providerId?: string;
   modelId?: string;
+  providerModelSelections: Record<string, string>;
   reasoning: ReasoningLevel;
   autoApprove: boolean;
 };
 
 const defaultChatPreferences: ChatPreferences = {
   mode: 'build',
+  providerModelSelections: {},
   reasoning: 'default',
   autoApprove: false,
 };
@@ -102,16 +113,20 @@ type OpencodeContextValue = {
   currentMessages: SessionMessageRecord[];
   currentTranscript: TranscriptEntry[];
   currentDiffs: FileDiff[];
+  currentTodos: Todo[];
   sessionPreviewById: Record<string, string>;
   isRefreshingSessions: boolean;
   isRefreshingMessages: boolean;
   isRefreshingDiffs: boolean;
   isBootstrappingChat: boolean;
   currentConfig?: Config;
+  availableProviders: ProviderOption[];
+  configuredProviders: ProviderOption[];
   availableModels: ModelOption[];
   availableAgents: AgentOption[];
   chatPreferences: ChatPreferences;
   updateChatPreferences: (patch: Partial<ChatPreferences>) => void;
+  configureProvider: (providerId: string) => Promise<void>;
   setAutoApprove: (enabled: boolean) => Promise<void>;
   sendingState: {
     sessionId?: string;
@@ -121,9 +136,11 @@ type OpencodeContextValue = {
   refreshSessions: (silent?: boolean) => Promise<void>;
   openSession: (sessionId: string) => Promise<void>;
   refreshCurrentSession: (silent?: boolean) => Promise<void>;
+  refreshCurrentTodos: (silent?: boolean) => Promise<void>;
   ensureActiveSession: () => Promise<string | undefined>;
   createSession: (title?: string) => Promise<Session>;
-  sendPrompt: (sessionId: string, prompt: string) => Promise<void>;
+  sendPrompt: (sessionId: string, prompt: string, attachments?: { uri: string; mime?: string; filename?: string }[]) => Promise<void>;
+  abortSession: (sessionId: string) => Promise<void>;
 };
 
 const OpencodeContext = createContext<OpencodeContextValue | null>(null);
@@ -140,20 +157,6 @@ function getProjectLabel(path: string) {
   const normalized = path.trim().replace(/\/$/, '');
   const segments = normalized.split('/').filter(Boolean);
   return segments.at(-1) || normalized || 'Project';
-}
-
-function getParentPath(path: string) {
-  const normalized = path.trim().replace(/\/$/, '');
-  if (!normalized || normalized === '/') {
-    return undefined;
-  }
-
-  const segments = normalized.split('/').filter(Boolean);
-  if (segments.length <= 1) {
-    return '/';
-  }
-
-  return `/${segments.slice(0, -1).join('/')}`;
 }
 
 function toAgentOption(agent: Agent): AgentOption {
@@ -190,6 +193,60 @@ function getInitialModelId(models: ModelOption[], config?: Config, storedModelId
   }
 
   return models[0]?.id;
+}
+
+function getInitialProviderId(models: ModelOption[], config?: Config, storedProviderId?: string, modelId?: string) {
+  if (storedProviderId && models.some((model) => model.providerID === storedProviderId)) {
+    return storedProviderId;
+  }
+
+  const modelMatch = models.find((model) => model.id === modelId);
+  if (modelMatch) {
+    return modelMatch.providerID;
+  }
+
+  if (config?.model) {
+    const configMatch = models.find((model) => model.id === config.model);
+    if (configMatch) {
+      return configMatch.providerID;
+    }
+  }
+
+  return models[0]?.providerID;
+}
+
+function getModelIdForProvider(models: ModelOption[], providerId?: string, selectedModelId?: string, preferredModelId?: string) {
+  const providerModels = providerId ? models.filter((model) => model.providerID === providerId) : models;
+  if (providerModels.length === 0) {
+    return selectedModelId;
+  }
+
+  if (selectedModelId && providerModels.some((model) => model.id === selectedModelId)) {
+    return selectedModelId;
+  }
+
+  if (preferredModelId && providerModels.some((model) => model.id === preferredModelId)) {
+    return preferredModelId;
+  }
+
+  return providerModels[0]?.id;
+}
+
+function getConfiguredProviderIds(config: Config | undefined, connected: string[], models: ModelOption[]) {
+  const configured = new Set<string>([
+    ...(config?.enabled_providers || []),
+    ...connected,
+    ...Object.keys(config?.provider || {}),
+  ]);
+
+  if (config?.model) {
+    const modelMatch = models.find((model) => model.id === config.model);
+    if (modelMatch) {
+      configured.add(modelMatch.providerID);
+    }
+  }
+
+  return configured;
 }
 
 function isAutoApproveEnabled(config?: Config) {
@@ -240,6 +297,7 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
   const [currentSessionId, setCurrentSessionId] = useState<string>();
   const [messagesBySession, setMessagesBySession] = useState<Record<string, SessionMessageRecord[]>>({});
   const [diffsBySession, setDiffsBySession] = useState<Record<string, FileDiff[]>>({});
+  const [todosBySession, setTodosBySession] = useState<Record<string, Todo[]>>({});
   const [serverProjects, setServerProjects] = useState<Project[]>([]);
   const [currentProjectPath, setCurrentProjectPath] = useState<string>();
   const [serverRootPath, setServerRootPath] = useState<string>();
@@ -252,6 +310,7 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
   const [isBootstrappingChat, setIsBootstrappingChat] = useState(false);
   const [sendingState, setSendingState] = useState<{ sessionId?: string; active: boolean }>({ active: false });
   const [currentConfig, setCurrentConfig] = useState<Config>();
+  const [availableProviders, setAvailableProviders] = useState<ProviderOption[]>([]);
   const [availableModels, setAvailableModels] = useState<ModelOption[]>([]);
   const [availableAgents, setAvailableAgents] = useState<AgentOption[]>([]);
   const [chatPreferences, setChatPreferences] = useState<ChatPreferences>(defaultChatPreferences);
@@ -496,9 +555,27 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
     [client],
   );
 
+  const refreshSessionTodos = useCallback(
+    async (sessionId: string) => {
+      const response = await client.session.todo({
+        throwOnError: true,
+        path: { id: sessionId },
+      });
+
+      setTodosBySession((current) => ({
+        ...current,
+        [sessionId]: response.data,
+      }));
+
+      return response.data;
+    },
+    [client],
+  );
+
   const refreshChatCapabilities = useCallback(async () => {
     if (!activeProjectPath) {
       setCurrentConfig(undefined);
+      setAvailableProviders([]);
       setAvailableModels([]);
       setAvailableAgents([]);
       return;
@@ -511,36 +588,58 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
     ]);
 
     const nextConfig = configResponse.data;
-    const nextModels = providersResponse.data.all
+    const nextModels: ModelOption[] = providersResponse.data.all
       .flatMap((provider) =>
         Object.values(provider.models).map((model) => ({
           id: `${provider.id}/${model.id}`,
           label: model.name,
           providerID: provider.id,
+          providerLabel: provider.name,
           modelID: model.id,
           supportsReasoning: model.reasoning,
         })),
       )
       .sort((left, right) => left.label.localeCompare(right.label));
+    const configuredProviderIds = getConfiguredProviderIds(nextConfig, providersResponse.data.connected, nextModels);
+    const configuredModels = nextModels.filter((model) => configuredProviderIds.has(model.providerID));
+    const nextProviders: ProviderOption[] = providersResponse.data.all
+      .map((provider) => ({
+        id: provider.id,
+        label: provider.name,
+        modelCount: Object.keys(provider.models).length,
+        configured: configuredProviderIds.has(provider.id),
+      }))
+      .sort((left, right) => left.label.localeCompare(right.label));
     const nextAgents = agentsResponse.data.map(toAgentOption);
 
     setCurrentConfig(nextConfig);
+    setAvailableProviders(nextProviders);
     setAvailableModels(nextModels);
     setAvailableAgents(nextAgents);
-    setChatPreferences((current) => ({
-      ...current,
-      mode: getInitialMode(nextAgents, nextConfig, current.mode),
-      modelId: getInitialModelId(nextModels, nextConfig, current.modelId),
-      autoApprove: isAutoApproveEnabled(nextConfig),
-    }));
+    setChatPreferences((current) => {
+      const nextProviderId = getInitialProviderId(configuredModels, nextConfig, current.providerId, current.modelId);
+
+      return {
+        ...current,
+        mode: getInitialMode(nextAgents, nextConfig, current.mode),
+        providerId: nextProviderId,
+        modelId: getModelIdForProvider(
+          configuredModels,
+          nextProviderId,
+          getInitialModelId(configuredModels, nextConfig, current.modelId),
+          nextProviderId ? current.providerModelSelections[nextProviderId] : undefined,
+        ),
+        autoApprove: isAutoApproveEnabled(nextConfig),
+      };
+    });
   }, [activeProjectPath, client]);
 
   const openSession = useCallback(
     async (sessionId: string) => {
       setCurrentSessionId(sessionId);
-      await Promise.all([refreshMessages(sessionId), refreshSessionDiff(sessionId, true)]);
+      await Promise.all([refreshMessages(sessionId), refreshSessionDiff(sessionId, true), refreshSessionTodos(sessionId)]);
     },
-    [refreshMessages, refreshSessionDiff],
+    [refreshMessages, refreshSessionDiff, refreshSessionTodos],
   );
 
   const createSession = useCallback(
@@ -581,7 +680,11 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
         const nextSessions = sessions.length > 0 ? sessions : await fetchSessions(true);
         const targetSession = nextSessions[0] ?? (await createSession());
         setCurrentSessionId(targetSession.id);
-        await Promise.all([refreshMessages(targetSession.id, true), refreshSessionDiff(targetSession.id, true)]);
+        await Promise.all([
+          refreshMessages(targetSession.id, true),
+          refreshSessionDiff(targetSession.id, true),
+          refreshSessionTodos(targetSession.id),
+        ]);
         return targetSession.id;
       } finally {
         setIsBootstrappingChat(false);
@@ -600,6 +703,7 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
     messagesBySession,
     refreshMessages,
     refreshSessionDiff,
+    refreshSessionTodos,
     sessions,
   ]);
 
@@ -638,6 +742,7 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
         setSessions([]);
         setSessionStatuses({});
         setCurrentConfig(undefined);
+        setAvailableProviders([]);
         setAvailableModels([]);
         setAvailableAgents([]);
       }
@@ -653,6 +758,7 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
       setSessions([]);
       setSessionStatuses({});
       setCurrentConfig(undefined);
+      setAvailableProviders([]);
       setAvailableModels([]);
       setAvailableAgents([]);
     }
@@ -680,17 +786,85 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
         return;
       }
 
-      await Promise.all([refreshSessions(silent), refreshMessages(currentSessionId, silent), refreshSessionDiff(currentSessionId, true)]);
+      await Promise.all([
+        refreshSessions(silent),
+        refreshMessages(currentSessionId, silent),
+        refreshSessionDiff(currentSessionId, true),
+        refreshSessionTodos(currentSessionId),
+      ]);
     },
-    [currentSessionId, refreshMessages, refreshSessionDiff, refreshSessions],
+    [currentSessionId, refreshMessages, refreshSessionDiff, refreshSessionTodos, refreshSessions],
+  );
+
+  const refreshCurrentTodos = useCallback(
+    async (_silent = false) => {
+      if (!currentSessionId) {
+        return;
+      }
+
+      await refreshSessionTodos(currentSessionId);
+    },
+    [currentSessionId, refreshSessionTodos],
   );
 
   const updateChatPreferences = useCallback((patch: Partial<ChatPreferences>) => {
-    setChatPreferences((current) => ({
-      ...current,
-      ...patch,
-    }));
-  }, []);
+    setChatPreferences((current) => {
+      const configuredProviderIds = new Set(availableProviders.filter((provider) => provider.configured).map((provider) => provider.id));
+      const nextProviderId = patch.providerId ?? current.providerId;
+      const safeProviderId = nextProviderId && configuredProviderIds.has(nextProviderId) ? nextProviderId : undefined;
+      const requestedModelId = patch.modelId ?? current.modelId;
+      const nextProviderModelSelections = patch.modelId
+        ? {
+            ...current.providerModelSelections,
+            [patch.providerId ?? safeProviderId ?? patch.modelId.split('/')[0]]: patch.modelId,
+          }
+        : current.providerModelSelections;
+      const nextModelId = getModelIdForProvider(
+        availableModels.filter((model) => configuredProviderIds.has(model.providerID)),
+        safeProviderId,
+        requestedModelId,
+        safeProviderId ? nextProviderModelSelections[safeProviderId] : undefined,
+      );
+
+      return {
+        ...current,
+        ...patch,
+        providerId: safeProviderId,
+        modelId: nextModelId,
+        providerModelSelections:
+          safeProviderId && nextModelId
+            ? {
+                ...nextProviderModelSelections,
+                [safeProviderId]: nextModelId,
+              }
+            : nextProviderModelSelections,
+      };
+    });
+  }, [availableModels, availableProviders]);
+
+  const configureProvider = useCallback(
+    async (providerId: string) => {
+      const latestConfig = currentConfig || (await client.config.get({ throwOnError: true })).data;
+      const enabledProviders = new Set(latestConfig.enabled_providers || []);
+      enabledProviders.add(providerId);
+
+      const response = await client.config.update({
+        throwOnError: true,
+        body: {
+          ...latestConfig,
+          enabled_providers: [...enabledProviders].sort(),
+        },
+      });
+
+      setCurrentConfig(response.data);
+      await refreshChatCapabilities();
+      setChatPreferences((current) => ({
+        ...current,
+        providerId: current.providerId || providerId,
+      }));
+    },
+    [client, currentConfig, refreshChatCapabilities],
+  );
 
   const setAutoApprove = useCallback(
     async (enabled: boolean) => {
@@ -711,7 +885,11 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
   );
 
   const sendPrompt = useCallback(
-    async (sessionId: string, prompt: string) => {
+    async (
+      sessionId: string,
+      prompt: string,
+      attachments?: { uri: string; mime?: string; filename?: string }[],
+    ) => {
       const trimmedPrompt = prompt.trim();
       if (!trimmedPrompt) {
         return;
@@ -737,17 +915,46 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
                 type: 'text',
                 text: trimmedPrompt,
               },
+              // append any file parts
+              ...(attachments || []).map((att) => ({
+                type: 'file',
+                mime: att.mime || 'application/octet-stream',
+                filename: att.filename || att.uri.split('/').pop(),
+                url: att.uri,
+              } as any)),
             ],
           },
         });
 
         setCurrentSessionId(sessionId);
-        await Promise.all([refreshSessions(true), refreshMessages(sessionId, true), refreshSessionDiff(sessionId, true)]);
+        await Promise.all([
+          refreshSessions(true),
+          refreshMessages(sessionId, true),
+          refreshSessionDiff(sessionId, true),
+          refreshSessionTodos(sessionId),
+        ]);
       } finally {
         setSendingState({ active: false, sessionId: undefined });
       }
     },
-    [chatPreferences.mode, chatPreferences.modelId, chatPreferences.reasoning, client, refreshMessages, refreshSessionDiff, refreshSessions],
+    [chatPreferences.mode, chatPreferences.modelId, chatPreferences.reasoning, client, refreshMessages, refreshSessionDiff, refreshSessionTodos, refreshSessions],
+  );
+
+  const abortSession = useCallback(
+    async (sessionId: string) => {
+      await client.session.abort({
+        throwOnError: true,
+        path: { id: sessionId },
+      });
+
+      await Promise.all([
+        refreshSessions(true),
+        refreshMessages(sessionId, true),
+        refreshSessionDiff(sessionId, true),
+        refreshSessionTodos(sessionId),
+      ]);
+    },
+    [client, refreshMessages, refreshSessionDiff, refreshSessionTodos, refreshSessions],
   );
 
   useEffect(() => {
@@ -763,12 +970,16 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
     const interval = setInterval(() => {
       void refreshSessions(true);
       if (currentSessionId) {
-        void Promise.all([refreshMessages(currentSessionId, true), refreshSessionDiff(currentSessionId, true)]);
+        void Promise.all([
+          refreshMessages(currentSessionId, true),
+          refreshSessionDiff(currentSessionId, true),
+          refreshSessionTodos(currentSessionId),
+        ]);
       }
-    }, 3000);
+    }, 1500);
 
     return () => clearInterval(interval);
-  }, [activeProjectPath, connection.status, currentSessionId, refreshMessages, refreshSessionDiff, refreshSessions, sendingState.active, sessionStatuses]);
+  }, [activeProjectPath, connection.status, currentSessionId, refreshMessages, refreshSessionDiff, refreshSessionTodos, refreshSessions, sendingState.active, sessionStatuses]);
 
   const updateSettings = useCallback((patch: Partial<OpencodeConnectionSettings>) => {
     setSettings((current) => ({
@@ -794,8 +1005,22 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
     [currentSessionId, sessions],
   );
 
-  const currentMessages = currentSessionId ? messagesBySession[currentSessionId] || [] : [];
-  const currentDiffs = currentSessionId ? diffsBySession[currentSessionId] || [] : [];
+  const currentMessages = useMemo(
+    () => (currentSessionId ? messagesBySession[currentSessionId] || [] : []),
+    [currentSessionId, messagesBySession],
+  );
+  const currentDiffs = useMemo(
+    () => (currentSessionId ? diffsBySession[currentSessionId] || [] : []),
+    [currentSessionId, diffsBySession],
+  );
+  const currentTodos = useMemo(
+    () => (currentSessionId ? todosBySession[currentSessionId] || [] : []),
+    [currentSessionId, todosBySession],
+  );
+  const configuredProviders = useMemo(
+    () => availableProviders.filter((provider) => provider.configured),
+    [availableProviders],
+  );
   const currentTranscript = useMemo(() => currentMessages.map(toTranscriptEntry), [currentMessages]);
   const sessionPreviewById = useMemo(
     () =>
@@ -828,25 +1053,31 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
       currentMessages,
       currentDiffs,
       currentTranscript,
+      currentTodos,
       sessionPreviewById,
       isRefreshingSessions,
       isRefreshingMessages,
       isRefreshingDiffs,
       isBootstrappingChat,
       currentConfig,
+      availableProviders,
+      configuredProviders,
       availableModels,
       availableAgents,
       chatPreferences,
       updateChatPreferences,
+      configureProvider,
       setAutoApprove,
       sendingState,
       connect,
       refreshSessions,
       openSession,
       refreshCurrentSession,
+      refreshCurrentTodos,
       ensureActiveSession,
       createSession,
       sendPrompt,
+      abortSession,
     }),
     [
       activeSession,
@@ -855,11 +1086,15 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
       connect,
       connection,
       currentConfig,
+      availableProviders,
+      configuredProviders,
       currentDiffs,
       createSession,
+      configureProvider,
       currentMessages,
       currentSessionId,
       currentTranscript,
+      currentTodos,
       chatPreferences,
       ensureActiveSession,
       availableAgents,
@@ -874,11 +1109,13 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
       currentProjectPath,
       projects,
       refreshCurrentSession,
+      refreshCurrentTodos,
       refreshWorkspaceCatalog,
       refreshSessions,
       selectProject,
       setAutoApprove,
       sendPrompt,
+      abortSession,
       sendingState,
       serverRootPath,
       sessionPreviewById,

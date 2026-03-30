@@ -132,6 +132,7 @@ export function ChatView() {
   } = useOpencode();
 
   const [draft, setDraft] = useState('');
+  const [attachments, setAttachments] = useState<{ uri: string; mime?: string; filename?: string }[]>([]);
   const [activeTab, setActiveTab] = useState<'session' | 'changes'>('session');
   const [menu, setMenu] = useState<'mode' | 'model' | 'reasoning' | undefined>();
   const [isUpdatingAutoApprove, setIsUpdatingAutoApprove] = useState(false);
@@ -332,6 +333,15 @@ export function ChatView() {
             underlineColor="transparent"
             activeUnderlineColor="transparent"
           />
+          {attachments.length > 0 ? (
+            <View style={{ marginTop: 8, flexDirection: 'row', gap: 8 }}>
+              {attachments.map((att, idx) => (
+                <Chip key={att.uri + idx} onClose={() => setAttachments((cur) => cur.filter((_, i) => i !== idx))}>
+                  {att.filename || att.uri}
+                </Chip>
+              ))}
+            </View>
+          ) : null}
           <View style={styles.controlsRow}>
             <MenuControl
               active={menu === 'mode'}
@@ -390,6 +400,23 @@ export function ChatView() {
                 void setAutoApprove(!chatPreferences.autoApprove).finally(() => setIsUpdatingAutoApprove(false));
               }}>
               {chatPreferences.autoApprove ? 'Auto' : 'Ask first'}
+            </Button>
+            <Button
+              compact
+              onPress={async () => {
+                // open image picker
+                try {
+                  const result = await import('expo-image-picker').then((m) => m.launchImageLibraryAsync({ mediaTypes: m.MediaTypeOptions.All, quality: 0.8 }));
+                  if (!result.cancelled) {
+                    const uri = result.assets ? result.assets[0].uri : (result as any).uri;
+                    const mime = (result as any).type || 'image';
+                    setAttachments((cur) => [...cur, { uri, mime, filename: uri.split('/').pop() }]);
+                  }
+                } catch (e) {
+                  console.warn('Picker error', e);
+                }
+              }}>
+              Attach
             </Button>
           </View>
 
