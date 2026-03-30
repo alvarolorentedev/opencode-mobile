@@ -46,9 +46,9 @@ export default function ChatLandingScreen() {
     <View style={[styles.center, { backgroundColor: palette.background }]}>
       <Surface style={[styles.panel, { backgroundColor: palette.surface }]} elevation={1}>
         <ActivityIndicator size="large" color={palette.tint} />
-        <Text variant="headlineSmall" style={[styles.title, { color: palette.text }]}>Opening chat</Text>
+        <Text variant="headlineSmall" style={[styles.title, { color: palette.text }]}>Opening OpenCode Mobile</Text>
         <Text variant="bodyMedium" style={[styles.copy, { color: palette.muted }]}>
-          {connection.status === 'error' ? connection.message : 'Loading the latest session for this workspace.'}
+          {connection.status === 'error' ? connection.message : 'Loading the latest session for this OpenCode Mobile workspace.'}
         </Text>
       </Surface>
     </View>

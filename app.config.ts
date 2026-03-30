@@ -11,7 +11,7 @@ const easProjectId = env('EXPO_EAS_PROJECT_ID');
 const expoOwner = env('EXPO_OWNER') ?? 'alvarolorentedev';
 
 const config: ExpoConfig = {
-  name: 'opencode-mobile',
+  name: 'OpenCode Mobile',
   slug: 'opencode-mobile',
   version: '1.0.0',
   orientation: 'portrait',
@@ -31,7 +31,7 @@ const config: ExpoConfig = {
     // Provide a stable android package so EAS can run non-interactive builds.
     package: androidPackage ?? 'app.getopencode.mobile',
     adaptiveIcon: {
-      backgroundColor: '#E6F4FE',
+      backgroundColor: '#1F1D1C',
       foregroundImage: './assets/images/android-icon-foreground.png',
       backgroundImage: './assets/images/android-icon-background.png',
       monochromeImage: './assets/images/android-icon-monochrome.png',

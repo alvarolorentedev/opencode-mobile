@@ -34,6 +34,7 @@ import {
   type TranscriptDetail,
   type TranscriptEntry,
 } from '@/lib/opencode/format';
+import { renderProviderIcon } from '@/components/ui/provider-icon';
 import {
   type ModelOption,
   type ReasoningLevel,
@@ -59,14 +60,182 @@ function getModelLabel(models: ModelOption[], modelId?: string) {
   return match ? match.label : 'Select model';
 }
 
-function clipBlock(value: string, limit = 18) {
-  const trimmed = value.trim();
-  if (!trimmed) {
-    return 'No content';
+type DiffLine = {
+  kind: 'context' | 'added' | 'removed';
+  leftNumber?: number;
+  rightNumber?: number;
+  text: string;
+};
+
+type DiffBlock =
+  | { type: 'lines'; lines: DiffLine[] }
+  | { type: 'collapsed'; hiddenCount: number; startLine?: number; endLine?: number };
+
+const DIFF_CONTEXT_LINES = 3;
+
+function buildLineDiff(beforeText: string, afterText: string): DiffLine[] {
+  const beforeLines = beforeText.split('\n');
+  const afterLines = afterText.split('\n');
+  const rowCount = beforeLines.length;
+  const columnCount = afterLines.length;
+  const table = Array.from({ length: rowCount + 1 }, () => Array<number>(columnCount + 1).fill(0));
+
+  for (let row = rowCount - 1; row >= 0; row -= 1) {
+    for (let column = columnCount - 1; column >= 0; column -= 1) {
+      table[row][column] =
+        beforeLines[row] === afterLines[column]
+          ? table[row + 1][column + 1] + 1
+          : Math.max(table[row + 1][column], table[row][column + 1]);
+    }
   }
 
-  const lines = trimmed.split('\n');
-  return lines.length <= limit ? trimmed : `${lines.slice(0, limit).join('\n')}\n...`;
+  const result: DiffLine[] = [];
+  let row = 0;
+  let column = 0;
+  let leftNumber = 1;
+  let rightNumber = 1;
+
+  while (row < rowCount && column < columnCount) {
+    if (beforeLines[row] === afterLines[column]) {
+      result.push({
+        kind: 'context',
+        leftNumber,
+        rightNumber,
+        text: beforeLines[row],
+      });
+      row += 1;
+      column += 1;
+      leftNumber += 1;
+      rightNumber += 1;
+      continue;
+    }
+
+    if (table[row + 1][column] >= table[row][column + 1]) {
+      result.push({
+        kind: 'removed',
+        leftNumber,
+        text: beforeLines[row],
+      });
+      row += 1;
+      leftNumber += 1;
+      continue;
+    }
+
+    result.push({
+      kind: 'added',
+      rightNumber,
+      text: afterLines[column],
+    });
+    column += 1;
+    rightNumber += 1;
+  }
+
+  while (row < rowCount) {
+    result.push({
+      kind: 'removed',
+      leftNumber,
+      text: beforeLines[row],
+    });
+    row += 1;
+    leftNumber += 1;
+  }
+
+  while (column < columnCount) {
+    result.push({
+      kind: 'added',
+      rightNumber,
+      text: afterLines[column],
+    });
+    column += 1;
+    rightNumber += 1;
+  }
+
+  return result;
+}
+
+function getDiffPalette(kind: DiffLine['kind'], palette: (typeof Colors)['light']) {
+  if (kind === 'added') {
+    return {
+      backgroundColor: 'rgba(86, 207, 142, 0.14)',
+      accentColor: '#56cf8e',
+    };
+  }
+
+  if (kind === 'removed') {
+    return {
+      backgroundColor: 'rgba(255, 107, 107, 0.14)',
+      accentColor: palette.danger,
+    };
+  }
+
+  return {
+    backgroundColor: palette.background,
+    accentColor: 'transparent',
+  };
+}
+
+function buildCollapsedDiffBlocks(lines: DiffLine[], contextSize = DIFF_CONTEXT_LINES): DiffBlock[] {
+  const blocks: DiffBlock[] = [];
+  let index = 0;
+
+  while (index < lines.length) {
+    if (lines[index].kind !== 'context') {
+      const changedLines: DiffLine[] = [];
+      while (index < lines.length && lines[index].kind !== 'context') {
+        changedLines.push(lines[index]);
+        index += 1;
+      }
+      blocks.push({ type: 'lines', lines: changedLines });
+      continue;
+    }
+
+    const contextStart = index;
+    while (index < lines.length && lines[index].kind === 'context') {
+      index += 1;
+    }
+
+    const contextLines = lines.slice(contextStart, index);
+    const isLeading = contextStart === 0;
+    const isTrailing = index === lines.length;
+
+    if (contextLines.length <= contextSize * 2 || (isLeading && isTrailing)) {
+      blocks.push({ type: 'lines', lines: contextLines });
+      continue;
+    }
+
+    if (isLeading) {
+      blocks.push({ type: 'lines', lines: contextLines.slice(0, contextSize) });
+      blocks.push({
+        type: 'collapsed',
+        hiddenCount: contextLines.length - contextSize,
+        startLine: contextLines[contextSize]?.leftNumber,
+        endLine: contextLines[contextLines.length - 1]?.leftNumber,
+      });
+      continue;
+    }
+
+    if (isTrailing) {
+      blocks.push({
+        type: 'collapsed',
+        hiddenCount: contextLines.length - contextSize,
+        startLine: contextLines[0]?.leftNumber,
+        endLine: contextLines[contextLines.length - contextSize - 1]?.leftNumber,
+      });
+      blocks.push({ type: 'lines', lines: contextLines.slice(-contextSize) });
+      continue;
+    }
+
+    blocks.push({ type: 'lines', lines: contextLines.slice(0, contextSize) });
+    blocks.push({
+      type: 'collapsed',
+      hiddenCount: contextLines.length - contextSize * 2,
+      startLine: contextLines[contextSize]?.leftNumber,
+      endLine: contextLines[contextLines.length - contextSize - 1]?.leftNumber,
+    });
+    blocks.push({ type: 'lines', lines: contextLines.slice(-contextSize) });
+  }
+
+  return blocks.filter((block) => block.type === 'lines' || block.hiddenCount > 0);
 }
 
 function getPermissionTitle(request: PendingPermissionRequest) {
@@ -289,6 +458,7 @@ export function ChatView() {
     availableModels,
     chatPreferences,
     connection,
+    configuredProviders,
     createSession,
     currentDiffs,
     currentPendingPermissions,
@@ -324,10 +494,11 @@ export function ChatView() {
 
   const status = currentSessionId ? sessionStatuses[currentSessionId] : undefined;
   const running = sendingState.active || (!!status && status.type !== 'idle');
-  const visibleModels = useMemo(
-    () => availableModels.filter((model) => model.providerID === chatPreferences.providerId),
-    [availableModels, chatPreferences.providerId],
-  );
+  const visibleModels = useMemo(() => {
+    const configuredProviderIds = new Set(configuredProviders.map((provider) => provider.id));
+
+    return availableModels.filter((model) => configuredProviderIds.has(model.providerID));
+  }, [availableModels, configuredProviders]);
   const diffDetails = useMemo(
     () => currentTranscript.flatMap((entry) => entry.details.filter((detail) => detail.kind === 'patch' || detail.kind === 'file')),
     [currentTranscript],
@@ -637,12 +808,14 @@ export function ChatView() {
           </MenuControl>
           <MenuControl
             active={menu === 'model'}
+            icon={(props) => renderProviderIcon(visibleModels.find((model) => model.id === chatPreferences.modelId)?.providerID, props.size, props.color)}
             label={getModelLabel(visibleModels, chatPreferences.modelId)}
             onClose={() => setMenu(undefined)}
             onOpen={() => setMenu('model')}>
             {visibleModels.map((model) => (
               <Menu.Item
                 key={model.id}
+                leadingIcon={(props) => renderProviderIcon(model.providerID, props.size, props.color)}
                 onPress={() => {
                   updateChatPreferences({ providerId: model.providerID, modelId: model.id });
                   setMenu(undefined);
@@ -742,12 +915,14 @@ export function ChatView() {
 function MenuControl({
   active,
   children,
+  icon,
   label,
   onClose,
   onOpen,
 }: {
   active: boolean;
   children: ReactNode;
+  icon?: (props: { size: number; color: string }) => ReactNode;
   label: string;
   onClose: () => void;
   onOpen: () => void;
@@ -763,6 +938,7 @@ function MenuControl({
       }}
       anchor={
         <Button
+          icon={icon}
           mode={active || visible ? 'contained-tonal' : 'outlined'}
           compact
           onPress={() => {
@@ -840,10 +1016,12 @@ function SessionDiffCard({ diff }: { diff: FileDiff }) {
   const colorScheme = useColorScheme() ?? 'light';
   const palette = Colors[colorScheme];
   const [open, setOpen] = useState(false);
+  const diffLines = useMemo(() => buildLineDiff(diff.before || '', diff.after || ''), [diff.after, diff.before]);
+  const diffBlocks = useMemo(() => buildCollapsedDiffBlocks(diffLines), [diffLines]);
 
   return (
     <Card mode="contained" style={[styles.sectionCard, { backgroundColor: palette.surface }]}> 
-      <TouchableRipple onPress={() => setOpen((current) => !current)}>
+      <TouchableRipple borderless={false} onPress={() => setOpen((current) => !current)} style={styles.diffPressable}>
         <Card.Content style={styles.diffContent}>
           <View style={styles.diffHeader}>
             <Text variant="titleMedium" style={{ color: palette.text }}>{diff.file}</Text>
@@ -852,10 +1030,50 @@ function SessionDiffCard({ diff }: { diff: FileDiff }) {
           {open ? (
             <>
               <Divider style={styles.divider} />
-              <Text variant="labelMedium" style={{ color: palette.muted }}>Before</Text>
-              <Text variant="bodySmall" style={[styles.code, { color: palette.text }]}>{clipBlock(diff.before)}</Text>
-              <Text variant="labelMedium" style={{ color: palette.muted }}>After</Text>
-              <Text variant="bodySmall" style={[styles.code, { color: palette.text }]}>{clipBlock(diff.after)}</Text>
+              <ScrollView horizontal showsHorizontalScrollIndicator>
+                <View style={styles.diffViewer}>
+                  {diffBlocks.map((block, blockIndex) => {
+                    if (block.type === 'collapsed') {
+                      return (
+                        <View key={`${diff.file}-collapsed-${blockIndex}`} style={[styles.diffCollapsedRow, { backgroundColor: palette.background, borderColor: palette.border }]}> 
+                          <Text variant="bodySmall" style={[styles.code, { color: palette.muted }]}>
+                            ... {block.hiddenCount} unchanged line{block.hiddenCount === 1 ? '' : 's'}
+                            {block.startLine && block.endLine ? ` (${block.startLine}-${block.endLine})` : ''}
+                          </Text>
+                        </View>
+                      );
+                    }
+
+                    return block.lines.map((line, index) => {
+                      const tone = getDiffPalette(line.kind, palette);
+                      return (
+                        <View
+                          key={`${diff.file}-${blockIndex}-${index}-${line.leftNumber ?? 'x'}-${line.rightNumber ?? 'x'}`}
+                          style={[
+                            styles.diffLineRow,
+                            {
+                              backgroundColor: tone.backgroundColor,
+                              borderLeftColor: tone.accentColor,
+                            },
+                          ]}>
+                          <Text variant="labelSmall" style={[styles.diffLineNumber, { color: palette.muted }]}>
+                            {line.leftNumber ?? ''}
+                          </Text>
+                          <Text variant="labelSmall" style={[styles.diffLineNumber, { color: palette.muted }]}>
+                            {line.rightNumber ?? ''}
+                          </Text>
+                          <Text style={[styles.diffMarker, { color: tone.accentColor || palette.muted }]}>
+                            {line.kind === 'added' ? '+' : line.kind === 'removed' ? '-' : ' '}
+                          </Text>
+                          <Text variant="bodySmall" style={[styles.code, styles.diffLineText, { color: palette.text }]}>
+                            {line.text || ' '}
+                          </Text>
+                        </View>
+                      );
+                    });
+                  })}
+                </View>
+              </ScrollView>
             </>
           ) : null}
         </Card.Content>
@@ -1122,7 +1340,41 @@ const styles = StyleSheet.create({
   detailHeader: { flexDirection: 'row', justifyContent: 'space-between', gap: 12, alignItems: 'flex-start' },
   detailTitleWrap: { flex: 1, gap: 2 },
   diffContent: { gap: 8 },
+  diffPressable: { borderRadius: 18 },
   diffHeader: { flexDirection: 'row', justifyContent: 'space-between', gap: 12, alignItems: 'center' },
+  diffViewer: { minWidth: '100%', gap: 1 },
+  diffCollapsedRow: {
+    borderWidth: 1,
+    borderStyle: 'dashed',
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    marginVertical: 2,
+  },
+  diffLineRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    borderLeftWidth: 3,
+    paddingVertical: 6,
+    paddingRight: 12,
+    minHeight: 36,
+  },
+  diffLineNumber: {
+    width: 38,
+    textAlign: 'right',
+    paddingTop: 1,
+    paddingRight: 8,
+  },
+  diffMarker: {
+    width: 18,
+    textAlign: 'center',
+    fontFamily: Platform.select({ ios: Fonts.mono, default: 'monospace' }),
+    paddingTop: 1,
+  },
+  diffLineText: {
+    flex: 1,
+    minWidth: 220,
+  },
   code: { fontFamily: Platform.select({ ios: Fonts.mono, default: 'monospace' }) },
   divider: { marginVertical: 4 },
 });

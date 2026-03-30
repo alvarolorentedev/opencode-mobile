@@ -54,6 +54,29 @@ export type ProviderOption = {
   configured: boolean;
 };
 
+export type ProviderAuthPrompt = {
+  type: 'text' | 'select';
+  key: string;
+  message: string;
+  placeholder?: string;
+  options?: Array<{
+    label: string;
+    value: string;
+    hint?: string;
+  }>;
+  when?: {
+    key: string;
+    op: 'eq' | 'neq';
+    value: string;
+  };
+};
+
+export type ProviderAuthMethod = {
+  type: 'oauth' | 'api';
+  label: string;
+  prompts?: ProviderAuthPrompt[];
+};
+
 export type AgentOption = {
   id: string;
   label: string;
@@ -134,12 +157,15 @@ type OpencodeContextValue = {
   isBootstrappingChat: boolean;
   currentConfig?: Config;
   availableProviders: ProviderOption[];
+  providerAuthMethodsById: Record<string, ProviderAuthMethod[]>;
   configuredProviders: ProviderOption[];
   availableModels: ModelOption[];
   availableAgents: AgentOption[];
   chatPreferences: ChatPreferences;
   updateChatPreferences: (patch: Partial<ChatPreferences>) => void;
   configureProvider: (providerId: string) => Promise<void>;
+  setProviderAuth: (providerId: string, values: Record<string, string>) => Promise<void>;
+  startProviderOAuth: (providerId: string, methodIndex: number, inputs?: Record<string, string>) => Promise<{ url: string; instructions?: string }>;
   setAutoApprove: (enabled: boolean) => Promise<void>;
   sendingState: {
     sessionId?: string;
@@ -331,6 +357,7 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
   const pendingNotificationSessionIdsRef = useRef<Set<string>>(new Set());
   const [currentConfig, setCurrentConfig] = useState<Config>();
   const [availableProviders, setAvailableProviders] = useState<ProviderOption[]>([]);
+  const [providerAuthMethodsById, setProviderAuthMethodsById] = useState<Record<string, ProviderAuthMethod[]>>({});
   const [availableModels, setAvailableModels] = useState<ModelOption[]>([]);
   const [availableAgents, setAvailableAgents] = useState<AgentOption[]>([]);
   const [chatPreferences, setChatPreferences] = useState<ChatPreferences>(defaultChatPreferences);
@@ -622,14 +649,16 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
     if (!activeProjectPath) {
       setCurrentConfig(undefined);
       setAvailableProviders([]);
+      setProviderAuthMethodsById({});
       setAvailableModels([]);
       setAvailableAgents([]);
       return;
     }
 
-    const [configResponse, providersResponse, agentsResponse] = await Promise.all([
+    const [configResponse, providersResponse, providerAuthResponse, agentsResponse] = await Promise.all([
       client.config.get(),
       client.provider.list(),
+      client.provider.auth(),
       client.app.agents(),
     ]);
 
@@ -660,6 +689,7 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
 
     setCurrentConfig(nextConfig);
     setAvailableProviders(nextProviders);
+    setProviderAuthMethodsById((providerAuthResponse.data || {}) as Record<string, ProviderAuthMethod[]>);
     setAvailableModels(nextModels);
     setAvailableAgents(nextAgents);
     setChatPreferences((current) => {
@@ -801,6 +831,7 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
         setSessionStatuses({});
         setCurrentConfig(undefined);
         setAvailableProviders([]);
+        setProviderAuthMethodsById({});
         setAvailableModels([]);
         setAvailableAgents([]);
       }
@@ -817,6 +848,7 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
       setSessionStatuses({});
       setCurrentConfig(undefined);
       setAvailableProviders([]);
+      setProviderAuthMethodsById({});
       setAvailableModels([]);
       setAvailableAgents([]);
     }
@@ -981,6 +1013,45 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
       }));
     },
     [client, currentConfig, refreshChatCapabilities],
+  );
+
+  const setProviderAuth = useCallback(
+    async (providerId: string, values: Record<string, string>) => {
+      const normalizedEntries = Object.entries(values).filter(([, value]) => value.trim());
+      const normalizedValues = Object.fromEntries(normalizedEntries);
+      const token = normalizedValues.token || normalizedValues.apiKey || normalizedValues.key || normalizedEntries[0]?.[1];
+
+      if (!token) {
+        throw new Error('Enter a provider credential first.');
+      }
+
+      const auth = normalizedValues.token && normalizedValues.key
+        ? { type: 'wellknown', key: normalizedValues.key, token: normalizedValues.token }
+        : { type: 'api', key: token };
+
+      await client.auth.set({ providerID: providerId, auth });
+      await configureProvider(providerId);
+      await refreshChatCapabilities();
+    },
+    [client, configureProvider, refreshChatCapabilities],
+  );
+
+  const startProviderOAuth = useCallback(
+    async (providerId: string, methodIndex: number, inputs?: Record<string, string>) => {
+      const response = await client.provider.oauth.authorize({
+        providerID: providerId,
+        method: methodIndex,
+        inputs,
+      });
+
+      await configureProvider(providerId);
+
+      return {
+        url: response.data.url,
+        instructions: response.data.instructions,
+      };
+    },
+    [client, configureProvider],
   );
 
   const setAutoApprove = useCallback(
@@ -1245,12 +1316,15 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
       isBootstrappingChat,
       currentConfig,
       availableProviders,
+      providerAuthMethodsById,
       configuredProviders,
       availableModels,
       availableAgents,
       chatPreferences,
       updateChatPreferences,
       configureProvider,
+      setProviderAuth,
+      startProviderOAuth,
       setAutoApprove,
       sendingState,
       connect,
@@ -1275,6 +1349,7 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
       connection,
       currentConfig,
       availableProviders,
+      providerAuthMethodsById,
       configuredProviders,
       currentDiffs,
       createSession,
@@ -1317,6 +1392,8 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
       sessions,
       serverProjects,
       settings,
+      setProviderAuth,
+      startProviderOAuth,
       updateChatPreferences,
       updateSettings,
     ],
