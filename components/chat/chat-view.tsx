@@ -496,9 +496,10 @@ export function ChatView() {
   const running = sendingState.active || (!!status && status.type !== 'idle');
   const visibleModels = useMemo(() => {
     const configuredProviderIds = new Set(configuredProviders.map((provider) => provider.id));
+    const enabledModelIds = new Set(chatPreferences.enabledModelIds);
 
-    return availableModels.filter((model) => configuredProviderIds.has(model.providerID));
-  }, [availableModels, configuredProviders]);
+    return availableModels.filter((model) => configuredProviderIds.has(model.providerID) && (enabledModelIds.size === 0 || enabledModelIds.has(model.id)));
+  }, [availableModels, chatPreferences.enabledModelIds, configuredProviders]);
   const diffDetails = useMemo(
     () => currentTranscript.flatMap((entry) => entry.details.filter((detail) => detail.kind === 'patch' || detail.kind === 'file')),
     [currentTranscript],

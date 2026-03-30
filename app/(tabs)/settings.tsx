@@ -4,6 +4,7 @@ import * as WebBrowser from 'expo-web-browser';
 import {
   Button,
   Card,
+  Checkbox,
   Chip,
   Dialog,
   HelperText,
@@ -105,9 +106,20 @@ export default function SettingsScreen() {
   const [providerDialogError, setProviderDialogError] = useState<string>();
   const [providerFeedback, setProviderFeedback] = useState<{ type: 'success' | 'info'; message: string }>();
 
-  const providerModels = useMemo(
-    () => availableModels.filter((model) => model.providerID === chatPreferences.providerId && configuredProviders.some((provider) => provider.id === model.providerID)),
-    [availableModels, chatPreferences.providerId, configuredProviders],
+  const enabledModelIds = useMemo(() => new Set(chatPreferences.enabledModelIds), [chatPreferences.enabledModelIds]);
+  const configuredModels = useMemo(
+    () => availableModels.filter((model) => configuredProviders.some((provider) => provider.id === model.providerID)),
+    [availableModels, configuredProviders],
+  );
+  const configuredProviderModels = useMemo(
+    () =>
+      configuredProviders
+        .map((provider) => ({
+          provider,
+          models: configuredModels.filter((model) => model.providerID === provider.id),
+        }))
+        .filter((entry) => entry.models.length > 0),
+    [configuredModels, configuredProviders],
   );
   const unconfiguredProviders = useMemo(
     () => availableProviders.filter((provider) => !provider.configured),
@@ -294,7 +306,7 @@ export default function SettingsScreen() {
       <Card mode="contained" style={[styles.card, { backgroundColor: palette.surface }]}> 
         <Card.Content style={styles.section}>
           <Text variant="titleLarge" style={[styles.title, { color: palette.text }]}>AI defaults</Text>
-          <Text variant="bodyMedium" style={{ color: palette.muted }}>Configure providers first, then choose defaults from the configured ones.</Text>
+          <Text variant="bodyMedium" style={{ color: palette.muted }}>Choose which configured models appear in chat. The last model you pick in chat stays selected for new chats.</Text>
           <View style={styles.providerHeader}>
             <Text variant="labelLarge" style={{ color: palette.text }}>Configured providers</Text>
             {unconfiguredProviders.length > 0 ? (
@@ -325,30 +337,44 @@ export default function SettingsScreen() {
                 <Chip
                   key={provider.id}
                   icon={({ size, color }) => renderProviderIcon(provider.id, size, color)}
-                  selected={chatPreferences.providerId === provider.id}
-                  onPress={() => updateChatPreferences({ providerId: provider.id })}>
+                  compact>
                   {getProviderCopy(provider.id, provider.label).label}
                 </Chip>
               ))}
             </View>
           {availableProviders.length === 0 ? <HelperText type="info">Connect first to load providers.</HelperText> : null}
           {availableProviders.length > 0 && configuredProviders.length === 0 ? <HelperText type="info">Configure at least one provider to pick defaults.</HelperText> : null}
-          <RadioButton.Group
-            onValueChange={(value) => updateChatPreferences({ modelId: value, providerId: chatPreferences.providerId })}
-            value={chatPreferences.modelId || ''}>
-            <View style={styles.radioGroup}>
-              {providerModels.map((model) => (
-                <Card key={model.id} mode="outlined" style={styles.optionCard}>
-                  <Card.Title
-                    title={model.label}
-                    subtitle={model.supportsReasoning ? 'Reasoning supported' : 'Standard model'}
-                    left={() => <RadioButton value={model.id} />}
-                  />
-                </Card>
-              ))}
-            </View>
-          </RadioButton.Group>
-          {chatPreferences.providerId && providerModels.length === 0 ? <HelperText type="info">No models found for this provider.</HelperText> : null}
+          <View style={styles.radioGroup}>
+            {configuredProviderModels.map(({ provider, models }) => (
+              <View key={provider.id} style={styles.providerModelSection}>
+                <Text variant="labelLarge" style={{ color: palette.text }}>{getProviderCopy(provider.id, provider.label).label}</Text>
+                {models.map((model) => {
+                  const checked = enabledModelIds.has(model.id);
+
+                  return (
+                    <Card
+                      key={model.id}
+                      mode="outlined"
+                      style={styles.optionCard}
+                      onPress={() => {
+                        const nextEnabledModelIds = checked
+                          ? chatPreferences.enabledModelIds.filter((id) => id !== model.id)
+                          : [...chatPreferences.enabledModelIds, model.id];
+
+                        updateChatPreferences({ enabledModelIds: nextEnabledModelIds });
+                      }}>
+                      <Card.Title
+                        title={model.label}
+                        subtitle={model.supportsReasoning ? 'Reasoning supported' : 'Standard model'}
+                        left={() => <Checkbox status={checked ? 'checked' : 'unchecked'} />}
+                      />
+                    </Card>
+                  );
+                })}
+              </View>
+            ))}
+          </View>
+          {configuredModels.length === 0 ? <HelperText type="info">No models found for your configured providers.</HelperText> : null}
         </Card.Content>
       </Card>
 
@@ -478,6 +504,7 @@ const styles = StyleSheet.create({
   providerHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 },
   chipWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   radioGroup: { gap: 10 },
+  providerModelSection: { gap: 10 },
   dialogContent: { gap: 14 },
   authMethodRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   promptGroup: { gap: 8 },

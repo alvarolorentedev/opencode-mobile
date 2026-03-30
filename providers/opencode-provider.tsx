@@ -91,6 +91,7 @@ export type ChatPreferences = {
   mode: string;
   providerId?: string;
   modelId?: string;
+  enabledModelIds: string[];
   providerModelSelections: Record<string, string>;
   reasoning: ReasoningLevel;
   autoApprove: boolean;
@@ -98,6 +99,7 @@ export type ChatPreferences = {
 
 const defaultChatPreferences: ChatPreferences = {
   mode: 'build',
+  enabledModelIds: [],
   providerModelSelections: {},
   reasoning: 'default',
   autoApprove: false,
@@ -273,6 +275,13 @@ function getModelIdForProvider(models: ModelOption[], providerId?: string, selec
   }
 
   return providerModels[0]?.id;
+}
+
+function getEnabledModelIds(models: ModelOption[], storedModelIds?: string[]) {
+  const availableModelIds = new Set(models.map((model) => model.id));
+  const nextEnabledModelIds = (storedModelIds || []).filter((modelId) => availableModelIds.has(modelId));
+
+  return nextEnabledModelIds.length > 0 ? nextEnabledModelIds : models.map((model) => model.id);
 }
 
 function getConfiguredProviderIds(config: Config | undefined, connected: string[], models: ModelOption[]) {
@@ -693,18 +702,24 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
     setAvailableModels(nextModels);
     setAvailableAgents(nextAgents);
     setChatPreferences((current) => {
+      const enabledModelIds = getEnabledModelIds(configuredModels, current.enabledModelIds);
+      const enabledModels = configuredModels.filter((model) => enabledModelIds.includes(model.id));
       const nextProviderId = getInitialProviderId(configuredModels, nextConfig, current.providerId, current.modelId);
+      const safeProviderId = nextProviderId && enabledModels.some((model) => model.providerID === nextProviderId)
+        ? nextProviderId
+        : getInitialProviderId(enabledModels, nextConfig, current.providerId, current.modelId);
 
       return {
         ...current,
         mode: getInitialMode(nextAgents, nextConfig, current.mode),
-        providerId: nextProviderId,
+        providerId: safeProviderId,
         modelId: getModelIdForProvider(
-          configuredModels,
-          nextProviderId,
-          getInitialModelId(configuredModels, nextConfig, current.modelId),
-          nextProviderId ? current.providerModelSelections[nextProviderId] : undefined,
+          enabledModels,
+          safeProviderId,
+          getInitialModelId(enabledModels, nextConfig, current.modelId),
+          safeProviderId ? current.providerModelSelections[safeProviderId] : undefined,
         ),
+        enabledModelIds,
         autoApprove: isAutoApproveEnabled(nextConfig),
       };
     });
@@ -965,8 +980,13 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
   const updateChatPreferences = useCallback((patch: Partial<ChatPreferences>) => {
     setChatPreferences((current) => {
       const configuredProviderIds = new Set(availableProviders.filter((provider) => provider.configured).map((provider) => provider.id));
+      const configuredModels = availableModels.filter((model) => configuredProviderIds.has(model.providerID));
+      const enabledModelIds = getEnabledModelIds(configuredModels, patch.enabledModelIds ?? current.enabledModelIds);
+      const enabledModels = configuredModels.filter((model) => enabledModelIds.includes(model.id));
       const nextProviderId = patch.providerId ?? current.providerId;
-      const safeProviderId = nextProviderId && configuredProviderIds.has(nextProviderId) ? nextProviderId : undefined;
+      const safeProviderId = nextProviderId && enabledModels.some((model) => model.providerID === nextProviderId)
+        ? nextProviderId
+        : getInitialProviderId(enabledModels, undefined, current.providerId, patch.modelId ?? current.modelId);
       const requestedModelId = patch.modelId ?? current.modelId;
       const nextProviderModelSelections = patch.modelId
         ? {
@@ -975,7 +995,7 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
           }
         : current.providerModelSelections;
       const nextModelId = getModelIdForProvider(
-        availableModels.filter((model) => configuredProviderIds.has(model.providerID)),
+        enabledModels,
         safeProviderId,
         requestedModelId,
         safeProviderId ? nextProviderModelSelections[safeProviderId] : undefined,
@@ -986,6 +1006,7 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
         ...patch,
         providerId: safeProviderId,
         modelId: nextModelId,
+        enabledModelIds,
         providerModelSelections:
           safeProviderId && nextModelId
             ? {
