@@ -1,4 +1,6 @@
 import { MaterialCommunityIcons } from '@expo/vector-icons';
+import * as Clipboard from 'expo-clipboard';
+import * as Haptics from 'expo-haptics';
 import { useEffect, useMemo, useRef, useState, type ComponentProps, type ReactNode } from 'react';
 import {
   KeyboardAvoidingView,
@@ -20,6 +22,7 @@ import {
   List,
   Menu,
   Portal,
+  Snackbar,
   Surface,
   Text,
   TextInput,
@@ -498,6 +501,7 @@ export function ChatView() {
   const [todosExpanded, setTodosExpanded] = useState(true);
   const [visibleTranscriptCount, setVisibleTranscriptCount] = useState(TRANSCRIPT_PAGE_SIZE);
   const [expandedDiffId, setExpandedDiffId] = useState<string | undefined>();
+  const [copiedMessageId, setCopiedMessageId] = useState<string | undefined>();
 
   const status = currentSessionId ? sessionStatuses[currentSessionId] : undefined;
   const running = sendingState.active || (!!status && status.type !== 'idle');
@@ -587,6 +591,26 @@ export function ChatView() {
       setTodosExpanded(true);
     }
   }, [pendingInteractions]);
+
+  useEffect(() => {
+    if (!copiedMessageId) {
+      return;
+    }
+
+    const timer = setTimeout(() => setCopiedMessageId(undefined), 1800);
+    return () => clearTimeout(timer);
+  }, [copiedMessageId]);
+
+  async function handleCopyMessage(entry: TranscriptEntry) {
+    const value = [entry.text.trim(), entry.error?.trim()].filter(Boolean).join('\n\n');
+    if (!value) {
+      return;
+    }
+
+    await Clipboard.setStringAsync(value);
+    setCopiedMessageId(entry.id);
+    void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => undefined);
+  }
 
   function handleLoadEarlier() {
     isPaginatingRef.current = true;
@@ -802,7 +826,16 @@ export function ChatView() {
           </View>
         ) : null}
 
-        {activeTab === 'session' ? visibleTranscript.map((entry) => <TranscriptMessage key={entry.id} entry={entry} />) : null}
+        {activeTab === 'session'
+          ? visibleTranscript.map((entry) => (
+              <TranscriptMessage
+                key={entry.id}
+                copied={copiedMessageId === entry.id}
+                entry={entry}
+                onCopy={() => void handleCopyMessage(entry)}
+              />
+            ))
+          : null}
 
         {activeTab === 'session' && pendingInteractions > 0 ? (
           <PendingInteractionsCard
@@ -1020,6 +1053,13 @@ export function ChatView() {
           </View>
         </View>
       </Surface>
+
+      <Snackbar
+        visible={Boolean(copiedMessageId)}
+        onDismiss={() => setCopiedMessageId(undefined)}
+        duration={1800}>
+        Message copied to clipboard
+      </Snackbar>
     </KeyboardAvoidingView>
   );
 }
@@ -1341,7 +1381,7 @@ function DiffCard({ detail, accordionId, expanded }: { detail: Extract<Transcrip
   );
 }
 
-function TranscriptMessage({ entry }: { entry: TranscriptEntry }) {
+function TranscriptMessage({ copied = false, entry, onCopy }: { copied?: boolean; entry: TranscriptEntry; onCopy: () => void }) {
   const colorScheme = useColorScheme() ?? 'light';
   const palette = Colors[colorScheme];
   const isUser = entry.role === 'user';
@@ -1349,40 +1389,51 @@ function TranscriptMessage({ entry }: { entry: TranscriptEntry }) {
 
   return (
     <View style={[styles.messageRow, isUser && styles.messageRowUser]}>
-      <Surface
-        style={[
-          styles.messageBubble,
-          isUser ? styles.messageBubbleUser : styles.messageBubbleAssistant,
-          {
-            backgroundColor: isUser ? palette.bubbleUser : palette.bubbleAssistant,
-            borderColor: isUser ? palette.bubbleUser : palette.border,
-          },
-        ]}
-        elevation={1}>
-        <View style={styles.messageMeta}>
-          <Text variant="labelMedium" style={{ color: isUser ? palette.onBubbleUser : palette.muted }}>{isUser ? 'You' : 'OpenCode'}</Text>
-          <Text variant="labelSmall" style={{ color: isUser ? palette.onBubbleUser : palette.muted, opacity: isUser ? 0.82 : 1 }}>
-            {formatTimestamp(entry.createdAt)}
-          </Text>
-        </View>
-        {entry.text ? (
-          <MarkdownText
-            text={entry.text}
-            color={isUser ? palette.onBubbleUser : palette.onBubbleAssistant}
-            mutedColor={isUser ? palette.onBubbleUser : palette.muted}
-          />
-        ) : null}
-        {entry.error ? <Text variant="bodyMedium" style={{ color: palette.danger }}>{entry.error}</Text> : null}
-        {!isUser && detailSummary.length > 0 ? (
-          <View style={styles.summaryRow}>
-            {detailSummary.map((item) => (
-              <Chip key={item} compact mode="flat" style={[styles.summaryChip, { backgroundColor: palette.background }]}>
-                {item}
-              </Chip>
-            ))}
+      <TouchableRipple borderless={false} rippleColor={`${palette.tint}22`} style={styles.messageTouchable} onLongPress={onCopy}>
+        <Surface
+          style={[
+            styles.messageBubble,
+            isUser ? styles.messageBubbleUser : styles.messageBubbleAssistant,
+            {
+              backgroundColor: isUser ? palette.bubbleUser : palette.bubbleAssistant,
+              borderColor: copied ? palette.tint : isUser ? palette.bubbleUser : palette.border,
+            },
+            copied ? styles.messageBubbleCopied : null,
+          ]}
+          elevation={1}>
+          <View style={styles.messageMeta}>
+            <Text variant="labelMedium" style={{ color: isUser ? palette.onBubbleUser : palette.muted }}>{isUser ? 'You' : 'OpenCode'}</Text>
+            <View style={styles.messageMetaRight}>
+              {copied ? (
+                <View style={[styles.copiedPill, { backgroundColor: isUser ? `${palette.onBubbleUser}20` : `${palette.tint}18` }]}>
+                  <MaterialCommunityIcons name="check" size={12} color={isUser ? palette.onBubbleUser : palette.tint} />
+                  <Text variant="labelSmall" style={{ color: isUser ? palette.onBubbleUser : palette.tint }}>Copied</Text>
+                </View>
+              ) : null}
+              <Text variant="labelSmall" style={{ color: isUser ? palette.onBubbleUser : palette.muted, opacity: isUser ? 0.82 : 1 }}>
+                {formatTimestamp(entry.createdAt)}
+              </Text>
+            </View>
           </View>
-        ) : null}
-      </Surface>
+          {entry.text ? (
+            <MarkdownText
+              text={entry.text}
+              color={isUser ? palette.onBubbleUser : palette.onBubbleAssistant}
+              mutedColor={isUser ? palette.onBubbleUser : palette.muted}
+            />
+          ) : null}
+          {entry.error ? <Text variant="bodyMedium" style={{ color: palette.danger }}>{entry.error}</Text> : null}
+          {!isUser && detailSummary.length > 0 ? (
+            <View style={styles.summaryRow}>
+              {detailSummary.map((item) => (
+                <Chip key={item} compact mode="flat" style={[styles.summaryChip, { backgroundColor: palette.background }]}> 
+                  {item}
+                </Chip>
+              ))}
+            </View>
+          ) : null}
+        </Surface>
+      </TouchableRipple>
     </View>
   );
 }
@@ -1615,10 +1666,14 @@ const styles = StyleSheet.create({
   composerActionButton: { margin: 0 },
   messageRow: { alignItems: 'stretch' },
   messageRowUser: { alignItems: 'flex-end' },
+  messageTouchable: { width: '100%', borderRadius: 22 },
   messageBubble: { maxWidth: '100%', padding: 16, borderRadius: 22, gap: 12, borderWidth: 1 },
+  messageBubbleCopied: { shadowColor: '#000', shadowOpacity: 0.12, shadowRadius: 14, shadowOffset: { width: 0, height: 6 } },
   messageBubbleUser: { maxWidth: '88%' },
   messageBubbleAssistant: { width: '100%' },
   messageMeta: { flexDirection: 'row', justifyContent: 'space-between', gap: 12, alignItems: 'center' },
+  messageMetaRight: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  copiedPill: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 8, paddingVertical: 4, borderRadius: 999 },
   markdownStack: { gap: 10 },
   markdownBulletRow: { flexDirection: 'row', gap: 10, alignItems: 'flex-start' },
   markdownBulletText: { flex: 1 },
