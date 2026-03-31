@@ -7,7 +7,7 @@ function env(name: string) {
 
 const iosBundleIdentifier = env('EXPO_IOS_BUNDLE_IDENTIFIER');
 const androidPackage = env('EXPO_ANDROID_PACKAGE');
-const easProjectId = env('EXPO_EAS_PROJECT_ID');
+const easProjectId = env('EXPO_EAS_PROJECT_ID') ?? 'd9362b8b-45e8-4158-9ac5-fe644b4447c3';
 const expoOwner = env('EXPO_OWNER') ?? 'alvarolorentedev';
 
 const config: ExpoConfig = {
@@ -66,14 +66,9 @@ const config: ExpoConfig = {
   },
   extra: {
     router: {},
-    // Read the EAS project id from environment so the id can be committed in `.env`.
-    ...(easProjectId
-      ? {
-          eas: {
-            projectId: easProjectId,
-          },
-        }
-      : {}),
+    eas: {
+      projectId: easProjectId,
+    },
   },
   owner: expoOwner,
 };

@@ -106,7 +106,7 @@ export default function SettingsScreen() {
   const [isConfiguringProvider, setIsConfiguringProvider] = useState(false);
   const [providerDialogError, setProviderDialogError] = useState<string>();
   const [providerFeedback, setProviderFeedback] = useState<{ type: 'success' | 'info'; message: string }>();
-  const [expandedProviders, setExpandedProviders] = useState<Record<string, boolean>>({});
+  const [expandedProviderId, setExpandedProviderId] = useState<string>();
 
   const enabledModelIds = useMemo(() => new Set(chatPreferences.enabledModelIds), [chatPreferences.enabledModelIds]);
   const configuredModels = useMemo(
@@ -374,53 +374,56 @@ export default function SettingsScreen() {
           {availableProviders.length === 0 ? <HelperText type="info">Connect first to load providers.</HelperText> : null}
           {availableProviders.length > 0 && configuredProviders.length === 0 ? <HelperText type="info">Configure at least one provider to pick defaults.</HelperText> : null}
           <List.Section style={styles.modelListSection}>
-            {configuredProviderModels.map(({ provider, models }) => {
-              const selectedCount = models.filter((model) => enabledModelIds.has(model.id)).length;
+            <List.AccordionGroup
+              expandedId={expandedProviderId}
+              onAccordionPress={(id) => setExpandedProviderId(expandedProviderId === String(id) ? undefined : String(id))}>
+              {configuredProviderModels.map(({ provider, models }) => {
+                const selectedCount = models.filter((model) => enabledModelIds.has(model.id)).length;
 
-              return (
-                <List.Accordion
-                  key={provider.id}
-                  title={getProviderCopy(provider.id, provider.label).label}
-                  description={`${selectedCount} of ${models.length} selected`}
-                  left={() => (
-                    <View
-                      style={[
-                        styles.providerAccordionIconWrap,
-                        { backgroundColor: palette.surfaceAlt, borderColor: palette.border },
-                      ]}>
-                      {renderProviderIcon(provider.id, 20, palette.tint)}
-                    </View>
-                  )}
-                  expanded={Boolean(expandedProviders[provider.id])}
-                  onPress={() => setExpandedProviders((current) => ({ ...current, [provider.id]: !current[provider.id] }))}
-                  style={[styles.providerAccordion, { backgroundColor: palette.background, borderColor: palette.border }]}
-                  titleStyle={{ color: palette.text }}
-                  descriptionStyle={{ color: palette.muted }}>
-                  {models.map((model) => {
-                    const checked = enabledModelIds.has(model.id);
+                return (
+                  <List.Accordion
+                    key={provider.id}
+                    id={provider.id}
+                    title={getProviderCopy(provider.id, provider.label).label}
+                    description={`${selectedCount} of ${models.length} selected`}
+                    left={() => (
+                      <View
+                        style={[
+                          styles.providerAccordionIconWrap,
+                          { backgroundColor: palette.surfaceAlt, borderColor: palette.border },
+                        ]}>
+                        {renderProviderIcon(provider.id, 20, palette.tint)}
+                      </View>
+                    )}
+                    style={[styles.providerAccordion, { backgroundColor: palette.background, borderColor: palette.border }]}
+                    titleStyle={{ color: palette.text }}
+                    descriptionStyle={{ color: palette.muted }}>
+                    {models.map((model) => {
+                      const checked = enabledModelIds.has(model.id);
 
-                    return (
-                      <List.Item
-                        key={model.id}
-                        title={model.label}
-                        description={model.supportsReasoning ? 'Reasoning supported' : 'Standard model'}
-                        titleStyle={{ color: palette.text }}
-                        descriptionStyle={{ color: palette.muted }}
-                        onPress={() => {
-                          const nextEnabledModelIds = checked
-                            ? chatPreferences.enabledModelIds.filter((id) => id !== model.id)
-                            : [...chatPreferences.enabledModelIds, model.id];
+                      return (
+                        <List.Item
+                          key={model.id}
+                          title={model.label}
+                          description={model.supportsReasoning ? 'Reasoning supported' : 'Standard model'}
+                          titleStyle={{ color: palette.text }}
+                          descriptionStyle={{ color: palette.muted }}
+                          onPress={() => {
+                            const nextEnabledModelIds = checked
+                              ? chatPreferences.enabledModelIds.filter((id) => id !== model.id)
+                              : [...chatPreferences.enabledModelIds, model.id];
 
-                          updateChatPreferences({ enabledModelIds: nextEnabledModelIds });
-                        }}
-                        left={() => <Checkbox status={checked ? 'checked' : 'unchecked'} />}
-                        style={styles.modelListItem}
-                      />
-                    );
-                  })}
-                </List.Accordion>
-              );
-            })}
+                            updateChatPreferences({ enabledModelIds: nextEnabledModelIds });
+                          }}
+                          left={() => <Checkbox status={checked ? 'checked' : 'unchecked'} />}
+                          style={styles.modelListItem}
+                        />
+                      );
+                    })}
+                  </List.Accordion>
+                );
+              })}
+            </List.AccordionGroup>
           </List.Section>
           {configuredModels.length === 0 ? <HelperText type="info">No models found for your configured providers.</HelperText> : null}
         </Card.Content>
