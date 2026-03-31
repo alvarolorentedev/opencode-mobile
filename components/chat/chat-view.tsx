@@ -460,7 +460,7 @@ export function ChatView() {
   const insets = useSafeAreaInsets();
   const scrollRef = useRef<ScrollView>(null);
   const isPaginatingRef = useRef(false);
-  const lastSubmittedPromptRef = useRef<{ key: string; at: number }>();
+  const lastSubmittedPromptRef = useRef<{ key: string; at: number } | null>(null);
   const {
     activeSession,
     availableAgents,
@@ -473,7 +473,6 @@ export function ChatView() {
     currentPendingPermissions,
     currentPendingQuestions,
     currentSessionId,
-    currentTodos,
     currentTranscript,
     ensureActiveSession,
     isRefreshingDiffs,
@@ -499,7 +498,6 @@ export function ChatView() {
   const [isUpdatingAutoApprove, setIsUpdatingAutoApprove] = useState(false);
   const [isCreatingSession, setIsCreatingSession] = useState(false);
   const [isStoppingSession, setIsStoppingSession] = useState(false);
-  const [todosExpanded, setTodosExpanded] = useState(true);
   const [visibleTranscriptCount, setVisibleTranscriptCount] = useState(TRANSCRIPT_PAGE_SIZE);
   const [expandedDiffId, setExpandedDiffId] = useState<string | undefined>();
   const [copiedMessageId, setCopiedMessageId] = useState<string | undefined>();
@@ -522,8 +520,6 @@ export function ChatView() {
     () => availableAgents.find((agent) => agent.id === chatPreferences.mode)?.label || chatPreferences.mode,
     [availableAgents, chatPreferences.mode],
   );
-  const completedTodos = currentTodos.filter((todo) => todo.status === 'completed').length;
-  const pendingTodos = currentTodos.filter((todo) => todo.status !== 'completed' && todo.status !== 'cancelled').length;
   const pendingInteractions = currentPendingPermissions.length + currentPendingQuestions.length;
   const awaitingUserInput = pendingInteractions > 0;
   const displayTranscript = useMemo(
@@ -586,12 +582,11 @@ export function ChatView() {
     }, 80);
 
     return () => clearTimeout(timer);
-  }, [activeTab, currentTodos, pendingInteractions, running, visibleTranscript]);
+  }, [activeTab, pendingInteractions, running, visibleTranscript]);
 
   useEffect(() => {
     if (pendingInteractions > 0) {
       setActiveTab('session');
-      setTodosExpanded(true);
     }
   }, [pendingInteractions]);
 
@@ -657,13 +652,13 @@ export function ChatView() {
       if (!sent) {
         setDraft(nextDraft);
         setAttachments(nextAttachments);
-        lastSubmittedPromptRef.current = undefined;
+        lastSubmittedPromptRef.current = null;
         return;
       }
     } catch (error) {
       setDraft(nextDraft);
       setAttachments(nextAttachments);
-      lastSubmittedPromptRef.current = undefined;
+      lastSubmittedPromptRef.current = null;
       throw error;
     }
   }
@@ -952,17 +947,6 @@ export function ChatView() {
       <Surface
         style={[styles.composer, { backgroundColor: palette.surface, borderTopColor: palette.border, paddingBottom: Math.max(insets.bottom, 12) }]}
         elevation={4}>
-        {(pendingTodos > 0 || pendingInteractions > 0) ? (
-          <TodoPanel
-            completedCount={completedTodos}
-            expanded={todosExpanded}
-            onToggle={() => setTodosExpanded((current) => !current)}
-            pendingCount={pendingTodos}
-            pendingInteractions={pendingInteractions}
-            todos={currentTodos}
-          />
-        ) : null}
-
         <View style={styles.controlsRow}>
           <MenuControl
             active={menu === 'mode'}
@@ -1209,69 +1193,6 @@ function TopTab({ active, label, onPress }: { active: boolean; label: string; on
         <Text variant="titleMedium" style={{ color: active ? palette.text : palette.muted, fontWeight: active ? '700' : '500' }}>{label}</Text>
       </View>
     </TouchableRipple>
-  );
-}
-
-function TodoPanel({
-  completedCount,
-  expanded,
-  onToggle,
-  pendingCount,
-  pendingInteractions,
-  todos,
-}: {
-  completedCount: number;
-  expanded: boolean;
-  onToggle: () => void;
-  pendingCount: number;
-  pendingInteractions: number;
-  todos: Todo[];
-}) {
-  const colorScheme = useColorScheme() ?? 'light';
-  const palette = Colors[colorScheme];
-  const totalItems = todos.length + pendingInteractions;
-  const showTodos = pendingInteractions === 0;
-  const titleText = pendingInteractions > 0
-    ? 'Waiting for your input'
-    : `${completedCount} of ${Math.max(totalItems, completedCount)} items completed`;
-  const summaryText = pendingInteractions > 0
-    ? `${pendingInteractions} response${pendingInteractions === 1 ? '' : 's'} waiting here`
-    : pendingCount > 0
-      ? `${pendingCount} still in progress`
-      : 'Everything is wrapped up';
-
-  return (
-    <Card mode="contained" style={[styles.todoCard, { backgroundColor: palette.background }]}> 
-      <TouchableRipple onPress={onToggle}>
-        <Card.Content style={styles.todoCardContent}>
-          <View style={styles.todoHeader}>
-            <View style={styles.todoHeaderText}>
-              <Text variant="titleMedium" style={{ color: palette.text }}>{titleText}</Text>
-              <Text variant="bodySmall" style={{ color: palette.muted }}>{summaryText}</Text>
-            </View>
-            <MaterialCommunityIcons name={expanded ? 'chevron-up' : 'chevron-down'} size={20} color={palette.muted} />
-          </View>
-          {expanded ? (
-            <View style={styles.todoList}>
-              {pendingInteractions > 0 ? (
-                <Text variant="bodySmall" style={{ color: palette.muted }}>
-                  Review the response card in the session feed to continue.
-                </Text>
-              ) : null}
-              {showTodos ? todos.map((todo, index) => (
-                <View key={`${todo.content}-${index}`} style={styles.todoRow}>
-                  <View style={[styles.todoState, { borderColor: getTodoTone(todo.priority, palette), backgroundColor: todo.status === 'completed' ? getTodoTone(todo.priority, palette) : 'transparent' }]} />
-                  <View style={styles.todoTextWrap}>
-                    <Text variant="bodyMedium" style={{ color: palette.text }}>{todo.content}</Text>
-                    <Text variant="bodySmall" style={{ color: palette.muted }}>{todo.status.replace('_', ' ')} • {todo.priority}</Text>
-                  </View>
-                </View>
-              )) : null}
-            </View>
-          ) : null}
-        </Card.Content>
-      </TouchableRipple>
-    </Card>
   );
 }
 
@@ -1647,8 +1568,6 @@ const styles = StyleSheet.create({
     gap: 10,
     borderTopWidth: 1,
   },
-  todoCard: { borderRadius: 22 },
-  todoCardContent: { gap: 12 },
   requestCard: { borderRadius: 22 },
   requestCardCompact: { borderRadius: 18 },
   requestCardContent: { gap: 12 },
@@ -1659,12 +1578,6 @@ const styles = StyleSheet.create({
   questionHeader: { gap: 2 },
   questionOptions: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   questionChip: { alignSelf: 'flex-start' },
-  todoHeader: { flexDirection: 'row', justifyContent: 'space-between', gap: 12, alignItems: 'center' },
-  todoHeaderText: { flex: 1, gap: 4 },
-  todoList: { gap: 12 },
-  todoRow: { flexDirection: 'row', gap: 12, alignItems: 'flex-start' },
-  todoState: { width: 18, height: 18, borderRadius: 6, borderWidth: 1.5, marginTop: 2 },
-  todoTextWrap: { flex: 1, gap: 2 },
   inputShell: { borderWidth: 1, borderRadius: 22, paddingLeft: 12, paddingRight: 6, paddingVertical: 6 },
   composerRow: { flexDirection: 'row', alignItems: 'flex-end', gap: 4 },
   input: { flex: 1, minHeight: 22, maxHeight: 120, fontSize: 17, marginHorizontal: -4 },
