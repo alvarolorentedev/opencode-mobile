@@ -460,7 +460,7 @@ export function ChatView() {
   const insets = useSafeAreaInsets();
   const scrollRef = useRef<ScrollView>(null);
   const isPaginatingRef = useRef(false);
-  const isSubmittingPromptRef = useRef(false);
+  const lastSubmittedPromptRef = useRef<{ key: string; at: number }>();
   const {
     activeSession,
     availableAgents,
@@ -621,10 +621,6 @@ export function ChatView() {
   }
 
   async function handleSendPrompt(promptOverride?: string) {
-    if (isSubmittingPromptRef.current) {
-      return;
-    }
-
     const nextDraft = promptOverride ?? draft;
     const nextAttachments = attachments;
     const prompt = nextDraft.trim();
@@ -632,26 +628,43 @@ export function ChatView() {
       return;
     }
 
-    isSubmittingPromptRef.current = true;
-    setDraft('');
-    setAttachments([]);
-
     try {
       const sessionId = currentSessionId || (await ensureActiveSession());
       if (!sessionId) {
-        setDraft(nextDraft);
-        setAttachments(nextAttachments);
         return;
       }
+
+      const submitKey = JSON.stringify({
+        sessionId,
+        prompt,
+        attachments: nextAttachments.map((attachment) => ({
+          uri: attachment.uri,
+          mime: attachment.mime,
+          filename: attachment.filename,
+        })),
+      });
+      const lastSubmittedPrompt = lastSubmittedPromptRef.current;
+      if (lastSubmittedPrompt && lastSubmittedPrompt.key === submitKey && Date.now() - lastSubmittedPrompt.at < 1000) {
+        return;
+      }
+
+      lastSubmittedPromptRef.current = { key: submitKey, at: Date.now() };
+
+      setDraft('');
+      setAttachments([]);
 
       const sent = await sendPrompt(sessionId, prompt, nextAttachments);
       if (!sent) {
         setDraft(nextDraft);
         setAttachments(nextAttachments);
+        lastSubmittedPromptRef.current = undefined;
         return;
       }
-    } finally {
-      isSubmittingPromptRef.current = false;
+    } catch (error) {
+      setDraft(nextDraft);
+      setAttachments(nextAttachments);
+      lastSubmittedPromptRef.current = undefined;
+      throw error;
     }
   }
 
