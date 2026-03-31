@@ -1,5 +1,5 @@
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { useEffect, useMemo, useRef, useState, type ComponentProps, type ReactNode } from 'react';
 import {
   KeyboardAvoidingView,
   Platform,
@@ -58,6 +58,10 @@ const TRANSCRIPT_PAGE_SIZE = 20;
 function getModelLabel(models: ModelOption[], modelId?: string) {
   const match = models.find((model) => model.id === modelId);
   return match ? match.label : 'Select model';
+}
+
+function getAutoApproveIcon(autoApprove: boolean) {
+  return autoApprove ? 'shield-check' : 'shield-key';
 }
 
 type DiffLine = {
@@ -793,6 +797,8 @@ export function ChatView() {
         <View style={styles.controlsRow}>
           <MenuControl
             active={menu === 'mode'}
+            iconName="robot-outline"
+            maxWidth={84}
             label={selectedAgentLabel}
             onClose={() => setMenu(undefined)}
             onOpen={() => setMenu('mode')}>
@@ -809,6 +815,7 @@ export function ChatView() {
           </MenuControl>
           <MenuControl
             active={menu === 'model'}
+            maxWidth={112}
             icon={(props) => renderProviderIcon(visibleModels.find((model) => model.id === chatPreferences.modelId)?.providerID, props.size, props.color)}
             label={getModelLabel(visibleModels, chatPreferences.modelId)}
             onClose={() => setMenu(undefined)}
@@ -827,6 +834,8 @@ export function ChatView() {
           </MenuControl>
           <MenuControl
             active={menu === 'reasoning'}
+            iconName="brain"
+            maxWidth={84}
             label={chatPreferences.reasoning}
             onClose={() => setMenu(undefined)}
             onOpen={() => setMenu('reasoning')}>
@@ -841,19 +850,20 @@ export function ChatView() {
               />
             ))}
           </MenuControl>
-          <Button
-            mode={chatPreferences.autoApprove ? 'contained-tonal' : 'outlined'}
-            compact
+          <ControlButton
+            active={chatPreferences.autoApprove}
+            iconName={getAutoApproveIcon(chatPreferences.autoApprove)}
+            iconOnly
             loading={isUpdatingAutoApprove}
             onPress={() => {
               setIsUpdatingAutoApprove(true);
               void setAutoApprove(!chatPreferences.autoApprove).finally(() => setIsUpdatingAutoApprove(false));
             }}>
-            {chatPreferences.autoApprove ? 'Auto' : 'Ask first'}
-          </Button>
-          <Button mode="outlined" compact icon="paperclip" onPress={() => void handleAttach()}>
+            {chatPreferences.autoApprove ? 'Auto approve enabled' : 'Ask permission'}
+          </ControlButton>
+          <ControlButton iconName="paperclip" iconOnly onPress={() => void handleAttach()}>
             Files
-          </Button>
+          </ControlButton>
         </View>
 
         {attachments.length > 0 ? (
@@ -917,14 +927,18 @@ function MenuControl({
   active,
   children,
   icon,
+  iconName,
   label,
+  maxWidth,
   onClose,
   onOpen,
 }: {
   active: boolean;
   children: ReactNode;
   icon?: (props: { size: number; color: string }) => ReactNode;
+  iconName?: ComponentProps<typeof MaterialCommunityIcons>['name'];
   label: string;
+  maxWidth?: number;
   onClose: () => void;
   onOpen: () => void;
 }) {
@@ -938,19 +952,69 @@ function MenuControl({
         onClose();
       }}
       anchor={
-        <Button
+        <ControlButton
+          active={active || visible}
           icon={icon}
-          mode={active || visible ? 'contained-tonal' : 'outlined'}
-          compact
+          iconName={iconName}
+          maxWidth={maxWidth}
           onPress={() => {
             setVisible(true);
             onOpen();
           }}>
           {label}
-        </Button>
+        </ControlButton>
       }>
       {children}
     </Menu>
+  );
+}
+
+function ControlButton({
+  active = false,
+  children,
+  icon,
+  iconName,
+  iconOnly = false,
+  loading = false,
+  maxWidth,
+  onPress,
+}: {
+  active?: boolean;
+  children: string;
+  icon?: (props: { size: number; color: string }) => ReactNode;
+  iconName?: ComponentProps<typeof MaterialCommunityIcons>['name'];
+  iconOnly?: boolean;
+  loading?: boolean;
+  maxWidth?: number;
+  onPress: () => void;
+}) {
+  const colorScheme = useColorScheme() ?? 'light';
+  const palette = Colors[colorScheme];
+  const textColor = active ? palette.tint : palette.text;
+  const borderColor = active ? 'transparent' : palette.border;
+  const backgroundColor = active ? `${palette.tint}18` : palette.surface;
+
+  return (
+    <TouchableRipple
+      onPress={onPress}
+      borderless={false}
+      style={[
+        styles.controlButton,
+        iconOnly ? styles.controlButtonIconOnly : styles.controlButtonText,
+        !iconOnly && maxWidth ? { maxWidth } : null,
+        { borderColor, backgroundColor },
+      ]}>
+      <View style={[styles.controlButtonInner, iconOnly && styles.controlButtonInnerIconOnly]}>
+        {loading ? <ActivityIndicator size={16} color={textColor} /> : null}
+        {!loading && icon ? icon({ size: 16, color: textColor }) : null}
+        {!loading && !icon && iconName ? <MaterialCommunityIcons name={iconName} size={16} color={textColor} /> : null}
+        {!iconOnly ? (
+          <Text numberOfLines={1} ellipsizeMode="tail" variant="labelLarge" style={[styles.controlButtonLabel, { color: textColor }]}>
+            {children}
+          </Text>
+        ) : null}
+      </View>
+    </TouchableRipple>
   );
 }
 
@@ -1318,7 +1382,33 @@ const styles = StyleSheet.create({
   composerRow: { flexDirection: 'row', alignItems: 'flex-end', gap: 4 },
   input: { flex: 1, minHeight: 22, maxHeight: 120, fontSize: 17, marginHorizontal: -4 },
   inputContentCompact: { paddingHorizontal: 0, paddingTop: 6, paddingBottom: 6, fontFamily: Fonts.sans },
-  controlsRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, paddingHorizontal: 2 },
+  controlsRow: { flexDirection: 'row', flexWrap: 'nowrap', gap: 6, paddingHorizontal: 0, alignItems: 'center', justifyContent: 'space-between' },
+  controlButton: {
+    borderWidth: 1,
+    borderRadius: 14,
+    minHeight: 38,
+    overflow: 'hidden',
+  },
+  controlButtonText: { minWidth: 0, flexShrink: 1 },
+  controlButtonIconOnly: {
+    width: 38,
+  },
+  controlButtonInner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 8,
+    paddingVertical: 8,
+    minWidth: 0,
+  },
+  controlButtonInnerIconOnly: {
+    justifyContent: 'center',
+    paddingHorizontal: 0,
+  },
+  controlButtonLabel: {
+    flexShrink: 1,
+    fontFamily: Fonts.sans,
+  },
   attachmentRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, paddingHorizontal: 2 },
   attachmentChip: { alignSelf: 'flex-start' },
   composerActionButton: { margin: 0 },
