@@ -821,16 +821,41 @@ export function ChatView() {
               <Card mode="contained" style={[styles.sectionCard, { backgroundColor: palette.surface }]}> 
                 <Card.Content style={styles.diffListCardContent}>
                   <List.AccordionGroup expandedId={expandedDiffId} onAccordionPress={(id) => setExpandedDiffId(expandedDiffId === String(id) ? undefined : String(id))}>
-                    {currentDiffs.map((diff) => (
-                      <SessionDiffCard key={diff.file} accordionId={`diff:${diff.file}`} diff={diff} />
-                    ))}
+                    {currentDiffs.map((diff) => {
+                      const accordionId = `diff:${diff.file}`;
+                      return <SessionDiffCard key={diff.file} accordionId={accordionId} diff={diff} expanded={expandedDiffId === accordionId} />;
+                    })}
                     {currentDiffs.length === 0
-                      ? diffDetails.map((detail) => <DiffCard key={detail.id} accordionId={`detail:${detail.id}`} detail={detail} />)
+                      ? diffDetails.map((detail) => {
+                          const accordionId = `detail:${detail.id}`;
+                          return <DiffCard key={detail.id} accordionId={accordionId} detail={detail} expanded={expandedDiffId === accordionId} />;
+                        })
                       : null}
                   </List.AccordionGroup>
                 </Card.Content>
               </Card>
             ) : null}
+          </View>
+        ) : null}
+
+        {activeTab === 'session' ? (
+          <View style={styles.requestStack}>
+            {currentPendingPermissions.map((request) => (
+              <PermissionRequestCard
+                key={request.id}
+                request={request}
+                onReply={(reply: 'once' | 'always' | 'reject') => void replyToPermission(request.id, reply)}
+              />
+            ))}
+
+            {currentPendingQuestions.map((request) => (
+              <QuestionRequestCard
+                key={request.id}
+                request={request}
+                onReject={() => void rejectQuestion(request.id)}
+                onSubmit={(answers: PendingQuestionAnswer[]) => void replyToQuestion(request.id, answers)}
+              />
+            ))}
           </View>
         ) : null}
 
@@ -856,23 +881,6 @@ export function ChatView() {
             todos={currentTodos}
           />
         ) : null}
-
-        {currentPendingPermissions.map((request) => (
-          <PermissionRequestCard
-            key={request.id}
-            request={request}
-            onReply={(reply: 'once' | 'always' | 'reject') => void replyToPermission(request.id, reply)}
-          />
-        ))}
-
-        {currentPendingQuestions.map((request) => (
-          <QuestionRequestCard
-            key={request.id}
-            request={request}
-            onReject={() => void rejectQuestion(request.id)}
-            onSubmit={(answers: PendingQuestionAnswer[]) => void replyToQuestion(request.id, answers)}
-          />
-        ))}
 
         <View style={styles.controlsRow}>
           <MenuControl
@@ -1023,6 +1031,23 @@ function MenuControl({
   onOpen: () => void;
 }) {
   const [visible, setVisible] = useState(false);
+  const anchor = (
+    <ControlButton
+      active={active || visible}
+      icon={icon}
+      iconName={iconName}
+      maxWidth={maxWidth}
+      onPress={() => {
+        setVisible(true);
+        onOpen();
+      }}>
+      {label}
+    </ControlButton>
+  );
+
+  if (!visible) {
+    return anchor;
+  }
 
   return (
     <Menu
@@ -1031,19 +1056,7 @@ function MenuControl({
         setVisible(false);
         onClose();
       }}
-      anchor={
-        <ControlButton
-          active={active || visible}
-          icon={icon}
-          iconName={iconName}
-          maxWidth={maxWidth}
-          onPress={() => {
-            setVisible(true);
-            onOpen();
-          }}>
-          {label}
-        </ControlButton>
-      }>
+      anchor={anchor}>
       {children}
     </Menu>
   );
@@ -1157,11 +1170,11 @@ function TodoPanel({
   );
 }
 
-function SessionDiffCard({ diff, accordionId }: { diff: FileDiff; accordionId: string }) {
+function SessionDiffCard({ diff, accordionId, expanded }: { diff: FileDiff; accordionId: string; expanded: boolean }) {
   const colorScheme = useColorScheme() ?? 'light';
   const palette = Colors[colorScheme];
-  const diffLines = useMemo(() => buildLineDiff(diff.before || '', diff.after || ''), [diff.after, diff.before]);
-  const diffBlocks = useMemo(() => buildCollapsedDiffBlocks(diffLines), [diffLines]);
+  const diffLines = useMemo(() => (expanded ? buildLineDiff(diff.before || '', diff.after || '') : []), [diff.after, diff.before, expanded]);
+  const diffBlocks = useMemo(() => (expanded ? buildCollapsedDiffBlocks(diffLines) : []), [diffLines, expanded]);
 
   return (
     <List.Accordion
@@ -1174,56 +1187,60 @@ function SessionDiffCard({ diff, accordionId }: { diff: FileDiff; accordionId: s
       theme={{ colors: { background: palette.surface } }}>
       <View style={styles.diffAccordionBody}>
         <Divider style={styles.divider} />
-        <ScrollView horizontal showsHorizontalScrollIndicator>
-          <View style={styles.diffViewer}>
-            {diffBlocks.map((block, blockIndex) => {
-              if (block.type === 'collapsed') {
-                return (
-                  <View key={`${diff.file}-collapsed-${blockIndex}`} style={[styles.diffCollapsedRow, { backgroundColor: palette.background, borderColor: palette.border }]}> 
-                    <Text variant="bodySmall" style={[styles.code, { color: palette.muted }]}> 
-                      ... {block.hiddenCount} unchanged line{block.hiddenCount === 1 ? '' : 's'}
-                      {block.startLine && block.endLine ? ` (${block.startLine}-${block.endLine})` : ''}
-                    </Text>
-                  </View>
-                );
-              }
+        {expanded ? (
+          <ScrollView horizontal showsHorizontalScrollIndicator>
+            <View style={styles.diffViewer}>
+              {diffBlocks.map((block, blockIndex) => {
+                if (block.type === 'collapsed') {
+                  return (
+                    <View key={`${diff.file}-collapsed-${blockIndex}`} style={[styles.diffCollapsedRow, { backgroundColor: palette.background, borderColor: palette.border }]}> 
+                      <Text variant="bodySmall" style={[styles.code, { color: palette.muted }]}> 
+                        ... {block.hiddenCount} unchanged line{block.hiddenCount === 1 ? '' : 's'}
+                        {block.startLine && block.endLine ? ` (${block.startLine}-${block.endLine})` : ''}
+                      </Text>
+                    </View>
+                  );
+                }
 
-              return block.lines.map((line, index) => {
-                const tone = getDiffPalette(line.kind, palette);
-                return (
-                  <View
-                    key={`${diff.file}-${blockIndex}-${index}-${line.leftNumber ?? 'x'}-${line.rightNumber ?? 'x'}`}
-                    style={[
-                      styles.diffLineRow,
-                      {
-                        backgroundColor: tone.backgroundColor,
-                        borderLeftColor: tone.accentColor,
-                      },
-                    ]}>
-                    <Text variant="labelSmall" style={[styles.diffLineNumber, { color: palette.muted }]}> 
-                      {line.leftNumber ?? ''}
-                    </Text>
-                    <Text variant="labelSmall" style={[styles.diffLineNumber, { color: palette.muted }]}> 
-                      {line.rightNumber ?? ''}
-                    </Text>
-                    <Text style={[styles.diffMarker, { color: tone.accentColor || palette.muted }]}> 
-                      {line.kind === 'added' ? '+' : line.kind === 'removed' ? '-' : ' '}
-                    </Text>
-                    <Text variant="bodySmall" style={[styles.code, styles.diffLineText, { color: palette.text }]}> 
-                      {line.text || ' '}
-                    </Text>
-                  </View>
-                );
-              });
-            })}
-          </View>
-        </ScrollView>
+                return block.lines.map((line, index) => {
+                  const tone = getDiffPalette(line.kind, palette);
+                  return (
+                    <View
+                      key={`${diff.file}-${blockIndex}-${index}-${line.leftNumber ?? 'x'}-${line.rightNumber ?? 'x'}`}
+                      style={[
+                        styles.diffLineRow,
+                        {
+                          backgroundColor: tone.backgroundColor,
+                          borderLeftColor: tone.accentColor,
+                        },
+                      ]}>
+                      <Text variant="labelSmall" style={[styles.diffLineNumber, { color: palette.muted }]}> 
+                        {line.leftNumber ?? ''}
+                      </Text>
+                      <Text variant="labelSmall" style={[styles.diffLineNumber, { color: palette.muted }]}> 
+                        {line.rightNumber ?? ''}
+                      </Text>
+                      <Text style={[styles.diffMarker, { color: tone.accentColor || palette.muted }]}> 
+                        {line.kind === 'added' ? '+' : line.kind === 'removed' ? '-' : ' '}
+                      </Text>
+                      <Text variant="bodySmall" style={[styles.code, styles.diffLineText, { color: palette.text }]}> 
+                        {line.text || ' '}
+                      </Text>
+                    </View>
+                  );
+                });
+              })}
+            </View>
+          </ScrollView>
+        ) : (
+          <Text variant="bodySmall" style={{ color: palette.muted }}>Expand to load the diff preview.</Text>
+        )}
       </View>
     </List.Accordion>
   );
 }
 
-function DiffCard({ detail, accordionId }: { detail: Extract<TranscriptDetail, { kind: 'patch' | 'file' }>; accordionId: string }) {
+function DiffCard({ detail, accordionId, expanded }: { detail: Extract<TranscriptDetail, { kind: 'patch' | 'file' }>; accordionId: string; expanded: boolean }) {
   const colorScheme = useColorScheme() ?? 'light';
   const palette = Colors[colorScheme];
 
@@ -1238,7 +1255,11 @@ function DiffCard({ detail, accordionId }: { detail: Extract<TranscriptDetail, {
       theme={{ colors: { background: palette.surface } }}>
       <View style={styles.diffAccordionBody}>
         <Divider style={styles.divider} />
-        <Text variant="bodySmall" style={[styles.code, { color: palette.muted }]}>{detail.body}</Text>
+        {expanded ? (
+          <Text variant="bodySmall" style={[styles.code, { color: palette.muted }]}>{detail.body}</Text>
+        ) : (
+          <Text variant="bodySmall" style={{ color: palette.muted }}>Expand to load the patch preview.</Text>
+        )}
       </View>
     </List.Accordion>
   );
@@ -1448,6 +1469,7 @@ const styles = StyleSheet.create({
   sectionStack: { gap: 12 },
   sectionCard: { borderRadius: 18 },
   sectionHeaderCard: { flexDirection: 'row', justifyContent: 'space-between', gap: 12, alignItems: 'center' },
+  requestStack: { gap: 12 },
   paginationRow: { alignItems: 'center', paddingVertical: 4 },
   loadingRow: { flexDirection: 'row', gap: 10, alignItems: 'center', paddingHorizontal: 8, paddingBottom: 8 },
   composer: {

@@ -32,12 +32,17 @@ import {
   type SessionMessageRecord,
   type TranscriptEntry,
 } from '@/lib/opencode/format';
-import { notifyTaskFinished } from '@/lib/notifications';
-
-const SETTINGS_STORAGE_KEY = 'opencode-mobile.settings';
-const CHAT_PREFERENCES_STORAGE_KEY = 'opencode-mobile.chat-preferences';
-const ACTIVE_PROJECT_STORAGE_KEY = 'opencode-mobile.active-project';
-const LAST_SESSION_BY_PROJECT_STORAGE_KEY = 'opencode-mobile.last-session-by-project';
+import {
+  clearPendingTaskFinishedNotification,
+  notifyTaskFinished,
+  trackPendingTaskFinishedNotification,
+} from '@/lib/notifications';
+import {
+  ACTIVE_PROJECT_STORAGE_KEY,
+  CHAT_PREFERENCES_STORAGE_KEY,
+  LAST_SESSION_BY_PROJECT_STORAGE_KEY,
+  SETTINGS_STORAGE_KEY,
+} from '@/lib/storage-keys';
 
 export type ModelOption = {
   id: string;
@@ -354,6 +359,37 @@ function mergePermissionConfig(config: Config | undefined, enabled: boolean): Co
       external_directory: enabled ? 'allow' : 'ask',
     },
   };
+}
+
+function getPendingRequestSessionId(request: any) {
+  const candidate =
+    request?.sessionID ??
+    request?.sessionId ??
+    request?.session ??
+    request?.session?.id ??
+    request?.message?.sessionID ??
+    request?.message?.sessionId ??
+    request?.tool?.sessionID ??
+    request?.tool?.sessionId;
+
+  return typeof candidate === 'string' ? candidate : undefined;
+}
+
+function groupPendingRequestsBySession<T extends { id?: string }>(requests: T[]) {
+  return requests.reduce<Record<string, T[]>>((acc, request: any) => {
+    const sessionId = getPendingRequestSessionId(request);
+    if (!sessionId) {
+      return acc;
+    }
+
+    const existing = acc[sessionId] || [];
+    if (request?.id && existing.some((item: any) => item?.id === request.id)) {
+      return acc;
+    }
+
+    acc[sessionId] = [...existing, request];
+    return acc;
+  }, {});
 }
 
 export function OpencodeProvider({ children }: PropsWithChildren) {
@@ -982,28 +1018,26 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
         return;
       }
 
-      const [permissions, questions] = await Promise.all([
-        listPendingPermissions(v2Client),
-        listPendingQuestions(v2Client),
+      const [scopedPermissions, scopedQuestions, globalPermissions, globalQuestions] = await Promise.all([
+        listPendingPermissions(v2Client).catch(() => []),
+        listPendingQuestions(v2Client).catch(() => []),
+        listPendingPermissions(catalogClient).catch(() => []),
+        listPendingQuestions(catalogClient).catch(() => []),
       ]);
 
-      const nextPermissionsBySession = (permissions as any[]).reduce<Record<string, PendingPermissionRequest[]>>((acc: Record<string, PendingPermissionRequest[]>, request: any) => {
-        const sessionID = request.sessionID || request.sessionId || request.session;
-        if (!sessionID) return acc;
-        acc[sessionID] = [...(acc[sessionID] || []), request as PendingPermissionRequest];
-        return acc;
-      }, {});
-      const nextQuestionsBySession = (questions as any[]).reduce<Record<string, PendingQuestionRequest[]>>((acc: Record<string, PendingQuestionRequest[]>, request: any) => {
-        const sessionID = request.sessionID || request.sessionId || request.session;
-        if (!sessionID) return acc;
-        acc[sessionID] = [...(acc[sessionID] || []), request as PendingQuestionRequest];
-        return acc;
-      }, {});
+      const nextPermissionsBySession = groupPendingRequestsBySession<PendingPermissionRequest>([
+        ...(scopedPermissions as PendingPermissionRequest[]),
+        ...(globalPermissions as PendingPermissionRequest[]),
+      ]);
+      const nextQuestionsBySession = groupPendingRequestsBySession<PendingQuestionRequest>([
+        ...(scopedQuestions as PendingQuestionRequest[]),
+        ...(globalQuestions as PendingQuestionRequest[]),
+      ]);
 
       setPendingPermissionsBySession(nextPermissionsBySession);
       setPendingQuestionsBySession(nextQuestionsBySession);
     },
-    [activeProjectPath, v2Client],
+    [activeProjectPath, catalogClient, v2Client],
   );
 
   const replyToPermission = useCallback(
@@ -1163,8 +1197,25 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
         return;
       }
 
+      const currentSession = sessions.find((session) => session.id === sessionId);
+
       pendingNotificationSessionIdsRef.current.add(sessionId);
+      if (activeProjectPath) {
+        await trackPendingTaskFinishedNotification({
+          sessionId,
+          sessionTitle: currentSession?.title,
+          projectPath: activeProjectPath,
+          settings: {
+            serverUrl: settingsRef.current.serverUrl,
+            username: settingsRef.current.username,
+            password: settingsRef.current.password,
+          },
+          requestedAt: Date.now(),
+        });
+      }
+
       setSendingState({ active: true, sessionId });
+      let promptAccepted = false;
 
       try {
         // Prepare file parts. For local URIs (file://, content://, asset://) try to read
@@ -1216,6 +1267,7 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
             ],
           },
         });
+        promptAccepted = true;
 
         setCurrentSessionId(sessionId);
         const nextSessions = await fetchSessions(true);
@@ -1234,16 +1286,24 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
             // Leave the session untitled if summarization is unavailable.
           }
         }
+      } catch (error) {
+        if (!promptAccepted) {
+          pendingNotificationSessionIdsRef.current.delete(sessionId);
+          await clearPendingTaskFinishedNotification(sessionId);
+        }
+
+        throw error;
       } finally {
         setSendingState({ active: false, sessionId: undefined });
       }
     },
-    [chatPreferences.mode, chatPreferences.modelId, chatPreferences.reasoning, client, fetchSessions, refreshMessages, refreshPendingRequests, refreshSessionDiff, refreshSessionTodos, summarizeSessionTitle],
+    [activeProjectPath, chatPreferences.mode, chatPreferences.modelId, chatPreferences.reasoning, client, fetchSessions, refreshMessages, refreshPendingRequests, refreshSessionDiff, refreshSessionTodos, sessions, summarizeSessionTitle],
   );
 
   const abortSession = useCallback(
     async (sessionId: string) => {
       pendingNotificationSessionIdsRef.current.delete(sessionId);
+      await clearPendingTaskFinishedNotification(sessionId);
         await client.session.abort({ path: { id: sessionId } });
 
       await Promise.all([
@@ -1283,22 +1343,37 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
   }, [activeProjectPath, connection.status, currentSessionId, refreshMessages, refreshPendingRequests, refreshSessionDiff, refreshSessionTodos, refreshSessions, sendingState.active, sessionStatuses]);
 
   useEffect(() => {
-    const pendingIds = [...pendingNotificationSessionIdsRef.current];
-    if (pendingIds.length === 0) {
-      return;
-    }
+    let cancelled = false;
 
-    pendingIds.forEach((sessionId) => {
-      const status = sessionStatuses[sessionId];
-      if ((status && status.type !== 'idle') || (sendingState.active && sendingState.sessionId === sessionId)) {
+    async function flushCompletedNotifications() {
+      const pendingIds = [...pendingNotificationSessionIdsRef.current];
+      if (pendingIds.length === 0) {
         return;
       }
 
-      pendingNotificationSessionIdsRef.current.delete(sessionId);
-      const session = sessions.find((item) => item.id === sessionId);
-      const title = session?.title || 'Task complete';
-      void notifyTaskFinished('OpenCode finished a task', title);
-    });
+      for (const sessionId of pendingIds) {
+        const status = sessionStatuses[sessionId];
+        if ((status && status.type !== 'idle') || (sendingState.active && sendingState.sessionId === sessionId)) {
+          continue;
+        }
+
+        pendingNotificationSessionIdsRef.current.delete(sessionId);
+        await clearPendingTaskFinishedNotification(sessionId);
+        if (cancelled) {
+          return;
+        }
+
+        const session = sessions.find((item) => item.id === sessionId);
+        const title = session?.title || 'Task complete';
+        await notifyTaskFinished('OpenCode finished a task', title);
+      }
+    }
+
+    void flushCompletedNotifications();
+
+    return () => {
+      cancelled = true;
+    };
   }, [sendingState.active, sendingState.sessionId, sessionStatuses, sessions]);
 
   const updateSettings = useCallback((patch: Partial<OpencodeConnectionSettings>) => {

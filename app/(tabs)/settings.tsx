@@ -429,7 +429,7 @@ export default function SettingsScreen() {
       </ScrollView>
 
       <Portal>
-        <Dialog visible={Boolean(selectedProvider)} onDismiss={resetProviderDialog}>
+        {selectedProvider ? <Dialog visible onDismiss={resetProviderDialog}>
           <Dialog.Title>{selectedProviderCopy ? `Configure ${selectedProviderCopy.label}` : 'Configure provider'}</Dialog.Title>
           <Dialog.Content style={styles.dialogContent}>
             {selectedProviderCopy?.description ? (
@@ -509,7 +509,7 @@ export default function SettingsScreen() {
               {selectedMethod?.type === 'oauth' ? 'Continue' : 'Save'}
             </Button>
           </Dialog.Actions>
-        </Dialog>
+        </Dialog> : null}
       </Portal>
 
       <Snackbar

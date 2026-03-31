@@ -1,4 +1,5 @@
 import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
+import Constants from 'expo-constants';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
@@ -6,7 +7,6 @@ import 'react-native-reanimated';
 import { PaperProvider } from 'react-native-paper';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
-import { initializeNotifications } from '@/lib/notifications';
 import { getPaperTheme } from '@/constants/paper-theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { OpencodeProvider } from '@/providers/opencode-provider';
@@ -20,7 +20,13 @@ export default function RootLayout() {
   const paperTheme = getPaperTheme(colorScheme === 'dark' ? 'dark' : 'light');
 
   useEffect(() => {
-    void initializeNotifications();
+    if (Constants.appOwnership === 'expo') {
+      return;
+    }
+
+    void import('@/lib/notifications')
+      .then(({ initializeNotifications }) => initializeNotifications())
+      .catch(() => undefined);
   }, []);
 
   return (

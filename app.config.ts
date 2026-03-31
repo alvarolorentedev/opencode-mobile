@@ -46,6 +46,7 @@ const config: ExpoConfig = {
   plugins: [
     'expo-router',
     'expo-notifications',
+    'expo-background-task',
     [
       'expo-splash-screen',
       {
