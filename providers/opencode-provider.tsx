@@ -1323,18 +1323,18 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
     }
 
     const hasBusySession = Object.values(sessionStatuses).some((status) => status.type !== 'idle');
-    if (!hasBusySession && !sendingState.active) {
-      return;
-    }
-
     const interval = setInterval(() => {
-      void refreshSessions(true);
-      if (currentSessionId) {
+      void refreshPendingRequests(true);
+
+      if (hasBusySession || sendingState.active) {
+        void refreshSessions(true);
+      }
+
+      if (currentSessionId && (hasBusySession || sendingState.active)) {
         void Promise.all([
           refreshMessages(currentSessionId, true),
           refreshSessionDiff(currentSessionId, true),
           refreshSessionTodos(currentSessionId),
-          refreshPendingRequests(true),
         ]);
       }
     }, 1500);

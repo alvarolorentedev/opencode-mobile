@@ -518,6 +518,7 @@ export function ChatView() {
   const completedTodos = currentTodos.filter((todo) => todo.status === 'completed').length;
   const pendingTodos = currentTodos.filter((todo) => todo.status !== 'completed' && todo.status !== 'cancelled').length;
   const pendingInteractions = currentPendingPermissions.length + currentPendingQuestions.length;
+  const awaitingUserInput = pendingInteractions > 0;
   const displayTranscript = useMemo(
     () => currentTranscript.filter(isDisplayMessage),
     [currentTranscript],
@@ -578,10 +579,11 @@ export function ChatView() {
     }, 80);
 
     return () => clearTimeout(timer);
-  }, [activeTab, currentTodos, running, visibleTranscript]);
+  }, [activeTab, currentTodos, pendingInteractions, running, visibleTranscript]);
 
   useEffect(() => {
     if (pendingInteractions > 0) {
+      setActiveTab('session');
       setTodosExpanded(true);
     }
   }, [pendingInteractions]);
@@ -802,6 +804,16 @@ export function ChatView() {
 
         {activeTab === 'session' ? visibleTranscript.map((entry) => <TranscriptMessage key={entry.id} entry={entry} />) : null}
 
+        {activeTab === 'session' && pendingInteractions > 0 ? (
+          <PendingInteractionsCard
+            permissions={currentPendingPermissions}
+            questions={currentPendingQuestions}
+            onPermissionReply={(requestId, reply) => void replyToPermission(requestId, reply)}
+            onQuestionReject={(requestId) => void rejectQuestion(requestId)}
+            onQuestionSubmit={(requestId, answers) => void replyToQuestion(requestId, answers)}
+          />
+        ) : null}
+
         {activeTab === 'changes' ? (
           <View style={styles.sectionStack}>
             <Card mode="contained" style={[styles.sectionCard, { backgroundColor: palette.surface }]}> 
@@ -845,7 +857,21 @@ export function ChatView() {
           </View>
         ) : null}
 
-        {activeTab === 'session' && running ? (
+        {activeTab === 'session' && awaitingUserInput ? (
+          <Card mode="contained" style={[styles.noticeCard, { backgroundColor: palette.surface }]}> 
+            <Card.Content style={styles.waitingNoticeContent}>
+              <View style={styles.waitingNoticeHeader}>
+                <MaterialCommunityIcons name="alert-circle-outline" size={18} color={palette.warning} />
+                <Text variant="titleMedium" style={{ color: palette.text }}>Waiting for your input</Text>
+              </View>
+              <Text style={{ color: palette.muted }}>
+                OpenCode is blocked on {pendingInteractions === 1 ? 'a response' : `${pendingInteractions} responses`} below.
+              </Text>
+            </Card.Content>
+          </Card>
+        ) : null}
+
+        {activeTab === 'session' && running && !awaitingUserInput ? (
           <View style={styles.loadingRow}>
             <ActivityIndicator color={palette.tint} />
             <Text style={{ color: palette.muted }}>
@@ -865,11 +891,6 @@ export function ChatView() {
             onToggle={() => setTodosExpanded((current) => !current)}
             pendingCount={pendingTodos}
             pendingInteractions={pendingInteractions}
-            permissions={currentPendingPermissions}
-            questions={currentPendingQuestions}
-            onPermissionReply={(requestId, reply) => void replyToPermission(requestId, reply)}
-            onQuestionReject={(requestId) => void rejectQuestion(requestId)}
-            onQuestionSubmit={(requestId, answers) => void replyToQuestion(requestId, answers)}
             todos={currentTodos}
           />
         ) : null}
@@ -1122,11 +1143,6 @@ function TodoPanel({
   onToggle,
   pendingCount,
   pendingInteractions,
-  permissions,
-  questions,
-  onPermissionReply,
-  onQuestionReject,
-  onQuestionSubmit,
   todos,
 }: {
   completedCount: number;
@@ -1134,11 +1150,6 @@ function TodoPanel({
   onToggle: () => void;
   pendingCount: number;
   pendingInteractions: number;
-  permissions: PendingPermissionRequest[];
-  questions: PendingQuestionRequest[];
-  onPermissionReply: (requestId: string, reply: 'once' | 'always' | 'reject') => void;
-  onQuestionReject: (requestId: string) => void;
-  onQuestionSubmit: (requestId: string, answers: PendingQuestionAnswer[]) => void;
   todos: Todo[];
 }) {
   const colorScheme = useColorScheme() ?? 'light';
@@ -1167,23 +1178,11 @@ function TodoPanel({
           </View>
           {expanded ? (
             <View style={styles.todoList}>
-              {permissions.map((request) => (
-                <PermissionRequestCard
-                  key={request.id}
-                  compact
-                  request={request}
-                  onReply={(reply) => onPermissionReply(request.id, reply)}
-                />
-              ))}
-              {questions.map((request) => (
-                <QuestionRequestCard
-                  key={request.id}
-                  compact
-                  request={request}
-                  onReject={() => onQuestionReject(request.id)}
-                  onSubmit={(answers) => onQuestionSubmit(request.id, answers)}
-                />
-              ))}
+              {pendingInteractions > 0 ? (
+                <Text variant="bodySmall" style={{ color: palette.muted }}>
+                  Review the response card in the session feed to continue.
+                </Text>
+              ) : null}
               {showTodos ? todos.map((todo, index) => (
                 <View key={`${todo.content}-${index}`} style={styles.todoRow}>
                   <View style={[styles.todoState, { borderColor: getTodoTone(todo.priority, palette), backgroundColor: todo.status === 'completed' ? getTodoTone(todo.priority, palette) : 'transparent' }]} />
@@ -1197,6 +1196,52 @@ function TodoPanel({
           ) : null}
         </Card.Content>
       </TouchableRipple>
+    </Card>
+  );
+}
+
+function PendingInteractionsCard({
+  onPermissionReply,
+  onQuestionReject,
+  onQuestionSubmit,
+  permissions,
+  questions,
+}: {
+  onPermissionReply: (requestId: string, reply: 'once' | 'always' | 'reject') => void;
+  onQuestionReject: (requestId: string) => void;
+  onQuestionSubmit: (requestId: string, answers: PendingQuestionAnswer[]) => void;
+  permissions: PendingPermissionRequest[];
+  questions: PendingQuestionRequest[];
+}) {
+  const colorScheme = useColorScheme() ?? 'light';
+  const palette = Colors[colorScheme];
+
+  return (
+    <Card mode="contained" style={[styles.sectionCard, { backgroundColor: palette.surface }]}> 
+      <Card.Content style={styles.pendingInteractionsContent}>
+        <View style={styles.waitingNoticeHeader}>
+          <MaterialCommunityIcons name="message-alert-outline" size={18} color={palette.warning} />
+          <Text variant="titleMedium" style={{ color: palette.text }}>Respond to continue</Text>
+        </View>
+        <Text variant="bodySmall" style={{ color: palette.muted }}>
+          OpenCode is waiting for your answer before it can continue.
+        </Text>
+        {permissions.map((request) => (
+          <PermissionRequestCard
+            key={request.id}
+            request={request}
+            onReply={(reply) => onPermissionReply(request.id, reply)}
+          />
+        ))}
+        {questions.map((request) => (
+          <QuestionRequestCard
+            key={request.id}
+            request={request}
+            onReject={() => onQuestionReject(request.id)}
+            onSubmit={(answers) => onQuestionSubmit(request.id, answers)}
+          />
+        ))}
+      </Card.Content>
     </Card>
   );
 }
@@ -1495,6 +1540,8 @@ const styles = StyleSheet.create({
   scroll: { flex: 1 },
   content: { padding: 12, gap: 12, paddingBottom: 20 },
   noticeCard: { borderRadius: 20 },
+  waitingNoticeContent: { gap: 8 },
+  waitingNoticeHeader: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   emptyCard: { borderRadius: 22 },
   emptyContent: { gap: 14 },
   emptyTitle: { fontFamily: Fonts.display, fontWeight: '700' },
@@ -1520,6 +1567,7 @@ const styles = StyleSheet.create({
   requestCardCompact: { borderRadius: 18 },
   requestCardContent: { gap: 12 },
   requestActionsRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  pendingInteractionsContent: { gap: 12 },
   questionList: { gap: 14 },
   questionBlock: { gap: 10 },
   questionHeader: { gap: 2 },

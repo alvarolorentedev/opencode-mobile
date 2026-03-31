@@ -78,6 +78,7 @@ export function buildClient(settings: OpencodeConnectionSettings): any {
 
   client.__opencode = {
     baseUrl,
+    directory: settings.directory.trim() || undefined,
     headers,
   };
 
@@ -94,7 +95,13 @@ async function apiRequest(client: any, path: string, init?: RequestInit) {
     throw new Error('OpenCode client is missing base URL metadata.');
   }
 
-  const response = await fetch(`${baseUrl}${path}`, {
+  const requestUrl = new URL(`${baseUrl}${path}`);
+  const directory = client?.__opencode?.directory;
+  if (directory && !requestUrl.searchParams.has('directory')) {
+    requestUrl.searchParams.set('directory', directory);
+  }
+
+  const response = await fetch(requestUrl.toString(), {
     ...init,
     headers: {
       Accept: 'application/json',
