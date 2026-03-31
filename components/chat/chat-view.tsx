@@ -517,6 +517,7 @@ export function ChatView() {
   );
   const completedTodos = currentTodos.filter((todo) => todo.status === 'completed').length;
   const pendingTodos = currentTodos.filter((todo) => todo.status !== 'completed' && todo.status !== 'cancelled').length;
+  const pendingInteractions = currentPendingPermissions.length + currentPendingQuestions.length;
   const displayTranscript = useMemo(
     () => currentTranscript.filter(isDisplayMessage),
     [currentTranscript],
@@ -578,6 +579,12 @@ export function ChatView() {
 
     return () => clearTimeout(timer);
   }, [activeTab, currentTodos, running, visibleTranscript]);
+
+  useEffect(() => {
+    if (pendingInteractions > 0) {
+      setTodosExpanded(true);
+    }
+  }, [pendingInteractions]);
 
   function handleLoadEarlier() {
     isPaginatingRef.current = true;
@@ -838,27 +845,6 @@ export function ChatView() {
           </View>
         ) : null}
 
-        {activeTab === 'session' ? (
-          <View style={styles.requestStack}>
-            {currentPendingPermissions.map((request) => (
-              <PermissionRequestCard
-                key={request.id}
-                request={request}
-                onReply={(reply: 'once' | 'always' | 'reject') => void replyToPermission(request.id, reply)}
-              />
-            ))}
-
-            {currentPendingQuestions.map((request) => (
-              <QuestionRequestCard
-                key={request.id}
-                request={request}
-                onReject={() => void rejectQuestion(request.id)}
-                onSubmit={(answers: PendingQuestionAnswer[]) => void replyToQuestion(request.id, answers)}
-              />
-            ))}
-          </View>
-        ) : null}
-
         {activeTab === 'session' && running ? (
           <View style={styles.loadingRow}>
             <ActivityIndicator color={palette.tint} />
@@ -872,12 +858,18 @@ export function ChatView() {
       <Surface
         style={[styles.composer, { backgroundColor: palette.surface, borderTopColor: palette.border, paddingBottom: Math.max(insets.bottom, 12) }]}
         elevation={4}>
-        {currentTodos.length > 0 && pendingTodos > 0 ? (
+        {(pendingTodos > 0 || pendingInteractions > 0) ? (
           <TodoPanel
             completedCount={completedTodos}
             expanded={todosExpanded}
             onToggle={() => setTodosExpanded((current) => !current)}
             pendingCount={pendingTodos}
+            pendingInteractions={pendingInteractions}
+            permissions={currentPendingPermissions}
+            questions={currentPendingQuestions}
+            onPermissionReply={(requestId, reply) => void replyToPermission(requestId, reply)}
+            onQuestionReject={(requestId) => void rejectQuestion(requestId)}
+            onQuestionSubmit={(requestId, answers) => void replyToQuestion(requestId, answers)}
             todos={currentTodos}
           />
         ) : null}
@@ -1129,16 +1121,38 @@ function TodoPanel({
   expanded,
   onToggle,
   pendingCount,
+  pendingInteractions,
+  permissions,
+  questions,
+  onPermissionReply,
+  onQuestionReject,
+  onQuestionSubmit,
   todos,
 }: {
   completedCount: number;
   expanded: boolean;
   onToggle: () => void;
   pendingCount: number;
+  pendingInteractions: number;
+  permissions: PendingPermissionRequest[];
+  questions: PendingQuestionRequest[];
+  onPermissionReply: (requestId: string, reply: 'once' | 'always' | 'reject') => void;
+  onQuestionReject: (requestId: string) => void;
+  onQuestionSubmit: (requestId: string, answers: PendingQuestionAnswer[]) => void;
   todos: Todo[];
 }) {
   const colorScheme = useColorScheme() ?? 'light';
   const palette = Colors[colorScheme];
+  const totalItems = todos.length + pendingInteractions;
+  const showTodos = pendingInteractions === 0;
+  const titleText = pendingInteractions > 0
+    ? 'Waiting for your input'
+    : `${completedCount} of ${Math.max(totalItems, completedCount)} items completed`;
+  const summaryText = pendingInteractions > 0
+    ? `${pendingInteractions} response${pendingInteractions === 1 ? '' : 's'} waiting here`
+    : pendingCount > 0
+      ? `${pendingCount} still in progress`
+      : 'Everything is wrapped up';
 
   return (
     <Card mode="contained" style={[styles.todoCard, { backgroundColor: palette.background }]}> 
@@ -1146,14 +1160,31 @@ function TodoPanel({
         <Card.Content style={styles.todoCardContent}>
           <View style={styles.todoHeader}>
             <View style={styles.todoHeaderText}>
-              <Text variant="titleMedium" style={{ color: palette.text }}>{completedCount} of {todos.length} todos completed</Text>
-              <Text variant="bodySmall" style={{ color: palette.muted }}>{pendingCount > 0 ? `${pendingCount} still in progress` : 'Everything is wrapped up'}</Text>
+              <Text variant="titleMedium" style={{ color: palette.text }}>{titleText}</Text>
+              <Text variant="bodySmall" style={{ color: palette.muted }}>{summaryText}</Text>
             </View>
             <MaterialCommunityIcons name={expanded ? 'chevron-up' : 'chevron-down'} size={20} color={palette.muted} />
           </View>
           {expanded ? (
             <View style={styles.todoList}>
-              {todos.map((todo, index) => (
+              {permissions.map((request) => (
+                <PermissionRequestCard
+                  key={request.id}
+                  compact
+                  request={request}
+                  onReply={(reply) => onPermissionReply(request.id, reply)}
+                />
+              ))}
+              {questions.map((request) => (
+                <QuestionRequestCard
+                  key={request.id}
+                  compact
+                  request={request}
+                  onReject={() => onQuestionReject(request.id)}
+                  onSubmit={(answers) => onQuestionSubmit(request.id, answers)}
+                />
+              ))}
+              {showTodos ? todos.map((todo, index) => (
                 <View key={`${todo.content}-${index}`} style={styles.todoRow}>
                   <View style={[styles.todoState, { borderColor: getTodoTone(todo.priority, palette), backgroundColor: todo.status === 'completed' ? getTodoTone(todo.priority, palette) : 'transparent' }]} />
                   <View style={styles.todoTextWrap}>
@@ -1161,7 +1192,7 @@ function TodoPanel({
                     <Text variant="bodySmall" style={{ color: palette.muted }}>{todo.status.replace('_', ' ')} • {todo.priority}</Text>
                   </View>
                 </View>
-              ))}
+              )) : null}
             </View>
           ) : null}
         </Card.Content>
@@ -1312,9 +1343,11 @@ function TranscriptMessage({ entry }: { entry: TranscriptEntry }) {
 }
 
 function PermissionRequestCard({
+  compact = false,
   onReply,
   request,
 }: {
+  compact?: boolean;
   onReply: (reply: 'once' | 'always' | 'reject') => void;
   request: PendingPermissionRequest;
 }) {
@@ -1322,7 +1355,7 @@ function PermissionRequestCard({
   const palette = Colors[colorScheme];
 
   return (
-    <Card mode="contained" style={[styles.requestCard, { backgroundColor: palette.background }]}> 
+    <Card mode="contained" style={[styles.requestCard, compact && styles.requestCardCompact, { backgroundColor: palette.background }]}> 
       <Card.Content style={styles.requestCardContent}>
         <Text variant="labelLarge" style={{ color: palette.warning }}>Permission request</Text>
         <Text variant="titleMedium" style={{ color: palette.text }}>{getPermissionTitle(request)}</Text>
@@ -1340,10 +1373,12 @@ function PermissionRequestCard({
 }
 
 function QuestionRequestCard({
+  compact = false,
   onReject,
   onSubmit,
   request,
 }: {
+  compact?: boolean;
   onReject: () => void;
   onSubmit: (answers: PendingQuestionAnswer[]) => void;
   request: PendingQuestionRequest;
@@ -1390,7 +1425,7 @@ function QuestionRequestCard({
   });
 
   return (
-    <Card mode="contained" style={[styles.requestCard, { backgroundColor: palette.background }]}> 
+    <Card mode="contained" style={[styles.requestCard, compact && styles.requestCardCompact, { backgroundColor: palette.background }]}> 
       <Card.Content style={styles.requestCardContent}>
         <Text variant="labelLarge" style={{ color: palette.tint }}>Question</Text>
         <View style={styles.questionList}>
@@ -1482,6 +1517,7 @@ const styles = StyleSheet.create({
   todoCard: { borderRadius: 22 },
   todoCardContent: { gap: 12 },
   requestCard: { borderRadius: 22 },
+  requestCardCompact: { borderRadius: 18 },
   requestCardContent: { gap: 12 },
   requestActionsRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   questionList: { gap: 14 },
