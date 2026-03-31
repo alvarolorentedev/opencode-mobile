@@ -420,6 +420,7 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
   const [isBootstrappingChat, setIsBootstrappingChat] = useState(false);
   const [sendingState, setSendingState] = useState<{ sessionId?: string; active: boolean }>({ active: false });
   const pendingNotificationSessionIdsRef = useRef<Set<string>>(new Set());
+  const promptSubmissionRef = useRef<{ active: boolean; sessionId?: string }>({ active: false });
   const [currentConfig, setCurrentConfig] = useState<Config>();
   const [availableProviders, setAvailableProviders] = useState<ProviderOption[]>([]);
   const [providerAuthMethodsById, setProviderAuthMethodsById] = useState<Record<string, ProviderAuthMethod[]>>({});
@@ -1197,6 +1198,12 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
         return false;
       }
 
+      if (promptSubmissionRef.current.active) {
+        return false;
+      }
+
+      promptSubmissionRef.current = { active: true, sessionId };
+
       const currentSession = sessions.find((session) => session.id === sessionId);
 
       pendingNotificationSessionIdsRef.current.add(sessionId);
@@ -1268,6 +1275,7 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
           },
         });
         promptAccepted = true;
+        promptSubmissionRef.current = { active: false, sessionId: undefined };
 
         setCurrentSessionId(sessionId);
         const nextSessions = await fetchSessions(true);
@@ -1288,6 +1296,7 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
         }
         return true;
       } catch (error) {
+        promptSubmissionRef.current = { active: false, sessionId: undefined };
         if (!promptAccepted) {
           pendingNotificationSessionIdsRef.current.delete(sessionId);
           await clearPendingTaskFinishedNotification(sessionId);

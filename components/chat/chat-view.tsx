@@ -460,7 +460,6 @@ export function ChatView() {
   const insets = useSafeAreaInsets();
   const scrollRef = useRef<ScrollView>(null);
   const isPaginatingRef = useRef(false);
-  const lastSubmittedPromptRef = useRef<{ key: string; at: number } | null>(null);
   const {
     activeSession,
     availableAgents,
@@ -629,22 +628,6 @@ export function ChatView() {
         return;
       }
 
-      const submitKey = JSON.stringify({
-        sessionId,
-        prompt,
-        attachments: nextAttachments.map((attachment) => ({
-          uri: attachment.uri,
-          mime: attachment.mime,
-          filename: attachment.filename,
-        })),
-      });
-      const lastSubmittedPrompt = lastSubmittedPromptRef.current;
-      if (lastSubmittedPrompt && lastSubmittedPrompt.key === submitKey && Date.now() - lastSubmittedPrompt.at < 1000) {
-        return;
-      }
-
-      lastSubmittedPromptRef.current = { key: submitKey, at: Date.now() };
-
       setDraft('');
       setAttachments([]);
 
@@ -652,13 +635,11 @@ export function ChatView() {
       if (!sent) {
         setDraft(nextDraft);
         setAttachments(nextAttachments);
-        lastSubmittedPromptRef.current = null;
         return;
       }
     } catch (error) {
       setDraft(nextDraft);
       setAttachments(nextAttachments);
-      lastSubmittedPromptRef.current = null;
       throw error;
     }
   }
