@@ -149,3 +149,14 @@ export async function rejectPendingQuestion(client: any, requestId: string) {
     method: 'POST',
   });
 }
+
+export async function setSessionArchived(client: any, sessionId: string, archivedAt?: number) {
+  await apiRequest(client, `/session/${sessionId}`, {
+    method: 'PATCH',
+    body: JSON.stringify({
+      time: {
+        archived: archivedAt ?? null,
+      },
+    }),
+  });
+}

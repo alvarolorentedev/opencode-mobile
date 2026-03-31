@@ -8,6 +8,7 @@ import {
   Chip,
   Dialog,
   HelperText,
+  List,
   Menu,
   Portal,
   RadioButton,
@@ -105,6 +106,7 @@ export default function SettingsScreen() {
   const [isConfiguringProvider, setIsConfiguringProvider] = useState(false);
   const [providerDialogError, setProviderDialogError] = useState<string>();
   const [providerFeedback, setProviderFeedback] = useState<{ type: 'success' | 'info'; message: string }>();
+  const [expandedProviders, setExpandedProviders] = useState<Record<string, boolean>>({});
 
   const enabledModelIds = useMemo(() => new Set(chatPreferences.enabledModelIds), [chatPreferences.enabledModelIds]);
   const configuredModels = useMemo(
@@ -271,6 +273,33 @@ export default function SettingsScreen() {
       <Card mode="contained" style={[styles.card, { backgroundColor: palette.surface }]}> 
         <Card.Content style={styles.section}>
           <Text variant="titleLarge" style={[styles.title, { color: palette.text }]}>Connection</Text>
+          <View style={[styles.connectionStatusCard, { backgroundColor: palette.background, borderColor: palette.border }]}> 
+            <View style={styles.connectionStatusHeader}>
+              <View style={styles.connectionStatusRow}>
+                <View
+                  style={[
+                    styles.connectionStatusDot,
+                    {
+                      backgroundColor:
+                        connection.status === 'connected'
+                          ? palette.success
+                          : connection.status === 'error'
+                            ? palette.danger
+                            : connection.status === 'connecting'
+                              ? palette.warning
+                              : palette.icon,
+                    },
+                  ]}
+                />
+                <Text variant="labelLarge" style={{ color: palette.text }}>
+                  {connection.status.charAt(0).toUpperCase() + connection.status.slice(1)}
+                </Text>
+              </View>
+              <Text variant="bodySmall" style={{ color: palette.muted }}>
+                Last checked {connection.checkedAt ? formatTimestamp(connection.checkedAt) : 'not yet'}
+              </Text>
+            </View>
+          </View>
           <TextInput
             mode="outlined"
             label="Server URL"
@@ -344,49 +373,59 @@ export default function SettingsScreen() {
             </View>
           {availableProviders.length === 0 ? <HelperText type="info">Connect first to load providers.</HelperText> : null}
           {availableProviders.length > 0 && configuredProviders.length === 0 ? <HelperText type="info">Configure at least one provider to pick defaults.</HelperText> : null}
-          <View style={styles.radioGroup}>
-            {configuredProviderModels.map(({ provider, models }) => (
-              <View key={provider.id} style={styles.providerModelSection}>
-                <Text variant="labelLarge" style={{ color: palette.text }}>{getProviderCopy(provider.id, provider.label).label}</Text>
-                {models.map((model) => {
-                  const checked = enabledModelIds.has(model.id);
+          <List.Section style={styles.modelListSection}>
+            {configuredProviderModels.map(({ provider, models }) => {
+              const selectedCount = models.filter((model) => enabledModelIds.has(model.id)).length;
 
-                  return (
-                    <Card
-                      key={model.id}
-                      mode="outlined"
-                      style={styles.optionCard}
-                      onPress={() => {
-                        const nextEnabledModelIds = checked
-                          ? chatPreferences.enabledModelIds.filter((id) => id !== model.id)
-                          : [...chatPreferences.enabledModelIds, model.id];
+              return (
+                <List.Accordion
+                  key={provider.id}
+                  title={getProviderCopy(provider.id, provider.label).label}
+                  description={`${selectedCount} of ${models.length} selected`}
+                  left={() => (
+                    <View
+                      style={[
+                        styles.providerAccordionIconWrap,
+                        { backgroundColor: palette.surfaceAlt, borderColor: palette.border },
+                      ]}>
+                      {renderProviderIcon(provider.id, 20, palette.tint)}
+                    </View>
+                  )}
+                  expanded={Boolean(expandedProviders[provider.id])}
+                  onPress={() => setExpandedProviders((current) => ({ ...current, [provider.id]: !current[provider.id] }))}
+                  style={[styles.providerAccordion, { backgroundColor: palette.background, borderColor: palette.border }]}
+                  titleStyle={{ color: palette.text }}
+                  descriptionStyle={{ color: palette.muted }}>
+                  {models.map((model) => {
+                    const checked = enabledModelIds.has(model.id);
 
-                        updateChatPreferences({ enabledModelIds: nextEnabledModelIds });
-                      }}>
-                      <Card.Title
+                    return (
+                      <List.Item
+                        key={model.id}
                         title={model.label}
-                        subtitle={model.supportsReasoning ? 'Reasoning supported' : 'Standard model'}
+                        description={model.supportsReasoning ? 'Reasoning supported' : 'Standard model'}
+                        titleStyle={{ color: palette.text }}
+                        descriptionStyle={{ color: palette.muted }}
+                        onPress={() => {
+                          const nextEnabledModelIds = checked
+                            ? chatPreferences.enabledModelIds.filter((id) => id !== model.id)
+                            : [...chatPreferences.enabledModelIds, model.id];
+
+                          updateChatPreferences({ enabledModelIds: nextEnabledModelIds });
+                        }}
                         left={() => <Checkbox status={checked ? 'checked' : 'unchecked'} />}
+                        style={styles.modelListItem}
                       />
-                    </Card>
-                  );
-                })}
-              </View>
-            ))}
-          </View>
+                    );
+                  })}
+                </List.Accordion>
+              );
+            })}
+          </List.Section>
           {configuredModels.length === 0 ? <HelperText type="info">No models found for your configured providers.</HelperText> : null}
         </Card.Content>
       </Card>
 
-      <Card mode="contained" style={[styles.card, { backgroundColor: palette.surface }]}> 
-        <Card.Content style={styles.section}>
-          <Text variant="titleLarge" style={[styles.title, { color: palette.text }]}>Status</Text>
-          <MetaRow label="Connection" value={connection.status} />
-          <MetaRow label="Message" value={connection.message} />
-          <MetaRow label="Workspace" value={connection.projectDirectory || 'Not connected'} />
-          <MetaRow label="Checked" value={connection.checkedAt ? formatTimestamp(connection.checkedAt) : 'Not yet'} />
-        </Card.Content>
-      </Card>
       </ScrollView>
 
       <Portal>
@@ -483,31 +522,32 @@ export default function SettingsScreen() {
   );
 }
 
-function MetaRow({ label, value }: { label: string; value: string }) {
-  const colorScheme = useColorScheme() ?? 'light';
-  const palette = Colors[colorScheme];
-
-  return (
-    <View style={styles.metaRow}>
-      <Text variant="labelMedium" style={{ color: palette.muted }}>{label}</Text>
-      <Text variant="bodyMedium" style={{ color: palette.text }}>{value}</Text>
-    </View>
-  );
-}
-
 const styles = StyleSheet.create({
   screen: { flex: 1 },
-  content: { padding: 16, gap: 16, paddingBottom: 28 },
+  content: { padding: 16, paddingTop: 28, gap: 16, paddingBottom: 28 },
   card: { borderRadius: 16 },
   section: { gap: 14 },
   title: { fontWeight: '600' },
+  connectionStatusCard: { borderRadius: 14, borderWidth: 1, paddingHorizontal: 14, paddingVertical: 12 },
+  connectionStatusHeader: { gap: 6 },
+  connectionStatusRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  connectionStatusDot: { width: 10, height: 10, borderRadius: 999 },
   providerHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 },
   chipWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  radioGroup: { gap: 10 },
-  providerModelSection: { gap: 10 },
+  modelListSection: { gap: 10 },
   dialogContent: { gap: 14 },
   authMethodRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   promptGroup: { gap: 8 },
-  optionCard: { borderRadius: 14 },
-  metaRow: { gap: 4 },
+  providerAccordion: { borderRadius: 14, borderWidth: 1, overflow: 'hidden', marginBottom: 10 },
+  providerAccordionIconWrap: {
+    width: 38,
+    height: 38,
+    borderRadius: 12,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginLeft: 4,
+    marginRight: 8,
+  },
+  modelListItem: { paddingLeft: 16, paddingRight: 8 },
 });

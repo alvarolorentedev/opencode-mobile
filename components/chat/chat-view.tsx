@@ -17,7 +17,9 @@ import {
   Chip,
   Divider,
   IconButton,
+  List,
   Menu,
+  Portal,
   Surface,
   Text,
   TextInput,
@@ -456,7 +458,6 @@ export function ChatView() {
   const scrollRef = useRef<ScrollView>(null);
   const isPaginatingRef = useRef(false);
   const {
-    activeProject,
     activeSession,
     availableAgents,
     availableModels,
@@ -481,6 +482,7 @@ export function ChatView() {
     sendPrompt,
     sendingState,
     sessionStatuses,
+    sessions,
     setAutoApprove,
     updateChatPreferences,
     abortSession,
@@ -489,12 +491,13 @@ export function ChatView() {
   const [draft, setDraft] = useState('');
   const [attachments, setAttachments] = useState<{ uri: string; mime?: string; filename?: string }[]>([]);
   const [activeTab, setActiveTab] = useState<'session' | 'changes'>('session');
-  const [menu, setMenu] = useState<'mode' | 'model' | 'reasoning' | undefined>();
+  const [menu, setMenu] = useState<'mode' | 'model' | 'reasoning' | 'session' | undefined>();
   const [isUpdatingAutoApprove, setIsUpdatingAutoApprove] = useState(false);
   const [isCreatingSession, setIsCreatingSession] = useState(false);
   const [isStoppingSession, setIsStoppingSession] = useState(false);
   const [todosExpanded, setTodosExpanded] = useState(true);
   const [visibleTranscriptCount, setVisibleTranscriptCount] = useState(TRANSCRIPT_PAGE_SIZE);
+  const [expandedDiffId, setExpandedDiffId] = useState<string | undefined>();
 
   const status = currentSessionId ? sessionStatuses[currentSessionId] : undefined;
   const running = sendingState.active || (!!status && status.type !== 'idle');
@@ -538,6 +541,14 @@ export function ChatView() {
 
     return undefined;
   }, [currentTranscript]);
+  const selectedSession = useMemo(
+    () => sessions.find((session) => session.id === currentSessionId) || activeSession,
+    [activeSession, currentSessionId, sessions],
+  );
+  const visibleSessions = useMemo(
+    () => sessions.filter((session) => !session?.time?.archived),
+    [sessions],
+  );
 
   useEffect(() => {
     setVisibleTranscriptCount(TRANSCRIPT_PAGE_SIZE);
@@ -654,14 +665,71 @@ export function ChatView() {
         style={[styles.header, { backgroundColor: palette.surface, paddingTop: insets.top, height: 64 + insets.top }]}
         statusBarHeight={0}
         elevated>
-        <Appbar.Content
-          title={activeSession?.title || 'OpenCode'}
-          subtitle={activeSession ? getSessionSubtitle(activeSession) : activeProject?.label || 'Chat'}
-          titleStyle={styles.headerTitle}
-        />
-        <Appbar.Action icon="refresh" onPress={() => void refreshCurrentSession()} />
-        <Appbar.Action icon="plus" onPress={() => void handleNewSession()} disabled={isCreatingSession || connection.status !== 'connected'} />
+        <View style={styles.headerMain}>
+          <TouchableRipple borderless onPress={() => setMenu('session')} style={styles.headerSessionAnchor}>
+            <View style={styles.headerSessionContent}>
+              <View style={styles.headerSessionTextWrap}>
+                <Text numberOfLines={1} variant="titleMedium" style={[styles.headerTitle, { color: palette.text }]}>
+                  {selectedSession?.title || 'Untitled chat'}
+                </Text>
+              </View>
+              <MaterialCommunityIcons name="chevron-down" size={20} color={palette.muted} />
+            </View>
+          </TouchableRipple>
+        </View>
+        <View style={styles.headerActions}>
+          <Appbar.Action icon="refresh" onPress={() => void refreshCurrentSession()} />
+          <Appbar.Action icon="plus" onPress={() => void handleNewSession()} disabled={isCreatingSession || connection.status !== 'connected'} />
+        </View>
       </Appbar.Header>
+      <Portal>
+        {menu === 'session' ? (
+          <View style={styles.sessionPickerOverlay}>
+            <TouchableRipple borderless onPress={() => setMenu(undefined)} style={styles.sessionPickerBackdrop}>
+              <View style={styles.sessionPickerBackdropFill} />
+            </TouchableRipple>
+            <Surface
+              style={[
+                styles.sessionPickerSheet,
+                {
+                  top: 64 + insets.top,
+                  backgroundColor: palette.surface,
+                  borderColor: palette.border,
+                },
+              ]}
+              elevation={4}>
+              <View style={[styles.sessionPickerHeader, { borderBottomColor: palette.border }]}> 
+                <Text variant="titleMedium" style={{ color: palette.text }}>Chats</Text>
+                <Button compact onPress={() => setMenu(undefined)}>Close</Button>
+              </View>
+              <ScrollView contentContainerStyle={styles.sessionPickerList} keyboardShouldPersistTaps="handled">
+                {visibleSessions.length === 0 ? (
+                  <Text variant="bodyMedium" style={{ color: palette.muted }}>No chats yet.</Text>
+                ) : null}
+                {visibleSessions.map((session) => {
+                  const isSelected = session.id === currentSessionId;
+
+                  return (
+                    <List.Item
+                      key={session.id}
+                      title={session.title || 'Untitled chat'}
+                      description={getSessionSubtitle(session)}
+                      titleStyle={{ color: palette.text, fontWeight: isSelected ? '700' : '500' }}
+                      descriptionStyle={{ color: palette.muted }}
+                      left={() => (isSelected ? <List.Icon icon="check-circle" color={palette.tint} /> : <List.Icon icon="message-outline" color={palette.muted} />)}
+                      onPress={() => {
+                        setMenu(undefined);
+                        void openSession(session.id);
+                      }}
+                      style={[styles.sessionPickerItem, { backgroundColor: isSelected ? palette.background : 'transparent', borderColor: palette.border }]}
+                    />
+                  );
+                })}
+              </ScrollView>
+            </Surface>
+          </View>
+        ) : null}
+      </Portal>
 
       <View style={[styles.tabsRow, { backgroundColor: palette.surface, borderBottomColor: palette.border }]}> 
         <TopTab active={activeTab === 'session'} label="Session" onPress={() => setActiveTab('session')} />
@@ -749,8 +817,20 @@ export function ChatView() {
               </Card>
             ) : null}
 
-            {currentDiffs.map((diff) => <SessionDiffCard key={diff.file} diff={diff} />)}
-            {currentDiffs.length === 0 ? diffDetails.map((detail) => <DiffCard key={detail.id} detail={detail} />) : null}
+            {(currentDiffs.length > 0 || diffDetails.length > 0) ? (
+              <Card mode="contained" style={[styles.sectionCard, { backgroundColor: palette.surface }]}> 
+                <Card.Content style={styles.diffListCardContent}>
+                  <List.AccordionGroup expandedId={expandedDiffId} onAccordionPress={(id) => setExpandedDiffId(expandedDiffId === String(id) ? undefined : String(id))}>
+                    {currentDiffs.map((diff) => (
+                      <SessionDiffCard key={diff.file} accordionId={`diff:${diff.file}`} diff={diff} />
+                    ))}
+                    {currentDiffs.length === 0
+                      ? diffDetails.map((detail) => <DiffCard key={detail.id} accordionId={`detail:${detail.id}`} detail={detail} />)
+                      : null}
+                  </List.AccordionGroup>
+                </Card.Content>
+              </Card>
+            ) : null}
           </View>
         ) : null}
 
@@ -1077,87 +1157,90 @@ function TodoPanel({
   );
 }
 
-function SessionDiffCard({ diff }: { diff: FileDiff }) {
+function SessionDiffCard({ diff, accordionId }: { diff: FileDiff; accordionId: string }) {
   const colorScheme = useColorScheme() ?? 'light';
   const palette = Colors[colorScheme];
-  const [open, setOpen] = useState(false);
   const diffLines = useMemo(() => buildLineDiff(diff.before || '', diff.after || ''), [diff.after, diff.before]);
   const diffBlocks = useMemo(() => buildCollapsedDiffBlocks(diffLines), [diffLines]);
 
   return (
-    <Card mode="contained" style={[styles.sectionCard, { backgroundColor: palette.surface }]}> 
-      <TouchableRipple borderless={false} onPress={() => setOpen((current) => !current)} style={styles.diffPressable}>
-        <Card.Content style={styles.diffContent}>
-          <View style={styles.diffHeader}>
-            <Text variant="titleMedium" style={{ color: palette.text }}>{diff.file}</Text>
-            <Text variant="bodySmall" style={{ color: palette.muted }}>+{diff.additions} / -{diff.deletions}</Text>
-          </View>
-          {open ? (
-            <>
-              <Divider style={styles.divider} />
-              <ScrollView horizontal showsHorizontalScrollIndicator>
-                <View style={styles.diffViewer}>
-                  {diffBlocks.map((block, blockIndex) => {
-                    if (block.type === 'collapsed') {
-                      return (
-                        <View key={`${diff.file}-collapsed-${blockIndex}`} style={[styles.diffCollapsedRow, { backgroundColor: palette.background, borderColor: palette.border }]}> 
-                          <Text variant="bodySmall" style={[styles.code, { color: palette.muted }]}>
-                            ... {block.hiddenCount} unchanged line{block.hiddenCount === 1 ? '' : 's'}
-                            {block.startLine && block.endLine ? ` (${block.startLine}-${block.endLine})` : ''}
-                          </Text>
-                        </View>
-                      );
-                    }
+    <List.Accordion
+      id={accordionId}
+      title={diff.file}
+      description={`+${diff.additions} / -${diff.deletions}`}
+      titleStyle={{ color: palette.text }}
+      descriptionStyle={{ color: palette.muted }}
+      style={[styles.diffAccordion, { borderColor: palette.border }]}
+      theme={{ colors: { background: palette.surface } }}>
+      <View style={styles.diffAccordionBody}>
+        <Divider style={styles.divider} />
+        <ScrollView horizontal showsHorizontalScrollIndicator>
+          <View style={styles.diffViewer}>
+            {diffBlocks.map((block, blockIndex) => {
+              if (block.type === 'collapsed') {
+                return (
+                  <View key={`${diff.file}-collapsed-${blockIndex}`} style={[styles.diffCollapsedRow, { backgroundColor: palette.background, borderColor: palette.border }]}> 
+                    <Text variant="bodySmall" style={[styles.code, { color: palette.muted }]}> 
+                      ... {block.hiddenCount} unchanged line{block.hiddenCount === 1 ? '' : 's'}
+                      {block.startLine && block.endLine ? ` (${block.startLine}-${block.endLine})` : ''}
+                    </Text>
+                  </View>
+                );
+              }
 
-                    return block.lines.map((line, index) => {
-                      const tone = getDiffPalette(line.kind, palette);
-                      return (
-                        <View
-                          key={`${diff.file}-${blockIndex}-${index}-${line.leftNumber ?? 'x'}-${line.rightNumber ?? 'x'}`}
-                          style={[
-                            styles.diffLineRow,
-                            {
-                              backgroundColor: tone.backgroundColor,
-                              borderLeftColor: tone.accentColor,
-                            },
-                          ]}>
-                          <Text variant="labelSmall" style={[styles.diffLineNumber, { color: palette.muted }]}>
-                            {line.leftNumber ?? ''}
-                          </Text>
-                          <Text variant="labelSmall" style={[styles.diffLineNumber, { color: palette.muted }]}>
-                            {line.rightNumber ?? ''}
-                          </Text>
-                          <Text style={[styles.diffMarker, { color: tone.accentColor || palette.muted }]}>
-                            {line.kind === 'added' ? '+' : line.kind === 'removed' ? '-' : ' '}
-                          </Text>
-                          <Text variant="bodySmall" style={[styles.code, styles.diffLineText, { color: palette.text }]}>
-                            {line.text || ' '}
-                          </Text>
-                        </View>
-                      );
-                    });
-                  })}
-                </View>
-              </ScrollView>
-            </>
-          ) : null}
-        </Card.Content>
-      </TouchableRipple>
-    </Card>
+              return block.lines.map((line, index) => {
+                const tone = getDiffPalette(line.kind, palette);
+                return (
+                  <View
+                    key={`${diff.file}-${blockIndex}-${index}-${line.leftNumber ?? 'x'}-${line.rightNumber ?? 'x'}`}
+                    style={[
+                      styles.diffLineRow,
+                      {
+                        backgroundColor: tone.backgroundColor,
+                        borderLeftColor: tone.accentColor,
+                      },
+                    ]}>
+                    <Text variant="labelSmall" style={[styles.diffLineNumber, { color: palette.muted }]}> 
+                      {line.leftNumber ?? ''}
+                    </Text>
+                    <Text variant="labelSmall" style={[styles.diffLineNumber, { color: palette.muted }]}> 
+                      {line.rightNumber ?? ''}
+                    </Text>
+                    <Text style={[styles.diffMarker, { color: tone.accentColor || palette.muted }]}> 
+                      {line.kind === 'added' ? '+' : line.kind === 'removed' ? '-' : ' '}
+                    </Text>
+                    <Text variant="bodySmall" style={[styles.code, styles.diffLineText, { color: palette.text }]}> 
+                      {line.text || ' '}
+                    </Text>
+                  </View>
+                );
+              });
+            })}
+          </View>
+        </ScrollView>
+      </View>
+    </List.Accordion>
   );
 }
 
-function DiffCard({ detail }: { detail: Extract<TranscriptDetail, { kind: 'patch' | 'file' }> }) {
+function DiffCard({ detail, accordionId }: { detail: Extract<TranscriptDetail, { kind: 'patch' | 'file' }>; accordionId: string }) {
   const colorScheme = useColorScheme() ?? 'light';
   const palette = Colors[colorScheme];
 
   return (
-    <Card mode="contained" style={[styles.sectionCard, { backgroundColor: palette.surface }]}> 
-      <Card.Content style={styles.diffContent}>
-        <Text variant="titleMedium" style={{ color: palette.text }}>{detail.label}</Text>
+    <List.Accordion
+      id={accordionId}
+      title={detail.label}
+      description={detail.kind === 'patch' ? 'Patch output' : 'File output'}
+      titleStyle={{ color: palette.text }}
+      descriptionStyle={{ color: palette.muted }}
+      style={[styles.diffAccordion, { borderColor: palette.border }]}
+      theme={{ colors: { background: palette.surface } }}>
+      <View style={styles.diffAccordionBody}>
+        <Divider style={styles.divider} />
         <Text variant="bodySmall" style={[styles.code, { color: palette.muted }]}>{detail.body}</Text>
-      </Card.Content>
-    </Card>
+      </View>
+    </List.Accordion>
   );
 }
 
@@ -1337,7 +1420,19 @@ function QuestionRequestCard({
 const styles = StyleSheet.create({
   screen: { flex: 1 },
   header: { elevation: 0 },
+  headerMain: { flex: 1, minWidth: 0, alignSelf: 'stretch', justifyContent: 'center' },
+  headerActions: { flexDirection: 'row', alignItems: 'center', flexShrink: 0 },
   headerTitle: { fontFamily: Fonts.display, fontWeight: '700' },
+  headerSessionAnchor: { flex: 1, alignSelf: 'stretch', justifyContent: 'center', borderRadius: 14, marginRight: 8 },
+  headerSessionContent: { flexDirection: 'row', alignItems: 'center', gap: 8, minWidth: 0, minHeight: 48, paddingRight: 4 },
+  headerSessionTextWrap: { flex: 1, minWidth: 0 },
+  sessionPickerOverlay: { ...StyleSheet.absoluteFillObject },
+  sessionPickerBackdrop: { ...StyleSheet.absoluteFillObject },
+  sessionPickerBackdropFill: { flex: 1, backgroundColor: 'rgba(0,0,0,0.28)' },
+  sessionPickerSheet: { position: 'absolute', left: 0, right: 0, bottom: 0, borderTopLeftRadius: 24, borderTopRightRadius: 24, borderWidth: 1, overflow: 'hidden' },
+  sessionPickerHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingVertical: 12, borderBottomWidth: 1 },
+  sessionPickerList: { padding: 12, gap: 8, paddingBottom: 24 },
+  sessionPickerItem: { borderRadius: 16, borderWidth: 1 },
   tabsRow: { flexDirection: 'row', borderBottomWidth: 1 },
   topTab: { flex: 1 },
   topTabInner: { minHeight: 52, alignItems: 'center', justifyContent: 'center' },
@@ -1430,8 +1525,10 @@ const styles = StyleSheet.create({
   detailContent: { gap: 8 },
   detailHeader: { flexDirection: 'row', justifyContent: 'space-between', gap: 12, alignItems: 'flex-start' },
   detailTitleWrap: { flex: 1, gap: 2 },
+  diffListCardContent: { paddingHorizontal: 0, paddingVertical: 0 },
+  diffAccordion: { borderTopWidth: 1 },
+  diffAccordionBody: { paddingHorizontal: 16, paddingBottom: 16, gap: 8 },
   diffContent: { gap: 8 },
-  diffPressable: { borderRadius: 18 },
   diffHeader: { flexDirection: 'row', justifyContent: 'space-between', gap: 12, alignItems: 'center' },
   diffViewer: { minWidth: '100%', gap: 1 },
   diffCollapsedRow: {

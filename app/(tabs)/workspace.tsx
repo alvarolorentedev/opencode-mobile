@@ -14,6 +14,7 @@ import {
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { formatRelativeTime, getSessionSubtitle } from '@/lib/opencode/format';
+import type { Session } from '@/lib/opencode/types';
 import { useOpencode } from '@/providers/opencode-provider';
 
 export default function WorkspaceScreen() {
@@ -22,6 +23,7 @@ export default function WorkspaceScreen() {
   const palette = Colors[colorScheme];
   const {
     activeProject,
+    archiveSession,
     connection,
     createSession,
     currentProjectPath,
@@ -37,10 +39,15 @@ export default function WorkspaceScreen() {
     sessionPreviewById,
     sessionStatuses,
     sessions,
+    unarchiveSession,
   } = useOpencode();
   const [isCreating, setIsCreating] = useState(false);
+  const [showArchived, setShowArchived] = useState(false);
+  const [updatingSessionId, setUpdatingSessionId] = useState<string | undefined>();
 
   const isRefreshing = isRefreshingSessions || isRefreshingWorkspaceCatalog;
+  const activeSessions = sessions.filter((session) => !session?.time?.archived);
+  const archivedSessions = sessions.filter((session) => session?.time?.archived);
 
   async function handleRefresh() {
     await Promise.all([refreshWorkspaceCatalog(), refreshSessions()]);
@@ -55,6 +62,52 @@ export default function WorkspaceScreen() {
     } finally {
       setIsCreating(false);
     }
+  }
+
+  async function handleArchiveToggle(sessionId: string, archived: boolean) {
+    setUpdatingSessionId(sessionId);
+    try {
+      if (archived) {
+        await unarchiveSession(sessionId);
+        return;
+      }
+
+      await archiveSession(sessionId);
+    } finally {
+      setUpdatingSessionId(undefined);
+    }
+  }
+
+  function renderSessionItem(session: Session, index: number, total: number, archived = false) {
+    return (
+      <View key={session.id}>
+        <List.Item
+          title={session.title || 'Untitled chat'}
+          description={sessionPreviewById[session.id] || getSessionSubtitle(session)}
+          onPress={() => {
+            void openSession(session.id);
+            router.push('/(tabs)');
+          }}
+          titleStyle={{ color: palette.text, fontWeight: currentSessionId === session.id ? '700' : '500' }}
+          descriptionStyle={{ color: palette.muted }}
+          right={() => (
+            <View style={styles.sessionMeta}>
+              <Text style={{ color: palette.muted }}>{formatRelativeTime(session.time.updated)}</Text>
+              <Text style={{ color: archived ? palette.muted : palette.tint }}>{archived ? 'archived' : sessionStatuses[session.id]?.type || 'idle'}</Text>
+              <Button
+                compact
+                mode="text"
+                loading={updatingSessionId === session.id}
+                disabled={updatingSessionId === session.id}
+                onPress={() => void handleArchiveToggle(session.id, archived)}>
+                {archived ? 'Unarchive' : 'Archive'}
+              </Button>
+            </View>
+          )}
+        />
+        {index < total - 1 ? <Divider /> : null}
+      </View>
+    );
   }
 
   return (
@@ -92,7 +145,7 @@ export default function WorkspaceScreen() {
                   descriptionStyle={{ color: palette.muted }}
                   right={() => (
                     <Text style={{ color: isActive ? palette.tint : palette.muted, alignSelf: 'center' }}>
-                      {isActive ? 'Active' : project.isCurrent ? 'Current' : project.source}
+                      {isActive ? 'Active' : project.isCurrent ? 'Current' : 'Server'}
                     </Text>
                   )}
                 />
@@ -113,28 +166,26 @@ export default function WorkspaceScreen() {
         />
         <Card.Content style={styles.listContent}>
           {!activeProject ? <Text style={{ color: palette.muted }}>Select a project first.</Text> : null}
-          {activeProject && sessions.length === 0 ? <Text style={{ color: palette.muted }}>No chats in this workspace yet.</Text> : null}
-          {sessions.map((session, index) => (
-            <View key={session.id}>
-              <List.Item
-                title={session.title || 'Untitled chat'}
-                description={sessionPreviewById[session.id] || getSessionSubtitle(session)}
-                onPress={() => {
-                  void openSession(session.id);
-                  router.push('/(tabs)');
-                }}
-                titleStyle={{ color: palette.text, fontWeight: currentSessionId === session.id ? '700' : '500' }}
-                descriptionStyle={{ color: palette.muted }}
-                right={() => (
-                  <View style={styles.sessionMeta}>
-                    <Text style={{ color: palette.muted }}>{formatRelativeTime(session.time.updated)}</Text>
-                    <Text style={{ color: palette.tint }}>{sessionStatuses[session.id]?.type || 'idle'}</Text>
-                  </View>
-                )}
-              />
-              {index < sessions.length - 1 ? <Divider /> : null}
+          {activeProject ? (
+            <View style={styles.filterRow}>
+              <Button compact mode={showArchived ? 'contained-tonal' : 'outlined'} onPress={() => setShowArchived((current) => !current)}>
+                {showArchived ? 'Hide archived' : `Show archived${archivedSessions.length > 0 ? ` (${archivedSessions.length})` : ''}`}
+              </Button>
             </View>
-          ))}
+          ) : null}
+          {activeProject && activeSessions.length === 0 ? (
+            <Text style={{ color: palette.muted }}>
+              {archivedSessions.length > 0 ? 'No active chats. Turn on archived chats to view older conversations.' : 'No chats in this workspace yet.'}
+            </Text>
+          ) : null}
+          {activeSessions.map((session, index) => renderSessionItem(session, index, activeSessions.length))}
+          {activeProject && showArchived && archivedSessions.length > 0 ? (
+            <View style={styles.archivedSection}>
+              <Divider />
+              <Text variant="titleSmall" style={[styles.archivedTitle, { color: palette.muted }]}>Archived chats</Text>
+              {archivedSessions.map((session, index) => renderSessionItem(session, index, archivedSessions.length, true))}
+            </View>
+          ) : null}
         </Card.Content>
       </Card>
     </ScrollView>
@@ -143,11 +194,14 @@ export default function WorkspaceScreen() {
 
 const styles = StyleSheet.create({
   screen: { flex: 1 },
-  content: { padding: 16, gap: 16, paddingBottom: 28 },
+  content: { padding: 16, paddingTop: 28, gap: 16, paddingBottom: 28 },
   hero: { padding: 16, borderRadius: 16, gap: 12 },
   actions: { flexDirection: 'row', gap: 12 },
   card: { borderRadius: 16 },
   listContent: { paddingHorizontal: 0 },
+  filterRow: { paddingHorizontal: 16, paddingBottom: 8, alignItems: 'flex-start' },
   headerAction: { marginRight: 16, alignSelf: 'center' },
   sessionMeta: { alignItems: 'flex-end', justifyContent: 'center', gap: 4 },
+  archivedSection: { paddingTop: 8 },
+  archivedTitle: { paddingHorizontal: 16, paddingVertical: 12 },
 });

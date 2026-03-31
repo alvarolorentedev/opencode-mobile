@@ -20,6 +20,7 @@ import {
   rejectPendingQuestion,
   replyToPendingPermission,
   replyToPendingQuestion,
+  setSessionArchived,
   type PendingPermissionRequest,
   type PendingQuestionAnswer,
   type PendingQuestionRequest,
@@ -109,7 +110,7 @@ export type OpencodeProject = {
   id?: string;
   label: string;
   path: string;
-  source: 'server' | 'browser';
+  source: 'server';
   updatedAt?: number;
   isCurrent?: boolean;
 };
@@ -181,6 +182,8 @@ type OpencodeContextValue = {
   refreshPendingRequests: (silent?: boolean) => Promise<void>;
   ensureActiveSession: () => Promise<string | undefined>;
   createSession: (title?: string) => Promise<Session>;
+  archiveSession: (sessionId: string) => Promise<void>;
+  unarchiveSession: (sessionId: string) => Promise<void>;
   sendPrompt: (sessionId: string, prompt: string, attachments?: { uri: string; mime?: string; filename?: string }[]) => Promise<void>;
   abortSession: (sessionId: string) => Promise<void>;
   replyToPermission: (requestId: string, reply: 'once' | 'always' | 'reject', message?: string) => Promise<void>;
@@ -320,6 +323,23 @@ function buildReasoningSystemPrompt(level: ReasoningLevel) {
   }
 
   return 'Reasoning effort: high. Spend extra time planning, evaluating tradeoffs, and verifying the best path before acting.';
+}
+
+function getSelectedModelParts(modelId?: string) {
+  if (!modelId) {
+    return undefined;
+  }
+
+  const providerID = modelId.split('/')[0];
+  const selectedModelID = modelId.split('/').slice(1).join('/');
+  if (!providerID || !selectedModelID) {
+    return undefined;
+  }
+
+  return {
+    providerID,
+    modelID: selectedModelID,
+  };
 }
 
 function mergePermissionConfig(config: Config | undefined, enabled: boolean): Config {
@@ -472,7 +492,7 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
       entries.set(activeProjectPath, {
         label: getProjectLabel(activeProjectPath),
         path: activeProjectPath,
-        source: 'browser',
+        source: 'server',
         isCurrent: activeProjectPath === currentProjectPath,
       });
     }
@@ -741,12 +761,54 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
 
   const createSession = useCallback(
     async (title?: string) => {
-        const response = await client.session.create({ body: { title: title?.trim() || 'New chat' } });
+      const trimmedTitle = title?.trim();
+      const response = trimmedTitle
+        ? await client.session.create({ body: { title: trimmedTitle } })
+        : await client.session.create();
 
       await refreshSessions(true);
       return response.data;
     },
     [client, refreshSessions],
+  );
+
+  const archiveSession = useCallback(
+    async (sessionId: string) => {
+      await setSessionArchived(client, sessionId, Date.now());
+      await refreshSessions(true);
+    },
+    [client, refreshSessions],
+  );
+
+  const unarchiveSession = useCallback(
+    async (sessionId: string) => {
+      await setSessionArchived(client, sessionId);
+      await refreshSessions(true);
+    },
+    [client, refreshSessions],
+  );
+
+  const summarizeSessionTitle = useCallback(
+    async (sessionId: string, knownSessions?: Session[]) => {
+      const existingSession = (knownSessions || sessions).find((session) => session.id === sessionId);
+      if (existingSession?.title?.trim()) {
+        return existingSession;
+      }
+
+      const selectedModel = getSelectedModelParts(chatPreferences.modelId);
+      if (!selectedModel) {
+        return existingSession;
+      }
+
+      await client.session.summarize({
+        path: { id: sessionId },
+        body: selectedModel,
+      });
+
+      const nextSessions = await fetchSessions(true);
+      return nextSessions.find((session) => session.id === sessionId);
+    },
+    [chatPreferences.modelId, client, fetchSessions, sessions],
   );
 
   const ensureActiveSession = useCallback(async () => {
@@ -1142,12 +1204,7 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
           path: { id: sessionId },
           body: {
             agent: chatPreferences.mode,
-            model: chatPreferences.modelId
-              ? {
-                  providerID: chatPreferences.modelId.split('/')[0],
-                  modelID: chatPreferences.modelId.split('/').slice(1).join('/'),
-                }
-              : undefined,
+            model: getSelectedModelParts(chatPreferences.modelId),
             system: buildReasoningSystemPrompt(chatPreferences.reasoning),
             parts: [
               {
@@ -1161,18 +1218,27 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
         });
 
         setCurrentSessionId(sessionId);
+        const nextSessions = await fetchSessions(true);
         await Promise.all([
-          refreshSessions(true),
           refreshMessages(sessionId, true),
           refreshSessionDiff(sessionId, true),
           refreshSessionTodos(sessionId),
           refreshPendingRequests(true),
         ]);
+
+        const currentSession = nextSessions.find((session) => session.id === sessionId);
+        if (!currentSession?.title?.trim()) {
+          try {
+            await summarizeSessionTitle(sessionId, nextSessions);
+          } catch {
+            // Leave the session untitled if summarization is unavailable.
+          }
+        }
       } finally {
         setSendingState({ active: false, sessionId: undefined });
       }
     },
-    [chatPreferences.mode, chatPreferences.modelId, chatPreferences.reasoning, client, refreshMessages, refreshPendingRequests, refreshSessionDiff, refreshSessionTodos, refreshSessions],
+    [chatPreferences.mode, chatPreferences.modelId, chatPreferences.reasoning, client, fetchSessions, refreshMessages, refreshPendingRequests, refreshSessionDiff, refreshSessionTodos, summarizeSessionTitle],
   );
 
   const abortSession = useCallback(
@@ -1366,6 +1432,8 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
       refreshPendingRequests,
       ensureActiveSession,
       createSession,
+      archiveSession,
+      unarchiveSession,
       sendPrompt,
       abortSession,
       replyToPermission,
@@ -1384,6 +1452,8 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
       configuredProviders,
       currentDiffs,
       createSession,
+      archiveSession,
+      unarchiveSession,
       configureProvider,
       currentMessages,
       currentSessionId,
