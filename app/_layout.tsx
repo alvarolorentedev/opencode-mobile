@@ -1,9 +1,9 @@
 import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
-import Constants from 'expo-constants';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
 import 'react-native-reanimated';
+import { Platform } from 'react-native';
 import { PaperProvider } from 'react-native-paper';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
@@ -20,7 +20,7 @@ export default function RootLayout() {
   const paperTheme = getPaperTheme(colorScheme === 'dark' ? 'dark' : 'light');
 
   useEffect(() => {
-    if (Constants.appOwnership === 'expo') {
+    if (Platform.OS === 'web') {
       return;
     }
 

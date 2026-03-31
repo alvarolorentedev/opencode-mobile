@@ -189,7 +189,7 @@ type OpencodeContextValue = {
   createSession: (title?: string) => Promise<Session>;
   archiveSession: (sessionId: string) => Promise<void>;
   unarchiveSession: (sessionId: string) => Promise<void>;
-  sendPrompt: (sessionId: string, prompt: string, attachments?: { uri: string; mime?: string; filename?: string }[]) => Promise<void>;
+  sendPrompt: (sessionId: string, prompt: string, attachments?: { uri: string; mime?: string; filename?: string }[]) => Promise<boolean>;
   abortSession: (sessionId: string) => Promise<void>;
   replyToPermission: (requestId: string, reply: 'once' | 'always' | 'reject', message?: string) => Promise<void>;
   replyToQuestion: (requestId: string, answers: PendingQuestionAnswer[]) => Promise<void>;
@@ -1194,7 +1194,7 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
     ) => {
       const trimmedPrompt = prompt.trim();
       if (!trimmedPrompt) {
-        return;
+        return false;
       }
 
       const currentSession = sessions.find((session) => session.id === sessionId);
@@ -1286,6 +1286,7 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
             // Leave the session untitled if summarization is unavailable.
           }
         }
+        return true;
       } catch (error) {
         if (!promptAccepted) {
           pendingNotificationSessionIdsRef.current.delete(sessionId);

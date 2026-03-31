@@ -460,6 +460,7 @@ export function ChatView() {
   const insets = useSafeAreaInsets();
   const scrollRef = useRef<ScrollView>(null);
   const isPaginatingRef = useRef(false);
+  const isSubmittingPromptRef = useRef(false);
   const {
     activeSession,
     availableAgents,
@@ -505,6 +506,8 @@ export function ChatView() {
 
   const status = currentSessionId ? sessionStatuses[currentSessionId] : undefined;
   const running = sendingState.active || (!!status && status.type !== 'idle');
+  const hasDraftInput = !!draft.trim() || attachments.length > 0;
+  const showSendAction = !running || hasDraftInput;
   const visibleModels = useMemo(() => {
     const configuredProviderIds = new Set(configuredProviders.map((provider) => provider.id));
     const enabledModelIds = new Set(chatPreferences.enabledModelIds);
@@ -618,19 +621,38 @@ export function ChatView() {
   }
 
   async function handleSendPrompt(promptOverride?: string) {
-    const prompt = (promptOverride ?? draft).trim();
-    if ((!prompt && attachments.length === 0) || connection.status !== 'connected') {
+    if (isSubmittingPromptRef.current) {
       return;
     }
 
-    const sessionId = currentSessionId || (await ensureActiveSession());
-    if (!sessionId) {
+    const nextDraft = promptOverride ?? draft;
+    const nextAttachments = attachments;
+    const prompt = nextDraft.trim();
+    if ((!prompt && nextAttachments.length === 0) || connection.status !== 'connected') {
       return;
     }
 
+    isSubmittingPromptRef.current = true;
     setDraft('');
-    await sendPrompt(sessionId, prompt, attachments);
     setAttachments([]);
+
+    try {
+      const sessionId = currentSessionId || (await ensureActiveSession());
+      if (!sessionId) {
+        setDraft(nextDraft);
+        setAttachments(nextAttachments);
+        return;
+      }
+
+      const sent = await sendPrompt(sessionId, prompt, nextAttachments);
+      if (!sent) {
+        setDraft(nextDraft);
+        setAttachments(nextAttachments);
+        return;
+      }
+    } finally {
+      isSubmittingPromptRef.current = false;
+    }
   }
 
   async function handleAttach() {
@@ -1032,17 +1054,17 @@ export function ChatView() {
 
             <IconButton
               mode="contained"
-              icon={running ? 'stop' : 'send'}
+              icon={showSendAction ? 'send' : 'stop'}
               size={20}
               style={styles.composerActionButton}
               loading={isStoppingSession}
               disabled={
-                running
-                  ? !currentSessionId || isStoppingSession
-                  : ((!draft.trim() && attachments.length === 0) || connection.status !== 'connected' || isCreatingSession)
+                showSendAction
+                  ? ((!draft.trim() && attachments.length === 0) || connection.status !== 'connected' || isCreatingSession)
+                  : !currentSessionId || isStoppingSession
               }
               onPress={() => {
-                if (running) {
+                if (!showSendAction) {
                   void handleAbort();
                   return;
                 }

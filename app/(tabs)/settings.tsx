@@ -1,5 +1,8 @@
-import { useMemo, useState } from 'react';
-import { ScrollView, StyleSheet, View } from 'react-native';
+import * as IntentLauncher from 'expo-intent-launcher';
+import * as Linking from 'expo-linking';
+import Constants from 'expo-constants';
+import { useEffect, useMemo, useState } from 'react';
+import { Platform, ScrollView, StyleSheet, View } from 'react-native';
 import * as WebBrowser from 'expo-web-browser';
 import {
   Button,
@@ -20,6 +23,11 @@ import {
 import { Colors } from '@/constants/theme';
 import { renderProviderIcon } from '@/components/ui/provider-icon';
 import { useColorScheme } from '@/hooks/use-color-scheme';
+import {
+  ensureNotificationPermissionsAsync,
+  getNotificationDebugStatusAsync,
+  type NotificationDebugStatus,
+} from '@/lib/notifications';
 import { formatTimestamp } from '@/lib/opencode/format';
 import { useOpencode } from '@/providers/opencode-provider';
 
@@ -107,6 +115,13 @@ export default function SettingsScreen() {
   const [providerDialogError, setProviderDialogError] = useState<string>();
   const [providerFeedback, setProviderFeedback] = useState<{ type: 'success' | 'info'; message: string }>();
   const [expandedProviderId, setExpandedProviderId] = useState<string>();
+  const [notificationStatus, setNotificationStatus] = useState<NotificationDebugStatus>();
+  const [isRefreshingNotificationStatus, setIsRefreshingNotificationStatus] = useState(false);
+  const [notificationFeedback, setNotificationFeedback] = useState<string>();
+  const applicationId = useMemo(
+    () => Constants.expoConfig?.android?.package || Constants.expoConfig?.ios?.bundleIdentifier,
+    [],
+  );
 
   const enabledModelIds = useMemo(() => new Set(chatPreferences.enabledModelIds), [chatPreferences.enabledModelIds]);
   const configuredModels = useMemo(
@@ -187,6 +202,98 @@ export default function SettingsScreen() {
       setIsConnecting(false);
     }
   }
+
+  async function refreshNotificationStatus() {
+    setIsRefreshingNotificationStatus(true);
+    try {
+      setNotificationStatus(await getNotificationDebugStatusAsync());
+    } finally {
+      setIsRefreshingNotificationStatus(false);
+    }
+  }
+
+  async function handleEnableNotifications() {
+    const permissions = await ensureNotificationPermissionsAsync();
+    await refreshNotificationStatus();
+
+    if (permissions?.granted) {
+      setNotificationFeedback('Notifications are enabled on this device.');
+      return;
+    }
+
+    setNotificationFeedback('Notifications are still disabled. Open system settings to enable them manually.');
+  }
+
+  async function handleOpenAppSettings() {
+    await Linking.openSettings();
+  }
+
+  async function handleOpenNotificationSettings() {
+    if (Platform.OS !== 'android') {
+      await Linking.openSettings();
+      return;
+    }
+
+    try {
+      await IntentLauncher.startActivityAsync(IntentLauncher.ActivityAction.APP_NOTIFICATION_SETTINGS, {
+        extra: applicationId
+          ? {
+              'android.provider.extra.APP_PACKAGE': applicationId,
+            }
+          : undefined,
+      });
+    } catch {
+      await Linking.openSettings();
+    }
+  }
+
+  async function handleOpenBatterySettings() {
+    if (Platform.OS !== 'android') {
+      return;
+    }
+
+    try {
+      await IntentLauncher.startActivityAsync(IntentLauncher.ActivityAction.IGNORE_BATTERY_OPTIMIZATION_SETTINGS);
+    } catch {
+      await Linking.openSettings();
+    }
+  }
+
+  async function handleOpenBatterySaverSettings() {
+    if (Platform.OS !== 'android') {
+      return;
+    }
+
+    try {
+      await IntentLauncher.startActivityAsync(IntentLauncher.ActivityAction.BATTERY_SAVER_SETTINGS);
+    } catch {
+      await Linking.openSettings();
+    }
+  }
+
+  useEffect(() => {
+    void refreshNotificationStatus();
+  }, []);
+
+  const notificationsEnabled = Boolean(notificationStatus?.permissionGranted);
+  const notificationStatusLabel = !notificationStatus
+    ? 'Checking'
+    : notificationsEnabled
+      ? 'Enabled'
+      : 'Needs setup';
+  const notificationStatusTone = !notificationStatus
+    ? palette.icon
+    : notificationsEnabled
+      ? palette.success
+      : palette.warning;
+  const backgroundStatusLabel = !notificationStatus
+    ? 'Checking'
+    : notificationStatus.backgroundMonitoringSupported
+      ? notificationStatus.backgroundTaskRegistered
+        ? 'Ready'
+        : 'Limited'
+      : 'Limited';
+  const notificationSummary = `${notificationsEnabled ? 'Notifications enabled' : 'Notifications off'}${backgroundStatusLabel === 'Checking' ? '' : ` • Background ${backgroundStatusLabel.toLowerCase()}`}`;
 
   function resetProviderDialog() {
     setSelectedProviderId(undefined);
@@ -429,6 +536,70 @@ export default function SettingsScreen() {
         </Card.Content>
       </Card>
 
+      <Card mode="contained" style={[styles.card, { backgroundColor: palette.surface }]}> 
+        <Card.Content style={styles.section}>
+          <Text variant="titleLarge" style={[styles.title, { color: palette.text }]}>Notifications</Text>
+          <View style={[styles.connectionStatusCard, { backgroundColor: palette.background, borderColor: palette.border }]}> 
+            <View style={styles.connectionStatusHeader}>
+              <View style={styles.connectionStatusRow}>
+                <View
+                  style={[
+                    styles.connectionStatusDot,
+                    {
+                      backgroundColor: notificationStatusTone,
+                    },
+                  ]}
+                />
+                <Text variant="labelLarge" style={{ color: palette.text }}>
+                  {notificationStatusLabel}
+                </Text>
+              </View>
+              <Text variant="bodySmall" style={{ color: palette.muted }}>
+                {notificationSummary}
+              </Text>
+            </View>
+          </View>
+          <View style={styles.actionRow}>
+            <Button mode="contained" disabled={notificationsEnabled} onPress={() => void handleEnableNotifications()}>
+              Enable notifications
+            </Button>
+            <Button mode="outlined" disabled={notificationsEnabled} onPress={() => void handleOpenNotificationSettings()}>
+              Notification settings
+            </Button>
+          </View>
+          <List.Section style={styles.infoListSection}>
+            <List.Item
+              title="App settings"
+              description="Review system settings for this app."
+              titleStyle={{ color: palette.text }}
+              descriptionStyle={{ color: palette.muted }}
+              right={() => <Button disabled={notificationsEnabled} onPress={() => void handleOpenAppSettings()}>Open</Button>}
+            />
+            {Platform.OS === 'android' ? (
+              <List.Item
+                title="Battery optimization"
+                description="Allow the app to run more reliably in the background."
+                titleStyle={{ color: palette.text }}
+                descriptionStyle={{ color: palette.muted }}
+                right={() => <Button disabled={!notificationsEnabled} onPress={() => void handleOpenBatterySettings()}>Open</Button>}
+              />
+            ) : null}
+            {Platform.OS === 'android' ? (
+              <List.Item
+                title="Battery saver"
+                description="Battery saver can delay reminders."
+                titleStyle={{ color: palette.text }}
+                descriptionStyle={{ color: palette.muted }}
+                right={() => <Button disabled={!notificationsEnabled} onPress={() => void handleOpenBatterySaverSettings()}>Open</Button>}
+              />
+            ) : null}
+          </List.Section>
+          <Button mode="text" loading={isRefreshingNotificationStatus} onPress={() => void refreshNotificationStatus()}>
+            Refresh status
+          </Button>
+        </Card.Content>
+      </Card>
+
       </ScrollView>
 
       <Portal>
@@ -521,6 +692,12 @@ export default function SettingsScreen() {
         duration={4000}>
         {providerFeedback?.message}
       </Snackbar>
+      <Snackbar
+        visible={Boolean(notificationFeedback)}
+        onDismiss={() => setNotificationFeedback(undefined)}
+        duration={4000}>
+        {notificationFeedback}
+      </Snackbar>
     </>
   );
 }
@@ -537,6 +714,8 @@ const styles = StyleSheet.create({
   connectionStatusDot: { width: 10, height: 10, borderRadius: 999 },
   providerHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 },
   chipWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  actionRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
+  infoListSection: { marginVertical: 0 },
   modelListSection: { gap: 10 },
   dialogContent: { gap: 14 },
   authMethodRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
