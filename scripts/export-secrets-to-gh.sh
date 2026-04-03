@@ -22,6 +22,21 @@ if [[ "${1:-}" == "--dry-run" ]]; then
   DRY_RUN=true
 fi
 
+# Temporary dir for safe file operations
+TMPDIR=$(mktemp -d)
+trap 'rm -rf "$TMPDIR"' EXIT
+
+# Detect base64 decoder flag differences (GNU vs BSD)
+BASE64_DECODE="--decode"
+if ! command -v base64 >/dev/null 2>&1; then
+  echo "Error: base64 command not found" >&2
+  exit 1
+fi
+if ! base64 $BASE64_DECODE < /dev/null >/dev/null 2>&1; then
+  # try BSD/macOS flag
+  BASE64_DECODE="-D"
+fi
+
 get_env() {
   local key="$1"
   # shellcheck disable=SC2002,SC2016
@@ -41,12 +56,47 @@ set_secret() {
     echo "Warning: $name not set in .env — skipping secret creation."
     return
   fi
+
   if [[ "$DRY_RUN" == true ]]; then
     echo "DRY RUN: gh secret set $name (value length: ${#value})"
-  else
-    echo "Setting secret: $name"
-    printf '%s' "$value" | gh secret set "$name" --body -
+    return
   fi
+
+  echo "Setting secret: $name"
+
+  # Special handling for large or binary secrets (the keystore base64)
+  if [[ "$name" == "ANDROID_KEYSTORE_BASE64" ]]; then
+    local b64file="$TMPDIR/${name}.b64"
+    local keystorebin="$TMPDIR/${name}.bin"
+    # Normalize: remove all whitespace/newlines (prevents web-ui wrapping issues)
+    printf '%s' "$value" | tr -d '[:space:]' > "$b64file"
+
+    # Basic sanity check: require at least some bytes
+    if [[ $(wc -c < "$b64file") -lt 100 ]]; then
+      echo "Error: $name appears too small (possible corruption); size=$(wc -c < $b64file)" >&2
+      return 1
+    fi
+
+    # Try decoding to confirm it's valid base64 and a keystore-like blob
+    if ! base64 $BASE64_DECODE "$b64file" > "$keystorebin" 2> "$TMPDIR/b64.err"; then
+      echo "Error: ANDROID_KEYSTORE_BASE64 failed to decode to binary. See $TMPDIR/b64.err" >&2
+      sed -n '1,120p' "$TMPDIR/b64.err" >&2 || true
+      return 1
+    fi
+
+    # Print non-sensitive diagnostics: lengths and sha256 of decoded bytes
+    if command -v sha256sum >/dev/null 2>&1; then
+      echo "Decoded keystore size: $(wc -c < "$keystorebin") bytes"
+      echo "Decoded keystore sha256: $(sha256sum "$keystorebin" | awk '{print $1}')"
+    fi
+
+    # Upload via stdin to avoid shell interpolation/truncation issues
+    gh secret set "$name" --body - < "$b64file"
+    return $?
+  fi
+
+  # Default path for small textual secrets
+  printf '%s' "$value" | gh secret set "$name" --body -
 }
 
 set_variable() {
