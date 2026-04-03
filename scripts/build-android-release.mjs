@@ -51,46 +51,63 @@ fs.writeFileSync(keystorePath, Buffer.from(keystoreBase64, 'base64'));
 // during non-interactive CI builds.
 // Detect keystore type (pkcs12 vs jks). keytool can list a keystore with a
 // specific storetype; try pkcs12 first and fall back to jks.
-function detectStoreType(keystoreFile, password) {
+function runKeytoolList(keystoreFile, password, storetype) {
   try {
-    const tryPkcs12 = spawnSync('keytool', [
+    const proc = spawnSync('keytool', [
       '-list',
       '-keystore',
       keystoreFile,
       '-storepass',
       password,
       '-storetype',
-      'pkcs12',
-    ]);
-    if (tryPkcs12.status === 0) return 'pkcs12';
+      storetype,
+    ], { encoding: 'utf8' });
+    return { status: proc.status, stdout: proc.stdout || '', stderr: proc.stderr || '' };
   } catch (e) {
-    // ignore
+    return { status: 1, stdout: '', stderr: String(e) };
   }
-
-  try {
-    const tryJks = spawnSync('keytool', [
-      '-list',
-      '-keystore',
-      keystoreFile,
-      '-storepass',
-      password,
-      '-storetype',
-      'jks',
-    ]);
-    if (tryJks.status === 0) return 'jks';
-  } catch (e) {
-    // ignore
-  }
-
-  return undefined;
 }
 
-const detectedStoreType = detectStoreType(keystorePath, keystorePassword);
-if (detectedStoreType) {
-  console.log(`Detected keystore type: ${detectedStoreType}`);
+function validateKeystore(keystoreFile, password) {
+  // Try pkcs12 then jks
+  const tried = [];
+  for (const t of ['pkcs12', 'jks']) {
+    const res = runKeytoolList(keystoreFile, password, t);
+    tried.push({ type: t, res });
+    if (res.status === 0) {
+      // parse aliases from stdout
+      const aliases = [];
+      for (const line of res.stdout.split(/\r?\n/)) {
+        const m = line.match(/Alias name:\s*(.+)/i) || line.match(/alias name:\s*(.+)/i) || line.match(/^\s*alias:\s*(.+)/i);
+        if (m) aliases.push(m[1].trim());
+      }
+      return { storeType: t, aliases };
+    }
+  }
+
+  // If neither succeeded, return diagnostics
+  return { storeType: undefined, tried };
+}
+
+const validation = validateKeystore(keystorePath, keystorePassword);
+if (validation.storeType) {
+  console.log(`Detected keystore type: ${validation.storeType}`);
+  if (validation.aliases && validation.aliases.length) {
+    console.log('Keystore aliases:');
+    for (const a of validation.aliases) console.log(` - ${a}`);
+  } else {
+    console.log('No aliases found in keystore output (this may be normal for some keystore types).');
+  }
 } else {
-  console.warn('Could not detect keystore type; defaulting to pkcs12');
+  console.error('Failed to read the provided keystore with keytool using either pkcs12 or jks store types.');
+  for (const t of validation.tried) {
+    console.error(`--- store type: ${t.type} ---`);
+    if (t.res.stderr) console.error(t.res.stderr.split(/\r?\n/).slice(0,50).join('\n'));
+  }
+  fail('Keystore validation failed. Ensure the base64 secret decodes to a valid PKCS12 or JKS keystore and that the password is correct.');
 }
+
+const detectedStoreType = validation.storeType;
 run('./gradlew', [
   'bundleRelease',
   'assembleRelease',
