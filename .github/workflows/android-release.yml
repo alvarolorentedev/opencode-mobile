@@ -66,11 +66,13 @@ jobs:
 
       - name: Decode keystore & verify
         run: |
+          set -eo pipefail
           mkdir -p android
-          # Print length of the secret (masked in logs) to help debug upload/truncation
-          echo "Secret length: $(echo -n "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" | wc -c)"
-          # Remove all whitespace (including CR) before decoding to avoid invalid base64 characters
-          echo "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" | tr -d '[:space:]' | base64 --decode > android/release.keystore || true
+          # Compute secret length robustly and without adding newlines
+          SECRET_LEN=$(printf '%s' "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" | tr -d '[:space:]' | wc -c)
+          echo "Secret length: $SECRET_LEN"
+          # Decode safely using printf to avoid echo interpretation issues
+          printf '%s' "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" | tr -d '[:space:]' | base64 --decode > android/release.keystore
           echo "Keystore on disk:"
           sha256sum android/release.keystore || true
           ls -l android/release.keystore || true
