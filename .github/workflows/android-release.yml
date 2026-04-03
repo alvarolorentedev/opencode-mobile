@@ -65,23 +65,36 @@ jobs:
         run: npm ci
 
       - name: Decode keystore & verify
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
         run: |
           set -eo pipefail
-          mkdir -p android
           # Compute secret length robustly and without adding newlines
-          SECRET_LEN=$(printf '%s' "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" | tr -d '[:space:]' | wc -c)
+          SECRET_LEN=$(printf '%s' "$ANDROID_KEYSTORE_BASE64" | tr -d '[:space:]' | wc -c)
           echo "Secret length: $SECRET_LEN"
+          if [ "$SECRET_LEN" -lt 100 ]; then
+            echo "Keystore secret is unexpectedly short; refusing to continue."
+            exit 1
+          fi
+
+          KEYSTORE_PATH="$RUNNER_TEMP/release.keystore"
           # Decode safely using printf to avoid echo interpretation issues
-          printf '%s' "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" | tr -d '[:space:]' | base64 --decode > android/release.keystore
+          printf '%s' "$ANDROID_KEYSTORE_BASE64" | tr -d '[:space:]' | base64 --decode > "$KEYSTORE_PATH"
+          FILE_SIZE=$(stat -c%s "$KEYSTORE_PATH")
+          echo "Decoded size: $FILE_SIZE"
+          if [ "$FILE_SIZE" -lt 100 ]; then
+            echo "Decoded keystore is unexpectedly small; refusing to continue."
+            exit 1
+          fi
           echo "Keystore on disk:"
-          sha256sum android/release.keystore || true
-          ls -l android/release.keystore || true
+          sha256sum "$KEYSTORE_PATH" || true
+          ls -l "$KEYSTORE_PATH" || true
         shell: bash
 
       - name: Build Android release
         run: npm run build:android:local
         env:
-          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          ANDROID_KEYSTORE_PATH: ${{ runner.temp }}/release.keystore
           ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
           ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
           ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}

@@ -64,6 +64,9 @@ set_secret() {
 
   echo "Setting secret: $name"
 
+  local secret_file="$TMPDIR/${name}.txt"
+  printf '%s' "$value" > "$secret_file"
+
   # Special handling for large or binary secrets (the keystore base64)
   if [[ "$name" == "ANDROID_KEYSTORE_BASE64" ]]; then
     local b64file="$TMPDIR/${name}.b64"
@@ -90,13 +93,14 @@ set_secret() {
       echo "Decoded keystore sha256: $(sha256sum "$keystorebin" | awk '{print $1}')"
     fi
 
-    # Upload via stdin to avoid shell interpolation/truncation issues
-    gh secret set "$name" --body - < "$b64file"
+    # Upload via stdin redirection. `gh secret set --body -` stores the literal
+    # dash, so use shell stdin instead.
+    gh secret set "$name" < "$b64file"
     return $?
   fi
 
   # Default path for small textual secrets
-  printf '%s' "$value" | gh secret set "$name" --body -
+  gh secret set "$name" < "$secret_file"
 }
 
 set_variable() {
@@ -137,7 +141,6 @@ set_variable EXPO_OWNER "$EXPO_OWNER"
 set_variable EXPO_ANDROID_PACKAGE "$EXPO_ANDROID_PACKAGE"
 set_variable EXPO_IOS_BUNDLE_IDENTIFIER "$EXPO_IOS_BUNDLE_IDENTIFIER"
 
-echo "Done. If you also want to upload the Google Play service account JSON, run:\n  gh secret set GOOGLE_PLAY_SERVICE_ACCOUNT_JSON --body '$(cat /dev/null)'
-Replace the body with the JSON file contents or run: gh secret set GOOGLE_PLAY_SERVICE_ACCOUNT_JSON --body "$(cat path/to/service-account.json)""
+echo "Done. If you also want to upload the Google Play service account JSON, run:\n  gh secret set GOOGLE_PLAY_SERVICE_ACCOUNT_JSON < path/to/service-account.json"
 
 exit 0

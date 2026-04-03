@@ -17,6 +17,11 @@ function requireEnv(name) {
   return value;
 }
 
+function getOptionalEnv(name) {
+  const value = process.env[name]?.trim();
+  return value || undefined;
+}
+
 function run(command, args, options = {}) {
   const result = spawnSync(command, args, {
     stdio: 'inherit',
@@ -40,12 +45,32 @@ run('npx', ['expo', 'prebuild', '--platform', 'android', '--non-interactive', '-
   cwd: repoRoot,
 });
 
-const keystoreBase64 = requireEnv('ANDROID_KEYSTORE_BASE64').replace(/\s+/g, '');
 const keystorePassword = requireEnv('ANDROID_KEYSTORE_PASSWORD');
 const keyAlias = requireEnv('ANDROID_KEY_ALIAS');
 const keyPassword = requireEnv('ANDROID_KEY_PASSWORD');
+const keystoreSourcePath = getOptionalEnv('ANDROID_KEYSTORE_PATH');
+const keystoreBase64 = getOptionalEnv('ANDROID_KEYSTORE_BASE64')?.replace(/\s+/g, '');
 
-fs.writeFileSync(keystorePath, Buffer.from(keystoreBase64, 'base64'));
+if (!keystoreSourcePath && !keystoreBase64) {
+  fail('Missing keystore input. Set either ANDROID_KEYSTORE_PATH or ANDROID_KEYSTORE_BASE64.');
+}
+
+if (keystoreSourcePath) {
+  if (!fs.existsSync(keystoreSourcePath)) {
+    fail(`Keystore file does not exist: ${keystoreSourcePath}`);
+  }
+  fs.copyFileSync(keystoreSourcePath, keystorePath);
+} else {
+  if (!keystoreBase64 || keystoreBase64.length < 100) {
+    fail('ANDROID_KEYSTORE_BASE64 is too short to be a valid keystore payload.');
+  }
+  fs.writeFileSync(keystorePath, Buffer.from(keystoreBase64, 'base64'));
+}
+
+const keystoreStats = fs.statSync(keystorePath);
+if (keystoreStats.size < 100) {
+  fail(`Decoded keystore is too small (${keystoreStats.size} bytes). Check the uploaded secret or keystore file.`);
+}
 
 // Debug: compute and print sha256 and size of the decoded keystore so CI logs
 // can be compared with a locally computed value to detect upload corruption.
@@ -106,6 +131,9 @@ if (validation.storeType) {
   if (validation.aliases && validation.aliases.length) {
     console.log('Keystore aliases:');
     for (const a of validation.aliases) console.log(` - ${a}`);
+    if (!validation.aliases.includes(keyAlias)) {
+      fail(`Configured ANDROID_KEY_ALIAS \"${keyAlias}\" was not found in the keystore aliases.`);
+    }
   } else {
     console.log('No aliases found in keystore output (this may be normal for some keystore types).');
   }
