@@ -28,31 +28,9 @@ function run(command, args, options = {}) {
   }
 }
 
-function injectReleaseSigningConfig(filePath, signing) {
-  const original = fs.readFileSync(filePath, 'utf8');
-
-  if (original.includes('signingConfigs {\n        release {')) {
-    return;
-  }
-
-  let updated = original;
-  const signingBlock = `\n    signingConfigs {\n        release {\n            storeFile file('${signing.storeFile}')\n            storePassword '${signing.storePassword}'\n            keyAlias '${signing.keyAlias}'\n            keyPassword '${signing.keyPassword}'\n        }\n    }\n`;
-
-  if (updated.includes('buildTypes {')) {
-    updated = updated.replace('buildTypes {', `${signingBlock}    buildTypes {`);
-  } else {
-    fail(`Unable to find buildTypes block in ${filePath}`);
-  }
-
-  updated = updated.replace(/release \{([\s\S]*?)\n\s*\}/, (match, body) => {
-    if (body.includes('signingConfig signingConfigs.release')) {
-      return match;
-    }
-    return `release {${body}\n            signingConfig signingConfigs.release\n        }`;
-  });
-
-  fs.writeFileSync(filePath, updated);
-}
+// NOTE: Avoid modifying generated Gradle files in a fragile way. Instead pass
+// signing properties to Gradle via -P arguments. This keeps the build script
+// compatible with different Android Gradle plugin versions.
 
 const repoRoot = process.cwd();
 const androidDir = path.join(repoRoot, 'android');
@@ -69,16 +47,15 @@ const keyPassword = requireEnv('ANDROID_KEY_PASSWORD');
 
 fs.writeFileSync(keystorePath, Buffer.from(keystoreBase64, 'base64'));
 
-injectReleaseSigningConfig(path.join(androidDir, 'app', 'build.gradle'), {
-  storeFile: '../release.keystore',
-  storePassword: keystorePassword,
-  keyAlias,
-  keyPassword,
-});
-
+// Pass signing props to Gradle. The Android Gradle Plugin will pick these up
+// during non-interactive CI builds.
 run('./gradlew', [
   'bundleRelease',
   'assembleRelease',
+  `-Pandroid.injected.signing.store.file=${keystorePath}`,
+  `-Pandroid.injected.signing.store.password=${keystorePassword}`,
+  `-Pandroid.injected.signing.key.alias=${keyAlias}`,
+  `-Pandroid.injected.signing.key.password=${keyPassword}`,
 ], {
   cwd: androidDir,
 });
