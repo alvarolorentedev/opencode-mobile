@@ -25,47 +25,39 @@ In the output, you'll find options to open the app in a
 
 You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
 
-## EAS builds
+## Android release builds
 
-This project includes a basic `eas.json` and a tracked `app.config.ts` so it can build with Expo Application Services without committing machine-specific app identifiers.
+The repository now includes a GitHub Action that builds a production Android bundle locally on the runner, without Expo EAS.
 
-Copy `.env.example` to `.env` and fill in the values Expo should inject into the config:
+Required GitHub secrets:
+
+- `ANDROID_KEYSTORE_BASE64`
+- `ANDROID_KEYSTORE_PASSWORD`
+- `ANDROID_KEY_ALIAS`
+- `ANDROID_KEY_PASSWORD`
+- `GOOGLE_PLAY_SERVICE_ACCOUNT_JSON` for Play Store uploads
+
+Recommended GitHub variables:
+
+- `EXPO_OWNER`
+- `EXPO_ANDROID_PACKAGE`
+- `EXPO_IOS_BUNDLE_IDENTIFIER`
+
+To build locally the same way as CI:
 
 ```bash
-EXPO_OWNER=alvarolorentedev
-EXPO_EAS_PROJECT_ID=your-eas-project-id
-EXPO_IOS_BUNDLE_IDENTIFIER=com.example.opencodemobile
-EXPO_ANDROID_PACKAGE=com.example.opencodemobile
+npm run build:android:local
 ```
 
-1. Install the Expo tooling if needed:
+This creates a signed release APK and AAB under `android/app/build/outputs/`.
 
-   ```bash
-   npm install
-   npm install -g eas-cli
-   ```
+The workflow in `.github/workflows/android-release.yml` also supports an optional manual upload to the Play Store internal track.
 
-2. Log in and link the project:
+For Play Store uploads, create a workflow dispatch run with `upload_to_play_store` enabled and add the Google Play service account JSON secret.
 
-   ```bash
-   eas login
-   eas init
-   ```
+## EAS builds
 
-3. Add the values from `eas init` and your native app identifiers to `.env`:
-
-   - `EXPO_EAS_PROJECT_ID`
-   - `EXPO_ANDROID_PACKAGE`
-   - `EXPO_IOS_BUNDLE_IDENTIFIER`
-
-4. Run a build:
-
-   ```bash
-   npm run build:android
-   npm run build:ios
-   ```
-
-For internal test builds, use `npm run build:preview:android` or `npm run build:preview:ios`.
+This project still includes `eas.json` and a tracked `app.config.ts` for teams that also use Expo tooling.
 
 ## Get a fresh project
 

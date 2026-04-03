@@ -13,6 +13,7 @@
     "ios": "expo start --ios",
     "web": "expo start --web",
     "lint": "expo lint",
+    "build:android:local": "node ./scripts/build-android-release.mjs",
     "build:android": "eas build --platform android --profile production",
     "build:ios": "eas build --platform ios --profile production",
     "build:preview:android": "eas build --platform android --profile preview",
