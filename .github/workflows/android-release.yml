@@ -67,8 +67,10 @@ jobs:
       - name: Decode keystore & verify
         run: |
           mkdir -p android
-          # Decode base64 secret safely (remove any accidental newlines) and write keystore
-          echo "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" | tr -d '\n' | base64 --decode > android/release.keystore || true
+          # Print length of the secret (masked in logs) to help debug upload/truncation
+          echo "Secret length: $(echo -n "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" | wc -c)"
+          # Remove all whitespace (including CR) before decoding to avoid invalid base64 characters
+          echo "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" | tr -d '[:space:]' | base64 --decode > android/release.keystore || true
           echo "Keystore on disk:"
           sha256sum android/release.keystore || true
           ls -l android/release.keystore || true
