@@ -49,6 +49,48 @@ fs.writeFileSync(keystorePath, Buffer.from(keystoreBase64, 'base64'));
 
 // Pass signing props to Gradle. The Android Gradle Plugin will pick these up
 // during non-interactive CI builds.
+// Detect keystore type (pkcs12 vs jks). keytool can list a keystore with a
+// specific storetype; try pkcs12 first and fall back to jks.
+function detectStoreType(keystoreFile, password) {
+  try {
+    const tryPkcs12 = spawnSync('keytool', [
+      '-list',
+      '-keystore',
+      keystoreFile,
+      '-storepass',
+      password,
+      '-storetype',
+      'pkcs12',
+    ]);
+    if (tryPkcs12.status === 0) return 'pkcs12';
+  } catch (e) {
+    // ignore
+  }
+
+  try {
+    const tryJks = spawnSync('keytool', [
+      '-list',
+      '-keystore',
+      keystoreFile,
+      '-storepass',
+      password,
+      '-storetype',
+      'jks',
+    ]);
+    if (tryJks.status === 0) return 'jks';
+  } catch (e) {
+    // ignore
+  }
+
+  return undefined;
+}
+
+const detectedStoreType = detectStoreType(keystorePath, keystorePassword);
+if (detectedStoreType) {
+  console.log(`Detected keystore type: ${detectedStoreType}`);
+} else {
+  console.warn('Could not detect keystore type; defaulting to pkcs12');
+}
 run('./gradlew', [
   'bundleRelease',
   'assembleRelease',
@@ -56,6 +98,7 @@ run('./gradlew', [
   `-Pandroid.injected.signing.store.password=${keystorePassword}`,
   `-Pandroid.injected.signing.key.alias=${keyAlias}`,
   `-Pandroid.injected.signing.key.password=${keyPassword}`,
+  ...(detectedStoreType ? [`-Pandroid.injected.signing.store.type=${detectedStoreType}`] : []),
 ], {
   cwd: androidDir,
 });
