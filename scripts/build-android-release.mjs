@@ -47,6 +47,17 @@ const keyPassword = requireEnv('ANDROID_KEY_PASSWORD');
 
 fs.writeFileSync(keystorePath, Buffer.from(keystoreBase64, 'base64'));
 
+// Debug: compute and print sha256 and size of the decoded keystore so CI logs
+// can be compared with a locally computed value to detect upload corruption.
+try {
+  const { createHash } = await import('node:crypto');
+  const data = fs.readFileSync(keystorePath);
+  const hash = createHash('sha256').update(data).digest('hex');
+  console.log(`Keystore written: ${keystorePath} (size=${data.length} bytes, sha256=${hash})`);
+} catch (e) {
+  console.warn('Unable to compute keystore hash for debugging:', e?.message ?? e);
+}
+
 // Pass signing props to Gradle. The Android Gradle Plugin will pick these up
 // during non-interactive CI builds.
 // Detect keystore type (pkcs12 vs jks). keytool can list a keystore with a
