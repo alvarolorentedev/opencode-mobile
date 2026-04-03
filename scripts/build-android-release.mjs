@@ -119,13 +119,25 @@ if (validation.storeType) {
 }
 
 const detectedStoreType = validation.storeType;
+
+// When using PKCS12 keystores the key password is typically the same as the
+// store password; some toolchains (and keytool) may fail decrypting a private
+// key if a different key password is supplied. If we detected pkcs12, prefer
+// the store password as the key password to avoid "Given final block not
+// properly padded" decryption errors.
+let effectiveKeyPassword = keyPassword;
+if (detectedStoreType === 'pkcs12') {
+  console.log('PKCS12 keystore detected: using store password as key password for signing');
+  effectiveKeyPassword = keystorePassword;
+}
+
 run('./gradlew', [
   'bundleRelease',
   'assembleRelease',
   `-Pandroid.injected.signing.store.file=${keystorePath}`,
   `-Pandroid.injected.signing.store.password=${keystorePassword}`,
   `-Pandroid.injected.signing.key.alias=${keyAlias}`,
-  `-Pandroid.injected.signing.key.password=${keyPassword}`,
+  `-Pandroid.injected.signing.key.password=${effectiveKeyPassword}`,
   ...(detectedStoreType ? [`-Pandroid.injected.signing.store.type=${detectedStoreType}`] : []),
 ], {
   cwd: androidDir,
