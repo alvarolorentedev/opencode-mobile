@@ -64,6 +64,16 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Decode keystore & verify
+        run: |
+          mkdir -p android
+          # Decode base64 secret safely (remove any accidental newlines) and write keystore
+          echo "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" | tr -d '\n' | base64 --decode > android/release.keystore || true
+          echo "Keystore on disk:"
+          sha256sum android/release.keystore || true
+          ls -l android/release.keystore || true
+        shell: bash
+
       - name: Build Android release
         run: npm run build:android:local
         env:
