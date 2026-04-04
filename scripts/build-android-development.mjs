@@ -3,6 +3,8 @@
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 
+const extraGradleArgs = (process.env.GRADLE_ARGS ?? '').split(/\s+/).filter(Boolean);
+
 function fail(message) {
   console.error(message);
   process.exit(1);
@@ -26,7 +28,7 @@ run('npx', ['expo', 'prebuild', '--platform', 'android', '--non-interactive', '-
   cwd: repoRoot,
 });
 
-run('./gradlew', ['assembleDebug'], {
+run('./gradlew', ['assembleDebug', ...extraGradleArgs], {
   cwd: androidDir,
 });
 

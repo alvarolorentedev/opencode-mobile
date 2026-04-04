@@ -12,6 +12,7 @@ jobs:
     env:
       EXPO_NO_TELEMETRY: 1
       EXPO_ANDROID_PACKAGE: ${{ vars.EXPO_ANDROID_PACKAGE }}
+      GRADLE_ARGS: --stacktrace --info
 
     steps:
       - name: Checkout repository
@@ -47,6 +48,18 @@ jobs:
 
       - name: Build Android development APK
         run: npm run build:development:android
+
+      - name: Upload debug build diagnostics
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-development-build-diagnostics
+          path: |
+            android/build/reports/**
+            android/app/build/reports/**
+            android/**/build/tmp/kotlin-classes/**
+            android/**/build/*.log
+          if-no-files-found: ignore
 
       - name: Upload development APK
         uses: actions/upload-artifact@v4

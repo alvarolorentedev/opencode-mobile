@@ -12,12 +12,13 @@
     "stop:cloudflare:bg": "./scripts/stop-expo-cloudflare-bg.sh",
     "status:cloudflare:bg": "./scripts/status-expo-cloudflare-bg.sh",
     "reset-project": "node ./scripts/reset-project.js",
-    "android": "expo start --android",
+    "android": "expo run:android",
     "web": "expo start --web",
     "lint": "expo lint",
     "build:android": "node ./scripts/build-android-release.mjs",
     "build:development:android": "node ./scripts/build-android-development.mjs",
-    "build:release:android": "node ./scripts/build-android-release.mjs"
+    "build:release:android": "node ./scripts/build-android-release.mjs",
+    "ios": "expo run:ios"
   },
   "dependencies": {
     "@expo/vector-icons": "^15.0.3",
@@ -44,7 +45,7 @@
     "expo-background-task": "~1.0.10",
     "expo-clipboard": "^55.0.9",
     "expo-constants": "~18.0.13",
-    "expo-dev-client": "^55.0.22",
+    "expo-dev-client": "~6.0.20",
     "expo-document-picker": "~14.0.8",
     "expo-font": "~14.0.11",
     "expo-haptics": "~15.0.8",
