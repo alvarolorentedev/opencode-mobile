@@ -20,9 +20,7 @@ jobs:
       contents: read
 
     env:
-      EXPO_OWNER: ${{ vars.EXPO_OWNER }}
       EXPO_ANDROID_PACKAGE: ${{ vars.EXPO_ANDROID_PACKAGE }}
-      EXPO_IOS_BUNDLE_IDENTIFIER: ${{ vars.EXPO_IOS_BUNDLE_IDENTIFIER }}
 
     steps:
       - name: Checkout repository
@@ -92,7 +90,7 @@ jobs:
         shell: bash
 
       - name: Build Android release
-        run: npm run build:android:local
+        run: npm run build:android
         env:
           ANDROID_KEYSTORE_PATH: ${{ runner.temp }}/release.keystore
           ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}

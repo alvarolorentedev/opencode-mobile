@@ -5,10 +5,7 @@ function env(name: string) {
   return value ? value : undefined;
 }
 
-const iosBundleIdentifier = env('EXPO_IOS_BUNDLE_IDENTIFIER');
 const androidPackage = env('EXPO_ANDROID_PACKAGE');
-const easProjectId = env('EXPO_EAS_PROJECT_ID');
-const expoOwner = env('EXPO_OWNER') ?? 'alvarolorentedev';
 
 const config: ExpoConfig = {
   name: 'OpenCode Mobile',
@@ -19,16 +16,7 @@ const config: ExpoConfig = {
   scheme: 'opencodemobile',
   userInterfaceStyle: 'automatic',
   newArchEnabled: true,
-  ios: {
-    supportsTablet: true,
-    // Provide a stable bundle identifier so EAS can run non-interactive builds.
-    bundleIdentifier: iosBundleIdentifier ?? 'app.getopencode.mobile',
-    infoPlist: {
-      NSUserNotificationUsageDescription: 'OpenCode Mobile sends notifications when a task finishes.',
-    },
-  },
   android: {
-    // Provide a stable android package so EAS can run non-interactive builds.
     package: androidPackage ?? 'app.getopencode.mobile',
     adaptiveIcon: {
       backgroundColor: '#1F1D1C',
@@ -66,16 +54,7 @@ const config: ExpoConfig = {
   },
   extra: {
     router: {},
-    // Read the EAS project id from environment so the id can be committed in `.env`.
-    ...(easProjectId
-      ? {
-          eas: {
-            projectId: easProjectId,
-          },
-        }
-      : {}),
   },
-  owner: expoOwner,
 };
 
 export default config;

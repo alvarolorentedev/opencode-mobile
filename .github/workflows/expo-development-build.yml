@@ -1,0 +1,55 @@
+name: Android Development Build
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    env:
+      EXPO_NO_TELEMETRY: 1
+      EXPO_ANDROID_PACKAGE: ${{ vars.EXPO_ANDROID_PACKAGE }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Cache Gradle
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: gradle-dev-build-${{ runner.os }}-${{ hashFiles('**/gradle-wrapper.properties','**/build.gradle*','**/settings.gradle*') }}
+          restore-keys: |
+            gradle-dev-build-${{ runner.os }}-
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build Android development APK
+        run: npm run build:development:android
+
+      - name: Upload development APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-development-apk
+          path: android/app/build/outputs/apk/debug/*.apk

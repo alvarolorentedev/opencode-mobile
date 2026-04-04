@@ -125,9 +125,7 @@ ANDROID_KEYSTORE_PASSWORD=$(get_env ANDROID_KEYSTORE_PASSWORD)
 ANDROID_KEY_ALIAS=$(get_env ANDROID_KEY_ALIAS)
 ANDROID_KEY_PASSWORD=$(get_env ANDROID_KEY_PASSWORD)
 
-EXPO_OWNER=$(get_env EXPO_OWNER)
 EXPO_ANDROID_PACKAGE=$(get_env EXPO_ANDROID_PACKAGE)
-EXPO_IOS_BUNDLE_IDENTIFIER=$(get_env EXPO_IOS_BUNDLE_IDENTIFIER)
 
 echo "Preparing to upload secrets to GitHub. Ensure you are authenticated with 'gh auth login'."
 
@@ -137,9 +135,7 @@ set_secret ANDROID_KEY_ALIAS "$ANDROID_KEY_ALIAS"
 set_secret ANDROID_KEY_PASSWORD "$ANDROID_KEY_PASSWORD"
 
 # The recommended EXPO_* values are non-secret and can be set as repository variables
-set_variable EXPO_OWNER "$EXPO_OWNER"
 set_variable EXPO_ANDROID_PACKAGE "$EXPO_ANDROID_PACKAGE"
-set_variable EXPO_IOS_BUNDLE_IDENTIFIER "$EXPO_IOS_BUNDLE_IDENTIFIER"
 
 echo "Done. If you also want to upload the Google Play service account JSON, run:\n  gh secret set GOOGLE_PLAY_SERVICE_ACCOUNT_JSON < path/to/service-account.json"
 
