@@ -12,6 +12,11 @@ const config: ExpoConfig = {
   slug: 'opencode-mobile',
   version: '1.0.0',
   orientation: 'portrait',
+  splash: {
+    image: "./assets/images/splash.png",
+    resizeMode: "contain",
+    backgroundColor: "#202020"
+  },
   icon: './assets/images/icon.png',
   scheme: 'opencodemobile',
   userInterfaceStyle: 'automatic',
@@ -19,10 +24,8 @@ const config: ExpoConfig = {
   android: {
     package: androidPackage ?? 'app.getopencode.mobile',
     adaptiveIcon: {
-      backgroundColor: '#1F1D1C',
-      foregroundImage: './assets/images/android-icon-foreground.png',
-      backgroundImage: './assets/images/android-icon-background.png',
-      monochromeImage: './assets/images/android-icon-monochrome.png',
+      foregroundImage: './assets/images/adaptive-icon.png',
+      backgroundColor: "#202020"
     },
     edgeToEdgeEnabled: true,
     predictiveBackGestureEnabled: false,

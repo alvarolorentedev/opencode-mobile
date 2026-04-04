@@ -12,6 +12,8 @@ jobs:
     env:
       EXPO_NO_TELEMETRY: 1
       EXPO_ANDROID_PACKAGE: ${{ vars.EXPO_ANDROID_PACKAGE }}
+      # Pass extra gradle args to the build script so we can get better diagnostics on failure
+      GRADLE_ARGS: --stacktrace --info
       GRADLE_ARGS: --stacktrace --info
 
     steps:
@@ -47,7 +49,19 @@ jobs:
         run: npm ci
 
       - name: Build Android development APK
+        id: build
         run: npm run build:development:android
+
+      - name: Upload build diagnostics on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-dev-diagnostics
+          path: |
+            android/build/reports/**
+            android/app/build/reports/**
+            android/**/build/tmp/kotlin-classes/**
+            android/**/build/*.log
 
       - name: Upload debug build diagnostics
         if: failure()
