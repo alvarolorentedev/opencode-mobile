@@ -37,6 +37,7 @@ export function useSpeechInput({
 }) {
   const [error, setError] = useState<string>();
   const [isListening, setIsListening] = useState(false);
+  const [isStarting, setIsStarting] = useState(false);
   const [supportsLocalRecognition] = useState(() => ExpoSpeechRecognitionModule.supportsOnDeviceRecognition());
   const [isAvailable] = useState(() => ExpoSpeechRecognitionModule.isRecognitionAvailable());
   const [level, setLevel] = useState(0);
@@ -72,47 +73,67 @@ export function useSpeechInput({
 
   const start = useCallback(async (options?: { continuous?: boolean }) => {
     setError(undefined);
+    setIsStarting(true);
 
     if (!isAvailable) {
       setError('Voice input is unavailable on this device.');
+      setIsStarting(false);
       return false;
     }
 
     if (preferOnDevice && !supportsLocalRecognition) {
       setError('On-device voice input is not available on this device yet.');
+      setIsStarting(false);
       return false;
     }
 
     const permissions = await ExpoSpeechRecognitionModule.requestPermissionsAsync();
     if (!permissions.granted) {
       setError('Microphone or speech recognition permission was denied.');
+      setIsStarting(false);
       return false;
     }
 
-    ExpoSpeechRecognitionModule.start({
-      addsPunctuation: true,
-      continuous: options?.continuous ?? Platform.OS !== 'ios',
-      interimResults: true,
-      iosTaskHint: 'dictation',
-      lang: locale || 'en-US',
-      requiresOnDeviceRecognition: preferOnDevice,
-      volumeChangeEventOptions: {
-        enabled: true,
-        intervalMillis: 120,
-      },
-    });
+    try {
+      ExpoSpeechRecognitionModule.start({
+        addsPunctuation: true,
+        continuous: options?.continuous ?? Platform.OS !== 'ios',
+        interimResults: true,
+        iosTaskHint: 'dictation',
+        lang: locale || 'en-US',
+        requiresOnDeviceRecognition: preferOnDevice,
+        volumeChangeEventOptions: {
+          enabled: true,
+          intervalMillis: 120,
+        },
+      });
 
-    return true;
+      return true;
+    } catch (error) {
+      setError(error instanceof Error ? error.message : 'Voice input failed to start.');
+      return false;
+    } finally {
+      setIsStarting(false);
+    }
   }, [isAvailable, locale, preferOnDevice, supportsLocalRecognition]);
 
   const stop = useCallback(() => {
-    ExpoSpeechRecognitionModule.stop();
+    try {
+      ExpoSpeechRecognitionModule.stop();
+    } catch {
+      // Ignore stop errors from transient native state.
+    }
   }, []);
 
   const abort = useCallback(() => {
-    ExpoSpeechRecognitionModule.abort();
-    setIsListening(false);
-    setLevel(0);
+    try {
+      ExpoSpeechRecognitionModule.abort();
+    } catch {
+      // Ignore abort errors from transient native state.
+    } finally {
+      setIsListening(false);
+      setLevel(0);
+    }
   }, []);
 
   return useMemo(
@@ -121,11 +142,12 @@ export function useSpeechInput({
       error,
       isAvailable,
       isListening,
+      isStarting,
       level,
       start,
       stop,
       supportsLocalRecognition,
     }),
-    [abort, error, isAvailable, isListening, level, start, stop, supportsLocalRecognition],
+    [abort, error, isAvailable, isListening, isStarting, level, start, stop, supportsLocalRecognition],
   );
 }
