@@ -14,7 +14,6 @@ jobs:
       EXPO_ANDROID_PACKAGE: ${{ vars.EXPO_ANDROID_PACKAGE }}
       # Pass extra gradle args to the build script so we can get better diagnostics on failure
       GRADLE_ARGS: --stacktrace --info
-      GRADLE_ARGS: --stacktrace --info
 
     steps:
       - name: Checkout repository
