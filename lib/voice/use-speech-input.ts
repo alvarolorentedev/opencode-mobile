@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useMemo, useRef, useState } from 'react';
 import { Platform } from 'react-native';
 import {
   ExpoSpeechRecognitionModule,
@@ -41,14 +41,29 @@ export function useSpeechInput({
   const [supportsLocalRecognition] = useState(() => ExpoSpeechRecognitionModule.supportsOnDeviceRecognition());
   const [isAvailable] = useState(() => ExpoSpeechRecognitionModule.isRecognitionAvailable());
   const [level, setLevel] = useState(0);
+  const ignoreErrorsUntilRef = useRef(0);
+
+  const shouldIgnoreError = useCallback((event: ExpoSpeechRecognitionErrorEvent) => {
+    if (event.error === 'aborted') {
+      return true;
+    }
+
+    if (event.error === 'client' && Date.now() < ignoreErrorsUntilRef.current) {
+      return true;
+    }
+
+    return false;
+  }, []);
 
   useSpeechRecognitionEvent('start', () => {
     setError(undefined);
+    setIsStarting(false);
     setIsListening(true);
   });
 
   useSpeechRecognitionEvent('end', () => {
     setIsListening(false);
+    setIsStarting(false);
     setLevel(0);
   });
 
@@ -58,10 +73,21 @@ export function useSpeechInput({
       return;
     }
 
+    if (event.isFinal) {
+      ignoreErrorsUntilRef.current = Date.now() + 1500;
+    }
+
     onResult(transcript, event.isFinal);
   });
 
   useSpeechRecognitionEvent('error', (event) => {
+    setIsStarting(false);
+    if (shouldIgnoreError(event)) {
+      setIsListening(false);
+      setLevel(0);
+      return;
+    }
+
     setError(toUserMessage(event));
     setIsListening(false);
     setLevel(0);
@@ -74,6 +100,7 @@ export function useSpeechInput({
   const start = useCallback(async (options?: { continuous?: boolean }) => {
     setError(undefined);
     setIsStarting(true);
+    ignoreErrorsUntilRef.current = 0;
 
     if (!isAvailable) {
       setError('Voice input is unavailable on this device.');
@@ -118,6 +145,7 @@ export function useSpeechInput({
   }, [isAvailable, locale, preferOnDevice, supportsLocalRecognition]);
 
   const stop = useCallback(() => {
+    ignoreErrorsUntilRef.current = Date.now() + 1500;
     try {
       ExpoSpeechRecognitionModule.stop();
     } catch {
@@ -126,6 +154,7 @@ export function useSpeechInput({
   }, []);
 
   const abort = useCallback(() => {
+    ignoreErrorsUntilRef.current = Date.now() + 1500;
     try {
       ExpoSpeechRecognitionModule.abort();
     } catch {

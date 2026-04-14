@@ -496,11 +496,13 @@ export function ChatView() {
   const [voiceFeedback, setVoiceFeedback] = useState<string | undefined>(undefined);
   const [conversationPhase, setConversationPhase] = useState<ConversationPhase>('off');
   const [queuedConversationPrompt, setQueuedConversationPrompt] = useState<string | undefined>(undefined);
+  const [pendingConversationTurn, setPendingConversationTurn] = useState<string | undefined>(undefined);
   const speechDraftPrefixRef = useRef('');
   const lastAutoSpokenMessageIdRef = useRef<string | undefined>(undefined);
   const conversationPhaseRef = useRef<ConversationPhase>('off');
   const assistantReplyBaselineIdRef = useRef<string | undefined>(undefined);
   const conversationResumeTimeoutRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  const conversationCancelRequestedRef = useRef(false);
 
   const status = currentSessionId ? sessionStatuses[currentSessionId] : undefined;
   const running = sendingState.active || (!!status && status.type !== 'idle');
@@ -579,7 +581,7 @@ export function ChatView() {
       if (conversationPhaseRef.current !== 'off') {
         setDraft(transcript);
         if (isFinal && transcript.trim()) {
-          setQueuedConversationPrompt(transcript.trim());
+          setPendingConversationTurn(transcript.trim());
           setConversationPhase('submitting');
         }
         return;
@@ -594,6 +596,10 @@ export function ChatView() {
       clearTimeout(conversationResumeTimeoutRef.current);
       conversationResumeTimeoutRef.current = undefined;
     }
+
+    conversationCancelRequestedRef.current = false;
+    setPendingConversationTurn(undefined);
+    setQueuedConversationPrompt(undefined);
 
     setDraft('');
     const started = await speechInput.start({ continuous: false });
@@ -688,6 +694,7 @@ export function ChatView() {
     if (conversationPhaseRef.current !== 'off') {
       setConversationPhase('off');
       setQueuedConversationPrompt(undefined);
+      setPendingConversationTurn(undefined);
     }
   }, [speechInput.error]);
 
@@ -733,6 +740,15 @@ export function ChatView() {
   }, [chatPreferences.autoPlayAssistantReplies, chatPreferences.speechLocale, chatPreferences.speechRate, chatPreferences.speechVoiceId, conversationActive, latestAssistantEntry, running]);
 
   useEffect(() => {
+    if (!conversationActive || conversationPhase !== 'submitting' || !pendingConversationTurn) {
+      return;
+    }
+
+    setQueuedConversationPrompt(pendingConversationTurn);
+    setPendingConversationTurn(undefined);
+  }, [conversationActive, conversationPhase, pendingConversationTurn]);
+
+  useEffect(() => {
     if (!conversationActive || !queuedConversationPrompt || conversationPhase !== 'submitting') {
       return;
     }
@@ -747,7 +763,14 @@ export function ChatView() {
           return;
         }
 
+        if (conversationCancelRequestedRef.current || conversationPhaseRef.current === 'off') {
+          setQueuedConversationPrompt(undefined);
+          setPendingConversationTurn(undefined);
+          return;
+        }
+
         setQueuedConversationPrompt(undefined);
+        setDraft('');
         setConversationPhase('waiting');
       } catch (error) {
         if (cancelled) {
@@ -756,6 +779,7 @@ export function ChatView() {
 
         const message = error instanceof Error ? error.message : 'Voice conversation failed while sending your message.';
         setQueuedConversationPrompt(undefined);
+        setPendingConversationTurn(undefined);
         setVoiceFeedback(message);
         setConversationPhase('off');
       }
@@ -833,8 +857,10 @@ export function ChatView() {
       return;
     }
 
+    conversationCancelRequestedRef.current = true;
     speechInput.abort();
     void stopSpeaking().catch(() => undefined);
+    setPendingConversationTurn(undefined);
     setConversationPhase('off');
     setQueuedConversationPrompt(undefined);
   }, [connection.status, conversationActive, speechInput]);
@@ -862,9 +888,12 @@ export function ChatView() {
         conversationResumeTimeoutRef.current = undefined;
       }
 
+      conversationCancelRequestedRef.current = true;
       speechInput.abort();
       await stopSpeaking().catch(() => undefined);
+      setPendingConversationTurn(undefined);
       setQueuedConversationPrompt(undefined);
+      setDraft('');
       setConversationPhase('off');
       setSpeakingMessageId(undefined);
       return;
@@ -888,6 +917,7 @@ export function ChatView() {
     speechInput.abort();
     await stopSpeaking().catch(() => undefined);
     setSpeakingMessageId(undefined);
+    setPendingConversationTurn(undefined);
     setQueuedConversationPrompt(undefined);
     assistantReplyBaselineIdRef.current = latestAssistantEntry?.id;
     lastAutoSpokenMessageIdRef.current = latestAssistantEntry?.id;
@@ -1039,8 +1069,12 @@ export function ChatView() {
           </TouchableRipple>
         </View>
         <View style={styles.headerActions}>
-          <Appbar.Action icon="refresh" onPress={() => void refreshCurrentSession()} />
           <Appbar.Action icon="plus" onPress={() => void handleNewSession()} disabled={isCreatingSession || connection.status !== 'connected'} />
+          <Appbar.Action
+            icon={conversationActive ? 'phone-hangup' : 'headset'}
+            onPress={() => void handleToggleConversationMode()}
+            disabled={connection.status !== 'connected' || isCreatingSession}
+          />
         </View>
       </Appbar.Header>
       <Portal>
@@ -1314,12 +1348,6 @@ export function ChatView() {
               void setAutoApprove(!chatPreferences.autoApprove).finally(() => setIsUpdatingAutoApprove(false));
             }}>
             {chatPreferences.autoApprove ? 'Auto approve enabled' : 'Ask permission'}
-          </ControlButton>
-          <ControlButton
-            active={conversationActive}
-            iconName={conversationActive ? 'phone-hangup' : 'headset'}
-            onPress={() => void handleToggleConversationMode()}>
-            {conversationActive ? 'End conversation' : 'Conversation'}
           </ControlButton>
           <ControlButton iconName="paperclip" iconOnly onPress={() => void handleAttach()}>
             Files
