@@ -101,6 +101,12 @@ export type ChatPreferences = {
   providerModelSelections: Record<string, string>;
   reasoning: ReasoningLevel;
   autoApprove: boolean;
+  autoPlayAssistantReplies: boolean;
+  preferOnDeviceRecognition: boolean;
+  resumeListeningAfterReply: boolean;
+  speechLocale?: string;
+  speechRate: number;
+  speechVoiceId?: string;
 };
 
 const defaultChatPreferences: ChatPreferences = {
@@ -109,6 +115,10 @@ const defaultChatPreferences: ChatPreferences = {
   providerModelSelections: {},
   reasoning: 'default',
   autoApprove: false,
+  autoPlayAssistantReplies: false,
+  preferOnDeviceRecognition: true,
+  resumeListeningAfterReply: true,
+  speechRate: 1,
 };
 
 export type OpencodeProject = {

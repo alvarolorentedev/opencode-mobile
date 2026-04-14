@@ -1,7 +1,7 @@
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import * as Clipboard from 'expo-clipboard';
 import * as Haptics from 'expo-haptics';
-import { useEffect, useMemo, useRef, useState, type ComponentProps, type ReactNode } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type ComponentProps, type ReactNode } from 'react';
 import {
   KeyboardAvoidingView,
   Platform,
@@ -10,7 +10,7 @@ import {
   StyleSheet,
   View,
 } from 'react-native';
-import type { FileDiff, Todo } from '@/lib/opencode/types';
+import type { FileDiff } from '@/lib/opencode/types';
 import {
   ActivityIndicator,
   Appbar,
@@ -39,6 +39,8 @@ import {
   type TranscriptDetail,
   type TranscriptEntry,
 } from '@/lib/opencode/format';
+import { speakText, stopSpeaking } from '@/lib/voice/speech-output';
+import { useSpeechInput } from '@/lib/voice/use-speech-input';
 import { renderProviderIcon } from '@/components/ui/provider-icon';
 import {
   type ModelOption,
@@ -59,6 +61,8 @@ const REASONING_OPTIONS: { id: ReasoningLevel; label: string }[] = [
 ];
 
 const TRANSCRIPT_PAGE_SIZE = 20;
+
+type ConversationPhase = 'off' | 'listening' | 'submitting' | 'waiting' | 'speaking';
 
 function getModelLabel(models: ModelOption[], modelId?: string) {
   const match = models.find((model) => model.id === modelId);
@@ -253,18 +257,6 @@ function getPermissionTitle(request: PendingPermissionRequest) {
     .filter(Boolean)
     .map((part: string) => part.charAt(0).toUpperCase() + part.slice(1))
     .join(' ');
-}
-
-function getTodoTone(priority: string, palette: (typeof Colors)['light']) {
-  if (priority === 'high') {
-    return palette.warning;
-  }
-
-  if (priority === 'low') {
-    return palette.muted;
-  }
-
-  return palette.tint;
 }
 
 function summarizeDetails(details: TranscriptDetail[]) {
@@ -500,9 +492,19 @@ export function ChatView() {
   const [visibleTranscriptCount, setVisibleTranscriptCount] = useState(TRANSCRIPT_PAGE_SIZE);
   const [expandedDiffId, setExpandedDiffId] = useState<string | undefined>();
   const [copiedMessageId, setCopiedMessageId] = useState<string | undefined>();
+  const [speakingMessageId, setSpeakingMessageId] = useState<string | undefined>(undefined);
+  const [voiceFeedback, setVoiceFeedback] = useState<string | undefined>(undefined);
+  const [conversationPhase, setConversationPhase] = useState<ConversationPhase>('off');
+  const [queuedConversationPrompt, setQueuedConversationPrompt] = useState<string | undefined>(undefined);
+  const speechDraftPrefixRef = useRef('');
+  const lastAutoSpokenMessageIdRef = useRef<string | undefined>(undefined);
+  const conversationPhaseRef = useRef<ConversationPhase>('off');
+  const assistantReplyBaselineIdRef = useRef<string | undefined>(undefined);
+  const conversationResumeTimeoutRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
   const status = currentSessionId ? sessionStatuses[currentSessionId] : undefined;
   const running = sendingState.active || (!!status && status.type !== 'idle');
+  const conversationActive = conversationPhase !== 'off';
   const hasDraftInput = !!draft.trim() || attachments.length > 0;
   const showSendAction = !running || hasDraftInput;
   const visibleModels = useMemo(() => {
@@ -553,6 +555,85 @@ export function ChatView() {
     () => sessions.filter((session) => !session?.time?.archived),
     [sessions],
   );
+  const latestAssistantEntry = useMemo(
+    () => [...displayTranscript].reverse().find((entry) => entry.role === 'assistant' && entry.text.trim()),
+    [displayTranscript],
+  );
+  const conversationStatusLabel = useMemo(() => {
+    switch (conversationPhase) {
+      case 'listening':
+        return 'Listening';
+      case 'submitting':
+        return 'Sending';
+      case 'waiting':
+        return currentActivityLabel || 'Thinking';
+      case 'speaking':
+        return 'Speaking';
+      default:
+        return undefined;
+    }
+  }, [conversationPhase, currentActivityLabel]);
+  const speechInput = useSpeechInput({
+    locale: chatPreferences.speechLocale,
+    onResult: (transcript, isFinal) => {
+      if (conversationPhaseRef.current !== 'off') {
+        setDraft(transcript);
+        if (isFinal && transcript.trim()) {
+          setQueuedConversationPrompt(transcript.trim());
+          setConversationPhase('submitting');
+        }
+        return;
+      }
+
+      setDraft(`${speechDraftPrefixRef.current}${transcript}`);
+    },
+    preferOnDevice: chatPreferences.preferOnDeviceRecognition,
+  });
+  const startConversationListening = useCallback(async () => {
+    if (conversationResumeTimeoutRef.current) {
+      clearTimeout(conversationResumeTimeoutRef.current);
+      conversationResumeTimeoutRef.current = undefined;
+    }
+
+    setDraft('');
+    const started = await speechInput.start({ continuous: false });
+    if (!started) {
+      setConversationPhase('off');
+      return false;
+    }
+
+    setConversationPhase('listening');
+    return true;
+  }, [speechInput]);
+  const handleSendPrompt = useCallback(async (promptOverride?: string) => {
+    const nextDraft = promptOverride ?? draft;
+    const nextAttachments = attachments;
+    const prompt = nextDraft.trim();
+    if ((!prompt && nextAttachments.length === 0) || connection.status !== 'connected') {
+      return;
+    }
+
+    try {
+      const sessionId = currentSessionId || (await ensureActiveSession());
+      if (!sessionId) {
+        return;
+      }
+
+      setDraft('');
+      setAttachments([]);
+
+      const sent = await sendPrompt(sessionId, prompt, nextAttachments);
+      if (!sent) {
+        setDraft(nextDraft);
+        setAttachments(nextAttachments);
+        return;
+      }
+    } catch (error) {
+      setDraft(nextDraft);
+      setAttachments(nextAttachments);
+      throw error;
+    }
+  }, [attachments, connection.status, currentSessionId, draft, ensureActiveSession, sendPrompt]);
 
   useEffect(() => {
     setVisibleTranscriptCount(TRANSCRIPT_PAGE_SIZE);
@@ -598,6 +679,166 @@ export function ChatView() {
     return () => clearTimeout(timer);
   }, [copiedMessageId]);
 
+  useEffect(() => {
+    if (!speechInput.error) {
+      return;
+    }
+
+    setVoiceFeedback(speechInput.error);
+    if (conversationPhaseRef.current !== 'off') {
+      setConversationPhase('off');
+      setQueuedConversationPrompt(undefined);
+    }
+  }, [speechInput.error]);
+
+  useEffect(() => {
+    conversationPhaseRef.current = conversationPhase;
+  }, [conversationPhase]);
+
+  useEffect(
+    () => () => {
+      if (conversationResumeTimeoutRef.current) {
+        clearTimeout(conversationResumeTimeoutRef.current);
+      }
+      void stopSpeaking().catch(() => undefined);
+    },
+    [],
+  );
+
+  useEffect(() => {
+    if (running || conversationActive || !chatPreferences.autoPlayAssistantReplies) {
+      return;
+    }
+
+    if (!latestAssistantEntry || latestAssistantEntry.id === lastAutoSpokenMessageIdRef.current) {
+      return;
+    }
+
+    const started = speakText({
+      language: chatPreferences.speechLocale,
+      onDone: () => setSpeakingMessageId((current) => (current === latestAssistantEntry.id ? undefined : current)),
+      onError: () => {
+        setVoiceFeedback('Unable to play this assistant reply.');
+        setSpeakingMessageId(undefined);
+      },
+      onStart: () => setSpeakingMessageId(latestAssistantEntry.id),
+      rate: chatPreferences.speechRate,
+      text: latestAssistantEntry.text,
+      voice: chatPreferences.speechVoiceId,
+    });
+
+    if (started) {
+      lastAutoSpokenMessageIdRef.current = latestAssistantEntry.id;
+    }
+  }, [chatPreferences.autoPlayAssistantReplies, chatPreferences.speechLocale, chatPreferences.speechRate, chatPreferences.speechVoiceId, conversationActive, latestAssistantEntry, running]);
+
+  useEffect(() => {
+    if (!conversationActive || !queuedConversationPrompt || conversationPhase !== 'submitting') {
+      return;
+    }
+
+    let cancelled = false;
+
+    const submitPrompt = async () => {
+      try {
+        assistantReplyBaselineIdRef.current = latestAssistantEntry?.id;
+        await handleSendPrompt(queuedConversationPrompt);
+        if (cancelled) {
+          return;
+        }
+
+        setQueuedConversationPrompt(undefined);
+        setConversationPhase('waiting');
+      } catch (error) {
+        if (cancelled) {
+          return;
+        }
+
+        const message = error instanceof Error ? error.message : 'Voice conversation failed while sending your message.';
+        setQueuedConversationPrompt(undefined);
+        setVoiceFeedback(message);
+        setConversationPhase('off');
+      }
+    };
+
+    void submitPrompt();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [conversationActive, conversationPhase, handleSendPrompt, latestAssistantEntry, queuedConversationPrompt]);
+
+  useEffect(() => {
+    if (!conversationActive || conversationPhase !== 'waiting' || running) {
+      return;
+    }
+
+    if (pendingInteractions > 0) {
+      setVoiceFeedback('Conversation mode paused because the assistant needs your input on screen.');
+      setConversationPhase('off');
+      return;
+    }
+
+    if (latestAssistantEntry && latestAssistantEntry.id !== assistantReplyBaselineIdRef.current) {
+      const started = speakText({
+        language: chatPreferences.speechLocale,
+        onDone: () => {
+          setSpeakingMessageId((current) => (current === latestAssistantEntry.id ? undefined : current));
+          if (conversationPhaseRef.current !== 'off' && chatPreferences.resumeListeningAfterReply) {
+            void startConversationListening();
+          } else {
+            setConversationPhase('off');
+          }
+        },
+        onError: () => {
+          setVoiceFeedback('Unable to play this assistant reply.');
+          setSpeakingMessageId(undefined);
+          setConversationPhase('off');
+        },
+        onStart: () => {
+          lastAutoSpokenMessageIdRef.current = latestAssistantEntry.id;
+          setSpeakingMessageId(latestAssistantEntry.id);
+          setConversationPhase('speaking');
+        },
+        rate: chatPreferences.speechRate,
+        text: latestAssistantEntry.text,
+        voice: chatPreferences.speechVoiceId,
+      });
+
+      if (!started) {
+        if (chatPreferences.resumeListeningAfterReply) {
+          void startConversationListening();
+        } else {
+          setConversationPhase('off');
+        }
+      }
+      return;
+    }
+
+    conversationResumeTimeoutRef.current = setTimeout(() => {
+      if (conversationPhaseRef.current === 'waiting' && !running) {
+        void startConversationListening();
+      }
+    }, 1200);
+
+    return () => {
+      if (conversationResumeTimeoutRef.current) {
+        clearTimeout(conversationResumeTimeoutRef.current);
+      }
+    };
+  }, [chatPreferences.resumeListeningAfterReply, chatPreferences.speechLocale, chatPreferences.speechRate, chatPreferences.speechVoiceId, conversationActive, conversationPhase, latestAssistantEntry, pendingInteractions, running, startConversationListening]);
+
+  useEffect(() => {
+    if (!conversationActive || connection.status === 'connected') {
+      return;
+    }
+
+    speechInput.abort();
+    void stopSpeaking().catch(() => undefined);
+    setConversationPhase('off');
+    setQueuedConversationPrompt(undefined);
+  }, [connection.status, conversationActive, speechInput]);
+
   async function handleCopyMessage(entry: TranscriptEntry) {
     const value = [entry.text.trim(), entry.error?.trim()].filter(Boolean).join('\n\n');
     if (!value) {
@@ -614,33 +855,109 @@ export function ChatView() {
     setVisibleTranscriptCount((current) => current + TRANSCRIPT_PAGE_SIZE);
   }
 
-  async function handleSendPrompt(promptOverride?: string) {
-    const nextDraft = promptOverride ?? draft;
-    const nextAttachments = attachments;
-    const prompt = nextDraft.trim();
-    if ((!prompt && nextAttachments.length === 0) || connection.status !== 'connected') {
+  async function handleToggleConversationMode() {
+    if (conversationActive) {
+      if (conversationResumeTimeoutRef.current) {
+        clearTimeout(conversationResumeTimeoutRef.current);
+        conversationResumeTimeoutRef.current = undefined;
+      }
+
+      speechInput.abort();
+      await stopSpeaking().catch(() => undefined);
+      setQueuedConversationPrompt(undefined);
+      setConversationPhase('off');
+      setSpeakingMessageId(undefined);
       return;
     }
 
-    try {
-      const sessionId = currentSessionId || (await ensureActiveSession());
-      if (!sessionId) {
-        return;
-      }
+    if (connection.status !== 'connected') {
+      setVoiceFeedback('Connect to OpenCode before starting a voice conversation.');
+      return;
+    }
 
-      setDraft('');
-      setAttachments([]);
+    if (running) {
+      setVoiceFeedback('Wait for the current reply to finish before starting conversation mode.');
+      return;
+    }
 
-      const sent = await sendPrompt(sessionId, prompt, nextAttachments);
-      if (!sent) {
-        setDraft(nextDraft);
-        setAttachments(nextAttachments);
-        return;
+    if (pendingInteractions > 0) {
+      setVoiceFeedback('Answer the current on-screen questions before starting conversation mode.');
+      return;
+    }
+
+    speechInput.abort();
+    await stopSpeaking().catch(() => undefined);
+    setSpeakingMessageId(undefined);
+    setQueuedConversationPrompt(undefined);
+    assistantReplyBaselineIdRef.current = latestAssistantEntry?.id;
+    lastAutoSpokenMessageIdRef.current = latestAssistantEntry?.id;
+    const started = await startConversationListening();
+    if (started) {
+      void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => undefined);
+    }
+  }
+
+  async function handleToggleRecording() {
+    if (conversationActive) {
+      return;
+    }
+
+    if (speechInput.isListening) {
+      speechInput.stop();
+      return;
+    }
+
+    speechDraftPrefixRef.current = draft.trim() ? `${draft.trim()} ` : '';
+    const started = await speechInput.start();
+    if (!started) {
+      return;
+    }
+
+    void Haptics.selectionAsync().catch(() => undefined);
+  }
+
+  async function handleSpeakEntry(entry: TranscriptEntry) {
+    if (speakingMessageId === entry.id) {
+      await stopSpeaking().catch(() => undefined);
+      setSpeakingMessageId(undefined);
+      if (conversationActive && chatPreferences.resumeListeningAfterReply) {
+        void startConversationListening();
       }
-    } catch (error) {
-      setDraft(nextDraft);
-      setAttachments(nextAttachments);
-      throw error;
+      return;
+    }
+
+    if (conversationActive) {
+      speechInput.abort();
+    }
+
+    const started = speakText({
+      language: chatPreferences.speechLocale,
+      onDone: () => {
+        setSpeakingMessageId((current) => (current === entry.id ? undefined : current));
+        if (conversationActive && chatPreferences.resumeListeningAfterReply) {
+          void startConversationListening();
+        }
+      },
+      onError: () => {
+        setVoiceFeedback('Unable to play this assistant reply.');
+        setSpeakingMessageId(undefined);
+        if (conversationActive) {
+          setConversationPhase('off');
+        }
+      },
+      onStart: () => {
+        setSpeakingMessageId(entry.id);
+        if (conversationActive) {
+          setConversationPhase('speaking');
+        }
+      },
+      rate: chatPreferences.speechRate,
+      text: entry.text,
+      voice: chatPreferences.speechVoiceId,
+    });
+
+    if (!started) {
+      setVoiceFeedback('There is no readable text in this assistant reply.');
     }
   }
 
@@ -841,9 +1158,12 @@ export function ChatView() {
           ? visibleTranscript.map((entry) => (
               <TranscriptMessage
                 key={entry.id}
+                canSpeak={entry.role === 'assistant' && Boolean(entry.text.trim())}
                 copied={copiedMessageId === entry.id}
                 entry={entry}
                 onCopy={() => void handleCopyMessage(entry)}
+                onToggleSpeak={() => void handleSpeakEntry(entry)}
+                speaking={speakingMessageId === entry.id}
               />
             ))
           : null}
@@ -995,10 +1315,32 @@ export function ChatView() {
             }}>
             {chatPreferences.autoApprove ? 'Auto approve enabled' : 'Ask permission'}
           </ControlButton>
+          <ControlButton
+            active={conversationActive}
+            iconName={conversationActive ? 'phone-hangup' : 'headset'}
+            onPress={() => void handleToggleConversationMode()}>
+            {conversationActive ? 'End conversation' : 'Conversation'}
+          </ControlButton>
           <ControlButton iconName="paperclip" iconOnly onPress={() => void handleAttach()}>
             Files
           </ControlButton>
         </View>
+
+        {conversationActive ? (
+          <View style={[styles.conversationBanner, { backgroundColor: `${palette.tint}10`, borderColor: `${palette.tint}28` }]}>
+            <View style={styles.conversationBannerHeader}>
+              <Text variant="labelLarge" style={{ color: palette.text }}>
+                Conversation mode
+              </Text>
+              <Chip compact icon={conversationPhase === 'speaking' ? 'volume-high' : 'microphone'}>
+                {conversationStatusLabel || 'Active'}
+              </Chip>
+            </View>
+            <Text variant="bodySmall" style={{ color: palette.muted }}>
+              Keep talking naturally. The app listens, sends your turn, reads the reply, and then listens again.
+            </Text>
+          </View>
+        ) : null}
 
         {attachments.length > 0 ? (
           <View style={styles.attachmentRow}>
@@ -1015,12 +1357,21 @@ export function ChatView() {
           </View>
         ) : null}
 
+        {speechInput.isListening ? (
+          <View style={styles.voiceStatusRow}>
+            <Chip compact icon="microphone" style={[styles.voiceStatusChip, { backgroundColor: `${palette.tint}14` }]}> 
+              {conversationActive ? 'Conversation' : 'Listening'} {speechInput.level > 0 ? `(${Math.min(10, Math.round(speechInput.level))})` : ''}
+            </Chip>
+          </View>
+        ) : null}
+
         <View style={[styles.inputShell, { borderColor: palette.border, backgroundColor: palette.background }]}> 
           <View style={styles.composerRow}>
             <TextInput
               mode="flat"
               value={draft}
               onChangeText={setDraft}
+              editable={!speechInput.isListening}
               multiline
               placeholder="Ask anything..."
               placeholderTextColor={palette.muted}
@@ -1031,6 +1382,17 @@ export function ChatView() {
             />
 
             <IconButton
+              icon={speechInput.isListening ? 'microphone-off' : 'microphone'}
+              size={20}
+              selected={speechInput.isListening}
+              style={styles.composerVoiceButton}
+              disabled={conversationActive || connection.status !== 'connected' || (!speechInput.isListening && !speechInput.isAvailable)}
+              onPress={() => {
+                void handleToggleRecording();
+              }}
+            />
+
+            <IconButton
               mode="contained"
               icon={showSendAction ? 'send' : 'stop'}
               size={20}
@@ -1038,7 +1400,7 @@ export function ChatView() {
               loading={isStoppingSession}
               disabled={
                 showSendAction
-                  ? ((!draft.trim() && attachments.length === 0) || connection.status !== 'connected' || isCreatingSession)
+                  ? ((!draft.trim() && attachments.length === 0) || connection.status !== 'connected' || isCreatingSession || speechInput.isListening)
                   : !currentSessionId || isStoppingSession
               }
               onPress={() => {
@@ -1059,6 +1421,12 @@ export function ChatView() {
         onDismiss={() => setCopiedMessageId(undefined)}
         duration={1800}>
         Message copied to clipboard
+      </Snackbar>
+      <Snackbar
+        visible={Boolean(voiceFeedback)}
+        onDismiss={() => setVoiceFeedback(undefined)}
+        duration={3200}>
+        {voiceFeedback}
       </Snackbar>
     </KeyboardAvoidingView>
   );
@@ -1318,7 +1686,21 @@ function DiffCard({ detail, accordionId, expanded }: { detail: Extract<Transcrip
   );
 }
 
-function TranscriptMessage({ copied = false, entry, onCopy }: { copied?: boolean; entry: TranscriptEntry; onCopy: () => void }) {
+function TranscriptMessage({
+  canSpeak = false,
+  copied = false,
+  entry,
+  onCopy,
+  onToggleSpeak,
+  speaking = false,
+}: {
+  canSpeak?: boolean;
+  copied?: boolean;
+  entry: TranscriptEntry;
+  onCopy: () => void;
+  onToggleSpeak: () => void;
+  speaking?: boolean;
+}) {
   const colorScheme = useColorScheme() ?? 'light';
   const palette = Colors[colorScheme];
   const isUser = entry.role === 'user';
@@ -1342,10 +1724,19 @@ function TranscriptMessage({ copied = false, entry, onCopy }: { copied?: boolean
             <Text variant="labelMedium" style={{ color: isUser ? palette.onBubbleUser : palette.muted }}>{isUser ? 'You' : 'OpenCode'}</Text>
             <View style={styles.messageMetaRight}>
               {copied ? (
-                <View style={[styles.copiedPill, { backgroundColor: isUser ? `${palette.onBubbleUser}20` : `${palette.tint}18` }]}>
+                <View style={[styles.copiedPill, { backgroundColor: isUser ? `${palette.onBubbleUser}20` : `${palette.tint}18` }]}> 
                   <MaterialCommunityIcons name="check" size={12} color={isUser ? palette.onBubbleUser : palette.tint} />
                   <Text variant="labelSmall" style={{ color: isUser ? palette.onBubbleUser : palette.tint }}>Copied</Text>
                 </View>
+              ) : null}
+              {canSpeak ? (
+                <IconButton
+                  icon={speaking ? 'stop' : 'volume-high'}
+                  size={16}
+                  style={styles.messageActionButton}
+                  iconColor={palette.muted}
+                  onPress={onToggleSpeak}
+                />
               ) : null}
               <Text variant="labelSmall" style={{ color: isUser ? palette.onBubbleUser : palette.muted, opacity: isUser ? 0.82 : 1 }}>
                 {formatTimestamp(entry.createdAt)}
@@ -1592,6 +1983,11 @@ const styles = StyleSheet.create({
   },
   attachmentRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, paddingHorizontal: 2 },
   attachmentChip: { alignSelf: 'flex-start' },
+  conversationBanner: { borderWidth: 1, borderRadius: 18, paddingHorizontal: 14, paddingVertical: 12, gap: 8 },
+  conversationBannerHeader: { flexDirection: 'row', justifyContent: 'space-between', gap: 12, alignItems: 'center' },
+  voiceStatusRow: { paddingHorizontal: 2 },
+  voiceStatusChip: { alignSelf: 'flex-start' },
+  composerVoiceButton: { margin: 0 },
   composerActionButton: { margin: 0 },
   messageRow: { alignItems: 'stretch' },
   messageRowUser: { alignItems: 'flex-end' },
@@ -1602,6 +1998,7 @@ const styles = StyleSheet.create({
   messageBubbleAssistant: { width: '100%' },
   messageMeta: { flexDirection: 'row', justifyContent: 'space-between', gap: 12, alignItems: 'center' },
   messageMetaRight: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  messageActionButton: { margin: -6 },
   copiedPill: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 8, paddingVertical: 4, borderRadius: 999 },
   markdownStack: { gap: 10 },
   markdownBulletRow: { flexDirection: 'row', gap: 10, alignItems: 'flex-start' },

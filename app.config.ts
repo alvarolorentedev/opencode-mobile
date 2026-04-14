@@ -39,6 +39,14 @@ const config: ExpoConfig = {
     'expo-notifications',
     'expo-background-task',
     [
+      'expo-speech-recognition',
+      {
+        microphonePermission: 'Allow $(PRODUCT_NAME) to access the microphone for voice input.',
+        speechRecognitionPermission: 'Allow $(PRODUCT_NAME) to convert speech to text on your device.',
+        androidSpeechServicePackages: ['com.google.android.googlequicksearchbox', 'com.google.android.as'],
+      },
+    ],
+    [
       'expo-splash-screen',
       {
         image: './assets/images/splash-icon.png',

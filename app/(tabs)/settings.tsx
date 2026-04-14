@@ -16,6 +16,7 @@ import {
   Portal,
   RadioButton,
   Snackbar,
+  Switch,
   Text,
   TextInput,
 } from 'react-native-paper';
@@ -29,6 +30,7 @@ import {
   type NotificationDebugStatus,
 } from '@/lib/notifications';
 import { formatTimestamp } from '@/lib/opencode/format';
+import { getSpeechVoiceOptions, type SpeechVoiceOption } from '@/lib/voice/speech-output';
 import { useOpencode } from '@/providers/opencode-provider';
 
 const KNOWN_PROVIDER_COPY: Record<string, { label: string; description: string }> = {
@@ -118,6 +120,9 @@ export default function SettingsScreen() {
   const [notificationStatus, setNotificationStatus] = useState<NotificationDebugStatus>();
   const [isRefreshingNotificationStatus, setIsRefreshingNotificationStatus] = useState(false);
   const [notificationFeedback, setNotificationFeedback] = useState<string>();
+  const [availableSpeechVoices, setAvailableSpeechVoices] = useState<SpeechVoiceOption[]>([]);
+  const [isRefreshingSpeechVoices, setIsRefreshingSpeechVoices] = useState(false);
+  const [speechVoiceMenuVisible, setSpeechVoiceMenuVisible] = useState(false);
   const applicationId = useMemo(
     () => Constants.expoConfig?.android?.package || Constants.expoConfig?.ios?.bundleIdentifier,
     [],
@@ -212,6 +217,17 @@ export default function SettingsScreen() {
     }
   }
 
+  async function refreshSpeechVoices() {
+    setIsRefreshingSpeechVoices(true);
+    try {
+      setAvailableSpeechVoices(await getSpeechVoiceOptions());
+    } catch {
+      setAvailableSpeechVoices([]);
+    } finally {
+      setIsRefreshingSpeechVoices(false);
+    }
+  }
+
   async function handleEnableNotifications() {
     const permissions = await ensureNotificationPermissionsAsync();
     await refreshNotificationStatus();
@@ -273,9 +289,14 @@ export default function SettingsScreen() {
 
   useEffect(() => {
     void refreshNotificationStatus();
+    void refreshSpeechVoices();
   }, []);
 
   const notificationsEnabled = Boolean(notificationStatus?.permissionGranted);
+  const selectedSpeechVoiceLabel = useMemo(
+    () => availableSpeechVoices.find((voice) => voice.id === chatPreferences.speechVoiceId)?.label || 'System default',
+    [availableSpeechVoices, chatPreferences.speechVoiceId],
+  );
   const notificationStatusLabel = !notificationStatus
     ? 'Checking'
     : notificationsEnabled
@@ -597,6 +618,107 @@ export default function SettingsScreen() {
           <Button mode="text" loading={isRefreshingNotificationStatus} onPress={() => void refreshNotificationStatus()}>
             Refresh status
           </Button>
+        </Card.Content>
+      </Card>
+
+      <Card mode="contained" style={[styles.card, { backgroundColor: palette.surface }]}> 
+        <Card.Content style={styles.section}>
+          <Text variant="titleLarge" style={[styles.title, { color: palette.text }]}>Voice</Text>
+          <List.Section style={styles.infoListSection}>
+            <List.Item
+              title="On-device voice input"
+              description="Prefer local speech recognition and avoid cloud fallback when possible."
+              titleStyle={{ color: palette.text }}
+              descriptionStyle={{ color: palette.muted }}
+              right={() => (
+                <Switch
+                  value={chatPreferences.preferOnDeviceRecognition}
+                  onValueChange={(value) => updateChatPreferences({ preferOnDeviceRecognition: value })}
+                />
+              )}
+            />
+            <List.Item
+              title="Auto-play assistant replies"
+              description="Read the latest assistant response aloud when it finishes."
+              titleStyle={{ color: palette.text }}
+              descriptionStyle={{ color: palette.muted }}
+              right={() => (
+                <Switch
+                  value={chatPreferences.autoPlayAssistantReplies}
+                  onValueChange={(value) => updateChatPreferences({ autoPlayAssistantReplies: value })}
+                />
+              )}
+            />
+            <List.Item
+              title="Resume listening after reply"
+              description="In conversation mode, start listening again after spoken playback ends."
+              titleStyle={{ color: palette.text }}
+              descriptionStyle={{ color: palette.muted }}
+              right={() => (
+                <Switch
+                  value={chatPreferences.resumeListeningAfterReply}
+                  onValueChange={(value) => updateChatPreferences({ resumeListeningAfterReply: value })}
+                />
+              )}
+            />
+          </List.Section>
+          <TextInput
+            mode="outlined"
+            label="Speech locale"
+            placeholder="en-US"
+            value={chatPreferences.speechLocale || ''}
+            autoCapitalize="none"
+            autoCorrect={false}
+            onChangeText={(value) => updateChatPreferences({ speechLocale: value.trim() || undefined })}
+          />
+          <HelperText type="info">Leave empty to use the system default language for voice input and playback.</HelperText>
+          <TextInput
+            mode="outlined"
+            label="Speech rate"
+            placeholder="1.0"
+            value={String(chatPreferences.speechRate)}
+            keyboardType="decimal-pad"
+            onChangeText={(value) => {
+              const normalized = value.replace(',', '.').trim();
+              const parsed = Number(normalized);
+              if (!normalized) {
+                updateChatPreferences({ speechRate: 1 });
+                return;
+              }
+              if (!Number.isFinite(parsed)) {
+                return;
+              }
+              updateChatPreferences({ speechRate: Math.min(1.5, Math.max(0.5, parsed)) });
+            }}
+          />
+          <HelperText type="info">Use a value between 0.5 and 1.5. `1` is the normal reading speed.</HelperText>
+          <Menu
+            visible={speechVoiceMenuVisible}
+            onDismiss={() => setSpeechVoiceMenuVisible(false)}
+            anchor={
+              <Button mode="outlined" onPress={() => setSpeechVoiceMenuVisible(true)} loading={isRefreshingSpeechVoices}>
+                Voice: {selectedSpeechVoiceLabel}
+              </Button>
+            }>
+            <Menu.Item
+              title="System default"
+              onPress={() => {
+                updateChatPreferences({ speechVoiceId: undefined });
+                setSpeechVoiceMenuVisible(false);
+              }}
+            />
+            {availableSpeechVoices.map((voice) => (
+              <Menu.Item
+                key={voice.id}
+                title={voice.label}
+                onPress={() => {
+                  updateChatPreferences({ speechVoiceId: voice.id, speechLocale: chatPreferences.speechLocale || voice.language });
+                  setSpeechVoiceMenuVisible(false);
+                }}
+              />
+            ))}
+          </Menu>
+          <HelperText type="info">On iPhone, text-to-speech may stay silent when the hardware mute switch is on.</HelperText>
         </Card.Content>
       </Card>
 
