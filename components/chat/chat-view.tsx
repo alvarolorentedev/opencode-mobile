@@ -62,8 +62,6 @@ const REASONING_OPTIONS: { id: ReasoningLevel; label: string }[] = [
 
 const TRANSCRIPT_PAGE_SIZE = 20;
 
-type ConversationPhase = 'off' | 'listening' | 'submitting' | 'waiting' | 'speaking';
-
 function getModelLabel(models: ModelOption[], modelId?: string) {
   const match = models.find((model) => model.id === modelId);
   return match ? match.label : 'Select model';
@@ -460,6 +458,8 @@ export function ChatView() {
     connection,
     configuredProviders,
     createSession,
+    conversation,
+    clearConversationFeedback,
     currentDiffs,
     currentPendingPermissions,
     currentPendingQuestions,
@@ -478,6 +478,7 @@ export function ChatView() {
     sessionStatuses,
     sessions,
     setAutoApprove,
+    toggleConversationMode,
     updateChatPreferences,
     abortSession,
   } = useOpencode();
@@ -494,21 +495,14 @@ export function ChatView() {
   const [copiedMessageId, setCopiedMessageId] = useState<string | undefined>();
   const [speakingMessageId, setSpeakingMessageId] = useState<string | undefined>(undefined);
   const [voiceFeedback, setVoiceFeedback] = useState<string | undefined>(undefined);
-  const [conversationPhase, setConversationPhase] = useState<ConversationPhase>('off');
-  const [queuedConversationPrompt, setQueuedConversationPrompt] = useState<string | undefined>(undefined);
-  const [pendingConversationTurn, setPendingConversationTurn] = useState<string | undefined>(undefined);
   const speechDraftPrefixRef = useRef('');
   const draftRef = useRef('');
   const attachmentsRef = useRef<{ uri: string; mime?: string; filename?: string }[]>([]);
   const lastAutoSpokenMessageIdRef = useRef<string | undefined>(undefined);
-  const conversationPhaseRef = useRef<ConversationPhase>('off');
-  const assistantReplyBaselineIdRef = useRef<string | undefined>(undefined);
-  const conversationResumeTimeoutRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
-  const conversationCancelRequestedRef = useRef(false);
 
   const status = currentSessionId ? sessionStatuses[currentSessionId] : undefined;
   const running = sendingState.active || (!!status && status.type !== 'idle');
-  const conversationActive = conversationPhase !== 'off';
+  const conversationActive = conversation.active;
   const hasDraftInput = !!draft.trim() || attachments.length > 0;
   const showSendAction = !running || hasDraftInput;
   const visibleModels = useMemo(() => {
@@ -572,38 +566,14 @@ export function ChatView() {
     () => [...displayTranscript].reverse().find((entry) => entry.role === 'assistant' && entry.text.trim()),
     [displayTranscript],
   );
-  const conversationStatusLabel = useMemo(() => {
-    switch (conversationPhase) {
-      case 'listening':
-        return 'Listening';
-      case 'submitting':
-        return 'Sending';
-      case 'waiting':
-        return currentActivityLabel || 'Thinking';
-      case 'speaking':
-        return 'Speaking';
-      default:
-        return undefined;
-    }
-  }, [conversationPhase, currentActivityLabel]);
   const speechInput = useSpeechInput({
     locale: chatPreferences.speechLocale,
     onResult: (transcript, isFinal) => {
-      if (conversationPhaseRef.current !== 'off') {
-        setDraft(transcript);
-        if (isFinal && transcript.trim()) {
-          setPendingConversationTurn(transcript.trim());
-          setConversationPhase('submitting');
-        }
-        return;
-      }
-
       setDraft(`${speechDraftPrefixRef.current}${transcript}`);
     },
     preferOnDevice: chatPreferences.preferOnDeviceRecognition,
   });
   const {
-    abort: abortSpeechInput,
     error: speechInputError,
     isAvailable: isSpeechInputAvailable,
     isListening: isSpeechInputListening,
@@ -611,26 +581,6 @@ export function ChatView() {
     start: startSpeechInput,
     stop: stopSpeechInput,
   } = speechInput;
-  const startConversationListening = useCallback(async () => {
-    if (conversationResumeTimeoutRef.current) {
-      clearTimeout(conversationResumeTimeoutRef.current);
-      conversationResumeTimeoutRef.current = undefined;
-    }
-
-    conversationCancelRequestedRef.current = false;
-    setPendingConversationTurn(undefined);
-    setQueuedConversationPrompt(undefined);
-
-    setDraft('');
-    const started = await startSpeechInput({ continuous: false });
-    if (!started) {
-      setConversationPhase('off');
-      return false;
-    }
-
-    setConversationPhase('listening');
-    return true;
-  }, [startSpeechInput]);
   const handleSendPrompt = useCallback(async (promptOverride?: string) => {
     const nextDraft = promptOverride ?? draftRef.current;
     const nextAttachments = attachmentsRef.current;
@@ -711,22 +661,10 @@ export function ChatView() {
     }
 
     setVoiceFeedback(speechInputError);
-    if (conversationPhaseRef.current !== 'off') {
-      setConversationPhase('off');
-      setQueuedConversationPrompt(undefined);
-      setPendingConversationTurn(undefined);
-    }
   }, [speechInputError]);
-
-  useEffect(() => {
-    conversationPhaseRef.current = conversationPhase;
-  }, [conversationPhase]);
 
   useEffect(
     () => () => {
-      if (conversationResumeTimeoutRef.current) {
-        clearTimeout(conversationResumeTimeoutRef.current);
-      }
       void stopSpeaking().catch(() => undefined);
     },
     [],
@@ -759,132 +697,6 @@ export function ChatView() {
     }
   }, [chatPreferences.autoPlayAssistantReplies, chatPreferences.speechLocale, chatPreferences.speechRate, chatPreferences.speechVoiceId, conversationActive, latestAssistantEntry, running]);
 
-  useEffect(() => {
-    if (!conversationActive || conversationPhase !== 'submitting' || !pendingConversationTurn) {
-      return;
-    }
-
-    setQueuedConversationPrompt(pendingConversationTurn);
-    setPendingConversationTurn(undefined);
-  }, [conversationActive, conversationPhase, pendingConversationTurn]);
-
-  useEffect(() => {
-    if (!conversationActive || !queuedConversationPrompt || conversationPhase !== 'submitting') {
-      return;
-    }
-
-    let cancelled = false;
-
-    const submitPrompt = async () => {
-      try {
-        assistantReplyBaselineIdRef.current = latestAssistantEntry?.id;
-        await handleSendPrompt(queuedConversationPrompt);
-        if (cancelled) {
-          return;
-        }
-
-        if (conversationCancelRequestedRef.current || conversationPhaseRef.current === 'off') {
-          setQueuedConversationPrompt(undefined);
-          setPendingConversationTurn(undefined);
-          return;
-        }
-
-        setQueuedConversationPrompt(undefined);
-        setDraft('');
-        setConversationPhase('waiting');
-      } catch (error) {
-        if (cancelled) {
-          return;
-        }
-
-        const message = error instanceof Error ? error.message : 'Voice conversation failed while sending your message.';
-        setQueuedConversationPrompt(undefined);
-        setPendingConversationTurn(undefined);
-        setVoiceFeedback(message);
-        setConversationPhase('off');
-      }
-    };
-
-    void submitPrompt();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [conversationActive, conversationPhase, handleSendPrompt, latestAssistantEntry, queuedConversationPrompt]);
-
-  useEffect(() => {
-    if (!conversationActive || conversationPhase !== 'waiting' || running) {
-      return;
-    }
-
-    if (pendingInteractions > 0) {
-      setVoiceFeedback('Conversation mode paused because the assistant needs your input on screen.');
-      setConversationPhase('off');
-      return;
-    }
-
-    if (latestAssistantEntry && latestAssistantEntry.id !== assistantReplyBaselineIdRef.current) {
-      const started = speakText({
-        language: chatPreferences.speechLocale,
-        onDone: () => {
-          setSpeakingMessageId((current) => (current === latestAssistantEntry.id ? undefined : current));
-          if (conversationPhaseRef.current !== 'off' && chatPreferences.resumeListeningAfterReply) {
-            void startConversationListening();
-          } else {
-            setConversationPhase('off');
-          }
-        },
-        onError: () => {
-          setVoiceFeedback('Unable to play this assistant reply.');
-          setSpeakingMessageId(undefined);
-          setConversationPhase('off');
-        },
-        onStart: () => {
-          lastAutoSpokenMessageIdRef.current = latestAssistantEntry.id;
-          setSpeakingMessageId(latestAssistantEntry.id);
-          setConversationPhase('speaking');
-        },
-        rate: chatPreferences.speechRate,
-        text: latestAssistantEntry.text,
-        voice: chatPreferences.speechVoiceId,
-      });
-
-      if (!started) {
-        if (chatPreferences.resumeListeningAfterReply) {
-          void startConversationListening();
-        } else {
-          setConversationPhase('off');
-        }
-      }
-      return;
-    }
-
-    conversationResumeTimeoutRef.current = setTimeout(() => {
-      if (conversationPhaseRef.current === 'waiting' && !running) {
-        void startConversationListening();
-      }
-    }, 1200);
-
-    return () => {
-      if (conversationResumeTimeoutRef.current) {
-        clearTimeout(conversationResumeTimeoutRef.current);
-      }
-    };
-  }, [chatPreferences.resumeListeningAfterReply, chatPreferences.speechLocale, chatPreferences.speechRate, chatPreferences.speechVoiceId, conversationActive, conversationPhase, latestAssistantEntry, pendingInteractions, running, startConversationListening]);
-
-  useEffect(() => {
-    if (!conversationActive || connection.status === 'connected') {
-      return;
-    }
-
-    conversationCancelRequestedRef.current = true;
-    abortSpeechInput();
-    void stopSpeaking().catch(() => undefined);
-    setPendingConversationTurn(undefined);
-    setConversationPhase('off');
-    setQueuedConversationPrompt(undefined);
-  }, [abortSpeechInput, connection.status, conversationActive]);
-
   async function handleCopyMessage(entry: TranscriptEntry) {
     const value = [entry.text.trim(), entry.error?.trim()].filter(Boolean).join('\n\n');
     if (!value) {
@@ -899,52 +711,6 @@ export function ChatView() {
   function handleLoadEarlier() {
     isPaginatingRef.current = true;
     setVisibleTranscriptCount((current) => current + TRANSCRIPT_PAGE_SIZE);
-  }
-
-  async function handleToggleConversationMode() {
-    if (conversationActive) {
-      if (conversationResumeTimeoutRef.current) {
-        clearTimeout(conversationResumeTimeoutRef.current);
-        conversationResumeTimeoutRef.current = undefined;
-      }
-
-      conversationCancelRequestedRef.current = true;
-      abortSpeechInput();
-      await stopSpeaking().catch(() => undefined);
-      setPendingConversationTurn(undefined);
-      setQueuedConversationPrompt(undefined);
-      setDraft('');
-      setConversationPhase('off');
-      setSpeakingMessageId(undefined);
-      return;
-    }
-
-    if (connection.status !== 'connected') {
-      setVoiceFeedback('Connect to OpenCode before starting a voice conversation.');
-      return;
-    }
-
-    if (running) {
-      setVoiceFeedback('Wait for the current reply to finish before starting conversation mode.');
-      return;
-    }
-
-    if (pendingInteractions > 0) {
-      setVoiceFeedback('Answer the current on-screen questions before starting conversation mode.');
-      return;
-    }
-
-    abortSpeechInput();
-    await stopSpeaking().catch(() => undefined);
-    setSpeakingMessageId(undefined);
-    setPendingConversationTurn(undefined);
-    setQueuedConversationPrompt(undefined);
-    assistantReplyBaselineIdRef.current = latestAssistantEntry?.id;
-    lastAutoSpokenMessageIdRef.current = latestAssistantEntry?.id;
-    const started = await startConversationListening();
-    if (started) {
-      void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => undefined);
-    }
   }
 
   async function handleToggleRecording() {
@@ -970,37 +736,24 @@ export function ChatView() {
     if (speakingMessageId === entry.id) {
       await stopSpeaking().catch(() => undefined);
       setSpeakingMessageId(undefined);
-      if (conversationActive && chatPreferences.resumeListeningAfterReply) {
-        void startConversationListening();
-      }
       return;
     }
 
     if (conversationActive) {
-      abortSpeechInput();
+      setVoiceFeedback('Stop conversation mode before playing a reply manually.');
+      return;
     }
 
     const started = speakText({
       language: chatPreferences.speechLocale,
       onDone: () => {
         setSpeakingMessageId((current) => (current === entry.id ? undefined : current));
-        if (conversationActive && chatPreferences.resumeListeningAfterReply) {
-          void startConversationListening();
-        }
       },
       onError: () => {
         setVoiceFeedback('Unable to play this assistant reply.');
         setSpeakingMessageId(undefined);
-        if (conversationActive) {
-          setConversationPhase('off');
-        }
       },
-      onStart: () => {
-        setSpeakingMessageId(entry.id);
-        if (conversationActive) {
-          setConversationPhase('speaking');
-        }
-      },
+      onStart: () => setSpeakingMessageId(entry.id),
       rate: chatPreferences.speechRate,
       text: entry.text,
       voice: chatPreferences.speechVoiceId,
@@ -1092,7 +845,7 @@ export function ChatView() {
           <Appbar.Action icon="plus" onPress={() => void handleNewSession()} disabled={isCreatingSession || connection.status !== 'connected'} />
           <Appbar.Action
             icon={conversationActive ? 'phone-hangup' : 'headset'}
-            onPress={() => void handleToggleConversationMode()}
+            onPress={() => void toggleConversationMode()}
             disabled={connection.status !== 'connected' || isCreatingSession}
           />
         </View>
@@ -1380,12 +1133,12 @@ export function ChatView() {
               <Text variant="labelLarge" style={{ color: palette.text }}>
                 Conversation mode
               </Text>
-              <Chip compact icon={conversationPhase === 'speaking' ? 'volume-high' : 'microphone'}>
-                {conversationStatusLabel || 'Active'}
+              <Chip compact icon={conversation.phase === 'speaking' ? 'volume-high' : 'microphone'}>
+                {conversation.statusLabel || 'Active'}
               </Chip>
             </View>
             <Text variant="bodySmall" style={{ color: palette.muted }}>
-              Keep talking naturally. The app listens, sends your turn, reads the reply, and then listens again.
+              Keep talking naturally. The app listens, sends your turn, reads the reply, and then listens again{conversation.appState !== 'active' ? ' in the background when the OS allows it.' : '.'}
             </Text>
           </View>
         ) : null}
@@ -1405,10 +1158,10 @@ export function ChatView() {
           </View>
         ) : null}
 
-        {isSpeechInputListening ? (
+        {isSpeechInputListening || conversation.isListening ? (
           <View style={styles.voiceStatusRow}>
             <Chip compact icon="microphone" style={[styles.voiceStatusChip, { backgroundColor: `${palette.tint}14` }]}> 
-              {conversationActive ? 'Conversation' : 'Listening'} {speechInputLevel > 0 ? `(${Math.min(10, Math.round(speechInputLevel))})` : ''}
+              {conversationActive ? 'Conversation' : 'Listening'} {Math.max(speechInputLevel, conversation.level) > 0 ? `(${Math.min(10, Math.round(Math.max(speechInputLevel, conversation.level)))})` : ''}
             </Chip>
           </View>
         ) : null}
@@ -1471,10 +1224,13 @@ export function ChatView() {
         Message copied to clipboard
       </Snackbar>
       <Snackbar
-        visible={Boolean(voiceFeedback)}
-        onDismiss={() => setVoiceFeedback(undefined)}
+        visible={Boolean(conversation.feedback || voiceFeedback)}
+        onDismiss={() => {
+          setVoiceFeedback(undefined);
+          clearConversationFeedback();
+        }}
         duration={3200}>
-        {voiceFeedback}
+        {conversation.feedback || voiceFeedback}
       </Snackbar>
     </KeyboardAvoidingView>
   );

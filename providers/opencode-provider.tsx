@@ -1,4 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { AppState, type AppStateStatus } from 'react-native';
 import type { Agent, Config, FileDiff, Project, Session, SessionStatus, Todo } from '@/lib/opencode/types';
 import {
   createContext,
@@ -43,6 +44,14 @@ import {
   LAST_SESSION_BY_PROJECT_STORAGE_KEY,
   SETTINGS_STORAGE_KEY,
 } from '@/lib/storage-keys';
+import { speakText, stopSpeaking } from '@/lib/voice/speech-output';
+import { useSpeechInput } from '@/lib/voice/use-speech-input';
+import {
+  startWorkingSoundAsync,
+  stopWorkingSoundAsync,
+  unloadWorkingSoundAsync,
+  type WorkingSoundVariant,
+} from '@/lib/voice/working-sound';
 
 export type ModelOption = {
   id: string;
@@ -92,6 +101,8 @@ export type AgentOption = {
 // Browser/server-folder browsing removed
 
 export type ReasoningLevel = 'low' | 'default' | 'high';
+export type ResponseScope = 'brief' | 'balanced' | 'detailed';
+export type ConversationPhase = 'off' | 'listening' | 'submitting' | 'waiting' | 'speaking';
 
 export type ChatPreferences = {
   mode: string;
@@ -107,6 +118,12 @@ export type ChatPreferences = {
   speechLocale?: string;
   speechRate: number;
   speechVoiceId?: string;
+  backgroundConversationEnabled: boolean;
+  workingSoundEnabled: boolean;
+  workingSoundVariant: WorkingSoundVariant;
+  workingSoundVolume: number;
+  responseScope: ResponseScope;
+  includeNextActions: boolean;
 };
 
 const defaultChatPreferences: ChatPreferences = {
@@ -119,6 +136,23 @@ const defaultChatPreferences: ChatPreferences = {
   preferOnDeviceRecognition: true,
   resumeListeningAfterReply: true,
   speechRate: 1,
+  backgroundConversationEnabled: true,
+  workingSoundEnabled: true,
+  workingSoundVariant: 'soft',
+  workingSoundVolume: 0.18,
+  responseScope: 'brief',
+  includeNextActions: true,
+};
+
+type ConversationState = {
+  active: boolean;
+  sessionId?: string;
+  phase: ConversationPhase;
+  statusLabel?: string;
+  feedback?: string;
+  isListening: boolean;
+  level: number;
+  appState: AppStateStatus;
 };
 
 export type OpencodeProject = {
@@ -181,6 +215,9 @@ type OpencodeContextValue = {
   availableAgents: AgentOption[];
   chatPreferences: ChatPreferences;
   updateChatPreferences: (patch: Partial<ChatPreferences>) => void;
+  conversation: ConversationState;
+  clearConversationFeedback: () => void;
+  toggleConversationMode: () => Promise<void>;
   configureProvider: (providerId: string) => Promise<void>;
   setProviderAuth: (providerId: string, values: Record<string, string>) => Promise<void>;
   startProviderOAuth: (providerId: string, methodIndex: number, inputs?: Record<string, string>) => Promise<{ url: string; instructions?: string }>;
@@ -340,6 +377,67 @@ function buildReasoningSystemPrompt(level: ReasoningLevel) {
   return 'Reasoning effort: high. Spend extra time planning, evaluating tradeoffs, and verifying the best path before acting.';
 }
 
+function buildResponseStyleSystemPrompt(scope: ResponseScope, includeNextActions: boolean) {
+  const scopeInstruction =
+    scope === 'brief'
+      ? 'Keep responses tightly scoped. Use short paragraphs or brief bullets and avoid extra background unless the user asks for it.'
+      : scope === 'detailed'
+        ? 'Give fuller explanations when helpful, but still stay conversational and focused on the user request.'
+        : 'Keep responses concise and user-friendly, with only the context needed to understand the answer.';
+
+  const nextActionsInstruction = includeNextActions
+    ? 'When there are useful next actions, end with a simple explanation of the recommended next step or a short numbered list.'
+    : 'Do not add next actions unless the user explicitly asks for them.';
+
+  return `${scopeInstruction} ${nextActionsInstruction}`;
+}
+
+function buildSystemPrompt(preferences: ChatPreferences) {
+  return [
+    buildReasoningSystemPrompt(preferences.reasoning),
+    buildResponseStyleSystemPrompt(preferences.responseScope, preferences.includeNextActions),
+  ]
+    .filter(Boolean)
+    .join('\n\n') || undefined;
+}
+
+function getActivityLabel(entry: TranscriptEntry) {
+  const runningTool = entry.details.find((detail) => detail.kind === 'tool' && detail.status === 'running');
+  if (runningTool) {
+    return runningTool.label;
+  }
+
+  const latestTool = [...entry.details].reverse().find((detail) => detail.kind === 'tool');
+  if (latestTool) {
+    return latestTool.label;
+  }
+
+  const latestPatch = [...entry.details].reverse().find((detail) => detail.kind === 'patch');
+  if (latestPatch) {
+    return latestPatch.label;
+  }
+
+  const latestReasoning = [...entry.details].reverse().find((detail) => detail.kind === 'reasoning');
+  if (latestReasoning) {
+    return latestReasoning.label;
+  }
+
+  const latestStep = [...entry.details].reverse().find((detail) => detail.kind === 'step' || detail.kind === 'subtask');
+  if (latestStep) {
+    return latestStep.label;
+  }
+
+  return undefined;
+}
+
+function isDisplayMessage(entry: TranscriptEntry) {
+  if (entry.role === 'user') {
+    return true;
+  }
+
+  return Boolean(entry.text.trim() || entry.error);
+}
+
 function getSelectedModelParts(modelId?: string) {
   if (!modelId) {
     return undefined;
@@ -438,9 +536,19 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
   const [availableAgents, setAvailableAgents] = useState<AgentOption[]>([]);
   const [chatPreferences, setChatPreferences] = useState<ChatPreferences>(defaultChatPreferences);
   const [lastSessionByProject, setLastSessionByProject] = useState<Record<string, string>>({});
+  const [conversationPhase, setConversationPhase] = useState<ConversationPhase>('off');
+  const [conversationSessionId, setConversationSessionId] = useState<string>();
+  const [queuedConversationPrompt, setQueuedConversationPrompt] = useState<string>();
+  const [pendingConversationTurn, setPendingConversationTurn] = useState<string>();
+  const [conversationFeedback, setConversationFeedback] = useState<string>();
+  const [conversationAppState, setConversationAppState] = useState<AppStateStatus>(AppState.currentState);
 
   const settingsRef = useRef(settings);
   const bootstrapPromiseRef = useRef<Promise<string | undefined> | null>(null);
+  const conversationPhaseRef = useRef<ConversationPhase>('off');
+  const assistantReplyBaselineIdRef = useRef<string | undefined>(undefined);
+  const conversationResumeTimeoutRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  const conversationCancelRequestedRef = useRef(false);
   settingsRef.current = settings;
 
   useEffect(() => {
@@ -1273,7 +1381,7 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
           body: {
             agent: chatPreferences.mode,
             model: getSelectedModelParts(chatPreferences.modelId),
-            system: buildReasoningSystemPrompt(chatPreferences.reasoning),
+            system: buildSystemPrompt(chatPreferences),
             parts: [
               {
                 type: 'text',
@@ -1317,7 +1425,7 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
         setSendingState({ active: false, sessionId: undefined });
       }
     },
-    [activeProjectPath, chatPreferences.mode, chatPreferences.modelId, chatPreferences.reasoning, client, fetchSessions, refreshMessages, refreshPendingRequests, refreshSessionDiff, refreshSessionTodos, sessions, summarizeSessionTitle],
+    [activeProjectPath, chatPreferences, client, fetchSessions, refreshMessages, refreshPendingRequests, refreshSessionDiff, refreshSessionTodos, sessions, summarizeSessionTitle],
   );
 
   const abortSession = useCallback(
@@ -1335,6 +1443,345 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
       ]);
     },
     [client, refreshMessages, refreshPendingRequests, refreshSessionDiff, refreshSessionTodos, refreshSessions],
+  );
+
+  const speechInput = useSpeechInput({
+    locale: chatPreferences.speechLocale,
+    onResult: (transcript, isFinal) => {
+      if (conversationPhaseRef.current === 'off') {
+        return;
+      }
+
+      if (isFinal && transcript.trim()) {
+        setPendingConversationTurn(transcript.trim());
+        setConversationPhase('submitting');
+      }
+    },
+    preferOnDevice: chatPreferences.preferOnDeviceRecognition,
+  });
+  const {
+    abort: abortSpeechInput,
+    error: speechInputError,
+    isListening: isConversationListening,
+    level: conversationListeningLevel,
+    start: startSpeechInput,
+  } = speechInput;
+
+  const getLatestConversationAssistantEntry = useCallback(
+    (sessionId?: string) => {
+      if (!sessionId) {
+        return undefined;
+      }
+
+      const transcript = (messagesBySession[sessionId] || []).map(toTranscriptEntry).filter(isDisplayMessage);
+      return [...transcript].reverse().find((entry) => entry.role === 'assistant' && entry.text.trim());
+    },
+    [messagesBySession],
+  );
+
+  const clearConversationFeedback = useCallback(() => {
+    setConversationFeedback(undefined);
+  }, []);
+
+  const stopConversationMode = useCallback(async () => {
+    if (conversationResumeTimeoutRef.current) {
+      clearTimeout(conversationResumeTimeoutRef.current);
+      conversationResumeTimeoutRef.current = undefined;
+    }
+
+    conversationCancelRequestedRef.current = true;
+    abortSpeechInput();
+    await stopSpeaking().catch(() => undefined);
+    await stopWorkingSoundAsync().catch(() => undefined);
+    setPendingConversationTurn(undefined);
+    setQueuedConversationPrompt(undefined);
+    setConversationPhase('off');
+    setConversationSessionId(undefined);
+  }, [abortSpeechInput]);
+
+  const startConversationListening = useCallback(async (sessionId?: string) => {
+    if (!sessionId && !conversationSessionId) {
+      return false;
+    }
+
+    if (conversationResumeTimeoutRef.current) {
+      clearTimeout(conversationResumeTimeoutRef.current);
+      conversationResumeTimeoutRef.current = undefined;
+    }
+
+    conversationCancelRequestedRef.current = false;
+    setPendingConversationTurn(undefined);
+    setQueuedConversationPrompt(undefined);
+    await stopWorkingSoundAsync().catch(() => undefined);
+
+    const started = await startSpeechInput({ continuous: false });
+    if (!started) {
+      setConversationPhase('off');
+      return false;
+    }
+
+    setConversationPhase('listening');
+    return true;
+  }, [conversationSessionId, startSpeechInput]);
+
+  const toggleConversationMode = useCallback(async () => {
+    if (conversationPhase !== 'off') {
+      await stopConversationMode();
+      return;
+    }
+
+    if (connection.status !== 'connected') {
+      setConversationFeedback('Connect to OpenCode before starting conversation mode.');
+      return;
+    }
+
+    if (sendingState.active) {
+      setConversationFeedback('Wait for the current reply to finish before starting conversation mode.');
+      return;
+    }
+
+    const pendingInteractionCount = Object.values(pendingPermissionsBySession).flat().length + Object.values(pendingQuestionsBySession).flat().length;
+    if (pendingInteractionCount > 0) {
+      setConversationFeedback('Answer the current on-screen questions before starting conversation mode.');
+      return;
+    }
+
+    const sessionId = currentSessionId || (await ensureActiveSession());
+    if (!sessionId) {
+      return;
+    }
+
+    abortSpeechInput();
+    await stopSpeaking().catch(() => undefined);
+    await stopWorkingSoundAsync().catch(() => undefined);
+    setCurrentSessionId(sessionId);
+    setConversationSessionId(sessionId);
+    setConversationFeedback(undefined);
+    setPendingConversationTurn(undefined);
+    setQueuedConversationPrompt(undefined);
+    assistantReplyBaselineIdRef.current = getLatestConversationAssistantEntry(sessionId)?.id;
+    const started = await startConversationListening(sessionId);
+    if (!started) {
+      setConversationSessionId(undefined);
+    }
+  }, [
+    abortSpeechInput,
+    connection.status,
+    conversationPhase,
+    currentSessionId,
+    ensureActiveSession,
+    getLatestConversationAssistantEntry,
+    pendingPermissionsBySession,
+    pendingQuestionsBySession,
+    sendingState.active,
+    startConversationListening,
+    stopConversationMode,
+  ]);
+
+  useEffect(() => {
+    conversationPhaseRef.current = conversationPhase;
+  }, [conversationPhase]);
+
+  useEffect(() => {
+    const subscription = AppState.addEventListener('change', (nextState) => {
+      setConversationAppState(nextState);
+    });
+
+    return () => subscription.remove();
+  }, []);
+
+  useEffect(() => {
+    if (conversationPhase === 'off' || chatPreferences.backgroundConversationEnabled || conversationAppState === 'active') {
+      return;
+    }
+
+    setConversationFeedback('Background conversation is disabled in settings, so conversation mode stopped when the app left the foreground.');
+    void stopConversationMode();
+  }, [chatPreferences.backgroundConversationEnabled, conversationAppState, conversationPhase, stopConversationMode]);
+
+  useEffect(() => {
+    if (!speechInputError) {
+      return;
+    }
+
+    setConversationFeedback(speechInputError);
+    if (conversationPhaseRef.current !== 'off') {
+      void stopConversationMode();
+    }
+  }, [speechInputError, stopConversationMode]);
+
+  useEffect(() => {
+    if (conversationPhase === 'off' || conversationPhase !== 'submitting' || !pendingConversationTurn || !conversationSessionId) {
+      return;
+    }
+
+    setQueuedConversationPrompt(pendingConversationTurn);
+    setPendingConversationTurn(undefined);
+  }, [conversationPhase, conversationSessionId, pendingConversationTurn]);
+
+  useEffect(() => {
+    if (conversationPhase === 'off' || conversationPhase !== 'submitting' || !queuedConversationPrompt || !conversationSessionId) {
+      return;
+    }
+
+    let cancelled = false;
+
+    const submitPrompt = async () => {
+      try {
+        assistantReplyBaselineIdRef.current = getLatestConversationAssistantEntry(conversationSessionId)?.id;
+        await sendPrompt(conversationSessionId, queuedConversationPrompt);
+        if (cancelled) {
+          return;
+        }
+
+        if (conversationCancelRequestedRef.current || conversationPhaseRef.current === 'off') {
+          setQueuedConversationPrompt(undefined);
+          setPendingConversationTurn(undefined);
+          return;
+        }
+
+        setQueuedConversationPrompt(undefined);
+        setConversationPhase('waiting');
+      } catch (error) {
+        if (cancelled) {
+          return;
+        }
+
+        const message = error instanceof Error ? error.message : 'Voice conversation failed while sending your message.';
+        setQueuedConversationPrompt(undefined);
+        setPendingConversationTurn(undefined);
+        setConversationFeedback(message);
+        await stopConversationMode();
+      }
+    };
+
+    void submitPrompt();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    conversationPhase,
+    conversationSessionId,
+    getLatestConversationAssistantEntry,
+    queuedConversationPrompt,
+    sendPrompt,
+    stopConversationMode,
+  ]);
+
+  useEffect(() => {
+    if (conversationPhase === 'off' || conversationPhase !== 'waiting') {
+      return;
+    }
+
+    const pendingInteractions = conversationSessionId
+      ? (pendingPermissionsBySession[conversationSessionId] || []).length + (pendingQuestionsBySession[conversationSessionId] || []).length
+      : 0;
+    const latestAssistantEntry = getLatestConversationAssistantEntry(conversationSessionId);
+    const sessionStatus = conversationSessionId ? sessionStatuses[conversationSessionId] : undefined;
+    const isSessionRunning = conversationSessionId
+      ? sendingState.sessionId === conversationSessionId || sendingState.active || (!!sessionStatus && sessionStatus.type !== 'idle')
+      : false;
+
+    if (pendingInteractions > 0) {
+      setConversationFeedback('Conversation mode paused because the assistant needs your input on screen.');
+      void stopConversationMode();
+      return;
+    }
+
+    if (isSessionRunning) {
+      if (chatPreferences.workingSoundEnabled) {
+        void startWorkingSoundAsync(chatPreferences.workingSoundVariant, chatPreferences.workingSoundVolume).catch(() => undefined);
+      }
+      return () => {
+        void stopWorkingSoundAsync().catch(() => undefined);
+      };
+    }
+
+    void stopWorkingSoundAsync().catch(() => undefined);
+    if (latestAssistantEntry && latestAssistantEntry.id !== assistantReplyBaselineIdRef.current) {
+      const started = speakText({
+        language: chatPreferences.speechLocale,
+        onDone: () => {
+          if (conversationPhaseRef.current !== 'off' && chatPreferences.resumeListeningAfterReply) {
+            void startConversationListening();
+          } else {
+            void stopConversationMode();
+          }
+        },
+        onError: () => {
+          setConversationFeedback('Unable to play this assistant reply.');
+          void stopConversationMode();
+        },
+        onStart: () => {
+          setConversationPhase('speaking');
+        },
+        rate: chatPreferences.speechRate,
+        text: latestAssistantEntry.text,
+        voice: chatPreferences.speechVoiceId,
+      });
+
+      if (!started) {
+        if (chatPreferences.resumeListeningAfterReply) {
+          void startConversationListening();
+        } else {
+          void stopConversationMode();
+        }
+      }
+      return;
+    }
+
+    conversationResumeTimeoutRef.current = setTimeout(() => {
+      if (conversationPhaseRef.current === 'waiting' && !isSessionRunning) {
+        void startConversationListening();
+      }
+    }, 1200);
+
+    return () => {
+      if (conversationResumeTimeoutRef.current) {
+        clearTimeout(conversationResumeTimeoutRef.current);
+        conversationResumeTimeoutRef.current = undefined;
+      }
+    };
+  }, [
+    chatPreferences.resumeListeningAfterReply,
+    chatPreferences.speechLocale,
+    chatPreferences.speechRate,
+    chatPreferences.speechVoiceId,
+    chatPreferences.workingSoundEnabled,
+    chatPreferences.workingSoundVariant,
+    chatPreferences.workingSoundVolume,
+    conversationPhase,
+    conversationSessionId,
+    getLatestConversationAssistantEntry,
+    pendingPermissionsBySession,
+    pendingQuestionsBySession,
+    sendingState.active,
+    sendingState.sessionId,
+    sessionStatuses,
+    startConversationListening,
+    stopConversationMode,
+  ]);
+
+  useEffect(() => {
+    if (conversationPhase === 'off' || connection.status === 'connected') {
+      return;
+    }
+
+    setConversationFeedback('Conversation mode stopped because OpenCode disconnected.');
+    void stopConversationMode();
+  }, [connection.status, conversationPhase, stopConversationMode]);
+
+  useEffect(
+    () => () => {
+      if (conversationResumeTimeoutRef.current) {
+        clearTimeout(conversationResumeTimeoutRef.current);
+      }
+
+      void stopSpeaking().catch(() => undefined);
+      void unloadWorkingSoundAsync().catch(() => undefined);
+    },
+    [],
   );
 
   useEffect(() => {
@@ -1357,10 +1804,18 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
           refreshSessionTodos(currentSessionId),
         ]);
       }
+
+      if (conversationSessionId && conversationSessionId !== currentSessionId && (conversationPhase !== 'off' || hasBusySession || sendingState.active)) {
+        void Promise.all([
+          refreshMessages(conversationSessionId, true),
+          refreshSessionDiff(conversationSessionId, true),
+          refreshSessionTodos(conversationSessionId),
+        ]);
+      }
     }, 1500);
 
     return () => clearInterval(interval);
-  }, [activeProjectPath, connection.status, currentSessionId, refreshMessages, refreshPendingRequests, refreshSessionDiff, refreshSessionTodos, refreshSessions, sendingState.active, sessionStatuses]);
+  }, [activeProjectPath, connection.status, conversationPhase, conversationSessionId, currentSessionId, refreshMessages, refreshPendingRequests, refreshSessionDiff, refreshSessionTodos, refreshSessions, sendingState.active, sessionStatuses]);
 
   useEffect(() => {
     let cancelled = false;
@@ -1467,6 +1922,64 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
     [availableProviders],
   );
   const currentTranscript = useMemo(() => currentMessages.map(toTranscriptEntry), [currentMessages]);
+  const conversationMessages = useMemo(
+    () => (conversationSessionId ? messagesBySession[conversationSessionId] || [] : []),
+    [conversationSessionId, messagesBySession],
+  );
+  const conversationTranscript = useMemo(() => conversationMessages.map(toTranscriptEntry), [conversationMessages]);
+  const conversationDisplayTranscript = useMemo(
+    () => conversationTranscript.filter(isDisplayMessage),
+    [conversationTranscript],
+  );
+  const latestConversationAssistantEntry = useMemo(
+    () => [...conversationDisplayTranscript].reverse().find((entry) => entry.role === 'assistant' && entry.text.trim()),
+    [conversationDisplayTranscript],
+  );
+  const conversationCurrentActivityLabel = useMemo(() => {
+    for (let index = conversationTranscript.length - 1; index >= 0; index -= 1) {
+      const entry = conversationTranscript[index];
+      if (isDisplayMessage(entry)) {
+        continue;
+      }
+
+      const label = getActivityLabel(entry);
+      if (label) {
+        return label;
+      }
+    }
+
+    return undefined;
+  }, [conversationTranscript]);
+  const conversationPendingInteractions = useMemo(() => {
+    if (!conversationSessionId) {
+      return 0;
+    }
+
+    return (pendingPermissionsBySession[conversationSessionId] || []).length + (pendingQuestionsBySession[conversationSessionId] || []).length;
+  }, [conversationSessionId, pendingPermissionsBySession, pendingQuestionsBySession]);
+  const conversationRunning = useMemo(() => {
+    if (!conversationSessionId) {
+      return false;
+    }
+
+    const status = sessionStatuses[conversationSessionId];
+    return sendingState.sessionId === conversationSessionId || sendingState.active || (!!status && status.type !== 'idle');
+  }, [conversationSessionId, sendingState.active, sendingState.sessionId, sessionStatuses]);
+  const conversationActive = conversationPhase !== 'off';
+  const conversationStatusLabel = useMemo(() => {
+    switch (conversationPhase) {
+      case 'listening':
+        return conversationAppState === 'active' ? 'Listening' : 'Listening in background';
+      case 'submitting':
+        return 'Sending';
+      case 'waiting':
+        return conversationCurrentActivityLabel || 'Thinking';
+      case 'speaking':
+        return 'Speaking';
+      default:
+        return undefined;
+    }
+  }, [conversationAppState, conversationCurrentActivityLabel, conversationPhase]);
   const sessionPreviewById = useMemo(
     () =>
       Object.fromEntries(
@@ -1514,6 +2027,18 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
       availableAgents,
       chatPreferences,
       updateChatPreferences,
+      conversation: {
+        active: conversationActive,
+        appState: conversationAppState,
+        feedback: conversationFeedback,
+        isListening: isConversationListening,
+        level: conversationListeningLevel,
+        phase: conversationPhase,
+        sessionId: conversationSessionId,
+        statusLabel: conversationStatusLabel,
+      },
+      clearConversationFeedback,
+      toggleConversationMode,
       configureProvider,
       setProviderAuth,
       startProviderOAuth,
@@ -1557,9 +2082,18 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
       currentPendingPermissions,
       currentPendingQuestions,
       chatPreferences,
+      clearConversationFeedback,
+      conversationActive,
+      conversationAppState,
+      conversationFeedback,
+      conversationListeningLevel,
+      conversationPhase,
+      conversationSessionId,
+      conversationStatusLabel,
       ensureActiveSession,
       availableAgents,
       availableModels,
+      isConversationListening,
       isBootstrappingChat,
       isRefreshingDiffs,
       isHydrated,
@@ -1590,6 +2124,7 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
       settings,
       setProviderAuth,
       startProviderOAuth,
+      toggleConversationMode,
       updateChatPreferences,
       updateSettings,
     ],

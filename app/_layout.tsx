@@ -27,6 +27,10 @@ export default function RootLayout() {
     void import('@/lib/notifications')
       .then(({ initializeNotifications }) => initializeNotifications())
       .catch(() => undefined);
+
+    void import('@/lib/voice/speech-output')
+      .then(({ initializeVoiceAudioAsync }) => initializeVoiceAudioAsync())
+      .catch(() => undefined);
   }, []);
 
   return (

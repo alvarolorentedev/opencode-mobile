@@ -1,10 +1,31 @@
 import * as Speech from 'expo-speech';
+import { Audio, InterruptionModeAndroid, InterruptionModeIOS } from 'expo-av';
 
 export type SpeechVoiceOption = {
   id: string;
   label: string;
   language: string;
 };
+
+let audioModeInitialized = false;
+
+export async function initializeVoiceAudioAsync() {
+  if (audioModeInitialized) {
+    return;
+  }
+
+  await Audio.setAudioModeAsync({
+    allowsRecordingIOS: false,
+    interruptionModeAndroid: InterruptionModeAndroid.DuckOthers,
+    interruptionModeIOS: InterruptionModeIOS.MixWithOthers,
+    playThroughEarpieceAndroid: false,
+    playsInSilentModeIOS: true,
+    shouldDuckAndroid: true,
+    staysActiveInBackground: true,
+  });
+
+  audioModeInitialized = true;
+}
 
 function compactWhitespace(value: string) {
   return value.replace(/\s+/g, ' ').trim();
@@ -57,6 +78,7 @@ export function speakText({
     return false;
   }
 
+  void initializeVoiceAudioAsync().catch(() => undefined);
   Speech.stop().catch(() => undefined);
   Speech.speak(speakableText, {
     language,

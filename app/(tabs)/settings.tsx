@@ -31,7 +31,19 @@ import {
 } from '@/lib/notifications';
 import { formatTimestamp } from '@/lib/opencode/format';
 import { getSpeechVoiceOptions, type SpeechVoiceOption } from '@/lib/voice/speech-output';
-import { useOpencode } from '@/providers/opencode-provider';
+import { useOpencode, type ResponseScope } from '@/providers/opencode-provider';
+import type { WorkingSoundVariant } from '@/lib/voice/working-sound';
+
+const RESPONSE_SCOPE_OPTIONS: { value: ResponseScope; label: string; description: string }[] = [
+  { value: 'brief', label: 'Brief', description: 'Short, tightly scoped answers for natural back-and-forth.' },
+  { value: 'balanced', label: 'Balanced', description: 'Concise answers with a little more context when helpful.' },
+  { value: 'detailed', label: 'Detailed', description: 'Longer explanations and more supporting detail.' },
+];
+
+const WORKING_SOUND_OPTIONS: { value: WorkingSoundVariant; label: string; description: string }[] = [
+  { value: 'soft', label: 'Soft chime', description: 'Warm layered tone with a gentle pulse.' },
+  { value: 'glass', label: 'Glass tone', description: 'Brighter, lighter ambient loop.' },
+];
 
 const KNOWN_PROVIDER_COPY: Record<string, { label: string; description: string }> = {
   openai: {
@@ -123,6 +135,8 @@ export default function SettingsScreen() {
   const [availableSpeechVoices, setAvailableSpeechVoices] = useState<SpeechVoiceOption[]>([]);
   const [isRefreshingSpeechVoices, setIsRefreshingSpeechVoices] = useState(false);
   const [speechVoiceMenuVisible, setSpeechVoiceMenuVisible] = useState(false);
+  const [responseScopeMenuVisible, setResponseScopeMenuVisible] = useState(false);
+  const [workingSoundMenuVisible, setWorkingSoundMenuVisible] = useState(false);
   const applicationId = useMemo(
     () => Constants.expoConfig?.android?.package || Constants.expoConfig?.ios?.bundleIdentifier,
     [],
@@ -296,6 +310,14 @@ export default function SettingsScreen() {
   const selectedSpeechVoiceLabel = useMemo(
     () => availableSpeechVoices.find((voice) => voice.id === chatPreferences.speechVoiceId)?.label || 'System default',
     [availableSpeechVoices, chatPreferences.speechVoiceId],
+  );
+  const selectedResponseScope = useMemo(
+    () => RESPONSE_SCOPE_OPTIONS.find((option) => option.value === chatPreferences.responseScope) || RESPONSE_SCOPE_OPTIONS[0],
+    [chatPreferences.responseScope],
+  );
+  const selectedWorkingSound = useMemo(
+    () => WORKING_SOUND_OPTIONS.find((option) => option.value === chatPreferences.workingSoundVariant) || WORKING_SOUND_OPTIONS[0],
+    [chatPreferences.workingSoundVariant],
   );
   const notificationStatusLabel = !notificationStatus
     ? 'Checking'
@@ -626,6 +648,18 @@ export default function SettingsScreen() {
           <Text variant="titleLarge" style={[styles.title, { color: palette.text }]}>Voice</Text>
           <List.Section style={styles.infoListSection}>
             <List.Item
+              title="Background conversation"
+              description="Keep conversation mode running across app navigation and try to stay active when the app is minimized or the phone is locked."
+              titleStyle={{ color: palette.text }}
+              descriptionStyle={{ color: palette.muted }}
+              right={() => (
+                <Switch
+                  value={chatPreferences.backgroundConversationEnabled}
+                  onValueChange={(value) => updateChatPreferences({ backgroundConversationEnabled: value })}
+                />
+              )}
+            />
+            <List.Item
               title="On-device voice input"
               description="Prefer local speech recognition and avoid cloud fallback when possible."
               titleStyle={{ color: palette.text }}
@@ -646,6 +680,18 @@ export default function SettingsScreen() {
                 <Switch
                   value={chatPreferences.autoPlayAssistantReplies}
                   onValueChange={(value) => updateChatPreferences({ autoPlayAssistantReplies: value })}
+                />
+              )}
+            />
+            <List.Item
+              title="Working sound"
+              description="Play a calm loop while the assistant is still working on a reply."
+              titleStyle={{ color: palette.text }}
+              descriptionStyle={{ color: palette.muted }}
+              right={() => (
+                <Switch
+                  value={chatPreferences.workingSoundEnabled}
+                  onValueChange={(value) => updateChatPreferences({ workingSoundEnabled: value })}
                 />
               )}
             />
@@ -672,6 +718,38 @@ export default function SettingsScreen() {
             onChangeText={(value) => updateChatPreferences({ speechLocale: value.trim() || undefined })}
           />
           <HelperText type="info">Leave empty to use the system default language for voice input and playback.</HelperText>
+          <Menu
+            visible={responseScopeMenuVisible}
+            onDismiss={() => setResponseScopeMenuVisible(false)}
+            anchor={
+              <Button mode="outlined" onPress={() => setResponseScopeMenuVisible(true)}>
+                Response scope: {selectedResponseScope.label}
+              </Button>
+            }>
+            {RESPONSE_SCOPE_OPTIONS.map((option) => (
+              <Menu.Item
+                key={option.value}
+                title={option.label}
+                onPress={() => {
+                  updateChatPreferences({ responseScope: option.value });
+                  setResponseScopeMenuVisible(false);
+                }}
+              />
+            ))}
+          </Menu>
+          <HelperText type="info">{selectedResponseScope.description}</HelperText>
+          <List.Item
+            title="Simple next actions"
+            description="End replies with a short recommendation when there is a clear next move."
+            titleStyle={{ color: palette.text }}
+            descriptionStyle={{ color: palette.muted }}
+            right={() => (
+              <Switch
+                value={chatPreferences.includeNextActions}
+                onValueChange={(value) => updateChatPreferences({ includeNextActions: value })}
+              />
+            )}
+          />
           <TextInput
             mode="outlined"
             label="Speech rate"
@@ -692,6 +770,46 @@ export default function SettingsScreen() {
             }}
           />
           <HelperText type="info">Use a value between 0.5 and 1.5. `1` is the normal reading speed.</HelperText>
+          <Menu
+            visible={workingSoundMenuVisible}
+            onDismiss={() => setWorkingSoundMenuVisible(false)}
+            anchor={
+              <Button mode="outlined" onPress={() => setWorkingSoundMenuVisible(true)}>
+                Working sound: {selectedWorkingSound.label}
+              </Button>
+            }>
+            {WORKING_SOUND_OPTIONS.map((option) => (
+              <Menu.Item
+                key={option.value}
+                title={option.label}
+                onPress={() => {
+                  updateChatPreferences({ workingSoundVariant: option.value });
+                  setWorkingSoundMenuVisible(false);
+                }}
+              />
+            ))}
+          </Menu>
+          <HelperText type="info">{selectedWorkingSound.description}</HelperText>
+          <TextInput
+            mode="outlined"
+            label="Working sound volume"
+            placeholder="0.18"
+            value={String(chatPreferences.workingSoundVolume)}
+            keyboardType="decimal-pad"
+            onChangeText={(value) => {
+              const normalized = value.replace(',', '.').trim();
+              const parsed = Number(normalized);
+              if (!normalized) {
+                updateChatPreferences({ workingSoundVolume: 0.18 });
+                return;
+              }
+              if (!Number.isFinite(parsed)) {
+                return;
+              }
+              updateChatPreferences({ workingSoundVolume: Math.min(1, Math.max(0, parsed)) });
+            }}
+          />
+          <HelperText type="info">Use a value between 0 and 1. Lower values feel calmer in the background.</HelperText>
           <Menu
             visible={speechVoiceMenuVisible}
             onDismiss={() => setSpeechVoiceMenuVisible(false)}
@@ -718,7 +836,7 @@ export default function SettingsScreen() {
               />
             ))}
           </Menu>
-          <HelperText type="info">On iPhone, text-to-speech may stay silent when the hardware mute switch is on.</HelperText>
+          <HelperText type="info">Best effort only in the current Expo app: spoken playback and working sound can continue more reliably than live listening when the OS suspends background work.</HelperText>
         </Card.Content>
       </Card>
 
