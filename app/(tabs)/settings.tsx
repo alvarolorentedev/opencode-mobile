@@ -649,7 +649,7 @@ export default function SettingsScreen() {
           <List.Section style={styles.infoListSection}>
             <List.Item
               title="Background conversation"
-              description="Keep conversation mode running across app navigation and try to stay active when the app is minimized or the phone is locked."
+              description="Android: keep monitoring the active session in a foreground service, read finished replies aloud, and resume when you reopen the app. iPhone support stays foreground-only."
               titleStyle={{ color: palette.text }}
               descriptionStyle={{ color: palette.muted }}
               right={() => (
@@ -836,7 +836,7 @@ export default function SettingsScreen() {
               />
             ))}
           </Menu>
-          <HelperText type="info">Best effort only in the current Expo app: spoken playback and working sound can continue more reliably than live listening when the OS suspends background work.</HelperText>
+          <HelperText type="info">Shippable behavior: Android can keep a foreground service alive to monitor a running session and speak the finished reply. Continuous background microphone capture still is not supported.</HelperText>
         </Card.Content>
       </Card>
 

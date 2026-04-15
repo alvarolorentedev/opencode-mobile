@@ -1,5 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { AppState, type AppStateStatus } from 'react-native';
+import { AppState, Platform, type AppStateStatus } from 'react-native';
 import type { Agent, Config, FileDiff, Project, Session, SessionStatus, Todo } from '@/lib/opencode/types';
 import {
   createContext,
@@ -27,6 +27,11 @@ import {
   type PendingQuestionRequest,
   type OpencodeConnectionSettings,
 } from '@/lib/opencode/client';
+import {
+  isBackgroundConversationSupported,
+  startBackgroundConversation,
+  stopBackgroundConversation,
+} from '@/lib/background-conversation';
 import {
   getHistoryPreview,
   toTranscriptEntry,
@@ -542,6 +547,8 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
   const [pendingConversationTurn, setPendingConversationTurn] = useState<string>();
   const [conversationFeedback, setConversationFeedback] = useState<string>();
   const [conversationAppState, setConversationAppState] = useState<AppStateStatus>(AppState.currentState);
+  const [eventStreamStatus, setEventStreamStatus] = useState<'idle' | 'connecting' | 'connected' | 'error'>('idle');
+  const [backgroundConversationServiceActive, setBackgroundConversationServiceActive] = useState(false);
 
   const settingsRef = useRef(settings);
   const bootstrapPromiseRef = useRef<Promise<string | undefined> | null>(null);
@@ -549,6 +556,8 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
   const assistantReplyBaselineIdRef = useRef<string | undefined>(undefined);
   const conversationResumeTimeoutRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const conversationCancelRequestedRef = useRef(false);
+  const backgroundConversationSignatureRef = useRef<string | undefined>(undefined);
+  const sessionRefreshTimeoutsRef = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
   settingsRef.current = settings;
 
   useEffect(() => {
@@ -827,6 +836,37 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
       return response.data;
     },
     [client],
+  );
+
+  const scheduleSessionRefresh = useCallback(
+    (sessionId: string, options?: { messages?: boolean; diff?: boolean; todos?: boolean; sessions?: boolean; delayMs?: number }) => {
+      if (!sessionId) {
+        return;
+      }
+
+      const existing = sessionRefreshTimeoutsRef.current[sessionId];
+      if (existing) {
+        clearTimeout(existing);
+      }
+
+      sessionRefreshTimeoutsRef.current[sessionId] = setTimeout(() => {
+        delete sessionRefreshTimeoutsRef.current[sessionId];
+
+        if (options?.sessions) {
+          void refreshSessions(true);
+        }
+        if (options?.messages) {
+          void refreshMessages(sessionId, true);
+        }
+        if (options?.diff) {
+          void refreshSessionDiff(sessionId, true);
+        }
+        if (options?.todos) {
+          void refreshSessionTodos(sessionId);
+        }
+      }, options?.delayMs ?? 150);
+    },
+    [refreshMessages, refreshSessionDiff, refreshSessionTodos, refreshSessions],
   );
 
   const refreshChatCapabilities = useCallback(async () => {
@@ -1376,22 +1416,30 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
           }
         }
 
-        await client.session.prompt({
-          path: { id: sessionId },
-          body: {
-            agent: chatPreferences.mode,
-            model: getSelectedModelParts(chatPreferences.modelId),
-            system: buildSystemPrompt(chatPreferences),
-            parts: [
-              {
-                type: 'text',
-                text: trimmedPrompt,
-              },
-              // append any file parts
-              ...preparedFileParts,
-            ],
-          },
-        });
+        const body = {
+          agent: chatPreferences.mode,
+          model: getSelectedModelParts(chatPreferences.modelId),
+          system: buildSystemPrompt(chatPreferences),
+          parts: [
+            {
+              type: 'text',
+              text: trimmedPrompt,
+            },
+            ...preparedFileParts,
+          ],
+        };
+
+        if (typeof client.session.promptAsync === 'function') {
+          await client.session.promptAsync({
+            path: { id: sessionId },
+            body,
+          });
+        } else {
+          await client.session.prompt({
+            path: { id: sessionId },
+            body,
+          });
+        }
         promptAccepted = true;
         promptSubmissionRef.current = { active: false, sessionId: undefined };
 
@@ -1483,6 +1531,58 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
     setConversationFeedback(undefined);
   }, []);
 
+  const stopBackgroundConversationService = useCallback(async () => {
+    backgroundConversationSignatureRef.current = undefined;
+    setBackgroundConversationServiceActive(false);
+    await stopBackgroundConversation().catch(() => undefined);
+  }, []);
+
+  const startBackgroundConversationService = useCallback(
+    async (sessionId: string) => {
+      if (
+        Platform.OS !== 'android'
+        || !chatPreferences.backgroundConversationEnabled
+        || !isBackgroundConversationSupported()
+        || !activeProjectPath
+        || !sessionId
+      ) {
+        return false;
+      }
+
+      const signature = JSON.stringify({
+        activeProjectPath,
+        assistantReplyBaselineId: assistantReplyBaselineIdRef.current,
+        sessionId,
+        serverUrl: settingsRef.current.serverUrl,
+        speechLocale: chatPreferences.speechLocale,
+        speechRate: chatPreferences.speechRate,
+        speechVoiceId: chatPreferences.speechVoiceId,
+        username: settingsRef.current.username,
+      });
+
+      if (backgroundConversationSignatureRef.current === signature) {
+        setBackgroundConversationServiceActive(true);
+        return true;
+      }
+
+      await startBackgroundConversation({
+        serverUrl: settingsRef.current.serverUrl,
+        username: settingsRef.current.username,
+        password: settingsRef.current.password,
+        directory: activeProjectPath,
+        sessionId,
+        speechLocale: chatPreferences.speechLocale,
+        speechRate: chatPreferences.speechRate,
+        speechVoiceId: chatPreferences.speechVoiceId,
+        assistantReplyBaselineId: assistantReplyBaselineIdRef.current,
+      });
+      backgroundConversationSignatureRef.current = signature;
+      setBackgroundConversationServiceActive(true);
+      return true;
+    },
+    [activeProjectPath, chatPreferences.backgroundConversationEnabled, chatPreferences.speechLocale, chatPreferences.speechRate, chatPreferences.speechVoiceId],
+  );
+
   const stopConversationMode = useCallback(async () => {
     if (conversationResumeTimeoutRef.current) {
       clearTimeout(conversationResumeTimeoutRef.current);
@@ -1493,11 +1593,12 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
     abortSpeechInput();
     await stopSpeaking().catch(() => undefined);
     await stopWorkingSoundAsync().catch(() => undefined);
+    await stopBackgroundConversationService();
     setPendingConversationTurn(undefined);
     setQueuedConversationPrompt(undefined);
     setConversationPhase('off');
     setConversationSessionId(undefined);
-  }, [abortSpeechInput]);
+  }, [abortSpeechInput, stopBackgroundConversationService]);
 
   const startConversationListening = useCallback(async (sessionId?: string) => {
     if (!sessionId && !conversationSessionId) {
@@ -1591,6 +1692,51 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
   }, []);
 
   useEffect(() => {
+    if (
+      Platform.OS !== 'android'
+      || !chatPreferences.backgroundConversationEnabled
+      || !isBackgroundConversationSupported()
+      || conversationAppState === 'active'
+      || conversationPhase === 'off'
+    ) {
+      return;
+    }
+
+    abortSpeechInput();
+    void stopSpeaking().catch(() => undefined);
+    void stopWorkingSoundAsync().catch(() => undefined);
+
+    if (conversationPhase === 'listening' || conversationPhase === 'speaking') {
+      setConversationPhase('waiting');
+    }
+  }, [abortSpeechInput, chatPreferences.backgroundConversationEnabled, conversationAppState, conversationPhase]);
+
+  useEffect(() => {
+    if (
+      Platform.OS !== 'android'
+      || !chatPreferences.backgroundConversationEnabled
+      || !isBackgroundConversationSupported()
+      || conversationAppState === 'active'
+      || conversationPhase === 'off'
+      || !conversationSessionId
+    ) {
+      void stopBackgroundConversationService();
+      return;
+    }
+
+    void startBackgroundConversationService(conversationSessionId).catch(() => {
+      setBackgroundConversationServiceActive(false);
+    });
+  }, [
+    chatPreferences.backgroundConversationEnabled,
+    conversationAppState,
+    conversationPhase,
+    conversationSessionId,
+    startBackgroundConversationService,
+    stopBackgroundConversationService,
+  ]);
+
+  useEffect(() => {
     if (conversationPhase === 'off' || chatPreferences.backgroundConversationEnabled || conversationAppState === 'active') {
       return;
     }
@@ -1674,6 +1820,16 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
       return;
     }
 
+    if (
+      Platform.OS === 'android'
+      && chatPreferences.backgroundConversationEnabled
+      && isBackgroundConversationSupported()
+      && conversationAppState !== 'active'
+    ) {
+      void stopWorkingSoundAsync().catch(() => undefined);
+      return;
+    }
+
     const pendingInteractions = conversationSessionId
       ? (pendingPermissionsBySession[conversationSessionId] || []).length + (pendingQuestionsBySession[conversationSessionId] || []).length
       : 0;
@@ -1751,6 +1907,7 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
     chatPreferences.workingSoundEnabled,
     chatPreferences.workingSoundVariant,
     chatPreferences.workingSoundVolume,
+    conversationAppState,
     conversationPhase,
     conversationSessionId,
     getLatestConversationAssistantEntry,
@@ -1772,16 +1929,138 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
     void stopConversationMode();
   }, [connection.status, conversationPhase, stopConversationMode]);
 
+  useEffect(() => {
+    if (connection.status !== 'connected' || !activeProjectPath) {
+      setEventStreamStatus('idle');
+      return;
+    }
+
+    const abortController = new AbortController();
+    let mounted = true;
+
+    const handleEvent = (event: any) => {
+      if (!event?.type) {
+        return;
+      }
+
+      switch (event.type) {
+        case 'session.created':
+        case 'session.updated':
+        case 'session.deleted':
+          void refreshSessions(true);
+          return;
+        case 'session.status': {
+          const sessionId = event.properties?.sessionID;
+          if (typeof sessionId === 'string') {
+            setSessionStatuses((current) => ({
+              ...current,
+              [sessionId]: event.properties.status,
+            }));
+            scheduleSessionRefresh(sessionId, { sessions: true, messages: true, diff: true, todos: true });
+          }
+          return;
+        }
+        case 'session.idle': {
+          const sessionId = event.properties?.sessionID;
+          if (typeof sessionId === 'string') {
+            setSessionStatuses((current) => ({
+              ...current,
+              [sessionId]: { type: 'idle' },
+            }));
+            scheduleSessionRefresh(sessionId, { sessions: true, messages: true, diff: true, todos: true, delayMs: 50 });
+          }
+          return;
+        }
+        case 'message.updated': {
+          const sessionId = event.properties?.info?.sessionID;
+          if (typeof sessionId === 'string') {
+            scheduleSessionRefresh(sessionId, { messages: true });
+          }
+          return;
+        }
+        case 'message.part.updated':
+        case 'message.part.removed': {
+          const sessionId = event.properties?.part?.sessionID ?? event.properties?.sessionID;
+          if (typeof sessionId === 'string') {
+            scheduleSessionRefresh(sessionId, { messages: true });
+          }
+          return;
+        }
+        case 'session.diff': {
+          const sessionId = event.properties?.sessionID;
+          if (typeof sessionId === 'string') {
+            setDiffsBySession((current) => ({
+              ...current,
+              [sessionId]: event.properties.diff || [],
+            }));
+          }
+          return;
+        }
+        case 'todo.updated': {
+          const sessionId = event.properties?.sessionID;
+          if (typeof sessionId === 'string') {
+            setTodosBySession((current) => ({
+              ...current,
+              [sessionId]: event.properties.todos || [],
+            }));
+          }
+          return;
+        }
+        case 'permission.updated':
+        case 'permission.replied':
+          void refreshPendingRequests(true);
+          return;
+        default:
+          return;
+      }
+    };
+
+    const subscribe = async () => {
+      setEventStreamStatus('connecting');
+
+      try {
+        const subscription = await client.event.subscribe({ signal: abortController.signal });
+        if (!mounted) {
+          abortController.abort();
+          return;
+        }
+
+        setEventStreamStatus('connected');
+        for await (const event of subscription.stream) {
+          if (!mounted || abortController.signal.aborted) {
+            break;
+          }
+
+          handleEvent(event);
+        }
+      } catch {
+        if (!abortController.signal.aborted && mounted) {
+          setEventStreamStatus('error');
+        }
+      }
+    };
+
+    void subscribe();
+
+    return () => {
+      mounted = false;
+      abortController.abort();
+    };
+  }, [activeProjectPath, client, connection.status, refreshPendingRequests, refreshSessions, scheduleSessionRefresh]);
+
   useEffect(
     () => () => {
+      Object.values(sessionRefreshTimeoutsRef.current).forEach((timeout) => clearTimeout(timeout));
+      sessionRefreshTimeoutsRef.current = {};
       if (conversationResumeTimeoutRef.current) {
         clearTimeout(conversationResumeTimeoutRef.current);
       }
 
+      void stopBackgroundConversationService().catch(() => undefined);
       void stopSpeaking().catch(() => undefined);
       void unloadWorkingSoundAsync().catch(() => undefined);
     },
-    [],
+    [stopBackgroundConversationService],
   );
 
   useEffect(() => {
@@ -1812,10 +2091,10 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
           refreshSessionTodos(conversationSessionId),
         ]);
       }
-    }, 1500);
+    }, eventStreamStatus === 'connected' ? 10000 : 2500);
 
     return () => clearInterval(interval);
-  }, [activeProjectPath, connection.status, conversationPhase, conversationSessionId, currentSessionId, refreshMessages, refreshPendingRequests, refreshSessionDiff, refreshSessionTodos, refreshSessions, sendingState.active, sessionStatuses]);
+  }, [activeProjectPath, connection.status, conversationPhase, conversationSessionId, currentSessionId, eventStreamStatus, refreshMessages, refreshPendingRequests, refreshSessionDiff, refreshSessionTodos, refreshSessions, sendingState.active, sessionStatuses]);
 
   useEffect(() => {
     let cancelled = false;
@@ -1973,13 +2252,16 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
       case 'submitting':
         return 'Sending';
       case 'waiting':
+        if (backgroundConversationServiceActive && conversationAppState !== 'active') {
+          return 'Monitoring in background';
+        }
         return conversationCurrentActivityLabel || 'Thinking';
       case 'speaking':
         return 'Speaking';
       default:
         return undefined;
     }
-  }, [conversationAppState, conversationCurrentActivityLabel, conversationPhase]);
+  }, [backgroundConversationServiceActive, conversationAppState, conversationCurrentActivityLabel, conversationPhase]);
   const sessionPreviewById = useMemo(
     () =>
       Object.fromEntries(
