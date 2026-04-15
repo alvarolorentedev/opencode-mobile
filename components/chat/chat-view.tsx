@@ -498,6 +498,8 @@ export function ChatView() {
   const [queuedConversationPrompt, setQueuedConversationPrompt] = useState<string | undefined>(undefined);
   const [pendingConversationTurn, setPendingConversationTurn] = useState<string | undefined>(undefined);
   const speechDraftPrefixRef = useRef('');
+  const draftRef = useRef('');
+  const attachmentsRef = useRef<{ uri: string; mime?: string; filename?: string }[]>([]);
   const lastAutoSpokenMessageIdRef = useRef<string | undefined>(undefined);
   const conversationPhaseRef = useRef<ConversationPhase>('off');
   const assistantReplyBaselineIdRef = useRef<string | undefined>(undefined);
@@ -557,6 +559,15 @@ export function ChatView() {
     () => sessions.filter((session) => !session?.time?.archived),
     [sessions],
   );
+
+  useEffect(() => {
+    draftRef.current = draft;
+  }, [draft]);
+
+  useEffect(() => {
+    attachmentsRef.current = attachments;
+  }, [attachments]);
+
   const latestAssistantEntry = useMemo(
     () => [...displayTranscript].reverse().find((entry) => entry.role === 'assistant' && entry.text.trim()),
     [displayTranscript],
@@ -591,6 +602,15 @@ export function ChatView() {
     },
     preferOnDevice: chatPreferences.preferOnDeviceRecognition,
   });
+  const {
+    abort: abortSpeechInput,
+    error: speechInputError,
+    isAvailable: isSpeechInputAvailable,
+    isListening: isSpeechInputListening,
+    level: speechInputLevel,
+    start: startSpeechInput,
+    stop: stopSpeechInput,
+  } = speechInput;
   const startConversationListening = useCallback(async () => {
     if (conversationResumeTimeoutRef.current) {
       clearTimeout(conversationResumeTimeoutRef.current);
@@ -602,7 +622,7 @@ export function ChatView() {
     setQueuedConversationPrompt(undefined);
 
     setDraft('');
-    const started = await speechInput.start({ continuous: false });
+    const started = await startSpeechInput({ continuous: false });
     if (!started) {
       setConversationPhase('off');
       return false;
@@ -610,10 +630,10 @@ export function ChatView() {
 
     setConversationPhase('listening');
     return true;
-  }, [speechInput]);
+  }, [startSpeechInput]);
   const handleSendPrompt = useCallback(async (promptOverride?: string) => {
-    const nextDraft = promptOverride ?? draft;
-    const nextAttachments = attachments;
+    const nextDraft = promptOverride ?? draftRef.current;
+    const nextAttachments = attachmentsRef.current;
     const prompt = nextDraft.trim();
     if ((!prompt && nextAttachments.length === 0) || connection.status !== 'connected') {
       return;
@@ -639,7 +659,7 @@ export function ChatView() {
       setAttachments(nextAttachments);
       throw error;
     }
-  }, [attachments, connection.status, currentSessionId, draft, ensureActiveSession, sendPrompt]);
+  }, [connection.status, currentSessionId, ensureActiveSession, sendPrompt]);
 
   useEffect(() => {
     setVisibleTranscriptCount(TRANSCRIPT_PAGE_SIZE);
@@ -686,17 +706,17 @@ export function ChatView() {
   }, [copiedMessageId]);
 
   useEffect(() => {
-    if (!speechInput.error) {
+    if (!speechInputError) {
       return;
     }
 
-    setVoiceFeedback(speechInput.error);
+    setVoiceFeedback(speechInputError);
     if (conversationPhaseRef.current !== 'off') {
       setConversationPhase('off');
       setQueuedConversationPrompt(undefined);
       setPendingConversationTurn(undefined);
     }
-  }, [speechInput.error]);
+  }, [speechInputError]);
 
   useEffect(() => {
     conversationPhaseRef.current = conversationPhase;
@@ -858,12 +878,12 @@ export function ChatView() {
     }
 
     conversationCancelRequestedRef.current = true;
-    speechInput.abort();
+    abortSpeechInput();
     void stopSpeaking().catch(() => undefined);
     setPendingConversationTurn(undefined);
     setConversationPhase('off');
     setQueuedConversationPrompt(undefined);
-  }, [connection.status, conversationActive, speechInput]);
+  }, [abortSpeechInput, connection.status, conversationActive]);
 
   async function handleCopyMessage(entry: TranscriptEntry) {
     const value = [entry.text.trim(), entry.error?.trim()].filter(Boolean).join('\n\n');
@@ -889,7 +909,7 @@ export function ChatView() {
       }
 
       conversationCancelRequestedRef.current = true;
-      speechInput.abort();
+      abortSpeechInput();
       await stopSpeaking().catch(() => undefined);
       setPendingConversationTurn(undefined);
       setQueuedConversationPrompt(undefined);
@@ -914,7 +934,7 @@ export function ChatView() {
       return;
     }
 
-    speechInput.abort();
+    abortSpeechInput();
     await stopSpeaking().catch(() => undefined);
     setSpeakingMessageId(undefined);
     setPendingConversationTurn(undefined);
@@ -932,13 +952,13 @@ export function ChatView() {
       return;
     }
 
-    if (speechInput.isListening) {
-      speechInput.stop();
+    if (isSpeechInputListening) {
+      stopSpeechInput();
       return;
     }
 
     speechDraftPrefixRef.current = draft.trim() ? `${draft.trim()} ` : '';
-    const started = await speechInput.start();
+    const started = await startSpeechInput();
     if (!started) {
       return;
     }
@@ -957,7 +977,7 @@ export function ChatView() {
     }
 
     if (conversationActive) {
-      speechInput.abort();
+      abortSpeechInput();
     }
 
     const started = speakText({
@@ -1385,10 +1405,10 @@ export function ChatView() {
           </View>
         ) : null}
 
-        {speechInput.isListening ? (
+        {isSpeechInputListening ? (
           <View style={styles.voiceStatusRow}>
             <Chip compact icon="microphone" style={[styles.voiceStatusChip, { backgroundColor: `${palette.tint}14` }]}> 
-              {conversationActive ? 'Conversation' : 'Listening'} {speechInput.level > 0 ? `(${Math.min(10, Math.round(speechInput.level))})` : ''}
+              {conversationActive ? 'Conversation' : 'Listening'} {speechInputLevel > 0 ? `(${Math.min(10, Math.round(speechInputLevel))})` : ''}
             </Chip>
           </View>
         ) : null}
@@ -1399,7 +1419,7 @@ export function ChatView() {
               mode="flat"
               value={draft}
               onChangeText={setDraft}
-              editable={!speechInput.isListening}
+              editable={!isSpeechInputListening}
               multiline
               placeholder="Ask anything..."
               placeholderTextColor={palette.muted}
@@ -1410,11 +1430,11 @@ export function ChatView() {
             />
 
             <IconButton
-              icon={speechInput.isListening ? 'microphone-off' : 'microphone'}
+              icon={isSpeechInputListening ? 'microphone-off' : 'microphone'}
               size={20}
-              selected={speechInput.isListening}
+              selected={isSpeechInputListening}
               style={styles.composerVoiceButton}
-              disabled={conversationActive || connection.status !== 'connected' || (!speechInput.isListening && !speechInput.isAvailable)}
+              disabled={conversationActive || connection.status !== 'connected' || (!isSpeechInputListening && !isSpeechInputAvailable)}
               onPress={() => {
                 void handleToggleRecording();
               }}
@@ -1428,7 +1448,7 @@ export function ChatView() {
               loading={isStoppingSession}
               disabled={
                 showSendAction
-                  ? ((!draft.trim() && attachments.length === 0) || connection.status !== 'connected' || isCreatingSession || speechInput.isListening)
+                  ? ((!draft.trim() && attachments.length === 0) || connection.status !== 'connected' || isCreatingSession || isSpeechInputListening)
                   : !currentSessionId || isStoppingSession
               }
               onPress={() => {
