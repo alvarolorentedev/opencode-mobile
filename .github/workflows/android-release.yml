@@ -20,6 +20,7 @@ jobs:
       contents: read
 
     env:
+      EXPO_APP_VARIANT: production
       EXPO_ANDROID_PACKAGE: ${{ vars.EXPO_ANDROID_PACKAGE }}
 
     steps:

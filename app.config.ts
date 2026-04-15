@@ -5,10 +5,15 @@ function env(name: string) {
   return value ? value : undefined;
 }
 
-const androidPackage = env('EXPO_ANDROID_PACKAGE');
+const appVariant = env('EXPO_APP_VARIANT') ?? 'production';
+const isDevelopmentVariant = appVariant === 'development';
+const defaultAndroidPackage = 'app.getopencode.mobile';
+const releaseAndroidPackage = env('EXPO_ANDROID_PACKAGE') ?? defaultAndroidPackage;
+const developmentAndroidPackage = env('EXPO_ANDROID_PACKAGE_DEV') ?? `${releaseAndroidPackage}.dev`;
+const androidPackage = isDevelopmentVariant ? developmentAndroidPackage : releaseAndroidPackage;
 
 const config: ExpoConfig = {
-  name: 'OpenCode Mobile',
+  name: isDevelopmentVariant ? 'OpenCode Mobile Dev' : 'OpenCode Mobile',
   slug: 'opencode-mobile',
   version: '1.0.0',
   orientation: 'portrait',
@@ -22,7 +27,7 @@ const config: ExpoConfig = {
   userInterfaceStyle: 'automatic',
   newArchEnabled: true,
   android: {
-    package: androidPackage ?? 'app.getopencode.mobile',
+    package: androidPackage,
     adaptiveIcon: {
       foregroundImage: './assets/images/adaptive-icon.png',
       backgroundColor: "#202020"

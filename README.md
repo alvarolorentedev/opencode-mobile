@@ -39,6 +39,7 @@ Required GitHub secrets:
 Recommended GitHub variables:
 
 - `EXPO_ANDROID_PACKAGE`
+- `EXPO_ANDROID_PACKAGE_DEV` (optional; defaults to `<EXPO_ANDROID_PACKAGE>.dev` for development builds)
 
 To build locally the same way as CI:
 
@@ -61,6 +62,8 @@ For Play Store uploads, create a workflow dispatch run with `upload_to_play_stor
   - Then start Metro with `npm run start:dev-client`.
   - If you use the Cloudflare tunnel workflow, start it with `npm run start:cloudflare:dev-client`.
 
+Development Android builds now use a separate application ID and app name by default, so you can keep the production app and the development client installed on the same phone.
+
 ## Manual Android development build
 
 There is also a manual GitHub Action at `.github/workflows/expo-development-build.yml` that builds an Android development APK locally on GitHub Actions.
@@ -68,6 +71,7 @@ There is also a manual GitHub Action at `.github/workflows/expo-development-buil
 Recommended GitHub variables:
 
 - `EXPO_ANDROID_PACKAGE`
+- `EXPO_ANDROID_PACKAGE_DEV` (optional; defaults to `<EXPO_ANDROID_PACKAGE>.dev`)
 
 The repository no longer depends on EAS Build. Both release and development Android builds run in GitHub Actions with `expo prebuild` plus Gradle, so no `EXPO_TOKEN` or `eas.json` is needed.
 

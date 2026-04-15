@@ -11,7 +11,9 @@ jobs:
 
     env:
       EXPO_NO_TELEMETRY: 1
+      EXPO_APP_VARIANT: development
       EXPO_ANDROID_PACKAGE: ${{ vars.EXPO_ANDROID_PACKAGE }}
+      EXPO_ANDROID_PACKAGE_DEV: ${{ vars.EXPO_ANDROID_PACKAGE_DEV }}
       # Pass extra gradle args to the build script so we can get better diagnostics on failure
       GRADLE_ARGS: --stacktrace --info
 

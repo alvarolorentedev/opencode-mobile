@@ -26,6 +26,10 @@ const androidDir = path.join(repoRoot, 'android');
 
 run('npx', ['expo', 'prebuild', '--platform', 'android', '--non-interactive', '--clean'], {
   cwd: repoRoot,
+  env: {
+    ...process.env,
+    EXPO_APP_VARIANT: 'development',
+  },
 });
 
 run('./gradlew', ['assembleDebug', ...extraGradleArgs], {

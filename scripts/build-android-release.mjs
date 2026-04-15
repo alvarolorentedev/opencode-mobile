@@ -43,6 +43,10 @@ const keystorePath = path.join(androidDir, 'release.keystore');
 
 run('npx', ['expo', 'prebuild', '--platform', 'android', '--non-interactive', '--clean'], {
   cwd: repoRoot,
+  env: {
+    ...process.env,
+    EXPO_APP_VARIANT: 'production',
+  },
 });
 
 const keystorePassword = requireEnv('ANDROID_KEYSTORE_PASSWORD');
