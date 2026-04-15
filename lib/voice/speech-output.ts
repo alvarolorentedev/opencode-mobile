@@ -1,5 +1,4 @@
 import * as Speech from 'expo-speech';
-import { Audio, InterruptionModeAndroid, InterruptionModeIOS } from 'expo-av';
 
 export type SpeechVoiceOption = {
   id: string;
@@ -8,16 +7,32 @@ export type SpeechVoiceOption = {
 };
 
 let audioModeInitialized = false;
+let audioModulePromise: Promise<typeof import('expo-av') | null> | null = null;
+
+async function getAudioModuleAsync() {
+  if (!audioModulePromise) {
+    audioModulePromise = import('expo-av')
+      .then((module) => module)
+      .catch(() => null);
+  }
+
+  return audioModulePromise;
+}
 
 export async function initializeVoiceAudioAsync() {
   if (audioModeInitialized) {
     return;
   }
 
-  await Audio.setAudioModeAsync({
+  const audioModule = await getAudioModuleAsync();
+  if (!audioModule) {
+    return;
+  }
+
+  await audioModule.Audio.setAudioModeAsync({
     allowsRecordingIOS: false,
-    interruptionModeAndroid: InterruptionModeAndroid.DuckOthers,
-    interruptionModeIOS: InterruptionModeIOS.MixWithOthers,
+    interruptionModeAndroid: audioModule.InterruptionModeAndroid.DuckOthers,
+    interruptionModeIOS: audioModule.InterruptionModeIOS.MixWithOthers,
     playThroughEarpieceAndroid: false,
     playsInSilentModeIOS: true,
     shouldDuckAndroid: true,

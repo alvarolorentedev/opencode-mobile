@@ -1,17 +1,30 @@
 import * as FileSystem from 'expo-file-system/legacy';
 import { encode as encodeBase64 } from 'base-64';
-import { Audio } from 'expo-av';
 
 import { initializeVoiceAudioAsync } from '@/lib/voice/speech-output';
 
 export type WorkingSoundVariant = 'soft' | 'glass';
 
+type ExpoAudioModule = typeof import('expo-av');
+type AudioSound = import('expo-av').Audio.Sound;
+
 const SAMPLE_RATE = 22050;
 const DURATION_SECONDS = 1.8;
 const PEAK_VOLUME = 0.12;
 
+let audioModulePromise: Promise<ExpoAudioModule | null> | null = null;
 let loadedVariant: WorkingSoundVariant | undefined;
-let sound: Audio.Sound | undefined;
+let sound: AudioSound | undefined;
+
+async function getAudioModuleAsync() {
+  if (!audioModulePromise) {
+    audioModulePromise = import('expo-av')
+      .then((module) => module)
+      .catch(() => null);
+  }
+
+  return audioModulePromise;
+}
 
 function clamp(value: number, min: number, max: number) {
   return Math.min(max, Math.max(min, value));
@@ -106,6 +119,11 @@ async function ensureWorkingSoundFileAsync(variant: WorkingSoundVariant) {
 }
 
 export async function startWorkingSoundAsync(variant: WorkingSoundVariant, volume: number) {
+  const audioModule = await getAudioModuleAsync();
+  if (!audioModule) {
+    return false;
+  }
+
   await initializeVoiceAudioAsync();
 
   if (sound && loadedVariant !== variant) {
@@ -116,7 +134,7 @@ export async function startWorkingSoundAsync(variant: WorkingSoundVariant, volum
 
   if (!sound) {
     const uri = await ensureWorkingSoundFileAsync(variant);
-    const created = await Audio.Sound.createAsync(
+    const created = await audioModule.Audio.Sound.createAsync(
       { uri },
       {
         isLooping: true,
@@ -133,6 +151,7 @@ export async function startWorkingSoundAsync(variant: WorkingSoundVariant, volum
   await sound.setIsLoopingAsync(true);
   await sound.setVolumeAsync(clamp(volume, 0, 1));
   await sound.playAsync();
+  return true;
 }
 
 export async function stopWorkingSoundAsync() {
