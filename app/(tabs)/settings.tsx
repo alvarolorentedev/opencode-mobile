@@ -648,18 +648,6 @@ export default function SettingsScreen() {
           <Text variant="titleLarge" style={[styles.title, { color: palette.text }]}>Voice</Text>
           <List.Section style={styles.infoListSection}>
             <List.Item
-              title="Background conversation"
-              description="Android: keep monitoring the active session in a foreground service, read finished replies aloud, and resume when you reopen the app. iPhone support stays foreground-only."
-              titleStyle={{ color: palette.text }}
-              descriptionStyle={{ color: palette.muted }}
-              right={() => (
-                <Switch
-                  value={chatPreferences.backgroundConversationEnabled}
-                  onValueChange={(value) => updateChatPreferences({ backgroundConversationEnabled: value })}
-                />
-              )}
-            />
-            <List.Item
               title="On-device voice input"
               description="Prefer local speech recognition and avoid cloud fallback when possible."
               titleStyle={{ color: palette.text }}

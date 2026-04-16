@@ -1,5 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { AppState, Platform, type AppStateStatus } from 'react-native';
+import { AppState } from 'react-native';
 import type { Agent, Config, FileDiff, Project, Session, SessionStatus, Todo } from '@/lib/opencode/types';
 import {
   createContext,
@@ -27,11 +27,6 @@ import {
   type PendingQuestionRequest,
   type OpencodeConnectionSettings,
 } from '@/lib/opencode/client';
-import {
-  isBackgroundConversationSupported,
-  startBackgroundConversation,
-  stopBackgroundConversation,
-} from '@/lib/background-conversation';
 import {
   getHistoryPreview,
   toTranscriptEntry,
@@ -123,7 +118,6 @@ export type ChatPreferences = {
   speechLocale?: string;
   speechRate: number;
   speechVoiceId?: string;
-  backgroundConversationEnabled: boolean;
   workingSoundEnabled: boolean;
   workingSoundVariant: WorkingSoundVariant;
   workingSoundVolume: number;
@@ -141,7 +135,6 @@ const defaultChatPreferences: ChatPreferences = {
   preferOnDeviceRecognition: true,
   resumeListeningAfterReply: true,
   speechRate: 1,
-  backgroundConversationEnabled: true,
   workingSoundEnabled: true,
   workingSoundVariant: 'soft',
   workingSoundVolume: 0.18,
@@ -157,7 +150,6 @@ type ConversationState = {
   feedback?: string;
   isListening: boolean;
   level: number;
-  appState: AppStateStatus;
 };
 
 export type OpencodeProject = {
@@ -546,9 +538,7 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
   const [queuedConversationPrompt, setQueuedConversationPrompt] = useState<string>();
   const [pendingConversationTurn, setPendingConversationTurn] = useState<string>();
   const [conversationFeedback, setConversationFeedback] = useState<string>();
-  const [conversationAppState, setConversationAppState] = useState<AppStateStatus>(AppState.currentState);
   const [eventStreamStatus, setEventStreamStatus] = useState<'idle' | 'connecting' | 'connected' | 'error'>('idle');
-  const [backgroundConversationServiceActive, setBackgroundConversationServiceActive] = useState(false);
 
   const settingsRef = useRef(settings);
   const bootstrapPromiseRef = useRef<Promise<string | undefined> | null>(null);
@@ -556,7 +546,6 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
   const assistantReplyBaselineIdRef = useRef<string | undefined>(undefined);
   const conversationResumeTimeoutRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const conversationCancelRequestedRef = useRef(false);
-  const backgroundConversationSignatureRef = useRef<string | undefined>(undefined);
   const sessionRefreshTimeoutsRef = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
   settingsRef.current = settings;
 
@@ -1531,58 +1520,6 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
     setConversationFeedback(undefined);
   }, []);
 
-  const stopBackgroundConversationService = useCallback(async () => {
-    backgroundConversationSignatureRef.current = undefined;
-    setBackgroundConversationServiceActive(false);
-    await stopBackgroundConversation().catch(() => undefined);
-  }, []);
-
-  const startBackgroundConversationService = useCallback(
-    async (sessionId: string) => {
-      if (
-        Platform.OS !== 'android'
-        || !chatPreferences.backgroundConversationEnabled
-        || !isBackgroundConversationSupported()
-        || !activeProjectPath
-        || !sessionId
-      ) {
-        return false;
-      }
-
-      const signature = JSON.stringify({
-        activeProjectPath,
-        assistantReplyBaselineId: assistantReplyBaselineIdRef.current,
-        sessionId,
-        serverUrl: settingsRef.current.serverUrl,
-        speechLocale: chatPreferences.speechLocale,
-        speechRate: chatPreferences.speechRate,
-        speechVoiceId: chatPreferences.speechVoiceId,
-        username: settingsRef.current.username,
-      });
-
-      if (backgroundConversationSignatureRef.current === signature) {
-        setBackgroundConversationServiceActive(true);
-        return true;
-      }
-
-      await startBackgroundConversation({
-        serverUrl: settingsRef.current.serverUrl,
-        username: settingsRef.current.username,
-        password: settingsRef.current.password,
-        directory: activeProjectPath,
-        sessionId,
-        speechLocale: chatPreferences.speechLocale,
-        speechRate: chatPreferences.speechRate,
-        speechVoiceId: chatPreferences.speechVoiceId,
-        assistantReplyBaselineId: assistantReplyBaselineIdRef.current,
-      });
-      backgroundConversationSignatureRef.current = signature;
-      setBackgroundConversationServiceActive(true);
-      return true;
-    },
-    [activeProjectPath, chatPreferences.backgroundConversationEnabled, chatPreferences.speechLocale, chatPreferences.speechRate, chatPreferences.speechVoiceId],
-  );
-
   const stopConversationMode = useCallback(async () => {
     if (conversationResumeTimeoutRef.current) {
       clearTimeout(conversationResumeTimeoutRef.current);
@@ -1593,12 +1530,11 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
     abortSpeechInput();
     await stopSpeaking().catch(() => undefined);
     await stopWorkingSoundAsync().catch(() => undefined);
-    await stopBackgroundConversationService();
     setPendingConversationTurn(undefined);
     setQueuedConversationPrompt(undefined);
     setConversationPhase('off');
     setConversationSessionId(undefined);
-  }, [abortSpeechInput, stopBackgroundConversationService]);
+  }, [abortSpeechInput]);
 
   const startConversationListening = useCallback(async (sessionId?: string) => {
     if (!sessionId && !conversationSessionId) {
@@ -1685,65 +1621,16 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
 
   useEffect(() => {
     const subscription = AppState.addEventListener('change', (nextState) => {
-      setConversationAppState(nextState);
+      if (nextState === 'active' || conversationPhaseRef.current === 'off') {
+        return;
+      }
+
+      setConversationFeedback('Conversation mode stopped because the app left the foreground.');
+      void stopConversationMode();
     });
 
     return () => subscription.remove();
-  }, []);
-
-  useEffect(() => {
-    if (
-      Platform.OS !== 'android'
-      || !chatPreferences.backgroundConversationEnabled
-      || !isBackgroundConversationSupported()
-      || conversationAppState === 'active'
-      || conversationPhase === 'off'
-    ) {
-      return;
-    }
-
-    abortSpeechInput();
-    void stopSpeaking().catch(() => undefined);
-    void stopWorkingSoundAsync().catch(() => undefined);
-
-    if (conversationPhase === 'listening' || conversationPhase === 'speaking') {
-      setConversationPhase('waiting');
-    }
-  }, [abortSpeechInput, chatPreferences.backgroundConversationEnabled, conversationAppState, conversationPhase]);
-
-  useEffect(() => {
-    if (
-      Platform.OS !== 'android'
-      || !chatPreferences.backgroundConversationEnabled
-      || !isBackgroundConversationSupported()
-      || conversationAppState === 'active'
-      || conversationPhase === 'off'
-      || !conversationSessionId
-    ) {
-      void stopBackgroundConversationService();
-      return;
-    }
-
-    void startBackgroundConversationService(conversationSessionId).catch(() => {
-      setBackgroundConversationServiceActive(false);
-    });
-  }, [
-    chatPreferences.backgroundConversationEnabled,
-    conversationAppState,
-    conversationPhase,
-    conversationSessionId,
-    startBackgroundConversationService,
-    stopBackgroundConversationService,
-  ]);
-
-  useEffect(() => {
-    if (conversationPhase === 'off' || chatPreferences.backgroundConversationEnabled || conversationAppState === 'active') {
-      return;
-    }
-
-    setConversationFeedback('Background conversation is disabled in settings, so conversation mode stopped when the app left the foreground.');
-    void stopConversationMode();
-  }, [chatPreferences.backgroundConversationEnabled, conversationAppState, conversationPhase, stopConversationMode]);
+  }, [stopConversationMode]);
 
   useEffect(() => {
     if (!speechInputError) {
@@ -1817,16 +1704,6 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
 
   useEffect(() => {
     if (conversationPhase === 'off' || conversationPhase !== 'waiting') {
-      return;
-    }
-
-    if (
-      Platform.OS === 'android'
-      && chatPreferences.backgroundConversationEnabled
-      && isBackgroundConversationSupported()
-      && conversationAppState !== 'active'
-    ) {
-      void stopWorkingSoundAsync().catch(() => undefined);
       return;
     }
 
@@ -1907,7 +1784,6 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
     chatPreferences.workingSoundEnabled,
     chatPreferences.workingSoundVariant,
     chatPreferences.workingSoundVolume,
-    conversationAppState,
     conversationPhase,
     conversationSessionId,
     getLatestConversationAssistantEntry,
@@ -2248,20 +2124,17 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
   const conversationStatusLabel = useMemo(() => {
     switch (conversationPhase) {
       case 'listening':
-        return conversationAppState === 'active' ? 'Listening' : 'Listening in background';
+        return 'Listening';
       case 'submitting':
         return 'Sending';
       case 'waiting':
-        if (backgroundConversationServiceActive && conversationAppState !== 'active') {
-          return 'Monitoring in background';
-        }
         return conversationCurrentActivityLabel || 'Thinking';
       case 'speaking':
         return 'Speaking';
       default:
         return undefined;
     }
-  }, [backgroundConversationServiceActive, conversationAppState, conversationCurrentActivityLabel, conversationPhase]);
+  }, [conversationCurrentActivityLabel, conversationPhase]);
   const sessionPreviewById = useMemo(
     () =>
       Object.fromEntries(
@@ -2311,7 +2184,6 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
       updateChatPreferences,
       conversation: {
         active: conversationActive,
-        appState: conversationAppState,
         feedback: conversationFeedback,
         isListening: isConversationListening,
         level: conversationListeningLevel,
@@ -2366,7 +2238,6 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
       chatPreferences,
       clearConversationFeedback,
       conversationActive,
-      conversationAppState,
       conversationFeedback,
       conversationListeningLevel,
       conversationPhase,
