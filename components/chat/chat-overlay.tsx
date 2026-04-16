@@ -1,5 +1,4 @@
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { useKeepAwake } from 'expo-keep-awake';
 import { useEffect, useRef } from 'react';
 import { Animated, Easing, StyleSheet, View } from 'react-native';
 import { Button, Text } from 'react-native-paper';
@@ -12,7 +11,6 @@ export function ConversationOverlay({
   insetsTop,
   latestAssistantText,
   latestUserText,
-  level,
   onStop,
   phase,
   sessionTitle,
@@ -22,67 +20,51 @@ export function ConversationOverlay({
   insetsTop: number;
   latestAssistantText?: string;
   latestUserText?: string;
-  level: number;
   onStop: () => void;
   phase: 'off' | 'listening' | 'submitting' | 'waiting' | 'speaking';
   sessionTitle: string;
   statusLabel?: string;
 }) {
-  useKeepAwake('opencode-conversation-overlay');
-
   const colorScheme = useColorScheme() ?? 'light';
   const palette = Colors[colorScheme];
-  const breathe = useRef(new Animated.Value(0)).current;
-  const levelScale = useRef(new Animated.Value(1)).current;
+  const orbScale = useRef(new Animated.Value(1)).current;
+  const orbOpacity = useRef(new Animated.Value(0.9)).current;
+  const statusOpacity = useRef(new Animated.Value(0.82)).current;
 
   useEffect(() => {
-    const loop = Animated.loop(
-      Animated.sequence([
-        Animated.timing(breathe, {
-          toValue: 1,
-          duration: 2600,
-          easing: Easing.inOut(Easing.ease),
-          useNativeDriver: true,
-        }),
-        Animated.timing(breathe, {
-          toValue: 0,
-          duration: 2600,
-          easing: Easing.inOut(Easing.ease),
-          useNativeDriver: true,
-        }),
-      ]),
-    );
+    const targetScale = phase === 'speaking' ? 1.03 : phase === 'listening' ? 1.015 : 1;
+    const targetOpacity = phase === 'speaking' ? 1 : phase === 'listening' ? 0.96 : 0.9;
+    const targetStatusOpacity = phase === 'waiting' ? 0.74 : 0.88;
 
-    loop.start();
-    return () => loop.stop();
-  }, [breathe]);
+    Animated.parallel([
+      Animated.timing(orbScale, {
+        toValue: targetScale,
+        duration: 260,
+        easing: Easing.out(Easing.cubic),
+        useNativeDriver: true,
+      }),
+      Animated.timing(orbOpacity, {
+        toValue: targetOpacity,
+        duration: 260,
+        easing: Easing.out(Easing.cubic),
+        useNativeDriver: true,
+      }),
+      Animated.timing(statusOpacity, {
+        toValue: targetStatusOpacity,
+        duration: 220,
+        easing: Easing.out(Easing.quad),
+        useNativeDriver: true,
+      }),
+    ]).start();
+  }, [orbOpacity, orbScale, phase, statusOpacity]);
 
-  useEffect(() => {
-    const cappedLevel = Math.min(12, Math.max(0, level));
-    const phaseBoost = phase === 'speaking' ? 0.08 : phase === 'listening' ? 0.04 : 0.02;
-    Animated.spring(levelScale, {
-      toValue: 1 + Math.min(0.22, cappedLevel * 0.015 + phaseBoost),
-      friction: 7,
-      tension: 90,
-      useNativeDriver: true,
-    }).start();
-  }, [level, levelScale, phase]);
-
-  const breatheScale = breathe.interpolate({
-    inputRange: [0, 1],
-    outputRange: [1, 1.06],
-  });
-  const shellOpacity = breathe.interpolate({
-    inputRange: [0, 1],
-    outputRange: [0.72, 0.96],
-  });
-
-  const accent = colorScheme === 'dark' ? '#4EE0B6' : '#39C5B0';
+  const accent = colorScheme === 'dark' ? '#4EE0B6' : '#6FDCCA';
   const electric = '#2C8CFF';
-  const overlayBackground = colorScheme === 'dark' ? '#060A09' : '#091110';
-  const overlaySurface = colorScheme === 'dark' ? 'rgba(20, 32, 29, 0.86)' : 'rgba(235, 246, 242, 0.12)';
+  const overlayBackground = colorScheme === 'dark' ? '#020404' : '#040808';
+  const overlaySurface = colorScheme === 'dark' ? 'rgba(16, 22, 21, 0.92)' : 'rgba(18, 27, 26, 0.88)';
   const overlayText = '#F4FBF8';
-  const overlayMuted = 'rgba(228, 240, 236, 0.7)';
+  const overlayMuted = 'rgba(228, 240, 236, 0.68)';
+  const orbRing = phase === 'speaking' ? `${electric}30` : `${accent}24`;
   const snippetLabel = phase === 'speaking' ? 'Latest reply' : phase === 'submitting' ? 'Sending' : 'Heard';
   const snippetText = phase === 'speaking' ? latestAssistantText : latestUserText || latestAssistantText;
   const phaseCopy =
@@ -98,9 +80,6 @@ export function ConversationOverlay({
 
   return (
     <View style={[styles.voiceOverlay, { backgroundColor: overlayBackground, paddingTop: insetsTop + 14 }]}> 
-      <View style={[styles.voiceOverlayGlow, styles.voiceOverlayGlowTop, { backgroundColor: `${accent}22` }]} />
-      <View style={[styles.voiceOverlayGlow, styles.voiceOverlayGlowBottom, { backgroundColor: `${electric}22` }]} />
-
       <View style={styles.voiceOverlayContent}>
         <View style={styles.voiceOverlayHeader}>
           <View style={styles.voiceOverlayHeaderCopy}>
@@ -109,20 +88,21 @@ export function ConversationOverlay({
               {sessionTitle}
             </Text>
           </View>
-          <View style={[styles.voiceOverlayStatusPill, { backgroundColor: overlaySurface, borderColor: `${palette.border}66` }]}>
-            <MaterialCommunityIcons name={phase === 'speaking' ? 'volume-high' : 'microphone'} size={16} color={overlayText} />
-            <Text variant="labelMedium" style={{ color: overlayText }}>{statusLabel || 'Active'}</Text>
-          </View>
+          <Animated.View style={{ opacity: statusOpacity }}>
+            <View style={[styles.voiceOverlayStatusPill, { backgroundColor: overlaySurface, borderColor: `${palette.border}52` }]}> 
+              <MaterialCommunityIcons name={phase === 'speaking' ? 'volume-high' : 'microphone'} size={16} color={overlayText} />
+              <Text variant="labelMedium" style={{ color: overlayText }}>{statusLabel || 'Active'}</Text>
+            </View>
+          </Animated.View>
         </View>
 
         <View style={styles.voiceOverlayCenter}>
-          <Animated.View style={[styles.voiceOrbShell, { opacity: shellOpacity, transform: [{ scale: breatheScale }] }]}>
-            <Animated.View style={[styles.voiceOrbCore, { transform: [{ scale: levelScale }] }]}>
-              <View style={[styles.voiceOrbAura, { backgroundColor: `${accent}40` }]} />
-              <View style={[styles.voiceOrbBlobTop, { backgroundColor: '#DFF8F6' }]} />
+          <Animated.View style={[styles.voiceOrbShell, { borderColor: orbRing, opacity: orbOpacity, transform: [{ scale: orbScale }] }]}> 
+            <View style={styles.voiceOrbCore}>
+              <View style={[styles.voiceOrbBlobTop, { backgroundColor: '#D7F3F0' }]} />
               <View style={[styles.voiceOrbBlobBottom, { backgroundColor: electric }]} />
-              <View style={[styles.voiceOrbHighlight, { backgroundColor: 'rgba(255,255,255,0.48)' }]} />
-            </Animated.View>
+              <View style={[styles.voiceOrbHighlight, { backgroundColor: 'rgba(255,255,255,0.36)' }]} />
+            </View>
           </Animated.View>
 
           <View style={styles.voiceOverlayMeta}>
@@ -136,7 +116,7 @@ export function ConversationOverlay({
         </View>
 
         <View style={styles.voiceOverlayFooter}>
-          <View style={[styles.voiceOverlaySnippetCard, { backgroundColor: overlaySurface, borderColor: 'rgba(255,255,255,0.08)' }]}>
+          <View style={[styles.voiceOverlaySnippetCard, { backgroundColor: overlaySurface, borderColor: 'rgba(255,255,255,0.06)' }]}> 
             <Text variant="labelMedium" style={{ color: overlayMuted }}>{snippetLabel}</Text>
             <Text numberOfLines={3} variant="bodyLarge" style={{ color: overlayText }}>
               {snippetText?.trim() || 'Start speaking naturally. OpenCode will listen, answer, and keep the loop going.'}
@@ -146,8 +126,8 @@ export function ConversationOverlay({
           <Button
             mode="contained"
             icon="phone-hangup"
-            buttonColor="#F2F5F3"
-            textColor="#111917"
+            buttonColor="#E8ECEA"
+            textColor="#0F1715"
             contentStyle={styles.voiceOverlayDoneContent}
             labelStyle={styles.voiceOverlayDoneLabel}
             onPress={onStop}>
@@ -161,15 +141,6 @@ export function ConversationOverlay({
 
 const styles = StyleSheet.create({
   voiceOverlay: { ...StyleSheet.absoluteFillObject, zIndex: 12 },
-  voiceOverlayGlow: {
-    position: 'absolute',
-    width: 240,
-    height: 240,
-    borderRadius: 999,
-    opacity: 0.85,
-  },
-  voiceOverlayGlowTop: { top: -30, right: -50 },
-  voiceOverlayGlowBottom: { bottom: 140, left: -70 },
   voiceOverlayContent: { flex: 1, paddingHorizontal: 22, paddingBottom: 22 },
   voiceOverlayHeader: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: 16 },
   voiceOverlayHeaderCopy: { flex: 1, minWidth: 0, gap: 6 },
@@ -189,9 +160,10 @@ const styles = StyleSheet.create({
     width: 252,
     height: 252,
     borderRadius: 999,
+    borderWidth: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: 'rgba(255,255,255,0.04)',
+    backgroundColor: 'rgba(255,255,255,0.02)',
   },
   voiceOrbCore: {
     width: 212,
@@ -201,12 +173,6 @@ const styles = StyleSheet.create({
     backgroundColor: '#DDF7F6',
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  voiceOrbAura: {
-    position: 'absolute',
-    width: 176,
-    height: 176,
-    borderRadius: 999,
   },
   voiceOrbBlobTop: {
     position: 'absolute',
@@ -232,7 +198,7 @@ const styles = StyleSheet.create({
     height: 42,
     borderRadius: 999,
   },
-  voiceOverlayMeta: { alignItems: 'center', gap: 12, paddingHorizontal: 14 },
+  voiceOverlayMeta: { alignItems: 'center', gap: 12, paddingHorizontal: 14, maxWidth: 320 },
   voiceOverlayPhaseTitle: { fontFamily: Fonts.display, fontWeight: '700', textAlign: 'center' },
   voiceOverlayPhaseCopy: { textAlign: 'center', lineHeight: 28, maxWidth: 320 },
   voiceOverlayFooter: { gap: 18 },

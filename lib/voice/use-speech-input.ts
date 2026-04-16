@@ -27,13 +27,17 @@ function toUserMessage(event: ExpoSpeechRecognitionErrorEvent) {
 }
 
 export function useSpeechInput({
+  levelStep = 1,
   locale,
   onResult,
   preferOnDevice,
+  volumeUpdateIntervalMillis = 120,
 }: {
+  levelStep?: number;
   locale?: string;
   preferOnDevice: boolean;
   onResult: (transcript: string, isFinal: boolean) => void;
+  volumeUpdateIntervalMillis?: number;
 }) {
   const [error, setError] = useState<string>();
   const [isListening, setIsListening] = useState(false);
@@ -42,6 +46,15 @@ export function useSpeechInput({
   const [isAvailable] = useState(() => ExpoSpeechRecognitionModule.isRecognitionAvailable());
   const [level, setLevel] = useState(0);
   const ignoreErrorsUntilRef = useRef(0);
+  const lastLevelRef = useRef(0);
+
+  const quantizeLevel = useCallback(
+    (value: number) => {
+      const safeStep = Math.max(0.25, levelStep);
+      return Math.round(Math.max(0, value) / safeStep) * safeStep;
+    },
+    [levelStep],
+  );
 
   const shouldIgnoreError = useCallback((event: ExpoSpeechRecognitionErrorEvent) => {
     if (event.error === 'aborted') {
@@ -64,6 +77,7 @@ export function useSpeechInput({
   useSpeechRecognitionEvent('end', () => {
     setIsListening(false);
     setIsStarting(false);
+    lastLevelRef.current = 0;
     setLevel(0);
   });
 
@@ -84,17 +98,29 @@ export function useSpeechInput({
     setIsStarting(false);
     if (shouldIgnoreError(event)) {
       setIsListening(false);
+      lastLevelRef.current = 0;
       setLevel(0);
       return;
     }
 
     setError(toUserMessage(event));
     setIsListening(false);
+    lastLevelRef.current = 0;
     setLevel(0);
   });
 
   useSpeechRecognitionEvent('volumechange', (event) => {
-    setLevel(Math.max(0, event.value));
+    if (!isListening) {
+      return;
+    }
+
+    const nextLevel = quantizeLevel(event.value);
+    if (nextLevel === lastLevelRef.current) {
+      return;
+    }
+
+    lastLevelRef.current = nextLevel;
+    setLevel(nextLevel);
   });
 
   const start = useCallback(async (options?: { continuous?: boolean }) => {
@@ -131,7 +157,7 @@ export function useSpeechInput({
         requiresOnDeviceRecognition: preferOnDevice,
         volumeChangeEventOptions: {
           enabled: true,
-          intervalMillis: 120,
+          intervalMillis: volumeUpdateIntervalMillis,
         },
       });
 
@@ -142,7 +168,7 @@ export function useSpeechInput({
     } finally {
       setIsStarting(false);
     }
-  }, [isAvailable, locale, preferOnDevice, supportsLocalRecognition]);
+  }, [isAvailable, locale, preferOnDevice, supportsLocalRecognition, volumeUpdateIntervalMillis]);
 
   const stop = useCallback(() => {
     ignoreErrorsUntilRef.current = Date.now() + 1500;
@@ -161,6 +187,7 @@ export function useSpeechInput({
       // Ignore abort errors from transient native state.
     } finally {
       setIsListening(false);
+      lastLevelRef.current = 0;
       setLevel(0);
     }
   }, []);

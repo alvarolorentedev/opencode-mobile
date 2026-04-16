@@ -1,4 +1,5 @@
 import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
+import Constants from 'expo-constants';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
@@ -18,9 +19,10 @@ export const unstable_settings = {
 export default function RootLayout() {
   const colorScheme = useColorScheme();
   const paperTheme = getPaperTheme(colorScheme === 'dark' ? 'dark' : 'light');
+  const isE2EMode = Boolean(Constants.expoConfig?.extra?.e2eMode);
 
   useEffect(() => {
-    if (Platform.OS === 'web') {
+    if (Platform.OS === 'web' || isE2EMode) {
       return;
     }
 
@@ -31,7 +33,7 @@ export default function RootLayout() {
     void import('@/lib/voice/speech-output')
       .then(({ initializeVoiceAudioAsync }) => initializeVoiceAudioAsync())
       .catch(() => undefined);
-  }, []);
+  }, [isE2EMode]);
 
   return (
     <SafeAreaProvider>

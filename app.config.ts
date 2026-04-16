@@ -7,6 +7,8 @@ function env(name: string) {
 
 const appVariant = env('EXPO_APP_VARIANT') ?? 'production';
 const isDevelopmentVariant = appVariant === 'development';
+const isE2EMode = env('EXPO_PUBLIC_E2E_MODE') === '1';
+const e2eServerUrl = env('EXPO_PUBLIC_E2E_SERVER_URL');
 const defaultAndroidPackage = 'app.getopencode.mobile';
 const releaseAndroidPackage = env('EXPO_ANDROID_PACKAGE') ?? defaultAndroidPackage;
 const developmentAndroidPackage = env('EXPO_ANDROID_PACKAGE_DEV') ?? `${releaseAndroidPackage}.dev`;
@@ -70,6 +72,8 @@ const config: ExpoConfig = {
   },
   extra: {
     router: {},
+    e2eMode: isE2EMode,
+    e2eServerUrl,
   },
 };
 

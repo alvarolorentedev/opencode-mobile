@@ -41,10 +41,8 @@ import {
 import { speakText, stopSpeaking } from '@/lib/voice/speech-output';
 import { useSpeechInput } from '@/lib/voice/use-speech-input';
 import {
-  startWorkingSoundAsync,
   stopWorkingSoundAsync,
   unloadWorkingSoundAsync,
-  type WorkingSoundVariant,
 } from '@/lib/voice/working-sound';
 import {
   buildSystemPrompt,
@@ -69,6 +67,7 @@ import {
   type ResponseScope as ProviderResponseScope,
 } from '@/providers/opencode-provider-utils';
 import { useConversationKeepAwake } from '@/providers/use-conversation-keep-awake';
+import { useConversationScreenDim } from '@/providers/use-conversation-screen-dim';
 import { useOpencodePersistence } from '@/providers/use-opencode-persistence';
 
 export type AgentOption = ProviderAgentOption;
@@ -89,11 +88,11 @@ export type ProviderAuthPrompt = {
   key: string;
   message: string;
   placeholder?: string;
-  options?: Array<{
+  options?: {
     label: string;
     value: string;
     hint?: string;
-  }>;
+  }[];
   when?: {
     key: string;
     op: 'eq' | 'neq';
@@ -1041,13 +1040,12 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
             // Attempt to read local file and encode as data URL. Use dynamic import to
             // avoid requiring expo-file-system in environments that don't have it.
             try {
-              // eslint-disable-next-line @typescript-eslint/no-var-requires
               const FileSystem = await import('expo-file-system');
               // readAsStringAsync supports file:// and content:// URIs on React Native
               const base64 = await FileSystem.readAsStringAsync(att.uri, { encoding: 'base64' });
               const dataUrl = `data:${mime};base64,${base64}`;
               preparedFileParts.push({ type: 'file', mime, filename, url: dataUrl });
-            } catch (err) {
+            } catch {
               // If reading fails, fall back to passing the original URI. The server
               // may still support some schemes or an MCP server may be able to fetch.
               preparedFileParts.push({ type: 'file', mime, filename, url: att.uri });
@@ -1133,6 +1131,7 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
   );
 
   const speechInput = useSpeechInput({
+    levelStep: 2,
     locale: chatPreferences.speechLocale,
     onResult: (transcript, isFinal) => {
       if (conversationPhaseRef.current === 'off') {
@@ -1145,6 +1144,7 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
       }
     },
     preferOnDevice: chatPreferences.preferOnDeviceRecognition,
+    volumeUpdateIntervalMillis: 400,
   });
   const {
     abort: abortSpeechInput,
@@ -1270,6 +1270,7 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
   }, [conversationPhase]);
 
   useConversationKeepAwake(conversationPhase, CONVERSATION_KEEP_AWAKE_TAG);
+  useConversationScreenDim(conversationPhase);
 
   useEffect(() => {
     const subscription = AppState.addEventListener('change', (nextState) => {
@@ -1375,9 +1376,6 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
     }
 
     if (isSessionRunning) {
-      if (chatPreferences.workingSoundEnabled) {
-        void startWorkingSoundAsync(chatPreferences.workingSoundVariant, chatPreferences.workingSoundVolume).catch(() => undefined);
-      }
       return () => {
         void stopWorkingSoundAsync().catch(() => undefined);
       };
@@ -1433,9 +1431,6 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
     chatPreferences.speechLocale,
     chatPreferences.speechRate,
     chatPreferences.speechVoiceId,
-    chatPreferences.workingSoundEnabled,
-    chatPreferences.workingSoundVariant,
-    chatPreferences.workingSoundVolume,
     conversationPhase,
     conversationSessionId,
     getLatestConversationAssistantEntry,
@@ -1596,14 +1591,27 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
     }
 
     const hasBusySession = Object.values(sessionStatuses).some((status) => status.type !== 'idle');
-    const interval = setInterval(() => {
-      void refreshPendingRequests(true);
+    const hasConversationActivity = conversationPhase !== 'off';
+    const useSafetyPolling = eventStreamStatus !== 'connected';
+    const shouldKeepSafetyPoll = useSafetyPolling || hasBusySession || sendingState.active || hasConversationActivity;
 
-      if (hasBusySession || sendingState.active) {
+    if (!shouldKeepSafetyPoll) {
+      return;
+    }
+
+    const interval = setInterval(() => {
+      const currentHasBusySession = Object.values(sessionStatuses).some((status) => status.type !== 'idle');
+      const currentHasConversationActivity = conversationPhase !== 'off';
+
+      if (useSafetyPolling) {
+        void refreshPendingRequests(true);
+      }
+
+      if (currentHasBusySession || sendingState.active) {
         void refreshSessions(true);
       }
 
-      if (currentSessionId && (hasBusySession || sendingState.active)) {
+      if (currentSessionId && (currentHasBusySession || sendingState.active)) {
         void Promise.all([
           refreshMessages(currentSessionId, true),
           refreshSessionDiff(currentSessionId, true),
@@ -1611,14 +1619,14 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
         ]);
       }
 
-      if (conversationSessionId && conversationSessionId !== currentSessionId && (conversationPhase !== 'off' || hasBusySession || sendingState.active)) {
+      if (conversationSessionId && conversationSessionId !== currentSessionId && (currentHasConversationActivity || currentHasBusySession || sendingState.active)) {
         void Promise.all([
           refreshMessages(conversationSessionId, true),
           refreshSessionDiff(conversationSessionId, true),
           refreshSessionTodos(conversationSessionId),
         ]);
       }
-    }, eventStreamStatus === 'connected' ? 10000 : 2500);
+    }, 5000);
 
     return () => clearInterval(interval);
   }, [activeProjectPath, connection.status, conversationPhase, conversationSessionId, currentSessionId, eventStreamStatus, refreshMessages, refreshPendingRequests, refreshSessionDiff, refreshSessionTodos, refreshSessions, sendingState.active, sessionStatuses]);
@@ -1733,14 +1741,6 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
     [conversationSessionId, messagesBySession],
   );
   const conversationTranscript = useMemo(() => conversationMessages.map(toTranscriptEntry), [conversationMessages]);
-  const conversationDisplayTranscript = useMemo(
-    () => conversationTranscript.filter(isTranscriptDisplayMessage),
-    [conversationTranscript],
-  );
-  const latestConversationAssistantEntry = useMemo(
-    () => [...conversationDisplayTranscript].reverse().find((entry) => entry.role === 'assistant' && entry.text.trim()),
-    [conversationDisplayTranscript],
-  );
   const conversationCurrentActivityLabel = useMemo(() => {
     for (let index = conversationTranscript.length - 1; index >= 0; index -= 1) {
       const entry = conversationTranscript[index];
@@ -1756,21 +1756,6 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
 
     return undefined;
   }, [conversationTranscript]);
-  const conversationPendingInteractions = useMemo(() => {
-    if (!conversationSessionId) {
-      return 0;
-    }
-
-    return (pendingPermissionsBySession[conversationSessionId] || []).length + (pendingQuestionsBySession[conversationSessionId] || []).length;
-  }, [conversationSessionId, pendingPermissionsBySession, pendingQuestionsBySession]);
-  const conversationRunning = useMemo(() => {
-    if (!conversationSessionId) {
-      return false;
-    }
-
-    const status = sessionStatuses[conversationSessionId];
-    return sendingState.sessionId === conversationSessionId || sendingState.active || (!!status && status.type !== 'idle');
-  }, [conversationSessionId, sendingState.active, sendingState.sessionId, sessionStatuses]);
   const conversationActive = conversationPhase !== 'off';
   const conversationStatusLabel = useMemo(() => {
     switch (conversationPhase) {

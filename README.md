@@ -34,9 +34,16 @@ Mobile client for OpenCode, built with Expo and React Native.
 ```bash
 npm run lint
 npm run typecheck
+npm run test:e2e:web
 npm run android
 npm run ios
 ```
+
+## Testing
+
+- Flow validation is CI-first and always runs against the fake OpenCode server in `tests/fake-opencode/server.mjs`.
+- The end-to-end suite is implemented with Playwright in `tests/e2e/flows.spec.mjs`.
+- The full repo testing strategy is documented in `TESTING.md`.
 
 ## OpenCode Connection
 

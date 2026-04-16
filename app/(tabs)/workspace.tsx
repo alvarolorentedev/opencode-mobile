@@ -123,8 +123,8 @@ export default function WorkspaceScreen() {
             : connection.message}
         </Text>
         <View style={styles.actions}>
-          <Button mode="outlined" onPress={() => void refreshWorkspaceCatalog()}>Sync</Button>
-          <Button mode="contained" onPress={() => void handleRefresh()}>Refresh</Button>
+          <Button testID="workspace-sync-button" mode="outlined" onPress={() => void refreshWorkspaceCatalog()}>Sync</Button>
+          <Button testID="workspace-refresh-button" mode="contained" onPress={() => void handleRefresh()}>Refresh</Button>
         </View>
       </Surface>
 
@@ -161,7 +161,7 @@ export default function WorkspaceScreen() {
           title="Chats"
           subtitle={activeProject ? `Showing chats for ${activeProject.label}` : 'Choose a project to load chats.'}
           right={() =>
-            isCreating ? <ActivityIndicator style={styles.headerAction} color={palette.tint} /> : <Button onPress={() => void handleNewChat()} disabled={!activeProject}>New</Button>
+                    isCreating ? <ActivityIndicator style={styles.headerAction} color={palette.tint} /> : <Button testID="workspace-new-chat-button" onPress={() => void handleNewChat()} disabled={!activeProject}>New</Button>
           }
         />
         <Card.Content style={styles.listContent}>

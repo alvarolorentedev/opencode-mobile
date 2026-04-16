@@ -204,7 +204,6 @@ export function ChatView() {
     error: speechInputError,
     isAvailable: isSpeechInputAvailable,
     isListening: isSpeechInputListening,
-    level: speechInputLevel,
     start: startSpeechInput,
     stop: stopSpeechInput,
   } = speechInput;
@@ -530,7 +529,6 @@ export function ChatView() {
             insetsTop={insets.top}
             latestAssistantText={latestAssistantEntry?.text}
             latestUserText={latestUserEntry?.text}
-            level={Math.max(speechInputLevel, conversation.level)}
             onStop={() => void toggleConversationMode()}
             phase={conversation.phase}
             sessionTitle={selectedSession?.title || 'Untitled chat'}
@@ -801,7 +799,7 @@ export function ChatView() {
         {isSpeechInputListening || conversation.isListening ? (
           <View style={styles.voiceStatusRow}>
             <Chip compact icon="microphone" style={[styles.voiceStatusChip, { backgroundColor: `${palette.tint}14` }]}> 
-              {conversationActive ? 'Conversation' : 'Listening'} {Math.max(speechInputLevel, conversation.level) > 0 ? `(${Math.min(10, Math.round(Math.max(speechInputLevel, conversation.level)))})` : ''}
+              {conversationActive ? 'Conversation active' : 'Listening'}
             </Chip>
           </View>
         ) : null}
@@ -809,6 +807,7 @@ export function ChatView() {
         <View style={[styles.inputShell, { borderColor: palette.border, backgroundColor: palette.background }]}> 
           <View style={styles.composerRow}>
             <TextInput
+              testID="chat-prompt-input"
               mode="flat"
               value={draft}
               onChangeText={setDraft}
@@ -823,6 +822,7 @@ export function ChatView() {
             />
 
             <IconButton
+              testID="chat-voice-button"
               icon={isSpeechInputListening ? 'microphone-off' : 'microphone'}
               size={20}
               selected={isSpeechInputListening}
@@ -834,6 +834,7 @@ export function ChatView() {
             />
 
             <IconButton
+              testID="chat-send-button"
               mode="contained"
               icon={showSendAction ? 'send' : 'stop'}
               size={20}

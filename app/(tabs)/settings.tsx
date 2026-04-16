@@ -453,6 +453,7 @@ export default function SettingsScreen() {
           <TextInput
             mode="outlined"
             label="Server URL"
+            testID="settings-server-url-input"
             value={settings.serverUrl}
             onChangeText={(value) => updateSettings({ serverUrl: value })}
             autoCapitalize="none"
@@ -462,6 +463,7 @@ export default function SettingsScreen() {
           <TextInput
             mode="outlined"
             label="Username"
+            testID="settings-username-input"
             value={settings.username}
             onChangeText={(value) => updateSettings({ username: value })}
             autoCapitalize="none"
@@ -470,13 +472,14 @@ export default function SettingsScreen() {
           <TextInput
             mode="outlined"
             label="Password"
+            testID="settings-password-input"
             value={settings.password}
             onChangeText={(value) => updateSettings({ password: value })}
             secureTextEntry
             autoCapitalize="none"
             autoCorrect={false}
           />
-          <Button mode="contained" loading={isConnecting} onPress={() => void handleConnect()}>
+          <Button testID="settings-reconnect-button" mode="contained" loading={isConnecting} onPress={() => void handleConnect()}>
             Reconnect
           </Button>
         </Card.Content>
@@ -493,7 +496,7 @@ export default function SettingsScreen() {
                 visible={addProviderMenuVisible}
                 onDismiss={() => setAddProviderMenuVisible(false)}
                 anchor={
-                  <Button compact mode="outlined" onPress={() => setAddProviderMenuVisible(true)}>
+                  <Button testID="settings-add-provider-button" compact mode="outlined" onPress={() => setAddProviderMenuVisible(true)}>
                     Add provider
                   </Button>
                 }>
@@ -907,7 +910,7 @@ export default function SettingsScreen() {
           </Dialog.Content>
           <Dialog.Actions>
             <Button onPress={resetProviderDialog}>Cancel</Button>
-            <Button disabled={!selectedMethod} loading={isConfiguringProvider} onPress={() => void submitProviderConfiguration()}>
+            <Button testID="settings-provider-save-button" disabled={!selectedMethod} loading={isConfiguringProvider} onPress={() => void submitProviderConfiguration()}>
               {selectedMethod?.type === 'oauth' ? 'Continue' : 'Save'}
             </Button>
           </Dialog.Actions>

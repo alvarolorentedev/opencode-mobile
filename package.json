@@ -5,6 +5,8 @@
   "scripts": {
     "start": "expo start",
     "start:dev-client": "expo start --dev-client",
+    "build:web:ci": "expo export --platform web --output-dir dist-e2e",
+    "serve:web:ci": "npm run build:web:ci && serve -s dist-e2e -l 19006",
     "start:cloudflare": "./scripts/start-expo-cloudflare.sh",
     "start:cloudflare:dev-client": "EXPO_START_TARGET=dev-client ./scripts/start-expo-cloudflare.sh",
     "start:cloudflare:bg": "./scripts/start-expo-cloudflare-bg.sh",
@@ -15,6 +17,10 @@
     "web": "expo start --web",
     "lint": "expo lint",
     "typecheck": "tsc --noEmit",
+    "test:fake-server": "node ./tests/fake-opencode/server.mjs",
+    "test:fake-server:self": "node ./tests/fake-opencode/self-test.mjs",
+    "test:e2e:web": "playwright test",
+    "test:ci:static": "npm run lint && npm run typecheck",
     "build:android": "node ./scripts/build-android-release.mjs",
     "build:development:android": "node ./scripts/build-android-development.mjs",
     "build:release:android": "node ./scripts/build-android-release.mjs",
@@ -31,6 +37,7 @@
     "expo": "~54.0.33",
     "expo-av": "^16.0.8",
     "expo-background-task": "~1.0.10",
+    "expo-brightness": "~14.0.8",
     "expo-clipboard": "^55.0.9",
     "expo-constants": "~18.0.13",
     "expo-dev-client": "~6.0.20",
@@ -65,9 +72,11 @@
     "react-native-worklets": "0.5.1"
   },
   "devDependencies": {
+    "@playwright/test": "^1.54.2",
     "@types/react": "~19.1.0",
     "eslint": "^9.25.0",
     "eslint-config-expo": "~10.0.0",
+    "serve": "^14.2.4",
     "typescript": "~5.9.2"
   },
   "private": true

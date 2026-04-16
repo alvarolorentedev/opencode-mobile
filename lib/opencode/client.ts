@@ -1,5 +1,6 @@
 import { createOpencodeClient } from '@opencode-ai/sdk/client';
 import { encode as encodeBase64 } from 'base-64';
+import Constants from 'expo-constants';
 
 // Small exported shapes used by the UI for pending requests.
 export type PendingPermissionRequest = {
@@ -30,7 +31,7 @@ export type OpencodeConnectionSettings = {
 };
 
 export const defaultConnectionSettings: OpencodeConnectionSettings = {
-  serverUrl: 'http://127.0.0.1:4096',
+  serverUrl: String(process.env.EXPO_PUBLIC_E2E_SERVER_URL || Constants.expoConfig?.extra?.e2eServerUrl || 'http://127.0.0.1:4096'),
   username: '',
   password: '',
   directory: '',
