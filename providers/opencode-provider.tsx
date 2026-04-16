@@ -1302,34 +1302,36 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
 
     void stopWorkingSoundAsync().catch(() => undefined);
     if (latestAssistantEntry && latestAssistantEntry.id !== assistantReplyBaselineIdRef.current) {
-      const started = speakText({
-        language: chatPreferences.speechLocale,
-        onDone: () => {
-          if (conversationPhaseRef.current !== 'off' && chatPreferences.resumeListeningAfterReply) {
+      void (async () => {
+        const started = await speakText({
+          language: chatPreferences.speechLocale,
+          onDone: () => {
+            if (conversationPhaseRef.current !== 'off' && chatPreferences.resumeListeningAfterReply) {
+              void startConversationListening();
+            } else {
+              void stopConversationMode();
+            }
+          },
+          onError: () => {
+            setConversationFeedback('Unable to play this assistant reply.');
+            void stopConversationMode();
+          },
+          onStart: () => {
+            setConversationPhase('speaking');
+          },
+          rate: chatPreferences.speechRate,
+          text: latestAssistantEntry.text,
+          voice: chatPreferences.speechVoiceId,
+        });
+
+        if (!started) {
+          if (chatPreferences.resumeListeningAfterReply) {
             void startConversationListening();
           } else {
             void stopConversationMode();
           }
-        },
-        onError: () => {
-          setConversationFeedback('Unable to play this assistant reply.');
-          void stopConversationMode();
-        },
-        onStart: () => {
-          setConversationPhase('speaking');
-        },
-        rate: chatPreferences.speechRate,
-        text: latestAssistantEntry.text,
-        voice: chatPreferences.speechVoiceId,
-      });
-
-      if (!started) {
-        if (chatPreferences.resumeListeningAfterReply) {
-          void startConversationListening();
-        } else {
-          void stopConversationMode();
         }
-      }
+      })();
       return;
     }
 

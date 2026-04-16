@@ -45,7 +45,10 @@ export function MarkdownText({ text, color, mutedColor }: { text: string; color:
     const content = paragraph.join(' ').trim();
     if (content) {
       blocks.push(
-        <Text key={`p-${blocks.length}`} variant="bodyLarge" style={{ color, lineHeight: 26 }}>
+        <Text
+          key={`p-${blocks.length}`}
+          variant="bodyLarge"
+          style={{ color, lineHeight: 26, flexShrink: 1, minWidth: 0 }}>
           {renderInlineMarkdown(content, color, mutedColor)}
         </Text>,
       );
@@ -102,9 +105,9 @@ export function MarkdownText({ text, color, mutedColor }: { text: string; color:
     if (bullet) {
       pushParagraph();
       blocks.push(
-        <View key={`b-${blocks.length}`} style={styles.markdownBulletRow}>
+      <View key={`b-${blocks.length}`} style={styles.markdownBulletRow}>
           <Text style={{ color }}>{'\u2022'}</Text>
-          <Text variant="bodyLarge" style={[styles.markdownBulletText, { color, lineHeight: 26 }]}>
+          <Text variant="bodyLarge" style={[styles.markdownBulletText, { color, lineHeight: 26, flexShrink: 1, minWidth: 0 }]}> 
             {renderInlineMarkdown(bullet[1], color, mutedColor)}
           </Text>
         </View>,
@@ -136,6 +139,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 6,
     paddingVertical: 2,
     borderRadius: 6,
+    flexShrink: 1,
+    minWidth: 0,
   },
   codeBlock: {
     borderRadius: 14,

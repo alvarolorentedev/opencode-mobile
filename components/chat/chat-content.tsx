@@ -130,9 +130,9 @@ export function ChatContent({
       ) : null}
 
       {activeTab === 'session'
-        ? visibleTranscript.map((entry) => (
+        ? visibleTranscript.map((entry, index) => (
             <TranscriptMessage
-              key={entry.id}
+              key={`${entry.id}-${entry.createdAt}-${index}`}
               canSpeak={entry.role === 'assistant' && Boolean(entry.text.trim())}
               copied={copiedMessageId === entry.id}
               entry={entry}

@@ -250,22 +250,24 @@ export function ChatView() {
       return;
     }
 
-    const started = speakText({
-      language: chatPreferences.speechLocale,
-      onDone: () => setSpeakingMessageId((current) => (current === latestAssistantEntry.id ? undefined : current)),
-      onError: () => {
-        setVoiceFeedback('Unable to play this assistant reply.');
-        setSpeakingMessageId(undefined);
-      },
-      onStart: () => setSpeakingMessageId(latestAssistantEntry.id),
-      rate: chatPreferences.speechRate,
-      text: latestAssistantEntry.text,
-      voice: chatPreferences.speechVoiceId,
-    });
+    void (async () => {
+      const started = await speakText({
+        language: chatPreferences.speechLocale,
+        onDone: () => setSpeakingMessageId((current) => (current === latestAssistantEntry.id ? undefined : current)),
+        onError: () => {
+          setVoiceFeedback('Unable to play this assistant reply.');
+          setSpeakingMessageId(undefined);
+        },
+        onStart: () => setSpeakingMessageId(latestAssistantEntry.id),
+        rate: chatPreferences.speechRate,
+        text: latestAssistantEntry.text,
+        voice: chatPreferences.speechVoiceId,
+      });
 
-    if (started) {
-      lastAutoSpokenMessageIdRef.current = latestAssistantEntry.id;
-    }
+      if (started) {
+        lastAutoSpokenMessageIdRef.current = latestAssistantEntry.id;
+      }
+    })();
   }, [chatPreferences.autoPlayAssistantReplies, chatPreferences.speechLocale, chatPreferences.speechRate, chatPreferences.speechVoiceId, conversationActive, latestAssistantEntry, running]);
 
   async function handleCopyMessage(entry: TranscriptEntry) {
@@ -315,7 +317,7 @@ export function ChatView() {
       return;
     }
 
-    const started = speakText({
+    const started = await speakText({
       language: chatPreferences.speechLocale,
       onDone: () => {
         setSpeakingMessageId((current) => (current === entry.id ? undefined : current));

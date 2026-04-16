@@ -75,9 +75,9 @@ export function ChatComposer({
       elevation={4}>
       <View style={styles.controlsRow}>
         <MenuControl active={menu === 'mode'} iconName="robot-outline" maxWidth={84} label={selectedAgentLabel} onClose={() => onMenuChange(undefined)} onOpen={() => onMenuChange('mode')}>
-          {availableAgents.map((agent) => (
+          {availableAgents.map((agent, index) => (
             <Menu.Item
-              key={agent.id}
+              key={`${agent.id}-${index}`}
               onPress={() => {
                 updateChatPreferences({ mode: agent.id });
                 onMenuChange(undefined);
@@ -93,9 +93,9 @@ export function ChatComposer({
           label={getModelLabel(visibleModels, chatPreferences.modelId)}
           onClose={() => onMenuChange(undefined)}
           onOpen={() => onMenuChange('model')}>
-          {visibleModels.map((model) => (
+          {visibleModels.map((model, index) => (
             <Menu.Item
-              key={model.id}
+              key={`${model.id}-${index}`}
               leadingIcon={(props) => renderProviderIcon(model.providerID, props.size, props.color)}
               onPress={() => {
                 updateChatPreferences({ providerId: model.providerID, modelId: model.id });

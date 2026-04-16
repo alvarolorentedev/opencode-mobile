@@ -8,6 +8,21 @@ export type SpeechVoiceOption = {
 
 let audioModeInitialized = false;
 let audioModulePromise: Promise<typeof import('expo-av') | null> | null = null;
+let duckingActive = false;
+
+function getVoiceAudioMode(audioModule: typeof import('expo-av'), duckOthers: boolean) {
+  return {
+    allowsRecordingIOS: false,
+    interruptionModeAndroid: audioModule.InterruptionModeAndroid.DuckOthers,
+    interruptionModeIOS: duckOthers
+      ? audioModule.InterruptionModeIOS.DuckOthers
+      : audioModule.InterruptionModeIOS.MixWithOthers,
+    playThroughEarpieceAndroid: false,
+    playsInSilentModeIOS: true,
+    shouldDuckAndroid: duckOthers,
+    staysActiveInBackground: true,
+  };
+}
 
 async function getAudioModuleAsync() {
   if (!audioModulePromise) {
@@ -29,17 +44,39 @@ export async function initializeVoiceAudioAsync() {
     return;
   }
 
-  await audioModule.Audio.setAudioModeAsync({
-    allowsRecordingIOS: false,
-    interruptionModeAndroid: audioModule.InterruptionModeAndroid.DuckOthers,
-    interruptionModeIOS: audioModule.InterruptionModeIOS.MixWithOthers,
-    playThroughEarpieceAndroid: false,
-    playsInSilentModeIOS: true,
-    shouldDuckAndroid: true,
-    staysActiveInBackground: true,
-  });
+  await audioModule.Audio.setAudioModeAsync(getVoiceAudioMode(audioModule, false));
 
   audioModeInitialized = true;
+}
+
+export async function activateVoiceDuckingAsync() {
+  const audioModule = await getAudioModuleAsync();
+  if (!audioModule) {
+    return;
+  }
+
+  await initializeVoiceAudioAsync();
+  if (duckingActive) {
+    return;
+  }
+
+  await audioModule.Audio.setAudioModeAsync(getVoiceAudioMode(audioModule, true));
+  duckingActive = true;
+}
+
+export async function deactivateVoiceDuckingAsync() {
+  const audioModule = await getAudioModuleAsync();
+  if (!audioModule) {
+    return;
+  }
+
+  await initializeVoiceAudioAsync();
+  if (!duckingActive) {
+    return;
+  }
+
+  await audioModule.Audio.setAudioModeAsync(getVoiceAudioMode(audioModule, false));
+  duckingActive = false;
 }
 
 function compactWhitespace(value: string) {
@@ -71,7 +108,7 @@ export async function getSpeechVoiceOptions() {
     .sort((left, right) => left.label.localeCompare(right.label));
 }
 
-export function speakText({
+export async function speakText({
   language,
   onDone,
   onError,
@@ -93,12 +130,18 @@ export function speakText({
     return false;
   }
 
-  void initializeVoiceAudioAsync().catch(() => undefined);
-  Speech.stop().catch(() => undefined);
+  await activateVoiceDuckingAsync().catch(() => undefined);
+  await Speech.stop().catch(() => undefined);
   Speech.speak(speakableText, {
     language,
-    onDone,
-    onError,
+    onDone: () => {
+      void deactivateVoiceDuckingAsync().catch(() => undefined);
+      onDone?.();
+    },
+    onError: (error) => {
+      void deactivateVoiceDuckingAsync().catch(() => undefined);
+      onError?.(error instanceof Error ? error : new Error('Speech playback failed.'));
+    },
     onStart,
     rate,
     voice,
@@ -108,4 +151,5 @@ export function speakText({
 
 export async function stopSpeaking() {
   await Speech.stop();
+  await deactivateVoiceDuckingAsync().catch(() => undefined);
 }

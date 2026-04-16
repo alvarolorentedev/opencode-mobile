@@ -1,4 +1,17 @@
-import { getConfiguredProviderIds } from '@/providers/opencode-provider-utils';
+import { getConfiguredProviderIds, toAgentOption } from '@/providers/opencode-provider-utils';
+
+function uniqueById<T extends { id: string }>(items: T[]) {
+  const seen = new Set<string>();
+
+  return items.filter((item) => {
+    if (seen.has(item.id)) {
+      return false;
+    }
+
+    seen.add(item.id);
+    return true;
+  });
+}
 
 export async function discoverChatCapabilities(client: any, activeProjectPath?: string) {
   if (!activeProjectPath) {
@@ -19,7 +32,7 @@ export async function discoverChatCapabilities(client: any, activeProjectPath?: 
   ]);
 
   const nextConfig = configResponse.data;
-  const nextModels = (providersResponse.data.all as any[])
+  const nextModels = uniqueById((providersResponse.data.all as any[])
     .flatMap((provider: any) =>
       Object.values(provider.models).map((model: any) => ({
         id: `${provider.id}/${model.id}`,
@@ -30,19 +43,19 @@ export async function discoverChatCapabilities(client: any, activeProjectPath?: 
         supportsReasoning: model.reasoning,
       })),
     )
-    .sort((left: any, right: any) => left.label.localeCompare(right.label));
+    .sort((left: any, right: any) => left.label.localeCompare(right.label)));
 
   const configuredProviderIds = getConfiguredProviderIds(nextConfig, providersResponse.data.connected, nextModels);
   const configuredModels = nextModels.filter((model: any) => configuredProviderIds.has(model.providerID));
-  const nextProviders = (providersResponse.data.all as any[])
+  const nextProviders = uniqueById((providersResponse.data.all as any[])
     .map((provider: any) => ({
       id: provider.id,
       label: provider.name,
       modelCount: Object.keys(provider.models).length,
       configured: configuredProviderIds.has(provider.id),
     }))
-    .sort((left: any, right: any) => left.label.localeCompare(right.label));
-  const nextAgents = agentsResponse.data.map((a: any) => a);
+    .sort((left: any, right: any) => left.label.localeCompare(right.label)));
+  const nextAgents = uniqueById(agentsResponse.data.map((agent: any) => toAgentOption(agent)));
 
   return {
     config: nextConfig,
