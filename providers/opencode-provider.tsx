@@ -28,9 +28,11 @@ import {
   type OpencodeConnectionSettings,
 } from '@/lib/opencode/client';
 import {
+  getBackgroundConversationStatus,
   isBackgroundConversationSupported,
   startBackgroundConversation,
   stopBackgroundConversation,
+  subscribeToBackgroundConversationEvents,
 } from '@/lib/background-conversation';
 import {
   getHistoryPreview,
@@ -549,6 +551,9 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
   const [conversationAppState, setConversationAppState] = useState<AppStateStatus>(AppState.currentState);
   const [eventStreamStatus, setEventStreamStatus] = useState<'idle' | 'connecting' | 'connected' | 'error'>('idle');
   const [backgroundConversationServiceActive, setBackgroundConversationServiceActive] = useState(false);
+  const [backgroundConversationLevel, setBackgroundConversationLevel] = useState(0);
+  const [backgroundConversationStatusLabel, setBackgroundConversationStatusLabel] = useState<string>();
+  const usesNativeConversationRuntime = Platform.OS === 'android' && chatPreferences.backgroundConversationEnabled && isBackgroundConversationSupported();
 
   const settingsRef = useRef(settings);
   const bootstrapPromiseRef = useRef<Promise<string | undefined> | null>(null);
@@ -1551,9 +1556,16 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
 
       const signature = JSON.stringify({
         activeProjectPath,
+        agent: chatPreferences.mode,
         assistantReplyBaselineId: assistantReplyBaselineIdRef.current,
+        model: getSelectedModelParts(chatPreferences.modelId),
+        resumeListeningAfterReply: chatPreferences.resumeListeningAfterReply,
         sessionId,
         serverUrl: settingsRef.current.serverUrl,
+        system: buildSystemPrompt(chatPreferences),
+        workingSoundEnabled: chatPreferences.workingSoundEnabled,
+        workingSoundVariant: chatPreferences.workingSoundVariant,
+        workingSoundVolume: chatPreferences.workingSoundVolume,
         speechLocale: chatPreferences.speechLocale,
         speechRate: chatPreferences.speechRate,
         speechVoiceId: chatPreferences.speechVoiceId,
@@ -1571,16 +1583,37 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
         password: settingsRef.current.password,
         directory: activeProjectPath,
         sessionId,
+        agent: chatPreferences.mode,
+        model: getSelectedModelParts(chatPreferences.modelId),
+        system: buildSystemPrompt(chatPreferences),
         speechLocale: chatPreferences.speechLocale,
         speechRate: chatPreferences.speechRate,
         speechVoiceId: chatPreferences.speechVoiceId,
         assistantReplyBaselineId: assistantReplyBaselineIdRef.current,
+        preferOnDeviceRecognition: chatPreferences.preferOnDeviceRecognition,
+        resumeListeningAfterReply: chatPreferences.resumeListeningAfterReply,
+        workingSoundEnabled: chatPreferences.workingSoundEnabled,
+        workingSoundVariant: chatPreferences.workingSoundVariant,
+        workingSoundVolume: chatPreferences.workingSoundVolume,
       });
       backgroundConversationSignatureRef.current = signature;
       setBackgroundConversationServiceActive(true);
       return true;
     },
-    [activeProjectPath, chatPreferences.backgroundConversationEnabled, chatPreferences.speechLocale, chatPreferences.speechRate, chatPreferences.speechVoiceId],
+    [
+      activeProjectPath,
+      chatPreferences.backgroundConversationEnabled,
+      chatPreferences.mode,
+      chatPreferences.modelId,
+      chatPreferences.preferOnDeviceRecognition,
+      chatPreferences.resumeListeningAfterReply,
+      chatPreferences.speechLocale,
+      chatPreferences.speechRate,
+      chatPreferences.speechVoiceId,
+      chatPreferences.workingSoundEnabled,
+      chatPreferences.workingSoundVariant,
+      chatPreferences.workingSoundVolume,
+    ],
   );
 
   const stopConversationMode = useCallback(async () => {
@@ -1596,11 +1629,17 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
     await stopBackgroundConversationService();
     setPendingConversationTurn(undefined);
     setQueuedConversationPrompt(undefined);
+    setBackgroundConversationLevel(0);
+    setBackgroundConversationStatusLabel(undefined);
     setConversationPhase('off');
     setConversationSessionId(undefined);
   }, [abortSpeechInput, stopBackgroundConversationService]);
 
   const startConversationListening = useCallback(async (sessionId?: string) => {
+    if (usesNativeConversationRuntime) {
+      return false;
+    }
+
     if (!sessionId && !conversationSessionId) {
       return false;
     }
@@ -1623,7 +1662,7 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
 
     setConversationPhase('listening');
     return true;
-  }, [conversationSessionId, startSpeechInput]);
+  }, [conversationSessionId, startSpeechInput, usesNativeConversationRuntime]);
 
   const toggleConversationMode = useCallback(async () => {
     if (conversationPhase !== 'off') {
@@ -1661,6 +1700,18 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
     setPendingConversationTurn(undefined);
     setQueuedConversationPrompt(undefined);
     assistantReplyBaselineIdRef.current = getLatestConversationAssistantEntry(sessionId)?.id;
+
+    if (usesNativeConversationRuntime) {
+      setConversationPhase('waiting');
+      const started = await startBackgroundConversationService(sessionId).catch(() => false);
+      if (!started) {
+        setConversationFeedback('Unable to start Android background conversation. Check microphone permission and rebuild the dev client.');
+        setConversationPhase('off');
+        setConversationSessionId(undefined);
+      }
+      return;
+    }
+
     const started = await startConversationListening(sessionId);
     if (!started) {
       setConversationSessionId(undefined);
@@ -1675,8 +1726,10 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
     pendingPermissionsBySession,
     pendingQuestionsBySession,
     sendingState.active,
+    startBackgroundConversationService,
     startConversationListening,
     stopConversationMode,
+    usesNativeConversationRuntime,
   ]);
 
   useEffect(() => {
@@ -1692,6 +1745,91 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
   }, []);
 
   useEffect(() => {
+    if (!usesNativeConversationRuntime) {
+      return;
+    }
+
+    let mounted = true;
+
+    void getBackgroundConversationStatus()
+      .then((status) => {
+        if (!mounted) {
+          return;
+        }
+
+        setBackgroundConversationServiceActive(status.active);
+        setBackgroundConversationLevel(status.level);
+        setBackgroundConversationStatusLabel(status.statusLabel);
+        setConversationPhase(status.phase);
+        setConversationFeedback(status.feedback);
+        setConversationSessionId(status.sessionId);
+      })
+      .catch(() => undefined);
+
+    const subscription = subscribeToBackgroundConversationEvents((event) => {
+      if (!mounted) {
+        return;
+      }
+
+      switch (event.type) {
+        case 'status':
+          setBackgroundConversationServiceActive(event.active);
+          setBackgroundConversationLevel(event.level || 0);
+          setBackgroundConversationStatusLabel(event.statusLabel);
+          setConversationPhase(event.phase);
+          setConversationFeedback(event.feedback);
+          setConversationSessionId(event.sessionId);
+          return;
+        case 'transcript':
+          if (event.status === 'final') {
+            setConversationFeedback(undefined);
+          }
+          return;
+        case 'assistant':
+          if (event.sessionId) {
+            scheduleSessionRefresh(event.sessionId, { messages: true, diff: true, todos: true, sessions: true, delayMs: 75 });
+          }
+          return;
+        case 'error':
+          setConversationFeedback(event.message);
+          if (event.sessionId) {
+            scheduleSessionRefresh(event.sessionId, { messages: true, sessions: true, delayMs: 75 });
+          }
+          return;
+        default:
+          return;
+      }
+    });
+
+    return () => {
+      mounted = false;
+      subscription?.remove();
+    };
+  }, [scheduleSessionRefresh, usesNativeConversationRuntime]);
+
+  useEffect(() => {
+    if (!usesNativeConversationRuntime || conversationPhase === 'off' || !conversationSessionId) {
+      return;
+    }
+
+    void startBackgroundConversationService(conversationSessionId).catch(() => {
+      setBackgroundConversationServiceActive(false);
+    });
+  }, [conversationPhase, conversationSessionId, startBackgroundConversationService, usesNativeConversationRuntime]);
+
+  useEffect(() => {
+    if (usesNativeConversationRuntime || !backgroundConversationServiceActive) {
+      return;
+    }
+
+    void stopBackgroundConversationService();
+  }, [backgroundConversationServiceActive, stopBackgroundConversationService, usesNativeConversationRuntime]);
+
+  useEffect(() => {
+    if (usesNativeConversationRuntime) {
+      return;
+    }
+
     if (
       Platform.OS !== 'android'
       || !chatPreferences.backgroundConversationEnabled
@@ -1709,9 +1847,13 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
     if (conversationPhase === 'listening' || conversationPhase === 'speaking') {
       setConversationPhase('waiting');
     }
-  }, [abortSpeechInput, chatPreferences.backgroundConversationEnabled, conversationAppState, conversationPhase]);
+  }, [abortSpeechInput, chatPreferences.backgroundConversationEnabled, conversationAppState, conversationPhase, usesNativeConversationRuntime]);
 
   useEffect(() => {
+    if (usesNativeConversationRuntime) {
+      return;
+    }
+
     if (
       Platform.OS !== 'android'
       || !chatPreferences.backgroundConversationEnabled
@@ -1734,6 +1876,7 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
     conversationSessionId,
     startBackgroundConversationService,
     stopBackgroundConversationService,
+    usesNativeConversationRuntime,
   ]);
 
   useEffect(() => {
@@ -1746,6 +1889,10 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
   }, [chatPreferences.backgroundConversationEnabled, conversationAppState, conversationPhase, stopConversationMode]);
 
   useEffect(() => {
+    if (usesNativeConversationRuntime) {
+      return;
+    }
+
     if (!speechInputError) {
       return;
     }
@@ -1754,18 +1901,26 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
     if (conversationPhaseRef.current !== 'off') {
       void stopConversationMode();
     }
-  }, [speechInputError, stopConversationMode]);
+  }, [speechInputError, stopConversationMode, usesNativeConversationRuntime]);
 
   useEffect(() => {
+    if (usesNativeConversationRuntime) {
+      return;
+    }
+
     if (conversationPhase === 'off' || conversationPhase !== 'submitting' || !pendingConversationTurn || !conversationSessionId) {
       return;
     }
 
     setQueuedConversationPrompt(pendingConversationTurn);
     setPendingConversationTurn(undefined);
-  }, [conversationPhase, conversationSessionId, pendingConversationTurn]);
+  }, [conversationPhase, conversationSessionId, pendingConversationTurn, usesNativeConversationRuntime]);
 
   useEffect(() => {
+    if (usesNativeConversationRuntime) {
+      return;
+    }
+
     if (conversationPhase === 'off' || conversationPhase !== 'submitting' || !queuedConversationPrompt || !conversationSessionId) {
       return;
     }
@@ -1813,9 +1968,14 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
     queuedConversationPrompt,
     sendPrompt,
     stopConversationMode,
+    usesNativeConversationRuntime,
   ]);
 
   useEffect(() => {
+    if (usesNativeConversationRuntime) {
+      return;
+    }
+
     if (conversationPhase === 'off' || conversationPhase !== 'waiting') {
       return;
     }
@@ -1918,6 +2078,7 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
     sessionStatuses,
     startConversationListening,
     stopConversationMode,
+    usesNativeConversationRuntime,
   ]);
 
   useEffect(() => {
@@ -2246,6 +2407,10 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
   }, [conversationSessionId, sendingState.active, sendingState.sessionId, sessionStatuses]);
   const conversationActive = conversationPhase !== 'off';
   const conversationStatusLabel = useMemo(() => {
+    if (usesNativeConversationRuntime && backgroundConversationStatusLabel) {
+      return backgroundConversationStatusLabel;
+    }
+
     switch (conversationPhase) {
       case 'listening':
         return conversationAppState === 'active' ? 'Listening' : 'Listening in background';
@@ -2261,7 +2426,7 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
       default:
         return undefined;
     }
-  }, [backgroundConversationServiceActive, conversationAppState, conversationCurrentActivityLabel, conversationPhase]);
+  }, [backgroundConversationServiceActive, backgroundConversationStatusLabel, conversationAppState, conversationCurrentActivityLabel, conversationPhase, usesNativeConversationRuntime]);
   const sessionPreviewById = useMemo(
     () =>
       Object.fromEntries(
@@ -2313,8 +2478,8 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
         active: conversationActive,
         appState: conversationAppState,
         feedback: conversationFeedback,
-        isListening: isConversationListening,
-        level: conversationListeningLevel,
+        isListening: usesNativeConversationRuntime ? conversationPhase === 'listening' : isConversationListening,
+        level: usesNativeConversationRuntime ? backgroundConversationLevel : conversationListeningLevel,
         phase: conversationPhase,
         sessionId: conversationSessionId,
         statusLabel: conversationStatusLabel,
@@ -2368,6 +2533,7 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
       conversationActive,
       conversationAppState,
       conversationFeedback,
+      backgroundConversationLevel,
       conversationListeningLevel,
       conversationPhase,
       conversationSessionId,
@@ -2409,6 +2575,7 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
       toggleConversationMode,
       updateChatPreferences,
       updateSettings,
+      usesNativeConversationRuntime,
     ],
   );
 

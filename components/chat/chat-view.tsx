@@ -1138,7 +1138,7 @@ export function ChatView() {
               </Chip>
             </View>
             <Text variant="bodySmall" style={{ color: palette.muted }}>
-              Keep talking naturally. The app listens, sends your turn, reads the reply, and then listens again{conversation.appState !== 'active' ? ' when you return to the app. On Android, the active task can keep being monitored in the background.' : '.'}
+              Keep talking naturally. The app listens, sends your turn, reads the reply, and then listens again{conversation.appState !== 'active' ? ' while Android keeps the voice loop running in the background service.' : '.'}
             </Text>
           </View>
         ) : null}
