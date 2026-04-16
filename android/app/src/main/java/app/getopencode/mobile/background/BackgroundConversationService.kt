@@ -44,8 +44,6 @@ import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
 
 class BackgroundConversationService : Service(), TextToSpeech.OnInitListener, RecognitionListener {
-  private class HttpStatusException(val statusCode: Int, message: String) : IllegalStateException(message)
-
   private val mainHandler = Handler(Looper.getMainLooper())
   private val executor: ExecutorService = Executors.newSingleThreadExecutor()
   private var textToSpeech: TextToSpeech? = null
@@ -166,7 +164,13 @@ class BackgroundConversationService : Service(), TextToSpeech.OnInitListener, Re
         serviceActive = true
         startForeground(NOTIFICATION_ID, buildNotification(currentStatusLabel ?: "Starting conversation", "Preparing background voice loop."))
         BackgroundConversationEvents.emitStatus(snapshot())
-        mainHandler.post { resumeConversationLoop() }
+        mainHandler.post {
+          if (!ttsReady) {
+            updateRuntimeStatus(Phase.WAITING, "Preparing speech", null)
+          } else {
+            startListening()
+          }
+        }
       }
     }
 
@@ -219,8 +223,8 @@ class BackgroundConversationService : Service(), TextToSpeech.OnInitListener, Re
       }
     })
 
-    if (serviceActive && currentPhase != Phase.OFF) {
-      mainHandler.post { resumeConversationLoop() }
+    if (serviceActive && currentPhase == Phase.WAITING) {
+      mainHandler.post { startListening() }
     }
   }
 
@@ -356,55 +360,6 @@ class BackgroundConversationService : Service(), TextToSpeech.OnInitListener, Re
     }
   }
 
-  private fun resumeConversationLoop() {
-    val config = currentConfig
-    if (!serviceActive || config == null || isSpeaking) {
-      return
-    }
-
-    if (!ttsReady) {
-      updateRuntimeStatus(Phase.WAITING, "Preparing speech", null)
-      return
-    }
-
-    stopPolling()
-    executor.execute {
-      try {
-        val latestReply = fetchLatestAssistantReply(config)
-        if (latestReply != null && latestReply.id != config.assistantReplyBaselineId) {
-          awaitingAssistantReply = false
-          awaitingAssistantReplySince = 0L
-          speakReply(latestReply.id, latestReply.text)
-          return@execute
-        }
-
-        val statusType = fetchSessionStatus(config)
-        if (statusType != null && statusType != "idle") {
-          awaitingAssistantReply = true
-          if (awaitingAssistantReplySince == 0L) {
-            awaitingAssistantReplySince = System.currentTimeMillis()
-          }
-          updateRuntimeStatus(Phase.WAITING, "OpenCode is thinking", null)
-          maybeStartWorkingSound()
-          schedulePoll(POST_SUBMIT_POLL_DELAY_MS)
-          return@execute
-        }
-
-        awaitingAssistantReply = false
-        awaitingAssistantReplySince = 0L
-        stopWorkingSound()
-        mainHandler.post { startListening() }
-      } catch (error: Exception) {
-        stopWorkingSound()
-        updateRuntimeStatus(Phase.WAITING, "Retrying background conversation", error.message ?: "Temporary background error")
-        emitError("network", error.message ?: "Background polling failed.")
-        if (serviceActive) {
-          schedulePoll(POLL_INTERVAL_MS)
-        }
-      }
-    }
-  }
-
   private fun ensureSpeechRecognizer(): SpeechRecognizer? {
     if (!recognitionAvailable) {
       return null
@@ -468,15 +423,7 @@ class BackgroundConversationService : Service(), TextToSpeech.OnInitListener, Re
       )
     }
 
-    try {
-      requestJson(config, "/session/${config.sessionId}/prompt_async", method = "POST", body = body)
-    } catch (error: HttpStatusException) {
-      if (error.statusCode !in setOf(404, 405, 501)) {
-        throw error
-      }
-
-      requestJson(config, "/session/${config.sessionId}/message", method = "POST", body = body)
-    }
+    requestJson(config, "/session/${config.sessionId}/message", method = "POST", body = body)
   }
 
   private fun fetchSessionStatus(config: ServiceConfig): String? {
@@ -576,10 +523,7 @@ class BackgroundConversationService : Service(), TextToSpeech.OnInitListener, Re
         val errorBody = runCatching {
           BufferedReader(InputStreamReader(connection.errorStream ?: connection.inputStream)).use { it.readText() }
         }.getOrNull()
-        throw HttpStatusException(
-          connection.responseCode,
-          errorBody?.takeIf { it.isNotBlank() } ?: "OpenCode request failed: ${connection.responseCode}",
-        )
+        throw IllegalStateException(errorBody?.takeIf { it.isNotBlank() } ?: "OpenCode request failed: ${connection.responseCode}")
       }
 
       BufferedReader(InputStreamReader(connection.inputStream)).use { reader ->
