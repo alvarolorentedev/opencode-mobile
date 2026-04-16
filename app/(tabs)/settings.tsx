@@ -649,7 +649,7 @@ export default function SettingsScreen() {
           <List.Section style={styles.infoListSection}>
             <List.Item
               title="Background conversation"
-              description="Android: move the conversation loop into a foreground service so listening, working sound, sending, waiting, and spoken replies can continue while the app is backgrounded. iPhone support stays foreground-only."
+              description="Android: keep monitoring the active session in a foreground service, read finished replies aloud, and resume when you reopen the app. iPhone support stays foreground-only."
               titleStyle={{ color: palette.text }}
               descriptionStyle={{ color: palette.muted }}
               right={() => (
@@ -836,7 +836,7 @@ export default function SettingsScreen() {
               />
             ))}
           </Menu>
-          <HelperText type="info">Android dev builds use a native foreground service for the voice loop. Keep microphone permission enabled and rebuild the dev client after native changes.</HelperText>
+          <HelperText type="info">Shippable behavior: Android can keep a foreground service alive to monitor a running session and speak the finished reply. Continuous background microphone capture still is not supported.</HelperText>
         </Card.Content>
       </Card>
 
