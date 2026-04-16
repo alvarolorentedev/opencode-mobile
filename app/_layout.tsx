@@ -40,13 +40,6 @@ export default function RootLayout() {
           <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
             <Stack>
               <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-              <Stack.Screen
-                name="session/[id]"
-                options={{
-                  title: 'Session',
-                  headerBackTitle: 'Back',
-                }}
-              />
             </Stack>
             <StatusBar style="auto" />
           </ThemeProvider>

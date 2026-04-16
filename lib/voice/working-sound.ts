@@ -1,4 +1,4 @@
-import * as FileSystem from 'expo-file-system/legacy';
+import { File, Paths } from 'expo-file-system';
 import { encode as encodeBase64 } from 'base-64';
 
 import { initializeVoiceAudioAsync } from '@/lib/voice/speech-output';
@@ -101,21 +101,13 @@ function createWorkingSoundBase64(variant: WorkingSoundVariant) {
 }
 
 async function ensureWorkingSoundFileAsync(variant: WorkingSoundVariant) {
-  const cacheDirectory = FileSystem.cacheDirectory;
-  if (!cacheDirectory) {
-    throw new Error('Audio cache is unavailable.');
+  const file = new File(Paths.cache, `working-sound-${variant}.wav`);
+  if (!file.exists) {
+    file.create();
+    file.write(createWorkingSoundBase64(variant), { encoding: 'base64' });
   }
 
-  const uri = `${cacheDirectory}working-sound-${variant}.wav`;
-  const existing = await FileSystem.getInfoAsync(uri);
-  if (!existing.exists) {
-    const base64 = createWorkingSoundBase64(variant);
-    await FileSystem.writeAsStringAsync(uri, base64, {
-      encoding: FileSystem.EncodingType.Base64,
-    });
-  }
-
-  return uri;
+  return file.uri;
 }
 
 export async function startWorkingSoundAsync(variant: WorkingSoundVariant, volume: number) {

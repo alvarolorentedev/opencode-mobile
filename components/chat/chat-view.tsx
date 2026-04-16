@@ -1,7 +1,7 @@
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import * as Clipboard from 'expo-clipboard';
 import * as Haptics from 'expo-haptics';
-import { useCallback, useEffect, useMemo, useRef, useState, type ComponentProps, type ReactNode } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   KeyboardAvoidingView,
   Platform,
@@ -10,14 +10,12 @@ import {
   StyleSheet,
   View,
 } from 'react-native';
-import type { FileDiff } from '@/lib/opencode/types';
 import {
   ActivityIndicator,
   Appbar,
   Button,
   Card,
   Chip,
-  Divider,
   IconButton,
   List,
   Menu,
@@ -31,14 +29,12 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Colors, Fonts } from '@/constants/theme';
+import { PendingInteractionsCard, DiffCard, SessionDiffCard, TranscriptMessage } from '@/components/chat/chat-cards';
+import { MenuControl, ControlButton, TopTab } from '@/components/chat/chat-controls';
+import { ConversationOverlay } from '@/components/chat/chat-overlay';
 import { useColorScheme } from '@/hooks/use-color-scheme';
-import type { PendingPermissionRequest, PendingQuestionAnswer, PendingQuestionRequest } from '@/lib/opencode/client';
-import {
-  formatTimestamp,
-  getSessionSubtitle,
-  type TranscriptDetail,
-  type TranscriptEntry,
-} from '@/lib/opencode/format';
+import { getSessionSubtitle, type TranscriptEntry } from '@/lib/opencode/format';
+import { getTranscriptActivityLabel, isTranscriptDisplayMessage } from '@/lib/opencode/transcript';
 import { speakText, stopSpeaking } from '@/lib/voice/speech-output';
 import { useSpeechInput } from '@/lib/voice/use-speech-input';
 import { renderProviderIcon } from '@/components/ui/provider-icon';
@@ -69,379 +65,6 @@ function getModelLabel(models: ModelOption[], modelId?: string) {
 
 function getAutoApproveIcon(autoApprove: boolean) {
   return autoApprove ? 'shield-check' : 'shield-key';
-}
-
-type DiffLine = {
-  kind: 'context' | 'added' | 'removed';
-  leftNumber?: number;
-  rightNumber?: number;
-  text: string;
-};
-
-type DiffBlock =
-  | { type: 'lines'; lines: DiffLine[] }
-  | { type: 'collapsed'; hiddenCount: number; startLine?: number; endLine?: number };
-
-const DIFF_CONTEXT_LINES = 3;
-
-function buildLineDiff(beforeText: string, afterText: string): DiffLine[] {
-  const beforeLines = beforeText.split('\n');
-  const afterLines = afterText.split('\n');
-  const rowCount = beforeLines.length;
-  const columnCount = afterLines.length;
-  const table = Array.from({ length: rowCount + 1 }, () => Array<number>(columnCount + 1).fill(0));
-
-  for (let row = rowCount - 1; row >= 0; row -= 1) {
-    for (let column = columnCount - 1; column >= 0; column -= 1) {
-      table[row][column] =
-        beforeLines[row] === afterLines[column]
-          ? table[row + 1][column + 1] + 1
-          : Math.max(table[row + 1][column], table[row][column + 1]);
-    }
-  }
-
-  const result: DiffLine[] = [];
-  let row = 0;
-  let column = 0;
-  let leftNumber = 1;
-  let rightNumber = 1;
-
-  while (row < rowCount && column < columnCount) {
-    if (beforeLines[row] === afterLines[column]) {
-      result.push({
-        kind: 'context',
-        leftNumber,
-        rightNumber,
-        text: beforeLines[row],
-      });
-      row += 1;
-      column += 1;
-      leftNumber += 1;
-      rightNumber += 1;
-      continue;
-    }
-
-    if (table[row + 1][column] >= table[row][column + 1]) {
-      result.push({
-        kind: 'removed',
-        leftNumber,
-        text: beforeLines[row],
-      });
-      row += 1;
-      leftNumber += 1;
-      continue;
-    }
-
-    result.push({
-      kind: 'added',
-      rightNumber,
-      text: afterLines[column],
-    });
-    column += 1;
-    rightNumber += 1;
-  }
-
-  while (row < rowCount) {
-    result.push({
-      kind: 'removed',
-      leftNumber,
-      text: beforeLines[row],
-    });
-    row += 1;
-    leftNumber += 1;
-  }
-
-  while (column < columnCount) {
-    result.push({
-      kind: 'added',
-      rightNumber,
-      text: afterLines[column],
-    });
-    column += 1;
-    rightNumber += 1;
-  }
-
-  return result;
-}
-
-function getDiffPalette(kind: DiffLine['kind'], palette: (typeof Colors)['light']) {
-  if (kind === 'added') {
-    return {
-      backgroundColor: 'rgba(86, 207, 142, 0.14)',
-      accentColor: '#56cf8e',
-    };
-  }
-
-  if (kind === 'removed') {
-    return {
-      backgroundColor: 'rgba(255, 107, 107, 0.14)',
-      accentColor: palette.danger,
-    };
-  }
-
-  return {
-    backgroundColor: palette.background,
-    accentColor: 'transparent',
-  };
-}
-
-function buildCollapsedDiffBlocks(lines: DiffLine[], contextSize = DIFF_CONTEXT_LINES): DiffBlock[] {
-  const blocks: DiffBlock[] = [];
-  let index = 0;
-
-  while (index < lines.length) {
-    if (lines[index].kind !== 'context') {
-      const changedLines: DiffLine[] = [];
-      while (index < lines.length && lines[index].kind !== 'context') {
-        changedLines.push(lines[index]);
-        index += 1;
-      }
-      blocks.push({ type: 'lines', lines: changedLines });
-      continue;
-    }
-
-    const contextStart = index;
-    while (index < lines.length && lines[index].kind === 'context') {
-      index += 1;
-    }
-
-    const contextLines = lines.slice(contextStart, index);
-    const isLeading = contextStart === 0;
-    const isTrailing = index === lines.length;
-
-    if (contextLines.length <= contextSize * 2 || (isLeading && isTrailing)) {
-      blocks.push({ type: 'lines', lines: contextLines });
-      continue;
-    }
-
-    if (isLeading) {
-      blocks.push({ type: 'lines', lines: contextLines.slice(0, contextSize) });
-      blocks.push({
-        type: 'collapsed',
-        hiddenCount: contextLines.length - contextSize,
-        startLine: contextLines[contextSize]?.leftNumber,
-        endLine: contextLines[contextLines.length - 1]?.leftNumber,
-      });
-      continue;
-    }
-
-    if (isTrailing) {
-      blocks.push({
-        type: 'collapsed',
-        hiddenCount: contextLines.length - contextSize,
-        startLine: contextLines[0]?.leftNumber,
-        endLine: contextLines[contextLines.length - contextSize - 1]?.leftNumber,
-      });
-      blocks.push({ type: 'lines', lines: contextLines.slice(-contextSize) });
-      continue;
-    }
-
-    blocks.push({ type: 'lines', lines: contextLines.slice(0, contextSize) });
-    blocks.push({
-      type: 'collapsed',
-      hiddenCount: contextLines.length - contextSize * 2,
-      startLine: contextLines[contextSize]?.leftNumber,
-      endLine: contextLines[contextLines.length - contextSize - 1]?.leftNumber,
-    });
-    blocks.push({ type: 'lines', lines: contextLines.slice(-contextSize) });
-  }
-
-  return blocks.filter((block) => block.type === 'lines' || block.hiddenCount > 0);
-}
-
-function getPermissionTitle(request: PendingPermissionRequest) {
-  return request.permission
-    .split(/[._-]/g)
-    .filter(Boolean)
-    .map((part: string) => part.charAt(0).toUpperCase() + part.slice(1))
-    .join(' ');
-}
-
-function summarizeDetails(details: TranscriptDetail[]) {
-  const patches = details.filter((detail) => detail.kind === 'patch').length;
-  const files = details.filter((detail) => detail.kind === 'file').length;
-  const runningTool = details.find((detail) => detail.kind === 'tool' && detail.status === 'running');
-  const failedRetry = details.find((detail) => detail.kind === 'retry');
-  const summaries: string[] = [];
-
-  if (runningTool) {
-    summaries.push(runningTool.label);
-  }
-
-  if (patches > 0) {
-    summaries.push(`Updated ${patches} patch${patches === 1 ? '' : 'es'}`);
-  }
-
-  if (files > 0) {
-    summaries.push(`${files} file${files === 1 ? '' : 's'}`);
-  }
-
-  if (failedRetry) {
-    summaries.push(failedRetry.label);
-  }
-
-  return summaries;
-}
-
-function getActivityLabel(entry: TranscriptEntry) {
-  const runningTool = entry.details.find((detail) => detail.kind === 'tool' && detail.status === 'running');
-  if (runningTool) {
-    return runningTool.label;
-  }
-
-  const latestTool = [...entry.details].reverse().find((detail) => detail.kind === 'tool');
-  if (latestTool) {
-    return latestTool.label;
-  }
-
-  const latestPatch = [...entry.details].reverse().find((detail) => detail.kind === 'patch');
-  if (latestPatch) {
-    return latestPatch.label;
-  }
-
-  const latestReasoning = [...entry.details].reverse().find((detail) => detail.kind === 'reasoning');
-  if (latestReasoning) {
-    return latestReasoning.label;
-  }
-
-  const latestStep = [...entry.details].reverse().find((detail) => detail.kind === 'step' || detail.kind === 'subtask');
-  if (latestStep) {
-    return latestStep.label;
-  }
-
-  return undefined;
-}
-
-function isDisplayMessage(entry: TranscriptEntry) {
-  if (entry.role === 'user') {
-    return true;
-  }
-
-  return Boolean(entry.text.trim() || entry.error);
-}
-
-function renderInlineMarkdown(text: string, color: string, codeColor: string): ReactNode[] {
-  const parts = text.split(/(`[^`]+`|\*\*[^*]+\*\*)/g).filter(Boolean);
-
-  return parts.map((part, index) => {
-    if (part.startsWith('`') && part.endsWith('`')) {
-      return (
-        <Text key={`inline-${index}`} style={[styles.inlineCode, { color: codeColor }]}> 
-          {part.slice(1, -1)}
-        </Text>
-      );
-    }
-
-    if (part.startsWith('**') && part.endsWith('**')) {
-      return (
-        <Text key={`inline-${index}`} style={{ color, fontWeight: '700' }}>
-          {part.slice(2, -2)}
-        </Text>
-      );
-    }
-
-    return (
-      <Text key={`inline-${index}`} style={{ color }}>
-        {part}
-      </Text>
-    );
-  });
-}
-
-function MarkdownText({ text, color, mutedColor }: { text: string; color: string; mutedColor: string }) {
-  const lines = text.split('\n');
-  const blocks: ReactNode[] = [];
-  let paragraph: string[] = [];
-  let codeBlock: string[] = [];
-  let inCodeBlock = false;
-
-  function pushParagraph() {
-    if (paragraph.length === 0) {
-      return;
-    }
-
-    const content = paragraph.join(' ').trim();
-    if (content) {
-      blocks.push(
-        <Text key={`p-${blocks.length}`} variant="bodyLarge" style={{ color, lineHeight: 26 }}>
-          {renderInlineMarkdown(content, color, mutedColor)}
-        </Text>,
-      );
-    }
-    paragraph = [];
-  }
-
-  function pushCodeBlock() {
-    if (codeBlock.length === 0) {
-      return;
-    }
-
-    blocks.push(
-      <View key={`code-${blocks.length}`} style={styles.codeBlock}>
-        <Text variant="bodySmall" style={[styles.code, { color }]}>
-          {codeBlock.join('\n')}
-        </Text>
-      </View>,
-    );
-    codeBlock = [];
-  }
-
-  lines.forEach((line) => {
-    if (line.trim().startsWith('```')) {
-      if (inCodeBlock) {
-        pushCodeBlock();
-      } else {
-        pushParagraph();
-      }
-      inCodeBlock = !inCodeBlock;
-      return;
-    }
-
-    if (inCodeBlock) {
-      codeBlock.push(line);
-      return;
-    }
-
-    const heading = line.match(/^(#{1,3})\s+(.*)$/);
-    if (heading) {
-      pushParagraph();
-      blocks.push(
-        <Text
-          key={`h-${blocks.length}`}
-          variant={heading[1].length === 1 ? 'headlineSmall' : 'titleMedium'}
-          style={{ color, fontWeight: '700' }}>
-          {heading[2]}
-        </Text>,
-      );
-      return;
-    }
-
-    const bullet = line.match(/^[-*]\s+(.*)$/);
-    if (bullet) {
-      pushParagraph();
-      blocks.push(
-        <View key={`b-${blocks.length}`} style={styles.markdownBulletRow}>
-          <Text style={{ color }}>{'\u2022'}</Text>
-          <Text variant="bodyLarge" style={[styles.markdownBulletText, { color, lineHeight: 26 }]}>
-            {renderInlineMarkdown(bullet[1], color, mutedColor)}
-          </Text>
-        </View>,
-      );
-      return;
-    }
-
-    if (!line.trim()) {
-      pushParagraph();
-      return;
-    }
-
-    paragraph.push(line.trim());
-  });
-
-  pushParagraph();
-  pushCodeBlock();
-
-  return <View style={styles.markdownStack}>{blocks}</View>;
 }
 
 export function ChatView() {
@@ -522,7 +145,7 @@ export function ChatView() {
   const pendingInteractions = currentPendingPermissions.length + currentPendingQuestions.length;
   const awaitingUserInput = pendingInteractions > 0;
   const displayTranscript = useMemo(
-    () => currentTranscript.filter(isDisplayMessage),
+    () => currentTranscript.filter(isTranscriptDisplayMessage),
     [currentTranscript],
   );
   const visibleTranscript = useMemo(
@@ -533,11 +156,11 @@ export function ChatView() {
   const currentActivityLabel = useMemo(() => {
     for (let index = currentTranscript.length - 1; index >= 0; index -= 1) {
       const entry = currentTranscript[index];
-      if (isDisplayMessage(entry)) {
+      if (isTranscriptDisplayMessage(entry)) {
         continue;
       }
 
-      const label = getActivityLabel(entry);
+      const label = getTranscriptActivityLabel(entry);
       if (label) {
         return label;
       }
@@ -564,6 +187,10 @@ export function ChatView() {
 
   const latestAssistantEntry = useMemo(
     () => [...displayTranscript].reverse().find((entry) => entry.role === 'assistant' && entry.text.trim()),
+    [displayTranscript],
+  );
+  const latestUserEntry = useMemo(
+    () => [...displayTranscript].reverse().find((entry) => entry.role === 'user' && entry.text.trim()),
     [displayTranscript],
   );
   const speechInput = useSpeechInput({
@@ -896,6 +523,19 @@ export function ChatView() {
               </ScrollView>
             </Surface>
           </View>
+        ) : null}
+        {conversationActive ? (
+          <ConversationOverlay
+            currentActivityLabel={currentActivityLabel}
+            insetsTop={insets.top}
+            latestAssistantText={latestAssistantEntry?.text}
+            latestUserText={latestUserEntry?.text}
+            level={Math.max(speechInputLevel, conversation.level)}
+            onStop={() => void toggleConversationMode()}
+            phase={conversation.phase}
+            sessionTitle={selectedSession?.title || 'Untitled chat'}
+            statusLabel={conversation.statusLabel}
+          />
         ) : null}
       </Portal>
 
@@ -1236,471 +876,6 @@ export function ChatView() {
   );
 }
 
-function MenuControl({
-  active,
-  children,
-  icon,
-  iconName,
-  label,
-  maxWidth,
-  onClose,
-  onOpen,
-}: {
-  active: boolean;
-  children: ReactNode;
-  icon?: (props: { size: number; color: string }) => ReactNode;
-  iconName?: ComponentProps<typeof MaterialCommunityIcons>['name'];
-  label: string;
-  maxWidth?: number;
-  onClose: () => void;
-  onOpen: () => void;
-}) {
-  const [visible, setVisible] = useState(false);
-  const anchor = (
-    <ControlButton
-      active={active || visible}
-      icon={icon}
-      iconName={iconName}
-      maxWidth={maxWidth}
-      onPress={() => {
-        setVisible(true);
-        onOpen();
-      }}>
-      {label}
-    </ControlButton>
-  );
-
-  if (!visible) {
-    return anchor;
-  }
-
-  return (
-    <Menu
-      visible={visible}
-      onDismiss={() => {
-        setVisible(false);
-        onClose();
-      }}
-      anchor={anchor}>
-      {children}
-    </Menu>
-  );
-}
-
-function ControlButton({
-  active = false,
-  children,
-  icon,
-  iconName,
-  iconOnly = false,
-  loading = false,
-  maxWidth,
-  onPress,
-}: {
-  active?: boolean;
-  children: string;
-  icon?: (props: { size: number; color: string }) => ReactNode;
-  iconName?: ComponentProps<typeof MaterialCommunityIcons>['name'];
-  iconOnly?: boolean;
-  loading?: boolean;
-  maxWidth?: number;
-  onPress: () => void;
-}) {
-  const colorScheme = useColorScheme() ?? 'light';
-  const palette = Colors[colorScheme];
-  const textColor = active ? palette.tint : palette.text;
-  const borderColor = active ? 'transparent' : palette.border;
-  const backgroundColor = active ? `${palette.tint}18` : palette.surface;
-
-  return (
-    <TouchableRipple
-      onPress={onPress}
-      borderless={false}
-      style={[
-        styles.controlButton,
-        iconOnly ? styles.controlButtonIconOnly : styles.controlButtonText,
-        !iconOnly && maxWidth ? { maxWidth } : null,
-        { borderColor, backgroundColor },
-      ]}>
-      <View style={[styles.controlButtonInner, iconOnly && styles.controlButtonInnerIconOnly]}>
-        {loading ? <ActivityIndicator size={16} color={textColor} /> : null}
-        {!loading && icon ? icon({ size: 16, color: textColor }) : null}
-        {!loading && !icon && iconName ? <MaterialCommunityIcons name={iconName} size={16} color={textColor} /> : null}
-        {!iconOnly ? (
-          <Text numberOfLines={1} ellipsizeMode="tail" variant="labelLarge" style={[styles.controlButtonLabel, { color: textColor }]}>
-            {children}
-          </Text>
-        ) : null}
-      </View>
-    </TouchableRipple>
-  );
-}
-
-function TopTab({ active, label, onPress }: { active: boolean; label: string; onPress: () => void }) {
-  const colorScheme = useColorScheme() ?? 'light';
-  const palette = Colors[colorScheme];
-
-  return (
-    <TouchableRipple style={styles.topTab} onPress={onPress}>
-      <View style={[styles.topTabInner, active && { borderBottomColor: palette.tint, borderBottomWidth: 2 }]}> 
-        <Text variant="titleMedium" style={{ color: active ? palette.text : palette.muted, fontWeight: active ? '700' : '500' }}>{label}</Text>
-      </View>
-    </TouchableRipple>
-  );
-}
-
-function PendingInteractionsCard({
-  onPermissionReply,
-  onQuestionReject,
-  onQuestionSubmit,
-  permissions,
-  questions,
-}: {
-  onPermissionReply: (requestId: string, reply: 'once' | 'always' | 'reject') => void;
-  onQuestionReject: (requestId: string) => void;
-  onQuestionSubmit: (requestId: string, answers: PendingQuestionAnswer[]) => void;
-  permissions: PendingPermissionRequest[];
-  questions: PendingQuestionRequest[];
-}) {
-  const colorScheme = useColorScheme() ?? 'light';
-  const palette = Colors[colorScheme];
-
-  return (
-    <Card mode="contained" style={[styles.sectionCard, { backgroundColor: palette.surface }]}> 
-      <Card.Content style={styles.pendingInteractionsContent}>
-        <View style={styles.waitingNoticeHeader}>
-          <MaterialCommunityIcons name="message-alert-outline" size={18} color={palette.warning} />
-          <Text variant="titleMedium" style={{ color: palette.text }}>Respond to continue</Text>
-        </View>
-        <Text variant="bodySmall" style={{ color: palette.muted }}>
-          OpenCode is waiting for your answer before it can continue.
-        </Text>
-        {permissions.map((request) => (
-          <PermissionRequestCard
-            key={request.id}
-            request={request}
-            onReply={(reply) => onPermissionReply(request.id, reply)}
-          />
-        ))}
-        {questions.map((request) => (
-          <QuestionRequestCard
-            key={request.id}
-            request={request}
-            onReject={() => onQuestionReject(request.id)}
-            onSubmit={(answers) => onQuestionSubmit(request.id, answers)}
-          />
-        ))}
-      </Card.Content>
-    </Card>
-  );
-}
-
-function SessionDiffCard({ diff, accordionId, expanded }: { diff: FileDiff; accordionId: string; expanded: boolean }) {
-  const colorScheme = useColorScheme() ?? 'light';
-  const palette = Colors[colorScheme];
-  const diffLines = useMemo(() => (expanded ? buildLineDiff(diff.before || '', diff.after || '') : []), [diff.after, diff.before, expanded]);
-  const diffBlocks = useMemo(() => (expanded ? buildCollapsedDiffBlocks(diffLines) : []), [diffLines, expanded]);
-
-  return (
-    <List.Accordion
-      id={accordionId}
-      title={diff.file}
-      description={`+${diff.additions} / -${diff.deletions}`}
-      titleStyle={{ color: palette.text }}
-      descriptionStyle={{ color: palette.muted }}
-      style={[styles.diffAccordion, { borderColor: palette.border }]}
-      theme={{ colors: { background: palette.surface } }}>
-      <View style={styles.diffAccordionBody}>
-        <Divider style={styles.divider} />
-        {expanded ? (
-          <ScrollView horizontal showsHorizontalScrollIndicator>
-            <View style={styles.diffViewer}>
-              {diffBlocks.map((block, blockIndex) => {
-                if (block.type === 'collapsed') {
-                  return (
-                    <View key={`${diff.file}-collapsed-${blockIndex}`} style={[styles.diffCollapsedRow, { backgroundColor: palette.background, borderColor: palette.border }]}> 
-                      <Text variant="bodySmall" style={[styles.code, { color: palette.muted }]}> 
-                        ... {block.hiddenCount} unchanged line{block.hiddenCount === 1 ? '' : 's'}
-                        {block.startLine && block.endLine ? ` (${block.startLine}-${block.endLine})` : ''}
-                      </Text>
-                    </View>
-                  );
-                }
-
-                return block.lines.map((line, index) => {
-                  const tone = getDiffPalette(line.kind, palette);
-                  return (
-                    <View
-                      key={`${diff.file}-${blockIndex}-${index}-${line.leftNumber ?? 'x'}-${line.rightNumber ?? 'x'}`}
-                      style={[
-                        styles.diffLineRow,
-                        {
-                          backgroundColor: tone.backgroundColor,
-                          borderLeftColor: tone.accentColor,
-                        },
-                      ]}>
-                      <Text variant="labelSmall" style={[styles.diffLineNumber, { color: palette.muted }]}> 
-                        {line.leftNumber ?? ''}
-                      </Text>
-                      <Text variant="labelSmall" style={[styles.diffLineNumber, { color: palette.muted }]}> 
-                        {line.rightNumber ?? ''}
-                      </Text>
-                      <Text style={[styles.diffMarker, { color: tone.accentColor || palette.muted }]}> 
-                        {line.kind === 'added' ? '+' : line.kind === 'removed' ? '-' : ' '}
-                      </Text>
-                      <Text variant="bodySmall" style={[styles.code, styles.diffLineText, { color: palette.text }]}> 
-                        {line.text || ' '}
-                      </Text>
-                    </View>
-                  );
-                });
-              })}
-            </View>
-          </ScrollView>
-        ) : (
-          <Text variant="bodySmall" style={{ color: palette.muted }}>Expand to load the diff preview.</Text>
-        )}
-      </View>
-    </List.Accordion>
-  );
-}
-
-function DiffCard({ detail, accordionId, expanded }: { detail: Extract<TranscriptDetail, { kind: 'patch' | 'file' }>; accordionId: string; expanded: boolean }) {
-  const colorScheme = useColorScheme() ?? 'light';
-  const palette = Colors[colorScheme];
-
-  return (
-    <List.Accordion
-      id={accordionId}
-      title={detail.label}
-      description={detail.kind === 'patch' ? 'Patch output' : 'File output'}
-      titleStyle={{ color: palette.text }}
-      descriptionStyle={{ color: palette.muted }}
-      style={[styles.diffAccordion, { borderColor: palette.border }]}
-      theme={{ colors: { background: palette.surface } }}>
-      <View style={styles.diffAccordionBody}>
-        <Divider style={styles.divider} />
-        {expanded ? (
-          <Text variant="bodySmall" style={[styles.code, { color: palette.muted }]}>{detail.body}</Text>
-        ) : (
-          <Text variant="bodySmall" style={{ color: palette.muted }}>Expand to load the patch preview.</Text>
-        )}
-      </View>
-    </List.Accordion>
-  );
-}
-
-function TranscriptMessage({
-  canSpeak = false,
-  copied = false,
-  entry,
-  onCopy,
-  onToggleSpeak,
-  speaking = false,
-}: {
-  canSpeak?: boolean;
-  copied?: boolean;
-  entry: TranscriptEntry;
-  onCopy: () => void;
-  onToggleSpeak: () => void;
-  speaking?: boolean;
-}) {
-  const colorScheme = useColorScheme() ?? 'light';
-  const palette = Colors[colorScheme];
-  const isUser = entry.role === 'user';
-  const detailSummary = summarizeDetails(entry.details);
-
-  return (
-    <View style={[styles.messageRow, isUser && styles.messageRowUser]}>
-      <TouchableRipple borderless={false} rippleColor={`${palette.tint}22`} style={styles.messageTouchable} onLongPress={onCopy}>
-        <Surface
-          style={[
-            styles.messageBubble,
-            isUser ? styles.messageBubbleUser : styles.messageBubbleAssistant,
-            {
-              backgroundColor: isUser ? palette.bubbleUser : palette.bubbleAssistant,
-              borderColor: copied ? palette.tint : isUser ? palette.bubbleUser : palette.border,
-            },
-            copied ? styles.messageBubbleCopied : null,
-          ]}
-          elevation={1}>
-          <View style={styles.messageMeta}>
-            <Text variant="labelMedium" style={{ color: isUser ? palette.onBubbleUser : palette.muted }}>{isUser ? 'You' : 'OpenCode'}</Text>
-            <View style={styles.messageMetaRight}>
-              {copied ? (
-                <View style={[styles.copiedPill, { backgroundColor: isUser ? `${palette.onBubbleUser}20` : `${palette.tint}18` }]}> 
-                  <MaterialCommunityIcons name="check" size={12} color={isUser ? palette.onBubbleUser : palette.tint} />
-                  <Text variant="labelSmall" style={{ color: isUser ? palette.onBubbleUser : palette.tint }}>Copied</Text>
-                </View>
-              ) : null}
-              {canSpeak ? (
-                <IconButton
-                  icon={speaking ? 'stop' : 'volume-high'}
-                  size={16}
-                  style={styles.messageActionButton}
-                  iconColor={palette.muted}
-                  onPress={onToggleSpeak}
-                />
-              ) : null}
-              <Text variant="labelSmall" style={{ color: isUser ? palette.onBubbleUser : palette.muted, opacity: isUser ? 0.82 : 1 }}>
-                {formatTimestamp(entry.createdAt)}
-              </Text>
-            </View>
-          </View>
-          {entry.text ? (
-            <MarkdownText
-              text={entry.text}
-              color={isUser ? palette.onBubbleUser : palette.onBubbleAssistant}
-              mutedColor={isUser ? palette.onBubbleUser : palette.muted}
-            />
-          ) : null}
-          {entry.error ? <Text variant="bodyMedium" style={{ color: palette.danger }}>{entry.error}</Text> : null}
-          {!isUser && detailSummary.length > 0 ? (
-            <View style={styles.summaryRow}>
-              {detailSummary.map((item) => (
-                <Chip key={item} compact mode="flat" style={[styles.summaryChip, { backgroundColor: palette.background }]}> 
-                  {item}
-                </Chip>
-              ))}
-            </View>
-          ) : null}
-        </Surface>
-      </TouchableRipple>
-    </View>
-  );
-}
-
-function PermissionRequestCard({
-  compact = false,
-  onReply,
-  request,
-}: {
-  compact?: boolean;
-  onReply: (reply: 'once' | 'always' | 'reject') => void;
-  request: PendingPermissionRequest;
-}) {
-  const colorScheme = useColorScheme() ?? 'light';
-  const palette = Colors[colorScheme];
-
-  return (
-    <Card mode="contained" style={[styles.requestCard, compact && styles.requestCardCompact, { backgroundColor: palette.background }]}> 
-      <Card.Content style={styles.requestCardContent}>
-        <Text variant="labelLarge" style={{ color: palette.warning }}>Permission request</Text>
-        <Text variant="titleMedium" style={{ color: palette.text }}>{getPermissionTitle(request)}</Text>
-        {request.patterns.length > 0 ? (
-          <Text variant="bodySmall" style={{ color: palette.muted }}>{request.patterns.join('\n')}</Text>
-        ) : null}
-        <View style={styles.requestActionsRow}>
-          <Button mode="contained" compact onPress={() => onReply('once')}>Allow once</Button>
-          <Button mode="contained-tonal" compact onPress={() => onReply('always')}>Always allow</Button>
-          <Button mode="text" compact textColor={palette.danger} onPress={() => onReply('reject')}>Deny</Button>
-        </View>
-      </Card.Content>
-    </Card>
-  );
-}
-
-function QuestionRequestCard({
-  compact = false,
-  onReject,
-  onSubmit,
-  request,
-}: {
-  compact?: boolean;
-  onReject: () => void;
-  onSubmit: (answers: PendingQuestionAnswer[]) => void;
-  request: PendingQuestionRequest;
-}) {
-  const colorScheme = useColorScheme() ?? 'light';
-  const palette = Colors[colorScheme];
-  const [answers, setAnswers] = useState<PendingQuestionAnswer[]>(() => request.questions.map(() => []));
-  const [customAnswers, setCustomAnswers] = useState<string[]>(() => request.questions.map(() => ''));
-
-  function toggleOption(questionIndex: number, label: string, multiple?: boolean) {
-    setAnswers((current) =>
-      current.map((answer, index) => {
-        if (index !== questionIndex) {
-          return answer;
-        }
-
-        if (!multiple) {
-          return answer[0] === label ? [] : [label];
-        }
-
-        return answer.includes(label) ? answer.filter((item) => item !== label) : [...answer, label];
-      }),
-    );
-  }
-
-  function updateCustomAnswer(questionIndex: number, value: string) {
-    setCustomAnswers((current) => current.map((answer, index) => (index === questionIndex ? value : answer)));
-  }
-
-  function handleSubmit() {
-    const nextAnswers = request.questions.map((question, index) => {
-      const trimmedCustom = customAnswers[index]?.trim();
-      const selected = answers[index] || [];
-      return trimmedCustom && question.custom !== false ? [...selected, trimmedCustom] : selected;
-    });
-
-    void onSubmit(nextAnswers);
-  }
-
-  const canSubmit = request.questions.every((question, index) => {
-    const selectedCount = answers[index]?.length || 0;
-    const hasCustom = Boolean(customAnswers[index]?.trim()) && question.custom !== false;
-    return selectedCount > 0 || hasCustom;
-  });
-
-  return (
-    <Card mode="contained" style={[styles.requestCard, compact && styles.requestCardCompact, { backgroundColor: palette.background }]}> 
-      <Card.Content style={styles.requestCardContent}>
-        <Text variant="labelLarge" style={{ color: palette.tint }}>Question</Text>
-        <View style={styles.questionList}>
-          {request.questions.map((question, questionIndex) => (
-            <View key={`${request.id}-${question.header}-${questionIndex}`} style={styles.questionBlock}>
-              <View style={styles.questionHeader}>
-                <Text variant="titleMedium" style={{ color: palette.text }}>{question.header}</Text>
-                <Text variant="bodySmall" style={{ color: palette.muted }}>{question.multiple ? 'Choose one or more' : 'Choose one'}</Text>
-              </View>
-              <Text variant="bodyMedium" style={{ color: palette.text }}>{question.question}</Text>
-              <View style={styles.questionOptions}>
-                {question.options.map((option) => {
-                  const selected = answers[questionIndex]?.includes(option.label);
-                  return (
-                    <Chip
-                      key={`${question.header}-${option.label}`}
-                      compact
-                      mode={selected ? 'flat' : 'outlined'}
-                      selected={selected}
-                      style={styles.questionChip}
-                      onPress={() => toggleOption(questionIndex, option.label, question.multiple)}>
-                      {option.label}
-                    </Chip>
-                  );
-                })}
-              </View>
-              {question.custom !== false ? (
-                <TextInput
-                  mode="outlined"
-                  dense
-                  placeholder="Type your answer"
-                  value={customAnswers[questionIndex] || ''}
-                  onChangeText={(value) => updateCustomAnswer(questionIndex, value)}
-                />
-              ) : null}
-            </View>
-          ))}
-        </View>
-        <View style={styles.requestActionsRow}>
-          <Button mode="contained" compact disabled={!canSubmit} onPress={handleSubmit}>Submit</Button>
-          <Button mode="text" compact textColor={palette.danger} onPress={onReject}>Reject</Button>
-        </View>
-      </Card.Content>
-    </Card>
-  );
-}
-
 const styles = StyleSheet.create({
   screen: { flex: 1 },
   header: { elevation: 0 },
@@ -1717,6 +892,93 @@ const styles = StyleSheet.create({
   sessionPickerHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingVertical: 12, borderBottomWidth: 1 },
   sessionPickerList: { padding: 12, gap: 8, paddingBottom: 24 },
   sessionPickerItem: { borderRadius: 16, borderWidth: 1 },
+  voiceOverlay: { ...StyleSheet.absoluteFillObject, zIndex: 12 },
+  voiceOverlayGlow: {
+    position: 'absolute',
+    width: 240,
+    height: 240,
+    borderRadius: 999,
+    opacity: 0.85,
+  },
+  voiceOverlayGlowTop: { top: -30, right: -50 },
+  voiceOverlayGlowBottom: { bottom: 140, left: -70 },
+  voiceOverlayContent: { flex: 1, paddingHorizontal: 22, paddingBottom: 22 },
+  voiceOverlayHeader: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: 16 },
+  voiceOverlayHeaderCopy: { flex: 1, minWidth: 0, gap: 6 },
+  voiceOverlayEyebrow: { letterSpacing: 0.6, textTransform: 'uppercase' },
+  voiceOverlayTitle: { fontFamily: Fonts.display, fontWeight: '700' },
+  voiceOverlayStatusPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    borderRadius: 999,
+    borderWidth: 1,
+  },
+  voiceOverlayCenter: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 28 },
+  voiceOrbShell: {
+    width: 252,
+    height: 252,
+    borderRadius: 999,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(255,255,255,0.04)',
+  },
+  voiceOrbCore: {
+    width: 212,
+    height: 212,
+    borderRadius: 999,
+    overflow: 'hidden',
+    backgroundColor: '#DDF7F6',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  voiceOrbAura: {
+    ...StyleSheet.absoluteFillObject,
+    borderRadius: 999,
+  },
+  voiceOrbBlobTop: {
+    position: 'absolute',
+    top: -8,
+    left: 18,
+    right: 18,
+    height: 122,
+    borderRadius: 999,
+  },
+  voiceOrbBlobBottom: {
+    position: 'absolute',
+    left: -8,
+    right: -8,
+    bottom: -6,
+    height: 112,
+    borderTopLeftRadius: 110,
+    borderTopRightRadius: 130,
+    borderBottomLeftRadius: 999,
+    borderBottomRightRadius: 999,
+  },
+  voiceOrbHighlight: {
+    position: 'absolute',
+    top: 26,
+    left: 42,
+    width: 70,
+    height: 52,
+    borderRadius: 999,
+    transform: [{ rotate: '-18deg' }],
+  },
+  voiceOverlayMeta: { alignItems: 'center', gap: 10, maxWidth: 320 },
+  voiceOverlayPhaseTitle: { fontFamily: Fonts.display, fontWeight: '700', textAlign: 'center' },
+  voiceOverlayPhaseCopy: { textAlign: 'center', lineHeight: 24 },
+  voiceOverlayFooter: { gap: 18, paddingBottom: 8 },
+  voiceOverlaySnippetCard: {
+    borderWidth: 1,
+    borderRadius: 24,
+    paddingHorizontal: 18,
+    paddingVertical: 16,
+    gap: 8,
+  },
+  voiceOverlayDoneContent: { minHeight: 58 },
+  voiceOverlayDoneLabel: { fontFamily: Fonts.display, fontSize: 18, fontWeight: '700' },
   tabsRow: { flexDirection: 'row', borderBottomWidth: 1 },
   topTab: { flex: 1 },
   topTabInner: { minHeight: 52, alignItems: 'center', justifyContent: 'center' },

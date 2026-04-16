@@ -1,6 +1,5 @@
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { AppState } from 'react-native';
-import type { Agent, Config, FileDiff, Project, Session, SessionStatus, Todo } from '@/lib/opencode/types';
+import type { Config, FileDiff, Project, Session, SessionStatus, Todo } from '@/lib/opencode/types';
 import {
   createContext,
   useCallback,
@@ -33,17 +32,12 @@ import {
   type SessionMessageRecord,
   type TranscriptEntry,
 } from '@/lib/opencode/format';
+import { getTranscriptActivityLabel, isTranscriptDisplayMessage } from '@/lib/opencode/transcript';
 import {
   clearPendingTaskFinishedNotification,
   notifyTaskFinished,
   trackPendingTaskFinishedNotification,
 } from '@/lib/notifications';
-import {
-  ACTIVE_PROJECT_STORAGE_KEY,
-  CHAT_PREFERENCES_STORAGE_KEY,
-  LAST_SESSION_BY_PROJECT_STORAGE_KEY,
-  SETTINGS_STORAGE_KEY,
-} from '@/lib/storage-keys';
 import { speakText, stopSpeaking } from '@/lib/voice/speech-output';
 import { useSpeechInput } from '@/lib/voice/use-speech-input';
 import {
@@ -52,15 +46,36 @@ import {
   unloadWorkingSoundAsync,
   type WorkingSoundVariant,
 } from '@/lib/voice/working-sound';
+import {
+  buildSystemPrompt,
+  defaultChatPreferences,
+  getConfiguredProviderIds,
+  getEnabledModelIds,
+  getErrorMessage,
+  getInitialMode,
+  getInitialModelId,
+  getInitialProviderId,
+  getModelIdForProvider,
+  getProjectLabel,
+  getSelectedModelParts,
+  groupPendingRequestsBySession,
+  isAutoApproveEnabled,
+  mergePermissionConfig,
+  toAgentOption,
+  type AgentOption as ProviderAgentOption,
+  type ChatPreferences as ProviderChatPreferences,
+  type ModelOption as ProviderModelOption,
+  type ReasoningLevel as ProviderReasoningLevel,
+  type ResponseScope as ProviderResponseScope,
+} from '@/providers/opencode-provider-utils';
+import { useConversationKeepAwake } from '@/providers/use-conversation-keep-awake';
+import { useOpencodePersistence } from '@/providers/use-opencode-persistence';
 
-export type ModelOption = {
-  id: string;
-  label: string;
-  providerID: string;
-  providerLabel: string;
-  modelID: string;
-  supportsReasoning: boolean;
-};
+export type AgentOption = ProviderAgentOption;
+export type ChatPreferences = ProviderChatPreferences;
+export type ModelOption = ProviderModelOption;
+export type ReasoningLevel = ProviderReasoningLevel;
+export type ResponseScope = ProviderResponseScope;
 
 export type ProviderOption = {
   id: string;
@@ -92,55 +107,11 @@ export type ProviderAuthMethod = {
   prompts?: ProviderAuthPrompt[];
 };
 
-export type AgentOption = {
-  id: string;
-  label: string;
-  description?: string;
-};
-
 // Browser/server-folder browsing removed
 
-export type ReasoningLevel = 'low' | 'default' | 'high';
-export type ResponseScope = 'brief' | 'balanced' | 'detailed';
 export type ConversationPhase = 'off' | 'listening' | 'submitting' | 'waiting' | 'speaking';
 
-export type ChatPreferences = {
-  mode: string;
-  providerId?: string;
-  modelId?: string;
-  enabledModelIds: string[];
-  providerModelSelections: Record<string, string>;
-  reasoning: ReasoningLevel;
-  autoApprove: boolean;
-  autoPlayAssistantReplies: boolean;
-  preferOnDeviceRecognition: boolean;
-  resumeListeningAfterReply: boolean;
-  speechLocale?: string;
-  speechRate: number;
-  speechVoiceId?: string;
-  workingSoundEnabled: boolean;
-  workingSoundVariant: WorkingSoundVariant;
-  workingSoundVolume: number;
-  responseScope: ResponseScope;
-  includeNextActions: boolean;
-};
-
-const defaultChatPreferences: ChatPreferences = {
-  mode: 'build',
-  enabledModelIds: [],
-  providerModelSelections: {},
-  reasoning: 'default',
-  autoApprove: false,
-  autoPlayAssistantReplies: false,
-  preferOnDeviceRecognition: true,
-  resumeListeningAfterReply: true,
-  speechRate: 1,
-  workingSoundEnabled: true,
-  workingSoundVariant: 'soft',
-  workingSoundVolume: 0.18,
-  responseScope: 'brief',
-  includeNextActions: true,
-};
+const CONVERSATION_KEEP_AWAKE_TAG = 'opencode-conversation-mode';
 
 type ConversationState = {
   active: boolean;
@@ -242,263 +213,7 @@ type OpencodeContextValue = {
 
 const OpencodeContext = createContext<OpencodeContextValue | null>(null);
 
-function getErrorMessage(error: unknown) {
-  if (error instanceof Error) {
-    return error.message;
-  }
-
-  return 'Something went wrong while talking to OpenCode.';
-}
-
-function getProjectLabel(path: string) {
-  const normalized = path.trim().replace(/\/$/, '');
-  const segments = normalized.split('/').filter(Boolean);
-  return segments.at(-1) || normalized || 'Project';
-}
-
-function toAgentOption(agent: Agent): AgentOption {
-  return {
-    id: agent.name,
-    label: agent.name.charAt(0).toUpperCase() + agent.name.slice(1),
-    description: agent.description,
-  };
-}
-
-function getInitialMode(agents: AgentOption[], config?: Config, storedMode?: string) {
-  if (storedMode && agents.some((agent) => agent.id === storedMode)) {
-    return storedMode;
-  }
-
-  const configuredAgent = config?.agent
-    ? Object.entries(config.agent).find(([, value]) => value && (value as any).disable !== true)?.[0]
-    : undefined;
-  if (configuredAgent && agents.some((agent) => agent.id === configuredAgent)) {
-    return configuredAgent;
-  }
-
-  const preferred = agents.find((agent) => agent.id === 'build') || agents.find((agent) => agent.id === 'general');
-  return preferred?.id || agents[0]?.id || defaultChatPreferences.mode;
-}
-
-function getInitialModelId(models: ModelOption[], config?: Config, storedModelId?: string) {
-  if (storedModelId && models.some((model) => model.id === storedModelId)) {
-    return storedModelId;
-  }
-
-  if (config?.model && models.some((model) => model.id === config.model)) {
-    return config.model;
-  }
-
-  return models[0]?.id;
-}
-
-function getInitialProviderId(models: ModelOption[], config?: Config, storedProviderId?: string, modelId?: string) {
-  if (storedProviderId && models.some((model) => model.providerID === storedProviderId)) {
-    return storedProviderId;
-  }
-
-  const modelMatch = models.find((model) => model.id === modelId);
-  if (modelMatch) {
-    return modelMatch.providerID;
-  }
-
-  if (config?.model) {
-    const configMatch = models.find((model) => model.id === config.model);
-    if (configMatch) {
-      return configMatch.providerID;
-    }
-  }
-
-  return models[0]?.providerID;
-}
-
-function getModelIdForProvider(models: ModelOption[], providerId?: string, selectedModelId?: string, preferredModelId?: string) {
-  const providerModels = providerId ? models.filter((model) => model.providerID === providerId) : models;
-  if (providerModels.length === 0) {
-    return selectedModelId;
-  }
-
-  if (selectedModelId && providerModels.some((model) => model.id === selectedModelId)) {
-    return selectedModelId;
-  }
-
-  if (preferredModelId && providerModels.some((model) => model.id === preferredModelId)) {
-    return preferredModelId;
-  }
-
-  return providerModels[0]?.id;
-}
-
-function getEnabledModelIds(models: ModelOption[], storedModelIds?: string[]) {
-  const availableModelIds = new Set(models.map((model) => model.id));
-  const nextEnabledModelIds = (storedModelIds || []).filter((modelId) => availableModelIds.has(modelId));
-
-  return nextEnabledModelIds.length > 0 ? nextEnabledModelIds : models.map((model) => model.id);
-}
-
-function getConfiguredProviderIds(config: Config | undefined, connected: string[], models: ModelOption[]) {
-  const configured = new Set<string>([
-    ...(config?.enabled_providers || []),
-    ...connected,
-    ...Object.keys((config?.provider as any) || {}),
-  ]);
-
-  if (config?.model) {
-    const modelMatch = models.find((model) => model.id === config.model);
-    if (modelMatch) {
-      configured.add(modelMatch.providerID);
-    }
-  }
-
-  return configured;
-}
-
-function isAutoApproveEnabled(config?: Config) {
-  if (!config?.permission) {
-    return false;
-  }
-
-  const { bash, doom_loop, edit, external_directory, webfetch } = config.permission;
-  return edit === 'allow' && bash === 'allow' && webfetch === 'allow' && doom_loop === 'allow' && external_directory === 'allow';
-}
-
-function buildReasoningSystemPrompt(level: ReasoningLevel) {
-  if (level === 'default') {
-    return undefined;
-  }
-
-  if (level === 'low') {
-    return 'Reasoning effort: low. Keep the solution direct, concise, and avoid unnecessary exploration unless needed.';
-  }
-
-  return 'Reasoning effort: high. Spend extra time planning, evaluating tradeoffs, and verifying the best path before acting.';
-}
-
-function buildResponseStyleSystemPrompt(scope: ResponseScope, includeNextActions: boolean) {
-  const scopeInstruction =
-    scope === 'brief'
-      ? 'Keep responses tightly scoped. Use short paragraphs or brief bullets and avoid extra background unless the user asks for it.'
-      : scope === 'detailed'
-        ? 'Give fuller explanations when helpful, but still stay conversational and focused on the user request.'
-        : 'Keep responses concise and user-friendly, with only the context needed to understand the answer.';
-
-  const nextActionsInstruction = includeNextActions
-    ? 'When there are useful next actions, end with a simple explanation of the recommended next step or a short numbered list.'
-    : 'Do not add next actions unless the user explicitly asks for them.';
-
-  return `${scopeInstruction} ${nextActionsInstruction}`;
-}
-
-function buildSystemPrompt(preferences: ChatPreferences) {
-  return [
-    buildReasoningSystemPrompt(preferences.reasoning),
-    buildResponseStyleSystemPrompt(preferences.responseScope, preferences.includeNextActions),
-  ]
-    .filter(Boolean)
-    .join('\n\n') || undefined;
-}
-
-function getActivityLabel(entry: TranscriptEntry) {
-  const runningTool = entry.details.find((detail) => detail.kind === 'tool' && detail.status === 'running');
-  if (runningTool) {
-    return runningTool.label;
-  }
-
-  const latestTool = [...entry.details].reverse().find((detail) => detail.kind === 'tool');
-  if (latestTool) {
-    return latestTool.label;
-  }
-
-  const latestPatch = [...entry.details].reverse().find((detail) => detail.kind === 'patch');
-  if (latestPatch) {
-    return latestPatch.label;
-  }
-
-  const latestReasoning = [...entry.details].reverse().find((detail) => detail.kind === 'reasoning');
-  if (latestReasoning) {
-    return latestReasoning.label;
-  }
-
-  const latestStep = [...entry.details].reverse().find((detail) => detail.kind === 'step' || detail.kind === 'subtask');
-  if (latestStep) {
-    return latestStep.label;
-  }
-
-  return undefined;
-}
-
-function isDisplayMessage(entry: TranscriptEntry) {
-  if (entry.role === 'user') {
-    return true;
-  }
-
-  return Boolean(entry.text.trim() || entry.error);
-}
-
-function getSelectedModelParts(modelId?: string) {
-  if (!modelId) {
-    return undefined;
-  }
-
-  const providerID = modelId.split('/')[0];
-  const selectedModelID = modelId.split('/').slice(1).join('/');
-  if (!providerID || !selectedModelID) {
-    return undefined;
-  }
-
-  return {
-    providerID,
-    modelID: selectedModelID,
-  };
-}
-
-function mergePermissionConfig(config: Config | undefined, enabled: boolean): Config {
-  return {
-    ...(config || {}),
-    permission: {
-      ...config?.permission,
-      edit: enabled ? 'allow' : 'ask',
-      bash: enabled ? 'allow' : 'ask',
-      webfetch: enabled ? 'allow' : 'ask',
-      doom_loop: enabled ? 'allow' : 'ask',
-      external_directory: enabled ? 'allow' : 'ask',
-    },
-  };
-}
-
-function getPendingRequestSessionId(request: any) {
-  const candidate =
-    request?.sessionID ??
-    request?.sessionId ??
-    request?.session ??
-    request?.session?.id ??
-    request?.message?.sessionID ??
-    request?.message?.sessionId ??
-    request?.tool?.sessionID ??
-    request?.tool?.sessionId;
-
-  return typeof candidate === 'string' ? candidate : undefined;
-}
-
-function groupPendingRequestsBySession<T extends { id?: string }>(requests: T[]) {
-  return requests.reduce<Record<string, T[]>>((acc, request: any) => {
-    const sessionId = getPendingRequestSessionId(request);
-    if (!sessionId) {
-      return acc;
-    }
-
-    const existing = acc[sessionId] || [];
-    if (request?.id && existing.some((item: any) => item?.id === request.id)) {
-      return acc;
-    }
-
-    acc[sessionId] = [...existing, request];
-    return acc;
-  }, {});
-}
-
 export function OpencodeProvider({ children }: PropsWithChildren) {
-  const [isHydrated, setIsHydrated] = useState(false);
   const [settings, setSettings] = useState<OpencodeConnectionSettings>(defaultConnectionSettings);
   const [connection, setConnection] = useState<ConnectionState>({
     status: 'idle',
@@ -549,83 +264,18 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
   const sessionRefreshTimeoutsRef = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
   settingsRef.current = settings;
 
-  useEffect(() => {
-    async function hydrateState() {
-      try {
-        const storedSettings = await AsyncStorage.getItem(SETTINGS_STORAGE_KEY);
-
-        if (storedSettings) {
-          const parsed = JSON.parse(storedSettings) as Partial<OpencodeConnectionSettings>;
-          setSettings({
-            ...defaultConnectionSettings,
-            ...parsed,
-          });
-        }
-
-        const storedChatPreferences = await AsyncStorage.getItem(CHAT_PREFERENCES_STORAGE_KEY);
-        if (storedChatPreferences) {
-          const parsed = JSON.parse(storedChatPreferences) as Partial<ChatPreferences>;
-          setChatPreferences({
-            ...defaultChatPreferences,
-            ...parsed,
-          });
-        }
-
-        const storedActiveProjectPath = await AsyncStorage.getItem(ACTIVE_PROJECT_STORAGE_KEY);
-        if (storedActiveProjectPath) {
-          setActiveProjectPath(storedActiveProjectPath);
-        }
-
-        const storedLastSessionByProject = await AsyncStorage.getItem(LAST_SESSION_BY_PROJECT_STORAGE_KEY);
-        if (storedLastSessionByProject) {
-          setLastSessionByProject(JSON.parse(storedLastSessionByProject) as Record<string, string>);
-        }
-      } catch {
-        // Ignore hydration issues and keep defaults.
-      } finally {
-        setIsHydrated(true);
-      }
-    }
-
-    void hydrateState();
-  }, []);
-
-  useEffect(() => {
-    if (!isHydrated) {
-      return;
-    }
-
-    void AsyncStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(settings));
-  }, [isHydrated, settings]);
-
-  useEffect(() => {
-    if (!isHydrated) {
-      return;
-    }
-
-    void AsyncStorage.setItem(CHAT_PREFERENCES_STORAGE_KEY, JSON.stringify(chatPreferences));
-  }, [chatPreferences, isHydrated]);
-
-  useEffect(() => {
-    if (!isHydrated) {
-      return;
-    }
-
-    if (activeProjectPath) {
-      void AsyncStorage.setItem(ACTIVE_PROJECT_STORAGE_KEY, activeProjectPath);
-      return;
-    }
-
-    void AsyncStorage.removeItem(ACTIVE_PROJECT_STORAGE_KEY);
-  }, [activeProjectPath, isHydrated]);
-
-  useEffect(() => {
-    if (!isHydrated) {
-      return;
-    }
-
-    void AsyncStorage.setItem(LAST_SESSION_BY_PROJECT_STORAGE_KEY, JSON.stringify(lastSessionByProject));
-  }, [isHydrated, lastSessionByProject]);
+  const { isHydrated } = useOpencodePersistence({
+    defaultChatPreferences,
+    defaultSettings: defaultConnectionSettings,
+    activeProjectPath,
+    chatPreferences,
+    lastSessionByProject,
+    setActiveProjectPath,
+    setChatPreferences,
+    setLastSessionByProject,
+    setSettings,
+    settings,
+  });
 
   const projects = useMemo<OpencodeProject[]>(() => {
     const entries = new Map<string, OpencodeProject>();
@@ -1392,7 +1042,7 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
             // avoid requiring expo-file-system in environments that don't have it.
             try {
               // eslint-disable-next-line @typescript-eslint/no-var-requires
-              const FileSystem = await import('expo-file-system/legacy');
+              const FileSystem = await import('expo-file-system');
               // readAsStringAsync supports file:// and content:// URIs on React Native
               const base64 = await FileSystem.readAsStringAsync(att.uri, { encoding: 'base64' });
               const dataUrl = `data:${mime};base64,${base64}`;
@@ -1510,7 +1160,7 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
         return undefined;
       }
 
-      const transcript = (messagesBySession[sessionId] || []).map(toTranscriptEntry).filter(isDisplayMessage);
+        const transcript = (messagesBySession[sessionId] || []).map(toTranscriptEntry).filter(isTranscriptDisplayMessage);
       return [...transcript].reverse().find((entry) => entry.role === 'assistant' && entry.text.trim());
     },
     [messagesBySession],
@@ -1618,6 +1268,8 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
   useEffect(() => {
     conversationPhaseRef.current = conversationPhase;
   }, [conversationPhase]);
+
+  useConversationKeepAwake(conversationPhase, CONVERSATION_KEEP_AWAKE_TAG);
 
   useEffect(() => {
     const subscription = AppState.addEventListener('change', (nextState) => {
@@ -2082,7 +1734,7 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
   );
   const conversationTranscript = useMemo(() => conversationMessages.map(toTranscriptEntry), [conversationMessages]);
   const conversationDisplayTranscript = useMemo(
-    () => conversationTranscript.filter(isDisplayMessage),
+    () => conversationTranscript.filter(isTranscriptDisplayMessage),
     [conversationTranscript],
   );
   const latestConversationAssistantEntry = useMemo(
@@ -2092,11 +1744,11 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
   const conversationCurrentActivityLabel = useMemo(() => {
     for (let index = conversationTranscript.length - 1; index >= 0; index -= 1) {
       const entry = conversationTranscript[index];
-      if (isDisplayMessage(entry)) {
+      if (isTranscriptDisplayMessage(entry)) {
         continue;
       }
 
-      const label = getActivityLabel(entry);
+      const label = getTranscriptActivityLabel(entry);
       if (label) {
         return label;
       }
