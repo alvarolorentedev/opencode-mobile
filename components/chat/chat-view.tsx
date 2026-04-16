@@ -70,6 +70,7 @@ export function ChatView() {
   const [copiedMessageId, setCopiedMessageId] = useState<string | undefined>();
   const [speakingMessageId, setSpeakingMessageId] = useState<string | undefined>(undefined);
   const [voiceFeedback, setVoiceFeedback] = useState<string | undefined>(undefined);
+  const [sendFeedback, setSendFeedback] = useState<string | undefined>(undefined);
   const speechDraftPrefixRef = useRef('');
   const draftRef = useRef('');
   const attachmentsRef = useRef<{ uri: string; mime?: string; filename?: string }[]>([]);
@@ -159,6 +160,7 @@ export function ChatView() {
     }
 
     try {
+      setSendFeedback(undefined);
       const sessionId = currentSessionId || (await ensureActiveSession());
       if (!sessionId) {
         return;
@@ -171,11 +173,12 @@ export function ChatView() {
       if (!sent) {
         setDraft(nextDraft);
         setAttachments(nextAttachments);
+        setSendFeedback('OpenCode could not send that message. Try again in a moment.');
       }
     } catch (error) {
       setDraft(nextDraft);
       setAttachments(nextAttachments);
-      throw error;
+      setSendFeedback(error instanceof Error ? error.message : 'OpenCode could not send that message.');
     }
   }, [connection.status, currentSessionId, ensureActiveSession, sendPrompt]);
 
@@ -344,6 +347,7 @@ export function ChatView() {
         return;
       }
 
+      setSendFeedback(undefined);
       setAttachments((current) => {
         const next = [...current];
 
@@ -483,9 +487,15 @@ export function ChatView() {
           isUpdatingAutoApprove={isUpdatingAutoApprove}
           menu={menu}
           onAttach={() => void handleAttach()}
-          onDraftChange={setDraft}
+          onDraftChange={(value) => {
+            setSendFeedback(undefined);
+            setDraft(value);
+          }}
           onMenuChange={setMenu}
-          onRemoveAttachment={(index) => setAttachments((current) => current.filter((_, itemIndex) => itemIndex !== index))}
+          onRemoveAttachment={(index) => {
+            setSendFeedback(undefined);
+            setAttachments((current) => current.filter((_, itemIndex) => itemIndex !== index));
+          }}
           onSend={() => {
             if (!showSendAction) {
               void handleAbort();
@@ -511,13 +521,14 @@ export function ChatView() {
         Message copied to clipboard
       </Snackbar>
       <Snackbar
-        visible={Boolean(conversation.feedback || voiceFeedback)}
+        visible={Boolean(conversation.feedback || voiceFeedback || sendFeedback)}
         onDismiss={() => {
+          setSendFeedback(undefined);
           setVoiceFeedback(undefined);
           clearConversationFeedback();
         }}
         duration={3200}>
-        {conversation.feedback || voiceFeedback}
+        {sendFeedback || conversation.feedback || voiceFeedback}
       </Snackbar>
     </>
   );

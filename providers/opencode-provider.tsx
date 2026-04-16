@@ -841,7 +841,7 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
       attachments?: { uri: string; mime?: string; filename?: string }[],
     ) => {
       const trimmedPrompt = prompt.trim();
-      if (!trimmedPrompt) {
+      if (!trimmedPrompt && (!attachments || attachments.length === 0)) {
         return false;
       }
 
@@ -872,9 +872,9 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
       let promptAccepted = false;
 
       try {
-        // Prepare file parts. For local URIs (file://, content://, asset://) try to read
-        // the file and convert to a data URL (base64). This makes the bytes available
-        // to the server even when it cannot fetch local device URIs.
+        // Prepare file parts. For local URIs (file://, content://, asset://) read the
+        // file and convert it to a data URL so the server receives the attachment bytes.
+        // Mobile-local URIs are not reachable from the OpenCode server.
         const preparedFileParts: { type: 'file'; mime: string; filename?: string; url: string }[] = [];
 
         if (attachments && attachments.length > 0) {
@@ -888,45 +888,35 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
               continue;
             }
 
-            // Attempt to read local file and encode as data URL. Use dynamic import to
-            // avoid requiring expo-file-system in environments that don't have it.
             try {
-              const FileSystem = await import('expo-file-system');
-              // readAsStringAsync supports file:// and content:// URIs on React Native
+              const FileSystem = await import('expo-file-system/legacy');
               const base64 = await FileSystem.readAsStringAsync(att.uri, { encoding: 'base64' });
               const dataUrl = `data:${mime};base64,${base64}`;
               preparedFileParts.push({ type: 'file', mime, filename, url: dataUrl });
-            } catch {
-              // If reading fails, fall back to passing the original URI. The server
-              // may still support some schemes or an MCP server may be able to fetch.
-              preparedFileParts.push({ type: 'file', mime, filename, url: att.uri });
+            } catch (error) {
+              const reason = error instanceof Error ? error.message : 'unknown error';
+              throw new Error(`Could not read attachment${filename ? ` \"${filename}\"` : ''}: ${reason}`);
             }
           }
         }
+
+        const parts: any[] = [];
+        if (trimmedPrompt) {
+          parts.push({ type: 'text', text: trimmedPrompt });
+        }
+        parts.push(...preparedFileParts);
 
         const body = {
           agent: chatPreferences.mode,
           model: getSelectedModelParts(chatPreferences.modelId),
           system: buildSystemPrompt(chatPreferences),
-          parts: [
-            {
-              type: 'text',
-              text: trimmedPrompt,
-            },
-            ...preparedFileParts,
-          ],
+          parts,
         };
 
         if (typeof client.session.promptAsync === 'function') {
-          await client.session.promptAsync({
-            path: { id: sessionId },
-            body,
-          });
+          await client.session.promptAsync({ path: { id: sessionId }, body });
         } else {
-          await client.session.prompt({
-            path: { id: sessionId },
-            body,
-          });
+          await client.session.prompt({ path: { id: sessionId }, body });
         }
         promptAccepted = true;
         promptSubmissionRef.current = { active: false, sessionId: undefined };
