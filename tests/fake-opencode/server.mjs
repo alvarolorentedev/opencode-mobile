@@ -3,60 +3,15 @@
 import http from 'node:http';
 import { URL } from 'node:url';
 
+import { listProvidersPayload, providerAuthPayload } from './fixtures.mjs';
+import { createSessionHelpers } from './session-helpers.mjs';
+import { createStateStore, getNow } from './state.mjs';
+
 const port = Number.parseInt(process.env.FAKE_OPENCODE_PORT || '4096', 10);
 const scenarioName = process.env.FAKE_OPENCODE_SCENARIO || 'happy-path';
 
-const now = () => Date.now();
-
-let state = createState(scenarioName);
-
-function createState(scenario) {
-  const rootPath = '/workspace';
-  const projectPath = '/workspace/demo-project';
-  const project = {
-    id: 'project-demo',
-    worktree: projectPath,
-    time: {
-      created: now() - 60_000,
-      initialized: now() - 30_000,
-    },
-  };
-
-  return {
-    scenario,
-    rootPath,
-    project,
-    nextSessionId: 1,
-    nextMessageId: 1,
-    nextPendingId: 1,
-    sseClients: new Set(),
-    sessions: [],
-    messagesBySession: {},
-    sessionStatuses: {},
-    diffsBySession: {},
-    todosBySession: {},
-    pendingPermissions: [],
-    pendingQuestions: [],
-    configuredProviderIds: new Set(['openai']),
-    config: {
-      model: 'openai/gpt-4.1-mini',
-      enabled_providers: ['openai'],
-      permission: {
-        edit: 'ask',
-        bash: 'ask',
-        webfetch: 'ask',
-        doom_loop: 'ask',
-        external_directory: 'ask',
-      },
-      provider: {},
-      agent: {
-        build: {},
-        general: {},
-      },
-    },
-    authByProvider: {},
-  };
-}
+const stateStore = createStateStore(scenarioName);
+let state = stateStore.getState();
 
 function sendJson(res, statusCode, payload) {
   res.writeHead(statusCode, {
@@ -95,11 +50,11 @@ function readJson(req) {
 }
 
 function getSession(sessionId) {
-  return state.sessions.find((session) => session.id === sessionId);
+  return helpers.getSession(sessionId);
 }
 
 function getMessages(sessionId) {
-  return state.messagesBySession[sessionId] || [];
+  return helpers.getMessages(sessionId);
 }
 
 function emitEvent(event) {
@@ -113,229 +68,18 @@ function emitEvent(event) {
   }
 }
 
-function syncSessionSummary(sessionId, summary) {
-  const session = getSession(sessionId);
-  if (!session) {
-    return;
-  }
-
-  session.summary = summary;
-  session.time.updated = now();
-}
-
-function createSession(title = '') {
-  const sessionId = `session-${state.nextSessionId++}`;
-  const session = {
-    id: sessionId,
-    title,
-    summary: {
-      files: 0,
-      additions: 0,
-      deletions: 0,
-    },
-    time: {
-      created: now(),
-      updated: now(),
-      archived: null,
-    },
-  };
-
-  state.sessions.unshift(session);
-  state.messagesBySession[sessionId] = [];
-  state.diffsBySession[sessionId] = [];
-  state.todosBySession[sessionId] = [];
-  state.sessionStatuses[sessionId] = { type: 'idle' };
-  emitEvent({ type: 'session.created', properties: { sessionID: sessionId } });
-  return session;
-}
-
-function createMessage(sessionId, role, parts, extra = {}) {
-  const record = {
-    info: {
-      id: `message-${state.nextMessageId++}`,
-      role,
-      sessionID: sessionId,
-      time: {
-        created: now(),
-      },
-      ...extra,
-    },
-    parts,
-  };
-
-  state.messagesBySession[sessionId] = [...getMessages(sessionId), record];
-  const session = getSession(sessionId);
-  if (session) {
-    session.time.updated = now();
-  }
-  emitEvent({
-    type: 'message.updated',
-    properties: {
-      info: record.info,
-    },
-  });
-  return record;
-}
-
-function completePrompt(sessionId, promptText) {
-  const diff = [
-    {
-      file: 'app/(tabs)/index.tsx',
-      additions: 6,
-      deletions: 1,
-      before: 'export default function OldScreen() {}\n',
-      after: 'export default function ChatLandingScreen() {\n  return null;\n}\n',
-    },
-  ];
-  const todos = [
-    { id: 'todo-1', content: 'Validate session transcript', status: 'completed', priority: 'high' },
-    { id: 'todo-2', content: 'Confirm fake server integration', status: 'completed', priority: 'medium' },
-  ];
-  const assistantText = `Finished: ${promptText || 'task complete'}. Flow stayed stable against the fake OpenCode server.`;
-
-  state.diffsBySession[sessionId] = diff;
-  state.todosBySession[sessionId] = todos;
-  syncSessionSummary(sessionId, { files: 1, additions: 6, deletions: 1 });
-  createMessage(sessionId, 'assistant', [
-    { type: 'text', text: assistantText },
-    { type: 'patch', files: diff.map((entry) => entry.file) },
-  ]);
-  state.sessionStatuses[sessionId] = { type: 'idle' };
-  emitEvent({ type: 'session.diff', properties: { sessionID: sessionId, diff } });
-  emitEvent({ type: 'todo.updated', properties: { sessionID: sessionId, todos } });
-  emitEvent({ type: 'session.idle', properties: { sessionID: sessionId } });
-
-  const session = getSession(sessionId);
-  if (session && !session.title.trim()) {
-    session.title = summarizePrompt(promptText);
-    emitEvent({ type: 'session.updated', properties: { sessionID: sessionId } });
-  }
-}
-
-function summarizePrompt(promptText) {
-  const words = (promptText || 'Untitled chat').trim().split(/\s+/).slice(0, 4);
-  return words.join(' ');
-}
-
-function scheduleCompletion(sessionId, promptText) {
-  setTimeout(() => {
-    completePrompt(sessionId, promptText);
-  }, 700);
-}
-
-function createPermissionRequest(sessionId) {
-  const request = {
-    id: `permission-${state.nextPendingId++}`,
-    sessionID: sessionId,
-    permission: 'edit_file',
-    patterns: ['app/(tabs)/index.tsx'],
-    always: [],
-    tool: { messageID: 'tool-message-1', callID: 'tool-call-1' },
-  };
-  state.pendingPermissions = [request];
-  emitEvent({ type: 'permission.updated', properties: { sessionID: sessionId } });
-}
-
-function createQuestionRequest(sessionId) {
-  const request = {
-    id: `question-${state.nextPendingId++}`,
-    sessionID: sessionId,
-    questions: [
-      {
-        question: 'Which area should OpenCode stabilize first?',
-        header: 'Focus area',
-        options: [
-          { label: 'Chat flow', description: 'Keep the prompt-response flow healthy.' },
-          { label: 'Settings', description: 'Validate provider configuration first.' },
-        ],
-        multiple: false,
-        custom: true,
-      },
-    ],
-    tool: { messageID: 'tool-message-2', callID: 'tool-call-2' },
-  };
-  state.pendingQuestions = [request];
-}
-
-function handlePromptSubmission(sessionId, body) {
-  const promptText = body?.parts?.find((part) => part?.type === 'text')?.text?.trim() || '';
-
-  createMessage(sessionId, 'user', [{ type: 'text', text: promptText || 'Triggered from CI flow test.' }]);
-  state.sessionStatuses[sessionId] = { type: 'running' };
-  emitEvent({
-    type: 'session.status',
-    properties: {
-      sessionID: sessionId,
-      status: { type: 'running' },
-    },
-  });
-
-  if (state.scenario === 'permission') {
-    createPermissionRequest(sessionId);
-    return;
-  }
-
-  if (state.scenario === 'question') {
-    createQuestionRequest(sessionId);
-    return;
-  }
-
-  scheduleCompletion(sessionId, promptText);
-}
-
-function mergeConfigPatch(patch) {
-  state.config = {
-    ...state.config,
-    ...patch,
-    permission: {
-      ...state.config.permission,
-      ...(patch?.permission || {}),
-    },
-    provider: {
-      ...state.config.provider,
-      ...(patch?.provider || {}),
-    },
-  };
-
-  const enabledProviders = Array.isArray(state.config.enabled_providers) ? state.config.enabled_providers : [];
-  state.config.enabled_providers = [...new Set(enabledProviders)].sort();
-  state.config.enabled_providers.forEach((providerId) => state.configuredProviderIds.add(providerId));
-}
-
-function listProvidersPayload() {
-  return {
-    all: [
-      {
-        id: 'openai',
-        name: 'OpenAI',
-        models: {
-          'gpt-4.1-mini': { id: 'gpt-4.1-mini', name: 'GPT-4.1 mini', reasoning: true },
-        },
-      },
-      {
-        id: 'openrouter',
-        name: 'OpenRouter',
-        models: {
-          'openrouter/auto': { id: 'openrouter/auto', name: 'Auto', reasoning: false },
-        },
-      },
-    ],
-    connected: [...state.configuredProviderIds].sort(),
-  };
-}
-
-function providerAuthPayload() {
-  return {
-    openai: [
-      {
-        type: 'oauth',
-        label: 'Sign in',
-        prompts: [],
-      },
-    ],
-    openrouter: [],
-  };
-}
+const helpers = createSessionHelpers({
+  emitEvent,
+  getNow,
+  getState: () => state,
+});
+const {
+  createSession,
+  handlePromptSubmission,
+  mergeConfigPatch,
+  scheduleCompletion,
+  summarizePrompt,
+} = helpers;
 
 function handleSse(req, res) {
   if (state.scenario === 'stream-disconnect') {
@@ -378,10 +122,7 @@ const server = http.createServer(async (req, res) => {
     if (req.method === 'POST' && pathname === '/__control/reset') {
       const body = await readJson(req);
       const nextScenario = body?.scenario || scenarioName;
-      for (const client of state.sseClients) {
-        client.end();
-      }
-      state = createState(nextScenario);
+      state = stateStore.resetState(nextScenario);
       sendJson(res, 200, { data: { scenario: state.scenario } });
       return;
     }
@@ -413,7 +154,7 @@ const server = http.createServer(async (req, res) => {
     }
 
     if (req.method === 'GET' && pathname === '/provider') {
-      sendJson(res, 200, listProvidersPayload());
+      sendJson(res, 200, listProvidersPayload(state));
       return;
     }
 
@@ -525,10 +266,10 @@ const server = http.createServer(async (req, res) => {
         return;
       }
 
-      session.time.archived = body?.time?.archived ?? null;
-      session.time.updated = now();
-      emitEvent({ type: 'session.updated', properties: { sessionID: sessionId } });
-      sendJson(res, 200, session);
+        session.time.archived = body?.time?.archived ?? null;
+        session.time.updated = getNow();
+        emitEvent({ type: 'session.updated', properties: { sessionID: sessionId } });
+        sendJson(res, 200, session);
       return;
     }
 

@@ -40,6 +40,7 @@ export function useSpeechInput({
   volumeUpdateIntervalMillis?: number;
 }) {
   const [error, setError] = useState<string>();
+  const [errorCode, setErrorCode] = useState<ExpoSpeechRecognitionErrorEvent['error']>();
   const [isListening, setIsListening] = useState(false);
   const [isStarting, setIsStarting] = useState(false);
   const [supportsLocalRecognition] = useState(() => ExpoSpeechRecognitionModule.supportsOnDeviceRecognition());
@@ -70,6 +71,7 @@ export function useSpeechInput({
 
   useSpeechRecognitionEvent('start', () => {
     setError(undefined);
+    setErrorCode(undefined);
     setIsStarting(false);
     setIsListening(true);
   });
@@ -97,6 +99,7 @@ export function useSpeechInput({
   useSpeechRecognitionEvent('error', (event) => {
     setIsStarting(false);
     if (shouldIgnoreError(event)) {
+      setErrorCode(undefined);
       setIsListening(false);
       lastLevelRef.current = 0;
       setLevel(0);
@@ -104,6 +107,7 @@ export function useSpeechInput({
     }
 
     setError(toUserMessage(event));
+    setErrorCode(event.error);
     setIsListening(false);
     lastLevelRef.current = 0;
     setLevel(0);
@@ -125,17 +129,20 @@ export function useSpeechInput({
 
   const start = useCallback(async (options?: { continuous?: boolean }) => {
     setError(undefined);
+    setErrorCode(undefined);
     setIsStarting(true);
     ignoreErrorsUntilRef.current = 0;
 
     if (!isAvailable) {
       setError('Voice input is unavailable on this device.');
+      setErrorCode(undefined);
       setIsStarting(false);
       return false;
     }
 
     if (preferOnDevice && !supportsLocalRecognition) {
       setError('On-device voice input is not available on this device yet.');
+      setErrorCode(undefined);
       setIsStarting(false);
       return false;
     }
@@ -143,6 +150,7 @@ export function useSpeechInput({
     const permissions = await ExpoSpeechRecognitionModule.requestPermissionsAsync();
     if (!permissions.granted) {
       setError('Microphone or speech recognition permission was denied.');
+      setErrorCode('not-allowed');
       setIsStarting(false);
       return false;
     }
@@ -164,6 +172,7 @@ export function useSpeechInput({
       return true;
     } catch (error) {
       setError(error instanceof Error ? error.message : 'Voice input failed to start.');
+      setErrorCode(undefined);
       return false;
     } finally {
       setIsStarting(false);
@@ -196,6 +205,7 @@ export function useSpeechInput({
     () => ({
       abort,
       error,
+      errorCode,
       isAvailable,
       isListening,
       isStarting,
@@ -204,6 +214,6 @@ export function useSpeechInput({
       stop,
       supportsLocalRecognition,
     }),
-    [abort, error, isAvailable, isListening, isStarting, level, start, stop, supportsLocalRecognition],
+    [abort, error, errorCode, isAvailable, isListening, isStarting, level, start, stop, supportsLocalRecognition],
   );
 }

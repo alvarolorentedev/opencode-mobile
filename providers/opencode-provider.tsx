@@ -1,4 +1,3 @@
-import { AppState } from 'react-native';
 import type { Config, FileDiff, Project, Session, SessionStatus, Todo } from '@/lib/opencode/types';
 import {
   createContext,
@@ -32,7 +31,7 @@ import {
   type SessionMessageRecord,
   type TranscriptEntry,
 } from '@/lib/opencode/format';
-import { getTranscriptActivityLabel, isTranscriptDisplayMessage } from '@/lib/opencode/transcript';
+import { isTranscriptDisplayMessage } from '@/lib/opencode/transcript';
 import {
   clearPendingTaskFinishedNotification,
   notifyTaskFinished,
@@ -66,149 +65,59 @@ import {
   type ReasoningLevel as ProviderReasoningLevel,
   type ResponseScope as ProviderResponseScope,
 } from '@/providers/opencode-provider-utils';
+import { createOpencodeContextValue } from '@/providers/opencode-provider-context';
+import {
+  getConfiguredProviders,
+  getConversationStatusLabel,
+  getCurrentPendingPermissions,
+  getCurrentPendingQuestions,
+  getSessionPreviewById,
+  getTranscript,
+  getTranscriptActivityLabelForEntries,
+} from '@/providers/opencode-provider-selectors';
+import {
+  CONVERSATION_FINAL_RESULT_SETTLE_MS,
+  CONVERSATION_KEEP_AWAKE_TAG,
+  CONVERSATION_LISTENING_RESTART_MS,
+  type AgentOption,
+  type ChatPreferences,
+  type ConnectionState,
+  type ConversationPhase,
+  type ConversationState,
+  type ModelOption,
+  type OpencodeContextValue,
+  type OpencodeProject,
+  type ProviderAuthMethod,
+  type ProviderOption,
+  type ReasoningLevel,
+  type ResponseScope,
+  type WorkspaceCatalog,
+} from '@/providers/opencode-provider-types';
 import { useConversationKeepAwake } from '@/providers/use-conversation-keep-awake';
 import { useConversationScreenDim } from '@/providers/use-conversation-screen-dim';
 import { useOpencodePersistence } from '@/providers/use-opencode-persistence';
+import {
+  loadWorkspaceCatalog as svcLoadWorkspaceCatalog,
+  listSessions as svcListSessions,
+  getSessionMessages as svcGetSessionMessages,
+  getSessionDiff as svcGetSessionDiff,
+  getSessionTodos as svcGetSessionTodos,
+} from '@/providers/services/session-service';
 
-export type AgentOption = ProviderAgentOption;
-export type ChatPreferences = ProviderChatPreferences;
-export type ModelOption = ProviderModelOption;
-export type ReasoningLevel = ProviderReasoningLevel;
-export type ResponseScope = ProviderResponseScope;
-
-export type ProviderOption = {
-  id: string;
-  label: string;
-  modelCount: number;
-  configured: boolean;
-};
-
-export type ProviderAuthPrompt = {
-  type: 'text' | 'select';
-  key: string;
-  message: string;
-  placeholder?: string;
-  options?: {
-    label: string;
-    value: string;
-    hint?: string;
-  }[];
-  when?: {
-    key: string;
-    op: 'eq' | 'neq';
-    value: string;
-  };
-};
-
-export type ProviderAuthMethod = {
-  type: 'oauth' | 'api';
-  label: string;
-  prompts?: ProviderAuthPrompt[];
-};
-
-// Browser/server-folder browsing removed
-
-export type ConversationPhase = 'off' | 'listening' | 'submitting' | 'waiting' | 'speaking';
-
-const CONVERSATION_KEEP_AWAKE_TAG = 'opencode-conversation-mode';
-
-type ConversationState = {
-  active: boolean;
-  sessionId?: string;
-  phase: ConversationPhase;
-  statusLabel?: string;
-  feedback?: string;
-  isListening: boolean;
-  level: number;
-};
-
-export type OpencodeProject = {
-  id?: string;
-  label: string;
-  path: string;
-  source: 'server';
-  updatedAt?: number;
-  isCurrent?: boolean;
-};
-
-type ConnectionState = {
-  status: 'idle' | 'connecting' | 'connected' | 'error';
-  message: string;
-  checkedAt?: number;
-  projectDirectory?: string;
-};
-
-type WorkspaceCatalog = {
-  currentProjectPath?: string;
-  serverRootPath?: string;
-  serverProjects: Project[];
-};
-
-type OpencodeContextValue = {
-  isHydrated: boolean;
-  settings: OpencodeConnectionSettings;
-  updateSettings: (patch: Partial<OpencodeConnectionSettings>) => void;
-  connection: ConnectionState;
-  projects: OpencodeProject[];
-  activeProjectPath?: string;
-  activeProject?: OpencodeProject;
-  selectProject: (path: string) => void;
-  serverProjects: Project[];
-  currentProjectPath?: string;
-  serverRootPath?: string;
-  isRefreshingWorkspaceCatalog: boolean;
-  refreshWorkspaceCatalog: (silent?: boolean) => Promise<void>;
-  // browsing server folders removed
-  sessions: Session[];
-  sessionStatuses: Record<string, SessionStatus>;
-  currentSessionId?: string;
-  activeSession?: Session;
-  currentMessages: SessionMessageRecord[];
-  currentTranscript: TranscriptEntry[];
-  currentDiffs: FileDiff[];
-  currentTodos: Todo[];
-  currentPendingPermissions: PendingPermissionRequest[];
-  currentPendingQuestions: PendingQuestionRequest[];
-  sessionPreviewById: Record<string, string>;
-  isRefreshingSessions: boolean;
-  isRefreshingMessages: boolean;
-  isRefreshingDiffs: boolean;
-  isBootstrappingChat: boolean;
-  currentConfig?: Config;
-  availableProviders: ProviderOption[];
-  providerAuthMethodsById: Record<string, ProviderAuthMethod[]>;
-  configuredProviders: ProviderOption[];
-  availableModels: ModelOption[];
-  availableAgents: AgentOption[];
-  chatPreferences: ChatPreferences;
-  updateChatPreferences: (patch: Partial<ChatPreferences>) => void;
-  conversation: ConversationState;
-  clearConversationFeedback: () => void;
-  toggleConversationMode: () => Promise<void>;
-  configureProvider: (providerId: string) => Promise<void>;
-  setProviderAuth: (providerId: string, values: Record<string, string>) => Promise<void>;
-  startProviderOAuth: (providerId: string, methodIndex: number, inputs?: Record<string, string>) => Promise<{ url: string; instructions?: string }>;
-  setAutoApprove: (enabled: boolean) => Promise<void>;
-  sendingState: {
-    sessionId?: string;
-    active: boolean;
-  };
-  connect: () => Promise<void>;
-  refreshSessions: (silent?: boolean) => Promise<void>;
-  openSession: (sessionId: string) => Promise<void>;
-  refreshCurrentSession: (silent?: boolean) => Promise<void>;
-  refreshCurrentTodos: (silent?: boolean) => Promise<void>;
-  refreshPendingRequests: (silent?: boolean) => Promise<void>;
-  ensureActiveSession: () => Promise<string | undefined>;
-  createSession: (title?: string) => Promise<Session>;
-  archiveSession: (sessionId: string) => Promise<void>;
-  unarchiveSession: (sessionId: string) => Promise<void>;
-  sendPrompt: (sessionId: string, prompt: string, attachments?: { uri: string; mime?: string; filename?: string }[]) => Promise<boolean>;
-  abortSession: (sessionId: string) => Promise<void>;
-  replyToPermission: (requestId: string, reply: 'once' | 'always' | 'reject', message?: string) => Promise<void>;
-  replyToQuestion: (requestId: string, answers: PendingQuestionAnswer[]) => Promise<void>;
-  rejectQuestion: (requestId: string) => Promise<void>;
-};
+export type {
+  AgentOption,
+  ChatPreferences,
+  ConnectionState,
+  ConversationPhase,
+  ConversationState,
+  ModelOption,
+  OpencodeContextValue,
+  OpencodeProject,
+  ProviderAuthMethod,
+  ProviderOption,
+  ReasoningLevel,
+  ResponseScope,
+} from '@/providers/opencode-provider-types';
 
 const OpencodeContext = createContext<OpencodeContextValue | null>(null);
 
@@ -252,6 +161,7 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
   const [queuedConversationPrompt, setQueuedConversationPrompt] = useState<string>();
   const [pendingConversationTurn, setPendingConversationTurn] = useState<string>();
   const [conversationFeedback, setConversationFeedback] = useState<string>();
+  const [conversationLatestHeardText, setConversationLatestHeardText] = useState<string>();
   const [eventStreamStatus, setEventStreamStatus] = useState<'idle' | 'connecting' | 'connected' | 'error'>('idle');
 
   const settingsRef = useRef(settings);
@@ -259,9 +169,22 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
   const conversationPhaseRef = useRef<ConversationPhase>('off');
   const assistantReplyBaselineIdRef = useRef<string | undefined>(undefined);
   const conversationResumeTimeoutRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  const conversationFinalResultTimeoutRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  const conversationListeningRestartTimeoutRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const conversationCancelRequestedRef = useRef(false);
+  const conversationSubmittingRef = useRef(false);
+  const pendingConversationTranscriptRef = useRef<string | undefined>(undefined);
+  const flushPendingConversationResultRef = useRef<() => void>(() => undefined);
   const sessionRefreshTimeoutsRef = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
   settingsRef.current = settings;
+
+  const clearPendingConversationResult = useCallback(() => {
+    pendingConversationTranscriptRef.current = undefined;
+    if (conversationFinalResultTimeoutRef.current) {
+      clearTimeout(conversationFinalResultTimeoutRef.current);
+      conversationFinalResultTimeoutRef.current = undefined;
+    }
+  }, []);
 
   const { isHydrated } = useOpencodePersistence({
     defaultChatPreferences,
@@ -325,38 +248,12 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
       }
 
       try {
-        const [pathResponse, projectsResponse, currentProjectResponse] = await Promise.all([
-          catalogClient.path.get(),
-          catalogClient.project.list().catch(() => undefined),
-          catalogClient.project.current().catch(() => undefined),
-        ]);
-
-        const discoveredProjects = projectsResponse?.data || [];
-        const currentProject = currentProjectResponse?.data;
-        const dedupedProjects = new Map<string, Project>();
-
-        if (currentProject?.worktree) {
-          dedupedProjects.set(currentProject.worktree, currentProject);
-        }
-
-        discoveredProjects.forEach((project: any) => {
-          dedupedProjects.set(project.worktree, project);
-        });
-
-        const nextProjects = [...dedupedProjects.values()].sort(
-          (left, right) => (right.time.initialized || right.time.created) - (left.time.initialized || left.time.created),
-        );
-
-        setServerProjects(nextProjects);
-        setCurrentProjectPath(currentProject?.worktree);
-        setServerRootPath(pathResponse.data.directory);
-        setActiveProjectPath((current) => current || currentProject?.worktree || nextProjects[0]?.worktree);
-
-        return {
-          currentProjectPath: currentProject?.worktree,
-          serverRootPath: pathResponse.data.directory,
-          serverProjects: nextProjects,
-        };
+        const result = await svcLoadWorkspaceCatalog(catalogClient);
+        setServerProjects(result.serverProjects as Project[]);
+        setCurrentProjectPath(result.currentProjectPath);
+        setServerRootPath(result.serverRootPath);
+        setActiveProjectPath((current) => current || result.currentProjectPath || result.serverProjects[0]?.worktree);
+        return result;
       } finally {
         if (!silent) {
           setIsRefreshingWorkspaceCatalog(false);
@@ -386,18 +283,10 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
       }
 
       try {
-        const [sessionsResponse, statusesResponse] = await Promise.all([
-          client.session.list(),
-          client.session.status(),
-        ]);
-
-        const nextSessions = [...sessionsResponse.data].sort(
-          (left, right) => right.time.updated - left.time.updated,
-        );
-
-        setSessions(nextSessions);
-        setSessionStatuses(statusesResponse.data);
-        return nextSessions;
+        const result = await svcListSessions(client);
+        setSessions(result.sessions);
+        setSessionStatuses(result.statuses);
+        return result.sessions;
       } finally {
         if (!silent) {
           setIsRefreshingSessions(false);
@@ -421,14 +310,13 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
       }
 
       try {
-        const response = await client.session.messages({ path: { id: sessionId } });
-
+        const data = await svcGetSessionMessages(client, sessionId);
         setMessagesBySession((current) => ({
           ...current,
-          [sessionId]: response.data,
+          [sessionId]: data,
         }));
 
-        return response.data;
+        return data;
       } finally {
         if (!silent) {
           setIsRefreshingMessages(false);
@@ -445,14 +333,13 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
       }
 
       try {
-        const response = await client.session.diff({ path: { id: sessionId } });
-
+        const data = await svcGetSessionDiff(client, sessionId);
         setDiffsBySession((current) => ({
           ...current,
-          [sessionId]: response.data,
+          [sessionId]: data,
         }));
 
-        return response.data;
+        return data;
       } finally {
         if (!silent) {
           setIsRefreshingDiffs(false);
@@ -464,14 +351,14 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
 
   const refreshSessionTodos = useCallback(
     async (sessionId: string) => {
-        const response = await client.session.todo({ path: { id: sessionId } });
+      const data = await svcGetSessionTodos(client, sessionId);
 
       setTodosBySession((current) => ({
         ...current,
-        [sessionId]: response.data,
+        [sessionId]: data,
       }));
 
-      return response.data;
+      return data;
     },
     [client],
   );
@@ -508,72 +395,36 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
   );
 
   const refreshChatCapabilities = useCallback(async () => {
-    if (!activeProjectPath) {
-      setCurrentConfig(undefined);
-      setAvailableProviders([]);
-      setProviderAuthMethodsById({});
-      setAvailableModels([]);
-      setAvailableAgents([]);
-      return;
-    }
+    const result = await import('@/providers/services/capabilities-service').then((m) => m.discoverChatCapabilities(client, activeProjectPath));
 
-    const [configResponse, providersResponse, providerAuthResponse, agentsResponse] = await Promise.all([
-      client.config.get(),
-      client.provider.list(),
-      client.provider.auth(),
-      client.app.agents(),
-    ]);
+    setCurrentConfig(result.config as any);
+    setAvailableProviders(result.providers as any[]);
+    setProviderAuthMethodsById(result.providerAuthMethodsById as Record<string, ProviderAuthMethod[]>);
+    setAvailableModels(result.models as any[]);
+    setAvailableAgents(result.agents as any[]);
 
-    const nextConfig = configResponse.data;
-    const nextModels: ModelOption[] = (providersResponse.data.all as any[])
-      .flatMap((provider: any) =>
-        Object.values(provider.models).map((model: any) => ({
-          id: `${provider.id}/${model.id}`,
-          label: model.name,
-          providerID: provider.id,
-          providerLabel: provider.name,
-          modelID: model.id,
-          supportsReasoning: model.reasoning,
-        })),
-      )
-      .sort((left: ModelOption, right: ModelOption) => left.label.localeCompare(right.label));
-    const configuredProviderIds = getConfiguredProviderIds(nextConfig, providersResponse.data.connected, nextModels);
-    const configuredModels = nextModels.filter((model) => configuredProviderIds.has(model.providerID));
-    const nextProviders: ProviderOption[] = (providersResponse.data.all as any[])
-      .map((provider: any) => ({
-        id: provider.id,
-        label: provider.name,
-        modelCount: Object.keys(provider.models).length,
-        configured: configuredProviderIds.has(provider.id),
-      }))
-      .sort((left: ProviderOption, right: ProviderOption) => left.label.localeCompare(right.label));
-    const nextAgents = agentsResponse.data.map(toAgentOption);
-
-    setCurrentConfig(nextConfig);
-    setAvailableProviders(nextProviders);
-    setProviderAuthMethodsById((providerAuthResponse.data || {}) as Record<string, ProviderAuthMethod[]>);
-    setAvailableModels(nextModels);
-    setAvailableAgents(nextAgents);
     setChatPreferences((current) => {
+      const configuredProviderIds = getConfiguredProviderIds(result.config as any, (result.connected || []) as string[], result.models as any[]);
+      const configuredModels = (result.config && result.models ? result.models.filter((model: any) => configuredProviderIds.has(model.providerID)) : []) as any[];
       const enabledModelIds = getEnabledModelIds(configuredModels, current.enabledModelIds);
       const enabledModels = configuredModels.filter((model) => enabledModelIds.includes(model.id));
-      const nextProviderId = getInitialProviderId(configuredModels, nextConfig, current.providerId, current.modelId);
+      const nextProviderId = getInitialProviderId(configuredModels, result.config, current.providerId, current.modelId);
       const safeProviderId = nextProviderId && enabledModels.some((model) => model.providerID === nextProviderId)
         ? nextProviderId
-        : getInitialProviderId(enabledModels, nextConfig, current.providerId, current.modelId);
+        : getInitialProviderId(enabledModels, result.config, current.providerId, current.modelId);
 
       return {
         ...current,
-        mode: getInitialMode(nextAgents, nextConfig, current.mode),
+        mode: getInitialMode(result.agents as any[], result.config, current.mode),
         providerId: safeProviderId,
         modelId: getModelIdForProvider(
           enabledModels,
           safeProviderId,
-          getInitialModelId(enabledModels, nextConfig, current.modelId),
+          getInitialModelId(enabledModels, result.config, current.modelId),
           safeProviderId ? current.providerModelSelections[safeProviderId] : undefined,
         ),
         enabledModelIds,
-        autoApprove: isAutoApproveEnabled(nextConfig),
+        autoApprove: isAutoApproveEnabled(result.config),
       };
     });
   }, [activeProjectPath, client]);
@@ -1134,13 +985,27 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
     levelStep: 2,
     locale: chatPreferences.speechLocale,
     onResult: (transcript, isFinal) => {
-      if (conversationPhaseRef.current === 'off') {
+      if (conversationPhaseRef.current !== 'listening') {
         return;
       }
 
-      if (isFinal && transcript.trim()) {
-        setPendingConversationTurn(transcript.trim());
-        setConversationPhase('submitting');
+      const nextTranscript = transcript.trim();
+      if (!nextTranscript) {
+        return;
+      }
+
+      pendingConversationTranscriptRef.current = nextTranscript;
+      setConversationLatestHeardText(nextTranscript);
+      if (conversationFinalResultTimeoutRef.current) {
+        clearTimeout(conversationFinalResultTimeoutRef.current);
+        conversationFinalResultTimeoutRef.current = undefined;
+      }
+
+      if (isFinal) {
+        conversationFinalResultTimeoutRef.current = setTimeout(() => {
+          conversationFinalResultTimeoutRef.current = undefined;
+          flushPendingConversationResultRef.current();
+        }, CONVERSATION_FINAL_RESULT_SETTLE_MS);
       }
     },
     preferOnDevice: chatPreferences.preferOnDeviceRecognition,
@@ -1149,10 +1014,27 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
   const {
     abort: abortSpeechInput,
     error: speechInputError,
+    errorCode: speechInputErrorCode,
     isListening: isConversationListening,
+    isStarting: isConversationListeningStarting,
     level: conversationListeningLevel,
     start: startSpeechInput,
   } = speechInput;
+
+  const flushPendingConversationResult = useCallback(() => {
+    const transcript = pendingConversationTranscriptRef.current?.trim();
+    clearPendingConversationResult();
+    if (!transcript || conversationPhaseRef.current !== 'listening') {
+      return;
+    }
+
+    conversationPhaseRef.current = 'submitting';
+    conversationSubmittingRef.current = true;
+    abortSpeechInput();
+    setPendingConversationTurn(transcript);
+    setConversationPhase('submitting');
+  }, [abortSpeechInput, clearPendingConversationResult]);
+  flushPendingConversationResultRef.current = flushPendingConversationResult;
 
   const getLatestConversationAssistantEntry = useCallback(
     (sessionId?: string) => {
@@ -1171,45 +1053,61 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
   }, []);
 
   const stopConversationMode = useCallback(async () => {
+    clearPendingConversationResult();
     if (conversationResumeTimeoutRef.current) {
       clearTimeout(conversationResumeTimeoutRef.current);
       conversationResumeTimeoutRef.current = undefined;
     }
+    if (conversationListeningRestartTimeoutRef.current) {
+      clearTimeout(conversationListeningRestartTimeoutRef.current);
+      conversationListeningRestartTimeoutRef.current = undefined;
+    }
 
     conversationCancelRequestedRef.current = true;
+    conversationSubmittingRef.current = false;
+    conversationPhaseRef.current = 'off';
     abortSpeechInput();
     await stopSpeaking().catch(() => undefined);
     await stopWorkingSoundAsync().catch(() => undefined);
     setPendingConversationTurn(undefined);
     setQueuedConversationPrompt(undefined);
+    setConversationLatestHeardText(undefined);
     setConversationPhase('off');
     setConversationSessionId(undefined);
-  }, [abortSpeechInput]);
+  }, [abortSpeechInput, clearPendingConversationResult]);
 
   const startConversationListening = useCallback(async (sessionId?: string) => {
     if (!sessionId && !conversationSessionId) {
       return false;
     }
 
+    clearPendingConversationResult();
     if (conversationResumeTimeoutRef.current) {
       clearTimeout(conversationResumeTimeoutRef.current);
       conversationResumeTimeoutRef.current = undefined;
     }
+    if (conversationListeningRestartTimeoutRef.current) {
+      clearTimeout(conversationListeningRestartTimeoutRef.current);
+      conversationListeningRestartTimeoutRef.current = undefined;
+    }
 
     conversationCancelRequestedRef.current = false;
+    conversationSubmittingRef.current = false;
     setPendingConversationTurn(undefined);
     setQueuedConversationPrompt(undefined);
     await stopWorkingSoundAsync().catch(() => undefined);
 
-    const started = await startSpeechInput({ continuous: false });
+    const started = await startSpeechInput({ continuous: true });
     if (!started) {
+      conversationPhaseRef.current = 'off';
       setConversationPhase('off');
       return false;
     }
 
+    conversationPhaseRef.current = 'listening';
     setConversationPhase('listening');
     return true;
-  }, [conversationSessionId, startSpeechInput]);
+  }, [clearPendingConversationResult, conversationSessionId, startSpeechInput]);
 
   const toggleConversationMode = useCallback(async () => {
     if (conversationPhase !== 'off') {
@@ -1267,26 +1165,57 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
 
   useEffect(() => {
     conversationPhaseRef.current = conversationPhase;
+    if (conversationPhase !== 'submitting') {
+      conversationSubmittingRef.current = false;
+    }
   }, [conversationPhase]);
+
+  useEffect(() => {
+    if (conversationPhase !== 'listening' || isConversationListening || isConversationListeningStarting) {
+      if (conversationListeningRestartTimeoutRef.current) {
+        clearTimeout(conversationListeningRestartTimeoutRef.current);
+        conversationListeningRestartTimeoutRef.current = undefined;
+      }
+      return;
+    }
+
+    if (conversationCancelRequestedRef.current || conversationSubmittingRef.current) {
+      return;
+    }
+
+    conversationListeningRestartTimeoutRef.current = setTimeout(() => {
+      conversationListeningRestartTimeoutRef.current = undefined;
+      if (
+        conversationPhaseRef.current !== 'listening' ||
+        conversationCancelRequestedRef.current ||
+        conversationSubmittingRef.current
+      ) {
+        return;
+      }
+
+      void startConversationListening();
+    }, CONVERSATION_LISTENING_RESTART_MS);
+
+    return () => {
+      if (conversationListeningRestartTimeoutRef.current) {
+        clearTimeout(conversationListeningRestartTimeoutRef.current);
+        conversationListeningRestartTimeoutRef.current = undefined;
+      }
+    };
+  }, [conversationPhase, isConversationListening, isConversationListeningStarting, startConversationListening]);
 
   useConversationKeepAwake(conversationPhase, CONVERSATION_KEEP_AWAKE_TAG);
   useConversationScreenDim(conversationPhase);
 
   useEffect(() => {
-    const subscription = AppState.addEventListener('change', (nextState) => {
-      if (nextState === 'active' || conversationPhaseRef.current === 'off') {
-        return;
-      }
-
-      setConversationFeedback('Conversation mode stopped because the app left the foreground.');
-      void stopConversationMode();
-    });
-
-    return () => subscription.remove();
-  }, [stopConversationMode]);
-
-  useEffect(() => {
     if (!speechInputError) {
+      return;
+    }
+
+    if (
+      conversationPhaseRef.current === 'listening' &&
+      (speechInputErrorCode === 'client' || speechInputErrorCode === 'no-speech' || speechInputErrorCode === 'speech-timeout')
+    ) {
       return;
     }
 
@@ -1294,7 +1223,7 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
     if (conversationPhaseRef.current !== 'off') {
       void stopConversationMode();
     }
-  }, [speechInputError, stopConversationMode]);
+  }, [speechInputError, speechInputErrorCode, stopConversationMode]);
 
   useEffect(() => {
     if (conversationPhase === 'off' || conversationPhase !== 'submitting' || !pendingConversationTurn || !conversationSessionId) {
@@ -1448,9 +1377,26 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
       return;
     }
 
-    setConversationFeedback('Conversation mode stopped because OpenCode disconnected.');
-    void stopConversationMode();
-  }, [connection.status, conversationPhase, stopConversationMode]);
+    setConversationFeedback(connection.message || 'OpenCode disconnected. Conversation mode will resume when the connection returns.');
+  }, [connection.message, connection.status, conversationPhase]);
+
+  useEffect(() => {
+    if (connection.status !== 'connected') {
+      return;
+    }
+
+    setConversationFeedback((current) => {
+      if (!current) {
+        return current;
+      }
+
+      if (current === connection.message || current.includes('resume when the connection returns')) {
+        return undefined;
+      }
+
+      return current;
+    });
+  }, [connection.message, connection.status]);
 
   useEffect(() => {
     if (connection.status !== 'connected' || !activeProjectPath) {
@@ -1577,6 +1523,9 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
       sessionRefreshTimeoutsRef.current = {};
       if (conversationResumeTimeoutRef.current) {
         clearTimeout(conversationResumeTimeoutRef.current);
+      }
+      if (conversationFinalResultTimeoutRef.current) {
+        clearTimeout(conversationFinalResultTimeoutRef.current);
       }
 
       void stopSpeaking().catch(() => undefined);
@@ -1714,73 +1663,27 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
     [currentSessionId, todosBySession],
   );
   const currentPendingPermissions = useMemo(
-    () => {
-      const candidateSessionIds = [...new Set([currentSessionId, sendingState.sessionId].filter(Boolean))] as string[];
-      const matches = candidateSessionIds.flatMap((sessionId) => pendingPermissionsBySession[sessionId] || []);
-
-      return matches.length > 0 ? matches : Object.values(pendingPermissionsBySession).flat();
-    },
+    () => getCurrentPendingPermissions(currentSessionId, sendingState.sessionId, pendingPermissionsBySession),
     [currentSessionId, pendingPermissionsBySession, sendingState.sessionId],
   );
   const currentPendingQuestions = useMemo(
-    () => {
-      const candidateSessionIds = [...new Set([currentSessionId, sendingState.sessionId].filter(Boolean))] as string[];
-      const matches = candidateSessionIds.flatMap((sessionId) => pendingQuestionsBySession[sessionId] || []);
-
-      return matches.length > 0 ? matches : Object.values(pendingQuestionsBySession).flat();
-    },
+    () => getCurrentPendingQuestions(currentSessionId, sendingState.sessionId, pendingQuestionsBySession),
     [currentSessionId, pendingQuestionsBySession, sendingState.sessionId],
   );
-  const configuredProviders = useMemo(
-    () => availableProviders.filter((provider) => provider.configured),
-    [availableProviders],
-  );
-  const currentTranscript = useMemo(() => currentMessages.map(toTranscriptEntry), [currentMessages]);
+  const configuredProviders = useMemo(() => getConfiguredProviders(availableProviders), [availableProviders]);
+  const currentTranscript = useMemo(() => getTranscript(currentMessages), [currentMessages]);
   const conversationMessages = useMemo(
     () => (conversationSessionId ? messagesBySession[conversationSessionId] || [] : []),
     [conversationSessionId, messagesBySession],
   );
-  const conversationTranscript = useMemo(() => conversationMessages.map(toTranscriptEntry), [conversationMessages]);
-  const conversationCurrentActivityLabel = useMemo(() => {
-    for (let index = conversationTranscript.length - 1; index >= 0; index -= 1) {
-      const entry = conversationTranscript[index];
-      if (isTranscriptDisplayMessage(entry)) {
-        continue;
-      }
-
-      const label = getTranscriptActivityLabel(entry);
-      if (label) {
-        return label;
-      }
-    }
-
-    return undefined;
-  }, [conversationTranscript]);
+  const conversationTranscript = useMemo(() => getTranscript(conversationMessages), [conversationMessages]);
+  const conversationCurrentActivityLabel = useMemo(() => getTranscriptActivityLabelForEntries(conversationTranscript), [conversationTranscript]);
   const conversationActive = conversationPhase !== 'off';
-  const conversationStatusLabel = useMemo(() => {
-    switch (conversationPhase) {
-      case 'listening':
-        return 'Listening';
-      case 'submitting':
-        return 'Sending';
-      case 'waiting':
-        return conversationCurrentActivityLabel || 'Thinking';
-      case 'speaking':
-        return 'Speaking';
-      default:
-        return undefined;
-    }
-  }, [conversationCurrentActivityLabel, conversationPhase]);
-  const sessionPreviewById = useMemo(
-    () =>
-      Object.fromEntries(
-        Object.entries(messagesBySession).map(([sessionId, messages]) => [sessionId, getHistoryPreview(messages)]),
-      ),
-    [messagesBySession],
-  );
+  const conversationStatusLabel = useMemo(() => getConversationStatusLabel(conversationPhase, conversationCurrentActivityLabel), [conversationCurrentActivityLabel, conversationPhase]);
+  const sessionPreviewById = useMemo(() => getSessionPreviewById(messagesBySession), [messagesBySession]);
 
   const contextValue = useMemo<OpencodeContextValue>(
-    () => ({
+    () => createOpencodeContextValue({
       isHydrated,
       settings,
       updateSettings,
@@ -1794,7 +1697,6 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
       serverRootPath,
       isRefreshingWorkspaceCatalog,
       refreshWorkspaceCatalog,
-      // browsing removed
       sessions,
       sessionStatuses,
       currentSessionId,
@@ -1823,6 +1725,7 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
         feedback: conversationFeedback,
         isListening: isConversationListening,
         level: conversationListeningLevel,
+        latestHeardText: conversationLatestHeardText,
         phase: conversationPhase,
         sessionId: conversationSessionId,
         statusLabel: conversationStatusLabel,
@@ -1875,6 +1778,7 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
       clearConversationFeedback,
       conversationActive,
       conversationFeedback,
+      conversationLatestHeardText,
       conversationListeningLevel,
       conversationPhase,
       conversationSessionId,
