@@ -61,8 +61,6 @@ class BackgroundConversationService : Service(), TextToSpeech.OnInitListener, Re
   private var isPolling = false
   private var isSpeaking = false
   private var currentAssistantText: String? = null
-  private var awaitingAssistantReply = false
-  private var awaitingAssistantReplySince = 0L
 
   private val pollRunnable = Runnable {
     if (!serviceActive || isPolling || isSpeaking || currentPhase == Phase.LISTENING || currentPhase == Phase.SUBMITTING) {
@@ -74,39 +72,22 @@ class BackgroundConversationService : Service(), TextToSpeech.OnInitListener, Re
     isPolling = true
     executor.execute {
       try {
-        val latestReply = fetchLatestAssistantReply(config)
-        if (latestReply != null && latestReply.id != config.assistantReplyBaselineId) {
-          awaitingAssistantReply = false
-          awaitingAssistantReplySince = 0L
-          currentConfig = config.copy(assistantReplyBaselineId = latestReply.id)
-          persistCurrentConfig()
-          speakReply(latestReply.id, latestReply.text)
+        val statusType = fetchSessionStatus(config)
+        if (statusType != null && statusType != "idle") {
+          maybeStartWorkingSound()
+          updateRuntimeStatus(Phase.WAITING, "OpenCode is thinking", null)
         } else {
-          val statusType = fetchSessionStatus(config)
-          val stillWaitingForReply = awaitingAssistantReply || (statusType != null && statusType != "idle")
-
-          if (stillWaitingForReply) {
-            maybeStartWorkingSound()
-            updateRuntimeStatus(Phase.WAITING, "OpenCode is thinking", null)
-
-            if (awaitingAssistantReply && awaitingAssistantReplySince > 0L && System.currentTimeMillis() - awaitingAssistantReplySince > REPLY_DISCOVERY_TIMEOUT_MS) {
-              awaitingAssistantReply = false
-              awaitingAssistantReplySince = 0L
-              stopWorkingSound()
-              updateRuntimeStatus(Phase.WAITING, "Still waiting for the reply", "OpenCode did not publish a finished reply yet. Returning to listening.")
-              emitError("reply_timeout", "OpenCode did not publish a finished reply yet. Returning to listening.")
-              if (serviceActive && config.resumeListeningAfterReply) {
-                mainHandler.post { startListening() }
-              }
-            }
-          } else {
-            stopWorkingSound()
-            if (serviceActive && currentPhase != Phase.LISTENING) {
-              if (config.resumeListeningAfterReply) {
-                mainHandler.post { startListening() }
-              } else {
-                updateRuntimeStatus(Phase.WAITING, "Waiting for your next turn", null)
-              }
+          stopWorkingSound()
+          val latestReply = fetchLatestAssistantReply(config)
+          if (latestReply != null && latestReply.id != config.assistantReplyBaselineId) {
+            currentConfig = config.copy(assistantReplyBaselineId = latestReply.id)
+            persistCurrentConfig()
+            speakReply(latestReply.id, latestReply.text)
+          } else if (serviceActive && currentPhase != Phase.LISTENING) {
+            if (config.resumeListeningAfterReply) {
+              mainHandler.post { startListening() }
+            } else {
+              updateRuntimeStatus(Phase.WAITING, "Waiting for your next turn", null)
             }
           }
         }
@@ -198,8 +179,6 @@ class BackgroundConversationService : Service(), TextToSpeech.OnInitListener, Re
         val config = currentConfig
         BackgroundConversationEvents.emitAssistant("finished", config?.sessionId, config?.assistantReplyBaselineId, currentAssistantText)
         currentAssistantText = null
-        awaitingAssistantReply = false
-        awaitingAssistantReplySince = 0L
         if (serviceActive && config?.resumeListeningAfterReply == true) {
           mainHandler.postDelayed({ startListening() }, POST_TTS_LISTEN_DELAY_MS)
         } else {
@@ -377,18 +356,13 @@ class BackgroundConversationService : Service(), TextToSpeech.OnInitListener, Re
   private fun submitPrompt(transcript: String) {
     val config = currentConfig ?: return
     updateRuntimeStatus(Phase.SUBMITTING, "Sending your turn", null)
-    awaitingAssistantReply = true
-    awaitingAssistantReplySince = System.currentTimeMillis()
     stopWorkingSound()
     executor.execute {
       try {
         postPrompt(config, transcript)
         updateRuntimeStatus(Phase.WAITING, "OpenCode is thinking", null)
-        maybeStartWorkingSound()
         schedulePoll(POST_SUBMIT_POLL_DELAY_MS)
       } catch (error: Exception) {
-        awaitingAssistantReply = false
-        awaitingAssistantReplySince = 0L
         val message = error.message ?: "Voice conversation failed while sending your message."
         updateRuntimeStatus(Phase.WAITING, "Could not send your turn", message)
         emitError("submit", message)
@@ -489,8 +463,6 @@ class BackgroundConversationService : Service(), TextToSpeech.OnInitListener, Re
 
     engine.setSpeechRate(config.speechRate.toFloat().coerceIn(0.5f, 1.5f))
     currentAssistantText = compactWhitespace(text)
-    awaitingAssistantReply = false
-    awaitingAssistantReplySince = 0L
     updateRuntimeStatus(Phase.SPEAKING, "Speaking reply", null)
     engine.speak(currentAssistantText, TextToSpeech.QUEUE_FLUSH, null, UUID.randomUUID().toString())
     currentConfig = config.copy(assistantReplyBaselineId = messageId)
@@ -600,8 +572,6 @@ class BackgroundConversationService : Service(), TextToSpeech.OnInitListener, Re
     toneGenerator = null
     currentAssistantText = null
     isSpeaking = false
-    awaitingAssistantReply = false
-    awaitingAssistantReplySince = 0L
     recognitionAvailable = SpeechRecognizer.isRecognitionAvailable(applicationContext)
     updateRuntimeStatus(Phase.OFF, null, null)
     currentConfig = null
@@ -908,7 +878,6 @@ class BackgroundConversationService : Service(), TextToSpeech.OnInitListener, Re
     private const val POST_TTS_LISTEN_DELAY_MS = 500L
     private const val RECOVERY_DELAY_MS = 900L
     private const val WORKING_SOUND_INTERVAL_MS = 1800L
-    private const val REPLY_DISCOVERY_TIMEOUT_MS = 120_000L
     private const val PREFS_NAME = "background_conversation"
     private const val EXTRA_SERVER_URL = "serverUrl"
     private const val EXTRA_USERNAME = "username"
