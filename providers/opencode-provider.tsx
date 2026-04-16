@@ -1932,11 +1932,10 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
         clearTimeout(conversationResumeTimeoutRef.current);
       }
 
-      void stopBackgroundConversationService().catch(() => undefined);
       void stopSpeaking().catch(() => undefined);
       void unloadWorkingSoundAsync().catch(() => undefined);
     },
-    [stopBackgroundConversationService],
+    [],
   );
 
   useEffect(() => {
