@@ -13,13 +13,15 @@ let duckingActive = false;
 function getVoiceAudioMode(audioModule: typeof import('expo-av'), duckOthers: boolean) {
   return {
     allowsRecordingIOS: false,
-    interruptionModeAndroid: audioModule.InterruptionModeAndroid.DuckOthers,
+    interruptionModeAndroid: duckOthers
+      ? audioModule.InterruptionModeAndroid.DoNotMix
+      : audioModule.InterruptionModeAndroid.DuckOthers,
     interruptionModeIOS: duckOthers
-      ? audioModule.InterruptionModeIOS.DuckOthers
+      ? audioModule.InterruptionModeIOS.DoNotMix
       : audioModule.InterruptionModeIOS.MixWithOthers,
     playThroughEarpieceAndroid: false,
     playsInSilentModeIOS: true,
-    shouldDuckAndroid: duckOthers,
+    shouldDuckAndroid: !duckOthers,
     staysActiveInBackground: true,
   };
 }
