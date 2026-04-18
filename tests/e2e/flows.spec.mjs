@@ -69,8 +69,8 @@ test('settings can configure an additional provider against the fake server', as
   await page.getByRole('tab', { name: 'Settings' }).click();
   await expect(page.getByText('AI defaults')).toBeVisible();
   await page.getByTestId('settings-add-provider-button').click();
-  await expect(page.getByRole('menuitem', { name: /OpenRouter/ })).toBeVisible();
-  await page.getByRole('menuitem', { name: /OpenRouter/ }).click();
+  await expect(page.getByText('OpenRouter')).toBeVisible();
+  await page.getByText('OpenRouter').click();
   await expect(page.getByText('Configure OpenRouter')).toBeVisible();
   await page.getByPlaceholder('Paste your API key').fill('sk-test-openrouter');
   await page.getByTestId('settings-provider-save-button').click();

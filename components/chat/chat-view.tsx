@@ -61,7 +61,7 @@ export function ChatView() {
   const [draft, setDraft] = useState('');
   const [attachments, setAttachments] = useState<{ uri: string; mime?: string; filename?: string }[]>([]);
   const [activeTab, setActiveTab] = useState<'session' | 'changes'>('session');
-  const [menu, setMenu] = useState<'mode' | 'model' | 'reasoning' | 'session' | undefined>();
+  const [sessionMenuVisible, setSessionMenuVisible] = useState(false);
   const [isUpdatingAutoApprove, setIsUpdatingAutoApprove] = useState(false);
   const [isCreatingSession, setIsCreatingSession] = useState(false);
   const [isStoppingSession, setIsStoppingSession] = useState(false);
@@ -419,18 +419,18 @@ export function ChatView() {
           currentSessionId={currentSessionId}
           insetsTop={insets.top}
           isCreatingSession={isCreatingSession}
-          onCloseMenu={() => setMenu(undefined)}
+          onCloseMenu={() => setSessionMenuVisible(false)}
           onConfirmStopConversation={handleConfirmStopConversation}
           onCreateSession={() => void handleNewSession()}
           onOpenSession={(sessionId) => {
-            setMenu(undefined);
+            setSessionMenuVisible(false);
             void openSession(sessionId);
           }}
-          onOpenSessionMenu={() => setMenu('session')}
+          onOpenSessionMenu={() => setSessionMenuVisible(true)}
           onToggleConversationMode={() => void toggleConversationMode()}
           palette={palette}
           selectedSession={selectedSession}
-          sessionMenuVisible={menu === 'session'}
+          sessionMenuVisible={sessionMenuVisible}
           sessions={visibleSessions}
         />
 
@@ -487,13 +487,11 @@ export function ChatView() {
           isSpeechInputListening={isSpeechInputListening}
           isStoppingSession={isStoppingSession}
           isUpdatingAutoApprove={isUpdatingAutoApprove}
-          menu={menu}
           onAttach={() => void handleAttach()}
           onDraftChange={(value) => {
             setSendFeedback(undefined);
             setDraft(value);
           }}
-          onMenuChange={setMenu}
           onRemoveAttachment={(index) => {
             setSendFeedback(undefined);
             setAttachments((current) => current.filter((_, itemIndex) => itemIndex !== index));

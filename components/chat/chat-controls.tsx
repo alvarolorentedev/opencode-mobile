@@ -1,65 +1,58 @@
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { useState, type ComponentProps, type ReactNode } from 'react';
-import { StyleSheet, View } from 'react-native';
-import { ActivityIndicator, Menu, Text, TouchableRipple } from 'react-native-paper';
+import type { ComponentProps, ReactNode } from 'react';
+import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
 
-import { Colors } from '@/constants/theme';
+import { NativeSelect, type NativeSelectOption } from '@/components/ui/native-select';
+import { Colors, Fonts } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 
-export function MenuControl({
-  active,
-  children,
+export function SelectControl<T extends string>({
+  disabled = false,
   icon,
   iconName,
   label,
   maxWidth,
-  onClose,
-  onOpen,
+  onValueChange,
+  options,
+  selectedValue,
+  title,
 }: {
-  active: boolean;
-  children: ReactNode;
+  disabled?: boolean;
   icon?: (props: { size: number; color: string }) => ReactNode;
   iconName?: ComponentProps<typeof MaterialCommunityIcons>['name'];
   label: string;
   maxWidth?: number;
-  onClose: () => void;
-  onOpen: () => void;
+  onValueChange: (value: T) => void;
+  options: NativeSelectOption<T>[];
+  selectedValue?: T;
+  title?: string;
 }) {
-  const [visible, setVisible] = useState(false);
-  const anchor = (
-    <ControlButton
-      active={active || visible}
-      icon={icon}
-      iconName={iconName}
-      maxWidth={maxWidth}
-      onPress={() => {
-        setVisible(true);
-        onOpen();
-      }}>
-      {label}
-    </ControlButton>
-  );
-
-  if (!visible) {
-    return anchor;
-  }
-
   return (
-    <Menu
-      visible={visible}
-      onDismiss={() => {
-        setVisible(false);
-        onClose();
-      }}
-      anchor={anchor}>
-      {children}
-    </Menu>
+    <NativeSelect
+      disabled={disabled}
+      onValueChange={onValueChange}
+      options={options}
+      selectedValue={selectedValue}
+      title={title}
+      renderTrigger={({ disabled: triggerDisabled, open, openState }) => (
+        <ControlButton
+          active={openState}
+          disabled={triggerDisabled}
+          icon={icon}
+          iconName={iconName}
+          maxWidth={maxWidth}
+          onPress={open}>
+          {label}
+        </ControlButton>
+      )}
+    />
   );
 }
 
 export function ControlButton({
   active = false,
   children,
+  disabled = false,
   icon,
   iconName,
   iconOnly = false,
@@ -69,6 +62,7 @@ export function ControlButton({
 }: {
   active?: boolean;
   children: string;
+  disabled?: boolean;
   icon?: (props: { size: number; color: string }) => ReactNode;
   iconName?: ComponentProps<typeof MaterialCommunityIcons>['name'];
   iconOnly?: boolean;
@@ -83,26 +77,27 @@ export function ControlButton({
   const backgroundColor = active ? `${palette.tint}18` : palette.surface;
 
   return (
-    <TouchableRipple
+    <Pressable
+      accessibilityRole="button"
+      disabled={disabled}
       onPress={onPress}
-      borderless={false}
-      style={[
+      style={({ pressed }) => [
         styles.controlButton,
         iconOnly ? styles.controlButtonIconOnly : styles.controlButtonText,
         !iconOnly && maxWidth ? { maxWidth } : null,
-        { borderColor, backgroundColor },
+        { borderColor, backgroundColor, opacity: disabled ? 0.45 : pressed ? 0.82 : 1 },
       ]}>
       <View style={[styles.controlButtonInner, iconOnly && styles.controlButtonInnerIconOnly]}>
         {loading ? <ActivityIndicator size={16} color={textColor} /> : null}
         {!loading && icon ? icon({ size: 16, color: textColor }) : null}
         {!loading && !icon && iconName ? <MaterialCommunityIcons name={iconName} size={16} color={textColor} /> : null}
         {!iconOnly ? (
-          <Text numberOfLines={1} ellipsizeMode="tail" variant="labelLarge" style={[styles.controlButtonLabel, { color: textColor }]}>
+          <Text numberOfLines={1} ellipsizeMode="tail" style={[styles.controlButtonLabel, { color: textColor }]}>
             {children}
           </Text>
         ) : null}
       </View>
-    </TouchableRipple>
+    </Pressable>
   );
 }
 
@@ -111,13 +106,13 @@ export function TopTab({ active, label, onPress }: { active: boolean; label: str
   const palette = Colors[colorScheme];
 
   return (
-    <TouchableRipple style={styles.topTab} onPress={onPress}>
-      <View style={[styles.topTabInner, active && { borderBottomColor: palette.tint, borderBottomWidth: 2 }]}>
-        <Text variant="titleMedium" style={{ color: active ? palette.text : palette.muted, fontWeight: active ? '700' : '500' }}>
+    <Pressable accessibilityRole="tab" style={styles.topTab} onPress={onPress}>
+      <View style={[styles.topTabInner, active && { borderBottomColor: palette.tint, borderBottomWidth: 2 }]}> 
+        <Text style={[styles.topTabLabel, { color: active ? palette.text : palette.muted, fontWeight: active ? '700' : '500' }]}> 
           {label}
         </Text>
       </View>
-    </TouchableRipple>
+    </Pressable>
   );
 }
 
@@ -147,11 +142,18 @@ const styles = StyleSheet.create({
   },
   controlButtonLabel: {
     flexShrink: 1,
+    fontFamily: Fonts.sans,
+    fontSize: 14,
+    fontWeight: '600',
   },
   topTab: { flex: 1 },
   topTabInner: {
     alignItems: 'center',
     justifyContent: 'center',
     paddingVertical: 14,
+  },
+  topTabLabel: {
+    fontFamily: Fonts.sans,
+    fontSize: 16,
   },
 });

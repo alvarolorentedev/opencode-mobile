@@ -30,8 +30,7 @@ import {
   type NotificationDebugStatus,
 } from '@/lib/notifications';
 import { getSpeechVoiceOptions, type SpeechVoiceOption } from '@/lib/voice/speech-output';
-import { useOpencode, type ResponseScope } from '@/providers/opencode-provider';
-import type { WorkingSoundVariant } from '@/lib/voice/working-sound';
+import { useOpencode } from '@/providers/opencode-provider';
 
 export default function SettingsScreen() {
   const colorScheme = useColorScheme() ?? 'light';
@@ -52,7 +51,6 @@ export default function SettingsScreen() {
     updateSettings,
   } = useOpencode();
   const [isConnecting, setIsConnecting] = useState(false);
-  const [addProviderMenuVisible, setAddProviderMenuVisible] = useState(false);
   const [selectedProviderId, setSelectedProviderId] = useState<string>();
   const [selectedMethodIndex, setSelectedMethodIndex] = useState(0);
   const [authValues, setAuthValues] = useState<Record<string, string>>({});
@@ -65,9 +63,6 @@ export default function SettingsScreen() {
   const [notificationFeedback, setNotificationFeedback] = useState<string>();
   const [availableSpeechVoices, setAvailableSpeechVoices] = useState<SpeechVoiceOption[]>([]);
   const [isRefreshingSpeechVoices, setIsRefreshingSpeechVoices] = useState(false);
-  const [speechVoiceMenuVisible, setSpeechVoiceMenuVisible] = useState(false);
-  const [responseScopeMenuVisible, setResponseScopeMenuVisible] = useState(false);
-  const [workingSoundMenuVisible, setWorkingSoundMenuVisible] = useState(false);
   const applicationId = useMemo(
     () => Constants.expoConfig?.android?.package || Constants.expoConfig?.ios?.bundleIdentifier,
     [],
@@ -239,7 +234,6 @@ export default function SettingsScreen() {
   }
 
   function startProviderConfiguration(providerId: string) {
-    setAddProviderMenuVisible(false);
     setProviderDialogError(undefined);
     setSelectedMethodIndex(0);
 
@@ -342,7 +336,6 @@ export default function SettingsScreen() {
           updateSettings={updateSettings}
         />
         <AiDefaultsSection
-          addProviderMenuVisible={addProviderMenuVisible}
           availableModels={availableModels}
           availableProviders={availableProviders}
           chatPreferences={chatPreferences}
@@ -350,7 +343,6 @@ export default function SettingsScreen() {
           enabledModelIds={enabledModelIds}
           expandedProviderId={expandedProviderId}
           onExpandedProviderChange={setExpandedProviderId}
-          onMenuVisibilityChange={setAddProviderMenuVisible}
           onModelToggle={handleModelToggle}
           onStartProviderConfiguration={startProviderConfiguration}
           palette={palette}
@@ -370,17 +362,11 @@ export default function SettingsScreen() {
           availableSpeechVoices={availableSpeechVoices}
           chatPreferences={chatPreferences}
           isRefreshingSpeechVoices={isRefreshingSpeechVoices}
-          onResponseScopeMenuVisibleChange={setResponseScopeMenuVisible}
-          onSpeechVoiceMenuVisibleChange={setSpeechVoiceMenuVisible}
-          onWorkingSoundMenuVisibleChange={setWorkingSoundMenuVisible}
           palette={palette}
-          responseScopeMenuVisible={responseScopeMenuVisible}
           selectedResponseScope={selectedResponseScope}
           selectedSpeechVoiceLabel={selectedSpeechVoiceLabel}
           selectedWorkingSound={selectedWorkingSound}
-          speechVoiceMenuVisible={speechVoiceMenuVisible}
           updateChatPreferences={updateChatPreferences}
-          workingSoundMenuVisible={workingSoundMenuVisible}
         />
 
       </ScrollView>

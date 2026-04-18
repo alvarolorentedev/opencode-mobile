@@ -1,4 +1,4 @@
-import { Platform, StyleSheet, View } from 'react-native';
+import { Platform, Pressable, StyleSheet, Switch as NativeSwitch, Text as NativeText, View } from 'react-native';
 import {
   Button,
   Card,
@@ -6,14 +6,13 @@ import {
   Chip,
   HelperText,
   List,
-  Menu,
-  Switch,
   Text,
   TextInput,
 } from 'react-native-paper';
 
+import { NativeSelect, type NativeSelectOption } from '@/components/ui/native-select';
 import { renderProviderIcon } from '@/components/ui/provider-icon';
-import { Colors } from '@/constants/theme';
+import { Colors, Fonts } from '@/constants/theme';
 import { formatTimestamp } from '@/lib/opencode/format';
 import type { NotificationDebugStatus } from '@/lib/notifications';
 import type { OpencodeConnectionSettings } from '@/lib/opencode/client';
@@ -103,7 +102,6 @@ export function ConnectionSection({ connection, isConnecting, onReconnect, palet
 }
 
 type AiDefaultsSectionProps = {
-  addProviderMenuVisible: boolean;
   availableModels: ModelOption[];
   availableProviders: ProviderOption[];
   chatPreferences: ChatPreferences;
@@ -111,14 +109,12 @@ type AiDefaultsSectionProps = {
   enabledModelIds: Set<string>;
   expandedProviderId?: string;
   onExpandedProviderChange: (providerId?: string) => void;
-  onMenuVisibilityChange: (visible: boolean) => void;
   onModelToggle: (modelId: string, checked: boolean) => void;
   onStartProviderConfiguration: (providerId: string) => void;
   palette: Palette;
 };
 
 export function AiDefaultsSection({
-  addProviderMenuVisible,
   availableModels,
   availableProviders,
   chatPreferences,
@@ -126,7 +122,6 @@ export function AiDefaultsSection({
   enabledModelIds,
   expandedProviderId,
   onExpandedProviderChange,
-  onMenuVisibilityChange,
   onModelToggle,
   onStartProviderConfiguration,
   palette,
@@ -150,23 +145,32 @@ export function AiDefaultsSection({
         <View style={styles.providerHeader}>
           <Text variant="labelLarge" style={{ color: palette.text }}>Configured providers</Text>
           {unconfiguredProviders.length > 0 ? (
-            <Menu
-              visible={addProviderMenuVisible}
-              onDismiss={() => onMenuVisibilityChange(false)}
-              anchor={
-                <Button testID="settings-add-provider-button" compact mode="outlined" onPress={() => onMenuVisibilityChange(true)}>
-                  Add provider
-                </Button>
-              }>
-              {unconfiguredProviders.map((provider) => (
-                <Menu.Item
-                  key={provider.id}
-                  leadingIcon={(props) => renderProviderIcon(provider.id, props.size, props.color)}
-                  title={getProviderCopy(provider.id, provider.label).label}
-                  onPress={() => onStartProviderConfiguration(provider.id)}
-                />
-              ))}
-            </Menu>
+            <NativeSelect
+              onValueChange={onStartProviderConfiguration}
+              options={unconfiguredProviders.map((provider) => ({
+                label: getProviderCopy(provider.id, provider.label).label,
+                leadingIcon: (props) => renderProviderIcon(provider.id, props.size, props.color),
+                value: provider.id,
+              }))}
+              title="Add provider"
+              renderTrigger={({ disabled, open, openState }) => (
+                <Pressable
+                  accessibilityRole="button"
+                  disabled={disabled}
+                  onPress={open}
+                  testID="settings-add-provider-button"
+                  style={({ pressed }) => [
+                    styles.inlineSelectButton,
+                    {
+                      backgroundColor: palette.surface,
+                      borderColor: openState ? palette.tint : palette.border,
+                      opacity: disabled ? 0.45 : pressed ? 0.82 : 1,
+                    },
+                  ]}>
+                  <NativeText style={[styles.inlineSelectButtonLabel, { color: palette.text }]}>Add provider</NativeText>
+                </Pressable>
+              )}
+            />
           ) : null}
         </View>
 
@@ -322,37 +326,47 @@ type VoiceSectionProps = {
   availableSpeechVoices: SpeechVoiceOption[];
   chatPreferences: ChatPreferences;
   isRefreshingSpeechVoices: boolean;
-  onResponseScopeMenuVisibleChange: (visible: boolean) => void;
-  onSpeechVoiceMenuVisibleChange: (visible: boolean) => void;
-  onWorkingSoundMenuVisibleChange: (visible: boolean) => void;
   palette: Palette;
-  responseScopeMenuVisible: boolean;
   selectedResponseScope: { value: ResponseScope; label: string; description: string };
   selectedSpeechVoiceLabel: string;
   selectedWorkingSound: { value: WorkingSoundVariant; label: string; description: string };
-  speechVoiceMenuVisible: boolean;
   updateChatPreferences: (patch: Partial<ChatPreferences>) => void;
-  workingSoundMenuVisible: boolean;
 };
 
 export function VoiceSection({
   availableSpeechVoices,
   chatPreferences,
   isRefreshingSpeechVoices,
-  onResponseScopeMenuVisibleChange,
-  onSpeechVoiceMenuVisibleChange,
-  onWorkingSoundMenuVisibleChange,
   palette,
-  responseScopeMenuVisible,
   selectedResponseScope,
   selectedSpeechVoiceLabel,
   selectedWorkingSound,
-  speechVoiceMenuVisible,
   updateChatPreferences,
-  workingSoundMenuVisible,
 }: VoiceSectionProps) {
+  const responseScopeOptions: NativeSelectOption<ResponseScope>[] = RESPONSE_SCOPE_OPTIONS.map((option) => ({
+    description: option.description,
+    label: option.label,
+    value: option.value,
+  }));
+  const workingSoundOptions: NativeSelectOption<WorkingSoundVariant>[] = WORKING_SOUND_OPTIONS.map((option) => ({
+    description: option.description,
+    label: option.label,
+    value: option.value,
+  }));
+  const speechVoiceOptions: NativeSelectOption<string>[] = [
+    {
+      label: 'System default',
+      value: '__system__',
+    },
+    ...availableSpeechVoices.map((voice) => ({
+      description: voice.language,
+      label: voice.label,
+      value: voice.id,
+    })),
+  ];
+
   return (
-    <Card mode="contained" style={[styles.card, { backgroundColor: palette.surface }]}>
+    <Card mode="contained" style={[styles.card, { backgroundColor: palette.surface }]}> 
       <Card.Content style={styles.section}>
         <Text variant="titleLarge" style={[styles.title, { color: palette.text }]}>Voice</Text>
         <List.Section style={styles.infoListSection}>
@@ -395,25 +409,14 @@ export function VoiceSection({
           onChangeText={(value) => updateChatPreferences({ speechLocale: value.trim() || undefined })}
         />
         <HelperText type="info">Leave empty to use the system default language for voice input and playback.</HelperText>
-        <Menu
-          visible={responseScopeMenuVisible}
-          onDismiss={() => onResponseScopeMenuVisibleChange(false)}
-          anchor={
-            <Button mode="outlined" onPress={() => onResponseScopeMenuVisibleChange(true)}>
-              Response scope: {selectedResponseScope.label}
-            </Button>
-          }>
-          {RESPONSE_SCOPE_OPTIONS.map((option) => (
-            <Menu.Item
-              key={option.value}
-              title={option.label}
-              onPress={() => {
-                updateChatPreferences({ responseScope: option.value });
-                onResponseScopeMenuVisibleChange(false);
-              }}
-            />
-          ))}
-        </Menu>
+        <SettingSelectField
+          label="Response scope"
+          onValueChange={(value) => updateChatPreferences({ responseScope: value })}
+          options={responseScopeOptions}
+          palette={palette}
+          selectedValue={selectedResponseScope.value}
+          valueLabel={selectedResponseScope.label}
+        />
         <HelperText type="info">{selectedResponseScope.description}</HelperText>
         <SettingSwitchRow
           description="End replies with a short recommendation when there is a clear next move."
@@ -442,25 +445,14 @@ export function VoiceSection({
           }}
         />
         <HelperText type="info">Use a value between 0.5 and 1.5. `1` is the normal reading speed.</HelperText>
-        <Menu
-          visible={workingSoundMenuVisible}
-          onDismiss={() => onWorkingSoundMenuVisibleChange(false)}
-          anchor={
-            <Button mode="outlined" onPress={() => onWorkingSoundMenuVisibleChange(true)}>
-              Working sound: {selectedWorkingSound.label}
-            </Button>
-          }>
-          {WORKING_SOUND_OPTIONS.map((option) => (
-            <Menu.Item
-              key={option.value}
-              title={option.label}
-              onPress={() => {
-                updateChatPreferences({ workingSoundVariant: option.value });
-                onWorkingSoundMenuVisibleChange(false);
-              }}
-            />
-          ))}
-        </Menu>
+        <SettingSelectField
+          label="Working sound"
+          onValueChange={(value) => updateChatPreferences({ workingSoundVariant: value })}
+          options={workingSoundOptions}
+          palette={palette}
+          selectedValue={selectedWorkingSound.value}
+          valueLabel={selectedWorkingSound.label}
+        />
         <HelperText type="info">{selectedWorkingSound.description}</HelperText>
         <TextInput
           mode="outlined"
@@ -482,32 +474,27 @@ export function VoiceSection({
           }}
         />
         <HelperText type="info">Use a value between 0 and 1. Lower values feel calmer in the background.</HelperText>
-        <Menu
-          visible={speechVoiceMenuVisible}
-          onDismiss={() => onSpeechVoiceMenuVisibleChange(false)}
-          anchor={
-            <Button mode="outlined" onPress={() => onSpeechVoiceMenuVisibleChange(true)} loading={isRefreshingSpeechVoices}>
-              Voice: {selectedSpeechVoiceLabel}
-            </Button>
-          }>
-          <Menu.Item
-            title="System default"
-            onPress={() => {
+        <SettingSelectField
+          disabled={isRefreshingSpeechVoices}
+          label="Voice"
+          onValueChange={(value) => {
+            if (value === '__system__') {
               updateChatPreferences({ speechVoiceId: undefined });
-              onSpeechVoiceMenuVisibleChange(false);
-            }}
-          />
-          {availableSpeechVoices.map((voice) => (
-            <Menu.Item
-              key={voice.id}
-              title={voice.label}
-              onPress={() => {
-                updateChatPreferences({ speechVoiceId: voice.id, speechLocale: chatPreferences.speechLocale || voice.language });
-                onSpeechVoiceMenuVisibleChange(false);
-              }}
-            />
-          ))}
-        </Menu>
+              return;
+            }
+
+            const voice = availableSpeechVoices.find((item) => item.id === value);
+            if (!voice) {
+              return;
+            }
+
+            updateChatPreferences({ speechVoiceId: voice.id, speechLocale: chatPreferences.speechLocale || voice.language });
+          }}
+          options={speechVoiceOptions}
+          palette={palette}
+          selectedValue={chatPreferences.speechVoiceId || '__system__'}
+          valueLabel={selectedSpeechVoiceLabel}
+        />
         <HelperText type="info">
           Shippable behavior: Android can keep a foreground service alive to monitor a running session and speak the finished reply. Continuous background microphone capture still is not supported.
         </HelperText>
@@ -535,7 +522,67 @@ function SettingSwitchRow({
       description={description}
       titleStyle={{ color: palette.text }}
       descriptionStyle={{ color: palette.muted }}
-      right={() => <Switch value={value} onValueChange={onValueChange} />}
+      right={() => (
+        <NativeSwitch
+          ios_backgroundColor={palette.border}
+          onValueChange={onValueChange}
+          thumbColor={Platform.OS === 'android' ? (value ? palette.tint : '#f4f3f4') : undefined}
+          trackColor={{ false: palette.border, true: `${palette.tint}66` }}
+          value={value}
+        />
+      )}
+    />
+  );
+}
+
+function SettingSelectField<T extends string>({
+  disabled = false,
+  label,
+  onValueChange,
+  options,
+  palette,
+  selectedValue,
+  valueLabel,
+}: {
+  disabled?: boolean;
+  label: string;
+  onValueChange: (value: T) => void;
+  options: NativeSelectOption<T>[];
+  palette: Palette;
+  selectedValue?: T;
+  valueLabel: string;
+}) {
+  return (
+    <NativeSelect
+      disabled={disabled}
+      onValueChange={onValueChange}
+      options={options}
+      selectedValue={selectedValue}
+      title={label}
+      renderTrigger={({ disabled: triggerDisabled, open, openState }) => (
+        <Pressable
+          accessibilityRole="button"
+          disabled={triggerDisabled}
+          onPress={open}
+          style={({ pressed }) => [
+            styles.settingSelectField,
+            {
+              backgroundColor: palette.background,
+              borderColor: openState ? palette.tint : palette.border,
+              opacity: triggerDisabled ? 0.45 : pressed ? 0.82 : 1,
+            },
+          ]}>
+          <View style={styles.settingSelectFieldContent}>
+            <View style={styles.settingSelectTextWrap}>
+              <NativeText style={[styles.settingSelectLabel, { color: palette.muted }]}>{label}</NativeText>
+              <NativeText numberOfLines={1} style={[styles.settingSelectValue, { color: palette.text }]}>
+                {valueLabel}
+              </NativeText>
+            </View>
+            <NativeText style={[styles.settingSelectChevron, { color: palette.muted }]}>v</NativeText>
+          </View>
+        </Pressable>
+      )}
     />
   );
 }
@@ -549,9 +596,17 @@ const styles = StyleSheet.create({
   connectionStatusRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   connectionStatusDot: { width: 10, height: 10, borderRadius: 999 },
   providerHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 },
+  inlineSelectButton: { minHeight: 36, borderWidth: 1, borderRadius: 999, justifyContent: 'center', paddingHorizontal: 12 },
+  inlineSelectButtonLabel: { fontFamily: Fonts.sans, fontSize: 14, fontWeight: '600' },
   chipWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   actionRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
   infoListSection: { marginVertical: 0 },
+  settingSelectField: { borderRadius: 14, borderWidth: 1 },
+  settingSelectFieldContent: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12, minHeight: 54, paddingHorizontal: 14, paddingVertical: 10 },
+  settingSelectTextWrap: { flex: 1, gap: 2 },
+  settingSelectLabel: { fontFamily: Fonts.sans, fontSize: 12, fontWeight: '500' },
+  settingSelectValue: { fontFamily: Fonts.sans, fontSize: 16, fontWeight: '600' },
+  settingSelectChevron: { fontFamily: Fonts.mono, fontSize: 16, fontWeight: '700' },
   modelListSection: { gap: 10 },
   providerAccordion: { borderRadius: 14, borderWidth: 1, overflow: 'hidden', marginBottom: 10 },
   providerAccordionIconWrap: {

@@ -1,8 +1,8 @@
 import { View } from 'react-native';
-import { Chip, IconButton, Menu, Surface, Text, TextInput } from 'react-native-paper';
+import { Chip, IconButton, Surface, Text, TextInput } from 'react-native-paper';
 
 import { Colors } from '@/constants/theme';
-import { ControlButton, MenuControl } from '@/components/chat/chat-controls';
+import { ControlButton, SelectControl } from '@/components/chat/chat-controls';
 import { styles } from '@/components/chat/chat-view-styles';
 import { getAutoApproveIcon, getModelLabel, REASONING_OPTIONS } from '@/components/chat/chat-view-utils';
 import { renderProviderIcon } from '@/components/ui/provider-icon';
@@ -25,10 +25,8 @@ type ChatComposerProps = {
   isSpeechInputListening: boolean;
   isStoppingSession: boolean;
   isUpdatingAutoApprove: boolean;
-  menu?: 'mode' | 'model' | 'reasoning' | 'session';
   onAttach: () => void;
   onDraftChange: (value: string) => void;
-  onMenuChange: (menu: 'mode' | 'model' | 'reasoning' | 'session' | undefined) => void;
   onRemoveAttachment: (index: number) => void;
   onSend: () => void;
   onToggleAutoApprove: () => void;
@@ -55,10 +53,8 @@ export function ChatComposer({
   isSpeechInputListening,
   isStoppingSession,
   isUpdatingAutoApprove,
-  menu,
   onAttach,
   onDraftChange,
-  onMenuChange,
   onRemoveAttachment,
   onSend,
   onToggleAutoApprove,
@@ -74,49 +70,46 @@ export function ChatComposer({
       style={[styles.composer, { backgroundColor: palette.surface, borderTopColor: palette.border, paddingBottom: Math.max(insetsBottom, 12) }]}
       elevation={4}>
       <View style={styles.controlsRow}>
-        <MenuControl active={menu === 'mode'} iconName="robot-outline" maxWidth={84} label={selectedAgentLabel} onClose={() => onMenuChange(undefined)} onOpen={() => onMenuChange('mode')}>
-          {availableAgents.map((agent, index) => (
-            <Menu.Item
-              key={`${agent.id}-${index}`}
-              onPress={() => {
-                updateChatPreferences({ mode: agent.id });
-                onMenuChange(undefined);
-              }}
-              title={agent.label}
-            />
-          ))}
-        </MenuControl>
-        <MenuControl
-          active={menu === 'model'}
+        <SelectControl
+          disabled={availableAgents.length === 0}
+          iconName="robot-outline"
+          label={selectedAgentLabel}
+          maxWidth={84}
+          onValueChange={(value) => updateChatPreferences({ mode: value })}
+          options={availableAgents.map((agent) => ({ value: agent.id, label: agent.label }))}
+          selectedValue={chatPreferences.mode}
+          title="Choose assistant mode"
+        />
+        <SelectControl
+          disabled={visibleModels.length === 0}
           maxWidth={112}
           icon={(props) => renderProviderIcon(visibleModels.find((model) => model.id === chatPreferences.modelId)?.providerID, props.size, props.color)}
           label={getModelLabel(visibleModels, chatPreferences.modelId)}
-          onClose={() => onMenuChange(undefined)}
-          onOpen={() => onMenuChange('model')}>
-          {visibleModels.map((model, index) => (
-            <Menu.Item
-              key={`${model.id}-${index}`}
-              leadingIcon={(props) => renderProviderIcon(model.providerID, props.size, props.color)}
-              onPress={() => {
-                updateChatPreferences({ providerId: model.providerID, modelId: model.id });
-                onMenuChange(undefined);
-              }}
-              title={model.label}
-            />
-          ))}
-        </MenuControl>
-        <MenuControl active={menu === 'reasoning'} iconName="brain" maxWidth={84} label={chatPreferences.reasoning} onClose={() => onMenuChange(undefined)} onOpen={() => onMenuChange('reasoning')}>
-          {REASONING_OPTIONS.map((option) => (
-            <Menu.Item
-              key={option.id}
-              onPress={() => {
-                updateChatPreferences({ reasoning: option.id });
-                onMenuChange(undefined);
-              }}
-              title={option.label}
-            />
-          ))}
-        </MenuControl>
+          onValueChange={(value) => {
+            const model = visibleModels.find((item) => item.id === value);
+            if (!model) {
+              return;
+            }
+            updateChatPreferences({ providerId: model.providerID, modelId: model.id });
+          }}
+          options={visibleModels.map((model) => ({
+            description: model.supportsReasoning ? 'Reasoning supported' : 'Standard model',
+            label: model.label,
+            leadingIcon: (props) => renderProviderIcon(model.providerID, props.size, props.color),
+            value: model.id,
+          }))}
+          selectedValue={chatPreferences.modelId}
+          title="Choose model"
+        />
+        <SelectControl
+          iconName="brain"
+          label={chatPreferences.reasoning}
+          maxWidth={84}
+          onValueChange={(value) => updateChatPreferences({ reasoning: value })}
+          options={REASONING_OPTIONS.map((option) => ({ value: option.id, label: option.label }))}
+          selectedValue={chatPreferences.reasoning}
+          title="Choose reasoning level"
+        />
         <ControlButton active={chatPreferences.autoApprove} iconName={getAutoApproveIcon(chatPreferences.autoApprove)} iconOnly loading={isUpdatingAutoApprove} onPress={onToggleAutoApprove}>
           {chatPreferences.autoApprove ? 'Auto approve enabled' : 'Ask permission'}
         </ControlButton>

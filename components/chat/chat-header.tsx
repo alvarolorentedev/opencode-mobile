@@ -1,6 +1,6 @@
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { ScrollView, View } from 'react-native';
-import { Appbar, Button, Portal, Surface, Text, TouchableRipple, List } from 'react-native-paper';
+import { Pressable, ScrollView, Text as NativeText, View } from 'react-native';
+import { Appbar, Portal, Text } from 'react-native-paper';
 
 import { Colors } from '@/constants/theme';
 import { getSessionSubtitle } from '@/lib/opencode/format';
@@ -58,16 +58,16 @@ export function ChatHeader({
         statusBarHeight={0}
         elevated>
         <View style={styles.headerMain}>
-          <TouchableRipple borderless onPress={onOpenSessionMenu} style={styles.headerSessionAnchor}>
+          <Pressable onPress={onOpenSessionMenu} style={({ pressed }) => [styles.headerSessionAnchor, pressed && styles.headerSessionAnchorPressed]}>
             <View style={styles.headerSessionContent}>
               <View style={styles.headerSessionTextWrap}>
-                <Text numberOfLines={1} variant="titleMedium" style={[styles.headerTitle, { color: palette.text }]}>
+                <Text numberOfLines={1} variant="titleMedium" style={[styles.headerTitle, { color: palette.text }]}> 
                   {selectedSession?.title || 'Untitled chat'}
                 </Text>
               </View>
               <MaterialCommunityIcons name="chevron-down" size={20} color={palette.muted} />
             </View>
-          </TouchableRipple>
+          </Pressable>
         </View>
         <View style={styles.headerActions}>
           <Appbar.Action icon="plus" onPress={onCreateSession} disabled={isCreatingSession || connectionStatus !== 'connected'} />
@@ -81,10 +81,10 @@ export function ChatHeader({
       <Portal>
         {sessionMenuVisible ? (
           <View style={styles.sessionPickerOverlay}>
-            <TouchableRipple borderless onPress={onCloseMenu} style={styles.sessionPickerBackdrop}>
+            <Pressable onPress={onCloseMenu} style={styles.sessionPickerBackdrop}>
               <View style={styles.sessionPickerBackdropFill} />
-            </TouchableRipple>
-            <Surface
+            </Pressable>
+            <View
               style={[
                 styles.sessionPickerSheet,
                 {
@@ -93,10 +93,12 @@ export function ChatHeader({
                   borderColor: palette.border,
                 },
               ]}
-              elevation={4}>
-              <View style={[styles.sessionPickerHeader, { borderBottomColor: palette.border }]}>
+            >
+              <View style={[styles.sessionPickerHeader, { borderBottomColor: palette.border }]}> 
                 <Text variant="titleMedium" style={{ color: palette.text }}>Chats</Text>
-                <Button compact onPress={onCloseMenu}>Close</Button>
+                <Pressable onPress={onCloseMenu} style={({ pressed }) => [styles.sessionPickerCloseButton, pressed && styles.sessionPickerCloseButtonPressed]}>
+                  <NativeText style={[styles.sessionPickerCloseLabel, { color: palette.tint }]}>Close</NativeText>
+                </Pressable>
               </View>
               <ScrollView contentContainerStyle={styles.sessionPickerList} keyboardShouldPersistTaps="handled">
                 {sessions.length === 0 ? <Text variant="bodyMedium" style={{ color: palette.muted }}>No chats yet.</Text> : null}
@@ -104,22 +106,35 @@ export function ChatHeader({
                   const isSelected = session.id === currentSessionId;
 
                   return (
-                    <List.Item
+                    <Pressable
                       key={session.id}
-                      title={session.title || 'Untitled chat'}
-                      description={getSessionSubtitle(session)}
-                      titleStyle={{ color: palette.text, fontWeight: isSelected ? '700' : '500' }}
-                      descriptionStyle={{ color: palette.muted }}
-                      left={() => (
-                        isSelected ? <List.Icon icon="check-circle" color={palette.tint} /> : <List.Icon icon="message-outline" color={palette.muted} />
-                      )}
                       onPress={() => onOpenSession(session.id)}
-                      style={[styles.sessionPickerItem, { backgroundColor: isSelected ? palette.background : 'transparent', borderColor: palette.border }]}
-                    />
+                      style={({ pressed }) => [
+                        styles.sessionPickerItem,
+                        {
+                          backgroundColor: isSelected ? palette.background : 'transparent',
+                          borderColor: isSelected ? palette.tint : palette.border,
+                          opacity: pressed ? 0.82 : 1,
+                        },
+                      ]}>
+                      <View style={styles.sessionPickerItemRow}>
+                        <View style={[styles.sessionPickerItemIcon, { backgroundColor: `${(isSelected ? palette.tint : palette.muted)}14` }]}> 
+                          <MaterialCommunityIcons name={isSelected ? 'check-circle' : 'message-outline'} size={18} color={isSelected ? palette.tint : palette.muted} />
+                        </View>
+                        <View style={styles.sessionPickerItemTextWrap}>
+                          <NativeText style={[styles.sessionPickerItemTitle, { color: palette.text, fontWeight: isSelected ? '700' : '600' }]}> 
+                            {session.title || 'Untitled chat'}
+                          </NativeText>
+                          <NativeText style={[styles.sessionPickerItemSubtitle, { color: palette.muted }]}>
+                            {getSessionSubtitle(session)}
+                          </NativeText>
+                        </View>
+                      </View>
+                    </Pressable>
                   );
                 })}
               </ScrollView>
-            </Surface>
+            </View>
           </View>
         ) : null}
         {conversation.active ? (
