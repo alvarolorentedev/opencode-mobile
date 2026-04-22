@@ -1,5 +1,6 @@
 import { View } from 'react-native';
-import { Chip, IconButton, Surface, Text, TextInput } from 'react-native-paper';
+import { Chip, IconButton, Surface, Text, TextInput, Card, Checkbox } from 'react-native-paper';
+import { useEffect, useState } from 'react';
 
 import { Colors } from '@/constants/theme';
 import { ControlButton, SelectControl } from '@/components/chat/chat-controls';
@@ -37,6 +38,7 @@ type ChatComposerProps = {
   currentSessionId?: string;
   visibleModels: ModelOption[];
   updateChatPreferences: (patch: Partial<ChatPreferences>) => void;
+  currentTodos?: any[];
 };
 
 export function ChatComposer({
@@ -64,7 +66,45 @@ export function ChatComposer({
   showSendAction,
   updateChatPreferences,
   visibleModels,
-}: ChatComposerProps) {
+   currentTodos,
+   }: ChatComposerProps) {
+  const minInputHeight = 24;
+  const maxInputHeight = 110;
+  const hasComposerContent = Boolean(draft.trim()) || attachments.length > 0;
+  const showOuterAction = showSendAction ? (hasComposerContent ? 'send' : 'attach') : 'stop';
+  const outerActionIcon = showOuterAction === 'attach' ? 'plus' : showOuterAction;
+  const outerActionDisabled =
+    showOuterAction === 'attach'
+      ? false
+      : showOuterAction === 'send'
+        ? ((!draft.trim() && attachments.length === 0) || connectionStatus !== 'connected' || isCreatingSession || isSpeechInputListening)
+        : !currentSessionId || isStoppingSession;
+  const innerActionIcon = hasComposerContent ? 'paperclip' : (isSpeechInputListening ? 'microphone-off' : 'microphone');
+  const innerActionDisabled = hasComposerContent
+    ? false
+    : conversation.active || connectionStatus !== 'connected' || (!isSpeechInputListening && !isSpeechInputAvailable);
+  const handleOuterActionPress = showOuterAction === 'attach' ? onAttach : onSend;
+  const handleInnerActionPress = hasComposerContent ? onAttach : onToggleRecording;
+
+  const [todosCollapsed, setTodosCollapsed] = useState(false);
+  const [checkedIds, setCheckedIds] = useState<Record<string, boolean>>({});
+  const [inputHeight, setInputHeight] = useState(minInputHeight);
+
+  useEffect(() => {
+    if (!currentTodos) {
+      setCheckedIds({});
+      return;
+    }
+
+    const next: Record<string, boolean> = {};
+    for (const t of currentTodos) {
+      if (t && t.id) next[t.id] = t.status === 'completed';
+    }
+    setCheckedIds(next);
+  }, [currentTodos]);
+
+  const completedCount = currentTodos ? currentTodos.filter((t: any) => t && t.status === 'completed').length : 0;
+
   return (
     <Surface
       style={[styles.composer, { backgroundColor: palette.surface, borderTopColor: palette.border, paddingBottom: Math.max(insetsBottom, 12) }]}
@@ -72,9 +112,9 @@ export function ChatComposer({
       <View style={styles.controlsRow}>
         <SelectControl
           disabled={availableAgents.length === 0}
+          grow
           iconName="robot-outline"
           label={selectedAgentLabel}
-          maxWidth={84}
           onValueChange={(value) => updateChatPreferences({ mode: value })}
           options={availableAgents.map((agent) => ({ value: agent.id, label: agent.label }))}
           selectedValue={chatPreferences.mode}
@@ -82,7 +122,7 @@ export function ChatComposer({
         />
         <SelectControl
           disabled={visibleModels.length === 0}
-          maxWidth={112}
+          grow
           icon={(props) => renderProviderIcon(visibleModels.find((model) => model.id === chatPreferences.modelId)?.providerID, props.size, props.color)}
           label={getModelLabel(visibleModels, chatPreferences.modelId)}
           onValueChange={(value) => {
@@ -102,9 +142,9 @@ export function ChatComposer({
           title="Choose model"
         />
         <SelectControl
+          grow
           iconName="brain"
           label={chatPreferences.reasoning}
-          maxWidth={84}
           onValueChange={(value) => updateChatPreferences({ reasoning: value })}
           options={REASONING_OPTIONS.map((option) => ({ value: option.id, label: option.label }))}
           selectedValue={chatPreferences.reasoning}
@@ -113,7 +153,6 @@ export function ChatComposer({
         <ControlButton active={chatPreferences.autoApprove} iconName={getAutoApproveIcon(chatPreferences.autoApprove)} iconOnly loading={isUpdatingAutoApprove} onPress={onToggleAutoApprove}>
           {chatPreferences.autoApprove ? 'Auto approve enabled' : 'Ask permission'}
         </ControlButton>
-        <ControlButton iconName="paperclip" iconOnly onPress={onAttach}>Files</ControlButton>
       </View>
 
       {conversation.active ? (
@@ -126,6 +165,32 @@ export function ChatComposer({
             Keep talking naturally while the app stays open. It listens, sends your turn, reads the reply, and then listens again.
           </Text>
         </View>
+      ) : null}
+
+      {currentTodos && currentTodos.length > 0 ? (
+        <Card mode="contained" style={[styles.todoCard, { backgroundColor: palette.surface, borderColor: palette.border }]}> 
+          <Card.Content style={styles.todoHeader}>
+            <Text variant="bodyLarge" style={{ color: palette.text }}>{`${completedCount} of ${currentTodos.length} todos completed`}</Text>
+            <IconButton icon={todosCollapsed ? 'chevron-up' : 'chevron-down'} size={20} onPress={() => setTodosCollapsed((c) => !c)} />
+          </Card.Content>
+
+          {!todosCollapsed ? (
+            <Card.Content style={styles.todoList}>
+              {currentTodos.map((todo, idx) => (
+                <View key={todo.id || `${idx}`} style={styles.todoItemRow}>
+                  <Checkbox.Android
+                    status={checkedIds[todo.id] ? 'checked' : 'unchecked'}
+                    onPress={() => setCheckedIds((s) => ({ ...s, [todo.id]: !s[todo.id] }))}
+                  />
+                  <View style={styles.todoTextWrap}>
+                    <Text variant="bodyMedium" style={{ color: palette.text }}>{todo.content || 'Untitled todo'}</Text>
+                    {todo.priority ? <Text variant="bodySmall" style={{ color: palette.muted }}>{todo.priority}</Text> : null}
+                  </View>
+                </View>
+              ))}
+            </Card.Content>
+          ) : null}
+        </Card>
       ) : null}
 
       {attachments.length > 0 ? (
@@ -146,44 +211,55 @@ export function ChatComposer({
         </View>
       ) : null}
 
-      <View style={[styles.inputShell, { borderColor: palette.border, backgroundColor: palette.background }]}>
-        <View style={styles.composerRow}>
-          <TextInput
-            testID="chat-prompt-input"
-            mode="flat"
-            value={draft}
-            onChangeText={onDraftChange}
-            editable={!isSpeechInputListening}
-            multiline
-            placeholder="Ask anything..."
-            placeholderTextColor={palette.muted}
-            style={[styles.input, { backgroundColor: 'transparent', color: palette.text }]}
-            contentStyle={styles.inputContentCompact}
-            underlineColor="transparent"
-            activeUnderlineColor="transparent"
-          />
+      <View style={styles.composerDockRow}>
+        <View style={[styles.inputShell, styles.inputShellFlex, { borderColor: palette.border, backgroundColor: palette.background }]}>
+          <View style={styles.composerRow}>
+            <TextInput
+               testID="chat-prompt-input"
+               mode="flat"
+               dense
+               value={draft}
+               onChangeText={onDraftChange}
+               onContentSizeChange={({ nativeEvent }) => {
+                 const nextHeight = Math.min(maxInputHeight, Math.max(minInputHeight, Math.ceil(nativeEvent.contentSize.height)));
+                 setInputHeight((current) => (current === nextHeight ? current : nextHeight));
+               }}
+               editable={!isSpeechInputListening}
+               multiline
+               scrollEnabled={false}
+               placeholder="Ask anything..."
+               placeholderTextColor={palette.muted}
+               style={[styles.input, { height: inputHeight, backgroundColor: 'transparent', color: palette.text }]}
+               contentStyle={styles.inputContentCompact}
+               underlineColor="transparent"
+               activeUnderlineColor="transparent"
+               textAlignVertical="top"
+             />
 
-          <IconButton
-            testID="chat-voice-button"
-            icon={isSpeechInputListening ? 'microphone-off' : 'microphone'}
-            size={20}
-            selected={isSpeechInputListening}
-            style={styles.composerVoiceButton}
-            disabled={conversation.active || connectionStatus !== 'connected' || (!isSpeechInputListening && !isSpeechInputAvailable)}
-            onPress={onToggleRecording}
-          />
-
-          <IconButton
-            testID="chat-send-button"
-            mode="contained"
-            icon={showSendAction ? 'send' : 'stop'}
-            size={20}
-            style={styles.composerActionButton}
-            loading={isStoppingSession}
-            disabled={showSendAction ? ((!draft.trim() && attachments.length === 0) || connectionStatus !== 'connected' || isCreatingSession || isSpeechInputListening) : !currentSessionId || isStoppingSession}
-            onPress={onSend}
-          />
+            <IconButton
+              testID="chat-secondary-button"
+              icon={innerActionIcon}
+              size={20}
+              selected={!hasComposerContent && isSpeechInputListening}
+              style={styles.composerVoiceButton}
+              disabled={innerActionDisabled}
+              onPress={handleInnerActionPress}
+            />
+          </View>
         </View>
+
+        <IconButton
+          testID="chat-primary-button"
+          mode="contained"
+          icon={outerActionIcon}
+          size={20}
+          style={styles.composerPrimaryButton}
+          containerColor={palette.tint}
+          iconColor={palette.surface}
+          loading={showOuterAction === 'stop' && isStoppingSession}
+          disabled={outerActionDisabled}
+          onPress={handleOuterActionPress}
+        />
       </View>
     </Surface>
   );

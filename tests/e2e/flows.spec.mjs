@@ -69,12 +69,13 @@ test('settings can configure an additional provider against the fake server', as
   await page.getByRole('tab', { name: 'Settings' }).click();
   await expect(page.getByText('AI defaults')).toBeVisible();
   await page.getByTestId('settings-add-provider-button').click();
-  await expect(page.getByText('OpenRouter')).toBeVisible();
-  await page.getByText('OpenRouter').click();
+  await expect(page.getByRole('menuitem', { name: 'OpenRouter', exact: true })).toBeVisible();
+  await page.getByRole('menuitem', { name: 'OpenRouter', exact: true }).click();
   await expect(page.getByText('Configure OpenRouter')).toBeVisible();
   await page.getByPlaceholder('Paste your API key').fill('sk-test-openrouter');
   await page.getByTestId('settings-provider-save-button').click();
-  await expect(page.getByText('OpenRouter')).toBeVisible({ timeout: 15_000 });
+  await expect(page.getByText('Configure OpenRouter')).not.toBeVisible({ timeout: 15_000 });
+  await expect(page.getByRole('button', { name: 'OpenRouter', exact: true })).toBeVisible();
 });
 
 test('polling fallback still finishes the flow when SSE is unavailable', async ({ page, request }) => {

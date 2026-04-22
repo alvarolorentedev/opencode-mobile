@@ -51,18 +51,31 @@ export const styles = StyleSheet.create({
     gap: 10,
     borderTopWidth: 1,
   },
-  inputShell: { borderWidth: 1, borderRadius: 22, paddingLeft: 12, paddingRight: 6, paddingVertical: 6 },
-  composerRow: { flexDirection: 'row', alignItems: 'flex-end', gap: 4 },
-  input: { flex: 1, minHeight: 22, maxHeight: 120, fontSize: 17, marginHorizontal: -4 },
-  inputContentCompact: { paddingHorizontal: 0, paddingTop: 6, paddingBottom: 6, fontFamily: Fonts.sans },
-  controlsRow: { flexDirection: 'row', flexWrap: 'nowrap', gap: 6, paddingHorizontal: 0, alignItems: 'center', justifyContent: 'space-between' },
+  composerDockRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  inputShell: { borderWidth: 1, borderRadius: 22, paddingLeft: 12, paddingRight: 6, paddingTop: 0, paddingBottom: 0, minHeight: 48, justifyContent: 'center' },
+  inputShellFlex: { flex: 1 },
+  // Row containing the input and inline icon. Center children by default so the
+  // input visually floats vertically when single-line.
+  composerRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  // Keep input flexible but start very compact
+  // Input text area: keep the text container small; inner padding provides the 4px top/bottom
+  // Keep text vertically centered by default; multiline growth still allowed.
+  input: { flex: 1, minHeight: 24, maxHeight: 120, fontSize: 17, lineHeight: 22, marginHorizontal: -4, paddingVertical: 0, textAlignVertical: 'center' },
+  inputContentCompact: { paddingHorizontal: 0, paddingTop: 0, paddingBottom: 0, fontFamily: Fonts.sans },
+  controlsRow: { flexDirection: 'row', flexWrap: 'nowrap', gap: 6, paddingHorizontal: 0, alignItems: 'center', width: '100%' },
   attachmentRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, paddingHorizontal: 2 },
   attachmentChip: { alignSelf: 'flex-start' },
   conversationBanner: { borderWidth: 1, borderRadius: 18, paddingHorizontal: 14, paddingVertical: 12, gap: 8 },
   conversationBannerHeader: { flexDirection: 'row', justifyContent: 'space-between', gap: 12, alignItems: 'center' },
   voiceStatusRow: { paddingHorizontal: 2 },
   voiceStatusChip: { alignSelf: 'flex-start' },
-  composerVoiceButton: { margin: 0 },
+  composerVoiceButton: { margin: 0, alignSelf: 'center' },
+  composerPrimaryButton: { margin: 0, width: 44, height: 44, borderRadius: 999, alignSelf: 'center' },
   composerActionButton: { margin: 0 },
   diffListCardContent: { paddingHorizontal: 0, paddingVertical: 0 },
+  todoCard: { marginHorizontal: 12, borderRadius: 12, overflow: 'hidden', marginBottom: 8 },
+  todoHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  todoList: { gap: 10 },
+  todoItemRow: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 6 },
+  todoTextWrap: { flex: 1 },
 });

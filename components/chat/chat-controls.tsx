@@ -8,6 +8,7 @@ import { useColorScheme } from '@/hooks/use-color-scheme';
 
 export function SelectControl<T extends string>({
   disabled = false,
+  grow = false,
   icon,
   iconName,
   label,
@@ -18,6 +19,7 @@ export function SelectControl<T extends string>({
   title,
 }: {
   disabled?: boolean;
+  grow?: boolean;
   icon?: (props: { size: number; color: string }) => ReactNode;
   iconName?: ComponentProps<typeof MaterialCommunityIcons>['name'];
   label: string;
@@ -38,6 +40,7 @@ export function SelectControl<T extends string>({
         <ControlButton
           active={openState}
           disabled={triggerDisabled}
+          grow={grow}
           icon={icon}
           iconName={iconName}
           maxWidth={maxWidth}
@@ -53,6 +56,7 @@ export function ControlButton({
   active = false,
   children,
   disabled = false,
+  grow = false,
   icon,
   iconName,
   iconOnly = false,
@@ -63,6 +67,7 @@ export function ControlButton({
   active?: boolean;
   children: string;
   disabled?: boolean;
+  grow?: boolean;
   icon?: (props: { size: number; color: string }) => ReactNode;
   iconName?: ComponentProps<typeof MaterialCommunityIcons>['name'];
   iconOnly?: boolean;
@@ -83,6 +88,7 @@ export function ControlButton({
       onPress={onPress}
       style={({ pressed }) => [
         styles.controlButton,
+        grow && !iconOnly ? styles.controlButtonGrow : null,
         iconOnly ? styles.controlButtonIconOnly : styles.controlButtonText,
         !iconOnly && maxWidth ? { maxWidth } : null,
         { borderColor, backgroundColor, opacity: disabled ? 0.45 : pressed ? 0.82 : 1 },
@@ -121,11 +127,17 @@ const styles = StyleSheet.create({
     borderRadius: 999,
     borderWidth: 1,
   },
+  controlButtonGrow: {
+    flexGrow: 1,
+    flexBasis: 0,
+    minWidth: 0,
+  },
   controlButtonIconOnly: {
     width: 40,
     height: 40,
   },
   controlButtonText: {
+    flex: 1,
     minHeight: 40,
     paddingHorizontal: 12,
   },
