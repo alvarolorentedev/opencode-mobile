@@ -113,6 +113,7 @@ Put:
 - permission/question blocking logic
 
 If the client contract changes, update the fake server.
+Changes here require explicit human validation.
 
 ### `tests/e2e/`
 
@@ -125,6 +126,7 @@ Put:
 - SSE fallback coverage
 
 Prefer flow coverage over low-value unit tests for orchestration changes.
+Changes here require explicit human validation.
 
 ## Practices
 
@@ -226,6 +228,8 @@ Add or update tests when changing:
 - SSE or polling fallback behavior
 - fake server contract behavior
 
+Any change to `tests/e2e/` or `tests/fake-opencode/` requires explicit human validation, even if automated checks pass.
+
 ## Definition Of Done
 
 A change is done when:
@@ -233,6 +237,7 @@ A change is done when:
 - code is in the correct layer
 - behavior is preserved or intentionally updated
 - tests are added or updated for changed behavior
+- any `tests/e2e/` or `tests/fake-opencode/` changes have explicit human validation
 - documentation in `docs/` is updated when behavior, architecture, or contracts changed
 - validation matches the risk of the change
 - the final summary states what changed, what was verified, and any remaining risk
