@@ -13,6 +13,7 @@ import {
 import {
   buildClient,
   defaultConnectionSettings,
+  getConnectionError,
   getNormalizedServerUrl,
   listPendingPermissions,
   listPendingQuestions,
@@ -48,7 +49,6 @@ import {
   defaultChatPreferences,
   getConfiguredProviderIds,
   getEnabledModelIds,
-  getErrorMessage,
   getInitialMode,
   getInitialModelId,
   getInitialProviderId,
@@ -602,7 +602,7 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
       setServerRootPath(undefined);
       setConnection({
         status: 'error',
-        message: getErrorMessage(error),
+        message: getConnectionError(settingsRef.current.serverUrl, error),
         checkedAt: Date.now(),
       });
       setSessions([]);

@@ -18,6 +18,8 @@ Server connectivity is based on:
 - optional basic auth username/password
 - optional project directory scoping per client instance
 
+The base server URL may include a path prefix when OpenCode is exposed behind a reverse proxy, for example `https://host.example/api`.
+
 Default server URL:
 
 - `EXPO_PUBLIC_E2E_SERVER_URL`
@@ -41,6 +43,8 @@ Current request failures are surfaced mainly as:
 - snackbar errors in Chat
 - dialog errors during provider configuration
 - voice feedback errors
+
+For connection failures caused by pointing at a web UI root instead of the OpenCode API base URL, the connection message should explicitly suggest using an API-prefixed URL such as `/api`.
 
 The implementation favors user-facing recovery over deep error taxonomy.
 

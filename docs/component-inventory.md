@@ -315,6 +315,7 @@ Responsibility:
 
 - edit server URL, username, password
 - show connection state card
+- show the current connection message or error hint from provider state
 - trigger reconnect
 
 ### `AiDefaultsSection`

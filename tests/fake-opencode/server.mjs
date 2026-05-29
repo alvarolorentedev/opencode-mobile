@@ -9,6 +9,10 @@ import { createStateStore, getNow } from './state.mjs';
 
 const port = Number.parseInt(process.env.FAKE_OPENCODE_PORT || '4096', 10);
 const scenarioName = process.env.FAKE_OPENCODE_SCENARIO || 'happy-path';
+const configuredBasePath = (process.env.FAKE_OPENCODE_BASE_PATH || '').trim();
+const basePath = configuredBasePath
+  ? `/${configuredBasePath.replace(/^\/+/, '').replace(/\/+$/, '')}`
+  : '';
 
 const stateStore = createStateStore(scenarioName);
 let state = stateStore.getState();
@@ -106,7 +110,12 @@ function handleSse(req, res) {
 
 const server = http.createServer(async (req, res) => {
   const requestUrl = new URL(req.url || '/', `http://${req.headers.host || `127.0.0.1:${port}`}`);
-  const pathname = requestUrl.pathname;
+  const incomingPathname = requestUrl.pathname;
+  const pathname = basePath && incomingPathname.startsWith(`${basePath}/`)
+    ? incomingPathname.slice(basePath.length)
+    : incomingPathname === basePath
+      ? '/'
+      : incomingPathname;
 
   try {
     if (req.method === 'OPTIONS') {
@@ -116,6 +125,17 @@ const server = http.createServer(async (req, res) => {
         'Access-Control-Allow-Methods': 'GET, POST, PUT, PATCH, DELETE, OPTIONS',
       });
       res.end();
+      return;
+    }
+
+    if (basePath && !incomingPathname.startsWith(`${basePath}/`) && incomingPathname !== basePath) {
+      if (req.method === 'GET' && incomingPathname === '/') {
+        res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
+        res.end('<!doctype html><html><body><h1>Fake OpenCode UI</h1></body></html>');
+        return;
+      }
+
+      notFound(res);
       return;
     }
 

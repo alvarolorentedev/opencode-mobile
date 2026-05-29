@@ -1,4 +1,6 @@
 import { expect, test } from '@playwright/test';
+import { spawn } from 'node:child_process';
+import { setTimeout as sleep } from 'node:timers/promises';
 
 async function resetScenario(request, scenario) {
   const response = await request.post('http://127.0.0.1:44096/__control/reset', {
@@ -23,6 +25,25 @@ async function openReadyChat(page) {
 async function sendPrompt(page, prompt) {
   await page.getByPlaceholder('Ask anything...').fill(prompt);
   await page.getByTestId('chat-send-button').click();
+}
+
+async function waitForServer(request, url, timeoutMs = 10_000) {
+  const startedAt = Date.now();
+
+  while (Date.now() - startedAt < timeoutMs) {
+    try {
+      const response = await request.get(url);
+      if (response.ok()) {
+        return;
+      }
+    } catch {
+      // Keep polling until the timeout expires.
+    }
+
+    await sleep(200);
+  }
+
+  throw new Error(`Timed out waiting for fake server at ${url}`);
 }
 
 test('happy path keeps the main chat flow stable', async ({ page, request }) => {
@@ -87,4 +108,38 @@ test('polling fallback still finishes the flow when SSE is unavailable', async (
   await page.getByRole('tab', { name: 'Workspace' }).click();
   await expect(page.getByText('Finish through polling fallback', { exact: true }).last()).toBeVisible({ timeout: 40_000 });
   await expect(page.getByText('idle', { exact: true })).toBeVisible({ timeout: 40_000 });
+});
+
+test('settings explain root-vs-api mismatches and reconnect through a prefixed API base URL', async ({ page, request }) => {
+  const port = 44196;
+  const server = spawn(process.execPath, ['tests/fake-opencode/server.mjs'], {
+    cwd: process.cwd(),
+    env: {
+      ...process.env,
+      FAKE_OPENCODE_PORT: String(port),
+      FAKE_OPENCODE_SCENARIO: 'happy-path',
+      FAKE_OPENCODE_BASE_PATH: '/api',
+    },
+    stdio: 'inherit',
+  });
+
+  try {
+    await waitForServer(request, `http://127.0.0.1:${port}/api/path`);
+    await openReadyChat(page);
+
+    await page.getByRole('tab', { name: 'Settings' }).click();
+    await expect(page.getByText('Connection')).toBeVisible();
+
+    await page.getByTestId('settings-server-url-input').fill(`http://127.0.0.1:${port}`);
+    await page.getByTestId('settings-reconnect-button').click();
+    await expect(page.getByText(new RegExp(`OpenCode endpoint not found at http://127.0.0.1:${port}`))).toBeVisible({ timeout: 15_000 });
+    await expect(page.getByText(new RegExp(`http://127.0.0.1:${port}/api`))).toBeVisible();
+
+    await page.getByTestId('settings-server-url-input').fill(`http://127.0.0.1:${port}/api`);
+    await page.getByTestId('settings-reconnect-button').click();
+    await expect(page.getByText('Connected')).toBeVisible({ timeout: 15_000 });
+    await expect(page.getByText(new RegExp(`Connected to http://127.0.0.1:${port}/api`))).toBeVisible();
+  } finally {
+    server.kill('SIGTERM');
+  }
 });

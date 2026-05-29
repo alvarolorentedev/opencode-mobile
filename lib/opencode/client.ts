@@ -37,14 +37,93 @@ export const defaultConnectionSettings: OpencodeConnectionSettings = {
   directory: '',
 };
 
-function normalizeServerUrl(value: string) {
+type NormalizedServerUrl = {
+  displayUrl: string;
+  origin: string;
+  pathPrefix: string;
+};
+
+type ServerBase = {
+  baseUrl: string;
+  pathPrefix: string;
+};
+
+function joinUrlPath(prefix: string, pathname: string) {
+  const normalizedPrefix = prefix === '/' ? '' : prefix.replace(/\/$/, '');
+  const normalizedPathname = pathname.startsWith('/') ? pathname : `/${pathname}`;
+  return `${normalizedPrefix}${normalizedPathname}`;
+}
+
+function normalizeServerUrl(value: string): NormalizedServerUrl {
   const trimmed = value.trim();
   if (!trimmed) {
-    return defaultConnectionSettings.serverUrl;
+    return normalizeServerUrl(defaultConnectionSettings.serverUrl);
   }
 
   const withProtocol = /^https?:\/\//i.test(trimmed) ? trimmed : `http://${trimmed}`;
-  return withProtocol.replace(/\/$/, '');
+  const parsed = new URL(withProtocol);
+  const pathPrefix = parsed.pathname === '/' ? '' : parsed.pathname.replace(/\/$/, '');
+  const displayUrl = `${parsed.origin}${pathPrefix}`;
+
+  return {
+    displayUrl,
+    origin: parsed.origin,
+    pathPrefix,
+  };
+}
+
+function buildServerUrl(pathname: string, settingsOrBase: OpencodeConnectionSettings | ServerBase) {
+  const base = 'serverUrl' in settingsOrBase
+    ? (() => {
+        const normalized = normalizeServerUrl(settingsOrBase.serverUrl);
+        return {
+          baseUrl: normalized.origin,
+          pathPrefix: normalized.pathPrefix,
+        };
+      })()
+    : settingsOrBase;
+  return `${base.baseUrl}${joinUrlPath(base.pathPrefix, pathname)}`;
+}
+
+function createScopedFetch(baseUrl: string, pathPrefix: string) {
+  return async (input: RequestInfo | URL, init?: RequestInit) => {
+    const currentUrl =
+      typeof input === 'string'
+        ? input
+        : input instanceof URL
+          ? input.toString()
+          : input.url;
+    const parsed = new URL(currentUrl, baseUrl);
+
+    if (parsed.origin === baseUrl && pathPrefix && !parsed.pathname.startsWith(`${pathPrefix}/`) && parsed.pathname !== pathPrefix) {
+      parsed.pathname = joinUrlPath(pathPrefix, parsed.pathname);
+    }
+
+    if (typeof input === 'string' || input instanceof URL) {
+      return fetch(parsed.toString(), init);
+    }
+
+    return fetch(new Request(parsed.toString(), input), init);
+  };
+}
+
+function getConnectionErrorMessage(error: unknown, serverUrl: string) {
+  if (!(error instanceof Error)) {
+    return 'Something went wrong while talking to OpenCode.';
+  }
+
+  const normalizedUrl = normalizeServerUrl(serverUrl).displayUrl;
+  const message = error.message || 'Something went wrong while talking to OpenCode.';
+
+  if (/404|not found/i.test(message)) {
+    return `OpenCode endpoint not found at ${normalizedUrl}. If this address serves a web UI, use the API base URL instead, usually ${normalizedUrl}/api.`;
+  }
+
+  if (/json/i.test(message) && /unexpected|parse|token/i.test(message)) {
+    return `The server at ${normalizedUrl} did not return an OpenCode API response. If this address serves a web UI, use the API base URL instead, usually ${normalizedUrl}/api.`;
+  }
+
+  return message;
 }
 
 function createAuthHeader(settings: OpencodeConnectionSettings) {
@@ -67,27 +146,35 @@ function getRequestHeaders(settings: OpencodeConnectionSettings) {
 }
 
 export function buildClient(settings: OpencodeConnectionSettings): any {
-  const baseUrl = normalizeServerUrl(settings.serverUrl);
+  const normalizedServerUrl = normalizeServerUrl(settings.serverUrl);
   const headers = getRequestHeaders(settings);
+  const directory = settings.directory.trim() || undefined;
 
   // return a runtime client; type is kept as `any` to avoid coupling to generated SDK types
   const client = createOpencodeClient({
-    baseUrl,
-    directory: settings.directory.trim() || undefined,
+    baseUrl: normalizedServerUrl.origin,
+    directory,
+    fetch: createScopedFetch(normalizedServerUrl.origin, normalizedServerUrl.pathPrefix),
     headers,
   }) as any;
 
   client.__opencode = {
-    baseUrl,
-    directory: settings.directory.trim() || undefined,
+    baseUrl: normalizedServerUrl.origin,
+    directory,
     headers,
+    displayUrl: normalizedServerUrl.displayUrl,
+    pathPrefix: normalizedServerUrl.pathPrefix,
   };
 
   return client;
 }
 
 export function getNormalizedServerUrl(serverUrl: string) {
-  return normalizeServerUrl(serverUrl);
+  return normalizeServerUrl(serverUrl).displayUrl;
+}
+
+export function getConnectionError(serverUrl: string, error: unknown) {
+  return getConnectionErrorMessage(error, serverUrl);
 }
 
 async function apiRequest(client: any, path: string, init?: RequestInit) {
@@ -96,7 +183,10 @@ async function apiRequest(client: any, path: string, init?: RequestInit) {
     throw new Error('OpenCode client is missing base URL metadata.');
   }
 
-  const requestUrl = new URL(`${baseUrl}${path}`);
+  const requestUrl = new URL(buildServerUrl(path, {
+    baseUrl,
+    pathPrefix: client?.__opencode?.pathPrefix || '',
+  }));
   const directory = client?.__opencode?.directory;
   if (directory && !requestUrl.searchParams.has('directory')) {
     requestUrl.searchParams.set('directory', directory);

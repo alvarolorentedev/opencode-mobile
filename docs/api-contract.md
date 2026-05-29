@@ -22,6 +22,8 @@ The app builds clients with:
 - optional `directory`
 - optional basic auth header
 
+The configured server URL may include a path prefix such as `/api`; the client must preserve that prefix for both generated SDK requests and manual fetch calls.
+
 Client-scoped manual requests also append:
 
 - `Accept: application/json`

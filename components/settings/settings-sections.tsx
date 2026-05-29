@@ -63,6 +63,9 @@ export function ConnectionSection({ connection, isConnecting, onReconnect, palet
               Last checked {connection.checkedAt ? formatTimestamp(connection.checkedAt) : 'not yet'}
             </Text>
           </View>
+          <Text variant="bodyMedium" style={{ color: palette.muted }}>
+            {connection.message}
+          </Text>
         </View>
         <TextInput
           mode="outlined"
