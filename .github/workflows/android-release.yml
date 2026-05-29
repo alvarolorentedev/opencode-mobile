@@ -11,7 +11,8 @@ on:
   push:
     branches:
       - main
-      - master
+    tags:
+      - 'v*'
 
 jobs:
   build-android:
@@ -107,14 +108,24 @@ jobs:
             android/app/build/outputs/**/*.apk
 
       - name: Setup Ruby
-        if: ${{ github.event_name == 'workflow_dispatch' && inputs.upload_to_play_store }}
+        if: ${{ (github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')) || (github.event_name == 'workflow_dispatch' && inputs.upload_to_play_store) }}
         uses: ruby/setup-ruby@v1
         with:
           ruby-version: 3.3
           bundler-cache: true
 
-      - name: Upload to Play Store
-        if: ${{ github.event_name == 'workflow_dispatch' && inputs.upload_to_play_store }}
+      # - name: Upload to Play Store (production)
+      #   if: ${{ (github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')) || (github.event_name == 'workflow_dispatch' && inputs.upload_to_play_store) }}
+      #   uses: r0adkll/upload-google-play@v1
+      #   with:
+      #     serviceAccountJsonPlainText: ${{ secrets.GOOGLE_PLAY_SERVICE_ACCOUNT_JSON }}
+      #     packageName: ${{ vars.EXPO_ANDROID_PACKAGE }}
+      #     releaseFiles: android/app/build/outputs/bundle/release/app-release.aab
+      #     track: production
+      #     status: completed
+
+      - name: Upload to Play Store (internal)
+        if: ${{ (github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')) || (github.event_name == 'workflow_dispatch' && inputs.upload_to_play_store) }}
         uses: r0adkll/upload-google-play@v1
         with:
           serviceAccountJsonPlainText: ${{ secrets.GOOGLE_PLAY_SERVICE_ACCOUNT_JSON }}

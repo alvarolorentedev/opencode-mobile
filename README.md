@@ -67,6 +67,12 @@ npm run build:development:android
 
 Both local and GitHub Actions Android builds use the native `android/` project plus Gradle.
 
+### Release To Play Store
+
+- Push to `main` to run the Android release build and upload artifacts.
+- Push a version tag like `v1.2.3` to trigger the production Play Store upload automatically.
+- Use the manual `workflow_dispatch` release path only if you want an internal-track upload.
+
 ### GitHub Actions Secrets
 
 - `ANDROID_KEYSTORE_BASE64`
