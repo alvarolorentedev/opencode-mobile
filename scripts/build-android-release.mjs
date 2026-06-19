@@ -49,6 +49,33 @@ run('npx', ['expo', 'prebuild', '--platform', 'android', '--non-interactive', '-
   },
 });
 
+// Patch foojay-resolver-convention from 0.5.0 to 0.9.0 to avoid Maven Central
+// 403 errors for its transitive dependency com.google.code.gson:gson:2.9.1.
+function patchFoojayResolver() {
+  const settingsFile = path.join(androidDir, 'settings.gradle');
+  if (!fs.existsSync(settingsFile)) {
+    console.log('settings.gradle not found, skipping foojay-resolver patch.');
+    return;
+  }
+  let content = fs.readFileSync(settingsFile, 'utf8');
+  const original = content;
+
+  // Handle single-quoted format: id 'org.gradle.toolchains.foojay-resolver-convention' version '0.5.0'
+  content = content.replace(
+    /(['"])org\.gradle\.toolchains\.foojay-resolver-convention\1\s+version\s+(['"])0\.5\.0\2/g,
+    (match, q1, q2) => `${q1}org.gradle.toolchains.foojay-resolver-convention${q1} version ${q2}0.9.0${q2}`
+  );
+
+  if (content !== original) {
+    fs.writeFileSync(settingsFile, content, 'utf8');
+    console.log('Patched foojay-resolver-convention 0.5.0 -> 0.9.0 in android/settings.gradle');
+  } else {
+    console.log('foojay-resolver-convention 0.5.0 not found in settings.gradle, no patch needed.');
+  }
+}
+
+patchFoojayResolver();
+
 const keystorePassword = requireEnv('ANDROID_KEYSTORE_PASSWORD');
 const keyAlias = requireEnv('ANDROID_KEY_ALIAS');
 const keyPassword = requireEnv('ANDROID_KEY_PASSWORD');
