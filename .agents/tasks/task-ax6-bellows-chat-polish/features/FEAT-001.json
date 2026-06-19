@@ -1,0 +1,28 @@
+{
+  "id": "FEAT-001",
+  "type": "feat",
+  "description": "Three bellows direct chat improvements: (1) Settings integration - use actual bellowsServerUrl/bellowsApiKey from useOpencode().settings instead of hardcoded defaultBellowsSettings, (2) Markdown rendering - use existing MarkdownText component for assistant responses, (3) Chat persistence - save messages to AsyncStorage and add Clear Chat button",
+  "status": "completed",
+  "steps": [
+    "In providers/bellows-chat-provider.tsx: Import useOpencode from @/providers/opencode-provider. Inside the BellowsChatProvider component, call useOpencode() to get settings. Build a BellowsConnectionSettings object from settings.bellowsServerUrl and settings.bellowsApiKey (falling back to defaults if empty). Replace all uses of defaultBellowsSettings with this derived settings object. The useEffect for fetching models needs the settings as a dependency so models refresh when settings change. The sendMessage callback must also use the live settings.",
+    "In lib/storage-keys.ts: Add a new export const BELLOWS_CHAT_MESSAGES_STORAGE_KEY = 'bellows-chat-messages';",
+    "In providers/bellows-chat-provider.tsx: Import AsyncStorage from @react-native-async-storage/async-storage and BELLOWS_CHAT_MESSAGES_STORAGE_KEY from @/lib/storage-keys. On mount, load messages from AsyncStorage and set them via setMessages. After every state update that adds a message (in sendMessage after setting the assistant message, and after setting the user message), persist the full messages array to AsyncStorage. In clearMessages, also clear the AsyncStorage key.",
+    "In app/(tabs)/bellows-chat.tsx: Import MarkdownText from @/components/chat/chat-markdown.tsx. In the MessageBubble component, for assistant messages (message.role !== 'user'), replace the plain <Text> with <MarkdownText text={message.content} color={palette.onBubbleAssistant} mutedColor={palette.muted} />. Keep plain <Text> for user messages.",
+    "In app/(tabs)/bellows-chat.tsx: Add a 'Clear Chat' button. Import clearMessages from useBellowsChat(). Add an IconButton (icon='delete' or 'trash-can') in the toolbar area (next to the model selector) that calls clearMessages when pressed. Style it to fit the existing toolbar layout."
+  ],
+  "acceptance_criteria": [
+    "BellowsChatProvider reads bellowsServerUrl and bellowsApiKey from useOpencode().settings instead of using hardcoded defaultBellowsSettings",
+    "Model list fetch and chat completions use the live settings from the context",
+    "Assistant message bubbles render markdown (code blocks, bold, bullets) using MarkdownText component",
+    "User message bubbles remain plain text",
+    "Messages are persisted to AsyncStorage under the bellows-chat-messages key",
+    "On app mount/remount, previously saved messages are loaded and displayed",
+    "A Clear Chat button is visible in the toolbar that clears both state and AsyncStorage",
+    "npm run typecheck passes with no errors"
+  ],
+  "verification": [
+    "Run npm run typecheck and confirm zero type errors"
+  ],
+  "blocked_reason": null,
+  "findings": "All three improvements implemented in one pass. Typecheck passes clean. Used useMemo for connectionSettings to avoid unnecessary re-renders. Used refs for connectionSettings and messages in sendMessage callback to avoid stale closures (same pattern as the previous bellows-chat feature). AsyncStorage persistence uses fire-and-forget pattern (void prefix) to avoid blocking the UI."
+}

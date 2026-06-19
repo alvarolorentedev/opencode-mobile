@@ -3,6 +3,7 @@ import { FlatList, KeyboardAvoidingView, Platform, StyleSheet, View } from 'reac
 import { ActivityIndicator, IconButton, Menu, Surface, Text, TextInput } from 'react-native-paper';
 
 import { type BellowsChatMessage } from '@/lib/bellows/client';
+import { MarkdownText } from '@/components/chat/chat-markdown';
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { BellowsChatProvider, useBellowsChat } from '@/providers/bellows-chat-provider';
@@ -26,14 +27,22 @@ function MessageBubble({ message, palette }: { message: BellowsChatMessage; pale
         ]}
         elevation={1}
       >
-        <Text
-          style={[
-            styles.bubbleText,
-            { color: isUser ? palette.onBubbleUser : palette.onBubbleAssistant },
-          ]}
-        >
-          {message.content}
-        </Text>
+        {isUser ? (
+          <Text
+            style={[
+              styles.bubbleText,
+              { color: palette.onBubbleUser },
+            ]}
+          >
+            {message.content}
+          </Text>
+        ) : (
+          <MarkdownText
+            text={message.content}
+            color={palette.onBubbleAssistant}
+            mutedColor={palette.muted}
+          />
+        )}
       </Surface>
     </View>
   );
@@ -46,7 +55,7 @@ function MessageBubble({ message, palette }: { message: BellowsChatMessage; pale
 function BellowsChatContent() {
   const colorScheme = useColorScheme() ?? 'light';
   const palette = Colors[colorScheme];
-  const { messages, loading, error, models, selectedModel, setSelectedModel, sendMessage } = useBellowsChat();
+  const { messages, loading, error, models, selectedModel, setSelectedModel, sendMessage, clearMessages } = useBellowsChat();
 
   const [inputText, setInputText] = useState('');
   const [menuVisible, setMenuVisible] = useState(false);
@@ -112,6 +121,14 @@ function BellowsChatContent() {
             <Menu.Item title="No models loaded" disabled />
           )}
         </Menu>
+        <View style={styles.toolbarSpacer} />
+        <IconButton
+          icon="delete"
+          size={20}
+          iconColor={palette.muted}
+          onPress={clearMessages}
+          accessibilityLabel="Clear Chat"
+        />
       </View>
 
       {/* Messages */}
@@ -201,6 +218,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 8,
     borderBottomWidth: StyleSheet.hairlineWidth,
+  },
+  toolbarSpacer: {
+    flex: 1,
   },
   modelButton: {
     flexDirection: 'row',

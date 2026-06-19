@@ -3,7 +3,7 @@ import { StyleSheet, View } from 'react-native';
 import { Text } from 'react-native-paper';
 
 function renderInlineMarkdown(text: string, color: string, codeColor: string): ReactNode[] {
-  const parts = text.split(/(`[^`]+`|\*\*[^*]+\*\*)/g).filter(Boolean);
+  const parts = text.split(/(`[^`]+`|\*\*[^*]+\*\*|\*[^*]+\*)/g).filter(Boolean);
 
   return parts.map((part, index) => {
     if (part.startsWith('`') && part.endsWith('`')) {
@@ -18,6 +18,14 @@ function renderInlineMarkdown(text: string, color: string, codeColor: string): R
       return (
         <Text key={`inline-${index}`} style={{ color, fontWeight: '700' }}>
           {part.slice(2, -2)}
+        </Text>
+      );
+    }
+
+    if (part.startsWith('*') && part.endsWith('*') && part.length > 2) {
+      return (
+        <Text key={`inline-${index}`} style={{ color, fontStyle: 'italic' }}>
+          {part.slice(1, -1)}
         </Text>
       );
     }

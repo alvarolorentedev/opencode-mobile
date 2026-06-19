@@ -1,12 +1,15 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import {
   type BellowsChatMessage,
+  type BellowsConnectionSettings,
   type BellowsModel,
   bellowsChatCompletion,
   bellowsListModels,
-  defaultBellowsSettings,
 } from '@/lib/bellows/client';
+import { useOpencode } from '@/providers/opencode-provider';
+import { BELLOWS_CHAT_MESSAGES_STORAGE_KEY } from '@/lib/storage-keys';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -34,6 +37,13 @@ const BellowsChatContext = createContext<BellowsChatContextValue | undefined>(un
 // ---------------------------------------------------------------------------
 
 export function BellowsChatProvider({ children }: { children: React.ReactNode }) {
+  const { settings } = useOpencode();
+
+  const connectionSettings = useMemo<BellowsConnectionSettings>(() => ({
+    serverUrl: settings.bellowsServerUrl || 'http://127.0.0.1:4000',
+    apiKey: settings.bellowsApiKey || 'sk-anvil-safe-key',
+  }), [settings.bellowsServerUrl, settings.bellowsApiKey]);
+
   const [messages, setMessages] = useState<BellowsChatMessage[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -44,13 +54,37 @@ export function BellowsChatProvider({ children }: { children: React.ReactNode })
   const messagesRef = useRef(messages);
   messagesRef.current = messages;
 
-  // Fetch available models on mount
+  // Keep a ref to connectionSettings for use in callbacks
+  const connectionSettingsRef = useRef(connectionSettings);
+  connectionSettingsRef.current = connectionSettings;
+
+  // Load persisted messages on mount
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadMessages() {
+      try {
+        const stored = await AsyncStorage.getItem(BELLOWS_CHAT_MESSAGES_STORAGE_KEY);
+        if (!cancelled && stored) {
+          const parsed = JSON.parse(stored) as BellowsChatMessage[];
+          setMessages(parsed);
+        }
+      } catch {
+        // Silently ignore load failures
+      }
+    }
+
+    void loadMessages();
+    return () => { cancelled = true; };
+  }, []);
+
+  // Fetch available models when connectionSettings change
   useEffect(() => {
     let cancelled = false;
 
     async function fetchModels() {
       try {
-        const result = await bellowsListModels(defaultBellowsSettings);
+        const result = await bellowsListModels(connectionSettings);
         if (!cancelled) {
           setModels(result);
         }
@@ -61,7 +95,7 @@ export function BellowsChatProvider({ children }: { children: React.ReactNode })
 
     void fetchModels();
     return () => { cancelled = true; };
-  }, []);
+  }, [connectionSettings]);
 
   const sendMessage = useCallback(async (text: string) => {
     const userMessage: BellowsChatMessage = { role: 'user', content: text };
@@ -70,15 +104,21 @@ export function BellowsChatProvider({ children }: { children: React.ReactNode })
     setLoading(true);
     setError(null);
 
+    // Persist after adding user message
+    void AsyncStorage.setItem(BELLOWS_CHAT_MESSAGES_STORAGE_KEY, JSON.stringify(updatedMessages));
+
     try {
-      const response = await bellowsChatCompletion(defaultBellowsSettings, {
+      const response = await bellowsChatCompletion(connectionSettingsRef.current, {
         model: selectedModel,
         messages: updatedMessages,
       });
 
       const assistantMessage = response.choices[0]?.message;
       if (assistantMessage) {
-        setMessages(prev => [...prev, assistantMessage]);
+        const withAssistant = [...updatedMessages, assistantMessage];
+        setMessages(withAssistant);
+        // Persist after adding assistant message
+        void AsyncStorage.setItem(BELLOWS_CHAT_MESSAGES_STORAGE_KEY, JSON.stringify(withAssistant));
       }
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Request failed';
@@ -91,6 +131,7 @@ export function BellowsChatProvider({ children }: { children: React.ReactNode })
   const clearMessages = useCallback(() => {
     setMessages([]);
     setError(null);
+    void AsyncStorage.removeItem(BELLOWS_CHAT_MESSAGES_STORAGE_KEY);
   }, []);
 
   const value = useMemo<BellowsChatContextValue>(() => ({

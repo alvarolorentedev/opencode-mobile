@@ -1,0 +1,7 @@
+{
+  "task_id": "task-ax6-bellows-chat-polish",
+  "task_description": "Polish the Bellows Direct Chat with three improvements: (1) connect to actual user settings from the Settings tab, (2) render assistant responses as markdown, (3) persist chat messages across app restarts with a Clear Chat button",
+  "status": "completed",
+  "feature_order": ["FEAT-001"],
+  "blocked_reason": null
+}

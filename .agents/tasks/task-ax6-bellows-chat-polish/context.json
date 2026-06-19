@@ -1,0 +1,27 @@
+{
+  "project_type": "Expo React Native mobile app (TypeScript)",
+  "language": "TypeScript/TSX",
+  "build_system": "Expo with npm",
+  "test_framework": "Playwright E2E tests in tests/e2e/flows.spec.mjs, fake server in tests/fake-opencode/server.mjs",
+  "build_command": "npx expo export --platform web 2>&1 || true",
+  "test_command": "npm run typecheck",
+  "verification_instructions": "Run npm run typecheck to verify no type errors. The project uses expo so full native builds require Android Studio/Xcode.",
+  "snapshot_or_generated_files": null,
+  "setup_instructions": "npm install",
+  "environment_constraints": "No native build environment available. Typecheck is the primary verification. No Docker.",
+  "contribution_requirements": "Follow existing patterns in providers/ and components/. Use IIG palette from constants/theme.ts.",
+  "key_patterns": "Providers use React Context pattern (createContext + Provider + useXxx hook). AsyncStorage for persistence via @react-native-async-storage/async-storage. Storage keys in lib/storage-keys.ts. Bellows settings (bellowsServerUrl, bellowsApiKey) stored in OpencodeConnectionSettings and exposed via useOpencode().settings. MarkdownText component already exists at components/chat/chat-markdown.tsx for rendering markdown in chat bubbles.",
+  "relevant_files": [
+    "providers/bellows-chat-provider.tsx",
+    "app/(tabs)/bellows-chat.tsx",
+    "providers/opencode-provider.tsx",
+    "lib/bellows/client.ts",
+    "lib/opencode/client.ts",
+    "components/chat/chat-markdown.tsx",
+    "providers/use-opencode-persistence.ts",
+    "lib/storage-keys.ts",
+    "constants/theme.ts",
+    "app/_layout.tsx"
+  ],
+  "directory_structure": "app/ - Expo Router screens and layouts, providers/ - React Context providers, lib/ - API clients and utilities, components/ - reusable UI components, constants/ - theme and config"
+}
