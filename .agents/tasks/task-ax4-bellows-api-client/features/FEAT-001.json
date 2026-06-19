@@ -25,5 +25,5 @@
     "Run `npm run lint` in /projects/sandbox/ANVIL-CLIENT and confirm exit code 0"
   ],
   "blocked_reason": null,
-  "findings": "Typecheck and lint both pass cleanly. The BellowsSection uses type assertion for percentage-based width styling which TypeScript accepts without issue. The existing @opencode-ai/sdk client remains untouched."
+  "findings": "Typecheck and lint both pass cleanly. Review fixes applied: (1) bellowsError state added to surface fetch failures with inline error text, (2) Snackbar feedback for connection test success/failure, (3) bellowsBudgetInfo normalizes response shape checking for nested info/budget_info keys, (4) DimensionValue import replaces as-any type assertion. Items intentionally not fixed per scope constraints: SecureStore for API key, settings type coupling, model list virtualization."
 }
