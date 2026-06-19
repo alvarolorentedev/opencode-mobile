@@ -69,13 +69,13 @@ export function ConnectionSection({ connection, isConnecting, onReconnect, palet
         </View>
         <TextInput
           mode="outlined"
-          label="Server URL"
+          label="Bellows Server URL"
           testID="settings-server-url-input"
           value={settings.serverUrl}
           onChangeText={(value) => updateSettings({ serverUrl: value })}
           autoCapitalize="none"
           autoCorrect={false}
-          placeholder="http://192.168.1.10:4096"
+          placeholder="http://your-bellows-server:4096"
         />
         <TextInput
           mode="outlined"

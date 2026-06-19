@@ -12,15 +12,15 @@ export function getPaperTheme(colorScheme: 'light' | 'dark'): MD3Theme {
 
   return {
     ...base,
-    roundness: 3,
+    roundness: 8,
     colors: {
       ...base.colors,
       primary: palette.tint,
-      onPrimary: colorScheme === 'dark' ? '#08110F' : '#FFFFFF',
+      onPrimary: colorScheme === 'dark' ? '#1A1D21' : '#F6F2EB',
       primaryContainer: palette.surfaceAlt,
       onPrimaryContainer: palette.text,
       secondary: palette.accent,
-      onSecondary: colorScheme === 'dark' ? '#08110F' : '#FFFFFF',
+      onSecondary: colorScheme === 'dark' ? '#1A1D21' : '#F6F2EB',
       secondaryContainer: palette.surfaceAlt,
       onSecondaryContainer: palette.text,
       error: palette.danger,

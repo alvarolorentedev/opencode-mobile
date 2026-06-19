@@ -109,18 +109,18 @@ function createScopedFetch(baseUrl: string, pathPrefix: string) {
 
 function getConnectionErrorMessage(error: unknown, serverUrl: string) {
   if (!(error instanceof Error)) {
-    return 'Something went wrong while talking to OpenCode.';
+    return 'Something went wrong while talking to Bellows.';
   }
 
   const normalizedUrl = normalizeServerUrl(serverUrl).displayUrl;
-  const message = error.message || 'Something went wrong while talking to OpenCode.';
+  const message = error.message || 'Something went wrong while talking to Bellows.';
 
   if (/404|not found/i.test(message)) {
-    return `OpenCode endpoint not found at ${normalizedUrl}. If this address serves a web UI, use the API base URL instead, usually ${normalizedUrl}/api.`;
+    return `Bellows endpoint not found at ${normalizedUrl}. If this address serves a web UI, use the API base URL instead, usually ${normalizedUrl}/api.`;
   }
 
   if (/json/i.test(message) && /unexpected|parse|token/i.test(message)) {
-    return `The server at ${normalizedUrl} did not return an OpenCode API response. If this address serves a web UI, use the API base URL instead, usually ${normalizedUrl}/api.`;
+    return `The server at ${normalizedUrl} did not return a Bellows API response. If this address serves a web UI, use the API base URL instead, usually ${normalizedUrl}/api.`;
   }
 
   return message;
@@ -180,7 +180,7 @@ export function getConnectionError(serverUrl: string, error: unknown) {
 async function apiRequest(client: any, path: string, init?: RequestInit) {
   const baseUrl = client?.__opencode?.baseUrl;
   if (!baseUrl) {
-    throw new Error('OpenCode client is missing base URL metadata.');
+    throw new Error('Bellows client is missing base URL metadata.');
   }
 
   const requestUrl = new URL(buildServerUrl(path, {
@@ -203,7 +203,7 @@ async function apiRequest(client: any, path: string, init?: RequestInit) {
   });
 
   if (!response.ok) {
-    throw new Error(`OpenCode request failed: ${response.status}`);
+    throw new Error(`Bellows request failed: ${response.status}`);
   }
 
   if (response.status === 204) {

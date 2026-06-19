@@ -1,12 +1,18 @@
-# OpenCode Mobile
+# ANVIL-CLIENT
 
-Mobile client for OpenCode, built with Expo and React Native.
+Mobile client for the ANVIL/Bellows LLM routing system, built with Expo and React Native.
+
+Forked from [alvarolorentedev/opencode-mobile](https://github.com/alvarolorentedev/opencode-mobile) (Apache 2.0).
+
+## What is this?
+
+ANVIL-CLIENT is the mobile surface for ANVIL's Bellows gateway. It connects to a Bellows server instance and provides a chat interface for interacting with LLM-routed sessions, workspaces, and provider configurations from your phone or tablet.
 
 ## Requirements
 
 - Node.js 20+
 - npm
-- An OpenCode server you can connect to
+- A Bellows server you can connect to
 - Android Studio / Xcode if you want local native builds
 
 ## Getting Started
@@ -41,13 +47,13 @@ npm run ios
 
 ## Testing
 
-- Flow validation is CI-first and always runs against the fake OpenCode server in `tests/fake-opencode/server.mjs`.
+- Flow validation is CI-first and always runs against the fake server in `tests/fake-opencode/server.mjs`.
 - The end-to-end suite is implemented with Playwright in `tests/e2e/flows.spec.mjs`.
 - The full repo testing strategy is documented in `TESTING.md`.
 
-## OpenCode Connection
+## Bellows Connection
 
-Connection settings are configured inside the mobile app. By default the app expects an OpenCode server at `http://127.0.0.1:4096`.
+Connection settings are configured inside the mobile app. By default the app expects a Bellows server at `http://127.0.0.1:4096`.
 
 Local-only files such as `.env` and `config.json` are intentionally gitignored because they may contain secrets or tokens.
 
@@ -67,24 +73,6 @@ npm run build:development:android
 
 Both local and GitHub Actions Android builds use the native `android/` project plus Gradle.
 
-### Release To Play Store
+## Donor Attribution
 
-- Push to `main` to run the Android release build and upload artifacts.
-- Push a version tag like `v1.2.3` to trigger the production Play Store upload automatically.
-- Use the manual `workflow_dispatch` release path only if you want an internal-track upload.
-
-### GitHub Actions Secrets
-
-- `ANDROID_KEYSTORE_BASE64`
-- `ANDROID_KEYSTORE_PASSWORD`
-- `ANDROID_KEY_ALIAS`
-- `ANDROID_KEY_PASSWORD`
-- `GOOGLE_PLAY_SERVICE_ACCOUNT_JSON` for Play Store uploads
-
-### GitHub Actions Variables
-
-- `EXPO_ANDROID_PACKAGE`
-- `EXPO_ANDROID_PACKAGE_DEV` optional; defaults to `<EXPO_ANDROID_PACKAGE>.dev`
-
-The release workflow lives in `.github/workflows/android-release.yml`.
-The development build workflow lives in `.github/workflows/expo-development-build.yml`.
+This project is a fork of [opencode-mobile](https://github.com/alvarolorentedev/opencode-mobile) by alvarolorentedev, licensed under the Apache License 2.0. The original project provides the Expo/React Native scaffolding, navigation structure, and OpenCode SDK integration that ANVIL-CLIENT builds upon.
