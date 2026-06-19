@@ -2,7 +2,7 @@
   "id": "FEAT-001",
   "type": "feat",
   "description": "Create the Bellows API client at lib/bellows/client.ts that directly calls the LiteLLM proxy endpoints. Add a BellowsSection to settings for connection (Server URL + API Key) and integrate the budget display and model listing into the settings tab.",
-  "status": "in_progress",
+  "status": "completed",
   "steps": [
     "Create a new git branch `gate/ax4-bellows-api-client` from the current HEAD.",
     "Create `lib/bellows/client.ts` exporting a Bellows API client module. It should: (a) Define a `BellowsConnectionSettings` type with `serverUrl` (string, default 'http://127.0.0.1:4000') and `apiKey` (string, default 'sk-anvil-safe-key'). (b) Export async functions: `bellowsChatCompletion(settings, params: {model, messages, max_tokens?})` calling POST /v1/chat/completions, `bellowsListModels(settings)` calling GET /model/list, `bellowsAddModel(settings, params)` calling POST /model/add, `bellowsBudgetInfo(settings)` calling GET /budget/info, `bellowsSpendTotal(settings)` calling GET /spend/total, `bellowsSpendLogs(settings)` calling GET /spend/logs, `bellowsCacheInfo(settings)` calling GET /cache/info. Each function uses fetch with Authorization: Bearer {apiKey} header and Accept/Content-Type application/json. Return typed responses. (c) Export a `BellowsBudgetInfo` type: { current_spend: number; max_budget: number | null }. (d) Export a `BellowsModel` type: { id: string; [key: string]: any }.",
@@ -25,5 +25,5 @@
     "Run `npm run lint` in /projects/sandbox/ANVIL-CLIENT and confirm exit code 0"
   ],
   "blocked_reason": null,
-  "findings": ""
+  "findings": "Typecheck and lint both pass cleanly. The BellowsSection uses type assertion for percentage-based width styling which TypeScript accepts without issue. The existing @opencode-ai/sdk client remains untouched."
 }
