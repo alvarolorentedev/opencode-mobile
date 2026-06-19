@@ -1,0 +1,7 @@
+{
+  "task_id": "task-anvil-identity-iig-theming",
+  "task_description": "ANVIL-ize the opencode-mobile fork: rebrand to ANVIL, implement IIG Design System theming (Warm Paper light / Charcoal Room dark), and point the client config label at Bellows.",
+  "status": "in_progress",
+  "feature_order": ["FEAT-001", "FEAT-002"],
+  "blocked_reason": null
+}

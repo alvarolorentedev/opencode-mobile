@@ -1,0 +1,22 @@
+{
+  "id": "FEAT-001",
+  "type": "chore",
+  "description": "Install dependencies and verify baseline build passes (lint + typecheck)",
+  "status": "completed",
+  "steps": [
+    "Run `npm install` in /projects/sandbox/ANVIL-CLIENT",
+    "Run `npm run lint` and confirm it passes",
+    "Run `npm run typecheck` and confirm it passes"
+  ],
+  "acceptance_criteria": [
+    "npm install completes without errors",
+    "npm run lint passes with exit code 0",
+    "npm run typecheck passes with exit code 0"
+  ],
+  "verification": [
+    "npm run lint",
+    "npm run typecheck"
+  ],
+  "blocked_reason": null,
+  "findings": "npm install added 1022 packages successfully. Both `npm run lint` (expo lint) and `npm run typecheck` (tsc --noEmit) pass with exit code 0. The project name in package.json is still 'opencode-mobile@1.0.2'. 32 audit vulnerabilities reported (non-blocking)."
+}
