@@ -34,7 +34,7 @@ export default function TabLayout() {
       <Tabs.Screen
         name="index"
         options={{
-          title: 'OpenCode Mobile',
+          title: 'ANVIL',
           tabBarLabel: 'Chat',
           tabBarIcon: ({ color }) => <IconSymbol size={28} name="message.fill" color={color} />,
         }}
@@ -44,6 +44,13 @@ export default function TabLayout() {
         options={{
           title: 'Workspace',
           tabBarIcon: ({ color }) => <IconSymbol size={28} name="folder.fill" color={color} />,
+        }}
+      />
+      <Tabs.Screen
+        name="bellows-chat"
+        options={{
+          title: 'Bellows',
+          tabBarIcon: ({ color }) => <IconSymbol size={28} name="sparkles" color={color} />,
         }}
       />
       <Tabs.Screen

@@ -1,0 +1,7 @@
+{
+  "task_id": "task-bellows-direct-chat",
+  "task_description": "Implement a Direct Bellows Chat mode - a standalone chat tab that uses the Bellows LiteLLM proxy directly without requiring an OpenCode server connection. Includes a provider for state management, a chat UI screen, and tab registration.",
+  "status": "in_progress",
+  "feature_order": ["FEAT-001"],
+  "blocked_reason": null
+}

@@ -9,30 +9,30 @@ const appVariant = env('EXPO_APP_VARIANT') ?? 'production';
 const isDevelopmentVariant = appVariant === 'development';
 const isE2EMode = env('EXPO_PUBLIC_E2E_MODE') === '1';
 const e2eServerUrl = env('EXPO_PUBLIC_E2E_SERVER_URL');
-const defaultAndroidPackage = 'app.getopencode';
+const defaultAndroidPackage = 'com.anvil.client';
 const releaseAndroidPackage = env('EXPO_ANDROID_PACKAGE') ?? defaultAndroidPackage;
 const developmentAndroidPackage = env('EXPO_ANDROID_PACKAGE_DEV') ?? `${releaseAndroidPackage}.dev`;
 const androidPackage = isDevelopmentVariant ? developmentAndroidPackage : releaseAndroidPackage;
 
 const config: ExpoConfig = {
-  name: isDevelopmentVariant ? 'OpenCode Mobile Dev' : 'OpenCode Mobile',
-  slug: 'opencode-mobile',
+  name: isDevelopmentVariant ? 'ANVIL Dev' : 'ANVIL',
+  slug: 'anvil-client',
   version: '1.0.2',
   orientation: 'portrait',
   splash: {
     image: "./assets/images/splash.png",
     resizeMode: "contain",
-    backgroundColor: "#202020"
+    backgroundColor: "#1A1D21"
   },
   icon: './assets/images/icon.png',
-  scheme: 'opencodemobile',
+  scheme: 'anvilclient',
   userInterfaceStyle: 'automatic',
   newArchEnabled: true,
   android: {
     package: androidPackage,
     adaptiveIcon: {
       foregroundImage: './assets/images/adaptive-icon.png',
-      backgroundColor: "#202020"
+      backgroundColor: "#1A1D21"
     },
     edgeToEdgeEnabled: true,
     predictiveBackGestureEnabled: false,
@@ -59,9 +59,9 @@ const config: ExpoConfig = {
         image: './assets/images/splash-icon.png',
         imageWidth: 200,
         resizeMode: 'contain',
-        backgroundColor: '#ffffff',
+        backgroundColor: '#F6F2EB',
         dark: {
-          backgroundColor: '#000000',
+          backgroundColor: '#1A1D21',
         },
       },
     ],

@@ -119,7 +119,7 @@ export default function WorkspaceScreen() {
         <Text variant="headlineSmall" style={{ color: palette.text }}>Workspaces</Text>
         <Text variant="bodyMedium" style={{ color: palette.muted }}>
           {connection.status === 'connected'
-            ? `Connected to ${connection.projectDirectory || currentProjectPath || serverRootPath || 'your OpenCode server'}`
+            ? `Connected to ${connection.projectDirectory || currentProjectPath || serverRootPath || 'your Bellows server'}`
             : connection.message}
         </Text>
         <View style={styles.actions}>

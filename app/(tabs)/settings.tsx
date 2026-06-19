@@ -10,6 +10,7 @@ import {
 } from 'react-native-paper';
 
 import { Colors } from '@/constants/theme';
+import { BellowsSection } from '@/components/settings/bellows-section';
 import { ProviderConfigDialog } from '@/components/settings/provider-config-dialog';
 import {
   AiDefaultsSection,
@@ -31,6 +32,12 @@ import {
 } from '@/lib/notifications';
 import { getSpeechVoiceOptions, type SpeechVoiceOption } from '@/lib/voice/speech-output';
 import { useOpencode } from '@/providers/opencode-provider';
+import {
+  bellowsBudgetInfo,
+  bellowsListModels,
+  type BellowsBudgetInfo,
+  type BellowsModel,
+} from '@/lib/bellows/client';
 
 export default function SettingsScreen() {
   const colorScheme = useColorScheme() ?? 'light';
@@ -63,6 +70,11 @@ export default function SettingsScreen() {
   const [notificationFeedback, setNotificationFeedback] = useState<string>();
   const [availableSpeechVoices, setAvailableSpeechVoices] = useState<SpeechVoiceOption[]>([]);
   const [isRefreshingSpeechVoices, setIsRefreshingSpeechVoices] = useState(false);
+  const [bellowsBudget, setBellowsBudget] = useState<BellowsBudgetInfo | null>(null);
+  const [bellowsModels, setBellowsModels] = useState<BellowsModel[]>([]);
+  const [isBellowsLoading, setIsBellowsLoading] = useState(false);
+  const [bellowsError, setBellowsError] = useState<string | null>(null);
+  const [bellowsFeedback, setBellowsFeedback] = useState<string | undefined>();
   const applicationId = useMemo(
     () => Constants.expoConfig?.android?.package || Constants.expoConfig?.ios?.bundleIdentifier,
     [],
@@ -147,6 +159,36 @@ export default function SettingsScreen() {
       setAvailableSpeechVoices([]);
     } finally {
       setIsRefreshingSpeechVoices(false);
+    }
+  }
+
+  async function refreshBellows() {
+    setIsBellowsLoading(true);
+    setBellowsError(null);
+    try {
+      const bellowsSettings = {
+        serverUrl: settings.bellowsServerUrl || 'http://127.0.0.1:4000',
+        apiKey: settings.bellowsApiKey || 'sk-anvil-safe-key',
+      };
+      const [budget, models] = await Promise.all([
+        bellowsBudgetInfo(bellowsSettings).catch((err: unknown) => {
+          throw err;
+        }),
+        bellowsListModels(bellowsSettings).catch((err: unknown) => {
+          throw err;
+        }),
+      ]);
+      setBellowsBudget(budget);
+      setBellowsModels(models);
+      setBellowsFeedback('Bellows connection successful.');
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Connection failed';
+      setBellowsError(message);
+      setBellowsBudget(null);
+      setBellowsModels([]);
+      setBellowsFeedback(undefined);
+    } finally {
+      setIsBellowsLoading(false);
     }
   }
 
@@ -335,6 +377,17 @@ export default function SettingsScreen() {
           settings={settings}
           updateSettings={updateSettings}
         />
+        <BellowsSection
+          bellowsServerUrl={settings.bellowsServerUrl || 'http://127.0.0.1:4000'}
+          bellowsApiKey={settings.bellowsApiKey || 'sk-anvil-safe-key'}
+          bellowsError={bellowsError}
+          budgetInfo={bellowsBudget}
+          isBellowsLoading={isBellowsLoading}
+          models={bellowsModels}
+          onRefresh={() => void refreshBellows()}
+          palette={palette}
+          updateSettings={updateSettings}
+        />
         <AiDefaultsSection
           availableModels={availableModels}
           availableProviders={availableProviders}
@@ -399,6 +452,12 @@ export default function SettingsScreen() {
         onDismiss={() => setProviderFeedback(undefined)}
         duration={4000}>
         {providerFeedback?.message}
+      </Snackbar>
+      <Snackbar
+        visible={Boolean(bellowsFeedback)}
+        onDismiss={() => setBellowsFeedback(undefined)}
+        duration={3000}>
+        {bellowsFeedback}
       </Snackbar>
       <Snackbar
         visible={Boolean(notificationFeedback)}

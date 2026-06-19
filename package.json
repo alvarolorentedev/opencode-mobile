@@ -1,5 +1,5 @@
 {
-  "name": "opencode-mobile",
+  "name": "anvil-client",
   "main": "expo-router/entry",
   "version": "1.0.2",
   "scripts": {

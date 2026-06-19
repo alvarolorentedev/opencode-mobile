@@ -1,0 +1,25 @@
+{
+  "project_type": "Expo React Native app (mobile + web) with TypeScript",
+  "language": "TypeScript / TSX",
+  "build_system": "Expo CLI with npm scripts",
+  "test_framework": "Playwright for E2E tests, tsc --noEmit for type checking, eslint for linting",
+  "build_command": "npx expo export --platform web --output-dir dist-test 2>&1 || true",
+  "test_command": "npm run typecheck",
+  "verification_instructions": "Run npm run typecheck to confirm no TypeScript errors. Run npm run lint to confirm no lint errors.",
+  "snapshot_or_generated_files": null,
+  "setup_instructions": "Dependencies already installed in node_modules. No additional setup needed.",
+  "environment_constraints": "No device emulators available. Verification limited to typecheck and lint. No docker daemon.",
+  "contribution_requirements": "Do NOT modify existing opencode-provider or opencode-related files. New tab must work independently of OpenCode connection state.",
+  "key_patterns": "Tab screens in app/(tabs)/*.tsx. IconSymbol component uses SF Symbol names mapped to Material Icons in components/ui/icon-symbol.tsx. Colors from constants/theme.ts with light/dark palettes. React Native Paper for UI components. useColorScheme hook for theme detection. Providers in providers/ directory as context-based React providers.",
+  "relevant_files": [
+    "lib/bellows/client.ts",
+    "constants/theme.ts",
+    "app/(tabs)/_layout.tsx",
+    "app/(tabs)/index.tsx",
+    "components/ui/icon-symbol.tsx",
+    "components/chat/chat-composer.tsx",
+    "providers/opencode-provider.tsx",
+    "hooks/use-color-scheme.ts"
+  ],
+  "directory_structure": "app/(tabs)/ - file-based routing screens; providers/ - React context providers; lib/ - API clients and utilities; components/ - shared UI components; constants/ - theme and config; hooks/ - custom hooks"
+}

@@ -1,0 +1,34 @@
+{
+  "id": "FEAT-002",
+  "type": "feat",
+  "description": "Replace the green-toned color palette with IIG Design System colors (Warm Paper light, Charcoal Room dark), rebrand all OpenCode user-facing strings to ANVIL, update app.config.ts identity, and reconfigure the client connection label to say Bellows Server URL instead of OpenCode Server URL.",
+  "status": "completed",
+  "steps": [
+    "Step 1 - IIG Theming: Rewrite constants/theme.ts replacing all color values with IIG tokens. Light palette maps to Warm Paper: background=#F6F2EB, surface=#F4F0EA, surfaceAlt=#E8DFD0, card=#F8F4EE, text=#2A2A2A, tint=#8F1D1D (oxidrot primary), accent=#B4362E (oxidrot hover), muted=#6B6258, border=#D7CAB8, icon=#8A7D70, success=#3F6B42, warning=#A8741F (honey), danger=#8F1D1D, bubbleUser=#8F1D1D, onBubbleUser=#F6F2EB, bubbleAssistant=#E8DFD0, onBubbleAssistant=#2A2A2A, tabBackground=#F4F0EA, tabIconDefault=#8A7D70, tabIconSelected=#8F1D1D. Dark palette maps to Charcoal Room: background=#1A1D21, surface=#15171A, surfaceAlt=#24272B, card=#2C3035, text=#F2E9DC, tint=#D2A650 (amber dark), accent=#B4362E, muted=#B7AA98, border=rgba approximated as #3D3832, icon=#988C7D, success=#6D916F, warning=#B9852D, danger=#B4362E, bubbleUser=#8F1D1D, onBubbleUser=#F2E9DC, bubbleAssistant=#24272B, onBubbleAssistant=#F2E9DC, tabBackground=#15171A, tabIconDefault=#988C7D, tabIconSelected=#D2A650.",
+    "Step 2 - Paper Theme: Update constants/paper-theme.ts if needed to ensure it properly maps the new IIG Colors palette to react-native-paper MD3Theme (roundness can stay at 3 or increase to match IIG radius-sm ~8). The existing mapping logic should work since it reads from Colors.",
+    "Step 3 - Branding in app.config.ts: Change app name from 'OpenCode Mobile' / 'OpenCode Mobile Dev' to 'ANVIL' / 'ANVIL Dev'. Change slug from 'opencode-mobile' to 'anvil-client'. Change scheme from 'opencodemobile' to 'anvilclient'. Change default android package from 'app.getopencode' to 'com.anvil.client'. Update splash backgroundColor to IIG canvas dark (#1A1D21).",
+    "Step 4 - Branding in package.json: Change name from 'opencode-mobile' to 'anvil-client'.",
+    "Step 5 - Branding in app/(tabs)/_layout.tsx: Change title 'OpenCode Mobile' to 'ANVIL'.",
+    "Step 6 - Branding in app/(tabs)/index.tsx: Change user-facing strings 'Opening OpenCode Mobile' to 'Opening ANVIL' and 'Loading the latest session for this OpenCode Mobile workspace.' to 'Loading the latest session for this workspace.'.",
+    "Step 7 - Branding in app/(tabs)/workspace.tsx: Change fallback string 'your OpenCode server' to 'your Bellows server'.",
+    "Step 8 - Bellows API config label: In lib/opencode/client.ts, change the defaultConnectionSettings serverUrl default from 'http://127.0.0.1:4096' to 'http://127.0.0.1:4096' (keep same default port for now, just a cosmetic rename is done in the settings UI). In components/settings/settings-sections.tsx, change the TextInput label 'Server URL' to 'Bellows Server URL' and placeholder from 'http://192.168.1.10:4096' to 'http://your-bellows-server:4096'.",
+    "Step 9 - Branding in error messages: In lib/opencode/client.ts, replace user-facing strings referencing 'OpenCode' with 'Bellows' (e.g., 'Something went wrong while talking to OpenCode.' becomes 'Something went wrong while talking to Bellows.', 'OpenCode endpoint not found' becomes 'Bellows endpoint not found', 'did not return an OpenCode API response' becomes 'did not return a Bellows API response', 'OpenCode request failed' becomes 'Bellows request failed', 'OpenCode client is missing base URL metadata.' becomes 'Bellows client is missing base URL metadata.').",
+    "Step 10 - README.md: Rewrite README.md with ANVIL-CLIENT identity, mentioning it is forked from alvarolorentedev/opencode-mobile (Apache 2.0), describe it as the mobile client for the ANVIL/Bellows LLM routing system, keep the same Getting Started and Common Commands sections but update branding references."
+  ],
+  "acceptance_criteria": [
+    "constants/theme.ts exports IIG Warm Paper colors for light and IIG Charcoal Room colors for dark",
+    "app.config.ts uses 'ANVIL' name, 'anvil-client' slug, 'anvilclient' scheme, 'com.anvil.client' package",
+    "package.json name is 'anvil-client'",
+    "All user-facing strings referencing 'OpenCode Mobile' or 'OpenCode' in the tab layout, index screen, workspace screen, settings, and error messages are rebranded to ANVIL/Bellows",
+    "Settings screen shows 'Bellows Server URL' label",
+    "README.md describes the project as ANVIL-CLIENT with donor attribution",
+    "npm run lint passes",
+    "npm run typecheck passes"
+  ],
+  "verification": [
+    "npm run lint",
+    "npm run typecheck"
+  ],
+  "blocked_reason": null,
+  "findings": "All 10 steps completed. npm run lint and npm run typecheck both pass cleanly. package-lock.json was auto-updated due to name change in package.json. No other files were impacted."
+}

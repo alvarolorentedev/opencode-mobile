@@ -1,0 +1,28 @@
+{
+  "project_type": "Expo/React Native mobile app (fork of opencode-mobile)",
+  "language": "TypeScript / React Native",
+  "build_system": "npm + expo, Gradle for Android",
+  "test_framework": "Playwright E2E (tests/e2e/), fake server (tests/fake-opencode/), static checks (lint + typecheck)",
+  "build_command": "npm run typecheck && npm run lint",
+  "test_command": "npm run typecheck",
+  "verification_instructions": "1. npm run lint 2. npm run typecheck -- these are the baseline validation per AGENTS.md",
+  "snapshot_or_generated_files": null,
+  "setup_instructions": "npm install in /projects/sandbox/ANVIL-CLIENT",
+  "environment_constraints": "Full internet access. No Android SDK for native builds. Validation is lint + typecheck.",
+  "contribution_requirements": "Follow layer architecture in AGENTS.md: providers own domain state, lib owns protocol, components own presentation. Keep screens thin. No fetch logic in components.",
+  "key_patterns": "Colors exported from constants/theme.ts with light/dark palettes. Paper theme in constants/paper-theme.ts maps Colors to react-native-paper MD3Theme. Client construction in lib/opencode/client.ts with OpencodeConnectionSettings type. App config in app.config.ts. All OpenCode branding references use 'OpenCode' string.",
+  "relevant_files": [
+    "constants/theme.ts",
+    "constants/paper-theme.ts",
+    "app.config.ts",
+    "package.json",
+    "app/(tabs)/_layout.tsx",
+    "app/(tabs)/index.tsx",
+    "app/(tabs)/workspace.tsx",
+    "app/_layout.tsx",
+    "lib/opencode/client.ts",
+    "components/settings/settings-sections.tsx",
+    "README.md"
+  ],
+  "directory_structure": "app/ - Expo Router pages (tabs: index/chat, workspace, settings). components/ - UI (chat/, settings/, ui/). providers/ - domain state/orchestration. lib/opencode/ - API client layer. constants/ - theme + paper-theme. assets/images/ - icons and splash."
+}

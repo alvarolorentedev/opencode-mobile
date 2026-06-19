@@ -22,6 +22,7 @@ const MAPPING = {
   'sidebar.left': 'view-sidebar',
   'gearshape.fill': 'settings',
   'folder.fill': 'folder',
+  'sparkles': 'auto-awesome',
 } as IconMapping;
 
 /**

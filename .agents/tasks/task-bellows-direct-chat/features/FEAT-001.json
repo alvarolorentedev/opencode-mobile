@@ -1,0 +1,27 @@
+{
+  "id": "FEAT-001",
+  "type": "feat",
+  "description": "Create a standalone Bellows Chat provider, a new chat tab screen, and register it in the tab layout - implementing a direct LLM chat mode that works without OpenCode server",
+  "status": "completed",
+  "steps": [
+    "Create providers/bellows-chat-provider.tsx: A standalone React context provider that (a) manages a local messages array (BellowsChatMessage[]) in state, (b) exposes sendMessage(text: string) that appends the user message, calls bellowsChatCompletion with the full history array, and appends the assistant response, (c) exposes a loading state while waiting for the API, (d) calls bellowsListModels on mount to populate available models list, (e) holds selectedModel state (default 'gpt-4o'), (f) exposes setSelectedModel and models list, (g) uses defaultBellowsSettings from lib/bellows/client.ts. Keep it simple - no AsyncStorage persistence needed (memory only is fine), no streaming.",
+    "Create app/(tabs)/bellows-chat.tsx: A new tab screen that (a) wraps content in BellowsChatProvider, (b) displays a model selector dropdown/picker at the top using react-native-paper Menu or similar, (c) shows a FlatList/ScrollView of messages with user messages styled with palette.bubbleUser/onBubbleUser and assistant messages with palette.bubbleAssistant/onBubbleAssistant, (d) has a text input and send button at the bottom, (e) uses Colors from constants/theme.ts with useColorScheme for dark/light support, (f) shows a loading indicator while the assistant is generating.",
+    "Update app/(tabs)/_layout.tsx: Add a new Tabs.Screen entry for 'bellows-chat' with title 'Bellows' and an appropriate icon. Add the 'sparkles' SF Symbol mapping to components/ui/icon-symbol.tsx (maps to Material Icons 'auto-awesome') and use it for the tab icon.",
+    "Ensure the Bellows tab is completely independent of the OpenCode provider - it should not import from or depend on providers/opencode-provider.tsx or any opencode-specific modules."
+  ],
+  "acceptance_criteria": [
+    "providers/bellows-chat-provider.tsx exports BellowsChatProvider and useBellowsChat hook",
+    "app/(tabs)/bellows-chat.tsx renders a functional chat screen with model selector, message list, and input",
+    "The tab appears in the tab bar with a 'Bellows' label and sparkles/auto-awesome icon",
+    "npm run typecheck passes with no errors",
+    "The Bellows chat screen has no imports from providers/opencode-provider or lib/opencode/",
+    "Messages are sent using bellowsChatCompletion with the full history array (OpenAI-style)",
+    "Default model is 'gpt-4o' with ability to change via dropdown populated by bellowsListModels"
+  ],
+  "verification": [
+    "Run `npm run typecheck` in /projects/sandbox/ANVIL-CLIENT and confirm it passes",
+    "Run `npm run lint` in /projects/sandbox/ANVIL-CLIENT and confirm no new errors"
+  ],
+  "blocked_reason": null,
+  "findings": "Implementation completed cleanly. Both typecheck and lint pass with zero errors. The provider uses useCallback and useMemo for stability. The chat screen uses FlatList with auto-scroll. Model selector uses react-native-paper Menu. Post-review fix: resolved stale closure in sendMessage by adding a useRef to track latest messages and removing messages from the useCallback dependency array. This ensures concurrent sends always reference the current messages array."
+}

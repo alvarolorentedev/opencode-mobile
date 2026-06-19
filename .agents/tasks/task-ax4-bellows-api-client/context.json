@@ -1,0 +1,27 @@
+{
+  "project_type": "Expo/React Native mobile app (TypeScript)",
+  "language": "TypeScript / React Native",
+  "build_system": "npm + Expo CLI; no Dockerfile",
+  "test_framework": "Playwright E2E flows against fake-opencode server; static checks via eslint + tsc",
+  "build_command": "npm run typecheck && npm run lint",
+  "test_command": "npm run typecheck",
+  "verification_instructions": "Run `npm run typecheck` and `npm run lint` to confirm no type or lint errors. The project does not have unit tests; validation is done through CI flow tests and static analysis.",
+  "snapshot_or_generated_files": null,
+  "setup_instructions": "cd /projects/sandbox/ANVIL-CLIENT && npm install",
+  "environment_constraints": "Full internet access. Node.js and npm available. No Docker daemon needed.",
+  "contribution_requirements": "Test complete user flows not isolated helpers. Keep static checks green (lint + typecheck). The existing @opencode-ai/sdk must remain as fallback - do not remove it.",
+  "key_patterns": "- lib/opencode/client.ts: API client with auth header building, normalized URLs, exported functions for each endpoint. - providers/opencode-provider.tsx: main context provider with useState for all state, useCallback for actions, exported via React Context. - components/settings/settings-sections.tsx: each settings card is a separate exported component receiving palette + data as props. - constants/theme.ts: IIG palette with light/dark Colors object. - Path alias @/* resolves to project root.",
+  "relevant_files": [
+    "lib/opencode/client.ts",
+    "providers/opencode-provider.tsx",
+    "providers/opencode-provider-types.ts",
+    "providers/services/capabilities-service.ts",
+    "components/settings/settings-sections.tsx",
+    "components/settings/settings-utils.ts",
+    "app/(tabs)/settings.tsx",
+    "constants/theme.ts",
+    "package.json",
+    "tsconfig.json"
+  ],
+  "directory_structure": "lib/ - utility libraries (opencode client, notifications, voice). providers/ - React context providers and service layers. components/settings/ - settings UI sections. app/(tabs)/ - Expo Router tab screens. constants/ - theme/colors."
+}

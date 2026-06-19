@@ -1,0 +1,7 @@
+{
+  "task_id": "task-ax4-bellows-api-client",
+  "task_description": "Implement Bellows API client (LiteLLM proxy) in ANVIL-CLIENT as a parallel client to the existing @opencode-ai/sdk. Add budget display and model listing to the settings tab. Extend connection settings with Bellows Server URL and API Key.",
+  "status": "in_progress",
+  "feature_order": ["FEAT-001"],
+  "blocked_reason": null
+}
