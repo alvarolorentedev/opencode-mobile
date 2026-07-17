@@ -34,7 +34,7 @@
     "@react-navigation/elements": "^2.6.3",
     "@react-navigation/native": "^7.1.8",
     "base-64": "^1.0.0",
-    "expo": "~54.0.33",
+    "expo": "~56.0.8",
     "expo-av": "^16.0.8",
     "expo-background-task": "~1.0.10",
     "expo-brightness": "~14.0.8",
