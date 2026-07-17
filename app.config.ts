@@ -17,7 +17,7 @@ const androidPackage = isDevelopmentVariant ? developmentAndroidPackage : releas
 const config: ExpoConfig = {
   name: isDevelopmentVariant ? 'OpenCode Mobile Dev' : 'OpenCode Mobile',
   slug: 'opencode-mobile',
-  version: '1.0.2',
+  version: '1.0.3',
   orientation: 'portrait',
   splash: {
     image: "./assets/images/splash.png",
