@@ -53,13 +53,14 @@ This file is the application's effective domain layer. It owns:
 - session lists and session status tracking
 - current session selection and data refresh
 - transcript, diff, and todo caches
-- pending permission and question queues
+- event-driven, session-scoped permission queues
 - provider/model/agent capability discovery
 - chat preference management
 - prompt send / abort lifecycle
 - conversation mode state machine
 - notification completion tracking
-- SSE subscription and polling fallback
+- global SSE subscription with reconnect and polling fallback
+- session lifecycle actions, slash commands, workspace inspection, and diagnostics
 - persistence hydration and write-back
 
 If this app were reimplemented, this provider would be the main source of truth for required behavior.
@@ -78,7 +79,7 @@ If this app were reimplemented, this provider would be the main source of truth 
 - `app/(tabs)/index.tsx`
   Chat landing logic. Ensures a session exists and renders `ChatView` once available.
 - `app/(tabs)/workspace.tsx`
-  Project picker, session list, create/open/archive flows.
+  Project picker, session lifecycle controls, and read-only workspace file inspection.
 - `app/(tabs)/settings.tsx`
   Settings screen controller for connection, providers, notifications, and voice.
 
@@ -102,14 +103,18 @@ If this app were reimplemented, this provider would be the main source of truth 
 ### Services
 
 - `providers/services/session-service.ts`
-  Fetch workspace catalog, sessions, messages, diffs, and todos.
+  Fetch sessions, messages, diffs, todos, commands, and perform session lifecycle actions.
 - `providers/services/capabilities-service.ts`
-  Discover config, providers, provider auth methods, models, and agents.
+  Discover config, providers, provider auth methods, model capabilities, and agents.
+- `providers/services/workspace-service.ts`
+  Read-only file search/read/status and VCS requests.
+- `providers/services/diagnostics-service.ts`
+  Health, MCP, LSP, and formatter diagnostics with per-endpoint availability.
 
 ### OpenCode Protocol Helpers
 
 - `lib/opencode/client.ts`
-  Builds SDK client, normalizes server URL, adds optional basic auth, and implements manual endpoints for permissions/questions/session archive patching.
+  Builds the OpenCode 1.18.3 SDK client, normalizes server URL, adds optional basic auth, and provides a path-prefix-aware request helper for diagnostics.
 - `lib/opencode/format.ts`
   Converts raw message records into transcript entries and helper labels.
 - `lib/opencode/transcript.ts`
@@ -128,7 +133,7 @@ If this app were reimplemented, this provider would be the main source of truth 
 - `components/chat/chat-header.tsx`
   Session picker and conversation overlay mount point.
 - `components/chat/chat-cards.tsx`
-  Message, diff, permission, and question cards.
+  Message, diff, and permission cards, including message fork/revert actions.
 - `components/chat/chat-markdown.tsx`
   Small custom markdown renderer.
 - `components/chat/chat-overlay.tsx`
@@ -165,7 +170,7 @@ The normal startup flow is:
 5. Connection state becomes `connected` or `error`.
 6. If a project exists, the provider fetches sessions and chat capabilities.
 7. A follow-up effect calls `ensureActiveSession()` for the active project.
-8. `ensureActiveSession()` reopens the remembered session, falls back to the latest session, or creates a new one.
+8. `ensureActiveSession()` reopens the remembered session, falls back to the newest returned session, or creates a new one.
 9. The Chat tab can then render transcript, diffs, todos, pending interactions, and controls.
 
 This boot chain is important because the Chat screen itself is not responsible for initial data ownership. It only triggers `ensureActiveSession()` when the provider has enough context.
@@ -177,9 +182,7 @@ The provider creates two client instances:
 - `client`
   Bound to `settings` plus `activeProjectPath`. Used for session-scoped calls.
 - `catalogClient`
-  Bound to `settings` with an empty directory. Used for workspace-level discovery and global pending request fallback.
-
-The same runtime SDK client is also reused as `v2Client` for permission/question endpoints.
+  Bound to `settings` with an empty directory. Used for workspace discovery, diagnostics, and the global event stream.
 
 This split is one of the key architectural details. Workspace discovery is intentionally decoupled from a selected project directory.
 
@@ -194,8 +197,9 @@ The provider fetches and caches:
 - messages per session
 - diffs per session
 - todos per session
-- pending permissions/questions by session
+- pending permissions by session, populated by events and persisted locally
 - providers, models, and agents
+- commands, workspace file status/search/read data, VCS information, and diagnostics
 
 ### Provider -> Derived State
 
@@ -204,7 +208,7 @@ Selectors transform provider state into:
 - current transcript
 - session preview text
 - visible configured providers
-- current pending requests scoped to active or sending session
+- current permissions scoped to the active or sending session
 - conversation status label
 
 ### Provider -> UI
@@ -222,7 +226,9 @@ User interactions are converted to provider actions such as:
 - `sendPrompt`
 - `abortSession`
 - `replyToPermission`
-- `replyToQuestion`
+- `deleteSession`, `renameSession`, `forkSession`, `revertSession`, and share actions
+- `executeCommand`
+- workspace search/read and diagnostics refresh actions
 - `setProviderAuth`
 - `toggleConversationMode`
 
@@ -232,7 +238,7 @@ The app uses two update strategies in parallel:
 
 ### Primary Strategy: SSE Subscription
 
-When connected and a project is active, the provider subscribes to `client.event.subscribe()`.
+When connected and a project is active, the provider opens `catalogClient.global.event()`. Global event envelopes are filtered by `directory === activeProjectPath` before their payload is handled. If the stream ends or fails, the provider reconnects indefinitely with exponential backoff from 1 second to 15 seconds.
 
 Recognized events update local state or schedule refreshes for:
 
@@ -254,7 +260,9 @@ The provider keeps a 5-second polling loop when any of the following is true:
 - a prompt is currently being submitted
 - conversation mode is active
 
-Polling refreshes sessions, current session content, conversation session content, and pending requests as needed.
+Polling refreshes sessions and current/conversation session content as needed. It does not recover permissions because OpenCode 1.18.3 has no pending-permission list API.
+
+Permissions are therefore event-driven. `permission.updated` inserts a request under its `sessionID`; `permission.replied` removes it; idle transitions and user-initiated deletion clear session entries. The map is persisted so a request observed by this app survives an app restart. A request created before the app subscribes, and not already in its persisted map, cannot be discovered through the API.
 
 This dual model is critical. The implementation does not trust SSE alone.
 
@@ -267,9 +275,11 @@ This dual model is critical. The implementation does not trust SSE alone.
 Responsibilities:
 
 - render session transcript
-- render pending permission/question interactions inline
+- render pending permission interactions inline
 - render diff tab
 - send prompts and attachments
+- suggest and execute server-provided slash commands
+- fork from or revert to a user message, and undo a session revert
 - toggle auto-approve
 - select agent/model/reasoning
 - start/stop microphone dictation for the draft box
@@ -286,8 +296,10 @@ Responsibilities:
 - refresh workspace catalog and sessions
 - select active project
 - create/open sessions
-- archive and unarchive sessions
-- show active vs archived session lists
+- rename and permanently delete sessions
+- share/unshare sessions and copy a newly created share URL
+- search and read workspace files without editing them
+- show changed-file count and current VCS branch
 
 ### Settings Screen
 
@@ -295,6 +307,7 @@ Responsibilities:
 
 - edit connection settings
 - reconnect manually
+- inspect server health, realtime status, MCP, LSP, and formatter counts
 - configure providers
 - choose model enablement defaults
 - inspect and enable notification setup
@@ -318,7 +331,7 @@ Supporting behaviors include:
 - optional automatic return to listening after playback
 - keep-awake activation
 - brightness dimming
-- blocking if pending permissions/questions exist
+- blocking if pending permissions exist
 - cancellation and cleanup across timers, speech input, TTS, and working sound
 
 This is one of the densest parts of the architecture and would need careful parity in any rewrite.
@@ -328,7 +341,8 @@ This is one of the densest parts of the architecture and would need careful pari
 - The app uses custom theme tokens from `constants/theme.ts` and maps them into React Native Paper in `constants/paper-theme.ts`.
 - Markdown rendering is intentionally narrow and custom, not library-based.
 - Diff rendering is custom and optimized for readable in-app inspection, not full git-style fidelity.
-- The chat composer also surfaces server-provided todos, but the checkbox interaction is local UI state only and does not write back to the server.
+- The chat composer surfaces server-owned todos as read-only status icons. It does not mutate todo state.
+- Working sound is started by the provider while a send or any session is busy, when enabled, except during listening and speaking phases.
 
 ## Architectural Hotspots
 
@@ -340,7 +354,7 @@ This is the main behavioral hotspot. Changes here can affect nearly every screen
 
 ### Prompt lifecycle
 
-`sendPrompt()`, notification tracking, session refresh, summarization, and pending request refresh are tightly coupled.
+`sendPrompt()`, notification tracking, session refresh, summarization, attachment capability checks, and attachment encoding are tightly coupled.
 
 ### Conversation mode
 
@@ -360,6 +374,6 @@ If the system is rebuilt, the safest parity-preserving architecture would keep t
 - persisted connection/preferences/project/session identity state
 - transcript model derived from raw message parts rather than storing rendered text only
 - explicit conversation mode state machine
-- inline handling for permission/question blocking flows
+- event-driven handling for session-scoped permission blocking flows
 
 Those are implementation-defining patterns, not incidental details.

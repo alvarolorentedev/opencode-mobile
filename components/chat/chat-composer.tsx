@@ -1,6 +1,6 @@
 import { View } from 'react-native';
-import { Chip, IconButton, Surface, Text, TextInput, Card, Checkbox } from 'react-native-paper';
-import { useEffect, useState } from 'react';
+import { Chip, IconButton, Surface, Text, TextInput, Card } from 'react-native-paper';
+import { useState } from 'react';
 
 import { Colors } from '@/constants/theme';
 import { ControlButton, SelectControl } from '@/components/chat/chat-controls';
@@ -8,6 +8,7 @@ import { styles } from '@/components/chat/chat-view-styles';
 import { getAutoApproveIcon, getModelLabel, REASONING_OPTIONS } from '@/components/chat/chat-view-utils';
 import { renderProviderIcon } from '@/components/ui/provider-icon';
 import type { AgentOption, ChatPreferences, ModelOption } from '@/providers/opencode-provider';
+import type { Command } from '@/lib/opencode/types';
 
 type Palette = typeof Colors.light;
 
@@ -39,6 +40,8 @@ type ChatComposerProps = {
   visibleModels: ModelOption[];
   updateChatPreferences: (patch: Partial<ChatPreferences>) => void;
   currentTodos?: any[];
+  commands: Command[];
+  onCommandSelect: (command: string) => void;
 };
 
 export function ChatComposer({
@@ -48,6 +51,7 @@ export function ChatComposer({
   connectionStatus,
   conversation,
   currentSessionId,
+  commands,
   draft,
   insetsBottom,
   isCreatingSession,
@@ -56,6 +60,7 @@ export function ChatComposer({
   isStoppingSession,
   isUpdatingAutoApprove,
   onAttach,
+  onCommandSelect,
   onDraftChange,
   onRemoveAttachment,
   onSend,
@@ -87,21 +92,7 @@ export function ChatComposer({
   const handleInnerActionPress = hasComposerContent ? onAttach : onToggleRecording;
 
   const [todosCollapsed, setTodosCollapsed] = useState(false);
-  const [checkedIds, setCheckedIds] = useState<Record<string, boolean>>({});
   const [inputHeight, setInputHeight] = useState(minInputHeight);
-
-  useEffect(() => {
-    if (!currentTodos) {
-      setCheckedIds({});
-      return;
-    }
-
-    const next: Record<string, boolean> = {};
-    for (const t of currentTodos) {
-      if (t && t.id) next[t.id] = t.status === 'completed';
-    }
-    setCheckedIds(next);
-  }, [currentTodos]);
 
   const completedCount = currentTodos ? currentTodos.filter((t: any) => t && t.status === 'completed').length : 0;
 
@@ -178,10 +169,7 @@ export function ChatComposer({
             <Card.Content style={styles.todoList}>
               {currentTodos.map((todo, idx) => (
                 <View key={todo.id || `${idx}`} style={styles.todoItemRow}>
-                  <Checkbox.Android
-                    status={checkedIds[todo.id] ? 'checked' : 'unchecked'}
-                    onPress={() => setCheckedIds((s) => ({ ...s, [todo.id]: !s[todo.id] }))}
-                  />
+                  <IconButton icon={todo.status === 'completed' ? 'check-circle' : todo.status === 'in_progress' ? 'progress-clock' : 'circle-outline'} size={20} disabled />
                   <View style={styles.todoTextWrap}>
                     <Text variant="bodyMedium" style={{ color: palette.text }}>{todo.content || 'Untitled todo'}</Text>
                     {todo.priority ? <Text variant="bodySmall" style={{ color: palette.muted }}>{todo.priority}</Text> : null}
@@ -198,6 +186,16 @@ export function ChatComposer({
           {attachments.map((att, idx) => (
             <Chip key={`${att.uri}-${idx}`} compact mode="flat" style={[styles.attachmentChip, { backgroundColor: palette.background }]} onClose={() => onRemoveAttachment(idx)}>
               {att.filename || att.uri}
+            </Chip>
+          ))}
+        </View>
+      ) : null}
+
+      {draft.startsWith('/') && !draft.includes(' ') && commands.length > 0 ? (
+        <View style={styles.attachmentRow}>
+          {commands.filter((command) => command.name.startsWith(draft.slice(1))).slice(0, 6).map((command) => (
+            <Chip key={command.name} compact mode="outlined" onPress={() => onCommandSelect(command.name)}>
+              /{command.name}
             </Chip>
           ))}
         </View>

@@ -32,7 +32,7 @@ The highest-risk behavior in this app is orchestration across:
 
 - connection bootstrapping and workspace hydration
 - session lifecycle and prompt submission
-- permission and question blocking flows
+- permission blocking flows
 - provider configuration and model availability
 - event-stream updates and polling fallback
 
@@ -45,18 +45,19 @@ The deterministic server lives in `tests/fake-opencode/server.mjs`.
 It simulates:
 
 - workspace discovery
-- session creation, listing, status, messages, diffs, and todos
+- session creation, listing, status, title updates, deletion, fork, share, revert, messages, diffs, and todos
+- command discovery and execution
+- file search/read/status and VCS metadata
+- global health plus MCP, LSP, and formatter diagnostics
 - provider catalog and auth metadata
-- permission requests
-- question requests
-- SSE event streaming
+- full permission events and session-scoped responses
+- global SSE event envelopes
 - polling fallback when SSE is unavailable
 
 Supported scenarios:
 
 - `happy-path`
 - `permission`
-- `question`
 - `stream-disconnect`
 
 The Playwright suite resets the server between tests through `POST /__control/reset`.
@@ -68,7 +69,8 @@ The current CI suite validates:
 - app boot -> connect -> auto-create/open session
 - prompt submission -> assistant response -> diff visibility
 - permission request -> user approval -> run continues
-- question request -> user answer -> run continues
+- session rename and guarded deletion
+- command execution and workspace file search
 - provider setup from Settings against fake metadata
 - polling fallback when the SSE stream is unavailable
 

@@ -75,12 +75,14 @@ Behavior:
 - if no active session exists, the app creates or resolves one first
 - local/mobile file URIs are read and converted to data URLs before sending because the server cannot reach device-local paths
 - remote `http` and `https` attachment URLs are passed through unchanged
+- the selected model must advertise attachment support
+- local files larger than 10 MB are rejected before base64 encoding
 - request body includes selected agent, selected model, and generated system prompt derived from preferences
 
 After submission:
 
 - active session is refreshed
-- transcript, diff, todos, and pending requests are refreshed
+- transcript, diff, and todos are refreshed
 - untitled sessions are summarized using the selected model when possible
 - a pending local-notification tracker is created for the session
 
@@ -90,7 +92,7 @@ The Chat screen shows:
 
 - transcript messages
 - inline running status text while OpenCode is active
-- pending permissions/questions if OpenCode is blocked waiting for the user
+- pending permission requests observed on the event stream if OpenCode is blocked waiting for the user
 - a changes tab with current file diffs
 - todos when provided by the server
 
@@ -99,38 +101,24 @@ Behavior details:
 - only user messages and assistant messages with text or errors appear in the main transcript
 - reasoning and tool activity are summarized and attached to assistant messages as metadata chips
 - a status line like `OpenCode is ...` is shown while running and not blocked on user input
-- if the assistant is blocked on permissions/questions, a waiting card is shown and interactions render inline
+- if the assistant is blocked on an observed permission, a waiting card is shown and the permission renders inline
 
-### 6. Resolve Blocking Requests
-
-The app supports two blocking request types from the server.
-
-#### Permission Requests
+### 6. Resolve Permission Requests
 
 Each permission request shows:
 
-- a derived title from the permission key
+- a derived title from the SDK permission `title` or `type`
 - optional path or pattern list
 - action buttons: `Allow once`, `Always allow`, `Deny`
 
-After reply:
+Permission behavior:
 
-- request list is refreshed
-- current session messages are refreshed
-
-#### Question Requests
-
-Each question request can include:
-
-- one or more questions
-- single-select or multi-select answers
-- optional custom free-text answer
-
-Behavior:
-
-- submit is disabled until each question has either a selected option or a custom answer when custom answers are allowed
-- question rejection is supported
-- after reply or rejection, pending requests and current messages are refreshed
+- requests are received from the global event stream and stored under `sessionID`
+- only permissions for the current or sending session are displayed
+- replies use the session-scoped permission reply operation
+- the replied request is removed locally and that session's messages are refreshed
+- observed requests are persisted so they can survive an app restart
+- OpenCode 1.18.3 cannot list pending permissions; a request created before subscription and not already persisted cannot be recovered by polling
 
 ### 7. Inspect File Changes
 
@@ -150,15 +138,31 @@ The Workspace tab provides lifecycle operations:
 - refresh workspace catalog and sessions
 - open a session
 - create a new session
-- archive an active session
-- unarchive an archived session
-- toggle visibility of archived sessions
+- rename a session
+- permanently delete a session after confirmation
+- share a session and copy its URL, or unshare it
 
 Session list behavior:
 
-- sessions are split into active and archived groups by `session.time.archived`
 - each session row shows title, preview/subtitle, relative updated time, and status
 - active session rows are visually emphasized
+
+Additional session actions are available in Chat:
+
+- fork a session from a user message and open the fork
+- revert a session from a user message
+- undo the current revert
+
+### 9. Inspect Workspace Files
+
+The Workspace tab provides read-only source inspection:
+
+- search file paths by query
+- open returned files and display server-returned content
+- show the number of changed files from file status
+- show the current VCS branch when available
+
+There is no file editing or write operation in this surface.
 
 ## Chat Screen Detailed Behavior
 
@@ -188,6 +192,7 @@ The composer includes:
 - auto-approve toggle
 - optional conversation mode banner
 - optional todo summary card
+- slash-command suggestions when the draft starts with `/` and has no space
 - attachment chips
 - text input
 - primary and secondary action buttons
@@ -202,6 +207,13 @@ Secondary action rules:
 - with content present, the secondary button attaches files
 - without content, the secondary button toggles microphone dictation
 
+Slash command behavior:
+
+- commands are loaded from the server for the active project
+- up to six command names matching the current prefix are suggested
+- an exact known `/command` submission is sent through the session command API with the remaining text as arguments
+- attachments prevent command interpretation and use normal prompt submission
+
 ## Abort Behavior
 
 When a session is running and there is no draft content, the main composer action aborts the active session.
@@ -210,7 +222,7 @@ Abort behavior:
 
 - clears pending completion notification tracking for the session
 - calls the server abort endpoint
-- refreshes sessions, messages, diff, todos, and pending requests
+- refreshes sessions, messages, diff, and todos
 
 ## Auto-Approve Behavior
 
@@ -235,6 +247,7 @@ Behavior:
 - only configured providers contribute models to the model picker
 - model choices are also filtered by the enabled-model list from Settings
 - selecting a model updates both `providerId` and `modelId`
+- discovered model metadata includes attachment/input modality, tool-call, reasoning, status, and context/output limit capabilities
 - reasoning level affects only the generated system prompt, not local control flow
 
 ## Session Title Summarization
@@ -282,7 +295,9 @@ Behavior:
 
 - provider auth metadata comes from the server
 - if the server returns no auth methods for a non-known-OAuth provider, the app falls back to a generic API-key flow
-- if OAuth is selected, the app requests an authorization URL, opens the browser, then reconnects
+- if OAuth is selected, the app requests an authorization URL and opens the browser
+- code-based OAuth displays a callback dialog and submits the entered authorization code before enabling the provider
+- automatic OAuth enables/reconnects after the browser returns without a code dialog
 - if API auth is selected, auth values are normalized and sent to `client.auth.set`
 - after successful auth, the provider is enabled in server config and capabilities are refreshed
 
@@ -299,6 +314,13 @@ Behavior:
 - Android users can be deep-linked to notification settings and battery-related settings
 - `Enable notifications` requests permission and refreshes status
 - `Refresh status` re-queries permission and background-task registration state
+
+### Diagnostics Section
+
+- reports `/global/health` status and OpenCode version when available
+- reports global event stream state, describing non-connected states as polling fallback
+- reports MCP, LSP, and formatter counts when their endpoints are available
+- each diagnostic request fails independently and can be refreshed manually
 
 ### Voice Section
 
@@ -320,6 +342,8 @@ Behavior exposed today:
 - working sound variant and volume
 - TTS voice selection
 
+Working sound runs while a prompt is being submitted or any session is non-idle when enabled. It is stopped while conversation mode is listening or speaking and after work becomes idle.
+
 Important current implementation note:
 
 - response scope and next-actions settings do not change app layout; they only shape the generated system prompt sent to the server
@@ -332,7 +356,7 @@ Entry requirements:
 
 - server must be connected
 - no current send operation may be active
-- no pending permission/question interactions may be present
+- no pending permission interaction may be present
 - there must be or become an active session
 
 Loop behavior:
@@ -350,7 +374,7 @@ Additional behavior:
 - screen is kept awake while conversation mode is active
 - screen brightness is dimmed when possible
 - a full-screen overlay is shown
-- conversation mode stops if the assistant requires on-screen permission/question input
+- conversation mode stops if an observed permission requires on-screen input
 - speech/TTS failures surface feedback and may stop the mode
 
 ## Notifications Behavior
@@ -377,6 +401,7 @@ The following values are persisted locally:
 - active project path
 - last session ID by project
 - pending notification sessions
+- pending permissions observed from SSE, keyed by session
 
 The following values are not persisted and are rebuilt from the server:
 
@@ -385,8 +410,8 @@ The following values are not persisted and are rebuilt from the server:
 - messages
 - diffs
 - todos
-- pending requests
 - provider/model/agent catalog
+- commands, workspace file results/status/content, VCS info, and diagnostics
 
 ## User-Visible Edge Cases
 
@@ -404,12 +429,17 @@ Any reimplementation should preserve these functional outcomes:
 - automatic reconnection after local settings hydration
 - workspace-first session scoping
 - remembered last session per project
-- transcript + diff + todo + pending-request surfaces
-- session archive / unarchive support
+- transcript + diff + server-owned todo + permission surfaces
+- session delete, rename, fork, revert/unrevert, and share/unshare support
+- slash command discovery and execution
+- read-only workspace file search/view/status/VCS
+- server diagnostics
 - provider discovery and auth configuration from server metadata
 - enabled-model filtering separate from model selection
 - auto-approve writing back to server permissions config
 - attachment conversion from mobile-local URIs to data URLs
-- SSE updates with polling fallback
+- attachment capability enforcement and 10 MB local-file limit
+- reconnecting global SSE filtered to the active project, with polling fallback for refreshable session data
+- the documented pending-permission pre-subscription limitation
 - task-complete notification tracking
 - optional conversation mode with listen -> submit -> wait -> speak -> listen loop

@@ -1,19 +1,19 @@
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { useMemo, useState } from 'react';
+import { useMemo } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
-import { Button, Card, Chip, Divider, IconButton, List, Surface, Text, TextInput, TouchableRipple } from 'react-native-paper';
+import { Button, Card, Chip, Divider, IconButton, List, Surface, Text, TouchableRipple } from 'react-native-paper';
 
 import { MarkdownText } from '@/components/chat/chat-markdown';
 import { getDiffPalette, buildLineDiff, buildCollapsedDiffBlocks } from '@/components/chat/chat-diff';
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
-import type { PendingPermissionRequest, PendingQuestionAnswer, PendingQuestionRequest } from '@/lib/opencode/client';
+import type { PendingPermissionRequest } from '@/lib/opencode/client';
 import { formatTimestamp, type TranscriptDetail, type TranscriptEntry } from '@/lib/opencode/format';
 import { summarizeTranscriptDetails } from '@/lib/opencode/transcript';
 import type { FileDiff } from '@/lib/opencode/types';
 
 function getPermissionTitle(request: PendingPermissionRequest) {
-  return request.permission
+  return (request.title || request.type)
     .split(/[._-]/g)
     .filter(Boolean)
     .map((part: string) => part.charAt(0).toUpperCase() + part.slice(1))
@@ -22,16 +22,10 @@ function getPermissionTitle(request: PendingPermissionRequest) {
 
 export function PendingInteractionsCard({
   onPermissionReply,
-  onQuestionReject,
-  onQuestionSubmit,
   permissions,
-  questions,
 }: {
   onPermissionReply: (requestId: string, reply: 'once' | 'always' | 'reject') => void;
-  onQuestionReject: (requestId: string) => void;
-  onQuestionSubmit: (requestId: string, answers: PendingQuestionAnswer[]) => void;
   permissions: PendingPermissionRequest[];
-  questions: PendingQuestionRequest[];
 }) {
   const colorScheme = useColorScheme() ?? 'light';
   const palette = Colors[colorScheme];
@@ -51,14 +45,6 @@ export function PendingInteractionsCard({
             key={request.id}
             request={request}
             onReply={(reply) => onPermissionReply(request.id, reply)}
-          />
-        ))}
-        {questions.map((request) => (
-          <QuestionRequestCard
-            key={request.id}
-            request={request}
-            onReject={() => onQuestionReject(request.id)}
-            onSubmit={(answers) => onQuestionSubmit(request.id, answers)}
           />
         ))}
       </Card.Content>
@@ -166,6 +152,8 @@ export function TranscriptMessage({
   copied = false,
   entry,
   onCopy,
+  onFork,
+  onRevert,
   onToggleSpeak,
   speaking = false,
 }: {
@@ -173,6 +161,8 @@ export function TranscriptMessage({
   copied?: boolean;
   entry: TranscriptEntry;
   onCopy: () => void;
+  onFork?: () => void;
+  onRevert?: () => void;
   onToggleSpeak: () => void;
   speaking?: boolean;
 }) {
@@ -213,6 +203,8 @@ export function TranscriptMessage({
                   onPress={onToggleSpeak}
                 />
               ) : null}
+              {onFork ? <IconButton icon="source-fork" size={16} style={styles.messageActionButton} iconColor={palette.muted} onPress={onFork} /> : null}
+              {onRevert ? <IconButton icon="undo-variant" size={16} style={styles.messageActionButton} iconColor={palette.muted} onPress={onRevert} /> : null}
               <Text variant="labelSmall" style={{ color: isUser ? palette.onBubbleUser : palette.muted, opacity: isUser ? 0.82 : 1 }}>
                 {formatTimestamp(entry.createdAt)}
               </Text>
@@ -258,114 +250,13 @@ function PermissionRequestCard({
       <Card.Content style={styles.requestCardContent}>
         <Text variant="labelLarge" style={{ color: palette.warning }}>Permission request</Text>
         <Text variant="titleMedium" style={{ color: palette.text }}>{getPermissionTitle(request)}</Text>
-        {request.patterns.length > 0 ? (
-          <Text variant="bodySmall" style={{ color: palette.muted }}>{request.patterns.join('\n')}</Text>
+        {request.pattern ? (
+          <Text variant="bodySmall" style={{ color: palette.muted }}>{Array.isArray(request.pattern) ? request.pattern.join('\n') : request.pattern}</Text>
         ) : null}
         <View style={styles.requestActionsRow}>
           <Button mode="contained" compact onPress={() => onReply('once')}>Allow once</Button>
           <Button mode="contained-tonal" compact onPress={() => onReply('always')}>Always allow</Button>
           <Button mode="text" compact textColor={palette.danger} onPress={() => onReply('reject')}>Deny</Button>
-        </View>
-      </Card.Content>
-    </Card>
-  );
-}
-
-function QuestionRequestCard({
-  compact = false,
-  onReject,
-  onSubmit,
-  request,
-}: {
-  compact?: boolean;
-  onReject: () => void;
-  onSubmit: (answers: PendingQuestionAnswer[]) => void;
-  request: PendingQuestionRequest;
-}) {
-  const colorScheme = useColorScheme() ?? 'light';
-  const palette = Colors[colorScheme];
-  const [answers, setAnswers] = useState<PendingQuestionAnswer[]>(() => request.questions.map(() => []));
-  const [customAnswers, setCustomAnswers] = useState<string[]>(() => request.questions.map(() => ''));
-
-  function toggleOption(questionIndex: number, label: string, multiple?: boolean) {
-    setAnswers((current) =>
-      current.map((answer, index) => {
-        if (index !== questionIndex) {
-          return answer;
-        }
-
-        if (!multiple) {
-          return answer[0] === label ? [] : [label];
-        }
-
-        return answer.includes(label) ? answer.filter((item) => item !== label) : [...answer, label];
-      }),
-    );
-  }
-
-  function updateCustomAnswer(questionIndex: number, value: string) {
-    setCustomAnswers((current) => current.map((answer, index) => (index === questionIndex ? value : answer)));
-  }
-
-  function handleSubmit() {
-    const nextAnswers = request.questions.map((question, index) => {
-      const trimmedCustom = customAnswers[index]?.trim();
-      const selected = answers[index] || [];
-      return trimmedCustom && question.custom !== false ? [...selected, trimmedCustom] : selected;
-    });
-
-    void onSubmit(nextAnswers);
-  }
-
-  const canSubmit = request.questions.every((question, index) => {
-    const selectedCount = answers[index]?.length || 0;
-    const hasCustom = Boolean(customAnswers[index]?.trim()) && question.custom !== false;
-    return selectedCount > 0 || hasCustom;
-  });
-
-  return (
-    <Card mode="contained" style={[styles.requestCard, compact && styles.requestCardCompact, { backgroundColor: palette.background }]}> 
-      <Card.Content style={styles.requestCardContent}>
-        <Text variant="labelLarge" style={{ color: palette.tint }}>Question</Text>
-        <View style={styles.questionList}>
-          {request.questions.map((question, questionIndex) => (
-            <View key={`${request.id}-${question.header}-${questionIndex}`} style={styles.questionBlock}>
-              <View style={styles.questionHeader}>
-                <Text variant="titleMedium" style={{ color: palette.text }}>{question.header}</Text>
-                <Text variant="bodySmall" style={{ color: palette.muted }}>{question.multiple ? 'Choose one or more' : 'Choose one'}</Text>
-              </View>
-              <Text variant="bodyMedium" style={{ color: palette.text }}>{question.question}</Text>
-              <View style={styles.questionOptions}>
-                {question.options.map((option) => {
-                  const selected = answers[questionIndex]?.includes(option.label);
-                  return (
-                    <Chip
-                      key={`${question.header}-${option.label}`}
-                      compact
-                      mode={selected ? 'flat' : 'outlined'}
-                      selected={selected}
-                      style={styles.questionChip}
-                      onPress={() => toggleOption(questionIndex, option.label, question.multiple)}>
-                      {option.label}
-                    </Chip>
-                  );
-                })}
-              </View>
-              {question.custom !== false ? (
-                <TextInput
-                  mode="outlined"
-                  dense
-                  placeholder="Type your answer"
-                  value={customAnswers[questionIndex] || ''}
-                  onChangeText={(value) => updateCustomAnswer(questionIndex, value)}
-                />
-              ) : null}
-            </View>
-          ))}
-        </View>
-        <View style={styles.requestActionsRow}>
-          <Button mode="contained" compact disabled={!canSubmit} onPress={handleSubmit}>Submit</Button>
-          <Button mode="text" compact textColor={palette.danger} onPress={onReject}>Reject</Button>
         </View>
       </Card.Content>
     </Card>
@@ -418,9 +309,4 @@ const styles = StyleSheet.create({
   requestCardCompact: { borderRadius: 14 },
   requestCardContent: { gap: 10 },
   requestActionsRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
-  questionList: { gap: 18 },
-  questionBlock: { gap: 10 },
-  questionHeader: { gap: 4 },
-  questionOptions: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  questionChip: { alignSelf: 'flex-start' },
 });

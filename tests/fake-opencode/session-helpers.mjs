@@ -22,7 +22,11 @@ export function createSessionHelpers({ getNow, getState, emitEvent }) {
     const sessionId = `session-${state.nextSessionId++}`;
     const session = {
       id: sessionId,
+      slug: sessionId,
+      projectID: state.project.id,
+      directory: state.project.worktree,
       title,
+      version: '1.18.3',
       summary: {
         files: 0,
         additions: 0,
@@ -31,7 +35,6 @@ export function createSessionHelpers({ getNow, getState, emitEvent }) {
       time: {
         created: getNow(),
         updated: getNow(),
-        archived: null,
       },
     };
 
@@ -40,7 +43,7 @@ export function createSessionHelpers({ getNow, getState, emitEvent }) {
     state.diffsBySession[sessionId] = [];
     state.todosBySession[sessionId] = [];
     state.sessionStatuses[sessionId] = { type: 'idle' };
-    emitEvent({ type: 'session.created', properties: { sessionID: sessionId } });
+    emitEvent({ type: 'session.created', properties: { info: session } });
     return session;
   }
 
@@ -110,7 +113,7 @@ export function createSessionHelpers({ getNow, getState, emitEvent }) {
     const session = getSession(sessionId);
     if (session && !session.title.trim()) {
       session.title = summarizePrompt(promptText);
-      emitEvent({ type: 'session.updated', properties: { sessionID: sessionId } });
+      emitEvent({ type: 'session.updated', properties: { info: session } });
     }
   }
 
@@ -125,35 +128,16 @@ export function createSessionHelpers({ getNow, getState, emitEvent }) {
     const request = {
       id: `permission-${state.nextPendingId++}`,
       sessionID: sessionId,
-      permission: 'edit_file',
-      patterns: ['app/(tabs)/index.tsx'],
-      always: [],
-      tool: { messageID: 'tool-message-1', callID: 'tool-call-1' },
+      type: 'edit_file',
+      title: 'Edit file',
+      pattern: ['app/(tabs)/index.tsx'],
+      metadata: { source: 'fake-opencode' },
+      messageID: 'tool-message-1',
+      callID: 'tool-call-1',
+      time: { created: getNow() },
     };
     state.pendingPermissions = [request];
-    emitEvent({ type: 'permission.updated', properties: { sessionID: sessionId } });
-  }
-
-  function createQuestionRequest(sessionId) {
-    const state = getState();
-    const request = {
-      id: `question-${state.nextPendingId++}`,
-      sessionID: sessionId,
-      questions: [
-        {
-          question: 'Which area should OpenCode stabilize first?',
-          header: 'Focus area',
-          options: [
-            { label: 'Chat flow', description: 'Keep the prompt-response flow healthy.' },
-            { label: 'Settings', description: 'Validate provider configuration first.' },
-          ],
-          multiple: false,
-          custom: true,
-        },
-      ],
-      tool: { messageID: 'tool-message-2', callID: 'tool-call-2' },
-    };
-    state.pendingQuestions = [request];
+    emitEvent({ type: 'permission.updated', properties: request });
   }
 
   function handlePromptSubmission(sessionId, body) {
@@ -161,12 +145,12 @@ export function createSessionHelpers({ getNow, getState, emitEvent }) {
     const promptText = body?.parts?.find((part) => part?.type === 'text')?.text?.trim() || '';
 
     createMessage(sessionId, 'user', [{ type: 'text', text: promptText || 'Triggered from CI flow test.' }]);
-    state.sessionStatuses[sessionId] = { type: 'running' };
+    state.sessionStatuses[sessionId] = { type: 'busy' };
     emitEvent({
       type: 'session.status',
       properties: {
         sessionID: sessionId,
-        status: { type: 'running' },
+        status: { type: 'busy' },
       },
     });
 
@@ -175,12 +159,30 @@ export function createSessionHelpers({ getNow, getState, emitEvent }) {
       return;
     }
 
-    if (state.scenario === 'question') {
-      createQuestionRequest(sessionId);
-      return;
-    }
-
     scheduleCompletion(sessionId, promptText);
+  }
+
+  function handleCommand(sessionId, body) {
+    const command = body?.command || 'unknown';
+    const args = body?.arguments?.trim();
+    const text = `Command /${command}${args ? ` ${args}` : ''} completed.`;
+    createMessage(sessionId, 'user', [{ type: 'text', text: `/${command}${args ? ` ${args}` : ''}` }]);
+    createMessage(sessionId, 'assistant', [{ type: 'text', text }]);
+    getState().sessionStatuses[sessionId] = { type: 'idle' };
+    emitEvent({ type: 'session.idle', properties: { sessionID: sessionId } });
+    return getMessages(sessionId).at(-1);
+  }
+
+  function forkSession(sessionId, messageId) {
+    const source = getSession(sessionId);
+    if (!source) return undefined;
+    const forked = createSession(`${source.title || 'Untitled chat'} (fork)`);
+    forked.parentID = sessionId;
+    const sourceMessages = getMessages(sessionId);
+    const stopIndex = messageId ? sourceMessages.findIndex((entry) => entry.info.id === messageId) : -1;
+    getState().messagesBySession[forked.id] = structuredClone(stopIndex >= 0 ? sourceMessages.slice(0, stopIndex + 1) : sourceMessages)
+      .map((record) => ({ ...record, info: { ...record.info, sessionID: forked.id } }));
+    return forked;
   }
 
   function mergeConfigPatch(patch) {
@@ -206,11 +208,12 @@ export function createSessionHelpers({ getNow, getState, emitEvent }) {
   return {
     createMessage,
     createPermissionRequest,
-    createQuestionRequest,
     createSession,
+    forkSession,
     getMessages,
     getSession,
     handlePromptSubmission,
+    handleCommand,
     mergeConfigPatch,
     scheduleCompletion,
     summarizePrompt,

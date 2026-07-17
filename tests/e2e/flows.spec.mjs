@@ -24,7 +24,7 @@ async function openReadyChat(page) {
 
 async function sendPrompt(page, prompt) {
   await page.getByPlaceholder('Ask anything...').fill(prompt);
-  await page.getByTestId('chat-send-button').click();
+  await page.getByTestId('chat-primary-button').click();
 }
 
 async function waitForServer(request, url, timeoutMs = 10_000) {
@@ -57,7 +57,7 @@ test('happy path keeps the main chat flow stable', async ({ page, request }) => 
   await page.getByRole('tab', { name: 'Workspace' }).click();
   await expect(page.getByText('Chats', { exact: true })).toBeVisible();
   await expect(page.getByText('Stabilize the chat flow', { exact: true }).last()).toBeVisible();
-  await expect(page.getByText('Archive', { exact: true })).toBeVisible();
+  await expect(page.getByText('idle', { exact: true })).toBeVisible();
 });
 
 test('permission requests unblock the agent flow', async ({ page, request }) => {
@@ -71,16 +71,41 @@ test('permission requests unblock the agent flow', async ({ page, request }) => 
   await expect(page.getByText(/permission resolved/).first()).toBeVisible({ timeout: 20_000 });
 });
 
-test('question requests unblock the agent flow', async ({ page, request }) => {
-  await resetScenario(request, 'question');
+test('sessions can be renamed and require confirmation before deletion', async ({ page, request }) => {
+  await resetScenario(request, 'happy-path');
   await openReadyChat(page);
 
-  await sendPrompt(page, 'Trigger a question request');
+  await sendPrompt(page, 'Create a session to rename');
+  await expect(page.getByText(/Finished:/).first()).toBeVisible({ timeout: 20_000 });
+  await page.getByRole('tab', { name: 'Workspace' }).click();
+  await page.getByText('Rename', { exact: true }).click();
+  await page.getByTestId('workspace-session-title-input').fill('Renamed from Playwright');
+  await page.getByText('Save', { exact: true }).click();
+  await expect(page.getByText('Renamed from Playwright', { exact: true }).first()).toBeVisible();
 
-  await expect(page.getByText('Question', { exact: true })).toBeVisible({ timeout: 15_000 });
-  await page.getByText('Chat flow').click();
-  await page.getByText('Submit').click();
-  await expect(page.getByText(/question resolved/).first()).toBeVisible({ timeout: 20_000 });
+  page.once('dialog', (dialog) => void dialog.accept());
+  await page.getByText('Delete', { exact: true }).click();
+  await expect(page.getByText('Renamed from Playwright', { exact: true })).not.toBeVisible();
+});
+
+test('commands execute through the primary chat action', async ({ page, request }) => {
+  await resetScenario(request, 'happy-path');
+  await openReadyChat(page);
+
+  await sendPrompt(page, '/review src');
+  await expect(page.getByText('Command /review src completed.', { exact: true }).first()).toBeVisible({ timeout: 15_000 });
+});
+
+test('workspace file search opens deterministic file content', async ({ page, request }) => {
+  await resetScenario(request, 'happy-path');
+  await openReadyChat(page);
+
+  await page.getByRole('tab', { name: 'Workspace' }).click();
+  await page.getByTestId('workspace-file-search').fill('demo');
+  await page.getByText('Search', { exact: true }).click();
+  await expect(page.getByText('src/demo.ts', { exact: true })).toBeVisible();
+  await page.getByText('src/demo.ts', { exact: true }).click();
+  await expect(page.getByText(/OpenCode 1\.18\.3/)).toBeVisible();
 });
 
 test('settings can configure an additional provider against the fake server', async ({ page, request }) => {
@@ -90,8 +115,8 @@ test('settings can configure an additional provider against the fake server', as
   await page.getByRole('tab', { name: 'Settings' }).click();
   await expect(page.getByText('AI defaults')).toBeVisible();
   await page.getByTestId('settings-add-provider-button').click();
-  await expect(page.getByRole('menuitem', { name: 'OpenRouter', exact: true })).toBeVisible();
-  await page.getByRole('menuitem', { name: 'OpenRouter', exact: true }).click();
+  await expect(page.getByRole('button', { name: 'OpenRouter', exact: true })).toBeVisible();
+  await page.getByRole('button', { name: 'OpenRouter', exact: true }).click();
   await expect(page.getByText('Configure OpenRouter')).toBeVisible();
   await page.getByPlaceholder('Paste your API key').fill('sk-test-openrouter');
   await page.getByTestId('settings-provider-save-button').click();
@@ -111,6 +136,7 @@ test('polling fallback still finishes the flow when SSE is unavailable', async (
 });
 
 test('settings explain root-vs-api mismatches and reconnect through a prefixed API base URL', async ({ page, request }) => {
+  await resetScenario(request, 'happy-path');
   const port = 44196;
   const server = spawn(process.execPath, ['tests/fake-opencode/server.mjs'], {
     cwd: process.cwd(),
@@ -132,12 +158,12 @@ test('settings explain root-vs-api mismatches and reconnect through a prefixed A
 
     await page.getByTestId('settings-server-url-input').fill(`http://127.0.0.1:${port}`);
     await page.getByTestId('settings-reconnect-button').click();
-    await expect(page.getByText(new RegExp(`OpenCode endpoint not found at http://127.0.0.1:${port}`))).toBeVisible({ timeout: 15_000 });
-    await expect(page.getByText(new RegExp(`http://127.0.0.1:${port}/api`))).toBeVisible();
+    await expect(page.getByText(new RegExp(`OpenCode endpoint not found at http://127.0.0.1:${port}`)).first()).toBeVisible({ timeout: 15_000 });
+    await expect(page.getByText(new RegExp(`http://127.0.0.1:${port}/api`)).first()).toBeVisible();
 
     await page.getByTestId('settings-server-url-input').fill(`http://127.0.0.1:${port}/api`);
     await page.getByTestId('settings-reconnect-button').click();
-    await expect(page.getByText('Connected')).toBeVisible({ timeout: 15_000 });
+    await expect(page.getByText('Connected', { exact: true })).toBeVisible({ timeout: 15_000 });
     await expect(page.getByText(new RegExp(`Connected to http://127.0.0.1:${port}/api`))).toBeVisible();
   } finally {
     server.kill('SIGTERM');

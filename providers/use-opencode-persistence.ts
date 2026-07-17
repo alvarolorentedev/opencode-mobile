@@ -2,10 +2,12 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useEffect, useState, type Dispatch, type SetStateAction } from 'react';
 
 import type { OpencodeConnectionSettings } from '@/lib/opencode/client';
+import type { PendingPermissionRequest } from '@/lib/opencode/client';
 import {
   ACTIVE_PROJECT_STORAGE_KEY,
   CHAT_PREFERENCES_STORAGE_KEY,
   LAST_SESSION_BY_PROJECT_STORAGE_KEY,
+  PENDING_PERMISSIONS_STORAGE_KEY,
   SETTINGS_STORAGE_KEY,
 } from '@/lib/storage-keys';
 import type { ChatPreferences } from '@/providers/opencode-provider-utils';
@@ -16,9 +18,11 @@ export function useOpencodePersistence({
   activeProjectPath,
   chatPreferences,
   lastSessionByProject,
+  pendingPermissionsBySession,
   setActiveProjectPath,
   setChatPreferences,
   setLastSessionByProject,
+  setPendingPermissionsBySession,
   setSettings,
   settings,
 }: {
@@ -27,9 +31,11 @@ export function useOpencodePersistence({
   activeProjectPath?: string;
   chatPreferences: ChatPreferences;
   lastSessionByProject: Record<string, string>;
+  pendingPermissionsBySession: Record<string, PendingPermissionRequest[]>;
   setActiveProjectPath: (value?: string) => void;
   setChatPreferences: Dispatch<SetStateAction<ChatPreferences>>;
   setLastSessionByProject: Dispatch<SetStateAction<Record<string, string>>>;
+  setPendingPermissionsBySession: Dispatch<SetStateAction<Record<string, PendingPermissionRequest[]>>>;
   setSettings: Dispatch<SetStateAction<OpencodeConnectionSettings>>;
   settings: OpencodeConnectionSettings;
 }) {
@@ -67,6 +73,11 @@ export function useOpencodePersistence({
         if (storedLastSessionByProject) {
           setLastSessionByProject(JSON.parse(storedLastSessionByProject) as Record<string, string>);
         }
+
+        const storedPendingPermissions = await AsyncStorage.getItem(PENDING_PERMISSIONS_STORAGE_KEY);
+        if (storedPendingPermissions) {
+          setPendingPermissionsBySession(JSON.parse(storedPendingPermissions) as Record<string, PendingPermissionRequest[]>);
+        }
       } catch {
         // Ignore hydration issues and keep defaults.
       } finally {
@@ -75,7 +86,7 @@ export function useOpencodePersistence({
     }
 
     void hydrateState();
-  }, [defaultChatPreferences, defaultSettings, setActiveProjectPath, setChatPreferences, setLastSessionByProject, setSettings]);
+  }, [defaultChatPreferences, defaultSettings, setActiveProjectPath, setChatPreferences, setLastSessionByProject, setPendingPermissionsBySession, setSettings]);
 
   useEffect(() => {
     if (!isHydrated) {
@@ -113,6 +124,14 @@ export function useOpencodePersistence({
 
     void AsyncStorage.setItem(LAST_SESSION_BY_PROJECT_STORAGE_KEY, JSON.stringify(lastSessionByProject));
   }, [isHydrated, lastSessionByProject]);
+
+  useEffect(() => {
+    if (!isHydrated) {
+      return;
+    }
+
+    void AsyncStorage.setItem(PENDING_PERMISSIONS_STORAGE_KEY, JSON.stringify(pendingPermissionsBySession));
+  }, [isHydrated, pendingPermissionsBySession]);
 
   return { isHydrated };
 }

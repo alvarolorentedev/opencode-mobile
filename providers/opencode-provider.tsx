@@ -1,4 +1,4 @@
-import type { Config, FileDiff, Project, Session, SessionStatus, Todo } from '@/lib/opencode/types';
+import type { Command, Config, File, FileContent, FileDiff, Project, Session, SessionStatus, Todo, VcsInfo } from '@/lib/opencode/types';
 import {
   createContext,
   useCallback,
@@ -9,21 +9,16 @@ import {
   useState,
   type PropsWithChildren,
 } from 'react';
+import { Platform } from 'react-native';
 
 import {
   buildClient,
   defaultConnectionSettings,
   getConnectionError,
   getNormalizedServerUrl,
-  listPendingPermissions,
-  listPendingQuestions,
-  rejectPendingQuestion,
+  requestOpenCodeApi,
   replyToPendingPermission,
-  replyToPendingQuestion,
-  setSessionArchived,
   type PendingPermissionRequest,
-  type PendingQuestionAnswer,
-  type PendingQuestionRequest,
   type OpencodeConnectionSettings,
 } from '@/lib/opencode/client';
 import {
@@ -41,6 +36,7 @@ import {
 import { speakText, stopSpeaking } from '@/lib/voice/speech-output';
 import { useSpeechInput } from '@/lib/voice/use-speech-input';
 import {
+  startWorkingSoundAsync,
   stopWorkingSoundAsync,
   unloadWorkingSoundAsync,
 } from '@/lib/voice/working-sound';
@@ -55,7 +51,6 @@ import {
   getModelIdForProvider,
   getProjectLabel,
   getSelectedModelParts,
-  groupPendingRequestsBySession,
   isAutoApproveEnabled,
   mergePermissionConfig,
   toAgentOption,
@@ -70,7 +65,6 @@ import {
   getConfiguredProviders,
   getConversationStatusLabel,
   getCurrentPendingPermissions,
-  getCurrentPendingQuestions,
   getSessionPreviewById,
   getTranscript,
   getTranscriptActivityLabelForEntries,
@@ -102,7 +96,18 @@ import {
   getSessionMessages as svcGetSessionMessages,
   getSessionDiff as svcGetSessionDiff,
   getSessionTodos as svcGetSessionTodos,
+  deleteSession as svcDeleteSession,
+  executeCommand as svcExecuteCommand,
+  forkSession as svcForkSession,
+  listCommands as svcListCommands,
+  revertSession as svcRevertSession,
+  shareSession as svcShareSession,
+  unrevertSession as svcUnrevertSession,
+  unshareSession as svcUnshareSession,
+  updateSessionTitle as svcUpdateSessionTitle,
 } from '@/providers/services/session-service';
+import { loadDiagnostics, type Diagnostics } from '@/providers/services/diagnostics-service';
+import { findFiles, getFileStatus, getVcsInfo, readFile } from '@/providers/services/workspace-service';
 
 export type {
   AgentOption,
@@ -135,7 +140,6 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
   const [diffsBySession, setDiffsBySession] = useState<Record<string, FileDiff[]>>({});
   const [todosBySession, setTodosBySession] = useState<Record<string, Todo[]>>({});
   const [pendingPermissionsBySession, setPendingPermissionsBySession] = useState<Record<string, PendingPermissionRequest[]>>({});
-  const [pendingQuestionsBySession, setPendingQuestionsBySession] = useState<Record<string, PendingQuestionRequest[]>>({});
   const [serverProjects, setServerProjects] = useState<Project[]>([]);
   const [currentProjectPath, setCurrentProjectPath] = useState<string>();
   const [serverRootPath, setServerRootPath] = useState<string>();
@@ -163,8 +167,15 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
   const [conversationFeedback, setConversationFeedback] = useState<string>();
   const [conversationLatestHeardText, setConversationLatestHeardText] = useState<string>();
   const [eventStreamStatus, setEventStreamStatus] = useState<'idle' | 'connecting' | 'connected' | 'error'>('idle');
+  const [commands, setCommands] = useState<Command[]>([]);
+  const [workspaceFiles, setWorkspaceFiles] = useState<string[]>([]);
+  const [workspaceFileStatuses, setWorkspaceFileStatuses] = useState<File[]>([]);
+  const [selectedWorkspaceFile, setSelectedWorkspaceFile] = useState<{ path: string; content: FileContent }>();
+  const [vcsInfo, setVcsInfo] = useState<VcsInfo>();
+  const [diagnostics, setDiagnostics] = useState<Diagnostics>();
 
   const settingsRef = useRef(settings);
+  const activeProjectPathRef = useRef(activeProjectPath);
   const bootstrapPromiseRef = useRef<Promise<string | undefined> | null>(null);
   const conversationPhaseRef = useRef<ConversationPhase>('off');
   const assistantReplyBaselineIdRef = useRef<string | undefined>(undefined);
@@ -176,7 +187,9 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
   const pendingConversationTranscriptRef = useRef<string | undefined>(undefined);
   const flushPendingConversationResultRef = useRef<() => void>(() => undefined);
   const sessionRefreshTimeoutsRef = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
+  const sessionRefreshOptionsRef = useRef<Record<string, { messages?: boolean; diff?: boolean; todos?: boolean; sessions?: boolean }>>({});
   settingsRef.current = settings;
+  activeProjectPathRef.current = activeProjectPath;
 
   const clearPendingConversationResult = useCallback(() => {
     pendingConversationTranscriptRef.current = undefined;
@@ -192,9 +205,11 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
     activeProjectPath,
     chatPreferences,
     lastSessionByProject,
+    pendingPermissionsBySession,
     setActiveProjectPath,
     setChatPreferences,
     setLastSessionByProject,
+    setPendingPermissionsBySession,
     setSettings,
     settings,
   });
@@ -234,9 +249,6 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
     () => buildClient({ ...settings, directory: activeProjectPath || '' }),
     [activeProjectPath, settings],
   );
-  // v2 client for permissions/questions (cleaned up: use same exported client)
-  // keep single client instance; runtime client is permissive
-  const v2Client = client;
   const catalogClient = useMemo(() => buildClient({ ...settings, directory: '' }), [settings]);
 
   // browseServerPath stub removed
@@ -374,19 +386,29 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
         clearTimeout(existing);
       }
 
+      const pending = sessionRefreshOptionsRef.current[sessionId] || {};
+      sessionRefreshOptionsRef.current[sessionId] = {
+        messages: pending.messages || options?.messages,
+        diff: pending.diff || options?.diff,
+        todos: pending.todos || options?.todos,
+        sessions: pending.sessions || options?.sessions,
+      };
+
       sessionRefreshTimeoutsRef.current[sessionId] = setTimeout(() => {
         delete sessionRefreshTimeoutsRef.current[sessionId];
+        const mergedOptions = sessionRefreshOptionsRef.current[sessionId] || {};
+        delete sessionRefreshOptionsRef.current[sessionId];
 
-        if (options?.sessions) {
+        if (mergedOptions.sessions) {
           void refreshSessions(true);
         }
-        if (options?.messages) {
+        if (mergedOptions.messages) {
           void refreshMessages(sessionId, true);
         }
-        if (options?.diff) {
+        if (mergedOptions.diff) {
           void refreshSessionDiff(sessionId, true);
         }
-        if (options?.todos) {
+        if (mergedOptions.todos) {
           void refreshSessionTodos(sessionId);
         }
       }, options?.delayMs ?? 150);
@@ -450,27 +472,140 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
         ? await client.session.create({ body: { title: trimmedTitle } })
         : await client.session.create();
 
+      if (!response.data) {
+        throw new Error('OpenCode did not return the created session.');
+      }
       await refreshSessions(true);
       return response.data;
     },
     [client, refreshSessions],
   );
 
-  const archiveSession = useCallback(
+  const deleteSession = useCallback(
     async (sessionId: string) => {
-      await setSessionArchived(client, sessionId, Date.now());
+      await svcDeleteSession(client, sessionId);
+      setMessagesBySession((current) => {
+        const next = { ...current };
+        delete next[sessionId];
+        return next;
+      });
+      setDiffsBySession((current) => {
+        const next = { ...current };
+        delete next[sessionId];
+        return next;
+      });
+      setTodosBySession((current) => {
+        const next = { ...current };
+        delete next[sessionId];
+        return next;
+      });
+      setPendingPermissionsBySession((current) => {
+        const next = { ...current };
+        delete next[sessionId];
+        return next;
+      });
+      if (currentSessionId === sessionId) {
+        setCurrentSessionId(undefined);
+      }
       await refreshSessions(true);
     },
-    [client, refreshSessions],
+    [client, currentSessionId, refreshSessions],
   );
 
-  const unarchiveSession = useCallback(
-    async (sessionId: string) => {
-      await setSessionArchived(client, sessionId);
-      await refreshSessions(true);
-    },
-    [client, refreshSessions],
-  );
+  const renameSession = useCallback(async (sessionId: string, title: string) => {
+    const trimmed = title.trim();
+    if (!trimmed) {
+      throw new Error('Enter a session title.');
+    }
+    await svcUpdateSessionTitle(client, sessionId, trimmed);
+    await refreshSessions(true);
+  }, [client, refreshSessions]);
+
+  const forkSession = useCallback(async (sessionId: string, messageId?: string) => {
+    const forked = await svcForkSession(client, sessionId, messageId);
+    if (!forked) {
+      throw new Error('OpenCode did not return the forked session.');
+    }
+    await refreshSessions(true);
+    await openSession(forked.id);
+    return forked;
+  }, [client, openSession, refreshSessions]);
+
+  const shareSession = useCallback(async (sessionId: string) => {
+    const shared = await svcShareSession(client, sessionId);
+    if (!shared) {
+      throw new Error('OpenCode did not return the shared session.');
+    }
+    await refreshSessions(true);
+    return shared;
+  }, [client, refreshSessions]);
+
+  const unshareSession = useCallback(async (sessionId: string) => {
+    const unshared = await svcUnshareSession(client, sessionId);
+    if (!unshared) {
+      throw new Error('OpenCode did not return the session.');
+    }
+    await refreshSessions(true);
+    return unshared;
+  }, [client, refreshSessions]);
+
+  const revertSession = useCallback(async (sessionId: string, messageId: string) => {
+    await svcRevertSession(client, sessionId, messageId);
+    await Promise.all([refreshSessions(true), refreshMessages(sessionId, true), refreshSessionDiff(sessionId, true)]);
+  }, [client, refreshMessages, refreshSessionDiff, refreshSessions]);
+
+  const unrevertSession = useCallback(async (sessionId: string) => {
+    await svcUnrevertSession(client, sessionId);
+    await Promise.all([refreshSessions(true), refreshMessages(sessionId, true), refreshSessionDiff(sessionId, true)]);
+  }, [client, refreshMessages, refreshSessionDiff, refreshSessions]);
+
+  const refreshServerFeatures = useCallback(async () => {
+    if (!activeProjectPath) {
+      setCommands([]);
+      setWorkspaceFileStatuses([]);
+      setVcsInfo(undefined);
+      return;
+    }
+    const [nextCommands, nextStatuses, nextVcs] = await Promise.all([
+      svcListCommands(client).catch(() => []),
+      getFileStatus(client).catch(() => []),
+      getVcsInfo(client).catch(() => undefined),
+    ]);
+    setCommands(nextCommands || []);
+    setWorkspaceFileStatuses(nextStatuses || []);
+    setVcsInfo(nextVcs);
+  }, [activeProjectPath, client]);
+
+  const refreshDiagnostics = useCallback(async () => {
+    setDiagnostics(await loadDiagnostics(catalogClient));
+  }, [catalogClient]);
+
+  const searchWorkspaceFiles = useCallback(async (query: string) => {
+    const trimmed = query.trim();
+    const nextFiles = trimmed ? (await findFiles(client, trimmed)) || [] : [];
+    if (activeProjectPathRef.current === client.__opencode.directory) {
+      setWorkspaceFiles(nextFiles);
+    }
+  }, [client]);
+
+  const openWorkspaceFile = useCallback(async (path: string) => {
+    const content = await readFile(client, path);
+    if (!content) {
+      throw new Error('OpenCode did not return file content.');
+    }
+    if (activeProjectPathRef.current === client.__opencode.directory) {
+      setSelectedWorkspaceFile({ path, content });
+    }
+  }, [client]);
+
+  const executeCommand = useCallback(async (sessionId: string, command: string, args: string) => {
+    const selected = getSelectedModelParts(chatPreferences.modelId);
+    await svcExecuteCommand(client, sessionId, command, args, {
+      agent: chatPreferences.mode,
+      model: selected ? `${selected.providerID}/${selected.modelID}` : undefined,
+    });
+    await Promise.all([refreshMessages(sessionId, true), refreshSessions(true)]);
+  }, [chatPreferences.mode, chatPreferences.modelId, client, refreshMessages, refreshSessions]);
 
   const summarizeSessionTitle = useCallback(
     async (sessionId: string, knownSessions?: Session[]) => {
@@ -484,9 +619,9 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
         return existingSession;
       }
 
-      await client.session.summarize({
-        path: { id: sessionId },
-        body: selectedModel,
+      await requestOpenCodeApi(client, `/session/${encodeURIComponent(sessionId)}/summarize`, {
+        method: 'POST',
+        body: JSON.stringify(selectedModel),
       });
 
       const nextSessions = await fetchSessions(true);
@@ -564,6 +699,10 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
 
     setActiveProjectPath(normalizedPath);
     setCurrentSessionId(undefined);
+    setWorkspaceFiles([]);
+    setWorkspaceFileStatuses([]);
+    setSelectedWorkspaceFile(undefined);
+    setVcsInfo(undefined);
   }, []);
 
   const connect = useCallback(async () => {
@@ -586,7 +725,7 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
       // browsing removed
 
       if (activeProjectPath || catalog.currentProjectPath || catalog.serverProjects[0]?.worktree) {
-        await Promise.all([fetchSessions(true), refreshChatCapabilities()]);
+        await Promise.all([fetchSessions(true), refreshChatCapabilities(), refreshServerFeatures(), refreshDiagnostics()]);
       } else {
         setSessions([]);
         setSessionStatuses({});
@@ -613,7 +752,7 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
       setAvailableModels([]);
       setAvailableAgents([]);
     }
-  }, [activeProjectPath, fetchSessions, loadWorkspaceCatalog, refreshChatCapabilities]);
+  }, [activeProjectPath, fetchSessions, loadWorkspaceCatalog, refreshChatCapabilities, refreshDiagnostics, refreshServerFeatures]);
 
   useEffect(() => {
     if (!isHydrated) {
@@ -658,67 +797,30 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
     [currentSessionId, refreshSessionTodos],
   );
 
-  const refreshPendingRequests = useCallback(
-    async (_silent = false) => {
-      if (!activeProjectPath) {
-        setPendingPermissionsBySession({});
-        setPendingQuestionsBySession({});
-        return;
-      }
-
-      const [scopedPermissions, scopedQuestions, globalPermissions, globalQuestions] = await Promise.all([
-        listPendingPermissions(v2Client).catch(() => []),
-        listPendingQuestions(v2Client).catch(() => []),
-        listPendingPermissions(catalogClient).catch(() => []),
-        listPendingQuestions(catalogClient).catch(() => []),
-      ]);
-
-      const nextPermissionsBySession = groupPendingRequestsBySession<PendingPermissionRequest>([
-        ...(scopedPermissions as PendingPermissionRequest[]),
-        ...(globalPermissions as PendingPermissionRequest[]),
-      ]);
-      const nextQuestionsBySession = groupPendingRequestsBySession<PendingQuestionRequest>([
-        ...(scopedQuestions as PendingQuestionRequest[]),
-        ...(globalQuestions as PendingQuestionRequest[]),
-      ]);
-
-      setPendingPermissionsBySession(nextPermissionsBySession);
-      setPendingQuestionsBySession(nextQuestionsBySession);
-    },
-    [activeProjectPath, catalogClient, v2Client],
-  );
-
   const replyToPermission = useCallback(
-    async (requestId: string, reply: 'once' | 'always' | 'reject', message?: string) => {
-      await replyToPendingPermission(v2Client, requestId, reply, message);
-      await refreshPendingRequests(true);
-      if (currentSessionId) {
-        await refreshMessages(currentSessionId, true);
+    async (requestId: string, reply: 'once' | 'always' | 'reject') => {
+      const request = Object.values(pendingPermissionsBySession).flat().find((item) => item.id === requestId);
+      if (!request) {
+        throw new Error('This permission request is no longer available.');
       }
-    },
-    [currentSessionId, refreshMessages, refreshPendingRequests, v2Client],
-  );
-
-  const replyToQuestion = useCallback(
-    async (requestId: string, answers: PendingQuestionAnswer[]) => {
-      await replyToPendingQuestion(v2Client, requestId, answers);
-      await refreshPendingRequests(true);
-      if (currentSessionId) {
-        await refreshMessages(currentSessionId, true);
+      try {
+        await replyToPendingPermission(client, request.sessionID, request.id, reply);
+      } catch (error) {
+        if (error instanceof Error && /400|404/.test(error.message)) {
+          setPendingPermissionsBySession((current) => ({
+            ...current,
+            [request.sessionID]: (current[request.sessionID] || []).filter((item) => item.id !== request.id),
+          }));
+        }
+        throw error;
       }
+      setPendingPermissionsBySession((current) => ({
+        ...current,
+        [request.sessionID]: (current[request.sessionID] || []).filter((item) => item.id !== request.id),
+      }));
+      await refreshMessages(request.sessionID, true);
     },
-    [currentSessionId, refreshMessages, refreshPendingRequests, v2Client],
-  );
-
-  const rejectQuestion = useCallback(
-    async (requestId: string) => {
-      await rejectPendingQuestion(v2Client, requestId);
-      await refreshPendingRequests(true);
-      if (currentSessionId) {
-        await refreshMessages(currentSessionId, true);
-      }
-    },
-    [currentSessionId, refreshMessages, refreshPendingRequests, v2Client],
+    [client, pendingPermissionsBySession, refreshMessages],
   );
 
   const updateChatPreferences = useCallback((patch: Partial<ChatPreferences>) => {
@@ -765,12 +867,18 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
   const configureProvider = useCallback(
     async (providerId: string) => {
       const latestConfig = currentConfig || (await client.config.get()).data;
+      if (!latestConfig) {
+        throw new Error('OpenCode did not return its configuration.');
+      }
       const enabledProviders = new Set(latestConfig.enabled_providers || []);
       enabledProviders.add(providerId);
 
-      const response = await client.config.update({ body: { ...latestConfig, enabled_providers: [...enabledProviders].sort() } });
+      const updatedConfig = await requestOpenCodeApi<Config>(client, '/config', {
+        method: 'PATCH',
+        body: JSON.stringify({ ...latestConfig, enabled_providers: [...enabledProviders].sort() }),
+      });
 
-      setCurrentConfig(response.data);
+      setCurrentConfig(updatedConfig);
       await refreshChatCapabilities();
       setChatPreferences((current) => ({
         ...current,
@@ -791,10 +899,13 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
       }
 
       const auth = normalizedValues.token && normalizedValues.key
-        ? { type: 'wellknown', key: normalizedValues.key, token: normalizedValues.token }
-        : { type: 'api', key: token };
+        ? { type: 'wellknown' as const, key: normalizedValues.key, token: normalizedValues.token }
+        : { type: 'api' as const, key: token };
 
-      await client.auth.set({ providerID: providerId, auth });
+      await requestOpenCodeApi(client, `/auth/${encodeURIComponent(providerId)}`, {
+        method: 'PUT',
+        body: JSON.stringify(auth),
+      });
       await configureProvider(providerId);
       await refreshChatCapabilities();
     },
@@ -802,30 +913,40 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
   );
 
   const startProviderOAuth = useCallback(
-    async (providerId: string, methodIndex: number, inputs?: Record<string, string>) => {
-      const response = await client.provider.oauth.authorize({
-        providerID: providerId,
-        method: methodIndex,
-        inputs,
+    async (providerId: string, methodIndex: number, _inputs?: Record<string, string>) => {
+      const authorization = await requestOpenCodeApi<{ url: string; instructions: string; method: 'auto' | 'code' }>(client, `/provider/${encodeURIComponent(providerId)}/oauth/authorize`, {
+        method: 'POST',
+        body: JSON.stringify({ method: methodIndex }),
       });
 
-      await configureProvider(providerId);
-
       return {
-        url: response.data.url,
-        instructions: response.data.instructions,
+        url: authorization.url,
+        instructions: authorization.instructions,
+        method: authorization.method,
       };
     },
-    [client, configureProvider],
+    [client],
   );
+
+  const completeProviderOAuth = useCallback(async (providerId: string, methodIndex: number, code: string) => {
+    await requestOpenCodeApi(client, `/provider/${encodeURIComponent(providerId)}/oauth/callback`, {
+      method: 'POST',
+      body: JSON.stringify({ method: methodIndex, code: code.trim() || undefined }),
+    });
+    await configureProvider(providerId);
+    await refreshChatCapabilities();
+  }, [client, configureProvider, refreshChatCapabilities]);
 
   const setAutoApprove = useCallback(
     async (enabled: boolean) => {
       const latestConfig = currentConfig || (await client.config.get()).data;
       const nextConfig = mergePermissionConfig(latestConfig, enabled);
-      const response = await client.config.update({ body: nextConfig });
+      const updatedConfig = await requestOpenCodeApi<Config>(client, '/config', {
+        method: 'PATCH',
+        body: JSON.stringify(nextConfig),
+      });
 
-      setCurrentConfig(response.data);
+      setCurrentConfig(updatedConfig);
       setChatPreferences((current) => ({
         ...current,
         autoApprove: enabled,
@@ -872,6 +993,25 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
       let promptAccepted = false;
 
       try {
+        const selectedModel = availableModels.find((model) => model.id === chatPreferences.modelId);
+        if (attachments?.length && selectedModel && !selectedModel.supportsAttachments) {
+          throw new Error(`${selectedModel.label} does not support file attachments.`);
+        }
+        if (attachments?.length && selectedModel?.inputModalities?.length) {
+          const unsupported = attachments.find((attachment) => {
+            const mime = attachment.mime || '';
+            const modality = mime.startsWith('image/') ? 'image'
+              : mime.startsWith('audio/') ? 'audio'
+                : mime.startsWith('video/') ? 'video'
+                  : mime === 'application/pdf' ? 'pdf'
+                    : undefined;
+            return modality && !selectedModel.inputModalities.includes(modality);
+          });
+          if (unsupported) {
+            throw new Error(`${selectedModel.label} does not support ${unsupported.mime || 'this attachment type'} input.`);
+          }
+        }
+
         // Prepare file parts. For local URIs (file://, content://, asset://) read the
         // file and convert it to a data URL so the server receives the attachment bytes.
         // Mobile-local URIs are not reachable from the OpenCode server.
@@ -890,6 +1030,10 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
 
             try {
               const FileSystem = await import('expo-file-system/legacy');
+              const info = await FileSystem.getInfoAsync(att.uri);
+              if (info.exists && typeof info.size === 'number' && info.size > 10 * 1024 * 1024) {
+                throw new Error('File exceeds the 10 MB attachment limit.');
+              }
               const base64 = await FileSystem.readAsStringAsync(att.uri, { encoding: 'base64' });
               const dataUrl = `data:${mime};base64,${base64}`;
               preparedFileParts.push({ type: 'file', mime, filename, url: dataUrl });
@@ -913,11 +1057,10 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
           parts,
         };
 
-        if (typeof client.session.promptAsync === 'function') {
-          await client.session.promptAsync({ path: { id: sessionId }, body });
-        } else {
-          await client.session.prompt({ path: { id: sessionId }, body });
-        }
+        await requestOpenCodeApi(client, `/session/${encodeURIComponent(sessionId)}/prompt_async`, {
+          method: 'POST',
+          body: JSON.stringify(body),
+        });
         promptAccepted = true;
         promptSubmissionRef.current = { active: false, sessionId: undefined };
 
@@ -927,7 +1070,6 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
           refreshMessages(sessionId, true),
           refreshSessionDiff(sessionId, true),
           refreshSessionTodos(sessionId),
-          refreshPendingRequests(true),
         ]);
 
         const currentSession = nextSessions.find((session) => session.id === sessionId);
@@ -951,24 +1093,23 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
         setSendingState({ active: false, sessionId: undefined });
       }
     },
-    [activeProjectPath, chatPreferences, client, fetchSessions, refreshMessages, refreshPendingRequests, refreshSessionDiff, refreshSessionTodos, sessions, summarizeSessionTitle],
+    [activeProjectPath, availableModels, chatPreferences, client, fetchSessions, refreshMessages, refreshSessionDiff, refreshSessionTodos, sessions, summarizeSessionTitle],
   );
 
   const abortSession = useCallback(
     async (sessionId: string) => {
       pendingNotificationSessionIdsRef.current.delete(sessionId);
       await clearPendingTaskFinishedNotification(sessionId);
-        await client.session.abort({ path: { id: sessionId } });
+      await requestOpenCodeApi(client, `/session/${encodeURIComponent(sessionId)}/abort`, { method: 'POST' });
 
       await Promise.all([
         refreshSessions(true),
         refreshMessages(sessionId, true),
         refreshSessionDiff(sessionId, true),
         refreshSessionTodos(sessionId),
-        refreshPendingRequests(true),
       ]);
     },
-    [client, refreshMessages, refreshPendingRequests, refreshSessionDiff, refreshSessionTodos, refreshSessions],
+    [client, refreshMessages, refreshSessionDiff, refreshSessionTodos, refreshSessions],
   );
 
   const speechInput = useSpeechInput({
@@ -1115,9 +1256,9 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
       return;
     }
 
-    const pendingInteractionCount = Object.values(pendingPermissionsBySession).flat().length + Object.values(pendingQuestionsBySession).flat().length;
+    const pendingInteractionCount = currentSessionId ? (pendingPermissionsBySession[currentSessionId] || []).length : 0;
     if (pendingInteractionCount > 0) {
-      setConversationFeedback('Answer the current on-screen questions before starting conversation mode.');
+      setConversationFeedback('Answer the current permission request before starting conversation mode.');
       return;
     }
 
@@ -1147,7 +1288,6 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
     ensureActiveSession,
     getLatestConversationAssistantEntry,
     pendingPermissionsBySession,
-    pendingQuestionsBySession,
     sendingState.active,
     startConversationListening,
     stopConversationMode,
@@ -1280,7 +1420,7 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
     }
 
     const pendingInteractions = conversationSessionId
-      ? (pendingPermissionsBySession[conversationSessionId] || []).length + (pendingQuestionsBySession[conversationSessionId] || []).length
+      ? (pendingPermissionsBySession[conversationSessionId] || []).length
       : 0;
     const latestAssistantEntry = getLatestConversationAssistantEntry(conversationSessionId);
     const sessionStatus = conversationSessionId ? sessionStatuses[conversationSessionId] : undefined;
@@ -1356,7 +1496,6 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
     conversationSessionId,
     getLatestConversationAssistantEntry,
     pendingPermissionsBySession,
-    pendingQuestionsBySession,
     sendingState.active,
     sendingState.sessionId,
     sessionStatuses,
@@ -1396,8 +1535,8 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
       return;
     }
 
-    const abortController = new AbortController();
     let mounted = true;
+    let activeAbortController: AbortController | undefined;
 
     const handleEvent = (event: any) => {
       if (!event?.type) {
@@ -1429,6 +1568,11 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
               [sessionId]: { type: 'idle' },
             }));
             scheduleSessionRefresh(sessionId, { sessions: true, messages: true, diff: true, todos: true, delayMs: 50 });
+            setPendingPermissionsBySession((current) => {
+              const next = { ...current };
+              delete next[sessionId];
+              return next;
+            });
           }
           return;
         }
@@ -1467,36 +1611,65 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
           }
           return;
         }
-        case 'permission.updated':
-        case 'permission.replied':
-          void refreshPendingRequests(true);
+        case 'permission.updated': {
+          const request = event.properties as PendingPermissionRequest;
+          if (!request?.id || !request.sessionID) {
+            return;
+          }
+          setPendingPermissionsBySession((current) => ({
+            ...current,
+            [request.sessionID]: [
+              ...(current[request.sessionID] || []).filter((item) => item.id !== request.id),
+              request,
+            ],
+          }));
           return;
+        }
+        case 'permission.replied': {
+          const sessionId = event.properties?.sessionID;
+          const permissionId = event.properties?.permissionID;
+          if (typeof sessionId === 'string' && typeof permissionId === 'string') {
+            setPendingPermissionsBySession((current) => ({
+              ...current,
+              [sessionId]: (current[sessionId] || []).filter((item) => item.id !== permissionId),
+            }));
+          }
+          return;
+        }
         default:
           return;
       }
     };
 
     const subscribe = async () => {
-      setEventStreamStatus('connecting');
+      let retryDelay = 1000;
+      while (mounted) {
+        const abortController = new AbortController();
+        activeAbortController = abortController;
+        setEventStreamStatus(retryDelay === 1000 ? 'connecting' : 'error');
 
-      try {
-        const subscription = await client.event.subscribe({ signal: abortController.signal });
-        if (!mounted) {
-          abortController.abort();
-          return;
-        }
-
-        setEventStreamStatus('connected');
-        for await (const event of subscription.stream) {
+        try {
+          const subscription = await catalogClient.global.event({ signal: abortController.signal });
+          setEventStreamStatus('connected');
+          retryDelay = 1000;
+          for await (const envelope of subscription.stream) {
+            if (!mounted || abortController.signal.aborted) {
+              break;
+            }
+            if (envelope?.directory === activeProjectPath) {
+              handleEvent(envelope.payload);
+            }
+          }
+          if (mounted && !abortController.signal.aborted) {
+            throw new Error('OpenCode event stream ended.');
+          }
+        } catch {
           if (!mounted || abortController.signal.aborted) {
             break;
           }
-
-          handleEvent(event);
-        }
-      } catch {
-        if (!abortController.signal.aborted && mounted) {
           setEventStreamStatus('error');
+          await new Promise((resolve) => setTimeout(resolve, retryDelay));
+          retryDelay = Math.min(retryDelay * 2, 15000);
         }
       }
     };
@@ -1505,14 +1678,15 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
 
     return () => {
       mounted = false;
-      abortController.abort();
+      activeAbortController?.abort();
     };
-  }, [activeProjectPath, client, connection.status, refreshPendingRequests, refreshSessions, scheduleSessionRefresh]);
+  }, [activeProjectPath, catalogClient, connection.status, refreshSessions, scheduleSessionRefresh]);
 
   useEffect(
     () => () => {
       Object.values(sessionRefreshTimeoutsRef.current).forEach((timeout) => clearTimeout(timeout));
       sessionRefreshTimeoutsRef.current = {};
+      sessionRefreshOptionsRef.current = {};
       if (conversationResumeTimeoutRef.current) {
         clearTimeout(conversationResumeTimeoutRef.current);
       }
@@ -1544,11 +1718,7 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
       const currentHasBusySession = Object.values(sessionStatuses).some((status) => status.type !== 'idle');
       const currentHasConversationActivity = conversationPhase !== 'off';
 
-      if (useSafetyPolling) {
-        void refreshPendingRequests(true);
-      }
-
-      if (currentHasBusySession || sendingState.active) {
+      if (currentHasBusySession || sendingState.active || useSafetyPolling) {
         void refreshSessions(true);
       }
 
@@ -1570,7 +1740,17 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
     }, 5000);
 
     return () => clearInterval(interval);
-  }, [activeProjectPath, connection.status, conversationPhase, conversationSessionId, currentSessionId, eventStreamStatus, refreshMessages, refreshPendingRequests, refreshSessionDiff, refreshSessionTodos, refreshSessions, sendingState.active, sessionStatuses]);
+  }, [activeProjectPath, connection.status, conversationPhase, conversationSessionId, currentSessionId, eventStreamStatus, refreshMessages, refreshSessionDiff, refreshSessionTodos, refreshSessions, sendingState.active, sessionStatuses]);
+
+  useEffect(() => {
+    const busy = sendingState.active || Object.values(sessionStatuses).some((status) => status.type !== 'idle');
+    const shouldPlay = Platform.OS !== 'web' && chatPreferences.workingSoundEnabled && busy && conversationPhase !== 'listening' && conversationPhase !== 'speaking';
+    if (shouldPlay) {
+      void startWorkingSoundAsync(chatPreferences.workingSoundVariant, chatPreferences.workingSoundVolume).catch(() => undefined);
+      return;
+    }
+    void stopWorkingSoundAsync().catch(() => undefined);
+  }, [chatPreferences.workingSoundEnabled, chatPreferences.workingSoundVariant, chatPreferences.workingSoundVolume, conversationPhase, sendingState.active, sessionStatuses]);
 
   useEffect(() => {
     let cancelled = false;
@@ -1607,21 +1787,14 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
   }, [sendingState.active, sendingState.sessionId, sessionStatuses, sessions]);
 
   const updateSettings = useCallback((patch: Partial<OpencodeConnectionSettings>) => {
+    if (patch.serverUrl !== undefined && patch.serverUrl !== settingsRef.current.serverUrl) {
+      setPendingPermissionsBySession({});
+    }
     setSettings((current) => ({
       ...current,
       ...patch,
     }));
   }, []);
-
-  useEffect(() => {
-    if (connection.status !== 'connected' || !activeProjectPath || !currentSessionId) {
-      setPendingPermissionsBySession({});
-      setPendingQuestionsBySession({});
-      return;
-    }
-
-    void refreshPendingRequests(true);
-  }, [activeProjectPath, connection.status, currentSessionId, refreshPendingRequests]);
 
   useEffect(() => {
     if (!currentSessionId) {
@@ -1657,10 +1830,6 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
   const currentPendingPermissions = useMemo(
     () => getCurrentPendingPermissions(currentSessionId, sendingState.sessionId, pendingPermissionsBySession),
     [currentSessionId, pendingPermissionsBySession, sendingState.sessionId],
-  );
-  const currentPendingQuestions = useMemo(
-    () => getCurrentPendingQuestions(currentSessionId, sendingState.sessionId, pendingQuestionsBySession),
-    [currentSessionId, pendingQuestionsBySession, sendingState.sessionId],
   );
   const configuredProviders = useMemo(() => getConfiguredProviders(availableProviders), [availableProviders]);
   const currentTranscript = useMemo(() => getTranscript(currentMessages), [currentMessages]);
@@ -1698,7 +1867,6 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
       currentTranscript,
       currentTodos,
       currentPendingPermissions,
-      currentPendingQuestions,
       sessionPreviewById,
       isRefreshingSessions,
       isRefreshingMessages,
@@ -1727,6 +1895,7 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
       configureProvider,
       setProviderAuth,
       startProviderOAuth,
+      completeProviderOAuth,
       setAutoApprove,
       sendingState,
       connect,
@@ -1734,16 +1903,29 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
       openSession,
       refreshCurrentSession,
       refreshCurrentTodos,
-      refreshPendingRequests,
       ensureActiveSession,
       createSession,
-      archiveSession,
-      unarchiveSession,
+      deleteSession,
+      renameSession,
+      forkSession,
+      shareSession,
+      unshareSession,
+      revertSession,
+      unrevertSession,
       sendPrompt,
       abortSession,
       replyToPermission,
-      replyToQuestion,
-      rejectQuestion,
+      commands,
+      executeCommand,
+      workspaceFiles,
+      workspaceFileStatuses,
+      selectedWorkspaceFile,
+      vcsInfo,
+      searchWorkspaceFiles,
+      openWorkspaceFile,
+      diagnostics,
+      refreshDiagnostics,
+      eventStreamStatus,
     }),
     [
       activeSession,
@@ -1757,15 +1939,19 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
       configuredProviders,
       currentDiffs,
       createSession,
-      archiveSession,
-      unarchiveSession,
+      deleteSession,
+      renameSession,
+      forkSession,
+      shareSession,
+      unshareSession,
+      revertSession,
+      unrevertSession,
       configureProvider,
       currentMessages,
       currentSessionId,
       currentTranscript,
       currentTodos,
       currentPendingPermissions,
-      currentPendingQuestions,
       chatPreferences,
       clearConversationFeedback,
       conversationActive,
@@ -1790,12 +1976,9 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
       projects,
       refreshCurrentSession,
       refreshCurrentTodos,
-      refreshPendingRequests,
       refreshWorkspaceCatalog,
       refreshSessions,
-      rejectQuestion,
       replyToPermission,
-      replyToQuestion,
       selectProject,
       setAutoApprove,
       sendPrompt,
@@ -1809,9 +1992,21 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
       settings,
       setProviderAuth,
       startProviderOAuth,
+      completeProviderOAuth,
       toggleConversationMode,
       updateChatPreferences,
       updateSettings,
+      commands,
+      executeCommand,
+      workspaceFiles,
+      workspaceFileStatuses,
+      selectedWorkspaceFile,
+      vcsInfo,
+      searchWorkspaceFiles,
+      openWorkspaceFile,
+      diagnostics,
+      refreshDiagnostics,
+      eventStreamStatus,
     ],
   );
 

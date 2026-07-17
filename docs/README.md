@@ -39,7 +39,8 @@ Most important behavior flows through this provider:
 - session lifecycle
 - prompt submission
 - transcript, diff, and todo refresh
-- permission and question handling
+- event-driven, session-scoped permission handling
+- session lifecycle, slash commands, workspace inspection, and diagnostics
 - provider/model/agent capability discovery
 - local persistence
 - conversation mode orchestration

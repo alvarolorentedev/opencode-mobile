@@ -29,10 +29,10 @@ To rebuild a similar app with high fidelity, follow this order:
 7. add transcript fetch and rendering
 8. add prompt send / abort lifecycle
 9. add diff and todo rendering
-10. add permission/question blocking flows
+10. add event-driven, session-scoped permission blocking
 11. add provider/model/agent capability discovery
 12. add settings and provider configuration flows
-13. add SSE subscription and polling fallback
+13. add reconnecting global SSE and polling fallback
 14. add notifications
 15. add voice input, TTS, working sound, and conversation mode
 16. add E2E validation against a fake server
@@ -151,7 +151,7 @@ Visible behaviors:
 
 - full-width bottom sheet style overlay
 - includes `Close` action
-- lists non-archived sessions only
+- lists all sessions returned by the active project
 - selected session is highlighted
 - rows show title and subtitle
 
@@ -211,7 +211,7 @@ The Workspace screen has:
 2. `Sync` and `Refresh` actions
 3. projects card
 4. chats card
-5. archived toggle inside chats card
+5. read-only workspace file search and preview card
 
 Project rows show:
 
@@ -225,16 +225,19 @@ Session rows show:
 - preview or summary subtitle
 - relative updated time
 - status label
-- archive/unarchive action
+- rename, share/unshare, and delete actions
+
+Chat message actions add session fork and revert; a reverted session also exposes an unrevert action.
 
 ## Settings Screen Inventory
 
 The Settings screen is a vertical stack of cards:
 
 1. Connection
-2. AI defaults
-3. Notifications
-4. Voice
+2. Server diagnostics
+3. AI defaults
+4. Notifications
+5. Voice
 
 The provider config dialog is a modal over Settings.
 
@@ -263,15 +266,18 @@ The client assumes the server can provide:
 - prompt submission
 - prompt cancellation
 - session summarization
+- session delete, rename, fork, share/unshare, and revert/unrevert
+- command listing and execution
+- read-only file find/read/status and VCS information
+- health, MCP, LSP, and formatter diagnostics
 - provider listing
 - provider auth metadata
-- provider OAuth authorization
+- provider OAuth authorization and callback
 - provider auth write
 - config read/update
 - agent listing
-- pending permissions
-- pending questions
-- event subscription
+- session-scoped permission reply
+- global event subscription
 
 ## Required Session Data Shapes
 
@@ -281,7 +287,8 @@ The app expects sessions to have at least:
 - optional `title`
 - `time.created`
 - `time.updated`
-- `time.archived`
+- optional `share.url`
+- optional `revert`
 - optional `summary.files`
 - optional `summary.additions`
 - optional `summary.deletions`
@@ -325,31 +332,9 @@ The app uses:
 
 - `id`
 - `sessionID`
-- `permission`
-- `patterns[]`
-- `always[]`
-- optional `tool`
-
-## Pending Question Shape
-
-The app uses:
-
-- `id`
-- `sessionID`
-- `questions[]`
-
-Each question may contain:
-
-- `question`
-- `header`
-- `options[]`
-- optional `multiple`
-- optional `custom`
-
-Each option may contain:
-
-- `label`
-- optional `description`
+- `type`
+- optional `title`
+- optional `pattern`
 
 ## Event Contract Summary
 
@@ -375,7 +360,7 @@ The provider currently reacts to these event types:
 - `session.idle` forces local status to idle and schedules immediate refreshes
 - message events schedule message refresh
 - `session.diff` and `todo.updated` may update local caches directly
-- permission events trigger pending-request refresh
+- permission update/reply events insert or remove requests in the matching session cache
 
 ## Non-Obvious Parity Traps
 
@@ -401,9 +386,9 @@ Local file URIs are converted to data URLs before being sent.
 
 It is not a purely local convenience toggle.
 
-### 6. Todo Checkbox Interaction Is Local Only
+### 6. Todos Are Server-Owned
 
-The visible todo checklist in the composer is not persisted back to the server.
+The visible todo list is read-only and mirrors server status.
 
 ### 7. Conversation Mode Depends On Hidden Timer Logic
 
@@ -413,7 +398,15 @@ Recreating only the high-level phases is not enough. The settle timer, restart t
 
 The polling safety net is part of parity, not a debug fallback.
 
-### 9. E2E Mode Changes Runtime Side Effects
+### 9. Permissions Cannot Be Listed
+
+Permissions are learned from the global event stream and persisted by session. A permission created before subscription cannot be recovered unless this app observed and persisted it earlier.
+
+### 10. Attachment Support Is Model-Specific
+
+The selected model must advertise attachment support, and local files over 10 MB are rejected.
+
+### 11. E2E Mode Changes Runtime Side Effects
 
 Notification and voice bootstrap are intentionally skipped in E2E runs.
 
@@ -424,15 +417,18 @@ A regenerated app should be considered close to parity only if it can do all of 
 1. connect after hydration without user intervention
 2. discover projects and select one
 3. reopen the remembered session for that project or create one
-4. render transcript, diff, todos, and pending requests
+4. render transcript, diff, server-owned todos, and session-scoped permissions
 5. send prompts with attachments
 6. abort active sessions
-7. archive and unarchive sessions
-8. configure providers through OAuth and API-key flows
-9. update model availability based on configured providers and enabled model list
-10. continue functioning when SSE is unavailable
-11. notify when tasks finish on supported platforms
-12. run the conversation listen -> submit -> wait -> speak loop
+7. delete, rename, fork, revert/unrevert, and share/unshare sessions
+8. execute discovered slash commands
+9. inspect workspace files/status/VCS without writing files
+10. inspect diagnostics and complete code-based OAuth callbacks
+11. configure providers through OAuth and API-key flows
+12. enforce model attachment support and the 10 MB local limit
+13. continue functioning when global SSE reconnects or polling fallback is active
+14. notify when tasks finish on supported platforms
+15. run the conversation listen -> submit -> wait -> speak loop
 
 ## Confidence Level After This Addition
 

@@ -1,10 +1,9 @@
-import type { Config, FileDiff, Project, Session, SessionStatus, Todo } from '@/lib/opencode/types';
+import type { Command, Config, File, FileContent, FileDiff, Project, Session, SessionStatus, Todo, VcsInfo } from '@/lib/opencode/types';
 import type {
   OpencodeConnectionSettings,
   PendingPermissionRequest,
-  PendingQuestionAnswer,
-  PendingQuestionRequest,
 } from '@/lib/opencode/client';
+import type { Diagnostics } from '@/providers/services/diagnostics-service';
 import type { SessionMessageRecord, TranscriptEntry } from '@/lib/opencode/format';
 import type {
   AgentOption as ProviderAgentOption,
@@ -112,7 +111,6 @@ export type OpencodeContextValue = {
   currentDiffs: FileDiff[];
   currentTodos: Todo[];
   currentPendingPermissions: PendingPermissionRequest[];
-  currentPendingQuestions: PendingQuestionRequest[];
   sessionPreviewById: Record<string, string>;
   isRefreshingSessions: boolean;
   isRefreshingMessages: boolean;
@@ -131,7 +129,8 @@ export type OpencodeContextValue = {
   toggleConversationMode: () => Promise<void>;
   configureProvider: (providerId: string) => Promise<void>;
   setProviderAuth: (providerId: string, values: Record<string, string>) => Promise<void>;
-  startProviderOAuth: (providerId: string, methodIndex: number, inputs?: Record<string, string>) => Promise<{ url: string; instructions?: string }>;
+  startProviderOAuth: (providerId: string, methodIndex: number, inputs?: Record<string, string>) => Promise<{ url: string; instructions?: string; method: 'auto' | 'code' }>;
+  completeProviderOAuth: (providerId: string, methodIndex: number, code: string) => Promise<void>;
   setAutoApprove: (enabled: boolean) => Promise<void>;
   sendingState: {
     sessionId?: string;
@@ -142,14 +141,27 @@ export type OpencodeContextValue = {
   openSession: (sessionId: string) => Promise<void>;
   refreshCurrentSession: (silent?: boolean) => Promise<void>;
   refreshCurrentTodos: (silent?: boolean) => Promise<void>;
-  refreshPendingRequests: (silent?: boolean) => Promise<void>;
   ensureActiveSession: () => Promise<string | undefined>;
   createSession: (title?: string) => Promise<Session>;
-  archiveSession: (sessionId: string) => Promise<void>;
-  unarchiveSession: (sessionId: string) => Promise<void>;
+  deleteSession: (sessionId: string) => Promise<void>;
+  renameSession: (sessionId: string, title: string) => Promise<void>;
+  forkSession: (sessionId: string, messageId?: string) => Promise<Session>;
+  shareSession: (sessionId: string) => Promise<Session>;
+  unshareSession: (sessionId: string) => Promise<Session>;
+  revertSession: (sessionId: string, messageId: string) => Promise<void>;
+  unrevertSession: (sessionId: string) => Promise<void>;
   sendPrompt: (sessionId: string, prompt: string, attachments?: { uri: string; mime?: string; filename?: string }[]) => Promise<boolean>;
   abortSession: (sessionId: string) => Promise<void>;
-  replyToPermission: (requestId: string, reply: 'once' | 'always' | 'reject', message?: string) => Promise<void>;
-  replyToQuestion: (requestId: string, answers: PendingQuestionAnswer[]) => Promise<void>;
-  rejectQuestion: (requestId: string) => Promise<void>;
+  replyToPermission: (requestId: string, reply: 'once' | 'always' | 'reject') => Promise<void>;
+  commands: Command[];
+  executeCommand: (sessionId: string, command: string, args: string) => Promise<void>;
+  workspaceFiles: string[];
+  workspaceFileStatuses: File[];
+  selectedWorkspaceFile?: { path: string; content: FileContent };
+  vcsInfo?: VcsInfo;
+  searchWorkspaceFiles: (query: string) => Promise<void>;
+  openWorkspaceFile: (path: string) => Promise<void>;
+  diagnostics?: Diagnostics;
+  refreshDiagnostics: () => Promise<void>;
+  eventStreamStatus: 'idle' | 'connecting' | 'connected' | 'error';
 };

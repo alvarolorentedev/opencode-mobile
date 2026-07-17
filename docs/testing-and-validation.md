@@ -30,7 +30,7 @@ From `TESTING.md`, those gates include:
 
 The deterministic backend lives under `tests/fake-opencode/`.
 
-Its job is to simulate the server behaviors this client depends on, including:
+Its intended job is to simulate the server behaviors this client depends on, including:
 
 - workspace discovery
 - config fetch/update
@@ -44,16 +44,14 @@ Its job is to simulate the server behaviors this client depends on, including:
 - session abort
 - session title summarization
 - permission requests
-- question requests
 - SSE event delivery
 
-## Fake Server Scenarios
+## Supported-Contract Fake Server Scenarios
 
-Current scenarios represented in the test infrastructure:
+Scenarios in the test infrastructure that correspond to supported app behavior:
 
 - `happy-path`
 - `permission`
-- `question`
 - `stream-disconnect`
 
 ### Happy Path
@@ -70,17 +68,13 @@ Simulates a normal session run that completes and returns:
 
 Instead of completing immediately, the server emits a pending permission request and waits for client approval before finishing.
 
-### Question Scenario
-
-Instead of completing immediately, the server emits a pending question and waits for the client response before finishing.
-
 ### Stream Disconnect Scenario
 
 The SSE endpoint intentionally fails, forcing the app to complete the workflow through polling fallback.
 
-## What The E2E Suite Currently Proves
+## Supported-Contract E2E Flows
 
-From `tests/e2e/flows.spec.mjs`, the suite currently exercises these flows:
+`tests/e2e/flows.spec.mjs` encodes these supported-contract flows, subject to the migration mismatch documented below:
 
 ### Boot And Ready Chat
 
@@ -94,18 +88,11 @@ From `tests/e2e/flows.spec.mjs`, the suite currently exercises these flows:
 - send a prompt
 - wait for finished assistant text
 - verify the resulting chat appears in the Workspace tab
-- verify archive controls appear
 
 ### Permission Blocking Flow
 
 - send a prompt that triggers a permission request
 - approve it
-- verify run completion
-
-### Question Blocking Flow
-
-- send a prompt that triggers a question request
-- answer it
 - verify run completion
 
 ### Provider Setup Flow
@@ -122,9 +109,9 @@ From `tests/e2e/flows.spec.mjs`, the suite currently exercises these flows:
 - switch to Workspace
 - verify the session still completes and becomes idle
 
-## Coverage Strengths
+## Intended Coverage Strengths
 
-The current strategy gives good confidence in these areas:
+Once the fake server is migrated to the 1.18.3 contract, this strategy is intended to give confidence in:
 
 - provider-driven app bootstrapping
 - workspace selection and session continuity
@@ -141,18 +128,25 @@ The following important behaviors are present in code but are not obviously cove
 - speech recognition failures and permission edge cases
 - TTS playback behavior
 - notification initialization and background monitoring
-- archive/unarchive behavior beyond presence of controls
+- session delete, rename, fork, revert/unrevert, and share/unshare
 - attachment upload behavior
+- attachment capability rejection and the 10 MB local-file limit
+- slash-command execution
+- workspace file search/read/status and VCS display
+- diagnostics and OAuth callback completion
 - auto-approve config toggling
 - model enablement filtering and preference reconciliation
 - session summarization fallback behavior
 - keep-awake and brightness side effects
+- working-sound busy/idle transitions
+- global SSE reconnect/backoff behavior beyond initial failure fallback
+- permission restoration and the pre-subscription API limitation
 
 These are useful candidates for future validation if the product depends on them heavily.
 
 ## Why The Fake Server Matters For Parity
 
-The fake server documents which OpenCode interactions the client expects to exist and how the client reacts to them.
+After its 1.18.3 migration, the fake server should document which OpenCode interactions the client expects to exist and how the client reacts to them.
 
 For reimplementation work, it acts as a practical parity contract for:
 
@@ -186,9 +180,8 @@ If the app is ever rewritten, parity should be judged at minimum against these b
 1. hydration -> connect -> workspace discovery -> session bootstrap
 2. prompt send -> transcript refresh -> diff/todo refresh -> idle completion
 3. permission blocking and resolution
-4. question blocking and resolution
-5. capability discovery and provider configuration
-6. SSE failure fallback through polling
+4. capability discovery and provider configuration
+5. global SSE failure fallback through polling
 
 After that baseline, the next most valuable parity suite would add:
 
@@ -196,3 +189,7 @@ After that baseline, the next most valuable parity suite would add:
 2. conversation mode loop
 3. notification completion behavior
 4. auto-approve and settings persistence
+
+## Migration Coverage Status
+
+The application now targets OpenCode SDK 1.18.3, but the unchanged fake server and E2E fixtures still encode parts of the older contract. In particular, their permission event/reply shapes and stream endpoint need migration before they validate the event-driven session-scoped permission flow. The existing legacy blocking scenario outside the permission flow is not a supported app feature. Until the fixtures are migrated, the flow suite is not evidence that the 1.18.3 integration passes. No automated test currently proves the new lifecycle, command, workspace inspection, diagnostics, attachment-capability, OAuth callback, or global reconnect behavior.

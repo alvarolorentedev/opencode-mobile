@@ -7,6 +7,12 @@ export type ModelOption = {
   providerLabel: string;
   modelID: string;
   supportsReasoning: boolean;
+  supportsAttachments: boolean;
+  inputModalities: Array<'text' | 'audio' | 'image' | 'video' | 'pdf'>;
+  supportsToolCalls: boolean;
+  status?: 'alpha' | 'beta' | 'deprecated' | 'active';
+  contextLimit?: number;
+  outputLimit?: number;
 };
 
 export type AgentOption = {

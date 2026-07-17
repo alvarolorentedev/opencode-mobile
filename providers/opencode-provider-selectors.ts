@@ -1,6 +1,6 @@
 import { getHistoryPreview, toTranscriptEntry, type SessionMessageRecord, type TranscriptEntry } from '@/lib/opencode/format';
 import { getTranscriptActivityLabel, isTranscriptDisplayMessage } from '@/lib/opencode/transcript';
-import type { PendingPermissionRequest, PendingQuestionRequest } from '@/lib/opencode/client';
+import type { PendingPermissionRequest } from '@/lib/opencode/client';
 import type { ConversationPhase, ProviderOption } from '@/providers/opencode-provider-types';
 
 export function getCurrentPendingPermissions(
@@ -11,18 +11,7 @@ export function getCurrentPendingPermissions(
   const candidateSessionIds = [...new Set([currentSessionId, sendingSessionId].filter(Boolean))] as string[];
   const matches = candidateSessionIds.flatMap((sessionId) => pendingPermissionsBySession[sessionId] || []);
 
-  return matches.length > 0 ? matches : Object.values(pendingPermissionsBySession).flat();
-}
-
-export function getCurrentPendingQuestions(
-  currentSessionId: string | undefined,
-  sendingSessionId: string | undefined,
-  pendingQuestionsBySession: Record<string, PendingQuestionRequest[]>,
-) {
-  const candidateSessionIds = [...new Set([currentSessionId, sendingSessionId].filter(Boolean))] as string[];
-  const matches = candidateSessionIds.flatMap((sessionId) => pendingQuestionsBySession[sessionId] || []);
-
-  return matches.length > 0 ? matches : Object.values(pendingQuestionsBySession).flat();
+  return matches;
 }
 
 export function getConfiguredProviders(availableProviders: ProviderOption[]) {

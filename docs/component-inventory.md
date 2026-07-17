@@ -42,6 +42,8 @@ The goal is to make it possible to rebuild the UI tree without having to redisco
 - attach files through document picker
 - route prompt send / abort actions
 - open/create sessions and toggle conversation mode
+- execute exact server-provided slash commands
+- route fork, revert, and unrevert actions
 
 ### Main child components
 
@@ -69,7 +71,6 @@ type ChatContentProps = {
   currentActivityLabel?: string
   currentDiffs: FileDiff[]
   currentPendingPermissions: PendingPermissionRequest[]
-  currentPendingQuestions: PendingQuestionRequest[]
   currentSessionId?: string
   diffDetails: DiffDetail[]
   displayTranscript: TranscriptEntry[]
@@ -78,12 +79,13 @@ type ChatContentProps = {
   isRefreshingDiffs: boolean
   isRefreshingMessages: boolean
   onCopyMessage: (entry: TranscriptEntry) => void
+  onForkMessage: (messageId: string) => void
+  onRevertMessage: (messageId: string) => void
+  onUnrevert: () => void
   onExpandDiff: (id?: string) => void
   onLoadEarlier: () => void
   onRefresh: () => void
   onReplyToPermission: (requestId: string, reply: 'once' | 'always' | 'reject') => void
-  onReplyToQuestion: (requestId: string, answers: PendingQuestionAnswer[]) => void
-  onRejectQuestion: (requestId: string) => void
   onSendStarterPrompt: (prompt: string) => void
   onToggleSpeak: (entry: TranscriptEntry) => void
   palette: Palette
@@ -141,12 +143,15 @@ type ChatComposerProps = {
   visibleModels: ModelOption[]
   updateChatPreferences: (patch: Partial<ChatPreferences>) => void
   currentTodos?: any[]
+  commands: Command[]
+  onCommandSelect: (command: string) => void
 }
 ```
 
-### Important parity note
+### Important parity notes
 
-- todo checkbox presses only update local `checkedIds`, not server state
+- todos are server-owned and displayed with disabled status icons; the composer has no todo mutation action
+- typing `/` shows up to six matching server commands; selecting one fills the draft
 
 ## `components/chat/chat-header.tsx`
 
@@ -191,7 +196,7 @@ type ChatHeaderProps = {
 
 Responsibility:
 
-- render permission and question cards in a single continuation-blocked card
+- render session-scoped permission cards in a continuation-blocked card
 
 ### `SessionDiffCard`
 
@@ -210,7 +215,7 @@ Responsibility:
 Responsibility:
 
 - render one display transcript bubble
-- show copy state, optional TTS button, timestamp, markdown text, error, and summary chips
+- show copy state, optional TTS button, fork/revert actions for user messages, timestamp, markdown text, error, and summary chips
 
 ## `components/chat/chat-markdown.tsx`
 
@@ -298,6 +303,24 @@ This is important to parity because the chat layout is intentionally dense and h
 - conversation banner
 - todo card
 
+## Screen Controllers
+
+## `app/(tabs)/workspace.tsx`
+
+### Responsibility
+
+- wire project selection and session create/open/rename/delete/share actions to the provider
+- render read-only file path search, selected file content, changed-file count, and VCS branch
+- keep confirmation, rename input, and file-query state local to the screen
+
+## `app/(tabs)/settings.tsx`
+
+### Responsibility
+
+- wire connection, diagnostics, provider, notification, and voice sections to the provider
+- open provider OAuth URLs
+- collect and submit authorization codes for code-based OAuth callbacks
+
 ## Settings Components
 
 ## `components/settings/settings-sections.tsx`
@@ -308,6 +331,7 @@ This is important to parity because the chat layout is intentionally dense and h
 - `AiDefaultsSection`
 - `NotificationsSection`
 - `VoiceSection`
+- `DiagnosticsSection`
 
 ### `ConnectionSection`
 
@@ -343,6 +367,15 @@ Responsibility:
 - edit response style settings that become system prompt hints
 - select working sound and speech voice
 
+### `DiagnosticsSection`
+
+Responsibility:
+
+- show OpenCode health/version when available
+- show global event stream state and whether polling fallback is active
+- show MCP, LSP, and formatter counts
+- refresh diagnostics on demand
+
 ## `components/settings/provider-config-dialog.tsx`
 
 ### Responsibility
@@ -351,6 +384,7 @@ Responsibility:
 - support multi-method auth selection
 - render prompt fields from auth metadata
 - support OAuth and API/manual flows
+- hand code-based OAuth completion back to Settings for callback submission
 
 ### Prop contract
 
@@ -471,11 +505,13 @@ Most important exported contracts:
 - `OpencodeProject`
 - `OpencodeContextValue`
 
+The context includes session lifecycle actions, commands, read-only workspace state/actions, diagnostics, global stream status, and OAuth callback completion in addition to chat state.
+
 ## `providers/opencode-provider-selectors.ts`
 
 ### Responsibility
 
-- derive current pending requests, configured providers, transcript activity label, conversation status label, and session previews
+- derive current session-scoped permissions, configured providers, transcript activity label, conversation status label, and session previews
 
 ## `providers/opencode-provider-utils.ts`
 
@@ -491,12 +527,26 @@ Most important exported contracts:
 ### Responsibility
 
 - aggregate workspace/session API fetches in small helpers
+- expose delete, rename, fork, share/unshare, revert/unrevert, command-list, and command-execution calls
 
 ## `providers/services/capabilities-service.ts`
 
 ### Responsibility
 
 - aggregate capability discovery and normalize provider/model/agent lists
+- preserve model attachment/modalities/tool-call/reasoning/status/limit capabilities
+
+## `providers/services/workspace-service.ts`
+
+### Responsibility
+
+- expose read-only file find/text/list/read/status and VCS operations; the current UI uses file find, read, status, and VCS
+
+## `providers/services/diagnostics-service.ts`
+
+### Responsibility
+
+- load health, MCP, LSP, and formatter status independently so one unavailable endpoint does not hide the others
 
 ## Regeneration Notes
 

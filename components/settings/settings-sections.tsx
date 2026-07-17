@@ -19,9 +19,38 @@ import type { OpencodeConnectionSettings } from '@/lib/opencode/client';
 import type { SpeechVoiceOption } from '@/lib/voice/speech-output';
 import type { WorkingSoundVariant } from '@/lib/voice/working-sound';
 import type { ChatPreferences, ModelOption, ProviderOption, ResponseScope } from '@/providers/opencode-provider';
+import type { Diagnostics } from '@/providers/services/diagnostics-service';
 import { getProviderCopy, RESPONSE_SCOPE_OPTIONS, WORKING_SOUND_OPTIONS } from '@/components/settings/settings-utils';
 
 type Palette = typeof Colors.light;
+
+export function DiagnosticsSection({
+  diagnostics,
+  eventStreamStatus,
+  onRefresh,
+  palette,
+}: {
+  diagnostics?: Diagnostics;
+  eventStreamStatus: 'idle' | 'connecting' | 'connected' | 'error';
+  onRefresh: () => void;
+  palette: Palette;
+}) {
+  const health = diagnostics?.health.available ? diagnostics.health.data : undefined;
+  const mcpCount = diagnostics?.mcp.available ? Object.keys(diagnostics.mcp.data).length : undefined;
+  const lspCount = diagnostics?.lsp.available ? diagnostics.lsp.data.length : undefined;
+  const formatterCount = diagnostics?.formatter.available ? diagnostics.formatter.data.length : undefined;
+  return (
+    <Card mode="contained" style={[styles.card, { backgroundColor: palette.surface }]}>
+      <Card.Content style={styles.section}>
+        <Text variant="titleLarge" style={[styles.title, { color: palette.text }]}>Server diagnostics</Text>
+        <List.Item title="Server" description={health ? `OpenCode ${health.version}` : 'Health endpoint unavailable'} right={() => <Chip compact>{health?.healthy ? 'Healthy' : 'Unknown'}</Chip>} />
+        <List.Item title="Realtime updates" description={eventStreamStatus === 'connected' ? 'Global event stream connected' : 'Polling fallback active'} right={() => <Chip compact>{eventStreamStatus}</Chip>} />
+        <List.Item title="Subsystems" description={`MCP ${mcpCount ?? 'n/a'} • LSP ${lspCount ?? 'n/a'} • Formatters ${formatterCount ?? 'n/a'}`} />
+        <Button mode="outlined" onPress={onRefresh}>Refresh diagnostics</Button>
+      </Card.Content>
+    </Card>
+  );
+}
 
 type ConnectionSectionProps = {
   connection: { status: 'idle' | 'connecting' | 'connected' | 'error'; message: string; checkedAt?: number };

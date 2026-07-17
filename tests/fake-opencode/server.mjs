@@ -3,16 +3,28 @@
 import http from 'node:http';
 import { URL } from 'node:url';
 
-import { listProvidersPayload, providerAuthPayload } from './fixtures.mjs';
+import {
+  commandsPayload,
+  diagnosticsPayload,
+  fileStatusesPayload,
+  listProvidersPayload,
+  providerAuthPayload,
+  vcsPayload,
+} from './fixtures.mjs';
 import { createSessionHelpers } from './session-helpers.mjs';
 import { createStateStore, getNow } from './state.mjs';
 
 const port = Number.parseInt(process.env.FAKE_OPENCODE_PORT || '4096', 10);
 const scenarioName = process.env.FAKE_OPENCODE_SCENARIO || 'happy-path';
+const supportedScenarios = new Set(['happy-path', 'permission', 'stream-disconnect']);
 const configuredBasePath = (process.env.FAKE_OPENCODE_BASE_PATH || '').trim();
 const basePath = configuredBasePath
   ? `/${configuredBasePath.replace(/^\/+/, '').replace(/\/+$/, '')}`
   : '';
+
+if (!supportedScenarios.has(scenarioName)) {
+  throw new Error(`Unsupported fake OpenCode scenario: ${scenarioName}`);
+}
 
 const stateStore = createStateStore(scenarioName);
 let state = stateStore.getState();
@@ -66,7 +78,10 @@ function emitEvent(event) {
     return;
   }
 
-  const payload = `data: ${JSON.stringify(event)}\n\n`;
+  const payload = `data: ${JSON.stringify({
+    directory: state.project.worktree,
+    payload: { id: `event-${state.nextEventId++}`, ...event },
+  })}\n\n`;
   for (const client of state.sseClients) {
     client.write(payload);
   }
@@ -79,6 +94,8 @@ const helpers = createSessionHelpers({
 });
 const {
   createSession,
+  forkSession,
+  handleCommand,
   handlePromptSubmission,
   mergeConfigPatch,
   scheduleCompletion,
@@ -101,7 +118,11 @@ function handleSse(req, res) {
     Connection: 'keep-alive',
     'Access-Control-Allow-Origin': '*',
   });
-  res.write(': connected\n\n');
+  res.flushHeaders();
+  res.write(`data: ${JSON.stringify({
+    directory: state.project.worktree,
+    payload: { type: 'server.connected', properties: {} },
+  })}\n\n`);
   state.sseClients.add(res);
   req.on('close', () => {
     state.sseClients.delete(res);
@@ -142,6 +163,10 @@ const server = http.createServer(async (req, res) => {
     if (req.method === 'POST' && pathname === '/__control/reset') {
       const body = await readJson(req);
       const nextScenario = body?.scenario || scenarioName;
+      if (!supportedScenarios.has(nextScenario)) {
+        sendJson(res, 400, { error: `Unsupported scenario: ${nextScenario}` });
+        return;
+      }
       state = stateStore.resetState(nextScenario);
       sendJson(res, 200, { data: { scenario: state.scenario } });
       return;
@@ -184,22 +209,44 @@ const server = http.createServer(async (req, res) => {
     }
 
     if (req.method === 'POST' && /^\/provider\/[^/]+\/oauth\/authorize$/.test(pathname)) {
+      const body = await readJson(req);
+      if (!Number.isInteger(body?.method)) {
+        sendJson(res, 400, { error: 'OAuth authorize requires method' });
+        return;
+      }
       sendJson(res, 200, {
         url: 'https://example.test/oauth/complete',
         instructions: 'Fake OAuth completed in CI.',
+        method: body?.method === 0 ? 'code' : 'auto',
       });
+      return;
+    }
+
+    if (req.method === 'POST' && /^\/provider\/[^/]+\/oauth\/callback$/.test(pathname)) {
+      const providerId = pathname.split('/')[2];
+      const body = await readJson(req);
+      if (!Number.isInteger(body?.method)) {
+        sendJson(res, 400, { error: 'OAuth callback requires method' });
+        return;
+      }
+      state.configuredProviderIds.add(providerId);
+      sendJson(res, 200, { ok: true, code: body?.code });
       return;
     }
 
     if (req.method === 'PUT' && /^\/auth\/[^/]+$/.test(pathname)) {
       const providerId = pathname.split('/')[2];
       const body = await readJson(req);
-      state.authByProvider[providerId] = body?.auth;
+      if (!body?.type || body?.auth) {
+        sendJson(res, 400, { error: 'Auth body must be a raw Auth value' });
+        return;
+      }
+      state.authByProvider[providerId] = body;
       state.configuredProviderIds.add(providerId);
       mergeConfigPatch({
         enabled_providers: [...state.configuredProviderIds],
         provider: {
-          [providerId]: body?.auth || { type: 'api' },
+          [providerId]: body || { type: 'api' },
         },
       });
       sendJson(res, 200, { ok: true });
@@ -211,6 +258,90 @@ const server = http.createServer(async (req, res) => {
         { name: 'build', description: 'Default build agent' },
         { name: 'general', description: 'General-purpose agent' },
       ]);
+      return;
+    }
+
+    if (req.method === 'GET' && pathname === '/global/health') {
+      sendJson(res, 200, { healthy: true, version: '1.18.3' });
+      return;
+    }
+
+    if (req.method === 'GET' && pathname === '/command') {
+      sendJson(res, 200, commandsPayload());
+      return;
+    }
+
+    if (req.method === 'GET' && pathname === '/find/file') {
+      const query = (requestUrl.searchParams.get('query') || '').toLowerCase();
+      sendJson(res, 200, Object.keys(state.files).filter((path) => path.toLowerCase().includes(query)).sort());
+      return;
+    }
+
+    if (req.method === 'GET' && pathname === '/find') {
+      const pattern = requestUrl.searchParams.get('pattern') || '';
+      const matches = Object.entries(state.files).flatMap(([path, content]) => content.includes(pattern)
+        ? [{ path, line_number: 1, absolute_offset: content.indexOf(pattern), submatches: [{ match: { text: pattern }, start: 0, end: pattern.length }], lines: { text: content.split('\n')[0] } }]
+        : []);
+      sendJson(res, 200, matches);
+      return;
+    }
+
+    if (req.method === 'GET' && pathname === '/file') {
+      const requestedPath = requestUrl.searchParams.get('path') || '';
+      const prefix = requestedPath ? `${requestedPath.replace(/\/$/, '')}/` : '';
+      const nodes = Object.keys(state.files)
+        .filter((path) => path.startsWith(prefix))
+        .map((path) => ({ name: path.slice(prefix.length), path, absolute: `${state.project.worktree}/${path}`, type: 'file', ignored: false }));
+      sendJson(res, 200, nodes);
+      return;
+    }
+
+    if (req.method === 'GET' && pathname === '/file/content') {
+      const requestedPath = requestUrl.searchParams.get('path') || '';
+      if (!(requestedPath in state.files)) {
+        notFound(res);
+        return;
+      }
+      sendJson(res, 200, { type: 'text', content: state.files[requestedPath] });
+      return;
+    }
+
+    if (req.method === 'GET' && pathname === '/file/status') {
+      sendJson(res, 200, fileStatusesPayload());
+      return;
+    }
+
+    if (req.method === 'GET' && pathname === '/vcs') {
+      sendJson(res, 200, vcsPayload());
+      return;
+    }
+
+    if (req.method === 'GET' && pathname === '/vcs/status') {
+      sendJson(res, 200, [{ file: 'src/demo.ts', additions: 2, deletions: 1, status: 'modified' }]);
+      return;
+    }
+
+    if (req.method === 'GET' && pathname === '/vcs/diff') {
+      sendJson(res, 200, [{ file: 'src/demo.ts', patch: '@@ -1 +1 @@', additions: 2, deletions: 1, status: 'modified' }]);
+      return;
+    }
+
+    if (req.method === 'GET' && pathname === '/vcs/diff/raw') {
+      sendJson(res, 200, 'diff --git a/src/demo.ts b/src/demo.ts\n');
+      return;
+    }
+
+    const diagnostics = diagnosticsPayload();
+    if (req.method === 'GET' && pathname === '/mcp') {
+      sendJson(res, 200, diagnostics.mcp);
+      return;
+    }
+    if (req.method === 'GET' && pathname === '/lsp') {
+      sendJson(res, 200, diagnostics.lsp);
+      return;
+    }
+    if (req.method === 'GET' && pathname === '/formatter') {
+      sendJson(res, 200, diagnostics.formatter);
       return;
     }
 
@@ -228,6 +359,35 @@ const server = http.createServer(async (req, res) => {
 
     if (req.method === 'GET' && pathname === '/session/status') {
       sendJson(res, 200, state.sessionStatuses);
+      return;
+    }
+
+    if (req.method === 'GET' && /^\/session\/[^/]+$/.test(pathname)) {
+      const session = getSession(pathname.split('/')[2]);
+      if (!session) {
+        notFound(res);
+        return;
+      }
+      sendJson(res, 200, session);
+      return;
+    }
+
+    if (req.method === 'DELETE' && /^\/session\/[^/]+$/.test(pathname)) {
+      const sessionId = pathname.split('/')[2];
+      const sessionIndex = state.sessions.findIndex((entry) => entry.id === sessionId);
+      if (sessionIndex < 0) {
+        notFound(res);
+        return;
+      }
+      const deletedSession = state.sessions[sessionIndex];
+      state.sessions.splice(sessionIndex, 1);
+      delete state.messagesBySession[sessionId];
+      delete state.diffsBySession[sessionId];
+      delete state.todosBySession[sessionId];
+      delete state.sessionStatuses[sessionId];
+      state.pendingPermissions = state.pendingPermissions.filter((entry) => entry.sessionID !== sessionId);
+      emitEvent({ type: 'session.deleted', properties: { info: deletedSession } });
+      sendJson(res, 200, true);
       return;
     }
 
@@ -253,7 +413,12 @@ const server = http.createServer(async (req, res) => {
       const sessionId = pathname.split('/')[2];
       const body = await readJson(req);
       handlePromptSubmission(sessionId, body);
-      sendJson(res, 200, { accepted: true });
+      if (pathname.endsWith('/prompt_async')) {
+        res.writeHead(204, { 'Access-Control-Allow-Origin': '*' });
+        res.end();
+      } else {
+        sendJson(res, 200, { accepted: true });
+      }
       return;
     }
 
@@ -277,6 +442,81 @@ const server = http.createServer(async (req, res) => {
       return;
     }
 
+    if (req.method === 'POST' && /^\/session\/[^/]+\/command$/.test(pathname)) {
+      const sessionId = pathname.split('/')[2];
+      if (!getSession(sessionId)) {
+        notFound(res);
+        return;
+      }
+      sendJson(res, 200, handleCommand(sessionId, await readJson(req)));
+      return;
+    }
+
+    if (req.method === 'POST' && /^\/session\/[^/]+\/fork$/.test(pathname)) {
+      const sourceId = pathname.split('/')[2];
+      const body = await readJson(req);
+      const forked = forkSession(sourceId, body?.messageID);
+      if (!forked) {
+        notFound(res);
+        return;
+      }
+      sendJson(res, 200, forked);
+      return;
+    }
+
+    if (req.method === 'POST' && /^\/session\/[^/]+\/share$/.test(pathname)) {
+      const session = getSession(pathname.split('/')[2]);
+      if (!session) {
+        notFound(res);
+        return;
+      }
+      session.share = { url: `https://share.example.test/${session.id}` };
+      session.time.updated = getNow();
+      emitEvent({ type: 'session.updated', properties: { info: session } });
+      sendJson(res, 200, session);
+      return;
+    }
+
+    if (req.method === 'DELETE' && /^\/session\/[^/]+\/share$/.test(pathname)) {
+      const session = getSession(pathname.split('/')[2]);
+      if (!session) {
+        notFound(res);
+        return;
+      }
+      delete session.share;
+      session.time.updated = getNow();
+      emitEvent({ type: 'session.updated', properties: { info: session } });
+      sendJson(res, 200, session);
+      return;
+    }
+
+    if (req.method === 'POST' && /^\/session\/[^/]+\/revert$/.test(pathname)) {
+      const session = getSession(pathname.split('/')[2]);
+      const body = await readJson(req);
+      if (!session || !body?.messageID) {
+        sendJson(res, 400, { error: 'Revert requires a session and messageID' });
+        return;
+      }
+      session.revert = { messageID: body.messageID, ...(body.partID ? { partID: body.partID } : {}) };
+      session.time.updated = getNow();
+      emitEvent({ type: 'session.updated', properties: { info: session } });
+      sendJson(res, 200, session);
+      return;
+    }
+
+    if (req.method === 'POST' && /^\/session\/[^/]+\/unrevert$/.test(pathname)) {
+      const session = getSession(pathname.split('/')[2]);
+      if (!session) {
+        notFound(res);
+        return;
+      }
+      delete session.revert;
+      session.time.updated = getNow();
+      emitEvent({ type: 'session.updated', properties: { info: session } });
+      sendJson(res, 200, session);
+      return;
+    }
+
     if (req.method === 'PATCH' && /^\/session\/[^/]+$/.test(pathname)) {
       const sessionId = pathname.split('/')[2];
       const session = getSession(sessionId);
@@ -286,54 +526,37 @@ const server = http.createServer(async (req, res) => {
         return;
       }
 
-        session.time.archived = body?.time?.archived ?? null;
-        session.time.updated = getNow();
-        emitEvent({ type: 'session.updated', properties: { sessionID: sessionId } });
-        sendJson(res, 200, session);
-      return;
-    }
-
-    if (req.method === 'GET' && pathname === '/permission') {
-      sendJson(res, 200, state.pendingPermissions);
-      return;
-    }
-
-    if (req.method === 'GET' && pathname === '/question') {
-      sendJson(res, 200, state.pendingQuestions);
-      return;
-    }
-
-    if (req.method === 'POST' && /^\/permission\/[^/]+\/reply$/.test(pathname)) {
-      const requestId = pathname.split('/')[2];
-      const request = state.pendingPermissions.find((entry) => entry.id === requestId);
-      state.pendingPermissions = state.pendingPermissions.filter((entry) => entry.id !== requestId);
-      emitEvent({ type: 'permission.replied', properties: { requestID: requestId } });
-      if (request?.sessionID) {
-        scheduleCompletion(request.sessionID, 'permission resolved');
+      if (typeof body?.title !== 'string' || !body.title.trim()) {
+        sendJson(res, 400, { error: 'Session update requires title' });
+        return;
       }
-      sendJson(res, 200, { ok: true });
+      session.title = body.title.trim();
+      session.time.updated = getNow();
+      emitEvent({ type: 'session.updated', properties: { info: session } });
+      sendJson(res, 200, session);
       return;
     }
 
-    if (req.method === 'POST' && /^\/question\/[^/]+\/reply$/.test(pathname)) {
-      const requestId = pathname.split('/')[2];
-      const request = state.pendingQuestions.find((entry) => entry.id === requestId);
-      state.pendingQuestions = state.pendingQuestions.filter((entry) => entry.id !== requestId);
-      if (request?.sessionID) {
-        scheduleCompletion(request.sessionID, 'question resolved');
+    if (req.method === 'POST' && /^\/session\/[^/]+\/permissions\/[^/]+$/.test(pathname)) {
+      const [, , sessionId, , permissionId] = pathname.split('/');
+      const body = await readJson(req);
+      const request = state.pendingPermissions.find((entry) => entry.id === permissionId && entry.sessionID === sessionId);
+      if (!request || !['once', 'always', 'reject'].includes(body?.response)) {
+        sendJson(res, 400, { error: 'Invalid permission response' });
+        return;
       }
-      sendJson(res, 200, { ok: true });
+      state.pendingPermissions = state.pendingPermissions.filter((entry) => entry !== request);
+      emitEvent({
+        type: 'permission.replied',
+        properties: { sessionID: sessionId, permissionID: permissionId, response: body.response },
+      });
+      if (body.response !== 'reject') scheduleCompletion(sessionId, 'permission resolved');
+      else state.sessionStatuses[sessionId] = { type: 'idle' };
+      sendJson(res, 200, true);
       return;
     }
 
-    if (req.method === 'POST' && /^\/question\/[^/]+\/reject$/.test(pathname)) {
-      const requestId = pathname.split('/')[2];
-      state.pendingQuestions = state.pendingQuestions.filter((entry) => entry.id !== requestId);
-      sendJson(res, 200, { ok: true });
-      return;
-    }
-
-    if (req.method === 'GET' && pathname === '/event') {
+    if (req.method === 'GET' && pathname === '/global/event') {
       handleSse(req, res);
       return;
     }

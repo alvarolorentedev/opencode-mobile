@@ -1,804 +1,303 @@
 # API Contract
 
-## Purpose
+## Scope And Compatibility
 
-This document captures the OpenCode server contract as currently assumed by the mobile app.
+This is the client-side OpenCode contract implemented by the app. The code targets `@opencode-ai/sdk` 1.18.3 and imports generated request and response types directly. It is latest-only support: the app does not carry compatibility shims for older OpenCode endpoint shapes.
 
-It is not an official server API specification. It is the client-side contract required for parity.
-
-Sources for this contract:
+The authoritative implementation is:
 
 - `lib/opencode/client.ts`
+- `lib/opencode/types.ts`
 - `providers/services/*.ts`
 - `providers/opencode-provider.tsx`
-- `tests/fake-opencode/server.mjs`
-- `tests/fake-opencode/*.mjs`
 
-## Client Construction Contract
+## Client Construction
 
-The app builds clients with:
+`buildClient()` passes these options to `createOpencodeClient()`:
 
-- `baseUrl`
-- optional `directory`
-- optional basic auth header
+- normalized `baseUrl`
+- optional project `directory`
+- optional Basic Authorization header
+- a scoped fetch that preserves a configured URL path prefix
+- `responseStyle: 'fields'`
+- `throwOnError: true`
 
-The configured server URL may include a path prefix such as `/api`; the client must preserve that prefix for both generated SDK requests and manual fetch calls.
+Two clients are used:
 
-Client-scoped manual requests also append:
+- project-scoped `client` for session, capability, command, file, and VCS operations
+- unscoped `catalogClient` for project discovery, diagnostics, and global events
 
-- `Accept: application/json`
-- `Content-Type: application/json`
-- `Authorization` when password is configured
-- `directory=<path>` query parameter when the client is project-scoped
+The app retains client metadata for the manual health request. `requestOpenCodeApi()` preserves path prefixes, auth headers, JSON headers, and project directory when one exists.
 
-## Connection Settings Shape
+## Endpoint Families
 
-```ts
-type OpencodeConnectionSettings = {
-  serverUrl: string
-  username: string
-  password: string
-  directory: string
-}
-```
+The generated 1.18.3 SDK is used for:
 
-## Endpoint Summary
+- path, project list, and current project discovery
+- config get/update
+- provider list and auth metadata
+- provider OAuth authorize/callback and credential write
+- agent and command listing
+- session list/status/create/delete/update
+- session messages, diff, todos, prompt, abort, summarize, and command
+- session fork, share/unshare, and revert/unrevert
+- session-scoped permission reply
+- global event streaming
+- file find/read/status and VCS information
+- MCP, LSP, and formatter status
 
-The mobile app currently depends on these logical endpoints:
+The only direct path outside the generated methods is `GET /global/health`.
 
-- `GET /path`
-- `GET /project`
-- `GET /project/current`
-- `GET /config`
-- `PATCH /config`
-- `GET /provider`
-- `GET /provider/auth`
-- `POST /provider/:providerId/oauth/authorize`
-- `PUT /auth/:providerId`
-- `GET /agent`
-- `GET /session`
-- `POST /session`
-- `GET /session/status`
-- `GET /session/:id/message`
-- `GET /session/:id/diff`
-- `GET /session/:id/todo`
-- `POST /session/:id/prompt_async` or equivalent SDK prompt call
-- `POST /session/:id/abort`
-- `POST /session/:id/summarize`
-- `PATCH /session/:id`
-- `GET /permission`
-- `POST /permission/:id/reply`
-- `GET /question`
-- `POST /question/:id/reply`
-- `POST /question/:id/reject`
-- `GET /event`
+The app has no pending-permission list operation and implements permissions as its server-driven blocking interaction.
 
-## Workspace Discovery Endpoints
+## Workspace Discovery
 
-### `GET /path`
+The catalog client loads these requests concurrently:
 
-Purpose:
+- `path.get()`
+- `project.list()` as an optional request
+- `project.current()` as an optional request
 
-- discover server root path
+`path.get()` must return a `directory`. Projects are deduplicated by `worktree`; the current project is included even if omitted from the project list.
 
-Expected response shape used by the app:
+## Capability Discovery
 
-```json
-{
-  "directory": "/workspace"
-}
-```
+For an active project, the app loads:
 
-### `GET /project`
+- `config.get()`
+- `provider.list()`
+- `provider.auth()`
+- `app.agents()`
 
-Purpose:
+Provider models are flattened to app options. The following 1.18.3 model fields are retained:
 
-- list server projects/worktrees
+- `id` and `name`
+- `attachment`
+- `modalities.input`
+- `tool_call`
+- `reasoning`
+- `status`
+- `limit.context`
+- `limit.output`
 
-Expected response shape used by the app:
+`attachment` controls whether the composer may send files when the selected model is present in the discovered model list. If modality data is absent, the app defaults the input modality list to `text`; it does not infer attachment support.
+
+## Provider Authentication
+
+### Credential Write
+
+`client.auth.set()` receives the provider ID as path parameter and one of these bodies:
 
 ```json
-[
-  {
-    "id": "project-demo",
-    "worktree": "/workspace/demo-project",
-    "time": {
-      "created": 1710000000000,
-      "initialized": 1710000030000
-    }
-  }
-]
+{ "type": "api", "key": "sk-..." }
 ```
-
-### `GET /project/current`
-
-Purpose:
-
-- get current server-side project/worktree
-
-Expected response shape:
 
 ```json
-{
-  "id": "project-demo",
-  "worktree": "/workspace/demo-project",
-  "time": {
-    "created": 1710000000000,
-    "initialized": 1710000030000
-  }
-}
+{ "type": "wellknown", "key": "name", "token": "token" }
 ```
 
-## Config Endpoints
+After credential storage, the provider is enabled in config and capabilities are refreshed.
 
-### `GET /config`
+### OAuth Authorization And Callback
 
-Purpose:
-
-- fetch current OpenCode config used for provider, model, permission, and agent defaults
-
-Expected response fields used by the app:
-
-- `model`
-- `enabled_providers`
-- `permission`
-- `provider`
-- `agent`
-
-Example:
+Authorization calls `client.provider.oauth.authorize()` with:
 
 ```json
-{
-  "model": "openai/gpt-4.1-mini",
-  "enabled_providers": ["openai"],
-  "permission": {
-    "edit": "ask",
-    "bash": "ask",
-    "webfetch": "ask",
-    "doom_loop": "ask",
-    "external_directory": "ask"
-  },
-  "provider": {},
-  "agent": {
-    "build": {},
-    "general": {}
-  }
-}
+{ "method": 0 }
 ```
 
-### `PATCH /config`
+The response must contain:
 
-Purpose:
+- `url`
+- optional `instructions`
+- `method: "auto" | "code"`
 
-- update provider enablement or permission policy
-
-Payload patterns currently used:
-
-1. enable provider
-2. toggle auto-approve permissions
-
-Example payload for enabling auto-approve:
+The URL is opened in the system browser. For `code`, Settings collects an authorization code and calls `client.provider.oauth.callback()` with:
 
 ```json
-{
-  "permission": {
-    "edit": "allow",
-    "bash": "allow",
-    "webfetch": "allow",
-    "doom_loop": "allow",
-    "external_directory": "allow"
-  }
-}
+{ "method": 0, "code": "returned-code" }
 ```
 
-Expected response:
+An empty trimmed code is sent as `undefined`, although the current dialog disables completion until text is present. A successful callback enables the provider and refreshes capabilities. For `auto`, the app enables the provider and reconnects after browser completion.
 
-- updated config object
+## Session Contract
 
-## Provider And Agent Endpoints
+### List And Status
 
-### `GET /provider`
+`session.list()` and `session.status()` are fetched together. Sessions are sorted descending by `time.updated`; any status other than `idle` is treated as busy.
 
-Purpose:
-
-- list all providers and currently connected providers
-
-Expected response shape:
-
-```json
-{
-  "all": [
-    {
-      "id": "openai",
-      "name": "OpenAI",
-      "models": {
-        "gpt-4.1-mini": {
-          "id": "gpt-4.1-mini",
-          "name": "GPT-4.1 mini",
-          "reasoning": true
-        }
-      }
-    },
-    {
-      "id": "openrouter",
-      "name": "OpenRouter",
-      "models": {
-        "openrouter/auto": {
-          "id": "openrouter/auto",
-          "name": "Auto",
-          "reasoning": false
-        }
-      }
-    }
-  ],
-  "connected": ["openai"]
-}
-```
-
-Normalization rules used by the app:
-
-- each provider becomes a `ProviderOption`
-- provider models are flattened into `ModelOption[]`
-- model IDs are stored as `<providerID>/<modelID>`
-
-### `GET /provider/auth`
-
-Purpose:
-
-- load provider-specific auth metadata
-
-Expected response shape:
-
-```json
-{
-  "openai": [
-    {
-      "type": "oauth",
-      "label": "Sign in",
-      "prompts": []
-    }
-  ],
-  "openrouter": []
-}
-```
-
-Prompt fields currently supported by the UI:
-
-- `type: "text" | "select"`
-- `key`
-- `message`
-- `placeholder`
-- `options[]`
-- optional conditional `when`
-
-### `POST /provider/:providerId/oauth/authorize`
-
-Purpose:
-
-- start OAuth flow for a provider auth method
-
-Expected request body shape:
-
-```json
-{
-  "method": 0,
-  "inputs": {}
-}
-```
-
-Expected response shape:
-
-```json
-{
-  "url": "https://example.test/oauth/complete",
-  "instructions": "Fake OAuth completed in CI."
-}
-```
-
-### `PUT /auth/:providerId`
-
-Purpose:
-
-- store provider auth credentials
-
-Payload patterns used by the app:
-
-API auth:
-
-```json
-{
-  "auth": {
-    "type": "api",
-    "key": "sk-..."
-  }
-}
-```
-
-Wellknown auth:
-
-```json
-{
-  "auth": {
-    "type": "wellknown",
-    "key": "some-key-name",
-    "token": "some-token"
-  }
-}
-```
-
-Expected response:
-
-```json
-{
-  "ok": true
-}
-```
-
-### `GET /agent`
-
-Purpose:
-
-- list available agent modes
-
-Expected response shape:
-
-```json
-[
-  { "name": "build", "description": "Default build agent" },
-  { "name": "general", "description": "General-purpose agent" }
-]
-```
-
-## Session Endpoints
-
-### `GET /session`
-
-Purpose:
-
-- list sessions for the current scoped project
-
-Expected session fields used by the app:
+Fields consumed by the UI include:
 
 - `id`
 - `title`
 - `summary`
-- `time.created`
-- `time.updated`
-- `time.archived`
+- `time.created` and `time.updated`
+- `share.url`
+- `revert`
 
-Example:
+### Create, Rename, And Delete
 
-```json
-[
-  {
-    "id": "session-1",
-    "title": "Stabilize the chat flow",
-    "summary": {
-      "files": 1,
-      "additions": 6,
-      "deletions": 1
-    },
-    "time": {
-      "created": 1710000000000,
-      "updated": 1710000070000,
-      "archived": null
-    }
-  }
-]
-```
+- create uses `session.create()` with no body or `{ "title": "..." }`
+- rename uses `session.update()` with `{ "title": "..." }`
+- delete uses `session.delete()` and clears that session's local message, diff, todo, and permission caches
 
-### `POST /session`
+Deleting the current session also clears current selection before the list is refreshed.
 
-Purpose:
+### Fork
 
-- create a new session, optionally with title
-
-Possible request bodies:
+`session.fork()` receives an optional body:
 
 ```json
-{}
+{ "messageID": "message-id" }
 ```
 
-or
+The returned session is required. The app refreshes sessions and opens the fork.
+
+### Share And Unshare
+
+`session.share()` and `session.unshare()` must return the updated session. Workspace copies `share.url` after a newly shared session returns one.
+
+### Revert And Unrevert
+
+Revert sends:
+
+```json
+{ "messageID": "message-id", "partID": "optional-part-id" }
+```
+
+The current UI supplies a user message ID and no part ID. Revert and unrevert refresh sessions, messages, and diff. A session with `revert` shows a restore action.
+
+### Messages, Diffs, And Todos
+
+The app reads:
+
+- `session.messages({ id })`
+- `session.diff({ id })`
+- `session.todo({ id })`
+
+Missing data for these content requests is normalized to an empty array. Todos are server-owned. The UI renders their `status` and never sends a todo mutation.
+
+### Prompt And Attachments
+
+Prompt submission prefers `session.promptAsync()` and falls back to `session.prompt()` if that method is absent. Both receive:
+
+- selected `agent`
+- selected `{ providerID, modelID }`
+- optional generated `system` instructions
+- text and file `parts`
+
+Before send:
+
+- attachments are rejected if the selected discovered model has `attachment: false`
+- non-HTTP attachment URIs, including `file://`, `content://`, and `asset://`, are read and encoded as data URLs
+- a local file over 10 MB is rejected before encoding
+- remote `http:` and `https:` URLs pass through unchanged
+
+### Abort And Summarize
+
+- abort uses `session.abort()` and refreshes session content
+- summarize uses the selected provider/model for untitled sessions; failure leaves the title unchanged
+
+## Slash Commands
+
+Commands are loaded with `command.list()`. An exact known draft of the form `/name arguments` with no attachments calls `session.command()` with:
 
 ```json
 {
-  "title": "My session title"
-}
-```
-
-Expected response:
-
-- created session object
-
-### `GET /session/status`
-
-Purpose:
-
-- fetch current per-session runtime statuses
-
-Expected response shape:
-
-```json
-{
-  "session-1": { "type": "idle" },
-  "session-2": { "type": "running" }
-}
-```
-
-The app treats any non-`idle` state as busy.
-
-### `GET /session/:id/message`
-
-Purpose:
-
-- fetch raw message records for transcript derivation
-
-Expected message record example:
-
-```json
-[
-  {
-    "info": {
-      "id": "message-1",
-      "role": "user",
-      "sessionID": "session-1",
-      "time": { "created": 1710000000000 }
-    },
-    "parts": [
-      { "type": "text", "text": "Stabilize the chat flow" }
-    ]
-  },
-  {
-    "info": {
-      "id": "message-2",
-      "role": "assistant",
-      "sessionID": "session-1",
-      "time": { "created": 1710000001000 }
-    },
-    "parts": [
-      { "type": "text", "text": "Finished: task complete." },
-      { "type": "patch", "files": ["app/(tabs)/index.tsx"] }
-    ]
-  }
-]
-```
-
-Supported part types currently handled by the client:
-
-- `text`
-- `reasoning`
-- `tool`
-- `patch`
-- `file`
-- `subtask`
-- `step-start`
-- `step-finish`
-- `agent`
-- `retry`
-- `compaction`
-
-### `GET /session/:id/diff`
-
-Purpose:
-
-- fetch structured file diffs
-
-Example response:
-
-```json
-[
-  {
-    "file": "app/(tabs)/index.tsx",
-    "additions": 6,
-    "deletions": 1,
-    "before": "export default function OldScreen() {}\n",
-    "after": "export default function ChatLandingScreen() {\n  return null;\n}\n"
-  }
-]
-```
-
-### `GET /session/:id/todo`
-
-Purpose:
-
-- fetch session todos shown in the chat composer
-
-Example response:
-
-```json
-[
-  {
-    "id": "todo-1",
-    "content": "Validate session transcript",
-    "status": "completed",
-    "priority": "high"
-  },
-  {
-    "id": "todo-2",
-    "content": "Confirm fake server integration",
-    "status": "completed",
-    "priority": "medium"
-  }
-]
-```
-
-### `POST /session/:id/prompt_async`
-
-Purpose:
-
-- submit prompt content to a session
-
-The app also supports SDK variants such as `promptAsync()` or `prompt()`.
-
-Expected request body fields used by the app:
-
-- `agent`
-- `model.providerID`
-- `model.modelID`
-- optional `system`
-- `parts[]`
-
-Example request body:
-
-```json
-{
+  "command": "name",
+  "arguments": "arguments",
   "agent": "build",
-  "model": {
-    "providerID": "openai",
-    "modelID": "gpt-4.1-mini"
-  },
-  "system": "Reasoning effort: low. Keep the solution direct...",
-  "parts": [
-    { "type": "text", "text": "Implement the feature" },
-    {
-      "type": "file",
-      "mime": "text/plain",
-      "filename": "notes.txt",
-      "url": "data:text/plain;base64,SGVsbG8="
-    }
-  ]
+  "model": "provider/model"
 }
 ```
 
-Expected response in fake server:
+`agent` and `model` reflect current chat preferences. Messages and sessions are refreshed after execution.
+
+## Read-Only Workspace Contract
+
+`workspace-service.ts` wraps these SDK operations:
+
+- `find.files()` with `query` and a string `dirs` flag
+- `find.text()` with `pattern`
+- `file.list()` with `path`
+- `file.read()` with `path`
+- `file.status()`
+- `vcs.get()`
+
+The current Workspace UI uses file find, read, status, and VCS. Search is path-based, selected file content is displayed read-only, status is shown as a changed-file count, and VCS contributes the branch label. No file-write endpoint is called.
+
+## Diagnostics Contract
+
+Diagnostics load four requests independently:
+
+- `GET /global/health`, expected as `{ "healthy": true, "version": "..." }`
+- `mcp.status()`, expected as a status record keyed by MCP name
+- `lsp.status()`, expected as an array
+- `formatter.status()`, expected as an array
+
+Each result records either `{ available: true, data }` or `{ available: false, error }`. One unavailable endpoint does not fail the other diagnostic results.
+
+## Permission Contract
+
+Permissions are session-scoped and event-driven.
+
+`permission.updated` properties are treated as the complete SDK `Permission` object, including:
+
+- `id`
+- `sessionID`
+- `type` and optional `title`
+- optional `pattern`
+
+The request is inserted or replaced in `pendingPermissionsBySession[sessionID]`. `permission.replied` removes the matching `permissionID` from the matching `sessionID`.
+
+A reply calls the generated session-scoped operation with:
 
 ```json
-{ "accepted": true }
+{ "response": "once" }
 ```
 
-### `POST /session/:id/abort`
+Allowed values are `once`, `always`, and `reject`.
 
-Purpose:
+### API Limitation
 
-- cancel an active run
+OpenCode 1.18.3 exposes no operation used by this app to list currently pending permissions. Consequently:
 
-Expected response:
+- polling cannot discover permissions
+- reconnecting SSE does not replay a request unless the server emits it again
+- a request created before subscription cannot be shown if this app did not previously observe and persist it
+- observed permissions are persisted in AsyncStorage to reduce loss across app restarts
 
-```json
-{ "ok": true }
-```
+This is a protocol limitation, not a claim that polling provides complete permission recovery.
 
-### `POST /session/:id/summarize`
+## Global Event Stream
 
-Purpose:
+The catalog client opens `global.event()`. Each envelope contains a `directory` and `payload`; only envelopes matching the active project path are handled.
 
-- ask server to derive a title for an untitled session
+Recognized payload types:
 
-Expected request body shape used by the app:
+- `session.created`
+- `session.updated`
+- `session.deleted`
+- `session.status`
+- `session.idle`
+- `message.updated`
+- `message.part.updated`
+- `message.part.removed`
+- `session.diff`
+- `todo.updated`
+- `permission.updated`
+- `permission.replied`
 
-```json
-{
-  "providerID": "openai",
-  "modelID": "gpt-4.1-mini"
-}
-```
+The subscription reconnects after failure or an unexpected end. Backoff starts at 1 second, doubles after each failure, and is capped at 15 seconds. A successful connection resets backoff to 1 second.
 
-Expected response:
+## Polling Fallback
 
-- updated session or compatible session object
+A 5-second loop remains active while connected with an active project. Safety polling is used when SSE is not connected; busy sends, non-idle sessions, and conversation mode also drive refresh work.
 
-### `PATCH /session/:id`
+Polling can refresh:
 
-Purpose:
+- session list and statuses
+- current session messages, diff, and todos
+- conversation session messages, diff, and todos when it differs from current
 
-- archive or unarchive a session
-
-Archive request example:
-
-```json
-{
-  "time": {
-    "archived": 1710000100000
-  }
-}
-```
-
-Unarchive request example:
-
-```json
-{
-  "time": {
-    "archived": null
-  }
-}
-```
-
-Expected response:
-
-- updated session object
-
-## Pending Interaction Endpoints
-
-### `GET /permission`
-
-Expected response example:
-
-```json
-[
-  {
-    "id": "permission-1",
-    "sessionID": "session-1",
-    "permission": "edit_file",
-    "patterns": ["app/(tabs)/index.tsx"],
-    "always": [],
-    "tool": { "messageID": "tool-message-1", "callID": "tool-call-1" }
-  }
-]
-```
-
-### `POST /permission/:id/reply`
-
-Expected request body shape:
-
-```json
-{
-  "reply": "once",
-  "message": "optional"
-}
-```
-
-Allowed reply values used by the client:
-
-- `once`
-- `always`
-- `reject`
-
-Expected response:
-
-```json
-{ "ok": true }
-```
-
-### `GET /question`
-
-Expected response example:
-
-```json
-[
-  {
-    "id": "question-1",
-    "sessionID": "session-1",
-    "questions": [
-      {
-        "question": "Which area should OpenCode stabilize first?",
-        "header": "Focus area",
-        "options": [
-          { "label": "Chat flow", "description": "Keep the prompt-response flow healthy." },
-          { "label": "Settings", "description": "Validate provider configuration first." }
-        ],
-        "multiple": false,
-        "custom": true
-      }
-    ],
-    "tool": { "messageID": "tool-message-2", "callID": "tool-call-2" }
-  }
-]
-```
-
-### `POST /question/:id/reply`
-
-Expected request body shape:
-
-```json
-{
-  "answers": [
-    ["Chat flow"]
-  ]
-}
-```
-
-Answer contract:
-
-- outer array aligns with questions in order
-- each inner array contains selected labels and optional custom text
-
-Expected response:
-
-```json
-{ "ok": true }
-```
-
-### `POST /question/:id/reject`
-
-Expected response:
-
-```json
-{ "ok": true }
-```
-
-## Event Stream Contract
-
-### `GET /event`
-
-Purpose:
-
-- subscribe to server-sent events
-
-The client reacts to event objects with at least:
-
-- `type`
-- `properties`
-
-Observed event examples:
-
-```json
-{ "type": "session.created", "properties": { "sessionID": "session-1" } }
-```
-
-```json
-{ "type": "session.status", "properties": { "sessionID": "session-1", "status": { "type": "running" } } }
-```
-
-```json
-{ "type": "session.idle", "properties": { "sessionID": "session-1" } }
-```
-
-```json
-{ "type": "message.updated", "properties": { "info": { "sessionID": "session-1" } } }
-```
-
-```json
-{ "type": "session.diff", "properties": { "sessionID": "session-1", "diff": [] } }
-```
-
-```json
-{ "type": "todo.updated", "properties": { "sessionID": "session-1", "todos": [] } }
-```
-
-```json
-{ "type": "permission.replied", "properties": { "requestID": "permission-1" } }
-```
-
-## Fake Server Control Endpoint
-
-Used only by tests.
-
-### `POST /__control/reset`
-
-Request body:
-
-```json
-{ "scenario": "happy-path" }
-```
-
-Response:
-
-```json
-{ "data": { "scenario": "happy-path" } }
-```
-
-## Client Rules That Depend On The Contract
-
-- project discovery must work without a selected directory
-- session-scoped calls must work with a `directory` query parameter or equivalent SDK scoping
-- the server must tolerate prompt requests that include a generated `system` field
-- session status must be observable either through SSE or refresh polling
-- pending interactions must be addressable by request ID
-- archive state must round-trip through `time.archived`
-
-## Compatibility Notes
-
-The app intentionally uses permissive `any` types for SDK models. That means runtime contract compatibility matters more than TypeScript compatibility.
-
-For regeneration, matching these response shapes and semantics is more important than reproducing the exact SDK type surface.
+It cannot refresh permissions because no pending-permission list operation is available.

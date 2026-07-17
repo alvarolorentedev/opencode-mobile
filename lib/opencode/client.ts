@@ -1,27 +1,8 @@
-import { createOpencodeClient } from '@opencode-ai/sdk/client';
+import { createOpencodeClient, type OpencodeClient, type Permission } from '@opencode-ai/sdk/client';
 import { encode as encodeBase64 } from 'base-64';
 import Constants from 'expo-constants';
 
-// Small exported shapes used by the UI for pending requests.
-export type PendingPermissionRequest = {
-  id: string;
-  sessionID: string;
-  permission: string;
-  patterns: string[];
-  metadata?: Record<string, unknown>;
-  always: string[];
-  tool?: { messageID: string; callID: string };
-};
-
-export type QuestionOption = { label: string; description?: string };
-export type PendingQuestionRequest = {
-  id: string;
-  sessionID: string;
-  questions: Array<{ question: string; header: string; options: QuestionOption[]; multiple?: boolean; custom?: boolean }>;
-  tool?: { messageID: string; callID: string };
-};
-
-export type PendingQuestionAnswer = string[];
+export type PendingPermissionRequest = Permission;
 
 export type OpencodeConnectionSettings = {
   serverUrl: string;
@@ -46,6 +27,18 @@ type NormalizedServerUrl = {
 type ServerBase = {
   baseUrl: string;
   pathPrefix: string;
+};
+
+type ClientMetadata = {
+  baseUrl: string;
+  directory?: string;
+  headers?: Record<string, string>;
+  displayUrl: string;
+  pathPrefix: string;
+};
+
+export type ScopedOpencodeClient = OpencodeClient & {
+  __opencode: ClientMetadata;
 };
 
 function joinUrlPath(prefix: string, pathname: string) {
@@ -145,18 +138,19 @@ function getRequestHeaders(settings: OpencodeConnectionSettings) {
     : undefined;
 }
 
-export function buildClient(settings: OpencodeConnectionSettings): any {
+export function buildClient(settings: OpencodeConnectionSettings): ScopedOpencodeClient {
   const normalizedServerUrl = normalizeServerUrl(settings.serverUrl);
   const headers = getRequestHeaders(settings);
   const directory = settings.directory.trim() || undefined;
 
-  // return a runtime client; type is kept as `any` to avoid coupling to generated SDK types
   const client = createOpencodeClient({
     baseUrl: normalizedServerUrl.origin,
     directory,
     fetch: createScopedFetch(normalizedServerUrl.origin, normalizedServerUrl.pathPrefix),
     headers,
-  }) as any;
+    responseStyle: 'fields',
+    throwOnError: true,
+  }) as ScopedOpencodeClient;
 
   client.__opencode = {
     baseUrl: normalizedServerUrl.origin,
@@ -177,17 +171,17 @@ export function getConnectionError(serverUrl: string, error: unknown) {
   return getConnectionErrorMessage(error, serverUrl);
 }
 
-async function apiRequest(client: any, path: string, init?: RequestInit) {
-  const baseUrl = client?.__opencode?.baseUrl;
+export async function requestOpenCodeApi<T>(client: ScopedOpencodeClient, path: string, init?: RequestInit): Promise<T> {
+  const baseUrl = client.__opencode.baseUrl;
   if (!baseUrl) {
     throw new Error('OpenCode client is missing base URL metadata.');
   }
 
   const requestUrl = new URL(buildServerUrl(path, {
     baseUrl,
-    pathPrefix: client?.__opencode?.pathPrefix || '',
+    pathPrefix: client.__opencode.pathPrefix,
   }));
-  const directory = client?.__opencode?.directory;
+  const directory = client.__opencode.directory;
   if (directory && !requestUrl.searchParams.has('directory')) {
     requestUrl.searchParams.set('directory', directory);
   }
@@ -197,7 +191,7 @@ async function apiRequest(client: any, path: string, init?: RequestInit) {
     headers: {
       Accept: 'application/json',
       'Content-Type': 'application/json',
-      ...(client?.__opencode?.headers || {}),
+      ...(client.__opencode.headers || {}),
       ...(init?.headers || {}),
     },
   });
@@ -207,54 +201,24 @@ async function apiRequest(client: any, path: string, init?: RequestInit) {
   }
 
   if (response.status === 204) {
-    return undefined;
+    return undefined as T;
   }
 
-  return response.json();
+  return response.json() as Promise<T>;
 }
 
-export async function listPendingPermissions(client: any): Promise<PendingPermissionRequest[]> {
-  const response = await apiRequest(client, '/permission');
-  return (response?.data ?? response ?? []) as PendingPermissionRequest[];
-}
-
-export async function listPendingQuestions(client: any): Promise<PendingQuestionRequest[]> {
-  const response = await apiRequest(client, '/question');
-  return (response?.data ?? response ?? []) as PendingQuestionRequest[];
+export function normalizePendingPermission(permission: Permission): PendingPermissionRequest {
+  return permission;
 }
 
 export async function replyToPendingPermission(
-  client: any,
-  requestId: string,
-  reply: 'once' | 'always' | 'reject',
-  message?: string,
+  client: ScopedOpencodeClient,
+  sessionId: string,
+  permissionId: string,
+  response: 'once' | 'always' | 'reject',
 ) {
-  await apiRequest(client, `/permission/${requestId}/reply`, {
+  await requestOpenCodeApi(client, `/session/${encodeURIComponent(sessionId)}/permissions/${encodeURIComponent(permissionId)}`, {
     method: 'POST',
-    body: JSON.stringify({ reply, message }),
-  });
-}
-
-export async function replyToPendingQuestion(client: any, requestId: string, answers: PendingQuestionAnswer[]) {
-  await apiRequest(client, `/question/${requestId}/reply`, {
-    method: 'POST',
-    body: JSON.stringify({ answers }),
-  });
-}
-
-export async function rejectPendingQuestion(client: any, requestId: string) {
-  await apiRequest(client, `/question/${requestId}/reject`, {
-    method: 'POST',
-  });
-}
-
-export async function setSessionArchived(client: any, sessionId: string, archivedAt?: number) {
-  await apiRequest(client, `/session/${sessionId}`, {
-    method: 'PATCH',
-    body: JSON.stringify({
-      time: {
-        archived: archivedAt ?? null,
-      },
-    }),
+    body: JSON.stringify({ response }),
   });
 }

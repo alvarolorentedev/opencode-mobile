@@ -59,14 +59,14 @@ Primary fields:
 - `diffsBySession`
 - `todosBySession`
 - `pendingPermissionsBySession`
-- `pendingQuestionsBySession`
 
-These are keyed by session ID and only cached in memory.
+These are keyed by session ID. Messages, diffs, and todos are memory-only; observed permissions are also persisted.
 
 Important behavior:
 
 - data is fetched lazily when a session is opened or refreshed
-- caches are updated both by explicit refreshes and by SSE events / polling fallback
+- message/diff/todo caches are updated by explicit refreshes, SSE events, and polling fallback
+- permission entries are added and removed only from SSE events or user replies; there is no list refresh
 - current-session selectors only read the active or relevant session from these maps
 
 ## Capabilities And Preferences State
@@ -78,6 +78,12 @@ Primary fields:
 - `providerAuthMethodsById`
 - `availableModels`
 - `availableAgents`
+- `commands`
+- `workspaceFiles`
+- `workspaceFileStatuses`
+- `selectedWorkspaceFile`
+- `vcsInfo`
+- `diagnostics`
 - `chatPreferences`
 
 ### `chatPreferences`
@@ -152,6 +158,7 @@ Persisted values:
 - `opencode-mobile.active-project`
 - `opencode-mobile.last-session-by-project`
 - `opencode-mobile.pending-notification-sessions`
+- `opencode-mobile.pending-permissions`
 
 Hydration rules:
 
@@ -159,6 +166,7 @@ Hydration rules:
 - persisted chat preferences are merged over defaults and current provider state
 - active project path is restored if present
 - last-session map is restored if present
+- observed pending permissions are restored if present
 - hydration failures are ignored and defaults are kept
 
 The provider does not connect until hydration completes.
@@ -197,7 +205,7 @@ Derived by preferring:
 - current session ID
 - sending session ID
 
-If neither yields matches, all pending requests are flattened and shown.
+Only matches for the current session or sending session are shown. Permissions from unrelated sessions are not flattened into the active chat.
 
 ### Conversation Status Label
 
@@ -240,7 +248,7 @@ That detail is important because the transcript UI is not a raw message dump.
 
 ## OpenCode API Surface Used By The App
 
-### Via SDK Client
+### Via OpenCode 1.18.3 SDK Client
 
 The app currently uses these logical server capabilities:
 
@@ -250,36 +258,34 @@ The app currently uses these logical server capabilities:
 - config get / update
 - provider list
 - provider auth metadata
-- provider OAuth authorize
 - auth set
 - app agents
 - session list
 - session status
 - session create
+- session delete / update title / fork / share / unshare / revert / unrevert
 - session messages
 - session diff
 - session todo
 - session prompt or promptAsync
 - session abort
 - session summarize
-- event subscribe
+- command list and session command execution
+- file find/read/status and VCS info
+- MCP/LSP/formatter status
+- provider OAuth authorize and callback
+- session-scoped permission reply
+- global event subscription
 
-### Via Manual `fetch`
+### Via Manual Request Helper
 
-Some endpoints are wrapped manually in `lib/opencode/client.ts`:
-
-- `GET /permission`
-- `GET /question`
-- `POST /permission/:id/reply`
-- `POST /question/:id/reply`
-- `POST /question/:id/reject`
-- `PATCH /session/:id` for archive/unarchive
-
-Manual requests automatically attach:
+`GET /global/health` is called through `requestOpenCodeApi()` because diagnostics use that path directly. The helper preserves:
 
 - JSON headers
 - optional basic auth header
 - `directory` query parameter when the client is project-scoped
+
+The client does not implement a permission-list API.
 
 ## Capability Discovery Model
 
@@ -297,6 +303,8 @@ From that, the app derives:
 - configured provider IDs
 - configured model subset
 - available agent options
+- attachment support and input modalities per model
+- tool-call and reasoning support, status, and context/output limits
 
 Preference reconciliation then determines safe values for:
 
@@ -328,7 +336,10 @@ Current implementation assumes these invariants:
 - a current session ID may temporarily be absent during project switches and bootstrapping
 - session caches are safe to keep even when not current
 - provider/model selections may need to be corrected after capability refresh
-- pending permissions/questions can exist outside the currently viewed session, so selectors must decide what to surface
+- pending permissions are keyed by `sessionID` and only active/sending-session entries are surfaced
+- a pending permission created before global SSE subscription cannot be listed from OpenCode 1.18.3; only a previously persisted event can restore it
+- attachment capability is checked against the selected model before send
+- local attachment files larger than 10 MB are rejected before base64 encoding
 
 ## Non-Persisted But Behavioral State
 

@@ -31,7 +31,8 @@ Mark each item complete only when the behavior is implemented and manually or au
 - [ ] Implement optional basic auth header generation
 - [ ] Implement project-scoped client creation
 - [ ] Implement catalog-scoped client creation
-- [ ] Implement manual `fetch` wrappers for permissions/questions/archive patching
+- [ ] Use the OpenCode 1.18.3 generated client and types
+- [ ] Implement a path-prefix-aware manual helper for `/global/health`
 
 ## Phase 4: Persistence
 
@@ -40,6 +41,7 @@ Mark each item complete only when the behavior is implemented and manually or au
 - [ ] Persist active project path in AsyncStorage
 - [ ] Persist last-session-by-project map in AsyncStorage
 - [ ] Persist pending notification session records in AsyncStorage
+- [ ] Persist observed pending permissions by session
 - [ ] Block auto-connect until hydration finishes
 
 ## Phase 5: Provider Foundation
@@ -48,7 +50,7 @@ Mark each item complete only when the behavior is implemented and manually or au
 - [ ] Define connection state
 - [ ] Define workspace/session identity state
 - [ ] Define per-session caches for messages/diffs/todos
-- [ ] Define pending permission/question caches
+- [ ] Define a pending permission cache keyed by session
 - [ ] Define capability and preference state
 - [ ] Define conversation state
 - [ ] Expose typed `useOpencode()` hook
@@ -77,6 +79,7 @@ Mark each item complete only when the behavior is implemented and manually or au
 - [ ] Reconcile stored mode/provider/model preferences safely
 - [ ] Reconcile enabled model IDs safely
 - [ ] Reflect auto-approve from config permission state
+- [ ] Preserve model attachment/modalities/tool-call/reasoning/status/limit metadata
 
 ## Phase 8: Chat Transcript Model
 
@@ -114,8 +117,10 @@ Mark each item complete only when the behavior is implemented and manually or au
 - [ ] Create/resolve active session before send
 - [ ] Convert local file URIs to data URLs before send
 - [ ] Pass through remote attachment URLs unchanged
+- [ ] Reject attachments for models without attachment support
+- [ ] Reject local files over 10 MB before encoding
 - [ ] Include generated system prompt in prompt body when available
-- [ ] Refresh sessions/messages/diffs/todos/pending requests after send
+- [ ] Refresh sessions/messages/diffs/todos after send
 - [ ] Summarize untitled sessions after send when possible
 - [ ] Restore draft and attachments on failed send
 
@@ -125,9 +130,10 @@ Mark each item complete only when the behavior is implemented and manually or au
 - [ ] Recreate project list with `Active` / `Current` / `Server` state labels
 - [ ] Recreate chats list with preview and relative timestamp
 - [ ] Recreate New chat flow in Workspace screen
-- [ ] Recreate archive session action
-- [ ] Recreate unarchive session action
-- [ ] Recreate archived-session visibility toggle
+- [ ] Recreate rename and permanent delete actions
+- [ ] Recreate share/unshare and copy-share-URL behavior
+- [ ] Recreate fork-from-message behavior
+- [ ] Recreate revert/unrevert behavior
 - [ ] Recreate session opening from workspace list
 - [ ] Recreate session creation from chat header
 - [ ] Recreate session abort flow from composer stop action
@@ -141,29 +147,28 @@ Mark each item complete only when the behavior is implemented and manually or au
 - [ ] Recreate transcript patch/file fallback rendering
 - [ ] Recreate no-changes empty state
 - [ ] Recreate todo summary card in composer
-- [ ] Preserve local-only checkbox interaction behavior for todos
+- [ ] Render server-owned todos as read-only statuses
 
 ## Phase 13: Pending Interactions
 
-- [ ] Fetch pending permissions for scoped and catalog clients
-- [ ] Fetch pending questions for scoped and catalog clients
-- [ ] Group pending requests by session
-- [ ] Surface current-session pending requests first
+- [ ] Insert and remove permissions from global SSE events
+- [ ] Persist observed permissions by session
+- [ ] Surface only current/sending-session permissions
 - [ ] Recreate permission request card with `Allow once`, `Always allow`, `Deny`
-- [ ] Recreate question request card with single/multi select support
-- [ ] Recreate custom free-text question answers
-- [ ] Disable question submit until all questions are answered
-- [ ] Refresh pending requests and messages after replies/rejections
+- [ ] Reply through the session-scoped permission operation
+- [ ] Document that pre-subscription permissions cannot be listed
 
 ## Phase 14: Realtime Updates
 
-- [ ] Subscribe to event stream when connected and project is active
+- [ ] Subscribe to the global event stream when connected and project is active
+- [ ] Filter global envelopes by active project directory
 - [ ] Handle all current event types
 - [ ] Update local session status state from events
 - [ ] Schedule delayed session refreshes after relevant events
 - [ ] Apply direct cache updates for `session.diff` and `todo.updated`
 - [ ] Tear down event stream cleanly on unmount or dependency change
 - [ ] Track event stream status separately from connection state
+- [ ] Reconnect indefinitely with 1-to-15-second exponential backoff
 
 ## Phase 15: Polling Fallback
 
@@ -173,7 +178,7 @@ Mark each item complete only when the behavior is implemented and manually or au
 - [ ] Keep polling while conversation mode is active
 - [ ] Refresh current session content during polling
 - [ ] Refresh conversation session content if different from current session
-- [ ] Refresh pending requests while fallback polling is needed
+- [ ] Do not claim polling can recover pending permissions
 
 ## Phase 16: Settings Screen
 
@@ -183,6 +188,7 @@ Mark each item complete only when the behavior is implemented and manually or au
 - [ ] Recreate Voice section
 - [ ] Recreate provider configuration dialog
 - [ ] Support OAuth provider auth method selection
+- [ ] Support code-based OAuth callback completion
 - [ ] Support manual/API auth method selection
 - [ ] Support generic API fallback for providers without auth metadata when appropriate
 - [ ] Update provider enablement after successful auth/configuration
@@ -194,6 +200,14 @@ Mark each item complete only when the behavior is implemented and manually or au
 - [ ] Patch config permission fields to `allow` when enabled
 - [ ] Patch config permission fields to `ask` when disabled
 - [ ] Reflect config-derived auto-approve state in chat preferences after capability refresh
+
+## Phase 17A: Commands, Workspace Inspection, And Diagnostics
+
+- [ ] Discover and suggest slash commands
+- [ ] Execute exact known commands through the session command operation
+- [ ] Search and read workspace files without write actions
+- [ ] Show file status count and VCS branch
+- [ ] Load health, MCP, LSP, and formatter diagnostics independently
 
 ## Phase 18: Notifications
 
@@ -227,7 +241,9 @@ Mark each item complete only when the behavior is implemented and manually or au
 - [ ] Implement final-result settle timeout
 - [ ] Implement listening restart timeout
 - [ ] Implement assistant baseline tracking for spoken reply detection
-- [ ] Stop conversation mode when pending interactions appear
+- [ ] Stop conversation mode when a pending permission appears
+- [ ] Start working sound while sends or sessions are busy when enabled
+- [ ] Stop working sound while listening/speaking or idle
 - [ ] Recreate full-screen conversation overlay
 - [ ] Recreate keep-awake behavior during conversation mode
 - [ ] Recreate brightness dimming behavior during conversation mode
@@ -241,7 +257,6 @@ Mark each item complete only when the behavior is implemented and manually or au
 - [ ] Recreate fake server scenarios or compatible equivalents
 - [ ] Recreate Playwright happy-path flow
 - [ ] Recreate permission-blocking flow
-- [ ] Recreate question-blocking flow
 - [ ] Recreate provider-setup flow
 - [ ] Recreate SSE-disconnect/polling-fallback flow
 
@@ -250,7 +265,8 @@ Mark each item complete only when the behavior is implemented and manually or au
 - [ ] App reconnects automatically after hydration
 - [ ] Workspace selection controls chat context correctly
 - [ ] Remembered session is restored per project
-- [ ] Prompt send, abort, diff, todo, and pending-request flows all work
+- [ ] Prompt send, abort, diff, server-owned todo, and permission flows all work
+- [ ] Session lifecycle, commands, workspace inspection, and diagnostics work
 - [ ] Provider and model configuration flows work
 - [ ] SSE and polling fallback both support functional completion
 - [ ] Notifications work on supported builds

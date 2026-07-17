@@ -7,7 +7,7 @@ import { Colors } from '@/constants/theme';
 import { DiffCard, PendingInteractionsCard, SessionDiffCard, TranscriptMessage } from '@/components/chat/chat-cards';
 import { getSessionSubtitle, type TranscriptEntry } from '@/lib/opencode/format';
 import type { FileDiff, Session, SessionStatus } from '@/lib/opencode/types';
-import type { PendingPermissionRequest, PendingQuestionAnswer, PendingQuestionRequest } from '@/lib/opencode/client';
+import type { PendingPermissionRequest } from '@/lib/opencode/client';
 
 import { styles } from '@/components/chat/chat-view-styles';
 import { STARTER_PROMPTS } from '@/components/chat/chat-view-utils';
@@ -24,7 +24,6 @@ type ChatContentProps = {
   currentActivityLabel?: string;
   currentDiffs: FileDiff[];
   currentPendingPermissions: PendingPermissionRequest[];
-  currentPendingQuestions: PendingQuestionRequest[];
   currentSessionId?: string;
   diffDetails: DiffDetail[];
   displayTranscript: TranscriptEntry[];
@@ -33,12 +32,13 @@ type ChatContentProps = {
   isRefreshingDiffs: boolean;
   isRefreshingMessages: boolean;
   onCopyMessage: (entry: TranscriptEntry) => void;
+  onForkMessage: (messageId: string) => void;
+  onRevertMessage: (messageId: string) => void;
+  onUnrevert: () => void;
   onExpandDiff: (id?: string) => void;
   onLoadEarlier: () => void;
   onRefresh: () => void;
   onReplyToPermission: (requestId: string, reply: 'once' | 'always' | 'reject') => void;
-  onReplyToQuestion: (requestId: string, answers: PendingQuestionAnswer[]) => void;
-  onRejectQuestion: (requestId: string) => void;
   onSendStarterPrompt: (prompt: string) => void;
   onToggleSpeak: (entry: TranscriptEntry) => void;
   palette: Palette;
@@ -59,7 +59,6 @@ export function ChatContent({
   currentActivityLabel,
   currentDiffs,
   currentPendingPermissions,
-  currentPendingQuestions,
   diffDetails,
   displayTranscript,
   expandedDiffId,
@@ -67,12 +66,13 @@ export function ChatContent({
   isRefreshingDiffs,
   isRefreshingMessages,
   onCopyMessage,
+  onForkMessage,
+  onRevertMessage,
+  onUnrevert,
   onExpandDiff,
   onLoadEarlier,
   onRefresh,
   onReplyToPermission,
-  onReplyToQuestion,
-  onRejectQuestion,
   onSendStarterPrompt,
   onToggleSpeak,
   palette,
@@ -137,6 +137,8 @@ export function ChatContent({
               copied={copiedMessageId === entry.id}
               entry={entry}
               onCopy={() => onCopyMessage(entry)}
+              onFork={entry.role === 'user' ? () => onForkMessage(entry.id) : undefined}
+              onRevert={entry.role === 'user' ? () => onRevertMessage(entry.id) : undefined}
               onToggleSpeak={() => onToggleSpeak(entry)}
               speaking={speakingMessageId === entry.id}
             />
@@ -146,11 +148,17 @@ export function ChatContent({
       {activeTab === 'session' && pendingInteractions > 0 ? (
         <PendingInteractionsCard
           permissions={currentPendingPermissions}
-          questions={currentPendingQuestions}
           onPermissionReply={onReplyToPermission}
-          onQuestionReject={onRejectQuestion}
-          onQuestionSubmit={onReplyToQuestion}
         />
+      ) : null}
+
+      {activeTab === 'session' && activeSession?.revert ? (
+        <Card mode="contained" style={[styles.noticeCard, { backgroundColor: palette.surface }]}>
+          <Card.Content>
+            <Text variant="titleMedium" style={{ color: palette.text }}>Session is reverted</Text>
+            <Button mode="outlined" onPress={onUnrevert}>Restore reverted work</Button>
+          </Card.Content>
+        </Card>
       ) : null}
 
       {activeTab === 'changes' ? (

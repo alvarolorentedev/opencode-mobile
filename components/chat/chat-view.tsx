@@ -30,6 +30,7 @@ export function ChatView() {
     availableAgents,
     availableModels,
     chatPreferences,
+    commands,
     connection,
     configuredProviders,
     createSession,
@@ -37,7 +38,7 @@ export function ChatView() {
     clearConversationFeedback,
     currentDiffs,
     currentPendingPermissions,
-    currentPendingQuestions,
+    currentTodos,
     currentSessionId,
     currentTranscript,
     ensureActiveSession,
@@ -46,8 +47,10 @@ export function ChatView() {
     openSession,
     refreshCurrentSession,
     replyToPermission,
-    replyToQuestion,
-    rejectQuestion,
+    executeCommand,
+    forkSession,
+    revertSession,
+    unrevertSession,
     sendPrompt,
     sendingState,
     sessionStatuses,
@@ -95,7 +98,7 @@ export function ChatView() {
     () => availableAgents.find((agent) => agent.id === chatPreferences.mode)?.label || chatPreferences.mode,
     [availableAgents, chatPreferences.mode],
   );
-  const pendingInteractions = currentPendingPermissions.length + currentPendingQuestions.length;
+  const pendingInteractions = currentPendingPermissions.length;
   const awaitingUserInput = pendingInteractions > 0;
   const displayTranscript = useMemo(() => currentTranscript.filter(isTranscriptDisplayMessage), [currentTranscript]);
   const visibleTranscript = useMemo(
@@ -122,7 +125,7 @@ export function ChatView() {
     () => sessions.find((session) => session.id === currentSessionId) || activeSession,
     [activeSession, currentSessionId, sessions],
   );
-  const visibleSessions = useMemo(() => sessions.filter((session) => !session?.time?.archived), [sessions]);
+  const visibleSessions = sessions;
 
   useEffect(() => {
     draftRef.current = draft;
@@ -169,6 +172,12 @@ export function ChatView() {
       setDraft('');
       setAttachments([]);
 
+      const commandMatch = nextAttachments.length === 0 ? prompt.match(/^\/(\S+)(?:\s+([\s\S]*))?$/) : undefined;
+      if (commandMatch && commands.some((command) => command.name === commandMatch[1])) {
+        await executeCommand(sessionId, commandMatch[1], commandMatch[2] || '');
+        return;
+      }
+
       const sent = await sendPrompt(sessionId, prompt, nextAttachments);
       if (!sent) {
         setDraft(nextDraft);
@@ -180,7 +189,7 @@ export function ChatView() {
       setAttachments(nextAttachments);
       setSendFeedback(error instanceof Error ? error.message : 'OpenCode could not send that message.');
     }
-  }, [connection.status, currentSessionId, ensureActiveSession, sendPrompt]);
+  }, [commands, connection.status, currentSessionId, ensureActiveSession, executeCommand, sendPrompt]);
 
   useEffect(() => {
     setVisibleTranscriptCount(TRANSCRIPT_PAGE_SIZE);
@@ -448,7 +457,6 @@ export function ChatView() {
           currentActivityLabel={currentActivityLabel}
           currentDiffs={currentDiffs}
           currentPendingPermissions={currentPendingPermissions}
-          currentPendingQuestions={currentPendingQuestions}
           diffDetails={diffDetails}
           displayTranscript={displayTranscript}
           expandedDiffId={expandedDiffId}
@@ -460,8 +468,24 @@ export function ChatView() {
           onLoadEarlier={handleLoadEarlier}
           onRefresh={() => void refreshCurrentSession()}
           onReplyToPermission={(requestId, reply) => void replyToPermission(requestId, reply)}
-          onReplyToQuestion={(requestId, answers) => void replyToQuestion(requestId, answers)}
-          onRejectQuestion={(requestId) => void rejectQuestion(requestId)}
+          onForkMessage={(messageId) => {
+            if (!currentSessionId) return;
+            void forkSession(currentSessionId, messageId).catch((error) => setSendFeedback(error instanceof Error ? error.message : 'Could not fork session.'));
+          }}
+          onRevertMessage={(messageId) => {
+            if (!currentSessionId) return;
+            if (Platform.OS === 'web') {
+              if (globalThis.confirm('Revert from this message?\n\nOpenCode will revert session changes after this point.')) {
+                void revertSession(currentSessionId, messageId).catch((error) => setSendFeedback(error instanceof Error ? error.message : 'Could not revert session.'));
+              }
+              return;
+            }
+            Alert.alert('Revert from this message?', 'OpenCode will revert session changes after this point.', [
+              { text: 'Cancel', style: 'cancel' },
+              { text: 'Revert', style: 'destructive', onPress: () => void revertSession(currentSessionId, messageId).catch((error) => setSendFeedback(error instanceof Error ? error.message : 'Could not revert session.')) },
+            ]);
+          }}
+          onUnrevert={() => currentSessionId ? void unrevertSession(currentSessionId) : undefined}
           onSendStarterPrompt={(prompt) => void handleSendPrompt(prompt)}
           onToggleSpeak={(entry) => void handleSpeakEntry(entry)}
           palette={palette}
@@ -480,6 +504,8 @@ export function ChatView() {
           connectionStatus={connection.status}
           conversation={conversation}
           currentSessionId={currentSessionId}
+          currentTodos={currentTodos}
+          commands={commands}
           draft={draft}
           insetsBottom={insets.bottom}
           isCreatingSession={isCreatingSession}
@@ -492,6 +518,7 @@ export function ChatView() {
             setSendFeedback(undefined);
             setDraft(value);
           }}
+          onCommandSelect={(command) => setDraft(`/${command} `)}
           onRemoveAttachment={(index) => {
             setSendFeedback(undefined);
             setAttachments((current) => current.filter((_, itemIndex) => itemIndex !== index));

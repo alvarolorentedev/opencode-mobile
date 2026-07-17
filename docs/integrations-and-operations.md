@@ -104,6 +104,8 @@ Why it matters:
 
 - there is no bundled audio asset dependency for working sound
 - parity requires preserving the generated-loop behavior or an equivalent sound loop experience
+- the provider starts the loop while prompt submission or any session is busy when the preference is enabled
+- the loop is stopped during conversation listening/speaking and when no work is active
 
 ### Device Wake / Brightness
 
@@ -123,6 +125,8 @@ Current behavior:
 - multiple files supported
 - files copied to cache directory
 - duplicate attachment URIs filtered out client-side
+- the selected model must advertise attachment support
+- local files larger than 10 MB are rejected before base64 conversion
 
 ### Platform Settings Deep Links
 
@@ -132,7 +136,11 @@ The Settings screen uses:
 - `expo-intent-launcher`
 - `expo-web-browser`
 
-These support app settings, notification settings, battery settings, and provider OAuth browser flows.
+These support app settings, notification settings, battery settings, and provider OAuth browser flows. Code-based OAuth flows show an authorization-code dialog and call the provider OAuth callback before enabling and refreshing the provider.
+
+## OpenCode Compatibility
+
+The client is implemented against the current `@opencode-ai/sdk` 1.18.3 contract and uses generated SDK types rather than permissive legacy endpoint shims. It is latest-only support: older server shapes and removed endpoint forms are not compatibility targets.
 
 ## App Configuration
 

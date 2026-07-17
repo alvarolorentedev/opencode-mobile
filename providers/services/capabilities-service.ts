@@ -1,4 +1,28 @@
+import type { OpencodeClient, ProviderAuthMethod, ProviderListResponse } from '@opencode-ai/sdk/client';
+
 import { getConfiguredProviderIds, toAgentOption } from '@/providers/opencode-provider-utils';
+
+type DiscoveredModel = ProviderListResponse['all'][number]['models'][string];
+
+export type CapabilityModel = {
+  id: string;
+  label: string;
+  providerID: string;
+  providerLabel: string;
+  modelID: string;
+  attachment: boolean;
+  supportsAttachments: boolean;
+  inputModalities: Array<'text' | 'audio' | 'image' | 'video' | 'pdf'>;
+  supportsToolCalls: boolean;
+  contextLimit?: number;
+  outputLimit?: number;
+  modalities?: DiscoveredModel['modalities'];
+  supportsReasoning: boolean;
+  reasoning: boolean;
+  toolcall: boolean;
+  status?: DiscoveredModel['status'];
+  limit: DiscoveredModel['limit'];
+};
 
 function uniqueById<T extends { id: string }>(items: T[]) {
   const seen = new Set<string>();
@@ -13,7 +37,14 @@ function uniqueById<T extends { id: string }>(items: T[]) {
   });
 }
 
-export async function discoverChatCapabilities(client: any, activeProjectPath?: string) {
+function requireData<T>(data: T | undefined, operation: string): T {
+  if (data === undefined) {
+    throw new Error(`OpenCode ${operation} returned no data.`);
+  }
+  return data;
+}
+
+export async function discoverChatCapabilities(client: OpencodeClient, activeProjectPath?: string) {
   if (!activeProjectPath) {
     return {
       config: undefined,
@@ -31,37 +62,57 @@ export async function discoverChatCapabilities(client: any, activeProjectPath?: 
     client.app.agents(),
   ]);
 
-  const nextConfig = configResponse.data;
-  const nextModels = uniqueById((providersResponse.data.all as any[])
-    .flatMap((provider: any) =>
-      Object.values(provider.models).map((model: any) => ({
+  const nextConfig = requireData(configResponse.data, 'config request');
+  const providerData = requireData(providersResponse.data, 'provider request');
+  const authData = requireData(providerAuthResponse.data, 'provider auth request');
+  const agentData = requireData(agentsResponse.data, 'agent request');
+  const nextModels = uniqueById(providerData.all
+    .flatMap((provider) =>
+      Object.values(provider.models).map((model): CapabilityModel => ({
         id: `${provider.id}/${model.id}`,
         label: model.name,
         providerID: provider.id,
         providerLabel: provider.name,
         modelID: model.id,
+        attachment: model.attachment,
+        modalities: model.modalities,
         supportsReasoning: model.reasoning,
+        supportsAttachments: model.attachment,
+        inputModalities: model.modalities?.input || ['text'],
+        supportsToolCalls: model.tool_call,
+        contextLimit: model.limit?.context,
+        outputLimit: model.limit?.output,
+        reasoning: model.reasoning,
+        toolcall: model.tool_call,
+        status: model.status,
+        limit: model.limit,
       })),
     )
-    .sort((left: any, right: any) => left.label.localeCompare(right.label)));
+    .sort((left, right) => left.label.localeCompare(right.label)));
 
-  const configuredProviderIds = getConfiguredProviderIds(nextConfig, providersResponse.data.connected, nextModels);
-  const configuredModels = nextModels.filter((model: any) => configuredProviderIds.has(model.providerID));
-  const nextProviders = uniqueById((providersResponse.data.all as any[])
-    .map((provider: any) => ({
+  const configuredProviderIds = getConfiguredProviderIds(nextConfig, providerData.connected, nextModels);
+  const configuredModels = nextModels.filter((model) => configuredProviderIds.has(model.providerID));
+  const nextProviders = uniqueById(providerData.all
+    .map((provider) => ({
       id: provider.id,
       label: provider.name,
       modelCount: Object.keys(provider.models).length,
       configured: configuredProviderIds.has(provider.id),
     }))
-    .sort((left: any, right: any) => left.label.localeCompare(right.label)));
-  const nextAgents = uniqueById(agentsResponse.data.map((agent: any) => toAgentOption(agent)));
+    .sort((left, right) => left.label.localeCompare(right.label)));
+  const nextAgents = uniqueById(agentData.map(toAgentOption));
+  const providerAuthMethodsById = Object.fromEntries(
+    Object.entries(authData).map(([providerId, methods]) => [
+      providerId,
+      methods.map(({ type, label }): ProviderAuthMethod => ({ type, label })),
+    ]),
+  );
 
   return {
     config: nextConfig,
     providers: nextProviders,
-    connected: providersResponse.data.connected,
-    providerAuthMethodsById: (providerAuthResponse.data || {}) as Record<string, any[]>,
+    connected: providerData.connected,
+    providerAuthMethodsById,
     models: nextModels,
     agents: nextAgents,
     configuredModels,

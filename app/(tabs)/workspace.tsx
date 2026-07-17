@@ -1,5 +1,6 @@
+import * as Clipboard from 'expo-clipboard';
 import { useState } from 'react';
-import { RefreshControl, ScrollView, StyleSheet, View } from 'react-native';
+import { Alert, Platform, RefreshControl, ScrollView, StyleSheet, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import {
   ActivityIndicator,
@@ -9,6 +10,7 @@ import {
   List,
   Surface,
   Text,
+  TextInput,
 } from 'react-native-paper';
 
 import { Colors } from '@/constants/theme';
@@ -23,9 +25,9 @@ export default function WorkspaceScreen() {
   const palette = Colors[colorScheme];
   const {
     activeProject,
-    archiveSession,
     connection,
     createSession,
+    deleteSession,
     currentProjectPath,
     currentSessionId,
     isRefreshingSessions,
@@ -34,20 +36,28 @@ export default function WorkspaceScreen() {
     projects,
     refreshSessions,
     refreshWorkspaceCatalog,
+    renameSession,
     selectProject,
     serverRootPath,
     sessionPreviewById,
     sessionStatuses,
     sessions,
-    unarchiveSession,
+    shareSession,
+    unshareSession,
+    searchWorkspaceFiles,
+    openWorkspaceFile,
+    workspaceFiles,
+    workspaceFileStatuses,
+    selectedWorkspaceFile,
+    vcsInfo,
   } = useOpencode();
   const [isCreating, setIsCreating] = useState(false);
-  const [showArchived, setShowArchived] = useState(false);
   const [updatingSessionId, setUpdatingSessionId] = useState<string | undefined>();
+  const [renamingSessionId, setRenamingSessionId] = useState<string>();
+  const [renameValue, setRenameValue] = useState('');
+  const [fileQuery, setFileQuery] = useState('');
 
   const isRefreshing = isRefreshingSessions || isRefreshingWorkspaceCatalog;
-  const activeSessions = sessions.filter((session) => !session?.time?.archived);
-  const archivedSessions = sessions.filter((session) => session?.time?.archived);
 
   async function handleRefresh() {
     await Promise.all([refreshWorkspaceCatalog(), refreshSessions()]);
@@ -64,21 +74,58 @@ export default function WorkspaceScreen() {
     }
   }
 
-  async function handleArchiveToggle(sessionId: string, archived: boolean) {
+  async function handleDelete(sessionId: string) {
     setUpdatingSessionId(sessionId);
     try {
-      if (archived) {
-        await unarchiveSession(sessionId);
-        return;
-      }
-
-      await archiveSession(sessionId);
+      await deleteSession(sessionId);
     } finally {
       setUpdatingSessionId(undefined);
     }
   }
 
-  function renderSessionItem(session: Session, index: number, total: number, archived = false) {
+  function confirmDelete(session: Session) {
+    const message = `“${session.title || 'Untitled chat'}” and all of its data will be permanently deleted.`;
+    if (Platform.OS === 'web') {
+      if (globalThis.confirm(`Delete session?\n\n${message}`)) void handleDelete(session.id);
+      return;
+    }
+    Alert.alert('Delete session?', message, [
+      { text: 'Cancel', style: 'cancel' },
+      { text: 'Delete', style: 'destructive', onPress: () => void handleDelete(session.id) },
+    ]);
+  }
+
+  async function handleShare(session: Session) {
+    setUpdatingSessionId(session.id);
+    try {
+      if (session.share?.url) {
+        await unshareSession(session.id);
+      } else {
+        const shared = await shareSession(session.id);
+        if (shared.share?.url) await Clipboard.setStringAsync(shared.share.url);
+      }
+    } finally {
+      setUpdatingSessionId(undefined);
+    }
+  }
+
+  function confirmShare(session: Session) {
+    if (session.share?.url) {
+      void handleShare(session);
+      return;
+    }
+    const message = 'Anyone with the generated link may be able to view this session.';
+    if (Platform.OS === 'web') {
+      if (globalThis.confirm(`Share session publicly?\n\n${message}`)) void handleShare(session);
+      return;
+    }
+    Alert.alert('Share session publicly?', message, [
+      { text: 'Cancel', style: 'cancel' },
+      { text: 'Share', onPress: () => void handleShare(session) },
+    ]);
+  }
+
+  function renderSessionItem(session: Session, index: number, total: number) {
     return (
       <View key={session.id}>
         <List.Item
@@ -93,18 +140,30 @@ export default function WorkspaceScreen() {
           right={() => (
             <View style={styles.sessionMeta}>
               <Text style={{ color: palette.muted }}>{formatRelativeTime(session.time.updated)}</Text>
-              <Text style={{ color: archived ? palette.muted : palette.tint }}>{archived ? 'archived' : sessionStatuses[session.id]?.type || 'idle'}</Text>
-              <Button
+               <Text style={{ color: palette.tint }}>{sessionStatuses[session.id]?.type || 'idle'}</Text>
+               <View style={styles.inlineActions}>
+                 <Button compact onPress={() => { setRenamingSessionId(session.id); setRenameValue(session.title || ''); }}>Rename</Button>
+                 <Button compact onPress={() => confirmShare(session)}>{session.share?.url ? 'Unshare' : 'Share'}</Button>
+               </View>
+               <Button
                 compact
                 mode="text"
                 loading={updatingSessionId === session.id}
                 disabled={updatingSessionId === session.id}
-                onPress={() => void handleArchiveToggle(session.id, archived)}>
-                {archived ? 'Unarchive' : 'Archive'}
+                textColor={palette.danger}
+                onPress={() => confirmDelete(session)}>
+                Delete
               </Button>
             </View>
           )}
         />
+        {renamingSessionId === session.id ? (
+          <View style={styles.renameRow}>
+            <TextInput testID="workspace-session-title-input" mode="outlined" dense value={renameValue} onChangeText={setRenameValue} style={styles.renameInput} />
+            <Button mode="contained" onPress={() => void renameSession(session.id, renameValue).then(() => setRenamingSessionId(undefined))}>Save</Button>
+            <Button onPress={() => setRenamingSessionId(undefined)}>Cancel</Button>
+          </View>
+        ) : null}
         {index < total - 1 ? <Divider /> : null}
       </View>
     );
@@ -128,7 +187,7 @@ export default function WorkspaceScreen() {
         </View>
       </Surface>
 
-      <Card mode="contained" style={[styles.card, { backgroundColor: palette.surface }]}> 
+      <Card mode="contained" style={[styles.card, { backgroundColor: palette.surface }]}>
         <Card.Title title="Projects" subtitle="Pick the workspace that should back the chat." />
         <Card.Content style={styles.listContent}>
           {projects.length === 0 ? <Text style={{ color: palette.muted }}>No projects available yet.</Text> : null}
@@ -166,24 +225,26 @@ export default function WorkspaceScreen() {
         />
         <Card.Content style={styles.listContent}>
           {!activeProject ? <Text style={{ color: palette.muted }}>Select a project first.</Text> : null}
-          {activeProject ? (
-            <View style={styles.filterRow}>
-              <Button compact mode={showArchived ? 'contained-tonal' : 'outlined'} onPress={() => setShowArchived((current) => !current)}>
-                {showArchived ? 'Hide archived' : `Show archived${archivedSessions.length > 0 ? ` (${archivedSessions.length})` : ''}`}
-              </Button>
-            </View>
+          {activeProject && sessions.length === 0 ? (
+            <Text style={{ color: palette.muted }}>No chats in this workspace yet.</Text>
           ) : null}
-          {activeProject && activeSessions.length === 0 ? (
-            <Text style={{ color: palette.muted }}>
-              {archivedSessions.length > 0 ? 'No active chats. Turn on archived chats to view older conversations.' : 'No chats in this workspace yet.'}
-            </Text>
-          ) : null}
-          {activeSessions.map((session, index) => renderSessionItem(session, index, activeSessions.length))}
-          {activeProject && showArchived && archivedSessions.length > 0 ? (
-            <View style={styles.archivedSection}>
-              <Divider />
-              <Text variant="titleSmall" style={[styles.archivedTitle, { color: palette.muted }]}>Archived chats</Text>
-              {archivedSessions.map((session, index) => renderSessionItem(session, index, archivedSessions.length, true))}
+          {sessions.map((session, index) => renderSessionItem(session, index, sessions.length))}
+        </Card.Content>
+      </Card>
+
+      <Card mode="contained" style={[styles.card, { backgroundColor: palette.surface }]}>
+        <Card.Title title="Workspace files" subtitle={vcsInfo?.branch ? `Branch: ${vcsInfo.branch}` : 'Search and inspect files'} />
+        <Card.Content style={styles.fileSection}>
+          <View style={styles.renameRow}>
+            <TextInput testID="workspace-file-search" mode="outlined" dense placeholder="Search files" value={fileQuery} onChangeText={setFileQuery} style={styles.renameInput} />
+            <Button mode="contained" onPress={() => void searchWorkspaceFiles(fileQuery)}>Search</Button>
+          </View>
+          {workspaceFileStatuses.length > 0 ? <Text style={{ color: palette.muted }}>{workspaceFileStatuses.length} changed files</Text> : null}
+          {workspaceFiles.map((path) => <List.Item key={path} title={path} onPress={() => void openWorkspaceFile(path)} />)}
+          {selectedWorkspaceFile ? (
+            <View style={[styles.filePreview, { borderColor: palette.border, backgroundColor: palette.background }]}>
+              <Text variant="labelLarge" style={{ color: palette.text }}>{selectedWorkspaceFile.path}</Text>
+              <Text selectable style={[styles.code, { color: palette.text }]}>{selectedWorkspaceFile.content.content}</Text>
             </View>
           ) : null}
         </Card.Content>
@@ -202,6 +263,10 @@ const styles = StyleSheet.create({
   filterRow: { paddingHorizontal: 16, paddingBottom: 8, alignItems: 'flex-start' },
   headerAction: { marginRight: 16, alignSelf: 'center' },
   sessionMeta: { alignItems: 'flex-end', justifyContent: 'center', gap: 4 },
-  archivedSection: { paddingTop: 8 },
-  archivedTitle: { paddingHorizontal: 16, paddingVertical: 12 },
+  inlineActions: { flexDirection: 'row' },
+  renameRow: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 16, paddingBottom: 8 },
+  renameInput: { flex: 1 },
+  fileSection: { gap: 8, paddingHorizontal: 0 },
+  filePreview: { margin: 16, padding: 12, borderWidth: 1, borderRadius: 12, gap: 8 },
+  code: { fontFamily: 'monospace', fontSize: 12 },
 });

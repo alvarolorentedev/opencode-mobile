@@ -23,6 +23,7 @@ export function createState(scenario) {
     nextSessionId: 1,
     nextMessageId: 1,
     nextPendingId: 1,
+    nextEventId: 1,
     sseClients: new Set(),
     sessions: [],
     messagesBySession: {},
@@ -30,7 +31,6 @@ export function createState(scenario) {
     diffsBySession: {},
     todosBySession: {},
     pendingPermissions: [],
-    pendingQuestions: [],
     configuredProviderIds: new Set(['openai']),
     config: {
       model: 'openai/gpt-4.1-mini',
@@ -49,6 +49,11 @@ export function createState(scenario) {
       },
     },
     authByProvider: {},
+    files: {
+      'README.md': '# Demo project\n\nDeterministic fake OpenCode workspace.\n',
+      'src/demo.ts': 'export const demo = "OpenCode 1.18.3";\n',
+      'src/feature.ts': 'export function feature() {\n  return true;\n}\n',
+    },
   };
 }
 

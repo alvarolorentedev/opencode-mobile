@@ -5,8 +5,11 @@ import { useEffect, useMemo, useState } from 'react';
 import { Platform, ScrollView, StyleSheet } from 'react-native';
 import * as WebBrowser from 'expo-web-browser';
 import {
+  Button,
+  Dialog,
   Portal,
   Snackbar,
+  TextInput,
 } from 'react-native-paper';
 
 import { Colors } from '@/constants/theme';
@@ -14,6 +17,7 @@ import { ProviderConfigDialog } from '@/components/settings/provider-config-dial
 import {
   AiDefaultsSection,
   ConnectionSection,
+  DiagnosticsSection,
   NotificationsSection,
   VoiceSection,
 } from '@/components/settings/settings-sections';
@@ -40,12 +44,16 @@ export default function SettingsScreen() {
     availableProviders,
     chatPreferences,
     configureProvider,
+    completeProviderOAuth,
     configuredProviders,
     providerAuthMethodsById,
     setProviderAuth,
     startProviderOAuth,
     connect,
     connection,
+    diagnostics,
+    eventStreamStatus,
+    refreshDiagnostics,
     settings,
     updateChatPreferences,
     updateSettings,
@@ -63,6 +71,8 @@ export default function SettingsScreen() {
   const [notificationFeedback, setNotificationFeedback] = useState<string>();
   const [availableSpeechVoices, setAvailableSpeechVoices] = useState<SpeechVoiceOption[]>([]);
   const [isRefreshingSpeechVoices, setIsRefreshingSpeechVoices] = useState(false);
+  const [pendingOAuth, setPendingOAuth] = useState<{ providerId: string; methodIndex: number; instructions?: string }>();
+  const [oauthCode, setOAuthCode] = useState('');
   const applicationId = useMemo(
     () => Constants.expoConfig?.android?.package || Constants.expoConfig?.ios?.bundleIdentifier,
     [],
@@ -88,7 +98,17 @@ export default function SettingsScreen() {
   const effectiveAuthMethods = useMemo(
     () =>
       authMethods.length > 0
-        ? authMethods
+        ? authMethods.map((method) => method.type === 'api' && !method.prompts?.length
+          ? {
+              ...method,
+              prompts: [{
+                type: 'text' as const,
+                key: 'key',
+                message: 'API key',
+                placeholder: 'Paste your API key',
+              }],
+            }
+          : method)
         : useGenericFallback
           ? [
             {
@@ -276,6 +296,12 @@ export default function SettingsScreen() {
       if (selectedMethod.type === 'oauth') {
         const authorization = await startProviderOAuth(selectedProviderId, selectedMethodIndex, authValues);
         await WebBrowser.openBrowserAsync(authorization.url);
+        if (authorization.method === 'code') {
+          setPendingOAuth({ providerId: selectedProviderId, methodIndex: selectedMethodIndex, instructions: authorization.instructions });
+          setSelectedProviderId(undefined);
+          return;
+        }
+        await configureProvider(selectedProviderId);
         await connect();
         setProviderFeedback(
           authorization.instructions
@@ -335,6 +361,7 @@ export default function SettingsScreen() {
           settings={settings}
           updateSettings={updateSettings}
         />
+        <DiagnosticsSection diagnostics={diagnostics} eventStreamStatus={eventStreamStatus} onRefresh={() => void refreshDiagnostics()} palette={palette} />
         <AiDefaultsSection
           availableModels={availableModels}
           availableProviders={availableProviders}
@@ -372,6 +399,24 @@ export default function SettingsScreen() {
       </ScrollView>
 
       <Portal>
+        <Dialog visible={Boolean(pendingOAuth)} onDismiss={() => setPendingOAuth(undefined)}>
+          <Dialog.Title>Complete provider sign-in</Dialog.Title>
+          <Dialog.Content>
+            {pendingOAuth?.instructions ? <TextInput mode="flat" disabled value={pendingOAuth.instructions} /> : null}
+            <TextInput mode="outlined" label="Authorization code" value={oauthCode} onChangeText={setOAuthCode} autoCapitalize="none" />
+          </Dialog.Content>
+          <Dialog.Actions>
+            <Button onPress={() => setPendingOAuth(undefined)}>Cancel</Button>
+            <Button disabled={!oauthCode.trim()} onPress={() => {
+              if (!pendingOAuth) return;
+              void completeProviderOAuth(pendingOAuth.providerId, pendingOAuth.methodIndex, oauthCode).then(() => {
+                setPendingOAuth(undefined);
+                setOAuthCode('');
+                resetProviderDialog();
+              }).catch((error) => setProviderDialogError(error instanceof Error ? error.message : 'Could not complete sign-in.'));
+            }}>Complete</Button>
+          </Dialog.Actions>
+        </Dialog>
         {selectedProvider ? (
           <ProviderConfigDialog
             authMethods={authMethods}

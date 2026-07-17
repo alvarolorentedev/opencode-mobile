@@ -3,6 +3,14 @@
 set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
+
+export NVM_DIR="$HOME/.nvm"
+if [ -s "$NVM_DIR/nvm.sh" ]; then
+  unset npm_config_prefix
+  . "$NVM_DIR/nvm.sh"
+  nvm use 20 >/dev/null 2>&1 || true
+fi
+
 PORT="${EXPO_DEV_PORT:-8081}"
 PUBLIC_URL="${EXPO_PUBLIC_URL:-http://expo.alvarolorente.dev:80}"
 START_TARGET="${EXPO_START_TARGET:-go}"
