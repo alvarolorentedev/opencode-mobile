@@ -91,7 +91,7 @@ try {
   assert((await request('/command')).some((command) => command.name === 'review'), 'Expected command fixture');
   assert((await request('/find/file?query=demo')).includes('src/demo.ts'), 'Expected file search result');
   assert((await request('/file/content?path=src%2Fdemo.ts')).content.includes('1.18.3'), 'Expected file content');
-  assert((await request('/file/status')).length === 1, 'Expected file status');
+  assert((await request('/file/status')).length === 1, 'Expected initial file status');
   assert((await request('/vcs')).branch === 'main', 'Expected VCS info');
 
   const session = await request('/session', json('POST', { title: 'Smoke session' }));
@@ -106,6 +106,7 @@ try {
   await sleep(900);
   assert((await request(`/session/${sessionId}/message`)).length >= 2, 'Expected user and assistant messages');
   assert((await request(`/session/${sessionId}/diff`)).length > 0, 'Expected diff payload');
+  assert((await request('/file/status')).length === 2, 'Expected completed task file status');
 
   const commandMessage = await request(`/session/${sessionId}/command`, json('POST', { command: 'review', arguments: 'src' }));
   assert(commandMessage.parts[0].text.includes('/review src'), 'Command execution failed');

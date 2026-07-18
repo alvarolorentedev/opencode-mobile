@@ -1,7 +1,6 @@
-import type { OpencodeClient } from '@opencode-ai/sdk/client';
+import type { OpencodeClient, SnapshotFileDiff } from '@opencode-ai/sdk/v2/client';
 
 import type { Project } from '@/lib/opencode/types';
-import { requestOpenCodeApi, type ScopedOpencodeClient } from '@/lib/opencode/client';
 
 function requireData<T>(data: T | undefined, operation: string): T {
   if (data === undefined) {
@@ -13,12 +12,12 @@ function requireData<T>(data: T | undefined, operation: string): T {
 export async function loadWorkspaceCatalog(catalogClient: OpencodeClient) {
   const [pathResponse, projectsResponse, currentProjectResponse] = await Promise.all([
     catalogClient.path.get(),
-    catalogClient.project.list().catch(() => undefined),
-    catalogClient.project.current().catch(() => undefined),
+    catalogClient.project.list(),
+    catalogClient.project.current(),
   ]);
 
-  const discoveredProjects = projectsResponse?.data || [];
-  const currentProject = currentProjectResponse?.data;
+  const discoveredProjects = requireData(projectsResponse.data, 'project list request');
+  const currentProject = requireData(currentProjectResponse.data, 'current project request');
   const path = requireData(pathResponse.data, 'path request');
   const dedupedProjects = new Map<string, Project>();
 
@@ -50,56 +49,86 @@ export async function listSessions(client: OpencodeClient) {
 }
 
 export async function getSessionMessages(client: OpencodeClient, sessionId: string) {
-  const response = await client.session.messages({ path: { id: sessionId } });
-  return response.data || [];
+  const response = await client.session.messages({ sessionID: sessionId });
+  return requireData(response.data, 'session messages request');
 }
 
 export async function getSessionDiff(client: OpencodeClient, sessionId: string) {
-  const response = await client.session.diff({ path: { id: sessionId } });
-  return response.data || [];
+  const response = await client.session.diff({ sessionID: sessionId });
+  const sessionDiff = requireData(response.data, 'session diff request');
+  if (sessionDiff.length > 0) {
+    return sessionDiff;
+  }
+
+  const [messages, statuses] = await Promise.all([
+    getSessionMessages(client, sessionId),
+    client.file.status().then((result) => requireData(result.data, 'file status request')),
+  ]);
+  const files = [...new Set(messages.flatMap(({ parts }) =>
+    parts.flatMap((part) => part.type === 'patch' ? part.files : []),
+  ))];
+
+  const recovered = await Promise.all(files.map(async (file): Promise<SnapshotFileDiff | undefined> => {
+    const status = statuses.find((entry) => file === entry.path || file.endsWith(`/${entry.path}`));
+    if (!status) {
+      return undefined;
+    }
+
+    const content = await client.file.read({ path: status.path }).then((result) => result.data).catch(() => undefined);
+    const patch = content?.diff || content?.patch?.hunks.map((hunk) =>
+      `@@ -${hunk.oldStart},${hunk.oldLines} +${hunk.newStart},${hunk.newLines} @@\n${hunk.lines.join('\n')}`,
+    ).join('\n');
+    if (!patch) {
+      return undefined;
+    }
+
+    return {
+      file: status.path,
+      patch,
+      additions: status.added,
+      deletions: status.removed,
+      status: status.status,
+    };
+  }));
+
+  return recovered.filter((diff): diff is SnapshotFileDiff => Boolean(diff));
 }
 
 export async function getSessionTodos(client: OpencodeClient, sessionId: string) {
-  const response = await client.session.todo({ path: { id: sessionId } });
-  return response.data || [];
+  const response = await client.session.todo({ sessionID: sessionId });
+  return requireData(response.data, 'session todo request');
 }
 
 export async function deleteSession(client: OpencodeClient, sessionId: string) {
-  return requestOpenCodeApi<boolean>(client as ScopedOpencodeClient, `/session/${encodeURIComponent(sessionId)}`, { method: 'DELETE' });
+  return (await client.session.delete({ sessionID: sessionId })).data;
 }
 
 export async function updateSessionTitle(client: OpencodeClient, sessionId: string, title: string) {
-  return requestOpenCodeApi<import('@/lib/opencode/types').Session>(client as ScopedOpencodeClient, `/session/${encodeURIComponent(sessionId)}`, {
-    method: 'PATCH', body: JSON.stringify({ title }),
-  });
+  return (await client.session.update({ sessionID: sessionId, title })).data;
 }
 
 export async function forkSession(client: OpencodeClient, sessionId: string, messageId?: string) {
-  return requestOpenCodeApi<import('@/lib/opencode/types').Session>(client as ScopedOpencodeClient, `/session/${encodeURIComponent(sessionId)}/fork`, {
-    method: 'POST', body: JSON.stringify(messageId ? { messageID: messageId } : {}),
-  });
+  return (await client.session.fork({ sessionID: sessionId, messageID: messageId })).data;
 }
 
 export async function shareSession(client: OpencodeClient, sessionId: string) {
-  return requestOpenCodeApi<import('@/lib/opencode/types').Session>(client as ScopedOpencodeClient, `/session/${encodeURIComponent(sessionId)}/share`, { method: 'POST' });
+  return (await client.session.share({ sessionID: sessionId })).data;
 }
 
 export async function unshareSession(client: OpencodeClient, sessionId: string) {
-  return requestOpenCodeApi<import('@/lib/opencode/types').Session>(client as ScopedOpencodeClient, `/session/${encodeURIComponent(sessionId)}/share`, { method: 'DELETE' });
+  return (await client.session.unshare({ sessionID: sessionId })).data;
 }
 
 export async function revertSession(client: OpencodeClient, sessionId: string, messageId: string, partId?: string) {
-  return requestOpenCodeApi<import('@/lib/opencode/types').Session>(client as ScopedOpencodeClient, `/session/${encodeURIComponent(sessionId)}/revert`, {
-    method: 'POST', body: JSON.stringify({ messageID: messageId, partID: partId }),
-  });
+  return (await client.session.revert({ sessionID: sessionId, messageID: messageId, partID: partId })).data;
 }
 
 export async function unrevertSession(client: OpencodeClient, sessionId: string) {
-  return requestOpenCodeApi<import('@/lib/opencode/types').Session>(client as ScopedOpencodeClient, `/session/${encodeURIComponent(sessionId)}/unrevert`, { method: 'POST' });
+  return (await client.session.unrevert({ sessionID: sessionId })).data;
 }
 
 export async function listCommands(client: OpencodeClient) {
-  return (await client.command.list()).data;
+  return requireData((await client.command.list()).data, 'command list request');
 }
 
 export async function executeCommand(
@@ -109,14 +138,12 @@ export async function executeCommand(
   args: string,
   options?: { agent?: string; model?: string; messageId?: string },
 ) {
-  return requestOpenCodeApi(client as ScopedOpencodeClient, `/session/${encodeURIComponent(sessionId)}/command`, {
-    method: 'POST',
-    body: JSON.stringify({
-      command,
-      arguments: args,
-      agent: options?.agent,
-      model: options?.model,
-      messageID: options?.messageId,
-    }),
-  });
+  return (await client.session.command({
+    sessionID: sessionId,
+    command,
+    arguments: args,
+    agent: options?.agent,
+    model: options?.model,
+    messageID: options?.messageId,
+  })).data;
 }

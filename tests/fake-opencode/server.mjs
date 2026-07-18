@@ -16,7 +16,7 @@ import { createStateStore, getNow } from './state.mjs';
 
 const port = Number.parseInt(process.env.FAKE_OPENCODE_PORT || '4096', 10);
 const scenarioName = process.env.FAKE_OPENCODE_SCENARIO || 'happy-path';
-const supportedScenarios = new Set(['happy-path', 'permission', 'question', 'stream-disconnect']);
+const supportedScenarios = new Set(['happy-path', 'permission', 'question', 'stream-disconnect', 'diff-recovery']);
 const configuredBasePath = (process.env.FAKE_OPENCODE_BASE_PATH || '').trim();
 const basePath = configuredBasePath
   ? `/${configuredBasePath.replace(/^\/+/, '').replace(/\/+$/, '')}`
@@ -121,7 +121,7 @@ function handleSse(req, res) {
   res.flushHeaders();
   res.write(`data: ${JSON.stringify({
     directory: state.project.worktree,
-    payload: { type: 'server.connected', properties: {} },
+    payload: { id: `event-${state.nextEventId++}`, type: 'server.connected', properties: {} },
   })}\n\n`);
   state.sseClients.add(res);
   req.on('close', () => {
@@ -283,12 +283,18 @@ const server = http.createServer(async (req, res) => {
         notFound(res);
         return;
       }
-      sendJson(res, 200, { type: 'text', content: state.files[requestedPath] });
+      sendJson(res, 200, {
+        type: 'text',
+        content: state.files[requestedPath],
+        diff: requestedPath === 'app/(tabs)/index.tsx' && state.workspaceTaskCompleted
+          ? '@@ -1,1 +1,3 @@\n-export default function OldScreen() {}\n+export default function ChatLandingScreen() {\n+  return null;\n+}'
+          : undefined,
+      });
       return;
     }
 
     if (req.method === 'GET' && pathname === '/file/status') {
-      sendJson(res, 200, fileStatusesPayload());
+      sendJson(res, 200, fileStatusesPayload(state));
       return;
     }
 
@@ -353,7 +359,7 @@ const server = http.createServer(async (req, res) => {
       delete state.sessionStatuses[sessionId];
       state.pendingPermissions = state.pendingPermissions.filter((entry) => entry.sessionID !== sessionId);
       state.pendingQuestions = state.pendingQuestions.filter((entry) => entry.sessionID !== sessionId);
-      emitEvent({ type: 'session.deleted', properties: { info: deletedSession } });
+      emitEvent({ type: 'session.deleted', properties: { sessionID: sessionId, info: deletedSession } });
       sendJson(res, 200, true);
       return;
     }
@@ -366,7 +372,7 @@ const server = http.createServer(async (req, res) => {
 
     if (req.method === 'GET' && /^\/session\/[^/]+\/diff$/.test(pathname)) {
       const sessionId = pathname.split('/')[2];
-      sendJson(res, 200, state.diffsBySession[sessionId] || []);
+      sendJson(res, 200, state.scenario === 'diff-recovery' ? [] : state.diffsBySession[sessionId] || []);
       return;
     }
 
@@ -439,7 +445,7 @@ const server = http.createServer(async (req, res) => {
       }
       session.share = { url: `https://share.example.test/${session.id}` };
       session.time.updated = getNow();
-      emitEvent({ type: 'session.updated', properties: { info: session } });
+      emitEvent({ type: 'session.updated', properties: { sessionID: session.id, info: session } });
       sendJson(res, 200, session);
       return;
     }
@@ -452,7 +458,7 @@ const server = http.createServer(async (req, res) => {
       }
       delete session.share;
       session.time.updated = getNow();
-      emitEvent({ type: 'session.updated', properties: { info: session } });
+      emitEvent({ type: 'session.updated', properties: { sessionID: session.id, info: session } });
       sendJson(res, 200, session);
       return;
     }
@@ -466,7 +472,7 @@ const server = http.createServer(async (req, res) => {
       }
       session.revert = { messageID: body.messageID, ...(body.partID ? { partID: body.partID } : {}) };
       session.time.updated = getNow();
-      emitEvent({ type: 'session.updated', properties: { info: session } });
+      emitEvent({ type: 'session.updated', properties: { sessionID: session.id, info: session } });
       sendJson(res, 200, session);
       return;
     }
@@ -479,7 +485,7 @@ const server = http.createServer(async (req, res) => {
       }
       delete session.revert;
       session.time.updated = getNow();
-      emitEvent({ type: 'session.updated', properties: { info: session } });
+      emitEvent({ type: 'session.updated', properties: { sessionID: session.id, info: session } });
       sendJson(res, 200, session);
       return;
     }
@@ -499,7 +505,7 @@ const server = http.createServer(async (req, res) => {
       }
       session.title = body.title.trim();
       session.time.updated = getNow();
-      emitEvent({ type: 'session.updated', properties: { info: session } });
+      emitEvent({ type: 'session.updated', properties: { sessionID: session.id, info: session } });
       sendJson(res, 200, session);
       return;
     }

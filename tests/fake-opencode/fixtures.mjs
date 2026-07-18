@@ -5,17 +5,44 @@ export function listProvidersPayload(state) {
         id: 'openai',
         name: 'OpenAI',
         models: {
-          'gpt-4.1-mini': { id: 'gpt-4.1-mini', name: 'GPT-4.1 mini', reasoning: true },
+          'gpt-4.1-mini': {
+            id: 'gpt-4.1-mini',
+            name: 'GPT-4.1 mini',
+            capabilities: {
+              attachment: true,
+              reasoning: true,
+              temperature: true,
+              toolcall: true,
+              input: { text: true, audio: false, image: true, video: false, pdf: true },
+              output: { text: true, audio: false, image: false, video: false, pdf: false },
+              interleaved: false,
+            },
+            limit: { context: 1047576, output: 32768 },
+          },
         },
       },
       {
         id: 'openrouter',
         name: 'OpenRouter',
         models: {
-          'openrouter/auto': { id: 'openrouter/auto', name: 'Auto', reasoning: false },
+          'openrouter/auto': {
+            id: 'openrouter/auto',
+            name: 'Auto',
+            capabilities: {
+              attachment: false,
+              reasoning: false,
+              temperature: true,
+              toolcall: true,
+              input: { text: true, audio: false, image: false, video: false, pdf: false },
+              output: { text: true, audio: false, image: false, video: false, pdf: false },
+              interleaved: false,
+            },
+            limit: { context: 200000, output: 16384 },
+          },
         },
       },
     ],
+    default: { openai: 'gpt-4.1-mini', openrouter: 'openrouter/auto' },
     connected: [...state.configuredProviderIds].sort(),
   };
 }
@@ -29,7 +56,7 @@ export function providerAuthPayload() {
         prompts: [],
       },
     ],
-    openrouter: [],
+    openrouter: [{ type: 'api', label: 'API key' }],
   };
 }
 
@@ -60,8 +87,13 @@ export function diagnosticsPayload() {
   };
 }
 
-export function fileStatusesPayload() {
-  return [{ path: 'src/demo.ts', added: 2, removed: 1, status: 'modified' }];
+export function fileStatusesPayload(state) {
+  return [
+    { path: 'src/demo.ts', added: 2, removed: 1, status: 'modified' },
+    ...(state.workspaceTaskCompleted
+      ? [{ path: 'app/(tabs)/index.tsx', added: 6, removed: 1, status: 'modified' }]
+      : []),
+  ];
 }
 
 export function vcsPayload() {

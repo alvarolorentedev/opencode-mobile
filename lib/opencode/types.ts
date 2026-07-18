@@ -1,12 +1,9 @@
-import type { Config as SdkConfig } from '@opencode-ai/sdk/client';
-
 export type {
   Agent,
   Command,
   Config,
   File,
   FileContent,
-  FileDiff,
   FileNode,
   FormatterStatus,
   LspStatus,
@@ -14,7 +11,6 @@ export type {
   Message,
   Model,
   Part,
-  Permission,
   Project,
   Provider,
   ProviderAuthMethod,
@@ -23,8 +19,7 @@ export type {
   Todo,
   ToolPart,
   VcsInfo,
-} from '@opencode-ai/sdk/client';
-
-export type PermissionConfig = NonNullable<SdkConfig['permission']>;
+  SnapshotFileDiff as FileDiff,
+} from '@opencode-ai/sdk/v2/client';
 
 export default {};

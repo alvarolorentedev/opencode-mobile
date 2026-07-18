@@ -5,7 +5,7 @@ import { ActivityIndicator, Button, Card, IconButton, Text, TouchableRipple } fr
 
 import { Colors } from '@/constants/theme';
 import { DiffCard, PendingInteractionsCard, SessionDiffCard, TranscriptMessage } from '@/components/chat/chat-cards';
-import { getSessionSubtitle, type TranscriptEntry } from '@/lib/opencode/format';
+import type { TranscriptEntry } from '@/lib/opencode/format';
 import type { FileDiff, Session, SessionStatus, Todo } from '@/lib/opencode/types';
 import type { PendingPermissionRequest, PendingQuestionAnswer, PendingQuestionRequest } from '@/lib/opencode/client';
 
@@ -13,7 +13,7 @@ import { styles } from '@/components/chat/chat-view-styles';
 import { STARTER_PROMPTS } from '@/components/chat/chat-view-utils';
 
 type Palette = typeof Colors.light;
-type DiffDetail = Extract<TranscriptEntry['details'][number], { kind: 'patch' | 'file' }>;
+type DiffDetail = Extract<TranscriptEntry['details'][number], { kind: 'patch' }>;
 
 type ChatContentProps = {
   activeSession?: Session;
@@ -27,6 +27,7 @@ type ChatContentProps = {
   currentPendingQuestions: PendingQuestionRequest[];
   currentTodos: Todo[];
   currentSessionId?: string;
+  diffCount: number;
   diffDetails: DiffDetail[];
   displayTranscript: TranscriptEntry[];
   expandedDiffId?: string;
@@ -65,6 +66,7 @@ export function ChatContent({
   currentPendingPermissions,
   currentPendingQuestions,
   currentTodos,
+  diffCount,
   diffDetails,
   displayTranscript,
   expandedDiffId,
@@ -188,7 +190,9 @@ export function ChatContent({
               <View>
                 <Text variant="titleMedium" style={{ color: palette.text }}>Workspace diff</Text>
                 <Text variant="bodyMedium" style={{ color: palette.muted }}>
-                  {activeSession ? getSessionSubtitle(activeSession) : 'Current session'}
+                  {currentDiffs.length > 0
+                    ? `${diffCount} files changed, +${currentDiffs.reduce((total, diff) => total + diff.additions, 0)} / -${currentDiffs.reduce((total, diff) => total + diff.deletions, 0)}`
+                    : `${diffCount} files changed`}
                 </Text>
               </View>
               <Text variant="labelMedium" style={{ color: palette.tint }}>{isRefreshingDiffs ? 'Syncing' : status?.type || 'idle'}</Text>
@@ -208,7 +212,7 @@ export function ChatContent({
               <Card.Content style={styles.diffListCardContent}>
                 {currentDiffs.map((diff) => {
                   const accordionId = `diff:${diff.file}`;
-                  return <SessionDiffCard key={diff.file} diff={diff} expanded={expandedDiffId === accordionId} onPress={() => onExpandDiff(expandedDiffId === accordionId ? undefined : accordionId)} />;
+                  return <SessionDiffCard key={accordionId} diff={diff} expanded={expandedDiffId === accordionId} onPress={() => onExpandDiff(expandedDiffId === accordionId ? undefined : accordionId)} />;
                 })}
                 {currentDiffs.length === 0
                   ? diffDetails.map((detail) => {
@@ -263,7 +267,7 @@ export function ChatContent({
           {todosExpanded ? (
             <ScrollView style={styles.todoListScroll} contentContainerStyle={styles.todoList} nestedScrollEnabled>
               {currentTodos.map((todo, index) => (
-                <View key={todo.id || `${index}`} style={styles.todoItemRow}>
+                <View key={`${todo.content}-${index}`} style={styles.todoItemRow}>
                   <IconButton icon={todo.status === 'completed' ? 'check-circle' : todo.status === 'in_progress' ? 'progress-clock' : 'circle-outline'} size={20} disabled style={styles.todoStatusIcon} />
                   <View style={styles.todoTextWrap}>
                     <Text variant="bodyMedium" style={{ color: palette.text }}>{todo.content || 'Untitled task'}</Text>

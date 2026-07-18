@@ -51,20 +51,10 @@ const KNOWN_PROVIDER_COPY: Record<string, { label: string; description: string }
   },
 };
 
-const KNOWN_OAUTH_PROVIDER_IDS = new Set(['openai', 'github-copilot', 'github_copilot', 'anthropic']);
-
 export function getProviderCopy(providerId: string, fallbackLabel: string) {
   const copy = KNOWN_PROVIDER_COPY[providerId];
   return {
     label: copy?.label || fallbackLabel,
     description: copy?.description,
   };
-}
-
-export function shouldUseGenericApiFallback(providerId: string, authMethodsCount: number) {
-  if (authMethodsCount > 0) {
-    return false;
-  }
-
-  return !KNOWN_OAUTH_PROVIDER_IDS.has(providerId);
 }

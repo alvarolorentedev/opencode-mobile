@@ -98,9 +98,10 @@ export function ChatView() {
     return availableModels.filter((model) => configuredProviderIds.has(model.providerID) && (enabledModelIds.size === 0 || enabledModelIds.has(model.id)));
   }, [availableModels, chatPreferences.enabledModelIds, configuredProviders]);
   const diffDetails = useMemo(
-    () => currentTranscript.flatMap((entry) => entry.details.filter((detail) => detail.kind === 'patch' || detail.kind === 'file')),
+    () => currentTranscript.flatMap((entry) => entry.details.filter((detail) => detail.kind === 'patch')),
     [currentTranscript],
   );
+  const diffCount = currentDiffs.length || new Set(diffDetails.flatMap((detail) => detail.body.split('\n').filter(Boolean))).size;
   const selectedAgentLabel = useMemo(
     () => availableAgents.find((agent) => agent.id === chatPreferences.mode)?.label || chatPreferences.mode,
     [availableAgents, chatPreferences.mode],
@@ -474,7 +475,7 @@ export function ChatView() {
 
         <View style={[styles.tabsRow, { backgroundColor: palette.surface, borderBottomColor: palette.border }]}>
           <TopTab active={activeTab === 'session'} label="Session" onPress={() => setActiveTab('session')} />
-          <TopTab active={activeTab === 'changes'} label={`${currentDiffs.length || diffDetails.length || 0} Files Changed`} onPress={() => setActiveTab('changes')} />
+          <TopTab active={activeTab === 'changes'} label={`${diffCount} Files Changed`} onPress={() => setActiveTab('changes')} />
         </View>
 
         <ChatContent
@@ -488,6 +489,7 @@ export function ChatView() {
           currentPendingPermissions={currentPendingPermissions}
           currentPendingQuestions={currentPendingQuestions}
           currentTodos={currentTodos}
+          diffCount={diffCount}
           diffDetails={diffDetails}
           displayTranscript={displayTranscript}
           expandedDiffId={expandedDiffId}

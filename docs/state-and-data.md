@@ -247,7 +247,7 @@ That detail is important because the transcript UI is not a raw message dump.
 
 ## OpenCode API Surface Used By The App
 
-### Via OpenCode 1.18.3 SDK Client
+### Via OpenCode 1.18.3 V2 SDK Client
 
 The app currently uses these logical server capabilities:
 
@@ -275,14 +275,6 @@ The app currently uses these logical server capabilities:
 - provider OAuth authorize and callback
 - permission and question list/reply operations
 - global event subscription
-
-### Via Manual Request Helper
-
-`GET /global/health` and permission/question list and reply operations use `requestOpenCodeApi()`. The helper preserves:
-
-- JSON headers
-- optional basic auth header
-- `directory` query parameter when the client is project-scoped
 
 ## Capability Discovery Model
 

@@ -1,6 +1,4 @@
-import type { FormatterStatus, LspStatus, McpStatus } from '@opencode-ai/sdk/client';
-
-import { requestOpenCodeApi, type ScopedOpencodeClient } from '@/lib/opencode/client';
+import type { FormatterStatus, LspStatus, McpStatus, OpencodeClient } from '@opencode-ai/sdk/v2/client';
 
 export type HealthInfo = {
   healthy: true;
@@ -32,9 +30,9 @@ function requireData<T>(data: T | undefined, operation: string): T {
   return data;
 }
 
-export async function loadDiagnostics(client: ScopedOpencodeClient) {
+export async function loadDiagnostics(client: OpencodeClient) {
   const [health, mcp, lsp, formatter] = await Promise.all([
-    optionalDiagnostic(() => requestOpenCodeApi<HealthInfo>(client, '/global/health')),
+    optionalDiagnostic(async () => requireData((await client.global.health()).data, 'health diagnostic')),
     optionalDiagnostic<Record<string, McpStatus>>(async () =>
       requireData((await client.mcp.status()).data, 'MCP diagnostic')),
     optionalDiagnostic<LspStatus[]>(async () =>

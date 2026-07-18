@@ -13,7 +13,9 @@ export function createState(scenario) {
     time: {
       created: now() - 60_000,
       initialized: now() - 30_000,
+      updated: now() - 30_000,
     },
+    sandboxes: [],
   };
 
   return {
@@ -26,6 +28,7 @@ export function createState(scenario) {
     nextEventId: 1,
     sseClients: new Set(),
     completionTimers: new Set(),
+    workspaceTaskCompleted: false,
     sessions: [],
     messagesBySession: {},
     sessionStatuses: {},
@@ -52,6 +55,7 @@ export function createState(scenario) {
     },
     authByProvider: {},
     files: {
+      'app/(tabs)/index.tsx': 'export default function ChatLandingScreen() {\n  return null;\n}\n',
       'README.md': '# Demo project\n\nDeterministic fake OpenCode workspace.\n',
       'src/demo.ts': 'export const demo = "OpenCode 1.18.3";\n',
       'src/feature.ts': 'export function feature() {\n  return true;\n}\n',

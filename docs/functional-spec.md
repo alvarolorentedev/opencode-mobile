@@ -127,8 +127,8 @@ The `Files Changed` tab shows the current session diff.
 Behavior:
 
 - top card shows session subtitle and current status
-- if the server returns structured diff objects, they are rendered with additions/deletions and an expandable line diff preview
-- if only transcript patch/file details exist, those are used as a fallback display source
+- current `{ file, patch, additions, deletions }` diff objects are rendered as expandable line previews
+- if the session diff is empty, transcript patch filenames are resolved through current file status/read responses
 - if nothing has changed, the user sees `No file changes yet.`
 
 ### 8. Manage Sessions in the Workspace Tab
@@ -248,7 +248,7 @@ Behavior:
 - only configured providers contribute models to the model picker
 - model choices are also filtered by the enabled-model list from Settings
 - selecting a model updates both `providerId` and `modelId`
-- discovered model metadata includes attachment/input modality, tool-call, reasoning, status, and context/output limit capabilities
+- discovered model metadata comes from nested attachment/input modality, tool-call, reasoning, status, and context/output limit capabilities
 - reasoning level affects only the generated system prompt, not local control flow
 
 ## Session Title Summarization

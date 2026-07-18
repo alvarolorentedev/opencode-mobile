@@ -1,3 +1,4 @@
+import type { FilePartInput, GlobalEvent, TextPartInput } from '@opencode-ai/sdk/v2/client';
 import type { Command, Config, File, FileContent, FileDiff, Project, Session, SessionStatus, Todo, VcsInfo } from '@/lib/opencode/types';
 import {
   createContext,
@@ -18,7 +19,6 @@ import {
   getNormalizedServerUrl,
   listPendingInteractions,
   rejectPendingQuestion,
-  requestOpenCodeApi,
   replyToPendingPermission,
   replyToPendingQuestion,
   type PendingPermissionRequest,
@@ -419,15 +419,15 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
   const refreshChatCapabilities = useCallback(async () => {
     const result = await import('@/providers/services/capabilities-service').then((m) => m.discoverChatCapabilities(client, activeProjectPath));
 
-    setCurrentConfig(result.config as any);
-    setAvailableProviders(result.providers as any[]);
-    setProviderAuthMethodsById(result.providerAuthMethodsById as Record<string, ProviderAuthMethod[]>);
-    setAvailableModels(result.models as any[]);
-    setAvailableAgents(result.agents as any[]);
+    setCurrentConfig(result.config);
+    setAvailableProviders(result.providers);
+    setProviderAuthMethodsById(result.providerAuthMethodsById);
+    setAvailableModels(result.models);
+    setAvailableAgents(result.agents);
 
     setChatPreferences((current) => {
-      const configuredProviderIds = getConfiguredProviderIds(result.config as any, (result.connected || []) as string[], result.models as any[]);
-      const configuredModels = (result.config && result.models ? result.models.filter((model: any) => configuredProviderIds.has(model.providerID)) : []) as any[];
+      const configuredProviderIds = getConfiguredProviderIds(result.config, result.connected, result.models);
+      const configuredModels = result.models.filter((model) => configuredProviderIds.has(model.providerID));
       const enabledModelIds = getEnabledModelIds(configuredModels, current.enabledModelIds);
       const enabledModels = configuredModels.filter((model) => enabledModelIds.includes(model.id));
       const nextProviderId = getInitialProviderId(configuredModels, result.config, current.providerId, current.modelId);
@@ -437,7 +437,7 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
 
       return {
         ...current,
-        mode: getInitialMode(result.agents as any[], result.config, current.mode),
+        mode: getInitialMode(result.agents, result.config, current.mode),
         providerId: safeProviderId,
         modelId: getModelIdForProvider(
           enabledModels,
@@ -469,7 +469,7 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
     async (title?: string) => {
       const trimmedTitle = title?.trim();
       const response = trimmedTitle
-        ? await client.session.create({ body: { title: trimmedTitle } })
+        ? await client.session.create({ title: trimmedTitle })
         : await client.session.create();
 
       if (!response.data) {
@@ -624,10 +624,7 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
         return existingSession;
       }
 
-      await requestOpenCodeApi(client, `/session/${encodeURIComponent(sessionId)}/summarize`, {
-        method: 'POST',
-        body: JSON.stringify(selectedModel),
-      });
+      await client.session.summarize({ sessionID: sessionId, ...selectedModel });
 
       const nextSessions = await fetchSessions(true);
       return nextSessions.find((session) => session.id === sessionId);
@@ -809,17 +806,7 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
       if (!request) {
         throw new Error('This permission request is no longer available.');
       }
-      try {
-        await replyToPendingPermission(client, request.id, reply);
-      } catch (error) {
-        if (error instanceof Error && /400|404/.test(error.message)) {
-          setPendingPermissionsBySession((current) => ({
-            ...current,
-            [request.sessionID]: (current[request.sessionID] || []).filter((item) => item.id !== request.id),
-          }));
-        }
-        throw error;
-      }
+      await replyToPendingPermission(client, request.id, reply);
       setPendingPermissionsBySession((current) => ({
         ...current,
         [request.sessionID]: (current[request.sessionID] || []).filter((item) => item.id !== request.id),
@@ -911,10 +898,12 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
       const enabledProviders = new Set(latestConfig.enabled_providers || []);
       enabledProviders.add(providerId);
 
-      const updatedConfig = await requestOpenCodeApi<Config>(client, '/config', {
-        method: 'PATCH',
-        body: JSON.stringify({ ...latestConfig, enabled_providers: [...enabledProviders].sort() }),
-      });
+      const updatedConfig = (await client.config.update({
+        config: { ...latestConfig, enabled_providers: [...enabledProviders].sort() },
+      })).data;
+      if (!updatedConfig) {
+        throw new Error('OpenCode did not return its updated configuration.');
+      }
 
       setCurrentConfig(updatedConfig);
       await refreshChatCapabilities();
@@ -928,22 +917,17 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
 
   const setProviderAuth = useCallback(
     async (providerId: string, values: Record<string, string>) => {
-      const normalizedEntries = Object.entries(values).filter(([, value]) => value.trim());
-      const normalizedValues = Object.fromEntries(normalizedEntries);
-      const token = normalizedValues.token || normalizedValues.apiKey || normalizedValues.key || normalizedEntries[0]?.[1];
-
-      if (!token) {
+      const key = values.key?.trim();
+      const token = values.token?.trim();
+      if (!key) {
         throw new Error('Enter a provider credential first.');
       }
 
-      const auth = normalizedValues.token && normalizedValues.key
-        ? { type: 'wellknown' as const, key: normalizedValues.key, token: normalizedValues.token }
-        : { type: 'api' as const, key: token };
+      const auth = token
+        ? { type: 'wellknown' as const, key, token }
+        : { type: 'api' as const, key };
 
-      await requestOpenCodeApi(client, `/auth/${encodeURIComponent(providerId)}`, {
-        method: 'PUT',
-        body: JSON.stringify(auth),
-      });
+      await client.auth.set({ providerID: providerId, auth });
       await configureProvider(providerId);
       await refreshChatCapabilities();
     },
@@ -951,11 +935,15 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
   );
 
   const startProviderOAuth = useCallback(
-    async (providerId: string, methodIndex: number, _inputs?: Record<string, string>) => {
-      const authorization = await requestOpenCodeApi<{ url: string; instructions: string; method: 'auto' | 'code' }>(client, `/provider/${encodeURIComponent(providerId)}/oauth/authorize`, {
-        method: 'POST',
-        body: JSON.stringify({ method: methodIndex }),
-      });
+    async (providerId: string, methodIndex: number, inputs?: Record<string, string>) => {
+      const authorization = (await client.provider.oauth.authorize({
+        providerID: providerId,
+        method: methodIndex,
+        inputs,
+      })).data;
+      if (!authorization) {
+        throw new Error('OpenCode did not return OAuth authorization details.');
+      }
 
       return {
         url: authorization.url,
@@ -967,9 +955,10 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
   );
 
   const completeProviderOAuth = useCallback(async (providerId: string, methodIndex: number, code: string) => {
-    await requestOpenCodeApi(client, `/provider/${encodeURIComponent(providerId)}/oauth/callback`, {
-      method: 'POST',
-      body: JSON.stringify({ method: methodIndex, code: code.trim() || undefined }),
+    await client.provider.oauth.callback({
+      providerID: providerId,
+      method: methodIndex,
+      code: code.trim() || undefined,
     });
     await configureProvider(providerId);
     await refreshChatCapabilities();
@@ -979,10 +968,10 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
     async (enabled: boolean) => {
       const latestConfig = currentConfig || (await client.config.get()).data;
       const nextConfig = mergePermissionConfig(latestConfig, enabled);
-      const updatedConfig = await requestOpenCodeApi<Config>(client, '/config', {
-        method: 'PATCH',
-        body: JSON.stringify(nextConfig),
-      });
+      const updatedConfig = (await client.config.update({ config: nextConfig })).data;
+      if (!updatedConfig) {
+        throw new Error('OpenCode did not return its updated configuration.');
+      }
 
       setCurrentConfig(updatedConfig);
       setChatPreferences((current) => ({
@@ -1083,22 +1072,18 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
           }
         }
 
-        const parts: any[] = [];
+        const parts: (TextPartInput | FilePartInput)[] = [];
         if (trimmedPrompt) {
           parts.push({ type: 'text', text: trimmedPrompt });
         }
         parts.push(...preparedFileParts);
 
-        const body = {
+        await client.session.promptAsync({
+          sessionID: sessionId,
           agent: chatPreferences.mode,
           model: getSelectedModelParts(chatPreferences.modelId),
           system: buildSystemPrompt(chatPreferences),
           parts,
-        };
-
-        await requestOpenCodeApi(client, `/session/${encodeURIComponent(sessionId)}/prompt_async`, {
-          method: 'POST',
-          body: JSON.stringify(body),
         });
         promptAccepted = true;
         promptSubmissionRef.current = { active: false, sessionId: undefined };
@@ -1144,7 +1129,7 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
     async (sessionId: string) => {
       pendingNotificationSessionIdsRef.current.delete(sessionId);
       await clearPendingTaskFinishedNotification(sessionId);
-      await requestOpenCodeApi(client, `/session/${encodeURIComponent(sessionId)}/abort`, { method: 'POST' });
+      await client.session.abort({ sessionID: sessionId });
 
       await Promise.all([
         refreshSessions(true),
@@ -1586,11 +1571,7 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
     let mounted = true;
     let activeAbortController: AbortController | undefined;
 
-    const handleEvent = (event: any) => {
-      if (!event?.type) {
-        return;
-      }
-
+    const handleEvent = (event: GlobalEvent['payload']) => {
       switch (event.type) {
         case 'session.created':
         case 'session.updated':
@@ -1598,82 +1579,74 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
           void refreshSessions(true);
           return;
         case 'session.status': {
-          const sessionId = event.properties?.sessionID;
-          if (typeof sessionId === 'string') {
-            setSessionStatuses((current) => ({
-              ...current,
-              [sessionId]: event.properties.status,
-            }));
-            scheduleSessionRefresh(sessionId, { sessions: true, messages: true, diff: true, todos: true });
-          }
+          const sessionId = event.properties.sessionID;
+          setSessionStatuses((current) => ({
+            ...current,
+            [sessionId]: event.properties.status,
+          }));
+          scheduleSessionRefresh(sessionId, { sessions: true, messages: true, diff: true, todos: true });
           return;
         }
         case 'session.idle': {
-          const sessionId = event.properties?.sessionID;
-          if (typeof sessionId === 'string') {
-            setSessionStatuses((current) => ({
-              ...current,
-              [sessionId]: { type: 'idle' },
-            }));
-            scheduleSessionRefresh(sessionId, { sessions: true, messages: true, diff: true, todos: true, delayMs: 50 });
-            void refreshPendingInteractions();
-          }
+          const sessionId = event.properties.sessionID;
+          setSessionStatuses((current) => ({
+            ...current,
+            [sessionId]: { type: 'idle' },
+          }));
+          scheduleSessionRefresh(sessionId, { sessions: true, messages: true, diff: true, todos: true, delayMs: 50 });
+          void refreshPendingInteractions();
+          void refreshServerFeatures();
           return;
         }
         case 'session.error': {
-          const sessionId = event.properties?.sessionID;
-          const error = event.properties?.error;
-          const message = error?.data?.message || error?.message || 'OpenCode could not complete the request.';
+          const sessionId = event.properties.sessionID;
+          const error = event.properties.error;
+          const message = error && 'data' in error && error.data && 'message' in error.data
+            ? error.data.message
+            : error && 'message' in error
+              ? error.message
+              : 'OpenCode could not complete the request.';
           setPromptError({
             message: error?.name ? `${error.name}: ${message}` : String(message),
             occurredAt: Date.now(),
-            sessionId: typeof sessionId === 'string' ? sessionId : undefined,
+            sessionId,
           });
-          if (typeof sessionId === 'string') {
+          if (sessionId) {
             scheduleSessionRefresh(sessionId, { sessions: true, messages: true });
           }
           return;
         }
         case 'message.updated': {
-          const sessionId = event.properties?.info?.sessionID;
-          if (typeof sessionId === 'string') {
-            scheduleSessionRefresh(sessionId, { messages: true });
-          }
+          scheduleSessionRefresh(event.properties.sessionID, { messages: true });
           return;
         }
         case 'message.part.updated':
         case 'message.part.removed': {
-          const sessionId = event.properties?.part?.sessionID ?? event.properties?.sessionID;
-          if (typeof sessionId === 'string') {
-            scheduleSessionRefresh(sessionId, { messages: true });
-          }
+          scheduleSessionRefresh(event.properties.sessionID, { messages: true });
           return;
         }
         case 'session.diff': {
-          const sessionId = event.properties?.sessionID;
-          if (typeof sessionId === 'string') {
+          const sessionId = event.properties.sessionID;
+          if (event.properties.diff.length > 0) {
             setDiffsBySession((current) => ({
               ...current,
-              [sessionId]: event.properties.diff || [],
+              [sessionId]: event.properties.diff,
             }));
+          } else {
+            scheduleSessionRefresh(sessionId, { diff: true, delayMs: 50 });
           }
           return;
         }
         case 'todo.updated': {
-          const sessionId = event.properties?.sessionID;
-          if (typeof sessionId === 'string') {
-            setTodosBySession((current) => ({
-              ...current,
-              [sessionId]: event.properties.todos || [],
-            }));
-          }
+          const sessionId = event.properties.sessionID;
+          setTodosBySession((current) => ({
+            ...current,
+            [sessionId]: event.properties.todos,
+          }));
           return;
         }
         case 'permission.asked': {
-          const request = event.properties as PendingPermissionRequest;
-          if (!request?.id || !request.sessionID) {
-            return;
-          }
+          const request = event.properties;
           setPendingPermissionsBySession((current) => ({
             ...current,
             [request.sessionID]: [
@@ -1684,21 +1657,15 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
           return;
         }
         case 'permission.replied': {
-          const sessionId = event.properties?.sessionID;
-          const permissionId = event.properties?.requestID;
-          if (typeof sessionId === 'string' && typeof permissionId === 'string') {
-            setPendingPermissionsBySession((current) => ({
-              ...current,
-              [sessionId]: (current[sessionId] || []).filter((item) => item.id !== permissionId),
-            }));
-          }
+          const { sessionID, requestID } = event.properties;
+          setPendingPermissionsBySession((current) => ({
+            ...current,
+            [sessionID]: (current[sessionID] || []).filter((item) => item.id !== requestID),
+          }));
           return;
         }
         case 'question.asked': {
-          const request = event.properties as PendingQuestionRequest;
-          if (!request?.id || !request.sessionID) {
-            return;
-          }
+          const request = event.properties;
           setPendingQuestionsBySession((current) => ({
             ...current,
             [request.sessionID]: [
@@ -1710,14 +1677,11 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
         }
         case 'question.replied':
         case 'question.rejected': {
-          const sessionId = event.properties?.sessionID;
-          const requestId = event.properties?.requestID;
-          if (typeof sessionId === 'string' && typeof requestId === 'string') {
-            setPendingQuestionsBySession((current) => ({
-              ...current,
-              [sessionId]: (current[sessionId] || []).filter((item) => item.id !== requestId),
-            }));
-          }
+          const { sessionID, requestID } = event.properties;
+          setPendingQuestionsBySession((current) => ({
+            ...current,
+            [sessionID]: (current[sessionID] || []).filter((item) => item.id !== requestID),
+          }));
           return;
         }
         default:
@@ -1764,7 +1728,7 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
       mounted = false;
       activeAbortController?.abort();
     };
-  }, [activeProjectPath, catalogClient, connection.status, refreshPendingInteractions, refreshSessions, scheduleSessionRefresh]);
+  }, [activeProjectPath, catalogClient, connection.status, refreshPendingInteractions, refreshServerFeatures, refreshSessions, scheduleSessionRefresh]);
 
   useEffect(
     () => () => {
@@ -1949,6 +1913,7 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
       serverRootPath,
       isRefreshingWorkspaceCatalog,
       refreshWorkspaceCatalog,
+      refreshWorkspaceStatus: refreshServerFeatures,
       sessions,
       sessionStatuses,
       currentSessionId,
@@ -2076,6 +2041,7 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
       refreshCurrentSession,
       refreshCurrentTodos,
       refreshWorkspaceCatalog,
+      refreshServerFeatures,
       refreshSessions,
       replyToPermission,
       replyToQuestion,

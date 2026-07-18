@@ -36,6 +36,7 @@ export default function WorkspaceScreen() {
     projects,
     refreshSessions,
     refreshWorkspaceCatalog,
+    refreshWorkspaceStatus,
     renameSession,
     selectProject,
     serverRootPath,
@@ -60,7 +61,7 @@ export default function WorkspaceScreen() {
   const isRefreshing = isRefreshingSessions || isRefreshingWorkspaceCatalog;
 
   async function handleRefresh() {
-    await Promise.all([refreshWorkspaceCatalog(), refreshSessions()]);
+    await Promise.all([refreshWorkspaceCatalog(), refreshSessions(), refreshWorkspaceStatus()]);
   }
 
   async function handleNewChat() {

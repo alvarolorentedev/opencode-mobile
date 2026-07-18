@@ -1,5 +1,10 @@
-import { createOpencodeClient, type OpencodeClient } from '@opencode-ai/sdk/client';
-import type { PermissionRequest, QuestionAnswer, QuestionRequest } from '@opencode-ai/sdk/v2/types';
+import {
+  createOpencodeClient,
+  type OpencodeClient,
+  type PermissionRequest,
+  type QuestionAnswer,
+  type QuestionRequest,
+} from '@opencode-ai/sdk/v2/client';
 import { encode as encodeBase64 } from 'base-64';
 import Constants from 'expo-constants';
 
@@ -27,17 +32,8 @@ type NormalizedServerUrl = {
   pathPrefix: string;
 };
 
-type ServerBase = {
-  baseUrl: string;
-  pathPrefix: string;
-};
-
 type ClientMetadata = {
-  baseUrl: string;
   directory?: string;
-  headers?: Record<string, string>;
-  displayUrl: string;
-  pathPrefix: string;
 };
 
 export type ScopedOpencodeClient = OpencodeClient & {
@@ -68,20 +64,7 @@ function normalizeServerUrl(value: string): NormalizedServerUrl {
   };
 }
 
-function buildServerUrl(pathname: string, settingsOrBase: OpencodeConnectionSettings | ServerBase) {
-  const base = 'serverUrl' in settingsOrBase
-    ? (() => {
-        const normalized = normalizeServerUrl(settingsOrBase.serverUrl);
-        return {
-          baseUrl: normalized.origin,
-          pathPrefix: normalized.pathPrefix,
-        };
-      })()
-    : settingsOrBase;
-  return `${base.baseUrl}${joinUrlPath(base.pathPrefix, pathname)}`;
-}
-
-function createScopedFetch(baseUrl: string, pathPrefix: string) {
+function createScopedFetch(baseUrl: string, pathPrefix: string, directory?: string) {
   return async (input: RequestInfo | URL, init?: RequestInit) => {
     const currentUrl =
       typeof input === 'string'
@@ -94,12 +77,21 @@ function createScopedFetch(baseUrl: string, pathPrefix: string) {
     if (parsed.origin === baseUrl && pathPrefix && !parsed.pathname.startsWith(`${pathPrefix}/`) && parsed.pathname !== pathPrefix) {
       parsed.pathname = joinUrlPath(pathPrefix, parsed.pathname);
     }
+    if (parsed.origin === baseUrl && directory && !parsed.searchParams.has('directory')) {
+      parsed.searchParams.set('directory', directory);
+    }
 
     if (typeof input === 'string' || input instanceof URL) {
       return fetch(parsed.toString(), init);
     }
 
-    return fetch(new Request(parsed.toString(), input), init);
+    return fetch(parsed.toString(), {
+      body: input.method === 'GET' || input.method === 'HEAD' ? undefined : await input.arrayBuffer(),
+      credentials: input.credentials,
+      headers: input.headers,
+      method: input.method,
+      signal: input.signal,
+    });
   };
 }
 
@@ -146,24 +138,16 @@ export function buildClient(settings: OpencodeConnectionSettings): ScopedOpencod
   const headers = getRequestHeaders(settings);
   const directory = settings.directory.trim() || undefined;
 
-  const client = createOpencodeClient({
-    baseUrl: normalizedServerUrl.origin,
-    directory,
-    fetch: createScopedFetch(normalizedServerUrl.origin, normalizedServerUrl.pathPrefix),
-    headers,
-    responseStyle: 'fields',
-    throwOnError: true,
-  }) as ScopedOpencodeClient;
-
-  client.__opencode = {
-    baseUrl: normalizedServerUrl.origin,
-    directory,
-    headers,
-    displayUrl: normalizedServerUrl.displayUrl,
-    pathPrefix: normalizedServerUrl.pathPrefix,
-  };
-
-  return client;
+  return Object.assign(
+    createOpencodeClient({
+      baseUrl: normalizedServerUrl.origin,
+      fetch: createScopedFetch(normalizedServerUrl.origin, normalizedServerUrl.pathPrefix, directory),
+      headers,
+      responseStyle: 'fields',
+      throwOnError: true,
+    }),
+    { __opencode: { directory } },
+  );
 }
 
 export function getNormalizedServerUrl(serverUrl: string) {
@@ -174,70 +158,31 @@ export function getConnectionError(serverUrl: string, error: unknown) {
   return getConnectionErrorMessage(error, serverUrl);
 }
 
-export async function requestOpenCodeApi<T>(client: ScopedOpencodeClient, path: string, init?: RequestInit): Promise<T> {
-  const baseUrl = client.__opencode.baseUrl;
-  if (!baseUrl) {
-    throw new Error('OpenCode client is missing base URL metadata.');
-  }
-
-  const requestUrl = new URL(buildServerUrl(path, {
-    baseUrl,
-    pathPrefix: client.__opencode.pathPrefix,
-  }));
-  const directory = client.__opencode.directory;
-  if (directory && !requestUrl.searchParams.has('directory')) {
-    requestUrl.searchParams.set('directory', directory);
-  }
-
-  const response = await fetch(requestUrl.toString(), {
-    ...init,
-    headers: {
-      Accept: 'application/json',
-      'Content-Type': 'application/json',
-      ...(client.__opencode.headers || {}),
-      ...(init?.headers || {}),
-    },
-  });
-
-  if (!response.ok) {
-    const detail = (await response.text()).trim();
-    throw new Error(`OpenCode request failed: ${response.status}${detail ? ` - ${detail.slice(0, 1000)}` : ''}`);
-  }
-
-  if (response.status === 204) {
-    return undefined as T;
-  }
-
-  return response.json() as Promise<T>;
-}
-
 export async function listPendingInteractions(client: ScopedOpencodeClient) {
-  const [permissions, questions] = await Promise.all([
-    requestOpenCodeApi<PendingPermissionRequest[]>(client, '/permission'),
-    requestOpenCodeApi<PendingQuestionRequest[]>(client, '/question'),
+  const [permissionResponse, questionResponse] = await Promise.all([
+    client.permission.list(),
+    client.question.list(),
   ]);
 
-  return { permissions, questions };
+  if (!permissionResponse.data || !questionResponse.data) {
+    throw new Error('OpenCode did not return pending interactions.');
+  }
+
+  return { permissions: permissionResponse.data, questions: questionResponse.data };
 }
 
 export async function replyToPendingPermission(
   client: ScopedOpencodeClient,
-  permissionId: string,
+  requestID: string,
   reply: 'once' | 'always' | 'reject',
 ) {
-  await requestOpenCodeApi(client, `/permission/${encodeURIComponent(permissionId)}/reply`, {
-    method: 'POST',
-    body: JSON.stringify({ reply }),
-  });
+  await client.permission.reply({ requestID, reply });
 }
 
-export async function replyToPendingQuestion(client: ScopedOpencodeClient, requestId: string, answers: PendingQuestionAnswer[]) {
-  await requestOpenCodeApi(client, `/question/${encodeURIComponent(requestId)}/reply`, {
-    method: 'POST',
-    body: JSON.stringify({ answers }),
-  });
+export async function replyToPendingQuestion(client: ScopedOpencodeClient, requestID: string, answers: PendingQuestionAnswer[]) {
+  await client.question.reply({ requestID, answers });
 }
 
-export async function rejectPendingQuestion(client: ScopedOpencodeClient, requestId: string) {
-  await requestOpenCodeApi(client, `/question/${encodeURIComponent(requestId)}/reject`, { method: 'POST' });
+export async function rejectPendingQuestion(client: ScopedOpencodeClient, requestID: string) {
+  await client.question.reject({ requestID });
 }

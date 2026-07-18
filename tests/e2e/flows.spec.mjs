@@ -54,13 +54,27 @@ test('happy path keeps the main chat flow stable', async ({ page, request }) => 
 
   await expect(page.getByText(/Finished:/).first()).toBeVisible({ timeout: 20_000 });
   await expect(page.getByText(/Flow stayed stable against the fake OpenCode server/).first()).toBeVisible();
-  await page.getByText(/Files Changed/).click();
+  await page.getByText('1 Files Changed', { exact: true }).click();
+  await expect(page.getByText('1 files changed, +6 / -1', { exact: true })).toBeVisible();
   await page.getByText('app/(tabs)/index.tsx', { exact: true }).click();
   await expect(page.getByText(/export default function ChatLandingScreen/)).toBeVisible();
   await page.getByRole('tab', { name: 'Workspace' }).click();
+  await expect(page.getByText('2 changed files', { exact: true })).toBeVisible();
   await expect(page.getByText('Chats', { exact: true })).toBeVisible();
   await expect(page.getByText('Stabilize the chat flow', { exact: true }).last()).toBeVisible();
   await expect(page.getByText('idle', { exact: true }).first()).toBeVisible();
+});
+
+test('current file APIs recover diffs when the session diff is empty', async ({ page, request }) => {
+  await resetScenario(request, 'diff-recovery');
+  await openReadyChat(page);
+
+  await sendPrompt(page, 'Recover the current file diff');
+  await expect(page.getByText(/Finished:/).first()).toBeVisible({ timeout: 20_000 });
+  await page.getByText('1 Files Changed', { exact: true }).click();
+  await expect(page.getByText('1 files changed, +6 / -1', { exact: true })).toBeVisible();
+  await page.getByText('app/(tabs)/index.tsx', { exact: true }).click();
+  await expect(page.getByText(/export default function ChatLandingScreen/)).toBeVisible();
 });
 
 test('permission requests unblock the agent flow', async ({ page, request }) => {

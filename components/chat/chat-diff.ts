@@ -13,42 +13,34 @@ export type DiffBlock =
 
 const DIFF_CONTEXT_LINES = 3;
 
-export function buildLineDiff(beforeText: string, afterText: string): DiffLine[] {
-  const beforeLines = beforeText.split('\n');
-  const afterLines = afterText.split('\n');
-  let prefixLength = 0;
-  while (prefixLength < beforeLines.length && prefixLength < afterLines.length && beforeLines[prefixLength] === afterLines[prefixLength]) {
-    prefixLength += 1;
-  }
-
-  let suffixLength = 0;
-  while (
-    suffixLength < beforeLines.length - prefixLength &&
-    suffixLength < afterLines.length - prefixLength &&
-    beforeLines[beforeLines.length - suffixLength - 1] === afterLines[afterLines.length - suffixLength - 1]
-  ) {
-    suffixLength += 1;
-  }
-
-  // ponytail: treat multiple separated edits as one changed block; use Myers only if finer hunks become necessary.
+export function buildPatchDiff(patch: string): DiffLine[] {
   const result: DiffLine[] = [];
+  let leftNumber = 0;
+  let rightNumber = 0;
+  let inHunk = false;
 
-  beforeLines.slice(0, prefixLength).forEach((text, index) => {
-    result.push({ kind: 'context', leftNumber: index + 1, rightNumber: index + 1, text });
-  });
-  beforeLines.slice(prefixLength, beforeLines.length - suffixLength).forEach((text, index) => {
-    result.push({ kind: 'removed', leftNumber: prefixLength + index + 1, text });
-  });
-  afterLines.slice(prefixLength, afterLines.length - suffixLength).forEach((text, index) => {
-    result.push({ kind: 'added', rightNumber: prefixLength + index + 1, text });
-  });
-  beforeLines.slice(beforeLines.length - suffixLength).forEach((text, index) => {
-    result.push({
-      kind: 'context',
-      leftNumber: beforeLines.length - suffixLength + index + 1,
-      rightNumber: afterLines.length - suffixLength + index + 1,
-      text,
-    });
+  patch.split('\n').forEach((line) => {
+    const hunk = line.match(/^@@ -(\d+)(?:,\d+)? \+(\d+)(?:,\d+)? @@/);
+    if (hunk) {
+      leftNumber = Number(hunk[1]);
+      rightNumber = Number(hunk[2]);
+      inHunk = true;
+      return;
+    }
+    if (!inHunk || line.startsWith('\\ No newline')) return;
+
+    const text = line.slice(1);
+    if (line.startsWith('-')) {
+      result.push({ kind: 'removed', leftNumber, text });
+      leftNumber += 1;
+    } else if (line.startsWith('+')) {
+      result.push({ kind: 'added', rightNumber, text });
+      rightNumber += 1;
+    } else {
+      result.push({ kind: 'context', leftNumber, rightNumber, text });
+      leftNumber += 1;
+      rightNumber += 1;
+    }
   });
 
   return result;

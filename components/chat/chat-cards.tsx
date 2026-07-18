@@ -4,7 +4,7 @@ import { ScrollView, StyleSheet, View } from 'react-native';
 import { Button, Card, Chip, Divider, IconButton, List, Surface, Text, TextInput, TouchableRipple } from 'react-native-paper';
 
 import { MarkdownText } from '@/components/chat/chat-markdown';
-import { getDiffPalette, buildLineDiff, buildCollapsedDiffBlocks } from '@/components/chat/chat-diff';
+import { getDiffPalette, buildPatchDiff, buildCollapsedDiffBlocks } from '@/components/chat/chat-diff';
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import type { PendingPermissionRequest, PendingQuestionAnswer, PendingQuestionRequest } from '@/lib/opencode/client';
@@ -151,14 +151,14 @@ function QuestionRequestCard({
 export function SessionDiffCard({ diff, expanded, onPress }: { diff: FileDiff; expanded: boolean; onPress: () => void }) {
   const colorScheme = useColorScheme() ?? 'light';
   const palette = Colors[colorScheme];
-  const diffLines = useMemo(() => (expanded ? buildLineDiff(diff.before || '', diff.after || '') : []), [diff.after, diff.before, expanded]);
+  const diffLines = useMemo(() => (expanded ? buildPatchDiff(diff.patch || '') : []), [diff.patch, expanded]);
   const diffBlocks = useMemo(() => (expanded ? buildCollapsedDiffBlocks(diffLines) : []), [diffLines, expanded]);
 
   return (
     <List.Accordion
       expanded={expanded}
       onPress={onPress}
-      title={diff.file}
+      title={diff.file || 'Unknown file'}
       description={`+${diff.additions} / -${diff.deletions}`}
       titleStyle={{ color: palette.text }}
       descriptionStyle={{ color: palette.muted }}
@@ -169,7 +169,7 @@ export function SessionDiffCard({ diff, expanded, onPress }: { diff: FileDiff; e
         {expanded ? (
           <ScrollView horizontal showsHorizontalScrollIndicator>
             <View style={styles.diffViewer}>
-              {diffBlocks.map((block, blockIndex) => {
+              {diffBlocks.length === 0 ? <Text variant="bodySmall" style={{ color: palette.muted }}>No line changes available.</Text> : diffBlocks.map((block, blockIndex) => {
                 if (block.type === 'collapsed') {
                   return (
                     <View key={`${diff.file}-collapsed-${blockIndex}`} style={[styles.diffCollapsedRow, { backgroundColor: palette.background, borderColor: palette.border }]}> 
@@ -219,7 +219,7 @@ export function SessionDiffCard({ diff, expanded, onPress }: { diff: FileDiff; e
   );
 }
 
-export function DiffCard({ detail, expanded, onPress }: { detail: Extract<TranscriptDetail, { kind: 'patch' | 'file' }>; expanded: boolean; onPress: () => void }) {
+export function DiffCard({ detail, expanded, onPress }: { detail: Extract<TranscriptDetail, { kind: 'patch' }>; expanded: boolean; onPress: () => void }) {
   const colorScheme = useColorScheme() ?? 'light';
   const palette = Colors[colorScheme];
 
@@ -228,7 +228,7 @@ export function DiffCard({ detail, expanded, onPress }: { detail: Extract<Transc
       expanded={expanded}
       onPress={onPress}
       title={detail.label}
-      description={detail.kind === 'patch' ? 'Patch output' : 'File output'}
+      description="Files changed"
       titleStyle={{ color: palette.text }}
       descriptionStyle={{ color: palette.muted }}
       style={[styles.diffAccordion, { borderColor: palette.border }]}

@@ -7,16 +7,6 @@ export function createSessionHelpers({ getNow, getState, emitEvent }) {
     return getState().messagesBySession[sessionId] || [];
   }
 
-  function syncSessionSummary(sessionId, summary) {
-    const session = getSession(sessionId);
-    if (!session) {
-      return;
-    }
-
-    session.summary = summary;
-    session.time.updated = getNow();
-  }
-
   function createSession(title = '') {
     const state = getState();
     const sessionId = `session-${state.nextSessionId++}`;
@@ -43,7 +33,7 @@ export function createSessionHelpers({ getNow, getState, emitEvent }) {
     state.diffsBySession[sessionId] = [];
     state.todosBySession[sessionId] = [];
     state.sessionStatuses[sessionId] = { type: 'idle' };
-    emitEvent({ type: 'session.created', properties: { info: session } });
+    emitEvent({ type: 'session.created', properties: { sessionID: sessionId, info: session } });
     return session;
   }
 
@@ -70,6 +60,7 @@ export function createSessionHelpers({ getNow, getState, emitEvent }) {
     emitEvent({
       type: 'message.updated',
       properties: {
+        sessionID: sessionId,
         info: record.info,
       },
     });
@@ -88,32 +79,35 @@ export function createSessionHelpers({ getNow, getState, emitEvent }) {
         file: 'app/(tabs)/index.tsx',
         additions: 6,
         deletions: 1,
-        before: 'export default function OldScreen() {}\n',
-        after: 'export default function ChatLandingScreen() {\n  return null;\n}\n',
+        status: 'modified',
+        patch: '@@ -1,1 +1,3 @@\n-export default function OldScreen() {}\n+export default function ChatLandingScreen() {\n+  return null;\n+}',
       },
     ];
     const todos = [
-      { id: 'todo-1', content: 'Validate session transcript', status: 'completed', priority: 'high' },
-      { id: 'todo-2', content: 'Confirm fake server integration', status: 'completed', priority: 'medium' },
+      { content: 'Validate session transcript', status: 'completed', priority: 'high' },
+      { content: 'Confirm fake server integration', status: 'completed', priority: 'medium' },
     ];
     const assistantText = `Finished: ${promptText || 'task complete'}. Flow stayed stable against the fake OpenCode server.`;
 
     state.diffsBySession[sessionId] = diff;
     state.todosBySession[sessionId] = todos;
-    syncSessionSummary(sessionId, { files: 1, additions: 6, deletions: 1 });
+    state.workspaceTaskCompleted = true;
     createMessage(sessionId, 'assistant', [
       { type: 'text', text: assistantText },
       { type: 'patch', files: diff.map((entry) => entry.file) },
     ]);
     state.sessionStatuses[sessionId] = { type: 'idle' };
-    emitEvent({ type: 'session.diff', properties: { sessionID: sessionId, diff } });
+    emitEvent({
+      type: 'session.diff',
+      properties: { sessionID: sessionId, diff: state.scenario === 'diff-recovery' ? [] : diff },
+    });
     emitEvent({ type: 'todo.updated', properties: { sessionID: sessionId, todos } });
     emitEvent({ type: 'session.idle', properties: { sessionID: sessionId } });
 
     const session = getSession(sessionId);
     if (session && !session.title.trim()) {
       session.title = summarizePrompt(promptText);
-      emitEvent({ type: 'session.updated', properties: { info: session } });
+      emitEvent({ type: 'session.updated', properties: { sessionID: sessionId, info: session } });
     }
   }
 

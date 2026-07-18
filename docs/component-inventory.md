@@ -212,7 +212,7 @@ Responsibility:
 
 Responsibility:
 
-- render fallback patch/file transcript details when structured diff data is absent
+- render filename-only patch transcript details when structured diff data is absent
 
 ### `TranscriptMessage`
 
@@ -271,7 +271,7 @@ Responsibility:
 
 ### Responsibility
 
-- generate linear-time line diff previews from `before` and `after`
+- parse current unified `patch` hunks into line diff previews
 - collapse large unchanged context sections
 - derive diff palette by line kind
 
@@ -412,7 +412,7 @@ Main relevant props:
 - response scope option definitions
 - working sound option definitions
 - provider marketing copy
-- generic API fallback rule for providers without auth metadata
+- provider marketing copy and settings option lists
 
 ## Shared UI Components
 
@@ -538,7 +538,7 @@ The context includes session lifecycle actions, commands, read-only workspace st
 ### Responsibility
 
 - aggregate capability discovery and normalize provider/model/agent lists
-- preserve model attachment/modalities/tool-call/reasoning/status/limit capabilities
+- normalize current nested model attachment/input/tool-call/reasoning/status/limit capabilities
 
 ## `providers/services/workspace-service.ts`
 

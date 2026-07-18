@@ -90,7 +90,7 @@ export function getInitialMode(agents: AgentOption[], config?: Config, storedMod
   }
 
   const configuredAgent = config?.agent
-    ? Object.entries(config.agent).find(([, value]) => value && (value as { disable?: boolean }).disable !== true)?.[0]
+    ? Object.entries(config.agent).find(([, value]) => value && value.disable !== true)?.[0]
     : undefined;
   if (configuredAgent && agents.some((agent) => agent.id === configuredAgent)) {
     return configuredAgent;
@@ -174,7 +174,10 @@ export function getConfiguredProviderIds(config: Config | undefined, connected: 
 }
 
 export function isAutoApproveEnabled(config?: Config) {
-  if (!config?.permission) {
+  if (config?.permission === 'allow') {
+    return true;
+  }
+  if (!config?.permission || typeof config.permission !== 'object') {
     return false;
   }
 
@@ -236,10 +239,14 @@ export function getSelectedModelParts(modelId?: string) {
 }
 
 export function mergePermissionConfig(config: Config | undefined, enabled: boolean): Config {
+  const currentPermission = config?.permission && typeof config.permission === 'object'
+    ? config.permission
+    : {};
+
   return {
     ...(config || {}),
     permission: {
-      ...config?.permission,
+      ...currentPermission,
       edit: enabled ? 'allow' : 'ask',
       bash: enabled ? 'allow' : 'ask',
       webfetch: enabled ? 'allow' : 'ask',
@@ -249,33 +256,14 @@ export function mergePermissionConfig(config: Config | undefined, enabled: boole
   };
 }
 
-function getPendingRequestSessionId(request: Record<string, unknown>) {
-  const candidate =
-    request.sessionID ??
-    request.sessionId ??
-    request.session ??
-    (request.session as { id?: string } | undefined)?.id ??
-    (request.message as { sessionID?: string; sessionId?: string } | undefined)?.sessionID ??
-    (request.message as { sessionID?: string; sessionId?: string } | undefined)?.sessionId ??
-    (request.tool as { sessionID?: string; sessionId?: string } | undefined)?.sessionID ??
-    (request.tool as { sessionID?: string; sessionId?: string } | undefined)?.sessionId;
-
-  return typeof candidate === 'string' ? candidate : undefined;
-}
-
-export function groupPendingRequestsBySession<T extends { id?: string } & Record<string, unknown>>(requests: T[]) {
+export function groupPendingRequestsBySession<T extends { id: string; sessionID: string }>(requests: T[]) {
   return requests.reduce<Record<string, T[]>>((acc, request) => {
-    const sessionId = getPendingRequestSessionId(request);
-    if (!sessionId) {
+    const existing = acc[request.sessionID] || [];
+    if (existing.some((item) => item.id === request.id)) {
       return acc;
     }
 
-    const existing = acc[sessionId] || [];
-    if (request.id && existing.some((item) => item.id === request.id)) {
-      return acc;
-    }
-
-    acc[sessionId] = [...existing, request];
+    acc[request.sessionID] = [...existing, request];
     return acc;
   }, {});
 }

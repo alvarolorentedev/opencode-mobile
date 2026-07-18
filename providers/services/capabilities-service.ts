@@ -1,28 +1,9 @@
-import type { OpencodeClient, ProviderAuthMethod, ProviderListResponse } from '@opencode-ai/sdk/client';
+import type { OpencodeClient, ProviderListResponse } from '@opencode-ai/sdk/v2/client';
 
-import { getConfiguredProviderIds, toAgentOption } from '@/providers/opencode-provider-utils';
+import { getConfiguredProviderIds, toAgentOption, type ModelOption } from '@/providers/opencode-provider-utils';
 
 type DiscoveredModel = ProviderListResponse['all'][number]['models'][string];
-
-export type CapabilityModel = {
-  id: string;
-  label: string;
-  providerID: string;
-  providerLabel: string;
-  modelID: string;
-  attachment: boolean;
-  supportsAttachments: boolean;
-  inputModalities: ('text' | 'audio' | 'image' | 'video' | 'pdf')[];
-  supportsToolCalls: boolean;
-  contextLimit?: number;
-  outputLimit?: number;
-  modalities?: DiscoveredModel['modalities'];
-  supportsReasoning: boolean;
-  reasoning: boolean;
-  toolcall: boolean;
-  status?: DiscoveredModel['status'];
-  limit: DiscoveredModel['limit'];
-};
+const INPUT_MODALITIES: ModelOption['inputModalities'] = ['text', 'audio', 'image', 'video', 'pdf'];
 
 function uniqueById<T extends { id: string }>(items: T[]) {
   const seen = new Set<string>();
@@ -52,6 +33,8 @@ export async function discoverChatCapabilities(client: OpencodeClient, activePro
       providerAuthMethodsById: {},
       models: [],
       agents: [],
+      connected: [],
+      configuredModels: [],
     };
   }
 
@@ -68,24 +51,19 @@ export async function discoverChatCapabilities(client: OpencodeClient, activePro
   const agentData = requireData(agentsResponse.data, 'agent request');
   const nextModels = uniqueById(providerData.all
     .flatMap((provider) =>
-      Object.values(provider.models).map((model): CapabilityModel => ({
+      Object.values(provider.models).map((model: DiscoveredModel): ModelOption => ({
         id: `${provider.id}/${model.id}`,
         label: model.name,
         providerID: provider.id,
         providerLabel: provider.name,
         modelID: model.id,
-        attachment: model.attachment,
-        modalities: model.modalities,
-        supportsReasoning: model.reasoning,
-        supportsAttachments: model.attachment || Boolean(model.modalities?.input.some((modality) => modality !== 'text')),
-        inputModalities: model.modalities?.input || ['text'],
-        supportsToolCalls: model.tool_call,
-        contextLimit: model.limit?.context,
-        outputLimit: model.limit?.output,
-        reasoning: model.reasoning,
-        toolcall: model.tool_call,
+        supportsReasoning: model.capabilities.reasoning,
+        supportsAttachments: model.capabilities.attachment,
+        inputModalities: INPUT_MODALITIES.filter((modality) => model.capabilities.input[modality]),
+        supportsToolCalls: model.capabilities.toolcall,
+        contextLimit: model.limit.context,
+        outputLimit: model.limit.output,
         status: model.status,
-        limit: model.limit,
       })),
     )
     .sort((left, right) => left.label.localeCompare(right.label)));
@@ -101,18 +79,12 @@ export async function discoverChatCapabilities(client: OpencodeClient, activePro
     }))
     .sort((left, right) => left.label.localeCompare(right.label)));
   const nextAgents = uniqueById(agentData.map(toAgentOption));
-  const providerAuthMethodsById = Object.fromEntries(
-    Object.entries(authData).map(([providerId, methods]) => [
-      providerId,
-      methods.map(({ type, label }): ProviderAuthMethod => ({ type, label })),
-    ]),
-  );
 
   return {
     config: nextConfig,
     providers: nextProviders,
     connected: providerData.connected,
-    providerAuthMethodsById,
+    providerAuthMethodsById: authData,
     models: nextModels,
     agents: nextAgents,
     configuredModels,

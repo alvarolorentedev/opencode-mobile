@@ -27,11 +27,11 @@ Two clients are used:
 - project-scoped `client` for session, capability, command, file, and VCS operations
 - unscoped `catalogClient` for project discovery, diagnostics, and global events
 
-The app retains client metadata for the manual health request. `requestOpenCodeApi()` preserves path prefixes, auth headers, JSON headers, and project directory when one exists.
+The app retains only the scoped directory as client metadata so stale project responses can be ignored.
 
 ## Endpoint Families
 
-The generated 1.18.3 SDK is used for:
+The generated `@opencode-ai/sdk/v2/client` surface is used for all OpenCode requests:
 
 - path, project list, and current project discovery
 - config get/update
@@ -46,15 +46,13 @@ The generated 1.18.3 SDK is used for:
 - file find/read/status and VCS information
 - MCP, LSP, and formatter status
 
-Direct request paths outside the generated client methods cover `GET /global/health` and the current permission/question list and reply operations.
-
 ## Workspace Discovery
 
 The catalog client loads these requests concurrently:
 
 - `path.get()`
-- `project.list()` as an optional request
-- `project.current()` as an optional request
+- `project.list()`
+- `project.current()`
 
 `path.get()` must return a `directory`. Projects are deduplicated by `worktree`; the current project is included even if omitted from the project list.
 
@@ -67,18 +65,18 @@ For an active project, the app loads:
 - `provider.auth()`
 - `app.agents()`
 
-Provider models are flattened to app options. The following 1.18.3 model fields are retained:
+Provider models are flattened to app options. Capability discovery uses the current nested model fields:
 
 - `id` and `name`
-- `attachment`
-- `modalities.input`
-- `tool_call`
-- `reasoning`
+- `capabilities.attachment`
+- `capabilities.input`
+- `capabilities.toolcall`
+- `capabilities.reasoning`
 - `status`
 - `limit.context`
 - `limit.output`
 
-`attachment` controls whether the composer may send files when the selected model is present in the discovered model list. If modality data is absent, the app defaults the input modality list to `text`; it does not infer attachment support.
+`capabilities.attachment` controls whether the composer may send files. Enabled entries in `capabilities.input` define the accepted input modalities. Legacy top-level capability fields are not supported.
 
 ## Provider Authentication
 
@@ -169,15 +167,15 @@ The current UI supplies a user message ID and no part ID. Revert and unrevert re
 
 The app reads:
 
-- `session.messages({ id })`
-- `session.diff({ id })`
-- `session.todo({ id })`
+- `session.messages({ sessionID })`
+- `session.diff({ sessionID })`
+- `session.todo({ sessionID })`
 
-Missing data for these content requests is normalized to an empty array. Todos are server-owned. The UI renders their `status` and never sends a todo mutation.
+Diff responses use the current `{ file, patch, additions, deletions, status }` shape directly. If a server returns an empty session diff, patch-part filenames are resolved through the current v2 file status/read APIs; `FileContent.diff` or its structured patch hunks provide the line data. Missing response data is a contract error rather than an empty result. Todos are server-owned; the UI renders their `status` and never sends a todo mutation.
 
 ### Prompt And Attachments
 
-Prompt submission prefers `session.promptAsync()` and falls back to `session.prompt()` if that method is absent. Both receive:
+Prompt submission uses `session.promptAsync()` with:
 
 - selected `agent`
 - selected `{ providerID, modelID }`
@@ -186,7 +184,7 @@ Prompt submission prefers `session.promptAsync()` and falls back to `session.pro
 
 Before send:
 
-- attachments are rejected if the selected discovered model has `attachment: false`
+- attachments are rejected if the selected discovered model has `capabilities.attachment: false`
 - non-HTTP attachment URIs, including `file://`, `content://`, and `asset://`, are read and encoded as data URLs
 - a local file over 10 MB is rejected before encoding
 - remote `http:` and `https:` URLs pass through unchanged
@@ -226,7 +224,7 @@ Search is path-based, selected file content is displayed read-only, status is sh
 
 Diagnostics load four requests independently:
 
-- `GET /global/health`, expected as `{ "healthy": true, "version": "..." }`
+- `global.health()`, expected as `{ "healthy": true, "version": "..." }`
 - `mcp.status()`, expected as a status record keyed by MCP name
 - `lsp.status()`, expected as an array
 - `formatter.status()`, expected as an array

@@ -1,4 +1,4 @@
-import type { Command, Config, File, FileContent, FileDiff, Project, Session, SessionStatus, Todo, VcsInfo } from '@/lib/opencode/types';
+import type { Command, Config, File, FileContent, FileDiff, Project, ProviderAuthMethod, Session, SessionStatus, Todo, VcsInfo } from '@/lib/opencode/types';
 import type {
   OpencodeConnectionSettings,
   PendingQuestionAnswer,
@@ -20,35 +20,13 @@ export type ChatPreferences = ProviderChatPreferences;
 export type ModelOption = ProviderModelOption;
 export type ReasoningLevel = ProviderReasoningLevel;
 export type ResponseScope = ProviderResponseScope;
+export type { ProviderAuthMethod } from '@/lib/opencode/types';
 
 export type ProviderOption = {
   id: string;
   label: string;
   modelCount: number;
   configured: boolean;
-};
-
-export type ProviderAuthPrompt = {
-  type: 'text' | 'select';
-  key: string;
-  message: string;
-  placeholder?: string;
-  options?: {
-    label: string;
-    value: string;
-    hint?: string;
-  }[];
-  when?: {
-    key: string;
-    op: 'eq' | 'neq';
-    value: string;
-  };
-};
-
-export type ProviderAuthMethod = {
-  type: 'oauth' | 'api';
-  label: string;
-  prompts?: ProviderAuthPrompt[];
 };
 
 export type ConversationPhase = 'off' | 'listening' | 'submitting' | 'waiting' | 'speaking';
@@ -104,6 +82,7 @@ export type OpencodeContextValue = {
   serverRootPath?: string;
   isRefreshingWorkspaceCatalog: boolean;
   refreshWorkspaceCatalog: (silent?: boolean) => Promise<void>;
+  refreshWorkspaceStatus: () => Promise<void>;
   sessions: Session[];
   sessionStatuses: Record<string, SessionStatus>;
   currentSessionId?: string;

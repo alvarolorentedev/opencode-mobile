@@ -24,7 +24,6 @@ import {
 import {
   getProviderCopy,
   RESPONSE_SCOPE_OPTIONS,
-  shouldUseGenericApiFallback,
   WORKING_SOUND_OPTIONS,
 } from '@/components/settings/settings-utils';
 import { useColorScheme } from '@/hooks/use-color-scheme';
@@ -91,41 +90,20 @@ export default function SettingsScreen() {
     () => (selectedProviderId ? providerAuthMethodsById[selectedProviderId] || [] : []),
     [providerAuthMethodsById, selectedProviderId],
   );
-  const useGenericFallback = useMemo(
-    () => (selectedProviderId ? shouldUseGenericApiFallback(selectedProviderId, authMethods.length) : false),
-    [authMethods.length, selectedProviderId],
-  );
   const effectiveAuthMethods = useMemo(
     () =>
-      authMethods.length > 0
-        ? authMethods.map((method) => method.type === 'api' && !method.prompts?.length
-          ? {
-              ...method,
-              prompts: [{
-                type: 'text' as const,
-                key: 'key',
-                message: 'API key',
-                placeholder: 'Paste your API key',
-              }],
-            }
-          : method)
-        : useGenericFallback
-          ? [
-            {
-              type: 'api' as const,
-              label: 'API key',
-              prompts: [
-                {
-                  type: 'text' as const,
-                  key: 'key',
-                  message: 'API key',
-                  placeholder: 'Paste your API key',
-                },
-              ],
-            },
-          ]
-          : [],
-    [authMethods, useGenericFallback],
+      authMethods.map((method) => method.type === 'api' && !method.prompts?.length
+        ? {
+            ...method,
+            prompts: [{
+              type: 'text' as const,
+              key: 'key',
+              message: 'API key',
+              placeholder: 'Paste your API key',
+            }],
+          }
+        : method),
+    [authMethods],
   );
   const selectedMethod = effectiveAuthMethods[selectedMethodIndex];
   const visiblePrompts = useMemo(
@@ -258,20 +236,8 @@ export default function SettingsScreen() {
     setSelectedMethodIndex(0);
 
     const methods = providerAuthMethodsById[providerId] || [];
-    const fallbackMethod = {
-      type: 'api' as const,
-      label: 'API key',
-      prompts: [
-        {
-          type: 'text' as const,
-          key: 'key',
-          message: 'API key',
-          placeholder: 'Paste your API key',
-        },
-      ],
-    };
     const initialValues: Record<string, string> = {};
-    const initialMethod = methods[0] || (shouldUseGenericApiFallback(providerId, methods.length) ? fallbackMethod : undefined);
+    const initialMethod = methods[0];
     initialMethod?.prompts?.forEach((prompt) => {
       if (prompt.type === 'select') {
         initialValues[prompt.key] = prompt.options?.[0]?.value || '';
@@ -288,7 +254,6 @@ export default function SettingsScreen() {
     }
 
     const providerLabel = selectedProviderCopy?.label || selectedProviderId;
-    const hasAnyAuthValue = Object.values(authValues).some((value) => value.trim().length > 0);
     setIsConfiguringProvider(true);
     setProviderDialogError(undefined);
 
@@ -308,12 +273,6 @@ export default function SettingsScreen() {
             ? { type: 'info', message: authorization.instructions }
             : { type: 'success', message: `${providerLabel} sign-in finished. Provider status has been refreshed.` },
         );
-      } else if (useGenericFallback && authMethods.length === 0 && !hasAnyAuthValue) {
-        await configureProvider(selectedProviderId);
-        setProviderFeedback({
-          type: 'success',
-          message: `${providerLabel} was enabled successfully.`,
-        });
       } else {
         await setProviderAuth(selectedProviderId, authValues);
         setProviderFeedback({
@@ -433,7 +392,6 @@ export default function SettingsScreen() {
             selectedMethodIndex={selectedMethodIndex}
             selectedProviderDescription={selectedProviderCopy?.description}
             selectedProviderLabel={selectedProviderCopy?.label || selectedProvider.id}
-            useGenericFallback={useGenericFallback}
             visiblePrompts={visiblePrompts}
           />
         ) : null}

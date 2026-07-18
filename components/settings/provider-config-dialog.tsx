@@ -21,7 +21,6 @@ type ProviderConfigDialogProps = {
   selectedMethodIndex: number;
   selectedProviderDescription?: string;
   selectedProviderLabel: string;
-  useGenericFallback: boolean;
   visiblePrompts: NonNullable<ProviderAuthMethod['prompts']>;
 };
 
@@ -40,7 +39,6 @@ export function ProviderConfigDialog({
   selectedMethodIndex,
   selectedProviderDescription,
   selectedProviderLabel,
-  useGenericFallback,
   visiblePrompts,
 }: ProviderConfigDialogProps) {
   return (
@@ -52,12 +50,7 @@ export function ProviderConfigDialog({
             {selectedProviderDescription}
           </Text>
         ) : null}
-        {authMethods.length === 0 && useGenericFallback ? (
-          <HelperText type="info">
-            No provider-specific setup metadata was returned. You can paste an API key, or leave it empty to just enable the provider.
-          </HelperText>
-        ) : null}
-        {authMethods.length === 0 && !useGenericFallback ? (
+        {authMethods.length === 0 ? (
           <HelperText type="info">
             This provider should expose its auth flow from the server, but no auth metadata was returned. Refresh the connection and try again.
           </HelperText>
@@ -108,7 +101,7 @@ export function ProviderConfigDialog({
         {selectedMethod?.type === 'oauth' ? (
           <HelperText type="info">This opens the provider sign-in flow in your browser.</HelperText>
         ) : null}
-        {!selectedMethod && authMethods.length === 0 && !useGenericFallback ? (
+        {!selectedMethod && authMethods.length === 0 ? (
           <HelperText type="error">Setup details for this provider are unavailable right now.</HelperText>
         ) : null}
         {providerDialogError ? <HelperText type="error">{providerDialogError}</HelperText> : null}
