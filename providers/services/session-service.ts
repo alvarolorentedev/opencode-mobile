@@ -55,7 +55,7 @@ export async function getSessionMessages(client: OpencodeClient, sessionId: stri
 
 export async function getSessionDiff(client: OpencodeClient, sessionId: string) {
   const messages = await getSessionMessages(client, sessionId);
-  const latestUserMessage = messages.findLast(({ info }) => info.role === 'user');
+  const latestUserMessage = messages.slice().reverse().find(({ info }) => info.role === 'user');
   if (!latestUserMessage) {
     return [];
   }
