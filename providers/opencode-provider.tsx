@@ -17,6 +17,7 @@ import {
   defaultConnectionSettings,
   getConnectionError,
   getNormalizedServerUrl,
+  isValidServerUrl,
   listPendingInteractions,
   rejectPendingQuestion,
   replyToPendingPermission,
@@ -708,6 +709,15 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
   }, []);
 
   const connect = useCallback(async () => {
+    if (!isValidServerUrl(settingsRef.current.serverUrl)) {
+      setConnection({
+        status: 'error',
+        message: getConnectionError(settingsRef.current.serverUrl, new Error('Invalid server URL.')),
+        checkedAt: Date.now(),
+      });
+      return;
+    }
+
     setConnection({
       status: 'connecting',
       message: `Connecting to ${getNormalizedServerUrl(settingsRef.current.serverUrl)}...`,

@@ -30,6 +30,7 @@ type NormalizedServerUrl = {
   displayUrl: string;
   origin: string;
   pathPrefix: string;
+  valid: boolean;
 };
 
 type ClientMetadata = {
@@ -53,15 +54,25 @@ function normalizeServerUrl(value: string): NormalizedServerUrl {
   }
 
   const withProtocol = /^https?:\/\//i.test(trimmed) ? trimmed : `http://${trimmed}`;
-  const parsed = new URL(withProtocol);
-  const pathPrefix = parsed.pathname === '/' ? '' : parsed.pathname.replace(/\/$/, '');
-  const displayUrl = `${parsed.origin}${pathPrefix}`;
+  try {
+    const parsed = new URL(withProtocol);
+    const pathPrefix = parsed.pathname === '/' ? '' : parsed.pathname.replace(/\/$/, '');
+    const displayUrl = `${parsed.origin}${pathPrefix}`;
 
-  return {
-    displayUrl,
-    origin: parsed.origin,
-    pathPrefix,
-  };
+    return {
+      displayUrl,
+      origin: parsed.origin,
+      pathPrefix,
+      valid: Boolean(parsed.hostname),
+    };
+  } catch {
+    return {
+      displayUrl: trimmed,
+      origin: new URL(defaultConnectionSettings.serverUrl).origin,
+      pathPrefix: '',
+      valid: false,
+    };
+  }
 }
 
 function createScopedFetch(baseUrl: string, pathPrefix: string, directory?: string) {
@@ -86,7 +97,7 @@ function createScopedFetch(baseUrl: string, pathPrefix: string, directory?: stri
     }
 
     return fetch(parsed.toString(), {
-      body: input.method === 'GET' || input.method === 'HEAD' ? undefined : await input.arrayBuffer(),
+      body: input.method === 'GET' || input.method === 'HEAD' ? undefined : await input.text(),
       credentials: input.credentials,
       headers: input.headers,
       method: input.method,
@@ -96,11 +107,16 @@ function createScopedFetch(baseUrl: string, pathPrefix: string, directory?: stri
 }
 
 function getConnectionErrorMessage(error: unknown, serverUrl: string) {
+  const normalized = normalizeServerUrl(serverUrl);
+  if (!normalized.valid) {
+    return 'Enter a complete server URL, such as http://192.168.1.10:4096.';
+  }
+
   if (!(error instanceof Error)) {
     return 'Something went wrong while talking to OpenCode.';
   }
 
-  const normalizedUrl = normalizeServerUrl(serverUrl).displayUrl;
+  const normalizedUrl = normalized.displayUrl;
   const message = error.message || 'Something went wrong while talking to OpenCode.';
 
   if (/404|not found/i.test(message)) {
@@ -152,6 +168,10 @@ export function buildClient(settings: OpencodeConnectionSettings): ScopedOpencod
 
 export function getNormalizedServerUrl(serverUrl: string) {
   return normalizeServerUrl(serverUrl).displayUrl;
+}
+
+export function isValidServerUrl(serverUrl: string) {
+  return normalizeServerUrl(serverUrl).valid;
 }
 
 export function getConnectionError(serverUrl: string, error: unknown) {
