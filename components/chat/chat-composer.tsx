@@ -1,5 +1,5 @@
 import { View } from 'react-native';
-import { Chip, IconButton, Surface, Text, TextInput, Card } from 'react-native-paper';
+import { Chip, IconButton, Surface, Text, TextInput } from 'react-native-paper';
 import { useState } from 'react';
 
 import { Colors } from '@/constants/theme';
@@ -39,7 +39,6 @@ type ChatComposerProps = {
   currentSessionId?: string;
   visibleModels: ModelOption[];
   updateChatPreferences: (patch: Partial<ChatPreferences>) => void;
-  currentTodos?: any[];
   commands: Command[];
   onCommandSelect: (command: string) => void;
 };
@@ -71,8 +70,7 @@ export function ChatComposer({
   showSendAction,
   updateChatPreferences,
   visibleModels,
-   currentTodos,
-   }: ChatComposerProps) {
+}: ChatComposerProps) {
   const minInputHeight = 24;
   const maxInputHeight = 110;
   const hasComposerContent = Boolean(draft.trim()) || attachments.length > 0;
@@ -91,10 +89,7 @@ export function ChatComposer({
   const handleOuterActionPress = showOuterAction === 'attach' ? onAttach : onSend;
   const handleInnerActionPress = hasComposerContent ? onAttach : onToggleRecording;
 
-  const [todosCollapsed, setTodosCollapsed] = useState(false);
   const [inputHeight, setInputHeight] = useState(minInputHeight);
-
-  const completedCount = currentTodos ? currentTodos.filter((t: any) => t && t.status === 'completed').length : 0;
 
   return (
     <Surface
@@ -158,35 +153,21 @@ export function ChatComposer({
         </View>
       ) : null}
 
-      {currentTodos && currentTodos.length > 0 ? (
-        <Card mode="contained" style={[styles.todoCard, { backgroundColor: palette.surface, borderColor: palette.border }]}> 
-          <Card.Content style={styles.todoHeader}>
-            <Text variant="bodyLarge" style={{ color: palette.text }}>{`${completedCount} of ${currentTodos.length} todos completed`}</Text>
-            <IconButton icon={todosCollapsed ? 'chevron-up' : 'chevron-down'} size={20} onPress={() => setTodosCollapsed((c) => !c)} />
-          </Card.Content>
-
-          {!todosCollapsed ? (
-            <Card.Content style={styles.todoList}>
-              {currentTodos.map((todo, idx) => (
-                <View key={todo.id || `${idx}`} style={styles.todoItemRow}>
-                  <IconButton icon={todo.status === 'completed' ? 'check-circle' : todo.status === 'in_progress' ? 'progress-clock' : 'circle-outline'} size={20} disabled />
-                  <View style={styles.todoTextWrap}>
-                    <Text variant="bodyMedium" style={{ color: palette.text }}>{todo.content || 'Untitled todo'}</Text>
-                    {todo.priority ? <Text variant="bodySmall" style={{ color: palette.muted }}>{todo.priority}</Text> : null}
-                  </View>
-                </View>
-              ))}
-            </Card.Content>
-          ) : null}
-        </Card>
-      ) : null}
-
       {attachments.length > 0 ? (
         <View style={styles.attachmentRow}>
           {attachments.map((att, idx) => (
-            <Chip key={`${att.uri}-${idx}`} compact mode="flat" style={[styles.attachmentChip, { backgroundColor: palette.background }]} onClose={() => onRemoveAttachment(idx)}>
-              {att.filename || att.uri}
-            </Chip>
+            <View key={`${att.uri}-${idx}`} style={[styles.attachmentChip, { backgroundColor: palette.background }]}>
+              <Text numberOfLines={1} variant="labelLarge" style={[styles.attachmentLabel, { color: palette.text }]}>
+                {att.filename || att.uri}
+              </Text>
+              <IconButton
+                accessibilityLabel={`Remove ${att.filename || 'attachment'}`}
+                icon="close"
+                size={18}
+                style={styles.attachmentRemoveButton}
+                onPress={() => onRemoveAttachment(idx)}
+              />
+            </View>
           ))}
         </View>
       ) : null}

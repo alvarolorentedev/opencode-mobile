@@ -58,6 +58,7 @@ The goal is to make it possible to rebuild the UI tree without having to redisco
 
 - render transcript area and changes area
 - render empty states, connection issues, running indicators, and pending interactions
+- render server-owned tasks in a collapsible chat overlay
 
 ### Prop contract
 
@@ -71,6 +72,8 @@ type ChatContentProps = {
   currentActivityLabel?: string
   currentDiffs: FileDiff[]
   currentPendingPermissions: PendingPermissionRequest[]
+  currentPendingQuestions: PendingQuestionRequest[]
+  currentTodos: Todo[]
   currentSessionId?: string
   diffDetails: DiffDetail[]
   displayTranscript: TranscriptEntry[]
@@ -85,7 +88,9 @@ type ChatContentProps = {
   onExpandDiff: (id?: string) => void
   onLoadEarlier: () => void
   onRefresh: () => void
+  onRejectQuestion: (requestId: string) => void
   onReplyToPermission: (requestId: string, reply: 'once' | 'always' | 'reject') => void
+  onReplyToQuestion: (requestId: string, answers: string[][]) => void
   onSendStarterPrompt: (prompt: string) => void
   onToggleSpeak: (entry: TranscriptEntry) => void
   palette: Palette
@@ -111,7 +116,6 @@ type ChatContentProps = {
 - render controls for agent/model/reasoning selection
 - render auto-approve toggle
 - render optional conversation banner
-- render optional todo summary card
 - render attachments, voice status, prompt input, and action buttons
 
 ### Prop contract
@@ -142,7 +146,6 @@ type ChatComposerProps = {
   currentSessionId?: string
   visibleModels: ModelOption[]
   updateChatPreferences: (patch: Partial<ChatPreferences>) => void
-  currentTodos?: any[]
   commands: Command[]
   onCommandSelect: (command: string) => void
 }
@@ -150,7 +153,7 @@ type ChatComposerProps = {
 
 ### Important parity notes
 
-- todos are server-owned and displayed with disabled status icons; the composer has no todo mutation action
+- todos are server-owned and displayed in the chat overlay with disabled status icons; the UI has no todo mutation action
 - typing `/` shows up to six matching server commands; selecting one fills the draft
 
 ## `components/chat/chat-header.tsx`
@@ -196,7 +199,8 @@ type ChatHeaderProps = {
 
 Responsibility:
 
-- render session-scoped permission cards in a continuation-blocked card
+- render session-scoped permission and question cards in a continuation-blocked card
+- collect single, multiple, or custom question answers locally before submission
 
 ### `SessionDiffCard`
 
@@ -267,13 +271,13 @@ Responsibility:
 
 ### Responsibility
 
-- generate line diff data from `before` and `after`
+- generate linear-time line diff previews from `before` and `after`
 - collapse large unchanged context sections
 - derive diff palette by line kind
 
 ### Important behavior
 
-- uses a longest-common-subsequence style table to build diff lines
+- treats the common prefix and suffix as context and the middle as one changed block
 - preserves context/add/remove rows with line numbers
 
 ## `components/chat/chat-view-utils.ts`
@@ -301,7 +305,7 @@ This is important to parity because the chat layout is intentionally dense and h
 - message bubble geometry
 - composer dock
 - conversation banner
-- todo card
+- task overlay
 
 ## Screen Controllers
 
@@ -511,7 +515,7 @@ The context includes session lifecycle actions, commands, read-only workspace st
 
 ### Responsibility
 
-- derive current session-scoped permissions, configured providers, transcript activity label, conversation status label, and session previews
+- derive current session-scoped interactions, configured providers, transcript activity label, conversation status label, and session previews
 
 ## `providers/opencode-provider-utils.ts`
 
@@ -540,7 +544,7 @@ The context includes session lifecycle actions, commands, read-only workspace st
 
 ### Responsibility
 
-- expose read-only file find/text/list/read/status and VCS operations; the current UI uses file find, read, status, and VCS
+- expose read-only file find, read, status, and VCS operations
 
 ## `providers/services/diagnostics-service.ts`
 

@@ -41,14 +41,12 @@ The generated 1.18.3 SDK is used for:
 - session list/status/create/delete/update
 - session messages, diff, todos, prompt, abort, summarize, and command
 - session fork, share/unshare, and revert/unrevert
-- session-scoped permission reply
+- permission and question list/reply operations
 - global event streaming
 - file find/read/status and VCS information
 - MCP, LSP, and formatter status
 
-The only direct path outside the generated methods is `GET /global/health`.
-
-The app has no pending-permission list operation and implements permissions as its server-driven blocking interaction.
+Direct request paths outside the generated client methods cover `GET /global/health` and the current permission/question list and reply operations.
 
 ## Workspace Discovery
 
@@ -218,13 +216,11 @@ Commands are loaded with `command.list()`. An exact known draft of the form `/na
 `workspace-service.ts` wraps these SDK operations:
 
 - `find.files()` with `query` and a string `dirs` flag
-- `find.text()` with `pattern`
-- `file.list()` with `path`
 - `file.read()` with `path`
 - `file.status()`
 - `vcs.get()`
 
-The current Workspace UI uses file find, read, status, and VCS. Search is path-based, selected file content is displayed read-only, status is shown as a changed-file count, and VCS contributes the branch label. No file-write endpoint is called.
+Search is path-based, selected file content is displayed read-only, status is shown as a changed-file count, and VCS contributes the branch label. No file-write endpoint is called.
 
 ## Diagnostics Contract
 
@@ -237,37 +233,29 @@ Diagnostics load four requests independently:
 
 Each result records either `{ available: true, data }` or `{ available: false, error }`. One unavailable endpoint does not fail the other diagnostic results.
 
-## Permission Contract
+## Pending Interaction Contract
 
-Permissions are session-scoped and event-driven.
+Permissions and questions are session-scoped. The app reconciles `GET /permission` and `GET /question` results and also handles their global events.
 
-`permission.updated` properties are treated as the complete SDK `Permission` object, including:
+`permission.asked` properties contain:
 
 - `id`
 - `sessionID`
-- `type` and optional `title`
-- optional `pattern`
+- `permission`
+- `patterns`
+- `metadata`, `always`, and optional `tool`
 
-The request is inserted or replaced in `pendingPermissionsBySession[sessionID]`. `permission.replied` removes the matching `permissionID` from the matching `sessionID`.
+The request is inserted or replaced in `pendingPermissionsBySession[sessionID]`. `permission.replied` removes the matching `requestID`.
 
 A reply calls the generated session-scoped operation with:
 
 ```json
-{ "response": "once" }
+{ "reply": "once" }
 ```
 
 Allowed values are `once`, `always`, and `reject`.
 
-### API Limitation
-
-OpenCode 1.18.3 exposes no operation used by this app to list currently pending permissions. Consequently:
-
-- polling cannot discover permissions
-- reconnecting SSE does not replay a request unless the server emits it again
-- a request created before subscription cannot be shown if this app did not previously observe and persist it
-- observed permissions are persisted in AsyncStorage to reduce loss across app restarts
-
-This is a protocol limitation, not a claim that polling provides complete permission recovery.
+Question requests contain `id`, `sessionID`, and one or more question definitions with headers, prompts, options, and optional multiple/custom-answer behavior. Replies post ordered answer arrays to `/question/{requestID}/reply`; rejection posts to `/question/{requestID}/reject`.
 
 ## Global Event Stream
 
@@ -285,8 +273,11 @@ Recognized payload types:
 - `message.part.removed`
 - `session.diff`
 - `todo.updated`
-- `permission.updated`
+- `permission.asked`
 - `permission.replied`
+- `question.asked`
+- `question.replied`
+- `question.rejected`
 
 The subscription reconnects after failure or an unexpected end. Backoff starts at 1 second, doubles after each failure, and is capped at 15 seconds. A successful connection resets backoff to 1 second.
 
@@ -299,5 +290,4 @@ Polling can refresh:
 - session list and statuses
 - current session messages, diff, and todos
 - conversation session messages, diff, and todos when it differs from current
-
-It cannot refresh permissions because no pending-permission list operation is available.
+- pending permissions and questions

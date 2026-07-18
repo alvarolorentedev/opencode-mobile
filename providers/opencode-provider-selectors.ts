@@ -1,15 +1,14 @@
 import { getHistoryPreview, toTranscriptEntry, type SessionMessageRecord, type TranscriptEntry } from '@/lib/opencode/format';
 import { getTranscriptActivityLabel, isTranscriptDisplayMessage } from '@/lib/opencode/transcript';
-import type { PendingPermissionRequest } from '@/lib/opencode/client';
 import type { ConversationPhase, ProviderOption } from '@/providers/opencode-provider-types';
 
-export function getCurrentPendingPermissions(
+export function getCurrentPendingRequests<T>(
   currentSessionId: string | undefined,
   sendingSessionId: string | undefined,
-  pendingPermissionsBySession: Record<string, PendingPermissionRequest[]>,
+  pendingRequestsBySession: Record<string, T[]>,
 ) {
   const candidateSessionIds = [...new Set([currentSessionId, sendingSessionId].filter(Boolean))] as string[];
-  const matches = candidateSessionIds.flatMap((sessionId) => pendingPermissionsBySession[sessionId] || []);
+  const matches = candidateSessionIds.flatMap((sessionId) => pendingRequestsBySession[sessionId] || []);
 
   return matches;
 }

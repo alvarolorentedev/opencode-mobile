@@ -20,14 +20,10 @@ The goal is not aspirational design documentation. It is an implementation refer
   External dependencies, Expo/native integrations, environment configuration, and operational notes.
 - `testing-and-validation.md`
   Current validation strategy, fake server behavior, and test coverage boundaries.
-- `regeneration-blueprint.md`
-  Rebuild-oriented contract: UI inventory, event expectations, server shape summary, and parity traps.
 - `api-contract.md`
   Endpoint-by-endpoint client contract with example request and response shapes.
 - `component-inventory.md`
   UI and support component inventory with responsibilities and prop contracts.
-- `rebuild-checklist.md`
-  Step-by-step execution checklist for regenerating the app with parity.
 
 ## Current System Summary
 
@@ -39,7 +35,7 @@ Most important behavior flows through this provider:
 - session lifecycle
 - prompt submission
 - transcript, diff, and todo refresh
-- event-driven, session-scoped permission handling
+- session-scoped permission and question handling with event and list reconciliation
 - session lifecycle, slash commands, workspace inspection, and diagnostics
 - provider/model/agent capability discovery
 - local persistence
@@ -59,10 +55,8 @@ The tabs mostly render and manipulate provider state:
 3. `state-and-data.md`
 4. `integrations-and-operations.md`
 5. `testing-and-validation.md`
-6. `regeneration-blueprint.md`
-7. `api-contract.md`
-8. `component-inventory.md`
-9. `rebuild-checklist.md`
+6. `api-contract.md`
+7. `component-inventory.md`
 
 ## Scope Notes
 

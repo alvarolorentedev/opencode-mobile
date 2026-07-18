@@ -1,6 +1,8 @@
 import type { Command, Config, File, FileContent, FileDiff, Project, Session, SessionStatus, Todo, VcsInfo } from '@/lib/opencode/types';
 import type {
   OpencodeConnectionSettings,
+  PendingQuestionAnswer,
+  PendingQuestionRequest,
   PendingPermissionRequest,
 } from '@/lib/opencode/client';
 import type { Diagnostics } from '@/providers/services/diagnostics-service';
@@ -111,6 +113,7 @@ export type OpencodeContextValue = {
   currentDiffs: FileDiff[];
   currentTodos: Todo[];
   currentPendingPermissions: PendingPermissionRequest[];
+  currentPendingQuestions: PendingQuestionRequest[];
   sessionPreviewById: Record<string, string>;
   isRefreshingSessions: boolean;
   isRefreshingMessages: boolean;
@@ -136,6 +139,8 @@ export type OpencodeContextValue = {
     sessionId?: string;
     active: boolean;
   };
+  promptError?: { message: string; occurredAt: number; sessionId?: string };
+  clearPromptError: () => void;
   connect: () => Promise<void>;
   refreshSessions: (silent?: boolean) => Promise<void>;
   openSession: (sessionId: string) => Promise<void>;
@@ -153,6 +158,8 @@ export type OpencodeContextValue = {
   sendPrompt: (sessionId: string, prompt: string, attachments?: { uri: string; mime?: string; filename?: string }[]) => Promise<boolean>;
   abortSession: (sessionId: string) => Promise<void>;
   replyToPermission: (requestId: string, reply: 'once' | 'always' | 'reject') => Promise<void>;
+  replyToQuestion: (requestId: string, answers: PendingQuestionAnswer[]) => Promise<void>;
+  rejectQuestion: (requestId: string) => Promise<void>;
   commands: Command[];
   executeCommand: (sessionId: string, command: string, args: string) => Promise<void>;
   workspaceFiles: string[];

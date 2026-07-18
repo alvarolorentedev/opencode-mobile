@@ -12,7 +12,7 @@ export type CapabilityModel = {
   modelID: string;
   attachment: boolean;
   supportsAttachments: boolean;
-  inputModalities: Array<'text' | 'audio' | 'image' | 'video' | 'pdf'>;
+  inputModalities: ('text' | 'audio' | 'image' | 'video' | 'pdf')[];
   supportsToolCalls: boolean;
   contextLimit?: number;
   outputLimit?: number;
@@ -77,7 +77,7 @@ export async function discoverChatCapabilities(client: OpencodeClient, activePro
         attachment: model.attachment,
         modalities: model.modalities,
         supportsReasoning: model.reasoning,
-        supportsAttachments: model.attachment,
+        supportsAttachments: model.attachment || Boolean(model.modalities?.input.some((modality) => modality !== 'text')),
         inputModalities: model.modalities?.input || ['text'],
         supportsToolCalls: model.tool_call,
         contextLimit: model.limit?.context,

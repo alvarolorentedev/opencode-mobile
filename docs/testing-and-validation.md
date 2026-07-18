@@ -52,6 +52,7 @@ Scenarios in the test infrastructure that correspond to supported app behavior:
 
 - `happy-path`
 - `permission`
+- `question`
 - `stream-disconnect`
 
 ### Happy Path
@@ -68,13 +69,17 @@ Simulates a normal session run that completes and returns:
 
 Instead of completing immediately, the server emits a pending permission request and waits for client approval before finishing.
 
+### Question Scenario
+
+The server emits a pending assistant question and waits for an ordered answer payload before finishing.
+
 ### Stream Disconnect Scenario
 
 The SSE endpoint intentionally fails, forcing the app to complete the workflow through polling fallback.
 
 ## Supported-Contract E2E Flows
 
-`tests/e2e/flows.spec.mjs` encodes these supported-contract flows, subject to the migration mismatch documented below:
+`tests/e2e/flows.spec.mjs` encodes these supported-contract flows:
 
 ### Boot And Ready Chat
 
@@ -95,6 +100,12 @@ The SSE endpoint intentionally fails, forcing the app to complete the workflow t
 - approve it
 - verify run completion
 
+### Question Blocking Flow
+
+- send a prompt that triggers an assistant question
+- choose and submit an answer
+- verify run completion
+
 ### Provider Setup Flow
 
 - open Settings
@@ -111,7 +122,7 @@ The SSE endpoint intentionally fails, forcing the app to complete the workflow t
 
 ## Intended Coverage Strengths
 
-Once the fake server is migrated to the 1.18.3 contract, this strategy is intended to give confidence in:
+This strategy gives confidence in:
 
 - provider-driven app bootstrapping
 - workspace selection and session continuity
@@ -128,11 +139,10 @@ The following important behaviors are present in code but are not obviously cove
 - speech recognition failures and permission edge cases
 - TTS playback behavior
 - notification initialization and background monitoring
-- session delete, rename, fork, revert/unrevert, and share/unshare
+- session fork, revert/unrevert, and share/unshare
 - attachment upload behavior
 - attachment capability rejection and the 10 MB local-file limit
-- slash-command execution
-- workspace file search/read/status and VCS display
+- workspace file status and VCS display
 - diagnostics and OAuth callback completion
 - auto-approve config toggling
 - model enablement filtering and preference reconciliation
@@ -140,13 +150,12 @@ The following important behaviors are present in code but are not obviously cove
 - keep-awake and brightness side effects
 - working-sound busy/idle transitions
 - global SSE reconnect/backoff behavior beyond initial failure fallback
-- permission restoration and the pre-subscription API limitation
 
 These are useful candidates for future validation if the product depends on them heavily.
 
 ## Why The Fake Server Matters For Parity
 
-After its 1.18.3 migration, the fake server should document which OpenCode interactions the client expects to exist and how the client reacts to them.
+The fake server documents which OpenCode interactions the client expects to exist and how the client reacts to them.
 
 For reimplementation work, it acts as a practical parity contract for:
 
@@ -192,4 +201,4 @@ After that baseline, the next most valuable parity suite would add:
 
 ## Migration Coverage Status
 
-The application now targets OpenCode SDK 1.18.3, but the unchanged fake server and E2E fixtures still encode parts of the older contract. In particular, their permission event/reply shapes and stream endpoint need migration before they validate the event-driven session-scoped permission flow. The existing legacy blocking scenario outside the permission flow is not a supported app feature. Until the fixtures are migrated, the flow suite is not evidence that the 1.18.3 integration passes. No automated test currently proves the new lifecycle, command, workspace inspection, diagnostics, attachment-capability, OAuth callback, or global reconnect behavior.
+The fake server and flow fixtures cover the current permission and question list/event/reply contracts. No automated test currently proves attachment-capability, OAuth callback, or global reconnect behavior.

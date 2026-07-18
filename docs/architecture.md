@@ -53,7 +53,7 @@ This file is the application's effective domain layer. It owns:
 - session lists and session status tracking
 - current session selection and data refresh
 - transcript, diff, and todo caches
-- event-driven, session-scoped permission queues
+- session-scoped permission and question queues refreshed by events and list APIs
 - provider/model/agent capability discovery
 - chat preference management
 - prompt send / abort lifecycle
@@ -127,9 +127,9 @@ If this app were reimplemented, this provider would be the main source of truth 
 - `components/chat/chat-view.tsx`
   Main chat screen controller.
 - `components/chat/chat-content.tsx`
-  Transcript, pending interactions, and diff tab rendering.
+  Transcript, pending interactions, task overlay, and diff tab rendering.
 - `components/chat/chat-composer.tsx`
-  Prompt input, attachments, controls, and todo summary surface.
+  Prompt input, attachments, and controls.
 - `components/chat/chat-header.tsx`
   Session picker and conversation overlay mount point.
 - `components/chat/chat-cards.tsx`
@@ -197,7 +197,7 @@ The provider fetches and caches:
 - messages per session
 - diffs per session
 - todos per session
-- pending permissions by session, populated by events and persisted locally
+- pending permissions and questions by session, populated by events and refreshed from the server
 - providers, models, and agents
 - commands, workspace file status/search/read data, VCS information, and diagnostics
 
@@ -208,7 +208,7 @@ Selectors transform provider state into:
 - current transcript
 - session preview text
 - visible configured providers
-- current permissions scoped to the active or sending session
+- current permissions and questions scoped to the active or sending session
 - conversation status label
 
 ### Provider -> UI
@@ -226,6 +226,7 @@ User interactions are converted to provider actions such as:
 - `sendPrompt`
 - `abortSession`
 - `replyToPermission`
+- `replyToQuestion` and `rejectQuestion`
 - `deleteSession`, `renameSession`, `forkSession`, `revertSession`, and share actions
 - `executeCommand`
 - workspace search/read and diagnostics refresh actions
@@ -249,7 +250,7 @@ Recognized events update local state or schedule refreshes for:
 - message part updates/removals
 - session diff updates
 - todo updates
-- permission updates/replies
+- permission and question requests/replies
 
 ### Safety Strategy: Polling Fallback
 
@@ -260,9 +261,9 @@ The provider keeps a 5-second polling loop when any of the following is true:
 - a prompt is currently being submitted
 - conversation mode is active
 
-Polling refreshes sessions and current/conversation session content as needed. It does not recover permissions because OpenCode 1.18.3 has no pending-permission list API.
+Polling refreshes sessions, current/conversation session content, and pending interactions as needed. The `/permission` and `/question` list APIs recover requests missed by SSE.
 
-Permissions are therefore event-driven. `permission.updated` inserts a request under its `sessionID`; `permission.replied` removes it; idle transitions and user-initiated deletion clear session entries. The map is persisted so a request observed by this app survives an app restart. A request created before the app subscribes, and not already in its persisted map, cannot be discovered through the API.
+`permission.asked` and `question.asked` insert requests under their `sessionID`; reply and rejection events remove them. Opening or refreshing a session reconciles both maps with the server.
 
 This dual model is critical. The implementation does not trust SSE alone.
 
@@ -275,7 +276,7 @@ This dual model is critical. The implementation does not trust SSE alone.
 Responsibilities:
 
 - render session transcript
-- render pending permission interactions inline
+- render pending permission and question interactions inline
 - render diff tab
 - send prompts and attachments
 - suggest and execute server-provided slash commands
@@ -331,7 +332,7 @@ Supporting behaviors include:
 - optional automatic return to listening after playback
 - keep-awake activation
 - brightness dimming
-- blocking if pending permissions exist
+- blocking if pending permissions or questions exist
 - cancellation and cleanup across timers, speech input, TTS, and working sound
 
 This is one of the densest parts of the architecture and would need careful parity in any rewrite.
@@ -341,7 +342,7 @@ This is one of the densest parts of the architecture and would need careful pari
 - The app uses custom theme tokens from `constants/theme.ts` and maps them into React Native Paper in `constants/paper-theme.ts`.
 - Markdown rendering is intentionally narrow and custom, not library-based.
 - Diff rendering is custom and optimized for readable in-app inspection, not full git-style fidelity.
-- The chat composer surfaces server-owned todos as read-only status icons. It does not mutate todo state.
+- The chat area surfaces server-owned todos in a collapsed overlay with read-only status icons. It does not mutate todo state.
 - Working sound is started by the provider while a send or any session is busy, when enabled, except during listening and speaking phases.
 
 ## Architectural Hotspots

@@ -19,11 +19,6 @@ const config: ExpoConfig = {
   slug: 'opencode-mobile',
   version: '1.0.3',
   orientation: 'portrait',
-  splash: {
-    image: "./assets/images/splash.png",
-    resizeMode: "contain",
-    backgroundColor: "#202020"
-  },
   icon: './assets/images/icon.png',
   scheme: 'opencodemobile',
   userInterfaceStyle: 'automatic',

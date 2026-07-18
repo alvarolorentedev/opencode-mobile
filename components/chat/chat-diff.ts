@@ -16,79 +16,40 @@ const DIFF_CONTEXT_LINES = 3;
 export function buildLineDiff(beforeText: string, afterText: string): DiffLine[] {
   const beforeLines = beforeText.split('\n');
   const afterLines = afterText.split('\n');
-  const rowCount = beforeLines.length;
-  const columnCount = afterLines.length;
-  const table = Array.from({ length: rowCount + 1 }, () => Array<number>(columnCount + 1).fill(0));
-
-  for (let row = rowCount - 1; row >= 0; row -= 1) {
-    for (let column = columnCount - 1; column >= 0; column -= 1) {
-      table[row][column] =
-        beforeLines[row] === afterLines[column]
-          ? table[row + 1][column + 1] + 1
-          : Math.max(table[row + 1][column], table[row][column + 1]);
-    }
+  let prefixLength = 0;
+  while (prefixLength < beforeLines.length && prefixLength < afterLines.length && beforeLines[prefixLength] === afterLines[prefixLength]) {
+    prefixLength += 1;
   }
 
+  let suffixLength = 0;
+  while (
+    suffixLength < beforeLines.length - prefixLength &&
+    suffixLength < afterLines.length - prefixLength &&
+    beforeLines[beforeLines.length - suffixLength - 1] === afterLines[afterLines.length - suffixLength - 1]
+  ) {
+    suffixLength += 1;
+  }
+
+  // ponytail: treat multiple separated edits as one changed block; use Myers only if finer hunks become necessary.
   const result: DiffLine[] = [];
-  let row = 0;
-  let column = 0;
-  let leftNumber = 1;
-  let rightNumber = 1;
 
-  while (row < rowCount && column < columnCount) {
-    if (beforeLines[row] === afterLines[column]) {
-      result.push({
-        kind: 'context',
-        leftNumber,
-        rightNumber,
-        text: beforeLines[row],
-      });
-      row += 1;
-      column += 1;
-      leftNumber += 1;
-      rightNumber += 1;
-      continue;
-    }
-
-    if (table[row + 1][column] >= table[row][column + 1]) {
-      result.push({
-        kind: 'removed',
-        leftNumber,
-        text: beforeLines[row],
-      });
-      row += 1;
-      leftNumber += 1;
-      continue;
-    }
-
+  beforeLines.slice(0, prefixLength).forEach((text, index) => {
+    result.push({ kind: 'context', leftNumber: index + 1, rightNumber: index + 1, text });
+  });
+  beforeLines.slice(prefixLength, beforeLines.length - suffixLength).forEach((text, index) => {
+    result.push({ kind: 'removed', leftNumber: prefixLength + index + 1, text });
+  });
+  afterLines.slice(prefixLength, afterLines.length - suffixLength).forEach((text, index) => {
+    result.push({ kind: 'added', rightNumber: prefixLength + index + 1, text });
+  });
+  beforeLines.slice(beforeLines.length - suffixLength).forEach((text, index) => {
     result.push({
-      kind: 'added',
-      rightNumber,
-      text: afterLines[column],
+      kind: 'context',
+      leftNumber: beforeLines.length - suffixLength + index + 1,
+      rightNumber: afterLines.length - suffixLength + index + 1,
+      text,
     });
-    column += 1;
-    rightNumber += 1;
-  }
-
-  while (row < rowCount) {
-    result.push({
-      kind: 'removed',
-      leftNumber,
-      text: beforeLines[row],
-    });
-    row += 1;
-    leftNumber += 1;
-  }
-
-  while (column < columnCount) {
-    result.push({
-      kind: 'added',
-      rightNumber,
-      text: afterLines[column],
-    });
-    column += 1;
-    rightNumber += 1;
-  }
+  });
 
   return result;
 }

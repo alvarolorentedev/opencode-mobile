@@ -4,14 +4,6 @@ export async function findFiles(client: OpencodeClient, query: string, includeDi
   return (await client.find.files({ query: { query, dirs: includeDirectories ? 'true' : 'false' } })).data;
 }
 
-export async function findText(client: OpencodeClient, pattern: string) {
-  return (await client.find.text({ query: { pattern } })).data;
-}
-
-export async function listFiles(client: OpencodeClient, path: string) {
-  return (await client.file.list({ query: { path } })).data;
-}
-
 export async function readFile(client: OpencodeClient, path: string) {
   return (await client.file.read({ query: { path } })).data;
 }

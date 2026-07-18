@@ -1,8 +1,11 @@
-import { createOpencodeClient, type OpencodeClient, type Permission } from '@opencode-ai/sdk/client';
+import { createOpencodeClient, type OpencodeClient } from '@opencode-ai/sdk/client';
+import type { PermissionRequest, QuestionAnswer, QuestionRequest } from '@opencode-ai/sdk/v2/types';
 import { encode as encodeBase64 } from 'base-64';
 import Constants from 'expo-constants';
 
-export type PendingPermissionRequest = Permission;
+export type PendingPermissionRequest = PermissionRequest;
+export type PendingQuestionRequest = QuestionRequest;
+export type PendingQuestionAnswer = QuestionAnswer;
 
 export type OpencodeConnectionSettings = {
   serverUrl: string;
@@ -197,7 +200,8 @@ export async function requestOpenCodeApi<T>(client: ScopedOpencodeClient, path: 
   });
 
   if (!response.ok) {
-    throw new Error(`OpenCode request failed: ${response.status}`);
+    const detail = (await response.text()).trim();
+    throw new Error(`OpenCode request failed: ${response.status}${detail ? ` - ${detail.slice(0, 1000)}` : ''}`);
   }
 
   if (response.status === 204) {
@@ -207,18 +211,33 @@ export async function requestOpenCodeApi<T>(client: ScopedOpencodeClient, path: 
   return response.json() as Promise<T>;
 }
 
-export function normalizePendingPermission(permission: Permission): PendingPermissionRequest {
-  return permission;
+export async function listPendingInteractions(client: ScopedOpencodeClient) {
+  const [permissions, questions] = await Promise.all([
+    requestOpenCodeApi<PendingPermissionRequest[]>(client, '/permission'),
+    requestOpenCodeApi<PendingQuestionRequest[]>(client, '/question'),
+  ]);
+
+  return { permissions, questions };
 }
 
 export async function replyToPendingPermission(
   client: ScopedOpencodeClient,
-  sessionId: string,
   permissionId: string,
-  response: 'once' | 'always' | 'reject',
+  reply: 'once' | 'always' | 'reject',
 ) {
-  await requestOpenCodeApi(client, `/session/${encodeURIComponent(sessionId)}/permissions/${encodeURIComponent(permissionId)}`, {
+  await requestOpenCodeApi(client, `/permission/${encodeURIComponent(permissionId)}/reply`, {
     method: 'POST',
-    body: JSON.stringify({ response }),
+    body: JSON.stringify({ reply }),
   });
+}
+
+export async function replyToPendingQuestion(client: ScopedOpencodeClient, requestId: string, answers: PendingQuestionAnswer[]) {
+  await requestOpenCodeApi(client, `/question/${encodeURIComponent(requestId)}/reply`, {
+    method: 'POST',
+    body: JSON.stringify({ answers }),
+  });
+}
+
+export async function rejectPendingQuestion(client: ScopedOpencodeClient, requestId: string) {
+  await requestOpenCodeApi(client, `/question/${encodeURIComponent(requestId)}/reject`, { method: 'POST' });
 }

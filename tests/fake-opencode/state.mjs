@@ -25,12 +25,14 @@ export function createState(scenario) {
     nextPendingId: 1,
     nextEventId: 1,
     sseClients: new Set(),
+    completionTimers: new Set(),
     sessions: [],
     messagesBySession: {},
     sessionStatuses: {},
     diffsBySession: {},
     todosBySession: {},
     pendingPermissions: [],
+    pendingQuestions: [],
     configuredProviderIds: new Set(['openai']),
     config: {
       model: 'openai/gpt-4.1-mini',
@@ -68,11 +70,10 @@ export function createStateStore(initialScenario) {
       for (const client of state.sseClients) {
         client.end();
       }
+      for (const timer of state.completionTimers) {
+        clearTimeout(timer);
+      }
       state = createState(nextScenario);
-      return state;
-    },
-    setState(nextState) {
-      state = nextState;
       return state;
     },
   };

@@ -92,7 +92,7 @@ The Chat screen shows:
 
 - transcript messages
 - inline running status text while OpenCode is active
-- pending permission requests observed on the event stream if OpenCode is blocked waiting for the user
+- pending permission and question requests if OpenCode is blocked waiting for the user
 - a changes tab with current file diffs
 - todos when provided by the server
 
@@ -101,24 +101,24 @@ Behavior details:
 - only user messages and assistant messages with text or errors appear in the main transcript
 - reasoning and tool activity are summarized and attached to assistant messages as metadata chips
 - a status line like `OpenCode is ...` is shown while running and not blocked on user input
-- if the assistant is blocked on an observed permission, a waiting card is shown and the permission renders inline
+- if the assistant is blocked on a permission or question, a waiting card and inline interaction render
 
-### 6. Resolve Permission Requests
+### 6. Resolve Pending Interactions
 
 Each permission request shows:
 
-- a derived title from the SDK permission `title` or `type`
-- optional path or pattern list
+- a title derived from `permission`
+- optional pattern list
 - action buttons: `Allow once`, `Always allow`, `Deny`
 
 Permission behavior:
 
-- requests are received from the global event stream and stored under `sessionID`
-- only permissions for the current or sending session are displayed
-- replies use the session-scoped permission reply operation
+- requests are received from the global event stream and list API, then stored under `sessionID`
+- only interactions for the current or sending session are displayed
+- replies use `/permission/{requestID}/reply`
 - the replied request is removed locally and that session's messages are refreshed
-- observed requests are persisted so they can survive an app restart
-- OpenCode 1.18.3 cannot list pending permissions; a request created before subscription and not already persisted cannot be recovered by polling
+
+Question cards render each question's choices, optional custom answer, submit action, and rejection action. Answers preserve question order and support multiple selections.
 
 ### 7. Inspect File Changes
 
@@ -184,6 +184,8 @@ When a session has no display transcript yet, the user sees:
 
 ## Composer Behavior
 
+Server-owned tasks appear collapsed by default in an overlay over the chat area. Expanding the overlay shows a height-limited, scrollable list without resizing the composer.
+
 The composer includes:
 
 - agent picker
@@ -191,7 +193,6 @@ The composer includes:
 - reasoning picker
 - auto-approve toggle
 - optional conversation mode banner
-- optional todo summary card
 - slash-command suggestions when the draft starts with `/` and has no space
 - attachment chips
 - text input
@@ -356,7 +357,7 @@ Entry requirements:
 
 - server must be connected
 - no current send operation may be active
-- no pending permission interaction may be present
+- no pending permission or question interaction may be present
 - there must be or become an active session
 
 Loop behavior:
@@ -374,7 +375,7 @@ Additional behavior:
 - screen is kept awake while conversation mode is active
 - screen brightness is dimmed when possible
 - a full-screen overlay is shown
-- conversation mode stops if an observed permission requires on-screen input
+- conversation mode stops if a permission or question requires on-screen input
 - speech/TTS failures surface feedback and may stop the mode
 
 ## Notifications Behavior
@@ -401,7 +402,6 @@ The following values are persisted locally:
 - active project path
 - last session ID by project
 - pending notification sessions
-- pending permissions observed from SSE, keyed by session
 
 The following values are not persisted and are rebuilt from the server:
 
@@ -410,6 +410,7 @@ The following values are not persisted and are rebuilt from the server:
 - messages
 - diffs
 - todos
+- pending permissions and questions
 - provider/model/agent catalog
 - commands, workspace file results/status/content, VCS info, and diagnostics
 
@@ -421,6 +422,7 @@ The following values are not persisted and are rebuilt from the server:
 - If speech input is unavailable or denied, user-friendly errors are shown.
 - If TTS cannot speak a message, a snackbar error is shown.
 - If sending fails, draft text and attachments are restored locally.
+- Send failures remain visible until dismissed, include asynchronous `session.error` events, and can be copied with session/model context for diagnostics.
 
 ## Parity Checklist
 
@@ -440,6 +442,5 @@ Any reimplementation should preserve these functional outcomes:
 - attachment conversion from mobile-local URIs to data URLs
 - attachment capability enforcement and 10 MB local-file limit
 - reconnecting global SSE filtered to the active project, with polling fallback for refreshable session data
-- the documented pending-permission pre-subscription limitation
 - task-complete notification tracking
 - optional conversation mode with listen -> submit -> wait -> speak -> listen loop

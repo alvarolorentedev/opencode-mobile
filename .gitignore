@@ -6,7 +6,10 @@ node_modules/
 # Expo
 .expo/
 dist/
+dist-e2e/
 web-build/
+playwright-report/
+test-results/
 expo-env.d.ts
 
 # Native

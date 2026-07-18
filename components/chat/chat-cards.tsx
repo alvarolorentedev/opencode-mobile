@@ -1,19 +1,19 @@
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
-import { Button, Card, Chip, Divider, IconButton, List, Surface, Text, TouchableRipple } from 'react-native-paper';
+import { Button, Card, Chip, Divider, IconButton, List, Surface, Text, TextInput, TouchableRipple } from 'react-native-paper';
 
 import { MarkdownText } from '@/components/chat/chat-markdown';
 import { getDiffPalette, buildLineDiff, buildCollapsedDiffBlocks } from '@/components/chat/chat-diff';
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
-import type { PendingPermissionRequest } from '@/lib/opencode/client';
+import type { PendingPermissionRequest, PendingQuestionAnswer, PendingQuestionRequest } from '@/lib/opencode/client';
 import { formatTimestamp, type TranscriptDetail, type TranscriptEntry } from '@/lib/opencode/format';
 import { summarizeTranscriptDetails } from '@/lib/opencode/transcript';
 import type { FileDiff } from '@/lib/opencode/types';
 
 function getPermissionTitle(request: PendingPermissionRequest) {
-  return (request.title || request.type)
+  return request.permission
     .split(/[._-]/g)
     .filter(Boolean)
     .map((part: string) => part.charAt(0).toUpperCase() + part.slice(1))
@@ -22,10 +22,16 @@ function getPermissionTitle(request: PendingPermissionRequest) {
 
 export function PendingInteractionsCard({
   onPermissionReply,
+  onQuestionReject,
+  onQuestionReply,
   permissions,
+  questions,
 }: {
   onPermissionReply: (requestId: string, reply: 'once' | 'always' | 'reject') => void;
+  onQuestionReject: (requestId: string) => void;
+  onQuestionReply: (requestId: string, answers: PendingQuestionAnswer[]) => void;
   permissions: PendingPermissionRequest[];
+  questions: PendingQuestionRequest[];
 }) {
   const colorScheme = useColorScheme() ?? 'light';
   const palette = Colors[colorScheme];
@@ -47,12 +53,102 @@ export function PendingInteractionsCard({
             onReply={(reply) => onPermissionReply(request.id, reply)}
           />
         ))}
+        {questions.map((request) => (
+          <QuestionRequestCard
+            key={request.id}
+            request={request}
+            onReject={() => onQuestionReject(request.id)}
+            onReply={(answers) => onQuestionReply(request.id, answers)}
+          />
+        ))}
       </Card.Content>
     </Card>
   );
 }
 
-export function SessionDiffCard({ diff, accordionId, expanded }: { diff: FileDiff; accordionId: string; expanded: boolean }) {
+function QuestionRequestCard({
+  onReject,
+  onReply,
+  request,
+}: {
+  onReject: () => void;
+  onReply: (answers: PendingQuestionAnswer[]) => void;
+  request: PendingQuestionRequest;
+}) {
+  const colorScheme = useColorScheme() ?? 'light';
+  const palette = Colors[colorScheme];
+  const [answers, setAnswers] = useState<string[][]>(() => request.questions.map(() => []));
+  const [customAnswers, setCustomAnswers] = useState<string[]>(() => request.questions.map(() => ''));
+  const resolvedAnswers = request.questions.map((question, index) => {
+    const customAnswer = customAnswers[index].trim();
+    if (!customAnswer) {
+      return answers[index];
+    }
+    return question.multiple ? [...answers[index], customAnswer] : [customAnswer];
+  });
+  const canSubmit = resolvedAnswers.every((answer) => answer.length > 0);
+
+  return (
+    <Card mode="contained" style={[styles.requestCard, { backgroundColor: palette.background }]}>
+      <Card.Content style={styles.requestCardContent}>
+        <Text variant="labelLarge" style={{ color: palette.warning }}>Assistant question</Text>
+        {request.questions.map((question, questionIndex) => (
+          <View key={`${request.id}-${questionIndex}`} style={styles.questionBlock}>
+            <Text variant="titleMedium" style={{ color: palette.text }}>{question.header}</Text>
+            <Text variant="bodyMedium" style={{ color: palette.text }}>{question.question}</Text>
+            <View style={styles.questionOptions}>
+              {question.options.map((option) => {
+                const selected = answers[questionIndex].includes(option.label);
+                return (
+                  <Button
+                    key={option.label}
+                    mode={selected ? 'contained-tonal' : 'outlined'}
+                    onPress={() => {
+                      setAnswers((current) => current.map((answer, index) => {
+                        if (index !== questionIndex) return answer;
+                        if (!question.multiple) return [option.label];
+                        return selected ? answer.filter((label) => label !== option.label) : [...answer, option.label];
+                      }));
+                      if (!question.multiple) {
+                        setCustomAnswers((current) => current.map((answer, index) => index === questionIndex ? '' : answer));
+                      }
+                    }}>
+                    {option.label}
+                  </Button>
+                );
+              })}
+            </View>
+            {question.options.find((option) => answers[questionIndex].includes(option.label))?.description ? (
+              <Text variant="bodySmall" style={{ color: palette.muted }}>
+                {question.options.find((option) => answers[questionIndex].includes(option.label))?.description}
+              </Text>
+            ) : null}
+            {question.custom !== false ? (
+              <TextInput
+                dense
+                mode="outlined"
+                label="Custom answer"
+                value={customAnswers[questionIndex]}
+                onChangeText={(value) => {
+                  setCustomAnswers((current) => current.map((answer, index) => index === questionIndex ? value : answer));
+                  if (!question.multiple && value) {
+                    setAnswers((current) => current.map((answer, index) => index === questionIndex ? [] : answer));
+                  }
+                }}
+              />
+            ) : null}
+          </View>
+        ))}
+        <View style={styles.requestActionsRow}>
+          <Button mode="contained" disabled={!canSubmit} onPress={() => onReply(resolvedAnswers)}>Submit answer</Button>
+          <Button mode="text" textColor={palette.danger} onPress={onReject}>Reject</Button>
+        </View>
+      </Card.Content>
+    </Card>
+  );
+}
+
+export function SessionDiffCard({ diff, expanded, onPress }: { diff: FileDiff; expanded: boolean; onPress: () => void }) {
   const colorScheme = useColorScheme() ?? 'light';
   const palette = Colors[colorScheme];
   const diffLines = useMemo(() => (expanded ? buildLineDiff(diff.before || '', diff.after || '') : []), [diff.after, diff.before, expanded]);
@@ -60,7 +156,8 @@ export function SessionDiffCard({ diff, accordionId, expanded }: { diff: FileDif
 
   return (
     <List.Accordion
-      id={accordionId}
+      expanded={expanded}
+      onPress={onPress}
       title={diff.file}
       description={`+${diff.additions} / -${diff.deletions}`}
       titleStyle={{ color: palette.text }}
@@ -122,13 +219,14 @@ export function SessionDiffCard({ diff, accordionId, expanded }: { diff: FileDif
   );
 }
 
-export function DiffCard({ detail, accordionId, expanded }: { detail: Extract<TranscriptDetail, { kind: 'patch' | 'file' }>; accordionId: string; expanded: boolean }) {
+export function DiffCard({ detail, expanded, onPress }: { detail: Extract<TranscriptDetail, { kind: 'patch' | 'file' }>; expanded: boolean; onPress: () => void }) {
   const colorScheme = useColorScheme() ?? 'light';
   const palette = Colors[colorScheme];
 
   return (
     <List.Accordion
-      id={accordionId}
+      expanded={expanded}
+      onPress={onPress}
       title={detail.label}
       description={detail.kind === 'patch' ? 'Patch output' : 'File output'}
       titleStyle={{ color: palette.text }}
@@ -250,8 +348,8 @@ function PermissionRequestCard({
       <Card.Content style={styles.requestCardContent}>
         <Text variant="labelLarge" style={{ color: palette.warning }}>Permission request</Text>
         <Text variant="titleMedium" style={{ color: palette.text }}>{getPermissionTitle(request)}</Text>
-        {request.pattern ? (
-          <Text variant="bodySmall" style={{ color: palette.muted }}>{Array.isArray(request.pattern) ? request.pattern.join('\n') : request.pattern}</Text>
+        {request.patterns.length > 0 ? (
+          <Text variant="bodySmall" style={{ color: palette.muted }}>{request.patterns.join('\n')}</Text>
         ) : null}
         <View style={styles.requestActionsRow}>
           <Button mode="contained" compact onPress={() => onReply('once')}>Allow once</Button>
@@ -309,4 +407,6 @@ const styles = StyleSheet.create({
   requestCardCompact: { borderRadius: 14 },
   requestCardContent: { gap: 10 },
   requestActionsRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
+  questionBlock: { gap: 8 },
+  questionOptions: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
 });

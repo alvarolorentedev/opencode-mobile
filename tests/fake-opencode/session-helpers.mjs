@@ -118,9 +118,12 @@ export function createSessionHelpers({ getNow, getState, emitEvent }) {
   }
 
   function scheduleCompletion(sessionId, promptText) {
-    setTimeout(() => {
+    const state = getState();
+    const timer = setTimeout(() => {
+      state.completionTimers.delete(timer);
       completePrompt(sessionId, promptText);
     }, 700);
+    state.completionTimers.add(timer);
   }
 
   function createPermissionRequest(sessionId) {
@@ -128,16 +131,34 @@ export function createSessionHelpers({ getNow, getState, emitEvent }) {
     const request = {
       id: `permission-${state.nextPendingId++}`,
       sessionID: sessionId,
-      type: 'edit_file',
-      title: 'Edit file',
-      pattern: ['app/(tabs)/index.tsx'],
+      permission: 'edit_file',
+      patterns: ['app/(tabs)/index.tsx'],
       metadata: { source: 'fake-opencode' },
-      messageID: 'tool-message-1',
-      callID: 'tool-call-1',
-      time: { created: getNow() },
+      always: ['app/(tabs)/*'],
+      tool: { messageID: 'tool-message-1', callID: 'tool-call-1' },
     };
     state.pendingPermissions = [request];
-    emitEvent({ type: 'permission.updated', properties: request });
+    emitEvent({ type: 'permission.asked', properties: request });
+  }
+
+  function createQuestionRequest(sessionId) {
+    const state = getState();
+    const request = {
+      id: `question-${state.nextPendingId++}`,
+      sessionID: sessionId,
+      questions: [{
+        header: 'Approach',
+        question: 'Which implementation should be used?',
+        options: [
+          { label: 'Minimal', description: 'Make the smallest safe change.' },
+          { label: 'Expanded', description: 'Include broader improvements.' },
+        ],
+        multiple: false,
+        custom: true,
+      }],
+    };
+    state.pendingQuestions = [request];
+    emitEvent({ type: 'question.asked', properties: request });
   }
 
   function handlePromptSubmission(sessionId, body) {
@@ -156,6 +177,11 @@ export function createSessionHelpers({ getNow, getState, emitEvent }) {
 
     if (state.scenario === 'permission') {
       createPermissionRequest(sessionId);
+      return;
+    }
+
+    if (state.scenario === 'question') {
+      createQuestionRequest(sessionId);
       return;
     }
 
@@ -206,8 +232,6 @@ export function createSessionHelpers({ getNow, getState, emitEvent }) {
   }
 
   return {
-    createMessage,
-    createPermissionRequest,
     createSession,
     forkSession,
     getMessages,

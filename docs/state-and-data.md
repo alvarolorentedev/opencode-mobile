@@ -59,14 +59,15 @@ Primary fields:
 - `diffsBySession`
 - `todosBySession`
 - `pendingPermissionsBySession`
+- `pendingQuestionsBySession`
 
-These are keyed by session ID. Messages, diffs, and todos are memory-only; observed permissions are also persisted.
+These are keyed by session ID and held in memory.
 
 Important behavior:
 
 - data is fetched lazily when a session is opened or refreshed
 - message/diff/todo caches are updated by explicit refreshes, SSE events, and polling fallback
-- permission entries are added and removed only from SSE events or user replies; there is no list refresh
+- permission and question entries are updated by SSE events, replies, and server list refreshes
 - current-session selectors only read the active or relevant session from these maps
 
 ## Capabilities And Preferences State
@@ -158,7 +159,6 @@ Persisted values:
 - `opencode-mobile.active-project`
 - `opencode-mobile.last-session-by-project`
 - `opencode-mobile.pending-notification-sessions`
-- `opencode-mobile.pending-permissions`
 
 Hydration rules:
 
@@ -166,7 +166,6 @@ Hydration rules:
 - persisted chat preferences are merged over defaults and current provider state
 - active project path is restored if present
 - last-session map is restored if present
-- observed pending permissions are restored if present
 - hydration failures are ignored and defaults are kept
 
 The provider does not connect until hydration completes.
@@ -274,18 +273,16 @@ The app currently uses these logical server capabilities:
 - file find/read/status and VCS info
 - MCP/LSP/formatter status
 - provider OAuth authorize and callback
-- session-scoped permission reply
+- permission and question list/reply operations
 - global event subscription
 
 ### Via Manual Request Helper
 
-`GET /global/health` is called through `requestOpenCodeApi()` because diagnostics use that path directly. The helper preserves:
+`GET /global/health` and permission/question list and reply operations use `requestOpenCodeApi()`. The helper preserves:
 
 - JSON headers
 - optional basic auth header
 - `directory` query parameter when the client is project-scoped
-
-The client does not implement a permission-list API.
 
 ## Capability Discovery Model
 
@@ -336,8 +333,7 @@ Current implementation assumes these invariants:
 - a current session ID may temporarily be absent during project switches and bootstrapping
 - session caches are safe to keep even when not current
 - provider/model selections may need to be corrected after capability refresh
-- pending permissions are keyed by `sessionID` and only active/sending-session entries are surfaced
-- a pending permission created before global SSE subscription cannot be listed from OpenCode 1.18.3; only a previously persisted event can restore it
+- pending permissions and questions are keyed by `sessionID` and only active/sending-session entries are surfaced
 - attachment capability is checked against the selected model before send
 - local attachment files larger than 10 MB are rejected before base64 encoding
 

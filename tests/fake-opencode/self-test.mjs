@@ -93,9 +93,6 @@ try {
   assert((await request('/file/content?path=src%2Fdemo.ts')).content.includes('1.18.3'), 'Expected file content');
   assert((await request('/file/status')).length === 1, 'Expected file status');
   assert((await request('/vcs')).branch === 'main', 'Expected VCS info');
-  assert((await request('/vcs/status')).length === 1, 'Expected VCS status');
-  assert((await request('/vcs/diff')).length === 1, 'Expected VCS diff');
-  assert((await request('/vcs/diff/raw')).includes('diff --git'), 'Expected raw VCS diff');
 
   const session = await request('/session', json('POST', { title: 'Smoke session' }));
   const sessionId = session.id;
@@ -119,8 +116,6 @@ try {
   const messageId = (await request(`/session/${sessionId}/message`))[0].info.id;
   assert((await request(`/session/${sessionId}/revert`, json('POST', { messageID: messageId }))).revert.messageID === messageId, 'Session revert failed');
   assert(!(await request(`/session/${sessionId}/unrevert`, { method: 'POST' })).revert, 'Session unrevert failed');
-  assert((await response(`/session/${sessionId}`, json('PATCH', { time: { archived: Date.now() } }))).status !== 200, 'Archive update must not be accepted');
-
   await request('/__control/reset', json('POST', { scenario: 'permission' }));
   const permissionSession = await request('/session', json('POST', { title: 'Permission session' }));
   const abortController = new AbortController();
@@ -130,20 +125,29 @@ try {
   await request(`/session/${permissionSession.id}/prompt_async`, json('POST', {
     parts: [{ type: 'text', text: 'Trigger permission' }],
   }));
-  const envelope = await nextEvent(reader, (event) => event.payload?.type === 'permission.updated');
+  const envelope = await nextEvent(reader, (event) => event.payload?.type === 'permission.asked');
   assert(envelope.directory === '/workspace/demo-project', 'Global event directory missing');
   assert(envelope.payload.properties.id, 'Permission event did not include the full request');
+  assert((await request('/permission')).length === 1, 'Pending permission list failed');
   await request(
-    `/session/${permissionSession.id}/permissions/${envelope.payload.properties.id}`,
-    json('POST', { response: 'once' }),
+    `/permission/${envelope.payload.properties.id}/reply`,
+    json('POST', { reply: 'once' }),
   );
   abortController.abort();
 
   await request(`/session/${permissionSession.id}`, { method: 'DELETE' });
   assert(!(await response(`/session/${permissionSession.id}`)).ok, 'Session delete failed');
-  assert((await response('/question')).status === 404, 'Question endpoint must not exist');
-  assert((await response('/permission')).status === 404, 'Legacy permission list endpoint must not exist');
-  assert((await response('/__control/reset', json('POST', { scenario: 'question' }))).status === 400, 'Question scenario must not exist');
+  await request('/__control/reset', json('POST', { scenario: 'question' }));
+  const questionSession = await request('/session', json('POST', { title: 'Question session' }));
+  await request(`/session/${questionSession.id}/prompt_async`, json('POST', {
+    parts: [{ type: 'text', text: 'Trigger question' }],
+  }));
+  await sleep(800);
+  assert((await request(`/session/${questionSession.id}/message`)).length === 1, 'Reset leaked a scheduled completion into the question scenario');
+  assert((await request('/session/status'))[questionSession.id].type === 'busy', 'Reset completion changed the question session status');
+  const questions = await request('/question');
+  assert(questions.length === 1, 'Pending question list failed');
+  await request(`/question/${questions[0].id}/reply`, json('POST', { answers: [['Minimal']] }));
 
   console.log('Fake OpenCode 1.18.3 server self-test passed.');
 } finally {

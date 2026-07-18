@@ -58,6 +58,7 @@ Supported scenarios:
 
 - `happy-path`
 - `permission`
+- `question`
 - `stream-disconnect`
 
 The Playwright suite resets the server between tests through `POST /__control/reset`.
@@ -69,10 +70,12 @@ The current CI suite validates:
 - app boot -> connect -> auto-create/open session
 - prompt submission -> assistant response -> diff visibility
 - permission request -> user approval -> run continues
+- assistant question -> user answer -> run continues
 - session rename and guarded deletion
 - command execution and workspace file search
 - provider setup from Settings against fake metadata
 - polling fallback when the SSE stream is unavailable
+- connection recovery through a path-prefixed API URL
 
 ## Local Commands
 

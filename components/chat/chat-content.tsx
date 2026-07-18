@@ -1,13 +1,13 @@
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { RefObject } from 'react';
+import { RefObject, useState } from 'react';
 import { RefreshControl, ScrollView, View } from 'react-native';
-import { ActivityIndicator, Button, Card, List, Text, TouchableRipple } from 'react-native-paper';
+import { ActivityIndicator, Button, Card, IconButton, Text, TouchableRipple } from 'react-native-paper';
 
 import { Colors } from '@/constants/theme';
 import { DiffCard, PendingInteractionsCard, SessionDiffCard, TranscriptMessage } from '@/components/chat/chat-cards';
 import { getSessionSubtitle, type TranscriptEntry } from '@/lib/opencode/format';
-import type { FileDiff, Session, SessionStatus } from '@/lib/opencode/types';
-import type { PendingPermissionRequest } from '@/lib/opencode/client';
+import type { FileDiff, Session, SessionStatus, Todo } from '@/lib/opencode/types';
+import type { PendingPermissionRequest, PendingQuestionAnswer, PendingQuestionRequest } from '@/lib/opencode/client';
 
 import { styles } from '@/components/chat/chat-view-styles';
 import { STARTER_PROMPTS } from '@/components/chat/chat-view-utils';
@@ -24,6 +24,8 @@ type ChatContentProps = {
   currentActivityLabel?: string;
   currentDiffs: FileDiff[];
   currentPendingPermissions: PendingPermissionRequest[];
+  currentPendingQuestions: PendingQuestionRequest[];
+  currentTodos: Todo[];
   currentSessionId?: string;
   diffDetails: DiffDetail[];
   displayTranscript: TranscriptEntry[];
@@ -39,6 +41,8 @@ type ChatContentProps = {
   onLoadEarlier: () => void;
   onRefresh: () => void;
   onReplyToPermission: (requestId: string, reply: 'once' | 'always' | 'reject') => void;
+  onRejectQuestion: (requestId: string) => void;
+  onReplyToQuestion: (requestId: string, answers: PendingQuestionAnswer[]) => void;
   onSendStarterPrompt: (prompt: string) => void;
   onToggleSpeak: (entry: TranscriptEntry) => void;
   palette: Palette;
@@ -59,6 +63,8 @@ export function ChatContent({
   currentActivityLabel,
   currentDiffs,
   currentPendingPermissions,
+  currentPendingQuestions,
+  currentTodos,
   diffDetails,
   displayTranscript,
   expandedDiffId,
@@ -72,7 +78,9 @@ export function ChatContent({
   onExpandDiff,
   onLoadEarlier,
   onRefresh,
+  onRejectQuestion,
   onReplyToPermission,
+  onReplyToQuestion,
   onSendStarterPrompt,
   onToggleSpeak,
   palette,
@@ -83,21 +91,30 @@ export function ChatContent({
   status,
   visibleTranscript,
 }: ChatContentProps) {
+  const [todosExpanded, setTodosExpanded] = useState(false);
+  const completedTodoCount = currentTodos.filter((todo) => todo.status === 'completed').length;
+
   return (
-    <ScrollView
-      ref={scrollRef}
-      style={styles.scroll}
-      contentContainerStyle={styles.content}
-      keyboardShouldPersistTaps="handled"
-      refreshControl={<RefreshControl refreshing={isRefreshingMessages || isRefreshingDiffs} onRefresh={onRefresh} tintColor={palette.tint} />}>
-      {connection.status === 'error' ? (
+    <View style={styles.chatArea}>
+      <ScrollView
+        ref={scrollRef}
+        style={styles.scroll}
+        contentContainerStyle={[
+          styles.content,
+          activeTab === 'session' && currentTodos.length > 0
+            ? { paddingBottom: todosExpanded ? 320 : 76 }
+            : null,
+        ]}
+        keyboardShouldPersistTaps="handled"
+        refreshControl={<RefreshControl refreshing={isRefreshingMessages || isRefreshingDiffs} onRefresh={onRefresh} tintColor={palette.tint} />}>
+        {connection.status === 'error' ? (
         <Card mode="contained" style={[styles.noticeCard, { backgroundColor: palette.surface }]}>
           <Card.Content>
             <Text variant="titleMedium" style={{ color: palette.text }}>Connection issue</Text>
             <Text variant="bodyMedium" style={{ color: palette.muted }}>{connection.message}</Text>
           </Card.Content>
         </Card>
-      ) : null}
+        ) : null}
 
       {activeTab === 'session' && displayTranscript.length === 0 ? (
         <Card mode="contained" style={[styles.emptyCard, { backgroundColor: palette.surface }]}>
@@ -148,7 +165,10 @@ export function ChatContent({
       {activeTab === 'session' && pendingInteractions > 0 ? (
         <PendingInteractionsCard
           permissions={currentPendingPermissions}
+          questions={currentPendingQuestions}
           onPermissionReply={onReplyToPermission}
+          onQuestionReject={onRejectQuestion}
+          onQuestionReply={onReplyToQuestion}
         />
       ) : null}
 
@@ -186,18 +206,16 @@ export function ChatContent({
           {currentDiffs.length > 0 || diffDetails.length > 0 ? (
             <Card mode="contained" style={[styles.sectionCard, { backgroundColor: palette.surface }]}>
               <Card.Content style={styles.diffListCardContent}>
-                <List.AccordionGroup expandedId={expandedDiffId} onAccordionPress={(id) => onExpandDiff(expandedDiffId === String(id) ? undefined : String(id))}>
-                  {currentDiffs.map((diff) => {
-                    const accordionId = `diff:${diff.file}`;
-                    return <SessionDiffCard key={diff.file} accordionId={accordionId} diff={diff} expanded={expandedDiffId === accordionId} />;
-                  })}
-                  {currentDiffs.length === 0
-                    ? diffDetails.map((detail) => {
-                        const accordionId = `detail:${detail.id}`;
-                        return <DiffCard key={detail.id} accordionId={accordionId} detail={detail} expanded={expandedDiffId === accordionId} />;
-                      })
-                    : null}
-                </List.AccordionGroup>
+                {currentDiffs.map((diff) => {
+                  const accordionId = `diff:${diff.file}`;
+                  return <SessionDiffCard key={diff.file} diff={diff} expanded={expandedDiffId === accordionId} onPress={() => onExpandDiff(expandedDiffId === accordionId ? undefined : accordionId)} />;
+                })}
+                {currentDiffs.length === 0
+                  ? diffDetails.map((detail) => {
+                      const accordionId = `detail:${detail.id}`;
+                      return <DiffCard key={detail.id} detail={detail} expanded={expandedDiffId === accordionId} onPress={() => onExpandDiff(expandedDiffId === accordionId ? undefined : accordionId)} />;
+                    })
+                  : null}
               </Card.Content>
             </Card>
           ) : null}
@@ -226,6 +244,37 @@ export function ChatContent({
           </Text>
         </View>
       ) : null}
-    </ScrollView>
+      </ScrollView>
+
+      {activeTab === 'session' && currentTodos.length > 0 ? (
+        <Card mode="elevated" style={[styles.todoOverlay, { backgroundColor: palette.surface, borderColor: palette.border }]}>
+          <Card.Content style={styles.todoHeader}>
+            <Text variant="labelLarge" style={[styles.todoSummary, { color: palette.text }]}>
+              {`${completedTodoCount} of ${currentTodos.length} tasks completed`}
+            </Text>
+            <IconButton
+              accessibilityLabel={todosExpanded ? 'Collapse tasks' : 'Expand tasks'}
+              icon={todosExpanded ? 'chevron-down' : 'chevron-up'}
+              size={20}
+              style={styles.todoToggleButton}
+              onPress={() => setTodosExpanded((expanded) => !expanded)}
+            />
+          </Card.Content>
+          {todosExpanded ? (
+            <ScrollView style={styles.todoListScroll} contentContainerStyle={styles.todoList} nestedScrollEnabled>
+              {currentTodos.map((todo, index) => (
+                <View key={todo.id || `${index}`} style={styles.todoItemRow}>
+                  <IconButton icon={todo.status === 'completed' ? 'check-circle' : todo.status === 'in_progress' ? 'progress-clock' : 'circle-outline'} size={20} disabled style={styles.todoStatusIcon} />
+                  <View style={styles.todoTextWrap}>
+                    <Text variant="bodyMedium" style={{ color: palette.text }}>{todo.content || 'Untitled task'}</Text>
+                    {todo.priority ? <Text variant="bodySmall" style={{ color: palette.muted }}>{todo.priority}</Text> : null}
+                  </View>
+                </View>
+              ))}
+            </ScrollView>
+          ) : null}
+        </Card>
+      ) : null}
+    </View>
   );
 }

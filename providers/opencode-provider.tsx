@@ -16,16 +16,19 @@ import {
   defaultConnectionSettings,
   getConnectionError,
   getNormalizedServerUrl,
+  listPendingInteractions,
+  rejectPendingQuestion,
   requestOpenCodeApi,
   replyToPendingPermission,
+  replyToPendingQuestion,
   type PendingPermissionRequest,
+  type PendingQuestionAnswer,
+  type PendingQuestionRequest,
   type OpencodeConnectionSettings,
 } from '@/lib/opencode/client';
 import {
-  getHistoryPreview,
   toTranscriptEntry,
   type SessionMessageRecord,
-  type TranscriptEntry,
 } from '@/lib/opencode/format';
 import { isTranscriptDisplayMessage } from '@/lib/opencode/transcript';
 import {
@@ -51,20 +54,14 @@ import {
   getModelIdForProvider,
   getProjectLabel,
   getSelectedModelParts,
+  groupPendingRequestsBySession,
   isAutoApproveEnabled,
   mergePermissionConfig,
-  toAgentOption,
-  type AgentOption as ProviderAgentOption,
-  type ChatPreferences as ProviderChatPreferences,
-  type ModelOption as ProviderModelOption,
-  type ReasoningLevel as ProviderReasoningLevel,
-  type ResponseScope as ProviderResponseScope,
 } from '@/providers/opencode-provider-utils';
-import { createOpencodeContextValue } from '@/providers/opencode-provider-context';
 import {
   getConfiguredProviders,
   getConversationStatusLabel,
-  getCurrentPendingPermissions,
+  getCurrentPendingRequests,
   getSessionPreviewById,
   getTranscript,
   getTranscriptActivityLabelForEntries,
@@ -77,14 +74,11 @@ import {
   type ChatPreferences,
   type ConnectionState,
   type ConversationPhase,
-  type ConversationState,
   type ModelOption,
   type OpencodeContextValue,
   type OpencodeProject,
   type ProviderAuthMethod,
   type ProviderOption,
-  type ReasoningLevel,
-  type ResponseScope,
   type WorkspaceCatalog,
 } from '@/providers/opencode-provider-types';
 import { useConversationKeepAwake } from '@/providers/use-conversation-keep-awake';
@@ -140,6 +134,7 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
   const [diffsBySession, setDiffsBySession] = useState<Record<string, FileDiff[]>>({});
   const [todosBySession, setTodosBySession] = useState<Record<string, Todo[]>>({});
   const [pendingPermissionsBySession, setPendingPermissionsBySession] = useState<Record<string, PendingPermissionRequest[]>>({});
+  const [pendingQuestionsBySession, setPendingQuestionsBySession] = useState<Record<string, PendingQuestionRequest[]>>({});
   const [serverProjects, setServerProjects] = useState<Project[]>([]);
   const [currentProjectPath, setCurrentProjectPath] = useState<string>();
   const [serverRootPath, setServerRootPath] = useState<string>();
@@ -151,6 +146,7 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
   // browsing removed
   const [isBootstrappingChat, setIsBootstrappingChat] = useState(false);
   const [sendingState, setSendingState] = useState<{ sessionId?: string; active: boolean }>({ active: false });
+  const [promptError, setPromptError] = useState<{ message: string; occurredAt: number; sessionId?: string }>();
   const pendingNotificationSessionIdsRef = useRef<Set<string>>(new Set());
   const promptSubmissionRef = useRef<{ active: boolean; sessionId?: string }>({ active: false });
   const [currentConfig, setCurrentConfig] = useState<Config>();
@@ -205,11 +201,9 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
     activeProjectPath,
     chatPreferences,
     lastSessionByProject,
-    pendingPermissionsBySession,
     setActiveProjectPath,
     setChatPreferences,
     setLastSessionByProject,
-    setPendingPermissionsBySession,
     setSettings,
     settings,
   });
@@ -375,6 +369,12 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
     [client],
   );
 
+  const refreshPendingInteractions = useCallback(async () => {
+    const { permissions, questions } = await listPendingInteractions(client);
+    setPendingPermissionsBySession(groupPendingRequestsBySession(permissions));
+    setPendingQuestionsBySession(groupPendingRequestsBySession(questions));
+  }, [client]);
+
   const scheduleSessionRefresh = useCallback(
     (sessionId: string, options?: { messages?: boolean; diff?: boolean; todos?: boolean; sessions?: boolean; delayMs?: number }) => {
       if (!sessionId) {
@@ -460,9 +460,9 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
           [activeProjectPath]: sessionId,
         }));
       }
-      await Promise.all([refreshMessages(sessionId), refreshSessionDiff(sessionId, true), refreshSessionTodos(sessionId)]);
+      await Promise.all([refreshMessages(sessionId), refreshSessionDiff(sessionId, true), refreshSessionTodos(sessionId), refreshPendingInteractions()]);
     },
-    [activeProjectPath, refreshMessages, refreshSessionDiff, refreshSessionTodos],
+    [activeProjectPath, refreshMessages, refreshPendingInteractions, refreshSessionDiff, refreshSessionTodos],
   );
 
   const createSession = useCallback(
@@ -500,6 +500,11 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
         return next;
       });
       setPendingPermissionsBySession((current) => {
+        const next = { ...current };
+        delete next[sessionId];
+        return next;
+      });
+      setPendingQuestionsBySession((current) => {
         const next = { ...current };
         delete next[sessionId];
         return next;
@@ -781,9 +786,10 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
         refreshMessages(currentSessionId, silent),
         refreshSessionDiff(currentSessionId, true),
         refreshSessionTodos(currentSessionId),
+        refreshPendingInteractions(),
       ]);
     },
-    [currentSessionId, refreshMessages, refreshSessionDiff, refreshSessionTodos, refreshSessions],
+    [currentSessionId, refreshMessages, refreshPendingInteractions, refreshSessionDiff, refreshSessionTodos, refreshSessions],
   );
 
   const refreshCurrentTodos = useCallback(
@@ -804,7 +810,7 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
         throw new Error('This permission request is no longer available.');
       }
       try {
-        await replyToPendingPermission(client, request.sessionID, request.id, reply);
+        await replyToPendingPermission(client, request.id, reply);
       } catch (error) {
         if (error instanceof Error && /400|404/.test(error.message)) {
           setPendingPermissionsBySession((current) => ({
@@ -821,6 +827,38 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
       await refreshMessages(request.sessionID, true);
     },
     [client, pendingPermissionsBySession, refreshMessages],
+  );
+
+  const replyToQuestion = useCallback(
+    async (requestId: string, answers: PendingQuestionAnswer[]) => {
+      const request = Object.values(pendingQuestionsBySession).flat().find((item) => item.id === requestId);
+      if (!request) {
+        throw new Error('This question is no longer available.');
+      }
+      await replyToPendingQuestion(client, request.id, answers);
+      setPendingQuestionsBySession((current) => ({
+        ...current,
+        [request.sessionID]: (current[request.sessionID] || []).filter((item) => item.id !== request.id),
+      }));
+      await refreshMessages(request.sessionID, true);
+    },
+    [client, pendingQuestionsBySession, refreshMessages],
+  );
+
+  const rejectQuestion = useCallback(
+    async (requestId: string) => {
+      const request = Object.values(pendingQuestionsBySession).flat().find((item) => item.id === requestId);
+      if (!request) {
+        throw new Error('This question is no longer available.');
+      }
+      await rejectPendingQuestion(client, request.id);
+      setPendingQuestionsBySession((current) => ({
+        ...current,
+        [request.sessionID]: (current[request.sessionID] || []).filter((item) => item.id !== request.id),
+      }));
+      await refreshMessages(request.sessionID, true);
+    },
+    [client, pendingQuestionsBySession, refreshMessages],
   );
 
   const updateChatPreferences = useCallback((patch: Partial<ChatPreferences>) => {
@@ -971,6 +1009,7 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
       }
 
       promptSubmissionRef.current = { active: true, sessionId };
+      setPromptError(undefined);
 
       const currentSession = sessions.find((session) => session.id === sessionId);
 
@@ -1022,8 +1061,8 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
             const filename = att.filename || att.uri.split('/').pop();
             const mime = att.mime || 'application/octet-stream';
 
-            // If it's already a remote URL, use as-is.
-            if (/^https?:\/\//i.test(att.uri)) {
+            // Remote and picker-provided data URLs are already server-readable.
+            if (/^(?:https?:\/\/|data:)/i.test(att.uri)) {
               preparedFileParts.push({ type: 'file', mime, filename, url: att.uri });
               continue;
             }
@@ -1083,6 +1122,11 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
         return true;
       } catch (error) {
         promptSubmissionRef.current = { active: false, sessionId: undefined };
+        setPromptError({
+          message: error instanceof Error ? error.message : 'OpenCode could not send that message.',
+          occurredAt: Date.now(),
+          sessionId,
+        });
         if (!promptAccepted) {
           pendingNotificationSessionIdsRef.current.delete(sessionId);
           await clearPendingTaskFinishedNotification(sessionId);
@@ -1256,9 +1300,11 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
       return;
     }
 
-    const pendingInteractionCount = currentSessionId ? (pendingPermissionsBySession[currentSessionId] || []).length : 0;
+    const pendingInteractionCount = currentSessionId
+      ? (pendingPermissionsBySession[currentSessionId] || []).length + (pendingQuestionsBySession[currentSessionId] || []).length
+      : 0;
     if (pendingInteractionCount > 0) {
-      setConversationFeedback('Answer the current permission request before starting conversation mode.');
+      setConversationFeedback('Answer the current request before starting conversation mode.');
       return;
     }
 
@@ -1288,6 +1334,7 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
     ensureActiveSession,
     getLatestConversationAssistantEntry,
     pendingPermissionsBySession,
+    pendingQuestionsBySession,
     sendingState.active,
     startConversationListening,
     stopConversationMode,
@@ -1420,7 +1467,7 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
     }
 
     const pendingInteractions = conversationSessionId
-      ? (pendingPermissionsBySession[conversationSessionId] || []).length
+      ? (pendingPermissionsBySession[conversationSessionId] || []).length + (pendingQuestionsBySession[conversationSessionId] || []).length
       : 0;
     const latestAssistantEntry = getLatestConversationAssistantEntry(conversationSessionId);
     const sessionStatus = conversationSessionId ? sessionStatuses[conversationSessionId] : undefined;
@@ -1496,6 +1543,7 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
     conversationSessionId,
     getLatestConversationAssistantEntry,
     pendingPermissionsBySession,
+    pendingQuestionsBySession,
     sendingState.active,
     sendingState.sessionId,
     sessionStatuses,
@@ -1568,11 +1616,21 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
               [sessionId]: { type: 'idle' },
             }));
             scheduleSessionRefresh(sessionId, { sessions: true, messages: true, diff: true, todos: true, delayMs: 50 });
-            setPendingPermissionsBySession((current) => {
-              const next = { ...current };
-              delete next[sessionId];
-              return next;
-            });
+            void refreshPendingInteractions();
+          }
+          return;
+        }
+        case 'session.error': {
+          const sessionId = event.properties?.sessionID;
+          const error = event.properties?.error;
+          const message = error?.data?.message || error?.message || 'OpenCode could not complete the request.';
+          setPromptError({
+            message: error?.name ? `${error.name}: ${message}` : String(message),
+            occurredAt: Date.now(),
+            sessionId: typeof sessionId === 'string' ? sessionId : undefined,
+          });
+          if (typeof sessionId === 'string') {
+            scheduleSessionRefresh(sessionId, { sessions: true, messages: true });
           }
           return;
         }
@@ -1611,7 +1669,7 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
           }
           return;
         }
-        case 'permission.updated': {
+        case 'permission.asked': {
           const request = event.properties as PendingPermissionRequest;
           if (!request?.id || !request.sessionID) {
             return;
@@ -1627,11 +1685,37 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
         }
         case 'permission.replied': {
           const sessionId = event.properties?.sessionID;
-          const permissionId = event.properties?.permissionID;
+          const permissionId = event.properties?.requestID;
           if (typeof sessionId === 'string' && typeof permissionId === 'string') {
             setPendingPermissionsBySession((current) => ({
               ...current,
               [sessionId]: (current[sessionId] || []).filter((item) => item.id !== permissionId),
+            }));
+          }
+          return;
+        }
+        case 'question.asked': {
+          const request = event.properties as PendingQuestionRequest;
+          if (!request?.id || !request.sessionID) {
+            return;
+          }
+          setPendingQuestionsBySession((current) => ({
+            ...current,
+            [request.sessionID]: [
+              ...(current[request.sessionID] || []).filter((item) => item.id !== request.id),
+              request,
+            ],
+          }));
+          return;
+        }
+        case 'question.replied':
+        case 'question.rejected': {
+          const sessionId = event.properties?.sessionID;
+          const requestId = event.properties?.requestID;
+          if (typeof sessionId === 'string' && typeof requestId === 'string') {
+            setPendingQuestionsBySession((current) => ({
+              ...current,
+              [sessionId]: (current[sessionId] || []).filter((item) => item.id !== requestId),
             }));
           }
           return;
@@ -1680,7 +1764,7 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
       mounted = false;
       activeAbortController?.abort();
     };
-  }, [activeProjectPath, catalogClient, connection.status, refreshSessions, scheduleSessionRefresh]);
+  }, [activeProjectPath, catalogClient, connection.status, refreshPendingInteractions, refreshSessions, scheduleSessionRefresh]);
 
   useEffect(
     () => () => {
@@ -1720,6 +1804,7 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
 
       if (currentHasBusySession || sendingState.active || useSafetyPolling) {
         void refreshSessions(true);
+        void refreshPendingInteractions();
       }
 
       if (currentSessionId && (currentHasBusySession || sendingState.active)) {
@@ -1740,7 +1825,7 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
     }, 5000);
 
     return () => clearInterval(interval);
-  }, [activeProjectPath, connection.status, conversationPhase, conversationSessionId, currentSessionId, eventStreamStatus, refreshMessages, refreshSessionDiff, refreshSessionTodos, refreshSessions, sendingState.active, sessionStatuses]);
+  }, [activeProjectPath, connection.status, conversationPhase, conversationSessionId, currentSessionId, eventStreamStatus, refreshMessages, refreshPendingInteractions, refreshSessionDiff, refreshSessionTodos, refreshSessions, sendingState.active, sessionStatuses]);
 
   useEffect(() => {
     const busy = sendingState.active || Object.values(sessionStatuses).some((status) => status.type !== 'idle');
@@ -1789,12 +1874,14 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
   const updateSettings = useCallback((patch: Partial<OpencodeConnectionSettings>) => {
     if (patch.serverUrl !== undefined && patch.serverUrl !== settingsRef.current.serverUrl) {
       setPendingPermissionsBySession({});
+      setPendingQuestionsBySession({});
     }
     setSettings((current) => ({
       ...current,
       ...patch,
     }));
   }, []);
+  const clearPromptError = useCallback(() => setPromptError(undefined), []);
 
   useEffect(() => {
     if (!currentSessionId) {
@@ -1828,8 +1915,12 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
     [currentSessionId, todosBySession],
   );
   const currentPendingPermissions = useMemo(
-    () => getCurrentPendingPermissions(currentSessionId, sendingState.sessionId, pendingPermissionsBySession),
+    () => getCurrentPendingRequests(currentSessionId, sendingState.sessionId, pendingPermissionsBySession),
     [currentSessionId, pendingPermissionsBySession, sendingState.sessionId],
+  );
+  const currentPendingQuestions = useMemo(
+    () => getCurrentPendingRequests(currentSessionId, sendingState.sessionId, pendingQuestionsBySession),
+    [currentSessionId, pendingQuestionsBySession, sendingState.sessionId],
   );
   const configuredProviders = useMemo(() => getConfiguredProviders(availableProviders), [availableProviders]);
   const currentTranscript = useMemo(() => getTranscript(currentMessages), [currentMessages]);
@@ -1844,7 +1935,7 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
   const sessionPreviewById = useMemo(() => getSessionPreviewById(messagesBySession), [messagesBySession]);
 
   const contextValue = useMemo<OpencodeContextValue>(
-    () => createOpencodeContextValue({
+    () => ({
       isHydrated,
       settings,
       updateSettings,
@@ -1867,6 +1958,7 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
       currentTranscript,
       currentTodos,
       currentPendingPermissions,
+      currentPendingQuestions,
       sessionPreviewById,
       isRefreshingSessions,
       isRefreshingMessages,
@@ -1898,6 +1990,8 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
       completeProviderOAuth,
       setAutoApprove,
       sendingState,
+      promptError,
+      clearPromptError,
       connect,
       refreshSessions,
       openSession,
@@ -1915,6 +2009,8 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
       sendPrompt,
       abortSession,
       replyToPermission,
+      replyToQuestion,
+      rejectQuestion,
       commands,
       executeCommand,
       workspaceFiles,
@@ -1952,8 +2048,10 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
       currentTranscript,
       currentTodos,
       currentPendingPermissions,
+      currentPendingQuestions,
       chatPreferences,
       clearConversationFeedback,
+      clearPromptError,
       conversationActive,
       conversationFeedback,
       conversationLatestHeardText,
@@ -1972,6 +2070,7 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
       isRefreshingWorkspaceCatalog,
       isRefreshingSessions,
       openSession,
+      promptError,
       currentProjectPath,
       projects,
       refreshCurrentSession,
@@ -1979,6 +2078,8 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
       refreshWorkspaceCatalog,
       refreshSessions,
       replyToPermission,
+      replyToQuestion,
+      rejectQuestion,
       selectProject,
       setAutoApprove,
       sendPrompt,

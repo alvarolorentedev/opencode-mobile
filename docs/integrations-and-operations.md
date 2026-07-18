@@ -186,18 +186,13 @@ Important npm scripts from `package.json`:
 - `npm run test:fake-server:self`
 - `npm run test:e2e:web`
 - `npm run build:development:android`
-- `npm run build:release:android`
+- `npm run build:android`
 
-Additional repo scripts support:
-
-- Cloudflare Expo startup helpers
-- Android build automation
-- icon generation
-- secret export helpers
+Additional repo scripts support Android build automation.
 
 ## Android Build / Release Notes
 
-The repository includes a native `android/` project and Gradle build path.
+The build scripts generate a native `android/` project and use its Gradle build path.
 
 This means Android delivery is not purely managed Expo. The current implementation expects:
 

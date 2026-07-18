@@ -54,10 +54,13 @@ test('happy path keeps the main chat flow stable', async ({ page, request }) => 
 
   await expect(page.getByText(/Finished:/).first()).toBeVisible({ timeout: 20_000 });
   await expect(page.getByText(/Flow stayed stable against the fake OpenCode server/).first()).toBeVisible();
+  await page.getByText(/Files Changed/).click();
+  await page.getByText('app/(tabs)/index.tsx', { exact: true }).click();
+  await expect(page.getByText(/export default function ChatLandingScreen/)).toBeVisible();
   await page.getByRole('tab', { name: 'Workspace' }).click();
   await expect(page.getByText('Chats', { exact: true })).toBeVisible();
   await expect(page.getByText('Stabilize the chat flow', { exact: true }).last()).toBeVisible();
-  await expect(page.getByText('idle', { exact: true })).toBeVisible();
+  await expect(page.getByText('idle', { exact: true }).first()).toBeVisible();
 });
 
 test('permission requests unblock the agent flow', async ({ page, request }) => {
@@ -69,6 +72,18 @@ test('permission requests unblock the agent flow', async ({ page, request }) => 
   await expect(page.getByText('Permission request', { exact: true })).toBeVisible({ timeout: 15_000 });
   await page.getByText('Allow once').click();
   await expect(page.getByText(/permission resolved/).first()).toBeVisible({ timeout: 20_000 });
+});
+
+test('assistant questions unblock the agent flow', async ({ page, request }) => {
+  await resetScenario(request, 'question');
+  await openReadyChat(page);
+
+  await sendPrompt(page, 'Ask an implementation question');
+
+  await expect(page.getByText('Which implementation should be used?', { exact: true })).toBeVisible({ timeout: 15_000 });
+  await page.getByText('Minimal', { exact: true }).click();
+  await page.getByText('Submit answer', { exact: true }).click();
+  await expect(page.getByText(/selected Minimal/).first()).toBeVisible({ timeout: 20_000 });
 });
 
 test('sessions can be renamed and require confirmation before deletion', async ({ page, request }) => {
@@ -85,7 +100,7 @@ test('sessions can be renamed and require confirmation before deletion', async (
 
   page.once('dialog', (dialog) => void dialog.accept());
   await page.getByText('Delete', { exact: true }).click();
-  await expect(page.getByText('Renamed from Playwright', { exact: true })).not.toBeVisible();
+  await expect(page.getByText('Renamed from Playwright', { exact: true }).nth(1)).not.toBeVisible();
 });
 
 test('commands execute through the primary chat action', async ({ page, request }) => {

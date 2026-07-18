@@ -16,7 +16,7 @@ import { createStateStore, getNow } from './state.mjs';
 
 const port = Number.parseInt(process.env.FAKE_OPENCODE_PORT || '4096', 10);
 const scenarioName = process.env.FAKE_OPENCODE_SCENARIO || 'happy-path';
-const supportedScenarios = new Set(['happy-path', 'permission', 'stream-disconnect']);
+const supportedScenarios = new Set(['happy-path', 'permission', 'question', 'stream-disconnect']);
 const configuredBasePath = (process.env.FAKE_OPENCODE_BASE_PATH || '').trim();
 const basePath = configuredBasePath
   ? `/${configuredBasePath.replace(/^\/+/, '').replace(/\/+$/, '')}`
@@ -277,25 +277,6 @@ const server = http.createServer(async (req, res) => {
       return;
     }
 
-    if (req.method === 'GET' && pathname === '/find') {
-      const pattern = requestUrl.searchParams.get('pattern') || '';
-      const matches = Object.entries(state.files).flatMap(([path, content]) => content.includes(pattern)
-        ? [{ path, line_number: 1, absolute_offset: content.indexOf(pattern), submatches: [{ match: { text: pattern }, start: 0, end: pattern.length }], lines: { text: content.split('\n')[0] } }]
-        : []);
-      sendJson(res, 200, matches);
-      return;
-    }
-
-    if (req.method === 'GET' && pathname === '/file') {
-      const requestedPath = requestUrl.searchParams.get('path') || '';
-      const prefix = requestedPath ? `${requestedPath.replace(/\/$/, '')}/` : '';
-      const nodes = Object.keys(state.files)
-        .filter((path) => path.startsWith(prefix))
-        .map((path) => ({ name: path.slice(prefix.length), path, absolute: `${state.project.worktree}/${path}`, type: 'file', ignored: false }));
-      sendJson(res, 200, nodes);
-      return;
-    }
-
     if (req.method === 'GET' && pathname === '/file/content') {
       const requestedPath = requestUrl.searchParams.get('path') || '';
       if (!(requestedPath in state.files)) {
@@ -313,21 +294,6 @@ const server = http.createServer(async (req, res) => {
 
     if (req.method === 'GET' && pathname === '/vcs') {
       sendJson(res, 200, vcsPayload());
-      return;
-    }
-
-    if (req.method === 'GET' && pathname === '/vcs/status') {
-      sendJson(res, 200, [{ file: 'src/demo.ts', additions: 2, deletions: 1, status: 'modified' }]);
-      return;
-    }
-
-    if (req.method === 'GET' && pathname === '/vcs/diff') {
-      sendJson(res, 200, [{ file: 'src/demo.ts', patch: '@@ -1 +1 @@', additions: 2, deletions: 1, status: 'modified' }]);
-      return;
-    }
-
-    if (req.method === 'GET' && pathname === '/vcs/diff/raw') {
-      sendJson(res, 200, 'diff --git a/src/demo.ts b/src/demo.ts\n');
       return;
     }
 
@@ -386,6 +352,7 @@ const server = http.createServer(async (req, res) => {
       delete state.todosBySession[sessionId];
       delete state.sessionStatuses[sessionId];
       state.pendingPermissions = state.pendingPermissions.filter((entry) => entry.sessionID !== sessionId);
+      state.pendingQuestions = state.pendingQuestions.filter((entry) => entry.sessionID !== sessionId);
       emitEvent({ type: 'session.deleted', properties: { info: deletedSession } });
       sendJson(res, 200, true);
       return;
@@ -537,21 +504,50 @@ const server = http.createServer(async (req, res) => {
       return;
     }
 
-    if (req.method === 'POST' && /^\/session\/[^/]+\/permissions\/[^/]+$/.test(pathname)) {
-      const [, , sessionId, , permissionId] = pathname.split('/');
+    if (req.method === 'GET' && pathname === '/permission') {
+      sendJson(res, 200, state.pendingPermissions);
+      return;
+    }
+
+    if (req.method === 'POST' && /^\/permission\/[^/]+\/reply$/.test(pathname)) {
+      const permissionId = pathname.split('/')[2];
       const body = await readJson(req);
-      const request = state.pendingPermissions.find((entry) => entry.id === permissionId && entry.sessionID === sessionId);
-      if (!request || !['once', 'always', 'reject'].includes(body?.response)) {
+      const request = state.pendingPermissions.find((entry) => entry.id === permissionId);
+      if (!request || !['once', 'always', 'reject'].includes(body?.reply)) {
         sendJson(res, 400, { error: 'Invalid permission response' });
         return;
       }
       state.pendingPermissions = state.pendingPermissions.filter((entry) => entry !== request);
       emitEvent({
         type: 'permission.replied',
-        properties: { sessionID: sessionId, permissionID: permissionId, response: body.response },
+        properties: { sessionID: request.sessionID, requestID: permissionId, reply: body.reply },
       });
-      if (body.response !== 'reject') scheduleCompletion(sessionId, 'permission resolved');
-      else state.sessionStatuses[sessionId] = { type: 'idle' };
+      if (body.reply !== 'reject') scheduleCompletion(request.sessionID, 'permission resolved');
+      else state.sessionStatuses[request.sessionID] = { type: 'idle' };
+      sendJson(res, 200, true);
+      return;
+    }
+
+    if (req.method === 'GET' && pathname === '/question') {
+      sendJson(res, 200, state.pendingQuestions);
+      return;
+    }
+
+    if (req.method === 'POST' && /^\/question\/[^/]+\/(reply|reject)$/.test(pathname)) {
+      const [, , questionId, action] = pathname.split('/');
+      const request = state.pendingQuestions.find((entry) => entry.id === questionId);
+      const body = action === 'reply' ? await readJson(req) : undefined;
+      if (!request || (action === 'reply' && !Array.isArray(body?.answers))) {
+        sendJson(res, 400, { error: 'Invalid question response' });
+        return;
+      }
+      state.pendingQuestions = state.pendingQuestions.filter((entry) => entry !== request);
+      emitEvent({
+        type: action === 'reply' ? 'question.replied' : 'question.rejected',
+        properties: { sessionID: request.sessionID, requestID: questionId, ...(body || {}) },
+      });
+      if (action === 'reply') scheduleCompletion(request.sessionID, `selected ${body.answers.flat().join(', ')}`);
+      else state.sessionStatuses[request.sessionID] = { type: 'idle' };
       sendJson(res, 200, true);
       return;
     }

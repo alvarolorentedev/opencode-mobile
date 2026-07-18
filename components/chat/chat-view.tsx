@@ -2,7 +2,7 @@ import * as Clipboard from 'expo-clipboard';
 import * as Haptics from 'expo-haptics';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Alert, KeyboardAvoidingView, Platform, ScrollView, View } from 'react-native';
-import { Snackbar } from 'react-native-paper';
+import { Button, Card, Snackbar, Text } from 'react-native-paper';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { ChatComposer } from '@/components/chat/chat-composer';
@@ -36,8 +36,10 @@ export function ChatView() {
     createSession,
     conversation,
     clearConversationFeedback,
+    clearPromptError,
     currentDiffs,
     currentPendingPermissions,
+    currentPendingQuestions,
     currentTodos,
     currentSessionId,
     currentTranscript,
@@ -47,12 +49,16 @@ export function ChatView() {
     openSession,
     refreshCurrentSession,
     replyToPermission,
+    replyToQuestion,
+    rejectQuestion,
     executeCommand,
     forkSession,
     revertSession,
     unrevertSession,
     sendPrompt,
+    promptError,
     sendingState,
+    settings,
     sessionStatuses,
     sessions,
     setAutoApprove,
@@ -77,6 +83,7 @@ export function ChatView() {
   const speechDraftPrefixRef = useRef('');
   const draftRef = useRef('');
   const attachmentsRef = useRef<{ uri: string; mime?: string; filename?: string }[]>([]);
+  const lastSentAttachmentsRef = useRef<{ uri: string; mime?: string; filename?: string }[]>([]);
   const lastAutoSpokenMessageIdRef = useRef<string | undefined>(undefined);
 
   const status = currentSessionId ? sessionStatuses[currentSessionId] : undefined;
@@ -98,7 +105,7 @@ export function ChatView() {
     () => availableAgents.find((agent) => agent.id === chatPreferences.mode)?.label || chatPreferences.mode,
     [availableAgents, chatPreferences.mode],
   );
-  const pendingInteractions = currentPendingPermissions.length;
+  const pendingInteractions = currentPendingPermissions.length + currentPendingQuestions.length;
   const awaitingUserInput = pendingInteractions > 0;
   const displayTranscript = useMemo(() => currentTranscript.filter(isTranscriptDisplayMessage), [currentTranscript]);
   const visibleTranscript = useMemo(
@@ -125,6 +132,21 @@ export function ChatView() {
     () => sessions.find((session) => session.id === currentSessionId) || activeSession,
     [activeSession, currentSessionId, sessions],
   );
+  const visiblePromptError = promptError && (!promptError.sessionId || promptError.sessionId === currentSessionId)
+    ? promptError.message
+    : undefined;
+  const sendErrorMessage = sendFeedback || visiblePromptError;
+  const sendErrorDetails = sendErrorMessage
+    ? [
+        'OpenCode send failed',
+        `Error: ${sendErrorMessage}`,
+        `Time: ${new Date(promptError?.occurredAt || Date.now()).toISOString()}`,
+        `Session: ${currentSessionId || 'unknown'}`,
+        `Server: ${settings.serverUrl}`,
+        `Model: ${chatPreferences.modelId || 'unknown'}`,
+        `Attachments: ${lastSentAttachmentsRef.current.map((attachment) => attachment.filename || attachment.mime || 'unnamed').join(', ') || 'none'}`,
+      ].join('\n')
+    : '';
   const visibleSessions = sessions;
 
   useEffect(() => {
@@ -164,6 +186,7 @@ export function ChatView() {
 
     try {
       setSendFeedback(undefined);
+      lastSentAttachmentsRef.current = nextAttachments;
       const sessionId = currentSessionId || (await ensureActiveSession());
       if (!sessionId) {
         return;
@@ -350,11 +373,16 @@ export function ChatView() {
     try {
       const picker = await import('expo-document-picker');
       const result = await picker.getDocumentAsync({
+        base64: Platform.OS === 'web',
         multiple: true,
         copyToCacheDirectory: true,
       });
 
       if (result.canceled || !result.assets?.length) {
+        return;
+      }
+      if (result.assets.some((asset) => typeof asset.size === 'number' && asset.size > 10 * 1024 * 1024)) {
+        setSendFeedback('File exceeds the 10 MB attachment limit.');
         return;
       }
 
@@ -363,9 +391,10 @@ export function ChatView() {
         const next = [...current];
 
         result.assets.forEach((asset) => {
-          if (!next.some((attachment) => attachment.uri === asset.uri)) {
+          const uri = asset.base64 || asset.uri;
+          if (!next.some((attachment) => attachment.uri === uri)) {
             next.push({
-              uri: asset.uri,
+              uri,
               mime: asset.mimeType || 'application/octet-stream',
               filename: asset.name,
             });
@@ -375,7 +404,7 @@ export function ChatView() {
         return next;
       });
     } catch (error) {
-      console.warn('Attachment picker error', error);
+      setSendFeedback(error instanceof Error ? error.message : 'Could not attach that file.');
     }
   }
 
@@ -457,6 +486,8 @@ export function ChatView() {
           currentActivityLabel={currentActivityLabel}
           currentDiffs={currentDiffs}
           currentPendingPermissions={currentPendingPermissions}
+          currentPendingQuestions={currentPendingQuestions}
+          currentTodos={currentTodos}
           diffDetails={diffDetails}
           displayTranscript={displayTranscript}
           expandedDiffId={expandedDiffId}
@@ -467,7 +498,9 @@ export function ChatView() {
           onExpandDiff={setExpandedDiffId}
           onLoadEarlier={handleLoadEarlier}
           onRefresh={() => void refreshCurrentSession()}
+          onRejectQuestion={(requestId) => void rejectQuestion(requestId)}
           onReplyToPermission={(requestId, reply) => void replyToPermission(requestId, reply)}
+          onReplyToQuestion={(requestId, answers) => void replyToQuestion(requestId, answers)}
           onForkMessage={(messageId) => {
             if (!currentSessionId) return;
             void forkSession(currentSessionId, messageId).catch((error) => setSendFeedback(error instanceof Error ? error.message : 'Could not fork session.'));
@@ -497,6 +530,24 @@ export function ChatView() {
           visibleTranscript={visibleTranscript}
         />
 
+        {sendErrorMessage ? (
+          <Card mode="contained" style={[styles.sendErrorCard, { backgroundColor: `${palette.danger}14` }]}>
+            <Card.Content style={styles.sendErrorContent}>
+              <Text variant="titleSmall" style={{ color: palette.danger }}>Message not sent</Text>
+              <Text selectable variant="bodySmall" style={{ color: palette.text }}>{sendErrorMessage}</Text>
+              <View style={styles.sendErrorActions}>
+                <Button compact onPress={() => {
+                  void Clipboard.setStringAsync(sendErrorDetails).then(() => setCopiedMessageId('__send-error__'));
+                }}>Copy details</Button>
+                <Button compact onPress={() => {
+                  setSendFeedback(undefined);
+                  clearPromptError();
+                }}>Dismiss</Button>
+              </View>
+            </Card.Content>
+          </Card>
+        ) : null}
+
         <ChatComposer
           attachments={attachments}
           availableAgents={availableAgents}
@@ -504,7 +555,6 @@ export function ChatView() {
           connectionStatus={connection.status}
           conversation={conversation}
           currentSessionId={currentSessionId}
-          currentTodos={currentTodos}
           commands={commands}
           draft={draft}
           insetsBottom={insets.bottom}
@@ -545,17 +595,17 @@ export function ChatView() {
       </KeyboardAvoidingView>
 
       <Snackbar visible={Boolean(copiedMessageId)} onDismiss={() => setCopiedMessageId(undefined)} duration={1800}>
-        Message copied to clipboard
+        {copiedMessageId === '__send-error__' ? 'Error details copied' : 'Message copied to clipboard'}
       </Snackbar>
       <Snackbar
-        visible={Boolean(conversation.feedback || voiceFeedback || sendFeedback)}
+        visible={Boolean(conversation.feedback || voiceFeedback)}
         onDismiss={() => {
           setSendFeedback(undefined);
           setVoiceFeedback(undefined);
           clearConversationFeedback();
         }}
         duration={3200}>
-        {sendFeedback || conversation.feedback || voiceFeedback}
+        {conversation.feedback || voiceFeedback}
       </Snackbar>
     </>
   );
