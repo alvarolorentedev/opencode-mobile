@@ -16,7 +16,7 @@ import { createStateStore, getNow } from './state.mjs';
 
 const port = Number.parseInt(process.env.FAKE_OPENCODE_PORT || '4096', 10);
 const scenarioName = process.env.FAKE_OPENCODE_SCENARIO || 'happy-path';
-const supportedScenarios = new Set(['happy-path', 'permission', 'question', 'stream-disconnect', 'diff-recovery']);
+const supportedScenarios = new Set(['happy-path', 'permission', 'question', 'stream-disconnect']);
 const configuredBasePath = (process.env.FAKE_OPENCODE_BASE_PATH || '').trim();
 const basePath = configuredBasePath
   ? `/${configuredBasePath.replace(/^\/+/, '').replace(/\/+$/, '')}`
@@ -354,7 +354,6 @@ const server = http.createServer(async (req, res) => {
       const deletedSession = state.sessions[sessionIndex];
       state.sessions.splice(sessionIndex, 1);
       delete state.messagesBySession[sessionId];
-      delete state.diffsBySession[sessionId];
       delete state.todosBySession[sessionId];
       delete state.sessionStatuses[sessionId];
       state.pendingPermissions = state.pendingPermissions.filter((entry) => entry.sessionID !== sessionId);
@@ -372,7 +371,9 @@ const server = http.createServer(async (req, res) => {
 
     if (req.method === 'GET' && /^\/session\/[^/]+\/diff$/.test(pathname)) {
       const sessionId = pathname.split('/')[2];
-      sendJson(res, 200, state.scenario === 'diff-recovery' ? [] : state.diffsBySession[sessionId] || []);
+      const messageId = requestUrl.searchParams.get('messageID');
+      const message = getMessages(sessionId).find((record) => record.info.id === messageId && record.info.role === 'user');
+      sendJson(res, 200, message?.info.summary?.diffs || []);
       return;
     }
 

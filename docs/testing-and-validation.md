@@ -65,6 +65,8 @@ Simulates a normal session run that completes and returns:
 - two completed todos
 - idle session status at the end
 
+Diff retrieval follows the real message-scoped contract: requests without `messageID` return an empty list, while a completed user message exposes its own diff.
+
 ### Permission Scenario
 
 Instead of completing immediately, the server emits a pending permission request and waits for client approval before finishing.

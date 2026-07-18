@@ -104,8 +104,11 @@ try {
     parts: [{ type: 'text', text: 'Validate fake server flow' }],
   }));
   await sleep(900);
-  assert((await request(`/session/${sessionId}/message`)).length >= 2, 'Expected user and assistant messages');
-  assert((await request(`/session/${sessionId}/diff`)).length > 0, 'Expected diff payload');
+  const messages = await request(`/session/${sessionId}/message`);
+  const userMessage = messages.find((message) => message.info.role === 'user');
+  assert(messages.length >= 2, 'Expected user and assistant messages');
+  assert((await request(`/session/${sessionId}/diff`)).length === 0, 'Expected message-scoped diff contract');
+  assert((await request(`/session/${sessionId}/diff?messageID=${userMessage.info.id}`)).length > 0, 'Expected user message diff payload');
   assert((await request('/file/status')).length === 2, 'Expected completed task file status');
 
   const commandMessage = await request(`/session/${sessionId}/command`, json('POST', { command: 'review', arguments: 'src' }));

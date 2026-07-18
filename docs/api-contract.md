@@ -168,10 +168,10 @@ The current UI supplies a user message ID and no part ID. Revert and unrevert re
 The app reads:
 
 - `session.messages({ sessionID })`
-- `session.diff({ sessionID })`
+- `session.diff({ sessionID, messageID })`
 - `session.todo({ sessionID })`
 
-Diff responses use the current `{ file, patch, additions, deletions, status }` shape directly. If a server returns an empty session diff, patch-part filenames are resolved through the current v2 file status/read APIs; `FileContent.diff` or its structured patch hunks provide the line data. Missing response data is a contract error rather than an empty result. Todos are server-owned; the UI renders their `status` and never sends a todo mutation.
+The Files Changed surface shows the latest user message's diff. The app loads the session messages, selects the latest user message, and supplies its ID to the message-scoped diff endpoint. Diff responses use the current `{ file, patch, additions, deletions, status }` shape directly. When no structured diff is available, transcript patch parts can still supply filename-only entries; current workspace file state is not treated as session history. Missing response data is a contract error rather than an empty result. Todos are server-owned; the UI renders their `status` and never sends a todo mutation.
 
 ### Prompt And Attachments
 

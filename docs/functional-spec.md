@@ -122,13 +122,13 @@ Question cards render each question's choices, optional custom answer, submit ac
 
 ### 7. Inspect File Changes
 
-The `Files Changed` tab shows the current session diff.
+The `Files Changed` tab shows the diff produced by the latest user turn in the current session.
 
 Behavior:
 
 - top card shows session subtitle and current status
 - current `{ file, patch, additions, deletions }` diff objects are rendered as expandable line previews
-- if the session diff is empty, transcript patch filenames are resolved through current file status/read responses
+- if the message diff is empty, transcript patch details can still show filename-only entries
 - if nothing has changed, the user sees `No file changes yet.`
 
 ### 8. Manage Sessions in the Workspace Tab

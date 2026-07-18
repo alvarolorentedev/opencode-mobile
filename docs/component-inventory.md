@@ -206,7 +206,7 @@ Responsibility:
 
 Responsibility:
 
-- render structured diff accordion using generated line-level diff preview
+- render the latest user turn's structured diff using a generated line-level preview
 
 ### `DiffCard`
 

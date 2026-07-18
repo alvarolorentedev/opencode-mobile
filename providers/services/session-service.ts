@@ -1,4 +1,4 @@
-import type { OpencodeClient, SnapshotFileDiff } from '@opencode-ai/sdk/v2/client';
+import type { OpencodeClient } from '@opencode-ai/sdk/v2/client';
 
 import type { Project } from '@/lib/opencode/types';
 
@@ -54,44 +54,14 @@ export async function getSessionMessages(client: OpencodeClient, sessionId: stri
 }
 
 export async function getSessionDiff(client: OpencodeClient, sessionId: string) {
-  const response = await client.session.diff({ sessionID: sessionId });
-  const sessionDiff = requireData(response.data, 'session diff request');
-  if (sessionDiff.length > 0) {
-    return sessionDiff;
+  const messages = await getSessionMessages(client, sessionId);
+  const latestUserMessage = messages.findLast(({ info }) => info.role === 'user');
+  if (!latestUserMessage) {
+    return [];
   }
 
-  const [messages, statuses] = await Promise.all([
-    getSessionMessages(client, sessionId),
-    client.file.status().then((result) => requireData(result.data, 'file status request')),
-  ]);
-  const files = [...new Set(messages.flatMap(({ parts }) =>
-    parts.flatMap((part) => part.type === 'patch' ? part.files : []),
-  ))];
-
-  const recovered = await Promise.all(files.map(async (file): Promise<SnapshotFileDiff | undefined> => {
-    const status = statuses.find((entry) => file === entry.path || file.endsWith(`/${entry.path}`));
-    if (!status) {
-      return undefined;
-    }
-
-    const content = await client.file.read({ path: status.path }).then((result) => result.data).catch(() => undefined);
-    const patch = content?.diff || content?.patch?.hunks.map((hunk) =>
-      `@@ -${hunk.oldStart},${hunk.oldLines} +${hunk.newStart},${hunk.newLines} @@\n${hunk.lines.join('\n')}`,
-    ).join('\n');
-    if (!patch) {
-      return undefined;
-    }
-
-    return {
-      file: status.path,
-      patch,
-      additions: status.added,
-      deletions: status.removed,
-      status: status.status,
-    };
-  }));
-
-  return recovered.filter((diff): diff is SnapshotFileDiff => Boolean(diff));
+  const response = await client.session.diff({ sessionID: sessionId, messageID: latestUserMessage.info.id });
+  return requireData(response.data, 'message diff request');
 }
 
 export async function getSessionTodos(client: OpencodeClient, sessionId: string) {

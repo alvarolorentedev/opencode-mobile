@@ -188,7 +188,7 @@ export function ChatContent({
           <Card mode="contained" style={[styles.sectionCard, { backgroundColor: palette.surface }]}>
             <Card.Content style={styles.sectionHeaderCard}>
               <View>
-                <Text variant="titleMedium" style={{ color: palette.text }}>Workspace diff</Text>
+                <Text variant="titleMedium" style={{ color: palette.text }}>Latest turn diff</Text>
                 <Text variant="bodyMedium" style={{ color: palette.muted }}>
                   {currentDiffs.length > 0
                     ? `${diffCount} files changed, +${currentDiffs.reduce((total, diff) => total + diff.additions, 0)} / -${currentDiffs.reduce((total, diff) => total + diff.deletions, 0)}`

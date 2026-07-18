@@ -1771,7 +1771,7 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
         void refreshPendingInteractions();
       }
 
-      if (currentSessionId && (currentHasBusySession || sendingState.active)) {
+      if (currentSessionId && (currentHasBusySession || sendingState.active || useSafetyPolling)) {
         void Promise.all([
           refreshMessages(currentSessionId, true),
           refreshSessionDiff(currentSessionId, true),
@@ -1779,7 +1779,7 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
         ]);
       }
 
-      if (conversationSessionId && conversationSessionId !== currentSessionId && (currentHasConversationActivity || currentHasBusySession || sendingState.active)) {
+      if (conversationSessionId && conversationSessionId !== currentSessionId && (currentHasConversationActivity || currentHasBusySession || sendingState.active || useSafetyPolling)) {
         void Promise.all([
           refreshMessages(conversationSessionId, true),
           refreshSessionDiff(conversationSessionId, true),

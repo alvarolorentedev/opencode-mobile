@@ -30,7 +30,6 @@ export function createSessionHelpers({ getNow, getState, emitEvent }) {
 
     state.sessions.unshift(session);
     state.messagesBySession[sessionId] = [];
-    state.diffsBySession[sessionId] = [];
     state.todosBySession[sessionId] = [];
     state.sessionStatuses[sessionId] = { type: 'idle' };
     emitEvent({ type: 'session.created', properties: { sessionID: sessionId, info: session } });
@@ -74,22 +73,33 @@ export function createSessionHelpers({ getNow, getState, emitEvent }) {
 
   function completePrompt(sessionId, promptText) {
     const state = getState();
-    const diff = [
-      {
-        file: 'app/(tabs)/index.tsx',
-        additions: 6,
-        deletions: 1,
-        status: 'modified',
-        patch: '@@ -1,1 +1,3 @@\n-export default function OldScreen() {}\n+export default function ChatLandingScreen() {\n+  return null;\n+}',
-      },
-    ];
+    const userMessages = getMessages(sessionId).filter((message) => message.info.role === 'user');
+    const latestUserMessage = userMessages.at(-1);
+    const previousDiffs = userMessages.filter((message) => message.info.summary?.diffs).length;
+    const diff = previousDiffs === 0
+      ? [{
+          file: 'app/(tabs)/index.tsx',
+          additions: 6,
+          deletions: 1,
+          status: 'modified',
+          patch: '@@ -1,1 +1,3 @@\n-export default function OldScreen() {}\n+export default function ChatLandingScreen() {\n+  return null;\n+}',
+        }]
+      : [{
+          file: 'src/feature.ts',
+          additions: 1,
+          deletions: 1,
+          status: 'modified',
+          patch: '@@ -1,3 +1,3 @@\n export function feature() {\n-  return false;\n+  return true;\n }',
+        }];
     const todos = [
       { content: 'Validate session transcript', status: 'completed', priority: 'high' },
       { content: 'Confirm fake server integration', status: 'completed', priority: 'medium' },
     ];
     const assistantText = `Finished: ${promptText || 'task complete'}. Flow stayed stable against the fake OpenCode server.`;
 
-    state.diffsBySession[sessionId] = diff;
+    if (latestUserMessage) {
+      latestUserMessage.info.summary = { diffs: diff };
+    }
     state.todosBySession[sessionId] = todos;
     state.workspaceTaskCompleted = true;
     createMessage(sessionId, 'assistant', [
@@ -99,7 +109,7 @@ export function createSessionHelpers({ getNow, getState, emitEvent }) {
     state.sessionStatuses[sessionId] = { type: 'idle' };
     emitEvent({
       type: 'session.diff',
-      properties: { sessionID: sessionId, diff: state.scenario === 'diff-recovery' ? [] : diff },
+      properties: { sessionID: sessionId, diff },
     });
     emitEvent({ type: 'todo.updated', properties: { sessionID: sessionId, todos } });
     emitEvent({ type: 'session.idle', properties: { sessionID: sessionId } });

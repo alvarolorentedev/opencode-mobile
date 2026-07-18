@@ -65,16 +65,21 @@ test('happy path keeps the main chat flow stable', async ({ page, request }) => 
   await expect(page.getByText('idle', { exact: true }).first()).toBeVisible();
 });
 
-test('current file APIs recover diffs when the session diff is empty', async ({ page, request }) => {
-  await resetScenario(request, 'diff-recovery');
+test('files changed follows the latest user turn', async ({ page, request }) => {
+  await resetScenario(request, 'happy-path');
   await openReadyChat(page);
 
-  await sendPrompt(page, 'Recover the current file diff');
+  await sendPrompt(page, 'Create the first file diff');
   await expect(page.getByText(/Finished:/).first()).toBeVisible({ timeout: 20_000 });
   await page.getByText('1 Files Changed', { exact: true }).click();
-  await expect(page.getByText('1 files changed, +6 / -1', { exact: true })).toBeVisible();
-  await page.getByText('app/(tabs)/index.tsx', { exact: true }).click();
-  await expect(page.getByText(/export default function ChatLandingScreen/)).toBeVisible();
+  await expect(page.getByText('app/(tabs)/index.tsx', { exact: true })).toBeVisible();
+
+  await page.getByText('Session', { exact: true }).click();
+  await sendPrompt(page, 'Create the second file diff');
+  await expect(page.getByText(/Finished: Create the second file diff/).first()).toBeVisible({ timeout: 20_000 });
+  await page.getByText('1 Files Changed', { exact: true }).click();
+  await expect(page.getByText('src/feature.ts', { exact: true })).toBeVisible();
+  await expect(page.getByText('app/(tabs)/index.tsx', { exact: true })).not.toBeVisible();
 });
 
 test('permission requests unblock the agent flow', async ({ page, request }) => {
@@ -159,9 +164,9 @@ test('polling fallback still finishes the flow when SSE is unavailable', async (
 
   await sendPrompt(page, 'Finish through polling fallback');
 
-  await page.getByRole('tab', { name: 'Workspace' }).click();
-  await expect(page.getByText('Finish through polling fallback', { exact: true }).last()).toBeVisible({ timeout: 40_000 });
-  await expect(page.getByText('idle', { exact: true })).toBeVisible({ timeout: 40_000 });
+  await expect(page.getByText(/Finished: Finish through polling fallback/).first()).toBeVisible({ timeout: 40_000 });
+  await page.getByText('1 Files Changed', { exact: true }).click();
+  await expect(page.getByText('app/(tabs)/index.tsx', { exact: true })).toBeVisible({ timeout: 40_000 });
 });
 
 test('settings explain root-vs-api mismatches and reconnect through a prefixed API base URL', async ({ page, request }) => {

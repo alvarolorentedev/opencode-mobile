@@ -32,7 +32,6 @@ export function createState(scenario) {
     sessions: [],
     messagesBySession: {},
     sessionStatuses: {},
-    diffsBySession: {},
     todosBySession: {},
     pendingPermissions: [],
     pendingQuestions: [],
