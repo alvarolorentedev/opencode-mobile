@@ -1,7 +1,7 @@
 {
   "name": "opencode-mobile",
   "main": "expo-router/entry",
-  "version": "1.0.4",
+  "version": "1.0.5",
   "scripts": {
     "start": "expo start",
     "start:dev-client": "expo start --dev-client",
@@ -16,8 +16,9 @@
     "test:usage": "node ./tests/usage.test.mjs",
     "test:format": "node ./tests/format.test.mjs",
     "test:provider-utils": "node ./tests/provider-utils.test.mjs",
+    "test:workspace-patch": "node ./tests/workspace-patch.test.mjs",
     "test:e2e:web": "playwright test",
-    "test:ci:static": "npm run lint && npm run typecheck && npm run test:usage && npm run test:format && npm run test:provider-utils",
+    "test:ci:static": "npm run lint && npm run typecheck && npm run test:usage && npm run test:format && npm run test:provider-utils && npm run test:workspace-patch",
     "build:android": "node ./scripts/build-android-release.mjs",
     "build:development:android": "node ./scripts/build-android-development.mjs",
     "ios": "expo run:ios"
@@ -69,7 +70,8 @@
     "eslint": "^9.25.0",
     "eslint-config-expo": "~10.0.0",
     "serve": "^14.2.4",
-    "typescript": "~5.9.2"
+    "typescript": "~5.9.2",
+    "ws": "^8.21.1"
   },
   "private": true
 }

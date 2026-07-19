@@ -4,7 +4,7 @@
 
 The application uses a single shared domain store implemented with React state inside `OpencodeProvider`.
 
-State is split into six practical domains:
+State is split into seven practical domains:
 
 1. connection and environment state
 2. workspace and session identity state
@@ -12,6 +12,7 @@ State is split into six practical domains:
 4. capability and preference state
 5. conversation mode state
 6. notification tracking support state
+7. terminal state
 
 ## Connection And Environment State
 
@@ -38,6 +39,7 @@ Primary fields:
 - `activeProjectPath`
 - `serverProjects`
 - `sessions`
+- `archivedSessions`
 - `sessionStatuses`
 - `currentSessionId`
 - `lastSessionByProject`
@@ -50,6 +52,7 @@ Meaning:
 - `sessionStatuses` stores per-session runtime status from the server
 - `currentSessionId` is the selected/open session
 - `lastSessionByProject` persists the remembered session ID for each project path
+- `archivedSessions` is the experimental cross-project archived-session result, sorted newest-first
 
 ## Session Content Caches
 
@@ -84,6 +87,8 @@ Primary fields:
 - `workspaceFileStatuses`
 - `selectedWorkspaceFile`
 - `vcsInfo`
+- `worktrees`
+- `mcpStatuses`
 - `diagnostics`
 - `chatPreferences`
 
@@ -111,6 +116,20 @@ Current fields:
 - `includeNextActions`
 
 These values combine true application behavior settings and output-style preferences that are sent to the model as prompt instructions.
+
+`workspaceFiles`, selected file content, worktrees, and MCP status/config are server-derived and not persisted. Text edits remain local to the Workspace screen until the provider conflict-checks and saves them as a VCS patch.
+
+## Terminal State
+
+Primary fields:
+
+- `terminals`
+- `terminalShells`
+- `activeTerminalId`
+- `terminalOutput`
+- `terminalConnection`
+
+The provider owns the active WebSocket. Opening a PTY clears prior output, obtains a connect ticket, and transitions through `connecting`, `connected`, `error`, or `idle`. Incoming common ANSI CSI sequences are stripped and output is capped to the latest 100,000 characters. Terminal history and selection are not persisted.
 
 ## Conversation State
 
@@ -267,6 +286,7 @@ The app currently uses these logical server capabilities:
 - session status
 - session create
 - session delete / update title / fork / share / unshare / revert / unrevert
+- session archive/restore and experimental archived-session list
 - session messages
 - session diff
 - session todo
@@ -274,8 +294,11 @@ The app currently uses these logical server capabilities:
 - session abort
 - session summarize
 - command list and session command execution
-- file find/read/status and VCS info
-- MCP/LSP/formatter status
+- file find/read/status, VCS info, and VCS patch apply
+- experimental worktree list/create/reset/remove
+- MCP status/add/connect/disconnect/OAuth plus config-backed enable/disable
+- PTY list/create/remove/connect-token and ticket-authenticated WebSocket streaming; shell discovery remains provider-side for server defaults
+- LSP/formatter status
 - provider OAuth authorize and callback
 - permission and question list/reply operations
 - global event subscription
@@ -343,5 +366,7 @@ Some user-visible behavior depends on transient refs not persisted anywhere:
 - transcript pagination count in chat UI
 - copied-message snackbar state
 - currently spoken message ID
+- Workspace file edit draft and expected original content
+- PTY list, active PTY, connection, and capped output scrollback
 
 A rewrite that only mirrors persisted values would still miss important runtime behavior.

@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { Platform, Pressable, StyleSheet, Switch as NativeSwitch, Text as NativeText, View } from 'react-native';
 import {
   Button,
@@ -433,81 +434,15 @@ export function VoiceSection({
             value={chatPreferences.resumeListeningAfterReply}
           />
         </List.Section>
-        <TextInput
-          mode="outlined"
-          label="Speech locale"
-          placeholder="en-US"
-          value={chatPreferences.speechLocale || ''}
-          autoCapitalize="none"
-          autoCorrect={false}
-          onChangeText={(value) => updateChatPreferences({ speechLocale: value.trim() || undefined })}
-        />
+        <TextInput mode="outlined" label="Speech locale" placeholder="en-US" value={chatPreferences.speechLocale || ''} autoCapitalize="none" autoCorrect={false} onChangeText={(value) => updateChatPreferences({ speechLocale: value.trim() || undefined })} />
         <HelperText type="info">Leave empty to use the system default language for voice input and playback.</HelperText>
-        <SettingSelectField
-          label="Response scope"
-          onValueChange={(value) => updateChatPreferences({ responseScope: value })}
-          options={responseScopeOptions}
-          palette={palette}
-          selectedValue={selectedResponseScope.value}
-          valueLabel={selectedResponseScope.label}
-        />
+        <SettingSelectField label="Response scope" onValueChange={(value) => updateChatPreferences({ responseScope: value })} options={responseScopeOptions} palette={palette} selectedValue={selectedResponseScope.value} valueLabel={selectedResponseScope.label} />
         <HelperText type="info">{selectedResponseScope.description}</HelperText>
-        <SettingSwitchRow
-          description="End replies with a short recommendation when there is a clear next move."
-          onValueChange={(value) => updateChatPreferences({ includeNextActions: value })}
-          palette={palette}
-          title="Simple next actions"
-          value={chatPreferences.includeNextActions}
-        />
-        <TextInput
-          mode="outlined"
-          label="Speech rate"
-          placeholder="1.0"
-          value={String(chatPreferences.speechRate)}
-          keyboardType="decimal-pad"
-          onChangeText={(value) => {
-            const normalized = value.replace(',', '.').trim();
-            const parsed = Number(normalized);
-            if (!normalized) {
-              updateChatPreferences({ speechRate: 1 });
-              return;
-            }
-            if (!Number.isFinite(parsed)) {
-              return;
-            }
-            updateChatPreferences({ speechRate: Math.min(1.5, Math.max(0.5, parsed)) });
-          }}
-        />
-        <HelperText type="info">Use a value between 0.5 and 1.5. `1` is the normal reading speed.</HelperText>
-        <SettingSelectField
-          label="Working sound"
-          onValueChange={(value) => updateChatPreferences({ workingSoundVariant: value })}
-          options={workingSoundOptions}
-          palette={palette}
-          selectedValue={selectedWorkingSound.value}
-          valueLabel={selectedWorkingSound.label}
-        />
+        <SettingSwitchRow description="End replies with a short recommendation when there is a clear next move." onValueChange={(value) => updateChatPreferences({ includeNextActions: value })} palette={palette} title="Simple next actions" value={chatPreferences.includeNextActions} />
+        <NumericSlider label="Speech rate" minimum={0.5} maximum={1.5} step={0.1} value={chatPreferences.speechRate} valueLabel={`${chatPreferences.speechRate.toFixed(1)}x`} onValueChange={(speechRate) => updateChatPreferences({ speechRate })} palette={palette} />
+        <SettingSelectField label="Working sound" onValueChange={(value) => updateChatPreferences({ workingSoundVariant: value })} options={workingSoundOptions} palette={palette} selectedValue={selectedWorkingSound.value} valueLabel={selectedWorkingSound.label} />
         <HelperText type="info">{selectedWorkingSound.description}</HelperText>
-        <TextInput
-          mode="outlined"
-          label="Working sound volume"
-          placeholder="0.18"
-          value={String(chatPreferences.workingSoundVolume)}
-          keyboardType="decimal-pad"
-          onChangeText={(value) => {
-            const normalized = value.replace(',', '.').trim();
-            const parsed = Number(normalized);
-            if (!normalized) {
-              updateChatPreferences({ workingSoundVolume: 0.18 });
-              return;
-            }
-            if (!Number.isFinite(parsed)) {
-              return;
-            }
-            updateChatPreferences({ workingSoundVolume: Math.min(1, Math.max(0, parsed)) });
-          }}
-        />
-        <HelperText type="info">Use a value between 0 and 1. Lower values feel calmer in the background.</HelperText>
+        <NumericSlider label="Working sound volume" minimum={0} maximum={1} step={0.05} value={chatPreferences.workingSoundVolume} valueLabel={`${Math.round(chatPreferences.workingSoundVolume * 100)}%`} onValueChange={(workingSoundVolume) => updateChatPreferences({ workingSoundVolume })} palette={palette} />
         <SettingSelectField
           disabled={isRefreshingSpeechVoices}
           label="Voice"
@@ -534,6 +469,57 @@ export function VoiceSection({
         </HelperText>
       </Card.Content>
     </Card>
+  );
+}
+
+function NumericSlider({
+  label,
+  maximum,
+  minimum,
+  onValueChange,
+  palette,
+  step,
+  value,
+  valueLabel,
+}: {
+  label: string;
+  maximum: number;
+  minimum: number;
+  onValueChange: (value: number) => void;
+  palette: Palette;
+  step: number;
+  value: number;
+  valueLabel: string;
+}) {
+  const [width, setWidth] = useState(0);
+  const percentage = ((value - minimum) / (maximum - minimum)) * 100;
+
+  function setFromPosition(position: number) {
+    if (!width) return;
+    const raw = minimum + Math.max(0, Math.min(1, position / width)) * (maximum - minimum);
+    onValueChange(Number((Math.round(raw / step) * step).toFixed(2)));
+  }
+
+  return (
+    <View style={styles.numericSlider}>
+      <View style={styles.numericSliderHeader}>
+        <Text style={{ color: palette.text }}>{label}</Text>
+        <Text style={{ color: palette.muted }}>{valueLabel}</Text>
+      </View>
+      <View
+        accessibilityLabel={label}
+        accessibilityRole="adjustable"
+        accessibilityValue={{ max: maximum, min: minimum, now: value, text: valueLabel }}
+        onLayout={(event) => setWidth(event.nativeEvent.layout.width)}
+        onResponderGrant={(event) => setFromPosition(event.nativeEvent.locationX)}
+        onResponderMove={(event) => setFromPosition(event.nativeEvent.locationX)}
+        onStartShouldSetResponder={() => true}
+        style={[styles.sliderTrack, { backgroundColor: palette.border }]}
+      >
+        <View style={[styles.sliderProgress, { backgroundColor: palette.tint, width: `${percentage}%` }]} />
+        <View style={[styles.sliderThumb, { backgroundColor: palette.tint, left: `${percentage}%` }]} />
+      </View>
+    </View>
   );
 }
 
@@ -626,6 +612,11 @@ const styles = StyleSheet.create({
   section: { gap: 14 },
   title: { fontWeight: '600' },
   connectionStatusCard: { borderRadius: 14, borderWidth: 1, paddingHorizontal: 14, paddingVertical: 12 },
+  numericSlider: { gap: 8 },
+  numericSliderHeader: { flexDirection: 'row', justifyContent: 'space-between' },
+  sliderTrack: { borderRadius: 999, height: 6, justifyContent: 'center', marginHorizontal: 8, marginVertical: 10 },
+  sliderProgress: { borderRadius: 999, height: 6 },
+  sliderThumb: { borderRadius: 12, height: 24, marginLeft: -12, position: 'absolute', width: 24 },
   connectionStatusHeader: { gap: 6 },
   connectionStatusRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   connectionStatusDot: { width: 10, height: 10, borderRadius: 999 },

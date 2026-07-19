@@ -1,5 +1,23 @@
 import type { FilePartInput, GlobalEvent, TextPartInput } from '@opencode-ai/sdk/v2/client';
-import type { Command, Config, File, FileContent, FileDiff, Project, Session, SessionStatus, Todo, VcsInfo } from '@/lib/opencode/types';
+import type {
+  Command,
+  Config,
+  File,
+  FileContent,
+  FileDiff,
+  GlobalSession,
+  McpLocalConfig,
+  McpRemoteConfig,
+  McpStatus,
+  Project,
+  Pty,
+  PtyShellsResponse,
+  Session,
+  SessionStatus,
+  Todo,
+  VcsInfo,
+  Worktree,
+} from '@/lib/opencode/types';
 import {
   createContext,
   useCallback,
@@ -33,6 +51,7 @@ import {
 } from '@/lib/opencode/format';
 import { isTranscriptDisplayMessage } from '@/lib/opencode/transcript';
 import { aggregateSessionUsage, getLatestAssistantTurnUsage } from '@/lib/opencode/usage';
+import { createFullFilePatch } from '@/lib/opencode/workspace-patch';
 import {
   clearPendingTaskFinishedNotification,
   notifyTaskFinished,
@@ -88,6 +107,8 @@ import { useConversationScreenDim } from '@/providers/use-conversation-screen-di
 import { useOpencodePersistence } from '@/providers/use-opencode-persistence';
 import {
   loadWorkspaceCatalog as svcLoadWorkspaceCatalog,
+  archiveSession as svcArchiveSession,
+  listArchivedSessions as svcListArchivedSessions,
   listSessions as svcListSessions,
   getSessionMessages as svcGetSessionMessages,
   getSessionDiff as svcGetSessionDiff,
@@ -101,9 +122,37 @@ import {
   unrevertSession as svcUnrevertSession,
   unshareSession as svcUnshareSession,
   updateSessionTitle as svcUpdateSessionTitle,
+  restoreSession as svcRestoreSession,
 } from '@/providers/services/session-service';
 import { loadDiagnostics, type Diagnostics } from '@/providers/services/diagnostics-service';
-import { findFiles, getFileStatus, getVcsInfo, readFile } from '@/providers/services/workspace-service';
+import {
+  applyVcsPatch,
+  createWorktree as svcCreateWorktree,
+  findFiles,
+  getFileStatus,
+  getVcsInfo,
+  listWorktrees as svcListWorktrees,
+  readFile,
+  removeWorktree as svcRemoveWorktree,
+  resetWorktree as svcResetWorktree,
+} from '@/providers/services/workspace-service';
+import {
+  addMcpServer as svcAddMcpServer,
+  completeMcpOAuth as svcCompleteMcpOAuth,
+  connectMcpServer as svcConnectMcpServer,
+  disconnectMcpServer as svcDisconnectMcpServer,
+  getMcpStatus,
+  setMcpServerEnabled as svcSetMcpServerEnabled,
+  startMcpOAuth as svcStartMcpOAuth,
+} from '@/providers/services/mcp-service';
+import {
+  createTerminal as svcCreateTerminal,
+  createTerminalConnectToken,
+  getTerminalWebSocketUrl,
+  listShells,
+  listTerminals,
+  removeTerminal as svcRemoveTerminal,
+} from '@/providers/services/terminal-service';
 
 export type {
   AgentOption,
@@ -121,6 +170,7 @@ export type {
 } from '@/providers/opencode-provider-types';
 
 const OpencodeContext = createContext<OpencodeContextValue | null>(null);
+const ANSI_CSI_PATTERN = new RegExp('\\u001b\\[[0-?]*[ -/]*[@-~]', 'gi');
 
 export function OpencodeProvider({ children }: PropsWithChildren) {
   const [settings, setSettings] = useState<OpencodeConnectionSettings>(defaultConnectionSettings);
@@ -130,6 +180,7 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
   });
   const [activeProjectPath, setActiveProjectPath] = useState<string>();
   const [sessions, setSessions] = useState<Session[]>([]);
+  const [archivedSessions, setArchivedSessions] = useState<GlobalSession[]>([]);
   const [sessionStatuses, setSessionStatuses] = useState<Record<string, SessionStatus>>({});
   const [currentSessionId, setCurrentSessionId] = useState<string>();
   const [messagesBySession, setMessagesBySession] = useState<Record<string, SessionMessageRecord[]>>({});
@@ -173,6 +224,13 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
   const [selectedWorkspaceFile, setSelectedWorkspaceFile] = useState<{ path: string; content: FileContent }>();
   const [vcsInfo, setVcsInfo] = useState<VcsInfo>();
   const [diagnostics, setDiagnostics] = useState<Diagnostics>();
+  const [worktrees, setWorktrees] = useState<(string | Worktree)[]>([]);
+  const [mcpStatuses, setMcpStatuses] = useState<Record<string, McpStatus>>({});
+  const [terminals, setTerminals] = useState<Pty[]>([]);
+  const [terminalShells, setTerminalShells] = useState<PtyShellsResponse>([]);
+  const [activeTerminalId, setActiveTerminalId] = useState<string>();
+  const [terminalOutput, setTerminalOutput] = useState('');
+  const [terminalConnection, setTerminalConnection] = useState<'idle' | 'connecting' | 'connected' | 'error'>('idle');
 
   const settingsRef = useRef(settings);
   const activeProjectPathRef = useRef(activeProjectPath);
@@ -194,6 +252,9 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
   const flushPendingConversationResultRef = useRef<() => void>(() => undefined);
   const sessionRefreshTimeoutsRef = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
   const sessionRefreshOptionsRef = useRef<Record<string, { messages?: boolean; diff?: boolean; todos?: boolean; sessions?: boolean }>>({});
+  const terminalSocketRef = useRef<WebSocket | undefined>(undefined);
+  const terminalCursorByIdRef = useRef<Record<string, string>>({});
+  const terminalOpenGenerationRef = useRef(0);
   settingsRef.current = settings;
   activeProjectPathRef.current = activeProjectPath;
 
@@ -277,6 +338,7 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
     notificationRequestedAtRef.current.clear();
     setCurrentSessionId(undefined);
     setSessions([]);
+    setArchivedSessions([]);
     setSessionStatuses({});
     setCommands([]);
     setCurrentConfig(undefined);
@@ -290,6 +352,17 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
     setWorkspaceFileStatuses([]);
     setSelectedWorkspaceFile(undefined);
     setVcsInfo(undefined);
+    setWorktrees([]);
+    setMcpStatuses({});
+    setTerminals([]);
+    setTerminalShells([]);
+    setActiveTerminalId(undefined);
+    setTerminalOutput('');
+    setTerminalConnection('idle');
+    terminalSocketRef.current?.close();
+    terminalSocketRef.current = undefined;
+    terminalCursorByIdRef.current = {};
+    terminalOpenGenerationRef.current += 1;
   }, []);
 
   // browseServerPath stub removed
@@ -599,6 +672,26 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
     [client, currentSessionId, isCurrentClient, refreshSessions],
   );
 
+  const refreshArchivedSessions = useCallback(async () => {
+    const next = await svcListArchivedSessions(client);
+    if (isCurrentClient(client)) {
+      setArchivedSessions([...next].sort((left, right) => right.time.updated - left.time.updated));
+    }
+  }, [client, isCurrentClient]);
+
+  const archiveSession = useCallback(async (sessionId: string) => {
+    await svcArchiveSession(client, sessionId);
+    if (!isCurrentClient(client)) return;
+    if (currentSessionId === sessionId) setCurrentSessionId(undefined);
+    await Promise.all([refreshSessions(true), refreshArchivedSessions()]);
+  }, [client, currentSessionId, isCurrentClient, refreshArchivedSessions, refreshSessions]);
+
+  const restoreSession = useCallback(async (sessionId: string) => {
+    await svcRestoreSession(client, sessionId);
+    if (!isCurrentClient(client)) return;
+    await Promise.all([refreshSessions(true), refreshArchivedSessions()]);
+  }, [client, isCurrentClient, refreshArchivedSessions, refreshSessions]);
+
   const renameSession = useCallback(async (sessionId: string, title: string) => {
     const trimmed = title.trim();
     if (!trimmed) {
@@ -702,6 +795,176 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
       setSelectedWorkspaceFile({ path, content });
     }
   }, [client]);
+
+  const saveWorkspaceFile = useCallback(async (path: string, expectedContent: string, content: string) => {
+    const latest = await readFile(client, path);
+    if (latest.type !== 'text' || latest.encoding === 'base64') throw new Error('Only text files can be edited.');
+    if (latest.content !== expectedContent) throw new Error('The file changed on the server. Reopen it before saving.');
+    const patch = createFullFilePatch({ path, expectedContent, content });
+    if (!patch) return;
+    await applyVcsPatch(client, patch);
+    const saved = await readFile(client, path);
+    if (activeProjectPathRef.current === client.__opencode.directory) {
+      setSelectedWorkspaceFile({ path, content: saved });
+      await refreshServerFeatures();
+    }
+  }, [client, refreshServerFeatures]);
+
+  const refreshWorktrees = useCallback(async () => {
+    const next = await svcListWorktrees(client);
+    if (isCurrentClient(client)) setWorktrees(next);
+  }, [client, isCurrentClient]);
+
+  const createWorktree = useCallback(async (name?: string, startCommand?: string) => {
+    await svcCreateWorktree(client, name?.trim() || undefined, startCommand?.trim() || undefined);
+    await Promise.all([refreshWorktrees(), refreshWorkspaceCatalog(true)]);
+  }, [client, refreshWorktrees, refreshWorkspaceCatalog]);
+
+  const resetWorktree = useCallback(async (directory: string) => {
+    await svcResetWorktree(client, directory);
+    await refreshWorktrees();
+  }, [client, refreshWorktrees]);
+
+  const removeWorktree = useCallback(async (directory: string) => {
+    await svcRemoveWorktree(client, directory);
+    await Promise.all([refreshWorktrees(), refreshWorkspaceCatalog(true)]);
+  }, [client, refreshWorktrees, refreshWorkspaceCatalog]);
+
+  const refreshMcpServers = useCallback(async () => {
+    const next = await getMcpStatus(client);
+    if (isCurrentClient(client)) setMcpStatuses(next);
+  }, [client, isCurrentClient]);
+
+  const addMcpServer = useCallback(async (name: string, config: McpLocalConfig | McpRemoteConfig) => {
+    await svcAddMcpServer(client, name.trim(), config);
+    await Promise.all([refreshMcpServers(), refreshChatCapabilities()]);
+  }, [client, refreshChatCapabilities, refreshMcpServers]);
+
+  const connectMcpServer = useCallback(async (name: string) => {
+    await svcConnectMcpServer(client, name);
+    await refreshMcpServers();
+  }, [client, refreshMcpServers]);
+
+  const disconnectMcpServer = useCallback(async (name: string) => {
+    await svcDisconnectMcpServer(client, name);
+    await refreshMcpServers();
+  }, [client, refreshMcpServers]);
+
+  const setMcpServerEnabled = useCallback(async (name: string, enabled: boolean) => {
+    await svcSetMcpServerEnabled(client, name, enabled);
+    await Promise.all([refreshMcpServers(), refreshChatCapabilities()]);
+  }, [client, refreshChatCapabilities, refreshMcpServers]);
+
+  const startMcpOAuth = useCallback(async (name: string) => {
+    return (await svcStartMcpOAuth(client, name)).authorizationUrl;
+  }, [client]);
+
+  const completeMcpOAuth = useCallback(async (name: string, code: string) => {
+    await svcCompleteMcpOAuth(client, name, code.trim());
+    await refreshMcpServers();
+  }, [client, refreshMcpServers]);
+
+  const refreshTerminals = useCallback(async () => {
+    const [nextTerminals, nextShells] = await Promise.all([listTerminals(client), listShells(client)]);
+    if (!isCurrentClient(client)) return;
+    setTerminals(nextTerminals);
+    setTerminalShells(nextShells);
+  }, [client, isCurrentClient]);
+
+  const openTerminal = useCallback(async (ptyId: string) => {
+    const generation = ++terminalOpenGenerationRef.current;
+    const previousSocket = terminalSocketRef.current;
+    terminalSocketRef.current = undefined;
+    previousSocket?.close();
+    const switchingTerminal = activeTerminalId !== ptyId;
+    setActiveTerminalId(ptyId);
+    if (switchingTerminal) setTerminalOutput('');
+    setTerminalConnection('connecting');
+    const token = await createTerminalConnectToken(client, ptyId);
+    if (!isCurrentClient(client) || generation !== terminalOpenGenerationRef.current) {
+      throw new Error('Terminal connection was superseded.');
+    }
+    const socket = new WebSocket(getTerminalWebSocketUrl(
+      { serverUrl: settings.serverUrl, directory: activeProjectPath || '' },
+      ptyId,
+      { ticket: token.ticket, cursor: terminalCursorByIdRef.current[ptyId] },
+    ));
+    terminalSocketRef.current = socket;
+    let opened = false;
+    const connected = new Promise<void>((resolve, reject) => {
+      socket.onopen = () => {
+        if (generation !== terminalOpenGenerationRef.current) {
+          socket.close();
+          reject(new Error('Terminal connection was superseded.'));
+          return;
+        }
+        opened = true;
+        setTerminalConnection('connected');
+        resolve();
+      };
+      socket.onerror = () => {
+        if (generation !== terminalOpenGenerationRef.current) return;
+        setTerminalConnection('error');
+        if (!opened) reject(new Error('Could not connect to the terminal.'));
+      };
+      socket.onclose = () => {
+        if (generation !== terminalOpenGenerationRef.current) return;
+        if (terminalSocketRef.current === socket && opened) setTerminalConnection('idle');
+        if (!opened) reject(new Error('The terminal connection closed before it was ready.'));
+      };
+    });
+    socket.onmessage = ({ data }) => {
+      // ponytail: strip common CSI styling; use a terminal emulator if full VT control becomes required.
+      if (generation !== terminalOpenGenerationRef.current) return;
+      const append = (value: string) => setTerminalOutput((current) => `${current}${value.replace(ANSI_CSI_PATTERN, '')}`.slice(-100_000));
+      if (typeof data === 'string') append(data);
+      else {
+        const read = async () => {
+          const buffer = data instanceof Blob ? await data.arrayBuffer() : data as ArrayBuffer;
+          if (generation !== terminalOpenGenerationRef.current) return;
+          const bytes = new Uint8Array(buffer);
+          const text = new TextDecoder().decode(bytes[0] === 0 ? bytes.subarray(1) : bytes);
+          if (bytes[0] !== 0) {
+            append(text);
+            return;
+          }
+          try {
+            const cursor = JSON.parse(text).cursor;
+            if (cursor !== undefined) terminalCursorByIdRef.current[ptyId] = String(cursor);
+          } catch {
+            // Ignore malformed control frames instead of rendering protocol data.
+          }
+        };
+        void read();
+      }
+    };
+    await connected;
+  }, [activeProjectPath, activeTerminalId, client, isCurrentClient, settings.serverUrl]);
+
+  const createTerminal = useCallback(async (command?: string, title?: string) => {
+    const terminal = await svcCreateTerminal(client, { command: command?.trim() || undefined, title: title?.trim() || undefined });
+    await refreshTerminals();
+    await openTerminal(terminal.id);
+    return terminal;
+  }, [client, openTerminal, refreshTerminals]);
+
+  const sendTerminalInput = useCallback((input: string) => {
+    if (terminalSocketRef.current?.readyState !== WebSocket.OPEN) throw new Error('Terminal is not connected.');
+    terminalSocketRef.current.send(input);
+  }, []);
+
+  const closeTerminal = useCallback(async (ptyId: string) => {
+    if (activeTerminalId === ptyId) {
+      terminalOpenGenerationRef.current += 1;
+      terminalSocketRef.current?.close();
+      terminalSocketRef.current = undefined;
+      setActiveTerminalId(undefined);
+      setTerminalOutput('');
+    }
+    delete terminalCursorByIdRef.current[ptyId];
+    await svcRemoveTerminal(client, ptyId);
+    await refreshTerminals();
+  }, [activeTerminalId, client, refreshTerminals]);
 
   const executeCommand = useCallback(async (sessionId: string, command: string, args: string) => {
     const selected = getSelectedModelParts(chatPreferences.modelId);
@@ -896,6 +1159,16 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
     initialConnectStartedRef.current = true;
     void connect();
   }, [connect, isHydrated]);
+
+  useEffect(() => {
+    if (connection.status !== 'connected' || !activeProjectPath) return;
+    void Promise.all([
+      refreshWorktrees(),
+      refreshMcpServers(),
+      refreshTerminals(),
+      refreshArchivedSessions(),
+    ]).catch(() => undefined);
+  }, [activeProjectPath, connection.status, refreshArchivedSessions, refreshMcpServers, refreshTerminals, refreshWorktrees]);
 
   useEffect(() => {
     if (connection.status !== 'connected' || !activeProjectPath) {
@@ -1773,6 +2046,7 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
         case 'session.updated':
         case 'session.deleted':
           void refreshSessions(true);
+          void refreshArchivedSessions();
           return;
         case 'session.status': {
           const sessionId = event.properties.sessionID;
@@ -1835,6 +2109,21 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
         case 'file.edited':
         case 'vcs.branch.updated':
           void refreshServerFeatures();
+          return;
+        case 'pty.created':
+        case 'pty.updated':
+        case 'pty.exited':
+        case 'pty.deleted':
+          void refreshTerminals();
+          return;
+        case 'worktree.ready':
+        case 'worktree.failed':
+          void refreshWorktrees();
+          void refreshWorkspaceCatalog(true);
+          return;
+        case 'mcp.tools.changed':
+        case 'mcp.browser.open.failed':
+          void refreshMcpServers();
           return;
         case 'lsp.updated':
           void refreshDiagnostics();
@@ -1942,7 +2231,7 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
       mounted = false;
       activeAbortController?.abort();
     };
-  }, [activeProjectPath, catalogClient, connection.status, refreshChatCapabilities, refreshDiagnostics, refreshPendingInteractions, refreshServerFeatures, refreshSessions, refreshWorkspaceCatalog, scheduleSessionRefresh]);
+  }, [activeProjectPath, catalogClient, connection.status, refreshArchivedSessions, refreshChatCapabilities, refreshDiagnostics, refreshMcpServers, refreshPendingInteractions, refreshServerFeatures, refreshSessions, refreshTerminals, refreshWorktrees, refreshWorkspaceCatalog, scheduleSessionRefresh]);
 
   useEffect(
     () => () => {
@@ -1958,6 +2247,7 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
 
       void stopSpeaking().catch(() => undefined);
       void unloadWorkingSoundAsync().catch(() => undefined);
+      terminalSocketRef.current?.close();
     },
     [],
   );
@@ -2160,6 +2450,7 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
       refreshWorkspaceCatalog,
       refreshWorkspaceStatus: refreshServerFeatures,
       sessions,
+      archivedSessions,
       sessionStatuses,
       currentSessionId,
       activeSession,
@@ -2214,6 +2505,9 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
       ensureActiveSession,
       createSession,
       deleteSession,
+      archiveSession,
+      restoreSession,
+      refreshArchivedSessions,
       renameSession,
       forkSession,
       shareSession,
@@ -2233,6 +2527,30 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
       vcsInfo,
       searchWorkspaceFiles,
       openWorkspaceFile,
+      saveWorkspaceFile,
+      worktrees,
+      refreshWorktrees,
+      createWorktree,
+      resetWorktree,
+      removeWorktree,
+      mcpStatuses,
+      refreshMcpServers,
+      addMcpServer,
+      connectMcpServer,
+      disconnectMcpServer,
+      setMcpServerEnabled,
+      startMcpOAuth,
+      completeMcpOAuth,
+      terminals,
+      terminalShells,
+      activeTerminalId,
+      terminalOutput,
+      terminalConnection,
+      refreshTerminals,
+      createTerminal,
+      openTerminal,
+      sendTerminalInput,
+      closeTerminal,
       diagnostics,
       refreshDiagnostics,
       eventStreamStatus,
@@ -2327,6 +2645,34 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
       diagnostics,
       refreshDiagnostics,
       eventStreamStatus,
+      archivedSessions,
+      archiveSession,
+      restoreSession,
+      refreshArchivedSessions,
+      saveWorkspaceFile,
+      worktrees,
+      refreshWorktrees,
+      createWorktree,
+      resetWorktree,
+      removeWorktree,
+      mcpStatuses,
+      refreshMcpServers,
+      addMcpServer,
+      connectMcpServer,
+      disconnectMcpServer,
+      setMcpServerEnabled,
+      startMcpOAuth,
+      completeMcpOAuth,
+      terminals,
+      terminalShells,
+      activeTerminalId,
+      terminalOutput,
+      terminalConnection,
+      refreshTerminals,
+      createTerminal,
+      openTerminal,
+      sendTerminalInput,
+      closeTerminal,
     ],
   );
 

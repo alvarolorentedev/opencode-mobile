@@ -36,7 +36,7 @@ Most important behavior flows through this provider:
 - prompt submission
 - transcript, diff, and todo refresh
 - session-scoped permission and question handling with event and list reconciliation
-- session lifecycle, slash commands, workspace inspection, and diagnostics
+- session lifecycle/archive, slash commands, workspace editing/worktrees, MCP, PTYs, and diagnostics
 - provider/model/agent capability discovery
 - local persistence
 - conversation mode orchestration
@@ -46,7 +46,8 @@ The tabs mostly render and manipulate provider state:
 
 - `Chat`: active session UI
 - `Workspace`: project and session selection
-- `Settings`: connection, provider, notification, and voice configuration
+- `Settings`: connection, provider, MCP, notification, and voice configuration
+- `Terminal`: project PTY line console
 
 ## Recommended Reading Order
 

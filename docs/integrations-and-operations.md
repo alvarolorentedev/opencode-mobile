@@ -35,6 +35,8 @@ If a password is present, the app sends:
 
 Provider-specific auth is separate from server auth and is configured through OpenCode provider endpoints.
 
+PTY WebSockets use a short-lived server-issued connect ticket in the query string. Their URL preserves any configured API path prefix, switches `http`/`https` to `ws`/`wss`, and includes the active project directory; Basic credentials are not embedded in the WebSocket URL.
+
 ### Failure Model
 
 Current request failures are surfaced mainly as:
@@ -136,7 +138,7 @@ The Settings screen uses:
 - `expo-intent-launcher`
 - `expo-web-browser`
 
-These support app settings, notification settings, battery settings, and provider OAuth browser flows. Code-based OAuth flows show an authorization-code dialog and call the provider OAuth callback before enabling and refreshing the provider.
+These support app settings, notification settings, battery settings, and provider or remote-MCP OAuth browser flows. Code-based OAuth flows show an authorization-code input and call the corresponding callback.
 
 ## OpenCode Compatibility
 

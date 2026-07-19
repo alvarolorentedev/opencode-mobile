@@ -25,6 +25,7 @@ From `TESTING.md`, those gates include:
 - `npm run test:usage`
 - `npm run test:format`
 - `npm run test:provider-utils`
+- `npm run test:workspace-patch`
 - `npm run test:fake-server:self`
 - Playwright E2E flow tests against the fake OpenCode server
 - Android development build validation
@@ -48,6 +49,11 @@ Its intended job is to simulate the server behaviors this client depends on, inc
 - session title summarization
 - permission requests
 - SSE event delivery
+- file list/path/text/symbol search, conflict/patch application, and VCS diff/status
+- archived sessions and experimental worktrees
+- MCP lifecycle/config/OAuth endpoints
+- PTY REST endpoints and ticket-authenticated WebSocket input/output
+- session children, initialization, and shell execution endpoints
 
 ## Supported-Contract Fake Server Scenarios
 
@@ -125,6 +131,18 @@ The SSE endpoint intentionally fails, forcing the app to complete the workflow t
 - switch to Workspace
 - verify the session still completes and becomes idle
 
+### Workspace Mutation And Management Flows
+
+- edit a text file and save it through the conflict-checked VCS patch path
+- archive and restore a session through the experimental archived list
+- create an experimental worktree and add a remote MCP server
+
+### Terminal Flow
+
+- create a PTY from the fourth tab
+- connect with a server-issued ticket over WebSocket
+- send one line and verify streamed output
+
 ## Intended Coverage Strengths
 
 This strategy gives confidence in:
@@ -135,6 +153,7 @@ This strategy gives confidence in:
 - blocking interactions from the server
 - provider configuration flow
 - resilience to SSE failure
+- workspace patch save, archive/restore, worktree creation, MCP addition, and PTY WebSocket streaming
 
 ## Coverage Gaps
 
@@ -147,8 +166,9 @@ The following important behaviors are present in code but are not obviously cove
 - session fork, revert/unrevert, and share/unshare
 - attachment upload behavior
 - attachment capability rejection and the 10 MB local-file limit
-- workspace file status and VCS display
-- diagnostics and OAuth callback completion
+- workspace patch conflict UI and worktree reset/remove
+- MCP add/connect/disconnect/enable/disable and OAuth UI completion
+- terminal reconnect/termination, ANSI handling, scrollback truncation, and native WebSocket behavior
 - auto-approve config toggling
 - model enablement filtering and preference reconciliation
 - session summarization fallback behavior
@@ -176,6 +196,7 @@ Useful local commands documented in the repo:
 ```bash
 npm run lint
 npm run typecheck
+npm run test:workspace-patch
 npm run test:fake-server:self
 npm run test:e2e:web
 npm run build:development:android
@@ -206,4 +227,6 @@ After that baseline, the next most valuable parity suite would add:
 
 ## Migration Coverage Status
 
-The fake server and flow fixtures cover the current permission and question list/event/reply contracts. No automated test currently proves attachment-capability, OAuth callback, or global reconnect behavior.
+The fake server self-test covers the expanded REST contract plus a real ticket-authenticated PTY WebSocket exchange. Playwright covers patch save, archive/restore, worktree creation, MCP addition, and terminal input/output. It does not prove full terminal emulation, native WebSocket behavior, MCP OAuth UI completion, attachment capability, provider OAuth callback, or global reconnect behavior.
+
+For this worktree documentation task, Android validation is CI-only; no local Android build is claimed. The CI development APK remains the native regression gate.

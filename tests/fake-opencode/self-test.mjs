@@ -2,6 +2,7 @@
 
 import { spawn } from 'node:child_process';
 import { setTimeout as sleep } from 'node:timers/promises';
+import WebSocket from 'ws';
 
 const port = 4196;
 const prefix = '/api';
@@ -34,6 +35,31 @@ function json(method, body) {
 
 function assert(condition, message) {
   if (!condition) throw new Error(message);
+}
+
+function checkPtySocket(ptyId, ticket) {
+  return new Promise((resolve, reject) => {
+    const socket = new WebSocket(`ws://127.0.0.1:${port}${prefix}/pty/${ptyId}/connect?ticket=${ticket}`);
+    let output = '';
+    const timeout = setTimeout(() => reject(new Error('PTY WebSocket timed out')), 2000);
+    socket.on('message', (chunk) => {
+      output += chunk.toString();
+      if (!output.includes('$ ')) return;
+      if (!output.includes('ran: echo sdk')) {
+        socket.send('echo sdk\n');
+        return;
+      }
+      clearTimeout(timeout);
+      socket.close();
+      resolve();
+    });
+    socket.on('error', reject);
+  });
+}
+
+async function assertStatus(pathname, status, init) {
+  const result = await response(pathname, init);
+  assert(result.status === status, `${pathname} returned ${result.status}, expected ${status}`);
 }
 
 async function waitUntilReady() {
@@ -90,9 +116,53 @@ try {
 
   assert((await request('/command')).some((command) => command.name === 'review'), 'Expected command fixture');
   assert((await request('/find/file?query=demo')).includes('src/demo.ts'), 'Expected file search result');
+  assert((await request('/find?pattern=OpenCode')).some((match) => match.path.text === 'README.md'), 'Expected text search result');
+  assert((await request('/find/symbol?query=feature'))[0].name === 'feature', 'Expected symbol search result');
+  assert((await request('/file?path=src')).some((node) => node.name === 'demo.ts' && node.type === 'file'), 'Expected file list result');
+  await assertStatus('/find', 400);
   assert((await request('/file/content?path=src%2Fdemo.ts')).content.includes('1.18.3'), 'Expected file content');
   assert((await request('/file/status')).length === 1, 'Expected initial file status');
   assert((await request('/vcs')).branch === 'main', 'Expected VCS info');
+  assert((await request('/vcs/status')).length === 0, 'Expected clean VCS status');
+  const patch = 'diff --git a/src/demo.ts b/src/demo.ts\n--- a/src/demo.ts\n+++ b/src/demo.ts\n@@ -1 +1 @@\n-export const demo = "OpenCode 1.18.3";\n+export const demo = "OpenCode SDK 1.18.3";\n';
+  assert((await request('/vcs/apply', json('POST', { patch }))).applied, 'VCS apply failed');
+  assert((await request('/vcs/diff?mode=git'))[0].file === 'src/demo.ts', 'Expected structured VCS diff');
+  assert((await request('/vcs/diff/raw')) === patch, 'Expected raw VCS diff');
+  await assertStatus('/vcs/apply', 400, json('POST', { patch }));
+
+  assert((await request('/pty/shells')).some((shell) => shell.name === 'bash'), 'Expected PTY shells');
+  const pty = await request('/pty', json('POST', { command: '/bin/sh', args: ['-l'], title: 'Smoke terminal' }));
+  assert((await request(`/pty/${pty.id}`)).command === '/bin/sh', 'PTY get failed');
+  assert((await request(`/pty/${pty.id}`, json('PUT', { title: 'Renamed terminal', size: { rows: 30, cols: 100 } }))).title === 'Renamed terminal', 'PTY update failed');
+  await assertStatus(`/pty/${pty.id}/connect-token`, 403, { method: 'POST' });
+  const ptyTicket = (await request(`/pty/${pty.id}/connect-token`, { method: 'POST', headers: { 'x-opencode-ticket': '1' } })).ticket;
+  assert(ptyTicket === `ticket-${pty.id}`, 'PTY token failed');
+  await checkPtySocket(pty.id, ptyTicket);
+  assert((await request('/pty')).length === 1, 'PTY list failed');
+  await request(`/pty/${pty.id}`, { method: 'DELETE' });
+  await assertStatus(`/pty/${pty.id}`, 404);
+
+  const worktree = await request('/experimental/worktree', json('POST', { name: 'sdk-smoke' }));
+  assert((await request('/experimental/worktree')).includes(worktree.directory), 'Worktree list failed');
+  assert(await request('/experimental/worktree/reset', json('POST', { directory: worktree.directory })), 'Worktree reset failed');
+  await assertStatus('/experimental/worktree', 400, json('POST', { name: 'sdk-smoke' }));
+  assert(await request('/experimental/worktree', json('DELETE', { directory: worktree.directory })), 'Worktree remove failed');
+  await assertStatus('/experimental/worktree/reset', 400, json('POST', { directory: worktree.directory }));
+
+  const mcpConfig = { type: 'remote', url: 'https://mcp.example.test', enabled: true };
+  assert((await request('/mcp', json('POST', { name: 'remote-tools', config: mcpConfig })))['remote-tools'].status === 'connected', 'MCP add failed');
+  await request('/mcp/remote-tools/disconnect', { method: 'POST' });
+  assert((await request('/mcp'))['remote-tools'].status === 'disabled', 'MCP disconnect failed');
+  await request('/mcp/remote-tools/connect', { method: 'POST' });
+  const mcpOauth = await request('/mcp/remote-tools/auth', { method: 'POST' });
+  assert(mcpOauth.oauthState === 'oauth-remote-tools', 'MCP OAuth start failed');
+  assert((await request('/mcp/remote-tools/auth/callback', json('POST', { code: 'mcp-code' }))).status === 'connected', 'MCP OAuth callback failed');
+  assert((await request('/mcp/remote-tools/auth', { method: 'DELETE' })).success, 'MCP OAuth remove failed');
+  await assertStatus('/mcp/missing/connect', 404, { method: 'POST' });
+  await request('/config', json('PATCH', { mcp: { 'remote-tools': { ...mcpConfig, enabled: false } } }));
+  assert((await request('/mcp'))['remote-tools'].status === 'disabled', 'Config-backed MCP disable failed');
+  await assertStatus('/config', 400, json('PATCH', { mcp: { 'remote-tools': null } }));
+  assert((await request('/config')).mcp['remote-tools'], 'Rejected MCP deletion changed config');
 
   const session = await request('/session', json('POST', { title: 'Smoke session' }));
   const sessionId = session.id;
@@ -110,16 +180,26 @@ try {
   assert((await request(`/session/${sessionId}/diff`)).length === 0, 'Expected message-scoped diff contract');
   assert((await request(`/session/${sessionId}/diff?messageID=${userMessage.info.id}`)).length > 0, 'Expected user message diff payload');
   assert((await request('/file/status')).length === 2, 'Expected completed task file status');
+  assert(await request(`/session/${sessionId}/init`, json('POST', { modelID: 'gpt-4.1-mini', providerID: 'openai', messageID: userMessage.info.id })), 'Session init failed');
+  await assertStatus(`/session/${sessionId}/init`, 400, json('POST', {}));
+  const shellMessage = await request(`/session/${sessionId}/shell`, json('POST', { agent: 'build', command: 'npm test' }));
+  assert(shellMessage.parts[0].text.includes('/shell npm test'), 'Session shell failed');
 
   const commandMessage = await request(`/session/${sessionId}/command`, json('POST', { command: 'review', arguments: 'src' }));
   assert(commandMessage.parts[0].text.includes('/review src'), 'Command execution failed');
   const forked = await request(`/session/${sessionId}/fork`, json('POST', {}));
   assert(forked.parentID === sessionId, 'Session fork failed');
+  assert((await request(`/session/${sessionId}/children`)).some((child) => child.id === forked.id), 'Session children failed');
+  await assertStatus('/session/missing/children', 404);
   assert((await request(`/session/${sessionId}/share`, { method: 'POST' })).share.url, 'Session share failed');
   assert(!(await request(`/session/${sessionId}/share`, { method: 'DELETE' })).share, 'Session unshare failed');
   const messageId = (await request(`/session/${sessionId}/message`))[0].info.id;
   assert((await request(`/session/${sessionId}/revert`, json('POST', { messageID: messageId }))).revert.messageID === messageId, 'Session revert failed');
   assert(!(await request(`/session/${sessionId}/unrevert`, { method: 'POST' })).revert, 'Session unrevert failed');
+  const archived = await request(`/session/${sessionId}`, json('PATCH', { time: { archived: 1234567890 } }));
+  assert(archived.time.archived === 1234567890, 'Session archive failed');
+  assert(!(await request('/session')).some((entry) => entry.id === sessionId), 'Archived session leaked into active list');
+  assert((await request('/experimental/session?archived=true')).some((entry) => entry.id === sessionId && entry.project.id === 'project-demo'), 'Experimental archived list failed');
   await request('/__control/reset', json('POST', { scenario: 'permission' }));
   const permissionSession = await request('/session', json('POST', { title: 'Permission session' }));
   const abortController = new AbortController();

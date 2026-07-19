@@ -17,7 +17,7 @@ const androidPackage = isDevelopmentVariant ? developmentAndroidPackage : releas
 const config: ExpoConfig = {
   name: isDevelopmentVariant ? 'OpenCode Mobile Dev' : 'OpenCode Mobile',
   slug: 'opencode-mobile',
-  version: '1.0.4',
+  version: '1.0.5',
   orientation: 'portrait',
   icon: './assets/images/icon.png',
   scheme: 'opencodemobile',
@@ -25,7 +25,7 @@ const config: ExpoConfig = {
   newArchEnabled: true,
   android: {
     package: androidPackage,
-    versionCode: 4,
+    versionCode: 5,
     adaptiveIcon: {
       foregroundImage: './assets/images/adaptive-icon.png',
       backgroundColor: "#202020"

@@ -8,6 +8,7 @@ import {
   Button,
   Dialog,
   HelperText,
+  List,
   Portal,
   Snackbar,
   TextInput,
@@ -15,6 +16,7 @@ import {
 
 import { Colors } from '@/constants/theme';
 import { ProviderConfigDialog } from '@/components/settings/provider-config-dialog';
+import { McpSection } from '@/components/settings/mcp-section';
 import {
   AiDefaultsSection,
   ConnectionSection,
@@ -43,10 +45,14 @@ export default function SettingsScreen() {
   const {
     availableModels,
     availableProviders,
+    addMcpServer,
     chatPreferences,
     completeAutomaticProviderOAuth,
     completeProviderOAuth,
+    completeMcpOAuth,
     configuredProviders,
+    connectMcpServer,
+    currentConfig,
     providerAuthMethodsById,
     removeProvider,
     setProviderAuth,
@@ -54,13 +60,19 @@ export default function SettingsScreen() {
     connect,
     connection,
     diagnostics,
+    disconnectMcpServer,
     eventStreamStatus,
+    mcpStatuses,
     refreshDiagnostics,
+    refreshMcpServers,
     settings,
+    setMcpServerEnabled,
+    startMcpOAuth,
     updateChatPreferences,
     updateSettings,
   } = useOpencode();
   const [isConnecting, setIsConnecting] = useState(false);
+  const [expandedSection, setExpandedSection] = useState(() => connection.status === 'connected' ? 'ai' : 'connection');
   const [selectedProviderId, setSelectedProviderId] = useState<string>();
   const [selectedMethodIndex, setSelectedMethodIndex] = useState(0);
   const [authValues, setAuthValues] = useState<Record<string, string>>({});
@@ -221,6 +233,10 @@ export default function SettingsScreen() {
     void refreshSpeechVoices();
   }, []);
 
+  useEffect(() => {
+    setExpandedSection(connection.status === 'connected' ? 'ai' : 'connection');
+  }, [connection.status]);
+
   const selectedSpeechVoiceLabel = useMemo(
     () => availableSpeechVoices.find((voice) => voice.id === chatPreferences.speechVoiceId)?.label || 'System default',
     [availableSpeechVoices, chatPreferences.speechVoiceId],
@@ -342,49 +358,81 @@ export default function SettingsScreen() {
   return (
     <>
       <ScrollView style={[styles.screen, { backgroundColor: palette.background }]} contentContainerStyle={styles.content}>
-        <ConnectionSection
-          connection={connection}
-          isConnecting={isConnecting}
-          onReconnect={() => void handleConnect()}
-          palette={palette}
-          settings={settings}
-          updateSettings={updateSettings}
-        />
-        <DiagnosticsSection diagnostics={diagnostics} eventStreamStatus={eventStreamStatus} onRefresh={() => void refreshDiagnostics()} palette={palette} />
-        <AiDefaultsSection
-          availableModels={availableModels}
-          availableProviders={availableProviders}
-          chatPreferences={chatPreferences}
-          configuredProviders={configuredProviders}
-          enabledModelIds={enabledModelIds}
-          expandedProviderId={expandedProviderId}
-          onExpandedProviderChange={setExpandedProviderId}
-          onModelToggle={handleModelToggle}
-          onRemoveProvider={handleRemoveProvider}
-          onStartProviderConfiguration={startProviderConfiguration}
-          palette={palette}
-        />
-        <NotificationsSection
-          isRefreshingNotificationStatus={isRefreshingNotificationStatus}
-          notificationStatus={notificationStatus}
-          onEnableNotifications={() => void handleEnableNotifications()}
-          onOpenAppSettings={() => void handleOpenAppSettings()}
-          onOpenBatterySaverSettings={() => void handleOpenBatterySaverSettings()}
-          onOpenBatterySettings={() => void handleOpenBatterySettings()}
-          onOpenNotificationSettings={() => void handleOpenNotificationSettings()}
-          onRefreshStatus={() => void refreshNotificationStatus()}
-          palette={palette}
-        />
-        <VoiceSection
-          availableSpeechVoices={availableSpeechVoices}
-          chatPreferences={chatPreferences}
-          isRefreshingSpeechVoices={isRefreshingSpeechVoices}
-          palette={palette}
-          selectedResponseScope={selectedResponseScope}
-          selectedSpeechVoiceLabel={selectedSpeechVoiceLabel}
-          selectedWorkingSound={selectedWorkingSound}
-          updateChatPreferences={updateChatPreferences}
-        />
+        <List.AccordionGroup expandedId={expandedSection} onAccordionPress={(id) => setExpandedSection(expandedSection === String(id) ? '' : String(id))}>
+          <List.Accordion id="connection" title="Connection" description={connection.status === 'connected' ? 'Connected' : connection.message} titleStyle={{ color: palette.text }} descriptionStyle={{ color: palette.muted }} style={[styles.category, { backgroundColor: palette.surface, borderColor: palette.border }]}>
+            <ConnectionSection
+              connection={connection}
+              isConnecting={isConnecting}
+              onReconnect={() => void handleConnect()}
+              palette={palette}
+              settings={settings}
+              updateSettings={updateSettings}
+            />
+          </List.Accordion>
+          <List.Accordion id="ai" title="AI & providers" description={`${configuredProviders.length} configured`} titleStyle={{ color: palette.text }} descriptionStyle={{ color: palette.muted }} style={[styles.category, { backgroundColor: palette.surface, borderColor: palette.border }]}>
+            <AiDefaultsSection
+              availableModels={availableModels}
+              availableProviders={availableProviders}
+              chatPreferences={chatPreferences}
+              configuredProviders={configuredProviders}
+              enabledModelIds={enabledModelIds}
+              expandedProviderId={expandedProviderId}
+              onExpandedProviderChange={setExpandedProviderId}
+              onModelToggle={handleModelToggle}
+              onRemoveProvider={handleRemoveProvider}
+              onStartProviderConfiguration={startProviderConfiguration}
+              palette={palette}
+            />
+          </List.Accordion>
+          <List.Accordion id="notifications" title="Notifications" description={notificationStatus?.permissionGranted ? 'Enabled' : 'Off'} titleStyle={{ color: palette.text }} descriptionStyle={{ color: palette.muted }} style={[styles.category, { backgroundColor: palette.surface, borderColor: palette.border }]}>
+            <NotificationsSection
+              isRefreshingNotificationStatus={isRefreshingNotificationStatus}
+              notificationStatus={notificationStatus}
+              onEnableNotifications={() => void handleEnableNotifications()}
+              onOpenAppSettings={() => void handleOpenAppSettings()}
+              onOpenBatterySaverSettings={() => void handleOpenBatterySaverSettings()}
+              onOpenBatterySettings={() => void handleOpenBatterySettings()}
+              onOpenNotificationSettings={() => void handleOpenNotificationSettings()}
+              onRefreshStatus={() => void refreshNotificationStatus()}
+              palette={palette}
+            />
+          </List.Accordion>
+          <List.Accordion id="voice" title="Voice & responses" description={chatPreferences.autoPlayAssistantReplies ? 'Reply playback on' : 'Reply playback off'} titleStyle={{ color: palette.text }} descriptionStyle={{ color: palette.muted }} style={[styles.category, { backgroundColor: palette.surface, borderColor: palette.border }]}>
+            <VoiceSection
+              availableSpeechVoices={availableSpeechVoices}
+              chatPreferences={chatPreferences}
+              isRefreshingSpeechVoices={isRefreshingSpeechVoices}
+              palette={palette}
+              selectedResponseScope={selectedResponseScope}
+              selectedSpeechVoiceLabel={selectedSpeechVoiceLabel}
+              selectedWorkingSound={selectedWorkingSound}
+              updateChatPreferences={updateChatPreferences}
+            />
+          </List.Accordion>
+          <List.Accordion id="advanced" title="Advanced" description="MCP servers and diagnostics" titleStyle={{ color: palette.text }} descriptionStyle={{ color: palette.muted }} style={[styles.category, { backgroundColor: palette.surface, borderColor: palette.border }]}>
+            <McpSection
+              configs={currentConfig?.mcp}
+              mcpStatuses={mcpStatuses}
+              onAdd={addMcpServer}
+              onCompleteOAuth={completeMcpOAuth}
+              onConnect={connectMcpServer}
+              onDisconnect={disconnectMcpServer}
+              onRefresh={refreshMcpServers}
+              onSetEnabled={setMcpServerEnabled}
+              onStartOAuth={async (name) => {
+                const url = await startMcpOAuth(name);
+                if (!url) {
+                  await refreshMcpServers();
+                  return false;
+                }
+                await WebBrowser.openBrowserAsync(url);
+                return true;
+              }}
+              palette={palette}
+            />
+            <DiagnosticsSection diagnostics={diagnostics} eventStreamStatus={eventStreamStatus} onRefresh={() => void refreshDiagnostics()} palette={palette} />
+          </List.Accordion>
+        </List.AccordionGroup>
 
       </ScrollView>
 
@@ -448,4 +496,5 @@ export default function SettingsScreen() {
 const styles = StyleSheet.create({
   screen: { flex: 1 },
   content: { padding: 16, paddingTop: 28, gap: 16, paddingBottom: 28 },
+  category: { borderRadius: 16, borderWidth: 1, marginBottom: 10, overflow: 'hidden' },
 });

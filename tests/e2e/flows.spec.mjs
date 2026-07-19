@@ -112,12 +112,14 @@ test('sessions can be renamed and require confirmation before deletion', async (
   await sendPrompt(page, 'Create a session to rename');
   await expect(page.getByText(/Finished:/).first()).toBeVisible({ timeout: 20_000 });
   await page.getByRole('tab', { name: 'Workspace' }).click();
+  await page.getByLabel(/Actions for/).first().click();
   await page.getByText('Rename', { exact: true }).click();
   await page.getByTestId('workspace-session-title-input').fill('Renamed from Playwright');
   await page.getByText('Save', { exact: true }).click();
   await expect(page.getByText('Renamed from Playwright', { exact: true }).first()).toBeVisible();
 
   page.once('dialog', (dialog) => void dialog.accept());
+  await page.getByLabel(/Actions for/).first().click();
   await page.getByText('Delete', { exact: true }).click();
   await expect(page.getByText('Renamed from Playwright', { exact: true }).nth(1)).not.toBeVisible();
 });
@@ -135,11 +137,68 @@ test('workspace file search opens deterministic file content', async ({ page, re
   await openReadyChat(page);
 
   await page.getByRole('tab', { name: 'Workspace' }).click();
+  await page.getByText('Files', { exact: true }).click();
   await page.getByTestId('workspace-file-search').fill('demo');
   await page.getByText('Search', { exact: true }).click();
   await expect(page.getByText('src/demo.ts', { exact: true })).toBeVisible();
   await page.getByText('src/demo.ts', { exact: true }).click();
   await expect(page.getByText(/OpenCode 1\.18\.3/)).toBeVisible();
+});
+
+test('workspace files save through a conflict-checked VCS patch', async ({ page, request }) => {
+  await resetScenario(request, 'happy-path');
+  await openReadyChat(page);
+  await page.getByRole('tab', { name: 'Workspace' }).click();
+  await page.getByText('Files', { exact: true }).click();
+  await page.getByTestId('workspace-file-search').fill('demo');
+  await page.getByText('Search', { exact: true }).click();
+  await page.getByText('src/demo.ts', { exact: true }).click();
+  await page.getByText('Edit', { exact: true }).click();
+  await page.getByTestId('workspace-file-editor').fill('export const demo = "OpenCode SDK 1.18.3";\n');
+  await page.getByTestId('workspace-file-save-button').click();
+  await expect(page.getByText(/OpenCode SDK 1\.18\.3/)).toBeVisible();
+});
+
+test('sessions archive and restore without deletion', async ({ page, request }) => {
+  await resetScenario(request, 'happy-path');
+  await openReadyChat(page);
+  await sendPrompt(page, 'Archive this session safely');
+  await expect(page.getByText(/Finished:/).first()).toBeVisible({ timeout: 20_000 });
+  await page.getByRole('tab', { name: 'Workspace' }).click();
+  await page.getByLabel(/Actions for/).first().click();
+  await page.getByText('Archive', { exact: true }).click();
+  await page.getByLabel('Show archived chats').click();
+  await expect(page.getByText('Archive this session safely', { exact: true }).last()).toBeVisible();
+  await page.getByLabel(/Restore Archive this session safely/).click();
+  await expect(page.getByText('No archived chats.', { exact: true })).toBeVisible();
+});
+
+test('worktrees and MCP servers can be created', async ({ page, request }) => {
+  await resetScenario(request, 'happy-path');
+  await openReadyChat(page);
+  await page.getByRole('tab', { name: 'Workspace' }).click();
+  await page.getByText('Tools', { exact: true }).click();
+  await page.getByTestId('workspace-worktree-name').fill('mobile-test');
+  await page.getByTestId('workspace-worktree-create').click();
+  await expect(page.getByText('mobile-test', { exact: true })).toBeVisible();
+
+  await page.getByRole('tab', { name: 'Settings' }).click();
+  await page.getByText('Advanced', { exact: true }).click();
+  await page.getByText('Remote', { exact: true }).click();
+  await page.getByTestId('settings-mcp-name').fill('web-tools');
+  await page.getByTestId('settings-mcp-target').fill('https://example.test/mcp');
+  await page.getByTestId('settings-mcp-add').click();
+  await expect(page.getByText('web-tools', { exact: true })).toBeVisible();
+});
+
+test('terminal streams input and output over the PTY websocket', async ({ page, request }) => {
+  await resetScenario(request, 'happy-path');
+  await openReadyChat(page);
+  await page.getByRole('tab', { name: 'Terminal' }).click();
+  await page.getByTestId('terminal-create-button').click();
+  await page.getByTestId('terminal-line-input').fill('echo web');
+  await page.getByText('Send', { exact: true }).click();
+  await expect(page.getByTestId('terminal-output')).toContainText('ran: echo web');
 });
 
 test('settings can configure an additional provider against the fake server', async ({ page, request }) => {

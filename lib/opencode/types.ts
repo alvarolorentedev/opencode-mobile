@@ -1,3 +1,5 @@
+import type { AppSkillsResponse } from '@opencode-ai/sdk/v2/client';
+
 export type {
   Agent,
   Command,
@@ -7,19 +9,41 @@ export type {
   FileNode,
   FormatterStatus,
   LspStatus,
+  McpLocalConfig,
+  McpOAuthConfig,
+  McpRemoteConfig,
   McpStatus,
   Message,
   Model,
   Part,
+  PermissionRuleset,
   Project,
   Provider,
   ProviderAuthMethod,
+  Pty,
+  PtyShellsResponse,
+  PtyTicketConnectToken,
   Session,
   SessionStatus,
+  Symbol,
   Todo,
+  ToolIds,
+  ToolList,
+  ToolListItem,
   ToolPart,
+  VcsApplyError,
+  VcsFileDiff,
+  VcsFileStatus,
   VcsInfo,
+  Worktree,
+  WorktreeCreateInput,
+  WorktreeRemoveInput,
+  WorktreeResetInput,
+  AppSkillsResponse as Skills,
+  GlobalSession,
   SnapshotFileDiff as FileDiff,
 } from '@opencode-ai/sdk/v2/client';
+
+export type Skill = AppSkillsResponse[number];
 
 export default {};

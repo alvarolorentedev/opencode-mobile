@@ -1,6 +1,6 @@
-import type { OpencodeClient } from '@opencode-ai/sdk/v2/client';
+import type { OpencodeClient, PermissionRuleset } from '@opencode-ai/sdk/v2/client';
 
-import type { Project } from '@/lib/opencode/types';
+import type { GlobalSession, Project } from '@/lib/opencode/types';
 
 function requireData<T>(data: T | undefined, operation: string): T {
   if (data === undefined) {
@@ -48,6 +48,18 @@ export async function listSessions(client: OpencodeClient) {
   return { sessions: nextSessions, statuses: requireData(statusesResponse.data, 'session status request') };
 }
 
+export async function listArchivedSessions(client: OpencodeClient) {
+  const sessions: GlobalSession[] = [];
+  let cursor: number | undefined;
+  do {
+    const response = await client.experimental.session.list({ archived: true, cursor, limit: 100 });
+    sessions.push(...requireData(response.data, 'archived session list request'));
+    const next = response.response?.headers.get('x-next-cursor');
+    cursor = next ? Number(next) : undefined;
+  } while (cursor !== undefined);
+  return sessions;
+}
+
 export async function getSessionMessages(client: OpencodeClient, sessionId: string) {
   const response = await client.session.messages({ sessionID: sessionId });
   return requireData(response.data, 'session messages request');
@@ -75,6 +87,29 @@ export async function deleteSession(client: OpencodeClient, sessionId: string) {
 
 export async function updateSessionTitle(client: OpencodeClient, sessionId: string, title: string) {
   return (await client.session.update({ sessionID: sessionId, title })).data;
+}
+
+export type SessionUpdate = {
+  title?: string;
+  metadata?: Record<string, unknown>;
+  permission?: PermissionRuleset;
+  time?: { archived?: number };
+};
+
+export async function updateSession(client: OpencodeClient, sessionId: string, update: SessionUpdate) {
+  return requireData((await client.session.update({ sessionID: sessionId, ...update })).data, 'session update request');
+}
+
+export function archiveSession(client: OpencodeClient, sessionId: string, archived = Date.now()) {
+  return updateSession(client, sessionId, { time: { archived } });
+}
+
+export function restoreSession(client: OpencodeClient, sessionId: string) {
+  return updateSession(client, sessionId, { time: { archived: 0 } });
+}
+
+export async function getSessionChildren(client: OpencodeClient, sessionId: string) {
+  return requireData((await client.session.children({ sessionID: sessionId })).data, 'session children request');
 }
 
 export async function forkSession(client: OpencodeClient, sessionId: string, messageId?: string) {

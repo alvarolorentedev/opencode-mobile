@@ -40,6 +40,13 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
+        name="terminal"
+        options={{
+          title: 'Terminal',
+          tabBarIcon: ({ color }) => <IconSymbol size={28} name="terminal.fill" color={color} />,
+        }}
+      />
+      <Tabs.Screen
         name="workspace"
         options={{
           title: 'Workspace',

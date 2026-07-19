@@ -1,4 +1,23 @@
-import type { Command, Config, File, FileContent, FileDiff, Project, ProviderAuthMethod, Session, SessionStatus, Todo, VcsInfo } from '@/lib/opencode/types';
+import type {
+  Command,
+  Config,
+  File,
+  FileContent,
+  FileDiff,
+  GlobalSession,
+  McpLocalConfig,
+  McpRemoteConfig,
+  McpStatus,
+  Project,
+  ProviderAuthMethod,
+  Pty,
+  PtyShellsResponse,
+  Session,
+  SessionStatus,
+  Todo,
+  VcsInfo,
+  Worktree,
+} from '@/lib/opencode/types';
 import type {
   OpencodeConnectionSettings,
   PendingQuestionAnswer,
@@ -85,6 +104,7 @@ export type OpencodeContextValue = {
   refreshWorkspaceCatalog: (silent?: boolean) => Promise<void>;
   refreshWorkspaceStatus: () => Promise<void>;
   sessions: Session[];
+  archivedSessions: GlobalSession[];
   sessionStatuses: Record<string, SessionStatus>;
   currentSessionId?: string;
   activeSession?: Session;
@@ -133,6 +153,9 @@ export type OpencodeContextValue = {
   ensureActiveSession: () => Promise<string | undefined>;
   createSession: (title?: string) => Promise<Session>;
   deleteSession: (sessionId: string) => Promise<void>;
+  archiveSession: (sessionId: string) => Promise<void>;
+  restoreSession: (sessionId: string) => Promise<void>;
+  refreshArchivedSessions: () => Promise<void>;
   renameSession: (sessionId: string, title: string) => Promise<void>;
   forkSession: (sessionId: string, messageId?: string) => Promise<Session>;
   shareSession: (sessionId: string) => Promise<Session>;
@@ -152,6 +175,30 @@ export type OpencodeContextValue = {
   vcsInfo?: VcsInfo;
   searchWorkspaceFiles: (query: string) => Promise<void>;
   openWorkspaceFile: (path: string) => Promise<void>;
+  saveWorkspaceFile: (path: string, expectedContent: string, content: string) => Promise<void>;
+  worktrees: (string | Worktree)[];
+  refreshWorktrees: () => Promise<void>;
+  createWorktree: (name?: string, startCommand?: string) => Promise<void>;
+  resetWorktree: (directory: string) => Promise<void>;
+  removeWorktree: (directory: string) => Promise<void>;
+  mcpStatuses: Record<string, McpStatus>;
+  refreshMcpServers: () => Promise<void>;
+  addMcpServer: (name: string, config: McpLocalConfig | McpRemoteConfig) => Promise<void>;
+  connectMcpServer: (name: string) => Promise<void>;
+  disconnectMcpServer: (name: string) => Promise<void>;
+  setMcpServerEnabled: (name: string, enabled: boolean) => Promise<void>;
+  startMcpOAuth: (name: string) => Promise<string>;
+  completeMcpOAuth: (name: string, code: string) => Promise<void>;
+  terminals: Pty[];
+  terminalShells: PtyShellsResponse;
+  activeTerminalId?: string;
+  terminalOutput: string;
+  terminalConnection: 'idle' | 'connecting' | 'connected' | 'error';
+  refreshTerminals: () => Promise<void>;
+  createTerminal: (command?: string, title?: string) => Promise<Pty>;
+  openTerminal: (ptyId: string) => Promise<void>;
+  sendTerminalInput: (input: string) => void;
+  closeTerminal: (ptyId: string) => Promise<void>;
   diagnostics?: Diagnostics;
   refreshDiagnostics: () => Promise<void>;
   eventStreamStatus: 'idle' | 'connecting' | 'connected' | 'error';

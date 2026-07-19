@@ -314,9 +314,17 @@ This is important to parity because the chat layout is intentionally dense and h
 
 ### Responsibility
 
-- wire project selection and session create/open/rename/delete/share actions to the provider
-- render read-only file path search, selected file content, changed-file count, and VCS branch
-- keep confirmation, rename input, and file-query state local to the screen
+- wire project selection and active/archived session lifecycle actions to the provider
+- render file search plus conflict-checked text editing and full-file patch save
+- render experimental worktree create/list/reset/remove controls
+- keep confirmations, rename/edit inputs, file query, and worktree forms local to the screen
+
+### Presentation
+
+- uses a compact active-project header with sync, refresh, and new-chat icon actions
+- separates content into `Chats`, `Files`, and `Tools` views instead of showing every workspace feature at once
+- orders chats with the current chat first, then non-idle chats, then recent idle chats
+- exposes archived chats as a Chats view toggle and destructive/session actions through an accessible overflow menu
 
 ## `app/(tabs)/settings.tsx`
 
@@ -325,6 +333,22 @@ This is important to parity because the chat layout is intentionally dense and h
 - wire connection, diagnostics, provider, notification, and voice sections to the provider
 - open provider OAuth URLs
 - collect and submit authorization codes for code-based OAuth callbacks
+- wire MCP add/connect/disconnect/enable/disable and OAuth actions to `McpSection`
+
+### Presentation
+
+- shows one expandable settings category at a time
+- keeps Connection open until the server is connected, then opens AI and provider setup
+- groups MCP servers and diagnostics under the collapsed `Advanced` category
+
+## `app/(tabs)/terminal.tsx`
+
+### Responsibility
+
+- fourth tab and thin controller over provider-owned PTY state
+- render a compact dropdown-style PTY selector with plus, refresh, and close actions
+- create default-shell PTYs, select/reconnect existing PTYs, and send newline-terminated input
+- auto-scroll provider-capped output; it is not a VT terminal emulator
 
 ## Settings Components
 
@@ -372,6 +396,7 @@ Responsibility:
 - edit speech input/output preferences
 - edit response style settings that become system prompt hints
 - select working sound and speech voice
+- adjust speech rate and working-sound volume with touch sliders
 
 ### `DiagnosticsSection`
 
@@ -405,6 +430,15 @@ Main relevant props:
 - `selectedMethodIndex`
 - `selectedProviderLabel`
 - `visiblePrompts`
+
+## `components/settings/mcp-section.tsx`
+
+### Responsibility
+
+- add local command or remote URL MCP configurations
+- show status and failure details
+- connect/disconnect, enable/disable, remove, refresh, and complete remote OAuth
+- retain only form, busy, error, and OAuth-code UI state locally
 
 ## `components/settings/settings-utils.ts`
 
@@ -510,7 +544,7 @@ Most important exported contracts:
 - `OpencodeProject`
 - `OpencodeContextValue`
 
-The context includes session lifecycle actions, commands, read-only workspace state/actions, diagnostics, global stream status, and OAuth callback completion in addition to chat state.
+The context includes active/archived session lifecycle, commands, workspace editing/worktrees, MCP management, PTY terminal state/actions, diagnostics, global stream status, and OAuth callback completion in addition to chat state.
 
 ## `providers/opencode-provider-selectors.ts`
 
@@ -545,7 +579,21 @@ The context includes session lifecycle actions, commands, read-only workspace st
 
 ### Responsibility
 
-- expose read-only file find, read, status, and VCS operations
+- expose file find/read/status, VCS read/apply, and experimental worktree operations
+
+## `providers/services/mcp-service.ts`
+
+### Responsibility
+
+- expose MCP status/add/connect/disconnect/OAuth operations
+- use config updates for enable/disable and removal
+
+## `providers/services/terminal-service.ts`
+
+### Responsibility
+
+- expose PTY shell/list/create/get/update/remove/connect-token operations
+- build the ticket-authenticated, project-scoped PTY WebSocket URL
 
 ## `providers/services/diagnostics-service.ts`
 

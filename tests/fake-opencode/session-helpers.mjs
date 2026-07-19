@@ -228,6 +228,10 @@ export function createSessionHelpers({ getNow, getState, emitEvent }) {
         ...state.config.provider,
         ...(patch?.provider || {}),
       },
+      mcp: {
+        ...state.config.mcp,
+        ...(patch?.mcp || {}),
+      },
     };
 
     const enabledProviders = Array.isArray(state.config.enabled_providers) ? state.config.enabled_providers : [];

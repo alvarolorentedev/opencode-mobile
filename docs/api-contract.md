@@ -24,7 +24,7 @@ The authoritative implementation is:
 
 Two clients are used:
 
-- project-scoped `client` for session, capability, command, file, and VCS operations
+- project-scoped `client` for session, capability, command, file, VCS, worktree, MCP, and PTY operations
 - unscoped `catalogClient` for project discovery, diagnostics, and global events
 
 The app retains only the scoped directory as client metadata so stale project responses can be ignored.
@@ -41,10 +41,16 @@ The generated `@opencode-ai/sdk/v2/client` surface is used for all OpenCode requ
 - session list/status/create/delete/update
 - session messages, diff, todos, prompt, abort, summarize, and command
 - session fork, share/unshare, and revert/unrevert
+- session archive/restore and experimental archived-session listing
 - permission and question list/reply operations
 - global event streaming
-- file find/read/status and VCS information
-- MCP, LSP, and formatter status
+- file find/read/status, VCS information, and VCS patch apply
+- experimental worktree list/create/reset/remove
+- MCP status/add/connect/disconnect/OAuth and config-backed enable/disable
+- PTY shell/list/create/remove/connect-token plus WebSocket streaming
+- LSP and formatter status
+
+The service layer also exposes current SDK helpers for file listing, text/symbol search, VCS status/diff, and session children/init/shell. They are covered by the fake-server contract but are not currently wired to a user-facing provider action.
 
 ## Workspace Discovery
 
@@ -141,6 +147,10 @@ Fields consumed by the UI include:
 
 Deleting the current session also clears current selection before the list is refreshed.
 
+### Archive And Restore
+
+Archive and restore use regular `session.update()` with `time.archived` set to `Date.now()` or `0`. The archived list comes from `experimental.session.list({ archived: true })`, returns cross-project `GlobalSession` records, and is sorted by update time. The list endpoint is experimental and may be absent or change across OpenCode releases; the app does not provide a compatibility fallback.
+
 ### Fork
 
 `session.fork()` receives an optional body:
@@ -211,7 +221,7 @@ Commands are loaded with `command.list()`. An exact known draft of the form `/na
 
 `agent` and `model` reflect current chat preferences. Messages and sessions are refreshed after execution.
 
-## Read-Only Workspace Contract
+## Workspace Contract
 
 `workspace-service.ts` wraps these SDK operations:
 
@@ -219,8 +229,23 @@ Commands are loaded with `command.list()`. An exact known draft of the form `/na
 - `file.read()` with `path`
 - `file.status()`
 - `vcs.get()`
+- `vcs.apply()` with a generated full-file unified patch
 
-Search is path-based, selected file content is displayed read-only, status is shown as a changed-file count, and VCS contributes the branch label. No file-write endpoint is called.
+Search is path-based, status is shown as a changed-file count, and VCS contributes the branch label. Saving is limited to text content: the provider first re-reads the path and compares it with the expected original, generates a safe relative-path full-file patch, calls `vcs.apply()`, then re-reads the saved file. A mismatch is a conflict and requires reopening the file.
+
+## Experimental Worktree Contract
+
+`worktree.list()`, `worktree.create()`, `worktree.reset()`, and `worktree.remove()` map to experimental worktree endpoints. Creation sends optional `name` and `startCommand`; reset/remove identify the worktree by directory. Create/remove also refresh project discovery. These endpoints are experimental and have no fallback for unsupported or changed server versions.
+
+## MCP Management Contract
+
+MCP management uses `mcp.status()`, `mcp.add()`, `mcp.connect()`, `mcp.disconnect()`, `mcp.auth.start()`, and `mcp.auth.callback()`. Additions are also written through `config.update()` because dynamic `mcp.add()` state is not durable. Local commands use a JSON string array so arguments and paths with spaces remain intact; remote additions send a URL. Remote OAuth opens the returned authorization URL and submits the entered code. SDK 1.18.3 has no MCP deletion operation, and config updates deep-merge omitted keys, so the UI supports disabling rather than falsely reporting removal.
+
+## PTY Terminal Contract
+
+The client uses `pty.shells()`, `pty.list()`, `pty.create()`, `pty.remove()`, and `pty.connectToken()`. Opening a PTY requests a short-lived ticket, converts the normalized server URL to `ws:` or `wss:`, preserves any configured path prefix, and connects to `/pty/{ptyID}/connect` with `directory` and `ticket` query parameters.
+
+The ticket authenticates the WebSocket rather than placing Basic credentials in its URL. Incoming text/blob data is appended after common ANSI CSI stripping and truncated to the latest 100,000 characters. This is intentionally a line console, not full VT emulation.
 
 ## Diagnostics Contract
 
@@ -279,6 +304,9 @@ Recognized payload types:
 - `project.updated`
 - `file.edited`
 - `vcs.branch.updated`
+- `pty.created`, `pty.updated`, `pty.exited`, and `pty.deleted`
+- `worktree.ready` and `worktree.failed`
+- `mcp.tools.changed` and `mcp.browser.open.failed`
 - `lsp.updated`
 - `permission.asked`
 - `permission.replied`

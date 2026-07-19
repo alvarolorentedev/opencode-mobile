@@ -17,8 +17,9 @@ It enforces three gates:
 
 1. `static`
    - `npm run lint`
-   - `npm run typecheck`
-   - `npm run test:fake-server:self`
+    - `npm run typecheck`
+    - `npm run test:workspace-patch`
+    - `npm run test:fake-server:self`
 2. `flow-regression`
    - starts the fake OpenCode server
    - starts the Expo web app in CI mode
@@ -47,8 +48,11 @@ It simulates:
 - workspace discovery
 - session creation, listing, status, title updates, deletion, fork, share, revert, messages, diffs, and todos
 - command discovery and execution
-- file search/read/status and VCS metadata
-- global health plus MCP, LSP, and formatter diagnostics
+- file list/path/text/symbol search, read/status, conflict-checked patch apply, and VCS metadata/diffs
+- global health plus MCP lifecycle/config/OAuth, LSP, and formatter diagnostics
+- archived sessions and experimental worktree lifecycle
+- PTY lifecycle plus ticket-authenticated WebSocket input/output
+- session children, initialization, and shell execution
 - provider catalog and auth metadata
 - full permission events and session-scoped responses
 - global SSE event envelopes
@@ -76,11 +80,15 @@ The current CI suite validates:
 - provider setup from Settings against fake metadata
 - polling fallback when the SSE stream is unavailable
 - connection recovery through a path-prefixed API URL
+- workspace text patch save and session archive/restore
+- experimental worktree creation and MCP server addition
+- terminal creation and WebSocket line input/output
 
 ## Local Commands
 
 ```bash
 npm run test:fake-server:self
+npm run test:workspace-patch
 npm run test:e2e:web
 npm run build:development:android
 ```
@@ -92,3 +100,5 @@ npm run test:fake-server
 ```
 
 The app is built in `EXPO_PUBLIC_E2E_MODE=1` for CI flow tests so notification and voice bootstrap side effects do not interfere with deterministic automation.
+
+For the current worktree changes, Android validation is CI-only; no local Android build result is claimed.

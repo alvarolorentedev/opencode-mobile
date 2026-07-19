@@ -166,6 +166,26 @@ export function buildClient(settings: OpencodeConnectionSettings): ScopedOpencod
   );
 }
 
+export function buildPtyWebSocketUrl(
+  settings: Pick<OpencodeConnectionSettings, 'serverUrl' | 'directory'>,
+  ptyId: string,
+  options?: { ticket?: string; cursor?: string },
+) {
+  const server = normalizeServerUrl(settings.serverUrl);
+  if (!server.valid) {
+    throw new Error('Cannot build a terminal URL from an invalid server URL.');
+  }
+
+  const url = new URL(server.origin);
+  url.protocol = url.protocol === 'https:' ? 'wss:' : 'ws:';
+  url.pathname = joinUrlPath(server.pathPrefix, `/pty/${encodeURIComponent(ptyId)}/connect`);
+  const directory = settings.directory.trim();
+  if (directory) url.searchParams.set('directory', directory);
+  if (options?.ticket) url.searchParams.set('ticket', options.ticket);
+  if (options?.cursor) url.searchParams.set('cursor', options.cursor);
+  return url.toString();
+}
+
 export function getNormalizedServerUrl(serverUrl: string) {
   return normalizeServerUrl(serverUrl).displayUrl;
 }

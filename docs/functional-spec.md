@@ -9,6 +9,7 @@ The mobile app is a client for interacting with an OpenCode server from a phone 
 - sending prompts and files to OpenCode
 - tracking transcript, file changes, todos, and blocking requests
 - configuring providers, models, and voice behavior
+- editing workspace text files, managing worktrees/MCP servers, and using project PTYs
 - optionally using a hands-free conversation mode
 
 This document describes current user-visible behavior that should be preserved for parity.
@@ -140,6 +141,8 @@ The Workspace tab provides lifecycle operations:
 - create a new session
 - rename a session
 - permanently delete a session after confirmation
+- archive a session without deleting it
+- restore or permanently delete sessions shown by the experimental archived-session list
 - share a session and copy its URL, or unshare it
 
 Session list behavior:
@@ -153,16 +156,27 @@ Additional session actions are available in Chat:
 - revert a session from a user message
 - undo the current revert
 
-### 9. Inspect Workspace Files
+### 9. Inspect And Edit Workspace Files
 
-The Workspace tab provides read-only source inspection:
+The Workspace tab provides source inspection and text editing:
 
 - search file paths by query
 - open returned files and display server-returned content
 - show the number of changed files from file status
 - show the current VCS branch when available
+- edit the selected text file and save the complete replacement as a VCS patch
 
-There is no file editing or write operation in this surface.
+Before save, the provider re-reads the file and rejects the operation if the server content differs from the content originally opened. Only non-base64 text files are editable; a successful full-file patch is followed by another read and workspace-status refresh.
+
+### 10. Manage Worktrees
+
+The Workspace tab can list, create, reset, and remove worktrees. Creation accepts an optional name and start command; reset and remove require destructive confirmation. These SDK operations use OpenCode's experimental worktree endpoints, so server availability and response stability are not guaranteed like the non-experimental contract.
+
+### 11. Use The Terminal Tab
+
+The fourth tab uses a compact terminal selector. The plus action creates a PTY with the server default shell (which falls back to bash on the fake server); the selector opens the existing terminals, and the X action closes the selected terminal. Users send newline-terminated input to the selected terminal.
+
+The provider requests a short-lived PTY connect ticket and opens a project-scoped `ws:`/`wss:` connection. The UI is a line console, not a terminal emulator: it strips common ANSI CSI sequences, does not implement VT cursor behavior, and keeps the latest 100,000 output characters.
 
 ## Chat Screen Detailed Behavior
 
@@ -326,6 +340,13 @@ Behavior:
 - reports MCP, LSP, and formatter counts when their endpoints are available
 - each diagnostic request fails independently and can be refreshed manually
 
+### MCP Servers Section
+
+- adds local MCP commands or remote MCP URLs
+- refreshes status and connects or disconnects servers
+- enables/disables and removes configuration through config updates
+- starts remote OAuth in the browser and submits an authorization code callback
+
 ### Voice Section
 
 Purpose:
@@ -415,7 +436,7 @@ The following values are not persisted and are rebuilt from the server:
 - todos
 - pending permissions and questions
 - provider/model/agent catalog
-- commands, workspace file results/status/content, VCS info, and diagnostics
+- commands, workspace file results/status/content, VCS info, worktrees, MCP statuses, PTYs, terminal output, archived sessions, and diagnostics
 
 ## User-Visible Edge Cases
 
@@ -435,9 +456,12 @@ Any reimplementation should preserve these functional outcomes:
 - workspace-first session scoping
 - remembered last session per project
 - transcript + diff + server-owned todo + permission surfaces
-- session delete, rename, fork, revert/unrevert, and share/unshare support
+- session delete, archive/restore, rename, fork, revert/unrevert, and share/unshare support
 - slash command discovery and execution
-- read-only workspace file search/view/status/VCS
+- workspace file search/view/status plus conflict-checked full-file VCS patch save
+- experimental worktree management and archived-session listing
+- MCP lifecycle/configuration/OAuth management
+- ticket-authenticated PTY line console with bounded, CSI-stripped output
 - server diagnostics
 - provider discovery and auth configuration from server metadata
 - enabled-model filtering separate from model selection

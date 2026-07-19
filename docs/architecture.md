@@ -37,6 +37,7 @@ The app has one tab group in `app/(tabs)/_layout.tsx`:
 - `index` -> Chat
 - `workspace` -> Workspace
 - `settings` -> Settings
+- `terminal` -> Terminal
 
 Navigation complexity is deliberately low. There are no nested feature stacks, no per-screen providers, and no deep in-app route hierarchy.
 
@@ -61,6 +62,7 @@ This file is the application's effective domain layer. It owns:
 - notification completion tracking
 - global SSE subscription with reconnect and polling fallback
 - session lifecycle actions, slash commands, workspace inspection, and diagnostics
+- archived-session, worktree, MCP, and PTY terminal orchestration
 - persistence hydration and write-back
 
 If this app were reimplemented, this provider would be the main source of truth for required behavior.
@@ -79,9 +81,11 @@ If this app were reimplemented, this provider would be the main source of truth 
 - `app/(tabs)/index.tsx`
   Chat landing logic. Ensures a session exists and renders `ChatView` once available.
 - `app/(tabs)/workspace.tsx`
-  Project picker, session lifecycle controls, and read-only workspace file inspection.
+  Project picker, active/archived session and worktree controls, plus conflict-checked text file editing.
 - `app/(tabs)/settings.tsx`
-  Settings screen controller for connection, providers, notifications, and voice.
+  Settings screen controller for connection, providers, MCP servers, notifications, and voice.
+- `app/(tabs)/terminal.tsx`
+  Fourth-tab line console for creating, opening, using, and terminating project PTYs.
 
 ### Provider Layer
 
@@ -107,7 +111,11 @@ If this app were reimplemented, this provider would be the main source of truth 
 - `providers/services/capabilities-service.ts`
   Discover config, providers, provider auth methods, model capabilities, and agents.
 - `providers/services/workspace-service.ts`
-  Read-only file search/read/status and VCS requests.
+  File search/read/status, VCS patch, and experimental worktree requests.
+- `providers/services/mcp-service.ts`
+  MCP status, lifecycle, config enablement, and OAuth requests.
+- `providers/services/terminal-service.ts`
+  PTY lifecycle, shell discovery, connect-token, and WebSocket URL helpers.
 - `providers/services/diagnostics-service.ts`
   Health, MCP, LSP, and formatter diagnostics with per-endpoint availability.
 
@@ -200,6 +208,7 @@ The provider fetches and caches:
 - pending permissions and questions by session, populated by events and refreshed from the server
 - providers, models, and agents
 - commands, workspace file status/search/read data, VCS information, and diagnostics
+- archived sessions, worktrees, MCP statuses, PTYs, terminal connection state, and terminal output
 
 ### Provider -> Derived State
 
@@ -230,6 +239,7 @@ User interactions are converted to provider actions such as:
 - `deleteSession`, `renameSession`, `forkSession`, `revertSession`, and share actions
 - `executeCommand`
 - workspace search/read and diagnostics refresh actions
+- workspace patch save, archive/restore, worktree, MCP, and terminal actions
 - `setProviderAuth`
 - `toggleConversationMode`
 
@@ -299,7 +309,9 @@ Responsibilities:
 - create/open sessions
 - rename and permanently delete sessions
 - share/unshare sessions and copy a newly created share URL
-- search and read workspace files without editing them
+- archive active sessions; restore or permanently delete sessions from the experimental archived list
+- search, read, and edit text workspace files; saving re-reads for conflicts and applies a full-file VCS patch
+- create, list, reset, and remove worktrees through experimental endpoints
 - show changed-file count and current VCS branch
 
 ### Settings Screen
@@ -308,12 +320,24 @@ Responsibilities:
 
 - edit connection settings
 - reconnect manually
-- inspect server health, realtime status, MCP, LSP, and formatter counts
+- inspect server health, realtime status, LSP, and formatter counts
+- add local or remote MCP servers; connect, disconnect, enable, disable, and complete remote OAuth
 - configure providers
 - remove configured provider credentials
 - choose model enablement defaults
 - inspect and enable notification setup
 - manage voice and response-style preferences
+
+### Terminal Screen
+
+Responsibilities:
+
+- list available shells and project PTYs
+- create, open/reconnect, and terminate PTYs
+- request a short-lived connect ticket and stream PTY data over a project-scoped WebSocket
+- provide a line-oriented input/output console rather than a full terminal emulator
+
+The provider strips common ANSI CSI sequences and retains only the latest 100,000 output characters. It does not emulate cursor movement or other VT terminal behavior.
 
 ## Conversation Mode Architecture
 
