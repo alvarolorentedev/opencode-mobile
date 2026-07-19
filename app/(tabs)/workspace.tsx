@@ -256,7 +256,7 @@ export default function WorkspaceScreen() {
             visible={projectMenuVisible}
             onDismiss={() => setProjectMenuVisible(false)}
             anchor={
-              <Pressable accessibilityRole="button" accessibilityLabel="Select project" onPress={() => setProjectMenuVisible(true)} style={({ pressed }) => [styles.headerSelector, pressed && styles.headerSelectorPressed]}>
+              <Pressable onPress={() => setProjectMenuVisible(true)} style={({ pressed }) => [styles.headerSelector, pressed && styles.headerSelectorPressed]}>
                 <View style={styles.headerCopy}>
                   <Text numberOfLines={1} variant="titleMedium" style={[styles.headerTitle, { color: palette.text }]}>{activeProject?.label || 'Workspace'}</Text>
                   <Text numberOfLines={1} variant="bodySmall" style={{ color: palette.muted }}>{connection.status === 'connected' ? activeProject?.path || currentProjectPath || serverRootPath : connection.message}</Text>

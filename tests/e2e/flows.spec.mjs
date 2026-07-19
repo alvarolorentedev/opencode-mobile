@@ -14,8 +14,8 @@ async function openReadyChat(page) {
   await page.goto('/', { waitUntil: 'domcontentloaded' });
   if (await page.getByText('Choose a workspace').isVisible().catch(() => false)) {
     await page.getByRole('tab', { name: 'Workspace' }).click();
-    await page.getByRole('button', { name: 'Select project' }).click();
-    await page.getByText('demo-project', { exact: true }).click();
+    await page.getByText('Workspace', { exact: true }).first().click();
+    await page.getByTestId('menu-item-title').filter({ hasText: 'demo-project' }).click();
     await page.getByRole('tab', { name: 'Chat' }).click();
   }
   await expect(page.getByText('Start a new task')).toBeVisible({ timeout: 30_000 });
