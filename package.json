@@ -13,6 +13,7 @@
     "typecheck": "tsc --noEmit",
     "test:fake-server": "node ./tests/fake-opencode/server.mjs",
     "test:fake-server:self": "node ./tests/fake-opencode/self-test.mjs",
+    "test:usage": "node ./tests/usage.test.mjs",
     "test:e2e:web": "playwright test",
     "test:ci:static": "npm run lint && npm run typecheck",
     "build:android": "node ./scripts/build-android-release.mjs",

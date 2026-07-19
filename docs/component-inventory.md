@@ -162,6 +162,7 @@ type ChatComposerProps = {
 
 - top app bar
 - session picker sheet
+- compact current-session usage summary and usage breakdown sheet
 - mounting point for conversation overlay
 
 ### Prop contract

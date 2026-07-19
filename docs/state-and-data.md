@@ -193,6 +193,10 @@ Selected from derived `projects` by `activeProjectPath`.
 
 Derived by converting `currentMessages` with `toTranscriptEntry()`.
 
+### Current Usage
+
+Derived from persisted assistant `step-finish` parts in `currentMessages`. Stable step IDs prevent replayed SSE events and reloads from being double counted; streaming parts are excluded. OpenCode step cost is preferred, with exact OpenCode model metadata used only as a USD fallback when reported cost is zero or absent and tokens are nonzero.
+
 ### Session Preview By ID
 
 Derived from message history using `getHistoryPreview()`.

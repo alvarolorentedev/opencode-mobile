@@ -1,4 +1,4 @@
-import type { Agent, Config } from '@/lib/opencode/types';
+import type { Agent, Config, Model } from '@/lib/opencode/types';
 
 export type ModelOption = {
   id: string;
@@ -13,6 +13,7 @@ export type ModelOption = {
   status?: 'alpha' | 'beta' | 'deprecated' | 'active';
   contextLimit?: number;
   outputLimit?: number;
+  pricing?: Model['cost'];
 };
 
 export type AgentOption = {

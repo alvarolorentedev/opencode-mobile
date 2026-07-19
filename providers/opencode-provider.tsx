@@ -32,6 +32,7 @@ import {
   type SessionMessageRecord,
 } from '@/lib/opencode/format';
 import { isTranscriptDisplayMessage } from '@/lib/opencode/transcript';
+import { aggregateSessionUsage, getLatestAssistantTurnUsage } from '@/lib/opencode/usage';
 import {
   clearPendingTaskFinishedNotification,
   notifyTaskFinished,
@@ -1897,6 +1898,15 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
     [currentSessionId, pendingQuestionsBySession, sendingState.sessionId],
   );
   const configuredProviders = useMemo(() => getConfiguredProviders(availableProviders), [availableProviders]);
+  const usagePricingByModel = useMemo(
+    () => Object.fromEntries(availableModels.flatMap((model) => model.pricing ? [[`${model.providerID}/${model.modelID}`, model.pricing] as const] : [])),
+    [availableModels],
+  );
+  const currentUsage = useMemo(() => aggregateSessionUsage(currentMessages, usagePricingByModel), [currentMessages, usagePricingByModel]);
+  const latestAssistantTurnUsage = useMemo(
+    () => getLatestAssistantTurnUsage(currentMessages, usagePricingByModel),
+    [currentMessages, usagePricingByModel],
+  );
   const currentTranscript = useMemo(() => getTranscript(currentMessages), [currentMessages]);
   const conversationMessages = useMemo(
     () => (conversationSessionId ? messagesBySession[conversationSessionId] || [] : []),
@@ -1929,6 +1939,8 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
       currentSessionId,
       activeSession,
       currentMessages,
+      currentUsage,
+      latestAssistantTurnUsage,
       currentDiffs,
       currentTranscript,
       currentTodos,
@@ -2019,6 +2031,8 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
       unrevertSession,
       configureProvider,
       currentMessages,
+      currentUsage,
+      latestAssistantTurnUsage,
       currentSessionId,
       currentTranscript,
       currentTodos,

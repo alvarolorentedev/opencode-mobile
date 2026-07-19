@@ -7,6 +7,7 @@ import type {
 } from '@/lib/opencode/client';
 import type { Diagnostics } from '@/providers/services/diagnostics-service';
 import type { SessionMessageRecord, TranscriptEntry } from '@/lib/opencode/format';
+import type { SessionUsage } from '@/lib/opencode/usage';
 import type {
   AgentOption as ProviderAgentOption,
   ChatPreferences as ProviderChatPreferences,
@@ -89,6 +90,8 @@ export type OpencodeContextValue = {
   activeSession?: Session;
   currentMessages: SessionMessageRecord[];
   currentTranscript: TranscriptEntry[];
+  currentUsage: SessionUsage;
+  latestAssistantTurnUsage?: SessionUsage;
   currentDiffs: FileDiff[];
   currentTodos: Todo[];
   currentPendingPermissions: PendingPermissionRequest[];

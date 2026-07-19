@@ -63,6 +63,7 @@ export async function discoverChatCapabilities(client: OpencodeClient, activePro
         supportsToolCalls: model.capabilities.toolcall,
         contextLimit: model.limit.context,
         outputLimit: model.limit.output,
+        pricing: model.cost,
         status: model.status,
       })),
     )

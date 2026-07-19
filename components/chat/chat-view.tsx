@@ -43,9 +43,11 @@ export function ChatView() {
     currentTodos,
     currentSessionId,
     currentTranscript,
+    currentUsage,
     ensureActiveSession,
     isRefreshingDiffs,
     isRefreshingMessages,
+    latestAssistantTurnUsage,
     openSession,
     refreshCurrentSession,
     replyToPermission,
@@ -132,6 +134,10 @@ export function ChatView() {
   const selectedSession = useMemo(
     () => sessions.find((session) => session.id === currentSessionId) || activeSession,
     [activeSession, currentSessionId, sessions],
+  );
+  const contextModel = useMemo(
+    () => availableModels.find((model) => model.providerID === selectedSession?.model?.providerID && model.modelID === selectedSession?.model?.id),
+    [availableModels, selectedSession?.model?.id, selectedSession?.model?.providerID],
   );
   const visiblePromptError = promptError && (!promptError.sessionId || promptError.sessionId === currentSessionId)
     ? promptError.message
@@ -455,7 +461,10 @@ export function ChatView() {
         <ChatHeader
           connectionStatus={connection.status}
           conversation={conversation}
+          contextLimit={contextModel?.contextLimit}
+          contextTokens={selectedSession?.tokens?.input}
           currentSessionId={currentSessionId}
+          isUsageLoading={isRefreshingMessages}
           insetsTop={insets.top}
           isCreatingSession={isCreatingSession}
           onCloseMenu={() => setSessionMenuVisible(false)}
@@ -471,6 +480,8 @@ export function ChatView() {
           selectedSession={selectedSession}
           sessionMenuVisible={sessionMenuVisible}
           sessions={visibleSessions}
+          latestAssistantTurnUsage={latestAssistantTurnUsage}
+          usage={currentUsage}
         />
 
         <View style={[styles.tabsRow, { backgroundColor: palette.surface, borderBottomColor: palette.border }]}>
