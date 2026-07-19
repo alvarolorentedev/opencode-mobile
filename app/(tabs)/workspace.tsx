@@ -1,9 +1,12 @@
 import * as Clipboard from 'expo-clipboard';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useMemo, useState } from 'react';
-import { Alert, Platform, RefreshControl, ScrollView, StyleSheet, useWindowDimensions, View } from 'react-native';
+import { Alert, Platform, Pressable, RefreshControl, ScrollView, StyleSheet, useWindowDimensions, View } from 'react-native';
 import { useRouter } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
   ActivityIndicator,
+  Appbar,
   Button,
   Card,
   Divider,
@@ -12,12 +15,11 @@ import {
   Menu,
   SegmentedButtons,
   Snackbar,
-  Surface,
   Text,
   TextInput,
 } from 'react-native-paper';
 
-import { Colors } from '@/constants/theme';
+import { Colors, Fonts } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { formatRelativeTime, getSessionSubtitle } from '@/lib/opencode/format';
 import type { Session } from '@/lib/opencode/types';
@@ -25,6 +27,7 @@ import { useOpencode } from '@/providers/opencode-provider';
 
 export default function WorkspaceScreen() {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
   const compact = width < 700;
   const colorScheme = useColorScheme() ?? 'light';
@@ -72,6 +75,7 @@ export default function WorkspaceScreen() {
   const [activePanel, setActivePanel] = useState<'chats' | 'files' | 'tools'>('chats');
   const [showArchived, setShowArchived] = useState(false);
   const [sessionActionId, setSessionActionId] = useState<string>();
+  const [projectMenuVisible, setProjectMenuVisible] = useState(false);
   const [updatingSessionId, setUpdatingSessionId] = useState<string | undefined>();
   const [renamingSessionId, setRenamingSessionId] = useState<string>();
   const [renameValue, setRenameValue] = useState('');
@@ -243,23 +247,37 @@ export default function WorkspaceScreen() {
 
   return (
     <>
+      <Appbar.Header
+        style={[styles.header, { backgroundColor: palette.surface, paddingTop: insets.top, height: 64 + insets.top }]}
+        statusBarHeight={0}
+        elevated>
+        <View style={styles.headerMain}>
+          <Menu
+            visible={projectMenuVisible}
+            onDismiss={() => setProjectMenuVisible(false)}
+            anchor={
+              <Pressable onPress={() => setProjectMenuVisible(true)} style={({ pressed }) => [styles.headerSelector, pressed && styles.headerSelectorPressed]}>
+                <View style={styles.headerCopy}>
+                  <Text numberOfLines={1} variant="titleMedium" style={[styles.headerTitle, { color: palette.text }]}>{activeProject?.label || 'Workspace'}</Text>
+                  <Text numberOfLines={1} variant="bodySmall" style={{ color: palette.muted }}>{connection.status === 'connected' ? activeProject?.path || currentProjectPath || serverRootPath : connection.message}</Text>
+                </View>
+                <MaterialCommunityIcons name="chevron-down" size={20} color={palette.muted} />
+              </Pressable>
+            }>
+            {projects.length === 0 ? <Menu.Item title="No projects available" disabled /> : null}
+            {projects.map((project) => <Menu.Item key={project.path} title={project.label} leadingIcon={project.path === activeProject?.path ? 'check' : undefined} onPress={() => { setProjectMenuVisible(false); selectProject(project.path); }} />)}
+          </Menu>
+        </View>
+        <View style={styles.headerActions}>
+          <Appbar.Action testID="workspace-sync-button" icon="sync" accessibilityLabel="Sync projects" onPress={() => void refreshWorkspaceCatalog()} />
+          <Appbar.Action testID="workspace-refresh-button" icon="refresh" accessibilityLabel="Refresh workspace" onPress={() => void handleRefresh()} />
+          <Appbar.Action testID="workspace-new-chat-button" icon="plus" accessibilityLabel="New chat" disabled={!activeProject || isCreating} onPress={() => void handleNewChat()} />
+        </View>
+      </Appbar.Header>
       <ScrollView
         style={[styles.screen, { backgroundColor: palette.background }]}
         contentContainerStyle={[styles.content, styles.centeredContent]}
         refreshControl={<RefreshControl refreshing={isRefreshing} onRefresh={() => void handleRefresh()} tintColor={palette.tint} />}>
-      <Surface style={[styles.hero, { backgroundColor: palette.surface }]} elevation={1}>
-        <View style={styles.heroHeader}>
-          <View style={styles.heroCopy}>
-            <Text variant="headlineSmall" style={{ color: palette.text }}>{activeProject?.label || 'Workspaces'}</Text>
-            <Text numberOfLines={1} style={{ color: palette.muted }}>{connection.status === 'connected' ? activeProject?.path || currentProjectPath || serverRootPath : connection.message}</Text>
-          </View>
-          <IconButton testID="workspace-sync-button" icon="sync" accessibilityLabel="Sync projects" onPress={() => void refreshWorkspaceCatalog()} />
-          <IconButton testID="workspace-refresh-button" icon="refresh" accessibilityLabel="Refresh workspace" onPress={() => void handleRefresh()} />
-          <IconButton testID="workspace-new-chat-button" icon="plus" accessibilityLabel="New chat" disabled={!activeProject || isCreating} onPress={() => void handleNewChat()} />
-        </View>
-        {projects.length > 0 ? <SegmentedButtons value={activeProject?.path || ''} onValueChange={selectProject} buttons={projects.map((project) => ({ value: project.path, label: project.label }))} /> : null}
-      </Surface>
-
       <SegmentedButtons value={activePanel} onValueChange={(value) => setActivePanel(value as typeof activePanel)} buttons={[{ value: 'chats', label: 'Chats' }, { value: 'files', label: 'Files' }, { value: 'tools', label: 'Tools' }]} />
 
       {activePanel === 'chats' ? <Card mode="contained" style={[styles.card, { backgroundColor: palette.surface }]}>
@@ -433,11 +451,15 @@ export default function WorkspaceScreen() {
 
 const styles = StyleSheet.create({
   screen: { flex: 1 },
-  content: { padding: 16, paddingTop: 28, gap: 16, paddingBottom: 28, width: '100%' },
+  content: { padding: 16, gap: 16, paddingBottom: 28, width: '100%' },
   centeredContent: { maxWidth: 1100, alignSelf: 'center' },
-  hero: { padding: 16, borderRadius: 16, gap: 12 },
-  heroHeader: { alignItems: 'center', flexDirection: 'row', gap: 2 },
-  heroCopy: { flex: 1, minWidth: 0, gap: 2 },
+  header: { elevation: 0 },
+  headerMain: { alignSelf: 'stretch', flex: 1, justifyContent: 'center', minWidth: 0 },
+  headerActions: { alignItems: 'center', flexDirection: 'row', flexShrink: 0 },
+  headerSelector: { alignItems: 'center', alignSelf: 'stretch', borderRadius: 14, flexDirection: 'row', gap: 8, justifyContent: 'center', marginRight: 8, minHeight: 48, paddingRight: 4 },
+  headerSelectorPressed: { opacity: 0.82 },
+  headerCopy: { flex: 1, minWidth: 0 },
+  headerTitle: { fontFamily: Fonts.display, fontWeight: '700' },
   actions: { flexDirection: 'row', gap: 12 },
   card: { borderRadius: 16 },
   listContent: { paddingHorizontal: 0 },

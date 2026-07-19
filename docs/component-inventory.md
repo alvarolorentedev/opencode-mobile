@@ -321,7 +321,7 @@ This is important to parity because the chat layout is intentionally dense and h
 
 ### Presentation
 
-- uses a compact active-project header with sync, refresh, and new-chat icon actions
+- uses the same safe-area app header as Chat and Terminal, with an active-project selector and icon actions
 - separates content into `Chats`, `Files`, and `Tools` views instead of showing every workspace feature at once
 - orders chats with the current chat first, then non-idle chats, then recent idle chats
 - exposes archived chats as a Chats view toggle and destructive/session actions through an accessible overflow menu
@@ -338,6 +338,7 @@ This is important to parity because the chat layout is intentionally dense and h
 ### Presentation
 
 - shows one expandable settings category at a time
+- uses the same safe-area app header and title treatment as Chat and Terminal
 - keeps Connection open until the server is connected, then opens AI and provider setup
 - groups MCP servers and diagnostics under the collapsed `Advanced` category
 

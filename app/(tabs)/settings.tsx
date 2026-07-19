@@ -2,19 +2,22 @@ import * as IntentLauncher from 'expo-intent-launcher';
 import * as Linking from 'expo-linking';
 import Constants from 'expo-constants';
 import { useEffect, useMemo, useState } from 'react';
-import { Alert, Platform, ScrollView, StyleSheet } from 'react-native';
+import { Alert, Platform, ScrollView, StyleSheet, View } from 'react-native';
 import * as WebBrowser from 'expo-web-browser';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
+  Appbar,
   Button,
   Dialog,
   HelperText,
   List,
   Portal,
   Snackbar,
+  Text,
   TextInput,
 } from 'react-native-paper';
 
-import { Colors } from '@/constants/theme';
+import { Colors, Fonts } from '@/constants/theme';
 import { ProviderConfigDialog } from '@/components/settings/provider-config-dialog';
 import { McpSection } from '@/components/settings/mcp-section';
 import {
@@ -40,6 +43,7 @@ import { getSpeechVoiceOptions, type SpeechVoiceOption } from '@/lib/voice/speec
 import { useOpencode } from '@/providers/opencode-provider';
 
 export default function SettingsScreen() {
+  const insets = useSafeAreaInsets();
   const colorScheme = useColorScheme() ?? 'light';
   const palette = Colors[colorScheme];
   const {
@@ -357,6 +361,18 @@ export default function SettingsScreen() {
 
   return (
     <>
+      <Appbar.Header
+        style={[styles.header, { backgroundColor: palette.surface, paddingTop: insets.top, height: 64 + insets.top }]}
+        statusBarHeight={0}
+        elevated>
+        <View style={styles.headerMain}>
+          <Text variant="titleMedium" style={[styles.headerTitle, { color: palette.text }]}>Settings</Text>
+          <Text numberOfLines={1} variant="bodySmall" style={{ color: palette.muted }}>{connection.status === 'connected' ? 'Connected to OpenCode' : connection.message}</Text>
+        </View>
+        <View style={styles.headerActions}>
+          <Appbar.Action icon="refresh" accessibilityLabel="Reconnect" loading={isConnecting} disabled={isConnecting} onPress={() => void handleConnect()} />
+        </View>
+      </Appbar.Header>
       <ScrollView style={[styles.screen, { backgroundColor: palette.background }]} contentContainerStyle={styles.content}>
         <List.AccordionGroup expandedId={expandedSection} onAccordionPress={(id) => setExpandedSection(expandedSection === String(id) ? '' : String(id))}>
           <List.Accordion id="connection" title="Connection" description={connection.status === 'connected' ? 'Connected' : connection.message} titleStyle={{ color: palette.text }} descriptionStyle={{ color: palette.muted }} style={[styles.category, { backgroundColor: palette.surface, borderColor: palette.border }]}>
@@ -495,6 +511,10 @@ export default function SettingsScreen() {
 
 const styles = StyleSheet.create({
   screen: { flex: 1 },
-  content: { padding: 16, paddingTop: 28, gap: 16, paddingBottom: 28 },
+  content: { padding: 16, gap: 16, paddingBottom: 28 },
+  header: { elevation: 0 },
+  headerMain: { alignSelf: 'stretch', flex: 1, justifyContent: 'center', minWidth: 0 },
+  headerActions: { alignItems: 'center', flexDirection: 'row', flexShrink: 0 },
+  headerTitle: { fontFamily: Fonts.display, fontWeight: '700' },
   category: { borderRadius: 16, borderWidth: 1, marginBottom: 10, overflow: 'hidden' },
 });
