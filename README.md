@@ -1,5 +1,9 @@
 # OpenCode Mobile
 
+<a href="https://play.google.com/apps/testing/app.getopencode">
+  <img src="https://play.google.com/intl/en_us/badges/static/images/badges/en_badge_web_generic.png" alt="Get it on Google Play" width="200"/>
+</a>
+
 Mobile client for OpenCode, built with Expo and React Native.
 
 ## Requirements
