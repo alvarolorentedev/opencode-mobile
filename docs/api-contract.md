@@ -94,6 +94,8 @@ Provider models are flattened to app options. Capability discovery uses the curr
 
 After credential storage, the provider is enabled in config and capabilities are refreshed.
 
+Removing a provider calls `client.auth.remove()`, disables it in config, and refreshes capabilities.
+
 ### OAuth Authorization And Callback
 
 Authorization calls `client.provider.oauth.authorize()` with:
@@ -267,17 +269,24 @@ Recognized payload types:
 - `session.status`
 - `session.idle`
 - `message.updated`
+- `message.removed`
 - `message.part.updated`
 - `message.part.removed`
+- `session.compacted`
 - `session.diff`
 - `todo.updated`
+- `catalog.updated`
+- `project.updated`
+- `file.edited`
+- `vcs.branch.updated`
+- `lsp.updated`
 - `permission.asked`
 - `permission.replied`
 - `question.asked`
 - `question.replied`
 - `question.rejected`
 
-The subscription reconnects after failure or an unexpected end. Backoff starts at 1 second, doubles after each failure, and is capped at 15 seconds. A successful connection resets backoff to 1 second.
+The subscription reconnects after failure or an unexpected end. It is considered connected only after the first matching project event arrives, so polling remains active while the SDK is still opening or retrying the stream. Backoff starts at 1 second, doubles after each failure, and is capped at 15 seconds. A successful event resets backoff to 1 second.
 
 ## Polling Fallback
 

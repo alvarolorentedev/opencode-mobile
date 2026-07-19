@@ -22,6 +22,9 @@ From `TESTING.md`, those gates include:
 
 - `npm run lint`
 - `npm run typecheck`
+- `npm run test:usage`
+- `npm run test:format`
+- `npm run test:provider-utils`
 - `npm run test:fake-server:self`
 - Playwright E2E flow tests against the fake OpenCode server
 - Android development build validation

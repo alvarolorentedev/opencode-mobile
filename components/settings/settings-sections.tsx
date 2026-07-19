@@ -142,6 +142,7 @@ type AiDefaultsSectionProps = {
   expandedProviderId?: string;
   onExpandedProviderChange: (providerId?: string) => void;
   onModelToggle: (modelId: string, checked: boolean) => void;
+  onRemoveProvider: (providerId: string) => void;
   onStartProviderConfiguration: (providerId: string) => void;
   palette: Palette;
 };
@@ -155,6 +156,7 @@ export function AiDefaultsSection({
   expandedProviderId,
   onExpandedProviderChange,
   onModelToggle,
+  onRemoveProvider,
   onStartProviderConfiguration,
   palette,
 }: AiDefaultsSectionProps) {
@@ -208,7 +210,7 @@ export function AiDefaultsSection({
 
         <View style={styles.chipWrap}>
           {configuredProviders.map((provider) => (
-            <Chip key={provider.id} icon={({ size, color }) => renderProviderIcon(provider.id, size, color)} compact>
+            <Chip key={provider.id} icon={({ size, color }) => renderProviderIcon(provider.id, size, color)} compact onClose={() => onRemoveProvider(provider.id)}>
               {getProviderCopy(provider.id, provider.label).label}
             </Chip>
           ))}
@@ -315,7 +317,7 @@ export function NotificationsSection({
           <Button mode="contained" disabled={notificationsEnabled} onPress={onEnableNotifications}>
             Enable notifications
           </Button>
-          <Button mode="outlined" disabled={notificationsEnabled} onPress={onOpenNotificationSettings}>
+          <Button mode="outlined" onPress={onOpenNotificationSettings}>
             Notification settings
           </Button>
         </View>
@@ -325,7 +327,7 @@ export function NotificationsSection({
             description="Review system settings for this app."
             titleStyle={{ color: palette.text }}
             descriptionStyle={{ color: palette.muted }}
-            right={() => <Button disabled={notificationsEnabled} onPress={onOpenAppSettings}>Open</Button>}
+            right={() => <Button onPress={onOpenAppSettings}>Open</Button>}
           />
           {Platform.OS === 'android' ? (
             <List.Item
@@ -528,7 +530,7 @@ export function VoiceSection({
           valueLabel={selectedSpeechVoiceLabel}
         />
         <HelperText type="info">
-          Shippable behavior: Android can keep a foreground service alive to monitor a running session and speak the finished reply. Continuous background microphone capture still is not supported.
+          Android can periodically check running sessions in the background and post a completion notification. Background speech and continuous microphone capture are not supported.
         </HelperText>
       </Card.Content>
     </Card>

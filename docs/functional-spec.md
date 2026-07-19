@@ -267,6 +267,7 @@ Behavior:
 
 - values are persisted locally
 - reconnect button explicitly re-runs connection flow
+- editing connection values clears server-scoped state but does not reconnect until the button is pressed
 - status card shows current state and last checked timestamp
 
 ### AI Defaults Section
@@ -301,6 +302,7 @@ Behavior:
 - automatic OAuth enables/reconnects after the browser returns without a code dialog
 - if API auth is selected, auth values are normalized and sent to `client.auth.set`
 - after successful auth, the provider is enabled in server config and capabilities are refreshed
+- configured providers can be removed, deleting stored credentials and disabling the provider in config
 
 ### Notifications Section
 
@@ -314,6 +316,7 @@ Behavior:
 - on supported platforms, permission status is read from the system
 - Android users can be deep-linked to notification settings and battery-related settings
 - `Enable notifications` requests permission and refreshes status
+- startup initializes notification handling without displaying a permission prompt
 - `Refresh status` re-queries permission and background-task registration state
 
 ### Diagnostics Section

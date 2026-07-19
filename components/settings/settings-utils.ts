@@ -51,6 +51,12 @@ const KNOWN_PROVIDER_COPY: Record<string, { label: string; description: string }
   },
 };
 
+const GENERIC_API_KEY_PROVIDERS = new Set(['anthropic', 'azure', 'google', 'groq', 'mistral', 'openai', 'openrouter', 'xai']);
+
+export function supportsGenericApiKey(providerId?: string) {
+  return Boolean(providerId && GENERIC_API_KEY_PROVIDERS.has(providerId));
+}
+
 export function getProviderCopy(providerId: string, fallbackLabel: string) {
   const copy = KNOWN_PROVIDER_COPY[providerId];
   return {

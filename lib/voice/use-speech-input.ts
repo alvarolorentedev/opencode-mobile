@@ -140,13 +140,6 @@ export function useSpeechInput({
       return false;
     }
 
-    if (preferOnDevice && !supportsLocalRecognition) {
-      setError('On-device voice input is not available on this device yet.');
-      setErrorCode(undefined);
-      setIsStarting(false);
-      return false;
-    }
-
     const permissions = await ExpoSpeechRecognitionModule.requestPermissionsAsync();
     if (!permissions.granted) {
       setError('Microphone or speech recognition permission was denied.');
@@ -162,7 +155,7 @@ export function useSpeechInput({
         interimResults: true,
         iosTaskHint: 'dictation',
         lang: locale || 'en-US',
-        requiresOnDeviceRecognition: preferOnDevice,
+        requiresOnDeviceRecognition: preferOnDevice && supportsLocalRecognition,
         volumeChangeEventOptions: {
           enabled: true,
           intervalMillis: volumeUpdateIntervalMillis,

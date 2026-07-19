@@ -310,6 +310,7 @@ Responsibilities:
 - reconnect manually
 - inspect server health, realtime status, MCP, LSP, and formatter counts
 - configure providers
+- remove configured provider credentials
 - choose model enablement defaults
 - inspect and enable notification setup
 - manage voice and response-style preferences

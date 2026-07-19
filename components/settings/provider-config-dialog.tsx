@@ -7,7 +7,6 @@ import type { ProviderAuthMethod } from '@/providers/opencode-provider';
 type Palette = typeof Colors.light;
 
 type ProviderConfigDialogProps = {
-  authMethods: ProviderAuthMethod[];
   authValues: Record<string, string>;
   effectiveAuthMethods: ProviderAuthMethod[];
   isConfiguringProvider: boolean;
@@ -25,7 +24,6 @@ type ProviderConfigDialogProps = {
 };
 
 export function ProviderConfigDialog({
-  authMethods,
   authValues,
   effectiveAuthMethods,
   isConfiguringProvider,
@@ -49,11 +47,6 @@ export function ProviderConfigDialog({
           <Text variant="bodyMedium" style={{ color: palette.muted }}>
             {selectedProviderDescription}
           </Text>
-        ) : null}
-        {authMethods.length === 0 ? (
-          <HelperText type="info">
-            This provider should expose its auth flow from the server, but no auth metadata was returned. Refresh the connection and try again.
-          </HelperText>
         ) : null}
         {effectiveAuthMethods.length > 1 ? (
           <RadioButton.Group onValueChange={(value) => onMethodChange(Number(value))} value={String(selectedMethodIndex)}>
@@ -101,7 +94,7 @@ export function ProviderConfigDialog({
         {selectedMethod?.type === 'oauth' ? (
           <HelperText type="info">This opens the provider sign-in flow in your browser.</HelperText>
         ) : null}
-        {!selectedMethod && authMethods.length === 0 ? (
+        {!selectedMethod && effectiveAuthMethods.length === 0 ? (
           <HelperText type="error">Setup details for this provider are unavailable right now.</HelperText>
         ) : null}
         {providerDialogError ? <HelperText type="error">{providerDialogError}</HelperText> : null}

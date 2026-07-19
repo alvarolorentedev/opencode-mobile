@@ -353,6 +353,7 @@ Responsibility:
 
 - show configured providers
 - allow adding unconfigured providers
+- allow removing configured provider credentials
 - show models grouped by provider
 - allow toggling enabled model IDs
 
@@ -395,7 +396,6 @@ Responsibility:
 
 Main relevant props:
 
-- `authMethods`
 - `authValues`
 - `effectiveAuthMethods`
 - `onAuthValueChange`

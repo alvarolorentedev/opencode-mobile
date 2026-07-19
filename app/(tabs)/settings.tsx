@@ -2,11 +2,12 @@ import * as IntentLauncher from 'expo-intent-launcher';
 import * as Linking from 'expo-linking';
 import Constants from 'expo-constants';
 import { useEffect, useMemo, useState } from 'react';
-import { Platform, ScrollView, StyleSheet } from 'react-native';
+import { Alert, Platform, ScrollView, StyleSheet } from 'react-native';
 import * as WebBrowser from 'expo-web-browser';
 import {
   Button,
   Dialog,
+  HelperText,
   Portal,
   Snackbar,
   TextInput,
@@ -23,6 +24,7 @@ import {
 } from '@/components/settings/settings-sections';
 import {
   getProviderCopy,
+  supportsGenericApiKey,
   RESPONSE_SCOPE_OPTIONS,
   WORKING_SOUND_OPTIONS,
 } from '@/components/settings/settings-utils';
@@ -42,10 +44,11 @@ export default function SettingsScreen() {
     availableModels,
     availableProviders,
     chatPreferences,
-    configureProvider,
+    completeAutomaticProviderOAuth,
     completeProviderOAuth,
     configuredProviders,
     providerAuthMethodsById,
+    removeProvider,
     setProviderAuth,
     startProviderOAuth,
     connect,
@@ -63,7 +66,7 @@ export default function SettingsScreen() {
   const [authValues, setAuthValues] = useState<Record<string, string>>({});
   const [isConfiguringProvider, setIsConfiguringProvider] = useState(false);
   const [providerDialogError, setProviderDialogError] = useState<string>();
-  const [providerFeedback, setProviderFeedback] = useState<{ type: 'success' | 'info'; message: string }>();
+  const [providerFeedback, setProviderFeedback] = useState<{ type: 'success' | 'info' | 'error'; message: string }>();
   const [expandedProviderId, setExpandedProviderId] = useState<string>();
   const [notificationStatus, setNotificationStatus] = useState<NotificationDebugStatus>();
   const [isRefreshingNotificationStatus, setIsRefreshingNotificationStatus] = useState(false);
@@ -72,6 +75,7 @@ export default function SettingsScreen() {
   const [isRefreshingSpeechVoices, setIsRefreshingSpeechVoices] = useState(false);
   const [pendingOAuth, setPendingOAuth] = useState<{ providerId: string; methodIndex: number; instructions?: string }>();
   const [oauthCode, setOAuthCode] = useState('');
+  const [oauthError, setOAuthError] = useState<string>();
   const applicationId = useMemo(
     () => Constants.expoConfig?.android?.package || Constants.expoConfig?.ios?.bundleIdentifier,
     [],
@@ -92,7 +96,12 @@ export default function SettingsScreen() {
   );
   const effectiveAuthMethods = useMemo(
     () =>
-      authMethods.map((method) => method.type === 'api' && !method.prompts?.length
+      (authMethods.length > 0
+        ? authMethods
+        : supportsGenericApiKey(selectedProviderId)
+          ? [{ type: 'api' as const, label: 'API key' }]
+          : [])
+        .map((method) => method.type === 'api' && !method.prompts?.length
         ? {
             ...method,
             prompts: [{
@@ -103,7 +112,7 @@ export default function SettingsScreen() {
             }],
           }
         : method),
-    [authMethods],
+    [authMethods, selectedProviderId],
   );
   const selectedMethod = effectiveAuthMethods[selectedMethodIndex];
   const visiblePrompts = useMemo(
@@ -231,6 +240,12 @@ export default function SettingsScreen() {
     setProviderDialogError(undefined);
   }
 
+  function dismissPendingOAuth() {
+    setPendingOAuth(undefined);
+    setOAuthCode('');
+    setOAuthError(undefined);
+  }
+
   function startProviderConfiguration(providerId: string) {
     setProviderDialogError(undefined);
     setSelectedMethodIndex(0);
@@ -266,7 +281,7 @@ export default function SettingsScreen() {
           setSelectedProviderId(undefined);
           return;
         }
-        await configureProvider(selectedProviderId);
+        await completeAutomaticProviderOAuth(selectedProviderId);
         await connect();
         setProviderFeedback(
           authorization.instructions
@@ -309,6 +324,21 @@ export default function SettingsScreen() {
     updateChatPreferences({ enabledModelIds: nextEnabledModelIds });
   }
 
+  function handleRemoveProvider(providerId: string) {
+    const label = getProviderCopy(providerId, providerId).label;
+    const remove = () => void removeProvider(providerId)
+      .then(() => setProviderFeedback({ type: 'success', message: `${label} credentials were removed.` }))
+      .catch((error) => setProviderFeedback({ type: 'error', message: error instanceof Error ? error.message : 'Could not remove provider credentials.' }));
+    if (Platform.OS === 'web') {
+      if (globalThis.confirm(`Remove ${label}?\n\nStored credentials and provider configuration will be removed.`)) remove();
+      return;
+    }
+    Alert.alert(`Remove ${label}?`, 'Stored credentials and provider configuration will be removed.', [
+      { text: 'Cancel', style: 'cancel' },
+      { text: 'Remove', style: 'destructive', onPress: remove },
+    ]);
+  }
+
   return (
     <>
       <ScrollView style={[styles.screen, { backgroundColor: palette.background }]} contentContainerStyle={styles.content}>
@@ -330,6 +360,7 @@ export default function SettingsScreen() {
           expandedProviderId={expandedProviderId}
           onExpandedProviderChange={setExpandedProviderId}
           onModelToggle={handleModelToggle}
+          onRemoveProvider={handleRemoveProvider}
           onStartProviderConfiguration={startProviderConfiguration}
           palette={palette}
         />
@@ -358,27 +389,28 @@ export default function SettingsScreen() {
       </ScrollView>
 
       <Portal>
-        <Dialog visible={Boolean(pendingOAuth)} onDismiss={() => setPendingOAuth(undefined)}>
+        <Dialog visible={Boolean(pendingOAuth)} onDismiss={dismissPendingOAuth}>
           <Dialog.Title>Complete provider sign-in</Dialog.Title>
           <Dialog.Content>
             {pendingOAuth?.instructions ? <TextInput mode="flat" disabled value={pendingOAuth.instructions} /> : null}
             <TextInput mode="outlined" label="Authorization code" value={oauthCode} onChangeText={setOAuthCode} autoCapitalize="none" />
+            {oauthError ? <HelperText type="error">{oauthError}</HelperText> : null}
           </Dialog.Content>
           <Dialog.Actions>
-            <Button onPress={() => setPendingOAuth(undefined)}>Cancel</Button>
+            <Button onPress={dismissPendingOAuth}>Cancel</Button>
             <Button disabled={!oauthCode.trim()} onPress={() => {
               if (!pendingOAuth) return;
               void completeProviderOAuth(pendingOAuth.providerId, pendingOAuth.methodIndex, oauthCode).then(() => {
                 setPendingOAuth(undefined);
                 setOAuthCode('');
+                setOAuthError(undefined);
                 resetProviderDialog();
-              }).catch((error) => setProviderDialogError(error instanceof Error ? error.message : 'Could not complete sign-in.'));
+              }).catch((error) => setOAuthError(error instanceof Error ? error.message : 'Could not complete sign-in.'));
             }}>Complete</Button>
           </Dialog.Actions>
         </Dialog>
         {selectedProvider ? (
           <ProviderConfigDialog
-            authMethods={authMethods}
             authValues={authValues}
             effectiveAuthMethods={effectiveAuthMethods}
             isConfiguringProvider={isConfiguringProvider}

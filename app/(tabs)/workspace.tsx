@@ -8,6 +8,7 @@ import {
   Card,
   Divider,
   List,
+  Snackbar,
   Surface,
   Text,
   TextInput,
@@ -57,11 +58,13 @@ export default function WorkspaceScreen() {
   const [renamingSessionId, setRenamingSessionId] = useState<string>();
   const [renameValue, setRenameValue] = useState('');
   const [fileQuery, setFileQuery] = useState('');
+  const [error, setError] = useState<string>();
 
   const isRefreshing = isRefreshingSessions || isRefreshingWorkspaceCatalog;
 
   async function handleRefresh() {
-    await Promise.all([refreshWorkspaceCatalog(), refreshSessions(), refreshWorkspaceStatus()]);
+    await Promise.all([refreshWorkspaceCatalog(), refreshSessions(), refreshWorkspaceStatus()])
+      .catch((reason) => setError(reason instanceof Error ? reason.message : 'Could not refresh the workspace.'));
   }
 
   async function handleNewChat() {
@@ -70,6 +73,8 @@ export default function WorkspaceScreen() {
       const session = await createSession();
       await openSession(session.id);
       router.push('/(tabs)');
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : 'Could not create a session.');
     } finally {
       setIsCreating(false);
     }
@@ -79,6 +84,8 @@ export default function WorkspaceScreen() {
     setUpdatingSessionId(sessionId);
     try {
       await deleteSession(sessionId);
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : 'Could not delete the session.');
     } finally {
       setUpdatingSessionId(undefined);
     }
@@ -105,6 +112,8 @@ export default function WorkspaceScreen() {
         const shared = await shareSession(session.id);
         if (shared.share?.url) await Clipboard.setStringAsync(shared.share.url);
       }
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : 'Could not update session sharing.');
     } finally {
       setUpdatingSessionId(undefined);
     }
@@ -133,8 +142,9 @@ export default function WorkspaceScreen() {
           title={session.title || 'Untitled chat'}
           description={sessionPreviewById[session.id] || getSessionSubtitle(session)}
           onPress={() => {
-            void openSession(session.id);
-            router.push('/(tabs)');
+            void openSession(session.id)
+              .then(() => router.push('/(tabs)'))
+              .catch((reason) => setError(reason instanceof Error ? reason.message : 'Could not open the session.'));
           }}
           titleStyle={{ color: palette.text, fontWeight: currentSessionId === session.id ? '700' : '500' }}
           descriptionStyle={{ color: palette.muted }}
@@ -161,7 +171,9 @@ export default function WorkspaceScreen() {
         {renamingSessionId === session.id ? (
           <View style={styles.renameRow}>
             <TextInput testID="workspace-session-title-input" mode="outlined" dense value={renameValue} onChangeText={setRenameValue} style={styles.renameInput} />
-            <Button mode="contained" onPress={() => void renameSession(session.id, renameValue).then(() => setRenamingSessionId(undefined))}>Save</Button>
+            <Button mode="contained" onPress={() => void renameSession(session.id, renameValue)
+              .then(() => setRenamingSessionId(undefined))
+              .catch((reason) => setError(reason instanceof Error ? reason.message : 'Could not rename the session.'))}>Save</Button>
             <Button onPress={() => setRenamingSessionId(undefined)}>Cancel</Button>
           </View>
         ) : null}
@@ -171,10 +183,11 @@ export default function WorkspaceScreen() {
   }
 
   return (
-    <ScrollView
-      style={[styles.screen, { backgroundColor: palette.background }]}
-      contentContainerStyle={styles.content}
-      refreshControl={<RefreshControl refreshing={isRefreshing} onRefresh={() => void handleRefresh()} tintColor={palette.tint} />}>
+    <>
+      <ScrollView
+        style={[styles.screen, { backgroundColor: palette.background }]}
+        contentContainerStyle={styles.content}
+        refreshControl={<RefreshControl refreshing={isRefreshing} onRefresh={() => void handleRefresh()} tintColor={palette.tint} />}>
       <Surface style={[styles.hero, { backgroundColor: palette.surface }]} elevation={1}>
         <Text variant="headlineSmall" style={{ color: palette.text }}>Workspaces</Text>
         <Text variant="bodyMedium" style={{ color: palette.muted }}>
@@ -238,10 +251,10 @@ export default function WorkspaceScreen() {
         <Card.Content style={styles.fileSection}>
           <View style={styles.renameRow}>
             <TextInput testID="workspace-file-search" mode="outlined" dense placeholder="Search files" value={fileQuery} onChangeText={setFileQuery} style={styles.renameInput} />
-            <Button mode="contained" onPress={() => void searchWorkspaceFiles(fileQuery)}>Search</Button>
+            <Button mode="contained" onPress={() => void searchWorkspaceFiles(fileQuery).catch((reason) => setError(reason instanceof Error ? reason.message : 'Could not search workspace files.'))}>Search</Button>
           </View>
           {workspaceFileStatuses.length > 0 ? <Text style={{ color: palette.muted }}>{workspaceFileStatuses.length} changed files</Text> : null}
-          {workspaceFiles.map((path) => <List.Item key={path} title={path} onPress={() => void openWorkspaceFile(path)} />)}
+          {workspaceFiles.map((path) => <List.Item key={path} title={path} onPress={() => void openWorkspaceFile(path).catch((reason) => setError(reason instanceof Error ? reason.message : 'Could not open the file.'))} />)}
           {selectedWorkspaceFile ? (
             <View style={[styles.filePreview, { borderColor: palette.border, backgroundColor: palette.background }]}>
               <Text variant="labelLarge" style={{ color: palette.text }}>{selectedWorkspaceFile.path}</Text>
@@ -250,7 +263,9 @@ export default function WorkspaceScreen() {
           ) : null}
         </Card.Content>
       </Card>
-    </ScrollView>
+      </ScrollView>
+      <Snackbar visible={Boolean(error)} onDismiss={() => setError(undefined)}>{error}</Snackbar>
+    </>
   );
 }
 

@@ -171,6 +171,9 @@ export function ChatView() {
   const speechInput = useSpeechInput({
     locale: chatPreferences.speechLocale,
     onResult: (transcript) => {
+      if (conversationActive) {
+        return;
+      }
       setDraft(`${speechDraftPrefixRef.current}${transcript}`);
     },
     preferOnDevice: chatPreferences.preferOnDeviceRecognition,
@@ -398,7 +401,9 @@ export function ChatView() {
         const next = [...current];
 
         result.assets.forEach((asset) => {
-          const uri = asset.base64 || asset.uri;
+          const uri = asset.base64
+            ? `data:${asset.mimeType || 'application/octet-stream'};base64,${asset.base64}`
+            : asset.uri;
           if (!next.some((attachment) => attachment.uri === uri)) {
             next.push({
               uri,
@@ -421,6 +426,8 @@ export function ChatView() {
       const session = await createSession();
       await openSession(session.id);
       setActiveTab('session');
+    } catch (error) {
+      setSendFeedback(error instanceof Error ? error.message : 'Could not create a session.');
     } finally {
       setIsCreatingSession(false);
     }
@@ -434,6 +441,8 @@ export function ChatView() {
     setIsStoppingSession(true);
     try {
       await abortSession(currentSessionId);
+    } catch (error) {
+      setSendFeedback(error instanceof Error ? error.message : 'Could not stop the session.');
     } finally {
       setIsStoppingSession(false);
     }
@@ -511,9 +520,9 @@ export function ChatView() {
           onExpandDiff={setExpandedDiffId}
           onLoadEarlier={handleLoadEarlier}
           onRefresh={() => void refreshCurrentSession()}
-          onRejectQuestion={(requestId) => void rejectQuestion(requestId)}
-          onReplyToPermission={(requestId, reply) => void replyToPermission(requestId, reply)}
-          onReplyToQuestion={(requestId, answers) => void replyToQuestion(requestId, answers)}
+          onRejectQuestion={(requestId) => void rejectQuestion(requestId).catch((error) => setSendFeedback(error instanceof Error ? error.message : 'Could not reject the question.'))}
+          onReplyToPermission={(requestId, reply) => void replyToPermission(requestId, reply).catch((error) => setSendFeedback(error instanceof Error ? error.message : 'Could not reply to the permission request.'))}
+          onReplyToQuestion={(requestId, answers) => void replyToQuestion(requestId, answers).catch((error) => setSendFeedback(error instanceof Error ? error.message : 'Could not answer the question.'))}
           onForkMessage={(messageId) => {
             if (!currentSessionId) return;
             void forkSession(currentSessionId, messageId).catch((error) => setSendFeedback(error instanceof Error ? error.message : 'Could not fork session.'));
@@ -531,7 +540,7 @@ export function ChatView() {
               { text: 'Revert', style: 'destructive', onPress: () => void revertSession(currentSessionId, messageId).catch((error) => setSendFeedback(error instanceof Error ? error.message : 'Could not revert session.')) },
             ]);
           }}
-          onUnrevert={() => currentSessionId ? void unrevertSession(currentSessionId) : undefined}
+          onUnrevert={() => currentSessionId ? void unrevertSession(currentSessionId).catch((error) => setSendFeedback(error instanceof Error ? error.message : 'Could not restore the session.')) : undefined}
           onSendStarterPrompt={(prompt) => void handleSendPrompt(prompt)}
           onToggleSpeak={(entry) => void handleSpeakEntry(entry)}
           palette={palette}
@@ -546,7 +555,7 @@ export function ChatView() {
         {sendErrorMessage ? (
           <Card mode="contained" style={[styles.sendErrorCard, { backgroundColor: `${palette.danger}14` }]}>
             <Card.Content style={styles.sendErrorContent}>
-              <Text variant="titleSmall" style={{ color: palette.danger }}>Message not sent</Text>
+              <Text variant="titleSmall" style={{ color: palette.danger }}>Action failed</Text>
               <Text selectable variant="bodySmall" style={{ color: palette.text }}>{sendErrorMessage}</Text>
               <View style={styles.sendErrorActions}>
                 <Button compact onPress={() => {
@@ -596,7 +605,9 @@ export function ChatView() {
           }}
           onToggleAutoApprove={() => {
             setIsUpdatingAutoApprove(true);
-            void setAutoApprove(!chatPreferences.autoApprove).finally(() => setIsUpdatingAutoApprove(false));
+            void setAutoApprove(!chatPreferences.autoApprove)
+              .catch((error) => setSendFeedback(error instanceof Error ? error.message : 'Could not update auto-approve.'))
+              .finally(() => setIsUpdatingAutoApprove(false));
           }}
           onToggleRecording={() => void handleToggleRecording()}
           palette={palette}

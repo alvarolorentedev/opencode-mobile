@@ -124,8 +124,8 @@ if (Platform.OS !== 'web' && !TaskManager.isTaskDefined(CHAT_COMPLETION_TASK_NAM
             directory: pending.projectPath,
           });
           const [statusesResponse, sessionsResponse] = await Promise.all([
-            client.session.status().catch(() => undefined),
-            client.session.list().catch(() => undefined),
+            client.session.status(),
+            client.session.list(),
           ]);
 
           const status = statusesResponse?.data?.[pending.sessionId];
@@ -134,6 +134,10 @@ if (Platform.OS !== 'web' && !TaskManager.isTaskDefined(CHAT_COMPLETION_TASK_NAM
           }
 
           const session = sessionsResponse?.data?.find((item: { id: string; title?: string }) => item.id === pending.sessionId);
+          if (!session) {
+            delete pendingBySessionId[pending.sessionId];
+            continue;
+          }
           await scheduleTaskFinishedNotification(session?.title || pending.sessionTitle);
           delete pendingBySessionId[pending.sessionId];
         } catch {
@@ -244,7 +248,6 @@ export async function initializeNotifications() {
   });
 
   await configureNotificationChannelAsync();
-  await ensureNotificationPermissionsAsync();
   await registerBackgroundTaskAsync();
   initialized = true;
 }

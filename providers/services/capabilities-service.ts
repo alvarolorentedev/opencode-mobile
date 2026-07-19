@@ -67,7 +67,11 @@ export async function discoverChatCapabilities(client: OpencodeClient, activePro
         status: model.status,
       })),
     )
-    .sort((left, right) => left.label.localeCompare(right.label)));
+    .sort((left, right) => {
+      const leftDefault = providerData.default[left.providerID] === left.modelID;
+      const rightDefault = providerData.default[right.providerID] === right.modelID;
+      return Number(rightDefault) - Number(leftDefault) || left.label.localeCompare(right.label);
+    }));
 
   const configuredProviderIds = getConfiguredProviderIds(nextConfig, providerData.connected, nextModels);
   const configuredModels = nextModels.filter((model) => configuredProviderIds.has(model.providerID));

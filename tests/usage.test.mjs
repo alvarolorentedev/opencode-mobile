@@ -39,6 +39,11 @@ assert.equal(aggregateSessionUsage([assistant([step('step-4', 0)])]).costStatus,
 assert.equal(aggregateSessionUsage([assistant([step('step-4b', 0)])], { 'anthropic/sonnet': { input: 0, output: 0, cache: { read: 0, write: 0 } } }).costStatus, 'pricing-unavailable');
 assert.equal(aggregateSessionUsage([assistant([step('step-5', 0, { input: 0, output: 0, reasoning: 0, cache: { read: 0, write: 0 } })])]).costStatus, 'free');
 
+const tiered = aggregateSessionUsage([assistant([step('step-tier', 0, { input: 250_001, output: 0, reasoning: 0, cache: { read: 0, write: 0 } })])], {
+  'anthropic/sonnet': { input: 1, output: 1, cache: { read: 1, write: 1 }, tiers: [{ input: 2, output: 2, cache: { read: 2, write: 2 }, tier: { type: 'context', size: 200_000 } }] },
+});
+assert.equal(tiered.cost, 500_002);
+
 const replayed = aggregateSessionUsage([assistant([step('step-6'), step('step-6')]), assistant([step('step-6')])], pricing);
 assert.equal(replayed.completedSteps, 1);
 assert.equal(replayed.cost, 0.043);

@@ -158,6 +158,7 @@ export function getEnabledModelIds(models: ModelOption[], storedModelIds?: strin
 }
 
 export function getConfiguredProviderIds(config: Config | undefined, connected: string[], models: ModelOption[]) {
+  const disabled = new Set(config?.disabled_providers || []);
   const configured = new Set<string>([
     ...(config?.enabled_providers || []),
     ...connected,
@@ -170,6 +171,8 @@ export function getConfiguredProviderIds(config: Config | undefined, connected: 
       configured.add(modelMatch.providerID);
     }
   }
+
+  disabled.forEach((providerId) => configured.delete(providerId));
 
   return configured;
 }

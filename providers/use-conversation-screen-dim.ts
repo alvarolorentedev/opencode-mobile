@@ -38,6 +38,7 @@ export function useConversationScreenDim(phase: ConversationPhase) {
       previousBrightnessRef.current = currentBrightness;
       previousSystemBrightnessRef.current = currentSystemBrightness;
       systemBrightnessAppliedRef.current = canControlSystemBrightness;
+      dimAppliedRef.current = true;
 
       await Promise.all([
         Brightness.setBrightnessAsync(CONVERSATION_DIM_BRIGHTNESS).catch(() => undefined),
@@ -46,9 +47,6 @@ export function useConversationScreenDim(phase: ConversationPhase) {
           : Promise.resolve(),
       ]);
 
-      if (!cancelled) {
-        dimAppliedRef.current = true;
-      }
     }
 
     async function restoreBrightness() {

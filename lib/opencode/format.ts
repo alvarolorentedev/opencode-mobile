@@ -36,6 +36,10 @@ function getToolTitle(part: ToolPart) {
 }
 
 function getToolBody(part: ToolPart) {
+  if ('error' in part.state && part.state.error) {
+    return part.state.error;
+  }
+
   if ('output' in part.state && part.state.output) {
     return part.state.output;
   }
@@ -126,7 +130,7 @@ export function getSessionSubtitle(session: Session) {
 
 export function getPrimaryText(parts: Part[]) {
   return parts
-    .filter((part) => part.type === 'text' || part.type === 'reasoning')
+    .filter((part) => part.type === 'text')
     .map((part) => part.text.trim())
     .filter(Boolean)
     .join('\n\n');
@@ -196,6 +200,16 @@ export function toTranscriptEntry(record: SessionMessageRecord): TranscriptEntry
         body: getToolBody(part),
         status: part.state.status,
       });
+      if (part.state.status === 'completed') {
+        part.state.attachments?.forEach((attachment, attachmentIndex) => {
+          details.push({
+            id: `${id}-attachment-${attachmentIndex}`,
+            kind: 'file',
+            label: attachment.filename || 'Tool attachment',
+            body: attachment.mime || 'Attachment',
+          });
+        });
+      }
       return;
     }
 

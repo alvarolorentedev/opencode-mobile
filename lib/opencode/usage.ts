@@ -5,7 +5,7 @@ export type CostStatus = 'recorded' | 'estimated' | 'free' | 'pricing-unavailabl
 export type UsageTotals = { cost: number; inputTokens: number; outputTokens: number; reasoningTokens: number; cacheReadTokens: number; cacheWriteTokens: number; completedSteps: number };
 export type ModelUsage = UsageTotals & { providerId: string; modelId: string; costStatus: CostStatus };
 export type ProviderUsage = UsageTotals & { providerId: string; models: ModelUsage[] };
-export type UsagePricing = Pick<Model['cost'], 'input' | 'output' | 'cache'>;
+export type UsagePricing = Model['cost'];
 export type SessionUsage = UsageTotals & { costStatus: CostStatus; providers: ProviderUsage[] };
 
 const EMPTY_TOTALS: UsageTotals = { cacheReadTokens: 0, cacheWriteTokens: 0, completedSteps: 0, cost: 0, inputTokens: 0, outputTokens: 0, reasoningTokens: 0 };
@@ -37,8 +37,13 @@ function getCostStatus(totals: UsageTotals, recordedCost: number, hasPricing: bo
 function getStepTotals(part: Extract<Part, { type: 'step-finish' }>, pricing?: UsagePricing) {
   const totals: UsageTotals = { cacheReadTokens: part.tokens.cache.read, cacheWriteTokens: part.tokens.cache.write, completedSteps: 1, cost: part.cost, inputTokens: part.tokens.input, outputTokens: part.tokens.output, reasoningTokens: part.tokens.reasoning };
   if (totals.cost <= 0 && hasTokens(totals) && hasUsablePricing(pricing)) {
+    const contextTokens = totals.inputTokens + totals.cacheReadTokens + totals.cacheWriteTokens;
+    const tier = pricing.tiers
+      ?.filter((item) => contextTokens > item.tier.size)
+      .sort((left, right) => right.tier.size - left.tier.size)[0];
+    const effectivePricing = tier || (contextTokens > 200_000 ? pricing.experimentalOver200K : undefined) || pricing;
     // OpenCode model costs are per token; reasoning is output-priced unless metadata says otherwise.
-    totals.cost = totals.inputTokens * pricing.input + (totals.outputTokens + totals.reasoningTokens) * pricing.output + totals.cacheReadTokens * pricing.cache.read + totals.cacheWriteTokens * pricing.cache.write;
+    totals.cost = totals.inputTokens * effectivePricing.input + (totals.outputTokens + totals.reasoningTokens) * effectivePricing.output + totals.cacheReadTokens * effectivePricing.cache.read + totals.cacheWriteTokens * effectivePricing.cache.write;
   }
   return totals;
 }
