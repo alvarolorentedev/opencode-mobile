@@ -14,7 +14,7 @@ async function openReadyChat(page) {
   await page.goto('/', { waitUntil: 'domcontentloaded' });
   if (await page.getByText('Choose a workspace').isVisible().catch(() => false)) {
     await page.getByRole('tab', { name: 'Workspace' }).click();
-    await expect(page.getByText('Projects', { exact: true })).toBeVisible();
+    await page.getByRole('button', { name: 'Select project' }).click();
     await page.getByText('demo-project', { exact: true }).click();
     await page.getByRole('tab', { name: 'Chat' }).click();
   }
