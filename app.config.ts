@@ -1,4 +1,5 @@
 import type { ExpoConfig } from 'expo/config';
+import { withAndroidManifest } from '@expo/config-plugins';
 
 function env(name: string) {
   const value = process.env[name]?.trim();
@@ -13,6 +14,12 @@ const defaultAndroidPackage = 'app.getopencode';
 const releaseAndroidPackage = env('EXPO_ANDROID_PACKAGE') ?? defaultAndroidPackage;
 const developmentAndroidPackage = env('EXPO_ANDROID_PACKAGE_DEV') ?? `${releaseAndroidPackage}.dev`;
 const androidPackage = isDevelopmentVariant ? developmentAndroidPackage : releaseAndroidPackage;
+
+const withCleartextTraffic = (config: ExpoConfig) => withAndroidManifest(config, (config) => {
+  const application = config.modResults.manifest.application?.[0];
+  if (application) application.$['android:usesCleartextTraffic'] = 'true';
+  return config;
+});
 
 const config: ExpoConfig = {
   name: isDevelopmentVariant ? 'OpenCode Mobile Dev' : 'OpenCode Mobile',
@@ -36,6 +43,13 @@ const config: ExpoConfig = {
   web: {
     output: 'static',
     favicon: './assets/images/favicon.png',
+  },
+  ios: {
+    infoPlist: {
+      NSAppTransportSecurity: {
+        NSAllowsArbitraryLoads: true,
+      },
+    },
   },
   plugins: [
     'expo-router',
@@ -61,6 +75,7 @@ const config: ExpoConfig = {
         },
       },
     ],
+    withCleartextTraffic as unknown as string,
   ],
   experiments: {
     typedRoutes: true,
