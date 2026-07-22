@@ -1,7 +1,7 @@
 import * as Clipboard from 'expo-clipboard';
 import * as Haptics from 'expo-haptics';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Alert, KeyboardAvoidingView, Platform, ScrollView, View } from 'react-native';
+import { Alert, KeyboardAvoidingView, Platform, View } from 'react-native';
 import { Button, Card, Snackbar, Text } from 'react-native-paper';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -10,7 +10,6 @@ import { ChatContent } from '@/components/chat/chat-content';
 import { ChatHeader } from '@/components/chat/chat-header';
 import { TopTab } from '@/components/chat/chat-controls';
 import { styles } from '@/components/chat/chat-view-styles';
-import { TRANSCRIPT_PAGE_SIZE } from '@/components/chat/chat-view-utils';
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { type TranscriptEntry } from '@/lib/opencode/format';
@@ -23,8 +22,6 @@ export function ChatView() {
   const colorScheme = useColorScheme() ?? 'light';
   const palette = Colors[colorScheme];
   const insets = useSafeAreaInsets();
-  const scrollRef = useRef<ScrollView>(null);
-  const isPaginatingRef = useRef(false);
   const {
     activeSession,
     availableAgents,
@@ -76,7 +73,6 @@ export function ChatView() {
   const [isUpdatingAutoApprove, setIsUpdatingAutoApprove] = useState(false);
   const [isCreatingSession, setIsCreatingSession] = useState(false);
   const [isStoppingSession, setIsStoppingSession] = useState(false);
-  const [visibleTranscriptCount, setVisibleTranscriptCount] = useState(TRANSCRIPT_PAGE_SIZE);
   const [expandedDiffId, setExpandedDiffId] = useState<string | undefined>();
   const [copiedMessageId, setCopiedMessageId] = useState<string | undefined>();
   const [speakingMessageId, setSpeakingMessageId] = useState<string | undefined>(undefined);
@@ -111,11 +107,6 @@ export function ChatView() {
   const pendingInteractions = currentPendingPermissions.length + currentPendingQuestions.length;
   const awaitingUserInput = pendingInteractions > 0;
   const displayTranscript = useMemo(() => currentTranscript.filter(isTranscriptDisplayMessage), [currentTranscript]);
-  const visibleTranscript = useMemo(
-    () => displayTranscript.slice(Math.max(0, displayTranscript.length - visibleTranscriptCount)),
-    [displayTranscript, visibleTranscriptCount],
-  );
-  const hasMoreTranscript = visibleTranscript.length < displayTranscript.length;
   const currentActivityLabel = useMemo(() => {
     for (let index = currentTranscript.length - 1; index >= 0; index -= 1) {
       const entry = currentTranscript[index];
@@ -225,35 +216,6 @@ export function ChatView() {
   }, [commands, connection.status, currentSessionId, ensureActiveSession, executeCommand, sendPrompt]);
 
   useEffect(() => {
-    setVisibleTranscriptCount(TRANSCRIPT_PAGE_SIZE);
-  }, [currentSessionId]);
-
-  useEffect(() => {
-    if (displayTranscript.length <= visibleTranscriptCount) {
-      return;
-    }
-
-    const latestVisibleId = visibleTranscript[0]?.id;
-    const nextWindow = displayTranscript.slice(Math.max(0, displayTranscript.length - visibleTranscriptCount));
-    if (latestVisibleId && !nextWindow.some((entry) => entry.id === latestVisibleId)) {
-      setVisibleTranscriptCount((current) => current + TRANSCRIPT_PAGE_SIZE);
-    }
-  }, [displayTranscript, visibleTranscript, visibleTranscriptCount]);
-
-  useEffect(() => {
-    if (isPaginatingRef.current) {
-      isPaginatingRef.current = false;
-      return;
-    }
-
-    const timer = setTimeout(() => {
-      scrollRef.current?.scrollToEnd({ animated: visibleTranscript.length > 1 });
-    }, 80);
-
-    return () => clearTimeout(timer);
-  }, [activeTab, pendingInteractions, running, visibleTranscript]);
-
-  useEffect(() => {
     if (pendingInteractions > 0) {
       setActiveTab('session');
     }
@@ -321,11 +283,6 @@ export function ChatView() {
     await Clipboard.setStringAsync(value);
     setCopiedMessageId(entry.id);
     void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => undefined);
-  }
-
-  function handleLoadEarlier() {
-    isPaginatingRef.current = true;
-    setVisibleTranscriptCount((current) => current + TRANSCRIPT_PAGE_SIZE);
   }
 
   async function handleToggleRecording() {
@@ -513,12 +470,10 @@ export function ChatView() {
           diffDetails={diffDetails}
           displayTranscript={displayTranscript}
           expandedDiffId={expandedDiffId}
-          hasMoreTranscript={hasMoreTranscript}
           isRefreshingDiffs={isRefreshingDiffs}
           isRefreshingMessages={isRefreshingMessages}
           onCopyMessage={(entry) => void handleCopyMessage(entry)}
           onExpandDiff={setExpandedDiffId}
-          onLoadEarlier={handleLoadEarlier}
           onRefresh={() => void refreshCurrentSession()}
           onRejectQuestion={(requestId) => void rejectQuestion(requestId).catch((error) => setSendFeedback(error instanceof Error ? error.message : 'Could not reject the question.'))}
           onReplyToPermission={(requestId, reply) => void replyToPermission(requestId, reply).catch((error) => setSendFeedback(error instanceof Error ? error.message : 'Could not reply to the permission request.'))}
@@ -546,10 +501,8 @@ export function ChatView() {
           palette={palette}
           pendingInteractions={pendingInteractions}
           running={running}
-          scrollRef={scrollRef}
           speakingMessageId={speakingMessageId}
           status={status}
-          visibleTranscript={visibleTranscript}
         />
 
         {sendErrorMessage ? (

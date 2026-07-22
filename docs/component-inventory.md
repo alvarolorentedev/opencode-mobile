@@ -14,7 +14,7 @@ The goal is to make it possible to rebuild the UI tree without having to redisco
 
 - main chat screen controller
 - bridges provider state to presentational chat subcomponents
-- owns local UI state for draft, attachments, pagination, menu visibility, speaking state, snackbars, and voice draft capture
+- owns local UI state for draft, attachments, menu visibility, speaking state, snackbars, and voice draft capture
 
 ### Important local state
 
@@ -25,7 +25,6 @@ The goal is to make it possible to rebuild the UI tree without having to redisco
 - `isUpdatingAutoApprove`
 - `isCreatingSession`
 - `isStoppingSession`
-- `visibleTranscriptCount`
 - `expandedDiffId`
 - `copiedMessageId`
 - `speakingMessageId`
@@ -36,11 +35,11 @@ The goal is to make it possible to rebuild the UI tree without having to redisco
 
 - determine whether current session is running
 - filter transcript into display entries
-- paginate transcript
 - coordinate copy-to-clipboard and TTS playback
 - coordinate draft speech recognition
 - attach files through document picker
 - route prompt send / abort actions
+- provide the complete filtered transcript to the virtualized chat list
 - open/create sessions and toggle conversation mode
 - execute exact server-provided slash commands
 - route fork, revert, and unrevert actions
@@ -78,7 +77,6 @@ type ChatContentProps = {
   diffDetails: DiffDetail[]
   displayTranscript: TranscriptEntry[]
   expandedDiffId?: string
-  hasMoreTranscript: boolean
   isRefreshingDiffs: boolean
   isRefreshingMessages: boolean
   onCopyMessage: (entry: TranscriptEntry) => void
@@ -86,7 +84,6 @@ type ChatContentProps = {
   onRevertMessage: (messageId: string) => void
   onUnrevert: () => void
   onExpandDiff: (id?: string) => void
-  onLoadEarlier: () => void
   onRefresh: () => void
   onRejectQuestion: (requestId: string) => void
   onReplyToPermission: (requestId: string, reply: 'once' | 'always' | 'reject') => void
@@ -96,16 +93,15 @@ type ChatContentProps = {
   palette: Palette
   pendingInteractions: number
   running: boolean
-  scrollRef: RefObject<ScrollView | null>
   speakingMessageId?: string
   status?: SessionStatus
-  visibleTranscript: TranscriptEntry[]
 }
 ```
 
 ### Behavior notes
 
 - `session` tab shows transcript and pending cards
+- transcript messages use FlashList virtualization; it starts at the bottom, follows additions only from the bottom, and preserves the visible position otherwise
 - `changes` tab shows diff accordions
 - displays starter prompts when there are no display transcript messages
 

@@ -36,6 +36,8 @@ export const styles = StyleSheet.create({
   chatArea: { flex: 1, position: 'relative' },
   scroll: { flex: 1 },
   content: { padding: 12, gap: 12, paddingBottom: 20 },
+  transcriptItem: { marginBottom: 12 },
+  transcriptFooter: { gap: 12 },
   noticeCard: { borderRadius: 20 },
   waitingNoticeContent: { gap: 8 },
   waitingNoticeHeader: { flexDirection: 'row', alignItems: 'center', gap: 8 },
