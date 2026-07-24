@@ -28,7 +28,7 @@ import {
   useState,
   type PropsWithChildren,
 } from 'react';
-import { Platform } from 'react-native';
+import { AppState, Platform } from 'react-native';
 
 import {
   buildClient,
@@ -1656,6 +1656,23 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
     setConversationPhase('submitting');
   }, [abortSpeechInput, clearPendingConversationResult]);
   flushPendingConversationResultRef.current = flushPendingConversationResult;
+
+  // Stop the microphone when the app is backgrounded or the provider unmounts.
+  // Without this, speech recognition stays active after the user switches apps,
+  // continuing to capture audio in the background (privacy + battery cost).
+  // abort() is safe to call when not listening — the underlying native call is
+  // wrapped in try/catch inside useSpeechInput.
+  useEffect(() => {
+    const subscription = AppState.addEventListener('change', (state) => {
+      if (state !== 'active') {
+        abortSpeechInput();
+      }
+    });
+    return () => {
+      subscription.remove();
+      abortSpeechInput();
+    };
+  }, [abortSpeechInput]);
 
   const getLatestConversationAssistantEntry = useCallback(
     (sessionId?: string) => {
