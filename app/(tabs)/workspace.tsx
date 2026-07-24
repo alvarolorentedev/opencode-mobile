@@ -70,6 +70,9 @@ export default function WorkspaceScreen() {
     createWorktree,
     resetWorktree,
     removeWorktree,
+    favoriteSessions,
+    toggleFavoriteSession,
+    isFavoriteSession,
   } = useOpencode();
   const [isCreating, setIsCreating] = useState(false);
   const [activePanel, setActivePanel] = useState<'chats' | 'files' | 'tools'>('chats');
@@ -224,8 +227,16 @@ export default function WorkspaceScreen() {
                 onDismiss={() => setSessionActionId(undefined)}
                 anchor={<IconButton icon="dots-vertical" accessibilityLabel={`Actions for ${session.title || 'Untitled chat'}`} onPress={() => setSessionActionId(session.id)} />}>
                 <Menu.Item title="Rename" leadingIcon="pencil" onPress={() => { setSessionActionId(undefined); setRenamingSessionId(session.id); setRenameValue(session.title || ''); }} />
-                <Menu.Item title={session.share?.url ? 'Unshare' : 'Share'} leadingIcon="share-variant" onPress={() => { setSessionActionId(undefined); confirmShare(session); }} />
-                <Menu.Item title="Archive" leadingIcon="archive-outline" disabled={updatingSessionId === session.id} onPress={() => { setSessionActionId(undefined); void handleArchive(session.id); }} />
+              <Menu.Item title={session.share?.url ? 'Unshare' : 'Share'} leadingIcon="share-variant" onPress={() => { setSessionActionId(undefined); confirmShare(session); }} />
+              <Menu.Item
+                title={isFavoriteSession(session.id) ? 'Remove from favorites' : 'Add to favorites'}
+                leadingIcon={isFavoriteSession(session.id) ? 'star' : 'star-outline'}
+                onPress={() => {
+                  setSessionActionId(undefined);
+                  toggleFavoriteSession(session.id, activeProject?.path || '', session.title);
+                }}
+              />
+              <Menu.Item title="Archive" leadingIcon="archive-outline" disabled={updatingSessionId === session.id} onPress={() => { setSessionActionId(undefined); void handleArchive(session.id); }} />
                 <Menu.Item title="Delete" leadingIcon="delete-outline" titleStyle={{ color: palette.danger }} onPress={() => { setSessionActionId(undefined); confirmDelete(session); }} />
               </Menu>
             </View>
@@ -282,6 +293,42 @@ export default function WorkspaceScreen() {
 
       {activePanel === 'chats' ? <Card mode="contained" style={[styles.card, { backgroundColor: palette.surface }]}>
         <Card.Title title={showArchived ? 'Archived chats' : 'Chats'} subtitle={showArchived ? 'Restore or permanently delete chats.' : activeProject ? 'Current and running chats appear first.' : 'Choose a project to load chats.'} right={() => <IconButton icon={showArchived ? 'archive-remove-outline' : 'archive-outline'} accessibilityLabel={showArchived ? 'Show active chats' : 'Show archived chats'} onPress={() => { setShowArchived((value) => !value); if (!showArchived) void refreshArchivedSessions(); }} />} />
+        {favoriteSessions.length > 0 ? (
+          <View testID="workspace-favorites-bar" style={[styles.favoritesBar, { borderColor: palette.border }]}>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.favoritesScroll}>
+              {favoriteSessions.map((favorite) => (
+                <View key={favorite.sessionId} style={[styles.favoriteChip, { backgroundColor: palette.background }]}>
+                  <Pressable
+                    onPress={() => {
+                      if (favorite.projectPath && favorite.projectPath !== activeProject?.path) {
+                        selectProject(favorite.projectPath);
+                      }
+                      void openSession(favorite.sessionId)
+                        .then(() => router.push('/(tabs)'))
+                        .catch((reason) => setError(reason instanceof Error ? reason.message : 'Could not open the favorite session.'));
+                    }}
+                    style={styles.favoriteChipBody}>
+                    <Text numberOfLines={1} variant="labelLarge" style={{ color: palette.text, fontWeight: '600' }}>
+                      {favorite.title || 'Untitled chat'}
+                    </Text>
+                    {favorite.projectLabel ? (
+                      <Text numberOfLines={1} variant="labelSmall" style={{ color: palette.muted }}>
+                        {favorite.projectLabel}
+                      </Text>
+                    ) : null}
+                  </Pressable>
+                  <IconButton
+                    icon="star"
+                    size={16}
+                    iconColor={palette.tint}
+                    accessibilityLabel={`Remove ${favorite.title || 'Untitled chat'} from favorites`}
+                    onPress={() => toggleFavoriteSession(favorite.sessionId, favorite.projectPath, favorite.title)}
+                  />
+                </View>
+              ))}
+            </ScrollView>
+          </View>
+        ) : null}
         <Card.Content style={styles.listContent}>
           {showArchived ? archivedSessions.length === 0 ? <Text style={[styles.emptyText, { color: palette.muted }]}>No archived chats.</Text> : archivedSessions.map((session, index) => <View key={session.id}><View style={styles.archiveRow}><View style={styles.archiveCopy}><Text variant="titleMedium" style={{ color: palette.text }}>{session.title || 'Untitled chat'}</Text><Text style={{ color: palette.muted }}>{session.directory} · {formatRelativeTime(session.time.updated)}</Text></View><View style={styles.iconActions}><IconButton icon="restore" accessibilityLabel={`Restore ${session.title || 'Untitled chat'}`} loading={updatingArchivedSessionId === session.id} onPress={() => void handleArchivedSession(session.id, 'restore')} /><IconButton icon="delete-outline" iconColor={palette.danger} accessibilityLabel={`Delete ${session.title || 'Untitled chat'}`} disabled={updatingArchivedSessionId === session.id} onPress={() => confirmDestructive('Delete archived session?', `“${session.title || 'Untitled chat'}” and all of its data will be permanently deleted.`, 'Delete', () => void handleArchivedSession(session.id, 'delete'))} /></View></View>{index < archivedSessions.length - 1 ? <Divider /> : null}</View>) : <>{!activeProject ? <Text style={{ color: palette.muted }}>Select a project first.</Text> : null}{activeProject && orderedSessions.length === 0 ? <Text style={{ color: palette.muted }}>No chats in this workspace yet.</Text> : null}{orderedSessions.map((session, index) => renderSessionItem(session, index, orderedSessions.length))}</>}
         </Card.Content>
@@ -484,4 +531,8 @@ const styles = StyleSheet.create({
   worktreeSection: { gap: 8 },
   worktreeForm: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 8 },
   code: { fontFamily: 'monospace', fontSize: 12 },
+  favoritesBar: { paddingHorizontal: 8, paddingVertical: 6, borderBottomWidth: StyleSheet.hairlineWidth },
+  favoritesScroll: { alignItems: 'center', gap: 6, paddingHorizontal: 8 },
+  favoriteChip: { flexDirection: 'row', alignItems: 'center', borderRadius: 999, paddingLeft: 12, paddingRight: 0 },
+  favoriteChipBody: { paddingVertical: 6, paddingRight: 4, maxWidth: 160 },
 });

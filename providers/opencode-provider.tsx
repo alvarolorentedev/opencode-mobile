@@ -91,10 +91,12 @@ import {
   CONVERSATION_FINAL_RESULT_SETTLE_MS,
   CONVERSATION_KEEP_AWAKE_TAG,
   CONVERSATION_LISTENING_RESTART_MS,
+  FAVORITE_SESSIONS_MAX,
   type AgentOption,
   type ChatPreferences,
   type ConnectionState,
   type ConversationPhase,
+  type FavoriteSession,
   type ModelOption,
   type OpencodeContextValue,
   type OpencodeProject,
@@ -160,6 +162,8 @@ export type {
   ConnectionState,
   ConversationPhase,
   ConversationState,
+  FAVORITE_SESSIONS_MAX,
+  FavoriteSession,
   ModelOption,
   OpencodeContextValue,
   OpencodeProject,
@@ -182,6 +186,7 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
   const [sessions, setSessions] = useState<Session[]>([]);
   const [archivedSessions, setArchivedSessions] = useState<GlobalSession[]>([]);
   const [sessionStatuses, setSessionStatuses] = useState<Record<string, SessionStatus>>({});
+  const [favoriteSessions, setFavoriteSessions] = useState<FavoriteSession[]>([]);
   const [currentSessionId, setCurrentSessionId] = useState<string>();
   const [messagesBySession, setMessagesBySession] = useState<Record<string, SessionMessageRecord[]>>({});
   const [diffsBySession, setDiffsBySession] = useState<Record<string, FileDiff[]>>({});
@@ -271,9 +276,11 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
     defaultSettings: defaultConnectionSettings,
     activeProjectPath,
     chatPreferences,
+    favoriteSessions,
     lastSessionByProject,
     setActiveProjectPath,
     setChatPreferences,
+    setFavoriteSessions,
     setLastSessionByProject,
     setSettings,
     settings,
@@ -664,6 +671,9 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
         delete next[sessionId];
         return next;
       });
+      // Drop from favorites if present. Sessions are global across projects
+      // but a deleted session id is gone everywhere; safe to clear outright.
+      setFavoriteSessions((current) => (current.some((entry) => entry.sessionId === sessionId) ? current.filter((entry) => entry.sessionId !== sessionId) : current));
       if (currentSessionId === sessionId) {
         setCurrentSessionId(undefined);
       }
@@ -691,6 +701,37 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
     if (!isCurrentClient(client)) return;
     await Promise.all([refreshSessions(true), refreshArchivedSessions()]);
   }, [client, isCurrentClient, refreshArchivedSessions, refreshSessions]);
+
+  const toggleFavoriteSession = useCallback((sessionId: string, projectPath: string, title?: string) => {
+    setFavoriteSessions((current) => {
+      const existing = current.find((entry) => entry.sessionId === sessionId);
+      if (existing) {
+        return current.filter((entry) => entry.sessionId !== sessionId);
+      }
+      const next: FavoriteSession[] = [
+        ...current,
+        {
+          sessionId,
+          projectPath,
+          projectLabel: projectPath.split('/').filter(Boolean).pop() || projectPath,
+          title: title?.trim() || undefined,
+          favoritedAt: Date.now(),
+        },
+      ];
+      // Drop oldest beyond the cap so the persisted list stays bounded.
+      if (next.length > FAVORITE_SESSIONS_MAX) {
+        next.sort((left, right) => left.favoritedAt - right.favoritedAt);
+        next.splice(0, next.length - FAVORITE_SESSIONS_MAX);
+      }
+      return next;
+    });
+  }, []);
+
+  const isFavoriteSession = useCallback((sessionId: string) => favoriteSessions.some((entry) => entry.sessionId === sessionId), [favoriteSessions]);
+
+  const clearFavoriteSession = useCallback((sessionId: string) => {
+    setFavoriteSessions((current) => (current.some((entry) => entry.sessionId === sessionId) ? current.filter((entry) => entry.sessionId !== sessionId) : current));
+  }, []);
 
   const renameSession = useCallback(async (sessionId: string, title: string) => {
     const trimmed = title.trim();
@@ -2452,6 +2493,10 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
       sessions,
       archivedSessions,
       sessionStatuses,
+      favoriteSessions,
+      toggleFavoriteSession,
+      isFavoriteSession,
+      clearFavoriteSession,
       currentSessionId,
       activeSession,
       currentMessages,
@@ -2625,6 +2670,10 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
       sessionPreviewById,
       sessionStatuses,
       sessions,
+      favoriteSessions,
+      toggleFavoriteSession,
+      isFavoriteSession,
+      clearFavoriteSession,
       serverProjects,
       settings,
       setProviderAuth,
