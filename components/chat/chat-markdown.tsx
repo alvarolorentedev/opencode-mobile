@@ -137,7 +137,8 @@ function MarkdownTextImpl({ text, color, mutedColor }: { text: string; color: st
 }
 
 // Memo at component boundary too — guards against parent renders that pass
-// stable props (the common case after Wave 1 TranscriptMessage memo).
+// stable props (the common case once TranscriptMessage is memoized, since
+// streaming deltas only flip the entry ref of the active cell).
 export const MarkdownText = memo(MarkdownTextImpl);
 
 const styles = StyleSheet.create({

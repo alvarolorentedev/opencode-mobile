@@ -48,9 +48,10 @@ export function getConversationStatusLabel(conversationPhase: ConversationPhase,
   }
 }
 
-// Cache history preview per messages array reference. Wave 2.2 record-ref +
-// array-ref preservation in refreshMessages keeps this key stable for sessions
-// whose messages have not changed, so we skip the reverse+find pass for them.
+// Cache history preview per messages array reference. refreshMessages in the
+// provider preserves record refs AND array ref when content is unchanged, so
+// this key stays stable for sessions whose messages have not changed and we
+// skip the reverse+find pass for them.
 const sessionPreviewCache = new WeakMap<SessionMessageRecord[], string>();
 
 export function getSessionPreviewById(messagesBySession: Record<string, SessionMessageRecord[]>) {

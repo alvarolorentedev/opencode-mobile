@@ -64,7 +64,6 @@ function TranscriptSkeletonImpl({ palette }: { palette: Palette }) {
 
 const TranscriptSkeleton = memo(TranscriptSkeletonImpl);
 
-
 type ChatContentProps = {
   activeSession?: Session;
   activeTab: 'session' | 'changes';

@@ -338,10 +338,10 @@ function TranscriptMessageImpl({
 // in entry identity. Non-streaming cells skip re-render on parent updates.
 function areTranscriptMessagePropsEqual(prev: TranscriptMessageProps, next: TranscriptMessageProps) {
   return (
-    prev.entry === next.entry
-    && prev.copied === next.copied
-    && prev.speaking === next.speaking
-    && prev.canSpeak === next.canSpeak
+    prev.entry === next.entry &&
+    prev.copied === next.copied &&
+    prev.speaking === next.speaking &&
+    prev.canSpeak === next.canSpeak
   );
 }
 
