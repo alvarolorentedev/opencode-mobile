@@ -1592,6 +1592,12 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
       await clearPendingTaskFinishedNotification(sessionId);
       await client.session.abort({ sessionID: sessionId });
 
+      // Reset prompt guards immediately so the user can submit again without
+      // waiting for the in-flight promptAsync to settle. sendPrompt's finally
+      // block sets the same values; both writes compose to the same state.
+      promptSubmissionRef.current = { active: false, sessionId: undefined };
+      setSendingState((prev) => (prev.active ? { active: false, sessionId: undefined } : prev));
+
       await Promise.all([
         refreshSessions(true),
         refreshMessages(sessionId, true),
