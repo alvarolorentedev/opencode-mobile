@@ -1,6 +1,6 @@
 import * as Clipboard from 'expo-clipboard';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { memo, useEffect, useMemo, useState } from 'react';
+import { memo, useEffect, useMemo, useRef, useState } from 'react';
 import { Alert, Platform, Pressable, RefreshControl, ScrollView, StyleSheet, useWindowDimensions, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -78,12 +78,19 @@ function SessionListItemImpl({
   styles,
 }: SessionListItemProps) {
   const [renameValue, setRenameValue] = useState(session.title || '');
-  // Sync local rename input when entering rename mode for this row.
+  // Sync local rename input only when entering rename mode for this row.
+  // Refs guard against re-firing when session.title updates mid-rename
+  // (e.g., server pushes a new title via SSE) which would clobber the
+  // user's in-progress draft.
+  const sessionTitleRef = useRef(session.title);
+  sessionTitleRef.current = session.title;
+  const wasRenamingRef = useRef(false);
   useEffect(() => {
-    if (isRenaming) {
-      setRenameValue(session.title || '');
+    if (isRenaming && !wasRenamingRef.current) {
+      setRenameValue(sessionTitleRef.current || '');
     }
-  }, [isRenaming, session.title]);
+    wasRenamingRef.current = isRenaming;
+  }, [isRenaming]);
 
   return (
     <View>
