@@ -454,10 +454,49 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
         if (!isCurrentClient(client)) {
           return data;
         }
-        setMessagesBySession((current) => ({
-          ...current,
-          [sessionId]: data,
-        }));
+        setMessagesBySession((current) => {
+          const previous = current[sessionId];
+          if (!previous || previous.length === 0) {
+            return { ...current, [sessionId]: data };
+          }
+          // Preserve record object references for messages whose content has not
+          // changed since the previous fetch. format.ts caches transcript entries
+          // in a WeakMap keyed by record ref, so unchanged records skip the heavy
+          // tokenization pass during streaming. Equality check is JSON.stringify
+          // of the parts array — cheap relative to the network/parse already paid
+          // and to the toTranscriptEntry work it avoids for unchanged messages.
+          const previousById = new Map<string, SessionMessageRecord>();
+          for (const rec of previous) {
+            previousById.set(rec.info.id, rec);
+          }
+          // Equality must cover BOTH parts and info. toTranscriptEntry reads
+          // record.info.error (via getMessageError) — if the server adds an
+          // error post-hoc without changing parts (streaming-failure-after-
+          // partial-response), ignoring info would silently drop the error
+          // banner AND poison the WeakMap cache in format.ts. JSON.stringify
+          // is cheap here (info is small metadata: id/role/time/error).
+          const merged: SessionMessageRecord[] = new Array(data.length);
+          let unchanged = previous.length === data.length;
+          for (let i = 0; i < data.length; i++) {
+            const next = data[i];
+            const prev = previousById.get(next.info.id);
+            if (
+              prev &&
+              prev.parts.length === next.parts.length &&
+              JSON.stringify(prev.parts) === JSON.stringify(next.parts) &&
+              JSON.stringify(prev.info) === JSON.stringify(next.info)
+            ) {
+              merged[i] = prev;
+            } else {
+              merged[i] = next;
+              unchanged = false;
+            }
+          }
+          // Preserve array identity when no record changed. Downstream useMemos
+          // (transcript, currentUsage, sessionPreviewById, currentMessages) key
+          // off this array's reference and skip re-computation when it is stable.
+          return { ...current, [sessionId]: unchanged ? previous : merged };
+        });
 
         return data;
       } finally {

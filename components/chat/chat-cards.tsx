@@ -1,5 +1,5 @@
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { useMemo, useState } from 'react';
+import { memo, useMemo, useState } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
 import { Button, Card, Chip, Divider, IconButton, List, Surface, Text, TextInput, TouchableRipple } from 'react-native-paper';
 
@@ -245,16 +245,7 @@ export function DiffCard({ detail, expanded, onPress }: { detail: Extract<Transc
   );
 }
 
-export function TranscriptMessage({
-  canSpeak = false,
-  copied = false,
-  entry,
-  onCopy,
-  onFork,
-  onRevert,
-  onToggleSpeak,
-  speaking = false,
-}: {
+type TranscriptMessageProps = {
   canSpeak?: boolean;
   copied?: boolean;
   entry: TranscriptEntry;
@@ -263,7 +254,18 @@ export function TranscriptMessage({
   onRevert?: () => void;
   onToggleSpeak: () => void;
   speaking?: boolean;
-}) {
+};
+
+function TranscriptMessageImpl({
+  canSpeak = false,
+  copied = false,
+  entry,
+  onCopy,
+  onFork,
+  onRevert,
+  onToggleSpeak,
+  speaking = false,
+}: TranscriptMessageProps) {
   const colorScheme = useColorScheme() ?? 'light';
   const palette = Colors[colorScheme];
   const isUser = entry.role === 'user';
@@ -330,6 +332,20 @@ export function TranscriptMessage({
     </View>
   );
 }
+
+// Re-render only when entry identity or visible state changes.
+// Callbacks intentionally excluded: they only operate on entry data captured
+// in entry identity. Non-streaming cells skip re-render on parent updates.
+function areTranscriptMessagePropsEqual(prev: TranscriptMessageProps, next: TranscriptMessageProps) {
+  return (
+    prev.entry === next.entry
+    && prev.copied === next.copied
+    && prev.speaking === next.speaking
+    && prev.canSpeak === next.canSpeak
+  );
+}
+
+export const TranscriptMessage = memo(TranscriptMessageImpl, areTranscriptMessagePropsEqual);
 
 function PermissionRequestCard({
   compact = false,
