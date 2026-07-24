@@ -1,6 +1,6 @@
 import * as Clipboard from 'expo-clipboard';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { useMemo, useState } from 'react';
+import { memo, useEffect, useMemo, useState } from 'react';
 import { Alert, Platform, Pressable, RefreshControl, ScrollView, StyleSheet, useWindowDimensions, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -24,6 +24,113 @@ import { useColorScheme } from '@/hooks/use-color-scheme';
 import { formatRelativeTime, getSessionSubtitle } from '@/lib/opencode/format';
 import type { Session } from '@/lib/opencode/types';
 import { useOpencode } from '@/providers/opencode-provider';
+
+type Palette = typeof Colors.light;
+
+type SessionListItemProps = {
+  compact: boolean;
+  isActionMenuOpen: boolean;
+  isBusy: boolean;
+  isCurrent: boolean;
+  isRenaming: boolean;
+  onArchive: (sessionId: string) => void;
+  onCloseActionMenu: () => void;
+  onCloseRename: () => void;
+  onDeleteRequest: (session: Session) => void;
+  onOpen: (sessionId: string) => void;
+  onShareRequest: (session: Session) => void;
+  onRename: (sessionId: string, title: string) => void;
+  onStartActionMenu: (sessionId: string) => void;
+  onStartRename: (session: Session) => void;
+  palette: Palette;
+  preview?: string;
+  session: Session;
+  statusLabel: string;
+  styles: typeof styles;
+};
+
+// Memoized row for the active-sessions list. Previously renderSessionItem
+// returned a fresh closure tree on every parent state change (typing in
+// search box, opening a menu, renaming any session), forcing every visible
+// row to re-render. The comparator below skips re-render unless a
+// display-relevant prop changes. Callback identity is intentionally
+// excluded — they only fire on user action, so stale closures are not a
+// correctness issue here.
+function SessionListItemImpl({
+  compact,
+  isActionMenuOpen,
+  isBusy,
+  isCurrent,
+  isRenaming,
+  onArchive,
+  onCloseActionMenu,
+  onCloseRename,
+  onDeleteRequest,
+  onOpen,
+  onShareRequest,
+  onRename,
+  onStartActionMenu,
+  onStartRename,
+  palette,
+  preview,
+  session,
+  statusLabel,
+  styles,
+}: SessionListItemProps) {
+  const [renameValue, setRenameValue] = useState(session.title || '');
+  // Sync local rename input when entering rename mode for this row.
+  useEffect(() => {
+    if (isRenaming) {
+      setRenameValue(session.title || '');
+    }
+  }, [isRenaming, session.title]);
+
+  return (
+    <View>
+      <List.Item
+        title={session.title || 'Untitled chat'}
+        description={preview || getSessionSubtitle(session)}
+        onPress={() => onOpen(session.id)}
+        titleStyle={{ color: palette.text, fontWeight: isCurrent ? '700' : '500' }}
+        descriptionStyle={{ color: palette.muted }}
+        right={() => (
+          <View style={styles.sessionMeta}>
+            <Text style={{ color: palette.tint }}>{statusLabel}</Text>
+            <Menu
+              visible={isActionMenuOpen}
+              onDismiss={onCloseActionMenu}
+              anchor={<IconButton icon="dots-vertical" accessibilityLabel={`Actions for ${session.title || 'Untitled chat'}`} onPress={() => onStartActionMenu(session.id)} />}>
+              <Menu.Item title="Rename" leadingIcon="pencil" onPress={() => { onCloseActionMenu(); onStartRename(session); }} />
+              <Menu.Item title={session.share?.url ? 'Unshare' : 'Share'} leadingIcon="share-variant" onPress={() => { onCloseActionMenu(); onShareRequest(session); }} />
+              <Menu.Item title="Archive" leadingIcon="archive-outline" disabled={isBusy} onPress={() => { onCloseActionMenu(); onArchive(session.id); }} />
+              <Menu.Item title="Delete" leadingIcon="delete-outline" titleStyle={{ color: palette.danger }} onPress={() => { onCloseActionMenu(); onDeleteRequest(session); }} />
+            </Menu>
+          </View>
+        )}
+      />
+      {isRenaming ? (
+        <View style={[styles.renameRow, compact && styles.compactFormRow]}>
+          <TextInput testID="workspace-session-title-input" mode="outlined" dense value={renameValue} onChangeText={setRenameValue} style={styles.renameInput} />
+          <Button mode="contained" onPress={() => onRename(session.id, renameValue)}>Save</Button>
+          <Button onPress={onCloseRename}>Cancel</Button>
+        </View>
+      ) : null}
+    </View>
+  );
+}
+
+const areSessionListItemPropsEqual = (a: SessionListItemProps, b: SessionListItemProps) =>
+  a.session === b.session &&
+  a.preview === b.preview &&
+  a.statusLabel === b.statusLabel &&
+  a.palette === b.palette &&
+  a.compact === b.compact &&
+  a.isCurrent === b.isCurrent &&
+  a.isActionMenuOpen === b.isActionMenuOpen &&
+  a.isRenaming === b.isRenaming &&
+  a.isBusy === b.isBusy;
+
+const SessionListItem = memo(SessionListItemImpl, areSessionListItemPropsEqual);
 
 export default function WorkspaceScreen() {
   const router = useRouter();
@@ -78,7 +185,6 @@ export default function WorkspaceScreen() {
   const [projectMenuVisible, setProjectMenuVisible] = useState(false);
   const [updatingSessionId, setUpdatingSessionId] = useState<string | undefined>();
   const [renamingSessionId, setRenamingSessionId] = useState<string>();
-  const [renameValue, setRenameValue] = useState('');
   const [fileQuery, setFileQuery] = useState('');
   const [editingFile, setEditingFile] = useState<{ path: string; original: string; value: string }>();
   const [isSavingFile, setIsSavingFile] = useState(false);
@@ -206,40 +312,35 @@ export default function WorkspaceScreen() {
   function renderSessionItem(session: Session, index: number, total: number) {
     return (
       <View key={session.id}>
-        <List.Item
-          title={session.title || 'Untitled chat'}
-          description={sessionPreviewById[session.id] || getSessionSubtitle(session)}
-          onPress={() => {
-            void openSession(session.id)
+        <SessionListItem
+          compact={compact}
+          isActionMenuOpen={sessionActionId === session.id}
+          isBusy={updatingSessionId === session.id}
+          isCurrent={currentSessionId === session.id}
+          isRenaming={renamingSessionId === session.id}
+          onArchive={handleArchive}
+          onCloseActionMenu={() => setSessionActionId(undefined)}
+          onCloseRename={() => setRenamingSessionId(undefined)}
+          onDeleteRequest={confirmDelete}
+          onOpen={(sessionId) => {
+            void openSession(sessionId)
               .then(() => router.push('/(tabs)'))
               .catch((reason) => setError(reason instanceof Error ? reason.message : 'Could not open the session.'));
           }}
-          titleStyle={{ color: palette.text, fontWeight: currentSessionId === session.id ? '700' : '500' }}
-          descriptionStyle={{ color: palette.muted }}
-          right={() => (
-            <View style={styles.sessionMeta}>
-              <Text style={{ color: palette.tint }}>{sessionStatuses[session.id]?.type || 'idle'}</Text>
-              <Menu
-                visible={sessionActionId === session.id}
-                onDismiss={() => setSessionActionId(undefined)}
-                anchor={<IconButton icon="dots-vertical" accessibilityLabel={`Actions for ${session.title || 'Untitled chat'}`} onPress={() => setSessionActionId(session.id)} />}>
-                <Menu.Item title="Rename" leadingIcon="pencil" onPress={() => { setSessionActionId(undefined); setRenamingSessionId(session.id); setRenameValue(session.title || ''); }} />
-                <Menu.Item title={session.share?.url ? 'Unshare' : 'Share'} leadingIcon="share-variant" onPress={() => { setSessionActionId(undefined); confirmShare(session); }} />
-                <Menu.Item title="Archive" leadingIcon="archive-outline" disabled={updatingSessionId === session.id} onPress={() => { setSessionActionId(undefined); void handleArchive(session.id); }} />
-                <Menu.Item title="Delete" leadingIcon="delete-outline" titleStyle={{ color: palette.danger }} onPress={() => { setSessionActionId(undefined); confirmDelete(session); }} />
-              </Menu>
-            </View>
-          )}
-        />
-        {renamingSessionId === session.id ? (
-          <View style={[styles.renameRow, compact && styles.compactFormRow]}>
-            <TextInput testID="workspace-session-title-input" mode="outlined" dense value={renameValue} onChangeText={setRenameValue} style={styles.renameInput} />
-            <Button mode="contained" onPress={() => void renameSession(session.id, renameValue)
+          onShareRequest={confirmShare}
+          onRename={(sessionId, value) => {
+            void renameSession(sessionId, value)
               .then(() => setRenamingSessionId(undefined))
-              .catch((reason) => setError(reason instanceof Error ? reason.message : 'Could not rename the session.'))}>Save</Button>
-            <Button onPress={() => setRenamingSessionId(undefined)}>Cancel</Button>
-          </View>
-        ) : null}
+              .catch((reason) => setError(reason instanceof Error ? reason.message : 'Could not rename the session.'));
+          }}
+          onStartActionMenu={(id) => setSessionActionId(id)}
+          onStartRename={(target) => { setSessionActionId(undefined); setRenamingSessionId(target.id); }}
+          palette={palette}
+          preview={sessionPreviewById[session.id]}
+          session={session}
+          statusLabel={sessionStatuses[session.id]?.type || 'idle'}
+          styles={styles}
+        />
         {index < total - 1 ? <Divider /> : null}
       </View>
     );
