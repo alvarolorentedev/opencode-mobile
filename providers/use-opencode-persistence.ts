@@ -74,6 +74,11 @@ export function useOpencodePersistence({
           setLastSessionByProject(JSON.parse(storedLastSessionByProject) as Record<string, string>);
         }
 
+        const storedFavoriteSessions = await AsyncStorage.getItem(FAVORITE_SESSIONS_STORAGE_KEY);
+        if (storedFavoriteSessions) {
+          setFavoriteSessions(JSON.parse(storedFavoriteSessions) as FavoriteSession[]);
+        }
+
       } catch {
         // Ignore hydration issues and keep defaults.
       } finally {

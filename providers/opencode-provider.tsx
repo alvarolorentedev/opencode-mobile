@@ -162,7 +162,6 @@ export type {
   ConnectionState,
   ConversationPhase,
   ConversationState,
-  FAVORITE_SESSIONS_MAX,
   FavoriteSession,
   ModelOption,
   OpencodeContextValue,

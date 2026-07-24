@@ -227,16 +227,16 @@ export default function WorkspaceScreen() {
                 onDismiss={() => setSessionActionId(undefined)}
                 anchor={<IconButton icon="dots-vertical" accessibilityLabel={`Actions for ${session.title || 'Untitled chat'}`} onPress={() => setSessionActionId(session.id)} />}>
                 <Menu.Item title="Rename" leadingIcon="pencil" onPress={() => { setSessionActionId(undefined); setRenamingSessionId(session.id); setRenameValue(session.title || ''); }} />
-              <Menu.Item title={session.share?.url ? 'Unshare' : 'Share'} leadingIcon="share-variant" onPress={() => { setSessionActionId(undefined); confirmShare(session); }} />
-              <Menu.Item
-                title={isFavoriteSession(session.id) ? 'Remove from favorites' : 'Add to favorites'}
-                leadingIcon={isFavoriteSession(session.id) ? 'star' : 'star-outline'}
-                onPress={() => {
-                  setSessionActionId(undefined);
-                  toggleFavoriteSession(session.id, activeProject?.path || '', session.title);
-                }}
-              />
-              <Menu.Item title="Archive" leadingIcon="archive-outline" disabled={updatingSessionId === session.id} onPress={() => { setSessionActionId(undefined); void handleArchive(session.id); }} />
+                <Menu.Item title={session.share?.url ? 'Unshare' : 'Share'} leadingIcon="share-variant" onPress={() => { setSessionActionId(undefined); confirmShare(session); }} />
+                <Menu.Item
+                  title={isFavoriteSession(session.id) ? 'Remove from favorites' : 'Add to favorites'}
+                  leadingIcon={isFavoriteSession(session.id) ? 'star' : 'star-outline'}
+                  onPress={() => {
+                    setSessionActionId(undefined);
+                    toggleFavoriteSession(session.id, activeProject?.path || '', session.title);
+                  }}
+                />
+                <Menu.Item title="Archive" leadingIcon="archive-outline" disabled={updatingSessionId === session.id} onPress={() => { setSessionActionId(undefined); void handleArchive(session.id); }} />
                 <Menu.Item title="Delete" leadingIcon="delete-outline" titleStyle={{ color: palette.danger }} onPress={() => { setSessionActionId(undefined); confirmDelete(session); }} />
               </Menu>
             </View>
