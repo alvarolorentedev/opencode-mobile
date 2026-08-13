@@ -151,6 +151,15 @@ type ChatComposerProps = {
 
 - todos are server-owned and displayed in the chat overlay with disabled status icons; the UI has no todo mutation action
 - typing `/` shows up to six matching server commands; selecting one fills the draft
+- model selection uses a searchable sheet grouped by provider; the trigger displays `Provider · Model`
+
+## `components/chat/model-picker.tsx`
+
+### Responsibility
+
+- render the searchable, provider-grouped configured-model picker
+- own only local modal visibility and search-query state
+- return the selected `ModelOption` to the composer, which persists it through the provider
 
 ## `components/chat/chat-header.tsx`
 

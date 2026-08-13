@@ -217,6 +217,34 @@ test('settings can configure an additional provider against the fake server', as
   await expect(page.getByRole('button', { name: 'OpenRouter', exact: true })).toBeVisible();
 });
 
+test('chat model picker searches and groups models by provider', async ({ page, request }) => {
+  await resetScenario(request, 'happy-path');
+  await openReadyChat(page);
+
+  await page.getByRole('tab', { name: 'Settings' }).click();
+  await page.getByTestId('settings-add-provider-button').click();
+  await page.getByRole('button', { name: 'OpenRouter', exact: true }).click();
+  await page.getByPlaceholder('Paste your API key').fill('sk-test-openrouter');
+  await page.getByTestId('settings-provider-save-button').click();
+  await expect(page.getByText('Configure OpenRouter')).not.toBeVisible({ timeout: 15_000 });
+
+  await page.getByRole('tab', { name: 'Chat' }).click();
+  await page.getByTestId('chat-model-picker-trigger').click();
+  await expect(page.getByText('OpenAI', { exact: true })).toBeVisible();
+  await expect(page.getByText('OpenRouter', { exact: true })).toBeVisible();
+  await page.getByTestId('chat-model-picker-search').fill('openrouter');
+  await expect(page.getByText('OpenAI', { exact: true })).not.toBeVisible();
+  await page.getByText('Auto', { exact: true }).click();
+  await expect(page.getByTestId('chat-model-picker-trigger')).toContainText('OpenRouter · Auto');
+
+  await page.getByTestId('chat-model-picker-trigger').click();
+  await expect(page.getByTestId('chat-model-picker-search')).toHaveValue('');
+  await page.getByTestId('chat-model-picker-search').fill('not-a-model');
+  await expect(page.getByText('No matching models', { exact: true })).toBeVisible();
+  await expect(page.getByTestId('chat-model-picker-search')).toHaveValue('not-a-model');
+  await page.getByLabel('Close model picker').click();
+});
+
 test('polling fallback still finishes the flow when SSE is unavailable', async ({ page, request }) => {
   await resetScenario(request, 'stream-disconnect');
   await openReadyChat(page);

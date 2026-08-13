@@ -4,9 +4,9 @@ import { useState } from 'react';
 
 import { Colors } from '@/constants/theme';
 import { ControlButton, SelectControl } from '@/components/chat/chat-controls';
+import { ModelPicker } from '@/components/chat/model-picker';
 import { styles } from '@/components/chat/chat-view-styles';
-import { getAutoApproveIcon, getModelLabel, REASONING_OPTIONS } from '@/components/chat/chat-view-utils';
-import { renderProviderIcon } from '@/components/ui/provider-icon';
+import { getAutoApproveIcon, REASONING_OPTIONS } from '@/components/chat/chat-view-utils';
 import type { AgentOption, ChatPreferences, ModelOption } from '@/providers/opencode-provider';
 import type { Command } from '@/lib/opencode/types';
 
@@ -106,26 +106,13 @@ export function ChatComposer({
           selectedValue={chatPreferences.mode}
           title="Choose assistant mode"
         />
-        <SelectControl
+        <ModelPicker
           disabled={visibleModels.length === 0}
-          grow
-          icon={(props) => renderProviderIcon(visibleModels.find((model) => model.id === chatPreferences.modelId)?.providerID, props.size, props.color)}
-          label={getModelLabel(visibleModels, chatPreferences.modelId)}
-          onValueChange={(value) => {
-            const model = visibleModels.find((item) => item.id === value);
-            if (!model) {
-              return;
-            }
+          models={visibleModels}
+          onSelect={(model) => {
             updateChatPreferences({ providerId: model.providerID, modelId: model.id });
           }}
-          options={visibleModels.map((model) => ({
-            description: model.supportsReasoning ? 'Reasoning supported' : 'Standard model',
-            label: model.label,
-            leadingIcon: (props) => renderProviderIcon(model.providerID, props.size, props.color),
-            value: model.id,
-          }))}
-          selectedValue={chatPreferences.modelId}
-          title="Choose model"
+          selectedModelId={chatPreferences.modelId}
         />
         <SelectControl
           grow

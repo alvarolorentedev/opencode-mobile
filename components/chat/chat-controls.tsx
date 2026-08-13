@@ -63,6 +63,7 @@ export function ControlButton({
   loading = false,
   maxWidth,
   onPress,
+  testID,
 }: {
   active?: boolean;
   children: string;
@@ -74,6 +75,7 @@ export function ControlButton({
   loading?: boolean;
   maxWidth?: number;
   onPress: () => void;
+  testID?: string;
 }) {
   const colorScheme = useColorScheme() ?? 'light';
   const palette = Colors[colorScheme];
@@ -86,6 +88,7 @@ export function ControlButton({
       accessibilityRole="button"
       disabled={disabled}
       onPress={onPress}
+      testID={testID}
       style={({ pressed }) => [
         styles.controlButton,
         grow && !iconOnly ? styles.controlButtonGrow : null,

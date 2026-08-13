@@ -261,6 +261,7 @@ Behavior:
 
 - only configured providers contribute models to the model picker
 - model choices are also filtered by the enabled-model list from Settings
+- the picker shows the provider alongside the selected model, groups results by provider, and searches provider/model names and IDs
 - selecting a model updates both `providerId` and `modelId`
 - discovered model metadata comes from nested attachment/input modality, tool-call, reasoning, status, and context/output limit capabilities
 - reasoning level affects only the generated system prompt, not local control flow
