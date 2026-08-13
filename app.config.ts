@@ -1,5 +1,5 @@
-import type { ExpoConfig } from 'expo/config';
 import { withAndroidManifest } from '@expo/config-plugins';
+import type { ExpoConfig } from 'expo/config';
 
 function env(name: string) {
   const value = process.env[name]?.trim();
@@ -24,7 +24,7 @@ const withCleartextTraffic = (config: ExpoConfig) => withAndroidManifest(config,
 const config: ExpoConfig = {
   name: isDevelopmentVariant ? 'OpenCode Mobile Dev' : 'OpenCode Mobile',
   slug: 'opencode-mobile',
-  version: '1.0.8',
+  version: '1.0.9',
   orientation: 'portrait',
   icon: './assets/images/icon.png',
   scheme: 'opencodemobile',
