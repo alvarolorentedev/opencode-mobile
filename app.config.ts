@@ -24,7 +24,7 @@ const withCleartextTraffic = (config: ExpoConfig) => withAndroidManifest(config,
 const config: ExpoConfig = {
   name: isDevelopmentVariant ? 'OpenCode Mobile Dev' : 'OpenCode Mobile',
   slug: 'opencode-mobile',
-  version: '1.0.9',
+  version: '1.0.10',
   orientation: 'portrait',
   icon: './assets/images/icon.png',
   scheme: 'opencodemobile',
@@ -32,7 +32,7 @@ const config: ExpoConfig = {
   newArchEnabled: true,
   android: {
     package: androidPackage,
-    versionCode: 9,
+    versionCode: 10,
     adaptiveIcon: {
       foregroundImage: './assets/images/adaptive-icon.png',
       backgroundColor: "#202020"
