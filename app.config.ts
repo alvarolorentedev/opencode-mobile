@@ -32,7 +32,7 @@ const config: ExpoConfig = {
   newArchEnabled: true,
   android: {
     package: androidPackage,
-    versionCode: 7,
+    versionCode: 9,
     adaptiveIcon: {
       foregroundImage: './assets/images/adaptive-icon.png',
       backgroundColor: "#202020"
