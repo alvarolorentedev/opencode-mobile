@@ -37,42 +37,51 @@ export function useOpencodePersistence({
 
   useEffect(() => {
     async function hydrateState() {
-      try {
-        const storedSettings = await AsyncStorage.getItem(SETTINGS_STORAGE_KEY);
-
-        if (storedSettings) {
-          const parsed = JSON.parse(storedSettings) as Partial<OpencodeConnectionSettings>;
-          setSettings({
-            ...defaultSettings,
-            ...parsed,
-          });
+      // Each key is parsed independently. A single corrupt value (e.g.,
+      // truncated JSON written by a crashed prior run) used to abort all
+      // remaining hydration steps via the outer catch below, leaving the
+      // user stuck with defaults even for the keys that were intact.
+      async function loadKey<T>(key: string, parse: (raw: string) => T, apply: (parsed: T) => void) {
+        try {
+          const raw = await AsyncStorage.getItem(key);
+          if (raw === null) {
+            return;
+          }
+          apply(parse(raw));
+        } catch {
+          // Drop the corrupt value so subsequent writes replace it cleanly.
+          void AsyncStorage.removeItem(key).catch(() => undefined);
         }
-
-        const storedChatPreferences = await AsyncStorage.getItem(CHAT_PREFERENCES_STORAGE_KEY);
-        if (storedChatPreferences) {
-          const parsed = JSON.parse(storedChatPreferences) as Partial<ChatPreferences>;
-          setChatPreferences((current) => ({
-            ...defaultChatPreferences,
-            ...current,
-            ...parsed,
-          }));
-        }
-
-        const storedActiveProjectPath = await AsyncStorage.getItem(ACTIVE_PROJECT_STORAGE_KEY);
-        if (storedActiveProjectPath) {
-          setActiveProjectPath(storedActiveProjectPath);
-        }
-
-        const storedLastSessionByProject = await AsyncStorage.getItem(LAST_SESSION_BY_PROJECT_STORAGE_KEY);
-        if (storedLastSessionByProject) {
-          setLastSessionByProject(JSON.parse(storedLastSessionByProject) as Record<string, string>);
-        }
-
-      } catch {
-        // Ignore hydration issues and keep defaults.
-      } finally {
-        setIsHydrated(true);
       }
+
+      await Promise.all([
+        loadKey(
+          SETTINGS_STORAGE_KEY,
+          (raw) => JSON.parse(raw) as Partial<OpencodeConnectionSettings>,
+          (parsed) => setSettings({ ...defaultSettings, ...parsed }),
+        ),
+        loadKey(
+          CHAT_PREFERENCES_STORAGE_KEY,
+          (raw) => JSON.parse(raw) as Partial<ChatPreferences>,
+          (parsed) => setChatPreferences((current) => ({ ...defaultChatPreferences, ...current, ...parsed })),
+        ),
+        loadKey(
+          ACTIVE_PROJECT_STORAGE_KEY,
+          (raw) => raw, // stored as a plain string, not JSON
+          (parsed) => {
+            if (parsed) {
+              setActiveProjectPath(parsed);
+            }
+          },
+        ),
+        loadKey(
+          LAST_SESSION_BY_PROJECT_STORAGE_KEY,
+          (raw) => JSON.parse(raw) as Record<string, string>,
+          (parsed) => setLastSessionByProject(parsed),
+        ),
+      ]);
+
+      setIsHydrated(true);
     }
 
     void hydrateState();
