@@ -44,6 +44,7 @@ export type ChatPreferences = {
   workingSoundVolume: number;
   responseScope: ResponseScope;
   includeNextActions: boolean;
+  autoScrollToBottom: boolean;
 };
 
 export const defaultChatPreferences: ChatPreferences = {
@@ -61,6 +62,7 @@ export const defaultChatPreferences: ChatPreferences = {
   workingSoundVolume: 0.18,
   responseScope: 'brief',
   includeNextActions: true,
+  autoScrollToBottom: true,
 };
 
 export function getErrorMessage(error: unknown) {

@@ -19,6 +19,7 @@ type DiffDetail = Extract<TranscriptEntry['details'][number], { kind: 'patch' }>
 type ChatContentProps = {
   activeSession?: Session;
   activeTab: 'session' | 'changes';
+  autoScrollToBottom: boolean;
   awaitingUserInput: boolean;
   connection: { status: 'idle' | 'connecting' | 'connected' | 'error'; message: string };
   copiedMessageId?: string;
@@ -55,6 +56,7 @@ type ChatContentProps = {
 export function ChatContent({
   activeSession,
   activeTab,
+  autoScrollToBottom,
   awaitingUserInput,
   connection,
   copiedMessageId,
@@ -116,11 +118,15 @@ export function ChatContent({
           extraData={{ copiedMessageId, speakingMessageId }}
           keyboardShouldPersistTaps="handled"
           keyExtractor={(entry) => `${entry.id}-${entry.createdAt}`}
+<<<<<<< HEAD
           maintainVisibleContentPosition={{
             autoscrollToBottomThreshold: 0,
             animateAutoScrollToBottom: false,
             startRenderingFromBottom: true,
           }}
+=======
+          maintainVisibleContentPosition={autoScrollToBottom ? MAINTAIN_VISIBLE_CONTENT_POSITION : undefined}
+>>>>>>> a583f49 (feat: option to disable auto-scroll to newest message)
           onContentSizeChange={() => {
             if (!shouldPositionInitialTranscriptRef.current || displayTranscript.length === 0) {
               return;

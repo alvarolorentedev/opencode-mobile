@@ -458,6 +458,7 @@ export function ChatView() {
         <ChatContent
           activeSession={activeSession}
           activeTab={activeTab}
+          autoScrollToBottom={chatPreferences.autoScrollToBottom}
           awaitingUserInput={awaitingUserInput}
           connection={connection}
           copiedMessageId={copiedMessageId}
