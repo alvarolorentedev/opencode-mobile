@@ -336,6 +336,13 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
     pendingNotificationSessionIdsRef.current.clear();
     busyNotificationSessionIdsRef.current.clear();
     notificationRequestedAtRef.current.clear();
+    // Cancel pending session refresh timers. Without this, timeouts scheduled
+    // for sessions in the previous project keep firing after a project switch,
+    // running refresh callbacks that capture stale client instances and write
+    // into state slices that were just cleared above.
+    Object.values(sessionRefreshTimeoutsRef.current).forEach((timeout) => clearTimeout(timeout));
+    sessionRefreshTimeoutsRef.current = {};
+    sessionRefreshOptionsRef.current = {};
     setCurrentSessionId(undefined);
     setSessions([]);
     setArchivedSessions([]);
