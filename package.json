@@ -21,7 +21,9 @@
     "test:ci:static": "npm run lint && npm run typecheck && npm run test:usage && npm run test:format && npm run test:provider-utils && npm run test:workspace-patch",
     "build:android": "node ./scripts/build-android-release.mjs",
     "build:development:android": "node ./scripts/build-android-development.mjs",
-    "ios": "expo run:ios"
+    "ios": "expo run:ios",
+    "prebuild:ios": "expo prebuild --platform ios --non-interactive",
+    "build:ios:local": "node ./scripts/build-ios-release.mjs"
   },
   "dependencies": {
     "@expo/vector-icons": "^15.0.3",

@@ -124,3 +124,29 @@ jobs:
             android/**/build/tmp/kotlin-classes/**
             android/**/build/*.log
           if-no-files-found: ignore
+
+  ios-prebuild:
+    runs-on: macos-latest
+    needs: static
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Generate iOS native project
+        run: npx expo prebuild --platform ios --non-interactive
+
+      - name: Install CocoaPods dependencies
+        run: pod install
+        working-directory: ios
