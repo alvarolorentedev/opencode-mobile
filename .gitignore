@@ -44,6 +44,9 @@ app-example
 # generated native folders
 /ios
 /android
+ios-build/
+DerivedData/
+*.xcarchive
 
 # Expo / EAS local config
 app.json

@@ -2,11 +2,12 @@
 
 [![Get it on Google Play](https://img.shields.io/badge/Get_it_on-Google_Play-4285F4?style=for-the-badge&logo=googleplay&logoColor=white)](https://play.google.com/apps/testing/app.getopencode)
 [![Download APK](https://img.shields.io/badge/Download-APK-18A748?style=for-the-badge&logo=android&logoColor=white)](https://github.com/alvarolorentedev/opencode-mobile/releases/latest/download/opencode-mobile.apk)
+[![TestFlight](https://img.shields.io/badge/Join_Beta-TestFlight-0D96F6?style=for-the-badge&logo=apple&logoColor=white)](https://testflight.apple.com/)
 
 
 **Your OpenCode server, in your pocket.**
 
-OpenCode Mobile brings the full power of your self-hosted OpenCode AI assistant to your Android device. Chat with your models, manage conversations, and stay productive anywhere.
+OpenCode Mobile brings the full power of your self-hosted OpenCode AI assistant to your Android and iOS devices. Chat with your models, manage conversations, and stay productive anywhere.
 
 ## Why OpenCode Mobile?
 
@@ -22,6 +23,7 @@ OpenCode Mobile brings the full power of your self-hosted OpenCode AI assistant 
 
 1. **Download the app**:
    - [Google Play (Beta)](https://play.google.com/apps/testing/app.getopencode)
+   - [TestFlight (Beta)](https://testflight.apple.com/)
    - [Direct APK Download](https://github.com/alvarolorentedev/opencode-mobile/releases/latest/download/opencode-mobile.apk)
 
 2. **Connect to your server**: Open the app and enter your OpenCode server URL (default: `http://ip:4096`)
@@ -84,6 +86,8 @@ npm run typecheck      # Type checking
 npm run test:e2e:web   # End-to-end tests
 npm run android        # Build Android app
 npm run ios            # Build iOS app
+npm run prebuild:ios   # Generate iOS native project
+npm run build:ios:local # Build iOS release archive locally
 ```
 
 ### Android Builds
@@ -102,6 +106,58 @@ npm run build:development:android
 - Push to `main` to trigger Android release build and artifact upload
 - Push a version tag (e.g., `v1.2.3`) to trigger production Play Store upload
 - Use `workflow_dispatch` for manual internal-track uploads
+
+### iOS Builds
+
+Build a local iOS release:
+```bash
+npm run build:ios:local
+```
+
+**Prerequisites**:
+- Apple Developer Program membership ($99/year)
+- App Store Connect app created with bundle ID `app.getopencode`
+- Apple Distribution certificate (`.p12`) and provisioning profile
+- App Store Connect API key for TestFlight uploads
+
+**Required GitHub Secrets**:
+
+| Secret | Description |
+|--------|-------------|
+| `APPLE_CERTIFICATE_BASE64` | Base64-encoded Apple Distribution certificate (`.p12`) |
+| `APPLE_CERTIFICATE_PASSWORD` | Password for the `.p12` certificate |
+| `APPLE_PROVISIONING_PROFILE_BASE64` | Base64-encoded provisioning profile (`.mobileprovision`) |
+| `APPLE_TEAM_ID` | Apple Developer Team ID (10-character alphanumeric) |
+| `APPSTORE_API_KEY_ID` | App Store Connect API key ID |
+| `APPSTORE_API_ISSUER_ID` | App Store Connect API issuer ID |
+| `APPSTORE_API_PRIVATE_KEY` | App Store Connect API private key (`.p8` content) |
+
+**Creating the Apple Distribution Certificate**:
+1. Go to [Apple Developer Certificates](https://developer.apple.com/account/resources/certificates/list)
+2. Create a new "iOS Distribution" certificate
+3. Export as `.p12` with a password
+4. Base64-encode: `base64 -i certificate.p12 | pbcopy`
+5. Set `APPLE_CERTIFICATE_BASE64` and `APPLE_CERTIFICATE_PASSWORD` secrets
+
+**Creating the Provisioning Profile**:
+1. Go to [Apple Developer Profiles](https://developer.apple.com/account/resources/profiles/list)
+2. Create a new "App Store" provisioning profile for `app.getopencode`
+3. Download the `.mobileprovision` file
+4. Base64-encode: `base64 -i profile.mobileprovision | pbcopy`
+5. Set `APPLE_PROVISIONING_PROFILE_BASE64` secret
+
+**Creating the App Store Connect API Key**:
+1. Go to [App Store Connect > Users and Access > Integrations](https://appstoreconnect.apple.com/access/integrations/api)
+2. Generate a new API key with "Developer" access
+3. Download the `.p8` key file
+4. Note the Key ID and Issuer ID
+5. Set `APPSTORE_API_KEY_ID`, `APPSTORE_API_ISSUER_ID`, and `APPSTORE_API_PRIVATE_KEY` secrets
+
+**Release Automation**:
+- Push to `main` to trigger iOS release build and artifact upload
+- Push a version tag (e.g., `v1.2.3`) to trigger production TestFlight upload
+- Use `workflow_dispatch` with `upload_to_app_store: true` for manual TestFlight uploads
+- The `.ipa` artifact can be found in the workflow run's artifacts section
 
 ### Testing
 
