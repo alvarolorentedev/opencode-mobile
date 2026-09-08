@@ -56,8 +56,10 @@ const config: ExpoConfig = {
   },
   plugins: [
     'expo-router',
+    'expo-font',
     'expo-notifications',
     'expo-background-task',
+    'expo-web-browser',
     [
       'expo-speech-recognition',
       {

@@ -16,12 +16,13 @@ on:
 
 jobs:
   build-ios:
-    runs-on: macos-latest
+    runs-on: macos-26
     permissions:
       contents: read
 
     env:
       EXPO_APP_VARIANT: production
+      IOS_BUNDLE_IDENTIFIER: app.getopencode.mobile
 
     steps:
       - name: Checkout repository
@@ -36,25 +37,40 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Validate release version
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: |
+          APP_VERSION=$(npx expo config --type public --json | python3 -c "import sys,json; print(json.load(sys.stdin)['version'])")
+          if [ "$APP_VERSION" != "${GITHUB_REF_NAME#v}" ]; then
+            echo "Tag $GITHUB_REF_NAME does not match app version $APP_VERSION"
+            exit 1
+          fi
+
+      - name: Validate signing secrets
+        env:
+          APPLE_CERTIFICATE_BASE64: ${{ secrets.APPLE_CERTIFICATE_BASE64 }}
+          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+          APPLE_PROVISIONING_PROFILE_BASE64: ${{ secrets.APPLE_PROVISIONING_PROFILE_BASE64 }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: |
+          : "${APPLE_CERTIFICATE_BASE64:?Missing required secret: APPLE_CERTIFICATE_BASE64}"
+          : "${APPLE_CERTIFICATE_PASSWORD:?Missing required secret: APPLE_CERTIFICATE_PASSWORD}"
+          : "${APPLE_PROVISIONING_PROFILE_BASE64:?Missing required secret: APPLE_PROVISIONING_PROFILE_BASE64}"
+          : "${APPLE_TEAM_ID:?Missing required secret: APPLE_TEAM_ID}"
+
       - name: Generate iOS native project
-        run: npx expo prebuild --platform ios --non-interactive
+        run: CI=1 npx expo prebuild --platform ios --clean
 
       - name: Detect workspace
         id: workspace
         run: |
-          WORKSPACE=$(find ios -name "*.xcworkspace" -maxdepth 1 | head -1)
+          WORKSPACE=$(find ios -maxdepth 1 -name "*.xcworkspace" -print -quit)
           if [ -z "$WORKSPACE" ]; then
             echo "No .xcworkspace found"
             exit 1
           fi
           echo "path=$WORKSPACE" >> "$GITHUB_OUTPUT"
           echo "name=$(basename "$WORKSPACE" .xcworkspace)" >> "$GITHUB_OUTPUT"
-
-      - name: Detect scheme
-        id: scheme
-        run: |
-          SCHEME=$(xcodebuild -workspace "${{ steps.workspace.outputs.path }}" -list -json | python3 -c "import sys,json; print(json.load(sys.stdin)['project']['schemes'][0])")
-          echo "name=$SCHEME" >> "$GITHUB_OUTPUT"
 
       - name: Create temporary keychain
         run: |
@@ -63,6 +79,7 @@ jobs:
           security create-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
           security set-keychain-settings -lut 21600 "$KEYCHAIN_PATH"
           security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+          security list-keychains -d user -s "$KEYCHAIN_PATH"
           echo "KEYCHAIN_PATH=$KEYCHAIN_PATH" >> "$GITHUB_ENV"
           echo "KEYCHAIN_PASSWORD=$KEYCHAIN_PASSWORD" >> "$GITHUB_ENV"
 
@@ -72,53 +89,48 @@ jobs:
           APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
         run: |
           CERT_PATH=$RUNNER_TEMP/certificate.p12
-          printf '%s' "$APPLE_CERTIFICATE_BASE64" | base64 --decode > "$CERT_PATH"
+          printf '%s' "$APPLE_CERTIFICATE_BASE64" | tr -d '[:space:]' | base64 -D > "$CERT_PATH"
           security import "$CERT_PATH" -P "$APPLE_CERTIFICATE_PASSWORD" -A -t cert -f pkcs12 -k "$KEYCHAIN_PATH"
           security set-key-partition-list -S apple-tool:,apple: -k "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+          security find-identity -v -p codesigning "$KEYCHAIN_PATH"
 
       - name: Install provisioning profile
         env:
           APPLE_PROVISIONING_PROFILE_BASE64: ${{ secrets.APPLE_PROVISIONING_PROFILE_BASE64 }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
         run: |
           PROFILE_PATH=$RUNNER_TEMP/profile.mobileprovision
-          printf '%s' "$APPLE_PROVISIONING_PROFILE_BASE64" | base64 --decode > "$PROFILE_PATH"
-          mkdir -p ~/Library/MobileDevice/Provisioning\ Profiles
-          UUID=$(security cms -D -i "$PROFILE_PATH" | plutil -extract UUID raw -)
-          cp "$PROFILE_PATH" ~/Library/MobileDevice/Provisioning\ Profiles/"$UUID".mobileprovision
-
-      - name: Cache CocoaPods
-        uses: actions/cache@v4
-        with:
-          path: ios/Pods
-          key: pods-${{ runner.os }}-${{ steps.workspace.outputs.name }}-${{ hashFiles('ios/Podfile.lock') }}
-          restore-keys: |
-            pods-${{ runner.os }}-${{ steps.workspace.outputs.name }}-
-
-      - name: Install CocoaPods dependencies
-        run: pod install
-        working-directory: ios
-
-      - name: Determine build number
-        id: buildnum
-        run: |
-          if [[ "${{ github.ref }}" == refs/tags/v* ]]; then
-            BUILD_NUMBER=$(date +%Y%m%d)001
-          else
-            BUILD_NUMBER=${{ github.run_number }}
+          PROFILE_PLIST=$RUNNER_TEMP/profile.plist
+          printf '%s' "$APPLE_PROVISIONING_PROFILE_BASE64" | tr -d '[:space:]' | base64 -D > "$PROFILE_PATH"
+          security cms -D -i "$PROFILE_PATH" > "$PROFILE_PLIST"
+          PROFILE_UUID=$(plutil -extract UUID raw "$PROFILE_PLIST")
+          PROFILE_NAME=$(plutil -extract Name raw "$PROFILE_PLIST")
+          PROFILE_TEAM_ID=$(plutil -extract TeamIdentifier.0 raw "$PROFILE_PLIST")
+          PROFILE_APP_IDENTIFIER=$(plutil -extract Entitlements.application-identifier raw "$PROFILE_PLIST")
+          if [ "$PROFILE_TEAM_ID" != "$APPLE_TEAM_ID" ] || [ "${PROFILE_APP_IDENTIFIER#*.}" != "$IOS_BUNDLE_IDENTIFIER" ]; then
+            echo "Provisioning profile does not match team $APPLE_TEAM_ID and bundle $IOS_BUNDLE_IDENTIFIER"
+            exit 1
           fi
-          echo "value=$BUILD_NUMBER" >> "$GITHUB_OUTPUT"
+          mkdir -p ~/Library/MobileDevice/Provisioning\ Profiles
+          cp "$PROFILE_PATH" ~/Library/MobileDevice/Provisioning\ Profiles/"$PROFILE_UUID".mobileprovision
+          echo "PROFILE_NAME=$PROFILE_NAME" >> "$GITHUB_ENV"
+          echo "PROFILE_UUID=$PROFILE_UUID" >> "$GITHUB_ENV"
 
       - name: Build archive
         run: |
           xcodebuild -workspace "${{ steps.workspace.outputs.path }}" \
-            -scheme "${{ steps.scheme.outputs.name }}" \
+            -scheme "${{ steps.workspace.outputs.name }}" \
             -configuration Release \
             -archivePath "$RUNNER_TEMP/build.xcarchive" \
             -destination "generic/platform=iOS" \
-            -allowProvisioningUpdates \
             DEVELOPMENT_TEAM="${{ secrets.APPLE_TEAM_ID }}" \
-            CURRENT_PROJECT_VERSION="${{ steps.buildnum.outputs.value }}" \
-            COMPILER_INDEX_STORE_ENABLE=NO
+            CURRENT_PROJECT_VERSION="${{ github.run_number }}.${{ github.run_attempt }}" \
+            CODE_SIGN_STYLE=Manual \
+            CODE_SIGN_IDENTITY="Apple Distribution" \
+            PROVISIONING_PROFILE_SPECIFIER="$PROFILE_UUID" \
+            OTHER_CODE_SIGN_FLAGS="--keychain $KEYCHAIN_PATH" \
+            COMPILER_INDEX_STORE_ENABLE=NO \
+            archive
 
       - name: Verify archive
         run: |
@@ -135,13 +147,16 @@ jobs:
           <plist version="1.0">
           <dict>
             <key>method</key>
-            <string>app-store</string>
+            <string>app-store-connect</string>
             <key>teamID</key>
             <string>${{ secrets.APPLE_TEAM_ID }}</string>
-            <key>uploadBitcode</key>
-            <false/>
-            <key>compileBitcode</key>
-            <false/>
+            <key>signingStyle</key>
+            <string>manual</string>
+            <key>provisioningProfiles</key>
+            <dict>
+              <key>$IOS_BUNDLE_IDENTIFIER</key>
+              <string>$PROFILE_NAME</string>
+            </dict>
             <key>uploadSymbols</key>
             <true/>
           </dict>
@@ -158,6 +173,7 @@ jobs:
         with:
           name: ios-release-ipa
           path: ${{ runner.temp }}/ios-build/*.ipa
+          if-no-files-found: error
 
       - name: Upload to App Store Connect
         if: ${{ (github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')) || (github.event_name == 'workflow_dispatch' && inputs.upload_to_app_store) }}
@@ -166,22 +182,28 @@ jobs:
           APPSTORE_API_ISSUER_ID: ${{ secrets.APPSTORE_API_ISSUER_ID }}
           APPSTORE_API_PRIVATE_KEY: ${{ secrets.APPSTORE_API_PRIVATE_KEY }}
         run: |
+          if [ -z "$APPSTORE_API_KEY_ID" ] || [ -z "$APPSTORE_API_ISSUER_ID" ] || [ -z "$APPSTORE_API_PRIVATE_KEY" ]; then
+            echo "Missing App Store Connect API key secret"
+            exit 1
+          fi
           IPA_FILE=$(find "$RUNNER_TEMP/ios-build" -name "*.ipa" | head -1)
           if [ -z "$IPA_FILE" ]; then
             echo "No IPA file found"
             exit 1
           fi
 
-          mkdir -p "$RUNNER_TEMP/appstore_api_key"
-          cat > "$RUNNER_TEMP/appstore_api_key/AuthKey_${APPSTORE_API_KEY_ID}.p8" << EOF
+          mkdir -p "$RUNNER_TEMP/private_keys"
+          cat > "$RUNNER_TEMP/private_keys/AuthKey_${APPSTORE_API_KEY_ID}.p8" << EOF
           $APPSTORE_API_PRIVATE_KEY
           EOF
+          chmod 600 "$RUNNER_TEMP/private_keys/AuthKey_${APPSTORE_API_KEY_ID}.p8"
 
+          cd "$RUNNER_TEMP"
           xcrun altool --upload-app \
-            --type ios \
-            --file "$IPA_FILE" \
-            --apiKey "$APPSTORE_API_KEY_ID" \
-            --apiKeyIssuer "$APPSTORE_API_ISSUER_ID"
+              --type ios \
+              --file "$IPA_FILE" \
+              --apiKey "$APPSTORE_API_KEY_ID" \
+              --apiIssuer "$APPSTORE_API_ISSUER_ID"
 
       - name: Cleanup keychain
         if: always()

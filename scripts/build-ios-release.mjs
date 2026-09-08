@@ -21,8 +21,7 @@
 
 import fs from 'node:fs';
 import path from 'node:path';
-import { spawnSync } from 'node:child_process';
-import { execSync } from 'node:child_process';
+import { execSync, spawnSync } from 'node:child_process';
 import os from 'node:os';
 
 function fail(message) {
@@ -70,7 +69,7 @@ if (!scheme) {
     { encoding: 'utf8', stdio: ['pipe', 'pipe', 'pipe'] },
   );
   const parsed = JSON.parse(listOutput);
-  scheme = parsed.project?.schemes?.[0];
+  scheme = parsed.workspace?.schemes?.[0];
   if (!scheme) fail('Could not detect Xcode scheme. Set IOS_SCHEME.');
 }
 console.log(`Using scheme: ${scheme}`);
@@ -93,6 +92,7 @@ run('xcodebuild', [
   `DEVELOPMENT_TEAM=${requireEnv('IOS_TEAM_ID')}`,
   `CURRENT_PROJECT_VERSION=${buildNumber}`,
   'COMPILER_INDEX_STORE_ENABLE=NO',
+  'archive',
 ], { cwd: path.join(iosDir, scheme) });
 
 if (!fs.existsSync(archivePath)) fail('Archive not found at expected path.');

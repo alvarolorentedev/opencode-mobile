@@ -114,45 +114,6 @@ Build a local iOS release:
 npm run build:ios:local
 ```
 
-**Prerequisites**:
-- Apple Developer Program membership ($99/year)
-- App Store Connect app created with bundle ID `app.getopencode`
-- Apple Distribution certificate (`.p12`) and provisioning profile
-- App Store Connect API key for TestFlight uploads
-
-**Required GitHub Secrets**:
-
-| Secret | Description |
-|--------|-------------|
-| `APPLE_CERTIFICATE_BASE64` | Base64-encoded Apple Distribution certificate (`.p12`) |
-| `APPLE_CERTIFICATE_PASSWORD` | Password for the `.p12` certificate |
-| `APPLE_PROVISIONING_PROFILE_BASE64` | Base64-encoded provisioning profile (`.mobileprovision`) |
-| `APPLE_TEAM_ID` | Apple Developer Team ID (10-character alphanumeric) |
-| `APPSTORE_API_KEY_ID` | App Store Connect API key ID |
-| `APPSTORE_API_ISSUER_ID` | App Store Connect API issuer ID |
-| `APPSTORE_API_PRIVATE_KEY` | App Store Connect API private key (`.p8` content) |
-
-**Creating the Apple Distribution Certificate**:
-1. Go to [Apple Developer Certificates](https://developer.apple.com/account/resources/certificates/list)
-2. Create a new "iOS Distribution" certificate
-3. Export as `.p12` with a password
-4. Base64-encode: `base64 -i certificate.p12 | pbcopy`
-5. Set `APPLE_CERTIFICATE_BASE64` and `APPLE_CERTIFICATE_PASSWORD` secrets
-
-**Creating the Provisioning Profile**:
-1. Go to [Apple Developer Profiles](https://developer.apple.com/account/resources/profiles/list)
-2. Create a new "App Store" provisioning profile for `app.getopencode`
-3. Download the `.mobileprovision` file
-4. Base64-encode: `base64 -i profile.mobileprovision | pbcopy`
-5. Set `APPLE_PROVISIONING_PROFILE_BASE64` secret
-
-**Creating the App Store Connect API Key**:
-1. Go to [App Store Connect > Users and Access > Integrations](https://appstoreconnect.apple.com/access/integrations/api)
-2. Generate a new API key with "Developer" access
-3. Download the `.p8` key file
-4. Note the Key ID and Issuer ID
-5. Set `APPSTORE_API_KEY_ID`, `APPSTORE_API_ISSUER_ID`, and `APPSTORE_API_PRIVATE_KEY` secrets
-
 **Release Automation**:
 - Push to `main` to trigger iOS release build and artifact upload
 - Push a version tag (e.g., `v1.2.3`) to trigger production TestFlight upload
