@@ -12,12 +12,6 @@ async function resetScenario(request, scenario) {
 
 async function openReadyChat(page) {
   await page.goto('/', { waitUntil: 'domcontentloaded' });
-  if (await page.getByText('Choose a workspace').isVisible().catch(() => false)) {
-    await page.getByRole('tab', { name: 'Workspace' }).click();
-    await page.getByText('Workspace', { exact: true }).first().click();
-    await page.getByTestId('menu-item-title').filter({ hasText: 'demo-project' }).click();
-    await page.getByRole('tab', { name: 'Chat' }).click();
-  }
   await expect(page.getByText('Start a new task')).toBeVisible({ timeout: 30_000 });
   await expect(page.getByPlaceholder('Ask anything...')).toBeVisible();
 }
@@ -59,10 +53,11 @@ test('happy path keeps the main chat flow stable', async ({ page, request }) => 
   await page.getByText('app/(tabs)/index.tsx', { exact: true }).click();
   await expect(page.getByText(/export default function ChatLandingScreen/)).toBeVisible();
   await page.getByRole('tab', { name: 'Workspace' }).click();
-  await expect(page.getByText('2 changed files', { exact: true })).toBeVisible();
-  await expect(page.getByText('Chats', { exact: true })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Chats', exact: true })).toBeVisible();
   await expect(page.getByText('Stabilize the chat flow', { exact: true }).last()).toBeVisible();
   await expect(page.getByText('idle', { exact: true }).first()).toBeVisible();
+  await page.getByText('Files', { exact: true }).click();
+  await expect(page.getByText('2 changed files', { exact: true })).toBeVisible();
 });
 
 test('files changed follows the latest user turn', async ({ page, request }) => {
@@ -113,14 +108,16 @@ test('sessions can be renamed and require confirmation before deletion', async (
   await expect(page.getByText(/Finished:/).first()).toBeVisible({ timeout: 20_000 });
   await page.getByRole('tab', { name: 'Workspace' }).click();
   await page.getByLabel(/Actions for/).first().click();
-  await page.getByText('Rename', { exact: true }).click();
+  await page.getByRole('menuitem', { name: 'Rename' }).click();
   await page.getByTestId('workspace-session-title-input').fill('Renamed from Playwright');
   await page.getByText('Save', { exact: true }).click();
   await expect(page.getByText('Renamed from Playwright', { exact: true }).first()).toBeVisible();
 
+  await page.reload({ waitUntil: 'domcontentloaded' });
+  await page.getByRole('tab', { name: 'Workspace' }).click();
   page.once('dialog', (dialog) => void dialog.accept());
-  await page.getByLabel(/Actions for/).first().click();
-  await page.getByText('Delete', { exact: true }).click();
+  await page.getByLabel('Actions for Renamed from Playwright').click();
+  await page.getByRole('menuitem', { name: 'Delete' }).click();
   await expect(page.getByText('Renamed from Playwright', { exact: true }).nth(1)).not.toBeVisible();
 });
 
@@ -166,7 +163,7 @@ test('sessions archive and restore without deletion', async ({ page, request }) 
   await expect(page.getByText(/Finished:/).first()).toBeVisible({ timeout: 20_000 });
   await page.getByRole('tab', { name: 'Workspace' }).click();
   await page.getByLabel(/Actions for/).first().click();
-  await page.getByText('Archive', { exact: true }).click();
+  await page.getByRole('menuitem', { name: 'Archive' }).click();
   await page.getByLabel('Show archived chats').click();
   await expect(page.getByText('Archive this session safely', { exact: true }).last()).toBeVisible();
   await page.getByLabel(/Restore Archive this session safely/).click();
@@ -197,7 +194,7 @@ test('terminal streams input and output over the PTY websocket', async ({ page, 
   await page.getByRole('tab', { name: 'Terminal' }).click();
   await page.getByTestId('terminal-create-button').click();
   await page.getByTestId('terminal-line-input').fill('echo web');
-  await page.getByText('Send', { exact: true }).click();
+  await page.getByRole('button', { name: 'Send command' }).click();
   await expect(page.getByTestId('terminal-output')).toContainText('ran: echo web');
 });
 
@@ -227,14 +224,17 @@ test('chat model picker searches and groups models by provider', async ({ page, 
   await page.getByPlaceholder('Paste your API key').fill('sk-test-openrouter');
   await page.getByTestId('settings-provider-save-button').click();
   await expect(page.getByText('Configure OpenRouter')).not.toBeVisible({ timeout: 15_000 });
+  await page.getByRole('button', { name: 'OpenRouter 0 of 1 selected' }).click();
+  await page.getByText('Auto', { exact: true }).click();
 
   await page.getByRole('tab', { name: 'Chat' }).click();
   await page.getByTestId('chat-model-picker-trigger').click();
-  await expect(page.getByText('OpenAI', { exact: true })).toBeVisible();
-  await expect(page.getByText('OpenRouter', { exact: true })).toBeVisible();
+  const modelPicker = page.getByTestId('chat-model-picker');
+  await expect(modelPicker.getByText('OpenAI', { exact: true })).toBeVisible();
+  await expect(modelPicker.getByText('OpenRouter', { exact: true })).toBeVisible();
   await page.getByTestId('chat-model-picker-search').fill('openrouter');
-  await expect(page.getByText('OpenAI', { exact: true })).not.toBeVisible();
-  await page.getByText('Auto', { exact: true }).click();
+  await expect(modelPicker.getByText('OpenAI', { exact: true })).not.toBeVisible();
+  await modelPicker.getByRole('button', { name: /^Auto / }).click();
   await expect(page.getByTestId('chat-model-picker-trigger')).toContainText('OpenRouter · Auto');
 
   await page.getByTestId('chat-model-picker-trigger').click();
@@ -275,7 +275,7 @@ test('settings explain root-vs-api mismatches and reconnect through a prefixed A
     await openReadyChat(page);
 
     await page.getByRole('tab', { name: 'Settings' }).click();
-    await expect(page.getByText('Connection')).toBeVisible();
+    await page.getByRole('button', { name: /^Connection/ }).click();
 
     await page.getByTestId('settings-server-url-input').fill(`http://127.0.0.1:${port}`);
     await page.getByTestId('settings-reconnect-button').click();
@@ -285,6 +285,7 @@ test('settings explain root-vs-api mismatches and reconnect through a prefixed A
     await page.getByTestId('settings-server-url-input').fill(`http://127.0.0.1:${port}/api`);
     await page.getByTestId('settings-reconnect-button').click();
     await expect(page.getByText('Connected', { exact: true })).toBeVisible({ timeout: 15_000 });
+    await page.getByRole('button', { name: /^Connection/ }).click();
     await expect(page.getByText(new RegExp(`Connected to http://127.0.0.1:${port}/api`))).toBeVisible();
   } finally {
     server.kill('SIGTERM');

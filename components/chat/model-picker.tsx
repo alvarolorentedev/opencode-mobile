@@ -91,7 +91,7 @@ export function ModelPicker({ disabled = false, models, onSelect, selectedModelI
       <Modal animationType="slide" transparent visible={visible} onRequestClose={close}>
         <View style={[styles.overlay, { paddingBottom: keyboardHeight }]}>
           <Pressable accessibilityLabel="Close model picker" style={styles.backdrop} onPress={close} />
-          <View style={[styles.sheet, { backgroundColor: palette.surface, borderColor: palette.border }]}>
+          <View testID="chat-model-picker" style={[styles.sheet, { backgroundColor: palette.surface, borderColor: palette.border }]}>
               <View style={[styles.header, { borderBottomColor: palette.border }]}>
                 <Text style={[styles.title, { color: palette.text }]}>Choose model</Text>
                 <Pressable accessibilityRole="button" onPress={close} style={({ pressed }) => [styles.closeButton, pressed && styles.pressed]}>
