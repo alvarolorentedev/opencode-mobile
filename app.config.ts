@@ -46,7 +46,7 @@ const config: ExpoConfig = {
     favicon: './assets/images/favicon.png',
   },
   ios: {
-    bundleIdentifier: 'app.getopencode',
+    bundleIdentifier: 'app.getopencode.mobile',
     buildNumber: '10',
     infoPlist: {
       NSAppTransportSecurity: {

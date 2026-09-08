@@ -68,3 +68,5 @@ config.json
 # Google Play / service account JSONs
 google-play-service-account.json
 service-account*.json
+
+apple-ci/
