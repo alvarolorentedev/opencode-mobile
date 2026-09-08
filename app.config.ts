@@ -24,7 +24,7 @@ const withCleartextTraffic = (config: ExpoConfig) => withAndroidManifest(config,
 const config: ExpoConfig = {
   name: isDevelopmentVariant ? 'OpenCode Mobile Dev' : 'OpenCode Mobile',
   slug: 'opencode-mobile',
-  version: '1.0.10',
+  version: '1.0.11',
   orientation: 'portrait',
   icon: './assets/images/icon.png',
   scheme: 'opencodemobile',
@@ -32,7 +32,7 @@ const config: ExpoConfig = {
   newArchEnabled: true,
   android: {
     package: androidPackage,
-    versionCode: 10,
+    versionCode: 11,
     adaptiveIcon: {
       foregroundImage: './assets/images/adaptive-icon.png',
       backgroundColor: "#202020"
@@ -47,7 +47,7 @@ const config: ExpoConfig = {
   },
   ios: {
     bundleIdentifier: 'app.getopencode.mobile',
-    buildNumber: '10',
+    buildNumber: '11',
     infoPlist: {
       NSAppTransportSecurity: {
         NSAllowsArbitraryLoads: true,
