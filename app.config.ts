@@ -49,6 +49,7 @@ const config: ExpoConfig = {
     bundleIdentifier: 'app.getopencode.mobile',
     buildNumber: '11',
     infoPlist: {
+      ITSAppUsesNonExemptEncryption: false,
       NSPhotoLibraryUsageDescription: 'Allow OpenCode Mobile to access photos you choose to attach to chat messages.',
       NSAppTransportSecurity: {
         NSAllowsArbitraryLoads: true,
