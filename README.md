@@ -1,6 +1,6 @@
 # OpenCode Mobile
 
-[![Get it on Google Play](https://img.shields.io/badge/Get_it_on-Google_Play-4285F4?style=for-the-badge&logo=googleplay&logoColor=white)](https://play.google.com/apps/testing/app.getopencode)
+[![Get it on Google Play](https://img.shields.io/badge/Get_it_on-Google_Play-4285F4?style=for-the-badge&logo=googleplay&logoColor=white)](https://play.google.com/store/apps/details?id=app.getopencode)
 [![Download APK](https://img.shields.io/badge/Download-APK-18A748?style=for-the-badge&logo=android&logoColor=white)](https://github.com/alvarolorentedev/opencode-mobile/releases/latest/download/opencode-mobile.apk)
 [![TestFlight](https://img.shields.io/badge/Join_Beta-TestFlight-0D96F6?style=for-the-badge&logo=apple&logoColor=white)](https://testflight.apple.com/join/ddcE5Wzz)
 
@@ -22,7 +22,7 @@ OpenCode Mobile brings the full power of your self-hosted OpenCode AI assistant 
 ### For Users
 
 1. **Download the app**:
-   - [Google Play (Beta)](https://play.google.com/apps/testing/app.getopencode)
+   - [Google Play](https://play.google.com/store/apps/details?id=app.getopencode)
    - [TestFlight (Beta)](https://testflight.apple.com/join/ddcE5Wzz)
    - [Direct APK Download](https://github.com/alvarolorentedev/opencode-mobile/releases/latest/download/opencode-mobile.apk)
 
