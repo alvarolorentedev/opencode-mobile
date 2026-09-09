@@ -2,7 +2,7 @@
 
 [![Get it on Google Play](https://img.shields.io/badge/Get_it_on-Google_Play-4285F4?style=for-the-badge&logo=googleplay&logoColor=white)](https://play.google.com/apps/testing/app.getopencode)
 [![Download APK](https://img.shields.io/badge/Download-APK-18A748?style=for-the-badge&logo=android&logoColor=white)](https://github.com/alvarolorentedev/opencode-mobile/releases/latest/download/opencode-mobile.apk)
-[![TestFlight](https://img.shields.io/badge/Join_Beta-TestFlight-0D96F6?style=for-the-badge&logo=apple&logoColor=white)](https://testflight.apple.com/)
+[![TestFlight](https://img.shields.io/badge/Join_Beta-TestFlight-0D96F6?style=for-the-badge&logo=apple&logoColor=white)](https://testflight.apple.com/join/ddcE5Wzz)
 
 
 **Your OpenCode server, in your pocket.**
@@ -23,7 +23,7 @@ OpenCode Mobile brings the full power of your self-hosted OpenCode AI assistant 
 
 1. **Download the app**:
    - [Google Play (Beta)](https://play.google.com/apps/testing/app.getopencode)
-   - [TestFlight (Beta)](https://testflight.apple.com/)
+   - [TestFlight (Beta)](https://testflight.apple.com/join/ddcE5Wzz)
    - [Direct APK Download](https://github.com/alvarolorentedev/opencode-mobile/releases/latest/download/opencode-mobile.apk)
 
 2. **Connect to your server**: Open the app and enter your OpenCode server URL (default: `http://ip:4096`)
