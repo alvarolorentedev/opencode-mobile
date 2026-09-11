@@ -86,6 +86,8 @@ If this app were reimplemented, this provider would be the main source of truth 
   Settings screen controller for connection, providers, MCP servers, notifications, and voice.
 - `app/(tabs)/terminal.tsx`
   Fourth-tab line console for creating, opening, using, and terminating project PTYs.
+- `app/session/[id].tsx`
+  Session deep-link resolver. Parses `sessionId` + `project`, delegates to `openDeepLinkSession()`, then replaces onto the Chat tab.
 
 ### Provider Layer
 
@@ -158,6 +160,8 @@ If this app were reimplemented, this provider would be the main source of truth 
 
 ### Platform Integrations
 
+- `lib/deep-link.ts`
+  Parse/build session deep-link URLs (`opencodemobile://session/<id>?project=...`).
 - `lib/notifications.ts`
   Local notifications, background monitoring task, and notification debug status.
 - `lib/voice/speech-output.ts`
@@ -178,8 +182,10 @@ The normal startup flow is:
 5. Connection state becomes `connected` or `error`.
 6. If a project exists, the provider fetches sessions and chat capabilities.
 7. A follow-up effect calls `ensureActiveSession()` for the active project.
-8. `ensureActiveSession()` reopens the remembered session, falls back to the newest returned session, or creates a new one.
+8. `ensureActiveSession()` honors a transient deep-link target (set by `openDeepLinkSession`), then reopens the remembered session, falls back to the newest returned session, or creates a new one. A deep-link target that does not match any session never triggers session creation.
 9. The Chat tab can then render transcript, diffs, todos, pending interactions, and controls.
+
+When the app is launched from (or navigated to) a session deep link, the dedicated resolver route `app/session/[id].tsx` parses `sessionId` + `project`, calls `openDeepLinkSession()`, and replaces onto the Chat tab where the session is already current.
 
 This boot chain is important because the Chat screen itself is not responsible for initial data ownership. It only triggers `ensureActiveSession()` when the provider has enough context.
 
@@ -232,6 +238,7 @@ User interactions are converted to provider actions such as:
 - `selectProject`
 - `createSession`
 - `openSession`
+- `openDeepLinkSession`
 - `sendPrompt`
 - `abortSession`
 - `replyToPermission`

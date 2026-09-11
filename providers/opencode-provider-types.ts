@@ -24,6 +24,7 @@ import type {
   PendingQuestionRequest,
   PendingPermissionRequest,
 } from '@/lib/opencode/client';
+import type { SessionDeepLinkTarget } from '@/lib/deep-link';
 import type { Diagnostics } from '@/providers/services/diagnostics-service';
 import type { SessionMessageRecord, TranscriptEntry } from '@/lib/opencode/format';
 import type { SessionUsage } from '@/lib/opencode/usage';
@@ -151,6 +152,7 @@ export type OpencodeContextValue = {
   refreshCurrentSession: (silent?: boolean) => Promise<void>;
   refreshCurrentTodos: (silent?: boolean) => Promise<void>;
   ensureActiveSession: () => Promise<string | undefined>;
+  openDeepLinkSession: (target: SessionDeepLinkTarget) => Promise<{ ok: boolean; error?: string }>;
   createSession: (title?: string) => Promise<Session>;
   deleteSession: (sessionId: string) => Promise<void>;
   archiveSession: (sessionId: string) => Promise<void>;

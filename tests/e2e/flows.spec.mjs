@@ -256,6 +256,54 @@ test('polling fallback still finishes the flow when SSE is unavailable', async (
   await expect(page.getByText('app/(tabs)/index.tsx', { exact: true })).toBeVisible({ timeout: 40_000 });
 });
 
+test('deep links open a specific session', async ({ page, request }) => {
+  await resetScenario(request, 'happy-path');
+  const fakeServer = 'http://127.0.0.1:44096';
+
+  const createResponse = await request.post(`${fakeServer}/session`, {
+    data: { title: 'Deep Link Target Session' },
+  });
+  expect(createResponse.ok()).toBeTruthy();
+  const created = await createResponse.json();
+  const sessionId = created.id;
+  expect(sessionId).toBe('session-1');
+
+  await request.post(`${fakeServer}/session/${sessionId}/prompt_async`, {
+    data: { parts: [{ type: 'text', text: 'Open me through a deep link' }] },
+  });
+  await sleep(1500);
+
+  await page.goto(`/session/${sessionId}?project=${encodeURIComponent('/workspace/demo-project')}`, {
+    waitUntil: 'domcontentloaded',
+  });
+
+  await expect(
+    page.locator('text="Deep Link Target Session" >> visible=true').first(),
+  ).toBeVisible({ timeout: 30_000 });
+  await expect(
+    page.locator('text="Open me through a deep link" >> visible=true').first(),
+  ).toBeVisible();
+  await expect(
+    page.locator('text=/Finished: Open me through a deep link/ >> visible=true').first(),
+  ).toBeVisible({ timeout: 20_000 });
+});
+
+test('deep links report sessions that are missing', async ({ page, request }) => {
+  await resetScenario(request, 'happy-path');
+  const fakeServer = 'http://127.0.0.1:44096';
+
+  await request.post(`${fakeServer}/session`, {
+    data: { title: 'Existing Session' },
+  });
+
+  await page.goto(`/session/session-999?project=${encodeURIComponent('/workspace/demo-project')}`, {
+    waitUntil: 'domcontentloaded',
+  });
+
+  await expect(page.getByText('Could not open session', { exact: true })).toBeVisible({ timeout: 30_000 });
+  await expect(page.getByText(/was not found/).first()).toBeVisible();
+});
+
 test('settings explain root-vs-api mismatches and reconnect through a prefixed API base URL', async ({ page, request }) => {
   await resetScenario(request, 'happy-path');
   const port = 44196;
