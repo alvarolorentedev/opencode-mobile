@@ -24,7 +24,6 @@ import type {
   PendingQuestionRequest,
   PendingPermissionRequest,
 } from '@/lib/opencode/client';
-import type { SessionDeepLinkTarget } from '@/lib/deep-link';
 import type { Diagnostics } from '@/providers/services/diagnostics-service';
 import type { SessionMessageRecord, TranscriptEntry } from '@/lib/opencode/format';
 import type { SessionUsage } from '@/lib/opencode/usage';
@@ -51,6 +50,11 @@ export type ProviderOption = {
 };
 
 export type ConversationPhase = 'off' | 'listening' | 'submitting' | 'waiting' | 'speaking';
+
+export type SessionDeepLinkTarget = {
+  sessionId: string;
+  projectPath?: string;
+};
 
 export const CONVERSATION_KEEP_AWAKE_TAG = 'opencode-conversation-mode';
 export const CONVERSATION_FINAL_RESULT_SETTLE_MS = 2200;

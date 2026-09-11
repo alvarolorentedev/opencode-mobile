@@ -69,4 +69,4 @@ config.json
 google-play-service-account.json
 service-account*.json
 
-apple-ci/.nvmrc
+apple-ci/

@@ -7,14 +7,15 @@ export function createSessionHelpers({ getNow, getState, emitEvent }) {
     return getState().messagesBySession[sessionId] || [];
   }
 
-  function createSession(title = '') {
+  function createSession(title = '', directory) {
     const state = getState();
+    const project = state.projects.find((entry) => entry.worktree === directory) || state.project;
     const sessionId = `session-${state.nextSessionId++}`;
     const session = {
       id: sessionId,
       slug: sessionId,
-      projectID: state.project.id,
-      directory: state.project.worktree,
+      projectID: project.id,
+      directory: project.worktree,
       title,
       version: '1.18.3',
       summary: {
@@ -206,7 +207,7 @@ export function createSessionHelpers({ getNow, getState, emitEvent }) {
   function forkSession(sessionId, messageId) {
     const source = getSession(sessionId);
     if (!source) return undefined;
-    const forked = createSession(`${source.title || 'Untitled chat'} (fork)`);
+    const forked = createSession(`${source.title || 'Untitled chat'} (fork)`, source.directory);
     forked.parentID = sessionId;
     const sourceMessages = getMessages(sessionId);
     const stopIndex = messageId ? sourceMessages.findIndex((entry) => entry.info.id === messageId) : -1;

@@ -256,11 +256,12 @@ test('polling fallback still finishes the flow when SSE is unavailable', async (
   await expect(page.getByText('app/(tabs)/index.tsx', { exact: true })).toBeVisible({ timeout: 40_000 });
 });
 
-test('deep links open a specific session', async ({ page, request }) => {
+test('deep links switch projects and open a specific session', async ({ page, request }) => {
   await resetScenario(request, 'happy-path');
   const fakeServer = 'http://127.0.0.1:44096';
+  const projectPath = '/workspace/secondary-project';
 
-  const createResponse = await request.post(`${fakeServer}/session`, {
+  const createResponse = await request.post(`${fakeServer}/session?directory=${encodeURIComponent(projectPath)}`, {
     data: { title: 'Deep Link Target Session' },
   });
   expect(createResponse.ok()).toBeTruthy();
@@ -272,8 +273,9 @@ test('deep links open a specific session', async ({ page, request }) => {
     data: { parts: [{ type: 'text', text: 'Open me through a deep link' }] },
   });
   await sleep(1500);
+  await openReadyChat(page);
 
-  await page.goto(`/session/${sessionId}?project=${encodeURIComponent('/workspace/demo-project')}`, {
+  await page.goto(`/session/${sessionId}?project=${encodeURIComponent(projectPath)}`, {
     waitUntil: 'domcontentloaded',
   });
 

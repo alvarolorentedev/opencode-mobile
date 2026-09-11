@@ -186,7 +186,7 @@ const server = http.createServer(async (req, res) => {
     }
 
     if (req.method === 'GET' && pathname === '/project') {
-      sendJson(res, 200, [state.project]);
+      sendJson(res, 200, state.projects);
       return;
     }
 
@@ -496,7 +496,8 @@ const server = http.createServer(async (req, res) => {
     }
 
     if (req.method === 'GET' && pathname === '/session') {
-      sendJson(res, 200, state.sessions.filter((session) => !session.time.archived));
+      const directory = requestUrl.searchParams.get('directory') || state.project.worktree;
+      sendJson(res, 200, state.sessions.filter((session) => session.directory === directory && !session.time.archived));
       return;
     }
 
@@ -504,19 +505,27 @@ const server = http.createServer(async (req, res) => {
       const archived = requestUrl.searchParams.get('archived') === 'true';
       sendJson(res, 200, state.sessions
         .filter((session) => archived ? Boolean(session.time.archived) : !session.time.archived)
-        .map((session) => ({ ...session, project: { id: state.project.id, worktree: state.project.worktree } })));
+        .map((session) => {
+          const project = state.projects.find((entry) => entry.worktree === session.directory) || state.project;
+          return { ...session, project: { id: project.id, worktree: project.worktree } };
+        }));
       return;
     }
 
     if (req.method === 'POST' && pathname === '/session') {
       const body = await readJson(req);
-      const session = createSession(body?.title || '');
+      const session = createSession(body?.title || '', requestUrl.searchParams.get('directory') || undefined);
       sendJson(res, 200, session);
       return;
     }
 
     if (req.method === 'GET' && pathname === '/session/status') {
-      sendJson(res, 200, state.sessionStatuses);
+      const directory = requestUrl.searchParams.get('directory') || state.project.worktree;
+      sendJson(res, 200, Object.fromEntries(
+        state.sessions
+          .filter((session) => session.directory === directory)
+          .map((session) => [session.id, state.sessionStatuses[session.id]]),
+      ));
       return;
     }
 

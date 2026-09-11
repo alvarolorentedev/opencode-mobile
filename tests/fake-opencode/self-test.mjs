@@ -104,6 +104,7 @@ try {
   const pathPayload = await request('/path');
   assert(pathPayload.directory === '/workspace', 'Missing fake path payload');
   assert((await request('/global/health')).version === '1.18.3', 'Unexpected health version');
+  assert((await request('/project')).some((project) => project.id === 'project-secondary'), 'Missing secondary project fixture');
   assert(Object.keys(await request('/mcp')).length === 1, 'Expected MCP diagnostic');
   assert((await request('/lsp')).length === 1, 'Expected LSP diagnostic');
   assert((await request('/formatter')).length === 1, 'Expected formatter diagnostic');
@@ -167,6 +168,9 @@ try {
   const session = await request('/session', json('POST', { title: 'Smoke session' }));
   const sessionId = session.id;
   assert(sessionId, 'Session creation failed');
+  const secondarySession = await request('/session?directory=%2Fworkspace%2Fsecondary-project', json('POST', { title: 'Secondary session' }));
+  assert((await request('/session?directory=%2Fworkspace%2Fsecondary-project')).some((entry) => entry.id === secondarySession.id), 'Secondary session was not scoped to its project');
+  assert(!(await request('/session')).some((entry) => entry.id === secondarySession.id), 'Secondary session leaked into the default project');
   const renamed = await request(`/session/${sessionId}`, json('PATCH', { title: 'Renamed smoke session' }));
   assert(renamed.title === 'Renamed smoke session', 'Session rename failed');
 

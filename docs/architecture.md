@@ -160,8 +160,6 @@ If this app were reimplemented, this provider would be the main source of truth 
 
 ### Platform Integrations
 
-- `lib/deep-link.ts`
-  Parse/build session deep-link URLs (`opencodemobile://session/<id>?project=...`).
 - `lib/notifications.ts`
   Local notifications, background monitoring task, and notification debug status.
 - `lib/voice/speech-output.ts`

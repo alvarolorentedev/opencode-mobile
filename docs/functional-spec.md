@@ -56,7 +56,7 @@ Bootstrapping behavior:
 - otherwise the latest available session is used
 - if no session exists, one is created automatically
 
-A stale deep-link target that does not match any session never synthesizes a new one; it falls through to the remembered/latest/create behavior.
+A stale deep-link target that does not match any session returns a not-found error and never synthesizes a new one.
 
 Manual behavior:
 

@@ -13,40 +13,41 @@ export default function SessionDeepLinkScreen() {
   const router = useRouter();
   const params = useLocalSearchParams();
   const { isHydrated, openDeepLinkSession } = useOpencode();
+  const rawSessionId = Array.isArray(params.id) ? params.id[0] : params.id;
+  const sessionId = rawSessionId?.trim();
+  const rawProject = Array.isArray(params.project) ? params.project[0] : params.project;
+  const projectPath = rawProject?.trim() || undefined;
+  const targetKey = JSON.stringify([sessionId, projectPath]);
   const [error, setError] = useState<string>();
-  const startedRef = useRef(false);
-  const lastSessionIdRef = useRef<string | undefined>(undefined);
+  const startedTargetRef = useRef<string | undefined>(undefined);
+  const activeTargetRef = useRef(targetKey);
+  activeTargetRef.current = targetKey;
 
   useEffect(() => {
-    const rawSessionId = Array.isArray(params.id) ? params.id[0] : params.id;
-    const sessionId = rawSessionId?.trim();
     if (!sessionId) {
       setError('This session link is missing a session ID.');
       return;
     }
 
-    const rawProject = Array.isArray(params.project) ? params.project[0] : params.project;
-    const projectPath = rawProject?.trim() || undefined;
-
-    if (lastSessionIdRef.current !== sessionId) {
-      startedRef.current = false;
-    }
-    lastSessionIdRef.current = sessionId;
-    if (startedRef.current || !isHydrated) {
+    if (startedTargetRef.current === targetKey || !isHydrated) {
       return;
     }
 
-    startedRef.current = true;
+    startedTargetRef.current = targetKey;
+    setError(undefined);
     void openDeepLinkSession({ sessionId, projectPath })
       .then((result) => {
+        if (activeTargetRef.current !== targetKey) return;
         if (result.ok) {
           router.replace('/(tabs)');
           return;
         }
         setError(result.error);
       })
-      .catch(() => setError('Could not open this session link.'));
-  }, [isHydrated, openDeepLinkSession, params.id, params.project, router]);
+      .catch(() => {
+        if (activeTargetRef.current === targetKey) setError('Could not open this session link.');
+      });
+  }, [isHydrated, openDeepLinkSession, projectPath, router, sessionId, targetKey]);
 
   const title = error ? 'Could not open session' : 'Opening session';
   const copy = error

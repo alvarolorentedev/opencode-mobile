@@ -52,7 +52,6 @@ import {
 import { isTranscriptDisplayMessage } from '@/lib/opencode/transcript';
 import { aggregateSessionUsage, getLatestAssistantTurnUsage } from '@/lib/opencode/usage';
 import { createFullFilePatch } from '@/lib/opencode/workspace-patch';
-import { type SessionDeepLinkTarget } from '@/lib/deep-link';
 import {
   clearPendingTaskFinishedNotification,
   notifyTaskFinished,
@@ -101,6 +100,7 @@ import {
   type OpencodeProject,
   type ProviderAuthMethod,
   type ProviderOption,
+  type SessionDeepLinkTarget,
   type WorkspaceCatalog,
 } from '@/providers/opencode-provider-types';
 import { useConversationKeepAwake } from '@/providers/use-conversation-keep-awake';
@@ -236,9 +236,10 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
   const settingsRef = useRef(settings);
   const activeProjectPathRef = useRef(activeProjectPath);
   const connectionRef = useRef(connection);
-  const sessionsRef = useRef<Session[]>([]);
+  const serverProjectsRef = useRef<Project[]>([]);
   const currentSessionIdRef = useRef<string | undefined>(undefined);
   const pendingDeepLinkTargetRef = useRef<SessionDeepLinkTarget | undefined>(undefined);
+  const deepLinkOperationRef = useRef<object | undefined>(undefined);
   const scopeGenerationRef = useRef(0);
   const serverGenerationRef = useRef(0);
   const clientGenerationRef = useRef(new WeakMap<object, number>());
@@ -263,7 +264,7 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
   settingsRef.current = settings;
   activeProjectPathRef.current = activeProjectPath;
   connectionRef.current = connection;
-  sessionsRef.current = sessions;
+  serverProjectsRef.current = serverProjects;
   currentSessionIdRef.current = currentSessionId;
 
   const clearPendingConversationResult = useCallback(() => {
@@ -1008,7 +1009,12 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
       return undefined;
     }
 
-    if (currentSessionId && sessions.some((session) => session.id === currentSessionId)) {
+    const pendingTarget = pendingDeepLinkTargetRef.current;
+    if (
+      currentSessionId &&
+      sessions.some((session) => session.id === currentSessionId) &&
+      (!pendingTarget || pendingTarget.sessionId === currentSessionId)
+    ) {
       if (!messagesBySession[currentSessionId]) {
         await refreshMessages(currentSessionId, true);
       }
@@ -1026,13 +1032,15 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
 
       try {
         const nextSessions = sessions.length > 0 ? sessions : await fetchSessions(true);
+        if (pendingDeepLinkTargetRef.current !== pendingTarget) {
+          return undefined;
+        }
         const rememberedSessionId = activeProjectPath ? lastSessionByProject[activeProjectPath] : undefined;
-        const pendingTargetSessionId = pendingDeepLinkTargetRef.current?.sessionId;
-        const targetSession =
-          (pendingTargetSessionId ? nextSessions.find((session) => session.id === pendingTargetSessionId) : undefined) ??
-          (rememberedSessionId ? nextSessions.find((session) => session.id === rememberedSessionId) : undefined) ??
-          nextSessions[0] ??
-          (!pendingTargetSessionId ? await createSession() : undefined);
+        const targetSession = pendingTarget
+          ? nextSessions.find((session) => session.id === pendingTarget.sessionId)
+          : (rememberedSessionId ? nextSessions.find((session) => session.id === rememberedSessionId) : undefined) ??
+            nextSessions[0] ??
+            (await createSession());
         if (!targetSession) {
           return undefined;
         }
@@ -1045,7 +1053,7 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
           refreshServerFeatures(),
           refreshDiagnostics(),
         ]);
-        if (!isCurrentClient(client)) {
+        if (!isCurrentClient(client) || pendingDeepLinkTargetRef.current !== pendingTarget) {
           return undefined;
         }
         setCurrentSessionId(targetSession.id);
@@ -1168,9 +1176,19 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
     async (target: SessionDeepLinkTarget): Promise<{ ok: boolean; error?: string }> => {
       const sessionId = target.sessionId.trim();
       const projectPath = target.projectPath?.trim();
+      const operation = {};
+      deepLinkOperationRef.current = operation;
+      const ownsOperation = () => deepLinkOperationRef.current === operation;
+      const finish = (result: { ok: boolean; error?: string }) => {
+        if (ownsOperation()) {
+          pendingDeepLinkTargetRef.current = undefined;
+          deepLinkOperationRef.current = undefined;
+        }
+        return result;
+      };
       const connectionStatus = () => connectionRef.current.status;
       if (!sessionId) {
-        return { ok: false, error: 'This session link is missing a session ID.' };
+        return finish({ ok: false, error: 'This session link is missing a session ID.' });
       }
 
       if (connectionStatus() !== 'connected') {
@@ -1181,46 +1199,67 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
         while (connectionStatus() === 'connecting' && Date.now() < connectDeadline) {
           await new Promise((resolve) => setTimeout(resolve, 150));
         }
+        if (!ownsOperation()) {
+          return { ok: false, error: 'This session link was superseded.' };
+        }
         if (connectionStatus() !== 'connected') {
-          return { ok: false, error: connectionRef.current.message || 'Could not connect to the server.' };
+          return finish({ ok: false, error: connectionRef.current.message || 'Could not connect to the server.' });
         }
       }
 
-      if (!projectPath && !activeProjectPathRef.current) {
-        return { ok: false, error: 'This session link does not name a project, and no project is open.' };
+      const targetProjectPath = projectPath || activeProjectPathRef.current;
+      if (!targetProjectPath) {
+        return finish({ ok: false, error: 'This session link does not name a project, and no project is open.' });
+      }
+      if (projectPath && !serverProjectsRef.current.some((project) => project.worktree === projectPath)) {
+        return finish({ ok: false, error: `Project ${projectPath} is not available from the configured server.` });
       }
 
-      pendingDeepLinkTargetRef.current = { sessionId, projectPath };
-
-      if (projectPath && projectPath !== activeProjectPathRef.current) {
-        selectProject(projectPath);
+      pendingDeepLinkTargetRef.current = { sessionId, projectPath: targetProjectPath };
+      if (targetProjectPath !== activeProjectPathRef.current) {
+        selectProject(targetProjectPath);
       }
-
-      await ensureActiveSessionRef.current();
 
       const deadline = Date.now() + 30000;
-      while (Date.now() < deadline) {
-        if (currentSessionIdRef.current === sessionId) {
-          pendingDeepLinkTargetRef.current = undefined;
-          return { ok: true };
-        }
-        const currentSessions = sessionsRef.current;
-        if (currentSessions.some((session) => session.id === sessionId)) {
-          await openSession(sessionId);
-          await new Promise((resolve) => setTimeout(resolve, 250));
-          continue;
-        }
-        if (currentSessions.length > 0) {
-          break;
-        }
-        await new Promise((resolve) => setTimeout(resolve, 250));
+      while (ownsOperation() && activeProjectPathRef.current !== targetProjectPath && Date.now() < deadline) {
+        await new Promise((resolve) => setTimeout(resolve, 50));
+      }
+      if (!ownsOperation()) {
+        return { ok: false, error: 'This session link was superseded.' };
+      }
+      if (activeProjectPathRef.current !== targetProjectPath) {
+        return finish({ ok: false, error: `Could not open the ${targetProjectPath} project.` });
       }
 
-      pendingDeepLinkTargetRef.current = undefined;
-      const targetProject = projectPath || activeProjectPathRef.current || 'active';
-      return { ok: false, error: `Session ${sessionId} was not found in the ${targetProject} project.` };
+      let openedSessionId: string | undefined;
+      try {
+        for (let attempt = 0; attempt < 2 && openedSessionId !== sessionId; attempt += 1) {
+          openedSessionId = await ensureActiveSessionRef.current();
+          if (!ownsOperation()) {
+            return { ok: false, error: 'This session link was superseded.' };
+          }
+          if (openedSessionId !== sessionId) await new Promise((resolve) => setTimeout(resolve, 50));
+        }
+      } catch (error) {
+        return finish({
+          ok: false,
+          error: error instanceof Error ? error.message : 'Could not open this session link.',
+        });
+      }
+
+      while (ownsOperation() && openedSessionId === sessionId && currentSessionIdRef.current !== sessionId && Date.now() < deadline) {
+        await new Promise((resolve) => setTimeout(resolve, 50));
+      }
+      if (!ownsOperation()) {
+        return { ok: false, error: 'This session link was superseded.' };
+      }
+      if (currentSessionIdRef.current === sessionId) {
+        return finish({ ok: true });
+      }
+
+      return finish({ ok: false, error: `Session ${sessionId} was not found in the ${targetProjectPath} project.` });
     },
-    [connect, openSession, selectProject],
+    [connect, selectProject],
   );
 
   useEffect(() => {
