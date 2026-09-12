@@ -1668,7 +1668,9 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
           parts,
         });
         promptAccepted = true;
-        promptSubmissionRef.current = { active: false, sessionId: undefined };
+        if (promptSubmissionRef.current.sessionId === sessionId) {
+          promptSubmissionRef.current = { active: false, sessionId: undefined };
+        }
         if (!isCurrentClient(client)) {
           return true;
         }
@@ -1692,7 +1694,9 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
         }
         return true;
       } catch (error) {
-        promptSubmissionRef.current = { active: false, sessionId: undefined };
+        if (promptSubmissionRef.current.sessionId === sessionId) {
+          promptSubmissionRef.current = { active: false, sessionId: undefined };
+        }
         if (promptAccepted) {
           scheduleSessionRefresh(sessionId, { sessions: true, messages: true, diff: true, todos: true, delayMs: 1000 });
           return true;
@@ -1710,7 +1714,11 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
 
         throw error;
       } finally {
-        setSendingState({ active: false, sessionId: undefined });
+        setSendingState((current) => (
+          current.sessionId === sessionId
+            ? { active: false, sessionId: undefined }
+            : current
+        ));
       }
     },
     [activeProjectPath, availableModels, chatPreferences, client, fetchSessions, isCurrentClient, refreshMessages, refreshSessionDiff, refreshSessionTodos, refreshSessions, scheduleSessionRefresh, sessions, summarizeSessionTitle],
@@ -1727,8 +1735,14 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
       // Reset prompt guards immediately so the user can submit again without
       // waiting for the in-flight promptAsync to settle. sendPrompt's finally
       // block sets the same values; both writes compose to the same state.
-      promptSubmissionRef.current = { active: false, sessionId: undefined };
-      setSendingState((prev) => (prev.active ? { active: false, sessionId: undefined } : prev));
+      if (promptSubmissionRef.current.sessionId === sessionId) {
+        promptSubmissionRef.current = { active: false, sessionId: undefined };
+      }
+      setSendingState((current) => (
+        current.sessionId === sessionId
+          ? { active: false, sessionId: undefined }
+          : current
+      ));
 
       await Promise.all([
         refreshSessions(true),
