@@ -24,6 +24,15 @@
       "contributions": [
         "code"
       ]
+    },
+    {
+      "login": "WilhelmBuitrago",
+      "name": "Wilhelm Buitrago",
+      "avatar_url": "https://avatars.githubusercontent.com/u/122063634?v=4",
+      "profile": "https://github.com/WilhelmBuitrago",
+      "contributions": [
+        "bug"
+      ]
     }
   ],
   "contributorsPerLine": 7,
