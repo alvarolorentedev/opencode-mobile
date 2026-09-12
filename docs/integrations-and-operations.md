@@ -244,6 +244,10 @@ Android has the richest current support for:
 
 iOS is supported by Expo/React Native setup, but some operational tooling in the repo is Android-focused. Voice and TTS behavior are still explicitly supported.
 
+### Session Deep Links
+
+Session deep links (`opencodemobile://session/<id>?project=...`, web path `/session/<id>`) resolve through the configured custom scheme and Expo Router web paths. Universal/app links (HTTPS share URLs launching the app) and Android intent filters for the deep-link host are not configured; links are consumed only when the app scheme or web path is used directly.
+
 ## Operational Risks And Important Assumptions
 
 ### 1. Provider-Orchestrator Concentration

@@ -51,6 +51,11 @@ export type ProviderOption = {
 
 export type ConversationPhase = 'off' | 'listening' | 'submitting' | 'waiting' | 'speaking';
 
+export type SessionDeepLinkTarget = {
+  sessionId: string;
+  projectPath?: string;
+};
+
 export const CONVERSATION_KEEP_AWAKE_TAG = 'opencode-conversation-mode';
 export const CONVERSATION_FINAL_RESULT_SETTLE_MS = 2200;
 export const CONVERSATION_LISTENING_RESTART_MS = 350;
@@ -151,6 +156,7 @@ export type OpencodeContextValue = {
   refreshCurrentSession: (silent?: boolean) => Promise<void>;
   refreshCurrentTodos: (silent?: boolean) => Promise<void>;
   ensureActiveSession: () => Promise<string | undefined>;
+  openDeepLinkSession: (target: SessionDeepLinkTarget, signal?: AbortSignal) => Promise<{ ok: boolean; error?: string }>;
   createSession: (title?: string) => Promise<Session>;
   deleteSession: (sessionId: string) => Promise<void>;
   archiveSession: (sessionId: string) => Promise<void>;

@@ -361,6 +361,7 @@ Current implementation assumes these invariants:
 Some user-visible behavior depends on transient refs not persisted anywhere:
 
 - whether prompt submission is locked
+- pending deep-link target (`{ sessionId, projectPath? }`) consumed by `ensureActiveSession()` during boot
 - pending notification IDs still awaiting completion
 - conversation timing windows
 - transcript pagination count in chat UI

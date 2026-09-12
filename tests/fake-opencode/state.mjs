@@ -17,11 +17,17 @@ export function createState(scenario) {
     },
     sandboxes: [],
   };
+  const secondaryProject = {
+    ...project,
+    id: 'project-secondary',
+    worktree: '/workspace/secondary-project',
+  };
 
   return {
     scenario,
     rootPath,
     project,
+    projects: [project, secondaryProject],
     nextSessionId: 1,
     nextMessageId: 1,
     nextPendingId: 1,

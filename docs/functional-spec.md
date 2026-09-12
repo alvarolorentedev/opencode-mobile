@@ -51,15 +51,32 @@ The app maintains one active session at a time for the active project.
 
 Bootstrapping behavior:
 
+- if a transient deep-link target exists for the project (see below), that session is opened instead
 - if a remembered session exists for the project and still exists on the server, it is reopened
 - otherwise the latest available session is used
 - if no session exists, one is created automatically
+
+A stale deep-link target that does not match any session returns a not-found error and never synthesizes a new one.
 
 Manual behavior:
 
 - user can create a new session from the Workspace tab
 - user can create a new session from the Chat header
 - user can switch sessions from the Chat header session sheet
+
+### 3b. Open a Session via Deep Link
+
+The app supports deep links that open a specific session:
+
+`opencodemobile://session/<sessionId>?project=<url-encoded project path>`
+
+Behavior:
+
+- the link opens the session belonging to the given server project path
+- if the project differs from the active project, the app switches to it (and persists it as the active project)
+- if the session is not found in that project, a `Could not open session` error screen is shown with the server message
+- the link does not carry a server identity; it resolves against the currently configured server
+- only sessions that appear in the project's session list can be opened; archived sessions are not reachable this way
 
 ### 4. Send a Prompt
 
