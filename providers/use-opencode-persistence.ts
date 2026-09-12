@@ -2,6 +2,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useEffect, useState, type Dispatch, type SetStateAction } from 'react';
 
 import type { OpencodeConnectionSettings } from '@/lib/opencode/client';
+import { getConnectionPassword, saveConnectionPassword, withoutConnectionPassword } from '@/lib/connection-password';
 import {
   ACTIVE_PROJECT_STORAGE_KEY,
   CHAT_PREFERENCES_STORAGE_KEY,
@@ -55,11 +56,23 @@ export function useOpencodePersistence({
   useEffect(() => {
     async function hydrateState() {
       try {
+        let persistedSettings: Partial<OpencodeConnectionSettings> | undefined;
         await loadPersistedValue(AsyncStorage, SETTINGS_STORAGE_KEY, parseJsonObject<Partial<OpencodeConnectionSettings>>, (parsed) => {
-          setSettings({
+          persistedSettings = parsed;
+        });
+        const hasLegacyPassword = Boolean(persistedSettings && 'password' in persistedSettings);
+        const legacyPassword = persistedSettings?.password || '';
+        if (hasLegacyPassword) {
+          await saveConnectionPassword(legacyPassword);
+          await AsyncStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(withoutConnectionPassword({
             ...defaultSettings,
-            ...parsed,
-          });
+            ...persistedSettings,
+          })));
+        }
+        setSettings({
+          ...defaultSettings,
+          ...persistedSettings,
+          password: (await getConnectionPassword()) || legacyPassword,
         });
 
         await loadPersistedValue(AsyncStorage, CHAT_PREFERENCES_STORAGE_KEY, parseJsonObject<Partial<ChatPreferences>>, (parsed) => {
@@ -90,7 +103,8 @@ export function useOpencodePersistence({
       return;
     }
 
-    void AsyncStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(settings));
+    void AsyncStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(withoutConnectionPassword(settings)));
+    void saveConnectionPassword(settings.password);
   }, [isHydrated, settings]);
 
   useEffect(() => {

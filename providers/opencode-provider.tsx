@@ -1593,7 +1593,6 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
             settings: {
               serverUrl: settingsRef.current.serverUrl,
               username: settingsRef.current.username,
-              password: settingsRef.current.password,
             },
             requestedAt: Date.now(),
           }).catch(() => undefined);

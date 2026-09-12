@@ -339,10 +339,10 @@ Pending completion notification storage records:
 - `sessionId`
 - optional `sessionTitle`
 - `projectPath`
-- a subset of connection settings: `serverUrl`, `username`, `password`
+- a non-secret connection reference: `serverUrl`, `username`
 - `requestedAt`
 
-This stored payload is intentionally enough for background re-checks against the server.
+The password is stored separately in Keychain/Keystore-backed secure storage and resolved by the background worker at runtime. Regular connection settings in AsyncStorage also exclude the password; legacy plaintext settings are migrated during hydration.
 
 ## Important Data Invariants
 

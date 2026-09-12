@@ -6,7 +6,8 @@ import * as TaskManager from 'expo-task-manager';
 import { Platform } from 'react-native';
 
 import { buildClient, type OpencodeConnectionSettings } from '@/lib/opencode/client';
-import { PENDING_NOTIFICATION_SESSIONS_STORAGE_KEY } from '@/lib/storage-keys';
+import { getConnectionPassword } from '@/lib/connection-password';
+import { PENDING_NOTIFICATION_SESSIONS_STORAGE_KEY, SETTINGS_STORAGE_KEY } from '@/lib/storage-keys';
 
 const TASK_FINISHED_CHANNEL_ID = 'task-finished';
 const CHAT_COMPLETION_TASK_NAME = 'opencode-chat-completion-monitor';
@@ -16,9 +17,19 @@ type PendingNotificationSession = {
   sessionId: string;
   sessionTitle?: string;
   projectPath: string;
-  settings: Pick<OpencodeConnectionSettings, 'serverUrl' | 'username' | 'password'>;
+  settings: Pick<OpencodeConnectionSettings, 'serverUrl' | 'username'>;
   requestedAt: number;
 };
+
+function withoutPendingPassword(value: Record<string, PendingNotificationSession>) {
+  return Object.fromEntries(Object.entries(value).map(([sessionId, pending]) => [sessionId, {
+    ...pending,
+    settings: {
+      serverUrl: pending.settings.serverUrl,
+      username: pending.settings.username,
+    },
+  }])) as Record<string, PendingNotificationSession>;
+}
 
 export type NotificationDebugStatus = {
   platform: string;
@@ -60,7 +71,11 @@ async function readPendingNotificationSessions() {
       return {} as Record<string, PendingNotificationSession>;
     }
 
-    return JSON.parse(raw) as Record<string, PendingNotificationSession>;
+    const pending = withoutPendingPassword(JSON.parse(raw) as Record<string, PendingNotificationSession>);
+    if (JSON.stringify(pending) !== raw) {
+      void AsyncStorage.setItem(PENDING_NOTIFICATION_SESSIONS_STORAGE_KEY, JSON.stringify(pending));
+    }
+    return pending;
   } catch {
     return {} as Record<string, PendingNotificationSession>;
   }
@@ -73,7 +88,20 @@ async function writePendingNotificationSessions(value: Record<string, PendingNot
     return;
   }
 
-  await AsyncStorage.setItem(PENDING_NOTIFICATION_SESSIONS_STORAGE_KEY, JSON.stringify(value));
+  await AsyncStorage.setItem(PENDING_NOTIFICATION_SESSIONS_STORAGE_KEY, JSON.stringify(withoutPendingPassword(value)));
+}
+
+async function isCurrentPendingConnection(pending: PendingNotificationSession) {
+  try {
+    const raw = await AsyncStorage.getItem(SETTINGS_STORAGE_KEY);
+    if (!raw) {
+      return false;
+    }
+    const settings = JSON.parse(raw) as Partial<OpencodeConnectionSettings>;
+    return settings.serverUrl === pending.settings.serverUrl && settings.username === pending.settings.username;
+  } catch {
+    return false;
+  }
 }
 
 function buildTaskFinishedContent(title: string, body: string): Notifications.NotificationContentInput {
@@ -115,12 +143,16 @@ if (Platform.OS !== 'web' && !TaskManager.isTaskDefined(CHAT_COMPLETION_TASK_NAM
           delete pendingBySessionId[pending.sessionId];
           continue;
         }
+        if (!await isCurrentPendingConnection(pending)) {
+          delete pendingBySessionId[pending.sessionId];
+          continue;
+        }
 
         try {
           const client = buildClient({
             serverUrl: pending.settings.serverUrl,
             username: pending.settings.username,
-            password: pending.settings.password,
+            password: await getConnectionPassword(),
             directory: pending.projectPath,
           });
           const [statusesResponse, sessionsResponse] = await Promise.all([
