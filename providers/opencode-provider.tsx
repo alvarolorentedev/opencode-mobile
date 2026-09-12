@@ -280,9 +280,13 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
     activeProjectPath,
     chatPreferences,
     lastSessionByProject,
+    sessions,
+    sessionStatuses,
     setActiveProjectPath,
     setChatPreferences,
     setLastSessionByProject,
+    setSessions,
+    setSessionStatuses,
     setSettings,
     settings,
   });
