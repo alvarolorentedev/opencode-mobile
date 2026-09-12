@@ -9,6 +9,23 @@ import {
   SETTINGS_STORAGE_KEY,
 } from '@/lib/storage-keys';
 import type { ChatPreferences } from '@/providers/opencode-provider-utils';
+import { loadPersistedValue } from '@/providers/persistence-hydration';
+
+function parseJsonObject<T>(raw: string) {
+  const value: unknown = JSON.parse(raw);
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    throw new Error('Expected a JSON object.');
+  }
+  return value as T;
+}
+
+function parseLastSessionByProject(raw: string) {
+  const value = parseJsonObject<Record<string, unknown>>(raw);
+  if (Object.values(value).some((sessionId) => typeof sessionId !== 'string')) {
+    throw new Error('Expected session IDs to be strings.');
+  }
+  return value as Record<string, string>;
+}
 
 export function useOpencodePersistence({
   defaultChatPreferences,
@@ -38,38 +55,28 @@ export function useOpencodePersistence({
   useEffect(() => {
     async function hydrateState() {
       try {
-        const storedSettings = await AsyncStorage.getItem(SETTINGS_STORAGE_KEY);
-
-        if (storedSettings) {
-          const parsed = JSON.parse(storedSettings) as Partial<OpencodeConnectionSettings>;
+        await loadPersistedValue(AsyncStorage, SETTINGS_STORAGE_KEY, parseJsonObject<Partial<OpencodeConnectionSettings>>, (parsed) => {
           setSettings({
             ...defaultSettings,
             ...parsed,
           });
-        }
+        });
 
-        const storedChatPreferences = await AsyncStorage.getItem(CHAT_PREFERENCES_STORAGE_KEY);
-        if (storedChatPreferences) {
-          const parsed = JSON.parse(storedChatPreferences) as Partial<ChatPreferences>;
+        await loadPersistedValue(AsyncStorage, CHAT_PREFERENCES_STORAGE_KEY, parseJsonObject<Partial<ChatPreferences>>, (parsed) => {
           setChatPreferences((current) => ({
             ...defaultChatPreferences,
             ...current,
             ...parsed,
           }));
-        }
+        });
 
-        const storedActiveProjectPath = await AsyncStorage.getItem(ACTIVE_PROJECT_STORAGE_KEY);
-        if (storedActiveProjectPath) {
-          setActiveProjectPath(storedActiveProjectPath);
-        }
+        await loadPersistedValue(AsyncStorage, ACTIVE_PROJECT_STORAGE_KEY, (raw) => raw, (path) => {
+          if (path) {
+            setActiveProjectPath(path);
+          }
+        });
 
-        const storedLastSessionByProject = await AsyncStorage.getItem(LAST_SESSION_BY_PROJECT_STORAGE_KEY);
-        if (storedLastSessionByProject) {
-          setLastSessionByProject(JSON.parse(storedLastSessionByProject) as Record<string, string>);
-        }
-
-      } catch {
-        // Ignore hydration issues and keep defaults.
+        await loadPersistedValue(AsyncStorage, LAST_SESSION_BY_PROJECT_STORAGE_KEY, parseLastSessionByProject, setLastSessionByProject);
       } finally {
         setIsHydrated(true);
       }

@@ -185,7 +185,7 @@ Hydration rules:
 - persisted chat preferences are merged over defaults and current provider state
 - active project path is restored if present
 - last-session map is restored if present
-- hydration failures are ignored and defaults are kept
+- each persisted key hydrates independently; a storage read failure leaves that key untouched, while malformed or invalid JSON is removed without blocking other keys
 
 The provider does not connect until hydration completes.
 

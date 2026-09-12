@@ -16,6 +16,7 @@
     "test:usage": "node ./tests/usage.test.mjs",
     "test:format": "node ./tests/format.test.mjs",
     "test:provider-utils": "node ./tests/provider-utils.test.mjs",
+    "test:persistence-hydration": "node ./tests/persistence-hydration.test.mjs",
     "test:workspace-patch": "node ./tests/workspace-patch.test.mjs",
     "test:e2e:web": "playwright test",
     "test:ci:static": "npm run lint && npm run typecheck && npm run test:usage && npm run test:format && npm run test:provider-utils && npm run test:workspace-patch",
