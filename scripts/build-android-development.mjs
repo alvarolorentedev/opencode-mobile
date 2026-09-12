@@ -24,11 +24,13 @@ function run(command, args, options = {}) {
 const repoRoot = process.cwd();
 const androidDir = path.join(repoRoot, 'android');
 
-run('npx', ['expo', 'prebuild', '--platform', 'android', '--non-interactive', '--clean'], {
+// Expo SDK 54+ deprecated --non-interactive; CI=1 forces the same non-interactive mode.
+run('npx', ['expo', 'prebuild', '--platform', 'android', '--clean'], {
   cwd: repoRoot,
   env: {
     ...process.env,
     EXPO_APP_VARIANT: 'development',
+    CI: '1',
   },
 });
 

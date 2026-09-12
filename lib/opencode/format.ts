@@ -164,7 +164,21 @@ export function getHistoryPreview(messages: SessionMessageRecord[]) {
   return getMessagePreview(latest);
 }
 
+// Cache transcript entries by record reference. The provider (refreshMessages)
+// merges new fetch results with the previous array, preserving record object
+// references for messages whose content has not changed. That makes the
+// WeakMap key stable across refreshes for unchanged messages, so the heavy
+// if/else tokenization below is skipped for every unchanged entry in the array.
+// When a message actually changes (streaming append, tool state transition),
+// the provider allocates a new record object → WeakMap miss → re-tokenize.
+const transcriptEntryCache = new WeakMap<SessionMessageRecord, TranscriptEntry>();
+
 export function toTranscriptEntry(record: SessionMessageRecord): TranscriptEntry {
+  const cached = transcriptEntryCache.get(record);
+  if (cached) {
+    return cached;
+  }
+
   const textBlocks: string[] = [];
   const details: TranscriptDetail[] = [];
 
@@ -293,7 +307,7 @@ export function toTranscriptEntry(record: SessionMessageRecord): TranscriptEntry
     }
   });
 
-  return {
+  const entry: TranscriptEntry = {
     id: record.info.id,
     role: record.info.role,
     createdAt: record.info.time.created,
@@ -301,4 +315,6 @@ export function toTranscriptEntry(record: SessionMessageRecord): TranscriptEntry
     details,
     error: getMessageError(record),
   };
+  transcriptEntryCache.set(record, entry);
+  return entry;
 }
