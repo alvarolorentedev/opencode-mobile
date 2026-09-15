@@ -103,6 +103,7 @@ import {
   type SessionDeepLinkTarget,
   type WorkspaceCatalog,
 } from '@/providers/opencode-provider-types';
+import { hydrateSessionCache, persistSessionCache } from '@/providers/session-cache';
 import { useConversationKeepAwake } from '@/providers/use-conversation-keep-awake';
 import { useConversationScreenDim } from '@/providers/use-conversation-screen-dim';
 import { useOpencodePersistence } from '@/providers/use-opencode-persistence';
@@ -424,6 +425,31 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
     [loadWorkspaceCatalog],
   );
 
+  // Paint the cached session list for the active project on boot and on every
+  // project switch; the regular refresh reconciles once the server answers.
+  // fetchSessions is the only writer, so a cached empty list always means the
+  // server confirmed that project has no sessions.
+  const sessionCacheProjectRef = useRef<string | undefined>(undefined);
+  useEffect(() => {
+    if (!isHydrated) {
+      return;
+    }
+    const projectPath = activeProjectPath;
+    if (sessionCacheProjectRef.current === projectPath) {
+      return;
+    }
+    sessionCacheProjectRef.current = projectPath;
+    if (!projectPath) {
+      return;
+    }
+    void hydrateSessionCache(
+      projectPath,
+      (cached) => setSessions(cached as Session[]),
+      (cached) => setSessionStatuses(cached as Record<string, SessionStatus>),
+      () => activeProjectPathRef.current === projectPath,
+    );
+  }, [activeProjectPath, isHydrated]);
+
   const fetchSessions = useCallback(
     async (silent = false) => {
       if (!activeProjectPath) {
@@ -443,6 +469,7 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
         }
         setSessions(result.sessions);
         setSessionStatuses(result.statuses);
+        void persistSessionCache(activeProjectPath, result.sessions, result.statuses);
         return result.sessions;
       } finally {
         if (!silent) {

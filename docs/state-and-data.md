@@ -178,6 +178,7 @@ Persisted values:
 - `opencode-mobile.active-project`
 - `opencode-mobile.last-session-by-project`
 - `opencode-mobile.pending-notification-sessions`
+- `opencode-mobile.sessions.<projectPath>` / `opencode-mobile.session-statuses.<projectPath>` (per-project cache)
 
 Hydration rules:
 
@@ -186,6 +187,7 @@ Hydration rules:
 - active project path is restored if present
 - last-session map is restored if present
 - each persisted key hydrates independently; a storage read failure leaves that key untouched, while malformed or invalid JSON is removed without blocking other keys
+- per-project session caches hydrate on app open and on every project switch so the workspace list paints before the server answers; they are written only from confirmed fetch results, so a cached empty list means the server reported no sessions for that project
 
 The provider does not connect until hydration completes.
 
