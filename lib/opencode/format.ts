@@ -164,7 +164,65 @@ export function getHistoryPreview(messages: SessionMessageRecord[]) {
   return getMessagePreview(latest);
 }
 
+// Merge a fetched message array into the previously stored one, preserving
+// record object references for messages whose content has not changed.
+// toTranscriptEntry below caches transcript entries in a WeakMap keyed by
+// record reference, so unchanged records skip the heavy tokenization pass
+// during streaming refreshes. When a message actually changes (streaming
+// append, tool state transition), a new record object is adopted and the
+// WeakMap misses, forcing a re-tokenize.
+//
+// Equality must cover BOTH parts and info. toTranscriptEntry reads
+// record.info.error (via getMessageError) — if the server adds an error
+// post-hoc without changing parts, ignoring info would silently drop the
+// error banner AND poison the WeakMap cache. JSON.stringify is cheap here:
+// info is small metadata (id/role/time/error) and the network/parse cost of
+// the fetch has already been paid.
+export function mergeSessionMessageRecords(previous: SessionMessageRecord[], next: SessionMessageRecord[]): SessionMessageRecord[] {
+  if (previous.length === 0) {
+    return next;
+  }
+
+  const previousById = new Map<string, SessionMessageRecord>();
+  for (const record of previous) {
+    previousById.set(record.info.id, record);
+  }
+
+  const merged: SessionMessageRecord[] = new Array(next.length);
+  for (let index = 0; index < next.length; index += 1) {
+    const record = next[index];
+    const prior = previousById.get(record.info.id);
+    if (
+      prior &&
+      prior.parts.length === record.parts.length &&
+      JSON.stringify(prior.parts) === JSON.stringify(record.parts) &&
+      JSON.stringify(prior.info) === JSON.stringify(record.info)
+    ) {
+      merged[index] = prior;
+    } else {
+      merged[index] = record;
+    }
+  }
+
+  // Preserve array identity only when every index holds the exact same record
+  // object as before. Object identity at each index covers content equality,
+  // duplicate IDs, AND ordering: a reordered-but-unchanged list reuses record
+  // references at different positions, so this check fails and the fetched
+  // order wins. Downstream useMemos (transcript, currentUsage, session
+  // previews) key off this array's reference and skip re-computation when it
+  // is stable.
+  const unchanged = merged.length === previous.length && merged.every((record, index) => record === previous[index]);
+  return unchanged ? previous : merged;
+}
+
+const transcriptEntryCache = new WeakMap<SessionMessageRecord, TranscriptEntry>();
+
 export function toTranscriptEntry(record: SessionMessageRecord): TranscriptEntry {
+  const cached = transcriptEntryCache.get(record);
+  if (cached) {
+    return cached;
+  }
+
   const textBlocks: string[] = [];
   const details: TranscriptDetail[] = [];
 
@@ -293,7 +351,7 @@ export function toTranscriptEntry(record: SessionMessageRecord): TranscriptEntry
     }
   });
 
-  return {
+  const entry: TranscriptEntry = {
     id: record.info.id,
     role: record.info.role,
     createdAt: record.info.time.created,
@@ -301,4 +359,6 @@ export function toTranscriptEntry(record: SessionMessageRecord): TranscriptEntry
     details,
     error: getMessageError(record),
   };
+  transcriptEntryCache.set(record, entry);
+  return entry;
 }
