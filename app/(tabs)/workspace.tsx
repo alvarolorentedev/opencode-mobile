@@ -42,6 +42,7 @@ export default function WorkspaceScreen() {
     isRefreshingSessions,
     isRefreshingWorkspaceCatalog,
     openSession,
+    openSessionInProject,
     projects,
     refreshSessions,
     refreshWorkspaceCatalog,
@@ -53,6 +54,10 @@ export default function WorkspaceScreen() {
     sessionStatuses,
     sessions,
     archivedSessions,
+    favoriteSessions,
+    isFavoriteSession,
+    toggleFavoriteSession,
+    clearFavoriteSession,
     archiveSession,
     restoreSession,
     refreshArchivedSessions,
@@ -225,6 +230,7 @@ export default function WorkspaceScreen() {
                 anchor={<IconButton icon="dots-vertical" accessibilityLabel={`Actions for ${session.title || 'Untitled chat'}`} onPress={() => setSessionActionId(session.id)} />}>
                 <Menu.Item title="Rename" leadingIcon="pencil" onPress={() => { setSessionActionId(undefined); setRenamingSessionId(session.id); setRenameValue(session.title || ''); }} />
                 <Menu.Item title={session.share?.url ? 'Unshare' : 'Share'} leadingIcon="share-variant" onPress={() => { setSessionActionId(undefined); confirmShare(session); }} />
+                <Menu.Item title={isFavoriteSession(session.id) ? 'Remove from favorites' : 'Add to favorites'} leadingIcon={isFavoriteSession(session.id) ? 'star' : 'star-outline'} onPress={() => { setSessionActionId(undefined); toggleFavoriteSession(session.id, activeProject?.path || '', session.title); }} />
                 <Menu.Item title="Archive" leadingIcon="archive-outline" disabled={updatingSessionId === session.id} onPress={() => { setSessionActionId(undefined); void handleArchive(session.id); }} />
                 <Menu.Item title="Delete" leadingIcon="delete-outline" titleStyle={{ color: palette.danger }} onPress={() => { setSessionActionId(undefined); confirmDelete(session); }} />
               </Menu>
@@ -279,6 +285,36 @@ export default function WorkspaceScreen() {
         contentContainerStyle={[styles.content, styles.centeredContent]}
         refreshControl={<RefreshControl refreshing={isRefreshing} onRefresh={() => void handleRefresh()} tintColor={palette.tint} />}>
       <SegmentedButtons value={activePanel} onValueChange={(value) => setActivePanel(value as typeof activePanel)} buttons={[{ value: 'chats', label: 'Chats' }, { value: 'files', label: 'Files' }, { value: 'tools', label: 'Tools' }]} />
+
+      {activePanel === 'chats' && favoriteSessions.length > 0 ? (
+        <View testID="workspace-favorites-bar" style={[styles.favoritesBar, { borderColor: palette.border }]}>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.favoritesScroll}>
+            {favoriteSessions.map((favorite) => (
+              <View key={favorite.sessionId} style={[styles.favoriteChip, { backgroundColor: palette.surface, borderColor: palette.border }]}>
+                <Pressable
+                  accessibilityLabel={`Open favorite ${favorite.title || favorite.sessionId}`}
+                  onPress={() => {
+                    void openSessionInProject(favorite.projectPath, favorite.sessionId)
+                      .then(() => router.push('/(tabs)'))
+                      .catch((reason) => setError(reason instanceof Error ? reason.message : 'Could not open the favorite session.'));
+                  }}
+                  style={({ pressed }) => [styles.favoriteChipBody, pressed && styles.favoriteChipBodyPressed]}>
+                  <Text numberOfLines={1} variant="labelLarge" style={{ color: palette.text }}>{favorite.title || 'Untitled chat'}</Text>
+                  {favorite.projectPath !== activeProject?.path && favorite.projectLabel ? (
+                    <Text numberOfLines={1} variant="labelSmall" style={{ color: palette.muted }}>{favorite.projectLabel}</Text>
+                  ) : null}
+                </Pressable>
+                <IconButton
+                  icon="star-off-outline"
+                  size={16}
+                  accessibilityLabel={`Remove favorite ${favorite.title || favorite.sessionId}`}
+                  onPress={() => clearFavoriteSession(favorite.sessionId)}
+                />
+              </View>
+            ))}
+          </ScrollView>
+        </View>
+      ) : null}
 
       {activePanel === 'chats' ? <Card mode="contained" style={[styles.card, { backgroundColor: palette.surface }]}>
         <Card.Title title={showArchived ? 'Archived chats' : 'Chats'} subtitle={showArchived ? 'Restore or permanently delete chats.' : activeProject ? 'Current and running chats appear first.' : 'Choose a project to load chats.'} right={() => <IconButton icon={showArchived ? 'archive-remove-outline' : 'archive-outline'} accessibilityLabel={showArchived ? 'Show active chats' : 'Show archived chats'} onPress={() => { setShowArchived((value) => !value); if (!showArchived) void refreshArchivedSessions(); }} />} />
@@ -484,4 +520,9 @@ const styles = StyleSheet.create({
   worktreeSection: { gap: 8 },
   worktreeForm: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 8 },
   code: { fontFamily: 'monospace', fontSize: 12 },
+  favoritesBar: { borderBottomWidth: StyleSheet.hairlineWidth, paddingHorizontal: 8, paddingVertical: 6 },
+  favoritesScroll: { alignItems: 'center', gap: 6, paddingHorizontal: 8 },
+  favoriteChip: { alignItems: 'center', borderRadius: 999, borderWidth: 1, flexDirection: 'row', paddingLeft: 12 },
+  favoriteChipBody: { paddingVertical: 6, paddingRight: 4, maxWidth: 160 },
+  favoriteChipBodyPressed: { opacity: 0.72 },
 });

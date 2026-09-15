@@ -80,6 +80,16 @@ export type OpencodeProject = {
   isCurrent?: boolean;
 };
 
+export type FavoriteSession = {
+  sessionId: string;
+  projectPath: string;
+  projectLabel?: string;
+  title?: string;
+  favoritedAt: number;
+};
+
+export const FAVORITE_SESSIONS_MAX = 50;
+
 export type ConnectionState = {
   status: 'idle' | 'connecting' | 'connected' | 'error';
   message: string;
@@ -102,6 +112,7 @@ export type OpencodeContextValue = {
   activeProjectPath?: string;
   activeProject?: OpencodeProject;
   selectProject: (path: string) => void;
+  openSessionInProject: (projectPath: string, sessionId: string) => Promise<void>;
   serverProjects: Project[];
   currentProjectPath?: string;
   serverRootPath?: string;
@@ -111,6 +122,10 @@ export type OpencodeContextValue = {
   sessions: Session[];
   archivedSessions: GlobalSession[];
   sessionStatuses: Record<string, SessionStatus>;
+  favoriteSessions: FavoriteSession[];
+  toggleFavoriteSession: (sessionId: string, projectPath: string, title?: string) => void;
+  isFavoriteSession: (sessionId: string) => boolean;
+  clearFavoriteSession: (sessionId: string) => void;
   currentSessionId?: string;
   activeSession?: Session;
   currentMessages: SessionMessageRecord[];

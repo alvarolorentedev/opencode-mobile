@@ -341,3 +341,136 @@ test('settings explain root-vs-api mismatches and reconnect through a prefixed A
     server.kill('SIGTERM');
   }
 });
+
+test('favorites open sessions in the current workspace', async ({ page, request }) => {
+  await resetScenario(request, 'happy-path');
+  await openReadyChat(page);
+
+  await sendPrompt(page, 'Favorite current workspace session');
+  await expect(page.getByText(/Finished:/).first()).toBeVisible({ timeout: 20_000 });
+
+  await page.getByRole('tab', { name: 'Workspace' }).click();
+  await page.getByLabel('Actions for Favorite current workspace session').click();
+  await page.getByRole('menuitem', { name: 'Add to favorites' }).click();
+
+  const favoritesBar = page.getByTestId('workspace-favorites-bar');
+  await expect(favoritesBar).toBeVisible();
+  await expect(favoritesBar.getByText('Favorite current workspace session')).toBeVisible();
+
+  await page.getByLabel('New chat').click();
+  await expect(page.getByText('Start a new task')).toBeVisible({ timeout: 15_000 });
+  await page.getByRole('tab', { name: 'Workspace' }).click();
+  await page.getByLabel('Open favorite Favorite current workspace session').click();
+
+  await expect(
+    page.locator('text=/Finished: Favorite current workspace session/ >> visible=true').first(),
+  ).toBeVisible({ timeout: 20_000 });
+});
+
+test('favorites switch projects and open cross-workspace sessions', async ({ page, request }) => {
+  await resetScenario(request, 'happy-path');
+  const fakeServer = 'http://127.0.0.1:44096';
+  const projectPath = '/workspace/secondary-project';
+
+  const createResponse = await request.post(`${fakeServer}/session?directory=${encodeURIComponent(projectPath)}`, {
+    data: { title: 'Favorite Cross Workspace Session' },
+  });
+  expect(createResponse.ok()).toBeTruthy();
+  const { id: sessionId } = await createResponse.json();
+
+  await request.post(`${fakeServer}/session/${sessionId}/prompt_async`, {
+    data: { parts: [{ type: 'text', text: 'Open me through a favorite' }] },
+  });
+  await sleep(1500);
+  await openReadyChat(page);
+
+  await page.goto(`/session/${sessionId}?project=${encodeURIComponent(projectPath)}`, {
+    waitUntil: 'domcontentloaded',
+  });
+  await expect(
+    page.locator('text=/Finished: Open me through a favorite/ >> visible=true').first(),
+  ).toBeVisible({ timeout: 20_000 });
+
+  await page.getByRole('tab', { name: 'Workspace' }).click();
+  await page.getByLabel('Actions for Favorite Cross Workspace Session').click();
+  await page.getByRole('menuitem', { name: 'Add to favorites' }).click();
+  await expect(page.getByTestId('workspace-favorites-bar')).toBeVisible();
+
+  await page.getByText('secondary-project', { exact: true }).first().click();
+  await page.getByRole('menuitem', { name: 'demo-project' }).click();
+
+  const favoritesBar = page.getByTestId('workspace-favorites-bar');
+  await expect(favoritesBar).toBeVisible();
+  await expect(favoritesBar.getByText('secondary-project')).toBeVisible({ timeout: 15_000 });
+  await page.getByLabel('Open favorite Favorite Cross Workspace Session').click();
+
+  await expect(
+    page.locator('text=/Finished: Open me through a favorite/ >> visible=true').first(),
+  ).toBeVisible({ timeout: 20_000 });
+});
+
+test('favorites report sessions that are missing', async ({ page, request }) => {
+  await resetScenario(request, 'happy-path');
+  await openReadyChat(page);
+
+  await sendPrompt(page, 'Favorite vanishing session');
+  await expect(page.getByText(/Finished:/).first()).toBeVisible({ timeout: 20_000 });
+
+  await page.getByRole('tab', { name: 'Workspace' }).click();
+  await page.getByLabel('Actions for Favorite vanishing session').click();
+  await page.getByRole('menuitem', { name: 'Add to favorites' }).click();
+  await expect(page.getByTestId('workspace-favorites-bar')).toBeVisible();
+
+  const deleteResponse = await request.delete('http://127.0.0.1:44096/session/session-1');
+  expect(deleteResponse.ok()).toBeTruthy();
+
+  await page.getByLabel('Open favorite Favorite vanishing session').click();
+  await expect(
+    page.getByText(/could not open|not found|failed/i).first(),
+  ).toBeVisible({ timeout: 15_000 });
+});
+
+test('rapid favorite taps across workspaces settle on the last target', async ({ page, request }) => {
+  await resetScenario(request, 'happy-path');
+  const fakeServer = 'http://127.0.0.1:44096';
+  const projectPath = '/workspace/secondary-project';
+
+  const createResponse = await request.post(`${fakeServer}/session?directory=${encodeURIComponent(projectPath)}`, {
+    data: { title: 'Rapid Tap Secondary' },
+  });
+  expect(createResponse.ok()).toBeTruthy();
+  const { id: secondarySessionId } = await createResponse.json();
+
+  await request.post(`${fakeServer}/session/${secondarySessionId}/prompt_async`, {
+    data: { parts: [{ type: 'text', text: 'Secondary rapid tap target' }] },
+  });
+  await sleep(1500);
+  await openReadyChat(page);
+  await sendPrompt(page, 'Primary rapid tap target');
+  await expect(page.getByText(/Finished: Primary rapid tap target/).first()).toBeVisible({ timeout: 20_000 });
+
+  await page.goto(`/session/${secondarySessionId}?project=${encodeURIComponent(projectPath)}`, {
+    waitUntil: 'domcontentloaded',
+  });
+  await expect(
+    page.locator('text=/Finished: Secondary rapid tap target/ >> visible=true').first(),
+  ).toBeVisible({ timeout: 20_000 });
+  await page.getByRole('tab', { name: 'Workspace' }).click();
+  await page.getByLabel('Actions for Rapid Tap Secondary').click();
+  await page.getByRole('menuitem', { name: 'Add to favorites' }).click();
+
+  await page.getByText('secondary-project', { exact: true }).first().click();
+  await page.getByRole('menuitem', { name: 'demo-project' }).click();
+  await page.getByLabel('Actions for Primary rapid tap target').click();
+  await page.getByRole('menuitem', { name: 'Add to favorites' }).click();
+  await expect(page.getByTestId('workspace-favorites-bar')).toBeVisible();
+
+  // Dispatch both presses back to back so the second lands before the first
+  // navigation moves the app off the workspace tab.
+  await page.getByLabel('Open favorite Rapid Tap Secondary').dispatchEvent('click');
+  await page.getByLabel('Open favorite Primary rapid tap target').dispatchEvent('click');
+
+  await expect(
+    page.locator('text=/Finished: Primary rapid tap target/ >> visible=true').first(),
+  ).toBeVisible({ timeout: 20_000 });
+});
