@@ -494,6 +494,8 @@ export function ChatsSection({
             value={chatPreferences.hideSubagentChats}
           />
         </List.Section>
+        <HelperText type="info">How many chats the workspace list renders per page. This only limits mounted rows; the full list is always fetched.</HelperText>
+        <NumericSlider label="Chats per page" minimum={5} maximum={100} step={5} value={Math.round(chatPreferences.chatsPerPage) || 24} valueLabel={`${Math.round(chatPreferences.chatsPerPage) || 24}`} onValueChange={(chatsPerPage) => updateChatPreferences({ chatsPerPage })} palette={palette} />
       </Card.Content>
     </Card>
   );

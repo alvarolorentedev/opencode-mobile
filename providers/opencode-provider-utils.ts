@@ -45,6 +45,7 @@ export type ChatPreferences = {
   responseScope: ResponseScope;
   includeNextActions: boolean;
   hideSubagentChats: boolean;
+  chatsPerPage: number;
 };
 
 export const defaultChatPreferences: ChatPreferences = {
@@ -63,6 +64,7 @@ export const defaultChatPreferences: ChatPreferences = {
   responseScope: 'brief',
   includeNextActions: true,
   hideSubagentChats: false,
+  chatsPerPage: 24,
 };
 
 export function getErrorMessage(error: unknown) {
