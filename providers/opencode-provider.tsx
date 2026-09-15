@@ -50,6 +50,7 @@ import {
   type ScopedOpencodeClient,
 } from '@/lib/opencode/client';
 import {
+  mergeSessionMessageRecords,
   toTranscriptEntry,
   type SessionMessageRecord,
 } from '@/lib/opencode/format';
@@ -479,10 +480,16 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
         if (!isCurrentClient(client)) {
           return data;
         }
-        setMessagesBySession((current) => ({
-          ...current,
-          [sessionId]: data,
-        }));
+        setMessagesBySession((current) => {
+          const previous = current[sessionId] ?? [];
+          const merged = mergeSessionMessageRecords(previous, data);
+          // Returning the same state reference when nothing changed lets React
+          // skip the re-render that downstream useMemos key off this array for.
+          if (merged === previous) {
+            return current;
+          }
+          return { ...current, [sessionId]: merged };
+        });
 
         return data;
       } finally {

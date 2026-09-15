@@ -15,6 +15,7 @@
     "test:fake-server:self": "node ./tests/fake-opencode/self-test.mjs",
     "test:usage": "node ./tests/usage.test.mjs",
     "test:format": "node ./tests/format.test.mjs",
+    "test:record-preservation": "node ./tests/record-preservation.test.mjs",
     "test:provider-utils": "node ./tests/provider-utils.test.mjs",
     "test:credential-storage": "node ./tests/credential-storage.test.mjs",
     "test:persistence-hydration": "node ./tests/persistence-hydration.test.mjs",
