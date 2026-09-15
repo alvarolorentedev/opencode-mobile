@@ -35,6 +35,7 @@ export default function WorkspaceScreen() {
   const {
     activeProject,
     connection,
+    chatPreferences,
     createSession,
     deleteSession,
     currentProjectPath,
@@ -98,6 +99,11 @@ export default function WorkspaceScreen() {
       return leftPriority - rightPriority || right.time.updated - left.time.updated;
     }),
     [currentSessionId, sessionStatuses, sessions],
+  );
+
+  const filteredSessions = useMemo(
+    () => chatPreferences.hideSubagentChats ? orderedSessions.filter((session) => !session.parentID) : orderedSessions,
+    [chatPreferences.hideSubagentChats, orderedSessions],
   );
 
   async function handleRefresh() {
@@ -207,14 +213,14 @@ export default function WorkspaceScreen() {
     return (
       <View key={session.id}>
         <List.Item
-          title={session.title || 'Untitled chat'}
-          description={sessionPreviewById[session.id] || getSessionSubtitle(session)}
+          title={session.parentID ? `↳ ${session.title || 'Untitled chat'}` : session.title || 'Untitled chat'}
+          description={session.parentID ? `Subagent · ${sessionPreviewById[session.id] || getSessionSubtitle(session)}` : sessionPreviewById[session.id] || getSessionSubtitle(session)}
           onPress={() => {
             void openSession(session.id)
               .then(() => router.push('/(tabs)'))
               .catch((reason) => setError(reason instanceof Error ? reason.message : 'Could not open the session.'));
           }}
-          titleStyle={{ color: palette.text, fontWeight: currentSessionId === session.id ? '700' : '500' }}
+          titleStyle={{ color: session.parentID ? palette.muted : palette.text, fontWeight: currentSessionId === session.id ? '700' : '500', fontStyle: session.parentID ? 'italic' : 'normal' }}
           descriptionStyle={{ color: palette.muted }}
           right={() => (
             <View style={styles.sessionMeta}>
@@ -283,7 +289,7 @@ export default function WorkspaceScreen() {
       {activePanel === 'chats' ? <Card mode="contained" style={[styles.card, { backgroundColor: palette.surface }]}>
         <Card.Title title={showArchived ? 'Archived chats' : 'Chats'} subtitle={showArchived ? 'Restore or permanently delete chats.' : activeProject ? 'Current and running chats appear first.' : 'Choose a project to load chats.'} right={() => <IconButton icon={showArchived ? 'archive-remove-outline' : 'archive-outline'} accessibilityLabel={showArchived ? 'Show active chats' : 'Show archived chats'} onPress={() => { setShowArchived((value) => !value); if (!showArchived) void refreshArchivedSessions(); }} />} />
         <Card.Content style={styles.listContent}>
-          {showArchived ? archivedSessions.length === 0 ? <Text style={[styles.emptyText, { color: palette.muted }]}>No archived chats.</Text> : archivedSessions.map((session, index) => <View key={session.id}><View style={styles.archiveRow}><View style={styles.archiveCopy}><Text variant="titleMedium" style={{ color: palette.text }}>{session.title || 'Untitled chat'}</Text><Text style={{ color: palette.muted }}>{session.directory} · {formatRelativeTime(session.time.updated)}</Text></View><View style={styles.iconActions}><IconButton icon="restore" accessibilityLabel={`Restore ${session.title || 'Untitled chat'}`} loading={updatingArchivedSessionId === session.id} onPress={() => void handleArchivedSession(session.id, 'restore')} /><IconButton icon="delete-outline" iconColor={palette.danger} accessibilityLabel={`Delete ${session.title || 'Untitled chat'}`} disabled={updatingArchivedSessionId === session.id} onPress={() => confirmDestructive('Delete archived session?', `“${session.title || 'Untitled chat'}” and all of its data will be permanently deleted.`, 'Delete', () => void handleArchivedSession(session.id, 'delete'))} /></View></View>{index < archivedSessions.length - 1 ? <Divider /> : null}</View>) : <>{!activeProject ? <Text style={{ color: palette.muted }}>Select a project first.</Text> : null}{activeProject && orderedSessions.length === 0 ? <Text style={{ color: palette.muted }}>No chats in this workspace yet.</Text> : null}{orderedSessions.map((session, index) => renderSessionItem(session, index, orderedSessions.length))}</>}
+          {showArchived ? archivedSessions.length === 0 ? <Text style={[styles.emptyText, { color: palette.muted }]}>No archived chats.</Text> : archivedSessions.map((session, index) => <View key={session.id}><View style={styles.archiveRow}><View style={styles.archiveCopy}><Text variant="titleMedium" style={{ color: palette.text }}>{session.title || 'Untitled chat'}</Text><Text style={{ color: palette.muted }}>{session.directory} · {formatRelativeTime(session.time.updated)}</Text></View><View style={styles.iconActions}><IconButton icon="restore" accessibilityLabel={`Restore ${session.title || 'Untitled chat'}`} loading={updatingArchivedSessionId === session.id} onPress={() => void handleArchivedSession(session.id, 'restore')} /><IconButton icon="delete-outline" accessibilityLabel={`Delete ${session.title || 'Untitled chat'}`} loading={updatingArchivedSessionId === session.id} onPress={() => void handleArchivedSession(session.id, 'delete')} /></View></View></View>) : <>{!activeProject ? <Text style={{ color: palette.muted }}>Select a project first.</Text> : null}{activeProject && filteredSessions.length === 0 ? <Text style={{ color: palette.muted }}>{chatPreferences.hideSubagentChats && orderedSessions.length > 0 ? 'All chats are hidden by the subagent filter.' : 'No chats in this workspace yet.'}</Text> : null}{filteredSessions.map((session, index) => renderSessionItem(session, index, filteredSessions.length))}</>}
         </Card.Content>
       </Card> : null}
 

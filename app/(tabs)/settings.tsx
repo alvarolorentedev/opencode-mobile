@@ -22,6 +22,7 @@ import { ProviderConfigDialog } from '@/components/settings/provider-config-dial
 import { McpSection } from '@/components/settings/mcp-section';
 import {
   AiDefaultsSection,
+  ChatsSection,
   ConnectionSection,
   DiagnosticsSection,
   NotificationsSection,
@@ -411,6 +412,13 @@ export default function SettingsScreen() {
               onOpenNotificationSettings={() => void handleOpenNotificationSettings()}
               onRefreshStatus={() => void refreshNotificationStatus()}
               palette={palette}
+            />
+          </List.Accordion>
+          <List.Accordion id="chats" title="Chats" description={chatPreferences.hideSubagentChats ? 'Subagent chats hidden' : 'All chats shown'} titleStyle={{ color: palette.text }} descriptionStyle={{ color: palette.muted }} style={[styles.category, { backgroundColor: palette.surface, borderColor: palette.border }]}>
+            <ChatsSection
+              chatPreferences={chatPreferences}
+              palette={palette}
+              updateChatPreferences={updateChatPreferences}
             />
           </List.Accordion>
           <List.Accordion id="voice" title="Voice & responses" description={chatPreferences.autoPlayAssistantReplies ? 'Reply playback on' : 'Reply playback off'} titleStyle={{ color: palette.text }} descriptionStyle={{ color: palette.muted }} style={[styles.category, { backgroundColor: palette.surface, borderColor: palette.border }]}>
