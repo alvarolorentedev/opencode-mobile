@@ -2425,25 +2425,15 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
       return;
     }
 
-    const hasBusySession = Object.values(sessionStatuses).some((status) => status.type !== 'idle');
-    const hasConversationActivity = conversationPhase !== 'off';
-    const useSafetyPolling = eventStreamStatus !== 'connected';
-    const shouldKeepSafetyPoll = useSafetyPolling || hasBusySession || sendingState.active || hasConversationActivity;
-
-    if (!shouldKeepSafetyPoll) {
+    if (eventStreamStatus === 'connected') {
       return;
     }
 
     const interval = setInterval(() => {
-      const currentHasBusySession = Object.values(sessionStatuses).some((status) => status.type !== 'idle');
-      const currentHasConversationActivity = conversationPhase !== 'off';
+      void refreshSessions(true);
+      void refreshPendingInteractions();
 
-      if (currentHasConversationActivity || currentHasBusySession || sendingState.active || useSafetyPolling) {
-        void refreshSessions(true);
-        void refreshPendingInteractions();
-      }
-
-      if (currentSessionId && (currentHasConversationActivity || currentHasBusySession || sendingState.active || useSafetyPolling)) {
+      if (currentSessionId) {
         void Promise.all([
           refreshMessages(currentSessionId, true),
           refreshSessionDiff(currentSessionId, true),
@@ -2451,7 +2441,7 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
         ]);
       }
 
-      if (conversationSessionId && conversationSessionId !== currentSessionId && (currentHasConversationActivity || currentHasBusySession || sendingState.active || useSafetyPolling)) {
+      if (conversationSessionId && conversationSessionId !== currentSessionId) {
         void Promise.all([
           refreshMessages(conversationSessionId, true),
           refreshSessionDiff(conversationSessionId, true),
@@ -2461,7 +2451,7 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
     }, 5000);
 
     return () => clearInterval(interval);
-  }, [activeProjectPath, connection.status, conversationPhase, conversationSessionId, currentSessionId, eventStreamStatus, refreshMessages, refreshPendingInteractions, refreshSessionDiff, refreshSessionTodos, refreshSessions, sendingState.active, sessionStatuses]);
+  }, [activeProjectPath, connection.status, conversationSessionId, currentSessionId, eventStreamStatus, refreshMessages, refreshPendingInteractions, refreshSessionDiff, refreshSessionTodos, refreshSessions]);
 
   useEffect(() => {
     const busy = sendingState.active || Object.values(sessionStatuses).some((status) => status.type !== 'idle');
@@ -2555,6 +2545,43 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
     const fallbackSessionId = sessions.find((session) => session.id === rememberedSessionId)?.id || sessions[0]?.id;
     setCurrentSessionId(fallbackSessionId);
   }, [activeProjectPath, currentSessionId, lastSessionByProject, sessions]);
+
+  useEffect(() => {
+    const keepIds = new Set<string>();
+    if (currentSessionId) keepIds.add(currentSessionId);
+    if (conversationSessionId) keepIds.add(conversationSessionId);
+    for (const [id, status] of Object.entries(sessionStatuses)) {
+      if (status.type !== 'idle') keepIds.add(id);
+    }
+
+    setMessagesBySession((current) => {
+      const keys = Object.keys(current);
+      if (keys.length <= keepIds.size + 1) return current;
+      const next: typeof current = {};
+      for (const key of keys) {
+        if (keepIds.has(key)) next[key] = current[key];
+      }
+      return next;
+    });
+    setDiffsBySession((current) => {
+      const keys = Object.keys(current);
+      if (keys.length <= keepIds.size + 1) return current;
+      const next: typeof current = {};
+      for (const key of keys) {
+        if (keepIds.has(key)) next[key] = current[key];
+      }
+      return next;
+    });
+    setTodosBySession((current) => {
+      const keys = Object.keys(current);
+      if (keys.length <= keepIds.size + 1) return current;
+      const next: typeof current = {};
+      for (const key of keys) {
+        if (keepIds.has(key)) next[key] = current[key];
+      }
+      return next;
+    });
+  }, [currentSessionId, conversationSessionId, sessionStatuses]);
 
   const activeSession = useMemo(
     () => sessions.find((session) => session.id === currentSessionId),

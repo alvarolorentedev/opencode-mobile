@@ -61,13 +61,15 @@ export async function listArchivedSessions(client: OpencodeClient) {
 }
 
 const MESSAGE_PAGE_SIZE = 100;
+const MAX_MESSAGE_PAGES = 5;
 
 export async function getSessionMessages(client: OpencodeClient, sessionId: string) {
   // ponytail: paginate to avoid OOM in RN's OkHttp layer which buffers full responses.
   const allMessages: NonNullable<Awaited<ReturnType<typeof client.session.messages>>['data']> = [];
   let before: string | undefined;
+  let pages = 0;
 
-  while (true) {
+  while (pages < MAX_MESSAGE_PAGES) {
     const response = await client.session.messages({ sessionID: sessionId, limit: MESSAGE_PAGE_SIZE, before });
     const page = requireData(response.data, 'session messages request');
     for (const msg of page) {
@@ -76,6 +78,7 @@ export async function getSessionMessages(client: OpencodeClient, sessionId: stri
     if (page.length < MESSAGE_PAGE_SIZE) break;
     before = page[page.length - 1]?.info?.id;
     if (!before) break;
+    pages += 1;
   }
 
   return allMessages;
