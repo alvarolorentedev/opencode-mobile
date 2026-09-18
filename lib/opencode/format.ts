@@ -56,9 +56,9 @@ function getMessageError(record: SessionMessageRecord) {
     return undefined;
   }
 
-  return `${record.info.error.name}: ${
-    'message' in record.info.error.data ? String(record.info.error.data.message) : 'Request failed'
-  }`;
+  const data = record.info.error.data;
+  const message = data && 'message' in data ? String(data.message) : 'Request failed';
+  return `${record.info.error.name}: ${message}`;
 }
 
 function compactText(value: string) {

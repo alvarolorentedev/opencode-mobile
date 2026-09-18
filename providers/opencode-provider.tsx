@@ -1307,14 +1307,18 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
       return;
     }
 
+    let cancelled = false;
     void ensureActiveSessionRef.current().catch((error) => {
-      if (isCurrentClient(client)) {
+      if (!cancelled && isCurrentClient(client)) {
         setPromptError({
           message: error instanceof Error ? error.message : 'Could not load this project.',
           occurredAt: Date.now(),
         });
       }
     });
+    return () => {
+      cancelled = true;
+    };
   }, [activeProjectPath, client, connection.status, isCurrentClient]);
 
   const refreshCurrentSession = useCallback(
@@ -2298,7 +2302,7 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
           return;
         case 'session.diff': {
           const sessionId = event.properties.sessionID;
-          if (event.properties.diff.length > 0) {
+          if (event.properties.diff?.length > 0) {
             setDiffsBySession((current) => ({
               ...current,
               [sessionId]: event.properties.diff,

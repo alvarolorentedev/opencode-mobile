@@ -49,14 +49,17 @@ export async function listSessions(client: OpencodeClient) {
 }
 
 export async function listArchivedSessions(client: OpencodeClient) {
+  const MAX_ARCHIVED_PAGES = 10;
   const sessions: GlobalSession[] = [];
   let cursor: number | undefined;
+  let pages = 0;
   do {
     const response = await client.experimental.session.list({ archived: true, cursor, limit: 100 });
     sessions.push(...requireData(response.data, 'archived session list request'));
     const next = response.response?.headers.get('x-next-cursor');
     cursor = next ? Number(next) : undefined;
-  } while (cursor !== undefined);
+    pages += 1;
+  } while (cursor !== undefined && pages < MAX_ARCHIVED_PAGES);
   return sessions;
 }
 
