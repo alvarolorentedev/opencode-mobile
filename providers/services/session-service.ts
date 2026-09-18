@@ -60,9 +60,25 @@ export async function listArchivedSessions(client: OpencodeClient) {
   return sessions;
 }
 
+const MESSAGE_PAGE_SIZE = 100;
+
 export async function getSessionMessages(client: OpencodeClient, sessionId: string) {
-  const response = await client.session.messages({ sessionID: sessionId });
-  return requireData(response.data, 'session messages request');
+  // ponytail: paginate to avoid OOM in RN's OkHttp layer which buffers full responses.
+  const allMessages: NonNullable<Awaited<ReturnType<typeof client.session.messages>>['data']> = [];
+  let before: string | undefined;
+
+  while (true) {
+    const response = await client.session.messages({ sessionID: sessionId, limit: MESSAGE_PAGE_SIZE, before });
+    const page = requireData(response.data, 'session messages request');
+    for (const msg of page) {
+      allMessages.push(msg);
+    }
+    if (page.length < MESSAGE_PAGE_SIZE) break;
+    before = page[page.length - 1]?.info?.id;
+    if (!before) break;
+  }
+
+  return allMessages;
 }
 
 export async function getSessionDiff(client: OpencodeClient, sessionId: string) {
