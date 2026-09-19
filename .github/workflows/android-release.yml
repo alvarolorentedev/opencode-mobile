@@ -18,7 +18,7 @@ jobs:
   build-android:
     runs-on: ubuntu-latest
     permissions:
-      contents: read
+      contents: write
 
     env:
       EXPO_APP_VARIANT: production
@@ -98,6 +98,14 @@ jobs:
           path: |
             android/app/build/outputs/**/*.aab
             android/app/build/outputs/**/*.apk
+
+      - name: Upload to GitHub Release
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v3
+        with:
+          files: |
+            android/app/build/outputs/bundle/release/app-release.aab
+            android/app/build/outputs/apk/release/*.apk
 
       - name: Upload to Play Store (internal)
         if: ${{ (github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')) || (github.event_name == 'workflow_dispatch' && inputs.upload_to_play_store) }}
