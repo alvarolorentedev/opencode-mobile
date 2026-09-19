@@ -99,13 +99,15 @@ jobs:
             android/app/build/outputs/**/*.aab
             android/app/build/outputs/**/*.apk
 
+      - name: Rename APK for release
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: cp android/app/build/outputs/apk/release/app-release.apk opencode-mobile.apk
+
       - name: Upload to GitHub Release
         if: startsWith(github.ref, 'refs/tags/v')
         uses: softprops/action-gh-release@v3
         with:
-          files: |
-            android/app/build/outputs/bundle/release/app-release.aab
-            android/app/build/outputs/apk/release/*.apk
+          files: opencode-mobile.apk
 
       - name: Upload to Play Store (internal)
         if: ${{ (github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')) || (github.event_name == 'workflow_dispatch' && inputs.upload_to_play_store) }}

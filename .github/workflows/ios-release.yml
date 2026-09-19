@@ -175,11 +175,15 @@ jobs:
           path: ${{ runner.temp }}/ios-build/*.ipa
           if-no-files-found: error
 
+      - name: Rename IPA for release
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: cp "$RUNNER_TEMP/ios-build/"*.ipa opencode-mobile.ipa
+
       - name: Upload to GitHub Release
         if: startsWith(github.ref, 'refs/tags/v')
         uses: softprops/action-gh-release@v3
         with:
-          files: ${{ runner.temp }}/ios-build/*.ipa
+          files: opencode-mobile.ipa
 
       - name: Upload to App Store Connect
         if: ${{ (github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')) || (github.event_name == 'workflow_dispatch' && inputs.upload_to_app_store) }}
