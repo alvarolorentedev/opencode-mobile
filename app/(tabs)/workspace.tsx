@@ -48,6 +48,7 @@ export default function WorkspaceScreen() {
     refreshWorkspaceStatus,
     renameSession,
     selectProject,
+    serverCapabilities,
     serverRootPath,
     sessionPreviewById,
     sessionStatuses,
@@ -224,8 +225,8 @@ export default function WorkspaceScreen() {
                 onDismiss={() => setSessionActionId(undefined)}
                 anchor={<IconButton icon="dots-vertical" accessibilityLabel={`Actions for ${session.title || 'Untitled chat'}`} onPress={() => setSessionActionId(session.id)} />}>
                 <Menu.Item title="Rename" leadingIcon="pencil" onPress={() => { setSessionActionId(undefined); setRenamingSessionId(session.id); setRenameValue(session.title || ''); }} />
-                <Menu.Item title={session.share?.url ? 'Unshare' : 'Share'} leadingIcon="share-variant" onPress={() => { setSessionActionId(undefined); confirmShare(session); }} />
-                <Menu.Item title="Archive" leadingIcon="archive-outline" disabled={updatingSessionId === session.id} onPress={() => { setSessionActionId(undefined); void handleArchive(session.id); }} />
+                {serverCapabilities.share ? <Menu.Item title={session.share?.url ? 'Unshare' : 'Share'} leadingIcon="share-variant" onPress={() => { setSessionActionId(undefined); confirmShare(session); }} /> : null}
+                {serverCapabilities.archive ? <Menu.Item title="Archive" leadingIcon="archive-outline" disabled={updatingSessionId === session.id} onPress={() => { setSessionActionId(undefined); void handleArchive(session.id); }} /> : null}
                 <Menu.Item title="Delete" leadingIcon="delete-outline" titleStyle={{ color: palette.danger }} onPress={() => { setSessionActionId(undefined); confirmDelete(session); }} />
               </Menu>
             </View>
@@ -281,7 +282,7 @@ export default function WorkspaceScreen() {
       <SegmentedButtons value={activePanel} onValueChange={(value) => setActivePanel(value as typeof activePanel)} buttons={[{ value: 'chats', label: 'Chats' }, { value: 'files', label: 'Files' }, { value: 'tools', label: 'Tools' }]} />
 
       {activePanel === 'chats' ? <Card mode="contained" style={[styles.card, { backgroundColor: palette.surface }]}>
-        <Card.Title title={showArchived ? 'Archived chats' : 'Chats'} subtitle={showArchived ? 'Restore or permanently delete chats.' : activeProject ? 'Current and running chats appear first.' : 'Choose a project to load chats.'} right={() => <IconButton icon={showArchived ? 'archive-remove-outline' : 'archive-outline'} accessibilityLabel={showArchived ? 'Show active chats' : 'Show archived chats'} onPress={() => { setShowArchived((value) => !value); if (!showArchived) void refreshArchivedSessions(); }} />} />
+        <Card.Title title={showArchived ? 'Archived chats' : 'Chats'} subtitle={showArchived ? 'Restore or permanently delete chats.' : activeProject ? 'Current and running chats appear first.' : 'Choose a project to load chats.'} right={serverCapabilities.archive ? () => <IconButton icon={showArchived ? 'archive-remove-outline' : 'archive-outline'} accessibilityLabel={showArchived ? 'Show active chats' : 'Show archived chats'} onPress={() => { setShowArchived((value) => !value); if (!showArchived) void refreshArchivedSessions(); }} /> : undefined} />
         <Card.Content style={styles.listContent}>
           {showArchived ? archivedSessions.length === 0 ? <Text style={[styles.emptyText, { color: palette.muted }]}>No archived chats.</Text> : archivedSessions.map((session, index) => <View key={session.id}><View style={styles.archiveRow}><View style={styles.archiveCopy}><Text variant="titleMedium" style={{ color: palette.text }}>{session.title || 'Untitled chat'}</Text><Text style={{ color: palette.muted }}>{session.directory} · {formatRelativeTime(session.time.updated)}</Text></View><View style={styles.iconActions}><IconButton icon="restore" accessibilityLabel={`Restore ${session.title || 'Untitled chat'}`} loading={updatingArchivedSessionId === session.id} onPress={() => void handleArchivedSession(session.id, 'restore')} /><IconButton icon="delete-outline" iconColor={palette.danger} accessibilityLabel={`Delete ${session.title || 'Untitled chat'}`} disabled={updatingArchivedSessionId === session.id} onPress={() => confirmDestructive('Delete archived session?', `“${session.title || 'Untitled chat'}” and all of its data will be permanently deleted.`, 'Delete', () => void handleArchivedSession(session.id, 'delete'))} /></View></View>{index < archivedSessions.length - 1 ? <Divider /> : null}</View>) : <>{!activeProject ? <Text style={{ color: palette.muted }}>Select a project first.</Text> : null}{activeProject && orderedSessions.length === 0 ? <Text style={{ color: palette.muted }}>No chats in this workspace yet.</Text> : null}{orderedSessions.map((session, index) => renderSessionItem(session, index, orderedSessions.length))}</>}
         </Card.Content>
@@ -294,7 +295,7 @@ export default function WorkspaceScreen() {
             <TextInput testID="workspace-file-search" mode="outlined" dense placeholder="Search files" value={fileQuery} onChangeText={setFileQuery} style={styles.renameInput} />
             <Button mode="contained" onPress={() => void searchWorkspaceFiles(fileQuery).catch((reason) => setError(reason instanceof Error ? reason.message : 'Could not search workspace files.'))}>Search</Button>
           </View>
-          {workspaceFileStatuses.length > 0 ? <Text style={{ color: palette.muted }}>{workspaceFileStatuses.length} changed files</Text> : null}
+          {serverCapabilities.fileStatus && workspaceFileStatuses.length > 0 ? <Text style={{ color: palette.muted }}>{workspaceFileStatuses.length} changed files</Text> : null}
           {workspaceFiles.map((path) => <List.Item key={path} title={path} onPress={() => void openWorkspaceFile(path).catch((reason) => setError(reason instanceof Error ? reason.message : 'Could not open the file.'))} />)}
           {selectedWorkspaceFile ? (
             <View style={[styles.filePreview, { borderColor: palette.border, backgroundColor: palette.background }]}>
@@ -331,16 +332,20 @@ export default function WorkspaceScreen() {
               ) : (
                 <>
                   <Text selectable style={[styles.code, { color: palette.text }]}>{selectedWorkspaceFile.content.content}</Text>
-                  <Button
-                    mode="outlined"
-                    style={styles.selfStart}
-                    onPress={() => setEditingFile({
-                      path: selectedWorkspaceFile.path,
-                      original: selectedWorkspaceFile.content.content,
-                      value: selectedWorkspaceFile.content.content,
-                    })}>
-                    Edit
-                  </Button>
+                  {serverCapabilities.fileSave ? (
+                    <Button
+                      mode="outlined"
+                      style={styles.selfStart}
+                      onPress={() => setEditingFile({
+                        path: selectedWorkspaceFile.path,
+                        original: selectedWorkspaceFile.content.content,
+                        value: selectedWorkspaceFile.content.content,
+                      })}>
+                      Edit
+                    </Button>
+                  ) : (
+                    <Text style={{ color: palette.muted }}>Editing is not available on this server.</Text>
+                  )}
                 </>
               )}
             </View>
@@ -400,24 +405,26 @@ export default function WorkspaceScreen() {
                     <Text selectable style={{ color: palette.muted }}>{detail}</Text>
                   </View>
                   <View style={styles.iconActions}>
-                    <IconButton
-                      icon="backup-restore"
-                      accessibilityLabel={`Reset ${title}`}
-                      loading={updatingWorktree === directory}
-                      disabled={updatingWorktree === directory}
-                      iconColor={palette.danger}
-                      onPress={() => confirmDestructive(
-                        'Reset worktree?',
-                        `This discards uncommitted changes in ${directory}.`,
-                        'Reset',
-                        () => {
-                          setUpdatingWorktree(directory);
-                          void resetWorktree(directory)
-                            .catch((reason) => setError(reason instanceof Error ? reason.message : 'Could not reset the worktree.'))
-                            .finally(() => setUpdatingWorktree(undefined));
-                        },
-                      )}
-                    />
+                    {serverCapabilities.worktreeReset ? (
+                      <IconButton
+                        icon="backup-restore"
+                        accessibilityLabel={`Reset ${title}`}
+                        loading={updatingWorktree === directory}
+                        disabled={updatingWorktree === directory}
+                        iconColor={palette.danger}
+                        onPress={() => confirmDestructive(
+                          'Reset worktree?',
+                          `This discards uncommitted changes in ${directory}.`,
+                          'Reset',
+                          () => {
+                            setUpdatingWorktree(directory);
+                            void resetWorktree(directory)
+                              .catch((reason) => setError(reason instanceof Error ? reason.message : 'Could not reset the worktree.'))
+                              .finally(() => setUpdatingWorktree(undefined));
+                          },
+                        )}
+                      />
+                    ) : null}
                     <IconButton
                       icon="delete-outline"
                       accessibilityLabel={`Remove ${title}`}

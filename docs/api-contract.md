@@ -2,11 +2,21 @@
 
 ## Scope And Compatibility
 
-This is the client-side OpenCode contract implemented by the app. The code targets `@opencode-ai/sdk` 1.18.3 and imports generated request and response types directly. It is latest-only support: the app does not carry compatibility shims for older OpenCode endpoint shapes.
+This is the client-side OpenCode contract implemented by the app. It supports two server contracts:
+
+- OpenCode 1.x: unprefixed paths such as `/path` and `/session`, spoken through `@opencode-ai/sdk` 1.18.3 (`@opencode-ai/sdk/v2/client`). This is the app's domain type source and remains the default.
+- OpenCode 2.x: `/api`-prefixed paths spoken through `@opencode/client` 2.0.12. A V2 adapter normalizes V2 responses and events back into the app's existing 1.x-shaped domain types.
+
+`detectServerContract()` probes `/api/info` or `/api/health` for V2 and `/global/health` for V1. The resolved contract is stored in provider state and selects which client `buildClient()` constructs.
+
+The V2 adapter is best-effort and does not cover every 1.x feature. Unsupported on V2: session share/unshare, archive/restore, server-side todos, title summarization (`summarize`), `file.status`, `vcs.apply`, `find.text`/`find.symbol`, LSP and formatter diagnostics, and remote-MCP OAuth start/callback. These degrade to empty results or explicit errors.
+
+`getServerCapabilities(contract)` in `providers/opencode-provider-utils.ts` turns the resolved contract into UI-facing flags (`share`, `archive`, `todos`, `summarize`, `fileSave`, `fileStatus`, `lsp`, `formatter`, `mcpOAuth`, `configWrite`, `worktreeReset`). The provider exposes them as `serverCapabilities`, and screens/components hide the corresponding actions on V2 instead of letting them fail at tap time. All flags are `true` for V1.
 
 The authoritative implementation is:
 
 - `lib/opencode/client.ts`
+- `lib/opencode/v2-client.ts`
 - `lib/opencode/types.ts`
 - `providers/services/*.ts`
 - `providers/opencode-provider.tsx`

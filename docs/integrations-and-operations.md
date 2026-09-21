@@ -46,7 +46,11 @@ Current request failures are surfaced mainly as:
 - dialog errors during provider configuration
 - voice feedback errors
 
-For connection failures caused by pointing at a web UI root instead of the OpenCode API base URL, the connection message should explicitly suggest using an API-prefixed URL such as `/api`.
+For connection failures caused by pointing at a web UI root instead of the OpenCode API base URL, the connection message should explicitly suggest using an API-prefixed URL such as `/api`. Web-UI responses (`text/html` or the SDK's "not supported by this version" error), 404s, and JSON parse failures all map to a message that names the address and the suggested API base.
+
+The suggestion must never append `/api` to a URL that already ends in `/api`; when the configured URL is already an API base, the message instead reminds the user that the app supports OpenCode 1.x and 2.x servers and to verify the API base URL.
+
+Before each connect attempt the app probes the server contract. A V2 server is spoken through the `@opencode/client` adapter; a V1 server keeps the existing SDK path. Detection failures fall back to V1 so current behavior is preserved.
 
 The implementation favors user-facing recovery over deep error taxonomy.
 

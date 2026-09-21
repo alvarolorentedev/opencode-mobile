@@ -20,6 +20,7 @@ Primary fields:
 
 - `settings`
 - `connection`
+- `serverContract`
 - `currentProjectPath`
 - `serverRootPath`
 - `eventStreamStatus`
@@ -28,6 +29,7 @@ Meaning:
 
 - `settings` are user-entered connection parameters
 - `connection` is the user-facing connection state machine
+- `serverContract` is the resolved server API contract (`v1` or `v2`), set by probing during `connect()` and used to select the client implementation
 - `currentProjectPath` is the server's notion of current project
 - `serverRootPath` is the root directory reported by the server
 - `eventStreamStatus` tracks real-time subscription health independently of connection state

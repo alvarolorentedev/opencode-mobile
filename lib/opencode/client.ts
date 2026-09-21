@@ -8,6 +8,10 @@ import {
 import { encode as encodeBase64 } from 'base-64';
 import Constants from 'expo-constants';
 
+import { buildV2Client } from './v2-client';
+
+export type ServerContract = 'v1' | 'v2';
+
 export type PendingPermissionRequest = PermissionRequest;
 export type PendingQuestionRequest = QuestionRequest;
 export type PendingQuestionAnswer = QuestionAnswer;
@@ -41,7 +45,7 @@ export type ScopedOpencodeClient = OpencodeClient & {
   __opencode: ClientMetadata;
 };
 
-function joinUrlPath(prefix: string, pathname: string) {
+export function joinUrlPath(prefix: string, pathname: string) {
   const normalizedPrefix = prefix === '/' ? '' : prefix.replace(/\/$/, '');
   const normalizedPathname = pathname.startsWith('/') ? pathname : `/${pathname}`;
   return `${normalizedPrefix}${normalizedPathname}`;
@@ -118,13 +122,24 @@ function getConnectionErrorMessage(error: unknown, serverUrl: string) {
 
   const normalizedUrl = normalized.displayUrl;
   const message = error.message || 'Something went wrong while talking to OpenCode.';
+  const alreadyApiBase = /\/api$/i.test(normalizedUrl);
+  const apiHint = alreadyApiBase
+    ? ''
+    : ` If this address serves a web UI, use its API base URL instead, usually ${normalizedUrl}/api.`;
+  const versionHint = alreadyApiBase
+    ? ' This app supports OpenCode 1.x and 2.x servers; verify the API base URL is correct.'
+    : '';
+
+  if (/text\/html/i.test(message) || /not supported by this version/i.test(message)) {
+    return `The server at ${normalizedUrl} returned a web page instead of the OpenCode API.${apiHint}${versionHint}`;
+  }
 
   if (/404|not found/i.test(message)) {
-    return `OpenCode endpoint not found at ${normalizedUrl}. If this address serves a web UI, use the API base URL instead, usually ${normalizedUrl}/api.`;
+    return `OpenCode endpoint not found at ${normalizedUrl}.${apiHint}${versionHint}`;
   }
 
   if (/json/i.test(message) && /unexpected|parse|token/i.test(message)) {
-    return `The server at ${normalizedUrl} did not return an OpenCode API response. If this address serves a web UI, use the API base URL instead, usually ${normalizedUrl}/api.`;
+    return `The server at ${normalizedUrl} did not return an OpenCode API response.${apiHint}${versionHint}`;
   }
 
   return message;
@@ -140,7 +155,7 @@ function createAuthHeader(settings: OpencodeConnectionSettings) {
   return `Basic ${encodeBase64(`${username}:${password}`)}`;
 }
 
-function getRequestHeaders(settings: OpencodeConnectionSettings) {
+export function getRequestHeaders(settings: OpencodeConnectionSettings) {
   const authHeader = createAuthHeader(settings);
   return authHeader
     ? {
@@ -149,7 +164,43 @@ function getRequestHeaders(settings: OpencodeConnectionSettings) {
     : undefined;
 }
 
-export function buildClient(settings: OpencodeConnectionSettings): ScopedOpencodeClient {
+export function getServerBase(serverUrl: string) {
+  return normalizeServerUrl(serverUrl);
+}
+
+export function createPrefixFetch(origin: string, pathPrefix: string) {
+  return async (input: RequestInfo | URL, init?: RequestInit) => {
+    const currentUrl =
+      typeof input === 'string'
+        ? input
+        : input instanceof URL
+          ? input.toString()
+          : input.url;
+    const parsed = new URL(currentUrl, origin);
+
+    if (parsed.origin === origin && pathPrefix && !parsed.pathname.startsWith(`${pathPrefix}/`) && parsed.pathname !== pathPrefix) {
+      parsed.pathname = joinUrlPath(pathPrefix, parsed.pathname);
+    }
+
+    if (typeof input === 'string' || input instanceof URL) {
+      return fetch(parsed.toString(), init);
+    }
+
+    return fetch(parsed.toString(), {
+      body: input.method === 'GET' || input.method === 'HEAD' ? undefined : await input.text(),
+      credentials: input.credentials,
+      headers: input.headers,
+      method: input.method,
+      signal: input.signal,
+    });
+  };
+}
+
+export function buildClient(settings: OpencodeConnectionSettings, contract: ServerContract = 'v1'): ScopedOpencodeClient {
+  if (contract === 'v2') {
+    return buildV2Client(settings);
+  }
+
   const normalizedServerUrl = normalizeServerUrl(settings.serverUrl);
   const headers = getRequestHeaders(settings);
   const directory = settings.directory.trim() || undefined;
@@ -170,6 +221,7 @@ export function buildPtyWebSocketUrl(
   settings: Pick<OpencodeConnectionSettings, 'serverUrl' | 'directory'>,
   ptyId: string,
   options?: { ticket?: string; cursor?: string },
+  contract: ServerContract = 'v1',
 ) {
   const server = normalizeServerUrl(settings.serverUrl);
   if (!server.valid) {
@@ -178,12 +230,76 @@ export function buildPtyWebSocketUrl(
 
   const url = new URL(server.origin);
   url.protocol = url.protocol === 'https:' ? 'wss:' : 'ws:';
-  url.pathname = joinUrlPath(server.pathPrefix, `/pty/${encodeURIComponent(ptyId)}/connect`);
   const directory = settings.directory.trim();
-  if (directory) url.searchParams.set('directory', directory);
+
+  if (contract === 'v2') {
+    // V2 bakes /api into its routes and scopes WebSockets with location[directory].
+    const prefix = server.pathPrefix.replace(/\/api$/, '');
+    url.pathname = joinUrlPath(prefix, `/api/pty/${encodeURIComponent(ptyId)}/connect`);
+    if (directory) url.searchParams.set('location[directory]', directory);
+  } else {
+    url.pathname = joinUrlPath(server.pathPrefix, `/pty/${encodeURIComponent(ptyId)}/connect`);
+    if (directory) url.searchParams.set('directory', directory);
+  }
+
   if (options?.ticket) url.searchParams.set('ticket', options.ticket);
   if (options?.cursor) url.searchParams.set('cursor', options.cursor);
   return url.toString();
+}
+
+type ContractProbeResult = { contract: ServerContract; version?: string };
+
+async function probeJson(origin: string, pathPrefix: string, path: string, headers?: HeadersInit) {
+  const url = `${origin}${joinUrlPath(pathPrefix, path)}`;
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 5000);
+  try {
+    const response = await fetch(url, { headers, signal: controller.signal });
+    if (!response.ok) {
+      return undefined;
+    }
+    const contentType = response.headers.get('content-type') || '';
+    if (contentType.includes('text/html')) {
+      return undefined;
+    }
+    return (await response.json().catch(() => undefined)) as Record<string, unknown> | undefined;
+  } catch {
+    return undefined;
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
+export async function detectServerContract(settings: OpencodeConnectionSettings): Promise<ContractProbeResult> {
+  const base = normalizeServerUrl(settings.serverUrl);
+  if (!base.valid) {
+    return { contract: 'v1' };
+  }
+
+  const headers = getRequestHeaders(settings);
+  // V2 mounts its API under /api; V1 uses unprefixed paths. A configured /api suffix
+  // is the API mount itself, not a proxy prefix, so probe from the bare origin.
+  const prefixWithoutApi = base.pathPrefix.replace(/\/api$/, '');
+
+  // Run all probes concurrently so an unreachable server costs one timeout, not three.
+  const [info, apiHealth, health] = await Promise.all([
+    probeJson(base.origin, prefixWithoutApi, '/api/info', headers),
+    probeJson(base.origin, prefixWithoutApi, '/api/health', headers),
+    probeJson(base.origin, base.pathPrefix, '/global/health', headers),
+  ]);
+
+  if (info && typeof info.version === 'string') {
+    return { contract: 'v2', version: info.version };
+  }
+  if (apiHealth && (apiHealth.healthy === true || typeof apiHealth.version === 'string')) {
+    return { contract: 'v2', version: typeof apiHealth.version === 'string' ? apiHealth.version : undefined };
+  }
+  if (health && typeof health.version === 'string') {
+    return { contract: 'v1', version: health.version };
+  }
+
+  // Unknown or unavailable: keep the existing V1 behavior so current messages win.
+  return { contract: 'v1' };
 }
 
 export function getNormalizedServerUrl(serverUrl: string) {

@@ -58,6 +58,7 @@ export function ChatView() {
     promptError,
     sendingState,
     settings,
+    serverCapabilities,
     sessionStatuses,
     sessions,
     setAutoApprove,
@@ -535,6 +536,7 @@ export function ChatView() {
 
         <ChatComposer
           attachments={attachments}
+          autoApproveAvailable={serverCapabilities.configWrite}
           availableAgents={availableAgents}
           chatPreferences={chatPreferences}
           connectionStatus={connection.status}

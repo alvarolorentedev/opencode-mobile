@@ -5,7 +5,7 @@ import * as Notifications from 'expo-notifications';
 import * as TaskManager from 'expo-task-manager';
 import { Platform } from 'react-native';
 
-import { buildClient, type OpencodeConnectionSettings } from '@/lib/opencode/client';
+import { buildClient, detectServerContract, type OpencodeConnectionSettings } from '@/lib/opencode/client';
 import { getConnectionPassword } from '@/lib/connection-password';
 import { PENDING_NOTIFICATION_SESSIONS_STORAGE_KEY, SETTINGS_STORAGE_KEY } from '@/lib/storage-keys';
 
@@ -149,12 +149,14 @@ if (Platform.OS !== 'web' && !TaskManager.isTaskDefined(CHAT_COMPLETION_TASK_NAM
         }
 
         try {
-          const client = buildClient({
+          const settings: OpencodeConnectionSettings = {
             serverUrl: pending.settings.serverUrl,
             username: pending.settings.username,
             password: await getConnectionPassword(),
             directory: pending.projectPath,
-          });
+          };
+          const contract = (await detectServerContract(settings).catch(() => ({ contract: 'v1' as const }))).contract;
+          const client = buildClient(settings, contract);
           const [statusesResponse, sessionsResponse] = await Promise.all([
             client.session.status(),
             client.session.list(),
