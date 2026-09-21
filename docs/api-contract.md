@@ -7,7 +7,9 @@ This is the client-side OpenCode contract implemented by the app. It supports tw
 - OpenCode 1.x: unprefixed paths such as `/path` and `/session`, spoken through `@opencode-ai/sdk` 1.18.3 (`@opencode-ai/sdk/v2/client`). This is the app's domain type source and remains the default.
 - OpenCode 2.x: `/api`-prefixed paths spoken through `@opencode/client` 2.0.12. A V2 adapter normalizes V2 responses and events back into the app's existing 1.x-shaped domain types.
 
-`detectServerContract()` probes `/api/info` or `/api/health` for V2 and `/global/health` for V1. The resolved contract is stored in provider state and selects which client `buildClient()` constructs.
+`detectServerContract()` probes `/api/info`, `/api/health`, and `/global/health` concurrently. A `/global/health` response reporting a `1.x` version wins as V1, because newer 1.x servers also expose some `/api` compatibility routes. V2 is only selected when `/api/info` returns a V2 `ServerInfo` shape (`version` plus `pid`/`urls`/`paths`) or `/api/health` reports `healthy: true` without a 1.x signal. The resolved contract is stored in provider state and selects which client `buildClient()` constructs.
+
+Because a probe can still misclassify a hybrid server, `connect()` tries the detected contract first and falls back to the other one when workspace discovery fails with a contract-mismatch error (`UnsupportedContentType`, `UnexpectedStatus`, `MalformedResponse`, or an HTML response). Only after both fail is a connection error surfaced.
 
 The V2 adapter is best-effort and does not cover every 1.x feature. Unsupported on V2: session share/unshare, archive/restore, server-side todos, title summarization (`summarize`), `file.status`, `vcs.apply`, `find.text`/`find.symbol`, LSP and formatter diagnostics, and remote-MCP OAuth start/callback. These degrade to empty results or explicit errors.
 

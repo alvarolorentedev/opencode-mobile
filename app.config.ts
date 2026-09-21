@@ -24,7 +24,7 @@ const withCleartextTraffic = (config: ExpoConfig) => withAndroidManifest(config,
 const config: ExpoConfig = {
   name: isDevelopmentVariant ? 'OpenCode Mobile Dev' : 'OpenCode Mobile',
   slug: 'opencode-mobile',
-  version: '1.0.13',
+  version: '1.0.14',
   orientation: 'portrait',
   icon: './assets/images/icon.png',
   scheme: 'opencodemobile',
@@ -32,7 +32,7 @@ const config: ExpoConfig = {
   newArchEnabled: true,
   android: {
     package: androidPackage,
-    versionCode: 13,
+    versionCode: 14,
     adaptiveIcon: {
       foregroundImage: './assets/images/adaptive-icon.png',
       backgroundColor: "#202020"
@@ -47,7 +47,7 @@ const config: ExpoConfig = {
   },
   ios: {
     bundleIdentifier: 'app.getopencode.mobile',
-    buildNumber: '13',
+    buildNumber: '14',
     infoPlist: {
       ITSAppUsesNonExemptEncryption: false,
       NSPhotoLibraryUsageDescription: 'Allow OpenCode Mobile to access photos you choose to attach to chat messages.',

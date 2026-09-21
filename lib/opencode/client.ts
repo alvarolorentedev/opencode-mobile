@@ -130,6 +130,14 @@ function getConnectionErrorMessage(error: unknown, serverUrl: string) {
     ? ' This app supports OpenCode 1.x and 2.x servers; verify the API base URL is correct.'
     : '';
 
+  if (/unsupported.?content.?type|malformed.?response/i.test(message)) {
+    return `The server at ${normalizedUrl} did not return an OpenCode API response.${apiHint}${versionHint}`;
+  }
+
+  if (/^UnexpectedStatus$/i.test(message)) {
+    return `OpenCode endpoint not found at ${normalizedUrl}.${apiHint}${versionHint}`;
+  }
+
   if (/text\/html/i.test(message) || /not supported by this version/i.test(message)) {
     return `The server at ${normalizedUrl} returned a web page instead of the OpenCode API.${apiHint}${versionHint}`;
   }
@@ -288,11 +296,24 @@ export async function detectServerContract(settings: OpencodeConnectionSettings)
     probeJson(base.origin, base.pathPrefix, '/global/health', headers),
   ]);
 
-  if (info && typeof info.version === 'string') {
-    return { contract: 'v2', version: info.version };
+  const v1Health = health && typeof health.version === 'string' && /^1\./.test(health.version) ? health.version : undefined;
+  // V2 exposes a ServerInfo at /api/info ({ version, pid, urls, paths }); require that
+  // shape so a V1 server's /api compatibility routes are not mistaken for V2.
+  const v2Info = info && typeof info.version === 'string' && (typeof info.pid === 'number' || Array.isArray(info.urls) || Boolean(info.paths))
+    ? info.version
+    : undefined;
+  const v2Health = apiHealth && apiHealth.healthy === true ? (typeof apiHealth.version === 'string' ? apiHealth.version : '') : undefined;
+
+  // An explicit 1.x health version is the strongest signal: newer V1 servers also
+  // serve some /api routes, and picking V2 there breaks real requests.
+  if (v1Health) {
+    return { contract: 'v1', version: v1Health };
   }
-  if (apiHealth && (apiHealth.healthy === true || typeof apiHealth.version === 'string')) {
-    return { contract: 'v2', version: typeof apiHealth.version === 'string' ? apiHealth.version : undefined };
+  if (v2Info !== undefined) {
+    return { contract: 'v2', version: v2Info };
+  }
+  if (v2Health !== undefined && !v1Health) {
+    return { contract: 'v2', version: v2Health || undefined };
   }
   if (health && typeof health.version === 'string') {
     return { contract: 'v1', version: health.version };
@@ -312,6 +333,13 @@ export function isValidServerUrl(serverUrl: string) {
 
 export function getConnectionError(serverUrl: string, error: unknown) {
   return getConnectionErrorMessage(error, serverUrl);
+}
+
+export function isContractMismatchError(error: unknown) {
+  if (!(error instanceof Error)) {
+    return false;
+  }
+  return /unsupported.?content.?type|unexpectedstatus|malformed.?response|text\/html|not supported by this version/i.test(error.message);
 }
 
 export async function listPendingInteractions(client: ScopedOpencodeClient) {

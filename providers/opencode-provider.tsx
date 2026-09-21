@@ -36,6 +36,7 @@ import {
   detectServerContract,
   getConnectionError,
   getNormalizedServerUrl,
+  isContractMismatchError,
   isValidServerUrl,
   listPendingInteractions,
   rejectPendingQuestion,
@@ -1140,56 +1141,76 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
       message: `Connecting to ${getNormalizedServerUrl(settingsRef.current.serverUrl)}...`,
     });
 
-    let contract = serverContractRef.current;
+    let detectedContract = serverContractRef.current;
     try {
-      contract = (await detectServerContract(settingsRef.current)).contract;
+      detectedContract = (await detectServerContract(settingsRef.current)).contract;
     } catch {
-      contract = serverContractRef.current;
-    }
-    if (contract !== serverContractRef.current) {
-      serverContractRef.current = contract;
-      setServerContract(contract);
+      detectedContract = serverContractRef.current;
     }
 
-    const activeCatalogClient = buildClient({ ...settingsRef.current, directory: '' }, contract);
-    catalogGenerationRef.current.set(activeCatalogClient, serverGenerationRef.current);
+    // Newer OpenCode 1.x servers expose some /api compatibility routes, so a probe
+    // can pick the wrong contract. Try the detected one first, then fall back to the
+    // other before reporting a connection failure.
+    const candidates: ServerContract[] = detectedContract === 'v1' ? ['v1', 'v2'] : ['v2', 'v1'];
+    let catalog: WorkspaceCatalog | undefined;
+    let activeCatalogClient: ScopedOpencodeClient | undefined;
+    let usedContract: ServerContract | undefined;
+    let lastError: unknown;
 
-    try {
-      const catalog = await loadWorkspaceCatalog(true, activeCatalogClient);
-      if (!isCurrentCatalogClient(activeCatalogClient)) {
-        return;
+    for (const candidate of candidates) {
+      const candidateClient = buildClient({ ...settingsRef.current, directory: '' }, candidate);
+      catalogGenerationRef.current.set(candidateClient, serverGenerationRef.current);
+      try {
+        const result = await loadWorkspaceCatalog(true, candidateClient);
+        if (!isCurrentCatalogClient(candidateClient)) {
+          return;
+        }
+        catalog = result;
+        activeCatalogClient = candidateClient;
+        usedContract = candidate;
+        break;
+      } catch (error) {
+        lastError = error;
+        if (!isContractMismatchError(error)) {
+          break;
+        }
       }
-      const projectDirectory = catalog.currentProjectPath || catalog.serverRootPath;
+    }
 
+    if (!catalog || !activeCatalogClient || !usedContract) {
       setConnection({
-        status: 'connected',
-        message: `Connected to ${getNormalizedServerUrl(settingsRef.current.serverUrl)} (OpenCode ${contract === 'v2' ? '2.x' : '1.x'})`,
+        status: 'error',
+        message: getConnectionError(settingsRef.current.serverUrl, lastError ?? new Error('Could not reach the OpenCode server.')),
         checkedAt: Date.now(),
-        projectDirectory,
       });
-
-      if (!activeProjectPath && !catalog.currentProjectPath && !catalog.serverProjects[0]?.worktree) {
-        setSessions([]);
-        setSessionStatuses({});
-        setCurrentConfig(undefined);
-        setAvailableProviders([]);
-        setProviderAuthMethodsById({});
-        setAvailableModels([]);
-        setAvailableAgents([]);
-      }
-    } catch (error) {
-      if (!isCurrentCatalogClient(activeCatalogClient)) {
-        return;
-      }
       serverProjectsRef.current = [];
       setServerProjects([]);
       setCurrentProjectPath(undefined);
       setServerRootPath(undefined);
-      setConnection({
-        status: 'error',
-        message: getConnectionError(settingsRef.current.serverUrl, error),
-        checkedAt: Date.now(),
-      });
+      setSessions([]);
+      setSessionStatuses({});
+      setCurrentConfig(undefined);
+      setAvailableProviders([]);
+      setProviderAuthMethodsById({});
+      setAvailableModels([]);
+      setAvailableAgents([]);
+      return;
+    }
+
+    if (usedContract !== serverContractRef.current) {
+      serverContractRef.current = usedContract;
+      setServerContract(usedContract);
+    }
+
+    const projectDirectory = catalog.currentProjectPath || catalog.serverRootPath;
+    setConnection({
+      status: 'connected',
+      message: `Connected to ${getNormalizedServerUrl(settingsRef.current.serverUrl)} (OpenCode ${usedContract === 'v2' ? '2.x' : '1.x'})`,
+      checkedAt: Date.now(),
+      projectDirectory,
+    });
+
+    if (!activeProjectPath && !catalog.currentProjectPath && !catalog.serverProjects[0]?.worktree) {
       setSessions([]);
       setSessionStatuses({});
       setCurrentConfig(undefined);

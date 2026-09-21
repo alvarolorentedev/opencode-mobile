@@ -378,6 +378,34 @@ test('settings do not suggest a duplicated /api base when the API prefix is alre
   await expect(page.getByText(/http:\/\/127\.0\.0\.1:44096\/api\/api/)).toHaveCount(0);
 });
 
+test('a 1.x server exposing /api compatibility routes still connects as 1.x', async ({ page, request }) => {
+  const port = 44696;
+  const server = spawn(process.execPath, ['tests/fake-opencode/server.mjs'], {
+    cwd: process.cwd(),
+    env: {
+      ...process.env,
+      FAKE_OPENCODE_PORT: String(port),
+      FAKE_OPENCODE_SCENARIO: 'happy-path',
+      FAKE_OPENCODE_V2_COMPAT: '1',
+    },
+    stdio: 'inherit',
+  });
+
+  try {
+    await waitForServer(request, `http://127.0.0.1:${port}/global/health`);
+    await openReadyChat(page);
+    await connectToServer(page, `http://127.0.0.1:${port}`);
+    await sendPrompt(page, 'Confirm 1.x stays on 1.x');
+    await expect(page.getByText(/Finished:/).first()).toBeVisible({ timeout: 30_000 });
+
+    await page.getByRole('tab', { name: 'Settings' }).click();
+    await page.getByRole('button', { name: /^Connection/ }).click();
+    await expect(page.getByText(/Connected to http:\/\/127\.0\.0\.1:44696 \(OpenCode 1\.x\)/)).toBeVisible();
+  } finally {
+    server.kill('SIGTERM');
+  }
+});
+
 test('connects to an OpenCode 2 server and completes a prompt', async ({ page, request }) => {
   await resetScenario(request, 'happy-path');
   const port = 44296;

@@ -50,7 +50,7 @@ For connection failures caused by pointing at a web UI root instead of the OpenC
 
 The suggestion must never append `/api` to a URL that already ends in `/api`; when the configured URL is already an API base, the message instead reminds the user that the app supports OpenCode 1.x and 2.x servers and to verify the API base URL.
 
-Before each connect attempt the app probes the server contract. A V2 server is spoken through the `@opencode/client` adapter; a V1 server keeps the existing SDK path. Detection failures fall back to V1 so current behavior is preserved.
+Before each connect attempt the app probes the server contract. A V2 server is spoken through the `@opencode/client` adapter; a V1 server keeps the existing SDK path. A 1.x `/global/health` version always wins over `/api` probes, since newer 1.x servers expose partial `/api` compatibility routes. If discovery under the detected contract fails with a contract-mismatch error, connect retries the other contract before surfacing an error.
 
 The implementation favors user-facing recovery over deep error taxonomy.
 
