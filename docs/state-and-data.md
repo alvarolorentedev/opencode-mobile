@@ -182,6 +182,7 @@ Persisted values:
 - `opencode-mobile.last-session-by-project`
 - `opencode-mobile.pending-notification-sessions`
 - `opencode-mobile.sessions.<projectPath>` / `opencode-mobile.session-statuses.<projectPath>` (per-project cache)
+- `opencode-mobile.favorite-sessions` (cross-workspace favorites, capped at 50, oldest evicted)
 
 Hydration rules:
 

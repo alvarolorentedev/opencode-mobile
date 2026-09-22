@@ -98,10 +98,12 @@ import {
   CONVERSATION_FINAL_RESULT_SETTLE_MS,
   CONVERSATION_KEEP_AWAKE_TAG,
   CONVERSATION_LISTENING_RESTART_MS,
+  FAVORITE_SESSIONS_MAX,
   type AgentOption,
   type ChatPreferences,
   type ConnectionState,
   type ConversationPhase,
+  type FavoriteSession,
   type ModelOption,
   type OpencodeContextValue,
   type OpencodeProject,
@@ -169,6 +171,7 @@ export type {
   ConnectionState,
   ConversationPhase,
   ConversationState,
+  FavoriteSession,
   ModelOption,
   OpencodeContextValue,
   OpencodeProject,
@@ -221,6 +224,7 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
   const [availableAgents, setAvailableAgents] = useState<AgentOption[]>([]);
   const [chatPreferences, setChatPreferences] = useState<ChatPreferences>(defaultChatPreferences);
   const [lastSessionByProject, setLastSessionByProject] = useState<Record<string, string>>({});
+  const [favoriteSessions, setFavoriteSessions] = useState<FavoriteSession[]>([]);
   const [conversationPhase, setConversationPhase] = useState<ConversationPhase>('off');
   const [conversationSessionId, setConversationSessionId] = useState<string>();
   const [queuedConversationPrompt, setQueuedConversationPrompt] = useState<string>();
@@ -290,9 +294,11 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
     defaultSettings: defaultConnectionSettings,
     activeProjectPath,
     chatPreferences,
+    favoriteSessions,
     lastSessionByProject,
     setActiveProjectPath,
     setChatPreferences,
+    setFavoriteSessions,
     setLastSessionByProject,
     setSettings,
     settings,
@@ -724,6 +730,9 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
         delete next[sessionId];
         return next;
       });
+      // Session IDs are global across projects, so removing the session also
+      // invalidates any favorite pointing at it.
+      setFavoriteSessions((current) => current.filter((favorite) => favorite.sessionId !== sessionId));
       if (currentSessionId === sessionId) {
         setCurrentSessionId(undefined);
       }
@@ -745,6 +754,41 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
     if (currentSessionId === sessionId) setCurrentSessionId(undefined);
     await Promise.all([refreshSessions(true), refreshArchivedSessions()]);
   }, [client, currentSessionId, isCurrentClient, refreshArchivedSessions, refreshSessions]);
+
+  const toggleFavoriteSession = useCallback((sessionId: string, projectPath: string, title?: string) => {
+    const trimmedPath = projectPath.trim();
+    if (!sessionId || !trimmedPath) {
+      return;
+    }
+    setFavoriteSessions((current) => {
+      if (current.some((favorite) => favorite.sessionId === sessionId)) {
+        return current.filter((favorite) => favorite.sessionId !== sessionId);
+      }
+      const segment = trimmedPath.split('/').filter(Boolean).pop();
+      const next = [
+        {
+          sessionId,
+          projectPath: trimmedPath,
+          projectLabel: segment || trimmedPath,
+          title: title?.trim() || undefined,
+          favoritedAt: Date.now(),
+        },
+        ...current,
+      ];
+      // New entries prepend, so the oldest favorites sit at the tail.
+      return next.length > FAVORITE_SESSIONS_MAX ? next.slice(0, FAVORITE_SESSIONS_MAX) : next;
+    });
+  }, []);
+
+  const isFavoriteSession = useCallback(
+    (sessionId: string) => favoriteSessions.some((favorite) => favorite.sessionId === sessionId),
+    [favoriteSessions],
+  );
+
+  const clearFavoriteSession = useCallback((sessionId: string) => {
+    setFavoriteSessions((current) => current.filter((favorite) => favorite.sessionId !== sessionId));
+  }, []);
+
 
   const restoreSession = useCallback(async (sessionId: string) => {
     await svcRestoreSession(client, sessionId);
@@ -1161,6 +1205,8 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
     clearProjectState();
   }, [clearProjectState]);
 
+
+
   const connect = useCallback(async () => {
     if (!isValidServerUrl(settingsRef.current.serverUrl)) {
       setConnection({
@@ -1360,6 +1406,17 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
     },
     [connect, selectProject],
   );
+
+  // Deterministic project switch + session open for cross-workspace
+  // navigation. The deep-link flow already owns that state machine (project
+  // validation, scope switch, session reconciliation, not-found reporting), so
+  // favorites reuse it instead of racing selectProject with openSession.
+  const openSessionInProject = useCallback(async (projectPath: string, sessionId: string) => {
+    const result = await openDeepLinkSession({ sessionId, projectPath });
+    if (!result.ok) {
+      throw new Error(result.error || 'Could not open the session.');
+    }
+  }, [openDeepLinkSession]);
 
   useEffect(() => {
     if (!isHydrated || initialConnectStartedRef.current) {
@@ -2724,6 +2781,7 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
       activeProjectPath,
       activeProject,
       selectProject,
+      openSessionInProject,
       serverProjects,
       currentProjectPath,
       serverRootPath,
@@ -2733,6 +2791,10 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
       sessions,
       archivedSessions,
       sessionStatuses,
+      favoriteSessions,
+      toggleFavoriteSession,
+      isFavoriteSession,
+      clearFavoriteSession,
       currentSessionId,
       activeSession,
       currentMessages,
@@ -2900,6 +2962,7 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
       replyToQuestion,
       rejectQuestion,
       selectProject,
+      openSessionInProject,
       setAutoApprove,
       sendPrompt,
       abortSession,
@@ -2908,6 +2971,10 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
       serverCapabilities,
       sessionPreviewById,
       sessionStatuses,
+      favoriteSessions,
+      toggleFavoriteSession,
+      isFavoriteSession,
+      clearFavoriteSession,
       sessions,
       serverProjects,
       settings,
