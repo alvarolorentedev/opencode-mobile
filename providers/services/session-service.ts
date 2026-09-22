@@ -68,6 +68,8 @@ const MAX_MESSAGE_PAGES = 5;
 
 export async function getSessionMessages(client: OpencodeClient, sessionId: string) {
   // ponytail: paginate to avoid OOM in RN's OkHttp layer which buffers full responses.
+  // The server returns the newest page first and pages backwards via an opaque
+  // x-next-cursor; older pages are prepended to keep the transcript chronological.
   const allMessages: NonNullable<Awaited<ReturnType<typeof client.session.messages>>['data']> = [];
   let before: string | undefined;
   let pages = 0;
@@ -75,12 +77,10 @@ export async function getSessionMessages(client: OpencodeClient, sessionId: stri
   while (pages < MAX_MESSAGE_PAGES) {
     const response = await client.session.messages({ sessionID: sessionId, limit: MESSAGE_PAGE_SIZE, before });
     const page = requireData(response.data, 'session messages request');
-    for (const msg of page) {
-      allMessages.push(msg);
-    }
-    if (page.length < MESSAGE_PAGE_SIZE) break;
-    before = page[page.length - 1]?.info?.id;
-    if (!before) break;
+    allMessages.unshift(...page);
+    const next = response.response?.headers.get('x-next-cursor') ?? undefined;
+    if (page.length < MESSAGE_PAGE_SIZE || !next || next === before) break;
+    before = next;
     pages += 1;
   }
 

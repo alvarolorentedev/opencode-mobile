@@ -480,7 +480,13 @@ async function fetchAllMessages(api: V2Api, sessionID: string): Promise<V2Messag
   const messages: V2Message[] = [];
   let cursor: string | undefined;
   for (let page = 0; page < 20; page += 1) {
-    const response = await api.message.list({ sessionID, limit: 200, ...(cursor ? { cursor } : {}) });
+    // V2 lists messages newest-first by default. Request ascending so callers
+    // receive a chronological transcript. The order is encoded into the opaque
+    // cursor, so it must not be repeated on cursor pages (the server rejects
+    // `cursor` combined with `order`).
+    const response = await api.message.list(
+      cursor ? { sessionID, limit: 200, cursor } : { sessionID, limit: 200, order: 'asc' },
+    );
     const page = response.data ?? [];
     messages.push(...page);
     const next = response.cursor?.next ?? undefined;
