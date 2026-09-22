@@ -69,6 +69,7 @@ export default function SettingsScreen() {
     mcpStatuses,
     refreshDiagnostics,
     refreshMcpServers,
+    serverCapabilities,
     settings,
     setMcpServerEnabled,
     startMcpOAuth,
@@ -444,9 +445,10 @@ export default function SettingsScreen() {
                 await WebBrowser.openBrowserAsync(url);
                 return true;
               }}
+              oauthAvailable={serverCapabilities.mcpOAuth}
               palette={palette}
             />
-            <DiagnosticsSection diagnostics={diagnostics} eventStreamStatus={eventStreamStatus} onRefresh={() => void refreshDiagnostics()} palette={palette} />
+            <DiagnosticsSection diagnostics={diagnostics} eventStreamStatus={eventStreamStatus} formatterAvailable={serverCapabilities.formatter} lspAvailable={serverCapabilities.lsp} onRefresh={() => void refreshDiagnostics()} palette={palette} />
           </List.Accordion>
         </List.AccordionGroup>
 

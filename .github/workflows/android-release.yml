@@ -18,7 +18,7 @@ jobs:
   build-android:
     runs-on: ubuntu-latest
     permissions:
-      contents: read
+      contents: write
 
     env:
       EXPO_APP_VARIANT: production
@@ -31,7 +31,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
           cache: npm
 
       - name: Cache Gradle
@@ -45,13 +45,13 @@ jobs:
             gradle-cache-${{ runner.os }}-
 
       - name: Setup Java
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: 17
 
       - name: Setup Android SDK
-        uses: android-actions/setup-android@v3
+        uses: android-actions/setup-android@v4
 
       - name: Install dependencies
         run: npm ci
@@ -98,6 +98,16 @@ jobs:
           path: |
             android/app/build/outputs/**/*.aab
             android/app/build/outputs/**/*.apk
+
+      - name: Rename APK for release
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: cp android/app/build/outputs/apk/release/app-release.apk opencode-mobile.apk
+
+      - name: Upload to GitHub Release
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v3
+        with:
+          files: opencode-mobile.apk
 
       - name: Upload to Play Store (internal)
         if: ${{ (github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')) || (github.event_name == 'workflow_dispatch' && inputs.upload_to_play_store) }}

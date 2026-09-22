@@ -124,7 +124,9 @@ If this app were reimplemented, this provider would be the main source of truth 
 ### OpenCode Protocol Helpers
 
 - `lib/opencode/client.ts`
-  Builds the OpenCode 1.18.3 v2 SDK client, normalizes server URL, adds optional basic auth, and preserves configured URL path prefixes.
+  Normalizes server URL, adds optional basic auth, preserves configured URL path prefixes, probes the server contract, and builds either the OpenCode 1.x SDK client or the V2 adapter.
+- `lib/opencode/v2-client.ts`
+  OpenCode 2.x adapter over `@opencode/client`. Normalizes V2 responses and events back into the app's 1.x-shaped domain types and reports unsupported features explicitly.
 - `lib/opencode/format.ts`
   Converts raw message records into transcript entries and helper labels.
 - `lib/opencode/transcript.ts`

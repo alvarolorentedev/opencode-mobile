@@ -1,6 +1,6 @@
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { FlashList, type FlashListRef } from '@shopify/flash-list';
-import { memo, useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { memo, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { Animated, Easing, RefreshControl, ScrollView, View } from 'react-native';
 import { ActivityIndicator, Button, Card, IconButton, Text, TouchableRipple } from 'react-native-paper';
 
@@ -56,6 +56,14 @@ function TranscriptSkeletonImpl({ palette }: { palette: Palette }) {
 
 const TranscriptSkeleton = memo(TranscriptSkeletonImpl);
 
+// Stable reference so FlashList does not treat every parent render as a prop
+// change. Combined with the memoized TranscriptMessage rows this keeps
+// streaming refreshes from re-rendering untouched rows.
+const MAINTAIN_VISIBLE_CONTENT_POSITION = {
+  autoscrollToBottomThreshold: 0,
+  animateAutoScrollToBottom: false,
+  startRenderingFromBottom: true,
+} as const;
 type DiffDetail = Extract<TranscriptEntry['details'][number], { kind: 'patch' }>;
 
 type ChatContentProps = {
@@ -143,6 +151,8 @@ export function ChatContent({
     previousTranscriptRef.current = { sessionId: currentSessionId, length: displayTranscript.length };
   }, [currentSessionId, displayTranscript.length]);
 
+  const extraData = useMemo(() => ({ copiedMessageId, speakingMessageId }), [copiedMessageId, speakingMessageId]);
+
   return (
     <View style={styles.chatArea}>
       {activeTab === 'session' ? (
@@ -155,14 +165,10 @@ export function ChatContent({
             styles.content,
             currentTodos.length > 0 ? { paddingBottom: todosExpanded ? 320 : 76 } : null,
           ]}
-          extraData={{ copiedMessageId, speakingMessageId }}
+          extraData={extraData}
           keyboardShouldPersistTaps="handled"
           keyExtractor={(entry) => `${entry.id}-${entry.createdAt}`}
-          maintainVisibleContentPosition={{
-            autoscrollToBottomThreshold: 0,
-            animateAutoScrollToBottom: false,
-            startRenderingFromBottom: true,
-          }}
+          maintainVisibleContentPosition={MAINTAIN_VISIBLE_CONTENT_POSITION}
           onContentSizeChange={() => {
             if (!shouldPositionInitialTranscriptRef.current || displayTranscript.length === 0) {
               return;

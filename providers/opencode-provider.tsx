@@ -33,8 +33,10 @@ import { AppState, Platform } from 'react-native';
 import {
   buildClient,
   defaultConnectionSettings,
+  detectServerContract,
   getConnectionError,
   getNormalizedServerUrl,
+  isContractMismatchError,
   isValidServerUrl,
   listPendingInteractions,
   rejectPendingQuestion,
@@ -44,8 +46,11 @@ import {
   type PendingQuestionAnswer,
   type PendingQuestionRequest,
   type OpencodeConnectionSettings,
+  type ServerContract,
+  type ScopedOpencodeClient,
 } from '@/lib/opencode/client';
 import {
+  mergeSessionMessageRecords,
   toTranscriptEntry,
   type SessionMessageRecord,
 } from '@/lib/opencode/format';
@@ -75,9 +80,11 @@ import {
   getModelIdForProvider,
   getProjectLabel,
   getSelectedModelParts,
+  getServerCapabilities,
   groupPendingRequestsBySession,
   isAutoApproveEnabled,
   mergePermissionConfig,
+  recordRecentModelId,
 } from '@/providers/opencode-provider-utils';
 import {
   getConfiguredProviders,
@@ -179,6 +186,7 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
     status: 'idle',
     message: 'Add a server URL and connect to OpenCode.',
   });
+  const [serverContract, setServerContract] = useState<ServerContract>('v1');
   const [activeProjectPath, setActiveProjectPath] = useState<string>();
   const [sessions, setSessions] = useState<Session[]>([]);
   const [archivedSessions, setArchivedSessions] = useState<GlobalSession[]>([]);
@@ -236,6 +244,8 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
   const settingsRef = useRef(settings);
   const activeProjectPathRef = useRef(activeProjectPath);
   const connectionRef = useRef(connection);
+  const serverContractRef = useRef<ServerContract>('v1');
+  serverContractRef.current = serverContract;
   const serverProjectsRef = useRef<Project[]>([]);
   const currentSessionIdRef = useRef<string | undefined>(undefined);
   const pendingDeepLinkTargetRef = useRef<SessionDeepLinkTarget | undefined>(undefined);
@@ -319,10 +329,10 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
   );
 
   const client = useMemo(
-    () => buildClient({ ...settings, directory: activeProjectPath || '' }),
-    [activeProjectPath, settings],
+    () => buildClient({ ...settings, directory: activeProjectPath || '' }, serverContract),
+    [activeProjectPath, serverContract, settings],
   );
-  const catalogClient = useMemo(() => buildClient({ ...settings, directory: '' }), [settings]);
+  const catalogClient = useMemo(() => buildClient({ ...settings, directory: '' }, serverContract), [serverContract, settings]);
   if (!clientGenerationRef.current.has(client)) {
     clientGenerationRef.current.set(client, scopeGenerationRef.current);
   }
@@ -383,14 +393,14 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
   // browseServerPath stub removed
 
   const loadWorkspaceCatalog = useCallback(
-    async (silent = false): Promise<WorkspaceCatalog> => {
+    async (silent = false, targetClient: ScopedOpencodeClient = catalogClient): Promise<WorkspaceCatalog> => {
       if (!silent) {
         setIsRefreshingWorkspaceCatalog(true);
       }
 
       try {
-        const result = await svcLoadWorkspaceCatalog(catalogClient);
-        if (!isCurrentCatalogClient(catalogClient)) {
+        const result = await svcLoadWorkspaceCatalog(targetClient);
+        if (!isCurrentCatalogClient(targetClient)) {
           return result;
         }
         const nextServerProjects = result.serverProjects as Project[];
@@ -471,10 +481,16 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
         if (!isCurrentClient(client)) {
           return data;
         }
-        setMessagesBySession((current) => ({
-          ...current,
-          [sessionId]: data,
-        }));
+        setMessagesBySession((current) => {
+          const previous = current[sessionId] ?? [];
+          const merged = mergeSessionMessageRecords(previous, data);
+          // Returning the same state reference when nothing changed lets React
+          // skip the re-render that downstream useMemos key off this array for.
+          if (merged === previous) {
+            return current;
+          }
+          return { ...current, [sessionId]: merged };
+        });
 
         return data;
       } finally {
@@ -905,6 +921,7 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
       { serverUrl: settings.serverUrl, directory: activeProjectPath || '' },
       ptyId,
       { ticket: token.ticket, cursor: terminalCursorByIdRef.current[ptyId] },
+      serverContractRef.current,
     ));
     terminalSocketRef.current = socket;
     let opened = false;
@@ -1132,42 +1149,76 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
       message: `Connecting to ${getNormalizedServerUrl(settingsRef.current.serverUrl)}...`,
     });
 
+    let detectedContract = serverContractRef.current;
     try {
-      const catalog = await loadWorkspaceCatalog(true);
-      if (!isCurrentCatalogClient(catalogClient)) {
-        return;
-      }
-      const projectDirectory = catalog.currentProjectPath || catalog.serverRootPath;
+      detectedContract = (await detectServerContract(settingsRef.current)).contract;
+    } catch {
+      detectedContract = serverContractRef.current;
+    }
 
+    // Newer OpenCode 1.x servers expose some /api compatibility routes, so a probe
+    // can pick the wrong contract. Try the detected one first, then fall back to the
+    // other before reporting a connection failure.
+    const candidates: ServerContract[] = detectedContract === 'v1' ? ['v1', 'v2'] : ['v2', 'v1'];
+    let catalog: WorkspaceCatalog | undefined;
+    let activeCatalogClient: ScopedOpencodeClient | undefined;
+    let usedContract: ServerContract | undefined;
+    let lastError: unknown;
+
+    for (const candidate of candidates) {
+      const candidateClient = buildClient({ ...settingsRef.current, directory: '' }, candidate);
+      catalogGenerationRef.current.set(candidateClient, serverGenerationRef.current);
+      try {
+        const result = await loadWorkspaceCatalog(true, candidateClient);
+        if (!isCurrentCatalogClient(candidateClient)) {
+          return;
+        }
+        catalog = result;
+        activeCatalogClient = candidateClient;
+        usedContract = candidate;
+        break;
+      } catch (error) {
+        lastError = error;
+        if (!isContractMismatchError(error)) {
+          break;
+        }
+      }
+    }
+
+    if (!catalog || !activeCatalogClient || !usedContract) {
       setConnection({
-        status: 'connected',
-        message: `Connected to ${getNormalizedServerUrl(settingsRef.current.serverUrl)}`,
+        status: 'error',
+        message: getConnectionError(settingsRef.current.serverUrl, lastError ?? new Error('Could not reach the OpenCode server.')),
         checkedAt: Date.now(),
-        projectDirectory,
       });
-
-      if (!activeProjectPath && !catalog.currentProjectPath && !catalog.serverProjects[0]?.worktree) {
-        setSessions([]);
-        setSessionStatuses({});
-        setCurrentConfig(undefined);
-        setAvailableProviders([]);
-        setProviderAuthMethodsById({});
-        setAvailableModels([]);
-        setAvailableAgents([]);
-      }
-    } catch (error) {
-      if (!isCurrentCatalogClient(catalogClient)) {
-        return;
-      }
       serverProjectsRef.current = [];
       setServerProjects([]);
       setCurrentProjectPath(undefined);
       setServerRootPath(undefined);
-      setConnection({
-        status: 'error',
-        message: getConnectionError(settingsRef.current.serverUrl, error),
-        checkedAt: Date.now(),
-      });
+      setSessions([]);
+      setSessionStatuses({});
+      setCurrentConfig(undefined);
+      setAvailableProviders([]);
+      setProviderAuthMethodsById({});
+      setAvailableModels([]);
+      setAvailableAgents([]);
+      return;
+    }
+
+    if (usedContract !== serverContractRef.current) {
+      serverContractRef.current = usedContract;
+      setServerContract(usedContract);
+    }
+
+    const projectDirectory = catalog.currentProjectPath || catalog.serverRootPath;
+    setConnection({
+      status: 'connected',
+      message: `Connected to ${getNormalizedServerUrl(settingsRef.current.serverUrl)} (OpenCode ${usedContract === 'v2' ? '2.x' : '1.x'})`,
+      checkedAt: Date.now(),
+      projectDirectory,
+    });
+
+    if (!activeProjectPath && !catalog.currentProjectPath && !catalog.serverProjects[0]?.worktree) {
       setSessions([]);
       setSessionStatuses({});
       setCurrentConfig(undefined);
@@ -1176,7 +1227,7 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
       setAvailableModels([]);
       setAvailableAgents([]);
     }
-  }, [activeProjectPath, catalogClient, isCurrentCatalogClient, loadWorkspaceCatalog]);
+  }, [activeProjectPath, isCurrentCatalogClient, loadWorkspaceCatalog]);
 
   const ensureActiveSessionRef = useRef(ensureActiveSession);
   ensureActiveSessionRef.current = ensureActiveSession;
@@ -1307,14 +1358,18 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
       return;
     }
 
+    let cancelled = false;
     void ensureActiveSessionRef.current().catch((error) => {
-      if (isCurrentClient(client)) {
+      if (!cancelled && isCurrentClient(client)) {
         setPromptError({
           message: error instanceof Error ? error.message : 'Could not load this project.',
           occurredAt: Date.now(),
         });
       }
     });
+    return () => {
+      cancelled = true;
+    };
   }, [activeProjectPath, client, connection.status, isCurrentClient]);
 
   const refreshCurrentSession = useCallback(
@@ -1423,6 +1478,7 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
         providerId: safeProviderId,
         modelId: nextModelId,
         enabledModelIds,
+        recentModelIds: recordRecentModelId(current.recentModelIds, patch.modelId),
         providerModelSelections:
           safeProviderId && nextModelId
             ? {
@@ -2298,7 +2354,7 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
           return;
         case 'session.diff': {
           const sessionId = event.properties.sessionID;
-          if (event.properties.diff.length > 0) {
+          if (event.properties.diff?.length > 0) {
             setDiffsBySession((current) => ({
               ...current,
               [sessionId]: event.properties.diff,
@@ -2373,7 +2429,7 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
             if (!mounted || abortController.signal.aborted) {
               break;
             }
-            if (envelope?.directory === activeProjectPath) {
+            if (envelope && (envelope.directory === activeProjectPath || !envelope.directory)) {
               setEventStreamStatus('connected');
               retryDelay = 1000;
               handleEvent(envelope.payload);
@@ -2425,25 +2481,15 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
       return;
     }
 
-    const hasBusySession = Object.values(sessionStatuses).some((status) => status.type !== 'idle');
-    const hasConversationActivity = conversationPhase !== 'off';
-    const useSafetyPolling = eventStreamStatus !== 'connected';
-    const shouldKeepSafetyPoll = useSafetyPolling || hasBusySession || sendingState.active || hasConversationActivity;
-
-    if (!shouldKeepSafetyPoll) {
+    if (eventStreamStatus === 'connected') {
       return;
     }
 
     const interval = setInterval(() => {
-      const currentHasBusySession = Object.values(sessionStatuses).some((status) => status.type !== 'idle');
-      const currentHasConversationActivity = conversationPhase !== 'off';
+      void refreshSessions(true);
+      void refreshPendingInteractions();
 
-      if (currentHasConversationActivity || currentHasBusySession || sendingState.active || useSafetyPolling) {
-        void refreshSessions(true);
-        void refreshPendingInteractions();
-      }
-
-      if (currentSessionId && (currentHasConversationActivity || currentHasBusySession || sendingState.active || useSafetyPolling)) {
+      if (currentSessionId) {
         void Promise.all([
           refreshMessages(currentSessionId, true),
           refreshSessionDiff(currentSessionId, true),
@@ -2451,7 +2497,7 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
         ]);
       }
 
-      if (conversationSessionId && conversationSessionId !== currentSessionId && (currentHasConversationActivity || currentHasBusySession || sendingState.active || useSafetyPolling)) {
+      if (conversationSessionId && conversationSessionId !== currentSessionId) {
         void Promise.all([
           refreshMessages(conversationSessionId, true),
           refreshSessionDiff(conversationSessionId, true),
@@ -2461,7 +2507,7 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
     }, 5000);
 
     return () => clearInterval(interval);
-  }, [activeProjectPath, connection.status, conversationPhase, conversationSessionId, currentSessionId, eventStreamStatus, refreshMessages, refreshPendingInteractions, refreshSessionDiff, refreshSessionTodos, refreshSessions, sendingState.active, sessionStatuses]);
+  }, [activeProjectPath, connection.status, conversationSessionId, currentSessionId, eventStreamStatus, refreshMessages, refreshPendingInteractions, refreshSessionDiff, refreshSessionTodos, refreshSessions]);
 
   useEffect(() => {
     const busy = sendingState.active || Object.values(sessionStatuses).some((status) => status.type !== 'idle');
@@ -2556,6 +2602,43 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
     setCurrentSessionId(fallbackSessionId);
   }, [activeProjectPath, currentSessionId, lastSessionByProject, sessions]);
 
+  useEffect(() => {
+    const keepIds = new Set<string>();
+    if (currentSessionId) keepIds.add(currentSessionId);
+    if (conversationSessionId) keepIds.add(conversationSessionId);
+    for (const [id, status] of Object.entries(sessionStatuses)) {
+      if (status.type !== 'idle') keepIds.add(id);
+    }
+
+    setMessagesBySession((current) => {
+      const keys = Object.keys(current);
+      if (keys.length <= keepIds.size + 1) return current;
+      const next: typeof current = {};
+      for (const key of keys) {
+        if (keepIds.has(key)) next[key] = current[key];
+      }
+      return next;
+    });
+    setDiffsBySession((current) => {
+      const keys = Object.keys(current);
+      if (keys.length <= keepIds.size + 1) return current;
+      const next: typeof current = {};
+      for (const key of keys) {
+        if (keepIds.has(key)) next[key] = current[key];
+      }
+      return next;
+    });
+    setTodosBySession((current) => {
+      const keys = Object.keys(current);
+      if (keys.length <= keepIds.size + 1) return current;
+      const next: typeof current = {};
+      for (const key of keys) {
+        if (keepIds.has(key)) next[key] = current[key];
+      }
+      return next;
+    });
+  }, [currentSessionId, conversationSessionId, sessionStatuses]);
+
   const activeSession = useMemo(
     () => sessions.find((session) => session.id === currentSessionId),
     [currentSessionId, sessions],
@@ -2601,6 +2684,7 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
   const conversationActive = conversationPhase !== 'off';
   const conversationStatusLabel = useMemo(() => getConversationStatusLabel(conversationPhase, conversationCurrentActivityLabel), [conversationCurrentActivityLabel, conversationPhase]);
   const sessionPreviewById = useMemo(() => getSessionPreviewById(messagesBySession), [messagesBySession]);
+  const serverCapabilities = useMemo(() => getServerCapabilities(serverContract), [serverContract]);
 
   const contextValue = useMemo<OpencodeContextValue>(
     () => ({
@@ -2608,6 +2692,7 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
       settings,
       updateSettings,
       connection,
+      serverCapabilities,
       projects,
       activeProjectPath,
       activeProject,
@@ -2793,6 +2878,7 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
       abortSession,
       sendingState,
       serverRootPath,
+      serverCapabilities,
       sessionPreviewById,
       sessionStatuses,
       sessions,

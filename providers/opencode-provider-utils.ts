@@ -1,4 +1,38 @@
 import type { Agent, Config, Model } from '@/lib/opencode/types';
+import type { ServerContract } from '@/lib/opencode/client';
+
+export type ServerCapabilities = {
+  contract: ServerContract;
+  share: boolean;
+  archive: boolean;
+  todos: boolean;
+  summarize: boolean;
+  fileSave: boolean;
+  fileStatus: boolean;
+  lsp: boolean;
+  formatter: boolean;
+  mcpOAuth: boolean;
+  configWrite: boolean;
+  worktreeReset: boolean;
+};
+
+export function getServerCapabilities(contract: ServerContract): ServerCapabilities {
+  const full = contract === 'v1';
+  return {
+    contract,
+    share: full,
+    archive: full,
+    todos: full,
+    summarize: full,
+    fileSave: full,
+    fileStatus: full,
+    lsp: full,
+    formatter: full,
+    mcpOAuth: full,
+    configWrite: full,
+    worktreeReset: full,
+  };
+}
 
 export type ModelOption = {
   id: string;
@@ -31,6 +65,7 @@ export type ChatPreferences = {
   modelId?: string;
   enabledModelIds: string[];
   providerModelSelections: Record<string, string>;
+  recentModelIds: string[];
   reasoning: ReasoningLevel;
   autoApprove: boolean;
   autoPlayAssistantReplies: boolean;
@@ -50,6 +85,7 @@ export const defaultChatPreferences: ChatPreferences = {
   mode: 'build',
   enabledModelIds: [],
   providerModelSelections: {},
+  recentModelIds: [],
   reasoning: 'default',
   autoApprove: false,
   autoPlayAssistantReplies: false,
@@ -155,6 +191,14 @@ export function getEnabledModelIds(models: ModelOption[], storedModelIds?: strin
   const nextEnabledModelIds = (storedModelIds || []).filter((modelId) => availableModelIds.has(modelId));
 
   return nextEnabledModelIds.length > 0 ? nextEnabledModelIds : models.map((model) => model.id);
+}
+
+export function recordRecentModelId(recentModelIds: string[], modelId?: string) {
+  if (!modelId) {
+    return recentModelIds;
+  }
+
+  return [modelId, ...recentModelIds.filter((id) => id !== modelId)].slice(0, 4);
 }
 
 export function getConfiguredProviderIds(config: Config | undefined, connected: string[], models: ModelOption[]) {

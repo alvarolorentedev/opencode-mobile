@@ -16,6 +16,28 @@ async function openReadyChat(page) {
   await expect(page.getByPlaceholder('Ask anything...')).toBeVisible();
 }
 
+function spawnV2Server(port, scenario = 'happy-path') {
+  return spawn(process.execPath, ['tests/fake-opencode/server-v2.mjs'], {
+    cwd: process.cwd(),
+    env: {
+      ...process.env,
+      FAKE_OPENCODE_PORT: String(port),
+      FAKE_OPENCODE_SCENARIO: scenario,
+    },
+    stdio: 'inherit',
+  });
+}
+
+async function connectToServer(page, url) {
+  await page.getByRole('tab', { name: 'Settings' }).click();
+  await page.getByRole('button', { name: /^Connection/ }).click();
+  await page.getByTestId('settings-server-url-input').fill(url);
+  await page.getByTestId('settings-reconnect-button').click();
+  await expect(page.getByText('Connected', { exact: true })).toBeVisible({ timeout: 15_000 });
+  await page.getByRole('tab', { name: 'Chat' }).click();
+  await expect(page.getByPlaceholder('Ask anything...')).toBeVisible({ timeout: 15_000 });
+}
+
 async function sendPrompt(page, prompt) {
   await page.getByPlaceholder('Ask anything...').fill(prompt);
   await page.getByTestId('chat-primary-button').click();
@@ -232,14 +254,24 @@ test('chat model picker searches and groups models by provider', async ({ page, 
   const modelPicker = page.getByTestId('chat-model-picker');
   await expect(modelPicker.getByText('OpenAI', { exact: true })).toBeVisible();
   await expect(modelPicker.getByText('OpenRouter', { exact: true })).toBeVisible();
+  await expect(modelPicker.getByText('Selected', { exact: true })).toBeVisible();
   await page.getByTestId('chat-model-picker-search').fill('openrouter');
   await expect(modelPicker.getByText('OpenAI', { exact: true })).not.toBeVisible();
+  await expect(modelPicker.getByText('Selected', { exact: true })).not.toBeVisible();
   await modelPicker.getByRole('button', { name: /^Auto / }).click();
   await expect(page.getByTestId('chat-model-picker-trigger')).toContainText('OpenRouter · Auto');
 
   await page.getByTestId('chat-model-picker-trigger').click();
   await expect(page.getByTestId('chat-model-picker-search')).toHaveValue('');
+  await modelPicker.getByRole('button', { name: /^GPT-4\.1 mini / }).click();
+  await expect(page.getByTestId('chat-model-picker-trigger')).toContainText('OpenAI · GPT-4.1 mini');
+
+  await page.getByTestId('chat-model-picker-trigger').click();
+  await expect(modelPicker.getByText('Selected', { exact: true })).toBeVisible();
+  await expect(modelPicker.getByText('Recent', { exact: true })).toBeVisible();
+  await expect(modelPicker.getByText('OpenRouter · openrouter/auto', { exact: false })).toBeVisible();
   await page.getByTestId('chat-model-picker-search').fill('not-a-model');
+  await expect(modelPicker.getByText('Recent', { exact: true })).not.toBeVisible();
   await expect(page.getByText('No matching models', { exact: true })).toBeVisible();
   await expect(page.getByTestId('chat-model-picker-search')).toHaveValue('not-a-model');
   await page.getByLabel('Close model picker').click();
@@ -337,6 +369,132 @@ test('settings explain root-vs-api mismatches and reconnect through a prefixed A
     await expect(page.getByText('Connected', { exact: true })).toBeVisible({ timeout: 15_000 });
     await page.getByRole('button', { name: /^Connection/ }).click();
     await expect(page.getByText(new RegExp(`Connected to http://127.0.0.1:${port}/api`))).toBeVisible();
+  } finally {
+    server.kill('SIGTERM');
+  }
+});
+
+test('settings do not suggest a duplicated /api base when the API prefix is already set', async ({ page, request }) => {
+  await resetScenario(request, 'happy-path');
+  await openReadyChat(page);
+
+  await page.getByRole('tab', { name: 'Settings' }).click();
+  await page.getByRole('button', { name: /^Connection/ }).click();
+
+  await page.getByTestId('settings-server-url-input').fill('http://127.0.0.1:44096/api');
+  await page.getByTestId('settings-reconnect-button').click();
+  await expect(page.getByText(/OpenCode endpoint not found at http:\/\/127\.0\.0\.1:44096\/api\b/).first()).toBeVisible({ timeout: 15_000 });
+  await expect(page.getByText(/OpenCode 1\.x and 2\.x servers/).first()).toBeVisible();
+  await expect(page.getByText(/http:\/\/127\.0\.0\.1:44096\/api\/api/)).toHaveCount(0);
+});
+
+test('a 1.x server exposing /api compatibility routes still connects as 1.x', async ({ page, request }) => {
+  const port = 44696;
+  const server = spawn(process.execPath, ['tests/fake-opencode/server.mjs'], {
+    cwd: process.cwd(),
+    env: {
+      ...process.env,
+      FAKE_OPENCODE_PORT: String(port),
+      FAKE_OPENCODE_SCENARIO: 'happy-path',
+      FAKE_OPENCODE_V2_COMPAT: '1',
+    },
+    stdio: 'inherit',
+  });
+
+  try {
+    await waitForServer(request, `http://127.0.0.1:${port}/global/health`);
+    await openReadyChat(page);
+    await connectToServer(page, `http://127.0.0.1:${port}`);
+    await sendPrompt(page, 'Confirm 1.x stays on 1.x');
+    await expect(page.getByText(/Finished:/).first()).toBeVisible({ timeout: 30_000 });
+
+    await page.getByRole('tab', { name: 'Settings' }).click();
+    await page.getByRole('button', { name: /^Connection/ }).click();
+    await expect(page.getByText(/Connected to http:\/\/127\.0\.0\.1:44696 \(OpenCode 1\.x\)/)).toBeVisible();
+  } finally {
+    server.kill('SIGTERM');
+  }
+});
+
+test('connects to an OpenCode 2 server and completes a prompt', async ({ page, request }) => {
+  await resetScenario(request, 'happy-path');
+  const port = 44296;
+  const server = spawnV2Server(port);
+
+  try {
+    await waitForServer(request, `http://127.0.0.1:${port}/api/info`);
+    await openReadyChat(page);
+    await connectToServer(page, `http://127.0.0.1:${port}`);
+    await sendPrompt(page, 'Verify the OpenCode 2 adapter');
+    await expect(page.getByText(/Finished:/).first()).toBeVisible({ timeout: 30_000 });
+    await expect(page.getByText(/Flow stayed stable against the fake OpenCode server/).first()).toBeVisible();
+
+    // Unsupported V2 actions are hidden rather than failing at tap time.
+    await expect(page.getByText('Ask permission', { exact: true })).toHaveCount(0);
+    await page.getByRole('tab', { name: 'Workspace' }).click();
+    await expect(page.getByLabel('Show archived chats')).toHaveCount(0);
+    await page.getByLabel(/Actions for/).first().click();
+    await expect(page.getByRole('menuitem', { name: 'Rename' })).toBeVisible();
+    await expect(page.getByRole('menuitem', { name: 'Share' })).toHaveCount(0);
+    await expect(page.getByRole('menuitem', { name: 'Archive' })).toHaveCount(0);
+    await page.keyboard.press('Escape');
+    await page.getByRole('tab', { name: 'Settings' }).click();
+    await page.getByRole('button', { name: /^Advanced/ }).click();
+    await expect(page.getByText(/LSP/)).toHaveCount(0);
+    await expect(page.getByText(/Formatters/)).toHaveCount(0);
+  } finally {
+    server.kill('SIGTERM');
+  }
+});
+
+test('OpenCode 2 permission requests unblock the agent flow', async ({ page, request }) => {
+  const port = 44396;
+  const server = spawnV2Server(port, 'permission');
+  try {
+    await resetScenario(request, 'happy-path');
+    await waitForServer(request, `http://127.0.0.1:${port}/api/info`);
+    await openReadyChat(page);
+    await connectToServer(page, `http://127.0.0.1:${port}`);
+    await sendPrompt(page, 'Trigger a permission request');
+    await expect(page.getByText('Permission request', { exact: true })).toBeVisible({ timeout: 15_000 });
+    await page.getByText('Allow once').click();
+    await expect(page.getByText(/permission resolved/).first()).toBeVisible({ timeout: 20_000 });
+  } finally {
+    server.kill('SIGTERM');
+  }
+});
+
+test('OpenCode 2 questions unblock the agent flow', async ({ page, request }) => {
+  const port = 44496;
+  const server = spawnV2Server(port, 'question');
+  try {
+    await resetScenario(request, 'happy-path');
+    await waitForServer(request, `http://127.0.0.1:${port}/api/info`);
+    await openReadyChat(page);
+    await connectToServer(page, `http://127.0.0.1:${port}`);
+    await sendPrompt(page, 'Ask an implementation question');
+    await expect(page.getByText('Which implementation should be used?', { exact: true })).toBeVisible({ timeout: 15_000 });
+    await page.getByText('Minimal', { exact: true }).click();
+    await page.getByText('Submit answer', { exact: true }).click();
+    await expect(page.getByText(/question resolved/).first()).toBeVisible({ timeout: 20_000 });
+  } finally {
+    server.kill('SIGTERM');
+  }
+});
+
+test('OpenCode 2 terminal streams input and output over the PTY websocket', async ({ page, request }) => {
+  const port = 44596;
+  const server = spawnV2Server(port);
+  try {
+    await resetScenario(request, 'happy-path');
+    await waitForServer(request, `http://127.0.0.1:${port}/api/info`);
+    await openReadyChat(page);
+    await connectToServer(page, `http://127.0.0.1:${port}`);
+    await page.getByRole('tab', { name: 'Terminal' }).click();
+    await page.getByTestId('terminal-create-button').click();
+    await page.getByTestId('terminal-line-input').fill('echo v2');
+    await page.getByRole('button', { name: 'Send command' }).click();
+    await expect(page.getByTestId('terminal-output')).toContainText('ran: echo v2');
   } finally {
     server.kill('SIGTERM');
   }

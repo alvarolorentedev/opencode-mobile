@@ -281,6 +281,18 @@ const server = http.createServer(async (req, res) => {
       return;
     }
 
+    // Newer OpenCode 1.x servers also expose some /api routes. Emulate that so
+    // contract detection is forced to prefer the 1.x signature over /api probes.
+    if (process.env.FAKE_OPENCODE_V2_COMPAT === '1' && req.method === 'GET' && pathname === '/api/info') {
+      sendJson(res, 200, { version: '1.18.30', pid: 1, urls: [], paths: { tmp: '/tmp' } });
+      return;
+    }
+
+    if (process.env.FAKE_OPENCODE_V2_COMPAT === '1' && req.method === 'GET' && pathname === '/api/health') {
+      sendJson(res, 200, { healthy: true, version: '1.18.30' });
+      return;
+    }
+
     if (req.method === 'GET' && pathname === '/global/health') {
       sendJson(res, 200, { healthy: true, version: '1.18.3' });
       return;

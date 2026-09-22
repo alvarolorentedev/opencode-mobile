@@ -27,6 +27,7 @@ type ChatComposerProps = {
   isSpeechInputListening: boolean;
   isStoppingSession: boolean;
   isUpdatingAutoApprove: boolean;
+  autoApproveAvailable?: boolean;
   onAttach: () => void;
   onDraftChange: (value: string) => void;
   onRemoveAttachment: (index: number) => void;
@@ -58,6 +59,7 @@ export function ChatComposer({
   isSpeechInputListening,
   isStoppingSession,
   isUpdatingAutoApprove,
+  autoApproveAvailable = true,
   onAttach,
   onCommandSelect,
   onDraftChange,
@@ -112,6 +114,7 @@ export function ChatComposer({
           onSelect={(model) => {
             updateChatPreferences({ providerId: model.providerID, modelId: model.id });
           }}
+          recentModelIds={chatPreferences.recentModelIds}
           selectedModelId={chatPreferences.modelId}
         />
         <SelectControl
@@ -123,9 +126,11 @@ export function ChatComposer({
           selectedValue={chatPreferences.reasoning}
           title="Choose reasoning level"
         />
-        <ControlButton active={chatPreferences.autoApprove} iconName={getAutoApproveIcon(chatPreferences.autoApprove)} iconOnly loading={isUpdatingAutoApprove} onPress={onToggleAutoApprove}>
-          {chatPreferences.autoApprove ? 'Auto approve enabled' : 'Ask permission'}
-        </ControlButton>
+        {autoApproveAvailable ? (
+          <ControlButton active={chatPreferences.autoApprove} iconName={getAutoApproveIcon(chatPreferences.autoApprove)} iconOnly loading={isUpdatingAutoApprove} onPress={onToggleAutoApprove}>
+            {chatPreferences.autoApprove ? 'Auto approve enabled' : 'Ask permission'}
+          </ControlButton>
+        ) : null}
       </View>
 
       {conversation.active ? (

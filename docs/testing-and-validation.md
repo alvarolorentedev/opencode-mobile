@@ -34,6 +34,9 @@ From `TESTING.md`, those gates include:
 
 The deterministic backend lives under `tests/fake-opencode/`.
 
+- `tests/fake-opencode/server.mjs` emulates the OpenCode 1.x contract.
+- `tests/fake-opencode/server-v2.mjs` emulates the OpenCode 2.x `/api` contract (discovery, capabilities, sessions, messages, prompt, diff, permissions, forms, MCP, PTY, VCS, and the flat V2 event stream), reusing the same deterministic state and session helpers.
+
 Its intended job is to simulate the server behaviors this client depends on, including:
 
 - workspace discovery
@@ -124,6 +127,20 @@ The SSE endpoint intentionally fails, forcing the app to complete the workflow t
 - enter an API key
 - save configuration
 - verify provider appears as configured
+
+### Connection API Base Flow
+
+- point at a fake server with a configured API base path and verify the root-URL failure message suggests the prefixed URL
+- reconnect through the prefixed URL and verify the connection succeeds
+- point at a URL that already ends in `/api` and verify the message does not suggest a duplicated `/api`
+
+### OpenCode 2 Compatibility Flows
+
+- point at the V2 fake server and verify contract detection connects
+- verify capabilities, session bootstrap, prompt completion, and transcript rendering work through the V2 adapter
+- verify permission requests and form-backed questions unblock the flow
+- verify the PTY WebSocket streams input/output under `/api`
+- verify unsupported actions are hidden rather than failing: no auto-approve toggle, no share/archive actions, no archived toggle, and no LSP/formatter subsystem rows
 
 ### SSE Failure / Polling Fallback Flow
 
