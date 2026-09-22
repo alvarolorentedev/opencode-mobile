@@ -254,14 +254,24 @@ test('chat model picker searches and groups models by provider', async ({ page, 
   const modelPicker = page.getByTestId('chat-model-picker');
   await expect(modelPicker.getByText('OpenAI', { exact: true })).toBeVisible();
   await expect(modelPicker.getByText('OpenRouter', { exact: true })).toBeVisible();
+  await expect(modelPicker.getByText('Selected', { exact: true })).toBeVisible();
   await page.getByTestId('chat-model-picker-search').fill('openrouter');
   await expect(modelPicker.getByText('OpenAI', { exact: true })).not.toBeVisible();
+  await expect(modelPicker.getByText('Selected', { exact: true })).not.toBeVisible();
   await modelPicker.getByRole('button', { name: /^Auto / }).click();
   await expect(page.getByTestId('chat-model-picker-trigger')).toContainText('OpenRouter · Auto');
 
   await page.getByTestId('chat-model-picker-trigger').click();
   await expect(page.getByTestId('chat-model-picker-search')).toHaveValue('');
+  await modelPicker.getByRole('button', { name: /^GPT-4\.1 mini / }).click();
+  await expect(page.getByTestId('chat-model-picker-trigger')).toContainText('OpenAI · GPT-4.1 mini');
+
+  await page.getByTestId('chat-model-picker-trigger').click();
+  await expect(modelPicker.getByText('Selected', { exact: true })).toBeVisible();
+  await expect(modelPicker.getByText('Recent', { exact: true })).toBeVisible();
+  await expect(modelPicker.getByText('OpenRouter · openrouter/auto', { exact: false })).toBeVisible();
   await page.getByTestId('chat-model-picker-search').fill('not-a-model');
+  await expect(modelPicker.getByText('Recent', { exact: true })).not.toBeVisible();
   await expect(page.getByText('No matching models', { exact: true })).toBeVisible();
   await expect(page.getByTestId('chat-model-picker-search')).toHaveValue('not-a-model');
   await page.getByLabel('Close model picker').click();

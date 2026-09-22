@@ -158,6 +158,7 @@ type ChatComposerProps = {
 ### Responsibility
 
 - render the searchable, provider-grouped configured-model picker
+- pin a `Selected` and `Recent` section above the provider groups (hidden while searching)
 - own only local modal visibility and search-query state
 - return the selected `ModelOption` to the composer, which persists it through the provider
 

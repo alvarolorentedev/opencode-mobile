@@ -103,6 +103,7 @@ Current fields:
 - `modelId`
 - `enabledModelIds`
 - `providerModelSelections`
+- `recentModelIds`
 - `reasoning`
 - `autoApprove`
 - `autoPlayAssistantReplies`

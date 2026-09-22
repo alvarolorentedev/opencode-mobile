@@ -84,6 +84,7 @@ import {
   groupPendingRequestsBySession,
   isAutoApproveEnabled,
   mergePermissionConfig,
+  recordRecentModelId,
 } from '@/providers/opencode-provider-utils';
 import {
   getConfiguredProviders,
@@ -1477,6 +1478,7 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
         providerId: safeProviderId,
         modelId: nextModelId,
         enabledModelIds,
+        recentModelIds: recordRecentModelId(current.recentModelIds, patch.modelId),
         providerModelSelections:
           safeProviderId && nextModelId
             ? {

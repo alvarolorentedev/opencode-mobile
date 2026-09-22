@@ -65,6 +65,7 @@ export type ChatPreferences = {
   modelId?: string;
   enabledModelIds: string[];
   providerModelSelections: Record<string, string>;
+  recentModelIds: string[];
   reasoning: ReasoningLevel;
   autoApprove: boolean;
   autoPlayAssistantReplies: boolean;
@@ -84,6 +85,7 @@ export const defaultChatPreferences: ChatPreferences = {
   mode: 'build',
   enabledModelIds: [],
   providerModelSelections: {},
+  recentModelIds: [],
   reasoning: 'default',
   autoApprove: false,
   autoPlayAssistantReplies: false,
@@ -189,6 +191,14 @@ export function getEnabledModelIds(models: ModelOption[], storedModelIds?: strin
   const nextEnabledModelIds = (storedModelIds || []).filter((modelId) => availableModelIds.has(modelId));
 
   return nextEnabledModelIds.length > 0 ? nextEnabledModelIds : models.map((model) => model.id);
+}
+
+export function recordRecentModelId(recentModelIds: string[], modelId?: string) {
+  if (!modelId) {
+    return recentModelIds;
+  }
+
+  return [modelId, ...recentModelIds.filter((id) => id !== modelId)].slice(0, 4);
 }
 
 export function getConfiguredProviderIds(config: Config | undefined, connected: string[], models: ModelOption[]) {

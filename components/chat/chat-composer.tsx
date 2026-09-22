@@ -114,6 +114,7 @@ export function ChatComposer({
           onSelect={(model) => {
             updateChatPreferences({ providerId: model.providerID, modelId: model.id });
           }}
+          recentModelIds={chatPreferences.recentModelIds}
           selectedModelId={chatPreferences.modelId}
         />
         <SelectControl
