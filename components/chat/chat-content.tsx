@@ -1,7 +1,7 @@
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { FlashList, type FlashListRef } from '@shopify/flash-list';
-import { useLayoutEffect, useMemo, useRef, useState } from 'react';
-import { RefreshControl, ScrollView, View } from 'react-native';
+import { memo, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { Animated, Easing, RefreshControl, ScrollView, View } from 'react-native';
 import { ActivityIndicator, Button, Card, IconButton, Text, TouchableRipple } from 'react-native-paper';
 
 import { Colors } from '@/constants/theme';
@@ -14,6 +14,47 @@ import { styles } from '@/components/chat/chat-view-styles';
 import { STARTER_PROMPTS } from '@/components/chat/chat-view-utils';
 
 type Palette = typeof Colors.light;
+
+// Skeleton placeholder shown during the initial transcript fetch. Avoids the
+// "blank → populated list" snap users can read as a lock-up. Subtle opacity
+// pulse (1.2s loop, native driver) signals active loading without thrashing
+// the JS thread.
+function TranscriptSkeletonImpl({ palette }: { palette: Palette }) {
+  const opacity = useRef(new Animated.Value(0.35)).current;
+  useEffect(() => {
+    const loop = Animated.loop(
+      Animated.sequence([
+        Animated.timing(opacity, { toValue: 1, duration: 600, easing: Easing.out(Easing.ease), useNativeDriver: true }),
+        Animated.timing(opacity, { toValue: 0.35, duration: 600, easing: Easing.in(Easing.ease), useNativeDriver: true }),
+      ]),
+    );
+    loop.start();
+    return () => loop.stop();
+  }, [opacity]);
+
+  // Three placeholder bubbles mimic a typical user/assistant turn shape.
+  const rows: { role: 'user' | 'assistant'; width: `${number}%` }[] = [
+    { role: 'user', width: '60%' },
+    { role: 'assistant', width: '90%' },
+    { role: 'assistant', width: '75%' },
+  ];
+  return (
+    <View style={styles.transcriptItem}>
+      {rows.map((row, index) => (
+        <Animated.View
+          key={`skeleton-${index}`}
+          style={[
+            styles.skeletonRow,
+            row.role === 'user' ? styles.skeletonUser : styles.skeletonAssistant,
+            { width: row.width, backgroundColor: palette.surface, opacity },
+          ]}
+        />
+      ))}
+    </View>
+  );
+}
+
+const TranscriptSkeleton = memo(TranscriptSkeletonImpl);
 
 // Stable reference so FlashList does not treat every parent render as a prop
 // change. Combined with the memoized TranscriptMessage rows this keeps
@@ -158,7 +199,9 @@ export function ChatContent({
               </Card.Content>
             </Card>
           ) : null}
-          ListEmptyComponent={(
+          ListEmptyComponent={isRefreshingMessages && currentSessionId ? (
+            <TranscriptSkeleton palette={palette} />
+          ) : (
             <Card mode="contained" style={[styles.emptyCard, { backgroundColor: palette.surface }]}>
               <Card.Content style={styles.emptyContent}>
                 <Text variant="headlineSmall" style={[styles.emptyTitle, { color: palette.text }]}>Start a new task</Text>
