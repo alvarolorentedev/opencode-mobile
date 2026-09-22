@@ -22,7 +22,9 @@ export function getServerCapabilities(contract: ServerContract): ServerCapabilit
     contract,
     share: full,
     archive: full,
-    todos: full,
+    // V2 has no server-owned todo endpoint, but the plan is derived from the
+    // transcript's `todowrite` tool parts, so the surface is available on both.
+    todos: true,
     summarize: full,
     fileSave: full,
     fileStatus: full,

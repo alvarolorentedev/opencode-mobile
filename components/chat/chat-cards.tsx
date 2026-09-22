@@ -1,13 +1,13 @@
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { memo, useMemo, useState } from 'react';
-import { ScrollView, StyleSheet, View } from 'react-native';
-import { Button, Card, Chip, Divider, IconButton, List, Surface, Text, TextInput, TouchableRipple } from 'react-native-paper';
+import { Linking, ScrollView, StyleSheet, View } from 'react-native';
+import { Button, Card, Chip, Divider, IconButton, List, Surface, Switch, Text, TextInput, TouchableRipple } from 'react-native-paper';
 
 import { MarkdownText } from '@/components/chat/chat-markdown';
 import { getDiffPalette, buildPatchDiff, buildCollapsedDiffBlocks } from '@/components/chat/chat-diff';
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
-import type { PendingPermissionRequest, PendingQuestionAnswer, PendingQuestionRequest } from '@/lib/opencode/client';
+import type { PendingPermissionRequest, PendingQuestionAnswer, PendingQuestionPrompt, PendingQuestionRequest } from '@/lib/opencode/client';
 import { formatTimestamp, type TranscriptDetail, type TranscriptEntry } from '@/lib/opencode/format';
 import { summarizeTranscriptDetails } from '@/lib/opencode/transcript';
 import type { FileDiff } from '@/lib/opencode/types';
@@ -27,9 +27,9 @@ export function PendingInteractionsCard({
   permissions,
   questions,
 }: {
-  onPermissionReply: (requestId: string, reply: 'once' | 'always' | 'reject') => void;
-  onQuestionReject: (requestId: string) => void;
-  onQuestionReply: (requestId: string, answers: PendingQuestionAnswer[]) => void;
+  onPermissionReply: (requestId: string, reply: 'once' | 'always' | 'reject') => Promise<void>;
+  onQuestionReject: (requestId: string) => Promise<void>;
+  onQuestionReply: (requestId: string, answers: PendingQuestionAnswer[]) => Promise<void>;
   permissions: PendingPermissionRequest[];
   questions: PendingQuestionRequest[];
 }) {
@@ -71,77 +71,186 @@ function QuestionRequestCard({
   onReply,
   request,
 }: {
-  onReject: () => void;
-  onReply: (answers: PendingQuestionAnswer[]) => void;
+  onReject: () => Promise<void>;
+  onReply: (answers: PendingQuestionAnswer[]) => Promise<void>;
   request: PendingQuestionRequest;
 }) {
   const colorScheme = useColorScheme() ?? 'light';
   const palette = Colors[colorScheme];
-  const [answers, setAnswers] = useState<string[][]>(() => request.questions.map(() => []));
-  const [customAnswers, setCustomAnswers] = useState<string[]>(() => request.questions.map(() => ''));
-  const resolvedAnswers = request.questions.map((question, index) => {
+  const [submitting, setSubmitting] = useState<'reply' | 'reject' | undefined>(undefined);
+  const [answers, setAnswers] = useState<string[][]>(() => request.questions.map((prompt) => {
+    if (prompt.type === 'boolean') {
+      return [prompt.defaultValue === undefined ? 'false' : String(prompt.defaultValue)];
+    }
+    if (prompt.defaultValue !== undefined && prompt.options.length > 0) {
+      const match = prompt.options.find((option) => option.value === String(prompt.defaultValue) || option.label === String(prompt.defaultValue));
+      if (match) {
+        return [match.label];
+      }
+    }
+    return [];
+  }));
+  const [customAnswers, setCustomAnswers] = useState<string[]>(() => request.questions.map((prompt) => (
+    prompt.defaultValue !== undefined && prompt.options.length === 0 && prompt.type !== 'boolean' && prompt.type !== 'external'
+      ? String(prompt.defaultValue)
+      : ''
+  )));
+
+  const resolvedAnswers = request.questions.map((prompt, index) => {
     const customAnswer = customAnswers[index].trim();
     if (!customAnswer) {
       return answers[index];
     }
-    return question.multiple ? [...answers[index], customAnswer] : [customAnswer];
+    return prompt.multiple ? [...answers[index], customAnswer] : [customAnswer];
   });
-  const canSubmit = resolvedAnswers.every((answer) => answer.length > 0);
+
+  const answerValuesFor = (prompt: PendingQuestionPrompt, index: number) => resolvedAnswers[index].map((entry) => {
+    const match = prompt.options.find((option) => option.label === entry || option.value === entry);
+    return match?.value ?? entry;
+  });
+
+  const isPromptVisible = (prompt: PendingQuestionPrompt, index: number) => {
+    if (!prompt.when || prompt.when.length === 0) {
+      return true;
+    }
+    return prompt.when.every((condition) => {
+      const otherIndex = request.questions.findIndex((candidate) => candidate.key === condition.key);
+      if (otherIndex === -1 || otherIndex === index) {
+        return true;
+      }
+      const values = answerValuesFor(request.questions[otherIndex], otherIndex);
+      const matched = values.some((value) => String(value) === String(condition.value));
+      return condition.op === 'neq' ? !matched : matched;
+    });
+  };
+
+  const canSubmit = request.questions.every((prompt, index) => {
+    if (!isPromptVisible(prompt, index)) {
+      return true;
+    }
+    const required = prompt.required ?? prompt.type === undefined;
+    return !required || resolvedAnswers[index].length > 0;
+  });
+
+  const handleReply = () => {
+    if (submitting) {
+      return;
+    }
+    setSubmitting('reply');
+    void onReply(resolvedAnswers).catch(() => undefined).finally(() => setSubmitting(undefined));
+  };
+
+  const handleReject = () => {
+    if (submitting) {
+      return;
+    }
+    setSubmitting('reject');
+    void onReject().catch(() => undefined).finally(() => setSubmitting(undefined));
+  };
 
   return (
     <Card mode="contained" style={[styles.requestCard, { backgroundColor: palette.background }]}>
       <Card.Content style={styles.requestCardContent}>
         <Text variant="labelLarge" style={{ color: palette.warning }}>Assistant question</Text>
-        {request.questions.map((question, questionIndex) => (
-          <View key={`${request.id}-${questionIndex}`} style={styles.questionBlock}>
-            <Text variant="titleMedium" style={{ color: palette.text }}>{question.header}</Text>
-            <Text variant="bodyMedium" style={{ color: palette.text }}>{question.question}</Text>
-            <View style={styles.questionOptions}>
-              {question.options.map((option) => {
-                const selected = answers[questionIndex].includes(option.label);
-                return (
-                  <Button
-                    key={option.label}
-                    mode={selected ? 'contained-tonal' : 'outlined'}
-                    onPress={() => {
-                      setAnswers((current) => current.map((answer, index) => {
-                        if (index !== questionIndex) return answer;
-                        if (!question.multiple) return [option.label];
-                        return selected ? answer.filter((label) => label !== option.label) : [...answer, option.label];
-                      }));
-                      if (!question.multiple) {
-                        setCustomAnswers((current) => current.map((answer, index) => index === questionIndex ? '' : answer));
-                      }
-                    }}>
-                    {option.label}
-                  </Button>
-                );
-              })}
+        {request.title ? <Text variant="bodySmall" style={{ color: palette.muted }}>{request.title}</Text> : null}
+        {request.questions.map((prompt, questionIndex) => {
+          if (!isPromptVisible(prompt, questionIndex)) {
+            return null;
+          }
+
+          const selected = answers[questionIndex];
+          const selectedOption = prompt.options.find((option) => selected.includes(option.label));
+          const showOptions = prompt.type !== 'boolean' && prompt.type !== 'external' && prompt.options.length > 0;
+          const showCustom = prompt.custom !== false && prompt.type !== 'boolean' && prompt.type !== 'external';
+
+          return (
+            <View key={`${request.id}-${questionIndex}`} style={styles.questionBlock}>
+              <Text variant="titleMedium" style={{ color: palette.text }}>{prompt.header}</Text>
+              {prompt.question && prompt.question !== prompt.header ? (
+                <Text variant="bodyMedium" style={{ color: palette.text }}>{prompt.question}</Text>
+              ) : null}
+
+              {prompt.type === 'boolean' ? (
+                <View style={styles.questionBooleanRow}>
+                  <Text variant="bodyMedium" style={{ color: palette.text }}>{selected.includes('true') ? 'Yes' : 'No'}</Text>
+                  <Switch
+                    value={selected.includes('true')}
+                    onValueChange={(value) => {
+                      setAnswers((current) => current.map((answer, index) => index === questionIndex ? [value ? 'true' : 'false'] : answer));
+                    }}
+                  />
+                </View>
+              ) : null}
+
+              {prompt.type === 'external' && prompt.url ? (
+                <Button mode="outlined" icon="open-in-new" onPress={() => { void Linking.openURL(prompt.url as string).catch(() => undefined); }}>
+                  Open link
+                </Button>
+              ) : null}
+
+              {showOptions ? (
+                <View style={styles.questionOptions}>
+                  {prompt.options.map((option) => {
+                    const isSelected = selected.includes(option.label);
+                    return (
+                      <Button
+                        key={option.label}
+                        mode={isSelected ? 'contained-tonal' : 'outlined'}
+                        onPress={() => {
+                          setAnswers((current) => current.map((answer, index) => {
+                            if (index !== questionIndex) return answer;
+                            if (!prompt.multiple) return [option.label];
+                            return isSelected ? answer.filter((label) => label !== option.label) : [...answer, option.label];
+                          }));
+                          if (!prompt.multiple) {
+                            setCustomAnswers((current) => current.map((answer, index) => index === questionIndex ? '' : answer));
+                          }
+                        }}>
+                        {option.label}
+                      </Button>
+                    );
+                  })}
+                </View>
+              ) : null}
+
+              {selectedOption?.description ? (
+                <Text variant="bodySmall" style={{ color: palette.muted }}>{selectedOption.description}</Text>
+              ) : null}
+
+              {showCustom ? (
+                <TextInput
+                  dense
+                  mode="outlined"
+                  label={prompt.placeholder || 'Custom answer'}
+                  keyboardType={prompt.type === 'number' || prompt.type === 'integer' ? 'numeric' : 'default'}
+                  value={customAnswers[questionIndex]}
+                  onChangeText={(value) => {
+                    setCustomAnswers((current) => current.map((answer, index) => index === questionIndex ? value : answer));
+                    if (!prompt.multiple && value) {
+                      setAnswers((current) => current.map((answer, index) => index === questionIndex ? [] : answer));
+                    }
+                  }}
+                />
+              ) : null}
             </View>
-            {question.options.find((option) => answers[questionIndex].includes(option.label))?.description ? (
-              <Text variant="bodySmall" style={{ color: palette.muted }}>
-                {question.options.find((option) => answers[questionIndex].includes(option.label))?.description}
-              </Text>
-            ) : null}
-            {question.custom !== false ? (
-              <TextInput
-                dense
-                mode="outlined"
-                label="Custom answer"
-                value={customAnswers[questionIndex]}
-                onChangeText={(value) => {
-                  setCustomAnswers((current) => current.map((answer, index) => index === questionIndex ? value : answer));
-                  if (!question.multiple && value) {
-                    setAnswers((current) => current.map((answer, index) => index === questionIndex ? [] : answer));
-                  }
-                }}
-              />
-            ) : null}
-          </View>
-        ))}
+          );
+        })}
         <View style={styles.requestActionsRow}>
-          <Button mode="contained" disabled={!canSubmit} onPress={() => onReply(resolvedAnswers)}>Submit answer</Button>
-          <Button mode="text" textColor={palette.danger} onPress={onReject}>Reject</Button>
+          <Button
+            mode="contained"
+            disabled={!canSubmit || Boolean(submitting)}
+            loading={submitting === 'reply'}
+            onPress={handleReply}>
+            Submit answer
+          </Button>
+          <Button
+            mode="text"
+            textColor={palette.danger}
+            disabled={Boolean(submitting)}
+            loading={submitting === 'reject'}
+            onPress={handleReject}>
+            Reject
+          </Button>
         </View>
       </Card.Content>
     </Card>
@@ -353,11 +462,20 @@ function PermissionRequestCard({
   request,
 }: {
   compact?: boolean;
-  onReply: (reply: 'once' | 'always' | 'reject') => void;
+  onReply: (reply: 'once' | 'always' | 'reject') => Promise<void>;
   request: PendingPermissionRequest;
 }) {
   const colorScheme = useColorScheme() ?? 'light';
   const palette = Colors[colorScheme];
+  const [submitting, setSubmitting] = useState<'once' | 'always' | 'reject' | undefined>(undefined);
+
+  const handleReply = (reply: 'once' | 'always' | 'reject') => {
+    if (submitting) {
+      return;
+    }
+    setSubmitting(reply);
+    void onReply(reply).catch(() => undefined).finally(() => setSubmitting(undefined));
+  };
 
   return (
     <Card mode="contained" style={[styles.requestCard, compact && styles.requestCardCompact, { backgroundColor: palette.background }]}> 
@@ -368,9 +486,9 @@ function PermissionRequestCard({
           <Text variant="bodySmall" style={{ color: palette.muted }}>{request.patterns.join('\n')}</Text>
         ) : null}
         <View style={styles.requestActionsRow}>
-          <Button mode="contained" compact onPress={() => onReply('once')}>Allow once</Button>
-          <Button mode="contained-tonal" compact onPress={() => onReply('always')}>Always allow</Button>
-          <Button mode="text" compact textColor={palette.danger} onPress={() => onReply('reject')}>Deny</Button>
+          <Button mode="contained" compact disabled={Boolean(submitting)} loading={submitting === 'once'} onPress={() => handleReply('once')}>Allow once</Button>
+          <Button mode="contained-tonal" compact disabled={Boolean(submitting)} loading={submitting === 'always'} onPress={() => handleReply('always')}>Always allow</Button>
+          <Button mode="text" compact textColor={palette.danger} disabled={Boolean(submitting)} loading={submitting === 'reject'} onPress={() => handleReply('reject')}>Deny</Button>
         </View>
       </Card.Content>
     </Card>
@@ -424,5 +542,6 @@ const styles = StyleSheet.create({
   requestCardContent: { gap: 10 },
   requestActionsRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
   questionBlock: { gap: 8 },
+  questionBooleanRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 },
   questionOptions: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
 });

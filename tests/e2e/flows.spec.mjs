@@ -429,6 +429,11 @@ test('connects to an OpenCode 2 server and completes a prompt', async ({ page, r
     await expect(page.getByText(/Finished:/).first()).toBeVisible({ timeout: 30_000 });
     await expect(page.getByText(/Flow stayed stable against the fake OpenCode server/).first()).toBeVisible();
 
+    // V2 has no server-owned todo endpoint; the plan is derived from the
+    // transcript's `todowrite` tool part.
+    await expect(page.getByText('Plan', { exact: true })).toBeVisible();
+    await expect(page.getByText('2 of 2 tasks completed')).toBeVisible();
+
     // Unsupported V2 actions are hidden rather than failing at tap time.
     await expect(page.getByText('Ask permission', { exact: true })).toHaveCount(0);
     await page.getByRole('tab', { name: 'Workspace' }).click();
@@ -477,6 +482,8 @@ test('OpenCode 2 questions unblock the agent flow', async ({ page, request }) =>
     await page.getByText('Minimal', { exact: true }).click();
     await page.getByText('Submit answer', { exact: true }).click();
     await expect(page.getByText(/question resolved/).first()).toBeVisible({ timeout: 20_000 });
+    // The submitted label is translated back to the form option's value, not the label.
+    await expect(page.getByText(/"q0":"minimal"/).first()).toBeVisible({ timeout: 20_000 });
   } finally {
     server.kill('SIGTERM');
   }

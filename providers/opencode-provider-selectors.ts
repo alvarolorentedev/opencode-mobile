@@ -10,7 +10,11 @@ export function getCurrentPendingRequests<T>(
   const candidateSessionIds = [...new Set([currentSessionId, sendingSessionId].filter(Boolean))] as string[];
   const matches = candidateSessionIds.flatMap((sessionId) => pendingRequestsBySession[sessionId] || []);
 
-  return matches;
+  // MCP elicitation forms are owned by the server's `global` sentinel rather
+  // than a real session. Surface them with the active chat instead of dropping
+  // a blocking request that the user must answer.
+  const globalRequests = pendingRequestsBySession.global || [];
+  return globalRequests.length > 0 ? [...matches, ...globalRequests] : matches;
 }
 
 export function getConfiguredProviders(availableProviders: ProviderOption[]) {

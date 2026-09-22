@@ -91,6 +91,8 @@ export const styles = StyleSheet.create({
   diffListCardContent: { paddingHorizontal: 0, paddingVertical: 0 },
   todoOverlay: { position: 'absolute', left: 12, right: 12, bottom: 12, zIndex: 2, borderRadius: 16, borderWidth: 1, overflow: 'hidden' },
   todoHeader: { minHeight: 48, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 4 },
+  todoHeaderContent: { gap: 4 },
+  todoProgress: { height: 4, borderRadius: 2 },
   todoSummary: { flex: 1 },
   todoToggleButton: { width: 40, height: 40, margin: 0 },
   todoListScroll: { maxHeight: 240 },

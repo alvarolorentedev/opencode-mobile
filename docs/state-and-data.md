@@ -72,6 +72,7 @@ Important behavior:
 
 - data is fetched lazily when a session is opened or refreshed
 - message/diff/todo caches are updated by explicit refreshes, SSE events, and polling fallback
+- on V2 the server has no todo endpoint, so `currentTodos` falls back to the plan derived from the transcript's `todowrite` tool parts (`deriveTodosFromMessages`); V1 stays server-authoritative
 - permission and question entries are updated by SSE events, replies, and server list refreshes
 - current-session selectors only read the active or relevant session from these maps
 

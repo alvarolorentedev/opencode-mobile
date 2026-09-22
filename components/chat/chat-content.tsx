@@ -2,7 +2,7 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { FlashList, type FlashListRef } from '@shopify/flash-list';
 import { memo, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { Animated, Easing, RefreshControl, ScrollView, View } from 'react-native';
-import { ActivityIndicator, Button, Card, IconButton, Text, TouchableRipple } from 'react-native-paper';
+import { ActivityIndicator, Button, Card, IconButton, ProgressBar, Text, TouchableRipple } from 'react-native-paper';
 
 import { Colors } from '@/constants/theme';
 import { DiffCard, PendingInteractionsCard, SessionDiffCard, TranscriptMessage } from '@/components/chat/chat-cards';
@@ -90,9 +90,9 @@ type ChatContentProps = {
   onUnrevert: () => void;
   onExpandDiff: (id?: string) => void;
   onRefresh: () => void;
-  onReplyToPermission: (requestId: string, reply: 'once' | 'always' | 'reject') => void;
-  onRejectQuestion: (requestId: string) => void;
-  onReplyToQuestion: (requestId: string, answers: PendingQuestionAnswer[]) => void;
+  onReplyToPermission: (requestId: string, reply: 'once' | 'always' | 'reject') => Promise<void>;
+  onRejectQuestion: (requestId: string) => Promise<void>;
+  onReplyToQuestion: (requestId: string, answers: PendingQuestionAnswer[]) => Promise<void>;
   onSendStarterPrompt: (prompt: string) => void;
   onToggleSpeak: (entry: TranscriptEntry) => void;
   palette: Palette;
@@ -329,16 +329,26 @@ export function ChatContent({
 
       {activeTab === 'session' && currentTodos.length > 0 ? (
         <Card mode="elevated" style={[styles.todoOverlay, { backgroundColor: palette.surface, borderColor: palette.border }]}>
-          <Card.Content style={styles.todoHeader}>
-            <Text variant="labelLarge" style={[styles.todoSummary, { color: palette.text }]}>
-              {`${completedTodoCount} of ${currentTodos.length} tasks completed`}
-            </Text>
-            <IconButton
-              accessibilityLabel={todosExpanded ? 'Collapse tasks' : 'Expand tasks'}
-              icon={todosExpanded ? 'chevron-down' : 'chevron-up'}
-              size={20}
-              style={styles.todoToggleButton}
-              onPress={() => setTodosExpanded((expanded) => !expanded)}
+          <Card.Content style={styles.todoHeaderContent}>
+            <View style={styles.todoHeader}>
+              <View style={styles.todoSummary}>
+                <Text variant="labelLarge" style={{ color: palette.text }}>Plan</Text>
+                <Text variant="bodySmall" style={{ color: palette.muted }}>
+                  {`${completedTodoCount} of ${currentTodos.length} tasks completed`}
+                </Text>
+              </View>
+              <IconButton
+                accessibilityLabel={todosExpanded ? 'Collapse plan' : 'Expand plan'}
+                icon={todosExpanded ? 'chevron-down' : 'chevron-up'}
+                size={20}
+                style={styles.todoToggleButton}
+                onPress={() => setTodosExpanded((expanded) => !expanded)}
+              />
+            </View>
+            <ProgressBar
+              progress={completedTodoCount / currentTodos.length}
+              color={palette.tint}
+              style={styles.todoProgress}
             />
           </Card.Content>
           {todosExpanded ? (

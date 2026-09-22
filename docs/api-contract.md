@@ -11,9 +11,9 @@ This is the client-side OpenCode contract implemented by the app. It supports tw
 
 Because a probe can still misclassify a hybrid server, `connect()` tries the detected contract first and falls back to the other one when workspace discovery fails with a contract-mismatch error (`UnsupportedContentType`, `UnexpectedStatus`, `MalformedResponse`, or an HTML response). Only after both fail is a connection error surfaced.
 
-The V2 adapter is best-effort and does not cover every 1.x feature. Unsupported on V2: session share/unshare, archive/restore, server-side todos, title summarization (`summarize`), `file.status`, `vcs.apply`, `find.text`/`find.symbol`, LSP and formatter diagnostics, and remote-MCP OAuth start/callback. These degrade to empty results or explicit errors.
+The V2 adapter is best-effort and does not cover every 1.x feature. Unsupported on V2: session share/unshare, archive/restore, title summarization (`summarize`), `file.status`, `vcs.apply`, `find.text`/`find.symbol`, LSP and formatter diagnostics, and remote-MCP OAuth start/callback. These degrade to empty results or explicit errors. Server-owned session todos are not an endpoint on V2, but the adapter derives the same plan from the transcript's `todowrite` tool parts, so the todo surface is available on both contracts.
 
-`getServerCapabilities(contract)` in `providers/opencode-provider-utils.ts` turns the resolved contract into UI-facing flags (`share`, `archive`, `todos`, `summarize`, `fileSave`, `fileStatus`, `lsp`, `formatter`, `mcpOAuth`, `configWrite`, `worktreeReset`). The provider exposes them as `serverCapabilities`, and screens/components hide the corresponding actions on V2 instead of letting them fail at tap time. All flags are `true` for V1.
+`getServerCapabilities(contract)` in `providers/opencode-provider-utils.ts` turns the resolved contract into UI-facing flags (`share`, `archive`, `todos`, `summarize`, `fileSave`, `fileStatus`, `lsp`, `formatter`, `mcpOAuth`, `configWrite`, `worktreeReset`). The provider exposes them as `serverCapabilities`, and screens/components hide the corresponding actions on V2 instead of letting them fail at tap time. All flags are `true` for V1; `todos` is also `true` for V2 because it is derived client-side.
 
 The authoritative implementation is:
 
@@ -195,7 +195,7 @@ The app reads:
 - `session.diff({ sessionID, messageID })`
 - `session.todo({ sessionID })`
 
-The Files Changed surface shows the latest user message's diff. The app loads the session messages, selects the latest user message, and supplies its ID to the message-scoped diff endpoint. Diff responses use the current `{ file, patch, additions, deletions, status }` shape directly. When no structured diff is available, transcript patch parts can still supply filename-only entries; current workspace file state is not treated as session history. Missing response data is a contract error rather than an empty result. Todos are server-owned; the UI renders their `status` and never sends a todo mutation.
+The Files Changed surface shows the latest user message's diff. The app loads the session messages, selects the latest user message, and supplies its ID to the message-scoped diff endpoint. Diff responses use the current `{ file, patch, additions, deletions, status }` shape directly. When no structured diff is available, transcript patch parts can still supply filename-only entries; current workspace file state is not treated as session history. Missing response data is a contract error rather than an empty result. Todos are server-owned on V1; the UI renders their `status` and never sends a todo mutation. V2 has no todo endpoint, so the adapter derives the same `Todo[]` from the latest `todowrite` tool part in the transcript (`deriveTodosFromMessages` in `lib/opencode/format.ts`).
 
 ### Prompt And Attachments
 
@@ -292,7 +292,11 @@ A reply calls the generated session-scoped operation with:
 
 Allowed values are `once`, `always`, and `reject`.
 
-Question requests contain `id`, `sessionID`, and one or more question definitions with headers, prompts, options, and optional multiple/custom-answer behavior. Replies post ordered answer arrays to `/question/{requestID}/reply`; rejection posts to `/question/{requestID}/reject`.
+Question requests contain `id`, `sessionID`, optional `title`, and one or more question definitions with headers, prompts, options, and optional multiple/custom-answer behavior. Replies post ordered answer arrays to `/question/{requestID}/reply`; rejection posts to `/question/{requestID}/reject`.
+
+The app owns the `PendingQuestionRequest`/`PendingQuestionPrompt` shape rather than aliasing the V1 SDK type, so the V2 adapter can carry form-specific metadata: per-option `value`, field `type` (`string`, `number`, `integer`, `boolean`, `multiselect`, `external`), `required`, `placeholder`, `default`, `url`, and conditional `when` rules. The UI submits option labels; the V2 adapter translates them back to option values and coerces numeric/boolean answers before posting the form reply.
+
+`listPendingInteractions` fetches permissions and questions independently (`Promise.allSettled`) and returns whichever succeeded, so a failing form or permission list cannot hide the other surface. On V2 both list calls are scoped with `location[directory]` to the active project; V2 MCP elicitation forms use the server's `global` sentinel and are surfaced with the active chat instead of being dropped.
 
 ## Global Event Stream
 

@@ -208,6 +208,7 @@ Responsibility:
 
 - render session-scoped permission and question cards in a continuation-blocked card
 - collect single, multiple, or custom question answers locally before submission
+- render V2 form field types (boolean switch, numeric input, external link), honor `required`/`when`/`default`, and show a pending state while a reply is in flight
 
 ### `SessionDiffCard`
 

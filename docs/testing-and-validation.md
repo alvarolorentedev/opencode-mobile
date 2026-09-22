@@ -138,7 +138,10 @@ The SSE endpoint intentionally fails, forcing the app to complete the workflow t
 
 - point at the V2 fake server and verify contract detection connects
 - verify capabilities, session bootstrap, prompt completion, and transcript rendering work through the V2 adapter
+- verify the derived plan renders (`Plan`, `2 of 2 tasks completed`) from the transcript's `todowrite` tool part, since V2 has no todo endpoint
 - verify permission requests and form-backed questions unblock the flow
+- verify form option labels are translated back to option values on reply (the fake server records the decoded answer)
+- verify the V2 adapter scopes `GET /api/form` and `GET /api/permission/request` with `location[directory]`; the fake server rejects unscoped list calls
 - verify the PTY WebSocket streams input/output under `/api`
 - verify unsupported actions are hidden rather than failing: no auto-approve toggle, no share/archive actions, no archived toggle, and no LSP/formatter subsystem rows
 

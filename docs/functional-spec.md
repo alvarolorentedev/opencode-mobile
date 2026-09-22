@@ -136,7 +136,7 @@ Permission behavior:
 - replies use `/permission/{requestID}/reply`
 - the replied request is removed locally and that session's messages are refreshed
 
-Question cards render each question's choices, optional custom answer, submit action, and rejection action. Answers preserve question order and support multiple selections.
+Question cards render each question's choices, optional custom answer, submit action, and rejection action. Answers preserve question order and support multiple selections. V2 forms additionally render field types (`boolean` as a switch, `number`/`integer` with a numeric keyboard, `external` as an open-link action), respect `required` and `when` conditions, prefill `default` values, and show the form `title`. Submit and reject actions expose a pending state so a request cannot be answered twice. V2 MCP elicitation forms owned by the server's `global` sentinel are surfaced with the active chat rather than dropped.
 
 ### 7. Inspect File Changes
 

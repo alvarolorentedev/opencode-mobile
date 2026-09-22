@@ -50,6 +50,7 @@ import {
   type ScopedOpencodeClient,
 } from '@/lib/opencode/client';
 import {
+  deriveTodosFromMessages,
   mergeSessionMessageRecords,
   toTranscriptEntry,
   type SessionMessageRecord,
@@ -2735,10 +2736,22 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
     () => (currentSessionId ? diffsBySession[currentSessionId] || [] : []),
     [currentSessionId, diffsBySession],
   );
-  const currentTodos = useMemo(
-    () => (currentSessionId ? todosBySession[currentSessionId] || [] : []),
-    [currentSessionId, todosBySession],
-  );
+  const currentTodos = useMemo(() => {
+    if (!currentSessionId) {
+      return [];
+    }
+
+    const serverTodos = todosBySession[currentSessionId];
+    // OpenCode 2.x has no server-owned todo endpoint; its plan is derived from
+    // the transcript's `todowrite` tool parts. V1 stays server-authoritative and
+    // only derives as a fallback before the first fetch lands.
+    if (serverContract !== 'v2' && serverTodos !== undefined) {
+      return serverTodos;
+    }
+
+    const messages = messagesBySession[currentSessionId];
+    return messages ? deriveTodosFromMessages(messages) : [];
+  }, [currentSessionId, messagesBySession, serverContract, todosBySession]);
   const currentPendingPermissions = useMemo(
     () => getCurrentPendingRequests(currentSessionId, sendingState.sessionId, pendingPermissionsBySession),
     [currentSessionId, pendingPermissionsBySession, sendingState.sessionId],

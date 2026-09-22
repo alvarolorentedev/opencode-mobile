@@ -486,9 +486,9 @@ export function ChatView() {
           onCopyMessage={(entry) => void handleCopyMessage(entry)}
           onExpandDiff={setExpandedDiffId}
           onRefresh={() => void refreshCurrentSession()}
-          onRejectQuestion={(requestId) => void rejectQuestion(requestId).catch((error) => setSendFeedback(error instanceof Error ? error.message : 'Could not reject the question.'))}
-          onReplyToPermission={(requestId, reply) => void replyToPermission(requestId, reply).catch((error) => setSendFeedback(error instanceof Error ? error.message : 'Could not reply to the permission request.'))}
-          onReplyToQuestion={(requestId, answers) => void replyToQuestion(requestId, answers).catch((error) => setSendFeedback(error instanceof Error ? error.message : 'Could not answer the question.'))}
+          onRejectQuestion={(requestId) => rejectQuestion(requestId).catch((error) => { setSendFeedback(error instanceof Error ? error.message : 'Could not reject the question.'); })}
+          onReplyToPermission={(requestId, reply) => replyToPermission(requestId, reply).catch((error) => { setSendFeedback(error instanceof Error ? error.message : 'Could not reply to the permission request.'); })}
+          onReplyToQuestion={(requestId, answers) => replyToQuestion(requestId, answers).catch((error) => { setSendFeedback(error instanceof Error ? error.message : 'Could not answer the question.'); })}
           onForkMessage={(messageId) => {
             if (!currentSessionId) return;
             void forkSession(currentSessionId, messageId).catch((error) => setSendFeedback(error instanceof Error ? error.message : 'Could not fork session.'));

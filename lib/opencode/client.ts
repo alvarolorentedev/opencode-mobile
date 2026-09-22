@@ -3,7 +3,6 @@ import {
   type OpencodeClient,
   type PermissionRequest,
   type QuestionAnswer,
-  type QuestionRequest,
 } from '@opencode-ai/sdk/v2/client';
 import { encode as encodeBase64 } from 'base-64';
 import Constants from 'expo-constants';
@@ -13,7 +12,44 @@ import { buildV2Client } from './v2-client';
 export type ServerContract = 'v1' | 'v2';
 
 export type PendingPermissionRequest = PermissionRequest;
-export type PendingQuestionRequest = QuestionRequest;
+
+export type PendingQuestionOption = {
+  label: string;
+  description?: string;
+  /** Stable value submitted to the server. V1 uses the label; V2 forms carry an explicit value. */
+  value?: string;
+};
+
+export type PendingQuestionWhen = {
+  key: string;
+  op: 'eq' | 'neq';
+  value: string | number | boolean;
+};
+
+export type PendingQuestionPrompt = {
+  header: string;
+  question: string;
+  options: PendingQuestionOption[];
+  multiple?: boolean;
+  custom?: boolean;
+  /** V2 form field key, used to resolve `when` conditions. */
+  key?: string;
+  /** V2 form field type. V1 questions omit this and render as a single/multi choice. */
+  type?: 'string' | 'number' | 'integer' | 'boolean' | 'multiselect' | 'external';
+  required?: boolean;
+  placeholder?: string;
+  defaultValue?: string | number | boolean;
+  url?: string;
+  when?: PendingQuestionWhen[];
+};
+
+export type PendingQuestionRequest = {
+  id: string;
+  sessionID: string;
+  title?: string;
+  questions: PendingQuestionPrompt[];
+};
+
 export type PendingQuestionAnswer = QuestionAnswer;
 
 export type OpencodeConnectionSettings = {
@@ -343,16 +379,30 @@ export function isContractMismatchError(error: unknown) {
 }
 
 export async function listPendingInteractions(client: ScopedOpencodeClient) {
-  const [permissionResponse, questionResponse] = await Promise.all([
+  // Fetch each surface independently. A V2 server can reject an unscoped form or
+  // permission list while the other endpoint still works; coupling them behind a
+  // single Promise.all would hide working interactions behind one failing call.
+  const [permissionResult, questionResult] = await Promise.allSettled([
     client.permission.list(),
     client.question.list(),
   ]);
 
-  if (!permissionResponse.data || !questionResponse.data) {
-    throw new Error('OpenCode did not return pending interactions.');
+  const permissions = permissionResult.status === 'fulfilled' ? permissionResult.value.data : undefined;
+  const questions = questionResult.status === 'fulfilled' ? questionResult.value.data : undefined;
+
+  if (!permissions && !questions) {
+    const reason = permissionResult.status === 'rejected'
+      ? permissionResult.reason
+      : questionResult.status === 'rejected'
+        ? questionResult.reason
+        : undefined;
+    throw reason instanceof Error ? reason : new Error('OpenCode did not return pending interactions.');
   }
 
-  return { permissions: permissionResponse.data, questions: questionResponse.data };
+  return {
+    permissions: permissions ?? [],
+    questions: (questions ?? []) as PendingQuestionRequest[],
+  };
 }
 
 export async function replyToPendingPermission(

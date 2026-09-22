@@ -5,6 +5,8 @@ import {
   getRequestHeaders,
   getServerBase,
   type OpencodeConnectionSettings,
+  type PendingQuestionPrompt,
+  type PendingQuestionRequest,
   type ScopedOpencodeClient,
 } from './client';
 
@@ -297,27 +299,75 @@ function mapPermission(permission: V2Permission, ctx: AdapterContext): Record<st
   };
 }
 
-function formToQuestion(form: V2Form, ctx: AdapterContext): Record<string, unknown> {
+function formToQuestion(form: V2Form, ctx: AdapterContext): PendingQuestionRequest {
   ctx.formSession.set(form.id, form);
   const fields = Array.isArray(form.fields) ? form.fields : [];
   return {
     id: form.id,
     sessionID: form.sessionID,
+    title: stringField(form.title) || undefined,
     questions: fields.map((field) => {
       const record = field as Record<string, unknown>;
       const options = Array.isArray(record.options) ? record.options : [];
+      const type = stringField(record.type) as PendingQuestionPrompt['type'];
+      const when = Array.isArray(record.when)
+        ? record.when.flatMap((entry) => {
+            if (!entry || typeof entry !== 'object') {
+              return [];
+            }
+            const condition = entry as Record<string, unknown>;
+            const key = stringField(condition.key);
+            if (!key) {
+              return [];
+            }
+            const value = condition.value;
+            return [{
+              key,
+              op: condition.op === 'neq' ? 'neq' as const : 'eq' as const,
+              value: typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean' ? value : '',
+            }];
+          })
+        : undefined;
+      const defaultValue = record.default;
       return {
         header: stringField(record.title, stringField(record.key)),
         question: stringField(record.description) || stringField(record.title) || stringField(record.key),
+        key: stringField(record.key) || undefined,
         options: options.map((option) => {
           const item = (option ?? {}) as Record<string, unknown>;
-          return { label: stringField(item.label), description: stringField(item.description) };
+          const label = stringField(item.label);
+          return {
+            label,
+            description: stringField(item.description) || undefined,
+            value: stringField(item.value) || label,
+          };
         }),
-        multiple: record.type === 'multiselect',
+        multiple: type === 'multiselect',
         custom: record.custom === true || options.length === 0,
+        type,
+        required: record.required === true,
+        placeholder: stringField(record.placeholder) || undefined,
+        defaultValue: typeof defaultValue === 'string' || typeof defaultValue === 'number' || typeof defaultValue === 'boolean'
+          ? defaultValue
+          : undefined,
+        url: stringField(record.url) || undefined,
+        when,
       };
     }),
   };
+}
+
+function resolveOptionValue(record: Record<string, unknown>, raw: string): string {
+  const options = Array.isArray(record.options) ? record.options : [];
+  const match = options.find((option) => {
+    const item = (option ?? {}) as Record<string, unknown>;
+    return stringField(item.label) === raw || stringField(item.value) === raw;
+  });
+  if (!match) {
+    return raw;
+  }
+  const item = match as Record<string, unknown>;
+  return stringField(item.value) || stringField(item.label) || raw;
 }
 
 function toAnswer(form: V2Form, answers: unknown): Record<string, string | number | boolean | string[]> {
@@ -328,15 +378,31 @@ function toAnswer(form: V2Form, answers: unknown): Record<string, string | numbe
     const record = field as Record<string, unknown>;
     const key = stringField(record.key, String(index));
     const value = list[index];
-    if (record.type === 'multiselect') {
-      answer[key] = Array.isArray(value) ? value.map((item) => (typeof item === 'string' ? item : String(item))) : [String(value ?? '')];
-    } else if (Array.isArray(value)) {
-      answer[key] = value.length > 0 ? String(value[0]) : '';
-    } else if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') {
-      answer[key] = value;
-    } else {
-      answer[key] = value === undefined ? '' : String(value);
+    const type = stringField(record.type);
+
+    if (type === 'multiselect') {
+      const selected = Array.isArray(value) ? value.map((item) => String(item)) : value === undefined || value === null ? [] : [String(value)];
+      answer[key] = selected.map((item) => resolveOptionValue(record, item));
+      return;
     }
+
+    const raw = Array.isArray(value)
+      ? value.length > 0 ? String(value[0]) : ''
+      : value === undefined || value === null ? '' : String(value);
+    const resolved = resolveOptionValue(record, raw);
+
+    if (type === 'number' || type === 'integer') {
+      const numeric = Number(resolved);
+      answer[key] = resolved !== '' && Number.isFinite(numeric) ? numeric : resolved;
+      return;
+    }
+
+    if (type === 'boolean') {
+      answer[key] = resolved === 'true' || resolved === '1' || resolved === 'yes' || resolved === 'on';
+      return;
+    }
+
+    answer[key] = resolved;
   });
   return answer;
 }
@@ -566,6 +632,9 @@ function buildV2Raw(settings: OpencodeConnectionSettings): { client: Record<stri
         const diffs: V2Diff[] = await api.session.diff({ sessionID: parameters.sessionID });
         return ok(diffs);
       },
+      // OpenCode 2.x removed the server-owned todo endpoint. The plan is derived
+      // from `todowrite` tool parts in the transcript instead (see
+      // deriveTodosFromMessages in lib/opencode/format.ts).
       todo: async () => ok([]),
       delete: async (parameters: { sessionID: string }) => {
         await api.session.remove({ sessionID: parameters.sessionID });
@@ -871,7 +940,7 @@ function buildV2Raw(settings: OpencodeConnectionSettings): { client: Record<stri
     },
     permission: {
       list: async () => {
-        const response = await api.permission.request.list();
+        const response = await api.permission.request.list(ctx.directory ? { location: { directory: ctx.directory } } : {});
         return ok((response.data ?? []).map((permission) => mapPermission(permission, ctx)));
       },
       reply: async (parameters: { requestID: string; reply: 'once' | 'always' | 'reject' }) => {
@@ -882,7 +951,7 @@ function buildV2Raw(settings: OpencodeConnectionSettings): { client: Record<stri
     },
     question: {
       list: async () => {
-        const response = await api.form.list();
+        const response = await api.form.list(ctx.directory ? { location: { directory: ctx.directory } } : {});
         return ok((response.data ?? []).map((form) => formToQuestion(form, ctx)));
       },
       reply: async (parameters: { requestID: string; answers?: unknown }) => {
@@ -1016,7 +1085,7 @@ function mcpConfigToV2(config: Record<string, unknown> | undefined) {
 async function resolvePermissionSession(api: V2Api, ctx: AdapterContext, requestID: string): Promise<string> {
   const known = ctx.permissionSession.get(requestID);
   if (known) return known;
-  const response = await api.permission.request.list();
+  const response = await api.permission.request.list(ctx.directory ? { location: { directory: ctx.directory } } : {});
   (response.data ?? []).forEach((permission) => ctx.permissionSession.set(permission.id, permission.sessionID));
   const resolved = ctx.permissionSession.get(requestID);
   if (!resolved) throw new Error('This permission request is no longer available.');
@@ -1026,7 +1095,7 @@ async function resolvePermissionSession(api: V2Api, ctx: AdapterContext, request
 async function resolveForm(api: V2Api, ctx: AdapterContext, requestID: string): Promise<V2Form> {
   const known = ctx.formSession.get(requestID);
   if (known) return known;
-  const response = await api.form.list();
+  const response = await api.form.list(ctx.directory ? { location: { directory: ctx.directory } } : {});
   (response.data ?? []).forEach((form) => ctx.formSession.set(form.id, form));
   const resolved = ctx.formSession.get(requestID);
   if (!resolved) throw new Error('This question is no longer available.');

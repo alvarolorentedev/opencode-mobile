@@ -30,6 +30,17 @@ function location() {
   return { directory: state.project.worktree };
 }
 
+// The V2 adapter must scope form/permission lists to the active project
+// directory. Reject unscoped list calls so the client-side scoping is covered.
+function requireLocation(requestUrl, res) {
+  const directory = requestUrl.searchParams.get('location[directory]');
+  if (!directory) {
+    sendJson(res, 400, { error: 'location[directory] is required' });
+    return undefined;
+  }
+  return directory;
+}
+
 function readJson(req) {
   return new Promise((resolve, reject) => {
     let raw = '';
@@ -134,6 +145,18 @@ function messageToV2(record) {
     if (part.type === 'text') content.push({ type: 'text', text: part.text });
     else if (part.type === 'reasoning') content.push({ type: 'reasoning', text: part.text });
   }
+  // V2 has no server-owned todo endpoint. Surface the plan through a
+  // `todowrite` tool part so the adapter can derive it from the transcript.
+  const todos = state.todosBySession[record.info.sessionID] || [];
+  if (todos.length > 0) {
+    content.push({
+      type: 'tool',
+      id: `todowrite-${record.info.id}`,
+      name: 'todowrite',
+      state: { status: 'completed', input: { todos }, content: [], metadata: {}, time: { start: 0, end: 0 } },
+      time: { created: record.info.time.created, completed: record.info.time.created },
+    });
+  }
   return {
     id: record.info.id,
     type: 'assistant',
@@ -158,7 +181,7 @@ function questionToForm(question) {
       type: item.multiple ? 'multiselect' : 'string',
       title: item.header,
       description: item.question,
-      options: (item.options || []).map((option) => ({ value: option.label, label: option.label, description: option.description })),
+      options: (item.options || []).map((option) => ({ value: option.label.toLowerCase(), label: option.label, description: option.description })),
       custom: item.custom,
     })),
   };
@@ -430,7 +453,7 @@ const server = http.createServer(async (req, res) => {
         type: action === 'reply' ? 'question.replied' : 'question.rejected',
         properties: { sessionID: sessionID || request.sessionID, requestID: formID, ...(body || {}) },
       });
-      if (action === 'reply') helpers.scheduleCompletion(sessionID || request.sessionID, 'question resolved');
+      if (action === 'reply') helpers.scheduleCompletion(sessionID || request.sessionID, `question resolved ${JSON.stringify(body?.answer ?? {})}`);
       else state.sessionStatuses[sessionID || request.sessionID] = { type: 'idle' };
       res.writeHead(204, { 'Access-Control-Allow-Origin': '*' });
       res.end();
@@ -543,6 +566,7 @@ const server = http.createServer(async (req, res) => {
     }
 
     if (req.method === 'GET' && pathname === '/api/permission/request') {
+      if (!requireLocation(requestUrl, res)) return;
       sendJson(res, 200, {
         location: location(),
         data: state.pendingPermissions.map((request) => ({
@@ -558,6 +582,7 @@ const server = http.createServer(async (req, res) => {
     }
 
     if (req.method === 'GET' && pathname === '/api/form') {
+      if (!requireLocation(requestUrl, res)) return;
       sendJson(res, 200, { location: location(), data: state.pendingQuestions.map(questionToForm) });
       return;
     }
