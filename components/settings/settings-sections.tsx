@@ -479,6 +479,35 @@ export function VoiceSection({
   );
 }
 
+export function ChatsSection({
+  chatPreferences,
+  palette,
+  updateChatPreferences,
+}: {
+  chatPreferences: ChatPreferences;
+  palette: Palette;
+  updateChatPreferences: (patch: Partial<ChatPreferences>) => void;
+}) {
+  return (
+    <Card mode="contained" style={[styles.card, { backgroundColor: palette.surface }]}>
+      <Card.Content style={styles.section}>
+        <Text variant="titleLarge" style={[styles.title, { color: palette.text }]}>Chats</Text>
+        <List.Section style={styles.infoListSection}>
+          <SettingSwitchRow
+            description="Hide sessions started by subagents in the workspace chat list. They stay open and still run to completion."
+            onValueChange={(value) => updateChatPreferences({ hideSubagentChats: value })}
+            palette={palette}
+            title="Hide subagent chats"
+            value={chatPreferences.hideSubagentChats}
+          />
+        </List.Section>
+        <HelperText type="info">How many chats the workspace list renders per page. This only limits mounted rows; the full list is always fetched.</HelperText>
+        <NumericSlider label="Chats per page" minimum={5} maximum={100} step={5} value={Math.round(chatPreferences.chatsPerPage) || 24} valueLabel={`${Math.round(chatPreferences.chatsPerPage) || 24}`} onValueChange={(chatsPerPage) => updateChatPreferences({ chatsPerPage })} palette={palette} />
+      </Card.Content>
+    </Card>
+  );
+}
+
 function NumericSlider({
   label,
   maximum,

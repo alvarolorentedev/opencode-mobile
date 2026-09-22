@@ -78,6 +78,8 @@ export type ChatPreferences = {
   workingSoundVolume: number;
   responseScope: ResponseScope;
   includeNextActions: boolean;
+  hideSubagentChats: boolean;
+  chatsPerPage: number;
 };
 
 export const defaultChatPreferences: ChatPreferences = {
@@ -95,6 +97,8 @@ export const defaultChatPreferences: ChatPreferences = {
   workingSoundVolume: 0.18,
   responseScope: 'brief',
   includeNextActions: true,
+  hideSubagentChats: false,
+  chatsPerPage: 24,
 };
 
 export function getErrorMessage(error: unknown) {
