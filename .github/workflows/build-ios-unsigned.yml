@@ -1,0 +1,78 @@
+name: Build unsigned iOS IPA
+
+# Free sideload route: produces an UNSIGNED .ipa that can be re-signed and
+# installed with a sideloading tool (e.g. Sideloadly) using a free Apple ID.
+# No Apple signing material or paid Apple Developer account is required on CI.
+# Runs on a macOS runner (free on public repositories).
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+
+jobs:
+  build-ios-unsigned:
+    runs-on: macos-26
+
+    env:
+      EXPO_APP_VARIANT: production
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Generate iOS native project
+        run: CI=1 npx expo prebuild --platform ios --clean
+
+      - name: Detect workspace
+        id: workspace
+        run: |
+          WORKSPACE=$(find ios -maxdepth 1 -name "*.xcworkspace" -print -quit)
+          if [ -z "$WORKSPACE" ]; then
+            echo "No .xcworkspace found"
+            exit 1
+          fi
+          echo "path=$WORKSPACE" >> "$GITHUB_OUTPUT"
+          echo "name=$(basename "$WORKSPACE" .xcworkspace)" >> "$GITHUB_OUTPUT"
+
+      - name: Build unsigned app
+        run: |
+          xcodebuild -workspace "${{ steps.workspace.outputs.path }}" \
+            -scheme "${{ steps.workspace.outputs.name }}" \
+            -configuration Release \
+            -sdk iphoneos \
+            -derivedDataPath "$RUNNER_TEMP/derived" \
+            CURRENT_PROJECT_VERSION="${{ github.run_number }}.${{ github.run_attempt }}" \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            COMPILER_INDEX_STORE_ENABLE=NO \
+            build
+
+      - name: Assemble unsigned IPA
+        run: |
+          APP_PATH=$(find "$RUNNER_TEMP/derived/Build/Products/Release-iphoneos" -maxdepth 1 -name "*.app" -print -quit)
+          if [ -z "$APP_PATH" ]; then
+            echo "No .app produced in Release-iphoneos"
+            exit 1
+          fi
+          mkdir -p "$RUNNER_TEMP/ipa/Payload"
+          cp -R "$APP_PATH" "$RUNNER_TEMP/ipa/Payload/"
+          cd "$RUNNER_TEMP/ipa"
+          ditto -c -k --keepParent Payload opencode-mobile-unsigned.ipa
+
+      - name: Upload IPA artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: opencode-mobile-unsigned-ipa
+          path: ${{ runner.temp }}/ipa/opencode-mobile-unsigned.ipa
+          if-no-files-found: error

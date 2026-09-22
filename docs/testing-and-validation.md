@@ -182,7 +182,7 @@ The following important behaviors are present in code but are not obviously cove
 - conversation mode state machine
 - speech recognition failures and permission edge cases
 - TTS playback behavior
-- notification initialization and background monitoring
+- notification initialization and background monitoring (including lock-screen pending-permission alerts and action replies, which are native-only)
 - session fork, revert/unrevert, and share/unshare
 - attachment upload behavior
 - attachment capability rejection and the 10 MB local-file limit

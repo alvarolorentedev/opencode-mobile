@@ -60,6 +60,7 @@ This file is the application's effective domain layer. It owns:
 - prompt send / abort lifecycle
 - conversation mode state machine
 - notification completion tracking
+- lock-screen pending-permission alerts with Approve/Reject actions (permission replies)
 - global SSE subscription with reconnect and polling fallback
 - session lifecycle actions, slash commands, workspace inspection, and diagnostics
 - archived-session, worktree, MCP, and PTY terminal orchestration
@@ -163,7 +164,7 @@ If this app were reimplemented, this provider would be the main source of truth 
 ### Platform Integrations
 
 - `lib/notifications.ts`
-  Local notifications, background monitoring task, and notification debug status.
+  Local notifications, background monitoring task, pending-permission lock-screen category/actions, and notification debug status.
 - `lib/voice/speech-output.ts`
   Text-to-speech and audio ducking.
 - `lib/voice/use-speech-input.ts`

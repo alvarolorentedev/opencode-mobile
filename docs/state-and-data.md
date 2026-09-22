@@ -184,6 +184,7 @@ Persisted values:
 - `opencode-mobile.active-project`
 - `opencode-mobile.last-session-by-project`
 - `opencode-mobile.pending-notification-sessions`
+- `opencode-mobile.pending-permission-notified` (dedupe ledger for lock-screen pending-permission alerts)
 - `opencode-mobile.sessions.<projectPath>` / `opencode-mobile.session-statuses.<projectPath>` (per-project cache)
 - `opencode-mobile.favorite-sessions` (cross-workspace favorites)
 
@@ -383,6 +384,16 @@ Pending completion notification storage records:
 - `requestedAt`
 
 The password is stored separately in Keychain/Keystore-backed secure storage and resolved by the background worker at runtime. Regular connection settings in AsyncStorage also exclude the password; legacy plaintext settings are migrated during hydration.
+
+Lock-screen pending-permission alert dedupe records (`opencode-mobile.pending-permission-notified`) store, keyed by `sessionId/requestID`:
+
+- `sessionId`, `requestID`
+- optional `permissionTitle` and `patterns`
+- `projectPath`
+- a non-secret connection reference: `serverUrl`, `username`
+- `notifiedAt`
+
+The ledger holds no password and mirrors the completion tracker. Entries are written when the background task fires a pending-permission alert, cleared when the client replies to the permission (provider `replyToPermission`), and self-healed by the next background run when the request is no longer pending on the server.
 
 ## Important Data Invariants
 

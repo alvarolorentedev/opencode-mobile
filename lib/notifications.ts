@@ -5,13 +5,27 @@ import * as Notifications from 'expo-notifications';
 import * as TaskManager from 'expo-task-manager';
 import { Platform } from 'react-native';
 
-import { buildClient, detectServerContract, type OpencodeConnectionSettings } from '@/lib/opencode/client';
+import {
+  buildClient,
+  detectServerContract,
+  listPendingInteractions,
+  replyToPendingPermission,
+  type OpencodeConnectionSettings,
+  type PendingPermissionRequest,
+} from '@/lib/opencode/client';
 import { getConnectionPassword } from '@/lib/connection-password';
-import { PENDING_NOTIFICATION_SESSIONS_STORAGE_KEY, SETTINGS_STORAGE_KEY } from '@/lib/storage-keys';
+import {
+  PENDING_NOTIFICATION_SESSIONS_STORAGE_KEY,
+  PENDING_PERMISSION_NOTIFIED_STORAGE_KEY,
+  SETTINGS_STORAGE_KEY,
+} from '@/lib/storage-keys';
 
 const TASK_FINISHED_CHANNEL_ID = 'task-finished';
 const CHAT_COMPLETION_TASK_NAME = 'opencode-chat-completion-monitor';
 const BACKGROUND_MINIMUM_INTERVAL_MINUTES = 15;
+const PERMISSION_PENDING_CATEGORY_ID = 'permission-pending';
+const PERMISSION_ACTION_APPROVE = 'approve';
+const PERMISSION_ACTION_REJECT = 'reject';
 
 type PendingNotificationSession = {
   sessionId: string;
@@ -29,6 +43,59 @@ function withoutPendingPassword(value: Record<string, PendingNotificationSession
       username: pending.settings.username,
     },
   }])) as Record<string, PendingNotificationSession>;
+}
+
+// Dedupe ledger for lock-screen "pending permission" alerts. A record is stored
+// per session/request so the 15-minute background run does not spam the same
+// request. Entries are cleared when the client replies (see the provider) or on
+// the next run when the permission is no longer pending on the server.
+type PendingPermissionNotificationRecord = {
+  sessionId: string;
+  requestID: string;
+  permissionTitle?: string;
+  patterns?: string[];
+  projectPath: string;
+  settings: Pick<OpencodeConnectionSettings, 'serverUrl' | 'username'>;
+  notifiedAt: number;
+};
+
+function pendingPermissionRecordKey(sessionId: string, requestID: string) {
+  return `${sessionId}/${requestID}`;
+}
+
+async function readPendingPermissionNotified() {
+  try {
+    const raw = await AsyncStorage.getItem(PENDING_PERMISSION_NOTIFIED_STORAGE_KEY);
+    if (!raw) {
+      return {} as Record<string, PendingPermissionNotificationRecord>;
+    }
+    return JSON.parse(raw) as Record<string, PendingPermissionNotificationRecord>;
+  } catch {
+    return {} as Record<string, PendingPermissionNotificationRecord>;
+  }
+}
+
+async function writePendingPermissionNotified(value: Record<string, PendingPermissionNotificationRecord>) {
+  const keys = Object.keys(value);
+  if (keys.length === 0) {
+    await AsyncStorage.removeItem(PENDING_PERMISSION_NOTIFIED_STORAGE_KEY);
+    return;
+  }
+  await AsyncStorage.setItem(PENDING_PERMISSION_NOTIFIED_STORAGE_KEY, JSON.stringify(value));
+}
+
+export async function clearPendingPermissionNotification(sessionId: string, requestID?: string) {
+  const current = await readPendingPermissionNotified();
+  if (requestID) {
+    delete current[pendingPermissionRecordKey(sessionId, requestID)];
+  } else {
+    for (const key of Object.keys(current)) {
+      if (current[key]?.sessionId === sessionId) {
+        delete current[key];
+      }
+    }
+  }
+  await writePendingPermissionNotified(current);
 }
 
 export type NotificationDebugStatus = {
@@ -128,6 +195,39 @@ async function scheduleTaskFinishedNotification(sessionTitle?: string) {
   await scheduleLocalNotification('OpenCode finished a task', sessionTitle?.trim() || 'Task complete');
 }
 
+function buildPermissionPendingContent(record: PendingPermissionNotificationRecord): Notifications.NotificationContentInput {
+  const permissionTitle = record.permissionTitle?.trim() || 'Uma ação aguarda aprovação';
+  const detail = record.patterns?.length ? record.patterns.slice(0, 2).join(', ') : undefined;
+  return {
+    title: 'OpenCode precisa da tua aprovação',
+    body: detail ? `${permissionTitle} — ${detail}` : permissionTitle,
+    sound: true,
+    categoryIdentifier: PERMISSION_PENDING_CATEGORY_ID,
+    data: {
+      type: 'permission-pending',
+      sessionId: record.sessionId,
+      requestID: record.requestID,
+      permissionTitle,
+      patterns: record.patterns ?? [],
+      projectPath: record.projectPath,
+      serverUrl: record.settings.serverUrl,
+      username: record.settings.username,
+      notifiedAt: record.notifiedAt,
+    },
+    ...(Platform.OS === 'android' ? { channelId: TASK_FINISHED_CHANNEL_ID } : {}),
+  };
+}
+
+async function schedulePermissionPendingNotification(record: PendingPermissionNotificationRecord) {
+  if (!canUseNotifications()) {
+    return null;
+  }
+  return Notifications.scheduleNotificationAsync({
+    content: buildPermissionPendingContent(record),
+    trigger: null,
+  });
+}
+
 if (Platform.OS !== 'web' && !TaskManager.isTaskDefined(CHAT_COMPLETION_TASK_NAME)) {
   TaskManager.defineTask(CHAT_COMPLETION_TASK_NAME, async () => {
     try {
@@ -161,8 +261,64 @@ if (Platform.OS !== 'web' && !TaskManager.isTaskDefined(CHAT_COMPLETION_TASK_NAM
             client.session.status(),
             client.session.list(),
           ]);
+          const interactions = await listPendingInteractions(client).catch(() => undefined);
 
           const status = statusesResponse?.data?.[pending.sessionId];
+          const pendingPermissions = (interactions?.permissions ?? []).filter(
+            (item: PendingPermissionRequest) => item.sessionID === pending.sessionId,
+          );
+
+          if (pendingPermissions.length > 0) {
+            const notified = await readPendingPermissionNotified();
+            let changed = false;
+            const stillPending = new Set(pendingPermissions.map((item) => item.id));
+
+            for (const key of Object.keys(notified)) {
+              if (notified[key]?.sessionId === pending.sessionId && !stillPending.has(notified[key].requestID)) {
+                delete notified[key];
+                changed = true;
+              }
+            }
+
+            for (const item of pendingPermissions) {
+              const key = pendingPermissionRecordKey(pending.sessionId, item.id);
+              if (notified[key]) {
+                continue;
+              }
+              const record: PendingPermissionNotificationRecord = {
+                sessionId: pending.sessionId,
+                requestID: item.id,
+                permissionTitle: item.permission,
+                patterns: item.patterns,
+                projectPath: pending.projectPath,
+                settings: { serverUrl: pending.settings.serverUrl, username: pending.settings.username },
+                notifiedAt: Date.now(),
+              };
+              notified[key] = record;
+              changed = true;
+              await schedulePermissionPendingNotification(record);
+            }
+
+            if (changed) {
+              await writePendingPermissionNotified(notified);
+            }
+            continue;
+          }
+
+          {
+            const notified = await readPendingPermissionNotified();
+            let changed = false;
+            for (const key of Object.keys(notified)) {
+              if (notified[key]?.sessionId === pending.sessionId) {
+                delete notified[key];
+                changed = true;
+              }
+            }
+            if (changed) {
+              await writePendingPermissionNotified(notified);
+            }
+          }
+
           if (status && status.type !== 'idle') {
             continue;
           }
@@ -267,6 +423,72 @@ async function registerBackgroundTaskAsync() {
   });
 }
 
+async function configurePermissionPendingCategoryAsync() {
+  if (!canUseNotifications()) {
+    return;
+  }
+  await Notifications.setNotificationCategoryAsync(PERMISSION_PENDING_CATEGORY_ID, [
+    {
+      identifier: PERMISSION_ACTION_APPROVE,
+      buttonTitle: 'Aprovar',
+      options: { opensAppToForeground: true },
+    },
+    {
+      identifier: PERMISSION_ACTION_REJECT,
+      buttonTitle: 'Recusar',
+      options: { opensAppToForeground: true, isDestructive: true },
+    },
+  ]).catch(() => undefined);
+}
+
+function isPermissionNotificationData(value: unknown): value is {
+  sessionId: string;
+  requestID: string;
+  projectPath: string;
+  serverUrl: string;
+  username: string;
+} {
+  if (!value || typeof value !== 'object') {
+    return false;
+  }
+  const candidate = value as Record<string, unknown>;
+  return (
+    candidate.type === 'permission-pending' &&
+    typeof candidate.sessionId === 'string' &&
+    typeof candidate.requestID === 'string' &&
+    typeof candidate.projectPath === 'string' &&
+    typeof candidate.serverUrl === 'string' &&
+    typeof candidate.username === 'string'
+  );
+}
+
+async function handlePermissionNotificationResponse(response: Notifications.NotificationResponse) {
+  const data = response.notification.request.content.data;
+  if (!isPermissionNotificationData(data)) {
+    return;
+  }
+  if (response.actionIdentifier !== PERMISSION_ACTION_APPROVE && response.actionIdentifier !== PERMISSION_ACTION_REJECT) {
+    return;
+  }
+
+  const reply: 'once' | 'reject' = response.actionIdentifier === PERMISSION_ACTION_APPROVE ? 'once' : 'reject';
+  try {
+    const settings: OpencodeConnectionSettings = {
+      serverUrl: data.serverUrl,
+      username: data.username,
+      password: await getConnectionPassword(),
+      directory: data.projectPath,
+    };
+    const contract = (await detectServerContract(settings).catch(() => ({ contract: 'v1' as const }))).contract;
+    const client = buildClient(settings, contract);
+    await replyToPendingPermission(client, data.requestID, reply);
+  } catch {
+    // Keep the notified record so the next background run can retry the alert.
+    return;
+  }
+  await clearPendingPermissionNotification(data.sessionId, data.requestID);
+}
+
 export async function initializeNotifications() {
   if (initialized || !canUseNotifications()) {
     return;
@@ -282,7 +504,11 @@ export async function initializeNotifications() {
   });
 
   await configureNotificationChannelAsync();
+  await configurePermissionPendingCategoryAsync();
   await registerBackgroundTaskAsync();
+  Notifications.addNotificationResponseReceivedListener((response) => {
+    void handlePermissionNotificationResponse(response);
+  });
   initialized = true;
 }
 

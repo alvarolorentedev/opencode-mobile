@@ -59,6 +59,7 @@ import { isTranscriptDisplayMessage } from '@/lib/opencode/transcript';
 import { aggregateSessionUsage, getLatestAssistantTurnUsage } from '@/lib/opencode/usage';
 import { createFullFilePatch } from '@/lib/opencode/workspace-patch';
 import {
+  clearPendingPermissionNotification,
   clearPendingTaskFinishedNotification,
   notifyTaskFinished,
   trackPendingTaskFinishedNotification,
@@ -1491,6 +1492,7 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
         throw new Error('This permission request is no longer available.');
       }
       await replyToPendingPermission(client, request.id, reply);
+      void clearPendingPermissionNotification(request.sessionID, request.id).catch(() => undefined);
       setPendingPermissionsBySession((current) => ({
         ...current,
         [request.sessionID]: (current[request.sessionID] || []).filter((item) => item.id !== request.id),

@@ -73,6 +73,7 @@ Used for persistence of user settings and lightweight workflow continuity state.
 `expo-notifications`, `expo-background-task`, and `expo-task-manager` are used together for:
 
 - local task-complete notifications
+- lock-screen pending-permission notifications with `Aprovar` / `Recusar` actions (a notification action wakes the app briefly to reply to the server)
 - Android notification channel configuration
 - optional periodic background session-completion checks on supported native builds
 
@@ -206,6 +207,26 @@ This means Android delivery is not purely managed Expo. The current implementati
 - GitHub Actions Android build workflows
 - signing secrets for release builds
 
+## iOS / EAS Build (Cloud)
+
+`eas.json` adds Expo cloud build profiles (requires an Expo account and `eas login`):
+
+- `development` — dev-client build for development servers
+- `preview` — internal distribution (ad hoc provisioning): produces an installable `.ipa` for registered devices; this is the sideload-friendly path
+- `production` — App Store-style build
+
+iOS device builds via EAS require an Apple Developer Program account (paid) to generate a distribution certificate and ad hoc provisioning profile. A free Apple ID is not sufficient for EAS device builds (simulator builds only). Register test devices with `eas device:create` (needs the iPhone UDID) before building the `preview` profile.
+
+### Free sideload route (GitHub Actions, unsigned IPA)
+
+`.github/workflows/build-ios-unsigned.yml` builds an UNSIGNED `.ipa` on a macOS runner (free on public repositories) with no Apple signing material:
+
+- `expo prebuild` generates the native iOS project
+- `xcodebuild` builds `Release` for `iphoneos` with `CODE_SIGNING_ALLOWED=NO` / `CODE_SIGNING_REQUIRED=NO`
+- the `.app` is packaged as `Payload/opencode-mobile-unsigned.ipa` and uploaded as a workflow artifact
+
+Re-sign and install locally with Sideloadly using a free Apple ID (same flow as the official release IPA). The build keeps bundle identifier `app.getopencode.mobile`, so it installs over the previous sideloaded build; AsyncStorage app data may reset on reinstall, but the Keychain-stored password persists.
+
 ## Security / Data Handling Notes
 
 ### Locally Stored Sensitive Data
@@ -246,7 +267,7 @@ Android has the richest current support for:
 
 ### iOS
 
-iOS is supported by Expo/React Native setup, but some operational tooling in the repo is Android-focused. Voice and TTS behavior are still explicitly supported.
+iOS is supported by Expo/React Native setup, but some operational tooling in the repo is Android-focused. Voice and TTS behavior are still explicitly supported. iOS cloud builds are configured via `eas.json` (`preview` internal distribution is the sideload path); device installs require a paid Apple Developer account for signing — a free Apple ID works for simulator-only EAS builds, while sideloading with Sideloadly re-signs the resulting `.ipa`.
 
 ### Session Deep Links
 

@@ -432,6 +432,7 @@ Behavior:
 - when a prompt is sent, a pending notification tracker is stored locally with connection credentials and project path
 - while the app is active, completion can be detected by local provider state and trigger a local notification
 - on supported native platforms outside Expo Go, a background task checks pending sessions periodically and emits task-complete notifications
+- when a tracked session has a pending permission, the background task emits a lock-screen notification with `Aprovar`/`Recusar` actions (category `permission-pending`); selecting an action replies to the server (`once` for Aprovar, `reject` for Recusar), deduplicated per `sessionId/requestID`
 
 Parity implication:
 
