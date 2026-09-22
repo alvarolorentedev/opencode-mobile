@@ -9,11 +9,14 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { getPaperTheme } from '@/constants/paper-theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
+import { installGlobalErrorHandler } from '@/lib/error-reporting';
 import { OpencodeProvider } from '@/providers/opencode-provider';
 
 export const unstable_settings = {
   anchor: '(tabs)',
 };
+
+export { ErrorBoundary } from 'expo-router';
 
 export default function RootLayout() {
   const colorScheme = useColorScheme();
@@ -24,6 +27,8 @@ export default function RootLayout() {
     if (Platform.OS === 'web' || isE2EMode) {
       return;
     }
+
+    installGlobalErrorHandler();
 
     void import('@/lib/notifications')
       .then(({ initializeNotifications }) => initializeNotifications())

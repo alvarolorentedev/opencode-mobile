@@ -5,6 +5,10 @@ export const LAST_SESSION_BY_PROJECT_STORAGE_KEY = 'opencode-mobile.last-session
 export const PENDING_NOTIFICATION_SESSIONS_STORAGE_KEY = 'opencode-mobile.pending-notification-sessions';
 export const FAVORITE_SESSIONS_STORAGE_KEY = 'opencode-mobile.favorite-sessions';
 
+// Diagnostic file written synchronously by the global JS error handler; it
+// cannot use AsyncStorage because the process may die before a write flushes.
+export const LAST_JS_ERROR_FILENAME = 'opencode-mobile.last-js-error.json';
+
 // Per-project session list cache. Hydrated on app open and on every project
 // switch so the workspace chat list paints without waiting for the server;
 // rewritten only from confirmed fetch results in
