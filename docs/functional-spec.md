@@ -281,6 +281,8 @@ Behavior:
 - the picker shows the provider alongside the selected model, groups results by provider, and searches provider/model names and IDs
 - the picker pins the currently selected model and the recently used models at the top; these sections hide while a search query is active
 - selecting a model updates both `providerId` and `modelId` and records the model in the recent list
+- the initial model follows the server config (`GET /config` -> `model`, variant-tolerant); a stored selection wins when still available
+- when neither the stored nor the server-configured model resolves, no model is auto-picked: the picker shows `Select model` and prompts are sent without a model so the server default applies, instead of silently sending a possibly blocked model
 - discovered model metadata comes from nested attachment/input modality, tool-call, reasoning, status, and context/output limit capabilities
 - reasoning level affects only the generated system prompt, not local control flow
 

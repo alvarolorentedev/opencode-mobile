@@ -139,16 +139,46 @@ export function getInitialMode(agents: AgentOption[], config?: Config, storedMod
   return preferred?.id || agents[0]?.id || defaultChatPreferences.mode;
 }
 
+export function resolveConfigModelId(models: ModelOption[], configModel?: string) {
+  const normalized = configModel?.trim();
+  if (!normalized) {
+    return undefined;
+  }
+
+  const exact = models.find((model) => model.id === normalized);
+  if (exact) {
+    return exact.id;
+  }
+
+  // Server values may carry variant segments (e.g. `openrouter/~group/model`)
+  // while the catalog lists the bare model, or vice versa. Match on the
+  // provider plus the trailing model segment before giving up.
+  const [configProvider, ...configRest] = normalized.split('/');
+  const configLeaf = configRest.at(-1)?.trim();
+  if (configProvider && configLeaf) {
+    const leafMatch = models.find(
+      (model) => model.providerID === configProvider && model.modelID.split('/').at(-1) === configLeaf,
+    );
+    if (leafMatch) {
+      return leafMatch.id;
+    }
+    const modelPartMatch = models.find((model) => model.providerID === configProvider && model.modelID === configRest.join('/'));
+    if (modelPartMatch) {
+      return modelPartMatch.id;
+    }
+  }
+
+  return undefined;
+}
+
 export function getInitialModelId(models: ModelOption[], config?: Config, storedModelId?: string) {
   if (storedModelId && models.some((model) => model.id === storedModelId)) {
     return storedModelId;
   }
 
-  if (config?.model && models.some((model) => model.id === config.model)) {
-    return config.model;
-  }
-
-  return models[0]?.id;
+  // No stored or server match: leave unset so prompts fall through to the
+  // server's configured model instead of a possibly blocked auto-pick.
+  return resolveConfigModelId(models, config?.model);
 }
 
 export function getInitialProviderId(models: ModelOption[], config?: Config, storedProviderId?: string, modelId?: string) {
@@ -161,14 +191,13 @@ export function getInitialProviderId(models: ModelOption[], config?: Config, sto
     return modelMatch.providerID;
   }
 
-  if (config?.model) {
-    const configMatch = models.find((model) => model.id === config.model);
-    if (configMatch) {
-      return configMatch.providerID;
-    }
+  const configModelId = resolveConfigModelId(models, config?.model);
+  const configMatch = configModelId ? models.find((model) => model.id === configModelId) : undefined;
+  if (configMatch) {
+    return configMatch.providerID;
   }
 
-  return models[0]?.providerID;
+  return undefined;
 }
 
 export function getModelIdForProvider(models: ModelOption[], providerId?: string, selectedModelId?: string, preferredModelId?: string) {
@@ -185,7 +214,9 @@ export function getModelIdForProvider(models: ModelOption[], providerId?: string
     return preferredModelId;
   }
 
-  return providerModels[0]?.id;
+  // No explicit or server-backed choice: leave unset so the server default
+  // applies instead of silently sending a possibly blocked model.
+  return undefined;
 }
 
 export function getEnabledModelIds(models: ModelOption[], storedModelIds?: string[]) {
@@ -212,7 +243,8 @@ export function getConfiguredProviderIds(config: Config | undefined, connected: 
   ]);
 
   if (config?.model) {
-    const modelMatch = models.find((model) => model.id === config.model);
+    const configModelId = resolveConfigModelId(models, config.model);
+    const modelMatch = configModelId ? models.find((model) => model.id === configModelId) : undefined;
     if (modelMatch) {
       configured.add(modelMatch.providerID);
     }
