@@ -19,6 +19,7 @@
     "test:provider-utils": "node ./tests/provider-utils.test.mjs",
     "test:credential-storage": "node ./tests/credential-storage.test.mjs",
     "test:persistence-hydration": "node ./tests/persistence-hydration.test.mjs",
+    "test:session-cache": "node ./tests/session-cache.test.mjs",
     "test:workspace-patch": "node ./tests/workspace-patch.test.mjs",
     "test:e2e:web": "playwright test",
     "test:ci:static": "npm run lint && npm run typecheck && npm run test:usage && npm run test:format && npm run test:provider-utils && npm run test:workspace-patch",
