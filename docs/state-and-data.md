@@ -117,6 +117,7 @@ Current fields:
 - `workingSoundVolume`
 - `responseScope`
 - `includeNextActions`
+- `hideSubagentChats`
 
 These values combine true application behavior settings and output-style preferences that are sent to the model as prompt instructions.
 
