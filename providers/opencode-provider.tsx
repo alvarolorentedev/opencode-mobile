@@ -460,7 +460,7 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
     }
     void hydrateSessionCache(
       projectPath,
-      (cached) => setSessions(cached as Session[]),
+      (cached) => setSessions(cached),
       (cached) => setSessionStatuses(cached as Record<string, SessionStatus>),
       () => activeProjectPathRef.current === projectPath,
     );
@@ -764,13 +764,12 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
       if (current.some((favorite) => favorite.sessionId === sessionId)) {
         return current.filter((favorite) => favorite.sessionId !== sessionId);
       }
-      const segment = trimmedPath.split('/').filter(Boolean).pop();
+      const trimmedTitle = title?.trim();
       const next = [
         {
           sessionId,
           projectPath: trimmedPath,
-          projectLabel: segment || trimmedPath,
-          title: title?.trim() || undefined,
+          ...(trimmedTitle ? { title: trimmedTitle } : {}),
           favoritedAt: Date.now(),
         },
         ...current,

@@ -82,10 +82,14 @@ export type OpencodeProject = {
   isCurrent?: boolean;
 };
 
+// Explicit persisted model for a pinned session. `sessionId` and `projectPath`
+// are the identifiers required to reopen it; `title` is retained because it
+// cannot be reconstructed for cross-workspace favorites without a server call.
+// The project label is derived from `projectPath` at render time and is never
+// persisted.
 export type FavoriteSession = {
   sessionId: string;
   projectPath: string;
-  projectLabel?: string;
   title?: string;
   favoritedAt: number;
 };

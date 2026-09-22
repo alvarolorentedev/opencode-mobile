@@ -12,6 +12,7 @@ import {
 } from '@/lib/storage-keys';
 import type { ChatPreferences } from '@/providers/opencode-provider-utils';
 import type { FavoriteSession } from '@/providers/opencode-provider-types';
+import { parseFavoriteSessions, serializeFavoriteSessions } from '@/providers/favorites-storage';
 import { loadPersistedValue } from '@/providers/persistence-hydration';
 
 function parseJsonObject<T>(raw: string) {
@@ -28,14 +29,6 @@ function parseLastSessionByProject(raw: string) {
     throw new Error('Expected session IDs to be strings.');
   }
   return value as Record<string, string>;
-}
-
-function parseFavoriteSessions(raw: string) {
-  const value: unknown = JSON.parse(raw);
-  if (!Array.isArray(value) || value.some((entry) => !entry || typeof entry !== 'object' || typeof entry.sessionId !== 'string' || typeof entry.projectPath !== 'string')) {
-    throw new Error('Expected a list of favorite sessions.');
-  }
-  return value as FavoriteSession[];
 }
 
 export function useOpencodePersistence({
@@ -157,7 +150,7 @@ export function useOpencodePersistence({
       return;
     }
 
-    void AsyncStorage.setItem(FAVORITE_SESSIONS_STORAGE_KEY, JSON.stringify(favoriteSessions));
+    void AsyncStorage.setItem(FAVORITE_SESSIONS_STORAGE_KEY, serializeFavoriteSessions(favoriteSessions));
   }, [favoriteSessions, isHydrated]);
 
   return { isHydrated };

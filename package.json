@@ -1,7 +1,7 @@
 {
   "name": "opencode-mobile",
   "main": "expo-router/entry",
-  "version": "1.0.15",
+  "version": "1.0.16",
   "scripts": {
     "start": "expo start",
     "start:dev-client": "expo start --dev-client",
@@ -20,9 +20,10 @@
     "test:credential-storage": "node ./tests/credential-storage.test.mjs",
     "test:persistence-hydration": "node ./tests/persistence-hydration.test.mjs",
     "test:session-cache": "node ./tests/session-cache.test.mjs",
+    "test:favorites": "node ./tests/favorites.test.mjs",
     "test:workspace-patch": "node ./tests/workspace-patch.test.mjs",
     "test:e2e:web": "playwright test",
-    "test:ci:static": "npm run lint && npm run typecheck && npm run test:usage && npm run test:format && npm run test:provider-utils && npm run test:workspace-patch",
+    "test:ci:static": "npm run lint && npm run typecheck && npm run test:usage && npm run test:format && npm run test:provider-utils && npm run test:workspace-patch && npm run test:session-cache && npm run test:favorites",
     "build:android": "node ./scripts/build-android-release.mjs",
     "build:development:android": "node ./scripts/build-android-development.mjs",
     "ios": "expo run:ios",

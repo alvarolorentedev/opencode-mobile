@@ -37,6 +37,10 @@ function useStableCallback<Args extends unknown[], Result>(handler: (...args: Ar
   return useCallback((...args: Args) => handlerRef.current(...args), []);
 }
 
+function favoriteProjectLabel(projectPath: string) {
+  return projectPath.split('/').filter(Boolean).pop() || projectPath;
+}
+
 type SessionListItemProps = {
   canArchive: boolean;
   canShare: boolean;
@@ -433,8 +437,8 @@ export default function WorkspaceScreen() {
                   }}
                   style={({ pressed }) => [styles.favoriteChipBody, pressed && styles.favoriteChipBodyPressed]}>
                   <Text numberOfLines={1} variant="labelLarge" style={{ color: palette.text }}>{favorite.title || 'Untitled chat'}</Text>
-                  {favorite.projectPath !== activeProject?.path && favorite.projectLabel ? (
-                    <Text numberOfLines={1} variant="labelSmall" style={{ color: palette.muted }}>{favorite.projectLabel}</Text>
+                  {favorite.projectPath !== activeProject?.path ? (
+                    <Text numberOfLines={1} variant="labelSmall" style={{ color: palette.muted }}>{favoriteProjectLabel(favorite.projectPath)}</Text>
                   ) : null}
                 </Pressable>
                 <IconButton

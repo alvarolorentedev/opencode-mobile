@@ -172,17 +172,44 @@ These flags drive loading indicators and control decisions such as whether conve
 
 ## Persisted Data
 
-AsyncStorage keys are defined in `lib/storage-keys.ts`.
+AsyncStorage keys are defined in `lib/storage-keys.ts`. Secrets use platform
+secure storage, never AsyncStorage (see below).
 
 Persisted values:
 
-- `opencode-mobile.settings`
+- `opencode-mobile.settings` (connection URL and username; the password lives in secure storage)
 - `opencode-mobile.chat-preferences`
 - `opencode-mobile.active-project`
 - `opencode-mobile.last-session-by-project`
 - `opencode-mobile.pending-notification-sessions`
 - `opencode-mobile.sessions.<projectPath>` / `opencode-mobile.session-statuses.<projectPath>` (per-project cache)
-- `opencode-mobile.favorite-sessions` (cross-workspace favorites, capped at 50, oldest evicted)
+- `opencode-mobile.favorite-sessions` (cross-workspace favorites)
+
+### Session cache DTO
+
+The per-project session cache never stores raw SDK `Session` objects. It writes
+an explicit, validated DTO (`CachedSession` in `providers/session-cache.ts`) with
+only `id`, `title`, `createdAt`, `updatedAt`, and optional `parentID`. A field
+added upstream is not persisted unless the DTO mapping is updated. Sensitive or
+large fields such as share URLs, metadata, model choice, tokens, and revert
+diffs are deliberately excluded. Session statuses are reduced to their `type`
+discriminant.
+
+Each key stores an envelope of `{ cachedAt, sessions }` / `{ cachedAt, statuses }`.
+Cache entries older than `SESSION_CACHE_TTL_MS` (7 days) are discarded, and
+legacy pre-envelope payloads fail safe and are removed; the next confirmed fetch
+republishes the cache. Keys embed the raw project path because project paths are
+already persisted in `last-session-by-project`; hashing them would add collision
+and migration risk without a privacy gain.
+
+### Favorites DTO
+
+Favorites use the explicit `FavoriteSession` model
+(`providers/opencode-provider-types.ts`): `sessionId`, `projectPath`, optional
+`title`, and `favoritedAt`. The project label is derived from `projectPath` at
+render time and is not persisted. Hydration (`providers/favorites-storage.ts`)
+validates every field, drops malformed entries individually, and enforces
+`FAVORITE_SESSIONS_MAX` so a corrupt value cannot hydrate an unbounded list.
 
 Hydration rules:
 
@@ -192,6 +219,11 @@ Hydration rules:
 - last-session map is restored if present
 - each persisted key hydrates independently; a storage read failure leaves that key untouched, while malformed or invalid JSON is removed without blocking other keys
 - per-project session caches hydrate on app open and on every project switch so the workspace list paints before the server answers; they are written only from confirmed fetch results, so a cached empty list means the server reported no sessions for that project
+
+Credentials:
+
+- the connection password is stored in Keychain/Keystore-backed secure storage via `lib/connection-password.ts`; legacy plaintext `settings.password` is migrated to secure storage and stripped from AsyncStorage on hydration
+- pending completion-notification records store only a non-secret connection reference (`serverUrl`, `username`) and never the password
 
 The provider does not connect until hydration completes.
 
