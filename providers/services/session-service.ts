@@ -49,20 +49,42 @@ export async function listSessions(client: OpencodeClient) {
 }
 
 export async function listArchivedSessions(client: OpencodeClient) {
+  const MAX_ARCHIVED_PAGES = 10;
   const sessions: GlobalSession[] = [];
   let cursor: number | undefined;
+  let pages = 0;
   do {
     const response = await client.experimental.session.list({ archived: true, cursor, limit: 100 });
     sessions.push(...requireData(response.data, 'archived session list request'));
     const next = response.response?.headers.get('x-next-cursor');
     cursor = next ? Number(next) : undefined;
-  } while (cursor !== undefined);
+    pages += 1;
+  } while (cursor !== undefined && pages < MAX_ARCHIVED_PAGES);
   return sessions;
 }
 
+const MESSAGE_PAGE_SIZE = 100;
+const MAX_MESSAGE_PAGES = 5;
+
 export async function getSessionMessages(client: OpencodeClient, sessionId: string) {
-  const response = await client.session.messages({ sessionID: sessionId });
-  return requireData(response.data, 'session messages request');
+  // ponytail: paginate to avoid OOM in RN's OkHttp layer which buffers full responses.
+  const allMessages: NonNullable<Awaited<ReturnType<typeof client.session.messages>>['data']> = [];
+  let before: string | undefined;
+  let pages = 0;
+
+  while (pages < MAX_MESSAGE_PAGES) {
+    const response = await client.session.messages({ sessionID: sessionId, limit: MESSAGE_PAGE_SIZE, before });
+    const page = requireData(response.data, 'session messages request');
+    for (const msg of page) {
+      allMessages.push(msg);
+    }
+    if (page.length < MESSAGE_PAGE_SIZE) break;
+    before = page[page.length - 1]?.info?.id;
+    if (!before) break;
+    pages += 1;
+  }
+
+  return allMessages;
 }
 
 export async function getSessionDiff(client: OpencodeClient, sessionId: string) {

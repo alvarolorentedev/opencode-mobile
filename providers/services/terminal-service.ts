@@ -1,6 +1,6 @@
 import type { OpencodeClient } from '@opencode-ai/sdk/v2/client';
 
-import { buildPtyWebSocketUrl, type OpencodeConnectionSettings } from '@/lib/opencode/client';
+import { buildPtyWebSocketUrl, type OpencodeConnectionSettings, type ServerContract } from '@/lib/opencode/client';
 
 function requireData<T>(data: T | undefined, operation: string): T {
   if (data === undefined) throw new Error(`OpenCode ${operation} returned no data.`);
@@ -49,6 +49,7 @@ export function getTerminalWebSocketUrl(
   settings: Pick<OpencodeConnectionSettings, 'serverUrl' | 'directory'>,
   ptyId: string,
   options?: { ticket?: string; cursor?: string },
+  contract?: ServerContract,
 ) {
-  return buildPtyWebSocketUrl(settings, ptyId, options);
+  return buildPtyWebSocketUrl(settings, ptyId, options, contract);
 }

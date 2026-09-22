@@ -58,6 +58,7 @@ export function ChatView() {
     promptError,
     sendingState,
     settings,
+    serverCapabilities,
     sessionStatuses,
     sessions,
     setAutoApprove,
@@ -254,24 +255,34 @@ export function ChatView() {
       return;
     }
 
+    let cancelled = false;
     void (async () => {
       const started = await speakText({
         language: chatPreferences.speechLocale,
-        onDone: () => setSpeakingMessageId((current) => (current === latestAssistantEntry.id ? undefined : current)),
-        onError: () => {
-          setVoiceFeedback('Unable to play this assistant reply.');
-          setSpeakingMessageId(undefined);
+        onDone: () => {
+          if (!cancelled) setSpeakingMessageId((current) => (current === latestAssistantEntry.id ? undefined : current));
         },
-        onStart: () => setSpeakingMessageId(latestAssistantEntry.id),
+        onError: () => {
+          if (!cancelled) {
+            setVoiceFeedback('Unable to play this assistant reply.');
+            setSpeakingMessageId(undefined);
+          }
+        },
+        onStart: () => {
+          if (!cancelled) setSpeakingMessageId(latestAssistantEntry.id);
+        },
         rate: chatPreferences.speechRate,
         text: latestAssistantEntry.text,
         voice: chatPreferences.speechVoiceId,
       });
 
-      if (started) {
+      if (started && !cancelled) {
         lastAutoSpokenMessageIdRef.current = latestAssistantEntry.id;
       }
     })();
+    return () => {
+      cancelled = true;
+    };
   }, [chatPreferences.autoPlayAssistantReplies, chatPreferences.speechLocale, chatPreferences.speechRate, chatPreferences.speechVoiceId, conversationActive, latestAssistantEntry, running]);
 
   async function handleCopyMessage(entry: TranscriptEntry) {
@@ -525,6 +536,7 @@ export function ChatView() {
 
         <ChatComposer
           attachments={attachments}
+          autoApproveAvailable={serverCapabilities.configWrite}
           availableAgents={availableAgents}
           chatPreferences={chatPreferences}
           connectionStatus={connection.status}

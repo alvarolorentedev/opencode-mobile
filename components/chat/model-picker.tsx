@@ -12,6 +12,7 @@ type ModelPickerProps = {
   disabled?: boolean;
   models: ModelOption[];
   onSelect: (model: ModelOption) => void;
+  recentModelIds?: string[];
   selectedModelId?: string;
 };
 
@@ -20,7 +21,7 @@ function getSelectedModelLabel(models: ModelOption[], selectedModelId?: string) 
   return selected ? `${selected.providerLabel} · ${selected.label}` : 'Select model';
 }
 
-export function ModelPicker({ disabled = false, models, onSelect, selectedModelId }: ModelPickerProps) {
+export function ModelPicker({ disabled = false, models, onSelect, recentModelIds, selectedModelId }: ModelPickerProps) {
   const colorScheme = useColorScheme() ?? 'light';
   const palette = Colors[colorScheme];
   const [visible, setVisible] = useState(false);
@@ -75,6 +76,33 @@ export function ModelPicker({ disabled = false, models, onSelect, selectedModelI
     onSelect(model);
   };
   const selected = models.find((model) => model.id === selectedModelId);
+  const recentModels = (recentModelIds ?? [])
+    .map((id) => models.find((model) => model.id === id))
+    .filter((model): model is ModelOption => model !== undefined && model.id !== selectedModelId)
+    .slice(0, 3);
+  const renderModelRow = (model: ModelOption, showProvider = false) => {
+    const isSelected = model.id === selectedModelId;
+    return (
+      <Pressable
+        key={model.id}
+        accessibilityRole="button"
+        onPress={() => select(model)}
+        style={({ pressed }) => [
+          styles.option,
+          { backgroundColor: isSelected ? palette.background : palette.surface, borderColor: isSelected ? palette.tint : palette.border },
+          pressed && styles.pressed,
+        ]}>
+        <View style={styles.optionText}>
+          <Text style={[styles.optionLabel, { color: palette.text }]}>{model.label}</Text>
+          <Text style={[styles.optionDescription, { color: palette.muted }]}>
+            {showProvider ? `${model.providerLabel} · ${model.modelID}` : model.modelID}
+            {model.supportsReasoning ? ' · Reasoning supported' : ' · Standard model'}
+          </Text>
+        </View>
+        {isSelected ? <MaterialCommunityIcons name="check" size={20} color={palette.tint} /> : null}
+      </Pressable>
+    );
+  };
 
   return (
     <>
@@ -113,6 +141,18 @@ export function ModelPicker({ disabled = false, models, onSelect, selectedModelI
                 />
               </View>
               <ScrollView contentContainerStyle={styles.list} keyboardShouldPersistTaps="always" style={styles.results}>
+                {!normalizedQuery && selected ? (
+                  <View style={styles.group}>
+                    <Text style={[styles.sectionTitle, { color: palette.muted }]}>Selected</Text>
+                    {renderModelRow(selected, true)}
+                  </View>
+                ) : null}
+                {!normalizedQuery && recentModels.length > 0 ? (
+                  <View style={styles.group}>
+                    <Text style={[styles.sectionTitle, { color: palette.muted }]}>Recent</Text>
+                    {recentModels.map((model) => renderModelRow(model, true))}
+                  </View>
+                ) : null}
                 {providerGroups.map((group) => (
                   <View key={group.providerID} style={styles.group}>
                     <View style={styles.groupHeader}>
@@ -121,26 +161,7 @@ export function ModelPicker({ disabled = false, models, onSelect, selectedModelI
                       </View>
                       <Text style={[styles.groupTitle, { color: palette.text }]}>{group.label}</Text>
                     </View>
-                    {group.models.map((model) => {
-                      const isSelected = model.id === selectedModelId;
-                      return (
-                        <Pressable
-                          key={model.id}
-                          accessibilityRole="button"
-                          onPress={() => select(model)}
-                          style={({ pressed }) => [
-                            styles.option,
-                            { backgroundColor: isSelected ? palette.background : palette.surface, borderColor: isSelected ? palette.tint : palette.border },
-                            pressed && styles.pressed,
-                          ]}>
-                          <View style={styles.optionText}>
-                            <Text style={[styles.optionLabel, { color: palette.text }]}>{model.label}</Text>
-                            <Text style={[styles.optionDescription, { color: palette.muted }]}>{model.modelID}{model.supportsReasoning ? ' · Reasoning supported' : ' · Standard model'}</Text>
-                          </View>
-                          {isSelected ? <MaterialCommunityIcons name="check" size={20} color={palette.tint} /> : null}
-                        </Pressable>
-                      );
-                    })}
+                    {group.models.map((model) => renderModelRow(model))}
                   </View>
                 ))}
                 {matchingModels.length === 0 ? (
@@ -170,6 +191,7 @@ const styles = StyleSheet.create({
   results: { flexShrink: 1 },
   list: { gap: 20, padding: 12, paddingBottom: 28 },
   group: { gap: 8 },
+  sectionTitle: { fontFamily: Fonts.sans, fontSize: 12, fontWeight: '700', letterSpacing: 0.8, paddingHorizontal: 2, textTransform: 'uppercase' },
   groupHeader: { alignItems: 'center', flexDirection: 'row', gap: 8, paddingHorizontal: 2 },
   groupIcon: { alignItems: 'center', borderRadius: 999, height: 30, justifyContent: 'center', width: 30 },
   groupTitle: { fontFamily: Fonts.sans, fontSize: 16, fontWeight: '700' },

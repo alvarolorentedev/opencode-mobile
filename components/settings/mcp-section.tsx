@@ -18,6 +18,7 @@ export function McpSection({
   onRefresh,
   onSetEnabled,
   onStartOAuth,
+  oauthAvailable = true,
   palette,
 }: {
   configs?: Config['mcp'];
@@ -29,6 +30,7 @@ export function McpSection({
   onRefresh: () => Promise<void>;
   onSetEnabled: (name: string, enabled: boolean) => Promise<void>;
   onStartOAuth: (name: string) => Promise<boolean>;
+  oauthAvailable?: boolean;
   palette: Palette;
 }) {
   const [addType, setAddType] = useState<'local' | 'remote'>('local');
@@ -144,13 +146,13 @@ export function McpSection({
                   onPress={() => void run(actionKey, () => status?.status === 'connected' ? onDisconnect(serverName) : onConnect(serverName))}>
                   {status?.status === 'connected' ? 'Disconnect' : 'Connect'}
                 </Button>
-                {isRemote && status?.status === 'needs_auth' ? (
+                {oauthAvailable && isRemote && status?.status === 'needs_auth' ? (
                   <Button compact disabled={Boolean(busy)} onPress={() => void run(actionKey, async () => {
                     if (await onStartOAuth(serverName)) setOauthName(serverName);
                   })}>OAuth</Button>
                 ) : null}
               </View>
-              {oauthName === serverName ? (
+              {oauthAvailable && oauthName === serverName ? (
                 <View style={styles.oauth}>
                   <TextInput mode="outlined" label="Authorization code (optional)" value={oauthCode} onChangeText={setOauthCode} autoCapitalize="none" />
                   <Button

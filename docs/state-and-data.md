@@ -20,6 +20,7 @@ Primary fields:
 
 - `settings`
 - `connection`
+- `serverContract`
 - `currentProjectPath`
 - `serverRootPath`
 - `eventStreamStatus`
@@ -28,6 +29,7 @@ Meaning:
 
 - `settings` are user-entered connection parameters
 - `connection` is the user-facing connection state machine
+- `serverContract` is the resolved server API contract (`v1` or `v2`), set by probing during `connect()` and used to select the client implementation
 - `currentProjectPath` is the server's notion of current project
 - `serverRootPath` is the root directory reported by the server
 - `eventStreamStatus` tracks real-time subscription health independently of connection state
@@ -101,6 +103,7 @@ Current fields:
 - `modelId`
 - `enabledModelIds`
 - `providerModelSelections`
+- `recentModelIds`
 - `reasoning`
 - `autoApprove`
 - `autoPlayAssistantReplies`
@@ -355,6 +358,7 @@ Current implementation assumes these invariants:
 - pending permissions and questions are keyed by `sessionID` and only active/sending-session entries are surfaced
 - attachment capability is checked against the selected model before send
 - local attachment files larger than 10 MB are rejected before base64 encoding
+- `SessionMessageRecord` objects stored in `messagesBySession` are never mutated in place; `mergeSessionMessageRecords` in `lib/opencode/format.ts` adopts a new record object when content changes and preserves record and array references when nothing changed, keeping the WeakMap caches in `toTranscriptEntry` and `getSessionPreviewById` correct
 
 ## Non-Persisted But Behavioral State
 

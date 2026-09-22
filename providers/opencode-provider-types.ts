@@ -33,6 +33,7 @@ import type {
   ModelOption as ProviderModelOption,
   ReasoningLevel as ProviderReasoningLevel,
   ResponseScope as ProviderResponseScope,
+  ServerCapabilities as ProviderServerCapabilities,
 } from '@/providers/opencode-provider-utils';
 
 export type AgentOption = ProviderAgentOption;
@@ -40,6 +41,7 @@ export type ChatPreferences = ProviderChatPreferences;
 export type ModelOption = ProviderModelOption;
 export type ReasoningLevel = ProviderReasoningLevel;
 export type ResponseScope = ProviderResponseScope;
+export type ServerCapabilities = ProviderServerCapabilities;
 export type { ProviderAuthMethod } from '@/lib/opencode/types';
 
 export type ProviderOption = {
@@ -98,6 +100,7 @@ export type OpencodeContextValue = {
   settings: OpencodeConnectionSettings;
   updateSettings: (patch: Partial<OpencodeConnectionSettings>) => void;
   connection: ConnectionState;
+  serverCapabilities: ServerCapabilities;
   projects: OpencodeProject[];
   activeProjectPath?: string;
   activeProject?: OpencodeProject;
