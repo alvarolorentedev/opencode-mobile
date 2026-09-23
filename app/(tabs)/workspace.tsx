@@ -114,6 +114,20 @@ function SessionListItemImpl({
     wasRenamingRef.current = isRenaming;
   }, [isRenaming]);
 
+  // Keep the anchor element identity stable. Paper's Menu restarts its show
+  // animation whenever `anchor` changes, so an inline element re-created on
+  // every render causes needless animation churn.
+  const actionMenuAnchor = useMemo(
+    () => (
+      <IconButton
+        icon="dots-vertical"
+        accessibilityLabel={`Actions for ${session.title || 'Untitled chat'}`}
+        onPress={() => onStartActionMenu(session.id)}
+      />
+    ),
+    [onStartActionMenu, session.id, session.title],
+  );
+
   return (
     <View>
       <List.Item
@@ -128,7 +142,7 @@ function SessionListItemImpl({
             <Menu
               visible={isActionMenuOpen}
               onDismiss={onCloseActionMenu}
-              anchor={<IconButton icon="dots-vertical" accessibilityLabel={`Actions for ${session.title || 'Untitled chat'}`} onPress={() => onStartActionMenu(session.id)} />}>
+              anchor={actionMenuAnchor}>
               <Menu.Item title="Rename" leadingIcon="pencil" onPress={() => { onCloseActionMenu(); onStartRename(session); }} />
               {canShare ? <Menu.Item title={session.share?.url ? 'Unshare' : 'Share'} leadingIcon="share-variant" onPress={() => { onCloseActionMenu(); onShareRequest(session); }} /> : null}
               <Menu.Item title={isFavorite ? 'Remove from favorites' : 'Add to favorites'} leadingIcon={isFavorite ? 'star' : 'star-outline'} onPress={() => { onCloseActionMenu(); onToggleFavorite(session); }} />
