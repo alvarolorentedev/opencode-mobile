@@ -29,7 +29,6 @@ const config: ExpoConfig = {
   icon: './assets/images/icon.png',
   scheme: 'opencodemobile',
   userInterfaceStyle: 'automatic',
-  newArchEnabled: true,
   android: {
     package: androidPackage,
     versionCode: 19,
@@ -37,7 +36,6 @@ const config: ExpoConfig = {
       foregroundImage: './assets/images/adaptive-icon.png',
       backgroundColor: "#202020"
     },
-    edgeToEdgeEnabled: true,
     predictiveBackGestureEnabled: false,
     softwareKeyboardLayoutMode: 'resize',
   },
@@ -82,6 +80,9 @@ const config: ExpoConfig = {
         },
       },
     ],
+    'expo-image',
+    'expo-secure-store',
+    'expo-status-bar',
     withCleartextTraffic as unknown as string,
   ],
   experiments: {

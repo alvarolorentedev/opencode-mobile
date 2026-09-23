@@ -180,7 +180,7 @@ export function ModelPicker({ disabled = false, models, onSelect, recentModelIds
 
 const styles = StyleSheet.create({
   overlay: { flex: 1, justifyContent: 'flex-end' },
-  backdrop: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0, 0, 0, 0.28)', zIndex: 0 },
+  backdrop: { ...StyleSheet.absoluteFill, backgroundColor: 'rgba(0, 0, 0, 0.28)', zIndex: 0 },
   sheet: { borderTopLeftRadius: 24, borderTopRightRadius: 24, borderWidth: 1, elevation: 1, flexShrink: 1, maxHeight: '82%', overflow: 'hidden', zIndex: 1 },
   header: { alignItems: 'center', borderBottomWidth: 1, flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: 16, paddingVertical: 12 },
   title: { fontFamily: Fonts.display, fontSize: 18, fontWeight: '700' },

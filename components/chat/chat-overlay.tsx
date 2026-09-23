@@ -107,7 +107,7 @@ export function ConversationOverlay({
 }
 
 const styles = StyleSheet.create({
-  voiceOverlay: { ...StyleSheet.absoluteFillObject, zIndex: 12 },
+  voiceOverlay: { ...StyleSheet.absoluteFill, zIndex: 12 },
   voiceOverlayContent: { flex: 1, paddingHorizontal: 22, paddingBottom: 22 },
   voiceOverlayHeader: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: 16, paddingHorizontal: 4 },
   voiceOverlayHeaderCopy: { flex: 1, minWidth: 0, gap: 4 },

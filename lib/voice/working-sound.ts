@@ -5,8 +5,8 @@ import { initializeVoiceAudioAsync } from '@/lib/voice/speech-output';
 
 export type WorkingSoundVariant = 'soft' | 'glass';
 
-type ExpoAudioModule = typeof import('expo-av');
-type AudioSound = import('expo-av').Audio.Sound;
+type ExpoAudioModule = typeof import('expo-audio');
+type AudioPlayer = import('expo-audio').AudioPlayer;
 
 const SAMPLE_RATE = 22050;
 const DURATION_SECONDS = 1.8;
@@ -14,11 +14,11 @@ const PEAK_VOLUME = 0.12;
 
 let audioModulePromise: Promise<ExpoAudioModule | null> | null = null;
 let loadedVariant: WorkingSoundVariant | undefined;
-let sound: AudioSound | undefined;
+let sound: AudioPlayer | undefined;
 
 async function getAudioModuleAsync() {
   if (!audioModulePromise) {
-    audioModulePromise = import('expo-av')
+    audioModulePromise = import('expo-audio')
       .then((module) => module)
       .catch(() => null);
   }
@@ -119,30 +119,20 @@ export async function startWorkingSoundAsync(variant: WorkingSoundVariant, volum
   await initializeVoiceAudioAsync();
 
   if (sound && loadedVariant !== variant) {
-    await sound.unloadAsync().catch(() => undefined);
+    sound.remove();
     sound = undefined;
     loadedVariant = undefined;
   }
 
   if (!sound) {
     const uri = await ensureWorkingSoundFileAsync(variant);
-    const created = await audioModule.Audio.Sound.createAsync(
-      { uri },
-      {
-        isLooping: true,
-        progressUpdateIntervalMillis: 1000,
-        shouldPlay: false,
-        volume: clamp(volume, 0, 1),
-      },
-    );
-
-    sound = created.sound;
+    sound = audioModule.createAudioPlayer({ uri });
     loadedVariant = variant;
   }
 
-  await sound.setIsLoopingAsync(true);
-  await sound.setVolumeAsync(clamp(volume, 0, 1));
-  await sound.playAsync();
+  sound.loop = true;
+  sound.volume = clamp(volume, 0, 1);
+  sound.play();
   return true;
 }
 
@@ -151,8 +141,8 @@ export async function stopWorkingSoundAsync() {
     return;
   }
 
-  await sound.pauseAsync().catch(() => undefined);
-  await sound.setPositionAsync(0).catch(() => undefined);
+  sound.pause();
+  await sound.seekTo(0).catch(() => undefined);
 }
 
 export async function unloadWorkingSoundAsync() {
@@ -160,7 +150,7 @@ export async function unloadWorkingSoundAsync() {
     return;
   }
 
-  await sound.unloadAsync().catch(() => undefined);
+  sound.remove();
   sound = undefined;
   loadedVariant = undefined;
 }

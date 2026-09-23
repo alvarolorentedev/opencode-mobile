@@ -7,26 +7,22 @@ export type SpeechVoiceOption = {
 };
 
 let audioModeInitialized = false;
-let audioModulePromise: Promise<typeof import('expo-av') | null> | null = null;
+let audioModulePromise: Promise<typeof import('expo-audio') | null> | null = null;
 let duckingActive = false;
 
-function getVoiceAudioMode(audioModule: typeof import('expo-av'), duckOthers: boolean) {
+function getVoiceAudioMode(duckOthers: boolean): Partial<import('expo-audio').AudioMode> {
   return {
-    allowsRecordingIOS: false,
-    interruptionModeAndroid: audioModule.InterruptionModeAndroid.DuckOthers,
-    interruptionModeIOS: duckOthers
-      ? audioModule.InterruptionModeIOS.DuckOthers
-      : audioModule.InterruptionModeIOS.MixWithOthers,
-    playThroughEarpieceAndroid: false,
-    playsInSilentModeIOS: true,
-    shouldDuckAndroid: true,
-    staysActiveInBackground: true,
+    allowsRecording: false,
+    interruptionMode: duckOthers ? 'duckOthers' : 'mixWithOthers',
+    playsInSilentMode: true,
+    shouldPlayInBackground: true,
+    shouldRouteThroughEarpiece: false,
   };
 }
 
 async function getAudioModuleAsync() {
   if (!audioModulePromise) {
-    audioModulePromise = import('expo-av')
+    audioModulePromise = import('expo-audio')
       .then((module) => module)
       .catch(() => null);
   }
@@ -44,7 +40,7 @@ export async function initializeVoiceAudioAsync() {
     return;
   }
 
-  await audioModule.Audio.setAudioModeAsync(getVoiceAudioMode(audioModule, false));
+  await audioModule.setAudioModeAsync(getVoiceAudioMode(false));
 
   audioModeInitialized = true;
 }
@@ -60,7 +56,7 @@ export async function activateVoiceDuckingAsync() {
     return;
   }
 
-  await audioModule.Audio.setAudioModeAsync(getVoiceAudioMode(audioModule, true));
+  await audioModule.setAudioModeAsync(getVoiceAudioMode(true));
   duckingActive = true;
 }
 
@@ -75,7 +71,7 @@ export async function deactivateVoiceDuckingAsync() {
     return;
   }
 
-  await audioModule.Audio.setAudioModeAsync(getVoiceAudioMode(audioModule, false));
+  await audioModule.setAudioModeAsync(getVoiceAudioMode(false));
   duckingActive = false;
 }
 

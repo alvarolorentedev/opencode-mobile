@@ -87,7 +87,7 @@ Important current rule:
 Behavioral details:
 
 - speech playback strips markdown-like formatting into more speakable text
-- voice ducking is implemented through `expo-av` audio mode changes
+- voice ducking is implemented through `expo-audio` audio mode changes
 - silent mode playback is enabled on iOS
 - background audio is intended to remain active
 
@@ -104,7 +104,7 @@ Behavioral details:
 
 ### Working Sound
 
-The app synthesizes its own short looping WAV file at runtime and plays it with `expo-av`.
+The app synthesizes its own short looping WAV file at runtime and plays it with `expo-audio`.
 
 Why it matters:
 
