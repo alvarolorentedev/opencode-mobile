@@ -78,7 +78,7 @@
     "eslint": "^9.25.0",
     "eslint-config-expo": "~57.0.2",
     "serve": "^14.2.4",
-    "typescript": "~6.0.3",
+    "typescript": "~7.0.2",
     "ws": "^8.21.1"
   },
   "private": true
