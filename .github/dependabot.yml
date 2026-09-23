@@ -1,0 +1,28 @@
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    groups:
+      npm-minor-patch:
+        patterns:
+          - '*'
+        update-types:
+          - minor
+          - patch
+    # Expo SDK 54 pins these to SDK-compatible versions; bump them via
+    # `npx expo install --fix` during an SDK migration instead.
+    ignore:
+      - dependency-name: expo
+      - dependency-name: 'expo-*'
+      - dependency-name: react
+      - dependency-name: react-dom
+      - dependency-name: react-native
+      - dependency-name: react-native-screens
+      - dependency-name: react-native-safe-area-context
+      - dependency-name: '@shopify/flash-list'
+      - dependency-name: '@react-native-async-storage/async-storage'
+      # 5.15.3 regresses the Menu component; revisit once fixed upstream.
+      - dependency-name: react-native-paper
