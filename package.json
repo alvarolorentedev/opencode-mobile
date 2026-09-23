@@ -75,7 +75,7 @@
   "devDependencies": {
     "@playwright/test": "^1.54.2",
     "@types/react": "~19.2.4",
-    "eslint": "^9.25.0",
+    "eslint": "^10.11.0",
     "eslint-config-expo": "~57.0.2",
     "serve": "^14.2.4",
     "typescript": "~6.0.3",
