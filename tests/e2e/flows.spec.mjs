@@ -1,6 +1,21 @@
 import { expect, test } from '@playwright/test';
 import { spawn } from 'node:child_process';
+import net from 'node:net';
 import { setTimeout as sleep } from 'node:timers/promises';
+
+// Fixed ports collide with anything else bound on the CI runner. Ask the OS for
+// an ephemeral port instead so self-spawned fake servers never hit EADDRINUSE.
+async function getFreePort() {
+  return new Promise((resolve, reject) => {
+    const probe = net.createServer();
+    probe.unref();
+    probe.on('error', reject);
+    probe.listen(0, '127.0.0.1', () => {
+      const { port } = probe.address();
+      probe.close(() => resolve(port));
+    });
+  });
+}
 
 async function resetScenario(request, scenario) {
   const response = await request.post('http://127.0.0.1:44096/__control/reset', {
@@ -340,7 +355,7 @@ test('deep links report sessions that are missing', async ({ page, request }) =>
 
 test('settings explain root-vs-api mismatches and reconnect through a prefixed API base URL', async ({ page, request }) => {
   await resetScenario(request, 'happy-path');
-  const port = 44196;
+  const port = await getFreePort();
   const server = spawn(process.execPath, ['tests/fake-opencode/server.mjs'], {
     cwd: process.cwd(),
     env: {
@@ -389,7 +404,7 @@ test('settings do not suggest a duplicated /api base when the API prefix is alre
 });
 
 test('a 1.x server exposing /api compatibility routes still connects as 1.x', async ({ page, request }) => {
-  const port = 44696;
+  const port = await getFreePort();
   const server = spawn(process.execPath, ['tests/fake-opencode/server.mjs'], {
     cwd: process.cwd(),
     env: {
@@ -410,7 +425,7 @@ test('a 1.x server exposing /api compatibility routes still connects as 1.x', as
 
     await page.getByRole('tab', { name: 'Settings' }).click();
     await page.getByRole('button', { name: /^Connection/ }).click();
-    await expect(page.getByText(/Connected to http:\/\/127\.0\.0\.1:44696 \(OpenCode 1\.x\)/)).toBeVisible();
+    await expect(page.getByText(new RegExp(`Connected to http://127\\.0\\.0\\.1:${port} \\(OpenCode 1\\.x\\)`))).toBeVisible();
   } finally {
     server.kill('SIGTERM');
   }
@@ -418,7 +433,7 @@ test('a 1.x server exposing /api compatibility routes still connects as 1.x', as
 
 test('connects to an OpenCode 2 server and completes a prompt', async ({ page, request }) => {
   await resetScenario(request, 'happy-path');
-  const port = 44296;
+  const port = await getFreePort();
   const server = spawnV2Server(port);
 
   try {
@@ -453,7 +468,7 @@ test('connects to an OpenCode 2 server and completes a prompt', async ({ page, r
 });
 
 test('OpenCode 2 permission requests unblock the agent flow', async ({ page, request }) => {
-  const port = 44396;
+  const port = await getFreePort();
   const server = spawnV2Server(port, 'permission');
   try {
     await resetScenario(request, 'happy-path');
@@ -470,7 +485,7 @@ test('OpenCode 2 permission requests unblock the agent flow', async ({ page, req
 });
 
 test('OpenCode 2 questions unblock the agent flow', async ({ page, request }) => {
-  const port = 44496;
+  const port = await getFreePort();
   const server = spawnV2Server(port, 'question');
   try {
     await resetScenario(request, 'happy-path');
@@ -490,7 +505,7 @@ test('OpenCode 2 questions unblock the agent flow', async ({ page, request }) =>
 });
 
 test('OpenCode 2 terminal streams input and output over the PTY websocket', async ({ page, request }) => {
-  const port = 44596;
+  const port = await getFreePort();
   const server = spawnV2Server(port);
   try {
     await resetScenario(request, 'happy-path');
