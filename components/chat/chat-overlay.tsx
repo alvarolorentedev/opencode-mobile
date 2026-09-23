@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useState } from 'react';
 import { Animated, Easing, StyleSheet, View } from 'react-native';
 import { Button, Text } from 'react-native-paper';
 
@@ -21,8 +21,8 @@ export function ConversationOverlay({
   sessionTitle: string;
 }) {
   const colorScheme = useColorScheme() ?? 'light';
-  const orbScale = useRef(new Animated.Value(1)).current;
-  const orbOpacity = useRef(new Animated.Value(0.9)).current;
+  const [orbScale] = useState(() => new Animated.Value(1));
+  const [orbOpacity] = useState(() => new Animated.Value(0.9));
 
   useEffect(() => {
     const targetScale = phase === 'speaking' ? 1.03 : phase === 'listening' ? 1.015 : 1;

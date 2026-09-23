@@ -235,11 +235,13 @@ export default function SettingsScreen() {
   }
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- hydrate notification/speech status once on mount.
     void refreshNotificationStatus();
     void refreshSpeechVoices();
   }, []);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- default the expanded section when the connection state settles.
     setExpandedSection(connection.status === 'connected' ? 'ai' : 'connection');
   }, [connection.status]);
 

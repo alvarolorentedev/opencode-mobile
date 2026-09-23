@@ -20,7 +20,7 @@ type Palette = typeof Colors.light;
 // pulse (1.2s loop, native driver) signals active loading without thrashing
 // the JS thread.
 function TranscriptSkeletonImpl({ palette }: { palette: Palette }) {
-  const opacity = useRef(new Animated.Value(0.35)).current;
+  const [opacity] = useState(() => new Animated.Value(0.35));
   useEffect(() => {
     const loop = Animated.loop(
       Animated.sequence([

@@ -56,6 +56,7 @@ export function ModelPicker({ disabled = false, models, onSelect, recentModelIds
 
   useEffect(() => {
     if (!visible) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- reset the search when the picker closes.
       setQuery('');
     }
   }, [visible]);

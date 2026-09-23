@@ -12,9 +12,13 @@ updates:
         update-types:
           - minor
           - patch
-    # Expo SDK 54 pins these to SDK-compatible versions; bump them via
-    # `npx expo install --fix` during an SDK migration instead.
+    # Majors are breaking migrations; handle them deliberately.
     ignore:
+      - dependency-name: '*'
+        update-types:
+          - version-update:semver-major
+      # The Expo SDK pins these to SDK-compatible versions; bump them via
+      # `npx expo install --fix` during an SDK migration instead.
       - dependency-name: expo
       - dependency-name: 'expo-*'
       - dependency-name: react

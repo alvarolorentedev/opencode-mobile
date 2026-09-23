@@ -33,7 +33,9 @@ type Palette = typeof Colors.light;
 // never capture a stale project-scoped closure.
 function useStableCallback<Args extends unknown[], Result>(handler: (...args: Args) => Result) {
   const handlerRef = useRef(handler);
-  handlerRef.current = handler;
+  useEffect(() => {
+    handlerRef.current = handler;
+  });
   return useCallback((...args: Args) => handlerRef.current(...args), []);
 }
 
@@ -101,8 +103,10 @@ function SessionListItemImpl({
   // Refs guard against re-firing when session.title updates mid-rename
   // (server pushes a new title via SSE) which would clobber the draft.
   const sessionTitleRef = useRef(session.title);
-  sessionTitleRef.current = session.title;
   const wasRenamingRef = useRef(false);
+  useEffect(() => {
+    sessionTitleRef.current = session.title;
+  }, [session.title]);
   useEffect(() => {
     if (isRenaming && !wasRenamingRef.current) {
       setRenameValue(sessionTitleRef.current || '');
@@ -240,9 +244,6 @@ export default function WorkspaceScreen() {
       .then(() => router.push('/(tabs)'))
       .catch((reason) => setError(reason instanceof Error ? reason.message : 'Could not open the session.'));
   });
-  const archiveFromRow = useStableCallback((sessionId: string) => void handleArchive(sessionId));
-  const deleteFromRow = useStableCallback((session: Session) => confirmDelete(session));
-  const shareFromRow = useStableCallback((session: Session) => confirmShare(session));
   const toggleFavoriteFromRow = useStableCallback((session: Session) => {
     toggleFavoriteSession(session.id, activeProject?.path || '', session.title);
   });
@@ -361,6 +362,10 @@ export default function WorkspaceScreen() {
       { text: 'Share', onPress: () => void handleShare(session) },
     ]);
   }
+
+  const archiveFromRow = useStableCallback((sessionId: string) => void handleArchive(sessionId));
+  const deleteFromRow = useStableCallback((session: Session) => confirmDelete(session));
+  const shareFromRow = useStableCallback((session: Session) => confirmShare(session));
 
   function renderSessionItem(session: Session, index: number, total: number) {
     return (

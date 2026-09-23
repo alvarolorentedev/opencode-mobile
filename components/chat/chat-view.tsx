@@ -135,17 +135,21 @@ export function ChatView() {
     ? promptError.message
     : undefined;
   const sendErrorMessage = sendFeedback || visiblePromptError;
-  const sendErrorDetails = sendErrorMessage
-    ? [
-        'OpenCode send failed',
-        `Error: ${sendErrorMessage}`,
-        `Time: ${new Date(promptError?.occurredAt || Date.now()).toISOString()}`,
-        `Session: ${currentSessionId || 'unknown'}`,
-        `Server: ${settings.serverUrl}`,
-        `Model: ${chatPreferences.modelId || 'unknown'}`,
-        `Attachments: ${lastSentAttachmentsRef.current.map((attachment) => attachment.filename || attachment.mime || 'unnamed').join(', ') || 'none'}`,
-      ].join('\n')
-    : '';
+  const buildSendErrorDetails = useCallback(() => {
+    if (!sendErrorMessage) {
+      return '';
+    }
+
+    return [
+      'OpenCode send failed',
+      `Error: ${sendErrorMessage}`,
+      `Time: ${new Date(promptError?.occurredAt || Date.now()).toISOString()}`,
+      `Session: ${currentSessionId || 'unknown'}`,
+      `Server: ${settings.serverUrl}`,
+      `Model: ${chatPreferences.modelId || 'unknown'}`,
+      `Attachments: ${lastSentAttachmentsRef.current.map((attachment) => attachment.filename || attachment.mime || 'unnamed').join(', ') || 'none'}`,
+    ].join('\n');
+  }, [chatPreferences.modelId, currentSessionId, promptError?.occurredAt, sendErrorMessage, settings.serverUrl]);
   const visibleSessions = sessions;
 
   useEffect(() => {
@@ -218,6 +222,7 @@ export function ChatView() {
 
   useEffect(() => {
     if (pendingInteractions > 0) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- auto-focus the session tab when the server needs input; no render-time equivalent.
       setActiveTab('session');
     }
   }, [pendingInteractions]);
@@ -236,6 +241,7 @@ export function ChatView() {
       return;
     }
 
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- surface speech-hook errors as dismissible voice feedback.
     setVoiceFeedback(speechInputError);
   }, [speechInputError]);
 
@@ -523,7 +529,7 @@ export function ChatView() {
               <Text selectable variant="bodySmall" style={{ color: palette.text }}>{sendErrorMessage}</Text>
               <View style={styles.sendErrorActions}>
                 <Button compact onPress={() => {
-                  void Clipboard.setStringAsync(sendErrorDetails).then(() => setCopiedMessageId('__send-error__'));
+                  void Clipboard.setStringAsync(buildSendErrorDetails()).then(() => setCopiedMessageId('__send-error__'));
                 }}>Copy details</Button>
                 <Button compact onPress={() => {
                   setSendFeedback(undefined);
