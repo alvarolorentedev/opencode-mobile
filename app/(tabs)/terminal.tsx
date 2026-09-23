@@ -159,6 +159,7 @@ export default function TerminalScreen() {
           elevated>
           <View style={styles.headerMain}>
             <Menu
+              key={terminalMenuVisible ? 'open' : 'closed'}
               visible={terminalMenuVisible}
               onDismiss={() => setTerminalMenuVisible(false)}
               anchor={

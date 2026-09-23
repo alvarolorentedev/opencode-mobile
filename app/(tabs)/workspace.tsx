@@ -114,20 +114,6 @@ function SessionListItemImpl({
     wasRenamingRef.current = isRenaming;
   }, [isRenaming]);
 
-  // Keep the anchor element identity stable. Paper's Menu restarts its show
-  // animation whenever `anchor` changes, so an inline element re-created on
-  // every render causes needless animation churn.
-  const actionMenuAnchor = useMemo(
-    () => (
-      <IconButton
-        icon="dots-vertical"
-        accessibilityLabel={`Actions for ${session.title || 'Untitled chat'}`}
-        onPress={() => onStartActionMenu(session.id)}
-      />
-    ),
-    [onStartActionMenu, session.id, session.title],
-  );
-
   return (
     <View>
       <List.Item
@@ -139,10 +125,14 @@ function SessionListItemImpl({
         right={() => (
           <View style={styles.sessionMeta}>
             <Text style={{ color: palette.tint }}>{statusLabel}</Text>
+            {/* ponytail: Paper 5.15.3 Menu leaves a stale hide-animation callback that
+                unmounts the portal right after opening. Remounting on visibility change
+                discards that callback. Remove when Paper fixes it upstream. */}
             <Menu
+              key={isActionMenuOpen ? 'open' : 'closed'}
               visible={isActionMenuOpen}
               onDismiss={onCloseActionMenu}
-              anchor={actionMenuAnchor}>
+              anchor={<IconButton icon="dots-vertical" accessibilityLabel={`Actions for ${session.title || 'Untitled chat'}`} onPress={() => onStartActionMenu(session.id)} />}>
               <Menu.Item title="Rename" leadingIcon="pencil" onPress={() => { onCloseActionMenu(); onStartRename(session); }} />
               {canShare ? <Menu.Item title={session.share?.url ? 'Unshare' : 'Share'} leadingIcon="share-variant" onPress={() => { onCloseActionMenu(); onShareRequest(session); }} /> : null}
               <Menu.Item title={isFavorite ? 'Remove from favorites' : 'Add to favorites'} leadingIcon={isFavorite ? 'star' : 'star-outline'} onPress={() => { onCloseActionMenu(); onToggleFavorite(session); }} />
@@ -421,6 +411,7 @@ export default function WorkspaceScreen() {
         elevated>
         <View style={styles.headerMain}>
           <Menu
+            key={projectMenuVisible ? 'open' : 'closed'}
             visible={projectMenuVisible}
             onDismiss={() => setProjectMenuVisible(false)}
             anchor={
