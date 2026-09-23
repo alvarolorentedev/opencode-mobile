@@ -33,7 +33,7 @@
   "dependencies": {
     "@expo/vector-icons": "^15.0.3",
     "@opencode-ai/sdk": "^1.18.3",
-    "@opencode/client": "2.0.12",
+    "@opencode/client": "^2.0.15",
     "@react-native-async-storage/async-storage": "2.2.0",
     "@react-navigation/bottom-tabs": "^7.4.0",
     "@react-navigation/elements": "^2.6.3",
@@ -69,7 +69,7 @@
     "react": "19.1.0",
     "react-dom": "19.1.0",
     "react-native": "0.81.5",
-    "react-native-paper": "^5.15.0",
+    "react-native-paper": "5.15.0",
     "react-native-safe-area-context": "~5.6.0",
     "react-native-screens": "~4.16.0",
     "react-native-web": "~0.21.0"
