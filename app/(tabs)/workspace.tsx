@@ -16,10 +16,10 @@ import {
   SegmentedButtons,
   Snackbar,
   Text,
-  TextInput,
 } from 'react-native-paper';
 
 import { Colors, Fonts } from '@/constants/theme';
+import { TextInput } from '@/components/ui/text-input';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { formatRelativeTime, getSessionSubtitle } from '@/lib/opencode/format';
 import type { Session } from '@/lib/opencode/types';

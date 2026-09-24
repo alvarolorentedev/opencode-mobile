@@ -1,7 +1,9 @@
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { memo, useMemo, useState } from 'react';
 import { Linking, ScrollView, StyleSheet, View } from 'react-native';
-import { Button, Card, Chip, Divider, IconButton, List, Surface, Switch, Text, TextInput, TouchableRipple } from 'react-native-paper';
+import { Button, Card, Chip, Divider, IconButton, List, Surface, Switch, Text, TouchableRipple } from 'react-native-paper';
+
+import { TextInput } from '@/components/ui/text-input';
 
 import { MarkdownText } from '@/components/chat/chat-markdown';
 import { getDiffPalette, buildPatchDiff, buildCollapsedDiffBlocks } from '@/components/chat/chat-diff';

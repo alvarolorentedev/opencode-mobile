@@ -19,10 +19,10 @@ import {
   Snackbar,
   Surface,
   Text,
-  TextInput,
 } from 'react-native-paper';
 
 import { Colors, Fonts } from '@/constants/theme';
+import { TextInput } from '@/components/ui/text-input';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import type { Pty } from '@/lib/opencode/types';
 import { useOpencode } from '@/providers/opencode-provider';

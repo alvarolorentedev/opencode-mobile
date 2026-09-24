@@ -8,10 +8,10 @@ import {
   HelperText,
   List,
   Text,
-  TextInput,
 } from 'react-native-paper';
 
 import { NativeSelect, type NativeSelectOption } from '@/components/ui/native-select';
+import { TextInput } from '@/components/ui/text-input';
 import { renderProviderIcon } from '@/components/ui/provider-icon';
 import { Colors, Fonts } from '@/constants/theme';
 import { formatTimestamp } from '@/lib/opencode/format';

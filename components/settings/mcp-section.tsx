@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import { StyleSheet, Switch, View } from 'react-native';
-import { Button, Card, Chip, HelperText, List, SegmentedButtons, Text, TextInput } from 'react-native-paper';
+import { Button, Card, Chip, HelperText, List, SegmentedButtons, Text } from 'react-native-paper';
+
+import { TextInput } from '@/components/ui/text-input';
 
 import { Colors } from '@/constants/theme';
 import type { Config, McpLocalConfig, McpRemoteConfig, McpStatus } from '@/lib/opencode/types';

@@ -14,7 +14,6 @@ import {
   Portal,
   Snackbar,
   Text,
-  TextInput,
 } from 'react-native-paper';
 
 import { Colors, Fonts } from '@/constants/theme';
@@ -34,6 +33,7 @@ import {
   RESPONSE_SCOPE_OPTIONS,
   WORKING_SOUND_OPTIONS,
 } from '@/components/settings/settings-utils';
+import { TextInput } from '@/components/ui/text-input';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import {
   ensureNotificationPermissionsAsync,

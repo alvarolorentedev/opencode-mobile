@@ -1,8 +1,9 @@
 import { View } from 'react-native';
-import { Chip, IconButton, Surface, Text, TextInput } from 'react-native-paper';
+import { Chip, IconButton, Surface, Text } from 'react-native-paper';
 import { useState } from 'react';
 
 import { Colors } from '@/constants/theme';
+import { TextInput } from '@/components/ui/text-input';
 import { ControlButton, SelectControl } from '@/components/chat/chat-controls';
 import { ModelPicker } from '@/components/chat/model-picker';
 import { styles } from '@/components/chat/chat-view-styles';

@@ -1,5 +1,7 @@
 import { StyleSheet, View } from 'react-native';
-import { Button, Chip, Dialog, HelperText, RadioButton, Text, TextInput } from 'react-native-paper';
+import { Button, Chip, Dialog, HelperText, RadioButton, Text } from 'react-native-paper';
+
+import { TextInput } from '@/components/ui/text-input';
 
 import { Colors } from '@/constants/theme';
 import type { ProviderAuthMethod } from '@/providers/opencode-provider';
