@@ -12,11 +12,16 @@ That choice matches the app's risk profile:
 
 ## CI Gates
 
-The documented main validation workflow lives in `.github/workflows/trunk-validation.yml` and enforces:
+The single `.github/workflows/build.yml` workflow owns both validation and release. It runs on pushes to `main` and `v*` tags:
 
-1. static validation
-2. flow regression testing
-3. Android build validation
+- a single `validate` job covers static validation and flow regression testing, and is the required gate for both release jobs
+- validation uploads artifacts only on failure (`playwright-report`), with 3-day retention
+
+Release automation in the same workflow:
+
+- release jobs run only after `validate` passes, on `v*` tags (or manual dispatch), never on every `main` push
+- Actions artifacts expire after 3 days; the permanent copy is the GitHub Release asset, Play Store upload, or TestFlight upload
+- `.github/workflows/cleanup.yml` runs weekly to delete artifacts older than 3 days and keep only the newest Gradle/npm cache
 
 From `TESTING.md`, those gates include:
 
@@ -28,7 +33,6 @@ From `TESTING.md`, those gates include:
 - `npm run test:workspace-patch`
 - `npm run test:fake-server:self`
 - Playwright E2E flow tests against the fake OpenCode server
-- Android development build validation
 
 ## Fake OpenCode Server
 
@@ -249,4 +253,4 @@ After that baseline, the next most valuable parity suite would add:
 
 The fake server self-test covers the expanded REST contract plus a real ticket-authenticated PTY WebSocket exchange. Playwright covers patch save, archive/restore, worktree creation, MCP addition, and terminal input/output. It does not prove full terminal emulation, native WebSocket behavior, MCP OAuth UI completion, attachment capability, provider OAuth callback, or global reconnect behavior.
 
-For this worktree documentation task, Android validation is CI-only; no local Android build is claimed. The CI development APK remains the native regression gate.
+Android native validation now happens only in the tagged release build in `.github/workflows/build.yml`; there is no push-time Android development build gate.

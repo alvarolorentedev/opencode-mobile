@@ -1,0 +1,48 @@
+name: Cleanup Actions Storage
+
+on:
+  schedule:
+    - cron: '0 3 * * 0'
+  workflow_dispatch:
+
+permissions:
+  actions: write
+  contents: read
+
+jobs:
+  prune:
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+    steps:
+      - name: Delete artifacts older than 3 days
+        run: |
+          set -euo pipefail
+          cutoff=$(date -u -d '3 days ago' +%Y-%m-%dT%H:%M:%SZ)
+          echo "Deleting artifacts created before $cutoff"
+          ids=$(gh api --paginate "repos/$GITHUB_REPOSITORY/actions/artifacts?per_page=100" \
+            --jq ".artifacts[] | select(.created_at < \"$cutoff\") | .id")
+          count=0
+          for id in $ids; do
+            gh api -X DELETE "repos/$GITHUB_REPOSITORY/actions/artifacts/$id"
+            count=$((count + 1))
+          done
+          echo "Deleted $count artifacts"
+
+      - name: Keep only the newest cache per family
+        run: |
+          set -euo pipefail
+          # ponytail: --limit 100 covers current cache volume; paginate if it ever exceeds that
+          for prefix in gradle- node-cache-; do
+            keep=$(gh cache list --key "$prefix" --sort created_at --order desc --limit 100 --json id --jq '.[0].id // empty')
+            if [ -z "$keep" ]; then
+              echo "No $prefix caches"
+              continue
+            fi
+            echo "Keeping newest $prefix cache: $keep"
+            gh cache list --key "$prefix" --limit 100 --json id --jq '.[].id' \
+              | while read -r id; do
+                  [ "$id" = "$keep" ] || gh cache delete "$id"
+                done
+          done

@@ -7,25 +7,24 @@ This repo uses CI-enforced flow validation instead of broad unit test coverage.
 - Test complete user flows, not isolated helpers.
 - Always run integration flows against a fake OpenCode server.
 - Keep the merge gate deterministic and fast enough for trunk-based development.
-- Use Android build validation to catch native and Expo regressions.
+- Use the iOS release build to catch native and Expo regressions.
 
 ## CI Gates
 
-The main validation workflow lives in `.github/workflows/trunk-validation.yml` and runs on every push.
+The single `.github/workflows/build.yml` workflow owns validation and release, and runs on pushes to `main` and `v*` tags.
 
-It enforces three gates:
+It enforces a single `validate` gate:
 
-1. `static`
+1. `validate`
    - `npm run lint`
     - `npm run typecheck`
     - `npm run test:workspace-patch`
     - `npm run test:fake-server:self`
-2. `flow-regression`
    - starts the fake OpenCode server
    - starts the Expo web app in CI mode
    - runs Playwright flow tests against the fake server
-3. `android-build`
-   - builds the Android development APK through the existing Gradle pipeline
+
+iOS native validation happens in the `ios-release` job, so there is no separate prebuild job. Release builds (`v*` tags) run in the same workflow only after `validate` passes. Actions artifacts expire after 3 days; the permanent copy is the GitHub Release asset or store upload. `.github/workflows/cleanup.yml` runs weekly to purge artifacts older than 3 days and keep only the newest Gradle/npm cache.
 
 ## Why This Repo Uses Flow Tests
 
@@ -101,4 +100,4 @@ npm run test:fake-server
 
 The app is built in `EXPO_PUBLIC_E2E_MODE=1` for CI flow tests so notification and voice bootstrap side effects do not interfere with deterministic automation.
 
-For the current worktree changes, Android validation is CI-only; no local Android build result is claimed.
+Android native validation happens only in the tagged release build in `.github/workflows/build.yml`; the local `npm run build:development:android` command remains available for manual use.
