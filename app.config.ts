@@ -1,4 +1,4 @@
-import { withAndroidManifest } from '@expo/config-plugins';
+import { withAndroidManifest, withAppBuildGradle } from '@expo/config-plugins';
 import type { ExpoConfig } from 'expo/config';
 
 function env(name: string) {
@@ -14,12 +14,42 @@ const defaultAndroidPackage = 'app.getopencode';
 const releaseAndroidPackage = env('EXPO_ANDROID_PACKAGE') ?? defaultAndroidPackage;
 const developmentAndroidPackage = env('EXPO_ANDROID_PACKAGE_DEV') ?? `${releaseAndroidPackage}.dev`;
 const androidPackage = isDevelopmentVariant ? developmentAndroidPackage : releaseAndroidPackage;
+const androidReleaseBuildPropertiesPlugin: [string, { android: {
+  enableMinifyInReleaseBuilds: boolean;
+  enableShrinkResourcesInReleaseBuilds: boolean;
+} }] = [
+  'expo-build-properties',
+  {
+    android: {
+      enableMinifyInReleaseBuilds: true,
+      enableShrinkResourcesInReleaseBuilds: true,
+    },
+  },
+];
 
-const withCleartextTraffic = (config: ExpoConfig) => withAndroidManifest(config, (config) => {
-  const application = config.modResults.manifest.application?.[0];
-  if (application) application.$['android:usesCleartextTraffic'] = 'true';
-  return config;
-});
+const withAndroidAppConfig = (config: ExpoConfig) => {
+  const withManifest = withAndroidManifest(config, (config) => {
+    const application = config.modResults.manifest.application?.[0];
+    if (application) application.$['android:usesCleartextTraffic'] = 'true';
+    return config;
+  });
+
+  if (isDevelopmentVariant) return withManifest;
+
+  return withAppBuildGradle(withManifest, (config) => {
+    const legacyFile = 'getDefaultProguardFile("proguard-android.txt")';
+    const optimizedFile = 'getDefaultProguardFile("proguard-android-optimize.txt")';
+    const contents = config.modResults.contents;
+
+    if (contents.includes(optimizedFile)) return config;
+    if (!contents.includes(legacyFile)) {
+      throw new Error('Could not find the Android release ProGuard default file to enable R8 optimizations.');
+    }
+
+    config.modResults.contents = contents.replace(legacyFile, optimizedFile);
+    return config;
+  });
+};
 
 const config: ExpoConfig = {
   name: isDevelopmentVariant ? 'OpenCode Mobile Dev' : 'OpenCode Mobile',
@@ -60,6 +90,7 @@ const config: ExpoConfig = {
     'expo-notifications',
     'expo-background-task',
     'expo-web-browser',
+    ...(isDevelopmentVariant ? [] : [androidReleaseBuildPropertiesPlugin]),
     [
       'expo-speech-recognition',
       {
@@ -83,7 +114,7 @@ const config: ExpoConfig = {
     'expo-image',
     'expo-secure-store',
     'expo-status-bar',
-    withCleartextTraffic as unknown as string,
+    withAndroidAppConfig as unknown as string,
   ],
   experiments: {
     typedRoutes: true,

@@ -206,6 +206,41 @@ This means Android delivery is not purely managed Expo. The current implementati
 - GitHub Actions Android build workflows
 - signing secrets for release builds
 
+Production Android prebuilds use `expo-build-properties` to enable release
+minification and resource shrinking. The plugin is omitted for the development
+app variant; Android debug builds keep their normal unminified configuration.
+The production config plugin also selects Android's optimized default R8 rules;
+the React Native template's legacy `proguard-android.txt` disables code
+optimization even when minification is enabled. The generated `android/`
+directory is ignored, so `app.config.ts` remains the source of truth.
+
+The app adds no custom ProGuard rules and no keep rules for its application
+namespace. The generated React Native template includes its Reanimated rules;
+native dependencies also contribute consumer rules for Expo task/notification
+modules, React Native, Worklets, and Glide image loading.
+
+### Memory Profiling Targets
+
+The chat fetches at most 500 messages per session. Provider caches are pruned
+to the current/conversation sessions, non-idle sessions, and one spare session;
+the active transcript still keeps its raw records and derived transcript in
+memory. FlashList virtualizes rendered rows, but does not reduce those data
+caches. The tab layout sets no unmount-on-blur policy, so include returning to
+Chat after opening other tabs in device profiling.
+
+Attachments are limited to 10 MB each, not in aggregate. Local files are read
+and base64-encoded while a prompt is being prepared, and web picker data URLs
+remain in composer state until send. Profile long transcripts, long streamed
+replies, and several near-limit attachments on a low-memory Android device.
+The app already caps terminal output at 100,000 characters and clears refresh
+timers and the active terminal socket on project changes or provider teardown;
+the inspected paths show no clear listener/timer leak to fix without profiling
+evidence.
+
+The persisted per-project session cache contains only small session DTOs and
+statuses, with a seven-day TTL. Its keys are per project, so profile unusually
+large workspace catalogs if storage growth becomes visible.
+
 ## Security / Data Handling Notes
 
 ### Locally Stored Sensitive Data

@@ -42,6 +42,7 @@
     "expo-audio": "~57.0.5",
     "expo-background-task": "~57.0.19",
     "expo-brightness": "~57.0.2",
+    "expo-build-properties": "~1.0.10",
     "expo-clipboard": "~57.0.2",
     "expo-constants": "~57.0.19",
     "expo-dev-client": "~57.0.19",
