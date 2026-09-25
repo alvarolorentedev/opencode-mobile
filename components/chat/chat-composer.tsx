@@ -205,7 +205,7 @@ export function ChatComposer({
                contentStyle={styles.inputContentCompact}
                underlineColor="transparent"
                activeUnderlineColor="transparent"
-               textAlignVertical="top"
+               textAlignVertical="center"
              />
 
             <IconButton
