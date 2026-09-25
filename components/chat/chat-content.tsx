@@ -166,6 +166,7 @@ export function ChatContent({
             currentTodos.length > 0 ? { paddingBottom: todosExpanded ? 320 : 76 } : null,
           ]}
           extraData={extraData}
+          keyboardDismissMode="on-drag"
           keyboardShouldPersistTaps="handled"
           keyExtractor={(entry) => `${entry.id}-${entry.createdAt}`}
           maintainVisibleContentPosition={MAINTAIN_VISIBLE_CONTENT_POSITION}
@@ -274,6 +275,7 @@ export function ChatContent({
         <ScrollView
           style={styles.scroll}
           contentContainerStyle={styles.content}
+          keyboardDismissMode="on-drag"
           refreshControl={<RefreshControl refreshing={isRefreshingDiffs} onRefresh={onRefresh} tintColor={palette.tint} />}>
           {connection.status === 'error' ? (
             <Card mode="contained" style={[styles.noticeCard, { backgroundColor: palette.surface }]}>

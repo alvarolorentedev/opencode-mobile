@@ -219,7 +219,7 @@ export default function TerminalScreen() {
           </View>
         </Appbar.Header>
 
-        <ScrollView ref={outputRef} style={styles.output} contentContainerStyle={styles.outputContent} nestedScrollEnabled>
+        <ScrollView ref={outputRef} style={styles.output} contentContainerStyle={styles.outputContent} keyboardDismissMode="on-drag" nestedScrollEnabled>
           <Text testID="terminal-output" selectable style={[styles.outputText, { color: activeTerminalId ? palette.text : palette.muted }]}> 
             {activeTerminalId ? terminalOutput || 'Connected. Waiting for output...' : 'Open or create a terminal to begin.'}
           </Text>

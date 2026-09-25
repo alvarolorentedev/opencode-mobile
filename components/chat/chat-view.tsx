@@ -1,7 +1,7 @@
 import * as Clipboard from 'expo-clipboard';
 import * as Haptics from 'expo-haptics';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Alert, KeyboardAvoidingView, Platform, View } from 'react-native';
+import { Alert, Keyboard, KeyboardAvoidingView, Platform, View } from 'react-native';
 import { Button, Card, Snackbar, Text } from 'react-native-paper';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -219,6 +219,12 @@ export function ChatView() {
       setSendFeedback(error instanceof Error ? error.message : 'OpenCode could not send that message.');
     }
   }, [commands, connection.status, currentSessionId, ensureActiveSession, executeCommand, sendPrompt]);
+
+  useEffect(() => {
+    // ponytail: session/tab switch is the escape hatch when the transcript
+    // is too short for drag-to-dismiss; one effect beats a guard per caller.
+    Keyboard.dismiss();
+  }, [currentSessionId, activeTab]);
 
   useEffect(() => {
     if (pendingInteractions > 0) {

@@ -436,6 +436,7 @@ export default function WorkspaceScreen() {
       <ScrollView
         style={[styles.screen, { backgroundColor: palette.background }]}
         contentContainerStyle={[styles.content, styles.centeredContent]}
+        keyboardDismissMode="on-drag"
         refreshControl={<RefreshControl refreshing={isRefreshing} onRefresh={() => void handleRefresh()} tintColor={palette.tint} />}>
       <SegmentedButtons value={activePanel} onValueChange={(value) => setActivePanel(value as typeof activePanel)} buttons={[{ value: 'chats', label: 'Chats' }, { value: 'files', label: 'Files' }, { value: 'tools', label: 'Tools' }]} />
 
