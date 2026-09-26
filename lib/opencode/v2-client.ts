@@ -907,11 +907,14 @@ function buildV2Raw(settings: OpencodeConnectionSettings): { client: Record<stri
         return ok(shells.map(shellToV1));
       },
       list: async () => {
-        const response = await api.pty.list();
+        const response = await api.pty.list(ctx.directory ? { location: { directory: ctx.directory } } : {});
         return ok(response.data);
       },
       create: async (parameters?: { command?: string; args?: string[]; cwd?: string; title?: string; env?: Record<string, string> }) => {
-        const response = await api.pty.create({ ...parameters });
+        const response = await api.pty.create({
+          ...parameters,
+          ...(ctx.directory ? { location: { directory: ctx.directory } } : {}),
+        });
         return ok(response.data);
       },
       get: async (parameters: { ptyID: string }) => {
