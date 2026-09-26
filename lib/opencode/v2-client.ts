@@ -927,7 +927,10 @@ function buildV2Raw(settings: OpencodeConnectionSettings): { client: Record<stri
         return ok(undefined);
       },
       connectToken: async (parameters: { ptyID: string }) => {
-        const response = await api.pty.connect.token({ ptyID: parameters.ptyID });
+        const response = await api.pty.connect.token(
+          { ptyID: parameters.ptyID },
+          { headers: { 'x-opencode-ticket': '1' } },
+        );
         return ok({ ticket: response.data?.ticket });
       },
     },

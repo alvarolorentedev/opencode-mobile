@@ -555,6 +555,10 @@ const server = http.createServer(async (req, res) => {
 
     if (req.method === 'POST' && /^\/api\/pty\/[^/]+\/connect-token$/.test(pathname)) {
       const ptyId = pathname.split('/')[3];
+      if (req.headers['x-opencode-ticket'] !== '1') {
+        sendJson(res, 403, { error: 'PTY ticket header required' });
+        return;
+      }
       if (!state.ptys.some((pty) => pty.id === ptyId)) return notFound(res);
       sendJson(res, 200, { location: location(), data: { ticket: `ticket-${ptyId}`, expires_in: 60 } });
       return;
