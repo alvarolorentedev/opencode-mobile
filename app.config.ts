@@ -17,12 +17,26 @@ const androidPackage = isDevelopmentVariant ? developmentAndroidPackage : releas
 const androidReleaseBuildPropertiesPlugin: [string, { android: {
   enableMinifyInReleaseBuilds: boolean;
   enableShrinkResourcesInReleaseBuilds: boolean;
+  extraProguardRules: string;
 } }] = [
   'expo-build-properties',
   {
     android: {
       enableMinifyInReleaseBuilds: true,
       enableShrinkResourcesInReleaseBuilds: true,
+      // Expo modules convert JS objects into native records through the Pika
+      // introspection runtime and generated `$__Pika` classes, and load the
+      // headless app loader by class name. R8 sees no direct references and strips
+      // them, which crashed nested records (speech recognition's
+      // volumeChangeEventOptions -> NullPointerException) and the headless loader
+      // (ClassNotFoundException) in release builds. Costs ~33 KB of APK size.
+      extraProguardRules: [
+        '-keep class **$__Pika { *; }',
+        '-keep class io.github.lukmccall.pika.** { *; }',
+        '-keep class * implements io.github.lukmccall.pika.Introspectable { *; }',
+        '-keep class expo.modules.kotlin.records.** { *; }',
+        '-keep class expo.modules.adapters.react.apploader.** { *; }',
+      ].join('\n'),
     },
   },
 ];
