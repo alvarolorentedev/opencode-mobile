@@ -214,10 +214,13 @@ the React Native template's legacy `proguard-android.txt` disables code
 optimization even when minification is enabled. The generated `android/`
 directory is ignored, so `app.config.ts` remains the source of truth.
 
-The app adds no custom ProGuard rules and no keep rules for its application
-namespace. The generated React Native template includes its Reanimated rules;
-native dependencies also contribute consumer rules for Expo task/notification
-modules, React Native, Worklets, and Glide image loading.
+Production config adds custom keep rules for Expo's Pika record introspection
+runtime and classes loaded reflectively, including `RNHeadlessAppLoader`. These
+rules retain Expo record converters and add about 33 KB to the arm64 release
+APK. No keep rules target the app's own namespace. The generated React Native
+template includes its Reanimated rules; native dependencies also contribute
+consumer rules for Expo task/notification modules, React Native, Worklets, and
+Glide image loading.
 
 ### Memory Profiling Targets
 
