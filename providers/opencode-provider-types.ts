@@ -125,6 +125,10 @@ export type OpencodeContextValue = {
   isHydrated: boolean;
   settings: OpencodeConnectionSettings;
   updateSettings: (patch: Partial<OpencodeConnectionSettings>) => void;
+  switchConnection: (
+    next: Pick<OpencodeConnectionSettings, 'serverUrl' | 'username' | 'password'>,
+    modelPreferences?: Partial<ChatPreferences>,
+  ) => void;
   connection: ConnectionState;
   serverCapabilities: ServerCapabilities;
   projects: OpencodeProject[];

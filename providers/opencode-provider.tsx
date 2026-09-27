@@ -2765,6 +2765,30 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
       ...patch,
     }));
   }, [clearProjectState]);
+
+  // connect() reads settingsRef, which only picks up new settings on the next
+  // render, so the reconnect is deferred to an effect keyed on settings.
+  const pendingSwitchConnectRef = useRef(false);
+  const switchConnection = useCallback((
+    next: Pick<OpencodeConnectionSettings, 'serverUrl' | 'username' | 'password'>,
+    modelPreferences?: Partial<ChatPreferences>,
+  ) => {
+    updateSettings(next);
+    if (modelPreferences) {
+      // Applied raw; the catalog refresh after connecting validates it against
+      // the new server's models.
+      setChatPreferences((current) => ({ ...current, ...modelPreferences }));
+    }
+    pendingSwitchConnectRef.current = true;
+  }, [updateSettings]);
+
+  useEffect(() => {
+    if (!pendingSwitchConnectRef.current) {
+      return;
+    }
+    pendingSwitchConnectRef.current = false;
+    void connect();
+  }, [connect, settings]);
   const clearPromptError = useCallback(() => setPromptError(undefined), []);
 
   useEffect(() => {
@@ -2914,6 +2938,7 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
       isHydrated,
       settings,
       updateSettings,
+      switchConnection,
       connection,
       serverCapabilities,
       projects,
@@ -3136,6 +3161,7 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
       toggleConversationMode,
       updateChatPreferences,
       updateSettings,
+      switchConnection,
       commands,
       executeCommand,
       workspaceFiles,

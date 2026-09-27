@@ -10,6 +10,7 @@ import {
   Text,
 } from 'react-native-paper';
 
+import { ConnectionProfiles } from '@/components/settings/connection-profiles';
 import { NativeSelect, type NativeSelectOption } from '@/components/ui/native-select';
 import { TextInput } from '@/components/ui/text-input';
 import { renderProviderIcon } from '@/components/ui/provider-icon';
@@ -104,6 +105,7 @@ export function ConnectionSection({ connection, isConnecting, onReconnect, palet
             {connection.message}
           </Text>
         </View>
+        <ConnectionProfiles palette={palette} />
         <TextInput
           mode="outlined"
           label="Server URL"
