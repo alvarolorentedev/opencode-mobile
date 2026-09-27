@@ -444,11 +444,11 @@ export default function WorkspaceScreen() {
         <View testID="workspace-favorites-bar" style={[styles.favoritesBar, { borderColor: palette.border }]}>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.favoritesScroll}>
             {favoriteSessions.map((favorite) => (
-              <View key={favorite.sessionId} style={[styles.favoriteChip, { backgroundColor: palette.surface, borderColor: palette.border }]}>
+              <View key={`${favorite.connectionScope}:${favorite.sessionId}`} style={[styles.favoriteChip, { backgroundColor: palette.surface, borderColor: palette.border }]}>
                 <Pressable
                   accessibilityLabel={`Open favorite ${favorite.title || favorite.sessionId}`}
                   onPress={() => {
-                    void openSessionInProject(favorite.projectPath, favorite.sessionId)
+                    void openSessionInProject(favorite.projectPath, favorite.sessionId, favorite.connectionScope)
                       .then(() => router.push('/(tabs)'))
                       .catch((reason) => setError(reason instanceof Error ? reason.message : 'Could not open the favorite session.'));
                   }}

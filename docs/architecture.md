@@ -101,6 +101,10 @@ If this app were reimplemented, this provider would be the main source of truth 
   Derived selectors extracted from the provider body.
 - `providers/use-opencode-persistence.ts`
   AsyncStorage hydration and persistence.
+- `providers/session-cache.ts`
+  Per connection + project session/status cache DTO, validation, and hydration.
+- `providers/favorites-storage.ts`
+  Favorites DTO validation, bounded serialization, and legacy-entry migration.
 - `providers/use-conversation-keep-awake.ts`
   Keeps device awake during conversation mode.
 - `providers/use-conversation-screen-dim.ts`
@@ -133,6 +137,17 @@ If this app were reimplemented, this provider would be the main source of truth 
   Transcript activity helpers and display filtering.
 - `lib/opencode/types.ts`
   Direct aliases for generated v2 SDK protocol types.
+
+### Connection Identity And Credentials
+
+- `lib/connection-scope.ts`
+  Canonical, deterministic, password-free connection identity (`getConnectionScope`). Every server-scoped storage key, favorite, and pending notification record derives from it; scheme/host are normalized while URL path and query casing are preserved.
+- `lib/connection-profiles.ts`
+  Saved connection metadata in AsyncStorage, per-profile passwords in SecureStore, whole-DTO validation, and credential resolution for a connection that is not currently active.
+- `lib/connection-password.ts`
+  Active connection password in SecureStore, including legacy plaintext migration.
+- `lib/notification-pending.ts`
+  Explicit non-secret pending-notification DTO, parsing, and composite keying.
 
 ### Chat UI
 
@@ -176,7 +191,7 @@ If this app were reimplemented, this provider would be the main source of truth 
 The normal startup flow is:
 
 1. Root layout mounts providers.
-2. `useOpencodePersistence()` hydrates settings, chat preferences, active project, and last session map from AsyncStorage.
+2. `useOpencodePersistence()` hydrates settings, chat preferences, active project, and the connection-scoped last-session map from AsyncStorage.
 3. After hydration, `OpencodeProvider` calls `connect()`.
 4. `connect()` loads workspace catalog using a catalog-scoped client with no directory.
 5. Connection state becomes `connected` or `error`.
@@ -199,6 +214,22 @@ The provider creates two client instances:
   Bound to `settings` with an empty directory. Used for workspace discovery, diagnostics, and the global event stream.
 
 This split is one of the key architectural details. Workspace discovery is intentionally decoupled from a selected project directory.
+
+### Connection Switching
+
+Saved connections are a first-class concept built on `getConnectionScope()`. A
+switch is deliberately ordered:
+
+1. persist the outgoing profile's model preferences,
+2. update credentials and settings, which resets every server-derived in-memory slice,
+3. restore the target profile's model preferences (validated again by capability discovery after connecting),
+4. reconnect with the target settings passed explicitly to `runConnect()` instead of reading a render-delayed ref, then
+5. hydrate only state whose connection scope matches the new settings.
+
+Persisted session caches, remembered sessions, favorites, and pending
+notifications are all keyed by connection scope, so a switch can never surface
+or mutate another server's state even when both servers expose the same project
+path.
 
 ## Data Flow Model
 
@@ -326,6 +357,7 @@ Responsibilities:
 Responsibilities:
 
 - edit connection settings
+- save named connection profiles, switch between them, and delete them; switching persists the outgoing profile's model selection, restores the target profile's selection, and reconnects with that profile's credentials
 - reconnect manually
 - inspect server health, realtime status, LSP, and formatter counts
 - add local or remote MCP servers; connect, disconnect, enable, disable, and complete remote OAuth

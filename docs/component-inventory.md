@@ -385,7 +385,22 @@ Responsibility:
 - edit server URL, username, password
 - show connection state card
 - show the current connection message or error hint from provider state
+- render the saved-connection chips (`ConnectionProfiles`)
 - trigger reconnect
+
+## `components/settings/connection-profiles.tsx`
+
+### Responsibility
+
+- load saved connection profiles from AsyncStorage and show one chip per profile
+- mark the active profile by comparing `getConnectionScope()` of the profile and the current settings
+- switch profiles through `switchConnection()` (which persists the outgoing profile's model selection, restores the target's, and reconnects)
+- save or update the current URL/username/password as a named profile and store the password in SecureStore
+- delete a profile and its SecureStore password after confirmation
+
+The component owns only local dialog/loading state; profile persistence and
+credential handling live in `lib/connection-profiles.ts`, and switching lives in
+the provider.
 
 ### `AiDefaultsSection`
 

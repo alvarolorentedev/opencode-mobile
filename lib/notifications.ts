@@ -5,31 +5,19 @@ import * as Notifications from 'expo-notifications';
 import * as TaskManager from 'expo-task-manager';
 import { Platform } from 'react-native';
 
+import { resolveConnectionPassword } from '@/lib/connection-profiles';
 import { buildClient, detectServerContract, type OpencodeConnectionSettings } from '@/lib/opencode/client';
-import { getConnectionPassword } from '@/lib/connection-password';
-import { PENDING_NOTIFICATION_SESSIONS_STORAGE_KEY, SETTINGS_STORAGE_KEY } from '@/lib/storage-keys';
+import {
+  parsePendingNotificationSessions,
+  pendingNotificationKey,
+  serializePendingNotificationSessions,
+  type PendingNotificationSession,
+} from '@/lib/notification-pending';
+import { PENDING_NOTIFICATION_SESSIONS_STORAGE_KEY } from '@/lib/storage-keys';
 
 const TASK_FINISHED_CHANNEL_ID = 'task-finished';
 const CHAT_COMPLETION_TASK_NAME = 'opencode-chat-completion-monitor';
 const BACKGROUND_MINIMUM_INTERVAL_MINUTES = 15;
-
-type PendingNotificationSession = {
-  sessionId: string;
-  sessionTitle?: string;
-  projectPath: string;
-  settings: Pick<OpencodeConnectionSettings, 'serverUrl' | 'username'>;
-  requestedAt: number;
-};
-
-function withoutPendingPassword(value: Record<string, PendingNotificationSession>) {
-  return Object.fromEntries(Object.entries(value).map(([sessionId, pending]) => [sessionId, {
-    ...pending,
-    settings: {
-      serverUrl: pending.settings.serverUrl,
-      username: pending.settings.username,
-    },
-  }])) as Record<string, PendingNotificationSession>;
-}
 
 export type NotificationDebugStatus = {
   platform: string;
@@ -71,37 +59,28 @@ async function readPendingNotificationSessions() {
       return {} as Record<string, PendingNotificationSession>;
     }
 
-    const pending = withoutPendingPassword(JSON.parse(raw) as Record<string, PendingNotificationSession>);
-    if (JSON.stringify(pending) !== raw) {
-      void AsyncStorage.setItem(PENDING_NOTIFICATION_SESSIONS_STORAGE_KEY, JSON.stringify(pending));
+    const pending = parsePendingNotificationSessions(raw);
+    const serialized = serializePendingNotificationSessions(pending);
+    if (serialized !== raw) {
+      void AsyncStorage.setItem(PENDING_NOTIFICATION_SESSIONS_STORAGE_KEY, serialized).catch(() => undefined);
     }
     return pending;
   } catch {
+    // Malformed JSON cannot be attributed to any connection; drop it so a bad
+    // value does not block later writes.
+    await AsyncStorage.removeItem(PENDING_NOTIFICATION_SESSIONS_STORAGE_KEY).catch(() => undefined);
     return {} as Record<string, PendingNotificationSession>;
   }
 }
 
 async function writePendingNotificationSessions(value: Record<string, PendingNotificationSession>) {
-  const keys = Object.keys(value);
-  if (keys.length === 0) {
+  if (Object.keys(value).length === 0) {
     await AsyncStorage.removeItem(PENDING_NOTIFICATION_SESSIONS_STORAGE_KEY);
     return;
   }
 
-  await AsyncStorage.setItem(PENDING_NOTIFICATION_SESSIONS_STORAGE_KEY, JSON.stringify(withoutPendingPassword(value)));
-}
-
-async function isCurrentPendingConnection(pending: PendingNotificationSession) {
-  try {
-    const raw = await AsyncStorage.getItem(SETTINGS_STORAGE_KEY);
-    if (!raw) {
-      return false;
-    }
-    const settings = JSON.parse(raw) as Partial<OpencodeConnectionSettings>;
-    return settings.serverUrl === pending.settings.serverUrl && settings.username === pending.settings.username;
-  } catch {
-    return false;
-  }
+  // The serializer only keeps the explicit non-secret DTO fields.
+  await AsyncStorage.setItem(PENDING_NOTIFICATION_SESSIONS_STORAGE_KEY, serializePendingNotificationSessions(value));
 }
 
 function buildTaskFinishedContent(title: string, body: string): Notifications.NotificationContentInput {
@@ -131,20 +110,31 @@ async function scheduleTaskFinishedNotification(sessionTitle?: string) {
 if (Platform.OS !== 'web' && !TaskManager.isTaskDefined(CHAT_COMPLETION_TASK_NAME)) {
   TaskManager.defineTask(CHAT_COMPLETION_TASK_NAME, async () => {
     try {
-      const pendingBySessionId = await readPendingNotificationSessions();
-      const pendingSessions = Object.values(pendingBySessionId);
+      const pendingByKey = await readPendingNotificationSessions();
+      const pendingSessions = Object.entries(pendingByKey);
 
       if (pendingSessions.length === 0) {
         return BackgroundTask.BackgroundTaskResult.Success;
       }
 
-      for (const pending of pendingSessions) {
+      for (const [key, pending] of pendingSessions) {
         if (!pending.projectPath) {
-          delete pendingBySessionId[pending.sessionId];
+          delete pendingByKey[key];
           continue;
         }
-        if (!await isCurrentPendingConnection(pending)) {
-          delete pendingBySessionId[pending.sessionId];
+
+        // Resolve the credentials of the connection that created the record.
+        // The currently active connection is only used when this record
+        // belongs to it; another server's task must never borrow its password.
+        const password = await resolveConnectionPassword({
+          serverUrl: pending.settings.serverUrl,
+          username: pending.settings.username,
+        }).catch(() => undefined);
+        if (password === undefined) {
+          // The profile or active connection that owns this task is not
+          // resolvable right now (for example the user switched away from an
+          // unsaved connection). Keep the record and retry on a later run
+          // instead of discarding another server's task.
           continue;
         }
 
@@ -152,7 +142,7 @@ if (Platform.OS !== 'web' && !TaskManager.isTaskDefined(CHAT_COMPLETION_TASK_NAM
           const settings: OpencodeConnectionSettings = {
             serverUrl: pending.settings.serverUrl,
             username: pending.settings.username,
-            password: await getConnectionPassword(),
+            password,
             directory: pending.projectPath,
           };
           const contract = (await detectServerContract(settings).catch(() => ({ contract: 'v1' as const }))).contract;
@@ -169,17 +159,17 @@ if (Platform.OS !== 'web' && !TaskManager.isTaskDefined(CHAT_COMPLETION_TASK_NAM
 
           const session = sessionsResponse?.data?.find((item: { id: string; title?: string }) => item.id === pending.sessionId);
           if (!session) {
-            delete pendingBySessionId[pending.sessionId];
+            delete pendingByKey[key];
             continue;
           }
           await scheduleTaskFinishedNotification(session?.title || pending.sessionTitle);
-          delete pendingBySessionId[pending.sessionId];
+          delete pendingByKey[key];
         } catch {
           continue;
         }
       }
 
-      await writePendingNotificationSessions(pendingBySessionId);
+      await writePendingNotificationSessions(pendingByKey);
       return BackgroundTask.BackgroundTaskResult.Success;
     } catch {
       return BackgroundTask.BackgroundTaskResult.Failed;
@@ -288,17 +278,18 @@ export async function initializeNotifications() {
 
 export async function trackPendingTaskFinishedNotification(input: PendingNotificationSession) {
   const current = await readPendingNotificationSessions();
-  current[input.sessionId] = input;
+  current[pendingNotificationKey(input.connectionScope, input.sessionId)] = input;
   await writePendingNotificationSessions(current);
 }
 
-export async function clearPendingTaskFinishedNotification(sessionId: string) {
+export async function clearPendingTaskFinishedNotification(connectionScope: string, sessionId: string) {
   const current = await readPendingNotificationSessions();
-  if (!current[sessionId]) {
+  const key = pendingNotificationKey(connectionScope, sessionId);
+  if (!current[key]) {
     return;
   }
 
-  delete current[sessionId];
+  delete current[key];
   await writePendingNotificationSessions(current);
 }
 

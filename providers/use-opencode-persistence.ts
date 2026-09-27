@@ -13,7 +13,14 @@ import {
 import type { ChatPreferences } from '@/providers/opencode-provider-utils';
 import type { FavoriteSession } from '@/providers/opencode-provider-types';
 import { parseFavoriteSessions, serializeFavoriteSessions } from '@/providers/favorites-storage';
+import {
+  parseLastSessionByConnection,
+  serializeLastSessionByConnection,
+  type LastSessionByConnection,
+} from '@/providers/last-session-storage';
 import { loadPersistedValue } from '@/providers/persistence-hydration';
+
+export type { LastSessionByConnection } from '@/providers/last-session-storage';
 
 function parseJsonObject<T>(raw: string) {
   const value: unknown = JSON.parse(raw);
@@ -23,25 +30,17 @@ function parseJsonObject<T>(raw: string) {
   return value as T;
 }
 
-function parseLastSessionByProject(raw: string) {
-  const value = parseJsonObject<Record<string, unknown>>(raw);
-  if (Object.values(value).some((sessionId) => typeof sessionId !== 'string')) {
-    throw new Error('Expected session IDs to be strings.');
-  }
-  return value as Record<string, string>;
-}
-
 export function useOpencodePersistence({
   defaultChatPreferences,
   defaultSettings,
   activeProjectPath,
   chatPreferences,
   favoriteSessions,
-  lastSessionByProject,
+  lastSessionByConnection,
   setActiveProjectPath,
   setChatPreferences,
   setFavoriteSessions,
-  setLastSessionByProject,
+  setLastSessionByConnection,
   setSettings,
   settings,
 }: {
@@ -50,11 +49,11 @@ export function useOpencodePersistence({
   activeProjectPath?: string;
   chatPreferences: ChatPreferences;
   favoriteSessions: FavoriteSession[];
-  lastSessionByProject: Record<string, string>;
+  lastSessionByConnection: LastSessionByConnection;
   setActiveProjectPath: (value?: string) => void;
   setChatPreferences: Dispatch<SetStateAction<ChatPreferences>>;
   setFavoriteSessions: Dispatch<SetStateAction<FavoriteSession[]>>;
-  setLastSessionByProject: Dispatch<SetStateAction<Record<string, string>>>;
+  setLastSessionByConnection: Dispatch<SetStateAction<LastSessionByConnection>>;
   setSettings: Dispatch<SetStateAction<OpencodeConnectionSettings>>;
   settings: OpencodeConnectionSettings;
 }) {
@@ -96,7 +95,7 @@ export function useOpencodePersistence({
           }
         });
 
-        await loadPersistedValue(AsyncStorage, LAST_SESSION_BY_PROJECT_STORAGE_KEY, parseLastSessionByProject, setLastSessionByProject);
+        await loadPersistedValue(AsyncStorage, LAST_SESSION_BY_PROJECT_STORAGE_KEY, parseLastSessionByConnection, setLastSessionByConnection);
 
         await loadPersistedValue(AsyncStorage, FAVORITE_SESSIONS_STORAGE_KEY, parseFavoriteSessions, setFavoriteSessions);
       } finally {
@@ -105,7 +104,7 @@ export function useOpencodePersistence({
     }
 
     void hydrateState();
-  }, [defaultChatPreferences, defaultSettings, setActiveProjectPath, setChatPreferences, setFavoriteSessions, setLastSessionByProject, setSettings]);
+  }, [defaultChatPreferences, defaultSettings, setActiveProjectPath, setChatPreferences, setFavoriteSessions, setLastSessionByConnection, setSettings]);
 
   useEffect(() => {
     if (!isHydrated) {
@@ -142,8 +141,8 @@ export function useOpencodePersistence({
       return;
     }
 
-    void AsyncStorage.setItem(LAST_SESSION_BY_PROJECT_STORAGE_KEY, JSON.stringify(lastSessionByProject));
-  }, [isHydrated, lastSessionByProject]);
+    void AsyncStorage.setItem(LAST_SESSION_BY_PROJECT_STORAGE_KEY, serializeLastSessionByConnection(lastSessionByConnection));
+  }, [isHydrated, lastSessionByConnection]);
 
   useEffect(() => {
     if (!isHydrated) {

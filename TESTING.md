@@ -11,15 +11,13 @@ This repo uses CI-enforced flow validation instead of broad unit test coverage.
 
 ## CI Gates
 
-The single `.github/workflows/build.yml` workflow owns validation and release, and runs on pushes to `main` and `v*` tags.
+The single `.github/workflows/build.yml` workflow owns validation and release, and runs on pushes to `main` and `v*` tags. `.github/workflows/pr-validate.yml` runs the same `validate` steps on pull requests targeting `main`.
 
 It enforces a single `validate` gate:
 
 1. `validate`
-   - `npm run lint`
-    - `npm run typecheck`
-    - `npm run test:workspace-patch`
-    - `npm run test:fake-server:self`
+   - `npm run test:ci:static` (lint, typecheck, and the static suites: usage, v2-mappers, format, provider-utils, workspace-patch, persistence-hydration, credential-storage, session-cache, favorites, connection-scope, connection-profiles, last-session, notifications, notifications-background)
+   - `npm run test:fake-server:self`
    - starts the fake OpenCode server
    - starts the Expo web app in CI mode
    - runs Playwright flow tests against the fake server
@@ -82,12 +80,15 @@ The current CI suite validates:
 - workspace text patch save and session archive/restore
 - experimental worktree creation and MCP server addition
 - terminal creation and WebSocket line input/output
+- favorites reopening sessions across workspaces
+- saved connections switching between two servers that expose the same project
+  paths, with separate session caches and restored per-connection model selection
 
 ## Local Commands
 
 ```bash
+npm run test:ci:static
 npm run test:fake-server:self
-npm run test:workspace-patch
 npm run test:e2e:web
 npm run build:development:android
 ```

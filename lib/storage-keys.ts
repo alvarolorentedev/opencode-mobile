@@ -10,14 +10,19 @@ export const FAVORITE_SESSIONS_STORAGE_KEY = 'opencode-mobile.favorite-sessions'
 // cannot use AsyncStorage because the process may die before a write flushes.
 export const LAST_JS_ERROR_FILENAME = 'opencode-mobile.last-js-error.json';
 
+// Server-derived persisted state is always scoped by connection AND project.
+// The connection scope is the password-free identity from
+// lib/connection-scope.ts; project paths are server-local, so two servers
+// exposing the same path must never share cache entries.
+//
 // Per-project session list cache. Hydrated on app open and on every project
 // switch so the workspace chat list paints without waiting for the server;
 // rewritten only from confirmed fetch results in
 // providers/opencode-provider.tsx fetchSessions. See providers/session-cache.ts.
-export function sessionsCacheKey(projectPath: string) {
-  return `opencode-mobile.sessions.${projectPath}`;
+export function sessionsCacheKey(connectionScope: string, projectPath: string) {
+  return `opencode-mobile.sessions.${connectionScope}.${projectPath}`;
 }
 
-export function sessionStatusesCacheKey(projectPath: string) {
-  return `opencode-mobile.session-statuses.${projectPath}`;
+export function sessionStatusesCacheKey(connectionScope: string, projectPath: string) {
+  return `opencode-mobile.session-statuses.${connectionScope}.${projectPath}`;
 }

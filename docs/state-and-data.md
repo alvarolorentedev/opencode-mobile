@@ -44,7 +44,7 @@ Primary fields:
 - `archivedSessions`
 - `sessionStatuses`
 - `currentSessionId`
-- `lastSessionByProject`
+- `lastSessionByConnection`
 
 Meaning:
 
@@ -53,7 +53,7 @@ Meaning:
 - `sessions` are the current project's sessions sorted newest-first
 - `sessionStatuses` stores per-session runtime status from the server
 - `currentSessionId` is the selected/open session
-- `lastSessionByProject` persists the remembered session ID for each project path
+- `lastSessionByConnection` persists the remembered session ID per connection scope and project path, so the same path on two servers remembers different sessions
 - `archivedSessions` is the experimental cross-project archived-session result, sorted newest-first
 
 ## Session Content Caches
@@ -185,19 +185,40 @@ These flags drive loading indicators and control decisions such as whether conve
 AsyncStorage keys are defined in `lib/storage-keys.ts`. Secrets use platform
 secure storage, never AsyncStorage (see below).
 
+The storage rule for multi-server support is:
+
+```text
+credentials
+    -> SecureStore (connection password + per-profile passwords)
+
+connection profile metadata and chat preferences
+    -> AsyncStorage (never credentials)
+
+server-derived persisted state
+    -> connection scope + project scope
+```
+
+The connection scope is the canonical, password-free identity from
+`lib/connection-scope.ts`: normalized server URL (case-insensitive
+scheme/host, case-preserving path and query) plus username. It is the only
+supported key for anything that belongs to one server. `getConnectionScope()`
+is deterministic and encoded so it can be concatenated into storage keys; do
+not re-derive connection keys anywhere else.
+
 Persisted values:
 
 - `opencode-mobile.settings` (connection URL and username; the password lives in secure storage)
-- `opencode-mobile.chat-preferences`
+- `opencode-mobile.connection-profiles` (saved connections with name and optional per-profile model selection; passwords live in secure storage)
+- `opencode-mobile.chat-preferences` (active connection's preferences)
 - `opencode-mobile.active-project`
-- `opencode-mobile.last-session-by-project`
-- `opencode-mobile.pending-notification-sessions`
-- `opencode-mobile.sessions.<projectPath>` / `opencode-mobile.session-statuses.<projectPath>` (per-project cache)
-- `opencode-mobile.favorite-sessions` (cross-workspace favorites)
+- `opencode-mobile.last-session-by-project` (nested `connectionScope -> projectPath -> sessionId`; legacy flat maps are discarded on hydration)
+- `opencode-mobile.pending-notification-sessions` (non-secret connection references, keyed by connection scope + session ID)
+- `opencode-mobile.sessions.<connectionScope>.<projectPath>` / `opencode-mobile.session-statuses.<connectionScope>.<projectPath>` (per connection + project cache)
+- `opencode-mobile.favorite-sessions` (cross-workspace favorites, each carrying its connection scope)
 
 ### Session cache DTO
 
-The per-project session cache never stores raw SDK `Session` objects. It writes
+The per connection + project session cache never stores raw SDK `Session` objects. It writes
 an explicit, validated DTO (`CachedSession` in `providers/session-cache.ts`) with
 only `id`, `title`, `createdAt`, `updatedAt`, and optional `parentID`. A field
 added upstream is not persisted unless the DTO mapping is updated. Sensitive or
@@ -208,32 +229,41 @@ discriminant.
 Each key stores an envelope of `{ cachedAt, sessions }` / `{ cachedAt, statuses }`.
 Cache entries older than `SESSION_CACHE_TTL_MS` (7 days) are discarded, and
 legacy pre-envelope payloads fail safe and are removed; the next confirmed fetch
-republishes the cache. Keys embed the raw project path because project paths are
-already persisted in `last-session-by-project`; hashing them would add collision
-and migration risk without a privacy gain.
+republishes the cache. Keys embed the connection scope and then the raw project
+path, because project paths are server-local and two servers exposing the same
+path must never share cached sessions. Pre-multi-server keys were not scoped and
+are simply never read again, so the next confirmed fetch republishes the cache
+under the scoped key.
 
 ### Favorites DTO
 
 Favorites use the explicit `FavoriteSession` model
-(`providers/opencode-provider-types.ts`): `sessionId`, `projectPath`, optional
-`title`, and `favoritedAt`. The project label is derived from `projectPath` at
-render time and is not persisted. Hydration (`providers/favorites-storage.ts`)
-validates every field, drops malformed entries individually, and enforces
-`FAVORITE_SESSIONS_MAX` so a corrupt value cannot hydrate an unbounded list.
+(`providers/opencode-provider-types.ts`): `sessionId`, `connectionScope`,
+`projectPath`, optional `title`, and `favoritedAt`. The connection scope makes
+identical session IDs or project paths on two servers independent, and opening
+a favorite switches to the connection that owns it before running the
+deep-link flow. The project label is derived from `projectPath` at render time
+and is not persisted. Hydration (`providers/favorites-storage.ts`) validates
+every field, drops malformed entries individually, drops entries written before
+connection scopes existed (they cannot be safely attributed to a server), and
+enforces `FAVORITE_SESSIONS_MAX` so a corrupt value cannot hydrate an unbounded
+list.
 
 Hydration rules:
 
 - persisted settings are merged over default settings
 - persisted chat preferences are merged over defaults and current provider state
+- saved connection profiles are hydrated on demand and fully validated, including `modelPreferences`; entries with any malformed field are dropped and unknown fields are ignored
 - active project path is restored if present
-- last-session map is restored if present
+- last-session map is restored if present and is nested by connection scope; the legacy flat map fails validation and is removed
 - each persisted key hydrates independently; a storage read failure leaves that key untouched, while malformed or invalid JSON is removed without blocking other keys
-- per-project session caches hydrate on app open and on every project switch so the workspace list paints before the server answers; they are written only from confirmed fetch results, so a cached empty list means the server reported no sessions for that project
+- per connection + project session caches hydrate on app open and on every connection or project switch so the workspace list paints before the server answers; they are written only from confirmed fetch results, so a cached empty list means the server reported no sessions for that project. A late hydration result is discarded unless both the connection scope and project path are still current.
 
 Credentials:
 
-- the connection password is stored in Keychain/Keystore-backed secure storage via `lib/connection-password.ts`; legacy plaintext `settings.password` is migrated to secure storage and stripped from AsyncStorage on hydration
-- pending completion-notification records store only a non-secret connection reference (`serverUrl`, `username`) and never the password
+- the active connection password is stored in Keychain/Keystore-backed secure storage via `lib/connection-password.ts`; legacy plaintext `settings.password` is migrated to secure storage and stripped from AsyncStorage on hydration
+- each saved profile's password is stored under its own SecureStore key in `lib/connection-profiles.ts`; profile metadata in AsyncStorage never contains it
+- pending completion-notification records store only a non-secret connection reference (`serverUrl`, `username`, `connectionScope`) and never a password
 
 The provider does not connect until hydration completes.
 
@@ -390,10 +420,19 @@ Pending completion notification storage records:
 - `sessionId`
 - optional `sessionTitle`
 - `projectPath`
-- a non-secret connection reference: `serverUrl`, `username`
+- a non-secret connection reference: `serverUrl`, `username`, `connectionScope`
 - `requestedAt`
 
-The password is stored separately in Keychain/Keystore-backed secure storage and resolved by the background worker at runtime. Regular connection settings in AsyncStorage also exclude the password; legacy plaintext settings are migrated during hydration.
+Records are keyed by connection scope + session ID, so a pending task on one
+server survives switching to another server, and identical session IDs on two
+servers never collide. The background monitor resolves the password for the
+record's own connection at runtime: first through the saved profile whose scope
+matches, then through the active connection when the record belongs to it. A
+record whose password cannot be resolved yet is kept for a later run instead of
+being discarded or reusing another connection's password.
+
+Regular connection settings and profile metadata in AsyncStorage exclude the
+password; legacy plaintext settings are migrated during hydration.
 
 ## Important Data Invariants
 

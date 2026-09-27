@@ -300,11 +300,14 @@ If summarization fails, the session simply remains untitled.
 
 ### Connection Section
 
-Allows editing server URL, username, and password.
+Allows editing server URL, username, and password, and saving the current values
+as a named connection profile.
 
 Behavior:
 
-- values are persisted locally
+- values are persisted locally; each saved profile's password is stored in SecureStore while its name, URL, and username live in AsyncStorage
+- saved profiles render as chips above the fields; tapping a chip switches to that connection and reconnects, and long-pressing offers deletion
+- switching persists the outgoing profile's model selection, restores the target profile's selection, clears all server-derived state, and reconnects with the target credentials
 - reconnect button explicitly re-runs connection flow
 - editing connection values clears server-scoped state but does not reconnect until the button is pressed
 - status card shows current state and last checked timestamp
@@ -433,9 +436,10 @@ The app attempts to notify when an OpenCode task completes.
 
 Behavior:
 
-- when a prompt is sent, a pending notification tracker is stored locally with connection credentials and project path
+- when a prompt is sent, a pending notification tracker is stored locally with a non-secret connection reference (server URL, username, connection scope) and project path; passwords stay in SecureStore
+- pending records are keyed by connection scope + session ID, so a task started on one server survives switching to another
 - while the app is active, completion can be detected by local provider state and trigger a local notification
-- on supported native platforms outside Expo Go, a background task checks pending sessions periodically and emits task-complete notifications
+- on supported native platforms outside Expo Go, a background task checks pending sessions periodically, resolves each record's own connection credentials, and emits task-complete notifications; a record whose credentials cannot be resolved yet is kept for a later run rather than discarded
 
 Parity implication:
 
@@ -446,11 +450,13 @@ Parity implication:
 
 The following values are persisted locally:
 
-- connection settings
-- chat preferences
+- connection settings and saved connection profiles (credentials only in SecureStore)
+- chat preferences (per active connection; each profile also keeps its model selection)
 - active project path
-- last session ID by project
-- pending notification sessions
+- last session ID by connection scope and project
+- session list/status caches by connection scope and project
+- favorites, each carrying its connection scope
+- pending notification sessions, each carrying its connection scope
 
 The following values are not persisted and are rebuilt from the server:
 

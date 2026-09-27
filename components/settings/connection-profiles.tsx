@@ -31,12 +31,13 @@ export function ConnectionProfiles({ palette }: { palette: Palette }) {
   const { settings, chatPreferences, switchConnection } = useOpencode();
   const [profiles, setProfiles] = useState<ConnectionProfile[]>([]);
   const [dialogName, setDialogName] = useState<string>();
+  const [switchingProfileId, setSwitchingProfileId] = useState<string>();
 
   useEffect(() => {
     void loadConnectionProfiles().then(setProfiles);
   }, []);
 
-  const activeProfile = findMatchingProfile(profiles, settings.serverUrl, settings.username);
+  const activeProfile = findMatchingProfile(profiles, { serverUrl: settings.serverUrl, username: settings.username });
 
   async function persist(next: ConnectionProfile[]) {
     setProfiles(next);
@@ -44,16 +45,19 @@ export function ConnectionProfiles({ palette }: { palette: Palette }) {
   }
 
   async function handleSelect(profile: ConnectionProfile) {
-    if (profile.id === activeProfile?.id) {
+    if (switchingProfileId || profile.id === activeProfile?.id) {
       return;
     }
-    if (activeProfile) {
-      await persist(profiles.map((item) => (
-        item.id === activeProfile.id ? { ...item, modelPreferences: pickModelPreferences(chatPreferences) } : item
-      )));
+    setSwitchingProfileId(profile.id);
+    try {
+      const password = await getProfilePassword(profile.id);
+      // switchConnection persists the outgoing profile's model preferences,
+      // clears server-derived state, restores this profile's preferences, and
+      // reconnects with these credentials.
+      await switchConnection({ serverUrl: profile.serverUrl, username: profile.username, password }, profile.modelPreferences);
+    } finally {
+      setSwitchingProfileId(undefined);
     }
-    const password = await getProfilePassword(profile.id);
-    switchConnection({ serverUrl: profile.serverUrl, username: profile.username, password }, profile.modelPreferences);
   }
 
   async function handleSave() {
@@ -98,6 +102,7 @@ export function ConnectionProfiles({ palette }: { palette: Palette }) {
             testID={`connection-profile-${profile.id}`}
             selected={profile.id === activeProfile?.id}
             showSelectedCheck={false}
+            disabled={Boolean(switchingProfileId)}
             mode={profile.id === activeProfile?.id ? 'flat' : 'outlined'}
             onPress={() => void handleSelect(profile)}
             onLongPress={() => handleDelete(profile)}
@@ -134,8 +139,8 @@ export function ConnectionProfiles({ palette }: { palette: Palette }) {
             />
           </Dialog.Content>
           <Dialog.Actions>
-            <Button onPress={() => setDialogName(undefined)}>Cancel</Button>
-            <Button onPress={() => void handleSave()}>Save</Button>
+            <Button testID="connection-profile-save-cancel" onPress={() => setDialogName(undefined)}>Cancel</Button>
+            <Button testID="connection-profile-save-confirm" onPress={() => void handleSave()}>Save</Button>
           </Dialog.Actions>
         </Dialog>
       </Portal>

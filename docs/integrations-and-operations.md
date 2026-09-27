@@ -237,24 +237,34 @@ timers and the active terminal socket on project changes or provider teardown;
 the inspected paths show no clear listener/timer leak to fix without profiling
 evidence.
 
-The persisted per-project session cache contains only small session DTOs and
-statuses, with a seven-day TTL. Its keys are per project, so profile unusually
-large workspace catalogs if storage growth becomes visible.
+The persisted session cache contains only small session DTOs and statuses, with
+a seven-day TTL. Its keys are per connection + project, and saved connection
+profiles add one small metadata entry each, so profile several saved servers
+with large workspace catalogs if storage growth becomes visible.
 
 ## Security / Data Handling Notes
 
 ### Locally Stored Sensitive Data
 
-The app persists server URL, username, and password in AsyncStorage.
+The app splits persisted connection data:
+
+- server URL and username (and saved connection profile metadata such as the profile name and model selection) live in AsyncStorage
+- the active connection password and each saved profile password live in Keychain/Keystore-backed SecureStore via `lib/connection-password.ts` and `lib/connection-profiles.ts`, never in AsyncStorage
+- legacy plaintext `settings.password` is migrated to SecureStore and stripped during hydration
 
 Operational implication:
 
-- this is convenient but not equivalent to using a secure credential store
-- any rewrite should treat credential persistence as a deliberate product/security decision, not an accidental implementation detail
+- server-derived persisted state (session caches, remembered sessions, favorites, pending notifications) is scoped by the password-free connection scope from `lib/connection-scope.ts`, so credentials never appear in those keys or DTOs
+- a rewrite must keep the credential split when adding new persisted fields
 
 ### Notification Tracking Storage
 
-Pending notification sessions also store a subset of connection settings in AsyncStorage so background checks can authenticate.
+Pending notification sessions store only a non-secret connection reference —
+`serverUrl`, `username`, and `connectionScope` — in AsyncStorage so background
+checks can authenticate. Records are keyed by connection scope + session ID, and
+the background monitor resolves the password for the record's own connection
+(saved profile first, then the active connection if it matches). A pending
+record is never deleted just because another connection is active.
 
 ### Local Config Files
 

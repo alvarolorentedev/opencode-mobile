@@ -43,6 +43,68 @@ function spawnV2Server(port, scenario = 'happy-path') {
   });
 }
 
+// A second V1 server with its own state, used by the multi-connection tests.
+function spawnV1Server(port, scenario = 'happy-path') {
+  return spawn(process.execPath, ['tests/fake-opencode/server.mjs'], {
+    cwd: process.cwd(),
+    env: {
+      ...process.env,
+      FAKE_OPENCODE_PORT: String(port),
+      FAKE_OPENCODE_SCENARIO: scenario,
+    },
+    stdio: 'inherit',
+  });
+}
+
+// The Connection card can be collapsed; reopen it only when its inputs are not
+// visible so repeated visits to Settings do not toggle it shut.
+async function ensureConnectionSection(page) {
+  const serverUrlInput = page.getByTestId('settings-server-url-input');
+  for (let attempt = 0; attempt < 5; attempt += 1) {
+    if (await serverUrlInput.isVisible().catch(() => false)) {
+      return;
+    }
+    await page.getByRole('button', { name: /^Connection/ }).click();
+    await page.waitForTimeout(250);
+  }
+  await expect(serverUrlInput).toBeVisible();
+}
+
+async function saveConnectionProfile(page, name) {
+  await page.getByTestId('connection-profile-save').click();
+  await page.getByTestId('connection-profile-name-input').fill(name);
+  await page.getByTestId('connection-profile-save-confirm').click();
+  await expect(page.getByTestId('connection-profile-save')).toContainText('Update');
+}
+
+// The Connection card is an animated accordion that can re-render while a tab
+// becomes visible, so switching retries until the connection message proves
+// the provider is talking to the expected server.
+async function switchToSavedConnection(page, name, port) {
+  // The connection card message names the server the provider is actually
+  // connected to. The accordion can collapse while the switch reconnects, so
+  // each pass re-opens it, checks the message, and taps the chip until the
+  // target message is present. Tapping the already-active profile is a no-op.
+  const connectedMessage = page.getByText(new RegExp(`Connected to http://127\\.0\\.0\\.1:${port}`));
+  const deadline = Date.now() + 30_000;
+
+  while (Date.now() < deadline) {
+    await ensureConnectionSection(page);
+    if (await connectedMessage.count() > 0) {
+      await expect(connectedMessage.first()).toBeVisible();
+      return;
+    }
+
+    const chip = page.getByText(name, { exact: true }).first();
+    if (await chip.count() > 0) {
+      await chip.click({ timeout: 3000, force: true }).catch(() => undefined);
+    }
+    await page.waitForTimeout(250);
+  }
+
+  await expect(connectedMessage.first()).toBeVisible();
+}
+
 async function connectToServer(page, url) {
   await page.getByRole('tab', { name: 'Settings' }).click();
   await page.getByRole('button', { name: /^Connection/ }).click();
@@ -692,4 +754,75 @@ test('rapid favorite taps across workspaces settle on the last target', async ({
   await expect(
     page.locator('text=/Finished: Primary rapid tap target/ >> visible=true').first(),
   ).toBeVisible({ timeout: 20_000 });
+});
+
+test('saved connections keep sessions, caches, and model preferences separate', async ({ page, request }) => {
+  // Two servers, two prompts, and two profile switches need more headroom than
+  // a single-flow test.
+  test.setTimeout(90_000);
+  await resetScenario(request, 'happy-path');
+  await openReadyChat(page);
+
+  // Connection A is the default happy-path server. Give it a session and a
+  // non-default model preference.
+  await connectToServer(page, 'http://127.0.0.1:44096');
+  await sendPrompt(page, 'Server A session');
+  await expect(page.getByText(/Finished: Server A session/).first()).toBeVisible({ timeout: 20_000 });
+
+  await page.getByRole('tab', { name: 'Settings' }).click();
+  await page.getByTestId('settings-add-provider-button').click();
+  await page.getByRole('button', { name: 'OpenRouter', exact: true }).click();
+  await page.getByPlaceholder('Paste your API key').fill('sk-test-openrouter');
+  await page.getByTestId('settings-provider-save-button').click();
+  await expect(page.getByText('Configure OpenRouter')).not.toBeVisible({ timeout: 15_000 });
+  await page.getByRole('button', { name: 'OpenRouter 0 of 1 selected' }).click();
+  await page.getByText('Auto', { exact: true }).click();
+  await page.getByRole('tab', { name: 'Chat' }).click();
+  await page.getByTestId('chat-model-picker-trigger').click();
+  await page.getByTestId('chat-model-picker').getByRole('button', { name: /^Auto / }).click();
+  await expect(page.getByTestId('chat-model-picker-trigger')).toContainText('OpenRouter · Auto');
+
+  await page.getByRole('tab', { name: 'Settings' }).click();
+  await ensureConnectionSection(page);
+  await saveConnectionProfile(page, 'Server A');
+
+  // Connection B is a separate process with separate server state but the same
+  // project paths, which is the cache-isolation case.
+  const port = await getFreePort();
+  const serverB = spawnV1Server(port);
+  try {
+    await waitForServer(request, `http://127.0.0.1:${port}/path`);
+    await ensureConnectionSection(page);
+    await page.getByTestId('settings-server-url-input').fill(`http://127.0.0.1:${port}`);
+    await page.getByTestId('settings-reconnect-button').click();
+    await expect(page.getByText('Connected', { exact: true })).toBeVisible({ timeout: 15_000 });
+    await ensureConnectionSection(page);
+    await saveConnectionProfile(page, 'Server B');
+
+    await page.getByRole('tab', { name: 'Chat' }).click();
+    await expect(page.getByTestId('chat-model-picker-trigger')).toContainText('OpenAI · GPT-4.1 mini');
+    await sendPrompt(page, 'Server B session');
+    await expect(page.getByText(/Finished: Server B session/).first()).toBeVisible({ timeout: 20_000 });
+
+    // Switching to A restores A's model preference and A's own session list;
+    // B's session must never appear while connected to A.
+    await page.getByRole('tab', { name: 'Settings' }).click();
+    await switchToSavedConnection(page, 'Server A', 44096);
+    await page.getByRole('tab', { name: 'Chat' }).click();
+    await expect(page.getByTestId('chat-model-picker-trigger')).toContainText('OpenRouter · Auto');
+    await page.getByRole('tab', { name: 'Workspace' }).click();
+    await expect(page.getByText('Server A session', { exact: true }).first()).toBeVisible({ timeout: 15_000 });
+    await expect(page.getByText('Server B session', { exact: true })).not.toBeVisible();
+
+    // Switching back to B restores B's default model and B's own sessions.
+    await page.getByRole('tab', { name: 'Settings' }).click();
+    await switchToSavedConnection(page, 'Server B', port);
+    await page.getByRole('tab', { name: 'Chat' }).click();
+    await expect(page.getByTestId('chat-model-picker-trigger')).toContainText('OpenAI · GPT-4.1 mini');
+    await page.getByRole('tab', { name: 'Workspace' }).click();
+    await expect(page.getByText('Server B session', { exact: true }).first()).toBeVisible({ timeout: 15_000 });
+    await expect(page.getByText('Server A session', { exact: true })).not.toBeVisible();
+  } finally {
+    serverB.kill('SIGTERM');
+  }
 });

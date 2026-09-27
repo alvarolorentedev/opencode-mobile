@@ -28,15 +28,30 @@ Release automation in the same workflow:
 
 From `TESTING.md`, those gates include:
 
-- `npm run lint`
-- `npm run typecheck`
-- `npm run test:usage`
-- `npm run test:v2-mappers`
-- `npm run test:format`
-- `npm run test:provider-utils`
-- `npm run test:workspace-patch`
+- `npm run test:ci:static`, which chains lint, typecheck, and the transpiled static suites:
+  - `npm run test:usage`
+  - `npm run test:v2-mappers`
+  - `npm run test:format`
+  - `npm run test:provider-utils`
+  - `npm run test:workspace-patch`
+  - `npm run test:persistence-hydration`
+  - `npm run test:credential-storage`
+  - `npm run test:session-cache`
+  - `npm run test:favorites`
+  - `npm run test:connection-scope`
+  - `npm run test:connection-profiles`
+  - `npm run test:last-session`
+  - `npm run test:notifications`
+  - `npm run test:notifications-background`
 - `npm run test:fake-server:self`
 - Playwright E2E flow tests against the fake OpenCode server
+
+The connection-scope, connection-profile, notification, favorites, and session
+cache suites pin down the multi-server storage rule: deterministic password-free
+connection scopes, fully validated profile metadata, connection+project session
+cache isolation, connection-scoped last sessions, non-secret pending
+notification records with per-connection credential resolution, and legacy
+values that fail safe instead of being guessed.
 
 ## Fake OpenCode Server
 
@@ -171,6 +186,16 @@ The SSE endpoint intentionally fails, forcing the app to complete the workflow t
 - create a PTY from the fourth tab
 - connect with a server-issued ticket over WebSocket
 - send one line and verify streamed output
+
+### Favorites And Saved Connection Flows
+
+- favorite sessions in the current and cross-workspace projects, then reopen them
+- report a favorite session that no longer exists on the server
+- settle rapid favorite taps on the last target
+- save two connections that point at separate fake servers exposing the same
+  project paths, switch between them, and verify each connection shows only its
+  own sessions and restores its own model selection (the session cache,
+  remembered session, and model preferences can never leak across servers)
 
 ## Intended Coverage Strengths
 

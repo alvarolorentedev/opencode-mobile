@@ -4,12 +4,19 @@ import { FAVORITE_SESSIONS_MAX, type FavoriteSession } from '@/providers/opencod
 // fields (for example the legacy `projectLabel`, which is derived from the
 // project path) and discarding malformed entries instead of failing the whole
 // list.
+//
+// `connectionScope` is required: favorites written before multi-server support
+// have no way to say which server their session belongs to, so they are
+// dropped rather than guessed.
 function toFavoriteEntry(value: unknown): FavoriteSession | undefined {
   if (typeof value !== 'object' || value === null || Array.isArray(value)) {
     return undefined;
   }
-  const { sessionId, projectPath, title, favoritedAt } = value as Record<string, unknown>;
+  const { sessionId, connectionScope, projectPath, title, favoritedAt } = value as Record<string, unknown>;
   if (typeof sessionId !== 'string' || sessionId.trim().length === 0) {
+    return undefined;
+  }
+  if (typeof connectionScope !== 'string' || connectionScope.trim().length === 0) {
     return undefined;
   }
   if (typeof projectPath !== 'string' || projectPath.trim().length === 0) {
@@ -24,6 +31,7 @@ function toFavoriteEntry(value: unknown): FavoriteSession | undefined {
   const trimmedTitle = typeof title === 'string' ? title.trim() : '';
   return {
     sessionId,
+    connectionScope: connectionScope.trim(),
     projectPath,
     ...(trimmedTitle ? { title: trimmedTitle } : {}),
     favoritedAt,

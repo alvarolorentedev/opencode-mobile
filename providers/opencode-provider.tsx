@@ -59,6 +59,16 @@ import { isTranscriptDisplayMessage } from '@/lib/opencode/transcript';
 import { aggregateSessionUsage, getLatestAssistantTurnUsage } from '@/lib/opencode/usage';
 import { createFullFilePatch } from '@/lib/opencode/workspace-patch';
 import {
+  findMatchingProfile,
+  findProfileByConnectionScope,
+  getProfilePassword,
+  loadConnectionProfiles,
+  pickModelPreferences,
+  saveConnectionProfiles,
+} from '@/lib/connection-profiles';
+import { getConnectionScope } from '@/lib/connection-scope';
+import { pendingNotificationKey } from '@/lib/notification-pending';
+import {
   clearPendingTaskFinishedNotification,
   notifyTaskFinished,
   trackPendingTaskFinishedNotification,
@@ -190,6 +200,15 @@ export type {
 const OpencodeContext = createContext<OpencodeContextValue | null>(null);
 const ANSI_CSI_PATTERN = new RegExp('\\u001b\\[[0-?]*[ -/]*[@-~]', 'gi');
 
+// Foreground notification tracking for prompts sent in this app session. Keyed
+// by connection scope + session ID so switching servers cannot complete or
+// clear another server's pending task.
+type TrackedPendingNotification = {
+  sessionId: string;
+  connectionScope: string;
+  requestedAt: number;
+};
+
 export function OpencodeProvider({ children }: PropsWithChildren) {
   const [settings, setSettings] = useState<OpencodeConnectionSettings>(defaultConnectionSettings);
   const [connection, setConnection] = useState<ConnectionState>({
@@ -222,9 +241,8 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
   const [isBootstrappingChat, setIsBootstrappingChat] = useState(false);
   const [sendingState, setSendingState] = useState<{ sessionId?: string; active: boolean }>({ active: false });
   const [promptError, setPromptError] = useState<{ message: string; occurredAt: number; sessionId?: string }>();
-  const pendingNotificationSessionIdsRef = useRef<Set<string>>(new Set());
-  const busyNotificationSessionIdsRef = useRef<Set<string>>(new Set());
-  const notificationRequestedAtRef = useRef(new Map<string, number>());
+  const pendingNotificationsRef = useRef<Map<string, TrackedPendingNotification>>(new Map());
+  const busyNotificationsRef = useRef<Set<string>>(new Set());
   const promptSubmissionRef = useRef<{ active: boolean; sessionId?: string }>({ active: false });
   const [currentConfig, setCurrentConfig] = useState<Config>();
   const [availableProviders, setAvailableProviders] = useState<ProviderOption[]>([]);
@@ -232,7 +250,9 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
   const [availableModels, setAvailableModels] = useState<ModelOption[]>([]);
   const [availableAgents, setAvailableAgents] = useState<AgentOption[]>([]);
   const [chatPreferences, setChatPreferences] = useState<ChatPreferences>(defaultChatPreferences);
-  const [lastSessionByProject, setLastSessionByProject] = useState<Record<string, string>>({});
+  // Remembered session per connection scope, then per project path. Two servers
+  // exposing the same path keep independent entries.
+  const [lastSessionByConnection, setLastSessionByConnection] = useState<Record<string, Record<string, string>>>({});
   const [favoriteSessions, setFavoriteSessions] = useState<FavoriteSession[]>([]);
   const [conversationPhase, setConversationPhase] = useState<ConversationPhase>('off');
   const [conversationSessionId, setConversationSessionId] = useState<string>();
@@ -255,7 +275,17 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
   const [terminalOutput, setTerminalOutput] = useState('');
   const [terminalConnection, setTerminalConnection] = useState<'idle' | 'connecting' | 'connected' | 'error'>('idle');
 
+  // Stable, password-free identity for the configured server + user. Every
+  // piece of server-derived persisted state (session caches, last session,
+  // favorites, pending notifications) is scoped by it.
+  const connectionScope = useMemo(
+    () => getConnectionScope({ serverUrl: settings.serverUrl, username: settings.username }),
+    [settings.serverUrl, settings.username],
+  );
+
   const settingsRef = useRef(settings);
+  const chatPreferencesRef = useRef(chatPreferences);
+  const connectionScopeRef = useRef(connectionScope);
   const activeProjectPathRef = useRef(activeProjectPath);
   const connectionRef = useRef(connection);
   const serverContractRef = useRef<ServerContract>('v1');
@@ -288,6 +318,8 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
   const terminalCursorByIdRef = useRef<Record<string, string>>({});
   const terminalOpenGenerationRef = useRef(0);
   settingsRef.current = settings;
+  chatPreferencesRef.current = chatPreferences;
+  connectionScopeRef.current = connectionScope;
   activeProjectPathRef.current = activeProjectPath;
   connectionRef.current = connection;
   currentSessionIdRef.current = currentSessionId;
@@ -308,11 +340,11 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
     activeProjectPath,
     chatPreferences,
     favoriteSessions,
-    lastSessionByProject,
+    lastSessionByConnection,
     setActiveProjectPath,
     setChatPreferences,
     setFavoriteSessions,
-    setLastSessionByProject,
+    setLastSessionByConnection,
     setSettings,
     settings,
   });
@@ -371,9 +403,8 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
   const clearProjectState = useCallback(() => {
     bootstrapPromiseRef.current = null;
     bootstrapTokenRef.current = undefined;
-    pendingNotificationSessionIdsRef.current.clear();
-    busyNotificationSessionIdsRef.current.clear();
-    notificationRequestedAtRef.current.clear();
+    pendingNotificationsRef.current.clear();
+    busyNotificationsRef.current.clear();
     // Cancel pending session refresh timers. Without this, timeouts scheduled
     // for sessions in the previous project keep firing after a project switch,
     // running refresh callbacks that capture stale client instances and write
@@ -458,26 +489,31 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
   // project switch; the regular refresh reconciles once the server answers.
   // fetchSessions is the only writer, so a cached empty list always means the
   // server confirmed that project has no sessions.
-  const sessionCacheProjectRef = useRef<string | undefined>(undefined);
+  const sessionCacheKeyRef = useRef<string | undefined>(undefined);
   useEffect(() => {
     if (!isHydrated) {
       return;
     }
     const projectPath = activeProjectPath;
-    if (sessionCacheProjectRef.current === projectPath) {
+    const scope = connectionScope;
+    const cacheKey = projectPath ? `${scope}\u0000${projectPath}` : undefined;
+    if (sessionCacheKeyRef.current === cacheKey) {
       return;
     }
-    sessionCacheProjectRef.current = projectPath;
+    sessionCacheKeyRef.current = cacheKey;
     if (!projectPath) {
       return;
     }
     void hydrateSessionCache(
+      scope,
       projectPath,
       (cached) => setSessions(cached),
       (cached) => setSessionStatuses(cached as Record<string, SessionStatus>),
-      () => activeProjectPathRef.current === projectPath,
+      // A late read from the previous connection or project must never land in
+      // the new connection's state, even when both expose the same path.
+      () => activeProjectPathRef.current === projectPath && connectionScopeRef.current === scope,
     );
-  }, [activeProjectPath, isHydrated]);
+  }, [activeProjectPath, connectionScope, isHydrated]);
 
   const fetchSessions = useCallback(
     async (silent = false) => {
@@ -498,7 +534,7 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
         }
         setSessions(result.sessions);
         setSessionStatuses(result.statuses);
-        void persistSessionCache(activeProjectPath, result.sessions, result.statuses);
+        void persistSessionCache(connectionScope, activeProjectPath, result.sessions, result.statuses);
         return result.sessions;
       } finally {
         if (!silent) {
@@ -506,7 +542,7 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
         }
       }
     },
-    [activeProjectPath, client, isCurrentClient],
+    [activeProjectPath, client, connectionScope, isCurrentClient],
   );
 
   const refreshSessions = useCallback(
@@ -752,9 +788,13 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
     async (sessionId: string) => {
       setCurrentSessionId(sessionId);
       if (activeProjectPath) {
-        setLastSessionByProject((current) => ({
+        const scope = connectionScopeRef.current;
+        setLastSessionByConnection((current) => ({
           ...current,
-          [activeProjectPath]: sessionId,
+          [scope]: {
+            ...current[scope],
+            [activeProjectPath]: sessionId,
+          },
         }));
       }
       await Promise.all([refreshMessages(sessionId), refreshSessionDiff(sessionId, true), refreshSessionTodos(sessionId), refreshPendingInteractions()]);
@@ -816,9 +856,11 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
         delete next[sessionId];
         return next;
       });
-      // Session IDs are global across projects, so removing the session also
-      // invalidates any favorite pointing at it.
-      setFavoriteSessions((current) => current.filter((favorite) => favorite.sessionId !== sessionId));
+      // Removing the session invalidates any favorite for it on this
+      // connection; an identical session ID on another server is unrelated.
+      setFavoriteSessions((current) => current.filter(
+        (favorite) => !(favorite.connectionScope === connectionScopeRef.current && favorite.sessionId === sessionId),
+      ));
       if (currentSessionId === sessionId) {
         setCurrentSessionId(undefined);
       }
@@ -841,19 +883,24 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
     await Promise.all([refreshSessions(true), refreshArchivedSessions()]);
   }, [client, currentSessionId, isCurrentClient, refreshArchivedSessions, refreshSessions]);
 
+  // Favorites always belong to the active connection; the scope is derived
+  // from the current settings instead of being passed in by the UI.
   const toggleFavoriteSession = useCallback((sessionId: string, projectPath: string, title?: string) => {
+    const trimmedSessionId = sessionId.trim();
     const trimmedPath = projectPath.trim();
-    if (!sessionId || !trimmedPath) {
+    if (!trimmedSessionId || !trimmedPath) {
       return;
     }
+    const scope = connectionScopeRef.current;
     setFavoriteSessions((current) => {
-      if (current.some((favorite) => favorite.sessionId === sessionId)) {
-        return current.filter((favorite) => favorite.sessionId !== sessionId);
+      if (current.some((favorite) => favorite.connectionScope === scope && favorite.sessionId === trimmedSessionId)) {
+        return current.filter((favorite) => !(favorite.connectionScope === scope && favorite.sessionId === trimmedSessionId));
       }
       const trimmedTitle = title?.trim();
       const next = [
         {
-          sessionId,
+          sessionId: trimmedSessionId,
+          connectionScope: scope,
           projectPath: trimmedPath,
           ...(trimmedTitle ? { title: trimmedTitle } : {}),
           favoritedAt: Date.now(),
@@ -866,12 +913,16 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
   }, []);
 
   const isFavoriteSession = useCallback(
-    (sessionId: string) => favoriteSessions.some((favorite) => favorite.sessionId === sessionId),
+    (sessionId: string) => favoriteSessions.some(
+      (favorite) => favorite.connectionScope === connectionScopeRef.current && favorite.sessionId === sessionId,
+    ),
     [favoriteSessions],
   );
 
   const clearFavoriteSession = useCallback((sessionId: string) => {
-    setFavoriteSessions((current) => current.filter((favorite) => favorite.sessionId !== sessionId));
+    setFavoriteSessions((current) => current.filter(
+      (favorite) => !(favorite.connectionScope === connectionScopeRef.current && favorite.sessionId === sessionId),
+    ));
   }, []);
 
 
@@ -1222,7 +1273,9 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
         if (pendingDeepLinkTargetRef.current !== pendingTarget) {
           return undefined;
         }
-        const rememberedSessionId = activeProjectPath ? lastSessionByProject[activeProjectPath] : undefined;
+        const rememberedSessionId = activeProjectPath
+          ? lastSessionByConnection[connectionScope]?.[activeProjectPath]
+          : undefined;
         const targetSession = pendingTarget
           ? nextSessions.find((session) => session.id === pendingTarget.sessionId)
           : (rememberedSessionId ? nextSessions.find((session) => session.id === rememberedSessionId) : undefined) ??
@@ -1245,9 +1298,12 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
         }
         setCurrentSessionId(targetSession.id);
         if (activeProjectPath) {
-          setLastSessionByProject((current) => ({
+          setLastSessionByConnection((current) => ({
             ...current,
-            [activeProjectPath]: targetSession.id,
+            [connectionScope]: {
+              ...current[connectionScope],
+              [activeProjectPath]: targetSession.id,
+            },
           }));
         }
         return targetSession.id;
@@ -1265,11 +1321,12 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
   }, [
     activeProjectPath,
     connection.status,
+    connectionScope,
     client,
     createSession,
     currentSessionId,
     fetchSessions,
-    lastSessionByProject,
+    lastSessionByConnection,
     isCurrentClient,
     messagesBySession,
     refreshMessages,
@@ -1298,11 +1355,15 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
 
 
 
-  const connect = useCallback(async () => {
-    if (!isValidServerUrl(settingsRef.current.serverUrl)) {
+  // Connects using the settings passed in explicitly. Profile switches call
+  // this directly with the target settings instead of relying on `settingsRef`
+  // being updated by a render, so a switch can never connect with the previous
+  // server's URL, username, or password.
+  const runConnect = useCallback(async (targetSettings: OpencodeConnectionSettings) => {
+    if (!isValidServerUrl(targetSettings.serverUrl)) {
       setConnection({
         status: 'error',
-        message: getConnectionError(settingsRef.current.serverUrl, new Error('Invalid server URL.')),
+        message: getConnectionError(targetSettings.serverUrl, new Error('Invalid server URL.')),
         checkedAt: Date.now(),
       });
       return;
@@ -1310,12 +1371,12 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
 
     setConnection({
       status: 'connecting',
-      message: `Connecting to ${getNormalizedServerUrl(settingsRef.current.serverUrl)}...`,
+      message: `Connecting to ${getNormalizedServerUrl(targetSettings.serverUrl)}...`,
     });
 
     let detectedContract = serverContractRef.current;
     try {
-      detectedContract = (await detectServerContract(settingsRef.current)).contract;
+      detectedContract = (await detectServerContract(targetSettings)).contract;
     } catch {
       detectedContract = serverContractRef.current;
     }
@@ -1330,7 +1391,7 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
     let lastError: unknown;
 
     for (const candidate of candidates) {
-      const candidateClient = buildClient({ ...settingsRef.current, directory: '' }, candidate);
+      const candidateClient = buildClient({ ...targetSettings, directory: '' }, candidate);
       catalogGenerationRef.current.set(candidateClient, serverGenerationRef.current);
       try {
         const result = await loadWorkspaceCatalog(true, candidateClient);
@@ -1352,7 +1413,7 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
     if (!catalog || !activeCatalogClient || !usedContract) {
       setConnection({
         status: 'error',
-        message: getConnectionError(settingsRef.current.serverUrl, lastError ?? new Error('Could not reach the OpenCode server.')),
+        message: getConnectionError(targetSettings.serverUrl, lastError ?? new Error('Could not reach the OpenCode server.')),
         checkedAt: Date.now(),
       });
       serverProjectsRef.current = [];
@@ -1377,7 +1438,7 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
     const projectDirectory = catalog.currentProjectPath || catalog.serverRootPath;
     setConnection({
       status: 'connected',
-      message: `Connected to ${getNormalizedServerUrl(settingsRef.current.serverUrl)} (OpenCode ${usedContract === 'v2' ? '2.x' : '1.x'})`,
+      message: `Connected to ${getNormalizedServerUrl(targetSettings.serverUrl)} (OpenCode ${usedContract === 'v2' ? '2.x' : '1.x'})`,
       checkedAt: Date.now(),
       projectDirectory,
     });
@@ -1392,6 +1453,77 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
       setAvailableAgents([]);
     }
   }, [activeProjectPath, isCurrentCatalogClient, loadWorkspaceCatalog]);
+
+  const connect = useCallback(() => runConnect(settingsRef.current), [runConnect]);
+
+  const updateSettings = useCallback((patch: Partial<OpencodeConnectionSettings>) => {
+    const connectionChanged = (['serverUrl', 'username', 'password'] as const)
+      .some((key) => patch[key] !== undefined && patch[key] !== settingsRef.current[key]);
+    if (connectionChanged) {
+      scopeGenerationRef.current += 1;
+      serverGenerationRef.current += 1;
+      setConnection({ status: 'idle', message: 'Connection settings changed. Reconnect to apply them.' });
+      setActiveProjectPath(undefined);
+      // Mirror the reset in the ref immediately so an in-flight connect for the
+      // new settings cannot reuse the previous connection's project path before
+      // React commits the cleared state.
+      activeProjectPathRef.current = undefined;
+      clearProjectState();
+      setMessagesBySession({});
+      setDiffsBySession({});
+      setTodosBySession({});
+      serverProjectsRef.current = [];
+      setServerProjects([]);
+      setCurrentProjectPath(undefined);
+      setServerRootPath(undefined);
+      setDiagnostics(undefined);
+    }
+    setSettings((current) => ({
+      ...current,
+      ...patch,
+    }));
+  }, [clearProjectState]);
+
+  // Saves the outgoing profile's model selection before a switch resets
+  // server-derived state. Profiles are matched by connection scope, so an
+  // unsaved connection simply has nothing to update.
+  const captureActiveProfilePreferences = useCallback(async () => {
+    const profiles = await loadConnectionProfiles();
+    const active = findMatchingProfile(profiles, settingsRef.current);
+    if (!active) {
+      return;
+    }
+    await saveConnectionProfiles(profiles.map((profile) => (
+      profile.id === active.id ? { ...profile, modelPreferences: pickModelPreferences(chatPreferencesRef.current) } : profile
+    )));
+  }, []);
+
+  /**
+   * Switches to another connection. The order matters:
+   * 1. persist the outgoing profile's preferences,
+   * 2. update credentials/settings (which clears all server-derived state),
+   * 3. restore the target profile's model preferences,
+   * 4. reconnect using the target settings directly, not a render-delayed ref.
+   */
+  const switchConnection = useCallback(async (
+    next: Pick<OpencodeConnectionSettings, 'serverUrl' | 'username' | 'password'>,
+    modelPreferences?: Partial<ChatPreferences>,
+  ) => {
+    await captureActiveProfilePreferences().catch(() => undefined);
+
+    const targetSettings: OpencodeConnectionSettings = {
+      ...settingsRef.current,
+      ...next,
+    };
+    updateSettings(next);
+    if (modelPreferences) {
+      // Applied raw; the catalog refresh after connecting validates it against
+      // the new server's models.
+      setChatPreferences((current) => ({ ...current, ...modelPreferences }));
+    }
+
+    await runConnect(targetSettings);
+  }, [captureActiveProfilePreferences, runConnect, updateSettings]);
 
   const ensureActiveSessionRef = useRef(ensureActiveSession);
   ensureActiveSessionRef.current = ensureActiveSession;
@@ -1498,16 +1630,49 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
     [connect, selectProject],
   );
 
+  // Waits until the provider has rendered the connection scope a switch
+  // targeted. `runConnect` finishing is not enough: `connectionScopeRef` only
+  // updates on the render that adopts the new settings.
+  const waitForConnectionScope = useCallback(async (scope: string, timeoutMs = 20000) => {
+    const deadline = Date.now() + timeoutMs;
+    while (connectionScopeRef.current !== scope && Date.now() < deadline) {
+      await new Promise((resolve) => setTimeout(resolve, 50));
+    }
+    return connectionScopeRef.current === scope;
+  }, []);
+
   // Deterministic project switch + session open for cross-workspace
   // navigation. The deep-link flow already owns that state machine (project
   // validation, scope switch, session reconciliation, not-found reporting), so
   // favorites reuse it instead of racing selectProject with openSession.
-  const openSessionInProject = useCallback(async (projectPath: string, sessionId: string) => {
+  //
+  // A favorite carries the connection scope it belongs to. When it names
+  // another saved connection, switch there first and wait until the provider
+  // observes the new scope, so the deep-link flow can never run against the
+  // previous server.
+  const openSessionInProject = useCallback(async (projectPath: string, sessionId: string, targetConnectionScope?: string) => {
+    if (targetConnectionScope && targetConnectionScope !== connectionScopeRef.current) {
+      const profiles = await loadConnectionProfiles();
+      const profile = findProfileByConnectionScope(profiles, targetConnectionScope);
+      if (!profile) {
+        throw new Error('This favorite belongs to a saved connection that no longer exists.');
+      }
+      const password = await getProfilePassword(profile.id);
+      await switchConnection({
+        serverUrl: profile.serverUrl,
+        username: profile.username,
+        password,
+      }, profile.modelPreferences);
+      if (!await waitForConnectionScope(targetConnectionScope)) {
+        throw new Error('Could not switch to the connection that owns this favorite.');
+      }
+    }
+
     const result = await openDeepLinkSession({ sessionId, projectPath });
     if (!result.ok) {
       throw new Error(result.error || 'Could not open the session.');
     }
-  }, [openDeepLinkSession]);
+  }, [openDeepLinkSession, switchConnection, waitForConnectionScope]);
 
   useEffect(() => {
     if (!isHydrated || initialConnectStartedRef.current) {
@@ -1811,21 +1976,23 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
 
       const currentSession = sessions.find((session) => session.id === sessionId);
       let promptAccepted = false;
+      const trackingKey = pendingNotificationKey(connectionScope, sessionId);
+      const requestedAt = Date.now();
 
       try {
-        busyNotificationSessionIdsRef.current.delete(sessionId);
-        notificationRequestedAtRef.current.set(sessionId, Date.now());
-        pendingNotificationSessionIdsRef.current.add(sessionId);
+        busyNotificationsRef.current.delete(trackingKey);
+        pendingNotificationsRef.current.set(trackingKey, { sessionId, connectionScope, requestedAt });
         if (activeProjectPath) {
           await trackPendingTaskFinishedNotification({
             sessionId,
             sessionTitle: currentSession?.title,
             projectPath: activeProjectPath,
+            connectionScope,
             settings: {
               serverUrl: settingsRef.current.serverUrl,
               username: settingsRef.current.username,
             },
-            requestedAt: Date.now(),
+            requestedAt,
           }).catch(() => undefined);
         }
 
@@ -1939,9 +2106,8 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
           sessionId,
         });
         if (!promptAccepted) {
-          pendingNotificationSessionIdsRef.current.delete(sessionId);
-          notificationRequestedAtRef.current.delete(sessionId);
-          await clearPendingTaskFinishedNotification(sessionId).catch(() => undefined);
+          pendingNotificationsRef.current.delete(trackingKey);
+          await clearPendingTaskFinishedNotification(connectionScope, sessionId).catch(() => undefined);
         }
 
         throw error;
@@ -1953,15 +2119,15 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
         ));
       }
     },
-    [activeProjectPath, availableModels, chatPreferences, client, fetchSessions, isCurrentClient, refreshMessages, refreshSessionDiff, refreshSessionTodos, refreshSessions, scheduleSessionRefresh, sessions, summarizeSessionTitle],
+    [activeProjectPath, availableModels, chatPreferences, client, connectionScope, fetchSessions, isCurrentClient, refreshMessages, refreshSessionDiff, refreshSessionTodos, refreshSessions, scheduleSessionRefresh, sessions, summarizeSessionTitle],
   );
 
   const abortSession = useCallback(
     async (sessionId: string) => {
-      pendingNotificationSessionIdsRef.current.delete(sessionId);
-      busyNotificationSessionIdsRef.current.delete(sessionId);
-      notificationRequestedAtRef.current.delete(sessionId);
-      await clearPendingTaskFinishedNotification(sessionId);
+      const trackingKey = pendingNotificationKey(connectionScope, sessionId);
+      pendingNotificationsRef.current.delete(trackingKey);
+      busyNotificationsRef.current.delete(trackingKey);
+      await clearPendingTaskFinishedNotification(connectionScope, sessionId);
       await client.session.abort({ sessionID: sessionId });
 
       // Reset prompt guards immediately so the user can submit again without
@@ -1983,7 +2149,7 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
         refreshSessionTodos(sessionId),
       ]);
     },
-    [client, refreshMessages, refreshSessionDiff, refreshSessionTodos, refreshSessions],
+    [client, connectionScope, refreshMessages, refreshSessionDiff, refreshSessionTodos, refreshSessions],
   );
 
   const speechInput = useSpeechInput({
@@ -2189,11 +2355,12 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
 
   useEffect(() => {
     Object.entries(sessionStatuses).forEach(([sessionId, status]) => {
-      if (status.type !== 'idle' && pendingNotificationSessionIdsRef.current.has(sessionId)) {
-        busyNotificationSessionIdsRef.current.add(sessionId);
+      const key = pendingNotificationKey(connectionScope, sessionId);
+      if (status.type !== 'idle' && pendingNotificationsRef.current.has(key)) {
+        busyNotificationsRef.current.add(key);
       }
     });
-  }, [sessionStatuses]);
+  }, [connectionScope, sessionStatuses]);
 
   useEffect(() => {
     conversationPhaseRef.current = conversationPhase;
@@ -2702,34 +2869,37 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
     let cancelled = false;
 
     async function flushCompletedNotifications() {
-      const pendingIds = [...pendingNotificationSessionIdsRef.current];
-      if (pendingIds.length === 0) {
+      // Only prompts sent on the active connection may be completed here; a
+      // task belonging to another server stays pending for its own connection
+      // (foreground when it becomes active again, background otherwise).
+      const pendingEntries = [...pendingNotificationsRef.current.entries()]
+        .filter(([, pending]) => pending.connectionScope === connectionScope);
+      if (pendingEntries.length === 0) {
         return;
       }
 
-      for (const sessionId of pendingIds) {
+      for (const [key, pending] of pendingEntries) {
+        const { sessionId } = pending;
         const status = sessionStatuses[sessionId];
-        const oldEnough = Date.now() - (notificationRequestedAtRef.current.get(sessionId) || Date.now()) >= 5000;
-        if ((!busyNotificationSessionIdsRef.current.has(sessionId) && !oldEnough) || (status && status.type !== 'idle') || (sendingState.active && sendingState.sessionId === sessionId)) {
+        const oldEnough = Date.now() - pending.requestedAt >= 5000;
+        if ((!busyNotificationsRef.current.has(key) && !oldEnough) || (status && status.type !== 'idle') || (sendingState.active && sendingState.sessionId === sessionId)) {
           continue;
         }
 
         const session = sessions.find((item) => item.id === sessionId);
         if (!session) {
-          pendingNotificationSessionIdsRef.current.delete(sessionId);
-          busyNotificationSessionIdsRef.current.delete(sessionId);
-          notificationRequestedAtRef.current.delete(sessionId);
-          await clearPendingTaskFinishedNotification(sessionId).catch(() => undefined);
+          pendingNotificationsRef.current.delete(key);
+          busyNotificationsRef.current.delete(key);
+          await clearPendingTaskFinishedNotification(connectionScope, sessionId).catch(() => undefined);
           continue;
         }
-        await clearPendingTaskFinishedNotification(sessionId);
+        await clearPendingTaskFinishedNotification(connectionScope, sessionId);
         if (cancelled) {
           return;
         }
 
-        pendingNotificationSessionIdsRef.current.delete(sessionId);
-        busyNotificationSessionIdsRef.current.delete(sessionId);
-        notificationRequestedAtRef.current.delete(sessionId);
+        pendingNotificationsRef.current.delete(key);
+        busyNotificationsRef.current.delete(key);
         const title = session.title || 'Task complete';
         await notifyTaskFinished('OpenCode finished a task', title);
       }
@@ -2740,55 +2910,8 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
     return () => {
       cancelled = true;
     };
-  }, [sendingState.active, sendingState.sessionId, sessionStatuses, sessions]);
+  }, [connectionScope, sendingState.active, sendingState.sessionId, sessionStatuses, sessions]);
 
-  const updateSettings = useCallback((patch: Partial<OpencodeConnectionSettings>) => {
-    const connectionChanged = (['serverUrl', 'username', 'password'] as const)
-      .some((key) => patch[key] !== undefined && patch[key] !== settingsRef.current[key]);
-    if (connectionChanged) {
-      scopeGenerationRef.current += 1;
-      serverGenerationRef.current += 1;
-      setConnection({ status: 'idle', message: 'Connection settings changed. Reconnect to apply them.' });
-      setActiveProjectPath(undefined);
-      clearProjectState();
-      setMessagesBySession({});
-      setDiffsBySession({});
-      setTodosBySession({});
-      serverProjectsRef.current = [];
-      setServerProjects([]);
-      setCurrentProjectPath(undefined);
-      setServerRootPath(undefined);
-      setDiagnostics(undefined);
-    }
-    setSettings((current) => ({
-      ...current,
-      ...patch,
-    }));
-  }, [clearProjectState]);
-
-  // connect() reads settingsRef, which only picks up new settings on the next
-  // render, so the reconnect is deferred to an effect keyed on settings.
-  const pendingSwitchConnectRef = useRef(false);
-  const switchConnection = useCallback((
-    next: Pick<OpencodeConnectionSettings, 'serverUrl' | 'username' | 'password'>,
-    modelPreferences?: Partial<ChatPreferences>,
-  ) => {
-    updateSettings(next);
-    if (modelPreferences) {
-      // Applied raw; the catalog refresh after connecting validates it against
-      // the new server's models.
-      setChatPreferences((current) => ({ ...current, ...modelPreferences }));
-    }
-    pendingSwitchConnectRef.current = true;
-  }, [updateSettings]);
-
-  useEffect(() => {
-    if (!pendingSwitchConnectRef.current) {
-      return;
-    }
-    pendingSwitchConnectRef.current = false;
-    void connect();
-  }, [connect, settings]);
   const clearPromptError = useCallback(() => setPromptError(undefined), []);
 
   useEffect(() => {
@@ -2800,10 +2923,12 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
       return;
     }
 
-    const rememberedSessionId = activeProjectPath ? lastSessionByProject[activeProjectPath] : undefined;
+    const rememberedSessionId = activeProjectPath
+      ? lastSessionByConnection[connectionScope]?.[activeProjectPath]
+      : undefined;
     const fallbackSessionId = sessions.find((session) => session.id === rememberedSessionId)?.id || sessions[0]?.id;
     setCurrentSessionId(fallbackSessionId);
-  }, [activeProjectPath, currentSessionId, lastSessionByProject, sessions]);
+  }, [activeProjectPath, connectionScope, currentSessionId, lastSessionByConnection, sessions]);
 
   useEffect(() => {
     const keepIds = new Set<string>();

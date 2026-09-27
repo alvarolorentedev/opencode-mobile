@@ -83,12 +83,14 @@ export type OpencodeProject = {
 };
 
 // Explicit persisted model for a pinned session. `sessionId` and `projectPath`
-// are the identifiers required to reopen it; `title` is retained because it
-// cannot be reconstructed for cross-workspace favorites without a server call.
-// The project label is derived from `projectPath` at render time and is never
-// persisted.
+// are the identifiers required to reopen it; `connectionScope` says which
+// server + user owns it, so identical paths or session IDs on another server
+// never collide. `title` is retained because it cannot be reconstructed for
+// cross-workspace favorites without a server call. The project label is
+// derived from `projectPath` at render time and is never persisted.
 export type FavoriteSession = {
   sessionId: string;
+  connectionScope: string;
   projectPath: string;
   title?: string;
   favoritedAt: number;
@@ -128,14 +130,14 @@ export type OpencodeContextValue = {
   switchConnection: (
     next: Pick<OpencodeConnectionSettings, 'serverUrl' | 'username' | 'password'>,
     modelPreferences?: Partial<ChatPreferences>,
-  ) => void;
+  ) => Promise<void>;
   connection: ConnectionState;
   serverCapabilities: ServerCapabilities;
   projects: OpencodeProject[];
   activeProjectPath?: string;
   activeProject?: OpencodeProject;
   selectProject: (path: string) => void;
-  openSessionInProject: (projectPath: string, sessionId: string) => Promise<void>;
+  openSessionInProject: (projectPath: string, sessionId: string, connectionScope?: string) => Promise<void>;
   serverProjects: Project[];
   currentProjectPath?: string;
   serverRootPath?: string;

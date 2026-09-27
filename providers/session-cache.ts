@@ -103,28 +103,31 @@ function normalizeStatusType(type: SessionStatus['type'] | undefined): CachedSes
 }
 
 /**
- * Hydrates the cached session list and status map for `projectPath`.
+ * Hydrates the cached session list and status map for one
+ * connection + project pair.
  *
- * Cached values are written only after a confirmed server fetch for that
- * project, so an empty cached list always means "the server reported no
- * sessions", never "the list was cleared mid-switch". Expired or malformed
- * values are removed; transient storage read failures leave the key untouched
- * (see `loadPersistedValue`), and values read after the user switched away are
- * not applied.
+ * Cached values are written only after a confirmed server fetch for that pair,
+ * so an empty cached list always means "the server reported no sessions",
+ * never "the list was cleared mid-switch". Keys embed the password-free
+ * connection scope, so two servers exposing the same project path never share
+ * entries. Expired or malformed values are removed; transient storage read
+ * failures leave the key untouched (see `loadPersistedValue`), and values read
+ * after the user switched connection or project are not applied.
  */
 export async function hydrateSessionCache(
+  connectionScope: string,
   projectPath: string,
   applySessions: (sessions: Session[]) => void,
   applyStatuses: (statuses: Record<string, CachedSessionStatus>) => void,
   isCurrent: () => boolean,
   storage: SessionCacheStorage = AsyncStorage,
 ) {
-  await loadPersistedValue(storage, sessionsCacheKey(projectPath), parseCachedSessions, (sessions) => {
+  await loadPersistedValue(storage, sessionsCacheKey(connectionScope, projectPath), parseCachedSessions, (sessions) => {
     if (isCurrent()) {
       applySessions(sessions.map(toSessionFromCache));
     }
   });
-  await loadPersistedValue(storage, sessionStatusesCacheKey(projectPath), parseCachedStatuses, (statuses) => {
+  await loadPersistedValue(storage, sessionStatusesCacheKey(connectionScope, projectPath), parseCachedStatuses, (statuses) => {
     if (isCurrent()) {
       applyStatuses(statuses);
     }
@@ -132,13 +135,14 @@ export async function hydrateSessionCache(
 }
 
 /**
- * Persists a confirmed fetch result for `projectPath`. SDK Session and
- * SessionStatus objects are mapped to their persisted DTOs first. Empty lists
- * are valid: they overwrite any stale cache so a deleted last session does not
- * resurrect on the next launch. Write failures are ignored; the next refresh
- * rewrites.
+ * Persists a confirmed fetch result for one connection + project pair. SDK
+ * Session and SessionStatus objects are mapped to their persisted DTOs first.
+ * Empty lists are valid: they overwrite any stale cache so a deleted last
+ * session does not resurrect on the next launch. Write failures are ignored;
+ * the next refresh rewrites.
  */
 export async function persistSessionCache(
+  connectionScope: string,
   projectPath: string,
   sessions: Session[],
   statuses: Record<string, SessionStatus>,
@@ -152,6 +156,6 @@ export async function persistSessionCache(
       Object.entries(statuses).map(([sessionId, status]) => [sessionId, { type: normalizeStatusType(status?.type) }]),
     ),
   };
-  await storage.setItem(sessionsCacheKey(projectPath), JSON.stringify(sessionsEnvelope)).catch(() => undefined);
-  await storage.setItem(sessionStatusesCacheKey(projectPath), JSON.stringify(statusesEnvelope)).catch(() => undefined);
+  await storage.setItem(sessionsCacheKey(connectionScope, projectPath), JSON.stringify(sessionsEnvelope)).catch(() => undefined);
+  await storage.setItem(sessionStatusesCacheKey(connectionScope, projectPath), JSON.stringify(statusesEnvelope)).catch(() => undefined);
 }

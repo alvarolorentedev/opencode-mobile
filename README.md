@@ -43,6 +43,7 @@ Want to build from source or contribute? See the [Development](#development) sec
 - Conversation history and management
 - Multi-model support
 - Custom server configuration
+- Saved connections for switching between multiple OpenCode servers, each with its own sessions and model selection
 - Streamed responses for natural conversations
 - Clean, intuitive mobile interface
 
