@@ -1623,14 +1623,19 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
   }, [openDeepLinkSession, switchConnection, waitForConnectionScope]);
 
   useEffect(() => {
-    // A fresh installation must not silently connect to the default loopback
-    // URL before the user has entered a server in onboarding.
-    if (!isHydrated || !onboardingCompleted || initialConnectStartedRef.current) {
+    // Boot connect runs once, only for installs that had already completed
+    // onboarding when the app hydrated. A fresh install connects explicitly from
+    // the onboarding assistant (which sets `initialConnectStartedRef`); if the
+    // user skips the connect step, no server was configured and the app must not
+    // silently connect to the default loopback URL when setup finishes.
+    if (!isHydrated || initialConnectStartedRef.current) {
       return;
     }
 
     initialConnectStartedRef.current = true;
-    void connect();
+    if (onboardingCompleted) {
+      void connect();
+    }
   }, [connect, isHydrated, onboardingCompleted]);
 
   useEffect(() => {
