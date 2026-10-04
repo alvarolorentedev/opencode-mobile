@@ -10,8 +10,7 @@ import { OverlaySheet } from '@/components/ui/overlay-sheet';
 import { SwipeRow, type SwipeRowAction } from '@/components/ui/swipe-row';
 import { TextInput } from '@/components/ui/text-input';
 import { WorkspacePicker, WorkspacePickerButton } from '@/components/ui/workspace-picker';
-import { Colors } from '@/constants/theme';
-import { useColorScheme } from '@/hooks/use-color-scheme';
+import { usePalette } from '@/providers/theme-provider';
 import { formatRelativeTime, getSessionSubtitle } from '@/lib/opencode/format';
 import type { GlobalSession, Session } from '@/lib/opencode/types';
 import type { ActiveSessionItem, FavoriteSession } from '@/providers/opencode-provider-types';
@@ -26,7 +25,7 @@ type LibraryRow =
 
 export function ChatLibrary({ visible, onClose }: { visible: boolean; onClose: () => void }) {
   const { t } = useTranslation();
-  const palette = Colors[useColorScheme() ?? 'light'];
+  const palette = usePalette();
   const { activeProject, addWorkspace, projects, refreshWorkspaceCatalog, selectProject } = useWorkspace();
   const {
     archivedSessions, archiveSession, clearFavoriteSession, createSession, currentSessionId, deleteSession,

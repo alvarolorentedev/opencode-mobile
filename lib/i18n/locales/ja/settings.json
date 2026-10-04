@@ -257,6 +257,32 @@
     "description": "システム言語を使用するか、アプリインターフェース用に1つ選択します。"
   },
   "appearance": {
+    "accent": {
+      "label": "アクセントカラー",
+      "description": "対応している場合、システムは端末のアクセントカラーに従います (Android 12+)。それ以外は OpenCode のアクセントカラーを使用します。上書きする色を選択してください。",
+      "options": {
+        "system": {
+          "label": "システム",
+          "description": "対応している場合は端末のアクセントに従う"
+        },
+        "opencode": {
+          "label": "OpenCode",
+          "description": "OpenCode のアクセントを使用"
+        },
+        "blue": {
+          "label": "ブルー",
+          "description": "ブルーのアクセントを使用"
+        },
+        "violet": {
+          "label": "バイオレット",
+          "description": "バイオレットのアクセントを使用"
+        },
+        "orange": {
+          "label": "オレンジ",
+          "description": "オレンジのアクセントを使用"
+        }
+      }
+    },
     "chatTextSize": "チャットの文字サイズ",
     "chatTextSizeDescription": "チャットメッセージの文字サイズを調整します。小さくすると、一度により多くの会話を表示できます。",
     "flatThread": {

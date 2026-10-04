@@ -2,14 +2,12 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useState, type ComponentProps, type ReactNode } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
-import { Colors } from '@/constants/theme';
-import { useColorScheme } from '@/hooks/use-color-scheme';
-
+import { usePalette } from '@/providers/theme-provider';
 export type SwipeRowAction = { label: string; icon: ComponentProps<typeof MaterialCommunityIcons>['name']; onPress: () => void };
 
 export function SwipeRow({ children, actions, title }: { children: ReactNode; actions: SwipeRowAction[]; title: string }) {
   const [width, setWidth] = useState(0);
-  const palette = Colors[useColorScheme() ?? 'light'];
+  const palette = usePalette();
   return <ScrollView horizontal showsHorizontalScrollIndicator={false} onLayout={(event) => setWidth(event.nativeEvent.layout.width)} style={styles.row} contentContainerStyle={styles.content}>
     <View style={[styles.rowContent, { width: width || '100%' }]}>{children}</View>
     <View style={styles.actions}>{actions.map((action) => <Pressable key={action.label} accessibilityRole="button" accessibilityLabel={`${action.label} ${title}`} onPress={action.onPress} style={[styles.action, { backgroundColor: palette.surfaceAlt, borderColor: palette.border }]}>

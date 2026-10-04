@@ -257,6 +257,32 @@
     "description": "Utilise la langue du système ou choisis-en une pour l'interface de l'app."
   },
   "appearance": {
+    "accent": {
+      "label": "Couleur d'accent",
+      "description": "Système suit la couleur d'accent de l'appareil si disponible (Android 12+) ; sinon, la couleur d'accent OpenCode est utilisée. Choisissez une couleur pour la remplacer.",
+      "options": {
+        "system": {
+          "label": "Système",
+          "description": "Suivre la couleur d'accent de l'appareil si disponible"
+        },
+        "opencode": {
+          "label": "OpenCode",
+          "description": "Utiliser la couleur d'accent OpenCode"
+        },
+        "blue": {
+          "label": "Bleu",
+          "description": "Utiliser un accent bleu"
+        },
+        "violet": {
+          "label": "Violet",
+          "description": "Utiliser un accent violet"
+        },
+        "orange": {
+          "label": "Orange",
+          "description": "Utiliser un accent orange"
+        }
+      }
+    },
     "chatTextSize": "Taille du texte des messages",
     "chatTextSizeDescription": "Ajustez la taille du texte des messages. Une taille plus petite permet d’afficher davantage de conversation à la fois.",
     "flatThread": {

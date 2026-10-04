@@ -2,6 +2,8 @@
 // Kept separate from provider orchestration so preference shape and prompt
 // wording are changed in one place.
 
+import type { AccentMode } from '@/constants/accent';
+
 export type ReasoningLevel = 'low' | 'default' | 'high';
 export type ResponseScope = 'brief' | 'balanced' | 'detailed';
 export const TRANSCRIPT_FONT_SIZE_MIN = 12;
@@ -26,6 +28,11 @@ export type ChatPreferences = {
   // App UI language preference. `undefined` follows the OS locale; it is stored
   // alongside chat preferences because it is global and not connection-scoped.
   language?: string;
+  // Interactive accent preference. `system` follows the device accent where the
+  // platform exposes one (Android 12+), otherwise it resolves to the Opencode
+  // accent. Stored alongside chat preferences because it is global and not
+  // connection-scoped.
+  accent: AccentMode;
   providerId?: string;
   modelId?: string;
   enabledModelIds: string[];
@@ -52,6 +59,7 @@ export const defaultChatPreferences: ChatPreferences = {
   transcriptFontSize: DEFAULT_TRANSCRIPT_FONT_SIZE,
   flatTranscript: false,
   slimInterface: false,
+  accent: 'system',
   enabledModelIds: [],
   providerModelSelections: {},
   recentModelIds: [],

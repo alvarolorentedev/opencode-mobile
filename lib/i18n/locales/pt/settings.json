@@ -257,6 +257,32 @@
     "description": "Use o idioma do sistema ou escolha um para a interface do app."
   },
   "appearance": {
+    "accent": {
+      "label": "Cor de destaque",
+      "description": "Sistema segue a cor de destaque do dispositivo quando disponível (Android 12+); caso contrário, usa a cor de destaque do OpenCode. Escolha uma cor para substituir.",
+      "options": {
+        "system": {
+          "label": "Sistema",
+          "description": "Seguir a cor de destaque do dispositivo quando disponível"
+        },
+        "opencode": {
+          "label": "OpenCode",
+          "description": "Usar a cor de destaque do OpenCode"
+        },
+        "blue": {
+          "label": "Azul",
+          "description": "Usar destaque azul"
+        },
+        "violet": {
+          "label": "Violeta",
+          "description": "Usar destaque violeta"
+        },
+        "orange": {
+          "label": "Laranja",
+          "description": "Usar destaque laranja"
+        }
+      }
+    },
     "chatTextSize": "Tamanho do texto do chat",
     "chatTextSizeDescription": "Ajuste o tamanho do texto das mensagens. Textos menores mostram mais conversa de uma vez.",
     "flatThread": {

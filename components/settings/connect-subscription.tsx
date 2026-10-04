@@ -2,13 +2,12 @@ import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { View } from 'react-native';
 import { Button, RadioButton, Text } from 'react-native-paper';
-import { Colors } from '@/constants/theme';
-import { useColorScheme } from '@/hooks/use-color-scheme';
+import { usePalette } from '@/providers/theme-provider';
 import type { ConnectSetup } from '@/providers/use-connect-state';
 
 export function ConnectSubscription({ setup }: { setup: ConnectSetup }) {
   const { t } = useTranslation();
-  const palette = Colors[useColorScheme() ?? 'light'];
+  const palette = usePalette();
   const [selectedOffer, setSelectedOffer] = useState('');
   const selected = setup.offers.find((offer) => offer.key === selectedOffer) ?? setup.offers[0];
   const pending = setup.busy || ['purchasing', 'pending', 'verifying', 'savingSession', 'finalizing'].includes(setup.phase);

@@ -4,8 +4,7 @@ import { View } from 'react-native';
 import { Button, List, Text } from 'react-native-paper';
 
 import { TextInput } from '@/components/ui/text-input';
-import { Colors } from '@/constants/theme';
-import { useColorScheme } from '@/hooks/use-color-scheme';
+import { usePalette } from '@/providers/theme-provider';
 import type { File } from '@/lib/opencode/types';
 
 /** Search presentation is reset by the screen's connection/workspace key. Results stay provider-owned. */
@@ -16,7 +15,7 @@ export function FilesPanel({ statuses, files, onSearch, onOpen }: {
   onOpen: (path: string) => void;
 }) {
   const { t } = useTranslation();
-  const palette = Colors[useColorScheme() ?? 'light'];
+  const palette = usePalette();
   const [query, setQuery] = useState('');
   const [submittedQuery, setSubmittedQuery] = useState<string>();
   const [searching, setSearching] = useState(false);

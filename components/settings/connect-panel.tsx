@@ -4,13 +4,12 @@ import { useTranslation } from 'react-i18next';
 import { Alert, Platform, StyleSheet, View } from 'react-native';
 import { Button, HelperText, Text } from 'react-native-paper';
 import { ConnectSubscription } from '@/components/settings/connect-subscription';
-import { Colors } from '@/constants/theme';
-import { useColorScheme } from '@/hooks/use-color-scheme';
+import { usePalette } from '@/providers/theme-provider';
 import type { ConnectSetup } from '@/providers/use-connect-state';
 
 export function ConnectManagementPanel({ setup, onConnected, onClose }: { setup: ConnectSetup; onConnected: () => void; onClose: () => void }) {
   const { t } = useTranslation();
-  const palette = Colors[useColorScheme() ?? 'light'];
+  const palette = usePalette();
   const focused = useIsFocused();
   const connected = useRef(setup.phase === 'paired');
   useEffect(() => {

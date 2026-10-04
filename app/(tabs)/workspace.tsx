@@ -16,11 +16,11 @@ import {
 
 import { FilesPanel } from '@/components/workspace/files-panel';
 import { getConnectionScope } from '@/lib/connection-scope';
-import { Colors, Fonts } from '@/constants/theme';
+import { Fonts } from '@/constants/theme';
 import { TextInput } from '@/components/ui/text-input';
 import { TopTab } from '@/components/chat/chat-controls';
 import { WorkspacePicker } from '@/components/ui/workspace-picker';
-import { useColorScheme } from '@/hooks/use-color-scheme';
+import { useAppTheme } from '@/providers/theme-provider';
 import { useConnection, usePreferences, useWorkspace } from '@/providers/opencode-contexts';
 
 export default function WorkspaceScreen() {
@@ -28,8 +28,7 @@ export default function WorkspaceScreen() {
   const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
   const compact = width < 700;
-  const colorScheme = useColorScheme() ?? 'light';
-  const palette = Colors[colorScheme];
+  const { palette } = useAppTheme();
   const { connection, serverCapabilities, settings } = useConnection();
   const { chatPreferences } = usePreferences();
   const slim = chatPreferences.slimInterface === true;

@@ -15,5 +15,6 @@ assert.equal(normalizeTranscriptFontSize(undefined), 16);
 
 assert.equal(defaultChatPreferences.flatTranscript, false);
 assert.equal(defaultChatPreferences.slimInterface, false);
+assert.equal(defaultChatPreferences.accent, 'system');
 
 console.log('chat appearance tests passed');

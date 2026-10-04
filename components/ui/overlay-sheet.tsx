@@ -4,8 +4,7 @@ import { Pressable, ScrollView, StyleSheet, useWindowDimensions, View } from 're
 import { Icon, Portal, Text } from 'react-native-paper';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { Colors } from '@/constants/theme';
-import { useColorScheme } from '@/hooks/use-color-scheme';
+import { usePalette } from '@/providers/theme-provider';
 import { useDismissOnBack } from '@/hooks/use-dismiss-on-back';
 
 export function OverlaySheet({ visible, title, onClose, children, headerAction, testID, fitContent = false, scrollable = true, compact = false }: {
@@ -22,7 +21,7 @@ export function OverlaySheet({ visible, title, onClose, children, headerAction, 
   const insets = useSafeAreaInsets();
   const { height } = useWindowDimensions();
   const { t } = useTranslation();
-  const palette = Colors[useColorScheme() ?? 'light'];
+  const palette = usePalette();
   // Android back dismisses the open sheet instead of navigating the screen behind it.
   useDismissOnBack(visible, onClose);
   if (!visible) return null;

@@ -1,20 +1,17 @@
 import Constants from 'expo-constants';
-import { DarkTheme, DefaultTheme, Stack, ThemeProvider } from 'expo-router';
+import { Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
 import { ActivityIndicator, Platform, StyleSheet, View } from 'react-native';
-import { PaperProvider } from 'react-native-paper';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
-import { Colors } from '@/constants/theme';
-import { getPaperTheme } from '@/constants/paper-theme';
-import { useColorScheme } from '@/hooks/use-color-scheme';
 import { installGlobalErrorHandler } from '@/lib/error-reporting';
 import '@/lib/i18n';
 import { isConnectEnabled } from '@/lib/connect';
 import { useOnboarding } from '@/providers/opencode-contexts';
 import { OpencodeProvider } from '@/providers/opencode-provider';
+import { AppThemeProvider, usePalette } from '@/providers/theme-provider';
 
 export const unstable_settings = {
   anchor: '(tabs)',
@@ -27,8 +24,6 @@ export { ErrorBoundary } from 'expo-router';
 void SplashScreen.preventAutoHideAsync().catch(() => undefined);
 
 export default function RootLayout() {
-  const colorScheme = useColorScheme();
-  const paperTheme = getPaperTheme(colorScheme === 'dark' ? 'dark' : 'light');
   const isE2EMode = Boolean(Constants.expoConfig?.extra?.e2eMode);
 
   useEffect(() => {
@@ -50,12 +45,10 @@ export default function RootLayout() {
   return (
     <SafeAreaProvider>
       <OpencodeProvider>
-        <PaperProvider theme={paperTheme}>
-          <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-            <RootNavigator />
-            <StatusBar style="auto" />
-          </ThemeProvider>
-        </PaperProvider>
+        <AppThemeProvider>
+          <RootNavigator />
+          <StatusBar style="auto" />
+        </AppThemeProvider>
       </OpencodeProvider>
     </SafeAreaProvider>
   );
@@ -65,8 +58,7 @@ export default function RootLayout() {
 // hydration. `Stack.Protected` swaps the assistant in and out without mounting
 // the tab navigator behind it, which prevents any onboarding/app flash.
 function RootNavigator() {
-  const colorScheme = useColorScheme();
-  const palette = Colors[colorScheme ?? 'light'];
+  const palette = usePalette();
   const { isHydrated, onboardingCompleted, onboardingActive } = useOnboarding();
 
   useEffect(() => {

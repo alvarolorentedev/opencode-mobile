@@ -22,11 +22,11 @@ import {
   Text,
 } from 'react-native-paper';
 
-import { Colors, Fonts } from '@/constants/theme';
+import { Fonts } from '@/constants/theme';
 import { TextInput } from '@/components/ui/text-input';
 import { OverlaySheet } from '@/components/ui/overlay-sheet';
 import { SwipeRow } from '@/components/ui/swipe-row';
-import { useColorScheme } from '@/hooks/use-color-scheme';
+import { useAppTheme } from '@/providers/theme-provider';
 import type { Pty } from '@/lib/opencode/types';
 import { useConnection, usePreferences, useTerminal, useWorkspace } from '@/providers/opencode-contexts';
 
@@ -34,8 +34,7 @@ export default function TerminalScreen() {
   const { t } = useTranslation();
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const colorScheme = useColorScheme() ?? 'light';
-  const palette = Colors[colorScheme];
+  const { palette } = useAppTheme();
   const outputRef = useRef<ScrollView>(null);
   const { activeProject } = useWorkspace();
   const { connect, connection } = useConnection();

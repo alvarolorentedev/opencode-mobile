@@ -7,8 +7,7 @@ import { Button, List, Text } from 'react-native-paper';
 
 import { OnboardingStep } from '@/components/onboarding/onboarding-step';
 import { useNotificationSetup } from '@/components/settings/use-notification-setup';
-import { Colors } from '@/constants/theme';
-import { useColorScheme } from '@/hooks/use-color-scheme';
+import { usePalette } from '@/providers/theme-provider';
 import { getNormalizedServerUrl } from '@/lib/opencode/client';
 import { getVoiceInputPermissionAsync, type VoiceInputPermission } from '@/lib/voice/permissions';
 import { useCapabilities, useConnection, useOnboarding, usePreferences, useWorkspace } from '@/providers/opencode-contexts';
@@ -16,7 +15,7 @@ import { useCapabilities, useConnection, useOnboarding, usePreferences, useWorks
 export default function OnboardingReadyScreen() {
   const { t } = useTranslation();
   const router = useRouter();
-  const palette = Colors[useColorScheme() ?? 'light'];
+  const palette = usePalette();
   const { activeProject } = useWorkspace();
   const { availableModels } = useCapabilities();
   const { chatPreferences } = usePreferences();

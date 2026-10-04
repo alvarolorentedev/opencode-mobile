@@ -8,8 +8,8 @@ import { useDismissOnBack } from '@/hooks/use-dismiss-on-back';
 import { REASONING_OPTIONS } from '@/components/chat/chat-view-utils';
 import { ControlButton } from '@/components/chat/chat-controls';
 import { renderProviderIcon } from '@/components/ui/provider-icon';
-import { Colors, Fonts } from '@/constants/theme';
-import { useColorScheme } from '@/hooks/use-color-scheme';
+import { Fonts } from '@/constants/theme';
+import { useAppTheme } from '@/providers/theme-provider';
 import type { ModelOption, ReasoningLevel } from '@/providers/opencode-provider';
 
 type ModelPickerProps = {
@@ -32,8 +32,7 @@ function getSelectedModelLabel(models: ModelOption[], selectedModelId: string | 
 
 export function ModelPicker({ disabled = false, models, onSelect, recentModelIds, selectedModelId, slim = false, compact = false, reasoningLabel, reasoning, onReasoningChange }: ModelPickerProps) {
   const { t } = useTranslation();
-  const colorScheme = useColorScheme() ?? 'light';
-  const palette = Colors[colorScheme];
+  const { palette } = useAppTheme();
   const [visible, setVisible] = useState(false);
   const [query, setQuery] = useState('');
   const [keyboardHeight, setKeyboardHeight] = useState(0);

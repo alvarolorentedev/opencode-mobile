@@ -1,5 +1,7 @@
 import { Platform } from 'react-native';
 
+import type { AccentRoles } from '@/constants/accent';
+
 const tintColorLight = '#0F8A6C';
 const tintColorDark = '#7AE7C0';
 
@@ -11,7 +13,9 @@ export const Colors = {
     surfaceAlt: '#E7EFEA',
     card: '#FFFFFF',
     tint: tintColorLight,
-    accent: '#125F53',
+    accentForeground: '#FFFFFF',
+    accentMuted: '#E7EFEA',
+    accentOnMuted: '#172126',
     muted: '#667874',
     border: '#D6E1DC',
     icon: '#8B989B',
@@ -33,7 +37,9 @@ export const Colors = {
     surfaceAlt: '#20302C',
     card: '#16201D',
     tint: tintColorDark,
-    accent: '#58D4AB',
+    accentForeground: '#08110F',
+    accentMuted: '#20302C',
+    accentOnMuted: '#EAF3EF',
     muted: '#9AADA8',
     border: '#2B3C38',
     icon: '#839793',
@@ -49,6 +55,24 @@ export const Colors = {
     tabIconSelected: tintColorDark,
   },
 };
+
+export type Palette = typeof Colors.light;
+
+// The base palette carries sensible Opencode defaults; the resolved accent
+// roles override only the interactive accent tokens. Keeping the base values
+// unchanged means every non-accent token (surfaces, text, status colors, message
+// bubbles) is normally identical to the previous theme.
+export function buildPalette(scheme: 'light' | 'dark', roles: AccentRoles): Palette {
+  const base = Colors[scheme];
+  return {
+    ...base,
+    tint: roles.accent,
+    tabIconSelected: roles.accent,
+    accentForeground: roles.accentForeground,
+    accentMuted: roles.accentMuted,
+    accentOnMuted: roles.accentOnMuted,
+  };
+}
 
 export const Fonts = Platform.select({
   ios: {

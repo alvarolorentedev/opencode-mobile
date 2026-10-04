@@ -2,8 +2,7 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
 import { Pressable, StyleSheet, Text as NativeText, View } from 'react-native';
 
-import { Colors } from '@/constants/theme';
-import { useColorScheme } from '@/hooks/use-color-scheme';
+import { usePalette } from '@/providers/theme-provider';
 import type { OpencodeProject } from '@/providers/opencode-provider-types';
 
 /**
@@ -20,7 +19,7 @@ export function ProjectOptions({
   onSelect: (path: string) => void;
 }) {
   const { t } = useTranslation();
-  const palette = Colors[useColorScheme() ?? 'light'];
+  const palette = usePalette();
 
   return (
     <>

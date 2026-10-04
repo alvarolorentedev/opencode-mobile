@@ -4,11 +4,10 @@ import {
   type MD3Theme,
 } from 'react-native-paper';
 
-import { Colors } from '@/constants/theme';
+import type { Palette } from '@/constants/theme';
 
-export function getPaperTheme(colorScheme: 'light' | 'dark'): MD3Theme {
-  const palette = Colors[colorScheme];
-  const base = colorScheme === 'dark' ? MD3DarkTheme : MD3LightTheme;
+export function getPaperTheme(scheme: 'light' | 'dark', palette: Palette): MD3Theme {
+  const base = scheme === 'dark' ? MD3DarkTheme : MD3LightTheme;
 
   return {
     ...base,
@@ -16,13 +15,13 @@ export function getPaperTheme(colorScheme: 'light' | 'dark'): MD3Theme {
     colors: {
       ...base.colors,
       primary: palette.tint,
-      onPrimary: colorScheme === 'dark' ? '#08110F' : '#FFFFFF',
-      primaryContainer: palette.surfaceAlt,
-      onPrimaryContainer: palette.text,
-      secondary: palette.accent,
-      onSecondary: colorScheme === 'dark' ? '#08110F' : '#FFFFFF',
-      secondaryContainer: palette.surfaceAlt,
-      onSecondaryContainer: palette.text,
+      onPrimary: palette.accentForeground,
+      primaryContainer: palette.accentMuted,
+      onPrimaryContainer: palette.accentOnMuted,
+      secondary: palette.tint,
+      onSecondary: palette.accentForeground,
+      secondaryContainer: palette.accentMuted,
+      onSecondaryContainer: palette.accentOnMuted,
       error: palette.danger,
       background: palette.background,
       onBackground: palette.text,

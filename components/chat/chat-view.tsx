@@ -11,8 +11,7 @@ import { ChatContent } from '@/components/chat/chat-content';
 import { ChatHeader } from '@/components/chat/chat-header';
 import { ChatLibrary } from '@/components/chat/chat-library';
 import { styles } from '@/components/chat/chat-view-styles';
-import { Colors } from '@/constants/theme';
-import { useColorScheme } from '@/hooks/use-color-scheme';
+import { useAppTheme } from '@/providers/theme-provider';
 import { normalizeTranscriptFontSize } from '@/providers/opencode-preferences';
 import { type TranscriptEntry } from '@/lib/opencode/format';
 import { getTranscriptActivityLabel, getUserTurnForMessage, isTranscriptDisplayMessage } from '@/lib/opencode/transcript';
@@ -32,8 +31,7 @@ import {
 
 export function ChatView() {
   const { t } = useTranslation();
-  const colorScheme = useColorScheme() ?? 'light';
-  const palette = Colors[colorScheme];
+  const { palette } = useAppTheme();
   const insets = useSafeAreaInsets();
   const { activeProject } = useWorkspace();
   const {

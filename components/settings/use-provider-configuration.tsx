@@ -6,8 +6,7 @@ import { Button, Dialog, HelperText, Portal } from 'react-native-paper';
 import { ProviderConfigDialog } from '@/components/settings/provider-config-dialog';
 import { getProviderCopy, supportsGenericApiKey } from '@/components/settings/settings-utils';
 import { TextInput } from '@/components/ui/text-input';
-import { Colors } from '@/constants/theme';
-import { useColorScheme } from '@/hooks/use-color-scheme';
+import { usePalette } from '@/providers/theme-provider';
 import { useCapabilities, useConnection } from '@/providers/opencode-contexts';
 
 type ProviderFeedback = { type: 'success' | 'info' | 'error'; message: string };
@@ -25,7 +24,7 @@ type PendingOAuth = { providerId: string; methodIndex: number; instructions?: st
  */
 export function useProviderConfiguration() {
   const { t } = useTranslation();
-  const palette = Colors[useColorScheme() ?? 'light'];
+  const palette = usePalette();
   const { availableProviders, providerAuthMethodsById, setProviderAuth, startProviderOAuth, completeProviderOAuth, completeAutomaticProviderOAuth } = useCapabilities();
   const { connect } = useConnection();
 

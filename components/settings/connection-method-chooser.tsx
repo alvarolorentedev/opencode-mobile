@@ -2,13 +2,12 @@ import { useTranslation } from 'react-i18next';
 import { View } from 'react-native';
 import { List, Text } from 'react-native-paper';
 
-import { Colors } from '@/constants/theme';
-import { useColorScheme } from '@/hooks/use-color-scheme';
+import { usePalette } from '@/providers/theme-provider';
 import { useConnection } from '@/providers/opencode-contexts';
 
 export function ConnectionMethodChooser({ onPair, onManual }: { onPair: () => void; onManual: () => void }) {
   const { t } = useTranslation();
-  const palette = Colors[useColorScheme() ?? 'light'];
+  const palette = usePalette();
   const choiceStyle = { minHeight: 96, borderRadius: 12, backgroundColor: palette.surface };
   const titleStyle = { color: palette.text };
   const descriptionStyle = { color: palette.muted };
