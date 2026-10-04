@@ -257,6 +257,32 @@
     "description": "使用系统语言或为应用界面选择一种语言。"
   },
   "appearance": {
+    "accent": {
+      "label": "强调色",
+      "description": "支持时系统会跟随设备强调色（Android 12+）；否则使用 OpenCode 强调色。选择颜色以覆盖。",
+      "options": {
+        "system": {
+          "label": "系统",
+          "description": "在支持时跟随设备强调色"
+        },
+        "opencode": {
+          "label": "OpenCode",
+          "description": "使用 OpenCode 强调色"
+        },
+        "blue": {
+          "label": "蓝色",
+          "description": "使用蓝色强调"
+        },
+        "violet": {
+          "label": "紫色",
+          "description": "使用紫色强调"
+        },
+        "orange": {
+          "label": "橙色",
+          "description": "使用橙色强调"
+        }
+      }
+    },
     "chatTextSize": "聊天文字大小",
     "chatTextSizeDescription": "调整聊天消息的文字大小。较小的文字可一次显示更多对话。",
     "flatThread": {

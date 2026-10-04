@@ -5,8 +5,7 @@ import { Appbar, Button, HelperText } from 'react-native-paper';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { TextInput } from '@/components/ui/text-input';
-import { Colors } from '@/constants/theme';
-import { useColorScheme } from '@/hooks/use-color-scheme';
+import { usePalette } from '@/providers/theme-provider';
 import { isValidServerUrl } from '@/lib/opencode/client';
 
 export type ConnectionProfileFormValues = {
@@ -36,7 +35,7 @@ export function ConnectionProfileDialog({
 }) {
   const insets = useSafeAreaInsets();
   const { t } = useTranslation();
-  const palette = Colors[useColorScheme() ?? 'light'];
+  const palette = usePalette();
   const [name, setName] = useState(initial?.name ?? '');
   const [serverUrl, setServerUrl] = useState(initial?.serverUrl ?? '');
   const [username, setUsername] = useState(initial?.username ?? '');

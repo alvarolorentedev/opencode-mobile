@@ -569,7 +569,7 @@ This is one of the densest parts of the architecture and would need careful pari
   keyboard overlap while preserving the outer flex frame; explicit `height`
   adjustment can feed IME/layout changes back into each other with
   hardware-keyboard toolbars.
-- The app uses custom theme tokens from `constants/theme.ts` and maps them into React Native Paper in `constants/paper-theme.ts`.
+- The app uses custom theme tokens from `constants/theme.ts` and maps them into React Native Paper in `constants/paper-theme.ts`. `providers/theme-provider.tsx` resolves the persisted `accent` preference plus the OS color scheme into one palette, configures Paper and React Navigation, and is the only place that knows about platform accent resolution (Android Material You via `Color.android.dynamic`). Components consume the resolved palette through `useAppTheme()`/`usePalette()` instead of reading `Appearance`/`useColorScheme` directly.
 - Markdown rendering is intentionally narrow and custom, not library-based.
 - Diff rendering is custom and optimized for readable in-app inspection, not full git-style fidelity.
 - The chat area surfaces server-owned todos in a collapsed overlay with read-only status icons. It does not mutate todo state.

@@ -5,9 +5,8 @@ import { Appbar, Text } from 'react-native-paper';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { useOnboarding } from '@/providers/opencode-contexts';
-import { Colors, Fonts } from '@/constants/theme';
-import { useColorScheme } from '@/hooks/use-color-scheme';
-
+import { Fonts } from '@/constants/theme';
+import { usePalette } from '@/providers/theme-provider';
 /**
  * Shared chrome for every onboarding step: back affordance, step progress,
  * title/subtitle, a scrollable body, and a pinned footer for the primary
@@ -38,7 +37,7 @@ export function OnboardingStep({
 }) {
   const insets = useSafeAreaInsets();
   const { t } = useTranslation();
-  const palette = Colors[useColorScheme() ?? 'light'];
+  const palette = usePalette();
   const { onboardingActive } = useOnboarding();
   const progress = Math.max(0, Math.min(1, step / totalSteps));
 

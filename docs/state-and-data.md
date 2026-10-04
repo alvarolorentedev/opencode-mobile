@@ -112,6 +112,7 @@ Current fields:
 - `flatTranscript` (renders the transcript full-width without bubble chrome; defaults to `false`)
 - `slimInterface` (shrinks control sizes, spacing, and headers on the text-heavy screens; defaults to `false`)
 - `language` (optional; `undefined` follows the OS locale)
+- `accent` (interactive accent; `system` follows the device accent on Android 12+ and otherwise resolves to the Opencode accent; explicit modes are curated overrides)
 - `providerId`
 - `modelId`
 - `enabledModelIds`

@@ -6,15 +6,14 @@ import { Button, HelperText, Text } from 'react-native-paper';
 
 import { OnboardingStep } from '@/components/onboarding/onboarding-step';
 import { useNotificationSetup } from '@/components/settings/use-notification-setup';
-import { Colors } from '@/constants/theme';
-import { useColorScheme } from '@/hooks/use-color-scheme';
+import { usePalette } from '@/providers/theme-provider';
 import { getVoiceCapabilitiesAsync, type VoiceCapabilities } from '@/lib/voice/capabilities';
 import { requestVoiceInputPermissionAsync } from '@/lib/voice/permissions';
 
 export default function OnboardingPermissionsScreen() {
   const { t } = useTranslation();
   const router = useRouter();
-  const palette = Colors[useColorScheme() ?? 'light'];
+  const palette = usePalette();
   const notifications = useNotificationSetup();
   const [voice, setVoice] = useState<VoiceCapabilities>();
   const [isEnablingVoice, setIsEnablingVoice] = useState(false);

@@ -257,6 +257,32 @@
     "description": "Use the system language or pick one for the app interface."
   },
   "appearance": {
+    "accent": {
+      "label": "Accent color",
+      "description": "System follows your device accent where supported (Android 12+); otherwise the OpenCode accent is used. Pick a color to override.",
+      "options": {
+        "system": {
+          "label": "System",
+          "description": "Follow the device accent where supported"
+        },
+        "opencode": {
+          "label": "OpenCode",
+          "description": "Use the OpenCode accent"
+        },
+        "blue": {
+          "label": "Blue",
+          "description": "Use a blue accent"
+        },
+        "violet": {
+          "label": "Violet",
+          "description": "Use a violet accent"
+        },
+        "orange": {
+          "label": "Orange",
+          "description": "Use an orange accent"
+        }
+      }
+    },
     "chatTextSize": "Chat text size",
     "chatTextSizeDescription": "Adjust message text size in chat. Smaller text shows more of the conversation at once.",
     "flatThread": {

@@ -7,14 +7,13 @@ import { ActivityIndicator, Button, Text } from 'react-native-paper';
 import { OnboardingStep } from '@/components/onboarding/onboarding-step';
 import { ProjectOptions } from '@/components/onboarding/project-options';
 import { TextInput } from '@/components/ui/text-input';
-import { Colors } from '@/constants/theme';
-import { useColorScheme } from '@/hooks/use-color-scheme';
+import { usePalette } from '@/providers/theme-provider';
 import { useWorkspace } from '@/providers/opencode-contexts';
 
 export default function OnboardingWorkspaceScreen() {
   const { t } = useTranslation();
   const router = useRouter();
-  const palette = Colors[useColorScheme() ?? 'light'];
+  const palette = usePalette();
   const {
     projects,
     activeProjectPath,

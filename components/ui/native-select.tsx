@@ -12,8 +12,8 @@ import {
   View,
 } from 'react-native';
 
-import { Colors, Fonts } from '@/constants/theme';
-import { useColorScheme } from '@/hooks/use-color-scheme';
+import { Fonts } from '@/constants/theme';
+import { useAppTheme } from '@/providers/theme-provider';
 
 export type NativeSelectOption<T extends string = string> = {
   value: T;
@@ -44,8 +44,7 @@ export function NativeSelect<T extends string>({
   selectedValue,
   title,
 }: NativeSelectProps<T>) {
-  const colorScheme = useColorScheme() ?? 'light';
-  const palette = Colors[colorScheme];
+  const { palette, scheme: colorScheme } = useAppTheme();
   const { t } = useTranslation();
   const [visible, setVisible] = useState(false);
 

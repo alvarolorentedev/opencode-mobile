@@ -82,16 +82,18 @@ for (const legacyControlPlane of ['https://api.getopencode.app', 'https://apista
   assert.deepEqual(controlPlaneStorage.removed, ['control-plane']);
 }
 const preferences = await loadTs('providers/opencode-preferences.ts');
+const accent = await loadTs('constants/accent.ts');
 const { parseConnectionSettings, parseChatPreferences } = await loadTs('providers/persisted-preferences.ts', {
-  '@/lib/connect': connect, '@/providers/opencode-preferences': preferences,
+  '@/constants/accent': accent, '@/lib/connect': connect, '@/providers/opencode-preferences': preferences,
 });
 assert.throws(() => parseConnectionSettings('{"serverUrl":123}'), /Invalid/);
 assert.throws(() => parseConnectionSettings('{"username":"alice","connect":{}}'), /Invalid/);
 assert.deepEqual(JSON.parse(JSON.stringify(parseConnectionSettings('{"serverUrl":"http://test","password":"legacy","unknown":true}'))), { serverUrl: 'http://test', password: 'legacy' });
 const parsed = parseChatPreferences(JSON.stringify({ mode: 'build', enabledModelIds: null, recentModelIds: 42,
   providerModelSelections: { p: false }, speechRate: 100, workingSoundVolume: -1, transcriptFontSize: 99,
-  reasoning: 'invalid', hideSubagentChats: 'yes', language: 'es', unknown: 'ignored' }));
+  reasoning: 'invalid', hideSubagentChats: 'yes', language: 'es', accent: 'magenta', unknown: 'ignored' }));
 assert.deepEqual(JSON.parse(JSON.stringify(parsed)), { mode: 'build', language: 'es', transcriptFontSize: 24, speechRate: 1.5, workingSoundVolume: 0 });
+assert.equal(parseChatPreferences(JSON.stringify({ accent: 'blue' })).accent, 'blue', 'known accents are accepted');
 const defaults = { ...preferences.defaultChatPreferences, ...parsed };
 assert.ok(Array.isArray(defaults.enabledModelIds)); assert.ok(Array.isArray(defaults.recentModelIds));
 assert.equal(defaults.reasoning, 'default');

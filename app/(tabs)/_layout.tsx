@@ -6,15 +6,13 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { HapticTab } from '@/components/haptic-tab';
 import { IconSymbol } from '@/components/ui/icon-symbol';
-import { Colors } from '@/constants/theme';
-import { useColorScheme } from '@/hooks/use-color-scheme';
+import { useAppTheme } from '@/providers/theme-provider';
 
 export default function TabLayout() {
   const { t } = useTranslation();
-  const colorScheme = useColorScheme();
+  const { palette } = useAppTheme();
   const pathname = usePathname();
   const insets = useSafeAreaInsets();
-  const palette = Colors[colorScheme ?? 'light'];
   const selected = (route: string) => route === '/' ? pathname === '/' || pathname.startsWith('/session/') : pathname.startsWith(route);
   const iconColor = (route: string, color: ColorValue) => Platform.OS === 'web' ? selected(route) ? palette.tint : palette.tabIconDefault : color;
   const label = (route: string, value: string) => function TabLabel({ color }: { color: ColorValue }) {
@@ -24,12 +22,12 @@ export default function TabLayout() {
   return (
     <Tabs
       screenOptions={{
-        tabBarActiveTintColor: Colors[colorScheme ?? 'light'].tint,
-        tabBarInactiveTintColor: Colors[colorScheme ?? 'light'].tabIconDefault,
+        tabBarActiveTintColor: palette.tint,
+        tabBarInactiveTintColor: palette.tabIconDefault,
         tabBarHideOnKeyboard: false,
         tabBarStyle: {
-          backgroundColor: Colors[colorScheme ?? 'light'].tabBackground,
-          borderTopColor: Colors[colorScheme ?? 'light'].border,
+          backgroundColor: palette.tabBackground,
+          borderTopColor: palette.border,
           height: 56 + insets.bottom,
           paddingTop: 6,
           paddingBottom: Math.max(insets.bottom, 8),

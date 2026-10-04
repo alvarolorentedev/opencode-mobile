@@ -5,15 +5,14 @@ import { Pressable, StyleSheet, Text as NativeText, View } from 'react-native';
 import { Button, Text } from 'react-native-paper';
 
 import { ProjectOptions } from '@/components/onboarding/project-options';
-import { Colors } from '@/constants/theme';
-import { useColorScheme } from '@/hooks/use-color-scheme';
+import { usePalette } from '@/providers/theme-provider';
 import type { OpencodeProject } from '@/providers/opencode-provider-types';
 import { OverlaySheet } from './overlay-sheet';
 import { TextInput } from './text-input';
 
 export function WorkspacePickerButton({ onPress }: { onPress: () => void }) {
   const { t } = useTranslation();
-  const palette = Colors[useColorScheme() ?? 'light'];
+  const palette = usePalette();
   return <Pressable accessibilityRole="button" accessibilityLabel={t('workspace:picker.changeWorkspace')} onPress={onPress} style={styles.button}>
     <MaterialCommunityIcons name="folder-swap-outline" size={20} color={palette.tint} />
     <NativeText style={{ color: palette.tint }}>{t('common:tabs.workspace')}</NativeText>
@@ -30,7 +29,7 @@ export function WorkspacePicker({ visible, onClose, projects, activePath, onSele
   testID?: string;
 }) {
   const { t } = useTranslation();
-  const palette = Colors[useColorScheme() ?? 'light'];
+  const palette = usePalette();
   const [adding, setAdding] = useState(false);
   const [directory, setDirectory] = useState('');
   const [saving, setSaving] = useState(false);

@@ -5,8 +5,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ConnectManagementPanel } from '@/components/settings/connect-panel';
 import { ConnectEntry } from '@/components/settings/connect-pairing';
-import { Colors } from '@/constants/theme';
-import { useColorScheme } from '@/hooks/use-color-scheme';
+import { usePalette } from '@/providers/theme-provider';
 import { useConnection, useOnboarding } from '@/providers/opencode-contexts';
 
 export default function PairScreen() {
@@ -14,7 +13,7 @@ export default function PairScreen() {
   const router = useRouter();
   const { connectSetup } = useConnection();
   const { isHydrated, onboardingCompleted, onboardingActive } = useOnboarding();
-  const palette = Colors[useColorScheme() ?? 'light'];
+  const palette = usePalette();
   const { pairLink } = connectSetup;
   useEffect(() => {
     if (isHydrated && (params.v || params.cp || params.id || params.t || params.n)) {

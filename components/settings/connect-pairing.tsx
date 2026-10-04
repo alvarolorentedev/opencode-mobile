@@ -10,15 +10,14 @@ import { ConnectScanner } from '@/components/settings/connect-scanner';
 import { ConnectSubscription } from '@/components/settings/connect-subscription';
 import { OverlaySheet } from '@/components/ui/overlay-sheet';
 import { TextInput } from '@/components/ui/text-input';
-import { Colors } from '@/constants/theme';
-import { useColorScheme } from '@/hooks/use-color-scheme';
+import { usePalette } from '@/providers/theme-provider';
 import type { ConnectSetup } from '@/providers/use-connect-state';
 
 export function ConnectEntry(props: { setup: ConnectSetup; onConnected: () => void; onClose: () => void; onManage: () => void }) {
   const [choosing, setChoosing] = useState(false);
   const [busy, setBusy] = useState(false);
   const { t } = useTranslation();
-  const palette = Colors[useColorScheme() ?? 'light'];
+  const palette = usePalette();
   const insets = useSafeAreaInsets();
   if (!choosing) return <ConnectPairing {...props} onClose={() => setChoosing(true)} />;
   return <View style={[styles.screen, { backgroundColor: palette.background }]}>
@@ -32,7 +31,7 @@ export function ConnectEntry(props: { setup: ConnectSetup; onConnected: () => vo
 
 export function ConnectPairing({ setup, onConnected, onClose, onManage }: { setup: ConnectSetup; onConnected: () => void; onClose: () => void; onManage: () => void }) {
   const { t } = useTranslation();
-  const palette = Colors[useColorScheme() ?? 'light'];
+  const palette = usePalette();
   const insets = useSafeAreaInsets();
   const focused = useIsFocused();
   const [active, setActive] = useState(AppState.currentState === 'active');

@@ -13,15 +13,15 @@ import { useProviderConfiguration } from '@/components/settings/use-provider-con
 import { OnboardingStep } from '@/components/onboarding/onboarding-step';
 import { NativeSelect } from '@/components/ui/native-select';
 import { renderProviderIcon } from '@/components/ui/provider-icon';
-import { Colors, Fonts } from '@/constants/theme';
-import { useColorScheme } from '@/hooks/use-color-scheme';
+import { Fonts } from '@/constants/theme';
+import { usePalette } from '@/providers/theme-provider';
 import { useCapabilities, usePreferences } from '@/providers/opencode-contexts';
 import type { ResponseScope } from '@/providers/opencode-provider-types';
 
 export default function OnboardingPreferencesScreen() {
   const { t } = useTranslation();
   const router = useRouter();
-  const palette = Colors[useColorScheme() ?? 'light'];
+  const palette = usePalette();
   const { availableModels, availableProviders, configuredProviders } = useCapabilities();
   const { chatPreferences, updateChatPreferences } = usePreferences();
   const providerConfig = useProviderConfiguration();

@@ -9,8 +9,7 @@ import { TextInput } from '@/components/ui/text-input';
 
 import { MarkdownText } from '@/components/chat/chat-markdown';
 import { getDiffPalette, buildPatchDiff, buildCollapsedDiffBlocks } from '@/components/chat/chat-diff';
-import { Colors } from '@/constants/theme';
-import { useColorScheme } from '@/hooks/use-color-scheme';
+import { useAppTheme } from '@/providers/theme-provider';
 import type { PendingPermissionRequest, PendingQuestionAnswer, PendingQuestionPrompt, PendingQuestionRequest } from '@/lib/opencode/client';
 import { formatTimestamp, type TranscriptDetail, type TranscriptEntry } from '@/lib/opencode/format';
 import { summarizeTranscriptDetails } from '@/lib/opencode/transcript';
@@ -32,8 +31,7 @@ export function PendingInteractionsCard({
   permissions: PendingPermissionRequest[];
 }) {
   const { t } = useTranslation();
-  const colorScheme = useColorScheme() ?? 'light';
-  const palette = Colors[colorScheme];
+  const { palette } = useAppTheme();
 
   return (
     <Card mode="contained" style={[styles.sectionCard, { backgroundColor: palette.surface }]}> 
@@ -71,8 +69,7 @@ export function QuestionFlow({
   visible: boolean;
 }) {
   const { t } = useTranslation();
-  const colorScheme = useColorScheme() ?? 'light';
-  const palette = Colors[colorScheme];
+  const { palette } = useAppTheme();
   const insets = useSafeAreaInsets();
   const [step, setStep] = useState(0);
   const [error, setError] = useState<string>();
@@ -272,8 +269,7 @@ export function QuestionFlow({
 
 export function SessionDiffCard({ diff, expanded, onPress }: { diff: FileDiff; expanded: boolean; onPress: () => void }) {
   const { t } = useTranslation();
-  const colorScheme = useColorScheme() ?? 'light';
-  const palette = Colors[colorScheme];
+  const { palette } = useAppTheme();
   const diffLines = useMemo(() => (expanded ? buildPatchDiff(diff.patch || '') : []), [diff.patch, expanded]);
   const diffBlocks = useMemo(() => (expanded ? buildCollapsedDiffBlocks(diffLines) : []), [diffLines, expanded]);
 
@@ -333,8 +329,7 @@ export function SessionDiffCard({ diff, expanded, onPress }: { diff: FileDiff; e
 }
 
 export function DiffCard({ detail, expanded, onPress }: { detail: Extract<TranscriptDetail, { kind: 'patch' }>; expanded: boolean; onPress: () => void }) {
-  const colorScheme = useColorScheme() ?? 'light';
-  const palette = Colors[colorScheme];
+  const { palette } = useAppTheme();
 
   return (
     <View style={[styles.diffAccordion, { borderColor: palette.border }]}>
@@ -377,8 +372,7 @@ function TranscriptMessageImpl({
   speaking = false,
 }: TranscriptMessageProps) {
   const { t } = useTranslation();
-  const colorScheme = useColorScheme() ?? 'light';
-  const palette = Colors[colorScheme];
+  const { palette } = useAppTheme();
   const isUser = entry.role === 'user';
   const patchSummary = t('chat:cards.updatedPatches', { count: entry.details.filter((detail) => detail.kind === 'patch').length });
   const detailSummary = summarizeTranscriptDetails(entry.details, { patches: (count) => t('chat:cards.updatedPatches', { count }), files: (count) => t('chat:cards.fileCount', { count }) });
@@ -489,8 +483,7 @@ function PermissionRequestCard({
   request: PendingPermissionRequest;
 }) {
   const { t } = useTranslation();
-  const colorScheme = useColorScheme() ?? 'light';
-  const palette = Colors[colorScheme];
+  const { palette } = useAppTheme();
   const [submitting, setSubmitting] = useState<'once' | 'always' | 'reject' | undefined>(undefined);
 
   const handleReply = (reply: 'once' | 'always' | 'reject') => {

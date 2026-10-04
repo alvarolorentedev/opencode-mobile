@@ -11,7 +11,7 @@ import {
   Text,
 } from 'react-native-paper';
 
-import { Colors, Fonts } from '@/constants/theme';
+import { Fonts } from '@/constants/theme';
 import { McpSection } from '@/components/settings/mcp-section';
 import {
   AiDefaultsSection,
@@ -32,7 +32,7 @@ import {
   WORKING_SOUND_OPTIONS,
 } from '@/components/settings/settings-utils';
 import { OverlaySheet } from '@/components/ui/overlay-sheet';
-import { useColorScheme } from '@/hooks/use-color-scheme';
+import { useAppTheme } from '@/providers/theme-provider';
 import { normalizeTranscriptFontSize } from '@/providers/opencode-preferences';
 import { getSpeechVoiceOptions, type SpeechVoiceOption } from '@/lib/voice/speech-output';
 import { useCapabilities, useConnection, useMcp, useOnboarding, usePreferences } from '@/providers/opencode-contexts';
@@ -51,8 +51,7 @@ type SettingsSection = {
 
 export default function SettingsScreen() {
   const insets = useSafeAreaInsets();
-  const colorScheme = useColorScheme() ?? 'light';
-  const palette = Colors[colorScheme];
+  const { palette, scheme } = useAppTheme();
   const { t } = useTranslation();
   const { availableModels, availableProviders, configuredProviders, currentConfig, removeProvider } = useCapabilities();
   const { addMcpServer, completeMcpOAuth, connectMcpServer, disconnectMcpServer, mcpStatuses, refreshMcpServers, setMcpServerEnabled, startMcpOAuth } = useMcp();
@@ -115,6 +114,10 @@ export default function SettingsScreen() {
   const selectedLanguageLabel = useMemo(
     () => LANGUAGE_OPTIONS.find((option) => option.value === chatPreferences.language)?.label || t('common:labels.systemDefault'),
     [chatPreferences.language, t],
+  );
+  const selectedAccentLabel = useMemo(
+    () => t(`settings:appearance.accent.options.${chatPreferences.accent}.label`),
+    [chatPreferences.accent, t],
   );
 
   function handleModelToggle(modelId: string, checked: boolean) {
@@ -190,9 +193,9 @@ export default function SettingsScreen() {
       id: 'appearance',
       icon: 'format-size',
       title: t('settings:screen.categories.appearance'),
-      summary: `${normalizeTranscriptFontSize(chatPreferences.transcriptFontSize)} px`,
+      summary: `${normalizeTranscriptFontSize(chatPreferences.transcriptFontSize)} px • ${selectedAccentLabel}`,
       onPress: () => setOpenSection('appearance'),
-      render: () => <AppearanceSection chatPreferences={chatPreferences} palette={palette} updateChatPreferences={updateChatPreferences} />,
+      render: () => <AppearanceSection chatPreferences={chatPreferences} palette={palette} scheme={scheme} updateChatPreferences={updateChatPreferences} />,
     },
     {
       id: 'language',

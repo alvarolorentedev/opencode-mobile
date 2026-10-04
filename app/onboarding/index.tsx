@@ -5,13 +5,11 @@ import { StyleSheet, View } from 'react-native';
 import { Button, List, Text } from 'react-native-paper';
 
 import { OnboardingStep } from '@/components/onboarding/onboarding-step';
-import { Colors } from '@/constants/theme';
-import { useColorScheme } from '@/hooks/use-color-scheme';
-
+import { usePalette } from '@/providers/theme-provider';
 export default function OnboardingWelcomeScreen() {
   const { t } = useTranslation();
   const router = useRouter();
-  const palette = Colors[useColorScheme() ?? 'light'];
+  const palette = usePalette();
 
   return (
     <OnboardingStep

@@ -257,6 +257,32 @@
     "description": "Verwende die Systemsprache oder wähle eine für die App-Oberfläche."
   },
   "appearance": {
+    "accent": {
+      "label": "Akzentfarbe",
+      "description": "System folgt der Geräteakzentfarbe, sofern unterstützt (Android 12+); andernfalls wird die OpenCode-Akzentfarbe verwendet. Wähle eine Farbe zum Überschreiben.",
+      "options": {
+        "system": {
+          "label": "System",
+          "description": "Geräteakzentfarbe verwenden, wenn unterstützt"
+        },
+        "opencode": {
+          "label": "OpenCode",
+          "description": "OpenCode-Akzentfarbe verwenden"
+        },
+        "blue": {
+          "label": "Blau",
+          "description": "Blaue Akzentfarbe verwenden"
+        },
+        "violet": {
+          "label": "Violett",
+          "description": "Violette Akzentfarbe verwenden"
+        },
+        "orange": {
+          "label": "Orange",
+          "description": "Orange Akzentfarbe verwenden"
+        }
+      }
+    },
     "chatTextSize": "Chat-Textgröße",
     "chatTextSizeDescription": "Passe die Textgröße der Nachrichten an. Kleinere Schrift zeigt mehr vom Gespräch auf einmal.",
     "flatThread": {

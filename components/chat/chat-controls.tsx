@@ -3,9 +3,8 @@ import type { ComponentProps, ReactNode } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { NativeSelect, type NativeSelectOption } from '@/components/ui/native-select';
-import { Colors, Fonts } from '@/constants/theme';
-import { useColorScheme } from '@/hooks/use-color-scheme';
-
+import { Fonts } from '@/constants/theme';
+import { useAppTheme } from '@/providers/theme-provider';
 export function SelectControl<T extends string>({
   disabled = false,
   grow = false,
@@ -85,8 +84,7 @@ export function ControlButton({
   slim?: boolean;
   testID?: string;
 }) {
-  const colorScheme = useColorScheme() ?? 'light';
-  const palette = Colors[colorScheme];
+  const { palette } = useAppTheme();
   const textColor = active ? palette.tint : palette.text;
   const borderColor = active ? 'transparent' : palette.border;
   const backgroundColor = active ? `${palette.tint}18` : palette.surface;
@@ -125,8 +123,7 @@ export function ControlButton({
 }
 
 export function TopTab({ active, label, onPress, slim = false }: { active: boolean; label: string; onPress: () => void; slim?: boolean }) {
-  const colorScheme = useColorScheme() ?? 'light';
-  const palette = Colors[colorScheme];
+  const { palette } = useAppTheme();
 
   return (
     <Pressable accessibilityRole="tab" accessibilityState={{ selected: active }} aria-selected={active} style={styles.topTab} onPress={onPress}>

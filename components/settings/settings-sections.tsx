@@ -14,6 +14,7 @@ import { NativeSelect, type NativeSelectOption } from '@/components/ui/native-se
 import { NumericSlider } from '@/components/ui/numeric-slider';
 import { TextInput } from '@/components/ui/text-input';
 import { renderProviderIcon } from '@/components/ui/provider-icon';
+import { ACCENT_MODES, getAccentPreviewColor, type AccentMode } from '@/constants/accent';
 import { Colors, Fonts } from '@/constants/theme';
 import { formatTimestamp } from '@/lib/opencode/format';
 import type { NotificationDebugStatus } from '@/lib/notifications';
@@ -517,14 +518,26 @@ export function LanguageSection({
 export function AppearanceSection({
   chatPreferences,
   palette,
+  scheme,
   updateChatPreferences,
 }: {
   chatPreferences: ChatPreferences;
   palette: Palette;
+  scheme: 'light' | 'dark';
   updateChatPreferences: (patch: Partial<ChatPreferences>) => void;
 }) {
   const { t } = useTranslation();
   const fontSize = normalizeTranscriptFontSize(chatPreferences.transcriptFontSize);
+  const accentPreview = (mode: AccentMode) => mode === 'system' ? palette.tint : getAccentPreviewColor(mode, scheme);
+  const accentOptions: NativeSelectOption<AccentMode>[] = ACCENT_MODES.map((mode) => ({
+    value: mode,
+    label: t(`settings:appearance.accent.options.${mode}.label`),
+    description: t(`settings:appearance.accent.options.${mode}.description`),
+    leadingIcon: ({ size }) => (
+      <View style={[styles.accentSwatch, { width: size, height: size, backgroundColor: accentPreview(mode) }]} />
+    ),
+  }));
+  const selectedAccent = accentOptions.find((option) => option.value === chatPreferences.accent) ?? accentOptions[0];
 
   return (
     <View style={styles.section}>
@@ -539,6 +552,16 @@ export function AppearanceSection({
         palette={palette}
       />
       <HelperText type="info">{t('settings:appearance.chatTextSizeDescription')}</HelperText>
+      <SettingSelectField
+        label={t('settings:appearance.accent.label')}
+        leadingColor={accentPreview(chatPreferences.accent)}
+        onValueChange={(accent) => updateChatPreferences({ accent })}
+        options={accentOptions}
+        palette={palette}
+        selectedValue={chatPreferences.accent}
+        valueLabel={selectedAccent.label}
+      />
+      <HelperText type="info">{t('settings:appearance.accent.description')}</HelperText>
       <SettingSwitchRow
         title={t('settings:appearance.flatThread.title')}
         description={t('settings:appearance.flatThread.description')}
@@ -595,6 +618,7 @@ export function SettingSwitchRow({
 export function SettingSelectField<T extends string>({
   disabled = false,
   label,
+  leadingColor,
   onValueChange,
   options,
   palette,
@@ -603,6 +627,7 @@ export function SettingSelectField<T extends string>({
 }: {
   disabled?: boolean;
   label: string;
+  leadingColor?: string;
   onValueChange: (value: T) => void;
   options: NativeSelectOption<T>[];
   palette: Palette;
@@ -632,9 +657,12 @@ export function SettingSelectField<T extends string>({
           <View style={styles.settingSelectFieldContent}>
             <View style={styles.settingSelectTextWrap}>
               <NativeText style={[styles.settingSelectLabel, { color: palette.muted }]}>{label}</NativeText>
-              <NativeText numberOfLines={1} style={[styles.settingSelectValue, { color: palette.text }]}>
-                {valueLabel}
-              </NativeText>
+              <View style={styles.settingSelectValueRow}>
+                {leadingColor ? <View style={[styles.settingSelectSwatch, { backgroundColor: leadingColor }]} /> : null}
+                <NativeText numberOfLines={1} style={[styles.settingSelectValue, { color: palette.text }]}>
+                  {valueLabel}
+                </NativeText>
+              </View>
             </View>
             <NativeText style={[styles.settingSelectChevron, { color: palette.muted }]}>v</NativeText>
           </View>
@@ -663,6 +691,9 @@ const styles = StyleSheet.create({
   settingSelectField: { borderRadius: 14, borderWidth: 1 },
   settingSelectFieldContent: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12, minHeight: 54, paddingHorizontal: 14, paddingVertical: 10 },
   settingSelectTextWrap: { flex: 1, gap: 2 },
+  settingSelectValueRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  settingSelectSwatch: { width: 16, height: 16, borderRadius: 999, borderWidth: 1, borderColor: 'rgba(127,127,127,0.4)' },
+  accentSwatch: { borderRadius: 999 },
   settingSelectLabel: { fontFamily: Fonts.sans, fontSize: 12, fontWeight: '500' },
   settingSelectValue: { fontFamily: Fonts.sans, fontSize: 16, fontWeight: '600' },
   settingSelectChevron: { fontFamily: Fonts.mono, fontSize: 16, fontWeight: '700' },
