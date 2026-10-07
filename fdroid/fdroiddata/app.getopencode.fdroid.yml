@@ -29,10 +29,11 @@ Builds:
     srclibs:
       - firebase-stub@ce90a956aacda17a85c60577ee443aeb83d876ef
     prebuild:
-      - FIREBASE_STUB_SRC_DIR=$$firebase-stub$$/firebase-messaging/src node 
-        scripts/foss-prepare.mjs
-      - env CI=1 EXPO_APP_VARIANT=foss EXPO_PUBLIC_FOSS=1 npx expo prebuild -p 
-        android --clean
+      - FIREBASE_STUB_SRC_DIR=$$firebase-stub$$/firebase-messaging/src node scripts/foss-prepare.mjs
+      - env CI=1 EXPO_APP_VARIANT=foss EXPO_PUBLIC_FOSS=1 npx expo prebuild -p android
+        --clean
+      - sed -i '/jvmToolchain\|JavaVersion/s/17/21/' node_modules/@react-native/gradle-plugin/*/build.gradle.kts
+        node_modules/@react-native/gradle-plugin/react-native-gradle-plugin/src/main/kotlin/com/facebook/react/utils/JdkConfiguratorUtils.kt
     scanignore:
       - node_modules/*/local-maven-repo
       - node_modules/@*/*/local-maven-repo
@@ -45,8 +46,7 @@ Builds:
       - gradle assembleRelease -PreactNativeArchitectures=arm64-v8a
     ndk: 27.1.12297006
 
-AllowedAPKSigningKeys: 
-  d5a75b79abebf37d3011c66b681c7b903d99230f9d7f79eddb71ef30fffc3cc5
+AllowedAPKSigningKeys: d5a75b79abebf37d3011c66b681c7b903d99230f9d7f79eddb71ef30fffc3cc5
 
 MaintainerNotes: |-
   Builds the de-Googled FOSS flavor only (package app.getopencode.fdroid). The
