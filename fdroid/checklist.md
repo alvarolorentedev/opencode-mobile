@@ -1,13 +1,13 @@
 # F-Droid submission review
 
-Reviewed on 2026-10-07. Intended MR title: **New app: OpenCode Mobile**.
+Reviewed on 2026-10-07. [Source fixes](https://github.com/alvarolorentedev/opencode-mobile/tree/codex/fdroid-checklist) · [F-Droid pipeline](https://gitlab.com/alvarolorentedev/fdroiddata/-/pipelines/2922519005). Intended MR title: **New app: OpenCode Mobile**.
 The fdroiddata branch must contain only `metadata/app.getopencode.fdroid.yml`.
 
 | Checklist area | Evidence / status |
 | --- | --- |
 | Inclusion policy | Apache-2.0 upstream app; FOSS build excludes Play Billing, ML Kit, proprietary Firebase Messaging and install-referrer. Free replacement classes retain their original package names. Final acceptance belongs to F-Droid reviewers. |
 | Author notification | Submission is by the upstream author, Alvaro Lorente (`alvarolorentedev`); no third-party author reply is needed for an author submission. |
-| Store metadata | Upstream `fastlane/metadata/android/en-US/` has title, summary, description, changelog 52, icon and five phone screenshots. The recipe must pin a public commit containing them. |
+| Store metadata | Upstream `fastlane/metadata/android/en-US/` has title, summary, description, changelog 52, icon and five phone screenshots. The recipe pins public source commit `029ea4aef4c69e56b8b8cd315fa9bba44592580d`, which contains them. |
 | Documentation | Reviewed the inclusion policy, CONTRIBUTING.md, general and React Native templates, build metadata reference, Quick Start, reproducible-build and Git guides. Links below. |
 | Fork and branch | GitLab fork `alvarolorentedev/fdroiddata` is public; `app.getopencode.fdroid` is not protected. |
 | MR setup | No MR currently exists for this branch in the fork or `fdroid/fdroiddata`. Use the title above and submit a single app after the updated pipeline passes. Rebase only if there is a conflict. |
@@ -20,7 +20,7 @@ The fdroiddata branch must contain only `metadata/app.getopencode.fdroid.yml`.
 | ABI split | FOSS APK already includes only arm64-v8a (upstream v1.0.52 asset is about 49 MB). Splitting additional ABIs cannot shrink this single-ABI native payload. |
 | Anti-features | Optional speech input uses the installed system recognizer and can retry using its network service. This behavior is disclosed; reviewers may require NonFreeNet. Self-hosted OpenCode remains usable without voice. |
 | Validation | Local static, fake-server, all 94 web E2E tests, and the FOSS preparation check passed. Updated fdroiddata schema, lint, checkupdates, rewritemeta, source and APK checks must pass at the new branch head. |
-| Reports | Fastlane's source report includes informational metadata-discovery entries. Informational entries are expected; warnings/errors must be checked at the final pipeline. |
+| Reports | Fastlane's source report includes informational metadata-discovery entries. The updated pipeline report has one INFO entry confirming summary, description, changelog, icon and five screenshots; no warnings or errors. |
 | CI billing | If GitLab blocks CI pending phone/card details, leave the pipeline pending and ask maintainers to trigger it in the MR. |
 
 The icon and screenshots were retrieved from the author's
