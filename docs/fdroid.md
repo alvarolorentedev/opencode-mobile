@@ -28,6 +28,7 @@ files, voice) is unchanged. Only the optional paid Cloud Link path is absent.
 ## Building locally
 
 ```bash
+git submodule update --init --recursive
 npm run build:foss:android
 ```
 
@@ -38,8 +39,8 @@ which applies `scripts/foss-prepare.mjs` and then builds with the FOSS variant:
    get byte-identical dependency patches):
    - injects `expo.autolinking.exclude: ["expo-iap", "expo-camera"]` into
      `package.json` for the duration of the build (the build script restores it)
-   - swaps `expo-notifications`' `firebase-messaging` dependency for F-Droid's
-     pinned `firebase-stubs` sources
+   - swaps `expo-notifications`' `firebase-messaging` dependency for the pinned
+     `vendor/firebase-stubs` git submodule (Apache-2.0 source classes)
    - removes `expo-application`'s proprietary `com.android.installreferrer`
      dependency and stubs its `getInstallReferrerAsync`
 2. `expo prebuild` and Gradle run with `EXPO_APP_VARIANT=foss`,
@@ -47,9 +48,13 @@ which applies `scripts/foss-prepare.mjs` and then builds with the FOSS variant:
 
 Signing uses the same `ANDROID_KEYSTORE_*` environment variables as
 `npm run build:android`. On CI the `foss-release` job builds the variant, asserts
-the APK contains no `firebase`, `com.android.billingclient`,
-`play-services-code-scanner`, or `mlkit` entries, and attaches
+the APK contains no Play Billing, ML Kit, install-referrer, or
+`play-services-code-scanner` libraries, and attaches
 `opencode-mobile-fdroid.apk` to `v*` GitHub releases.
+The free stub classes keep the `com.google.firebase` package name; that namespace
+alone does not indicate that proprietary Firebase code is present. The FOSS CI
+checkout initializes the submodule, and the preparation script fails with an
+initialization instruction if its source classes are missing.
 
 The FOSS package id is `app.getopencode.fdroid`, so it can be installed
 alongside a Play Store build.
@@ -65,10 +70,16 @@ There is no self-hosted F-Droid repo. The FOSS build is distributed two ways:
   (fdroidserver checks it exists before `prebuild`). Instead it runs `npm ci`,
   `scripts/foss-prepare.mjs`, `npx expo prebuild -p android --clean`, then a
   manual `build:` that strips the release `signingConfig` and runs
-  `gradle assembleRelease`, with `output:` pointing at the unsigned APK. It is
-  marked for reproducible builds via `Binaries:` pointing at the GitHub release
-  APK, so F-Droid verifies its rebuild matches the upstream
-  `opencode-mobile-fdroid.apk` before publishing.
+  `gradle assembleRelease`, with `output:` pointing at the unsigned APK.
+  `submodules: true` lets F-Droid initialize and scan the pinned stub sources.
+  Reproducible builds are **not enabled**: upstream v1.0.52 uses JDK 17 and Expo
+  prebuilts, whereas the F-Droid recipe uses JDK 21 and builds Expo modules from
+  source. No byte-identical APK comparison has passed. The recipe therefore has
+  no `Binaries` or `AllowedAPKSigningKeys` field. F-Droid will sign with its own
+  key, so GitHub APKs cannot update an F-Droid installation. Resolve this before
+  the first F-Droid publication if the upstream signing key must be retained;
+  matching the JDK alone does not establish reproducibility. See
+  [F-Droid's reproducible-build guide](https://f-droid.org/docs/Reproducible_Builds/).
 - **GitHub releases** — the `foss-release` CI job attaches
   `opencode-mobile-fdroid.apk` to `v*` releases for direct sideloading.
 
@@ -82,6 +93,18 @@ When changing dependencies or native config:
 
 - `npm run test:ci:static` and `npm run typecheck` must stay green
 - `npm run test:architecture` guards the layering; FOSS stubs live in `lib/foss/`
-- bump the pinned `FIREBASE_STUB_SHA` in `scripts/foss-prepare.mjs` and the
-  `firebase-stub@<commit>` srclib in the recipe together if `expo-notifications`
-  needs a newer stub API
+- update the `vendor/firebase-stubs` submodule pin and the recipe's upstream
+  source commit together if `expo-notifications` needs a newer stub API
+
+## Store metadata
+
+F-Droid imports the English text and artwork from
+`fastlane/metadata/android/en-US/` at the recipe's pinned source commit. It
+contains the summary, full description, title, version-code changelogs, a
+512 × 512 PNG icon, and five 1080 × 2424 PNG phone screenshots. The artwork was
+retrieved from the author's [Google Play listing](https://play.google.com/store/apps/details?id=app.getopencode)
+on 2026-10-07. Keep this content in the upstream repository; copy only the build
+recipe to fdroiddata. A local or uncommitted asset is not available to F-Droid.
+
+See [`fdroid/checklist.md`](../fdroid/checklist.md) for the submission review and
+the remaining publication conditions.

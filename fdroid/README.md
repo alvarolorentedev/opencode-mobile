@@ -9,13 +9,19 @@ See [`docs/fdroid.md`](../docs/fdroid.md) for how the FOSS variant is produced.
 
 ## Submitting to fdroiddata
 
-1. Ensure a tagged release contains the FOSS support and its `foss-release` CI
-   job attached `opencode-mobile-fdroid.apk` to the GitHub release.
+1. Ensure the upstream source commit contains the FOSS support, pinned
+   `vendor/firebase-stubs` submodule, and complete `en-US` Fastlane metadata.
+   Releases use `v*` tags; the `foss-release` CI job attaches the FOSS APK.
 2. Fork and clone [fdroiddata](https://gitlab.com/fdroid/fdroiddata).
 3. Copy `fdroiddata/app.getopencode.fdroid.yml` into the fork at
    `metadata/app.getopencode.fdroid.yml`, and set `commit:` to that release's
-   tag SHA.
-4. Extract upstream signatures for reproducible verification:
+   full source commit SHA. If metadata or build support was added after the
+   release tag, pin the public commit containing those fixes.
+4. Decide the signing approach before first publication. Reproducible builds
+   are currently not enabled; the reasons are recorded in `MaintainerNotes`
+   and [`docs/fdroid.md`](../docs/fdroid.md). Only after unsigned APK equivalence
+   has been verified should you enable `Binaries`/`AllowedAPKSigningKeys` or
+   extract upstream signatures:
    ```bash
    curl -L -o opencode-mobile-fdroid.apk \
       https://github.com/alvarolorentedev/opencode-mobile/releases/download/v1.0.52/opencode-mobile-fdroid.apk
@@ -29,8 +35,10 @@ See [`docs/fdroid.md`](../docs/fdroid.md) for how the FOSS variant is produced.
    fdroid lint app.getopencode.fdroid
    fdroid build app.getopencode.fdroid
    ```
-6. Branch, commit (`New App: app.getopencode.fdroid`), push to your fork, and
-   open a merge request. F-Droid maintainers build and publish it.
+6. Keep the fork public and the source branch unprotected. Use the MR title
+   `New app: OpenCode Mobile`, include the checklist and reproducibility
+   explanation, and submit only `metadata/app.getopencode.fdroid.yml`.
+   F-Droid maintainers review, build, and publish it.
 
 ## Reviewer notes
 

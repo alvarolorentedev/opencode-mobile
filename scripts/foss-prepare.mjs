@@ -1,8 +1,7 @@
 #!/usr/bin/env node
 // Applies every patch that turns the vendored dependencies into a build that
 // F-Droid's inclusion policy accepts. Shared by scripts/build-android-release.mjs
-// (FOSS flavor) and the fdroiddata recipe so both produce identical inputs and
-// therefore a reproducible APK.
+// (FOSS flavor) and the fdroiddata recipe so both apply the same patches.
 //
 // Patches:
 //   1. package.json   -> exclude the native expo-iap / expo-camera modules
@@ -14,14 +13,8 @@
 // Safe to run more than once.
 
 import fs from 'node:fs';
-import os from 'node:os';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
-
-// Pinned to the same commit the fdroiddata recipe references. Bump both
-// together if expo-notifications needs a newer stub API.
-const FIREBASE_STUB_SHA = 'ce90a956aacda17a85c60577ee443aeb83d876ef';
-const FIREBASE_STUB_URL = `https://gitlab.com/freed-by-fdroid/firebase-stubs/-/archive/${FIREBASE_STUB_SHA}/firebase-stubs-${FIREBASE_STUB_SHA}.tar.gz`;
 
 function run(command, args, options = {}) {
   const result = spawnSync(command, args, { stdio: 'inherit', ...options });
@@ -58,18 +51,14 @@ function patchExpoNotifications(repoRoot) {
   );
   if (fs.existsSync(marker)) return;
 
-  // F-Droid passes its firebase-stub srclib checkout so the stub source is
-  // auditable in the build recipe; other builds fetch the same pinned commit.
   const localSrcDir = process.env.FIREBASE_STUB_SRC_DIR;
-  run('cp', ['-a', `${localSrcDir ? path.resolve(localSrcDir) : downloadStubSource()}/.`, `${path.join(androidDir, 'src')}/`]);
-}
-
-function downloadStubSource() {
-  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'firebase-stub-'));
-  const archive = path.join(tmpDir, 'stub.tar.gz');
-  run('curl', ['-fsSL', FIREBASE_STUB_URL, '-o', archive]);
-  run('tar', ['-xzf', archive, '-C', tmpDir]);
-  return path.join(tmpDir, `firebase-stubs-${FIREBASE_STUB_SHA}`, 'firebase-messaging', 'src');
+  const stubSrcDir = localSrcDir
+    ? path.resolve(localSrcDir)
+    : path.join(repoRoot, 'vendor/firebase-stubs/firebase-messaging/src');
+  if (!fs.existsSync(path.join(stubSrcDir, 'main/java/com/google/firebase/messaging/FirebaseMessaging.java'))) {
+    throw new Error('Firebase stub sources are missing. Run git submodule update --init --recursive.');
+  }
+  run('cp', ['-a', `${stubSrcDir}/.`, `${path.join(androidDir, 'src')}/`]);
 }
 
 // Replace an `AsyncFunction("name") { ... }` block with `replacement`, matching

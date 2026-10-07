@@ -17,3 +17,5 @@ Your phone connects over HTTPS to an OpenCode server that you expose through a s
 
 F-Droid build notes:
 This build is produced without proprietary Google libraries. It excludes Google Play Billing and the ML Kit barcode scanner, so the optional paid Cloud Link subscription and its QR pairing are not available. It also compiles expo-notifications against free replacement classes instead of Firebase Cloud Messaging; local task-completion notifications still work. To connect, enter your OpenCode server URL and credentials manually.
+
+Voice input uses the speech recognizer installed on your device. If on-device recognition fails, the recognizer may send audio to its provider for network recognition. You can use typed prompts without enabling voice input.
