@@ -19,8 +19,8 @@ The fdroiddata branch must contain only `metadata/app.getopencode.fdroid.yml`.
 | Reproducibility | Exception documented: upstream v1.0.52 uses JDK 17 / Expo prebuilts; F-Droid uses JDK 21 / Expo source builds. APK equivalence has not been established. The upstream signing-key restriction is omitted while Binaries is absent. Resolve shared signing before first publication if required. |
 | ABI split | FOSS APK already includes only arm64-v8a (upstream v1.0.52 asset is about 49 MB). Splitting additional ABIs cannot shrink this single-ABI native payload. |
 | Anti-features | Optional speech input uses the installed system recognizer and can retry using its network service. This behavior is disclosed; reviewers may require NonFreeNet. Self-hosted OpenCode remains usable without voice. |
-| Validation | Local static, fake-server, all 94 web E2E tests, and the FOSS preparation check passed. Updated fdroiddata schema, lint, checkupdates, rewritemeta, source and APK checks must pass at the new branch head. |
-| Reports | Fastlane's source report includes informational metadata-discovery entries. The updated pipeline report has one INFO entry confirming summary, description, changelog, icon and five screenshots; no warnings or errors. |
+| Validation | Local static, fake-server, all 94 web E2E tests, and the FOSS preparation check passed. All nine jobs in pipeline `2922519005` passed at squashed fdroiddata commit `71de30c2eb1f21afc4a2f2428a6dc25a1422addc`, including the build and APK checks. |
+| Reports | Fastlane's source report includes informational metadata-discovery entries. Final report: 37 entries (1 MAJOR, 5 MINOR, 31 INFO). The six flagged settings/permissions are explained below; metadata, ABI/size, artifact and other permission entries are informational. |
 | CI billing | If GitLab blocks CI pending phone/card details, leave the pipeline pending and ask maintainers to trigger it in the MR. |
 
 The icon and screenshots were retrieved from the author's
@@ -37,6 +37,30 @@ has not been verified. This is why Binaries and upstream signatures are absent.
 F-Droid would sign this package with its own key, preventing seamless upgrades
 between GitHub and F-Droid APKs. Shared signing must be resolved before first
 publication if that capability is required.
+
+## APK report explanations for the MR
+
+The final pipeline passes. Its Reports tab still lists Android settings and
+permissions for reviewer inspection:
+
+| Report finding | Explanation |
+| --- | --- |
+| Cleartext Traffic Permitted (MAJOR) | Intentional: users can connect to their own OpenCode server over HTTP, including LAN/VPN deployments. `app.config.ts` explicitly enables this. Use HTTPS across untrusted networks. |
+| INTERNET (MINOR) | Required for the user-configured OpenCode API and SSE connection. |
+| RECORD_AUDIO (MINOR) | Optional voice input; `lib/voice/permissions.ts` requests microphone consent at runtime. Typed chat works without granting it. |
+| READ_EXTERNAL_STORAGE / WRITE_EXTERNAL_STORAGE (2 MINOR) | Inherited from the Expo Android template, expo-file-system and expo-image. The source manifests cap these legacy declarations at Android SDK 32. App attachments use the system document picker with a copy in app cache; the app does not request broad storage permission at runtime. |
+| SYSTEM_ALERT_WINDOW (MINOR) | Inherited from Expo's generated base manifest. The app does not request overlay access or draw overlays; this declaration grants no special overlay access without the user enabling it. It is retained in the currently verified APK. |
+
+The 31 INFO entries describe the five screenshots/icon/text/changelog discovery,
+the built APK, its ARM64 ABI and 47 MB size, R8 configuration and remaining
+permissions. Notification/badge permissions come from expo-notifications,
+biometric permissions from expo-secure-store, and WRITE_SETTINGS supports the
+user-authorized conversation screen-dimming feature. These are disclosures,
+not failing checks.
+
+Dependency compiler deprecations and the CI cache messages (`.gradle` missing /
+no files to cache) are outside the Reports tab. They do not prevent the successful
+build or APK scan; the cache messages come from the shared fdroiddata CI setup.
 
 ## References
 
