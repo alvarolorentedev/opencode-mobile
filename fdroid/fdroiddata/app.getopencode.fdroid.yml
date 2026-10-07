@@ -3,6 +3,7 @@ Categories:
   - Internet
 License: Apache-2.0
 AuthorName: Alvaro Lorente
+AuthorEmail: contact@alvarolorente.dev
 AuthorWebSite: https://getopencode.app/
 WebSite: https://getopencode.app/
 SourceCode: https://github.com/alvarolorentedev/opencode-mobile
@@ -18,7 +19,8 @@ Repo: https://github.com/alvarolorentedev/opencode-mobile
 Builds:
   - versionName: 1.0.52
     versionCode: 52
-    commit: 2115b576b1eb9453c22e08f9482a45750757cb8d
+    commit: 029ea4aef4c69e56b8b8cd315fa9bba44592580d
+    submodules: true
     sudo:
       - apt-get update
       - apt-get install -y npm curl
@@ -27,10 +29,8 @@ Builds:
       - rm -rf node_modules/expo-dev-client node_modules/expo-dev-launcher node_modules/expo-dev-menu
         node_modules/expo-dev-menu-interface
     output: android/app/build/outputs/apk/release/*.apk
-    srclibs:
-      - firebase-stub@ce90a956aacda17a85c60577ee443aeb83d876ef
     prebuild:
-      - FIREBASE_STUB_SRC_DIR=$$firebase-stub$$/firebase-messaging/src node scripts/foss-prepare.mjs
+      - node scripts/foss-prepare.mjs
       - npm pkg set 'expo.autolinking.android.buildFromSource[0]=.*'
       - find node_modules -type f \( -name "*.gradle" -o -name "*.gradle.kts" -o -name
         "*.kt" \) -exec sed -i -e 's/JavaVersion.VERSION_17/JavaVersion.VERSION_21/g'
@@ -54,31 +54,37 @@ Builds:
       - gradle assembleRelease -PreactNativeArchitectures=arm64-v8a
     ndk: 27.1.12297006
 
-AllowedAPKSigningKeys: d5a75b79abebf37d3011c66b681c7b903d99230f9d7f79eddb71ef30fffc3cc5
-
 MaintainerNotes: |-
   Builds the de-Googled FOSS flavor only (package app.getopencode.fdroid). The
   Play/iOS flavor (app.getopencode) is not built here. There is no committed
   android/ directory, so the recipe must not use subdir; prebuild generates it
   and the build runs gradle manually. scripts/foss-prepare.mjs excludes Play
   Billing (expo-iap) and ML Kit barcode scanning (expo-camera) from autolinking,
-  swaps firebase-messaging in expo-notifications for the firebase-stub srclib,
+  swaps firebase-messaging in expo-notifications for the pinned
+  vendor/firebase-stubs git submodule,
   and removes expo-application's install-referrer dependency. The dev-client
   modules are removed because they are development-only and reference Gradle
   projects that are not autolinked for release. Expo modules are forced to
   build from source via expo.autolinking.android.buildFromSource, and the
-  local-maven-repo prebuilts stay scanignored so the scan is quiet. The JVM
+  unused Expo local-maven-repo prebuilts are deleted with node_modules after
+  the scan; they are not used by the source build. The JVM
   toolchain is raised to 21 because the F-Droid buildserver ships only
   OpenJDK 21. The scanner also deletes an entire Gradle build file when it
   encounters an unrecognized Maven URL; these four React Native modules use
   local React Native Maven paths, so their exact build.gradle files are
   scanignored to preserve autolinking variants.
-  Reproducible builds are not yet set up (no Binaries); revisit once upstream
-  builds with the same JDK 21 toolchain. Voice input uses the device's system
+  Reproducible builds are not enabled: upstream v1.0.52 uses JDK 17 and Expo
+  prebuilts, while this recipe uses JDK 21 and builds Expo modules from source.
+  Byte-identical APKs have not been verified. Without Binaries or upstream
+  signatures, F-Droid signs with its own key; GitHub APKs cannot update those
+  installations. Resolve reproducibility before the first F-Droid publication
+  if sharing the upstream signature is required. This build includes only
+  arm64-v8a, so additional ABI splits would not reduce the native ABI payload.
+  Voice input uses the device's system
   speech recognizer, which some reviewers may consider a non-free network
   service; if so, add NonFreeNet under AntiFeatures rather than dropping voice.
-  If expo-notifications' stub API changes, update the firebase-stub commit here
-  and FIREBASE_STUB_SHA in scripts/foss-prepare.mjs together.
+  If expo-notifications' stub API changes, update the upstream firebase-stubs
+  submodule pin and the source commit in this recipe together.
 
 AutoUpdateMode: Version
 UpdateCheckMode: Tags ^v[0-9.]+$
