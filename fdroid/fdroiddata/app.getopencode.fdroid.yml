@@ -14,8 +14,6 @@ AutoName: OpenCode Mobile
 
 RepoType: git
 Repo: https://github.com/alvarolorentedev/opencode-mobile
-Binaries: 
-  https://github.com/alvarolorentedev/opencode-mobile/releases/download/v%v/opencode-mobile-fdroid.apk
 
 Builds:
   - versionName: 1.0.52
@@ -24,16 +22,22 @@ Builds:
     sudo:
       - apt-get update
       - apt-get install -y npm curl
-    init: npm ci
+    init:
+      - npm ci
+      - rm -rf node_modules/expo-dev-client node_modules/expo-dev-launcher node_modules/expo-dev-menu
+        node_modules/expo-dev-menu-interface
     output: android/app/build/outputs/apk/release/*.apk
     srclibs:
       - firebase-stub@ce90a956aacda17a85c60577ee443aeb83d876ef
     prebuild:
       - FIREBASE_STUB_SRC_DIR=$$firebase-stub$$/firebase-messaging/src node scripts/foss-prepare.mjs
+      - npm pkg set 'expo.autolinking.android.buildFromSource[0]=.*'
+      - find node_modules -type f \( -name "*.gradle" -o -name "*.gradle.kts" -o -name
+        "*.kt" \) -exec sed -i -e 's/JavaVersion.VERSION_17/JavaVersion.VERSION_21/g'
+        -e 's/jvmToolchain(17)/jvmToolchain(21)/g' -e 's/JvmTarget.fromTarget("17")/JvmTarget.fromTarget("21")/g'
+        {} +
       - env CI=1 EXPO_APP_VARIANT=foss EXPO_PUBLIC_FOSS=1 npx expo prebuild -p android
         --clean
-      - sed -i '/jvmToolchain\|JavaVersion/s/17/21/' node_modules/@react-native/gradle-plugin/*/build.gradle.kts
-        node_modules/@react-native/gradle-plugin/react-native-gradle-plugin/src/main/kotlin/com/facebook/react/utils/JdkConfiguratorUtils.kt
     scanignore:
       - node_modules/*/local-maven-repo
       - node_modules/@*/*/local-maven-repo
@@ -55,13 +59,19 @@ MaintainerNotes: |-
   and the build runs gradle manually. scripts/foss-prepare.mjs excludes Play
   Billing (expo-iap) and ML Kit barcode scanning (expo-camera) from autolinking,
   swaps firebase-messaging in expo-notifications for the firebase-stub srclib,
-  and removes expo-application's install-referrer dependency. Voice input uses
-  the device's system speech recognizer, which some reviewers may consider a
-  non-free network service; if so, add NonFreeNet under AntiFeatures rather than
-  dropping voice. Upstream publishes the matching opencode-mobile-fdroid.apk on
-  GitHub releases for reproducible verification (Binaries above). If
-  expo-notifications' stub API changes, update the firebase-stub commit here and
-  FIREBASE_STUB_SHA in scripts/foss-prepare.mjs together.
+  and removes expo-application's install-referrer dependency. The dev-client
+  modules are removed because they are development-only and reference Gradle
+  projects that are not autolinked for release. Expo modules are forced to
+  build from source via expo.autolinking.android.buildFromSource, and the
+  local-maven-repo prebuilts stay scanignored so the scan is quiet. The JVM
+  toolchain is raised to 21 because the F-Droid buildserver ships only
+  OpenJDK 21.
+  Reproducible builds are not yet set up (no Binaries); revisit once upstream
+  builds with the same JDK 21 toolchain. Voice input uses the device's system
+  speech recognizer, which some reviewers may consider a non-free network
+  service; if so, add NonFreeNet under AntiFeatures rather than dropping voice.
+  If expo-notifications' stub API changes, update the firebase-stub commit here
+  and FIREBASE_STUB_SHA in scripts/foss-prepare.mjs together.
 
 AutoUpdateMode: Version
 UpdateCheckMode: Tags ^v[0-9.]+$
