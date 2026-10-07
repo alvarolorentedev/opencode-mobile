@@ -1,0 +1,3 @@
+[submodule "vendor/firebase-stubs"]
+	path = vendor/firebase-stubs
+	url = https://gitlab.com/freed-by-fdroid/firebase-stubs.git
