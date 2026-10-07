@@ -42,6 +42,10 @@ Builds:
       - node_modules/*/local-maven-repo
       - node_modules/@*/*/local-maven-repo
       - node_modules/hermes-compiler/hermesc/linux64-bin/hermesc
+      - node_modules/@react-native-async-storage/async-storage/android/build.gradle
+      - node_modules/@react-native-masked-view/masked-view/android/build.gradle
+      - node_modules/react-native-safe-area-context/android/build.gradle
+      - node_modules/react-native-screens/android/build.gradle
     scandelete:
       - node_modules
     build:
@@ -65,7 +69,10 @@ MaintainerNotes: |-
   build from source via expo.autolinking.android.buildFromSource, and the
   local-maven-repo prebuilts stay scanignored so the scan is quiet. The JVM
   toolchain is raised to 21 because the F-Droid buildserver ships only
-  OpenJDK 21.
+  OpenJDK 21. The scanner also deletes an entire Gradle build file when it
+  encounters an unrecognized Maven URL; these four React Native modules use
+  local React Native Maven paths, so their exact build.gradle files are
+  scanignored to preserve autolinking variants.
   Reproducible builds are not yet set up (no Binaries); revisit once upstream
   builds with the same JDK 21 toolchain. Voice input uses the device's system
   speech recognizer, which some reviewers may consider a non-free network
