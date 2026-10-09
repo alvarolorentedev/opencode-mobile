@@ -73,7 +73,7 @@ trusted environment, and sandbox configuration. See
 [F-Droid and FOSS builds](fdroid.md) for the FOSS variant's scope and distribution.
 
 **Release Automation**:
-- Every CI run (push to `main`, tags, manual dispatch) builds the Android release and uploads it as the `android-release-artifacts` artifact
+- Every CI run (push to `main`, tags, manual dispatch) builds the Android release and uploads APKs as the `android-release-artifacts` artifact; `v*` tag runs also include the release AAB, available even if the later Play Store upload fails
 - The GitHub Release asset and production Play Store upload happen only on `v*` tags
 - Release ABIs are trimmed per ref: `v*` tags build `armeabi-v7a,arm64-v8a`; other builds build `arm64-v8a` only. Override locally with `ANDROID_RELEASE_ABIS`. See [Android Build / Release Notes](integrations-and-operations.md#release-abis-and-gradle-memory)
 

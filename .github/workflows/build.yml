@@ -154,7 +154,9 @@ jobs:
         with:
           name: android-release-artifacts
           retention-days: 3
-          path: android/app/build/outputs/**/*.apk
+          path: |
+            android/app/build/outputs/**/*.apk
+            ${{ startsWith(github.ref, 'refs/tags/v') && 'android/app/build/outputs/bundle/release/app-release.aab' || '' }}
 
       - name: Rename APK for release
         if: startsWith(github.ref, 'refs/tags/v')
