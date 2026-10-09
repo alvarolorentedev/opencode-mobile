@@ -63,7 +63,7 @@ export const defaultChatPreferences: ChatPreferences = {
   preferOnDeviceRecognition: true,
   resumeListeningAfterReply: true,
   speechRate: 1,
-  workingSoundEnabled: true,
+  workingSoundEnabled: false,
   workingSoundVariant: 'soft',
   workingSoundVolume: 0.18,
   responseScope: 'brief',
