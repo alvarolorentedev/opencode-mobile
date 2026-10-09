@@ -34,6 +34,34 @@ function notFound(res) {
   sendJson(res, 404, { error: 'Not found' });
 }
 
+// Optional HTTP Basic auth for public/shared deployments. Disabled unless
+// FAKE_OPENCODE_BASIC_AUTH is set (format "user:password"; a value without a
+// colon treats the whole value as the password for the default "opencode"
+// user), so the test suites and local E2E runs stay unauthenticated.
+const basicAuthCredential = (process.env.FAKE_OPENCODE_BASIC_AUTH || '').trim();
+const basicAuthHeader = (() => {
+  if (!basicAuthCredential) return undefined;
+  const separator = basicAuthCredential.indexOf(':');
+  const username = separator === -1 ? 'opencode' : basicAuthCredential.slice(0, separator);
+  const password = separator === -1 ? basicAuthCredential : basicAuthCredential.slice(separator + 1);
+  return `Basic ${Buffer.from(`${username}:${password}`).toString('base64')}`;
+})();
+
+function isAuthorized(req) {
+  return basicAuthHeader === undefined || req.headers.authorization === basicAuthHeader;
+}
+
+function unauthorized(res) {
+  res.writeHead(401, {
+    'Content-Type': 'application/json',
+    'WWW-Authenticate': 'Basic realm="fake-opencode"',
+    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Headers': 'Content-Type, Authorization, x-opencode-ticket',
+    'Access-Control-Allow-Methods': 'GET, POST, PUT, PATCH, DELETE, OPTIONS',
+  });
+  res.end(JSON.stringify({ error: 'Unauthorized' }));
+}
+
 function location() {
   return { directory: state.project.worktree };
 }
@@ -321,6 +349,11 @@ const server = http.createServer(async (req, res) => {
         'Access-Control-Allow-Methods': 'GET, POST, PUT, PATCH, DELETE, OPTIONS',
       });
       res.end();
+      return;
+    }
+
+    if (!isAuthorized(req)) {
+      unauthorized(res);
       return;
     }
 
@@ -954,6 +987,11 @@ const server = http.createServer(async (req, res) => {
 
 const ptyWebSockets = new WebSocketServer({ noServer: true });
 server.on('upgrade', (req, socket, head) => {
+  if (!isAuthorized(req)) {
+    socket.write('HTTP/1.1 401 Unauthorized\r\nWWW-Authenticate: Basic realm="fake-opencode"\r\n\r\n');
+    socket.destroy();
+    return;
+  }
   const requestUrl = new URL(req.url || '/', `http://${req.headers.host || `127.0.0.1:${port}`}`);
   const match = requestUrl.pathname.match(/^\/api\/pty\/([^/]+)\/connect$/);
   const ptyId = match?.[1] ? decodeURIComponent(match[1]) : undefined;
@@ -970,7 +1008,7 @@ server.on('upgrade', (req, socket, head) => {
 ptyWebSockets.on('connection', (socket, request) => terminalFixture.connect(socket, request));
 
 server.listen(port, '127.0.0.1', () => {
-  console.log(`Fake OpenCode V2 server listening on http://127.0.0.1:${port} (${scenarioName})`);
+  console.log(`Fake OpenCode V2 server listening on http://127.0.0.1:${port} (${scenarioName})${basicAuthHeader ? ' [basic auth]' : ''}`);
 });
 
 for (const signal of ['SIGINT', 'SIGTERM']) {

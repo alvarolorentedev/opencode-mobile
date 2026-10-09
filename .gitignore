@@ -63,6 +63,9 @@ credentials.json
 .env.*
 # Allow explicitly committed safe env file
 #.env.commit
+
+# Fake OpenCode deployment credentials (systemd EnvironmentFile)
+fake-opencode.env
  
 # Local config (may contain tokens/secrets)
 config.json
