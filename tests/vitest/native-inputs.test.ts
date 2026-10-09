@@ -43,6 +43,7 @@ const { OverlaySheet } = await loadTs('components/ui/overlay-sheet.tsx', {
   'react-i18next': { useTranslation: () => ({ t: (key: string) => key }) },
   'react-native-safe-area-context': { useSafeAreaInsets: () => ({ top: 62, bottom: 34 }) },
   '@/constants/theme': { Colors: { dark: {} } },
+  '@/hooks/use-update-blocker': { useUpdateBlocker: () => {} },
   '@/hooks/use-color-scheme': { useColorScheme: () => 'dark' },
   '@/hooks/use-dismiss-on-back': { useDismissOnBack: () => {} },
 });

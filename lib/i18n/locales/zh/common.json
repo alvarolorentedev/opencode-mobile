@@ -45,5 +45,14 @@
     "none": "无",
     "notSet": "未设置",
     "systemDefault": "系统默认"
+  },
+  "updates": {
+    "available": "有可用更新。",
+    "ready": "更新已下载。点击更新以安装并重启应用。",
+    "update": "更新",
+    "later": "稍后",
+    "failed": "无法更新。请稍后重试。",
+    "opening": "正在打开更新…",
+    "installing": "正在安装更新…"
   }
 }

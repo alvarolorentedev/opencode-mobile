@@ -203,6 +203,12 @@ const config: ExpoConfig = {
     e2eMode: isE2EMode,
     e2eServerUrl,
     foss: isFossVariant,
+    updates: {
+      enabled: !isDevelopmentVariant && !isFossVariant && !isE2EMode,
+      testing: isDevelopmentVariant && isE2EMode,
+      appStoreId: env('EXPO_IOS_APP_STORE_ID'),
+      appStoreCountry: env('EXPO_IOS_APP_STORE_COUNTRY'),
+    },
     connectPilot: {
       testing: isDevelopmentVariant && isE2EMode,
     },

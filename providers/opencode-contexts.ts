@@ -15,6 +15,7 @@ import type {
   SessionLibraryContextValue,
   TerminalContextValue,
   WorkspaceFilesContextValue,
+  UpdatesContextValue,
 } from '@/providers/opencode-provider-types';
 
 // Domain-scoped contexts for the single OpencodeProvider. Splitting the old
@@ -35,6 +36,7 @@ export const ApprovalsContext = createContext<ApprovalsContextValue | null>(null
 export const ConversationContext = createContext<ConversationContextValue | null>(null);
 export const TerminalContext = createContext<TerminalContextValue | null>(null);
 export const McpContext = createContext<McpContextValue | null>(null);
+export const UpdatesContext = createContext<UpdatesContextValue | null>(null);
 
 function useDomainValue<T>(context: Context<T | null>, name: string): T {
   const value = useContext(context);
@@ -58,3 +60,4 @@ export const useApprovals = () => useDomainValue(ApprovalsContext, 'useApprovals
 export const useConversation = () => useDomainValue(ConversationContext, 'useConversation');
 export const useTerminal = () => useDomainValue(TerminalContext, 'useTerminal');
 export const useMcp = () => useDomainValue(McpContext, 'useMcp');
+export const useUpdates = () => useDomainValue(UpdatesContext, 'useUpdates');

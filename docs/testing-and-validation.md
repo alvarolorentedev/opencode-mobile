@@ -728,3 +728,25 @@ build stopped because no Android SDK location was configured. Native keyboard,
 Back, safe areas, large text, screen-reader behavior and real-server acceptance
 remain to be checked; explicit human validation of the changed test contracts is
 still required.
+
+## App update validation
+
+`tests/vitest/app-updates.test.ts` covers cooldown, store identity, numeric versions,
+TestFlight suppression, blockers, cancellation, failure, timeouts and recovery.
+`tests/e2e/app-updates.spec.mjs` exercises the banner across tabs, drafts and sheets,
+persisted Later and the separate download/install actions using an explicit
+development fixture. No fake server protocol is changed. Real Play/App Store and
+accessibility acceptance remains required; see [app updates](app-updates.md).
+E2E changes require explicit human validation under AGENTS.md.
+
+Implementation verification on 2026-10-09: static CI, fake-server self-tests, all
+112 web E2E flows, FOSS preparation, and actual Expo Android autolinking inclusion/
+exclusion checks passed. The unsigned iOS device Release build passed, including
+the production AppTransaction branch. The Android module compiled separately with
+Kotlin 2.1.20 against Expo/RN and official Play 2.1.0 APIs; the full development
+build stopped before app compilation because this host has no Android SDK.
+Android APK/R8/FOSS artifact builds, real store/device acceptance and explicit
+human validation of the added E2E contract remain outstanding. The missing iOS
+App Store ID remains a configuration prerequisite. No version was increased.
+The final 390×844 dark-layout update flows also passed, including 44-point banner
+action targets and cross-tab draft protection.

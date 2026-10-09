@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Alert, Keyboard, Platform } from 'react-native';
 
+import { useUpdateBlocker } from '@/hooks/use-update-blocker';
 import { type TranscriptEntry } from '@/lib/opencode/format';
 import { getTranscriptActivityLabel, getUserTurnForMessage, isTranscriptDisplayMessage } from '@/lib/opencode/transcript';
 import { getLatestContextTokens } from '@/lib/opencode/usage';
@@ -21,10 +22,12 @@ import {
   usePreferences,
   useProjects,
   useSessionLibrary,
+  useUpdates,
 } from '@/providers/opencode-contexts';
 
 export function useChatViewController() {
   const { t } = useTranslation();
+  const { block } = useUpdates();
   const { activeProject } = useProjects();
   const { activeSession, createSession, currentSessionId, ensureActiveSession, openSession } = useCurrentSession();
   const { forkSession, revertSession, sessionStatuses, sessions, unrevertSession } = useSessionLibrary();
@@ -202,6 +205,8 @@ export function useChatViewController() {
     start: startSpeechInput,
     stop: stopSpeechInput,
   } = speechInput;
+  useUpdateBlocker(Boolean(draft || attachments.length || isSpeechInputListening || speakingMessageId ||
+    copiedMessageId || sendFeedback || voiceFeedback || isCreatingSession || isStoppingSession || isUpdatingAutoApprove));
   // Only offer a recovery action when the snackbar is actually showing a
   // voice-input error, not unrelated conversation or playback feedback.
   // Dictation failures live in this component's own hook; conversation
@@ -361,7 +366,9 @@ export function useChatViewController() {
     }
 
     speechDraftPrefixRef.current = draft.trim() ? `${draft.trim()} ` : '';
-    const started = await startSpeechInput();
+    const release = block();
+    let started: boolean;
+    try { started = await startSpeechInput(); } finally { release(); }
     if (!started) {
       return;
     }

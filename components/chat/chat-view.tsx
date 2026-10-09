@@ -4,6 +4,7 @@ import { Alert, Keyboard, KeyboardAvoidingView, Linking, Platform, Pressable, Vi
 import { Button, Card, FAB, Snackbar, Text } from 'react-native-paper';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { useUpdates } from '@/providers/opencode-contexts';
 import { ChatComposer } from '@/components/chat/chat-composer';
 import { PendingPrompts } from '@/components/chat/pending-prompts';
 import { ChatContent } from '@/components/chat/chat-content';
@@ -17,6 +18,7 @@ import { normalizeTranscriptFontSize } from '@/providers/opencode-preferences';
 
 export function ChatView() {
   const { t } = useTranslation();
+  const { block } = useUpdates();
   const colorScheme = useColorScheme() ?? 'light';
   const palette = Colors[colorScheme];
   const insets = useSafeAreaInsets();
@@ -132,10 +134,11 @@ export function ChatView() {
               }
               return;
             }
+            const release = block();
             Alert.alert(t('chat:view.revertTitle'), t('chat:view.revertMessage'), [
-              { text: t('common:actions.cancel'), style: 'cancel' },
-              { text: t('chat:view.revert'), style: 'destructive', onPress: () => void revertSession(currentSessionId, messageId).catch((error) => setSendFeedback(error instanceof Error ? error.message : t('chat:view.couldNotRevert'))) },
-            ]);
+              { text: t('common:actions.cancel'), style: 'cancel', onPress: release },
+              { text: t('chat:view.revert'), style: 'destructive', onPress: () => void revertSession(currentSessionId, messageId).catch((error) => setSendFeedback(error instanceof Error ? error.message : t('chat:view.couldNotRevert'))).finally(release) },
+            ], { cancelable: true, onDismiss: release });
           }}
           onUnrevert={() => currentSessionId ? void unrevertSession(currentSessionId).catch((error) => setSendFeedback(error instanceof Error ? error.message : t('chat:view.couldNotRestore'))) : undefined}
           onReviewChanges={handleReviewChanges}

@@ -105,6 +105,8 @@ jobs:
     env:
       EXPO_APP_VARIANT: production
       IOS_BUNDLE_IDENTIFIER: app.getopencode.mobile
+      EXPO_IOS_APP_STORE_ID: ${{ vars.EXPO_IOS_APP_STORE_ID }}
+      EXPO_IOS_APP_STORE_COUNTRY: ${{ vars.EXPO_IOS_APP_STORE_COUNTRY }}
 
     steps:
       - name: Checkout repository

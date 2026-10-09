@@ -29,7 +29,7 @@ function patchAutolinking(repoRoot) {
   pkg.expo = { ...(pkg.expo ?? {}) };
   pkg.expo.autolinking = { ...(pkg.expo.autolinking ?? {}) };
   pkg.expo.autolinking.exclude = [
-    ...new Set([...(pkg.expo.autolinking.exclude ?? []), 'expo-iap', 'expo-camera']),
+    ...new Set([...(pkg.expo.autolinking.exclude ?? []), 'expo-iap', 'expo-camera', 'opencode-updates']),
   ];
   fs.writeFileSync(packageJsonPath, `${JSON.stringify(pkg, null, 2)}\n`);
 }

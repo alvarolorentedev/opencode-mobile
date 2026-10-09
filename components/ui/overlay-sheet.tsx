@@ -4,6 +4,7 @@ import { KeyboardAvoidingView, Pressable, ScrollView, StyleSheet, useWindowDimen
 import { Icon, Portal, Text } from 'react-native-paper';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { useUpdateBlocker } from '@/hooks/use-update-blocker';
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useDismissOnBack } from '@/hooks/use-dismiss-on-back';
@@ -20,6 +21,7 @@ export function OverlaySheet({ visible, title, onClose, children, headerAction, 
   compact?: boolean;
 }) {
   const insets = useSafeAreaInsets();
+  useUpdateBlocker(visible);
   const { height } = useWindowDimensions();
   const { t } = useTranslation();
   const palette = Colors[useColorScheme() ?? 'light'];

@@ -6,6 +6,7 @@ import { KeyboardAvoidingView, Linking, Modal, Pressable, ScrollView, StyleSheet
 import { ActivityIndicator, Appbar, Button, Chip, HelperText, Switch, Text } from 'react-native-paper';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { useUpdateBlocker } from '@/hooks/use-update-blocker';
 import { NativeSelect } from '@/components/ui/native-select';
 import { TextInput } from '@/components/ui/text-input';
 
@@ -216,6 +217,7 @@ export function ProviderConfigDialog({
   visiblePrompts,
 }: ProviderConfigDialogProps) {
   const insets = useSafeAreaInsets();
+  useUpdateBlocker(true);
   const { t } = useTranslation();
   const isOAuth = selectedMethod?.type === 'oauth';
   const pairingCode = oauthStage === 'pending' ? extractPairingCode(oauthInstructions) : undefined;

@@ -724,3 +724,11 @@ OpenCode 2 hides reset/startup commands and maps directory-only inventory to nam
 The browser groups state and actions under one context member, keeping the public
 context below the 135-member ceiling. Screens and components call provider actions;
 services and protocol modules own requests and response normalization.
+
+## App update state
+
+`useAppUpdates` holds the native snapshot and interaction gates in the provider.
+Only discovery time and the version/stage dismissal are persisted under
+`opencode-mobile.app-updates`. Drafts and form contents remain local; blocker
+tokens report presence only. Downloaded state is recovered from Play and never
+triggers installation automatically. See [app updates](app-updates.md).

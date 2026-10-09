@@ -24,6 +24,7 @@ async function form(platform = 'web', onSubmit = vi.fn(), foss = false) {
     '@/components/settings/connect-scanner': { ConnectScanner: 'Scanner' },
     '@/components/ui/text-input': { TextInput: 'Input' },
     '@/constants/theme': { Colors: { light: {} } },
+    '@/hooks/use-update-blocker': { useUpdateBlocker: () => {} },
     '@/hooks/use-color-scheme': { useColorScheme: () => 'light' },
     '@/lib/opencode/client': { isValidServerUrl: () => true },
     '@/lib/opencode/client/url': { getServerHostname: () => '192.168.1.10' },

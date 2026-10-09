@@ -4,6 +4,7 @@ import { KeyboardAvoidingView, Modal, ScrollView, View } from 'react-native';
 import { Appbar, Button, Text } from 'react-native-paper';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { useUpdateBlocker } from '@/hooks/use-update-blocker';
 import { TextInput } from '@/components/ui/text-input';
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
@@ -21,6 +22,7 @@ export function FilePreview({ file, workspacePath, branch, canSave, slim, onClos
 }) {
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
+  useUpdateBlocker(true);
   const palette = Colors[useColorScheme() ?? 'light'];
   const [draft, setDraft] = useState<{ original: string; value: string }>();
   const [saving, setSaving] = useState(false);

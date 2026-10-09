@@ -85,7 +85,7 @@ If this app were reimplemented, this provider would be the main source of truth 
 Its public contract is split into domain contexts (`providers/opencode-contexts.ts`
 + the `*ContextValue` types): onboarding, connection, diagnostics, capabilities,
 preferences, projects, workspace files, current session, session library, chat,
-approvals, conversation, terminal, and MCP. The provider still
+approvals, conversation, terminal, MCP, and app updates. The provider still
 owns all the state and actions; each domain value is memoized and rendered as its
 own context, so a consumer only re-renders when the domain it reads changes and
 each screen declares its real dependencies instead of pulling from one
@@ -753,3 +753,11 @@ OpenCode 2 hides reset/startup commands and maps directory-only inventory to nam
 The browser groups state and actions under one context member, keeping the public
 context below the 135-member ceiling. Screens and components call provider actions;
 services and protocol modules own requests and response normalization.
+
+## App update integration
+
+The existing provider owns `useAppUpdates` and its `useUpdates()` domain hook.
+The root shell renders the notice; local UI registers busy presence through
+`useUpdateBlocker`, retaining its own contents. `lib/app-updates.ts` wraps the local
+Expo module and iOS lookup. See [app updates](app-updates.md) for install consent,
+safety gates and FOSS exclusion.

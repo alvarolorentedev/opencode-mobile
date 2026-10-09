@@ -1,8 +1,8 @@
 import Constants from 'expo-constants';
-import { DarkTheme, DefaultTheme, Stack, ThemeProvider } from 'expo-router';
+import { DarkTheme, DefaultTheme, Stack, ThemeProvider, usePathname } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
-import { useEffect } from 'react';
+import { useEffect, useLayoutEffect } from 'react';
 import { ActivityIndicator, Platform, StyleSheet, View } from 'react-native';
 import { PaperProvider } from 'react-native-paper';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
@@ -13,7 +13,8 @@ import { useColorScheme } from '@/hooks/use-color-scheme';
 import { installGlobalErrorHandler } from '@/lib/error-reporting';
 import '@/lib/i18n';
 import { isConnectEnabled } from '@/lib/connect';
-import { useOnboarding } from '@/providers/opencode-contexts';
+import { useOnboarding, useUpdates } from '@/providers/opencode-contexts';
+import { UpdateNotice } from '@/components/ui/update-notice';
 import { OpencodeProvider } from '@/providers/opencode-provider';
 
 export const unstable_settings = {
@@ -53,12 +54,25 @@ export default function RootLayout() {
         <PaperProvider theme={paperTheme}>
           <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
             <RootNavigator />
+            <UpdateHost />
             <StatusBar style="auto" />
           </ThemeProvider>
         </PaperProvider>
       </OpencodeProvider>
     </SafeAreaProvider>
   );
+}
+
+function UpdateHost() {
+  const pathname = usePathname();
+  const updates = useUpdates();
+  const { setSurfaceActive } = updates;
+  const eligible = ['/', '/workspace', '/settings'].includes(pathname);
+  useLayoutEffect(() => {
+    setSurfaceActive(eligible);
+    return () => setSurfaceActive(false);
+  }, [eligible, setSurfaceActive]);
+  return <UpdateNotice {...updates} onUpdate={() => { void updates.update(); }} onLater={updates.later} onDismissError={updates.clearError} />;
 }
 
 // The onboarding decision depends on persisted state, so routing waits for

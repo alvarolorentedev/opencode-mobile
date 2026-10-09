@@ -45,5 +45,14 @@
     "none": "Aucun",
     "notSet": "non défini",
     "systemDefault": "Valeur par défaut du système"
+  },
+  "updates": {
+    "available": "Une mise à jour est disponible.",
+    "ready": "Mise à jour téléchargée. Appuyez sur Mettre à jour pour l’installer et redémarrer l’application.",
+    "update": "Mettre à jour",
+    "later": "Plus tard",
+    "failed": "Impossible de mettre à jour. Réessayez plus tard.",
+    "opening": "Ouverture de la mise à jour…",
+    "installing": "Installation de la mise à jour…"
   }
 }

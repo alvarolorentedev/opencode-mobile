@@ -1,0 +1,16 @@
+plugins {
+  id 'com.android.library'
+  id 'expo-module-gradle-plugin'
+}
+
+group = 'app.getopencode.updates'
+version = '1.0.0'
+
+android {
+  namespace 'app.getopencode.updates'
+}
+
+dependencies {
+  implementation 'com.facebook.react:react-android'
+  implementation 'com.google.android.play:app-update:2.1.0'
+}

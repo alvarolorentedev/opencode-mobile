@@ -5,6 +5,7 @@ import { Keyboard, KeyboardAvoidingView, Modal, Platform, ScrollView, StyleSheet
 import { Appbar, Button, HelperText, Text, TextInput as PaperInput } from 'react-native-paper';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { useUpdateBlocker } from '@/hooks/use-update-blocker';
 import { ConnectCameraGate } from '@/components/settings/connect-camera-gate';
 import { ConnectScanner } from '@/components/settings/connect-scanner';
 import { TextInput } from '@/components/ui/text-input';
@@ -33,6 +34,7 @@ export function ConnectionProfileDialog({ title, submitLabel, showName = true, i
   onBusyChange?: (busy: boolean) => void;
 }) {
   const insets = useSafeAreaInsets();
+  useUpdateBlocker(true);
   const { t } = useTranslation();
   const { connectionProfiles } = useConnection();
   const palette = Colors[useColorScheme() ?? 'light'];

@@ -45,5 +45,14 @@
     "none": "Ninguno",
     "notSet": "sin definir",
     "systemDefault": "Predeterminado del sistema"
+  },
+  "updates": {
+    "available": "Hay una actualización disponible.",
+    "ready": "Actualización descargada. Pulsa Actualizar para instalarla y reiniciar la app.",
+    "update": "Actualizar",
+    "later": "Más tarde",
+    "failed": "No se pudo actualizar. Inténtalo más tarde.",
+    "opening": "Abriendo la actualización…",
+    "installing": "Instalando actualización…"
   }
 }

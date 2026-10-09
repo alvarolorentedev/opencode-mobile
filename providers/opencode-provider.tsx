@@ -19,6 +19,7 @@ import {
   SessionLibraryContext,
   TerminalContext,
   WorkspaceFilesContext,
+  UpdatesContext,
 } from '@/providers/opencode-contexts';
 import {
   CURRENT_ONBOARDING_VERSION,
@@ -44,6 +45,7 @@ import { usePromptInbox } from '@/providers/use-prompt-inbox';
 import { usePromptLifecycle } from '@/providers/use-prompt-lifecycle';
 import { useConnectionActions } from '@/providers/use-connection-actions';
 import { useOpencodeProviderValues } from '@/providers/opencode-provider-values';
+import { useAppUpdates } from '@/providers/use-app-updates';
 
 export type {
   AgentOption,
@@ -415,6 +417,20 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
     eventStreamStatus,
   });
 
+  const updates = useAppUpdates({
+    initialized: isHydrated && onboardingCompleted && !state.onboardingActive,
+    blocked: prompt.sendingState.active || conversationPhase !== 'off' || values.chatValue.isBootstrappingChat ||
+      state.connection.status === 'connecting' || Boolean(state.mcpAuthPrompt) ||
+      Object.values(state.sessionStatuses).some((status) => status.type !== 'idle') ||
+      activeSessionsHook.activeSessions.some((session) => session.status.type !== 'idle') ||
+      Object.values(state.pendingPermissionsBySession).some((items) => items.length > 0) ||
+      Object.values(state.pendingQuestionsBySession).some((items) => items.length > 0) ||
+      Object.values(inbox.pendingPromptsBySession).some((items) => items.length > 0) ||
+      (values.connectionValue.connectSetup.enabled && (values.connectionValue.connectSetup.busy ||
+        values.connectionValue.connectSetup.initialization === 'loading' ||
+        !['idle', 'paired'].includes(values.connectionValue.connectSetup.phase))),
+  });
+
   return (
     <OnboardingContext.Provider value={values.onboardingValue}>
       <ConnectionContext.Provider value={values.connectionValue}>
@@ -429,7 +445,9 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
                         <ApprovalsContext.Provider value={values.approvalsValue}>
                           <ConversationContext.Provider value={values.conversationValue}>
                             <TerminalContext.Provider value={values.terminalValue}>
-                              <McpContext.Provider value={values.mcpValue}>{children}</McpContext.Provider>
+                              <McpContext.Provider value={values.mcpValue}>
+                                <UpdatesContext.Provider value={updates}>{children}</UpdatesContext.Provider>
+                              </McpContext.Provider>
                             </TerminalContext.Provider>
                           </ConversationContext.Provider>
                         </ApprovalsContext.Provider>

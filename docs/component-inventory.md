@@ -949,3 +949,12 @@ screen-reader mode is enabled. Native screen-reader/input validation remains req
 These surfaces reuse the existing palette, theme, slim preference, inputs and
 picker overlay. Workspace retains its tab label and route. Chat uses the same
 picker and provider selection action; Terminal follows that directory.
+
+## App update notice
+
+- `components/ui/update-notice.tsx`: themed, translated banner, failure snackbar
+  and interaction gate; all actions come from the provider.
+- `hooks/use-update-blocker.ts`: registers open/busy local surfaces with the
+  existing provider without sharing their content.
+- `modules/opencode-updates`: local Expo Android Play update module and iOS
+  verified-installation helper. See [app updates](app-updates.md).

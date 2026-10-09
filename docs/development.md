@@ -102,3 +102,10 @@ npm run build:ios:local
 Connection settings are configured inside the app. By default, the app expects an OpenCode server at `http://127.0.0.1:4096`.
 
 Local configuration files (`.env`, `config.json`) are gitignored for security.
+
+### Store update configuration
+
+Android Play updates use the local Expo module and require a signed Play-installed
+production app for runtime validation. FOSS excludes the module. iOS is disabled
+until the verified public listing ID is supplied as `EXPO_IOS_APP_STORE_ID`;
+`EXPO_IOS_APP_STORE_COUNTRY` is optional. See [app updates](app-updates.md).

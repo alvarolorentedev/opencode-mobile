@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Keyboard, Modal, Pressable, SectionList, StyleSheet, Text, TextInput, View } from 'react-native';
 
+import { useUpdateBlocker } from '@/hooks/use-update-blocker';
 import { NumericSlider } from '@/components/ui/numeric-slider';
 import { useDismissOnBack } from '@/hooks/use-dismiss-on-back';
 import { useKeyboardHeight } from '@/hooks/use-keyboard-height';
@@ -37,6 +38,7 @@ export function ModelPicker({ disabled = false, models, onSelect, recentModelIds
   const palette = Colors[colorScheme];
   const [visible, setVisible] = useState(false);
   const [query, setQuery] = useState('');
+  useUpdateBlocker(visible);
   const keyboardHeight = useKeyboardHeight(visible);
   const normalizedQuery = query.trim().toLocaleLowerCase();
   const matchingModels = useMemo(

@@ -12,6 +12,7 @@ import {
   View,
 } from 'react-native';
 
+import { useUpdateBlocker } from '@/hooks/use-update-blocker';
 import { Colors, Fonts } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useKeyboardHeight } from '@/hooks/use-keyboard-height';
@@ -53,6 +54,7 @@ export function NativeSelect<T extends string>({
   const { t } = useTranslation();
   const [visible, setVisible] = useState(false);
   const [query, setQuery] = useState('');
+  useUpdateBlocker(visible);
   const keyboardHeight = useKeyboardHeight(visible && searchable);
 
   const selectedOption = useMemo(
@@ -84,6 +86,7 @@ export function NativeSelect<T extends string>({
     }
 
     if (Platform.OS === 'ios' && !searchable) {
+      setVisible(true);
       ActionSheetIOS.showActionSheetWithOptions(
         {
           cancelButtonIndex: options.length,
@@ -92,6 +95,7 @@ export function NativeSelect<T extends string>({
           userInterfaceStyle: colorScheme,
         },
         (buttonIndex) => {
+          setVisible(false);
           if (buttonIndex >= 0 && buttonIndex < options.length) {
             onValueChange(options[buttonIndex].value);
           }

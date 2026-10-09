@@ -45,5 +45,14 @@
     "none": "None",
     "notSet": "not set",
     "systemDefault": "System default"
+  },
+  "updates": {
+    "available": "An update is available.",
+    "ready": "Update downloaded. Tap Update to install and restart the app.",
+    "update": "Update",
+    "later": "Later",
+    "failed": "Could not update. Please try again later.",
+    "opening": "Opening the update…",
+    "installing": "Installing update…"
   }
 }

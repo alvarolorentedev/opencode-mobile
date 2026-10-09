@@ -31,7 +31,7 @@ try {
   assert.doesNotMatch(application, /com\.android\.installreferrer|import android\.os\.RemoteException/);
   assert.match(application, /getInstallReferrerAsync[\s\S]*promise\.resolve\(""\)/);
   assert.deepEqual(JSON.parse(read('package.json')).expo.autolinking.exclude,
-    ['existing-module', 'expo-iap', 'expo-camera']);
+    ['existing-module', 'expo-iap', 'expo-camera', 'opencode-updates']);
 
   const files = ['package.json', `${notificationDir}/build.gradle`,
     `${applicationDir}/build.gradle`, `${applicationDir}/src/main/java/expo/modules/application/ApplicationModule.kt`];

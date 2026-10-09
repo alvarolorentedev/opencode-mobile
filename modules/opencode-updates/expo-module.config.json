@@ -1,0 +1,5 @@
+{
+  "platforms": ["android", "apple"],
+  "android": { "modules": ["app.getopencode.updates.OpencodeUpdatesModule"] },
+  "apple": { "modules": ["OpencodeUpdatesModule"] }
+}

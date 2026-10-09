@@ -368,6 +368,8 @@ export type McpContextValue = {
 
 // The union of every domain, kept for documentation and the architecture
 // ratchet. No runtime context exposes this shape.
+export type UpdatesContextValue = ReturnType<typeof import('@/providers/use-app-updates').useAppUpdates>;
+
 export type OpencodeContextValue = OnboardingContextValue &
   ConnectionContextValue &
   DiagnosticsContextValue &
@@ -381,4 +383,4 @@ export type OpencodeContextValue = OnboardingContextValue &
   ApprovalsContextValue &
   ConversationContextValue &
   TerminalContextValue &
-  McpContextValue;
+  McpContextValue & UpdatesContextValue;

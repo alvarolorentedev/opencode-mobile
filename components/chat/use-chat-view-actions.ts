@@ -1,6 +1,7 @@
 import { Alert, Platform } from 'react-native';
 import type { Dispatch, SetStateAction } from 'react';
 
+import { useUpdates } from '@/providers/opencode-contexts';
 import type { TranscriptEntry } from '@/lib/opencode/format';
 import { pickedAttachment } from '@/lib/attachment-preview';
 import { speakText, stopSpeaking } from '@/lib/voice/speech-output';
@@ -45,6 +46,7 @@ export function useChatViewActions({
   setSpeakingMessageId,
   setVoiceFeedback,
 }: ChatViewActionsInput) {
+  const { block } = useUpdates();
   async function handleSpeakEntry(entry: TranscriptEntry) {
     if (speakingMessageId === entry.id) {
       await stopSpeaking().catch(() => undefined);
@@ -78,6 +80,7 @@ export function useChatViewActions({
   }
 
   async function handleAttach() {
+    const release = block();
     try {
       const picker = await import('expo-document-picker');
       const result = await picker.getDocumentAsync({
@@ -109,7 +112,7 @@ export function useChatViewActions({
       });
     } catch (error) {
       setSendFeedback(error instanceof Error ? error.message : t('chat:view.couldNotAttach'));
-    }
+    } finally { release(); }
   }
 
   async function handleNewSession() {
