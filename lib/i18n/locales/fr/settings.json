@@ -52,6 +52,36 @@
       "serverUrl": "Saisis l'URL du serveur.",
       "invalidUrl": "Saisis une URL de serveur complète, comme http://192.168.1.10:4096.",
       "save": "Impossible d'enregistrer cette connexion."
+    },
+    "setup": {
+      "step": "Étape {{step}} sur 2",
+      "addressTitle": "Adresse du serveur",
+      "detailsTitle": "Détails de connexion",
+      "addressHint": "Connectez-vous à votre serveur OpenCode.",
+      "continue": "Continuer",
+      "change": "Modifier",
+      "detected": "OpenCode {{version}} détecté",
+      "identify": "Saisissez les identifiants pour identifier le serveur.",
+      "customUsername": "Nom d’utilisateur personnalisé",
+      "passwordHint": "Saisissez le mot de passe du serveur.",
+      "optionalName": "Nom (facultatif)",
+      "nameHint": "Laissez vide pour utiliser l’IP ou le domaine du serveur.",
+      "showPassword": "Afficher le mot de passe",
+      "hidePassword": "Masquer le mot de passe",
+      "scan": "Scanner le QR local",
+      "pairCommand": "Sur votre ordinateur, exécutez opencode pair.",
+      "sameNetwork": "Gardez les deux appareils sur le même réseau.",
+      "scanAutomatic": "Scannez pour enregistrer et vous connecter automatiquement.",
+      "scanAgain": "Scanner à nouveau",
+      "enterAddress": "Saisir une adresse",
+      "unreachable": "Serveur inaccessible. Vérifiez l’adresse et le réseau, puis réessayez.",
+      "credentialsRejected": "Identifiants refusés. Vérifiez le mot de passe et le nom d’utilisateur ou scannez un nouveau QR.",
+      "pairingErrors": {
+        "invalid": "Ce code n’est pas un code d’appairage OpenCode. Exécutez opencode pair et scannez à nouveau.",
+        "expired": "Ce code a expiré ou a déjà été utilisé. Exécutez à nouveau opencode pair.",
+        "unreachable": "Serveur inaccessible. Vérifiez que les appareils sont sur le même réseau ou saisissez l’adresse manuellement.",
+        "loopback": "Ce code contient uniquement une adresse localhost. Exécutez opencode service set hostname 0.0.0.0, puis opencode service start et opencode pair sur votre ordinateur."
+      }
     }
   },
   "providers": {

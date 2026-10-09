@@ -52,6 +52,36 @@
       "serverUrl": "Informe a URL do servidor.",
       "invalidUrl": "Informe uma URL de servidor completa, como http://192.168.1.10:4096.",
       "save": "Não foi possível salvar esta conexão."
+    },
+    "setup": {
+      "step": "Passo {{step}} de 2",
+      "addressTitle": "Endereço do servidor",
+      "detailsTitle": "Detalhes da conexão",
+      "addressHint": "Conecte-se ao seu servidor OpenCode.",
+      "continue": "Continuar",
+      "change": "Alterar",
+      "detected": "OpenCode {{version}} detectado",
+      "identify": "Insira as credenciais para identificar o servidor.",
+      "customUsername": "Nome de usuário personalizado",
+      "passwordHint": "Insira a senha do servidor.",
+      "optionalName": "Nome (opcional)",
+      "nameHint": "Deixe em branco para usar o IP ou domínio do servidor.",
+      "showPassword": "Mostrar senha",
+      "hidePassword": "Ocultar senha",
+      "scan": "Escanear QR local",
+      "pairCommand": "No computador, execute opencode pair.",
+      "sameNetwork": "Mantenha os dois dispositivos na mesma rede.",
+      "scanAutomatic": "Escaneie para salvar e conectar automaticamente.",
+      "scanAgain": "Escanear novamente",
+      "enterAddress": "Inserir endereço",
+      "unreachable": "Não foi possível acessar o servidor. Confira o endereço e a rede e tente novamente.",
+      "credentialsRejected": "Credenciais rejeitadas. Confira a senha e o usuário ou escaneie um novo QR.",
+      "pairingErrors": {
+        "invalid": "Este não é um código de pareamento OpenCode. Execute opencode pair e escaneie novamente.",
+        "expired": "Este código expirou ou já foi usado. Execute opencode pair novamente.",
+        "unreachable": "Servidor inacessível. Confira se os dispositivos estão na mesma rede ou insira o endereço manualmente.",
+        "loopback": "Este código contém apenas um endereço localhost. Execute opencode service set hostname 0.0.0.0, depois opencode service start e opencode pair no computador."
+      }
     }
   },
   "providers": {

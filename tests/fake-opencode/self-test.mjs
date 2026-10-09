@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 
 import { spawn } from 'node:child_process';
+import { Buffer } from 'node:buffer';
 import { setTimeout as sleep } from 'node:timers/promises';
 import WebSocket from 'ws';
 import { OpenCode } from '@opencode/client';
@@ -290,6 +291,15 @@ try {
 
   const v2Info = await v2request('/api/info');
   assert(v2Info.version === '2.0.0-fake', 'V2 server info missing');
+  const code = await v2request('/__control/pairing', json('POST', { password: 'local-password' }));
+  assert((await fetch(`${v2Origin}/api/info`)).status === 401, 'Protected V2 info must require credentials');
+  const token = await v2request(`/auth/connect/${code.code}`, { headers: { Accept: 'application/json' } });
+  assert(typeof token.token === 'string', 'Local pairing must return a session token');
+  assert((await fetch(`${v2Origin}/auth/connect/${code.code}`)).status === 401, 'Local pairing codes must work only once');
+  assert((await v2request('/api/info', { headers: { Authorization: `Basic ${Buffer.from(`opencode:${token.token}`).toString('base64')}` } })).version === '2.0.0-fake', 'Pairing tokens must authenticate API requests');
+  const expired = await v2request('/__control/pairing', json('POST', { expired: true }));
+  assert((await fetch(`${v2Origin}/auth/connect/${expired.code}`)).status === 401, 'Expired local codes must fail');
+  await v2request('/__control/reset', json('POST', { scenario: 'happy-path' }));
   const initialProviders = (await v2request('/api/provider')).data;
   assert(initialProviders.length === 1 && initialProviders[0].id === 'openai', 'V2 lists active providers, not its unconnected catalog');
   const integrations = (await v2request('/api/integration')).data;

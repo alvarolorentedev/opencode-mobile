@@ -52,6 +52,36 @@
       "serverUrl": "Enter the server URL.",
       "invalidUrl": "Enter a complete server URL, such as http://192.168.1.10:4096.",
       "save": "Could not save this connection."
+    },
+    "setup": {
+      "step": "Step {{step}} of 2",
+      "addressTitle": "Server address",
+      "detailsTitle": "Connection details",
+      "addressHint": "Connect to your OpenCode server.",
+      "continue": "Continue",
+      "change": "Change",
+      "detected": "OpenCode {{version}} detected",
+      "identify": "Enter credentials to identify the server.",
+      "customUsername": "Custom username",
+      "passwordHint": "Enter your server password.",
+      "optionalName": "Name (optional)",
+      "nameHint": "Leave blank to use the server IP or domain.",
+      "showPassword": "Show password",
+      "hidePassword": "Hide password",
+      "scan": "Scan local QR code",
+      "pairCommand": "On your computer, run opencode pair.",
+      "sameNetwork": "Keep both devices on the same network.",
+      "scanAutomatic": "Scan to save and connect automatically.",
+      "scanAgain": "Scan again",
+      "enterAddress": "Enter address instead",
+      "unreachable": "Could not reach the server. Check the address and network, then retry.",
+      "credentialsRejected": "Credentials rejected. Check the password and username, or scan a new QR code.",
+      "pairingErrors": {
+        "invalid": "This is not an OpenCode pairing code. Run opencode pair and scan again.",
+        "expired": "This pairing code expired or was already used. Run opencode pair again.",
+        "unreachable": "Could not reach the server. Check that both devices are on the same network, or enter the address manually.",
+        "loopback": "This code only contains a localhost address. Run opencode service set hostname 0.0.0.0, then opencode service start and opencode pair on your computer."
+      }
     }
   },
   "providers": {

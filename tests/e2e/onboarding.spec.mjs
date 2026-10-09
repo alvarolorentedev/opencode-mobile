@@ -16,7 +16,7 @@ async function waitForChat(page) {
 
 async function openManual(page) {
   await page.getByTestId('connection-method-manual').click();
-  await page.getByTestId('connection-profile-name-input').fill('Test server');
+  await expect(page.getByTestId('connection-profile-url-input')).toBeVisible();
 }
 
 async function seedExistingInstall(page) {
@@ -59,9 +59,10 @@ test('fresh install walks through onboarding into a working chat', async ({ page
   await expect(page.getByTestId('onboarding-connect-test')).toHaveCount(0);
   await expect(page.getByTestId('connection-method-chooser')).toBeVisible();
   await openManual(page);
-  await expect(page.getByTestId('connection-profile-save-confirm')).toHaveText('Save & connect');
 
   await page.getByTestId('connection-profile-url-input').fill(FAKE_SERVER_URL);
+  await page.getByTestId('connection-profile-continue').click();
+  await expect(page.getByTestId('connection-profile-save-confirm')).toHaveText('Save & connect');
   await page.getByTestId('connection-profile-save-confirm').click();
 
   await expect(page.getByTestId('onboarding-workspace')).toBeVisible({ timeout: 20_000 });
@@ -119,12 +120,13 @@ test('a failed connection keeps entered values and allows retry', async ({ page 
   await openManual(page);
   const url = page.getByTestId('connection-profile-url-input');
   await url.fill('http://127.0.0.1:1');
-  await page.getByTestId('connection-profile-save-confirm').click();
+  await page.getByTestId('connection-profile-continue').click();
 
   await expect(page.getByTestId('connection-profile-error')).toBeVisible({ timeout: 25_000 });
   await expect(url).toHaveValue('http://127.0.0.1:1');
 
   await url.fill(FAKE_SERVER_URL);
+  await page.getByTestId('connection-profile-continue').click();
   await page.getByTestId('connection-profile-save-confirm').click();
   await expect(page.getByTestId('onboarding-workspace')).toBeVisible({ timeout: 20_000 });
 });
@@ -180,7 +182,7 @@ test('Advanced groups editor and general settings and resets onboarding without 
   await expect(page.getByText('Review setup · Step 3 of 5')).toBeVisible();
   await openManual(page);
   await expect(page.getByTestId('connection-profile-url-input')).toHaveValue(FAKE_SERVER_URL);
-
+  await page.getByTestId('connection-profile-continue').click();
   await page.getByTestId('connection-profile-save-confirm').click();
   await expect(page.getByTestId('onboarding-workspace')).toBeVisible({ timeout: 20_000 });
   await page.getByRole('button', { name: /^Select / }).first().click();
@@ -204,7 +206,7 @@ test('connection prevents duplicate submissions and disables Skip while validati
   let release;
   const pending = new Promise((resolve) => { release = resolve; });
   await page.route('**/global/health', async (route) => { probes += 1; await pending; await route.continue(); });
-  const connect = page.getByTestId('connection-profile-save-confirm');
+  const connect = page.getByTestId('connection-profile-continue');
   await connect.dispatchEvent('click');
   await connect.dispatchEvent('click');
   await expect(connect).toBeDisabled();
@@ -212,6 +214,8 @@ test('connection prevents duplicate submissions and disables Skip while validati
   await expect(page.getByTestId('connection-profile-url-input')).not.toBeEditable();
   await expect.poll(() => probes).toBe(1);
   release();
-  await expect(page.getByTestId('onboarding-workspace')).toBeVisible({ timeout: 20_000 });
+  await expect(page.getByTestId('connection-profile-name-input')).toBeVisible();
   expect(probes).toBe(1);
+  await page.getByTestId('connection-profile-save-confirm').click();
+  await expect(page.getByTestId('onboarding-workspace')).toBeVisible({ timeout: 20_000 });
 });

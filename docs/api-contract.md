@@ -11,6 +11,34 @@ This is the client-side OpenCode contract implemented by the app. It supports tw
 
 Because a probe can still misclassify a hybrid server, `connect()` tries the detected contract first and falls back to the other one when workspace discovery fails with a contract-mismatch error (`UnsupportedContentType`, `UnexpectedStatus`, `MalformedResponse`, or an HTML response). Only after both fail is a connection error surfaced.
 
+Setup uses `probeConnection()` directly. Its outcomes are `detected` (contract and
+optional version), `authentication-required` (401/403), `unreachable` (all requests
+fail), and `unknown` (reachable without a recognized contract). Each request has
+a five-second timeout and supports cancellation. `detectServerContract()` remains
+the compatibility wrapper with the existing V1 fallback for connection attempts.
+
+### Local V2 pairing
+
+V2 accepts the fixed Basic-auth username `opencode`; a blank stored username
+already resolves to it in the shared transport. The password may be a configured
+password or a session token. See [upstream authentication](https://github.com/anomalyco/opencode/blob/v2/packages/server/src/auth.ts).
+
+`lib/opencode/pairing.ts` accepts current `{code, urls}` QR JSON and HTTP(S)
+`/auth/connect/<code>` links, including a proxy path prefix. It redeems a code via
+GET with `Accept: application/json`, expects `{token}`, and returns a clean server
+URL with that token as the password. It also accepts older `{urls, username:
+"opencode", password}` JSON and base64 credential links at `/connect#<data>` or
+`/connect?data=<data>`. See [upstream pairing](https://github.com/anomalyco/opencode/blob/v2/packages/app/src/servers/connect/pairing.ts)
+and the [server contract](https://github.com/anomalyco/opencode/blob/v2/packages/protocol/src/groups/server.ts).
+
+Payload size, code syntax, credentials and HTTP(S) addresses are validated before
+requests. Distinct non-loopback addresses are tried in payload order, with a
+five-second timeout per address. Redemption rejects redirects through Expo's
+native transport, since React Native's XHR ignores redirect mode.
+Invalid/used/expired codes can be replaced by a
+new scan; loopback-only and unreachable payloads offer manual/network guidance.
+Pairing secrets never become profile metadata or saved URL paths/query/hash.
+
 The V2 adapter is best-effort and does not cover every 1.x feature. Unsupported on V2: session share/unshare, archive/restore, title summarization (`summarize`), `file.status`, `vcs.apply`, `find.text`/`find.symbol`, LSP and formatter diagnostics, and remote-MCP OAuth start/callback. These degrade to empty results or explicit errors. Server-owned session todos are not an endpoint on V2, but the adapter derives the same plan from the transcript's `todowrite` tool parts, so the todo surface is available on both contracts.
 
 `getServerCapabilities(contract)` in `providers/opencode-capabilities.ts` turns the resolved contract into UI-facing flags (`share`, `archive`, `todos`, `summarize`, `fileSave`, `fileStatus`, `lsp`, `formatter`, `mcpOAuth`, `configWrite`, `worktreeReset`). The provider exposes them as `serverCapabilities`, and screens/components hide the corresponding actions on V2 instead of letting them fail at tap time. All flags are `true` for V1; `todos` is also `true` for V2 because it is derived client-side.

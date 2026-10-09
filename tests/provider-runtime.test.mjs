@@ -283,16 +283,20 @@ console.log('workspace scope, realtime recovery, and conversation lifecycle regr
 
 // Profile orchestration stays provider-owned and serializes metadata/credentials.
 const profileRuntime = hookRuntime();
-let storedProfiles = [], profileId = 0, failMetadata = false, updates = 0;
+let storedProfiles = [], profileId = 0, failMetadata = false, failCredential = false, updates = 0;
 const passwords = new Map();
+const profileUrls = await loadTs('lib/opencode/client/url.ts', { './types': { defaultConnectionSettings: { serverUrl: 'http://127.0.0.1:4096' } } });
 const profilesHook = await loadTs('providers/use-connection-profiles.ts', {
+  '@/lib/opencode/client/url': profileUrls,
+  '@/lib/opencode/client/probe': { probeConnection: async () => ({ status: 'detected', contract: 'v2' }) },
+  '@/lib/opencode/pairing': { resolveLocalPairing: async () => ({ serverUrl: 'http://example.test', username: '', password: 'session-token' }) },
   react: profileRuntime.react,
   '@/lib/connection-profiles': {
     createProfileId: () => `profile-${++profileId}`,
     loadConnectionProfiles: async () => [...storedProfiles],
     saveConnectionProfiles: async (next) => { if (failMetadata) throw new Error('metadata failed'); storedProfiles = next; },
     getProfilePassword: async (id) => passwords.get(id) ?? '',
-    saveProfilePassword: async (id, password) => { passwords.set(id, password); },
+    saveProfilePassword: async (id, password) => { if (failCredential) throw new Error('secure storage failed'); passwords.set(id, password); },
     deleteProfilePassword: async (id) => { passwords.delete(id); },
     findMatchingProfile: (entries, settings) => entries.find((p) => p.serverUrl === settings.serverUrl),
   },
@@ -306,6 +310,11 @@ const [savedA, savedB] = await Promise.all([
 ]);
 await profileRuntime.settle();
 assert.equal(storedProfiles.length, 2); assert.equal(updates, 0, 'saving a new inactive profile cannot change the active settings');
+failCredential = true;
+await assert.rejects(profileRuntime.value.save({ name: 'edited', serverUrl: 'a', username: 'alice', password: 'session-token' }, savedA.id), /secure storage failed/);
+assert.equal(storedProfiles.find((entry) => entry.id === savedA.id).name, 'A', 'credential failures leave profile metadata intact');
+assert.equal(passwords.get(savedA.id), 'a-secret');
+failCredential = false;
 failMetadata = true;
 await assert.rejects(profileRuntime.value.save({ name: 'edited', serverUrl: 'a', username: 'alice', password: 'new-secret' }, savedA.id), /metadata failed/);
 assert.equal(passwords.get(savedA.id), 'a-secret', 'failed metadata writes restore the previous credential');
@@ -314,6 +323,14 @@ profileRuntime.update({ settings: { serverUrl: 'a' } });
 await assert.rejects(profileRuntime.value.remove(savedA.id), /active connection/);
 await profileRuntime.value.remove(savedB.id); await profileRuntime.settle();
 assert.equal(storedProfiles.length, 1); assert.equal(passwords.has(savedB.id), false);
+const named = await profileRuntime.value.save({ name: '  ', serverUrl: 'https://EXAMPLE.test:8443/proxy', username: '', password: 'session-token' });
+assert.equal(named.name, 'example.test');
+assert.equal(passwords.get(named.id), 'session-token');
+assert.equal('password' in storedProfiles.find((entry) => entry.id === named.id), false);
+assert.equal(updates, 0, 'setup saves and probes leave the current connection untouched');
+assert.equal((await profileRuntime.value.probe({ serverUrl: 'http://example.test', username: '', password: '' })).status, 'detected');
+assert.equal((await profileRuntime.value.pair('code')).password, 'session-token');
+await profileRuntime.settle();
 const stableProfiles = profileRuntime.value;
 profileRuntime.update({ switchConnection: async () => {} });
 assert.equal(profileRuntime.value, stableProfiles, 'profile domain values remain stable when only callback bridges change');

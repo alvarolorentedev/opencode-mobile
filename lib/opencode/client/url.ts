@@ -38,6 +38,11 @@ export function getNormalizedServerUrl(serverUrl: string) {
   return normalizeServerUrl(serverUrl).displayUrl;
 }
 
+export function getServerHostname(serverUrl: string) {
+  const base = normalizeServerUrl(serverUrl);
+  return base.valid ? new URL(base.origin).hostname : '';
+}
+
 export function isValidServerUrl(serverUrl: string) {
   return normalizeServerUrl(serverUrl).valid;
 }

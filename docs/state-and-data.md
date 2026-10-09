@@ -345,6 +345,16 @@ Credentials:
 
 - the active connection password is stored in Keychain/Keystore-backed secure storage via `lib/connection-password.ts`; legacy plaintext `settings.password` is migrated to secure storage and stripped from AsyncStorage on hydration
 - each saved profile's password is stored under its own SecureStore key in `lib/connection-profiles.ts`; profile metadata in AsyncStorage never contains it
+- manual profile saves trim the name and default blank names to the normalized
+  hostname, excluding scheme, port and path. Existing IDs, usernames, scopes and
+  storage format are preserved; saving an edit does not automatically reconnect.
+- manual setup probes are read-only, abortable and ignored after Back, address
+  changes or dismissal. Authentication-blocked/unknown outcomes never become a
+  V1 label. Form values survive step changes and retries.
+- local V2 QR redemption returns a session token, stored in the existing password
+  slot before connecting. Pairing codes are never persisted or retained in saved
+  URLs. A failed save retains the token in form state; a failed connection retains
+  the saved profile ID, so retry does not redeem again or create another profile.
 - pending completion-notification records store only a non-secret connection reference (`serverUrl`, `username`, `connectionScope`) and never a password
 
 The provider does not connect until hydration completes.

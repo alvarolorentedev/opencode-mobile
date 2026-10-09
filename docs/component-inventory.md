@@ -507,16 +507,25 @@ The component owns only local state (expanded row, dialog, switching row); profi
 
 ### Responsibility
 
-- collect name, server URL, username, and password for one connection
+- collect the server address first, then password and an optional name whose
+  placeholder is the hostname; Continue displays an abortable detection state
+- hide Username for confirmed V2, show it for V1, and offer a collapsed custom
+  username when credentials are needed to identify the server
+- reuse `ConnectCameraGate` and `ConnectScanner` for native-only local QR setup,
+  without a Cloud Link entitlement; scanning automatically saves and connects
 - The shared TextInput clears Paper's implicit text alignment for single-line
   iOS fields to prevent wrapping. Explicit caller alignment takes precedence;
   password masking and credential values remain native and unchanged.
-- validate the name and URL before submit, surface the error inline, and disable submit while saving
+- validate the URL, surface probe/pair/save errors inline, and disable duplicate
+  operations while busy; names default in the provider's save action
 - own its form state for the lifetime of one dialog instance (mounted only while open)
 
 Submit is a callback: the list component decides whether the values are added
 as a profile plus connected, or applied to the existing profile/current
 connection.
+Changing the address or going Back preserves fields and invalidates obsolete
+probes. Successful redemption retains its token through save/connect retries.
+Editing uses the same form but saves without automatically reconnecting.
 
 ### `AiDefaultsSection`
 

@@ -183,6 +183,7 @@ async function setActiveServerUrl(page, url) {
   await openCurrentConnectionRow(page);
   await openConnectionDialog(page, page.getByTestId('connection-edit-current'), page.getByTestId('connection-profile-url-input'));
   await page.getByTestId('connection-profile-url-input').fill(url);
+  await clickWithRetry(page.getByTestId('connection-profile-continue'));
   await clickWithRetry(page.getByTestId('connection-profile-save-confirm'));
   await expect(page.getByTestId('connection-profile-url-input')).not.toBeVisible({ timeout: 10_000 });
 }
@@ -226,9 +227,10 @@ async function connectToServer(page, url) {
 // "Add connection" saves and connects in one step.
 async function addConnection(page, { name, url }) {
   await ensureConnectionSection(page);
-  await openConnectionDialog(page, page.getByTestId('connection-add-button'), page.getByTestId('connection-profile-name-input'));
-  await page.getByTestId('connection-profile-name-input').fill(name);
+  await openConnectionDialog(page, page.getByTestId('connection-add-button'), page.getByTestId('connection-profile-url-input'));
   await page.getByTestId('connection-profile-url-input').fill(url);
+  await clickWithRetry(page.getByTestId('connection-profile-continue'));
+  await page.getByTestId('connection-profile-name-input').fill(name);
   await clickWithRetry(page.getByTestId('connection-profile-save-confirm'));
   await expect(page.getByTestId('connection-profile-url-input')).not.toBeVisible({ timeout: 10_000 });
 }

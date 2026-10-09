@@ -304,6 +304,11 @@ function modelCatalog() {
   }))];
 }
 
+let connectionPassword = process.env.FAKE_OPENCODE_PASSWORD || '';
+let pairingCode;
+let pairingToken;
+let pairingSequence = 0;
+
 const server = http.createServer(async (req, res) => {
   const requestUrl = new URL(req.url || '/', `http://${req.headers.host || `127.0.0.1:${port}`}`);
   const pathname = requestUrl.pathname;
@@ -345,6 +350,9 @@ const server = http.createServer(async (req, res) => {
       v2Clients.clear();
       suppressEvents = false;
       state = stateStore.resetState(body?.scenario || scenarioName);
+      connectionPassword = body?.password ?? process.env.FAKE_OPENCODE_PASSWORD ?? '';
+      pairingCode = undefined;
+      pairingToken = undefined;
       sendJson(res, 200, { data: { scenario: state.scenario } });
       return;
     }
@@ -352,6 +360,28 @@ const server = http.createServer(async (req, res) => {
     if (req.method === 'GET' && pathname === '/__control/instructions') {
       sendJson(res, 200, { data: state.instructionsBySession });
       return;
+    }
+
+    if (req.method === 'POST' && pathname === '/__control/pairing') {
+      const body = await readJson(req);
+      if (body?.password !== undefined) connectionPassword = body.password;
+      pairingCode = { value: `local-code-${++pairingSequence}`, expiresAt: body?.expired ? 0 : Date.now() + 300_000 };
+      sendJson(res, 200, { code: pairingCode.value, expires_in: 300 });
+      return;
+    }
+    if (req.method === 'GET' && pathname.startsWith('/auth/connect/')) {
+      if (!pairingCode || pairingCode.expiresAt <= Date.now() || pathname !== `/auth/connect/${pairingCode.value}`) {
+        sendJson(res, 401, { _tag: 'UnauthorizedError', message: 'Pairing link expired or already used' });
+        return;
+      }
+      pairingCode = undefined;
+      pairingToken = `local-session-${pairingSequence}`;
+      sendJson(res, 200, { token: pairingToken });
+      return;
+    }
+    if (connectionPassword) {
+      const valid = [connectionPassword, pairingToken].filter(Boolean).some((secret) => req.headers.authorization === `Basic ${Buffer.from(`opencode:${secret}`).toString('base64')}`);
+      if (!valid) { sendJson(res, 401, { _tag: 'UnauthorizedError', message: 'Authentication required' }); return; }
     }
 
     if (pathname === '/api/event') {

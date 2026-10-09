@@ -2,6 +2,9 @@ import { useCallback, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { createProfileId, deleteProfilePassword, findMatchingProfile, getProfilePassword,
   loadConnectionProfiles, saveConnectionProfiles, saveProfilePassword, type ConnectionProfile } from '@/lib/connection-profiles';
 import type { ConnectionContextValue } from '@/providers/opencode-provider-types';
+import { probeConnection } from '@/lib/opencode/client/probe';
+import { getServerHostname, normalizeServerUrl } from '@/lib/opencode/client/url';
+import { resolveLocalPairing } from '@/lib/opencode/pairing';
 
 export type ConnectionProfileInput = Pick<ConnectionProfile, 'name' | 'serverUrl' | 'username'> & { password: string };
 
@@ -24,12 +27,17 @@ export function useConnectionProfiles({ settings, switchConnection, updateSettin
     return latest.current.switchConnection({ serverUrl: profile.serverUrl, username: profile.username, password, connect: profile.connect }, profile.modelPreferences);
   }, []);
   const passwordForEditing = useCallback((id: string) => getProfilePassword(id), []);
+  const probe = useCallback((values: Pick<ConnectionProfileInput, 'serverUrl' | 'username' | 'password'>, signal?: AbortSignal) => probeConnection({ ...values, directory: '' }, signal), []);
+  const pair = useCallback((code: string, signal?: AbortSignal) => resolveLocalPairing(code, signal), []);
   const save = useCallback((values: ConnectionProfileInput, id?: string) => mutate(async () => {
     const stored = await loadConnectionProfiles(true);
     const previous = id ? stored.find((profile) => profile.id === id) : undefined;
     if (id && !previous) throw new Error('This connection profile is no longer available.');
     if (previous?.connect) throw new Error('Manage this connection through Cloud Link.');
-    const profile: ConnectionProfile = { ...previous, id: id ?? createProfileId(), name: values.name, serverUrl: values.serverUrl, username: values.username };
+    const base = normalizeServerUrl(values.serverUrl);
+    if (!values.serverUrl.trim() || !base.valid) throw new Error('Invalid server URL.');
+    const name = values.name.trim() || getServerHostname(values.serverUrl);
+    const profile: ConnectionProfile = { ...previous, id: id ?? createProfileId(), name, serverUrl: values.serverUrl.trim(), username: values.username.trim() };
     const oldPassword = previous ? await getProfilePassword(profile.id) : '';
     await saveProfilePassword(profile.id, values.password);
     const next = [...stored.filter((entry) => entry.id !== profile.id), profile];
@@ -53,7 +61,7 @@ export function useConnectionProfiles({ settings, switchConnection, updateSettin
     setProfiles(next);
     await deleteProfilePassword(id);
   }), [mutate]);
-  return useMemo(() => ({ profiles, refresh, connect, passwordForEditing, save, remove }), [profiles, refresh, connect, passwordForEditing, save, remove]);
+  return useMemo(() => ({ profiles, refresh, connect, passwordForEditing, probe, pair, save, remove }), [profiles, refresh, connect, passwordForEditing, probe, pair, save, remove]);
 }
 
 export type ConnectionProfilesState = ReturnType<typeof useConnectionProfiles>;

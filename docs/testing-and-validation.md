@@ -598,6 +598,33 @@ The composer approval toggle is now the sole Chat approval affordance: the shiel
 
 ## Add connection redesign validation
 
+Manual setup now probes address → details in Settings and onboarding. Vitest
+connection protocol/form coverage checks V1/V2 detection, auth uncertainty,
+incorrect credentials, unknown/unreachable responses, proxy prefixes,
+cancellation/stale results, native-only scan presentation, QR formats, malformed
+payloads, expiry, loopback filtering, address order/timeouts and retry with a
+redeemed token. Provider runtime coverage checks hostname defaults, unchanged
+active connections, credential ordering/rollback and stable callbacks.
+`manual-connection.spec.mjs` covers protected V1/V2 setup, optional/custom naming
+and field preservation. Existing onboarding/connection flows cover duplicate
+submission, edit behavior and connection retry without duplicate profiles. The V2
+fake server supports protected discovery and one-use/expired pairing fixtures.
+
+Run `test:ci:static`, `test:fake-server:self`, `test:e2e:web` and
+`build:development:android`. Explicit human validation of modified E2E/fake-server
+files is required by AGENTS.md. Real-device acceptance must verify `opencode pair`
+scanning and automatic connection, camera denial, backgrounding, keyboard/Back,
+larger text and screen-reader accessibility. Automated web tests cannot exercise
+the native camera or confirm local-network reachability on physical devices.
+
+Local implementation validation on 2026-10-09 passed the static suite (146 Vitest
+cases plus the existing Node checks), both fake-server self-tests and all 104 web
+E2E cases. The new connection-retry regression also passed three consecutive runs.
+The Android development command completed Expo prebuild but
+Gradle stopped with `SDK location not found`; no Android SDK is installed or
+configured on this host. Real-device checks and explicit human validation of the
+E2E/fake-server changes remain outstanding.
+
 Connection creation now enters through a shared Cloud Link/Manual chooser in
 Settings and onboarding. The web flows cover manual form retry and duplicate
 submission guards, subscription dismissal back to the chooser, subscriber

@@ -215,7 +215,9 @@ and provider setup remain in Settings.
   `providers/persisted-preferences.ts`.
 - `providers/use-connection-profiles.ts`
   Provider-owned saved-profile state, credential ordering, mutation serialization,
-  and connection actions exposed through `useConnection().connectionProfiles`.
+  hostname defaults, setup probing, local V2 pairing, and connection actions
+  exposed through `useConnection().connectionProfiles`. Setup probes never switch
+  the active connection; saving an edit does not reconnect.
 - `providers/use-conversation-state.ts`
   Conversation phases, speech submission, reply playback, timers, and cleanup.
 - `providers/use-opencode-realtime.ts`
@@ -305,6 +307,14 @@ into the right layer and, if needed, lower the number in the same change.
   Direct aliases for generated v2 SDK protocol types.
 
 ### Connection Identity And Credentials
+
+Manual setup shares a two-step address/details dialog between Settings and
+onboarding. Components own fields, step changes and the native camera surface;
+the provider owns probe/pair/save/connect actions. `lib/opencode/client/probe.ts`
+preserves setup detection uncertainty while retaining the existing connect-time
+fallback. `lib/opencode/pairing.ts` validates local QR formats and redeems V2
+one-use codes, independently of Cloud Link subscriptions. The resulting session
+token uses the existing per-profile password storage and Basic-auth transport.
 
 The optional native Cloud Link method composes `use-connect-state.ts`
 inside the provider, verifies native subscriptions through the Cloud Link service,

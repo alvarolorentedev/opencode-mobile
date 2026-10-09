@@ -52,6 +52,36 @@
       "serverUrl": "サーバー URL を入力してください。",
       "invalidUrl": "http://192.168.1.10:4096 などの完全なサーバー URL を入力してください。",
       "save": "この接続を保存できませんでした。"
+    },
+    "setup": {
+      "step": "ステップ {{step}} / 2",
+      "addressTitle": "サーバーアドレス",
+      "detailsTitle": "接続の詳細",
+      "addressHint": "OpenCode サーバーに接続します。",
+      "continue": "続ける",
+      "change": "変更",
+      "detected": "OpenCode {{version}} を検出",
+      "identify": "サーバーを識別するために認証情報を入力してください。",
+      "customUsername": "カスタムユーザー名",
+      "passwordHint": "サーバーのパスワードを入力してください。",
+      "optionalName": "名前（任意）",
+      "nameHint": "空欄の場合はサーバーの IP またはドメインを使用します。",
+      "showPassword": "パスワードを表示",
+      "hidePassword": "パスワードを隠す",
+      "scan": "ローカル QR コードをスキャン",
+      "pairCommand": "コンピューターで opencode pair を実行してください。",
+      "sameNetwork": "両方のデバイスを同じネットワークに接続してください。",
+      "scanAutomatic": "スキャンすると自動的に保存して接続します。",
+      "scanAgain": "再スキャン",
+      "enterAddress": "アドレスを入力",
+      "unreachable": "サーバーに接続できません。アドレスとネットワークを確認して再試行してください。",
+      "credentialsRejected": "認証情報が拒否されました。パスワードとユーザー名を確認するか、新しい QR コードをスキャンしてください。",
+      "pairingErrors": {
+        "invalid": "OpenCode のペアリングコードではありません。opencode pair を実行して再スキャンしてください。",
+        "expired": "このコードは期限切れか使用済みです。opencode pair を再実行してください。",
+        "unreachable": "サーバーに接続できません。両方のデバイスが同じネットワークにあるか確認するか、アドレスを手動で入力してください。",
+        "loopback": "このコードには localhost のアドレスしかありません。コンピューターで opencode service set hostname 0.0.0.0 を実行し、続けて opencode service start と opencode pair を実行してください。"
+      }
     }
   },
   "providers": {

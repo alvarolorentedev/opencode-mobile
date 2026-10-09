@@ -30,9 +30,9 @@ export async function fetchConnection(input: RequestInfo | URL, init?: RequestIn
     const error = getConnectCredentialError(settings.connect, settings.password);
     if (error) throw new Error(error);
   }
-  // Expo's native fetch supports streams and redirect rejection; RN's XHR
-  // polyfill ignores redirect mode. Manual connections retain their transport.
-  const response = settings?.connect ? await expoFetch(input, { ...init, redirect: 'error' }) : await fetch(input, init);
+  // RN's XHR ignores redirect rejection. Use Expo for Cloud Link and one-use
+  // local pairing requests; other manual connections retain their transport.
+  const response = settings?.connect || init?.redirect === 'error' ? await expoFetch(input, { ...init, redirect: 'error' }) : await fetch(input, init);
   recordRequest();
   measureResponseBytes(response);
   if (settings?.connect && response.status === 401) throw new Error('Cloud Link credentials were rejected. Pair this device again.');

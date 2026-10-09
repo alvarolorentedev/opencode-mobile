@@ -48,7 +48,7 @@ const androidReleaseBuildPropertiesPlugin: [string, { android: {
 // the tuple shape so `plugins` stays assignable to ExpoConfig.
 type PluginList = NonNullable<ExpoConfig['plugins']>;
 const cameraPlugin: PluginList = [['expo-camera', {
-  cameraPermission: 'Allow $(PRODUCT_NAME) to scan a Cloud Link pairing QR code.',
+  cameraPermission: 'Allow $(PRODUCT_NAME) to scan an OpenCode pairing QR code.',
   recordAudioAndroid: false,
 }]];
 const iapPlugin: PluginList = ['expo-iap'];

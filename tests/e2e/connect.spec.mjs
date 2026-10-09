@@ -451,7 +451,7 @@ test('subscription dismissal returns to the chooser and Manual stays available',
   }
   await page.getByTestId('connect-subscription-sheet').getByText('Close', { exact: true }).click();
   await page.getByTestId('connection-method-manual').click();
-  await expect(page.getByTestId('connection-profile-name-input')).toBeVisible();
+  await expect(page.getByTestId('connection-profile-url-input')).toBeVisible();
   expect(await events(page)).not.toContain('purchase');
 });
 
@@ -536,8 +536,9 @@ test('Settings has one creation entry and both methods lead through the shared c
   await page.screenshot({ path: '/tmp/opencode-add-connection-subscription.png' });
   await page.getByTestId('connect-subscription-sheet').getByText('Close', { exact: true }).click();
   await page.getByTestId('connection-method-manual').click();
-  await page.getByTestId('connection-profile-name-input').fill('Manual server');
   await page.getByTestId('connection-profile-url-input').fill(SERVER);
+  await page.getByTestId('connection-profile-continue').click();
+  await page.getByTestId('connection-profile-name-input').fill('Manual server');
   await page.getByTestId('connection-profile-save-confirm').click();
   await expect(page).toHaveURL(/\/workspace$/, { timeout: 30_000 });
   const profiles = await page.evaluate(() => JSON.parse(localStorage.getItem('opencode-mobile.connection-profiles')));

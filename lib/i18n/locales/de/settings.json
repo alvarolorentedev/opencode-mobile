@@ -52,6 +52,36 @@
       "serverUrl": "Gib die Server-URL ein.",
       "invalidUrl": "Gib eine vollständige Server-URL ein, zum Beispiel http://192.168.1.10:4096.",
       "save": "Diese Verbindung konnte nicht gespeichert werden."
+    },
+    "setup": {
+      "step": "Schritt {{step}} von 2",
+      "addressTitle": "Serveradresse",
+      "detailsTitle": "Verbindungsdetails",
+      "addressHint": "Verbinde dich mit deinem OpenCode-Server.",
+      "continue": "Weiter",
+      "change": "Ändern",
+      "detected": "OpenCode {{version}} erkannt",
+      "identify": "Gib die Zugangsdaten ein, um den Server zu erkennen.",
+      "customUsername": "Eigener Benutzername",
+      "passwordHint": "Gib das Serverpasswort ein.",
+      "optionalName": "Name (optional)",
+      "nameHint": "Leer lassen, um die Server-IP oder Domain zu verwenden.",
+      "showPassword": "Passwort anzeigen",
+      "hidePassword": "Passwort verbergen",
+      "scan": "Lokalen QR-Code scannen",
+      "pairCommand": "Führe auf deinem Computer opencode pair aus.",
+      "sameNetwork": "Beide Geräte müssen im selben Netzwerk sein.",
+      "scanAutomatic": "Scannen, um automatisch zu speichern und zu verbinden.",
+      "scanAgain": "Erneut scannen",
+      "enterAddress": "Adresse eingeben",
+      "unreachable": "Server nicht erreichbar. Prüfe Adresse und Netzwerk und versuche es erneut.",
+      "credentialsRejected": "Zugangsdaten abgelehnt. Prüfe Passwort und Benutzername oder scanne einen neuen QR-Code.",
+      "pairingErrors": {
+        "invalid": "Dies ist kein OpenCode-Kopplungscode. Führe opencode pair aus und scanne erneut.",
+        "expired": "Dieser Code ist abgelaufen oder wurde bereits verwendet. Führe opencode pair erneut aus.",
+        "unreachable": "Server nicht erreichbar. Prüfe, ob beide Geräte im selben Netzwerk sind, oder gib die Adresse manuell ein.",
+        "loopback": "Dieser Code enthält nur eine localhost-Adresse. Führe opencode service set hostname 0.0.0.0, dann opencode service start und opencode pair auf deinem Computer aus."
+      }
     }
   },
   "providers": {

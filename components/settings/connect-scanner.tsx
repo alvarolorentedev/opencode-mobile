@@ -7,7 +7,7 @@ import { ActivityIndicator, Button, HelperText, Text } from 'react-native-paper'
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 
-export function ConnectScanner({ onScan, enabled }: { onScan: (link: string) => void; enabled: boolean }) {
+export function ConnectScanner({ onScan, enabled, hint }: { onScan: (link: string) => void; enabled: boolean; hint?: string }) {
   const { t } = useTranslation();
   const palette = Colors[useColorScheme() ?? 'light'];
   const [permission] = useCameraPermissions();
@@ -56,7 +56,7 @@ export function ConnectScanner({ onScan, enabled }: { onScan: (link: string) => 
           <View style={styles.scrim} />
         </View>
         <View style={styles.scrim} />
-        <Text style={styles.hint}>{t('settings:connect.scanHint')}</Text>
+        <Text style={styles.hint}>{hint ?? t('settings:connect.scanHint')}</Text>
       </View>
       {!ready ? <View style={styles.loading} pointerEvents="none"><ActivityIndicator accessibilityLabel={t('settings:connect.cameraLoading')} /></View> : null}
     </View>

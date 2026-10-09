@@ -52,6 +52,36 @@
       "serverUrl": "请输入服务器 URL。",
       "invalidUrl": "请输入完整的服务器 URL，例如 http://192.168.1.10:4096。",
       "save": "无法保存此连接。"
+    },
+    "setup": {
+      "step": "第 {{step}} 步，共 2 步",
+      "addressTitle": "服务器地址",
+      "detailsTitle": "连接详情",
+      "addressHint": "连接到你的 OpenCode 服务器。",
+      "continue": "继续",
+      "change": "更改",
+      "detected": "已检测到 OpenCode {{version}}",
+      "identify": "输入凭据以识别服务器。",
+      "customUsername": "自定义用户名",
+      "passwordHint": "输入服务器密码。",
+      "optionalName": "名称（可选）",
+      "nameHint": "留空以使用服务器 IP 或域名。",
+      "showPassword": "显示密码",
+      "hidePassword": "隐藏密码",
+      "scan": "扫描本地二维码",
+      "pairCommand": "在电脑上运行 opencode pair。",
+      "sameNetwork": "请让两台设备连接到同一网络。",
+      "scanAutomatic": "扫描后自动保存并连接。",
+      "scanAgain": "重新扫描",
+      "enterAddress": "改为输入地址",
+      "unreachable": "无法连接服务器。请检查地址和网络后重试。",
+      "credentialsRejected": "凭据被拒绝。请检查密码和用户名，或扫描新的二维码。",
+      "pairingErrors": {
+        "invalid": "这不是 OpenCode 配对码。请运行 opencode pair 并重新扫描。",
+        "expired": "此配对码已过期或已使用。请重新运行 opencode pair。",
+        "unreachable": "无法连接服务器。请确认两台设备连接到同一网络，或手动输入地址。",
+        "loopback": "此配对码仅包含 localhost 地址。请在电脑上运行 opencode service set hostname 0.0.0.0，然后运行 opencode service start 和 opencode pair。"
+      }
     }
   },
   "providers": {

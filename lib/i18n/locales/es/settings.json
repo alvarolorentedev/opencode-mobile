@@ -52,6 +52,36 @@
       "serverUrl": "Introduce la URL del servidor.",
       "invalidUrl": "Introduce una URL de servidor completa, como http://192.168.1.10:4096.",
       "save": "No se pudo guardar esta conexión."
+    },
+    "setup": {
+      "step": "Paso {{step}} de 2",
+      "addressTitle": "Dirección del servidor",
+      "detailsTitle": "Detalles de conexión",
+      "addressHint": "Conéctate a tu servidor OpenCode.",
+      "continue": "Continuar",
+      "change": "Cambiar",
+      "detected": "OpenCode {{version}} detectado",
+      "identify": "Introduce las credenciales para identificar el servidor.",
+      "customUsername": "Usuario personalizado",
+      "passwordHint": "Introduce la contraseña del servidor.",
+      "optionalName": "Nombre (opcional)",
+      "nameHint": "Déjalo vacío para usar la IP o el dominio del servidor.",
+      "showPassword": "Mostrar contraseña",
+      "hidePassword": "Ocultar contraseña",
+      "scan": "Escanear QR local",
+      "pairCommand": "En tu ordenador, ejecuta opencode pair.",
+      "sameNetwork": "Mantén ambos dispositivos en la misma red.",
+      "scanAutomatic": "Escanea para guardar y conectar automáticamente.",
+      "scanAgain": "Volver a escanear",
+      "enterAddress": "Introducir dirección",
+      "unreachable": "No se pudo acceder al servidor. Comprueba la dirección y la red e inténtalo de nuevo.",
+      "credentialsRejected": "Credenciales rechazadas. Comprueba la contraseña y el usuario o escanea un nuevo QR.",
+      "pairingErrors": {
+        "invalid": "Este no es un código de emparejamiento de OpenCode. Ejecuta opencode pair y vuelve a escanear.",
+        "expired": "Este código ha caducado o ya se ha usado. Ejecuta opencode pair de nuevo.",
+        "unreachable": "No se pudo acceder al servidor. Comprueba que ambos dispositivos estén en la misma red o introduce la dirección manualmente.",
+        "loopback": "Este código solo contiene una dirección localhost. Ejecuta opencode service set hostname 0.0.0.0, después opencode service start y opencode pair en tu ordenador."
+      }
     }
   },
   "providers": {
