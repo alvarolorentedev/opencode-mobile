@@ -128,7 +128,7 @@ Provider models are flattened to app options. Capability discovery uses the curr
 
 `capabilities.attachment` controls whether the composer may send files. Enabled entries in `capabilities.input` define the accepted input modalities. Legacy top-level capability fields are not supported.
 
-On V2, `modelToV1()` maps `capabilities.tools` and `capabilities.input`, and derives `capabilities.reasoning` from the model's provider compatibility fields and variants/settings because V2 has no explicit reasoning flag. Every entry in `Model.Info.cost` is mapped: the untiered entry becomes the base price and entries with a `tier` become `cost.tiers`, so tiered pricing estimates match V1 behavior.
+On V2, `modelToV1()` maps `capabilities.tools` and `capabilities.input`, and derives `capabilities.reasoning` from the model's provider compatibility fields and variants/settings because V2 has no explicit reasoning flag. Every entry in `Model.Info.cost` is mapped: the untiered entry becomes the base price and entries with a `tier` become `cost.tiers`, so tiered pricing estimates match V1 behavior. The V1 model `id` (and the provider model map key) uses V2 `Model.Info.id`, not `modelID`, because standard and Fast variants share a `modelID` and would otherwise collapse into one entry.
 
 ## Provider Authentication
 

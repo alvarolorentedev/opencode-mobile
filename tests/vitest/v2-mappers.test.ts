@@ -99,7 +99,7 @@ describe('v2 response mappers', () => {
       ],
       variants: [{ id: 'high', settings: { reasoningEffort: 'high' } }],
     }) as never);
-    expect(mapped.id).toBe('sonnet');
+    expect(mapped.id).toBe('anthropic/sonnet');
     expect((mapped.capabilities as never as { reasoning: boolean }).reasoning).toBe(true);
     expect((mapped.capabilities as never as { attachment: boolean }).attachment).toBe(true);
     expect((mapped.capabilities as never as { toolcall: boolean }).toolcall).toBe(true);

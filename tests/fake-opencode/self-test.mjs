@@ -315,7 +315,7 @@ try {
   assert((await v2request('/api/integration')).data.find((item) => item.id === 'opencode-go').connections.some((connection) => connection.method === 'key'), 'V2 key login must retain the credential connection');
   const v2Directory = '/workspace/secondary-project';
   const v2Session = (await v2request('/api/session', json('POST', { title: 'V2 smoke session', location: { directory: v2Directory } }))).data;
-  assert(v2Session.model?.id === 'gpt-4.1-mini' && v2Session.model.providerID === 'openai', 'V2 session did not expose a model');
+  assert(v2Session.model?.id === 'openai/gpt-4.1-mini' && v2Session.model.providerID === 'openai', 'V2 session did not expose a model');
   assert(v2Session.tokens?.input === 0 && v2Session.cost === 0, 'V2 session did not expose usage fields');
   const missingPrompt = await fetch(`${v2Origin}/api/session/ses_missing/prompt`, json('POST', { text: 'Missing session' }));
   assert(missingPrompt.status === 404, 'V2 prompts must reject a missing session');
@@ -359,7 +359,7 @@ try {
   assert(v2Assistant.cost > 0, 'V2 assistant cost missing');
   const v2Listed = (await v2request('/api/session')).data.find((entry) => entry.id === v2Session.id);
   assert(v2Listed.tokens.input === 1200 && v2Listed.cost > 0, 'V2 session usage did not accumulate');
-  assert(v2Listed.model?.id === 'gpt-4.1-mini', 'V2 session list dropped the model');
+  assert(v2Listed.model?.id === 'openai/gpt-4.1-mini', 'V2 session list dropped the model');
 
   // Session instruction entries back the adapter's `system` prompt mapping.
   const instructionPath = `/api/experimental/session/${v2Session.id}/instructions/entries/opencode-mobile.chat-preferences`;

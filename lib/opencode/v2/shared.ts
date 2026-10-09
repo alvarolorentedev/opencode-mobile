@@ -148,7 +148,7 @@ export async function providersToV1(api: V2Api, location: LocationOptions) {
     id: provider.id,
     name: provider.name,
     integrationIds: [...new Set([provider.integrationID, provider.id].filter(Boolean))] as string[],
-    models: Object.fromEntries(models.filter((model) => model.providerID === provider.id).map((model) => [model.modelID, modelToV1(model)])),
+    models: Object.fromEntries(models.filter((model) => model.providerID === provider.id).map((model) => [model.id, modelToV1(model)])),
   }));
   // V2's provider endpoint lists active providers. The integration endpoint is
   // the connectable catalog, including providers with no credentials yet.
@@ -164,9 +164,9 @@ export async function providersToV1(api: V2Api, location: LocationOptions) {
   const defaults: Record<string, string> = {};
   providers.forEach((provider) => {
     const first = models.find((model) => model.providerID === provider.id);
-    if (first) defaults[provider.id] = first.modelID;
+    if (first) defaults[provider.id] = first.id;
   });
-  if (defaultRef) defaults[defaultRef.providerID] = defaultRef.modelID;
+  if (defaultRef) defaults[defaultRef.providerID] = defaultRef.id;
 
   // `auto` is a catalog activation policy, not evidence of a connection.
   // Keep unconnected providers available in Settings' Add provider picker.

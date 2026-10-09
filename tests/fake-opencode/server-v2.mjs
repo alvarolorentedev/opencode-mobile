@@ -155,7 +155,7 @@ function deliverInboxItem(item) {
   emitV2Event(event('session.inbox.delivered', { sessionID: item.sessionID, inboxID: item.id }));
 }
 
-const FAKE_MODEL = { id: 'gpt-4.1-mini', providerID: 'openai' };
+const FAKE_MODEL = { id: 'openai/gpt-4.1-mini', providerID: 'openai' };
 // Deterministic per-assistant-call usage so V2 e2e can assert context
 // utilization. Non-zero values prove the adapter carries model/tokens/cost;
 // session totals accumulate them the way the real server does.

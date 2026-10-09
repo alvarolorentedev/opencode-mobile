@@ -60,7 +60,7 @@ export function modelToV1(model: ModelInfo): Record<string, unknown> {
     }));
 
   return {
-    id: model.modelID,
+    id: model.id,
     name: model.name,
     providerID: model.providerID,
     capabilities: {
