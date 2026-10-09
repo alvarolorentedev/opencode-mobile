@@ -1,0 +1,1 @@
+- All provider models are listed again in Settings, including OpenAI standard and Fast variants.
