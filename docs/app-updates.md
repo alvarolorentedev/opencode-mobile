@@ -12,6 +12,8 @@ The local Expo module `modules/opencode-updates` uses Google's official
 `com.google.android.play:app-update:2.1.0`, with Expo SDK 57's Gradle plugin and a
 namespace. Only non-debuggable apps installed by Google Play are eligible. Play
 still enforces app ownership, signing and a higher available version code.
+The module declares `defaultConfig.versionName = '1.0.0'`, which Expo's Gradle
+publication setup requires separately from the app's release version.
 
 Update starts a flexible download after native Play consent. Download completion
 only raises the ready notice. A second explicit Update tap on that notice calls

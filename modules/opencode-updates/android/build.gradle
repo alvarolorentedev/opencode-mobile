@@ -8,6 +8,9 @@ version = '1.0.0'
 
 android {
   namespace 'app.getopencode.updates'
+  defaultConfig {
+    versionName '1.0.0'
+  }
 }
 
 dependencies {
