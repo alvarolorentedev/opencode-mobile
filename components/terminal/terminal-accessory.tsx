@@ -48,9 +48,9 @@ export function TerminalAccessory({ state, labels, disabled, expanded, onExpand,
   const button = (key: string, title = key) => <button key={key} type="button" disabled={disabled} aria-label={key} onPointerDown={(event) => repeat(event, key)} onPointerUp={() => clearTimeout(timer.current)} onPointerCancel={() => clearTimeout(timer.current)} onClick={() => onKey(key)}>{title}</button>;
   return <div className="terminal-accessory" data-testid="terminal-accessory">
     <div className="terminal-key-row">
-      {button('Escape', 'Esc')}{button('Tab')}
+      {button('ArrowUp', '↑')}{button('ArrowDown', '↓')}{button('ArrowLeft', '←')}{button('ArrowRight', '→')}
+      {button('Tab')}{button('Escape', 'Esc')}
       {(['ctrl', 'alt', 'shift'] as const).map((key) => <button type="button" key={key} disabled={disabled} aria-label={`${key[0].toUpperCase()}${key.slice(1)}, ${labels[state.states[key]]}`} aria-pressed={state.modifiers[key]} data-state={state.states[key]} onPointerDown={keepFocus} onClick={() => state.toggle(key)}>{key[0].toUpperCase()}{key.slice(1)}{state.states[key] === 'locked' ? ' •' : ''}</button>)}
-      {button('ArrowLeft', '←')}{button('ArrowDown', '↓')}{button('ArrowUp', '↑')}{button('ArrowRight', '→')}
       <button type="button" aria-label={labels.more} aria-expanded={expanded} onPointerDown={keepFocus} onClick={onExpand}>Fn</button>
       {selected && <button type="button" onPointerDown={keepFocus} onClick={onCopy}>{labels.copy}</button>}
     </div>
