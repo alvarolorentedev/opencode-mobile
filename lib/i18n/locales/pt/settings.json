@@ -8,7 +8,8 @@
       "advanced": "Avançado",
       "appearance": "Aparência",
       "support": "Suporte",
-      "permissions": "Aprovações"
+      "permissions": "Aprovações",
+      "subscription": "Assinatura"
     },
     "summaries": {
       "configuredCount": "{{value}} configurados",
@@ -402,5 +403,16 @@
     "removeTitle": "Remover permissão salva",
     "removeMessage": "Parar de permitir automaticamente {{resource}}?",
     "refresh": "Atualizar"
+  },
+  "subscription": {
+    "inactive": "Nenhuma assinatura ativa",
+    "accessThrough": "Acesso até {{date}}",
+    "description": "Acesso remoto às suas máquinas OpenCode.",
+    "manage": "Gerenciar assinatura",
+    "opensApple": "Abre as assinaturas da App Store",
+    "opensGoogle": "Abre o Google Play",
+    "restoreDescription": "Recuperar uma compra existente",
+    "machines": "Máquinas",
+    "machinesDescription": "Ver e gerenciar máquinas conectadas"
   }
 }

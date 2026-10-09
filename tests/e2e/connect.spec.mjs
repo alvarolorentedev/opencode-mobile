@@ -50,6 +50,12 @@ async function manage(page) {
   await expect(page.getByTestId('connect-refresh-machines')).toBeVisible();
 }
 async function events(page) { return page.evaluate(() => globalThis.__connectStoreTest.events); }
+async function openSubscriptionSettings(page) {
+  await page.addInitScript(() => localStorage.setItem('opencode-mobile.onboarding-version', JSON.stringify({ version: 1 })));
+  await page.goto('/settings');
+  await page.getByRole('button', { name: /^Subscription\./ }).click();
+  await expect(page.getByTestId('subscription-section')).toBeVisible();
+}
 async function assertNoStoredSecrets(page) {
   const stored = await page.evaluate(() => JSON.stringify(localStorage));
   for (const secret of ['device-test-secret', 'test-user-token', 'temporary-test-pairing', 'native-test-proof']) expect(stored).not.toContain(secret);
@@ -118,6 +124,97 @@ test.beforeEach(async ({ request }) => {
   expect((await request.post(`${SERVER}/__control/reset`, { data: { scenario: 'happy-path' } })).ok()).toBeTruthy();
 });
 test.afterEach(async ({ page }) => { await page.unrouteAll({ behavior: 'ignoreErrors' }); });
+
+for (const theme of ['dark', 'light']) {
+  test(`Subscription Settings shows verified access and opens management without a camera (${theme})`, async ({ page }) => {
+    const runtimeErrors = [];
+    page.on('pageerror', (error) => runtimeErrors.push(error.message));
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.emulateMedia({ colorScheme: theme });
+    await storeFixture(page, { recovered: true });
+    const state = await mockControlPlane(page, { owned: true });
+    await openSubscriptionSettings(page);
+    await expect(page.getByTestId('subscription-status')).toHaveText('Active');
+    const date = new Date(state.paidThrough).toLocaleDateString('en', { day: 'numeric', month: 'short', year: 'numeric' });
+    await expect(page.getByTestId('subscription-expiry')).toHaveText(`Access through ${date}`);
+    await expect(page.getByTestId('connect-purchase')).toHaveCount(0);
+    await expect(page.getByTestId('connect-restore')).toHaveCount(1);
+    await expect(page.getByTestId('connect-options')).toHaveCount(0);
+    expect(await events(page)).not.toContain('purchase');
+    expect(await events(page)).not.toContain('restore');
+    const managed = page.getByTestId('subscription-manage');
+    await managed.click();
+    await expect.poll(() => events(page)).toContain('manage-subscription');
+    await expect(managed).toBeEnabled();
+    await page.screenshot({ path: `/tmp/opencode-subscription-${theme}.png` });
+    for (const width of [320, 1440]) {
+      await page.setViewportSize({ width, height: 844 });
+      await expect(managed).toBeInViewport();
+      expect(await page.getByTestId('subscription-section').evaluate((element) => element.scrollWidth <= element.clientWidth)).toBe(true);
+      await page.screenshot({ path: `/tmp/opencode-subscription-${theme}-${width}.png` });
+    }
+    expect(runtimeErrors).toEqual([]);
+    await page.getByTestId('settings-section-overlay').getByText('Close', { exact: true }).click();
+    await expect(page.getByTestId('subscription-section')).toHaveCount(0);
+    await page.getByRole('button', { name: /^Subscription\./ }).click();
+    await page.getByTestId('subscription-machines').click();
+    await expect(page).toHaveURL(/\/pair\?mode=manage$/);
+    await expect(page.getByTestId('connect-refresh-machines')).toBeVisible();
+    await expect(page.getByTestId('subscription-section')).toHaveCount(0);
+    expect(state.pairClaims).toBe(0);
+    await assertNoStoredSecrets(page);
+  });
+}
+
+for (const outcome of [undefined, 'pending']) {
+  test(`Subscription Settings purchases without a QR and guards pending actions (${outcome ?? 'completed'})`, async ({ page }) => {
+    await storeFixture(page, { outcome });
+    const state = await mockControlPlane(page);
+    await openSubscriptionSettings(page);
+    await expect(page.getByTestId('subscription-status')).toHaveText('No active subscription');
+    await expect(page.getByTestId('subscription-expiry')).toHaveCount(0);
+    await expect(page.getByTestId('connect-restore')).toHaveCount(1);
+    await expect(page.getByTestId('connect-purchase')).toBeEnabled();
+    expect(await events(page)).not.toContain('purchase');
+    await page.getByTestId('connect-purchase').click();
+    if (outcome === 'pending') {
+      await expect(page.getByTestId('connect-progress')).toHaveText('Waiting for purchase approval…');
+      await expect(page.getByTestId('connect-purchase')).toBeDisabled();
+      await expect(page.getByTestId('connect-restore')).toBeDisabled();
+      await expect(page.getByTestId('subscription-manage')).toBeDisabled();
+      expect(state.subscriptionClaims).toBe(0);
+    } else {
+      await expect(page.getByTestId('subscription-status')).toHaveText('Active');
+      await expect(page.getByTestId('subscription-expiry')).toBeVisible();
+      await expect(page.getByTestId('connect-purchase')).toHaveCount(0);
+      expect(state.subscriptionClaims).toBe(1);
+    }
+    expect((await events(page)).filter((event) => event === 'purchase')).toHaveLength(1);
+    expect(state.pairClaims).toBe(0);
+    await expect(page).toHaveURL(/\/settings$/);
+    await assertNoStoredSecrets(page);
+  });
+}
+
+test('Subscription Settings retries catalog failures and restores access without purchasing', async ({ page }) => {
+  await storeFixture(page);
+  const options = { catalogStatus: 503, owned: true };
+  const state = await mockControlPlane(page, options);
+  await openSubscriptionSettings(page);
+  await expect(page.getByTestId('connect-error')).toBeVisible();
+  await expect(page.getByTestId('connect-restore')).toBeDisabled();
+  options.catalogStatus = 200;
+  await page.getByTestId('connect-retry').click();
+  await expect(page.getByTestId('connect-error')).toHaveCount(0);
+  await expect(page.getByTestId('connect-restore')).toBeEnabled();
+  await page.getByTestId('connect-restore').click();
+  await expect(page.getByTestId('subscription-status')).toHaveText('Active');
+  await expect(page.getByTestId('connect-restore')).toHaveCount(1);
+  expect(await events(page)).toContain('restore');
+  expect(await events(page)).not.toContain('purchase');
+  expect(state.pairClaims).toBe(0);
+  await expect(page).toHaveURL(/\/settings$/);
+});
 
 test('Cloud Link trusts only fixed environments and has no manual control-plane configuration', async ({ page }) => {
   await storeFixture(page);

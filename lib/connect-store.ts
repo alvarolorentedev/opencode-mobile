@@ -15,7 +15,7 @@ export type ConnectOffer = {
   offerToken?: string;
 };
 
-type StoreApi = Pick<typeof import('expo-iap'), 'initConnection' | 'endConnection' | 'fetchProducts' | 'requestPurchase' | 'getAvailablePurchases' | 'restorePurchases' | 'finishTransaction' | 'getTransactionJwsIOS' | 'isEligibleForIntroOfferIOS' | 'getPendingTransactionsIOS' | 'purchaseUpdatedListener' | 'purchaseErrorListener'>;
+type StoreApi = Pick<typeof import('expo-iap'), 'initConnection' | 'endConnection' | 'fetchProducts' | 'requestPurchase' | 'getAvailablePurchases' | 'restorePurchases' | 'deepLinkToSubscriptions' | 'finishTransaction' | 'getTransactionJwsIOS' | 'isEligibleForIntroOfferIOS' | 'getPendingTransactionsIOS' | 'purchaseUpdatedListener' | 'purchaseErrorListener'>;
 type NativePurchaseError = Parameters<Parameters<StoreApi['purchaseErrorListener']>[0]>[0];
 type StoreTest = {
   products: ProductSubscription[];
@@ -46,6 +46,7 @@ export async function loadConnectStore(): Promise<StoreApi> {
     fetchProducts: async () => test.products,
     getAvailablePurchases: async () => { test.events.push('available'); return test.purchases; },
     restorePurchases: async () => { test.events.push('restore'); if (test.restoredPurchases) test.purchases = test.restoredPurchases; },
+    deepLinkToSubscriptions: async () => { test.events.push('manage-subscription'); },
     getPendingTransactionsIOS: async () => test.pendingTransactions ?? [],
     requestPurchase: async () => {
       test.events.push('purchase');
@@ -67,6 +68,17 @@ export async function loadConnectStore(): Promise<StoreApi> {
     purchaseUpdatedListener: (callback: typeof onPurchase) => { onPurchase = callback; return { remove: () => { onPurchase = () => undefined; } }; },
     purchaseErrorListener: (callback: typeof onError) => { onError = callback; return { remove: () => { onError = () => undefined; } }; },
   } as StoreApi;
+}
+
+export async function openConnectSubscriptionManagement() {
+  const api = await loadConnectStore();
+  if (Platform.OS === 'android') {
+    const packageNameAndroid = Constants.expoConfig?.android?.package;
+    if (!packageNameAndroid) throw new Error('The Android app package is unavailable.');
+    await api.deepLinkToSubscriptions({ packageNameAndroid });
+  } else {
+    await api.deepLinkToSubscriptions();
+  }
 }
 
 export function selectConnectOffers(catalog: ConnectCatalog, products: ProductSubscription[], store = getConnectStore(), introEligible = new Set<string>()): ConnectOffer[] {

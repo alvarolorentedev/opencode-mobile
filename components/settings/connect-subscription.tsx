@@ -6,7 +6,7 @@ import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import type { ConnectSetup } from '@/providers/use-connect-state';
 
-export function ConnectSubscription({ setup }: { setup: ConnectSetup }) {
+export function ConnectSubscription({ setup, showRestore = true }: { setup: ConnectSetup; showRestore?: boolean }) {
   const { t } = useTranslation();
   const palette = Colors[useColorScheme() ?? 'light'];
   const [selectedOffer, setSelectedOffer] = useState('');
@@ -26,6 +26,6 @@ export function ConnectSubscription({ setup }: { setup: ConnectSetup }) {
       </View>)}
     </RadioButton.Group> : null}
     <Button testID="connect-purchase" mode="contained" disabled={!setup.canPurchase || !selected} onPress={() => { if (selected) void setup.purchase(selected.key); }}>{t('settings:connect.subscribe')}</Button>
-    <Button testID="connect-restore" disabled={pending || !setup.storeReady} onPress={() => { void setup.restore(); }}>{t('settings:connect.restore')}</Button>
+    {showRestore ? <Button testID="connect-restore" disabled={pending || !setup.storeReady} onPress={() => { void setup.restore(); }}>{t('settings:connect.restore')}</Button> : null}
   </View>;
 }

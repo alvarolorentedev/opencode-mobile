@@ -18,7 +18,7 @@ import {
   type ConnectPairing,
   type ConnectSession,
 } from '@/lib/connect';
-import { connectPurchaseRequest, isConnectPurchase, loadConnectStore, type ConnectOffer, type ConnectStoreApi } from '@/lib/connect-store';
+import { connectPurchaseRequest, isConnectPurchase, loadConnectStore, openConnectSubscriptionManagement, type ConnectOffer, type ConnectStoreApi } from '@/lib/connect-store';
 import { deleteProfilePassword, loadConnectionProfiles, saveConnectionProfiles, type ConnectionProfile } from '@/lib/connection-profiles';
 import type { OpencodeConnectionSettings } from '@/lib/opencode/client';
 import type { ConnectionContextValue } from '@/providers/opencode-provider-types';
@@ -271,6 +271,11 @@ export function useConnectState({ controlPlaneUrl, setControlPlaneUrl, switchCon
     return continueAfterPurchase();
   }), [continueAfterPurchase, perform, recoverSession]);
 
+  const manageSubscription = useCallback(() => {
+    if (initialization !== 'ready' || pendingPurchase.current || ['purchasing', 'pending'].includes(phase)) return Promise.resolve(false);
+    return perform(openConnectSubscriptionManagement);
+  }, [initialization, perform, phase]);
+
   const retry = useCallback(() => {
     if (!apiRef.current) { setError(undefined); setInitialization('loading'); setInitializationAttempt((current) => current + 1); return Promise.resolve(false); }
     return perform(async () => {
@@ -307,7 +312,7 @@ export function useConnectState({ controlPlaneUrl, setControlPlaneUrl, switchCon
 
   const canChangeControlPlane = enabled && isHydrated && !busy && purchaseRecovery !== 'verified' && !['purchasing', 'pending', 'saving'].includes(phase);
   const canPurchase = !busy && storeReady && !purchaseRecovery && !['purchasing', 'pending'].includes(phase);
-  return { enabled, initialization, pairLink, dismissError, controlPlaneUrl, canChangeControlPlane, canPurchase, hasToken: hasConnectSession(session), entitled: hasConnectEntitlement(session), pairing, phase, busy, error, notice, machines, profiles, savedProfile, offers, storeReady, canRetry,
+  return { enabled, initialization, pairLink, dismissError, controlPlaneUrl, canChangeControlPlane, canPurchase, hasToken: hasConnectSession(session), entitled: hasConnectEntitlement(session), subscriptionExpiresAt: session?.subscription_expires_at, pairing, phase, busy, error, notice, machines, profiles, savedProfile, offers, storeReady, canRetry, manageSubscription,
     selectControlPlane, acceptLink, purchase, restore, retry, claim, cancelPairing, refreshMachines, connectProfile, connectMachine, forgetProfile, revokeMachine, prepareSettings };
 }
 

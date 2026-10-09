@@ -8,7 +8,8 @@
       "advanced": "Erweitert",
       "appearance": "Darstellung",
       "support": "Support",
-      "permissions": "Genehmigungen"
+      "permissions": "Genehmigungen",
+      "subscription": "Abonnement"
     },
     "summaries": {
       "configuredCount": "{{value}} konfiguriert",
@@ -402,5 +403,16 @@
     "removeTitle": "Gespeicherte Berechtigung entfernen",
     "removeMessage": "{{resource}} nicht mehr automatisch erlauben?",
     "refresh": "Aktualisieren"
+  },
+  "subscription": {
+    "inactive": "Kein aktives Abonnement",
+    "accessThrough": "Zugriff bis {{date}}",
+    "description": "Fernzugriff auf deine OpenCode-Rechner.",
+    "manage": "Abonnement verwalten",
+    "opensApple": "Öffnet App Store-Abonnements",
+    "opensGoogle": "Öffnet Google Play",
+    "restoreDescription": "Einen bestehenden Kauf wiederherstellen",
+    "machines": "Rechner",
+    "machinesDescription": "Verbundene Rechner anzeigen und verwalten"
   }
 }

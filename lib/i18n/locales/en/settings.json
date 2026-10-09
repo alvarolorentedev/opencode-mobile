@@ -8,7 +8,8 @@
       "advanced": "Advanced",
       "appearance": "Appearance",
       "support": "Support",
-      "permissions": "Approvals"
+      "permissions": "Approvals",
+      "subscription": "Subscription"
     },
     "summaries": {
       "configuredCount": "{{value}} configured",
@@ -402,5 +403,16 @@
     "removeTitle": "Remove saved permission",
     "removeMessage": "Stop automatically allowing {{resource}}?",
     "refresh": "Refresh"
+  },
+  "subscription": {
+    "inactive": "No active subscription",
+    "accessThrough": "Access through {{date}}",
+    "description": "Remote access to your OpenCode machines.",
+    "manage": "Manage subscription",
+    "opensApple": "Opens App Store subscriptions",
+    "opensGoogle": "Opens Google Play",
+    "restoreDescription": "Recover an existing purchase",
+    "machines": "Machines",
+    "machinesDescription": "View and manage connected machines"
   }
 }

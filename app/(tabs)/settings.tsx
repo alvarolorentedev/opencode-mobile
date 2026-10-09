@@ -17,6 +17,7 @@ import {
   AiDefaultsSection,
   EditorSection,
   ConnectionSection,
+  SubscriptionSection,
   DiagnosticsSection,
   GeneralSection,
   NotificationsSection,
@@ -147,6 +148,14 @@ export default function SettingsScreen() {
       onPress: () => setOpenSection('connection'),
       render: () => <ConnectionSection connection={connection} palette={palette} onManageConnect={connectSetup.enabled ? () => { setOpenSection(undefined); router.push('/pair?mode=manage'); } : undefined} onPair={connectSetup.enabled ? () => { setOpenSection(undefined); router.push('/pair'); } : undefined} />,
     },
+    ...(connectSetup.enabled ? [{
+      id: 'subscription',
+      icon: 'crown-outline' as const,
+      title: t('settings:screen.categories.subscription'),
+      summary: `${t('settings:connect.title')} · ${connectSetup.initialization === 'loading' ? t('settings:connect.progress.idle') : connectSetup.entitled ? t('common:labels.active') : t('settings:subscription.inactive')}`,
+      onPress: () => setOpenSection('subscription'),
+      render: () => <SubscriptionSection setup={connectSetup} palette={palette} onManageMachines={() => { setOpenSection(undefined); router.push('/pair?mode=manage'); }} />,
+    }] : []),
     {
       id: 'ai',
       icon: 'creation',

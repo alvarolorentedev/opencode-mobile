@@ -20,6 +20,12 @@ layout, safe areas and screen-reader actions on iOS and Android.
 
 ## Current Strategy
 
+Cloud Link Subscription Settings coverage is described in [connect.md](connect.md).
+Validate the selected grouped-action layout in dark/light themes, narrow widths,
+larger text, sheet dismissal and screen-reader navigation. Check real App Store
+and Google Play handoff separately from the mocked E2E driver. E2E additions
+require explicit human validation under AGENTS.md.
+
 This repository validates behavior primarily through end-to-end flow tests and static checks, not broad unit-test coverage.
 
 That choice matches the app's risk profile:

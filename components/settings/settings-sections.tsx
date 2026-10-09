@@ -1,5 +1,6 @@
 export { DiagnosticsSection } from './sections/diagnostics-section';
 export { ConnectionSection } from './sections/connection-section';
+export { SubscriptionSection } from './sections/subscription-section';
 export { AiDefaultsSection } from './sections/ai-defaults-section';
 export { NotificationsSection } from './sections/notifications-section';
 export { VoiceSection } from './sections/voice-section';

@@ -414,7 +414,7 @@ for (const platform of ['apple', 'google']) {
     const purchase = { id: 'recovery-transaction', productId: `fixture.${platform}`, store: platform, purchaseState: 'purchased', purchaseToken: 'exact-native-proof', transactionDate: Date.now() };
     if (scenario === 'routing' && platform === 'apple') purchase.environmentIOS = 'Sandbox';
     const requests = [], events = [];
-    let fail = true, onPurchase, onAppState;
+    let fail = true, onPurchase, onAppState, releaseManagement, managementCalls = 0;
     const nativeApi = {
       initConnection: async () => true, endConnection: async () => true,
       fetchProducts: async () => scenario === 'catalog' && fail ? [] : platform === 'apple' ? [appleProduct] : [googleProduct],
@@ -434,7 +434,9 @@ for (const platform of ['apple', 'google']) {
     const concern = {
       'react-native': { Platform: { OS: globalThis.__connectPlatform }, AppState: { addEventListener: (_, listener) => { onAppState = listener; return { remove() {} }; } } },
       '@/lib/connect': connect,
-      '@/lib/connect-store': { ...storeApi, loadConnectStore: async () => nativeApi },
+      '@/lib/connect-store': { ...storeApi, loadConnectStore: async () => nativeApi,
+        openConnectSubscriptionManagement: async () => { managementCalls++; await new Promise((resolve) => { releaseManagement = resolve; }); },
+      },
       '@/lib/connection-profiles': { loadConnectionProfiles: async () => [] },
       '@/providers/connection-refresh': {},
       '@/providers/services/connect-subscription-service': subscriptionService,
@@ -488,6 +490,15 @@ for (const platform of ['apple', 'google']) {
       }
       assert.equal(runtime.value.canPurchase, true);
       if (scenario === 'routing') {
+        assert.equal(runtime.value.subscriptionExpiresAt, undefined, 'Do not invent an access date before verification.');
+        const management = runtime.value.manageSubscription();
+        await runtime.settle();
+        assert.equal(runtime.value.busy, true);
+        assert.equal(await runtime.value.manageSubscription(), false, 'Do not open duplicate store-management sheets.');
+        releaseManagement();
+        assert.equal(await management, true);
+        await runtime.settle();
+        assert.equal(managementCalls, 1);
         await runtime.value.pairLink({ v: '1', cp: staging, id: 'discarded', t: 'temporary-proof', n: 'Test Mac' });
         await runtime.settle();
         await runtime.value.cancelPairing();
@@ -496,6 +507,7 @@ for (const platform of ['apple', 'google']) {
       }
       await runtime.value.purchase(runtime.value.offers[0].key);
       await runtime.settle();
+      assert.equal(await runtime.value.manageSubscription(), false, 'Do not open subscription management during a purchase.');
       assert.equal(runtime.value.canChangeControlPlane, false, 'An open store purchase cannot change environment');
       globalThis.__secureWriteFails = failure === 'secure';
       onPurchase(purchase);
@@ -503,6 +515,7 @@ for (const platform of ['apple', 'google']) {
       if (scenario === 'routing') {
         assert.equal(runtime.value.controlPlaneUrl, staging);
         assert.equal(runtime.value.entitled, true);
+        assert.equal(runtime.value.subscriptionExpiresAt, session.subscription_expires_at, 'Expose the verified access-through date only.');
         assert.equal(runtime.value.error, undefined);
         assert.equal(await connect.getConnectSession(pairing.controlPlaneUrl, platform), undefined);
         assert.equal((await connect.getConnectSession(staging, platform)).user_token, session.user_token);

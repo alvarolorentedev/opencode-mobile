@@ -115,6 +115,21 @@ claim must safely recover the same store ownership when repeated.
 
 ## Add connection and pairing UI
 
+Settings exposes Subscription directly below Connection in Cloud Link-enabled
+builds. Its compact summary displays verified access status and localized
+`Access through` date, followed by Subscription and Machines action groups.
+Manage subscription opens App Store subscriptions on iOS or the current app
+package's Google Play subscriptions page on Android, without guessing a product
+from catalog offers. Cancellation and billing changes happen in the native store.
+The date denotes paid-through access, not automatic renewal or cancellation state.
+
+Inactive access reuses native offers and Subscribe. The section always has one
+explicit Restore purchases action, plus existing progress/error/notice/Retry
+feedback. Conflicting store operations disable actions. Your machines closes the
+sheet and opens `pair?mode=manage`; opening Subscription alone never requests
+camera access, pairs a machine, purchases, or performs interactive Restore.
+FOSS and production web retain the existing Cloud Link availability gate.
+
 Settings retains connection status and saved profiles. Add connection is the
 single creation entry and opens two stacked choices: Pair with Cloud Link, then
 Manual. Onboarding uses the same chooser and retains Skip. Manual opens the
@@ -270,6 +285,25 @@ remain. Forget removes local credentials only; explicit machine deletion removes
 local records only after the backend acknowledges successful cleanup.
 
 ## Validation
+
+Subscription Settings flows cover dark/light mobile layouts, verified access
+dates, store handoff through the E2E driver, sheet close/reopen, machine navigation,
+QR-free Purchase/Restore, pending approval guards, and catalog failure/retry.
+Store-wrapper tests verify iOS handoff, Android package identity without a guessed
+SKU, and unavailable-build/identity errors. Provider-hook checks verify serialized
+management, purchase exclusion, and verified-date exposure. These mocks do not
+establish real store handoff or device accessibility. The added E2E flows require
+explicit human validation under AGENTS.md. The user confirmed human validation
+of the section and its five new E2E flows on 2026-10-09; real native store handoff
+and device accessibility remain separate acceptance checks.
+
+Subscription Settings verification on 2026-10-09: static CI (149 Vitest tests
+plus the script suites), both fake-server self-tests, all 109 web E2E flows and
+FOSS preparation checks passed. Dark/light screenshots at 390, 320 and 1440 px
+showed the selected grouped-action layout without horizontal overflow or
+uncaught browser errors in the new flows. Android development prebuild passed;
+Gradle stopped because no Android SDK location is configured. Live store handoff,
+native larger text and screen-reader acceptance remain unverified.
 
 `test:connect` covers trusted catalog/API/proof/session contracts and the actual
 claim → secure-write → finalization aggregation on both stores, including

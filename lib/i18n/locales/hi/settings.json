@@ -8,7 +8,8 @@
       "advanced": "उन्नत",
       "appearance": "दिखावट",
       "support": "सहायता",
-      "permissions": "स्वीकृतियाँ"
+      "permissions": "स्वीकृतियाँ",
+      "subscription": "सदस्यता"
     },
     "summaries": {
       "configuredCount": "{{value}} कॉन्फ़िगर किए गए",
@@ -402,5 +403,16 @@
     "removeTitle": "सहेजी गई अनुमति हटाएं",
     "removeMessage": "{{resource}} को स्वतः अनुमति देना बंद करें?",
     "refresh": "रीफ़्रेश करें"
+  },
+  "subscription": {
+    "inactive": "कोई सक्रिय सदस्यता नहीं",
+    "accessThrough": "{{date}} तक पहुँच",
+    "description": "अपनी OpenCode मशीनों तक रिमोट पहुँच।",
+    "manage": "सदस्यता प्रबंधित करें",
+    "opensApple": "App Store की सदस्यताएँ खोलता है",
+    "opensGoogle": "Google Play खोलता है",
+    "restoreDescription": "मौजूदा खरीदारी पुनर्स्थापित करें",
+    "machines": "मशीनें",
+    "machinesDescription": "कनेक्ट की गई मशीनें देखें और प्रबंधित करें"
   }
 }

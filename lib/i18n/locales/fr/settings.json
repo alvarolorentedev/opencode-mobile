@@ -8,7 +8,8 @@
       "advanced": "Avancé",
       "appearance": "Apparence",
       "support": "Assistance",
-      "permissions": "Approbations"
+      "permissions": "Approbations",
+      "subscription": "Abonnement"
     },
     "summaries": {
       "configuredCount": "{{value}} configurés",
@@ -402,5 +403,16 @@
     "removeTitle": "Supprimer l’autorisation enregistrée",
     "removeMessage": "Ne plus autoriser automatiquement {{resource}} ?",
     "refresh": "Actualiser"
+  },
+  "subscription": {
+    "inactive": "Aucun abonnement actif",
+    "accessThrough": "Accès jusqu’au {{date}}",
+    "description": "Accès à distance à vos machines OpenCode.",
+    "manage": "Gérer l’abonnement",
+    "opensApple": "Ouvre les abonnements de l’App Store",
+    "opensGoogle": "Ouvre Google Play",
+    "restoreDescription": "Récupérer un achat existant",
+    "machines": "Machines",
+    "machinesDescription": "Voir et gérer les machines connectées"
   }
 }

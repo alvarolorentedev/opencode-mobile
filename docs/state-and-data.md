@@ -330,6 +330,11 @@ Credentials:
   automatically claims after initialization settles and entitlement is verified.
   Subscription recovery and automatic pairing use the existing operation lock;
   failed claims require explicit Retry or a replacement QR.
+- `connectSetup.subscriptionExpiresAt` exposes only the verified session's
+  paid-through timestamp, not its bearer token or a renewal prediction.
+  `manageSubscription()` uses the existing operation lock and refuses to open
+  store management during initialization or a pending purchase. Platform store
+  handoff belongs to `lib/connect-store.ts`; Settings owns only presentation.
 - Failed subscription operations return to an idle phase while retaining their
   provider checkpoint. Purchase environment routing automatically switches scope
   after the operation releases its lock, retaining the same native transaction

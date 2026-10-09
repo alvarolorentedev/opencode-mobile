@@ -8,7 +8,8 @@
       "advanced": "高级",
       "appearance": "外观",
       "support": "支持",
-      "permissions": "审批"
+      "permissions": "审批",
+      "subscription": "订阅"
     },
     "summaries": {
       "configuredCount": "已配置 {{value}} 个",
@@ -402,5 +403,16 @@
     "removeTitle": "移除已保存的权限",
     "removeMessage": "不再自动允许 {{resource}}？",
     "refresh": "刷新"
+  },
+  "subscription": {
+    "inactive": "没有有效订阅",
+    "accessThrough": "可访问至 {{date}}",
+    "description": "远程访问你的 OpenCode 设备。",
+    "manage": "管理订阅",
+    "opensApple": "打开 App Store 订阅",
+    "opensGoogle": "打开 Google Play",
+    "restoreDescription": "恢复已有购买",
+    "machines": "设备",
+    "machinesDescription": "查看和管理已连接的设备"
   }
 }

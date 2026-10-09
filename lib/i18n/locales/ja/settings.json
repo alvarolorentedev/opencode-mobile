@@ -8,7 +8,8 @@
       "advanced": "詳細設定",
       "appearance": "表示",
       "support": "サポート",
-      "permissions": "承認"
+      "permissions": "承認",
+      "subscription": "サブスクリプション"
     },
     "summaries": {
       "configuredCount": "{{value}} 件設定済み",
@@ -402,5 +403,16 @@
     "removeTitle": "保存された権限を削除",
     "removeMessage": "{{resource}} の自動許可を停止しますか？",
     "refresh": "更新"
+  },
+  "subscription": {
+    "inactive": "有効なサブスクリプションはありません",
+    "accessThrough": "{{date}}までアクセス可能",
+    "description": "OpenCodeマシンへのリモートアクセス。",
+    "manage": "サブスクリプションを管理",
+    "opensApple": "App Storeのサブスクリプションを開きます",
+    "opensGoogle": "Google Playを開きます",
+    "restoreDescription": "購入済みの商品を復元",
+    "machines": "マシン",
+    "machinesDescription": "接続済みのマシンを表示・管理"
   }
 }

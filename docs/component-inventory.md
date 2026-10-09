@@ -428,6 +428,8 @@ This is important to parity because the chat layout is intentionally dense and h
 ### Presentation
 
 - shows compact settings rows in one group and opens one category at a time
+- places `Subscription` immediately after Connection when Cloud Link is enabled;
+  its summary reflects initialization or verified access status
 - uses the same safe-area app header and title treatment as Chat and Terminal
 - groups MCP servers and diagnostics under the `Advanced` category
 - shows a `Language` category for the app interface language
@@ -459,6 +461,11 @@ provider and purchase service; no URL editor is rendered. `connect-scanner.tsx`
 owns camera presentation/lifecycle and the viewfinder; it previews only once
 permission is granted and never pairs without an entitlement.
 `connect-subscription.tsx` renders native offers and explicit purchase/Restore.
+`sections/subscription-section.tsx` renders the Cloud Link access summary,
+Subscription actions (native store management, offers when inactive, one Restore
+row), and a Machines shortcut to the existing management route. It uses the
+shared Settings overlay and provider state; it never opens the camera or starts
+a purchase merely by opening the section.
 `connect-panel.tsx` renders the separate machine/profile management view. `app/pair.tsx` ingests links and navigates only; deep links skip the camera gate.
 Domain state/actions come from `useConnection().connectSetup`; see [Cloud Link](connect.md).
 
@@ -469,6 +476,7 @@ Domain state/actions come from `useConnection().connectSetup`; see [Cloud Link](
 - `EditorSection`
 - `GeneralSection`
 - `ConnectionSection`
+- `SubscriptionSection`
 - `AiDefaultsSection`
 - `NotificationsSection`
 - `VoiceSection`
