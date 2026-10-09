@@ -1,0 +1,5 @@
+- In-app update checks with store-backed installs on Android and iOS.
+- Activity notifications and a background keep-alive service for session updates.
+- New Subscription section in Settings with subscription management.
+- Refined onboarding and connection handling.
+- Working sound is now off by default; terminal button order improved.
