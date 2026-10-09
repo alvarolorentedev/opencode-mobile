@@ -225,7 +225,7 @@ verifies that session events carry that session's directory. Non-session events
 use the server's main directory. Scoped session lists filter by `directory`;
 unscoped lists include every workspace for the Chat Library's recent group.
 
-The V2 server supports an optional `FAKE_OPENCODE_BASIC_AUTH` environment variable (`user:password`; a value without a colon is treated as the password for the default `opencode` user). When set, every API request and PTY WebSocket upgrade must send a matching `Authorization: Basic ...` header, while `OPTIONS` CORS preflight requests stay exempt. The variable is unset in the automated suites, so their behavior is unchanged. The public `fake.alvarolorente.dev` deployment runs `server-v2.mjs` under a `systemd --user` unit with this variable enabled.
+The V2 server supports an optional `FAKE_OPENCODE_BASIC_AUTH` environment variable (`user:password`; a value without a colon is treated as the password for the default `opencode` user). When set, every API request and PTY WebSocket upgrade must send a matching `Authorization: Basic ...` header, while `OPTIONS` CORS preflight requests stay exempt and the health/info probe endpoints (`/api/info`, `/api/health`, `/global/health`) stay public so connection setup can resolve the contract before credentials are entered. The variable is unset in the automated suites, so their behavior is unchanged. The public `fake.alvarolorente.dev` deployment runs `server-v2.mjs` under a `systemd --user` unit with this variable enabled.
 
 Its intended job is to simulate the server behaviors this client depends on, including:
 

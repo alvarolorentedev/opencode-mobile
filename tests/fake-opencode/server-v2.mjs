@@ -62,6 +62,12 @@ function unauthorized(res) {
   res.end(JSON.stringify({ error: 'Unauthorized' }));
 }
 
+// Connection setup probes health/info before any credentials exist. Real
+// OpenCode servers answer these without auth; mirror that so the client can
+// resolve the contract and reach the credentials step. Every other route stays
+// behind FAKE_OPENCODE_BASIC_AUTH when it is set.
+const publicProbePaths = new Set(['/api/info', '/api/health', '/global/health']);
+
 function location() {
   return { directory: state.project.worktree };
 }
@@ -352,7 +358,7 @@ const server = http.createServer(async (req, res) => {
       return;
     }
 
-    if (!isAuthorized(req)) {
+    if (!publicProbePaths.has(pathname) && !isAuthorized(req)) {
       unauthorized(res);
       return;
     }
@@ -432,6 +438,11 @@ const server = http.createServer(async (req, res) => {
 
     if (req.method === 'GET' && pathname === '/api/info') {
       sendJson(res, 200, { version: '2.0.0-fake', pid: 1, urls: [`http://127.0.0.1:${port}`], paths: { tmp: '/tmp' } });
+      return;
+    }
+
+    if (req.method === 'GET' && pathname === '/api/health') {
+      sendJson(res, 200, { healthy: true, version: '2.0.0-fake' });
       return;
     }
 
