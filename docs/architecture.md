@@ -229,8 +229,6 @@ and provider setup remain in Settings.
   Favorites DTO validation, bounded serialization, and legacy-entry migration.
 - `providers/use-conversation-keep-awake.ts`
   Keeps device awake during conversation mode.
-- `providers/use-conversation-screen-dim.ts`
-  Dims screen during conversation mode.
 - `providers/use-terminal-state.ts`
   Project-scoped PTY list and retained per-PTY transports, connect tickets,
   reconnect, renderer registration, cursor acknowledgements, and resize.
@@ -644,7 +642,6 @@ Supporting behaviors include:
 - automatic assistant reply playback
 - optional automatic return to listening after playback
 - keep-awake activation
-- brightness dimming
 - blocking if pending permissions or questions exist
 - cancellation and cleanup across timers, speech input, TTS, and working sound
 
@@ -690,7 +687,7 @@ This is the main behavioral hotspot. Changes here can affect nearly every screen
 
 ### Conversation mode
 
-It spans provider state, timers, speech recognition, TTS, keep-awake, brightness, and chat state.
+It spans provider state, timers, speech recognition, TTS, keep-awake, and chat state.
 
 ### Capability refresh
 

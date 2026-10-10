@@ -53,10 +53,9 @@ permissions for reviewer inspection:
 
 Informational entries describe the five screenshots/icon/text/changelog discovery,
 the built APK, its ARM64 ABI, R8 configuration and remaining
-permissions. Notification/badge permissions come from expo-notifications,
-biometric permissions from expo-secure-store, and WRITE_SETTINGS supports the
-user-authorized conversation screen-dimming feature. These are disclosures,
-not failing checks.
+permissions. Notification/badge permissions come from expo-notifications and
+biometric permissions from expo-secure-store. These are disclosures, not
+failing checks.
 
 Dependency compiler deprecations and the CI cache messages (`.gradle` missing /
 no files to cache) are outside the Reports tab. They do not prevent the successful

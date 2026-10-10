@@ -11,7 +11,6 @@ import { getTranscript, getConversationStatusLabel, getTranscriptActivityLabelFo
 import { CONVERSATION_FINAL_RESULT_SETTLE_MS, CONVERSATION_KEEP_AWAKE_TAG,
   type ChatContextValue, type ChatPreferences, type ConnectionState, type ConversationPhase, type ConversationState } from '@/providers/opencode-provider-types';
 import { useConversationKeepAwake } from '@/providers/use-conversation-keep-awake';
-import { useConversationScreenDim } from '@/providers/use-conversation-screen-dim';
 import { applyConversationFeedback } from '@/providers/conversation/feedback';
 import { useConversationListeningEffects } from '@/providers/conversation/use-conversation-listening';
 import { useConversationPlayback } from '@/providers/conversation/use-conversation-playback';
@@ -257,7 +256,6 @@ export function useConversationState({ connection, chatPreferences, currentSessi
   }, [conversationPhase]);
 
   useConversationKeepAwake(conversationPhase, CONVERSATION_KEEP_AWAKE_TAG);
-  useConversationScreenDim(conversationPhase);
 
   useConversationListeningEffects({
     conversationPhase,

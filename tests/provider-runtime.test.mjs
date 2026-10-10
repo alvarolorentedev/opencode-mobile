@@ -245,7 +245,6 @@ const conversationImports = {
   '@/providers/opencode-provider-selectors': selectors,
   '@/providers/opencode-provider-types': { CONVERSATION_FINAL_RESULT_SETTLE_MS: 2200, CONVERSATION_KEEP_AWAKE_TAG: 'test', CONVERSATION_LISTENING_RESTART_MS: 350 },
   '@/providers/use-conversation-keep-awake': { useConversationKeepAwake: () => {} },
-  '@/providers/use-conversation-screen-dim': { useConversationScreenDim: () => {} },
 };
 const conversationFeedback = await loadTs('providers/conversation/feedback.ts', {}, voiceRuntime.globals);
 const conversationListening = await loadTs('providers/conversation/use-conversation-listening.ts', { ...conversationImports, '@/providers/conversation/feedback': conversationFeedback }, voiceRuntime.globals);

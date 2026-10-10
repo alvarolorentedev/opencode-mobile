@@ -122,14 +122,14 @@ Why it matters:
 - the provider starts the loop while prompt submission or any session is busy when the preference is enabled
 - the loop is stopped during conversation listening/speaking and when no work is active
 
-### Device Wake / Brightness
+### Device Wake
 
 Conversation mode also uses:
 
 - `expo-keep-awake`
-- `expo-brightness`
 
-Brightness behavior is best-effort and permission-dependent.
+The app never overrides screen brightness, so the system brightness setting
+always applies.
 
 ### Document Picker
 

@@ -482,7 +482,6 @@ Loop behavior:
 Additional behavior:
 
 - screen is kept awake while conversation mode is active
-- screen brightness is dimmed when possible
 - a full-screen overlay is shown
 - conversation mode stops if a permission or question requires on-screen input
 - speech/TTS failures surface feedback and may stop the mode

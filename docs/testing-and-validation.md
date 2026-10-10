@@ -524,7 +524,7 @@ The following important behaviors are present in code but are not obviously cove
 - auto-approve config toggling
 - model enablement filtering and preference reconciliation
 - session summarization fallback behavior
-- keep-awake and brightness side effects
+- keep-awake side effects
 - working-sound busy/idle transitions
 - native SSE transport behavior and real network reconnect timing (web missed-event recovery and deterministic backoff are covered)
 
