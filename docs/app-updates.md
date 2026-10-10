@@ -2,9 +2,10 @@
 
 `OpencodeProvider` owns `useAppUpdates`; `useUpdates()` exposes the update notice,
 store actions and blocker registration. `lib/app-updates.ts` is the platform
-boundary. The root shell renders the Paper banner on Chat, Workspace and Settings;
-Terminal, onboarding, pairing and session routes do not offer updates. It uses the
-existing light/dark theme, including its fixed accent, and all eight locales.
+boundary. The root shell renders the offer through the shared `OverlaySheet` overlay
+on Chat, Workspace and Settings; Terminal, onboarding, pairing and session routes do
+not offer updates. The offer and the install handoff reuse the existing overlay and
+Paper controls, the light/dark theme, including its fixed accent, and all eight locales.
 
 ## Android
 
@@ -16,10 +17,10 @@ The module declares `defaultConfig.versionName = '1.0.0'`, which Expo's Gradle
 publication setup requires separately from the app's release version.
 
 Update starts a flexible download after native Play consent. Download completion
-only raises the ready notice. A second explicit Update tap on that notice calls
+only raises the ready offer. A second explicit Update tap on that offer calls
 `completeUpdate()`; its text warns that the app will restart. No listener,
-foreground event or cold launch installs an update automatically. The interaction
-modal blocks new edits while opening store consent and during installation.
+foreground event or cold launch installs an update automatically. The non-dismissible
+handoff overlay blocks new edits while opening store consent and during installation.
 Cancellation and failures dismiss the same candidate; failures show a short error
 without automatically opening the Play Store. Listeners are removed on teardown.
 

@@ -952,8 +952,9 @@ picker and provider selection action; Terminal follows that directory.
 
 ## App update notice
 
-- `components/ui/update-notice.tsx`: themed, translated banner, failure snackbar
-  and interaction gate; all actions come from the provider.
+- `components/ui/update-notice.tsx`: themed, translated offer and install handoff
+  rendered through the shared `OverlaySheet`, failure snackbar; all actions come
+  from the provider.
 - `hooks/use-update-blocker.ts`: registers open/busy local surfaces with the
   existing provider without sharing their content.
 - `modules/opencode-updates`: local Expo Android Play update module and iOS

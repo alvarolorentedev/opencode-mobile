@@ -733,9 +733,9 @@ still required.
 
 `tests/vitest/app-updates.test.ts` covers cooldown, store identity, numeric versions,
 TestFlight suppression, blockers, cancellation, failure, timeouts and recovery.
-`tests/e2e/app-updates.spec.mjs` exercises the banner across tabs, drafts and sheets,
-persisted Later and the separate download/install actions using an explicit
-development fixture. No fake server protocol is changed. Real Play/App Store and
+`tests/e2e/app-updates.spec.mjs` exercises the offer overlay, drafts and open
+sheets suppressing it, persisted Later and the separate download/install actions
+using an explicit development fixture. No fake server protocol is changed. Real Play/App Store and
 accessibility acceptance remains required; see [app updates](app-updates.md).
 E2E changes require explicit human validation under AGENTS.md.
 

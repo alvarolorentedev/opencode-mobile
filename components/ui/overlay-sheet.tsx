@@ -9,7 +9,7 @@ import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useDismissOnBack } from '@/hooks/use-dismiss-on-back';
 
-export function OverlaySheet({ visible, title, onClose, children, headerAction, testID, fitContent = false, scrollable = true, compact = false }: {
+export function OverlaySheet({ visible, title, onClose, children, headerAction, testID, fitContent = false, scrollable = true, compact = false, blockUpdates = true, dismissible = true }: {
   visible: boolean;
   title: string;
   onClose: () => void;
@@ -19,30 +19,32 @@ export function OverlaySheet({ visible, title, onClose, children, headerAction, 
   fitContent?: boolean;
   scrollable?: boolean;
   compact?: boolean;
+  blockUpdates?: boolean;
+  dismissible?: boolean;
 }) {
   const insets = useSafeAreaInsets();
-  useUpdateBlocker(visible);
+  useUpdateBlocker(visible && blockUpdates);
   const { height } = useWindowDimensions();
   const { t } = useTranslation();
   const palette = Colors[useColorScheme() ?? 'light'];
   // Android back dismisses the open sheet instead of navigating the screen behind it.
-  useDismissOnBack(visible, onClose);
+  useDismissOnBack(visible && dismissible, onClose);
   if (!visible) return null;
 
   return (
     <Portal>
       <KeyboardAvoidingView behavior="padding" style={[styles.overlay, { paddingTop: compact ? Math.max(64 + insets.top, height * 0.45) : 64 + insets.top }]} testID={testID}>
-        <Pressable accessibilityLabel={t('common:actions.closeWithName', { title })} onPress={onClose} style={StyleSheet.absoluteFill}>
+        {dismissible ? <Pressable accessibilityLabel={t('common:actions.closeWithName', { title })} onPress={onClose} style={StyleSheet.absoluteFill}>
           <View style={styles.backdrop} />
-        </Pressable>
+        </Pressable> : null}
         <View testID={fitContent ? `${testID}-sheet` : undefined} accessibilityLabel={title} accessibilityViewIsModal style={[styles.sheet, !fitContent && { flex: 1 }, { backgroundColor: palette.surface, borderColor: palette.border }]}>
           {compact ? <View style={styles.grabberWrap}><View style={[styles.grabber, { backgroundColor: palette.muted }]} /></View> : null}
           <View style={[styles.header, compact && styles.compactHeader, { borderBottomColor: palette.border }]}>
             {compact ? (
               <>
-                <Pressable accessibilityRole="button" accessibilityLabel={t('common:actions.close')} onPress={onClose} style={styles.compactAction}>
+                {dismissible ? <Pressable accessibilityRole="button" accessibilityLabel={t('common:actions.close')} onPress={onClose} style={styles.compactAction}>
                   <Icon source="close" size={22} color={palette.muted} />
-                </Pressable>
+                </Pressable> : <View style={styles.compactAction} />}
                 <Text variant="titleMedium" style={[styles.compactTitle, { color: palette.text }]}>{title}</Text>
                 <View style={styles.compactAction}>{headerAction}</View>
               </>
@@ -51,9 +53,9 @@ export function OverlaySheet({ visible, title, onClose, children, headerAction, 
                 <Text variant="titleMedium" style={{ color: palette.text }}>{title}</Text>
                 <View style={styles.headerActions}>
                   {headerAction}
-                  <Pressable accessibilityRole="button" onPress={onClose} style={styles.closeButton}>
+                  {dismissible ? <Pressable accessibilityRole="button" onPress={onClose} style={styles.closeButton}>
                     <Text style={{ color: palette.tint }}>{t('common:actions.close')}</Text>
-                  </Pressable>
+                  </Pressable> : null}
                 </View>
               </>
             )}
