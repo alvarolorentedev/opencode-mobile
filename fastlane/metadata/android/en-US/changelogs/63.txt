@@ -1,0 +1,3 @@
+- More reliable task-finished notifications.
+- Removed screen dimming during voice conversations.
+- Cleaner in-app update notice.
