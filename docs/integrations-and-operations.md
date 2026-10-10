@@ -224,6 +224,25 @@ the React Native template's legacy `proguard-android.txt` disables code
 optimization even when minification is enabled. The generated `android/`
 directory is ignored, so `app.config.ts` remains the source of truth.
 
+Play's R8 optimization check also wants optimized resource shrinking. AGP 8.12
+(RN 0.86.3's pinned version) only enables it via the
+`android.r8.optimizedResourceShrinking` Gradle property, which `app.config.ts`
+sets alongside the JVM args. AGP 9+ enables it by default; forcing AGP 9 is not
+compatible with this RN/Expo SDK and waits on the next SDK bump.
+
+Two more Play findings are handled in `app.config.ts`:
+
+- The app is orientation-unrestricted (`orientation: 'default'`) so Android 16
+  stops ignoring the old portrait lock on large screens. The ML Kit
+  barcode-scanner delegate activity that `expo-camera` pulls in is overridden to
+  `unspecified` for the same reason (release/FOSS variants without `expo-camera`
+  skip this).
+- React Native's own `StatusBarModule`/`WindowUtilKt` still reference the
+  Android 15-deprecated `setStatusBarColor`/`setNavigationBarColor` APIs, so the
+  edge-to-edge warning cannot be fully cleared until RN removes them
+  (upstream `facebook/react-native#48256`). The Material origins are fixed by
+  pinning `com.google.android.material:material:1.14.0` over Expo's 1.13.0.
+
 Production config adds custom keep rules for Expo's Pika record introspection
 runtime and classes loaded reflectively, including `RNHeadlessAppLoader`. These
 rules retain Expo record converters and add about 33 KB to the arm64 release

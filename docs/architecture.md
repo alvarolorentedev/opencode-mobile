@@ -661,6 +661,9 @@ This is one of the densest parts of the architecture and would need careful pari
   hardware-keyboard toolbars.
 - Chat and Terminal avoidance starts at the screen origin; their headers already
   apply the top safe-area inset, so no keyboard vertical offset is added.
+- The app is not orientation-locked. Screens must lay out in portrait and
+  landscape and under Android 16's large-screen resize behavior; safe-area
+  insets are applied at the screen/header level.
 - Bottom overlays follow the same `padding` rule: `OverlaySheet` uses a stable
   full-screen `KeyboardAvoidingView` around a shrinking sheet and scroll area,
   while transparent `Modal` sheets (`native-select`,
