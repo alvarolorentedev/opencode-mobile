@@ -1,0 +1,2 @@
+- The app now rotates and adapts to landscape and large-screen devices instead of staying locked to portrait.
+- Smaller download and lower memory use through improved Android build optimization.
