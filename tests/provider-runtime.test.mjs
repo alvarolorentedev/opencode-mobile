@@ -65,7 +65,7 @@ const context = {
   },
   setSelectedWorkspaceFile: (value) => { selected = value; },
   createFullFilePatch: () => 'patch', applyVcsPatch: async () => { patches++; }, refreshServerFeatures: async () => {}, refreshVcsDiff: async () => {},
-  connectionScope: 'scope', pendingNotificationKey: () => 'key', pendingNotificationsRef: { current: new Map() },
+  connectionScope: 'scope', pendingNotificationKey: () => 'key',
   busyNotificationsRef: { current: new Set() }, promptSubmissionRef: { current: {} }, setSendingState: () => {},
   clearPendingTaskFinishedNotification: async () => { throw new Error('storage unavailable'); },
   refreshSessions: async () => {}, refreshMessages: async () => {}, refreshSessionDiff: async () => {}, refreshSessionTodos: async () => {},

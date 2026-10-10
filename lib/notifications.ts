@@ -303,6 +303,18 @@ export async function trackPendingTaskFinishedNotification(input: PendingNotific
   });
 }
 
+// The persisted store is the single source of truth for in-flight completion
+// tracking. Callers read it scoped to their connection instead of mirroring the
+// records locally.
+export async function listPendingTaskFinishedNotifications(connectionScope?: string) {
+  return withPendingSessions(async () => {
+    const all = await readPendingNotificationSessions();
+    return connectionScope
+      ? Object.values(all).filter((pending) => pending.connectionScope === connectionScope)
+      : Object.values(all);
+  });
+}
+
 export async function clearPendingTaskFinishedNotification(connectionScope: string, sessionId: string, requestedAt?: number) {
   return withPendingSessions(async () => {
     const current = await readPendingNotificationSessions();

@@ -5,7 +5,7 @@ import type { OpencodeConnectionSettings } from '@/lib/opencode/client';
 // running prompt and the background monitor. They must stay non-secret: only
 // the connection identity (`serverUrl`, `username`, `connectionScope`) is
 // stored, never a password. Credentials are resolved at runtime through
-// `resolveConnectionPassword`.
+// `resolveConnectionCredentials`.
 export type PendingNotificationSession = {
   sessionId: string;
   sessionTitle?: string;

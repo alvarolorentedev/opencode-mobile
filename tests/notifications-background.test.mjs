@@ -110,7 +110,7 @@ const notificationsUri = await transpileToDataUri('lib/notifications.ts', [
   [/from '@\/lib\/storage-keys'/g, `from "${storageKeysUri}"`],
 ]);
 
-const { trackPendingTaskFinishedNotification, clearPendingTaskFinishedNotification } = await import(notificationsUri);
+const { trackPendingTaskFinishedNotification, clearPendingTaskFinishedNotification, listPendingTaskFinishedNotifications } = await import(notificationsUri);
 const storageKeys = await import(storageKeysUri);
 const { getConnectionScope } = await import(connectionScopeUri);
 const { pendingNotificationKey } = await import(notificationPendingUri);
@@ -145,6 +145,15 @@ function seedPending() {
 function readPending() {
   const raw = storage.get(storageKeys.PENDING_NOTIFICATION_SESSIONS_STORAGE_KEY);
   return raw ? JSON.parse(raw) : {};
+}
+
+// The persisted store is the single source of truth; scoped reads filter by
+// connection so callers never need a mirrored in-memory copy.
+{
+  globalThis.__notificationsTestAsyncStorage.clear();
+  seedPending();
+  assert.deepEqual((await listPendingTaskFinishedNotifications(scopeA)).map((pending) => pending.sessionId), ['session-a']);
+  assert.equal((await listPendingTaskFinishedNotifications()).length, 2);
 }
 
 // 1. Server A's task is still running, so its record stays valid, A's own

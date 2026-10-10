@@ -111,7 +111,6 @@ export function useOpencodeProviderState() {
   const diffScopeBySessionRef = useRef<Record<string, DiffScope>>({});
   const selectedDiffMessageBySessionRef = useRef<Record<string, string | undefined>>({});
   const messagesBySessionRef = useRef(messagesBySession);
-  const pendingNotificationsRef = useRef<Map<string, { sessionId: string; connectionScope: string; requestedAt: number }>>(new Map());
   const busyNotificationsRef = useRef<Set<string>>(new Set());
   const promptSubmissionRef = useRef<{ active: boolean; sessionId?: string }>({ active: false });
   const workspaceFileRequestRef = useRef(0);
@@ -199,7 +198,6 @@ export function useOpencodeProviderState() {
     diffScopeBySessionRef,
     selectedDiffMessageBySessionRef,
     messagesBySessionRef,
-    pendingNotificationsRef,
     busyNotificationsRef,
     promptSubmissionRef,
     workspaceFileRequestRef,

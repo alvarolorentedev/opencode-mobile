@@ -91,7 +91,6 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
     setVcsInfo,
     bootstrapPromiseRef,
     bootstrapTokenRef,
-    pendingNotificationsRef,
     busyNotificationsRef,
     sessionRefreshTimeoutsRef,
     sessionRefreshOptionsRef,
@@ -222,7 +221,6 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
   const clearProjectState = useCallback(() => {
     bootstrapPromiseRef.current = null;
     bootstrapTokenRef.current = undefined;
-    pendingNotificationsRef.current.clear();
     busyNotificationsRef.current.clear();
     Object.values(sessionRefreshTimeoutsRef.current).forEach((timeout) => clearTimeout(timeout));
     sessionRefreshTimeoutsRef.current = {};
@@ -248,7 +246,7 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
     mcp.resetMcpState();
     terminal.resetTerminal();
     worktree.resetWorktrees();
-  }, [mcp.resetMcpState, permissionRules.resetPermissionRules, terminal.resetTerminal, transcript.reset, worktree.resetWorktrees, bootstrapPromiseRef, bootstrapTokenRef, busyNotificationsRef, pendingNotificationsRef, sessionRefreshOptionsRef, sessionRefreshTimeoutsRef, setArchivedSessions, setAvailableAgents, setAvailableModels, setAvailableProviders, setCommands, setCurrentConfig, setCurrentSessionId, setMcpAuthPrompt, setPendingPermissionsBySession, setPendingQuestionsBySession, setProviderAuthMethodsById, setSelectedWorkspaceFile, setSessionStatuses, setSessions, setVcsInfo, setWorkspaceFileStatuses]);
+  }, [mcp.resetMcpState, permissionRules.resetPermissionRules, terminal.resetTerminal, transcript.reset, worktree.resetWorktrees, bootstrapPromiseRef, bootstrapTokenRef, busyNotificationsRef, sessionRefreshOptionsRef, sessionRefreshTimeoutsRef, setArchivedSessions, setAvailableAgents, setAvailableModels, setAvailableProviders, setCommands, setCurrentConfig, setCurrentSessionId, setMcpAuthPrompt, setPendingPermissionsBySession, setPendingQuestionsBySession, setProviderAuthMethodsById, setSelectedWorkspaceFile, setSessionStatuses, setSessions, setVcsInfo, setWorkspaceFileStatuses]);
 
   const workspace = useWorkspaceActions({ ...state, client, catalogClient, isCurrentClient, isCurrentCatalogClient, clearProjectState, isHydrated, refreshMessages: inbox.refreshMessages });
 

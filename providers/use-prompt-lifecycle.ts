@@ -8,6 +8,7 @@ import type { PromptDelivery, PromptInput } from '@/lib/opencode/prompt-inbox';
 import { pendingNotificationKey } from '@/lib/notification-pending';
 import {
   clearPendingTaskFinishedNotification,
+  listPendingTaskFinishedNotifications,
   notifyTaskFinished,
   trackPendingTaskFinishedNotification,
 } from '@/lib/notifications';
@@ -16,12 +17,6 @@ import { getSelectedModelParts } from '@/providers/opencode-model-selection';
 import type { ChatPreferences } from '@/providers/opencode-preferences';
 import { buildSystemPrompt } from '@/providers/opencode-preferences';
 import type { SessionRefreshOptions } from '@/providers/opencode-provider-events';
-
-type TrackedPendingNotification = {
-  sessionId: string;
-  connectionScope: string;
-  requestedAt: number;
-};
 
 type PromptLifecycleInput = {
   submitPrompt: (input: PromptInput, delivery: PromptDelivery) => Promise<void>;
@@ -34,7 +29,6 @@ type PromptLifecycleInput = {
   availableModels: ModelOption[];
   chatPreferences: ChatPreferences;
   settingsRef: { current: OpencodeConnectionSettings };
-  pendingNotificationsRef: { current: Map<string, TrackedPendingNotification> };
   busyNotificationsRef: { current: Set<string> };
   promptSubmissionRef: { current: { active: boolean; sessionId?: string } };
   setCurrentSessionId: Dispatch<SetStateAction<string | undefined>>;
@@ -59,7 +53,6 @@ export function usePromptLifecycle({
   availableModels,
   chatPreferences,
   settingsRef,
-  pendingNotificationsRef,
   busyNotificationsRef,
   promptSubmissionRef,
   setCurrentSessionId,
@@ -100,7 +93,6 @@ export function usePromptLifecycle({
 
       try {
         busyNotificationsRef.current.delete(trackingKey);
-        pendingNotificationsRef.current.set(trackingKey, { sessionId, connectionScope, requestedAt });
         if (activeProjectPath) {
           await trackPendingTaskFinishedNotification({
             sessionId,
@@ -230,7 +222,6 @@ export function usePromptLifecycle({
           sessionId,
         });
         if (!promptAccepted) {
-          pendingNotificationsRef.current.delete(trackingKey);
           await clearPendingTaskFinishedNotification(connectionScope, sessionId).catch(() => undefined);
         }
 
@@ -243,13 +234,12 @@ export function usePromptLifecycle({
         ));
       }
     },
-    [activeProjectPath, availableModels, busyNotificationsRef, chatPreferences, client, connectionScope, fetchSessions, isCurrentClient, pendingNotificationsRef, promptSubmissionRef, refreshMessages, refreshSessionDiff, refreshSessionTodos, scheduleSessionRefresh, sessions, setCurrentSessionId, setPromptError, setSelectedDiffMessageBySession, settingsRef, submitPrompt, summarizeSessionTitle],
+    [activeProjectPath, availableModels, busyNotificationsRef, chatPreferences, client, connectionScope, fetchSessions, isCurrentClient, promptSubmissionRef, refreshMessages, refreshSessionDiff, refreshSessionTodos, scheduleSessionRefresh, sessions, setCurrentSessionId, setPromptError, setSelectedDiffMessageBySession, settingsRef, submitPrompt, summarizeSessionTitle],
   );
 
   const abortSession = useCallback(
     async (sessionId: string) => {
       const trackingKey = pendingNotificationKey(connectionScope, sessionId);
-      pendingNotificationsRef.current.delete(trackingKey);
       busyNotificationsRef.current.delete(trackingKey);
       await clearPendingTaskFinishedNotification(connectionScope, sessionId).catch(() => undefined);
       await client.session.abort({ sessionID: sessionId });
@@ -273,39 +263,36 @@ export function usePromptLifecycle({
         refreshSessionTodos(sessionId),
       ]);
     },
-    [busyNotificationsRef, client, connectionScope, pendingNotificationsRef, promptSubmissionRef, refreshMessages, refreshSessionDiff, refreshSessionTodos, refreshSessions],
+    [busyNotificationsRef, client, connectionScope, promptSubmissionRef, refreshMessages, refreshSessionDiff, refreshSessionTodos, refreshSessions],
   );
-
-  useEffect(() => {
-    Object.entries(sessionStatuses).forEach(([sessionId, status]) => {
-      const key = pendingNotificationKey(connectionScope, sessionId);
-      if (status.type !== 'idle' && pendingNotificationsRef.current.has(key)) {
-        busyNotificationsRef.current.add(key);
-      }
-    });
-  }, [busyNotificationsRef, connectionScope, pendingNotificationsRef, sessionStatuses]);
 
   useEffect(() => {
     let cancelled = false;
 
     async function flushCompletedNotifications() {
-      const pendingEntries = [...pendingNotificationsRef.current.entries()]
-        .filter(([, pending]) => pending.connectionScope === connectionScope);
-      if (pendingEntries.length === 0) {
+      const pendingEntries = await listPendingTaskFinishedNotifications(connectionScope);
+      if (cancelled || pendingEntries.length === 0) {
         return;
       }
 
-      for (const [key, pending] of pendingEntries) {
+      for (const pending of pendingEntries) {
         const { sessionId } = pending;
+        const key = pendingNotificationKey(pending.connectionScope, sessionId);
         const status = sessionStatuses[sessionId];
+        // Latch once the session has actually started working so an early
+        // completion notifies without waiting out the debounce below.
+        if (status && status.type !== 'idle') {
+          busyNotificationsRef.current.add(key);
+          continue;
+        }
+
         const oldEnough = Date.now() - pending.requestedAt >= 5000;
-        if ((!busyNotificationsRef.current.has(key) && !oldEnough) || (status && status.type !== 'idle') || (sendingState.active && sendingState.sessionId === sessionId)) {
+        if ((!busyNotificationsRef.current.has(key) && !oldEnough) || (sendingState.active && sendingState.sessionId === sessionId)) {
           continue;
         }
 
         const session = sessions.find((item) => item.id === sessionId);
         if (!session) {
-          pendingNotificationsRef.current.delete(key);
           busyNotificationsRef.current.delete(key);
           await clearPendingTaskFinishedNotification(connectionScope, sessionId).catch(() => undefined);
           continue;
@@ -315,7 +302,6 @@ export function usePromptLifecycle({
           return;
         }
 
-        pendingNotificationsRef.current.delete(key);
         busyNotificationsRef.current.delete(key);
         if (cleared) await notifyTaskFinished(session.title, connectionScope);
       }
@@ -326,7 +312,7 @@ export function usePromptLifecycle({
     return () => {
       cancelled = true;
     };
-  }, [busyNotificationsRef, connectionScope, pendingNotificationsRef, sendingState.active, sendingState.sessionId, sessionStatuses, sessions]);
+  }, [busyNotificationsRef, connectionScope, sendingState.active, sendingState.sessionId, sessionStatuses, sessions]);
 
   const clearPromptError = useCallback(() => setPromptError(undefined), []);
 

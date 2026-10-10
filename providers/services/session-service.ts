@@ -61,8 +61,7 @@ async function fetchSessions(client: OpencodeClient) {
 // unscoped client (empty directory) so both contracts return sessions and
 // statuses for every project on the active connection, not just the active one.
 export async function listActiveSessions(client: OpencodeClient) {
-  const { sessions, statuses } = await listSessions(client);
-  return { sessions: sessions.filter((session) => !session.time.archived), statuses };
+  return listSessions(client);
 }
 
 export async function listArchivedSessions(client: OpencodeClient) {
