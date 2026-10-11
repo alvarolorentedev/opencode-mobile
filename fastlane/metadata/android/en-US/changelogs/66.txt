@@ -1,0 +1,2 @@
+- Update prompts no longer interrupt your chat: they now appear as a dismissible banner.
+- Clearer consent flow when installing updates.
