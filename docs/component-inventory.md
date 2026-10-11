@@ -475,6 +475,7 @@ Domain state/actions come from `useConnection().connectSetup`; see [Cloud Link](
 
 - `EditorSection`
 - `GeneralSection`
+- `UpdateSection`
 - `ConnectionSection`
 - `SubscriptionSection`
 - `AiDefaultsSection`
@@ -571,6 +572,15 @@ Responsibility:
 - choose the app interface language or follow the system default
 - persist the choice through `updateChatPreferences({ language })`; `undefined` follows the OS locale
 - list the supported languages built from `SUPPORTED_LANGUAGES`
+
+### `UpdateSection`
+
+Responsibility:
+
+- Advanced → Auto-update group for the app update feature
+- toggle update checks and pick the check period (When available, Daily, Weekly)
+- read and mutate the provider-owned update preference through `useUpdates()`
+- render nothing when the update module is unavailable (`supported` is false)
 
 ### `DiagnosticsSection`
 

@@ -395,6 +395,28 @@
     "title": "Allgemein",
     "resetOnboarding": "Einrichtung neu starten"
   },
+  "autoUpdate": {
+    "title": "Auto-Update",
+    "enable": {
+      "title": "Nach Updates suchen",
+      "description": "Neue Versionen anbieten, sobald sie im Store verfügbar sind."
+    },
+    "checkPeriod": {
+      "label": "Prüfintervall",
+      "available": {
+        "label": "Wenn verfügbar",
+        "description": "Eine neue Version anzeigen, sobald der Store sie meldet."
+      },
+      "daily": {
+        "label": "Täglich",
+        "description": "Höchstens einmal pro Tag nach einer neuen Version suchen."
+      },
+      "weekly": {
+        "label": "Wöchentlich",
+        "description": "Höchstens einmal pro Woche nach einer neuen Version suchen."
+      }
+    }
+  },
   "permissions": {
     "title": "Gespeicherte Berechtigungen",
     "description": "Regeln aus „Immer erlauben“. Beim Entfernen fragt der Server wieder nach.",

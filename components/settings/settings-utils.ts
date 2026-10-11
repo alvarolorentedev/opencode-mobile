@@ -4,6 +4,7 @@ import { SUPPORTED_LANGUAGES } from '@/lib/i18n/languages';
 import type { ServerContract } from '@/lib/opencode/client';
 import type { ProviderAuthMethod } from '@/lib/opencode/types';
 import type { WorkingSoundVariant } from '@/lib/voice/working-sound';
+import { UPDATE_CHECK_PERIODS, type UpdateCheckPeriod } from '@/providers/app-update-policy';
 import type { ProviderOption, ResponseScope } from '@/providers/opencode-provider';
 
 export const RESPONSE_SCOPE_OPTIONS: { value: ResponseScope }[] = [
@@ -16,6 +17,8 @@ export const WORKING_SOUND_OPTIONS: { value: WorkingSoundVariant }[] = [
   { value: 'soft' },
   { value: 'glass' },
 ];
+
+export const UPDATE_CHECK_PERIOD_OPTIONS: { value: UpdateCheckPeriod }[] = UPDATE_CHECK_PERIODS.map((value) => ({ value }));
 
 export const LANGUAGE_OPTIONS: { value: string; label: string }[] = SUPPORTED_LANGUAGES.map((language) => ({ value: language.code, label: language.nativeName }));
 

@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import { deferred, hookRuntime, loadTs } from '../helpers/runtime.mjs';
-import { parseUpdatePreferences, UPDATE_CHECK_INTERVAL, UPDATE_DISMISS_INTERVAL, updateCheckDue, updateNotice } from '../../providers/app-update-policy';
+import { DEFAULT_UPDATE_CHECK_PERIOD, parseUpdatePreferences, UPDATE_CHECK_INTERVALS, UPDATE_DISMISS_INTERVAL, updateCheckDue, updateNotice } from '../../providers/app-update-policy';
 import type { AppUpdateApi, UpdateEvent, UpdateSnapshot } from '../../lib/app-updates';
 
 const available: UpdateSnapshot = { phase: 'available', version: '59' };
@@ -19,7 +19,7 @@ async function provider({ stored = null, readError = false, snapshot = available
     react: runtime.react, '@react-native-async-storage/async-storage': storage,
     'react-native': { AppState: { currentState: 'active', addEventListener: (_: string, listener: typeof foreground) => { foreground = listener; return { remove: vi.fn() }; } } },
     '@/lib/app-updates': { loadAppUpdates: () => api }, '@/lib/storage-keys': { APP_UPDATES_STORAGE_KEY: 'updates' },
-    '@/providers/app-update-policy': { parseUpdatePreferences, UPDATE_DISMISS_INTERVAL, updateCheckDue, updateNotice },
+    '@/providers/app-update-policy': { DEFAULT_UPDATE_CHECK_PERIOD, parseUpdatePreferences, UPDATE_CHECK_INTERVALS, UPDATE_DISMISS_INTERVAL, updateCheckDue, updateNotice },
     '@/providers/persistence-hydration': persistence,
   }, runtime.globals);
   runtime.mount(useAppUpdates, { initialized: false, blocked: false });
@@ -32,16 +32,20 @@ async function provider({ stored = null, readError = false, snapshot = available
 describe('update policy', () => {
   it('validates persistence and resets cooldown for another version or downloaded stage', () => {
     expect(() => parseUpdatePreferences('{"lastCheckAt":"bad"}')).toThrow();
+    expect(() => parseUpdatePreferences('{"lastCheckAt":0,"enabled":"yes"}')).toThrow();
+    expect(() => parseUpdatePreferences('{"lastCheckAt":0,"checkPeriod":"monthly"}')).toThrow();
     expect(() => parseUpdatePreferences('{"lastCheckAt":0,"dismissal":{"version":"59","phase":"other","until":1}}')).toThrow();
-    const preferences = { lastCheckAt: 0, dismissal: { version: '59', phase: 'available' as const, until: 100 } };
+    expect(parseUpdatePreferences('{"lastCheckAt":0}')).toEqual({ lastCheckAt: 0, enabled: true, checkPeriod: 'available' });
+    const preferences = { lastCheckAt: 0, enabled: true, checkPeriod: 'available' as const, dismissal: { version: '59', phase: 'available' as const, until: 100 } };
     expect(updateNotice(available, preferences, 50)).toBeUndefined();
     expect(updateNotice(downloaded, preferences, 50)).toEqual(downloaded);
     expect(updateNotice({ ...available, version: '60' }, preferences, 50)).toBeDefined();
     expect(updateNotice(available, preferences, 100)).toBeDefined();
-    expect(updateNotice({ phase: 'downloaded' }, { lastCheckAt: 0, dismissal: { version: 'downloaded', phase: 'downloaded', until: 100 } }, 50)).toBeUndefined();
-    expect(updateCheckDue(100, 99)).toBe(true);
-    expect(updateCheckDue(100, 100 + UPDATE_CHECK_INTERVAL - 1)).toBe(false);
-    expect(updateCheckDue(100, 100 + UPDATE_CHECK_INTERVAL)).toBe(true);
+    expect(updateNotice({ phase: 'downloaded' }, { lastCheckAt: 0, enabled: true, checkPeriod: 'available', dismissal: { version: 'downloaded', phase: 'downloaded', until: 100 } }, 50)).toBeUndefined();
+    expect(updateCheckDue(100, 99, UPDATE_CHECK_INTERVALS.daily)).toBe(true);
+    expect(updateCheckDue(100, 100 + UPDATE_CHECK_INTERVALS.daily - 1, UPDATE_CHECK_INTERVALS.daily)).toBe(false);
+    expect(updateCheckDue(100, 100 + UPDATE_CHECK_INTERVALS.daily, UPDATE_CHECK_INTERVALS.daily)).toBe(true);
+    expect(updateCheckDue(100, 100, UPDATE_CHECK_INTERVALS.available)).toBe(true);
   });
 });
 
@@ -84,6 +88,18 @@ describe('provider update safety', () => {
     const view = await provider({ stored: JSON.stringify({ lastCheckAt: Date.now() }), snapshot: downloaded });
     expect(view.runtime.value.notice).toEqual(downloaded); expect(view.api.complete).not.toHaveBeenCalled();
     view.runtime.unmount(); expect(view.unsubscribe).toHaveBeenCalledOnce();
+  });
+  it('defaults to surfacing an available update discovered inside the discovery interval', async () => {
+    const view = await provider({ stored: JSON.stringify({ lastCheckAt: Date.now() }), snapshot: available });
+    expect(view.runtime.value.notice).toEqual(available);
+  });
+  it('throttles discovery when the check period is daily or weekly', async () => {
+    const view = await provider({ stored: JSON.stringify({ lastCheckAt: Date.now(), checkPeriod: 'weekly' }), snapshot: available });
+    expect(view.runtime.value.notice).toBeUndefined();
+  });
+  it('does not offer updates when auto-update is disabled', async () => {
+    const view = await provider({ stored: JSON.stringify({ lastCheckAt: 0, enabled: false }), snapshot: available });
+    expect(view.runtime.value.notice).toBeUndefined();
   });
   it('persists Later and declines to prompt when storage cannot be read', async () => {
     const view = await provider(); view.runtime.value.later(); await view.runtime.settle();

@@ -395,6 +395,28 @@
     "title": "一般",
     "resetOnboarding": "初期設定をやり直す"
   },
+  "autoUpdate": {
+    "title": "自動更新",
+    "enable": {
+      "title": "更新を確認する",
+      "description": "ストアで利用可能になり次第、新しいバージョンを提示します。"
+    },
+    "checkPeriod": {
+      "label": "確認間隔",
+      "available": {
+        "label": "利用可能になったとき",
+        "description": "ストアが通知した時点で新しいバージョンを表示します。"
+      },
+      "daily": {
+        "label": "毎日",
+        "description": "新しいバージョンを1日1回まで確認します。"
+      },
+      "weekly": {
+        "label": "毎週",
+        "description": "新しいバージョンを週1回まで確認します。"
+      }
+    }
+  },
   "permissions": {
     "title": "保存された権限",
     "description": "「常に許可」で作成されたルールです。削除するとサーバーが再度確認します。",

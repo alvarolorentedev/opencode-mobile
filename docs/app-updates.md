@@ -25,13 +25,16 @@ Cancellation and failures dismiss the same candidate; failures show a short erro
 without automatically opening the Play Store. Listeners are removed on teardown.
 
 The provider checks after hydration and onboarding, and on foreground entry.
-Discovery is throttled for 12 hours, including failed attempts. Android queries
-native download/install state on foreground entry even inside that interval so a
-pending download can recover after process death. This recovery query does not
-rediscover an available update inside the discovery interval. Later suppresses a
-version and stage for seven days; a new version or downloaded stage resets it.
-Preferences use `opencode-mobile.app-updates`. Unreadable storage suppresses offers
-for that run; malformed persisted values are cleared through the existing helper.
+Settings → Advanced → Auto-update owns the feature: an enable toggle and a check
+period of When available (default), Daily, or Weekly. "When available" checks on
+every foreground entry so a new version surfaces immediately; Daily and Weekly
+throttle discovery to that interval, including failed attempts. Android queries
+native download/install state on foreground entry even inside a throttled interval
+so a pending download can recover after process death; that recovery query does not
+rediscover an available update inside the interval. Later suppresses a version and
+stage for seven days; a new version or downloaded stage resets it. Preferences use
+`opencode-mobile.app-updates`. Unreadable storage suppresses offers for that run;
+malformed persisted values are cleared through the existing helper.
 
 Update actions recheck foreground, route and safety after the async native read.
 Active/sending/queued tasks, conversation mode, pending permissions/questions,

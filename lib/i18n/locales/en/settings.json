@@ -395,6 +395,28 @@
     "title": "General",
     "resetOnboarding": "Reset onboarding"
   },
+  "autoUpdate": {
+    "title": "Auto-update",
+    "enable": {
+      "title": "Check for updates",
+      "description": "Offer new versions when they are available on the store."
+    },
+    "checkPeriod": {
+      "label": "Check period",
+      "available": {
+        "label": "When available",
+        "description": "Surface a new version as soon as the store reports it."
+      },
+      "daily": {
+        "label": "Daily",
+        "description": "Check for a new version at most once a day."
+      },
+      "weekly": {
+        "label": "Weekly",
+        "description": "Check for a new version at most once a week."
+      }
+    }
+  },
   "permissions": {
     "title": "Saved permissions",
     "description": "Rules created by “Always allow”. Removing one makes the server ask again.",

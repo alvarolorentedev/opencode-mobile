@@ -731,8 +731,9 @@ still required.
 
 ## App update validation
 
-`tests/vitest/app-updates.test.ts` covers cooldown, store identity, numeric versions,
-TestFlight suppression, blockers, cancellation, failure, timeouts and recovery.
+`tests/vitest/app-updates.test.ts` covers cooldown, the enable toggle and check
+period, store identity, numeric versions, TestFlight suppression, blockers,
+cancellation, failure, timeouts and recovery.
 `tests/e2e/app-updates.spec.mjs` exercises the offer overlay, drafts and open
 sheets suppressing it, persisted Later and the separate download/install actions
 using an explicit development fixture. No fake server protocol is changed. Real Play/App Store and

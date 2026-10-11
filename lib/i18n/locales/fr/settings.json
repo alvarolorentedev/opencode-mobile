@@ -395,6 +395,28 @@
     "title": "Général",
     "resetOnboarding": "Relancer la configuration initiale"
   },
+  "autoUpdate": {
+    "title": "Mise à jour automatique",
+    "enable": {
+      "title": "Rechercher des mises à jour",
+      "description": "Proposer les nouvelles versions dès qu’elles sont disponibles sur la boutique."
+    },
+    "checkPeriod": {
+      "label": "Fréquence de recherche",
+      "available": {
+        "label": "Dès que disponible",
+        "description": "Afficher une nouvelle version dès que la boutique la signale."
+      },
+      "daily": {
+        "label": "Quotidienne",
+        "description": "Rechercher une nouvelle version au plus une fois par jour."
+      },
+      "weekly": {
+        "label": "Hebdomadaire",
+        "description": "Rechercher une nouvelle version au plus une fois par semaine."
+      }
+    }
+  },
   "permissions": {
     "title": "Autorisations enregistrées",
     "description": "Règles créées par « Toujours autoriser ». En supprimer une force le serveur à redemander.",

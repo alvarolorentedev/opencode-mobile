@@ -445,6 +445,19 @@ Behavior exposed today:
 - the choice is persisted with chat preferences and applied immediately
 - the interface language also drives `Intl` date, number, currency, and relative-time formatting
 
+### Update Section
+
+Purpose:
+
+- control whether the app checks for store updates and how often
+
+Behavior exposed today:
+
+- an enable toggle turns update checks and offers on or off
+- the check period is When available (default), Daily, or Weekly
+- "When available" checks on every foreground entry so a new version surfaces immediately; Daily and Weekly throttle discovery to that interval
+- the preference is persisted with the app update state, and the group is hidden when the update module is unavailable (web, FOSS, development, or iOS without a configured store ID)
+
 ### Support Section
 
 Purpose:

@@ -395,6 +395,28 @@
     "title": "常规",
     "resetOnboarding": "重新进行初始设置"
   },
+  "autoUpdate": {
+    "title": "自动更新",
+    "enable": {
+      "title": "检查更新",
+      "description": "当商店中有新版本可用时提示。"
+    },
+    "checkPeriod": {
+      "label": "检查周期",
+      "available": {
+        "label": "可用时",
+        "description": "商店一报告新版本就显示。"
+      },
+      "daily": {
+        "label": "每天",
+        "description": "每天最多检查一次新版本。"
+      },
+      "weekly": {
+        "label": "每周",
+        "description": "每周最多检查一次新版本。"
+      }
+    }
+  },
   "permissions": {
     "title": "已保存的权限",
     "description": "由“始终允许”创建的规则。移除后服务器将再次询问。",

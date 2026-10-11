@@ -23,6 +23,7 @@ import {
   NotificationsSection,
   PermissionsSection,
   SupportSection,
+  UpdateSection,
   VoiceSection,
 } from '@/components/settings/settings-sections';
 import { useNotificationSetup } from '@/components/settings/use-notification-setup';
@@ -36,7 +37,7 @@ import {
 import { OverlaySheet } from '@/components/ui/overlay-sheet';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { getSpeechVoiceOptions, type SpeechVoiceOption } from '@/lib/voice/speech-output';
-import { useApprovals, useCapabilities, useConnection, useDiagnostics, useMcp, useOnboarding, usePreferences } from '@/providers/opencode-contexts';
+import { useApprovals, useCapabilities, useConnection, useDiagnostics, useMcp, useOnboarding, usePreferences, useUpdates } from '@/providers/opencode-contexts';
 
 // One entry per settings section. Adding a section means adding an entry here
 // (and its presentational component); the row list and the overlay both derive
@@ -62,6 +63,7 @@ export default function SettingsScreen() {
   const { diagnostics, eventStreamStatus, refreshDiagnostics } = useDiagnostics();
   const { approvals } = useApprovals();
   const { startOnboardingReview } = useOnboarding();
+  const updates = useUpdates();
   const router = useRouter();
   const notifications = useNotificationSetup();
   const providerConfig = useProviderConfiguration();
@@ -194,6 +196,7 @@ export default function SettingsScreen() {
             startOnboardingReview();
             router.push('/onboarding');
           }} />
+          {updates.supported ? <UpdateSection checkPeriod={updates.checkPeriod} enabled={updates.enabled} onCheckPeriodChange={updates.setCheckPeriod} onEnabledChange={updates.setEnabled} palette={palette} /> : null}
           <McpSection configs={currentConfig?.mcp} mcpStatuses={mcpStatuses} onAdd={addMcpServer} onCompleteOAuth={completeMcpOAuth} onConnect={connectMcpServer} onDisconnect={disconnectMcpServer} onRefresh={refreshMcpServers} onSetEnabled={setMcpServerEnabled} onStartOAuth={async (name) => { const url = await startMcpOAuth(name); if (!url) { await refreshMcpServers(); return false; } await WebBrowser.openBrowserAsync(url); return true; }} oauthAvailable={serverCapabilities.mcpOAuth} palette={palette} />
           <DiagnosticsSection diagnostics={diagnostics} eventStreamStatus={eventStreamStatus} formatterAvailable={serverCapabilities.formatter} lspAvailable={serverCapabilities.lsp} onRefresh={() => void refreshDiagnostics()} palette={palette} />
         </>

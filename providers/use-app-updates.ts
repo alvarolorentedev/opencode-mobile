@@ -4,7 +4,7 @@ import { AppState } from 'react-native';
 
 import { loadAppUpdates, type AppUpdateApi, type UpdateSnapshot } from '@/lib/app-updates';
 import { APP_UPDATES_STORAGE_KEY } from '@/lib/storage-keys';
-import { parseUpdatePreferences, UPDATE_DISMISS_INTERVAL, updateCheckDue, updateNotice, type UpdatePreferences } from '@/providers/app-update-policy';
+import { DEFAULT_UPDATE_CHECK_PERIOD, parseUpdatePreferences, UPDATE_CHECK_INTERVALS, UPDATE_DISMISS_INTERVAL, updateCheckDue, updateNotice, type UpdateCheckPeriod, type UpdatePreferences } from '@/providers/app-update-policy';
 import { createPersistenceWriter, loadPersistedValue } from '@/providers/persistence-hydration';
 
 async function readUpdate(api: AppUpdateApi) {
@@ -18,8 +18,9 @@ async function readUpdate(api: AppUpdateApi) {
 
 export function useAppUpdates({ initialized, blocked }: { initialized: boolean; blocked: boolean }) {
   const [snapshot, setSnapshot] = useState<UpdateSnapshot>({ phase: 'none' });
-  const [preferences, setPreferences] = useState<UpdatePreferences>({ lastCheckAt: 0 });
+  const [preferences, setPreferences] = useState<UpdatePreferences>(() => ({ lastCheckAt: 0, enabled: true, checkPeriod: DEFAULT_UPDATE_CHECK_PERIOD }));
   const [ready, setReady] = useState(false);
+  const [supported, setSupported] = useState(false);
   const [surfaceActive, setSurfaceActive] = useState(false);
   const [foreground, setForeground] = useState(AppState.currentState === 'active');
   const [blockerCount, setBlockerCount] = useState(0);
@@ -60,7 +61,8 @@ export function useAppUpdates({ initialized, blocked }: { initialized: boolean; 
   const check = useCallback(async () => {
     const current = latest.current;
     if (!api.current || !current.initialized || !current.ready || !current.foreground || suppressSession.current || checking.current || actionLock.current) return;
-    const due = updateCheckDue(current.preferences.lastCheckAt, Date.now());
+    if (!current.preferences.enabled) return;
+    const due = updateCheckDue(current.preferences.lastCheckAt, Date.now(), UPDATE_CHECK_INTERVALS[current.preferences.checkPeriod]);
     if (!due && !api.current.supportsRecovery) return;
     checking.current = true;
     const revision = eventRevision.current;
@@ -85,6 +87,7 @@ export function useAppUpdates({ initialized, blocked }: { initialized: boolean; 
   useEffect(() => {
     mounted.current = true;
     api.current = loadAppUpdates();
+    setSupported(Boolean(api.current));
     const unsubscribe = api.current?.subscribe((event) => {
       if (!mounted.current) return;
       setNow(Date.now());
@@ -172,11 +175,23 @@ export function useAppUpdates({ initialized, blocked }: { initialized: boolean; 
     }
   }, [check, dismiss, safe]);
 
+  const setEnabled = useCallback((enabled: boolean) => {
+    const next = { ...latest.current.preferences, enabled };
+    latest.current.preferences = next;
+    setPreferences(next);
+    if (enabled) void check();
+  }, [check]);
+  const setCheckPeriod = useCallback((checkPeriod: UpdateCheckPeriod) => {
+    const next = { ...latest.current.preferences, checkPeriod };
+    latest.current.preferences = next;
+    setPreferences(next);
+    if (checkPeriod === 'available') void check();
+  }, [check]);
   const notice = initialized && ready && foreground && surfaceActive && !blocked && !blockerCount &&
-    !busy && !installing && !suppressed ? updateNotice(snapshot, preferences, now) : undefined;
+    !busy && !installing && !suppressed && preferences.enabled ? updateNotice(snapshot, preferences, now) : undefined;
   const later = useCallback(() => dismiss(latest.current.snapshot), [dismiss]);
   const clearError = useCallback(() => setError(false), []);
   return useMemo(() => ({ notice, busy, installing, error: error && foreground && surfaceActive && !blocked && !blockerCount,
-    update, later, clearError, block, setSurfaceActive }),
-  [notice, busy, installing, error, foreground, surfaceActive, blocked, blockerCount, update, later, clearError, block]);
+    update, later, clearError, block, setSurfaceActive, supported, enabled: preferences.enabled, checkPeriod: preferences.checkPeriod, setEnabled, setCheckPeriod }),
+  [notice, busy, installing, error, foreground, surfaceActive, blocked, blockerCount, update, later, clearError, block, supported, preferences.enabled, preferences.checkPeriod, setEnabled, setCheckPeriod]);
 }

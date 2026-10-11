@@ -395,6 +395,28 @@
     "title": "General",
     "resetOnboarding": "Reiniciar la configuración inicial"
   },
+  "autoUpdate": {
+    "title": "Actualización automática",
+    "enable": {
+      "title": "Buscar actualizaciones",
+      "description": "Ofrecer nuevas versiones cuando estén disponibles en la tienda."
+    },
+    "checkPeriod": {
+      "label": "Frecuencia de comprobación",
+      "available": {
+        "label": "Cuando esté disponible",
+        "description": "Mostrar una nueva versión en cuanto la tienda la detecte."
+      },
+      "daily": {
+        "label": "Diaria",
+        "description": "Buscar una nueva versión como máximo una vez al día."
+      },
+      "weekly": {
+        "label": "Semanal",
+        "description": "Buscar una nueva versión como máximo una vez a la semana."
+      }
+    }
+  },
   "permissions": {
     "title": "Permisos guardados",
     "description": "Reglas creadas por «Permitir siempre». Al eliminar una, el servidor volverá a preguntar.",
