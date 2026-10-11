@@ -762,8 +762,9 @@ services and protocol modules own requests and response normalization.
 
 The existing provider owns `useAppUpdates` and its `useUpdates()` domain hook.
 The tab shell renders the nonmodal banner above its default tab bar without
-covering screen controls; the root shell owns route eligibility, the transparent
-handoff gate and failure snackbar. Available Play candidates open native consent
+covering screen controls on Chat, Workspace, Settings and Terminal; the root
+shell owns route eligibility, the transparent handoff gate and failure snackbar.
+Available Play candidates open native consent
 directly at a safe moment. Local UI registers busy presence through
 `useUpdateBlocker`, retaining its own contents. `lib/app-updates.ts` wraps the local
 Expo module and iOS lookup. See [app updates](app-updates.md) for install consent,

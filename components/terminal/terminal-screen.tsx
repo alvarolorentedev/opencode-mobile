@@ -26,6 +26,7 @@ import { TerminalView } from './terminal-view';
 import { OverlaySheet } from '@/components/ui/overlay-sheet';
 import { SwipeRow } from '@/components/ui/swipe-row';
 import { useColorScheme } from '@/hooks/use-color-scheme';
+import { useUpdateBlocker } from '@/hooks/use-update-blocker';
 import type { Pty } from '@/lib/opencode/types';
 import { useConnection, usePreferences, useProjects, useTerminal } from '@/providers/opencode-contexts';
 
@@ -54,6 +55,7 @@ export default function TerminalScreen() {
   const [isCreating, setIsCreating] = useState(false);
   const [terminalPickerVisible, setTerminalPickerVisible] = useState(false);
   const [error, setError] = useState<string>();
+  useUpdateBlocker(isCreating || Boolean(busyId));
 
   useEffect(() => {
     if (connection.status === 'connected' && activeProject) {

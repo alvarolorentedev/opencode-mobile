@@ -3,7 +3,7 @@
 `OpencodeProvider` owns `useAppUpdates`; `useUpdates()` exposes the update notice,
 store actions and blocker registration. `lib/app-updates.ts` is the platform
 boundary. The tab shell renders a compact nonmodal banner above the tabs
-on Chat, Workspace and Settings; Terminal, onboarding, pairing and session routes do
+on Chat, Workspace, Settings and Terminal; onboarding, pairing and session routes do
 not offer updates. The banner uses Paper controls, the light/dark theme, including
 its fixed accent, and all eight locales. It wraps its actions on narrow screens
 and retains access to the tabs. It occupies layout space above the default tab
@@ -46,10 +46,11 @@ malformed persisted values are cleared through the existing helper.
 
 Update actions recheck foreground, route and safety after the async native read.
 Active/sending/queued tasks, conversation mode, pending permissions/questions,
-connection work and Cloud Link purchase/setup suppress offers. Components retain
-their local drafts, attachments and form contents; `useUpdateBlocker` only registers
-that they are busy. Open sheets, pickers, file previews, connection/provider forms,
-voice input/playback and native attachment selection also suppress offers.
+connection work, terminal creation/open/close and Cloud Link purchase/setup suppress
+offers. Components retain their local drafts, attachments and form contents;
+`useUpdateBlocker` only registers that they are busy. Open sheets, pickers, file
+previews, connection/provider forms, voice input/playback and native attachment
+selection also suppress offers.
 
 The FOSS preparation script excludes `opencode-updates` from autolinking, removing
 its Play dependency from that build. JS also rejects FOSS, Expo Go, development,
