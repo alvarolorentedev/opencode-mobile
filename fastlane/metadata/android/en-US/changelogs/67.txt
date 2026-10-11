@@ -1,0 +1,1 @@
+- Cloud Link automatically recovers expired access after resume, with safer retries and profile and chat continuity.
