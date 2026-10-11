@@ -1,4 +1,4 @@
-import { useCallback, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { createProfileId, deleteProfilePassword, findMatchingProfile, getProfilePassword,
   loadConnectionProfiles, saveConnectionProfiles, saveProfilePassword, type ConnectionProfile } from '@/lib/connection-profiles';
 import type { ConnectionContextValue } from '@/providers/opencode-provider-types';
@@ -8,7 +8,7 @@ import { resolveLocalPairing } from '@/lib/opencode/pairing';
 
 export type ConnectionProfileInput = Pick<ConnectionProfile, 'name' | 'serverUrl' | 'username'> & { password: string };
 
-export function useConnectionProfiles({ settings, switchConnection, updateSettings }: Pick<ConnectionContextValue, 'settings' | 'switchConnection' | 'updateSettings'>) {
+export function useConnectionProfiles({ settings, switchConnection, updateSettings, profileSnapshot }: Pick<ConnectionContextValue, 'settings' | 'switchConnection' | 'updateSettings'> & { profileSnapshot: ConnectionProfile[] }) {
   const [profiles, setProfiles] = useState<ConnectionProfile[]>([]);
   const latest = useRef({ settings, switchConnection, updateSettings });
   useLayoutEffect(() => { latest.current = { settings, switchConnection, updateSettings }; });
@@ -22,6 +22,9 @@ export function useConnectionProfiles({ settings, switchConnection, updateSettin
     const stored = await loadConnectionProfiles(true);
     setProfiles(stored);
   }), [mutate]);
+  useEffect(() => {
+    void refresh().catch((reason) => console.warn('Could not refresh connection profiles.', reason));
+  }, [profileSnapshot, refresh]);
   const connect = useCallback(async (profile: ConnectionProfile) => {
     const password = await getProfilePassword(profile.id);
     return latest.current.switchConnection({ serverUrl: profile.serverUrl, username: profile.username, password, connect: profile.connect }, profile.modelPreferences);

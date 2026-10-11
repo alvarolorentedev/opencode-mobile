@@ -257,6 +257,10 @@ async function setActiveConnection(settings) {
   assert.deepEqual(await resolveConnectionCredentials(first), { password: 'signed-secret-1', connect: first.connect }, 'Background clients must carry expiry metadata into their fetch guard.');
   const next = await saveConnectProfile('https://api.opencodecloud.link', { ...claim, device_id: 'device-2', device_secret: 'signed-secret-2' });
   assert.equal(next.id, first.id, 'Credential rotation preserves user-visible profile identity.');
+  assert.equal(findMatchingProfile([first], next)?.id, first.id, 'Rotated Cloud Link usernames still match the saved machine.');
+  assert.equal(findMatchingProfile([first], { ...next, connect: { ...next.connect, machineId: 'another-machine' } }), undefined);
+  assert.equal(findMatchingProfile([first], { ...next, connect: { ...next.connect, controlPlaneUrl: 'https://apistaging.opencodecloud.link' } }), undefined);
+  assert.equal(findMatchingProfile([first], { serverUrl: first.serverUrl, username: next.username }), undefined, 'Manual identities still require an exact credential scope.');
   assert.equal(next.connect.machineId, first.connect.machineId);
   assert.equal(next.serverUrl, first.serverUrl);
   assert.equal(await getProfilePassword(first.id), 'signed-secret-2');

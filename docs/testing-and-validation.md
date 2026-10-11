@@ -497,6 +497,21 @@ prove native store acceptance. Native
 camera, secure relaunch/locked-device access, real tunnel upgrades, and
 revocation still require explicit physical-device validation.
 
+`test:connect` also runs `tests/connect-recovery.test.mjs`, exercising the actual
+provider hooks with deterministic app-state, time, native store and storage
+boundaries. It covers healthy reopen, background expiry and retry cancellation,
+cold-launch store readiness, shared credential access, stale recovery success
+and failure after switching connections, and renewal with Settings mounted.
+Profile checks distinguish machines/environments while preserving manual scope
+matching. The live-renewal E2E checks one active saved row, fresh username, panel
+close/reopen and remembered-session continuity without a document reload.
+On 2026-10-11, the user explicitly confirmed the live-renewal flow and all Android
+background/resume and full-relaunch checks on a build containing this fix,
+satisfying the human validation requirement for these E2E changes under AGENTS.md.
+Static CI, both fake-server self-tests and all 116 web E2E flows passed. Android
+development prebuild passed; local Gradle compilation remains unverified because
+no Android SDK is configured.
+
 The service-domain cutover checks reject both legacy control planes before any
 request or store proof is sent, preserve isolated legacy secure records, and
 discard legacy environment preferences in favor of `api.opencodecloud.link`.

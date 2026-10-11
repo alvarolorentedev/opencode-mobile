@@ -3,9 +3,9 @@ import type { ConnectionActionsInput } from '@/providers/opencode-provider-actio
 import type { useConnectionConnectActions } from '@/providers/use-connection-connect-actions';
 
 type ConnectionProfileActionsInput = ConnectionActionsInput
-  & Pick<ReturnType<typeof useConnectionConnectActions>, 'switchConnection' | 'updateSettings'>;
+  & Pick<ReturnType<typeof useConnectionConnectActions>, 'switchConnection' | 'updateSettings' | 'connectSetup'>;
 
-export function useConnectionProfileActions({ settings, switchConnection, updateSettings }: ConnectionProfileActionsInput) {
-  const connectionProfiles = useConnectionProfiles({ settings, switchConnection, updateSettings });
+export function useConnectionProfileActions({ settings, switchConnection, updateSettings, connectSetup }: ConnectionProfileActionsInput) {
+  const connectionProfiles = useConnectionProfiles({ settings, switchConnection, updateSettings, profileSnapshot: connectSetup.profiles });
   return { connectionProfiles };
 }

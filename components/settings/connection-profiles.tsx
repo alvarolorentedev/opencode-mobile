@@ -46,7 +46,7 @@ export function ConnectionProfiles({ palette, onManageConnect, onPair }: { palet
     void refresh().catch((reason) => setError(reason instanceof Error ? reason.message : String(reason)));
   }, [refresh]));
 
-  const activeProfile = findMatchingProfile(profiles, { serverUrl: settings.serverUrl, username: settings.username });
+  const activeProfile = findMatchingProfile(profiles, settings);
   const isReconnecting = connection.status === 'connecting';
   function manageConnect(profile: ConnectionProfile) {
     connectSetup.selectControlPlane(profile.connect!.controlPlaneUrl);

@@ -347,6 +347,16 @@ Credentials:
   then finalizes the store transaction. Pending QR continuation is secure;
   subscription expiry preserves profiles, and access refresh keeps machine/profile
   identity while migrating credential-scoped remembered state.
+- Automatic Cloud Link recovery waits for store initialization and unfinished
+  subscription finalization, then rereads saved credentials. Requests for the
+  same environment/machine share one access/save operation; different machine
+  saves are ordered because they share the secure-save checkpoint. A late
+  recovery cannot replace a connection selected while it was in flight.
+- Foreground return schedules recovery even after credential expiry or loss.
+  Failed automatic recovery retries after 60 seconds while active; backgrounding
+  cancels retry timers. Same-machine renewal keeps the workspace selection.
+  Provider-owned profile state refreshes when the Cloud Link profile snapshot
+  changes, including renewal of inactive saved machines.
 
 - the active connection password is stored in Keychain/Keystore-backed secure storage via `lib/connection-password.ts`; legacy plaintext `settings.password` is migrated to secure storage and stripped from AsyncStorage on hydration
 - each saved profile's password is stored under its own SecureStore key in `lib/connection-profiles.ts`; profile metadata in AsyncStorage never contains it

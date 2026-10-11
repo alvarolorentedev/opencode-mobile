@@ -508,6 +508,57 @@ test('renewal rotates credentials while preserving profile, machine, hostname an
   expect(state.pairClaims).toBe(1); expect(state.accesses).toBe(1); expect(await events(page)).not.toContain('purchase'); await assertNoStoredSecrets(page);
 });
 
+test('live renewal keeps one active connection and the selected session across panel reopening', async ({ page }) => {
+  const runtimeErrors = [], dataAuth = [];
+  page.on('pageerror', (error) => runtimeErrors.push(error.message));
+  page.on('request', (request) => { if (request.url().startsWith(CONNECT_SERVER) && request.method() !== 'OPTIONS') dataAuth.push(request.headers().authorization); });
+  await page.setViewportSize({ width: 390, height: 844 });
+  await storeFixture(page); const state = await mockControlPlane(page);
+  await openPair(page); await page.getByTestId('connect-purchase').click();
+  await expect(page).toHaveURL(/\/workspace$/, { timeout: 30_000 });
+  const previous = await page.evaluate(() => JSON.parse(localStorage.getItem('opencode-mobile.connection-profiles'))[0]);
+  const oldScope = Buffer.from(`${previous.serverUrl}\n${previous.username}`).toString('base64url');
+  await expect.poll(() => page.evaluate((scope) => Object.keys(JSON.parse(localStorage.getItem('opencode-mobile.last-session-by-project') || '{}')[scope] || {}).length, oldScope)).toBeGreaterThan(0);
+  const selected = await page.evaluate((scope) => JSON.parse(localStorage.getItem('opencode-mobile.last-session-by-project'))[scope], oldScope);
+  await page.getByRole('tab', { name: 'Chat' }).click();
+  const chat = page.getByRole('button', { name: /^Open chats/ });
+  await expect(chat).toBeVisible();
+  const sessionLabel = await chat.getAttribute('aria-label');
+  await page.getByRole('tab', { name: 'Settings' }).click();
+  const overlay = page.getByTestId('settings-section-overlay');
+  await page.getByRole('button', { name: /^Connection/ }).click();
+  const row = page.getByTestId(`connection-row-${previous.id}`);
+  await expect(row).toContainText('Active');
+  await expect(page.getByTestId('connection-row-current')).toHaveCount(0);
+  await overlay.getByText('Close', { exact: true }).click();
+  await page.getByRole('button', { name: /^Subscription\./ }).click();
+  state.paidThrough += 3600000;
+  await page.getByTestId('connect-restore').click();
+  await expect(page.getByTestId('connect-restore')).toBeEnabled();
+  await expect(page.getByTestId('connect-error')).toHaveCount(0);
+  await overlay.getByText('Close', { exact: true }).click();
+  await page.getByRole('button', { name: /^Connection/ }).click();
+  await expect(row).toContainText('Active');
+  await expect(page.getByTestId('connection-row-current')).toHaveCount(0);
+  await row.click();
+  await expect(overlay).toContainText('Username: device-2');
+  await overlay.getByText('Close', { exact: true }).click();
+  await page.getByRole('button', { name: /^Connection/ }).click();
+  await expect(row).toContainText('Active');
+  await expect(page.getByTestId('connection-row-current')).toHaveCount(0);
+  const newScope = Buffer.from(`${previous.serverUrl}\ndevice-2`).toString('base64url');
+  await expect.poll(() => page.evaluate((scope) => JSON.parse(localStorage.getItem('opencode-mobile.last-session-by-project') || '{}')[scope], newScope)).toEqual(selected);
+  expect(await page.evaluate(() => JSON.parse(localStorage.getItem('opencode-mobile.connection-profiles')).length)).toBe(1);
+  expect(state.accesses).toBe(1); expect(state.pairClaims).toBe(1);
+  expect(dataAuth).toContain(`Basic ${Buffer.from('device-2:device-test-secret').toString('base64')}`);
+  await page.screenshot({ path: '/tmp/opencode-cloud-link-renewal.png' });
+  await overlay.getByText('Close', { exact: true }).click();
+  await page.getByRole('tab', { name: 'Chat' }).click();
+  await expect(page.getByRole('button', { name: sessionLabel, exact: true })).toBeVisible();
+  expect(runtimeErrors).toEqual([]);
+  await assertNoStoredSecrets(page);
+});
+
 test('a subscriber opening a QR link pairs automatically without a purchase overlay', async ({ page }) => {
   await storeFixture(page, { recovered: true });
   const state = await mockControlPlane(page);

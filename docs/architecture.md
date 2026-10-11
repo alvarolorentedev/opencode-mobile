@@ -318,8 +318,12 @@ The optional native Cloud Link method composes `use-connect-state.ts`
 inside the provider, verifies native subscriptions through the Cloud Link service,
 validates catalog/session/pairing protocol in `lib/connect.ts`, and
 activates Basic-auth profiles through `switchConnection()`. Shared connection
-preparation refreshes credentials on the same owned machine; expiry preserves
-profiles and renewal migrates state to the rotated credential scope. The `pair` route is
+preparation refreshes credentials on the same owned machine, shares in-flight
+access requests, and waits for native initialization when recovery needs it.
+Foreground return recovers expired or missing credentials automatically; expiry
+still blocks data-plane traffic. Same-machine renewal preserves the selected
+workspace and migrates remembered state to the rotated credential scope. Saved
+profile rows match Cloud Link machine identity and refresh after rotation. The `pair` route is
 independent of onboarding completion. See [Cloud Link pilot](connect.md).
 
 - `lib/connection-scope.ts`

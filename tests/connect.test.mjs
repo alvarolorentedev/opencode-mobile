@@ -707,3 +707,5 @@ await assert.rejects(access.activateConnectProfile({
 }, { ...connectProfile, connect: undefined }), /1033/);
 assert.equal(connectionAttempts, 1, 'Manual connections do not receive Cloud Link tunnel retries.');
 console.log('Cloud Link tunnel startup retries only Cloudflare 1033 and leaves manual connections unchanged');
+
+await import('./connect-recovery.test.mjs');

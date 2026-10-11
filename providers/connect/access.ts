@@ -45,6 +45,7 @@ export type AccessDeps = {
   entitlementRecovery: { current: boolean };
   recoveryMachineId: { current: string | undefined };
   lastAccess: { current: Map<string, number> };
+  accessRequests: { current: Map<string, Promise<ConnectionProfile>> };
   setSession: (session: ConnectSession | undefined) => void;
   setPhase: (phase: ConnectPhase) => void;
   setProfiles: (profiles: ConnectionProfile[]) => void;
@@ -58,6 +59,7 @@ export type AccessDeps = {
   clearPairing: () => Promise<void>;
   finishPurchase: (purchase: Purchase) => Promise<boolean>;
   recoverSession: () => Promise<ConnectSession>;
+  waitForInitialization: () => Promise<void>;
 };
 
 export async function authenticateConnectRequest<T>({
@@ -142,35 +144,57 @@ export async function saveConnectAccess({
   return profile;
 }
 
-export async function requestConnectAccess(deps: AccessDeps, machineId: string, fromPairing = false) {
-  const { controlPlaneUrl, recoveryMachineId, beforeProfileRefresh, pendingClaim } = deps;
-  recoveryMachineId.current = machineId;
-  await beforeProfileRefresh();
-  const previous = (await loadConnectionProfiles(true)).find((profile) => profile.connect?.controlPlaneUrl === controlPlaneUrl && profile.connect.machineId === machineId);
-  const response = await authenticateConnectRequest(deps, (token) => accessConnectMachine(controlPlaneUrl, machineId, token));
-  if (previous && new URL(previous.serverUrl).hostname !== new URL(response.server_url).hostname) throw new Error('machine_hostname_mismatch: Access returned a different hostname.');
-  pendingClaim.current = { controlPlaneUrl, response, previous, fromPairing };
-  const saved = await saveConnectAccess(deps);
-  recoveryMachineId.current = undefined;
-  return saved;
+export function requestConnectAccess(deps: AccessDeps, machineId: string, fromPairing = false): Promise<ConnectionProfile> {
+  const { controlPlaneUrl, recoveryMachineId, beforeProfileRefresh, pendingClaim, accessRequests } = deps;
+  const key = `${controlPlaneUrl}:${machineId}`;
+  const existing = accessRequests.current.get(key);
+  if (existing) return fromPairing ? existing.then(async (profile) => { await deps.clearPairing(); return profile; }) : existing;
+  // The secure-save checkpoint is shared, so different machines save in order.
+  const preceding = [...accessRequests.current.values()];
+  const request = (async () => {
+    await Promise.allSettled(preceding);
+    recoveryMachineId.current = machineId;
+    if (pendingClaim.current) {
+      if (pendingClaim.current.controlPlaneUrl !== controlPlaneUrl || pendingClaim.current.response.machine_id !== machineId) throw new Error('Finish saving the pending machine before reconnecting another machine.');
+    } else {
+      await beforeProfileRefresh();
+      const previous = (await loadConnectionProfiles(true)).find((profile) => profile.connect?.controlPlaneUrl === controlPlaneUrl && profile.connect.machineId === machineId);
+      const response = await authenticateConnectRequest(deps, (token) => accessConnectMachine(controlPlaneUrl, machineId, token));
+      if (previous && new URL(previous.serverUrl).hostname !== new URL(response.server_url).hostname) throw new Error('machine_hostname_mismatch: Access returned a different hostname.');
+      pendingClaim.current = { controlPlaneUrl, response, previous, fromPairing };
+    }
+    const saved = await saveConnectAccess(deps);
+    recoveryMachineId.current = undefined;
+    deps.setPhase('idle');
+    return saved;
+  })().finally(() => { accessRequests.current.delete(key); });
+  accessRequests.current.set(key, request);
+  return request;
 }
 
 export async function prepareConnectSettings(deps: AccessDeps, settings: OpencodeConnectionSettings): Promise<OpencodeConnectionSettings> {
   const { controlPlaneUrl, pendingPurchase, pendingClaim, lastAccess } = deps;
   if (!settings.connect) return settings;
-  if (pendingPurchase.current) throw new Error('Finish securing and finalizing your subscription before reconnecting.');
-  const profile = (await loadConnectionProfiles(true)).find((entry) => entry.connect?.machineId === settings.connect!.machineId && entry.connect.controlPlaneUrl === settings.connect!.controlPlaneUrl);
-  let password = profile ? await getProfilePassword(profile.id) : settings.password;
-  let connect = profile?.connect ?? settings.connect;
-  if (getConnectCredentialError(connect, password) || (Date.parse(connect.expiresAt) - Date.now() <= 5 * 60_000 && Date.now() - (lastAccess.current.get(connect.machineId) ?? 0) > 60_000)) {
-    if (connect.controlPlaneUrl !== controlPlaneUrl) throw new Error('Select this machine’s trusted Cloud Link environment to recover access.');
-    if (pendingClaim.current && pendingClaim.current.response.machine_id !== connect.machineId) throw new Error('Finish saving the pending machine before reconnecting another machine.');
-    const next = pendingClaim.current ? await saveConnectAccess(deps) : await requestConnectAccess(deps, connect.machineId);
-    password = await getProfilePassword(next.id);
-    connect = next.connect!;
-    return { ...settings, serverUrl: next.serverUrl, username: next.username, password, connect };
+  let initialized = false;
+  while (true) {
+    const profile = (await loadConnectionProfiles(true)).find((entry) => entry.connect?.machineId === settings.connect!.machineId && entry.connect.controlPlaneUrl === settings.connect!.controlPlaneUrl);
+    const password = profile ? await getProfilePassword(profile.id) : settings.password;
+    const connect = profile?.connect ?? settings.connect;
+    const refresh = getConnectCredentialError(connect, password) || (Date.parse(connect.expiresAt) - Date.now() <= 5 * 60_000 && Date.now() - (lastAccess.current.get(connect.machineId) ?? 0) > 60_000);
+    if (!initialized && (pendingPurchase.current || refresh)) {
+      await deps.waitForInitialization();
+      initialized = true;
+      continue;
+    }
+    if (pendingPurchase.current) throw new Error('Finish securing and finalizing your subscription before reconnecting.');
+    if (refresh) {
+      if (connect.controlPlaneUrl !== controlPlaneUrl) throw new Error('Select this machine’s trusted Cloud Link environment to recover access.');
+      if (pendingClaim.current && pendingClaim.current.response.machine_id !== connect.machineId) throw new Error('Finish saving the pending machine before reconnecting another machine.');
+      const next = await requestConnectAccess(deps, connect.machineId);
+      return { ...settings, serverUrl: next.serverUrl, username: next.username, password: await getProfilePassword(next.id), connect: next.connect };
+    }
+    return { ...settings, serverUrl: profile?.serverUrl ?? settings.serverUrl, username: profile?.username ?? settings.username, password, connect };
   }
-  return { ...settings, serverUrl: profile?.serverUrl ?? settings.serverUrl, username: profile?.username ?? settings.username, password, connect };
 }
 
 export async function activateConnectProfile({ setSavedProfile, setPhase, switchConnection }: AccessDeps, profile: ConnectionProfile) {
@@ -190,7 +214,8 @@ export async function activateConnectProfile({ setSavedProfile, setPhase, switch
 
 export async function claimConnectAction(deps: AccessDeps) {
   const { controlPlaneUrl, pairingRef, pendingClaim, pendingPurchase, finishPurchase, setPhase, clearPairing } = deps;
-  if (pendingClaim.current) return activateConnectProfile(deps, await saveConnectAccess(deps));
+  await Promise.allSettled([...deps.accessRequests.current.values()]);
+  if (pendingClaim.current) return activateConnectProfile(deps, await requestConnectAccess(deps, pendingClaim.current.response.machine_id));
   const current = pairingRef.current;
   if (!current) throw new Error('Scan or open a pairing link first.');
   if (current.controlPlaneUrl !== controlPlaneUrl) throw new Error('This QR is for a different subscription environment. Open a fresh QR from the matching connector.');
@@ -207,5 +232,5 @@ export async function claimConnectAction(deps: AccessDeps) {
   }
   const previous = (await loadConnectionProfiles(true)).find((profile) => profile.connect?.controlPlaneUrl === current.controlPlaneUrl && profile.connect.machineId === response.machine_id);
   pendingClaim.current = { controlPlaneUrl: current.controlPlaneUrl, response, previous, fromPairing: true };
-  return activateConnectProfile(deps, await saveConnectAccess(deps));
+  return activateConnectProfile(deps, await requestConnectAccess(deps, response.machine_id, true));
 }

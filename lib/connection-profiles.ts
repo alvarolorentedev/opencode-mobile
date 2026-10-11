@@ -112,7 +112,11 @@ export function findProfileByConnectionScope(profiles: ConnectionProfile[], conn
   return profiles.find((profile) => getConnectionScope(profile) === connectionScope);
 }
 
-export function findMatchingProfile(profiles: ConnectionProfile[], identity: ConnectionIdentity) {
+export function findMatchingProfile(profiles: ConnectionProfile[], identity: ConnectionIdentity & { connect?: ConnectMetadata }) {
+  if (identity.connect) {
+    return profiles.find((profile) => profile.connect?.controlPlaneUrl === identity.connect!.controlPlaneUrl
+      && profile.connect.machineId === identity.connect!.machineId);
+  }
   return findProfileByConnectionScope(profiles, getConnectionScope(identity));
 }
 

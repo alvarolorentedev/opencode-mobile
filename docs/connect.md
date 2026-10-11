@@ -265,6 +265,17 @@ minutes before expiry, avoids repeatedly refreshing unchanged paid-through
 credentials, and retries transient failures. Expiry still closes SSE/terminal
 sockets and blocks all SDK/polling/background traffic.
 
+Foreground return also recovers credentials that expired or went missing while
+the app was closed/backgrounded. Recovery waits for native-store initialization
+and unfinished subscription finalization before requesting access. Concurrent
+reconnects share one access/save operation per environment and machine; retrying
+a completed secure-save checkpoint does not rotate credentials again. Transient
+automatic recovery failures retry after 60 seconds while foregrounded.
+Live renewal reconnects the same machine without clearing the selected workspace;
+saved profile rows refresh on credential changes and use machine identity for
+their Active badge. Credential-scoped storage keys remain unchanged. Stale
+recovery results cannot replace a newly selected connection.
+
 After a pairing claim is saved, the first connection retries Cloudflare Error
 1033 with bounded 1/2/4/8-second delays while a newly started tunnel comes online.
 Other connection errors remain immediately actionable; the saved profile can be
@@ -332,6 +343,13 @@ Production web has neither this store driver nor credential persistence.
 Run `test:ci:static`, `test:fake-server:self`, `test:e2e:web`, the Android
 development build and an iOS development build. E2E changes require explicit
 human validation under AGENTS.md, even when automated checks pass.
+
+Cloud Link recovery validation on 2026-10-11: static CI, both fake-server
+self-tests and all 116 web E2E flows passed. The user explicitly confirmed live
+renewal with one active connection row, panel close/reopen and selected-chat
+continuity, plus Android background/resume and full relaunch on a build containing
+this fix. Android development prebuild passed locally; Gradle compilation remains
+unverified here because no Android SDK is configured.
 
 Automatic-routing validation on 2026-10-04: static checks, both fake-server
 self-tests and all 82 Chromium flows passed. Actual provider-hook checks cover

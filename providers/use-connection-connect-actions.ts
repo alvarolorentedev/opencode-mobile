@@ -72,18 +72,25 @@ export function useConnectionConnectActions({
 
   const runConnect = useCallback(async (targetSettings: OpencodeConnectionSettings): Promise<ConnectionState> => {
     initialConnectStartedRef.current = true;
+    let generation = serverGenerationRef.current;
+    const current = () => generation === serverGenerationRef.current;
     if (targetSettings.connect) {
       try {
         const prepared = await prepareConnectSettingsRef.current(targetSettings);
-        if (prepared.username !== targetSettings.username || prepared.password !== targetSettings.password || prepared.connect?.expiresAt !== targetSettings.connect.expiresAt) {
+        if (!current()) return connectionRef.current;
+        const credentialError = getConnectCredentialError(prepared.connect, prepared.password);
+        if (credentialError) throw new Error(credentialError);
+        if (prepared.serverUrl !== settingsRef.current.serverUrl || prepared.username !== settingsRef.current.username || prepared.password !== settingsRef.current.password || prepared.connect?.expiresAt !== settingsRef.current.connect?.expiresAt) {
           settingsRef.current = prepared;
           setSettings(prepared);
           scopeGenerationRef.current += 1;
           serverGenerationRef.current += 1;
+          generation = serverGenerationRef.current;
           clearProjectState();
         }
         targetSettings = prepared;
       } catch (reason) {
+        if (!current()) return connectionRef.current;
         const failed: ConnectionState = { status: 'error', message: reason instanceof Error ? reason.message : 'Could not recover Cloud Link access.', checkedAt: Date.now() };
         setConnection(failed);
         return failed;
@@ -116,6 +123,7 @@ export function useConnectionConnectActions({
     } catch {
       detectedContract = serverContractRef.current;
     }
+    if (!current()) return connectionRef.current;
 
     const candidates: ServerContract[] = detectedContract === 'v1' ? ['v1', 'v2'] : ['v2', 'v1'];
     let catalog: WorkspaceCatalog | undefined;
@@ -136,6 +144,7 @@ export function useConnectionConnectActions({
         usedContract = candidate;
         break;
       } catch (error) {
+        if (!current()) return connectionRef.current;
         lastError = error;
         if (!isContractMismatchError(error)) {
           break;
@@ -242,6 +251,10 @@ export function useConnectionConnectActions({
       ...next,
       connect: connectMetadata,
     };
+    if (connectMetadata && settingsRef.current.connect?.controlPlaneUrl === connectMetadata.controlPlaneUrl
+      && settingsRef.current.connect.machineId === connectMetadata.machineId) {
+      return runConnect(targetSettings);
+    }
     updateSettings({ ...next, connect: connectMetadata });
     settingsRef.current = targetSettings;
     if (modelPreferences) {
@@ -252,7 +265,7 @@ export function useConnectionConnectActions({
   }, [captureActiveProfilePreferences, runConnect, settingsRef, setChatPreferences, updateSettings]);
 
   const disconnectConnectProfile = useCallback(async (profile: ConnectionProfile) => {
-    if (getConnectionScope(profile) !== getConnectionScope(settingsRef.current)) return;
+    if (!findMatchingProfile([profile], settingsRef.current)) return;
     updateSettings({ serverUrl: '', username: '', password: '', connect: undefined });
     await saveConnectionPassword('');
   }, [settingsRef, updateSettings]);
@@ -272,39 +285,48 @@ export function useConnectionConnectActions({
   const connectAccessRefreshRef = useRef('');
   useEffect(() => {
     if (!isHydrated || !settings.connect) return;
+    let cancelled = false;
     let timer: ReturnType<typeof setTimeout>;
     let refreshTimer: ReturnType<typeof setTimeout>;
     const scheduleRefresh = () => {
       clearTimeout(refreshTimer);
       const remaining = Date.parse(settings.connect!.expiresAt) - Date.now();
-      const refreshKey = `${settings.connect!.machineId}:${settings.connect!.expiresAt}`;
-      if (connectAccessRefreshRef.current === refreshKey) return;
-      if (remaining > 0) refreshTimer = setTimeout(() => {
+      const refreshKey = `${settings.connect!.controlPlaneUrl}:${settings.connect!.machineId}:${settings.connect!.expiresAt}`;
+      const recover = getConnectCredentialError(settings.connect, settings.password) || connectionRef.current.status === 'error';
+      if (!recover && connectAccessRefreshRef.current === refreshKey) return;
+      refreshTimer = setTimeout(() => {
         if (AppState.currentState === 'active') {
           connectAccessRefreshRef.current = refreshKey;
           void connect().then((result) => {
+            if (cancelled || AppState.currentState !== 'active') return;
             if (result.status !== 'connected') { connectAccessRefreshRef.current = ''; refreshTimer = setTimeout(scheduleRefresh, 60_000); }
           });
         }
-      }, Math.min(Math.max(remaining - 5 * 60_000, 1000), 2_147_483_647));
+      }, recover ? 1000 : Math.min(Math.max(remaining - 5 * 60_000, 1000), 2_147_483_647));
     };
     const check = () => {
       const message = getConnectCredentialError(settings.connect, settings.password);
       if (message) {
-        scopeGenerationRef.current += 1;
-        serverGenerationRef.current += 1;
-        clearProjectState();
-        setSendingState({ active: false });
-        setConnection({ status: 'error', message, checkedAt: Date.now() });
+        if (connectionRef.current.status !== 'error' || connectionRef.current.message !== message) {
+          scopeGenerationRef.current += 1;
+          serverGenerationRef.current += 1;
+          clearProjectState();
+          setSendingState({ active: false });
+          setConnection({ status: 'error', message, checkedAt: Date.now() });
+        }
+        scheduleRefresh();
         return;
       }
       timer = setTimeout(check, Math.min(Date.parse(settings.connect!.expiresAt) - Date.now(), 2_147_483_647));
     };
     check();
     scheduleRefresh();
-    const subscription = AppState.addEventListener('change', (state) => { if (state === 'active') { clearTimeout(timer); check(); scheduleRefresh(); } });
-    return () => { clearTimeout(timer); clearTimeout(refreshTimer); subscription.remove(); };
-  }, [clearProjectState, connect, isHydrated, scopeGenerationRef, serverGenerationRef, setConnection, setSendingState, settings.connect, settings.password]);
+    const subscription = AppState.addEventListener('change', (state) => {
+      clearTimeout(timer); clearTimeout(refreshTimer);
+      if (state === 'active') { check(); scheduleRefresh(); }
+    });
+    return () => { cancelled = true; clearTimeout(timer); clearTimeout(refreshTimer); subscription.remove(); };
+  }, [clearProjectState, connect, connectionRef, isHydrated, scopeGenerationRef, serverGenerationRef, setConnection, setSendingState, settings.connect, settings.password]);
 
   return { connect, updateSettings, switchConnection, connectSetup };
 }
