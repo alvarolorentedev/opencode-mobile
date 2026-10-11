@@ -1,0 +1,1 @@
+- Automatic app updates: the app can now check for and install new versions, with a new Settings section to control it.
