@@ -577,7 +577,7 @@ Responsibility:
 
 Responsibility:
 
-- Advanced → Auto-update group for the app update feature
+- Advanced → Update checks group for the app update feature
 - toggle update checks and pick the check period (When available, Daily, Weekly)
 - read and mutate the provider-owned update preference through `useUpdates()`
 - render nothing when the update module is unavailable (`supported` is false)
@@ -962,9 +962,10 @@ picker and provider selection action; Terminal follows that directory.
 
 ## App update notice
 
-- `components/ui/update-notice.tsx`: themed, translated offer and install handoff
-  rendered through the shared `OverlaySheet`, failure snackbar; all actions come
-  from the provider.
+- `components/ui/update-notice.tsx`: compact, translated nonmodal ready/App Store
+  banner above the tabs, transparent handoff interaction gate and failure snackbar;
+  Android's available prompt and visible installation UI are owned by Google Play.
+  All actions come from the provider.
 - `hooks/use-update-blocker.ts`: registers open/busy local surfaces with the
   existing provider without sharing their content.
 - `modules/opencode-updates`: local Expo Android Play update module and iOS

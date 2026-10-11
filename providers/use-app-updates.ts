@@ -21,6 +21,7 @@ export function useAppUpdates({ initialized, blocked }: { initialized: boolean; 
   const [preferences, setPreferences] = useState<UpdatePreferences>(() => ({ lastCheckAt: 0, enabled: true, checkPeriod: DEFAULT_UPDATE_CHECK_PERIOD }));
   const [ready, setReady] = useState(false);
   const [supported, setSupported] = useState(false);
+  const [nativeConsent, setNativeConsent] = useState(false);
   const [surfaceActive, setSurfaceActive] = useState(false);
   const [foreground, setForeground] = useState(AppState.currentState === 'active');
   const [blockerCount, setBlockerCount] = useState(0);
@@ -88,6 +89,7 @@ export function useAppUpdates({ initialized, blocked }: { initialized: boolean; 
     mounted.current = true;
     api.current = loadAppUpdates();
     setSupported(Boolean(api.current));
+    setNativeConsent(Boolean(api.current?.nativeConsent));
     const unsubscribe = api.current?.subscribe((event) => {
       if (!mounted.current) return;
       setNow(Date.now());
@@ -141,7 +143,7 @@ export function useAppUpdates({ initialized, blocked }: { initialized: boolean; 
 
   const safe = useCallback(() => {
     const current = latest.current;
-    return current.initialized && current.ready && current.surfaceActive && current.foreground && !current.blocked && !current.installing &&
+    return current.initialized && current.ready && current.preferences.enabled && current.surfaceActive && current.foreground && !current.blocked && !current.installing &&
       !suppressSession.current && blockers.current.size === 0;
   }, []);
 
@@ -150,6 +152,7 @@ export function useAppUpdates({ initialized, blocked }: { initialized: boolean; 
     const adapter = api.current;
     const offered = latest.current.snapshot;
     if (!updateNotice(offered, latest.current.preferences, Date.now())) return;
+    let attempted = offered;
     actionLock.current = true;
     setBusy(true); setError(false);
     try {
@@ -157,6 +160,7 @@ export function useAppUpdates({ initialized, blocked }: { initialized: boolean; 
       const result = await readUpdate(adapter);
       const fresh = { ...result, version: result.version ?? offered.version };
       if (!mounted.current || !safe()) return;
+      attempted = fresh;
       if (fresh.phase === 'downloaded') {
         if (offered.phase !== 'downloaded') { setSnapshot(fresh); latest.current.snapshot = fresh; return; }
         latest.current.installing = true;
@@ -164,11 +168,13 @@ export function useAppUpdates({ initialized, blocked }: { initialized: boolean; 
         await adapter.complete();
         // Keep the interaction gate up until Play restarts the app or reports failure.
       } else if (fresh.phase === 'available') {
+        latest.current.snapshot = fresh;
+        setSnapshot(fresh);
         await adapter.start();
-        dismiss(offered);
+        dismiss(fresh);
       } else { latest.current.snapshot = fresh; setSnapshot(fresh); setInstalling(fresh.phase === 'installing'); }
     } catch {
-      if (mounted.current) { latest.current.installing = false; setInstalling(false); setError(true); dismiss(offered); }
+      if (mounted.current) { latest.current.installing = false; setInstalling(false); setError(true); dismiss(attempted); }
     } finally {
       actionLock.current = false;
       if (mounted.current) { setBusy(false); if (!latest.current.installing) void check(); }
@@ -187,8 +193,12 @@ export function useAppUpdates({ initialized, blocked }: { initialized: boolean; 
     setPreferences(next);
     if (checkPeriod === 'available') void check();
   }, [check]);
-  const notice = initialized && ready && foreground && surfaceActive && !blocked && !blockerCount &&
+  const candidate = initialized && ready && foreground && surfaceActive && !blocked && !blockerCount &&
     !busy && !installing && !suppressed && preferences.enabled ? updateNotice(snapshot, preferences, now) : undefined;
+  useEffect(() => {
+    if (candidate?.phase === 'available' && nativeConsent) void update();
+  }, [candidate, nativeConsent, update]);
+  const notice = candidate?.phase === 'available' && nativeConsent ? undefined : candidate;
   const later = useCallback(() => dismiss(latest.current.snapshot), [dismiss]);
   const clearError = useCallback(() => setError(false), []);
   return useMemo(() => ({ notice, busy, installing, error: error && foreground && surfaceActive && !blocked && !blockerCount,

@@ -47,12 +47,15 @@
     "systemDefault": "系统默认"
   },
   "updates": {
-    "available": "有可用更新。",
-    "ready": "更新已下载。点击更新以安装并重启应用。",
-    "update": "更新",
+    "available": "有可用更新",
+    "ready": "更新已就绪",
     "later": "稍后",
     "failed": "无法更新。请稍后重试。",
     "opening": "正在打开更新…",
-    "installing": "正在安装更新…"
+    "installing": "正在安装更新…",
+    "readyDescription": "重启应用以安装更新。",
+    "availableDescription": "通过 App Store 安装最新版本。",
+    "restart": "重启并安装",
+    "openStore": "打开 App Store"
   }
 }

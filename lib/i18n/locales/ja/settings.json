@@ -396,7 +396,7 @@
     "resetOnboarding": "初期設定をやり直す"
   },
   "autoUpdate": {
-    "title": "自動更新",
+    "title": "アップデートの確認",
     "enable": {
       "title": "更新を確認する",
       "description": "ストアで利用可能になり次第、新しいバージョンを提示します。"

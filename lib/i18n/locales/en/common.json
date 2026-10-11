@@ -47,12 +47,15 @@
     "systemDefault": "System default"
   },
   "updates": {
-    "available": "An update is available.",
-    "ready": "Update downloaded. Tap Update to install and restart the app.",
-    "update": "Update",
+    "available": "Update available",
+    "ready": "Update ready",
     "later": "Later",
     "failed": "Could not update. Please try again later.",
     "opening": "Opening the update…",
-    "installing": "Installing update…"
+    "installing": "Installing update…",
+    "readyDescription": "Restart the app to install.",
+    "availableDescription": "Install the latest version through the App Store.",
+    "restart": "Restart & install",
+    "openStore": "Open App Store"
   }
 }

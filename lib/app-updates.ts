@@ -6,6 +6,7 @@ export type UpdatePhase = 'none' | 'available' | 'downloading' | 'downloaded' | 
 export type UpdateSnapshot = { phase: UpdatePhase; version?: string };
 export type UpdateEvent = { phase: UpdatePhase | 'cancelled' | 'failed' };
 export type AppUpdateApi = {
+  nativeConsent?: boolean;
   supportsRecovery?: boolean;
   check: () => Promise<UpdateSnapshot>;
   start: () => Promise<boolean>;
@@ -44,7 +45,7 @@ export function appStoreCandidate(data: unknown, appId: string, bundleId: string
 
 type UpdateTest = {
   snapshot: UpdateSnapshot; checks: number; events: string[];
-  startResult?: boolean; startError?: boolean; completeError?: boolean;
+  nativeConsent?: boolean; startResult?: boolean; startError?: boolean; completeError?: boolean;
   emit?: (event: UpdateEvent) => void;
 };
 
@@ -57,6 +58,7 @@ export function loadAppUpdates(): AppUpdateApi | null {
       ? (globalThis as typeof globalThis & { __appUpdateTest?: UpdateTest }).__appUpdateTest : undefined;
     if (!test) return null;
     return {
+      nativeConsent: test.nativeConsent !== false,
       supportsRecovery: true,
       check: async () => { test.checks++; return { ...test.snapshot }; },
       start: async () => {
@@ -88,6 +90,7 @@ export function loadAppUpdates(): AppUpdateApi | null {
   const native = requireOptionalNativeModule<NativeUpdates>('OpencodeUpdates');
   if (!native) return null;
   if (Platform.OS === 'android') return {
+    nativeConsent: true,
     supportsRecovery: true,
     check: () => native.check(), start: () => native.startFlexibleUpdate(), complete: () => native.completeUpdate(),
     subscribe: (callback) => { const subscription = native.addListener('status', callback); return () => subscription.remove(); },

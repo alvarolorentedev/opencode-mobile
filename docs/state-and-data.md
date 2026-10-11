@@ -727,9 +727,11 @@ services and protocol modules own requests and response normalization.
 
 ## App update state
 
-`useAppUpdates` holds the native snapshot, the auto-update preference (enabled and
+`useAppUpdates` holds the native snapshot, the update-check preference (enabled and
 check period) and interaction gates in the provider. Only discovery time, the
-auto-update preference and the version/stage dismissal are persisted under
+update-check preference and the version/stage dismissal are persisted under
 `opencode-mobile.app-updates`. Drafts and form contents remain local; blocker
 tokens report presence only. Downloaded state is recovered from Play and never
-triggers installation automatically. See [app updates](app-updates.md).
+triggers installation automatically. Safe available candidates on Play open native
+consent directly; only downloaded candidates render an Android banner. iOS
+candidates retain an explicit App Store action. See [app updates](app-updates.md).

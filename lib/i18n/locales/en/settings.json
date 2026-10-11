@@ -396,7 +396,7 @@
     "resetOnboarding": "Reset onboarding"
   },
   "autoUpdate": {
-    "title": "Auto-update",
+    "title": "Update checks",
     "enable": {
       "title": "Check for updates",
       "description": "Offer new versions when they are available on the store."

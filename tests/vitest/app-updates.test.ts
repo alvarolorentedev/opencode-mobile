@@ -5,14 +5,14 @@ import type { AppUpdateApi, UpdateEvent, UpdateSnapshot } from '../../lib/app-up
 
 const available: UpdateSnapshot = { phase: 'available', version: '59' };
 const downloaded: UpdateSnapshot = { phase: 'downloaded', version: '59' };
-async function provider({ stored = null, readError = false, snapshot = available, recovery = true, check = vi.fn(async () => snapshot) }:
-  { stored?: string | null; readError?: boolean; snapshot?: UpdateSnapshot; recovery?: boolean; check?: ReturnType<typeof vi.fn> } = {}) {
+async function provider({ stored = null, readError = false, snapshot = available, recovery = true, nativeConsent = false, blocked = false, check = vi.fn(async () => snapshot) }:
+  { stored?: string | null; readError?: boolean; snapshot?: UpdateSnapshot; recovery?: boolean; nativeConsent?: boolean; blocked?: boolean; check?: ReturnType<typeof vi.fn> } = {}) {
   const runtime = hookRuntime();
   let event: (value: UpdateEvent) => void = () => {};
   let foreground: (value: string) => void = () => {};
   const storage = { getItem: vi.fn(async () => { if (readError) throw Error(); return stored; }), setItem: vi.fn(async () => {}), removeItem: vi.fn(async () => {}) };
   const unsubscribe = vi.fn();
-  const api: AppUpdateApi = { supportsRecovery: recovery, check, start: vi.fn(async () => true), complete: vi.fn(async () => {}),
+  const api: AppUpdateApi = { nativeConsent, supportsRecovery: recovery, check, start: vi.fn(async () => true), complete: vi.fn(async () => {}),
     subscribe: (listener) => { event = listener; return unsubscribe; } };
   const persistence = await loadTs('providers/persistence-hydration.ts');
   const { useAppUpdates } = await loadTs('providers/use-app-updates.ts', {
@@ -22,7 +22,7 @@ async function provider({ stored = null, readError = false, snapshot = available
     '@/providers/app-update-policy': { DEFAULT_UPDATE_CHECK_PERIOD, parseUpdatePreferences, UPDATE_CHECK_INTERVALS, UPDATE_DISMISS_INTERVAL, updateCheckDue, updateNotice },
     '@/providers/persistence-hydration': persistence,
   }, runtime.globals);
-  runtime.mount(useAppUpdates, { initialized: false, blocked: false });
+  runtime.mount(useAppUpdates, { initialized: false, blocked });
   await runtime.settle();
   expect(api.check).not.toHaveBeenCalled();
   runtime.value.setSurfaceActive(true); runtime.update({ initialized: true }); await runtime.settle();
@@ -50,6 +50,50 @@ describe('update policy', () => {
 });
 
 describe('provider update safety', () => {
+  it('opens only native consent at a safe moment and still requires an explicit restart', async () => {
+    const view = await provider({ nativeConsent: true, blocked: true });
+    expect(view.runtime.value.notice).toBeUndefined();
+    expect(view.api.start).not.toHaveBeenCalled();
+    const release = view.runtime.value.block();
+    view.runtime.update({ blocked: false }); await view.runtime.settle();
+    expect(view.api.start).not.toHaveBeenCalled();
+    release(); await view.runtime.settle();
+    expect(view.api.start).toHaveBeenCalledOnce();
+    expect(view.runtime.value.notice).toBeUndefined();
+    view.foreground('background'); view.foreground('active'); await view.runtime.settle();
+    expect(view.api.start).toHaveBeenCalledOnce();
+    view.event({ phase: 'downloaded' });
+    expect(view.runtime.value.notice).toEqual(downloaded);
+    expect(view.api.complete).not.toHaveBeenCalled();
+    view.api.check = vi.fn(async () => downloaded);
+    await view.runtime.value.update(); await view.runtime.settle();
+    expect(view.api.complete).toHaveBeenCalledOnce();
+  });
+  it('does not open native consent when disabled or the recovered download is ready', async () => {
+    const disabled = await provider({ nativeConsent: true, stored: JSON.stringify({ lastCheckAt: 0, enabled: false }) });
+    expect(disabled.api.start).not.toHaveBeenCalled();
+    const ready = await provider({ nativeConsent: true, snapshot: downloaded });
+    expect(ready.api.start).not.toHaveBeenCalled();
+    expect(ready.api.complete).not.toHaveBeenCalled();
+    expect(ready.runtime.value.notice).toEqual(downloaded);
+  });
+  it('rechecks safety before native consent and suppresses cancellation for the version actually offered', async () => {
+    const view = await provider({ nativeConsent: true, blocked: true });
+    const pending = deferred();
+    view.api.check = vi.fn(() => pending.promise);
+    view.runtime.update({ blocked: false });
+    view.runtime.update({ blocked: true });
+    pending.resolve(available); await view.runtime.settle();
+    expect(view.api.start).not.toHaveBeenCalled();
+    view.api.check = vi.fn(async () => ({ ...available, version: '60' }));
+    vi.mocked(view.api.start).mockResolvedValue(false);
+    view.runtime.update({ blocked: false }); await view.runtime.settle();
+    expect(view.api.start).toHaveBeenCalledOnce();
+    expect(view.runtime.value.notice).toBeUndefined();
+    expect(JSON.parse(view.storage.setItem.mock.calls.at(-1)![1]).dismissal.version).toBe('60');
+    view.foreground('background'); view.foreground('active'); await view.runtime.settle();
+    expect(view.api.start).toHaveBeenCalledOnce();
+  });
   it('requires a second tap to install and blocks drafts, background and unsafe routes', async () => {
     const view = await provider();
     expect(view.runtime.value.notice).toEqual(available);

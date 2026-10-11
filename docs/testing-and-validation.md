@@ -734,9 +734,13 @@ still required.
 `tests/vitest/app-updates.test.ts` covers cooldown, the enable toggle and check
 period, store identity, numeric versions, TestFlight suppression, blockers,
 cancellation, failure, timeouts and recovery.
-`tests/e2e/app-updates.spec.mjs` exercises the offer overlay, drafts and open
-sheets suppressing it, persisted Later and the separate download/install actions
-using an explicit development fixture. No fake server protocol is changed. Real Play/App Store and
+`tests/e2e/app-updates.spec.mjs` exercises direct native consent without a themed
+offer, the nonmodal ready banner, drafts and open sheets suppressing it, persisted
+Later, cancellation, separate download/install actions, and explicit App Store
+navigation using a development fixture. Mobile checks cover 390×844 dark and
+320×700 light layouts, 44-point controls, usable tabs and an uncovered composer.
+The provider tests also cover deferred native consent, enabled checks and a
+version changing between discovery and native handoff. No fake server protocol is changed. Real Play/App Store and
 accessibility acceptance remains required; see [app updates](app-updates.md).
 E2E changes require explicit human validation under AGENTS.md.
 
@@ -751,3 +755,15 @@ human validation of the added E2E contract remain outstanding. The missing iOS
 App Store ID remains a configuration prerequisite. No version was increased.
 The final 390×844 dark-layout update flows also passed, including 44-point banner
 action targets and cross-tab draft protection.
+
+Update-flow revision verification on 2026-10-11: static CI (including 166 Vitest
+tests), both fake-server self-tests, all 115 web E2E flows and FOSS preparation
+passed. Screenshot review caught a floating banner covering the composer; the
+final banner occupies layout space above the default tab bar, and E2E checks
+verify the composer and tabs remain usable. The selected concept's colors, copy,
+12-point banner radius and mint action are retained; controls wrap into a second
+row on narrow screens using existing Paper typography. Android development
+prebuild succeeded, but Gradle stopped because no Android SDK is configured.
+The user explicitly validated the revised E2E behavior contract on 2026-10-11.
+Real store installation and native accessibility/large text acceptance remain
+outstanding. No version was increased.

@@ -1,19 +1,23 @@
 import { Tabs, usePathname } from 'expo-router';
+import { BottomTabBar } from 'expo-router/js-tabs';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
-import { Platform, Text, type ColorValue } from 'react-native';
+import { Platform, Text, View, type ColorValue } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { HapticTab } from '@/components/haptic-tab';
 import { IconSymbol } from '@/components/ui/icon-symbol';
+import { UpdateBanner } from '@/components/ui/update-notice';
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
+import { useUpdates } from '@/providers/opencode-contexts';
 
 export default function TabLayout() {
   const { t } = useTranslation();
   const colorScheme = useColorScheme();
   const pathname = usePathname();
   const insets = useSafeAreaInsets();
+  const updates = useUpdates();
   const palette = Colors[colorScheme ?? 'light'];
   const selected = (route: string) => route === '/' ? pathname === '/' || pathname.startsWith('/session/') : pathname.startsWith(route);
   const iconColor = (route: string, color: ColorValue) => Platform.OS === 'web' ? selected(route) ? palette.tint : palette.tabIconDefault : color;
@@ -23,6 +27,10 @@ export default function TabLayout() {
 
   return (
     <Tabs
+      tabBar={(props) => <View>
+        <UpdateBanner notice={updates.notice} onUpdate={() => { void updates.update(); }} onLater={updates.later} />
+        <BottomTabBar {...props} />
+      </View>}
       screenOptions={{
         tabBarActiveTintColor: Colors[colorScheme ?? 'light'].tint,
         tabBarInactiveTintColor: Colors[colorScheme ?? 'light'].tabIconDefault,

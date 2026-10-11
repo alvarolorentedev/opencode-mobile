@@ -611,7 +611,7 @@ Responsibilities:
 - manage voice and response-style preferences
 - adjust the chat transcript text size, bubble/flat layout, and slim interface density
 - choose the app interface language
-- group chat text size, flat conversation and V2 Steer/Append delivery under Advanced → Editor; group slim interface, language and Reset onboarding under Advanced → General; expose the app update preference under Advanced → Auto-update
+- group chat text size, flat conversation and V2 Steer/Append delivery under Advanced → Editor; group slim interface, language and Reset onboarding under Advanced → General; expose the app update preference under Advanced → Update checks
 - launch Reset onboarding at the presentation screen, with the permissions, connection and workspace steps seeded from current state without wiping configuration
 
 ### Terminal Screen
@@ -757,7 +757,10 @@ services and protocol modules own requests and response normalization.
 ## App update integration
 
 The existing provider owns `useAppUpdates` and its `useUpdates()` domain hook.
-The root shell renders the notice; local UI registers busy presence through
+The tab shell renders the nonmodal banner above its default tab bar without
+covering screen controls; the root shell owns route eligibility, the transparent
+handoff gate and failure snackbar. Available Play candidates open native consent
+directly at a safe moment. Local UI registers busy presence through
 `useUpdateBlocker`, retaining its own contents. `lib/app-updates.ts` wraps the local
 Expo module and iOS lookup. See [app updates](app-updates.md) for install consent,
 safety gates and FOSS exclusion.

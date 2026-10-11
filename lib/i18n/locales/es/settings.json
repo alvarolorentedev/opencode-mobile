@@ -396,7 +396,7 @@
     "resetOnboarding": "Reiniciar la configuración inicial"
   },
   "autoUpdate": {
-    "title": "Actualización automática",
+    "title": "Comprobar actualizaciones",
     "enable": {
       "title": "Buscar actualizaciones",
       "description": "Ofrecer nuevas versiones cuando estén disponibles en la tienda."

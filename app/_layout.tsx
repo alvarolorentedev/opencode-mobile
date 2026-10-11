@@ -72,7 +72,7 @@ function UpdateHost() {
     setSurfaceActive(eligible);
     return () => setSurfaceActive(false);
   }, [eligible, setSurfaceActive]);
-  return <UpdateNotice {...updates} onUpdate={() => { void updates.update(); }} onLater={updates.later} onDismissError={updates.clearError} />;
+  return <UpdateNotice {...updates} onDismissError={updates.clearError} />;
 }
 
 // The onboarding decision depends on persisted state, so routing waits for

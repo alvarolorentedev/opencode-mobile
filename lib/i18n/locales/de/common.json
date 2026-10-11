@@ -47,12 +47,15 @@
     "systemDefault": "Systemstandard"
   },
   "updates": {
-    "available": "Ein Update ist verfügbar.",
-    "ready": "Update heruntergeladen. Tippe auf Aktualisieren, um es zu installieren und die App neu zu starten.",
-    "update": "Aktualisieren",
+    "available": "Update verfügbar",
+    "ready": "Update bereit",
     "later": "Später",
     "failed": "Aktualisierung fehlgeschlagen. Versuche es später erneut.",
     "opening": "Update wird geöffnet…",
-    "installing": "Update wird installiert…"
+    "installing": "Update wird installiert…",
+    "readyDescription": "Starte die App zur Installation neu.",
+    "availableDescription": "Installiere die neueste Version über den App Store.",
+    "restart": "Neu starten & installieren",
+    "openStore": "App Store öffnen"
   }
 }

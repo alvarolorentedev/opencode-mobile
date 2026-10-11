@@ -396,7 +396,7 @@
     "resetOnboarding": "重新进行初始设置"
   },
   "autoUpdate": {
-    "title": "自动更新",
+    "title": "更新检查",
     "enable": {
       "title": "检查更新",
       "description": "当商店中有新版本可用时提示。"

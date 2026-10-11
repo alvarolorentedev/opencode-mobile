@@ -2,10 +2,13 @@
 
 `OpencodeProvider` owns `useAppUpdates`; `useUpdates()` exposes the update notice,
 store actions and blocker registration. `lib/app-updates.ts` is the platform
-boundary. The root shell renders the offer through the shared `OverlaySheet` overlay
+boundary. The tab shell renders a compact nonmodal banner above the tabs
 on Chat, Workspace and Settings; Terminal, onboarding, pairing and session routes do
-not offer updates. The offer and the install handoff reuse the existing overlay and
-Paper controls, the light/dark theme, including its fixed accent, and all eight locales.
+not offer updates. The banner uses Paper controls, the light/dark theme, including
+its fixed accent, and all eight locales. It wraps its actions on narrow screens
+and retains access to the tabs. It occupies layout space above the default tab
+bar, keeping both the composer and navigation visible. The root shell owns route
+eligibility, the handoff gate and failure snackbar.
 
 ## Android
 
@@ -16,17 +19,22 @@ still enforces app ownership, signing and a higher available version code.
 The module declares `defaultConfig.versionName = '1.0.0'`, which Expo's Gradle
 publication setup requires separately from the app's release version.
 
-Update starts a flexible download after native Play consent. Download completion
-only raises the ready offer. A second explicit Update tap on that offer calls
-`completeUpdate()`; its text warns that the app will restart. No listener,
-foreground event or cold launch installs an update automatically. The non-dismissible
-handoff overlay blocks new edits while opening store consent and during installation.
+An available update opens native Play consent directly at the first safe moment,
+without a preceding themed offer. The adapter's `nativeConsent` flag identifies
+that flow; iOS never opens its store automatically. Consent starts a flexible
+background download. Download completion only raises an "Update ready" banner.
+Its separate "Restart & install" action calls `completeUpdate()`; the description
+warns that the app will restart. No listener, foreground event or cold launch
+installs an update automatically. A transparent, accessible, non-dismissible
+interaction gate blocks new edits and Back during handoff; Play owns the visible
+consent and installation UI, so no themed progress sheet is stacked underneath it.
 Cancellation and failures dismiss the same candidate; failures show a short error
 without automatically opening the Play Store. Listeners are removed on teardown.
 
 The provider checks after hydration and onboarding, and on foreground entry.
-Settings → Advanced → Auto-update owns the feature: an enable toggle and a check
-period of When available (default), Daily, or Weekly. "When available" checks on
+Settings → Advanced → Update checks owns the feature: an enable toggle and a check
+period of When available (default), Daily, or Weekly. These preferences control
+app checks and reminders, not the store's automatic-update setting. "When available" checks on
 every foreground entry so a new version surfaces immediately; Daily and Weekly
 throttle discovery to that interval, including failed attempts. Android queries
 native download/install state on foreground entry even inside a throttled interval
@@ -63,7 +71,8 @@ requires a verified production `AppTransaction` matching the running bundle;
 TestFlight/sandbox, debug, simulator and unverifiable installations return no
 candidate. It uses `AppTransaction.shared`, never refreshes receipts or initializes
 purchases. TypeScript validates the lookup's ID, bundle ID and numeric release
-version. Update opens a constructed official App Store URL; iOS does not install
+version. The banner's explicit "Open App Store" action opens a constructed
+official App Store URL; iOS does not install
 or restart through this feature. Timeout, unavailable listings and store failures
 never delay boot or produce an unsolicited prompt.
 
@@ -73,11 +82,13 @@ Run static CI, fake-server self-tests, web E2E and FOSS preparation checks. Nati
 builds must autolink this module for store variants and exclude it for FOSS.
 
 On two signed Play internal-track releases of the same package, with the older
-version installed through Play and the account owning it, check consent/cancel,
+version installed through Play and the account owning it, check direct native consent/cancel,
 background download, process death, recovery, Later and failure. Verify a downloaded
 update never restarts while composing, editing a file, opening a modal or using
 voice, and installs only after the explicit ready action on a safe screen. Check
-that the interaction gate prevents starting new unsaved work during handoff.
+that the interaction gate prevents starting new unsaved work during handoff,
+and no duplicate themed offer or progress sheet appears. Verify the nonmodal ready
+banner remains above the tabs at narrow widths and large text sizes.
 
 On a public App Store installation, verify the configured ID and storefront,
 matching/newer/equal versions and explicit store navigation. Verify TestFlight,

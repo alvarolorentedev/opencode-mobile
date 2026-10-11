@@ -396,7 +396,7 @@
     "resetOnboarding": "Einrichtung neu starten"
   },
   "autoUpdate": {
-    "title": "Auto-Update",
+    "title": "Update-Prüfung",
     "enable": {
       "title": "Nach Updates suchen",
       "description": "Neue Versionen anbieten, sobald sie im Store verfügbar sind."
