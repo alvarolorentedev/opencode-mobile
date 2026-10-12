@@ -10,7 +10,7 @@ import { FilesPanel } from '@/components/workspace/files-panel';
 import { FilePreview } from '@/components/workspace/file-preview';
 import { Colors, Fonts } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
-import { getConnectionScope } from '@/lib/connection-scope';
+import { getConnectionUiScope } from '@/lib/connection-scope';
 import { useConnection, usePreferences, useProjects, useWorkspaceFiles } from '@/providers/opencode-contexts';
 
 export default function WorkspaceScreen() {
@@ -26,7 +26,7 @@ export default function WorkspaceScreen() {
   const [fileVisible, setFileVisible] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string>();
-  const scope = `${getConnectionScope(settings)}:${activeProject?.path}`;
+  const scope = `${getConnectionUiScope(settings)}:${activeProject?.path}`;
   const ready = connection.status === 'connected' && Boolean(activeProject);
   async function refresh() {
     if (refreshing) return;

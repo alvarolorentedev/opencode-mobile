@@ -265,6 +265,27 @@ minutes before expiry, avoids repeatedly refreshing unchanged paid-through
 credentials, and retries transient failures. Expiry still closes SSE/terminal
 sockets and blocks all SDK/polling/background traffic.
 
+Concurrent reconnect triggers (boot, foreground refresh, activation retry,
+manual Reconnect, profile switch) join one in-flight connect when the server,
+generation, and credentials match, so workspace discovery and contract probing
+run once. A credential rotation that lands mid-flight updates the in-flight key
+instead of letting a second stale attempt start.
+
+Data-plane authentication failures are not retried in a loop. The realtime
+subscription classifies failures (`lib/opencode/client/errors.ts`) and stops
+its retry loop for `auth`/`entitlement`, notifying the provider once: Cloud Link
+runs the same prepared credential recovery used by foreground renewal, while
+manual connections surface an actionable error that requires an explicit
+reconnect. Offline/timeout/tunnel-startup failures stay on the bounded backoff
+path, and a foreground stream that goes silent without an error is
+re-established by the liveness watchdog.
+
+A same-machine credential rotation preserves the selected workspace, sessions,
+transcript, worktrees, MCP state, terminal transports/renderers and cursor, and
+the workspace editor selection and draft. Storage-scoped keys still migrate to
+the rotated credential scope. A different server, machine, or manual edit keeps
+the existing full reset.
+
 Foreground return also recovers credentials that expired or went missing while
 the app was closed/backgrounded. Recovery waits for native-store initialization
 and unfinished subscription finalization before requesting access. Concurrent

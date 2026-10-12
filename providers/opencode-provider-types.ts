@@ -22,6 +22,7 @@ import type {
   VcsInfo,
 } from '@/lib/opencode/types';
 import type {
+  ConnectionFailureKind,
   OpencodeConnectionSettings,
   PendingPermission,
   PendingQuestion,
@@ -131,6 +132,7 @@ export type ConnectionState = {
   checkedAt?: number;
   projectDirectory?: string;
   retryableStartup?: boolean;
+  kind?: ConnectionFailureKind;
 };
 
 // Which diff source the Files Changed surface reads from. `turn` is the

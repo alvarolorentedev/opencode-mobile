@@ -33,6 +33,8 @@ const stateStore = createStateStore(scenarioName);
 let state = stateStore.getState();
 const terminalFixture = createTerminalFixture((id) => { const pty = state.ptys.find((item) => item.id === id); if (pty) pty.status = 'exited'; });
 let suppressEvents = false;
+let stallEvents = false;
+let sseSubscribes = 0;
 const applicablePatch = 'diff --git a/src/demo.ts b/src/demo.ts\n--- a/src/demo.ts\n+++ b/src/demo.ts\n@@ -1 +1 @@\n-export const demo = "OpenCode 1.18.3";\n+export const demo = "OpenCode SDK 1.18.3";\n';
 const editorPatch = '--- a/src/demo.ts\n+++ b/src/demo.ts\n@@ -1,1 +1,1 @@\n-export const demo = "OpenCode 1.18.3";\n+export const demo = "OpenCode SDK 1.18.3";\n';
 // Committed-on-branch fixture, distinct from the uncommitted `git` diff so the
@@ -90,7 +92,7 @@ function getMessages(sessionId) {
 }
 
 function emitEvent(event) {
-  if (suppressEvents) return;
+  if (suppressEvents || stallEvents) return;
   if (state.sseClients.size === 0) {
     return;
   }
@@ -136,11 +138,12 @@ function handleSse(req, res) {
     'Access-Control-Allow-Origin': '*',
   });
   res.flushHeaders();
-  res.write(`data: ${JSON.stringify({
+  state.sseClients.add(res);
+  sseSubscribes += 1;
+  if (!stallEvents) res.write(`data: ${JSON.stringify({
     directory: state.project.worktree,
     payload: { id: `event-${state.nextEventId++}`, type: 'server.connected', properties: {} },
   })}\n\n`);
-  state.sseClients.add(res);
   req.on('close', () => {
     state.sseClients.delete(res);
   });
@@ -182,11 +185,19 @@ const server = http.createServer(async (req, res) => {
     if (req.method === 'POST' && pathname === '/__control/event-stream') {
       const body = await readJson(req);
       suppressEvents = Boolean(body?.suppress);
+      if (typeof body?.stall === 'boolean') {
+        stallEvents = body.stall;
+        // Releasing a stall re-announces the stream so held clients reconcile.
+        if (!stallEvents) for (const client of state.sseClients) client.write(`data: ${JSON.stringify({
+          directory: state.project.worktree,
+          payload: { id: `event-${state.nextEventId++}`, type: 'server.connected', properties: {} },
+        })}\n\n`);
+      }
       if (body?.disconnect) {
         for (const client of state.sseClients) client.end();
         state.sseClients.clear();
       }
-      sendJson(res, 200, { data: { suppressEvents, clients: state.sseClients.size } });
+      sendJson(res, 200, { data: { suppressEvents, stallEvents, clients: state.sseClients.size, subscribes: sseSubscribes } });
       return;
     }
 
@@ -205,6 +216,8 @@ const server = http.createServer(async (req, res) => {
         return;
       }
       suppressEvents = false;
+      stallEvents = false;
+      sseSubscribes = 0;
       state = stateStore.resetState(nextScenario);
       sendJson(res, 200, { data: { scenario: state.scenario } });
       return;

@@ -1829,6 +1829,71 @@ for (const protocol of ['v1', 'v2']) {
 }
 
 
+for (const protocol of ['v1', 'v2']) {
+  test(`${protocol} silently stalled event stream is re-established and reconciles a missed blocker`, async ({ page, request }) => {
+    const port = await getFreePort();
+    const server = protocol === 'v2' ? spawnV2Server(port, 'question') : spawnV1Server(port, 'question');
+    const origin = `http://127.0.0.1:${port}`;
+    try {
+      await resetScenario(request, 'happy-path');
+      await waitForServer(request, `${origin}${protocol === 'v2' ? '/api/info' : '/path'}`);
+      await openReadyChat(page);
+      await connectToServer(page, origin);
+      const control = `${origin}/__control/event-stream`;
+      await expect.poll(async () => (await (await request.post(control, { data: { suppress: true, stall: true } })).json()).data.clients).toBeGreaterThan(0);
+      // Create a pending interaction outside the selected chat. The stream is
+      // open but silent, so only the liveness watchdog can re-establish it.
+      const sessionsPath = protocol === 'v2' ? '/api/session' : '/session';
+      const created = await (await request.post(`${origin}${sessionsPath}`, { data: { title: 'Stalled question' } })).json();
+      const session = protocol === 'v2' ? created.data : created;
+      await request.post(`${origin}${sessionsPath}/${session.id}/${protocol === 'v2' ? 'prompt' : 'prompt_async'}`, {
+        data: protocol === 'v2' ? { text: 'Ask an implementation question' } : { parts: [{ type: 'text', text: 'Ask an implementation question' }] },
+      });
+      const pendingPath = protocol === 'v2' ? '/api/form?location[directory]=/workspace/demo-project' : '/question?directory=/workspace/demo-project';
+      await expect.poll(async () => {
+        const payload = await (await request.get(`${origin}${pendingPath}`)).json();
+        return (protocol === 'v2' ? payload.data : payload).length;
+      }).toBe(1);
+      await expect.poll(async () => {
+        const outcome = await (await request.post(control, { data: { suppress: true, stall: true } })).json();
+        return outcome.data.subscribes;
+      }, { timeout: 20_000 }).toBeGreaterThan(1);
+      const snapshot = page.waitForResponse((response) => response.url().startsWith(`${origin}${sessionsPath}?`) && response.request().method() === 'GET');
+      await request.post(control, { data: { suppress: false, stall: false } });
+      await snapshot;
+      await openChatLibrary(page);
+      await page.getByText('Stalled question', { exact: true }).first().click();
+      await expect(page.getByText('Which implementation should be used?', { exact: true })).toBeVisible({ timeout: 15_000 });
+    } finally {
+      server.kill('SIGTERM');
+    }
+  });
+}
+
+test('v2 network drop recovers the retained session without replaying the prompt', async ({ page, request }) => {
+  const port = await getFreePort();
+  const server = spawnV2Server(port, 'retry');
+  const origin = `http://127.0.0.1:${port}`;
+  try {
+    await resetScenario(request, 'happy-path');
+    await waitForServer(request, `${origin}/api/info`);
+    await openReadyChat(page);
+    await connectToServer(page, origin);
+    await sendPrompt(page, 'Network drop recovery');
+    await expect(page.getByText(/retrying \(attempt 2\)/)).toBeVisible({ timeout: 15_000 });
+    await page.context().setOffline(true);
+    await page.waitForTimeout(1500);
+    await page.context().setOffline(false);
+    await expect(page.getByText(/Recovered: Network drop recovery/).first()).toBeVisible({ timeout: 30_000 });
+    const state = await (await request.get(`${origin}/__control/state`)).json();
+    const prompts = Object.values(state.messagesBySession).flat()
+      .filter((record) => record.type === 'user' && record.text === 'Network drop recovery');
+    expect(prompts).toHaveLength(1);
+  } finally {
+    server.kill('SIGTERM');
+  }
+});
+
 test('composer exposes direct approvals, agent selection and thinking in the model picker without losing drafts', async ({ page, request }) => {
   await page.setViewportSize({ width: 393, height: 852 });
   await resetScenario(request, 'happy-path');

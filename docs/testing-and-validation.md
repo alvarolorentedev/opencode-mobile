@@ -510,6 +510,28 @@ foreground recovery does not overlap or restart activation and rescan retains
 the saved profile. Protocol checks preserve HTML 1033 before SDK parsing and
 keep 401/403 and TLS/certificate failures immediately actionable.
 
+Recovery classification is pinned by `tests/vitest/connection-classification.test.ts`
+(tunnel-startup, offline, timeout, auth, entitlement, server-incompatible,
+unknown, and the retry/auth policies). `tests/provider-runtime.test.mjs` covers
+the liveness watchdog (one re-subscription per staleness window, foreground
+cycle, no traffic while healthy), the queued full reconcile behind an in-flight
+safety poll, auth-failure stream stop with a single provider notification, and
+the terminal reconnect on a rotated credential client.
+`tests/connect-recovery.test.mjs` covers single-flight concurrent connects
+(one workspace discovery), same-machine rotation using the soft reset (workspace
+preserved), and data-plane revocation (state cleared once, Cloud Link recovery
+reused). `tests/vitest/terminal.test.ts` covers jittered bounded reconnect
+delays and cursor-preserving reconnect with rotated credentials.
+`tests/e2e/flows.spec.mjs` adds a silently stalled SSE flow (watchdog
+re-subscribes and the released stall reconciles a missed blocker, both
+protocols) and a browser offline/online drop that recovers the retained session
+without re-submitting the prompt.
+
+These fake-server and E2E changes require explicit human validation under
+AGENTS.md. Device acceptance still needs Wi-Fi/cellular transitions, sleep/wake
+resume, real revocation, and Cloud Link renewal with a live terminal and editor
+draft.
+
 The web Cloud Link flows use controlled time and mocked tunnel responses to
 check waiting beyond 15 seconds without recovery controls, automatic connection,
 neutral timeout without automatic restart, explicit Retry without replaying

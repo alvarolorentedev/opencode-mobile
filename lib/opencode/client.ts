@@ -30,7 +30,7 @@ export {
   getServerBase,
 } from './client/url';
 export { createAuthHeader, getRequestHeaders, createScopedFetch, createPrefixFetch, fetchConnection } from './client/fetch';
-export { getConnectionError, getConnectionErrorMessage, isContractMismatchError, isRetryableCloudLinkStartupError } from './client/errors';
+export { getConnectionError, getConnectionErrorMessage, isContractMismatchError, isRetryableCloudLinkStartupError, classifyConnectionFailure, isRetryableConnectionFailure, isAuthConnectionFailure, type ConnectionFailureKind } from './client/errors';
 export { detectServerContract, probeConnection, type ContractProbeResult, type ConnectionProbeResult } from './client/probe';
 export {
   listPendingInteractions,

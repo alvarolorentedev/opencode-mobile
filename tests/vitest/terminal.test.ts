@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createTerminalDecoder, createTerminalOutputQueue, MAX_TERMINAL_PENDING_BYTES } from '@/lib/opencode/terminal-stream';
 import { encodeTerminalKey, NO_MODIFIERS, pasteNeedsConfirmation } from '@/components/terminal/terminal-keys';
-import { createTerminalConnection } from '@/providers/terminal-connection';
+import { createTerminalConnection, type TerminalConnectionContext } from '@/providers/terminal-connection';
 import type { ScopedOpencodeClient } from '@/lib/opencode/client';
 import type { Terminal } from '@xterm/xterm';
 import { installTerminalInput } from '@/components/terminal/terminal-input';
@@ -103,8 +103,12 @@ describe('terminal output', () => {
 });
 
 describe('PTY connection lifecycle', () => {
-  function connection() {
-    return createTerminalConnection({ id: 'pty-1', client: {} as ScopedOpencodeClient, current: () => true, serverUrl: 'https://example.test/prefix', directory: '/project', serverContract: 'v1', publish: vi.fn() });
+  function connection(context?: () => TerminalConnectionContext) {
+    return createTerminalConnection({
+      id: 'pty-1',
+      context: context ?? (() => ({ client: {} as ScopedOpencodeClient, current: true, serverUrl: 'https://example.test/prefix', directory: '/project', serverContract: 'v1' })),
+      publish: vi.fn(),
+    });
   }
   it('sends raw input and resumes at the acknowledged UTF-16 cursor with a fresh ticket', async () => {
     const pty = connection(), written: string[] = [];
@@ -117,6 +121,32 @@ describe('PTY connection lifecycle', () => {
     await vi.advanceTimersByTimeAsync(1000);
     expect(services.url.mock.calls[1][2]).toEqual({ ticket: 'fresh-ticket', cursor: '4' });
     expect(services.token).toHaveBeenCalledTimes(2); expect(written).toEqual(['$ ', '😀']);
+    pty.dispose();
+  });
+  it('reconnects with rotated credentials while keeping the renderer cursor', async () => {
+    const initial = {} as ScopedOpencodeClient, rotated = {} as ScopedOpencodeClient;
+    const live: TerminalConnectionContext = { client: initial, current: true, serverUrl: 'https://example.test/prefix', directory: '/project', serverContract: 'v1', authorization: 'Basic old' };
+    const pty = connection(() => live);
+    pty.register({ write: async () => {} }); await settle();
+    const socket = services.socket.mock.results[0].value as Socket;
+    socket.open(); socket.message('$ '); socket.message(metadata(2));
+    await vi.advanceTimersByTimeAsync(16);
+    live.client = rotated; live.authorization = 'Basic new';
+    pty.reconnect(); await settle();
+    expect(services.token.mock.calls[1][0]).toBe(rotated);
+    expect(services.socket.mock.calls[1][1]).toBe('Basic new');
+    expect(services.url.mock.calls[1][2]).toEqual({ ticket: 'fresh-ticket', cursor: '2' });
+    pty.dispose();
+  });
+  it('jitters reconnect delays while keeping them bounded', async () => {    const random = vi.spyOn(Math, 'random').mockReturnValue(0);
+    const pty = connection(); pty.register({ write: async () => {} }); await settle();
+    const socket = services.socket.mock.results[0].value as Socket;
+    socket.open(); socket.end();
+    await vi.advanceTimersByTimeAsync(499);
+    expect(services.token).toHaveBeenCalledTimes(1);
+    await vi.advanceTimersByTimeAsync(1);
+    expect(services.token).toHaveBeenCalledTimes(2);
+    random.mockRestore();
     pty.dispose();
   });
   it('waits for in-flight renderer writes before reconnect and resets the cursor after renderer loss', async () => {

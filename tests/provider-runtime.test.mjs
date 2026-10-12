@@ -245,6 +245,8 @@ const catalogClient = { api: { event: { async subscribe({ signal }) {
 } } } };
 const realtime = await loadTs('providers/use-opencode-realtime.ts', {
   react: runtime.react,
+  'react-native': { AppState: { currentState: 'active', addEventListener: () => ({ remove() {} }) } },
+  '@/lib/opencode/client/errors': { classifyConnectionFailure: () => 'unknown', isAuthConnectionFailure: () => false },
   '@/lib/opencode/events': { subscribeEvents: async function* (client, signal) { yield* await client.api.event.subscribe({ signal }); } },
 }, runtime.globals);
 assert.equal(realtime.shouldPoll(true, false), false);
@@ -272,6 +274,97 @@ wake({ location: { directory: '/another-project' }, type: 'server.connected' });
 assert.equal(sessionsRefreshed, 4); assert.equal(pendingRefreshed, 4, 'reconnection always recovers pending interactions');
 assert.deepEqual(events, ['server.connected'], 'other-project events are filtered');
 wake(null); await runtime.settle(); runtime.unmount(); assert.equal(runtime.countTimers(1000), 0);
+
+// SSE liveness: a stream that goes silent without an error is re-established
+// once per staleness window, a long background return re-verifies the stream,
+// and a reconnect's full rebuild is queued behind an in-flight safety poll.
+{
+  const liveness = hookRuntime();
+  let now = 1_000_000, subscriptions = 0, wake, sessions = 0, pending = 0, heldSessions;
+  const fullPasses = [];
+  const listeners = new Set();
+  const client = { api: { event: { async subscribe({ signal }) {
+    subscriptions++;
+    return (async function* () {
+      while (!signal.aborted) {
+        const incoming = await new Promise((resolve) => { wake = resolve; signal.addEventListener('abort', () => resolve(null), { once: true }); });
+        if (incoming === null) return;
+        yield incoming;
+      }
+    })();
+  } } } };
+  const appState = { currentState: 'active', addEventListener: (_event, listener) => { listeners.add(listener); return { remove: () => listeners.delete(listener) }; } };
+  const hook = await loadTs('providers/use-opencode-realtime.ts', {
+    react: liveness.react,
+    'react-native': { AppState: appState },
+    '@/lib/opencode/client/errors': { classifyConnectionFailure: () => 'unknown', isAuthConnectionFailure: () => false },
+    '@/lib/opencode/events': { subscribeEvents: async function* (instance, signal) { yield* await instance.api.event.subscribe({ signal }); } },
+  }, { ...liveness.globals, Date: class extends Date { static now() { return now; } } });
+  const inputs = {
+    catalogClient: client, activeProjectPath: '/repo', connected: true, busy: false, currentSessionId: 's',
+    onEvent: () => {}, refreshSessions: async () => { sessions++; await heldSessions?.promise; },
+    refreshPendingInteractions: async () => { pending++; },
+    refreshMessages: async (_id, _silent, options) => { fullPasses.push(Boolean(options?.full)); },
+    refreshSessionDiff: async () => {}, refreshSessionTodos: async () => {},
+  };
+  liveness.mount(hook.useOpencodeRealtime, inputs); await liveness.settle();
+  wake({ location: { directory: '/repo' }, type: 'server.connected' }); await liveness.settle();
+  assert.equal(liveness.value.eventStreamStatus, 'connected');
+  assert.equal(subscriptions, 1); assert.equal(sessions, 1); assert.equal(pending, 1);
+  now += 89_000; liveness.fire(7000); await liveness.settle();
+  assert.equal(subscriptions, 1, 'a stream inside the staleness window is left alone');
+  now += 2_000; liveness.fire(7000); await liveness.settle();
+  assert.equal(subscriptions, 2, 'a silent stream is re-established after the window');
+  wake({ location: { directory: '/repo' }, type: 'server.connected' }); await liveness.settle();
+  assert.equal(liveness.value.eventStreamStatus, 'connected');
+  [...listeners].forEach((listener) => listener('background'));
+  now += 16_000;
+  [...listeners].forEach((listener) => listener('active'));
+  await liveness.settle();
+  assert.equal(subscriptions, 3, 'a long background return re-verifies the stream');
+  wake({ location: { directory: '/repo' }, type: 'server.connected' }); await liveness.settle();
+  fullPasses.length = 0;
+  heldSessions = deferred();
+  liveness.update({ busy: true }); liveness.fire(10000); await liveness.settle();
+  assert.deepEqual(fullPasses, [false], 'the busy safety poll tails the transcript');
+  wake(null); await liveness.settle(); liveness.fire(1000); await liveness.settle();
+  assert.equal(subscriptions, 4);
+  wake({ location: { directory: '/repo' }, type: 'server.connected' }); await liveness.settle();
+  assert.deepEqual(fullPasses, [false], 'the reconnect rebuild waits for the in-flight poll');
+  heldSessions.resolve(); heldSessions = undefined; await liveness.settle();
+  assert.deepEqual(fullPasses, [false, true], 'the reconnect rebuild cannot be swallowed by the poll');
+  liveness.unmount();
+}
+
+// Revocation: an authentication failure stops the stream, notifies the
+// provider once, and never enters the reconnect loop.
+{
+  const revoked = hookRuntime();
+  let fatal = 0, subscriptions = 0;
+  const client = { api: { event: { async subscribe() { subscriptions++; throw new Error('401 credentials rejected'); } } } };
+  const hook = await loadTs('providers/use-opencode-realtime.ts', {
+    react: revoked.react,
+    'react-native': { AppState: { currentState: 'active', addEventListener: () => ({ remove() {} }) } },
+    '@/lib/opencode/client/errors': {
+      classifyConnectionFailure: (error) => /401|credential/i.test(String(error?.message)) ? 'auth' : 'unknown',
+      isAuthConnectionFailure: (kind) => kind === 'auth' || kind === 'entitlement',
+    },
+    '@/lib/opencode/events': { subscribeEvents: async function* (instance, signal) { yield* await instance.api.event.subscribe({ signal }); } },
+  }, revoked.globals);
+  revoked.mount(hook.useOpencodeRealtime, {
+    catalogClient: client, activeProjectPath: '/repo', connected: true, busy: true, currentSessionId: 's',
+    onFatalError: (kind) => { fatal++; assert.equal(kind, 'auth'); },
+    onEvent: () => {}, refreshSessions: async () => {}, refreshPendingInteractions: async () => {},
+    refreshMessages: async () => {}, refreshSessionDiff: async () => {}, refreshSessionTodos: async () => {},
+  });
+  await revoked.settle();
+  assert.equal(revoked.value.eventStreamStatus, 'error');
+  assert.equal(fatal, 1); assert.equal(subscriptions, 1);
+  revoked.fire(1000); await revoked.settle(); revoked.fire(15000); await revoked.settle();
+  assert.equal(subscriptions, 1, 'revoked credentials must not retry the stream');
+  assert.equal(fatal, 1, 'the provider is notified once');
+  revoked.unmount();
+}
 
 // Conversation state machine runs against stubbed speech/platform boundaries.
 const voiceRuntime = hookRuntime();
@@ -545,8 +638,8 @@ assert.deepEqual(Object.keys(cachedDiffs), ['target']); assert.deepEqual(Object.
       createTerminal: async () => ({ id: 'new' }), removeTerminal: async () => { if (rejectRemoval) throw new Error('Rejected'); },
     },
     './terminal-connection': { createTerminalConnection: ({ id, publish }) => {
-      const record = { state: { id, generation: 0, status: 'connected' }, disposed: false, sent: [],
-        foreground() {}, reconnect() {}, register: () => () => {}, resize() {},
+      const record = { state: { id, generation: 0, status: 'connected' }, disposed: false, sent: [], reconnects: 0,
+        foreground() {}, reconnect() { record.reconnects += 1; }, register: () => () => {}, resize() {},
         send(input) { record.sent.push(input); },
         exit() { record.state.status = 'exited'; publish(); }, dispose() { record.disposed = true; },
       };
@@ -555,6 +648,10 @@ assert.deepEqual(Object.keys(cachedDiffs), ['target']); assert.deepEqual(Object.
   });
   runtime.mount(useTerminalState, { client, isCurrentClient: () => true, serverUrl: 'http://example.test', directory: '/repo', serverContract: 'v1' });
   await runtime.value.openTerminal('first'); runtime.flush();
+  const rotatedClient = {};
+  runtime.update({ client: rotatedClient });
+  assert.ok(records.get('first').reconnects >= 1, 'a rotated credential client reconnects the retained PTY');
+  runtime.update({ client });
   pendingList = true;
   const refresh = runtime.value.refreshTerminals();
   await runtime.value.openTerminal('second'); runtime.flush();

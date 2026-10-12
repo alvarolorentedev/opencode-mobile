@@ -551,6 +551,16 @@ The app uses two update strategies in parallel:
 
 When connected and a project is active, the provider opens `catalogClient.global.event()`. Global event envelopes are filtered by `directory === activeProjectPath` before their payload is handled. If the stream ends or fails, the provider reconnects indefinitely with exponential backoff from 1 second to 15 seconds.
 
+A socket can also die without an error. A liveness watchdog re-establishes
+the subscription when a foreground stream has received no envelope for a
+staleness window (90 seconds; shortened in E2E builds), and foreground return
+bypasses the remaining backoff or cycles a stream that was backgrounded long
+enough. Reconnects keep a first-envelope authoritative reconcile; if a poll is
+already in flight, the full rebuild is queued behind it instead of being
+coalesced away. Invalid-credential and entitlement failures stop the retry
+loop and are surfaced through `ConnectionState.kind` (`auth`/`entitlement`),
+while Cloud Link reuses its prepared credential recovery.
+
 Recognized events update local state or schedule refreshes for:
 
 - session creation/update/deletion
@@ -646,7 +656,7 @@ Responsibilities:
 - request a short-lived connect ticket and stream PTY data over a project-scoped WebSocket
 - provide xterm terminal emulation with immediate input and a system-keyboard accessory
 
-The provider delivers raw VT output in ordered acknowledged batches to xterm. It owns reconnect cursors, resize, and per-PTY transport lifetime; xterm owns the display and 10,000-line scrollback.
+The provider delivers raw VT output in ordered acknowledged batches to xterm. It owns reconnect cursors, resize, and per-PTY transport lifetime; xterm owns the display and 10,000-line scrollback. Retained PTYs read the live client and credentials through a context accessor, so a same-machine Cloud Link credential rotation reconnects the transport with fresh credentials instead of disposing the renderer and cursor. Unexpected disconnects retry with jittered 1/2/4/8/15-second delays.
 
 ## Conversation Mode Architecture
 

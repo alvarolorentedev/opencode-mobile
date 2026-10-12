@@ -15,6 +15,8 @@ const stateStore = createStateStore(scenarioName);
 let state = stateStore.getState();
 const terminalFixture = createTerminalFixture((id) => { const pty = state.ptys.find((item) => item.id === id); if (pty) pty.status = 'exited'; });
 let suppressEvents = false;
+let stallEvents = false;
+let v2Subscribes = 0;
 const v2Clients = new Set();
 // VCS diff fixtures. `working` mirrors uncommitted changes; `branch` is a
 // distinct committed fixture so the diff-scope surface is deterministic.
@@ -85,7 +87,7 @@ function event(type, data) {
 }
 
 function emitV2Event(mapped) {
-  if (suppressEvents) return;
+  if (suppressEvents || stallEvents) return;
   const payload = `data: ${JSON.stringify(mapped)}\n\n`;
   for (const client of v2Clients) {
     client.write(payload);
@@ -129,11 +131,16 @@ const server = http.createServer(async (req, res) => {
     if (req.method === 'POST' && pathname === '/__control/event-stream') {
       const body = await readJson(req);
       suppressEvents = Boolean(body?.suppress);
+      if (typeof body?.stall === 'boolean') {
+        stallEvents = body.stall;
+        // Releasing a stall re-announces the stream so held clients reconcile.
+        if (!stallEvents) for (const client of v2Clients) client.write(`data: ${JSON.stringify(event('server.connected', {}))}\n\n`);
+      }
       if (body?.disconnect) {
         for (const client of v2Clients) client.end();
         v2Clients.clear();
       }
-      sendJson(res, 200, { data: { suppressEvents, clients: v2Clients.size } });
+      sendJson(res, 200, { data: { suppressEvents, stallEvents, clients: v2Clients.size, subscribes: v2Subscribes } });
       return;
     }
 
@@ -159,6 +166,8 @@ const server = http.createServer(async (req, res) => {
       for (const client of v2Clients) client.end();
       v2Clients.clear();
       suppressEvents = false;
+      stallEvents = false;
+      v2Subscribes = 0;
       state = stateStore.resetState(body?.scenario || scenarioName);
       connectionPassword = body?.password ?? process.env.FAKE_OPENCODE_PASSWORD ?? '';
       pairingCode = undefined;
@@ -203,7 +212,8 @@ const server = http.createServer(async (req, res) => {
         'Access-Control-Allow-Origin': '*',
       });
       v2Clients.add(res);
-      res.write(`data: ${JSON.stringify(event('server.connected', {}))}\n\n`);
+      v2Subscribes += 1;
+      if (!stallEvents) res.write(`data: ${JSON.stringify(event('server.connected', {}))}\n\n`);
       req.on('close', () => v2Clients.delete(res));
       return;
     }

@@ -139,6 +139,7 @@ export type ConnectionActionsInput = {
   activeProjectPathRef: { current: string | undefined };
   connectionScopeRef: { current: string };
   clearProjectState: () => void;
+  softResetProjectState: () => void;
   isHydrated: boolean;
   isCurrentCatalogClient: (candidate: object) => boolean;
   loadWorkspaceCatalog: (silent?: boolean, targetClient?: ScopedOpencodeClient) => Promise<WorkspaceCatalog>;

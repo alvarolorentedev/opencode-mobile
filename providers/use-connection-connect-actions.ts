@@ -12,12 +12,14 @@ import { getConnectCredentialError } from '@/lib/connect';
 import { saveConnectionPassword } from '@/lib/connection-password';
 import {
   buildClient,
+  classifyConnectionFailure,
   detectServerContract,
   getConnectionError,
   getNormalizedServerUrl,
   isContractMismatchError,
   isRetryableCloudLinkStartupError,
   isValidServerUrl,
+  type ConnectionFailureKind,
   type OpencodeConnectionSettings,
   type ScopedOpencodeClient,
   type ServerContract,
@@ -26,6 +28,13 @@ import type { ConnectionProfile } from '@/lib/connection-profiles';
 import type { ChatPreferences, ConnectionState, WorkspaceCatalog } from '@/providers/opencode-provider-types';
 import { useConnectState } from '@/providers/use-connect-state';
 import type { ConnectionActionsInput } from '@/providers/opencode-provider-action-inputs';
+
+// Joining concurrent connects is keyed on the exact credentials and generation
+// so a rotation that lands mid-flight starts a new attempt instead of adopting
+// stale credentials.
+function getConnectRequestKey(settings: OpencodeConnectionSettings, generation: number) {
+  return [generation, settings.serverUrl, settings.username, settings.password, settings.connect?.machineId ?? '', settings.connect?.expiresAt ?? ''].join('\u0000');
+}
 
 export function useConnectionConnectActions({
   settings,
@@ -36,6 +45,7 @@ export function useConnectionConnectActions({
   setActiveProjectPath,
   activeProjectPathRef,
   clearProjectState,
+  softResetProjectState,
   isHydrated,
   isCurrentCatalogClient,
   loadWorkspaceCatalog,
@@ -70,8 +80,9 @@ export function useConnectionConnectActions({
   initialConnectStartedRef,
 }: ConnectionActionsInput) {
   const prepareConnectSettingsRef = useRef<(settings: OpencodeConnectionSettings) => Promise<OpencodeConnectionSettings>>(async (value) => value);
+  const connectInFlightRef = useRef<{ key: string; promise: Promise<ConnectionState> } | undefined>(undefined);
 
-  const runConnect = useCallback(async (targetSettings: OpencodeConnectionSettings): Promise<ConnectionState> => {
+  const performConnect = useCallback(async (targetSettings: OpencodeConnectionSettings, onPrepared?: (prepared: OpencodeConnectionSettings) => void): Promise<ConnectionState> => {
     initialConnectStartedRef.current = true;
     let generation = serverGenerationRef.current;
     const current = () => generation === serverGenerationRef.current;
@@ -82,24 +93,34 @@ export function useConnectionConnectActions({
         const credentialError = getConnectCredentialError(prepared.connect, prepared.password);
         if (credentialError) throw new Error(credentialError);
         if (prepared.serverUrl !== settingsRef.current.serverUrl || prepared.username !== settingsRef.current.username || prepared.password !== settingsRef.current.password || prepared.connect?.expiresAt !== settingsRef.current.connect?.expiresAt) {
+          const previous = settingsRef.current;
+          const sameMachineRotation = Boolean(
+            prepared.connect && previous.connect
+            && prepared.connect.controlPlaneUrl === previous.connect.controlPlaneUrl
+            && prepared.connect.machineId === previous.connect.machineId
+            && prepared.serverUrl === previous.serverUrl,
+          );
           settingsRef.current = prepared;
           setSettings(prepared);
           scopeGenerationRef.current += 1;
           serverGenerationRef.current += 1;
           generation = serverGenerationRef.current;
-          clearProjectState();
+          // A same-machine credential renewal keeps workspace, session, terminal
+          // and editor state; only client-bound in-flight bookkeeping resets.
+          if (sameMachineRotation) softResetProjectState(); else clearProjectState();
         }
         targetSettings = prepared;
+        onPrepared?.(prepared);
       } catch (reason) {
         if (!current()) return connectionRef.current;
-        const failed: ConnectionState = { status: 'error', message: reason instanceof Error ? reason.message : 'Could not recover Cloud Link access.', checkedAt: Date.now() };
+        const failed: ConnectionState = { status: 'error', message: reason instanceof Error ? reason.message : 'Could not recover Cloud Link access.', kind: classifyConnectionFailure(reason), checkedAt: Date.now() };
         setConnection(failed);
         return failed;
       }
     }
     const credentialError = getConnectCredentialError(targetSettings.connect, targetSettings.password);
     if (credentialError) {
-      const failed: ConnectionState = { status: 'error', message: credentialError, checkedAt: Date.now() };
+      const failed: ConnectionState = { status: 'error', message: credentialError, kind: 'auth', checkedAt: Date.now() };
       setConnection(failed);
       return failed;
     }
@@ -107,6 +128,7 @@ export function useConnectionConnectActions({
       const failed: ConnectionState = {
         status: 'error',
         message: getConnectionError(targetSettings.serverUrl, new Error('Invalid server URL.')),
+        kind: 'unknown',
         checkedAt: Date.now(),
       };
       setConnection(failed);
@@ -154,10 +176,12 @@ export function useConnectionConnectActions({
     }
 
     if (!catalog || !activeCatalogClient || !usedContract) {
+      const failure = lastError ?? new Error('Could not reach the OpenCode server.');
       const failed: ConnectionState = {
         status: 'error',
-        message: getConnectionError(targetSettings.serverUrl, lastError ?? new Error('Could not reach the OpenCode server.')),
+        message: getConnectionError(targetSettings.serverUrl, failure),
         retryableStartup: Boolean(targetSettings.connect) && isRetryableCloudLinkStartupError(lastError),
+        kind: classifyConnectionFailure(failure),
         checkedAt: Date.now(),
       };
       setConnection(failed);
@@ -200,9 +224,47 @@ export function useConnectionConnectActions({
     }
 
     return connected;
-  }, [activeProjectPath, catalogGenerationRef, clearProjectState, isCurrentCatalogClient, loadWorkspaceCatalog, initialConnectStartedRef, serverContractRef, serverGenerationRef, scopeGenerationRef, settingsRef, setAvailableAgents, setAvailableModels, setAvailableProviders, setConnection, setCurrentConfig, setCurrentProjectPath, setProviderAuthMethodsById, setServerContract, setServerProjects, setServerRootPath, setSessionStatuses, setSessions, setSettings, serverProjectsRef, connectionRef]);
+  }, [activeProjectPath, catalogGenerationRef, clearProjectState, softResetProjectState, isCurrentCatalogClient, loadWorkspaceCatalog, initialConnectStartedRef, serverContractRef, serverGenerationRef, scopeGenerationRef, settingsRef, setAvailableAgents, setAvailableModels, setAvailableProviders, setConnection, setCurrentConfig, setCurrentProjectPath, setProviderAuthMethodsById, setServerContract, setServerProjects, setServerRootPath, setSessionStatuses, setSessions, setSettings, serverProjectsRef, connectionRef]);
+
+  const runConnect = useCallback((targetSettings: OpencodeConnectionSettings) => {
+    const inFlight = connectInFlightRef.current;
+    if (inFlight && inFlight.key === getConnectRequestKey(targetSettings, serverGenerationRef.current)) return inFlight.promise;
+    const record = { key: '', promise: Promise.resolve(connectionRef.current) };
+    record.promise = performConnect(targetSettings, (prepared) => {
+      record.key = getConnectRequestKey(prepared, serverGenerationRef.current);
+    }).finally(() => {
+      if (connectInFlightRef.current === record) connectInFlightRef.current = undefined;
+    });
+    record.key = getConnectRequestKey(targetSettings, serverGenerationRef.current);
+    connectInFlightRef.current = record;
+    return record.promise;
+  }, [connectionRef, performConnect, serverGenerationRef]);
 
   const connect = useCallback(() => runConnect(settingsRef.current), [runConnect, settingsRef]);
+
+  // A revoked or invalid credential on the data plane cannot heal by retrying.
+  // Cloud Link reuses its prepared credential/recovery path; manual servers ask
+  // the user to reconnect. Server-derived caches are cleared, workspace
+  // selection is not.
+  const handleStreamAuthFailure = useCallback((kind: ConnectionFailureKind) => {
+    if (settingsRef.current.connect) {
+      void connect().catch(() => undefined);
+      return;
+    }
+    if (connectionRef.current.status === 'error' && connectionRef.current.kind === kind) return;
+    scopeGenerationRef.current += 1;
+    serverGenerationRef.current += 1;
+    clearProjectState();
+    setSendingState({ active: false });
+    setConnection({
+      status: 'error',
+      kind,
+      message: kind === 'entitlement'
+        ? 'Access was denied. Reconnect or restore access to continue.'
+        : 'Authentication failed. Check the credentials and reconnect.',
+      checkedAt: Date.now(),
+    });
+  }, [clearProjectState, connect, connectionRef, scopeGenerationRef, serverGenerationRef, setConnection, setSendingState, settingsRef]);
 
   const updateSettings = useCallback((patch: Partial<OpencodeConnectionSettings>) => {
     const connectionChanged = (['serverUrl', 'username', 'password'] as const)
@@ -319,7 +381,7 @@ export function useConnectionConnectActions({
           serverGenerationRef.current += 1;
           clearProjectState();
           setSendingState({ active: false });
-          setConnection({ status: 'error', message, checkedAt: Date.now() });
+          setConnection({ status: 'error', message, kind: 'auth', checkedAt: Date.now() });
         }
         scheduleRefresh();
         return;
@@ -335,5 +397,5 @@ export function useConnectionConnectActions({
     return () => { cancelled = true; clearTimeout(timer); clearTimeout(refreshTimer); subscription.remove(); };
   }, [activationPaused, clearProjectState, connect, connectionRef, isHydrated, scopeGenerationRef, serverGenerationRef, setConnection, setSendingState, settings.connect, settings.password]);
 
-  return { connect, updateSettings, switchConnection, connectSetup };
+  return { connect, updateSettings, switchConnection, connectSetup, handleStreamAuthFailure };
 }

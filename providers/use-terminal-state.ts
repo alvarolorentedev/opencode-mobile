@@ -1,10 +1,10 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { AppState } from 'react-native';
 
 import type { ScopedOpencodeClient, ServerContract } from '@/lib/opencode/client';
 import type { Pty, PtyShellsResponse } from '@/lib/opencode/types';
 import { createTerminal as svcCreateTerminal, listShells, listTerminals, removeTerminal } from '@/providers/services/terminal-service';
-import { createTerminalConnection } from './terminal-connection';
+import { createTerminalConnection, type TerminalConnectionContext } from './terminal-connection';
 import type { TerminalInstance, TerminalRenderer, TerminalRuntime } from './terminal-types';
 
 export function useTerminalState({ client, isCurrentClient, serverUrl, directory, serverContract, authorization }: {
@@ -25,6 +25,25 @@ export function useTerminalState({ client, isCurrentClient, serverUrl, directory
   const connections = useRef(new Map<string, ReturnType<typeof createTerminalConnection>>());
   const foreground = useRef(AppState.currentState !== 'background' && AppState.currentState !== 'inactive');
   const publish = useCallback(() => setInstances([...connections.current.values()].map((entry) => entry.state)), []);
+
+  // Retained PTY transports read the live client/credentials through this
+  // accessor so a same-machine credential rotation reconnects instead of
+  // tearing down the renderer and its cursor.
+  const latest = useRef({ client, isCurrentClient, serverUrl, directory, serverContract, authorization });
+  useLayoutEffect(() => {
+    latest.current = { client, isCurrentClient, serverUrl, directory, serverContract, authorization };
+  });
+  const context = useCallback((): TerminalConnectionContext => {
+    const current = latest.current;
+    return {
+      client: current.client,
+      current: current.isCurrentClient(current.client),
+      serverUrl: current.serverUrl,
+      directory: current.directory,
+      serverContract: current.serverContract,
+      authorization: current.authorization,
+    };
+  }, []);
 
   useEffect(() => {
     const owned = connections.current;
@@ -62,18 +81,23 @@ export function useTerminalState({ client, isCurrentClient, serverUrl, directory
   }, [refreshTerminals]);
 
   const openTerminal = useCallback(async (ptyId: string) => {
-    if (!isCurrentClient(client)) return;
+    const live = latest.current;
+    if (!live.isCurrentClient(live.client)) return;
     const existing = connections.current.get(ptyId);
     if (!existing) {
-      const connection = createTerminalConnection({
-        id: ptyId, client, current: () => isCurrentClient(client), serverUrl, directory, serverContract, authorization, publish,
-      });
+      const connection = createTerminalConnection({ id: ptyId, context, publish });
       connections.current.set(ptyId, connection);
       connection.foreground(foreground.current);
       publish();
     } else if (existing.state.status === 'error' || existing.state.status === 'idle') existing.reconnect();
     setActiveTerminalId(ptyId);
-  }, [authorization, client, directory, isCurrentClient, publish, serverContract, serverUrl]);
+  }, [context, publish]);
+
+  // A new client (credential rotation) reuses the same transport with fresh
+  // credentials; project switches dispose connections before this runs.
+  useEffect(() => {
+    for (const connection of connections.current.values()) connection.reconnect();
+  }, [authorization, client, directory, serverContract, serverUrl]);
 
   const createTerminal = useCallback(async (command?: string, title?: string) => {
     const terminal = await svcCreateTerminal(client, { command: command?.trim() || undefined, title: title?.trim() || undefined });

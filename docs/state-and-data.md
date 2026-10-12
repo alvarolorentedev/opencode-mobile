@@ -33,6 +33,7 @@ Meaning:
 - `currentProjectPath` is the server's notion of current project
 - `serverRootPath` is the root directory reported by the server
 - `eventStreamStatus` tracks real-time subscription health independently of connection state
+- failures carry a machine-readable `kind` (`timeout`, `offline`, `auth`, `entitlement`, `tunnel-startup`, `server-incompatible`, `unknown`) alongside the display message; `retryableStartup` remains for Cloud Link activation compatibility
 
 ## Workspace And Session Identity State
 
@@ -184,12 +185,15 @@ UTF-16 characters, matching the server. A replacement renderer resets its cursor
 and requests fresh replay. xterm retains 10,000 scrollback lines; the pending
 output queue has a 2 MiB limit and fails visibly instead of dropping data.
 
-Unexpected disconnects retry after 1/2/4/8/15 seconds with fresh tickets.
-Backgrounding suspends retries and closes transports; foregrounding reconnects.
-Authentication/removal failures and clean PTY exit stop automatic retry. Input
-requires a connected transport and matching scope/generation, and is never
-replayed after reconnect. Visible dimensions update the PTY immediately on first
-measurement and then with a deduplicated 100 ms debounce.
+Unexpected disconnects retry after jittered 1/2/4/8/15-second delays with fresh
+tickets. Backgrounding suspends retries and closes transports; foregrounding
+reconnects. Authentication/removal failures and clean PTY exit stop automatic
+retry. Input requires a connected transport and matching scope/generation, and is
+never replayed after reconnect. Visible dimensions update the PTY immediately on
+first measurement and then with a deduplicated 100 ms debounce. A same-machine
+Cloud Link credential rotation also reconnects retained transports with the
+rotated credentials instead of disposing them, so the acknowledged cursor and
+the renderer surface survive (see the rotation note under connection state).
 
 Exit retains the final display with input disabled. Explicit termination removes
 local state only after the server accepts deletion; failure preserves it.
@@ -675,18 +679,29 @@ A rewrite that only mirrors persisted values would still miss important runtime 
 `use-opencode-realtime.ts`, composed by the provider, reconciles session/status,
 pending permission/question lists, and selected/conversation message, diff, and
 todo snapshots on the first envelope of every subscription, including reconnects.
-Only one reconciliation runs at a time. SSE remains primary; a safety poll runs
-during active work even when SSE is connected, every 10 seconds while connected
-and every 5 seconds while disconnected. A submitted prompt also schedules a
-one-off transcript refresh after 5 seconds so a missed completion still lands.
-The first envelope of a subscription reconciles authoritatively (rebuilding the
-transcript window); later ticks tail-merge. Idle connected sessions do not poll.
+Only one reconciliation runs at a time, and a reconnect's authoritative rebuild
+is queued behind an in-flight safety poll rather than coalesced into it. SSE
+remains primary; a safety poll runs during active work even when SSE is connected,
+every 10 seconds while connected and every 5 seconds while disconnected. A
+submitted prompt also schedules a one-off transcript refresh after 5 seconds so a
+missed completion still lands. The first envelope of a subscription reconciles
+authoritatively (rebuilding the transcript window); later ticks tail-merge. Idle
+connected sessions do not poll.
+A liveness watchdog runs only while the app is foregrounded: a stream that has
+received no envelope for 90 seconds (3 seconds in E2E builds) is re-subscribed
+once per window, and a foreground return either retries immediately (when the
+stream is not connected) or cycles a stream that was backgrounded for 15 seconds
+or more. Envelope timestamps advance the window, so a healthy server never
+reconnects. Stream failures classified as invalid credentials or entitlement
+(`auth`/`entitlement`) stop the retry loop and notify the provider, which routes
+Cloud Link to its prepared credential recovery and manual connections to an
+actionable error state.
 An event-derived `retry` status is preserved across session-list refreshes
 (`mergeSessionStatuses`), so an automatic retry stays busy and its safety poll
 continues instead of freezing on a missed event. Stable latest-action bridges
-prevent provider renders from reopening the stream.
-Cleanup aborts subscriptions and cancels poll/retry timers. Domain responses
-retain the provider's client-scope guards.
+prevent provider renders from reopening the stream. Cleanup aborts subscriptions
+and cancels poll/retry timers. Domain responses retain the provider's
+client-scope guards.
 
 ### Chat options and review presentation
 

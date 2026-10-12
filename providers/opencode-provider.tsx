@@ -248,6 +248,17 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
     worktree.resetWorktrees();
   }, [mcp.resetMcpState, permissionRules.resetPermissionRules, terminal.resetTerminal, transcript.reset, worktree.resetWorktrees, bootstrapPromiseRef, bootstrapTokenRef, busyNotificationsRef, sessionRefreshOptionsRef, sessionRefreshTimeoutsRef, setArchivedSessions, setAvailableAgents, setAvailableModels, setAvailableProviders, setCommands, setCurrentConfig, setCurrentSessionId, setMcpAuthPrompt, setPendingPermissionsBySession, setPendingQuestionsBySession, setProviderAuthMethodsById, setSelectedWorkspaceFile, setSessionStatuses, setSessions, setVcsInfo, setWorkspaceFileStatuses]);
 
+  const softResetProjectState = useCallback(() => {
+    // Same-machine credential rotation: keep server-derived data (still valid
+    // for the same server) but drop in-flight bookkeeping bound to the old
+    // client so a new bootstrap can start.
+    bootstrapPromiseRef.current = null;
+    bootstrapTokenRef.current = undefined;
+    Object.values(sessionRefreshTimeoutsRef.current).forEach((timeout) => clearTimeout(timeout));
+    sessionRefreshTimeoutsRef.current = {};
+    sessionRefreshOptionsRef.current = {};
+  }, [bootstrapPromiseRef, bootstrapTokenRef, sessionRefreshOptionsRef, sessionRefreshTimeoutsRef]);
+
   const workspace = useWorkspaceActions({ ...state, client, catalogClient, isCurrentClient, isCurrentCatalogClient, clearProjectState, isHydrated, refreshMessages: inbox.refreshMessages });
 
   const capabilities = useCapabilitiesActions({ ...state, client, isCurrentClient });
@@ -284,6 +295,7 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
     isCurrentCatalogClient,
     ensureActiveSessionRef,
     clearProjectState,
+    softResetProjectState,
     isHydrated,
     refreshActiveSessions: activeSessionsHook.refreshActiveSessions,
   });
@@ -358,6 +370,7 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
     conversationSessionId,
     onEvent: handleEvent,
     onGlobalEvent: handleActivityEvent,
+    onFatalError: connectionActions.handleStreamAuthFailure,
     refreshSessions: workspace.refreshSessions,
     refreshPendingInteractions: workspace.refreshPendingInteractions,
     refreshMessages: inbox.refreshMessages,

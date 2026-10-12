@@ -7,7 +7,7 @@ const ref = (current) => ({ current });
 const noop = () => {};
 async function fixture({ expired = false, missing = false, storedSession = true, storeGate, ttl = 600000, unchangedExpiry = false } = {}) {
   const runtime = hookRuntime();
-  let now = Date.now(), accessCalls = 0, pairClaims = 0, catalogs = 0, resets = 0, accessFailure = false, catalogFailure = false, accessGate;
+  let now = Date.now(), accessCalls = 0, pairClaims = 0, catalogs = 0, resets = 0, softResets = 0, accessFailure = false, catalogFailure = false, accessGate;
   const globals = { ...runtime.globals, Date: class extends Date { static now() { return now; } } };
   const storage = new Map(), secrets = new Map(), listeners = new Set();
   const native = {
@@ -75,6 +75,7 @@ async function fixture({ expired = false, missing = false, storedSession = true,
     getConnectionError: (_, reason) => reason.message, getNormalizedServerUrl: (url) => url,
     isContractMismatchError: () => false, isValidServerUrl: () => true,
     isRetryableCloudLinkStartupError: (reason) => /1033/.test(reason.message),
+    classifyConnectionFailure: (reason) => /offline|catalog/i.test(String(reason?.message)) ? 'offline' : 'unknown',
   };
   const actions = await loadTs('providers/use-connection-connect-actions.ts', imports, globals);
   const profileHook = await loadTs('providers/use-connection-profiles.ts', {
@@ -85,6 +86,7 @@ async function fixture({ expired = false, missing = false, storedSession = true,
     serverGenerationRef: ref(0), scopeGenerationRef: ref(0), catalogGenerationRef: ref(new WeakMap()),
     initialConnectStartedRef: ref(false), serverContractRef: ref('v2'), serverProjectsRef: ref([]), chatPreferencesRef: ref({ enabledModelIds: [], recentModelIds: [], providerModelSelections: {} }),
     clearProjectState: () => { resets++; },
+    softResetProjectState: () => { softResets++; },
     isCurrentCatalogClient: (client) => input.catalogGenerationRef.current.get(client) === input.serverGenerationRef.current,
     loadWorkspaceCatalog: async () => { catalogs++; if (catalogFailure) throw new Error(typeof catalogFailure === 'string' ? catalogFailure : 'offline'); return { currentProjectPath: '/fixture', serverProjects: [], serverRootPath: '/fixture' }; },
   };
@@ -99,7 +101,7 @@ async function fixture({ expired = false, missing = false, storedSession = true,
     const connectionProfiles = profileHook.useConnectionProfiles({ settings, switchConnection: result.switchConnection, updateSettings: result.updateSettings, profileSnapshot: result.connectSetup.profiles });
     return { ...result, settings, connection, activeProjectPath, connectionProfiles };
   }, {});
-  return { runtime, profile, profiles, get accesses() { return accessCalls; }, get pairClaims() { return pairClaims; }, get catalogs() { return catalogs; }, get resets() { return resets; },
+  return { runtime, profile, profiles, get accesses() { return accessCalls; }, get pairClaims() { return pairClaims; }, get catalogs() { return catalogs; }, get resets() { return resets; }, get softResets() { return softResets; },
     failAccess(value) { accessFailure = value; }, failCatalog(value) { catalogFailure = value; }, blockAccess() { accessGate = deferred(); return accessGate; },
     advance(ms) { now += ms; }, appState(state) { native.AppState.currentState = state; [...listeners].forEach((listener) => listener(state)); runtime.flush(); },
   };
@@ -205,8 +207,11 @@ async function fixture({ expired = false, missing = false, storedSession = true,
   await f.runtime.settle(); assert.equal(f.accesses, 1);
   assert.equal(f.runtime.value.connectSetup.selectControlPlane('https://apistaging.opencodecloud.link'), false, 'An access request must retain its authenticated environment.');
   gate.resolve(); await Promise.all([first, second]); await f.runtime.settle();
-  assert.equal(f.accesses, 1); assert.equal(f.resets, 2, 'expiry reset plus one credential reset');
+  assert.equal(f.accesses, 1); assert.equal(f.resets, 1, 'only the expiry reset clears state');
+  assert.equal(f.softResets, 1, 'a same-machine credential rotation keeps server-derived state');
+  assert.equal(f.catalogs, 1, 'concurrent connects share one workspace discovery');
   assert.equal(f.runtime.value.connection.status, 'connected');
+  assert.equal(f.runtime.value.activeProjectPath, '/fixture', 'a same-machine rotation keeps the selected workspace');
   f.runtime.unmount();
 }
 // A request finishing after backgrounding must not rearm a retry timer.
@@ -323,3 +328,28 @@ console.log('Cloud Link approval wait, explicit saved-credential retry, rescan, 
   f.runtime.unmount();
 }
 console.log('Cloud Link activation credential reuse and connection-change guards passed');
+
+// Data-plane revocation stops automatic retries and surfaces an actionable state.
+{
+  const f = await fixture(); await f.runtime.settle();
+  f.runtime.value.updateSettings({ serverUrl: 'http://manual.test', username: '', password: '', connect: undefined }); await f.runtime.settle();
+  await f.runtime.value.connect(); await f.runtime.settle();
+  assert.equal(f.runtime.value.connection.status, 'connected');
+  const before = f.resets;
+  f.runtime.value.handleStreamAuthFailure('auth'); await f.runtime.settle();
+  assert.equal(f.runtime.value.connection.status, 'error');
+  assert.equal(f.runtime.value.connection.kind, 'auth');
+  assert.equal(f.resets, before + 1, 'revocation clears server-derived caches once');
+  f.runtime.value.handleStreamAuthFailure('auth'); await f.runtime.settle();
+  assert.equal(f.resets, before + 1, 'a repeated failure is not cleared twice');
+  f.runtime.unmount();
+}
+// Cloud Link revocation reuses the prepared credential recovery path.
+{
+  const f = await fixture({ expired: true }); await f.runtime.settle();
+  f.runtime.value.handleStreamAuthFailure('entitlement'); await f.runtime.settle();
+  assert.equal(f.accesses, 1);
+  assert.equal(f.runtime.value.connection.status, 'connected');
+  f.runtime.unmount();
+}
+console.log('Data-plane revocation recovery checks passed');
