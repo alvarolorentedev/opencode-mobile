@@ -96,6 +96,23 @@ jobs:
       - name: Setup Android SDK
         uses: android-actions/setup-android@v4
 
+      # AGP's on-demand CMake install occasionally fetches a truncated archive
+      # and fails mid-build ("Archive is not a ZIP archive"). Pre-install it
+      # with retries so a flaky download cannot abort Gradle.
+      - name: Install CMake
+        run: |
+          set -eo pipefail
+          for attempt in 1 2 3; do
+            if sdkmanager --install 'cmake;3.22.1' </dev/null; then
+              exit 0
+            fi
+            rm -rf "${ANDROID_HOME:-$ANDROID_SDK_ROOT}/.temp"
+            sleep $((attempt * 5))
+          done
+          echo "::error::Failed to install cmake;3.22.1 after 3 attempts"
+          exit 1
+        shell: bash
+
       - name: Install dependencies
         run: npm ci
 
@@ -217,6 +234,22 @@ jobs:
 
       - name: Setup Android SDK
         uses: android-actions/setup-android@v4
+
+      # Same retried pre-install as android-release: protects the FOSS build
+      # from the flaky AGP-downloaded CMake archive.
+      - name: Install CMake
+        run: |
+          set -eo pipefail
+          for attempt in 1 2 3; do
+            if sdkmanager --install 'cmake;3.22.1' </dev/null; then
+              exit 0
+            fi
+            rm -rf "${ANDROID_HOME:-$ANDROID_SDK_ROOT}/.temp"
+            sleep $((attempt * 5))
+          done
+          echo "::error::Failed to install cmake;3.22.1 after 3 attempts"
+          exit 1
+        shell: bash
 
       - name: Install dependencies
         run: npm ci
