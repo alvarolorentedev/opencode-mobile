@@ -1,7 +1,7 @@
 {
   "name": "opencode-mobile",
   "main": "index.js",
-  "version": "1.0.69",
+  "version": "1.0.70",
   "scripts": {
     "start": "expo start",
     "start:dev-client": "expo start --dev-client",

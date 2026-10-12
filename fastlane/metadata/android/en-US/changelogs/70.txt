@@ -1,0 +1,2 @@
+- New Android home widget for quick access to your sessions.
+- iOS quick actions: jump straight to key tasks from the app icon.
