@@ -40,8 +40,14 @@ export async function finalizeConnectPurchase(controlPlaneUrl: string, store: Co
     catch { throw new Error('Subscription verified, but secure session saving failed. Retry saving without purchasing again.'); }
     pending.persisted = true;
   }
-  onPhase('finalizing');
-  try { await api.finishTransaction({ purchase: pending.purchase, isConsumable: false }); }
-  catch { throw new Error('Session saved, but store finalization failed. Retry finalization without purchasing again.'); }
+  // StoreKit requires the app to finish the transaction; unfinished iOS
+  // transactions replay until finished. Google Play is acknowledged by the
+  // control plane on claim with a durable retry, so the app never acknowledges
+  // Play itself (a second acknowledge can fail and would race the backend).
+  if (store === 'apple') {
+    onPhase('finalizing');
+    try { await api.finishTransaction({ purchase: pending.purchase, isConsumable: false }); }
+    catch { throw new Error('Session saved, but store finalization failed. Retry finalization without purchasing again.'); }
+  }
   return pending.session;
 }

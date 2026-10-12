@@ -547,11 +547,12 @@ Android development prebuild completed; Gradle compilation stopped with
 the physical-device flows remains pending.
 
 Cloud Link subscription checks are described in [connect.md](connect.md). Static
-checks validate claim/secure-write/finalization ordering on both stores. Mocked
-E2E validates explicit Purchase/Restore, silent unfinished-purchase recovery,
-pending/cancellation, exact QR continuation, transient/save/finalization retries,
-existing-machine access, identity mismatch, rotation and expiry. These do not
-prove native store acceptance. Native
+checks validate claim/secure-write ordering, StoreKit finalization on iOS, and
+the backend-owned Google acknowledgement (Android never calls
+`finishTransaction`). Mocked E2E validates explicit Purchase/Restore, silent
+unfinished-purchase recovery, pending/cancellation, exact QR continuation,
+transient/save retries, existing-machine access, identity mismatch, rotation and
+expiry. These do not prove native store acceptance. Native
 camera, secure relaunch/locked-device access, real tunnel upgrades, and
 revocation still require explicit physical-device validation.
 

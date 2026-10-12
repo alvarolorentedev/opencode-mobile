@@ -106,12 +106,16 @@ advertised, license testers/test-track build, backend verification credentials
 and authenticated RTDN. Local StoreKit simulation is not server-verifiable.
 Store-console setup and backend deployment are external to this mobile change.
 
-**Backend release blocker:** the sibling backend inspected for this change still
-acknowledges Google purchases. Mobile is the sole finalization owner under the
-corrected contract. Remove backend acknowledgement from claim, notifications,
-reconciliation and recovery before full Android contract validation. Mobile
-calls only `finishTransaction`, not a second acknowledgement operation. Backend
-claim must safely recover the same store ownership when repeated.
+Google subscription acknowledgement is owned by the control plane. The server
+persists the verified grant, acknowledges Play, and retains a durable
+`acknowledgement_pending` retry across claim, notifications and reconciliation; a
+`200` grant can return `acknowledgement_pending: true`. The app must never
+acknowledge a Google purchase itself: Play's guidance is to acknowledge from the
+secure backend when one exists, and a client `acknowledgePurchase` cannot safely
+no-op a purchase the backend already acknowledged. Mobile finishes only the
+StoreKit transaction on iOS, where no server acknowledgement API exists. Claim
+safely recovers the same store ownership when repeated, including when a client
+acknowledgement from an older build lands first.
 
 ## Add connection and pairing UI
 
@@ -189,20 +193,23 @@ Both stores follow this order:
    needed); Google uses its purchase token.
 2. Submit the proof to unauthenticated `/v1/subscriptions/claim`.
 3. Validate the returned session and durably write it to SecureStore.
-4. Call `finishTransaction({ purchase, isConsumable: false })`, finishing StoreKit
-   on iOS and acknowledging Google on Android.
+4. Apple only: call `finishTransaction({ purchase, isConsumable: false })` to
+   finish the StoreKit transaction. Google is acknowledged by the control plane
+   during claim with durable retry, so the app never acknowledges Play.
 5. Automatically continue a pending QR, or recover owned machines.
 
-A failed backend claim or secure write never finalizes the transaction.
-Verification errors identify the selected control plane. Subscribe stays disabled
-while a transaction needs recovery; Retry and Restore reuse the existing purchase.
+A failed backend claim or secure write never grants access. Verification errors
+identify the selected control plane. Subscribe stays disabled while a transaction
+needs recovery; Retry and Restore reuse the existing purchase.
 Production and test environments can advertise the same product ID, so an offer
 alone does not identify the purchase environment. Google test purchases route to
 staging automatically, including Purchase, Restore and silent restart recovery.
 The desktop connector's QR must use that same environment.
-Finalization retries reuse the saved session without buying again. After app
-termination, the unfinished native transaction can be rediscovered, exchanged
-again through the idempotent claim and finalized. Store proofs are not stored
+Apple finalization retries reuse the saved session without buying again. For
+Google, the control plane owns acknowledgement and retries it durably, so an
+unfinished purchase is finalized server-side without any client acknowledgement.
+After app termination, a rediscovered Apple transaction can be exchanged again
+through the idempotent claim and finished. Store proofs are not stored
 permanently. Session validity and paid-through entitlement are separate. When pairing or machine
 access returns the exact `403` / `no active subscription` response, the provider
 clears the cached Connect entitlement while preserving the identity and pending QR,
@@ -385,6 +392,16 @@ Production web has neither this store driver nor credential persistence.
 Run `test:ci:static`, `test:fake-server:self`, `test:e2e:web`, the Android
 development build and an iOS development build. E2E changes require explicit
 human validation under AGENTS.md, even when automated checks pass.
+
+Google acknowledgement ownership validation on 2026-10-12: the app no longer
+acknowledges Play purchases. It finishes only the StoreKit transaction on iOS,
+while the control plane owns Google acknowledgement with durable retry.
+`test:connect` asserts Android never calls `finishTransaction`; Cloud Link E2E
+asserts purchase/Restore/recovery still claim and secure a session without a
+client finalization step. Locally, static CI, both fake-server self-tests and the
+39 Cloud Link E2E flows passed. The updated E2E assertions require explicit human
+validation under AGENTS.md, and live Android license-test acknowledgement remains
+a separate acceptance check.
 
 Cloud Link recovery validation on 2026-10-11: static CI, both fake-server
 self-tests and all 116 web E2E flows passed. The user explicitly confirmed live

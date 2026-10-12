@@ -18,7 +18,7 @@ async function storeFixture(page, options = {}) {
     globalThis.__connectStoreTest = {
       products: [{ id: productId, title: 'Cloud Link Monthly', type: 'subs', platform: 'android', displayPrice: '$4.99', currency: 'USD', description: 'Cloud Link', nameAndroid: 'Cloud Link', subscriptionOffers: [{ id: 'monthly', basePlanIdAndroid: 'monthly', offerTokenAndroid: 'native-offer', displayPrice: '$4.99', price: 4.99, period: { unit: 'month', value: 1 }, pricingPhasesAndroid: { pricingPhaseList: [{ formattedPrice: '$4.99', billingPeriod: 'P1M', billingCycleCount: 0 }] } }] }],
       nextPurchase: purchase, restoredPurchases: [purchase], purchases: options.recovered ? [purchase] : [],
-      events: [], outcome: options.outcome, finishFailures: options.finishFailures,
+      events: [], outcome: options.outcome,
     };
     if (options.secureFailure) globalThis.__connectSecureWriteFailure = true;
   }, { productId: PRODUCT, options });
@@ -346,7 +346,7 @@ test('a real buyer with a remembered staging preference automatically uses produ
   await assertNoStoredSecrets(page);
 });
 
-test('purchase finalizes then automatically pairs, saves securely, and connects with Basic auth', async ({ page }) => {
+test('purchase completes then automatically pairs, saves securely, and connects with Basic auth', async ({ page }) => {
   await storeFixture(page);
   const state = await mockControlPlane(page);
   const dataAuth = [];
@@ -367,7 +367,7 @@ test('purchase finalizes then automatically pairs, saves securely, and connects 
   await page.getByTestId('connect-purchase').click();
   await expect(page).toHaveURL(/\/workspace$/, { timeout: 30_000 });
   expect(state.subscriptionClaims).toBe(1); expect(state.pairClaims).toBe(1);
-  expect((await events(page)).filter((event) => ['purchase', 'claim', 'finish'].includes(event))).toEqual(['purchase', 'claim', 'finish']);
+  expect((await events(page)).filter((event) => ['purchase', 'claim'].includes(event))).toEqual(['purchase', 'claim']);
   expect(dataAuth.length).toBeGreaterThan(0);
   expect(dataAuth.every((value) => value === `Basic ${Buffer.from('device-1:device-test-secret').toString('base64')}`)).toBeTruthy();
   await assertNoStoredSecrets(page);
@@ -379,26 +379,22 @@ test('Restore continues the exact pending QR without purchasing', async ({ page 
   await openPair(page);
   await page.getByTestId('connect-restore').click();
   await expect(page).toHaveURL(/\/workspace$/, { timeout: 30_000 });
-  expect((await events(page)).filter((event) => ['purchase', 'restore', 'claim', 'finish'].includes(event))).toEqual(['restore', 'claim', 'finish']);
+  expect((await events(page)).filter((event) => ['purchase', 'restore', 'claim'].includes(event))).toEqual(['restore', 'claim']);
   expect(state.pairClaims).toBe(1); await assertNoStoredSecrets(page);
 });
 
 for (const [name, options, message] of [
   ['failed verification', { subscriptionStatus: 502 }, 'temporarily unavailable'],
   ['secure session failure', { secureFailure: true }, 'secure session saving failed'],
-  ['finalization failure', { finishFailures: 1 }, 'store finalization failed'],
 ]) {
   test(`${name} retries without another purchase`, async ({ page }) => {
     await storeFixture(page, options); const state = await mockControlPlane(page, options);
     await openPair(page); await page.getByTestId('connect-purchase').click();
     await expect(page.getByTestId('connect-error')).toContainText(message);
-    if (options.finishFailures) {
-      await expect(page.getByTestId('connect-subscription-sheet')).toHaveCount(0);
-    }
     await expect(page.getByTestId('connect-control-plane')).toHaveCount(0);
-    if (!options.finishFailures) await expect(page.getByTestId('connect-purchase')).toBeDisabled();
+    await expect(page.getByTestId('connect-purchase')).toBeDisabled();
     expect(state.pairClaims).toBe(0);
-    if (!options.finishFailures) expect(await events(page)).not.toContain('finish');
+    expect(await events(page)).not.toContain('finish');
     await page.getByTestId('connect-retry').click();
     await expect(page).toHaveURL(/\/workspace$/, { timeout: 30_000 });
     expect((await events(page)).filter((event) => event === 'purchase')).toHaveLength(1);
@@ -426,7 +422,7 @@ for (const recovery of ['purchase', 'restore', 'restart']) {
     expect(staging.pairClaims).toBe(1);
     expect((await events(page)).filter((event) => event === 'purchase')).toHaveLength(recovery === 'purchase' ? 1 : 0);
     expect((await events(page)).filter((event) => event === 'restore')).toHaveLength(recovery === 'restore' ? 1 : 0);
-    expect((await events(page)).filter((event) => event === 'finish')).toHaveLength(1);
+    expect((await events(page)).filter((event) => event === 'finish')).toHaveLength(0);
     await expect.poll(() => page.evaluate(() => localStorage.getItem('opencode-mobile.connect-control-plane'))).toBe(STAGING);
     await assertNoStoredSecrets(page);
   });
@@ -449,7 +445,7 @@ test('unfinished native purchase recovery after restart never synchronizes or pu
   await page.addInitScript(() => localStorage.setItem('opencode-mobile.onboarding-version', JSON.stringify({ version: 1 })));
   await page.goto('/pair');
   await expect(page.getByTestId('connect-subscription-sheet')).toHaveCount(0);
-  await expect.poll(async () => (await events(page)).includes('finish')).toBeTruthy();
+  await expect.poll(async () => (await events(page)).includes('claim')).toBeTruthy();
   expect(state.subscriptionClaims).toBe(1); expect(await events(page)).not.toContain('restore'); expect(await events(page)).not.toContain('purchase');
   await page.reload();
   await expect.poll(() => state.subscriptionClaims).toBe(2);

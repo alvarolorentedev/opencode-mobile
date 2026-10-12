@@ -362,24 +362,34 @@ for (const platform of ['apple', 'google']) {
     return new Response(JSON.stringify(session), { status: claimStatus });
   };
   const complete = (pending) => subscriptionService.finalizeConnectPurchase(pairing.controlPlaneUrl, platform, pending, nativeApi, () => undefined);
+  // Apple finishes the StoreKit transaction in the app. Google acknowledgment is
+  // the control plane's durable responsibility, so the app must never finalize it.
+  const finalized = platform === 'apple' ? ['claim', 'secure', 'finish'] : ['claim', 'secure'];
+  const saved = platform === 'apple' ? ['secure', 'finish'] : ['secure'];
   try {
-    await complete({ purchase }); assert.deepEqual(phases, ['claim', 'secure', 'finish']);
+    await complete({ purchase }); assert.deepEqual(phases, finalized);
     phases.length = 0; claimStatus = 502;
     await assert.rejects(complete({ purchase })); assert.deepEqual(phases, ['claim']);
     phases.length = 0; claimStatus = 200; globalThis.__secureWriteFails = true;
     const saving = { purchase };
     await assert.rejects(complete(saving), /secure session saving failed/); assert.deepEqual(phases, ['claim']);
     globalThis.__secureWriteFails = false; phases.length = 0;
-    await complete(saving); assert.deepEqual(phases, ['secure', 'finish']);
-    phases.length = 0; finishFails = true; const unfinished = { purchase };
-    await assert.rejects(complete(unfinished), /store finalization failed/); assert.deepEqual(phases, ['claim', 'secure', 'finish']);
-    phases.length = 0; finishFails = false;
-    await complete(unfinished); assert.deepEqual(phases, ['finish'], 'Finalization retry must not claim or purchase again.');
+    await complete(saving); assert.deepEqual(phases, saved);
     phases.length = 0; const previousClaims = claims;
     await complete({ purchase }); assert.equal(claims, previousClaims + 1, 'Restart safely exchanges the rediscovered proof again.');
     phases.length = 0;
     await assert.rejects(complete({ purchase: { ...purchase, purchaseState: 'pending' } }), /pending/); assert.deepEqual(phases, []);
     await assert.rejects(complete({ purchase: { ...purchase, store: platform === 'apple' ? 'google' : 'apple' } }), /different store/); assert.deepEqual(phases, []);
+    if (platform === 'apple') {
+      phases.length = 0; finishFails = true; const unfinished = { purchase };
+      await assert.rejects(complete(unfinished), /store finalization failed/); assert.deepEqual(phases, ['claim', 'secure', 'finish']);
+      phases.length = 0; finishFails = false;
+      await complete(unfinished); assert.deepEqual(phases, ['finish'], 'Finalization retry must not claim or purchase again.');
+    } else {
+      phases.length = 0;
+      await complete({ purchase });
+      assert.deepEqual(phases, ['claim', 'secure'], 'Android must never call finishTransaction.');
+    }
   } finally { globalThis.fetch = originalFetch; globalThis.__secureWriteFails = false; delete globalThis.__subscriptionEvents; }
 }
 console.log('Subscription catalog, native proof, DEFERRED replacement, secure grant/finalization and recovery checks passed');
@@ -388,7 +398,12 @@ console.log('Subscription catalog, native proof, DEFERRED replacement, secure gr
 // verification must permit automatic routing without replaying a purchase;
 // once verified, secure-save/finalization checkpoints must stay in their scope.
 for (const platform of ['apple', 'google']) {
-  for (const scenario of ['catalog', 'routing', 'claim', 'restore', 'secure', 'finish']) {
+  // Google has no client-side finalization failure: the control plane owns
+  // acknowledgment with durable retry.
+  const scenarios = platform === 'apple'
+    ? ['catalog', 'routing', 'claim', 'restore', 'secure', 'finish']
+    : ['catalog', 'routing', 'claim', 'restore', 'secure'];
+  for (const scenario of scenarios) {
     // Each scenario represents a fresh app process, including its catalog cache.
     const freshConnectUri = `${connectUri}#${platform}-${scenario}`;
     const connect = await import(freshConnectUri);
@@ -513,7 +528,7 @@ for (const platform of ['apple', 'google']) {
         assert.deepEqual(requests.filter((address) => address.endsWith('/claim')), platform === 'google'
           ? [`${pairing.controlPlaneUrl}/v1/subscriptions/claim`, `${staging}/v1/subscriptions/claim`]
           : [`${staging}/v1/subscriptions/claim`]);
-        assert.deepEqual(events, ['purchase', 'finish']);
+        assert.deepEqual(events, platform === 'apple' ? ['purchase', 'finish'] : ['purchase']);
         continue;
       }
       assert.equal(runtime.value.phase, 'idle', 'A failed operation must not leave a stale progress phase');
@@ -647,7 +662,7 @@ for (const platform of ['apple', 'google']) {
         assert.equal(runtime.value.phase, 'paired');
         assert.equal(runtime.value.controlPlaneUrl, staging);
         assert.deepEqual(pairRequests.map(({ token }) => token), ['Bearer stale-session', 'Bearer user-token']);
-        assert.deepEqual(events, ['finish', 'save-profile', 'connect']);
+        assert.deepEqual(events, platform === 'apple' ? ['finish', 'save-profile', 'connect'] : ['save-profile', 'connect']);
         assert.equal(await connect.getPendingConnectPairing(staging, platform), undefined);
       } else if (scenario === 'unrelated-403' || scenario === 'invalid-qr') {
         assert.equal(proofRequests.length, 0, 'Other denials must not reverify store proofs');
