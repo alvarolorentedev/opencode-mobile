@@ -8,6 +8,7 @@ const h = vi.hoisted(() => ({
   runtime: undefined as any, listener: undefined as any, appState: 'active',
   snapshot: undefined as any, granted: true, updates: [] as any[], dismissed: undefined as string | undefined,
   scope: undefined as string | undefined, tracked: [] as any[], cleared: [] as any[],
+  attention: [] as any[], resolved: [] as string[],
   read: vi.fn(), stop: vi.fn(), build: vi.fn(),
 }));
 vi.mock('react', () => Object.fromEntries(['useRef', 'useLayoutEffect', 'useEffect', 'useCallback'].map((key) => [key, (...args: any[]) => h.runtime.react[key](...args)])));
@@ -25,6 +26,8 @@ vi.mock('@/lib/i18n', () => ({ i18n: { t: (key: string) => key } }));
 vi.mock('@/lib/notifications', () => ({
   trackPendingTaskFinishedNotification: async (input: any) => { h.tracked.push(input); return input; },
   clearPendingTaskFinishedNotification: async (...args: any[]) => { h.cleared.push(args); },
+  raisePendingAttention: async (_scope: string, sessionId: string, key: string) => { h.attention.push({ sessionId, key }); return true; },
+  clearPendingAttention: async (_scope: string, sessionId: string) => { h.resolved.push(sessionId); return true; },
 }));
 vi.mock('@/lib/opencode/client', () => ({ buildClient: (...args: any[]) => h.build(...args) }));
 vi.mock('@/providers/services/session-service', () => ({
@@ -43,12 +46,12 @@ function assistant(error?: string, parts: any[] = []) {
 }
 function props() {
   return { catalogClient: {} as any, settings: { serverUrl: 'https://server', username: '', password: '', directory: '' },
-    contract: 'v2' as const, connectionScope: 'scope', connected: true, currentSessionId: 'one', sessions: [session('one')], sendingState: { active: false } };
+    contract: 'v2' as const, connectionScope: 'scope', connected: true, currentSessionId: 'one', sessions: [session('one')], sendingState: { active: false }, streamConnectedRef: { current: true } };
 }
 
 beforeEach(() => {
   h.runtime = hookRuntime(); h.appState = 'active'; h.granted = true; h.dismissed = undefined;
-  h.updates = []; h.tracked = []; h.cleared = []; h.stop.mockReset().mockResolvedValue(undefined); h.build.mockReset();
+  h.updates = []; h.tracked = []; h.cleared = []; h.attention = []; h.resolved = []; h.stop.mockReset().mockResolvedValue(undefined); h.build.mockReset();
   h.snapshot = snapshot(); h.read.mockReset();
   for (const [key, value] of Object.entries(h.runtime.globals)) vi.stubGlobal(key, value);
 });
@@ -187,6 +190,26 @@ describe('provider observer', () => {
     slow.resolve({ sessions: [], statuses: {} }); await h.runtime.settle();
     expect(h.updates.every((update) => update.active)).toBe(true);
     expect(h.cleared).toHaveLength(0); h.runtime.unmount();
+  });
+
+  it('raises one needs-input alert while backgrounded and clears it when resolved', async () => {
+    await mount();
+    h.appState = 'background'; h.listener('background');
+    h.runtime.value({ type: 'permission.asked', data: { id: 'p1', sessionID: 'one' } });
+    await h.runtime.settle();
+    expect(h.attention).toEqual([{ sessionId: 'one', key: 'blocked' }]);
+    h.runtime.value({ type: 'permission.replied', data: { sessionID: 'one', requestID: 'p1' } });
+    await h.runtime.settle();
+    expect(h.resolved).toContain('one');
+    h.runtime.unmount();
+  });
+
+  it('does not alert for a blocker while the app is foregrounded', async () => {
+    await mount();
+    h.runtime.value({ type: 'form.created', data: { form: { id: 'f1', sessionID: 'one' } } });
+    await h.runtime.settle();
+    expect(h.attention).toHaveLength(0);
+    h.runtime.unmount();
   });
 });
 

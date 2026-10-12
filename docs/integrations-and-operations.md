@@ -76,8 +76,12 @@ Used for persistence of user settings and lightweight workflow continuity state.
 
 `expo-notifications`, `expo-background-task`, and `expo-task-manager` are used together for:
 
-- local task-complete notifications
-- Android notification channel configuration
+- local task-complete notifications with finished/failed copy and a non-secret
+  route payload that reopens the owning session
+- Android notification channel configuration (silent `task-finished-silent` and
+  default-importance `task-attention`)
+- locally observed, deduped needs-input notifications when a tracked task blocks
+  on a permission or question while the app is not foregrounded
 - optional periodic background session-completion checks on supported native builds
 - Android server-wide activity notifications through a local Expo module and
   `dataSync` foreground service; its Headless JS keepalive preserves provider
@@ -88,6 +92,9 @@ Important current rule:
 - background monitoring is considered unsupported on web and unsupported in Expo Go (`Constants.appOwnership === 'expo'`)
 - live activity stops at idle, dismissal, scope changes, service timeout, or
   process termination; periodic completion monitoring remains the fallback
+- iOS background delivery is best effort only: a suspended app can only be woken
+  opportunistically, so completion notifications arrive when the app next runs or
+  the system schedules the background task, never on a fixed schedule
 
 ### Voice Output
 

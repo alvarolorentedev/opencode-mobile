@@ -1,7 +1,9 @@
 {
   "taskFinished": {
     "title": "OpenCode ने एक कार्य पूरा किया",
-    "bodyFallback": "कार्य पूर्ण"
+    "bodyFallback": "कार्य पूर्ण",
+    "failedTitle": "OpenCode कार्य विफल हुआ",
+    "failedBodyFallback": "कार्य एक त्रुटि के साथ समाप्त हुआ"
   },
   "activity": {
     "working": "कार्यरत",
@@ -18,5 +20,8 @@
     "channel": "कार्य गतिविधि",
     "untitled": "बिना शीर्षक का कार्य",
     "tasks": "{{count}} कार्य चल रहे हैं"
+  },
+  "attention": {
+    "channel": "कार्य पर ध्यान दें"
   }
 }

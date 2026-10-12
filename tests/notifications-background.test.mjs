@@ -101,6 +101,11 @@ const sessionServiceStubUri = `data:text/javascript,${encodeURIComponent(`
     const [statuses, sessions] = await Promise.all([client.session.status(), client.session.list()]);
     return { statuses: statuses.data, sessions: sessions.data };
   }
+  export async function readSessionSettlement(client, sessionId, knownStatus) {
+    if (knownStatus && knownStatus.type !== 'idle') return { state: knownStatus.type === 'retry' ? 'retrying' : 'running' };
+    const override = globalThis.__notificationsTestSettlement ? globalThis.__notificationsTestSettlement(sessionId) : undefined;
+    return override ?? { state: 'finished' };
+  }
 `)}`;
 const notificationsUri = await transpileToDataUri('lib/notifications.ts', [
   [/from '@\/providers\/services\/session-service'/g, `from "${sessionServiceStubUri}"`],
@@ -239,6 +244,31 @@ function readPending() {
   const raw = storage.get(storageKeys.PENDING_NOTIFICATION_SESSIONS_STORAGE_KEY);
   assert.equal(raw.includes('secret-a'), false);
   assert.equal(raw.includes('secret-b'), false);
+}
+
+// 3. A server-reported failure notifies with the failure copy, and a still
+// running task keeps its record.
+{
+  globalThis.__notificationsTestAsyncStorage.clear();
+  globalThis.__notificationsTestScheduled.length = 0;
+  globalThis.__notificationsTestBuilds.length = 0;
+  seedPending();
+  globalThis.__notificationsTestResolver = () => 'secret-a';
+  globalThis.__notificationsTestClientFactory = () => ({
+    session: {
+      status: async () => ({ data: { 'session-a': { type: 'idle' }, 'session-b': { type: 'idle' } } }),
+      list: async () => ({ data: [{ id: 'session-a', title: 'A task' }, { id: 'session-b', title: 'B task' }] }),
+    },
+  });
+  globalThis.__notificationsTestSettlement = (id) => (id === 'session-b' ? { state: 'failed' } : { state: 'running' });
+
+  assert.equal(await runTask(), 1);
+
+  assert.equal(globalThis.__notificationsTestScheduled.length, 1);
+  assert.equal(globalThis.__notificationsTestScheduled[0].content.title, 'notifications:taskFinished.failedTitle');
+  assert.equal(globalThis.__notificationsTestScheduled[0].content.body, 'B task');
+  assert.ok(readPending()[pendingNotificationKey(scopeA, 'session-a')], 'a running task keeps its record');
+  delete globalThis.__notificationsTestSettlement;
 }
 
 // Concurrent additions and clears must merge rather than overwrite snapshots.

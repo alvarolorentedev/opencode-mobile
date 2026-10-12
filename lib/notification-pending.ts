@@ -13,6 +13,10 @@ export type PendingNotificationSession = {
   connectionScope: string;
   settings: Pick<OpencodeConnectionSettings, 'serverUrl' | 'username'>;
   requestedAt: number;
+  // Non-secret marker for the last attention alert raised for this record
+  // (for example "blocked"). It prevents repeated needs-input alerts while a
+  // task stays blocked and is cleared again when the block resolves.
+  attentionKey?: string;
 };
 
 // Session IDs are only unique per server, so the persisted map and the
@@ -28,11 +32,12 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 function toPendingNotificationSession(value: unknown): PendingNotificationSession | undefined {
   if (!isRecord(value)) return undefined;
 
-  const { sessionId, sessionTitle, projectPath, connectionScope, settings, requestedAt } = value;
+  const { sessionId, sessionTitle, projectPath, connectionScope, settings, requestedAt, attentionKey } = value;
   if (typeof sessionId !== 'string' || !sessionId.trim()) return undefined;
   if (typeof projectPath !== 'string' || !projectPath.trim()) return undefined;
   if (typeof requestedAt !== 'number' || !Number.isFinite(requestedAt)) return undefined;
   if (sessionTitle !== undefined && typeof sessionTitle !== 'string') return undefined;
+  if (attentionKey !== undefined && typeof attentionKey !== 'string') return undefined;
   if (!isRecord(settings)) return undefined;
   const { serverUrl, username } = settings;
   if (typeof serverUrl !== 'string' || !serverUrl.trim()) return undefined;
@@ -52,6 +57,7 @@ function toPendingNotificationSession(value: unknown): PendingNotificationSessio
     connectionScope: scope,
     settings: { serverUrl, username },
     requestedAt,
+    ...(typeof attentionKey === 'string' && attentionKey.trim() ? { attentionKey: attentionKey.trim() } : {}),
   };
 }
 

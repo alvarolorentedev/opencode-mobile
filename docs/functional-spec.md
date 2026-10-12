@@ -508,11 +508,17 @@ Behavior:
 - when a prompt is sent, a pending notification tracker is stored locally with a non-secret connection reference (server URL, username, connection scope) and project path; passwords stay in SecureStore
 - pending records are keyed by connection scope + session ID, so a task started on one server survives switching to another
 - while the app is active, completion can be detected by local provider state and trigger a local notification
-- on supported native platforms outside Expo Go, a background task checks pending sessions periodically, resolves each record's own connection credentials, and emits task-complete notifications; a record whose credentials cannot be resolved yet is kept for a later run rather than discarded
+- completion is confirmed against the server before alerting: the shared settlement read classifies the task as running, retrying, blocked, failed, aborted, finished, or unknown, and only a terminal finished/failed result clears the record and notifies. A record created in a previous app session waits for that confirmation instead of trusting a cached idle status.
+- completion copy distinguishes finished from failed; interrupted (aborted) runs are dropped without an alert
+- a record that belongs to another project is left in place instead of being cleared from the active project's session list, so switching workspaces cannot silently drop a completion. It is notified on return or by the background monitor.
+- completion and needs-input notifications carry a non-secret route payload (session, project, connection scope) so a tap reopens the owning connection, workspace, and session through the existing deep-link resolver
+- a locally observed needs-input alert fires once per block episode when a tracked task transitions to a permission or question prompt and the app is not foregrounded; resolving the prompt re-arms it
+- on supported native platforms outside Expo Go, a background task checks pending sessions periodically, resolves each record's own connection credentials, and emits task-complete notifications; a record whose credentials cannot be resolved yet or whose reads fail is kept for a later run rather than discarded
 
 Parity implication:
 
 - notification tracking is coupled to prompt submission and session status transitions
+- iOS completion delivery while the app is suspended is best effort: iOS grants background time opportunistically, so a completion is delivered when the app next runs or the system schedules the background task, not immediately
 - Android native builds automatically show one silent ongoing activity notification
   for all tasks on the connected server, including other workspaces and desktop
   tasks. It shows the active count and selected task's tool, thinking, retry,
@@ -529,10 +535,14 @@ Parity implication:
 - Idle background discovery is not continuous: desktop work started afterward
   is discovered when the app resumes. Foreground discovery polls every 20 seconds,
   with events triggering reconciliation; monitored work polls every 5 seconds.
-  Force-stop, removing the app from Recents, and process termination end live
-  monitoring. Android service timeouts leave a silent monitoring-paused result.
+  While the SSE stream is healthy, per-tick permission/question probes are limited
+  to directories with running or watched work and fall back to every directory when
+  the stream is down. Force-stop, removing the app from Recents, and process
+  termination end live monitoring. Android service timeouts leave a silent
+  monitoring-paused result.
 - Android completion notifications use a silent channel, including the periodic
-  fallback. iOS completion behavior is unchanged. Live activity requires a rebuilt
+  fallback; needs-input alerts use a separate default-importance channel. iOS
+  completion behavior is unchanged. Live activity requires a rebuilt
   native app and is disabled on web, Expo Go, and E2E runs.
 - a rewrite should preserve both in-app completion flushing and background completion checking
 

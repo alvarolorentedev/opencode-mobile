@@ -1,7 +1,9 @@
 {
   "taskFinished": {
     "title": "OpenCode がタスクを完了しました",
-    "bodyFallback": "タスク完了"
+    "bodyFallback": "タスク完了",
+    "failedTitle": "OpenCode のタスクが失敗しました",
+    "failedBodyFallback": "タスクはエラーで終了しました"
   },
   "activity": {
     "working": "作業中",
@@ -18,5 +20,8 @@
     "channel": "タスクのアクティビティ",
     "untitled": "無題のタスク",
     "tasks": "{{count}} 件のタスクを実行中"
+  },
+  "attention": {
+    "channel": "対応が必要なタスク"
   }
 }

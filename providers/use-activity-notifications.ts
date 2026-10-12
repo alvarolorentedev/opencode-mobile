@@ -1,12 +1,13 @@
 import { getEventSessionStatus } from '@/lib/opencode/events';
 import type { OpencodeEvent } from '@/lib/opencode/events';
+import { stringField } from '@/lib/opencode/v2/fields';
 import { useCallback, useEffect, useLayoutEffect, useRef } from 'react';
 import { AppState } from 'react-native';
 import * as Notifications from 'expo-notifications';
 
 import { activityNotifications, manageActivityCompletion, updateActivityNotification } from '@/lib/activity-notifications';
 import { i18n } from '@/lib/i18n';
-import { clearPendingTaskFinishedNotification, trackPendingTaskFinishedNotification } from '@/lib/notifications';
+import { clearPendingAttention, clearPendingTaskFinishedNotification, raisePendingAttention, trackPendingTaskFinishedNotification } from '@/lib/notifications';
 import type { OpencodeConnectionSettings, ScopedOpencodeClient, ServerContract } from '@/lib/opencode/client';
 import type { Session, SessionStatus } from '@/lib/opencode/types';
 import { getSessionActivities, selectDisplayedActivity, type SessionActivity } from '@/providers/activity-notification-state';
@@ -23,7 +24,37 @@ type Input = {
   sessions: Session[];
   sendingState: { active: boolean; sessionId?: string };
   promptError?: { sessionId?: string; occurredAt: number };
+  // True while the global SSE stream is healthy. When it is, interaction reads
+  // can be limited to directories with running work because events reconcile
+  // other workspaces directly.
+  streamConnectedRef: { current: boolean };
 };
+
+function eventData(event: OpencodeEvent): Record<string, unknown> {
+  return event.type === 'compatibility' ? {} : ('data' in event ? event.data as Record<string, unknown> : {});
+}
+
+// A permission or question request that should alert a backgrounded user.
+// Compatibility (v1) events are handled by the Android activity snapshot.
+function attentionTarget(event: OpencodeEvent): { sessionId?: string; key: string } {
+  const type = event.type === 'compatibility' ? event.payload.type : event.type;
+  const data = eventData(event);
+  if (type === 'permission.asked' || type === 'question.asked') {
+    return { sessionId: stringField(data.sessionID), key: 'blocked' };
+  }
+  if (type === 'form.created') {
+    const form = data.form as Record<string, unknown> | undefined;
+    return { sessionId: stringField(form?.sessionID), key: 'blocked' };
+  }
+  return { key: 'blocked' };
+}
+
+function settledSession(event: OpencodeEvent): string | undefined {
+  const type = event.type === 'compatibility' ? event.payload.type : event.type;
+  if (type !== 'permission.replied' && type !== 'form.replied' && type !== 'form.cancelled') return undefined;
+  const data = eventData(event);
+  return stringField(data.sessionID) ?? stringField((data.form as Record<string, unknown> | undefined)?.sessionID);
+}
 
 export function useActivityNotifications(input: Input) {
   const latest = useRef(input);
@@ -88,7 +119,13 @@ export function useActivityNotifications(input: Input) {
           if (monitoring) manageActivityCompletion(scope);
         }
         const revision = eventRevision.current;
-        const snapshot = await readActivitySnapshot(catalogClient, current.settings, current.contract, watched);
+        const snapshot = await readActivitySnapshot(
+          catalogClient,
+          current.settings,
+          current.contract,
+          watched,
+          !current.streamConnectedRef.current,
+        );
         if (cancelled) return;
         if (revision !== eventRevision.current) { rerun = true; return; }
         snapshot.statuses = mergeSessionStatuses(eventStatuses.current, {
@@ -192,6 +229,14 @@ export function useActivityNotifications(input: Input) {
     if (status) { eventStatuses.current[status.sessionID] = status.status; eventRevision.current++; }
     const type = event.type === 'compatibility' ? event.payload.type : event.type;
     if (/^(permission\.|question\.|form\.|session\.(created|deleted))/.test(type)) eventRevision.current++;
+    // Locally observed needs-input alert. It is best effort: it fires only
+    // while JS is alive and only when the app is not already showing the prompt.
+    const target = attentionTarget(event);
+    if (target.sessionId && AppState.currentState !== 'active') {
+      void raisePendingAttention(latest.current.connectionScope, target.sessionId, target.key).catch(() => undefined);
+    }
+    const resolved = settledSession(event);
+    if (resolved) void clearPendingAttention(latest.current.connectionScope, resolved).catch(() => undefined);
     if (/^(session\.|message\.|permission\.|question\.|form\.)/.test(type)) refreshRef.current(false, /^(message\.|session\.(text|reasoning|tool))/.test(type) ? 1000 : 250);
   }, []);
 }

@@ -340,10 +340,12 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
     }
   }, []);
 
+  const streamConnectedRef = useRef(false);
   const handleActivityEvent = useActivityNotifications({
     catalogClient, settings: state.settings, contract: state.serverContract,
     connectionScope: state.connectionScope, connected: state.connection.status === 'connected',
     currentSessionId: state.currentSessionId, sessions: state.sessions, sendingState: prompt.sendingState, promptError: prompt.promptError,
+    streamConnectedRef,
   });
 
   const { eventStreamStatus } = useOpencodeRealtime({
@@ -361,6 +363,10 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
     refreshMessages: inbox.refreshMessages,
     refreshSessionDiff: workspace.refreshSessionDiff,
     refreshSessionTodos: workspace.refreshSessionTodos,
+  });
+
+  useLayoutEffect(() => {
+    streamConnectedRef.current = eventStreamStatus === 'connected';
   });
 
   useOpencodeProviderEffects({

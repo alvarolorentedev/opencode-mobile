@@ -1,4 +1,4 @@
-import { hasPendingSessionWork, listSessions } from '@/providers/services/session-service';
+import { listSessions, readSessionSettlement } from '@/providers/services/session-service';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as BackgroundTask from 'expo-background-task';
 import Constants from 'expo-constants';
@@ -19,8 +19,11 @@ import {
 import { PENDING_NOTIFICATION_SESSIONS_STORAGE_KEY } from '@/lib/storage-keys';
 
 const TASK_FINISHED_CHANNEL_ID = 'task-finished-silent';
+const TASK_ATTENTION_CHANNEL_ID = 'task-attention';
 const CHAT_COMPLETION_TASK_NAME = 'opencode-chat-completion-monitor';
 const BACKGROUND_MINIMUM_INTERVAL_MINUTES = 15;
+
+export type CompletionOutcome = 'finished' | 'failed';
 
 export type NotificationDebugStatus = {
   platform: string;
@@ -111,7 +114,24 @@ function buildTaskFinishedContent(title: string, body: string): Notifications.No
   };
 }
 
-async function scheduleLocalNotification(title: string, body: string) {
+// Non-secret routing payload shared by completion and attention notifications.
+// It mirrors the Android activity notification link so a tap opens the owning
+// connection, workspace, and session.
+export type NotificationRouteData = {
+  sessionId: string;
+  projectPath?: string;
+  connectionScope?: string;
+};
+
+function routeData(input: NotificationRouteData): Record<string, string> {
+  return {
+    sessionId: input.sessionId,
+    ...(input.projectPath ? { projectPath: input.projectPath } : {}),
+    ...(input.connectionScope ? { connectionScope: input.connectionScope } : {}),
+  };
+}
+
+async function scheduleLocalNotification(title: string, body: string, data?: Record<string, string>) {
   if (!canUseNotifications()) {
     return null;
   }
@@ -119,16 +139,51 @@ async function scheduleLocalNotification(title: string, body: string) {
   await configureNotificationChannelAsync();
 
   return Notifications.scheduleNotificationAsync({
-    content: buildTaskFinishedContent(title, body),
+    content: { ...buildTaskFinishedContent(title, body), ...(data ? { data } : {}) },
     trigger: Platform.OS === 'android' ? { channelId: TASK_FINISHED_CHANNEL_ID } : null,
   });
 }
 
-async function scheduleTaskFinishedNotification(sessionTitle?: string) {
+async function scheduleTaskFinishedNotification(input: {
+  sessionTitle?: string;
+  outcome: CompletionOutcome;
+  data: Record<string, string>;
+}) {
+  const failed = input.outcome === 'failed';
   await scheduleLocalNotification(
-    i18n.t('notifications:taskFinished.title'),
-    sessionTitle?.trim() || i18n.t('notifications:taskFinished.bodyFallback'),
+    i18n.t(failed ? 'notifications:taskFinished.failedTitle' : 'notifications:taskFinished.title'),
+    input.sessionTitle?.trim() || i18n.t(failed ? 'notifications:taskFinished.failedBodyFallback' : 'notifications:taskFinished.bodyFallback'),
+    input.data,
   );
+}
+
+async function configureAttentionChannelAsync() {
+  if (Platform.OS !== 'android' || !canUseNotifications()) {
+    return;
+  }
+
+  await Notifications.setNotificationChannelAsync(TASK_ATTENTION_CHANNEL_ID, {
+    name: i18n.t('notifications:attention.channel'),
+    importance: Notifications.AndroidImportance.DEFAULT,
+  });
+}
+
+async function scheduleAttentionNotification(pending: PendingNotificationSession) {
+  if (!canUseNotifications()) {
+    return;
+  }
+
+  await configureAttentionChannelAsync();
+
+  await Notifications.scheduleNotificationAsync({
+    content: {
+      title: pending.sessionTitle?.trim() || i18n.t('notifications:activity.untitled'),
+      body: i18n.t('notifications:activity.needsInput'),
+      sound: Platform.OS !== 'android',
+      data: routeData({ sessionId: pending.sessionId, projectPath: pending.projectPath, connectionScope: pending.connectionScope }),
+    },
+    trigger: Platform.OS === 'android' ? { channelId: TASK_ATTENTION_CHANNEL_ID } : null,
+  });
 }
 
 if (Platform.OS !== 'web' && !TaskManager.isTaskDefined(CHAT_COMPLETION_TASK_NAME)) {
@@ -173,20 +228,28 @@ if (Platform.OS !== 'web' && !TaskManager.isTaskDefined(CHAT_COMPLETION_TASK_NAM
           const client = buildClient(settings, contract);
           const { statuses, sessions } = await listSessions(client);
 
-          const status = statuses[pending.sessionId];
-          if (status && status.type !== 'idle') {
+          const settlement = await readSessionSettlement(client, pending.sessionId, statuses[pending.sessionId]);
+          if (settlement.state === 'running' || settlement.state === 'retrying' || settlement.state === 'unknown') continue;
+          if (settlement.state === 'blocked') {
+            await raisePendingAttention(pending.connectionScope, pending.sessionId, 'blocked').catch(() => undefined);
             continue;
           }
 
           const session = sessions.find((item: { id: string; title?: string }) => item.id === pending.sessionId);
-          if (!session) {
+          if (!session || settlement.state === 'aborted') {
+            // A deleted session or an interrupted run is dropped without an alert.
             await completePendingNotification(key, pending);
             continue;
           }
-          if (await hasPendingSessionWork(client, pending.sessionId)) continue;
           // Re-check ownership after the network read: a new prompt for this
           // session must not be notified or removed by the older monitor pass.
-          await completePendingNotification(key, pending, () => notifyTaskFinished(session?.title || pending.sessionTitle, pending.connectionScope));
+          await completePendingNotification(key, pending, () => notifyTaskFinished({
+            sessionId: pending.sessionId,
+            sessionTitle: session.title || pending.sessionTitle,
+            projectPath: pending.projectPath,
+            connectionScope: pending.connectionScope,
+            outcome: settlement.state === 'failed' ? 'failed' : 'finished',
+          }));
         } catch {
           continue;
         }
@@ -328,7 +391,55 @@ export async function clearPendingTaskFinishedNotification(connectionScope: stri
 
 // Notification copy is translated here, at the lib boundary, so callers pass
 // only the session title and never render notification strings themselves.
-export async function notifyTaskFinished(sessionTitle?: string, connectionScope?: string) {
-  if (isActivityCompletionManaged(connectionScope)) return;
-  await scheduleTaskFinishedNotification(sessionTitle);
+// Completion carries a non-secret route payload so a tap can open the owning
+// connection, workspace, and session.
+export async function notifyTaskFinished(input: {
+  sessionId: string;
+  sessionTitle?: string;
+  projectPath?: string;
+  connectionScope?: string;
+  outcome?: CompletionOutcome;
+}) {
+  if (isActivityCompletionManaged(input.connectionScope)) return;
+  await scheduleTaskFinishedNotification({
+    sessionTitle: input.sessionTitle,
+    outcome: input.outcome ?? 'finished',
+    data: routeData(input),
+  });
+}
+
+// Records the last attention marker for a pending record and reports whether an
+// alert should be posted now. Repeated polls while a task stays blocked return
+// undefined, so a needs-input alert fires once per block episode; resolving the
+// block clears the marker so a later block alerts again.
+export async function claimPendingAttention(connectionScope: string, sessionId: string, key: string) {
+  return withPendingSessions(async () => {
+    const current = await readPendingNotificationSessions();
+    const record = current[pendingNotificationKey(connectionScope, sessionId)];
+    if (!record || record.attentionKey === key) return undefined;
+    record.attentionKey = key;
+    await writePendingNotificationSessions(current);
+    return { ...record };
+  });
+}
+
+export async function clearPendingAttention(connectionScope: string, sessionId: string) {
+  return withPendingSessions(async () => {
+    const current = await readPendingNotificationSessions();
+    const record = current[pendingNotificationKey(connectionScope, sessionId)];
+    if (!record?.attentionKey) return false;
+    delete record.attentionKey;
+    await writePendingNotificationSessions(current);
+    return true;
+  });
+}
+
+// Local, best-effort needs-input alert for a task already tracked by this
+// connection. Callers must skip it while the app is foregrounded, where the
+// in-app prompt is already visible.
+export async function raisePendingAttention(connectionScope: string, sessionId: string, key: string) {
+  const pending = await claimPendingAttention(connectionScope, sessionId, key);
+  if (!pending) return false;
+  await scheduleAttentionNotification(pending);
+  return true;
 }

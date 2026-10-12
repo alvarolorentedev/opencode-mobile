@@ -387,13 +387,18 @@ serialized profile saves with credential rollback and callback stability.
 `test:persistence-hydration` checks field validation, credential-independent
 hydration, ordered/deduplicated writes, and preserving unread records.
 `test:notifications-background` covers concurrent changes, transient reads/writes,
-malformed data, and a re-sent task during background completion checks.
+malformed data, a re-sent task during background completion checks, and
+outcome-aware copy (a server-reported failure notifies with the failure text while
+a running task keeps its record).
 The Vitest activity-notifications suite exercises the real provider observer,
 aggregation service, and selectors with native/network boundaries mocked. It
 covers multiple workspaces, descendants, blockers, retry/queue states, failed
 reads, foreground permission changes, background polling, completion cleanup,
 dismissal cycle keys, and stale reads after connection changes. V2 status tests
 reject network failures and missing active-session responses instead of idle.
+`tests/vitest/session-settlement.test.ts` pins the pure settlement decision table
+(running, retrying, blocked, finished, failed, aborted) and
+`tests/vitest/notification-route.test.ts` pins the non-secret route payload.
 Provider-runtime also covers connection-scoped notification links.
 
 Native acceptance remains required for activity notifications: start work, leave
@@ -402,9 +407,18 @@ the silent final result. Repeat with several desktop tasks, disabled notificatio
 permission, disabled promotion, Stop monitoring, shade dismissal, network loss,
 removing Recents, and a shortened Android foreground-service timeout. Confirm a
 new task can show after dismissal and that no idle polling service remains.
+Additional local-notification checks: tap a finished and a failed completion and
+confirm the app opens the owning connection, workspace, and session; background
+the app during a permission prompt and confirm one needs-input alert that does not
+repeat on the next poll and re-arms after resolving; send a prompt then switch
+workspaces before it finishes and confirm the completion still arrives (on return
+or via the background task); force-stop mid-task and relaunch to confirm no false
+"finished" alert fires from a cached idle status.
 Check Android 16+ promotion and a pre-16 normal notification fallback; verify
 production and FOSS clean prebuilds preserve the module and release shrinking
 preserves Expo records. Web E2E cannot establish status-bar or battery behavior.
+iOS device validation must confirm that a completion discovered while suspended is
+delivered only when the app next runs or the background task is granted time.
 the Vitest `record-preservation` suite is now part of the static CI gate.
 
 ### Workspace Mutation And Management Flows

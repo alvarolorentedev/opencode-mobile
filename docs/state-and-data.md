@@ -590,6 +590,13 @@ Only successful catalog, status, interaction, inbox, and transcript reads can
 end monitoring; failed reads preserve active work and display Reconnecting.
 Completion record deletion returns whether the matching record was removed,
 so the provider and activity observer cannot both emit completion notifications.
+The foreground flush and the background monitor classify a session through the
+shared settlement read (`readSessionSettlement`): running, retrying, and blocked
+states keep the record, aborted clears it silently, and finished/failed notify
+with matching copy. A record from a previous app session is only cleared after a
+fresh server read confirms a terminal state, so a cold start cannot post a
+completion from a persisted idle status. A record whose project differs from the
+active project is left untouched rather than cleared from the wrong session list.
 Observed desktop tasks reuse the non-secret pending DTO below; insert-if-absent
 does not overwrite a prompt's existing timestamp, and conditional deletion
 cannot remove a later submission. Connection switches retain durable records
@@ -602,6 +609,7 @@ Pending completion notification storage records:
 - `projectPath`
 - a non-secret connection reference: `serverUrl`, `username`, `connectionScope`
 - `requestedAt`
+- an optional non-secret `attentionKey` marking the last needs-input alert raised
 
 Records are keyed by connection scope + session ID, so a pending task on one
 server survives switching to another server, and identical session IDs on two

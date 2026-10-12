@@ -13,6 +13,7 @@ import {
   notifyTaskFinished,
   trackPendingTaskFinishedNotification,
 } from '@/lib/notifications';
+import { readSessionSettlement } from '@/providers/services/session-service';
 import type { ModelOption } from '@/providers/opencode-model-selection';
 import { getSelectedModelParts } from '@/providers/opencode-model-selection';
 import type { ChatPreferences } from '@/providers/opencode-preferences';
@@ -279,6 +280,12 @@ export function usePromptLifecycle({
       for (const pending of pendingEntries) {
         const { sessionId } = pending;
         const key = pendingNotificationKey(pending.connectionScope, sessionId);
+        // A record for another project cannot be confirmed from this project's
+        // session list; keep it for the background monitor or a later return to
+        // that workspace instead of dropping a completion silently.
+        if (pending.projectPath !== activeProjectPath) {
+          continue;
+        }
         const status = sessionStatuses[sessionId];
         // Latch once the session has actually started working so an early
         // completion notifies without waiting out the debounce below.
@@ -287,24 +294,53 @@ export function usePromptLifecycle({
           continue;
         }
 
-        const oldEnough = Date.now() - pending.requestedAt >= 5000;
-        if ((!busyNotificationsRef.current.has(key) && !oldEnough) || (sendingState.active && sendingState.sessionId === sessionId)) {
+        const session = sessions.find((item) => item.id === sessionId);
+        // A deleted or not-yet-loaded session is not proof of completion. The
+        // background monitor drops genuinely deleted records.
+        if (!session) {
           continue;
         }
 
-        const session = sessions.find((item) => item.id === sessionId);
-        if (!session) {
-          busyNotificationsRef.current.delete(key);
-          await clearPendingTaskFinishedNotification(connectionScope, sessionId).catch(() => undefined);
+        const oldEnough = Date.now() - pending.requestedAt >= 5000;
+        const latched = busyNotificationsRef.current.has(key);
+        if ((!latched && !oldEnough) || (sendingState.active && sendingState.sessionId === sessionId)) {
           continue;
         }
+
+        // Confirm against the server before notifying. When this app session
+        // already observed the task running, the known idle status is enough to
+        // skip the extra status read; otherwise (for example a cold start from a
+        // persisted record) the settlement read verifies the server instead of
+        // trusting a cached idle status.
+        const settlement = await readSessionSettlement(client, sessionId, latched ? status : undefined);
+        if (cancelled) {
+          return;
+        }
+        if (settlement.state === 'running' || settlement.state === 'retrying'
+          || settlement.state === 'blocked' || settlement.state === 'unknown') {
+          continue;
+        }
+        if (settlement.state === 'aborted') {
+          busyNotificationsRef.current.delete(key);
+          await clearPendingTaskFinishedNotification(connectionScope, sessionId, pending.requestedAt);
+          continue;
+        }
+
         const cleared = await clearPendingTaskFinishedNotification(connectionScope, sessionId, pending.requestedAt);
         if (cancelled) {
           return;
         }
 
         busyNotificationsRef.current.delete(key);
-        if (cleared) await notifyTaskFinished(session.title, connectionScope);
+        if (cleared) {
+          await notifyTaskFinished({
+            sessionId,
+            sessionTitle: session.title,
+            projectPath: pending.projectPath,
+            connectionScope,
+            outcome: settlement.state === 'failed' ? 'failed' : 'finished',
+          });
+        }
       }
     }
 
@@ -313,7 +349,7 @@ export function usePromptLifecycle({
     return () => {
       cancelled = true;
     };
-  }, [busyNotificationsRef, connectionScope, sendingState.active, sendingState.sessionId, sessionStatuses, sessions]);
+  }, [activeProjectPath, busyNotificationsRef, client, connectionScope, sendingState.active, sendingState.sessionId, sessionStatuses, sessions]);
 
   const clearPromptError = useCallback(() => setPromptError(undefined), []);
 

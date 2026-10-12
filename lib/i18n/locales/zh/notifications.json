@@ -1,7 +1,9 @@
 {
   "taskFinished": {
     "title": "OpenCode 已完成任务",
-    "bodyFallback": "任务完成"
+    "bodyFallback": "任务完成",
+    "failedTitle": "OpenCode 任务失败",
+    "failedBodyFallback": "任务以错误结束"
   },
   "activity": {
     "working": "处理中",
@@ -18,5 +20,8 @@
     "channel": "任务活动",
     "untitled": "无标题任务",
     "tasks": "{{count}} 个任务正在运行"
+  },
+  "attention": {
+    "channel": "任务需要处理"
   }
 }

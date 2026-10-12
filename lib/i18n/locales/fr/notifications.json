@@ -1,7 +1,9 @@
 {
   "taskFinished": {
     "title": "OpenCode a terminé une tâche",
-    "bodyFallback": "Tâche terminée"
+    "bodyFallback": "Tâche terminée",
+    "failedTitle": "Échec de la tâche OpenCode",
+    "failedBodyFallback": "La tâche s’est terminée par une erreur"
   },
   "activity": {
     "working": "En cours",
@@ -18,5 +20,8 @@
     "channel": "Activité des tâches",
     "untitled": "Tâche sans titre",
     "tasks": "{{count}} tâches en cours"
+  },
+  "attention": {
+    "channel": "Tâche nécessitant votre attention"
   }
 }

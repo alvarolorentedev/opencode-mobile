@@ -10,6 +10,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { Colors } from '@/constants/theme';
 import { getPaperTheme } from '@/constants/paper-theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
+import { useNotificationRoute } from '@/hooks/use-notification-route';
 import { installGlobalErrorHandler } from '@/lib/error-reporting';
 import '@/lib/i18n';
 import { isConnectEnabled } from '@/lib/connect';
@@ -82,6 +83,7 @@ function RootNavigator() {
   const colorScheme = useColorScheme();
   const palette = Colors[colorScheme ?? 'light'];
   const { isHydrated, onboardingCompleted, onboardingActive } = useOnboarding();
+  useNotificationRoute();
 
   useEffect(() => {
     if (isHydrated) {

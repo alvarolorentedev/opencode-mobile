@@ -137,4 +137,22 @@ assert.throws(() => parsePendingNotificationSessions('{not json'));
   assert.equal(parsed[pendingNotificationKey(scopeB, 'shared')].requestedAt, 2);
 }
 
+// 7. The non-secret attention marker round-trips; unknown fields are dropped.
+{
+  const parsed = parsePendingNotificationSessions(JSON.stringify({
+    a: {
+      sessionId: 'session-attn',
+      projectPath: '/repo',
+      connectionScope: scopeA,
+      settings: { serverUrl: 'https://a.example', username: 'alice' },
+      requestedAt: 5,
+      attentionKey: 'blocked',
+      extra: 'nope',
+    },
+  }));
+  const key = pendingNotificationKey(scopeA, 'session-attn');
+  assert.equal(parsed[key].attentionKey, 'blocked');
+  assert.equal(serializePendingNotificationSessions(parsed).includes('extra'), false);
+}
+
 console.log('notification pending tests passed');

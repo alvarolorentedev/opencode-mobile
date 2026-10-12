@@ -1,7 +1,9 @@
 {
   "taskFinished": {
     "title": "OpenCode ha terminado una tarea",
-    "bodyFallback": "Tarea completada"
+    "bodyFallback": "Tarea completada",
+    "failedTitle": "La tarea de OpenCode ha fallado",
+    "failedBodyFallback": "La tarea terminó con un error"
   },
   "activity": {
     "working": "Trabajando",
@@ -18,5 +20,8 @@
     "channel": "Actividad de tareas",
     "untitled": "Tarea sin título",
     "tasks": "{{count}} tareas en curso"
+  },
+  "attention": {
+    "channel": "Tarea que requiere atención"
   }
 }

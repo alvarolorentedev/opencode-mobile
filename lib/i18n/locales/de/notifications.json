@@ -1,7 +1,9 @@
 {
   "taskFinished": {
     "title": "OpenCode hat eine Aufgabe abgeschlossen",
-    "bodyFallback": "Aufgabe abgeschlossen"
+    "bodyFallback": "Aufgabe abgeschlossen",
+    "failedTitle": "OpenCode-Aufgabe fehlgeschlagen",
+    "failedBodyFallback": "Die Aufgabe wurde mit einem Fehler beendet"
   },
   "activity": {
     "working": "Aktiv",
@@ -18,5 +20,8 @@
     "channel": "Aufgabenaktivität",
     "untitled": "Unbenannte Aufgabe",
     "tasks": "{{count}} Aufgaben laufen"
+  },
+  "attention": {
+    "channel": "Aufgabe erfordert Aufmerksamkeit"
   }
 }

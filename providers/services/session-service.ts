@@ -1,9 +1,11 @@
 import { compareLabels } from '@/lib/compare-labels';
 import type { ScopedOpencodeClient } from '@/lib/opencode/client';
+import { listPendingPermissions, listPendingQuestions } from '@/lib/opencode/client/interactions';
 import type { SessionMessageRecord } from '@/lib/opencode/format';
 import { coalesceRead } from '@/lib/opencode/in-flight';
 import { toProjectView, toSessionView } from '@/lib/opencode/v2-mappers';
 import { toMessageRecord } from '@/lib/opencode/v2/mappers';
+import type { SessionStatus } from '@/lib/opencode/types';
 import * as v1 from '@/lib/opencode/compat/v1/session';
 
 export function getSessionInbox(client: ScopedOpencodeClient, sessionId: string) {
@@ -50,6 +52,64 @@ export async function hasPendingSessionWork(client: ScopedOpencodeClient, sessio
   return inbox.length > 0 || permissions.data.some((request) => request.sessionID === sessionID)
     || forms.data.some((form) => form.sessionID === sessionID || form.sessionID === 'global')
     || (latest?.type === 'assistant' && Boolean(latest.retry));
+}
+
+export type SessionSettlementState = 'running' | 'retrying' | 'blocked' | 'failed' | 'aborted' | 'finished' | 'unknown';
+export type SessionSettlement = { state: SessionSettlementState; message?: string };
+
+// Pure decision table shared by the live read below and unit tests, so copy and
+// clearing rules cannot drift from the observed inputs.
+export function classifySessionSettlement(input: {
+  status?: SessionStatus;
+  queued: boolean;
+  blocked: boolean;
+  error?: { name: string; data?: { message?: string }; message?: string };
+}): SessionSettlement {
+  if (input.status && input.status.type !== 'idle') {
+    return { state: input.status.type === 'retry' ? 'retrying' : 'running' };
+  }
+  if (input.queued) return { state: 'running' };
+  if (input.blocked) return { state: 'blocked' };
+  if (!input.error) return { state: 'finished' };
+  if (input.error.name === 'MessageAbortedError') return { state: 'aborted' };
+  return { state: 'failed', message: input.error.data?.message || input.error.message };
+}
+
+/**
+ * One server-verified view of whether a session still needs the user's
+ * attention. The foreground completion flush and the background monitor share
+ * it so their copy and clearing decisions cannot diverge. Reads are
+ * contract-agnostic; v1 has no prompt inbox, so its inbox read is skipped.
+ *
+ * `knownStatus` lets a caller that just listed sessions avoid a second status
+ * read; when omitted, the server's current status is fetched, which is what
+ * makes a cold-start completion wait for confirmation instead of trusting a
+ * persisted idle status.
+ */
+export async function readSessionSettlement(
+  client: ScopedOpencodeClient,
+  sessionID: string,
+  knownStatus?: SessionStatus,
+): Promise<SessionSettlement> {
+  try {
+    const status = knownStatus ?? (await listSessions(client)).statuses[sessionID];
+    const [inbox, permissions, questions, page] = await Promise.all([
+      client.promptInbox ? client.promptInbox.list(sessionID).catch(() => []) : Promise.resolve([]),
+      listPendingPermissions(client),
+      listPendingQuestions(client),
+      getSessionMessages(client, sessionID, { limit: 20 }),
+    ]);
+    const latest = page.records.filter((record) => record.info.role === 'assistant').at(-1);
+    return classifySessionSettlement({
+      status,
+      queued: Boolean(inbox?.length),
+      blocked: Boolean(permissions?.some((request) => request.sessionID === sessionID)
+        || questions?.some((question) => question.sessionID === sessionID)),
+      error: latest?.info.role === 'assistant' ? latest.info.error : undefined,
+    });
+  } catch {
+    return { state: 'unknown' };
+  }
 }
 export async function listArchivedSessions(client: ScopedOpencodeClient) {
   if (client.compatibility) return v1.listArchivedSessions(client.compatibility);

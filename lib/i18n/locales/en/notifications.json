@@ -1,7 +1,9 @@
 {
   "taskFinished": {
     "title": "OpenCode finished a task",
-    "bodyFallback": "Task complete"
+    "bodyFallback": "Task complete",
+    "failedTitle": "OpenCode task failed",
+    "failedBodyFallback": "The task ended with an error"
   },
   "activity": {
     "working": "Working",
@@ -18,5 +20,8 @@
     "channel": "Task activity",
     "untitled": "Untitled task",
     "tasks": "{{count}} tasks running"
+  },
+  "attention": {
+    "channel": "Task needs attention"
   }
 }
