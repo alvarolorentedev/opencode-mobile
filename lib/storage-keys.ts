@@ -13,6 +13,11 @@ export const ONBOARDING_VERSION_STORAGE_KEY = 'opencode-mobile.onboarding-versio
 export const LAST_SESSION_BY_PROJECT_STORAGE_KEY = 'opencode-mobile.last-session-by-project';
 export const PENDING_NOTIFICATION_SESSIONS_STORAGE_KEY = 'opencode-mobile.pending-notification-sessions';
 export const FAVORITE_SESSIONS_STORAGE_KEY = 'opencode-mobile.favorite-sessions';
+// Bounded, non-secret task snapshot for the Android home widget. The widget
+// handler runs headless without provider state, so the app writes this on
+// confirmed provider changes and the handler renders from it. See
+// providers/widget-snapshot.ts.
+export const WIDGET_SNAPSHOT_STORAGE_KEY = 'opencode-mobile.widget-snapshot';
 // Per-day network usage diagnostic (requests + bytes). See
 // lib/opencode/data-usage.ts.
 export const DATA_USAGE_STORAGE_KEY = 'opencode-mobile.data-usage';

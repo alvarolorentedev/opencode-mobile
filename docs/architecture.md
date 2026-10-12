@@ -401,6 +401,32 @@ timers alive; network reads and lifecycle decisions remain in the provider.
 autolinked from `modules/` and survive a clean prebuild. iOS, web, Expo Go, and
 E2E runs do not start this service.
 
+Launcher quick actions and the Android home widget are published from the same
+provider, by `providers/use-native-surfaces.ts`, whenever the connection-wide
+active-session selection or the current session changes. The selection itself
+stays in `providers/active-sessions.ts`; the hooks only debounce, translate
+labels, and hand data to the platform bridges. `hooks/use-quick-action-route.ts`
+resolves a quick-action tap through the existing `app/session/[id].tsx` resolver,
+exactly like a notification tap.
+
+- `lib/quick-actions.ts`
+  `expo-quick-actions` bridge for dynamic launcher/home-screen actions. Session
+  items carry only `{ sessionId, projectPath, connectionScope }`; no static
+  shortcuts and no config plugin are used, so web/E2E/Expo Go no-op.
+- `lib/session-link.ts`
+  Canonical `opencodemobile://session/...` builder shared by the Android activity
+  notification and the widget snapshot.
+- `lib/widgets.tsx`
+  Android home-widget bridge. Repaints placed widgets from a provider-owned
+  snapshot; no-op on iOS (no widget surface yet, see
+  [iOS widget parity](ios-widget-parity.md)), web, and E2E.
+- `widgets/`
+  Headless widget trees and the task handler registered from `index.js`. These
+  files cannot live under `app/` because Expo Router treats `app/` as routes;
+  the handler reads provider-owned snapshot storage because it runs outside
+  React. `tests/architecture.test.mjs` applies the same size ratchet to this
+  directory.
+
 - `lib/notifications.ts`
   Local notifications, background monitoring task, and notification debug status.
 - `lib/voice/speech-output.ts`

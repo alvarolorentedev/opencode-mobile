@@ -274,6 +274,7 @@ Persisted values:
 - `opencode-mobile.onboarding-version` (completion-only first-run marker; see below)
 - `opencode-mobile.last-session-by-project` (nested `connectionScope -> projectPath -> sessionId`; legacy flat maps are discarded on hydration)
 - `opencode-mobile.pending-notification-sessions` (non-secret connection references, keyed by connection scope + session ID)
+- `opencode-mobile.widget-snapshot` (bounded Android home-widget snapshot: `updatedAt` plus at most three `{id, title, status, link}` rows for running/recent sessions; validated on read and never stored with credentials — see `providers/widget-snapshot.ts`)
 - `opencode-mobile.sessions.<connectionScope>.<projectPath>` / `opencode-mobile.session-statuses.<connectionScope>.<projectPath>` (per connection + project cache)
 - `opencode-mobile.favorite-sessions` (cross-workspace favorites, each carrying its connection scope)
 

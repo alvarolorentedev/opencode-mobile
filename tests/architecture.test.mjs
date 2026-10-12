@@ -41,7 +41,9 @@ assert.ok(
 const MAX_LINES = 500;
 const LINE_LIMIT_EXEMPT = new Set(['lib/i18n/resources.ts']);
 const oversized = [];
-for (const dir of ['app', 'components', 'providers', 'lib']) {
+// `widgets/` holds the headless native widget trees and task handler; they are
+// not app routes, so they live outside app/ but still follow the size ratchet.
+for (const dir of ['app', 'components', 'providers', 'lib', 'widgets']) {
   for (const file of await collectSourceFiles(path.join(root, dir))) {
     const relative = path.relative(root, file);
     if (LINE_LIMIT_EXEMPT.has(relative)) continue;

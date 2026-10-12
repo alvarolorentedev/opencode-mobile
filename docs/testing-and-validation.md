@@ -29,6 +29,42 @@ iOS Share Extension) requires real-device acceptance. Changes to
 `tests/e2e/` require explicit human validation under AGENTS.md. See
 [iOS share parity](ios-share-parity.md) for the iOS device checklist.
 
+## Quick actions and Android home widget
+
+Static coverage:
+
+- `tests/vitest/session-link.test.ts` pins the shared
+  `opencodemobile://session/...` builder (encoding, prefix) that the Android
+  activity notification and the widget snapshot both rely on.
+- `tests/vitest/quick-action-items.test.ts` pins the quick-action selection:
+  routing payload fields, running-first order from the existing active-session
+  selector, untitled fallback, dropped entries, the three-session cap, and the
+  empty-scope case.
+- `tests/vitest/widget-snapshot.test.ts` pins the widget DTO: bounded rows, link
+  shape, title truncation, and per-row rejection of malformed persisted values
+  (only `opencodemobile://session/` links with a known status survive).
+- `tests/architecture.test.mjs` now applies the 500-line ratchet to `widgets/`.
+- No fake-server or protocol contract changes; `test:fake-server:self` runs
+  unchanged. Web E2E proves the surfaces no-op in the browser (`Platform.OS`
+  guard plus the package's `globalThis.expo` fallback).
+
+Device acceptance (blocking for a native release):
+
+- Android: the "OpenCode tasks" widget appears in the picker, renders added
+  widgets, survives force-quit and reboot by rendering the stored snapshot,
+  updates after tasks start/finish, opens the exact session from a row, and
+  opens the app from the empty background. Verify a minified release build (not
+  only debug) renders the widget, the WorkManager worker added for widget events
+  does not run periodically (`adb shell dumpsys jobscheduler`), and TalkBack
+  announces the row names.
+- iOS: dynamic quick actions appear in the app's long-press menu after first
+  launch; a cold start from a session item opens that session; a session owned by
+  another saved connection switches first; `New chat` creates a session; labels
+  follow the app language and larger text sizes.
+- Both: no new permission prompts; web, Expo Go, and E2E builds show no
+  additional surface; a release change that removes the widget must be checked
+  for placed-widget behavior (they disappear and can be re-added).
+
 ## Current Strategy
 
 Cloud Link Subscription Settings coverage is described in [connect.md](connect.md).

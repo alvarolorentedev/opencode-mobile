@@ -26,6 +26,9 @@ The goal is not aspirational design documentation. It is an implementation refer
   UI and support component inventory with responsibilities and prop contracts.
 - `ios-share-parity.md`
   Deferred iOS inbound-share gap and the requirements to close it.
+- `ios-widget-parity.md`
+  Deferred iOS widget/Live Activity gap, shipped quick actions and the Android
+  home widget, and the requirements to close the iOS side.
 - `development.md` explanation on how to run the app locally.
 
 ## Current System Summary

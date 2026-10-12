@@ -567,6 +567,41 @@ Parity implication:
   native app and is disabled on web, Expo Go, and E2E runs.
 - a rewrite should preserve both in-app completion flushing and background completion checking
 
+## Quick Actions And Home Widget
+
+Launcher quick actions (iOS and Android) and the Android home widget surface
+recent tasks without opening the app.
+
+Quick actions:
+
+- dynamic-only items, capped at four: `New chat` plus up to three running/recent
+  sessions from the connection-wide active-session selection (`providers/active-sessions.ts`)
+- session labels fall back to the untitled chat copy; labels follow the app
+  language and refresh when sessions or the language change
+- publishing is debounced and only happens while the app is foregrounded;
+  Android throttles dynamic shortcut updates from the background
+- a session item carries only `{ sessionId, projectPath, connectionScope }` and
+  opens through the same resolver as an external deep link, so opening a session
+  from another saved connection switches connections first
+- tapping `New chat` creates a session through the provider and lands on Chat;
+  when the app is not connected, no items are published
+- no static shortcuts, no config plugin, and no approve/deny/reply actions
+
+Android home widget («OpenCode tasks»):
+
+- shows the running/recent task list with a status label (`Working`, `Retrying`)
+  and a relative "updated" time
+- renders a bounded, non-secret snapshot written by the provider; the headless
+  widget task never fetches, authenticates, or mutates anything
+- each task row opens the session deep link; tapping elsewhere opens the app
+- before the app has connected, the widget shows the empty state
+- light and dark variants; row names are exposed to screen readers
+- the widget picker label and description are English-only (the config plugin
+  writes them as non-translatable Android string resources)
+
+iOS widgets and Live Activities are deliberately not implemented; see
+[iOS widget parity](ios-widget-parity.md).
+
 ## Persistence Requirements
 
 The following values are persisted locally:
@@ -578,6 +613,7 @@ The following values are persisted locally:
 - session list/status caches by connection scope and project
 - favorites, each carrying its connection scope
 - pending notification sessions, each carrying its connection scope
+- the bounded Android home-widget snapshot (non-secret; rebuilt on the next confirmed state change)
 
 The following values are not persisted and are rebuilt from the server:
 

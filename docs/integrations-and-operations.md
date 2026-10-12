@@ -96,6 +96,33 @@ Important current rule:
   opportunistically, so completion notifications arrive when the app next runs or
   the system schedules the background task, never on a fixed schedule
 
+### Quick Actions
+
+`expo-quick-actions` publishes dynamic launcher/home-screen quick actions on iOS
+and Android: New chat plus up to three running/recent sessions. The package is
+dynamic-only here — no config plugin, no static shortcuts — so nothing is added
+to `Info.plist` or `shortcuts.xml`, and installation on existing devices only
+gains items after the first app launch. `lib/quick-actions.ts` owns the bridge
+and no-ops on web/Expo Go/E2E; publishing is debounced and foreground-only
+because Android throttles dynamic shortcut updates in the background. Session
+items carry only the non-secret `{ sessionId, projectPath, connectionScope }`
+payload and route through `app/session/[id].tsx`.
+
+### Android Home Widget
+
+`react-native-android-widget` (MIT, pure Android) powers the "OpenCode tasks"
+widget configured in `app.config.ts` (3×2 target cell, resizable, no automatic
+update period). Widget trees and the headless task handler live in `widgets/`;
+`lib/widgets.tsx` repaints placed widgets from the provider-owned snapshot in
+`providers/widget-snapshot.ts` / `providers/widget-snapshot-storage.ts`. The
+headless handler renders last-known state only; it never fetches or
+authenticates. `app.config.ts` also adds two R8 keep rules for the library's
+reflectively constructed WorkManager worker and its base class, mirroring the
+existing Pika/headless-loader rules. The widget picker label and description are
+English-only because the plugin writes them as non-translatable string
+resources. iOS has no widget surface yet; see
+[iOS widget parity](ios-widget-parity.md).
+
 ### Voice Output
 
 `expo-speech` is used for TTS.
@@ -327,6 +354,7 @@ The app splits persisted connection data:
 - server URL and username (and saved connection profile metadata such as the profile name and model selection) live in AsyncStorage
 - the active connection password and each saved profile password live in Keychain/Keystore-backed SecureStore via `lib/connection-password.ts` and `lib/connection-profiles.ts`, never in AsyncStorage
 - legacy plaintext `settings.password` is migrated to SecureStore and stripped during hydration
+- `opencode-mobile.widget-snapshot` (Android home widget) stores only non-secret routing data: session IDs, truncated titles, and `opencodemobile://session/...` links that carry no credentials
 
 Operational implication:
 
@@ -364,10 +392,11 @@ Android has the richest current support for:
 - notification settings deep links
 - battery optimization guidance
 - development and release build pipelines
+- launcher quick actions and the home-screen "OpenCode tasks" widget
 
 ### iOS
 
-iOS is supported by Expo/React Native setup, but some operational tooling in the repo is Android-focused. Voice and TTS behavior are still explicitly supported.
+iOS is supported by Expo/React Native setup, but some operational tooling in the repo is Android-focused. Voice and TTS behavior are still explicitly supported. Launcher quick actions are supported; home/Lock Screen widgets and Live Activities are deferred (see [iOS widget parity](ios-widget-parity.md)).
 
 ### Session Deep Links
 

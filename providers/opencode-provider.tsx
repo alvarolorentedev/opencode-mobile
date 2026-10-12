@@ -32,6 +32,7 @@ import { useActivityNotifications } from '@/providers/use-activity-notifications
 import { usePermissionRulesState } from '@/providers/use-permission-rules-state';
 import { useTranscriptState } from '@/providers/use-transcript-state';
 import { useMcpState } from '@/providers/use-mcp-state';
+import { useNativeSurfaces } from '@/providers/use-native-surfaces';
 import { useOpencodePersistence } from '@/providers/use-opencode-persistence';
 import { useTerminalState } from '@/providers/use-terminal-state';
 import { useWorktreeState } from '@/providers/use-worktree-state';
@@ -217,6 +218,14 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
     currentSessionId: state.currentSessionId,
     hideSubagentChats: state.chatPreferences.hideSubagentChats === true,
     visible: state.activeSessionsVisible,
+  });
+
+  useNativeSurfaces({
+    ready: state.connection.status !== 'idle',
+    connected: state.connection.status === 'connected',
+    connectionScope: state.connectionScope,
+    language: state.chatPreferences.language,
+    activeSessions: activeSessionsHook.activeSessions,
   });
 
   const clearProjectState = useCallback(() => {

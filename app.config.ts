@@ -32,12 +32,16 @@ const androidReleaseBuildPropertiesPlugin: [string, { android: {
       // them, which crashed nested records (speech recognition's
       // volumeChangeEventOptions -> NullPointerException) and the headless loader
       // (ClassNotFoundException) in release builds. Costs ~33 KB of APK size.
+      // WorkManager also constructs the widget library's headless worker
+      // reflectively, so keep it and its base class for the same reason.
       extraProguardRules: [
         '-keep class **$__Pika { *; }',
         '-keep class io.github.lukmccall.pika.** { *; }',
         '-keep class * implements io.github.lukmccall.pika.Introspectable { *; }',
         '-keep class expo.modules.kotlin.records.** { *; }',
         '-keep class expo.modules.adapters.react.apploader.** { *; }',
+        '-keep class com.reactnativeandroidwidget.RNWidgetBackgroundTaskWorker { *; }',
+        '-keep class com.reactnativeandroidwidget.oss.HeadlessJsTaskWorker { *; }',
       ].join('\n'),
     },
   },
@@ -250,6 +254,30 @@ const config: ExpoConfig = {
     'expo-secure-store',
     ...(isFossVariant ? [] : iapPlugin),
     'expo-status-bar',
+    [
+      // Android home-screen widget. Widget trees and the headless task handler
+      // live in widgets/; the provider publishes snapshots on confirmed state
+      // changes (providers/use-native-surfaces.ts). The picker label and
+      // description are written to strings.xml as non-translatable by the
+      // plugin, so they stay English. iOS has no widget surface yet; see
+      // docs/ios-widget-parity.md. The library is MIT-licensed and pure
+      // Android, so the FOSS variant keeps it.
+      'react-native-android-widget',
+      {
+        widgets: [
+          {
+            name: 'SessionWidget',
+            label: 'OpenCode tasks',
+            description: 'Recent OpenCode tasks and their status.',
+            minWidth: '180dp',
+            minHeight: '110dp',
+            targetCellWidth: 3,
+            targetCellHeight: 2,
+            resizeMode: 'horizontal|vertical',
+          },
+        ],
+      },
+    ],
     withAndroidAppConfig as unknown as string,
   ],
   experiments: {

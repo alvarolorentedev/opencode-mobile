@@ -3,6 +3,7 @@ import Constants from 'expo-constants';
 import { Platform } from 'react-native';
 
 import { i18n } from '@/lib/i18n';
+import { buildSessionLink } from '@/lib/session-link';
 
 type ActivityContent = {
   title: string;
@@ -29,7 +30,11 @@ export function updateActivityNotification(input: {
   action: string; count: number; key: string; active: boolean;
 }) {
   const title = input.title.trim() || i18n.t('notifications:activity.untitled');
-  const link = `opencodemobile://session/${encodeURIComponent(input.sessionId)}?project=${encodeURIComponent(input.projectPath)}&connectionScope=${encodeURIComponent(input.connectionScope)}`;
+  const link = buildSessionLink({
+    sessionId: input.sessionId,
+    projectPath: input.projectPath,
+    connectionScope: input.connectionScope,
+  });
   return activityNotifications?.update({
     title: input.active && input.count > 1 ? i18n.t('notifications:activity.tasks', { count: input.count }) : title,
     body: input.active && input.count > 1 ? `${title} · ${input.action}` : input.action,
