@@ -1,0 +1,17 @@
+{
+  "title": "OpenCode に共有",
+  "subtitle": "この内容を確認し、ワークスペースを選択してチャットに追加します。送信をタップするまで何も送信されません。",
+  "workspace": "ワークスペース",
+  "noWorkspace": "ワークスペースが選択されていません",
+  "chooseWorkspace": "選択",
+  "notConnected": "サーバーに接続されていません。送信する前に接続してください。",
+  "link": "リンク",
+  "attachments": "添付ファイル",
+  "skipped": "スキップ: {{items}}",
+  "addToChat": "チャットに追加",
+  "discard": "破棄",
+  "empty": "共有する内容がありませんでした。",
+  "backToChat": "チャットに戻る",
+  "finishSetup": "共有内容を追加するには OpenCode Mobile のセットアップを完了してください。",
+  "continueSetup": "セットアップを続ける"
+}

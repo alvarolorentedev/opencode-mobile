@@ -185,6 +185,14 @@ Update together when needed:
 - native wrappers: `lib/voice/` and `lib/notifications.ts`
 - UI affordances: `components/chat/`
 
+### Inbound sharing
+
+- staging and lifecycle: `providers/use-share-state.ts`
+- payload normalization and limits: `lib/share/parse.ts`
+- routing and preview: `app/+native-intent.ts` and `app/share.tsx`
+- receive plugin config and platform gaps: `app.config.ts` and
+  `docs/ios-share-parity.md`
+
 ## Development Loop
 
 For each task:

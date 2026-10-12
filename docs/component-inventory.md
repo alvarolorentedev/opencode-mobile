@@ -447,6 +447,25 @@ This is important to parity because the chat layout is intentionally dense and h
 - delegate rendering and keyboard controls to `components/terminal/`
 - stream immediate terminal input through provider actions; the server owns line editing/history
 
+## `app/share.tsx`
+
+### Responsibility
+
+- preview content shared into the app from the OS share sheet
+- render provider-staged `sharedInput.pending` as selectable text, a link block,
+  and shared attachment tiles (reusing `attachment-strip.tsx`)
+- let the user change the target workspace through the shared `WorkspacePicker`
+  and show the active server
+- Add to chat replaces onto the Chat tab, where
+  `components/chat/use-chat-view-controller.ts` seeds the composer draft and
+  attachments; the composer keeps the only send path
+- Discard clears the staged payload and returns to chat
+- handle incomplete onboarding ("finish setup") and an empty payload
+
+It owns only the picker's local visibility. Staging, validation, and cleanup
+live in `providers/use-share-state.ts`; it performs no fetch, persistence, or
+submission. See [iOS share parity](ios-share-parity.md) for platform coverage.
+
 ## Settings Components
 
 `connection-method-chooser.tsx` renders the shared Cloud Link/Manual choices and

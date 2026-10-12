@@ -46,6 +46,7 @@ import { usePromptLifecycle } from '@/providers/use-prompt-lifecycle';
 import { useConnectionActions } from '@/providers/use-connection-actions';
 import { useOpencodeProviderValues } from '@/providers/opencode-provider-values';
 import { useAppUpdates } from '@/providers/use-app-updates';
+import { useShareState } from '@/providers/use-share-state';
 
 export type {
   AgentOption,
@@ -382,6 +383,8 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
     streamConnectedRef.current = eventStreamStatus === 'connected';
   });
 
+  const sharedInput = useShareState();
+
   useOpencodeProviderEffects({
     ...state,
     client,
@@ -406,8 +409,7 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
   const values = useOpencodeProviderValues({
     ...state,
     ...transcript,
-    ...permissionRules,
-    mcpAuthPrompt: state.mcpAuthPrompt,
+    ...permissionRules,    mcpAuthPrompt: state.mcpAuthPrompt,
     dismissMcpAuth,
     pendingPromptsBySession: inbox.pendingPromptsBySession,
     ...terminal,
@@ -432,6 +434,7 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
     projects,
     activeProject,
     eventStreamStatus,
+    sharedInput,
   });
 
   const updates = useAppUpdates({

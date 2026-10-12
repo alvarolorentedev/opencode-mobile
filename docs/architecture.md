@@ -145,6 +145,11 @@ and provider setup remain in Settings.
   Session deep-link resolver. Parses `sessionId`, `project`, and optional
   `connectionScope`, delegates to `openDeepLinkSession()`, then replaces onto
   the Chat tab. Connection switching and credential resolution stay in the provider.
+- `app/share.tsx`
+  Inbound-share preview. Renders the provider-staged `sharedInput` (text, link,
+  attachment tiles, skipped-item warnings), the shared workspace picker, and
+  Add to chat / Discard. Thin controller: it never fetches, persists, or
+  submits. `app/+native-intent.ts` routes the `expo-sharing` host here.
 - `app/onboarding/*.tsx`
   First-run setup assistant steps (presentation, permissions, connect,
   workspace, ready). Thin controllers over provider state; they do not own
@@ -415,6 +420,28 @@ E2E runs do not start this service.
   Voice permission reads/requests plus the app-settings deep link.
 - `lib/voice/working-sound.ts`
   Generated looping working sound.
+
+### Inbound Sharing
+
+Content shared into the app from the OS share sheet is staged in one
+provider-owned, in-memory slot and previewed before it can reach the composer.
+
+- `app.config.ts` enables the `expo-sharing` receive plugin for Android
+  (`ACTION_SEND`/`ACTION_SEND_MULTIPLE` intent filters). The iOS Share Extension
+  is deferred and tracked in [iOS share parity](ios-share-parity.md).
+- `app/+native-intent.ts` redirects the `expo-sharing` deep-link host to
+  `/share`; session, pair, and notification links pass through unchanged.
+- `providers/use-share-state.ts` reads `getSharedPayloads()` /
+  `getResolvedSharedPayloadsAsync()` on mount and on foreground return, parses
+  through `lib/share/parse.ts`, and stages a bounded (10-minute TTL) payload.
+  It is a no-op on web. Nothing is persisted; `SharedPayload` carries no
+  credentials.
+- `lib/share/parse.ts` normalizes raw payloads into the composer's attachment
+  shape, reusing `lib/attachment-preview.ts`'s 10 MB limit and URI allow-list.
+- `components/chat/use-chat-view-controller.ts` consumes the staged payload into
+  `draft`/`attachments` only while the chat route is focused, so the share
+  preview's Discard still clears a staged payload. The composer keeps the only
+  send path; sharing never auto-submits.
 
 ### Internationalization
 

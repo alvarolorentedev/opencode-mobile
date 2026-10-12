@@ -1,0 +1,17 @@
+{
+  "title": "Shared with OpenCode",
+  "subtitle": "Review this content, choose a workspace, then add it to the chat. Nothing is sent until you tap send.",
+  "workspace": "Workspace",
+  "noWorkspace": "No workspace selected",
+  "chooseWorkspace": "Choose",
+  "notConnected": "Not connected to a server. Connect before sending.",
+  "link": "Link",
+  "attachments": "Attachments",
+  "skipped": "Skipped: {{items}}",
+  "addToChat": "Add to chat",
+  "discard": "Discard",
+  "empty": "There was nothing to share.",
+  "backToChat": "Back to chat",
+  "finishSetup": "Finish setting up OpenCode Mobile to add shared content.",
+  "continueSetup": "Continue setup"
+}

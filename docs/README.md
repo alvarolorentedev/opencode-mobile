@@ -24,6 +24,8 @@ The goal is not aspirational design documentation. It is an implementation refer
   Endpoint-by-endpoint client contract with example request and response shapes.
 - `component-inventory.md`
   UI and support component inventory with responsibilities and prop contracts.
+- `ios-share-parity.md`
+  Deferred iOS inbound-share gap and the requirements to close it.
 - `development.md` explanation on how to run the app locally.
 
 ## Current System Summary

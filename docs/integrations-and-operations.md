@@ -150,6 +150,24 @@ Current behavior:
 - the selected model must advertise attachment support
 - local files larger than 10 MB are rejected before base64 conversion
 
+### Share Receive (Inbound)
+
+`expo-sharing`'s receive plugin is used to accept content shared into the app.
+
+Current behavior:
+
+- Android share intents are enabled via the `expo-sharing` plugin in
+  `app.config.ts` (`text/*`, `image/*`, `application/pdf` single; `image/*`
+  multiple)
+- `providers/use-share-state.ts` stages the resolved payload in memory only
+  (10-minute TTL, never persisted, no credentials)
+- `lib/share/parse.ts` reuses the existing 10 MB limit and URI allow-list
+- `app/+native-intent.ts` routes the `expo-sharing` host to `app/share.tsx`
+- sharing never auto-submits; the composer remains the only send path
+- web cannot receive native share payloads and is a no-op
+- the iOS Share Extension is deferred; see
+  [iOS share parity](ios-share-parity.md)
+
 ### Platform Settings Deep Links
 
 The Settings screen uses:

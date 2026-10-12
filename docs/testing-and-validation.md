@@ -18,6 +18,17 @@ validation under AGENTS.md. Native acceptance remains required for media
 playback/background/close, temporary-file cleanup, document handoff, keyboard
 layout, safe areas and screen-reader actions on iOS and Android.
 
+## Inbound sharing
+
+`tests/vitest/share.test.ts` covers payload normalization: text/link collection,
+file mapping, oversize and unsafe-URI rejection, item-count and text-length
+caps. `tests/e2e/share.spec.mjs` is web smoke coverage only: it proves the
+`/share` route renders empty and returns to chat. The browser cannot receive
+native share payloads, so the OS share-sheet path (Android intents; the deferred
+iOS Share Extension) requires real-device acceptance. Changes to
+`tests/e2e/` require explicit human validation under AGENTS.md. See
+[iOS share parity](ios-share-parity.md) for the iOS device checklist.
+
 ## Current Strategy
 
 Cloud Link Subscription Settings coverage is described in [connect.md](connect.md).

@@ -38,6 +38,7 @@ import type { VoiceRecoveryAction } from '@/lib/voice/speech-errors';
 import type { AgentOption, ModelOption } from '@/providers/opencode-model-selection';
 import type { ChatPreferences, ReasoningLevel, ResponseScope } from '@/providers/opencode-preferences';
 import type { ServerCapabilities } from '@/providers/opencode-capabilities';
+import type { SharedInput } from '@/providers/use-share-state';
 import type { TerminalRuntime, TerminalStatus } from '@/providers/terminal-types';
 
 export type { AgentOption, ChatPreferences, ModelOption, ReasoningLevel, ResponseScope, ServerCapabilities };
@@ -324,6 +325,9 @@ export type ChatContextValue = {
   };
   promptError?: { message: string; occurredAt: number; sessionId?: string; sourceTitle?: string };
   clearPromptError: () => void;
+  // Content shared into the app from the OS share sheet, grouped so the context
+  // surface does not grow one member per share concern.
+  sharedInput: SharedInput;
 };
 
 // Server-originated approval interactions grouped so the domain surface does

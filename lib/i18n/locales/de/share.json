@@ -1,0 +1,17 @@
+{
+  "title": "Mit OpenCode geteilt",
+  "subtitle": "Prüfe diesen Inhalt, wähle einen Arbeitsbereich und füge ihn dem Chat hinzu. Es wird nichts gesendet, bis du auf Senden tippst.",
+  "workspace": "Arbeitsbereich",
+  "noWorkspace": "Kein Arbeitsbereich ausgewählt",
+  "chooseWorkspace": "Auswählen",
+  "notConnected": "Nicht mit einem Server verbunden. Verbinde dich vor dem Senden.",
+  "link": "Link",
+  "attachments": "Anhänge",
+  "skipped": "Übersprungen: {{items}}",
+  "addToChat": "Zum Chat hinzufügen",
+  "discard": "Verwerfen",
+  "empty": "Es gab nichts zu teilen.",
+  "backToChat": "Zurück zum Chat",
+  "finishSetup": "Schließe die Einrichtung von OpenCode Mobile ab, um geteilte Inhalte hinzuzufügen.",
+  "continueSetup": "Einrichtung fortsetzen"
+}

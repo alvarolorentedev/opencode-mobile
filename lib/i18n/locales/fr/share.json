@@ -1,0 +1,17 @@
+{
+  "title": "Partagé avec OpenCode",
+  "subtitle": "Vérifiez ce contenu, choisissez un espace de travail, puis ajoutez-le au chat. Rien n'est envoyé tant que vous n'appuyez pas sur envoyer.",
+  "workspace": "Espace de travail",
+  "noWorkspace": "Aucun espace de travail sélectionné",
+  "chooseWorkspace": "Choisir",
+  "notConnected": "Non connecté à un serveur. Connectez-vous avant d'envoyer.",
+  "link": "Lien",
+  "attachments": "Pièces jointes",
+  "skipped": "Ignoré : {{items}}",
+  "addToChat": "Ajouter au chat",
+  "discard": "Ignorer",
+  "empty": "Il n'y avait rien à partager.",
+  "backToChat": "Retour au chat",
+  "finishSetup": "Terminez la configuration d'OpenCode Mobile pour ajouter du contenu partagé.",
+  "continueSetup": "Continuer la configuration"
+}

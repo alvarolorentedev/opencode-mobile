@@ -1,5 +1,6 @@
 import * as Clipboard from 'expo-clipboard';
 import * as Haptics from 'expo-haptics';
+import { usePathname } from 'expo-router';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Alert, Keyboard, Platform } from 'react-native';
@@ -43,7 +44,7 @@ export function useChatViewController() {
     diffTurns, executeCommand, isRefreshingDiffs, isRefreshingMessages,
     latestAssistantTurnUsage, promptError, refreshCurrentSession, refreshDiffs, rejectQuestion,
     replyToPermission, replyToQuestion, selectDiffMessage, selectedDiffMessageId, sendPrompt,
-    sendingState, setAutoApprove, setDiffScope, transcriptPaging,
+    sendingState, setAutoApprove, setDiffScope, transcriptPaging, sharedInput,
   } = useChat();
 
   const [draft, setDraft] = useState('');
@@ -182,6 +183,31 @@ export function useChatViewController() {
   useEffect(() => {
     attachmentsRef.current = attachments;
   }, [attachments]);
+
+  const pathname = usePathname();
+  const sharedPending = sharedInput.pending;
+  const clearShared = sharedInput.clearShared;
+  // Shared content lands in the composer as a reviewable draft; it is never
+  // submitted here. Only the chat route consumes it, so the share preview's
+  // Discard still clears a staged payload.
+  useEffect(() => {
+    if (!sharedPending || pathname !== '/') {
+      return;
+    }
+    const nextText = sharedPending.text || sharedPending.url || '';
+    if (nextText) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- shared content seeds the reviewable draft; never auto-sent.
+      setDraft((current) => (current.trim() ? current : nextText));
+    }
+    if (sharedPending.attachments.length > 0) {
+      setAttachments((current) => {
+        const existing = new Set(current.map((attachment) => attachment.uri));
+        const additions = sharedPending.attachments.filter((attachment) => !existing.has(attachment.uri));
+        return additions.length ? [...current, ...additions] : current;
+      });
+    }
+    clearShared();
+  }, [clearShared, pathname, sharedPending]);
 
   const latestAssistantEntry = useMemo(
     () => [...displayTranscript].reverse().find((entry) => entry.role === 'assistant' && entry.text.trim()),

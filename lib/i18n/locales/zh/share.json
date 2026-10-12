@@ -1,0 +1,17 @@
+{
+  "title": "已分享至 OpenCode",
+  "subtitle": "查看此内容，选择工作区，然后将其添加到聊天。在你点击发送之前不会发送任何内容。",
+  "workspace": "工作区",
+  "noWorkspace": "未选择工作区",
+  "chooseWorkspace": "选择",
+  "notConnected": "未连接到服务器。发送前请先连接。",
+  "link": "链接",
+  "attachments": "附件",
+  "skipped": "已跳过：{{items}}",
+  "addToChat": "添加到聊天",
+  "discard": "丢弃",
+  "empty": "没有可分享的内容。",
+  "backToChat": "返回聊天",
+  "finishSetup": "完成 OpenCode Mobile 的设置以添加分享内容。",
+  "continueSetup": "继续设置"
+}

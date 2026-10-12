@@ -197,6 +197,20 @@ const config: ExpoConfig = {
     'expo-notifications',
     'expo-background-task',
     'expo-web-browser',
+    [
+      // Receiving shares into the app. Android share intents are enabled here;
+      // the iOS Share Extension is deferred and tracked in
+      // docs/ios-share-parity.md. The JS side stages payloads in
+      // providers/use-share-state.ts and previews them in app/share.tsx.
+      'expo-sharing',
+      {
+        android: {
+          enabled: true,
+          singleShareMimeTypes: ['text/*', 'image/*', 'application/pdf'],
+          multipleShareMimeTypes: ['image/*'],
+        },
+      },
+    ],
     ...(isFossVariant ? [] : cameraPlugin),
     [
       // Exposes the shipped app languages to the OS so iOS/Android surface the

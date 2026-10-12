@@ -1,0 +1,137 @@
+import { useRouter } from 'expo-router';
+import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
+import { ScrollView, StyleSheet, Text as NativeText, View } from 'react-native';
+import { ActivityIndicator, Appbar, Button, Surface, Text } from 'react-native-paper';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+
+import { AttachmentStrip } from '@/components/chat/attachment-strip';
+import { WorkspacePicker } from '@/components/ui/workspace-picker';
+import { Colors, Fonts } from '@/constants/theme';
+import { useColorScheme } from '@/hooks/use-color-scheme';
+import { useChat, useConnection, useOnboarding, useProjects } from '@/providers/opencode-contexts';
+
+/**
+ * Preview surface for content shared into the app from the OS share sheet.
+ * Thin controller: the provider stages the payload, this screen only lets the
+ * user review it, pick a workspace, and add it to the composer. Nothing is
+ * submitted from here; the composer still owns the explicit send action.
+ */
+export default function ShareScreen() {
+  const { t } = useTranslation();
+  const router = useRouter();
+  const insets = useSafeAreaInsets();
+  const palette = Colors[useColorScheme() ?? 'light'];
+  const { isHydrated, onboardingCompleted } = useOnboarding();
+  const { connection, settings } = useConnection();
+  const { activeProject, addWorkspace, projects, selectProject } = useProjects();
+  const { sharedInput } = useChat();
+  const [pickerVisible, setPickerVisible] = useState(false);
+  const pending = sharedInput.pending;
+
+  const addToChat = () => router.replace('/(tabs)');
+  const discard = () => {
+    sharedInput.clearShared();
+    router.replace('/(tabs)');
+  };
+
+  const done = (
+    <View style={[styles.center, { backgroundColor: palette.background }]}>
+      <Surface style={[styles.panel, { backgroundColor: palette.surface }]} elevation={1}>
+        <Text variant="titleMedium" style={{ color: palette.text }}>{t('share:empty')}</Text>
+        <Button mode="contained" onPress={discard} style={styles.panelAction}>{t('share:backToChat')}</Button>
+      </Surface>
+    </View>
+  );
+
+  return (
+    <View style={[styles.screen, { backgroundColor: palette.background }]}>
+      <Appbar.Header statusBarHeight={insets.top} style={{ backgroundColor: palette.surface }} elevated>
+        <Appbar.Content title={t('share:title')} titleStyle={{ fontFamily: Fonts.display, fontWeight: '700' }} />
+        <Appbar.Action icon="close" accessibilityLabel={t('share:discard')} onPress={discard} />
+      </Appbar.Header>
+
+      {!isHydrated ? (
+        <View style={styles.center}><ActivityIndicator size="large" color={palette.tint} /></View>
+      ) : !onboardingCompleted ? (
+        <View style={styles.center}>
+          <Text variant="bodyLarge" style={[styles.centerCopy, { color: palette.muted }]}>{t('share:finishSetup')}</Text>
+          <Button mode="contained" onPress={() => router.replace('/onboarding')}>{t('share:continueSetup')}</Button>
+        </View>
+      ) : !pending ? done : (
+        <ScrollView contentContainerStyle={styles.content}>
+          <Text variant="bodyMedium" style={{ color: palette.muted }}>{t('share:subtitle')}</Text>
+
+          <Text variant="titleSmall" style={{ color: palette.text }}>{t('share:workspace')}</Text>
+          <View style={styles.workspaceRow}>
+            <NativeText numberOfLines={1} style={[styles.workspaceName, { color: palette.text }]}>
+              {activeProject?.label || t('share:noWorkspace')}
+            </NativeText>
+            <Button compact mode="outlined" icon="folder-swap-outline" onPress={() => setPickerVisible(true)}>
+              {t('share:chooseWorkspace')}
+            </Button>
+          </View>
+          <NativeText numberOfLines={1} style={{ color: palette.muted }}>{settings.serverUrl}</NativeText>
+          {connection.status !== 'connected' ? (
+            <Text variant="bodySmall" style={{ color: palette.warning }}>{t('share:notConnected')}</Text>
+          ) : null}
+
+          {pending.text ? (
+            <Surface style={[styles.block, { backgroundColor: palette.surface, borderColor: palette.border }]}>
+              <Text selectable style={{ color: palette.text }}>{pending.text}</Text>
+            </Surface>
+          ) : null}
+
+          {pending.url ? (
+            <Surface style={[styles.block, { backgroundColor: palette.surface, borderColor: palette.border }]}>
+              <Text variant="labelSmall" style={{ color: palette.muted }}>{t('share:link')}</Text>
+              <Text selectable style={{ color: palette.tint }}>{pending.url}</Text>
+            </Surface>
+          ) : null}
+
+          {pending.attachments.length > 0 ? (
+            <View style={styles.attachments}>
+              <Text variant="titleSmall" style={{ color: palette.text }}>{t('share:attachments')}</Text>
+              <AttachmentStrip attachments={pending.attachments} />
+            </View>
+          ) : null}
+
+          {pending.skipped.length > 0 ? (
+            <Text variant="bodySmall" style={{ color: palette.warning }}>
+              {t('share:skipped', { items: pending.skipped.join(', ') })}
+            </Text>
+          ) : null}
+
+          <View style={styles.footer}>
+            <Button mode="outlined" onPress={discard}>{t('share:discard')}</Button>
+            <Button mode="contained" icon="plus" onPress={addToChat}>{t('share:addToChat')}</Button>
+          </View>
+        </ScrollView>
+      )}
+
+      <WorkspacePicker
+        visible={pickerVisible}
+        onClose={() => setPickerVisible(false)}
+        projects={projects}
+        activePath={activeProject?.path}
+        onSelect={(path) => selectProject(path)}
+        onAdd={(directory) => addWorkspace(directory)}
+        testID="share-workspace-picker"
+      />
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  screen: { flex: 1 },
+  center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 24, gap: 16 },
+  centerCopy: { textAlign: 'center' },
+  panel: { width: '100%', maxWidth: 480, padding: 24, gap: 12, borderRadius: 16, alignItems: 'center' },
+  panelAction: { marginTop: 8 },
+  content: { padding: 20, gap: 12 },
+  workspaceRow: { flexDirection: 'row', alignItems: 'center', gap: 12, flexWrap: 'wrap' },
+  workspaceName: { flex: 1, minWidth: 120, fontWeight: '600' },
+  block: { borderWidth: 1, borderRadius: 12, padding: 12, gap: 4 },
+  attachments: { gap: 8 },
+  footer: { flexDirection: 'row', justifyContent: 'flex-end', flexWrap: 'wrap', gap: 10, marginTop: 8 },
+});

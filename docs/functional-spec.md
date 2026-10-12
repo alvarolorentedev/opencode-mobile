@@ -78,6 +78,27 @@ Behavior:
 - the link does not carry a server identity; it resolves against the currently configured server
 - only sessions that appear in the project's session list can be opened; archived sessions are not reachable this way
 
+### 3c. Receive Content Shared From Another App
+
+On Android, the app appears in the OS share sheet for text, links, images, and
+PDF documents and receives single or multiple items.
+
+Behavior:
+
+- the share stages the content in the provider and opens the share preview
+  (`/share`), which shows text, a link, attachment tiles, and any skipped items
+- the user can change the target workspace through the shared workspace picker
+  before adding the content
+- Add to chat seeds the composer draft and attachments for the active chat; the
+  user still presses send, so shared content is never submitted automatically
+- Discard clears the staged content; a staged payload also expires after ten
+  minutes
+- a share received before onboarding finishes shows a finish-setup state
+- files keep the existing 10 MB limit and URI allow-list, and the selected
+  model's attachment capability is still enforced at send
+- web cannot receive native share payloads; iOS support is deferred (see
+  [iOS share parity](ios-share-parity.md))
+
 ### 4. Send a Prompt
 
 The user can send:

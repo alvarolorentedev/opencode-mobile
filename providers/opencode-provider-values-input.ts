@@ -42,6 +42,7 @@ import type { useConversationState } from '@/providers/use-conversation-state';
 import type { usePromptLifecycle } from '@/providers/use-prompt-lifecycle';
 import type { useSessionActions } from '@/providers/use-session-actions';
 import type { useWorkspaceActions } from '@/providers/use-workspace-actions';
+import type { SharedInput } from '@/providers/use-share-state';
 
 type ActionInputs =
   ReturnType<typeof useWorkspaceActions> &
@@ -134,4 +135,5 @@ export type ProviderValuesInput = ActionInputs & {
   disconnectMcpServer: (name: string) => Promise<void>;
   setMcpServerEnabled: (name: string, enabled: boolean) => Promise<void>;
   mcpOAuth: import('./opencode-provider-types').McpContextValue['mcpOAuth'];
+  sharedInput: SharedInput;
 };
