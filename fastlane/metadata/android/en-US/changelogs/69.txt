@@ -1,0 +1,4 @@
+- Share into the app: send text or files from other apps, with a preview before posting.
+- Smarter notifications: attention alerts and clearer failure reporting.
+- More reliable terminal and connection handling.
+- Purchase flow fixes for Google Play and the App Store.
