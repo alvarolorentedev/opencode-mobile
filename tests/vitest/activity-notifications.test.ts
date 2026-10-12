@@ -43,7 +43,7 @@ function assistant(error?: string, parts: any[] = []) {
 }
 function props() {
   return { catalogClient: {} as any, settings: { serverUrl: 'https://server', username: '', password: '', directory: '' },
-    contract: 'v1' as const, connectionScope: 'scope', connected: true, currentSessionId: 'one', sessions: [session('one')], sendingState: { active: false } };
+    contract: 'v2' as const, connectionScope: 'scope', connected: true, currentSessionId: 'one', sessions: [session('one')], sendingState: { active: false } };
 }
 
 beforeEach(() => {
@@ -88,8 +88,8 @@ describe('provider observer', () => {
     // Exercise the actual service too, with deterministic SDK clients.
     h.read.mockImplementation(async () => ({ sessions: h.snapshot.sessions, statuses: h.snapshot.statuses }));
     h.build.mockImplementation(() => ({
-      permission: { list: async () => ({ data: [...h.snapshot.blocked].map((sessionID) => ({ sessionID })) }) },
-      question: { list: async () => ({ data: [] }) },
+      __opencode: { contract: 'v2', directory: '/repo' },
+      api: { permission: { request: { list: async () => ({ data: [...h.snapshot.blocked].map((sessionID) => ({ id: `permission-${sessionID}`, sessionID, action: 'edit', resources: [], save: [] })) }) } }, form: { list: async () => ({ data: [] }) } },
       messages: async (id: string) => h.snapshot.messages[id] ?? [],
       promptInbox: { list: async (id: string) => h.snapshot.queued.has(id) ? [{ id: 'queued' }] : [] },
     }));
@@ -138,11 +138,11 @@ describe('provider observer', () => {
   it('preserves event-only retries until a terminal event clears them', async () => {
     await mount();
     h.snapshot.statuses.one = { type: 'idle' };
-    h.runtime.value({ type: 'session.status', properties: { sessionID: 'one', status: { type: 'retry', attempt: 1, message: 'Retry', next: Date.now() + 60000 } } });
+    h.runtime.value({ type: 'session.retry.scheduled', data: { sessionID: 'one', attempt: 1, error: { message: 'Retry' }, at: Date.now() + 60000 } });
     h.runtime.fire(250); await h.runtime.settle();
     expect(h.updates.at(-1)).toMatchObject({ active: true, action: 'notifications:activity.retrying' });
     expect(h.cleared).toHaveLength(0);
-    h.runtime.value({ type: 'session.idle', properties: { sessionID: 'one' } });
+    h.runtime.value({ type: 'session.execution.succeeded', data: { sessionID: 'one' } });
     h.runtime.fire(250); await h.runtime.settle();
     expect(h.updates.at(-1).active).toBe(false);
   });
@@ -163,10 +163,10 @@ describe('provider observer', () => {
     const key = h.updates.at(-1).key; h.dismissed = key;
     await poll();
     h.snapshot.statuses.one = { type: 'idle' }; h.snapshot.messages.one = [assistant('APIError')];
-    h.runtime.value({ type: 'session.idle', properties: { sessionID: 'one' } }); h.runtime.fire(250); await h.runtime.settle();
+    h.runtime.value({ type: 'session.execution.succeeded', data: { sessionID: 'one' } }); h.runtime.fire(250); await h.runtime.settle();
     expect(h.updates.at(-1)).toMatchObject({ active: false, action: 'notifications:activity.failed', key });
     h.snapshot = snapshot(['new']);
-    h.runtime.value({ type: 'session.status', properties: { sessionID: 'new', status: { type: 'busy' } } }); h.runtime.fire(250); await h.runtime.settle();
+    h.runtime.value({ type: 'session.execution.started', data: { sessionID: 'new' } }); h.runtime.fire(250); await h.runtime.settle();
     expect(h.updates.at(-1).key).not.toBe(key); expect(h.updates.at(-1).sessionId).toBe('new');
     h.runtime.unmount();
   });
@@ -193,7 +193,7 @@ describe('provider observer', () => {
 describe('activity service', () => {
   it('rejects partial interaction reads so an idle status cannot hide a blocker', async () => {
     h.read.mockResolvedValue({ sessions: [session('one')], statuses: {} });
-    h.build.mockReturnValue({ permission: { list: async () => { throw new Error('unavailable'); } }, question: { list: async () => ({ data: [] }) } });
+    h.build.mockReturnValue({ __opencode: { directory: '/repo' }, api: { permission: { request: { list: async () => { throw new Error('unavailable'); } } }, form: { list: async () => ({ data: [] }) } } });
     await expect(readActivitySnapshot({} as any, props().settings, 'v1', new Set())).rejects.toThrow('unavailable');
   });
 });

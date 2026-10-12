@@ -7,10 +7,22 @@ import { setTimeout as sleep } from 'node:timers/promises';
 // Existing flows assume the app boots straight into chat. Seed a completed
 // onboarding marker so first-run setup is skipped; the dedicated onboarding
 // spec intentionally omits this so the assistant is exercised.
-test.beforeEach(async ({ page }) => {
-  await page.addInitScript(() => {
+const compatibilityTitles = [
+  'sessions archive and restore without deletion',
+  'idle chats stay active and archived cards restore and continue the same session',
+  'archived cards restore sessions in their own workspace and keep errors retryable',
+  'V1 providers retain API-key login alongside OAuth metadata',
+  'settings do not suggest a duplicated /api base when the API prefix is already set',
+  'composer exposes direct approvals, agent selection and thinking in the model picker without losing drafts',
+  'workspace files save through a conflict-checked VCS patch',
+];
+const usesCompatibility = (title) => compatibilityTitles.includes(title) || title.includes('v1 compatibility');
+const backendOrigin = () => `http://127.0.0.1:${usesCompatibility(test.info().title) ? 44097 : 44096}`;
+test.beforeEach(async ({ page }, info) => {
+  await page.addInitScript((legacy) => {
     globalThis.localStorage.setItem('opencode-mobile.onboarding-version', JSON.stringify({ version: 1 }));
-  });
+    if (legacy) globalThis.localStorage.setItem('opencode-mobile.settings', JSON.stringify({ serverUrl: 'http://127.0.0.1:44097', username: '', directory: '' }));
+  }, usesCompatibility(info.title));
 });
 
 // Fixed ports collide with anything else bound on the CI runner. Ask the OS for
@@ -28,7 +40,7 @@ async function getFreePort() {
 }
 
 async function resetScenario(request, scenario) {
-  const response = await request.post('http://127.0.0.1:44096/__control/reset', {
+  const response = await request.post(`${backendOrigin()}/__control/reset`, {
     data: { scenario },
   });
 
@@ -74,7 +86,7 @@ async function chooseDiffSource(page, source) {
 }
 
 function spawnV2Server(port, scenario = 'happy-path') {
-  return spawn(process.execPath, ['tests/fake-opencode/server-v2.mjs'], {
+  return spawn(process.execPath, ['tests/fake-opencode/server.mjs'], {
     cwd: process.cwd(),
     env: {
       ...process.env,
@@ -87,7 +99,7 @@ function spawnV2Server(port, scenario = 'happy-path') {
 
 // A second V1 server with its own state, used by the multi-connection tests.
 function spawnV1Server(port, scenario = 'happy-path') {
-  return spawn(process.execPath, ['tests/fake-opencode/server.mjs'], {
+  return spawn(process.execPath, ['tests/fake-opencode/server-v1.mjs'], {
     cwd: process.cwd(),
     env: {
       ...process.env,
@@ -563,7 +575,7 @@ for (const scenario of ['permission', 'question']) {
   test(`incoming ${scenario} dismisses changes and its source picker`, async ({ page, request }) => {
     await resetScenario(request, scenario);
     await openReadyChat(page);
-    const promptRequest = page.waitForRequest((request) => request.method() === 'POST' && request.url().includes('/prompt_async'));
+    const promptRequest = page.waitForRequest((request) => request.method() === 'POST' && request.url().endsWith('/prompt'));
     await sendPrompt(page, 'Create changes after resolving a blocker');
     const promptUrl = (await promptRequest).url();
     if (scenario === 'permission') {
@@ -576,7 +588,7 @@ for (const scenario of ['permission', 'question']) {
     await page.getByTestId('chat-changes-chip').click();
     await page.getByRole('button', { name: /Change files changed source/ }).click();
     await expect(page.getByTestId('diff-source-overlay')).toBeVisible();
-    const response = await request.post(promptUrl, { data: { parts: [{ type: 'text', text: 'Request another blocker' }] } });
+    const response = await request.post(promptUrl, { data: { text: 'Request another blocker' } });
     expect(response.ok()).toBeTruthy();
     await expect(page.getByTestId('changes-overlay')).toHaveCount(0);
     await expect(page.getByTestId('diff-source-overlay')).toHaveCount(0);
@@ -649,7 +661,7 @@ test('assistant questions unblock the agent flow', async ({ page, request }) => 
   await expect(page.getByText('Include broader improvements.', { exact: true })).toBeVisible();
   await page.getByText('Minimal', { exact: true }).click();
   await page.getByText('Submit answer', { exact: true }).click();
-  await expect(page.getByText(/selected Minimal/).first()).toBeVisible({ timeout: 20_000 });
+  await expect(page.getByText(/"approach":"minimal"/).first()).toBeVisible({ timeout: 20_000 });
 });
 
 test('multi-step questions keep drafts across dismissal and submit conditional custom answers', async ({ page, request }) => {
@@ -674,7 +686,7 @@ test('multi-step questions keep drafts across dismissal and submit conditional c
   await page.getByRole('button', { name: 'Next' }).click();
   await expect(page.getByRole('dialog').getByRole('textbox')).toHaveValue('Needed for both screens');
   await page.getByRole('button', { name: 'Submit answer' }).click();
-  await expect(page.getByText(/selected Expanded, Chat, Needed for both screens/).first()).toBeVisible({ timeout: 20_000 });
+  await expect(page.getByText(/question resolved.*expanded.*chat.*Needed for both screens/).first()).toBeVisible({ timeout: 20_000 });
 });
 
 test('question submission failure keeps the answer and allows retry', async ({ page, request }) => {
@@ -684,9 +696,9 @@ test('question submission failure keeps the answer and allows retry', async ({ p
   await expect(page.getByText('Which implementation should be used?', { exact: true })).toBeVisible({ timeout: 15_000 });
   await page.getByText('Minimal', { exact: true }).click();
   await page.getByRole('button', { name: 'Submit answer' }).click();
-  await expect(page.getByRole('dialog').getByText(/503 Service Unavailable/)).toBeVisible();
+  await expect(page.getByRole('dialog').getByText(/503/)).toBeVisible();
   await page.getByRole('button', { name: 'Submit answer' }).click();
-  await expect(page.getByText(/Finished: selected Minimal/).first()).toBeVisible({ timeout: 20_000 });
+  await expect(page.getByText(/Finished: question resolved.*minimal/).first()).toBeVisible({ timeout: 20_000 });
 });
 
 test('sessions can be renamed and require confirmation before deletion', async ({ page, request }) => {
@@ -794,7 +806,7 @@ test('idle chats stay active and archived cards restore and continue the same se
   await openReadyChat(page);
   await sendPrompt(page, 'Continue this idle chat');
   await expect(page.getByText(/Finished: Continue this idle chat/).first()).toBeVisible({ timeout: 20_000 });
-  const sessions = await (await request.get('http://127.0.0.1:44096/session')).json();
+  const sessions = await (await request.get(`${backendOrigin()}/session`)).json();
   const session = sessions.find((entry) => entry.title === 'Continue this idle chat');
   expect(session.time.archived).toBeFalsy();
   await openChatLibrary(page);
@@ -811,15 +823,15 @@ test('idle chats stay active and archived cards restore and continue the same se
   await expect(page.getByText(/Finished: Continue this idle chat/).first()).toBeVisible();
   await sendPrompt(page, 'Second turn in the restored chat');
   await expect(page.getByText(/Finished: Second turn in the restored chat/).first()).toBeVisible({ timeout: 20_000 });
-  const history = await (await request.get(`http://127.0.0.1:44096/session/${session.id}/message`)).json();
+  const history = await (await request.get(`${backendOrigin()}/session/${session.id}/message`)).json();
   expect(history.filter((entry) => entry.info.role === 'user')).toHaveLength(2);
 });
 
 test('archived cards restore sessions in their own workspace and keep errors retryable', async ({ page, request }) => {
   await resetScenario(request, 'happy-path');
   const directory = '/workspace/secondary-project';
-  const session = await (await request.post(`http://127.0.0.1:44096/session?directory=${encodeURIComponent(directory)}`, { data: { title: 'Archived elsewhere' } })).json();
-  await request.patch(`http://127.0.0.1:44096/session/${session.id}`, { data: { time: { archived: 100 } } });
+  const session = await (await request.post(`${backendOrigin()}/session?directory=${encodeURIComponent(directory)}`, { data: { title: 'Archived elsewhere' } })).json();
+  await request.patch(`${backendOrigin()}/session/${session.id}`, { data: { time: { archived: 100 } } });
   await openReadyChat(page);
   await openChatLibrary(page);
   await page.getByRole('button', { name: 'Archived', exact: true }).click();
@@ -838,7 +850,7 @@ test('archived cards restore sessions in their own workspace and keep errors ret
   expect(updates).toEqual([directory, directory]);
   await sendPrompt(page, 'Continue restored workspace session');
   await expect(page.getByText(/Finished: Continue restored workspace session/).first()).toBeVisible({ timeout: 20_000 });
-  const history = await (await request.get(`http://127.0.0.1:44096/session/${session.id}/message`)).json();
+  const history = await (await request.get(`${backendOrigin()}/session/${session.id}/message`)).json();
   expect(history.some((entry) => entry.info.role === 'user')).toBeTruthy();
 });
 
@@ -963,7 +975,7 @@ test('terminal streams input and output over the PTY websocket', async ({ page, 
   await page.getByTestId('terminal-selector').click();
   page.once('dialog', (dialog) => dialog.accept());
   await page.getByRole('button', { name: new RegExp(`^Close Terminal, ${id.slice(0, 8)}$`) }).click();
-  await expect(page.getByText(/DELETE .*\/pty\/pty-1 → 500 Internal Server Error/)).toBeVisible();
+  await expect(page.getByText(/OpenCode request failed \(500\)/)).toBeVisible();
   await page.getByTestId('terminal-picker').getByRole('button', { name: 'Close', exact: true }).click();
   await expect(output.locator('.xterm-accessibility-tree')).toContainText('ran: echo web');
   await page.getByTestId('terminal-selector').click();
@@ -1068,19 +1080,19 @@ test('polling fallback still finishes the flow when SSE is unavailable', async (
 
 test('deep links switch projects and open a specific session', async ({ page, request }) => {
   await resetScenario(request, 'happy-path');
-  const fakeServer = 'http://127.0.0.1:44096';
+  const fakeServer = backendOrigin();
   const projectPath = '/workspace/secondary-project';
 
-  const createResponse = await request.post(`${fakeServer}/session?directory=${encodeURIComponent(projectPath)}`, {
-    data: { title: 'Deep Link Target Session' },
+  const createResponse = await request.post(`${fakeServer}/api/session`, {
+    data: { title: 'Deep Link Target Session', location: { directory: projectPath } },
   });
   expect(createResponse.ok()).toBeTruthy();
-  const created = await createResponse.json();
+  const created = (await createResponse.json()).data;
   const sessionId = created.id;
   expect(sessionId).toBe('session-1');
 
-  await request.post(`${fakeServer}/session/${sessionId}/prompt_async`, {
-    data: { parts: [{ type: 'text', text: 'Open me through a deep link' }] },
+  await request.post(`${fakeServer}/api/session/${sessionId}/prompt`, {
+    data: { text: 'Open me through a deep link' },
   });
   await sleep(1500);
   await openReadyChat(page);
@@ -1102,9 +1114,9 @@ test('deep links switch projects and open a specific session', async ({ page, re
 
 test('deep links report sessions that are missing', async ({ page, request }) => {
   await resetScenario(request, 'happy-path');
-  const fakeServer = 'http://127.0.0.1:44096';
+  const fakeServer = backendOrigin();
 
-  await request.post(`${fakeServer}/session`, {
+  await request.post(`${fakeServer}/api/session`, {
     data: { title: 'Existing Session' },
   });
 
@@ -1119,7 +1131,7 @@ test('deep links report sessions that are missing', async ({ page, request }) =>
 test('settings explain root-vs-api mismatches and reconnect through a prefixed API base URL', async ({ page, request }) => {
   await resetScenario(request, 'happy-path');
   const port = await getFreePort();
-  const server = spawn(process.execPath, ['tests/fake-opencode/server.mjs'], {
+  const server = spawn(process.execPath, ['tests/fake-opencode/server-v1.mjs'], {
     cwd: process.cwd(),
     env: {
       ...process.env,
@@ -1159,16 +1171,16 @@ test('settings do not suggest a duplicated /api base when the API prefix is alre
   await goToTab(page, 'Settings');
   await ensureConnectionSection(page);
 
-  await setActiveServerUrl(page, 'http://127.0.0.1:44096/api');
+  await setActiveServerUrl(page, 'http://127.0.0.1:44097/api');
   await reconnectActiveConnection(page);
-  await expect(page.getByText(/OpenCode endpoint not found at http:\/\/127\.0\.0\.1:44096\/api\b/).first()).toBeVisible({ timeout: 15_000 });
+  await expect(page.getByText(/OpenCode endpoint not found at http:\/\/127\.0\.0\.1:44097\/api\b/).first()).toBeVisible({ timeout: 15_000 });
   await expect(page.getByText(/OpenCode 1\.x and 2\.x servers/).first()).toBeVisible();
-  await expect(page.getByText(/http:\/\/127\.0\.0\.1:44096\/api\/api/)).toHaveCount(0);
+  await expect(page.getByText(/http:\/\/127\.0\.0\.1:44097\/api\/api/)).toHaveCount(0);
 });
 
 test('a 1.x server exposing /api compatibility routes still connects as 1.x', async ({ page, request }) => {
   const port = await getFreePort();
-  const server = spawn(process.execPath, ['tests/fake-opencode/server.mjs'], {
+  const server = spawn(process.execPath, ['tests/fake-opencode/server-v1.mjs'], {
     cwd: process.cwd(),
     env: {
       ...process.env,
@@ -1266,14 +1278,14 @@ for (const providerName of ['OpenCode Go', 'OpenRouter']) {
       await expect(page.getByText(`Configure ${providerName}`)).not.toBeVisible({ timeout: 15_000 });
       await expect(page.getByRole('button', { name: `Remove ${providerName} credentials`, exact: true })).toBeVisible();
       await page.getByRole('button', { name: new RegExp(`${providerName} [0-9]+ of`) }).click();
-      await expect(page.getByText(`${providerName} coding model`, { exact: true })).toBeVisible();
+      await expect(page.getByText('Auto', { exact: true })).toBeVisible();
       // A reconnect must rediscover the saved connection rather than relying
-      // on the adapter's synthetic config.update response.
+      // on local UI state.
       await page.reload();
       await ensureAiSection(page);
       await expect(page.getByRole('button', { name: `Remove ${providerName} credentials`, exact: true })).toBeVisible();
       await page.getByRole('button', { name: new RegExp(`${providerName} [0-9]+ of`) }).click();
-      await expect(page.getByText(`${providerName} coding model`, { exact: true })).toBeVisible();
+      await expect(page.getByText('Auto', { exact: true })).toBeVisible();
       // Existing connections can also replace a key without removing the
       // provider first (including providers connected through environment).
       await page.getByRole('button', { name: new RegExp(`${providerName}$`) }).click();
@@ -1415,7 +1427,7 @@ test('OpenCode 2 questions unblock the agent flow', async ({ page, request }) =>
     await page.getByText('Submit answer', { exact: true }).click();
     await expect(page.getByText(/question resolved/).first()).toBeVisible({ timeout: 20_000 });
     // The submitted label is translated back to the form option's value, not the label.
-    await expect(page.getByText(/"q0":"minimal"/).first()).toBeVisible({ timeout: 20_000 });
+    await expect(page.getByText(/"approach":"minimal"/).first()).toBeVisible({ timeout: 20_000 });
   } finally {
     server.kill('SIGTERM');
   }
@@ -1498,21 +1510,21 @@ test('favorites open sessions in the current workspace', async ({ page, request 
 
 test('favorites switch projects and open cross-workspace sessions', async ({ page, request }) => {
   await resetScenario(request, 'happy-path');
-  const fakeServer = 'http://127.0.0.1:44096';
+  const fakeServer = backendOrigin();
   const projectPath = '/workspace/secondary-project';
 
-  const createResponse = await request.post(`${fakeServer}/session?directory=${encodeURIComponent(projectPath)}`, {
-    data: { title: 'Favorite Cross Workspace Session' },
+  const createResponse = await request.post(`${fakeServer}/api/session`, {
+    data: { title: 'Favorite Cross Workspace Session', location: { directory: projectPath } },
   });
   expect(createResponse.ok()).toBeTruthy();
-  const { id: sessionId } = await createResponse.json();
+  const { id: sessionId } = (await createResponse.json()).data;
 
-  await request.post(`${fakeServer}/session/${sessionId}/prompt_async`, {
-    data: { parts: [{ type: 'text', text: 'Open me through a favorite' }] },
+  await request.post(`${fakeServer}/api/session/${sessionId}/prompt`, {
+    data: { text: 'Open me through a favorite' },
   });
   await expect.poll(async () => {
-    const response = await request.get(`${fakeServer}/session/${sessionId}/message`);
-    return (await response.json()).some((entry) => entry.parts.some((part) => part.type === 'text' && part.text.startsWith('Finished: Open me through a favorite')));
+    const response = await request.get(`${fakeServer}/api/session/${sessionId}/message`);
+    return (await response.json()).data.some((entry) => (entry.content ?? []).some((part) => part.type === 'text' && part.text.startsWith('Finished: Open me through a favorite')));
   }, { timeout: 20_000 }).toBe(true);
   await openReadyChat(page);
 
@@ -1550,7 +1562,7 @@ test('favorites report sessions that are missing', async ({ page, request }) => 
   await chatAction(page, 'Favorite vanishing session', 'Favorite');
   await expect(page.getByText('Favorites', { exact: true })).toBeVisible();
 
-  const deleteResponse = await request.delete('http://127.0.0.1:44096/session/session-1');
+  const deleteResponse = await request.delete('http://127.0.0.1:44096/api/session/session-1');
   expect(deleteResponse.ok()).toBeTruthy();
 
   await page.getByTestId('chat-library').getByRole('button', { name: 'Open Favorite vanishing session' }).first().click();
@@ -1561,17 +1573,17 @@ test('favorites report sessions that are missing', async ({ page, request }) => 
 
 test('rapid favorite taps across workspaces settle on the last target', async ({ page, request }) => {
   await resetScenario(request, 'happy-path');
-  const fakeServer = 'http://127.0.0.1:44096';
+  const fakeServer = backendOrigin();
   const projectPath = '/workspace/secondary-project';
 
-  const createResponse = await request.post(`${fakeServer}/session?directory=${encodeURIComponent(projectPath)}`, {
-    data: { title: 'Rapid Tap Secondary' },
+  const createResponse = await request.post(`${fakeServer}/api/session`, {
+    data: { title: 'Rapid Tap Secondary', location: { directory: projectPath } },
   });
   expect(createResponse.ok()).toBeTruthy();
-  const { id: secondarySessionId } = await createResponse.json();
+  const { id: secondarySessionId } = (await createResponse.json()).data;
 
-  await request.post(`${fakeServer}/session/${secondarySessionId}/prompt_async`, {
-    data: { parts: [{ type: 'text', text: 'Secondary rapid tap target' }] },
+  await request.post(`${fakeServer}/api/session/${secondarySessionId}/prompt`, {
+    data: { text: 'Secondary rapid tap target' },
   });
   await sleep(1500);
   await openReadyChat(page);
@@ -1605,16 +1617,16 @@ test('rapid favorite taps across workspaces settle on the last target', async ({
 
 test('chat library lists recently used sessions from other workspaces and switches on tap', async ({ page, request }) => {
   await resetScenario(request, 'happy-path');
-  const fakeServer = 'http://127.0.0.1:44096';
+  const fakeServer = backendOrigin();
   const projectPath = '/workspace/secondary-project';
 
-  const createResponse = await request.post(`${fakeServer}/session?directory=${encodeURIComponent(projectPath)}`, {
-    data: { title: 'Recent Secondary Session' },
+  const createResponse = await request.post(`${fakeServer}/api/session`, {
+    data: { title: 'Recent Secondary Session', location: { directory: projectPath } },
   });
   expect(createResponse.ok()).toBeTruthy();
-  const { id: sessionId } = await createResponse.json();
-  await request.post(`${fakeServer}/session/${sessionId}/prompt_async`, {
-    data: { parts: [{ type: 'text', text: 'Recent secondary work' }] },
+  const { id: sessionId } = (await createResponse.json()).data;
+  await request.post(`${fakeServer}/api/session/${sessionId}/prompt`, {
+    data: { text: 'Recent secondary work' },
   });
   await sleep(1200);
 
@@ -1639,16 +1651,16 @@ test('chat library lists recently used sessions from other workspaces and switch
 
 test('chat library lists running sessions from other workspaces', async ({ page, request }) => {
   await resetScenario(request, 'permission');
-  const fakeServer = 'http://127.0.0.1:44096';
+  const fakeServer = backendOrigin();
   const projectPath = '/workspace/secondary-project';
 
-  const createResponse = await request.post(`${fakeServer}/session?directory=${encodeURIComponent(projectPath)}`, {
-    data: { title: 'Running Secondary Session' },
+  const createResponse = await request.post(`${fakeServer}/api/session`, {
+    data: { title: 'Running Secondary Session', location: { directory: projectPath } },
   });
   expect(createResponse.ok()).toBeTruthy();
-  const { id: sessionId } = await createResponse.json();
-  await request.post(`${fakeServer}/session/${sessionId}/prompt_async`, {
-    data: { parts: [{ type: 'text', text: 'Running secondary work' }] },
+  const { id: sessionId } = (await createResponse.json()).data;
+  await request.post(`${fakeServer}/api/session/${sessionId}/prompt`, {
+    data: { text: 'Running secondary work' },
   });
   await sleep(500);
 
@@ -1887,11 +1899,11 @@ test('starter examples fill without sending and library empty copy follows visib
 
 test('workspace shows changed files, deleted scope, search states and failure recovery', async ({ page, request }) => {
   await resetScenario(request, 'happy-path');
-  await page.route('**/file/status?**', (route) => route.fulfill({ json: [
-    { path: 'src/demo.ts', status: 'modified', added: 2, removed: 1 },
-    { path: 'README.md', status: 'added', added: 1, removed: 0 },
-    { path: 'removed.ts', status: 'deleted', added: 0, removed: 1 },
-  ] }));
+  await page.route('**/api/vcs/status?**', (route) => route.fulfill({ json: { location: { directory: '/workspace/demo-project' }, data: [
+    { file: 'src/demo.ts', status: 'modified', additions: 2, deletions: 1 },
+    { file: 'README.md', status: 'added', additions: 1, deletions: 0 },
+    { file: 'removed.ts', status: 'deleted', additions: 0, deletions: 1 },
+  ] } }));
   await openReadyChat(page);
   await goToTab(page, 'Workspace');
   await expect(page.getByText('Deleted file content is unavailable.', { exact: false })).toBeVisible();
@@ -1906,11 +1918,11 @@ test('workspace shows changed files, deleted scope, search states and failure re
   await expect(search).toBeFocused();
   await search.press('Enter');
   await expect(page.getByText('No files match “no-match-zz”.')).toBeVisible();
-  await page.route('**/find/file?**', (route) => route.fulfill({ status: 500, json: { message: 'Search unavailable' } }));
+  await page.route('**/api/fs/find?**', (route) => route.fulfill({ status: 500, json: { message: 'Search unavailable' } }));
   await search.fill('demo');
   await page.getByRole('button', { name: 'Search', exact: true }).click();
   await expect(page.getByText(/Search unavailable|500|search workspace files/i).first()).toBeVisible();
-  await page.unroute('**/find/file?**');
+  await page.unroute('**/api/fs/find?**');
   await page.getByRole('button', { name: 'Search', exact: true }).click();
   await expect(page.getByText('Results for “demo”')).toBeVisible();
 });
@@ -1992,7 +2004,7 @@ for (const contract of ['v1', 'v2']) {
       await page.getByTestId('workspace-entry-src').click();
       await page.getByTestId('workspace-entry-src/demo.ts').click();
       await expect(page.getByText(/export const workspace = "\/workspace\/secondary-project"/)).toBeVisible();
-      await expect(page.getByRole('button', { name: 'Edit', exact: true })).toHaveCount(contract === 'v1' ? 1 : 0);
+      await expect(page.getByRole('button', { name: 'Edit', exact: true })).toHaveCount(1);
       await page.getByLabel('Close file').click();
       await page.getByRole('button', { name: 'Change workspace' }).click();
       await page.getByTestId('workspace-worktree-add').click();
@@ -2040,7 +2052,7 @@ test('workspace editor confirms discarded edits and keeps conflict failures reco
   page.once('dialog', (dialog) => dialog.dismiss());
   await page.getByLabel('Close file').click();
   await expect(page.getByTestId('workspace-file-editor')).toHaveValue('unsaved draft');
-  await page.route('**/file/content?**', (route) => route.fulfill({ json: { type: 'text', content: 'changed on server' } }));
+  await page.route('**/api/fs/read/**', (route) => route.fulfill({ contentType: 'text/plain', body: 'changed on server' }));
   await page.getByTestId('workspace-file-save-button').click();
   await expect(page.getByText('The file changed on the server. Reopen it before saving.')).toBeVisible();
   await expect(page.getByTestId('workspace-file-editor')).toHaveValue('unsaved draft');
@@ -2048,3 +2060,70 @@ test('workspace editor confirms discarded edits and keeps conflict failures reco
   await page.getByLabel('Close file').click();
   await expect(page.getByTestId('workspace-entry-src/demo.ts')).toBeVisible();
 });
+
+for (const scenario of ['happy-path', 'permission', 'question', 'stream-disconnect']) {
+  test(`v1 compatibility retains the ${scenario} prompt lifecycle`, async ({ page, request }) => {
+    await resetScenario(request, scenario);
+    await openReadyChat(page);
+    await sendPrompt(page, 'Compatibility prompt');
+    if (scenario === 'permission') await page.getByRole('button', { name: 'Allow once', exact: true }).click();
+    if (scenario === 'question') {
+      await page.getByText('Minimal', { exact: true }).click();
+      await page.getByRole('button', { name: 'Submit answer', exact: true }).click();
+    }
+    await expect(page.getByText(/Finished:/).first()).toBeVisible({ timeout: 40_000 });
+    await page.reload();
+    await expect(page.getByText(/Finished:/).first()).toBeVisible({ timeout: 30_000 });
+  });
+}
+
+test('v2 file saves reject conflicts and retain drafts on write failure', async ({ page, request }) => {
+  await resetScenario(request, 'happy-path'); await openReadyChat(page);
+  await goToTab(page, 'Workspace');
+  await page.getByTestId('workspace-file-search').fill('demo');
+  await page.getByRole('button', { name: 'Search', exact: true }).click();
+  await page.getByText('src/demo.ts', { exact: true }).last().click();
+  await page.getByText('Edit', { exact: true }).click();
+  const draft = 'export const demo = "V2 😀";\n';
+  await page.getByTestId('workspace-file-editor').fill(draft);
+  let writes = 0;
+  await page.route('**/api/experimental/fs/write?*', async (route) => {
+    writes++; await route.fulfill({ status: 503, json: { error: 'Write offline' } });
+  });
+  await page.getByTestId('workspace-file-save-button').click();
+  await expect(page.getByText(/Write offline/)).toBeVisible();
+  await expect(page.getByTestId('workspace-file-editor')).toHaveValue(draft);
+  expect(writes).toBe(1);
+  await page.unroute('**/api/experimental/fs/write?*');
+  await page.route('**/api/fs/read/**', (route) => route.fulfill({ status: 200, contentType: 'text/plain', body: 'External edit' }));
+  await page.getByTestId('workspace-file-save-button').click();
+  await expect(page.getByText(/changed on the server/)).toBeVisible();
+  await expect(page.getByTestId('workspace-file-editor')).toHaveValue(draft);
+  expect(writes).toBe(1);
+  await page.unroute('**/api/fs/read/**');
+  await page.getByTestId('workspace-file-save-button').click();
+  await expect(page.getByTestId('workspace-file-editor')).not.toBeVisible();
+  const result = await request.get(`${backendOrigin()}/api/fs/read/src/demo.ts?location[directory]=/workspace/demo-project`);
+  expect(await result.text()).toBe(draft);
+});
+
+for (const mode of ['auto', 'code']) {
+  test(`v2 MCP OAuth completes through ${mode} authorization`, async ({ page, request }) => {
+    await resetScenario(request, 'happy-path'); await openReadyChat(page);
+    await goToTab(page, 'Settings'); await page.getByText('Advanced', { exact: true }).click();
+    await page.getByText('Remote', { exact: true }).click();
+    const name = `tools-${mode}`;
+    await page.getByTestId('settings-mcp-name').fill(name);
+    await page.getByTestId('settings-mcp-target').fill('https://tools.test/mcp');
+    await page.getByTestId('settings-mcp-add').click();
+    await expect(page.getByText(name, { exact: true })).toBeVisible();
+    await page.getByRole('button', { name: 'OAuth', exact: true }).click();
+    await page.getByTestId('settings-provider-save-button').click();
+    if (mode === 'code') {
+      await page.getByTestId('provider-oauth-code-input').fill('authorization-code');
+      await page.getByTestId('provider-oauth-complete-button').click();
+    }
+    await expect(page.getByText(`Configure ${name}`, { exact: true })).not.toBeVisible({ timeout: 15_000 });
+    await expect.poll(async () => (await (await request.get(`${backendOrigin()}/__control/state`)).json()).mcpStatuses[name].status).toBe('connected');
+  });
+}

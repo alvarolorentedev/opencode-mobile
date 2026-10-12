@@ -1,4 +1,5 @@
-import type { GlobalEvent } from '@opencode-ai/sdk/v2/client';
+import { getEventSessionStatus } from '@/lib/opencode/events';
+import type { OpencodeEvent } from '@/lib/opencode/events';
 import { useCallback, useEffect, useLayoutEffect, useRef } from 'react';
 import { AppState } from 'react-native';
 import * as Notifications from 'expo-notifications';
@@ -56,7 +57,7 @@ export function useActivityNotifications(input: Input) {
     async function publish(activity: SessionActivity, count: number) {
       if (cancelled) return false;
       return updateActivityNotification({
-        sessionId: activity.session.id, projectPath: activity.session.directory, connectionScope: scope,
+        sessionId: activity.session.id, projectPath: activity.session.directory || '', connectionScope: scope,
         title: activity.session.title || i18n.t('notifications:activity.untitled'),
         action: action(activity), count, key: `${runPrefix}:${generation}`, active: activity.active,
       });
@@ -112,7 +113,7 @@ export function useActivityNotifications(input: Input) {
           watched.add(session.id);
           if (!tracked.has(session.id)) {
             const record = await trackPendingTaskFinishedNotification({
-              sessionId: session.id, sessionTitle: session.title, projectPath: session.directory, connectionScope: scope,
+              sessionId: session.id, sessionTitle: session.title, projectPath: session.directory || '', connectionScope: scope,
               settings: { serverUrl: current.settings.serverUrl, username: current.settings.username }, requestedAt: Date.now(),
             }, true);
             if (cancelled) return;
@@ -144,7 +145,7 @@ export function useActivityNotifications(input: Input) {
       } catch (error) {
         if (!cancelled && displayed && monitoring) {
           await updateActivityNotification({
-            sessionId: displayed.session.id, projectPath: displayed.session.directory, connectionScope: scope,
+            sessionId: displayed.session.id, projectPath: displayed.session.directory || '', connectionScope: scope,
             title: displayed.session.title, action: i18n.t('notifications:activity.reconnecting'),
             count: previousIds.size, key: `${runPrefix}:${generation}`, active: true,
           }).catch(() => undefined);
@@ -186,14 +187,11 @@ export function useActivityNotifications(input: Input) {
 
   useEffect(() => { refreshRef.current(); }, [input.currentSessionId, input.promptError]);
 
-  return useCallback((event: GlobalEvent['payload']) => {
-    if (event.type === 'session.status') {
-      eventStatuses.current[event.properties.sessionID] = event.properties.status;
-      eventRevision.current++;
-    } else if (event.type === 'session.idle') {
-      eventStatuses.current[event.properties.sessionID] = { type: 'idle' };
-      eventRevision.current++;
-    } else if (/^(permission\.|question\.|session\.(created|deleted))/.test(event.type)) eventRevision.current++;
-    if (/^(session\.|message\.|permission\.|question\.)/.test(event.type)) refreshRef.current(false, event.type.startsWith('message.') ? 1000 : 250);
+  return useCallback((event: OpencodeEvent) => {
+    const status = getEventSessionStatus(event);
+    if (status) { eventStatuses.current[status.sessionID] = status.status; eventRevision.current++; }
+    const type = event.type === 'compatibility' ? event.payload.type : event.type;
+    if (/^(permission\.|question\.|form\.|session\.(created|deleted))/.test(type)) eventRevision.current++;
+    if (/^(session\.|message\.|permission\.|question\.|form\.)/.test(type)) refreshRef.current(false, /^(message\.|session\.(text|reasoning|tool))/.test(type) ? 1000 : 250);
   }, []);
 }

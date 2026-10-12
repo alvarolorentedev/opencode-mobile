@@ -29,7 +29,7 @@ Meaning:
 
 - `settings` are user-entered connection parameters
 - `connection` is the user-facing connection state machine
-- `serverContract` is the resolved server API contract (`v1` or `v2`), set by probing during `connect()` and used to select the client implementation
+- `serverContract` is the resolved server API contract (`v1` or `v2`), defaults to `v2`, is resolved by probing during `connect()`, and selects native operations or the isolated v1 compatibility implementation
 - `currentProjectPath` is the server's notion of current project
 - `serverRootPath` is the root directory reported by the server
 - `eventStreamStatus` tracks real-time subscription health independently of connection state
@@ -159,7 +159,7 @@ Current fields:
 
 These values combine true application behavior settings and output-style preferences that are sent to the model as prompt instructions.
 
-`browser`, selected file content, worktree inventory/owning project identity, and MCP status/config are server-derived and not persisted. Text edits remain local to `FilePreview` until the provider conflict-checks and saves them as a VCS patch. Listing, search and file-open commits check the current client identity and request order; saves check client identity before applying a patch and only update the selected file if that selection is still current. Identical directory paths on different servers do not make a response current.
+`browser`, selected file content, worktree inventory/owning project identity, and MCP status/config are server-derived and not persisted. Text edits remain local to `FilePreview` until the provider compares the current server content with the original editor baseline, writes through native v2 `file.write` (or a v1 VCS patch), and verifies the saved text. Failed comparison, write or verification retains the draft. Listing, search and file-open commits check the current client identity and request order; saves check client identity before writing and only update the selected file if that selection is still current. Identical directory paths on different servers do not make a response current.
 
 ## Terminal State
 
@@ -416,7 +416,7 @@ parts are excluded. OpenCode step cost is preferred, with exact OpenCode model
 metadata used only as a USD fallback when reported cost is zero or absent and
 tokens are nonzero.
 
-Context utilization is derived separately by `getLatestContextTokens()`: it walks back to the newest completed `step-finish` and reports that call's prompt (`input + cache.read + cache.write`) plus its reply (`output`). Cumulative session totals are intentionally not used, because every call re-sends the history. All-zero placeholder steps, which the V2 adapter emits for in-flight assistant messages, are skipped so the last completed call stays visible until usage arrives.
+Context utilization is derived separately by `getLatestContextTokens()`: it walks back to the newest completed `step-finish` and reports that call's prompt (`input + cache.read + cache.write`) plus its reply (`output`). Cumulative session totals are intentionally not used, because every call re-sends the history. Native in-flight messages produce no placeholder usage steps. Repeated updates replace the usage entry for the same call, and todo records update by message identity, so paging and event replay preserve accumulated totals.
 
 ### Session Preview By ID
 
@@ -535,40 +535,17 @@ That detail is important because the transcript UI is not a raw message dump.
 
 ## OpenCode API Surface Used By The App
 
-### Via OpenCode 1.18.3 V2 SDK Client
+### Native OpenCode 2 baseline
 
-The app currently uses these logical server capabilities:
+The primary SDK is `@opencode/client`. Services use native location/project discovery, session create/list/active/update/fork/revert/interrupt, message cursors, turn diffs, instructions, inbox delivery, model/agent selection, command execution, permission requests/replies, forms, provider integrations/accounts, file read/write/search/list, VCS status/diff, MCP runtime lifecycle and OAuth, worktrees, PTY tokens and the native event stream.
 
-- path get
-- project list
-- project current
-- config get / update
-- provider list
-- provider auth metadata
-- auth set
-- app agents
-- session list
-- session status
-- session create
-- session delete / update title / fork / share / unshare / revert / unrevert
-- session archive/restore and experimental archived-session list
-- session messages
-- session diff
-- session todo
-- session prompt or promptAsync
-- session instruction entries (V2 mapping for the V1 prompt `system` field)
-- session abort
-- session summarize
-- command list and session command execution
-- file find/read/status, VCS info, and VCS patch apply
-- experimental worktree list/create/reset/remove
-- MCP status/add/connect/disconnect/OAuth plus config-backed enable/disable
-- PTY list/create/remove/connect-token and ticket-authenticated WebSocket streaming; shell discovery remains provider-side for server defaults
-- LSP/formatter status
-- provider OAuth authorize and callback
-- permission and question list/reply operations
-- saved permission (always-allow rule) list/remove (V2)
-- global event subscription
+The app projects native records into its own presentation models. It derives plans from accumulated `todowrite` records and usage from accumulated assistant calls rather than the bounded transcript page. Session hydration restores persisted summaries as summaries, never as complete SDK records. Stored keys and DTO schemas are unchanged.
+
+### OpenCode 1 compatibility extensions
+
+`lib/opencode/compat/v1/` preserves legacy operations and event semantics. Sharing, archive/restore, title summarization, general configuration writes, persistent MCP enablement, worktree reset, and LSP/formatter diagnostics are exposed only for v1. Native v2 never reports success for unsupported mutations.
+
+MCP authorization exposes grouped `methods/start/complete/wait/cancel` actions. Native authorization uses the MCP server's `integrationID`, carries automatic or code mode, and reuses the provider authentication form model. Connection changes invalidate results and cancel pending attempts.
 
 ## Capability Discovery Model
 

@@ -6,7 +6,7 @@ import { createFullFilePatch } from '@/lib/opencode/workspace-patch';
 import { listCommands as svcListCommands } from '@/providers/services/session-service';
 import { loadDiagnostics } from '@/providers/services/diagnostics-service';
 import {
-  applyVcsPatch,
+  saveFile,
   getFileStatus,
   getVcsInfo,
   readFile,
@@ -83,8 +83,10 @@ export function useWorkspaceFileActions({
     if (latest.content !== expectedContent) throw new Error('The file changed on the server. Reopen it before saving.');
     const patch = createFullFilePatch({ path, expectedContent, content });
     if (!patch) return;
-    await applyVcsPatch(client, patch);
+    await saveFile(client, path, content, patch);
     const saved = await readFile(client, path);
+    if (!isCurrentClient(client)) throw new Error('The workspace changed before saving completed.');
+    if (saved.type !== 'text' || saved.encoding === 'base64' || saved.content !== content) throw new Error('The saved file did not match your changes. Reopen it before retrying.');
     if (isCurrentClient(client) && request === workspaceFileRequestRef.current) {
       setSelectedWorkspaceFile({ path, content: saved });
       await refreshServerFeatures();

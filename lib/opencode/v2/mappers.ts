@@ -1,7 +1,10 @@
+import type { SessionMessageRecord } from '../format/types';
+import type { Part, ToolPart } from '../types';
 import type { PendingQuestionPrompt, PendingQuestionRequest } from '../client';
-import { extractErrorMessage, numberField, stringField, type AdapterContext, type V2Form, type V2Message, type V2Permission } from './shared';
+import { extractErrorMessage, numberField, stringField } from './fields';
+import type { V2Context, V2Form, V2Message, V2Permission } from './shared';
 
-export function fileToV1(file: unknown) {
+export function toFileDetail(file: unknown) {
   const record = (file ?? {}) as Record<string, unknown>;
   const source = (record.source ?? {}) as Record<string, unknown>;
   const mime = stringField(record.mime, 'application/octet-stream');
@@ -30,18 +33,18 @@ function toolContentToText(content: unknown): string {
     .join('\n');
 }
 
-function toolPartFromV2(messageId: string, sessionID: string, index: number, tool: Record<string, unknown>): Record<string, unknown> {
+function toToolDetail(messageId: string, sessionID: string, index: number, tool: Record<string, unknown>): ToolPart {
   const state = (tool.state ?? {}) as Record<string, unknown>;
   const status = stringField(state.status, 'running');
-  const input = state.input;
+  const input = state.input && typeof state.input === 'object' ? state.input as Record<string, unknown> : {};
   const base = {
     id: `${messageId}-tool-${stringField(tool.id, String(index))}`,
     sessionID,
     messageID: messageId,
-    type: 'tool',
+    type: 'tool' as const,
     callID: stringField(tool.id, String(index)),
     tool: stringField(tool.name, 'tool'),
-    metadata: state.metadata,
+    metadata: state.metadata as Record<string, unknown> | undefined,
   };
 
   if (status === 'completed') {
@@ -51,9 +54,9 @@ function toolPartFromV2(messageId: string, sessionID: string, index: number, too
         status: 'completed',
         input,
         output: toolContentToText(state.content),
-        attachments: Array.isArray(state.content) ? state.content.filter((item) => item?.type === 'file').map(fileToV1) : [],
+        attachments: Array.isArray(state.content) ? state.content.filter((item) => item?.type === 'file').map((file, fileIndex) => ({ ...toFileDetail(file), id: `${messageId}-tool-file-${fileIndex}`, sessionID, messageID: messageId })) : [],
         title: stringField(tool.name, 'tool'),
-        metadata: state.metadata,
+        metadata: state.metadata as Record<string, unknown> | undefined,
       },
     };
   }
@@ -65,7 +68,7 @@ function toolPartFromV2(messageId: string, sessionID: string, index: number, too
         status: 'error',
         input,
         error: extractErrorMessage(state.error),
-        metadata: state.metadata,
+        metadata: state.metadata as Record<string, unknown> | undefined,
       },
     };
   }
@@ -76,18 +79,18 @@ function toolPartFromV2(messageId: string, sessionID: string, index: number, too
       status: 'running',
       input,
       title: stringField(tool.name, 'tool'),
-      metadata: state.metadata,
+      metadata: state.metadata as Record<string, unknown> | undefined,
     },
   };
 }
 
-export function messageToV1(message: V2Message, sessionID: string): { info: Record<string, unknown>; parts: Record<string, unknown>[] } | undefined {
+export function toMessageRecord(message: V2Message, sessionID: string): SessionMessageRecord | undefined {
   const type = stringField(message.type);
   const created = numberField((message.time as Record<string, unknown> | undefined)?.created);
   const baseInfo = { id: message.id, sessionID, time: { created } };
 
   if (type === 'user') {
-    const parts: Record<string, unknown>[] = [];
+    const parts: Part[] = [];
     const text = stringField((message as Record<string, unknown>).text);
     if (text) {
       parts.push({ id: `${message.id}-text-0`, sessionID, messageID: message.id, type: 'text', text });
@@ -99,7 +102,7 @@ export function messageToV1(message: V2Message, sessionID: string): { info: Reco
           id: `${message.id}-file-${index}`,
           sessionID,
           messageID: message.id,
-          ...fileToV1(file),
+          ...toFileDetail(file),
         });
       });
     }
@@ -108,7 +111,7 @@ export function messageToV1(message: V2Message, sessionID: string): { info: Reco
 
   if (type === 'assistant') {
     const content = Array.isArray((message as Record<string, unknown>).content) ? (message as Record<string, unknown>).content as unknown[] : [];
-    const parts: Record<string, unknown>[] = content.map((raw, index) => {
+    const parts: Part[] = content.map((raw, index) => {
       const part = (raw ?? {}) as Record<string, unknown>;
       const partType = stringField(part.type);
       if (partType === 'text') {
@@ -117,9 +120,11 @@ export function messageToV1(message: V2Message, sessionID: string): { info: Reco
       if (partType === 'reasoning') {
         return { id: `${message.id}-reasoning-${index}`, sessionID, messageID: message.id, type: 'reasoning', text: stringField(part.text) };
       }
-      return toolPartFromV2(message.id, sessionID, index, part);
+      return toToolDetail(message.id, sessionID, index, part);
     });
 
+    const snapshot = (message as Record<string, unknown>).snapshot as { files?: string[] } | undefined;
+    if (snapshot?.files?.length) parts.push({ id: `${message.id}-patch`, sessionID, messageID: message.id, type: 'patch', files: snapshot.files });
     const model = (message as Record<string, unknown>).model as Record<string, unknown> | undefined;
     const tokens = (message as Record<string, unknown>).tokens as Record<string, unknown> | undefined;
     const cost = numberField((message as Record<string, unknown>).cost);
@@ -141,6 +146,7 @@ export function messageToV1(message: V2Message, sessionID: string): { info: Reco
       });
     }
 
+    if (tokens || typeof (message as Record<string, unknown>).cost === 'number') {
     parts.push({
       id: `${message.id}-step-finish`,
       sessionID,
@@ -158,6 +164,7 @@ export function messageToV1(message: V2Message, sessionID: string): { info: Reco
         },
       },
     });
+    }
 
     return {
       info: {
@@ -173,26 +180,17 @@ export function messageToV1(message: V2Message, sessionID: string): { info: Reco
 
   if (type.startsWith('compaction')) {
     return {
-      info: { ...baseInfo, role: 'assistant' },
+      info: { ...baseInfo, role: 'assistant', providerID: '', modelID: '' },
       parts: [{ id: `${message.id}-compaction`, sessionID, messageID: message.id, type: 'compaction', auto: stringField((message as Record<string, unknown>).reason) === 'auto' }],
     };
   }
 
-  return undefined;
+  // Keep native timeline markers in the paginated window even when hidden by the UI.
+  return { info: { ...baseInfo, role: 'assistant', providerID: '', modelID: '' }, parts: [] };
 }
 
-export function mapStatus(status: unknown): Record<string, unknown> {
-  const type = stringField((status as Record<string, unknown> | undefined)?.type, 'busy');
-  if (type === 'idle') return { type: 'idle' };
-  if (type === 'retry') {
-    const record = status as Record<string, unknown>;
-    return { type: 'retry', attempt: numberField(record.attempt), message: stringField(record.message), next: numberField(record.next) };
-  }
-  return { type: 'busy' };
-}
-
-export function mapPermission(permission: V2Permission, ctx: AdapterContext): Record<string, unknown> {
-  ctx.permissionSession.set(permission.id, permission.sessionID);
+export function mapPermission(permission: V2Permission, ctx?: V2Context): import('../client').PendingPermissionRequest {
+  ctx?.permissionSession.set(permission.id, permission.sessionID);
   const source = permission.source as Record<string, unknown> | undefined;
   return {
     id: permission.id,
@@ -219,8 +217,8 @@ export function mapSavedPermission(permission: {
   };
 }
 
-export function formToQuestion(form: V2Form, ctx: AdapterContext): PendingQuestionRequest {
-  ctx.formSession.set(form.id, form);
+export function formToQuestion(form: V2Form, ctx?: V2Context): PendingQuestionRequest {
+  ctx?.formSession.set(form.id, form);
   const fields = Array.isArray(form.fields) ? form.fields : [];
   return {
     id: form.id,

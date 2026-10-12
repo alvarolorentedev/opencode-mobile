@@ -38,3 +38,8 @@ export function extractPairingCode(instructions?: string): string | undefined {
   const match = instructions.match(/\bcode\b[^A-Za-z0-9]{0,4}([A-Za-z0-9-]*\d[A-Za-z0-9-]*)/i);
   return match?.[1];
 }
+
+export async function openOAuthBrowser(url: string) {
+  const browser = await import('expo-web-browser');
+  return browser.openBrowserAsync(url);
+}

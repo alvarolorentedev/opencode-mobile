@@ -1,4 +1,5 @@
-import type { FilePartInput, TextPartInput } from '@opencode-ai/sdk/v2/client';
+import { interruptSession } from '@/providers/services/session-service';
+import type { FilePartInput, TextPartInput } from '@/lib/opencode/types';
 import { useCallback, useEffect, useState, type Dispatch, type SetStateAction } from 'react';
 
 import type { OpencodeConnectionSettings, ScopedOpencodeClient } from '@/lib/opencode/client';
@@ -242,7 +243,7 @@ export function usePromptLifecycle({
       const trackingKey = pendingNotificationKey(connectionScope, sessionId);
       busyNotificationsRef.current.delete(trackingKey);
       await clearPendingTaskFinishedNotification(connectionScope, sessionId).catch(() => undefined);
-      await client.session.abort({ sessionID: sessionId });
+      await interruptSession(client, sessionId);
 
       // Reset prompt guards immediately so the user can submit again without
       // waiting for the in-flight promptAsync to settle. sendPrompt's finally

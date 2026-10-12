@@ -15,7 +15,7 @@ import type { ProviderAuthMethod, ProviderAuthValues } from '@/providers/opencod
 
 type ProviderFeedback = { type: 'success' | 'info' | 'error'; message: string };
 
-function initialAuthValues(method?: ProviderAuthMethod): ProviderAuthValues {
+export function initialAuthValues(method?: ProviderAuthMethod): ProviderAuthValues {
   const values: ProviderAuthValues = {};
   method?.prompts?.forEach((prompt) => {
     if (prompt.type === 'select' && prompt.options?.length) {

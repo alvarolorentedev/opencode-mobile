@@ -1,3 +1,4 @@
+import { hasPendingSessionWork, listSessions } from '@/providers/services/session-service';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as BackgroundTask from 'expo-background-task';
 import Constants from 'expo-constants';
@@ -168,23 +169,21 @@ if (Platform.OS !== 'web' && !TaskManager.isTaskDefined(CHAT_COMPLETION_TASK_NAM
             ...credentials,
             directory: pending.projectPath,
           };
-          const contract = (await detectServerContract(settings).catch(() => ({ contract: 'v1' as const }))).contract;
+          const contract = (await detectServerContract(settings).catch(() => ({ contract: 'v2' as const }))).contract;
           const client = buildClient(settings, contract);
-          const [statusesResponse, sessionsResponse] = await Promise.all([
-            client.session.status(),
-            client.session.list(),
-          ]);
+          const { statuses, sessions } = await listSessions(client);
 
-          const status = statusesResponse?.data?.[pending.sessionId];
+          const status = statuses[pending.sessionId];
           if (status && status.type !== 'idle') {
             continue;
           }
 
-          const session = sessionsResponse?.data?.find((item: { id: string; title?: string }) => item.id === pending.sessionId);
+          const session = sessions.find((item: { id: string; title?: string }) => item.id === pending.sessionId);
           if (!session) {
             await completePendingNotification(key, pending);
             continue;
           }
+          if (await hasPendingSessionWork(client, pending.sessionId)) continue;
           // Re-check ownership after the network read: a new prompt for this
           // session must not be notified or removed by the older monitor pass.
           await completePendingNotification(key, pending, () => notifyTaskFinished(session?.title || pending.sessionTitle, pending.connectionScope));

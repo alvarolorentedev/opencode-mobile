@@ -118,11 +118,11 @@ export function useConnectionConnectActions({
       message: `Connecting to ${getNormalizedServerUrl(targetSettings.serverUrl)}...`,
     });
 
-    let detectedContract = serverContractRef.current;
+    let detectedContract: ServerContract = 'v2';
     try {
       detectedContract = (await detectServerContract(targetSettings)).contract;
     } catch {
-      detectedContract = serverContractRef.current;
+      detectedContract = 'v2';
     }
     if (!current()) return connectionRef.current;
 

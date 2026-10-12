@@ -1,7 +1,6 @@
-import { createOpencodeClient } from '@opencode-ai/sdk/v2/client';
+import { buildV1Compatibility } from './compat/v1/client';
 
 import { buildV2Client } from './v2-client';
-import { createScopedFetch, getRequestHeaders } from './client/fetch';
 import { joinUrlPath, normalizeServerUrl } from './client/url';
 import type { OpencodeConnectionSettings, ScopedOpencodeClient, ServerContract } from './client/types';
 
@@ -42,32 +41,16 @@ export {
   removeSavedPermissionRule,
 } from './client/interactions';
 
-export function buildClient(settings: OpencodeConnectionSettings, contract: ServerContract = 'v1'): ScopedOpencodeClient {
-  if (contract === 'v2') {
-    return buildV2Client(settings);
-  }
-
-  const normalizedServerUrl = normalizeServerUrl(settings.serverUrl);
-  const headers = getRequestHeaders(settings);
-  const directory = settings.directory.trim() || undefined;
-
-  return Object.assign(
-    createOpencodeClient({
-      baseUrl: normalizedServerUrl.origin,
-      fetch: createScopedFetch(normalizedServerUrl.origin, normalizedServerUrl.pathPrefix, directory, settings),
-      headers,
-      responseStyle: 'fields',
-      throwOnError: true,
-    }),
-    { __opencode: { directory } },
-  );
+export function buildClient(settings: OpencodeConnectionSettings, contract: ServerContract = 'v2'): ScopedOpencodeClient {
+  if (contract === 'v2') return buildV2Client(settings);
+  return { compatibility: buildV1Compatibility(settings), __opencode: { contract, directory: settings.directory.trim() || undefined } };
 }
 
 export function buildPtyWebSocketUrl(
   settings: Pick<OpencodeConnectionSettings, 'serverUrl' | 'directory'>,
   ptyId: string,
   options?: { ticket?: string; cursor?: string },
-  contract: ServerContract = 'v1',
+  contract: ServerContract = 'v2',
 ) {
   const server = normalizeServerUrl(settings.serverUrl);
   if (!server.valid) {

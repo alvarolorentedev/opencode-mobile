@@ -4,8 +4,8 @@ import { deferred, hookRuntime, loadTs } from '../helpers/runtime.mjs';
 import { attachmentKind, dataUrlBytes, pickedAttachment, prepareAttachmentFile, openAttachmentExternally, readAttachmentText } from '@/lib/attachment-preview';
 import { defaultChatPreferences } from '@/providers/opencode-preferences';
 import { parseChatPreferences } from '@/providers/persisted-preferences';
-import { fileToV1, messageToV1 } from '@/lib/opencode/v2/mappers';
-import { mapV2Event } from '@/lib/opencode/v2/events';
+import { toFileDetail, toMessageRecord } from '@/lib/opencode/v2/mappers';
+import { handleProviderEvent } from '@/providers/opencode-provider-events';
 import { toTranscriptEntry } from '@/lib/opencode/format';
 import { isTranscriptDisplayMessage } from '@/lib/opencode/transcript';
 
@@ -69,13 +69,13 @@ describe('feed attachments', () => {
 
   it('normalizes both user and tool attachments without dropping media-only messages', () => {
     const file = { name: 'result.png', mime: 'image/png', data: 'aGVsbG8=', source: { type: 'file', uri: 'file:///server/path' } };
-    expect(fileToV1(file).url).toBe('data:image/png;base64,aGVsbG8=');
+    expect(toFileDetail(file).url).toBe('data:image/png;base64,aGVsbG8=');
     expect(attachmentKind({ uri: '', mime: 'audio/wav' })).toBe('audio');
     expect(attachmentKind({ uri: '', mime: 'video/mp4', filename: 'clip.mp4' })).toBe('video');
     expect(attachmentKind({ uri: '', filename: 'clip.mp4' })).toBe('video');
     expect(attachmentKind({ uri: '', filename: 'notes.md' })).toBe('text');
     expect(attachmentKind({ uri: '', mime: 'application/pdf' })).toBe('document');
-    const mapped = messageToV1({ id: 'm', type: 'user', time: { created: 1 }, text: '', files: [file] } as never, 's');
+    const mapped = toMessageRecord({ id: 'm', type: 'user', time: { created: 1 }, text: '', files: [file] } as never, 's');
     const entry = toTranscriptEntry(mapped as never);
     expect(entry.details[0]).toMatchObject({ kind: 'file', uri: 'data:image/png;base64,aGVsbG8=', mime: 'image/png', filename: 'result.png' });
     const assistant = toTranscriptEntry({ info: { id: 'a', role: 'assistant', time: { created: 1 } }, parts: [{ type: 'tool', tool: 'capture', state: { status: 'completed', output: '', attachments: [{ type: 'file', url: 'data:image/png;base64,aGVsbG8=', mime: 'image/png', filename: 'result.png' }] } }] } as never);
@@ -88,8 +88,9 @@ describe('feed attachments', () => {
     expect(parseChatPreferences('{"promptDelivery":"queue"}').promptDelivery).toBe('queue');
     expect(parseChatPreferences('{"promptDelivery":"invalid"}').promptDelivery).toBeUndefined();
     for (const type of ['enqueued', 'delivered', 'cancelled', 'delivery.changed']) {
-      expect(mapV2Event({ id: 'event', type: `session.inbox.${type}`, data: { sessionID: 's' } }, {} as never)?.payload)
-        .toMatchObject({ type: 'message.part.updated', properties: { sessionID: 's' } });
+      const scheduleSessionRefresh = vi.fn();
+      handleProviderEvent({ id: 'event', type: `session.inbox.${type}`, data: { sessionID: 's' } } as never, { scheduleSessionRefresh } as never);
+      expect(scheduleSessionRefresh).toHaveBeenCalledWith('s', { messages: true });
     }
   });
 });
@@ -151,7 +152,7 @@ describe('provider-owned prompt inbox', () => {
     await expect(runtime.value.submitPrompt({ sessionID: 's', parts: [] }, 'steer')).rejects.toThrow('rejected'); runtime.flush();
     expect(runtime.value.pendingPromptsBySession.s).toHaveLength(0);
     const promptAsync = vi.fn();
-    const v1 = await mount({ session: { promptAsync } });
+    const v1 = await mount({ compatibility: { session: { promptAsync } } });
     await v1.value.submitPrompt({ sessionID: 's', parts: [] }, 'queue'); v1.flush();
     expect(promptAsync).toHaveBeenCalledWith({ sessionID: 's', parts: [] });
     expect(v1.value.pendingPromptsBySession).toEqual({});

@@ -64,7 +64,8 @@ const context = {
     return path === 'save' ? saveGate.promise : fileGate.promise;
   },
   setSelectedWorkspaceFile: (value) => { selected = value; },
-  createFullFilePatch: () => 'patch', applyVcsPatch: async () => { patches++; }, refreshServerFeatures: async () => {}, refreshVcsDiff: async () => {},
+  createFullFilePatch: () => 'patch', saveFile: async () => { patches++; },
+  interruptSession: async () => { aborted = true; }, refreshServerFeatures: async () => {}, refreshVcsDiff: async () => {},
   connectionScope: 'scope', pendingNotificationKey: () => 'key',
   busyNotificationsRef: { current: new Set() }, promptSubmissionRef: { current: {} }, setSendingState: () => {},
   clearPendingTaskFinishedNotification: async () => { throw new Error('storage unavailable'); },
@@ -178,25 +179,74 @@ browserRuntime.update({ client: active });
 assert.equal(browserRuntime.value.initialized, false, 'a different server with the same path resets the browser');
 assert.deepEqual(Array.from(browserRuntime.value.results), []); assert.equal(selected.path, 'selection-last'); assert.equal(patches, 0);
 
+// Guarded saves reject conflicts and verify the exact post-write content.
+active = client;
+let bytes = 'original';
+context.readFile = async () => ({ type: 'text', content: bytes });
+context.saveFile = async (_, path, content) => { patches++; bytes = content; };
+await assert.rejects(actions.saveWorkspaceFile('save', 'obsolete', 'draft'), /changed on the server/);
+assert.equal(patches, 0, 'a known conflict must never write');
+await actions.saveWorkspaceFile('save', 'original', 'edited');
+assert.equal(bytes, 'edited'); assert.equal(selected.content.content, 'edited');
+context.saveFile = async () => { throw new Error('write offline'); };
+await assert.rejects(actions.saveWorkspaceFile('save', 'edited', 'draft'), /write offline/);
+assert.equal(selected.content.content, 'edited', 'a failed write must not replace the saved baseline');
+context.saveFile = async () => { bytes = 'external edit'; };
+await assert.rejects(actions.saveWorkspaceFile('save', 'edited', 'draft'), /did not match/);
+assert.equal(selected.content.content, 'edited', 'failed verification must not replace the saved baseline');
+
 await actions.abortSession('s');
 assert.equal(aborted, true, 'notification storage failure must not prevent aborting server work');
+
+// The bounded transcript keeps an independent, replay-safe usage/plan ledger.
+const transcriptSource = await readSource('../providers/use-transcript-state.ts');
+const ledgerHelpers = {
+  ...await loadTs('lib/opencode/usage.ts'),
+  ...await loadTs('lib/opencode/format/todos.ts'),
+  ...await loadTs('lib/opencode/format/window.ts'),
+};
+let usageLedger = {}, todoLedger = {};
+const ledgerContext = {
+  ...ledgerHelpers, useCallback: (action) => action,
+  setUsageStepsBySession: (update) => { usageLedger = update(usageLedger); },
+  setTodoRecordsBySession: (update) => { todoLedger = update(todoLedger); }, exports: {},
+};
+const ledgerDeclaration = extractDeclarations(transcriptSource, ['recordUsageAndTodos']);
+runInNewContext(ts.transpileModule(`${ledgerDeclaration}\nexports.record = recordUsageAndTodos;`, { compilerOptions: { module: ts.ModuleKind.CommonJS } }).outputText, ledgerContext);
+const ledgerMessage = (id, time, status, cost) => ({
+  info: { id, role: 'assistant', time: { created: time }, providerID: 'p', modelID: 'm' },
+  parts: [
+    { type: 'tool', tool: 'todowrite', state: { status: 'completed', input: { todos: [{ content: 'Task', status }] } } },
+    { id: 'usage', sessionID: 's', messageID: id, type: 'step-finish', cost, tokens: { input: 1, output: 1, reasoning: 0, cache: { read: 0, write: 0 } } },
+  ],
+});
+ledgerContext.exports.record('s', [ledgerMessage('new', 20, 'pending', 0)]);
+ledgerContext.exports.record('s', [ledgerMessage('new', 20, 'completed', 0.2)]);
+ledgerContext.exports.record('s', [ledgerMessage('old', 10, 'pending', 0.1)]);
+ledgerContext.exports.record('s', [ledgerMessage('new', 20, 'completed', 0.2)]);
+assert.equal(ledgerHelpers.deriveTodosFromMessages(todoLedger.s)[0].status, 'completed', 'loading older pages cannot revert the current plan');
+assert.equal(usageLedger.s.length, 2, 'updated/replayed calls must not duplicate usage');
+assert.ok(Math.abs(ledgerHelpers.aggregateUsageSteps(usageLedger.s).cost - 0.3) < 1e-10);
 
 // Real realtime hook: connected busy polling, reconnect reconciliation,
 // backpressure, stable subscriptions, and cancellation of reconnect timers.
 const runtime = hookRuntime();
 let events = [], wake, subscriptions = 0, sessionsRefreshed = 0, pendingRefreshed = 0;
 let heldRefresh;
-const catalogClient = { global: { async event({ signal }) {
+const catalogClient = { api: { event: { async subscribe({ signal }) {
   subscriptions++;
-  return { stream: (async function* () {
+  return (async function* () {
     while (!signal.aborted) {
       const incoming = await new Promise((resolve) => { wake = resolve; signal.addEventListener('abort', () => resolve(null), { once: true }); });
       if (!incoming) return;
       yield incoming;
     }
-  })() };
-} } };
-const realtime = await loadTs('providers/use-opencode-realtime.ts', { react: runtime.react }, runtime.globals);
+  })();
+} } } };
+const realtime = await loadTs('providers/use-opencode-realtime.ts', {
+  react: runtime.react,
+  '@/lib/opencode/events': { subscribeEvents: async function* (client, signal) { yield* await client.api.event.subscribe({ signal }); } },
+}, runtime.globals);
 assert.equal(realtime.shouldPoll(true, false), false);
 assert.equal(realtime.shouldPoll(true, true), true);
 assert.equal(realtime.shouldPoll(false, false), true);
@@ -208,7 +258,7 @@ const inputs = {
   refreshMessages: async () => {}, refreshSessionDiff: async () => {}, refreshSessionTodos: async () => {},
 };
 runtime.mount(realtime.useOpencodeRealtime, inputs); await runtime.settle();
-wake({ directory: '/repo', payload: { type: 'server.connected', properties: {} } }); await runtime.settle();
+wake({ location: { directory: '/repo' }, type: 'server.connected' }); await runtime.settle();
 assert.equal(runtime.value.eventStreamStatus, 'connected'); assert.equal(sessionsRefreshed, 1); assert.equal(pendingRefreshed, 1);
 assert.equal(runtime.countTimers(5000), 0, 'idle connected SSE needs no safety poll');
 runtime.update({ busy: true }); runtime.fire(10000); await runtime.settle(); assert.equal(sessionsRefreshed, 2);
@@ -218,7 +268,7 @@ heldRefresh.resolve(); heldRefresh = undefined; await runtime.settle();
 runtime.update({ refreshMessages: async () => {} }); await runtime.settle(); assert.equal(subscriptions, 1, 'changing action identities must not reopen SSE');
 wake(null); await runtime.settle(); assert.equal(runtime.value.eventStreamStatus, 'error');
 runtime.fire(1000); await runtime.settle(); assert.equal(subscriptions, 2);
-wake({ directory: '/another-project', payload: { type: 'server.connected', properties: {} } }); await runtime.settle();
+wake({ location: { directory: '/another-project' }, type: 'server.connected' }); await runtime.settle();
 assert.equal(sessionsRefreshed, 4); assert.equal(pendingRefreshed, 4, 'reconnection always recovers pending interactions');
 assert.deepEqual(events, ['server.connected'], 'other-project events are filtered');
 wake(null); await runtime.settle(); runtime.unmount(); assert.equal(runtime.countTimers(1000), 0);

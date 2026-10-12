@@ -70,7 +70,7 @@ async function mockControlPlane(page, options = {}) {
     if (/\/event$/.test(url.pathname)) { await route.abort(); return; }
     if (route.request().method() === 'OPTIONS') { await route.fulfill({ status: 204, headers: { 'access-control-allow-origin': '*', 'access-control-allow-headers': '*' } }); return; }
     if (options.startup && !options.startup.ready) {
-      if (url.pathname === '/path') options.startup.attempts += 1;
+      if (url.pathname === '/api/location') options.startup.attempts += 1;
       await route.fulfill({ status: 503, headers: { 'access-control-allow-origin': '*' }, contentType: 'text/html', body: '<html>Cloudflare Error 1033</html>' }); return;
     }
     const response = await route.fetch({ url: `${SERVER}${url.pathname}${url.search}` });

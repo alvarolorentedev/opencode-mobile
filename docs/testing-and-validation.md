@@ -142,7 +142,7 @@ the separate Mac runtime still require native acceptance checks.
 The `test:vitest` suite is the standard TypeScript runner (Vitest) for module
 behavior that benefits from real imports and module mocking: format/transcript
 shaping, bounded-window record preservation, session reads/pagination/coalescing,
-and the V2 response/event mappers and provider-auth mapping. These suites import
+and the native V2 presentation projections/event dispatcher and provider-auth mapping. These suites import
 the real `@/` modules and replace platform/protocol boundaries with `vi.mock`,
 instead of transpiling sources through the legacy `loadTs` VM helper (still used
 by `test:provider-runtime`, which drives hook source through a custom renderer).
@@ -150,8 +150,8 @@ by `test:provider-runtime`, which drives hook source through a custom renderer).
 Subagent blocking and event coverage is unit-level: `pending-interactions.test.ts`
 covers `collectDescendantSessionIds`, descendant permission/question surfacing,
 and `isPromptErrorVisible`; `provider-events.test.ts` covers the `handleProviderEvent`
-MCP-auth alert, part-delta/project-directory refresh, and the new V2 event
-mappings; `v2-mappers.test.ts` covers `mapSavedPermission`. There is deliberately
+MCP-auth alert, part-delta/project-directory refresh, and the native V2 event
+dispatch; `v2-mappers.test.ts` covers `mapSavedPermission`. There is deliberately
 no fake-server or Playwright scenario for these surfaces yet (MCP auth failure,
 saved permission rules, subagent prompt routing), so end-to-end confirmation
 remains a follow-up; the fake-server contract is unchanged.
@@ -216,8 +216,8 @@ Transsion ART/GC stall in the 1.0.39 report is fixed.
 
 The deterministic backend lives under `tests/fake-opencode/`.
 
-- `tests/fake-opencode/server.mjs` emulates the OpenCode 1.x contract.
-- `tests/fake-opencode/server-v2.mjs` emulates the OpenCode 2.x `/api` contract (discovery, capabilities, sessions, messages, prompt, diff, permissions, forms, MCP, PTY, VCS, and the flat V2 event stream), reusing the same deterministic state and session helpers.
+- `tests/fake-opencode/server-v1.mjs` emulates the OpenCode 1.x contract.
+- `tests/fake-opencode/server.mjs` emulates the OpenCode 2.x `/api` contract (discovery, capabilities, sessions, messages, prompt, diff, permissions, forms, MCP, PTY, VCS, and the flat V2 event stream), using canonical native fixtures and shared version-neutral filesystem/terminal infrastructure.
 
 The V2 self-test submits prompts through the pinned `@opencode/client` SDK,
 checks that the HTTP 200 admission identifies the stored user message, and
@@ -266,7 +266,7 @@ Simulates a normal session run that completes and returns:
 - two completed todos
 - idle session status at the end
 
-Diff retrieval follows the real message-scoped contract: requests without `messageID` return an empty list, while a completed user message exposes its own diff. VCS `mode=git` and `mode=branch` return distinct fixtures so the Files Changed diff scopes can be exercised; V2 exposes the same through `/api/vcs/diff` with `working`/`branch` and, like form and permission lists, rejects VCS requests that omit `location[directory]`, so an unscoped adapter call fails the Files Changed flows instead of silently reporting no changes.
+Diff retrieval follows the real message-scoped contract: v1 requests without `messageID` return an empty list; v2 selects a turn with native `from`, while a completed user message exposes its own diff. VCS `mode=git` and `mode=branch` return distinct fixtures so the Files Changed diff scopes can be exercised; V2 exposes the same through `/api/vcs/diff` with `working`/`branch` and, like form and permission lists, rejects VCS requests that omit `location[directory]`, so an unscoped client call fails the Files Changed flows instead of silently reporting no changes.
 
 ### Permission Scenario
 
@@ -341,10 +341,10 @@ against a real V2 server and real code/automatic OAuth completion.
 - reconnect through the prefixed URL and verify the connection succeeds
 - point at a URL that already ends in `/api` and verify the message does not suggest a duplicated `/api`
 
-### OpenCode 2 Compatibility Flows
+### Primary OpenCode 2 Flows
 
 - point at the V2 fake server and verify contract detection connects
-- verify capabilities, session bootstrap, prompt completion, and transcript rendering work through the V2 adapter
+- verify capabilities, session bootstrap, prompt completion, and transcript rendering work through the native V2 client
 - verify context utilization resolves the session model's limit and renders the latest model call's tokens (`2.3K of 128K input tokens`) instead of "Unavailable"
 - verify the derived plan renders (`Plan`, `2 of 2 tasks completed`) from the transcript's `todowrite` tool part, since V2 has no todo endpoint
 - verify permission requests and form-backed questions unblock the flow
@@ -804,3 +804,29 @@ prebuild succeeded, but Gradle stopped because no Android SDK is configured.
 The user explicitly validated the revised E2E behavior contract on 2026-10-11.
 Real store installation and native accessibility/large text acceptance remain
 outstanding. No version was increased.
+
+## OpenCode 2 primary protocol inversion
+
+`@opencode/client` is the primary SDK, client contract and fake backend. Default construction, uncertain detection and PTY URLs use v2; affirmative v1 discovery selects the isolated compatibility implementation. Alternate-contract attempts require an actual endpoint/protocol mismatch, never auth denial or transport failure. Production v1 SDK imports are prohibited outside `lib/opencode/compat/v1/` by the architecture suite.
+
+Playwright boots native `server.mjs` on 44096 and explicit `server-v1.mjs` compatibility on 44097. Shared prompt/approval/question/polling and persisted continuity flows run on v2 with additional v1 coverage. Compatibility-only archive, approval configuration and patch saves remain covered. The self-test exercises both protocol contracts plus shared terminal infrastructure.
+
+Focused regressions cover native message cursors/events, replay/update-safe usage and todos, same-directory connection switching, persisted session continuity, conflict rejection, write failure/draft retention, post-write verification, MCP integration discovery, automatic/code completion and cancellation while requests are in flight.
+
+Required gates remain `test:ci:static`, `test:fake-server:self`, `test:e2e:web`. Android development validation and real-server/device checks for file edits, OAuth, reconnects and terminals are required acceptance checks. On this host Expo Android prebuild succeeds, but Gradle cannot compile without an Android SDK; the local server requires authentication. These are outstanding checks, not passing results. Changed fake-server/E2E contracts require explicit human validation before completion.
+
+Background v2 completion also checks native inbox, permission/form blockers and the latest retry record before notifying; an unavailable read keeps monitoring pending. Worktree regressions distinguish the owning canonical project from the selected worktree location.
+
+### Human acceptance for the v2 primary change
+
+Automated validation: static CI checks and both fake-server self-tests pass; the complete Playwright suite passes 126 tests. Android prebuild passes, but development compilation is blocked by the missing SDK. Authenticated real-server/device validation remains outstanding; the user will perform these checks manually after the changes are committed.
+
+Before marking this change complete, a human must review and validate the changed `tests/fake-opencode/` and `tests/e2e/` contracts (AGENTS.md):
+
+- Confirm native fixtures and cursor/event/form/permission behavior match v2; inspect the explicit v1 translations and compatibility-only scenarios.
+- Exercise prompt completion, questions/approvals, reconnect/polling recovery, persisted sessions and worktree switching on both contracts.
+- On a real v2 server/device, edit UTF-8 text, reject an external edit conflict, retain a failed-save draft, and verify saved content/VCS refresh. The pre-read/write race remains accepted.
+- Complete automatic and code MCP OAuth, cancel/restart, and switch connections while authorization is pending.
+- Verify terminal streaming and cursor resume after reconnect; retain v1 sharing/archive/config/diagnostic features.
+
+No dependency version, persisted schema or release version was changed. Existing Cloud Link work is retained.

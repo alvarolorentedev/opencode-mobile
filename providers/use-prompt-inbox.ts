@@ -43,7 +43,8 @@ export function usePromptInbox({ client, isCurrentClient, refreshMessages: readM
 
   const submitPrompt = useCallback(async (input: PromptInput, delivery: PromptDelivery) => {
     if (!client.promptInbox) {
-      await client.session.promptAsync(input);
+      if (!client.compatibility) throw new Error('Prompt admission is unavailable.');
+      await client.compatibility.session.promptAsync(input);
       return;
     }
     const sessionId = input.sessionID;

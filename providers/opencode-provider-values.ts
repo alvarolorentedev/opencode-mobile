@@ -1,3 +1,4 @@
+import { getDiffTurnMessages } from './opencode-provider-selectors';
 import { useMemo } from 'react';
 
 import { deriveTodosFromMessages } from '@/lib/opencode/format';
@@ -173,8 +174,7 @@ export function useOpencodeProviderValues(input: ProviderValuesInput) {
     connectMcpServer,
     disconnectMcpServer,
     setMcpServerEnabled,
-    startMcpOAuth,
-    completeMcpOAuth,
+    mcpOAuth,
     serverContract,
   } = input;
 
@@ -208,9 +208,7 @@ export function useOpencodeProviderValues(input: ProviderValuesInput) {
     [currentDiffScope, currentSessionId, diffsBySession, vcsDiffsByScope],
   );
   const diffTurns = useMemo<DiffTurn[]>(() => {
-    const turns = currentMessages.filter(
-      (record) => record.info.role === 'user' && (record.info.summary?.diffs?.length ?? 0) > 0,
-    );
+    const turns = getDiffTurnMessages(currentMessages);
     return turns.map((record, index) => {
       const textPart = record.parts.find((part) => part.type === 'text');
       const preview = textPart && textPart.type === 'text' ? textPart.text.replace(/\s+/g, ' ').trim() : '';
@@ -355,8 +353,8 @@ export function useOpencodeProviderValues(input: ProviderValuesInput) {
   );
 
   const mcpValue = useMemo<McpContextValue>(
-    () => ({ mcpStatuses, refreshMcpServers, addMcpServer, connectMcpServer, disconnectMcpServer, setMcpServerEnabled, startMcpOAuth, completeMcpOAuth }),
-    [mcpStatuses, refreshMcpServers, addMcpServer, connectMcpServer, disconnectMcpServer, setMcpServerEnabled, startMcpOAuth, completeMcpOAuth],
+    () => ({ mcpStatuses, refreshMcpServers, addMcpServer, connectMcpServer, disconnectMcpServer, setMcpServerEnabled, mcpOAuth }),
+    [mcpStatuses, refreshMcpServers, addMcpServer, connectMcpServer, disconnectMcpServer, setMcpServerEnabled, mcpOAuth],
   );
 
   return {

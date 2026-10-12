@@ -1,51 +1,30 @@
-import type { OpencodeClient } from '@opencode-ai/sdk/v2/client';
+import type { ScopedOpencodeClient } from '@/lib/opencode/client';
 import { Platform } from 'react-native';
-
 import { buildPtyWebSocketUrl, type OpencodeConnectionSettings, type ServerContract } from '@/lib/opencode/client';
-import { requireData } from '@/providers/services/require-data';
-
-export async function listShells(client: OpencodeClient) {
-  return requireData((await client.pty.shells()).data, 'shell list request');
+import { toShellView } from '@/lib/opencode/v2/shared';
+import * as v1 from '@/lib/opencode/compat/v1/terminal';
+const location = (client: ScopedOpencodeClient) => ({ location: { directory: client.__opencode.directory } });
+export async function listShells(client: ScopedOpencodeClient) {
+  return client.compatibility ? v1.listShells(client.compatibility) : (await client.api!.config.shells()).map(toShellView);
 }
-
-export async function listTerminals(client: OpencodeClient) {
-  return requireData((await client.pty.list()).data, 'terminal list request');
+export async function listTerminals(client: ScopedOpencodeClient) {
+  return client.compatibility ? v1.listTerminals(client.compatibility) : (await client.api!.pty.list(location(client))).data;
 }
-
-export async function createTerminal(
-  client: OpencodeClient,
-  input?: { command?: string; args?: string[]; cwd?: string; title?: string; env?: Record<string, string> },
-) {
-  return requireData((await client.pty.create(input)).data, 'terminal create request');
+export async function createTerminal(client: ScopedOpencodeClient, input?: { command?: string; args?: string[]; cwd?: string; title?: string; env?: Record<string, string> }) {
+  return client.compatibility ? v1.createTerminal(client.compatibility, input) : (await client.api!.pty.create({ ...location(client), ...input })).data;
 }
-
-export async function removeTerminal(client: OpencodeClient, ptyId: string) {
-  await client.pty.remove({ ptyID: ptyId });
+export async function removeTerminal(client: ScopedOpencodeClient, ptyID: string) {
+  return client.compatibility ? v1.removeTerminal(client.compatibility, ptyID) : client.api!.pty.remove({ ...location(client), ptyID });
 }
-
-export async function resizeTerminal(client: OpencodeClient, ptyId: string, size: { cols: number; rows: number }) {
-  return requireData((await client.pty.update({ ptyID: ptyId, size })).data, 'terminal resize request');
+export async function resizeTerminal(client: ScopedOpencodeClient, ptyID: string, size: { cols: number; rows: number }) {
+  return client.compatibility ? v1.resizeTerminal(client.compatibility, ptyID, size) : client.api!.pty.update({ ...location(client), ptyID, size });
 }
-
-export async function createTerminalConnectToken(client: OpencodeClient, ptyId: string) {
-  return requireData((await client.pty.connectToken(
-    { ptyID: ptyId },
-    { headers: { 'x-opencode-ticket': '1' } },
-  )).data, 'terminal connect token request');
+export async function createTerminalConnectToken(client: ScopedOpencodeClient, ptyID: string) {
+  return client.compatibility ? v1.createTerminalConnectToken(client.compatibility, ptyID) : (await client.api!.pty.connect.token({ ...location(client), ptyID }, { headers: { 'x-opencode-ticket': '1' } })).data;
 }
-
-export function getTerminalWebSocketUrl(
-  settings: Pick<OpencodeConnectionSettings, 'serverUrl' | 'directory'>,
-  ptyId: string,
-  options?: { ticket?: string; cursor?: string },
-  contract?: ServerContract,
-) {
-  return buildPtyWebSocketUrl(settings, ptyId, options, contract);
-}
-
+export function getTerminalWebSocketUrl(settings: Pick<OpencodeConnectionSettings, 'serverUrl' | 'directory'>, ptyId: string, options?: { ticket?: string; cursor?: string }, contract?: ServerContract) { return buildPtyWebSocketUrl(settings, ptyId, options, contract); }
 export function openTerminalWebSocket(url: string, authorization?: string) {
   if (Platform.OS === 'web') return new WebSocket(url);
-  // React Native's constructor accepts handshake headers; the DOM type does not.
   const NativeSocket = WebSocket as unknown as { new(url: string, protocols: undefined, options: { headers: Record<string, string> }): WebSocket };
   return new NativeSocket(url, undefined, { headers: authorization ? { Authorization: authorization } : {} });
 }

@@ -1,51 +1,31 @@
-#!/usr/bin/env node
+import { models, providerCatalog, modelCatalog } from './fixtures.mjs';
 import { filesForDirectory, fileNodes, addWorktree } from './workspace.mjs';
-
 import http from 'node:http';
-import { URL } from 'node:url';
+import { Buffer } from 'node:buffer';
 import { WebSocketServer } from 'ws';
 import { createTerminalFixture } from './terminal.mjs';
 
-import {
-  commandsPayload,
-  diagnosticsPayload,
-  fileStatusesPayload,
-  listProvidersPayload,
-  providerAuthPayload,
-  vcsPayload,
-} from './fixtures.mjs';
 import { createSessionHelpers } from './session-helpers.mjs';
 import { createStateStore, getNow, resolveProject } from './state.mjs';
 
 const port = Number.parseInt(process.env.FAKE_OPENCODE_PORT || '4096', 10);
 const scenarioName = process.env.FAKE_OPENCODE_SCENARIO || 'happy-path';
-const supportedScenarios = new Set(['happy-path', 'permission', 'question', 'question-multi', 'question-failure', 'stream-disconnect']);
-const configuredBasePath = (process.env.FAKE_OPENCODE_BASE_PATH || '').trim();
-const basePath = configuredBasePath
-  ? `/${configuredBasePath.replace(/^\/+/, '').replace(/\/+$/, '')}`
-  : '';
-
-if (!supportedScenarios.has(scenarioName)) {
-  throw new Error(`Unsupported fake OpenCode scenario: ${scenarioName}`);
-}
 
 const stateStore = createStateStore(scenarioName);
 let state = stateStore.getState();
 const terminalFixture = createTerminalFixture((id) => { const pty = state.ptys.find((item) => item.id === id); if (pty) pty.status = 'exited'; });
 let suppressEvents = false;
-const applicablePatch = 'diff --git a/src/demo.ts b/src/demo.ts\n--- a/src/demo.ts\n+++ b/src/demo.ts\n@@ -1 +1 @@\n-export const demo = "OpenCode 1.18.3";\n+export const demo = "OpenCode SDK 1.18.3";\n';
-const editorPatch = '--- a/src/demo.ts\n+++ b/src/demo.ts\n@@ -1,1 +1,1 @@\n-export const demo = "OpenCode 1.18.3";\n+export const demo = "OpenCode SDK 1.18.3";\n';
-// Committed-on-branch fixture, distinct from the uncommitted `git` diff so the
-// scope surface can be exercised deterministically.
+const v2Clients = new Set();
+// VCS diff fixtures. `working` mirrors uncommitted changes; `branch` is a
+// distinct committed fixture so the diff-scope surface is deterministic.
+const workingPatch = 'diff --git a/src/demo.ts b/src/demo.ts\n--- a/src/demo.ts\n+++ b/src/demo.ts\n@@ -1 +1 @@\n-export const demo = "OpenCode 1.18.3";\n+export const demo = "OpenCode SDK 1.18.3";\n';
 const branchPatch = 'diff --git a/README.md b/README.md\n--- a/README.md\n+++ b/README.md\n@@ -1,3 +1,4 @@\n # Demo project\n \n Deterministic fake OpenCode workspace.\n+Committed on this branch.\n';
 
-function sendJson(res, statusCode, payload, headers = {}) {
+function sendJson(res, statusCode, payload) {
   res.writeHead(statusCode, {
     'Content-Type': 'application/json',
-    'Access-Control-Expose-Headers': 'x-next-cursor',
-    ...headers,
     'Access-Control-Allow-Origin': '*',
-    'Access-Control-Allow-Headers': 'Content-Type, Authorization, x-opencode-directory, x-opencode-ticket',
+    'Access-Control-Allow-Headers': 'Content-Type, Authorization, x-opencode-ticket',
     'Access-Control-Allow-Methods': 'GET, POST, PUT, PATCH, DELETE, OPTIONS',
   });
   res.end(JSON.stringify(payload));
@@ -55,8 +35,21 @@ function notFound(res) {
   sendJson(res, 404, { error: 'Not found' });
 }
 
-function badRequest(res, error) {
-  sendJson(res, 400, { error });
+function location() {
+  return { directory: state.project.canonical };
+}
+
+// The V2 adapter must scope form/permission lists and every VCS read to the
+// active project directory. The real server answers unscoped calls with its own
+// location's state (usually an empty diff), so reject them here and make the
+// client-side scoping observable instead of silently wrong.
+function requireLocation(requestUrl, res) {
+  const directory = requestUrl.searchParams.get('location[directory]');
+  if (!directory) {
+    sendJson(res, 400, { error: 'location[directory] is required' });
+    return undefined;
+  }
+  return directory;
 }
 
 function readJson(req) {
@@ -70,7 +63,6 @@ function readJson(req) {
         resolve(undefined);
         return;
       }
-
       try {
         resolve(JSON.parse(raw));
       } catch (error) {
@@ -81,99 +73,54 @@ function readJson(req) {
   });
 }
 
-function getSession(sessionId) {
-  return helpers.getSession(sessionId);
+function event(type, data) {
+  const session = state.sessions.find((entry) => entry.id === (data.sessionID || data.form?.sessionID));
+  return {
+    id: `event-${state.nextEventId++}`,
+    created: Date.now(),
+    type,
+    location: { directory: session?.location.directory || state.project.canonical },
+    data,
+  };
 }
 
-function getMessages(sessionId) {
-  return helpers.getMessages(sessionId);
-}
-
-function emitEvent(event) {
+function emitV2Event(mapped) {
   if (suppressEvents) return;
-  if (state.sseClients.size === 0) {
-    return;
-  }
-
-  const payload = `data: ${JSON.stringify({
-    directory: state.project.worktree,
-    payload: { id: `event-${state.nextEventId++}`, ...event },
-  })}\n\n`;
-  for (const client of state.sseClients) {
+  const payload = `data: ${JSON.stringify(mapped)}\n\n`;
+  for (const client of v2Clients) {
     client.write(payload);
   }
 }
 
-const helpers = createSessionHelpers({
-  emitEvent,
-  getNow,
-  getState: () => state,
-});
-const {
-  createSession,
-  forkSession,
-  handleCommand,
-  handlePromptSubmission,
-  mergeConfigPatch,
-  scheduleCompletion,
-  summarizePrompt,
-} = helpers;
+function emitEvent(message) { emitV2Event(event(message.type, message.data)); }
 
-function handleSse(req, res) {
-  if (state.scenario === 'stream-disconnect') {
-    res.writeHead(503, {
-      'Content-Type': 'text/plain',
-      'Access-Control-Allow-Origin': '*',
-    });
-    res.end('SSE disabled for this scenario');
-    return;
-  }
+const helpers = createSessionHelpers({ emitEvent, getNow, getState: () => state });
 
-  res.writeHead(200, {
-    'Content-Type': 'text/event-stream',
-    'Cache-Control': 'no-cache',
-    Connection: 'keep-alive',
-    'Access-Control-Allow-Origin': '*',
-  });
-  res.flushHeaders();
-  res.write(`data: ${JSON.stringify({
-    directory: state.project.worktree,
-    payload: { id: `event-${state.nextEventId++}`, type: 'server.connected', properties: {} },
-  })}\n\n`);
-  state.sseClients.add(res);
-  req.on('close', () => {
-    state.sseClients.delete(res);
-  });
+
+function deliverInboxItem(item) {
+  state.inboxBySession[item.sessionID] = (state.inboxBySession[item.sessionID] || []).filter((entry) => entry.id !== item.id);
+  state.activePromptBySession[item.sessionID] = item.payload.text;
+  helpers.handlePromptSubmission(item.sessionID, { messageID: item.id, text: item.payload.text, files: item.payload.files });
+  emitV2Event(event('session.inbox.delivered', { sessionID: item.sessionID, inboxID: item.id }));
 }
+
+let connectionPassword = process.env.FAKE_OPENCODE_PASSWORD || '';
+let pairingCode;
+let pairingToken;
+let pairingSequence = 0;
 
 const server = http.createServer(async (req, res) => {
   const requestUrl = new URL(req.url || '/', `http://${req.headers.host || `127.0.0.1:${port}`}`);
-  const incomingPathname = requestUrl.pathname;
-  const pathname = basePath && incomingPathname.startsWith(`${basePath}/`)
-    ? incomingPathname.slice(basePath.length)
-    : incomingPathname === basePath
-      ? '/'
-      : incomingPathname;
+  const pathname = requestUrl.pathname;
 
   try {
     if (req.method === 'OPTIONS') {
       res.writeHead(204, {
         'Access-Control-Allow-Origin': '*',
-        'Access-Control-Allow-Headers': 'Content-Type, Authorization, x-opencode-directory, x-opencode-ticket',
+        'Access-Control-Allow-Headers': 'Content-Type, Authorization, x-opencode-ticket',
         'Access-Control-Allow-Methods': 'GET, POST, PUT, PATCH, DELETE, OPTIONS',
       });
       res.end();
-      return;
-    }
-
-    if (basePath && !incomingPathname.startsWith(`${basePath}/`) && incomingPathname !== basePath) {
-      if (req.method === 'GET' && incomingPathname === '/') {
-        res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
-        res.end('<!doctype html><html><body><h1>Fake OpenCode UI</h1></body></html>');
-        return;
-      }
-
-      notFound(res);
       return;
     }
 
@@ -183,10 +130,10 @@ const server = http.createServer(async (req, res) => {
       const body = await readJson(req);
       suppressEvents = Boolean(body?.suppress);
       if (body?.disconnect) {
-        for (const client of state.sseClients) client.end();
-        state.sseClients.clear();
+        for (const client of v2Clients) client.end();
+        v2Clients.clear();
       }
-      sendJson(res, 200, { data: { suppressEvents, clients: state.sseClients.size } });
+      sendJson(res, 200, { data: { suppressEvents, clients: v2Clients.size } });
       return;
     }
 
@@ -196,798 +143,699 @@ const server = http.createServer(async (req, res) => {
       return;
     }
 
+    if (req.method === 'GET' && pathname === '/__control/state') {
+      sendJson(res, 200, { scenario: state.scenario, sessions: state.sessions, messagesBySession: state.messagesBySession, sessionStatuses: state.sessionStatuses, pendingPermissions: state.pendingPermissions, pendingQuestions: state.pendingQuestions, configuredProviderIds: [...state.configuredProviderIds], authByProvider: state.authByProvider, worktrees: state.worktrees, mcpStatuses: state.mcpStatuses, files: state.files, questionAnswers: state.lastQuestionAnswer }); return;
+    }
+    if (req.method === 'GET' && pathname === '/__control/oauth-complete') {
+      const attempt = state.integrationAttempts[requestUrl.searchParams.get('attemptID')];
+      if (!attempt) return notFound(res);
+      attempt.status = 'complete';
+      if (attempt.integrationID.startsWith('mcp-')) state.mcpStatuses[attempt.integrationID.slice(4)] = { status: 'connected' };
+      sendJson(res, 200, { status: 'complete' }); return;
+    }
     if (req.method === 'POST' && pathname === '/__control/reset') {
       terminalFixture.reset();
       const body = await readJson(req);
-      const nextScenario = body?.scenario || scenarioName;
-      if (!supportedScenarios.has(nextScenario)) {
-        sendJson(res, 400, { error: `Unsupported scenario: ${nextScenario}` });
-        return;
-      }
+      for (const client of v2Clients) client.end();
+      v2Clients.clear();
       suppressEvents = false;
-      state = stateStore.resetState(nextScenario);
+      state = stateStore.resetState(body?.scenario || scenarioName);
+      connectionPassword = body?.password ?? process.env.FAKE_OPENCODE_PASSWORD ?? '';
+      pairingCode = undefined;
+      pairingToken = undefined;
       sendJson(res, 200, { data: { scenario: state.scenario } });
       return;
     }
 
-    if (req.method === 'GET' && pathname === '/path') {
-      sendJson(res, 200, { directory: state.rootPath });
+    if (req.method === 'GET' && pathname === '/__control/instructions') {
+      sendJson(res, 200, { data: state.instructionsBySession });
       return;
     }
 
-    if (req.method === 'GET' && pathname === '/project') {
-      sendJson(res, 200, state.projects);
-      return;
-    }
-
-    if (req.method === 'GET' && pathname === '/project/current') {
-      const project = resolveProject(state, requestUrl.searchParams.get('directory'));
-      if (!project) { badRequest(res, 'Directory is outside the server workspace.'); return; }
-      sendJson(res, 200, project);
-      return;
-    }
-
-    if (req.method === 'GET' && pathname === '/config') {
-      sendJson(res, 200, state.config);
-      return;
-    }
-
-    if (req.method === 'PATCH' && pathname === '/config') {
-      const patch = await readJson(req);
-      if (patch?.mcp) {
-        for (const [name, config] of Object.entries(patch.mcp)) {
-          if (config === null) {
-            badRequest(res, 'MCP config entries cannot be null');
-            return;
-          } else {
-            state.mcpRuntimeConfigs[name] = config;
-            state.mcpStatuses[name] = { status: config.enabled === false ? 'disabled' : 'connected' };
-          }
-        }
-      }
-      mergeConfigPatch(patch);
-      sendJson(res, 200, state.config);
-      return;
-    }
-
-    if (req.method === 'GET' && pathname === '/provider') {
-      sendJson(res, 200, listProvidersPayload(state));
-      return;
-    }
-
-    if (req.method === 'GET' && pathname === '/provider/auth') {
-      sendJson(res, 200, providerAuthPayload());
-      return;
-    }
-
-    if (req.method === 'POST' && /^\/provider\/[^/]+\/oauth\/authorize$/.test(pathname)) {
+    if (req.method === 'POST' && pathname === '/__control/pairing') {
       const body = await readJson(req);
-      if (!Number.isInteger(body?.method)) {
-        sendJson(res, 400, { error: 'OAuth authorize requires method' });
+      if (body?.password !== undefined) connectionPassword = body.password;
+      pairingCode = { value: `local-code-${++pairingSequence}`, expiresAt: body?.expired ? 0 : Date.now() + 300_000 };
+      sendJson(res, 200, { code: pairingCode.value, expires_in: 300 });
+      return;
+    }
+    if (req.method === 'GET' && pathname.startsWith('/auth/connect/')) {
+      if (!pairingCode || pairingCode.expiresAt <= Date.now() || pathname !== `/auth/connect/${pairingCode.value}`) {
+        sendJson(res, 401, { _tag: 'UnauthorizedError', message: 'Pairing link expired or already used' });
         return;
       }
+      pairingCode = undefined;
+      pairingToken = `local-session-${pairingSequence}`;
+      sendJson(res, 200, { token: pairingToken });
+      return;
+    }
+    if (connectionPassword) {
+      const valid = [connectionPassword, pairingToken].filter(Boolean).some((secret) => req.headers.authorization === `Basic ${Buffer.from(`opencode:${secret}`).toString('base64')}`);
+      if (!valid) { sendJson(res, 401, { _tag: 'UnauthorizedError', message: 'Authentication required' }); return; }
+    }
+
+    if (pathname === '/api/event') {
+      if (state.scenario === 'stream-disconnect') return sendJson(res, 503, { error: 'SSE unavailable' });
+      res.writeHead(200, {
+        'Content-Type': 'text/event-stream',
+        'Cache-Control': 'no-cache',
+        Connection: 'keep-alive',
+        'Access-Control-Allow-Origin': '*',
+      });
+      v2Clients.add(res);
+      res.write(`data: ${JSON.stringify(event('server.connected', {}))}\n\n`);
+      req.on('close', () => v2Clients.delete(res));
+      return;
+    }
+
+    if (req.method === 'GET' && pathname === '/api/info') {
+      sendJson(res, 200, { version: '2.0.0-fake', pid: 1, urls: [`http://127.0.0.1:${port}`], paths: { tmp: '/tmp' } });
+      return;
+    }
+
+    if (req.method === 'GET' && pathname === '/api/location') {
+      const project = resolveProject(state, requestUrl.searchParams.get('location[directory]'));
+      if (!project) { sendJson(res, 400, { error: 'Directory is outside the server workspace.' }); return; }
+      sendJson(res, 200, { directory: requestUrl.searchParams.get('location[directory]') || project.canonical, project: { id: project.id, directory: project.canonical, canonical: project.canonical } });
+      return;
+    }
+
+    if (req.method === 'GET' && pathname === '/api/project') {
+      sendJson(res, 200, state.projects.map((project) => ({
+        id: project.id,
+        canonical: project.canonical,
+        time: { created: project.time.created, updated: project.time.initialized || project.time.created },
+        sandboxes: [],
+      })));
+      return;
+    }
+
+    if (req.method === 'GET' && pathname === '/api/config') {
+      sendJson(res, 200, [{ type: 'directory', path: state.rootPath }, { type: 'document', info: state.config }]);
+      return;
+    }
+
+    if (req.method === 'GET' && pathname === '/api/provider') {
       sendJson(res, 200, {
-        url: 'https://example.test/oauth/complete',
-        instructions: 'Fake OAuth completed in CI.',
-        method: body?.method === 0 ? 'code' : 'auto',
+        location: location(),
+        data: providerCatalog.filter((provider) => state.configuredProviderIds.has(provider.id)),
       });
       return;
     }
 
-    if (req.method === 'POST' && /^\/provider\/[^/]+\/oauth\/callback$/.test(pathname)) {
-      const providerId = pathname.split('/')[2];
-      const body = await readJson(req);
-      if (!Number.isInteger(body?.method)) {
-        sendJson(res, 400, { error: 'OAuth callback requires method' });
-        return;
-      }
-      state.configuredProviderIds.add(providerId);
-      sendJson(res, 200, { ok: true, code: body?.code });
+    if (req.method === 'GET' && pathname === '/api/model') {
+      sendJson(res, 200, { location: location(), data: modelCatalog(state).filter((model) => model.enabled) });
       return;
     }
 
-    if (req.method === 'PUT' && /^\/auth\/[^/]+$/.test(pathname)) {
-      const providerId = pathname.split('/')[2];
-      const body = await readJson(req);
-      if (!body?.type || body?.auth) {
-        sendJson(res, 400, { error: 'Auth body must be a raw Auth value' });
-        return;
-      }
-      state.authByProvider[providerId] = body;
-      state.configuredProviderIds.add(providerId);
-      mergeConfigPatch({
-        enabled_providers: [...state.configuredProviderIds],
-        provider: {
-          [providerId]: body || { type: 'api' },
-        },
+    if (req.method === 'GET' && pathname === '/api/model/default') {
+      sendJson(res, 200, { location: location(), data: models[0] });
+      return;
+    }
+
+    if (req.method === 'GET' && pathname === '/api/agent') {
+      sendJson(res, 200, {
+        location: location(),
+        data: [
+          { id: 'build', name: 'build', mode: 'primary', hidden: false, permissions: [] },
+          { id: 'general', name: 'general', mode: 'all', hidden: false, permissions: [] },
+        ],
       });
-      sendJson(res, 200, { ok: true });
       return;
     }
 
-    if (req.method === 'GET' && pathname === '/agent') {
-      sendJson(res, 200, [
-        { name: 'build', description: 'Default build agent' },
-        { name: 'general', description: 'General-purpose agent' },
-      ]);
+    const mcpMutation = pathname.match(/^\/api\/experimental\/mcp\/([^/]+)(?:\/(connect|disconnect))?$/);
+    if (mcpMutation) {
+      if (!requireLocation(requestUrl, res)) return;
+      const name = decodeURIComponent(mcpMutation[1]);
+      if (req.method === 'PUT') {
+        const body = await readJson(req); state.mcpRuntimeConfigs[name] = body.config;
+        state.mcpStatuses[name] = body.config.disabled ? { status: 'disabled' } : body.config.type === 'remote' && body.config.oauth !== false ? { status: 'needs_auth', error: 'Authentication required' } : { status: 'connected' };
+      } else if (req.method === 'DELETE') { delete state.mcpRuntimeConfigs[name]; delete state.mcpStatuses[name]; }
+      else if (req.method === 'POST' && state.mcpRuntimeConfigs[name]) state.mcpStatuses[name] = { status: mcpMutation[2] === 'disconnect' ? 'disabled' : 'connected' };
+      else return notFound(res);
+      emitV2Event(event('mcp.status.changed', { server: name })); sendJson(res, 204); return;
+    }
+    const integrationEntry = pathname.match(/^\/api\/integration\/([^/]+)$/);
+    if (req.method === 'GET' && integrationEntry) {
+      const id = decodeURIComponent(integrationEntry[1]);
+      const native = providerCatalog.find((provider) => provider.integrationID === id);
+      const mcpName = id.startsWith('mcp-') ? id.slice(4) : undefined;
+      if (!native && !state.mcpRuntimeConfigs[mcpName]) return notFound(res);
+      sendJson(res, 200, { location: location(), data: { id, name: native?.name || mcpName, methods: mcpName ? [{ type: 'oauth', id: 'login', label: 'Sign in' }] : [{ type: 'key', label: 'API key' }], connections: [], ...(mcpName ? { metadata: { source: 'mcp' } } : {}) } }); return;
+    }
+    const oauthPath = pathname.match(/^\/api\/integration\/([^/]+)\/connect\/oauth(?:\/([^/]+)(?:\/(complete))?)?$/);
+    if (oauthPath) {
+      if (!requireLocation(requestUrl, res)) return;
+      const integrationID = decodeURIComponent(oauthPath[1]);
+      if (req.method === 'POST' && !oauthPath[2]) {
+        const body = await readJson(req); if (body.methodID !== 'login') return sendJson(res, 400, { error: 'Unknown login method' });
+        const id = `attempt-${Object.keys(state.integrationAttempts).length + 1}`;
+        state.integrationAttempts[id] = { integrationID, status: 'pending' };
+        sendJson(res, 200, { location: location(), data: { attemptID: id, mode: integrationID.includes('code') ? 'code' : 'auto', url: `http://127.0.0.1:${port}/__control/oauth-complete?attemptID=${id}`, instructions: 'Finish sign-in in the browser.', time: { created: getNow(), expires: getNow() + 300000 } } }); return;
+      }
+      const attempt = state.integrationAttempts[oauthPath[2]];
+      if (!attempt || attempt.integrationID !== integrationID) return notFound(res);
+      if (req.method === 'DELETE') { delete state.integrationAttempts[oauthPath[2]]; sendJson(res, 204); return; }
+      if (req.method === 'POST' && oauthPath[3]) { const body = await readJson(req); if (!body.code?.trim()) return sendJson(res, 400, { error: 'Enter a code' }); attempt.status = 'complete'; state.mcpStatuses[integrationID.slice(4)] = { status: 'connected' }; sendJson(res, 204); return; }
+      if (req.method === 'GET') { sendJson(res, 200, { location: location(), data: { status: attempt.status } }); return; }
+      return notFound(res);
+    }
+    if (req.method === 'GET' && pathname === '/api/integration') {
+      sendJson(res, 200, {
+        location: location(),
+        data: providerCatalog.map((provider) => ({
+          id: provider.integrationID, name: provider.name,
+          methods: [{ type: 'env', names: ['PROVIDER_API_KEY'] }, { type: 'key', label: 'API key' }],
+          connections: state.credentials
+            .filter((credential) => credential.integrationID === provider.integrationID)
+            .map((credential) => ({ type: 'credential', id: credential.id, label: credential.label, method: 'key' })),
+        })),
+      });
       return;
     }
 
-    // Newer OpenCode 1.x servers also expose some /api routes. Emulate that so
-    // contract detection is forced to prefer the 1.x signature over /api probes.
-    if (process.env.FAKE_OPENCODE_V2_COMPAT === '1' && req.method === 'GET' && pathname === '/api/info') {
-      sendJson(res, 200, { version: '1.18.30', pid: 1, urls: [], paths: { tmp: '/tmp' } });
-      return;
-    }
-
-    if (process.env.FAKE_OPENCODE_V2_COMPAT === '1' && req.method === 'GET' && pathname === '/api/health') {
-      sendJson(res, 200, { healthy: true, version: '1.18.30' });
-      return;
-    }
-
-    if (req.method === 'GET' && pathname === '/global/health') {
-      sendJson(res, 200, { healthy: true, version: '1.18.3' });
-      return;
-    }
-
-    if (req.method === 'GET' && pathname === '/command') {
-      sendJson(res, 200, commandsPayload());
-      return;
-    }
-
-    if (req.method === 'GET' && pathname === '/find/file') {
-      const query = (requestUrl.searchParams.get('query') || '').toLowerCase();
-      const files = filesForDirectory(state, requestUrl.searchParams.get('directory'));
-      if (!files) { badRequest(res, 'A valid directory is required'); return; }
-      sendJson(res, 200, Object.keys(files).filter((path) => path.toLowerCase().includes(query)).sort());
-      return;
-    }
-
-    if (req.method === 'GET' && pathname === '/find') {
-      const pattern = requestUrl.searchParams.get('pattern');
-      if (!pattern) {
-        badRequest(res, 'Find text requires pattern');
+    const keyConnect = pathname.match(/^\/api\/integration\/([^/]+)\/connect\/key$/);
+    if (req.method === 'POST' && keyConnect) {
+      if (!requireLocation(requestUrl, res)) return;
+      const integrationID = decodeURIComponent(keyConnect[1]);
+      const provider = providerCatalog.find((item) => item.integrationID === integrationID);
+      const body = await readJson(req);
+      if (!provider || !body?.key?.trim()) {
+        sendJson(res, 400, { error: 'A known integration and API key are required' });
         return;
       }
-      const matches = [];
-      for (const [path, content] of Object.entries(state.files)) {
-        let offset = 0;
-        for (const [index, line] of content.split('\n').entries()) {
-          const start = line.toLowerCase().indexOf(pattern.toLowerCase());
-          if (start >= 0) {
-            matches.push({
-              path: { text: path },
-              lines: { text: line },
-              line_number: index + 1,
-              absolute_offset: offset + start,
-              submatches: [{ match: { text: line.slice(start, start + pattern.length) }, start, end: start + pattern.length }],
-            });
-          }
-          offset += line.length + 1;
-        }
+      state.configuredProviderIds.add(provider.id);
+      state.authByProvider[provider.id] = { type: 'api', key: body.key };
+      const label = typeof body?.label === 'string' && body.label.trim() ? body.label.trim() : 'API key';
+      const existing = state.credentials.find((credential) => credential.integrationID === integrationID && credential.label === label);
+      state.credentials.forEach((credential) => { if (credential.integrationID === integrationID) credential.active = false; });
+      if (existing) {
+        existing.active = true;
+        existing.value = { type: 'key', key: body.key };
+      } else {
+        state.credentials.push({ id: `credential-${integrationID}-${state.credentials.length + 1}`, integrationID, label, active: true, value: { type: 'key', key: body.key } });
       }
-      sendJson(res, 200, matches);
+      sendJson(res, 204);
       return;
     }
 
-    if (req.method === 'GET' && pathname === '/find/symbol') {
-      const query = requestUrl.searchParams.get('query');
-      if (!query) {
-        badRequest(res, 'Find symbols requires query');
+    if (req.method === 'GET' && pathname === '/api/credential') {
+      sendJson(res, 200, { data: state.credentials });
+      return;
+    }
+
+    if (req.method === 'POST' && pathname === '/api/credential') {
+      const body = await readJson(req);
+      if (!body?.integrationID || !body?.value) {
+        sendJson(res, 400, { error: 'integrationID and value are required' });
         return;
       }
-      const symbols = [{
-        name: 'feature',
-        kind: 12,
-        location: {
-          uri: `file://${state.project.worktree}/src/feature.ts`,
-          range: { start: { line: 0, character: 16 }, end: { line: 0, character: 23 } },
-        },
-      }];
-      sendJson(res, 200, symbols.filter((symbol) => symbol.name.toLowerCase().includes(query.toLowerCase())));
+      const activate = body.activate === true || (body.activate !== false && !state.credentials.some((credential) => credential.integrationID === body.integrationID && credential.active));
+      if (activate) state.credentials.forEach((credential) => { if (credential.integrationID === body.integrationID) credential.active = false; });
+      const credential = { id: body.id || `credential-${body.integrationID}-${state.credentials.length + 1}`, integrationID: body.integrationID, label: body.label || 'API key', active: activate, value: body.value };
+      state.credentials.push(credential);
+      sendJson(res, 200, { data: credential });
       return;
     }
 
-    if (req.method === 'GET' && pathname === '/file') {
+    const activateMatch = pathname.match(/^\/api\/credential\/([^/]+)\/activate$/);
+    if (req.method === 'POST' && activateMatch) {
+      const credentialID = decodeURIComponent(activateMatch[1]);
+      const target = state.credentials.find((credential) => credential.id === credentialID);
+      if (target) {
+        state.credentials.forEach((credential) => {
+          if (credential.integrationID === target.integrationID) credential.active = credential.id === credentialID;
+        });
+      }
+      res.writeHead(204, { 'Access-Control-Allow-Origin': '*' });
+      res.end();
+      return;
+    }
+
+    const credentialMatch = pathname.match(/^\/api\/credential\/([^/]+)$/);
+    if (req.method === 'PATCH' && credentialMatch) {
+      const body = await readJson(req);
+      const target = state.credentials.find((credential) => credential.id === decodeURIComponent(credentialMatch[1]));
+      if (target && typeof body?.label === 'string') target.label = body.label;
+      res.writeHead(204, { 'Access-Control-Allow-Origin': '*' });
+      res.end();
+      return;
+    }
+
+    if (req.method === 'DELETE' && credentialMatch) {
+      const credentialID = decodeURIComponent(credentialMatch[1]);
+      state.credentials = state.credentials.filter((credential) => credential.id !== credentialID);
+      res.writeHead(204, { 'Access-Control-Allow-Origin': '*' });
+      res.end();
+      return;
+    }
+
+    if (req.method === 'GET' && pathname === '/api/session/active') {
+      const active = {};
+      for (const [sessionID, status] of Object.entries(state.sessionStatuses)) {
+        // The running set excludes retries, matching the real server. The app
+        // must preserve the event-derived retry across this list refresh.
+        if (status?.type === 'busy') active[sessionID] = { type: 'running' };
+      }
+      sendJson(res, 200, { data: active });
+      return;
+    }
+
+    if (req.method === 'GET' && pathname === '/api/session') {
       const directory = requestUrl.searchParams.get('directory');
-      const files = filesForDirectory(state, directory);
-      if (!files) { badRequest(res, 'A valid directory is required'); return; }
-      sendJson(res, 200, fileNodes(files, directory, requestUrl.searchParams.get('path') || ''));
+      const sessions = directory ? state.sessions.filter((session) => session.location.directory === directory) : state.sessions;
+      sendJson(res, 200, { data: sessions, cursor: { next: null, previous: null } });
       return;
     }
 
-    if (req.method === 'GET' && pathname === '/file/content') {
-      const requestedPath = requestUrl.searchParams.get('path') || '';
-      const files = filesForDirectory(state, requestUrl.searchParams.get('directory'));
-      if (!files) { badRequest(res, 'A valid directory is required'); return; }
-      if (!(requestedPath in files)) {
-        notFound(res);
+    if (req.method === 'POST' && pathname === '/api/session') {
+      const body = await readJson(req);
+      const directory = body?.location?.directory;
+      const session = helpers.createSession(body?.title || '', directory);
+      sendJson(res, 200, { data: session });
+      return;
+    }
+
+    const forkPath = pathname.match(/^\/api\/session\/([^/]+)\/fork$/);
+    if (req.method === 'POST' && forkPath) {
+      const source = helpers.getSession(forkPath[1]); if (!source) return notFound(res);
+      const body = await readJson(req);
+      const fork = helpers.createSession(`${source.title || 'Untitled chat'} (fork)`, source.location.directory);
+      fork.parentID = source.id; fork.model = source.model; fork.agent = source.agent;
+      const messages = helpers.getMessages(source.id);
+      const end = body?.before ? messages.findIndex((item) => item.id === body.before) : -1;
+      state.messagesBySession[fork.id] = structuredClone(end >= 0 ? messages.slice(0, end) : messages);
+      emitV2Event(event('session.forked', { sessionID: fork.id }));
+      sendJson(res, 200, { data: fork }); return;
+    }
+    const revertPath = pathname.match(/^\/api\/session\/([^/]+)\/revert(?:\/(stage))?$/);
+    if (revertPath) {
+      const session = helpers.getSession(revertPath[1]); if (!session) return notFound(res);
+      if (req.method === 'POST' && revertPath[2]) {
+        const body = await readJson(req);
+        if (!helpers.getMessages(session.id).some((item) => item.id === body.messageID)) return notFound(res);
+        session.revert = { messageID: body.messageID };
+        emitV2Event(event('session.revert.staged', { sessionID: session.id, revert: session.revert }));
+        sendJson(res, 200, { data: session.revert }); return;
+      }
+      if (req.method === 'DELETE') {
+        delete session.revert; emitV2Event(event('session.revert.cleared', { sessionID: session.id }));
+        sendJson(res, 204); return;
+      }
+      return notFound(res);
+    }
+
+    if (req.method === 'GET' && /^\/api\/session\/[^/]+$/.test(pathname)) {
+      const session = helpers.getSession(pathname.split('/')[3]);
+      if (!session) return notFound(res);
+      sendJson(res, 200, { data: session });
+      return;
+    }
+
+    if (req.method === 'DELETE' && /^\/api\/session\/[^/]+$/.test(pathname)) {
+      const sessionID = pathname.split('/')[3];
+      state.sessions = state.sessions.filter((session) => session.id !== sessionID);
+      delete state.messagesBySession[sessionID];
+      emitV2Event(event('session.deleted', { sessionID }));
+      res.writeHead(204, { 'Access-Control-Allow-Origin': '*' });
+      res.end();
+      return;
+    }
+
+    if (req.method === 'PATCH' && /^\/api\/session\/[^/]+$/.test(pathname)) {
+      const sessionID = pathname.split('/')[3];
+      const body = await readJson(req);
+      const session = helpers.getSession(sessionID);
+      if (!session) return notFound(res);
+      if (typeof body?.title === 'string') session.title = body.title;
+      res.writeHead(204, { 'Access-Control-Allow-Origin': '*' });
+      res.end();
+      return;
+    }
+
+    if (req.method === 'GET' && /^\/api\/session\/[^/]+\/message$/.test(pathname)) {
+      const sessionID = pathname.split('/')[3];
+      const cursor = requestUrl.searchParams.get('cursor');
+      if (cursor && requestUrl.searchParams.has('order')) return sendJson(res, 400, { error: 'cursor and order cannot be combined' });
+      const position = cursor ? JSON.parse(Buffer.from(cursor, 'base64url').toString()) : { offset: 0, order: requestUrl.searchParams.get('order') || 'desc' };
+      const limit = Number(requestUrl.searchParams.get('limit') || 200);
+      const messages = [...(state.messagesBySession[sessionID] || [])];
+      if (position.order === 'desc') messages.reverse();
+      const data = messages.slice(position.offset, position.offset + limit);
+      const next = position.offset + limit < messages.length ? Buffer.from(JSON.stringify({ ...position, offset: position.offset + limit })).toString('base64url') : null;
+      sendJson(res, 200, { data, cursor: { next, previous: null } });
+      return;
+    }
+
+    if (req.method === 'GET' && /^\/api\/session\/[^/]+\/diff$/.test(pathname)) {
+      const sessionID = pathname.split('/')[3];
+      const messageID = requestUrl.searchParams.get('from');
+      const userMessages = (state.messagesBySession[sessionID] || []).filter((record) => record.type === 'user');
+      const target = messageID
+        ? userMessages.find((record) => record.id === messageID)
+        : userMessages[userMessages.length - 1];
+      sendJson(res, 200, { data: state.diffsByTurn[sessionID]?.[target?.id] || [] });
+      return;
+    }
+
+    if (req.method === 'GET' && /^\/api\/session\/[^/]+\/inbox$/.test(pathname)) {
+      const sessionID = pathname.split('/')[3];
+      if (!helpers.getSession(sessionID)) return notFound(res);
+      sendJson(res, 200, { data: state.inboxBySession[sessionID] || [] });
+      return;
+    }
+
+    const inboxItemPath = pathname.match(/^\/api\/session\/([^/]+)\/inbox\/([^/]+)$/);
+    if (inboxItemPath && (req.method === 'DELETE' || req.method === 'PATCH')) {
+      const [, sessionID, inboxID] = inboxItemPath;
+      const item = (state.inboxBySession[sessionID] || []).find((entry) => entry.id === inboxID);
+      if (!item) return notFound(res);
+      if (req.method === 'DELETE') {
+        state.inboxBySession[sessionID] = state.inboxBySession[sessionID].filter((entry) => entry.id !== inboxID);
+        emitV2Event(event('session.inbox.cancelled', { sessionID, inboxID }));
+      } else {
+        const body = await readJson(req);
+        if (!['steer', 'queue'].includes(body?.delivery)) return sendJson(res, 400, { error: 'Invalid delivery' });
+        item.delivery = body.delivery;
+        emitV2Event(event('session.inbox.delivery.changed', { sessionID, inboxID, delivery: item.delivery }));
+      }
+      sendJson(res, 204);
+      return;
+    }
+
+    if (req.method === 'POST' && pathname === '/__control/inbox') {
+      const body = await readJson(req);
+      const sessionID = body.sessionID;
+      if (!helpers.getSession(sessionID)) return notFound(res);
+      if (body.action === 'complete') helpers.completePrompt(sessionID, state.activePromptBySession[sessionID]);
+      const pending = state.inboxBySession[sessionID] || [];
+      const item = pending.find((entry) => body.action === 'complete' || entry.delivery === 'steer');
+      if (item) deliverInboxItem(item);
+      sendJson(res, 200, { data: state.inboxBySession[sessionID] || [] });
+      return;
+    }
+
+    if (req.method === 'POST' && /^\/api\/session\/[^/]+\/prompt$/.test(pathname)) {
+      const sessionID = pathname.split('/')[3];
+      if (!helpers.getSession(sessionID)) return notFound(res);
+      const body = await readJson(req);
+      const files = (body?.files || []).map((file) => {
+        const match = file.uri?.match(/^data:([^;,]+);base64,([\s\S]*)$/);
+        return { name: file.name, mime: match?.[1] || 'application/octet-stream', data: match?.[2] || '', source: { type: 'inline' } };
+      });
+      const item = {
+        id: `message-${state.nextMessageId++}`, sessionID, type: 'user',
+        payload: { text: body?.text || '', files }, delivery: body?.delivery || 'steer', time: { created: getNow() },
+      };
+      state.inboxBySession[sessionID] = [...(state.inboxBySession[sessionID] || []), item];
+      emitV2Event(event('session.inbox.enqueued', { sessionID, inboxID: item.id, item: { type: 'user', payload: item.payload, delivery: item.delivery } }));
+      if (state.scenario !== 'inbox' || state.sessionStatuses[sessionID]?.type === 'idle') deliverInboxItem(item);
+      sendJson(res, 200, { data: item });
+      return;
+    }
+
+    if (req.method === 'POST' && /^\/api\/session\/[^/]+\/interrupt$/.test(pathname)) {
+      const sessionID = pathname.split('/')[3];
+      state.sessionStatuses[sessionID] = { type: 'idle' };
+      sendJson(res, 200, { interrupted: true });
+      return;
+    }
+
+    if (req.method === 'POST' && /^\/api\/session\/[^/]+\/command$/.test(pathname)) {
+      const sessionID = pathname.split('/')[3];
+      const body = await readJson(req);
+      helpers.handleCommand(sessionID, { command: body?.name, arguments: body?.text });
+      res.writeHead(204, { 'Access-Control-Allow-Origin': '*' });
+      res.end();
+      return;
+    }
+
+    if (req.method === 'POST' && /^\/api\/session\/[^/]+\/(agent|model)$/.test(pathname)) {
+      const sessionID = pathname.split('/')[3];
+      const body = await readJson(req);
+      const session = helpers.getSession(sessionID);
+      if (session) {
+        if (pathname.endsWith('/model') && body?.model) session.model = body.model;
+        if (pathname.endsWith('/agent') && body?.agent) session.agent = body.agent;
+      }
+      res.writeHead(204, { 'Access-Control-Allow-Origin': '*' });
+      res.end();
+      return;
+    }
+
+    // Session-scoped instruction entries are the V2 replacement for the V1
+    // prompt `system` field. The adapter writes chat preferences here.
+    if (pathname.startsWith('/api/experimental/session/') && pathname.includes('/instructions/entries')) {
+      const match = pathname.match(/^\/api\/experimental\/session\/([^/]+)\/instructions\/entries(?:\/([^/]+))?$/);
+      if (!match) return notFound(res);
+      const sessionID = match[1];
+      const key = match[2] ? decodeURIComponent(match[2]) : undefined;
+      if (!helpers.getSession(sessionID)) return notFound(res);
+      const entries = state.instructionsBySession[sessionID] || (state.instructionsBySession[sessionID] = {});
+      if (req.method === 'GET' && !key) {
+        sendJson(res, 200, { data: Object.entries(entries).map(([entryKey, value]) => ({ key: entryKey, value })) });
         return;
       }
+      if (req.method === 'PUT' && key) {
+        const body = await readJson(req);
+        entries[key] = body?.value;
+        res.writeHead(204, { 'Access-Control-Allow-Origin': '*' });
+        res.end();
+        return;
+      }
+      if (req.method === 'DELETE' && key) {
+        delete entries[key];
+        res.writeHead(204, { 'Access-Control-Allow-Origin': '*' });
+        res.end();
+        return;
+      }
+    }
+
+    if (req.method === 'POST' && /^\/api\/session\/[^/]+\/permission\/[^/]+\/reply$/.test(pathname)) {
+      const sessionID = pathname.split('/')[3];
+      const requestID = pathname.split('/')[5];
+      const body = await readJson(req);
+      const request = state.pendingPermissions.find((item) => item.id === requestID);
+      if (!request || !['once', 'always', 'reject'].includes(body?.decision)) {
+        sendJson(res, 400, { error: 'Invalid permission response' });
+        return;
+      }
+      state.pendingPermissions = state.pendingPermissions.filter((item) => item !== request);
+      emitEvent({ type: 'permission.replied', data: { sessionID: sessionID || request.sessionID, requestID, reply: body.decision } });
+      if (body.decision !== 'reject') helpers.scheduleCompletion(sessionID || request.sessionID, 'permission resolved');
+      else state.sessionStatuses[sessionID || request.sessionID] = { type: 'idle' };
+      res.writeHead(204, { 'Access-Control-Allow-Origin': '*' });
+      res.end();
+      return;
+    }
+
+    if (req.method === 'POST' && /^\/api\/session\/[^/]+\/form\/[^/]+\/(reply|cancel)$/.test(pathname)) {
+      const sessionID = pathname.split('/')[3];
+      const formID = pathname.split('/')[5];
+      const action = pathname.split('/')[6];
+      const body = action === 'reply' ? await readJson(req) : undefined;
+      const request = state.pendingQuestions.find((item) => item.id === formID);
+      if (!request) {
+        sendJson(res, 400, { error: 'Invalid question response' });
+        return;
+      }
+      if (action === 'reply' && state.scenario === 'question-failure' && !state.questionReplyFailed) { state.questionReplyFailed = true; sendJson(res, 503, { error: 'Question submission failed. Try again.' }); return; }
+      state.pendingQuestions = state.pendingQuestions.filter((item) => item !== request);
+      emitEvent({
+        type: action === 'reply' ? 'form.replied' : 'form.cancelled',
+        data: { sessionID: sessionID || request.sessionID, id: formID, ...(body || {}) },
+      });
+      if (action === 'reply') helpers.scheduleCompletion(sessionID || request.sessionID, `question resolved ${JSON.stringify(body?.answer ?? {})}`);
+      else state.sessionStatuses[sessionID || request.sessionID] = { type: 'idle' };
+      res.writeHead(204, { 'Access-Control-Allow-Origin': '*' });
+      res.end();
+      return;
+    }
+
+    if (req.method === 'GET' && pathname === '/api/config/shell') {
+      sendJson(res, 200, [{ path: '/bin/bash', name: 'bash', acceptable: true }]);
+      return;
+    }
+
+    if (req.method === 'GET' && pathname === '/api/command') {
+      sendJson(res, 200, { location: location(), data: [{ name: 'review', description: 'Review code' }] });
+      return;
+    }
+
+    if (req.method === 'GET' && pathname === '/api/mcp') {
       sendJson(res, 200, {
-        type: files[requestedPath].includes('\0') ? 'binary' : 'text',
-        content: files[requestedPath],
-        diff: requestedPath === 'app/(tabs)/index.tsx' && state.workspaceTaskCompleted
-          ? '@@ -1,1 +1,3 @@\n-export default function OldScreen() {}\n+export default function ChatLandingScreen() {\n+  return null;\n+}'
-          : undefined,
+        location: location(),
+        data: Object.entries(state.mcpStatuses).map(([name, status]) => ({ name, status, ...(state.mcpRuntimeConfigs[name]?.type === 'remote' && state.mcpRuntimeConfigs[name].oauth !== false ? { integrationID: `mcp-${name}` } : {}) })),
       });
       return;
     }
 
-    if (req.method === 'GET' && pathname === '/file/status') {
-      sendJson(res, 200, fileStatusesPayload(state));
+    if (req.method === 'GET' && pathname === '/api/vcs') {
+      if (!requireLocation(requestUrl, res)) return;
+      sendJson(res, 200, { location: location(), data: { provider: 'git', branch: { current: 'main', default: 'main' } } });
       return;
     }
 
-    if (req.method === 'GET' && pathname === '/vcs') {
-      sendJson(res, 200, vcsPayload());
+    if (req.method === 'GET' && pathname === '/api/vcs/status') {
+      if (!requireLocation(requestUrl, res)) return;
+      sendJson(res, 200, { location: location(), data: state.workspaceTaskCompleted ? [{ file: 'src/demo.ts', additions: 1, deletions: 1, status: 'modified' }, { file: 'app/(tabs)/index.tsx', additions: 6, deletions: 1, status: 'modified' }] : [] });
       return;
     }
 
-    if (req.method === 'GET' && pathname === '/vcs/status') {
-      sendJson(res, 200, state.files['src/demo.ts'].includes('SDK')
-        ? [{ file: 'src/demo.ts', additions: 1, deletions: 1, status: 'modified' }]
-        : []);
-      return;
-    }
-
-    if (req.method === 'GET' && pathname === '/vcs/diff') {
+    if (req.method === 'GET' && pathname === '/api/vcs/diff') {
+      if (!requireLocation(requestUrl, res)) return;
       const mode = requestUrl.searchParams.get('mode');
-      if (!['git', 'branch'].includes(mode)) {
-        badRequest(res, 'VCS diff requires mode');
+      if (!['working', 'branch', 'committed'].includes(mode)) {
+        sendJson(res, 400, { error: 'VCS diff requires mode' });
         return;
       }
       if (mode === 'branch') {
-        sendJson(res, 200, [{ file: 'README.md', patch: branchPatch, additions: 1, deletions: 0, status: 'modified' }]);
+        sendJson(res, 200, { location: location(), data: [{ file: 'README.md', patch: branchPatch, additions: 1, deletions: 0, status: 'modified' }] });
         return;
       }
-      sendJson(res, 200, state.files['src/demo.ts'].includes('SDK')
-        ? [{ file: 'src/demo.ts', patch: applicablePatch, additions: 1, deletions: 1, status: 'modified' }]
-        : []);
+      sendJson(res, 200, {
+        location: location(),
+        data: state.files['src/demo.ts'].includes('SDK')
+          ? [{ file: 'src/demo.ts', patch: workingPatch, additions: 1, deletions: 1, status: 'modified' }]
+          : [],
+      });
       return;
     }
 
-    if (req.method === 'GET' && pathname === '/vcs/diff/raw') {
-      sendJson(res, 200, state.files['src/demo.ts'].includes('SDK') ? applicablePatch : '');
+    if (req.method === 'GET' && ['/api/fs/find', '/api/fs/list'].includes(pathname)) {
+      const directory = requireLocation(requestUrl, res);
+      if (!directory) return;
+      const files = filesForDirectory(state, directory);
+      if (!files) { sendJson(res, 400, { error: 'Unknown workspace' }); return; }
+      const query = (requestUrl.searchParams.get('query') || '').toLowerCase();
+      const entries = pathname === '/api/fs/find'
+        ? Object.keys(files).filter((path) => path.toLowerCase().includes(query)).sort().map((path) => ({ path, type: 'file' }))
+        : fileNodes(files, directory, requestUrl.searchParams.get('path') || '').map(({ path, type }) => ({ path, type }));
+      sendJson(res, 200, { location: { directory }, data: entries });
       return;
     }
 
-    if (req.method === 'POST' && pathname === '/vcs/apply') {
-      const body = await readJson(req);
-      const expected = 'export const demo = "OpenCode 1.18.3";\n';
-      if (![applicablePatch, editorPatch].includes(body?.patch) || state.files['src/demo.ts'] !== expected) {
-        badRequest(res, 'Patch is unsupported or no longer applies');
-        return;
-      }
-      state.files['src/demo.ts'] = 'export const demo = "OpenCode SDK 1.18.3";\n';
-      sendJson(res, 200, { applied: true });
+    if (req.method === 'POST' && pathname === '/api/experimental/fs/write') {
+      const directory = requireLocation(requestUrl, res); if (!directory) return;
+      const path = requestUrl.searchParams.get('path'); const files = filesForDirectory(state, directory);
+      if (!files || !path || path.startsWith('/') || path.split('/').includes('..')) return sendJson(res, 400, { error: 'Invalid file path' });
+      const chunks = []; for await (const chunk of req) chunks.push(chunk);
+      files[path] = Buffer.concat(chunks).toString('utf8'); state.workspaceTaskCompleted = true;
+      emitV2Event(event('filesystem.changed', { path })); sendJson(res, 200, { location: { directory }, data: { path } }); return;
+    }
+    if (req.method === 'GET' && pathname.startsWith('/api/fs/read/')) {
+      const directory = requireLocation(requestUrl, res);
+      if (!directory) return;
+      const files = filesForDirectory(state, directory);
+      if (!files) { sendJson(res, 400, { error: 'Unknown workspace' }); return; }
+      const requestedPath = decodeURIComponent(pathname.slice('/api/fs/read/'.length));
+      if (!(requestedPath in files)) return notFound(res);
+      res.writeHead(200, { 'Content-Type': 'text/plain; charset=utf-8', 'Access-Control-Allow-Origin': '*' });
+      res.end(files[requestedPath]);
       return;
     }
 
-    if (req.method === 'GET' && pathname === '/mcp') {
-      sendJson(res, 200, state.mcpStatuses);
-      return;
-    }
-    if (req.method === 'POST' && pathname === '/mcp') {
-      const body = await readJson(req);
-      if (!body?.name || !body?.config || state.mcpRuntimeConfigs[body.name]) {
-        badRequest(res, 'MCP add requires a unique name and config');
-        return;
-      }
-      state.mcpRuntimeConfigs[body.name] = body.config;
-      state.mcpStatuses[body.name] = { status: body.config.enabled === false ? 'disabled' : 'connected' };
-      sendJson(res, 200, state.mcpStatuses);
-      return;
-    }
-    if (req.method === 'POST' && /^\/mcp\/[^/]+\/(connect|disconnect)$/.test(pathname)) {
-      const [, , name, action] = pathname.split('/');
-      if (!state.mcpRuntimeConfigs[name]) {
-        notFound(res);
-        return;
-      }
-      state.mcpStatuses[name] = { status: action === 'connect' ? 'connected' : 'disabled' };
-      sendJson(res, 200, true);
-      return;
-    }
-    if (/^\/mcp\/[^/]+\/auth$/.test(pathname)) {
-      const name = pathname.split('/')[2];
-      if (!state.mcpRuntimeConfigs[name]) {
-        notFound(res);
-        return;
-      }
-      if (req.method === 'POST') {
-        const oauthState = `oauth-${name}`;
-        state.mcpOauth[name] = { state: oauthState };
-        sendJson(res, 200, { authorizationUrl: `https://example.test/mcp/${name}/authorize`, oauthState });
-        return;
-      }
-      if (req.method === 'DELETE') {
-        delete state.mcpOauth[name];
-        sendJson(res, 200, { success: true });
-        return;
-      }
-    }
-    if (req.method === 'POST' && /^\/mcp\/[^/]+\/auth\/callback$/.test(pathname)) {
-      const name = pathname.split('/')[2];
-      const body = await readJson(req);
-      if (!state.mcpRuntimeConfigs[name]) {
-        notFound(res);
-        return;
-      }
-      if (!state.mcpOauth[name] || !body?.code) {
-        badRequest(res, 'MCP OAuth callback requires an active flow and code');
-        return;
-      }
-      state.mcpOauth[name].code = body.code;
-      state.mcpStatuses[name] = { status: 'connected' };
-      sendJson(res, 200, state.mcpStatuses[name]);
-      return;
-    }
-    const diagnostics = diagnosticsPayload();
-    if (req.method === 'GET' && pathname === '/lsp') {
-      sendJson(res, 200, diagnostics.lsp);
-      return;
-    }
-    if (req.method === 'GET' && pathname === '/formatter') {
-      sendJson(res, 200, diagnostics.formatter);
+    if (req.method === 'GET' && pathname === '/api/pty') {
+      sendJson(res, 200, { location: location(), data: state.ptys });
       return;
     }
 
-    if (req.method === 'GET' && pathname === '/session') {
-      // No directory query = unscoped call (cross-workspace listing). Match the
-      // real server: return every non-archived session, each with its directory.
-      const directory = requestUrl.searchParams.get('directory');
-      sendJson(res, 200, state.sessions.filter((session) => (!directory || session.directory === directory) && !session.time.archived));
-      return;
-    }
-
-    if (req.method === 'GET' && pathname === '/experimental/session') {
-      const archived = requestUrl.searchParams.get('archived') === 'true';
-      const directory = requestUrl.searchParams.get('directory');
-      sendJson(res, 200, state.sessions
-        .filter((session) => (!directory || session.directory === directory) && (archived || !session.time.archived))
-        .map((session) => {
-          const project = state.projects.find((entry) => entry.worktree === session.directory) || state.project;
-          return { ...session, project: { id: project.id, worktree: project.worktree } };
-        }));
-      return;
-    }
-
-    if (req.method === 'POST' && pathname === '/session') {
-      const body = await readJson(req);
-      const session = createSession(body?.title || '', requestUrl.searchParams.get('directory') || undefined);
-      sendJson(res, 200, session);
-      return;
-    }
-
-    if (req.method === 'GET' && pathname === '/session/status') {
-      // Unscoped call returns statuses for every project on the server.
-      const directory = requestUrl.searchParams.get('directory');
-      sendJson(res, 200, Object.fromEntries(
-        state.sessions
-          .filter((session) => !directory || session.directory === directory)
-          .map((session) => [session.id, state.sessionStatuses[session.id]]),
-      ));
-      return;
-    }
-
-    if (req.method === 'GET' && /^\/session\/[^/]+$/.test(pathname)) {
-      const session = getSession(pathname.split('/')[2]);
-      if (!session) {
-        notFound(res);
-        return;
-      }
-      sendJson(res, 200, session);
-      return;
-    }
-
-    if (req.method === 'DELETE' && /^\/session\/[^/]+$/.test(pathname)) {
-      const sessionId = pathname.split('/')[2];
-      const sessionIndex = state.sessions.findIndex((entry) => entry.id === sessionId);
-      if (sessionIndex < 0) {
-        notFound(res);
-        return;
-      }
-      const deletedSession = state.sessions[sessionIndex];
-      state.sessions.splice(sessionIndex, 1);
-      delete state.messagesBySession[sessionId];
-      delete state.sessionInitializations[sessionId];
-      delete state.todosBySession[sessionId];
-      delete state.sessionStatuses[sessionId];
-      state.pendingPermissions = state.pendingPermissions.filter((entry) => entry.sessionID !== sessionId);
-      state.pendingQuestions = state.pendingQuestions.filter((entry) => entry.sessionID !== sessionId);
-      emitEvent({ type: 'session.deleted', properties: { sessionID: sessionId, info: deletedSession } });
-      sendJson(res, 200, true);
-      return;
-    }
-
-    if (req.method === 'GET' && /^\/session\/[^/]+\/message$/.test(pathname)) {
-      const sessionId = pathname.split('/')[2];
-      const messages = getMessages(sessionId);
-      const before = requestUrl.searchParams.get('before');
-      const end = before ? Math.max(0, messages.findIndex((record) => record.info.id === before)) : messages.length;
-      const limit = Number(requestUrl.searchParams.get('limit') || messages.length);
-      const start = Math.max(0, end - limit);
-      sendJson(res, 200, messages.slice(start, end), start > 0 ? { 'x-next-cursor': messages[start].info.id } : {});
-      return;
-    }
-
-    if (req.method === 'GET' && /^\/session\/[^/]+\/children$/.test(pathname)) {
-      const sessionId = pathname.split('/')[2];
-      if (!getSession(sessionId)) {
-        notFound(res);
-        return;
-      }
-      sendJson(res, 200, state.sessions.filter((session) => session.parentID === sessionId));
-      return;
-    }
-
-    if (req.method === 'POST' && /^\/session\/[^/]+\/init$/.test(pathname)) {
-      const session = getSession(pathname.split('/')[2]);
-      const body = await readJson(req);
-      if (!session) {
-        notFound(res);
-        return;
-      }
-      if (!body?.modelID || !body?.providerID || !body?.messageID) {
-        badRequest(res, 'Session init requires modelID, providerID, and messageID');
-        return;
-      }
-      state.sessionInitializations[session.id] = {
-        modelID: body.modelID,
-        providerID: body.providerID,
-        messageID: body.messageID,
-      };
-      sendJson(res, 200, true);
-      return;
-    }
-
-    if (req.method === 'POST' && /^\/session\/[^/]+\/shell$/.test(pathname)) {
-      const sessionId = pathname.split('/')[2];
-      const body = await readJson(req);
-      if (!getSession(sessionId)) {
-        notFound(res);
-        return;
-      }
-      if (!body?.agent || !body?.command) {
-        badRequest(res, 'Session shell requires agent and command');
-        return;
-      }
-      sendJson(res, 200, handleCommand(sessionId, { command: 'shell', arguments: body.command }));
-      return;
-    }
-
-    if (req.method === 'GET' && /^\/session\/[^/]+\/diff$/.test(pathname)) {
-      const sessionId = pathname.split('/')[2];
-      const messageId = requestUrl.searchParams.get('messageID');
-      const message = getMessages(sessionId).find((record) => record.info.id === messageId && record.info.role === 'user');
-      sendJson(res, 200, message?.info.summary?.diffs || []);
-      return;
-    }
-
-    if (req.method === 'GET' && /^\/session\/[^/]+\/todo$/.test(pathname)) {
-      const sessionId = pathname.split('/')[2];
-      sendJson(res, 200, state.todosBySession[sessionId] || []);
-      return;
-    }
-
-    if (req.method === 'POST' && (/^\/session\/[^/]+\/prompt_async$/.test(pathname) || /^\/session\/[^/]+\/message$/.test(pathname))) {
-      const sessionId = pathname.split('/')[2];
-      const body = await readJson(req);
-      handlePromptSubmission(sessionId, body);
-      if (pathname.endsWith('/prompt_async')) {
-        res.writeHead(204, { 'Access-Control-Allow-Origin': '*' });
-        res.end();
-      } else {
-        sendJson(res, 200, { accepted: true });
-      }
-      return;
-    }
-
-    if (req.method === 'POST' && /^\/session\/[^/]+\/abort$/.test(pathname)) {
-      const sessionId = pathname.split('/')[2];
-      state.sessionStatuses[sessionId] = { type: 'idle' };
-      emitEvent({ type: 'session.idle', properties: { sessionID: sessionId } });
-      sendJson(res, 200, { ok: true });
-      return;
-    }
-
-    if (req.method === 'POST' && /^\/session\/[^/]+\/summarize$/.test(pathname)) {
-      const sessionId = pathname.split('/')[2];
-      const session = getSession(sessionId);
-      const lastUserMessage = [...getMessages(sessionId)].reverse().find((record) => record.info.role === 'user');
-      if (session) {
-        const promptText = lastUserMessage?.parts?.find((part) => part.type === 'text')?.text || 'Untitled chat';
-        session.title = summarizePrompt(promptText);
-      }
-      sendJson(res, 200, session || null);
-      return;
-    }
-
-    if (req.method === 'POST' && /^\/session\/[^/]+\/command$/.test(pathname)) {
-      const sessionId = pathname.split('/')[2];
-      if (!getSession(sessionId)) {
-        notFound(res);
-        return;
-      }
-      sendJson(res, 200, handleCommand(sessionId, await readJson(req)));
-      return;
-    }
-
-    if (req.method === 'POST' && /^\/session\/[^/]+\/fork$/.test(pathname)) {
-      const sourceId = pathname.split('/')[2];
-      const body = await readJson(req);
-      const forked = forkSession(sourceId, body?.messageID);
-      if (!forked) {
-        notFound(res);
-        return;
-      }
-      sendJson(res, 200, forked);
-      return;
-    }
-
-    if (req.method === 'POST' && /^\/session\/[^/]+\/share$/.test(pathname)) {
-      const session = getSession(pathname.split('/')[2]);
-      if (!session) {
-        notFound(res);
-        return;
-      }
-      session.share = { url: `https://share.example.test/${session.id}` };
-      session.time.updated = getNow();
-      emitEvent({ type: 'session.updated', properties: { sessionID: session.id, info: session } });
-      sendJson(res, 200, session);
-      return;
-    }
-
-    if (req.method === 'DELETE' && /^\/session\/[^/]+\/share$/.test(pathname)) {
-      const session = getSession(pathname.split('/')[2]);
-      if (!session) {
-        notFound(res);
-        return;
-      }
-      delete session.share;
-      session.time.updated = getNow();
-      emitEvent({ type: 'session.updated', properties: { sessionID: session.id, info: session } });
-      sendJson(res, 200, session);
-      return;
-    }
-
-    if (req.method === 'POST' && /^\/session\/[^/]+\/revert$/.test(pathname)) {
-      const session = getSession(pathname.split('/')[2]);
-      const body = await readJson(req);
-      if (!session || !body?.messageID) {
-        sendJson(res, 400, { error: 'Revert requires a session and messageID' });
-        return;
-      }
-      session.revert = { messageID: body.messageID, ...(body.partID ? { partID: body.partID } : {}) };
-      session.time.updated = getNow();
-      emitEvent({ type: 'session.updated', properties: { sessionID: session.id, info: session } });
-      sendJson(res, 200, session);
-      return;
-    }
-
-    if (req.method === 'POST' && /^\/session\/[^/]+\/unrevert$/.test(pathname)) {
-      const session = getSession(pathname.split('/')[2]);
-      if (!session) {
-        notFound(res);
-        return;
-      }
-      delete session.revert;
-      session.time.updated = getNow();
-      emitEvent({ type: 'session.updated', properties: { sessionID: session.id, info: session } });
-      sendJson(res, 200, session);
-      return;
-    }
-
-    if (req.method === 'PATCH' && /^\/session\/[^/]+$/.test(pathname)) {
-      const sessionId = pathname.split('/')[2];
-      const session = getSession(sessionId);
-      const body = await readJson(req);
-      if (!session) {
-        notFound(res);
-        return;
-      }
-
-      if (body?.title !== undefined && (typeof body.title !== 'string' || !body.title.trim())) {
-        badRequest(res, 'Session title must not be empty');
-        return;
-      }
-      if (body?.title !== undefined) session.title = body.title.trim();
-      if (body?.time?.archived !== undefined) session.time.archived = body.time.archived;
-      if (body?.title === undefined && body?.time?.archived === undefined) {
-        badRequest(res, 'Session update requires title or time.archived');
-        return;
-      }
-      session.time.updated = getNow();
-      emitEvent({ type: 'session.updated', properties: { sessionID: session.id, info: session } });
-      sendJson(res, 200, session);
-      return;
-    }
-
-    if (req.method === 'GET' && pathname === '/pty/shells') {
-      sendJson(res, 200, [
-        { path: '/bin/bash', name: 'bash', acceptable: true },
-        { path: '/bin/sh', name: 'sh', acceptable: true },
-      ]);
-      return;
-    }
-
-    if (req.method === 'GET' && pathname === '/pty') {
-      sendJson(res, 200, state.ptys);
-      return;
-    }
-
-    if (req.method === 'POST' && pathname === '/pty') {
+    if (req.method === 'POST' && pathname === '/api/pty') {
       const body = await readJson(req) || {};
       const pty = {
         id: `pty-${state.nextPtyId++}`,
         title: body.title || body.command || 'Terminal',
         command: body.command || '/bin/bash',
         args: Array.isArray(body.args) ? body.args : [],
-        cwd: body.cwd || state.project.worktree,
+        cwd: body.cwd || state.project.canonical,
         status: 'running',
         pid: 4000 + state.nextPtyId,
       };
       state.ptys.push(pty);
-      sendJson(res, 200, pty);
+      sendJson(res, 200, { location: location(), data: pty });
       return;
     }
 
-    if (/^\/pty\/[^/]+$/.test(pathname)) {
-      const ptyId = pathname.split('/')[2];
+    if (/^\/api\/pty\/[^/]+$/.test(pathname)) {
+      const ptyId = pathname.split('/')[3];
       const index = state.ptys.findIndex((pty) => pty.id === ptyId);
-      if (index < 0) {
-        notFound(res);
-        return;
-      }
+      if (index < 0) return notFound(res);
       if (req.method === 'GET') {
-        sendJson(res, 200, state.ptys[index]);
+        sendJson(res, 200, { location: location(), data: state.ptys[index] });
         return;
       }
       if (req.method === 'PUT') {
         const body = await readJson(req) || {};
-        if (body.title !== undefined && (typeof body.title !== 'string' || !body.title.trim())) {
-          badRequest(res, 'PTY title must not be empty');
-          return;
-        }
         if (body.size) terminalFixture.get(ptyId).size = body.size;
-        if (body.title !== undefined) state.ptys[index].title = body.title.trim();
-        sendJson(res, 200, state.ptys[index]);
+        if (body.title !== undefined) state.ptys[index].title = body.title;
+        sendJson(res, 200, { location: location(), data: state.ptys[index] });
         return;
       }
       if (req.method === 'DELETE') {
         if (terminalFixture.get(ptyId).failTerminate) { terminalFixture.get(ptyId).failTerminate = false; sendJson(res, 500, { error: 'Termination failed' }); return; }
         terminalFixture.remove(ptyId);
         state.ptys.splice(index, 1);
-        sendJson(res, 200, true);
+        res.writeHead(204, { 'Access-Control-Allow-Origin': '*' });
+        res.end();
         return;
       }
     }
 
-    if (req.method === 'POST' && /^\/pty\/[^/]+\/connect-token$/.test(pathname)) {
-      const ptyId = pathname.split('/')[2];
+    if (req.method === 'POST' && /^\/api\/pty\/[^/]+\/connect-token$/.test(pathname)) {
+      const ptyId = pathname.split('/')[3];
       if (req.headers['x-opencode-ticket'] !== '1') {
         sendJson(res, 403, { error: 'PTY ticket header required' });
         return;
       }
-      if (!state.ptys.some((pty) => pty.id === ptyId)) {
-        notFound(res);
-        return;
-      }
-      sendJson(res, 200, { ticket: `ticket-${ptyId}`, expires_in: 60 });
+      if (!state.ptys.some((pty) => pty.id === ptyId)) return notFound(res);
+      sendJson(res, 200, { location: location(), data: { ticket: `ticket-${ptyId}`, expires_in: 60 } });
       return;
     }
 
-    if (pathname === '/experimental/worktree') {
+    if (pathname === '/api/worktree') {
+      const body = req.method === 'GET' ? {} : await readJson(req);
+      const projectID = requestUrl.searchParams.get('projectID') || body?.projectID;
+      if (!state.projects.some((entry) => entry.id === projectID)) { sendJson(res, 400, { error: 'A projectID is required' }); return; }
       if (req.method === 'GET') {
-        sendJson(res, 200, state.worktrees.filter((worktree) => worktree.projectID === resolveProject(state, requestUrl.searchParams.get('directory'))?.id).map((worktree) => worktree.directory));
-        return;
-      }
-      const body = await readJson(req) || {};
-      if (req.method === 'POST') {
-        const project = resolveProject(state, requestUrl.searchParams.get('directory'));
-        let worktree;
-        try { worktree = addWorktree(state, project?.id, body.name); }
-        catch (error) { badRequest(res, error.message); return; }
-        sendJson(res, 200, worktree);
-        return;
-      }
-      if (req.method === 'DELETE') {
-        const index = state.worktrees.findIndex((worktree) => worktree.directory === body.directory);
-        if (index < 0) {
-          badRequest(res, 'Unknown worktree directory');
-          return;
-        }
+        sendJson(res, 200, state.worktrees.filter((entry) => entry.projectID === projectID).map(({ directory }) => ({ directory })));
+      } else if (req.method === 'POST') {
+        try { const entry = addWorktree(state, projectID, body.name); sendJson(res, 200, { directory: entry.directory }); }
+        catch (error) { sendJson(res, 400, { error: error.message }); }
+      } else if (req.method === 'DELETE') {
+        const index = state.worktrees.findIndex((entry) => entry.directory === body.directory && entry.projectID === projectID);
+        if (index < 0) { notFound(res); return; }
         state.worktrees.splice(index, 1);
-        sendJson(res, 200, true);
-        return;
-      }
-    }
-
-    if (req.method === 'POST' && pathname === '/experimental/worktree/reset') {
-      const body = await readJson(req) || {};
-      if (!state.worktrees.some((worktree) => worktree.directory === body.directory)) {
-        badRequest(res, 'Unknown worktree directory');
-        return;
-      }
-      sendJson(res, 200, true);
+        res.writeHead(204, { 'Access-Control-Allow-Origin': '*' }); res.end();
+      } else notFound(res);
       return;
     }
 
-    if (req.method === 'GET' && pathname === '/permission') {
-      sendJson(res, 200, state.pendingPermissions);
-      return;
-    }
-
-    if (req.method === 'POST' && /^\/permission\/[^/]+\/reply$/.test(pathname)) {
-      const permissionId = pathname.split('/')[2];
-      const body = await readJson(req);
-      const request = state.pendingPermissions.find((entry) => entry.id === permissionId);
-      if (!request || !['once', 'always', 'reject'].includes(body?.reply)) {
-        sendJson(res, 400, { error: 'Invalid permission response' });
-        return;
-      }
-      state.pendingPermissions = state.pendingPermissions.filter((entry) => entry !== request);
-      emitEvent({
-        type: 'permission.replied',
-        properties: { sessionID: request.sessionID, requestID: permissionId, reply: body.reply },
+    if (req.method === 'GET' && pathname === '/api/permission/request') {
+      if (!requireLocation(requestUrl, res)) return;
+      sendJson(res, 200, {
+        location: location(),
+        data: state.pendingPermissions,
       });
-      if (body.reply !== 'reject') scheduleCompletion(request.sessionID, 'permission resolved');
-      else state.sessionStatuses[request.sessionID] = { type: 'idle' };
-      sendJson(res, 200, true);
       return;
     }
 
-    if (req.method === 'GET' && pathname === '/question') {
-      sendJson(res, 200, state.pendingQuestions);
-      return;
-    }
-
-    if (req.method === 'POST' && /^\/question\/[^/]+\/(reply|reject)$/.test(pathname)) {
-      const [, , questionId, action] = pathname.split('/');
-      const request = state.pendingQuestions.find((entry) => entry.id === questionId);
-      if (state.scenario === 'question-failure' && action === 'reply' && !state.questionReplyFailed) {
-        state.questionReplyFailed = true;
-        sendJson(res, 503, { error: 'Temporary question failure' });
-        return;
-      }
-      const body = action === 'reply' ? await readJson(req) : undefined;
-      if (!request || (action === 'reply' && !Array.isArray(body?.answers))) {
-        sendJson(res, 400, { error: 'Invalid question response' });
-        return;
-      }
-      state.pendingQuestions = state.pendingQuestions.filter((entry) => entry !== request);
-      emitEvent({
-        type: action === 'reply' ? 'question.replied' : 'question.rejected',
-        properties: { sessionID: request.sessionID, requestID: questionId, ...(body || {}) },
-      });
-      if (action === 'reply') scheduleCompletion(request.sessionID, `selected ${body.answers.flat().join(', ')}`);
-      else state.sessionStatuses[request.sessionID] = { type: 'idle' };
-      sendJson(res, 200, true);
-      return;
-    }
-
-    if (req.method === 'GET' && pathname === '/global/event') {
-      handleSse(req, res);
+    if (req.method === 'GET' && pathname === '/api/form') {
+      if (!requireLocation(requestUrl, res)) return;
+      sendJson(res, 200, { location: location(), data: state.pendingQuestions });
       return;
     }
 
     notFound(res);
   } catch (error) {
-    sendJson(res, 500, {
-      error: error instanceof Error ? error.message : 'Unknown fake server error',
-      scenario: state.scenario,
-    });
+    sendJson(res, 500, { error: error instanceof Error ? error.message : 'Fake V2 server error' });
   }
 });
 
 const ptyWebSockets = new WebSocketServer({ noServer: true });
 server.on('upgrade', (req, socket, head) => {
   const requestUrl = new URL(req.url || '/', `http://${req.headers.host || `127.0.0.1:${port}`}`);
-  const pathname = basePath && requestUrl.pathname.startsWith(`${basePath}/`)
-    ? requestUrl.pathname.slice(basePath.length)
-    : requestUrl.pathname;
-  const match = pathname.match(/^\/pty\/([^/]+)\/connect$/);
+  const match = requestUrl.pathname.match(/^\/api\/pty\/([^/]+)\/connect$/);
   const ptyId = match?.[1] ? decodeURIComponent(match[1]) : undefined;
   if (!ptyId || requestUrl.searchParams.get('ticket') !== `ticket-${ptyId}` || !state.ptys.some((pty) => pty.id === ptyId)) {
     socket.write('HTTP/1.1 403 Forbidden\r\n\r\n');
@@ -1002,15 +850,13 @@ server.on('upgrade', (req, socket, head) => {
 ptyWebSockets.on('connection', (socket, request) => terminalFixture.connect(socket, request));
 
 server.listen(port, '127.0.0.1', () => {
-  console.log(`Fake OpenCode server listening on http://127.0.0.1:${port} (${state.scenario})`);
+  console.log(`Fake OpenCode V2 server listening on http://127.0.0.1:${port} (${scenarioName})`);
 });
 
 for (const signal of ['SIGINT', 'SIGTERM']) {
   process.on(signal, () => {
     for (const socket of ptyWebSockets.clients) socket.terminate();
     ptyWebSockets.close();
-    server.close(() => {
-      process.exit(0);
-    });
+    server.close(() => process.exit(0));
   });
 }

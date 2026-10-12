@@ -95,7 +95,15 @@ const storageKeysUri = await transpileToDataUri('lib/storage-keys.ts');
 const notificationPendingUri = await transpileToDataUri('lib/notification-pending.ts', [
   [/from '@\/lib\/connection-scope'/g, `from "${connectionScopeUri}"`],
 ]);
+const sessionServiceStubUri = `data:text/javascript,${encodeURIComponent(`
+  export async function hasPendingSessionWork() { return false; }
+  export async function listSessions(client) {
+    const [statuses, sessions] = await Promise.all([client.session.status(), client.session.list()]);
+    return { statuses: statuses.data, sessions: sessions.data };
+  }
+`)}`;
 const notificationsUri = await transpileToDataUri('lib/notifications.ts', [
+  [/from '@\/providers\/services\/session-service'/g, `from "${sessionServiceStubUri}"`],
   [/from '@\/lib\/activity-notifications'/g, `from "data:text/javascript,export function isActivityCompletionManaged() { return false; }"`],
   [/from '@react-native-async-storage\/async-storage'/g, `from "${asyncStorageStubUri}"`],
   [/from 'expo-background-task'/g, `from "${backgroundTaskStubUri}"`],

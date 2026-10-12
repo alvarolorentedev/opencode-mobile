@@ -30,11 +30,11 @@ export function getServerCapabilities(contract: ServerContract): ServerCapabilit
     // transcript's `todowrite` tool parts, so the surface is available on both.
     todos: true,
     summarize: full,
-    fileSave: full,
-    fileStatus: full,
+    fileSave: true,
+    fileStatus: true,
     lsp: full,
     formatter: full,
-    mcpOAuth: full,
+    mcpOAuth: true,
     configWrite: full,
     worktreeReset: full,
     // Server-persisted "always allow" rules are a V2 surface.

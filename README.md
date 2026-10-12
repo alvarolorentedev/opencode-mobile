@@ -28,6 +28,8 @@
 
 ---
 
+OpenCode 2 is the primary server contract. OpenCode 1 remains supported through an isolated compatibility layer. Native v2 includes file editing with conflict checks, MCP OAuth, provider accounts, inbox delivery, and native realtime events. Features without matching v2 APIs stay available only on v1: sharing, archive/restore, title summarization, general config writes, persistent MCP enablement, worktree reset, and LSP/formatter diagnostics.
+
 ## OpenCode, without being tied to your laptop
 
 OpenCode Mobile is an independent, community-built mobile companion for [OpenCode](https://opencode.ai/).
@@ -181,7 +183,7 @@ OpenCode Mobile is built with:
 - Expo
 - TypeScript
 - Expo Router
-- OpenCode SDK/client
+- `@opencode/client` for native OpenCode 2; `@opencode-ai/sdk` isolated to OpenCode 1 compatibility
 
 For local development, architecture, testing, and release instructions:
 

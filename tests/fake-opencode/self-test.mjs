@@ -9,7 +9,7 @@ import { OpenCode } from '@opencode/client';
 const port = 4196;
 const prefix = '/api';
 const origin = `http://127.0.0.1:${port}`;
-const server = spawn(process.execPath, ['tests/fake-opencode/server.mjs'], {
+const server = spawn(process.execPath, ['tests/fake-opencode/server-v1.mjs'], {
   cwd: process.cwd(),
   env: {
     ...process.env,
@@ -226,6 +226,8 @@ try {
   assert(forked.parentID === sessionId, 'Session fork failed');
   assert((await request(`/session/${sessionId}/children`)).some((child) => child.id === forked.id), 'Session children failed');
   await assertStatus('/session/missing/children', 404);
+  await request(`/session/${sessionId}/summarize`, json('POST', { providerID: 'openai', modelID: 'gpt-4.1-mini' }));
+  assert((await request(`/session/${sessionId}`)).title.trim(), 'Compatibility title summarization missing');
   assert((await request(`/session/${sessionId}/share`, { method: 'POST' })).share.url, 'Session share failed');
   assert(!(await request(`/session/${sessionId}/share`, { method: 'DELETE' })).share, 'Session unshare failed');
   const messageId = (await request(`/session/${sessionId}/message`))[0].info.id;
@@ -271,7 +273,7 @@ try {
   await request(`/question/${questions[0].id}/reply`, json('POST', { answers: [['Minimal']] }));
 
   // --- OpenCode 2 contract -------------------------------------------------
-  v2Server = spawn(process.execPath, ['tests/fake-opencode/server-v2.mjs'], {
+  v2Server = spawn(process.execPath, ['tests/fake-opencode/server.mjs'], {
     cwd: process.cwd(),
     env: {
       ...process.env,
@@ -330,6 +332,29 @@ try {
     assert(content.includes(directory.endsWith('secondary-project') ? directory : 'OpenCode 1.18.3'), 'V2 file reads must respect the directory');
   }
   assert((await fetch(`${v2Origin}/api/fs/list`)).status === 400, 'V2 file listing requires location');
+  const fileScope = { location: { directory: v2Directory } };
+  const savedText = 'export const demo = "V2 😀";\n';
+  await v2Api.file.write({ ...fileScope, path: 'src/demo.ts', payload: new TextEncoder().encode(savedText) });
+  assert(new TextDecoder().decode(await v2Api.file.read({ ...fileScope, path: 'src/demo.ts' })) === savedText, 'Native file writes must preserve UTF-8 bytes');
+  assert((await v2Api.vcs.status(fileScope)).data.some((entry) => entry.file === 'src/demo.ts'), 'Native file status missing');
+  for (const mode of ['auto', 'code']) {
+    const name = `tools-${mode}`;
+    await v2Api.mcp.add({ ...fileScope, server: name, config: { type: 'remote', url: 'https://tools.test/mcp' } });
+    const entry = (await v2Api.mcp.list(fileScope)).data.find((item) => item.name === name);
+    assert(entry.integrationID, 'MCP OAuth must expose its integration ID');
+    const integration = (await v2Api.integration.get({ ...fileScope, integrationID: entry.integrationID })).data;
+    const input = { ...fileScope, integrationID: entry.integrationID, methodID: integration.methods[0].id };
+    const attempt = (await v2Api.integration.oauth.connect(input)).data;
+    assert(attempt.mode === mode, 'Authorization mode must remain native');
+    const target = { ...fileScope, integrationID: entry.integrationID, attemptID: attempt.attemptID };
+    assert((await v2Api.integration.oauth.status(target)).data.status === 'pending', 'OAuth must wait for server completion');
+    if (mode === 'auto') await fetch(attempt.url); else await v2Api.integration.oauth.complete({ ...target, code: '123' });
+    assert((await v2Api.integration.oauth.status(target)).data.status === 'complete', 'OAuth completion missing');
+    await v2Api.integration.oauth.cancel(target);
+    let cancelled = false;
+    try { await v2Api.integration.oauth.status(target); } catch { cancelled = true; }
+    assert(cancelled, 'Cancelled OAuth attempts must be removed');
+  }
   const createdWorktree = await v2Api.worktree.create({ projectID: 'project-demo', name: 'v2-smoke' });
   assert((await v2Api.worktree.list({ projectID: 'project-demo' })).some((entry) => entry.directory === createdWorktree.directory), 'V2 worktree inventory missing');
   assert((await v2Api.location.get({ location: { directory: createdWorktree.directory } })).project.id === 'project-demo', 'Worktrees retain their parent project');
@@ -340,7 +365,7 @@ try {
   assert((await v2Api.session.list()).data.length === 2, 'V2 unscoped lists must include all workspace sessions');
   const v2EventsController = new AbortController();
   const v2Reader = (await fetch(`${v2Origin}/api/event`, { signal: v2EventsController.signal })).body.getReader();
-  const v2RunningEvent = nextEvent(v2Reader, (event) => event.type === 'session.status' && event.data.sessionID === v2Session.id);
+  const v2RunningEvent = nextEvent(v2Reader, (event) => event.type === 'session.execution.started' && event.data.sessionID === v2Session.id);
   const admitted = await v2Api.session.prompt({ sessionID: v2Session.id, text: 'Validate V2 contract' });
   assert(admitted.type === 'user' && admitted.sessionID === v2Session.id && admitted.payload.text === 'Validate V2 contract', 'V2 prompt must return the admitted input through the SDK');
   assert((await v2RunningEvent).location.directory === v2Directory, 'V2 session events must use their session directory');
@@ -360,6 +385,14 @@ try {
   const v2Listed = (await v2request('/api/session')).data.find((entry) => entry.id === v2Session.id);
   assert(v2Listed.tokens.input === 1200 && v2Listed.cost > 0, 'V2 session usage did not accumulate');
   assert(v2Listed.model?.id === 'openai/gpt-4.1-mini', 'V2 session list dropped the model');
+
+  const fork = await v2Api.session.fork({ sessionID: v2Session.id, before: v2Assistant.id });
+  assert(fork.parentID === v2Session.id, 'Native fork must retain parent identity');
+  assert(!(await v2Api.message.list({ sessionID: fork.id })).data.some((entry) => entry.id === v2Assistant.id), 'Native fork before cursor must exclude the cursor');
+  const user = (await v2Api.message.list({ sessionID: v2Session.id })).data.find((entry) => entry.type === 'user');
+  assert((await v2Api.session.revert.stage({ sessionID: v2Session.id, messageID: user.id })).messageID === user.id, 'Native revert stage missing');
+  await v2Api.session.revert.clear({ sessionID: v2Session.id });
+  assert(!(await v2Api.session.get({ sessionID: v2Session.id })).revert, 'Native revert clear missing');
 
   // Session instruction entries back the adapter's `system` prompt mapping.
   const instructionPath = `/api/experimental/session/${v2Session.id}/instructions/entries/opencode-mobile.chat-preferences`;

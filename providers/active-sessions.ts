@@ -35,7 +35,7 @@ export function getActiveSessions({
 
   return [...running, ...recent].slice(0, maxTotal).map((session) => ({
     sessionId: session.id,
-    projectPath: session.directory,
+    projectPath: session.directory || '',
     title: session.title,
     status: statuses[session.id] ?? { type: 'idle' },
     isCurrent: session.id === currentSessionId,

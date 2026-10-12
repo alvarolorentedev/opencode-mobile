@@ -43,7 +43,7 @@ const api = {
   session: {
     async list() { listCalls++; await Promise.resolve(); return { data: [{ id: 's', time: { created: 0, updated: 1 }, location: { directory: '/repo' } }] }; },
     async active() { return { s: {} }; },
-    async diff({ messageID }: any) { expect(messageID).toBe('m-4299'); return []; },
+    async diff({ from }: any) { expect(from).toBe('m-4299'); return []; },
   },
 };
 h.api = api;
@@ -80,7 +80,7 @@ describe('session reads', () => {
       const start = Math.max(0, end - limit);
       return { data: history.slice(start, end).map((m) => ({ info: { id: m.id, role: 'user' }, parts: [] })), response: { headers: new Headers(start ? { 'x-next-cursor': String(start) } : {}) } };
     } } };
-    const v1 = await getSessionMessages(v1Client, 's');
+    const v1 = await getSessionMessages({ compatibility: v1Client } as any, 's');
     expect(v1.records.length).toBe(20);
     expect(v1.records[0].info.id).toBe('m-4280');
     expect(v1.records.at(-1)!.info.id).toBe('m-4299');
@@ -89,9 +89,9 @@ describe('session reads', () => {
 
   it('does not report idle when the V2 active-session read fails', async () => {
     const active = vi.spyOn(api.session, 'active').mockRejectedValueOnce(new Error('offline'));
-    await expect(client.session.status()).rejects.toThrow('offline');
+    await expect(listSessions(client)).rejects.toThrow('offline');
     active.mockResolvedValueOnce(undefined as never);
-    await expect(client.session.status()).rejects.toThrow('did not return active sessions');
+    await expect(listSessions(client)).rejects.toThrow('did not return active sessions');
     active.mockRestore();
   });
 
@@ -130,8 +130,35 @@ describe('session reads', () => {
           : { data: [archivedSession, restoredSession], response: { headers: new Headers() } };
       } } },
     };
-    expect(Array.from(await listArchivedSessions(mixedClient), (s: any) => s.id)).toEqual(['archive']);
+    expect(Array.from(await listArchivedSessions({ compatibility: mixedClient } as any), (s: any) => s.id)).toEqual(['archive']);
     expect(cursors).toEqual([undefined, 2]);
-    expect(Array.from((await listSessions(mixedClient)).sessions, (s: any) => s.id)).toEqual(['active', 'restored']);
+    expect(Array.from((await listSessions({ compatibility: mixedClient } as any)).sessions, (s: any) => s.id)).toEqual(['active', 'restored']);
+  });
+});
+
+describe('native background completion checks', () => {
+  it('does not mistake retry, inbox or approvals for completion and propagates read failures', async () => {
+    const { hasPendingSessionWork } = await import('@/providers/services/session-service');
+    const api: any = {
+      message: { list: vi.fn(async () => ({ data: [{ type: 'assistant', retry: { attempt: 2 } }] })) },
+      session: { inbox: { list: vi.fn(async () => []) } },
+      permission: { request: { list: vi.fn(async () => ({ data: [] })) } },
+      form: { list: vi.fn(async () => ({ data: [] })) },
+    };
+    const client = { api, __opencode: { directory: '/repo' } } as never;
+    expect(await hasPendingSessionWork(client, 's')).toBe(true);
+    api.message.list.mockResolvedValue({ data: [{ type: 'idle' }, { type: 'assistant', retry: {} }] });
+    expect(await hasPendingSessionWork(client, 's')).toBe(false);
+    api.session.inbox.list.mockResolvedValue([{}]);
+    expect(await hasPendingSessionWork(client, 's')).toBe(true);
+    api.session.inbox.list.mockResolvedValue([]);
+    api.permission.request.list.mockResolvedValue({ data: [{ sessionID: 's' }] });
+    expect(await hasPendingSessionWork(client, 's')).toBe(true);
+    api.permission.request.list.mockResolvedValue({ data: [] });
+    api.form.list.mockResolvedValue({ data: [{ sessionID: 'global' }] });
+    expect(await hasPendingSessionWork(client, 's')).toBe(true);
+    api.form.list.mockRejectedValue(new Error('offline'));
+    await expect(hasPendingSessionWork(client, 's')).rejects.toThrow('offline');
+    expect(await hasPendingSessionWork({ compatibility: {} } as never, 's')).toBe(false);
   });
 });

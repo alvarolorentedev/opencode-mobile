@@ -1,10 +1,10 @@
-import { OpenCode } from '@opencode/client';
+import type { NativeOpencodeApi } from '../client/types';
 
 import { getServerBase, type OpencodeConnectionSettings } from '../client';
-import type { ProviderAuthPrompt } from '../types';
-import { modelToV1 } from '../v2-mappers';
+import type { ProviderAuthPrompt, Agent, Config, FileContent, PtyShellsResponse } from '../types';
+import { toModelOptionRecord } from '../v2-mappers';
 
-export type V2Api = ReturnType<typeof OpenCode.make>;
+export type V2Api = NativeOpencodeApi;
 
 export type V2Message = Awaited<ReturnType<V2Api['message']['list']>>['data'][number];
 export type V2Diff = Awaited<ReturnType<V2Api['session']['diff']>>[number];
@@ -17,20 +17,6 @@ type V2Integration = Awaited<ReturnType<V2Api['integration']['list']>>['data'][n
 type V2Shell = Awaited<ReturnType<V2Api['config']['shells']>>[number];
 export type LocationOptions = { location?: { directory?: string } };
 
-export type RawResult = { data?: unknown; response?: { headers: Headers } };
-
-export type V2EventEnvelope = {
-  id: string;
-  type: string;
-  location?: { directory?: string };
-  data?: Record<string, unknown>;
-};
-
-export type V1Envelope = {
-  directory: string;
-  payload: { id: string; type: string; properties: Record<string, unknown> };
-};
-
 export type RawCredential = {
   id: string;
   integrationID: string;
@@ -39,7 +25,7 @@ export type RawCredential = {
   value?: { type?: string };
 };
 
-export type AdapterContext = {
+export type V2Context = {
   api: V2Api;
   directory?: string;
   listCredentials: () => Promise<RawCredential[]>;
@@ -47,37 +33,8 @@ export type AdapterContext = {
   formSession: Map<string, V2Form>;
 };
 
-export type V2Adapter = {
-  api: V2Api;
-  ctx: AdapterContext;
-  directory?: string;
-  vcsLocation: LocationOptions;
-  ok: (data: unknown) => RawResult;
-  listSessionPage: () => Promise<Awaited<ReturnType<V2Api['session']['list']>>>;
-  getProjectID: () => Promise<string>;
-};
-
-export function stringField(value: unknown, fallback = ''): string {
-  return typeof value === 'string' ? value : fallback;
-}
-
-export function numberField(value: unknown, fallback = 0): number {
-  return typeof value === 'number' ? value : fallback;
-}
-
-export function extractErrorMessage(error: unknown): string {
-  if (error instanceof Error) return error.message;
-  if (error && typeof error === 'object') {
-    const record = error as Record<string, unknown>;
-    if (typeof record.message === 'string') return record.message;
-    if (typeof record._tag === 'string') return record._tag;
-  }
-  return 'OpenCode request failed.';
-}
-
-export function toError(error: unknown): Error {
-  return error instanceof Error ? error : new Error(extractErrorMessage(error));
-}
+export { stringField, numberField, extractErrorMessage, toError } from './fields';
+import { stringField } from './fields';
 
 // V2 routes are absolute (/api/...), so baseUrl path segments are replaced. A reverse
 // proxy prefix is preserved by rewriting the outgoing request instead.
@@ -87,7 +44,7 @@ export function resolveV2Base(settings: OpencodeConnectionSettings) {
   return { base, pathPrefix };
 }
 
-export function decodeFile(bytes: unknown): Record<string, unknown> {
+export function decodeFile(bytes: unknown): FileContent {
   try {
     const content = typeof bytes === 'string' ? bytes : new TextDecoder('utf-8', { fatal: true }).decode(bytes as Uint8Array);
     if (content.includes('\0')) return { type: 'binary', content: '', encoding: 'base64' };
@@ -97,7 +54,7 @@ export function decodeFile(bytes: unknown): Record<string, unknown> {
   }
 }
 
-export function configToV1(entries: unknown): Record<string, unknown> {
+export function toConfigView(entries: unknown): Config {
   const list = Array.isArray(entries) ? (entries as Record<string, unknown>[]) : [];
   const document = list.find((entry) => entry.type === 'document' && entry.info);
   const info = (document?.info ?? {}) as Record<string, unknown>;
@@ -119,17 +76,17 @@ export function configToV1(entries: unknown): Record<string, unknown> {
 
   return {
     ...info,
-    provider,
+    provider: provider as Config['provider'],
     enabled_providers: enabled,
     disabled_providers: disabled,
     model,
-    agent: info.agents,
-    permission: info.permissions,
-    mcp: (info.mcp as Record<string, unknown> | undefined)?.servers,
+    agent: info.agents as Config['agent'],
+    permission: undefined,
+    mcp: Object.fromEntries(Object.entries((info.mcp as { servers?: Record<string, Record<string, unknown>> } | undefined)?.servers ?? {}).map(([name, config]) => [name, { ...config, enabled: config.disabled !== true }])) as Config['mcp'],
   };
 }
 
-export async function providersToV1(api: V2Api, location: LocationOptions) {
+export async function getProviderCatalog(api: V2Api, location: LocationOptions) {
   const [providersResponse, modelsResponse, defaultResponse, integrationsResponse] = await Promise.all([
     api.provider.list(location),
     api.model.list(location),
@@ -148,7 +105,7 @@ export async function providersToV1(api: V2Api, location: LocationOptions) {
     id: provider.id,
     name: provider.name,
     integrationIds: [...new Set([provider.integrationID, provider.id].filter(Boolean))] as string[],
-    models: Object.fromEntries(models.filter((model) => model.providerID === provider.id).map((model) => [model.id, modelToV1(model)])),
+    models: Object.fromEntries(models.filter((model) => model.providerID === provider.id).map((model) => [model.id, toModelOptionRecord(model)])),
   }));
   // V2's provider endpoint lists active providers. The integration endpoint is
   // the connectable catalog, including providers with no credentials yet.
@@ -201,12 +158,13 @@ function numeric(value: unknown): number | undefined {
 // V2 integration methods carry a rich `form` (string/select/number/boolean/
 // multiselect/external with `when` conditions). Map it into the app's normalized
 // prompt model so the setup UI can render type-specific controls.
-function formToPrompts(form: unknown): ProviderAuthPrompt[] | undefined {
+export function formToPrompts(form: unknown): ProviderAuthPrompt[] | undefined {
   if (!Array.isArray(form)) return undefined;
   const prompts = (form as V2FormField[])
     .filter((field) => !field.hidden)
     .map((field): ProviderAuthPrompt => {
       const message = field.title || field.key;
+      const required = field.required;
       const when = field.when?.map((condition) => ({
         key: condition.key,
         op: condition.op,
@@ -215,24 +173,24 @@ function formToPrompts(form: unknown): ProviderAuthPrompt[] | undefined {
 
       switch (field.type) {
         case 'boolean':
-          return { type: 'boolean', key: field.key, message, defaultValue: typeof field.default === 'boolean' ? field.default : undefined, when };
+          return { type: 'boolean', key: field.key, message, required, defaultValue: typeof field.default === 'boolean' ? field.default : undefined, when };
         case 'number':
         case 'integer':
-          return { type: field.type, key: field.key, message, min: numeric(field.minimum), max: numeric(field.maximum), defaultValue: numeric(field.default), when };
+          return { type: field.type, key: field.key, message, required, min: numeric(field.minimum), max: numeric(field.maximum), defaultValue: numeric(field.default), when };
         case 'multiselect':
-          return { type: 'multiselect', key: field.key, message, options: field.options, defaultValue: Array.isArray(field.default) ? (field.default as string[]) : undefined, when };
+          return { type: 'multiselect', key: field.key, message, required, options: field.options, defaultValue: Array.isArray(field.default) ? (field.default as string[]) : undefined, when };
         case 'external':
-          return { type: 'external', key: field.key, message, url: field.url, when };
+          return { type: 'external', key: field.key, message, required, url: field.url, when };
         default:
           return field.options?.length
-            ? { type: 'select', key: field.key, message, options: field.options, defaultValue: typeof field.default === 'string' ? field.default : undefined, when }
-            : { type: 'text', key: field.key, message, placeholder: field.placeholder, defaultValue: typeof field.default === 'string' ? field.default : undefined, when };
+            ? { type: 'select', key: field.key, message, options: field.options, required, defaultValue: typeof field.default === 'string' ? field.default : undefined, when }
+            : { type: 'text', key: field.key, message, placeholder: field.placeholder, required, defaultValue: typeof field.default === 'string' ? field.default : undefined, when };
       }
     });
   return prompts.length > 0 ? prompts : undefined;
 }
 
-export async function providerAuthToV1(api: V2Api, location: LocationOptions) {
+export async function getProviderAuthMethods(api: V2Api, location: LocationOptions) {
   const [integrationsResponse, providersResponse] = await Promise.all([api.integration.list(location), api.provider.list(location)]);
   const result: Record<string, unknown[]> = {};
   const providers = providersResponse.data ?? [];
@@ -269,11 +227,11 @@ export async function findIntegration(api: V2Api, providerID: string, location: 
   return (integrations.data ?? []).find((item) => item.id === (provider?.integrationID ?? providerID));
 }
 
-export function agentToV1(agent: V2Agent): Record<string, unknown> {
+export function toAgentView(agent: V2Agent): Agent {
   return { name: agent.id, description: agent.description, mode: agent.mode, hidden: agent.hidden };
 }
 
-export function shellToV1(shell: V2Shell): Record<string, unknown> {
+export function toShellView(shell: V2Shell): PtyShellsResponse[number] {
   return { name: shell.name, path: shell.path, acceptable: shell.acceptable };
 }
 
@@ -281,10 +239,11 @@ export function mcpConfigToV2(config: Record<string, unknown> | undefined) {
   if (!config) return { type: 'local' as const, command: [] as string[] };
   const enabled = config.enabled !== false;
   if (config.type === 'remote') {
-    return { type: 'remote' as const, url: stringField(config.url), disabled: !enabled };
+    const oauth = config.oauth as import('../types').McpOAuthConfig | false | undefined;
+    return { type: 'remote' as const, url: stringField(config.url), disabled: !enabled, headers: config.headers as Record<string, string> | undefined, ...(oauth === false ? { oauth: false as const } : oauth ? { oauth: { client_id: oauth.clientId, client_secret: oauth.clientSecret, scope: oauth.scope } } : {}) };
   }
   const command = Array.isArray(config.command) ? config.command.map((item) => stringField(item)) : [];
-  return { type: 'local' as const, command, disabled: !enabled };
+  return { type: 'local' as const, command, disabled: !enabled, environment: config.environment as Record<string, string> | undefined };
 }
 
 // V2 prompt input has no `system` field. The equivalent is a durable,

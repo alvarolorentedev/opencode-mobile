@@ -133,6 +133,5 @@ export type ProviderValuesInput = ActionInputs & {
   connectMcpServer: (name: string) => Promise<void>;
   disconnectMcpServer: (name: string) => Promise<void>;
   setMcpServerEnabled: (name: string, enabled: boolean) => Promise<void>;
-  startMcpOAuth: (name: string) => Promise<string>;
-  completeMcpOAuth: (name: string, code: string) => Promise<void>;
+  mcpOAuth: import('./opencode-provider-types').McpContextValue['mcpOAuth'];
 };

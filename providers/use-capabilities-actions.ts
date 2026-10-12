@@ -1,3 +1,4 @@
+import { getConfig, updateConfig, getProviders, setProviderCredentialsForClient, removeProviderCredentials, startProviderAuthorization, completeProviderAuthorization } from '@/providers/services/capabilities-service';
 import { useCallback, type Dispatch, type SetStateAction } from 'react';
 
 import type { Config } from '@/lib/opencode/types';
@@ -85,20 +86,18 @@ export function useCapabilitiesActions({
 
   const configureProvider = useCallback(
     async (providerId: string) => {
-      const latestConfig = currentConfig || (await client.config.get()).data;
+      const latestConfig = currentConfig || await getConfig(client);
       if (!latestConfig) {
         throw new Error('OpenCode did not return its configuration.');
       }
       const enabledProviders = new Set(latestConfig.enabled_providers || []);
       enabledProviders.add(providerId);
 
-      const updatedConfig = (await client.config.update({
-        config: {
-          ...latestConfig,
-          disabled_providers: (latestConfig.disabled_providers || []).filter((id) => id !== providerId),
-          enabled_providers: [...enabledProviders].sort(),
-        },
-      })).data;
+      const updatedConfig = client.compatibility ? await updateConfig(client, {
+        ...latestConfig,
+        disabled_providers: (latestConfig.disabled_providers || []).filter((id) => id !== providerId),
+        enabled_providers: [...enabledProviders].sort(),
+      }) : latestConfig;
       if (!updatedConfig) {
         throw new Error('OpenCode did not return its updated configuration.');
       }
@@ -116,21 +115,11 @@ export function useCapabilitiesActions({
   const setProviderAuth = useCallback(
     async (providerId: string, values: ProviderAuthValues) => {
       const key = typeof values.key === 'string' ? values.key.trim() : '';
-      const token = typeof values.token === 'string' ? values.token.trim() : '';
       if (!key) {
         throw new Error('Enter a provider credential first.');
       }
 
-      const metadata = Object.fromEntries(
-        Object.entries(values)
-          .filter(([name, value]) => name !== 'key' && name !== 'token' && typeof value === 'string' && value.trim())
-          .map(([name, value]) => [name, (value as string).trim()]),
-      );
-      const auth = token
-        ? { type: 'wellknown' as const, key, token }
-        : { type: 'api' as const, key, ...(Object.keys(metadata).length > 0 ? { metadata } : {}) };
-
-      await client.auth.set({ providerID: providerId, auth });
+      await setProviderCredentialsForClient(client, providerId, values);
       await configureProvider(providerId);
       await refreshChatCapabilities();
     },
@@ -138,16 +127,14 @@ export function useCapabilitiesActions({
   );
 
   const removeProvider = useCallback(async (providerId: string) => {
-    await client.auth.remove({ providerID: providerId });
-    const latestConfig = currentConfig || (await client.config.get()).data;
-    if (latestConfig) {
-      const updatedConfig = (await client.config.update({
-        config: {
-          ...latestConfig,
-          disabled_providers: [...new Set([...(latestConfig.disabled_providers || []), providerId])].sort(),
-          enabled_providers: (latestConfig.enabled_providers || []).filter((id) => id !== providerId),
-        },
-      })).data;
+    await removeProviderCredentials(client, providerId);
+    const latestConfig = currentConfig || await getConfig(client);
+    if (latestConfig && client.compatibility) {
+      const updatedConfig = await updateConfig(client, {
+        ...latestConfig,
+        disabled_providers: [...new Set([...(latestConfig.disabled_providers || []), providerId])].sort(),
+        enabled_providers: (latestConfig.enabled_providers || []).filter((id) => id !== providerId),
+      });
       setCurrentConfig(updatedConfig);
     }
     await refreshChatCapabilities();
@@ -155,11 +142,7 @@ export function useCapabilitiesActions({
 
   const startProviderOAuth = useCallback(
     async (providerId: string, methodIndex: number, inputs?: ProviderAuthValues) => {
-      const authorization = (await client.provider.oauth.authorize({
-        providerID: providerId,
-        method: methodIndex,
-        inputs: inputs as Record<string, string> | undefined,
-      })).data;
+      const authorization = await startProviderAuthorization(client, providerId, methodIndex, inputs);
       if (!authorization) {
         throw new Error('OpenCode did not return OAuth authorization details.');
       }
@@ -184,7 +167,7 @@ export function useCapabilitiesActions({
     }
     const deadline = Date.now() + 900_000;
     for (;;) {
-      const providers = (await client.provider.list()).data;
+      const providers = await getProviders(client);
       if (providers?.connected.includes(providerId)) {
         await configureProvider(providerId);
         return;
@@ -202,11 +185,7 @@ export function useCapabilitiesActions({
   }, [client]);
 
   const completeProviderOAuth = useCallback(async (providerId: string, methodIndex: number, code: string) => {
-    await client.provider.oauth.callback({
-      providerID: providerId,
-      method: methodIndex,
-      code: code.trim() || undefined,
-    });
+    await completeProviderAuthorization(client, providerId, methodIndex, code);
     await configureProvider(providerId);
     await refreshChatCapabilities();
   }, [client, configureProvider, refreshChatCapabilities]);
@@ -273,9 +252,9 @@ export function useCapabilitiesActions({
 
   const setAutoApprove = useCallback(
     async (enabled: boolean) => {
-      const latestConfig = currentConfig || (await client.config.get()).data;
+      const latestConfig = currentConfig || await getConfig(client);
       const nextConfig = mergePermissionConfig(latestConfig, enabled);
-      const updatedConfig = (await client.config.update({ config: nextConfig })).data;
+      const updatedConfig = await updateConfig(client, nextConfig);
       if (!updatedConfig) {
         throw new Error('OpenCode did not return its updated configuration.');
       }

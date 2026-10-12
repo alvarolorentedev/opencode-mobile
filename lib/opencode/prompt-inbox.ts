@@ -1,8 +1,8 @@
-import type { OpencodeClient } from '@opencode-ai/sdk/v2/client';
+import type { FilePartInput, TextPartInput } from './message-types';
 
 export type PromptAttachment = { uri: string; mime?: string; filename?: string };
 export type PromptDelivery = 'steer' | 'queue';
-export type PromptInput = Parameters<OpencodeClient['session']['promptAsync']>[0];
+export type PromptInput = { sessionID: string; parts: (TextPartInput | FilePartInput)[]; agent?: string; model?: { providerID: string; modelID: string }; system?: string; variant?: string };
 export type PendingPrompt = {
   id: string;
   sessionId: string;

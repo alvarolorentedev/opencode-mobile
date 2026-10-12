@@ -1,10 +1,11 @@
+import { subscribeEvents } from '@/lib/opencode/events';
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
-import type { GlobalEvent } from '@opencode-ai/sdk/v2/client';
+import type { OpencodeEvent } from '@/lib/opencode/events';
 import type { ScopedOpencodeClient } from '@/lib/opencode/client';
 
 type RealtimeActions = {
-  onEvent: (event: GlobalEvent['payload']) => void;
-  onGlobalEvent?: (event: GlobalEvent['payload']) => void;
+  onEvent: (event: OpencodeEvent) => void;
+  onGlobalEvent?: (event: OpencodeEvent) => void;
   refreshSessions: (silent: boolean) => Promise<unknown>;
   refreshPendingInteractions: () => Promise<unknown>;
   refreshMessages: (sessionId: string, silent: boolean, options?: { full?: boolean }) => Promise<unknown>;
@@ -59,9 +60,9 @@ export function useOpencodeRealtime({ catalogClient, activeProjectPath, connecte
       while (!controller.signal.aborted) {
         setEventStreamStatus(retryDelay === 1000 ? 'connecting' : 'error');
         try {
-          const subscription = await catalogClient.global.event({ signal: controller.signal, sseMaxRetryAttempts: 1 });
+          const subscription = subscribeEvents(catalogClient, controller.signal);
           let reconciled = false;
-          for await (const envelope of subscription.stream) {
+          for await (const envelope of subscription) {
             if (controller.signal.aborted) break;
             if (!envelope) continue;
             setEventStreamStatus('connected');
@@ -70,8 +71,8 @@ export function useOpencodeRealtime({ catalogClient, activeProjectPath, connecte
               reconciled = true;
               void reconcile(true);
             }
-            latest.current.onGlobalEvent?.(envelope.payload);
-            if (envelope.directory === activeProjectPath || !envelope.directory) latest.current.onEvent(envelope.payload);
+            latest.current.onGlobalEvent?.(envelope);
+            if (envelope.location?.directory === activeProjectPath || !envelope.location?.directory) latest.current.onEvent(envelope);
           }
           if (!controller.signal.aborted) throw new Error('OpenCode event stream ended.');
         } catch {

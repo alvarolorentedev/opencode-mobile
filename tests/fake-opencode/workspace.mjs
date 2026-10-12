@@ -2,7 +2,7 @@ import { resolveProject } from './state.mjs';
 
 export function filesForDirectory(state, directory) {
   if (!directory || !resolveProject(state, directory)) return undefined;
-  if (directory === state.project.worktree) return state.files;
+  if (directory === (state.project.canonical || state.project.worktree)) return state.files;
   state.filesByDirectory[directory] ||= {
     ...state.files,
     'README.md': `# ${directory.split('/').pop()}\n\nFiles in ${directory}.\n`,
@@ -30,6 +30,6 @@ export function addWorktree(state, projectID, requestedName) {
   if (!project || !/^[a-zA-Z0-9._-]+$/.test(name) || state.worktrees.some((entry) => entry.name === name)) throw new Error('Worktree name is invalid or already exists');
   const entry = { name, branch: `worktree/${name}`, directory: `/worktrees/${name}`, projectID };
   state.worktrees.push(entry);
-  state.filesByDirectory[entry.directory] = { ...filesForDirectory(state, project.worktree), 'README.md': `# Worktree ${name}\n` };
+  state.filesByDirectory[entry.directory] = { ...filesForDirectory(state, (project.canonical || project.worktree)), 'README.md': `# Worktree ${name}\n` };
   return entry;
 }

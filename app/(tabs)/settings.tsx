@@ -1,4 +1,3 @@
-import * as WebBrowser from 'expo-web-browser';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { type ComponentProps, type ReactNode, useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'expo-router';
@@ -57,7 +56,7 @@ export default function SettingsScreen() {
   const palette = Colors[colorScheme];
   const { t } = useTranslation();
   const { availableModels, availableProviders, configuredProviders, currentConfig, providerAccounts, providerAuthMethodsById, removeProvider } = useCapabilities();
-  const { addMcpServer, completeMcpOAuth, connectMcpServer, disconnectMcpServer, mcpStatuses, refreshMcpServers, setMcpServerEnabled, startMcpOAuth } = useMcp();
+  const { addMcpServer, mcpOAuth, connectMcpServer, disconnectMcpServer, mcpStatuses, refreshMcpServers, setMcpServerEnabled } = useMcp();
   const { chatPreferences, updateChatPreferences } = usePreferences();
   const { connect, connection, serverCapabilities, connectSetup } = useConnection();
   const { diagnostics, eventStreamStatus, refreshDiagnostics } = useDiagnostics();
@@ -197,7 +196,7 @@ export default function SettingsScreen() {
             router.push('/onboarding');
           }} />
           {updates.supported ? <UpdateSection checkPeriod={updates.checkPeriod} enabled={updates.enabled} onCheckPeriodChange={updates.setCheckPeriod} onEnabledChange={updates.setEnabled} palette={palette} /> : null}
-          <McpSection configs={currentConfig?.mcp} mcpStatuses={mcpStatuses} onAdd={addMcpServer} onCompleteOAuth={completeMcpOAuth} onConnect={connectMcpServer} onDisconnect={disconnectMcpServer} onRefresh={refreshMcpServers} onSetEnabled={setMcpServerEnabled} onStartOAuth={async (name) => { const url = await startMcpOAuth(name); if (!url) { await refreshMcpServers(); return false; } await WebBrowser.openBrowserAsync(url); return true; }} oauthAvailable={serverCapabilities.mcpOAuth} palette={palette} />
+          <McpSection configs={currentConfig?.mcp} mcpStatuses={mcpStatuses} onAdd={addMcpServer} onConnect={connectMcpServer} onDisconnect={disconnectMcpServer} onRefresh={refreshMcpServers} onSetEnabled={setMcpServerEnabled} mcpOAuth={mcpOAuth} persistentConfigAvailable={serverCapabilities.configWrite} requiresIntegrationId={serverCapabilities.contract === 'v2'} oauthAvailable={serverCapabilities.mcpOAuth} palette={palette} />
           <DiagnosticsSection diagnostics={diagnostics} eventStreamStatus={eventStreamStatus} formatterAvailable={serverCapabilities.formatter} lspAvailable={serverCapabilities.lsp} onRefresh={() => void refreshDiagnostics()} palette={palette} />
         </>
       ),

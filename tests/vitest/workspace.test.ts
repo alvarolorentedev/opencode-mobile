@@ -1,9 +1,8 @@
 import { describe, expect, it, vi } from 'vitest';
 
 import { workspacePath, workspaceEntries, workspaceWorktrees } from '@/lib/opencode/workspace';
-import { buildFilesystemApi } from '@/lib/opencode/v2/filesystem';
-import { decodeFile, type V2Adapter } from '@/lib/opencode/v2/shared';
-import { buildWorktreeApi } from '@/lib/opencode/v2/worktree';
+import { findFiles, listFiles, readFile, listWorktrees } from '@/providers/services/workspace-service';
+import { decodeFile } from '@/lib/opencode/v2/shared';
 
 vi.mock('@/lib/opencode/client', () => ({ getServerBase: () => ({ origin: 'http://test', pathPrefix: '' }) }));
 
@@ -28,12 +27,10 @@ describe('workspace protocol', () => {
   });
   it('scopes every V2 filesystem request and maps directory-only worktrees', async () => {
     const api = { file: { find: vi.fn(async () => ({ data: [{ path: 'src/a.ts', type: 'file' }] })), list: vi.fn(async () => ({ data: [{ path: 'src', type: 'directory' }] })), read: vi.fn(async () => new TextEncoder().encode('hello')) }, worktree: { list: vi.fn(async () => [{ directory: '/worktrees/task' }]) } };
-    const adapter = { api, vcsLocation: { location: { directory: '/worktrees/task' } }, ok: (data: unknown) => ({ data }), getProjectID: async () => 'parent-project' } as unknown as V2Adapter;
-    const filesystem = buildFilesystemApi(adapter) as { find: { files: (input: { query: string }) => Promise<unknown> }; file: { list: (input: { path: string }) => Promise<unknown>; read: (input: { path: string }) => Promise<unknown> } };
-    await filesystem.find.files({ query: 'a' }); await filesystem.file.list({ path: 'src' }); await filesystem.file.read({ path: 'src/a.ts' });
-    for (const method of [api.file.find, api.file.list, api.file.read]) expect(method).toHaveBeenCalledWith(expect.objectContaining(adapter.vcsLocation));
-    const worktree = buildWorktreeApi(adapter) as { worktree: { list: () => Promise<unknown> } };
-    expect(await worktree.worktree.list()).toEqual({ data: ['/worktrees/task'] });
+    const client = { api: { ...api, location: { get: async () => ({ project: { id: 'parent-project' } }) } }, __opencode: { contract: 'v2', directory: '/worktrees/task' } } as never;
+    await findFiles(client, 'a'); await listFiles(client, 'src'); await readFile(client, 'src/a.ts');
+    for (const method of [api.file.find, api.file.list, api.file.read]) expect(method).toHaveBeenCalledWith(expect.objectContaining({ location: { directory: '/worktrees/task' } }));
+    expect(await listWorktrees(client)).toEqual([{ directory: '/worktrees/task', name: 'task', branch: undefined }]);
     expect(api.worktree.list).toHaveBeenCalledWith({ projectID: 'parent-project' });
   });
 });

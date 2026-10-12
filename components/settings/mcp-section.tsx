@@ -1,3 +1,5 @@
+import { useMcpAuthentication } from './use-mcp-authentication';
+import type { McpContextValue } from '@/providers/opencode-provider-types';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { StyleSheet, Switch, View } from 'react-native';
@@ -15,25 +17,27 @@ export function McpSection({
   configs,
   mcpStatuses,
   onAdd,
-  onCompleteOAuth,
   onConnect,
   onDisconnect,
   onRefresh,
   onSetEnabled,
-  onStartOAuth,
+  mcpOAuth,
+  persistentConfigAvailable = true,
   oauthAvailable = true,
+  requiresIntegrationId = false,
   palette,
 }: {
   configs?: Config['mcp'];
   mcpStatuses: Record<string, McpStatus>;
   onAdd: (name: string, config: McpLocalConfig | McpRemoteConfig) => Promise<void>;
-  onCompleteOAuth: (name: string, code: string) => Promise<void>;
   onConnect: (name: string) => Promise<void>;
   onDisconnect: (name: string) => Promise<void>;
   onRefresh: () => Promise<void>;
   onSetEnabled: (name: string, enabled: boolean) => Promise<void>;
-  onStartOAuth: (name: string) => Promise<boolean>;
+  mcpOAuth: McpContextValue['mcpOAuth'];
+  persistentConfigAvailable?: boolean;
   oauthAvailable?: boolean;
+  requiresIntegrationId?: boolean;
   palette: Palette;
 }) {
   const { t } = useTranslation();
@@ -42,8 +46,7 @@ export function McpSection({
   const [target, setTarget] = useState('');
   const [busy, setBusy] = useState<string>();
   const [error, setError] = useState<string>();
-  const [oauthName, setOauthName] = useState<string>();
-  const [oauthCode, setOauthCode] = useState('');
+  const authentication = useMcpAuthentication(mcpOAuth, palette);
   const names = Array.from(new Set([...Object.keys(configs || {}), ...Object.keys(mcpStatuses)])).sort();
 
   async function run(key: string, action: () => Promise<void>) {
@@ -132,7 +135,7 @@ export function McpSection({
                 <HelperText type="error">{status.error}</HelperText>
               ) : null}
               <View style={styles.actions}>
-                {config ? (
+                {config && persistentConfigAvailable ? (
                   <View style={styles.enabledControl}>
                     <Text variant="labelMedium">{t('common:labels.enabled')}</Text>
                     <Switch
@@ -149,30 +152,15 @@ export function McpSection({
                   onPress={() => void run(actionKey, () => status?.status === 'connected' ? onDisconnect(serverName) : onConnect(serverName))}>
                   {status?.status === 'connected' ? t('common:actions.disconnect') : t('common:actions.connect')}
                 </Button>
-                {oauthAvailable && isRemote && status?.status === 'needs_auth' ? (
-                  <Button compact disabled={Boolean(busy)} onPress={() => void run(actionKey, async () => {
-                    if (await onStartOAuth(serverName)) setOauthName(serverName);
-                  })}>{t('settings:mcp.oauth')}</Button>
+                {oauthAvailable && (requiresIntegrationId ? Boolean((status as { integrationID?: string } | undefined)?.integrationID) : isRemote) && status?.status === 'needs_auth' ? (
+                  <Button compact disabled={Boolean(busy)} onPress={() => void run(actionKey, () => authentication.open(serverName))}>{t('settings:mcp.oauth')}</Button>
                 ) : null}
               </View>
-              {oauthAvailable && oauthName === serverName ? (
-                <View style={styles.oauth}>
-                  <TextInput mode="outlined" label={t('settings:mcp.authorizationCode')} value={oauthCode} onChangeText={setOauthCode} autoCapitalize="none" />
-                  <Button
-                    compact
-                    disabled={!oauthCode.trim() || Boolean(busy)}
-                    onPress={() => void run(actionKey, async () => {
-                      await onCompleteOAuth(serverName, oauthCode);
-                      setOauthCode('');
-                      setOauthName(undefined);
-                    })}>
-                    {t('settings:mcp.completeOAuth')}
-                  </Button>
-                </View>
-              ) : null}
+
             </View>
           );
         })}
+        {authentication.dialog}
         {error ? <HelperText type="error">{error}</HelperText> : null}
     </View>
   );

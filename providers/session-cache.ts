@@ -107,7 +107,7 @@ function toSessionFromCache(cached: CachedSession): Session {
     title: cached.title,
     time: { created: cached.createdAt, updated: cached.updatedAt },
     ...(cached.parentID ? { parentID: cached.parentID } : {}),
-  } as unknown as Session;
+  };
 }
 
 function normalizeStatusType(type: SessionStatus['type'] | undefined): CachedSessionStatus['type'] {

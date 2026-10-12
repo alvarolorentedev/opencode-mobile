@@ -115,7 +115,7 @@ function PromptField({ authValues, onAuthValueChange, palette, prompt }: {
       label={prompt.message}
       placeholder={prompt.placeholder}
       keyboardType={numeric ? 'numeric' : undefined}
-      value={typeof value === 'string' ? value : ''}
+      value={typeof value === 'string' || typeof value === 'number' ? String(value) : ''}
       onChangeText={(next) => onAuthValueChange(prompt.key, next)}
       autoCapitalize="none"
       autoCorrect={false}

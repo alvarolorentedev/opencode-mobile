@@ -38,7 +38,7 @@ Those behaviors live primarily in `providers/opencode-provider.tsx`, `components
 
 ## Fake OpenCode Server
 
-The deterministic server lives in `tests/fake-opencode/server.mjs`.
+The primary deterministic backend is native v2 in `tests/fake-opencode/server.mjs` (`npm run test:fake-server`). The v1 compatibility boundary is `server-v1.mjs` (`npm run test:fake-server:v1`). Playwright uses v2 by default, with explicit v1 coverage for shared flows and compatibility-only features.
 
 It simulates:
 
@@ -102,3 +102,9 @@ npm run test:fake-server
 The app is built in `EXPO_PUBLIC_E2E_MODE=1` for CI flow tests so notification and voice bootstrap side effects do not interfere with deterministic automation.
 
 Android native validation happens on every CI run in the `android-release` job in `.github/workflows/build.yml`; the local `npm run build:development:android` command remains available for manual use.
+
+## v2 primary acceptance
+
+Run `npm run test:ci:static`, `npm run test:fake-server:self`, and `npm run test:e2e:web`; all three gates must pass before push. The SDK import boundary is checked statically. Regressions cover native cursors/events, accumulated usage/todos, connection switching and persisted continuity, guarded file saves, and MCP integration OAuth.
+
+Run `npm run build:development:android`, then validate editing, code/automatic OAuth, reconnects and terminals against real v2 and v1 servers on devices. The pre-save read is not atomic with the write. Any changed fake-server or E2E contract requires explicit human validation under AGENTS.md before completion.

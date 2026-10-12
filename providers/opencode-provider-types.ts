@@ -363,8 +363,13 @@ export type McpContextValue = {
   connectMcpServer: (name: string) => Promise<void>;
   disconnectMcpServer: (name: string) => Promise<void>;
   setMcpServerEnabled: (name: string, enabled: boolean) => Promise<void>;
-  startMcpOAuth: (name: string) => Promise<string>;
-  completeMcpOAuth: (name: string, code: string) => Promise<void>;
+  mcpOAuth: {
+    methods: (name: string) => Promise<ProviderAuthMethod[]>;
+    start: (name: string, method: number, values?: ProviderAuthValues) => Promise<{ url: string; instructions?: string; method: 'auto' | 'code' }>;
+    complete: (name: string, code: string) => Promise<void>;
+    wait: (name: string) => Promise<void>;
+    cancel: (name: string) => Promise<void>;
+  };
 };
 
 // The union of every domain, kept for documentation and the architecture

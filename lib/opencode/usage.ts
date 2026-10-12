@@ -62,19 +62,22 @@ export function usageStepKey(part: Extract<Part, { type: 'step-finish' }>) {
   return `${part.sessionID}:${part.messageID}:${part.id}`;
 }
 
-// Append every step-finish in `messages` to `steps`, keeping one entry per step
-// key so a replayed fetch or SSE event cannot double count.
+// Keep one current usage entry per model call, including updates to an existing
+// message, so replayed fetches and events cannot double count.
 export function addUsageSteps(steps: Map<string, SessionUsageStep>, messages: SessionMessageRecord[]) {
+  let changed = false;
   for (const { info, parts } of messages) {
     if (info.role !== 'assistant') continue;
     for (const part of parts) {
       if (part.type !== 'step-finish') continue;
       const key = usageStepKey(part);
-      if (!steps.has(key)) {
+      if (JSON.stringify(steps.get(key)?.part) !== JSON.stringify(part)) {
         steps.set(key, { key, providerId: info.providerID, modelId: info.modelID, part });
+        changed = true;
       }
     }
   }
+  return changed;
 }
 
 export function aggregateUsageSteps(steps: Iterable<SessionUsageStep>, pricingByModel: Record<string, UsagePricing> = {}): SessionUsage {
@@ -138,9 +141,7 @@ export function getLatestContextTokens(messages: SessionMessageRecord[]) {
       const part = parts[partIndex];
       if (part.type !== 'step-finish') continue;
       const tokens = part.tokens.input + part.tokens.cache.read + part.tokens.cache.write + part.tokens.output;
-      // The V2 adapter emits a placeholder step-finish for in-flight assistant
-      // messages, so an all-zero step means "usage not reported yet", not an
-      // empty context. Keep the previous completed step visible instead.
+      // Keep the previous completed call visible while usage has not arrived.
       if (tokens > 0) return tokens;
     }
   }

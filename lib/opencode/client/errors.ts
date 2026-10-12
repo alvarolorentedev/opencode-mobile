@@ -75,5 +75,9 @@ export function isContractMismatchError(error: unknown) {
   if (!(error instanceof Error)) {
     return false;
   }
-  return /unsupported.?content.?type|unexpectedstatus|malformed.?response|text\/html|not supported by this version/i.test(error.message);
+  const status = (error as Error & { status?: number; cause?: { status?: number } }).status
+    ?? (error as Error & { cause?: { status?: number } }).cause?.status;
+  if (status !== undefined) return status === 404 || status === 405;
+  if (/\b(?:401|403|429|5\d\d)\b|authentication|unauthorized|forbidden|network|fetch failed|timed? ?out/i.test(error.message)) return false;
+  return /unsupported.?content.?type|malformed.?response|text\/html|not supported by this version/i.test(error.message);
 }

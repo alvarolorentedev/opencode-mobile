@@ -22,13 +22,20 @@ export default defineConfig({
   webServer: [
     {
       command: 'node ./tests/fake-opencode/server.mjs',
-      url: 'http://127.0.0.1:44096/path',
+      url: 'http://127.0.0.1:44096/api/info',
       reuseExistingServer: !process.env.CI,
       timeout: 30_000,
       env: {
         ...process.env,
         FAKE_OPENCODE_PORT: '44096',
       },
+    },
+    {
+      command: 'node ./tests/fake-opencode/server-v1.mjs',
+      url: 'http://127.0.0.1:44097/path',
+      reuseExistingServer: !process.env.CI,
+      timeout: 30_000,
+      env: { ...process.env, FAKE_OPENCODE_PORT: '44097' },
     },
     {
       command: 'npm run serve:web:ci',

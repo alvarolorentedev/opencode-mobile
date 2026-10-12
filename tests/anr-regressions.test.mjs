@@ -33,6 +33,8 @@ const selection = await load('../providers/opencode-model-selection.ts', {
 });
 const { discoverChatCapabilities } = await load('../providers/services/capabilities-service.ts', {
   '@/lib/compare-labels': labels,
+  '@/lib/opencode/v2/shared': {},
+  '@/lib/opencode/compat/v1/auth': {},
   '@/providers/opencode-model-selection': selection,
   '@/providers/services/require-data': await load('../providers/services/require-data.ts'),
 });
@@ -49,13 +51,15 @@ const client = {
   app: { agents: async () => ({ data: [] }) },
 };
 for (let i = 0; i < 2; i += 1) {
-  const result = await discoverChatCapabilities(client, '/repo');
+  const result = await discoverChatCapabilities({ compatibility: client }, '/repo');
   assert.equal(result.models.length, names.length);
   assert.equal(result.models[0].modelID, '1');
   assert.deepEqual(Array.from(result.models.slice(1), (model) => model.label), names.filter((_, i) => i !== 1).sort((a, b) => a.localeCompare(b)));
 }
 const { getSpeechVoiceOptions } = await load('../lib/voice/speech-output.ts', {
   '@/lib/compare-labels': labels,
+  '@/lib/opencode/v2/shared': {},
+  '@/lib/opencode/compat/v1/auth': {},
   'expo-speech': { getAvailableVoicesAsync: async () => names.slice(0, 3).map((name) => ({ identifier: name, name, language: 'en' })) },
 });
 assert.deepEqual(Array.from(await getSpeechVoiceOptions(), (voice) => voice.label), names.slice(0, 3).map((name) => `${name} (en)`).sort((a, b) => a.localeCompare(b)));

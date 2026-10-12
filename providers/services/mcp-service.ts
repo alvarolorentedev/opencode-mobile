@@ -1,47 +1,23 @@
-import type { McpLocalConfig, McpRemoteConfig, OpencodeClient } from '@opencode-ai/sdk/v2/client';
-
-import { requireData } from '@/providers/services/require-data';
-
-export async function getMcpStatus(client: OpencodeClient) {
-  return requireData((await client.mcp.status()).data, 'MCP status request');
+import type { McpLocalConfig, McpRemoteConfig, McpStatus } from '@/lib/opencode/types';
+import type { ScopedOpencodeClient } from '@/lib/opencode/client';
+import { mcpConfigToV2 } from '@/lib/opencode/v2/shared';
+import * as v1 from '@/lib/opencode/compat/v1/mcp';
+const location = (client: ScopedOpencodeClient) => ({ location: { directory: client.__opencode.directory } });
+export async function getMcpStatus(client: ScopedOpencodeClient): Promise<Record<string, McpStatus>> {
+  if (client.compatibility) return v1.getMcpStatus(client.compatibility);
+  return Object.fromEntries((await client.api!.mcp.list(location(client))).data.map((server) => [server.name, { ...server.status, ...(server.integrationID ? { integrationID: server.integrationID } : {}) }]));
 }
-
-export async function addMcpServer(client: OpencodeClient, name: string, config: McpLocalConfig | McpRemoteConfig) {
-  await client.mcp.add({ name, config });
-  return updateMcpConfig(client, (mcp) => { mcp[name] = config; });
+export async function addMcpServer(client: ScopedOpencodeClient, name: string, config: McpLocalConfig | McpRemoteConfig) {
+  if (client.compatibility) return v1.addMcpServer(client.compatibility, name, config);
+  await client.api!.mcp.add({ ...location(client), server: name, config: mcpConfigToV2(config) });
 }
-
-export async function connectMcpServer(client: OpencodeClient, name: string) {
-  return requireData((await client.mcp.connect({ name })).data, 'MCP connect request');
+export async function connectMcpServer(client: ScopedOpencodeClient, name: string) {
+  return client.compatibility ? v1.connectMcpServer(client.compatibility, name) : client.api!.mcp.connect({ ...location(client), server: name });
 }
-
-export async function disconnectMcpServer(client: OpencodeClient, name: string) {
-  return requireData((await client.mcp.disconnect({ name })).data, 'MCP disconnect request');
+export async function disconnectMcpServer(client: ScopedOpencodeClient, name: string) {
+  return client.compatibility ? v1.disconnectMcpServer(client.compatibility, name) : client.api!.mcp.disconnect({ ...location(client), server: name });
 }
-
-export async function startMcpOAuth(client: OpencodeClient, name: string) {
-  return requireData((await client.mcp.auth.start({ name })).data, 'MCP OAuth start request');
-}
-
-export async function completeMcpOAuth(client: OpencodeClient, name: string, code: string) {
-  return requireData((await client.mcp.auth.callback({ name, code })).data, 'MCP OAuth callback request');
-}
-
-async function updateMcpConfig(client: OpencodeClient, update: (mcp: NonNullable<Awaited<ReturnType<typeof getConfig>>['mcp']>) => void) {
-  const config = await getConfig(client);
-  const mcp = { ...config.mcp };
-  update(mcp);
-  return requireData((await client.config.update({ config: { ...config, mcp } })).data, 'MCP config update');
-}
-
-async function getConfig(client: OpencodeClient) {
-  return requireData((await client.config.get()).data, 'config request');
-}
-
-export function setMcpServerEnabled(client: OpencodeClient, name: string, enabled: boolean) {
-  return updateMcpConfig(client, (mcp) => {
-    const config = mcp[name];
-    if (!config) throw new Error(`MCP server "${name}" is not configured.`);
-    mcp[name] = { ...config, enabled };
-  });
+export async function setMcpServerEnabled(client: ScopedOpencodeClient, name: string, enabled: boolean) {
+  if (!client.compatibility) throw new Error('Persistent MCP enablement is unavailable on OpenCode 2.');
+  return v1.setMcpServerEnabled(client.compatibility, name, enabled);
 }

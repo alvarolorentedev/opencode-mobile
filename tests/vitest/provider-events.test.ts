@@ -1,32 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 
-import { mapV2Event } from '@/lib/opencode/v2/events';
-import type { AdapterContext } from '@/lib/opencode/v2/shared';
 import { handleProviderEvent, type ProviderEventActions } from '@/providers/opencode-provider-events';
-
-vi.mock('@opencode/client', () => ({ OpenCode: { make: () => ({}) } }));
-vi.mock('@/lib/opencode/client', () => ({
-  getServerBase: () => ({ origin: 'http://test', pathPrefix: '' }),
-  getRequestHeaders: () => ({}),
-  createPrefixFetch: () => () => {},
-}));
-
-const ctx = { permissionSession: new Map(), formSession: new Map() } as unknown as AdapterContext;
-
-const mapped = (type: string, data: Record<string, unknown> = {}) =>
-  mapV2Event({ id: 'event-1', type, data }, ctx);
-
-describe('mapV2Event refresh mappings', () => {
-  it('maps diagnostics, MCP, worktree, credential, command and session detail events', () => {
-    expect(mapped('lsp.updated')?.payload.type).toBe('lsp.updated');
-    expect(mapped('mcp.tools.changed')?.payload.type).toBe('mcp.tools.changed');
-    expect(mapped('worktree.failed')?.payload.type).toBe('worktree.failed');
-    expect(mapped('credential.switched')?.payload.type).toBe('catalog.updated');
-    expect(mapped('session.instructions.updated', { sessionID: 's1' })?.payload.type).toBe('session.updated');
-    expect(mapped('session.metadata.updated', { sessionID: 's1' })?.payload.type).toBe('session.updated');
-    expect(mapped('command.executed', { sessionID: 's1' })?.payload.type).toBe('session.updated');
-  });
-});
 
 function createActions() {
   const calls = {
@@ -66,7 +40,7 @@ describe('handleProviderEvent', () => {
   it('surfaces an MCP browser open failure and refreshes MCP servers', () => {
     const { actions, calls } = createActions();
     handleProviderEvent(
-      { id: 'e', type: 'mcp.browser.open.failed', properties: { mcpName: 'remote', url: 'https://example.com/auth' } } as never,
+      { type: 'compatibility', payload: { id: 'e', type: 'mcp.browser.open.failed', properties: { mcpName: 'remote', url: 'https://example.com/auth' } } } as never,
       actions,
     );
     expect(calls.setMcpAuthPrompt).toHaveBeenCalledWith({ mcpName: 'remote', url: 'https://example.com/auth' });
@@ -75,22 +49,34 @@ describe('handleProviderEvent', () => {
 
   it('refreshes the transcript tail on a part delta', () => {
     const { actions, calls } = createActions();
-    handleProviderEvent({ id: 'e', type: 'message.part.delta', properties: { sessionID: 's1' } } as never, actions);
+    handleProviderEvent({ id: 'e', type: 'session.text.delta', data: { sessionID: 's1' } } as never, actions);
     expect(calls.scheduleSessionRefresh).toHaveBeenCalledWith('s1', { messages: true });
   });
 
   it('refreshes the workspace catalog when project directories change', () => {
     const { actions, calls } = createActions();
-    handleProviderEvent({ id: 'e', type: 'project.directories.updated', properties: { projectID: 'p1' } } as never, actions);
+    handleProviderEvent({ id: 'e', type: 'project.updated', data: { projectID: 'p1' } } as never, actions);
     expect(calls.refreshWorkspaceCatalog).toHaveBeenCalledWith(true);
   });
 
   it('refreshes sessions when a subagent asks for permission', () => {
     const { actions, calls } = createActions();
     handleProviderEvent(
-      { id: 'e', type: 'permission.asked', properties: { id: 'perm-1', sessionID: 'child' } } as never,
+      { id: 'e', type: 'permission.asked', data: { id: 'perm-1', sessionID: 'child', action: 'edit', resources: [] } } as never,
       actions,
     );
     expect(calls.refreshSessions).toHaveBeenCalled();
+  });
+});
+
+describe('native event status and legacy translation', () => {
+  it('preserves native status payloads and translates compatible v1 approvals', async () => {
+    const { getEventSessionStatus } = await import('@/lib/opencode/events');
+    const { translateCompatibilityEvent } = await import('@/lib/opencode/compat/v1/events');
+    const status = { type: 'retry', attempt: 3, next: 100, message: 'Retry', action: { reason: 'r', provider: 'p', title: 't', message: 'm', label: 'l' } } as const;
+    expect(getEventSessionStatus({ type: 'session.status', data: { sessionID: 's', status } })).toEqual({ sessionID: 's', status });
+    const translated = translateCompatibilityEvent({ directory: '/repo', payload: { type: 'permission.asked', properties: { id: 'r', sessionID: 's', permission: 'edit', patterns: ['src/*'], always: ['src/*'], metadata: {}, tool: { messageID: 'm', callID: 'c' } } } } as never);
+    expect(translated).toMatchObject({ type: 'permission.asked', location: { directory: '/repo' }, data: { action: 'edit', resources: ['src/*'], source: { type: 'tool', messageID: 'm', id: 'c' } } });
+    expect(translateCompatibilityEvent({ directory: '/repo', payload: { type: 'mcp.browser.open.failed', properties: { mcpName: 'tools', url: 'https://login.test' } } } as never).type).toBe('compatibility');
   });
 });

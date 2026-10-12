@@ -1,8 +1,6 @@
-import {
-  type OpencodeClient,
-  type PermissionRequest,
-  type QuestionAnswer,
-} from '@opencode-ai/sdk/v2/client';
+import type { OpenCodeClient } from '@opencode/client';
+import type { LegacyClient } from '../compat/v1/client';
+import type { V2Context } from '../v2/shared';
 import Constants from 'expo-constants';
 
 import type { ConnectMetadata } from '@/lib/connect';
@@ -11,12 +9,12 @@ import type { PromptInboxApi } from '@/lib/opencode/prompt-inbox';
 
 export type ServerContract = 'v1' | 'v2';
 
-export type PendingPermissionRequest = PermissionRequest;
+export type PendingPermissionRequest = { id: string; sessionID: string; permission: string; patterns: string[]; always: string[]; metadata: Record<string, unknown>; tool?: { messageID: string; callID: string } };
 
 // Provider-derived wrapper that carries the requesting session's title so a
 // subagent/nested approval can show provenance in the active chat. The base
 // request shape is unchanged; the extra field is display-only.
-export type PendingPermission = PermissionRequest & { sourceTitle?: string };
+export type PendingPermission = PendingPermissionRequest & { sourceTitle?: string };
 export type PendingQuestion = PendingQuestionRequest & { sourceTitle?: string };
 
 // A server-persisted "always allow" rule (V2 `permission.saved`). Display-only
@@ -65,7 +63,7 @@ export type PendingQuestionRequest = {
   questions: PendingQuestionPrompt[];
 };
 
-export type PendingQuestionAnswer = QuestionAnswer;
+export type PendingQuestionAnswer = string[];
 
 export type OpencodeConnectionSettings = {
   serverUrl: string;
@@ -91,6 +89,7 @@ export type NormalizedServerUrl = {
 
 export type ClientMetadata = {
   directory?: string;
+  contract: ServerContract;
 };
 
 // A stored provider credential (V2 only). One integration can hold several
@@ -116,21 +115,21 @@ export type ProviderAccountsApi = {
 // server (the provider redirects to the server's callback, not the app), so the
 // app waits on the attempt status instead of guessing from the provider list.
 export type ProviderOAuthApi = {
+  start: (providerId: string, method: number, values?: ProviderAuthValues) => Promise<import('../v2/capabilities').Authorization>;
+  complete: (providerId: string, code: string) => Promise<void>;
   wait: (providerId: string, timeoutMs?: number) => Promise<void>;
   cancel: (providerId: string) => Promise<void>;
 };
 
-// Server-persisted "always allow" rules (V2 only). Present only on the V2
-// adapter; undefined on V1, which has no saved-rule list.
-export type SavedPermissionsApi = {
-  list: () => Promise<SavedPermissionRule[]>;
-  remove: (id: string) => Promise<void>;
-};
+export type NativeOpencodeApi = Pick<OpenCodeClient, 'server' | 'location' | 'project' | 'session' | 'message' | 'config' | 'provider' | 'model' | 'agent' | 'integration' | 'credential' | 'permission' | 'form' | 'event' | 'file' | 'vcs' | 'worktree' | 'mcp' | 'pty' | 'command'>;
 
-export type ScopedOpencodeClient = OpencodeClient & {
+export type ScopedOpencodeClient = {
+  api?: NativeOpencodeApi;
+  context?: V2Context;
+  compatibility?: LegacyClient;
   __opencode: ClientMetadata;
+  mcpOAuth?: ProviderOAuthApi & { methods: (name: string) => Promise<import('../types').ProviderAuthMethod[]> };
   accounts?: ProviderAccountsApi;
   providerOAuth?: ProviderOAuthApi;
   promptInbox?: PromptInboxApi;
-  savedPermissions?: SavedPermissionsApi;
 };

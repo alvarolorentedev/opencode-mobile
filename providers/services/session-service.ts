@@ -1,210 +1,123 @@
-import type { OpencodeClient, PermissionRuleset } from '@opencode-ai/sdk/v2/client';
-
-import type { GlobalSession, Project } from '@/lib/opencode/types';
-import type { SessionMessageRecord } from '@/lib/opencode/format';
-import { requireData } from '@/providers/services/require-data';
-import { coalesceRead } from '@/lib/opencode/in-flight';
+import { compareLabels } from '@/lib/compare-labels';
 import type { ScopedOpencodeClient } from '@/lib/opencode/client';
+import type { SessionMessageRecord } from '@/lib/opencode/format';
+import { coalesceRead } from '@/lib/opencode/in-flight';
+import { toProjectView, toSessionView } from '@/lib/opencode/v2-mappers';
+import { toMessageRecord } from '@/lib/opencode/v2/mappers';
+import * as v1 from '@/lib/opencode/compat/v1/session';
 
 export function getSessionInbox(client: ScopedOpencodeClient, sessionId: string) {
   return coalesceRead(client, `inbox:${sessionId}`, () => client.promptInbox!.list(sessionId));
 }
-
-export async function loadWorkspaceCatalog(catalogClient: OpencodeClient) {
-  const [pathResponse, projectsResponse, currentProjectResponse] = await Promise.all([
-    catalogClient.path.get(),
-    catalogClient.project.list(),
-    catalogClient.project.current(),
-  ]);
-
-  const discoveredProjects = requireData(projectsResponse.data, 'project list request');
-  const currentProject = requireData(currentProjectResponse.data, 'current project request');
-  const path = requireData(pathResponse.data, 'path request');
-  const dedupedProjects = new Map<string, Project>();
-
-  if (currentProject?.worktree) {
-    dedupedProjects.set(currentProject.worktree, currentProject);
-  }
-
-  discoveredProjects.forEach((project) => {
-    dedupedProjects.set(project.worktree, project);
+export async function loadWorkspaceCatalog(client: ScopedOpencodeClient) {
+  if (client.compatibility) return v1.loadWorkspaceCatalog(client.compatibility);
+  const [location, projects] = await Promise.all([client.api!.location.get(), client.api!.project.list()]);
+  if (!location?.project?.id || !location.directory || !Array.isArray(projects)) throw new Error('MalformedResponse: OpenCode did not return its workspace catalog.');
+  const current = projects.find((project) => project.id === location.project.id);
+  const serverProjects = projects.map(toProjectView).sort((left, right) => compareLabels(left.worktree, right.worktree));
+  return { currentProjectPath: location.directory, serverRootPath: location.directory, serverProjects: current ? serverProjects : [...serverProjects, { id: location.project.id, worktree: location.project.canonical, time: { created: 0 } }] };
+}
+export async function resolveWorkspace(client: ScopedOpencodeClient) {
+  if (client.compatibility) return v1.resolveWorkspace(client.compatibility);
+  const location = await client.api!.location.get({ location: { directory: client.__opencode.directory } });
+  return { id: location.project.id, worktree: location.project.canonical, time: { created: 0 } };
+}
+export function listSessions(client: ScopedOpencodeClient) {
+  return coalesceRead(client, 'sessions', async () => {
+    if (client.compatibility) return v1.listSessions(client.compatibility);
+    const [page, active] = await Promise.all([client.api!.session.list(client.__opencode.directory ? { directory: client.__opencode.directory } : {}), client.api!.session.active()]);
+    if (active == null) throw new Error('OpenCode did not return active sessions.');
+    const sessions = page.data.map(toSessionView).filter((session) => !session.time.archived).sort((a, b) => b.time.updated - a.time.updated);
+    const statuses: Record<string, import('@/lib/opencode/types').SessionStatus> = {};
+    for (const session of page.data) statuses[session.id] = { type: 'idle' };
+    for (const id of Object.keys(active)) statuses[id] = { type: 'busy' };
+    return { sessions, statuses };
   });
-
-  const nextProjects = [...dedupedProjects.values()].sort(
-    (left, right) => (right.time.initialized || right.time.created) - (left.time.initialized || left.time.created),
-  );
-
-  return {
-    currentProjectPath: currentProject?.worktree,
-    serverRootPath: path.directory,
-    serverProjects: nextProjects,
-  };
 }
-
-export async function resolveWorkspace(client: OpencodeClient) {
-  return requireData((await client.project.current()).data, 'current project request');
+export const listActiveSessions = listSessions;
+// Native retries and blocking forms are absent from the running-session set.
+// Background completion must confirm these before treating an idle list as done.
+export async function hasPendingSessionWork(client: ScopedOpencodeClient, sessionID: string) {
+  if (!client.api) return false;
+  const location = { location: { directory: client.__opencode.directory } };
+  const [messages, inbox, permissions, forms] = await Promise.all([
+    client.api.message.list({ sessionID, limit: 20, order: 'desc' }),
+    client.api.session.inbox.list({ sessionID }),
+    client.api.permission.request.list(location),
+    client.api.form.list(location),
+  ]);
+  const latest = messages.data.find((message) => message.type === 'assistant' || message.type === 'idle' || message.type === 'user');
+  return inbox.length > 0 || permissions.data.some((request) => request.sessionID === sessionID)
+    || forms.data.some((form) => form.sessionID === sessionID || form.sessionID === 'global')
+    || (latest?.type === 'assistant' && Boolean(latest.retry));
 }
-
-export async function listSessions(client: OpencodeClient) {
-  return coalesceRead(client, 'sessions', () => fetchSessions(client));
+export async function listArchivedSessions(client: ScopedOpencodeClient) {
+  if (client.compatibility) return v1.listArchivedSessions(client.compatibility);
+  return [];
 }
-
-async function fetchSessions(client: OpencodeClient) {
-  const [sessionsResponse, statusesResponse] = await Promise.all([client.session.list(), client.session.status()]);
-
-  const nextSessions = [...requireData(sessionsResponse.data, 'session list request')]
-    .sort((left, right) => right.time.updated - left.time.updated);
-  return { sessions: nextSessions.filter((session) => !session.time.archived), statuses: requireData(statusesResponse.data, 'session status request') };
-}
-
-// Cross-workspace session snapshot for the Chat Library "Active" group. Uses an
-// unscoped client (empty directory) so both contracts return sessions and
-// statuses for every project on the active connection, not just the active one.
-export async function listActiveSessions(client: OpencodeClient) {
-  return listSessions(client);
-}
-
-export async function listArchivedSessions(client: OpencodeClient) {
-  const MAX_ARCHIVED_PAGES = 10;
-  const sessions: GlobalSession[] = [];
-  let cursor: number | undefined;
-  let pages = 0;
-  do {
-    const response = await client.experimental.session.list({ archived: true, cursor, limit: 100 });
-    sessions.push(...requireData(response.data, 'archived session list request'));
-    const next = response.response?.headers.get('x-next-cursor');
-    cursor = next ? Number(next) : undefined;
-    pages += 1;
-  } while (cursor !== undefined && pages < MAX_ARCHIVED_PAGES);
-  // archived=true includes active sessions on V1; filter after pagination.
-  return sessions.filter((session) => Boolean(session.time.archived));
-}
-
 export const INITIAL_MESSAGE_LIMIT = 20;
 export const HISTORY_PAGE_LIMIT = 20;
-
-export type SessionMessagePage = {
-  records: SessionMessageRecord[];
-  hasMore: boolean;
-  nextBefore?: string;
-};
-
-// A single backwards page of transcript. The server returns the newest page
-// first and pages toward older records through an opaque cursor (V1 exposes it
-// as `x-next-cursor`; the V2 adapter maps its cursor onto the same header).
-// Callers request the newest page with no `before`, then page back with the
-// returned `nextBefore` while scrolling up.
-export async function getSessionMessages(
-  client: OpencodeClient,
-  sessionId: string,
-  options: { limit?: number; before?: string } = {},
-): Promise<SessionMessagePage> {
-  const limit = options.limit ?? HISTORY_PAGE_LIMIT;
-  const before = options.before;
-  return coalesceRead(client, `messages:${sessionId}:${before ?? 'newest'}:${limit}`, () =>
-    fetchSessionMessagePage(client, sessionId, limit, before));
-}
-
-async function fetchSessionMessagePage(client: OpencodeClient, sessionId: string, limit: number, before?: string): Promise<SessionMessagePage> {
-  const response = await client.session.messages({ sessionID: sessionId, limit, before });
-  const records = requireData(response.data, 'session messages request') as SessionMessageRecord[];
-  const header = response.response?.headers.get('x-next-cursor') ?? undefined;
-  const nextBefore = header && header !== before ? header : undefined;
-  return { records, hasMore: Boolean(nextBefore), nextBefore };
-}
-
-export async function getSessionDiff(client: OpencodeClient, sessionId: string, messageId?: string, messages?: SessionMessageRecord[]) {
-  // Callers that already know which turn they want pass its id and skip the
-  // transcript scan. Otherwise prefer the transcript already held in memory;
-  // only a cold cache pays for a newest-page read.
-  let targetMessageId = messageId;
-  if (!targetMessageId) {
-    const source = messages ?? (await getSessionMessages(client, sessionId, { limit: INITIAL_MESSAGE_LIMIT })).records;
-    const latestUserMessage = source.slice().reverse().find(({ info }) => info.role === 'user');
-    if (!latestUserMessage) {
-      return [];
-    }
-    targetMessageId = latestUserMessage.info.id;
-  }
-
-  const messageID = targetMessageId;
-  return coalesceRead(client, `diff:${sessionId}:${messageID}`, async () => {
-    const response = await client.session.diff({ sessionID: sessionId, messageID });
-    return requireData(response.data, 'message diff request');
+export type SessionMessagePage = { records: SessionMessageRecord[]; hasMore: boolean; nextBefore?: string };
+export function getSessionMessages(client: ScopedOpencodeClient, sessionId: string, options: { limit?: number; before?: string } = {}): Promise<SessionMessagePage> {
+  const { limit = HISTORY_PAGE_LIMIT, before } = options;
+  return coalesceRead(client, `messages:${sessionId}:${before ?? 'newest'}:${limit}`, async () => {
+    if (client.compatibility) return v1.getSessionMessages(client.compatibility, sessionId, options);
+    const page = await client.api!.message.list(before ? { sessionID: sessionId, limit, cursor: before } : { sessionID: sessionId, limit, order: 'desc' });
+    const records = [...page.data].reverse().map((message) => toMessageRecord(message, sessionId)).filter((record): record is SessionMessageRecord => Boolean(record));
+    const nextBefore = page.cursor.next && page.cursor.next !== before ? page.cursor.next : undefined;
+    return { records, hasMore: Boolean(nextBefore), nextBefore };
   });
 }
-
-export async function getSessionTodos(client: OpencodeClient, sessionId: string) {
-  return coalesceRead(client, `todos:${sessionId}`, async () => {
-    const response = await client.session.todo({ sessionID: sessionId });
-    return requireData(response.data, 'session todo request');
-  });
+export async function getSessionDiff(client: ScopedOpencodeClient, sessionId: string, messageId?: string, messages?: SessionMessageRecord[]) {
+  const target = messageId ?? (messages ?? (await getSessionMessages(client, sessionId)).records).slice().reverse().find((record) => record.info.role === 'user')?.info.id;
+  if (!target) return [];
+  return coalesceRead(client, `diff:${sessionId}:${target}`, async () => client.compatibility ? v1.getSessionDiff(client.compatibility, sessionId, target) : client.api!.session.diff({ sessionID: sessionId, from: target }));
 }
-
-export async function deleteSession(client: OpencodeClient, sessionId: string) {
-  return (await client.session.delete({ sessionID: sessionId })).data;
+export async function getSessionTodos(client: ScopedOpencodeClient, sessionId: string) {
+  return client.compatibility ? v1.getSessionTodos(client.compatibility, sessionId) : [];
 }
-
-export async function updateSessionTitle(client: OpencodeClient, sessionId: string, title: string) {
-  return (await client.session.update({ sessionID: sessionId, title })).data;
+export async function createSession(client: ScopedOpencodeClient, title?: string) {
+  if (client.compatibility) return (await client.compatibility.session.create(title ? { title } : undefined)).data;
+  return toSessionView(await client.api!.session.create({ ...(title ? { title } : {}), ...(client.__opencode.directory ? { location: { directory: client.__opencode.directory } } : {}) }));
 }
-
-type SessionUpdate = {
-  title?: string;
-  metadata?: Record<string, unknown>;
-  permission?: PermissionRuleset;
-  time?: { archived?: number };
-};
-
-async function updateSession(client: OpencodeClient, sessionId: string, update: SessionUpdate) {
-  return requireData((await client.session.update({ sessionID: sessionId, ...update })).data, 'session update request');
+export async function deleteSession(client: ScopedOpencodeClient, sessionId: string) {
+  return client.compatibility ? v1.deleteSession(client.compatibility, sessionId) : client.api!.session.remove({ sessionID: sessionId });
 }
-
-export function archiveSession(client: OpencodeClient, sessionId: string, archived = Date.now()) {
-  return updateSession(client, sessionId, { time: { archived } });
+export async function updateSessionTitle(client: ScopedOpencodeClient, sessionId: string, title: string) {
+  if (client.compatibility) return v1.updateSessionTitle(client.compatibility, sessionId, title);
+  await client.api!.session.update({ sessionID: sessionId, title });
+  return toSessionView(await client.api!.session.get({ sessionID: sessionId }));
 }
-
-export function restoreSession(client: OpencodeClient, sessionId: string) {
-  return updateSession(client, sessionId, { time: { archived: 0 } });
+function requireCompatibility(client: ScopedOpencodeClient) {
+  if (!client.compatibility) throw new Error('This operation is not supported by OpenCode 2.');
+  return client.compatibility;
 }
-
-export async function forkSession(client: OpencodeClient, sessionId: string, messageId?: string) {
-  return (await client.session.fork({ sessionID: sessionId, messageID: messageId })).data;
+export const archiveSession = (client: ScopedOpencodeClient, sessionId: string) => v1.archiveSession(requireCompatibility(client), sessionId);
+export const restoreSession = (client: ScopedOpencodeClient, sessionId: string) => v1.restoreSession(requireCompatibility(client), sessionId);
+export const shareSession = (client: ScopedOpencodeClient, sessionId: string) => v1.shareSession(requireCompatibility(client), sessionId);
+export const unshareSession = (client: ScopedOpencodeClient, sessionId: string) => v1.unshareSession(requireCompatibility(client), sessionId);
+export async function forkSession(client: ScopedOpencodeClient, sessionId: string, messageId?: string) {
+  return client.compatibility ? v1.forkSession(client.compatibility, sessionId, messageId) : toSessionView(await client.api!.session.fork({ sessionID: sessionId, ...(messageId ? { before: messageId } : {}) }));
 }
-
-export async function shareSession(client: OpencodeClient, sessionId: string) {
-  return (await client.session.share({ sessionID: sessionId })).data;
+export async function revertSession(client: ScopedOpencodeClient, sessionId: string, messageId: string, partId?: string) {
+  if (client.compatibility) return v1.revertSession(client.compatibility, sessionId, messageId, partId);
+  return client.api!.session.revert.stage({ sessionID: sessionId, messageID: messageId, ...(partId ? { partID: partId } : {}) });
 }
-
-export async function unshareSession(client: OpencodeClient, sessionId: string) {
-  return (await client.session.unshare({ sessionID: sessionId })).data;
+export async function unrevertSession(client: ScopedOpencodeClient, sessionId: string) {
+  return client.compatibility ? v1.unrevertSession(client.compatibility, sessionId) : client.api!.session.revert.clear({ sessionID: sessionId });
 }
-
-export async function revertSession(client: OpencodeClient, sessionId: string, messageId: string, partId?: string) {
-  return (await client.session.revert({ sessionID: sessionId, messageID: messageId, partID: partId })).data;
+export async function interruptSession(client: ScopedOpencodeClient, sessionID: string) {
+  return client.compatibility ? client.compatibility.session.abort({ sessionID }) : client.api!.session.interrupt({ sessionID });
 }
-
-export async function unrevertSession(client: OpencodeClient, sessionId: string) {
-  return (await client.session.unrevert({ sessionID: sessionId })).data;
+export async function summarizeSession(client: ScopedOpencodeClient, input: { sessionID: string; providerID: string; modelID: string }) {
+  return requireCompatibility(client).session.summarize(input);
 }
-
-export async function listCommands(client: OpencodeClient) {
-  return requireData((await client.command.list()).data, 'command list request');
+export async function listCommands(client: ScopedOpencodeClient) {
+  return client.compatibility ? v1.listCommands(client.compatibility) : (await client.api!.command.list({ location: { directory: client.__opencode.directory } })).data;
 }
-
-export async function executeCommand(
-  client: OpencodeClient,
-  sessionId: string,
-  command: string,
-  args: string,
-  options?: { agent?: string; model?: string; messageId?: string },
-) {
-  return (await client.session.command({
-    sessionID: sessionId,
-    command,
-    arguments: args,
-    agent: options?.agent,
-    model: options?.model,
-    messageID: options?.messageId,
-  })).data;
+export async function executeCommand(client: ScopedOpencodeClient, sessionId: string, command: string, args: string, options?: { agent?: string; model?: string; messageId?: string }) {
+  if (client.compatibility) return v1.executeCommand(client.compatibility, sessionId, command, args, options);
+  if (options?.agent) await client.api!.session.switchAgent({ sessionID: sessionId, agent: options.agent });
+  if (options?.model) { const [providerID, ...id] = options.model.split('/'); await client.api!.session.switchModel({ sessionID: sessionId, model: { providerID, id: id.join('/') } }); }
+  await client.api!.session.command({ sessionID: sessionId, name: command, text: args });
 }

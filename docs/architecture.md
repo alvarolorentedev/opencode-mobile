@@ -294,17 +294,21 @@ into the right layer and, if needed, lower the number in the same change.
 ### OpenCode Protocol Helpers
 
 - `lib/opencode/client.ts`
-  Builds either the OpenCode 1.x SDK client or the V2 adapter. The barrel re-exports the connection helpers now split by concern under `lib/opencode/client/` (`types`, `url`, `fetch`, `errors`, `probe`, `interactions`); URL normalization, basic auth, path-prefix handling, transport, contract probing, and pending-interaction calls each live in one module.
+  Builds the native OpenCode 2 client by default. Connection helpers under `lib/opencode/client/` own URL normalization, authentication, prefix handling, transport, probing, and pending interactions. Affirmative 1.x health/path discovery selects compatibility, including known `/api` compatibility routes. Unknown detection starts with v2; only missing endpoints or malformed protocol responses permit another contract attempt. Authentication and transport failures remain actionable.
 - `lib/opencode/v2-client.ts`
-  OpenCode 2.x adapter over `@opencode/client`. Keeps the `buildV2Client` entrypoint and error wrapping; the V1-shaped client is re-assembled from per-domain builders so a protocol change touches one builder.
+  Constructs `@opencode/client` and exposes a typed subset of its native API, plus app actions for provider accounts, OAuth and inbox delivery. Services consume native sessions, cursor responses, forms and operations directly.
 - `lib/opencode/v2/`
-  The 2.x adapter's per-domain builder modules (`raw`, `project`, `session`, `capabilities`, `filesystem`, `vcs`, `worktree`, `mcp`, `pty`, `global`, `interactions`), plus shared protocol types/helpers (`shared`), response mappers (`mappers`), and event mapping (`events`). Normalizes V2 responses and events back into the app's 1.x-shaped domain types and reports unsupported features explicitly.
-- `lib/opencode/format.ts`
-  Barrel over `lib/opencode/format/` (`types`, `tool`, `time`, `preview`, `todos`, `window`, `transcript`). Converts raw message records into transcript entries, previews, todos, and windowed history.
-- `lib/opencode/transcript.ts`
-  Transcript activity helpers and display filtering.
-- `lib/opencode/types.ts`
-  Direct aliases for generated v2 SDK protocol types.
+  Native transport, auth/MCP helpers and presentation projections. No fabricated 1.x SDK response envelopes or translated 1.x events exist on this path.
+- `lib/opencode/compat/v1/`
+  The isolated 1.x compatibility implementation. Production `@opencode-ai/sdk` imports are allowed only here. It preserves legacy session, config, MCP, diagnostics and terminal behavior; its event dispatcher handles explicit compatibility extensions with no native equivalent.
+- `lib/opencode/events.ts`
+  Subscribes to native events directly, wrapping legacy events only at the compatibility boundary. Provider event handlers preserve reconnection reconciliation and polling fallback.
+- `lib/opencode/format.ts` and `lib/opencode/types.ts`
+  App-owned transcript, capability, session summary and diagnostics models. Protocol helpers and provider selectors derive these views; screens and presentation components never parse wire records. Persisted DTOs and storage keys remain stable.
+
+Native v2 editing uses `vcs.status` and `file.write`. The provider compares the server text with the editor baseline before writing, verifies the saved text afterward, and refreshes file/VCS state. Drafts remain local on failure. The comparison cannot prevent a concurrent edit between the read and write because v2 has no conditional-write API.
+
+MCP OAuth resolves each server's exposed `integrationID`, then uses native integration start/complete/status/cancel operations. The grouped provider interface carries code/automatic mode and form prompts; cleanup cancels attempts and rejects stale connection results. General config writes, persistent MCP enablement, sharing, archive/restore, title summarization, worktree reset and LSP/formatter diagnostics remain gated to 1.x compatibility.
 
 ### Connection Identity And Credentials
 

@@ -1,7 +1,9 @@
+import { getProviders, setProviderCredentialsForClient, removeProviderCredentials } from '@/providers/services/capabilities-service';
+import { getProviderAuthMethods } from '@/lib/opencode/v2/shared';
 import { describe, it, expect, vi } from 'vitest';
 
-import { modelToV1, projectToV1, sessionToV1 } from '@/lib/opencode/v2-mappers';
-import { mapSavedPermission, messageToV1 } from '@/lib/opencode/v2/mappers';
+import { toModelOptionRecord, toProjectView, toSessionView } from '@/lib/opencode/v2-mappers';
+import { mapSavedPermission, toMessageRecord } from '@/lib/opencode/v2/mappers';
 import { buildV2Client } from '@/lib/opencode/v2-client';
 
 const h = vi.hoisted(() => ({ api: undefined as unknown }));
@@ -14,7 +16,7 @@ vi.mock('@/lib/opencode/client', () => ({
 
 describe('v2 response mappers', () => {
   it('preserves session usage fields', () => {
-    const session = sessionToV1({
+    const session = toSessionView({
       id: 'ses_1',
       projectID: 'project-1',
       title: 'Chat',
@@ -31,13 +33,13 @@ describe('v2 response mappers', () => {
     expect(session.title).toBe('Chat');
     expect(session.time).toEqual({ created: 1, updated: 2 });
 
-    const minimalSession = sessionToV1({ id: 'ses_2', projectID: 'project-1', cost: 0, tokens: { input: 0, output: 0, reasoning: 0, cache: { read: 0, write: 0 } }, time: { created: 0, updated: 0 } } as never);
+    const minimalSession = toSessionView({ id: 'ses_2', projectID: 'project-1', cost: 0, tokens: { input: 0, output: 0, reasoning: 0, cache: { read: 0, write: 0 } }, time: { created: 0, updated: 0 } } as never);
     expect(minimalSession.title).toBe('');
     expect(minimalSession.model).toBeUndefined();
   });
 
   it('maps an assistant retry into a retry transcript part', () => {
-    const mapped = messageToV1({
+    const mapped = toMessageRecord({
       id: 'msg_1',
       type: 'assistant',
       sessionID: 'ses_1',
@@ -66,9 +68,10 @@ describe('v2 response mappers', () => {
     });
   });
 
-  it('maps projects', () => {    expect(projectToV1({ id: 'project-1', canonical: '/workspace/demo', vcs: 'git', time: { created: 1, updated: 2 }, sandboxes: [] } as never)).toEqual({
+  it('maps projects', () => {    expect(toProjectView({ id: 'project-1', canonical: '/workspace/demo', vcs: 'git', time: { created: 1, updated: 2 }, sandboxes: [] } as never)).toEqual({
       id: 'project-1',
       worktree: '/workspace/demo',
+      sandboxes: [],
       vcs: 'git',
       time: { created: 1, initialized: 2 },
     });
@@ -92,7 +95,7 @@ describe('v2 response mappers', () => {
       };
     }
 
-    const mapped = modelToV1(model({
+    const mapped = toModelOptionRecord(model({
       cost: [
         { input: 3, output: 15, cache: { read: 0.3, write: 3.75 } },
         { tier: { type: 'context', size: 200000 }, input: 6, output: 22.5, cache: { read: 0.6, write: 7.5 } },
@@ -106,18 +109,17 @@ describe('v2 response mappers', () => {
     expect((mapped.capabilities as never as { input: unknown }).input).toEqual({ text: true, audio: false, image: true, video: false, pdf: false });
     expect(mapped.limit).toEqual({ context: 200000, output: 8192 });
     expect(mapped.cost).toEqual({
-      input: 3,
-      output: 15,
-      cache: { read: 0.3, write: 3.75 },
-      tiers: [{ input: 6, output: 22.5, cache: { read: 0.6, write: 7.5 }, tier: { type: 'context', size: 200000 } }],
+      input: 3 / 1_000_000, output: 15 / 1_000_000,
+      cache: { read: 0.3 / 1_000_000, write: 3.75 / 1_000_000 },
+      tiers: [{ input: 6 / 1_000_000, output: 22.5 / 1_000_000, cache: { read: 0.6 / 1_000_000, write: 7.5 / 1_000_000 }, tier: { type: 'context', size: 200000 } }],
     });
     expect(mapped.status).toBe('active');
 
-    expect((modelToV1(model() as never).capabilities as never as { reasoning: boolean }).reasoning).toBe(false);
-    expect((modelToV1(model({ variants: [{ id: 'fast', settings: { reasoning: false } }] }) as never).capabilities as never as { reasoning: boolean }).reasoning).toBe(false);
-    expect((modelToV1(model({ cost: [], variants: [] }) as never).cost as never as { input: number }).input).toBe(0);
-    expect((modelToV1(model({ cost: [{ tier: { type: 'context', size: 1000 }, input: 1, output: 2, cache: { read: 0, write: 0 } }] }) as never).cost as never as { input: number }).input).toBe(1);
-    expect((modelToV1(model({ compatibility: { reasoningField: 'reasoning_content' } }) as never).capabilities as never as { reasoning: boolean }).reasoning).toBe(true);
+    expect((toModelOptionRecord(model() as never).capabilities as never as { reasoning: boolean }).reasoning).toBe(false);
+    expect((toModelOptionRecord(model({ variants: [{ id: 'fast', settings: { reasoning: false } }] }) as never).capabilities as never as { reasoning: boolean }).reasoning).toBe(false);
+    expect((toModelOptionRecord(model({ cost: [], variants: [] }) as never).cost as never as { input: number }).input).toBe(0);
+    expect((toModelOptionRecord(model({ cost: [{ tier: { type: 'context', size: 1000 }, input: 1, output: 2, cache: { read: 0, write: 0 } }] }) as never).cost as never as { input: number }).input).toBe(1 / 1_000_000);
+    expect((toModelOptionRecord(model({ compatibility: { reasoningField: 'reasoning_content' } }) as never).capabilities as never as { reasoning: boolean }).reasoning).toBe(true);
   });
 });
 
@@ -159,27 +161,27 @@ describe('v2 provider discovery and API-key auth', () => {
     h.api = api;
     const client = buildV2Client({ serverUrl: 'http://test', directory: '/repo', username: '', password: '' } as never);
 
-    expect(Array.from((await client.provider.list()).data.connected)).toEqual(['openai', 'env-provider']);
+    expect(Array.from((await getProviders(client)).connected)).toEqual(['openai', 'env-provider']);
 
     // Real V2 servers omit unconnected providers and their models entirely.
     api.provider.list = async () => ({ data: providers.filter(({ id }) => id === 'openai') });
     integrations.push({ id: 'mcp-tools', name: 'Tools', metadata: { source: 'mcp' }, connections: [], methods: [{ type: 'oauth', id: 'mcp-login' }] });
-    const catalog = (await client.provider.list()).data;
+    const catalog = (await getProviders(client));
     expect(catalog.all.some((provider: any) => provider.id === 'opencode-go')).toBe(true);
     expect(catalog.all.some((provider: any) => provider.id === 'mcp-tools')).toBe(false);
-    expect(Array.from((await client.provider.auth()).data['opencode-go'], (method: any) => method.type)).toEqual(['oauth', 'api']);
-    await client.provider.oauth.authorize({ providerID: 'opencode-go', method: 0 });
-    await client.auth.set({ providerID: 'opencode-go', auth: { type: 'api', key: 'test-go-key' } });
+    expect(Array.from((await getProviderAuthMethods(client.api!, { location: { directory: '/repo' } }))['opencode-go'], (method: any) => method.type)).toEqual(['oauth', 'api']);
+    await client.providerOAuth!.start('opencode-go', 0);
+    await setProviderCredentialsForClient(client, 'opencode-go', { key: 'test-go-key' });
     expect(savedKey).toEqual({ integrationID: 'opencode-go', key: 'test-go-key' });
 
     api.provider.list = async () => ({ data: providers });
-    expect(Array.from((await client.provider.list()).data.connected)).toEqual(['openai', 'opencode-go', 'env-provider']);
+    expect(Array.from((await getProviders(client)).connected)).toEqual(['openai', 'opencode-go', 'env-provider']);
     providers.find(({ id }) => id === 'opencode-go')!.integrationID = 'openai';
     integrations.find(({ id }) => id === 'openai')!.methods = [{ type: 'oauth', id: 'console-login', label: 'Console account' }];
-    expect(Array.from((await client.provider.auth()).data['opencode-go'], (method: any) => method.type)).toEqual(['oauth', 'api']);
-    await client.auth.set({ providerID: 'opencode-go', auth: { type: 'api', key: 'second-go-key' } });
+    expect(Array.from((await getProviderAuthMethods(client.api!, { location: { directory: '/repo' } }))['opencode-go'], (method: any) => method.type)).toEqual(['oauth', 'api']);
+    await setProviderCredentialsForClient(client, 'opencode-go', { key: 'second-go-key' });
     expect(savedKey).toEqual({ integrationID: 'opencode-go', key: 'second-go-key' });
-    await client.auth.remove({ providerID: 'opencode-go' });
+    await removeProviderCredentials(client, 'opencode-go');
     expect(removedCredential).toBe('credential-go');
   });
 
@@ -198,7 +200,7 @@ describe('v2 provider discovery and API-key auth', () => {
       },
     };
     const client = buildV2Client({ serverUrl: 'http://test', directory: '/repo', username: '', password: '' } as never);
-    const methods = (await client.provider.auth()).data as Record<string, Array<{ prompts?: Array<Record<string, unknown>> }>>;
+    const methods = (await getProviderAuthMethods(client.api!, { location: { directory: '/repo' } })) as Record<string, Array<{ prompts?: Array<Record<string, unknown>> }>>;
     expect(methods.openai[0].prompts?.map((prompt) => prompt.type)).toEqual(['select', 'boolean', 'integer']);
     expect(methods.openai[0].prompts?.[0].options).toEqual([{ label: 'A', value: 'a' }]);
     expect(methods.openai[0].prompts?.[1].defaultValue).toBe(true);

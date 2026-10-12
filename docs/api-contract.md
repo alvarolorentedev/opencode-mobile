@@ -1,21 +1,14 @@
 # API Contract
 
-## Scope And Compatibility
+## Primary Contract And Compatibility
 
-This is the client-side OpenCode contract implemented by the app. It supports two server contracts:
+OpenCode 2 is the primary contract, using the installed `@opencode/client` 2.0.16 SDK and its native `/api` operations. `ScopedOpencodeClient` exposes a typed subset as `api`, with explicit account, OAuth and inbox actions. Native responses, pagination cursors and events are consumed directly; no fabricated v1 response envelopes exist on this path.
 
-- OpenCode 1.x: unprefixed paths such as `/path` and `/session`, spoken through `@opencode-ai/sdk` 1.18.3 (`@opencode-ai/sdk/v2/client`). This is the app's domain type source and remains the default.
-- OpenCode 2.x: `/api`-prefixed paths spoken through `@opencode/client` 2.0.12. A V2 adapter normalizes V2 responses and events back into the app's existing 1.x-shaped domain types.
+OpenCode 1 uses `@opencode-ai/sdk/v2/client` only within `lib/opencode/compat/v1/`. The `compatibility` extension preserves legacy behavior and v1-only operations. Transcript entries, capability options, session summaries and diagnostics are app-owned presentation models, derived in protocol helpers/services/provider selectors. Screens and components do not parse SDK records.
 
-`detectServerContract()` probes `/api/info`, `/api/health`, and `/global/health` concurrently. A `/global/health` response reporting a `1.x` version wins as V1, because newer 1.x servers also expose some `/api` compatibility routes. V2 is only selected when `/api/info` returns a V2 `ServerInfo` shape (`version` plus `pid`/`urls`/`paths`) or `/api/health` reports `healthy: true` without a 1.x signal. The resolved contract is stored in provider state and selects which client `buildClient()` constructs.
+`buildClient()`, initial provider state, uncertain detection and PTY URLs default to v2. Probing checks `/api/info`, `/api/health` and `/global/health` concurrently. Affirmative 1.x health or path responses win, including known `/api` compatibility routes. Setup distinguishes detected, authentication-required, unknown and unreachable results, with cancellation and five-second probe timeouts. Connection discovery attempts another contract only for missing endpoints (404/405) or malformed protocol responses. Authentication, rate-limit, server and transport failures never trigger alternate-contract attempts.
 
-Because a probe can still misclassify a hybrid server, `connect()` tries the detected contract first and falls back to the other one when workspace discovery fails with a contract-mismatch error (`UnsupportedContentType`, `UnexpectedStatus`, `MalformedResponse`, or an HTML response). Only after both fail is a connection error surfaced.
-
-Setup uses `probeConnection()` directly. Its outcomes are `detected` (contract and
-optional version), `authentication-required` (401/403), `unreachable` (all requests
-fail), and `unknown` (reachable without a recognized contract). Each request has
-a five-second timeout and supports cancellation. `detectServerContract()` remains
-the compatibility wrapper with the existing V1 fallback for connection attempts.
+The existing connection scope, storage keys and persisted DTOs remain unchanged. Hydration restores cached summaries as app summaries rather than claiming they are complete SDK sessions.
 
 ### Local V2 pairing
 
@@ -39,396 +32,80 @@ Invalid/used/expired codes can be replaced by a
 new scan; loopback-only and unreachable payloads offer manual/network guidance.
 Pairing secrets never become profile metadata or saved URL paths/query/hash.
 
-The V2 adapter is best-effort and does not cover every 1.x feature. Unsupported on V2: session share/unshare, archive/restore, title summarization (`summarize`), `file.status`, `vcs.apply`, `find.text`/`find.symbol`, LSP and formatter diagnostics, and remote-MCP OAuth start/callback. These degrade to empty results or explicit errors. Server-owned session todos are not an endpoint on V2, but the adapter derives the same plan from the transcript's `todowrite` tool parts, so the todo surface is available on both contracts.
+## Native Client And Scoping
 
-`getServerCapabilities(contract)` in `providers/opencode-capabilities.ts` turns the resolved contract into UI-facing flags (`share`, `archive`, `todos`, `summarize`, `fileSave`, `fileStatus`, `lsp`, `formatter`, `mcpOAuth`, `configWrite`, `worktreeReset`). The provider exposes them as `serverCapabilities`, and screens/components hide the corresponding actions on V2 instead of letting them fail at tap time. All flags are `true` for V1; `todos` is also `true` for V2 because it is derived client-side.
+`lib/opencode/v2/raw.ts` constructs `OpenCode.make` with the authenticated, prefix-preserving transport. The SDK replaces URL path segments with absolute `/api` routes; a configured proxy prefix is rewritten by the shared fetch helper. A trailing `/api` is treated as the API mount, not duplicated. Blank usernames resolve to `opencode`.
 
-The authoritative implementation is:
+Workspace requests carry `location: { directory }` where the native API supports it. Session/message operations use global session IDs; session listing uses the native `directory` filter. Project discovery preserves the location directory, including worktrees whose owning project has a different canonical directory. Filesystem/PTY operations and their WebSockets remain scoped to the selected directory.
 
-- `lib/opencode/client.ts`
-- `lib/opencode/v2-client.ts`
-- `lib/opencode/v2/`
-- `lib/opencode/types.ts`
-- `providers/services/*.ts`
-- `providers/opencode-provider.tsx`
+SDK success responses retain their native shapes. Failed HTTP responses preserve status and server error details for actionable UI errors and mismatch classification. No-op mutation methods are not installed for unsupported features.
 
-## Client Construction
+## Workspace And Sessions
 
-`buildClient()` passes these options to `createOpencodeClient()`:
+- Workspace catalog: `location.get()` and `project.list()`; project views retain ID, canonical path, name, VCS and sandboxes.
+- Sessions: `session.list()` plus `session.active()`, create/get/update/remove/fork, model/agent selection, instructions and interrupt. Native active sets omit retries, so the provider preserves event-derived retry state across refreshes.
+- Fork uses native `before`; revert uses `session.revert.stage()` and `clear()`.
+- Messages: `message.list({ sessionID, limit: 20, order: 'desc' })` for the newest page, then opaque `cursor` without an `order` override for older pages. Native `cursor.next` is retained in the provider window. The display window is bounded to 200 records.
+- Turn diffs: `session.diff({ sessionID, from: userMessageID })`; working/branch views use scoped `vcs.diff({ mode: 'working' | 'branch' })`. Native assistant snapshot files provide review navigation and filename-only fallback details.
+- Usage and plans accumulate independently of the display window. Updates to the same assistant call replace its usage entry; replay cannot double-count. Todo writes update by message ID and stay chronological when older pages arrive. Plans derive from native `todowrite` input; v1 uses its server todo endpoint.
+- Context utilization uses the most recent completed call's input, cache read/write and output, rather than cumulative session totals. Model prices are converted from native USD per million tokens to the app's per-token pricing model, preserving tiers.
 
-- normalized `baseUrl`
-- optional project `directory`
-- optional Basic Authorization header
-- a scoped fetch that preserves a configured URL path prefix
-- `responseStyle: 'fields'`
-- `throwOnError: true`
+## Prompts, Instructions And Inbox
 
-Two clients are used:
+Native prompts use `session.prompt({ sessionID, text, files, delivery })`. Before submission, services apply the selected agent/model with native operations and synchronize the `opencode-mobile.chat-preferences` instruction entry. Empty preferences remove that entry. Missing experimental instruction endpoints preserve the existing prompt fallback.
 
-- project-scoped `client` for session, capability, command, file, VCS, worktree, MCP, and PTY operations
-- unscoped `catalogClient` for project discovery, diagnostics, and global events
+The native admission record identifies the accepted input. Completion is observed through events and message reads. `delivery` supports steer at a step boundary and queue/append at a later turn. Native inbox list/update/cancel operations preserve message identity, attachment bytes and pending state. V1 retains `session.promptAsync` with text/file parts and its `system` field.
 
-The app retains only the scoped directory as client metadata so stale project responses can be ignored.
+Attachment capability checks, 10 MB local-file limits, temporary-file cleanup and URI/base64 preparation remain app-owned. File-only messages retain attachment details. Commands use native `session.command({ name, text })` after model/agent selection; v1 receives its legacy command/arguments fields. Abort uses native `session.interrupt`; title summarization is v1-only.
 
-## Endpoint Families
+## Capabilities And Provider Authentication
 
-The generated `@opencode-ai/sdk/v2/client` surface is used for all OpenCode requests:
+Native discovery combines config documents, providers, models, agents and integrations. Integration catalogs keep unconnected providers addable while excluding MCP integrations. `activation: auto` is catalog policy, not proof of a connected account. Connection state derives from credentials/environment connections or enabled models. Provider models retain native IDs, including distinct variants sharing a modelID. Model reasoning support derives from compatibility and variant settings.
 
-- path, project list, and current project discovery
-- config get/update
-- provider list and auth metadata
-- provider OAuth authorize/callback and credential write
-- agent and command listing
-- session list/status/create/delete/update
-- session messages, diff, todos, prompt, abort, summarize, and command
-- session fork, share/unshare, and revert/unrevert
-- session archive/restore and experimental archived-session listing
-- permission and question list/reply operations
-- global event streaming
-- file find/read/status, VCS information/diff, and VCS patch apply
-- experimental worktree list/create/reset/remove
-- MCP status/add/connect/disconnect/OAuth and config-backed enable/disable
-- PTY shell/list/create/remove/connect-token plus WebSocket streaming
-- LSP and formatter status
+Native integration methods expose key/OAuth authentication and optional rich forms. The app prompt model preserves string/select/number/integer/boolean/multiselect/external fields, defaults and conditions. Environment/command methods never masquerade as key entry. Shared Console integrations may serve OAuth while the provider's direct integration accepts its API key.
 
-The service layer also exposes current SDK helpers for file listing, text/symbol search, VCS status, and session children/init/shell. They are covered by the fake-server contract but are not currently wired to a user-facing provider action. The VCS diff and raw-diff helpers are wired through the Files Changed diff scopes.
+`integration.connect.key`, `integration.oauth.connect/complete/status/cancel` and credential activate/remove operations own authentication. OAuth start carries automatic or code mode; automatic completion polls the server's pending/complete/failed/expired attempt state, with a fifteen-minute timeout. Cancellation invalidates in-flight reads and cancels attempts that arrive late. Connection changes reject stale results.
 
-## Workspace Discovery
+The installed SDK exposes credential mutations but not credential listing. Account discovery therefore reads authenticated `GET /api/credential` through the same transport; 404/405 means no account-list surface. Account views associate labeled credentials with each provider's serving integrations. General config editing is not supported by native config.update and remains gated; connecting a provider refreshes actual server state.
 
-The catalog client loads these requests concurrently:
+## Approvals And Forms
 
-- `path.get()`
-- `project.list()`
-- `project.current()`
-- adding a workspace resolves `project.current()` with that server directory (`directory` on V1, `location[directory]` on V2), then refreshes `project.list()`; the resolved worktree is selected
+Native permission requests use `permission.request.list`, preserving session ID, action/resources/save, metadata and tool source. Replies use `permission.reply({ sessionID, requestID, decision })`. Saved always-allow rules use `permission.saved.list/remove`.
 
-`path.get()` must return a `directory`. Projects are deduplicated by `worktree`; the current project is included even if omitted from the project list. A selected app workspace remains selected if a refresh omits it from `project.list()`; only when there is no selected path does discovery choose the server current project, then the first listed project. The active workspace path is persisted and restored during hydration.
+Native forms use `form.list` and `session.form.reply/cancel`. The app question view preserves native keys, option values, conditional fields, custom answers, defaults and typed values; reply helpers convert UI answers into native `FormAnswer` values. Successful replies remove cached requests; failures retain answers for retry. Nested-session approvals retain provenance in the active chat. Activity completion requires both permission and form reads to succeed.
 
-Session links and Chat Library opening accept that active path even when it is absent from the catalog. Other explicitly named project paths must still be listed by the configured server; session existence is checked through the scoped session flow.
+## File Editing And Worktrees
 
-## Capability Discovery
+Native filesystem APIs support find/list/read, with text decoding that rejects binary and malformed UTF-8. `vcs.status` supplies file status; `file.write({ location, path, payload: Uint8Array })` saves text bytes. Provider actions validate paths, compare current server content with the editor baseline, reject known conflicts, write and verify the exact saved text. Failure retains the editor draft and original baseline. Successful saves refresh file/VCS state; stale responses cannot replace a different connection or selected file.
 
-For an active project, the app loads:
+The pre-read cannot prevent a concurrent edit between comparison and write: native v2 has no atomic conditional-write API. V1 retains conflict-checked VCS patch application.
 
-- `config.get()`
-- `provider.list()`
-- `provider.auth()`
-- `app.agents()`
+Native worktree list/create/remove uses the owning project ID, while the selected location remains the worktree directory. Reset is v1-only.
 
-Provider models are flattened to app options. Capability discovery uses the current nested model fields:
+## MCP Authentication And Runtime Lifecycle
 
-- `id` and `name`
-- `capabilities.attachment`
-- `capabilities.input`
-- `capabilities.toolcall`
-- `capabilities.reasoning`
-- `status`
-- `limit.context`
-- `limit.output`
+Native MCP list/add/connect/disconnect operations use the selected location. Runtime additions do not claim to persist general config. Persistent enable/disable remains v1-only.
 
-`capabilities.attachment` controls whether the composer may send files. Enabled entries in `capabilities.input` define the accepted input modalities. Legacy top-level capability fields are not supported.
+OAuth resolves each MCP server's exposed `integrationID`, then reads that integration's methods and invokes native OAuth connect/complete/status/cancel. The relationship is defined by the [upstream MCP implementation](https://github.com/anomalyco/opencode/blob/dev/packages/core/src/mcp/index.ts); it is never inferred from a server name.
 
-On V2, `modelToV1()` maps `capabilities.tools` and `capabilities.input`, and derives `capabilities.reasoning` from the model's provider compatibility fields and variants/settings because V2 has no explicit reasoning flag. Every entry in `Model.Info.cost` is mapped: the untiered entry becomes the base price and entries with a `tier` become `cost.tiers`, so tiered pricing estimates match V1 behavior. The V1 model `id` (and the provider model map key) uses V2 `Model.Info.id`, not `modelID`, because standard and Fast variants share a `modelID` and would otherwise collapse into one entry.
+The provider exposes grouped `mcpOAuth.methods/start/complete/wait/cancel` actions carrying the authorization mode. Settings reuses the provider authentication form dialog, supports automatic completion/code entry, cancels on dismissal or connection changes, and guards late results. Native OAuth controls appear only when the server exposes an integration ID. V1 retains remote MCP authorization URLs and code callbacks, plus its browser-open-failure alert.
 
-## Provider Authentication
+## Terminals And Diagnostics
 
-### Credential Write
+Native PTY list/create/update/remove and `pty.connect.token` use the workspace location. Shell discovery uses native config.shells. WebSocket URLs default to `/api/pty/:id/connect`, preserving ticket, cursor and `location[directory]`; v1 uses its legacy route and directory query. Browser/native socket handling, reconnection cursor resume, output buffering and input state remain shared.
 
-`client.auth.set()` receives the provider ID as path parameter and one of these bodies:
+Native diagnostics independently load server.info and MCP status. LSP and formatter diagnostics remain unavailable and hidden on v2 rather than reporting empty success. V1 retains its health/LSP/formatter endpoints.
 
-```json
-{ "type": "api", "key": "sk-..." }
-```
+## Realtime And Polling
 
-```json
-{ "type": "wellknown", "key": "name", "token": "token" }
-```
+Native events are dispatched directly. Execution/legacy-native status events maintain busy/idle/retry state; message/text/reasoning/tool/inbox events schedule transcript reads; compaction/revert reconciles full windows. Capability, project, filesystem/VCS, worktree, MCP and PTY events refresh their provider-owned domains.
 
-After credential storage, the provider is enabled in config and capabilities are refreshed.
+V1 translates events with matching semantics at `compat/v1/events.ts`. Legacy message deltas, question metadata, configuration and diagnostic events retain explicit compatibility extensions. The native path never converts events to v1.
 
-Removing a provider calls `client.auth.remove()`, disables it in config, and refreshes capabilities.
+SSE reconnects with bounded backoff and reconciles sessions, pending interactions and active transcript state after recovery. Polling continues when SSE is unavailable and while busy even with a connected stream, so missed events cannot strand a prompt. Retry state keeps safety polling alive until execution resumes or completes. Completion notifications, review selections and conversation mode use provider-derived state on both contracts.
 
-### OAuth Authorization And Callback
+## Compatibility-only Features And Validation
 
-Authorization calls `client.provider.oauth.authorize()` with:
+Sharing, archive/restore, title summarization, general config writes, persistent MCP enablement, worktree reset and LSP/formatter diagnostics remain available through v1 compatibility. Capability flags hide these on v2, and their service mutations reject unsupported calls.
 
-```json
-{ "method": 0 }
-```
-
-The response must contain:
-
-- `url`
-- optional `instructions`
-- `method: "auto" | "code"`
-
-Routing follows the returned `method`, not the presence of instructions:
-
-- `auto`: the server completes the exchange (loopback callback or device/pairing polling). The app opens `url` when present, shows any instructions/pairing code with copy controls plus an open/copy link action, and polls the attempt until it completes. It never asks the user to paste a code.
-- `code`: the provider expects a code back. The app opens `url`, shows the instructions/link, and collects the authorization code on the setup step. A redirect that returns to the app scheme is captured opportunistically and submitted directly, but is not required.
-
-Device/pairing codes are embedded in `instructions` (`"Enter code: 8F43-6FCF"`); the app best-effort extracts the code into its own copyable field and always shows the full instruction text. Manual completion calls `client.provider.oauth.callback()` with:
-
-```json
-{ "method": 0, "code": "returned-code" }
-```
-
-An empty trimmed code is sent as `undefined`, and the dialog disables completion until text is present. A successful callback enables the provider and refreshes capabilities.
-
-On V2, `auto` OAuth completes on the server after the browser hits the server's callback or the device flow is approved. Rather than guessing from the provider list, the adapter polls `integration.oauth.status` (`pending`/`complete`/`failed`/`expired`) through a `providerOAuth.wait(providerId, timeoutMs)` facade (default fifteen minutes, matching device-code expiry) and only then enables the provider. V1 has no attempt status and keeps bounded `provider.list()` polling. Dismissing a pending flow cancels the attempt through `providerOAuth.cancel(providerId)` on V2.
-
-### Provider Auth Methods And Forms
-
-`provider.auth()` returns the login methods per provider. V2 integration methods carry a rich `form` (string/select/number/integer/boolean/multiselect/external with `when` conditions) that the adapter normalizes into the app's prompt model, so the setup UI renders type-specific controls. V1 auth metadata (text/select with a single `when`) maps into the same model.
-
-### Provider Accounts
-
-OpenCode 2 stores credentials as first-class, labeled accounts. `GET /api/credential` returns `{id, integrationID, label, active, value}` for every stored credential and is the authoritative source for the active account; exactly one credential is `active` per integration. `integration.connect.key` and `integration.connect.oauth` accept an optional `label` and create a new credential, activating it unless one already exists. `POST /api/credential/:id/activate` switches the active account, `PATCH /api/credential/:id` renames it, and `DELETE /api/credential/:id` removes it. The provider layer surfaces these per provider as `ProviderOption.accounts`, associating a credential with every provider whose integration (its own id or a linked Console integration) serves one of the provider's login methods. The endpoint is newer than the pinned client; the adapter reads it through its own authenticated transport and treats a missing endpoint as "no accounts". V1 has a single credential per provider and no account list.
-
-## Session Contract
-
-### List And Status
-
-`session.list()` and `session.status()` are fetched together. Sessions are sorted descending by `time.updated`; any status other than `idle` is treated as busy. The V2 adapter derives status from `session.active()`, whose running set cannot express `retry`, so the provider preserves an event-derived `retry` across list refreshes (see Global Event Stream) instead of letting a refresh downgrade it to idle.
-
-Fields consumed by the UI include:
-
-- `id`
-- `title`
-- `summary`
-- `time.created` and `time.updated`
-- `share.url`
-- `revert`
-- `model`, `tokens`, and `cost` for the usage sheet's context utilization
-
-The V2 adapter maps `model`, `tokens`, and `cost` from `Session.Info` in `sessionToV1()`. Context utilization is the latest completed `step-finish`'s prompt plus its reply (`input + cache.read + cache.write + output`), not cumulative session totals, and all-zero placeholder steps are skipped while an assistant message is still in flight. The V2 adapter emits one `step-finish` part per assistant message, so "latest step" means "latest model call" on both contracts. V2 `Session.Info` has no `summary` field, so the session picker subtitle shows the no-file-changes fallback on V2 until a server-side summary exists.
-
-### Create, Rename, And Delete
-
-- create uses `session.create()` with no body or `{ "title": "..." }`
-- rename uses `session.update()` with `{ "title": "..." }`
-- delete uses `session.delete()` and clears that session's local message, diff, todo, and permission caches
-
-Deleting the current session also clears current selection before the list is refreshed.
-
-### Archive And Restore
-
-Archive and restore use regular `session.update()` with `time.archived` set to `Date.now()` or `0`. The archived list comes from `experimental.session.list({ archived: true })`, returns cross-project `GlobalSession` records, and is sorted by update time. The list endpoint is experimental and may be absent or change across OpenCode releases; the app does not provide a compatibility fallback.
-
-### Fork
-
-`session.fork()` receives an optional body:
-
-```json
-{ "messageID": "message-id" }
-```
-
-The returned session is required. The app refreshes sessions and opens the fork.
-
-### Share And Unshare
-
-`session.share()` and `session.unshare()` must return the updated session. Workspace copies `share.url` after a newly shared session returns one.
-
-### Revert And Unrevert
-
-Revert sends:
-
-```json
-{ "messageID": "message-id", "partID": "optional-part-id" }
-```
-
-The current UI supplies a user message ID and no part ID. Revert and unrevert refresh sessions, messages, and diff. A session with `revert` shows a restore action.
-
-### Messages, Diffs, And Todos
-
-The app reads:
-
-- `session.messages({ sessionID })`
-- `session.diff({ sessionID, messageID })`
-- `session.todo({ sessionID })`
-
-The Files Changed surface has three diff scopes. The `turn` scope shows a single user message's diff: the app loads the session messages, selects the latest user message (or a user-selected earlier turn), and supplies its ID to the message-scoped diff endpoint. The `uncommitted` and `branch` scopes call `vcs.diff({ mode })` with `git` on V1 / `working` on V2, and `branch` respectively. Workspace scoping rides on the `directory` query parameter on V1 and on `location[directory]` on V2: the V2 server answers an unscoped VCS call with its own location's state, so the adapter attaches `location` to every VCS read (`vcs.get`, `vcs.status`, `vcs.diff`) instead of the caller's directory. The V2 adapter translates the VCS mode (`git` -> `working`, `branch` -> `branch`) and forwards `messageID` on `session.diff`; V2 also accepts a `committed` VCS mode that the shared two-scope UI does not expose. Diff responses use the current `{ file, patch, additions, deletions, status }` shape directly. When no structured turn diff is available, transcript patch parts can still supply filename-only entries; current workspace file state is not treated as session history. Missing response data is a contract error rather than an empty result. Todos are server-owned on V1; the UI renders their `status` and never sends a todo mutation. V2 has no todo endpoint, so the adapter derives the same `Todo[]` from the latest `todowrite` tool part in the transcript (`deriveTodosFromMessages` in `lib/opencode/format.ts`). On V2 the adapter maps the V1 `before` cursor onto V2's opaque cursor; the first page requests descending order and subsequent pages omit `order`, mirroring V1's newest-first backward paging. The app loads 20 messages per page: the newest page on session open and older pages as the user scrolls up, keeping at most 200 raw records in memory.
-
-### Prompt And Attachments
-
-Prompt submission uses `session.promptAsync()` with:
-
-- selected `agent`
-- selected `{ providerID, modelID }`
-- optional generated `system` instructions
-- text and file `parts`
-
-The optional `system` instructions are built from chat preferences (`buildSystemPrompt`: reasoning level, response scope, next actions). V1 sends them as the prompt `system` field. V2 prompt input has no `system` field, so the adapter writes the same text to a session-scoped instruction entry (`opencode-mobile.chat-preferences`) with `PUT /api/experimental/session/{sessionID}/instructions/entries/{key}` and removes it when the preferences are empty. The server announces instruction changes at the next step boundary. If a V2 server does not expose the experimental endpoint, the adapter logs nothing and still sends the prompt.
-
-V2 prompt submission returns HTTP 200 with a `{ data: SessionInbox.User }` admission response identifying the accepted input. Completion is observed through session events and message reads.
-
-Before send:
-
-- attachments are rejected if the selected discovered model has `capabilities.attachment: false`
-- non-HTTP attachment URIs, including `file://`, `content://`, and `asset://`, are read and encoded as data URLs
-- a local file over 10 MB is rejected before encoding
-- remote `http:` and `https:` URLs pass through unchanged
-
-### Abort And Summarize
-
-- abort uses `session.abort()` and refreshes session content
-- summarize uses the selected provider/model for untitled sessions; failure leaves the title unchanged
-
-## Slash Commands
-
-Commands are loaded with `command.list()`. An exact known draft of the form `/name arguments` with no attachments calls `session.command()` with:
-
-```json
-{
-  "command": "name",
-  "arguments": "arguments",
-  "agent": "build",
-  "model": "provider/model"
-}
-```
-
-`agent` and `model` reflect current chat preferences. Messages and sessions are refreshed after execution.
-
-## Workspace Contract
-
-`workspace-service.ts` wraps these SDK operations:
-
-- `find.files()` with `query` and a string `dirs` flag
-- `file.read()` with `path`
-- `file.status()`
-- `vcs.get()`
-- `vcs.apply()` with a generated full-file unified patch
-
-Search is path-based, status is shown as a changed-file count, and VCS contributes the branch label. Saving is limited to text content: the provider first re-reads the path and compares it with the expected original, generates a safe relative-path full-file patch, calls `vcs.apply()`, then re-reads the saved file. A mismatch is a conflict and requires reopening the file.
-
-## Experimental Worktree Contract
-
-`worktree.list()`, `worktree.create()`, `worktree.reset()`, and `worktree.remove()` map to experimental worktree endpoints. Creation sends optional `name` and `startCommand`; reset/remove identify the worktree by directory. Create/remove also refresh project discovery. These endpoints are experimental and have no fallback for unsupported or changed server versions.
-
-## MCP Management Contract
-
-MCP management uses `mcp.status()`, `mcp.add()`, `mcp.connect()`, `mcp.disconnect()`, `mcp.auth.start()`, and `mcp.auth.callback()`. Additions are also written through `config.update()` because dynamic `mcp.add()` state is not durable. Local commands use a JSON string array so arguments and paths with spaces remain intact; remote additions send a URL. Remote OAuth opens the returned authorization URL and submits the entered code. SDK 1.18.3 has no MCP deletion operation, and config updates deep-merge omitted keys, so the UI supports disabling rather than falsely reporting removal.
-
-## PTY Terminal Contract
-
-The client uses `pty.shells()`, `pty.list()`, `pty.create()`, `pty.update()` (size), `pty.remove()`, and `pty.connectToken()`. Opening a PTY requests a short-lived ticket, converts the normalized server URL to `ws:` or `wss:`, preserves any configured path prefix, and connects to `/pty/{ptyID}/connect` with `directory` and `ticket` query parameters.
-
-The ticket authenticates the upstream WebSocket. Native sockets also send configured Basic-auth headers, which the Cloud Link proxy requires on upgrades; credentials never enter the URL. Incoming text/blob/ArrayBuffer data is decoded in order and written to xterm without stripping VT controls. NUL-prefixed binary JSON carries a numeric replay cursor; apply it after preceding output has been acknowledged, then increment for live output by its UTF-16 character count. Reconnect requests a fresh ticket and passes that cursor only while retaining the matching renderer. Size changes call `pty.update({ ptyID, size: { cols, rows } })`. There is no new wire protocol or client input replay.
-
-Omitting the cursor requests the full retained replay; `-1` tails from the current
-end. These units and replay semantics follow the upstream
-[PTY service](https://github.com/anomalyco/opencode/blob/dev/packages/core/src/pty.ts)
-and [wire protocol](https://github.com/anomalyco/opencode/blob/dev/packages/core/src/pty/protocol.ts).
-
-### V2 PTY mapping
-
-V2 mounts PTYs under `/api` and scopes them with `location[directory]` instead of `directory`. Every PTY endpoint must carry that location; mixing a scoped read with an unscoped lookup produces "PTY session not found". The adapter maps:
-
-- `pty.list()` / `pty.create()` → `GET/POST /api/pty` with `location[directory]` from the active project, so listing and creation target the same location the UI is scoped to
-- `pty.get()` / `pty.update()` / `pty.remove()` → `GET/PUT/DELETE /api/pty/{ptyID}` with the same `location[directory]`
-- `pty.connectToken()` → `POST /api/pty/{ptyID}/connect-token` with `location[directory]`; the `x-opencode-ticket: 1` header is required and is sent both as the generated `PtyConnectTokenInput` field and as a request header
-- WebSocket → `ws(s)://{origin}{prefix}/api/pty/{ptyID}/connect?location[directory]=…&cursor=…&ticket=…`
-
-The connect token is short-lived and single-use; every open/reconnect requests a fresh one. The live terminal socket lives in the provider, so event handling for `pty.created`/`pty.updated`/`pty.exited`/`pty.deleted` must be registered in the provider event switch (not only the history replay path) or the terminal list stops reconciling after the first change.
-
-## Diagnostics Contract
-
-Diagnostics load four requests independently:
-
-- `global.health()`, expected as `{ "healthy": true, "version": "..." }`
-- `mcp.status()`, expected as a status record keyed by MCP name
-- `lsp.status()`, expected as an array
-- `formatter.status()`, expected as an array
-
-Each result records either `{ available: true, data }` or `{ available: false, error }`. One unavailable endpoint does not fail the other diagnostic results.
-
-## Pending Interaction Contract
-
-Permissions and questions are session-scoped. The app reconciles `GET /permission` and `GET /question` results and also handles their global events.
-
-`permission.asked` properties contain:
-
-- `id`
-- `sessionID`
-- `permission`
-- `patterns`
-- `metadata`, `always`, and optional `tool`
-
-The request is inserted or replaced in `pendingPermissionsBySession[sessionID]`. `permission.replied` removes the matching `requestID`.
-
-A subagent's request carries the child session's `sessionID`. The active chat surfaces requests for the current/sending session and its full descendant subtree (resolved from each session's `parentID`), so nested prompts are presented on the root chat instead of being dropped.
-
-### Saved permission rules (V2)
-
-V2 persists "always allow" grants created by permission replies. The app lists
-them through `api.permission.saved.list()` (mapped to `{ id, action, resource,
-createdAt }`) and revokes one through `api.permission.saved.remove({ id })`.
-These are exposed on the client as the optional top-level `savedPermissions`
-surface (the V1-shaped SDK `permission` object does not type them) and are gated
-by the `savedPermissions` server capability. V1 has no equivalent; the Settings
-section is hidden there.
-
-A reply calls the generated session-scoped operation with:
-
-```json
-{ "reply": "once" }
-```
-
-Allowed values are `once`, `always`, and `reject`.
-
-Question requests contain `id`, `sessionID`, optional `title`, and one or more question definitions with headers, prompts, options, and optional multiple/custom-answer behavior. Replies post ordered answer arrays to `/question/{requestID}/reply`; rejection posts to `/question/{requestID}/reject`.
-
-The app owns the `PendingQuestionRequest`/`PendingQuestionPrompt` shape rather than aliasing the V1 SDK type, so the V2 adapter can carry form-specific metadata: per-option `value`, field `type` (`string`, `number`, `integer`, `boolean`, `multiselect`, `external`), `required`, `placeholder`, `default`, `url`, and conditional `when` rules. The UI submits option labels; the V2 adapter translates them back to option values and coerces numeric/boolean answers before posting the form reply.
-
-`listPendingInteractions` fetches permissions and questions independently (`Promise.allSettled`) and returns whichever succeeded, so a failing form or permission list cannot hide the other surface. On V2 both list calls are scoped with `location[directory]` to the active project; V2 MCP elicitation forms use the server's `global` sentinel and are surfaced with the active chat instead of being dropped.
-
-## Global Event Stream
-
-The catalog client opens `global.event()`. Each envelope contains a `directory` and `payload`; only envelopes matching the active project path are handled.
-
-Recognized payload types:
-
-- `session.created`
-- `session.updated`
-- `session.deleted`
-- `session.status`
-- `session.idle`
-- `message.updated`
-- `message.removed`
-- `message.part.updated`
-- `message.part.removed`
-- `session.compacted`
-- `session.diff`
-- `todo.updated`
-- `catalog.updated`
-- `project.updated`
-- `file.edited`
-- `vcs.branch.updated`
-- `pty.created`, `pty.updated`, `pty.exited`, and `pty.deleted`
-- `worktree.ready` and `worktree.failed`
-- `mcp.tools.changed` and `mcp.browser.open.failed`
-- `lsp.updated`
-- `permission.asked`
-- `permission.replied`
-- `question.asked`
-- `question.replied`
-- `question.rejected`
-
-The subscription reconnects after failure or an unexpected end. It is considered connected only after the first matching project event arrives, so polling remains active while the SDK is still opening or retrying the stream. Backoff starts at 1 second, doubles after each failure, and is capped at 15 seconds. A successful event resets backoff to 1 second.
-
-`mcp.browser.open.failed` carries `{ mcpName, url }`; the server could not open the MCP OAuth URL on its own. The app stores this as the chat `approvals.mcpAuth` alert (Open link / Dismiss) and also refreshes MCP status, so a mid-session tool that needs authentication is not silently blocked. The alert hides once the named server reports `connected`.
-
-The V2 adapter maps refresh-relevant events onto the same V1-shaped handler: `lsp.updated`, `mcp.tools.changed` (in addition to status/resource changes), `worktree.failed`, `credential.switched` (catalog), `session.instructions.updated` / `session.metadata.updated` / `command.executed` (session), plus the V1-only `message.part.delta`, `project.directories.updated`, `file.watcher.updated`, `reference.updated`, `plugin.added`, `models-dev.refreshed`, and `integration.updated`.
-
-On V2 a mid-turn provider failure emits `session.execution.failed` (mapped to `session.idle`) followed by `session.retry.scheduled` (mapped to a `session.status` carrying `retry`, `attempt`, and `next`). V2 keeps the retry on the assistant message, so the adapter also maps `assistant.retry` to a transcript `retry` part, and the running indicator shows the retry attempt from the session status. Because the running set excludes retries, a session-list refresh must not overwrite the event-derived retry: `mergeSessionStatuses` keeps it until the server reports the session running, a terminal event clears it, or the retry's `next` is more than two minutes stale. Preserving the retry keeps the session busy, so the safety poll keeps running and recovers output even when the retry's SSE frames are missed.
-
-## Polling Fallback
-
-A 5-second loop remains active while connected with an active project. Safety polling is used when SSE is not connected; busy sends, non-idle sessions, and conversation mode also drive refresh work.
-
-Polling can refresh:
-
-- session list and statuses
-- current session messages, diff, and todos
-- conversation session messages, diff, and todos when it differs from current
-- pending permissions and questions
+The default fake server and Playwright backend are native v2. Canonical native fixtures are translated/extended at the v1 fake boundary; filesystem and terminal infrastructure is version-neutral. Static architecture checks prohibit production v1 SDK imports outside compatibility. All three gates are required: `test:ci:static`, `test:fake-server:self`, `test:e2e:web`. Android development and real-server/device acceptance cover editing, OAuth, reconnects and terminals. Changed fake-server/E2E contracts require explicit human validation under AGENTS.md.

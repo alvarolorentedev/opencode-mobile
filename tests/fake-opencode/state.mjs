@@ -8,13 +8,13 @@ export function resolveProject(state, directory) {
   if (!directory) return state.project;
   const worktree = state.worktrees.find((entry) => entry.directory === directory);
   if (worktree) return state.projects.find((entry) => entry.id === worktree.projectID);
-  const existing = state.projects.find((project) => project.worktree === directory);
+  const existing = state.projects.find((project) => (project.canonical || project.worktree) === directory);
   if (existing) return existing;
   if (!directory.startsWith(`${state.rootPath}/`)) return undefined;
   const project = {
     id: `project-added-${state.projects.length}`,
-    worktree: directory,
-    time: { created: now(), initialized: now(), updated: now() },
+    canonical: directory,
+    time: { created: now(), updated: now() },
     sandboxes: [],
   };
   state.projects.push(project);
@@ -26,10 +26,9 @@ export function createState(scenario) {
   const projectPath = '/workspace/demo-project';
   const project = {
     id: 'project-demo',
-    worktree: projectPath,
+    canonical: projectPath,
     time: {
       created: now() - 60_000,
-      initialized: now() - 30_000,
       updated: now() - 30_000,
     },
     sandboxes: [],
@@ -37,7 +36,7 @@ export function createState(scenario) {
   const secondaryProject = {
     ...project,
     id: 'project-secondary',
-    worktree: '/workspace/secondary-project',
+    canonical: '/workspace/secondary-project',
   };
 
   return {
@@ -67,7 +66,7 @@ export function createState(scenario) {
     ptys: [],
     worktrees: [],
     mcpStatuses: { filesystem: { status: 'connected' } },
-    mcpRuntimeConfigs: { filesystem: { type: 'local', command: ['fake-filesystem'], enabled: true } },
+    mcpRuntimeConfigs: { filesystem: { type: 'local', command: ['fake-filesystem'], disabled: false } },
     mcpOauth: {},
     configuredProviderIds: new Set(['openai']),
     // V2 stores credentials as labeled accounts; openai starts with two so
@@ -77,24 +76,13 @@ export function createState(scenario) {
       { id: 'credential-openai-2', integrationID: 'openai', label: 'Personal', active: false, value: { type: 'key', key: 'sk-openai-personal' } },
     ],
     config: {
-      model: 'openai/gpt-4.1-mini',
-      enabled_providers: ['openai'],
-      permission: {
-        edit: 'ask',
-        bash: 'ask',
-        webfetch: 'ask',
-        doom_loop: 'ask',
-        external_directory: 'ask',
-      },
-      provider: {},
-      agent: {
-        build: {},
-        general: {},
-      },
-      mcp: {
-        filesystem: { type: 'local', command: ['fake-filesystem'], enabled: true },
-      },
+      model: 'openai/gpt-4.1-mini', providers: { openai: {} },
+      permissions: [{ action: '*', resource: '*', effect: 'ask' }],
+      agents: { build: {}, general: {} },
+      mcp: { servers: { filesystem: { type: 'local', command: ['fake-filesystem'], disabled: false } } },
     },
+    diffsByTurn: {},
+    integrationAttempts: {},
     authByProvider: {},
     filesByDirectory: {},
     files: {

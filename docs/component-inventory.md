@@ -420,7 +420,7 @@ This is important to parity because the chat layout is intentionally dense and h
   redirect code back into the app
 - poll for automatic OAuth completion and show headless/device-code pairing
   instructions, then submit code-based OAuth callbacks
-- wire MCP add/connect/disconnect/enable/disable and OAuth actions to `McpSection`
+- wire MCP runtime lifecycle and grouped OAuth methods/start/complete/wait/cancel actions to `McpSection`; expose persistent enable/disable only on v1
 - declare every category once in a `SettingsSection` registry (`icon`, `title`,
   `summary`, `onPress`, `render`); the row list and the overlay both derive from
   it, so adding a category is a single entry plus its presentational component
@@ -645,6 +645,8 @@ Main relevant props:
 ### Responsibility
 
 - add local command or remote URL MCP configurations
+- reuse `use-mcp-authentication.tsx` and `ProviderConfigDialog` for native integration forms, code or automatic OAuth, cancellation and stale-result guards
+- show v2 OAuth only for servers that expose an `integrationID`; hide persistent enablement when general config writes are unavailable
 - show status and failure details
 - connect/disconnect, enable/disable, remove, refresh, and complete remote OAuth
 - retain only form, busy, error, and OAuth-code UI state locally

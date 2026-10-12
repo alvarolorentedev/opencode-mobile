@@ -62,9 +62,7 @@ export function useTranscriptState({
 
     setUsageStepsBySession((current) => {
       const steps = new Map((current[sessionId] ?? []).map((step) => [step.key, step] as const));
-      const size = steps.size;
-      addUsageSteps(steps, records);
-      if (steps.size === size) {
+      if (!addUsageSteps(steps, records)) {
         return current;
       }
       return { ...current, [sessionId]: [...steps.values()] };
@@ -74,12 +72,10 @@ export function useTranscriptState({
     if (todoRecords.length > 0) {
       setTodoRecordsBySession((current) => {
         const existing = current[sessionId] ?? [];
-        const known = new Set(existing.map((record) => record.info.id));
-        const additions = todoRecords.filter((record) => !known.has(record.info.id));
-        if (additions.length === 0) {
-          return current;
-        }
-        return { ...current, [sessionId]: [...existing, ...additions] };
+        const merged = mergeSessionMessageWindow(existing, todoRecords);
+        if (merged === existing) return current;
+        // Older pages arrive after the newest page; plan writes must still be chronological.
+        return { ...current, [sessionId]: merged.sort((left, right) => left.info.time.created - right.info.time.created) };
       });
     }
   }, []);

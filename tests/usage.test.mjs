@@ -4,7 +4,7 @@ import ts from 'typescript';
 
 const source = await readFile(new URL('../lib/opencode/usage.ts', import.meta.url), 'utf8');
 const output = ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.ESNext, target: ts.ScriptTarget.ES2020 } }).outputText;
-const { aggregateSessionUsage, formatEstimatedCost, formatTokenCount, getLatestAssistantTurnUsage, getLatestContextTokens } = await import(`data:text/javascript,${encodeURIComponent(output)}`);
+const { aggregateSessionUsage, formatEstimatedCost, formatTokenCount, getLatestAssistantTurnUsage, getLatestContextTokens, addUsageSteps, aggregateUsageSteps } = await import(`data:text/javascript,${encodeURIComponent(output)}`);
 
 const pricing = { 'anthropic/sonnet': { input: 0.000003, output: 0.000015, cache: { read: 0.0000003, write: 0.00000375 } } };
 
@@ -68,8 +68,7 @@ assert.equal(getLatestContextTokens(multiStep), 2110);
 assert.equal(getLatestContextTokens([]), undefined);
 assert.equal(getLatestContextTokens([{ info: { id: 'u', sessionID: 'session-1', role: 'user' }, parts: [] }]), undefined);
 
-// V2 emits a placeholder step-finish while an assistant message is still in
-// flight. The previous completed step stays visible until usage arrives.
+// Zero usage cannot displace the latest completed context read.
 const streaming = [
   assistant([step('s1', 0, { input: 1000, output: 50, reasoning: 0, cache: { read: 800, write: 100 } })]),
   { info: { id: 'message-2', sessionID: 'session-1', role: 'user' }, parts: [] },
@@ -78,5 +77,13 @@ const streaming = [
 assert.equal(getLatestContextTokens(streaming), 1950);
 assert.equal(getLatestContextTokens([assistant([step('zero-step', 0, { input: 0, output: 0, reasoning: 0, cache: { read: 0, write: 0 } })])]), undefined);
 assert.equal(getLatestContextTokens([assistant([{ id: 'in-flight', type: 'step-finish', tokens: { input: 0, output: 0, reasoning: 0, cache: { read: 0, write: 0 } } }])]), undefined);
+
+const ledger = new Map();
+assert.equal(addUsageSteps(ledger, [assistant([step('updating', 0)])]), true);
+assert.equal(addUsageSteps(ledger, [assistant([step('updating', 0)])]), false);
+assert.equal(addUsageSteps(ledger, [assistant([step('updating', 0.1, { input: 1000, output: 300, reasoning: 0, cache: { read: 0, write: 0 } })])]), true);
+assert.equal(ledger.size, 1);
+assert.equal(aggregateUsageSteps(ledger.values()).cost, 0.1);
+assert.equal(aggregateUsageSteps(ledger.values()).outputTokens, 300);
 
 console.log('usage tests passed');

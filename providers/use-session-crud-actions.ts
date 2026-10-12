@@ -1,3 +1,4 @@
+import { createSession as svcCreateSession, summarizeSession } from '@/providers/services/session-service';
 import { useCallback } from 'react';
 
 import type { Session } from '@/lib/opencode/types';
@@ -70,18 +71,16 @@ export function useSessionCrudActions({
   const createSession = useCallback(
     async (title?: string) => {
       const trimmedTitle = title?.trim();
-      const response = trimmedTitle
-        ? await client.session.create({ title: trimmedTitle })
-        : await client.session.create();
+      const created = await svcCreateSession(client, trimmedTitle);
 
-      if (!response.data) {
+      if (!created) {
         throw new Error('OpenCode did not return the created session.');
       }
       if (!isCurrentClient(client)) {
         throw new Error('The active project changed before the session was created.');
       }
       await refreshSessions(true);
-      return response.data;
+      return created;
     },
     [client, isCurrentClient, refreshSessions],
   );
@@ -219,7 +218,7 @@ export function useSessionCrudActions({
         return existingSession;
       }
 
-      await client.session.summarize({ sessionID: sessionId, ...selectedModel });
+      await summarizeSession(client, { sessionID: sessionId, ...selectedModel });
 
       const nextSessions = await fetchSessions(true);
       return nextSessions.find((session) => session.id === sessionId);

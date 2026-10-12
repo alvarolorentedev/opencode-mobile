@@ -43,7 +43,7 @@ export function useOpencodeProviderState() {
     status: 'idle',
     message: 'Add a server URL and connect to OpenCode.',
   });
-  const [serverContract, setServerContract] = useState<ServerContract>('v1');
+  const [serverContract, setServerContract] = useState<ServerContract>('v2');
   const [activeProjectPath, setActiveProjectPath] = useState<string>();
   const [onboardingVersion, setOnboardingVersion] = useState(0);
   const [onboardingActive, setOnboardingActive] = useState(false);
@@ -94,7 +94,7 @@ export function useOpencodeProviderState() {
   const connectionScopeRef = useRef(connectionScope);
   const activeProjectPathRef = useRef(activeProjectPath);
   const connectionRef = useRef(connection);
-  const serverContractRef = useRef<ServerContract>('v1');
+  const serverContractRef = useRef<ServerContract>('v2');
   const serverProjectsRef = useRef<Project[]>([]);
   const currentSessionIdRef = useRef<string | undefined>(undefined);
   const pendingDeepLinkTargetRef = useRef<import('@/providers/opencode-provider-types').SessionDeepLinkTarget | undefined>(undefined);

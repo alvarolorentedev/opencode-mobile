@@ -113,3 +113,14 @@ assert.deepEqual(
 );
 
 console.log(`architecture checks passed (provider ${providerLines} lines, context ${contextMembers} members).`);
+
+// OpenCode 2 is the transport contract; the old SDK belongs only to its adapter.
+const legacyImports = [];
+for (const dir of ['app', 'components', 'providers', 'lib']) {
+  for (const file of await collectSourceFiles(path.join(root, dir))) {
+    const relative = path.relative(root, file);
+    if (relative.startsWith('lib/opencode/compat/v1/')) continue;
+    if (/(?:from\s*|import\s*\(|require\s*\()["']@opencode-ai\/sdk/.test(await readFile(file, 'utf8'))) legacyImports.push(relative);
+  }
+}
+assert.deepEqual(legacyImports, [], `V1 SDK imports belong in the compatibility boundary: ${legacyImports.join(', ')}`);

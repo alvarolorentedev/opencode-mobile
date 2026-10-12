@@ -1,6 +1,8 @@
-import type { FormatterStatus, LspStatus, McpStatus, OpencodeClient } from '@opencode-ai/sdk/v2/client';
+import type { FormatterStatus, LspStatus, McpStatus } from '@/lib/opencode/types';
+import type { ScopedOpencodeClient } from '@/lib/opencode/client';
 
-import { requireData } from '@/providers/services/require-data';
+import { loadDiagnostics as loadLegacyDiagnostics } from '@/lib/opencode/compat/v1/diagnostics';
+import { getMcpStatus } from './mcp-service';
 
 type OptionalDiagnostic<T> =
   | { available: true; data: T }
@@ -20,15 +22,16 @@ async function optionalDiagnostic<T>(load: () => Promise<T>): Promise<OptionalDi
   }
 }
 
-export async function loadDiagnostics(client: OpencodeClient) {
+export async function loadDiagnostics(client: ScopedOpencodeClient) {
+  if (client.compatibility) return loadLegacyDiagnostics(client.compatibility);
   const [health, mcp, lsp, formatter] = await Promise.all([
-    optionalDiagnostic(async () => requireData((await client.global.health()).data, 'health diagnostic')),
+    optionalDiagnostic(async () => ({ healthy: true, version: (await client.api!.server.info()).version })),
     optionalDiagnostic<Record<string, McpStatus>>(async () =>
-      requireData((await client.mcp.status()).data, 'MCP diagnostic')),
+      getMcpStatus(client)),
     optionalDiagnostic<LspStatus[]>(async () =>
-      requireData((await client.lsp.status()).data, 'LSP diagnostic')),
+      Promise.reject(new Error('Language servers are unavailable on OpenCode 2.'))),
     optionalDiagnostic<FormatterStatus[]>(async () =>
-      requireData((await client.formatter.status()).data, 'formatter diagnostic')),
+      Promise.reject(new Error('Formatters are unavailable on OpenCode 2.'))),
   ]);
 
   return { health, mcp, lsp, formatter };

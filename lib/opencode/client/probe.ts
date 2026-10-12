@@ -51,7 +51,7 @@ export async function probeConnection(settings: OpencodeConnectionSettings, sign
   ]);
   const [info, apiHealth, health] = responses.map((response) => response?.body);
 
-  const v1Health = health && typeof health.version === 'string' && /^1\./.test(health.version) ? health.version : undefined;
+  const v1Health = [health, apiHealth, info].find((body) => typeof body?.version === 'string' && /^1\./.test(body.version))?.version as string | undefined;
   // V2 exposes a ServerInfo at /api/info ({ version, pid, urls, paths }); require that
   // shape so a V1 server's /api compatibility routes are not mistaken for V2.
   const v2Info = info && typeof info.version === 'string' && (typeof info.pid === 'number' || Array.isArray(info.urls) || Boolean(info.paths))
@@ -80,6 +80,6 @@ export async function probeConnection(settings: OpencodeConnectionSettings, sign
 
 export async function detectServerContract(settings: OpencodeConnectionSettings): Promise<ContractProbeResult> {
   const result = await probeConnection(settings);
-  // Setup must preserve uncertainty; existing connection fallback still starts with V1.
-  return result.status === 'detected' ? { contract: result.contract, version: result.version } : { contract: 'v1' };
+  // Setup must preserve uncertainty; existing connection fallback starts with V2.
+  return result.status === 'detected' ? { contract: result.contract, version: result.version } : { contract: 'v2' };
 }

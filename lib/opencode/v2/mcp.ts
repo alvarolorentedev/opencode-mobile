@@ -1,41 +1,22 @@
-import { mcpConfigToV2, type V2Adapter } from './shared';
-
-export function buildMcpApi({ api, ok }: V2Adapter): Record<string, unknown> {
+import { createIntegrationOAuth } from './capabilities';
+import { formToPrompts, type V2Context } from './shared';
+import type { ProviderAuthMethod, ProviderAuthValues } from '../types';
+export function buildMcpOAuth(ctx: V2Context) {
+  const oauth = createIntegrationOAuth(ctx);
+  const location = ctx.directory ? { location: { directory: ctx.directory } } : {};
+  const integration = async (name: string) => {
+    const server = (await ctx.api.mcp.list(location)).data.find((item) => item.name === name);
+    if (!server?.integrationID) throw new Error('This MCP server does not expose authentication.');
+    return (await ctx.api.integration.get({ ...location, integrationID: server.integrationID })).data;
+  };
   return {
-    mcp: {
-      status: async () => {
-        const response = await api.mcp.list();
-        const statuses: Record<string, unknown> = {};
-        (response.data ?? []).forEach((server) => {
-          const raw = (server.status ?? {}) as Record<string, unknown>;
-          const value = typeof raw.status === 'string' ? raw.status : typeof raw.type === 'string' ? raw.type : 'disabled';
-          statuses[server.name] = { status: value };
-        });
-        return ok(statuses);
-      },
-      add: async (parameters: { name: string; config?: Record<string, unknown> }) => {
-        await api.mcp.add({ server: parameters.name, config: mcpConfigToV2(parameters.config) });
-        return ok(parameters.config);
-      },
-      connect: async (parameters: { name: string }) => {
-        await api.mcp.connect({ server: parameters.name });
-        return ok(undefined);
-      },
-      disconnect: async (parameters: { name: string }) => {
-        await api.mcp.disconnect({ server: parameters.name });
-        return ok(undefined);
-      },
-      auth: {
-        start: async () => {
-          throw new Error('MCP OAuth is not supported by OpenCode 2 servers.');
-        },
-        callback: async () => {
-          throw new Error('MCP OAuth is not supported by OpenCode 2 servers.');
-        },
-        remove: async () => {
-          throw new Error('MCP OAuth is not supported by OpenCode 2 servers.');
-        },
-      },
+    ...oauth,
+    methods: async (name: string): Promise<ProviderAuthMethod[]> => (await integration(name)).methods.filter((method) => method.type === 'oauth').map((method) => ({ type: 'oauth', label: method.label, prompts: formToPrompts(method.form) })),
+    start: async (name: string, methodIndex = 0, values?: ProviderAuthValues) => {
+      const entry = await integration(name);
+      const method = entry.methods.filter((method) => method.type === 'oauth')[methodIndex];
+      if (!method) throw new Error('This MCP server does not offer OAuth.');
+      return oauth.start(name, entry.id, method.id, values);
     },
   };
 }

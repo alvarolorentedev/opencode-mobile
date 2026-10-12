@@ -1,4 +1,4 @@
-import type { GlobalEvent } from '@opencode-ai/sdk/v2/client';
+import type { OpencodeEvent } from '@/lib/opencode/events';
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, type PropsWithChildren } from 'react';
 
 import { buildClient, defaultConnectionSettings, getRequestHeaders } from '@/lib/opencode/client';
@@ -334,7 +334,7 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
       selectedDiffMessageBySessionRef: state.selectedDiffMessageBySessionRef,
     };
   });
-  const handleEvent = useCallback((event: GlobalEvent['payload']) => {
+  const handleEvent = useCallback((event: OpencodeEvent) => {
     if (eventActionsRef.current) {
       handleProviderEvent(event, eventActionsRef.current);
     }

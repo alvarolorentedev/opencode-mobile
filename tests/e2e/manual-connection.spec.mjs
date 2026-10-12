@@ -3,7 +3,7 @@ import { spawn } from 'node:child_process';
 import { Buffer } from 'node:buffer';
 import net from 'node:net';
 
-const V1 = 'http://127.0.0.1:44096';
+const V1 = 'http://127.0.0.1:44097';
 async function openManual(page, url) {
   await page.goto('/', { waitUntil: 'domcontentloaded' });
   await page.getByTestId('onboarding-welcome-start').click();
@@ -19,7 +19,7 @@ async function v2Server(request, password = '') {
     server.listen(0, '127.0.0.1', () => { const { port } = server.address(); server.close(() => resolve(port)); });
   });
   const origin = `http://127.0.0.1:${port}`;
-  const server = spawn(process.execPath, ['tests/fake-opencode/server-v2.mjs'], { env: { ...process.env, FAKE_OPENCODE_PORT: String(port), FAKE_OPENCODE_PASSWORD: password }, stdio: 'inherit' });
+  const server = spawn(process.execPath, ['tests/fake-opencode/server.mjs'], { env: { ...process.env, FAKE_OPENCODE_PORT: String(port), FAKE_OPENCODE_PASSWORD: password }, stdio: 'inherit' });
   await expect.poll(async () => { try { return (await request.get(`${origin}/api/info`)).status(); } catch { return 0; } }).toBe(password ? 401 : 200);
   return { server, origin };
 }

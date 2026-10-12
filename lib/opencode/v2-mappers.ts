@@ -1,25 +1,29 @@
-// Pure V2 -> V1 protocol mappers. This module intentionally has no runtime
+// Native protocol records projected into app-owned presentation models. This module intentionally has no runtime
 // imports so it can be transpiled and exercised by node tests without an
 // OpenCode server (`tests/v2-mappers.test.mjs`).
 import type { ModelInfo, Project, SessionInfo } from '@opencode/client';
+import type { Project as ProjectView, Session, Model } from './types';
 
 export const INPUT_MODALITIES = ['text', 'audio', 'image', 'video', 'pdf'] as const;
 
-export function projectToV1(project: Project): Record<string, unknown> {
+export function toProjectView(project: Project): ProjectView {
   return {
     id: project.id,
     worktree: project.canonical,
     vcs: project.vcs,
+    ...(project.name ? { name: project.name } : {}),
+    ...(project.sandboxes ? { sandboxes: project.sandboxes } : {}),
     time: { created: project.time.created, initialized: project.time.updated },
   };
 }
 
-export function sessionToV1(session: SessionInfo): Record<string, unknown> {
+export function toSessionView(session: SessionInfo): Session {
   return {
     id: session.id,
     title: session.title ?? '',
     directory: session.location?.directory,
-    time: { created: session.time.created, updated: session.time.updated },
+    time: { ...session.time },
+    projectID: session.projectID,
     parentID: session.parentID,
     revert: session.revert,
     share: undefined,
@@ -27,6 +31,7 @@ export function sessionToV1(session: SessionInfo): Record<string, unknown> {
     tokens: session.tokens,
     cost: session.cost,
     agent: session.agent,
+    metadata: session.metadata,
   };
 }
 
@@ -47,16 +52,16 @@ function modelSupportsReasoning(model: ModelInfo): boolean {
   return candidates.some((candidate) => containsReasoningSetting(candidate));
 }
 
-export function modelToV1(model: ModelInfo): Record<string, unknown> {
+export function toModelOptionRecord(model: ModelInfo): Model {
   const costs = Array.isArray(model.cost) ? model.cost : [];
   const base = costs.find((entry) => !entry.tier) ?? costs[0];
   const tiers = costs
     .filter((entry) => entry.tier)
     .map((entry) => ({
-      input: entry.input,
-      output: entry.output,
-      cache: { read: entry.cache?.read ?? 0, write: entry.cache?.write ?? 0 },
-      tier: entry.tier,
+      input: entry.input / 1_000_000,
+      output: entry.output / 1_000_000,
+      cache: { read: (entry.cache?.read ?? 0) / 1_000_000, write: (entry.cache?.write ?? 0) / 1_000_000 },
+      tier: entry.tier!,
     }));
 
   return {
@@ -66,14 +71,14 @@ export function modelToV1(model: ModelInfo): Record<string, unknown> {
     capabilities: {
       reasoning: modelSupportsReasoning(model),
       attachment: model.capabilities.input.some((modality) => modality !== 'text'),
-      input: Object.fromEntries(INPUT_MODALITIES.map((modality) => [modality, model.capabilities.input.includes(modality)])),
+      input: Object.fromEntries(INPUT_MODALITIES.map((modality) => [modality, model.capabilities.input.includes(modality)])) as Model['capabilities']['input'],
       toolcall: model.capabilities.tools,
     },
     limit: { context: model.limit.context, output: model.limit.output },
     cost: {
-      input: base?.input ?? 0,
-      output: base?.output ?? 0,
-      cache: { read: base?.cache?.read ?? 0, write: base?.cache?.write ?? 0 },
+      input: (base?.input ?? 0) / 1_000_000,
+      output: (base?.output ?? 0) / 1_000_000,
+      cache: { read: (base?.cache?.read ?? 0) / 1_000_000, write: (base?.cache?.write ?? 0) / 1_000_000 },
       ...(tiers.length > 0 ? { tiers } : {}),
     },
     status: model.status,
