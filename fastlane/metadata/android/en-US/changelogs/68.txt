@@ -1,0 +1,2 @@
+- More reliable Cloud Link sessions: access and approval waits now recover automatically after interruptions.
+- Improved compatibility with the latest OpenCode (v2).
