@@ -69,6 +69,10 @@ async function mockControlPlane(page, options = {}) {
     const url = new URL(route.request().url());
     if (/\/event$/.test(url.pathname)) { await route.abort(); return; }
     if (route.request().method() === 'OPTIONS') { await route.fulfill({ status: 204, headers: { 'access-control-allow-origin': '*', 'access-control-allow-headers': '*' } }); return; }
+    if (options.startup && !options.startup.ready) {
+      if (url.pathname === '/path') options.startup.attempts += 1;
+      await route.fulfill({ status: 503, headers: { 'access-control-allow-origin': '*' }, contentType: 'text/html', body: '<html>Cloudflare Error 1033</html>' }); return;
+    }
     const response = await route.fetch({ url: `${SERVER}${url.pathname}${url.search}` });
     await route.fulfill({ response, headers: { ...response.headers(), 'access-control-allow-origin': '*' } });
   });
@@ -124,6 +128,71 @@ test.beforeEach(async ({ request }) => {
   expect((await request.post(`${SERVER}/__control/reset`, { data: { scenario: 'happy-path' } })).ok()).toBeTruthy();
 });
 test.afterEach(async ({ page }) => { await page.unrouteAll({ behavior: 'ignoreErrors' }); });
+
+async function startApprovalWait(page, startup, theme = 'dark') {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.emulateMedia({ colorScheme: theme });
+  await page.clock.install();
+  await storeFixture(page, { recovered: true });
+  const state = await mockControlPlane(page, { startup });
+  await page.addInitScript(() => localStorage.setItem('opencode-mobile.onboarding-version', JSON.stringify({ version: 1 })));
+  await page.goto('/pair');
+  await expect(page.getByTestId('connect-options')).toBeEnabled();
+  await submitLink(page, pairingLink().toString());
+  await expect(page.getByTestId('connect-progress')).toHaveText('Confirm this connection on your computer.');
+  await expect.poll(() => startup.attempts).toBeGreaterThan(0);
+  await page.clock.pauseAt(await page.evaluate(() => Date.now() + 100));
+  return state;
+}
+
+test('Cloud Link waits beyond 15 seconds without recovery controls and connects automatically', async ({ page }) => {
+  const startup = { ready: false, attempts: 0 };
+  const state = await startApprovalWait(page, startup);
+  await page.clock.runFor(16_000);
+  await expect(page.getByTestId('connect-progress')).toHaveText('Confirm this connection on your computer.');
+  await expect(page.getByTestId('connect-error-sheet')).toHaveCount(0);
+  await expect(page.getByTestId('connect-retry')).toHaveCount(0);
+  await expect(page.getByTestId('connect-options')).toBeDisabled();
+  await page.screenshot({ path: '/tmp/opencode-cloud-link-waiting.png' });
+  startup.ready = true;
+  await page.clock.runFor(15_000); await page.clock.resume();
+  await expect(page).toHaveURL(/\/workspace$/, { timeout: 30_000 });
+  expect(state.pairClaims).toBe(1); expect(state.accesses).toBe(0);
+});
+
+test('Cloud Link delayed activation stays calm and explicit Retry reuses credentials', async ({ page }) => {
+  const startup = { ready: false, attempts: 0 };
+  const state = await startApprovalWait(page, startup);
+  await page.clock.fastForward(121_000);
+  await expect(page.getByTestId('connect-delayed')).toHaveText('No approval yet. Approve on your computer, or scan a fresh QR code.');
+  await expect(page.getByTestId('connect-error')).toHaveCount(0);
+  await expect(page.getByTestId('connect-retry-connection')).toHaveCount(0);
+  await expect(page.getByTestId('connect-rescan')).toHaveText('Scan the new QR code on your computer');
+  const attempts = startup.attempts;
+  await page.clock.fastForward(180_000);
+  expect(startup.attempts).toBe(attempts);
+  await page.screenshot({ path: '/tmp/opencode-cloud-link-delayed.png' });
+  startup.ready = true; await page.clock.resume();
+  await page.getByTestId('connect-retry').click();
+  await expect(page).toHaveURL(/\/workspace$/, { timeout: 30_000 });
+  expect(state.pairClaims).toBe(1); expect(state.accesses).toBe(0);
+  await assertNoStoredSecrets(page);
+});
+
+test('Cloud Link delayed activation can scan the regenerated QR without deleting the saved profile', async ({ page }) => {
+  const startup = { ready: false, attempts: 0 };
+  const state = await startApprovalWait(page, startup, 'light');
+  await page.clock.fastForward(121_000);
+  await expect(page.getByTestId('connect-delayed')).toBeVisible();
+  await page.clock.resume(); await page.getByTestId('connect-rescan').click();
+  await expect(page.getByTestId('connect-error-sheet')).toHaveCount(0);
+  const saved = await page.evaluate(() => localStorage.getItem('opencode-mobile.connection-profiles'));
+  expect(saved).toContain('machine-1');
+  startup.ready = true;
+  await submitLink(page, pairingLink('regenerated').toString());
+  await expect(page).toHaveURL(/\/workspace$/, { timeout: 30_000 });
+  expect(state.pairClaims).toBe(2); expect(state.accesses).toBe(0);
+});
 
 for (const theme of ['dark', 'light']) {
   test(`Subscription Settings shows verified access and opens management without a camera (${theme})`, async ({ page }) => {

@@ -29,13 +29,14 @@ import {
   type PendingConnectPurchase,
 } from '@/providers/services/connect-subscription-service';
 import type { ConnectPhase } from '@/providers/connect/catalog';
+import { activateConnectProfile, type ConnectActivation } from './activation';
+export { activateConnectProfile } from './activation';
 
 export type PendingAccess = { controlPlaneUrl: string; response: ConnectClaim; previous?: ConnectionProfile; fromPairing?: boolean };
 
-// ponytail: 15s cumulative backoff; extend only if real connector timings require it.
-const tunnelStartupRetryDelays = [1_000, 2_000, 4_000, 8_000] as const;
-
 export type AccessDeps = {
+  activation: { current: ConnectActivation | undefined };
+  isActiveProfile: (profile: ConnectionProfile) => boolean;
   controlPlaneUrl: string;
   store: ConnectStore;
   sessionRef: { current: ConnectSession | undefined };
@@ -180,7 +181,10 @@ export async function prepareConnectSettings(deps: AccessDeps, settings: Opencod
     const profile = (await loadConnectionProfiles(true)).find((entry) => entry.connect?.machineId === settings.connect!.machineId && entry.connect.controlPlaneUrl === settings.connect!.controlPlaneUrl);
     const password = profile ? await getProfilePassword(profile.id) : settings.password;
     const connect = profile?.connect ?? settings.connect;
-    const refresh = getConnectCredentialError(connect, password) || (Date.parse(connect.expiresAt) - Date.now() <= 5 * 60_000 && Date.now() - (lastAccess.current.get(connect.machineId) ?? 0) > 60_000);
+    const credentialError = getConnectCredentialError(connect, password);
+    const activating = deps.activation.current?.startup && deps.activation.current.profile.connect?.machineId === connect.machineId && deps.activation.current.profile.connect.controlPlaneUrl === connect.controlPlaneUrl;
+    if (activating && credentialError) throw new Error(credentialError);
+    const refresh = credentialError || (!activating && Date.parse(connect.expiresAt) - Date.now() <= 5 * 60_000 && Date.now() - (lastAccess.current.get(connect.machineId) ?? 0) > 60_000);
     if (!initialized && (pendingPurchase.current || refresh)) {
       await deps.waitForInitialization();
       initialized = true;
@@ -197,25 +201,13 @@ export async function prepareConnectSettings(deps: AccessDeps, settings: Opencod
   }
 }
 
-export async function activateConnectProfile({ setSavedProfile, setPhase, switchConnection }: AccessDeps, profile: ConnectionProfile) {
-  const password = await getProfilePassword(profile.id);
-  setSavedProfile(profile);
-  setPhase('connecting');
-  for (let attempt = 0; ; attempt += 1) {
-    const result = await switchConnection({ serverUrl: profile.serverUrl, username: profile.username, password, connect: profile.connect }, profile.modelPreferences);
-    if (result.status === 'connected') {
-      setPhase('paired');
-      return true;
-    }
-    if (!profile.connect || !/\b1033\b/.test(result.message) || attempt === tunnelStartupRetryDelays.length) throw new Error(result.message);
-    await new Promise((resolve) => setTimeout(resolve, tunnelStartupRetryDelays[attempt]));
-  }
-}
-
-export async function claimConnectAction(deps: AccessDeps) {
+export async function claimConnectAction(deps: AccessDeps, isCurrent = () => true) {
   const { controlPlaneUrl, pairingRef, pendingClaim, pendingPurchase, finishPurchase, setPhase, clearPairing } = deps;
   await Promise.allSettled([...deps.accessRequests.current.values()]);
-  if (pendingClaim.current) return activateConnectProfile(deps, await requestConnectAccess(deps, pendingClaim.current.response.machine_id));
+  if (pendingClaim.current) {
+    const fromPairing = pendingClaim.current.fromPairing;
+    return activateConnectProfile(deps, await requestConnectAccess(deps, pendingClaim.current.response.machine_id), fromPairing, isCurrent);
+  }
   const current = pairingRef.current;
   if (!current) throw new Error('Scan or open a pairing link first.');
   if (current.controlPlaneUrl !== controlPlaneUrl) throw new Error('This QR is for a different subscription environment. Open a fresh QR from the matching connector.');
@@ -226,11 +218,11 @@ export async function claimConnectAction(deps: AccessDeps) {
     const deviceName = Platform.OS === 'ios' ? 'iPhone' : Platform.OS === 'android' ? 'Android phone' : 'Web test device';
     response = await authenticateConnectRequest(deps, (token) => claimConnectPairing(current, token, deviceName));
   } catch (reason) {
-    if (reason instanceof ConnectApiError && reason.machineId) return activateConnectProfile(deps, await requestConnectAccess(deps, reason.machineId, true));
+    if (reason instanceof ConnectApiError && reason.machineId) return activateConnectProfile(deps, await requestConnectAccess(deps, reason.machineId, true), true, isCurrent);
     if (reason instanceof ConnectApiError && (reason.status === 404 || reason.invalidPairingToken || reason.pairingExpired)) await clearPairing();
     throw reason;
   }
   const previous = (await loadConnectionProfiles(true)).find((profile) => profile.connect?.controlPlaneUrl === current.controlPlaneUrl && profile.connect.machineId === response.machine_id);
   pendingClaim.current = { controlPlaneUrl: current.controlPlaneUrl, response, previous, fromPairing: true };
-  return activateConnectProfile(deps, await requestConnectAccess(deps, response.machine_id, true));
+  return activateConnectProfile(deps, await requestConnectAccess(deps, response.machine_id, true), true, isCurrent);
 }

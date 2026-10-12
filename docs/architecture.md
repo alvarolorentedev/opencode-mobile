@@ -207,6 +207,8 @@ and provider setup remain in Settings.
   finalization/recovery (`purchases.ts`), pairing link handling (`pairing.ts`),
   and access credential preparation (`access.ts`); re-exported through
   `providers/use-connect-state.ts`.
+  `activation.ts` owns the bounded post-claim desktop-approval/startup wait,
+  foreground suspension and delayed saved-profile checkpoint.
 - `providers/conversation/`
   Conversation listening, playback, connection-feedback, and shared feedback
   helpers composed by `providers/use-conversation-state.ts`.

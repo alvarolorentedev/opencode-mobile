@@ -1,7 +1,7 @@
 import { getConnectCatalog, isConnectEntitlement, type ConnectCatalog, type ConnectStore } from '@/lib/connect';
 import { selectConnectOffers, type ConnectOffer, type ConnectStoreApi } from '@/lib/connect-store';
 
-export type ConnectPhase = 'idle' | 'catalog' | 'purchasing' | 'pending' | 'restoring' | 'verifying' | 'savingSession' | 'finalizing' | 'claiming' | 'saving' | 'connecting' | 'paired';
+export type ConnectPhase = 'idle' | 'catalog' | 'purchasing' | 'pending' | 'restoring' | 'verifying' | 'savingSession' | 'finalizing' | 'claiming' | 'saving' | 'connecting' | 'waitingForApproval' | 'delayed' | 'paired';
 
 export async function loadConnectCatalog({
   controlPlaneUrl,

@@ -276,10 +276,31 @@ saved profile rows refresh on credential changes and use machine identity for
 their Active badge. Credential-scoped storage keys remain unchanged. Stale
 recovery results cannot replace a newly selected connection.
 
-After a pairing claim is saved, the first connection retries Cloudflare Error
-1033 with bounded 1/2/4/8-second delays while a newly started tunnel comes online.
-Other connection errors remain immediately actionable; the saved profile can be
-retried without scanning or claiming the QR again.
+After a pairing claim is securely saved (including ambiguous-claim recovery),
+the first activation displays “Confirm this connection on your computer.” The
+connector withholds tunnel startup until its owner approves. Mobile cannot
+distinguish approval, denial, expiry and tunnel startup with the current API;
+there are no new status requests or protocol fields.
+
+Activation retries Cloudflare Error 1033, identified DNS resolution failures,
+and connection timeout/reset errors with 3/6/12/15-second delays, capped at 15
+seconds, within a 120-second elapsed budget including request time. No further
+attempt is scheduled once that budget expires; an already-running request may
+settle later. HTML 1033 responses are preserved before SDK parsing can discard
+their body. Authentication/entitlement denials, invalid/unsafe URLs, TLS/certificate
+errors and unclassified transport failures remain immediately actionable.
+Generic fetch failures are ambiguous and are not retried. Manual connections
+and general reconnects do not receive this startup wait.
+
+Backgrounding pauses further activation attempts without resetting the deadline.
+An overdue foreground return shows a neutral delayed state: “No approval yet.
+Approve on your computer, or scan a fresh QR code.” Retry explicitly starts another
+bounded activation using the saved profile and credentials, without reclaiming
+the QR, refreshing the machine list or rotating valid credentials. “Scan the new
+QR code on your computer” returns to the scanner and accepts the connector's
+regenerated QR while preserving saved profiles. Foreground recovery cannot overlap
+or restart a waiting/delayed activation. Teardown/environment changes cancel waits;
+results for a different active connection cannot complete the old pairing flow.
 
 Sessions are SecureStore records scoped by trusted environment and store; Apple
 and Google identities never merge. Session/pending-QR storage requires an

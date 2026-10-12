@@ -488,6 +488,28 @@ This strategy gives confidence in:
 
 ## Coverage Gaps
 
+Cloud Link activation checks cover 3/6/12/15-second backoff, request time within
+the shared 120-second budget, mixed transient failures, explicit saved-credential
+retry, permanent failures, general/manual reconnect exclusion, stale results,
+background suspension and teardown cleanup. Provider-hook coverage verifies
+foreground recovery does not overlap or restart activation and rescan retains
+the saved profile. Protocol checks preserve HTML 1033 before SDK parsing and
+keep 401/403 and TLS/certificate failures immediately actionable.
+
+The web Cloud Link flows use controlled time and mocked tunnel responses to
+check waiting beyond 15 seconds without recovery controls, automatic connection,
+neutral timeout without automatic restart, explicit Retry without replaying
+claim/access, and regenerated-QR recovery. E2E changes require explicit human
+validation under AGENTS.md. Real-device acceptance remains outstanding: delayed
+desktop approval, approval followed by slow DNS/tunnel startup, denial/TTL expiry
+followed by a regenerated QR, and background/resume during the wait.
+
+Local validation on 2026-10-12 passed `test:ci:static` (including 199 Vitest cases),
+both fake-server self-tests and all 119 web E2E flows against the final export.
+Android development prebuild completed; Gradle compilation stopped with
+`SDK location not found`. Explicit human validation of these E2E changes and
+the physical-device flows remains pending.
+
 Cloud Link subscription checks are described in [connect.md](connect.md). Static
 checks validate claim/secure-write/finalization ordering on both stores. Mocked
 E2E validates explicit Purchase/Restore, silent unfinished-purchase recovery,

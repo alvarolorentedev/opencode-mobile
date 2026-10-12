@@ -1,6 +1,26 @@
 import { normalizeServerUrl } from './url';
 
+export function isRetryableCloudLinkStartupError(error: unknown): boolean {
+  const seen = new Set<unknown>();
+  const descriptions: string[] = [];
+  while (error && !seen.has(error)) {
+    seen.add(error);
+    if (typeof error === 'string') { descriptions.push(error); break; }
+    if (typeof error !== 'object') break;
+    const record = error as { message?: unknown; domain?: unknown; code?: unknown; status?: unknown; cause?: unknown };
+    if (record.status === 401 || record.status === 403) return false;
+    descriptions.push(typeof record.message === 'string' ? record.message : '', typeof record.domain === 'string' ? record.domain : '', typeof record.code === 'string' || typeof record.code === 'number' ? String(record.code) : '');
+    error = record.cause;
+  }
+  const message = descriptions.join(' ');
+  // Generic fetch failures can conceal certificate failures. Only retry identified transport errors.
+  if (/\b(?:401|403)\b|credential|entitlement|certificate|(?:^|[^a-z])(?:TLS|SSL|CERT)(?:[^a-z]|$)|NSURLErrorDomain.*-120[0-6]\b|invalid.*url|unsafe.*url/i.test(message)) return false;
+  return /\b1033\b|\b(?:ENOTFOUND|EAI_AGAIN|ETIMEDOUT|ECONNRESET|ESOCKETTIMEDOUT)\b|(?:unable|failed|could not) to resolve host|name or service not known|nodename nor servname|DNS.*(?:resolution|lookup|failed)|(?:connection|request|connect) timed? ?out|connection reset|NSURLErrorDomain.*(?:-1001|-1003|-1005|-1006)\b/i.test(message);
+}
+
 export function getConnectionErrorMessage(error: unknown, serverUrl: string) {
+  // The V1 SDK throws non-JSON error pages as strings.
+  if (typeof error === 'string') error = new Error(error);
   const normalized = normalizeServerUrl(serverUrl);
   if (!normalized.valid) {
     return 'Enter a complete server URL, such as http://192.168.1.10:4096.';

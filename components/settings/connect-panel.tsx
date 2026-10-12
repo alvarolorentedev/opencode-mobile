@@ -32,11 +32,12 @@ export function ConnectManagementPanel({ setup, onConnected, onClose }: { setup:
       {setup.entitled ? <Text style={{ color: palette.text }} testID="connect-subscription-active">{t('settings:connect.subscriptionActive')}</Text> : setup.initialization === 'ready' ? <ConnectSubscription setup={setup} /> : null}
       {setup.canRetry ? <Button testID="connect-retry" disabled={setup.busy} onPress={() => void setup.retry()}>{t('common:actions.retry')}</Button> : null}
       {setup.busy ? <Text style={{ color: palette.text }} testID="connect-progress">{t(`settings:connect.progress.${setup.phase}`)}</Text> : null}
+      {setup.phase === 'delayed' ? <Text style={{ color: palette.text }} testID="connect-delayed">{t('settings:connect.progress.delayed')}</Text> : null}
       {setup.error ? <HelperText testID="connect-error" type="error">{setup.error}</HelperText> : null}
       {setup.notice ? <HelperText testID="connect-notice" type="info">{setup.notice}</HelperText> : null}
       {setup.savedProfile ? <>
         <Text style={{ color: palette.text }}>{t('settings:connect.savedConnection', { name: setup.savedProfile.name })}</Text>
-        <Button testID="connect-retry-connection" mode="outlined" disabled={setup.busy} onPress={() => runConnect(setup.connectProfile(setup.savedProfile!))}>{t('common:actions.reconnect')}</Button>
+        {setup.phase !== 'delayed' ? <Button testID="connect-retry-connection" mode="outlined" disabled={setup.busy} onPress={() => runConnect(setup.connectProfile(setup.savedProfile!))}>{t('common:actions.reconnect')}</Button> : null}
       </> : null}
       <Text style={{ color: palette.text }} variant="titleMedium">{t('settings:connect.machines')}</Text>
       <Button testID="connect-refresh-machines" mode="outlined" disabled={setup.busy || !setup.hasToken} onPress={() => { void setup.refreshMachines(); }}>{t('settings:connect.refreshMachines')}</Button>

@@ -36,6 +36,12 @@ export async function fetchConnection(input: RequestInfo | URL, init?: RequestIn
   recordRequest();
   measureResponseBytes(response);
   if (settings?.connect && response.status === 401) throw new Error('Cloud Link credentials were rejected. Pair this device again.');
+  if (settings?.connect && response.status === 403) throw new Error('Cloud Link access was denied (403). Check your subscription or device credentials.');
+  // Some SDKs discard HTML error bodies, hiding Cloudflare's tunnel-startup code.
+  if (settings?.connect && !response.ok && /text\/(?:html|plain)/i.test(response.headers.get('content-type') ?? '')) {
+    const body = await response.clone().text();
+    if (/\b1033\b/.test(body)) throw new Error('Cloudflare Error 1033');
+  }
   return response;
 }
 

@@ -330,6 +330,14 @@ Credentials:
   automatically claims after initialization settles and entitlement is verified.
   Subscription recovery and automatic pairing use the existing operation lock;
   failed claims require explicit Retry or a replacement QR.
+- First post-claim activation adds `waitingForApproval` and `delayed` phases.
+  Its in-memory provider checkpoint retains the saved profile and a cancellable
+  wait, not the redeemed QR. `ConnectionState.retryableStartup` classifies raw
+  transport failures before display formatting. One 120-second budget includes
+  request time, pauses attempts in background and survives foreground return;
+  delayed retries are explicit. Valid credentials are reused without near-expiry
+  rotation during startup; actual credential expiry remains blocking. This wait
+  does not apply to normal reconnects. See [Cloud Link](connect.md).
 - `connectSetup.subscriptionExpiresAt` exposes only the verified session's
   paid-through timestamp, not its bearer token or a renewal prediction.
   `manageSubscription()` uses the existing operation lock and refuses to open

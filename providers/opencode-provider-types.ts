@@ -130,6 +130,7 @@ export type ConnectionState = {
   message: string;
   checkedAt?: number;
   projectDirectory?: string;
+  retryableStartup?: boolean;
 };
 
 // Which diff source the Files Changed surface reads from. `turn` is the

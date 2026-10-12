@@ -36,8 +36,9 @@ import {
   type AccessDeps,
   type PendingAccess,
 } from '@/providers/connect/access';
+import type { ConnectActivation } from './activation';
 
-export function useConnectState({ controlPlaneUrl, setControlPlaneUrl, switchConnection, disconnect, isHydrated, onProfileRefreshed, activeMachineId, beforeProfileRefresh }: {
+export function useConnectState({ controlPlaneUrl, setControlPlaneUrl, switchConnection, disconnect, isHydrated, onProfileRefreshed, activeMachineId, beforeProfileRefresh, isActiveProfile }: {
   controlPlaneUrl: string;
   setControlPlaneUrl: Dispatch<SetStateAction<string>>;
   switchConnection: ConnectionContextValue['switchConnection'];
@@ -46,6 +47,7 @@ export function useConnectState({ controlPlaneUrl, setControlPlaneUrl, switchCon
   activeMachineId?: string;
   beforeProfileRefresh: () => Promise<void>;
   onProfileRefreshed: (previous: ConnectionProfile, next: ConnectionProfile) => void;
+  isActiveProfile: (profile: ConnectionProfile) => boolean;
 }) {
   const enabled = isConnectEnabled();
   const store = getConnectStore();
@@ -55,6 +57,7 @@ export function useConnectState({ controlPlaneUrl, setControlPlaneUrl, switchCon
   const [session, setSession] = useState<ConnectSession>();
   const [pairing, setPairing] = useState<ConnectPairing>();
   const [phase, setPhase] = useState<ConnectPhase>('idle');
+  const activation = useRef<ConnectActivation | undefined>(undefined);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string>();
   const [notice, setNotice] = useState<string>();
@@ -82,12 +85,19 @@ export function useConnectState({ controlPlaneUrl, setControlPlaneUrl, switchCon
   const initializationTask = useRef<Promise<boolean> | undefined>(undefined);
   const activeMachineIdRef = useRef(activeMachineId);
   useLayoutEffect(() => { activeMachineIdRef.current = activeMachineId; });
+  useLayoutEffect(() => {
+    if (phase === 'delayed' && activation.current && !isActiveProfile(activation.current.profile)) {
+      activation.current.controller.abort(); activation.current = undefined;
+      setPhase('idle'); setCanRetry(false);
+    }
+  }, [activeMachineId, controlPlaneUrl, isActiveProfile, phase]);
   const drainRef = useRef<() => void>(() => undefined);
   const recoveryMachineId = useRef<string | undefined>(undefined);
   const resumeRef = useRef<() => Promise<boolean | void>>(async () => undefined);
   const refreshRef = useRef<() => Promise<boolean | void>>(async () => undefined);
 
   const changeControlPlane = useCallback((next: string) => {
+    activation.current?.controller.abort(); activation.current = undefined;
     scopeGeneration.current += 1;
     setInitialization('loading'); autoPair.current = false;
     const retainedPairing = pairingRef.current?.controlPlaneUrl === next ? pairingRef.current : undefined;
@@ -106,17 +116,22 @@ export function useConnectState({ controlPlaneUrl, setControlPlaneUrl, switchCon
     if (!preserveError) setError(undefined);
     setNotice(undefined);
     setCanRetry(false);
+    const generation = scopeGeneration.current;
     let nextControlPlane: string | undefined;
     try { return (await action()) !== false; }
     catch (reason) {
+      if (generation !== scopeGeneration.current) return false;
       if (reason instanceof ConnectPurchaseEnvironmentChange) nextControlPlane = reason.controlPlaneUrl;
       else { entitlementRecovery.current = false; setError(reason instanceof Error ? reason.message : 'Cloud Link setup failed. Try again.'); setCanRetry(true); }
       return false;
     }
     finally {
-      lock.current = false; setBusy(false);
-      if (nextControlPlane) changeControlPlane(nextControlPlane);
-      else drainRef.current();
+      lock.current = false;
+      if (generation === scopeGeneration.current) {
+        setBusy(false);
+        if (nextControlPlane) changeControlPlane(nextControlPlane);
+        else drainRef.current();
+      }
     }
   }, [changeControlPlane, enabled]);
 
@@ -142,16 +157,23 @@ export function useConnectState({ controlPlaneUrl, setControlPlaneUrl, switchCon
   const loadCatalog = useCallback(() => loadConnectCatalog({ controlPlaneUrl, store, apiRef, catalogRef, setOffers, setPhase }), [controlPlaneUrl, store]);
 
   const accessDeps = useMemo<AccessDeps>(() => ({
+    activation, isActiveProfile,
     controlPlaneUrl, store, sessionRef, pairingRef, pendingClaim, pendingPurchase, entitlementRecovery, recoveryMachineId,
     lastAccess, accessRequests, setSession, setPhase, setProfiles, setSavedProfile, switchConnection, beforeProfileRefresh,
     onProfileRefreshed, clearPairing, finishPurchase, recoverSession, waitForInitialization,
-  }), [beforeProfileRefresh, clearPairing, controlPlaneUrl, finishPurchase, onProfileRefreshed, recoverSession, store, switchConnection, waitForInitialization]);
+  }), [beforeProfileRefresh, clearPairing, controlPlaneUrl, finishPurchase, isActiveProfile, onProfileRefreshed, recoverSession, store, switchConnection, waitForInitialization]);
 
   const authenticated = useCallback(<T,>(request: (token: string) => Promise<T>) => authenticateConnectRequest(accessDeps, request), [accessDeps]);
   const requestAccess = useCallback((machineId: string, fromPairing = false) => requestConnectAccess(accessDeps, machineId, fromPairing), [accessDeps]);
   const prepareSettings = useCallback((settings: OpencodeConnectionSettings) => prepareConnectSettings(accessDeps, settings), [accessDeps]);
-  const activate = useCallback((profile: ConnectionProfile) => activateConnectProfile(accessDeps, profile), [accessDeps]);
-  const claimAction = useCallback(() => claimConnectAction(accessDeps), [accessDeps]);
+  const activate = useCallback((profile: ConnectionProfile, waitForStartup = false) => {
+    const generation = scopeGeneration.current;
+    return activateConnectProfile(accessDeps, profile, waitForStartup, () => generation === scopeGeneration.current);
+  }, [accessDeps]);
+  const claimAction = useCallback(() => {
+    const generation = scopeGeneration.current;
+    return claimConnectAction(accessDeps, () => generation === scopeGeneration.current);
+  }, [accessDeps]);
 
   const refreshMachinesAction = useCallback(async () => {
     const next = await authenticated((token) => listConnectMachines(controlPlaneUrl, token));
@@ -224,10 +246,11 @@ export function useConnectState({ controlPlaneUrl, setControlPlaneUrl, switchCon
         if (await finishPurchase(recoverable)) { initialized(true); await resumeRef.current(); }
       }
     }, true).then((ok) => {
-      initialized(ok);
-      if (current()) { initializationTask.current = undefined; setInitialization(ok ? 'ready' : 'error'); }
+      const ready = ok || Boolean(activation.current);
+      initialized(ready);
+      if (current()) { initializationTask.current = undefined; setInitialization(ready ? 'ready' : 'error'); }
     });
-    return () => { initialized(false); scopeGeneration.current += 1; subscriptions.forEach((subscription) => subscription.remove()); void apiRef.current?.endConnection(); apiRef.current = undefined; };
+    return () => { initialized(false); scopeGeneration.current += 1; activation.current?.controller.abort(); activation.current = undefined; subscriptions.forEach((subscription) => subscription.remove()); void apiRef.current?.endConnection(); apiRef.current = undefined; };
   }, [availablePurchases, controlPlaneUrl, enabled, finishPurchase, isHydrated, initializationAttempt, loadCatalog, perform, store]);
 
   useEffect(() => { refreshRef.current = async () => {
@@ -242,7 +265,7 @@ export function useConnectState({ controlPlaneUrl, setControlPlaneUrl, switchCon
   }; }, [availablePurchases, finishPurchase, store]);
   useEffect(() => {
     if (!enabled) return;
-    const listener = AppState.addEventListener('change', (state) => { if (state === 'active' && initialization === 'ready') void perform(() => refreshRef.current()); });
+    const listener = AppState.addEventListener('change', (state) => { if (state === 'active' && initialization === 'ready' && !activation.current) void perform(() => refreshRef.current()); });
     return () => listener.remove();
   }, [enabled, initialization, perform]);
 
@@ -254,9 +277,13 @@ export function useConnectState({ controlPlaneUrl, setControlPlaneUrl, switchCon
     return selectConnectControlPlane({ url, enabled, isHydrated, phase, controlPlaneUrl, linkLock, lock, pendingClaim, pendingPurchase, changeControlPlane, setError });
   }, [changeControlPlane, controlPlaneUrl, enabled, isHydrated, phase]);
 
-  const acceptLink = useCallback((link: Parameters<typeof parseConnectPairing>[0]) => acceptConnectLink({
+  const acceptLink = useCallback(async (link: Parameters<typeof parseConnectPairing>[0]) => {
+    const accepted = await acceptConnectLink({
     link, controlPlaneUrl, store, pendingClaim, sessionRef, pairingRef, setPairing, setSavedProfile, setPhase, setError, setNotice,
-  }), [controlPlaneUrl, store]);
+    });
+    if (accepted) { activation.current?.controller.abort(); activation.current = undefined; }
+    return accepted;
+  }, [controlPlaneUrl, store]);
 
   const pairLink = useCallback((link: Parameters<typeof parseConnectPairing>[0]) => pairConnectLink({
     link, initialization, linkLock, autoPair, lock, pendingClaim, pendingPurchase, acceptLink,
@@ -296,18 +323,20 @@ export function useConnectState({ controlPlaneUrl, setControlPlaneUrl, switchCon
   const retry = useCallback(() => {
     if (!apiRef.current) { setError(undefined); setInitialization('loading'); setInitializationAttempt((current) => current + 1); return Promise.resolve(false); }
     return perform(async () => {
+    if (activation.current && phase === 'delayed') return activate(activation.current.profile, true);
     if (pendingPurchase.current) { await finishPurchase(pendingPurchase.current.purchase); return continueAfterPurchase(); }
     if (!catalogRef.current || !offers.length) return loadCatalog();
     if (pendingClaim.current || pairingRef.current) return claimAction();
     if (recoveryMachineId.current) return activate(await requestAccess(recoveryMachineId.current));
+    if (savedProfile) return activate(savedProfile);
     return refreshMachinesAction();
     }).then((ok) => { if (ok) setInitialization('ready'); return ok; });
-  }, [activate, claimAction, continueAfterPurchase, finishPurchase, loadCatalog, offers.length, perform, refreshMachinesAction, requestAccess]);
+  }, [activate, claimAction, continueAfterPurchase, finishPurchase, loadCatalog, offers.length, perform, phase, refreshMachinesAction, requestAccess, savedProfile]);
   const claim = useCallback(() => perform(claimAction), [claimAction, perform]);
   const refreshMachines = useCallback(() => perform(refreshMachinesAction), [perform, refreshMachinesAction]);
   const connectProfile = useCallback((profile: ConnectionProfile) => perform(() => activate(profile)), [activate, perform]);
   const connectMachine = useCallback((id: string) => perform(async () => activate(await requestAccess(id))), [activate, perform, requestAccess]);
-  const cancelPairing = useCallback(() => perform(async () => { autoPair.current = false; await clearPairing(); setPhase('idle'); }), [clearPairing, perform]);
+  const cancelPairing = useCallback(() => perform(async () => { activation.current?.controller.abort(); activation.current = undefined; autoPair.current = false; await clearPairing(); setPhase('idle'); }), [clearPairing, perform]);
 
   const removeProfiles = useCallback(async (removed: ConnectionProfile[]) => {
     for (const profile of removed) await disconnect(profile);
@@ -316,6 +345,7 @@ export function useConnectState({ controlPlaneUrl, setControlPlaneUrl, switchCon
     await saveConnectionProfiles(next);
     await Promise.all(removed.map((profile) => deleteProfilePassword(profile.id)));
     setProfiles(next);
+    if (removed.some((profile) => profile.id === activation.current?.profile.id)) { activation.current?.controller.abort(); activation.current = undefined; }
     if (removed.some((profile) => profile.id === savedProfile?.id)) { setSavedProfile(undefined); setPhase('idle'); }
   }, [disconnect, savedProfile?.id]);
   const forgetProfile = useCallback((profile: ConnectionProfile) => perform(async () => {
@@ -329,7 +359,7 @@ export function useConnectState({ controlPlaneUrl, setControlPlaneUrl, switchCon
 
   const canChangeControlPlane = enabled && isHydrated && !busy && purchaseRecovery !== 'verified' && !['purchasing', 'pending', 'saving'].includes(phase);
   const canPurchase = !busy && storeReady && !purchaseRecovery && !['purchasing', 'pending'].includes(phase);
-  return { enabled, initialization, pairLink, dismissError, controlPlaneUrl, canChangeControlPlane, canPurchase, hasToken: hasConnectSession(session), entitled: hasConnectEntitlement(session), subscriptionExpiresAt: session?.subscription_expires_at, pairing, phase, busy, error, notice, machines, profiles, savedProfile, offers, storeReady, canRetry, manageSubscription,
+  return { enabled, initialization, pairLink, dismissError, controlPlaneUrl, canChangeControlPlane, canPurchase, hasToken: hasConnectSession(session), entitled: hasConnectEntitlement(session), subscriptionExpiresAt: session?.subscription_expires_at, pairing, phase, busy, error, notice, machines, profiles, savedProfile, offers, storeReady, canRetry: canRetry || phase === 'delayed', manageSubscription,
     selectControlPlane, acceptLink, purchase, restore, retry, claim, cancelPairing, refreshMachines, connectProfile, connectMachine, forgetProfile, revokeMachine, prepareSettings };
 }
 

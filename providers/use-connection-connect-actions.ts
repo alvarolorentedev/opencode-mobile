@@ -16,6 +16,7 @@ import {
   getConnectionError,
   getNormalizedServerUrl,
   isContractMismatchError,
+  isRetryableCloudLinkStartupError,
   isValidServerUrl,
   type OpencodeConnectionSettings,
   type ScopedOpencodeClient,
@@ -156,6 +157,7 @@ export function useConnectionConnectActions({
       const failed: ConnectionState = {
         status: 'error',
         message: getConnectionError(targetSettings.serverUrl, lastError ?? new Error('Could not reach the OpenCode server.')),
+        retryableStartup: Boolean(targetSettings.connect) && isRetryableCloudLinkStartupError(lastError),
         checkedAt: Date.now(),
       };
       setConnection(failed);
@@ -277,9 +279,13 @@ export function useConnectionConnectActions({
     setLastSessionByConnection((current) => ({ ...current, [newScope]: { ...current[oldScope], ...current[newScope] } }));
   }, [setFavoriteSessions, setLastSessionByConnection]);
 
-  const connectSetup = useConnectState({ controlPlaneUrl, setControlPlaneUrl, switchConnection, disconnect: disconnectConnectProfile, isHydrated, activeMachineId: settings.connect?.machineId, beforeProfileRefresh: captureActiveProfilePreferences, onProfileRefreshed: onConnectProfileRefreshed });
+  const isActiveProfile = useCallback((profile: ConnectionProfile) => Boolean(settingsRef.current.connect && findMatchingProfile([profile], settingsRef.current)), [settingsRef]);
+  const connectSetup = useConnectState({ controlPlaneUrl, setControlPlaneUrl, switchConnection, disconnect: disconnectConnectProfile, isHydrated, activeMachineId: settings.connect?.machineId, beforeProfileRefresh: captureActiveProfilePreferences, onProfileRefreshed: onConnectProfileRefreshed, isActiveProfile });
+  const connectPhaseRef = useRef(connectSetup.phase);
+  const activationPaused = connectSetup.phase === 'waitingForApproval' || connectSetup.phase === 'delayed';
   useLayoutEffect(() => {
     prepareConnectSettingsRef.current = connectSetup.prepareSettings;
+    connectPhaseRef.current = connectSetup.phase;
   });
 
   const connectAccessRefreshRef = useRef('');
@@ -290,12 +296,13 @@ export function useConnectionConnectActions({
     let refreshTimer: ReturnType<typeof setTimeout>;
     const scheduleRefresh = () => {
       clearTimeout(refreshTimer);
+      if (connectPhaseRef.current === 'waitingForApproval' || connectPhaseRef.current === 'delayed') return;
       const remaining = Date.parse(settings.connect!.expiresAt) - Date.now();
       const refreshKey = `${settings.connect!.controlPlaneUrl}:${settings.connect!.machineId}:${settings.connect!.expiresAt}`;
       const recover = getConnectCredentialError(settings.connect, settings.password) || connectionRef.current.status === 'error';
       if (!recover && connectAccessRefreshRef.current === refreshKey) return;
       refreshTimer = setTimeout(() => {
-        if (AppState.currentState === 'active') {
+        if (AppState.currentState === 'active' && connectPhaseRef.current !== 'waitingForApproval' && connectPhaseRef.current !== 'delayed') {
           connectAccessRefreshRef.current = refreshKey;
           void connect().then((result) => {
             if (cancelled || AppState.currentState !== 'active') return;
@@ -326,7 +333,7 @@ export function useConnectionConnectActions({
       if (state === 'active') { check(); scheduleRefresh(); }
     });
     return () => { cancelled = true; clearTimeout(timer); clearTimeout(refreshTimer); subscription.remove(); };
-  }, [clearProjectState, connect, connectionRef, isHydrated, scopeGenerationRef, serverGenerationRef, setConnection, setSendingState, settings.connect, settings.password]);
+  }, [activationPaused, clearProjectState, connect, connectionRef, isHydrated, scopeGenerationRef, serverGenerationRef, setConnection, setSendingState, settings.connect, settings.password]);
 
   return { connect, updateSettings, switchConnection, connectSetup };
 }

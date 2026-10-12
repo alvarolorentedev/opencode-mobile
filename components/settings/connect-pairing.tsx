@@ -58,8 +58,9 @@ export function ConnectPairing({ setup, onConnected, onClose, onManage }: { setu
     if (focused && setup.phase === 'paired' && !setup.error && !connected.current) { connected.current = true; onConnected(); }
   }, [focused, onConnected, setup.error, setup.phase]);
   const pending = setup.busy || ['purchasing', 'pending'].includes(setup.phase);
+  const delayed = setup.phase === 'delayed';
   const subscription = focused && setup.initialization !== 'loading' && !setup.entitled;
-  const canScan = setup.initialization === 'ready' && !pending && !sheet && !setup.error && !scanPending;
+  const canScan = setup.initialization === 'ready' && !pending && !delayed && !sheet && !setup.error && !scanPending;
   function close() {
     if (pending || scanPending) return;
     void setup.cancelPairing().then((ok) => { if (ok) onClose(); });
@@ -92,12 +93,13 @@ export function ConnectPairing({ setup, onConnected, onClose, onManage }: { setu
       {setup.entitled ? <Button testID="connect-manage" icon="monitor-multiple" disabled={pending} onPress={() => { setSheet(undefined); onManage(); }}>{t('settings:connect.machines')}</Button> : null}
       <Button testID="connect-learn-more" icon="open-in-new" onPress={() => void Linking.openURL(CONNECT_LEARN_MORE_URL).catch(() => undefined)}>{t('settings:connect.learnMore')}</Button>
     </OverlaySheet>
-    <OverlaySheet visible={focused && !sheet && !subscription && Boolean(setup.error || setup.notice)} title={t('settings:connect.title')} onClose={() => { setup.dismissError(); }} fitContent testID="connect-error-sheet">
+    <OverlaySheet visible={focused && !pending && !sheet && !subscription && Boolean(delayed || setup.error || setup.notice)} title={t('settings:connect.title')} onClose={() => { if (delayed) void setup.cancelPairing(); else setup.dismissError(); }} fitContent testID="connect-error-sheet">
+      {delayed ? <Text testID="connect-delayed" style={{ color: palette.text }}>{t('settings:connect.progress.delayed')}</Text> : null}
       {setup.error ? <HelperText testID="connect-error" type="error">{setup.error}</HelperText> : null}
       {setup.notice ? <HelperText testID="connect-notice" type="info">{setup.notice}</HelperText> : null}
       {setup.canRetry ? <Button testID="connect-retry" disabled={setup.busy} onPress={() => void setup.retry()}>{t('common:actions.retry')}</Button> : null}
-      {setup.savedProfile ? <Button testID="connect-retry-connection" disabled={setup.busy} onPress={() => void setup.connectProfile(setup.savedProfile!)}>{t('common:actions.reconnect')}</Button> : null}
-      <Button disabled={pending} onPress={() => { setup.dismissError(); setSheet('options'); }}>{t('settings:connect.openLink')}</Button>
+      {setup.savedProfile && !delayed ? <Button testID="connect-retry-connection" disabled={setup.busy} onPress={() => void setup.connectProfile(setup.savedProfile!)}>{t('common:actions.reconnect')}</Button> : null}
+      {delayed ? <Button testID="connect-rescan" onPress={() => void setup.cancelPairing()}>{t('settings:connect.scanNewQr')}</Button> : <Button disabled={pending} onPress={() => { setup.dismissError(); setSheet('options'); }}>{t('settings:connect.openLink')}</Button>}
     </OverlaySheet>
   </KeyboardAvoidingView>;
 }

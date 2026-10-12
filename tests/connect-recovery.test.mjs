@@ -7,7 +7,7 @@ const ref = (current) => ({ current });
 const noop = () => {};
 async function fixture({ expired = false, missing = false, storedSession = true, storeGate, ttl = 600000, unchangedExpiry = false } = {}) {
   const runtime = hookRuntime();
-  let now = Date.now(), accessCalls = 0, catalogs = 0, resets = 0, accessFailure = false, catalogFailure = false, accessGate;
+  let now = Date.now(), accessCalls = 0, pairClaims = 0, catalogs = 0, resets = 0, accessFailure = false, catalogFailure = false, accessGate;
   const globals = { ...runtime.globals, Date: class extends Date { static now() { return now; } } };
   const storage = new Map(), secrets = new Map(), listeners = new Set();
   const native = {
@@ -26,6 +26,7 @@ async function fixture({ expired = false, missing = false, storedSession = true,
       let body;
       if (url.endsWith('/catalog')) body = { plans: [{ id: 'cloudlink', entitlements: ['cloudlink'], products: [{ store: 'google', productId: 'fixture', basePlanId: 'monthly', offerIds: [] }] }] };
       else if (url.endsWith('/subscriptions/claim')) body = session;
+      else if (/\/pairings\/[^/]+\/claim$/.test(url)) { pairClaims++; body = claim; }
       else if (url.endsWith('/access')) {
         accessCalls++;
         await accessGate?.promise;
@@ -64,6 +65,7 @@ async function fixture({ expired = false, missing = false, storedSession = true,
   imports['@/providers/connect/catalog'] = await loadTs('providers/connect/catalog.ts', imports, globals);
   imports['@/providers/connect/purchases'] = await loadTs('providers/connect/purchases.ts', imports, globals);
   imports['@/providers/connect/pairing'] = await loadTs('providers/connect/pairing.ts', imports, globals);
+  imports['./activation'] = await loadTs('providers/connect/activation.ts', imports, globals);
   imports['@/providers/connect/access'] = await loadTs('providers/connect/access.ts', imports, globals);
   const setup = await loadTs('providers/connect/use-connect-machine.ts', imports, globals);
   imports['@/providers/use-connect-state'] = setup;
@@ -72,6 +74,7 @@ async function fixture({ expired = false, missing = false, storedSession = true,
     buildClient: (settings) => settings, detectServerContract: async () => ({ contract: 'v2' }),
     getConnectionError: (_, reason) => reason.message, getNormalizedServerUrl: (url) => url,
     isContractMismatchError: () => false, isValidServerUrl: () => true,
+    isRetryableCloudLinkStartupError: (reason) => /1033/.test(reason.message),
   };
   const actions = await loadTs('providers/use-connection-connect-actions.ts', imports, globals);
   const profileHook = await loadTs('providers/use-connection-profiles.ts', {
@@ -83,7 +86,7 @@ async function fixture({ expired = false, missing = false, storedSession = true,
     initialConnectStartedRef: ref(false), serverContractRef: ref('v2'), serverProjectsRef: ref([]), chatPreferencesRef: ref({ enabledModelIds: [], recentModelIds: [], providerModelSelections: {} }),
     clearProjectState: () => { resets++; },
     isCurrentCatalogClient: (client) => input.catalogGenerationRef.current.get(client) === input.serverGenerationRef.current,
-    loadWorkspaceCatalog: async () => { catalogs++; if (catalogFailure) throw new Error('offline'); return { currentProjectPath: '/fixture', serverProjects: [], serverRootPath: '/fixture' }; },
+    loadWorkspaceCatalog: async () => { catalogs++; if (catalogFailure) throw new Error(typeof catalogFailure === 'string' ? catalogFailure : 'offline'); return { currentProjectPath: '/fixture', serverProjects: [], serverRootPath: '/fixture' }; },
   };
   for (const key of ['setServerProjects', 'setCurrentProjectPath', 'setServerRootPath', 'setSessions', 'setSessionStatuses', 'setCurrentConfig', 'setAvailableProviders', 'setProviderAuthMethodsById', 'setAvailableModels', 'setAvailableAgents', 'setMessagesBySession', 'setDiffsBySession', 'setTodosBySession', 'setFavoriteSessions', 'setLastSessionByConnection', 'setChatPreferences', 'setDiagnostics', 'setSendingState']) input[key] = noop;
   runtime.mount(() => {
@@ -96,7 +99,7 @@ async function fixture({ expired = false, missing = false, storedSession = true,
     const connectionProfiles = profileHook.useConnectionProfiles({ settings, switchConnection: result.switchConnection, updateSettings: result.updateSettings, profileSnapshot: result.connectSetup.profiles });
     return { ...result, settings, connection, activeProjectPath, connectionProfiles };
   }, {});
-  return { runtime, profile, profiles, get accesses() { return accessCalls; }, get catalogs() { return catalogs; }, get resets() { return resets; },
+  return { runtime, profile, profiles, get accesses() { return accessCalls; }, get pairClaims() { return pairClaims; }, get catalogs() { return catalogs; }, get resets() { return resets; },
     failAccess(value) { accessFailure = value; }, failCatalog(value) { catalogFailure = value; }, blockAccess() { accessGate = deferred(); return accessGate; },
     advance(ms) { now += ms; }, appState(state) { native.AppState.currentState = state; [...listeners].forEach((listener) => listener(state)); runtime.flush(); },
   };
@@ -253,3 +256,70 @@ for (const [fail, cloud] of [[false, false], [true, false], [false, true], [true
   f.runtime.unmount();
 }
 console.log('Cloud Link resume, native initialization, access coalescing, stale recovery, and live renewal checks passed');
+
+// First-claim approval waiting owns recovery, including after an overdue resume.
+const approvalQR = 'opencodemobile://pair?v=1&cp=https%3A%2F%2Fapi.opencodecloud.link&id=approval&t=one-use-token&n=Mac';
+{
+  const f = await fixture(); await f.runtime.settle(); f.failCatalog('Cloudflare Error 1033');
+  await f.runtime.value.connectSetup.pairLink(approvalQR); await f.runtime.settle();
+  assert.equal(f.runtime.value.connectSetup.phase, 'waitingForApproval');
+  assert.equal(f.pairClaims, 1); assert.equal(f.accesses, 0);
+  assert.equal(f.runtime.countTimers(1000), 0, 'Foreground recovery must not compete with activation.');
+  f.appState('background'); f.advance(3000); f.runtime.fire(3000); await f.runtime.settle();
+  const before = f.catalogs;
+  f.advance(180000); f.appState('active'); await f.runtime.settle();
+  assert.equal(f.runtime.value.connectSetup.phase, 'delayed');
+  assert.equal(f.runtime.value.connectSetup.error, undefined);
+  assert.equal(f.runtime.value.connectSetup.canRetry, true);
+  assert.equal(f.catalogs, before, 'Overdue foreground return does not reconnect or restart the budget.');
+  assert.equal(f.runtime.countTimers(1000), 0);
+  f.appState('background'); f.appState('active'); await f.runtime.settle();
+  assert.equal(f.catalogs, before);
+  f.failCatalog(false);
+  await f.runtime.value.connectSetup.retry(); await f.runtime.settle();
+  assert.equal(f.runtime.value.connectSetup.phase, 'paired');
+  assert.equal(f.runtime.value.connection.status, 'connected');
+  assert.equal(f.pairClaims, 1, 'Retry must not replay the QR claim.');
+  assert.equal(f.accesses, 0, 'Retry must not rotate credentials or refresh machine access.');
+  assert.equal(f.runtime.value.settings.password, 'secret-a');
+  f.runtime.unmount();
+}
+// Rescan retires only the activation checkpoint and accepts the connector's new QR.
+{
+  const f = await fixture(); await f.runtime.settle(); f.failCatalog('Cloudflare Error 1033');
+  await f.runtime.value.connectSetup.pairLink(approvalQR); await f.runtime.settle();
+  f.advance(120000); f.runtime.fire(3000); await f.runtime.settle();
+  assert.equal(f.runtime.value.connectSetup.phase, 'delayed');
+  await f.runtime.value.connectSetup.cancelPairing(); await f.runtime.settle();
+  assert.equal(f.runtime.value.connectSetup.phase, 'idle');
+  assert.equal((await f.profiles.loadConnectionProfiles()).length, 1);
+  assert.equal(await f.profiles.getProfilePassword(f.profile.id), 'secret-a');
+  f.failCatalog(false);
+  await f.runtime.value.connectSetup.pairLink(approvalQR.replace('id=approval', 'id=new-approval')); await f.runtime.settle();
+  assert.equal(f.runtime.value.connectSetup.phase, 'paired'); assert.equal(f.pairClaims, 2);
+  f.runtime.unmount();
+}
+console.log('Cloud Link approval wait, explicit saved-credential retry, rescan, and foreground exclusion checks passed');
+
+// A still-valid post-claim credential is not rotated after a minute of waiting.
+{
+  const f = await fixture({ ttl: 240000 }); await f.runtime.settle(); f.failCatalog('Cloudflare Error 1033');
+  await f.runtime.value.connectSetup.pairLink(approvalQR); await f.runtime.settle();
+  f.advance(63000); f.runtime.fire(3000); await f.runtime.settle();
+  assert.equal(f.runtime.value.connectSetup.phase, 'waitingForApproval');
+  assert.equal(f.accesses, 0, 'Near-expiry preparation must reuse valid activation credentials.');
+  f.runtime.unmount();
+}
+// A connection selected during the wait cannot be replaced by the old activation.
+{
+  const f = await fixture(); await f.runtime.settle(); f.failCatalog('Cloudflare Error 1033');
+  await f.runtime.value.connectSetup.pairLink(approvalQR); await f.runtime.settle();
+  const before = f.catalogs;
+  f.runtime.value.updateSettings({ serverUrl: 'http://manual.test', username: '', password: '', connect: undefined });
+  await f.runtime.settle(); f.advance(3000); f.runtime.fire(3000); await f.runtime.settle();
+  assert.equal(f.runtime.value.connectSetup.phase, 'idle');
+  assert.equal(f.runtime.value.settings.serverUrl, 'http://manual.test');
+  assert.equal(f.catalogs, before, 'A stale activation must not switch back to its saved profile.');
+  f.runtime.unmount();
+}
+console.log('Cloud Link activation credential reuse and connection-change guards passed');

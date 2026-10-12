@@ -469,6 +469,12 @@ a purchase merely by opening the section.
 `connect-panel.tsx` renders the separate machine/profile management view. `app/pair.tsx` ingests links and navigates only; deep links skip the camera gate.
 Domain state/actions come from `useConnection().connectSetup`; see [Cloud Link](connect.md).
 
+After a valid Cloud Link claim, the pairing surface shows desktop-confirmation
+progress and hides recovery controls while the provider checks activation. A
+delayed activation uses neutral text with Retry and Scan the new QR code on your
+computer; the scan action resets the provider checkpoint and resumes the existing
+scanner. It preserves stored profiles. Components do not poll or classify errors.
+
 ## `components/settings/settings-sections.tsx`
 
 ### Exported sections
