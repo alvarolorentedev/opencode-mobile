@@ -6,12 +6,15 @@ import os
 from pathlib import Path
 import re
 import shutil
+import struct
 import subprocess
+import tempfile
 import time
 import unittest
 import urllib.request
 import xml.etree.ElementTree as ET
 import zipfile
+import zlib
 
 
 def run(*args):
@@ -130,7 +133,7 @@ def no_submission():
 
 def fixtures(directory):
     photo = directory / "share-photo.png"
-    photo.write_bytes(base64.b64decode("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+a8WQAAAAASUVORK5CYII="))
+    photo.write_bytes(base64.b64decode("iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAIAAACQkWg2AAAAFklEQVR4nGPQ6LlDEmIY1TCqYfhqAADy3ZAQaQsB1wAAAABJRU5ErkJggg=="))
     pdf = directory / "share-document.pdf"
     objects = [b"<< /Type /Catalog /Pages 2 0 R >>",
                b"<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
@@ -233,6 +236,20 @@ def validate(apk, output):
 
 
 class Checks(unittest.TestCase):
+    def test_file_fixtures(self):
+        with tempfile.TemporaryDirectory() as directory:
+            photo, pdf = fixtures(Path(directory))
+            data = photo.read_bytes()
+            self.assertEqual(data[:8], b"\x89PNG\r\n\x1a\n")
+            position = 8
+            while position < len(data):
+                length = struct.unpack_from(">I", data, position)[0]
+                payload = data[position + 4:position + 8 + length]
+                crc = struct.unpack_from(">I", data, position + 8 + length)[0]
+                self.assertEqual(zlib.crc32(payload) & 0xffffffff, crc)
+                position += length + 12
+            self.assertTrue(pdf.read_bytes().startswith(b"%PDF-1.4"))
+
     def test_locator_and_bounds(self):
         root = ET.fromstring('<hierarchy><node text="Share" content-desc="" bounds="[10,20][30,60]"/></hierarchy>')
         self.assertEqual(center(find(root, "Share")), ("20", "40"))
