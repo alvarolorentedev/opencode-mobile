@@ -5,9 +5,8 @@ import { Platform, StyleSheet, View } from 'react-native';
 import { ActivityIndicator } from 'react-native-paper';
 
 /**
- * Resolves camera permission before the pairing surface (and its subscription
- * sheet) render. Denial cancels pairing instead of revealing a scan-first
- * screen the user cannot use. Web never uses the camera and is passed through.
+ * Resolves camera permission before a requested scanner renders. Denial returns
+ * to the caller's previous surface. Web never requests camera permission.
  */
 export function ConnectCameraGate({ onCancel, children }: { onCancel: () => void; children: ReactNode }) {
   const { t } = useTranslation();

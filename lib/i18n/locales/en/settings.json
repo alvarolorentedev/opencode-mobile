@@ -389,7 +389,45 @@
     "benefits": "Connect with a QR code, access your computer remotely through Cloud Link, and recover your machines on another device with Restore purchases.",
     "subscribe": "Subscribe",
     "options": "Connection options",
-    "learnMore": "Learn more about Cloud Link"
+    "learnMore": "Learn more about Cloud Link",
+    "onboarding": {
+      "step": "{{step}} of {{total}}",
+      "step1": {
+        "title": "Your computer.\nAnywhere.",
+        "subtitle": "Use OpenCode on your computer from your phone.",
+        "action": "Get started"
+      },
+      "step2": {
+        "title": "Set up your\ncomputer",
+        "subtitle": "Download Cloud Link on your computer.",
+        "action": "Cloud Link is running"
+      },
+      "step3": {
+        "title": "Enable\nCloud Link",
+        "subtitle": "Subscribe to connect this app to your computer over the internet.",
+        "action": "Subscribe & continue"
+      },
+      "step4": {
+        "title": "Pair your\ncomputer",
+        "subtitle": "Scan the QR code shown in Cloud Link on your computer.",
+        "action": "Scan QR code"
+      },
+      "explanation": "Cloud Link connects your devices over the internet. Keep your computer on and Cloud Link running.",
+      "instruction1": "Install on your computer",
+      "instruction2": "Subscribe in this app",
+      "instruction3": "Scan to pair",
+      "openOnComputer": "On your computer, open:",
+      "copySetupUrl": "Copy computer setup URL",
+      "copied": "Setup URL copied",
+      "copyError": "Could not copy the URL. Open opencodecloud.link on your computer.",
+      "downloadHint": "Download and open Cloud Link, then keep its pairing QR code on screen.",
+      "remote": "Connect over the internet",
+      "pair": "Pair your computer with this app",
+      "billing": "Billing is handled by your app store.",
+      "checkoutHint": "Opens your app store to confirm purchase.",
+      "approveHint": "Then approve the connection on your computer.",
+      "usePairingLink": "Use pairing link"
+    }
   },
   "editor": {
     "title": "Editor"

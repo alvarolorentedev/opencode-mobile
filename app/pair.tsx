@@ -17,11 +17,13 @@ export default function PairScreen() {
   const palette = Colors[useColorScheme() ?? 'light'];
   const { pairLink } = connectSetup;
   // Captured before the incoming link params are stripped from the route.
-  const [deepLink] = useState(() => Boolean(params.v || params.cp || params.id || params.t || params.n));
+  const [deepLink, setDeepLink] = useState(() => Boolean(params.v || params.cp || params.id || params.t || params.n));
+  // Router params can arrive after mount; retain their origin before stripping them.
+  if (!deepLink && (params.v || params.cp || params.id || params.t || params.n)) setDeepLink(true);
   useEffect(() => {
     if (isHydrated && (params.v || params.cp || params.id || params.t || params.n)) {
       void pairLink(params);
-      router.replace('/pair');
+      router.setParams({ v: undefined, cp: undefined, id: undefined, t: undefined, n: undefined });
     }
   }, [pairLink, isHydrated, params, router]);
   if (!connectSetup.enabled) return null;

@@ -948,3 +948,46 @@ Before marking this change complete, a human must review and validate the change
 - Verify terminal streaming and cursor resume after reconnect; retain v1 sharing/archive/config/diagnostic features.
 
 No dependency version, persisted schema or release version was changed. Existing Cloud Link work is retained.
+
+## Cloud Link illustrated onboarding
+
+`connect-onboarding.test.ts` checks four-step navigation, explicit scan before
+camera permission, denial returning to Pair, pending/canceled purchases,
+finalization-error recovery, subscriber entry, access loss and direct-link
+continuation. The existing Cloud Link web suite now enters Subscribe through
+Learn and Computer setup for ordinary entry, retaining deep-link purchase,
+Restore, renewal, activation and error coverage. New flows assert native pricing,
+copy feedback, removed Share setup, Restore above Subscribe, aligned illustration/
+heading/subheading/primary-action positions, explicit checkout and no pairing
+until scanning or opening a link. Pending and canceled guided purchases stay on
+Subscribe. The fake backend and subscription protocol are unchanged.
+
+Run all three CI gates and the Android development build. Native acceptance must
+cover real App Store/Google Play purchase/Restore, camera allow/deny and fallback,
+desktop approval, Back/keyboard, foreground suspension, safe areas, light/dark,
+larger text and VoiceOver/TalkBack. Modified `tests/e2e/connect.spec.mjs` requires
+explicit human validation under AGENTS.md after automated checks pass.
+
+Human validation: on 2026-10-13 the user explicitly validated the revised Cloud
+Link E2E contract in this chat. Real store/camera/device acceptance remains
+outstanding and is separate from approval of the deterministic test contract.
+
+Implementation validation (2026-10-13): static CI passes (290 Vitest checks), both
+fake-server self-tests pass, and the full web suite passes 134 flows. After the
+short-screen illustration adjustment, all 44 Cloud Link flows pass again with
+fresh dark and narrow-light captures. Browser comparison is recorded in
+`design-qa.md`. Android development prebuild passes; Gradle remains blocked by
+`SDK location not found`. No dependency, release version or protocol changed.
+
+Pair illustration refinement (2026-10-13): the thick scanner icon is replaced
+by a transparent, theme-tinted corner overlay positioned outside the display.
+The original computer drawing is still shared with Download. Lint, typecheck and
+both focused dark/narrow-light flows pass on isolated preview/backend ports; the
+full suite and native build were not repeated for this visual-only change. The
+user explicitly validated the screenshot-helper adjustment in this chat.
+
+Pre-merge validation (2026-10-13): the Cloud Link commit was rebased onto `main`
+without the unrelated Android-sharing commits from its original base. All three
+required gates pass on that result: static CI (289 Vitest checks), both fake-server
+self-tests, and all 134 web E2E flows, including the final scan-frame refinement.
+Native builds and real store/camera/device acceptance were not repeated.

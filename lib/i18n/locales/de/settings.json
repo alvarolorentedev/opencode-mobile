@@ -389,7 +389,45 @@
     "benefits": "Verbinde dich per QR-Code, greife über Cloud Link aus der Ferne auf deinen Computer zu und stelle deine Rechner auf einem anderen Gerät mit Käufe wiederherstellen wieder her.",
     "subscribe": "Abonnieren",
     "options": "Verbindungsoptionen",
-    "learnMore": "Mehr über Cloud Link erfahren"
+    "learnMore": "Mehr über Cloud Link erfahren",
+    "onboarding": {
+      "step": "{{step}} von {{total}}",
+      "step1": {
+        "title": "Dein Computer.\nÜberall.",
+        "subtitle": "Nutze OpenCode auf deinem Computer über dein Handy.",
+        "action": "Loslegen"
+      },
+      "step2": {
+        "title": "Richte deinen\nComputer ein",
+        "subtitle": "Lade Cloud Link auf deinen Computer herunter.",
+        "action": "Cloud Link läuft"
+      },
+      "step3": {
+        "title": "Aktiviere\nCloud Link",
+        "subtitle": "Abonniere, um diese App über das Internet mit deinem Computer zu verbinden.",
+        "action": "Abonnieren und weiter"
+      },
+      "step4": {
+        "title": "Verbinde deinen\nComputer",
+        "subtitle": "Scanne den QR-Code in Cloud Link auf deinem Computer.",
+        "action": "QR-Code scannen"
+      },
+      "explanation": "Cloud Link verbindet deine Geräte über das Internet. Lass deinen Computer eingeschaltet und Cloud Link geöffnet.",
+      "instruction1": "Auf dem Computer installieren",
+      "instruction2": "In dieser App abonnieren",
+      "instruction3": "Zum Verbinden scannen",
+      "openOnComputer": "Öffne auf deinem Computer:",
+      "copySetupUrl": "Einrichtungs-URL für den Computer kopieren",
+      "copied": "Einrichtungs-URL kopiert",
+      "copyError": "Die URL konnte nicht kopiert werden. Öffne opencodecloud.link auf deinem Computer.",
+      "downloadHint": "Lade Cloud Link herunter und öffne es. Lass den QR-Code zum Verbinden auf dem Bildschirm.",
+      "remote": "Über das Internet verbinden",
+      "pair": "Verbinde deinen Computer mit dieser App",
+      "billing": "Die Abrechnung erfolgt über deinen App Store.",
+      "checkoutHint": "Öffnet deinen App Store, um den Kauf zu bestätigen.",
+      "approveHint": "Bestätige danach die Verbindung auf deinem Computer.",
+      "usePairingLink": "Verbindungslink verwenden"
+    }
   },
   "editor": {
     "title": "Editor"
