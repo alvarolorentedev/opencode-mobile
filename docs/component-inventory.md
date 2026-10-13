@@ -464,6 +464,11 @@ Discard cancels and clears staged content. Components never fetch or persist.
 `widgets/session-widget.tsx` renders Latest replies, Awaiting actions and Plan
 progress as RemoteViews. Height determines one to three rows; both palettes,
 accessible names, text truncation and absolute update timestamps are shared.
+The renderer opts out of React Compiler with a module-level `"use no memo"`
+directive: the widget library calls it outside React, where compiler-injected
+hooks cannot run. Trees use supported widget primitives instead of React
+Fragments, which the serializer cannot handle. The same renderer serves
+foreground updates and headless add/update/resize tasks.
 `SessionWidget` retains its native identity; `AttentionWidget` and `PlanWidget`
 are separate gallery entries. Taps only open the app or validated chat links.
 The Android General section exposes Show widget previews; turning it off removes

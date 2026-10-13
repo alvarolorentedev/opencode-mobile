@@ -1,0 +1,2 @@
+- Fix Android home widgets so existing widgets refresh reliably after an app update.
+- Improve handling when sharing content into OpenCode Mobile.

@@ -1,6 +1,6 @@
 import Constants from 'expo-constants';
 import { Platform } from 'react-native';
-import { requestWidgetUpdate } from 'react-native-android-widget';
+import { getWidgetInfo, requestWidgetUpdateById } from 'react-native-android-widget';
 
 import type { WidgetSnapshot } from '@/providers/widget-snapshot';
 import { WIDGET_NAMES, SessionWidget, widgetKind } from '@/widgets/session-widget';
@@ -13,16 +13,22 @@ export const homeWidgetSupported = Platform.OS === 'android' && Constants.appOwn
 
 export async function updateHomeWidget(snapshot: WidgetSnapshot | undefined) {
   if (!homeWidgetSupported) return;
-  try {
-    await Promise.all(WIDGET_NAMES.map((widgetName) => requestWidgetUpdate({
-      widgetName,
-      renderWidget: ({ height }) => ({
-        light: <SessionWidget scheme="light" snapshot={snapshot} kind={widgetKind(widgetName)} height={height} />,
-        dark: <SessionWidget scheme="dark" snapshot={snapshot} kind={widgetKind(widgetName)} height={height} />,
-      }),
-    })));
-  } catch (error) {
-    // A widget repaint failure is cosmetic; app state must be unaffected.
-    console.warn('Could not update the home widget.', error);
-  }
+  await Promise.all(WIDGET_NAMES.map(async (widgetName) => {
+    try {
+      const widgets = await getWidgetInfo(widgetName);
+      // The library's bulk updater uses an unawaited async forEach.
+      await Promise.all(widgets.map(({ widgetId }) => requestWidgetUpdateById({
+        widgetName, widgetId,
+        renderWidget: ({ height }) => ({
+          light: <SessionWidget scheme="light" snapshot={snapshot} kind={widgetKind(widgetName)} height={height} />,
+          dark: <SessionWidget scheme="dark" snapshot={snapshot} kind={widgetKind(widgetName)} height={height} />,
+        }),
+      }).catch((error) => {
+        console.warn('Could not update the home widget.', widgetName, widgetId, error);
+      })));
+    } catch (error) {
+      // Native widget failures must not interrupt the provider's publish queue.
+      console.warn('Could not list the home widgets.', widgetName, error);
+    }
+  }));
 }

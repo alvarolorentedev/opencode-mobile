@@ -1,3 +1,6 @@
+"use no memo";
+
+// The widget serializer calls these functions outside React, so compiler hooks cannot run.
 import { FlexWidget, TextWidget, type ColorProp } from 'react-native-android-widget';
 
 import { i18n } from '@/lib/i18n';
@@ -41,7 +44,7 @@ export function SessionWidget({ snapshot, scheme, kind = 'replies', height = 300
       <TextWidget text={title} maxLines={1} truncate="END" style={{ fontSize: 12, fontWeight: '600', color: palette.muted }} />
       {kind === 'plan' ? (
         <FlexWidget style={{ width: 'match_parent', flexDirection: 'column' }}>
-          {plan ? <>
+          {plan ? <FlexWidget style={{ width: 'match_parent', flexDirection: 'column' }}>
             <TextWidget text={plan.session.title} maxLines={1} truncate="END" style={{ fontSize: 14, color: palette.text }} />
             <TextWidget text={plan.total ? (plan.completed === plan.total ? t('share:widgets.completed') : t('share:widgets.progress', { completed: plan.completed, total: plan.total })) : t('share:widgets.noPlan')}
               maxLines={1} style={{ fontSize: 11, color: palette.accent }} />
@@ -50,7 +53,7 @@ export function SessionWidget({ snapshot, scheme, kind = 'replies', height = 300
                 text={`${step.status === 'completed' ? '✓' : step.status === 'in_progress' ? '→' : step.status === 'cancelled' ? '×' : '○'} ${(snapshot?.showPreviews !== false && step.content) || t('share:widgets.step', { index: step.index })}`}
                 maxLines={1} truncate="END" style={{ fontSize: 12, color: palette.text }} />
             ))}
-          </> : <TextWidget text={t('share:widgets.chooseChat')} style={{ fontSize: 13, color: palette.text }} />}
+          </FlexWidget> : <TextWidget text={t('share:widgets.chooseChat')} style={{ fontSize: 13, color: palette.text }} />}
         </FlexWidget>
       ) : rows.length ? rows.slice(0, limit).map((row) => {
         const attention = kind === 'attention' && 'permissions' in row && 'questions' in row ? row : undefined;

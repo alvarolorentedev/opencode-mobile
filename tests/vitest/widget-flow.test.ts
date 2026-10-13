@@ -1,15 +1,22 @@
+import { readFileSync } from 'node:fs';
+import { createRequire } from 'node:module';
+import path from 'node:path';
+import { runInNewContext } from 'node:vm';
+import { transformSync } from '@babel/core';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { deferred, hookRuntime, loadTs } from '../helpers/runtime.mjs';
-import { recentWidgetSessions, widgetAttention, widgetPlan, widgetReply } from '@/providers/widget-content';
+import { recentWidgetSessions, widgetAttention, widgetPlan, widgetReply, widgetSession } from '@/providers/widget-content';
 import { hideWidgetPreviews, parseWidgetSnapshot } from '@/providers/widget-snapshot';
-import { deriveTodosFromMessages } from '@/lib/opencode/format';
+import { deriveTodosFromMessages, formatTimestamp } from '@/lib/opencode/format';
+import { i18n } from '@/lib/i18n';
+import * as storageKeys from '@/lib/storage-keys';
 import { mergeSessionStatuses } from '@/providers/opencode-provider-utils';
 import { defaultChatPreferences } from '@/providers/opencode-preferences';
 import { parseChatPreferences } from '@/providers/persisted-preferences';
 import { readWidgetData } from '@/providers/services/widget-service';
 
 const h = vi.hoisted(() => ({ list: vi.fn(), messages: vi.fn(), permissions: vi.fn(), questions: vi.fn(), clients: vi.fn() }));
-vi.mock('@/lib/i18n', () => ({ i18n: { t: (key: string) => key }, getFormatLocale: () => 'en' }));
+vi.mock('expo-localization', () => ({ getLocales: () => [{ languageTag: 'en' }] }));
 vi.mock('@/lib/opencode/client', () => ({ buildClient: (...args: any[]) => h.clients(...args) }));
 vi.mock('@/lib/opencode/client/interactions', () => ({ listPendingPermissions: (...args: any[]) => h.permissions(...args), listPendingQuestions: (...args: any[]) => h.questions(...args) }));
 vi.mock('@/providers/services/session-service', () => ({ listActiveSessions: (...args: any[]) => h.list(...args), getSessionMessages: (...args: any[]) => h.messages(...args) }));
@@ -190,22 +197,184 @@ describe('widget provider lifecycle', () => {
   });
 });
 
-it('renders all widget sizes with bounded rows, absolute timestamps and accessible route targets', async () => {
-  const element = (type: any, props: any) => ({ type, props });
-  const { SessionWidget, widgetRowLimit } = await loadTs('widgets/session-widget.tsx', {
-    'react/jsx-runtime': { jsx: element, jsxs: element, Fragment: 'Fragment' },
-    'react-native-android-widget': { FlexWidget: 'Flex', TextWidget: 'Text' },
-    '@/lib/i18n': { i18n: { t: (key: string, values: any) => values ? `${key} ${JSON.stringify(values)}` : key, getFixedT: (language: string) => (key: string) => `${language}:${key}` } },
-    '@/lib/opencode/format': { formatTimestamp: () => 'Oct 13, 10:00' },
-  });
-  expect([110, 200, 300].map(widgetRowLimit)).toEqual([1, 2, 3]);
-  const data = dataset(); const attention = widgetAttention({ ...data.interactions, sessions: data.sessions, scope: 's', untitled: 'x', now: 1, showPreviews: true });
-  const snapshot = { updatedAt: 1, sessions: attention.rows, attention, plan: widgetPlan(data.sessions[0], [], 's', 'x', 1, true) };
-  expect(SessionWidget({ snapshot: { ...snapshot, language: 'es' }, scheme: 'light' }).props.accessibilityLabel).toBe('es:share:widgets.replies');
-  for (const kind of ['replies', 'attention', 'plan']) {
-    const rendered = SessionWidget({ snapshot, scheme: 'dark', kind, height: 200 });
-    expect(rendered.props.accessibilityLabel).toBe(`share:widgets.${kind}`);
-    expect(JSON.stringify(rendered)).toContain('Oct 13, 10:00');
-    expect(rendered.props.clickAction).toBe(kind === 'plan' ? 'OPEN_URI' : 'OPEN_APP');
+describe('compiled native widgets', () => {
+  const require = createRequire(import.meta.url);
+  const libraryRoot = 'node_modules/react-native-android-widget/lib/commonjs/';
+  const { buildWidgetTree } = require(path.resolve(`${libraryRoot}api/build-widget-tree.js`));
+  const primitives = {
+    ...require(path.resolve(`${libraryRoot}widgets/FlexWidget.js`)),
+    ...require(path.resolve(`${libraryRoot}widgets/TextWidget.js`)),
+  };
+  const { jsx } = require('react/jsx-runtime');
+  const now = Date.UTC(2026, 9, 13, 8);
+  const todos = [
+    { content: 'Previous step', status: 'completed', priority: 'medium' },
+    { content: 'Actual next step', status: 'in_progress', priority: 'medium' },
+    { content: 'Following step', status: 'pending', priority: 'medium' },
+  ] as any;
+  function snapshot() {
+    const sessions = [session('one', 3), session('two', 2), session('three', 1)];
+    return {
+      updatedAt: now, language: 'en', showPreviews: true, connectionScope: 'scope',
+      sessions: sessions.map((entry, index) => ({ ...widgetSession(entry, 'scope', 'Untitled', { type: index === 0 ? 'busy' : index === 1 ? 'retry' : 'idle' }), preview: `Reply ${entry.id}` })),
+      attention: widgetAttention({ sessions, permissions: sessions.map((entry) => permission(entry.id)), questions: [question('one')], scope: 'scope', untitled: 'Untitled', now, showPreviews: true }),
+      plan: widgetPlan(sessions[0], todos, 'scope', 'Untitled', now, true),
+    };
   }
+  // Run Expo's actual Android compiler and the library's serializer, outside a React renderer.
+  function loadModule(relative: string, imports: Record<string, any>, dev = false, platform = 'android') {
+    const filename = path.resolve(relative);
+    const source = readFileSync(filename, 'utf8');
+    const code = relative.endsWith('.js') ? source : transformSync(source, {
+      filename, configFile: false, babelrc: false, presets: ['babel-preset-expo'],
+      caller: { name: 'metro', platform, isDev: dev, isNodeModule: false, supportsStaticESM: false, supportsReactCompiler: true },
+    })!.code!;
+    const exports = {};
+    const localRequire = createRequire(filename);
+    runInNewContext(code, { exports, console, require: (name: string) => name in imports ? imports[name] : localRequire(name) });
+    return exports as any;
+  }
+  function renderer(dev = false) {
+    return loadModule('widgets/session-widget.tsx', {
+      'react-native-android-widget': primitives, '@/lib/i18n': { i18n }, '@/lib/opencode/format': { formatTimestamp },
+    }, dev);
+  }
+  const flatten = (tree: any): any[] => [tree, ...(tree.children ?? []).flatMap(flatten)];
+  const text = (tree: any) => flatten(tree).filter((node) => node.type === 'TextWidget').map((node) => node.props.text);
+
+  it.each([true, false])('serializes visible content, empty states and redaction with dev=%s', (dev) => {
+    const { SessionWidget, widgetRowLimit } = renderer(dev);
+    expect([140, 200, 300].map(widgetRowLimit)).toEqual([1, 2, 3]);
+    const data = snapshot();
+    const empty = { ...data, sessions: [], attention: { updatedAt: now, total: 0, rows: [] }, plan: widgetPlan(session('one'), [], 'scope', 'x', now, true) };
+    const completed = { ...data, plan: widgetPlan(session('one'), todos.map((step: any) => ({ ...step, status: 'completed' })), 'scope', 'x', now, true) };
+    for (const kind of ['replies', 'attention', 'plan']) for (const scheme of ['light', 'dark']) for (const height of [140, 300]) {
+      for (const [state, snapshot] of Object.entries({ missing: undefined, empty, populated: data, hidden: hideWidgetPreviews(data), completed })) {
+        const tree = buildWidgetTree(jsx(SessionWidget, { snapshot, scheme, kind, height }));
+        const texts = text(tree);
+        const serialized = JSON.stringify(tree);
+        expect(tree.props.backgroundColor).toBe(scheme === 'light' ? '#FCFDFC' : '#16201D');
+        expect(tree.props).toMatchObject({ width: 'match_parent', height: 'match_parent', accessibilityLabel: i18n.t(`share:widgets.${kind}`) });
+        expect(texts[0]).toBe(i18n.t(`share:widgets.${kind}`));
+        expect(texts.length).toBeGreaterThan(1);
+        expect(texts.every((value: string) => value.length > 0 && !value.includes('share:widgets.'))).toBe(true);
+        const targets = flatten(tree).filter((node) => node.props?.clickAction === 'OPEN_URI');
+        if (snapshot) {
+          expect(texts).toContain(i18n.t('share:widgets.updated', { time: formatTimestamp(now, 'en') }));
+          if (kind === 'plan') expect(targets[0].props.clickActionData.uri).toBe(data.plan.session.link);
+          else {
+            const rows = kind === 'attention' ? snapshot.attention!.rows : snapshot.sessions;
+            expect(targets.map((node) => node.props.clickActionData.uri)).toEqual(rows.slice(0, widgetRowLimit(height)).map((row) => row.link));
+            expect(targets.every((node) => node.props.accessibilityLabel.includes(node.children[0].props.text))).toBe(true);
+          }
+        }
+        if (state === 'missing') expect(texts).toContain(i18n.t(`share:widgets.${kind === 'plan' ? 'chooseChat' : kind === 'attention' ? 'openApp' : 'noReply'}`));
+        if (state === 'empty') expect(texts).toContain(i18n.t(`share:widgets.${kind === 'plan' ? 'noPlan' : kind === 'attention' ? 'noActions' : 'noReply'}`));
+        if (state === 'populated') expect(serialized).toContain(kind === 'plan' ? 'Actual next step' : kind === 'attention' ? 'edit: src/main.ts' : 'Reply one');
+        if (state === 'hidden') {
+          expect(serialized).not.toMatch(/Reply |Actual next step|Following step|src\/main/);
+          expect(serialized).toContain(i18n.t(kind === 'plan' ? 'share:widgets.step' : 'share:widgets.hidden', { index: 2 }));
+        }
+        if (state === 'completed' && kind === 'plan') expect(texts).toContain(i18n.t('share:widgets.completed'));
+      }
+    }
+    const localized = buildWidgetTree(jsx(SessionWidget, { snapshot: { ...data, language: 'es' }, scheme: 'light' }));
+    expect(localized.props.accessibilityLabel).toBe(i18n.getFixedT('es')('share:widgets.replies'));
+    expect(text(localized)).toContain(i18n.getFixedT('es')('share:widgets.updated', { time: formatTimestamp(now, 'es') }));
+  });
+
+  function nativeRuntime(dev = false) {
+    const widget = renderer(dev);
+    const placed = widget.WIDGET_NAMES.flatMap((widgetName: string, index: number) => (index ? [300] : [140, 300]).map((height, row) => ({ widgetName, widgetId: index * 10 + row, height, width: 300 })));
+    const native = { getWidgetInfo: vi.fn(async (name: string) => placed.filter((info: any) => info.widgetName === name)), drawWidgetById: vi.fn() };
+    const boundary = { '../AndroidWidget': { AndroidWidget: native } };
+    let task: any;
+    const platform = { Platform: { OS: 'android' }, AppRegistry: { registerHeadlessTask: vi.fn((_key, factory) => { task = factory(); }) } };
+    const library = {
+      ...primitives,
+      ...loadModule(`${libraryRoot}api/get-widget-info.js`, boundary),
+      ...loadModule(`${libraryRoot}api/request-widget-update-by-id.js`, boundary),
+      ...loadModule(`${libraryRoot}api/register-widget-task-handler.js`, { ...boundary, 'react-native': platform }),
+    };
+    const imports = { 'react-native-android-widget': library, 'react-native': platform, '@/widgets/session-widget': widget };
+    const bridge = (os = 'android', ownership = 'standalone', e2eMode = false) => loadModule('lib/widgets.tsx', {
+      ...imports, 'react-native': { Platform: { OS: os } }, 'expo-constants': { appOwnership: ownership, expoConfig: { extra: { e2eMode } } },
+    }, dev, os);
+    const storage = { getItem: vi.fn(async (key: string) => key === storageKeys.WIDGET_SNAPSHOT_STORAGE_KEY ? JSON.stringify(snapshot()) : JSON.stringify({ showWidgetPreviews: false, language: 'en' })) };
+    const snapshotStorage = loadModule('providers/widget-snapshot-storage.ts', {
+      '@react-native-async-storage/async-storage': storage, '@/lib/storage-keys': storageKeys,
+      '@/providers/widget-snapshot': { hideWidgetPreviews, parseWidgetSnapshot },
+    }, dev);
+    loadModule('widgets/session-widget-task.tsx', { ...imports, '@/providers/widget-snapshot-storage': snapshotStorage }, dev);
+    return { native, bridge, placed, storage, task: () => task };
+  }
+
+  it.each([true, false])('dispatches foreground and headless updates with native boundaries only, dev=%s', async (dev) => {
+    const runtime = nativeRuntime(dev);
+    await runtime.bridge().updateHomeWidget(snapshot());
+    expect(runtime.native.drawWidgetById).toHaveBeenCalledTimes(runtime.placed.length);
+    for (const [config, name, id] of runtime.native.drawWidgetById.mock.calls) {
+      expect(runtime.placed).toContainEqual(expect.objectContaining({ widgetName: name, widgetId: id }));
+      for (const scheme of ['light', 'dark']) expect(text(config[scheme]).length).toBeGreaterThan(1);
+    }
+    runtime.native.drawWidgetById.mockClear();
+    for (const info of runtime.placed) for (const widgetAction of ['WIDGET_ADDED', 'WIDGET_UPDATE', 'WIDGET_RESIZED']) {
+      await runtime.task()({ ...info, widgetAction });
+    }
+    expect(runtime.native.drawWidgetById).toHaveBeenCalledTimes(runtime.placed.length * 3);
+    expect(runtime.storage.getItem).toHaveBeenCalledWith(storageKeys.WIDGET_SNAPSHOT_STORAGE_KEY);
+    expect(runtime.storage.getItem).toHaveBeenCalledWith(storageKeys.CHAT_PREFERENCES_STORAGE_KEY);
+    for (const [config, name] of runtime.native.drawWidgetById.mock.calls) {
+      expect(JSON.stringify(config)).not.toMatch(/Reply |Actual next step|src\/main/);
+      expect(text(config.light).length).toBeGreaterThan(1);
+      expect(text(config.light)).toContain('one');
+      expect(text(config.light).join('\n')).toContain(i18n.t(name === 'PlanWidget' ? 'share:widgets.step' : 'share:widgets.hidden', { index: 2 }));
+    }
+    runtime.native.drawWidgetById.mockClear();
+    await runtime.task()({ ...runtime.placed[0], widgetAction: 'WIDGET_DELETED' });
+    await runtime.task()({ ...runtime.placed[0], widgetName: 'UnknownWidget', widgetAction: 'WIDGET_UPDATE' });
+    expect(runtime.native.drawWidgetById).not.toHaveBeenCalled();
+    runtime.storage.getItem.mockResolvedValue(null);
+    await runtime.task()({ ...runtime.placed[0], widgetAction: 'WIDGET_UPDATE' });
+    expect(text(runtime.native.drawWidgetById.mock.calls[0][0].light)).toContain(i18n.t('share:widgets.noReply'));
+  });
+
+  it('awaits every placed instance and catches individual failures without skipping other widgets', async () => {
+    const runtime = nativeRuntime();
+    const original = runtime.native.getWidgetInfo.getMockImplementation()!;
+    const delayed = deferred();
+    let calls = 0;
+    runtime.native.getWidgetInfo.mockImplementation((name: string) => name === 'SessionWidget' && ++calls > 1 ? delayed.promise : original(name));
+    runtime.native.drawWidgetById.mockImplementation((_config, _name, id) => { if (id === 0) throw new Error('native dispatch failed'); });
+    const warning = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    try {
+      let finished = false;
+      const pending = runtime.bridge().updateHomeWidget(snapshot()).then(() => { finished = true; });
+      await vi.waitFor(() => expect(runtime.native.drawWidgetById).toHaveBeenCalledTimes(2));
+      expect(finished).toBe(false);
+      delayed.resolve(runtime.placed.filter((info: any) => info.widgetName === 'SessionWidget'));
+      await pending;
+      expect(runtime.native.drawWidgetById).toHaveBeenCalledTimes(4);
+      expect(warning).toHaveBeenCalledWith('Could not update the home widget.', 'SessionWidget', 0, expect.any(Error));
+      runtime.native.getWidgetInfo.mockImplementation((name: string) => name === 'SessionWidget' ? Promise.reject(new Error('lookup failed')) : original(name));
+      runtime.native.drawWidgetById.mockClear();
+      await runtime.bridge().updateHomeWidget(snapshot());
+      expect(runtime.native.drawWidgetById).toHaveBeenCalledTimes(2);
+      expect(warning).toHaveBeenCalledWith('Could not list the home widgets.', 'SessionWidget', expect.any(Error));
+      runtime.native.getWidgetInfo.mockImplementation(original);
+      runtime.native.drawWidgetById.mockReset();
+      const data = snapshot();
+      await runtime.bridge().updateHomeWidget({ ...data, plan: { ...data.plan, steps: null } });
+      expect(runtime.native.drawWidgetById).toHaveBeenCalledTimes(3);
+      expect(runtime.native.drawWidgetById.mock.calls.map(([, name]) => name)).not.toContain('PlanWidget');
+      expect(warning).toHaveBeenCalledWith('Could not update the home widget.', 'PlanWidget', 20, expect.objectContaining({ message: expect.stringContaining('slice') }));
+    } finally { warning.mockRestore(); }
+  });
+
+  it('does not dispatch widgets on web, Expo Go or E2E', async () => {
+    const runtime = nativeRuntime();
+    for (const args of [['web'], ['android', 'expo'], ['android', 'standalone', true]] as any[]) await runtime.bridge(...args).updateHomeWidget(snapshot());
+    expect(runtime.native.getWidgetInfo).not.toHaveBeenCalled();
+    expect(runtime.native.drawWidgetById).not.toHaveBeenCalled();
+  });
 });

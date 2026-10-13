@@ -4,13 +4,10 @@
 // notification) passes through unchanged.
 let shareReceipt = 0;
 export async function redirectSystemPath({ path }: { path: string; initial: boolean }) {
-  try {
-    if (new URL(path).hostname === 'expo-sharing') {
-      // Re-entering an already visible preview must ingest the new intent too.
-      return `/share?receipt=${++shareReceipt}`;
-    }
-    return path;
-  } catch {
-    return path;
+  // React Native's URL.hostname only parses HTTP(S), not custom app schemes.
+  if (/^[a-z][a-z\d+.-]*:\/\/expo-sharing(?:[/?#]|$)/i.test(path)) {
+    // Re-entering an already visible preview must ingest the new intent too.
+    return `/share?receipt=${++shareReceipt}`;
   }
+  return path;
 }

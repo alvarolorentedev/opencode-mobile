@@ -422,6 +422,9 @@ permission and Chat Library visibility do not gate widget reads.
   headlessly from storage; no headless network reads or mutations. Absolute update
   timestamps identify last-known state while suspended. The existing native
   `SessionWidget` identity is retained for Latest replies.
+  The bridge awaits serialization and native dispatch for each placed widget
+  separately, isolating lookup/repaint failures from other instances and the
+  provider publish queue. The native draw API has no completion acknowledgement.
 
 - `lib/notifications.ts`
   Local notifications, background monitoring task, and notification debug status.
@@ -451,6 +454,8 @@ new intent refreshes an already-visible screen. The iOS extension remains
 [deferred](ios-share-parity.md). A version-checked prebuild patch in
 `scripts/prepare-android-sharing.cjs` fixes Expo Sharing 57.0.22 stream handling,
 accompanying text, unique cache copies and bounded reads; review it on upgrade.
+The redirect matches the exact share host directly, because React Native's
+`URL.hostname` does not parse custom app schemes. Other deep links pass through.
 
 `lib/share/parse.ts` normalizes Java `file:/` URIs without decoding paths, treats
 text/HTML streams as attachments, applies the ten-item and per-file 10 MB limits,

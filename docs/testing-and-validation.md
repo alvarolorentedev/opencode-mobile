@@ -31,6 +31,16 @@ idempotence, unique/bounded cache copies and failure before writes on unsupporte
 versions. `tests/e2e/share.spec.mjs` remains unchanged web route smoke coverage;
 the native share sheet requires device acceptance.
 
+`native-intent.test.ts` uses the installed React Native URL implementation to
+reproduce the custom-scheme hostname failure and verifies cold/warm share routing,
+repeat receipts, and unrelated-link preservation. The redirect fix needs no
+native plugin change; Android device acceptance must still confirm the preview,
+conversation selection and attachment handoff with the app closed and open.
+Redirect verification (2026-10-13): the native-URL regression failed before the
+fix and passed after it. Static CI (286 Vitest checks), both fake-server
+self-tests and all 129 web flows pass. Android development prebuild succeeds;
+Gradle compilation remains blocked by the missing Android SDK.
+
 `widget-flow.test.ts` exercises recent reply selection, descendant/global blocker
 grouping, removal of settled requests, real todo progress/completion, redaction,
 malformed snapshots, independent workspace reads, failed-read retention, global
@@ -38,6 +48,14 @@ events/resume/polling refresh, stale scope rejection, serialized writes, prefere
 changes during queued writes, headless privacy enforcement, responsive trees,
 fixed widget locales and route targets. Existing
 `widget-snapshot.test.ts` preserves the legacy snapshot read contract.
+Rendering coverage compiles the real source with Expo's Android Babel preset and
+React Compiler enabled in development and production, then runs the installed
+widget serializer with real primitives. It covers all three widgets, both themes,
+small/large sizes, visible content and backgrounds, empty states, hidden previews,
+completed plans, accessibility and exact chat links. Foreground and headless
+integration tests mock native boundaries only, read real snapshot storage logic,
+and verify awaited dispatches, independent instance failures and platform guards.
+Mock JSX trees alone cannot detect compiler hooks or unsupported Fragments.
 
 Required gates: `test:ci:static`, `test:fake-server:self`, `test:e2e:web`,
 `test:foss`, and `build:development:android`. E2E and fake-server handlers are not
@@ -54,6 +72,9 @@ Native release acceptance remains blocking:
   open and incomplete onboarding.
 - Add all three widgets in a minified release, resize to minimum/large sizes,
   verify both themes, large text and TalkBack, reboot and reopen after force-stop.
+  Verify existing placed widgets repaint after upgrade without removing them;
+  every widget must show a background, title and content or an explicit empty
+  state, rather than an invisible clickable rectangle.
 - Receive replies and blockers in another workspace with the library closed;
   answer a permission/question and confirm its removal. Exercise child/global
   blockers, current-chat plan changes/completion and empty plans.
@@ -64,16 +85,18 @@ Native release acceptance remains blocking:
 - iOS launcher quick actions remain unchanged and still require signed-device
   cold-start acceptance. iOS Share/Widget extensions remain deferred.
 
-Implementation verification (2026-10-13): static CI passes with 278 Vitest
+Implementation verification (2026-10-13): static CI passes with 286 Vitest
 checks; both fake-server self-tests, all 129 web E2E flows and FOSS preparation
 pass. Development and production Android prebuilds generate all three receivers,
 zero periodic update intervals and the release R8 keep rules. An isolated Kotlin
 probe with Android/Expo stubs passes text-stream/caption handling, duplicate
-filenames, known/unknown-size limits and partial-file cleanup. This is not a full
-Android build: Gradle stops because the SDK location is missing. Actual device
+filenames, known/unknown-size limits and partial-file cleanup. The blank-widget
+repair also passes production Android export with Hermes bytecode generation.
+Both development and minified release Gradle attempts stop because the SDK
+location is missing. Actual device
 rendering, TalkBack, native share permissions and minified/R8 acceptance remain
-unverified. No fake-server/E2E contract, dependency version or release version
-was changed; iOS Share/Widget extensions remain deferred.
+unverified. No fake-server/E2E contract or dependency version was changed; iOS
+Share/Widget extensions remain deferred.
 
 ## Current Strategy
 
