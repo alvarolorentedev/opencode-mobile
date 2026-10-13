@@ -252,7 +252,9 @@ const realtime = await loadTs('providers/use-opencode-realtime.ts', {
 assert.equal(realtime.shouldPoll(true, false), false);
 assert.equal(realtime.shouldPoll(true, true), true);
 assert.equal(realtime.shouldPoll(false, false), true);
+let nativeSurfacesRefreshed = 0;
 const inputs = {
+  refreshNativeSurfaces: async () => { nativeSurfacesRefreshed++; },
   catalogClient, activeProjectPath: '/repo', connected: true, busy: false, currentSessionId: 's',
   onEvent: (event) => events.push(event.type),
   refreshSessions: async () => { sessionsRefreshed++; await heldRefresh?.promise; },
@@ -272,6 +274,7 @@ wake(null); await runtime.settle(); assert.equal(runtime.value.eventStreamStatus
 runtime.fire(1000); await runtime.settle(); assert.equal(subscriptions, 2);
 wake({ location: { directory: '/another-project' }, type: 'server.connected' }); await runtime.settle();
 assert.equal(sessionsRefreshed, 4); assert.equal(pendingRefreshed, 4, 'reconnection always recovers pending interactions');
+assert.equal(nativeSurfacesRefreshed, 4, 'widget reconciliation follows first connect, safety polls and reconnects');
 assert.deepEqual(events, ['server.connected'], 'other-project events are filtered');
 wake(null); await runtime.settle(); runtime.unmount(); assert.equal(runtime.countTimers(1000), 0);
 

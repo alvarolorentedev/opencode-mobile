@@ -8,6 +8,7 @@ import type { ConnectionFailureKind, ScopedOpencodeClient } from '@/lib/opencode
 type RealtimeActions = {
   onEvent: (event: OpencodeEvent) => void;
   onGlobalEvent?: (event: OpencodeEvent) => void;
+  refreshNativeSurfaces?: () => Promise<unknown>;
   onFatalError?: (kind: ConnectionFailureKind) => void;
   refreshSessions: (silent: boolean) => Promise<unknown>;
   refreshPendingInteractions: () => Promise<unknown>;
@@ -61,6 +62,7 @@ export function useOpencodeRealtime({ catalogClient, activeProjectPath, connecte
     let result: Promise<unknown>;
     result = Promise.allSettled([
       next.refreshSessions(true), next.refreshPendingInteractions(),
+      next.refreshNativeSurfaces?.(),
       ...[...sessions].flatMap((id) => [next.refreshMessages(id, true, full ? { full: true } : undefined), next.refreshSessionDiff(id, true), next.refreshSessionTodos(id)]),
     ]).finally(() => {
       if (inFlight.current !== result) return;

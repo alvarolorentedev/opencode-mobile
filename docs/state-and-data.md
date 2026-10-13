@@ -274,7 +274,7 @@ Persisted values:
 - `opencode-mobile.onboarding-version` (completion-only first-run marker; see below)
 - `opencode-mobile.last-session-by-project` (nested `connectionScope -> projectPath -> sessionId`; legacy flat maps are discarded on hydration)
 - `opencode-mobile.pending-notification-sessions` (non-secret connection references, keyed by connection scope + session ID)
-- `opencode-mobile.widget-snapshot` (bounded Android home-widget snapshot: `updatedAt` plus at most three `{id, title, status, link}` rows for running/recent sessions; validated on read and never stored with credentials — see `providers/widget-snapshot.ts`)
+- `opencode-mobile.widget-snapshot` (bounded Android replies, awaiting-action and plan snapshot: connection scope, language/privacy preference, per-surface observation times, three rows/steps, counts, validated links and optional 160-character previews; no authentication credentials, raw request metadata or tool output)
 - `opencode-mobile.sessions.<connectionScope>.<projectPath>` / `opencode-mobile.session-statuses.<connectionScope>.<projectPath>` (per connection + project cache)
 - `opencode-mobile.favorite-sessions` (cross-workspace favorites, each carrying its connection scope)
 
@@ -754,3 +754,24 @@ tokens report presence only. Downloaded state is recovered from Play and never
 triggers installation automatically. Safe available candidates on Play open native
 consent directly; only downloaded candidates render an Android banner. iOS
 candidates retain an explicit App Store action. See [app updates](app-updates.md).
+
+## Inbound share and widget state
+
+`use-share-state` owns one in-memory receipt and its ten-minute deadline. The
+preview destination defaults after hydration and is independent of the open
+session until Add. Confirmation is bound to connection + project + session;
+consumption clears it synchronously so Strict Mode/route rerenders cannot append
+it twice. Discard/expiry cancel pending reads and navigation. A failed opening
+retains both payload and any newly created target for retry.
+
+`use-widget-state` owns last-known provider snapshots and guarded service reads.
+Replies and attention have independent observation times; failed reads retain
+previous data. Current plan is projected from accumulated V2 todo records or V1
+todos. Scope changes clear previous-server content, and writes are serialized
+before repaint. `showWidgetPreviews` defaults to true in existing preference
+storage; false removes all reply/request/step text from snapshots. Headless reads also
+check persisted preferences so a newer privacy choice overrides an older queued
+snapshot; unreadable preferences hide excerpts. Widget locales do not mutate app
+language. Legacy title/
+status snapshots remain readable. Headless rendering has no API access. Live
+updates stop when Android suspends JS; timestamps explicitly represent cached data.

@@ -33,6 +33,7 @@ import { usePermissionRulesState } from '@/providers/use-permission-rules-state'
 import { useTranscriptState } from '@/providers/use-transcript-state';
 import { useMcpState } from '@/providers/use-mcp-state';
 import { useNativeSurfaces } from '@/providers/use-native-surfaces';
+import { useWidgetState } from '@/providers/use-widget-state';
 import { useOpencodePersistence } from '@/providers/use-opencode-persistence';
 import { useTerminalState } from '@/providers/use-terminal-state';
 import { useWorktreeState } from '@/providers/use-worktree-state';
@@ -221,13 +222,15 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
   });
 
   useNativeSurfaces({
-    ready: state.connection.status !== 'idle',
-    connected: state.connection.status === 'connected',
-    connectionScope: state.connectionScope,
-    language: state.chatPreferences.language,
+    ready: state.connection.status !== 'idle', connected: state.connection.status === 'connected',
+    connectionScope: state.connectionScope, language: state.chatPreferences.language,
     activeSessions: activeSessionsHook.activeSessions,
   });
-
+  const widgets = useWidgetState({
+    ...state, hydrated: isHydrated, connected: state.connection.status === 'connected', catalogClient, contract: state.serverContract, isCurrentCatalogClient,
+    showPreviews: state.chatPreferences.showWidgetPreviews !== false, language: state.chatPreferences.language,
+    sessions: state.sessions, todoRecordsBySession: transcript.todoRecordsBySession, todosBySession: state.todosBySession,
+  });
   const clearProjectState = useCallback(() => {
     bootstrapPromiseRef.current = null;
     bootstrapTokenRef.current = undefined;
@@ -375,11 +378,12 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
     activeProjectPath: state.activeProjectPath,
     connected: state.connection.status === 'connected',
     pendingSessionIds: Object.keys(inbox.pendingPromptsBySession).filter((id) => inbox.pendingPromptsBySession[id].length > 0),
-    busy: Object.values(inbox.pendingPromptsBySession).some((prompts) => prompts.length > 0) || prompt.sendingState.active || conversationPhase !== 'off' || Object.values(state.sessionStatuses).some((status) => status.type !== 'idle'),
+    busy: widgets.busy || Object.values(inbox.pendingPromptsBySession).some((prompts) => prompts.length > 0) || prompt.sendingState.active || conversationPhase !== 'off' || Object.values(state.sessionStatuses).some((status) => status.type !== 'idle'),
     currentSessionId: state.currentSessionId,
     conversationSessionId,
     onEvent: handleEvent,
-    onGlobalEvent: handleActivityEvent,
+    onGlobalEvent: (event) => { handleActivityEvent(event); widgets.handleWidgetEvent(event); },
+    refreshNativeSurfaces: widgets.refreshWidgets,
     onFatalError: connectionActions.handleStreamAuthFailure,
     refreshSessions: workspace.refreshSessions,
     refreshPendingInteractions: workspace.refreshPendingInteractions,
@@ -392,8 +396,9 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
     streamConnectedRef.current = eventStreamStatus === 'connected';
   });
 
-  const sharedInput = useShareState();
-
+  const sharedInput = useShareState({
+    ...state, hydrated: isHydrated, projectPath: state.activeProjectPath, sessions: activeSessionsHook.catalogSessions, hideSubagentChats: state.chatPreferences.hideSubagentChats, refreshTargets: activeSessionsHook.refreshActiveSessions,
+    createSession: sessionActions.createSession, openSession: connectionActions.openDeepLinkSession });
   useOpencodeProviderEffects({
     ...state,
     client,

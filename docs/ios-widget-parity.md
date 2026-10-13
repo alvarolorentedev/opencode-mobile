@@ -24,6 +24,9 @@ the docs it references.
   `widgets/session-widget.tsx` + `widgets/session-widget-task.tsx`, fed by the
   bounded snapshot in `providers/widget-snapshot.ts` /
   `providers/widget-snapshot-storage.ts`.
+- Android now has Latest replies, Awaiting actions and current-chat Plan progress.
+  Future iOS home widgets should consume the same bounded, redacted sections.
+  Lock Screen widgets must omit reply/request/step text and titles.
 - iOS Lock Screen and home screen widgets: **missing**. iOS Live Activities are
   also missing (and deferred; see below).
 

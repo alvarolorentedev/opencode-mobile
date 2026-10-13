@@ -46,6 +46,7 @@ export type ChatPreferences = {
   responseScope: ResponseScope;
   includeNextActions: boolean;
   hideSubagentChats: boolean;
+  showWidgetPreviews: boolean;
 };
 
 export const defaultChatPreferences: ChatPreferences = {
@@ -69,6 +70,7 @@ export const defaultChatPreferences: ChatPreferences = {
   responseScope: 'brief',
   includeNextActions: true,
   hideSubagentChats: false,
+  showWidgetPreviews: true,
 };
 
 function buildReasoningSystemPrompt(level: ReasoningLevel) {

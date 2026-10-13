@@ -1,6 +1,6 @@
 {
   "title": "Mit OpenCode geteilt",
-  "subtitle": "Prüfe diesen Inhalt, wähle einen Arbeitsbereich und füge ihn dem Chat hinzu. Es wird nichts gesendet, bis du auf Senden tippst.",
+  "subtitle": "Prüfe den Inhalt, wähle eine Unterhaltung und füge ihn zum Entwurf hinzu. Erst beim Senden wird er übermittelt.",
   "workspace": "Arbeitsbereich",
   "noWorkspace": "Kein Arbeitsbereich ausgewählt",
   "chooseWorkspace": "Auswählen",
@@ -13,5 +13,29 @@
   "empty": "Es gab nichts zu teilen.",
   "backToChat": "Zurück zum Chat",
   "finishSetup": "Schließe die Einrichtung von OpenCode Mobile ab, um geteilte Inhalte hinzuzufügen.",
-  "continueSetup": "Einrichtung fortsetzen"
+  "continueSetup": "Einrichtung fortsetzen",
+  "conversation": "Unterhaltung",
+  "change": "Ändern",
+  "chooseConversation": "Unterhaltung auswählen",
+  "unavailable": "Der Inhalt konnte nicht gelesen werden. Teile ihn erneut.",
+  "destinationChanged": "Die Unterhaltung hat sich geändert. Wähle ein Ziel und versuche es erneut.",
+  "widgets": {
+    "replies": "Neueste Antworten",
+    "attention": "Ausstehende Aktionen",
+    "plan": "Planfortschritt",
+    "noPlan": "Keine Planschritte verfügbar",
+    "chooseChat": "Wähle eine Unterhaltung in der App",
+    "noReply": "Noch keine Antwort",
+    "noActions": "Keine ausstehenden Aktionen",
+    "progress": "{{completed}}/{{total}} Schritte erledigt",
+    "step": "Schritt {{index}}",
+    "requests": "Berechtigungen: {{permissions}} · Fragen: {{questions}}",
+    "moreChats": "+{{count}} weitere Chats",
+    "updated": "Aktualisiert {{time}}",
+    "hidden": "Vorschauen ausgeblendet",
+    "previewsTitle": "Widget-Vorschauen anzeigen",
+    "previewsDescription": "Antworten, Anfragen und Planschritte auf dem Startbildschirm anzeigen.",
+    "completed": "Plan abgeschlossen",
+    "openApp": "App zum Aktualisieren öffnen"
+  }
 }

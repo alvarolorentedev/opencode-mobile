@@ -3,9 +3,11 @@ import * as Haptics from 'expo-haptics';
 import { usePathname } from 'expo-router';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Alert, Keyboard, Platform } from 'react-native';
+import { Keyboard } from 'react-native';
 
 import { useUpdateBlocker } from '@/hooks/use-update-blocker';
+import { mergeSharedDraft } from '@/lib/share/parse';
+import { getConnectionScope } from '@/lib/connection-scope';
 import { type TranscriptEntry } from '@/lib/opencode/format';
 import { getTranscriptActivityLabel, getUserTurnForMessage, isTranscriptDisplayMessage } from '@/lib/opencode/transcript';
 import { getLatestContextTokens } from '@/lib/opencode/usage';
@@ -36,6 +38,7 @@ export function useChatViewController() {
   const { chatPreferences, updateChatPreferences } = usePreferences();
   const slim = chatPreferences.slimInterface === true;
   const { connection, settings, serverCapabilities } = useConnection();
+  const connectionScope = getConnectionScope(settings);
   const { approvals } = useApprovals();
   const { conversation, clearConversationFeedback, toggleConversationMode } = useConversation();
   const {
@@ -186,28 +189,20 @@ export function useChatViewController() {
 
   const pathname = usePathname();
   const sharedPending = sharedInput.pending;
-  const clearShared = sharedInput.clearShared;
+  const consumeShared = sharedInput.consumeShared;
   // Shared content lands in the composer as a reviewable draft; it is never
   // submitted here. Only the chat route consumes it, so the share preview's
   // Discard still clears a staged payload.
   useEffect(() => {
-    if (!sharedPending || pathname !== '/') {
+    if (!sharedPending || pathname !== '/' || !currentSessionId || !activeProject?.path) {
       return;
     }
-    const nextText = sharedPending.text || sharedPending.url || '';
-    if (nextText) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect -- shared content seeds the reviewable draft; never auto-sent.
-      setDraft((current) => (current.trim() ? current : nextText));
-    }
-    if (sharedPending.attachments.length > 0) {
-      setAttachments((current) => {
-        const existing = new Set(current.map((attachment) => attachment.uri));
-        const additions = sharedPending.attachments.filter((attachment) => !existing.has(attachment.uri));
-        return additions.length ? [...current, ...additions] : current;
-      });
-    }
-    clearShared();
-  }, [clearShared, pathname, sharedPending]);
+    const payload = consumeShared({ connectionScope, projectPath: activeProject.path, sessionId: currentSessionId });
+    if (!payload) return;
+    const next = mergeSharedDraft(draftRef.current, attachmentsRef.current, payload);
+    setDraft(next.draft);
+    setAttachments(next.attachments);
+  }, [activeProject?.path, connectionScope, consumeShared, currentSessionId, pathname, sharedPending, sharedInput.busy]);
 
   const latestAssistantEntry = useMemo(
     () => [...displayTranscript].reverse().find((entry) => entry.role === 'assistant' && entry.text.trim()),

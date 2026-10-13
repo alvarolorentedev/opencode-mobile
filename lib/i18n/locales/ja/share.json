@@ -1,6 +1,6 @@
 {
   "title": "OpenCode に共有",
-  "subtitle": "この内容を確認し、ワークスペースを選択してチャットに追加します。送信をタップするまで何も送信されません。",
+  "subtitle": "内容を確認し、会話を選んで下書きに追加します。送信をタップするまで送信されません。",
   "workspace": "ワークスペース",
   "noWorkspace": "ワークスペースが選択されていません",
   "chooseWorkspace": "選択",
@@ -13,5 +13,29 @@
   "empty": "共有する内容がありませんでした。",
   "backToChat": "チャットに戻る",
   "finishSetup": "共有内容を追加するには OpenCode Mobile のセットアップを完了してください。",
-  "continueSetup": "セットアップを続ける"
+  "continueSetup": "セットアップを続ける",
+  "conversation": "会話",
+  "change": "変更",
+  "chooseConversation": "会話を選択",
+  "unavailable": "共有内容を読み込めませんでした。もう一度共有してください。",
+  "destinationChanged": "会話が変更されました。送信先を選んで再試行してください。",
+  "widgets": {
+    "replies": "最新の返信",
+    "attention": "対応待ち",
+    "plan": "計画の進捗",
+    "noPlan": "計画の手順がありません",
+    "chooseChat": "アプリで会話を選択してください",
+    "noReply": "返信はまだありません",
+    "noActions": "対応待ちはありません",
+    "progress": "{{completed}}/{{total}} 手順完了",
+    "step": "手順 {{index}}",
+    "requests": "権限: {{permissions}} · 質問: {{questions}}",
+    "moreChats": "ほか {{count}} 件の会話",
+    "updated": "更新: {{time}}",
+    "hidden": "プレビュー非表示",
+    "previewsTitle": "ウィジェットのプレビューを表示",
+    "previewsDescription": "ホーム画面に返信、リクエスト、計画の内容を表示します。",
+    "completed": "計画完了",
+    "openApp": "アプリを開いて更新してください"
+  }
 }

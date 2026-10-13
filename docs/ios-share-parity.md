@@ -11,8 +11,7 @@ docs it references.
 ## Current shipped state (Android)
 
 - Receive plugin: `expo-sharing` config plugin in `app.config.ts` with
-  `android.enabled: true`, `singleShareMimeTypes: ['text/*', 'image/*',
-  'application/pdf']`, `multipleShareMimeTypes: ['image/*']`. The iOS block is
+  `android.enabled: true`, `singleShareMimeTypes: ['*/*']`, `multipleShareMimeTypes: ['*/*']`. The iOS block is
   intentionally absent.
 - Staging: `providers/use-share-state.ts` calls
   `getSharedPayloads()` / `getResolvedSharedPayloadsAsync()` on mount and on
@@ -20,10 +19,11 @@ docs it references.
   `SharedPayload` (bounded 10-minute TTL, never persisted).
 - Routing: `app/+native-intent.ts` redirects the `expo-sharing` host to
   `/share`; every other deep link passes through.
-- Preview: `app/share.tsx` shows text/link/attachment tiles, the workspace
-  picker, and Add to chat / Discard. Nothing is submitted here.
+- Preview: `app/share.tsx` shows text/link/attachment tiles, a current-chat destination, searchable conversation chooser
+  with workspace labels/New chat, and Add to chat / Discard. Nothing is submitted here.
 - Composer handoff: `components/chat/use-chat-view-controller.ts` consumes the
-  staged payload into `draft`/`attachments` when the chat route is focused. The
+  confirmed payload into `draft`/`attachments` once the route is focused and
+  connection/project/session match, preserving existing draft content. The
   composer still owns the explicit send.
 - Web/E2E: `useShareState` is a no-op on web; the browser cannot receive native
   share payloads.

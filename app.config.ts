@@ -1,4 +1,4 @@
-import { withAndroidManifest, withAppBuildGradle, withGradleProperties, withMainActivity } from '@expo/config-plugins';
+import { withAndroidManifest, withAppBuildGradle, withDangerousMod, withGradleProperties, withMainActivity } from '@expo/config-plugins';
 import { mergeContents } from '@expo/config-plugins/build/utils/generateCode';
 import type { ExpoConfig } from 'expo/config';
 
@@ -91,7 +91,13 @@ const MLKIT_SCANNER_ACTIVITY =
   'com.google.mlkit.vision.codescanner.internal.GmsBarcodeScanningDelegateActivity';
 
 const withAndroidAppConfig = (config: ExpoConfig) => {
-  const withGradle = withAndroidGradleProperties(config);
+  const withSharing = withDangerousMod(config, ['android', async (config) => {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports -- Expo config runs the Node build helper.
+    const { prepareAndroidSharing } = require('./scripts/prepare-android-sharing.cjs');
+    prepareAndroidSharing(config.modRequest.projectRoot);
+    return config;
+  }]);
+  const withGradle = withAndroidGradleProperties(withSharing);
   const withManifest = withAndroidManifest(withGradle, (config) => {
     const application = config.modResults.manifest.application?.[0];
     if (application) application.$['android:usesCleartextTraffic'] = 'true';
@@ -165,14 +171,14 @@ const withAndroidAppConfig = (config: ExpoConfig) => {
 const config: ExpoConfig = {
   name: isDevelopmentVariant ? 'OpenCode Mobile Dev' : 'OpenCode Mobile',
   slug: 'opencode-mobile',
-  version: '1.0.70',
+  version: '1.0.71',
   orientation: 'default',
   icon: './assets/images/icon.png',
   scheme: 'opencodemobile',
   userInterfaceStyle: 'automatic',
   android: {
     package: androidPackage,
-    versionCode: 70,
+    versionCode: 71,
     adaptiveIcon: {
       foregroundImage: './assets/images/adaptive-icon.png',
       backgroundColor: "#202020"
@@ -186,7 +192,7 @@ const config: ExpoConfig = {
   },
   ios: {
     bundleIdentifier: isDevelopmentVariant ? 'app.getopencode.mobile.dev' : 'app.getopencode.mobile',
-    buildNumber: '70',
+    buildNumber: '71',
     infoPlist: {
       ITSAppUsesNonExemptEncryption: false,
       NSPhotoLibraryUsageDescription: 'Allow OpenCode Mobile to access photos you choose to attach to chat messages.',
@@ -210,8 +216,8 @@ const config: ExpoConfig = {
       {
         android: {
           enabled: true,
-          singleShareMimeTypes: ['text/*', 'image/*', 'application/pdf'],
-          multipleShareMimeTypes: ['image/*'],
+          singleShareMimeTypes: ['*/*'],
+          multipleShareMimeTypes: ['*/*'],
         },
       },
     ],
@@ -257,7 +263,7 @@ const config: ExpoConfig = {
     [
       // Android home-screen widget. Widget trees and the headless task handler
       // live in widgets/; the provider publishes snapshots on confirmed state
-      // changes (providers/use-native-surfaces.ts). The picker label and
+      // changes (providers/use-widget-state.ts). The picker label and
       // description are written to strings.xml as non-translatable by the
       // plugin, so they stay English. iOS has no widget surface yet; see
       // docs/ios-widget-parity.md. The library is MIT-licensed and pure
@@ -267,12 +273,24 @@ const config: ExpoConfig = {
         widgets: [
           {
             name: 'SessionWidget',
-            label: 'OpenCode tasks',
-            description: 'Recent OpenCode tasks and their status.',
+            label: 'OpenCode latest replies',
+            description: 'Latest assistant replies across recent chats.',
             minWidth: '180dp',
-            minHeight: '110dp',
-            targetCellWidth: 3,
-            targetCellHeight: 2,
+            minHeight: '140dp',
+            targetCellWidth: 4,
+            targetCellHeight: 3,
+            resizeMode: 'horizontal|vertical',
+          },
+          {
+            name: 'AttentionWidget', label: 'OpenCode awaiting actions',
+            description: 'Pending permissions and questions across workspaces.',
+            minWidth: '180dp', minHeight: '140dp', targetCellWidth: 4, targetCellHeight: 3,
+            resizeMode: 'horizontal|vertical',
+          },
+          {
+            name: 'PlanWidget', label: 'OpenCode plan progress',
+            description: 'Todo steps and progress in the current chat.',
+            minWidth: '180dp', minHeight: '140dp', targetCellWidth: 4, targetCellHeight: 3,
             resizeMode: 'horizontal|vertical',
           },
         ],

@@ -51,9 +51,10 @@ export function parseIncomingShare(items: IncomingShareItem[]): SharedPayload | 
   const skipped: string[] = [];
 
   for (const item of items.slice(0, MAX_SHARE_ITEMS)) {
-    const contentUri = item.contentUri?.trim() || undefined;
+    // Java File.toURI() emits file:/…; keep percent-encoded paths intact.
+    const contentUri = item.contentUri?.trim().replace(/^file:\/(?!\/)/i, 'file:///') || undefined;
     const kind = item.contentType ?? undefined;
-    const isFileLike = Boolean(contentUri) && kind !== 'text';
+    const isFileLike = Boolean(contentUri);
 
     if (!isFileLike) {
       const value = (item.value ?? '').trim();
@@ -63,7 +64,7 @@ export function parseIncomingShare(items: IncomingShareItem[]): SharedPayload | 
       continue;
     }
 
-    if (kind === 'website') {
+    if (kind === 'website' && /^https?:\/\//i.test(contentUri!)) {
       urls.push(contentUri!);
       continue;
     }
@@ -89,7 +90,7 @@ export function parseIncomingShare(items: IncomingShareItem[]): SharedPayload | 
 
   const text = texts.join('\n\n').slice(0, MAX_SHARE_TEXT).trim();
   const url = urls[0];
-  if (!text && !url && attachments.length === 0) {
+  if (!text && !url && attachments.length === 0 && skipped.length === 0) {
     return null;
   }
 
@@ -98,5 +99,19 @@ export function parseIncomingShare(items: IncomingShareItem[]): SharedPayload | 
     ...(url ? { url } : {}),
     attachments,
     skipped,
+  };
+}
+
+export function mergeSharedDraft(draft: string, attachments: PromptAttachment[], payload: SharedPayload) {
+  const text = [payload.text, payload.url].filter(Boolean).join('\n\n');
+  const seen = new Set(attachments.map((item) => item.uri));
+  const additions = payload.attachments.filter((item) => {
+    if (seen.has(item.uri)) return false;
+    seen.add(item.uri);
+    return true;
+  });
+  return {
+    draft: text ? (draft.trim() ? `${draft}\n\n${text}` : text) : draft,
+    attachments: additions.length ? [...attachments, ...additions] : attachments,
   };
 }

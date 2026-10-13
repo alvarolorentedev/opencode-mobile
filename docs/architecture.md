@@ -401,31 +401,27 @@ timers alive; network reads and lifecycle decisions remain in the provider.
 autolinked from `modules/` and survive a clean prebuild. iOS, web, Expo Go, and
 E2E runs do not start this service.
 
-Launcher quick actions and the Android home widget are published from the same
-provider, by `providers/use-native-surfaces.ts`, whenever the connection-wide
-active-session selection or the current session changes. The selection itself
-stays in `providers/active-sessions.ts`; the hooks only debounce, translate
-labels, and hand data to the platform bridges. `hooks/use-quick-action-route.ts`
-resolves a quick-action tap through the existing `app/session/[id].tsx` resolver,
-exactly like a notification tap.
+Launcher quick actions remain foreground-only and use the existing active-session
+selection. `providers/use-widget-state.ts` independently owns the three Android
+widget snapshots. Its service aggregates the connection-wide session catalog,
+newest messages for three recent root chats, and permission/question reads for
+every session workspace. It receives global SSE events before workspace filtering
+and participates in the existing realtime reconciliation and 5s/10s polling;
+cross-workspace running work and blockers keep the safety poll active. Notification
+permission and Chat Library visibility do not gate widget reads.
 
-- `lib/quick-actions.ts`
-  `expo-quick-actions` bridge for dynamic launcher/home-screen actions. Session
-  items carry only `{ sessionId, projectPath, connectionScope }`; no static
-  shortcuts and no config plugin are used, so web/E2E/Expo Go no-op.
-- `lib/session-link.ts`
-  Canonical `opencodemobile://session/...` builder shared by the Android activity
-  notification and the widget snapshot.
-- `lib/widgets.tsx`
-  Android home-widget bridge. Repaints placed widgets from a provider-owned
-  snapshot; no-op on iOS (no widget surface yet, see
-  [iOS widget parity](ios-widget-parity.md)), web, and E2E.
-- `widgets/`
-  Headless widget trees and the task handler registered from `index.js`. These
-  files cannot live under `app/` because Expo Router treats `app/` as routes;
-  the handler reads provider-owned snapshot storage because it runs outside
-  React. `tests/architecture.test.mjs` applies the same size ratchet to this
-  directory.
+- `lib/quick-actions.ts` and `hooks/use-quick-action-route.ts`: existing launcher
+  bridge and validated session routing.
+- `lib/session-link.ts`: shared credential-free session links.
+- `providers/widget-content.ts`: bounded reply, blocker and real todo projections.
+- `providers/widget-snapshot.ts` / storage: validated legacy-compatible snapshot,
+  per-surface observation times, ordered writes before repaint, scope guards and
+  preview redaction. No authentication credentials, tool output or raw request
+  metadata are stored. Enabled previews do persist user-visible content.
+- `lib/widgets.tsx` and `widgets/`: repaint the three registered widgets and render
+  headlessly from storage; no headless network reads or mutations. Absolute update
+  timestamps identify last-known state while suspended. The existing native
+  `SessionWidget` identity is retained for Latest replies.
 
 - `lib/notifications.ts`
   Local notifications, background monitoring task, and notification debug status.
@@ -449,25 +445,24 @@ exactly like a notification tap.
 
 ### Inbound Sharing
 
-Content shared into the app from the OS share sheet is staged in one
-provider-owned, in-memory slot and previewed before it can reach the composer.
+The Android `expo-sharing` receive plugin accepts single/multiple files (`*/*`).
+`app/+native-intent.ts` routes shares to the preview with a receipt key so a
+new intent refreshes an already-visible screen. The iOS extension remains
+[deferred](ios-share-parity.md). A version-checked prebuild patch in
+`scripts/prepare-android-sharing.cjs` fixes Expo Sharing 57.0.22 stream handling,
+accompanying text, unique cache copies and bounded reads; review it on upgrade.
 
-- `app.config.ts` enables the `expo-sharing` receive plugin for Android
-  (`ACTION_SEND`/`ACTION_SEND_MULTIPLE` intent filters). The iOS Share Extension
-  is deferred and tracked in [iOS share parity](ios-share-parity.md).
-- `app/+native-intent.ts` redirects the `expo-sharing` deep-link host to
-  `/share`; session, pair, and notification links pass through unchanged.
-- `providers/use-share-state.ts` reads `getSharedPayloads()` /
-  `getResolvedSharedPayloadsAsync()` on mount and on foreground return, parses
-  through `lib/share/parse.ts`, and stages a bounded (10-minute TTL) payload.
-  It is a no-op on web. Nothing is persisted; `SharedPayload` carries no
-  credentials.
-- `lib/share/parse.ts` normalizes raw payloads into the composer's attachment
-  shape, reusing `lib/attachment-preview.ts`'s 10 MB limit and URI allow-list.
-- `components/chat/use-chat-view-controller.ts` consumes the staged payload into
-  `draft`/`attachments` only while the chat route is focused, so the share
-  preview's Discard still clears a staged payload. The composer keeps the only
-  send path; sharing never auto-submits.
+`lib/share/parse.ts` normalizes Java `file:/` URIs without decoding paths, treats
+text/HTML streams as attachments, applies the ten-item and per-file 10 MB limits,
+and preserves skipped-item warnings even if nothing is usable.
+`providers/use-share-state.ts` owns in-memory receipts, the 10-minute TTL,
+hydration-dependent default destination, connection-scoped chooser data,
+confirmation, guarded session creation/opening and one-shot consumption.
+`app/share.tsx` renders preview/chooser/error state and navigates only after the
+provider confirms the destination. The composer consumes only a confirmed share
+whose connection, project and session match; it appends text and URL without
+losing the local draft and deduplicates attachments. Nothing auto-sends. Discard,
+expiry and connection changes cancel stale operations; failures retain the share.
 
 ### Internationalization
 

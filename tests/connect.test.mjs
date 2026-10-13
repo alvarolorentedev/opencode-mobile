@@ -284,21 +284,31 @@ for (const variant of ['development', 'production']) {
   const source = (await readFile(new URL(`../scripts/${file}.mjs`, import.meta.url), 'utf8')).replace(/^#!.*\n/, '');
   const code = ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2020, allowJs: true, esModuleInterop: true } }).outputText;
   const commands = [];
+  const writes = [];
   const environment = { EXPO_APP_VARIANT: variant === 'development' ? 'production' : 'development', ANDROID_KEYSTORE_PATH: '/fake/store', ANDROID_KEYSTORE_PASSWORD: 'test', ANDROID_KEY_ALIAS: 'test', ANDROID_KEY_PASSWORD: 'test' };
   const actualRequire = createRequire(import.meta.url);
   await vm.runInNewContext(`(async () => { ${code} })()`, {
     exports: {}, Buffer,
-    process: { env: environment, cwd: () => '/fake/project', exit: () => { throw new Error('Build script failed'); } },
+    process: { env: environment, cwd: () => '/fake/project', exit: () => { throw new Error('Build script failed'); }, on: () => {} },
     console: { log() {}, warn() {}, error() {} },
     require: (name) => name === 'node:child_process' ? {
-      spawnSync(command, args, options) { commands.push({ command, env: options?.env ?? environment }); return { status: 0, stdout: 'Alias name: test\n' }; },
+      spawnSync(command, args, options) { commands.push({ command, args, env: options?.env ?? environment }); return { status: 0, stdout: 'Alias name: test\n' }; },
     } : name === 'node:fs' ? {
       existsSync: () => true, copyFileSync() {}, statSync: () => ({ size: 128 }), readFileSync: () => Buffer.alloc(128),
+      appendFileSync(_path, data) { writes.push(String(data)); }, writeFileSync() {},
     } : actualRequire(name),
   });
   const nativeCommands = commands.filter(({ command }) => command === 'npx' || command === './gradlew');
   assert.deepEqual(nativeCommands.map(({ command }) => command), ['npx', './gradlew']);
   for (const command of nativeCommands) assert.equal(command.env.EXPO_APP_VARIANT, variant);
+  // Signing credentials must never reach a command line; they are injected
+  // through the generated gradle.properties instead.
+  for (const { args } of commands) assert.ok(!args.includes('test'), `Build commands must not carry signing secrets: ${args.join(' ')}`);
+  assert.ok(commands.some(({ command, args }) => command === './gradlew' && !args.some((arg) => String(arg).includes('signing'))), 'Gradle must not receive -Pandroid.injected.signing.* arguments.');
+  // Only the release script signs, so only it writes signing properties.
+  if (variant === 'production') {
+    assert.ok(writes.some((data) => data.includes('android.injected.signing.store.password=test')), 'Signing credentials must be injected through gradle.properties.');
+  }
 }
 console.log('Connect parser, API, credentials, native availability, camera config, build variants, and WebSocket tests passed');
 

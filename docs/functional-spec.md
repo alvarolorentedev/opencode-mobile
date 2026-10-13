@@ -567,6 +567,17 @@ Parity implication:
   native app and is disabled on web, Expo Go, and E2E runs.
 - a rewrite should preserve both in-app completion flushing and background completion checking
 
+## Android inbound sharing
+
+Receive files, images, audio, video, documents, text and URLs from another app's
+Share menu. Preview defaults to the current conversation; Change lets you pick
+another conversation on the active server or New chat in the current workspace.
+Add opens the exact destination and seeds a reviewable composer draft, preserving
+existing text/attachments. Only Send submits. Errors retain the payload; Discard
+and the ten-minute TTL clear it. Up to ten items and 10 MB per file; rejected
+items remain visible as warnings, and selected-model capability checks apply.
+iOS receive parity remains deferred.
+
 ## Quick Actions And Home Widget
 
 Launcher quick actions (iOS and Android) and the Android home widget surface
@@ -587,20 +598,27 @@ Quick actions:
   when the app is not connected, no items are published
 - no static shortcuts, no config plugin, and no approve/deny/reply actions
 
-Android home widget («OpenCode tasks»):
+Android home widgets:
 
-- shows the running/recent task list with a status label (`Working`, `Retrying`)
-  and a relative "updated" time
-- renders a bounded, non-secret snapshot written by the provider; the headless
-  widget task never fetches, authenticates, or mutates anything
-- each task row opens the session deep link; tapping elsewhere opens the app
-- before the app has connected, the widget shows the empty state
-- light and dark variants; row names are exposed to screen readers
-- the widget picker label and description are English-only (the config plugin
-  writes them as non-translatable Android string resources)
+- Latest replies: one newest readable assistant message per three most recently
+  updated root chats on the active connection, with bounded excerpts, status and
+  file-only reply summaries; tap opens that chat.
+- Awaiting actions: up to three conversations with permission/question counts,
+  short request excerpts and overflow count. Descendants group under parents;
+  global requests appear once. Responses happen in the app after tapping.
+- Plan progress: current chat's real todo steps, completed/total count, current
+  step and upcoming steps, plus complete/empty states. No inferred plan text.
+- Resizable light/dark layouts with accessible names and bounded rows. Existing
+  SessionWidget placements become Latest replies; two new widgets are available.
+- Reads use global SSE and existing polling even with the chat library closed or
+  notifications denied. Headless handlers only render last-known storage.
+- Absolute last-successful update times remain visible when suspended. No new
+  background worker or continuous idle monitoring is introduced.
+- Show widget previews defaults on. Disabling it strips reply/request/step text
+  from snapshots and all placed widgets; titles/counts/status remain.
+- Gallery labels/descriptions are English-only; rendered widget copy is translated.
 
-iOS widgets and Live Activities are deliberately not implemented; see
-[iOS widget parity](ios-widget-parity.md).
+iOS widgets and Live Activities remain [deferred](ios-widget-parity.md).
 
 ## Persistence Requirements
 
@@ -613,7 +631,7 @@ The following values are persisted locally:
 - session list/status caches by connection scope and project
 - favorites, each carrying its connection scope
 - pending notification sessions, each carrying its connection scope
-- the bounded Android home-widget snapshot (non-secret; rebuilt on the next confirmed state change)
+- the bounded Android widget snapshot (routing, timestamps, status/counts and enabled reply/request/plan previews; authentication credentials excluded)
 
 The following values are not persisted and are rebuilt from the server:
 

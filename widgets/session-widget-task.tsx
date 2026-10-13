@@ -2,7 +2,7 @@ import { Platform } from 'react-native';
 import { registerWidgetTaskHandler } from 'react-native-android-widget';
 
 import { loadWidgetSnapshot } from '@/providers/widget-snapshot-storage';
-import { SESSION_WIDGET_NAME, SessionWidget } from '@/widgets/session-widget';
+import { WIDGET_NAMES, SessionWidget, widgetKind } from '@/widgets/session-widget';
 
 // Headless entry registered from index.js before Expo Router. The widget task
 // runs without the app UI (add, resize, update, reboot), so it renders the
@@ -11,12 +11,12 @@ import { SESSION_WIDGET_NAME, SessionWidget } from '@/widgets/session-widget';
 // handled natively by the widget library.
 if (Platform.OS === 'android') {
   registerWidgetTaskHandler(async ({ widgetInfo, widgetAction, renderWidget }) => {
-    if (widgetInfo.widgetName !== SESSION_WIDGET_NAME) return;
+    if (!WIDGET_NAMES.some((name) => name === widgetInfo.widgetName)) return;
     if (widgetAction === 'WIDGET_DELETED') return;
     const snapshot = await loadWidgetSnapshot();
     renderWidget({
-      light: <SessionWidget scheme="light" snapshot={snapshot} />,
-      dark: <SessionWidget scheme="dark" snapshot={snapshot} />,
+      light: <SessionWidget scheme="light" snapshot={snapshot} kind={widgetKind(widgetInfo.widgetName)} height={widgetInfo.height} />,
+      dark: <SessionWidget scheme="dark" snapshot={snapshot} kind={widgetKind(widgetInfo.widgetName)} height={widgetInfo.height} />,
     });
   });
 }

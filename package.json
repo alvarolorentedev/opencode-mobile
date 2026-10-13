@@ -1,7 +1,7 @@
 {
   "name": "opencode-mobile",
   "main": "index.js",
-  "version": "1.0.70",
+  "version": "1.0.71",
   "scripts": {
     "start": "expo start",
     "start:dev-client": "expo start --dev-client",
@@ -65,6 +65,7 @@
     "expo-camera": "~57.0.6",
     "expo-clipboard": "~57.0.2",
     "expo-constants": "~57.0.19",
+    "expo-crypto": "~57.0.4",
     "expo-dev-client": "~57.0.19",
     "expo-document-picker": "~57.0.2",
     "expo-file-system": "~57.0.7",

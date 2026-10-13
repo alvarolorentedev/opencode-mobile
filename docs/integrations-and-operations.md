@@ -108,20 +108,24 @@ because Android throttles dynamic shortcut updates in the background. Session
 items carry only the non-secret `{ sessionId, projectPath, connectionScope }`
 payload and route through `app/session/[id].tsx`.
 
-### Android Home Widget
+### Android Home Widgets
 
-`react-native-android-widget` (MIT, pure Android) powers the "OpenCode tasks"
-widget configured in `app.config.ts` (3×2 target cell, resizable, no automatic
-update period). Widget trees and the headless task handler live in `widgets/`;
-`lib/widgets.tsx` repaints placed widgets from the provider-owned snapshot in
-`providers/widget-snapshot.ts` / `providers/widget-snapshot-storage.ts`. The
-headless handler renders last-known state only; it never fetches or
-authenticates. `app.config.ts` also adds two R8 keep rules for the library's
-reflectively constructed WorkManager worker and its base class, mirroring the
-existing Pika/headless-loader rules. The widget picker label and description are
-English-only because the plugin writes them as non-translatable string
-resources. iOS has no widget surface yet; see
-[iOS widget parity](ios-widget-parity.md).
+`react-native-android-widget` (MIT, pure Android) provides three resizable 4×3
+widgets: Latest replies (`SessionWidget`, retaining existing placements), Awaiting
+actions (`AttentionWidget`) and current-chat Plan progress (`PlanWidget`). There
+is no automatic update period. Provider-owned service reads and the existing SSE
+plus polling runtime update bounded snapshots; notification permission is not
+required. Headless add/resize/reboot handlers only read and render stored data.
+Each surface keeps its last successful observation time on failures and displays
+an absolute timestamp. Suspended/terminated apps leave dated snapshots.
+
+Show widget previews defaults on in Android General Settings. Disabling it strips
+reply/request excerpts and step content from storage and repaints all instances.
+Titles/counts/status remain. Snapshot writes are ordered before repaint and reject
+stale connection results. The existing two R8 WorkManager keep rules remain.
+Gallery labels/descriptions are English because the plugin emits non-translatable
+resources; widget contents support every shipped language. iOS remains
+[deferred](ios-widget-parity.md).
 
 ### Voice Output
 
@@ -179,21 +183,21 @@ Current behavior:
 
 ### Share Receive (Inbound)
 
-`expo-sharing`'s receive plugin is used to accept content shared into the app.
+Android accepts single/multiple generic files (`*/*`) using `expo-sharing`.
+The prebuild config calls `scripts/prepare-android-sharing.cjs`, an idempotent,
+version-checked patch for 57.0.22: text/plain streams and accompanying text are
+preserved, copies use unique cache names, and unknown-size files are bounded
+while reading. Upgrading Expo Sharing requires reviewing this patch. Native
+resolution failures produce skipped items instead of fabricated readable files.
+JS normalizes `file:/` to `file:///`, preserves encoding and applies the existing
+URI allow-list, ten-item and 10 MB per-file limits.
 
-Current behavior:
-
-- Android share intents are enabled via the `expo-sharing` plugin in
-  `app.config.ts` (`text/*`, `image/*`, `application/pdf` single; `image/*`
-  multiple)
-- `providers/use-share-state.ts` stages the resolved payload in memory only
-  (10-minute TTL, never persisted, no credentials)
-- `lib/share/parse.ts` reuses the existing 10 MB limit and URI allow-list
-- `app/+native-intent.ts` routes the `expo-sharing` host to `app/share.tsx`
-- sharing never auto-submits; the composer remains the only send path
-- web cannot receive native share payloads and is a no-op
-- the iOS Share Extension is deferred; see
-  [iOS share parity](ios-share-parity.md)
+The provider stages content in memory for ten minutes and owns receipt/destination
+identity, confirmation and cancellation. Preview offers current chat, another
+conversation on the active connection, or New chat. Add awaits provider session
+resolution; the matching composer consumes once and retains existing draft
+content. Errors keep the preview available. Nothing auto-submits. Web receives
+no native payloads; the iOS Share Extension remains [deferred](ios-share-parity.md).
 
 ### Platform Settings Deep Links
 
@@ -267,6 +271,14 @@ This means Android delivery is not purely managed Expo. The current implementati
 - local Gradle-based Android builds
 - GitHub Actions Android build workflows
 - signing secrets for release builds
+
+Release signing credentials (`ANDROID_KEYSTORE_*`) are injected through a
+temporary `android/gradle.properties` for the duration of the Gradle
+invocation rather than passed as `-P` arguments, so the passwords never appear
+in the process list or in the command echoed by
+`scripts/build-android-release.mjs` on failure. The generated file is restored
+when the build exits. `keytool` reads the store password via `-storepass:env`,
+keeping it off its command line too.
 
 Production Android prebuilds use `expo-build-properties` to enable release
 minification and resource shrinking. The plugin is omitted for the development
@@ -354,7 +366,7 @@ The app splits persisted connection data:
 - server URL and username (and saved connection profile metadata such as the profile name and model selection) live in AsyncStorage
 - the active connection password and each saved profile password live in Keychain/Keystore-backed SecureStore via `lib/connection-password.ts` and `lib/connection-profiles.ts`, never in AsyncStorage
 - legacy plaintext `settings.password` is migrated to SecureStore and stripped during hydration
-- `opencode-mobile.widget-snapshot` (Android home widget) stores only non-secret routing data: session IDs, truncated titles, and `opencodemobile://session/...` links that carry no credentials
+- `opencode-mobile.widget-snapshot` stores bounded routing data, counts/status, timestamps and enabled reply/request/plan excerpts. Authentication credentials, raw request metadata and tool output are excluded; disable Show widget previews to remove excerpts.
 
 Operational implication:
 
@@ -392,7 +404,7 @@ Android has the richest current support for:
 - notification settings deep links
 - battery optimization guidance
 - development and release build pipelines
-- launcher quick actions and the home-screen "OpenCode tasks" widget
+- launcher quick actions and the three Android home widgets
 
 ### iOS
 

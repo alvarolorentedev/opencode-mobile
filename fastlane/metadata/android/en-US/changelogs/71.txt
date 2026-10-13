@@ -1,0 +1,3 @@
+- Share any supported file type into OpenCode Mobile, with clearer previews and safer handling of large or unsupported items.
+- Add three Android widgets for latest replies, pending actions, and plan progress.
+- Improve connection recovery and session updates across workspaces.

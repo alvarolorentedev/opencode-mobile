@@ -44,6 +44,13 @@ const secureStoreStubUri = `data:text/javascript,${encodeURIComponent(`
 const reactNativeStubUri = `data:text/javascript,${encodeURIComponent(`
   export const Platform = { get OS() { return globalThis.__profilesTestPlatformOS; } };
 `)}`;
+const cryptoStubUri = `data:text/javascript,${encodeURIComponent(`
+  let counter = 0;
+  export function randomUUID() {
+    counter += 1;
+    return '00000000-0000-4000-8000-' + String(counter).padStart(12, '0');
+  }
+`)}`;
 
 const base64Uri = `data:text/javascript,${encodeURIComponent(
   `import base64 from ${JSON.stringify(pathToFileURL(path.join(root, 'node_modules/base-64/base64.js')).href)}; export const encode = base64.encode;`,
@@ -71,6 +78,7 @@ const connectionPasswordUri = await transpileToDataUri('lib/connection-password.
 const connectionProfilesUri = await transpileToDataUri('lib/connection-profiles.ts', [
   [/from '@\/lib\/connect'/g, `from "${connectUri}"`],
   [/from '@react-native-async-storage\/async-storage'/g, `from "${asyncStorageStubUri}"`],
+  [/from 'expo-crypto'/g, `from "${cryptoStubUri}"`],
   [/from 'expo-secure-store'/g, `from "${secureStoreStubUri}"`],
   [/from 'react-native'/g, `from "${reactNativeStubUri}"`],
   [/from '@\/lib\/connection-password'/g, `from "${connectionPasswordUri}"`],

@@ -3,21 +3,11 @@ import { AppState } from 'react-native';
 
 import { i18n } from '@/lib/i18n';
 import { quickActionsSupported, setQuickActions, type QuickActionItem } from '@/lib/quick-actions';
-import { homeWidgetSupported, updateHomeWidget } from '@/lib/widgets';
 import type { ActiveSessionItem } from '@/providers/opencode-provider-types';
 import { getSessionQuickActions } from '@/providers/quick-action-items';
-import { buildWidgetSnapshot } from '@/providers/widget-snapshot';
-import { saveWidgetSnapshot } from '@/providers/widget-snapshot-storage';
 
-// Publishes the two native entry-point surfaces from confirmed provider state:
-// launcher quick actions and the Android home widget. Data is read from the
-// provider's existing cross-workspace active-session selection; nothing new is
-// fetched, and the widget snapshot carries no credentials.
-//
-// Android throttles dynamic shortcut updates while the app is in the
-// background, so shortcut publishing waits for the foreground. Widget repaints
-// are cheap local RemoteViews updates and may run while the foreground service
-// keeps JS alive.
+// Launcher shortcuts publish only in foreground; widget state is independently
+// reconciled by use-widget-state so replies and blockers do not depend on the library.
 const PUBLISH_DEBOUNCE_MS = 1500;
 
 type Input = {
@@ -34,7 +24,7 @@ export function useNativeSurfaces({ ready, connected, connectionScope, language,
   const sessionsRef = useRef(activeSessions);
   useLayoutEffect(() => { sessionsRef.current = activeSessions; });
 
-  const surfaceable = quickActionsSupported || homeWidgetSupported;
+  const surfaceable = quickActionsSupported;
   const sessionSignature = activeSessions
     .map((session) => `${session.sessionId}:${session.status.type}:${session.title ?? ''}`)
     .join('|');
@@ -55,23 +45,10 @@ export function useNativeSurfaces({ ready, connected, connectionScope, language,
     setQuickActions(items);
   }, [connected, connectionScope]);
 
-  const publishWidget = useCallback(() => {
-    if (!homeWidgetSupported || !connected) return;
-    const snapshot = buildWidgetSnapshot({
-      activeSessions: sessionsRef.current,
-      connectionScope,
-      untitledLabel: i18n.t('chat:library.untitledChat'),
-      updatedAt: Date.now(),
-    });
-    void saveWidgetSnapshot(snapshot);
-    void updateHomeWidget(snapshot);
-  }, [connected, connectionScope]);
-
   useEffect(() => {
     if (!surfaceable || !ready) return;
     const publish = () => {
       publishQuickActions();
-      publishWidget();
     };
     const timer = setTimeout(publish, PUBLISH_DEBOUNCE_MS);
     const subscription = AppState.addEventListener('change', (state) => {
@@ -81,5 +58,5 @@ export function useNativeSurfaces({ ready, connected, connectionScope, language,
       clearTimeout(timer);
       subscription.remove();
     };
-  }, [publishQuickActions, publishWidget, ready, signature, surfaceable]);
+  }, [publishQuickActions, ready, signature, surfaceable]);
 }

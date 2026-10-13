@@ -449,22 +449,25 @@ This is important to parity because the chat layout is intentionally dense and h
 
 ## `app/share.tsx`
 
-### Responsibility
+Thin preview/controller over provider-owned `sharedInput`: resolving, setup,
+empty/error, shared text/link, attachment tiles and skipped-item warnings.
+Shows the current conversation by default; Change opens the existing OverlaySheet
+with searchable conversation rows and workspace labels, plus New chat in the
+current workspace. The workspace picker remains available when setup is needed.
+Choosing a conversation only selects the pending destination. Add awaits the
+provider's guarded create/open action before navigating to Chat. The composer
+merges the confirmed receipt exactly once and remains the only send path.
+Discard cancels and clears staged content. Components never fetch or persist.
 
-- preview content shared into the app from the OS share sheet
-- render provider-staged `sharedInput.pending` as selectable text, a link block,
-  and shared attachment tiles (reusing `attachment-strip.tsx`)
-- let the user change the target workspace through the shared `WorkspacePicker`
-  and show the active server
-- Add to chat replaces onto the Chat tab, where
-  `components/chat/use-chat-view-controller.ts` seeds the composer draft and
-  attachments; the composer keeps the only send path
-- Discard clears the staged payload and returns to chat
-- handle incomplete onboarding ("finish setup") and an empty payload
+## Android widget presentation
 
-It owns only the picker's local visibility. Staging, validation, and cleanup
-live in `providers/use-share-state.ts`; it performs no fetch, persistence, or
-submission. See [iOS share parity](ios-share-parity.md) for platform coverage.
+`widgets/session-widget.tsx` renders Latest replies, Awaiting actions and Plan
+progress as RemoteViews. Height determines one to three rows; both palettes,
+accessible names, text truncation and absolute update timestamps are shared.
+`SessionWidget` retains its native identity; `AttentionWidget` and `PlanWidget`
+are separate gallery entries. Taps only open the app or validated chat links.
+The Android General section exposes Show widget previews; turning it off removes
+reply/request excerpts and step text while preserving titles, counts and status.
 
 ## Settings Components
 

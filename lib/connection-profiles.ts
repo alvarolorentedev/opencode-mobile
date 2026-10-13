@@ -1,4 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { randomUUID } from 'expo-crypto';
 import * as SecureStore from 'expo-secure-store';
 import { Platform } from 'react-native';
 
@@ -32,7 +33,7 @@ function passwordKey(profileId: string) {
 }
 
 export function createProfileId() {
-  return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
+  return randomUUID();
 }
 
 export function pickModelPreferences(preferences: ChatPreferences): ProfileModelPreferences {

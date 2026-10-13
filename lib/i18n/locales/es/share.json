@@ -1,6 +1,6 @@
 {
   "title": "Compartido con OpenCode",
-  "subtitle": "Revisa este contenido, elige un espacio de trabajo y añádelo al chat. No se envía nada hasta que pulses enviar.",
+  "subtitle": "Revisa el contenido, elige una conversación y añádelo al editor. No se envía nada hasta que pulses enviar.",
   "workspace": "Espacio de trabajo",
   "noWorkspace": "Ningún espacio de trabajo seleccionado",
   "chooseWorkspace": "Elegir",
@@ -13,5 +13,29 @@
   "empty": "No había nada que compartir.",
   "backToChat": "Volver al chat",
   "finishSetup": "Termina de configurar OpenCode Mobile para añadir contenido compartido.",
-  "continueSetup": "Continuar configuración"
+  "continueSetup": "Continuar configuración",
+  "conversation": "Conversación",
+  "change": "Cambiar",
+  "chooseConversation": "Elige una conversación",
+  "unavailable": "No se pudo leer el contenido. Vuelve a compartirlo.",
+  "destinationChanged": "La conversación ha cambiado. Elige un destino e inténtalo de nuevo.",
+  "widgets": {
+    "replies": "Últimas respuestas",
+    "attention": "Acciones pendientes",
+    "plan": "Progreso del plan",
+    "noPlan": "No hay pasos disponibles",
+    "chooseChat": "Elige una conversación en la app",
+    "noReply": "Aún no hay respuesta",
+    "noActions": "No hay acciones pendientes",
+    "progress": "{{completed}}/{{total}} pasos completados",
+    "step": "Paso {{index}}",
+    "requests": "Permisos: {{permissions}} · Preguntas: {{questions}}",
+    "moreChats": "+{{count}} chats más",
+    "updated": "Actualizado {{time}}",
+    "hidden": "Vistas previas ocultas",
+    "previewsTitle": "Mostrar vistas previas en widgets",
+    "previewsDescription": "Muestra respuestas, solicitudes y pasos del plan en la pantalla de inicio.",
+    "completed": "Plan completado",
+    "openApp": "Abre la app para actualizar"
+  }
 }

@@ -18,52 +18,62 @@ validation under AGENTS.md. Native acceptance remains required for media
 playback/background/close, temporary-file cleanup, document handoff, keyboard
 layout, safe areas and screen-reader actions on iOS and Android.
 
-## Inbound sharing
+## Inbound sharing and Android widgets
 
-`tests/vitest/share.test.ts` covers payload normalization: text/link collection,
-file mapping, oversize and unsafe-URI rejection, item-count and text-length
-caps. `tests/e2e/share.spec.mjs` is web smoke coverage only: it proves the
-`/share` route renders empty and returns to chat. The browser cannot receive
-native share payloads, so the OS share-sheet path (Android intents; the deferred
-iOS Share Extension) requires real-device acceptance. Changes to
-`tests/e2e/` require explicit human validation under AGENTS.md. See
-[iOS share parity](ios-share-parity.md) for the iOS device checklist.
+`tests/vitest/share.test.ts` and `share-flow.test.ts` cover Android `file:/` URI
+normalization, encoded filenames, text/HTML and media streams, duplicate display
+names, mixed content, limits, all-rejected warnings, delayed hydration, explicit
+current/other/new destinations, retry without duplicate creation, duplicate taps,
+cancellation, connection changes, one-shot consumption, TTL, draft merging and
+warm re-entry while native resolution is pending.
+`native-share-patch.test.ts` checks the prebuild patch against installed source,
+idempotence, unique/bounded cache copies and failure before writes on unsupported
+versions. `tests/e2e/share.spec.mjs` remains unchanged web route smoke coverage;
+the native share sheet requires device acceptance.
 
-## Quick actions and Android home widget
+`widget-flow.test.ts` exercises recent reply selection, descendant/global blocker
+grouping, removal of settled requests, real todo progress/completion, redaction,
+malformed snapshots, independent workspace reads, failed-read retention, global
+events/resume/polling refresh, stale scope rejection, serialized writes, preference
+changes during queued writes, headless privacy enforcement, responsive trees,
+fixed widget locales and route targets. Existing
+`widget-snapshot.test.ts` preserves the legacy snapshot read contract.
 
-Static coverage:
+Required gates: `test:ci:static`, `test:fake-server:self`, `test:e2e:web`,
+`test:foss`, and `build:development:android`. E2E and fake-server handlers are not
+changed for this feature; any future changes to them require explicit human
+validation under AGENTS.md.
 
-- `tests/vitest/session-link.test.ts` pins the shared
-  `opencodemobile://session/...` builder (encoding, prefix) that the Android
-  activity notification and the widget snapshot both rely on.
-- `tests/vitest/quick-action-items.test.ts` pins the quick-action selection:
-  routing payload fields, running-first order from the existing active-session
-  selector, untitled fallback, dropped entries, the three-session cap, and the
-  empty-scope case.
-- `tests/vitest/widget-snapshot.test.ts` pins the widget DTO: bounded rows, link
-  shape, title truncation, and per-row rejection of malformed persisted values
-  (only `opencodemobile://session/` links with a known status survive).
-- `tests/architecture.test.mjs` now applies the 500-line ratchet to `widgets/`.
-- No fake-server or protocol contract changes; `test:fake-server:self` runs
-  unchanged. Web E2E proves the surfaces no-op in the browser (`Platform.OS`
-  guard plus the package's `globalThis.expo` fallback).
+Native release acceptance remains blocking:
 
-Device acceptance (blocking for a native release):
+- Share image, audio, video, PDF, text/HTML and generic files from Files/Photos and
+  another app; test cold/warm launch, multiple files with identical names,
+  accompanying text, oversize/unreadable items, all-rejected warnings and expiry.
+- Confirm current, other-workspace and New chat destinations, retry/Discard,
+  preserved draft and explicit send. Verify warm shares while the app is already
+  open and incomplete onboarding.
+- Add all three widgets in a minified release, resize to minimum/large sizes,
+  verify both themes, large text and TalkBack, reboot and reopen after force-stop.
+- Receive replies and blockers in another workspace with the library closed;
+  answer a permission/question and confirm its removal. Exercise child/global
+  blockers, current-chat plan changes/completion and empty plans.
+- Disable previews and verify all placed widgets and persisted snapshot content;
+  switch servers while reads are running. With notifications denied, widgets
+  still refresh while the app runs. Suspended widgets retain absolute update
+  times; no new periodic WorkManager job or foreground service is introduced.
+- iOS launcher quick actions remain unchanged and still require signed-device
+  cold-start acceptance. iOS Share/Widget extensions remain deferred.
 
-- Android: the "OpenCode tasks" widget appears in the picker, renders added
-  widgets, survives force-quit and reboot by rendering the stored snapshot,
-  updates after tasks start/finish, opens the exact session from a row, and
-  opens the app from the empty background. Verify a minified release build (not
-  only debug) renders the widget, the WorkManager worker added for widget events
-  does not run periodically (`adb shell dumpsys jobscheduler`), and TalkBack
-  announces the row names.
-- iOS: dynamic quick actions appear in the app's long-press menu after first
-  launch; a cold start from a session item opens that session; a session owned by
-  another saved connection switches first; `New chat` creates a session; labels
-  follow the app language and larger text sizes.
-- Both: no new permission prompts; web, Expo Go, and E2E builds show no
-  additional surface; a release change that removes the widget must be checked
-  for placed-widget behavior (they disappear and can be re-added).
+Implementation verification (2026-10-13): static CI passes with 278 Vitest
+checks; both fake-server self-tests, all 129 web E2E flows and FOSS preparation
+pass. Development and production Android prebuilds generate all three receivers,
+zero periodic update intervals and the release R8 keep rules. An isolated Kotlin
+probe with Android/Expo stubs passes text-stream/caption handling, duplicate
+filenames, known/unknown-size limits and partial-file cleanup. This is not a full
+Android build: Gradle stops because the SDK location is missing. Actual device
+rendering, TalkBack, native share permissions and minified/R8 acceptance remain
+unverified. No fake-server/E2E contract, dependency version or release version
+was changed; iOS Share/Widget extensions remain deferred.
 
 ## Current Strategy
 

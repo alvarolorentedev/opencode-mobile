@@ -1,9 +1,9 @@
 import { getFormatLocale } from '@/lib/i18n';
 
-export function formatTimestamp(value: number) {
+export function formatTimestamp(value: number, locale = getFormatLocale()) {
   try {
     if (typeof Intl !== 'undefined' && typeof Intl.DateTimeFormat === 'function') {
-      return new Intl.DateTimeFormat(getFormatLocale(), {
+      return new Intl.DateTimeFormat(locale, {
         dateStyle: 'medium',
         timeStyle: 'short',
       }).format(value);

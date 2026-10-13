@@ -1,6 +1,6 @@
 {
   "title": "Partagé avec OpenCode",
-  "subtitle": "Vérifiez ce contenu, choisissez un espace de travail, puis ajoutez-le au chat. Rien n'est envoyé tant que vous n'appuyez pas sur envoyer.",
+  "subtitle": "Vérifiez le contenu, choisissez une conversation et ajoutez-le au message. Rien n’est envoyé avant votre confirmation.",
   "workspace": "Espace de travail",
   "noWorkspace": "Aucun espace de travail sélectionné",
   "chooseWorkspace": "Choisir",
@@ -13,5 +13,29 @@
   "empty": "Il n'y avait rien à partager.",
   "backToChat": "Retour au chat",
   "finishSetup": "Terminez la configuration d'OpenCode Mobile pour ajouter du contenu partagé.",
-  "continueSetup": "Continuer la configuration"
+  "continueSetup": "Continuer la configuration",
+  "conversation": "Conversation",
+  "change": "Changer",
+  "chooseConversation": "Choisir une conversation",
+  "unavailable": "Impossible de lire le contenu. Partagez-le à nouveau.",
+  "destinationChanged": "La conversation a changé. Choisissez une destination et réessayez.",
+  "widgets": {
+    "replies": "Dernières réponses",
+    "attention": "Actions en attente",
+    "plan": "Progression du plan",
+    "noPlan": "Aucune étape disponible",
+    "chooseChat": "Choisissez une conversation dans l’app",
+    "noReply": "Pas encore de réponse",
+    "noActions": "Aucune action en attente",
+    "progress": "{{completed}}/{{total}} étapes terminées",
+    "step": "Étape {{index}}",
+    "requests": "Autorisations : {{permissions}} · Questions : {{questions}}",
+    "moreChats": "+{{count}} conversations",
+    "updated": "Mis à jour {{time}}",
+    "hidden": "Aperçus masqués",
+    "previewsTitle": "Afficher les aperçus des widgets",
+    "previewsDescription": "Afficher les réponses, demandes et étapes du plan sur l’écran d’accueil.",
+    "completed": "Plan terminé",
+    "openApp": "Ouvrez l’app pour actualiser"
+  }
 }

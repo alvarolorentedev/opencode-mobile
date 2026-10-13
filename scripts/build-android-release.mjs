@@ -42,6 +42,41 @@ function run(command, args, options = {}) {
 const repoRoot = process.cwd();
 const androidDir = path.join(repoRoot, 'android');
 const keystorePath = path.join(androidDir, 'release.keystore');
+const gradlePropertiesPath = path.join(androidDir, 'gradle.properties');
+
+// Signing credentials are injected through gradle.properties instead of -P
+// arguments so they never appear in the process list or in the command echoed
+// by `run()` on failure. The generated file is restored on exit.
+let gradlePropertiesBackup;
+let gradlePropertiesDirty = false;
+
+// Java properties values only need `\`, newlines, and a leading space escaped;
+// `=`, `:`, `#`, and `!` are literal once the key/value separator has passed.
+function escapePropertiesValue(value) {
+  return value
+    .replace(/\\/g, '\\\\')
+    .replace(/\r/g, '\\r')
+    .replace(/\n/g, '\\n')
+    .replace(/^ /, '\\ ');
+}
+
+function writeSigningProperties(props) {
+  gradlePropertiesBackup = fs.readFileSync(gradlePropertiesPath);
+  const lines = Object.entries(props).map(([key, value]) => `${key}=${escapePropertiesValue(value)}`);
+  fs.appendFileSync(gradlePropertiesPath, `\n# Injected release signing (scripts/build-android-release.mjs)\n${lines.join('\n')}\n`);
+  gradlePropertiesDirty = true;
+}
+
+function restoreGradleProperties() {
+  if (gradlePropertiesDirty && gradlePropertiesBackup) {
+    fs.writeFileSync(gradlePropertiesPath, gradlePropertiesBackup);
+    gradlePropertiesDirty = false;
+  }
+}
+
+process.on('exit', restoreGradleProperties);
+process.on('SIGINT', () => process.exit(130));
+process.on('SIGTERM', () => process.exit(143));
 
 // The script pins the Expo variant so a conflicting EXPO_APP_VARIANT in the
 // caller's environment cannot leak into Gradle. FOSS is selected through a
@@ -74,8 +109,6 @@ function restorePackageJson() {
 
 if (isFossVariant) {
   process.on('exit', restorePackageJson);
-  process.on('SIGINT', () => process.exit(130));
-  process.on('SIGTERM', () => process.exit(143));
 
   if (!buildEnv.FIREBASE_STUB_SRC_DIR?.trim()) {
     const stubRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'opencode-firebase-stubs-'));
@@ -136,32 +169,31 @@ try {
   console.warn('Unable to compute keystore hash for debugging:', e?.message ?? e);
 }
 
-// Pass signing props to Gradle. The Android Gradle Plugin will pick these up
-// during non-interactive CI builds.
 // Detect keystore type (pkcs12 vs jks). keytool can list a keystore with a
-// specific storetype; try pkcs12 first and fall back to jks.
-function runKeytoolList(keystoreFile, password, storetype) {
+// specific storetype; try pkcs12 first and fall back to jks. The password is
+// read from the environment via `-storepass:env` so it never enters argv.
+function runKeytoolList(keystoreFile, storetype) {
   try {
     const proc = spawnSync('keytool', [
       '-list',
       '-keystore',
       keystoreFile,
-      '-storepass',
-      password,
+      '-storepass:env',
+      'ANDROID_KEYSTORE_PASSWORD',
       '-storetype',
       storetype,
-    ], { encoding: 'utf8' });
+    ], { encoding: 'utf8', env: process.env });
     return { status: proc.status, stdout: proc.stdout || '', stderr: proc.stderr || '' };
   } catch (e) {
     return { status: 1, stdout: '', stderr: String(e) };
   }
 }
 
-function validateKeystore(keystoreFile, password) {
+function validateKeystore(keystoreFile) {
   // Try pkcs12 then jks
   const tried = [];
   for (const t of ['pkcs12', 'jks']) {
-    const res = runKeytoolList(keystoreFile, password, t);
+    const res = runKeytoolList(keystoreFile, t);
     tried.push({ type: t, res });
     if (res.status === 0) {
       // parse aliases from stdout
@@ -178,7 +210,7 @@ function validateKeystore(keystoreFile, password) {
   return { storeType: undefined, tried };
 }
 
-const validation = validateKeystore(keystorePath, keystorePassword);
+const validation = validateKeystore(keystorePath);
 if (validation.storeType) {
   console.log(`Detected keystore type: ${validation.storeType}`);
   if (validation.aliases && validation.aliases.length) {
@@ -216,6 +248,16 @@ if (detectedStoreType === 'pkcs12') {
 // also produces the AAB and honors ANDROID_RELEASE_ABIS.
 const gradleTasks = isFossVariant ? ['assembleRelease'] : ['bundleRelease', 'assembleRelease'];
 
+// Pass signing props to Gradle via gradle.properties. The Android Gradle Plugin
+// picks up `android.injected.signing.*` during non-interactive builds.
+writeSigningProperties({
+  'android.injected.signing.store.file': keystorePath,
+  'android.injected.signing.store.password': keystorePassword,
+  'android.injected.signing.key.alias': keyAlias,
+  'android.injected.signing.key.password': effectiveKeyPassword,
+  ...(detectedStoreType ? { 'android.injected.signing.store.type': detectedStoreType } : {}),
+});
+
 run('./gradlew', [
   ...gradleTasks,
   // Trim ABIs for release artifacts. Play needs at most armeabi-v7a + arm64-v8a;
@@ -223,11 +265,6 @@ run('./gradlew', [
   // the wider set on version tags. Building fewer ABIs cuts native compile and
   // packaging work, plus bundletool's peak memory.
   `-PreactNativeArchitectures=${getOptionalEnv('ANDROID_RELEASE_ABIS') ?? 'arm64-v8a'}`,
-  `-Pandroid.injected.signing.store.file=${keystorePath}`,
-  `-Pandroid.injected.signing.store.password=${keystorePassword}`,
-  `-Pandroid.injected.signing.key.alias=${keyAlias}`,
-  `-Pandroid.injected.signing.key.password=${effectiveKeyPassword}`,
-  ...(detectedStoreType ? [`-Pandroid.injected.signing.store.type=${detectedStoreType}`] : []),
 ], {
   cwd: androidDir,
   env: buildEnv,

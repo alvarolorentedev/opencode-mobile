@@ -1,5 +1,5 @@
 import { useTranslation } from 'react-i18next';
-import { StyleSheet, View } from 'react-native';
+import { Platform, StyleSheet, View } from 'react-native';
 import { Button, HelperText, Text } from 'react-native-paper';
 
 import type { ChatPreferences } from '@/providers/opencode-provider';
@@ -24,6 +24,13 @@ export function GeneralSection({ chatPreferences, palette, updateChatPreferences
         value={chatPreferences.slimInterface === true}
       />
       <LanguageSection chatPreferences={chatPreferences} palette={palette} updateChatPreferences={updateChatPreferences} />
+      {Platform.OS === 'android' ? <SettingSwitchRow
+        title={t('share:widgets.previewsTitle')}
+        description={t('share:widgets.previewsDescription')}
+        onValueChange={(showWidgetPreviews) => updateChatPreferences({ showWidgetPreviews })}
+        palette={palette}
+        value={chatPreferences.showWidgetPreviews !== false}
+      /> : null}
       <Button mode="outlined" icon="restart" onPress={onResetOnboarding}>{t('settings:general.resetOnboarding')}</Button>
       <HelperText type="info">{t('onboarding:settingsAssistant.summary')}</HelperText>
     </View>

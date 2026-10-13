@@ -11,6 +11,7 @@ import { listActiveSessions as svcListActiveSessions } from '@/providers/service
 // without spending data on every project's session list.
 const ACTIVE_SESSIONS_POLL_MS = 20000;
 const MAX_ACTIVE = 4;
+const EMPTY_SESSIONS: Session[] = [];
 
 type ActiveSessionsSnapshot = {
   scope?: string;
@@ -90,5 +91,5 @@ export function useActiveSessions({
     return () => clearInterval(interval);
   }, [connected, hasRunning, refreshActiveSessions, visible]);
 
-  return { activeSessions, refreshActiveSessions };
+  return { activeSessions, catalogSessions: current?.sessions ?? EMPTY_SESSIONS, refreshActiveSessions };
 }

@@ -30,7 +30,7 @@ export function parseChatPreferences(raw: string): Partial<ChatPreferences> {
   for (const key of ['mode', 'providerId', 'modelId', 'language', 'speechLocale', 'speechVoiceId']) {
     if (typeof value[key] === 'string') preferences[key] = value[key];
   }
-  for (const key of ['flatTranscript', 'slimInterface', 'autoApprove', 'autoPlayAssistantReplies', 'preferOnDeviceRecognition', 'resumeListeningAfterReply', 'workingSoundEnabled', 'includeNextActions', 'hideSubagentChats']) {
+  for (const key of ['flatTranscript', 'slimInterface', 'autoApprove', 'autoPlayAssistantReplies', 'preferOnDeviceRecognition', 'resumeListeningAfterReply', 'workingSoundEnabled', 'includeNextActions', 'hideSubagentChats', 'showWidgetPreviews']) {
     if (typeof value[key] === 'boolean') preferences[key] = value[key];
   }
   for (const key of ['enabledModelIds', 'recentModelIds']) {

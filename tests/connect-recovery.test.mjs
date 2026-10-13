@@ -40,6 +40,7 @@ async function fixture({ expired = false, missing = false, storedSession = true,
   const scope = await loadTs('lib/connection-scope.ts', { 'base-64': { encode: (value) => Buffer.from(value, 'binary').toString('base64') } });
   const profiles = await loadTs('lib/connection-profiles.ts', {
     '@react-native-async-storage/async-storage': { __esModule: true, default: asyncStorage }, 'expo-secure-store': secureStore,
+    'expo-crypto': { randomUUID: (() => { let n = 0; return () => `00000000-0000-4000-8000-${String(++n).padStart(12, '0')}`; })() },
     'react-native': native, '@/lib/connect': connect, '@/lib/connection-scope': scope,
     '@/lib/connection-password': { getConnectionPassword: async () => '' }, '@/lib/storage-keys': keys,
   }, globals);

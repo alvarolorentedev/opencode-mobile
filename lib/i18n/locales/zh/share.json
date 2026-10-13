@@ -1,6 +1,6 @@
 {
   "title": "已分享至 OpenCode",
-  "subtitle": "查看此内容，选择工作区，然后将其添加到聊天。在你点击发送之前不会发送任何内容。",
+  "subtitle": "查看内容，选择对话并添加到草稿。点击发送前不会发送任何内容。",
   "workspace": "工作区",
   "noWorkspace": "未选择工作区",
   "chooseWorkspace": "选择",
@@ -13,5 +13,29 @@
   "empty": "没有可分享的内容。",
   "backToChat": "返回聊天",
   "finishSetup": "完成 OpenCode Mobile 的设置以添加分享内容。",
-  "continueSetup": "继续设置"
+  "continueSetup": "继续设置",
+  "conversation": "对话",
+  "change": "更改",
+  "chooseConversation": "选择对话",
+  "unavailable": "无法读取分享内容，请重新分享。",
+  "destinationChanged": "对话已更改，请选择目标后重试。",
+  "widgets": {
+    "replies": "最新回复",
+    "attention": "待处理操作",
+    "plan": "计划进度",
+    "noPlan": "暂无计划步骤",
+    "chooseChat": "请在应用中选择对话",
+    "noReply": "暂无回复",
+    "noActions": "暂无待处理操作",
+    "progress": "已完成 {{completed}}/{{total}} 步",
+    "step": "步骤 {{index}}",
+    "requests": "权限：{{permissions}} · 问题：{{questions}}",
+    "moreChats": "另有 {{count}} 个对话",
+    "updated": "更新于 {{time}}",
+    "hidden": "预览已隐藏",
+    "previewsTitle": "显示小组件预览",
+    "previewsDescription": "在主屏幕上显示回复、请求和计划内容。",
+    "completed": "计划已完成",
+    "openApp": "打开应用以刷新"
+  }
 }
