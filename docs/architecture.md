@@ -473,6 +473,8 @@ provider confirms the destination. The composer consumes only a confirmed share
 whose connection, project and session match; it appends text and URL without
 losing the local draft and deduplicates attachments. Nothing auto-sends. Discard,
 expiry and connection changes cancel stale operations; failures retain the share.
+Add and Discard dismiss back to the existing tabs navigator, preserving the
+mounted composer's draft and attachments instead of replacing it with new tabs.
 
 ### Internationalization
 

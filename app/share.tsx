@@ -41,11 +41,11 @@ export default function ShareScreen() {
   useEffect(() => { void refreshShared(); }, [receipt, refreshShared]);
 
   const addToChat = async () => {
-    if (await sharedInput.addToChat()) router.replace('/(tabs)');
+    if (await sharedInput.addToChat()) router.dismissTo('/(tabs)');
   };
   const discard = () => {
     sharedInput.clearShared();
-    router.replace('/(tabs)');
+    router.dismissTo('/(tabs)');
   };
 
   const done = (

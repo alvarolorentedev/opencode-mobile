@@ -1,4 +1,5 @@
 import { beforeEach, expect, it, vi } from 'vitest';
+import { createRequire } from 'node:module';
 import { deferred, hookRuntime, loadTs } from '../helpers/runtime.mjs';
 
 type Element = { type: any; props: any };
@@ -14,11 +15,11 @@ const label = (node: Element) => [node.props?.children].flat(Infinity).filter((v
 let runtime: ReturnType<typeof hookRuntime>;
 let shared: any;
 let receipt: string;
-let replace: ReturnType<typeof vi.fn>;
+let dismissTo: ReturnType<typeof vi.fn>;
 async function mount() {
   const { default: Screen } = await loadTs('app/share.tsx', {
     react: runtime.react, 'react/jsx-runtime': { jsx: element, jsxs: element, Fragment: 'Fragment' },
-    'expo-router': { useRouter: () => ({ replace }), useLocalSearchParams: () => ({ receipt }) },
+    'expo-router': { useRouter: () => ({ dismissTo }), useLocalSearchParams: () => ({ receipt }) },
     'react-i18next': { useTranslation: () => ({ t: (key: string) => key }) },
     'react-native': { StyleSheet: { create: (value: unknown) => value }, ScrollView: 'ScrollView', Text: 'NativeText', View: 'View' },
     'react-native-paper': { ActivityIndicator: 'Spinner', Appbar: { Header: 'Header', Content: 'Content', Action: 'Action' }, Button: 'Button', Surface: 'Surface', Text: 'Text' },
@@ -39,7 +40,7 @@ async function mount() {
 }
 const button = (text: string) => find(runtime.value, (node) => node.type === 'Button' && label(node) === text)!;
 beforeEach(() => {
-  runtime = hookRuntime(); receipt = '1'; replace = vi.fn();
+  runtime = hookRuntime(); receipt = '1'; dismissTo = vi.fn();
   shared = { pending: { text: 'hello', attachments: [{ uri: 'file:///photo.png' }], skipped: [] },
     target: { sessionId: 'current', projectPath: '/repo', connectionScope: 's' },
     targets: [{ sessionId: 'current', projectPath: '/repo', connectionScope: 's', title: 'Current' }, { sessionId: 'other', projectPath: '/other', connectionScope: 's', title: 'Other' }],
@@ -53,9 +54,9 @@ it('only navigates after a successful provider handoff and wires Change to an ex
   button('Other · other').props.onPress(); runtime.flush();
   expect(shared.selectTarget).toHaveBeenCalledWith(shared.targets[1]);
   button('share:addToChat').props.onPress(); await runtime.settle();
-  expect(replace).not.toHaveBeenCalled();
+  expect(dismissTo).not.toHaveBeenCalled();
   waiting.resolve(true); await runtime.settle();
-  expect(replace).toHaveBeenCalledWith('/(tabs)');
+  expect(dismissTo).toHaveBeenCalledWith('/(tabs)');
   runtime.unmount();
 });
 it('refreshes repeated native receipt routes and keeps rejected-only shares visible without Add', async () => {
@@ -67,5 +68,18 @@ it('refreshes repeated native receipt routes and keeps rejected-only shares visi
   expect(shared.refreshShared).toHaveBeenCalledTimes(2);
   button('share:discard').props.onPress();
   expect(shared.clearShared).toHaveBeenCalledOnce();
+  expect(dismissTo).toHaveBeenCalledWith('/(tabs)');
   runtime.unmount();
+});
+
+it('keeps the original tabs route when dismissing instead of creating another chat screen', () => {
+  const { StackRouter, StackActions } = createRequire(import.meta.url)('../../node_modules/expo-router/build/react-navigation/routers/StackRouter.js');
+  const router = StackRouter({ initialRouteName: '(tabs)' });
+  const options = { routeNames: ['(tabs)', 'share'], routeParamList: {}, routeGetIdList: {} };
+  const initial = router.getInitialState(options);
+  const shared = router.getStateForAction(initial, StackActions.push('share'), options);
+  const dismissed = router.getStateForAction(shared, StackActions.popTo('(tabs)'), options);
+  expect(dismissed.routes).toEqual(initial.routes);
+  const replaced = router.getStateForAction(shared, StackActions.replace('(tabs)'), options);
+  expect(replaced.routes.at(-1).key).not.toBe(initial.routes[0].key);
 });

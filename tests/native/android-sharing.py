@@ -208,6 +208,8 @@ def validate(apk, output):
         adb("shell", "input", "tap", *center(node))
         adb("shell", "input", "text", "existing-draft")
         hide_keyboard()
+        flow.composer("existing-draft")
+        flow.snapshot("before-warm-share")
         for index in range(2):
             flow.text_share("repeat-share-token")
             flow.add("repeat-share-token", occurrences=index + 1)

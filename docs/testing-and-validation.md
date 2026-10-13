@@ -47,6 +47,10 @@ Inspection of the earlier release APK confirmed both the native patch and
 `share_into_scheme` were absent. Source compilation and an explicit resource
 keep rule address these independent build defects; the release APK checks
 prevent either from silently returning.
+The first completed cold-share emulator flow also exposed tab replacement on
+return from the preview: it recreated the composer and dropped the local draft.
+Add/Discard now use `dismissTo`, with the installed stack router's route identity
+covered by Vitest and the draft asserted before and after warm native shares.
 
 `native-intent.test.ts` uses the installed React Native URL implementation to
 reproduce the custom-scheme hostname failure and verifies cold/warm share routing,
