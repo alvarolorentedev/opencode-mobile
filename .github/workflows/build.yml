@@ -13,12 +13,17 @@ on:
         required: false
         default: false
         type: boolean
+      share_apk_run:
+        description: 'Validate an existing release APK artifact from this workflow run ID without rebuilding'
+        required: false
+        default: ''
+        type: string
 
 # A new push cancels the previous in-progress run on the same ref, so stale
 # builds don't race current ones. Tag releases are exempt: a release in
 # flight must never be killed mid-upload.
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
+  group: ${{ github.workflow }}-${{ github.ref }}-${{ inputs.share_apk_run || 'build' }}
   cancel-in-progress: ${{ !startsWith(github.ref, 'refs/tags/v') }}
 
 jobs:
@@ -205,11 +210,12 @@ jobs:
 
   android-sharing:
     needs: android-release
-    if: github.event_name == 'workflow_dispatch' && inputs.build_android
+    if: ${{ always() && !cancelled() && github.event_name == 'workflow_dispatch' && (needs.android-release.result == 'success' || inputs.share_apk_run != '') }}
     runs-on: ubuntu-latest
     timeout-minutes: 20
     permissions:
       contents: read
+      actions: read
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -226,6 +232,8 @@ jobs:
         with:
           name: android-release-artifacts
           path: native-share-apk
+          run-id: ${{ inputs.share_apk_run || github.run_id }}
+          github-token: ${{ github.token }}
       - name: Enable KVM
         run: sudo chmod 666 /dev/kvm
       - name: Validate the release share receiver on Android

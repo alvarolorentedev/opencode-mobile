@@ -11,6 +11,7 @@ import subprocess
 import tempfile
 import time
 import unittest
+from unittest.mock import patch
 import urllib.request
 import xml.etree.ElementTree as ET
 import zipfile
@@ -23,6 +24,11 @@ def run(*args):
 
 def adb(*args):
     return run("adb", *args)
+
+
+def hide_keyboard():
+    if re.search(rb"\b(?:mInputShown|isInputShown)=true\b", adb("shell", "dumpsys", "input_method")):
+        adb("shell", "input", "keyevent", "4")
 
 
 def find(root, value):
@@ -184,7 +190,7 @@ def validate(apk, output):
         flow.tap("Manual")
         # The release defaults to 127.0.0.1:4096; adb reverse reaches the fake server.
         flow.wait("Server address")
-        adb("shell", "input", "keyevent", "4")
+        hide_keyboard()
         flow.tap("Continue")
         flow.tap("Save & connect")
         flow.tap("Select demo-project")
@@ -201,7 +207,7 @@ def validate(apk, output):
         node = flow.composer()
         adb("shell", "input", "tap", *center(node))
         adb("shell", "input", "text", "existing-draft")
-        adb("shell", "input", "keyevent", "4")
+        hide_keyboard()
         for index in range(2):
             flow.text_share("repeat-share-token")
             flow.add("repeat-share-token", occurrences=index + 1)
@@ -236,6 +242,14 @@ def validate(apk, output):
 
 
 class Checks(unittest.TestCase):
+    def test_back_only_dismisses_a_visible_keyboard(self):
+        for state, calls in [(b"mInputShown=false", 1), (b"mInputShown=true", 2)]:
+            with patch(__name__ + ".adb", return_value=state) as native:
+                hide_keyboard()
+                self.assertEqual(native.call_count, calls)
+                if calls == 2:
+                    native.assert_called_with("shell", "input", "keyevent", "4")
+
     def test_file_fixtures(self):
         with tempfile.TemporaryDirectory() as directory:
             photo, pdf = fixtures(Path(directory))

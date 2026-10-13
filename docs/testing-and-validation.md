@@ -41,6 +41,8 @@ real URI grants. The existing fake V2 server confirms nothing auto-submits.
 The workflow uploads screenshots, accessibility trees, manifest and logs as
 `android-sharing-evidence`, including on failures. Emulator coverage does not
 establish OEM share-sheet behaviour or physical-device accessibility.
+Set `share_apk_run` to an existing Build run ID to repeat native validation
+against its exact release APK without another compilation (`build_android=false`).
 Inspection of the earlier release APK confirmed both the native patch and
 `share_into_scheme` were absent. Source compilation and an explicit resource
 keep rule address these independent build defects; the release APK checks
