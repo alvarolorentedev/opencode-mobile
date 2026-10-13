@@ -34,8 +34,11 @@ jobs:
       - name: Keep only the newest cache per family
         run: |
           set -euo pipefail
+          # Keep the production and FOSS Gradle caches independent: a shared
+          # `gradle-` prefix would delete one flavor every week and force a
+          # cold dependency download on the next build.
           # ponytail: --limit 100 covers current cache volume; paginate if it ever exceeds that
-          for prefix in gradle- node-cache-; do
+          for prefix in gradle-Linux- gradle-foss-Linux- node-cache-; do
             keep=$(gh cache list --key "$prefix" --sort created_at --order desc --limit 100 --json id --jq '.[0].id // empty')
             if [ -z "$keep" ]; then
               echo "No $prefix caches"

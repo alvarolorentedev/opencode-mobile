@@ -259,7 +259,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: ios-release-ipa
-          retention-days: 3
+          retention-days: 1
           path: ${{ runner.temp }}/ios-build/*.ipa
           if-no-files-found: error
 

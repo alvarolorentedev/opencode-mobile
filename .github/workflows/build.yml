@@ -7,6 +7,12 @@ on:
     tags:
       - 'v*'
   workflow_dispatch:
+    inputs:
+      build_android:
+        description: 'Also build the Android release APKs (skipped on main pushes)'
+        required: false
+        default: false
+        type: boolean
 
 # A new push cancels the previous in-progress run on the same ref, so stale
 # builds don't race current ones. Tag releases are exempt: a release in
@@ -58,8 +64,11 @@ jobs:
           path: playwright-report
           if-no-files-found: ignore
 
+  # Release builds only run for `v*` tags or a manual dispatch that asks for
+  # an APK; plain pushes to `main` stop at the validation gate.
   android-release:
     needs: validate
+    if: ${{ startsWith(github.ref, 'refs/tags/v') || (github.event_name == 'workflow_dispatch' && inputs.build_android) }}
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -170,7 +179,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: android-release-artifacts
-          retention-days: 3
+          retention-days: 1
           path: |
             android/app/build/outputs/**/*.apk
 
@@ -196,7 +205,7 @@ jobs:
 
   foss-release:
     needs: [validate, android-release]
-    if: ${{ always() && needs.validate.result == 'success' }}
+    if: ${{ always() && needs.validate.result == 'success' && (startsWith(github.ref, 'refs/tags/v') || (github.event_name == 'workflow_dispatch' && inputs.build_android)) }}
     runs-on: ubuntu-latest
     permissions:
       contents: write

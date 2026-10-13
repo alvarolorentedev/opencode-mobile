@@ -138,6 +138,7 @@ opening accepts the retained active path while rejecting other unlisted paths.
 `.github/workflows/build.yml` owns Android validation and release. It runs on pushes to `main` and `v*` tags:
 
 - a single `validate` job covers static validation and flow regression testing, and is the required gate for both release jobs
+- on pushes to `main` only the `validate` job runs; `android-release` and `foss-release` are limited to `v*` tags and manual dispatches with `build_android: true`
 - validation uploads artifacts only on failure (`playwright-report`), with 3-day retention; Playwright retains failed-test traces and screenshots without requiring retries
 
 `.github/workflows/pr-validate.yml` runs the same validate steps on pull requests targeting `main`, so contributor branches get the static, fake-server, and Playwright gates before review. It does not build or publish releases, and it cancels superseded runs for the same PR.
@@ -150,8 +151,8 @@ opening accepts the retained active path while rejecting other unlisted paths.
 - it has no `cancel-in-progress`, so a release in flight is never killed mid-upload
 
 Release automation in `build.yml`:
-- Actions artifacts expire after 3 days; the permanent copy is the GitHub Release asset, Play Store upload, or TestFlight upload
-- `.github/workflows/cleanup.yml` runs weekly to delete artifacts older than 3 days and keep only the newest Gradle/npm cache
+- APK/IPA workflow artifacts expire after 1 day; the permanent copy is the GitHub Release asset, Play Store upload, or TestFlight upload
+- `.github/workflows/cleanup.yml` runs weekly to delete expired artifacts and keep only the newest cache per family (production Gradle, FOSS Gradle, npm)
 
 From `TESTING.md`, those gates include:
 

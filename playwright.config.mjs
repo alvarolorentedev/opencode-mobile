@@ -4,6 +4,8 @@ export default defineConfig({
   testDir: './tests/e2e',
   timeout: 60_000,
   fullyParallel: false,
+  // The fake server keeps one global scenario; multiple workers would reset it
+  // out from under other spec files (see /__control/reset in server.mjs).
   workers: 1,
   reporter: [['list'], ['html', { open: 'never' }]],
   use: {
