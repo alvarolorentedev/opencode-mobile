@@ -34,6 +34,8 @@ describe('Android sharing build patch', () => {
       const target = path.join(temporary, 'node_modules/expo-sharing');
       cpSync(root, target, { recursive: true });
       prepareAndroidSharing(temporary); prepareAndroidSharing(temporary);
+      const keep = readFileSync(path.join(temporary, 'android/app/src/main/res/raw/opencode_sharing_keep.xml'), 'utf8');
+      expect(keep).toContain('tools:keep="@string/share_into_scheme"');
       const before = readFileSync(path.join(target, 'android/src/main/java/expo/modules/sharing/dataParsers/SimpleShareIntentDataParser.kt'), 'utf8');
       writeFileSync(path.join(target, 'package.json'), JSON.stringify({ version: '58.0.0' }));
       expect(() => prepareAndroidSharing(temporary)).toThrow('expected 57.0.22');

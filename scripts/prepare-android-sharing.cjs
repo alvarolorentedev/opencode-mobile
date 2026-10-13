@@ -77,5 +77,10 @@ function prepareAndroidSharing(root) {
     return [filename, patchSharingSource(fs.readFileSync(filename, 'utf8'), resolved)];
   });
   for (const [filename, source] of changes) fs.writeFileSync(filename, source);
+  // Expo looks this up by name; optimized resource shrinking otherwise removes it.
+  const resources = path.join(root, 'android/app/src/main/res/raw');
+  fs.mkdirSync(resources, { recursive: true });
+  fs.writeFileSync(path.join(resources, 'opencode_sharing_keep.xml'),
+    '<resources xmlns:tools="http://schemas.android.com/tools" tools:keep="@string/share_into_scheme" />\n');
 }
 module.exports = { prepareAndroidSharing, patchSharingSource };

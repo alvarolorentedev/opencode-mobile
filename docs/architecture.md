@@ -457,6 +457,8 @@ accompanying text, unique cache copies and bounded reads; review it on upgrade.
 Android autolinking builds only `expo-sharing` from source so the patched Kotlin
 is compiled instead of silently using Expo's bundled precompiled AAR. FOSS
 preparation preserves that setting.
+The prebuild helper also keeps `share_into_scheme` from optimized Android
+resource shrinking: Expo loads this string dynamically to create the share link.
 The redirect matches the exact share host directly, because React Native's
 `URL.hostname` does not parse custom app schemes. Other deep links pass through.
 

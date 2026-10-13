@@ -41,6 +41,10 @@ real URI grants. The existing fake V2 server confirms nothing auto-submits.
 The workflow uploads screenshots, accessibility trees, manifest and logs as
 `android-sharing-evidence`, including on failures. Emulator coverage does not
 establish OEM share-sheet behaviour or physical-device accessibility.
+Inspection of the earlier release APK confirmed both the native patch and
+`share_into_scheme` were absent. Source compilation and an explicit resource
+keep rule address these independent build defects; the release APK checks
+prevent either from silently returning.
 
 `native-intent.test.ts` uses the installed React Native URL implementation to
 reproduce the custom-scheme hostname failure and verifies cold/warm share routing,
