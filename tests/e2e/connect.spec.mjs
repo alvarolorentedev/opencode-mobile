@@ -33,6 +33,13 @@ async function openPair(page, completed = true, id = 'pair-1') {
   await expect(page.getByTestId('connect-user-token')).toHaveCount(0);
   await expect(page.getByTestId('connect-token-required')).toHaveCount(0);
 }
+async function showGuidedSubscription(page) {
+  await expect(page.getByTestId('connect-step-1')).toBeVisible();
+  await page.getByTestId('connect-next').click();
+  await expect(page.getByTestId('connect-step-2')).toBeVisible();
+  await page.getByTestId('connect-next').click();
+  await expect(page.getByTestId('connect-step-3')).toBeVisible();
+}
 async function submitLink(page, link) {
   const errorSheet = page.getByTestId('connect-error-sheet');
   if (await errorSheet.isVisible()) await errorSheet.getByRole('button', { name: 'Open pairing link', exact: true }).click();
@@ -478,7 +485,7 @@ for (const options of [{ lostResponse: true }, { reconciliation: true }]) {
 test('second-device Restore lists durable machines; access mismatch saves nothing', async ({ page }) => {
   await storeFixture(page); const state = await mockControlPlane(page, { owned: true, mismatch: true });
   await page.addInitScript(() => localStorage.setItem('opencode-mobile.onboarding-version', JSON.stringify({ version: 1 })));
-  await page.goto('/pair'); await expect(page.getByTestId('connect-restore')).toBeEnabled();
+  await page.goto('/pair'); await showGuidedSubscription(page); await expect(page.getByTestId('connect-restore')).toBeEnabled();
   await page.getByTestId('connect-restore').click();
   await expect(page.getByTestId('connect-subscription-sheet')).toHaveCount(0);
   await manage(page);
@@ -491,7 +498,7 @@ test('second-device Restore lists durable machines; access mismatch saves nothin
 test('second-device Restore reconnects the same owned machine without a QR', async ({ page }) => {
   await storeFixture(page); const state = await mockControlPlane(page, { owned: true });
   await page.addInitScript(() => localStorage.setItem('opencode-mobile.onboarding-version', JSON.stringify({ version: 1 })));
-  await page.goto('/pair'); await expect(page.getByTestId('connect-restore')).toBeEnabled();
+  await page.goto('/pair'); await showGuidedSubscription(page); await expect(page.getByTestId('connect-restore')).toBeEnabled();
   await page.getByTestId('connect-restore').click();
   await expect(page.getByTestId('connect-subscription-sheet')).toHaveCount(0);
   await manage(page);
@@ -549,7 +556,7 @@ test('renewal rotates credentials while preserving profile, machine, hostname an
   // A second launch has only durable profile metadata; Restore reacquires its
   // store session, then refreshes access on the original machine.
   state.paidThrough += 3600000;
-  await page.goto('/pair'); await expect(page.getByTestId('connect-restore')).toBeEnabled();
+  await page.goto('/pair'); await showGuidedSubscription(page); await expect(page.getByTestId('connect-restore')).toBeEnabled();
   await page.evaluate((previousUsername) => {
     const original = Storage.prototype.setItem; let fail = true;
     Storage.prototype.setItem = function (key, value) { if (key === 'opencode-mobile.connection-profiles' && fail && JSON.parse(value)[0].username !== previousUsername) { fail = false; throw new Error('storage unavailable'); } return original.call(this, key, value); };
@@ -645,27 +652,41 @@ test('a subscriber opening a QR link pairs automatically without a purchase over
   await assertNoStoredSecrets(page);
 });
 
-test('subscription dismissal returns to the chooser and Manual stays available', async ({ page }) => {
+test('guided setup can close or go back without purchasing and Manual stays available', async ({ page }) => {
   await storeFixture(page); await mockControlPlane(page);
   await page.addInitScript(() => localStorage.setItem('opencode-mobile.onboarding-version', JSON.stringify({ version: 1 })));
   await page.goto('/pair');
+  await showGuidedSubscription(page);
   await expect(page.getByTestId('connect-purchase')).toBeEnabled();
-  for (const dismiss of ['close', 'escape', 'backdrop']) {
-    const sheet = page.getByTestId('connect-subscription-sheet');
-    await expect(sheet).toBeVisible();
-    if (dismiss === 'close') await sheet.getByText('Close', { exact: true }).click();
-    else if (dismiss === 'escape') await page.keyboard.press('Escape');
-    else await sheet.getByLabel('Close Cloud Link').click({ position: { x: 10, y: 10 } });
+  await page.keyboard.press('Escape');
+  await expect(page.getByTestId('connect-step-2')).toBeVisible();
+  await page.getByRole('button', { name: 'Back', exact: true }).click();
+  await expect(page.getByTestId('connect-step-1')).toBeVisible();
+  for (const dismiss of ['close', 'escape']) {
+    if (dismiss === 'close') await page.getByTestId('connect-close').click();
+    else await page.keyboard.press('Escape');
     await expect(page.getByTestId('connection-method-chooser')).toBeVisible();
     await expect(page.getByTestId('connect-panel')).toHaveCount(0);
-    await expect(sheet).toHaveCount(0);
+    await expect(page.getByTestId('connect-subscription-sheet')).toHaveCount(0);
     await page.getByTestId('connection-method-connect').click();
-    await expect(page.getByTestId('connect-purchase')).toBeEnabled();
+    await expect(page.getByTestId('connect-step-1')).toBeVisible();
   }
-  await page.getByTestId('connect-subscription-sheet').getByText('Close', { exact: true }).click();
+  await page.getByTestId('connect-close').click();
   await page.getByTestId('connection-method-manual').click();
   await expect(page.getByTestId('connection-profile-url-input')).toBeVisible();
   expect(await events(page)).not.toContain('purchase');
+});
+
+test('closing an incoming pairing link clears its QR and starts guided setup when reopened from the chooser', async ({ page }) => {
+  await storeFixture(page); const state = await mockControlPlane(page);
+  await openPair(page);
+  await page.getByTestId('connect-subscription-sheet').getByText('Close', { exact: true }).click();
+  await page.getByTestId('connection-method-connect').click();
+  await expect(page.getByTestId('connect-step-1')).toBeVisible();
+  await showGuidedSubscription(page);
+  await page.getByTestId('connect-purchase').click();
+  await expect(page.getByTestId('connect-step-4')).toBeVisible();
+  expect(state.pairClaims).toBe(0);
 });
 
 test('an existing subscriber selecting Cloud Link opens the pairing screen without a purchase overlay', async ({ page }) => {
@@ -741,13 +762,14 @@ test('Settings has one creation entry and both methods lead through the shared c
   await expect(page.getByTestId('connection-method-manual')).toHaveAttribute('role', 'button');
   await page.screenshot({ path: '/tmp/opencode-add-connection-chooser.png' });
   await page.getByTestId('connection-method-connect').click();
+  await showGuidedSubscription(page);
   await expect(page.getByTestId('connect-purchase')).toBeEnabled();
   await expect(page.getByRole('tab', { name: 'Settings' })).not.toBeVisible();
-  const subscriptionSheet = page.getByTestId('connect-subscription-sheet');
-  await expect(subscriptionSheet.getByRole('button', { name: 'Trusted control plane', exact: true })).toHaveCount(0);
-  await expect(subscriptionSheet.getByRole('button', { name: 'Open pairing link', exact: true })).toHaveCount(0);
+  const subscription = page.getByTestId('connect-step-3');
+  await expect(subscription.getByRole('button', { name: 'Trusted control plane', exact: true })).toHaveCount(0);
+  await expect(subscription.getByRole('button', { name: 'Open pairing link', exact: true })).toHaveCount(0);
   await page.screenshot({ path: '/tmp/opencode-add-connection-subscription.png' });
-  await page.getByTestId('connect-subscription-sheet').getByText('Close', { exact: true }).click();
+  await page.getByTestId('connect-close').click();
   await page.getByTestId('connection-method-manual').click();
   await page.getByTestId('connection-profile-url-input').fill(SERVER);
   await page.getByTestId('connection-profile-continue').click();
@@ -765,7 +787,8 @@ test('store setup errors keep subscription recovery separate from pairing settin
   await mockControlPlane(page, { productId: 'unavailable.product' });
   await page.addInitScript(() => localStorage.setItem('opencode-mobile.onboarding-version', JSON.stringify({ version: 1 })));
   await page.goto('/pair');
-  const sheet = page.getByTestId('connect-subscription-sheet');
+  await showGuidedSubscription(page);
+  const sheet = page.getByTestId('connect-step-3');
   await expect(sheet.getByTestId('connect-error')).toContainText('No matching Cloud Link products');
   await expect(sheet.getByTestId('connect-retry')).toBeVisible();
   await expect(sheet.getByTestId('connect-purchase')).toBeDisabled();
@@ -774,4 +797,91 @@ test('store setup errors keep subscription recovery separate from pairing settin
   await expect(sheet.getByRole('button', { name: 'Open pairing link', exact: true })).toHaveCount(0);
   await expect(page.getByTestId('connect-control-plane')).toHaveCount(0);
   await expect(page.getByTestId('connect-settings')).toHaveCount(0);
+});
+
+test('guided Cloud Link uses consistent illustrated steps, store pricing and explicit checkout', async ({ page }) => {
+  await storeFixture(page); const state = await mockControlPlane(page);
+  await page.addInitScript(() => localStorage.setItem('opencode-mobile.onboarding-version', JSON.stringify({ version: 1 })));
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.emulateMedia({ colorScheme: 'dark' });
+  await page.goto('/pair');
+  const positions = [];
+  async function capture(step) {
+    await expect(page.getByTestId(`connect-step-${step}`)).toBeVisible();
+    const artwork = page.getByTestId('connect-illustration').locator('img').first();
+    await expect(artwork).toHaveAttribute('src', new RegExp(step === 2 || step === 4 ? 'cloud-link-desktop' : 'cloud-link-devices'));
+    await artwork.evaluate((image) => image.decode());
+    if (step === 4) await page.getByTestId('connect-illustration').locator('img').last().evaluate((image) => image.decode());
+    const image = await page.getByTestId('connect-illustration').boundingBox();
+    const title = await page.getByTestId('connect-step-heading').boundingBox();
+    const subtitle = await page.getByTestId('connect-step-subheading').boundingBox();
+    const primary = await page.getByTestId(step === 3 ? 'connect-purchase' : step === 4 ? 'connect-start-scan' : 'connect-next').boundingBox();
+    positions.push({ image: image.y, title: title.y, subtitle: subtitle.y, primary: primary.y });
+    await page.screenshot({ path: `output/cloud-link-step-${step}.png` });
+  }
+  await capture(1);
+  expect(await events(page)).not.toContain('purchase');
+  await page.getByTestId('connect-next').click();
+  await capture(2);
+  await expect(page.getByRole('button', { name: 'Share setup link' })).toHaveCount(0);
+  await page.getByTestId('connect-copy-setup-url').click();
+  await expect(page.getByTestId('connect-copy-setup-url')).toHaveAccessibleName('Setup URL copied');
+  await page.getByTestId('connect-next').click();
+  await expect(page.getByTestId('connect-purchase')).toBeEnabled();
+  await expect(page.getByTestId(`connect-offer-${PRODUCT}:monthly:monthly`)).toContainText('$4.99');
+  const restore = await page.getByTestId('connect-restore').boundingBox();
+  const purchase = await page.getByTestId('connect-purchase').boundingBox();
+  expect(restore.height).toBeGreaterThanOrEqual(44);
+  expect(restore.y + restore.height).toBeLessThanOrEqual(purchase.y);
+  await capture(3);
+  expect(state.subscriptionClaims).toBe(0);
+  expect(state.pairClaims).toBe(0);
+  await page.getByTestId('connect-purchase').click();
+  await capture(4);
+  expect(await events(page)).toContain('purchase');
+  expect(state.subscriptionClaims).toBe(1);
+  expect(state.pairClaims).toBe(0);
+  for (const surface of ['image', 'title', 'subtitle', 'primary']) {
+    expect(Math.max(...positions.map((position) => position[surface])) - Math.min(...positions.map((position) => position[surface]))).toBeLessThan(2);
+  }
+  await submitLink(page, pairingLink().toString());
+  await expect(page).toHaveURL(/\/workspace$/, { timeout: 30_000 });
+  expect(state.pairClaims).toBe(1);
+  await assertNoStoredSecrets(page);
+});
+
+for (const outcome of ['pending', 'canceled']) {
+  test(`guided ${outcome} checkout stays on subscription and never pairs`, async ({ page }) => {
+    await storeFixture(page, { outcome }); const state = await mockControlPlane(page);
+    await page.addInitScript(() => localStorage.setItem('opencode-mobile.onboarding-version', JSON.stringify({ version: 1 })));
+    await page.goto('/pair');
+    await showGuidedSubscription(page);
+    await page.getByTestId('connect-purchase').click();
+    await expect(page.getByTestId('connect-notice')).toContainText(outcome === 'pending' ? 'pending store approval' : 'Purchase canceled');
+    await expect(page.getByTestId('connect-step-3')).toBeVisible();
+    await expect(page.getByTestId('connect-step-4')).toHaveCount(0);
+    expect(state.subscriptionClaims).toBe(0); expect(state.pairClaims).toBe(0);
+  });
+}
+
+test('guided subscription keeps actions accessible on a narrow light screen', async ({ page }) => {
+  await storeFixture(page); await mockControlPlane(page);
+  await page.addInitScript(() => localStorage.setItem('opencode-mobile.onboarding-version', JSON.stringify({ version: 1 })));
+  await page.setViewportSize({ width: 320, height: 700 });
+  await page.emulateMedia({ colorScheme: 'light' });
+  await page.goto('/pair');
+  await showGuidedSubscription(page);
+  await expect(page.getByTestId('connect-purchase')).toBeEnabled();
+  const purchase = await page.getByTestId('connect-purchase').boundingBox();
+  const restore = await page.getByTestId('connect-restore').boundingBox();
+  const price = await page.getByTestId(`connect-offer-${PRODUCT}:monthly:monthly`).boundingBox();
+  expect(purchase.height).toBeGreaterThanOrEqual(44);
+  expect(purchase.y + purchase.height).toBeLessThanOrEqual(700);
+  expect(restore.height).toBeGreaterThanOrEqual(44);
+  expect(restore.y + restore.height).toBeLessThanOrEqual(purchase.y);
+  expect(price.y + price.height).toBeLessThanOrEqual(restore.y);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(320);
+  await page.screenshot({ path: 'output/cloud-link-subscription-light-narrow.png' });
+  await page.getByTestId('connect-restore').click();
+  await expect(page.getByTestId('connect-step-4')).toBeVisible();
 });

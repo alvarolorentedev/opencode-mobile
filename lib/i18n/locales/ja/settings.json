@@ -389,7 +389,45 @@
     "benefits": "QRコードで接続し、Cloud Linkを通じてコンピューターにリモートアクセスできます。「購入を復元」で別のデバイスからマシンを復元できます。",
     "subscribe": "登録する",
     "options": "接続オプション",
-    "learnMore": "Cloud Linkについて詳しく"
+    "learnMore": "Cloud Linkについて詳しく",
+    "onboarding": {
+      "step": "{{total}} ステップ中 {{step}}",
+      "step1": {
+        "title": "あなたのパソコン。\nどこからでも。",
+        "subtitle": "スマートフォンからパソコンの OpenCode を使えます。",
+        "action": "始める"
+      },
+      "step2": {
+        "title": "パソコンを\nセットアップ",
+        "subtitle": "パソコンに Cloud Link をダウンロードしてください。",
+        "action": "Cloud Link を起動しました"
+      },
+      "step3": {
+        "title": "Cloud Link を\n有効にする",
+        "subtitle": "サブスクリプションでこのアプリをインターネット経由でパソコンに接続します。",
+        "action": "登録して続ける"
+      },
+      "step4": {
+        "title": "パソコンを\nペアリング",
+        "subtitle": "パソコンの Cloud Link に表示された QR コードをスキャンしてください。",
+        "action": "QR コードをスキャン"
+      },
+      "explanation": "Cloud Link はインターネット経由でデバイスを接続します。パソコンの電源を入れ、Cloud Link を起動したままにしてください。",
+      "instruction1": "パソコンにインストール",
+      "instruction2": "このアプリで登録",
+      "instruction3": "スキャンしてペアリング",
+      "openOnComputer": "パソコンで開くサイト：",
+      "copySetupUrl": "パソコン設定用 URL をコピー",
+      "copied": "設定用 URL をコピーしました",
+      "copyError": "URL をコピーできませんでした。パソコンで opencodecloud.link を開いてください。",
+      "downloadHint": "Cloud Link をダウンロードして起動し、ペアリング用 QR コードを画面に表示したままにしてください。",
+      "remote": "インターネット経由で接続",
+      "pair": "パソコンをこのアプリとペアリング",
+      "billing": "請求はアプリストアが管理します。",
+      "checkoutHint": "アプリストアを開いて購入を確認します。",
+      "approveHint": "その後、パソコンで接続を承認してください。",
+      "usePairingLink": "ペアリングリンクを使う"
+    }
   },
   "editor": {
     "title": "エディター"

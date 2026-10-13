@@ -140,36 +140,52 @@ Manual. Onboarding uses the same chooser and retains Skip. Manual opens the
 shared full-screen Name/URL/Username/Password form with Save & connect. Failed
 connections retain the form and reuse the saved profile on retry.
 
-Cloud Link opens a full-screen camera surface, outside the tabs. On native, each
-pairing entry requests camera permission before this surface (and its subscription
-sheet) renders, including when Android reports a requestable denial; denial
-cancels pairing and returns to the previous screen. Store/session
-initialization is explicit (`loading`, `ready`, `error`); scanning and the
-subscription overlay wait for recovery to settle. A verified subscriber scans
-and automatically pairs, securely saves, and connects through the provider's
-`pairLink` action. Non-subscribers see the shared subscription sheet with
-benefits, native localized offers, Subscribe and Restore purchases over the
-camera preview; the preview renders but scans never pair without an active
-entitlement. Dismissing it clears the pending QR, dismisses the camera surface,
-and returns to the chooser. Every new Cloud Link attempt checks entitlement again
-and shows the sheet for a non-subscriber; dismissal is never remembered. Active
-subscribers go directly to the camera surface without the buy/Restore sheet,
-including when opening pairing again after a successful connection. No purchase
-is started automatically. Deep links use the same continuation and retain the
-exact pending QR for purchase/Restore; because they already carry a QR they skip
-the camera-permission gate.
+Cloud Link opens a full-screen, four-step illustrated assistant outside the tabs:
+
+1. **Learn** explains remote access, the computer prerequisite, and install →
+   subscribe → pair.
+2. **Computer setup** shows the copyable `opencodecloud.link` address and asks the
+   user to download/open Cloud Link on their computer and leave its QR visible.
+   Cloud Link is running is an explicit user confirmation, not installation
+   detection. There is no Share setup action.
+3. **Subscribe** shows native localized offers at normal body size. A single
+   offer is a static summary; multiple configured offers retain selection. Restore
+   purchases is a visible text link above the pinned Subscribe & continue button.
+   Subscribe explicitly launches native store checkout and advances only after
+   verified access, secure session saving and finalization complete. Cancellation,
+   pending approval and failed verification/finalization stay on this step with
+   the existing recovery controls. Opening the screen never purchases or restores.
+4. **Pair** reuses the computer drawing with scanner corners, explains scanning
+   and desktop approval, and offers Use pairing link above the pinned Scan QR code
+   action. This action opens the existing scanner and only then requests camera
+   permission. Denial or scanner Back returns to the illustrated Pair step;
+   pairing links remain available without camera permission.
+
+All steps share illustration/heading/subheading positions, scrollable content,
+44-point secondary targets, safe-area padding and bottom-aligned primary actions.
+Artwork is decorative and hidden from screen readers. Existing subscribers start
+on Pair and skip subscription; access loss returns them to Subscribe. Back moves
+through the assistant, while Close cancels the pending pairing and returns to the
+shared chooser, where Manual remains available. No assistant completion marker is
+persisted. App updates are blocked while pairing is focused.
+
+Incoming deep links already supply a QR payload and preserve their direct
+subscription/automatic-pairing continuation without the assistant or camera gate.
+The route clears secret query parameters with `setParams` so it retains that
+origin while the provider keeps the exact pending QR through purchase/Restore.
+Store/session initialization remains explicit (`loading`, `ready`, `error`).
+Scanning never pairs without provider-verified entitlement.
 
 The camera unmounts during operations, overlays, lost focus and backgrounding.
 Invalid/untrusted links show recoverable errors; dismissing resumes scanning.
-A viewfinder frames the QR area and its hint replaces the old status chips. The
-appbar hosts a single options action (`monitor-multiple`) instead of an inline
-pair-link button: it contains the pairing-link alternative, machine management
-for entitled users, and a learn-more link to `https://opencodecloud.link/`.
-Unavailable cameras retain Retry. The subscription sheet, including store setup and purchase errors, contains
-only purchase/Restore content and recovery controls. Pairing-link fallback belongs to the options sheet. Machine management lives in a separate `pair?mode=manage`
-view, reached through the options action or saved profiles' Manage Cloud Link or
-Your machines after Restore. Production web offers Manual and explains native Cloud Link availability;
-only the existing web E2E harness enables mocked Cloud Link.
+The scanner appbar options action (`monitor-multiple`) retains the pairing-link
+alternative, machine management and learn-more URL. The illustrated Pair step's
+Use pairing link opens those same options. Unavailable cameras retain Retry.
+Machine management stays in `pair?mode=manage`, also reached through saved
+profiles and the Subscription section. Production web offers Manual and explains
+native Cloud Link availability; only the development web E2E harness enables
+mocked Cloud Link. Purchase/Restore, credentials, activation and environment
+routing remain provider-owned and unchanged.
 
 ## Purchase, Restore and pairing
 

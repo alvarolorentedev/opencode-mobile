@@ -389,7 +389,45 @@
     "benefits": "Connectez-vous avec un code QR, accédez à votre ordinateur à distance via Cloud Link et retrouvez vos machines sur un autre appareil avec Restaurer les achats.",
     "subscribe": "S’abonner",
     "options": "Options de connexion",
-    "learnMore": "En savoir plus sur Cloud Link"
+    "learnMore": "En savoir plus sur Cloud Link",
+    "onboarding": {
+      "step": "{{step}} sur {{total}}",
+      "step1": {
+        "title": "Votre ordinateur.\nPartout.",
+        "subtitle": "Utilisez OpenCode sur votre ordinateur depuis votre téléphone.",
+        "action": "Commencer"
+      },
+      "step2": {
+        "title": "Configurez votre\nordinateur",
+        "subtitle": "Téléchargez Cloud Link sur votre ordinateur.",
+        "action": "Cloud Link est ouvert"
+      },
+      "step3": {
+        "title": "Activez\nCloud Link",
+        "subtitle": "Abonnez-vous pour connecter cette app à votre ordinateur par internet.",
+        "action": "S’abonner et continuer"
+      },
+      "step4": {
+        "title": "Associez votre\nordinateur",
+        "subtitle": "Scannez le code QR affiché dans Cloud Link sur votre ordinateur.",
+        "action": "Scanner le code QR"
+      },
+      "explanation": "Cloud Link connecte vos appareils par internet. Gardez votre ordinateur allumé et Cloud Link ouvert.",
+      "instruction1": "Installez sur votre ordinateur",
+      "instruction2": "Abonnez-vous dans cette app",
+      "instruction3": "Scannez pour associer",
+      "openOnComputer": "Sur votre ordinateur, ouvrez :",
+      "copySetupUrl": "Copier l’URL de configuration de l’ordinateur",
+      "copied": "URL de configuration copiée",
+      "copyError": "Impossible de copier l’URL. Ouvrez opencodecloud.link sur votre ordinateur.",
+      "downloadHint": "Téléchargez et ouvrez Cloud Link, puis gardez son code QR d’association à l’écran.",
+      "remote": "Connexion par internet",
+      "pair": "Associez votre ordinateur à cette app",
+      "billing": "La facturation est gérée par votre boutique d’applications.",
+      "checkoutHint": "Ouvre votre boutique d’applications pour confirmer l’achat.",
+      "approveHint": "Puis approuvez la connexion sur votre ordinateur.",
+      "usePairingLink": "Utiliser un lien d’association"
+    }
   },
   "editor": {
     "title": "Éditeur"

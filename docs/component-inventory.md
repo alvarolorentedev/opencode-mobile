@@ -479,15 +479,24 @@ reply/request excerpts and step text while preserving titles, counts and status.
 `connection-method-chooser.tsx` renders the shared Cloud Link/Manual choices and
 a learn-more link. `connection-setup-form.tsx` composes the chooser and existing
 manual profile form for onboarding and returning from pairing.
-`connect-camera-gate.tsx` resolves native camera permission before the pairing
-surface renders and cancels pairing on denial; documented web never uses the
-camera. `connect-pairing.tsx` composes the full-screen scanner, an appbar
-options action that hosts the pairing-link alternative and machine management,
-plus shared subscription and error overlays. Environment routing belongs to the
-provider and purchase service; no URL editor is rendered. `connect-scanner.tsx`
-owns camera presentation/lifecycle and the viewfinder; it previews only once
-permission is granted and never pairs without an entitlement.
-`connect-subscription.tsx` renders native offers and explicit purchase/Restore.
+`connect-onboarding.tsx` presents the four-step Cloud Link assistant (learn,
+computer setup, subscribe, pair), with shared illustration/heading/subheading
+spacing and pinned primary actions. Pair reuses the computer drawing beneath a
+thin transparent, theme-tinted corner frame outside the display. It owns only
+clipboard feedback; step and
+scanner visibility are local presentation state in `connect-pairing.tsx`.
+`connect-camera-gate.tsx` requests permission only after Scan QR code (and still
+serves manual local QR setup); denial returns to the illustrated Pair step.
+`connect-pairing.tsx` retains the existing scanner, appbar options, link fallback
+and recovery overlays. Deep links bypass the assistant and camera gate. Returning
+subscribers start on Pair; native subscription verification and pairing remain in
+the provider. `connect-scanner.tsx` owns camera presentation/lifecycle and only
+previews after permission is granted.
+`connect-subscription.tsx` reuses native offers and explicit purchase/Restore.
+Its assistant layout has a static single-offer summary (selection for multiple
+offers), native pricing at body size, inline recovery, and a Restore text link
+above Subscribe & continue. Other Settings/management callers retain their
+existing compact layout.
 `sections/subscription-section.tsx` renders the Cloud Link access summary,
 Subscription actions (native store management, offers when inactive, one Restore
 row), and a Machines shortcut to the existing management route. It uses the

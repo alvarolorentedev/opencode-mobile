@@ -389,7 +389,45 @@
     "benefits": "Conéctate con un código QR, accede a tu ordenador de forma remota con Cloud Link y recupera tus equipos en otro dispositivo con Restaurar compras.",
     "subscribe": "Suscribirse",
     "options": "Opciones de conexión",
-    "learnMore": "Más información sobre Cloud Link"
+    "learnMore": "Más información sobre Cloud Link",
+    "onboarding": {
+      "step": "{{step}} de {{total}}",
+      "step1": {
+        "title": "Tu ordenador.\nDonde quieras.",
+        "subtitle": "Usa OpenCode en tu ordenador desde el móvil.",
+        "action": "Empezar"
+      },
+      "step2": {
+        "title": "Configura tu\nordenador",
+        "subtitle": "Descarga Cloud Link en tu ordenador.",
+        "action": "Cloud Link está abierto"
+      },
+      "step3": {
+        "title": "Activa\nCloud Link",
+        "subtitle": "Suscríbete para conectar esta app a tu ordenador por internet.",
+        "action": "Suscribirse y continuar"
+      },
+      "step4": {
+        "title": "Vincula tu\nordenador",
+        "subtitle": "Escanea el código QR de Cloud Link en tu ordenador.",
+        "action": "Escanear código QR"
+      },
+      "explanation": "Cloud Link conecta tus dispositivos por internet. Mantén el ordenador encendido y Cloud Link abierto.",
+      "instruction1": "Instala en tu ordenador",
+      "instruction2": "Suscríbete en esta app",
+      "instruction3": "Escanea para vincular",
+      "openOnComputer": "En tu ordenador, abre:",
+      "copySetupUrl": "Copiar URL de configuración del ordenador",
+      "copied": "URL de configuración copiada",
+      "copyError": "No se pudo copiar la URL. Abre opencodecloud.link en tu ordenador.",
+      "downloadHint": "Descarga y abre Cloud Link y deja su código QR de vinculación en pantalla.",
+      "remote": "Conecta por internet",
+      "pair": "Vincula tu ordenador con esta app",
+      "billing": "Tu tienda de aplicaciones gestiona la facturación.",
+      "checkoutHint": "Abre tu tienda de aplicaciones para confirmar la compra.",
+      "approveHint": "Después, aprueba la conexión en tu ordenador.",
+      "usePairingLink": "Usar enlace de vinculación"
+    }
   },
   "editor": {
     "title": "Editor"

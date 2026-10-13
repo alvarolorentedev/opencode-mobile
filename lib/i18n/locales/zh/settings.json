@@ -389,7 +389,45 @@
     "benefits": "通过二维码连接，使用 Cloud Link 远程访问电脑，并通过“恢复购买”在另一台设备上恢复您的机器。",
     "subscribe": "订阅",
     "options": "连接选项",
-    "learnMore": "了解 Cloud Link"
+    "learnMore": "了解 Cloud Link",
+    "onboarding": {
+      "step": "第 {{step}} 步，共 {{total}} 步",
+      "step1": {
+        "title": "你的电脑。\n随时随地。",
+        "subtitle": "通过手机使用电脑上的 OpenCode。",
+        "action": "开始"
+      },
+      "step2": {
+        "title": "设置你的\n电脑",
+        "subtitle": "在电脑上下载 Cloud Link。",
+        "action": "Cloud Link 已启动"
+      },
+      "step3": {
+        "title": "启用\nCloud Link",
+        "subtitle": "订阅后，通过互联网将此应用连接到你的电脑。",
+        "action": "订阅并继续"
+      },
+      "step4": {
+        "title": "配对你的\n电脑",
+        "subtitle": "扫描电脑上 Cloud Link 显示的二维码。",
+        "action": "扫描二维码"
+      },
+      "explanation": "Cloud Link 通过互联网连接你的设备。请保持电脑开机，并让 Cloud Link 运行。",
+      "instruction1": "在电脑上安装",
+      "instruction2": "在此应用中订阅",
+      "instruction3": "扫描以配对",
+      "openOnComputer": "在电脑上打开：",
+      "copySetupUrl": "复制电脑设置网址",
+      "copied": "已复制设置网址",
+      "copyError": "无法复制网址。请在电脑上打开 opencodecloud.link。",
+      "downloadHint": "下载并打开 Cloud Link，然后保持配对二维码显示在屏幕上。",
+      "remote": "通过互联网连接",
+      "pair": "将电脑与此应用配对",
+      "billing": "账单由你的应用商店管理。",
+      "checkoutHint": "打开应用商店以确认购买。",
+      "approveHint": "然后在电脑上批准连接。",
+      "usePairingLink": "使用配对链接"
+    }
   },
   "editor": {
     "title": "编辑器"

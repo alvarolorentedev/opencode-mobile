@@ -372,6 +372,13 @@ independent of onboarding completion. See [Cloud Link pilot](connect.md).
 - `components/settings/settings-utils.ts`
   Provider copy and option lists.
 
+Cloud Link's four-step assistant is presentation in
+`components/settings/connect-onboarding.tsx` and `connect-pairing.tsx`, sharing
+`connect-subscription.tsx` and the existing scanner. It introduces no new routes,
+stores or persistence. Native offers, purchase verification, secure saving,
+finalization and automatic pairing still belong to the existing provider flow.
+See [Cloud Link](connect.md) for entry, camera and deep-link behavior.
+
 ### Platform Integrations
 
 Android activity notifications are orchestrated by `use-activity-notifications`
