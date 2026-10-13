@@ -454,6 +454,9 @@ new intent refreshes an already-visible screen. The iOS extension remains
 [deferred](ios-share-parity.md). A version-checked prebuild patch in
 `scripts/prepare-android-sharing.cjs` fixes Expo Sharing 57.0.22 stream handling,
 accompanying text, unique cache copies and bounded reads; review it on upgrade.
+Android autolinking builds only `expo-sharing` from source so the patched Kotlin
+is compiled instead of silently using Expo's bundled precompiled AAR. FOSS
+preparation preserves that setting.
 The redirect matches the exact share host directly, because React Native's
 `URL.hostname` does not parse custom app schemes. Other deep links pass through.
 

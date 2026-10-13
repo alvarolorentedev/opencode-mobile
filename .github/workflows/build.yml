@@ -160,8 +160,8 @@ jobs:
           ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
           ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
           # Version tags ship a Play-ready AAB (32-bit + 64-bit ARM); other builds
-          # (main, manual) only need 64-bit ARM, which is faster and lighter.
-          ANDROID_RELEASE_ABIS: ${{ startsWith(github.ref, 'refs/tags/v') && 'armeabi-v7a,arm64-v8a' || 'arm64-v8a' }}
+          # Manual builds include x86_64 so the same release APK runs on the emulator.
+          ANDROID_RELEASE_ABIS: ${{ startsWith(github.ref, 'refs/tags/v') && 'armeabi-v7a,arm64-v8a' || 'arm64-v8a,x86_64' }}
 
       - name: Verify APK signature
         run: |
@@ -202,6 +202,48 @@ jobs:
           releaseFiles: android/app/build/outputs/bundle/release/app-release.aab
           tracks: internal
           status: completed
+
+  android-sharing:
+    needs: android-release
+    if: github.event_name == 'workflow_dispatch' && inputs.build_android
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: 17
+      - run: npm ci
+      - run: python3 tests/native/android-sharing.py --self-test
+      - uses: actions/download-artifact@v4
+        with:
+          name: android-release-artifacts
+          path: native-share-apk
+      - name: Enable KVM
+        run: sudo chmod 666 /dev/kvm
+      - name: Validate the release share receiver on Android
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 36
+          target: google_apis
+          arch: x86_64
+          profile: pixel_5
+          disable-animations: true
+          script: python3 tests/native/android-sharing.py --apk native-share-apk/apk/release/app-release.apk --output native-share-results
+      - name: Upload native share evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-sharing-evidence
+          retention-days: 3
+          path: native-share-results
 
   foss-release:
     needs: [validate, android-release]

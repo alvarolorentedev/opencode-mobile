@@ -31,6 +31,17 @@ idempotence, unique/bounded cache copies and failure before writes on unsupporte
 versions. `tests/e2e/share.spec.mjs` remains unchanged web route smoke coverage;
 the native share sheet requires device acceptance.
 
+Manual Build workflow runs with `build_android=true` also validate the actual
+signed, minified release APK on an API 36 x86_64 emulator. The APK must contain
+single/multiple share filters, the app scheme, the dynamically loaded scheme
+resource and the patched cache-copy code. `tests/native/android-sharing.py`
+then covers cold/warm/repeated text shares, existing/New chat selection, draft
+preservation, one-shot handoff, and PNG/PDF sharing through Android Files with
+real URI grants. The existing fake V2 server confirms nothing auto-submits.
+The workflow uploads screenshots, accessibility trees, manifest and logs as
+`android-sharing-evidence`, including on failures. Emulator coverage does not
+establish OEM share-sheet behaviour or physical-device accessibility.
+
 `native-intent.test.ts` uses the installed React Native URL implementation to
 reproduce the custom-scheme hostname failure and verifies cold/warm share routing,
 repeat receipts, and unrelated-link preservation. The redirect fix needs no

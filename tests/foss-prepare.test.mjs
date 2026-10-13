@@ -13,7 +13,7 @@ try {
   fs.mkdirSync(path.dirname(stubSource), { recursive: true });
   fs.writeFileSync(stubSource, 'package com.google.firebase.messaging;\npublic class FirebaseMessaging {}\n');
   fs.writeFileSync(path.join(root, 'package.json'), JSON.stringify({
-    expo: { autolinking: { exclude: ['existing-module'] } },
+    expo: { autolinking: { exclude: ['existing-module'], android: { buildFromSource: ['expo-sharing'] } } },
   }));
   for (const name of ['expo-notifications', 'expo-application']) {
     fs.cpSync(path.resolve('node_modules', name, 'android'),
@@ -32,6 +32,8 @@ try {
   assert.match(application, /getInstallReferrerAsync[\s\S]*promise\.resolve\(""\)/);
   assert.deepEqual(JSON.parse(read('package.json')).expo.autolinking.exclude,
     ['existing-module', 'expo-iap', 'expo-camera', 'opencode-updates']);
+  assert.deepEqual(JSON.parse(read('package.json')).expo.autolinking.android.buildFromSource,
+    ['expo-sharing'], 'FOSS preparation must keep the patched sharing receiver built from source');
 
   const files = ['package.json', `${notificationDir}/build.gradle`,
     `${applicationDir}/build.gradle`, `${applicationDir}/src/main/java/expo/modules/application/ApplicationModule.kt`];
