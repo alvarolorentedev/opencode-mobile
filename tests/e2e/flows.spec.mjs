@@ -377,6 +377,7 @@ test('attachment tiles preview images, text and documents above the related mess
 
 test('OpenCode 2 keeps steer and append prompts pinned until delivery and recovers them after reload', async ({ page, request }) => {
   test.setTimeout(90_000);
+  await resetScenario(request, 'happy-path');
   const port = await getFreePort();
   const origin = `http://127.0.0.1:${port}`;
   const server = spawnV2Server(port, 'inbox');

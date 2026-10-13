@@ -648,8 +648,21 @@ Android development prebuild completed; Gradle compilation stopped with
 `SDK location not found`. Explicit human validation of these E2E changes and
 the physical-device flows remains pending.
 
-Cloud Link subscription checks are described in [connect.md](connect.md). Static
-checks validate claim/secure-write ordering, StoreKit finalization on iOS, and
+Cloud Link subscription checks are described in [connect.md](connect.md). Provider
+checks cover rejected/false native initialization and billing failures
+during product and existing-purchase queries on both stores. Retry reconnects and
+replays initialization while checkout stays disabled; purchase checkpoints retain
+their existing recovery path. The V2 inbox E2E resets the shared boot backend
+before opening chat so the preceding attachment flow cannot leak its conversation.
+Billing recovery validation (2026-10-13): static CI (291 Vitest checks plus script
+suites), both fake-server self-tests, all 134 web flows and the Android development
+build pass. An earlier full rerun had intermittent V2 terminal, file-diff and
+polling failures; all three passed separately and in the final full run without
+changes to those flows. On 2026-10-13 the user explicitly validated the one-line
+inbox E2E reset in this chat. Real Google Play checkout remains unverified.
+No release version changed.
+
+Static checks validate claim/secure-write ordering, StoreKit finalization on iOS, and
 the backend-owned Google acknowledgement (Android never calls
 `finishTransaction`). Mocked E2E validates explicit Purchase/Restore, silent
 unfinished-purchase recovery, pending/cancellation, exact QR continuation,

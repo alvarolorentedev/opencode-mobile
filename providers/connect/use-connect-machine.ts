@@ -215,6 +215,7 @@ export function useConnectState({ controlPlaneUrl, setControlPlaneUrl, switchCon
     let initialized!: (ready: boolean) => void;
     initializationTask.current = new Promise<boolean>((resolve) => { initialized = resolve; });
     void perform(async () => {
+      setStoreReady(false);
       const [stored, pending, saved] = await Promise.all([getConnectSession(controlPlaneUrl, store), getPendingConnectPairing(controlPlaneUrl, store), loadConnectionProfiles()]);
       if (!current()) return false;
       sessionRef.current = stored; setSession(stored);
@@ -233,6 +234,7 @@ export function useConnectState({ controlPlaneUrl, setControlPlaneUrl, switchCon
         else setError('The store could not complete the purchase. Try again or Restore.');
       })];
       if (!await api.initConnection()) throw new Error('Could not connect to the native store. Retry.');
+      if (!current()) return false;
       setStoreReady(true);
       await loadCatalog();
       if (pendingPurchase.current && !isConnectPurchase(catalogRef.current, pendingPurchase.current.purchase, store)) {
@@ -321,7 +323,11 @@ export function useConnectState({ controlPlaneUrl, setControlPlaneUrl, switchCon
   }, [initialization, perform, phase]);
 
   const retry = useCallback(() => {
-    if (!apiRef.current) { setError(undefined); setInitialization('loading'); setInitializationAttempt((current) => current + 1); return Promise.resolve(false); }
+    if (lock.current) return Promise.resolve(false);
+    if (!apiRef.current || (initialization === 'error' && !pendingPurchase.current)) {
+      setError(undefined); setStoreReady(false); setInitialization('loading');
+      setInitializationAttempt((current) => current + 1); return Promise.resolve(false);
+    }
     return perform(async () => {
     if (activation.current && phase === 'delayed') return activate(activation.current.profile, true);
     if (pendingPurchase.current) { await finishPurchase(pendingPurchase.current.purchase); return continueAfterPurchase(); }
@@ -331,7 +337,7 @@ export function useConnectState({ controlPlaneUrl, setControlPlaneUrl, switchCon
     if (savedProfile) return activate(savedProfile);
     return refreshMachinesAction();
     }).then((ok) => { if (ok) setInitialization('ready'); return ok; });
-  }, [activate, claimAction, continueAfterPurchase, finishPurchase, loadCatalog, offers.length, perform, phase, refreshMachinesAction, requestAccess, savedProfile]);
+  }, [activate, claimAction, continueAfterPurchase, finishPurchase, initialization, loadCatalog, offers.length, perform, phase, refreshMachinesAction, requestAccess, savedProfile]);
   const claim = useCallback(() => perform(claimAction), [claimAction, perform]);
   const refreshMachines = useCallback(() => perform(refreshMachinesAction), [perform, refreshMachinesAction]);
   const connectProfile = useCallback((profile: ConnectionProfile) => perform(() => activate(profile)), [activate, perform]);
@@ -358,7 +364,7 @@ export function useConnectState({ controlPlaneUrl, setControlPlaneUrl, switchCon
   }), [authenticated, controlPlaneUrl, perform, removeProfiles]);
 
   const canChangeControlPlane = enabled && isHydrated && !busy && purchaseRecovery !== 'verified' && !['purchasing', 'pending', 'saving'].includes(phase);
-  const canPurchase = !busy && storeReady && !purchaseRecovery && !['purchasing', 'pending'].includes(phase);
+  const canPurchase = initialization === 'ready' && !busy && storeReady && !purchaseRecovery && !['purchasing', 'pending'].includes(phase);
   return { enabled, initialization, pairLink, dismissError, controlPlaneUrl, canChangeControlPlane, canPurchase, hasToken: hasConnectSession(session), entitled: hasConnectEntitlement(session), subscriptionExpiresAt: session?.subscription_expires_at, pairing, phase, busy, error, notice, machines, profiles, savedProfile, offers, storeReady, canRetry: canRetry || phase === 'delayed', manageSubscription,
     selectControlPlane, acceptLink, purchase, restore, retry, claim, cancelPairing, refreshMachines, connectProfile, connectMachine, forgetProfile, revokeMachine, prepareSettings };
 }

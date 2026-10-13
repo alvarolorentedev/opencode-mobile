@@ -411,8 +411,8 @@ for (const platform of ['apple', 'google']) {
   // Google has no client-side finalization failure: the control plane owns
   // acknowledgment with durable retry.
   const scenarios = platform === 'apple'
-    ? ['catalog', 'routing', 'claim', 'restore', 'secure', 'finish']
-    : ['catalog', 'routing', 'claim', 'restore', 'secure'];
+    ? ['billing-init', 'billing-false', 'billing-catalog', 'billing-purchases', 'catalog', 'routing', 'claim', 'restore', 'secure', 'finish']
+    : ['billing-init', 'billing-false', 'billing-catalog', 'billing-purchases', 'catalog', 'routing', 'claim', 'restore', 'secure'];
   for (const scenario of scenarios) {
     // Each scenario represents a fresh app process, including its catalog cache.
     const freshConnectUri = `${connectUri}#${platform}-${scenario}`;
@@ -430,12 +430,26 @@ for (const platform of ['apple', 'google']) {
     if (scenario === 'routing' && platform === 'apple') purchase.environmentIOS = 'Sandbox';
     const requests = [], events = [];
     let fail = true, onPurchase, onAppState, releaseManagement, managementCalls = 0;
+    let initializationCalls = 0, endCalls = 0, productCalls = 0, availableCalls = 0;
     const nativeApi = {
-      initConnection: async () => true, endConnection: async () => true,
-      fetchProducts: async () => scenario === 'catalog' && fail ? [] : platform === 'apple' ? [appleProduct] : [googleProduct],
+      initConnection: async () => {
+        initializationCalls++;
+        if (fail && scenario === 'billing-init') throw new Error('Billing client not ready');
+        return !(fail && scenario === 'billing-false');
+      },
+      endConnection: async () => { endCalls++; return true; },
+      fetchProducts: async () => {
+        productCalls++;
+        if (fail && scenario === 'billing-catalog') throw new Error('Billing client not ready');
+        return scenario === 'catalog' && fail ? [] : platform === 'apple' ? [appleProduct] : [googleProduct];
+      },
       // Recovery must retain the transaction even if the next store query has
       // not published it yet. No interactive Restore is needed to change scope.
-      getAvailablePurchases: async () => [], getPendingTransactionsIOS: async () => [],
+      getAvailablePurchases: async () => {
+        availableCalls++;
+        if (fail && scenario === 'billing-purchases') throw new Error('Billing client not ready');
+        return [];
+      }, getPendingTransactionsIOS: async () => [],
       requestPurchase: async () => { events.push('purchase'); },
       restorePurchases: async () => { events.push('restore'); },
       getTransactionJwsIOS: async () => '', isEligibleForIntroOfferIOS: async () => false,
@@ -485,18 +499,32 @@ for (const platform of ['apple', 'google']) {
         });
       }, {});
       await runtime.settle();
-      if (scenario === 'catalog') {
+      if (scenario === 'catalog' || scenario.startsWith('billing-')) {
         assert.equal(runtime.value.initialization, 'error');
-        assert.equal(runtime.value.offers.length, 0);
+        assert.equal(runtime.value.canPurchase, false, 'Failed initialization must block checkout until recovery completes.');
+        assert.equal(initializationCalls, 1);
+        if (scenario !== 'billing-purchases') assert.equal(runtime.value.offers.length, 0);
+        if (['billing-init', 'billing-false'].includes(scenario)) {
+          assert.equal(runtime.value.storeReady, false);
+          assert.equal(productCalls, 0, 'Never query products before billing connects.');
+          assert.equal(availableCalls, 0);
+        }
         const setupError = runtime.value.error;
-        assert.match(setupError, /No matching Cloud Link products/);
+        assert.match(setupError, scenario === 'catalog' ? /No matching Cloud Link products/ : scenario === 'billing-false' ? /Could not connect to the native store/ : /Billing client not ready/);
         onAppState('active');
         await runtime.settle();
         assert.equal(runtime.value.error, setupError, 'Foregrounding must preserve failed setup errors.');
         assert.equal(runtime.value.canRetry, true);
         fail = false;
-        assert.equal(await runtime.value.retry(), true);
+        assert.equal(await runtime.value.retry(), false, 'Restarted setup completes asynchronously.');
+        runtime.flush();
+        assert.equal(runtime.value.storeReady, false);
+        assert.equal(runtime.value.canPurchase, false);
+        assert.equal(await runtime.value.retry(), false, 'Do not restart initialization while it is running.');
         await runtime.settle();
+        assert.equal(initializationCalls, 2, 'Retry must reconnect billing, not just reuse its API.');
+        assert.equal(endCalls, 1, 'Remove the failed billing connection before reconnecting.');
+        assert.ok(availableCalls > 0, 'Retry must also recover existing purchases.');
         assert.equal(runtime.value.initialization, 'ready');
         assert.equal(runtime.value.error, undefined);
         assert.equal(runtime.value.canRetry, false);

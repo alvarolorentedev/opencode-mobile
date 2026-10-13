@@ -87,7 +87,11 @@ Apple products and Google product/base-plan/offer IDs. Missing configuration or
 native product metadata shows an unavailable error. Catalog plans and verified
 sessions recognize `cloudlink`, retaining `connect` for legacy compatibility.
 Returning to the foreground after failed initialization preserves the error
-and Retry action; Retry reloads the store offers.
+and Retry action. Retry closes the failed native connection and restarts store
+initialization, offer loading and existing-purchase recovery. Checkout stays
+disabled until initialization succeeds. A purchase already awaiting verification,
+secure saving or finalization retains its checkpoint and resumes through the
+existing recovery path.
 
 `expo-iap` 5.8.2 requires a native development/store build. Rebuild after adding
 its plugin. Expo Go and ordinary web cannot purchase or restore. Keep Expo SDK
