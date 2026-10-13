@@ -1,0 +1,3 @@
+- New illustrated four-step guide for setting up Cloud Link.
+- Sharing into the app now lands in the chat you were already in.
+- Fixed share targets breaking in release builds.
