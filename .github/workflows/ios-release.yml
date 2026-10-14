@@ -87,15 +87,6 @@ jobs:
           CI: 'true'
           EXPO_PUBLIC_E2E_MODE: '1'
 
-      - name: Upload Playwright report
-        if: failure()
-        uses: actions/upload-artifact@v4
-        with:
-          name: playwright-report
-          retention-days: 3
-          path: playwright-report
-          if-no-files-found: ignore
-
   ios-release:
     needs: validate
     runs-on: macos-26
@@ -254,14 +245,6 @@ jobs:
             -archivePath "$RUNNER_TEMP/build.xcarchive" \
             -exportOptionsPlist "$RUNNER_TEMP/ExportOptions.plist" \
             -exportPath "$RUNNER_TEMP/ios-build"
-
-      - name: Upload IPA artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: ios-release-ipa
-          retention-days: 1
-          path: ${{ runner.temp }}/ios-build/*.ipa
-          if-no-files-found: error
 
       - name: Rename IPA for release
         run: cp "$RUNNER_TEMP/ios-build/"*.ipa opencode-mobile.ipa

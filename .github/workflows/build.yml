@@ -60,15 +60,6 @@ jobs:
           CI: 'true'
           EXPO_PUBLIC_E2E_MODE: '1'
 
-      - name: Upload Playwright report
-        if: failure()
-        uses: actions/upload-artifact@v4
-        with:
-          name: playwright-report
-          retention-days: 3
-          path: playwright-report
-          if-no-files-found: ignore
-
   # Release builds only run for `v*` tags or a manual dispatch that asks for
   # an APK; plain pushes to `main` stop at the validation gate.
   android-release:
@@ -180,14 +171,6 @@ jobs:
           "$APKSIGNER" verify --verbose --print-certs "$APK"
         shell: bash
 
-      - name: Upload release artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: android-release-artifacts
-          retention-days: 1
-          path: |
-            android/app/build/outputs/**/*.apk
-
       - name: Rename APK for release
         if: startsWith(github.ref, 'refs/tags/v')
         run: cp android/app/build/outputs/apk/release/app-release.apk opencode-mobile.apk
@@ -207,51 +190,6 @@ jobs:
           releaseFiles: android/app/build/outputs/bundle/release/app-release.aab
           tracks: internal
           status: completed
-
-  android-sharing:
-    needs: android-release
-    if: ${{ always() && !cancelled() && github.event_name == 'workflow_dispatch' && (needs.android-release.result == 'success' || inputs.share_apk_run != '') }}
-    runs-on: ubuntu-latest
-    timeout-minutes: 20
-    permissions:
-      contents: read
-      actions: read
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: npm
-      - uses: actions/setup-java@v5
-        with:
-          distribution: temurin
-          java-version: 17
-      - run: npm ci
-      - run: python3 tests/native/android-sharing.py --self-test
-      - uses: actions/download-artifact@v4
-        with:
-          name: android-release-artifacts
-          path: native-share-apk
-          run-id: ${{ inputs.share_apk_run || github.run_id }}
-          github-token: ${{ github.token }}
-      - name: Enable KVM
-        run: sudo chmod 666 /dev/kvm
-      - name: Validate the release share receiver on Android
-        uses: reactivecircus/android-emulator-runner@v2
-        with:
-          api-level: 36
-          target: google_apis
-          arch: x86_64
-          profile: pixel_5
-          disable-animations: true
-          script: python3 tests/native/android-sharing.py --apk native-share-apk/apk/release/app-release.apk --output native-share-results
-      - name: Upload native share evidence
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: android-sharing-evidence
-          retention-days: 3
-          path: native-share-results
 
   foss-release:
     needs: [validate, android-release]

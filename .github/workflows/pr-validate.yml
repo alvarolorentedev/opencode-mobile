@@ -42,12 +42,3 @@ jobs:
         env:
           CI: 'true'
           EXPO_PUBLIC_E2E_MODE: '1'
-
-      - name: Upload Playwright report
-        if: failure()
-        uses: actions/upload-artifact@v4
-        with:
-          name: playwright-report
-          retention-days: 3
-          path: playwright-report
-          if-no-files-found: ignore
