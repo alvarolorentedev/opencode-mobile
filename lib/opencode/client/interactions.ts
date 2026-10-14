@@ -14,7 +14,7 @@ export async function listPendingInteractions(client: ScopedOpencodeClient) {
   const p = permissions.status === 'fulfilled' ? permissions.value : undefined;
   const q = questions.status === 'fulfilled' ? questions.value : undefined;
   if (!p && !q) throw permissions.status === 'rejected' ? permissions.reason : questions.status === 'rejected' ? questions.reason : new Error('OpenCode did not return pending interactions.');
-  return { permissions: p ?? [], questions: q ?? [] };
+  return { permissions: p, questions: q };
 }
 async function permissionSession(client: ScopedOpencodeClient, id: string) {
   if (!client.context!.permissionSession.has(id)) await listPendingPermissions(client);

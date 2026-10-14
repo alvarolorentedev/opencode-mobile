@@ -5,7 +5,7 @@ import {
   findMatchingProfile,
   loadConnectionProfiles,
   pickModelPreferences,
-  saveConnectionProfiles,
+  mutateConnectionProfiles,
 } from '@/lib/connection-profiles';
 import { getConnectionScope } from '@/lib/connection-scope';
 import { getConnectCredentialError } from '@/lib/connect';
@@ -293,14 +293,17 @@ export function useConnectionConnectActions({
   }, [activeProjectPathRef, clearProjectState, scopeGenerationRef, serverGenerationRef, serverProjectsRef, settingsRef, setActiveProjectPath, setConnection, setCurrentProjectPath, setDiagnostics, setDiffsBySession, setMessagesBySession, setServerRootPath, setServerProjects, setSettings, setTodosBySession]);
 
   const captureActiveProfilePreferences = useCallback(async () => {
-    const profiles = await loadConnectionProfiles();
-    const active = findMatchingProfile(profiles, settingsRef.current);
-    if (!active) {
-      return;
-    }
-    await saveConnectionProfiles(profiles.map((profile) => (
-      profile.id === active.id ? { ...profile, modelPreferences: pickModelPreferences(chatPreferencesRef.current) } : profile
-    )));
+    const identity = settingsRef.current;
+    const modelPreferences = pickModelPreferences(chatPreferencesRef.current);
+    await mutateConnectionProfiles(async (profiles, save) => {
+      const active = findMatchingProfile(profiles, identity);
+      if (!active) {
+        return;
+      }
+      await save(profiles.map((profile) => (
+        profile.id === active.id ? { ...profile, modelPreferences } : profile
+      )));
+    });
   }, [chatPreferencesRef, settingsRef]);
 
   const switchConnection = useCallback(async (

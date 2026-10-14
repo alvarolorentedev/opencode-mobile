@@ -124,21 +124,6 @@ export function ControlButton({
   );
 }
 
-export function TopTab({ active, label, onPress, slim = false }: { active: boolean; label: string; onPress: () => void; slim?: boolean }) {
-  const colorScheme = useColorScheme() ?? 'light';
-  const palette = Colors[colorScheme];
-
-  return (
-    <Pressable accessibilityRole="tab" accessibilityState={{ selected: active }} aria-selected={active} style={styles.topTab} onPress={onPress}>
-      <View style={[styles.topTabInner, active && { borderBottomColor: palette.tint, borderBottomWidth: 2 }, slim && { paddingVertical: 8 }]}>
-        <Text maxFontSizeMultiplier={1.5} style={[styles.topTabLabel, slim && { fontSize: 14 }, { color: active ? palette.text : palette.muted, fontWeight: active ? '700' : '500' }]}>
-          {label}
-        </Text>
-      </View>
-    </Pressable>
-  );
-}
-
 const styles = StyleSheet.create({
   controlButton: {
     borderRadius: 999,
@@ -174,15 +159,5 @@ const styles = StyleSheet.create({
     fontFamily: Fonts.sans,
     fontSize: 14,
     fontWeight: '600',
-  },
-  topTab: { flex: 1 },
-  topTabInner: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 14,
-  },
-  topTabLabel: {
-    fontFamily: Fonts.sans,
-    fontSize: 16,
   },
 });

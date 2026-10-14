@@ -1,5 +1,50 @@
 # Testing And Validation
 
+## Audit remediation regressions
+
+`audit-races.test.ts` covers composer revision ownership, explicit failed-input
+recovery, bootstrap/connection/session changes, partial blocker-map updates and
+abort/resubmit races in the actual prompt hook. `read-deadline.test.ts` exercises
+both installed SDKs through the shared transport: stalled headers and bodies,
+coalescing recovery, caller signals, late-result rejection, stream/mutation
+exclusions, exact UTF-8 authentication and advertised-byte diagnostics.
+Profile tests exercise interleaved manual, Cloud Link and preference writes.
+Hydration tests preserve unread metadata and prevent credentials from being
+applied to an unknown/default server. Prompt ownership also covers stale client
+callbacks, overlapping aborts and notification records moved during renewal.
+The installed React Native URL implementation guards legacy URL sanitation.
+Usage tests prefer authoritative totals and mark partial history; attachment tests
+reject declared/encoded oversize and stop bounded streams before file creation.
+Widget tests assert directory request budgets and retention beyond displayed rows.
+`files-panel.test.ts` guards lazy row construction and navigation for 1,000 files;
+rendered/native acceptance must still verify scrolling, keyboard and accessibility.
+
+Finite GET/HEAD API reads have one 30-second deadline through body consumption.
+Expired operations release coalescing and reject late results; SSE retains its
+existing watchdog and mutations are neither timed out nor automatically retried.
+Network diagnostics count requests and known Content-Length bytes, not exact
+transferred bytes. No response is duplicated solely for accounting.
+
+Audit implementation acceptance (2026-10-14): static CI passes with 318 Vitest
+checks, and both v1/v2 fake-server self-tests pass. The full web gate passes 134
+flows. The unchanged workspace focus assertion caught scroll anchoring dismissing
+search input; disabled anchoring and stable row data fix it. A separate Chromium
+check at 393×852 and 1280×800 browsed 1,000 files, mounted 66 rows initially,
+retained input focus and opened the last file without horizontal overflow.
+Its only console misses were expected `/api/health` and `/global/health` probes;
+there were no page exceptions or framework overlays.
+
+Android development compilation and FOSS preparation pass. An isolated API 36
+ARM64 app validates password-backed profile saving, prompt admission/completion
+and native scrolling through the 1,000-file folder. Earlier SDK-location failure
+notes below describe prior runs, not this environment. Native development mode
+still reports SDK import cycles (also seen on unchanged main); an Expo Router
+early-mount linking warning occurred on the first launch without breaking these
+flows. Physical-device battery/thermal/frame timing, complete media/keyboard/
+accessibility acceptance and this patch's iOS runtime remain unverified.
+No fake-server/E2E source contract, dependency or release version changed.
+
+
 ## Feed attachments and OpenCode 2 inbox
 
 `tests/vitest/feed.test.ts` covers picker data normalization, preview decoding

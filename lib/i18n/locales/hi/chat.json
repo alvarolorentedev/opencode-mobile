@@ -43,7 +43,8 @@
     },
     "tabFilesChanged_one": "{{files}} फ़ाइल बदली",
     "tabFilesChanged_many": "{{files}} फ़ाइलें बदलीं",
-    "tabFilesChanged_other": "{{files}} फ़ाइलें बदलीं"
+    "tabFilesChanged_other": "{{files}} फ़ाइलें बदलीं",
+    "restoreFailedInput": "विफल संदेश वापस लाएँ"
   },
   "content": {
     "connectionIssue": "कनेक्शन समस्या",
@@ -153,7 +154,9 @@
     "modelCostLabel": "{{model}} लागत {{cost}}",
     "pricingUnavailableLower": "मूल्य निर्धारण अनुपलब्ध",
     "modelTokensLabel": "{{input}} इनपुट टोकन, {{output}} आउटपुट टोकन, {{reasoning}} तर्क टोकन, {{cacheRead}} कैश रीड टोकन, {{cacheWrite}} कैश राइट टोकन, {{steps}} पूर्ण चरण",
-    "modelTokens": "{{input}} इन  {{output}} आउट  {{reasoning}} तर्क  {{cacheRead}} कैश रीड  {{cacheWrite}} कैश राइट  {{steps}} चरण"
+    "modelTokens": "{{input}} इन  {{output}} आउट  {{reasoning}} तर्क  {{cacheRead}} कैश रीड  {{cacheWrite}} कैश राइट  {{steps}} चरण",
+    "partialTotals": "कुछ कुल में केवल लोड किया गया इतिहास शामिल है।",
+    "partialBreakdown": "मॉडल विवरण और कॉल की संख्या में केवल लोड किया गया इतिहास शामिल है।"
   },
   "library": {
     "title": "चैट",

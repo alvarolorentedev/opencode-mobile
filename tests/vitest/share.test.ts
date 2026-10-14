@@ -6,6 +6,8 @@ import {
   parseIncomingShare,
 } from '@/lib/share/parse';
 
+vi.mock('expo/fetch', () => ({ fetch: (...args: any[]) => (globalThis.fetch as any)(...args) }));
+vi.mock('@/lib/opencode/client/types', () => ({ defaultConnectionSettings: { serverUrl: 'http://localhost' } }));
 vi.mock('react-native', () => ({ Platform: { OS: 'ios' } }));
 
 describe('incoming share parsing', () => {

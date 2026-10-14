@@ -226,8 +226,9 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
     connectionScope: state.connectionScope, language: state.chatPreferences.language,
     activeSessions: activeSessionsHook.activeSessions,
   });
+  const streamConnectedRef = useRef(false);
   const widgets = useWidgetState({
-    ...state, hydrated: isHydrated, connected: state.connection.status === 'connected', catalogClient, contract: state.serverContract, isCurrentCatalogClient,
+    ...state, streamConnectedRef, hydrated: isHydrated, connected: state.connection.status === 'connected', catalogClient, contract: state.serverContract, isCurrentCatalogClient,
     showPreviews: state.chatPreferences.showWidgetPreviews !== false, language: state.chatPreferences.language,
     sessions: state.sessions, todoRecordsBySession: transcript.todoRecordsBySession, todosBySession: state.todosBySession,
   });
@@ -365,7 +366,6 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
     }
   }, []);
 
-  const streamConnectedRef = useRef(false);
   const handleActivityEvent = useActivityNotifications({
     catalogClient, settings: state.settings, contract: state.serverContract,
     connectionScope: state.connectionScope, connected: state.connection.status === 'connected',

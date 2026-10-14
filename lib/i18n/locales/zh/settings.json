@@ -295,7 +295,7 @@
     "notAvailable": "不适用",
     "refresh": "刷新诊断",
     "networkUsage": "网络使用量",
-    "networkUsageValue": "今天 {{requests}} 次请求 · {{size}}",
+    "networkUsageValue": "{{requests}} 次请求 · 今日已知响应大小 {{size}}",
     "networkUsageReset": "重置"
   },
   "mcp": {

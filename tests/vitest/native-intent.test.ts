@@ -22,6 +22,13 @@ runInNewContext(code, {
 });
 
 describe('native inbound share routing', () => {
+  it('scrubs legacy URL credentials using the installed getter-only native URL', async () => {
+    const urls = await loadTs('lib/opencode/client/url.ts', { './types': { defaultConnectionSettings: { serverUrl: 'http://localhost' } } }, { URL: native.URL });
+    const value = 'https://alice:private@host.test/proxy?directory=/repo';
+    expect(urls.normalizeServerUrl(value).valid).toBe(false);
+    expect(urls.stripServerUrlCredentials(value)).toBe('https://host.test/proxy?directory=/repo');
+    expect(urls.stripServerUrlCredentials('http://alice:private@')).toBe('http://');
+  });
   it.each([true, false])('opens the preview on Android with initial=%s', async (initial) => {
     const path = 'opencodemobile://expo-sharing';
     expect(new native.URL(path).hostname).toBe('');

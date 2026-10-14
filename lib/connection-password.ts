@@ -5,6 +5,7 @@ import { getConnectTestSecret, setConnectTestSecret } from '@/lib/connect';
 import type { OpencodeConnectionSettings } from '@/lib/opencode/client';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { SETTINGS_STORAGE_KEY } from '@/lib/storage-keys';
+import { stripServerUrlCredentials } from '@/lib/opencode/client/url';
 
 const CONNECTION_PASSWORD_STORAGE_KEY = 'opencode-mobile.connection-password';
 
@@ -12,7 +13,7 @@ type StoredConnectionSettings = Omit<OpencodeConnectionSettings, 'password'>;
 
 export function withoutConnectionPassword(settings: OpencodeConnectionSettings): StoredConnectionSettings {
   const { password: _password, ...storedSettings } = settings;
-  return storedSettings;
+  return { ...storedSettings, serverUrl: stripServerUrlCredentials(storedSettings.serverUrl) };
 }
 
 export async function getConnectionPassword() {
@@ -34,6 +35,7 @@ export async function getConnectionPassword() {
       return '';
     }
     const { password: legacyPassword, ...storedSettings } = settings;
+    if (typeof storedSettings.serverUrl === 'string') storedSettings.serverUrl = stripServerUrlCredentials(storedSettings.serverUrl);
     await SecureStore.setItemAsync(CONNECTION_PASSWORD_STORAGE_KEY, legacyPassword);
     await AsyncStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(storedSettings));
     return legacyPassword;

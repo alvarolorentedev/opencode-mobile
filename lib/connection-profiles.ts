@@ -8,6 +8,7 @@ import { getConnectCredentialError, getConnectTestSecret, parseConnectMetadata, 
 import { getConnectionScope, type ConnectionIdentity } from '@/lib/connection-scope';
 import { CONNECTION_PROFILES_STORAGE_KEY, SETTINGS_STORAGE_KEY } from '@/lib/storage-keys';
 import type { ChatPreferences } from '@/providers/opencode-preferences';
+import { isValidServerUrl, stripServerUrlCredentials } from '@/lib/opencode/client/url';
 
 // Saved connection metadata is non-secret and lives in AsyncStorage. Passwords
 // are stored per profile in SecureStore and are never part of this model.
@@ -102,7 +103,7 @@ export function toConnectionProfile(value: unknown): ConnectionProfile | undefin
   return {
     id: id.trim(),
     name: name.trim(),
-    serverUrl: serverUrl.trim(),
+    serverUrl: stripServerUrlCredentials(serverUrl),
     username: username.trim(),
     ...(parsedConnect ? { connect: parsedConnect } : {}),
     ...(parsedPreferences ? { modelPreferences: parsedPreferences } : {}),
@@ -125,7 +126,23 @@ async function writeConnectionProfiles(profiles: ConnectionProfile[]) {
   await AsyncStorage.setItem(CONNECTION_PROFILES_STORAGE_KEY, JSON.stringify(profiles));
 }
 
-export async function loadConnectionProfiles(strict = false): Promise<ConnectionProfile[]> {
+let profileMutations: Promise<unknown> = Promise.resolve();
+function serializeProfiles<T>(operation: () => Promise<T>) {
+  const result = profileMutations.then(operation);
+  profileMutations = result.catch(() => undefined);
+  return result;
+}
+
+export function loadConnectionProfiles(strict = false) {
+  return serializeProfiles(() => readConnectionProfiles(strict));
+}
+
+// Credential changes and metadata rollback must finish before another writer reads.
+export function mutateConnectionProfiles<T>(operation: (profiles: ConnectionProfile[], save: typeof writeConnectionProfiles) => Promise<T>) {
+  return serializeProfiles(async () => operation(await readConnectionProfiles(true), writeSanitizedProfiles));
+}
+
+async function readConnectionProfiles(strict = false): Promise<ConnectionProfile[]> {
   let raw: string | null;
   try {
     raw = await AsyncStorage.getItem(CONNECTION_PROFILES_STORAGE_KEY);
@@ -157,7 +174,11 @@ export async function loadConnectionProfiles(strict = false): Promise<Connection
   return profiles;
 }
 
-export async function saveConnectionProfiles(profiles: ConnectionProfile[]) {
+export function saveConnectionProfiles(profiles: ConnectionProfile[]) {
+  return serializeProfiles(() => writeSanitizedProfiles(profiles));
+}
+
+async function writeSanitizedProfiles(profiles: ConnectionProfile[]) {
   const sanitized = profiles
     .map(toConnectionProfile)
     .filter((profile): profile is ConnectionProfile => profile !== undefined);
@@ -179,6 +200,7 @@ export async function saveConnectionProfiles(profiles: ConnectionProfile[]) {
  * password.
  */
 export async function resolveConnectionCredentials(identity: ConnectionIdentity): Promise<{ password: string; connect?: ConnectMetadata } | undefined> {
+  if (!identity.serverUrl.trim() || !isValidServerUrl(identity.serverUrl)) return undefined;
   const connectionScope = getConnectionScope(identity);
 
   try {
@@ -236,22 +258,23 @@ export async function deleteProfilePassword(profileId: string) {
 }
 
 export async function saveConnectProfile(controlPlaneUrl: string, claim: import('@/lib/connect').ConnectClaim) {
-  const profiles = await loadConnectionProfiles(true);
-  const previous = profiles.filter((profile) => profile.connect?.controlPlaneUrl === controlPlaneUrl && profile.connect.machineId === claim.machine_id);
-  if (previous[0] && new URL(previous[0].serverUrl).hostname !== new URL(claim.server_url).hostname) throw new Error('machine_hostname_mismatch: Access returned a different hostname.');
-  const profile: ConnectionProfile = {
-    id: previous[0]?.id ?? createProfileId(), name: previous[0]?.name ?? claim.machine_name, serverUrl: claim.server_url, username: claim.device_id,
-    ...(previous[0]?.modelPreferences ? { modelPreferences: previous[0].modelPreferences } : {}),
-    connect: { controlPlaneUrl, machineId: claim.machine_id, machineName: claim.machine_name, deviceId: claim.device_id, expiresAt: claim.expires_at },
-  };
-  const oldPassword = previous[0] ? await getProfilePassword(profile.id) : '';
-  await saveProfilePassword(profile.id, claim.device_secret, true);
-  try {
-    await saveConnectionProfiles([...profiles.filter((item) => !previous.includes(item)), profile]);
-  } catch (error) {
-    await saveProfilePassword(profile.id, oldPassword, true).catch(() => undefined);
-    throw error;
-  }
-  await Promise.all(previous.filter((item) => item.id !== profile.id).map((item) => deleteProfilePassword(item.id)));
-  return profile;
+  return mutateConnectionProfiles(async (profiles, save) => {
+    const previous = profiles.filter((profile) => profile.connect?.controlPlaneUrl === controlPlaneUrl && profile.connect.machineId === claim.machine_id);
+    if (previous[0] && new URL(previous[0].serverUrl).hostname !== new URL(claim.server_url).hostname) throw new Error('machine_hostname_mismatch: Access returned a different hostname.');
+    const profile: ConnectionProfile = {
+      id: previous[0]?.id ?? createProfileId(), name: previous[0]?.name ?? claim.machine_name, serverUrl: claim.server_url, username: claim.device_id,
+      ...(previous[0]?.modelPreferences ? { modelPreferences: previous[0].modelPreferences } : {}),
+      connect: { controlPlaneUrl, machineId: claim.machine_id, machineName: claim.machine_name, deviceId: claim.device_id, expiresAt: claim.expires_at },
+    };
+    const oldPassword = previous[0] ? await getProfilePassword(profile.id) : '';
+    await saveProfilePassword(profile.id, claim.device_secret, true);
+    try {
+      await save([...profiles.filter((item) => !previous.includes(item)), profile]);
+    } catch (error) {
+      await saveProfilePassword(profile.id, oldPassword, true).catch(() => undefined);
+      throw error;
+    }
+    await Promise.all(previous.filter((item) => item.id !== profile.id).map((item) => deleteProfilePassword(item.id)));
+    return profile;
+  });
 }

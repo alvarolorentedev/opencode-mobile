@@ -43,7 +43,8 @@
     },
     "tabFilesChanged_one": "{{files}} 个文件已更改",
     "tabFilesChanged_many": "{{files}} 个文件已更改",
-    "tabFilesChanged_other": "{{files}} 个文件已更改"
+    "tabFilesChanged_other": "{{files}} 个文件已更改",
+    "restoreFailedInput": "恢复发送失败的消息"
   },
   "content": {
     "connectionIssue": "连接问题",
@@ -153,7 +154,9 @@
     "modelCostLabel": "{{model}} 费用 {{cost}}",
     "pricingUnavailableLower": "价格不可用",
     "modelTokensLabel": "{{input}} 个输入 token，{{output}} 个输出 token，{{reasoning}} 个推理 token，{{cacheRead}} 个缓存读取 token，{{cacheWrite}} 个缓存写入 token，{{steps}} 个已完成步骤",
-    "modelTokens": "{{input}} 输入  {{output}} 输出  {{reasoning}} 推理  {{cacheRead}} 缓存读取  {{cacheWrite}} 缓存写入  {{steps}} 步骤"
+    "modelTokens": "{{input}} 输入  {{output}} 输出  {{reasoning}} 推理  {{cacheRead}} 缓存读取  {{cacheWrite}} 缓存写入  {{steps}} 步骤",
+    "partialTotals": "部分总计仅包含已加载的历史记录。",
+    "partialBreakdown": "模型明细和调用次数仅包含已加载的历史记录。"
   },
   "library": {
     "title": "聊天",

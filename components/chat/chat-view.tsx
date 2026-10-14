@@ -31,7 +31,7 @@ export function ChatView() {
     currentUsage, diffAdditions, diffCount, diffDeletions, diffDetails, diffTurns,
     displayTranscript, draft, expandedDiffId, forkSession, handleAbort, handleAttach,
     handleConfirmStopConversation, handleCopyMessage, handleNewSession, handleReviewChanges,
-    handleSendPrompt, handleSpeakEntry, handleToggleRecording, handleVoiceRecovery,
+    handleSendPrompt, handleSpeakEntry, handleToggleRecording, handleVoiceRecovery, hasFailedInput, recoverFailedInput, dismissFailedInput,
     isCreatingSession, isRefreshingDiffs, isRefreshingMessages, isSpeechInputAvailable,
     isSpeechInputListening, isStoppingSession, isUpdatingAutoApprove, latestAssistantTurnUsage,
     pendingPrompts, pendingInteractions, progressIcon, progressVisible, refreshCurrentSession, refreshDiffs,
@@ -157,11 +157,13 @@ export function ChatView() {
               <Text variant="titleSmall" style={{ color: palette.danger }}>{t('chat:view.actionFailed')}</Text>
               <Text selectable variant="bodySmall" style={{ color: palette.text }}>{sendErrorMessage}</Text>
               <View style={styles.sendErrorActions}>
+                {hasFailedInput ? <Button compact onPress={recoverFailedInput}>{t('chat:view.restoreFailedInput')}</Button> : null}
                 <Button compact onPress={() => {
                   void Clipboard.setStringAsync(buildSendErrorDetails()).then(() => setCopiedMessageId('__send-error__'));
                 }}>{t('chat:view.copyDetails')}</Button>
                 <Button compact onPress={() => {
                   setSendFeedback(undefined);
+                  dismissFailedInput();
                   clearPromptError();
                 }}>{t('common:actions.dismiss')}</Button>
               </View>

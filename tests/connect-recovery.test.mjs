@@ -43,6 +43,7 @@ async function fixture({ expired = false, missing = false, storedSession = true,
     'expo-crypto': { randomUUID: (() => { let n = 0; return () => `00000000-0000-4000-8000-${String(++n).padStart(12, '0')}`; })() },
     'react-native': native, '@/lib/connect': connect, '@/lib/connection-scope': scope,
     '@/lib/connection-password': { getConnectionPassword: async () => '' }, '@/lib/storage-keys': keys,
+    '@/lib/opencode/client/url': await loadTs('lib/opencode/client/url.ts', { './types': { defaultConnectionSettings: { serverUrl: 'http://localhost' } } }),
   }, globals);
   const profile = await profiles.saveConnectProfile(CP, claim);
   if (missing) await profiles.deleteProfilePassword(profile.id);

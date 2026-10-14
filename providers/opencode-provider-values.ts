@@ -2,7 +2,7 @@ import { getDiffTurnMessages } from './opencode-provider-selectors';
 import { useMemo } from 'react';
 
 import { deriveTodosFromMessages } from '@/lib/opencode/format';
-import { aggregateUsageSteps, getLatestAssistantTurnUsage } from '@/lib/opencode/usage';
+import { aggregateUsageSteps, getSessionUsage, getLatestAssistantTurnUsage } from '@/lib/opencode/usage';
 import { getServerCapabilities } from '@/providers/opencode-capabilities';
 import {
   getConfiguredProviders,
@@ -273,8 +273,9 @@ export function useOpencodeProviderValues(input: ProviderValuesInput) {
     [availableModels],
   );
   const currentUsage = useMemo(
-    () => aggregateUsageSteps(usageStepsBySession[currentSessionId ?? ''] ?? [], usagePricingByModel),
-    [currentSessionId, usageStepsBySession, usagePricingByModel],
+    () => getSessionUsage(activeSession, aggregateUsageSteps(usageStepsBySession[currentSessionId ?? ''] ?? [], usagePricingByModel),
+      !!currentSessionId && !!messageWindows[currentSessionId] && !messageWindows[currentSessionId].hasMore && currentMessages.length < 200),
+    [activeSession, currentMessages.length, currentSessionId, messageWindows, usageStepsBySession, usagePricingByModel],
   );
   const latestAssistantTurnUsage = useMemo(
     () => getLatestAssistantTurnUsage(currentMessages, usagePricingByModel),

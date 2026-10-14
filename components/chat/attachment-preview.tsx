@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { AppState, StyleSheet, View } from 'react-native';
 import { Image } from 'expo-image';
@@ -50,36 +50,45 @@ export function AttachmentPreview({ attachment, onClose }: { attachment: PromptA
   const [mediaUri, setMediaUri] = useState<string>();
   const [failed, setFailed] = useState(false);
   const [opening, setOpening] = useState(false);
+  const openingController = useRef<AbortController | undefined>(undefined);
   const fail = useCallback(() => setFailed(true), []);
   useEffect(() => {
     let cancelled = false;
     let release: (() => void) | undefined;
+    const controller = new AbortController();
+    const subscription = AppState.addEventListener('change', (state) => {
+      if (state !== 'active') { controller.abort(); openingController.current?.abort(); }
+    });
     void (async () => {
       validateAttachmentUri(attachment.uri);
       if (kind === 'text') {
-        const contents = await readAttachmentText(attachment);
+        const contents = await readAttachmentText(attachment, controller.signal);
         if (!cancelled) setText(contents);
-      } else if (kind === 'audio' || kind === 'video') {
-        const file = await prepareAttachmentFile(attachment);
+      } else if (kind === 'audio' || kind === 'video' || kind === 'image') {
+        const file = await prepareAttachmentFile(attachment, controller.signal);
         release = file.release;
         if (cancelled) release();
         else setMediaUri(file.uri);
       }
     })().catch(() => { if (!cancelled) setFailed(true); });
-    return () => { cancelled = true; release?.(); };
+    return () => { cancelled = true; controller.abort(); openingController.current?.abort(); subscription.remove(); release?.(); };
   }, [attachment, kind]);
 
   return (
     <OverlaySheet visible title={attachment.filename || t('chat:composer.attachment')} onClose={onClose} testID="attachment-preview" scrollable={kind !== 'image' && kind !== 'video'}>
       {failed ? <Text accessibilityRole="alert" style={{ color: palette.danger }}>{t('chat:attachments.previewFailed')}</Text>
-        : kind === 'image' ? <Image testID="attachment-image-preview" source={{ uri: attachment.uri }} contentFit="contain" style={styles.image} onError={() => setFailed(true)} />
+        : kind === 'image' ? mediaUri ? <Image testID="attachment-image-preview" source={{ uri: mediaUri }} contentFit="contain" style={styles.image} onError={() => setFailed(true)} /> : <ActivityIndicator />
           : kind === 'text' ? text === undefined ? <ActivityIndicator /> : <Text testID="attachment-text-preview" selectable style={{ color: palette.text }}>{text}</Text>
             : kind === 'audio' ? mediaUri ? <AudioPreview uri={mediaUri} onError={fail} /> : <ActivityIndicator />
               : kind === 'video' ? mediaUri ? <VideoPreview uri={mediaUri} onError={fail} /> : <ActivityIndicator />
               : <View style={styles.audio}>
                 <Text style={{ color: palette.muted }}>{attachment.mime || t('chat:composer.attachment')}</Text>
                 <Button testID="attachment-open-external" loading={opening} disabled={opening} icon="open-in-new"
-                  onPress={() => { setOpening(true); void openAttachmentExternally(attachment).catch(() => setFailed(true)).finally(() => setOpening(false)); }}>
+                  onPress={() => {
+                    setOpening(true);
+                    const controller = new AbortController(); openingController.current = controller;
+                    void openAttachmentExternally(attachment, controller.signal).catch(() => { if (!controller.signal.aborted) setFailed(true); }).finally(() => setOpening(false));
+                  }}>
                   {t('chat:attachments.openExternally')}
                 </Button>
               </View>}

@@ -43,7 +43,8 @@
     },
     "tabFilesChanged_one": "{{files}} ファイルを変更",
     "tabFilesChanged_many": "{{files}} ファイルを変更",
-    "tabFilesChanged_other": "{{files}} ファイルを変更"
+    "tabFilesChanged_other": "{{files}} ファイルを変更",
+    "restoreFailedInput": "送信に失敗したメッセージを復元"
   },
   "content": {
     "connectionIssue": "接続の問題",
@@ -153,7 +154,9 @@
     "modelCostLabel": "{{model}} のコスト {{cost}}",
     "pricingUnavailableLower": "料金を取得できません",
     "modelTokensLabel": "{{input}} 入力トークン、{{output}} 出力トークン、{{reasoning}} 推論トークン、{{cacheRead}} キャッシュ読み取りトークン、{{cacheWrite}} キャッシュ書き込みトークン、{{steps}} 完了ステップ",
-    "modelTokens": "{{input}} 入力  {{output}} 出力  {{reasoning}} 推論  {{cacheRead}} キャッシュ読み取り  {{cacheWrite}} キャッシュ書き込み  {{steps}} ステップ"
+    "modelTokens": "{{input}} 入力  {{output}} 出力  {{reasoning}} 推論  {{cacheRead}} キャッシュ読み取り  {{cacheWrite}} キャッシュ書き込み  {{steps}} ステップ",
+    "partialTotals": "一部の合計は読み込まれた履歴のみです。",
+    "partialBreakdown": "モデル別の内訳と呼び出し回数は読み込まれた履歴のみです。"
   },
   "library": {
     "title": "チャット",

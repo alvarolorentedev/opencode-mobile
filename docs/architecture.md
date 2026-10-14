@@ -176,7 +176,7 @@ and provider setup remain in Settings.
 - `providers/use-opencode-provider-state.ts`
   The provider's core state, latest-ref bridges, and connection-generation
   counters, returned as one flat object.
-- `providers/opencode-provider-effects.ts`
+- `providers/use-opencode-provider-effects.ts`
   Provider lifecycle effects: language sync, active-session seeding, boot
   connect, refresh fan-out, chat bootstrap, transcript pruning, and working
   sound.
@@ -221,7 +221,7 @@ and provider setup remain in Settings.
   AsyncStorage hydration and ordered write-back, with field validation in
   `providers/persisted-preferences.ts`.
 - `providers/use-connection-profiles.ts`
-  Provider-owned saved-profile state, credential ordering, mutation serialization,
+  Provider-owned saved-profile state, UI sequencing and credential ordering,
   hostname defaults, setup probing, local V2 pairing, and connection actions
   exposed through `useConnection().connectionProfiles`. Setup probes never switch
   the active connection; saving an edit does not reconnect.
@@ -340,7 +340,7 @@ independent of onboarding completion. See [Cloud Link pilot](connect.md).
 - `lib/connection-scope.ts`
   Canonical, deterministic, password-free connection identity (`getConnectionScope`). Every server-scoped storage key, favorite, and pending notification record derives from it; scheme/host are normalized while URL path and query casing are preserved.
 - `lib/connection-profiles.ts`
-  Saved connection metadata in AsyncStorage, per-profile passwords in SecureStore, whole-DTO validation, and credential resolution for a connection that is not currently active.
+  Saved connection metadata in AsyncStorage, per-profile passwords in SecureStore, whole-DTO validation, one shared read/modify/write transaction queue (manual, Cloud Link, preferences, removal and sanitation), and credential resolution for a connection that is not currently active.
 - `lib/connection-password.ts`
   Active connection password in SecureStore, including legacy plaintext migration.
 - `lib/notification-pending.ts`
@@ -412,7 +412,10 @@ Launcher quick actions remain foreground-only and use the existing active-sessio
 selection. `providers/use-widget-state.ts` independently owns the three Android
 widget snapshots. Its service aggregates the connection-wide session catalog,
 newest messages for three recent root chats, and permission/question reads for
-every session workspace. It receives global SSE events before workspace filtering
+running, event-dirty or known-blocked workspaces while SSE is healthy. Initial
+seeding, reconnection, foreground resume and polling fallback scan all workspaces.
+Unprobed interaction data stays in the widget provider, including blockers
+beyond its three displayed rows. It receives global SSE events before workspace filtering
 and participates in the existing realtime reconciliation and 5s/10s polling;
 cross-workspace running work and blockers keep the safety poll active. Notification
 permission and Chat Library visibility do not gate widget reads.
@@ -841,8 +844,10 @@ Search spans the selected workspace root and clearing it restores the browsed
 folder. Breadcrumb navigation cannot leave that root. Listing, search, preview
 and save require a selected directory. The OpenCode 2 filesystem adapter passes
 `location[directory]` on every request and rejects malformed UTF-8/binary content.
-Text editing retains the existing conflict-checked patch path and is unavailable
-on OpenCode 2. Unsaved edits require discard confirmation.
+Text editing compares the server content against the editor baseline, writes
+through native v2 `file.write` or the v1 patch path, and verifies the saved text.
+Unsaved edits require discard confirmation. The pre-read/write race remains
+because neither path provides a conditional-write contract.
 
 The shared Workspace/Chat picker contains worktree inventory for the owning
 project, resolved from the scoped project API rather than path prefixes. Directory

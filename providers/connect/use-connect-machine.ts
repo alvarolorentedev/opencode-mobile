@@ -19,7 +19,7 @@ import {
   type ConnectSession,
 } from '@/lib/connect';
 import { connectPurchaseRequest, isConnectPurchase, loadConnectStore, openConnectSubscriptionManagement, type ConnectOffer, type ConnectStoreApi } from '@/lib/connect-store';
-import { deleteProfilePassword, loadConnectionProfiles, saveConnectionProfiles, type ConnectionProfile } from '@/lib/connection-profiles';
+import { deleteProfilePassword, loadConnectionProfiles, mutateConnectionProfiles, type ConnectionProfile } from '@/lib/connection-profiles';
 import type { OpencodeConnectionSettings } from '@/lib/opencode/client';
 import type { ConnectionContextValue } from '@/providers/opencode-provider-types';
 
@@ -346,10 +346,12 @@ export function useConnectState({ controlPlaneUrl, setControlPlaneUrl, switchCon
 
   const removeProfiles = useCallback(async (removed: ConnectionProfile[]) => {
     for (const profile of removed) await disconnect(profile);
-    const stored = await loadConnectionProfiles(true);
-    const next = stored.filter((profile) => !removed.some((item) => item.id === profile.id));
-    await saveConnectionProfiles(next);
-    await Promise.all(removed.map((profile) => deleteProfilePassword(profile.id)));
+    const next = await mutateConnectionProfiles(async (stored, save) => {
+      const next = stored.filter((profile) => !removed.some((item) => item.id === profile.id));
+      await save(next);
+      await Promise.all(removed.map((profile) => deleteProfilePassword(profile.id)));
+      return next;
+    });
     setProfiles(next);
     if (removed.some((profile) => profile.id === activation.current?.profile.id)) { activation.current?.controller.abort(); activation.current = undefined; }
     if (removed.some((profile) => profile.id === savedProfile?.id)) { setSavedProfile(undefined); setPhase('idle'); }

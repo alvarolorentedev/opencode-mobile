@@ -67,7 +67,8 @@ const context = {
   createFullFilePatch: () => 'patch', saveFile: async () => { patches++; },
   interruptSession: async () => { aborted = true; }, refreshServerFeatures: async () => {}, refreshVcsDiff: async () => {},
   connectionScope: 'scope', pendingNotificationKey: () => 'key',
-  busyNotificationsRef: { current: new Set() }, promptSubmissionRef: { current: {} }, setSendingState: () => {},
+  settingsRef: { current: { serverUrl: 'http://server', username: '' } }, getConnectionUiScope: () => 'scope',
+  busyNotificationsRef: { current: new Set() }, promptSubmissionRef: { current: {} }, latestSubmissionRef: { current: {} }, setSendingState: () => {},
   clearPendingTaskFinishedNotification: async () => { throw new Error('storage unavailable'); },
   refreshSessions: async () => {}, refreshMessages: async () => {}, refreshSessionDiff: async () => {}, refreshSessionTodos: async () => {},
   exports: {},
@@ -439,7 +440,7 @@ const profilesHook = await loadTs('providers/use-connection-profiles.ts', {
   '@/lib/connection-profiles': {
     createProfileId: () => `profile-${++profileId}`,
     loadConnectionProfiles: async () => [...storedProfiles],
-    saveConnectionProfiles: async (next) => { if (failMetadata) throw new Error('metadata failed'); storedProfiles = next; },
+    mutateConnectionProfiles: async (operation) => operation([...storedProfiles], async (next) => { if (failMetadata) throw new Error('metadata failed'); storedProfiles = next; }),
     getProfilePassword: async (id) => passwords.get(id) ?? '',
     saveProfilePassword: async (id, password) => { if (failCredential) throw new Error('secure storage failed'); passwords.set(id, password); },
     deleteProfilePassword: async (id) => { passwords.delete(id); },

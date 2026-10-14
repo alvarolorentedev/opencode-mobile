@@ -194,8 +194,8 @@ export function useWorkspaceRefreshActions({
     if (!isCurrentClient(client)) {
       return;
     }
-    setPendingPermissionsBySession(groupPendingRequestsBySession(permissions));
-    setPendingQuestionsBySession(groupPendingRequestsBySession(questions));
+    if (permissions) setPendingPermissionsBySession(groupPendingRequestsBySession(permissions));
+    if (questions) setPendingQuestionsBySession(groupPendingRequestsBySession(questions));
   }, [client, isCurrentClient]);
 
   const scheduleSessionRefresh = useCallback(

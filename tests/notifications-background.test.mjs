@@ -92,7 +92,11 @@ const connectionScopeUri = await transpileToDataUri('lib/connection-scope.ts', [
   [/from 'base-64'/g, `from "${base64Uri}"`],
 ]);
 const storageKeysUri = await transpileToDataUri('lib/storage-keys.ts');
+const urlUri = await transpileToDataUri('lib/opencode/client/url.ts', [
+  [/from '\.\/types'/g, `from "data:text/javascript,export const defaultConnectionSettings = {serverUrl:'http://localhost'};"`],
+]);
 const notificationPendingUri = await transpileToDataUri('lib/notification-pending.ts', [
+  [/from '@\/lib\/opencode\/client\/url'/g, `from "${urlUri}"`],
   [/from '@\/lib\/connection-scope'/g, `from "${connectionScopeUri}"`],
 ]);
 const sessionServiceStubUri = `data:text/javascript,${encodeURIComponent(`

@@ -48,22 +48,25 @@ export default function WorkspaceScreen() {
       <Appbar.Action testID="workspace-refresh-button" icon="refresh" disabled={refreshing || connection.status !== 'connected'} accessibilityLabel={t('workspace:screen.refreshWorkspace')} onPress={() => void refresh()} />
     </Appbar.Header>
     <WorkspacePicker visible={pickerVisible} testID="workspace-picker" projects={projects} activePath={activeProject?.path} onClose={() => setPickerVisible(false)} onSelect={selectProject} onAdd={addWorkspace} />
-    <ScrollView style={{ flex: 1, backgroundColor: palette.background }} contentContainerStyle={[styles.content, slim && { padding: 10 }]}
-      keyboardDismissMode="on-drag" keyboardShouldPersistTaps="handled"
-      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => void refresh()} tintColor={palette.tint} />}>
-      <Text variant="headlineMedium" style={{ fontWeight: '700', color: palette.text }}>{t('workspace:screen.filesTab')}</Text>
-      {!ready ? <View style={{ gap: 12 }}>
+    {ready ? <FilesPanel key={scope} browser={browser} workspaceLabel={activeProject!.label} statuses={serverCapabilities.fileStatus ? workspaceFileStatuses : []}
+      contentStyle={[styles.content, slim && { padding: 10 }]} refreshing={refreshing} onRefresh={() => void refresh()}
+      header={<>
+        <Text variant="headlineMedium" style={{ fontWeight: '700', color: palette.text }}>{t('workspace:screen.filesTab')}</Text>
+        {vcsInfo?.branch ? <Text style={{ color: palette.muted }}>{t('workspace:files.branch', { branch: vcsInfo.branch })}</Text> : null}
+      </>}
+      onOpen={(path) => { void openWorkspaceFile(path).then(() => setFileVisible(true)).catch((reason) => setError(reason instanceof Error ? reason.message : t('workspace:errors.openFile'))); }} />
+      : <ScrollView style={{ flex: 1, backgroundColor: palette.background }} contentContainerStyle={[styles.content, slim && { padding: 10 }]}
+        keyboardDismissMode="on-drag" keyboardShouldPersistTaps="handled"
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => void refresh()} tintColor={palette.tint} />}>
+        <Text variant="headlineMedium" style={{ fontWeight: '700', color: palette.text }}>{t('workspace:screen.filesTab')}</Text>
+      <View style={{ gap: 12 }}>
         <Text style={{ color: palette.muted }}>{connection.status !== 'connected' ? connection.message : t('workspace:picker.empty')}</Text>
         <Button mode="outlined" loading={connection.status === 'connecting'} onPress={() => {
           if (connection.status === 'connected') setPickerVisible(true);
           else void connect().catch((reason) => setError(reason instanceof Error ? reason.message : t('workspace:errors.refreshWorkspace')));
         }}>{connection.status !== 'connected' ? t('common:actions.reconnect') : t('workspace:picker.title')}</Button>
-      </View> : <>
-        {vcsInfo?.branch ? <Text style={{ color: palette.muted }}>{t('workspace:files.branch', { branch: vcsInfo.branch })}</Text> : null}
-        <FilesPanel key={scope} browser={browser} workspaceLabel={activeProject!.label} statuses={serverCapabilities.fileStatus ? workspaceFileStatuses : []}
-          onOpen={(path) => { void openWorkspaceFile(path).then(() => setFileVisible(true)).catch((reason) => setError(reason instanceof Error ? reason.message : t('workspace:errors.openFile'))); }} />
-      </>}
-    </ScrollView>
+      </View>
+      </ScrollView>}
     {ready && fileVisible && selectedWorkspaceFile ? <FilePreview key={`${scope}:${selectedWorkspaceFile.path}`} file={selectedWorkspaceFile}
       workspacePath={activeProject!.path} branch={vcsInfo?.branch} canSave={serverCapabilities.fileSave} slim={slim}
       onClose={() => setFileVisible(false)} onSave={saveWorkspaceFile} /> : null}

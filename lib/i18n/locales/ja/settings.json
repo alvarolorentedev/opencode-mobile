@@ -295,7 +295,7 @@
     "notAvailable": "該当なし",
     "refresh": "診断を更新",
     "networkUsage": "ネットワーク使用量",
-    "networkUsageValue": "本日 {{requests}} 件のリクエスト · {{size}}",
+    "networkUsageValue": "{{requests}} 件のリクエスト · 今日の既知の応答サイズ {{size}}",
     "networkUsageReset": "リセット"
   },
   "mcp": {

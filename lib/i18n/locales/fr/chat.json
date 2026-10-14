@@ -43,7 +43,8 @@
     },
     "tabFilesChanged_one": "{{files}} fichier modifié",
     "tabFilesChanged_many": "{{files}} fichiers modifiés",
-    "tabFilesChanged_other": "{{files}} fichiers modifiés"
+    "tabFilesChanged_other": "{{files}} fichiers modifiés",
+    "restoreFailedInput": "Récupérer le message échoué"
   },
   "content": {
     "connectionIssue": "Problème de connexion",
@@ -153,7 +154,9 @@
     "modelCostLabel": "Coût de {{model}} : {{cost}}",
     "pricingUnavailableLower": "tarification indisponible",
     "modelTokensLabel": "{{input}} jetons d'entrée, {{output}} jetons de sortie, {{reasoning}} jetons de raisonnement, {{cacheRead}} jetons lus en cache, {{cacheWrite}} jetons écrits en cache, {{steps}} étapes terminées",
-    "modelTokens": "{{input}} entrée  {{output}} sortie  {{reasoning}} raisonnement  {{cacheRead}} lecture cache  {{cacheWrite}} écriture cache  {{steps}} étapes"
+    "modelTokens": "{{input}} entrée  {{output}} sortie  {{reasoning}} raisonnement  {{cacheRead}} lecture cache  {{cacheWrite}} écriture cache  {{steps}} étapes",
+    "partialTotals": "Certains totaux couvrent uniquement l’historique chargé.",
+    "partialBreakdown": "Le détail par modèle et les appels couvrent uniquement l’historique chargé."
   },
   "library": {
     "title": "Chats",

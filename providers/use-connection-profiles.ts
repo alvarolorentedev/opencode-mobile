@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { createProfileId, deleteProfilePassword, findMatchingProfile, getProfilePassword,
-  loadConnectionProfiles, saveConnectionProfiles, saveProfilePassword, type ConnectionProfile } from '@/lib/connection-profiles';
+  loadConnectionProfiles, mutateConnectionProfiles, saveProfilePassword, type ConnectionProfile } from '@/lib/connection-profiles';
 import type { ConnectionContextValue } from '@/providers/opencode-provider-types';
 import { probeConnection } from '@/lib/opencode/client/probe';
 import { getServerHostname, normalizeServerUrl } from '@/lib/opencode/client/url';
@@ -32,8 +32,7 @@ export function useConnectionProfiles({ settings, switchConnection, updateSettin
   const passwordForEditing = useCallback((id: string) => getProfilePassword(id), []);
   const probe = useCallback((values: Pick<ConnectionProfileInput, 'serverUrl' | 'username' | 'password'>, signal?: AbortSignal) => probeConnection({ ...values, directory: '' }, signal), []);
   const pair = useCallback((code: string, signal?: AbortSignal) => resolveLocalPairing(code, signal), []);
-  const save = useCallback((values: ConnectionProfileInput, id?: string) => mutate(async () => {
-    const stored = await loadConnectionProfiles(true);
+  const save = useCallback((values: ConnectionProfileInput, id?: string) => mutate(() => mutateConnectionProfiles(async (stored, saveMetadata) => {
     const previous = id ? stored.find((profile) => profile.id === id) : undefined;
     if (id && !previous) throw new Error('This connection profile is no longer available.');
     if (previous?.connect) throw new Error('Manage this connection through Cloud Link.');
@@ -45,7 +44,7 @@ export function useConnectionProfiles({ settings, switchConnection, updateSettin
     await saveProfilePassword(profile.id, values.password);
     const next = [...stored.filter((entry) => entry.id !== profile.id), profile];
     try {
-      await saveConnectionProfiles(next);
+      await saveMetadata(next);
     } catch (error) {
       await saveProfilePassword(profile.id, oldPassword).catch(() => undefined);
       throw error;
@@ -55,15 +54,14 @@ export function useConnectionProfiles({ settings, switchConnection, updateSettin
       latest.current.updateSettings({ serverUrl: values.serverUrl, username: values.username, password: values.password });
     }
     return profile;
-  }), [mutate]);
-  const remove = useCallback((id: string) => mutate(async () => {
-    const stored = await loadConnectionProfiles(true);
+  })), [mutate]);
+  const remove = useCallback((id: string) => mutate(() => mutateConnectionProfiles(async (stored, saveMetadata) => {
     if (findMatchingProfile(stored, latest.current.settings)?.id === id) throw new Error('The active connection cannot be deleted.');
     const next = stored.filter((profile) => profile.id !== id);
-    await saveConnectionProfiles(next);
+    await saveMetadata(next);
     setProfiles(next);
     await deleteProfilePassword(id);
-  }), [mutate]);
+  })), [mutate]);
   return useMemo(() => ({ profiles, refresh, connect, passwordForEditing, probe, pair, save, remove }), [profiles, refresh, connect, passwordForEditing, probe, pair, save, remove]);
 }
 

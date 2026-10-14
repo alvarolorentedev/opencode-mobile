@@ -295,7 +295,7 @@
     "notAvailable": "n/d",
     "refresh": "Actualiser les diagnostics",
     "networkUsage": "Utilisation réseau",
-    "networkUsageValue": "{{requests}} requêtes · {{size}} aujourd’hui",
+    "networkUsageValue": "{{requests}} requêtes · {{size}} de réponses de taille connue aujourd’hui",
     "networkUsageReset": "Réinitialiser"
   },
   "mcp": {

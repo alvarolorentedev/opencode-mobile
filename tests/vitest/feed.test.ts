@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { decode } from 'base-64';
 
 import { deferred, hookRuntime, loadTs } from '../helpers/runtime.mjs';
 import { attachmentKind, dataUrlBytes, pickedAttachment, prepareAttachmentFile, openAttachmentExternally, readAttachmentText } from '@/lib/attachment-preview';
@@ -10,6 +11,12 @@ import { toTranscriptEntry } from '@/lib/opencode/format';
 import { isTranscriptDisplayMessage } from '@/lib/opencode/transcript';
 
 const native = vi.hoisted(() => ({ OS: 'ios', files: new Map<string, Uint8Array>(), shared: vi.fn(), released: vi.fn() }));
+vi.mock('base-64', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('base-64')>();
+  return { ...actual, decode: vi.fn(actual.decode) };
+});
+vi.mock('expo/fetch', () => ({ fetch: (...args: any[]) => (globalThis.fetch as any)(...args) }));
+vi.mock('@/lib/opencode/client/types', () => ({ defaultConnectionSettings: { serverUrl: 'http://localhost' } }));
 vi.mock('react-native', () => ({ Platform: native }));
 vi.mock('@/lib/i18n', () => ({ getFormatLocale: () => 'en' }));
 vi.mock('@/lib/connect', () => ({ parseConnectMetadata: () => undefined }));
@@ -47,6 +54,7 @@ describe('feed attachments', () => {
 
   it('reads UTF-8 text and rejects malformed or oversized content', async () => {
     expect(await readAttachmentText(textAttachment)).toBe('hello');
+    expect(new TextDecoder().decode(dataUrlBytes('data:text/plain;base64,aGVs\nbG8=\n'))).toBe('hello');
     expect(await readAttachmentText({ uri: `data:text/plain;base64,${Buffer.from('こんにちは').toString('base64')}` })).toBe('こんにちは');
     expect(new TextDecoder().decode(dataUrlBytes('data:text/plain,hello%20world'))).toBe('hello world');
     await expect(readAttachmentText({ uri: 'javascript:alert(1)' })).rejects.toThrow('unavailable');
@@ -65,6 +73,35 @@ describe('feed attachments', () => {
     const local = await prepareAttachmentFile({ uri: 'file:///original.txt' });
     local.release();
     expect(native.released).not.toHaveBeenCalledWith('file:///original.txt');
+  });
+
+  it('rejects declared oversize before reading and caps unknown streams without writing a temporary file', async () => {
+    const remote = { uri: 'https://server/large.txt', mime: 'text/plain', filename: 'large.txt' };
+    const read = vi.fn(), cancel = vi.fn();
+    const transport = vi.spyOn(globalThis, 'fetch').mockResolvedValue({ ok: true, headers: new Headers({ 'content-length': String(10 * 1024 * 1024 + 1) }),
+      body: { getReader: () => ({ read, cancel: async () => cancel(), releaseLock() {} }) } } as any);
+    try {
+      await expect(readAttachmentText(remote)).rejects.toThrow('10 MB'); expect(read).not.toHaveBeenCalled(); expect(cancel).toHaveBeenCalledOnce();
+      transport.mockResolvedValue({ ok: true, headers: new Headers(), body: { getReader: () => ({ read,
+        cancel: async () => cancel(), releaseLock() {} }) } } as any);
+      read.mockResolvedValueOnce({ value: new Uint8Array(10 * 1024 * 1024), done: false })
+        .mockResolvedValueOnce({ value: new Uint8Array(1), done: false });
+      await expect(prepareAttachmentFile(remote)).rejects.toThrow('10 MB'); expect(read).toHaveBeenCalledTimes(2);
+      expect(native.files.size).toBe(0);
+    } finally { transport.mockRestore(); }
+  });
+
+  it('rejects oversized encoded data before base64 decoding and stops a canceled preview read', async () => {
+    expect(() => dataUrlBytes(`data:text/plain;base64,${'A'.repeat(Math.ceil((10 * 1024 * 1024 + 1) / 3) * 4)}`)).toThrow('10 MB');
+    expect(() => dataUrlBytes(`data:text/plain;base64,${'A'.repeat(Math.ceil((10 * 1024 * 1024 + 1) / 3) * 4 - 1)}`)).toThrow('10 MB');
+    expect(decode).not.toHaveBeenCalled();
+    const controller = new AbortController(); controller.abort();
+    const transport = vi.spyOn(globalThis, 'fetch');
+    try { await expect(readAttachmentText({ uri: 'https://server/file' }, controller.signal)).rejects.toThrow('canceled'); expect(transport).not.toHaveBeenCalled(); }
+    finally { transport.mockRestore(); }
+    native.files.set('file:///too-big', new Uint8Array(10 * 1024 * 1024 + 1));
+    await expect(prepareAttachmentFile({ uri: 'file:///too-big' })).rejects.toThrow('10 MB');
+    expect(native.files.has('file:///too-big')).toBe(true);
   });
 
   it('normalizes both user and tool attachments without dropping media-only messages', () => {

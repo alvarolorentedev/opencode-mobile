@@ -7,13 +7,14 @@ import { Keyboard } from 'react-native';
 
 import { useUpdateBlocker } from '@/hooks/use-update-blocker';
 import { mergeSharedDraft } from '@/lib/share/parse';
-import { getConnectionScope } from '@/lib/connection-scope';
+import { getConnectionScope, getConnectionUiScope } from '@/lib/connection-scope';
 import { type TranscriptEntry } from '@/lib/opencode/format';
 import { getTranscriptActivityLabel, getUserTurnForMessage, isTranscriptDisplayMessage } from '@/lib/opencode/transcript';
 import { getLatestContextTokens } from '@/lib/opencode/usage';
 import { openVoiceSettingsAsync } from '@/lib/voice/permissions';
 import { speakText, stopSpeaking } from '@/lib/voice/speech-output';
 import { useSpeechInput } from '@/lib/voice/use-speech-input';
+import { useChatDraft } from './use-chat-draft';
 import { useChatViewActions } from './use-chat-view-actions';
 import {
   useApprovals,
@@ -50,8 +51,9 @@ export function useChatViewController() {
     sendingState, setAutoApprove, setDiffScope, transcriptPaging, sharedInput,
   } = useChat();
 
-  const [draft, setDraft] = useState('');
-  const [attachments, setAttachments] = useState<{ uri: string; mime?: string; filename?: string }[]>([]);
+  const { draft, attachments, setDraft, setAttachments, inputRef, capture, hasFailedInput, recoverFailedInput, dismissFailedInput } =
+    useChatDraft(`${getConnectionUiScope(settings)}:${activeProject?.path ?? ''}`, currentSessionId);
+  const submittingRef = useRef(false);
   const [changesVisible, setChangesVisible] = useState(false);
   const [progressVisible, setProgressVisible] = useState(false);
   const [sessionMenuVisible, setSessionMenuVisible] = useState(false);
@@ -66,8 +68,6 @@ export function useChatViewController() {
   const speechDraftPrefixRef = useRef('');
   const conversationActiveRef = useRef(false);
   const voiceRecoveryContextRef = useRef<'conversation' | 'dictation'>('dictation');
-  const draftRef = useRef('');
-  const attachmentsRef = useRef<{ uri: string; mime?: string; filename?: string }[]>([]);
   const lastSentAttachmentsRef = useRef<{ uri: string; mime?: string; filename?: string }[]>([]);
   const lastAutoSpokenMessageIdRef = useRef<string | undefined>(undefined);
 
@@ -163,7 +163,7 @@ export function useChatViewController() {
   // The provider scopes promptError to the active session tree, so a failing
   // subagent is already surfaced here; no local session gate is needed.
   const visiblePromptError = promptError?.message;
-  const sendErrorMessage = sendFeedback || visiblePromptError;
+  const sendErrorMessage = sendFeedback || visiblePromptError || (hasFailedInput ? t('chat:view.couldNotSendRetry') : undefined);
   const buildSendErrorDetails = useCallback(() => {
     if (!sendErrorMessage) {
       return '';
@@ -180,13 +180,6 @@ export function useChatViewController() {
     ].join('\n');
   }, [chatPreferences.modelId, currentSessionId, promptError?.occurredAt, sendErrorMessage, settings.serverUrl, t]);
 
-  useEffect(() => {
-    draftRef.current = draft;
-  }, [draft]);
-  useEffect(() => {
-    attachmentsRef.current = attachments;
-  }, [attachments]);
-
   const pathname = usePathname();
   const sharedPending = sharedInput.pending;
   const consumeShared = sharedInput.consumeShared;
@@ -199,10 +192,10 @@ export function useChatViewController() {
     }
     const payload = consumeShared({ connectionScope, projectPath: activeProject.path, sessionId: currentSessionId });
     if (!payload) return;
-    const next = mergeSharedDraft(draftRef.current, attachmentsRef.current, payload);
+    const next = mergeSharedDraft(inputRef.current.draft, inputRef.current.attachments, payload);
     setDraft(next.draft);
     setAttachments(next.attachments);
-  }, [activeProject?.path, connectionScope, consumeShared, currentSessionId, pathname, sharedPending, sharedInput.busy]);
+  }, [activeProject?.path, connectionScope, consumeShared, currentSessionId, pathname, sharedPending, sharedInput.busy, inputRef, setAttachments, setDraft]);
 
   const latestAssistantEntry = useMemo(
     () => [...displayTranscript].reverse().find((entry) => entry.role === 'assistant' && entry.text.trim()),
@@ -240,23 +233,27 @@ export function useChatViewController() {
       : 'none';
 
   const handleSendPrompt = useCallback(async (promptOverride?: string) => {
-    const nextDraft = promptOverride ?? draftRef.current;
-    const nextAttachments = attachmentsRef.current;
+    if (submittingRef.current) return;
+    const snapshot = capture(promptOverride);
+    const nextDraft = promptOverride ?? snapshot.draft;
+    const nextAttachments = snapshot.attachments;
     const prompt = nextDraft.trim();
     if ((!prompt && nextAttachments.length === 0) || connection.status !== 'connected') {
       return;
     }
 
+    submittingRef.current = true;
+    let sessionId = currentSessionId;
     try {
       setSendFeedback(undefined);
       lastSentAttachmentsRef.current = nextAttachments;
-      const sessionId = currentSessionId || (await ensureActiveSession());
+      sessionId = currentSessionId || (await ensureActiveSession());
       if (!sessionId) {
         return;
       }
 
-      setDraft('');
-      setAttachments([]);
+      if (!snapshot.belongsHere(sessionId)) return;
+      snapshot.clear(sessionId);
 
       const commandMatch = nextAttachments.length === 0 ? prompt.match(/^\/(\S+)(?:\s+([\s\S]*))?$/) : undefined;
       if (commandMatch && commands.some((command) => command.name === commandMatch[1])) {
@@ -266,16 +263,12 @@ export function useChatViewController() {
 
       const sent = await sendPrompt(sessionId, prompt, nextAttachments);
       if (!sent) {
-        setDraft(nextDraft);
-        setAttachments(nextAttachments);
-        setSendFeedback(t('chat:view.couldNotSendRetry'));
+        if (snapshot.restore(sessionId)) setSendFeedback(t('chat:view.couldNotSendRetry'));
       }
     } catch (error) {
-      setDraft(nextDraft);
-      setAttachments(nextAttachments);
-      setSendFeedback(error instanceof Error ? error.message : t('chat:view.couldNotSend'));
-    }
-  }, [commands, connection.status, currentSessionId, ensureActiveSession, executeCommand, sendPrompt, t]);
+      if (snapshot.restore(sessionId)) setSendFeedback(error instanceof Error ? error.message : t('chat:view.couldNotSend'));
+    } finally { submittingRef.current = false; }
+  }, [capture, commands, connection.status, currentSessionId, ensureActiveSession, executeCommand, sendPrompt, t]);
 
   useEffect(() => {
     Keyboard.dismiss();
@@ -426,7 +419,7 @@ export function useChatViewController() {
     currentUsage, diffAdditions, diffCount, diffDeletions, diffDetails, diffTurns,
     displayTranscript, draft, expandedDiffId, forkSession, handleAbort, handleAttach,
     handleConfirmStopConversation, handleCopyMessage, handleNewSession, handleReviewChanges,
-    handleSendPrompt, handleSpeakEntry, handleToggleRecording, handleVoiceRecovery,
+    handleSendPrompt, handleSpeakEntry, handleToggleRecording, handleVoiceRecovery, hasFailedInput, recoverFailedInput, dismissFailedInput,
     isCreatingSession, isRefreshingDiffs, isRefreshingMessages, isSpeechInputAvailable,
     isSpeechInputListening, isStoppingSession, isUpdatingAutoApprove, latestAssistantTurnUsage,
     pendingPrompts, pendingInteractions, progressIcon, progressVisible, refreshCurrentSession, refreshDiffs,

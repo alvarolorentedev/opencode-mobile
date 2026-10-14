@@ -29,7 +29,11 @@ const base64Uri = `data:text/javascript,${encodeURIComponent(
 const connectionScopeUri = await transpileToDataUri('lib/connection-scope.ts', [
   [/from 'base-64'/g, `from "${base64Uri}"`],
 ]);
+const urlUri = await transpileToDataUri('lib/opencode/client/url.ts', [
+  [/from '\.\/types'/g, `from "data:text/javascript,export const defaultConnectionSettings = {serverUrl:'http://localhost'};"`],
+]);
 const notificationPendingUri = await transpileToDataUri('lib/notification-pending.ts', [
+  [/from '@\/lib\/opencode\/client\/url'/g, `from "${urlUri}"`],
   [/from '@\/lib\/connection-scope'/g, `from "${connectionScopeUri}"`],
 ]);
 
@@ -56,7 +60,7 @@ assert.match(pendingNotificationKey(scopeA, 'session-1'), /^[A-Za-z0-9_-]+\u0000
     sessionTitle: 'Ship it',
     projectPath: '/repo',
     connectionScope: scopeA,
-    settings: { serverUrl: 'https://a.example', username: 'alice', password: 'leaked', extra: 1 },
+    settings: { serverUrl: 'https://url-user:leaked@a.example', username: 'alice', password: 'leaked', extra: 1 },
     requestedAt: 123,
     extra: 'nope',
   };

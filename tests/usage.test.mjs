@@ -4,7 +4,7 @@ import ts from 'typescript';
 
 const source = await readFile(new URL('../lib/opencode/usage.ts', import.meta.url), 'utf8');
 const output = ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.ESNext, target: ts.ScriptTarget.ES2020 } }).outputText;
-const { aggregateSessionUsage, formatEstimatedCost, formatTokenCount, getLatestAssistantTurnUsage, getLatestContextTokens, addUsageSteps, aggregateUsageSteps } = await import(`data:text/javascript,${encodeURIComponent(output)}`);
+const { aggregateSessionUsage, formatEstimatedCost, formatTokenCount, getLatestAssistantTurnUsage, getLatestContextTokens, addUsageSteps, aggregateUsageSteps, getSessionUsage } = await import(`data:text/javascript,${encodeURIComponent(output)}`);
 
 const pricing = { 'anthropic/sonnet': { input: 0.000003, output: 0.000015, cache: { read: 0.0000003, write: 0.00000375 } } };
 
@@ -22,6 +22,15 @@ assert.equal(single.completedSteps, 1);
 assert.equal(single.inputTokens, 842);
 assert.equal(single.reasoningTokens, 9);
 assert.equal(single.cacheWriteTokens, 2);
+const authoritative = getSessionUsage({ cost: 40, tokens: { input: 4000, output: 800, reasoning: 40, cache: { read: 100, write: 20 } } }, single, false);
+assert.equal(authoritative.cost, 40, 'Server totals replace the loaded tail rather than adding to it.');
+assert.equal(authoritative.inputTokens, 4000);
+assert.equal(authoritative.completedSteps, 1);
+assert.deepEqual(authoritative.completeness, { cost: true, tokens: true, breakdown: false });
+assert.deepEqual(getSessionUsage(undefined, single, false).completeness, { cost: false, tokens: false, breakdown: false });
+assert.equal(getSessionUsage({ cost: 0 }, single, false).cost, 0, 'A recorded zero is authoritative.');
+assert.deepEqual(getSessionUsage({ cost: NaN }, single, true).completeness, { cost: true, tokens: true, breakdown: true });
+assert.equal(getSessionUsage({ tokens: { input: 10 } }, single, false).inputTokens, single.inputTokens, 'Malformed server totals fall back to observed usage without crashing.');
 
 const toolLoop = aggregateSessionUsage([assistant([step('step-1'), { id: 'tool-1', type: 'tool', state: { status: 'completed' } }, step('step-2', 0.02)])], pricing);
 assert.equal(toolLoop.completedSteps, 2);

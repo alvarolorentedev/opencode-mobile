@@ -27,7 +27,7 @@ type MessageWindow = { nextBefore?: string; hasMore: boolean };
 // Owns the paginated transcript window for every session: the loaded messages
 // are held by the provider, while this hook owns the pagination cursors, and
 // accumulates completed model calls and V2 plan records so a bounded window
-// still yields exact session usage and todos.
+// retains observed call usage and todos without requiring unbounded history reads.
 export function useTranscriptState({
   client,
   isCurrentClient,

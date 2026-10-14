@@ -4,6 +4,7 @@ import { fetchConnection } from '@/lib/opencode/client/fetch';
 import { detectServerContract, probeConnection } from '@/lib/opencode/client/probe';
 import { getServerHostname } from '@/lib/opencode/client/url';
 import { parseLocalPairing, resolveLocalPairing } from '@/lib/opencode/pairing';
+import * as readDeadline from '@/lib/opencode/client/read-deadline';
 import { loadTs } from '../helpers/runtime.mjs';
 
 vi.mock('@/lib/opencode/client/types', () => ({ defaultConnectionSettings: { serverUrl: 'http://127.0.0.1:4096' } }));
@@ -56,7 +57,7 @@ describe('connection setup probe', () => {
 describe('local pairing', () => {
   it('preserves Cloudflare startup errors before SDK parsing, while auth denials and manual transport stay actionable', async () => {
     const transport = await loadTs('lib/opencode/client/fetch.ts', {
-      'base-64': {}, 'expo/fetch': { fetch: async () => response },
+      './read-deadline': readDeadline, 'base-64': {}, 'expo/fetch': { fetch: async () => response },
       '../data-usage': { recordBytes: () => {}, recordRequest: () => {} },
       '@/lib/connect': { getConnectCredentialError: () => undefined }, './url': {},
     }, { fetch: async () => response });
@@ -69,20 +70,20 @@ describe('local pairing', () => {
       await expect(transport.fetchConnection('https://machine.test', {}, cloudSettings)).rejects.toThrow(status === 401 ? 'credentials were rejected' : 'access was denied');
     }
     response = html(530);
-    expect(await transport.fetchConnection('http://manual.test')).toBe(response);
+    expect(await (await transport.fetchConnection('http://manual.test')).text()).toContain('1033');
   });
   it('uses redirect-aware native transport for redemption while preserving normal manual transport', async () => {
     const manualFetch = vi.fn(async () => json({}));
     const nativeFetch = vi.fn(async () => json({}));
     const transport = await loadTs('lib/opencode/client/fetch.ts', {
-      'base-64': {}, 'expo/fetch': { fetch: nativeFetch },
+      './read-deadline': readDeadline, 'base-64': {}, 'expo/fetch': { fetch: nativeFetch },
       '../data-usage': { recordBytes: () => {}, recordRequest: () => {} },
       '@/lib/connect': { getConnectCredentialError: () => undefined }, './url': {},
     }, { fetch: manualFetch });
     await transport.fetchConnection('http://example.test/api/info');
     await transport.fetchConnection('http://example.test/auth/connect/code', { redirect: 'error' });
     expect(manualFetch).toHaveBeenCalledOnce();
-    expect(nativeFetch).toHaveBeenCalledWith('http://example.test/auth/connect/code', { redirect: 'error' });
+    expect(nativeFetch).toHaveBeenCalledWith('http://example.test/auth/connect/code', expect.objectContaining({ redirect: 'error', signal: expect.any(AbortSignal) }));
   });
   it.each([
     JSON.stringify({ urls: ['http://192.168.1.10:49374'], code: 'one-use-code' }),

@@ -43,7 +43,8 @@
     },
     "tabFilesChanged_one": "{{files}} Datei geändert",
     "tabFilesChanged_many": "{{files}} Dateien geändert",
-    "tabFilesChanged_other": "{{files}} Dateien geändert"
+    "tabFilesChanged_other": "{{files}} Dateien geändert",
+    "restoreFailedInput": "Fehlgeschlagene Nachricht wiederherstellen"
   },
   "content": {
     "connectionIssue": "Verbindungsproblem",
@@ -153,7 +154,9 @@
     "modelCostLabel": "{{model}} Kosten {{cost}}",
     "pricingUnavailableLower": "Preise nicht verfügbar",
     "modelTokensLabel": "{{input}} Eingabe-Token, {{output}} Ausgabe-Token, {{reasoning}} Reasoning-Token, {{cacheRead}} Cache-Lese-Token, {{cacheWrite}} Cache-Schreib-Token, {{steps}} abgeschlossene Schritte",
-    "modelTokens": "{{input}} rein  {{output}} raus  {{reasoning}} Reasoning  {{cacheRead}} Cache lesen  {{cacheWrite}} Cache schreiben  {{steps}} Schritte"
+    "modelTokens": "{{input}} rein  {{output}} raus  {{reasoning}} Reasoning  {{cacheRead}} Cache lesen  {{cacheWrite}} Cache schreiben  {{steps}} Schritte",
+    "partialTotals": "Einige Summen umfassen nur den geladenen Verlauf.",
+    "partialBreakdown": "Modellübersicht und Aufrufzahlen umfassen nur den geladenen Verlauf."
   },
   "library": {
     "title": "Chats",

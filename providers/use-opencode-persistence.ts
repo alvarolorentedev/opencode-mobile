@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState, type Dispatch, type SetStateAction } 
 import type { OpencodeConnectionSettings } from '@/lib/opencode/client';
 import { normalizeTrustedControlPlaneUrl } from '@/lib/connect';
 import { getConnectionPassword, saveConnectionPassword, withoutConnectionPassword } from '@/lib/connection-password';
+import { isValidServerUrl } from '@/lib/opencode/client/url';
 import {
   ACTIVE_PROJECT_STORAGE_KEY,
   CHAT_PREFERENCES_STORAGE_KEY,
@@ -79,15 +80,16 @@ export function useOpencodePersistence({
         await load(SETTINGS_STORAGE_KEY, parseConnectionSettings, (parsed) => {
           persistedSettings = parsed;
         });
-        const hasLegacyPassword = Boolean(persistedSettings && 'password' in persistedSettings);
-        const legacyPassword = persistedSettings?.password || '';
+        const hasConnectionIdentity = Boolean(persistedSettings?.serverUrl?.trim() && isValidServerUrl(persistedSettings.serverUrl));
+        const hasLegacyPassword = Boolean(hasConnectionIdentity && persistedSettings && 'password' in persistedSettings);
+        const legacyPassword = hasConnectionIdentity ? persistedSettings?.password || '' : '';
         let password = legacyPassword;
         try {
           if (hasLegacyPassword) {
             await saveConnectionPassword(legacyPassword);
             await AsyncStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(withoutConnectionPassword({ ...defaultSettings, ...persistedSettings })));
           }
-          password = (await getConnectionPassword()) || legacyPassword;
+          password = hasConnectionIdentity ? (await getConnectionPassword()) || legacyPassword : '';
         } catch (reason) {
           writeChanged.preserveUnread(SETTINGS_STORAGE_KEY);
           console.warn('Could not hydrate connection credentials.', reason);

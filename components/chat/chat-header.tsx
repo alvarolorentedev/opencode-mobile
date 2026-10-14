@@ -112,11 +112,13 @@ export function ChatHeader({
       </Portal>
       <OverlaySheet visible={usageVisible} title={t('chat:header.sessionUsage')} testID="session-usage-overlay" fitContent onClose={() => setUsageVisible(false)}>
         <Text accessibilityLabel={usageLabel} variant="bodySmall" style={{ color: palette.muted }}>{usageLabel}</Text>
+        {usage.completeness && (!usage.completeness.cost || !usage.completeness.tokens) ? <Text variant="bodySmall" style={{ color: palette.muted }}>{t('chat:header.partialTotals')}</Text> : null}
         {latestAssistantTurnUsage ? <Text variant="bodySmall" style={{ color: palette.muted }}>{latestAssistantTurnUsage.costStatus === 'pricing-unavailable' ? t('chat:header.lastResponsePricing') : t('chat:header.lastResponseCost', { cost: formatCost(latestAssistantTurnUsage.cost) })}</Text> : null}
         <View style={[styles.usageProvider, { borderColor: palette.border }]}>
           <View style={styles.usageRow}><Text variant="titleSmall" style={{ color: palette.text }}>{t('chat:header.contextUtilization')}</Text><Text accessibilityLabel={contextProgress === undefined ? t('chat:header.contextUnavailable') : t('chat:header.contextPercent', { percent: Math.round(contextProgress * 100) })} variant="titleSmall" style={{ color: palette.text }}>{contextProgress === undefined ? t('common:labels.unavailable') : `${Math.round(contextProgress * 100)}%`}</Text></View>
           {contextProgress === undefined ? <Text variant="bodySmall" style={{ color: palette.muted }}>{t('chat:header.noContextLimit')}</Text> : <><View style={{ height: 8, overflow: 'hidden' }}><ProgressBar progress={contextProgress} color={palette.tint} style={styles.contextProgress} /></View><Text variant="bodySmall" style={{ color: palette.muted }}>{t('chat:header.inputTokens', { used: formatTokenCount(contextTokens || 0), limit: formatTokenCount(contextLimit || 0) })}</Text></>}
         </View>
+        {usage.completeness?.breakdown === false ? <Text variant="bodySmall" style={{ color: palette.muted }}>{t('chat:header.partialBreakdown')}</Text> : null}
         {usage.completedSteps === 0 ? <Text variant="bodyMedium" style={{ color: palette.muted }}>{t('chat:header.noSteps')}</Text> : null}
         {usage.providers.map((provider) => (
           <View key={provider.providerId} style={[styles.usageProvider, { borderColor: palette.border }]}>

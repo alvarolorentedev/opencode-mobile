@@ -1,12 +1,13 @@
 import { interruptSession } from '@/providers/services/session-service';
 import type { FilePartInput, TextPartInput } from '@/lib/opencode/types';
-import { useCallback, useEffect, useState, type Dispatch, type SetStateAction } from 'react';
+import { useCallback, useEffect, useRef, useState, type Dispatch, type SetStateAction } from 'react';
 
 import type { OpencodeConnectionSettings, ScopedOpencodeClient } from '@/lib/opencode/client';
 import type { SessionMessageRecord } from '@/lib/opencode/format';
 import type { Session, SessionStatus } from '@/lib/opencode/types';
 import type { PromptDelivery, PromptInput } from '@/lib/opencode/prompt-inbox';
 import { pendingNotificationKey } from '@/lib/notification-pending';
+import { getConnectionScope, getConnectionUiScope } from '@/lib/connection-scope';
 import {
   clearPendingTaskFinishedNotification,
   listPendingTaskFinishedNotifications,
@@ -33,7 +34,6 @@ type PromptLifecycleInput = {
   settingsRef: { current: OpencodeConnectionSettings };
   busyNotificationsRef: { current: Set<string> };
   promptSubmissionRef: { current: { active: boolean; sessionId?: string } };
-  setCurrentSessionId: Dispatch<SetStateAction<string | undefined>>;
   setSelectedDiffMessageBySession: Dispatch<SetStateAction<Record<string, string | undefined>>>;
   fetchSessions: (silent?: boolean) => Promise<Session[]>;
   refreshSessions: (silent?: boolean) => Promise<unknown>;
@@ -57,7 +57,6 @@ export function usePromptLifecycle({
   settingsRef,
   busyNotificationsRef,
   promptSubmissionRef,
-  setCurrentSessionId,
   setSelectedDiffMessageBySession,
   fetchSessions,
   refreshSessions,
@@ -69,6 +68,8 @@ export function usePromptLifecycle({
 }: PromptLifecycleInput) {
   const [sendingState, setSendingState] = useState<{ sessionId?: string; active: boolean }>({ active: false });
   const [promptError, setPromptError] = useState<{ message: string; occurredAt: number; sessionId?: string }>();
+  const requestedAtRef = useRef(0);
+  const latestSubmissionRef = useRef<{ active: boolean; sessionId: string; requestedAt: number; owner: string } | undefined>(undefined);
 
   const sendPrompt = useCallback(
     async (
@@ -81,17 +82,29 @@ export function usePromptLifecycle({
         return false;
       }
 
-      if (promptSubmissionRef.current.active) {
+      if (!isCurrentClient(client) || promptSubmissionRef.current.active) {
         return false;
       }
 
-      promptSubmissionRef.current = { active: true, sessionId };
+      const requestedAt = Math.max(Date.now(), requestedAtRef.current + 1);
+      requestedAtRef.current = requestedAt;
+      const submission = { active: true, sessionId, requestedAt, owner: getConnectionUiScope(settingsRef.current) };
+      latestSubmissionRef.current = submission;
+      promptSubmissionRef.current = submission;
+      const ownsSubmission = () => promptSubmissionRef.current === submission && isCurrentClient(client);
       setPromptError(undefined);
 
       const currentSession = sessions.find((session) => session.id === sessionId);
       let promptAccepted = false;
       const trackingKey = pendingNotificationKey(connectionScope, sessionId);
-      const requestedAt = Date.now();
+      const canceled = async () => {
+        await clearPendingTaskFinishedNotification(connectionScope, sessionId, requestedAt).catch(() => undefined);
+        if (submission.owner === getConnectionUiScope(settingsRef.current)) {
+          const currentScope = getConnectionScope(settingsRef.current);
+          if (currentScope !== connectionScope) await clearPendingTaskFinishedNotification(currentScope, sessionId, requestedAt).catch(() => undefined);
+        }
+        return false;
+      };
 
       try {
         busyNotificationsRef.current.delete(trackingKey);
@@ -109,7 +122,8 @@ export function usePromptLifecycle({
           }).catch(() => undefined);
         }
 
-        setSendingState({ active: true, sessionId });
+        if (!ownsSubmission()) return canceled();
+        setSendingState(submission);
         const selectedModel = availableModels.find((model) => model.id === chatPreferences.modelId);
         if (attachments?.length && !selectedModel) {
           throw new Error('Select a model that supports attachments first.');
@@ -170,6 +184,7 @@ export function usePromptLifecycle({
         }
         parts.push(...preparedFileParts);
 
+        if (!ownsSubmission()) return canceled();
         await submitPrompt({
           sessionID: sessionId,
           agent: chatPreferences.mode,
@@ -178,9 +193,8 @@ export function usePromptLifecycle({
           parts,
         }, chatPreferences.promptDelivery ?? 'steer');
         promptAccepted = true;
-        if (promptSubmissionRef.current.sessionId === sessionId) {
-          promptSubmissionRef.current = { active: false, sessionId: undefined };
-        }
+        const owned = ownsSubmission();
+        if (owned) promptSubmissionRef.current = { active: false };
         if (!isCurrentClient(client)) {
           return true;
         }
@@ -191,9 +205,8 @@ export function usePromptLifecycle({
         // safety poll can run at a slower, lower-data cadence.
         scheduleSessionRefresh(sessionId, { sessions: true, messages: true, fullMessages: true, diff: true, todos: true, delayMs: 5000 });
 
-        setCurrentSessionId(sessionId);
         // A new user turn supersedes any earlier turn the diff surface was pinned to.
-        setSelectedDiffMessageBySession((current) => ({ ...current, [sessionId]: undefined }));
+        if (owned) setSelectedDiffMessageBySession((current) => ({ ...current, [sessionId]: undefined }));
         const nextSessions = await fetchSessions(true);
         await Promise.all([
           refreshMessages(sessionId, true),
@@ -211,49 +224,49 @@ export function usePromptLifecycle({
         }
         return true;
       } catch (error) {
-        if (promptSubmissionRef.current.sessionId === sessionId) {
-          promptSubmissionRef.current = { active: false, sessionId: undefined };
-        }
+        const owned = ownsSubmission();
+        if (owned) promptSubmissionRef.current = { active: false };
         if (promptAccepted) {
-          scheduleSessionRefresh(sessionId, { sessions: true, messages: true, diff: true, todos: true, delayMs: 1000 });
+          if (isCurrentClient(client)) scheduleSessionRefresh(sessionId, { sessions: true, messages: true, diff: true, todos: true, delayMs: 1000 });
           return true;
         }
-        setPromptError({
+        if (owned) setPromptError({
           message: error instanceof Error ? error.message : 'OpenCode could not send that message.',
           occurredAt: Date.now(),
           sessionId,
         });
         if (!promptAccepted) {
-          await clearPendingTaskFinishedNotification(connectionScope, sessionId).catch(() => undefined);
+          await canceled();
         }
 
         throw error;
       } finally {
+        if (promptSubmissionRef.current === submission) promptSubmissionRef.current = { active: false };
         setSendingState((current) => (
-          current.sessionId === sessionId
+          current === submission
             ? { active: false, sessionId: undefined }
             : current
         ));
       }
     },
-    [activeProjectPath, availableModels, busyNotificationsRef, chatPreferences, client, connectionScope, fetchSessions, isCurrentClient, promptSubmissionRef, refreshMessages, refreshSessionDiff, refreshSessionTodos, scheduleSessionRefresh, sessions, setCurrentSessionId, setPromptError, setSelectedDiffMessageBySession, settingsRef, submitPrompt, summarizeSessionTitle],
+    [activeProjectPath, availableModels, busyNotificationsRef, chatPreferences, client, connectionScope, fetchSessions, isCurrentClient, promptSubmissionRef, refreshMessages, refreshSessionDiff, refreshSessionTodos, scheduleSessionRefresh, sessions, setPromptError, setSelectedDiffMessageBySession, settingsRef, submitPrompt, summarizeSessionTitle],
   );
 
   const abortSession = useCallback(
     async (sessionId: string) => {
+      const submission = latestSubmissionRef.current;
       const trackingKey = pendingNotificationKey(connectionScope, sessionId);
       busyNotificationsRef.current.delete(trackingKey);
-      await clearPendingTaskFinishedNotification(connectionScope, sessionId).catch(() => undefined);
+      const requestedAt = submission?.sessionId === sessionId && submission.owner === getConnectionUiScope(settingsRef.current) ? submission.requestedAt : undefined;
+      await clearPendingTaskFinishedNotification(connectionScope, sessionId, requestedAt).catch(() => undefined);
       await interruptSession(client, sessionId);
 
-      // Reset prompt guards immediately so the user can submit again without
-      // waiting for the in-flight promptAsync to settle. sendPrompt's finally
-      // block sets the same values; both writes compose to the same state.
-      if (promptSubmissionRef.current.sessionId === sessionId) {
+      // Release only the submission this abort started with.
+      if (isCurrentClient(client) && promptSubmissionRef.current === submission && submission?.sessionId === sessionId) {
         promptSubmissionRef.current = { active: false, sessionId: undefined };
       }
       setSendingState((current) => (
-        current.sessionId === sessionId
+        current === submission && current.sessionId === sessionId
           ? { active: false, sessionId: undefined }
           : current
       ));
@@ -265,7 +278,7 @@ export function usePromptLifecycle({
         refreshSessionTodos(sessionId),
       ]);
     },
-    [busyNotificationsRef, client, connectionScope, promptSubmissionRef, refreshMessages, refreshSessionDiff, refreshSessionTodos, refreshSessions],
+    [busyNotificationsRef, client, connectionScope, isCurrentClient, promptSubmissionRef, refreshMessages, refreshSessionDiff, refreshSessionTodos, refreshSessions, settingsRef],
   );
 
   useEffect(() => {

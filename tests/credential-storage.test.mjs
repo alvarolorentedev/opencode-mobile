@@ -35,7 +35,7 @@ assert.doesNotMatch(notifications, /getConnectionPassword/);
 assert.doesNotMatch(notifications, /Pick<OpencodeConnectionSettings, 'serverUrl' \| 'username' \| 'password'>/);
 assert.match(notifications, /serializePendingNotificationSessions\(value\)/);
 assert.match(pending, /connectionScope: scope/);
-assert.match(pending, /settings: \{ serverUrl, username \}/);
+assert.match(pending, /settings: \{ serverUrl: stripServerUrlCredentials\(serverUrl\), username \}/);
 assert.doesNotMatch(pending, /password:/);
 
 // Favorites keep only the explicit non-secret model.

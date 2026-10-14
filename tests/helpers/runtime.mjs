@@ -8,7 +8,7 @@ export async function loadTs(relative, imports = {}, globals = {}) {
   runInNewContext(ts.transpileModule(source, {
     compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2020, jsx: ts.JsxEmit.ReactJSX },
   }).outputText, {
-    exports, console, Headers, URL, AbortController, setTimeout, clearTimeout, setInterval, clearInterval,
+    exports, console, Headers, URL, AbortController, TextEncoder, TextDecoder, Response, setTimeout, clearTimeout, setInterval, clearInterval,
     require(name) { if (!(name in imports)) throw new Error(`Missing test import ${name} in ${relative}`); return imports[name]; },
     ...globals,
   });
@@ -75,8 +75,8 @@ export function hookRuntime() {
     // Async flows can chain several awaits (e.g. a failed production claim
     // followed by a staging re-init and re-claim). 60 microtask turns were not
     // enough for automatic Connect environment routing; keep headroom so the
-    // hook reaches its settled state before assertions run.
-    async settle() { for (let i = 0; i < 120; i++) { await Promise.resolve(); flush(); } return value; },
+    // hook reaches its settled state through serialized profile transactions too.
+    async settle() { for (let i = 0; i < 240; i++) { await Promise.resolve(); flush(); } return value; },
     get value() { return value; },
     fire(ms) { for (const [id, timer] of [...timers]) if (timer.ms === ms && timers.has(id)) { if (!timer.interval) timers.delete(id); timer.fn(); } return flush(); },
     countTimers(ms) { return [...timers.values()].filter((timer) => timer.ms === ms).length; },

@@ -8,7 +8,7 @@ import { deriveTodosFromMessages, type SessionMessageRecord } from '@/lib/openco
 import type { Session, SessionStatus, Todo } from '@/lib/opencode/types';
 import { homeWidgetSupported, updateHomeWidget } from '@/lib/widgets';
 import { mergeSessionStatuses } from '@/providers/opencode-provider-utils';
-import { readWidgetData } from '@/providers/services/widget-service';
+import { readWidgetData, type WidgetInteractions } from '@/providers/services/widget-service';
 import { recentWidgetSessions, widgetSession, widgetReply, widgetAttention, widgetPlan } from '@/providers/widget-content';
 import { hideWidgetPreviews, type WidgetSnapshot } from '@/providers/widget-snapshot';
 import { loadWidgetSnapshot, saveWidgetSnapshot } from '@/providers/widget-snapshot-storage';
@@ -19,6 +19,7 @@ type Input = {
   isCurrentCatalogClient: (client: object) => boolean;
   showPreviews: boolean; language?: string; currentSessionId?: string; sessions: Session[];
   todoRecordsBySession: Record<string, SessionMessageRecord[]>; todosBySession: Record<string, Todo[]>;
+  streamConnectedRef?: { current: boolean };
 };
 
 export function useWidgetState(input: Input) {
@@ -26,6 +27,9 @@ export function useWidgetState(input: Input) {
   useLayoutEffect(() => { latest.current = input; });
   const snapshot = useRef<WidgetSnapshot | undefined>(undefined);
   const statuses = useRef<Record<string, SessionStatus>>({});
+  const interactions = useRef<Record<string, WidgetInteractions>>({});
+  const dirtyDirectories = useRef(new Set<string>());
+  const seed = useRef(true);
   const generation = useRef(0);
   const initialized = useRef(false);
   const eventRevision = useRef(0);
@@ -67,7 +71,8 @@ export function useWidgetState(input: Input) {
     void publish({ ...snapshot.current, plan }, generation.current);
   }, [publish]);
 
-  const refreshWidgets = useCallback((): Promise<void> => {
+  const refreshWidgets = useCallback((full = false): Promise<void> => {
+    if (full) { seed.current = true; eventRevision.current++; }
     const current = latest.current;
     if (!homeWidgetSupported || !current.hydrated || !current.connected || !initialized.current) return Promise.resolve();
     if (inFlight.current) { rerun.current = true; return inFlight.current; }
@@ -76,9 +81,17 @@ export function useWidgetState(input: Input) {
     let promise!: Promise<void>;
     promise = (async () => {
       try {
-        const data = await readWidgetData(current.catalogClient, current.settings, current.contract);
+        const watchedDirectories = new Set([...dirtyDirectories.current, ...Object.entries(interactions.current)
+          .filter(([, value]) => value.permissions.length || value.questions.length).map(([directory]) => directory)]);
+        const data = await readWidgetData(current.catalogClient, current.settings, current.contract, {
+          probeAllDirectories: seed.current || !current.streamConnectedRef?.current,
+          watchedDirectories, previousInteractions: interactions.current,
+          watchedSessionIds: new Set(Object.entries(statuses.current).filter(([, status]) => status.type !== 'idle').map(([id]) => id)),
+        });
         if (operation !== generation.current || !current.isCurrentCatalogClient(current.catalogClient)) return;
         if (revision !== eventRevision.current) { rerun.current = true; return; }
+        if (data.interactions) { seed.current = false; dirtyDirectories.current.clear(); }
+        if (data.interactionsByDirectory) interactions.current = data.interactionsByDirectory;
         const now = Date.now();
         const scope = current.connectionScope;
         const untitled = i18n.t('chat:library.untitledChat');
@@ -118,6 +131,7 @@ export function useWidgetState(input: Input) {
     if (!homeWidgetSupported || !input.hydrated) return;
     const operation = ++generation.current;
     snapshot.current = undefined; statuses.current = {}; inFlight.current = undefined; rerun.current = false; initialized.current = false;
+    interactions.current = {}; dirtyDirectories.current.clear(); seed.current = true;
     clearTimeout(eventTimer.current);
     // eslint-disable-next-line react-hooks/set-state-in-effect -- scope-owned polling state.
     setBusy(false);
@@ -144,7 +158,7 @@ export function useWidgetState(input: Input) {
 
   useEffect(() => {
     if (!homeWidgetSupported) return;
-    const listener = AppState.addEventListener('change', (state) => { if (state === 'active') void refreshWidgets(); });
+    const listener = AppState.addEventListener('change', (state) => { if (state === 'active') void refreshWidgets(true); });
     return () => listener.remove();
   }, [refreshWidgets]);
 
@@ -153,6 +167,8 @@ export function useWidgetState(input: Input) {
     if (status) statuses.current[status.sessionID] = status.status;
     const type = event.type === 'compatibility' ? event.payload.type : event.type;
     if (!/^(session\.|message\.|permission\.|question\.|form\.)/.test(type)) return;
+    if (event.location?.directory) dirtyDirectories.current.add(event.location.directory);
+    else seed.current = true;
     eventRevision.current++;
     clearTimeout(eventTimer.current);
     if (status || /^(permission\.|question\.|form\.)/.test(type)) void refreshRef.current();

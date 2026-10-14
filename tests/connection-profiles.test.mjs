@@ -68,7 +68,11 @@ const connectUri = await transpileToDataUri('lib/connect.ts', [
   [/from 'expo-secure-store'/g, `from "${secureStoreStubUri}"`],
   [/from 'react-native'/g, `from "${reactNativeStubUri}"`],
 ]);
+const urlUri = await transpileToDataUri('lib/opencode/client/url.ts', [
+  [/from '\.\/types'/g, `from "data:text/javascript,export const defaultConnectionSettings = {serverUrl:'http://localhost'};"`],
+]);
 const connectionPasswordUri = await transpileToDataUri('lib/connection-password.ts', [
+  [/from '@\/lib\/opencode\/client\/url'/g, `from "${urlUri}"`],
   [/from '@\/lib\/connect'/g, `from "${connectUri}"`],
   [/from '@react-native-async-storage\/async-storage'/g, `from "${asyncStorageStubUri}"`],
   [/from 'expo-secure-store'/g, `from "${secureStoreStubUri}"`],
@@ -76,6 +80,7 @@ const connectionPasswordUri = await transpileToDataUri('lib/connection-password.
   [/from '@\/lib\/storage-keys'/g, `from "${storageKeysUri}"`],
 ]);
 const connectionProfilesUri = await transpileToDataUri('lib/connection-profiles.ts', [
+  [/from '@\/lib\/opencode\/client\/url'/g, `from "${urlUri}"`],
   [/from '@\/lib\/connect'/g, `from "${connectUri}"`],
   [/from '@react-native-async-storage\/async-storage'/g, `from "${asyncStorageStubUri}"`],
   [/from 'expo-crypto'/g, `from "${cryptoStubUri}"`],
@@ -96,6 +101,7 @@ const {
   findProfileByConnectionScope,
   getProfilePassword,
   loadConnectionProfiles,
+  mutateConnectionProfiles,
   resolveConnectionPassword,
   resolveConnectionCredentials,
   saveConnectionProfiles,
@@ -105,6 +111,8 @@ const {
 } = await import(connectionProfilesUri);
 
 const passwordStorageKey = 'opencode-mobile.connection-password';
+assert.equal(await resolveConnectionCredentials({ serverUrl: '', username: '' }), undefined);
+assert.equal(await resolveConnectionCredentials({ serverUrl: 'http://', username: '' }), undefined);
 
 function resetStorage() {
   globalThis.__profilesTestAsyncStorage.clear();
@@ -307,3 +315,30 @@ async function setActiveConnection(settings) {
   assert.equal(globalThis.__profilesTestSecureStore.size, 1, 'A read failure cannot overwrite existing profiles or secrets.');
 }
 console.log('connection profile tests passed');
+
+// Manual credentials, Cloud Link and preference writes share one transaction.
+{
+  resetStorage();
+  const manual = { id: 'manual', name: 'Manual', serverUrl: 'http://alice:private@host.test/proxy', username: 'configured' };
+  await saveConnectionProfiles([manual]);
+  assert.equal((await loadConnectionProfiles())[0].serverUrl, 'http://host.test/proxy');
+  assert.ok(!globalThis.__profilesTestAsyncStorage.get(storageKeys.CONNECTION_PROFILES_STORAGE_KEY).includes('private'));
+  const entered = Promise.withResolvers(), credential = Promise.withResolvers();
+  const edit = mutateConnectionProfiles(async (stored, save) => {
+    entered.resolve(); await credential.promise;
+    await saveProfilePassword('manual', 'manual-secret');
+    await save(stored.map((profile) => ({ ...profile, name: 'Edited' })));
+  });
+  await entered.promise;
+  const cloud = saveConnectProfile('https://api.opencodecloud.link', { server_url: 'https://cloud.test', machine_id: 'machine', machine_name: 'Cloud', device_id: 'device', device_secret: 'cloud-secret', expires_at: new Date(Date.now() + 60_000).toISOString() });
+  const preferences = mutateConnectionProfiles(async (stored, save) => save(stored.map((profile) => profile.id === 'manual' ? { ...profile, modelPreferences: { modelId: 'model' } } : profile)));
+  credential.resolve(); await Promise.all([edit, cloud, preferences]);
+  const stored = await loadConnectionProfiles();
+  assert.equal(stored.length, 2);
+  assert.equal(stored.find((profile) => profile.id === 'manual').name, 'Edited');
+  assert.equal(stored.find((profile) => profile.id === 'manual').modelPreferences.modelId, 'model');
+  assert.equal(await getProfilePassword('manual'), 'manual-secret');
+  assert.equal(await getProfilePassword((await cloud).id), 'cloud-secret');
+  await assert.rejects(mutateConnectionProfiles(async () => { throw new Error('failed writer'); }), /failed writer/);
+  assert.equal((await loadConnectionProfiles()).length, 2, 'A rejected writer must release the queue.');
+}

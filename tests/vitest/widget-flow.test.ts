@@ -16,6 +16,7 @@ import { parseChatPreferences } from '@/providers/persisted-preferences';
 import { readWidgetData } from '@/providers/services/widget-service';
 
 const h = vi.hoisted(() => ({ list: vi.fn(), messages: vi.fn(), permissions: vi.fn(), questions: vi.fn(), clients: vi.fn() }));
+vi.mock('@/lib/opencode/client/types', () => ({ defaultConnectionSettings: { serverUrl: 'http://localhost' } }));
 vi.mock('expo-localization', () => ({ getLocales: () => [{ languageTag: 'en' }] }));
 vi.mock('@/lib/opencode/client', () => ({ buildClient: (...args: any[]) => h.clients(...args) }));
 vi.mock('@/lib/opencode/client/interactions', () => ({ listPendingPermissions: (...args: any[]) => h.permissions(...args), listPendingQuestions: (...args: any[]) => h.questions(...args) }));
@@ -93,6 +94,32 @@ describe('widget service', () => {
     h.messages.mockRejectedValueOnce(new Error('offline'));
     const result = await readWidgetData({} as any, settings, 'v1');
     expect(result.interactions).toBeUndefined(); expect(result.messages).toBeUndefined();
+  });
+  it('probes running, dirty and all known-blocked directories while SSE is healthy, then fully scans on fallback', async () => {
+    h.list.mockResolvedValue({ sessions: Array.from({ length: 20 }, (_, i) => session(`s${i}`, i, undefined, `/repo${i}`)), statuses: { s7: { type: 'busy' } } });
+    h.permissions.mockResolvedValue([]); h.questions.mockResolvedValue([]);
+    const previousInteractions = Object.fromEntries(Array.from({ length: 6 }, (_, i) => [`/repo${i}`, { permissions: [permission(`s${i}`)], questions: [] }]));
+    // More blocked workspaces than the widget's three visible rows must remain watched.
+    const result = await readWidgetData({} as any, settings, 'v2', { probeAllDirectories: false, watchedDirectories: new Set(['/repo7', '/repo8', ...Object.keys(previousInteractions)]), previousInteractions });
+    expect(h.permissions).toHaveBeenCalledTimes(8); expect(h.questions).toHaveBeenCalledTimes(8);
+    expect(h.clients).toHaveBeenCalledTimes(11); expect(h.messages).toHaveBeenCalledTimes(3);
+    expect(result.interactions?.permissions).toEqual([]);
+    h.permissions.mockClear(); h.questions.mockClear();
+    await readWidgetData({} as any, settings, 'v2', { probeAllDirectories: true });
+    expect(h.permissions).toHaveBeenCalledTimes(20); expect(h.questions).toHaveBeenCalledTimes(20);
+  });
+  it('preserves unprobed interaction data and builds only the recent clients in an idle healthy workspace catalog', async () => {
+    h.list.mockResolvedValue({ sessions: Array.from({ length: 20 }, (_, i) => session(`s${i}`, i, undefined, `/repo${i}`)), statuses: {} });
+    const previous = { '/repo0': { permissions: [permission('s0')], questions: [] } };
+    const result = await readWidgetData({} as any, settings, 'v2', { probeAllDirectories: false, previousInteractions: previous });
+    expect(h.permissions).not.toHaveBeenCalled(); expect(h.clients).toHaveBeenCalledTimes(3);
+    expect(result.interactions?.permissions).toEqual(previous['/repo0'].permissions);
+  });
+  it('keeps event-derived retry sessions watched when the native catalog reports idle', async () => {
+    h.list.mockResolvedValue({ sessions: [session('retry', 1, undefined, '/retry')], statuses: { retry: { type: 'idle' } } });
+    await readWidgetData({} as any, settings, 'v2', { probeAllDirectories: false, watchedSessionIds: new Set(['retry']) });
+    expect(h.permissions).toHaveBeenCalledWith(expect.objectContaining({ directory: '/retry' }));
+    expect(h.questions).toHaveBeenCalledOnce();
   });
 });
 

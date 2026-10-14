@@ -5,15 +5,17 @@ import { recordBytes, recordRequest } from '../data-usage';
 import { getConnectCredentialError } from '@/lib/connect';
 import { joinUrlPath } from './url';
 import type { OpencodeConnectionSettings } from './types';
+import { fetchWithReadDeadline } from './read-deadline';
 
 export function createAuthHeader(settings: OpencodeConnectionSettings) {
-  const password = settings.password.trim();
+  const password = settings.password;
   if (!password) {
     return undefined;
   }
 
   const username = settings.username.trim() || 'opencode';
-  return `Basic ${encodeBase64(`${username}:${password}`)}`;
+  const bytes = new TextEncoder().encode(`${username}:${password}`);
+  return `Basic ${encodeBase64(Array.from(bytes, (byte) => String.fromCharCode(byte)).join(''))}`;
 }
 
 export function getRequestHeaders(settings: OpencodeConnectionSettings) {
@@ -32,7 +34,13 @@ export async function fetchConnection(input: RequestInfo | URL, init?: RequestIn
   }
   // RN's XHR ignores redirect rejection. Use Expo for Cloud Link and one-use
   // local pairing requests; other manual connections retain their transport.
-  const response = settings?.connect || init?.redirect === 'error' ? await expoFetch(input, { ...init, redirect: 'error' }) : await fetch(input, init);
+  const transport = settings?.connect || init?.redirect === 'error'
+    ? (input: RequestInfo | URL, init?: RequestInit) => expoFetch(input, { ...init, redirect: 'error' })
+    : fetch;
+  const url = typeof input === 'string' ? input : input instanceof URL ? input.toString() : input.url;
+  const method = init?.method ?? (typeof input === 'object' && 'method' in input ? input.method : 'GET');
+  const finiteRead = /^(GET|HEAD)$/i.test(method) && !/\/event\/?(?:\?|$)/.test(url);
+  const response = finiteRead ? await fetchWithReadDeadline(transport, input, init) : await transport(input, init);
   recordRequest();
   measureResponseBytes(response);
   if (settings?.connect && response.status === 401) throw new Error('Cloud Link credentials were rejected. Pair this device again.');
@@ -45,8 +53,8 @@ export async function fetchConnection(input: RequestInfo | URL, init?: RequestIn
   return response;
 }
 
-// Best-effort response size accounting for the data-usage diagnostic. SSE bodies
-// are streamed and never end, so they are intentionally not buffered to count.
+// shortcut: counts advertised body sizes only; add streaming accounting if exact
+// network diagnostics become necessary, never buffer a second copy to count it.
 function measureResponseBytes(response: Response) {
   const contentType = response.headers.get('content-type') || '';
   if (contentType.includes('text/event-stream')) {
@@ -57,12 +65,6 @@ function measureResponseBytes(response: Response) {
   if (Number.isFinite(length) && length >= 0) {
     recordBytes(length);
     return;
-  }
-  try {
-    const clone = response.clone();
-    void clone.arrayBuffer().then((buffer) => recordBytes(buffer.byteLength)).catch(() => undefined);
-  } catch {
-    // Body was already consumed or is not cloneable; skip measurement.
   }
 }
 
@@ -93,6 +95,7 @@ export function createScopedFetch(baseUrl: string, pathPrefix: string, directory
       headers: input.headers,
       method: input.method,
       signal: input.signal,
+      ...init,
     }, settings);
   };
 }
@@ -121,6 +124,7 @@ export function createPrefixFetch(origin: string, pathPrefix: string, settings?:
       headers: input.headers,
       method: input.method,
       signal: input.signal,
+      ...init,
     }, settings);
   };
 }

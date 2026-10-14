@@ -1,4 +1,5 @@
 import { getConnectionScope } from '@/lib/connection-scope';
+import { stripServerUrlCredentials } from '@/lib/opencode/client/url';
 import type { OpencodeConnectionSettings } from '@/lib/opencode/client';
 
 // Pending completion-notification records are the durable contract between a
@@ -55,7 +56,7 @@ function toPendingNotificationSession(value: unknown): PendingNotificationSessio
     ...(typeof sessionTitle === 'string' && sessionTitle.trim() ? { sessionTitle: sessionTitle.trim() } : {}),
     projectPath,
     connectionScope: scope,
-    settings: { serverUrl, username },
+    settings: { serverUrl: stripServerUrlCredentials(serverUrl), username },
     requestedAt,
     ...(typeof attentionKey === 'string' && attentionKey.trim() ? { attentionKey: attentionKey.trim() } : {}),
   };

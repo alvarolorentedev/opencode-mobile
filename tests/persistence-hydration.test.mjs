@@ -82,10 +82,12 @@ for (const legacyControlPlane of ['https://api.getopencode.app', 'https://apista
   assert.deepEqual(controlPlaneStorage.removed, ['control-plane']);
 }
 const preferences = await loadTs('providers/opencode-preferences.ts');
+const profileUrls = await loadTs('lib/opencode/client/url.ts', { './types': { defaultConnectionSettings: { serverUrl: 'http://localhost' } } });
 const { parseConnectionSettings, parseChatPreferences } = await loadTs('providers/persisted-preferences.ts', {
-  '@/lib/connect': connect, '@/providers/opencode-preferences': preferences,
+  '@/lib/connect': connect, '@/providers/opencode-preferences': preferences, '@/lib/opencode/client/url': profileUrls,
 });
 assert.throws(() => parseConnectionSettings('{"serverUrl":123}'), /Invalid/);
+assert.equal(parseConnectionSettings('{"serverUrl":"https://alice:secret@host.test/proxy","username":"configured"}').serverUrl, 'https://host.test/proxy');
 assert.throws(() => parseConnectionSettings('{"username":"alice","connect":{}}'), /Invalid/);
 assert.deepEqual(JSON.parse(JSON.stringify(parseConnectionSettings('{"serverUrl":"http://test","password":"legacy","unknown":true}'))), { serverUrl: 'http://test', password: 'legacy' });
 const parsed = parseChatPreferences(JSON.stringify({ mode: 'build', enabledModelIds: null, recentModelIds: 42,
@@ -116,6 +118,7 @@ console.log('persistence hydration, field validation, ordered write, and failure
 // Actual write-back hook: unread settings and unavailable secure credentials do
 // not stop independent preferences from hydrating or replace stored defaults.
 const hydrationRuntime = hookRuntime();
+let credentialReads = 0;
 const keys = await loadTs('lib/storage-keys.ts');
 const stored = new Map([[keys.SETTINGS_STORAGE_KEY, '{"serverUrl":"stored-server"}'],
   [keys.CHAT_PREFERENCES_STORAGE_KEY, '{"language":"es"}']]);
@@ -127,11 +130,12 @@ const hook = await loadTs('providers/use-opencode-persistence.ts', {
   } },
   '@/lib/connect': { normalizeTrustedControlPlaneUrl: (raw) => raw },
   '@/lib/connection-password': {
-    getConnectionPassword: async () => { throw new Error('secure storage unavailable'); },
+    getConnectionPassword: async () => { credentialReads++; return 'another-server-secret'; },
     saveConnectionPassword: async () => assert.fail('unread credentials must remain untouched'),
     withoutConnectionPassword: ({ password: _, ...metadata }) => metadata,
   },
   '@/lib/storage-keys': keys,
+  '@/lib/opencode/client/url': profileUrls,
   '@/providers/persisted-preferences': { parseConnectionSettings, parseChatPreferences },
   '@/providers/persistence-hydration': { loadPersistedValue, createPersistenceWriter },
   '@/providers/favorites-storage': { parseFavoriteSessions: JSON.parse, serializeFavoriteSessions: JSON.stringify },
@@ -150,11 +154,13 @@ hydrationRuntime.mount(() => {
   return { ...hook.useOpencodePersistence({ defaultSettings, defaultChatPreferences: preferences.defaultChatPreferences,
     settings, setSettings, chatPreferences, setChatPreferences, activeProjectPath, setActiveProjectPath,
     controlPlaneUrl, setControlPlaneUrl, favoriteSessions, setFavoriteSessions,
-    lastSessionByConnection, setLastSessionByConnection, onboardingVersion, setOnboardingVersion }), chatPreferences };
+    lastSessionByConnection, setLastSessionByConnection, onboardingVersion, setOnboardingVersion }), chatPreferences, settings };
 }, {});
 await hydrationRuntime.settle();
 assert.equal(hydrationRuntime.value.isHydrated, true);
 assert.equal(hydrationRuntime.value.chatPreferences.language, 'es');
+assert.equal(credentialReads, 0, 'Unread server metadata must not lend a stored credential to the default server.');
+assert.equal(hydrationRuntime.value.settings.password, '');
 assert.equal(stored.get(keys.SETTINGS_STORAGE_KEY), '{"serverUrl":"stored-server"}');
 hydrationRuntime.unmount();
 console.log('independent hydration and unread-record write-back checks passed');

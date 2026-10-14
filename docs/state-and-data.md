@@ -372,7 +372,11 @@ Credentials:
   changes, including renewal of inactive saved machines.
 
 - the active connection password is stored in Keychain/Keystore-backed secure storage via `lib/connection-password.ts`; legacy plaintext `settings.password` is migrated to secure storage and stripped from AsyncStorage on hydration
+- credentials hydrate only when stored server metadata supplies a valid identity; unread metadata never lends an old password to the default server. Invalid background connection references do not resolve credentials
 - each saved profile's password is stored under its own SecureStore key in `lib/connection-profiles.ts`; profile metadata in AsyncStorage never contains it
+- all profile read/modify/write operations share the storage module's transaction queue, including credential rollback and read-time sanitation. A transient storage read failure never becomes a destructive empty-list write
+- new server URLs containing userinfo are rejected before probing or saving. Legacy profile/settings/notification URLs are scrubbed without importing unused URL credentials; IDs and separately configured username/password fields remain intact
+- Basic authentication preserves password whitespace and encodes username/password as UTF-8
 - manual profile saves trim the name and default blank names to the normalized
   hostname, excluding scheme, port and path. Existing IDs, usernames, scopes and
   storage format are preserved; saving an edit does not automatically reconnect.
@@ -412,14 +416,17 @@ Derived by converting `currentMessages` with `toTranscriptEntry()`.
 
 ### Current Usage
 
-Derived from the session's accumulated assistant `step-finish` parts. The
-provider keeps a per-session map of completed model calls keyed by stable step
-ID (`session:message:part`) as fetched pages merge, so the transcript window can
-stay bounded without undercounting session cost or tokens. Stable step IDs
-prevent replayed SSE events and reloads from being double counted; streaming
-parts are excluded. OpenCode step cost is preferred, with exact OpenCode model
-metadata used only as a USD fallback when reported cost is zero or absent and
-tokens are nonzero.
+Server-provided session cost and token totals are authoritative when available;
+fetched call usage is never added to those totals. Without server totals the
+provider reports observed usage from loaded history and labels incomplete totals.
+A per-session map keyed by stable step ID (`session:message:part`) retains fetched
+calls as the transcript window moves, without counting replayed calls twice.
+Model/provider breakdowns and call counts describe observed history, and are
+marked partial when the contiguous loaded window has not reached its beginning
+or has hit the 200-record cap. The app never fetches all history just for usage.
+Observed step cost uses model-price USD estimates only when recorded cost is
+zero/absent and tokens are nonzero; an authoritative session cost of zero remains
+zero.
 
 Context utilization is derived separately by `getLatestContextTokens()`: it walks back to the newest completed `step-finish` and reports that call's prompt (`input + cache.read + cache.write`) plus its reply (`output`). Cumulative session totals are intentionally not used, because every call re-sends the history. Native in-flight messages produce no placeholder usage steps. Repeated updates replace the usage entry for the same call, and todo records update by message identity, so paging and event replay preserve accumulated totals.
 
@@ -452,6 +459,9 @@ fetch failure keeps the previous snapshot. The snapshot is in-memory only and
 does not share the per-connection+project session cache.
 
 ### Current Pending Requests
+
+A failed permission or question list read leaves that surface unchanged. A
+successful empty list clears it; both reads failing rejects the refresh.
 
 Derived by preferring:
 
@@ -730,8 +740,10 @@ Search spans the selected workspace root and clearing it restores the browsed
 folder. Breadcrumb navigation cannot leave that root. Listing, search, preview
 and save require a selected directory. The OpenCode 2 filesystem adapter passes
 `location[directory]` on every request and rejects malformed UTF-8/binary content.
-Text editing retains the existing conflict-checked patch path and is unavailable
-on OpenCode 2. Unsaved edits require discard confirmation.
+Text editing compares the server content against the editor baseline, writes
+through native v2 `file.write` or the v1 patch path, and verifies the saved text.
+Unsaved edits require discard confirmation. The pre-read/write race remains
+because neither path provides a conditional-write contract.
 
 The shared Workspace/Chat picker contains worktree inventory for the owning
 project, resolved from the scoped project API rather than path prefixes. Adding a

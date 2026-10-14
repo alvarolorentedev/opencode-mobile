@@ -22,7 +22,7 @@ export function normalizeServerUrl(value: string): NormalizedServerUrl {
       displayUrl,
       origin: parsed.origin,
       pathPrefix,
-      valid: Boolean(parsed.hostname),
+      valid: Boolean(parsed.hostname) && stripServerUrlCredentials(trimmed) === trimmed,
     };
   } catch {
     return {
@@ -32,6 +32,13 @@ export function normalizeServerUrl(value: string): NormalizedServerUrl {
       valid: false,
     };
   }
+}
+
+// Legacy metadata may contain URL credentials which the transport never used.
+export function stripServerUrlCredentials(value: string) {
+  // Native URL has getter-only userinfo fields. Scrub the authority directly,
+  // including malformed legacy URLs, without changing paths or queries.
+  return value.trim().replace(/^((?:[a-z][a-z\d+.-]*:\/\/)?)[^/?#]*@/i, '$1');
 }
 
 export function getNormalizedServerUrl(serverUrl: string) {

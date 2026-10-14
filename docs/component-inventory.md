@@ -12,7 +12,7 @@ text, explicit audio playback, and inline video playback. Closing/backgrounding
 stops media; temporary native files are released. PDF/Office documents use the
 system share/viewer on native and browser download/open on web. Preview loading
 and URI/file handling live in `lib/attachment-preview.ts`, with the existing
-10 MB limit. Image tiles and the full image preview use contain fit; the preview
+10 MB limit. Declared oversize and encoded data are rejected before allocation; unknown-size downloads stop at the streamed limit. Closing/backgrounding aborts pending reads, and local originals are never deleted. Image tiles and the full image preview use contain fit; the preview
 fills the sheet's available height.
 
 `pending-prompts.tsx` renders provider-derived OpenCode 2 sending/waiting entries
@@ -54,6 +54,7 @@ The goal is to make it possible to rebuild the UI tree without having to redisco
 - `speakingMessageId`
 - `voiceFeedback`
 - `sendFeedback`
+- failed input retained by `use-chat-draft.ts` when a newer composer edit prevents automatic restoration; the error card explicitly merges it back on Restore failed message
 
 ### Main responsibilities
 
@@ -344,7 +345,6 @@ Responsibility:
 
 - `SelectControl`
 - `ControlButton`
-- `TopTab`
 
 ### Responsibility
 
@@ -935,7 +935,7 @@ But parity is easiest if these responsibilities remain separated:
 
 - `ChatView` creates the shared task-progress FAB and owns progress-overlay visibility. It renders the FAB beside the changes chip when visible; `ChatContent` renders it floating at the bottom-right otherwise and retains the detailed progress overlay. The detailed progress overlay remains available. Patch summary chips open the Files changed overlay and select their parent user turn when that message is present in the current session; otherwise the existing changes scope is retained. `TranscriptMessage` memoization includes the review callback to keep the session mapping current.
 - The chat library's connection-wide group is Running & recent, with an explicit Running indicator. Deduplicated chats do not create an empty Chats section. Search-empty copy is distinct from a truly empty library.
-- `components/workspace/files-panel.tsx` renders provider-owned changed-file statuses immediately. Added/modified files use the existing reader; deleted rows explain unavailable content. Button and keyboard search share one guarded handler. Query, submitted query, loading, and failure presentation are local and reset with the connection/workspace key; results remain provider-owned.
+- `components/workspace/files-panel.tsx` owns one FlashList for browser entries and changed-file rows, with search, breadcrumbs, status and branch/title content in its header. It renders provider-owned changed-file statuses immediately. Added/modified files use the existing reader; deleted rows explain unavailable content. Button and keyboard search share one guarded handler. Query, submitted query, loading, and failure presentation are local and reset with the connection/workspace key; results remain provider-owned.
 - Setup has one guarded Connect & continue action through `switchConnection`. Input survives failures; connection controls and Skip are disabled while submitting. The shared Cloud Link/Manual chooser precedes the manual form.
 - Approval cards separate the current resources from server-provided future `always` patterns and explain that the server controls rule duration. Missing patterns explicitly have unspecified scope. Question descriptions appear before selection, while existing custom/multiple/conditional answer handling remains intact.
 - Starter examples fill the draft; the bug example appends a symptoms prompt. Terminal's empty state calls the existing creation handler and describes line-at-a-time commands.

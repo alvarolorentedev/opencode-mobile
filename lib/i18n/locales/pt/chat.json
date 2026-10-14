@@ -43,7 +43,8 @@
     },
     "tabFilesChanged_one": "{{files}} arquivo alterado",
     "tabFilesChanged_many": "{{files}} arquivos alterados",
-    "tabFilesChanged_other": "{{files}} arquivos alterados"
+    "tabFilesChanged_other": "{{files}} arquivos alterados",
+    "restoreFailedInput": "Recuperar mensagem que falhou"
   },
   "content": {
     "connectionIssue": "Problema de conexão",
@@ -153,7 +154,9 @@
     "modelCostLabel": "Custo de {{model}} {{cost}}",
     "pricingUnavailableLower": "preço indisponível",
     "modelTokensLabel": "{{input}} tokens de entrada, {{output}} tokens de saída, {{reasoning}} tokens de raciocínio, {{cacheRead}} tokens de leitura de cache, {{cacheWrite}} tokens de escrita de cache, {{steps}} etapas concluídas",
-    "modelTokens": "{{input}} entrada  {{output}} saída  {{reasoning}} raciocínio  {{cacheRead}} leitura de cache  {{cacheWrite}} escrita de cache  {{steps}} etapas"
+    "modelTokens": "{{input}} entrada  {{output}} saída  {{reasoning}} raciocínio  {{cacheRead}} leitura de cache  {{cacheWrite}} escrita de cache  {{steps}} etapas",
+    "partialTotals": "Alguns totais incluem apenas o histórico carregado.",
+    "partialBreakdown": "Os detalhes por modelo e as chamadas incluem apenas o histórico carregado."
   },
   "library": {
     "title": "Chats",

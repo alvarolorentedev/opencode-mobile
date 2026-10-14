@@ -295,7 +295,7 @@
     "notAvailable": "लागू नहीं",
     "refresh": "निदान रीफ़्रेश करें",
     "networkUsage": "नेटवर्क उपयोग",
-    "networkUsageValue": "आज {{requests}} अनुरोध · {{size}}",
+    "networkUsageValue": "{{requests}} अनुरोध · आज ज्ञात प्रतिक्रिया आकार {{size}}",
     "networkUsageReset": "रीसेट"
   },
   "mcp": {

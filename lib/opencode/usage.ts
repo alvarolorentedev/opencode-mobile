@@ -1,4 +1,4 @@
-import type { Model, Part } from '@/lib/opencode/types';
+import type { Model, Part, Session } from '@/lib/opencode/types';
 import type { SessionMessageRecord } from '@/lib/opencode/format';
 
 type CostStatus = 'recorded' | 'estimated' | 'free' | 'pricing-unavailable';
@@ -6,7 +6,8 @@ type UsageTotals = { cost: number; inputTokens: number; outputTokens: number; re
 type ModelUsage = UsageTotals & { providerId: string; modelId: string; costStatus: CostStatus };
 type ProviderUsage = UsageTotals & { providerId: string; models: ModelUsage[] };
 type UsagePricing = Model['cost'];
-export type SessionUsage = UsageTotals & { costStatus: CostStatus; providers: ProviderUsage[] };
+export type SessionUsage = UsageTotals & { costStatus: CostStatus; providers: ProviderUsage[];
+  completeness?: { cost: boolean; tokens: boolean; breakdown: boolean } };
 
 const EMPTY_TOTALS: UsageTotals = { cacheReadTokens: 0, cacheWriteTokens: 0, completedSteps: 0, cost: 0, inputTokens: 0, outputTokens: 0, reasoningTokens: 0 };
 
@@ -50,7 +51,7 @@ function getStepTotals(part: Extract<Part, { type: 'step-finish' }>, pricing?: U
 
 // A single completed model call. A paginated transcript window no longer holds
 // every message, so the provider accumulates these steps independently of the
-// loaded window to keep session cost/token totals exact.
+// loaded window to keep observed calls without double counting.
 export type SessionUsageStep = {
   key: string;
   providerId: string;
@@ -120,6 +121,18 @@ export function aggregateSessionUsage(messages: SessionMessageRecord[], pricingB
   const steps = new Map<string, SessionUsageStep>();
   addUsageSteps(steps, messages);
   return aggregateUsageSteps(steps.values(), pricingByModel);
+}
+
+export function getSessionUsage(session: Session | undefined, observed: SessionUsage, completeHistory: boolean): SessionUsage {
+  const costKnown = typeof session?.cost === 'number' && Number.isFinite(session.cost) && session.cost >= 0;
+  const tokens = session?.tokens;
+  const tokensKnown = !!tokens && [tokens.input, tokens.output, tokens.reasoning, tokens.cache?.read, tokens.cache?.write].every((value) => Number.isFinite(value) && value >= 0);
+  return { ...observed,
+    ...(costKnown ? { cost: session!.cost!, costStatus: 'recorded' as const } : {}),
+    ...(tokensKnown ? { inputTokens: tokens!.input, outputTokens: tokens!.output, reasoningTokens: tokens!.reasoning,
+      cacheReadTokens: tokens!.cache.read, cacheWriteTokens: tokens!.cache.write } : {}),
+    completeness: { cost: costKnown || completeHistory, tokens: tokensKnown || completeHistory, breakdown: completeHistory },
+  };
 }
 
 export function getLatestAssistantTurnUsage(messages: SessionMessageRecord[], pricingByModel?: Record<string, UsagePricing>) {
