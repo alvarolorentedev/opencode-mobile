@@ -28,15 +28,6 @@
 
 ---
 
-OpenCode 2 is the primary server contract. OpenCode 1 remains supported through an isolated compatibility layer. Native v2 includes file editing with conflict checks, MCP OAuth, provider accounts, inbox delivery, and native realtime events. Features without matching v2 APIs stay available only on v1: sharing, archive/restore, title summarization, general config writes, persistent MCP enablement, worktree reset, and LSP/formatter diagnostics.
-
-Android supports sharing files, images, audio, video and text into the current chat
-or a chosen conversation. Preview before adding; sending is always explicit.
-Three resizable home widgets show latest replies, pending permissions/questions,
-and the current chat's plan progress. Hide excerpts in General Settings; widgets
-retain dated snapshots when the app is suspended. iOS Share/Widget extensions
-remain deferred.
-
 ## OpenCode, without being tied to your laptop
 
 OpenCode Mobile is an independent, community-built mobile companion for [OpenCode](https://opencode.ai/).
