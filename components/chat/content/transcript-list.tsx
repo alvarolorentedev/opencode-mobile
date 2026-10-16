@@ -2,7 +2,7 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { FlashList, type FlashListRef } from '@shopify/flash-list';
 import { useLayoutEffect, useMemo, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
-import { RefreshControl, View } from 'react-native';
+import { View } from 'react-native';
 import { ActivityIndicator, Button, Card, Text, TouchableRipple } from 'react-native-paper';
 
 import { TranscriptMessage } from '@/components/chat/chat-cards';
@@ -40,7 +40,6 @@ type TranscriptListProps = {
   onCopyMessage: (entry: TranscriptEntry) => void;
   onForkMessage: (messageId: string) => void;
   onLoadOlderMessages: () => void;
-  onRefresh: () => void;
   onReviewChanges: (messageId: string) => void;
   onRevertMessage: (messageId: string) => void;
   onSelectStarterPrompt: (prompt: string) => void;
@@ -70,7 +69,6 @@ export function TranscriptList({
   onCopyMessage,
   onForkMessage,
   onLoadOlderMessages,
-  onRefresh,
   onReviewChanges,
   onRevertMessage,
   onSelectStarterPrompt,
@@ -124,7 +122,6 @@ export function TranscriptList({
         shouldPositionInitialTranscriptRef.current = false;
         transcriptRef.current?.scrollToEnd({ animated: false });
       }}
-      refreshControl={<RefreshControl refreshing={isRefreshingMessages} onRefresh={onRefresh} tintColor={palette.tint} />}
       renderItem={({ item: entry }) => (
         <View style={[
           styles.transcriptItem,

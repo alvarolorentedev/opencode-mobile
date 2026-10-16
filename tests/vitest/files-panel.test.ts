@@ -2,10 +2,10 @@ import { describe, expect, it, vi } from 'vitest';
 import { hookRuntime, loadTs } from '../helpers/runtime.mjs';
 
 describe('workspace file list', () => {
-  it('defers 1,000 file rows to one list and preserves row navigation, changed-file states and refresh', async () => {
+  it('defers 1,000 file rows to one list and preserves row navigation and changed-file states', async () => {
     const runtime = hookRuntime(), createdItems = vi.fn();
     const element = (type: unknown, props: any) => { if (type === 'Item') createdItems(); return { type, props }; };
-    const onOpen = vi.fn(), onRefresh = vi.fn(), openDirectory = vi.fn();
+    const onOpen = vi.fn(), openDirectory = vi.fn();
     const { FilesPanel } = await loadTs('components/workspace/files-panel.tsx', {
       react: runtime.react, 'react/jsx-runtime': { jsx: element, jsxs: element }, '@shopify/flash-list': { FlashList: 'FlashList' },
       'react-i18next': { useTranslation: () => ({ t: (key: string) => key }) }, 'react-native': { View: 'View' },
@@ -13,7 +13,7 @@ describe('workspace file list', () => {
       '@/components/ui/text-input': { TextInput: 'Input' }, '@/constants/theme': { Colors: { light: {} } }, '@/hooks/use-color-scheme': { useColorScheme: () => 'light' },
     });
     runtime.mount(FilesPanel, { browser: { initialized: true, path: '', entries: Array.from({ length: 1000 }, (_, i) => ({ path: `file${i}.ts`, name: `file${i}.ts`, type: i === 0 ? 'directory' : 'file' })),
-      openDirectory, search: vi.fn() }, statuses: [{ path: 'file1.ts', status: 'modified' }, { path: 'removed.ts', status: 'deleted' }], workspaceLabel: 'Repo', onOpen, onRefresh, refreshing: false });
+      openDirectory, search: vi.fn() }, statuses: [{ path: 'file1.ts', status: 'modified' }, { path: 'removed.ts', status: 'deleted' }], workspaceLabel: 'Repo', onOpen });
     const list = runtime.value;
     expect(list.type).toBe('FlashList'); expect(list.props.data).toHaveLength(1003); expect(createdItems).not.toHaveBeenCalled();
     expect(list.props.keyExtractor(list.props.data[1])).not.toBe(list.props.keyExtractor(list.props.data[1001]));
@@ -23,7 +23,7 @@ describe('workspace file list', () => {
     expect(onOpen).toHaveBeenCalledWith('file999.ts');
     const deleted = list.props.renderItem({ item: list.props.data[1002] });
     expect(deleted.props.disabled).toBe(true); expect(deleted.props.onPress).toBeUndefined();
-    list.props.onRefresh(); expect(onRefresh).toHaveBeenCalledOnce(); expect(list.props.keyboardShouldPersistTaps).toBe('handled');
+    expect(list.props.keyboardShouldPersistTaps).toBe('handled');
     runtime.unmount();
   });
 });

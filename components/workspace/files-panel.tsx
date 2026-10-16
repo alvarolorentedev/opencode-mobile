@@ -10,10 +10,8 @@ import { useColorScheme } from '@/hooks/use-color-scheme';
 import type { File } from '@/lib/opencode/types';
 import type { WorkspaceFilesContextValue } from '@/providers/opencode-provider-types';
 
-export function FilesPanel({ statuses, browser, workspaceLabel, onOpen, header, refreshing, onRefresh, contentStyle }: {
+export function FilesPanel({ statuses, browser, workspaceLabel, onOpen, header, contentStyle }: {
   header?: ReactNode;
-  refreshing: boolean;
-  onRefresh: () => void;
   contentStyle?: StyleProp<ViewStyle>;
   statuses: File[];
   browser: WorkspaceFilesContextValue['browser'];
@@ -63,7 +61,7 @@ export function FilesPanel({ statuses, browser, workspaceLabel, onOpen, header, 
   return <FlashList style={{ flex: 1, backgroundColor: palette.background }} contentContainerStyle={contentStyle}
     data={rows} ListHeaderComponent={listHeader} keyboardDismissMode="on-drag" keyboardShouldPersistTaps="handled"
     maintainVisibleContentPosition={{ disabled: true }}
-    refreshing={refreshing} onRefresh={onRefresh} keyExtractor={(row) => row.kind === 'entry' ? `entry:${row.entry.path}` : row.kind === 'changed' ? `changed:${row.file.path}` : 'changed-heading'}
+    keyExtractor={(row) => row.kind === 'entry' ? `entry:${row.entry.path}` : row.kind === 'changed' ? `changed:${row.file.path}` : 'changed-heading'}
     getItemType={(row) => row.kind} renderItem={({ item }) => {
       if (item.kind === 'heading') return <Text variant="titleSmall" style={{ marginVertical: 12 }}>{t('workspace:files.changedFiles', { value: statuses.length })}</Text>;
       if (item.kind === 'changed') {

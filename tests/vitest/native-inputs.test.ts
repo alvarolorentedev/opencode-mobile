@@ -38,8 +38,25 @@ const { TextInput } = await loadTs('components/ui/text-input.tsx', {
   'react/jsx-runtime': jsx, 'react-native': native, 'react-native-paper': paper,
 });
 const { OverlaySheet } = await loadTs('components/ui/overlay-sheet.tsx', {
+  react: {
+    useState: (initial: unknown) => [typeof initial === 'function' ? (initial as () => unknown)() : initial, () => {}],
+    useEffect: () => {},
+  },
   'react/jsx-runtime': jsx, 'react-native': native,
   'react-native-paper': { ...paper, Portal: 'Portal', Icon: 'Icon' },
+  'react-native-gesture-handler': {
+    Gesture: { Pan: () => ({ enabled() { return this; }, activeOffsetY() { return this; }, onUpdate() { return this; }, onEnd() { return this; } }) },
+    GestureDetector: 'GestureDetector',
+  },
+  'react-native-reanimated': {
+    __esModule: true,
+    default: { View: 'View' },
+    runOnJS: (fn: () => void) => fn,
+    useAnimatedStyle: () => ({}),
+    useSharedValue: (value: unknown) => ({ value }),
+    withSpring: (value: unknown) => value,
+    withTiming: (value: unknown) => value,
+  },
   'react-i18next': { useTranslation: () => ({ t: (key: string) => key }) },
   'react-native-safe-area-context': { useSafeAreaInsets: () => ({ top: 62, bottom: 34 }) },
   '@/constants/theme': { Colors: { dark: {} } },

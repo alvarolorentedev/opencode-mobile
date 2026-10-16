@@ -42,15 +42,12 @@ type ChatContentProps = {
   slim: boolean;
   transcriptFontSize: number;
   expandedDiffId?: string;
-  isRefreshingDiffs: boolean;
   isRefreshingMessages: boolean;
   onCopyMessage: (entry: TranscriptEntry) => void;
   onForkMessage: (messageId: string) => void;
   onRevertMessage: (messageId: string) => void;
   onUnrevert: () => void;
   onExpandDiff: (id?: string) => void;
-  onRefresh: () => void;
-  onRefreshDiffs: () => void;
   onSelectDiffScope: (scope: DiffScope) => void;
   onSelectDiffMessage: (messageId: string) => void;
   selectedDiffMessageId?: string;
@@ -85,7 +82,6 @@ export function ChatContent({ ...props }: ChatContentProps) {
         onCopyMessage={props.onCopyMessage}
         onForkMessage={props.onForkMessage}
         onLoadOlderMessages={props.onLoadOlderMessages}
-        onRefresh={props.onRefresh}
         onReviewChanges={props.onReviewChanges}
         onRevertMessage={props.onRevertMessage}
         onSelectStarterPrompt={props.onSelectStarterPrompt}
@@ -109,10 +105,8 @@ export function ChatContent({ ...props }: ChatContentProps) {
         diffDetails={props.diffDetails}
         diffTurns={props.diffTurns}
         expandedDiffId={props.expandedDiffId}
-        isRefreshingDiffs={props.isRefreshingDiffs}
         onCloseChanges={props.onCloseChanges}
         onExpandDiff={props.onExpandDiff}
-        onRefreshDiffs={props.onRefreshDiffs}
         onSelectDiffMessage={props.onSelectDiffMessage}
         onSelectDiffScope={props.onSelectDiffScope}
         palette={props.palette}

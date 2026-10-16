@@ -1,7 +1,7 @@
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Pressable, RefreshControl, ScrollView, StyleSheet, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { Appbar, Button, Snackbar, Text } from 'react-native-paper';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -49,15 +49,14 @@ export default function WorkspaceScreen() {
     </Appbar.Header>
     <WorkspacePicker visible={pickerVisible} testID="workspace-picker" projects={projects} activePath={activeProject?.path} onClose={() => setPickerVisible(false)} onSelect={selectProject} onAdd={addWorkspace} />
     {ready ? <FilesPanel key={scope} browser={browser} workspaceLabel={activeProject!.label} statuses={serverCapabilities.fileStatus ? workspaceFileStatuses : []}
-      contentStyle={[styles.content, slim && { padding: 10 }]} refreshing={refreshing} onRefresh={() => void refresh()}
+      contentStyle={[styles.content, slim && { padding: 10 }]}
       header={<>
         <Text variant="headlineMedium" style={{ fontWeight: '700', color: palette.text }}>{t('workspace:screen.filesTab')}</Text>
         {vcsInfo?.branch ? <Text style={{ color: palette.muted }}>{t('workspace:files.branch', { branch: vcsInfo.branch })}</Text> : null}
       </>}
       onOpen={(path) => { void openWorkspaceFile(path).then(() => setFileVisible(true)).catch((reason) => setError(reason instanceof Error ? reason.message : t('workspace:errors.openFile'))); }} />
       : <ScrollView style={{ flex: 1, backgroundColor: palette.background }} contentContainerStyle={[styles.content, slim && { padding: 10 }]}
-        keyboardDismissMode="on-drag" keyboardShouldPersistTaps="handled"
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => void refresh()} tintColor={palette.tint} />}>
+        keyboardDismissMode="on-drag" keyboardShouldPersistTaps="handled">
         <Text variant="headlineMedium" style={{ fontWeight: '700', color: palette.text }}>{t('workspace:screen.filesTab')}</Text>
       <View style={{ gap: 12 }}>
         <Text style={{ color: palette.muted }}>{connection.status !== 'connected' ? connection.message : t('workspace:picker.empty')}</Text>

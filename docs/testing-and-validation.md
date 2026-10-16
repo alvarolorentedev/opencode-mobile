@@ -893,6 +893,10 @@ Run the static, fake-server self-test, and full web E2E gates. E2E edits require
 
 The compact diff-sheet flow also verifies its full viewport width, initial bottom-sheet position, compact file-row height, expanded accessibility state, and lack of horizontal overflow. Diff-source selection remains reachable from the header's three-dot button; the selected scope/turn is included in its accessible name. The shared overlay's other presentations remain unchanged. Native acceptance must check wrapped code and long paths at larger text sizes.
 
+## Overlay swipe dismissal
+
+The shared `OverlaySheet` now dismisses on a downward drag of its header using `react-native-gesture-handler`, driven by `Gesture.Pan` and a Reanimated `translateY`. A web flow opens the chat library and drags its header down to assert dismissal; the existing close-button flows still cover the tap path. Pull-to-refresh was removed from the workspace, transcript, and diff views, so their manual refresh coverage moved to the workspace header button and to SSE/polling. Run `test:ci:static`, `test:fake-server:self`, and `test:e2e:web`. Native acceptance must verify the drag on a real device (gesture-handler is a native module), plus screen-reader reachability and Android Back dismissal. E2E and fake-server edits require explicit human validation under AGENTS.md.
+
 
 ## Session library recovery (#64)
 

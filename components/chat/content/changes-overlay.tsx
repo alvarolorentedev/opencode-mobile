@@ -1,7 +1,7 @@
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Pressable, RefreshControl, ScrollView, View } from 'react-native';
+import { Pressable, ScrollView, View } from 'react-native';
 import { IconButton, Text } from 'react-native-paper';
 
 import { DiffCard, SessionDiffCard } from '@/components/chat/chat-cards';
@@ -32,10 +32,8 @@ type ChangesOverlayProps = {
   diffDetails: DiffDetail[];
   diffTurns: DiffTurn[];
   expandedDiffId?: string;
-  isRefreshingDiffs: boolean;
   onCloseChanges: () => void;
   onExpandDiff: (id?: string) => void;
-  onRefreshDiffs: () => void;
   onSelectDiffMessage: (messageId: string) => void;
   onSelectDiffScope: (scope: DiffScope) => void;
   palette: Palette;
@@ -52,10 +50,8 @@ export function ChangesOverlay({
   diffDetails,
   diffTurns,
   expandedDiffId,
-  isRefreshingDiffs,
   onCloseChanges,
   onExpandDiff,
-  onRefreshDiffs,
   onSelectDiffMessage,
   onSelectDiffScope,
   palette,
@@ -107,8 +103,7 @@ export function ChangesOverlay({
           style={[styles.scroll, { backgroundColor: palette.background }]}
           contentContainerStyle={styles.changesList}
           keyboardDismissMode="on-drag"
-          keyboardShouldPersistTaps="handled"
-          refreshControl={<RefreshControl refreshing={isRefreshingDiffs} onRefresh={onRefreshDiffs} tintColor={palette.tint} />}>
+          keyboardShouldPersistTaps="handled">
           {connection.status === 'error' ? (
             <View style={styles.changesNotice}>
               <Text variant="titleMedium" style={{ color: palette.text }}>{t('chat:content.connectionIssue')}</Text>

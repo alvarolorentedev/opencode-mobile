@@ -173,7 +173,7 @@ Behavior:
 - `{ file, patch, additions, deletions }` diff objects are rendered as expandable line previews
 - if the turn message diff is empty, transcript patch details can still show filename-only entries
 - per-scope empty states: `No file changes yet.`, `No uncommitted changes.`, `No changes against the default branch.`
-- pull-to-refresh reloads the active scope; VCS scopes have no SSE event and are refreshed on demand (scope change, pull-to-refresh, or a workspace file save while a VCS scope is active)
+- VCS scopes have no SSE event and are refreshed on demand (a scope change or a workspace file save while a VCS scope is active)
 
 ### 8. Manage Sessions in the Chat Library
 
@@ -240,6 +240,8 @@ When a session has no display transcript yet, the user sees:
 ## Overlay and Back Navigation
 
 Overlays are dismissible with the platform back action. On Android, pressing the hardware back button while an overlay is open dismisses that overlay and keeps the current screen in place; a second back press then performs the underlying navigation. Overlay sheets (chat library, session usage, workspace and terminal pickers) share this behavior through `OverlaySheet`, and the conversation-mode overlay stops the mode on back. Native modal surfaces (dialogs, model picker, file details, select pickers) follow the same dismiss-first rule through their own back handling.
+
+Overlay sheets also dismiss on a downward drag of their header (the grabber/title strip), which uses `react-native-gesture-handler` and honors the same `dismissible` flag as the backdrop. Scrollable sheet content keeps its own scroll gesture, so dragging the list does not dismiss. There is no pull-to-refresh anywhere in the app; the workspace keeps its header refresh button, and the transcript and diff views rely on SSE/polling updates.
 
 ## Transcript Behavior
 

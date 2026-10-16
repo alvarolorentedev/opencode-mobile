@@ -572,6 +572,29 @@ test('changes chip preserves the composer and hides for an empty scope', async (
   expect(errors).toEqual([]);
 });
 
+test('overlay sheets dismiss on a downward header swipe', async ({ page, request }) => {
+  await resetScenario(request, 'happy-path');
+  await openReadyChat(page);
+  await openChatLibrary(page);
+  const library = page.getByTestId('chat-library');
+  await expect(library).toBeVisible();
+  // The sheet carries the title as its accessible name and renders its header
+  // (the drag zone) at the top of the panel.
+  const sheet = page.getByLabel('Chats', { exact: true });
+  await expect(sheet).toBeVisible();
+  const bounds = await sheet.boundingBox();
+  expect(bounds).not.toBeNull();
+  const startX = bounds.x + bounds.width / 2;
+  const startY = bounds.y + 24;
+  await page.mouse.move(startX, startY);
+  await page.mouse.down();
+  for (let step = 1; step <= 8; step += 1) {
+    await page.mouse.move(startX, startY + step * 40);
+  }
+  await page.mouse.up();
+  await expect(library).toBeHidden();
+});
+
 for (const scenario of ['permission', 'question']) {
   test(`incoming ${scenario} dismisses changes and its source picker`, async ({ page, request }) => {
     await resetScenario(request, scenario);

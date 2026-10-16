@@ -4,6 +4,7 @@ import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect, useLayoutEffect } from 'react';
 import { ActivityIndicator, Platform, StyleSheet, View } from 'react-native';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { PaperProvider } from 'react-native-paper';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
@@ -51,17 +52,19 @@ export default function RootLayout() {
   }, [isE2EMode]);
 
   return (
-    <SafeAreaProvider>
-      <OpencodeProvider>
-        <PaperProvider theme={paperTheme}>
-          <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-            <RootNavigator />
-            <UpdateHost />
-            <StatusBar style="auto" />
-          </ThemeProvider>
-        </PaperProvider>
-      </OpencodeProvider>
-    </SafeAreaProvider>
+    <GestureHandlerRootView style={styles.root}>
+      <SafeAreaProvider>
+        <OpencodeProvider>
+          <PaperProvider theme={paperTheme}>
+            <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
+              <RootNavigator />
+              <UpdateHost />
+              <StatusBar style="auto" />
+            </ThemeProvider>
+          </PaperProvider>
+        </OpencodeProvider>
+      </SafeAreaProvider>
+    </GestureHandlerRootView>
   );
 }
 
@@ -121,5 +124,6 @@ function RootNavigator() {
 }
 
 const styles = StyleSheet.create({
+  root: { flex: 1 },
   hydration: { alignItems: 'center', flex: 1, justifyContent: 'center' },
 });

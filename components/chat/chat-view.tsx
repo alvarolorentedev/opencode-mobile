@@ -32,9 +32,9 @@ export function ChatView() {
     displayTranscript, draft, expandedDiffId, forkSession, handleAbort, handleAttach,
     handleConfirmStopConversation, handleCopyMessage, handleNewSession, handleReviewChanges,
     handleSendPrompt, handleSpeakEntry, handleToggleRecording, handleVoiceRecovery, hasFailedInput, recoverFailedInput, dismissFailedInput,
-    isCreatingSession, isRefreshingDiffs, isRefreshingMessages, isSpeechInputAvailable,
+    isCreatingSession, isRefreshingMessages, isSpeechInputAvailable,
     isSpeechInputListening, isStoppingSession, isUpdatingAutoApprove, latestAssistantTurnUsage,
-    pendingPrompts, pendingInteractions, progressIcon, progressVisible, refreshCurrentSession, refreshDiffs,
+    pendingPrompts, pendingInteractions, progressIcon, progressVisible,
     rejectQuestion, replyToPermission, replyToQuestion, revertSession, retryAttempt, running, selectDiffMessage,
     selectedAgentLabel, selectedDiffMessageId, selectedSession, sendErrorMessage,
     serverCapabilities, sessionMenuVisible, setAttachments, setAutoApprove, setChangesVisible,
@@ -110,12 +110,9 @@ export function ChatView() {
             if (!currentSessionId || transcriptPaging.isLoadingOlder || !transcriptPaging.hasOlder) return;
             void transcriptPaging.loadOlder(currentSessionId);
           }}
-          isRefreshingDiffs={isRefreshingDiffs}
           isRefreshingMessages={isRefreshingMessages}
           onCopyMessage={(entry) => void handleCopyMessage(entry)}
           onExpandDiff={setExpandedDiffId}
-          onRefresh={() => void refreshCurrentSession()}
-          onRefreshDiffs={() => void refreshDiffs()}
           onSelectDiffScope={setDiffScope}
           onSelectDiffMessage={selectDiffMessage}
           selectedDiffMessageId={selectedDiffMessageId}
