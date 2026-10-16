@@ -66,7 +66,6 @@ describe('keyboard sheet layout', () => {
 describe('native input regressions', () => {
   let runtime: ReturnType<typeof hookRuntime>;
   let input: () => Element;
-  let measurement: () => Element | undefined;
 
   beforeEach(async () => {
     platform.OS = 'ios';
@@ -86,51 +85,24 @@ describe('native input regressions', () => {
       chatPreferences: {}, conversation: {}, palette: {}, showSendAction: true,
     });
     input = () => find(runtime.value, 'chat-prompt-input')!;
-    measurement = () => find(runtime.value, 'chat-prompt-measurement');
   });
 
-  it.each([[false, 44, 110], [true, 36, 90]])('sizes iOS independently of input callbacks (slim=%s)', (slim, min, max) => {
+  it.each([[false, 44, 110], [true, 40, 90]])('lets iOS grow the native input between its caps (slim=%s)', (slim, min, max) => {
     runtime.update({ slim });
-    const resize = (height: number) => {
-      measurement()!.props.onLayout({ nativeEvent: { layout: { height } } });
-      runtime.flush();
-    };
+    expect(find(runtime.value, 'chat-prompt-measurement')).toBeUndefined();
     expect(input().props.onContentSizeChange).toBeUndefined();
-    resize(65.2);
-    expect(flatten(input().props.style).height).toBe(66);
-    expect(input().props.scrollEnabled).toBe(false);
-    resize(400);
-    expect(flatten(input().props.style).height).toBe(max);
     expect(input().props.scrollEnabled).toBe(true);
-    resize(20);
-    expect(flatten(input().props.style).height).toBe(min);
-    expect(input().props.scrollEnabled).toBe(false);
-    resize(400);
-    runtime.update({ draft: '' });
-    expect(flatten(input().props.style).height).toBe(min);
-    expect(input().props.scrollEnabled).toBe(false);
-  });
-
-  it('measures trailing blank lines without changing the draft or exposing duplicate text', () => {
-    const draft = 'wrapped words\n\n';
-    const onDraftChange = vi.fn();
-    runtime.update({ draft, onDraftChange });
-    expect(measurement()!.props.children).toBe(`${draft}\u200b`);
-    expect(input().props.value).toBe(draft);
-    expect(input().props.onChangeText).toBe(onDraftChange);
-    expect(measurement()!.props.accessible).toBe(false);
-    expect(measurement()!.props.accessibilityElementsHidden).toBe(true);
-    expect(measurement()!.props.pointerEvents).toBe('none');
-    expect(measurement()!.props.maxFontSizeMultiplier).toBe(1.5);
-    expect(flatten(measurement()!.props.style)).toMatchObject({ fontFamily: 'Avenir Next', fontSize: 17, letterSpacing: 0.5 });
-    runtime.update({ slim: true });
-    expect(flatten(measurement()!.props.style).fontSize).toBe(15);
+    const style = flatten(input().props.style);
+    expect(style.height).toBeUndefined();
+    expect(style).toMatchObject({ minHeight: min, maxHeight: max, fontSize: slim ? 15 : 17 });
+    expect(flatten(input().props.contentStyle)).toMatchObject({ minHeight: min, maxHeight: max });
+    expect(input().props.value).toBe('hello');
   });
 
   it.each(['android', 'web'])('retains content-size growth and scrolling on %s', (os) => {
     platform.OS = os;
     runtime.flush();
-    expect(measurement()).toBeUndefined();
+    expect(flatten(input().props.style).minHeight).toBeUndefined();
     input().props.onContentSizeChange({ nativeEvent: { contentSize: { height: 80 } } });
     runtime.flush();
     expect(flatten(input().props.style).height).toBe(80);

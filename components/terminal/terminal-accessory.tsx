@@ -31,13 +31,16 @@ export function useTerminalModifiers(): AccessoryState {
   };
 }
 
-export function TerminalAccessory({ state, labels, disabled, expanded, onExpand, onKey, onPaste, onCopy, selected }: {
+export function TerminalAccessory({ state, labels, disabled, expanded, onExpand, onKey, onPaste, onCopy, selected, onInteract }: {
   state: AccessoryState; labels: AccessoryLabels; disabled: boolean; expanded: boolean;
   onExpand: () => void; onKey: (key: string) => void; onPaste: () => void; onCopy: () => void; selected: boolean;
+  onInteract: () => void;
 }) {
   const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   useEffect(() => () => clearTimeout(timer.current), []);
-  const keepFocus = (event: PointerEvent<HTMLButtonElement>) => { if (event.pointerType !== 'mouse' || event.button === 0) event.preventDefault(); };
+  // Modifier and expander taps must not resign the terminal textarea, or the
+  // soft keyboard hides on iOS. Keep focus inside the gesture and restore it.
+  const keepFocus = (event: PointerEvent<HTMLButtonElement>) => { if (event.pointerType !== 'mouse' || event.button === 0) event.preventDefault(); onInteract(); };
   const repeat = (event: PointerEvent<HTMLButtonElement>, key: string) => {
     keepFocus(event);
     if (!/^Arrow/.test(key)) return;
@@ -50,14 +53,14 @@ export function TerminalAccessory({ state, labels, disabled, expanded, onExpand,
     <div className="terminal-key-row">
       {button('ArrowUp', '↑')}{button('ArrowDown', '↓')}{button('ArrowLeft', '←')}{button('ArrowRight', '→')}
       {button('Tab')}{button('Escape', 'Esc')}
-      {(['ctrl', 'alt', 'shift'] as const).map((key) => <button type="button" key={key} disabled={disabled} aria-label={`${key[0].toUpperCase()}${key.slice(1)}, ${labels[state.states[key]]}`} aria-pressed={state.modifiers[key]} data-state={state.states[key]} onPointerDown={keepFocus} onClick={() => state.toggle(key)}>{key[0].toUpperCase()}{key.slice(1)}{state.states[key] === 'locked' ? ' •' : ''}</button>)}
-      <button type="button" aria-label={labels.more} aria-expanded={expanded} onPointerDown={keepFocus} onClick={onExpand}>Fn</button>
-      {selected && <button type="button" onPointerDown={keepFocus} onClick={onCopy}>{labels.copy}</button>}
+      {(['ctrl', 'alt', 'shift'] as const).map((key) => <button type="button" key={key} disabled={disabled} aria-label={`${key[0].toUpperCase()}${key.slice(1)}, ${labels[state.states[key]]}`} aria-pressed={state.modifiers[key]} data-state={state.states[key]} onPointerDown={keepFocus} onClick={() => { state.toggle(key); onInteract(); }}>{key[0].toUpperCase()}{key.slice(1)}{state.states[key] === 'locked' ? ' •' : ''}</button>)}
+      <button type="button" aria-label={labels.more} aria-expanded={expanded} onPointerDown={keepFocus} onClick={() => { onExpand(); onInteract(); }}>Fn</button>
+      {selected && <button type="button" onPointerDown={keepFocus} onClick={() => { onCopy(); onInteract(); }}>{labels.copy}</button>}
     </div>
     {expanded && <div className="terminal-key-row">
       {Array.from({ length: 12 }, (_, i) => button(`F${i + 1}`))}
       {['Home', 'End', 'PageUp', 'PageDown', 'Insert', 'Delete'].map((key) => button(key))}
-      <button type="button" disabled={disabled} onPointerDown={keepFocus} onClick={onPaste}>{labels.paste}</button>
+      <button type="button" disabled={disabled} onPointerDown={keepFocus} onClick={() => { onPaste(); onInteract(); }}>{labels.paste}</button>
     </div>}
     <span role="status" className="terminal-sr-only">{Object.entries(state.states).filter(([, value]) => value !== 'off').map(([key, value]) => `${key} ${labels[value as ModifierState]}`).join(', ')}</span>
   </div>;

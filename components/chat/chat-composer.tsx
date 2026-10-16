@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Keyboard, Platform, Text as NativeText, useWindowDimensions, View } from 'react-native';
-import { Chip, IconButton, Surface, Text, useTheme } from 'react-native-paper';
+import { Keyboard, Platform, useWindowDimensions, View } from 'react-native';
+import { Chip, IconButton, Surface, Text } from 'react-native-paper';
 
 import { Colors } from '@/constants/theme';
 import { TextInput } from '@/components/ui/text-input';
@@ -79,9 +79,10 @@ export function ChatComposer({
   visibleModels,
 }: ChatComposerProps) {
   const { t } = useTranslation();
-  const { fonts } = useTheme();
   const { fontScale } = useWindowDimensions();
-  const minInputHeight = slim ? 36 : 44;
+  // iOS grows the native multiline input itself, and Paper's dense container
+  // floors that growth at its 40 px minimum, so slim shares the same floor.
+  const minInputHeight = slim ? 40 : 44;
   const maxInputHeight = slim ? 90 : 110;
   const hasComposerContent = Boolean(draft.trim()) || attachments.length > 0;
   const primaryAction = !showSendAction ? 'stop' : hasComposerContent ? 'send' : 'voice';
@@ -92,6 +93,9 @@ export function ChatComposer({
       : connectionStatus !== 'connected' || !isSpeechInputAvailable;
   const reasoningLabel = t(REASONING_OPTIONS.find((option) => option.id === chatPreferences.reasoning)?.labelKey || 'chat:composer.chooseReasoningLevel');
 
+  // Android/web size the input from content-size events. iOS lets the native
+  // multiline input grow and scroll at the cap instead of measuring a hidden
+  // copy, which lagged a layout pass behind the text on device.
   const [inputHeight, setInputHeight] = useState(minInputHeight);
   const displayedInputHeight = draft ? Math.min(maxInputHeight, Math.max(minInputHeight, inputHeight)) : minInputHeight;
   const inputTextStyle = [styles.composerTextArea, slim && { fontSize: 15 }];
@@ -152,27 +156,6 @@ export function ChatComposer({
       ) : null}
 
       <View testID="chat-composer-card" style={[styles.composerCard, slim && { borderRadius: 22 }, { backgroundColor: palette.surfaceAlt }]}>
-        {Platform.OS === 'ios' ? (
-          // iOS Fabric may not emit content-size changes for fixed-height inputs.
-          <NativeText
-            testID="chat-prompt-measurement"
-            accessible={false}
-            accessibilityElementsHidden
-            importantForAccessibility="no-hide-descendants"
-            pointerEvents="none"
-            maxFontSizeMultiplier={1.5}
-            onLayout={({ nativeEvent }) => updateInputHeight(nativeEvent.layout.height)}
-            style={[
-              fonts.bodyLarge,
-              { fontWeight: undefined, lineHeight: undefined },
-              inputTextStyle,
-              styles.inputContentCompact,
-              // Match the card padding and input margins without affecting layout.
-              { position: 'absolute', top: 8, left: 8, right: 8, opacity: 0 },
-            ]}>
-            {`${draft}\u200b`}
-          </NativeText>
-        ) : null}
         <TextInput
           testID="chat-prompt-input"
           mode="flat"
@@ -182,11 +165,17 @@ export function ChatComposer({
           onContentSizeChange={Platform.OS === 'ios' ? undefined : ({ nativeEvent }) => updateInputHeight(nativeEvent.contentSize.height)}
           editable={!isSpeechInputListening}
           multiline
-          scrollEnabled={displayedInputHeight >= maxInputHeight}
+          scrollEnabled={Platform.OS === 'ios' ? true : displayedInputHeight >= maxInputHeight}
           placeholder={t('chat:composer.placeholder')}
           placeholderTextColor={palette.muted}
-          style={[inputTextStyle, { height: displayedInputHeight, color: palette.text }]}
-          contentStyle={styles.inputContentCompact}
+          style={[
+            inputTextStyle,
+            Platform.OS === 'ios'
+              // Let the platform size the multiline input and scroll at the cap.
+              ? { minHeight: minInputHeight, maxHeight: maxInputHeight, color: palette.text }
+              : { height: displayedInputHeight, color: palette.text },
+          ]}
+          contentStyle={Platform.OS === 'ios' ? [styles.inputContentCompact, { minHeight: minInputHeight, maxHeight: maxInputHeight }] : styles.inputContentCompact}
           underlineColor="transparent"
           activeUnderlineColor="transparent"
           textAlignVertical="top"

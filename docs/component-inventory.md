@@ -159,11 +159,10 @@ type ChatContentProps = {
 - dismiss the keyboard when opening selectors while preserving the parent-owned draft; model picker dismisses on Back/Escape or session/tab changes
 - render optional conversation banner
 - render attachments, voice status, prompt input, and action buttons
-- On iOS, an invisible, accessibility-hidden native Text measures the draft at
-  the input's width and typography because fixed-height Fabric inputs can miss
-  content-size events. Trailing blank lines are included. The input grows from
-  44 to 110 px (36 to 90 px in slim mode), scrolls at the cap, and shrinks when
-  text is removed or cleared. Android and web retain content-size events.
+- On iOS the native multiline input grows itself between 44 and 110 px (40 to
+  90 px in slim mode) and scrolls at the cap, so height never lags a layout pass
+  behind the text. Paper's dense container floors the slim input at 40 px.
+  Android and web retain content-size events and the explicit measured height.
 
 ### Prop contract
 
@@ -974,6 +973,8 @@ imperative output batches, reports fit dimensions, and sends ordered input.
 `terminal-accessory.tsx` renders Esc/Tab/Ctrl/Alt/Shift/arrows/Fn plus F1–F12,
 Home/End/PageUp/PageDown/Insert/Delete/Paste. A modifier tap arms it once, a
 double tap locks it, and another tap clears it. Terminal/tab changes clear modifiers.
+Every accessory tap re-focuses the terminal textarea inside the gesture (arrows
+already did) so modifier, Fn, Copy, and Paste taps keep the soft keyboard up.
 Shift modifies accessory/navigation keys and capitalizes ASCII letters; the
 system keyboard supplies shifted punctuation and composed text.
 `terminal-keys.ts` encodes accessory combinations and terminal cursor modes.

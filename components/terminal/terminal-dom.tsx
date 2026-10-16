@@ -182,6 +182,6 @@ export default function TerminalDOM({ ref, instances, activeId, visible, slim, t
       {instances.map((entry) => <div key={entry.id} data-pty={entry.id} data-testid={entry.id === activeId ? 'terminal-output' : undefined} className="terminal-display" style={{ display: entry.id === activeId ? 'block' : 'none' }} />)}
       {scrolled && <button className="terminal-latest" type="button" onClick={() => getDisplay()?.terminal.scrollToBottom()}>{labels.latest}</button>}
     </div>
-    <TerminalAccessory state={accessory} labels={labels} disabled={disabled} expanded={expanded} onExpand={() => setExpanded((value) => !value)} onKey={accessoryKey} selected={selected} onCopy={() => { const display = getDisplay(); if (display) void callbacks.current.onCopy(display.terminal.getSelection()); }} onPaste={() => { if (activeId) void callbacks.current.onPaste(activeId); }} />
+    <TerminalAccessory state={accessory} labels={labels} disabled={disabled} expanded={expanded} onExpand={() => setExpanded((value) => !value)} onKey={accessoryKey} selected={selected} onInteract={() => getDisplay()?.terminal.focus()} onCopy={() => { const display = getDisplay(); if (display) void callbacks.current.onCopy(display.terminal.getSelection()); }} onPaste={() => { if (activeId) void callbacks.current.onPaste(activeId); }} />
   </div>;
 }

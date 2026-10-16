@@ -268,8 +268,7 @@ flat-transcript and slim-interface preferences default to off.
 
 `tests/vitest/native-inputs.test.ts` exercises the real composer and shared
 input with the existing hook driver and mocked platform boundaries. It covers
-iOS measurement-driven growth, height caps, scrolling, shrinking/clearing,
-trailing blank lines, regular/slim typography, accessibility exclusion,
+iOS native auto-grow caps (no measured height or hidden measurement node),
 Android/web content-size callbacks, and single-line alignment overrides without
 altering password values. These checks do not reproduce UIKit rendering.
 
@@ -280,11 +279,13 @@ must remain masked on one row through typing, paste, blur/refocus, and reopening
 the connection dialog. Repeat composer growth/scrolling on Android. Native
 checks are required before considering the iOS password workaround verified.
 
-The iOS 26.5 simulator acceptance run confirmed regular/slim height caps,
-wrapped and pasted prompts, typed/trailing newlines, shrinking/clearing, larger
-text, and masked passwords through typing, paste, blur/refocus, and dialog
-reopening. The reopened test credential matched exactly. Android runtime and
-the separate Mac runtime still require native acceptance checks.
+iOS now grows the native input instead of measuring a hidden copy, because the
+on-device measurement lagged a layout pass behind the text (the simulator run
+did not reproduce it). Confirm same-keystroke growth, the regular/slim caps, and
+shrink-on-delete on a physical iPhone. The iOS 26.5 simulator acceptance run
+confirmed masked passwords through typing, paste, blur/refocus, and dialog
+reopening. Android runtime and the separate Mac runtime still require native
+acceptance checks.
 
 The `test:vitest` suite is the standard TypeScript runner (Vitest) for module
 behavior that benefits from real imports and module mocking: format/transcript
