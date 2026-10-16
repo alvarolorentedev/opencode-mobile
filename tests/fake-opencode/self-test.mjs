@@ -423,6 +423,27 @@ try {
   await v2Api.session.inbox.cancel({ sessionID: inboxSession.id, inboxID: cancelled.id });
   assert((await v2Api.session.inbox.list({ sessionID: inboxSession.id })).length === 0, 'Cancellation must remove the pending item');
 
+  // --- Device-authenticated connector management ---------------------------
+  await v2request('/__control/device', json('POST', { device_id: 'device-smoke', device_secret: 'device-secret-smoke' }));
+  const deviceHeaders = { Authorization: `Basic ${Buffer.from('device-smoke:device-secret-smoke').toString('base64')}` };
+  const deviceJson = (method, body) => ({ method, headers: { ...deviceHeaders, 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+  assert((await fetch(`${v2Origin}/_cloudlink/services`)).status === 401, 'Management must require a device credential');
+  assert((await fetch(`${v2Origin}/_cloudlink/services`, { headers: { Authorization: `Basic ${Buffer.from('device-smoke:wrong').toString('base64')}` } })).status === 401, 'Management must reject a wrong device secret');
+  assert((await v2request('/_cloudlink/services', { headers: deviceHeaders })).services.length === 0, 'Service list must start empty');
+  const createdService = await fetch(`${v2Origin}/_cloudlink/services/api`, deviceJson('PUT', { name: 'API', path: '/test/api/', target: '127.0.0.1:3000', enabled: false, access: 'private', strip_prefix: true }));
+  assert(createdService.status === 201, `Service create must return 201, got ${createdService.status}`);
+  assert((await createdService.json()).service.path === '/test/api', 'Service create must return the canonical path');
+  const replacedService = await fetch(`${v2Origin}/_cloudlink/services/api`, deviceJson('PUT', { path: '/test/api', target: '127.0.0.1:3001' }));
+  assert(replacedService.status === 200, 'Service replace must return 200');
+  assert((await replacedService.json()).service.target === '127.0.0.1:3001', 'Service replace must return the stored target');
+  assert((await fetch(`${v2Origin}/_cloudlink/services/other`, deviceJson('PUT', { path: '/test/api', target: '127.0.0.1:3002' }))).status === 400, 'Duplicate paths must be rejected');
+  assert((await fetch(`${v2Origin}/_cloudlink/services/other`, deviceJson('PUT', { path: '/other', target: '10.0.0.1:3000' }))).status === 400, 'Non-loopback targets must be rejected');
+  assert((await fetch(`${v2Origin}/_cloudlink/services/other`, json('PUT', { path: '/other', target: '127.0.0.1:3000' }))).status === 401, 'Management must reject an anonymous write');
+  assert((await v2request('/_cloudlink/services', { headers: deviceHeaders })).services.length === 1, 'Service list must reflect the write');
+  assert((await fetch(`${v2Origin}/_cloudlink/services/missing`, { method: 'DELETE', headers: deviceHeaders })).status === 404, 'Deleting an unknown service must return 404');
+  assert((await fetch(`${v2Origin}/_cloudlink/services/api`, { method: 'DELETE', headers: deviceHeaders })).status === 204, 'Deleting a service must return 204');
+  assert((await v2request('/_cloudlink/services', { headers: deviceHeaders })).services.length === 0, 'Deleted service must disappear from the list');
+
   console.log('Fake OpenCode 1.18.3 server self-test passed.');
   console.log('Fake OpenCode 2.0 server self-test passed.');
 } finally {

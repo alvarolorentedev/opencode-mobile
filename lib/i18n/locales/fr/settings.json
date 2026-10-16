@@ -9,7 +9,8 @@
       "appearance": "Apparence",
       "support": "Assistance",
       "permissions": "Approbations",
-      "subscription": "Abonnement"
+      "subscription": "Abonnement",
+      "services": "Services"
     },
     "summaries": {
       "configuredCount": "{{value}} configurés",
@@ -17,7 +18,8 @@
       "replyPlaybackOff": "Lecture des réponses désactivée",
       "advanced": "Éditeur, général, serveurs MCP et diagnostics",
       "support": "Notez l'app, envoyez vos retours, obtenez de l'aide",
-      "permissions": "{{value}} enregistrées"
+      "permissions": "{{value}} enregistrées",
+      "services": "{{value}} exposés"
     }
   },
   "support": {
@@ -477,5 +479,51 @@
     "restoreDescription": "Récupérer un achat existant",
     "machines": "Machines",
     "machinesDescription": "Voir et gérer les machines connectées"
+  },
+  "services": {
+    "title": "Services exposés",
+    "description": "Ajoutez, remplacez et supprimez les services exposés par votre connecteur via le tunnel. Les modifications s'appliquent immédiatement.",
+    "add": "Ajouter un service",
+    "addTitle": "Nouveau service",
+    "editTitle": "Modifier le service",
+    "empty": "Aucun service exposé pour l'instant.",
+    "capacity": "Vous pouvez exposer jusqu'à {{max}} services.",
+    "saved": "{{name}} enregistré.",
+    "saveFailed": "Impossible d'enregistrer ce service.",
+    "removed": "{{name}} supprimé.",
+    "removeFailed": "Impossible de supprimer ce service.",
+    "removeTitle": "Supprimer {{name}} ?",
+    "removeMessage": "Le connecteur cesse immédiatement de router ce chemin.",
+    "removeConfirm": "Supprimer {{name}} ? Le connecteur cesse immédiatement de router ce chemin.",
+    "copyLink": "Copier le lien",
+    "linkCopied": "Lien du service copié.",
+    "linkUnavailable": "Impossible de créer un lien pour ce service.",
+    "enabledHint": "Acheminer le trafic de ce chemin via le tunnel.",
+    "stripPrefixHint": "Retirer le préfixe de chemin correspondant avant le transfert.",
+    "fields": {
+      "id": "ID",
+      "name": "Nom",
+      "path": "Chemin",
+      "target": "Cible",
+      "access": "Accès",
+      "enabled": "Activé",
+      "stripPrefix": "Retirer le préfixe"
+    },
+    "access": {
+      "private": "Privé",
+      "public": "Public"
+    },
+    "errors": {
+      "required": "Ce champ est obligatoire.",
+      "idFormat": "Utilisez 1 à 32 lettres minuscules, chiffres ou tirets.",
+      "nameLength": "Utilisez 64 caractères maximum.",
+      "pathRoot": "Le chemin ne peut pas être la racine du serveur.",
+      "pathReserved": "Le préfixe /_cloudlink est réservé.",
+      "pathFormat": "Utilisez un chemin comme /test/api sans requête, fragment ni encodage.",
+      "targetFormat": "Utilisez une adresse comme 127.0.0.1:3000.",
+      "targetLoopback": "La cible doit être en loopback (127.0.0.1 ou ::1).",
+      "targetReserved": "Le port 8443 est réservé aux services exposés.",
+      "targetPort": "Utilisez un port non privilégié entre 1024 et 65535."
+    }
   }
 }

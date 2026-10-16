@@ -177,6 +177,7 @@ export function useOpencodeProviderValues(input: ProviderValuesInput) {
     mcpOAuth,
     serverContract,
     sharedInput,
+    servicesValue,
   } = input;
 
   const activeSession = useMemo(
@@ -291,8 +292,8 @@ export function useOpencodeProviderValues(input: ProviderValuesInput) {
   );
 
   const connectionValue = useMemo<ConnectionContextValue>(
-    () => ({ connectionProfiles, settings, updateSettings, switchConnection, connection, serverCapabilities, connect, connectSetup }),
-    [connectionProfiles, settings, updateSettings, switchConnection, connection, serverCapabilities, connect, connectSetup],
+    () => ({ connectionProfiles, settings, updateSettings, switchConnection, connection, serverCapabilities, connect, connectSetup, services: servicesValue }),
+    [connectionProfiles, settings, updateSettings, switchConnection, connection, serverCapabilities, connect, connectSetup, servicesValue],
   );
 
   const diagnosticsValue = useMemo<DiagnosticsContextValue>(

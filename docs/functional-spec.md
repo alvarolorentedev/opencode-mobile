@@ -350,6 +350,22 @@ Behavior:
 - values are persisted locally; passwords stay in SecureStore while name, URL, and username live in AsyncStorage
 - Settings shows short category summaries in one compact group; tapping Connection opens a content-sized overlay with the server message, last checked timestamp, and saved connection rows
 
+### Exposed Services Section
+
+Purpose:
+
+- let a paired Cloud Link device add, replace and remove the connector's exposed service paths remotely over the existing tunnel
+
+Behavior:
+
+- the section appears only for a Cloud Link connection (`settings.connect`); manual connections never show it
+- opening (or re-opening) the section re-fetches `GET /_cloudlink/services`, because the connector's tray or CLI can change the list out from under the app; the Settings row shows the current count
+- Add/Edit opens an inline form for id (create only), optional name, path, target, enabled, access (`private`/`public`) and strip-prefix; the id is fixed when editing
+- the app mirrors the connector's validation before sending, and shows the connector's own message when the server rejects a request (for example `400` invalid service)
+- a successful save renders the stored canonical values the connector returns, not the request values
+- each row shows name, `path → target`, access and enabled state, with Edit, Copy link, and Remove; Copy link copies `https://<server host>:8443<path>/`
+- changes apply to the running proxy immediately and are persisted; no connector restart is required
+
 ### AI Defaults Section
 
 Purpose:

@@ -9,7 +9,8 @@
       "appearance": "外观",
       "support": "支持",
       "permissions": "审批",
-      "subscription": "订阅"
+      "subscription": "订阅",
+      "services": "服务"
     },
     "summaries": {
       "configuredCount": "已配置 {{value}} 个",
@@ -17,7 +18,8 @@
       "replyPlaybackOff": "回复播放已关闭",
       "advanced": "编辑器、常规、MCP 服务器和诊断",
       "support": "评价应用、发送反馈、获取帮助",
-      "permissions": "已保存 {{value}} 项"
+      "permissions": "已保存 {{value}} 项",
+      "services": "已公开 {{value}}"
     }
   },
   "support": {
@@ -477,5 +479,51 @@
     "restoreDescription": "恢复已有购买",
     "machines": "设备",
     "machinesDescription": "查看和管理已连接的设备"
+  },
+  "services": {
+    "title": "已公开的服务",
+    "description": "添加、替换和移除连接器通过隧道公开的服务路径。更改会立即生效。",
+    "add": "添加服务",
+    "addTitle": "新服务",
+    "editTitle": "编辑服务",
+    "empty": "尚未公开任何服务。",
+    "capacity": "最多可公开 {{max}} 个服务。",
+    "saved": "已保存 {{name}}。",
+    "saveFailed": "无法保存此服务。",
+    "removed": "已移除 {{name}}。",
+    "removeFailed": "无法移除此服务。",
+    "removeTitle": "移除 {{name}}？",
+    "removeMessage": "连接器将立即停止路由此路径。",
+    "removeConfirm": "移除 {{name}}？连接器将立即停止路由此路径。",
+    "copyLink": "复制链接",
+    "linkCopied": "已复制服务链接。",
+    "linkUnavailable": "无法为此服务生成链接。",
+    "enabledHint": "通过隧道路由此路径的流量。",
+    "stripPrefixHint": "转发前移除匹配的路径前缀。",
+    "fields": {
+      "id": "ID",
+      "name": "名称",
+      "path": "路径",
+      "target": "目标",
+      "access": "访问权限",
+      "enabled": "已启用",
+      "stripPrefix": "移除路径前缀"
+    },
+    "access": {
+      "private": "私有",
+      "public": "公开"
+    },
+    "errors": {
+      "required": "此字段为必填项。",
+      "idFormat": "请使用 1-32 个小写字母、数字或连字符。",
+      "nameLength": "请使用不超过 64 个字符。",
+      "pathRoot": "路径不能是服务器根路径。",
+      "pathReserved": "/_cloudlink 前缀为保留前缀。",
+      "pathFormat": "请使用类似 /test/api 的路径，不含查询、片段或编码。",
+      "targetFormat": "请使用类似 127.0.0.1:3000 的地址。",
+      "targetLoopback": "目标必须是回环地址（127.0.0.1 或 ::1）。",
+      "targetReserved": "端口 8443 保留给已公开的服务。",
+      "targetPort": "请使用 1024 到 65535 之间的非特权端口。"
+    }
   }
 }

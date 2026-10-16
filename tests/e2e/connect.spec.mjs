@@ -885,3 +885,40 @@ test('guided subscription keeps actions accessible on a narrow light screen', as
   await page.getByTestId('connect-restore').click();
   await expect(page.getByTestId('connect-step-4')).toBeVisible();
 });
+
+test('a paired device adds, edits and removes an exposed service', async ({ page, request }) => {
+  await storeFixture(page, { recovered: true });
+  await mockControlPlane(page);
+  // The fake connector only trusts provisioned device credentials; the control
+  // plane hands the app `device-<n>` with a fixed secret.
+  for (const id of ['device-1', 'device-2', 'device-3']) {
+    await request.post(`${SERVER}/__control/device`, { data: { device_id: id, device_secret: 'device-test-secret' } });
+  }
+  await page.addInitScript(() => localStorage.setItem('opencode-mobile.onboarding-version', JSON.stringify({ version: 1 })));
+  page.on('dialog', (dialog) => void dialog.accept());
+  await page.goto(`/pair?${pairingLink().searchParams}`);
+  await expect(page).toHaveURL(/\/workspace$/, { timeout: 30_000 });
+
+  await page.getByRole('tab', { name: 'Settings' }).click();
+  await page.getByRole('button', { name: /^Services\./ }).click();
+  await expect(page.getByTestId('services-section')).toBeVisible();
+  await expect(page.getByTestId('service-api')).toHaveCount(0);
+
+  await page.getByTestId('service-add').click();
+  await page.getByTestId('service-id-input').fill('api');
+  await page.getByTestId('service-path-input').fill('/test/api');
+  await page.getByTestId('service-target-input').fill('127.0.0.1:3000');
+  await page.getByTestId('service-save').click();
+  await expect(page.getByTestId('service-api')).toContainText('/test/api');
+  await expect(page.getByTestId('services-feedback')).toContainText('Saved');
+
+  await page.getByTestId('service-api').getByRole('button', { name: 'Edit' }).click();
+  await page.getByTestId('service-target-input').fill('127.0.0.1:3001');
+  await page.getByTestId('service-save').click();
+  await expect(page.getByTestId('service-api')).toContainText('127.0.0.1:3001');
+
+  await page.getByTestId('service-api').getByRole('button', { name: 'Remove' }).click();
+  await expect(page.getByTestId('service-api')).toHaveCount(0);
+  await expect(page.getByTestId('services-feedback')).toContainText('Removed');
+});
+

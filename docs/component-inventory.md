@@ -519,6 +519,7 @@ scanner. It preserves stored profiles. Components do not poll or classify errors
 - `UpdateSection`
 - `ConnectionSection`
 - `SubscriptionSection`
+- `ServicesSection`
 - `AiDefaultsSection`
 - `NotificationsSection`
 - `VoiceSection`
@@ -685,6 +686,17 @@ Main relevant props:
 - show status and failure details
 - connect/disconnect, enable/disable, remove, refresh, and complete remote OAuth
 - retain only form, busy, error, and OAuth-code UI state locally
+
+## `components/settings/sections/services-section.tsx`
+
+### Responsibility
+
+- list the connector's exposed services from `useConnection().services`, with name, `path → target`, access and enabled state
+- add/replace a service through an inline form (id fixed when editing), and remove with confirmation
+- mirror the connector's validation locally and surface the connector's own error message on rejection
+- copy a shareable `https://<host>:8443<path>/` link per service
+- own only form, busy, error and feedback UI state; all reads/writes and canonical values come from the provider's services domain
+- rendered only for Cloud Link connections; the provider hides it for manual connections
 
 ## `components/settings/settings-utils.ts`
 

@@ -1075,3 +1075,25 @@ without the unrelated Android-sharing commits from its original base. All three
 required gates pass on that result: static CI (289 Vitest checks), both fake-server
 self-tests, and all 134 web E2E flows, including the final scan-frame refinement.
 Native builds and real store/camera/device acceptance were not repeated.
+
+## Connector service management validation
+
+A paired device adds, replaces and removes the connector's exposed services
+through `/_cloudlink/services`. Coverage is split by layer:
+
+- `lib/opencode/client/management.ts` is unit-tested in
+  `tests/vitest/services-management.test.ts`: the path/target/id validation
+  mirror, the shareable-link builder, the device Basic credential and request
+  shape, canonical-value parsing, and error/status propagation (including the
+  no-connection and expired-credential guards).
+- The V2 fake server implements `GET/PUT/DELETE /_cloudlink/services` behind a
+  device-credential check provisioned through `POST /__control/device`, and
+  `tests/fake-opencode/self-test.mjs` asserts 401 without a device credential,
+  201 create / 200 replace, canonical path/target responses, duplicate-path and
+  non-loopback rejection, 404 on unknown delete, and list consistency.
+- `tests/e2e/connect.spec.mjs` drives a real Cloud Link pairing, opens Settings →
+  Services, and adds, edits and removes a service through the fake connector.
+
+The connector contract is frozen; only the fake server's mirror of it changed,
+so the fake-server and E2E additions require explicit human validation under
+AGENTS.md. CI gates: `test:ci:static`, `test:fake-server:self`, `test:e2e:web`.

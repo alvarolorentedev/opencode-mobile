@@ -104,6 +104,18 @@ V1 translates events with matching semantics at `compat/v1/events.ts`. Legacy me
 
 SSE reconnects with bounded backoff and reconciles sessions, pending interactions and active transcript state after recovery. Polling continues when SSE is unavailable and while busy even with a connected stream, so missed events cannot strand a prompt. Retry state keeps safety polling alive until execution resumes or completes. Completion notifications, review selections and conversation mode use provider-derived state on both contracts.
 
+## Connector Service Management (Cloud Link)
+
+A paired device manages the connector's exposed services directly over the tunnel, on the `server_url` origin (never the `:8443` services origin), using the same HTTP Basic credential as OpenCode traffic (`username = device_id`, `password = device_secret`). The control plane is not involved.
+
+- `GET /_cloudlink/services` → `{ services: [Service, ...] }`
+- `PUT /_cloudlink/services/{id}` → `201` created / `200` replaced, body is the bare `Service` (only `path` and `target` required), response `{ service: Service }` with stored canonical values
+- `DELETE /_cloudlink/services/{id}` → `204`
+
+`Service` is `{ id, name, path, target, enabled, access: 'private' | 'public', strip_prefix }`; omitted PUT fields default to `name = id`, `enabled = false`, `access = 'private'`, `strip_prefix = true`. Errors are `400` invalid, `401` unauthorized, `404` unknown id, `405` method, `413` too large, `415` wrong content type; the app shows the connector's message and never branches on its wording. The list reflects connector-side (tray/CLI) edits, so the Settings surface re-fetches on open.
+
+Client code and the validation mirror live in `lib/opencode/client/management.ts`; the provider exposes it through the connection domain (`useConnection().services`). See the connector's frozen `protocol/README.md` → "Service management API (device-authenticated)".
+
 ## Compatibility-only Features And Validation
 
 Sharing, archive/restore, title summarization, general config writes, persistent MCP enablement, worktree reset and LSP/formatter diagnostics remain available through v1 compatibility. Capability flags hide these on v2, and their service mutations reject unsupported calls.

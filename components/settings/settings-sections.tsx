@@ -7,6 +7,7 @@ export { VoiceSection } from './sections/voice-section';
 export { LanguageSection } from './sections/language-section';
 export { EditorSection } from './sections/editor-section';
 export { GeneralSection } from './sections/general-section';
+export { ServicesSection } from './sections/services-section';
 export { UpdateSection } from './sections/update-section';
 export { SupportSection } from './sections/support-section';
 export { PermissionsSection } from './sections/permissions-section';

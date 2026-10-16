@@ -21,6 +21,7 @@ import {
   GeneralSection,
   NotificationsSection,
   PermissionsSection,
+  ServicesSection,
   SupportSection,
   UpdateSection,
   VoiceSection,
@@ -58,7 +59,7 @@ export default function SettingsScreen() {
   const { availableModels, availableProviders, configuredProviders, currentConfig, providerAccounts, providerAuthMethodsById, removeProvider } = useCapabilities();
   const { addMcpServer, mcpOAuth, connectMcpServer, disconnectMcpServer, mcpStatuses, refreshMcpServers, setMcpServerEnabled } = useMcp();
   const { chatPreferences, updateChatPreferences } = usePreferences();
-  const { connect, connection, serverCapabilities, connectSetup } = useConnection();
+  const { connect, connection, serverCapabilities, connectSetup, services: serviceManagement, settings } = useConnection();
   const { diagnostics, eventStreamStatus, refreshDiagnostics } = useDiagnostics();
   const { approvals } = useApprovals();
   const { startOnboardingReview } = useOnboarding();
@@ -156,6 +157,14 @@ export default function SettingsScreen() {
       summary: `${t('settings:connect.title')} · ${connectSetup.initialization === 'loading' ? t('settings:connect.progress.idle') : connectSetup.entitled ? t('common:labels.active') : t('settings:subscription.inactive')}`,
       onPress: () => setOpenSection('subscription'),
       render: () => <SubscriptionSection setup={connectSetup} palette={palette} onManageMachines={() => { setOpenSection(undefined); router.push('/pair?mode=manage'); }} />,
+    }] : []),
+    ...(serviceManagement.available ? [{
+      id: 'services',
+      icon: 'server-outline' as const,
+      title: t('settings:screen.categories.services'),
+      summary: t('settings:screen.summaries.services', { value: serviceManagement.services.length }),
+      onPress: () => { setOpenSection('services'); void serviceManagement.refresh(); },
+      render: () => <ServicesSection api={serviceManagement} serverUrl={settings.serverUrl} palette={palette} />,
     }] : []),
     {
       id: 'ai',

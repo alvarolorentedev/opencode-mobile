@@ -9,7 +9,8 @@
       "appearance": "表示",
       "support": "サポート",
       "permissions": "承認",
-      "subscription": "サブスクリプション"
+      "subscription": "サブスクリプション",
+      "services": "サービス"
     },
     "summaries": {
       "configuredCount": "{{value}} 件設定済み",
@@ -17,7 +18,8 @@
       "replyPlaybackOff": "返信の再生オフ",
       "advanced": "エディター、一般、MCPサーバー、診断",
       "support": "アプリを評価、フィードバック、サポート",
-      "permissions": "{{value}} 件保存済み"
+      "permissions": "{{value}} 件保存済み",
+      "services": "{{value}} 件公開"
     }
   },
   "support": {
@@ -477,5 +479,51 @@
     "restoreDescription": "購入済みの商品を復元",
     "machines": "マシン",
     "machinesDescription": "接続済みのマシンを表示・管理"
+  },
+  "services": {
+    "title": "公開サービス",
+    "description": "コネクタがトンネル経由で公開するサービスを追加・置換・削除します。変更はすぐに反映されます。",
+    "add": "サービスを追加",
+    "addTitle": "新しいサービス",
+    "editTitle": "サービスを編集",
+    "empty": "公開されているサービスはまだありません。",
+    "capacity": "公開できるサービスは最大 {{max}} 件です。",
+    "saved": "{{name}} を保存しました。",
+    "saveFailed": "このサービスを保存できませんでした。",
+    "removed": "{{name}} を削除しました。",
+    "removeFailed": "このサービスを削除できませんでした。",
+    "removeTitle": "{{name}} を削除しますか？",
+    "removeMessage": "コネクタはこのパスのルーティングを直ちに停止します。",
+    "removeConfirm": "{{name}} を削除しますか？コネクタはこのパスのルーティングを直ちに停止します。",
+    "copyLink": "リンクをコピー",
+    "linkCopied": "サービスのリンクをコピーしました。",
+    "linkUnavailable": "このサービスのリンクを作成できませんでした。",
+    "enabledHint": "このパスの通信をトンネル経由でルーティングします。",
+    "stripPrefixHint": "転送前に一致したパスのプレフィックスを削除します。",
+    "fields": {
+      "id": "ID",
+      "name": "名前",
+      "path": "パス",
+      "target": "ターゲット",
+      "access": "アクセス",
+      "enabled": "有効",
+      "stripPrefix": "パスプレフィックスを削除"
+    },
+    "access": {
+      "private": "プライベート",
+      "public": "パブリック"
+    },
+    "errors": {
+      "required": "この項目は必須です。",
+      "idFormat": "小文字・数字・ハイフンを1〜32文字で使用してください。",
+      "nameLength": "64文字以内で入力してください。",
+      "pathRoot": "パスをサーバーのルートにはできません。",
+      "pathReserved": "/_cloudlink プレフィックスは予約されています。",
+      "pathFormat": "クエリ・フラグメント・エンコードを含まない /test/api のようなパスを使用してください。",
+      "targetFormat": "127.0.0.1:3000 のようなアドレスを使用してください。",
+      "targetLoopback": "ターゲットはループバック（127.0.0.1 または ::1）である必要があります。",
+      "targetReserved": "ポート 8443 は公開サービス用に予約されています。",
+      "targetPort": "1024〜65535 の非特権ポートを使用してください。"
+    }
   }
 }

@@ -110,6 +110,16 @@ let connectionPassword = process.env.FAKE_OPENCODE_PASSWORD || '';
 let pairingCode;
 let pairingToken;
 let pairingSequence = 0;
+// Device-authenticated connector management surface. `deviceCredentials` mirrors
+// the connector's paired-device Basic credentials; `managedServices` is the
+// exposed-service list the `/_cloudlink/services` API reads and mutates.
+const deviceCredentials = new Map();
+let managedServices = [];
+
+function sendText(res, statusCode, body) {
+  res.writeHead(statusCode, { 'Content-Type': 'text/plain; charset=utf-8', 'Access-Control-Allow-Origin': '*' });
+  res.end(body);
+}
 
 const server = http.createServer(async (req, res) => {
   const requestUrl = new URL(req.url || '/', `http://${req.headers.host || `127.0.0.1:${port}`}`);
@@ -172,6 +182,8 @@ const server = http.createServer(async (req, res) => {
       connectionPassword = body?.password ?? process.env.FAKE_OPENCODE_PASSWORD ?? '';
       pairingCode = undefined;
       pairingToken = undefined;
+      deviceCredentials.clear();
+      managedServices = [];
       sendJson(res, 200, { data: { scenario: state.scenario } });
       return;
     }
@@ -188,6 +200,12 @@ const server = http.createServer(async (req, res) => {
       sendJson(res, 200, { code: pairingCode.value, expires_in: 300 });
       return;
     }
+    if (req.method === 'POST' && pathname === '/__control/device') {
+      const body = await readJson(req);
+      if (body?.device_id) deviceCredentials.set(body.device_id, body.device_secret ?? '');
+      sendJson(res, 200, { data: { devices: [...deviceCredentials.keys()] } });
+      return;
+    }
     if (req.method === 'GET' && pathname.startsWith('/auth/connect/')) {
       if (!pairingCode || pairingCode.expiresAt <= Date.now() || pathname !== `/auth/connect/${pairingCode.value}`) {
         sendJson(res, 401, { _tag: 'UnauthorizedError', message: 'Pairing link expired or already used' });
@@ -198,6 +216,55 @@ const server = http.createServer(async (req, res) => {
       sendJson(res, 200, { token: pairingToken });
       return;
     }
+    // Device-authenticated connector management. Served on the OpenCode origin
+    // (never the `:8443` services origin) and reachable only with a paired
+    // device credential, so it is handled before the OpenCode password gate.
+    if (pathname === '/_cloudlink/services' || pathname.startsWith('/_cloudlink/services/')) {
+      const rawAuth = req.headers.authorization || '';
+      const basic = rawAuth.startsWith('Basic ') ? Buffer.from(rawAuth.slice(6), 'base64').toString('utf8') : '';
+      const separator = basic.indexOf(':');
+      const user = separator >= 0 ? basic.slice(0, separator) : '';
+      const secret = separator >= 0 ? basic.slice(separator + 1) : '';
+      const deviceOk = Boolean(user) && deviceCredentials.get(user) === secret;
+      const operatorOk = Boolean(connectionPassword) && basic === `opencode:${connectionPassword}`;
+      if (!deviceOk && !operatorOk) return sendText(res, 401, 'device credential required');
+      const id = pathname === '/_cloudlink/services' ? undefined : decodeURIComponent(pathname.slice('/_cloudlink/services/'.length));
+      if (req.method === 'GET' && id === undefined) return sendJson(res, 200, { services: managedServices });
+      if (req.method === 'PUT' && id) {
+        const body = await readJson(req) || {};
+        const canonicalPath = typeof body.path === 'string' ? body.path.replace(/\/+$/, '') : '';
+        const target = typeof body.target === 'string' ? body.target : '';
+        if (!canonicalPath || !canonicalPath.startsWith('/') || canonicalPath.includes('%') || canonicalPath.includes('?') || canonicalPath.includes('#')) {
+          return sendText(res, 400, 'invalid service: path must be an absolute path');
+        }
+        if (!/^(?:127\.0\.0\.1|\[::1\]):(\d+)$/.test(target)) return sendText(res, 400, 'invalid service: target must be loopback');
+        const port = Number(target.slice(target.lastIndexOf(':') + 1));
+        if (port < 1024 || port > 65_535) return sendText(res, 400, 'invalid service: target port must be 1024-65535');
+        const created = !managedServices.some((service) => service.id === id);
+        if (created && managedServices.length >= 16) return sendText(res, 400, 'invalid service: at most 16 services are allowed');
+        if (managedServices.some((service) => service.id !== id && service.path === canonicalPath)) return sendText(res, 400, 'invalid service: path must be unique');
+        const service = {
+          id,
+          name: typeof body.name === 'string' && body.name.trim() ? body.name.trim() : id,
+          path: canonicalPath,
+          target,
+          enabled: body.enabled === true,
+          access: body.access === 'public' ? 'public' : 'private',
+          strip_prefix: body.strip_prefix !== false,
+        };
+        managedServices = managedServices.filter((entry) => entry.id !== id).concat(service);
+        return sendJson(res, created ? 201 : 200, { service });
+      }
+      if (req.method === 'DELETE' && id) {
+        if (!managedServices.some((service) => service.id === id)) return sendText(res, 404, 'unknown service');
+        managedServices = managedServices.filter((service) => service.id !== id);
+        res.writeHead(204, { 'Access-Control-Allow-Origin': '*' });
+        res.end();
+        return;
+      }
+      return sendText(res, 405, 'method not allowed');
+    }
+
     if (connectionPassword) {
       const valid = [connectionPassword, pairingToken].filter(Boolean).some((secret) => req.headers.authorization === `Basic ${Buffer.from(`opencode:${secret}`).toString('base64')}`);
       if (!valid) { sendJson(res, 401, { _tag: 'UnauthorizedError', message: 'Authentication required' }); return; }

@@ -9,7 +9,8 @@
       "appearance": "Appearance",
       "support": "Support",
       "permissions": "Approvals",
-      "subscription": "Subscription"
+      "subscription": "Subscription",
+      "services": "Services"
     },
     "summaries": {
       "configuredCount": "{{value}} configured",
@@ -17,7 +18,8 @@
       "replyPlaybackOff": "Reply playback off",
       "advanced": "Editor, general, MCP servers and diagnostics",
       "support": "Rate the app, send feedback, get help",
-      "permissions": "{{value}} saved"
+      "permissions": "{{value}} saved",
+      "services": "{{value}} exposed"
     }
   },
   "support": {
@@ -477,5 +479,51 @@
     "restoreDescription": "Recover an existing purchase",
     "machines": "Machines",
     "machinesDescription": "View and manage connected machines"
+  },
+  "services": {
+    "title": "Exposed services",
+    "description": "Add, replace and remove the service paths your connector exposes through its tunnel. Changes apply live.",
+    "add": "Add service",
+    "addTitle": "New service",
+    "editTitle": "Edit service",
+    "empty": "No services exposed yet.",
+    "capacity": "You can expose up to {{max}} services.",
+    "saved": "Saved {{name}}.",
+    "saveFailed": "Could not save this service.",
+    "removed": "Removed {{name}}.",
+    "removeFailed": "Could not remove this service.",
+    "removeTitle": "Remove {{name}}?",
+    "removeMessage": "The connector stops routing this path immediately.",
+    "removeConfirm": "Remove {{name}}? The connector stops routing this path immediately.",
+    "copyLink": "Copy link",
+    "linkCopied": "Service link copied.",
+    "linkUnavailable": "Could not build a link for this service.",
+    "enabledHint": "Route traffic for this path through the tunnel.",
+    "stripPrefixHint": "Remove the matched path prefix before forwarding.",
+    "fields": {
+      "id": "ID",
+      "name": "Name",
+      "path": "Path",
+      "target": "Target",
+      "access": "Access",
+      "enabled": "Enabled",
+      "stripPrefix": "Strip path prefix"
+    },
+    "access": {
+      "private": "Private",
+      "public": "Public"
+    },
+    "errors": {
+      "required": "This field is required.",
+      "idFormat": "Use 1-32 lowercase letters, digits or hyphens.",
+      "nameLength": "Use 64 characters or fewer.",
+      "pathRoot": "The path cannot be the server root.",
+      "pathReserved": "The /_cloudlink prefix is reserved.",
+      "pathFormat": "Use a path like /test/api without query, fragment or encoding.",
+      "targetFormat": "Use an address like 127.0.0.1:3000.",
+      "targetLoopback": "The target must be loopback (127.0.0.1 or ::1).",
+      "targetReserved": "Port 8443 is reserved for exposed services.",
+      "targetPort": "Use an unprivileged port between 1024 and 65535."
+    }
   }
 }

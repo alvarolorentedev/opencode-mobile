@@ -23,6 +23,7 @@ import type {
 } from '@/lib/opencode/types';
 import type {
   ConnectionFailureKind,
+  ManagedService,
   OpencodeConnectionSettings,
   PendingPermission,
   PendingQuestion,
@@ -30,6 +31,7 @@ import type {
   PendingQuestionRequest,
   PendingPermissionRequest,
   SavedPermissionRule,
+  ServiceInput,
 } from '@/lib/opencode/client';
 import type { Diagnostics } from '@/providers/services/diagnostics-service';
 import type { SessionMessageRecord, TranscriptEntry } from '@/lib/opencode/format';
@@ -166,6 +168,19 @@ export type OnboardingContextValue = {
   stopOnboardingReview: () => void;
 };
 
+// Remote connector service management. Folded into the connection domain so the
+// provider keeps a single context entry for it; consumers read `services` and
+// call the actions it exposes. `available` is false for manual connections.
+export type ServiceManagementApi = {
+  services: ManagedService[];
+  available: boolean;
+  isRefreshing: boolean;
+  isSaving: boolean;
+  refresh: () => Promise<void>;
+  save: (id: string, input: ServiceInput) => Promise<ManagedService>;
+  remove: (id: string) => Promise<void>;
+};
+
 export type ConnectionContextValue = {
   connectionProfiles: import('@/providers/use-connection-profiles').ConnectionProfilesState;
   connectSetup: import('@/providers/use-connect-state').ConnectSetup;
@@ -178,6 +193,7 @@ export type ConnectionContextValue = {
   connection: ConnectionState;
   serverCapabilities: ServerCapabilities;
   connect: () => Promise<ConnectionState>;
+  services: ServiceManagementApi;
 };
 
 export type DiagnosticsContextValue = {

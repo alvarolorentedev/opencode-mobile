@@ -30,6 +30,26 @@ export {
   getServerBase,
 } from './client/url';
 export { createAuthHeader, getRequestHeaders, createScopedFetch, createPrefixFetch, fetchConnection } from './client/fetch';
+export {
+  MAX_MANAGED_SERVICES,
+  SERVICES_PORT,
+  ServiceManagementError,
+  buildServiceShareUrl,
+  canonicalizeServicePath,
+  canonicalizeServiceTarget,
+  deleteManagedService,
+  getServiceNameError,
+  isValidServiceId,
+  listManagedServices,
+  prepareServiceDraft,
+  putManagedService,
+  type ManagedService,
+  type ServiceAccess,
+  type ServiceDraft,
+  type ServiceDraftErrors,
+  type ServiceFieldError,
+  type ServiceInput,
+} from './client/management';
 export { getConnectionError, getConnectionErrorMessage, isContractMismatchError, isRetryableCloudLinkStartupError, classifyConnectionFailure, isRetryableConnectionFailure, isAuthConnectionFailure, type ConnectionFailureKind } from './client/errors';
 export { detectServerContract, probeConnection, type ContractProbeResult, type ConnectionProbeResult } from './client/probe';
 export {

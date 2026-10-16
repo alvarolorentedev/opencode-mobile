@@ -9,7 +9,8 @@
       "appearance": "Apariencia",
       "support": "Soporte",
       "permissions": "Aprobaciones",
-      "subscription": "Suscripción"
+      "subscription": "Suscripción",
+      "services": "Servicios"
     },
     "summaries": {
       "configuredCount": "{{value}} configurados",
@@ -17,7 +18,8 @@
       "replyPlaybackOff": "Reproducción de respuestas desactivada",
       "advanced": "Editor, general, servidores MCP y diagnósticos",
       "support": "Valora la app, envía comentarios, obtén ayuda",
-      "permissions": "{{value}} guardados"
+      "permissions": "{{value}} guardados",
+      "services": "{{value}} expuestos"
     }
   },
   "support": {
@@ -477,5 +479,51 @@
     "restoreDescription": "Recuperar una compra existente",
     "machines": "Equipos",
     "machinesDescription": "Ver y gestionar equipos conectados"
+  },
+  "services": {
+    "title": "Servicios expuestos",
+    "description": "Añade, reemplaza y elimina los servicios que tu conector expone por el túnel. Los cambios se aplican al instante.",
+    "add": "Añadir servicio",
+    "addTitle": "Nuevo servicio",
+    "editTitle": "Editar servicio",
+    "empty": "Aún no hay servicios expuestos.",
+    "capacity": "Puedes exponer hasta {{max}} servicios.",
+    "saved": "{{name}} guardado.",
+    "saveFailed": "No se pudo guardar este servicio.",
+    "removed": "{{name}} eliminado.",
+    "removeFailed": "No se pudo eliminar este servicio.",
+    "removeTitle": "¿Eliminar {{name}}?",
+    "removeMessage": "El conector deja de enrutar esta ruta de inmediato.",
+    "removeConfirm": "¿Eliminar {{name}}? El conector deja de enrutar esta ruta de inmediato.",
+    "copyLink": "Copiar enlace",
+    "linkCopied": "Enlace del servicio copiado.",
+    "linkUnavailable": "No se pudo crear un enlace para este servicio.",
+    "enabledHint": "Enruta el tráfico de esta ruta por el túnel.",
+    "stripPrefixHint": "Quita el prefijo de ruta coincidente antes de reenviar.",
+    "fields": {
+      "id": "ID",
+      "name": "Nombre",
+      "path": "Ruta",
+      "target": "Destino",
+      "access": "Acceso",
+      "enabled": "Activado",
+      "stripPrefix": "Quitar prefijo de ruta"
+    },
+    "access": {
+      "private": "Privado",
+      "public": "Público"
+    },
+    "errors": {
+      "required": "Este campo es obligatorio.",
+      "idFormat": "Usa de 1 a 32 letras minúsculas, dígitos o guiones.",
+      "nameLength": "Usa 64 caracteres o menos.",
+      "pathRoot": "La ruta no puede ser la raíz del servidor.",
+      "pathReserved": "El prefijo /_cloudlink está reservado.",
+      "pathFormat": "Usa una ruta como /test/api sin consulta, fragmento ni codificación.",
+      "targetFormat": "Usa una dirección como 127.0.0.1:3000.",
+      "targetLoopback": "El destino debe ser loopback (127.0.0.1 o ::1).",
+      "targetReserved": "El puerto 8443 está reservado para servicios expuestos.",
+      "targetPort": "Usa un puerto no privilegiado entre 1024 y 65535."
+    }
   }
 }
