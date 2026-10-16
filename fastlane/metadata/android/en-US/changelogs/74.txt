@@ -1,0 +1,4 @@
+- Manage your computer's exposed services (paths, targets, access) from Cloud Link settings.
+- Dismiss bottom sheets by dragging their header down.
+- Smoother iOS composer growth and terminal keyboard behavior.
+- Improved Cloud Link connection recovery and error messages.
