@@ -1,0 +1,1 @@
+- Older chats are no longer hidden: workspace lists now load every page of sessions, not just the most recent.
