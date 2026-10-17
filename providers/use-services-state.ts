@@ -46,6 +46,11 @@ export function useServicesState({
     try {
       const next = await listManagedServices(settings);
       if (scopeGenerationRef.current === generation) setState({ scope: scopeKey, services: next });
+    } catch {
+      // A rejected list (for example a connector that rejects the device
+      // credentials) must not surface as an unhandled error from a background
+      // refresh; keep the section usable and show no stale entries.
+      if (scopeGenerationRef.current === generation) setState({ scope: scopeKey, services: [] });
     } finally {
       setIsRefreshing(false);
     }
