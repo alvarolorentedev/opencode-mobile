@@ -60,7 +60,7 @@ async function events(page) { return page.evaluate(() => globalThis.__connectSto
 async function openSubscriptionSettings(page) {
   await page.addInitScript(() => localStorage.setItem('opencode-mobile.onboarding-version', JSON.stringify({ version: 1 })));
   await page.goto('/settings');
-  await page.getByRole('button', { name: /^Subscription\./ }).click();
+  await page.getByRole('button', { name: /^Cloud Link/ }).click();
   await expect(page.getByTestId('subscription-section')).toBeVisible();
 }
 async function assertNoStoredSecrets(page) {
@@ -232,7 +232,7 @@ for (const theme of ['dark', 'light']) {
     expect(runtimeErrors).toEqual([]);
     await page.getByTestId('settings-section-overlay').getByText('Close', { exact: true }).click();
     await expect(page.getByTestId('subscription-section')).toHaveCount(0);
-    await page.getByRole('button', { name: /^Subscription\./ }).click();
+    await page.getByRole('button', { name: /^Cloud Link/ }).click();
     await page.getByTestId('subscription-machines').click();
     await expect(page).toHaveURL(/\/pair\?mode=manage$/);
     await expect(page.getByTestId('connect-refresh-machines')).toBeVisible();
@@ -603,7 +603,7 @@ test('live renewal keeps one active connection and the selected session across p
   await expect(row).toContainText('Active');
   await expect(page.getByTestId('connection-row-current')).toHaveCount(0);
   await overlay.getByText('Close', { exact: true }).click();
-  await page.getByRole('button', { name: /^Subscription\./ }).click();
+  await page.getByRole('button', { name: /^Cloud Link/ }).click();
   state.paidThrough += 3600000;
   await page.getByTestId('connect-restore').click();
   await expect(page.getByTestId('connect-restore')).toBeEnabled();
@@ -745,7 +745,7 @@ test('invalid and untrusted QR links can be replaced with a valid subscriber lin
   expect(state.pairClaims).toBe(1); expect(await events(page)).not.toContain('purchase');
 });
 
-test('Settings has one creation entry and both methods lead through the shared chooser', async ({ page }) => {
+test('Settings has one creation entry with Scan QR, Manual and Cloud Link methods', async ({ page }) => {
   await storeFixture(page); await mockControlPlane(page);
   await page.addInitScript(() => {
     localStorage.setItem('opencode-mobile.onboarding-version', JSON.stringify({ version: 1 }));
@@ -758,8 +758,10 @@ test('Settings has one creation entry and both methods lead through the shared c
   await expect(page.getByTestId('connection-pair-connect')).toHaveCount(0);
   await expect(page.getByTestId('connection-row-current')).toBeVisible();
   await page.getByTestId('connection-add-button').click();
+  await expect(page.getByTestId('connection-method-scan')).toHaveAttribute('role', 'button');
   await expect(page.getByTestId('connection-method-connect')).toHaveAttribute('role', 'button');
   await expect(page.getByTestId('connection-method-manual')).toHaveAttribute('role', 'button');
+  await expect(page.getByText('Local QR scanning is available in the iOS and Android app.')).toBeVisible();
   await page.screenshot({ path: '/tmp/opencode-add-connection-chooser.png' });
   await page.getByTestId('connection-method-connect').click();
   await showGuidedSubscription(page);
@@ -900,7 +902,7 @@ test('a paired device adds, edits and removes an exposed service', async ({ page
   await expect(page).toHaveURL(/\/workspace$/, { timeout: 30_000 });
 
   await page.getByRole('tab', { name: 'Settings' }).click();
-  await page.getByRole('button', { name: /^Services\./ }).click();
+  await page.getByRole('button', { name: /^Cloud Link/ }).click();
   await expect(page.getByTestId('services-section')).toBeVisible();
   await expect(page.getByTestId('service-api')).toHaveCount(0);
 

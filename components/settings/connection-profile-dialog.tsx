@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import Constants from 'expo-constants';
 import { useTranslation } from 'react-i18next';
-import { Keyboard, KeyboardAvoidingView, Modal, Platform, ScrollView, StyleSheet, View } from 'react-native';
+import { KeyboardAvoidingView, Modal, Platform, ScrollView, StyleSheet, View } from 'react-native';
 import { Appbar, Button, HelperText, Text, TextInput as PaperInput } from 'react-native-paper';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -24,11 +24,12 @@ export type ConnectionProfileFormValues = {
 };
 
 // The form owns presentation; probing, pairing and profile persistence stay in the provider.
-export function ConnectionProfileDialog({ title, submitLabel, showName = true, initial, onSubmit, onDismiss, onBusyChange }: {
+export function ConnectionProfileDialog({ title, submitLabel, showName = true, initial, startScanning = false, onSubmit, onDismiss, onBusyChange }: {
   title: string;
   submitLabel: string;
   showName?: boolean;
   initial?: Partial<ConnectionProfileFormValues>;
+  startScanning?: boolean;
   onSubmit: (values: ConnectionProfileFormValues) => Promise<void> | void;
   onDismiss: () => void;
   onBusyChange?: (busy: boolean) => void;
@@ -38,6 +39,7 @@ export function ConnectionProfileDialog({ title, submitLabel, showName = true, i
   const { t } = useTranslation();
   const { connectionProfiles } = useConnection();
   const palette = Colors[useColorScheme() ?? 'light'];
+  const native = (Platform.OS === 'ios' || Platform.OS === 'android') && !Constants.expoConfig?.extra?.foss;
   const [name, setName] = useState(initial?.name ?? '');
   const [serverUrl, setServerUrl] = useState(initial?.serverUrl ?? '');
   const [username, setUsername] = useState(initial?.username ?? '');
@@ -46,7 +48,7 @@ export function ConnectionProfileDialog({ title, submitLabel, showName = true, i
   const [probe, setProbe] = useState<ConnectionProbeResult>();
   const [customUsername, setCustomUsername] = useState(Boolean(initial?.username));
   const [showPassword, setShowPassword] = useState(false);
-  const [scanning, setScanning] = useState(false);
+  const [scanning, setScanning] = useState(() => startScanning && native);
   const [scanAttempt, setScanAttempt] = useState(0);
   const [error, setError] = useState<string>();
   const [busy, setBusy] = useState<'probe' | 'save' | 'pair'>();
@@ -56,7 +58,6 @@ export function ConnectionProfileDialog({ title, submitLabel, showName = true, i
   useEffect(() => () => { request.current += 1; controller.current?.abort(); }, []);
   useEffect(() => { onBusyChange?.(Boolean(busy)); }, [busy, onBusyChange]);
   const locked = busy === 'save' || busy === 'pair';
-  const native = (Platform.OS === 'ios' || Platform.OS === 'android') && !Constants.expoConfig?.extra?.foss;
   const v1 = probe?.status === 'detected' && probe.contract === 'v1';
   const v2 = probe?.status === 'detected' && probe.contract === 'v2';
 
@@ -146,11 +147,6 @@ export function ConnectionProfileDialog({ title, submitLabel, showName = true, i
             <TextInput mode="outlined" label={t('settings:connection.fields.serverUrl')} testID="connection-profile-url-input" value={serverUrl}
               onChangeText={(value) => { setServerUrl(value); setProbe(undefined); setError(undefined); }} disabled={Boolean(busy)} autoFocus
               autoCapitalize="none" autoCorrect={false} keyboardType="url" placeholder="http://192.168.1.10:49374" />
-            {native && showName && initial?.name === undefined ? <>
-              <Button testID="connection-local-scan" mode="outlined" icon="qrcode-scan" disabled={Boolean(busy)} onPress={() => { Keyboard.dismiss(); setError(undefined); setScanning(true); }}>{t('settings:connection.setup.scan')}</Button>
-              <Text style={{ color: palette.muted }}>{t('settings:connection.setup.pairCommand')}</Text>
-              <Text style={{ color: palette.muted }}>{t('settings:connection.setup.sameNetwork')}</Text>
-            </> : null}
           </> : <>
             <View style={styles.addressRow}>
               <Text style={styles.address} numberOfLines={2}>{serverUrl}</Text>

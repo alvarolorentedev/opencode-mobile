@@ -80,6 +80,7 @@
     "reject": "Ablehnen",
     "unknownFile": "Unbekannte Datei",
     "noLineChanges": "Keine Zeilenänderungen verfügbar.",
+    "previewUnavailable": "Für diese Datei ist keine Diff-Vorschau verfügbar.",
     "hiddenLines_one": "... {{count}} unveränderte Zeile",
     "hiddenLines_many": "... {{count}} unveränderte Zeilen",
     "hiddenLines_other": "... {{count}} unveränderte Zeilen",

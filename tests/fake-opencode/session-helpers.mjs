@@ -1,4 +1,4 @@
-import { completedTask, permissionRequest, questionForm } from './fixtures.mjs';
+import { completedTask, permissionRequest, questionForm, toNativeFileDiffs } from './fixtures.mjs';
 import { resolveProject } from './state.mjs';
 export const FAKE_MODEL = { id: 'openai/gpt-4.1-mini', providerID: 'openai' };
 export const ASSISTANT_USAGE = { input: 1200, output: 240, reasoning: 0, cache: { read: 800, write: 100 } };
@@ -35,7 +35,8 @@ export function createSessionHelpers({ getNow, getState, emitEvent }) {
     const state = getState();
     const user = getMessages(sessionID).filter((message) => message.type === 'user').at(-1);
     const previous = Object.keys(state.diffsByTurn[sessionID] || {}).length;
-    const { diff, todos, text } = completedTask(previous, promptText);
+    const { source, todos, text } = completedTask(previous, promptText);
+    const diff = toNativeFileDiffs([source]);
     if (user) { state.diffsByTurn[sessionID] ||= {}; state.diffsByTurn[sessionID][user.id] = diff; }
     state.todosBySession[sessionID] = todos; state.workspaceTaskCompleted = true;
     const assistant = createMessage(sessionID, 'assistant', { agent: 'build', model: getSession(sessionID)?.model || FAKE_MODEL, content: [{ type: 'text', text }, { type: 'tool', id: `todowrite-${getNow()}`, name: 'todowrite', time: { created: getNow(), completed: getNow() }, state: { status: 'completed', input: { todos }, content: [{ type: 'text', text: 'Plan updated' }] } }], snapshot: { start: `before-${user?.id}`, end: `after-${user?.id}`, files: diff.map((item) => item.file) } });

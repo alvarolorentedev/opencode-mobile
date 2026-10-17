@@ -2,6 +2,7 @@ import type { SessionInfo } from '@opencode/client';
 
 import { compareLabels } from '@/lib/compare-labels';
 import type { ScopedOpencodeClient } from '@/lib/opencode/client';
+import { toFileDiffs } from '@/lib/opencode/diff';
 import { listPendingPermissions, listPendingQuestions } from '@/lib/opencode/client/interactions';
 import type { NativeOpencodeApi } from '@/lib/opencode/client/types';
 import type { SessionMessageRecord } from '@/lib/opencode/format';
@@ -165,7 +166,10 @@ export function getSessionMessages(client: ScopedOpencodeClient, sessionId: stri
 export async function getSessionDiff(client: ScopedOpencodeClient, sessionId: string, messageId?: string, messages?: SessionMessageRecord[]) {
   const target = messageId ?? (messages ?? (await getSessionMessages(client, sessionId)).records).slice().reverse().find((record) => record.info.role === 'user')?.info.id;
   if (!target) return [];
-  return coalesceRead(client, `diff:${sessionId}:${target}`, async () => client.compatibility ? v1.getSessionDiff(client.compatibility, sessionId, target) : client.api!.session.diff({ sessionID: sessionId, from: target }));
+  return coalesceRead(client, `diff:${sessionId}:${target}`, async () =>
+    client.compatibility
+      ? v1.getSessionDiff(client.compatibility, sessionId, target)
+      : toFileDiffs(await client.api!.session.diff({ sessionID: sessionId, from: target })));
 }
 export async function getSessionTodos(client: ScopedOpencodeClient, sessionId: string) {
   return client.compatibility ? v1.getSessionTodos(client.compatibility, sessionId) : [];

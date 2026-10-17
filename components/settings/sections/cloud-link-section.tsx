@@ -1,13 +1,21 @@
 import { useTranslation } from 'react-i18next';
-import { Platform, StyleSheet, View } from 'react-native';
+import { Linking, Platform, StyleSheet, View } from 'react-native';
 import { ActivityIndicator, Button, HelperText, Icon, List, Text } from 'react-native-paper';
 
 import { ConnectSubscription } from '@/components/settings/connect-subscription';
+import { ServicesSection } from '@/components/settings/sections/services-section';
+import { CONNECT_LEARN_MORE_URL } from '@/lib/connect';
+import type { ServiceManagementApi } from '@/providers/opencode-provider-types';
 import type { ConnectSetup } from '@/providers/use-connect-state';
 import type { Palette } from './setting-rows';
 
-export function SubscriptionSection({ setup, palette, onManageMachines }: {
+// Consolidated Cloud Link surface: verified access status, store management,
+// owned machines, and the connector's exposed services. Services only exist for
+// a Cloud Link connection, so they live here instead of their own Settings row.
+export function CloudLinkSection({ setup, services, serverUrl, palette, onManageMachines }: {
   setup: ConnectSetup;
+  services?: ServiceManagementApi;
+  serverUrl?: string;
   palette: Palette;
   onManageMachines: () => void;
 }) {
@@ -22,7 +30,7 @@ export function SubscriptionSection({ setup, palette, onManageMachines }: {
   return <View testID="subscription-section" style={styles.section}>
     <View style={[styles.summary, { backgroundColor: palette.surfaceAlt }]}>
       <View style={styles.summaryHeader}>
-        <Icon source="crown-outline" size={28} color={palette.tint} />
+        <Icon source="cloud-outline" size={28} color={palette.tint} />
         <Text variant="titleMedium" style={[styles.name, { color: palette.text }]}>{t('settings:connect.title')}</Text>
         <View style={styles.status}>
           {setup.initialization === 'loading' ? <ActivityIndicator size="small" /> : <Icon source="circle" size={10} color={setup.entitled ? palette.success : palette.muted} />}
@@ -61,6 +69,12 @@ export function SubscriptionSection({ setup, palette, onManageMachines }: {
         titleStyle={{ color: palette.text }} descriptionStyle={{ color: palette.muted }} titleNumberOfLines={0} descriptionNumberOfLines={0} style={{ opacity: pending ? 0.45 : 1 }}
         left={(props) => <List.Icon {...props} icon="monitor" color={pending ? palette.muted : palette.tint} />} right={(props) => <List.Icon {...props} icon="chevron-right" color={palette.muted} />} />
     </View>
+
+    {services?.available && serverUrl ? <ServicesSection api={services} serverUrl={serverUrl} palette={palette} /> : null}
+
+    <List.Item testID="cloud-link-learn-more" accessibilityRole="button" onPress={() => void Linking.openURL(CONNECT_LEARN_MORE_URL).catch(() => undefined)}
+      title={t('settings:connect.learnMore')} titleStyle={{ color: palette.text }} titleNumberOfLines={0}
+      left={(props) => <List.Icon {...props} icon="information-outline" color={palette.tint} />} right={(props) => <List.Icon {...props} icon="open-in-new" color={palette.muted} />} />
   </View>;
 }
 

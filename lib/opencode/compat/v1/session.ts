@@ -4,6 +4,7 @@ import type { GlobalSession, Project } from '@/lib/opencode/types';
 import type { SessionMessageRecord } from '@/lib/opencode/format';
 import { requireData } from '@/providers/services/require-data';
 import { coalesceRead } from '@/lib/opencode/in-flight';
+import { toFileDiffs } from '@/lib/opencode/diff';
 
 export async function loadWorkspaceCatalog(catalogClient: OpencodeClient) {
   const [pathResponse, projectsResponse, currentProjectResponse] = await Promise.all([
@@ -125,7 +126,8 @@ export async function getSessionDiff(client: OpencodeClient, sessionId: string, 
   const messageID = targetMessageId;
   return coalesceRead(client, `diff:${sessionId}:${messageID}`, async () => {
     const response = await client.session.diff({ sessionID: sessionId, messageID });
-    return requireData(response.data, 'message diff request');
+    // V1 serves whole-file `before`/`after` contents, not a unified patch.
+    return toFileDiffs(requireData(response.data, 'message diff request'));
   });
 }
 

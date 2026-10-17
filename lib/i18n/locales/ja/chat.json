@@ -80,6 +80,7 @@
     "reject": "拒否",
     "unknownFile": "不明なファイル",
     "noLineChanges": "利用可能な行の変更はありません。",
+    "previewUnavailable": "このファイルの差分プレビューは利用できません。",
     "hiddenLines_one": "... {{count}}行の変更なし",
     "hiddenLines_many": "... {{count}}行の変更なし",
     "hiddenLines_other": "... {{count}}行の変更なし",

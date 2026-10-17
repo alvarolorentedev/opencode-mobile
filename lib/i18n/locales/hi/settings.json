@@ -10,7 +10,8 @@
       "support": "सहायता",
       "permissions": "स्वीकृतियाँ",
       "subscription": "सदस्यता",
-      "services": "सेवाएँ"
+      "services": "सेवाएँ",
+      "cloudLink": "Cloud Link"
     },
     "summaries": {
       "configuredCount": "{{value}} कॉन्फ़िगर किए गए",
@@ -385,6 +386,9 @@
     "accessUnavailable": "Access unavailable. Purchase or Restore to reactivate this machine.",
     "scanHint": "कनेक्ट करने के लिए अपने कंप्यूटर का QR कोड स्कैन करें।",
     "scanNewQr": "अपने कंप्यूटर पर नया QR कोड स्कैन करें",
+    "scanLocal": "QR कोड स्कैन करें",
+    "scanLocalHint": "एक ही नेटवर्क पर कंप्यूटर से कनेक्ट करें।",
+    "scanLocalUnavailable": "स्थानीय QR स्कैनिंग iOS और Android ऐप में उपलब्ध है।",
     "manual": "मैन्युअल",
     "manualHint": "अपने सर्वर का URL और क्रेडेंशियल दर्ज करें।",
     "nativeOnly": "Cloud Link iOS और Android ऐप में उपलब्ध है।",

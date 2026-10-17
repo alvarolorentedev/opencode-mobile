@@ -80,6 +80,7 @@
     "reject": "Reject",
     "unknownFile": "Unknown file",
     "noLineChanges": "No line changes available.",
+    "previewUnavailable": "Diff preview isn't available for this file.",
     "hiddenLines_one": "... {{count}} unchanged line",
     "hiddenLines_many": "... {{count}} unchanged lines",
     "hiddenLines_other": "... {{count}} unchanged lines",

@@ -234,6 +234,24 @@ npm run test:e2e:web
 
 A red e2e run is blocking. If a failure looks intermittent, rerun the failing test to confirm and harden it before pushing rather than pushing over a flaky check.
 
+### Local mirror for heavy checks
+
+The project root may live on an external or network drive. To speed up lint,
+typecheck, the `test:*` suites, and native builds, you may copy the working tree
+to a local temporary directory on this machine (for example under
+`/private/var/folders/...` or `$TMPDIR`).
+
+The project root on the (possibly remote) drive remains the single source of
+truth:
+
+- make every source edit in the project root, never in the mirror
+- sync the working tree (or at least the changed files) into the mirror before
+  running a check, and treat mirror output as read-only evidence
+- never commit, tag, or push from the mirror
+- when a check regenerates a committed file (for example `npm run gen:i18n`),
+  run the generator in the project root and commit the root copy, not the
+  mirror's
+
 For every release version increase, add or update
 `fastlane/metadata/android/en-US/changelogs/<android.versionCode>.txt` with
 concise user-facing release notes. The filename must match `android.versionCode`

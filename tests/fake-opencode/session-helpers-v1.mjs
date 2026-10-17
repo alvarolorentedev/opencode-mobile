@@ -1,4 +1,4 @@
-import { completedTask, permissionRequest, questionForm } from './fixtures.mjs';
+import { completedTask, permissionRequest, questionForm, toLegacyFileDiffs } from './fixtures.mjs';
 import { resolveProject } from './state-v1.mjs';
 
 export function createSessionHelpers({ getNow, getState, emitEvent }) {
@@ -80,7 +80,8 @@ export function createSessionHelpers({ getNow, getState, emitEvent }) {
     const userMessages = getMessages(sessionId).filter((message) => message.info.role === 'user');
     const latestUserMessage = userMessages.at(-1);
     const previousDiffs = userMessages.filter((message) => message.info.summary?.diffs).length;
-    const { diff, todos, text: assistantText } = completedTask(previousDiffs, promptText);
+    const { source, todos, text: assistantText } = completedTask(previousDiffs, promptText);
+    const diff = toLegacyFileDiffs([source]);
 
     if (latestUserMessage) {
       latestUserMessage.info.summary = { diffs: diff };

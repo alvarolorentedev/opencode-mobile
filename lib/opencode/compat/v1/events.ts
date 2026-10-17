@@ -1,5 +1,6 @@
 import type { GlobalEvent } from '@opencode-ai/sdk/v2/client';
 import type { OpencodeEvent } from '../../events';
+import { toFileDiffs } from '../../diff';
 import type { ProviderEventActions } from '@/providers/opencode-provider-events';
 
 export function dispatchCompatibilityEvent(event: GlobalEvent['payload'], actions: ProviderEventActions): void {
@@ -111,12 +112,15 @@ export function dispatchCompatibilityEvent(event: GlobalEvent['payload'], action
       return;
     case 'session.diff': {
       const sessionId = event.properties.sessionID;
+      // V1 serves whole-file `before`/`after` contents, not a unified patch, so
+      // normalize before the surface renders it.
+      const diffs = toFileDiffs(event.properties.diff);
       // When the surface is pinned to an earlier turn, an incoming latest-turn
       // diff must not overwrite it; refresh the selected turn instead.
-      if (event.properties.diff?.length > 0 && !actions.selectedDiffMessageBySessionRef.current[sessionId]) {
+      if (diffs.length > 0 && !actions.selectedDiffMessageBySessionRef.current[sessionId]) {
         actions.setDiffsBySession((current) => ({
           ...current,
-          [sessionId]: event.properties.diff,
+          [sessionId]: diffs,
         }));
       } else {
         actions.scheduleSessionRefresh(sessionId, { diff: true, delayMs: 50 });

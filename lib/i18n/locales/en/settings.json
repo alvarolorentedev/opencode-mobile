@@ -10,7 +10,8 @@
       "support": "Support",
       "permissions": "Approvals",
       "subscription": "Subscription",
-      "services": "Services"
+      "services": "Services",
+      "cloudLink": "Cloud Link"
     },
     "summaries": {
       "configuredCount": "{{value}} configured",
@@ -385,6 +386,9 @@
     "accessUnavailable": "Access unavailable. Purchase or Restore to reactivate this machine.",
     "scanHint": "Scan your computer’s QR code to connect.",
     "scanNewQr": "Scan the new QR code on your computer",
+    "scanLocal": "Scan QR code",
+    "scanLocalHint": "Connect to a computer on the same network.",
+    "scanLocalUnavailable": "Local QR scanning is available in the iOS and Android app.",
     "manual": "Manual",
     "manualHint": "Enter your server URL and credentials.",
     "nativeOnly": "Cloud Link is available in the iOS and Android app.",

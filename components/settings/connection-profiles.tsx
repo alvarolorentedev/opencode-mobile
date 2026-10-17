@@ -19,7 +19,7 @@ type Palette = typeof Colors.light;
 const CURRENT_CONNECTION_KEY = 'current';
 
 type DialogState =
-  | { mode: 'add' }
+  | { mode: 'add'; scan?: boolean }
   | { mode: 'edit-profile'; profile: ConnectionProfile; password: string }
   | { mode: 'edit-current' };
 
@@ -273,13 +273,14 @@ export function ConnectionProfiles({ palette, onManageConnect, onPair }: { palet
         </Text>
       ) : null}
       <OverlaySheet visible={choosing} title={t('settings:connection.addConnection')} onClose={() => setChoosing(false)} fitContent testID="connection-method-sheet">
-        <ConnectionMethodChooser onManual={() => { setChoosing(false); setDialog({ mode: 'add' }); }} onPair={() => { setChoosing(false); onPair?.(); }} />
+        <ConnectionMethodChooser onScan={() => { setChoosing(false); setDialog({ mode: 'add', scan: true }); }} onManual={() => { setChoosing(false); setDialog({ mode: 'add' }); }} onPair={() => { setChoosing(false); onPair?.(); }} />
       </OverlaySheet>
       {dialog ? (
         <ConnectionProfileDialog
           title={dialog.mode === 'add' ? t('settings:connection.addConnection') : t('settings:connection.editConnection')}
           submitLabel={dialog.mode === 'add' ? t('settings:connection.saveAndConnect') : t('common:actions.save')}
           showName={dialog.mode !== 'edit-current'}
+          startScanning={dialog.mode === 'add' && Boolean(dialog.scan)}
           initial={dialog.mode === 'add' ? undefined : dialog.mode === 'edit-current' ? {
             serverUrl: settings.serverUrl,
             username: settings.username,

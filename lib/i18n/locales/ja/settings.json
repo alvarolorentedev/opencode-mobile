@@ -10,7 +10,8 @@
       "support": "サポート",
       "permissions": "承認",
       "subscription": "サブスクリプション",
-      "services": "サービス"
+      "services": "サービス",
+      "cloudLink": "Cloud Link"
     },
     "summaries": {
       "configuredCount": "{{value}} 件設定済み",
@@ -385,6 +386,9 @@
     "accessUnavailable": "Access unavailable. Purchase or Restore to reactivate this machine.",
     "scanHint": "コンピューターのQRコードをスキャンして接続します。",
     "scanNewQr": "コンピューターに表示された新しいQRコードをスキャン",
+    "scanLocal": "QRコードをスキャン",
+    "scanLocalHint": "同じネットワーク上のコンピューターに接続します。",
+    "scanLocalUnavailable": "ローカルQRスキャンはiOSおよびAndroidアプリで利用できます。",
     "manual": "手動",
     "manualHint": "サーバーURLと認証情報を入力します。",
     "nativeOnly": "Cloud LinkはiOSとAndroidアプリで利用できます。",

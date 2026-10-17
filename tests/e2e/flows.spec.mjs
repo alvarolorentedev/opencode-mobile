@@ -660,6 +660,27 @@ test('files changed switches between turn, uncommitted, and branch diffs', async
   await expect(page.getByText('app/(tabs)/index.tsx', { exact: true })).toBeVisible();
 });
 
+test('v1 compatibility renders diff lines from before/after contents', async ({ page, request }) => {
+  await resetScenario(request, 'happy-path');
+  await openReadyChat(page);
+
+  await sendPrompt(page, 'Create a v1 compatibility diff');
+  await expect(page.getByText(/Finished:/).first()).toBeVisible({ timeout: 40_000 });
+
+  await page.getByTestId('chat-changes-chip').click();
+  const overlay = page.getByTestId('changes-overlay');
+  await expect(overlay.getByText('app/(tabs)/index.tsx', { exact: true })).toBeVisible();
+
+  // V1 serves whole-file `before`/`after` contents instead of a unified patch.
+  // The expanded preview must show the changed lines rather than a filename
+  // with an empty body.
+  await overlay.getByRole('button', { name: /app\/\(tabs\)\/index\.tsx/ }).click();
+  await expect(overlay.getByText('export default function OldScreen() {}', { exact: true })).toBeVisible();
+  await expect(overlay.getByText('export default function ChatLandingScreen() {', { exact: true })).toBeVisible();
+  await expect(overlay.getByText('  return null;', { exact: true })).toBeVisible();
+  await expect(overlay.getByText('No line changes available.', { exact: true })).toHaveCount(0);
+});
+
 test('permission requests unblock the agent flow', async ({ page, request }) => {
   await resetScenario(request, 'permission');
   await openReadyChat(page);

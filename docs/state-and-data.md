@@ -70,6 +70,8 @@ Primary fields:
 
 These are keyed by session ID and held in memory.
 
+`diffsBySession` holds normalized `FileDiff` entries. Both contracts pass through `lib/opencode/diff.ts` before they are stored, so a v1 `before`/`after` pair arrives with a rebuilt unified `patch` and the viewer renders the same line preview for either contract.
+
 Diff scope state:
 
 - `diffScopeBySession` records the selected Files Changed scope (`turn`, `uncommitted`, `branch`) per session; it defaults to `turn`

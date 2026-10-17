@@ -16,6 +16,9 @@ export function SessionDiffCard({ diff, expanded, onPress }: { diff: FileDiff; e
   const palette = Colors[colorScheme];
   const diffLines = useMemo(() => (expanded ? buildPatchDiff(diff.patch || '') : []), [diff.patch, expanded]);
   const diffBlocks = useMemo(() => (expanded ? buildCollapsedDiffBlocks(diffLines) : []), [diffLines, expanded]);
+  // A patch that yields no lines is a genuinely empty hunk. No patch at all
+  // means the server reported changes without content the viewer can render.
+  const emptyPreviewKey = diff.patch ? 'chat:cards.noLineChanges' : 'chat:cards.previewUnavailable';
 
   return (
     <View style={[styles.diffAccordion, { borderColor: palette.border }]}>
@@ -28,7 +31,7 @@ export function SessionDiffCard({ diff, expanded, onPress }: { diff: FileDiff; e
       <View style={styles.diffAccordionBody}>
         {expanded ? (
           <View style={styles.diffViewer}>
-            {diffBlocks.length === 0 ? <Text variant="bodySmall" style={{ color: palette.muted }}>{t('chat:cards.noLineChanges')}</Text> : diffBlocks.map((block, blockIndex) => {
+            {diffBlocks.length === 0 ? <Text variant="bodySmall" style={{ color: palette.muted }}>{t(emptyPreviewKey)}</Text> : diffBlocks.map((block, blockIndex) => {
               if (block.type === 'collapsed') {
                 return (
                   <View key={`${diff.file}-collapsed-${blockIndex}`} style={[styles.diffCollapsedRow, { backgroundColor: palette.background, borderColor: palette.border }]}>

@@ -27,14 +27,46 @@ export function modelCatalog(state) {
   }))];
 }
 
+// Whole-file fixtures behind each turn's diff. V2 serves the unified patch; V1
+// serves `before`/`after` contents, so each contract projects its own shape at
+// its boundary instead of sharing one.
+const diffFixtures = [
+  {
+    file: 'app/(tabs)/index.tsx',
+    status: 'modified',
+    additions: 6,
+    deletions: 1,
+    patch: '@@ -1,1 +1,3 @@\n-export default function OldScreen() {}\n+export default function ChatLandingScreen() {\n+  return null;\n}',
+    before: 'export default function OldScreen() {}\n',
+    after: 'export default function ChatLandingScreen() {\n  return null;\n}\n',
+  },
+  {
+    file: 'src/feature.ts',
+    status: 'modified',
+    additions: 1,
+    deletions: 1,
+    patch: '@@ -1,3 +1,3 @@\n export function feature() {\n-  return false;\n+  return true;\n}',
+    before: 'export function feature() {\n  return false;\n}\n',
+    after: 'export function feature() {\n  return true;\n}\n',
+  },
+];
+
+export function toNativeFileDiffs(fixtures) {
+  return fixtures.map(({ file, patch, additions, deletions, status }) => ({ file, patch, additions, deletions, status }));
+}
+
+export function toLegacyFileDiffs(fixtures) {
+  return fixtures.map(({ file, before, after, additions, deletions, status }) => ({ file, before, after, additions, deletions, status }));
+}
+
 export function completedTask(previous, promptText = '') {
-    const diff = previous === 0 ? [{ file: 'app/(tabs)/index.tsx', additions: 6, deletions: 1, status: 'modified', patch: '@@ -1,1 +1,3 @@\n-export default function OldScreen() {}\n+export default function ChatLandingScreen() {\n+  return null;\n+}' }] : [{ file: 'src/feature.ts', additions: 1, deletions: 1, status: 'modified', patch: '@@ -1,3 +1,3 @@\n export function feature() {\n-  return false;\n+  return true;\n }' }];
+    const source = diffFixtures[previous === 0 ? 0 : 1];
     const todos = [{ content: 'Validate session transcript', status: 'completed', priority: 'high' }, { content: 'Confirm fake server integration', status: 'completed', priority: 'medium' }];
     const markdownFixture = promptText === 'Render markdown regression fixture'
       ? '\n\n| Tool | Status | Notes | BuildVersion | ArtifactPath | Verification |\n| :---- | :----: | ----: | :------------ | :------------: | -------------: |\n| build | OK | 12s | 1.0.32 | artifacts/android-development-build.apk | passed-on-390px-viewport |\n| test | FAIL | flaky | 1.0.32 | tests/e2e/flows.spec.mjs | retried-after-failure |\n\n1. Verify the table formatting.\n2. Open the [Markdown reference](https://example.com/markdown-reference).\n\nInline code: `<text>`.'
       : '';
     const text = `Finished: ${promptText || 'task complete'}. Flow stayed stable against the fake OpenCode server.${markdownFixture}`;
-  return { diff, todos, text };
+  return { source, todos, text };
 }
 
 export function permissionRequest(id, sessionID) {

@@ -80,6 +80,7 @@
     "reject": "拒绝",
     "unknownFile": "未知文件",
     "noLineChanges": "没有可用的行更改。",
+    "previewUnavailable": "此文件没有可用的差异预览。",
     "hiddenLines_one": "... {{count}} 行未更改",
     "hiddenLines_many": "... {{count}} 行未更改",
     "hiddenLines_other": "... {{count}} 行未更改",

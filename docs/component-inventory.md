@@ -292,6 +292,7 @@ Responsibility:
 Responsibility:
 
 - render a structured diff (`FileDiff`/`VcsFileDiff`) using compact full-width rows with a left expansion chevron, filename, and green/red line totals; expanded previews wrap code within the sheet, using one old/new line-number gutter and existing collapsed-context blocks
+- show a preview-unavailable line when the server reported changes without exposing patch content, and a no-line-changes line when a patch produced no renderable hunks
 
 ### `DiffCard`
 
@@ -475,17 +476,20 @@ reply/request excerpts and step text while preserving titles, counts and status.
 
 ## Settings Components
 
-`connection-method-chooser.tsx` renders the shared Cloud Link/Manual choices and
-a learn-more link. `connection-setup-form.tsx` composes the chooser and existing
-manual profile form for onboarding and returning from pairing.
+`connection-method-chooser.tsx` renders the shared Scan QR code (local network),
+Manual, and Cloud Link choices in that order, plus a learn-more link.
+`connection-setup-form.tsx` composes the chooser and existing manual profile
+form for onboarding and returning from pairing; the scan choice opens the form
+directly in camera mode.
 `connect-onboarding.tsx` presents the four-step Cloud Link assistant (learn,
 computer setup, subscribe, pair), with shared illustration/heading/subheading
 spacing and pinned primary actions. Pair reuses the computer drawing beneath a
 thin transparent, theme-tinted corner frame outside the display. It owns only
 clipboard feedback; step and
 scanner visibility are local presentation state in `connect-pairing.tsx`.
-`connect-camera-gate.tsx` requests permission only after Scan QR code (and still
-serves manual local QR setup); denial returns to the illustrated Pair step.
+`connect-camera-gate.tsx` requests permission only after Scan QR code (including
+the Connection section's local Scan QR code choice); denial returns to the
+illustrated Pair step.
 `connect-pairing.tsx` retains the existing scanner, appbar options, link fallback
 and recovery overlays. Deep links bypass the assistant and camera gate. Returning
 subscribers start on Pair; native subscription verification and pairing remain in
@@ -496,11 +500,12 @@ Its assistant layout has a static single-offer summary (selection for multiple
 offers), native pricing at body size, inline recovery, and a Restore text link
 above Subscribe & continue. Other Settings/management callers retain their
 existing compact layout.
-`sections/subscription-section.tsx` renders the Cloud Link access summary,
-Subscription actions (native store management, offers when inactive, one Restore
-row), and a Machines shortcut to the existing management route. It uses the
-shared Settings overlay and provider state; it never opens the camera or starts
-a purchase merely by opening the section.
+`sections/cloud-link-section.tsx` renders the consolidated Cloud Link surface:
+the access summary, Subscription actions (native store management, offers when
+inactive, one Restore row), a Machines shortcut to the existing management
+route, the connector's exposed services when a Cloud Link connection is active,
+and a learn-more row. It uses the shared Settings overlay and provider state; it
+never opens the camera or starts a purchase merely by opening the section.
 `connect-panel.tsx` renders the separate machine/profile management view. `app/pair.tsx` ingests links and navigates only; deep links skip the camera gate.
 Domain state/actions come from `useConnection().connectSetup`; see [Cloud Link](connect.md).
 
@@ -518,7 +523,7 @@ scanner. It preserves stored profiles. Components do not poll or classify errors
 - `GeneralSection`
 - `UpdateSection`
 - `ConnectionSection`
-- `SubscriptionSection`
+- `CloudLinkSection`
 - `ServicesSection`
 - `AiDefaultsSection`
 - `NotificationsSection`
@@ -534,6 +539,8 @@ Responsibility:
 - show connection state card
 - show the current connection message or error hint from provider state
 - render the saved-connection list (`ConnectionProfiles`)
+- offer Scan QR code (local), Manual and Cloud Link creation choices through
+  `Add connection`
 
 The server URL/username/password fields are no longer a standalone form; they
 live inside the connection rows (current connection row) or the add/edit
@@ -563,7 +570,9 @@ The component owns only local state (expanded row, dialog, switching row); profi
 - hide Username for confirmed V2, show it for V1, and offer a collapsed custom
   username when credentials are needed to identify the server
 - reuse `ConnectCameraGate` and `ConnectScanner` for native-only local QR setup,
-  without a Cloud Link entitlement; scanning automatically saves and connects
+  without a Cloud Link entitlement, when opened with `startScanning` (the
+  Settings Connection section's Scan QR code choice); scanning automatically
+  saves and connects
 - The shared TextInput clears Paper's implicit text alignment for single-line
   iOS fields to prevent wrapping. Explicit caller alignment takes precedence;
   password masking and credential values remain native and unchanged.

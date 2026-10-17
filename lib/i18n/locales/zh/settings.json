@@ -10,7 +10,8 @@
       "support": "支持",
       "permissions": "审批",
       "subscription": "订阅",
-      "services": "服务"
+      "services": "服务",
+      "cloudLink": "Cloud Link"
     },
     "summaries": {
       "configuredCount": "已配置 {{value}} 个",
@@ -385,6 +386,9 @@
     "accessUnavailable": "Access unavailable. Purchase or Restore to reactivate this machine.",
     "scanHint": "扫描电脑的二维码以连接。",
     "scanNewQr": "扫描电脑上的新二维码",
+    "scanLocal": "扫描二维码",
+    "scanLocalHint": "连接到同一网络上的电脑。",
+    "scanLocalUnavailable": "本地二维码扫描在 iOS 和 Android 应用中可用。",
     "manual": "手动",
     "manualHint": "输入服务器网址和凭据。",
     "nativeOnly": "Cloud Link 可在 iOS 和 Android 应用中使用。",

@@ -310,6 +310,8 @@ into the right layer and, if needed, lower the number in the same change.
   Subscribes to native events directly, wrapping legacy events only at the compatibility boundary. Provider event handlers preserve reconnection reconciliation and polling fallback.
 - `lib/opencode/format.ts` and `lib/opencode/types.ts`
   App-owned transcript, capability, session summary and diagnostics models. Protocol helpers and provider selectors derive these views; screens and presentation components never parse wire records. Persisted DTOs and storage keys remain stable.
+- `lib/opencode/diff.ts`
+  Normalizes session diffs across contracts. Native v2 serves a unified `patch`; v1 (and some v2 responses) serve whole-file `before`/`after` contents. The helper rebuilds a single-hunk patch from the contents so the viewer renders changed lines instead of a filename with an empty body, and keeps the server's reported totals.
 
 Native v2 editing uses `vcs.status` and `file.write`. The provider compares the server text with the editor baseline before writing, verifies the saved text afterward, and refreshes file/VCS state. Drafts remain local on failure. The comparison cannot prevent a concurrent edit between the read and write because v2 has no conditional-write API.
 

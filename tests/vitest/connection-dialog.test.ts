@@ -8,7 +8,7 @@ function find(root: Element | Element[], testID: string): Element | undefined {
   if (root.props?.testID === testID || root.type === testID) return root;
   return find(root.props?.children, testID);
 }
-async function form(platform = 'web', onSubmit = vi.fn(), foss = false) {
+async function form(platform = 'web', onSubmit = vi.fn(), foss = false, startScanning = false) {
   const runtime = hookRuntime();
   const probe = vi.fn(async () => ({ status: 'detected', contract: 'v2' }));
   const pair = vi.fn(async () => ({ serverUrl: 'http://192.168.1.10:49374', username: '', password: 'session-token', directory: '' }));
@@ -33,7 +33,7 @@ async function form(platform = 'web', onSubmit = vi.fn(), foss = false) {
   }, { Error });
   const onDismiss = vi.fn();
   const onBusyChange = vi.fn();
-  runtime.mount(ConnectionProfileDialog, { title: 'Add connection', submitLabel: 'Save', onSubmit, onDismiss, onBusyChange });
+  runtime.mount(ConnectionProfileDialog, { title: 'Add connection', submitLabel: 'Save', onSubmit, onDismiss, onBusyChange, startScanning });
   const element = (id: string) => { const value = find(runtime.value, id); if (!value) throw new Error(`Missing ${id}`); return value; };
   const change = (id: string, value: string) => { element(id).props.onChangeText(value); runtime.flush(); };
   const press = async (id: string) => { element(id).props.onPress(); await runtime.settle(); };
@@ -88,8 +88,7 @@ describe('manual connection form', () => {
   });
   it('auto-connects after native scanning and retries save with the redeemed token', async () => {
     const onSubmit = vi.fn().mockRejectedValueOnce(new Error('Secure storage unavailable')).mockResolvedValue(undefined);
-    const view = await form('android', onSubmit);
-    await view.press('connection-local-scan');
+    const view = await form('android', onSubmit, false, true);
     expect(view.element('Gate')).toBeDefined();
     view.element('Scanner').props.onScan('one-use-code');
     await view.runtime.settle();
@@ -101,12 +100,15 @@ describe('manual connection form', () => {
     expect(onSubmit).toHaveBeenCalledTimes(2);
     expect(onSubmit.mock.calls[1][0]).toMatchObject({ password: 'session-token', name: '' });
   });
-  it('keeps the web camera action hidden', async () => {
-    const view = await form();
-    expect(find(view.runtime.value, 'connection-local-scan')).toBeUndefined();
+  it('keeps scanning hidden on web even when requested', async () => {
+    const view = await form('web', vi.fn(), false, true);
+    expect(find(view.runtime.value, 'Gate')).toBeUndefined();
+    expect(find(view.runtime.value, 'Scanner')).toBeUndefined();
+    expect(view.element('connection-profile-url-input')).toBeDefined();
   });
   it('keeps scanning hidden in native FOSS builds without a camera module', async () => {
-    const view = await form('android', vi.fn(), true);
-    expect(find(view.runtime.value, 'connection-local-scan')).toBeUndefined();
+    const view = await form('android', vi.fn(), true, true);
+    expect(find(view.runtime.value, 'Gate')).toBeUndefined();
+    expect(view.element('connection-profile-url-input')).toBeDefined();
   });
 });

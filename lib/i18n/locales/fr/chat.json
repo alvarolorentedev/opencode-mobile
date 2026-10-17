@@ -80,6 +80,7 @@
     "reject": "Rejeter",
     "unknownFile": "Fichier inconnu",
     "noLineChanges": "Aucune modification de ligne disponible.",
+    "previewUnavailable": "L'aperçu du diff n'est pas disponible pour ce fichier.",
     "hiddenLines_one": "... {{count}} ligne inchangée",
     "hiddenLines_many": "... {{count}} lignes inchangées",
     "hiddenLines_other": "... {{count}} lignes inchangées",

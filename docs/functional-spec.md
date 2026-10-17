@@ -342,7 +342,7 @@ Behavior:
 
 - each connection is a collapsible row; expanding shows its server URL and username, and reveals Connect, Edit, and Delete for that connection
 - the active row shows an `Active` (or `Connecting`) badge; the active connection always has a row, titled `Current connection` while it has not been saved as a profile yet
-- `Add connection` opens a scrollable full-screen form for name, server URL, username, and password; the keyboard-safe primary action is `Save & connect`, which stores the profile (password in SecureStore, metadata in AsyncStorage) and switches to it
+- `Add connection` offers three choices in order: Scan QR code (local network, native only), Manual, and Cloud Link. Scan QR code and Manual open the shared scrollable full-screen form for name, server URL, username, and password; its keyboard-safe primary action, `Save & connect`, stores the profile (password in SecureStore, metadata in AsyncStorage) and switches to it. Cloud Link opens the guided assistant
 - `Edit` opens the same form for that connection: for a saved connection it updates the stored profile (and the live settings when it is active), for the current unsaved connection it updates the live settings only
 - editing the active connection never reconnects on its own; the row's Reconnect action does that, so an in-flight session is not dropped
 - the active connection cannot be deleted; other connections offer Delete with a confirmation
@@ -358,8 +358,8 @@ Purpose:
 
 Behavior:
 
-- the section appears only for a Cloud Link connection (`settings.connect`); manual connections never show it
-- opening (or re-opening) the section re-fetches `GET /_cloudlink/services`, because the connector's tray or CLI can change the list out from under the app; the Settings row shows the current count
+- the subsection appears inside the consolidated Cloud Link Settings section only for a Cloud Link connection (`settings.connect`); manual connections never show it
+- opening (or re-opening) the Cloud Link section re-fetches `GET /_cloudlink/services`, because the connector's tray or CLI can change the list out from under the app
 - Add/Edit opens an inline form for id (create only), optional name, path, target, enabled, access (`private`/`public`) and strip-prefix; the id is fixed when editing
 - the app mirrors the connector's validation before sending, and shows the connector's own message when the server rejects a request (for example `400` invalid service)
 - a successful save renders the stored canonical values the connector returns, not the request values

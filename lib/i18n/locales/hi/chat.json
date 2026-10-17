@@ -80,6 +80,7 @@
     "reject": "अस्वीकार करें",
     "unknownFile": "अज्ञात फ़ाइल",
     "noLineChanges": "कोई पंक्ति बदलाव उपलब्ध नहीं।",
+    "previewUnavailable": "इस फ़ाइल के लिए डिफ़ पूर्वावलोकन उपलब्ध नहीं है।",
     "hiddenLines_one": "... {{count}} अपरिवर्तित पंक्ति",
     "hiddenLines_many": "... {{count}} अपरिवर्तित पंक्तियाँ",
     "hiddenLines_other": "... {{count}} अपरिवर्तित पंक्तियाँ",
