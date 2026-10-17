@@ -1,0 +1,4 @@
+- Cloud Link settings now bring access status, machines, and exposed services together in one place.
+- Connection setup offers three clear choices: scan a QR code, enter details manually, or use Cloud Link.
+- Chat diffs resolve against their matching turn, with a note when line details are unavailable.
+- Failed Cloud Link service refreshes stay quiet instead of surfacing stale errors.

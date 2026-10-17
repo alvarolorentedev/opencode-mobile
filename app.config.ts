@@ -171,14 +171,14 @@ const withAndroidAppConfig = (config: ExpoConfig) => {
 const config: ExpoConfig = {
   name: isDevelopmentVariant ? 'OpenCode Mobile Dev' : 'OpenCode Mobile',
   slug: 'opencode-mobile',
-  version: '1.0.75',
+  version: '1.0.76',
   orientation: 'default',
   icon: './assets/images/icon.png',
   scheme: 'opencodemobile',
   userInterfaceStyle: 'automatic',
   android: {
     package: androidPackage,
-    versionCode: 75,
+    versionCode: 76,
     adaptiveIcon: {
       foregroundImage: './assets/images/adaptive-icon.png',
       backgroundColor: "#202020"
@@ -192,7 +192,7 @@ const config: ExpoConfig = {
   },
   ios: {
     bundleIdentifier: isDevelopmentVariant ? 'app.getopencode.mobile.dev' : 'app.getopencode.mobile',
-    buildNumber: '75',
+    buildNumber: '76',
     infoPlist: {
       ITSAppUsesNonExemptEncryption: false,
       NSPhotoLibraryUsageDescription: 'Allow OpenCode Mobile to access photos you choose to attach to chat messages.',
