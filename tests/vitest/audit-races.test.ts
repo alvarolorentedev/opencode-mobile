@@ -62,6 +62,7 @@ describe('partial interaction reads', () => {
     let result: any = { permissions: undefined, questions: [] };
     const { useWorkspaceRefreshActions } = await loadTs('providers/use-workspace-refresh-actions.ts', {
       react: runtime.react, '@/lib/opencode/client': { listPendingInteractions: async () => { if (result instanceof Error) throw result; return result; } },
+      '@/lib/opencode/transcript': { resolveDiffTurn: () => undefined },
       '@/providers/opencode-provider-utils': utilities, '@/providers/session-cache': {}, '@/providers/services/session-service': {}, '@/providers/services/workspace-service': {},
     });
     const permissions = vi.fn(), questions = vi.fn();
