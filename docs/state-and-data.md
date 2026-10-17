@@ -52,7 +52,7 @@ Meaning:
 
 - `activeProjectPath` is the app-selected project context
 - `serverProjects` are raw projects returned by the server
-- `sessions` are the current project's sessions sorted newest-first
+- `sessions` are the current project's sessions sorted newest-first; the native list is cursor-paged and every page is read, so a workspace never drops its older chats
 - `sessionStatuses` stores per-session runtime status from the server
 - `currentSessionId` is the selected/open session
 - `lastSessionByConnection` persists the remembered session ID per connection scope and project path, so the same path on two servers remembers different sessions

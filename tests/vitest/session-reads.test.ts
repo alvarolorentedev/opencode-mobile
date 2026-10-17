@@ -95,6 +95,57 @@ describe('session reads', () => {
     active.mockRestore();
   });
 
+  it('lists every V2 session page instead of only the first', async () => {
+    const page = (id: string, updated: number, next: string | null) => ({
+      data: [{ id, time: { created: 0, updated }, location: { directory: '/repo' } }],
+      cursor: { next },
+    });
+    const cursors: unknown[] = [];
+    const previous = h.api;
+    h.api = {
+      session: {
+        list: async ({ cursor }: { cursor?: string }) => {
+          cursors.push(cursor);
+          return cursor === undefined ? page('newest', 3, 'page-2') : page('older', 2, null);
+        },
+        active: async () => ({}),
+      },
+    };
+    const pagedClient = buildV2Client({ serverUrl: 'http://test', directory: '/repo', username: '', password: '' } as never);
+    const result = await listSessions(pagedClient);
+    h.api = previous;
+    expect(cursors).toEqual([undefined, 'page-2']);
+    expect(Array.from(result.sessions, (session: any) => session.id)).toEqual(['newest', 'older']);
+    expect(result.statuses).toEqual({ newest: { type: 'idle' }, older: { type: 'idle' } });
+  });
+
+  it('stops V2 paging when a page repeats its own cursor or adds nothing', async () => {
+    const repeated = [{ id: 'looping', time: { created: 0, updated: 1 }, location: { directory: '/repo' } }];
+    let reads = 0;
+    const previous = h.api;
+    h.api = {
+      session: {
+        list: async () => { reads += 1; return { data: repeated, cursor: { next: 'same' } }; },
+        active: async () => ({}),
+      },
+    };
+    const loopingClient = buildV2Client({ serverUrl: 'http://test', directory: '/repo', username: '', password: '' } as never);
+    const result = await listSessions(loopingClient);
+    h.api = previous;
+    // The first page is kept, the second repeats it, and paging stops there.
+    expect(reads).toBe(2);
+    expect(Array.from(result.sessions, (session: any) => session.id)).toEqual(['looping']);
+  });
+
+  it('rejects a malformed V2 session list response', async () => {
+    const previous = h.api;
+    h.api = { session: { list: async () => ({ data: null, cursor: { next: null } }), active: async () => ({}) } };
+    const malformedClient = buildV2Client({ serverUrl: 'http://test', directory: '/repo', username: '', password: '' } as never);
+    const failure = await listSessions(malformedClient).then(() => undefined, (error: Error) => error);
+    h.api = previous;
+    expect(failure?.message).toContain('did not return its session list');
+  });
+
   it('coalesces outstanding reads per client scope and never caches settled ones', async () => {
     const old: any = {}, next: any = {};
     const slow = deferred();

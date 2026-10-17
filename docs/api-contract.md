@@ -36,14 +36,14 @@ Pairing secrets never become profile metadata or saved URL paths/query/hash.
 
 `lib/opencode/v2/raw.ts` constructs `OpenCode.make` with the authenticated, prefix-preserving transport. The SDK replaces URL path segments with absolute `/api` routes; a configured proxy prefix is rewritten by the shared fetch helper. A trailing `/api` is treated as the API mount, not duplicated. Blank usernames resolve to `opencode`.
 
-Workspace requests carry `location: { directory }` where the native API supports it. Session/message operations use global session IDs; session listing uses the native `directory` filter. Project discovery preserves the location directory, including worktrees whose owning project has a different canonical directory. Filesystem/PTY operations and their WebSockets remain scoped to the selected directory.
+Workspace requests carry `location: { directory }` where the native API supports it. Session/message operations use global session IDs; session listing uses the native `directory` filter and follows every cursor page, because a first page alone hides a workspace's older chats. Project discovery preserves the location directory, including worktrees whose owning project has a different canonical directory. Filesystem/PTY operations and their WebSockets remain scoped to the selected directory.
 
 SDK success responses retain their native shapes. Failed HTTP responses preserve status and server error details for actionable UI errors and mismatch classification. No-op mutation methods are not installed for unsupported features.
 
 ## Workspace And Sessions
 
 - Workspace catalog: `location.get()` and `project.list()`; project views retain ID, canonical path, name, VCS and sandboxes.
-- Sessions: `session.list()` plus `session.active()`, create/get/update/remove/fork, model/agent selection, instructions and interrupt. Native active sets omit retries, so the provider preserves event-derived retry state across refreshes.
+- Sessions: `session.list()` plus `session.active()`, create/get/update/remove/fork, model/agent selection, instructions and interrupt. Native session listing is cursor-paged, so the service follows `cursor.next` (bounded, deduplicated) until the workspace's chats are exhausted; reading only the first page silently hides every older chat. Native active sets omit retries, so the provider preserves event-derived retry state across refreshes.
 - Fork uses native `before`; revert uses `session.revert.stage()` and `clear()`.
 - Messages: `message.list({ sessionID, limit: 20, order: 'desc' })` for the newest page, then opaque `cursor` without an `order` override for older pages. Native `cursor.next` is retained in the provider window. The display window is bounded to 200 records.
 - Turn diffs: `session.diff({ sessionID, from: userMessageID })`; working/branch views use scoped `vcs.diff({ mode: 'working' | 'branch' })`. Native assistant snapshot files provide review navigation and filename-only fallback details.

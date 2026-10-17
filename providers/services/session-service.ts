@@ -1,6 +1,9 @@
+import type { SessionInfo } from '@opencode/client';
+
 import { compareLabels } from '@/lib/compare-labels';
 import type { ScopedOpencodeClient } from '@/lib/opencode/client';
 import { listPendingPermissions, listPendingQuestions } from '@/lib/opencode/client/interactions';
+import type { NativeOpencodeApi } from '@/lib/opencode/client/types';
 import type { SessionMessageRecord } from '@/lib/opencode/format';
 import { coalesceRead } from '@/lib/opencode/in-flight';
 import { toProjectView, toSessionView } from '@/lib/opencode/v2-mappers';
@@ -24,14 +27,45 @@ export async function resolveWorkspace(client: ScopedOpencodeClient) {
   const location = await client.api!.location.get({ location: { directory: client.__opencode.directory } });
   return { id: location.project.id, worktree: location.project.canonical, time: { created: 0 } };
 }
+
+// V2 lists sessions through a cursor. Reading only the first page silently
+// hides every older chat in a workspace, so the workspace list, the
+// connection-wide snapshot and the notification monitor all follow it. V1
+// returns the complete array in one response.
+const MAX_SESSION_PAGES = 10;
+
+async function listV2Sessions(api: NativeOpencodeApi, directory?: string): Promise<SessionInfo[]> {
+  const scope = directory ? { directory } : {};
+  const records: SessionInfo[] = [];
+  const seen = new Set<string>();
+  let cursor: string | undefined;
+  for (let page = 0; page < MAX_SESSION_PAGES; page += 1) {
+    const response = await api.session.list(cursor ? { ...scope, cursor } : scope);
+    if (!Array.isArray(response?.data)) throw new Error('MalformedResponse: OpenCode did not return its session list.');
+    // Pages can overlap at the cursor; a page that adds nothing also stops a
+    // server that ignores the cursor from looping.
+    const fresh = response.data.filter((session) => !seen.has(session.id));
+    if (fresh.length === 0) break;
+    for (const session of fresh) seen.add(session.id);
+    records.push(...fresh);
+    const next = response.cursor?.next;
+    if (!next || next === cursor) break;
+    cursor = next;
+  }
+  return records;
+}
+
 export function listSessions(client: ScopedOpencodeClient) {
   return coalesceRead(client, 'sessions', async () => {
     if (client.compatibility) return v1.listSessions(client.compatibility);
-    const [page, active] = await Promise.all([client.api!.session.list(client.__opencode.directory ? { directory: client.__opencode.directory } : {}), client.api!.session.active()]);
+    const [records, active] = await Promise.all([
+      listV2Sessions(client.api!, client.__opencode.directory),
+      client.api!.session.active(),
+    ]);
     if (active == null) throw new Error('OpenCode did not return active sessions.');
-    const sessions = page.data.map(toSessionView).filter((session) => !session.time.archived).sort((a, b) => b.time.updated - a.time.updated);
-    const statuses: Record<string, import('@/lib/opencode/types').SessionStatus> = {};
-    for (const session of page.data) statuses[session.id] = { type: 'idle' };
+    const sessions = records.map(toSessionView).filter((session) => !session.time.archived).sort((a, b) => b.time.updated - a.time.updated);
+    const statuses: Record<string, SessionStatus> = {};
+    for (const session of records) statuses[session.id] = { type: 'idle' };
     for (const id of Object.keys(active)) statuses[id] = { type: 'busy' };
     return { sessions, statuses };
   });

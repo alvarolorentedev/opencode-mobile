@@ -17,6 +17,11 @@ const terminalFixture = createTerminalFixture((id) => { const pty = state.ptys.f
 let suppressEvents = false;
 let stallEvents = false;
 let v2Subscribes = 0;
+// The real V2 session list is cursor-paged. Keep a realistic default so the
+// app must follow the cursor, and let a test shrink it without seeding dozens
+// of chats.
+const DEFAULT_SESSION_PAGE_LIMIT = 50;
+let sessionPageLimit = DEFAULT_SESSION_PAGE_LIMIT;
 const v2Clients = new Set();
 // VCS diff fixtures. `working` mirrors uncommitted changes; `branch` is a
 // distinct committed fixture so the diff-scope surface is deterministic.
@@ -160,6 +165,16 @@ const server = http.createServer(async (req, res) => {
       return;
     }
 
+    // Shrink the session-list page so a test can prove the app follows cursors.
+    if (pathname === '/__control/session-page') {
+      if (req.method === 'POST') {
+        const body = await readJson(req);
+        sessionPageLimit = Number.isInteger(body?.size) && body.size > 0 ? body.size : DEFAULT_SESSION_PAGE_LIMIT;
+      }
+      sendJson(res, 200, { data: { size: sessionPageLimit } });
+      return;
+    }
+
     if (req.method === 'GET' && pathname === '/__control/state') {
       sendJson(res, 200, { scenario: state.scenario, sessions: state.sessions, messagesBySession: state.messagesBySession, sessionStatuses: state.sessionStatuses, pendingPermissions: state.pendingPermissions, pendingQuestions: state.pendingQuestions, configuredProviderIds: [...state.configuredProviderIds], authByProvider: state.authByProvider, worktrees: state.worktrees, mcpStatuses: state.mcpStatuses, files: state.files, questionAnswers: state.lastQuestionAnswer }); return;
     }
@@ -178,6 +193,7 @@ const server = http.createServer(async (req, res) => {
       suppressEvents = false;
       stallEvents = false;
       v2Subscribes = 0;
+      sessionPageLimit = DEFAULT_SESSION_PAGE_LIMIT;
       state = stateStore.resetState(body?.scenario || scenarioName);
       connectionPassword = body?.password ?? process.env.FAKE_OPENCODE_PASSWORD ?? '';
       pairingCode = undefined;
@@ -481,8 +497,15 @@ const server = http.createServer(async (req, res) => {
 
     if (req.method === 'GET' && pathname === '/api/session') {
       const directory = requestUrl.searchParams.get('directory');
-      const sessions = directory ? state.sessions.filter((session) => session.location.directory === directory) : state.sessions;
-      sendJson(res, 200, { data: sessions, cursor: { next: null, previous: null } });
+      const all = directory ? state.sessions.filter((session) => session.location.directory === directory) : state.sessions;
+      // Cursor pages, like the real server: a first page alone must never be
+      // mistaken for the complete list.
+      const cursor = requestUrl.searchParams.get('cursor');
+      const offset = cursor ? Number(JSON.parse(Buffer.from(cursor, 'base64url').toString()).offset) : 0;
+      const limit = Number(requestUrl.searchParams.get('limit')) || sessionPageLimit;
+      const end = offset + limit;
+      const next = end < all.length ? Buffer.from(JSON.stringify({ offset: end })).toString('base64url') : null;
+      sendJson(res, 200, { data: all.slice(offset, end), cursor: { next, previous: null } });
       return;
     }
 

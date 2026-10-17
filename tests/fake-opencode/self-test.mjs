@@ -386,6 +386,20 @@ try {
   assert(v2Listed.tokens.input === 1200 && v2Listed.cost > 0, 'V2 session usage did not accumulate');
   assert(v2Listed.model?.id === 'openai/gpt-4.1-mini', 'V2 session list dropped the model');
 
+  // A first page must never look like the complete workspace list.
+  const pageDirectory = '/workspace/pagination-project';
+  for (const title of ['Page one', 'Page two', 'Page three']) await v2request('/api/session', json('POST', { title, location: { directory: pageDirectory } }));
+  const pagePath = `/api/session?directory=${encodeURIComponent(pageDirectory)}`;
+  await v2request('/__control/session-page', json('POST', { size: 2 }));
+  const firstPage = await v2request(pagePath);
+  assert(firstPage.data.length === 2 && firstPage.cursor.next, 'Session listing must return one cursor page, not the whole list');
+  const secondPage = await v2request(`${pagePath}&cursor=${encodeURIComponent(firstPage.cursor.next)}`);
+  assert(secondPage.data.length === 1 && secondPage.cursor.next === null, 'Session cursor must reach the final page');
+  assert(!secondPage.data.some((entry) => firstPage.data.some((first) => first.id === entry.id)), 'Session pages must not repeat entries');
+  assert((await v2request('/__control/session-page')).data.size === 2, 'Session page size must be reported for tests');
+  await v2request('/__control/session-page', json('POST', {}));
+  assert((await v2request(pagePath)).data.length === 3, 'Default session page size must restore the full list');
+
   const fork = await v2Api.session.fork({ sessionID: v2Session.id, before: v2Assistant.id });
   assert(fork.parentID === v2Session.id, 'Native fork must retain parent identity');
   assert(!(await v2Api.message.list({ sessionID: fork.id })).data.some((entry) => entry.id === v2Assistant.id), 'Native fork before cursor must exclude the cursor');

@@ -1420,6 +1420,32 @@ test('OpenCode 2 adds a server workspace from the shared picker', async ({ page,
   }
 });
 
+test('OpenCode 2 lists every workspace chat across session pages', async ({ page, request }) => {
+  await resetScenario(request, 'happy-path');
+  const port = await getFreePort();
+  const server = spawnV2Server(port);
+  const origin = `http://127.0.0.1:${port}`;
+  const projectPath = '/workspace/demo-project';
+  try {
+    await waitForServer(request, `${origin}/api/info`);
+    // A page smaller than the workspace's chat count: only a client that follows
+    // the session-list cursor can show every chat.
+    expect((await request.post(`${origin}/__control/session-page`, { data: { size: 2 } })).ok()).toBeTruthy();
+    for (const title of ['First page chat', 'Second page chat', 'Third page chat']) {
+      const created = await request.post(`${origin}/api/session`, { data: { title, location: { directory: projectPath } } });
+      expect(created.ok()).toBeTruthy();
+    }
+    await openReadyChat(page);
+    await connectToServer(page, origin);
+    await openChatLibrary(page);
+    for (const title of ['First page chat', 'Second page chat', 'Third page chat']) {
+      await expect(page.getByText(title, { exact: true }).first()).toBeVisible({ timeout: 20_000 });
+    }
+  } finally {
+    server.kill('SIGTERM');
+  }
+});
+
 test('OpenCode 2 permission requests unblock the agent flow', async ({ page, request }) => {
   const port = await getFreePort();
   const server = spawnV2Server(port, 'permission');
