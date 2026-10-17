@@ -1,6 +1,7 @@
 import { useCallback } from 'react';
 
 import { listPendingInteractions } from '@/lib/opencode/client';
+import { resolveDiffTurn } from '@/lib/opencode/transcript';
 import { areSessionListsEqual, areSessionStatusMapsEqual, groupPendingRequestsBySession, mergeSessionStatuses } from '@/providers/opencode-provider-utils';
 import type { DiffScope } from '@/providers/opencode-provider-types';
 import type { SessionRefreshOptions } from '@/providers/opencode-provider-events';
@@ -84,8 +85,13 @@ export function useWorkspaceRefreshActions({
       }
 
       try {
-        const targetMessageId = messageId ?? selectedDiffMessageBySessionRef.current[sessionId];
-        const data = await svcGetSessionDiff(client, sessionId, targetMessageId, messagesBySessionRef.current[sessionId]);
+        const messages = messagesBySessionRef.current[sessionId] ?? [];
+        const pinned = selectedDiffMessageBySessionRef.current[sessionId];
+        // Resolve through the same selector the diff surface displays with so a
+        // request can never ask the server for a different turn than the one the
+        // overlay highlights.
+        const targetMessageId = messageId ?? resolveDiffTurn(messages, pinned);
+        const data = await svcGetSessionDiff(client, sessionId, targetMessageId, messages);
         if (!isCurrentClient(client)) {
           return data;
         }

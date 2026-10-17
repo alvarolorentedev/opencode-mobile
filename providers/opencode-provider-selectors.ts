@@ -100,19 +100,3 @@ export function getSessionPreviewById(messagesBySession: Record<string, SessionM
 export function getTranscript(messages: SessionMessageRecord[]) {
   return messages.map(toTranscriptEntry);
 }
-
-// V2 records changes on assistant snapshots; V1 carries user-turn summaries.
-export function getDiffTurnMessages(messages: import('@/lib/opencode/format').SessionMessageRecord[]) {
-  const turns: import('@/lib/opencode/format').SessionMessageRecord[] = [];
-  let user: import('@/lib/opencode/format').SessionMessageRecord | undefined;
-  let included = false;
-  for (const record of messages) {
-    if (record.info.role === 'user') {
-      user = record; included = Boolean(record.info.summary?.diffs.length);
-      if (included) turns.push(record);
-    } else if (user && !included && record.parts.some((part) => part.type === 'patch' && part.files.length)) {
-      turns.push(user); included = true;
-    }
-  }
-  return turns;
-}

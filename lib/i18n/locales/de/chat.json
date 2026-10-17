@@ -243,6 +243,7 @@
     "noUncommitted": "Keine nicht committeten Änderungen.",
     "noBranchChanges": "Keine Änderungen gegenüber dem Standard-Branch.",
     "noChanges": "Noch keine Dateiänderungen.",
+    "changedFilesNote": "Für diesen Turn sind keine Diff-Zeilen verfügbar.",
     "latestTurn": "Letzte Runde",
     "syncing": "Wird synchronisiert",
     "filesChangedCompact": "{{files}} Dateien geändert, +{{additions}} / -{{deletions}}",

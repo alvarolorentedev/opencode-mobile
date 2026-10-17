@@ -243,6 +243,7 @@
     "noUncommitted": "Aucune modification non validée.",
     "noBranchChanges": "Aucune modification par rapport à la branche par défaut.",
     "noChanges": "Aucune modification de fichier pour le moment.",
+    "changedFilesNote": "Les lignes du diff ne sont pas disponibles pour ce tour.",
     "latestTurn": "Dernier tour",
     "syncing": "Synchronisation",
     "filesChangedCompact": "{{files}} fichiers modifiés, +{{additions}} / -{{deletions}}",

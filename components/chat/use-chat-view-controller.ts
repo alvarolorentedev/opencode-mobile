@@ -9,7 +9,7 @@ import { useUpdateBlocker } from '@/hooks/use-update-blocker';
 import { mergeSharedDraft } from '@/lib/share/parse';
 import { getConnectionScope, getConnectionUiScope } from '@/lib/connection-scope';
 import { type TranscriptEntry } from '@/lib/opencode/format';
-import { getTranscriptActivityLabel, getUserTurnForMessage, isTranscriptDisplayMessage } from '@/lib/opencode/transcript';
+import { getTranscriptActivityLabel, getTurnPatchDetails, getUserTurnForMessage, isTranscriptDisplayMessage } from '@/lib/opencode/transcript';
 import { getLatestContextTokens } from '@/lib/opencode/usage';
 import { openVoiceSettingsAsync } from '@/lib/voice/permissions';
 import { speakText, stopSpeaking } from '@/lib/voice/speech-output';
@@ -107,9 +107,11 @@ export function useChatViewController() {
 
     return availableModels.filter((model) => configuredProviderIds.has(model.providerID) && (enabledModelIds.size === 0 || enabledModelIds.has(model.id)));
   }, [availableModels, chatPreferences.enabledModelIds, configuredProviders]);
+  // Scoped to the turn the overlay shows: an unscoped list would report files
+  // from every turn in the transcript.
   const diffDetails = useMemo(
-    () => currentTranscript.flatMap((entry) => entry.details.filter((detail) => detail.kind === 'patch')),
-    [currentTranscript],
+    () => getTurnPatchDetails(currentTranscript, currentMessages, selectedDiffMessageId),
+    [currentMessages, currentTranscript, selectedDiffMessageId],
   );
   const diffCount = currentDiffs.length || (currentDiffScope === 'turn'
     ? new Set(diffDetails.flatMap((detail) => detail.body.split('\n').filter(Boolean))).size

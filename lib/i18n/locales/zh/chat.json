@@ -243,6 +243,7 @@
     "noUncommitted": "没有未提交的更改。",
     "noBranchChanges": "与默认分支相比没有更改。",
     "noChanges": "尚无文件更改。",
+    "changedFilesNote": "此轮次没有可用的差异行。",
     "latestTurn": "最新轮次",
     "syncing": "同步中",
     "filesChangedCompact": "{{files}} 个文件已更改，+{{additions}} / -{{deletions}}",

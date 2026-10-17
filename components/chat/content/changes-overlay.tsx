@@ -1,10 +1,10 @@
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Pressable, ScrollView, View } from 'react-native';
 import { IconButton, Text } from 'react-native-paper';
 
-import { DiffCard, SessionDiffCard } from '@/components/chat/chat-cards';
+import { ChangedFilesCard, SessionDiffCard } from '@/components/chat/chat-cards';
 import { styles } from '@/components/chat/chat-view-styles';
 import { OverlaySheet } from '@/components/ui/overlay-sheet';
 import { Colors } from '@/constants/theme';
@@ -76,6 +76,10 @@ export function ChangesOverlay({
   const scopeLabel = t(DIFF_SCOPE_OPTIONS.find((option) => option.value === currentDiffScope)?.labelKey ?? 'chat:diff.turn');
   const selectedTurnLabel = diffTurns.find((turn) => turn.id === selectedDiffMessageId)?.label || t('chat:diff.latestTurn');
   const showDiffDetails = isTurnScope && currentDiffs.length === 0;
+  const changedFiles = useMemo(
+    () => [...new Set(diffDetails.flatMap((detail) => detail.body.split('\n').filter(Boolean)))],
+    [diffDetails],
+  );
 
   useEffect(() => {
     if (!changesVisible) {
@@ -110,17 +114,14 @@ export function ChangesOverlay({
               <Text variant="bodyMedium" style={{ color: palette.muted }}>{connection.message}</Text>
             </View>
           ) : null}
-          {currentDiffs.length === 0 && !(showDiffDetails && diffDetails.length > 0) ? (
+          {currentDiffs.length === 0 && !(showDiffDetails && changedFiles.length > 0) ? (
             <Text variant="bodyMedium" style={[styles.changesNotice, { color: palette.muted }]}>{scopeEmptyMessage}</Text>
           ) : null}
           {currentDiffs.map((diff) => {
             const accordionId = `diff:${currentDiffScope}:${diff.file}`;
             return <SessionDiffCard key={accordionId} diff={diff} expanded={expandedDiffId === accordionId} onPress={() => onExpandDiff(expandedDiffId === accordionId ? undefined : accordionId)} />;
           })}
-          {showDiffDetails ? diffDetails.map((detail) => {
-            const accordionId = `detail:${detail.id}`;
-            return <DiffCard key={detail.id} detail={detail} expanded={expandedDiffId === accordionId} onPress={() => onExpandDiff(expandedDiffId === accordionId ? undefined : accordionId)} />;
-          }) : null}
+          {showDiffDetails && changedFiles.length > 0 ? <ChangedFilesCard files={changedFiles} /> : null}
         </ScrollView>
       </OverlaySheet>
 

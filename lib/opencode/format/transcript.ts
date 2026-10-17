@@ -64,7 +64,7 @@ export function toTranscriptEntry(record: SessionMessageRecord): TranscriptEntry
       details.push({
         id,
         kind: 'patch',
-        label: `Patch ${part.files.length} files`,
+        label: `Patch ${part.files.length} ${part.files.length === 1 ? 'file' : 'files'}`,
         body: part.files.join('\n'),
       });
       return;

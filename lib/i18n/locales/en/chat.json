@@ -243,6 +243,7 @@
     "noUncommitted": "No uncommitted changes.",
     "noBranchChanges": "No changes against the default branch.",
     "noChanges": "No file changes yet.",
+    "changedFilesNote": "Diff lines aren't available for this turn.",
     "latestTurn": "Latest turn",
     "syncing": "Syncing",
     "filesChangedCompact": "{{files}} files changed, +{{additions}} / -{{deletions}}",

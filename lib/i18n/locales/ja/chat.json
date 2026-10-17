@@ -243,6 +243,7 @@
     "noUncommitted": "未コミットの変更はありません。",
     "noBranchChanges": "既定ブランチに対する変更はありません。",
     "noChanges": "ファイル変更はまだありません。",
+    "changedFilesNote": "このターンの差分行は利用できません。",
     "latestTurn": "最新ターン",
     "syncing": "同期中",
     "filesChangedCompact": "{{files}}件のファイル変更、+{{additions}} / -{{deletions}}",

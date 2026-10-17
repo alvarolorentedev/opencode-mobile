@@ -1,7 +1,7 @@
-import { getDiffTurnMessages } from './opencode-provider-selectors';
 import { useMemo } from 'react';
 
 import { deriveTodosFromMessages } from '@/lib/opencode/format';
+import { getDiffTurnMessages, resolveDiffTurn } from '@/lib/opencode/transcript';
 import { aggregateUsageSteps, getSessionUsage, getLatestAssistantTurnUsage } from '@/lib/opencode/usage';
 import { getServerCapabilities } from '@/providers/opencode-capabilities';
 import {
@@ -217,16 +217,10 @@ export function useOpencodeProviderValues(input: ProviderValuesInput) {
       return { id: record.info.id, label: `Turn ${index + 1}`, preview: preview ? preview.slice(0, 80) : undefined };
     });
   }, [currentMessages]);
-  const selectedDiffMessageId = useMemo(() => {
-    if (!currentSessionId) {
-      return undefined;
-    }
-    const selected = selectedDiffMessageBySession[currentSessionId];
-    if (selected && diffTurns.some((turn) => turn.id === selected)) {
-      return selected;
-    }
-    return diffTurns[diffTurns.length - 1]?.id;
-  }, [currentSessionId, diffTurns, selectedDiffMessageBySession]);
+  const selectedDiffMessageId = useMemo(
+    () => (currentSessionId ? resolveDiffTurn(currentMessages, selectedDiffMessageBySession[currentSessionId]) : undefined),
+    [currentMessages, currentSessionId, selectedDiffMessageBySession],
+  );
   const currentTodos = useMemo(() => {
     if (!currentSessionId) {
       return [];

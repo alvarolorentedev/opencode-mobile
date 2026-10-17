@@ -243,6 +243,7 @@
     "noUncommitted": "No hay cambios sin confirmar.",
     "noBranchChanges": "No hay cambios respecto a la rama predeterminada.",
     "noChanges": "Aún no hay cambios en los archivos.",
+    "changedFilesNote": "Las líneas del diff no están disponibles para este turno.",
     "latestTurn": "Último turno",
     "syncing": "Sincronizando",
     "filesChangedCompact": "{{files}} archivos modificados, +{{additions}} / -{{deletions}}",

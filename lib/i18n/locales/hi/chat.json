@@ -243,6 +243,7 @@
     "noUncommitted": "कोई अप्रतिबद्ध बदलाव नहीं।",
     "noBranchChanges": "डिफ़ॉल्ट ब्रांच के मुकाबले कोई बदलाव नहीं।",
     "noChanges": "अभी तक कोई फ़ाइल बदलाव नहीं।",
+    "changedFilesNote": "इस टर्न के लिए डिफ़ पंक्तियाँ उपलब्ध नहीं हैं।",
     "latestTurn": "नवीनतम बारी",
     "syncing": "सिंक हो रहा है",
     "filesChangedCompact": "{{files}} फ़ाइलें बदलीं, +{{additions}} / -{{deletions}}",

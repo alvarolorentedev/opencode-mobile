@@ -7,7 +7,6 @@ import { Text } from 'react-native-paper';
 import { getDiffPalette, buildPatchDiff, buildCollapsedDiffBlocks } from '@/components/chat/chat-diff';
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
-import { type TranscriptDetail } from '@/lib/opencode/format';
 import type { FileDiff } from '@/lib/opencode/types';
 
 export function SessionDiffCard({ diff, expanded, onPress }: { diff: FileDiff; expanded: boolean; onPress: () => void }) {
@@ -75,17 +74,20 @@ export function SessionDiffCard({ diff, expanded, onPress }: { diff: FileDiff; e
   );
 }
 
-export function DiffCard({ detail, expanded, onPress }: { detail: Extract<TranscriptDetail, { kind: 'patch' }>; expanded: boolean; onPress: () => void }) {
+// Filename-only fallback for a turn whose structured diff the server did not
+// provide. It is a file list, not a diff, so it is never rendered as one.
+export function ChangedFilesCard({ files }: { files: string[] }) {
+  const { t } = useTranslation();
   const colorScheme = useColorScheme() ?? 'light';
   const palette = Colors[colorScheme];
 
   return (
-    <View style={[styles.diffAccordion, { borderColor: palette.border }]}>
-      <Pressable accessibilityRole="button" accessibilityState={{ expanded }} aria-expanded={expanded} onPress={onPress} style={[styles.diffFileRow, { backgroundColor: palette.surface }]}>
-        <MaterialCommunityIcons name={expanded ? 'chevron-down' : 'chevron-right'} size={18} color={palette.muted} />
-        <Text variant="labelLarge" numberOfLines={1} ellipsizeMode="middle" style={[styles.diffFileName, { color: palette.text }]}>{detail.label}</Text>
-      </Pressable>
-      {expanded ? <Text selectable variant="bodySmall" style={[styles.code, styles.diffFallback, { color: palette.muted }]}>{detail.body}</Text> : null}
+    <View testID="changed-files-card" style={[styles.changedFilesCard, { backgroundColor: palette.surface, borderColor: palette.border }]}>
+      <Text variant="labelLarge" style={{ color: palette.text }}>{t('chat:cards.filesChanged')}</Text>
+      {files.map((file) => (
+        <Text key={file} selectable variant="bodySmall" style={[styles.code, { color: palette.text }]}>{file}</Text>
+      ))}
+      <Text variant="bodySmall" style={{ color: palette.muted }}>{t('chat:diff.changedFilesNote')}</Text>
     </View>
   );
 }
@@ -94,7 +96,7 @@ const styles = StyleSheet.create({
   diffAccordion: { borderBottomWidth: 1 },
   diffFileRow: { flexDirection: 'row', alignItems: 'center', gap: 8, minHeight: 48, paddingHorizontal: 12, paddingVertical: 10 },
   diffFileName: { flex: 1, minWidth: 0, fontWeight: '700' },
-  diffFallback: { padding: 12 },
+  changedFilesCard: { borderBottomWidth: 1, gap: 6, paddingHorizontal: 16, paddingVertical: 12 },
   diffAccordionBody: { paddingBottom: 0 },
   diffViewer: { width: '100%', paddingVertical: 4 },
   diffCollapsedRow: { borderRadius: 8, marginHorizontal: 8, marginVertical: 4, paddingHorizontal: 10, paddingVertical: 8 },
