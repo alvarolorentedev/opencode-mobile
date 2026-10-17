@@ -123,13 +123,14 @@ acknowledgement from an older build lands first.
 
 ## Add connection and pairing UI
 
-Settings exposes the consolidated Cloud Link section after Advanced in
-Cloud Link-enabled builds. It folds in the exposed-services management that
-previously had its own Settings row. Its compact summary displays verified
-access status. The section shows the localized `Access through` date, a
-Subscription action group (native offers and Subscribe when inactive, Manage
-subscription and one Restore purchases), the Machines shortcut, and the
-connector's exposed services when a Cloud Link connection is active. Manage
+Settings exposes the consolidated Cloud Link section directly below AI &
+Providers, and only for installs that came from the app stores. It folds in the
+exposed-services management that previously had its own Settings row. Its
+compact summary displays verified access status. Inside the section the order is
+status, the connector's exposed services (active Cloud Link connections only),
+the Subscription action group, and Machines last, followed by the Learn more
+footer row. The Subscription group holds native offers and Subscribe when
+inactive, Manage subscription and one Restore purchases. Manage
 subscription opens App Store subscriptions on iOS or the current app package's
 Google Play subscriptions page on Android, without guessing a product from
 catalog offers. Cancellation and billing changes happen in the native store. The
@@ -140,8 +141,17 @@ explicit Restore purchases action, plus existing progress/error/notice/Retry
 feedback. Conflicting store operations disable actions. Your machines closes the
 sheet and opens `pair?mode=manage`; opening Cloud Link alone never requests
 camera access, pairs a machine, purchases, or performs interactive Restore.
-FOSS and production web retain the existing Cloud Link availability gate, and the
-services subsection only renders for an active Cloud Link connection.
+
+`lib/connect-install.ts` decides whether Settings may offer the section.
+`isConnectStoreInstall()` resolves the iOS application release type and only
+accepts `AppStore`, while on Android it accepts a resolved Play Install Referrer
+call; the Play Store only answers that service for packages it installed, so
+directly installed APKs and F-Droid/FOSS builds fail it and stay hidden. The
+provider exposes the resolved flag as `connectSetup.storeInstall`, so the
+Settings row never flashes for non-store installs. FOSS and production web retain
+the existing Cloud Link availability gate, the development web E2E harness keeps
+the section through `connectPilot.testing`, and the services subsection only
+renders for an active Cloud Link connection.
 
 Settings retains connection status and saved profiles. Add connection is the
 single creation entry and opens three stacked choices: Scan QR code (local

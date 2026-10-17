@@ -9,9 +9,10 @@ import type { ServiceManagementApi } from '@/providers/opencode-provider-types';
 import type { ConnectSetup } from '@/providers/use-connect-state';
 import type { Palette } from './setting-rows';
 
-// Consolidated Cloud Link surface: verified access status, store management,
-// owned machines, and the connector's exposed services. Services only exist for
-// a Cloud Link connection, so they live here instead of their own Settings row.
+// Consolidated Cloud Link surface: verified access status, the connector's
+// exposed services, store subscription management, and owned machines, in that
+// order. Services only exist for a Cloud Link connection, so they live here
+// instead of their own Settings row.
 export function CloudLinkSection({ setup, services, serverUrl, palette, onManageMachines }: {
   setup: ConnectSetup;
   services?: ServiceManagementApi;
@@ -43,6 +44,8 @@ export function CloudLinkSection({ setup, services, serverUrl, palette, onManage
       <Text variant="bodyMedium" style={{ color: palette.muted }}>{t('settings:subscription.description')}</Text>
     </View>
 
+    {services?.available && serverUrl ? <ServicesSection api={services} serverUrl={serverUrl} palette={palette} /> : null}
+
     <View>
       <Text variant="labelLarge" style={[styles.groupTitle, { color: palette.muted }]}>{t('settings:screen.categories.subscription')}</Text>
       {!setup.entitled && setup.initialization === 'ready' ? <ConnectSubscription setup={setup} showRestore={false} /> : null}
@@ -69,8 +72,6 @@ export function CloudLinkSection({ setup, services, serverUrl, palette, onManage
         titleStyle={{ color: palette.text }} descriptionStyle={{ color: palette.muted }} titleNumberOfLines={0} descriptionNumberOfLines={0} style={{ opacity: pending ? 0.45 : 1 }}
         left={(props) => <List.Icon {...props} icon="monitor" color={pending ? palette.muted : palette.tint} />} right={(props) => <List.Icon {...props} icon="chevron-right" color={palette.muted} />} />
     </View>
-
-    {services?.available && serverUrl ? <ServicesSection api={services} serverUrl={serverUrl} palette={palette} /> : null}
 
     <List.Item testID="cloud-link-learn-more" accessibilityRole="button" onPress={() => void Linking.openURL(CONNECT_LEARN_MORE_URL).catch(() => undefined)}
       title={t('settings:connect.learnMore')} titleStyle={{ color: palette.text }} titleNumberOfLines={0}

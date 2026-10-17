@@ -352,6 +352,12 @@ Credentials:
   `manageSubscription()` uses the existing operation lock and refuses to open
   store management during initialization or a pending purchase. Platform store
   handoff belongs to `lib/connect-store.ts`; Settings owns only presentation.
+- `connectSetup.storeInstall` resolves through `lib/connect-install.ts` before
+  Settings may offer the section: the iOS App Store release type, or a Play
+  Install Referrer response on Android. Directly installed APKs, F-Droid/FOSS
+  and non-store iOS builds resolve false. It is a visibility flag only;
+  existing Cloud Link profiles, pairing and deep links keep working on any
+  install.
 - Failed subscription operations return to an idle phase while retaining their
   provider checkpoint. Purchase environment routing automatically switches scope
   after the operation releases its lock, retaining the same native transaction

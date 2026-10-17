@@ -429,8 +429,9 @@ This is important to parity because the chat layout is intentionally dense and h
 ### Presentation
 
 - shows compact settings rows in one group and opens one category at a time
-- places `Subscription` immediately after Connection when Cloud Link is enabled;
-  its summary reflects initialization or verified access status
+- places Cloud Link immediately below AI & Providers, and only when the provider
+  resolved `connectSetup.storeInstall` (App Store or Google Play installs); its
+  summary reflects initialization or verified access status
 - uses the same safe-area app header and title treatment as Chat and Terminal
 - groups MCP servers and diagnostics under the `Advanced` category
 - shows a `Language` category for the app interface language
@@ -501,11 +502,12 @@ Its assistant layout has a static single-offer summary (selection for multiple
 offers), native pricing at body size, inline recovery, and a Restore text link
 above Subscribe & continue. Other Settings/management callers retain their
 existing compact layout.
-`sections/cloud-link-section.tsx` renders the consolidated Cloud Link surface:
-the access summary, Subscription actions (native store management, offers when
-inactive, one Restore row), a Machines shortcut to the existing management
-route, the connector's exposed services when a Cloud Link connection is active,
-and a learn-more row. It uses the shared Settings overlay and provider state; it
+`sections/cloud-link-section.tsx` renders the consolidated Cloud Link surface in
+this order: the access summary, the connector's exposed services (when a Cloud
+Link connection is active), Subscription actions (native store management,
+offers when inactive, one Restore row), and a Machines shortcut to the existing
+management route, closing with a learn-more row. It uses the shared Settings
+overlay and provider state; it
 never opens the camera or starts a purchase merely by opening the section.
 `connect-panel.tsx` renders the separate machine/profile management view. `app/pair.tsx` ingests links and navigates only; deep links skip the camera gate.
 Domain state/actions come from `useConnection().connectSetup`; see [Cloud Link](connect.md).

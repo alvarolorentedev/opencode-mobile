@@ -18,7 +18,9 @@ upstream to provide a build flavour without them. The FOSS variant:
 - excludes `expo-iap` and `expo-camera` from autolinking and plugins, and
   redirects their JS imports to stubs in `lib/foss/` via `metro.config.js`
 - disables the Cloud Link paid-subscription and QR-pairing surfaces by returning
-  `false` from `isConnectEnabled()` when `extra.foss` is set
+  `false` from `isConnectEnabled()` when `extra.foss` is set; the Settings
+  section also requires the store-install check in `lib/connect-install.ts`,
+  which FOSS can never pass
 - keeps local task-completion notifications by compiling `expo-notifications`
   against F-Droid's free `firebase-stubs` classes instead of `firebase-messaging`
 
@@ -46,7 +48,9 @@ It then applies `scripts/foss-prepare.mjs` and builds with the FOSS variant:
      sources supplied through `FIREBASE_STUB_SRC_DIR`; F-Droid supplies its
      pinned `firebase-stub` srclib at the same revision
    - removes `expo-application`'s proprietary `com.android.installreferrer`
-     dependency and stubs its `getInstallReferrerAsync`
+     dependency and stubs its `getInstallReferrerAsync` to resolve empty; FOSS
+     builds already fail Cloud Link's `extra.foss` gate, so the store-install
+     check is never consulted there
 2. `expo prebuild` and Gradle run with `EXPO_APP_VARIANT=foss`,
    `EXPO_PUBLIC_FOSS=1`, and app id `app.getopencode.fdroid`
 

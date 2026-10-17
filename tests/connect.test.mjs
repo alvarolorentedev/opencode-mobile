@@ -463,6 +463,7 @@ for (const platform of ['apple', 'google']) {
     const concern = {
       'react-native': { Platform: { OS: globalThis.__connectPlatform }, AppState: { currentState: 'active', addEventListener: (_, listener) => { onAppState = listener; return { remove() {} }; } } },
       '@/lib/connect': connect,
+      '@/lib/connect-install': { isConnectStoreInstall: async () => true },
       '@/lib/connect-store': { ...storeApi, loadConnectStore: async () => nativeApi,
         openConnectSubscriptionManagement: async () => { managementCalls++; await new Promise((resolve) => { releaseManagement = resolve; }); },
       },
@@ -499,6 +500,7 @@ for (const platform of ['apple', 'google']) {
         });
       }, {});
       await runtime.settle();
+      assert.equal(runtime.value.storeInstall, true, 'The provider must expose the resolved store-install flag.');
       if (scenario === 'catalog' || scenario.startsWith('billing-')) {
         assert.equal(runtime.value.initialization, 'error');
         assert.equal(runtime.value.canPurchase, false, 'Failed initialization must block checkout until recovery completes.');
@@ -641,6 +643,7 @@ for (const platform of ['apple', 'google']) {
     const concern = {
       'react-native': { Platform: { OS: globalThis.__connectPlatform }, AppState: { currentState: 'active', addEventListener: () => ({ remove() {} }) } },
       '@/lib/connect': connect,
+      '@/lib/connect-install': { isConnectStoreInstall: async () => true },
       '@/lib/connect-store': { ...storeApi, loadConnectStore: async () => nativeApi },
       '@/lib/connection-profiles': { loadConnectionProfiles: async () => [], saveConnectProfile: async (cp, response) => {
         events.push('save-profile'); assert.equal(cp, staging);

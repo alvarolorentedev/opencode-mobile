@@ -58,6 +58,7 @@
     "@xterm/xterm": "6.0.0",
     "base-64": "^1.0.0",
     "expo": "^57.0.24",
+    "expo-application": "~57.0.3",
     "expo-asset": "~57.0.18",
     "expo-audio": "~57.0.5",
     "expo-background-task": "~57.0.19",

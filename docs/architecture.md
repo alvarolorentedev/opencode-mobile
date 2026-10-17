@@ -379,7 +379,11 @@ Cloud Link's four-step assistant is presentation in
 `connect-subscription.tsx` and the existing scanner. It introduces no new routes,
 stores or persistence. Native offers, purchase verification, secure saving,
 finalization and automatic pairing still belong to the existing provider flow.
-See [Cloud Link](connect.md) for entry, camera and deep-link behavior.
+`lib/connect-install.ts` (resolved into `connectSetup.storeInstall`) gates the
+Cloud Link Settings row to App Store and Google Play installs; the row sits
+directly below AI & Providers and orders status, exposed services, subscription,
+then machines. See [Cloud Link](connect.md) for entry, camera and deep-link
+behavior.
 
 ### Platform Integrations
 
@@ -712,6 +716,7 @@ Responsibilities:
 - configure providers
 - remove configured provider credentials
 - choose model enablement defaults
+- show the Cloud Link section directly below AI & Providers, and only for store installs, with status → exposed services → subscription → machines ordering
 - inspect and enable notification setup
 - manage voice and response-style preferences
 - adjust the chat transcript text size, bubble/flat layout, and slim interface density

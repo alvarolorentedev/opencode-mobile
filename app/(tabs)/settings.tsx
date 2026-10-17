@@ -157,6 +157,14 @@ export default function SettingsScreen() {
       onPress: () => setOpenSection('ai'),
       render: () => <AiDefaultsSection availableModels={availableModels} availableProviders={availableProviders} configuredProviders={configuredProviders} contract={serverCapabilities.contract} enabledModelIds={enabledModelIds} expandedProviderId={expandedProviderId} onActivateProviderAccount={(credentialId) => void providerAccounts.activate(credentialId)} onExpandedProviderChange={setExpandedProviderId} onModelToggle={handleModelToggle} onRemoveProvider={handleRemoveProvider} onRemoveProviderAccount={(credentialId) => void providerAccounts.remove(credentialId)} onStartProviderConfiguration={providerConfig.startProviderConfiguration} palette={palette} providerAuthMethodsById={providerAuthMethodsById} />,
     },
+    ...(connectSetup.enabled && connectSetup.storeInstall ? [{
+      id: 'cloud-link',
+      icon: 'cloud-outline' as const,
+      title: t('settings:screen.categories.cloudLink'),
+      summary: connectSetup.initialization === 'loading' ? t('settings:connect.progress.idle') : connectSetup.entitled ? t('common:labels.active') : t('settings:subscription.inactive'),
+      onPress: () => { setOpenSection('cloud-link'); void serviceManagement.refresh(); },
+      render: () => <CloudLinkSection setup={connectSetup} services={serviceManagement} serverUrl={settings.serverUrl} palette={palette} onManageMachines={() => { setOpenSection(undefined); router.push('/pair?mode=manage'); }} />,
+    }] : []),
     {
       id: 'notifications',
       icon: 'bell-outline',
@@ -193,14 +201,6 @@ export default function SettingsScreen() {
         </>
       ),
     },
-    ...(connectSetup.enabled ? [{
-      id: 'cloud-link',
-      icon: 'cloud-outline' as const,
-      title: t('settings:screen.categories.cloudLink'),
-      summary: connectSetup.initialization === 'loading' ? t('settings:connect.progress.idle') : connectSetup.entitled ? t('common:labels.active') : t('settings:subscription.inactive'),
-      onPress: () => { setOpenSection('cloud-link'); void serviceManagement.refresh(); },
-      render: () => <CloudLinkSection setup={connectSetup} services={serviceManagement} serverUrl={settings.serverUrl} palette={palette} onManageMachines={() => { setOpenSection(undefined); router.push('/pair?mode=manage'); }} />,
-    }] : []),
     ...(serverCapabilities.savedPermissions ? [{
       id: 'permissions',
       icon: 'shield-key-outline' as const,

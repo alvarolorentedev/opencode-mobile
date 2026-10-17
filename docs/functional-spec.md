@@ -350,6 +350,20 @@ Behavior:
 - values are persisted locally; passwords stay in SecureStore while name, URL, and username live in AsyncStorage
 - Settings shows short category summaries in one compact group; tapping Connection opens a content-sized overlay with the server message, last checked timestamp, and saved connection rows
 
+### Cloud Link Section
+
+Purpose:
+
+- show verified Cloud Link access and manage the store subscription, owned machines, and connector-exposed services
+
+Behavior exposed today:
+
+- the row sits directly below AI & Providers and only appears for installs that came from the App Store or Google Play; directly installed APKs, F-Droid/FOSS builds, production web, and non-store iOS builds never show it (the development web E2E harness keeps it through `connectPilot.testing`)
+- inside the section the order is: access status summary, Exposed Services (only for an active Cloud Link connection), the subscription group (Manage subscription, Restore purchases, and native offers/Subscribe while inactive), then Machines last, with a Learn more footer row
+- the section opens without requesting camera access, pairing a machine, purchasing, or restoring
+- progress, error, notice, and Retry feedback stays attached to the subscription actions
+- an existing Cloud Link connection profile and its deep links keep working even when the store-install check hides the section
+
 ### Exposed Services Section
 
 Purpose:

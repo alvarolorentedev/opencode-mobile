@@ -18,6 +18,7 @@ import {
   type ConnectPairing,
   type ConnectSession,
 } from '@/lib/connect';
+import { isConnectStoreInstall } from '@/lib/connect-install';
 import { connectPurchaseRequest, isConnectPurchase, loadConnectStore, openConnectSubscriptionManagement, type ConnectOffer, type ConnectStoreApi } from '@/lib/connect-store';
 import { deleteProfilePassword, loadConnectionProfiles, mutateConnectionProfiles, type ConnectionProfile } from '@/lib/connection-profiles';
 import type { OpencodeConnectionSettings } from '@/lib/opencode/client';
@@ -66,6 +67,7 @@ export function useConnectState({ controlPlaneUrl, setControlPlaneUrl, switchCon
   const [profiles, setProfiles] = useState<ConnectionProfile[]>([]);
   const [savedProfile, setSavedProfile] = useState<ConnectionProfile>();
   const [storeReady, setStoreReady] = useState(false);
+  const [storeInstall, setStoreInstall] = useState(false);
   const [initializationAttempt, setInitializationAttempt] = useState(0);
   const [canRetry, setCanRetry] = useState(false);
   const [purchaseRecovery, setPurchaseRecovery] = useState<'unverified' | 'verified'>();
@@ -255,6 +257,16 @@ export function useConnectState({ controlPlaneUrl, setControlPlaneUrl, switchCon
     return () => { initialized(false); scopeGeneration.current += 1; activation.current?.controller.abort(); activation.current = undefined; subscriptions.forEach((subscription) => subscription.remove()); void apiRef.current?.endConnection(); apiRef.current = undefined; };
   }, [availablePurchases, controlPlaneUrl, enabled, finishPurchase, isHydrated, initializationAttempt, loadCatalog, perform, store]);
 
+  // Store-install resolution is a capability query, independent of hydration
+  // and of the store connection itself. The dialog only appears once the
+  // platform confirms an App Store or Google Play install.
+  useEffect(() => {
+    if (!enabled) return;
+    let active = true;
+    void isConnectStoreInstall().then((value) => { if (active) setStoreInstall(value); }, () => undefined);
+    return () => { active = false; };
+  }, [enabled]);
+
   useEffect(() => { refreshRef.current = async () => {
     if (pendingPurchase.current) { await finishPurchase(pendingPurchase.current.purchase); return resumeRef.current(); }
     if (apiRef.current && catalogRef.current) {
@@ -367,7 +379,7 @@ export function useConnectState({ controlPlaneUrl, setControlPlaneUrl, switchCon
 
   const canChangeControlPlane = enabled && isHydrated && !busy && purchaseRecovery !== 'verified' && !['purchasing', 'pending', 'saving'].includes(phase);
   const canPurchase = initialization === 'ready' && !busy && storeReady && !purchaseRecovery && !['purchasing', 'pending'].includes(phase);
-  return { enabled, initialization, pairLink, dismissError, controlPlaneUrl, canChangeControlPlane, canPurchase, hasToken: hasConnectSession(session), entitled: hasConnectEntitlement(session), subscriptionExpiresAt: session?.subscription_expires_at, pairing, phase, busy, error, notice, machines, profiles, savedProfile, offers, storeReady, canRetry: canRetry || phase === 'delayed', manageSubscription,
+  return { enabled, storeInstall, initialization, pairLink, dismissError, controlPlaneUrl, canChangeControlPlane, canPurchase, hasToken: hasConnectSession(session), entitled: hasConnectEntitlement(session), subscriptionExpiresAt: session?.subscription_expires_at, pairing, phase, busy, error, notice, machines, profiles, savedProfile, offers, storeReady, canRetry: canRetry || phase === 'delayed', manageSubscription,
     selectControlPlane, acceptLink, purchase, restore, retry, claim, cancelPairing, refreshMachines, connectProfile, connectMachine, forgetProfile, revokeMachine, prepareSettings };
 }
 
