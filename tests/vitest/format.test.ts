@@ -78,4 +78,11 @@ describe('transcript turn lookup', () => {
     expect(getUserTurnForMessage(turnRecords.slice(2), 'reply-a')).toBeUndefined();
     expect(getUserTurnForMessage([{ info: { id: 'orphan', role: 'assistant', parentID: 'missing' }, parts: [] }] as never[], 'orphan')).toBeUndefined();
   });
+
+  it('maps a v2 reply without a parent link to the preceding user message', () => {
+    expect(getUserTurnForMessage([
+      { info: { id: 'user-a', role: 'user' }, parts: [] },
+      { info: { id: 'reply', role: 'assistant' }, parts: [] },
+    ] as never[], 'reply')).toBe('user-a');
+  });
 });

@@ -294,11 +294,12 @@ Responsibility:
 - render a structured diff (`FileDiff`/`VcsFileDiff`) using compact full-width rows with a left expansion chevron, filename, and green/red line totals; expanded previews wrap code within the sheet, using one old/new line-number gutter and existing collapsed-context blocks
 - show a preview-unavailable line when the server reported changes without exposing patch content, and a no-line-changes line when a patch produced no renderable hunks
 
-### `DiffCard`
+### `ChangedFilesCard`
 
 Responsibility:
 
-- render filename-only patch transcript details when structured diff data is absent
+- render the changed files of one turn as a plain list when the structured turn diff is absent, with a localized title and a note that diff lines are unavailable for the turn
+- it is never rendered as a diff, so a filename is never presented as patch content
 
 ### `TranscriptMessage`
 

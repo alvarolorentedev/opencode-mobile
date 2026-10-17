@@ -76,6 +76,7 @@ Diff scope state:
 
 - `diffScopeBySession` records the selected Files Changed scope (`turn`, `uncommitted`, `branch`) per session; it defaults to `turn`
 - `selectedDiffMessageBySession` records which user turn the `turn` scope is pinned to; it is cleared when a new prompt is sent
+- `selectedDiffMessageId` and the diff request both resolve through `resolveDiffTurn(messages, pinnedTurnId)` in `lib/opencode/transcript.ts`: a still-valid pin wins, then the newest turn that recorded a change, then the newest user message for a turn still running before its first snapshot. Display and fetch therefore never drift onto different turns.
 - `vcsDiffsByScope` caches the workspace-scoped `uncommitted`/`branch` diffs, which are not keyed by session
 - `currentDiffs` resolves to the active scope's diff; VCS scopes have no SSE event, so they refresh on a scope change or a workspace file save while active
 
