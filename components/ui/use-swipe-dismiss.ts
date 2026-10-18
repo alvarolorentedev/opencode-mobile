@@ -1,5 +1,5 @@
-/* eslint-disable react-hooks/immutability -- Reanimated shared values are intentionally mutated from gesture worklets and close-time resets, which the React Compiler rule cannot model. */
-import { useCallback, useEffect, useState } from 'react';
+/* eslint-disable react-hooks/immutability -- Reanimated shared values are intentionally mutated from gesture worklets and open-time resets, which the React Compiler rule cannot model. */
+import { useCallback, useLayoutEffect, useRef, useState } from 'react';
 import type { LayoutChangeEvent } from 'react-native';
 import { Gesture } from 'react-native-gesture-handler';
 import { runOnJS, useAnimatedStyle, useSharedValue, withSpring, withTiming } from 'react-native-reanimated';
@@ -28,14 +28,20 @@ export function useSwipeDismiss({ visible, enabled, onDismiss }: {
   const [sheetHeight, setSheetHeight] = useState(0);
   const translateY = useSharedValue(0);
   const dismissing = useSharedValue(false);
+  const wasVisible = useRef(false);
 
-  // Reset the drag offset while the sheet is closed so a previous drag never
-  // leaves it rendered off-screen when it reopens.
-  useEffect(() => {
-    if (!visible) {
+  // Reset the drag offset when the sheet opens, so a previous swipe never leaves
+  // it rendered off-screen when it reopens. This must NOT run on close: on iOS
+  // the native `Modal` keeps its children mounted through the dismissal
+  // animation, so resetting on close would snap the dragged-off sheet back
+  // on-screen mid-dismiss (a ghost). `OverlaySheet` unmounts immediately, so the
+  // open-time reset covers it too.
+  useLayoutEffect(() => {
+    if (visible && !wasVisible.current) {
       translateY.value = 0;
       dismissing.value = false;
     }
+    wasVisible.current = visible;
   }, [dismissing, translateY, visible]);
 
   const handleSheetLayout = useCallback((event: LayoutChangeEvent) => {
