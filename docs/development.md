@@ -4,9 +4,13 @@ OpenCode Mobile is built with Expo and React Native.
 
 ### Requirements
 
-- Node.js 20+
+- Node.js 22.12+ (the range in `package.json` `engines` is authoritative; `.nvmrc` pins 22)
 - npm
 - Android Studio / Xcode for native builds
+
+The unit suite runs under Vitest 5, which requires Node `^22.12.0 || ^24.0.0 || >=26.0.0`. Older Node versions will fail to start the test runner.
+
+> If the working tree lives on a shared or network drive, macOS may leave `._*` AppleDouble sidecar files behind. They are gitignored, but delete them before copying the tree to a build/test mirror so they never reach a bundle or native project.
 
 ### Getting Started
 
@@ -94,9 +98,11 @@ npm run build:ios:local
 
 ### Testing
 
+- `npm run test:ci:static` runs lint, app type-checking, and the Vitest suites
+  (`tests/vitest/`)
 - Flow validation runs against the fake OpenCode server in `tests/fake-opencode/server.mjs`
-- End-to-end suite uses Playwright (`tests/e2e/flows.spec.mjs`)
-- Full testing strategy documented in `TESTING.md`
+- End-to-end suite uses Playwright (`tests/e2e/*.spec.mjs`)
+- Full testing strategy documented in `TESTING.md`; deferred test work in `docs/known-gaps.md`
 
 ### Configuration
 

@@ -402,13 +402,13 @@ uncaught browser errors in the new flows. Android development prebuild passed;
 Gradle stopped because no Android SDK location is configured. Live store handoff,
 native larger text and screen-reader acceptance remain unverified.
 
-`test:connect` covers trusted catalog/API/proof/session contracts and the actual
+`tests/vitest/connect.test.ts` covers trusted catalog/API/proof/session contracts and the actual
 claim → secure-write → finalization aggregation on both stores, including
 failures, retries, rediscovered transactions, and bounded Cloudflare 1033 tunnel
 startup recovery after pairing. It also tests catalog/base-plan/
 offer selection, native JWS forwarding, Family Sharing exclusion, DEFERRED
 replacement, URL safety, app identity/camera/build variants and WebSocket headers.
-`test:connection-profiles` checks stable profile identity, credential rotation,
+`tests/vitest/connection-profiles.test.ts` checks stable profile identity, credential rotation,
 hostname preservation, rollback, secret exclusion and expiry.
 Control-plane checks cover the fixed allowlist, URL normalization/rejection,
 explicit pairing trust, and environment-isolated sessions and pending QR records.
@@ -433,7 +433,7 @@ human validation under AGENTS.md, even when automated checks pass.
 Google acknowledgement ownership validation on 2026-10-12: the app no longer
 acknowledges Play purchases. It finishes only the StoreKit transaction on iOS,
 while the control plane owns Google acknowledgement with durable retry.
-`test:connect` asserts Android never calls `finishTransaction`; Cloud Link E2E
+`tests/vitest/connect.test.ts` asserts Android never calls `finishTransaction`; Cloud Link E2E
 asserts purchase/Restore/recovery still claim and secure a session without a
 client finalization step. Locally, static CI, both fake-server self-tests and the
 39 Cloud Link E2E flows passed. The updated E2E assertions require explicit human

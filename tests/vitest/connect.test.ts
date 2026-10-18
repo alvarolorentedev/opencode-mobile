@@ -4,7 +4,11 @@ import { readFile } from 'node:fs/promises';
 import { createRequire } from 'node:module';
 import vm from 'node:vm';
 import ts from 'typescript';
-import { loadTs, hookRuntime } from './helpers/runtime.mjs';
+import { loadTs, hookRuntime } from '../helpers/runtime.mjs';
+import { describe, it } from 'vitest';
+
+describe('connect and Cloud Link pairing', () => {
+  it('connect and Cloud Link pairing', async () => {
 
 const uri = (source) => `data:text/javascript,${encodeURIComponent(source)}`;
 async function moduleUri(file, replacements) {
@@ -21,7 +25,7 @@ const secure = uri(`export const WHEN_UNLOCKED_THIS_DEVICE_ONLY = 1;
   export async function getItemAsync(key) { return globalThis.__connectSecrets.get(key) ?? null; }
   export async function setItemAsync(key, value) { if (globalThis.__secureWriteFails) throw new Error('secure write failed'); globalThis.__subscriptionEvents?.push('secure'); globalThis.__connectSecrets.set(key, value); }
   export async function deleteItemAsync(key) { globalThis.__connectSecrets.delete(key); }`);
-const connect = await import(await moduleUri('../lib/connect.ts', [
+const connect = await import(await moduleUri('../../lib/connect.ts', [
   [/from 'expo\/fetch'/g, `from "${uri('export const fetch = (...args) => globalThis.fetch(...args);')}"`],
   [/from 'expo-constants'/g, `from "${constants}"`], [/from 'react-native'/g, `from "${native}"`], [/from 'expo-secure-store'/g, `from "${secure}"`],
 ]));
@@ -206,7 +210,7 @@ try {
 
 // Verify native upgrades add Basic without putting credentials in the URL;
 // browser upgrades retain the existing ticket-only behavior.
-const service = await import(await moduleUri('../providers/services/terminal-service.ts', [
+const service = await import(await moduleUri('../../providers/services/terminal-service.ts', [
   [/from '@\/lib\/opencode\/v2\/shared'/g, `from "${uri('export const toShellView = (value) => value;')}"`],
   [/from '@\/lib\/opencode\/compat\/v1\/terminal'/g, `from "${uri('export {};')}"`],
   [/from 'react-native'/g, `from "${native}"`],
@@ -230,7 +234,7 @@ try {
   assert.equal(connect.getConnectTestSecret('secret'), 'value');
 } finally { globalThis.WebSocket = originalSocket; }
 
-const configSource = await readFile(new URL('../app.config.ts', import.meta.url), 'utf8');
+const configSource = await readFile(new URL('../../app.config.ts', import.meta.url), 'utf8');
 const compiled = ts.transpileModule(configSource, { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2020 } }).outputText;
 function appConfig(variant, controlPlaneUrl) {
   const context = { exports: {}, require: createRequire(import.meta.url), process: { env: { EXPO_APP_VARIANT: variant, EXPO_PUBLIC_E2E_MODE: '1', EXPO_CONNECT_CONTROL_PLANE_URL: controlPlaneUrl, EXPO_CONNECT_CONTROL_PLANES: 'http://127.0.0.1:8787', EXPO_CONNECT_TEST_USER_TOKEN: 'configured-test-token' } } };
@@ -281,7 +285,7 @@ assert.ok(!foss.plugins.includes('expo-iap'), 'FOSS build must not configure the
 // prebuild, even when the caller has a conflicting variant in the environment.
 for (const variant of ['development', 'production']) {
   const file = variant === 'development' ? 'build-android-development' : 'build-android-release';
-  const source = (await readFile(new URL(`../scripts/${file}.mjs`, import.meta.url), 'utf8')).replace(/^#!.*\n/, '');
+  const source = (await readFile(new URL(`../../scripts/${file}.mjs`, import.meta.url), 'utf8')).replace(/^#!.*\n/, '');
   const code = ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2020, allowJs: true, esModuleInterop: true } }).outputText;
   const commands = [];
   const writes = [];
@@ -310,19 +314,18 @@ for (const variant of ['development', 'production']) {
     assert.ok(writes.some((data) => data.includes('android.injected.signing.store.password=test')), 'Signing credentials must be injected through gradle.properties.');
   }
 }
-console.log('Connect parser, API, credentials, native availability, camera config, build variants, and WebSocket tests passed');
 
 // Test the actual store/backend aggregation, including crash-recovery checkpoints.
-const storeUri = await moduleUri('../lib/connect-store.ts', [
-  [/from '@\/lib\/connect'/g, `from "${await moduleUri('../lib/connect.ts', [[/from 'expo\/fetch'/g, `from "${uri('export const fetch = (...args) => globalThis.fetch(...args);')}"`], [/from 'expo-constants'/g, `from "${constants}"`], [/from 'react-native'/g, `from "${native}"`], [/from 'expo-secure-store'/g, `from "${secure}"`]])}"`],
+const storeUri = await moduleUri('../../lib/connect-store.ts', [
+  [/from '@\/lib\/connect'/g, `from "${await moduleUri('../../lib/connect.ts', [[/from 'expo\/fetch'/g, `from "${uri('export const fetch = (...args) => globalThis.fetch(...args);')}"`], [/from 'expo-constants'/g, `from "${constants}"`], [/from 'react-native'/g, `from "${native}"`], [/from 'expo-secure-store'/g, `from "${secure}"`]])}"`],
   [/from 'expo-constants'/g, `from "${constants}"`], [/from 'react-native'/g, `from "${native}"`],
 ]);
 const storeApi = await import(storeUri);
-const connectUri = await moduleUri('../lib/connect.ts', [
+const connectUri = await moduleUri('../../lib/connect.ts', [
   [/from 'expo\/fetch'/g, `from "${uri('export const fetch = (...args) => globalThis.fetch(...args);')}"`],
   [/from 'expo-constants'/g, `from "${constants}"`], [/from 'react-native'/g, `from "${native}"`], [/from 'expo-secure-store'/g, `from "${secure}"`],
 ]);
-const subscriptionService = await import(await moduleUri('../providers/services/connect-subscription-service.ts', [
+const subscriptionService = await import(await moduleUri('../../providers/services/connect-subscription-service.ts', [
   [/from '@\/lib\/connect'/g, `from "${connectUri}"`], [/from '@\/lib\/connect-store'/g, `from "${storeUri}"`],
 ]));
 const fixtureCatalog = { plans: [{ id: 'cloudlink', entitlements: ['cloudlink'], products: [{ store: 'apple', productId: 'fixture.apple' }, { store: 'google', productId: 'fixture.google', basePlanId: 'monthly', offerIds: ['trial'] }] }] };
@@ -402,7 +405,6 @@ for (const platform of ['apple', 'google']) {
     }
   } finally { globalThis.fetch = originalFetch; globalThis.__secureWriteFails = false; delete globalThis.__subscriptionEvents; }
 }
-console.log('Subscription catalog, native proof, DEFERRED replacement, secure grant/finalization and recovery checks passed');
 
 // Run the real provider hook and purchase service on both stores. A failed
 // verification must permit automatic routing without replaying a purchase;
@@ -417,7 +419,7 @@ for (const platform of ['apple', 'google']) {
     // Each scenario represents a fresh app process, including its catalog cache.
     const freshConnectUri = `${connectUri}#${platform}-${scenario}`;
     const connect = await import(freshConnectUri);
-    const subscriptionService = await import(await moduleUri('../providers/services/connect-subscription-service.ts', [
+    const subscriptionService = await import(await moduleUri('../../providers/services/connect-subscription-service.ts', [
       [/from '@\/lib\/connect'/g, `from "${freshConnectUri}"`],
       [/from '@\/lib\/connect-store'/g, `from "${storeUri}"`],
     ]));
@@ -609,7 +611,6 @@ for (const platform of ['apple', 'google']) {
     }
   }
 }
-console.log('Apple/Google provider environment correction, checkpoint isolation, and duplicate-purchase recovery checks passed');
 
 // A cached active session must yield to an authoritative subscription rejection.
 // Exercise the real QR continuation and Google's production -> staging routing.
@@ -617,7 +618,7 @@ for (const platform of ['apple', 'google']) {
   for (const scenario of ['renewed', 'expired', 'missing', 'rejected-again', 'unrelated-403', 'invalid-qr']) {
     const freshConnectUri = `${connectUri}#${platform}-${scenario}`;
     const connect = await import(freshConnectUri);
-    const subscriptionService = await import(await moduleUri('../providers/services/connect-subscription-service.ts', [
+    const subscriptionService = await import(await moduleUri('../../providers/services/connect-subscription-service.ts', [
       [/from '@\/lib\/connect'/g, `from "${freshConnectUri}"`],
       [/from '@\/lib\/connect-store'/g, `from "${storeUri}"`],
     ]));
@@ -722,6 +723,7 @@ for (const platform of ['apple', 'google']) {
     } finally { runtime.unmount(); globalThis.fetch = originalFetch; }
   }
 }
-console.log('Apple/Android stale entitlement recovery, QR preservation, and bounded retries passed');
 
-await import('./connect-recovery.test.mjs');
+
+  });
+});

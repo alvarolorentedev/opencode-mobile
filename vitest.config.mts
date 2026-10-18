@@ -12,6 +12,10 @@ export default defineConfig({
     include: ['tests/vitest/**/*.test.ts'],
     environment: 'node',
     globals: false,
+    // Suites ported from the standalone Node scripts drive whole provider
+    // orchestration flows (connect recovery, prompt lifecycle). They run in
+    // milliseconds alone but can exceed the 5s default under parallel load.
+    testTimeout: 30_000,
   },
   resolve: {
     alias: {

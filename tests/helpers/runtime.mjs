@@ -4,6 +4,7 @@ import ts from 'typescript';
 
 export async function loadTs(relative, imports = {}, globals = {}) {
   const source = await readFile(new URL(`../../${relative}`, import.meta.url), 'utf8');
+  /** @type {any} */
   const exports = {};
   runInNewContext(ts.transpileModule(source, {
     compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2020, jsx: ts.JsxEmit.ReactJSX },

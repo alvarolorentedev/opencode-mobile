@@ -2,6 +2,10 @@
 
 This repo uses CI-enforced flow validation instead of broad unit test coverage.
 
+The authoritative, detailed reference is
+[`docs/testing-and-validation.md`](docs/testing-and-validation.md). This file is
+the short overview of the strategy and the merge gate.
+
 ## Principles
 
 - Test complete user flows, not isolated helpers.
@@ -11,18 +15,29 @@ This repo uses CI-enforced flow validation instead of broad unit test coverage.
 
 ## CI Gates
 
-The single `.github/workflows/build.yml` workflow owns validation and release, and runs on pushes to `main` and `v*` tags. `.github/workflows/pr-validate.yml` runs the same `validate` steps on pull requests targeting `main`.
+Three workflows run the same `validate` gate:
 
-It enforces a single `validate` gate:
+- `.github/workflows/build.yml` — pushes to `main` and `v*` tags
+- `.github/workflows/pr-validate.yml` — pull requests targeting `main`
+- `.github/workflows/ios-release.yml` — manual iOS release dispatch
 
-1. `validate`
-   - `npm run test:ci:static` (lint, typecheck, and the static suites: usage, v2-mappers, format, provider-utils, workspace-patch, persistence-hydration, credential-storage, session-cache, favorites, connection-scope, connection-profiles, last-session, notifications, notifications-background, record-preservation, session-reads, provider-runtime)
-   - `npm run test:fake-server:self`
-   - starts the fake OpenCode server
-   - starts the Expo web app in CI mode
-   - runs Playwright flow tests against the fake server
+`validate` runs:
 
-iOS native validation happens in the `ios-release` job, so there is no separate prebuild job. The `android-release` job always runs after `validate` passes and uploads the signed artifacts; release publishing and store uploads (`v*` tags) run in the same workflow only after `validate` passes. Actions artifacts expire after 3 days; the permanent copy is the GitHub Release asset or store upload. `.github/workflows/cleanup.yml` runs weekly to purge artifacts older than 3 days and keep only the newest Gradle/npm cache.
+1. `npm run test:ci:static` — lint, app TypeScript type-checking, and the Vitest
+   suites. The exact set is the script in `package.json`; do not duplicate the
+   list in prose.
+2. `npm run test:fake-server:self`
+3. `npm run test:e2e:web` — builds the web bundle, boots the fake server, and
+   runs the Playwright flows.
+
+The three workflows currently repeat the `validate` steps inline. A reusable
+workflow has not been extracted yet; until it is, keep the three step lists in
+sync when the gate changes.
+
+`ios-release` also builds and signs the iOS archive after `validate`; the Android
+release jobs (`android-release`, `foss-release`) run after `validate` on `v*` tags
+or a manual dispatch with `build_android: true`. Actions artifacts expire after a
+few days; the permanent copy is the GitHub Release asset or store upload.
 
 ## Why This Repo Uses Flow Tests
 
@@ -34,11 +49,16 @@ The highest-risk behavior in this app is orchestration across:
 - provider configuration and model availability
 - event-stream updates and polling fallback
 
-Those behaviors live primarily in `providers/opencode-provider.tsx`, `components/chat/chat-view.tsx`, `app/(tabs)/workspace.tsx`, `app/(tabs)/settings.tsx`, and `lib/opencode/client.ts`.
+Those behaviors live primarily in `providers/opencode-provider.tsx`,
+`components/chat/chat-view.tsx`, `app/(tabs)/workspace.tsx`,
+`app/(tabs)/settings.tsx`, and `lib/opencode/client.ts`.
 
 ## Fake OpenCode Server
 
-The primary deterministic backend is native v2 in `tests/fake-opencode/server.mjs` (`npm run test:fake-server`). The v1 compatibility boundary is `server-v1.mjs` (`npm run test:fake-server:v1`). Playwright uses v2 by default, with explicit v1 coverage for shared flows and compatibility-only features.
+The primary deterministic backend is native v2 in `tests/fake-opencode/server.mjs`
+(`npm run test:fake-server`). The v1 compatibility boundary is `server-v1.mjs`
+(`npm run test:fake-server:v1`). Playwright uses v2 by default, with explicit v1
+coverage for shared flows and compatibility-only features.
 
 It simulates:
 
@@ -62,7 +82,8 @@ Supported scenarios:
 - `question`
 - `stream-disconnect`
 
-The Playwright suite resets the server between tests through `POST /__control/reset`.
+The Playwright suite resets the server between tests through
+`POST /__control/reset`.
 
 ## Flow Coverage
 
@@ -99,12 +120,33 @@ If you need to debug the fake backend directly:
 npm run test:fake-server
 ```
 
-The app is built in `EXPO_PUBLIC_E2E_MODE=1` for CI flow tests so notification and voice bootstrap side effects do not interfere with deterministic automation.
+The app is built in `EXPO_PUBLIC_E2E_MODE=1` for CI flow tests so notification and
+voice bootstrap side effects do not interfere with deterministic automation.
 
-Android native validation happens on every CI run in the `android-release` job in `.github/workflows/build.yml`; the local `npm run build:development:android` command remains available for manual use.
+Android native validation happens on every CI run in the `android-release` job in
+`.github/workflows/build.yml`; the local `npm run build:development:android`
+command remains available for manual use.
+
+## Test Layout
+
+- `tests/vitest/` — Vitest suites, run by `npm run test:vitest` (part of
+  `npm run test:ci:static`). They are not type-checked by `tsc`; many drive the
+  dynamic `loadTs`/`hookRuntime` harness in `tests/helpers/runtime.mjs`.
+- `tests/e2e/` — Playwright flow specs.
+- `tests/fake-opencode/` — the deterministic v1/v2 fake servers and their self-test.
+- `tests/foss-prepare.test.mjs` — FOSS build-tooling check, run by `npm run test:foss`.
+
+See [known gaps](docs/known-gaps.md) for deferred test-infrastructure work.
 
 ## v2 primary acceptance
 
-Run `npm run test:ci:static`, `npm run test:fake-server:self`, and `npm run test:e2e:web`; all three gates must pass before push. The SDK import boundary is checked statically. Regressions cover native cursors/events, accumulated usage/todos, connection switching and persisted continuity, guarded file saves, and MCP integration OAuth.
+Run `npm run test:ci:static`, `npm run test:fake-server:self`, and
+`npm run test:e2e:web`; all three gates must pass before push. The SDK import
+boundary is checked statically. Regressions cover native cursors/events,
+accumulated usage/todos, connection switching and persisted continuity, guarded
+file saves, and MCP integration OAuth.
 
-Run `npm run build:development:android`, then validate editing, code/automatic OAuth, reconnects and terminals against real v2 and v1 servers on devices. The pre-save read is not atomic with the write. Any changed fake-server or E2E contract requires explicit human validation under AGENTS.md before completion.
+Run `npm run build:development:android`, then validate editing, code/automatic
+OAuth, reconnects and terminals against real v2 and v1 servers on devices. The
+pre-save read is not atomic with the write. Any changed fake-server or E2E
+contract requires explicit human validation under AGENTS.md before completion.

@@ -101,7 +101,7 @@ which on many devices is supplied by Google. If F-Droid reviewers apply
 When changing dependencies or native config:
 
 - `npm run test:ci:static` and `npm run typecheck` must stay green
-- `npm run test:architecture` guards the layering; FOSS stubs live in `lib/foss/`
+- `npm run test:vitest` guards the layering via `tests/vitest/architecture.test.ts`; FOSS stubs live in `lib/foss/`
 - update the Firebase stub revision in `scripts/build-android-release.mjs`
   and the recipe's `firebase-stub` srclib together if `expo-notifications`
   needs a newer stub API

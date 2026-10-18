@@ -1,5 +1,16 @@
 # Testing And Validation
 
+# Testing And Validation
+
+All static and unit/contract suites now run under Vitest from `tests/vitest/`
+(`npm run test:vitest`, invoked by `npm run test:ci:static`). The standalone
+Node `.mjs` suites were migrated here; suite names used later in this document
+(for example `test:i18n`, `test:provider-runtime`, `test:architecture`) are the
+historical script names, and their equivalent today is
+`tests/vitest/<name>.test.ts`. The deterministic fake servers
+(`tests/fake-opencode/`) and the Playwright specs (`tests/e2e/`) are unchanged.
+See [known gaps](known-gaps.md) for the deferred test-infrastructure work.
+
 ## Audit remediation regressions
 
 `audit-races.test.ts` covers composer revision ownership, explicit failed-input
@@ -218,32 +229,13 @@ opening accepts the retained active path while rejecting other unlisted paths.
 
 Release automation in `build.yml`:
 - APK/IPA workflow artifacts expire after 1 day; the permanent copy is the GitHub Release asset, Play Store upload, or TestFlight upload
-- `.github/workflows/cleanup.yml` runs weekly to delete expired artifacts and keep only the newest cache per family (production Gradle, FOSS Gradle, npm)
 
-From `TESTING.md`, those gates include:
+The `validate` gate runs:
 
-- `npm run test:ci:static`, which chains lint, typecheck, and the static suites:
-  - `npm run test:usage`
-  - `npm run test:chat-appearance`
-  - `npm run test:vitest` (Vitest: format, transcript turns, record preservation, session reads/pagination, V2 mappers)
-  - `npm run test:i18n`
-  - `npm run test:provider-runtime`
-  - `npm run test:provider-utils`
-  - `npm run test:workspace-patch`
-  - `npm run test:persistence-hydration`
-  - `npm run test:credential-storage`
-  - `npm run test:session-cache`
-  - `npm run test:favorites`
-  - `npm run test:connection-scope`
-  - `npm run test:connection-profiles`
-  - `npm run test:last-session`
-  - `npm run test:active-sessions`
-  - `npm run test:notifications`
-  - `npm run test:notifications-background`
-  - `npm run test:onboarding`
-  - `npm run test:connect`
-  - `npm run test:architecture`
-  - `npm run test:anr`
+- `npm run test:ci:static`, the single static entrypoint. It runs lint,
+  TypeScript type-checking for the app and for `tests/` (`npm run typecheck:tests`),
+  the Vitest suites (`npm run test:vitest`), and the static contract suites.
+  The script in `package.json` is the source of truth for the exact suite list.
 - `npm run test:fake-server:self`
 - Playwright E2E flow tests against the fake OpenCode server
 
@@ -317,9 +309,9 @@ then English. It also verifies that the generated `lib/i18n/resources.ts`
 registry matches the locale folders, that `SUPPORTED_LANGUAGES` and the folders
 agree, and that `app.config.ts` exposes the same `supportedLocales`. Regenerate
 the registry with `npm run gen:i18n`. During local iteration,
-`npm run test:i18n:loose` (`--allow-missing`) tolerates keys that a non-English
-locale has not translated yet (they fall back to English at runtime); CI runs the
-strict form and enforces full parity.
+`npm run test:i18n:loose` sets `I18N_ALLOW_MISSING=1` and tolerates keys that a
+non-English locale has not translated yet (they fall back to English at runtime);
+CI runs the strict form and enforces full parity.
 
 The `test:architecture` suite is a ratchet on the documented layering: the
 provider file size, the combined domain-context surface, and a rule that
@@ -660,12 +652,12 @@ keep 401/403 and TLS/certificate failures immediately actionable.
 
 Recovery classification is pinned by `tests/vitest/connection-classification.test.ts`
 (tunnel-startup, offline, timeout, auth, entitlement, server-incompatible,
-unknown, and the retry/auth policies). `tests/provider-runtime.test.mjs` covers
+unknown, and the retry/auth policies). `tests/vitest/provider-runtime.test.ts` covers
 the liveness watchdog (one re-subscription per staleness window, foreground
 cycle, no traffic while healthy), the queued full reconcile behind an in-flight
 safety poll, auth-failure stream stop with a single provider notification, and
 the terminal reconnect on a rotated credential client.
-`tests/connect-recovery.test.mjs` covers single-flight concurrent connects
+`tests/vitest/connect-recovery.test.ts` covers single-flight concurrent connects
 (one workspace discovery), same-machine rotation using the soft reset (workspace
 preserved), and data-plane revocation (state cleared once, Cloud Link recovery
 reused). `tests/vitest/terminal.test.ts` covers jittered bounded reconnect
@@ -717,7 +709,8 @@ expiry. These do not prove native store acceptance. Native
 camera, secure relaunch/locked-device access, real tunnel upgrades, and
 revocation still require explicit physical-device validation.
 
-`test:connect` also runs `tests/connect-recovery.test.mjs`, exercising the actual
+`test:connect` covers the same contract as `tests/vitest/connect-recovery.test.ts`,
+exercising the actual
 provider hooks with deterministic app-state, time, native store and storage
 boundaries. It covers healthy reopen, background expiry and retry cancellation,
 cold-launch store readiness, shared credential access, stale recovery success
@@ -783,7 +776,7 @@ Useful local commands documented in the repo:
 ```bash
 npm run lint
 npm run typecheck
-npm run test:workspace-patch
+npm run test:vitest
 npm run test:fake-server:self
 npm run test:e2e:web
 npm run build:development:android

@@ -272,7 +272,7 @@ orchestrator. Each hook receives the current client (and, when it must call a
 later-defined provider callback, a latest-ref) and exposes its own reset, so the
 provider's project/connection reset composes them instead of inlining state.
 
-`test:architecture` enforces a repo-wide readable-size ratchet: every source
+`tests/vitest/architecture.test.ts` (run by `npm run test:vitest`) enforces a repo-wide readable-size ratchet: every source
 file under `app/`, `components/`, `providers/`, and `lib/` must stay at or below
 **500 lines** (200-400 is the target; generated `lib/i18n/resources.ts` is
 exempt), the provider stays at or below 500, and the public context surface

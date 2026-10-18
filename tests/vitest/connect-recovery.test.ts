@@ -1,6 +1,10 @@
 import assert from 'node:assert/strict';
 import { Buffer } from 'node:buffer';
-import { loadTs, hookRuntime, deferred } from './helpers/runtime.mjs';
+import { loadTs, hookRuntime, deferred } from '../helpers/runtime.mjs';
+import { describe, it } from 'vitest';
+
+describe('connect recovery', () => {
+  it('connect recovery', async () => {
 
 const CP = 'https://api.opencodecloud.link';
 const ref = (current) => ({ current });
@@ -263,7 +267,6 @@ for (const [fail, cloud] of [[false, false], [true, false], [false, true], [true
   assert.notEqual(stored[0].username, f.profile.username);
   f.runtime.unmount();
 }
-console.log('Cloud Link resume, native initialization, access coalescing, stale recovery, and live renewal checks passed');
 
 // First-claim approval waiting owns recovery, including after an overdue resume.
 const approvalQR = 'opencodemobile://pair?v=1&cp=https%3A%2F%2Fapi.opencodecloud.link&id=approval&t=one-use-token&n=Mac';
@@ -307,7 +310,6 @@ const approvalQR = 'opencodemobile://pair?v=1&cp=https%3A%2F%2Fapi.opencodecloud
   assert.equal(f.runtime.value.connectSetup.phase, 'paired'); assert.equal(f.pairClaims, 2);
   f.runtime.unmount();
 }
-console.log('Cloud Link approval wait, explicit saved-credential retry, rescan, and foreground exclusion checks passed');
 
 // A still-valid post-claim credential is not rotated after a minute of waiting.
 {
@@ -330,7 +332,6 @@ console.log('Cloud Link approval wait, explicit saved-credential retry, rescan, 
   assert.equal(f.catalogs, before, 'A stale activation must not switch back to its saved profile.');
   f.runtime.unmount();
 }
-console.log('Cloud Link activation credential reuse and connection-change guards passed');
 
 // Data-plane revocation stops automatic retries and surfaces an actionable state.
 {
@@ -355,4 +356,6 @@ console.log('Cloud Link activation credential reuse and connection-change guards
   assert.equal(f.runtime.value.connection.status, 'connected');
   f.runtime.unmount();
 }
-console.log('Data-plane revocation recovery checks passed');
+
+  });
+});

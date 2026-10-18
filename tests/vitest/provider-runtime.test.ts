@@ -2,7 +2,11 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { runInNewContext } from 'node:vm';
 import ts from 'typescript';
-import { loadTs, hookRuntime, deferred } from './helpers/runtime.mjs';
+import { loadTs, hookRuntime, deferred } from '../helpers/runtime.mjs';
+import { describe, it } from 'vitest';
+
+describe('provider runtime actions', () => {
+  it('provider runtime actions', async () => {
 
 // Exercise the real provider actions, including a server switch where the next
 // server exposes the same directory as the previous server. The declarations
@@ -39,11 +43,11 @@ function extractEffect(source, marker) {
   visit(ast);
   return found;
 }
-const workspaceActionsSource = await readSource('../providers/use-workspace-file-actions.ts');
-const promptLifecycleSource = await readSource('../providers/use-prompt-lifecycle.ts');
-const sessionActionsSource = await readSource('../providers/use-session-bootstrap-actions.ts');
-const connectionActionsSource = await readSource('../providers/use-connection-link-actions.ts');
-const providerEffectsSource = await readSource('../providers/use-opencode-provider-effects.ts');
+const workspaceActionsSource = await readSource('../../providers/use-workspace-file-actions.ts');
+const promptLifecycleSource = await readSource('../../providers/use-prompt-lifecycle.ts');
+const sessionActionsSource = await readSource('../../providers/use-session-bootstrap-actions.ts');
+const connectionActionsSource = await readSource('../../providers/use-connection-link-actions.ts');
+const providerEffectsSource = await readSource('../../providers/use-opencode-provider-effects.ts');
 const names = [ 'openWorkspaceFile', 'saveWorkspaceFile', 'abortSession'];
 const declarations = [
   extractDeclarations(workspaceActionsSource, ['openWorkspaceFile', 'saveWorkspaceFile']),
@@ -200,7 +204,7 @@ await actions.abortSession('s');
 assert.equal(aborted, true, 'notification storage failure must not prevent aborting server work');
 
 // The bounded transcript keeps an independent, replay-safe usage/plan ledger.
-const transcriptSource = await readSource('../providers/use-transcript-state.ts');
+const transcriptSource = await readSource('../../providers/use-transcript-state.ts');
 const ledgerHelpers = {
   ...await loadTs('lib/opencode/usage.ts'),
   ...await loadTs('lib/opencode/format/todos.ts'),
@@ -434,7 +438,6 @@ voiceRuntime.update({ pendingQuestionsBySession: { s: [{ id: 'question' }] } });
 await voiceRuntime.value.toggleConversationMode(); await voiceRuntime.settle(); assert.equal(voiceRuntime.value.conversation.phase, 'off');
 assert.match(voiceRuntime.value.conversation.feedback, /Answer the current request/);
 voiceRuntime.unmount(); assert.equal(voiceRuntime.countTimers(2200), 0); assert.ok(aborts > 0);
-console.log('workspace scope, realtime recovery, and conversation lifecycle regression tests passed');
 
 // Profile orchestration stays provider-owned and serializes metadata/credentials.
 const profileRuntime = hookRuntime();
@@ -490,7 +493,6 @@ const stableProfiles = profileRuntime.value;
 profileRuntime.update({ switchConnection: async () => {} });
 assert.equal(profileRuntime.value, stableProfiles, 'profile domain values remain stable when only callback bridges change');
 profileRuntime.unmount();
-console.log('provider-owned profile ordering, rollback, and callback stability checks passed');
 
 // Actual session callbacks: restore in the row's workspace, preserve scope,
 // and refresh an explicit target missing from an otherwise populated cache.
@@ -587,7 +589,7 @@ assert.equal((await canceledOpen).ok, false);
 assert.equal(sessionContext.pendingDeepLinkTargetRef.current, undefined);
 
 // Exercise the actual library runner without loading the native rendering tree.
-const librarySource = await readFile(new URL('../components/chat/chat-library.tsx', import.meta.url), 'utf8');
+const librarySource = await readFile(new URL('../../components/chat/chat-library.tsx', import.meta.url), 'utf8');
 const libraryAst = ts.createSourceFile('library.tsx', librarySource, ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX);
 const libraryBody = libraryAst.statements.find((n) => ts.isFunctionDeclaration(n) && n.name?.text === 'ChatLibrary').body;
 const runner = libraryBody.statements.find((n) => ts.isFunctionDeclaration(n) && n.name?.text === 'run').getText(libraryAst);
@@ -602,7 +604,6 @@ libraryContext.operationRef.current = undefined; // dismiss the old overlay
 await libraryRun('second', async () => {}, () => { completed++; });
 libraryGate.resolve(); await firstLibraryRun;
 assert.equal(completed, 1); assert.equal(libraryError, undefined, 'an old error cannot overwrite a newer successful opening');
-console.log('session restore, explicit-target opening, cancellation, and library race regressions passed');
 
 const queuedGate = deferred();
 const queuedFirst = libraryRun('old', async () => { await queuedGate.promise; throw new Error('obsolete error'); }, () => { completed += 100; });
@@ -685,5 +686,7 @@ assert.deepEqual(Object.keys(cachedDiffs), ['target']); assert.deepEqual(Object.
   await runtime.value.closeTerminal('first'); runtime.flush();
   assert.equal(runtime.value.activeTerminalId, 'second'); assert.equal(records.get('first').disposed, true);
   runtime.unmount(); assert.equal(records.get('second').disposed, true);
-  console.log('terminal scope, refresh race, failed removal, retained selection, and disposal checks passed');
 }
+
+  });
+});

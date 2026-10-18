@@ -29,6 +29,9 @@ The goal is not aspirational design documentation. It is an implementation refer
 - `ios-widget-parity.md`
   Deferred iOS widget/Live Activity gap, shipped quick actions and the Android
   home widget, and the requirements to close the iOS side.
+- `known-gaps.md`
+  Deliberately deferred structural work: provider/chat orchestration wiring,
+  test-infrastructure leftovers, and CI/observability gaps.
 - `development.md` explanation on how to run the app locally.
 
 ## Current System Summary
