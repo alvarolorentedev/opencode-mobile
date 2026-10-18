@@ -60,9 +60,12 @@ validation is still required to establish whether it resolves the flicker.
 
 ## Core Architectural Principle
 
-The dominant design decision is central orchestration through `providers/opencode-provider.tsx`.
+The dominant design decision is central orchestration through the provider layer:
+`providers/opencode-provider.tsx` is a thin wrapper that mounts
+`providers/opencode-provider-tree.tsx` with the values assembled by
+`providers/use-opencode-provider-composition.ts`.
 
-This file is the application's effective domain layer. It owns:
+This composition unit is the application's effective domain layer. It owns:
 
 - connection settings and connection state
 - project catalog and active project selection
@@ -158,7 +161,14 @@ and provider setup remain in Settings.
 ### Provider Layer
 
 - `providers/opencode-provider.tsx`
-  Main orchestrator and context source.
+  Thin entrypoint: mounts the context tree with the values from the
+  composition unit.
+- `providers/use-opencode-provider-composition.ts`
+  The orchestrator: wires the domain hooks, assembles their inputs, and derives
+  the context values. This is the application's effective domain layer.
+- `providers/opencode-provider-tree.tsx`
+  The nested domain context providers, in their documented order
+  (`UpdatesContext` innermost).
 - `providers/opencode-provider-types.ts`
   Shared public types, the domain context values, and their union.
 - `providers/opencode-contexts.ts`
@@ -267,15 +277,18 @@ MCP and worktree callback bridges use stable callbacks backed by the provider's
 latest refs. Conversation submission similarly uses the latest send action
 without restarting a submitted turn when message state changes.
 
-These domain hooks are composed by `OpencodeProvider`, which stays the single
-orchestrator. Each hook receives the current client (and, when it must call a
-later-defined provider callback, a latest-ref) and exposes its own reset, so the
-provider's project/connection reset composes them instead of inlining state.
+These domain hooks are composed by `use-opencode-provider-composition.ts`, which
+is the single orchestrator. Each hook receives the current client (and, when it
+must call a later-defined provider callback, a latest-ref) and exposes its own
+reset, so the provider's project/connection reset composes them instead of
+inlining state.
 
 `tests/vitest/architecture.test.ts` (run by `npm run test:vitest`) enforces a repo-wide readable-size ratchet: every source
-file under `app/`, `components/`, `providers/`, and `lib/` must stay at or below
-**500 lines** (200-400 is the target; generated `lib/i18n/resources.ts` is
-exempt), the provider stays at or below 500, and the public context surface
+file under `app/`, `components/`, `providers/`, `lib/`, and `widgets/` must stay at
+or below **500 lines** (200-400 is the target; generated `lib/i18n/resources.ts` is
+exempt), `providers/opencode-provider.tsx` must stay a thin wrapper at or below
+**60 lines** because composition lives in
+`providers/use-opencode-provider-composition.ts`, and the public context surface
 cannot grow past 135 members. When a limit is genuinely outgrown, split the file
 into the right layer and, if needed, lower the number in the same change.
 
@@ -351,9 +364,9 @@ independent of onboarding completion. See [Cloud Link pilot](connect.md).
 ### Chat UI
 
 - `components/chat/chat-view.tsx`
-  Main chat screen render, driven by `components/chat/use-chat-view-controller.ts` and `components/chat/use-chat-view-actions.ts`.
-- `components/chat/chat-content.tsx`
-  Barrel over `components/chat/content/` (transcript list, changes overlay, pending interactions, skeleton).
+  Main chat screen render, driven by `components/chat/use-chat-view-controller.ts` and `components/chat/use-chat-view-actions.ts`. It renders the transcript list, changes overlay, and pending interactions directly; there is no pass-through wrapper.
+- `components/chat/content/`
+  The chat area leaves: transcript list, changes overlay, pending interactions, and skeleton.
 - `components/chat/chat-composer.tsx`
   Prompt input, attachments, and controls.
 - `components/chat/chat-header.tsx`
@@ -790,9 +803,11 @@ This is one of the densest parts of the architecture and would need careful pari
 
 The highest-coupling areas are:
 
-### `providers/opencode-provider.tsx`
+### `providers/use-opencode-provider-composition.ts`
 
 This is the main behavioral hotspot. Changes here can affect nearly every screen.
+The wrapper (`opencode-provider.tsx`) and the tree (`opencode-provider-tree.tsx`)
+stay mechanical so orchestration pressure is visible in one file.
 
 ### Prompt lifecycle
 

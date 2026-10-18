@@ -299,7 +299,12 @@
     "refresh": "Refresh diagnostics",
     "networkUsage": "Network usage",
     "networkUsageValue": "{{requests}} requests · {{size}} known response sizes today",
-    "networkUsageReset": "Reset"
+    "networkUsageReset": "Reset",
+    "lastError": "Last app error",
+    "lastErrorValue": "{{message}} · {{time}}",
+    "lastErrorNone": "No app errors recorded",
+    "lastErrorFatal": "Fatal",
+    "lastErrorHandled": "Handled"
   },
   "mcp": {
     "title": "MCP servers",

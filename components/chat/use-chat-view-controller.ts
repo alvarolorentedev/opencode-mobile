@@ -414,24 +414,39 @@ export function useChatViewController() {
   }
 
   return {
-    activeProject, activeSession, approvals, attachments, availableAgents, awaitingUserInput,
-    buildSendErrorDetails, changesVisible, chatPreferences, clearConversationFeedback,
-    clearPromptError, commands, completedTodoCount, connection, contextModel, contextTokens,
-    conversation, copiedMessageId, currentActivityLabel, currentDiffs, currentDiffScope,
-    currentPendingPermissions, currentPendingQuestions, currentSessionId, currentTodos,
-    currentUsage, diffAdditions, diffCount, diffDeletions, diffDetails, diffTurns,
-    displayTranscript, draft, expandedDiffId, forkSession, handleAbort, handleAttach,
-    handleConfirmStopConversation, handleCopyMessage, handleNewSession, handleReviewChanges,
-    handleSendPrompt, handleSpeakEntry, handleToggleRecording, handleVoiceRecovery, hasFailedInput, recoverFailedInput, dismissFailedInput, hasTranscriptMessages,
-    isCreatingSession, isRefreshingDiffs, isRefreshingMessages, isSpeechInputAvailable,
-    isSpeechInputListening, isStoppingSession, isUpdatingAutoApprove, latestAssistantTurnUsage,
-    pendingPrompts, pendingInteractions, progressIcon, progressVisible, refreshCurrentSession, refreshDiffs,
-    rejectQuestion, replyToPermission, replyToQuestion, revertSession, retryAttempt, running, selectDiffMessage,
-    selectedAgentLabel, selectedDiffMessageId, selectedSession, sendErrorMessage,
-    serverCapabilities, sessionMenuVisible, setAttachments, setAutoApprove, setChangesVisible,
-    setCopiedMessageId, setDiffScope, setDraft, setExpandedDiffId, setIsUpdatingAutoApprove,
-    setProgressVisible, setSendFeedback, setSessionMenuVisible, setVoiceFeedback, showSendAction,
-    slim, speakingMessageId, toggleConversationMode, transcriptPaging, unrevertSession,
-    updateChatPreferences, visibleModels, voiceFeedback, voiceRecoveryAction,
+    header: {
+      activeProject, connection, contextModel, contextTokens, conversation,
+      currentUsage, latestAssistantTurnUsage, selectedSession, slim,
+    },
+    content: {
+      activeSession, awaitingUserInput, changesVisible, completedTodoCount,
+      copiedMessageId, currentActivityLabel, currentDiffs, currentDiffScope,
+      currentPendingPermissions, currentPendingQuestions, currentSessionId, currentTodos,
+      diffAdditions, diffCount, diffDeletions, diffDetails, diffTurns, displayTranscript,
+      expandedDiffId, hasTranscriptMessages, isRefreshingDiffs, isRefreshingMessages,
+      pendingInteractions, pendingPrompts, progressIcon, progressVisible, retryAttempt,
+      running, selectedDiffMessageId, speakingMessageId, transcriptPaging,
+    },
+    composer: {
+      attachments, availableAgents, chatPreferences, commands, draft,
+      isCreatingSession, isSpeechInputAvailable, isSpeechInputListening,
+      isStoppingSession, isUpdatingAutoApprove, selectedAgentLabel, serverCapabilities,
+      showSendAction, visibleModels,
+    },
+    overlay: {
+      approvals, hasFailedInput, sendErrorMessage,
+      sessionMenuVisible, voiceFeedback, voiceRecoveryAction,
+    },
+    actions: {
+      buildSendErrorDetails, clearConversationFeedback, clearPromptError, dismissFailedInput,
+      forkSession, handleAbort, handleAttach, handleConfirmStopConversation, handleCopyMessage,
+      handleNewSession, handleReviewChanges, handleSendPrompt, handleSpeakEntry,
+      handleToggleRecording, handleVoiceRecovery, recoverFailedInput, refreshCurrentSession,
+      refreshDiffs, rejectQuestion, replyToPermission, replyToQuestion, revertSession,
+      selectDiffMessage, setAttachments, setAutoApprove, setChangesVisible, setCopiedMessageId,
+      setDiffScope, setDraft, setExpandedDiffId, setIsUpdatingAutoApprove, setProgressVisible,
+      setSendFeedback, setSessionMenuVisible, setVoiceFeedback, toggleConversationMode,
+      unrevertSession, updateChatPreferences,
+    },
   };
 }

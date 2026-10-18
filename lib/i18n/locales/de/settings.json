@@ -299,7 +299,12 @@
     "refresh": "Diagnose aktualisieren",
     "networkUsage": "Netzwerknutzung",
     "networkUsageValue": "{{requests}} Anfragen · {{size}} bekannte Antwortgrößen heute",
-    "networkUsageReset": "Zurücksetzen"
+    "networkUsageReset": "Zurücksetzen",
+    "lastError": "Letzter App-Fehler",
+    "lastErrorValue": "{{message}} · {{time}}",
+    "lastErrorNone": "Keine App-Fehler aufgezeichnet",
+    "lastErrorFatal": "Fatal",
+    "lastErrorHandled": "Behandelt"
   },
   "mcp": {
     "title": "MCP-Server",

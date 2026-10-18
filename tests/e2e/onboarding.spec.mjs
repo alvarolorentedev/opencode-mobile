@@ -1,14 +1,11 @@
 import { expect, test } from '@playwright/test';
 
-// First-run setup coverage. Unlike flows.spec.mjs, these tests intentionally do
+import { resetScenario } from './helpers/flows.mjs';
+
+// First-run setup coverage. Unlike the flow specs, these tests intentionally do
 // NOT seed `opencode-mobile.onboarding-version`, so the assistant is exercised.
 
 const FAKE_SERVER_URL = 'http://127.0.0.1:44096';
-
-async function resetScenario(request, scenario = 'happy-path') {
-  const response = await request.post('http://127.0.0.1:44096/__control/reset', { data: { scenario } });
-  expect(response.ok()).toBeTruthy();
-}
 
 async function waitForChat(page) {
   await expect(page.getByText('Start a new task')).toBeVisible({ timeout: 30_000 });

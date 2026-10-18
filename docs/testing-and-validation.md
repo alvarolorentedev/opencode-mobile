@@ -9,7 +9,9 @@ Node `.mjs` suites were migrated here; suite names used later in this document
 historical script names, and their equivalent today is
 `tests/vitest/<name>.test.ts`. The deterministic fake servers
 (`tests/fake-opencode/`) and the Playwright specs (`tests/e2e/`) are unchanged.
-See [known gaps](known-gaps.md) for the deferred test-infrastructure work.
+The flow specs are split by domain (`tests/e2e/<domain>.spec.mjs`) over shared
+helpers in `tests/e2e/helpers/flows.mjs`. Suites that are not yet typed are
+listed in `tsconfig.tests.json`; see [known gaps](known-gaps.md).
 
 ## Audit remediation regressions
 
@@ -242,6 +244,8 @@ The `validate` gate runs:
   TypeScript type-checking for the app and for `tests/` (`npm run typecheck:tests`),
   the Vitest suites (`npm run test:vitest`), and the static contract suites.
   The script in `package.json` is the source of truth for the exact suite list.
+  `typecheck:tests` uses `tsconfig.tests.json`, which excludes the harness-heavy
+  suites listed there until they can be typed.
 - `npm run test:fake-server:self`
 - Playwright E2E flow tests against the fake OpenCode server
 
@@ -432,7 +436,7 @@ A prompt fails mid-turn (`session.execution.failed`) and the server schedules an
 
 ## Supported-Contract E2E Flows
 
-`tests/e2e/flows.spec.mjs` encodes these supported-contract flows:
+The Playwright flow specs (`tests/e2e/*.spec.mjs`) encode these supported-contract flows:
 
 ### Boot And Ready Chat
 
@@ -603,7 +607,7 @@ the Vitest `record-preservation` suite is now part of the static CI gate.
 ### Onboarding Flows
 
 `tests/e2e/onboarding.spec.mjs` deliberately omits the `opencode-mobile.onboarding-version`
-seed used by `flows.spec.mjs`, so the assistant is exercised:
+seed used by the flow specs, so the assistant is exercised:
 
 - fresh install shows an informational presentation with only Continue, walks permissions → connect → project → ready with step numbers 1–5, checks back navigation, verifies Ready only summarizes connection/project, enters chat, and does not reappear on relaunch
 - every configured step can be skipped (connect and project included) and finishing without a project lands on the chat project prompt
@@ -668,7 +672,7 @@ the terminal reconnect on a rotated credential client.
 preserved), and data-plane revocation (state cleared once, Cloud Link recovery
 reused). `tests/vitest/terminal.test.ts` covers jittered bounded reconnect
 delays and cursor-preserving reconnect with rotated credentials.
-`tests/e2e/flows.spec.mjs` adds a silently stalled SSE flow (watchdog
+`tests/e2e/realtime.spec.mjs` adds a silently stalled SSE flow (watchdog
 re-subscribes and the released stall reconciles a missed blocker, both
 protocols) and a browser offline/online drop that recovers the retained session
 without re-submitting the prompt.

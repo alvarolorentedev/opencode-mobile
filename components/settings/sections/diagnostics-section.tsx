@@ -3,6 +3,7 @@ import { StyleSheet, View } from 'react-native';
 import { Button, Chip, List, Text } from 'react-native-paper';
 
 import { formatDataUsage, resetDataUsage, useDataUsage } from '@/lib/opencode/data-usage';
+import type { RecordedJsError } from '@/lib/error-reporting';
 import type { Diagnostics } from '@/providers/services/diagnostics-service';
 import type { Palette } from './setting-rows';
 
@@ -10,6 +11,7 @@ export function DiagnosticsSection({
   diagnostics,
   eventStreamStatus,
   formatterAvailable = true,
+  lastJsError,
   lspAvailable = true,
   onRefresh,
   palette,
@@ -17,6 +19,7 @@ export function DiagnosticsSection({
   diagnostics?: Diagnostics;
   eventStreamStatus: 'idle' | 'connecting' | 'connected' | 'error';
   formatterAvailable?: boolean;
+  lastJsError?: RecordedJsError;
   lspAvailable?: boolean;
   onRefresh: () => void;
   palette: Palette;
@@ -40,6 +43,15 @@ export function DiagnosticsSection({
         <List.Item
           title={t('settings:diagnostics.networkUsage')}
           description={t('settings:diagnostics.networkUsageValue', { requests: dataUsage.requests, size: formatDataUsage(dataUsage.bytes) })}
+        />
+        <List.Item
+          title={t('settings:diagnostics.lastError')}
+          description={lastJsError
+            ? t('settings:diagnostics.lastErrorValue', { message: lastJsError.message, time: new Date(lastJsError.at).toLocaleString() })
+            : t('settings:diagnostics.lastErrorNone')}
+          right={lastJsError
+            ? () => <Chip compact>{lastJsError.isFatal ? t('settings:diagnostics.lastErrorFatal') : t('settings:diagnostics.lastErrorHandled')}</Chip>
+            : undefined}
         />
         <View style={styles.diagnosticsActions}>
           <Button mode="outlined" onPress={onRefresh}>{t('settings:diagnostics.refresh')}</Button>

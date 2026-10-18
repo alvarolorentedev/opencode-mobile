@@ -73,73 +73,22 @@ The goal is to make it possible to rebuild the UI tree without having to redisco
 
 - `ChatHeader`
 - `ChatLibrary`
-- `ChatContent`
+- `TranscriptList`, `ChangesOverlay`, `PendingInteractions` (from `components/chat/content/`)
 - `ChatComposer`
 - `Snackbar`
 
-## `components/chat/chat-content.tsx`
+## `components/chat/content/`
 
 ### Responsibility
 
-- render transcript area and changes area
-- render empty states, connection issues, running indicators, and pending interactions
-- render server-owned tasks in a compact progress view that opens the shared overlay
-- load older transcript history when the user scrolls to the top of the list
+- `transcript-list.tsx`: render transcript area, empty states, connection issues, running indicators, and load older history on scroll-up
+- `changes-overlay.tsx`: render the Files changed overlay with refresh, scope selection, and diff accordions
+- `pending-interactions.tsx`: render server-owned tasks, permissions, and questions, including the compact progress view
 
-### Prop contract
-
-```ts
-type ChatContentProps = {
-  activeSession?: Session
-  progressAction?: ReactNode
-  progressVisible: boolean
-  onCloseProgress: () => void
-  changesVisible: boolean
-  onCloseChanges: () => void
-  awaitingUserInput: boolean
-  connection: { status: 'idle' | 'connecting' | 'connected' | 'error'; message: string }
-  copiedMessageId?: string
-  currentActivityLabel?: string
-  currentDiffs: FileDiff[]
-  currentDiffScope: DiffScope
-  currentPendingPermissions: PendingPermissionRequest[]
-  currentPendingQuestions: PendingQuestionRequest[]
-  currentTodos: Todo[]
-  currentSessionId?: string
-  diffCount: number
-  diffDetails: DiffDetail[]
-  diffTurns: DiffTurn[]
-  displayTranscript: TranscriptEntry[]
-  expandedDiffId?: string
-  hasMessages: boolean
-  hasOlderMessages: boolean
-  isLoadingOlderMessages: boolean
-  onLoadOlderMessages: () => void
-  isRefreshingDiffs: boolean
-  isRefreshingMessages: boolean
-  onCopyMessage: (entry: TranscriptEntry) => void
-  onForkMessage: (messageId: string) => void
-  onRevertMessage: (messageId: string) => void
-  onUnrevert: () => void
-  onExpandDiff: (id?: string) => void
-  onRefresh: () => void
-  onRefreshDiffs: () => void
-  onSelectDiffScope: (scope: DiffScope) => void
-  onSelectDiffMessage: (messageId: string) => void
-  selectedDiffMessageId?: string
-  onRejectQuestion: (requestId: string) => void
-  onReplyToPermission: (requestId: string, reply: 'once' | 'always' | 'reject') => void
-  onReplyToQuestion: (requestId: string, answers: string[][]) => void
-  onSelectStarterPrompt: (prompt: string) => void // fills draft, never sends
-  onReviewChanges: (messageId: string) => void // resolves the current session's parent user turn
-  onToggleSpeak: (entry: TranscriptEntry) => void
-  palette: Palette
-  pendingInteractions: number
-  running: boolean
-  speakingMessageId?: string
-  status?: SessionStatus
-}
-```
+`ChatView` renders these leaves directly and passes the values assembled by
+`useChatViewController`'s `content` / `composer` / `actions` namespaces. There is
+no intermediate `ChatContent` pass-through; it was removed so the prop surface is
+declared once, at the leaves.
 
 ### Behavior notes
 
@@ -890,7 +839,11 @@ Used primarily by tab icons.
 
 ### Responsibility
 
-- central domain controller for almost all app behavior
+- thin entrypoint that mounts the provider tree with the composition unit's values
+
+Orchestration lives in `providers/use-opencode-provider-composition.ts` and the
+context wiring in `providers/opencode-provider-tree.tsx`; the entrypoint is held
+to 60 lines by the architecture ratchet and only re-exports the public types.
 
 The public UI contract is exposed through domain hooks from `providers/opencode-contexts.ts` (`useOnboarding`, `useConnection`, `useDiagnostics`, `useCapabilities`, `usePreferences`, `useProjects`, `useProjectFiles`, `useCurrentSession`, `useSessionLibrary`, `useChat`, `useApprovals`, `useConversation`, `useTerminal`, `useMcp`), each typed by its matching `*ContextValue`. `OpencodeContextValue` is their documented union.
 
@@ -1001,7 +954,7 @@ But parity is easiest if these responsibilities remain separated:
 
 ## UX simplification contracts
 
-- `ChatView` creates the shared task-progress FAB and owns progress-overlay visibility. It renders the FAB beside the changes chip when visible; `ChatContent` renders it floating at the bottom-right otherwise and retains the detailed progress overlay. The detailed progress overlay remains available. Patch summary chips open the Files changed overlay and select their parent user turn when that message is present in the current session; otherwise the existing changes scope is retained. `TranscriptMessage` memoization includes the review callback to keep the session mapping current.
+- `ChatView` creates the shared task-progress FAB and owns progress-overlay visibility. It renders the FAB beside the changes chip when visible; `PendingInteractions` renders it floating at the bottom-right otherwise and retains the detailed progress overlay. The detailed progress overlay remains available. Patch summary chips open the Files changed overlay and select their parent user turn when that message is present in the current session; otherwise the existing changes scope is retained. `TranscriptMessage` memoization includes the review callback to keep the session mapping current.
 - The chat library's connection-wide group is Running & recent, with an explicit Running indicator. Deduplicated chats do not create an empty Chats section. Search-empty copy is distinct from a truly empty library.
 - `components/project/files-panel.tsx` owns one FlashList for browser entries and changed-file rows, with search, breadcrumbs, status and branch/title content in its header. It renders provider-owned changed-file statuses immediately. Added/modified files use the existing reader; deleted rows explain unavailable content. Button and keyboard search share one guarded handler. Query, submitted query, loading, and failure presentation are local and reset with the connection/project key; results remain provider-owned.
 - Setup has one guarded Connect & continue action through `switchConnection`. Input survives failures; connection controls and Skip are disabled while submitting. The shared Cloud Link/Manual chooser precedes the manual form.

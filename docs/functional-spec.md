@@ -445,7 +445,8 @@ Behavior:
 - reports `/global/health` status and OpenCode version when available
 - reports global event stream state, describing non-connected states as polling fallback
 - reports MCP, LSP, and formatter counts when their endpoints are available
-- each diagnostic request fails independently and can be refreshed manually
+- reports the last JS error recorded on this device (message, time, and a fatal/handled chip) or a neutral empty state
+- each diagnostic request fails independently and can be refreshed manually; Refresh also re-reads the recorded error
 
 ### MCP Servers Section
 

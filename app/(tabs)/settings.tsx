@@ -35,6 +35,7 @@ import {
 } from '@/components/settings/settings-utils';
 import { OverlaySheet } from '@/components/ui/overlay-sheet';
 import { useColorScheme } from '@/hooks/use-color-scheme';
+import { useLastJsError } from '@/hooks/use-last-js-error';
 import { getSpeechVoiceOptions, type SpeechVoiceOption } from '@/lib/voice/speech-output';
 import { useApprovals, useCapabilities, useConnection, useDiagnostics, useMcp, useOnboarding, usePreferences, useUpdates } from '@/providers/opencode-contexts';
 
@@ -60,6 +61,7 @@ export default function SettingsScreen() {
   const { chatPreferences, updateChatPreferences } = usePreferences();
   const { connect, connection, serverCapabilities, connectSetup, services: serviceManagement } = useConnection();
   const { diagnostics, eventStreamStatus, refreshDiagnostics } = useDiagnostics();
+  const { lastJsError, refreshLastJsError } = useLastJsError();
   const { approvals } = useApprovals();
   const { startOnboardingReview } = useOnboarding();
   const updates = useUpdates();
@@ -213,7 +215,7 @@ export default function SettingsScreen() {
           }} />
           {updates.supported ? <UpdateSection checkPeriod={updates.checkPeriod} enabled={updates.enabled} onCheckPeriodChange={updates.setCheckPeriod} onEnabledChange={updates.setEnabled} palette={palette} /> : null}
           <McpSection configs={currentConfig?.mcp} mcpStatuses={mcpStatuses} onAdd={addMcpServer} onConnect={connectMcpServer} onDisconnect={disconnectMcpServer} onRefresh={refreshMcpServers} onSetEnabled={setMcpServerEnabled} mcpOAuth={mcpOAuth} persistentConfigAvailable={serverCapabilities.configWrite} requiresIntegrationId={serverCapabilities.contract === 'v2'} oauthAvailable={serverCapabilities.mcpOAuth} palette={palette} />
-          <DiagnosticsSection diagnostics={diagnostics} eventStreamStatus={eventStreamStatus} formatterAvailable={serverCapabilities.formatter} lspAvailable={serverCapabilities.lsp} onRefresh={() => void refreshDiagnostics()} palette={palette} />
+          <DiagnosticsSection diagnostics={diagnostics} eventStreamStatus={eventStreamStatus} formatterAvailable={serverCapabilities.formatter} lastJsError={lastJsError} lspAvailable={serverCapabilities.lsp} onRefresh={() => { void refreshDiagnostics(); refreshLastJsError(); }} palette={palette} />
         </>
       ),
     },

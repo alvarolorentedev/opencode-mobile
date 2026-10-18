@@ -261,6 +261,11 @@ server-derived persisted state
     -> connection scope + project scope
 ```
 
+One local file sits outside AsyncStorage and secure storage: `lib/error-reporting.ts`
+records the last JS error to `LAST_JS_ERROR_FILENAME` in the app's documents
+directory, and `readLastJsError()` parses it for Settings → Diagnostics. It never
+leaves the device; there is no remote reporter.
+
 The connection scope is the canonical, password-free identity from
 `lib/connection-scope.ts`: normalized server URL (case-insensitive
 scheme/host, case-preserving path and query) plus username. It is the only

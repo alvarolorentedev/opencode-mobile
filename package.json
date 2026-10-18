@@ -11,6 +11,7 @@
     "web": "expo start --web",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
+    "typecheck:tests": "tsc -p tsconfig.tests.json",
     "gen:i18n": "node ./scripts/gen-i18n.mjs",
     "test:vitest": "vitest run",
     "test:i18n:loose": "I18N_ALLOW_MISSING=1 vitest run tests/vitest/i18n.test.ts",

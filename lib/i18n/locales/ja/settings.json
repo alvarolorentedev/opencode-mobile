@@ -299,7 +299,12 @@
     "refresh": "診断を更新",
     "networkUsage": "ネットワーク使用量",
     "networkUsageValue": "{{requests}} 件のリクエスト · 今日の既知の応答サイズ {{size}}",
-    "networkUsageReset": "リセット"
+    "networkUsageReset": "リセット",
+    "lastError": "最後のアプリエラー",
+    "lastErrorValue": "{{message}} · {{time}}",
+    "lastErrorNone": "アプリエラーは記録されていません",
+    "lastErrorFatal": "致命的",
+    "lastErrorHandled": "処理済み"
   },
   "mcp": {
     "title": "MCP サーバー",

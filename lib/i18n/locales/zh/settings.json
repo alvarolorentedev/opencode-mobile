@@ -299,7 +299,12 @@
     "refresh": "刷新诊断",
     "networkUsage": "网络使用量",
     "networkUsageValue": "{{requests}} 次请求 · 今日已知响应大小 {{size}}",
-    "networkUsageReset": "重置"
+    "networkUsageReset": "重置",
+    "lastError": "最近的 App 错误",
+    "lastErrorValue": "{{message}} · {{time}}",
+    "lastErrorNone": "未记录到 App 错误",
+    "lastErrorFatal": "致命",
+    "lastErrorHandled": "已处理"
   },
   "mcp": {
     "title": "MCP 服务器",

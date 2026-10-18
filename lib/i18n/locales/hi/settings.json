@@ -299,7 +299,12 @@
     "refresh": "निदान रीफ़्रेश करें",
     "networkUsage": "नेटवर्क उपयोग",
     "networkUsageValue": "{{requests}} अनुरोध · आज ज्ञात प्रतिक्रिया आकार {{size}}",
-    "networkUsageReset": "रीसेट"
+    "networkUsageReset": "रीसेट",
+    "lastError": "अंतिम ऐप त्रुटि",
+    "lastErrorValue": "{{message}} · {{time}}",
+    "lastErrorNone": "कोई ऐप त्रुटि दर्ज नहीं",
+    "lastErrorFatal": "घातक",
+    "lastErrorHandled": "संभाली गई"
   },
   "mcp": {
     "title": "MCP सर्वर",
