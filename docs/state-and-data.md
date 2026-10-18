@@ -222,7 +222,8 @@ Supporting refs and timers hold important transient control state for:
 
 - whether cancellation was requested
 - whether a submission is in flight
-- pending transcript waiting to be flushed
+- pending transcript waiting to be flushed; results accumulate onto it across
+  recognizer segments and listening restarts instead of replacing it
 - assistant-reply baseline tracking
 - resume-listening timeout
 - final-result settle timeout

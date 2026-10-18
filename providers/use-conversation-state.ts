@@ -6,6 +6,7 @@ import type { SessionStatus } from '@/lib/opencode/types';
 import type { VoiceRecoveryAction } from '@/lib/voice/speech-errors';
 import { stopSpeaking } from '@/lib/voice/speech-output';
 import { useSpeechInput } from '@/lib/voice/use-speech-input';
+import { createTranscriptAccumulator } from '@/lib/voice/transcript-accumulate';
 import { stopWorkingSoundAsync } from '@/lib/voice/working-sound';
 import { getTranscript, getConversationStatusLabel, getTranscriptActivityLabelForEntries } from '@/providers/opencode-provider-selectors';
 import { CONVERSATION_FINAL_RESULT_SETTLE_MS, CONVERSATION_KEEP_AWAKE_TAG,
@@ -49,10 +50,12 @@ export function useConversationState({ connection, chatPreferences, currentSessi
   const conversationListeningRestartTimeoutRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const conversationCancelRequestedRef = useRef(false);
   const conversationSubmittingRef = useRef(false);
-  const pendingConversationTranscriptRef = useRef<string | undefined>(undefined);
+  // Accumulates the words heard across recognizer segments and restarts; the
+  // value is the pending transcript waiting to be flushed.
+  const transcriptAccumulatorRef = useRef(createTranscriptAccumulator());
   const flushPendingConversationResultRef = useRef<() => void>(() => undefined);
   const clearPendingConversationResult = useCallback(() => {
-    pendingConversationTranscriptRef.current = undefined;
+    transcriptAccumulatorRef.current.reset();
     if (conversationFinalResultTimeoutRef.current) {
       clearTimeout(conversationFinalResultTimeoutRef.current);
       conversationFinalResultTimeoutRef.current = undefined;
@@ -67,19 +70,20 @@ export function useConversationState({ connection, chatPreferences, currentSessi
         return;
       }
 
-      const nextTranscript = transcript.trim();
-      if (!nextTranscript) {
+      const mergedTranscript = transcriptAccumulatorRef.current.push(transcript, isFinal);
+      if (!mergedTranscript) {
         return;
       }
 
-      pendingConversationTranscriptRef.current = nextTranscript;
-      setConversationLatestHeardText(nextTranscript);
-      if (conversationFinalResultTimeoutRef.current) {
-        clearTimeout(conversationFinalResultTimeoutRef.current);
-        conversationFinalResultTimeoutRef.current = undefined;
-      }
+      setConversationLatestHeardText(mergedTranscript);
 
-      if (isFinal) {
+      // Only a final result arms the settle timer, but any result postpones
+      // it: resumed speech must never be cut off by a submit that was
+      // scheduled before the pause.
+      if (isFinal || conversationFinalResultTimeoutRef.current) {
+        if (conversationFinalResultTimeoutRef.current) {
+          clearTimeout(conversationFinalResultTimeoutRef.current);
+        }
         conversationFinalResultTimeoutRef.current = setTimeout(() => {
           conversationFinalResultTimeoutRef.current = undefined;
           flushPendingConversationResultRef.current();
@@ -101,7 +105,7 @@ export function useConversationState({ connection, chatPreferences, currentSessi
   } = speechInput;
 
   const flushPendingConversationResult = useCallback(() => {
-    const transcript = pendingConversationTranscriptRef.current?.trim();
+    const transcript = transcriptAccumulatorRef.current.value()?.trim();
     clearPendingConversationResult();
     if (!transcript || conversationPhaseRef.current !== 'listening') {
       return;
@@ -163,7 +167,10 @@ export function useConversationState({ connection, chatPreferences, currentSessi
       return false;
     }
 
-    clearPendingConversationResult();
+    // A restart (the recognizer ending after a pause) must keep the pending
+    // final result and its settle timer alive, so words spoken before the
+    // restart are still submitted instead of being forgotten.
+
     if (conversationResumeTimeoutRef.current) {
       clearTimeout(conversationResumeTimeoutRef.current);
       conversationResumeTimeoutRef.current = undefined;
@@ -189,7 +196,7 @@ export function useConversationState({ connection, chatPreferences, currentSessi
     conversationPhaseRef.current = 'listening';
     setConversationPhase('listening');
     return true;
-  }, [clearPendingConversationResult, conversationSessionId, startSpeechInput]);
+  }, [conversationSessionId, startSpeechInput]);
 
   const toggleConversationMode = useCallback(async () => {
     if (conversationPhase !== 'off') {

@@ -14,6 +14,7 @@ import { getLatestContextTokens } from '@/lib/opencode/usage';
 import { openVoiceSettingsAsync } from '@/lib/voice/permissions';
 import { speakText, stopSpeaking } from '@/lib/voice/speech-output';
 import { useSpeechInput } from '@/lib/voice/use-speech-input';
+import { createTranscriptAccumulator } from '@/lib/voice/transcript-accumulate';
 import { useChatDraft } from './use-chat-draft';
 import { useChatViewActions } from './use-chat-view-actions';
 import {
@@ -66,6 +67,7 @@ export function useChatViewController() {
   const [voiceFeedback, setVoiceFeedback] = useState<string | undefined>(undefined);
   const [sendFeedback, setSendFeedback] = useState<string | undefined>(undefined);
   const speechDraftPrefixRef = useRef('');
+  const dictationAccumulatorRef = useRef(createTranscriptAccumulator());
   const conversationActiveRef = useRef(false);
   const voiceRecoveryContextRef = useRef<'conversation' | 'dictation'>('dictation');
   const lastSentAttachmentsRef = useRef<{ uri: string; mime?: string; filename?: string }[]>([]);
@@ -206,11 +208,17 @@ export function useChatViewController() {
   );
   const speechInput = useSpeechInput({
     locale: chatPreferences.speechLocale,
-    onResult: (transcript) => {
+    onResult: (transcript, isFinal) => {
       if (conversationActive) {
         return;
       }
-      setDraft(`${speechDraftPrefixRef.current}${transcript}`);
+      // The recognizer resets its segment on every pause; accumulate so a
+      // thinking pause never erases the words already dictated.
+      const merged = dictationAccumulatorRef.current.push(transcript, isFinal);
+      if (!merged) {
+        return;
+      }
+      setDraft(`${speechDraftPrefixRef.current}${merged}`);
     },
     preferOnDevice: chatPreferences.preferOnDeviceRecognition,
   });
@@ -383,6 +391,7 @@ export function useChatViewController() {
     }
 
     speechDraftPrefixRef.current = draft.trim() ? `${draft.trim()} ` : '';
+    dictationAccumulatorRef.current.reset();
     const release = block();
     let started: boolean;
     try { started = await startSpeechInput(); } finally { release(); }

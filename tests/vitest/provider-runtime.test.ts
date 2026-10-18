@@ -386,6 +386,7 @@ wake(null); await runtime.settle(); runtime.unmount(); assert.equal(runtime.coun
 // Conversation state machine runs against stubbed speech/platform boundaries.
 const voiceRuntime = hookRuntime();
 let recognitionOptions, speechCallbacks, sends = 0, aborts = 0;
+let lastPrompt;
 let listening = false;
 const sendGate = deferred();
 const startSpeech = async () => { listening = true; return true; };
@@ -400,6 +401,7 @@ const conversationImports = {
   '@/lib/opencode/format': { toTranscriptEntry: (record) => record },
   '@/lib/opencode/transcript': { isTranscriptDisplayMessage: (entry) => Boolean(entry.text) },
   '@/lib/voice/speech-output': { stopSpeaking: async () => {}, speakText: async (options) => { speechCallbacks = options; options.onStart(); return true; } },
+  '@/lib/voice/transcript-accumulate': await loadTs('lib/voice/transcript-accumulate.ts', {}, voiceRuntime.globals),
   '@/lib/voice/use-speech-input': { useSpeechInput: (options) => { recognitionOptions = options; return { abort: abortSpeech, start: startSpeech, isListening: listening, isStarting: false, level: 0 }; } },
   '@/lib/voice/working-sound': { stopWorkingSoundAsync: async () => {} },
   '@/providers/opencode-provider-selectors': selectors,
@@ -421,19 +423,62 @@ const chatPreferences = (await loadTs('providers/opencode-preferences.ts')).defa
 voiceRuntime.mount(conversation.useConversationState, {
   connection: { status: 'connected', message: 'ready' }, chatPreferences, currentSessionId: 's', setCurrentSessionId: () => {},
   sessionStatuses: { s: { type: 'busy' } }, messagesBySession: {}, pendingPermissionsBySession: {}, pendingQuestionsBySession: {},
-  sendingState: { active: false }, ensureActiveSession: async () => 's', sendPrompt: async () => { sends++; await sendGate.promise; return true; },
+  sendingState: { active: false }, ensureActiveSession: async () => 's', sendPrompt: async (_sessionId, prompt) => { sends++; lastPrompt = prompt; await sendGate.promise; return true; },
 });
 await voiceRuntime.value.toggleConversationMode(); await voiceRuntime.settle();
 assert.equal(voiceRuntime.value.conversation.phase, 'listening');
 recognitionOptions.onResult('voice prompt', true); voiceRuntime.fire(2200); await voiceRuntime.settle();
 assert.equal(sends, 1);
-voiceRuntime.update({ messagesBySession: { s: [] }, sendPrompt: async () => { sends++; return true; } }); await voiceRuntime.settle();
+voiceRuntime.update({ messagesBySession: { s: [] }, sendPrompt: async (_sessionId, prompt) => { sends++; lastPrompt = prompt; return true; } }); await voiceRuntime.settle();
 assert.equal(sends, 1, 'a provider refresh cannot replay a submitted voice turn');
 sendGate.resolve(); await voiceRuntime.settle(); assert.equal(voiceRuntime.value.conversation.phase, 'waiting');
 voiceRuntime.update({ sessionStatuses: { s: { type: 'idle' } }, messagesBySession: { s: [{ id: 'reply', role: 'assistant', text: 'done', details: [] }] } });
 await voiceRuntime.settle(); assert.equal(voiceRuntime.value.conversation.phase, 'speaking');
 speechCallbacks.onDone(); await voiceRuntime.settle(); assert.equal(voiceRuntime.value.conversation.phase, 'listening');
 await voiceRuntime.value.toggleConversationMode(); await voiceRuntime.settle(); assert.equal(voiceRuntime.value.conversation.phase, 'off');
+
+// A recognizer session that ends after a short pause (no-speech / end event)
+// schedules a listening restart. The restart must keep the pending final
+// result and its settle timer alive, and the next session must continue the
+// carried transcript instead of replacing it.
+await voiceRuntime.value.toggleConversationMode(); await voiceRuntime.settle();
+assert.equal(voiceRuntime.value.conversation.phase, 'listening');
+recognitionOptions.onResult('first half', true);
+abortSpeech();
+await voiceRuntime.update({}); await voiceRuntime.settle();
+voiceRuntime.fire(350); await voiceRuntime.settle();
+assert.equal(voiceRuntime.value.conversation.phase, 'listening');
+recognitionOptions.onResult('second half', false);
+voiceRuntime.fire(2200); await voiceRuntime.settle();
+assert.equal(sends, 2, 'a listening restart cannot discard the pending final result');
+assert.equal(lastPrompt, 'first half second half');
+await voiceRuntime.value.toggleConversationMode(); await voiceRuntime.settle();
+
+// Android keeps the session alive across a pause: each finalized segment is
+// followed by fresh-segment results that must append to the accumulated
+// transcript, never replace it, and resumed speech postpones the settle timer.
+await voiceRuntime.value.toggleConversationMode(); await voiceRuntime.settle();
+assert.equal(voiceRuntime.value.conversation.phase, 'listening');
+recognitionOptions.onResult('what is the weather', true);
+recognitionOptions.onResult('in paris', false);
+await voiceRuntime.settle();
+assert.equal(voiceRuntime.value.conversation.latestHeardText, 'what is the weather in paris', 'a fresh recognizer segment cannot reset the accumulated words');
+recognitionOptions.onResult('in paris france', true);
+voiceRuntime.fire(2200); await voiceRuntime.settle();
+assert.equal(sends, 3, 'segment finals accumulate into one turn');
+assert.equal(lastPrompt, 'what is the weather in paris france');
+await voiceRuntime.value.toggleConversationMode(); await voiceRuntime.settle();
+
+// A final that repeats the previous segment's tail words (with punctuation)
+// splices instead of duplicating.
+await voiceRuntime.value.toggleConversationMode(); await voiceRuntime.settle();
+assert.equal(voiceRuntime.value.conversation.phase, 'listening');
+recognitionOptions.onResult('count to three', true);
+recognitionOptions.onResult('three, four.', true);
+voiceRuntime.fire(2200); await voiceRuntime.settle();
+assert.equal(lastPrompt, 'count to three four.', 'repeated tail words cannot duplicate in the submitted turn');
+await voiceRuntime.value.toggleConversationMode(); await voiceRuntime.settle();
+
 voiceRuntime.update({ pendingQuestionsBySession: { s: [{ id: 'question' }] } });
 await voiceRuntime.value.toggleConversationMode(); await voiceRuntime.settle(); assert.equal(voiceRuntime.value.conversation.phase, 'off');
 assert.match(voiceRuntime.value.conversation.feedback, /Answer the current request/);
