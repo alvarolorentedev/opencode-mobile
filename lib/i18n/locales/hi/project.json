@@ -1,15 +1,15 @@
 {
   "screen": {
     "syncProjects": "प्रोजेक्ट सिंक करें",
-    "refreshWorkspace": "कार्यक्षेत्र रीफ़्रेश करें",
+    "refreshProject": "प्रोजेक्ट रीफ़्रेश करें",
     "filesTab": "फ़ाइलें",
     "worktreesTab": "वर्कट्री"
   },
   "files": {
-    "title": "कार्यक्षेत्र फ़ाइलें",
+    "title": "प्रोजेक्ट फ़ाइलें",
     "branch": "ब्रांच: {{branch}}",
     "searchAndInspect": "फ़ाइलें खोजें और निरीक्षण करें",
-    "searchPlaceholder": "इस कार्यक्षेत्र में खोजें",
+    "searchPlaceholder": "इस प्रोजेक्ट में खोजें",
     "search": "खोजें",
     "changedFiles": "{{value}} बदली फ़ाइलें",
     "close": "फ़ाइल बंद करें",
@@ -24,7 +24,7 @@
     "searching": "खोज जारी है…",
     "noMatches": "“{{query}}” से कोई फ़ाइल मेल नहीं खाती।",
     "resultsFor": "“{{query}}” के परिणाम",
-    "searchScope": "{{workspace}} में खोजें",
+    "searchScope": "{{project}} में खोजें",
     "clearSearch": "खोज साफ़ करें",
     "loading": "फ़ाइलें लोड हो रही हैं…",
     "emptyFolder": "यह फ़ोल्डर खाली है।",
@@ -55,23 +55,24 @@
     "manage": "{{name}} प्रबंधित करें"
   },
   "picker": {
-    "title": "कार्यक्षेत्र चुनें",
-    "changeWorkspace": "कार्यक्षेत्र बदलें",
+    "title": "प्रोजेक्ट चुनें",
+    "changeProject": "प्रोजेक्ट बदलें",
     "enterPath": "OpenCode सर्वर पर एक फ़ोल्डर पथ दर्ज करें।",
     "serverDirectory": "सर्वर निर्देशिका",
-    "add": "कार्यक्षेत्र जोड़ें",
+    "add": "प्रोजेक्ट जोड़ें",
     "selectLabel": "{{name}} चुनें",
-    "empty": "कोई कार्यक्षेत्र उपलब्ध नहीं।"
+    "removeLabel": "{{name}} हटाएं",
+    "empty": "कोई प्रोजेक्ट उपलब्ध नहीं।"
   },
   "errors": {
-    "refreshWorkspace": "कार्यक्षेत्र रीफ़्रेश नहीं किया जा सका।",
-    "searchFiles": "कार्यक्षेत्र फ़ाइलें खोजी नहीं जा सकीं।",
+    "refreshProject": "प्रोजेक्ट रीफ़्रेश नहीं किया जा सका।",
+    "searchFiles": "प्रोजेक्ट फ़ाइलें खोजी नहीं जा सकीं।",
     "openFile": "फ़ाइल खोली नहीं जा सकी।",
     "saveFile": "फ़ाइल सहेजी नहीं जा सकी।",
     "refreshWorktrees": "वर्कट्री रीफ़्रेश नहीं की जा सकीं।",
     "createWorktree": "वर्कट्री बनाई नहीं जा सकी।",
     "resetWorktree": "वर्कट्री रीसेट नहीं की जा सकी।",
     "removeWorktree": "वर्कट्री हटाई नहीं जा सकी।",
-    "addWorkspace": "कार्यक्षेत्र जोड़ा नहीं जा सका।"
+    "addProject": "प्रोजेक्ट जोड़ा नहीं जा सका।"
   }
 }

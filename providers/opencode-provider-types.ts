@@ -1,4 +1,4 @@
-import type { useWorkspaceBrowser } from '@/providers/use-workspace-browser';
+import type { useProjectBrowser } from '@/providers/use-project-browser';
 import type { WorktreeCatalog } from '@/providers/use-worktree-state';
 import type { PendingPrompt } from '@/lib/opencode/prompt-inbox';
 import type {
@@ -102,11 +102,15 @@ export type OpencodeProject = {
   isCurrent?: boolean;
 };
 
+// Opened projects per connection scope, most-recent-first. The picker renders
+// this list; the server's project catalog only enriches the entries.
+export type ProjectPathsByConnection = Record<string, string[]>;
+
 // Explicit persisted model for a pinned session. `sessionId` and `projectPath`
 // are the identifiers required to reopen it; `connectionScope` says which
 // server + user owns it, so identical paths or session IDs on another server
 // never collide. `title` is retained because it cannot be reconstructed for
-// cross-workspace favorites without a server call. The project label is
+// cross-project favorites without a server call. The project label is
 // derived from `projectPath` at render time and is never persisted.
 export type FavoriteSession = {
   sessionId: string;
@@ -118,8 +122,8 @@ export type FavoriteSession = {
 
 export const FAVORITE_SESSIONS_MAX = 50;
 
-// A session outside the active workspace, surfaced in the Chat Library "Active"
-// group. `projectPath` is the server directory used to switch workspaces; the
+// A session outside the active project, surfaced in the Chat Library "Active"
+// group. `projectPath` is the server directory used to switch projects; the
 // status drives the running indicator and ordering.
 export type ActiveSessionItem = {
   sessionId: string;
@@ -140,7 +144,7 @@ export type ConnectionState = {
 };
 
 // Which diff source the Files Changed surface reads from. `turn` is the
-// per-user-message snapshot diff; the VCS scopes come from the workspace
+// per-user-message snapshot diff; the VCS scopes come from the project
 // working tree and are not tied to the current session.
 export type DiffScope = 'turn' | 'uncommitted' | 'branch';
 
@@ -151,7 +155,7 @@ export type DiffTurn = {
   preview?: string;
 };
 
-export type WorkspaceCatalog = {
+export type ProjectCatalog = {
   currentProjectPath?: string;
   serverRootPath?: string;
   serverProjects: Project[];
@@ -272,22 +276,22 @@ export type ProjectsContextValue = {
   activeProjectPath?: string;
   activeProject?: OpencodeProject;
   selectProject: (path: string) => void;
-  addWorkspace: (directory: string) => Promise<string>;
-  serverProjects: Project[];
+  addProject: (directory: string) => Promise<string>;
+  removeProject: (path: string) => void;
   currentProjectPath?: string;
   serverRootPath?: string;
-  isRefreshingWorkspaceCatalog: boolean;
-  refreshWorkspaceCatalog: (silent?: boolean) => Promise<void>;
-  refreshWorkspaceStatus: () => Promise<void>;
+  isRefreshingProjectCatalog: boolean;
+  refreshProjectCatalog: (silent?: boolean) => Promise<void>;
+  refreshProjectStatus: () => Promise<void>;
 };
 
-export type WorkspaceFilesContextValue = {
-  browser: ReturnType<typeof useWorkspaceBrowser>;
-  workspaceFileStatuses: File[];
-  selectedWorkspaceFile?: { path: string; content: FileContent };
+export type ProjectFilesContextValue = {
+  browser: ReturnType<typeof useProjectBrowser>;
+  projectFileStatuses: File[];
+  selectedProjectFile?: { path: string; content: FileContent };
   vcsInfo?: VcsInfo;
-  openWorkspaceFile: (path: string) => Promise<void>;
-  saveWorkspaceFile: (path: string, expectedContent: string, content: string) => Promise<void>;
+  openProjectFile: (path: string) => Promise<void>;
+  saveProjectFile: (path: string, expectedContent: string, content: string) => Promise<void>;
   worktrees: WorktreeCatalog;
   refreshWorktrees: () => Promise<void>;
   createWorktree: (name?: string, startCommand?: string) => Promise<void>;
@@ -440,7 +444,7 @@ export type OpencodeContextValue = OnboardingContextValue &
   CapabilitiesContextValue &
   PreferencesContextValue &
   ProjectsContextValue &
-  WorkspaceFilesContextValue &
+  ProjectFilesContextValue &
   CurrentSessionContextValue &
   SessionLibraryContextValue &
   ChatContextValue &

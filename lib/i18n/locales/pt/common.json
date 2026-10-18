@@ -2,7 +2,7 @@
   "tabs": {
     "chat": "Chat",
     "terminal": "Terminal",
-    "workspace": "Espaço de trabalho",
+    "projects": "Projetos",
     "settings": "Configurações"
   },
   "actions": {

@@ -1,5 +1,5 @@
 // Small provider-agnostic helpers that do not belong to a specific domain
-// (project labels, workspace list derivation, and grouping pending interactions
+// (project labels, project list derivation, and grouping pending interactions
 // by session).
 
 import type { Project, Session, SessionStatus } from '@/lib/opencode/types';
@@ -37,35 +37,35 @@ export function getProjectLabel(path: string) {
   return segments.at(-1) || normalized || 'Project';
 }
 
-// The picker mirrors the server's project list. Nothing is derived from the
-// selected path, so a refresh that omits a directory can never leave a phantom
-// workspace behind.
-export function buildOpencodeProjects(serverProjects: Project[], currentProjectPath?: string): OpencodeProject[] {
-  const entries = new Map<string, OpencodeProject>();
-  serverProjects.forEach((project) => {
-    entries.set(project.worktree, {
-      id: project.id,
-      label: getProjectLabel(project.worktree),
-      path: project.worktree,
-      source: 'server',
-      updatedAt: project.time.initialized || project.time.created,
-      isCurrent: project.worktree === currentProjectPath,
-    });
+// The picker mirrors the desktop Home list: it renders the projects the user
+// opened on this connection and enriches them with the server's project
+// metadata (id and display name). A remote project that was never opened is not
+// rendered.
+export function buildOpencodeProjects(openedPaths: string[], currentProjectPath: string | undefined, serverProjects: Project[]): OpencodeProject[] {
+  const remoteByPath = new Map(serverProjects.map((project) => [project.worktree, project]));
+  return openedPaths.map((path) => {
+    const remote = remoteByPath.get(path);
+    return {
+      ...(remote ? { id: remote.id } : {}),
+      label: remote?.name || getProjectLabel(path),
+      path,
+      source: 'server' as const,
+      ...(remote ? { updatedAt: remote.time.initialized || remote.time.created } : {}),
+      isCurrent: path === currentProjectPath,
+    };
   });
-  return [...entries.values()].sort((left, right) => (right.updatedAt || 0) - (left.updatedAt || 0));
 }
 
 // The active location can be a worktree: a server-known directory that belongs
 // to a project but is not a project itself. Worktrees are confirmed by the
-// worktree catalog (which resolves them server-side); a project entry is only
-// used when it came from the server list.
+// worktree catalog (which resolves them server-side) so the owning project
+// labels the active entry.
 export function resolveActiveProject(projects: OpencodeProject[], activeProjectPath: string | undefined, currentProjectPath: string | undefined, worktrees: WorktreeCatalog | undefined): OpencodeProject | undefined {
-  const listed = projects.find((project) => project.path === activeProjectPath);
-  if (listed) return listed;
-  const project = worktrees?.project;
-  if (!activeProjectPath || !project || project.root === activeProjectPath) return undefined;
-  if (!worktrees.entries.some((entry) => entry.directory === activeProjectPath)) return undefined;
-  return { id: project.id, label: project.label, path: activeProjectPath, source: 'server', isCurrent: activeProjectPath === currentProjectPath };
+  const worktree = worktrees?.project;
+  if (activeProjectPath && worktree && worktree.root !== activeProjectPath && worktrees.entries.some((entry) => entry.directory === activeProjectPath)) {
+    return { id: worktree.id, label: worktree.label, path: activeProjectPath, source: 'server', isCurrent: activeProjectPath === currentProjectPath };
+  }
+  return projects.find((project) => project.path === activeProjectPath);
 }
 
 // Equality guards so a no-op poll refresh keeps the previous state identity and

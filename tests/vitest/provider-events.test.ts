@@ -6,7 +6,7 @@ function createActions() {
   const calls = {
     refreshSessions: vi.fn(async () => undefined),
     refreshMcpServers: vi.fn(async () => undefined),
-    refreshWorkspaceCatalog: vi.fn(async () => undefined),
+    refreshProjectCatalog: vi.fn(async () => undefined),
     refreshChatCapabilities: vi.fn(async () => undefined),
     refreshServerFeatures: vi.fn(async () => undefined),
     scheduleSessionRefresh: vi.fn(),
@@ -19,7 +19,7 @@ function createActions() {
     refreshPendingInteractions: async () => undefined,
     refreshServerFeatures: calls.refreshServerFeatures,
     refreshChatCapabilities: calls.refreshChatCapabilities,
-    refreshWorkspaceCatalog: calls.refreshWorkspaceCatalog,
+    refreshProjectCatalog: calls.refreshProjectCatalog,
     refreshTerminals: async () => undefined,
     refreshWorktrees: async () => undefined,
     refreshMcpServers: calls.refreshMcpServers,
@@ -53,10 +53,10 @@ describe('handleProviderEvent', () => {
     expect(calls.scheduleSessionRefresh).toHaveBeenCalledWith('s1', { messages: true });
   });
 
-  it('refreshes the workspace catalog when project directories change', () => {
+  it('refreshes the project catalog when project directories change', () => {
     const { actions, calls } = createActions();
     handleProviderEvent({ id: 'e', type: 'project.updated', data: { projectID: 'p1' } } as never, actions);
-    expect(calls.refreshWorkspaceCatalog).toHaveBeenCalledWith(true);
+    expect(calls.refreshProjectCatalog).toHaveBeenCalledWith(true);
   });
 
   it('refreshes sessions when a subagent asks for permission', () => {

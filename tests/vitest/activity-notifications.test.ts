@@ -118,7 +118,7 @@ describe('provider observer', () => {
     h.runtime.unmount(); expect(h.stop).toHaveBeenCalled(); expect(h.scope).toBeUndefined();
   });
 
-  it('retains work on failed reads and reconciles global events outside the selected workspace', async () => {
+  it('retains work on failed reads and reconciles global events outside the selected project', async () => {
     await mount();
     h.read.mockRejectedValueOnce(new Error('offline'));
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});

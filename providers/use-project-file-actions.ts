@@ -1,8 +1,8 @@
 import { useCallback } from 'react';
 
-import { useWorkspaceBrowser } from '@/providers/use-workspace-browser';
-import { workspacePath } from '@/lib/opencode/workspace';
-import { createFullFilePatch } from '@/lib/opencode/workspace-patch';
+import { useProjectBrowser } from '@/providers/use-project-browser';
+import { projectPath } from '@/lib/opencode/project';
+import { createFullFilePatch } from '@/lib/opencode/project-patch';
 import { listCommands as svcListCommands } from '@/providers/services/session-service';
 import { loadDiagnostics } from '@/providers/services/diagnostics-service';
 import {
@@ -10,33 +10,33 @@ import {
   getFileStatus,
   getVcsInfo,
   readFile,
-} from '@/providers/services/workspace-service';
-import type { WorkspaceActionsInput } from '@/providers/opencode-provider-action-inputs';
+} from '@/providers/services/project-service';
+import type { ProjectActionsInput } from '@/providers/opencode-provider-action-inputs';
 
-type WorkspaceFileActionsInput = WorkspaceActionsInput & {
+type ProjectFileActionsInput = ProjectActionsInput & {
   refreshVcsDiff: (scope: 'uncommitted' | 'branch', silent?: boolean) => Promise<unknown>;
 };
 
-export function useWorkspaceFileActions({
+export function useProjectFileActions({
   client,
   isCurrentClient,
   activeProjectPath,
   setCommands,
-  setWorkspaceFileStatuses,
+  setProjectFileStatuses,
   setVcsInfo,
   setDiagnostics,
-  setSelectedWorkspaceFile,
-  workspaceFileRequestRef,
+  setSelectedProjectFile,
+  projectFileRequestRef,
   currentSessionIdRef,
   diffScopeBySessionRef,
   refreshVcsDiff,
-}: WorkspaceFileActionsInput) {
-  const browser = useWorkspaceBrowser({ client, isCurrentClient });
+}: ProjectFileActionsInput) {
+  const browser = useProjectBrowser({ client, isCurrentClient });
 
   const refreshServerFeatures = useCallback(async () => {
     if (!activeProjectPath) {
       setCommands([]);
-      setWorkspaceFileStatuses([]);
+      setProjectFileStatuses([]);
       setVcsInfo(undefined);
       return;
     }
@@ -49,7 +49,7 @@ export function useWorkspaceFileActions({
       return;
     }
     setCommands(nextCommands || []);
-    setWorkspaceFileStatuses(nextStatuses || []);
+    setProjectFileStatuses(nextStatuses || []);
     setVcsInfo(nextVcs);
   }, [activeProjectPath, client, isCurrentClient]);
 
@@ -60,9 +60,9 @@ export function useWorkspaceFileActions({
     }
   }, [client, isCurrentClient]);
 
-  const openWorkspaceFile = useCallback(async (path: string) => {
-    path = workspacePath(path, client.__opencode.directory || '');
-    const request = ++workspaceFileRequestRef.current;
+  const openProjectFile = useCallback(async (path: string) => {
+    path = projectPath(path, client.__opencode.directory || '');
+    const request = ++projectFileRequestRef.current;
     const content = await readFile(client, path);
     if (!content) {
       throw new Error('OpenCode did not return file content.');
@@ -70,25 +70,25 @@ export function useWorkspaceFileActions({
     if (content.type !== 'text' || content.encoding === 'base64') {
       throw new Error('Binary files cannot be previewed as text.');
     }
-    if (!isCurrentClient(client) || request !== workspaceFileRequestRef.current) throw new Error('File selection was superseded.');
-    setSelectedWorkspaceFile({ path, content });
+    if (!isCurrentClient(client) || request !== projectFileRequestRef.current) throw new Error('File selection was superseded.');
+    setSelectedProjectFile({ path, content });
   }, [client, isCurrentClient]);
 
-  const saveWorkspaceFile = useCallback(async (path: string, expectedContent: string, content: string) => {
-    path = workspacePath(path, client.__opencode.directory || '');
-    const request = workspaceFileRequestRef.current;
+  const saveProjectFile = useCallback(async (path: string, expectedContent: string, content: string) => {
+    path = projectPath(path, client.__opencode.directory || '');
+    const request = projectFileRequestRef.current;
     const latest = await readFile(client, path);
-    if (!isCurrentClient(client)) throw new Error('The workspace changed before saving.');
+    if (!isCurrentClient(client)) throw new Error('The project changed before saving.');
     if (latest.type !== 'text' || latest.encoding === 'base64') throw new Error('Only text files can be edited.');
     if (latest.content !== expectedContent) throw new Error('The file changed on the server. Reopen it before saving.');
     const patch = createFullFilePatch({ path, expectedContent, content });
     if (!patch) return;
     await saveFile(client, path, content, patch);
     const saved = await readFile(client, path);
-    if (!isCurrentClient(client)) throw new Error('The workspace changed before saving completed.');
+    if (!isCurrentClient(client)) throw new Error('The project changed before saving completed.');
     if (saved.type !== 'text' || saved.encoding === 'base64' || saved.content !== content) throw new Error('The saved file did not match your changes. Reopen it before retrying.');
-    if (isCurrentClient(client) && request === workspaceFileRequestRef.current) {
-      setSelectedWorkspaceFile({ path, content: saved });
+    if (isCurrentClient(client) && request === projectFileRequestRef.current) {
+      setSelectedProjectFile({ path, content: saved });
       await refreshServerFeatures();
       const activeSessionId = currentSessionIdRef.current;
       const scope = activeSessionId ? diffScopeBySessionRef.current[activeSessionId] : undefined;
@@ -98,5 +98,5 @@ export function useWorkspaceFileActions({
     }
   }, [client, isCurrentClient, refreshServerFeatures, refreshVcsDiff]);
 
-  return { refreshServerFeatures, refreshDiagnostics, browser, openWorkspaceFile, saveWorkspaceFile };
+  return { refreshServerFeatures, refreshDiagnostics, browser, openProjectFile, saveProjectFile };
 }

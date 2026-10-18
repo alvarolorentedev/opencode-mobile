@@ -25,14 +25,14 @@ async function mount() {
     'react-native-paper': { ActivityIndicator: 'Spinner', Appbar: { Header: 'Header', Content: 'Content', Action: 'Action' }, Button: 'Button', Surface: 'Surface', Text: 'Text' },
     'react-native-safe-area-context': { useSafeAreaInsets: () => ({ top: 0 }) },
     '@/components/chat/attachment-strip': { AttachmentStrip: 'Attachments' },
-    '@/components/ui/workspace-picker': { WorkspacePicker: 'WorkspacePicker' },
+    '@/components/ui/project-picker': { ProjectPicker: 'ProjectPicker' },
     '@/components/ui/overlay-sheet': { OverlaySheet: 'Sheet' }, '@/components/ui/text-input': { TextInput: 'Input' },
     '@/constants/theme': { Colors: { light: { background: '#fff', surface: '#fff', text: '#111', muted: '#666', tint: '#080', warning: '#a60', danger: '#f00' } }, Fonts: {} },
     '@/hooks/use-color-scheme': { useColorScheme: () => 'light' },
     '@/providers/opencode-contexts': {
       useOnboarding: () => ({ isHydrated: true, onboardingCompleted: true }),
       useConnection: () => ({ connection: { status: 'connected' }, settings: { serverUrl: 'https://server' } }),
-      useProjects: () => ({ activeProject: { path: '/repo', label: 'repo' }, projects: [], addWorkspace() {}, selectProject() {} }),
+      useProjects: () => ({ activeProject: { path: '/repo', label: 'repo' }, projects: [], addProject() {}, selectProject() {} }),
       useChat: () => ({ sharedInput: shared }),
     },
   }, runtime.globals);

@@ -137,7 +137,7 @@
     "estimatedCost": "Estimated API cost {{cost}}",
     "openChats": "Open chats. {{title}}",
     "untitledChat": "Untitled chat",
-    "chooseWorkspace": "Choose a workspace",
+    "chooseProject": "Choose a project",
     "newChat": "New chat",
     "showUsage": "Show session usage details",
     "stopConversationMode": "Stop conversation mode",
@@ -162,7 +162,7 @@
   "library": {
     "title": "Chats",
     "searchPlaceholder": "Search chats",
-    "chooseWorkspace": "Choose a workspace",
+    "chooseProject": "Choose a project",
     "swipeHint": " · Swipe left for actions",
     "active": "Active",
     "archived": "Archived",
@@ -219,7 +219,7 @@
   },
   "starter": {
     "title": "Start a new task",
-    "description": "Keep the prompt specific and OpenCode will inspect the workspace, show progress, and stream back file changes.",
+    "description": "Keep the prompt specific and OpenCode will inspect the project, show progress, and stream back file changes.",
     "prompts": {
       "polish": "Explain this project",
       "review": "Review recent changes",
@@ -260,10 +260,10 @@
     "filesChangedCompact_other": "{{files}} files changed, +{{additions}} / -{{deletions}}"
   },
   "session": {
-    "chooseWorkspace": "Choose a workspace",
-    "selectWorkspace": "Select a project in the Workspaces tab to open its chat context.",
+    "chooseProject": "Choose a project",
+    "selectProject": "Select a project in the Projects tab to open its chat context.",
     "opening": "Opening OpenCode Mobile",
-    "loading": "Loading the latest session for this OpenCode Mobile workspace."
+    "loading": "Loading the latest session for this OpenCode Mobile project."
   },
   "deepLink": {
     "missingSessionId": "This session link is missing a session ID.",

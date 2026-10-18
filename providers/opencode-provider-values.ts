@@ -28,7 +28,7 @@ import type {
   ProjectsContextValue,
   SessionLibraryContextValue,
   TerminalContextValue,
-  WorkspaceFilesContextValue,
+  ProjectFilesContextValue,
 } from '@/providers/opencode-provider-types';
 import type { ProviderValuesInput } from '@/providers/opencode-provider-values-input';
 
@@ -70,21 +70,21 @@ export function useOpencodeProviderValues(input: ProviderValuesInput) {
     projects,
     activeProjectPath,
     activeProject,
-    serverProjects,
     currentProjectPath,
     serverRootPath,
-    isRefreshingWorkspaceCatalog,
-    refreshWorkspaceCatalog,
+    isRefreshingProjectCatalog,
+    refreshProjectCatalog,
     refreshServerFeatures,
     refreshDiagnostics,
     browser,
-    workspaceFileStatuses,
-    selectedWorkspaceFile,
+    projectFileStatuses,
+    selectedProjectFile,
     vcsInfo,
     selectProject,
-    addWorkspace,
-    openWorkspaceFile,
-    saveWorkspaceFile,
+    addProject,
+    removeProject,
+    openProjectFile,
+    saveProjectFile,
     worktrees,
     refreshWorktrees,
     createWorktree,
@@ -306,13 +306,13 @@ export function useOpencodeProviderValues(input: ProviderValuesInput) {
   );
 
   const projectsValue = useMemo<ProjectsContextValue>(
-    () => ({ projects, activeProjectPath, activeProject, selectProject, addWorkspace, serverProjects, currentProjectPath, serverRootPath, isRefreshingWorkspaceCatalog, refreshWorkspaceCatalog, refreshWorkspaceStatus: refreshServerFeatures }),
-    [projects, activeProjectPath, activeProject, selectProject, addWorkspace, serverProjects, currentProjectPath, serverRootPath, isRefreshingWorkspaceCatalog, refreshWorkspaceCatalog, refreshServerFeatures],
+    () => ({ projects, activeProjectPath, activeProject, selectProject, addProject, removeProject, currentProjectPath, serverRootPath, isRefreshingProjectCatalog, refreshProjectCatalog, refreshProjectStatus: refreshServerFeatures }),
+    [projects, activeProjectPath, activeProject, selectProject, addProject, removeProject, currentProjectPath, serverRootPath, isRefreshingProjectCatalog, refreshProjectCatalog, refreshServerFeatures],
   );
 
-  const workspaceFilesValue = useMemo<WorkspaceFilesContextValue>(
-    () => ({ browser, workspaceFileStatuses, selectedWorkspaceFile, vcsInfo, openWorkspaceFile, saveWorkspaceFile, worktrees, refreshWorktrees, createWorktree, resetWorktree, removeWorktree }),
-    [browser, workspaceFileStatuses, selectedWorkspaceFile, vcsInfo, openWorkspaceFile, saveWorkspaceFile, worktrees, refreshWorktrees, createWorktree, resetWorktree, removeWorktree],
+  const projectFilesValue = useMemo<ProjectFilesContextValue>(
+    () => ({ browser, projectFileStatuses, selectedProjectFile, vcsInfo, openProjectFile, saveProjectFile, worktrees, refreshWorktrees, createWorktree, resetWorktree, removeWorktree }),
+    [browser, projectFileStatuses, selectedProjectFile, vcsInfo, openProjectFile, saveProjectFile, worktrees, refreshWorktrees, createWorktree, resetWorktree, removeWorktree],
   );
 
   const activeSessionsValue = useMemo(
@@ -361,7 +361,7 @@ export function useOpencodeProviderValues(input: ProviderValuesInput) {
     capabilitiesValue,
     preferencesValue,
     projectsValue,
-    workspaceFilesValue,
+    projectFilesValue,
     currentSessionValue,
     sessionLibraryValue,
     chatValue,

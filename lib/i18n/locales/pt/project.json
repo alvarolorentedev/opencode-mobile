@@ -1,15 +1,15 @@
 {
   "screen": {
     "syncProjects": "Sincronizar projetos",
-    "refreshWorkspace": "Atualizar espaço de trabalho",
+    "refreshProject": "Atualizar projeto",
     "filesTab": "Arquivos",
     "worktreesTab": "Worktrees"
   },
   "files": {
-    "title": "Arquivos do espaço de trabalho",
+    "title": "Arquivos do projeto",
     "branch": "Branch: {{branch}}",
     "searchAndInspect": "Buscar e inspecionar arquivos",
-    "searchPlaceholder": "Pesquisar neste espaço de trabalho",
+    "searchPlaceholder": "Pesquisar neste projeto",
     "search": "Buscar",
     "changedFiles": "{{value}} arquivos alterados",
     "close": "Fechar arquivo",
@@ -24,7 +24,7 @@
     "searching": "Buscando…",
     "noMatches": "Nenhum arquivo corresponde a “{{query}}”.",
     "resultsFor": "Resultados para “{{query}}”",
-    "searchScope": "Pesquisar em {{workspace}}",
+    "searchScope": "Pesquisar em {{project}}",
     "clearSearch": "Limpar pesquisa",
     "loading": "Carregando arquivos…",
     "emptyFolder": "Esta pasta está vazia.",
@@ -50,28 +50,29 @@
     "removeTitle": "Remover o worktree?",
     "removeMessage": "{{directory}} será removido. Isso não pode ser desfeito.",
     "groupTitle": "Árvores de trabalho · {{project}}",
-    "selectGuidance": "Toque em um diretório para usá-lo como espaço de trabalho.",
+    "selectGuidance": "Toque em um diretório para usá-lo como projeto.",
     "create": "Criar árvore de trabalho",
     "manage": "Gerenciar {{name}}"
   },
   "picker": {
-    "title": "Escolher espaço de trabalho",
-    "changeWorkspace": "Trocar espaço de trabalho",
+    "title": "Escolher projeto",
+    "changeProject": "Trocar projeto",
     "enterPath": "Informe o caminho de uma pasta no servidor OpenCode.",
     "serverDirectory": "Diretório do servidor",
-    "add": "Adicionar espaço de trabalho",
+    "add": "Adicionar projeto",
     "selectLabel": "Selecionar {{name}}",
-    "empty": "Nenhum espaço de trabalho disponível."
+    "removeLabel": "Remover {{name}}",
+    "empty": "Nenhum projeto disponível."
   },
   "errors": {
-    "refreshWorkspace": "Não foi possível atualizar o espaço de trabalho.",
-    "searchFiles": "Não foi possível buscar os arquivos do espaço de trabalho.",
+    "refreshProject": "Não foi possível atualizar o projeto.",
+    "searchFiles": "Não foi possível buscar os arquivos do projeto.",
     "openFile": "Não foi possível abrir o arquivo.",
     "saveFile": "Não foi possível salvar o arquivo.",
     "refreshWorktrees": "Não foi possível atualizar os worktrees.",
     "createWorktree": "Não foi possível criar o worktree.",
     "resetWorktree": "Não foi possível redefinir o worktree.",
     "removeWorktree": "Não foi possível remover o worktree.",
-    "addWorkspace": "Não foi possível adicionar o espaço de trabalho."
+    "addProject": "Não foi possível adicionar o projeto."
   }
 }

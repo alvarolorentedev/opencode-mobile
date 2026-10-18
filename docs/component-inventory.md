@@ -220,7 +220,7 @@ type ChatComposerProps = {
 ### Responsibility
 
 - top app bar with New Chat and usage actions; voice chat starts from the composer waveform only
-- active session and workspace title that opens the Chats overlay
+- active session and project title that opens the Chats overlay
 - compact current-session usage summary and usage breakdown sheet
 - mounting point for conversation overlay
 
@@ -244,24 +244,24 @@ type ChatHeaderProps = {
 ## `components/chat/chat-library.tsx`
 
 - Chats overlay with search, favorites, archived sessions, and swipe-left session actions
-- active, favorite, current-workspace, and archived rows share one FlashList scroll owner; search, filters, and New Chat stay outside the virtualized list
-- "Active across workspaces" group above Favorites listing up to four running/recent sessions from the whole connection; listed IDs are removed from the Chat list below, and tapping one switches project and opens it through `openSessionInProject`. Project-scoped actions (rename/share/archive/delete) appear only on the current-workspace rows
-- re-seeds the cross-workspace snapshot when the overlay opens
+- active, favorite, current-project, and archived rows share one FlashList scroll owner; search, filters, and New Chat stay outside the virtualized list
+- "Active across projects" group above Favorites listing up to four running/recent sessions from the whole connection; listed IDs are removed from the Chat list below, and tapping one switches project and opens it through `openSessionInProject`. Project-scoped actions (rename/share/archive/delete) appear only on the current-project rows
+- re-seeds the cross-project snapshot when the overlay opens
 - keeps the Hide subagents switch alongside the Active and Archived filters
-- header action opening the shared workspace picker overlay
-- uses provider actions for switching workspaces, opening chats, and persistence
+- header action opening the shared project picker overlay
+- uses provider actions for switching projects, opening chats, and persistence
 - owns only local search, section, swipe row, rename, and feedback state
 
 ## `components/ui/overlay-sheet.tsx`
 
-- shared overlay presentation for Chats, workspace selection, progress, diff source selection, session usage, terminal selection, and Settings categories; short overlays fit their content
+- shared overlay presentation for Chats, project selection, progress, diff source selection, session usage, terminal selection, and Settings categories; short overlays fit their content
 - `scrollable={false}` lets embedded virtualized lists own scrolling without a nested ScrollView
 - a full-screen `KeyboardAvoidingView` with `behavior="padding"` contains the sheet; the sheet and its scroll area shrink within the visible space so focused inputs (including the speech locale) stay reachable above the keyboard
 
-## `components/ui/workspace-picker.tsx`
+## `components/ui/project-picker.tsx`
 
-- shared Chat workspace button and project picker overlay also used by Workspace's existing dropdown
-- lets the user enter a directory on the OpenCode server; the provider resolves and selects it
+- shared Chat project button and project picker overlay also used by Project's existing dropdown
+- renders the connection's opened projects; a row's close control removes it locally, and adding lets the user enter a directory on the OpenCode server that the provider resolves and selects
 - owns no domain state or persistence
 
 ## `components/chat/chat-cards.tsx`
@@ -350,7 +350,7 @@ Responsibility:
 
 ### Responsibility
 
-- small reusable controls for the chat toolbar and Workspace header
+- small reusable controls for the chat toolbar and Project header
 - accept a `slim` prop that shrinks control height, icon size, and label size for the slim-interface preference
 
 ## `components/chat/chat-diff.ts`
@@ -396,21 +396,21 @@ This is important to parity because the chat layout is intentionally dense and h
 
 ## Screen Controllers
 
-## `app/(tabs)/workspace.tsx`
+## `app/(tabs)/projects.tsx`
 
 ### Responsibility
 
 - wire project selection to the provider
-- wire the provider browser, preview, and shared workspace picker
-- combine folder/search, file status, and workspace catalog refresh
+- wire the provider browser, preview, and shared project picker
+- combine folder/search, file status, and project catalog refresh
 - keep picker/preview visibility and screen feedback local
 
 ### Presentation
 
-- keeps its active-project title, path, and dropdown trigger in the header; the dropdown opens the shared workspace picker overlay
-- the shared picker can add a server directory as a workspace
-- provides one workspace refresh action
-- shows files directly with breadcrumbs and scoped search; worktree controls live in the shared workspace picker
+- keeps its active-project title, path, and dropdown trigger in the header; the dropdown opens the shared project picker overlay
+- the shared picker lists the connection's opened projects, can close them locally, and can add a server directory as a project
+- provides one project refresh action
+- shows files directly with breadcrumbs and scoped search; worktree controls live in the shared project picker
 - opens file viewing and editing in a focused full-screen surface
 
 ## `app/(tabs)/settings.tsx`
@@ -458,8 +458,8 @@ This is important to parity because the chat layout is intentionally dense and h
 Thin preview/controller over provider-owned `sharedInput`: resolving, setup,
 empty/error, shared text/link, attachment tiles and skipped-item warnings.
 Shows the current conversation by default; Change opens the existing OverlaySheet
-with searchable conversation rows and workspace labels, plus New chat in the
-current workspace. The workspace picker remains available when setup is needed.
+with searchable conversation rows and project labels, plus New chat in the
+current project. The project picker remains available when setup is needed.
 Choosing a conversation only selects the pending destination. Add awaits the
 provider's guarded create/open action before navigating to Chat. The composer
 merges the confirmed receipt exactly once and remains the only send path.
@@ -765,11 +765,11 @@ Main relevant props:
 
 Responsibility:
 
-- the five first-run setup steps: app presentation, permissions, add connection, workspace, ready
+- the five first-run setup steps: app presentation, permissions, add connection, project, ready
 - presentation only describes the app, with Continue navigation; preferences and provider setup live in Settings
-- permissions, connect and workspace are skippable; skipping advances one step without persisting anything
-- ready summarizes only the connection and workspace, then completes first-run setup or closes review mode
-- thin controllers only; connection/workspace persistence and permission requests are delegated to the provider and existing helpers
+- permissions, connect and project are skippable; skipping advances one step without persisting anything
+- ready summarizes only the connection and project, then completes first-run setup or closes review mode
+- thin controllers only; connection/project persistence and permission requests are delegated to the provider and existing helpers
 - seeded from current provider state so re-running from Settings reviews rather than resets
 
 ## `components/onboarding/onboarding-step.tsx`
@@ -780,14 +780,14 @@ Responsibility:
 
 ## `components/onboarding/project-options.tsx`
 
-- presentational project-row list shared by `WorkspacePicker` and the onboarding workspace step
-- callers own empty/loading states
+- presentational project-row list shared by `ProjectPicker` and the onboarding project step
+- renders an optional close control that removes a project locally; callers own empty/loading states and whether closing is offered
 
 ## `providers/onboarding-state.ts`
 
 - `CURRENT_ONBOARDING_VERSION`, parse/serialize for the completion marker
 - pure `resolveOnboardingStatus()` migration decision and the storage-backed `loadOnboardingStatus()`
-- completion only; never stores connection, workspace, preference, or permission values
+- completion only; never stores connection, project, preference, or permission values
 
 ## `components/settings/use-notification-setup.ts`
 
@@ -887,7 +887,7 @@ Used primarily by tab icons.
 
 - central domain controller for almost all app behavior
 
-The public UI contract is exposed through domain hooks from `providers/opencode-contexts.ts` (`useOnboarding`, `useConnection`, `useDiagnostics`, `useCapabilities`, `usePreferences`, `useProjects`, `useWorkspaceFiles`, `useCurrentSession`, `useSessionLibrary`, `useChat`, `useApprovals`, `useConversation`, `useTerminal`, `useMcp`), each typed by its matching `*ContextValue`. `OpencodeContextValue` is their documented union.
+The public UI contract is exposed through domain hooks from `providers/opencode-contexts.ts` (`useOnboarding`, `useConnection`, `useDiagnostics`, `useCapabilities`, `usePreferences`, `useProjects`, `useProjectFiles`, `useCurrentSession`, `useSessionLibrary`, `useChat`, `useApprovals`, `useConversation`, `useTerminal`, `useMcp`), each typed by its matching `*ContextValue`. `OpencodeContextValue` is their documented union.
 
 ## `providers/opencode-provider-types.ts`
 
@@ -904,7 +904,7 @@ Most important exported contracts:
 - `OpencodeProject`
 - the `*ContextValue` domain types and their union `OpencodeContextValue`
 
-The domain values cover active/archived session lifecycle, commands, workspace editing/worktrees, MCP management, PTY terminal state/actions, diagnostics, global stream status, and OAuth callback completion in addition to chat state.
+The domain values cover active/archived session lifecycle, commands, project editing/worktrees, MCP management, PTY terminal state/actions, diagnostics, global stream status, and OAuth callback completion in addition to chat state.
 
 ## `providers/opencode-provider-selectors.ts`
 
@@ -944,7 +944,7 @@ The domain values cover active/archived session lifecycle, commands, workspace e
 
 ### Responsibility
 
-- aggregate workspace/session API fetches in small helpers
+- aggregate project/session API fetches in small helpers
 - expose delete, rename, fork, share/unshare, revert/unrevert, command-list, and command-execution calls
 
 ## `providers/services/capabilities-service.ts`
@@ -954,7 +954,7 @@ The domain values cover active/archived session lifecycle, commands, workspace e
 - aggregate capability discovery and normalize provider/model/agent lists
 - normalize current nested model attachment/input/tool-call/reasoning/status/limit capabilities
 
-## `providers/services/workspace-service.ts`
+## `providers/services/project-service.ts`
 
 ### Responsibility
 
@@ -998,7 +998,7 @@ But parity is easiest if these responsibilities remain separated:
 
 - `ChatView` creates the shared task-progress FAB and owns progress-overlay visibility. It renders the FAB beside the changes chip when visible; `ChatContent` renders it floating at the bottom-right otherwise and retains the detailed progress overlay. The detailed progress overlay remains available. Patch summary chips open the Files changed overlay and select their parent user turn when that message is present in the current session; otherwise the existing changes scope is retained. `TranscriptMessage` memoization includes the review callback to keep the session mapping current.
 - The chat library's connection-wide group is Running & recent, with an explicit Running indicator. Deduplicated chats do not create an empty Chats section. Search-empty copy is distinct from a truly empty library.
-- `components/workspace/files-panel.tsx` owns one FlashList for browser entries and changed-file rows, with search, breadcrumbs, status and branch/title content in its header. It renders provider-owned changed-file statuses immediately. Added/modified files use the existing reader; deleted rows explain unavailable content. Button and keyboard search share one guarded handler. Query, submitted query, loading, and failure presentation are local and reset with the connection/workspace key; results remain provider-owned.
+- `components/project/files-panel.tsx` owns one FlashList for browser entries and changed-file rows, with search, breadcrumbs, status and branch/title content in its header. It renders provider-owned changed-file statuses immediately. Added/modified files use the existing reader; deleted rows explain unavailable content. Button and keyboard search share one guarded handler. Query, submitted query, loading, and failure presentation are local and reset with the connection/project key; results remain provider-owned.
 - Setup has one guarded Connect & continue action through `switchConnection`. Input survives failures; connection controls and Skip are disabled while submitting. The shared Cloud Link/Manual chooser precedes the manual form.
 - Approval cards separate the current resources from server-provided future `always` patterns and explain that the server controls rule duration. Missing patterns explicitly have unspecified scope. Question descriptions appear before selection, while existing custom/multiple/conditional answer handling remains intact.
 - Starter examples fill the draft; the bug example appends a symptoms prompt. Terminal's empty state calls the existing creation handler and describes line-at-a-time commands.
@@ -1051,22 +1051,22 @@ mouse events. The Latest output control appears away from the scrollback bottom.
 Buttons have at least 44-point targets, accessible names and state, and xterm
 screen-reader mode is enabled. Native screen-reader/input validation remains required.
 
-## Workspace file browser components
+## Project file browser components
 
-- `components/workspace/files-panel.tsx` renders sorted folders/files, breadcrumbs,
-  explicit workspace-wide search scope, changed files, loading/empty/error states,
+- `components/project/files-panel.tsx` renders sorted folders/files, breadcrumbs,
+  explicit project-wide search scope, changed files, loading/empty/error states,
   and retry actions. Only the unsubmitted search input is local; listing/search
   state and actions come from the provider's `browser` member.
-- `components/workspace/file-preview.tsx` renders the full-screen text preview,
+- `components/project/file-preview.tsx` renders the full-screen text preview,
   local edit draft, save feedback and discard confirmation. It calls the existing
   provider save action; unsupported editing is capability-gated.
-- `components/workspace/worktree-picker.tsx` renders the owning project's worktree
+- `components/project/worktree-picker.tsx` renders the owning project's worktree
   rows, selection indicators, creation form and row management menus inside the
-  shared `WorkspacePicker`. Forms, menu visibility and confirmations are local;
+  shared `ProjectPicker`. Forms, menu visibility and confirmations are local;
   inventory and lifecycle actions remain provider-owned.
 
 These surfaces reuse the existing palette, theme, slim preference, inputs and
-picker overlay. Workspace retains its tab label and route. Chat uses the same
+picker overlay. Projects retains its tab label and route. Chat uses the same
 picker and provider selection action; Terminal follows that directory.
 
 ## App update notice

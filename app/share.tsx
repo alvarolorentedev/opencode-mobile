@@ -6,7 +6,7 @@ import { ActivityIndicator, Appbar, Button, Surface, Text } from 'react-native-p
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { AttachmentStrip } from '@/components/chat/attachment-strip';
-import { WorkspacePicker } from '@/components/ui/workspace-picker';
+import { ProjectPicker } from '@/components/ui/project-picker';
 import { OverlaySheet } from '@/components/ui/overlay-sheet';
 import { TextInput } from '@/components/ui/text-input';
 import { Colors, Fonts } from '@/constants/theme';
@@ -16,7 +16,7 @@ import { useChat, useConnection, useOnboarding, useProjects } from '@/providers/
 /**
  * Preview surface for content shared into the app from the OS share sheet.
  * Thin controller: the provider stages the payload, this screen only lets the
- * user review it, pick a workspace, and add it to the composer. Nothing is
+ * user review it, pick a project, and add it to the composer. Nothing is
  * submitted from here; the composer still owns the explicit send action.
  */
 export default function ShareScreen() {
@@ -27,7 +27,7 @@ export default function ShareScreen() {
   const palette = Colors[useColorScheme() ?? 'light'];
   const { isHydrated, onboardingCompleted } = useOnboarding();
   const { connection, settings } = useConnection();
-  const { activeProject, addWorkspace, projects, selectProject } = useProjects();
+  const { activeProject, addProject, projects, removeProject, selectProject } = useProjects();
   const { sharedInput } = useChat();
   const [pickerVisible, setPickerVisible] = useState(false);
   const [chatPickerVisible, setChatPickerVisible] = useState(false);
@@ -77,19 +77,19 @@ export default function ShareScreen() {
         <ScrollView contentContainerStyle={styles.content}>
           <Text variant="bodyMedium" style={{ color: palette.muted }}>{t('share:subtitle')}</Text>
 
-          {!activeProject?.path ? <><Text variant="titleSmall" style={{ color: palette.text }}>{t('share:workspace')}</Text>
-          <View style={styles.workspaceRow}>
-            <NativeText numberOfLines={1} style={[styles.workspaceName, { color: palette.text }]}>
-              {activeProject?.label || t('share:noWorkspace')}
+          {!activeProject?.path ? <><Text variant="titleSmall" style={{ color: palette.text }}>{t('share:project')}</Text>
+          <View style={styles.projectRow}>
+            <NativeText numberOfLines={1} style={[styles.projectName, { color: palette.text }]}>
+              {activeProject?.label || t('share:noProject')}
             </NativeText>
             <Button compact mode="outlined" icon="folder-swap-outline" onPress={() => setPickerVisible(true)}>
-              {t('share:chooseWorkspace')}
+              {t('share:chooseProject')}
             </Button>
           </View></> : null}
           <NativeText numberOfLines={1} style={{ color: palette.muted }}>{settings.serverUrl}</NativeText>
           <Text variant="titleSmall">{t('share:conversation')}</Text>
-          <View style={styles.workspaceRow}>
-            <NativeText numberOfLines={1} style={[styles.workspaceName, { color: palette.text }]}>{targetTitle}</NativeText>
+          <View style={styles.projectRow}>
+            <NativeText numberOfLines={1} style={[styles.projectName, { color: palette.text }]}>{targetTitle}</NativeText>
             <Button disabled={sharedInput.busy} mode="outlined" onPress={() => setChatPickerVisible(true)}>{t('share:change')}</Button>
           </View>
           {target?.projectPath ? <Text variant="bodySmall">{target.projectPath}</Text> : null}
@@ -133,14 +133,15 @@ export default function ShareScreen() {
         </ScrollView>
       )}
 
-      <WorkspacePicker
+      <ProjectPicker
         visible={pickerVisible}
         onClose={() => setPickerVisible(false)}
         projects={projects}
         activePath={activeProject?.path}
         onSelect={(path) => selectProject(path)}
-        onAdd={(directory) => addWorkspace(directory)}
-        testID="share-workspace-picker"
+        onRemove={removeProject}
+        onAdd={(directory) => addProject(directory)}
+        testID="share-project-picker"
       />
       <OverlaySheet visible={chatPickerVisible} title={t('share:chooseConversation')} onClose={() => setChatPickerVisible(false)} testID="share-chat-picker">
         <TextInput mode="outlined" value={search} onChangeText={setSearch} placeholder={t('chat:library.searchPlaceholder')} />
@@ -165,8 +166,8 @@ const styles = StyleSheet.create({
   panel: { width: '100%', maxWidth: 480, padding: 24, gap: 12, borderRadius: 16, alignItems: 'center' },
   panelAction: { marginTop: 8 },
   content: { padding: 20, gap: 12 },
-  workspaceRow: { flexDirection: 'row', alignItems: 'center', gap: 12, flexWrap: 'wrap' },
-  workspaceName: { flex: 1, minWidth: 120, fontWeight: '600' },
+  projectRow: { flexDirection: 'row', alignItems: 'center', gap: 12, flexWrap: 'wrap' },
+  projectName: { flex: 1, minWidth: 120, fontWeight: '600' },
   block: { borderWidth: 1, borderRadius: 12, padding: 12, gap: 4 },
   attachments: { gap: 8 },
   footer: { flexDirection: 'row', justifyContent: 'flex-end', flexWrap: 'wrap', gap: 10, marginTop: 8 },

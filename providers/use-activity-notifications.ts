@@ -26,7 +26,7 @@ type Input = {
   promptError?: { sessionId?: string; occurredAt: number };
   // True while the global SSE stream is healthy. When it is, interaction reads
   // can be limited to directories with running work because events reconcile
-  // other workspaces directly.
+  // other projects directly.
   streamConnectedRef: { current: boolean };
 };
 

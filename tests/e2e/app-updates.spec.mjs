@@ -74,7 +74,7 @@ test('cancelled native consent does not repeatedly offer the same update', async
   await boot(page, request, { phase: 'available', version: '59' }, false);
   await expect(notice(page)).toHaveCount(0);
   await expect(page.getByText('Opening the update…', { exact: true })).toHaveCount(0);
-  await page.getByRole('tab', { name: /Workspace/ }).click();
+  await page.getByRole('tab', { name: /Project/ }).click();
   await expect(notice(page)).toHaveCount(0);
   expect(await page.evaluate(() => globalThis.__appUpdateTest.events)).toEqual(['start']);
 });
@@ -103,8 +103,8 @@ test('the nonmodal banner fits a small screen and keeps navigation usable', asyn
   await expect(notice(page)).toHaveCount(0);
   await page.getByPlaceholder('Ask anything...').fill('');
   await expect(notice(page)).toBeVisible();
-  await page.getByRole('tab', { name: /Workspace/ }).click();
-  await expect(page).toHaveURL(/workspace/);
+  await page.getByRole('tab', { name: /Project/ }).click();
+  await expect(page).toHaveURL(/projects/);
   await expect(notice(page)).toBeVisible();
   expect(await page.evaluate(() => globalThis.__appUpdateTest.events)).toEqual([]);
 });

@@ -1,5 +1,5 @@
 
-import { workspaceEntries, workspaceWorktrees } from '@/lib/opencode/workspace';
+import { projectEntries, projectWorktrees } from '@/lib/opencode/project';
 import type { OpencodeClient } from '@opencode-ai/sdk/v2/client';
 
 import { requireData } from '@/providers/services/require-data';
@@ -9,7 +9,7 @@ export async function findFiles(client: OpencodeClient, query: string, includeDi
 }
 
 export async function listFiles(client: OpencodeClient, path: string) {
-  return workspaceEntries(requireData((await client.file.list({ path })).data, 'directory listing'), '');
+  return projectEntries(requireData((await client.file.list({ path })).data, 'directory listing'), '');
 }
 
 export async function readFile(client: OpencodeClient, path: string) {
@@ -33,7 +33,7 @@ export async function applyVcsPatch(client: OpencodeClient, patch: string) {
 }
 
 export async function listWorktrees(client: OpencodeClient) {
-  return workspaceWorktrees(requireData((await client.worktree.list()).data, 'worktree list request'));
+  return projectWorktrees(requireData((await client.worktree.list()).data, 'worktree list request'));
 }
 
 export async function createWorktree(client: OpencodeClient, name?: string, startCommand?: string) {

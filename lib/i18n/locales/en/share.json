@@ -1,9 +1,9 @@
 {
   "title": "Shared with OpenCode",
   "subtitle": "Review this content, choose a conversation, then add it to the composer. Nothing is sent until you tap send.",
-  "workspace": "Workspace",
-  "noWorkspace": "No workspace selected",
-  "chooseWorkspace": "Choose",
+  "project": "Project",
+  "noProject": "No project selected",
+  "chooseProject": "Choose",
   "notConnected": "Not connected to a server. Connect before sending.",
   "link": "Link",
   "attachments": "Attachments",

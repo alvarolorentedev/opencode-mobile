@@ -11,7 +11,7 @@ import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useProjects } from '@/providers/opencode-contexts';
 
-export default function OnboardingWorkspaceScreen() {
+export default function OnboardingProjectScreen() {
   const { t } = useTranslation();
   const router = useRouter();
   const palette = Colors[useColorScheme() ?? 'light'];
@@ -19,9 +19,9 @@ export default function OnboardingWorkspaceScreen() {
     projects,
     activeProjectPath,
     selectProject,
-    addWorkspace,
-    isRefreshingWorkspaceCatalog,
-    refreshWorkspaceCatalog,
+    addProject,
+    isRefreshingProjectCatalog,
+    refreshProjectCatalog,
   } = useProjects();
 
   const [adding, setAdding] = useState(false);
@@ -44,10 +44,10 @@ export default function OnboardingWorkspaceScreen() {
     setIsAdding(true);
     setAddError(undefined);
     try {
-      await addWorkspace(directory);
+      await addProject(directory);
       router.push('/onboarding/ready');
     } catch (reason) {
-      setAddError(reason instanceof Error ? reason.message : t('workspace:errors.addWorkspace'));
+      setAddError(reason instanceof Error ? reason.message : t('project:errors.addProject'));
     } finally {
       setIsAdding(false);
     }
@@ -57,9 +57,9 @@ export default function OnboardingWorkspaceScreen() {
     <OnboardingStep
       step={4}
       totalSteps={5}
-      title={t('onboarding:workspace.title')}
-      subtitle={t('onboarding:workspace.subtitle')}
-      testID="onboarding-workspace"
+      title={t('onboarding:project.title')}
+      subtitle={t('onboarding:project.subtitle')}
+      testID="onboarding-project"
       footerSingleLine
       onBack={() => router.back()}
       footer={
@@ -67,49 +67,49 @@ export default function OnboardingWorkspaceScreen() {
           <Button
             mode="text"
             style={{ marginRight: 'auto' }}
-            testID="onboarding-workspace-skip"
-            disabled={isRefreshingWorkspaceCatalog || isAdding}
+            testID="onboarding-project-skip"
+            disabled={isRefreshingProjectCatalog || isAdding}
             onPress={() => router.push('/onboarding/ready')}>
-            {t('onboarding:workspace.skip')}
+            {t('onboarding:project.skip')}
           </Button>
           <Button
             mode="outlined"
-            testID="onboarding-workspace-refresh"
-            loading={isRefreshingWorkspaceCatalog}
-            disabled={isRefreshingWorkspaceCatalog || isAdding}
-            onPress={() => void refreshWorkspaceCatalog()}>
+            testID="onboarding-project-refresh"
+            loading={isRefreshingProjectCatalog}
+            disabled={isRefreshingProjectCatalog || isAdding}
+            onPress={() => void refreshProjectCatalog()}>
             {t('common:actions.refresh')}
           </Button>
           {activeProject ? (
             <Button
               mode="contained"
-              testID="onboarding-workspace-continue"
+              testID="onboarding-project-continue"
               onPress={() => choose(activeProject.path)}>
-              {t('onboarding:workspace.continue')}
+              {t('onboarding:project.continue')}
             </Button>
           ) : null}
         </>
       }>
-      {isRefreshingWorkspaceCatalog && projects.length === 0 ? (
+      {isRefreshingProjectCatalog && projects.length === 0 ? (
         <View style={styles.loading}>
           <ActivityIndicator />
-          <Text style={{ color: palette.muted }}>{t('onboarding:workspace.loading')}</Text>
+          <Text style={{ color: palette.muted }}>{t('onboarding:project.loading')}</Text>
         </View>
       ) : null}
 
-      {!isRefreshingWorkspaceCatalog && projects.length === 0 ? (
-        <Text style={{ color: palette.muted }}>{t('onboarding:workspace.empty')}</Text>
+      {!isRefreshingProjectCatalog && projects.length === 0 ? (
+        <Text style={{ color: palette.muted }}>{t('onboarding:project.empty')}</Text>
       ) : null}
 
       <ProjectOptions activePath={activeProjectPath} onSelect={choose} projects={projects} />
 
       {adding ? (
         <View style={[styles.addForm, { borderColor: palette.border }]}>
-          <Text style={{ color: palette.muted }}>{t('workspace:picker.enterPath')}</Text>
+          <Text style={{ color: palette.muted }}>{t('project:picker.enterPath')}</Text>
           <TextInput
             mode="outlined"
-            testID="onboarding-workspace-directory"
-            label={t('workspace:picker.serverDirectory')}
+            testID="onboarding-project-directory"
+            label={t('project:picker.serverDirectory')}
             value={directory}
             onChangeText={setDirectory}
             autoCapitalize="none"
@@ -122,11 +122,11 @@ export default function OnboardingWorkspaceScreen() {
             </Button>
             <Button
               mode="contained"
-              testID="onboarding-workspace-add-submit"
+              testID="onboarding-project-add-submit"
               loading={isAdding}
               disabled={isAdding || !directory.trim()}
               onPress={() => void submitAdd()}>
-              {t('workspace:picker.add')}
+              {t('project:picker.add')}
             </Button>
           </View>
         </View>
@@ -134,9 +134,9 @@ export default function OnboardingWorkspaceScreen() {
         <Button
           mode="outlined"
           icon="plus"
-          testID="onboarding-workspace-add"
+          testID="onboarding-project-add"
           onPress={() => setAdding(true)}>
-          {t('workspace:picker.add')}
+          {t('project:picker.add')}
         </Button>
       )}
     </OnboardingStep>

@@ -20,7 +20,7 @@ docs it references.
 - Routing: `app/+native-intent.ts` redirects the `expo-sharing` host to
   `/share`; every other deep link passes through.
 - Preview: `app/share.tsx` shows text/link/attachment tiles, a current-chat destination, searchable conversation chooser
-  with workspace labels/New chat, and Add to chat / Discard. Nothing is submitted here.
+  with project labels/New chat, and Add to chat / Discard. Nothing is submitted here.
 - Composer handoff: `components/chat/use-chat-view-controller.ts` consumes the
   confirmed payload into `draft`/`attachments` once the route is focused and
   connection/project/session match, preserving existing draft content. The
@@ -90,7 +90,7 @@ docs it references.
 ## Acceptance tests (device)
 
 - Share text, a URL, an image, and a PDF from Safari/Photos/Files into the app on
-  a signed device build and confirm the preview, workspace picker, and Add to
+  a signed device build and confirm the preview, project picker, and Add to
   chat flow.
 - Cold start from a share while un-onboarded: verify the setup-needed state and
   Discard.

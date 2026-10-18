@@ -18,7 +18,7 @@ import {
   ProjectsContext,
   SessionLibraryContext,
   TerminalContext,
-  WorkspaceFilesContext,
+  ProjectFilesContext,
   UpdatesContext,
 } from '@/providers/opencode-contexts';
 import {
@@ -40,7 +40,7 @@ import { useWorktreeState } from '@/providers/use-worktree-state';
 import { handleProviderEvent, type ProviderEventActions } from '@/providers/opencode-provider-events';
 import { useOpencodeProviderState } from '@/providers/use-opencode-provider-state';
 import { useOpencodeProviderEffects } from '@/providers/use-opencode-provider-effects';
-import { useWorkspaceActions } from '@/providers/use-workspace-actions';
+import { useProjectActions } from '@/providers/use-project-actions';
 import { useCapabilitiesActions } from '@/providers/use-capabilities-actions';
 import { useSessionActions } from '@/providers/use-session-actions';
 import { usePromptInbox } from '@/providers/use-prompt-inbox';
@@ -89,8 +89,8 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
     setPendingQuestionsBySession,
     setSavedPermissions,
     setMcpAuthPrompt,
-    setWorkspaceFileStatuses,
-    setSelectedWorkspaceFile,
+    setProjectFileStatuses,
+    setSelectedProjectFile,
     setVcsInfo,
     bootstrapPromiseRef,
     bootstrapTokenRef,
@@ -109,9 +109,9 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
     defaultSettings: defaultConnectionSettings,
   });
 
-  const refreshWorkspaceCatalogRef = useRef<(silent?: boolean) => Promise<void>>(async () => undefined);
+  const refreshProjectCatalogRef = useRef<(silent?: boolean) => Promise<void>>(async () => undefined);
   const refreshChatCapabilitiesRef = useRef<() => Promise<void>>(async () => undefined);
-  const refreshWorkspaceCatalogLatest = useCallback((silent?: boolean) => refreshWorkspaceCatalogRef.current(silent), []);
+  const refreshProjectCatalogLatest = useCallback((silent?: boolean) => refreshProjectCatalogRef.current(silent), []);
   const refreshChatCapabilitiesLatest = useCallback(() => refreshChatCapabilitiesRef.current(), []);
 
   const onboardingCompleted = isOnboardingComplete(state.onboardingVersion);
@@ -134,8 +134,8 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
   }, [setMcpAuthPrompt]);
 
   const projects = useMemo(
-    () => buildOpencodeProjects(state.serverProjects, state.currentProjectPath),
-    [state.currentProjectPath, state.serverProjects],
+    () => buildOpencodeProjects(state.projectPathsByConnection[state.connectionScope] ?? [], state.currentProjectPath, state.serverProjects),
+    [state.connectionScope, state.currentProjectPath, state.projectPathsByConnection, state.serverProjects],
   );
 
   const client = useMemo(
@@ -173,7 +173,7 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
     serverUrl: state.settings.serverUrl,
     authorization: getRequestHeaders(state.settings)?.Authorization,
   });
-  const worktree = useWorktreeState({ ...state, client, isCurrentClient, refreshWorkspaceCatalog: refreshWorkspaceCatalogLatest });
+  const worktree = useWorktreeState({ ...state, client, isCurrentClient, refreshProjectCatalog: refreshProjectCatalogLatest });
   const activeProject = useMemo(
     () => resolveActiveProject(projects, state.activeProjectPath, state.currentProjectPath, worktree.worktrees),
     [projects, state.activeProjectPath, state.currentProjectPath, worktree.worktrees],
@@ -232,13 +232,13 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
     setPendingQuestionsBySession({});
     setMcpAuthPrompt(undefined);
     permissionRules.resetPermissionRules();
-    setWorkspaceFileStatuses([]);
-    setSelectedWorkspaceFile(undefined);
+    setProjectFileStatuses([]);
+    setSelectedProjectFile(undefined);
     setVcsInfo(undefined);
     mcp.resetMcpState();
     terminal.resetTerminal();
     worktree.resetWorktrees();
-  }, [mcp.resetMcpState, permissionRules.resetPermissionRules, terminal.resetTerminal, transcript.reset, worktree.resetWorktrees, bootstrapPromiseRef, bootstrapTokenRef, busyNotificationsRef, sessionRefreshOptionsRef, sessionRefreshTimeoutsRef, setArchivedSessions, setAvailableAgents, setAvailableModels, setAvailableProviders, setCommands, setCurrentConfig, setCurrentSessionId, setMcpAuthPrompt, setPendingPermissionsBySession, setPendingQuestionsBySession, setProviderAuthMethodsById, setSelectedWorkspaceFile, setSessionStatuses, setSessions, setVcsInfo, setWorkspaceFileStatuses]);
+  }, [mcp.resetMcpState, permissionRules.resetPermissionRules, terminal.resetTerminal, transcript.reset, worktree.resetWorktrees, bootstrapPromiseRef, bootstrapTokenRef, busyNotificationsRef, sessionRefreshOptionsRef, sessionRefreshTimeoutsRef, setArchivedSessions, setAvailableAgents, setAvailableModels, setAvailableProviders, setCommands, setCurrentConfig, setCurrentSessionId, setMcpAuthPrompt, setPendingPermissionsBySession, setPendingQuestionsBySession, setProviderAuthMethodsById, setSelectedProjectFile, setSessionStatuses, setSessions, setVcsInfo, setProjectFileStatuses]);
 
   const softResetProjectState = useCallback(() => {
     // Same-machine credential rotation: keep server-derived data (still valid
@@ -251,13 +251,13 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
     sessionRefreshOptionsRef.current = {};
   }, [bootstrapPromiseRef, bootstrapTokenRef, sessionRefreshOptionsRef, sessionRefreshTimeoutsRef]);
 
-  const workspace = useWorkspaceActions({ ...state, client, catalogClient, isCurrentClient, isCurrentCatalogClient, clearProjectState, isHydrated, refreshMessages: inbox.refreshMessages });
+  const project = useProjectActions({ ...state, client, catalogClient, isCurrentClient, isCurrentCatalogClient, clearProjectState, isHydrated, refreshMessages: inbox.refreshMessages });
 
   const capabilities = useCapabilitiesActions({ ...state, client, isCurrentClient });
 
   const sessionActions = useSessionActions({
     ...state,
-    ...workspace,
+    ...project,
     ...permissionRules,
     client,
     catalogClient,
@@ -272,7 +272,7 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
   const prompt = usePromptLifecycle({
     submitPrompt: inbox.submitPrompt,
     ...state,
-    ...workspace,
+    ...project,
     client,
     isCurrentClient,
     refreshMessages: inbox.refreshMessages,
@@ -281,7 +281,7 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
 
   const connectionActions = useConnectionActions({
     ...state,
-    ...workspace,
+    ...project,
     ...sessionActions,
     ...prompt,
     isCurrentCatalogClient,
@@ -313,21 +313,21 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
   // Written in a layout effect so no ref is touched during render; all readers
   // are event handlers, realtime callbacks, or passive effects that run later.
   useLayoutEffect(() => {
-    refreshWorkspaceCatalogRef.current = workspace.refreshWorkspaceCatalog;
+    refreshProjectCatalogRef.current = project.refreshProjectCatalog;
     refreshChatCapabilitiesRef.current = capabilities.refreshChatCapabilities;
     ensureActiveSessionRef.current = sessionActions.ensureActiveSession;
     eventActionsRef.current = {
-      refreshSessions: workspace.refreshSessions,
+      refreshSessions: project.refreshSessions,
       refreshArchivedSessions: sessionActions.refreshArchivedSessions,
-      scheduleSessionRefresh: workspace.scheduleSessionRefresh,
-      refreshPendingInteractions: workspace.refreshPendingInteractions,
-      refreshServerFeatures: workspace.refreshServerFeatures,
+      scheduleSessionRefresh: project.scheduleSessionRefresh,
+      refreshPendingInteractions: project.refreshPendingInteractions,
+      refreshServerFeatures: project.refreshServerFeatures,
       refreshChatCapabilities: capabilities.refreshChatCapabilities,
-      refreshWorkspaceCatalog: workspace.refreshWorkspaceCatalog,
+      refreshProjectCatalog: project.refreshProjectCatalog,
       refreshTerminals: terminal.refreshTerminals,
       refreshWorktrees: worktree.refreshWorktrees,
       refreshMcpServers: mcp.refreshMcpServers,
-      refreshDiagnostics: workspace.refreshDiagnostics,
+      refreshDiagnostics: project.refreshDiagnostics,
       setSessionStatuses: state.setSessionStatuses,
       setPromptError: prompt.setPromptError,
       setDiffsBySession: state.setDiffsBySession,
@@ -363,11 +363,11 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
     onGlobalEvent: (event) => { handleActivityEvent(event); widgets.handleWidgetEvent(event); },
     refreshNativeSurfaces: widgets.refreshWidgets,
     onFatalError: connectionActions.handleStreamAuthFailure,
-    refreshSessions: workspace.refreshSessions,
-    refreshPendingInteractions: workspace.refreshPendingInteractions,
+    refreshSessions: project.refreshSessions,
+    refreshPendingInteractions: project.refreshPendingInteractions,
     refreshMessages: inbox.refreshMessages,
-    refreshSessionDiff: workspace.refreshSessionDiff,
-    refreshSessionTodos: workspace.refreshSessionTodos,
+    refreshSessionDiff: project.refreshSessionDiff,
+    refreshSessionTodos: project.refreshSessionTodos,
   });
 
   useLayoutEffect(() => {
@@ -407,7 +407,7 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
     ...terminal,
     ...worktree,
     ...mcp,
-    ...workspace,
+    ...project,
     ...sessionActions,
     ...capabilities,
     ...prompt,
@@ -450,7 +450,7 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
           <CapabilitiesContext.Provider value={values.capabilitiesValue}>
             <PreferencesContext.Provider value={values.preferencesValue}>
               <ProjectsContext.Provider value={values.projectsValue}>
-                <WorkspaceFilesContext.Provider value={values.workspaceFilesValue}>
+                <ProjectFilesContext.Provider value={values.projectFilesValue}>
                   <CurrentSessionContext.Provider value={values.currentSessionValue}>
                     <SessionLibraryContext.Provider value={values.sessionLibraryValue}>
                       <ChatContext.Provider value={values.chatValue}>
@@ -466,7 +466,7 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
                       </ChatContext.Provider>
                     </SessionLibraryContext.Provider>
                   </CurrentSessionContext.Provider>
-                </WorkspaceFilesContext.Provider>
+                </ProjectFilesContext.Provider>
               </ProjectsContext.Provider>
             </PreferencesContext.Provider>
           </CapabilitiesContext.Provider>

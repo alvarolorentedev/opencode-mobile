@@ -65,15 +65,15 @@ test('fresh install walks through onboarding into a working chat', async ({ page
   await expect(page.getByTestId('connection-profile-save-confirm')).toHaveText('Save & connect');
   await page.getByTestId('connection-profile-save-confirm').click();
 
-  await expect(page.getByTestId('onboarding-workspace')).toBeVisible({ timeout: 20_000 });
+  await expect(page.getByTestId('onboarding-project')).toBeVisible({ timeout: 20_000 });
   await expect(page.getByText('Step 4 of 5', { exact: true })).toBeVisible();
   await page.getByRole('button', { name: /^Select / }).first().click();
 
   await expect(page.getByTestId('onboarding-ready')).toBeVisible();
   await expect(page.getByText('Step 5 of 5', { exact: true })).toBeVisible();
   await page.getByRole('button', { name: 'Back', exact: true }).click();
-  await expect(page.getByTestId('onboarding-workspace')).toBeVisible();
-  await page.getByTestId('onboarding-workspace-continue').click();
+  await expect(page.getByTestId('onboarding-project')).toBeVisible();
+  await page.getByTestId('onboarding-project-continue').click();
   await expect(page.getByTestId('onboarding-ready')).toBeVisible();
   await page.getByTestId('onboarding-ready-start').click();
 
@@ -97,16 +97,16 @@ test('every onboarding step can be skipped', async ({ page }) => {
   await expect(page.getByTestId('onboarding-connect')).toBeVisible();
   await page.getByTestId('onboarding-connect-skip').click();
 
-  // No connection was made, so the workspace step has nothing to pick.
-  await expect(page.getByTestId('onboarding-workspace')).toBeVisible();
-  await page.getByTestId('onboarding-workspace-skip').click();
+  // No connection was made, so the project step has nothing to pick.
+  await expect(page.getByTestId('onboarding-project')).toBeVisible();
+  await page.getByTestId('onboarding-project-skip').click();
 
   await expect(page.getByTestId('onboarding-ready')).toBeVisible();
   await page.getByTestId('onboarding-ready-start').click();
 
-  // Completing without a workspace lands on the chat workspace prompt instead
+  // Completing without a project lands on the chat project prompt instead
   // of a crash, and onboarding does not reappear on relaunch.
-  await expect(page.getByText('Select a project in the Workspaces tab to open its chat context.')).toBeVisible({ timeout: 30_000 });
+  await expect(page.getByText('Select a project in the Projects tab to open its chat context.')).toBeVisible({ timeout: 30_000 });
   await page.reload({ waitUntil: 'domcontentloaded' });
   await expect(page.getByTestId('onboarding-welcome')).toHaveCount(0);
 });
@@ -128,7 +128,7 @@ test('a failed connection keeps entered values and allows retry', async ({ page 
   await url.fill(FAKE_SERVER_URL);
   await page.getByTestId('connection-profile-continue').click();
   await page.getByTestId('connection-profile-save-confirm').click();
-  await expect(page.getByTestId('onboarding-workspace')).toBeVisible({ timeout: 20_000 });
+  await expect(page.getByTestId('onboarding-project')).toBeVisible({ timeout: 20_000 });
 });
 
 test('an existing configured installation skips onboarding', async ({ page }) => {
@@ -184,7 +184,7 @@ test('Advanced groups editor and general settings and resets onboarding without 
   await expect(page.getByTestId('connection-profile-url-input')).toHaveValue(FAKE_SERVER_URL);
   await page.getByTestId('connection-profile-continue').click();
   await page.getByTestId('connection-profile-save-confirm').click();
-  await expect(page.getByTestId('onboarding-workspace')).toBeVisible({ timeout: 20_000 });
+  await expect(page.getByTestId('onboarding-project')).toBeVisible({ timeout: 20_000 });
   await page.getByRole('button', { name: /^Select / }).first().click();
   await expect(page.getByTestId('onboarding-ready')).toBeVisible();
   await page.getByTestId('onboarding-ready-start').click();
@@ -217,5 +217,5 @@ test('connection prevents duplicate submissions and disables Skip while validati
   await expect(page.getByTestId('connection-profile-name-input')).toBeVisible();
   expect(probes).toBe(1);
   await page.getByTestId('connection-profile-save-confirm').click();
-  await expect(page.getByTestId('onboarding-workspace')).toBeVisible({ timeout: 20_000 });
+  await expect(page.getByTestId('onboarding-project')).toBeVisible({ timeout: 20_000 });
 });

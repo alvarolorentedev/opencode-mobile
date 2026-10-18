@@ -11,9 +11,9 @@ import { useColorScheme } from '@/hooks/use-color-scheme';
 import { confirmAction } from '@/lib/confirm-action';
 import type { FileContent } from '@/lib/opencode/types';
 
-export function FilePreview({ file, workspacePath, branch, canSave, slim, onClose, onSave }: {
+export function FilePreview({ file, projectPath, branch, canSave, slim, onClose, onSave }: {
   file: { path: string; content: FileContent };
-  workspacePath: string;
+  projectPath: string;
   branch?: string;
   canSave: boolean;
   slim: boolean;
@@ -30,38 +30,38 @@ export function FilePreview({ file, workspacePath, branch, canSave, slim, onClos
   const dirty = draft && draft.value !== draft.original;
   function leave(run: () => void) {
     if (saving) return;
-    if (dirty) confirmAction(t('workspace:files.discardTitle'), t('workspace:files.discardMessage'), t('workspace:files.discard'), t('common:actions.cancel'), run);
+    if (dirty) confirmAction(t('project:files.discardTitle'), t('project:files.discardMessage'), t('project:files.discard'), t('common:actions.cancel'), run);
     else run();
   }
   return <Modal visible animationType="slide" presentationStyle="fullScreen" onRequestClose={() => leave(onClose)}>
     <KeyboardAvoidingView style={{ flex: 1, backgroundColor: palette.background }} behavior="padding">
       <Appbar.Header statusBarHeight={0} style={{ backgroundColor: palette.surface, paddingTop: insets.top, height: (slim ? 52 : 64) + insets.top }}>
-        <Appbar.BackAction disabled={saving} accessibilityLabel={t('workspace:files.close')} onPress={() => leave(onClose)} />
+        <Appbar.BackAction disabled={saving} accessibilityLabel={t('project:files.close')} onPress={() => leave(onClose)} />
         <Appbar.Content title={file.path.split('/').pop() || file.path} subtitle={file.path} />
         {canSave && !draft ? <Button onPress={() => setDraft({ original: file.content.content, value: file.content.content })}>{t('common:actions.edit')}</Button> : null}
       </Appbar.Header>
       <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={{ padding: slim ? 10 : 16, gap: 16, paddingBottom: Math.max(insets.bottom, 16) }}>
         <View style={{ gap: 6 }}>
-          <Text style={{ color: palette.muted }}>{workspacePath}</Text>
-          {branch ? <Text style={{ color: palette.muted }}>{t('workspace:files.branch', { branch })}</Text> : null}
+          <Text style={{ color: palette.muted }}>{projectPath}</Text>
+          {branch ? <Text style={{ color: palette.muted }}>{t('project:files.branch', { branch })}</Text> : null}
         </View>
         {error ? <Text accessibilityLiveRegion="polite" style={{ color: palette.danger }}>{error}</Text> : null}
         {draft ? <>
-          <Text style={{ color: palette.warning }}>{t('workspace:files.savingNotice')}</Text>
-          <TextInput testID="workspace-file-editor" mode="outlined" multiline editable={!saving} value={draft.value}
+          <Text style={{ color: palette.warning }}>{t('project:files.savingNotice')}</Text>
+          <TextInput testID="project-file-editor" mode="outlined" multiline editable={!saving} value={draft.value}
             onChangeText={(value) => setDraft({ ...draft, value })} style={{ minHeight: 240, fontFamily: 'monospace', fontSize: 13 }} />
           <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
-            <Button testID="workspace-file-save-button" mode="contained" loading={saving} disabled={saving || !dirty} onPress={() => {
+            <Button testID="project-file-save-button" mode="contained" loading={saving} disabled={saving || !dirty} onPress={() => {
               setSaving(true); setError(undefined);
               void onSave(file.path, draft.original, draft.value).then(() => setDraft(undefined))
-                .catch((reason) => setError(reason instanceof Error ? reason.message : t('workspace:errors.saveFile'))).finally(() => setSaving(false));
-            }}>{t('workspace:files.savePatch')}</Button>
+                .catch((reason) => setError(reason instanceof Error ? reason.message : t('project:errors.saveFile'))).finally(() => setSaving(false));
+            }}>{t('project:files.savePatch')}</Button>
             <Button disabled={saving} onPress={() => leave(() => { setDraft(undefined); setError(undefined); })}>{t('common:actions.cancel')}</Button>
           </View>
         </> : <>
-          <Text variant="labelLarge" style={{ color: palette.muted }}>{t('workspace:files.preview')}</Text>
+          <Text variant="labelLarge" style={{ color: palette.muted }}>{t('project:files.preview')}</Text>
           <Text selectable style={{ fontFamily: 'monospace', fontSize: 13, lineHeight: 22, color: palette.text }}>{file.content.content}</Text>
-          {!canSave ? <Text style={{ color: palette.muted }}>{t('workspace:files.editingUnavailable')}</Text> : null}
+          {!canSave ? <Text style={{ color: palette.muted }}>{t('project:files.editingUnavailable')}</Text> : null}
         </>}
       </ScrollView>
     </KeyboardAvoidingView>

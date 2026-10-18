@@ -49,15 +49,19 @@ describe('provider model selection utilities', () => {
     const { mergeSessionStatuses, RETRY_STATUS_STALE_MS, collectDescendantSessionIds, areSessionListsEqual, areSessionStatusMapsEqual, buildOpencodeProjects, resolveActiveProject } = await import(`data:text/javascript,${encodeURIComponent(providerUtilsOutput)}`);
     const now = 1_000_000;
 
-    // The picker reflects only the server's project list; the selected path
-    // never adds an entry of its own.
-    const listedProjects = buildOpencodeProjects([{ id: 'p1', worktree: '/repo', time: { created: 1, updated: 5 } }], '/repo');
-    assert.deepEqual(listedProjects.map((project) => ({ path: project.path, label: project.label, isCurrent: project.isCurrent })), [{ path: '/repo', label: 'repo', isCurrent: true }]);
-    assert.equal(buildOpencodeProjects([], '/unlisted').length, 0);
-    // A worktree is the only unlisted path the active project may keep, and only
-    // while the worktree catalog resolves it.
-    const worktreeCatalog = { entries: [{ directory: '/worktrees/task', name: 'task' }], project: { id: 'p1', root: '/repo', label: 'repo' }, loading: false };
-    assert.equal(resolveActiveProject(listedProjects, '/worktrees/task', '/repo', worktreeCatalog)?.path, '/worktrees/task');
+    // The picker renders only the projects opened on this connection and
+    // enriches them with the server's project metadata.
+    const remoteProjects = [{ id: 'p1', worktree: '/repo', name: 'Repo display', time: { created: 1, updated: 5 } }];
+    const listedProjects = buildOpencodeProjects(['/repo', '/unlisted'], '/repo', remoteProjects);
+    assert.deepEqual(listedProjects.map((project) => ({ path: project.path, label: project.label, id: project.id, isCurrent: project.isCurrent })), [
+      { path: '/repo', label: 'Repo display', id: 'p1', isCurrent: true },
+      { path: '/unlisted', label: 'unlisted', id: undefined, isCurrent: false },
+    ]);
+    assert.deepEqual(buildOpencodeProjects([], '/repo', remoteProjects), []);
+    // A worktree is labeled by its owning project and only while the worktree
+    // catalog resolves it.
+    const worktreeCatalog = { entries: [{ directory: '/worktrees/task', name: 'task' }], project: { id: 'p1', root: '/repo', label: 'Repo display' }, loading: false };
+    assert.equal(resolveActiveProject(listedProjects, '/worktrees/task', '/repo', worktreeCatalog)?.label, 'Repo display');
     assert.equal(resolveActiveProject(listedProjects, '/elsewhere', '/repo', worktreeCatalog), undefined);
     const retry = { type: 'retry', attempt: 2, message: 'provider failed', next: now + 5_000 };
     const staleRetry = { type: 'retry', attempt: 2, message: 'provider failed', next: now - RETRY_STATUS_STALE_MS - 1 };

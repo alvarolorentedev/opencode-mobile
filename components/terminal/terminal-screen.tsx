@@ -113,7 +113,7 @@ export default function TerminalScreen() {
       <View style={[styles.emptyScreen, { backgroundColor: palette.background }]}>
         <Surface style={[styles.emptyPanel, { backgroundColor: palette.surface }]} elevation={1}>
           <Text variant="headlineSmall" style={{ color: palette.text }}>
-            {connection.status !== 'connected' ? t('terminal:screen.connectTitle') : t('terminal:screen.chooseWorkspace')}
+            {connection.status !== 'connected' ? t('terminal:screen.connectTitle') : t('terminal:screen.chooseProject')}
           </Text>
           <Text variant="bodyMedium" style={{ color: palette.muted }}>
             {connection.status !== 'connected'
@@ -124,10 +124,10 @@ export default function TerminalScreen() {
             mode="contained"
             loading={connection.status === 'connecting'}
             onPress={() => {
-              const action = connection.status !== 'connected' ? connect() : Promise.resolve(router.push('/(tabs)/workspace'));
+              const action = connection.status !== 'connected' ? connect() : Promise.resolve(router.push('/(tabs)/projects'));
               void action.catch((reason) => setError(message(reason, t('terminal:errors.connect'))));
             }}>
-            {connection.status !== 'connected' ? t('common:actions.reconnect') : t('terminal:screen.openWorkspaces')}
+            {connection.status !== 'connected' ? t('common:actions.reconnect') : t('terminal:screen.openProjects')}
           </Button>
         </Surface>
         <Snackbar visible={Boolean(error)} onDismiss={() => setError(undefined)}>{error}</Snackbar>

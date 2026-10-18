@@ -33,6 +33,7 @@ import type {
   FavoriteSession,
   ProviderAuthMethod,
   ProviderOption,
+  ProjectPathsByConnection,
 } from '@/providers/opencode-provider-types';
 import type { Diagnostics } from '@/providers/services/diagnostics-service';
 
@@ -67,7 +68,7 @@ export function useOpencodeProviderState() {
   const [isRefreshingSessions, setIsRefreshingSessions] = useState(false);
   const [isRefreshingMessages, setIsRefreshingMessages] = useState(false);
   const [isRefreshingDiffs, setIsRefreshingDiffs] = useState(false);
-  const [isRefreshingWorkspaceCatalog, setIsRefreshingWorkspaceCatalog] = useState(false);
+  const [isRefreshingProjectCatalog, setIsRefreshingProjectCatalog] = useState(false);
   const [isBootstrappingChat, setIsBootstrappingChat] = useState(false);
   const [activeSessionsVisible, setActiveSessionsVisible] = useState(false);
   const [currentConfig, setCurrentConfig] = useState<Config>();
@@ -78,9 +79,10 @@ export function useOpencodeProviderState() {
   const [chatPreferences, setChatPreferences] = useState<ChatPreferences>(defaultChatPreferences);
   const [lastSessionByConnection, setLastSessionByConnection] = useState<Record<string, Record<string, string>>>({});
   const [favoriteSessions, setFavoriteSessions] = useState<FavoriteSession[]>([]);
+  const [projectPathsByConnection, setProjectPathsByConnection] = useState<ProjectPathsByConnection>({});
   const [commands, setCommands] = useState<Command[]>([]);
-  const [workspaceFileStatuses, setWorkspaceFileStatuses] = useState<File[]>([]);
-  const [selectedWorkspaceFile, setSelectedWorkspaceFile] = useState<{ path: string; content: FileContent }>();
+  const [projectFileStatuses, setProjectFileStatuses] = useState<File[]>([]);
+  const [selectedProjectFile, setSelectedProjectFile] = useState<{ path: string; content: FileContent }>();
   const [vcsInfo, setVcsInfo] = useState<VcsInfo>();
   const [diagnostics, setDiagnostics] = useState<Diagnostics>();
 
@@ -113,7 +115,8 @@ export function useOpencodeProviderState() {
   const messagesBySessionRef = useRef(messagesBySession);
   const busyNotificationsRef = useRef<Set<string>>(new Set());
   const promptSubmissionRef = useRef<{ active: boolean; sessionId?: string }>({ active: false });
-  const workspaceFileRequestRef = useRef(0);
+  const projectFileRequestRef = useRef(0);
+  const projectPathsByConnectionRef = useRef(projectPathsByConnection);
 
   // Latest-ref mirror. Updating refs in a layout effect (instead of during
   // render) is the React-sanctioned pattern: the mirrored values are only read
@@ -129,6 +132,7 @@ export function useOpencodeProviderState() {
     diffScopeBySessionRef.current = diffScopeBySession;
     selectedDiffMessageBySessionRef.current = selectedDiffMessageBySession;
     messagesBySessionRef.current = messagesBySession;
+    projectPathsByConnectionRef.current = projectPathsByConnection;
   });
 
   return {
@@ -159,7 +163,7 @@ export function useOpencodeProviderState() {
     isRefreshingSessions, setIsRefreshingSessions,
     isRefreshingMessages, setIsRefreshingMessages,
     isRefreshingDiffs, setIsRefreshingDiffs,
-    isRefreshingWorkspaceCatalog, setIsRefreshingWorkspaceCatalog,
+    isRefreshingProjectCatalog, setIsRefreshingProjectCatalog,
     isBootstrappingChat, setIsBootstrappingChat,
     activeSessionsVisible, setActiveSessionsVisible,
     currentConfig, setCurrentConfig,
@@ -170,9 +174,10 @@ export function useOpencodeProviderState() {
     chatPreferences, setChatPreferences,
     lastSessionByConnection, setLastSessionByConnection,
     favoriteSessions, setFavoriteSessions,
+    projectPathsByConnection, setProjectPathsByConnection,
     commands, setCommands,
-    workspaceFileStatuses, setWorkspaceFileStatuses,
-    selectedWorkspaceFile, setSelectedWorkspaceFile,
+    projectFileStatuses, setProjectFileStatuses,
+    selectedProjectFile, setSelectedProjectFile,
     vcsInfo, setVcsInfo,
     diagnostics, setDiagnostics,
     connectionScope,
@@ -200,7 +205,8 @@ export function useOpencodeProviderState() {
     messagesBySessionRef,
     busyNotificationsRef,
     promptSubmissionRef,
-    workspaceFileRequestRef,
+    projectFileRequestRef,
+    projectPathsByConnectionRef,
   };
 }
 

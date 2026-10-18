@@ -14,7 +14,7 @@ import type {
   ProjectsContextValue,
   SessionLibraryContextValue,
   TerminalContextValue,
-  WorkspaceFilesContextValue,
+  ProjectFilesContextValue,
   UpdatesContextValue,
 } from '@/providers/opencode-provider-types';
 
@@ -28,7 +28,7 @@ export const DiagnosticsContext = createContext<DiagnosticsContextValue | null>(
 export const CapabilitiesContext = createContext<CapabilitiesContextValue | null>(null);
 export const PreferencesContext = createContext<PreferencesContextValue | null>(null);
 export const ProjectsContext = createContext<ProjectsContextValue | null>(null);
-export const WorkspaceFilesContext = createContext<WorkspaceFilesContextValue | null>(null);
+export const ProjectFilesContext = createContext<ProjectFilesContextValue | null>(null);
 export const CurrentSessionContext = createContext<CurrentSessionContextValue | null>(null);
 export const SessionLibraryContext = createContext<SessionLibraryContextValue | null>(null);
 export const ChatContext = createContext<ChatContextValue | null>(null);
@@ -52,7 +52,7 @@ export const useDiagnostics = () => useDomainValue(DiagnosticsContext, 'useDiagn
 export const useCapabilities = () => useDomainValue(CapabilitiesContext, 'useCapabilities');
 export const usePreferences = () => useDomainValue(PreferencesContext, 'usePreferences');
 export const useProjects = () => useDomainValue(ProjectsContext, 'useProjects');
-export const useWorkspaceFiles = () => useDomainValue(WorkspaceFilesContext, 'useWorkspaceFiles');
+export const useProjectFiles = () => useDomainValue(ProjectFilesContext, 'useProjectFiles');
 export const useCurrentSession = () => useDomainValue(CurrentSessionContext, 'useCurrentSession');
 export const useSessionLibrary = () => useDomainValue(SessionLibraryContext, 'useSessionLibrary');
 export const useChat = () => useDomainValue(ChatContext, 'useChat');

@@ -10,11 +10,11 @@ import { setTimeout as sleep } from 'node:timers/promises';
 const compatibilityTitles = [
   'sessions archive and restore without deletion',
   'idle chats stay active and archived cards restore and continue the same session',
-  'archived cards restore sessions in their own workspace and keep errors retryable',
+  'archived cards restore sessions in their own project and keep errors retryable',
   'V1 providers retain API-key login alongside OAuth metadata',
   'settings do not suggest a duplicated /api base when the API prefix is already set',
   'composer exposes direct approvals, agent selection and thinking in the model picker without losing drafts',
-  'workspace files save through a conflict-checked VCS patch',
+  'project files save through a conflict-checked VCS patch',
 ];
 const usesCompatibility = (title) => compatibilityTitles.includes(title) || title.includes('v1 compatibility');
 const backendOrigin = () => `http://127.0.0.1:${usesCompatibility(test.info().title) ? 44097 : 44096}`;
@@ -448,8 +448,8 @@ test('happy path keeps the main chat flow stable', async ({ page, request }) => 
   await expect(page.getByTestId('chat-changes-chip')).toHaveAccessibleName('Review changes. 1 file changed, +6 / -1');
   await page.getByText('app/(tabs)/index.tsx', { exact: true }).click();
   await expect(page.getByText(/export default function ChatLandingScreen/)).toBeVisible();
-  await goToTab(page, 'Workspace');
-  await expect(page.getByRole('tab', { name: 'Workspace' })).toHaveAttribute('aria-selected', 'true');
+  await goToTab(page, 'Projects');
+  await expect(page.getByRole('tab', { name: 'Projects' })).toHaveAttribute('aria-selected', 'true');
   await expect(page.getByRole('button', { name: /^Open chats/ })).toHaveCount(0);
   await expect(page.getByText('Modified', { exact: true })).toHaveCount(2);
 });
@@ -470,8 +470,8 @@ test('tab navigation preserves the mounted app and an unsent chat draft', async 
 
   await goToTab(page, 'Settings');
   await ensureConnectionSection(page);
-  await goToTab(page, 'Workspace');
-  await expect(page.getByRole('button', { name: 'Change workspace' })).toBeVisible();
+  await goToTab(page, 'Projects');
+  await expect(page.getByRole('button', { name: 'Change project' })).toBeVisible();
   await goToTab(page, 'Chat');
   await expect(page.getByPlaceholder('Ask anything...')).toHaveValue(draft);
   expect(documentRequests).toEqual([]);
@@ -773,62 +773,70 @@ test('commands execute through the primary chat action', async ({ page, request 
   await expect(page.getByText('Command /review src completed.', { exact: true }).first()).toBeVisible({ timeout: 15_000 });
 });
 
-test('Chat and Workspace use the same workspace picker', async ({ page, request }) => {
+test('Chat and Project use the same project picker', async ({ page, request }) => {
   await resetScenario(request, 'happy-path');
   await openReadyChat(page);
 
-  await goToTab(page, 'Workspace');
-  const workspaceDropdown = page.getByRole('button', { name: 'Change workspace' });
-  await expect(workspaceDropdown).toContainText('demo-project');
-  await expect(workspaceDropdown).toContainText('/workspace/demo-project');
-  await expect(page.getByTestId('workspace-refresh-button')).toBeVisible();
-  await workspaceDropdown.click();
-  await expect(page.getByTestId('workspace-picker')).toBeVisible();
-  await page.getByTestId('workspace-picker').getByRole('button', { name: 'Select secondary-project' }).click();
+  await goToTab(page, 'Projects');
+  const projectDropdown = page.getByRole('button', { name: 'Change project' });
+  await expect(projectDropdown).toContainText('demo-project');
+  await expect(projectDropdown).toContainText('/workspace/demo-project');
+  await expect(page.getByTestId('project-refresh-button')).toBeVisible();
+  await projectDropdown.click();
+  await expect(page.getByTestId('project-picker')).toBeVisible();
+  // A server project that was never opened on this connection is not listed.
+  await expect(page.getByTestId('project-picker').getByRole('button', { name: 'Select secondary-project' })).toHaveCount(0);
+  await page.getByTestId('project-add-button').click();
+  await page.getByTestId('project-add-path').fill('/workspace/secondary-project');
+  await page.getByTestId('project-add-submit').click();
+  await expect(page.getByText('secondary-project', { exact: true }).first()).toBeVisible();
+  await projectDropdown.click();
+  await expect(page.getByRole('button', { name: 'Select secondary-project' })).toBeVisible();
+  await page.getByRole('button', { name: 'Select secondary-project' }).click();
   await expect(page.getByText('secondary-project', { exact: true }).first()).toBeVisible();
 
   await goToTab(page, 'Chat');
   await openChatLibrary(page);
-  await page.getByRole('button', { name: 'Change workspace' }).click();
-  await expect(page.getByTestId('chat-workspace-picker')).toBeVisible();
-  await page.getByTestId('chat-workspace-picker').getByRole('button', { name: 'Select demo-project' }).click();
-  await goToTab(page, 'Workspace');
+  await page.getByRole('button', { name: 'Change project' }).click();
+  await expect(page.getByTestId('chat-project-picker')).toBeVisible();
+  await page.getByTestId('chat-project-picker').getByRole('button', { name: 'Select demo-project' }).click();
+  await goToTab(page, 'Projects');
   await expect(page.getByText('demo-project', { exact: true }).first()).toBeVisible();
 
-  await workspaceDropdown.click();
-  await page.getByTestId('workspace-add-button').click();
-  await page.getByTestId('workspace-add-path').fill('/outside/new-project');
-  await page.getByTestId('workspace-add-submit').click();
+  await projectDropdown.click();
+  await page.getByTestId('project-add-button').click();
+  await page.getByTestId('project-add-path').fill('/outside/new-project');
+  await page.getByTestId('project-add-submit').click();
   await expect(page.getByText('OpenCode could not open that directory. Check the server path.')).toBeVisible();
-  await page.getByTestId('workspace-add-path').fill('/workspace/new-project');
-  await page.getByTestId('workspace-add-submit').click();
-  await expect(workspaceDropdown).toContainText('new-project');
-  await workspaceDropdown.click();
+  await page.getByTestId('project-add-path').fill('/workspace/new-project');
+  await page.getByTestId('project-add-submit').click();
+  await expect(projectDropdown).toContainText('new-project');
+  await projectDropdown.click();
   await expect(page.getByRole('button', { name: 'Select new-project' })).toBeVisible();
 });
 
-test('workspace file search opens deterministic file content', async ({ page, request }) => {
+test('project file search opens deterministic file content', async ({ page, request }) => {
   await resetScenario(request, 'happy-path');
   await openReadyChat(page);
 
-  await goToTab(page, 'Workspace');
-  await page.getByTestId('workspace-file-search').fill('demo');
+  await goToTab(page, 'Projects');
+  await page.getByTestId('project-file-search').fill('demo');
   await page.getByRole('button', { name: 'Search', exact: true }).click();
   await expect(page.getByText('src/demo.ts', { exact: true }).last()).toBeVisible();
   await page.getByText('src/demo.ts', { exact: true }).last().click();
   await expect(page.getByText(/OpenCode 1\.18\.3/)).toBeVisible();
 });
 
-test('workspace files save through a conflict-checked VCS patch', async ({ page, request }) => {
+test('project files save through a conflict-checked VCS patch', async ({ page, request }) => {
   await resetScenario(request, 'happy-path');
   await openReadyChat(page);
-  await goToTab(page, 'Workspace');
-  await page.getByTestId('workspace-file-search').fill('demo');
+  await goToTab(page, 'Projects');
+  await page.getByTestId('project-file-search').fill('demo');
   await page.getByRole('button', { name: 'Search', exact: true }).click();
   await page.getByText('src/demo.ts', { exact: true }).last().click();
   await page.getByText('Edit', { exact: true }).click();
-  await page.getByTestId('workspace-file-editor').fill('export const demo = "OpenCode SDK 1.18.3";\n');
-  await page.getByTestId('workspace-file-save-button').click();
+  await page.getByTestId('project-file-editor').fill('export const demo = "OpenCode SDK 1.18.3";\n');
+  await page.getByTestId('project-file-save-button').click();
   await expect(page.getByText(/OpenCode SDK 1\.18\.3/)).toBeVisible();
 });
 
@@ -872,7 +880,7 @@ test('idle chats stay active and archived cards restore and continue the same se
   expect(history.filter((entry) => entry.info.role === 'user')).toHaveLength(2);
 });
 
-test('archived cards restore sessions in their own workspace and keep errors retryable', async ({ page, request }) => {
+test('archived cards restore sessions in their own project and keep errors retryable', async ({ page, request }) => {
   await resetScenario(request, 'happy-path');
   const directory = '/workspace/secondary-project';
   const session = await (await request.post(`${backendOrigin()}/session?directory=${encodeURIComponent(directory)}`, { data: { title: 'Archived elsewhere' } })).json();
@@ -893,8 +901,8 @@ test('archived cards restore sessions in their own workspace and keep errors ret
   await row.click();
   await expect(page.getByTestId('chat-library')).not.toBeVisible();
   expect(updates).toEqual([directory, directory]);
-  await sendPrompt(page, 'Continue restored workspace session');
-  await expect(page.getByText(/Finished: Continue restored workspace session/).first()).toBeVisible({ timeout: 20_000 });
+  await sendPrompt(page, 'Continue restored project session');
+  await expect(page.getByText(/Finished: Continue restored project session/).first()).toBeVisible({ timeout: 20_000 });
   const history = await (await request.get(`${backendOrigin()}/session/${session.id}/message`)).json();
   expect(history.some((entry) => entry.info.role === 'user')).toBeTruthy();
 });
@@ -902,13 +910,13 @@ test('archived cards restore sessions in their own workspace and keep errors ret
 test('worktrees and MCP servers can be created', async ({ page, request }) => {
   await resetScenario(request, 'happy-path');
   await openReadyChat(page);
-  await goToTab(page, 'Workspace');
-  await page.getByRole('button', { name: 'Change workspace' }).click();
-  await page.getByTestId('workspace-worktree-add').click();
-  await page.getByTestId('workspace-worktree-name').fill('mobile-test');
-  await page.getByTestId('workspace-worktree-create').click();
+  await goToTab(page, 'Projects');
+  await page.getByRole('button', { name: 'Change project' }).click();
+  await page.getByTestId('project-worktree-add').click();
+  await page.getByTestId('project-worktree-name').fill('mobile-test');
+  await page.getByTestId('project-worktree-create').click();
   await expect(page.getByText('mobile-test', { exact: true })).toBeVisible();
-  await page.getByTestId('workspace-picker').getByRole('button', { name: 'Close', exact: true }).click();
+  await page.getByTestId('project-picker').getByRole('button', { name: 'Close', exact: true }).click();
 
   await goToTab(page, 'Settings');
   await page.getByText('Advanced', { exact: true }).click();
@@ -1374,7 +1382,7 @@ test('OpenCode 2 lists provider accounts and switches the active one', async ({ 
   }
 });
 
-test('OpenCode 2 adds a server workspace from the shared picker', async ({ page, request }) => {
+test('OpenCode 2 adds a server project from the shared picker', async ({ page, request }) => {
   await resetScenario(request, 'happy-path');
   const port = await getFreePort();
   const server = spawnV2Server(port);
@@ -1383,62 +1391,62 @@ test('OpenCode 2 adds a server workspace from the shared picker', async ({ page,
     await openReadyChat(page);
     await connectToServer(page, `http://127.0.0.1:${port}`);
     await openChatLibrary(page);
-    await page.getByRole('button', { name: 'Change workspace' }).click();
-    await page.getByTestId('workspace-add-button').click();
-    await page.getByTestId('workspace-add-path').fill('/workspace/v2-new-project');
-    await page.getByTestId('workspace-add-submit').click();
+    await page.getByRole('button', { name: 'Change project' }).click();
+    await page.getByTestId('project-add-button').click();
+    await page.getByTestId('project-add-path').fill('/workspace/v2-new-project');
+    await page.getByTestId('project-add-submit').click();
     await expect(page.getByRole('button', { name: /^Open chats/ })).toContainText('v2-new-project');
     const serverProjects = await (await request.get(`http://127.0.0.1:${port}/api/project`)).json();
     expect(serverProjects.some((project) => project.canonical === '/workspace/v2-new-project')).toBe(true);
     const [promptResponse] = await Promise.all([
       page.waitForResponse((response) => response.url().startsWith(`http://127.0.0.1:${port}/api/session/`) && response.url().endsWith('/prompt') && response.request().method() === 'POST'),
-      sendPrompt(page, 'Retained workspace chat'),
+      sendPrompt(page, 'Retained project chat'),
     ]);
     expect(promptResponse.status()).toBe(200);
     const { data: { sessionID: retainedSessionId } } = await promptResponse.json();
     const { data: promptedSession } = await (await request.get(`http://127.0.0.1:${port}/api/session/${retainedSessionId}`)).json();
     expect(promptedSession.location.directory).toBe('/workspace/v2-new-project');
     await expect(page.getByPlaceholder('Ask anything...')).toHaveValue('');
-    await expect(page.getByText(/Finished: Retained workspace chat/).first()).toBeVisible({ timeout: 30_000 });
-    await goToTab(page, 'Workspace');
+    await expect(page.getByText(/Finished: Retained project chat/).first()).toBeVisible({ timeout: 30_000 });
+    await goToTab(page, 'Projects');
     await Promise.all([
       page.waitForResponse((response) => response.url().includes('/api/project') && response.request().method() === 'GET'),
-      page.getByTestId('workspace-refresh-button').click(),
+      page.getByTestId('project-refresh-button').click(),
     ]);
-    await expect(page.getByRole('button', { name: 'Change workspace' })).toContainText('/workspace/v2-new-project');
+    await expect(page.getByRole('button', { name: 'Change project' })).toContainText('/workspace/v2-new-project');
     await expect.poll(() => page.evaluate(() => globalThis.localStorage.getItem('opencode-mobile.active-project'))).toBe('/workspace/v2-new-project');
     await goToTab(page, 'Chat');
     await openChatLibrary(page);
-    await chatAction(page, 'Retained workspace chat', 'Favorite');
+    await chatAction(page, 'Retained project chat', 'Favorite');
     await page.getByTestId(`chat-library-favorite-${retainedSessionId}`).click();
     await expect(page.getByTestId('chat-library')).not.toBeVisible();
-    await expect(page.getByText(/Finished: Retained workspace chat/).first()).toBeVisible();
+    await expect(page.getByText(/Finished: Retained project chat/).first()).toBeVisible();
     await expect.poll(() => page.evaluate(() => globalThis.localStorage.getItem('opencode-mobile.favorite-sessions'))).toContain(retainedSessionId);
-    await goToTab(page, 'Workspace');
-    await expect(page.getByRole('button', { name: 'Change workspace' })).toContainText('/workspace/v2-new-project');
-    await page.getByRole('button', { name: 'Change workspace' }).click();
+    await goToTab(page, 'Projects');
+    await expect(page.getByRole('button', { name: 'Change project' })).toContainText('/workspace/v2-new-project');
+    await page.getByRole('button', { name: 'Change project' }).click();
     await expect(page.getByRole('button', { name: 'Select v2-new-project' })).toBeVisible();
-    await page.getByTestId('workspace-picker').getByRole('button', { name: 'Close', exact: true }).click();
+    await page.getByTestId('project-picker').getByRole('button', { name: 'Close', exact: true }).click();
     await goToTab(page, 'Settings');
     await reconnectActiveConnection(page);
     await expectConnectedTo(page, String(port));
     await page.reload();
-    await goToTab(page, 'Workspace');
-    await expect(page.getByRole('button', { name: 'Change workspace' })).toContainText('/workspace/v2-new-project');
-    await page.getByRole('button', { name: 'Change workspace' }).click();
+    await goToTab(page, 'Projects');
+    await expect(page.getByRole('button', { name: 'Change project' })).toContainText('/workspace/v2-new-project');
+    await page.getByRole('button', { name: 'Change project' }).click();
     await expect(page.getByRole('button', { name: 'Select v2-new-project' })).toBeVisible();
-    await page.getByTestId('workspace-picker').getByRole('button', { name: 'Close', exact: true }).click();
+    await page.getByTestId('project-picker').getByRole('button', { name: 'Close', exact: true }).click();
     await goToTab(page, 'Chat');
     await openChatLibrary(page);
     await page.getByTestId(`chat-library-favorite-${retainedSessionId}`).click();
     await expect(page.getByTestId('chat-library')).not.toBeVisible();
-    await expect(page.getByText(/Finished: Retained workspace chat/).first()).toBeVisible();
+    await expect(page.getByText(/Finished: Retained project chat/).first()).toBeVisible();
   } finally {
     server.kill('SIGTERM');
   }
 });
 
-test('OpenCode 2 lists every workspace chat across session pages', async ({ page, request }) => {
+test('OpenCode 2 lists every project chat across session pages', async ({ page, request }) => {
   await resetScenario(request, 'happy-path');
   const port = await getFreePort();
   const server = spawnV2Server(port);
@@ -1446,7 +1454,7 @@ test('OpenCode 2 lists every workspace chat across session pages', async ({ page
   const projectPath = '/workspace/demo-project';
   try {
     await waitForServer(request, `${origin}/api/info`);
-    // A page smaller than the workspace's chat count: only a client that follows
+    // A page smaller than the project's chat count: only a client that follows
     // the session-list cursor can show every chat.
     expect((await request.post(`${origin}/__control/session-page`, { data: { size: 2 } })).ok()).toBeTruthy();
     for (const title of ['First page chat', 'Second page chat', 'Third page chat']) {
@@ -1536,7 +1544,7 @@ test('OpenCode 2 files changed reads location-scoped VCS diffs', async ({ page, 
     await expect(page.getByRole('button', { name: /Change files changed source.*Latest turn diff/ })).toBeVisible();
 
     // V2 answers unscoped VCS calls for the server's own directory, so the
-    // request must carry location[directory] for the workspace diff to show.
+    // request must carry location[directory] for the project diff to show.
     const scopedVcsDiff = page.waitForRequest((candidate) => {
       const url = decodeURIComponent(candidate.url());
       return url.includes('/api/vcs/diff') && url.includes('location[directory]');
@@ -1554,35 +1562,35 @@ test('OpenCode 2 files changed reads location-scoped VCS diffs', async ({ page, 
   }
 });
 
-test('favorites open sessions in the current workspace', async ({ page, request }) => {
+test('favorites open sessions in the current project', async ({ page, request }) => {
   await resetScenario(request, 'happy-path');
   await openReadyChat(page);
 
-  await sendPrompt(page, 'Favorite current workspace session');
+  await sendPrompt(page, 'Favorite current project session');
   await expect(page.getByText(/Finished:/).first()).toBeVisible({ timeout: 20_000 });
 
   await openChatLibrary(page);
-  await chatAction(page, 'Favorite current workspace session', 'Favorite');
+  await chatAction(page, 'Favorite current project session', 'Favorite');
   await expect(page.getByText('Favorites', { exact: true })).toBeVisible();
   await page.getByTestId('chat-library').getByRole('button', { name: 'Close' }).click();
   await expect(page.getByTestId('chat-library')).not.toBeVisible();
   await page.locator('#root').getByRole('button', { name: 'New chat', exact: true }).click();
   await expect(page.getByText('Start a new task')).toBeVisible({ timeout: 15_000 });
   await openChatLibrary(page);
-  await page.getByTestId('chat-library').getByRole('button', { name: 'Open Favorite current workspace session' }).first().click();
+  await page.getByTestId('chat-library').getByRole('button', { name: 'Open Favorite current project session' }).first().click();
 
   await expect(
-    page.locator('text=/Finished: Favorite current workspace session/ >> visible=true').first(),
+    page.locator('text=/Finished: Favorite current project session/ >> visible=true').first(),
   ).toBeVisible({ timeout: 20_000 });
 });
 
-test('favorites switch projects and open cross-workspace sessions', async ({ page, request }) => {
+test('favorites switch projects and open cross-project sessions', async ({ page, request }) => {
   await resetScenario(request, 'happy-path');
   const fakeServer = backendOrigin();
   const projectPath = '/workspace/secondary-project';
 
   const createResponse = await request.post(`${fakeServer}/api/session`, {
-    data: { title: 'Favorite Cross Workspace Session', location: { directory: projectPath } },
+    data: { title: 'Favorite Cross Project Session', location: { directory: projectPath } },
   });
   expect(createResponse.ok()).toBeTruthy();
   const { id: sessionId } = (await createResponse.json()).data;
@@ -1604,11 +1612,11 @@ test('favorites switch projects and open cross-workspace sessions', async ({ pag
   ).toBeVisible({ timeout: 20_000 });
 
   await openChatLibrary(page);
-  await chatAction(page, 'Favorite Cross Workspace Session', 'Favorite');
+  await chatAction(page, 'Favorite Cross Project Session', 'Favorite');
   await expect(page.getByText('Favorites', { exact: true })).toBeVisible();
 
-  await page.getByRole('button', { name: 'Change workspace' }).click();
-  await page.getByTestId('chat-workspace-picker').getByRole('button', { name: 'Select demo-project' }).click();
+  await page.getByRole('button', { name: 'Change project' }).click();
+  await page.getByTestId('chat-project-picker').getByRole('button', { name: 'Select demo-project' }).click();
   await openChatLibrary(page);
   await expect(page.getByTestId('chat-library').getByText('demo-project · Swipe left for actions', { exact: true })).toBeVisible();
   await page.getByTestId(`chat-library-favorite-${sessionId}`).click();
@@ -1639,7 +1647,7 @@ test('favorites report sessions that are missing', async ({ page, request }) => 
   ).toBeVisible({ timeout: 15_000 });
 });
 
-test('rapid favorite taps across workspaces settle on the last target', async ({ page, request }) => {
+test('rapid favorite taps across projects settle on the last target', async ({ page, request }) => {
   await resetScenario(request, 'happy-path');
   const fakeServer = backendOrigin();
   const projectPath = '/workspace/secondary-project';
@@ -1667,8 +1675,8 @@ test('rapid favorite taps across workspaces settle on the last target', async ({
   await openChatLibrary(page);
   await chatAction(page, 'Rapid Tap Secondary', 'Favorite');
 
-  await page.getByRole('button', { name: 'Change workspace' }).click();
-  await page.getByTestId('chat-workspace-picker').getByRole('button', { name: 'Select demo-project' }).click();
+  await page.getByRole('button', { name: 'Change project' }).click();
+  await page.getByTestId('chat-project-picker').getByRole('button', { name: 'Select demo-project' }).click();
   await openChatLibrary(page);
   await chatAction(page, 'Primary rapid tap target', 'Favorite');
   await expect(page.getByText('Favorites', { exact: true })).toBeVisible();
@@ -1683,7 +1691,7 @@ test('rapid favorite taps across workspaces settle on the last target', async ({
   ).toBeVisible({ timeout: 20_000 });
 });
 
-test('chat library lists recently used sessions from other workspaces and switches on tap', async ({ page, request }) => {
+test('chat library lists recently used sessions from other projects and switches on tap', async ({ page, request }) => {
   await resetScenario(request, 'happy-path');
   const fakeServer = backendOrigin();
   const projectPath = '/workspace/secondary-project';
@@ -1711,13 +1719,13 @@ test('chat library lists recently used sessions from other workspaces and switch
   await expect(page.getByText('secondary-project', { exact: true }).first()).toBeVisible({ timeout: 20_000 });
 
   // The group is connection-wide, so it is still listed after switching to the
-  // workspace that owns the session (and the session is not duplicated below).
+  // project that owns the session (and the session is not duplicated below).
   await openChatLibrary(page);
   await expect(page.getByText('Running & recent', { exact: true })).toBeVisible({ timeout: 15_000 });
   await expect(page.getByTestId('chat-library').getByRole('button', { name: 'Open Recent Secondary Session' })).toHaveCount(1);
 });
 
-test('chat library lists running sessions from other workspaces', async ({ page, request }) => {
+test('chat library lists running sessions from other projects', async ({ page, request }) => {
   await resetScenario(request, 'permission');
   const fakeServer = backendOrigin();
   const projectPath = '/workspace/secondary-project';
@@ -2009,7 +2017,7 @@ test('composer exposes direct approvals, agent selection and thinking in the mod
   await expect(prompt).toHaveValue('Keep this draft');
   await expect(page.getByTestId('chat-primary-button')).toHaveAccessibleName('Send task');
   await expect(page.getByTestId('chat-attach-button')).toHaveAccessibleName('Attach files');
-  await goToTab(page, 'Workspace');
+  await goToTab(page, 'Projects');
   await goToTab(page, 'Chat');
   await expect(page.getByTestId('chat-model-picker')).toHaveCount(0);
 });
@@ -2030,7 +2038,7 @@ test('starter examples fill without sending and library empty copy follows visib
   await expect(library.getByText('No chats match your search.', { exact: true })).toBeVisible();
 });
 
-test('workspace shows changed files, deleted scope, search states and failure recovery', async ({ page, request }) => {
+test('project shows changed files, deleted scope, search states and failure recovery', async ({ page, request }) => {
   await resetScenario(request, 'happy-path');
   await page.route('**/api/vcs/status?**', (route) => route.fulfill({ json: { location: { directory: '/workspace/demo-project' }, data: [
     { file: 'src/demo.ts', status: 'modified', additions: 2, deletions: 1 },
@@ -2038,14 +2046,14 @@ test('workspace shows changed files, deleted scope, search states and failure re
     { file: 'removed.ts', status: 'deleted', additions: 0, deletions: 1 },
   ] } }));
   await openReadyChat(page);
-  await goToTab(page, 'Workspace');
+  await goToTab(page, 'Projects');
   await expect(page.getByText('Deleted file content is unavailable.', { exact: false })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Search', exact: true })).toBeDisabled();
   await page.getByText('src/demo.ts', { exact: true }).click();
   await expect(page.getByText(/OpenCode 1\.18\.3/)).toBeVisible();
   await page.getByLabel('Close file').click();
   await expect(page.getByLabel('Close file')).toHaveCount(0);
-  const search = page.getByTestId('workspace-file-search');
+  const search = page.getByTestId('project-file-search');
   await search.fill('no-match-zz');
   await expect(page.getByRole('button', { name: 'Search', exact: true })).toBeEnabled();
   await expect(search).toBeFocused();
@@ -2054,7 +2062,7 @@ test('workspace shows changed files, deleted scope, search states and failure re
   await page.route('**/api/fs/find?**', (route) => route.fulfill({ status: 500, json: { message: 'Search unavailable' } }));
   await search.fill('demo');
   await page.getByRole('button', { name: 'Search', exact: true }).click();
-  await expect(page.getByText(/Search unavailable|500|search workspace files/i).first()).toBeVisible();
+  await expect(page.getByText(/Search unavailable|500|search project files/i).first()).toBeVisible();
   await page.unroute('**/api/fs/find?**');
   await page.getByRole('button', { name: 'Search', exact: true }).click();
   await expect(page.getByText('Results for “demo”')).toBeVisible();
@@ -2101,7 +2109,7 @@ test('completed progress stays compact and patch review selects its turn after a
 });
 
 for (const contract of ['v1', 'v2']) {
-  test(`${contract} workspace browses scoped folders and switches worktrees across tabs`, async ({ page, request }) => {
+  test(`${contract} project browses scoped folders and switches worktrees across tabs`, async ({ page, request }) => {
     const port = await getFreePort();
     const server = contract === 'v1' ? spawnV1Server(port) : spawnV2Server(port);
     try {
@@ -2110,45 +2118,50 @@ for (const contract of ['v1', 'v2']) {
       await openReadyChat(page);
       await connectToServer(page, `http://127.0.0.1:${port}`);
       await page.setViewportSize({ width: 390, height: 844 });
-      await goToTab(page, 'Workspace');
-      await expect(page.getByTestId('workspace-entry-src')).toBeVisible();
+      await goToTab(page, 'Projects');
+      await expect(page.getByTestId('project-entry-src')).toBeVisible();
       await expect(page.getByRole('tab', { name: 'Worktrees' })).toHaveCount(0);
-      await page.screenshot({ path: `/tmp/opencode-workspace-${contract}.png` });
-      await page.getByTestId('workspace-entry-src').click();
-      await expect(page.getByTestId('workspace-entry-src/demo.ts')).toBeVisible();
+      await page.screenshot({ path: `/tmp/opencode-project-${contract}.png` });
+      await page.getByTestId('project-entry-src').click();
+      await expect(page.getByTestId('project-entry-src/demo.ts')).toBeVisible();
       await goToTab(page, 'Chat');
-      await goToTab(page, 'Workspace');
-      await expect(page.getByTestId('workspace-entry-src/demo.ts')).toBeVisible();
-      await page.getByTestId('workspace-file-search').fill('README');
+      await goToTab(page, 'Projects');
+      await expect(page.getByTestId('project-entry-src/demo.ts')).toBeVisible();
+      await page.getByTestId('project-file-search').fill('README');
       await page.getByRole('button', { name: 'Search', exact: true }).click();
-      await page.getByTestId('workspace-entry-README.md').click();
+      await page.getByTestId('project-entry-README.md').click();
       await expect(page.getByText(/# Demo project/)).toBeVisible();
       await page.getByLabel('Close file').click();
       await expect(page.getByText('Results for “README”')).toBeVisible();
       await page.getByRole('button', { name: 'Clear search' }).click();
-      await expect(page.getByTestId('workspace-entry-src/demo.ts')).toBeVisible();
+      await expect(page.getByTestId('project-entry-src/demo.ts')).toBeVisible();
       await page.getByRole('button', { name: 'demo-project', exact: true }).click();
-      await page.getByTestId('workspace-entry-assets').click();
-      await page.getByTestId('workspace-entry-assets/binary.dat').click();
+      await page.getByTestId('project-entry-assets').click();
+      await page.getByTestId('project-entry-assets/binary.dat').click();
       await expect(page.getByText('Binary files cannot be previewed as text.')).toBeVisible();
-      await page.getByRole('button', { name: 'Change workspace' }).click();
-      const picker = page.getByTestId('workspace-picker');
-      await picker.getByRole('button', { name: 'Select secondary-project' }).click();
-      await page.getByTestId('workspace-entry-src').click();
-      await page.getByTestId('workspace-entry-src/demo.ts').click();
+      await page.getByRole('button', { name: 'Change project' }).click();
+      const picker = page.getByTestId('project-picker');
+      // The connection starts with the server's current project only; open the
+      // secondary project before switching to it.
+      await expect(picker.getByRole('button', { name: 'Select secondary-project' })).toHaveCount(0);
+      await picker.getByTestId('project-add-button').click();
+      await picker.getByTestId('project-add-path').fill('/workspace/secondary-project');
+      await picker.getByTestId('project-add-submit').click();
+      await page.getByTestId('project-entry-src').click();
+      await page.getByTestId('project-entry-src/demo.ts').click();
       await expect(page.getByText(/export const workspace = "\/workspace\/secondary-project"/)).toBeVisible();
       await expect(page.getByRole('button', { name: 'Edit', exact: true })).toHaveCount(1);
       await page.getByLabel('Close file').click();
-      await page.getByRole('button', { name: 'Change workspace' }).click();
-      await page.getByTestId('workspace-worktree-add').click();
-      await expect(page.getByTestId('workspace-worktree-command')).toHaveCount(contract === 'v1' ? 1 : 0);
-      await page.getByTestId('workspace-worktree-name').fill('scoped-task');
-      await page.getByTestId('workspace-worktree-create').click();
+      await page.getByRole('button', { name: 'Change project' }).click();
+      await page.getByTestId('project-worktree-add').click();
+      await expect(page.getByTestId('project-worktree-command')).toHaveCount(contract === 'v1' ? 1 : 0);
+      await page.getByTestId('project-worktree-name').fill('scoped-task');
+      await page.getByTestId('project-worktree-create').click();
       await expect(picker.getByRole('button', { name: 'Select scoped-task' })).toBeVisible();
-      await page.screenshot({ path: `/tmp/opencode-workspace-picker-${contract}.png` });
+      await page.screenshot({ path: `/tmp/opencode-project-picker-${contract}.png` });
       await picker.getByRole('button', { name: 'Select scoped-task' }).click();
-      await expect(page.getByRole('button', { name: 'Change workspace' })).toContainText('/worktrees/scoped-task');
-      await page.getByTestId('workspace-entry-README.md').click();
+      await expect(page.getByRole('button', { name: 'Change project' })).toContainText('/worktrees/scoped-task');
+      await page.getByTestId('project-entry-README.md').click();
       await expect(page.getByText('# Worktree scoped-task', { exact: false })).toBeVisible();
       await page.getByLabel('Close file').click();
       await goToTab(page, 'Chat');
@@ -2157,41 +2170,45 @@ for (const contract of ['v1', 'v2']) {
       await goToTab(page, 'Terminal');
       await page.getByTestId('terminal-create-button').click();
       await expect(page.getByTestId('terminal-output')).toBeVisible();
-      await goToTab(page, 'Workspace');
+      await goToTab(page, 'Projects');
       await page.reload();
-      await expect(page.getByRole('button', { name: 'Change workspace' })).toContainText('/worktrees/scoped-task');
-      await page.getByRole('button', { name: 'Change workspace' }).click();
+      await expect(page.getByRole('button', { name: 'Change project' })).toContainText('/worktrees/scoped-task');
+      await page.getByRole('button', { name: 'Change project' }).click();
       await expect(picker.getByText('Worktrees · secondary-project')).toBeVisible();
       await expect(picker.getByRole('button', { name: 'Manage scoped-task' })).toBeDisabled();
       await picker.getByRole('button', { name: 'Select secondary-project' }).click();
-      await page.getByRole('button', { name: 'Change workspace' }).click();
+      await page.getByRole('button', { name: 'Change project' }).click();
       await picker.getByRole('button', { name: 'Manage scoped-task' }).click();
       await expect(picker.getByRole('button', { name: 'Reset', exact: true })).toHaveCount(contract === 'v1' ? 1 : 0);
       page.once('dialog', (dialog) => dialog.accept());
       await picker.getByRole('button', { name: 'Remove', exact: true }).click();
+      await expect(picker.getByRole('button', { name: 'Manage scoped-task' })).toHaveCount(0);
+      // The server worktree is gone; closing the project row removes the local
+      // entry without touching the server.
+      await picker.getByTestId('project-remove-/worktrees/scoped-task').click();
       await expect(picker.getByRole('button', { name: 'Select scoped-task' })).toHaveCount(0);
     } finally { server.kill('SIGTERM'); }
   });
 }
 
-test('workspace editor confirms discarded edits and keeps conflict failures recoverable', async ({ page, request }) => {
+test('project editor confirms discarded edits and keeps conflict failures recoverable', async ({ page, request }) => {
   await resetScenario(request, 'happy-path');
   await openReadyChat(page);
-  await goToTab(page, 'Workspace');
-  await page.getByTestId('workspace-entry-src').click();
-  await page.getByTestId('workspace-entry-src/demo.ts').click();
+  await goToTab(page, 'Projects');
+  await page.getByTestId('project-entry-src').click();
+  await page.getByTestId('project-entry-src/demo.ts').click();
   await page.getByRole('button', { name: 'Edit', exact: true }).click();
-  await page.getByTestId('workspace-file-editor').fill('unsaved draft');
+  await page.getByTestId('project-file-editor').fill('unsaved draft');
   page.once('dialog', (dialog) => dialog.dismiss());
   await page.getByLabel('Close file').click();
-  await expect(page.getByTestId('workspace-file-editor')).toHaveValue('unsaved draft');
+  await expect(page.getByTestId('project-file-editor')).toHaveValue('unsaved draft');
   await page.route('**/api/fs/read/**', (route) => route.fulfill({ contentType: 'text/plain', body: 'changed on server' }));
-  await page.getByTestId('workspace-file-save-button').click();
+  await page.getByTestId('project-file-save-button').click();
   await expect(page.getByText('The file changed on the server. Reopen it before saving.')).toBeVisible();
-  await expect(page.getByTestId('workspace-file-editor')).toHaveValue('unsaved draft');
+  await expect(page.getByTestId('project-file-editor')).toHaveValue('unsaved draft');
   page.once('dialog', (dialog) => dialog.accept());
   await page.getByLabel('Close file').click();
-  await expect(page.getByTestId('workspace-entry-src/demo.ts')).toBeVisible();
+  await expect(page.getByTestId('project-entry-src/demo.ts')).toBeVisible();
 });
 
 for (const scenario of ['happy-path', 'permission', 'question', 'stream-disconnect']) {
@@ -2212,30 +2229,30 @@ for (const scenario of ['happy-path', 'permission', 'question', 'stream-disconne
 
 test('v2 file saves reject conflicts and retain drafts on write failure', async ({ page, request }) => {
   await resetScenario(request, 'happy-path'); await openReadyChat(page);
-  await goToTab(page, 'Workspace');
-  await page.getByTestId('workspace-file-search').fill('demo');
+  await goToTab(page, 'Projects');
+  await page.getByTestId('project-file-search').fill('demo');
   await page.getByRole('button', { name: 'Search', exact: true }).click();
   await page.getByText('src/demo.ts', { exact: true }).last().click();
   await page.getByText('Edit', { exact: true }).click();
   const draft = 'export const demo = "V2 😀";\n';
-  await page.getByTestId('workspace-file-editor').fill(draft);
+  await page.getByTestId('project-file-editor').fill(draft);
   let writes = 0;
   await page.route('**/api/experimental/fs/write?*', async (route) => {
     writes++; await route.fulfill({ status: 503, json: { error: 'Write offline' } });
   });
-  await page.getByTestId('workspace-file-save-button').click();
+  await page.getByTestId('project-file-save-button').click();
   await expect(page.getByText(/Write offline/)).toBeVisible();
-  await expect(page.getByTestId('workspace-file-editor')).toHaveValue(draft);
+  await expect(page.getByTestId('project-file-editor')).toHaveValue(draft);
   expect(writes).toBe(1);
   await page.unroute('**/api/experimental/fs/write?*');
   await page.route('**/api/fs/read/**', (route) => route.fulfill({ status: 200, contentType: 'text/plain', body: 'External edit' }));
-  await page.getByTestId('workspace-file-save-button').click();
+  await page.getByTestId('project-file-save-button').click();
   await expect(page.getByText(/changed on the server/)).toBeVisible();
-  await expect(page.getByTestId('workspace-file-editor')).toHaveValue(draft);
+  await expect(page.getByTestId('project-file-editor')).toHaveValue(draft);
   expect(writes).toBe(1);
   await page.unroute('**/api/fs/read/**');
-  await page.getByTestId('workspace-file-save-button').click();
-  await expect(page.getByTestId('workspace-file-editor')).not.toBeVisible();
+  await page.getByTestId('project-file-save-button').click();
+  await expect(page.getByTestId('project-file-editor')).not.toBeVisible();
   const result = await request.get(`${backendOrigin()}/api/fs/read/src/demo.ts?location[directory]=/workspace/demo-project`);
   expect(await result.text()).toBe(draft);
 });

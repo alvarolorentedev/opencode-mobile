@@ -318,7 +318,7 @@ sockets and blocks all SDK/polling/background traffic.
 
 Concurrent reconnect triggers (boot, foreground refresh, activation retry,
 manual Reconnect, profile switch) join one in-flight connect when the server,
-generation, and credentials match, so workspace discovery and contract probing
+generation, and credentials match, so project discovery and contract probing
 run once. A credential rotation that lands mid-flight updates the in-flight key
 instead of letting a second stale attempt start.
 
@@ -331,9 +331,9 @@ reconnect. Offline/timeout/tunnel-startup failures stay on the bounded backoff
 path, and a foreground stream that goes silent without an error is
 re-established by the liveness watchdog.
 
-A same-machine credential rotation preserves the selected workspace, sessions,
+A same-machine credential rotation preserves the selected project, sessions,
 transcript, worktrees, MCP state, terminal transports/renderers and cursor, and
-the workspace editor selection and draft. Storage-scoped keys still migrate to
+the project editor selection and draft. Storage-scoped keys still migrate to
 the rotated credential scope. A different server, machine, or manual edit keeps
 the existing full reset.
 
@@ -343,7 +343,7 @@ and unfinished subscription finalization before requesting access. Concurrent
 reconnects share one access/save operation per environment and machine; retrying
 a completed secure-save checkpoint does not rotate credentials again. Transient
 automatic recovery failures retry after 60 seconds while foregrounded.
-Live renewal reconnects the same machine without clearing the selected workspace;
+Live renewal reconnects the same machine without clearing the selected project;
 saved profile rows refresh on credential changes and use machine identity for
 their Active badge. Credential-scoped storage keys remain unchanged. Stale
 recovery results cannot replace a newly selected connection.
@@ -483,7 +483,7 @@ For the simulator compilation after a development prebuild:
 
 ```bash
 EXPO_APP_VARIANT=development CI=1 npx expo prebuild --platform ios
-EXPO_APP_VARIANT=development xcodebuild -workspace ios/OpenCodeMobileDev.xcworkspace \
+EXPO_APP_VARIANT=development xcodebuild -project ios/OpenCodeMobileDev.xcworkspace \
   -scheme OpenCodeMobileDev -configuration Debug -sdk iphonesimulator \
   -destination 'generic/platform=iOS Simulator' CODE_SIGNING_ALLOWED=NO build
 ```

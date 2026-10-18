@@ -2,7 +2,7 @@
   "tabs": {
     "chat": "聊天",
     "terminal": "终端",
-    "workspace": "工作区",
+    "projects": "项目",
     "settings": "设置"
   },
   "actions": {

@@ -95,7 +95,7 @@ async function fixture({ expired = false, missing = false, storedSession = true,
     clearProjectState: () => { resets++; },
     softResetProjectState: () => { softResets++; },
     isCurrentCatalogClient: (client) => input.catalogGenerationRef.current.get(client) === input.serverGenerationRef.current,
-    loadWorkspaceCatalog: async () => { catalogs++; if (catalogFailure) throw new Error(typeof catalogFailure === 'string' ? catalogFailure : 'offline'); return { currentProjectPath: '/fixture', serverProjects: [], serverRootPath: '/fixture' }; },
+    loadProjectCatalog: async () => { catalogs++; if (catalogFailure) throw new Error(typeof catalogFailure === 'string' ? catalogFailure : 'offline'); return { currentProjectPath: '/fixture', serverProjects: [], serverRootPath: '/fixture' }; },
   };
   for (const key of ['setServerProjects', 'setCurrentProjectPath', 'setServerRootPath', 'setSessions', 'setSessionStatuses', 'setCurrentConfig', 'setAvailableProviders', 'setProviderAuthMethodsById', 'setAvailableModels', 'setAvailableAgents', 'setMessagesBySession', 'setDiffsBySession', 'setTodosBySession', 'setFavoriteSessions', 'setLastSessionByConnection', 'setChatPreferences', 'setDiagnostics', 'setSendingState']) input[key] = noop;
   runtime.mount(() => {
@@ -216,9 +216,9 @@ async function fixture({ expired = false, missing = false, storedSession = true,
   gate.resolve(); await Promise.all([first, second]); await f.runtime.settle();
   assert.equal(f.accesses, 1); assert.equal(f.resets, 1, 'only the expiry reset clears state');
   assert.equal(f.softResets, 1, 'a same-machine credential rotation keeps server-derived state');
-  assert.equal(f.catalogs, 1, 'concurrent connects share one workspace discovery');
+  assert.equal(f.catalogs, 1, 'concurrent connects share one project discovery');
   assert.equal(f.runtime.value.connection.status, 'connected');
-  assert.equal(f.runtime.value.activeProjectPath, '/fixture', 'a same-machine rotation keeps the selected workspace');
+  assert.equal(f.runtime.value.activeProjectPath, '/fixture', 'a same-machine rotation keeps the selected project');
   f.runtime.unmount();
 }
 // A request finishing after backgrounding must not rearm a retry timer.
@@ -244,7 +244,7 @@ for (const [fail, cloud] of [[false, false], [true, false], [false, true], [true
   assert.equal(f.runtime.value.connection.status, 'connected');
   f.runtime.unmount();
 }
-// Renewal while mounted refreshes the same profile and keeps the workspace.
+// Renewal while mounted refreshes the same profile and keeps the project.
 {
   const f = await fixture(); await f.runtime.settle(); await f.runtime.value.connect();
   assert.equal(await f.runtime.value.connectSetup.restore(), true); await f.runtime.settle();

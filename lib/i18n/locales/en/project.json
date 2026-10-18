@@ -1,15 +1,15 @@
 {
   "screen": {
     "syncProjects": "Sync projects",
-    "refreshWorkspace": "Refresh workspace",
+    "refreshProject": "Refresh project",
     "filesTab": "Files",
     "worktreesTab": "Worktrees"
   },
   "files": {
-    "title": "Workspace files",
+    "title": "Project files",
     "branch": "Branch: {{branch}}",
     "searchAndInspect": "Search and inspect files",
-    "searchPlaceholder": "Search this workspace",
+    "searchPlaceholder": "Search this project",
     "search": "Search",
     "changedFiles": "{{value}} changed files",
     "close": "Close file",
@@ -24,7 +24,7 @@
     "searching": "Searching…",
     "noMatches": "No files match “{{query}}”.",
     "resultsFor": "Results for “{{query}}”",
-    "searchScope": "Search in {{workspace}}",
+    "searchScope": "Search in {{project}}",
     "clearSearch": "Clear search",
     "loading": "Loading files…",
     "emptyFolder": "This folder is empty.",
@@ -50,28 +50,29 @@
     "removeTitle": "Remove worktree?",
     "removeMessage": "{{directory}} will be removed. This cannot be undone.",
     "groupTitle": "Worktrees · {{project}}",
-    "selectGuidance": "Tap a directory to use it as your workspace.",
+    "selectGuidance": "Tap a directory to use it as your project.",
     "create": "Create worktree",
     "manage": "Manage {{name}}"
   },
   "picker": {
-    "title": "Choose workspace",
-    "changeWorkspace": "Change workspace",
+    "title": "Choose project",
+    "changeProject": "Change project",
     "enterPath": "Enter a folder path on the OpenCode server.",
     "serverDirectory": "Server directory",
-    "add": "Add workspace",
+    "add": "Add project",
     "selectLabel": "Select {{name}}",
-    "empty": "No workspaces available."
+    "removeLabel": "Remove {{name}}",
+    "empty": "No projects available."
   },
   "errors": {
-    "refreshWorkspace": "Could not refresh the workspace.",
-    "searchFiles": "Could not search workspace files.",
+    "refreshProject": "Could not refresh the project.",
+    "searchFiles": "Could not search project files.",
     "openFile": "Could not open the file.",
     "saveFile": "Could not save the file.",
     "refreshWorktrees": "Could not refresh worktrees.",
     "createWorktree": "Could not create the worktree.",
     "resetWorktree": "Could not reset the worktree.",
     "removeWorktree": "Could not remove the worktree.",
-    "addWorkspace": "Could not add workspace."
+    "addProject": "Could not add project."
   }
 }

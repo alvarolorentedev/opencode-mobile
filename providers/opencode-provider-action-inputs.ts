@@ -30,11 +30,12 @@ import type {
   ProviderAuthMethod,
   ProviderOption,
   SessionDeepLinkTarget,
-  WorkspaceCatalog,
+  ProjectCatalog,
+  ProjectPathsByConnection,
 } from '@/providers/opencode-provider-types';
 import type { Diagnostics } from '@/providers/services/diagnostics-service';
 
-export type WorkspaceActionsInput = {
+export type ProjectActionsInput = {
   client: ScopedOpencodeClient;
   catalogClient: ScopedOpencodeClient;
   isCurrentClient: (candidate: object) => boolean;
@@ -43,6 +44,8 @@ export type WorkspaceActionsInput = {
   setActiveProjectPath: Dispatch<SetStateAction<string | undefined>>;
   activeProjectPathRef: { current: string | undefined };
   clearProjectState: () => void;
+  projectPathsByConnectionRef: { current: ProjectPathsByConnection };
+  setProjectPathsByConnection: Dispatch<SetStateAction<ProjectPathsByConnection>>;
   serverProjectsRef: { current: Project[] };
   setServerProjects: Dispatch<SetStateAction<Project[]>>;
   setCurrentProjectPath: Dispatch<SetStateAction<string | undefined>>;
@@ -52,7 +55,7 @@ export type WorkspaceActionsInput = {
   isHydrated: boolean;
   setSessions: Dispatch<SetStateAction<Session[]>>;
   setSessionStatuses: Dispatch<SetStateAction<Record<string, SessionStatus>>>;
-  setIsRefreshingWorkspaceCatalog: Dispatch<SetStateAction<boolean>>;
+  setIsRefreshingProjectCatalog: Dispatch<SetStateAction<boolean>>;
   setIsRefreshingSessions: Dispatch<SetStateAction<boolean>>;
   setIsRefreshingDiffs: Dispatch<SetStateAction<boolean>>;
   setDiffsBySession: Dispatch<SetStateAction<Record<string, FileDiff[]>>>;
@@ -60,8 +63,8 @@ export type WorkspaceActionsInput = {
   setTodosBySession: Dispatch<SetStateAction<Record<string, Todo[]>>>;
   setPendingPermissionsBySession: Dispatch<SetStateAction<Record<string, PendingPermissionRequest[]>>>;
   setPendingQuestionsBySession: Dispatch<SetStateAction<Record<string, PendingQuestionRequest[]>>>;
-  setWorkspaceFileStatuses: Dispatch<SetStateAction<File[]>>;
-  setSelectedWorkspaceFile: Dispatch<SetStateAction<{ path: string; content: FileContent } | undefined>>;
+  setProjectFileStatuses: Dispatch<SetStateAction<File[]>>;
+  setSelectedProjectFile: Dispatch<SetStateAction<{ path: string; content: FileContent } | undefined>>;
   setVcsInfo: Dispatch<SetStateAction<VcsInfo | undefined>>;
   setCommands: Dispatch<SetStateAction<Command[]>>;
   setDiagnostics: Dispatch<SetStateAction<Diagnostics | undefined>>;
@@ -71,7 +74,7 @@ export type WorkspaceActionsInput = {
   diffScopeBySessionRef: { current: Record<string, DiffScope> };
   currentSessionIdRef: { current: string | undefined };
   messagesBySessionRef: { current: Record<string, SessionMessageRecord[]> };
-  workspaceFileRequestRef: { current: number };
+  projectFileRequestRef: { current: number };
   scopeGenerationRef: { current: number };
   sessionRefreshTimeoutsRef: { current: Record<string, ReturnType<typeof setTimeout>> };
   sessionRefreshOptionsRef: { current: Record<string, { messages?: boolean; fullMessages?: boolean; diff?: boolean; todos?: boolean; sessions?: boolean }> };
@@ -142,7 +145,7 @@ export type ConnectionActionsInput = {
   softResetProjectState: () => void;
   isHydrated: boolean;
   isCurrentCatalogClient: (candidate: object) => boolean;
-  loadWorkspaceCatalog: (silent?: boolean, targetClient?: ScopedOpencodeClient) => Promise<WorkspaceCatalog>;
+  loadProjectCatalog: (silent?: boolean, targetClient?: ScopedOpencodeClient) => Promise<ProjectCatalog>;
   selectProject: (path: string) => void;
   refreshSessions: (silent?: boolean) => Promise<unknown>;
   refreshArchivedSessions: () => Promise<unknown>;

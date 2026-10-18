@@ -7,7 +7,7 @@ import { areSessionListsEqual, areSessionStatusMapsEqual } from '@/providers/ope
 import { listActiveSessions as svcListActiveSessions } from '@/providers/services/session-service';
 
 // The snapshot also refreshes on connect and whenever the Chat Library opens,
-// so a slow poll is enough to keep the cross-workspace running list fresh
+// so a slow poll is enough to keep the cross-project running list fresh
 // without spending data on every project's session list.
 const ACTIVE_SESSIONS_POLL_MS = 20000;
 const MAX_ACTIVE = 4;
@@ -19,7 +19,7 @@ type ActiveSessionsSnapshot = {
   statuses: Record<string, SessionStatus>;
 };
 
-// Cross-workspace session snapshot for the Chat Library "Active" group. It reads
+// Cross-project session snapshot for the Chat Library "Active" group. It reads
 // through the unscoped catalog client so it sees every project on the active
 // connection, seeds on connect, and polls only while the Chat Library is visible
 // and a remote session is running. The snapshot is tagged with its connection
@@ -79,7 +79,7 @@ export function useActiveSessions({
 
   const hasRunning = activeSessions.some((session) => session.status.type !== 'idle');
   useEffect(() => {
-    // Only spend data refreshing the cross-workspace snapshot while the Chat
+    // Only spend data refreshing the cross-project snapshot while the Chat
     // Library is actually open and a remote session is running; opening the
     // library also refreshes once.
     if (!connected || !visible || !hasRunning) {

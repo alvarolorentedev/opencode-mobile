@@ -7,7 +7,7 @@ The application uses a single shared domain store implemented with React state i
 State is split into seven practical domains:
 
 1. connection and environment state
-2. workspace and session identity state
+2. project and session identity state
 3. session content caches
 4. capability and preference state
 5. conversation mode state
@@ -36,7 +36,7 @@ Meaning:
 - the connection domain also exposes `services`, the Cloud Link connector's remote service-management state with its connector-reported management revision and port pool. The provider resolves the target machine from the active Cloud Link connection or a saved Cloud Link profile (so it works while another connection is active), exposes the target/machine list and unavailable reason, and keeps the list keyed by that target scope; see [api-contract.md](api-contract.md#connector-service-management-cloud-link)
 - failures carry a machine-readable `kind` (`timeout`, `offline`, `auth`, `entitlement`, `tunnel-startup`, `server-incompatible`, `unknown`) alongside the display message; `retryableStartup` remains for Cloud Link activation compatibility
 
-## Workspace And Session Identity State
+## Project And Session Identity State
 
 Primary fields:
 
@@ -52,7 +52,7 @@ Meaning:
 
 - `activeProjectPath` is the app-selected project context
 - `serverProjects` are raw projects returned by the server
-- `sessions` are the current project's sessions sorted newest-first; the native list is cursor-paged and every page is read, so a workspace never drops its older chats
+- `sessions` are the current project's sessions sorted newest-first; the native list is cursor-paged and every page is read, so a project never drops its older chats
 - `sessionStatuses` stores per-session runtime status from the server
 - `currentSessionId` is the selected/open session
 - `lastSessionByConnection` persists the remembered session ID per connection scope and project path, so the same path on two servers remembers different sessions
@@ -77,8 +77,8 @@ Diff scope state:
 - `diffScopeBySession` records the selected Files Changed scope (`turn`, `uncommitted`, `branch`) per session; it defaults to `turn`
 - `selectedDiffMessageBySession` records which user turn the `turn` scope is pinned to; it is cleared when a new prompt is sent
 - `selectedDiffMessageId` and the diff request both resolve through `resolveDiffTurn(messages, pinnedTurnId)` in `lib/opencode/transcript.ts`: a still-valid pin wins, then the newest turn that recorded a change, then the newest user message for a turn still running before its first snapshot. Display and fetch therefore never drift onto different turns.
-- `vcsDiffsByScope` caches the workspace-scoped `uncommitted`/`branch` diffs, which are not keyed by session
-- `currentDiffs` resolves to the active scope's diff; VCS scopes have no SSE event, so they refresh on a scope change or a workspace file save while active
+- `vcsDiffsByScope` caches the project-scoped `uncommitted`/`branch` diffs, which are not keyed by session
+- `currentDiffs` resolves to the active scope's diff; VCS scopes have no SSE event, so they refresh on a scope change or a project file save while active
 
 Important behavior:
 
@@ -104,7 +104,7 @@ Only key and OAuth integration methods map to interactive login;
 environment/command methods are not API-key methods. V1 catalog providers offer API-key entry alongside auth metadata,
 except known OAuth-only providers. Credentials are written through the existing
 provider action and V2 integration key endpoint, then capabilities are refreshed.
-Catalog and login requests carry the active workspace location. Go keys prefer
+Catalog and login requests carry the active project location. Go keys prefer
 the direct Go integration even when the active provider uses Console for OAuth.
 A catalog entry carries `integrationIds` (the provider id plus any linked Console
 integration) so credentials can be associated with every provider whose login
@@ -125,8 +125,8 @@ Primary fields:
 - `availableAgents`
 - `commands`
 - `browser` (relative path, directory entries, search results/query, loading/error state, and listing/search actions)
-- `workspaceFileStatuses`
-- `selectedWorkspaceFile`
+- `projectFileStatuses`
+- `selectedProjectFile`
 - `vcsInfo`
 - `worktrees`
 - `mcpStatuses`
@@ -237,7 +237,7 @@ Primary flags:
 - `isRefreshingSessions`
 - `isRefreshingMessages`
 - `isRefreshingDiffs`
-- `isRefreshingWorkspaceCatalog`
+- `isRefreshingProjectCatalog`
 - `isBootstrappingChat`
 - `sendingState`
 
@@ -275,12 +275,13 @@ Persisted values:
 - `opencode-mobile.connection-profiles` (saved connections with name and optional per-profile model selection; passwords live in secure storage)
 - `opencode-mobile.chat-preferences` (chat preferences, including the global UI `language`; not connection-scoped)
 - `opencode-mobile.active-project`
+- `opencode-mobile.projects` (opened projects per connection scope, most-recent-first directory paths; an explicit empty list means the user closed every project and is not re-seeded)
 - `opencode-mobile.onboarding-version` (completion-only first-run marker; see below)
 - `opencode-mobile.last-session-by-project` (nested `connectionScope -> projectPath -> sessionId`; legacy flat maps are discarded on hydration)
 - `opencode-mobile.pending-notification-sessions` (non-secret connection references, keyed by connection scope + session ID)
 - `opencode-mobile.widget-snapshot` (bounded Android replies, awaiting-action and plan snapshot: connection scope, language/privacy preference, per-surface observation times, three rows/steps, counts, validated links and optional 160-character previews; no authentication credentials, raw request metadata or tool output)
 - `opencode-mobile.sessions.<connectionScope>.<projectPath>` / `opencode-mobile.session-statuses.<connectionScope>.<projectPath>` (per connection + project cache)
-- `opencode-mobile.favorite-sessions` (cross-workspace favorites, each carrying its connection scope)
+- `opencode-mobile.favorite-sessions` (cross-project favorites, each carrying its connection scope)
 
 ### Session cache DTO
 
@@ -320,11 +321,11 @@ Hydration rules:
 - persisted settings validate known string fields and Cloud Link identity before merging over defaults
 - persisted chat preferences validate individual strings, booleans, arrays, maps, and enum values; numeric controls are clamped to their supported ranges before merging over defaults and current provider state
 - saved connection profiles are hydrated on demand and fully validated, including `modelPreferences`; entries with any malformed field are dropped and unknown fields are ignored
-- active project path is restored if present, then validated against the server catalog on connect: an unlisted path falls back to the server's current/first project unless the server resolves it as a worktree
+- active project path is restored if present, and the connection's opened projects restore with it; on connect an unlisted active path falls back to the most recent opened project unless the server resolves it (a deep link or worktree)
 - last-session map is restored if present and is nested by connection scope; the legacy flat map fails validation and is removed
 - each persisted key hydrates independently; a storage or credential read failure preserves the unread key and suppresses unchanged default write-back until the user changes that value or relaunches. Malformed or invalid JSON is removed without blocking other keys
 - write-back is ordered per key and skips identical successful writes. Errors are reported and failed writes remain retryable. Secure credential writes finish before active connection metadata is written
-- per connection + project session caches hydrate on app open and on every connection or project switch so the workspace list paints before the server answers; they are written only from confirmed fetch results, so a cached empty list means the server reported no sessions for that project. A late hydration result is discarded unless both the connection scope and project path are still current.
+- per connection + project session caches hydrate on app open and on every connection or project switch so the project list paints before the server answers; they are written only from confirmed fetch results, so a cached empty list means the server reported no sessions for that project. A late hydration result is discarded unless both the connection scope and project path are still current.
 - onboarding completion is resolved last, so `isHydrated` already implies the assistant's visibility is known. When the marker is absent, an installation that already has a stored settings key, saved profile metadata, or an active project is treated as completed (existing users never see onboarding); a fresh installation starts the assistant. The resolved marker (version 0 when onboarding should run, `CURRENT_ONBOARDING_VERSION` when it should not) is written back by the persistence write-back effect, which makes the decision sticky and stops the settings write effect from later re-triggering migration. Storage read failures report completed, so an unreadable store can never gate an existing user.
 
 Credentials:
@@ -377,7 +378,7 @@ Credentials:
   recovery cannot replace a connection selected while it was in flight.
 - Foreground return schedules recovery even after credential expiry or loss.
   Failed automatic recovery retries after 60 seconds while active; backgrounding
-  cancels retry timers. Same-machine renewal keeps the workspace selection.
+  cancels retry timers. Same-machine renewal keeps the project selection.
   Provider-owned profile state refreshes when the Cloud Link profile snapshot
   changes, including renewal of inactive saved machines.
 
@@ -407,14 +408,15 @@ Several important UI-facing values are derived instead of stored directly.
 
 ### Projects
 
-Derived only from `serverProjects` (the server's `project.list()`) and `currentProjectPath`; no entry comes from the selected path.
+Derived from the connection-scoped opened project paths, enriched by `serverProjects` (the server's `project.list()`) and `currentProjectPath`. A remote project the user never opened is not rendered; a path is opened when selected, added, or followed from a link.
 
 Properties include:
 
-- label derived from final path segment
+- label from the server project's name, else the final path segment
 - `source: 'server'`
-- `isCurrent`
-- sorted by last initialized/created time
+- `id`/`updatedAt` when the server catalog knows the path
+- `isCurrent` when the path is the server's active directory
+- ordered by the local opened list (most recent first)
 
 ### Active Project
 
@@ -444,7 +446,7 @@ Context utilization is derived separately by `getLatestContextTokens()`: it walk
 
 Derived from message history using `getHistoryPreview()`.
 
-### Active Sessions Across Workspaces
+### Active Sessions Across Projects
 
 `providers/use-active-sessions.ts` keeps a connection-scoped snapshot of every
 session on the connected server (sessions + statuses) fetched through the
@@ -453,15 +455,15 @@ scope change therefore hides it immediately without a reset pass.
 `getActiveSessions()` (`providers/active-sessions.ts`) derives the Chat Library
 group from it:
 
-- the group is connection-wide, not filtered by the active workspace, so it is
-  stable across workspace switches
+- the group is connection-wide, not filtered by the active project, so it is
+  stable across project switches
 - archived sessions are always excluded; subagent chats are excluded when
   `hideSubagentChats` is on
 - running (busy/retry) sessions sort first by most recent update, followed by the
   most recently updated idle sessions, and the whole list is capped at
   `maxTotal` (4)
 
-The Chat Library removes these session IDs from the current-workspace Chat list so
+The Chat Library removes these session IDs from the current-project Chat list so
 a session never appears in both places. The snapshot seeds on connect and on every
 catalog-client change, refreshes when the library opens, and polls every 20
 seconds only while the library is open and a session is running. A transient
@@ -604,7 +606,7 @@ This logic prevents stale persisted provider/model values from breaking the UI w
 ## Notification Tracking Data
 
 On Android native builds, the provider also observes all tasks on the connected
-server, including other workspaces and desktop submissions. It holds a transient
+server, including other projects and desktop submissions. It holds a transient
 server-wide snapshot plus observed root IDs, connection scope, and notification
 cycle. Busy descendants, retries, queued inbox messages, and pending interactions
 keep their root active. The selected notification task prioritizes blockers,
@@ -690,7 +692,7 @@ Some user-visible behavior depends on transient refs not persisted anywhere:
 - transcript pagination count in chat UI
 - copied-message snackbar state
 - currently spoken message ID
-- Workspace file edit draft and expected original content
+- Project file edit draft and expected original content
 - PTY list, active PTY, per-PTY connection state, and renderer registration
 
 A rewrite that only mirrors persisted values would still miss important runtime behavior.
@@ -733,23 +735,23 @@ The composer owns only temporary input-height state on Android/web; iOS grows th
 
 Patch review resolves an assistant message's `parentID` only against user messages in the current session (`getUserTurnForMessage`). A match sets Turn scope and selects that user turn through the existing provider actions. Missing matches open the existing changes view without selecting a historical turn. The review callback is included in transcript memoization and list extra data.
 
-Workspace browser state and request-scope guards remain provider-owned. `FilesPanel` owns only the draft search input and renders provider loading/error state; it remounts on the password-free connection identity plus workspace path. It does not fetch, persist, or cache results. Setup still uses the existing connection-switch path exactly once per guarded submission.
+Project browser state and request-scope guards remain provider-owned. `FilesPanel` owns only the draft search input and renders provider loading/error state; it remounts on the password-free connection identity plus project path. It does not fetch, persist, or cache results. Setup still uses the existing connection-switch path exactly once per guarded submission.
 
 
 ## Session library recovery (#64)
 
-The V1 experimental list with `archived=true` includes active sessions. The archive list uses the unscoped catalog client so sessions from other workspaces remain reachable. The session service filters archived records after traversing pages; active lists exclude records with a truthy `time.archived`. `restoreSession(id, { projectPath, open })` restores through the target workspace client, refreshes the lists, and optionally reopens the same session. Connection changes abort continuation. Explicit open targets absent from cached lists trigger a fresh list read rather than creation of a replacement session.
+The V1 experimental list with `archived=true` includes active sessions. The archive list uses the unscoped catalog client so sessions from other projects remain reachable. The session service filters archived records after traversing pages; active lists exclude records with a truthy `time.archived`. `restoreSession(id, { projectPath, open })` restores through the target project client, refreshes the lists, and optionally reopens the same session. Connection changes abort continuation. Explicit open targets absent from cached lists trigger a fresh list read rather than creation of a replacement session.
 
 
-Transcript, diff, and todo cache pruning is paused while session bootstrap is loading. A pending deep-link target is also retained until selection completes, so early transcript reads survive slower capability/configuration requests when reopening a favorite from another workspace.
+Transcript, diff, and todo cache pruning is paused while session bootstrap is loading. A pending deep-link target is also retained until selection completes, so early transcript reads survive slower capability/configuration requests when reopening a favorite from another project.
 
-## Workspace file browser
+## Project file browser
 
-Workspace retains its tab label and route. Files is its main surface: the provider
+Projects retains its tab label and route. Files is its main surface: the provider
 owns the current relative directory, sorted folder/file entries, submitted search,
 results, loading/error state and request-order guards. It retains the directory
 across tab switches and resets on scoped-client changes; it is not persisted.
-Search spans the selected workspace root and clearing it restores the browsed
+Search spans the selected project root and clearing it restores the browsed
 folder. Breadcrumb navigation cannot leave that root. Listing, search, preview
 and save require a selected directory. The OpenCode 2 filesystem adapter passes
 `location[directory]` on every request and rejects malformed UTF-8/binary content.
@@ -758,11 +760,11 @@ through native v2 `file.write` or the v1 patch path, and verifies the saved text
 Unsaved edits require discard confirmation. The pre-read/write race remains
 because neither path provides a conditional-write contract.
 
-The shared Workspace/Chat picker contains worktree inventory for the owning
+The shared Project/Chat picker contains worktree inventory for the owning
 project, resolved from the scoped project API rather than path prefixes. Adding a
 validated directory selects the requested path, including a worktree, rather than
-its owning project root. Selection uses the existing provider workspace action and applies across Chat,
-Workspace and Terminal. Creation stays in the picker; reset/remove live in row
+its owning project root. Selection uses the existing provider project action and applies across Chat,
+Project and Terminal. Creation stays in the picker; reset/remove live in row
 menus, preserve confirmations and reject the active directory and primary checkout.
 OpenCode 2 hides reset/startup commands and maps directory-only inventory to names.
 The browser groups state and actions under one context member, keeping the public

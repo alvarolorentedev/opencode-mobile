@@ -1,15 +1,15 @@
 {
   "screen": {
     "syncProjects": "Synchroniser les projets",
-    "refreshWorkspace": "Actualiser l'espace de travail",
+    "refreshProject": "Actualiser le projet",
     "filesTab": "Fichiers",
     "worktreesTab": "Arbres de travail"
   },
   "files": {
-    "title": "Fichiers de l'espace de travail",
+    "title": "Fichiers de le projet",
     "branch": "Branche : {{branch}}",
     "searchAndInspect": "Rechercher et inspecter les fichiers",
-    "searchPlaceholder": "Rechercher dans cet espace de travail",
+    "searchPlaceholder": "Rechercher dans cet projet",
     "search": "Rechercher",
     "changedFiles": "{{value}} fichiers modifiés",
     "close": "Fermer le fichier",
@@ -24,7 +24,7 @@
     "searching": "Recherche…",
     "noMatches": "Aucun fichier ne correspond à « {{query}} ».",
     "resultsFor": "Résultats pour « {{query}} »",
-    "searchScope": "Rechercher dans {{workspace}}",
+    "searchScope": "Rechercher dans {{project}}",
     "clearSearch": "Effacer la recherche",
     "loading": "Chargement des fichiers…",
     "emptyFolder": "Ce dossier est vide.",
@@ -50,28 +50,29 @@
     "removeTitle": "Retirer l'arbre de travail ?",
     "removeMessage": "{{directory}} sera supprimé. Cette action est irréversible.",
     "groupTitle": "Arbres de travail · {{project}}",
-    "selectGuidance": "Touchez un dossier pour en faire votre espace de travail.",
+    "selectGuidance": "Touchez un dossier pour en faire votre projet.",
     "create": "Créer un arbre de travail",
     "manage": "Gérer {{name}}"
   },
   "picker": {
-    "title": "Choisir un espace de travail",
-    "changeWorkspace": "Changer d'espace de travail",
+    "title": "Choisir un projet",
+    "changeProject": "Changer de projet",
     "enterPath": "Saisis un chemin de dossier sur le serveur OpenCode.",
     "serverDirectory": "Répertoire du serveur",
-    "add": "Ajouter un espace de travail",
+    "add": "Ajouter un projet",
     "selectLabel": "Sélectionner {{name}}",
-    "empty": "Aucun espace de travail disponible."
+    "removeLabel": "Retirer {{name}}",
+    "empty": "Aucun projet disponible."
   },
   "errors": {
-    "refreshWorkspace": "Impossible d'actualiser l'espace de travail.",
-    "searchFiles": "Impossible de rechercher dans les fichiers de l'espace de travail.",
+    "refreshProject": "Impossible d'actualiser le projet.",
+    "searchFiles": "Impossible de rechercher dans les fichiers de le projet.",
     "openFile": "Impossible d'ouvrir le fichier.",
     "saveFile": "Impossible d'enregistrer le fichier.",
     "refreshWorktrees": "Impossible d'actualiser les arbres de travail.",
     "createWorktree": "Impossible de créer l'arbre de travail.",
     "resetWorktree": "Impossible de réinitialiser l'arbre de travail.",
     "removeWorktree": "Impossible de retirer l'arbre de travail.",
-    "addWorkspace": "Impossible d'ajouter l'espace de travail."
+    "addProject": "Impossible d'ajouter le projet."
   }
 }

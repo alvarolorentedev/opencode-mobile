@@ -60,13 +60,13 @@ describe('partial interaction reads', () => {
     const runtime = hookRuntime();
     const utilities = await loadTs('providers/opencode-provider-utils.ts');
     let result: any = { permissions: undefined, questions: [] };
-    const { useWorkspaceRefreshActions } = await loadTs('providers/use-workspace-refresh-actions.ts', {
+    const { useProjectRefreshActions } = await loadTs('providers/use-project-refresh-actions.ts', {
       react: runtime.react, '@/lib/opencode/client': { listPendingInteractions: async () => { if (result instanceof Error) throw result; return result; } },
       '@/lib/opencode/transcript': { resolveDiffTurn: () => undefined },
-      '@/providers/opencode-provider-utils': utilities, '@/providers/session-cache': {}, '@/providers/services/session-service': {}, '@/providers/services/workspace-service': {},
+      '@/providers/opencode-provider-utils': utilities, '@/providers/session-cache': {}, '@/providers/services/session-service': {}, '@/providers/services/project-service': {},
     });
     const permissions = vi.fn(), questions = vi.fn();
-    runtime.mount(useWorkspaceRefreshActions, { client: {}, isCurrentClient: () => true, setPendingPermissionsBySession: permissions, setPendingQuestionsBySession: questions });
+    runtime.mount(useProjectRefreshActions, { client: {}, isCurrentClient: () => true, setPendingPermissionsBySession: permissions, setPendingQuestionsBySession: questions });
     await runtime.value.refreshPendingInteractions();
     expect(permissions).not.toHaveBeenCalled(); expect(questions).toHaveBeenCalledWith({});
     result = { permissions: [], questions: undefined }; await runtime.value.refreshPendingInteractions();

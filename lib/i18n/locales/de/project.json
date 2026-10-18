@@ -1,15 +1,15 @@
 {
   "screen": {
     "syncProjects": "Projekte synchronisieren",
-    "refreshWorkspace": "Arbeitsbereich aktualisieren",
+    "refreshProject": "Projekt aktualisieren",
     "filesTab": "Dateien",
     "worktreesTab": "Worktrees"
   },
   "files": {
-    "title": "Arbeitsbereichsdateien",
+    "title": "Projektdateien",
     "branch": "Branch: {{branch}}",
     "searchAndInspect": "Dateien suchen und prüfen",
-    "searchPlaceholder": "Diesen Arbeitsbereich durchsuchen",
+    "searchPlaceholder": "Diesen Projekt durchsuchen",
     "search": "Suchen",
     "changedFiles": "{{value}} geänderte Dateien",
     "close": "Datei schließen",
@@ -24,7 +24,7 @@
     "searching": "Suche läuft…",
     "noMatches": "Keine Dateien entsprechen „{{query}}“.",
     "resultsFor": "Ergebnisse für „{{query}}“",
-    "searchScope": "Suche in {{workspace}}",
+    "searchScope": "Suche in {{project}}",
     "clearSearch": "Suche löschen",
     "loading": "Dateien werden geladen…",
     "emptyFolder": "Dieser Ordner ist leer.",
@@ -50,28 +50,29 @@
     "removeTitle": "Worktree entfernen?",
     "removeMessage": "{{directory}} wird entfernt. Das kann nicht rückgängig gemacht werden.",
     "groupTitle": "Worktrees · {{project}}",
-    "selectGuidance": "Ein Verzeichnis antippen, um es als Arbeitsbereich zu verwenden.",
+    "selectGuidance": "Ein Verzeichnis antippen, um es als Projekt zu verwenden.",
     "create": "Worktree erstellen",
     "manage": "{{name}} verwalten"
   },
   "picker": {
-    "title": "Arbeitsbereich wählen",
-    "changeWorkspace": "Arbeitsbereich wechseln",
+    "title": "Projekt wählen",
+    "changeProject": "Projekt wechseln",
     "enterPath": "Gib einen Ordnerpfad auf dem OpenCode-Server ein.",
     "serverDirectory": "Serververzeichnis",
-    "add": "Arbeitsbereich hinzufügen",
+    "add": "Projekt hinzufügen",
     "selectLabel": "{{name}} auswählen",
-    "empty": "Keine Arbeitsbereiche verfügbar."
+    "removeLabel": "{{name}} entfernen",
+    "empty": "Keine Projekte verfügbar."
   },
   "errors": {
-    "refreshWorkspace": "Der Arbeitsbereich konnte nicht aktualisiert werden.",
-    "searchFiles": "Die Arbeitsbereichsdateien konnten nicht durchsucht werden.",
+    "refreshProject": "Der Projekt konnte nicht aktualisiert werden.",
+    "searchFiles": "Die Projektdateien konnten nicht durchsucht werden.",
     "openFile": "Die Datei konnte nicht geöffnet werden.",
     "saveFile": "Die Datei konnte nicht gespeichert werden.",
     "refreshWorktrees": "Die Worktrees konnten nicht aktualisiert werden.",
     "createWorktree": "Der Worktree konnte nicht erstellt werden.",
     "resetWorktree": "Der Worktree konnte nicht zurückgesetzt werden.",
     "removeWorktree": "Der Worktree konnte nicht entfernt werden.",
-    "addWorkspace": "Der Arbeitsbereich konnte nicht hinzugefügt werden."
+    "addProject": "Der Projekt konnte nicht hinzugefügt werden."
   }
 }

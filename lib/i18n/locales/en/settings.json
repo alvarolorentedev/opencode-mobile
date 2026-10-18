@@ -333,7 +333,7 @@
     },
     "slimInterface": {
       "title": "Slim interface",
-      "description": "Shrink buttons, spacing, and headers in chat, terminal, and workspace so more text fits on screen."
+      "description": "Shrink buttons, spacing, and headers in chat, terminal, and project so more text fits on screen."
     }
   },
   "connect": {

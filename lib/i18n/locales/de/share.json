@@ -1,9 +1,9 @@
 {
   "title": "Mit OpenCode geteilt",
   "subtitle": "Prüfe den Inhalt, wähle eine Unterhaltung und füge ihn zum Entwurf hinzu. Erst beim Senden wird er übermittelt.",
-  "workspace": "Arbeitsbereich",
-  "noWorkspace": "Kein Arbeitsbereich ausgewählt",
-  "chooseWorkspace": "Auswählen",
+  "project": "Projekt",
+  "noProject": "Kein Projekt ausgewählt",
+  "chooseProject": "Auswählen",
   "notConnected": "Nicht mit einem Server verbunden. Verbinde dich vor dem Senden.",
   "link": "Link",
   "attachments": "Anhänge",

@@ -41,8 +41,8 @@ export default function OnboardingWelcomeScreen() {
           left={(props) => <List.Icon {...props} icon="server" color={palette.tint} />}
         />
         <List.Item
-          title={t('onboarding:welcome.points.workspace.title')}
-          description={t('onboarding:welcome.points.workspace.description')}
+          title={t('onboarding:welcome.points.project.title')}
+          description={t('onboarding:welcome.points.project.description')}
           titleStyle={{ color: palette.text }}
           descriptionStyle={{ color: palette.muted }}
           left={(props) => <List.Icon {...props} icon="folder-outline" color={palette.tint} />}

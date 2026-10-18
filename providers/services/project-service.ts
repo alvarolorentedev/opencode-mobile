@@ -1,7 +1,7 @@
 import type { ScopedOpencodeClient } from '@/lib/opencode/client';
-import { workspaceEntries, workspaceWorktrees } from '@/lib/opencode/workspace';
+import { projectEntries, projectWorktrees } from '@/lib/opencode/project';
 import { decodeFile } from '@/lib/opencode/v2/shared';
-import * as v1 from '@/lib/opencode/compat/v1/workspace';
+import * as v1 from '@/lib/opencode/compat/v1/project';
 const location = (client: ScopedOpencodeClient) => ({ location: { directory: client.__opencode.directory } });
 export async function findFiles(client: ScopedOpencodeClient, query: string, includeDirectories = false) {
   if (client.compatibility) return v1.findFiles(client.compatibility, query, includeDirectories);
@@ -9,7 +9,7 @@ export async function findFiles(client: ScopedOpencodeClient, query: string, inc
 }
 export async function listFiles(client: ScopedOpencodeClient, path: string) {
   const data = client.compatibility ? (await client.compatibility.file.list({ path })).data : (await client.api!.file.list({ ...location(client), path })).data;
-  return workspaceEntries(data ?? [], client.__opencode.directory || '');
+  return projectEntries(data ?? [], client.__opencode.directory || '');
 }
 export async function readFile(client: ScopedOpencodeClient, path: string) {
   return client.compatibility ? v1.readFile(client.compatibility, path) : decodeFile(await client.api!.file.read({ ...location(client), path }));
@@ -36,7 +36,7 @@ export async function applyVcsPatch(client: ScopedOpencodeClient, patch: string)
 }
 async function projectID(client: ScopedOpencodeClient) { return (await client.api!.location.get(location(client))).project.id; }
 export async function listWorktrees(client: ScopedOpencodeClient) {
-  return client.compatibility ? v1.listWorktrees(client.compatibility) : workspaceWorktrees(await client.api!.worktree.list({ projectID: await projectID(client) }));
+  return client.compatibility ? v1.listWorktrees(client.compatibility) : projectWorktrees(await client.api!.worktree.list({ projectID: await projectID(client) }));
 }
 export async function createWorktree(client: ScopedOpencodeClient, name?: string, startCommand?: string) {
   return client.compatibility ? v1.createWorktree(client.compatibility, name, startCommand) : client.api!.worktree.create({ projectID: await projectID(client), ...(name ? { name } : {}) });

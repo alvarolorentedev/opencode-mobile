@@ -137,7 +137,7 @@
     "estimatedCost": "推定 API コスト {{cost}}",
     "openChats": "チャットを開く。{{title}}",
     "untitledChat": "無題のチャット",
-    "chooseWorkspace": "ワークスペースを選択",
+    "chooseProject": "プロジェクトを選択",
     "newChat": "新しいチャット",
     "showUsage": "セッション使用状況の詳細を表示",
     "stopConversationMode": "会話モードを停止",
@@ -162,7 +162,7 @@
   "library": {
     "title": "チャット",
     "searchPlaceholder": "チャットを検索",
-    "chooseWorkspace": "ワークスペースを選択",
+    "chooseProject": "プロジェクトを選択",
     "swipeHint": " · 左にスワイプで操作",
     "active": "アクティブ",
     "archived": "アーカイブ済み",
@@ -219,7 +219,7 @@
   },
   "starter": {
     "title": "新しいタスクを開始",
-    "description": "プロンプトを具体的にすると、OpenCode がワークスペースを調査し、進捗を表示して、ファイル変更をストリーミングします。",
+    "description": "プロンプトを具体的にすると、OpenCode がプロジェクトを調査し、進捗を表示して、ファイル変更をストリーミングします。",
     "prompts": {
       "polish": "このプロジェクトを説明して",
       "review": "最近の変更を確認して",
@@ -260,10 +260,10 @@
     "filesChangedCompact_other": "{{files}} ファイルを変更 · +{{additions}} / -{{deletions}}"
   },
   "session": {
-    "chooseWorkspace": "ワークスペースを選択",
-    "selectWorkspace": "「ワークスペース」タブでプロジェクトを選択すると、そのチャットコンテキストが開きます。",
+    "chooseProject": "プロジェクトを選択",
+    "selectProject": "「プロジェクト」タブでプロジェクトを選択すると、そのチャットコンテキストが開きます。",
     "opening": "OpenCode Mobile を起動しています",
-    "loading": "この OpenCode Mobile ワークスペースの最新セッションを読み込んでいます。"
+    "loading": "この OpenCode Mobile プロジェクトの最新セッションを読み込んでいます。"
   },
   "deepLink": {
     "missingSessionId": "このセッションリンクにはセッション ID がありません。",

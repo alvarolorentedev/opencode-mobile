@@ -355,7 +355,7 @@ evidence.
 The persisted session cache contains only small session DTOs and statuses, with
 a seven-day TTL. Its keys are per connection + project, and saved connection
 profiles add one small metadata entry each, so profile several saved servers
-with large workspace catalogs if storage growth becomes visible.
+with large project catalogs if storage growth becomes visible.
 
 ## Security / Data Handling Notes
 

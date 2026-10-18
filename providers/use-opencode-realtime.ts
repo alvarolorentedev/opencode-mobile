@@ -200,7 +200,7 @@ export function useOpencodeRealtime({ catalogClient, activeProjectPath, connecte
   useEffect(() => {
     if (!connected || !activeProjectPath || !shouldPoll(eventStreamStatus === 'connected', busy)) return;
     // While SSE is healthy the loop is a safety net and runs slower; without a
-    // stream it is the primary transport. Prompt completion across workspaces is
+    // stream it is the primary transport. Prompt completion across projects is
     // additionally covered by the post-send transcript refresh, so a slower
     // connected cadence cannot strand a finished turn.
     const intervalMs = eventStreamStatus === 'connected' ? 10000 : 5000;

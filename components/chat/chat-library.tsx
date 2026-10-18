@@ -9,7 +9,7 @@ import { Button, Text } from 'react-native-paper';
 import { OverlaySheet } from '@/components/ui/overlay-sheet';
 import { SwipeRow, type SwipeRowAction } from '@/components/ui/swipe-row';
 import { TextInput } from '@/components/ui/text-input';
-import { WorkspacePicker, WorkspacePickerButton } from '@/components/ui/workspace-picker';
+import { ProjectPicker, ProjectPickerButton } from '@/components/ui/project-picker';
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { formatRelativeTime, getSessionSubtitle } from '@/lib/opencode/format';
@@ -27,7 +27,7 @@ type LibraryRow =
 export function ChatLibrary({ visible, onClose }: { visible: boolean; onClose: () => void }) {
   const { t } = useTranslation();
   const palette = Colors[useColorScheme() ?? 'light'];
-  const { activeProject, addWorkspace, projects, refreshWorkspaceCatalog, selectProject } = useProjects();
+  const { activeProject, addProject, projects, refreshProjectCatalog, removeProject, selectProject } = useProjects();
   const { createSession, currentSessionId, openSession, activeSessions: activeSessionsValue } = useCurrentSession();
   const {
     archivedSessions, archiveSession, clearFavoriteSession, deleteSession,
@@ -37,7 +37,7 @@ export function ChatLibrary({ visible, onClose }: { visible: boolean; onClose: (
   } = useSessionLibrary();
   const { chatPreferences, updateChatPreferences } = usePreferences();
   const { serverCapabilities } = useConnection();
-  const [workspaceVisible, setWorkspaceVisible] = useState(false);
+  const [projectVisible, setProjectVisible] = useState(false);
   const [query, setQuery] = useState('');
   const [section, setSection] = useState<'active' | 'archived'>('active');
   const [renamingId, setRenamingId] = useState<string>();
@@ -90,18 +90,18 @@ export function ChatLibrary({ visible, onClose }: { visible: boolean; onClose: (
       }
     }
   }
-  const close = () => { operationRef.current = undefined; queuedOpenRef.current = undefined; setBusyId(undefined); setError(undefined); setWorkspaceVisible(false); setRenamingId(undefined); onClose(); };
+  const close = () => { operationRef.current = undefined; queuedOpenRef.current = undefined; setBusyId(undefined); setError(undefined); setProjectVisible(false); setRenamingId(undefined); onClose(); };
   const open = (id: string) => void run(id, () => openSession(id), close);
   const openActive = (id: string, projectPath: string) => void run(id, () => openSessionInProject(projectPath, id), close);
 
-  // Live current-workspace sessions win over the cross-workspace snapshot so a
+  // Live current-project sessions win over the cross-project snapshot so a
   // rename or share change is reflected immediately in the Active group.
   const liveById = new Map(sessions.map((session) => [session.id, session]));
 
-  // Shared row actions for the Active group and the current-workspace Chat list.
+  // Shared row actions for the Active group and the current-project Chat list.
   // Project-scoped actions (rename/share/archive/delete) are only offered for
-  // sessions in the active workspace; the scoped client cannot manage another
-  // workspace's session, so cross-workspace rows stay open/favorite only.
+  // sessions in the active project; the scoped client cannot manage another
+  // project's session, so cross-project rows stay open/favorite only.
   const sessionActions = (id: string, title: string | undefined, projectPath: string, shareUrl: string | undefined, manage: boolean): SwipeRowAction[] => {
     const favorite = isFavoriteSession(id);
     return [
@@ -116,8 +116,8 @@ export function ChatLibrary({ visible, onClose }: { visible: boolean; onClose: (
     ];
   };
 
-  // Cross-workspace running/recent sessions are connection-scoped, not
-  // workspace-scoped, so they are re-seeded whenever the overlay opens. The
+  // Cross-project running/recent sessions are connection-scoped, not
+  // project-scoped, so they are re-seeded whenever the overlay opens. The
   // visibility signal also lets the provider stop its snapshot poll when the
   // library is closed. The two effects read the stable setter/refresh so a
   // snapshot update cannot retrigger this effect.
@@ -199,9 +199,9 @@ export function ChatLibrary({ visible, onClose }: { visible: boolean; onClose: (
   }
 
   return <>
-    <OverlaySheet visible={visible && !workspaceVisible} title={t('chat:library.title')} testID="chat-library" scrollable={false} onClose={close} headerAction={<WorkspacePickerButton onPress={() => { void refreshWorkspaceCatalog(); setWorkspaceVisible(true); }} />}>
+    <OverlaySheet visible={visible && !projectVisible} title={t('chat:library.title')} testID="chat-library" scrollable={false} onClose={close} headerAction={<ProjectPickerButton onPress={() => { void refreshProjectCatalog(); setProjectVisible(true); }} />}>
       <TextInput mode="outlined" testID="chat-library-search" placeholder={t('chat:library.searchPlaceholder')} value={query} onChangeText={setQuery} />
-      <Text variant="bodySmall" style={{ color: palette.muted }}>{activeProject?.label || t('chat:library.chooseWorkspace')}{t('chat:library.swipeHint')}</Text>
+      <Text variant="bodySmall" style={{ color: palette.muted }}>{activeProject?.label || t('chat:library.chooseProject')}{t('chat:library.swipeHint')}</Text>
       <View style={styles.sectionTabs}>
         <Button compact mode={section === 'active' ? 'contained-tonal' : 'text'} onPress={() => setSection('active')}>{t('chat:library.active')}</Button>
         {serverCapabilities.archive ? <Button compact mode={section === 'archived' ? 'contained-tonal' : 'text'} onPress={() => { setSection('archived'); void refreshArchivedSessions().catch((reason) => setError(reason instanceof Error ? reason.message : t('chat:library.couldNotLoadArchived'))); }}>{t('chat:library.archived')}</Button> : null}
@@ -213,7 +213,7 @@ export function ChatLibrary({ visible, onClose }: { visible: boolean; onClose: (
       <Button icon="plus" disabled={!activeProject || Boolean(busyId)} onPress={() => void run('new', async () => { const session = await createSession(); await openSession(session.id); }, close)}>{t('chat:library.newChat')}</Button>
     </OverlaySheet>
 
-    <WorkspacePicker visible={visible && workspaceVisible} testID="chat-workspace-picker" projects={projects} activePath={activeProject?.path} onClose={() => setWorkspaceVisible(false)} onSelect={(path) => { selectProject(path); close(); }} onAdd={async (path) => { await addWorkspace(path); close(); }} />
+    <ProjectPicker visible={visible && projectVisible} testID="chat-project-picker" projects={projects} activePath={activeProject?.path} onClose={() => setProjectVisible(false)} onSelect={(path) => { selectProject(path); close(); }} onRemove={removeProject} onAdd={async (path) => { await addProject(path); close(); }} />
   </>;
 }
 

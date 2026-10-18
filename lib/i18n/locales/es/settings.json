@@ -333,7 +333,7 @@
     },
     "slimInterface": {
       "title": "Interfaz compacta",
-      "description": "Reduce botones, espaciado y encabezados en chat, terminal y espacio de trabajo para que quepa más texto en pantalla."
+      "description": "Reduce botones, espaciado y encabezados en chat, terminal y proyecto para que quepa más texto en pantalla."
     }
   },
   "connect": {

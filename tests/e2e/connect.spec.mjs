@@ -163,7 +163,7 @@ test('Cloud Link waits beyond 15 seconds without recovery controls and connects 
   await page.screenshot({ path: '/tmp/opencode-cloud-link-waiting.png' });
   startup.ready = true;
   await page.clock.runFor(15_000); await page.clock.resume();
-  await expect(page).toHaveURL(/\/workspace$/, { timeout: 30_000 });
+  await expect(page).toHaveURL(/\/projects$/, { timeout: 30_000 });
   expect(state.pairClaims).toBe(1); expect(state.accesses).toBe(0);
 });
 
@@ -181,7 +181,7 @@ test('Cloud Link delayed activation stays calm and explicit Retry reuses credent
   await page.screenshot({ path: '/tmp/opencode-cloud-link-delayed.png' });
   startup.ready = true; await page.clock.resume();
   await page.getByTestId('connect-retry').click();
-  await expect(page).toHaveURL(/\/workspace$/, { timeout: 30_000 });
+  await expect(page).toHaveURL(/\/projects$/, { timeout: 30_000 });
   expect(state.pairClaims).toBe(1); expect(state.accesses).toBe(0);
   await assertNoStoredSecrets(page);
 });
@@ -197,7 +197,7 @@ test('Cloud Link delayed activation can scan the regenerated QR without deleting
   expect(saved).toContain('machine-1');
   startup.ready = true;
   await submitLink(page, pairingLink('regenerated').toString());
-  await expect(page).toHaveURL(/\/workspace$/, { timeout: 30_000 });
+  await expect(page).toHaveURL(/\/projects$/, { timeout: 30_000 });
   expect(state.pairClaims).toBe(2); expect(state.accesses).toBe(0);
 });
 
@@ -329,7 +329,7 @@ for (const legacyControlPlane of ['https://api.getopencode.app', 'https://apista
     await openPair(page);
     await expect.poll(() => page.evaluate(() => localStorage.getItem('opencode-mobile.connect-control-plane'))).toBe(CONTROL_PLANE);
     await page.getByTestId('connect-purchase').click();
-    await expect(page).toHaveURL(/\/workspace$/, { timeout: 30_000 });
+    await expect(page).toHaveURL(/\/projects$/, { timeout: 30_000 });
     expect(production.subscriptionClaims).toBe(1);
     expect(production.pairClaims).toBe(1);
     expect(legacyRequests).toEqual([]);
@@ -344,7 +344,7 @@ test('a real buyer with a remembered staging preference automatically uses produ
   await page.addInitScript((url) => localStorage.setItem('opencode-mobile.connect-control-plane', url), STAGING);
   await openPair(page);
   await page.getByTestId('connect-purchase').click();
-  await expect(page).toHaveURL(/\/workspace$/, { timeout: 30_000 });
+  await expect(page).toHaveURL(/\/projects$/, { timeout: 30_000 });
   expect(production.subscriptionClaims).toBe(1);
   expect(production.pairClaims).toBe(1);
   expect(staging.subscriptionClaims).toBe(0);
@@ -372,7 +372,7 @@ test('purchase completes then automatically pairs, saves securely, and connects 
   expect(await events(page)).not.toContain('restore');
   expect(state.pairClaims).toBe(0);
   await page.getByTestId('connect-purchase').click();
-  await expect(page).toHaveURL(/\/workspace$/, { timeout: 30_000 });
+  await expect(page).toHaveURL(/\/projects$/, { timeout: 30_000 });
   expect(state.subscriptionClaims).toBe(1); expect(state.pairClaims).toBe(1);
   expect((await events(page)).filter((event) => ['purchase', 'claim'].includes(event))).toEqual(['purchase', 'claim']);
   expect(dataAuth.length).toBeGreaterThan(0);
@@ -385,7 +385,7 @@ test('Restore continues the exact pending QR without purchasing', async ({ page 
   await storeFixture(page); const state = await mockControlPlane(page);
   await openPair(page);
   await page.getByTestId('connect-restore').click();
-  await expect(page).toHaveURL(/\/workspace$/, { timeout: 30_000 });
+  await expect(page).toHaveURL(/\/projects$/, { timeout: 30_000 });
   expect((await events(page)).filter((event) => ['purchase', 'restore', 'claim'].includes(event))).toEqual(['restore', 'claim']);
   expect(state.pairClaims).toBe(1); await assertNoStoredSecrets(page);
 });
@@ -403,7 +403,7 @@ for (const [name, options, message] of [
     expect(state.pairClaims).toBe(0);
     expect(await events(page)).not.toContain('finish');
     await page.getByTestId('connect-retry').click();
-    await expect(page).toHaveURL(/\/workspace$/, { timeout: 30_000 });
+    await expect(page).toHaveURL(/\/projects$/, { timeout: 30_000 });
     expect((await events(page)).filter((event) => event === 'purchase')).toHaveLength(1);
     expect(state.subscriptionClaims).toBe(options.subscriptionStatus ? 2 : 1);
   });
@@ -422,7 +422,7 @@ for (const recovery of ['purchase', 'restore', 'restart']) {
       await expect(page.getByTestId('connect-purchase')).toBeEnabled({ timeout: 30_000 });
       await page.getByTestId(recovery === 'purchase' ? 'connect-purchase' : 'connect-restore').click();
     }
-    await expect(page).toHaveURL(/\/workspace$/, { timeout: 30_000 });
+    await expect(page).toHaveURL(/\/projects$/, { timeout: 30_000 });
     expect(production.subscriptionClaims).toBe(1);
     expect(production.pairClaims).toBe(0);
     expect(staging.subscriptionClaims).toBe(1);
@@ -466,7 +466,7 @@ test('an expired QR preserves the subscription and accepts a fresh QR without re
   await expect(page.getByTestId('connect-subscription-sheet')).toHaveCount(0);
   await expect(page.getByTestId('connect-machine-name')).toHaveCount(0);
   await submitLink(page, pairingLink('fresh-pair').toString());
-  await expect(page).toHaveURL(/\/workspace$/, { timeout: 30_000 });
+  await expect(page).toHaveURL(/\/projects$/, { timeout: 30_000 });
   expect(state.subscriptionClaims).toBe(1); expect((await events(page)).filter((event) => event === 'purchase')).toHaveLength(1);
 });
 
@@ -475,7 +475,7 @@ for (const options of [{ lostResponse: true }, { reconciliation: true }]) {
     await storeFixture(page); const state = await mockControlPlane(page, options);
     await openPair(page); await page.getByTestId('connect-purchase').click();
     if (options.lostResponse) { await expect(page.getByTestId('connect-error')).toContainText('Retry the same request'); await page.getByTestId('connect-retry').click(); }
-    await expect(page).toHaveURL(/\/workspace$/, { timeout: 30_000 });
+    await expect(page).toHaveURL(/\/projects$/, { timeout: 30_000 });
     expect(state.accesses).toBe(1); expect(state.subscriptionClaims).toBe(1);
     const profiles = await page.evaluate(() => JSON.parse(localStorage.getItem('opencode-mobile.connection-profiles')));
     expect(profiles[0].connect.machineId).toBe('machine-1'); expect(profiles[0].serverUrl).toBe(CONNECT_SERVER);
@@ -503,7 +503,7 @@ test('second-device Restore reconnects the same owned machine without a QR', asy
   await expect(page.getByTestId('connect-subscription-sheet')).toHaveCount(0);
   await manage(page);
   await page.getByTestId('connect-access-machine-1').click();
-  await expect(page).toHaveURL(/\/workspace$/, { timeout: 30_000 });
+  await expect(page).toHaveURL(/\/projects$/, { timeout: 30_000 });
   expect(state.pairClaims).toBe(0); expect(state.accesses).toBe(1);
   expect(await events(page)).not.toContain('purchase'); await assertNoStoredSecrets(page);
 });
@@ -517,14 +517,14 @@ test('secure profile-save recovery does not replay pairing or purchase', async (
   });
   await page.getByTestId('connect-purchase').click();
   await expect(page.getByTestId('connect-error')).toContainText('secure saving failed');
-  await page.getByTestId('connect-retry').click(); await expect(page).toHaveURL(/\/workspace$/, { timeout: 30_000 });
+  await page.getByTestId('connect-retry').click(); await expect(page).toHaveURL(/\/projects$/, { timeout: 30_000 });
   expect(state.pairClaims).toBe(1); expect(state.subscriptionClaims).toBe(1);
 });
 
 test('expiry stops data-plane traffic while preserving owned machine and profile', async ({ page }) => {
   await storeFixture(page); const state = await mockControlPlane(page, { ttl: 8000 });
   await openPair(page); await page.getByTestId('connect-purchase').click();
-  await expect(page).toHaveURL(/\/workspace$/, { timeout: 30_000 });
+  await expect(page).toHaveURL(/\/projects$/, { timeout: 30_000 });
   await page.waitForTimeout(8500);
   const requests = [];
   page.on('request', (request) => { if (request.url().startsWith(CONNECT_SERVER)) requests.push(request.url()); });
@@ -535,14 +535,14 @@ test('expiry stops data-plane traffic while preserving owned machine and profile
 
 test('fresh-install subscription pairing continues onboarding', async ({ page }) => {
   await storeFixture(page); await mockControlPlane(page); await openPair(page, false);
-  await page.getByTestId('connect-purchase').click(); await expect(page.getByTestId('onboarding-workspace')).toBeVisible({ timeout: 30_000 });
+  await page.getByTestId('connect-purchase').click(); await expect(page.getByTestId('onboarding-project')).toBeVisible({ timeout: 30_000 });
 });
 
 
 test('renewal rotates credentials while preserving profile, machine, hostname and scoped favorites', async ({ page }) => {
   await storeFixture(page); const state = await mockControlPlane(page);
   await openPair(page); await page.getByTestId('connect-purchase').click();
-  await expect(page).toHaveURL(/\/workspace$/, { timeout: 30_000 });
+  await expect(page).toHaveURL(/\/projects$/, { timeout: 30_000 });
   const previous = await page.evaluate(() => JSON.parse(localStorage.getItem('opencode-mobile.connection-profiles'))[0]);
   const previousScope = Buffer.from(`${previous.serverUrl}\n${previous.username}`).toString('base64url');
   // Let the first connection finish its bootstrap write before seeding the
@@ -565,7 +565,7 @@ test('renewal rotates credentials while preserving profile, machine, hostname an
   await expect(page.getByTestId('connect-error')).toContainText('secure saving failed');
   expect(await page.evaluate(() => JSON.parse(localStorage.getItem('opencode-mobile.favorite-sessions'))[0].connectionScope)).toBe(previousScope);
   await page.getByTestId('connect-retry').click();
-  await expect(page).toHaveURL(/\/workspace$/, { timeout: 30_000 });
+  await expect(page).toHaveURL(/\/projects$/, { timeout: 30_000 });
   await expect.poll(() => page.evaluate(() => {
     const profile = JSON.parse(localStorage.getItem('opencode-mobile.connection-profiles'))[0];
     const scope = btoa(`${profile.serverUrl}\n${profile.username}`).replaceAll('+', '-').replaceAll('/', '_').replace(/=+$/, '');
@@ -587,7 +587,7 @@ test('live renewal keeps one active connection and the selected session across p
   await page.setViewportSize({ width: 390, height: 844 });
   await storeFixture(page); const state = await mockControlPlane(page);
   await openPair(page); await page.getByTestId('connect-purchase').click();
-  await expect(page).toHaveURL(/\/workspace$/, { timeout: 30_000 });
+  await expect(page).toHaveURL(/\/projects$/, { timeout: 30_000 });
   const previous = await page.evaluate(() => JSON.parse(localStorage.getItem('opencode-mobile.connection-profiles'))[0]);
   const oldScope = Buffer.from(`${previous.serverUrl}\n${previous.username}`).toString('base64url');
   await expect.poll(() => page.evaluate((scope) => Object.keys(JSON.parse(localStorage.getItem('opencode-mobile.last-session-by-project') || '{}')[scope] || {}).length, oldScope)).toBeGreaterThan(0);
@@ -643,7 +643,7 @@ test('a subscriber opening a QR link pairs automatically without a purchase over
     }).observe(document, { childList: true, subtree: true });
   });
   await page.goto(`/pair?${pairingLink().searchParams}`);
-  await expect(page).toHaveURL(/\/workspace$/, { timeout: 30_000 });
+  await expect(page).toHaveURL(/\/projects$/, { timeout: 30_000 });
   purchaseOverlays = await page.evaluate(() => Number(globalThis.__subscriptionOverlaySeen));
   expect(purchaseOverlays).toBe(0);
   expect(state.pairClaims).toBe(1);
@@ -716,7 +716,7 @@ test('a subscriber can reopen pairing after connecting without a subscription ov
   await storeFixture(page); const state = await mockControlPlane(page);
   await openPair(page);
   await page.getByTestId('connect-purchase').click();
-  await expect(page).toHaveURL(/\/workspace$/, { timeout: 30_000 });
+  await expect(page).toHaveURL(/\/projects$/, { timeout: 30_000 });
   await page.getByRole('tab', { name: 'Settings' }).click();
   await page.getByRole('button', { name: /^Connection/ }).click();
   await page.getByTestId('connection-add-button').click();
@@ -741,7 +741,7 @@ test('invalid and untrusted QR links can be replaced with a valid subscriber lin
   await expect(page.getByTestId('connect-error')).toContainText('trusted control plane');
   expect(state.pairClaims).toBe(0);
   await submitLink(page, pairingLink().toString());
-  await expect(page).toHaveURL(/\/workspace$/, { timeout: 30_000 });
+  await expect(page).toHaveURL(/\/projects$/, { timeout: 30_000 });
   expect(state.pairClaims).toBe(1); expect(await events(page)).not.toContain('purchase');
 });
 
@@ -777,7 +777,7 @@ test('Settings has one creation entry with Scan QR, Manual and Cloud Link method
   await page.getByTestId('connection-profile-continue').click();
   await page.getByTestId('connection-profile-name-input').fill('Manual server');
   await page.getByTestId('connection-profile-save-confirm').click();
-  await expect(page).toHaveURL(/\/workspace$/, { timeout: 30_000 });
+  await expect(page).toHaveURL(/\/projects$/, { timeout: 30_000 });
   const profiles = await page.evaluate(() => JSON.parse(localStorage.getItem('opencode-mobile.connection-profiles')));
   expect(profiles).toHaveLength(1); expect(profiles[0].connect).toBeUndefined();
   expect(await events(page)).not.toContain('purchase');
@@ -847,7 +847,7 @@ test('guided Cloud Link uses consistent illustrated steps, store pricing and exp
     expect(Math.max(...positions.map((position) => position[surface])) - Math.min(...positions.map((position) => position[surface]))).toBeLessThan(2);
   }
   await submitLink(page, pairingLink().toString());
-  await expect(page).toHaveURL(/\/workspace$/, { timeout: 30_000 });
+  await expect(page).toHaveURL(/\/projects$/, { timeout: 30_000 });
   expect(state.pairClaims).toBe(1);
   await assertNoStoredSecrets(page);
 });
@@ -899,7 +899,7 @@ test('a paired device adds, edits and removes an exposed service', async ({ page
   await page.addInitScript(() => localStorage.setItem('opencode-mobile.onboarding-version', JSON.stringify({ version: 1 })));
   page.on('dialog', (dialog) => void dialog.accept());
   await page.goto(`/pair?${pairingLink().searchParams}`);
-  await expect(page).toHaveURL(/\/workspace$/, { timeout: 30_000 });
+  await expect(page).toHaveURL(/\/projects$/, { timeout: 30_000 });
 
   await page.getByRole('tab', { name: 'Settings' }).click();
   await page.getByRole('button', { name: /^Cloud Link/ }).click();
@@ -965,7 +965,7 @@ test('exposed services stay available while a different connection is active', a
   await page.addInitScript(() => localStorage.setItem('opencode-mobile.onboarding-version', JSON.stringify({ version: 1 })));
   page.on('dialog', (dialog) => void dialog.accept());
   await page.goto(`/pair?${pairingLink().searchParams}`);
-  await expect(page).toHaveURL(/\/workspace$/, { timeout: 30_000 });
+  await expect(page).toHaveURL(/\/projects$/, { timeout: 30_000 });
 
   // Expose one service while Cloud Link is the active connection.
   await page.getByRole('tab', { name: 'Settings' }).click();

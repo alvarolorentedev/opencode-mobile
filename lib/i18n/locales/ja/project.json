@@ -1,15 +1,15 @@
 {
   "screen": {
     "syncProjects": "プロジェクトを同期",
-    "refreshWorkspace": "ワークスペースを更新",
+    "refreshProject": "プロジェクトを更新",
     "filesTab": "ファイル",
     "worktreesTab": "ワークツリー"
   },
   "files": {
-    "title": "ワークスペースのファイル",
+    "title": "プロジェクトのファイル",
     "branch": "ブランチ: {{branch}}",
     "searchAndInspect": "ファイルを検索して表示",
-    "searchPlaceholder": "このワークスペースを検索",
+    "searchPlaceholder": "このプロジェクトを検索",
     "search": "検索",
     "changedFiles": "{{value}} 件の変更ファイル",
     "close": "ファイルを閉じる",
@@ -24,7 +24,7 @@
     "searching": "検索中…",
     "noMatches": "「{{query}}」に一致するファイルがありません。",
     "resultsFor": "「{{query}}」の検索結果",
-    "searchScope": "{{workspace}} 内を検索",
+    "searchScope": "{{project}} 内を検索",
     "clearSearch": "検索をクリア",
     "loading": "ファイルを読み込み中…",
     "emptyFolder": "このフォルダーは空です。",
@@ -50,28 +50,29 @@
     "removeTitle": "ワークツリーを削除しますか？",
     "removeMessage": "{{directory}} が削除されます。これは元に戻せません。",
     "groupTitle": "ワークツリー · {{project}}",
-    "selectGuidance": "ディレクトリをタップしてワークスペースに設定します。",
+    "selectGuidance": "ディレクトリをタップしてプロジェクトに設定します。",
     "create": "ワークツリーを作成",
     "manage": "{{name}} を管理"
   },
   "picker": {
-    "title": "ワークスペースを選択",
-    "changeWorkspace": "ワークスペースを変更",
+    "title": "プロジェクトを選択",
+    "changeProject": "プロジェクトを変更",
     "enterPath": "OpenCode サーバー上のフォルダーパスを入力してください。",
     "serverDirectory": "サーバーディレクトリ",
-    "add": "ワークスペースを追加",
+    "add": "プロジェクトを追加",
     "selectLabel": "{{name}}を選択",
-    "empty": "利用可能なワークスペースはありません。"
+    "removeLabel": "{{name}}を削除",
+    "empty": "利用可能なプロジェクトはありません。"
   },
   "errors": {
-    "refreshWorkspace": "ワークスペースを更新できませんでした。",
-    "searchFiles": "ワークスペースのファイルを検索できませんでした。",
+    "refreshProject": "プロジェクトを更新できませんでした。",
+    "searchFiles": "プロジェクトのファイルを検索できませんでした。",
     "openFile": "ファイルを開けませんでした。",
     "saveFile": "ファイルを保存できませんでした。",
     "refreshWorktrees": "ワークツリーを更新できませんでした。",
     "createWorktree": "ワークツリーを作成できませんでした。",
     "resetWorktree": "ワークツリーをリセットできませんでした。",
     "removeWorktree": "ワークツリーを削除できませんでした。",
-    "addWorkspace": "ワークスペースを追加できませんでした。"
+    "addProject": "プロジェクトを追加できませんでした。"
   }
 }

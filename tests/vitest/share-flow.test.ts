@@ -54,7 +54,7 @@ describe('confirmed share handoff', () => {
     expect(input.openSession).toHaveBeenCalledWith(expect.objectContaining(target), expect.any(AbortSignal));
     runtime.unmount();
   });
-  it('selects another workspace conversation without changing its destination during bootstrap', async () => {
+  it('selects another project conversation without changing its destination during bootstrap', async () => {
     await mount();
     const other = runtime.value.targets[1];
     runtime.value.selectTarget(other); runtime.flush();

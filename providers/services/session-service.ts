@@ -11,15 +11,15 @@ import { toProjectView, toSessionView } from '@/lib/opencode/v2-mappers';
 import { toMessageRecord } from '@/lib/opencode/v2/mappers';
 import type { Project, SessionStatus } from '@/lib/opencode/types';
 import * as v1 from '@/lib/opencode/compat/v1/session';
-import { listWorktrees as listV1Worktrees } from '@/lib/opencode/compat/v1/workspace';
+import { listWorktrees as listV1Worktrees } from '@/lib/opencode/compat/v1/project';
 
 export function getSessionInbox(client: ScopedOpencodeClient, sessionId: string) {
   return coalesceRead(client, `inbox:${sessionId}`, () => client.promptInbox!.list(sessionId));
 }
-export async function loadWorkspaceCatalog(client: ScopedOpencodeClient) {
-  if (client.compatibility) return v1.loadWorkspaceCatalog(client.compatibility);
+export async function loadProjectCatalog(client: ScopedOpencodeClient) {
+  if (client.compatibility) return v1.loadProjectCatalog(client.compatibility);
   const [location, projects] = await Promise.all([client.api!.location.get(), client.api!.project.list()]);
-  if (!location?.project?.id || !location.directory || !Array.isArray(projects)) throw new Error('MalformedResponse: OpenCode did not return its workspace catalog.');
+  if (!location?.project?.id || !location.directory || !Array.isArray(projects)) throw new Error('MalformedResponse: OpenCode did not return its project catalog.');
   const current = projects.find((project) => project.id === location.project.id);
   const serverProjects = projects.map(toProjectView).sort((left, right) => compareLabels(left.worktree, right.worktree));
   return { currentProjectPath: location.directory, serverRootPath: location.directory, serverProjects: current ? serverProjects : [...serverProjects, { id: location.project.id, worktree: location.project.canonical, time: { created: 0 } }] };
@@ -28,9 +28,9 @@ export async function loadWorkspaceCatalog(client: ScopedOpencodeClient) {
 // V2 exposes that location explicitly: a worktree keeps its own directory while
 // the project canonical stays the main checkout; nested input resolves to the
 // owning checkout. V1 has no location field and resolves through the project.
-export type ResolvedWorkspace = Project & { directory?: string };
-export async function resolveWorkspace(client: ScopedOpencodeClient): Promise<ResolvedWorkspace> {
-  if (client.compatibility) return v1.resolveWorkspace(client.compatibility);
+export type ResolvedProjectLocation = Project & { directory?: string };
+export async function resolveProjectLocation(client: ScopedOpencodeClient): Promise<ResolvedProjectLocation> {
+  if (client.compatibility) return v1.resolveProjectLocation(client.compatibility);
   const location = await client.api!.location.get({ location: { directory: client.__opencode.directory } });
   return { id: location.project.id, worktree: location.project.canonical, directory: location.project.directory, time: { created: 0 } };
 }
@@ -41,11 +41,11 @@ export async function resolveWorkspace(client: ScopedOpencodeClient): Promise<Re
 // and nested input resolves to its checkout, so those are rejected here. V2
 // reports a worktree through the resolved location; V1 reports the owning
 // project, so a worktree directory needs the worktree inventory.
-export async function isKnownWorkspaceLocation(client: ScopedOpencodeClient): Promise<boolean> {
+export async function isKnownProjectLocation(client: ScopedOpencodeClient): Promise<boolean> {
   const directory = client.__opencode.directory;
   if (!directory) return false;
   try {
-    const resolved = await resolveWorkspace(client);
+    const resolved = await resolveProjectLocation(client);
     if (resolved.directory === directory && resolved.worktree !== directory) return true;
     if (client.compatibility) {
       const entries = await listV1Worktrees(client.compatibility);
@@ -58,7 +58,7 @@ export async function isKnownWorkspaceLocation(client: ScopedOpencodeClient): Pr
 }
 
 // V2 lists sessions through a cursor. Reading only the first page silently
-// hides every older chat in a workspace, so the workspace list, the
+// hides every older chat in a project, so the project list, the
 // connection-wide snapshot and the notification monitor all follow it. V1
 // returns the complete array in one response.
 const MAX_SESSION_PAGES = 10;

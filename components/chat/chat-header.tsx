@@ -86,7 +86,7 @@ export function ChatHeader({
                   {selectedSession?.title || t('chat:header.untitledChat')}
                 </Text>
                 <NativeText maxFontSizeMultiplier={1.5} numberOfLines={1} style={[styles.headerUsage, { color: palette.muted }]}>
-                  {activeProjectLabel || t('chat:header.chooseWorkspace')}
+                  {activeProjectLabel || t('chat:header.chooseProject')}
                 </NativeText>
               </View>
               <MaterialCommunityIcons name="chevron-down" size={20} color={palette.muted} />

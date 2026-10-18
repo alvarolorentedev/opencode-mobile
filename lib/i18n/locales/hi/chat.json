@@ -137,7 +137,7 @@
     "estimatedCost": "अनुमानित API लागत {{cost}}",
     "openChats": "चैट खोलें। {{title}}",
     "untitledChat": "बिना शीर्षक चैट",
-    "chooseWorkspace": "कार्यक्षेत्र चुनें",
+    "chooseProject": "प्रोजेक्ट चुनें",
     "newChat": "नई चैट",
     "showUsage": "सेशन उपयोग विवरण दिखाएँ",
     "stopConversationMode": "बातचीत मोड रोकें",
@@ -162,7 +162,7 @@
   "library": {
     "title": "चैट",
     "searchPlaceholder": "चैट खोजें",
-    "chooseWorkspace": "कार्यक्षेत्र चुनें",
+    "chooseProject": "प्रोजेक्ट चुनें",
     "swipeHint": " · कार्रवाइयों के लिए बाएँ स्वाइप करें",
     "active": "सक्रिय",
     "archived": "संग्रहीत",
@@ -219,7 +219,7 @@
   },
   "starter": {
     "title": "नया कार्य शुरू करें",
-    "description": "प्रॉम्प्ट को विशिष्ट रखें और OpenCode कार्यक्षेत्र का निरीक्षण करेगा, प्रगति दिखाएगा, और फ़ाइल बदलाव स्ट्रीम करेगा।",
+    "description": "प्रॉम्प्ट को विशिष्ट रखें और OpenCode प्रोजेक्ट का निरीक्षण करेगा, प्रगति दिखाएगा, और फ़ाइल बदलाव स्ट्रीम करेगा।",
     "prompts": {
       "polish": "इस प्रोजेक्ट को समझाएँ",
       "review": "हाल के बदलावों की समीक्षा करें",
@@ -260,10 +260,10 @@
     "filesChangedCompact_other": "{{files}} फ़ाइलें बदलीं, +{{additions}} / -{{deletions}}"
   },
   "session": {
-    "chooseWorkspace": "कार्यक्षेत्र चुनें",
-    "selectWorkspace": "इसकी चैट संदर्भ खोलने के लिए कार्यक्षेत्र टैब में एक प्रोजेक्ट चुनें।",
+    "chooseProject": "प्रोजेक्ट चुनें",
+    "selectProject": "इसकी चैट संदर्भ खोलने के लिए प्रोजेक्ट टैब में एक प्रोजेक्ट चुनें।",
     "opening": "OpenCode Mobile खोला जा रहा है",
-    "loading": "इस OpenCode Mobile कार्यक्षेत्र का नवीनतम सेशन लोड हो रहा है।"
+    "loading": "इस OpenCode Mobile प्रोजेक्ट का नवीनतम सेशन लोड हो रहा है।"
   },
   "deepLink": {
     "missingSessionId": "इस सेशन लिंक में सेशन ID नहीं है।",

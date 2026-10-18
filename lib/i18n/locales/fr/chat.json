@@ -137,7 +137,7 @@
     "estimatedCost": "Coût API estimé {{cost}}",
     "openChats": "Chats ouverts. {{title}}",
     "untitledChat": "Chat sans titre",
-    "chooseWorkspace": "Choisis un espace de travail",
+    "chooseProject": "Choisis un projet",
     "newChat": "Nouveau chat",
     "showUsage": "Afficher les détails d'utilisation de la session",
     "stopConversationMode": "Arrêter le mode conversation",
@@ -162,7 +162,7 @@
   "library": {
     "title": "Chats",
     "searchPlaceholder": "Rechercher des chats",
-    "chooseWorkspace": "Choisis un espace de travail",
+    "chooseProject": "Choisis un projet",
     "swipeHint": " · Glisse vers la gauche pour les actions",
     "active": "Actifs",
     "archived": "Archivés",
@@ -219,7 +219,7 @@
   },
   "starter": {
     "title": "Démarrer une nouvelle tâche",
-    "description": "Garde la consigne précise et OpenCode inspectera l'espace de travail, affichera la progression et diffusera les modifications de fichiers.",
+    "description": "Garde la consigne précise et OpenCode inspectera le projet, affichera la progression et diffusera les modifications de fichiers.",
     "prompts": {
       "polish": "Explique ce projet",
       "review": "Examine les modifications récentes",
@@ -260,10 +260,10 @@
     "filesChangedCompact_other": "{{files}} fichiers modifiés, +{{additions}} / -{{deletions}}"
   },
   "session": {
-    "chooseWorkspace": "Choisis un espace de travail",
-    "selectWorkspace": "Sélectionne un projet dans l'onglet Espaces de travail pour ouvrir son contexte de chat.",
+    "chooseProject": "Choisis un projet",
+    "selectProject": "Sélectionne un projet dans l'onglet Projets pour ouvrir son contexte de chat.",
     "opening": "Ouverture d'OpenCode Mobile",
-    "loading": "Chargement de la dernière session pour cet espace de travail OpenCode Mobile."
+    "loading": "Chargement de la dernière session pour cet projet OpenCode Mobile."
   },
   "deepLink": {
     "missingSessionId": "Ce lien de session ne contient pas d'ID de session.",

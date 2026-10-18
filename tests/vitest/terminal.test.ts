@@ -106,7 +106,7 @@ describe('PTY connection lifecycle', () => {
   function connection(context?: () => TerminalConnectionContext) {
     return createTerminalConnection({
       id: 'pty-1',
-      context: context ?? (() => ({ client: {} as ScopedOpencodeClient, current: true, serverUrl: 'https://example.test/prefix', directory: '/project', serverContract: 'v1' })),
+      context: context ?? (() => ({ client: {} as ScopedOpencodeClient, current: true, serverUrl: 'https://example.test/prefix', directory: '/workspace', serverContract: 'v1' })),
       publish: vi.fn(),
     });
   }
@@ -125,7 +125,7 @@ describe('PTY connection lifecycle', () => {
   });
   it('reconnects with rotated credentials while keeping the renderer cursor', async () => {
     const initial = {} as ScopedOpencodeClient, rotated = {} as ScopedOpencodeClient;
-    const live: TerminalConnectionContext = { client: initial, current: true, serverUrl: 'https://example.test/prefix', directory: '/project', serverContract: 'v1', authorization: 'Basic old' };
+    const live: TerminalConnectionContext = { client: initial, current: true, serverUrl: 'https://example.test/prefix', directory: '/workspace', serverContract: 'v1', authorization: 'Basic old' };
     const pty = connection(() => live);
     pty.register({ write: async () => {} }); await settle();
     const socket = services.socket.mock.results[0].value as Socket;

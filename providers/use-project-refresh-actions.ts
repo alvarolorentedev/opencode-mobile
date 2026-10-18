@@ -11,10 +11,10 @@ import {
   getSessionDiff as svcGetSessionDiff,
   getSessionTodos as svcGetSessionTodos,
 } from '@/providers/services/session-service';
-import { getVcsDiff as svcGetVcsDiff } from '@/providers/services/workspace-service';
-import type { WorkspaceActionsInput } from '@/providers/opencode-provider-action-inputs';
+import { getVcsDiff as svcGetVcsDiff } from '@/providers/services/project-service';
+import type { ProjectActionsInput } from '@/providers/opencode-provider-action-inputs';
 
-export function useWorkspaceRefreshActions({
+export function useProjectRefreshActions({
   activeProjectPath,
   client,
   isCurrentClient,
@@ -37,7 +37,7 @@ export function useWorkspaceRefreshActions({
   sessionRefreshOptionsRef,
   connectionScope,
   refreshMessages,
-}: WorkspaceActionsInput) {
+}: ProjectActionsInput) {
   const fetchSessions = useCallback(
     async (silent = false) => {
       if (!activeProjectPath) {
@@ -260,4 +260,4 @@ export function useWorkspaceRefreshActions({
   };
 }
 
-export type WorkspaceRefreshActions = ReturnType<typeof useWorkspaceRefreshActions>;
+export type ProjectRefreshActions = ReturnType<typeof useProjectRefreshActions>;

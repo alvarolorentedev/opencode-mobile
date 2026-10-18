@@ -333,7 +333,7 @@
     },
     "slimInterface": {
       "title": "Schlanke Oberfläche",
-      "description": "Verkleinert Schaltflächen, Abstände und Kopfzeilen in Chat, Terminal und Arbeitsbereich, damit mehr Text auf den Bildschirm passt."
+      "description": "Verkleinert Schaltflächen, Abstände und Kopfzeilen in Chat, Terminal und Projekt, damit mehr Text auf den Bildschirm passt."
     }
   },
   "connect": {

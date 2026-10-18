@@ -25,7 +25,7 @@ export type ProviderEventActions = {
   refreshPendingInteractions: () => Promise<unknown>;
   refreshServerFeatures: () => Promise<unknown>;
   refreshChatCapabilities: () => Promise<unknown>;
-  refreshWorkspaceCatalog: (silent?: boolean) => Promise<unknown>;
+  refreshProjectCatalog: (silent?: boolean) => Promise<unknown>;
   refreshTerminals: () => Promise<unknown>;
   refreshWorktrees: () => Promise<unknown>;
   refreshMcpServers: () => Promise<unknown>;
@@ -91,10 +91,10 @@ export function handleProviderEvent(event: OpencodeEvent, actions: ProviderEvent
   if (/^(server\.connected|config\.|provider\.|model\.|agent\.|skill\.|command\.|integration\.|credential\.|models-dev\.|reference\.|plugin\.)/.test(type)) {
     void actions.refreshChatCapabilities().catch(() => undefined);
   }
-  if (type.startsWith('project.')) void actions.refreshWorkspaceCatalog(true).catch(() => undefined);
+  if (type.startsWith('project.')) void actions.refreshProjectCatalog(true).catch(() => undefined);
   if (type === 'filesystem.changed' || type.startsWith('vcs.')) void actions.refreshServerFeatures().catch(() => undefined);
   if (type.startsWith('pty.')) void actions.refreshTerminals().catch(() => undefined);
-  if (type.startsWith('worktree.')) { void actions.refreshWorktrees().catch(() => undefined); void actions.refreshWorkspaceCatalog(true).catch(() => undefined); }
+  if (type.startsWith('worktree.')) { void actions.refreshWorktrees().catch(() => undefined); void actions.refreshProjectCatalog(true).catch(() => undefined); }
   if (type.startsWith('mcp.')) void actions.refreshMcpServers().catch(() => undefined);
   if (type.startsWith('lsp.')) void actions.refreshDiagnostics().catch(() => undefined);
 }

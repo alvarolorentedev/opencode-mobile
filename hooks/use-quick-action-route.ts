@@ -5,7 +5,7 @@ import { readInitialQuickAction, subscribeQuickActions, type QuickAction } from 
 import { useCurrentSession } from '@/providers/opencode-contexts';
 
 // Routes a launcher/home-screen quick action into the app. Session actions reuse
-// the existing session deep-link resolver, so the connection, workspace, and
+// the existing session deep-link resolver, so the connection, project, and
 // session are validated exactly like an external link or a notification tap.
 // New chat creates through the provider and lands on the Chat tab. The initial
 // cold-start action is consumed once, after hydration, to avoid navigating

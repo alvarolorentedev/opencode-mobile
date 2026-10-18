@@ -11,8 +11,8 @@ export default function OnboardingConnectScreen() {
   const router = useRouter();
   const [busy, setBusy] = useState(false);
   return <OnboardingStep step={3} totalSteps={5} title={t('settings:connection.addConnection')} testID="onboarding-connect" onBack={busy ? undefined : () => router.back()} footer={
-    <Button disabled={busy} testID="onboarding-connect-skip" onPress={() => router.push('/onboarding/workspace')}>{t('onboarding:connect.skip')}</Button>
+    <Button disabled={busy} testID="onboarding-connect-skip" onPress={() => router.push('/onboarding/project')}>{t('onboarding:connect.skip')}</Button>
   }>
-    <ConnectionSetupForm onBusyChange={setBusy} onPair={() => router.push('/pair')} onConnected={() => router.push('/onboarding/workspace')} />
+    <ConnectionSetupForm onBusyChange={setBusy} onPair={() => router.push('/pair')} onConnected={() => router.push('/onboarding/project')} />
   </OnboardingStep>;
 }

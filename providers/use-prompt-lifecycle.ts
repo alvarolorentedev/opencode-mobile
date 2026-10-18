@@ -199,7 +199,7 @@ export function usePromptLifecycle({
           return true;
         }
         // Delayed safety refresh. The server may finish after promptAsync
-        // returns, and a completion across workspaces can be missed when the
+        // returns, and a completion across projects can be missed when the
         // event directory does not match the active project. Re-read the
         // transcript once after the typical completion window so the busy
         // safety poll can run at a slower, lower-data cadence.
@@ -295,7 +295,7 @@ export function usePromptLifecycle({
         const key = pendingNotificationKey(pending.connectionScope, sessionId);
         // A record for another project cannot be confirmed from this project's
         // session list; keep it for the background monitor or a later return to
-        // that workspace instead of dropping a completion silently.
+        // that project instead of dropping a completion silently.
         if (pending.projectPath !== activeProjectPath) {
           continue;
         }

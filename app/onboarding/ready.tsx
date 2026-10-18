@@ -68,8 +68,8 @@ export default function OnboardingReadyScreen() {
           left={(props) => <List.Icon {...props} icon="server-network" color={palette.tint} />}
         />
         <List.Item
-          title={t('onboarding:ready.workspace')}
-          description={activeProject ? `${activeProject.label} · ${activeProject.path}` : t('onboarding:ready.workspaceMissing')}
+          title={t('onboarding:ready.project')}
+          description={activeProject ? `${activeProject.label} · ${activeProject.path}` : t('onboarding:ready.projectMissing')}
           titleStyle={{ color: palette.muted, fontSize: 13 }}
           descriptionStyle={{ color: palette.text }}
           left={(props) => <List.Icon {...props} icon="folder-outline" color={palette.tint} />}

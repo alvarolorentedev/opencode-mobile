@@ -10,17 +10,17 @@ requires explicit human validation under `AGENTS.md`.
 ## 1. Provider and chat orchestration wiring
 
 `providers/opencode-provider.tsx` is the single orchestrator and remains the
-app's main coupling hotspot. It currently sits exactly at the architecture
+app's main coupling hotspot. It currently sits near the architecture
 ratchet limits enforced by `tests/vitest/architecture.test.ts`:
 
-- the provider file is **exactly 500 lines** (`MAX_LINES` = 500), and
+- the provider file is 477 lines (`MAX_LINES` = 500), and
 - the combined domain-context surface is **exactly 135 members**
   (`contextMembers <= 135`).
 
 The caps are doing their job, but the pressure shows up as relocation rather
 than reduction:
 
-- `OpencodeProvider` spreads `...state` (and, further down, `...workspace`,
+- `OpencodeProvider` spreads `...state` (and, further down, `...project`,
   `...sessionActions`, `...prompt`, ...) into roughly twenty `use*` hooks, then
   re-assembles the context values.
 - `providers/opencode-provider-action-inputs.ts` and

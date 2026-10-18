@@ -40,12 +40,12 @@ OpenCode Mobile is an Expo / React Native client for an OpenCode server. The app
 
 Most important behavior flows through this provider:
 
-- server connection and workspace discovery
+- server connection and project discovery
 - session lifecycle
 - prompt submission
 - transcript, diff, and todo refresh
 - session-scoped permission and question handling with event and list reconciliation
-- session lifecycle/archive, slash commands, workspace editing/worktrees, MCP, PTYs, and diagnostics
+- session lifecycle/archive, slash commands, project editing/worktrees, MCP, PTYs, and diagnostics
 - provider/model/agent capability discovery
 - local persistence
 - conversation mode orchestration
@@ -54,7 +54,7 @@ Most important behavior flows through this provider:
 The tabs mostly render and manipulate provider state:
 
 - `Chat`: active session UI
-- `Workspace`: project and session selection
+- `Project`: project and session selection
 - `Settings`: connection, provider, MCP, notification, and voice configuration
 - `Terminal`: interactive project PTYs with xterm and terminal-key accessory
 

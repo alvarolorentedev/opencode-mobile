@@ -5,7 +5,7 @@ export const CONNECTION_PROFILES_STORAGE_KEY = 'opencode-mobile.connection-profi
 export const CHAT_PREFERENCES_STORAGE_KEY = 'opencode-mobile.chat-preferences';
 export const ACTIVE_PROJECT_STORAGE_KEY = 'opencode-mobile.active-project';
 // Completion-only first-run setup marker. It never stores connection,
-// workspace, preference, or permission values; those stay in their existing
+// project, preference, or permission values; those stay in their existing
 // stores. A value below CURRENT_ONBOARDING_VERSION means the assistant should
 // run; version 0 marks "started but not completed" so a relaunch is not
 // mistaken for a pre-onboarding upgrade. See providers/onboarding-state.ts.
@@ -13,6 +13,11 @@ export const ONBOARDING_VERSION_STORAGE_KEY = 'opencode-mobile.onboarding-versio
 export const LAST_SESSION_BY_PROJECT_STORAGE_KEY = 'opencode-mobile.last-session-by-project';
 export const PENDING_NOTIFICATION_SESSIONS_STORAGE_KEY = 'opencode-mobile.pending-notification-sessions';
 export const FAVORITE_SESSIONS_STORAGE_KEY = 'opencode-mobile.favorite-sessions';
+// Opened projects per connection scope (most-recent-first directory paths).
+// Mirrors the desktop Home list: the picker shows projects the user opened on
+// this device, while `project.list()` only enriches them. See
+// providers/projects-storage.ts.
+export const PROJECTS_STORAGE_KEY = 'opencode-mobile.projects';
 // Bounded, non-secret task snapshot for the Android home widget. The widget
 // handler runs headless without provider state, so the app writes this on
 // confirmed provider changes and the handler renders from it. See
@@ -32,7 +37,7 @@ export const LAST_JS_ERROR_FILENAME = 'opencode-mobile.last-js-error.json';
 // exposing the same path must never share cache entries.
 //
 // Per-project session list cache. Hydrated on app open and on every project
-// switch so the workspace chat list paints without waiting for the server;
+// switch so the project chat list paints without waiting for the server;
 // rewritten only from confirmed fetch results in
 // providers/opencode-provider.tsx fetchSessions. See providers/session-cache.ts.
 export function sessionsCacheKey(connectionScope: string, projectPath: string) {

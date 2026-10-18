@@ -79,7 +79,7 @@ export function dispatchCompatibilityEvent(event: GlobalEvent['payload'], action
       return;
     case 'project.updated':
     case 'project.directories.updated':
-      void actions.refreshWorkspaceCatalog(true).catch(() => undefined);
+      void actions.refreshProjectCatalog(true).catch(() => undefined);
       return;
     case 'file.edited':
     case 'file.watcher.updated':
@@ -95,7 +95,7 @@ export function dispatchCompatibilityEvent(event: GlobalEvent['payload'], action
     case 'worktree.ready':
     case 'worktree.failed':
       void actions.refreshWorktrees().catch(() => undefined);
-      void actions.refreshWorkspaceCatalog(true).catch(() => undefined);
+      void actions.refreshProjectCatalog(true).catch(() => undefined);
       return;
     case 'mcp.tools.changed':
       void actions.refreshMcpServers().catch(() => undefined);

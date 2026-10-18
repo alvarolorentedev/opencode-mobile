@@ -1,21 +1,21 @@
 import { describe, expect, it, vi } from 'vitest';
 
-import { workspacePath, workspaceEntries, workspaceWorktrees } from '@/lib/opencode/workspace';
-import { findFiles, listFiles, readFile, listWorktrees } from '@/providers/services/workspace-service';
+import { projectPath, projectEntries, projectWorktrees } from '@/lib/opencode/project';
+import { findFiles, listFiles, readFile, listWorktrees } from '@/providers/services/project-service';
 import { decodeFile } from '@/lib/opencode/v2/shared';
 
 vi.mock('@/lib/opencode/client', () => ({ getServerBase: () => ({ origin: 'http://test', pathPrefix: '' }) }));
 
-describe('workspace protocol', () => {
+describe('project protocol', () => {
   it('keeps paths within the selected root and sorts folders first', () => {
-    expect(workspacePath('/repo/src/a.ts', '/repo')).toBe('src/a.ts');
-    expect(workspacePath('.', '/repo', true)).toBe('');
-    for (const path of ['../secret', '/repo-other/file', '/repo/../secret']) expect(() => workspacePath(path, '/repo')).toThrow();
-    expect(() => workspacePath('file', '')).toThrow(/Choose a workspace/);
-    expect(workspaceEntries([{ path: 'z.ts', type: 'file' }, { path: 'src', type: 'directory' }, { path: 'app', type: 'directory' }], '/repo').map((entry) => entry.name)).toEqual(['app', 'src', 'z.ts']);
+    expect(projectPath('/repo/src/a.ts', '/repo')).toBe('src/a.ts');
+    expect(projectPath('.', '/repo', true)).toBe('');
+    for (const path of ['../secret', '/repo-other/file', '/repo/../secret']) expect(() => projectPath(path, '/repo')).toThrow();
+    expect(() => projectPath('file', '')).toThrow(/Choose a project/);
+    expect(projectEntries([{ path: 'z.ts', type: 'file' }, { path: 'src', type: 'directory' }, { path: 'app', type: 'directory' }], '/repo').map((entry) => entry.name)).toEqual(['app', 'src', 'z.ts']);
   });
   it('normalizes worktree names without inventing branch information', () => {
-    expect(workspaceWorktrees(['/worktrees/task', { directory: '/worktrees/fix', name: 'Fix', branch: 'fix' }])).toEqual([
+    expect(projectWorktrees(['/worktrees/task', { directory: '/worktrees/fix', name: 'Fix', branch: 'fix' }])).toEqual([
       { directory: '/worktrees/task', name: 'task', branch: undefined }, { directory: '/worktrees/fix', name: 'Fix', branch: 'fix' },
     ]);
   });

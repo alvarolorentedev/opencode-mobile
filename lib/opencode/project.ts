@@ -1,30 +1,30 @@
 import { compareLabels } from '@/lib/compare-labels';
 import type { FileNode, Worktree } from './types';
 
-export type WorkspaceFileEntry = Pick<FileNode, 'path' | 'name' | 'type'>;
-export type WorkspaceWorktree = Pick<Worktree, 'directory' | 'name'> & { branch?: string };
+export type ProjectFileEntry = Pick<FileNode, 'path' | 'name' | 'type'>;
+export type ProjectWorktree = Pick<Worktree, 'directory' | 'name'> & { branch?: string };
 
-export function workspacePath(path: string, root: string, allowRoot = false): string {
-  if (!root.trim()) throw new Error('Choose a workspace before accessing files.');
+export function projectPath(path: string, root: string, allowRoot = false): string {
+  if (!root.trim()) throw new Error('Choose a project before accessing files.');
   const value = path.replace(/\\/g, '/');
   const base = root.replace(/\\/g, '/').replace(/\/+$/, '');
   const absolute = value.startsWith('/') || /^[a-z]:\//i.test(value);
-  if (absolute && value !== base && !value.startsWith(`${base}/`)) throw new Error('The path is outside the selected workspace.');
+  if (absolute && value !== base && !value.startsWith(`${base}/`)) throw new Error('The path is outside the selected project.');
   const relative = absolute ? value.slice(base.length).replace(/^\//, '') : value;
-  if (relative.split('/').includes('..') || /[\x00-\x1f]/.test(relative)) throw new Error('Invalid workspace path.');
+  if (relative.split('/').includes('..') || /[\x00-\x1f]/.test(relative)) throw new Error('Invalid project path.');
   const normalized = relative.split('/').filter((part) => part && part !== '.').join('/');
   if (!allowRoot && !normalized) throw new Error('A file path is required.');
   return normalized;
 }
 
-export function workspaceEntries(entries: Pick<FileNode, 'path' | 'type'>[], root: string): WorkspaceFileEntry[] {
+export function projectEntries(entries: Pick<FileNode, 'path' | 'type'>[], root: string): ProjectFileEntry[] {
   return entries.map((entry) => {
-    const path = workspacePath(entry.path, root);
+    const path = projectPath(entry.path, root);
     return { path, name: path.split('/').pop()!, type: entry.type };
   }).sort((a, b) => a.type === b.type ? compareLabels(a.name, b.name) : a.type === 'directory' ? -1 : 1);
 }
 
-export function workspaceWorktrees(entries: (string | Pick<Worktree, 'directory'> & Partial<Worktree>)[]): WorkspaceWorktree[] {
+export function projectWorktrees(entries: (string | Pick<Worktree, 'directory'> & Partial<Worktree>)[]): ProjectWorktree[] {
   return entries.map((entry) => {
     const directory = typeof entry === 'string' ? entry : entry.directory;
     return { directory, name: (typeof entry === 'string' ? undefined : entry.name) || directory.split(/[\\/]/).filter(Boolean).pop() || directory,

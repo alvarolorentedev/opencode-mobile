@@ -137,7 +137,7 @@
     "estimatedCost": "预计 API 费用 {{cost}}",
     "openChats": "打开聊天。{{title}}",
     "untitledChat": "未命名聊天",
-    "chooseWorkspace": "选择工作区",
+    "chooseProject": "选择项目",
     "newChat": "新建聊天",
     "showUsage": "显示会话用量详情",
     "stopConversationMode": "停止对话模式",
@@ -162,7 +162,7 @@
   "library": {
     "title": "聊天",
     "searchPlaceholder": "搜索聊天",
-    "chooseWorkspace": "选择工作区",
+    "chooseProject": "选择项目",
     "swipeHint": " · 左滑查看操作",
     "active": "活跃",
     "archived": "已归档",
@@ -219,7 +219,7 @@
   },
   "starter": {
     "title": "开始新任务",
-    "description": "保持提示词具体，OpenCode 会检查工作区、显示进度，并流式返回文件更改。",
+    "description": "保持提示词具体，OpenCode 会检查项目、显示进度，并流式返回文件更改。",
     "prompts": {
       "polish": "解释这个项目",
       "review": "查看最近的更改",
@@ -260,10 +260,10 @@
     "filesChangedCompact_other": "{{files}} 个文件已更改 · +{{additions}} / -{{deletions}}"
   },
   "session": {
-    "chooseWorkspace": "选择工作区",
-    "selectWorkspace": "在工作区标签页中选择一个项目，以打开其聊天上下文。",
+    "chooseProject": "选择项目",
+    "selectProject": "在项目标签页中选择一个项目，以打开其聊天上下文。",
     "opening": "正在打开 OpenCode Mobile",
-    "loading": "正在加载此 OpenCode Mobile 工作区的最新会话。"
+    "loading": "正在加载此 OpenCode Mobile 项目的最新会话。"
   },
   "deepLink": {
     "missingSessionId": "此会话链接缺少会话 ID。",

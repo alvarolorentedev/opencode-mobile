@@ -25,7 +25,7 @@ import {
   type ServerContract,
 } from '@/lib/opencode/client';
 import type { ConnectionProfile } from '@/lib/connection-profiles';
-import type { ChatPreferences, ConnectionState, WorkspaceCatalog } from '@/providers/opencode-provider-types';
+import type { ChatPreferences, ConnectionState, ProjectCatalog } from '@/providers/opencode-provider-types';
 import { useConnectState } from '@/providers/use-connect-state';
 import type { ConnectionActionsInput } from '@/providers/opencode-provider-action-inputs';
 
@@ -48,7 +48,7 @@ export function useConnectionConnectActions({
   softResetProjectState,
   isHydrated,
   isCurrentCatalogClient,
-  loadWorkspaceCatalog,
+  loadProjectCatalog,
   serverProjectsRef,
   setServerProjects,
   setCurrentProjectPath,
@@ -105,7 +105,7 @@ export function useConnectionConnectActions({
           scopeGenerationRef.current += 1;
           serverGenerationRef.current += 1;
           generation = serverGenerationRef.current;
-          // A same-machine credential renewal keeps workspace, session, terminal
+          // A same-machine credential renewal keeps project, session, terminal
           // and editor state; only client-bound in-flight bookkeeping resets.
           if (sameMachineRotation) softResetProjectState(); else clearProjectState();
         }
@@ -149,7 +149,7 @@ export function useConnectionConnectActions({
     if (!current()) return connectionRef.current;
 
     const candidates: ServerContract[] = detectedContract === 'v1' ? ['v1', 'v2'] : ['v2', 'v1'];
-    let catalog: WorkspaceCatalog | undefined;
+    let catalog: ProjectCatalog | undefined;
     let activeCatalogClient: ScopedOpencodeClient | undefined;
     let usedContract: ServerContract | undefined;
     let lastError: unknown;
@@ -158,7 +158,7 @@ export function useConnectionConnectActions({
       const candidateClient = buildClient({ ...targetSettings, directory: '' }, candidate);
       catalogGenerationRef.current.set(candidateClient, serverGenerationRef.current);
       try {
-        const result = await loadWorkspaceCatalog(true, candidateClient);
+        const result = await loadProjectCatalog(true, candidateClient);
         if (!isCurrentCatalogClient(candidateClient)) {
           return connectionRef.current;
         }
@@ -224,7 +224,7 @@ export function useConnectionConnectActions({
     }
 
     return connected;
-  }, [activeProjectPath, catalogGenerationRef, clearProjectState, softResetProjectState, isCurrentCatalogClient, loadWorkspaceCatalog, initialConnectStartedRef, serverContractRef, serverGenerationRef, scopeGenerationRef, settingsRef, setAvailableAgents, setAvailableModels, setAvailableProviders, setConnection, setCurrentConfig, setCurrentProjectPath, setProviderAuthMethodsById, setServerContract, setServerProjects, setServerRootPath, setSessionStatuses, setSessions, setSettings, serverProjectsRef, connectionRef]);
+  }, [activeProjectPath, catalogGenerationRef, clearProjectState, softResetProjectState, isCurrentCatalogClient, loadProjectCatalog, initialConnectStartedRef, serverContractRef, serverGenerationRef, scopeGenerationRef, settingsRef, setAvailableAgents, setAvailableModels, setAvailableProviders, setConnection, setCurrentConfig, setCurrentProjectPath, setProviderAuthMethodsById, setServerContract, setServerProjects, setServerRootPath, setSessionStatuses, setSessions, setSettings, serverProjectsRef, connectionRef]);
 
   const runConnect = useCallback((targetSettings: OpencodeConnectionSettings) => {
     const inFlight = connectInFlightRef.current;
@@ -244,7 +244,7 @@ export function useConnectionConnectActions({
 
   // A revoked or invalid credential on the data plane cannot heal by retrying.
   // Cloud Link reuses its prepared credential/recovery path; manual servers ask
-  // the user to reconnect. Server-derived caches are cleared, workspace
+  // the user to reconnect. Server-derived caches are cleared, project
   // selection is not.
   const handleStreamAuthFailure = useCallback((kind: ConnectionFailureKind) => {
     if (settingsRef.current.connect) {

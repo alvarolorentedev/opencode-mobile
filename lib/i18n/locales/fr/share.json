@@ -1,9 +1,9 @@
 {
   "title": "Partagé avec OpenCode",
   "subtitle": "Vérifiez le contenu, choisissez une conversation et ajoutez-le au message. Rien n’est envoyé avant votre confirmation.",
-  "workspace": "Espace de travail",
-  "noWorkspace": "Aucun espace de travail sélectionné",
-  "chooseWorkspace": "Choisir",
+  "project": "Projet",
+  "noProject": "Aucun projet sélectionné",
+  "chooseProject": "Choisir",
   "notConnected": "Non connecté à un serveur. Connectez-vous avant d'envoyer.",
   "link": "Lien",
   "attachments": "Pièces jointes",
