@@ -22,7 +22,6 @@ export function useSessionBootstrapActions({
   bootstrapTokenRef,
   isCurrentClient,
   fetchSessions,
-  refreshSessions,
   refreshMessages,
   refreshSessionDiff,
   refreshSessionTodos,
@@ -135,33 +134,5 @@ export function useSessionBootstrapActions({
     setIsBootstrappingChat,
   ]);
 
-  const refreshCurrentSession = useCallback(
-    async (silent = false) => {
-      if (!currentSessionId) {
-        return;
-      }
-
-      await Promise.all([
-        refreshSessions(silent),
-        refreshMessages(currentSessionId, silent),
-        refreshSessionDiff(currentSessionId, true),
-        refreshSessionTodos(currentSessionId),
-        refreshPendingInteractions(),
-      ]);
-    },
-    [currentSessionId, refreshMessages, refreshPendingInteractions, refreshSessionDiff, refreshSessionTodos, refreshSessions],
-  );
-
-  const refreshCurrentTodos = useCallback(
-    async (_silent = false) => {
-      if (!currentSessionId) {
-        return;
-      }
-
-      await refreshSessionTodos(currentSessionId);
-    },
-    [currentSessionId, refreshSessionTodos],
-  );
-
-  return { ensureActiveSession, refreshCurrentSession, refreshCurrentTodos };
+  return { ensureActiveSession };
 }

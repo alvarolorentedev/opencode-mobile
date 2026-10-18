@@ -83,7 +83,7 @@ Diff scope state:
 Important behavior:
 
 - data is fetched lazily when a session is opened or refreshed
-- the transcript window is paginated (newest 20 on open, older 20 per scroll-up, bounded at 200); see Message And Transcript Transformation
+- the transcript window is paginated (newest 20 on open, older 20 per scroll-up, bounded at 100); see Message And Transcript Transformation
 - message/diff/todo caches are updated by explicit refreshes, SSE events, and polling fallback
 - an incoming `session.diff` event only overwrites the turn diff when the surface is not pinned to an earlier turn
 - on V2 the server has no todo endpoint, so `currentTodos` derives from the accumulated `todowrite` tool records (`deriveTodosFromMessages`), not just the loaded window; V1 stays server-authoritative
@@ -440,7 +440,7 @@ A per-session map keyed by stable step ID (`session:message:part`) retains fetch
 calls as the transcript window moves, without counting replayed calls twice.
 Model/provider breakdowns and call counts describe observed history, and are
 marked partial when the contiguous loaded window has not reached its beginning
-or has hit the 200-record cap. The app never fetches all history just for usage.
+or has hit the 100-record cap. The app never fetches all history just for usage.
 Observed step cost uses model-price USD estimates only when recorded cost is
 zero/absent and tokens are nonzero; an authoritative session cost of zero remains
 zero.
@@ -516,13 +516,16 @@ Derived from phase plus latest non-display transcript activity.
 
 Session history is paginated. Opening a session loads only the newest 20 raw
 records; scrolling to the top of the transcript pulls the previous 20 through
-the server's backward cursor, and the loaded window is bounded at 200 records
+the server's backward cursor, and the loaded window is bounded at 100 records
 with the oldest records dropped on overflow. Tail activity (SSE part/message
-updates, the safety poll, idle completion) fetches only the newest page and
-union-merges new records into the window, bridging backwards a bounded number of
-pages if a burst of messages arrived, so older loaded records are never
-re-downloaded. Removal, revert/unrevert, compaction, and reconnect reconciliation
-rebuild the window authoritatively instead of merging.
+updates, the safety poll, idle completion) fetches exactly one newest page and
+union-merges new records into the window, so older loaded records are never
+re-downloaded. When a burst is larger than one page and the newest page no
+longer overlaps the held window, the fetched page is adopted as a fresh
+contiguous window and history paging restarts from its oldest record instead of
+downloading bridging pages. Only server-side history rewrites rebuild the window
+instead of merging: compaction, revert/unrevert, and (on V1) explicit message
+removal. Reconnects and foreground returns tail-merge.
 
 V1 pages backwards with `limit`/`before` and an `x-next-cursor` header; V2
 translates descending API pages and opaque cursors into the same contract,
@@ -707,14 +710,18 @@ A rewrite that only mirrors persisted values would still miss important runtime 
 `use-opencode-realtime.ts`, composed by the provider, reconciles session/status,
 pending permission/question lists, and selected/conversation message, diff, and
 todo snapshots on the first envelope of every subscription, including reconnects.
-Only one reconciliation runs at a time, and a reconnect's authoritative rebuild
-is queued behind an in-flight safety poll rather than coalesced into it. SSE
-remains primary; a safety poll runs during active work even when SSE is connected,
-every 10 seconds while connected and every 5 seconds while disconnected. A
-submitted prompt also schedules a one-off transcript refresh after 5 seconds so a
-missed completion still lands. The first envelope of a subscription reconciles
-authoritatively (rebuilding the transcript window); later ticks tail-merge. Idle
-connected sessions do not poll.
+Only one reconciliation runs at a time, and a reconnect pass is queued behind an
+in-flight safety poll rather than coalesced into it. SSE remains primary; a safety
+poll runs during active work even when SSE is connected, every 10 seconds while
+connected and every 5 seconds while disconnected. A submitted prompt also
+schedules a one-off transcript refresh after 5 seconds so a missed completion
+still lands. Every transcript refresh tail-merges one newest page; only a
+compaction or revert event rebuilds the window. Idle connected sessions do not
+poll.
+Streaming part events refresh the transcript only for the session the user can
+see (the active chat, conversation mode, or a session with queued prompts);
+background sessions refresh on status transitions and completion. Bursts of part
+events coalesce into a single read.
 A liveness watchdog runs only while the app is foregrounded: a stream that has
 received no envelope for 90 seconds (3 seconds in E2E builds) is re-subscribed
 once per window, and a foreground return either retries immediately (when the

@@ -529,6 +529,10 @@ reads, V2 shared listing/status, and failure retry/client isolation.
 the Vitest `record-preservation` suite covers the bounded-window merge: unchanged record and
 array references are preserved, changed records are replaced, new tail records
 are appended, and scrolled-up history is prepended without duplicates.
+the Vitest `transcript-policy` suite covers the refresh modes: a cold load fetches
+one newest page, a tail merge appends without dropping held records, a
+non-overlapping burst adopts the fetched page, the window is capped by dropping
+the oldest records, and only `replace` discards held history.
 `test:provider-runtime` runs actual provider callbacks and extracted hooks with
 deterministic platform/timer boundaries: out-of-order project results, stale
 same-directory server responses, safety-poll overlap, reconnect snapshots,

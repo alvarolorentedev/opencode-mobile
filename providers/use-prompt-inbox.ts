@@ -3,12 +3,13 @@ import { useCallback, useRef, useState } from 'react';
 import type { ScopedOpencodeClient } from '@/lib/opencode/client';
 import type { SessionMessageRecord } from '@/lib/opencode/format';
 import type { PendingPrompt, PromptDelivery, PromptInput } from '@/lib/opencode/prompt-inbox';
+import type { TranscriptRefreshMode } from '@/providers/opencode-provider-types';
 import { getSessionInbox } from '@/providers/services/session-service';
 
 export function usePromptInbox({ client, isCurrentClient, refreshMessages: readMessages }: {
   client: ScopedOpencodeClient;
   isCurrentClient: (candidate: object) => boolean;
-  refreshMessages: (sessionId: string, silent?: boolean, options?: { full?: boolean }) => Promise<SessionMessageRecord[]>;
+  refreshMessages: (sessionId: string, silent?: boolean, options?: { mode?: TranscriptRefreshMode }) => Promise<SessionMessageRecord[]>;
 }) {
   const [snapshot, setSnapshot] = useState<{ client: object; prompts: Record<string, PendingPrompt[]> }>({ client, prompts: {} });
   const revisions = useRef<Record<string, number>>({});
@@ -23,7 +24,7 @@ export function usePromptInbox({ client, isCurrentClient, refreshMessages: readM
     });
   }, [client, isCurrentClient]);
 
-  const refreshMessages = useCallback(async (sessionId: string, silent = false, options?: { full?: boolean }) => {
+  const refreshMessages = useCallback(async (sessionId: string, silent = false, options?: { mode?: TranscriptRefreshMode }) => {
     if (!client.promptInbox) return readMessages(sessionId, silent, options);
     const revision = (revisions.current[sessionId] ?? 0) + 1;
     revisions.current[sessionId] = revision;

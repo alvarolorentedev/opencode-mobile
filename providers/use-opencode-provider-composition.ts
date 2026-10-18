@@ -279,6 +279,12 @@ export function useOpencodeProviderComposition() {
     refreshProjectCatalogRef.current = project.refreshProjectCatalog;
     refreshChatCapabilitiesRef.current = capabilities.refreshChatCapabilities;
     ensureActiveSessionRef.current = sessionActions.ensureActiveSession;
+    const focusSessionIds = new Set<string>();
+    if (state.currentSessionId) focusSessionIds.add(state.currentSessionId);
+    if (conversationSessionId) focusSessionIds.add(conversationSessionId);
+    for (const [sessionId, prompts] of Object.entries(inbox.pendingPromptsBySession)) {
+      if (prompts.length > 0) focusSessionIds.add(sessionId);
+    }
     eventActionsRef.current = {
       refreshSessions: project.refreshSessions,
       refreshArchivedSessions: sessionActions.refreshArchivedSessions,
@@ -291,6 +297,7 @@ export function useOpencodeProviderComposition() {
       refreshWorktrees: worktree.refreshWorktrees,
       refreshMcpServers: mcp.refreshMcpServers,
       refreshDiagnostics: project.refreshDiagnostics,
+      focusSessionIds,
       setSessionStatuses: state.setSessionStatuses,
       setPromptError: prompt.setPromptError,
       setDiffsBySession: state.setDiffsBySession,

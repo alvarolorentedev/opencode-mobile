@@ -9,6 +9,7 @@ import {
   unloadWorkingSoundAsync,
 } from '@/lib/voice/working-sound';
 import type { ConversationPhase } from '@/providers/opencode-provider-types';
+import { pruneByKeepIds } from '@/providers/opencode-provider-utils';
 import type { OpencodeProviderState } from '@/providers/use-opencode-provider-state';
 
 type ProviderEffectsInput = OpencodeProviderState & {
@@ -169,33 +170,9 @@ export function useOpencodeProviderEffects({
       if (status.type !== 'idle') keepIds.add(id);
     }
 
-    setMessagesBySession((current) => {
-      const keys = Object.keys(current);
-      if (keys.length <= keepIds.size + 1) return current;
-      const next: typeof current = {};
-      for (const key of keys) {
-        if (keepIds.has(key)) next[key] = current[key];
-      }
-      return next;
-    });
-    setDiffsBySession((current) => {
-      const keys = Object.keys(current);
-      if (keys.length <= keepIds.size + 1) return current;
-      const next: typeof current = {};
-      for (const key of keys) {
-        if (keepIds.has(key)) next[key] = current[key];
-      }
-      return next;
-    });
-    setTodosBySession((current) => {
-      const keys = Object.keys(current);
-      if (keys.length <= keepIds.size + 1) return current;
-      const next: typeof current = {};
-      for (const key of keys) {
-        if (keepIds.has(key)) next[key] = current[key];
-      }
-      return next;
-    });
+    setMessagesBySession((current) => pruneByKeepIds(current, keepIds, keepIds.size + 1));
+    setDiffsBySession((current) => pruneByKeepIds(current, keepIds, keepIds.size + 1));
+    setTodosBySession((current) => pruneByKeepIds(current, keepIds, keepIds.size + 1));
     pruneTranscript(keepIds, keepIds.size + 1);
   }, [currentSessionId, conversationSessionId, isBootstrappingChat, pruneTranscript, sessionStatuses, setDiffsBySession, setMessagesBySession, setTodosBySession]);
 }

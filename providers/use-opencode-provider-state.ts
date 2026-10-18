@@ -27,6 +27,7 @@ import type {
 import type { AgentOption, ModelOption } from '@/providers/opencode-model-selection';
 import type { ChatPreferences } from '@/providers/opencode-preferences';
 import { defaultChatPreferences } from '@/providers/opencode-preferences';
+import type { SessionRefreshOptions } from '@/providers/opencode-provider-events';
 import type {
   ConnectionState,
   DiffScope,
@@ -109,7 +110,7 @@ export function useOpencodeProviderState() {
   const bootstrapPromiseRef = useRef<Promise<string | undefined> | null>(null);
   const bootstrapTokenRef = useRef<object | undefined>(undefined);
   const sessionRefreshTimeoutsRef = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
-  const sessionRefreshOptionsRef = useRef<Record<string, { messages?: boolean; fullMessages?: boolean; diff?: boolean; todos?: boolean; sessions?: boolean }>>({});
+  const sessionRefreshOptionsRef = useRef<Record<string, SessionRefreshOptions>>({});
   const diffScopeBySessionRef = useRef<Record<string, DiffScope>>({});
   const selectedDiffMessageBySessionRef = useRef<Record<string, string | undefined>>({});
   const messagesBySessionRef = useRef(messagesBySession);

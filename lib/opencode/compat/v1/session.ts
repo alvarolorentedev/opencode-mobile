@@ -88,8 +88,7 @@ export async function listArchivedSessions(client: OpencodeClient) {
   return sessions.filter((session) => Boolean(session.time.archived));
 }
 
-export const INITIAL_MESSAGE_LIMIT = 20;
-export const HISTORY_PAGE_LIMIT = 20;
+export const TRANSCRIPT_PAGE_LIMIT = 20;
 
 export type SessionMessagePage = {
   records: SessionMessageRecord[];
@@ -107,7 +106,7 @@ export async function getSessionMessages(
   sessionId: string,
   options: { limit?: number; before?: string } = {},
 ): Promise<SessionMessagePage> {
-  const limit = options.limit ?? HISTORY_PAGE_LIMIT;
+  const limit = options.limit ?? TRANSCRIPT_PAGE_LIMIT;
   const before = options.before;
   return coalesceRead(client, `messages:${sessionId}:${before ?? 'newest'}:${limit}`, () =>
     fetchSessionMessagePage(client, sessionId, limit, before));
@@ -127,7 +126,7 @@ export async function getSessionDiff(client: OpencodeClient, sessionId: string, 
   // only a cold cache pays for a newest-page read.
   let targetMessageId = messageId;
   if (!targetMessageId) {
-    const source = messages ?? (await getSessionMessages(client, sessionId, { limit: INITIAL_MESSAGE_LIMIT })).records;
+    const source = messages ?? (await getSessionMessages(client, sessionId, { limit: TRANSCRIPT_PAGE_LIMIT })).records;
     const latestUserMessage = source.slice().reverse().find(({ info }) => info.role === 'user');
     if (!latestUserMessage) {
       return [];

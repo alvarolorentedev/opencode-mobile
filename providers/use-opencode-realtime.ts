@@ -4,6 +4,7 @@ import { classifyConnectionFailure, isAuthConnectionFailure } from '@/lib/openco
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import type { OpencodeEvent } from '@/lib/opencode/events';
 import type { ConnectionFailureKind, ScopedOpencodeClient } from '@/lib/opencode/client';
+import type { TranscriptRefreshMode } from '@/providers/opencode-provider-types';
 
 type RealtimeActions = {
   onEvent: (event: OpencodeEvent) => void;
@@ -12,7 +13,7 @@ type RealtimeActions = {
   onFatalError?: (kind: ConnectionFailureKind) => void;
   refreshSessions: (silent: boolean) => Promise<unknown>;
   refreshPendingInteractions: () => Promise<unknown>;
-  refreshMessages: (sessionId: string, silent: boolean, options?: { full?: boolean }) => Promise<unknown>;
+  refreshMessages: (sessionId: string, silent: boolean, options?: { mode?: TranscriptRefreshMode }) => Promise<unknown>;
   refreshSessionDiff: (sessionId: string, silent: boolean) => Promise<unknown>;
   refreshSessionTodos: (sessionId: string) => Promise<unknown>;
 };
@@ -63,7 +64,7 @@ export function useOpencodeRealtime({ catalogClient, activeProjectPath, connecte
     result = Promise.allSettled([
       next.refreshSessions(true), next.refreshPendingInteractions(),
       next.refreshNativeSurfaces?.(full),
-      ...[...sessions].flatMap((id) => [next.refreshMessages(id, true, full ? { full: true } : undefined), next.refreshSessionDiff(id, true), next.refreshSessionTodos(id)]),
+      ...[...sessions].flatMap((id) => [next.refreshMessages(id, true), next.refreshSessionDiff(id, true), next.refreshSessionTodos(id)]),
     ]).finally(() => {
       if (inFlight.current !== result) return;
       inFlight.current = undefined;

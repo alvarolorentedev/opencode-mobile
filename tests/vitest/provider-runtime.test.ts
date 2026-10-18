@@ -4,6 +4,7 @@ import { runInNewContext } from 'node:vm';
 import ts from 'typescript';
 import { loadTs, hookRuntime, deferred } from '../helpers/runtime.mjs';
 import { describe, it } from 'vitest';
+import { pruneByKeepIds } from '@/providers/opencode-provider-utils';
 
 describe('provider runtime actions', () => {
   it('provider runtime actions', async () => {
@@ -319,11 +320,11 @@ wake(null); await runtime.settle(); runtime.unmount(); assert.equal(runtime.coun
 
 // SSE liveness: a stream that goes silent without an error is re-established
 // once per staleness window, a long background return re-verifies the stream,
-// and a reconnect's full rebuild is queued behind an in-flight safety poll.
+// and a reconnect reconcile is queued behind an in-flight safety poll.
 {
   const liveness = hookRuntime();
   let now = 1_000_000, subscriptions = 0, wake, sessions = 0, pending = 0, heldSessions;
-  const fullPasses = [];
+  const messageModes = [];
   const listeners = new Set();
   const client = { api: { event: { async subscribe({ signal }) {
     subscriptions++;
@@ -346,7 +347,7 @@ wake(null); await runtime.settle(); runtime.unmount(); assert.equal(runtime.coun
     catalogClient: client, activeProjectPath: '/repo', connected: true, busy: false, currentSessionId: 's',
     onEvent: () => {}, refreshSessions: async () => { sessions++; await heldSessions?.promise; },
     refreshPendingInteractions: async () => { pending++; },
-    refreshMessages: async (_id, _silent, options) => { fullPasses.push(Boolean(options?.full)); },
+    refreshMessages: async (_id, _silent, options) => { messageModes.push(options?.mode); },
     refreshSessionDiff: async () => {}, refreshSessionTodos: async () => {},
   };
   liveness.mount(hook.useOpencodeRealtime, inputs); await liveness.settle();
@@ -365,16 +366,16 @@ wake(null); await runtime.settle(); runtime.unmount(); assert.equal(runtime.coun
   await liveness.settle();
   assert.equal(subscriptions, 3, 'a long background return re-verifies the stream');
   wake({ location: { directory: '/repo' }, type: 'server.connected' }); await liveness.settle();
-  fullPasses.length = 0;
+  messageModes.length = 0;
   heldSessions = deferred();
   liveness.update({ busy: true }); liveness.fire(10000); await liveness.settle();
-  assert.deepEqual(fullPasses, [false], 'the busy safety poll tails the transcript');
+  assert.deepEqual(messageModes, [undefined], 'the busy safety poll tails the transcript');
   wake(null); await liveness.settle(); liveness.fire(1000); await liveness.settle();
   assert.equal(subscriptions, 4);
   wake({ location: { directory: '/repo' }, type: 'server.connected' }); await liveness.settle();
-  assert.deepEqual(fullPasses, [false], 'the reconnect rebuild waits for the in-flight poll');
+  assert.deepEqual(messageModes, [undefined], 'the reconnect reconcile waits for the in-flight poll');
   heldSessions.resolve(); heldSessions = undefined; await liveness.settle();
-  assert.deepEqual(fullPasses, [false, true], 'the reconnect rebuild cannot be swallowed by the poll');
+  assert.deepEqual(messageModes, [undefined, undefined], 'the reconnect reconcile cannot be swallowed by the poll');
   // A short background return must still re-assert domain data even though the
   // stream stayed up and no restart/rebuild is requested.
   const sessionsBeforeForeground = sessions;
@@ -661,6 +662,7 @@ const pruneContext = {
   setDiffsBySession: (update) => { cachedDiffs = update(cachedDiffs); },
   setTodosBySession: (update) => { cachedTodos = update(cachedTodos); },
   pruneTranscript: () => {},
+  pruneByKeepIds,
 };
 runInNewContext(ts.transpileModule(pruneEffect, { compilerOptions: { module: ts.ModuleKind.CommonJS } }).outputText, pruneContext);
 prune();

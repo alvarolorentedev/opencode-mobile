@@ -189,12 +189,12 @@ export function useSessionCrudActions({
 
   const revertSession = useCallback(async (sessionId: string, messageId: string) => {
     await svcRevertSession(client, sessionId, messageId);
-    await Promise.all([refreshSessions(true), refreshMessages(sessionId, true, { full: true }), refreshSessionDiff(sessionId, true)]);
+    await Promise.all([refreshSessions(true), refreshMessages(sessionId, true, { mode: 'replace' }), refreshSessionDiff(sessionId, true)]);
   }, [client, refreshMessages, refreshSessionDiff, refreshSessions]);
 
   const unrevertSession = useCallback(async (sessionId: string) => {
     await svcUnrevertSession(client, sessionId);
-    await Promise.all([refreshSessions(true), refreshMessages(sessionId, true, { full: true }), refreshSessionDiff(sessionId, true)]);
+    await Promise.all([refreshSessions(true), refreshMessages(sessionId, true, { mode: 'replace' }), refreshSessionDiff(sessionId, true)]);
   }, [client, refreshMessages, refreshSessionDiff, refreshSessions]);
 
   const executeCommand = useCallback(async (sessionId: string, command: string, args: string) => {

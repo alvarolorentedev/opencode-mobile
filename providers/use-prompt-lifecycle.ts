@@ -20,6 +20,7 @@ import { getSelectedModelParts } from '@/providers/opencode-model-selection';
 import type { ChatPreferences } from '@/providers/opencode-preferences';
 import { buildSystemPrompt } from '@/providers/opencode-preferences';
 import type { SessionRefreshOptions } from '@/providers/opencode-provider-events';
+import type { TranscriptRefreshMode } from '@/providers/opencode-provider-types';
 
 type PromptLifecycleInput = {
   submitPrompt: (input: PromptInput, delivery: PromptDelivery) => Promise<void>;
@@ -37,7 +38,7 @@ type PromptLifecycleInput = {
   setSelectedDiffMessageBySession: Dispatch<SetStateAction<Record<string, string | undefined>>>;
   fetchSessions: (silent?: boolean) => Promise<Session[]>;
   refreshSessions: (silent?: boolean) => Promise<unknown>;
-  refreshMessages: (sessionId: string, silent?: boolean, options?: { full?: boolean }) => Promise<SessionMessageRecord[]>;
+  refreshMessages: (sessionId: string, silent?: boolean, options?: { mode?: TranscriptRefreshMode }) => Promise<SessionMessageRecord[]>;
   refreshSessionDiff: (sessionId: string, silent?: boolean, messageId?: string) => Promise<unknown>;
   refreshSessionTodos: (sessionId: string) => Promise<unknown>;
   scheduleSessionRefresh: (sessionId: string, options?: SessionRefreshOptions) => void;
@@ -200,10 +201,10 @@ export function usePromptLifecycle({
         }
         // Delayed safety refresh. The server may finish after promptAsync
         // returns, and a completion across projects can be missed when the
-        // event directory does not match the active project. Re-read the
-        // transcript once after the typical completion window so the busy
-        // safety poll can run at a slower, lower-data cadence.
-        scheduleSessionRefresh(sessionId, { sessions: true, messages: true, fullMessages: true, diff: true, todos: true, delayMs: 5000 });
+        // event directory does not match the active project. Merge the newest
+        // page once after the typical completion window (never a full rebuild)
+        // so the busy safety poll can run at a slower, lower-data cadence.
+        scheduleSessionRefresh(sessionId, { sessions: true, messages: true, diff: true, todos: true, delayMs: 5000 });
 
         // A new user turn supersedes any earlier turn the diff surface was pinned to.
         if (owned) setSelectedDiffMessageBySession((current) => ({ ...current, [sessionId]: undefined }));

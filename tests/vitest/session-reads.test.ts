@@ -186,30 +186,3 @@ describe('session reads', () => {
     expect(Array.from((await listSessions({ compatibility: mixedClient } as any)).sessions, (s: any) => s.id)).toEqual(['active', 'restored']);
   });
 });
-
-describe('native background completion checks', () => {
-  it('does not mistake retry, inbox or approvals for completion and propagates read failures', async () => {
-    const { hasPendingSessionWork } = await import('@/providers/services/session-service');
-    const api: any = {
-      message: { list: vi.fn(async () => ({ data: [{ type: 'assistant', retry: { attempt: 2 } }] })) },
-      session: { inbox: { list: vi.fn(async () => []) } },
-      permission: { request: { list: vi.fn(async () => ({ data: [] })) } },
-      form: { list: vi.fn(async () => ({ data: [] })) },
-    };
-    const client = { api, __opencode: { directory: '/repo' } } as never;
-    expect(await hasPendingSessionWork(client, 's')).toBe(true);
-    api.message.list.mockResolvedValue({ data: [{ type: 'idle' }, { type: 'assistant', retry: {} }] });
-    expect(await hasPendingSessionWork(client, 's')).toBe(false);
-    api.session.inbox.list.mockResolvedValue([{}]);
-    expect(await hasPendingSessionWork(client, 's')).toBe(true);
-    api.session.inbox.list.mockResolvedValue([]);
-    api.permission.request.list.mockResolvedValue({ data: [{ sessionID: 's' }] });
-    expect(await hasPendingSessionWork(client, 's')).toBe(true);
-    api.permission.request.list.mockResolvedValue({ data: [] });
-    api.form.list.mockResolvedValue({ data: [{ sessionID: 'global' }] });
-    expect(await hasPendingSessionWork(client, 's')).toBe(true);
-    api.form.list.mockRejectedValue(new Error('offline'));
-    await expect(hasPendingSessionWork(client, 's')).rejects.toThrow('offline');
-    expect(await hasPendingSessionWork({ compatibility: {} } as never, 's')).toBe(false);
-  });
-});

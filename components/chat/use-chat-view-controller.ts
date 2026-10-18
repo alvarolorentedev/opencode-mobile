@@ -9,11 +9,12 @@ import { useUpdateBlocker } from '@/hooks/use-update-blocker';
 import { mergeSharedDraft } from '@/lib/share/parse';
 import { getConnectionScope, getConnectionUiScope } from '@/lib/connection-scope';
 import { type TranscriptEntry } from '@/lib/opencode/format';
-import { getTranscriptActivityLabel, getTurnPatchDetails, getUserTurnForMessage, isTranscriptDisplayMessage } from '@/lib/opencode/transcript';
+import { getTurnPatchDetails, getUserTurnForMessage, isTranscriptDisplayMessage } from '@/lib/opencode/transcript';
 import { getLatestContextTokens } from '@/lib/opencode/usage';
 import { openVoiceSettingsAsync } from '@/lib/voice/permissions';
 import { speakText, stopSpeaking } from '@/lib/voice/speech-output';
 import { useSpeechInput } from '@/lib/voice/use-speech-input';
+import { getTranscriptActivityLabelForEntries } from '@/providers/opencode-provider-selectors';
 import { useChatDraft } from './use-chat-draft';
 import { useChatViewActions } from './use-chat-view-actions';
 import {
@@ -46,7 +47,7 @@ export function useChatViewController() {
     pendingPrompts, abortSession, clearPromptError, commands, currentDiffs, currentDiffScope, currentMessages,
     currentPendingPermissions, currentPendingQuestions, currentTodos, currentTranscript, currentUsage,
     diffTurns, executeCommand, isRefreshingDiffs, isRefreshingMessages,
-    latestAssistantTurnUsage, promptError, refreshCurrentSession, refreshDiffs, rejectQuestion,
+    latestAssistantTurnUsage, promptError, refreshDiffs, rejectQuestion,
     replyToPermission, replyToQuestion, selectDiffMessage, selectedDiffMessageId, sendPrompt,
     sendingState, setAutoApprove, setDiffScope, transcriptPaging, sharedInput,
   } = useChat();
@@ -129,21 +130,7 @@ export function useChatViewController() {
   const progressIcon = completedTodoCount === currentTodos.length ? 'check-circle' : progressSlice > 0 ? `circle-slice-${progressSlice}` : 'circle-outline';
   const displayTranscript = useMemo(() => currentTranscript.filter(isTranscriptDisplayMessage), [currentTranscript]);
   const hasTranscriptMessages = currentMessages.length > 0;
-  const currentActivityLabel = useMemo(() => {
-    for (let index = currentTranscript.length - 1; index >= 0; index -= 1) {
-      const entry = currentTranscript[index];
-      if (isTranscriptDisplayMessage(entry)) {
-        continue;
-      }
-
-      const label = getTranscriptActivityLabel(entry);
-      if (label) {
-        return label;
-      }
-    }
-
-    return undefined;
-  }, [currentTranscript]);
+  const currentActivityLabel = useMemo(() => getTranscriptActivityLabelForEntries(currentTranscript), [currentTranscript]);
   const selectedSession = useMemo(
     () => sessions.find((session) => session.id === currentSessionId) || activeSession,
     [activeSession, currentSessionId, sessions],
@@ -441,8 +428,8 @@ export function useChatViewController() {
       buildSendErrorDetails, clearConversationFeedback, clearPromptError, dismissFailedInput,
       forkSession, handleAbort, handleAttach, handleConfirmStopConversation, handleCopyMessage,
       handleNewSession, handleReviewChanges, handleSendPrompt, handleSpeakEntry,
-      handleToggleRecording, handleVoiceRecovery, recoverFailedInput, refreshCurrentSession,
-      refreshDiffs, rejectQuestion, replyToPermission, replyToQuestion, revertSession,
+      handleToggleRecording, handleVoiceRecovery, recoverFailedInput, refreshDiffs,
+      rejectQuestion, replyToPermission, replyToQuestion, revertSession,
       selectDiffMessage, setAttachments, setAutoApprove, setChangesVisible, setCopiedMessageId,
       setDiffScope, setDraft, setExpandedDiffId, setIsUpdatingAutoApprove, setProgressVisible,
       setSendFeedback, setSessionMenuVisible, setVoiceFeedback, toggleConversationMode,

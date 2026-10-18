@@ -53,6 +53,28 @@ describe('handleProviderEvent', () => {
     expect(calls.scheduleSessionRefresh).toHaveBeenCalledWith('s1', { messages: true });
   });
 
+  it('skips part updates for sessions outside the visible focus set', () => {
+    const { actions, calls } = createActions();
+    actions.focusSessionIds = new Set(['visible']);
+    handleProviderEvent({ id: 'e', type: 'session.text.delta', data: { sessionID: 'background' } } as never, actions);
+    expect(calls.scheduleSessionRefresh).not.toHaveBeenCalled();
+    handleProviderEvent({ id: 'e2', type: 'session.tool.updated', data: { sessionID: 'visible' } } as never, actions);
+    expect(calls.scheduleSessionRefresh).toHaveBeenCalledWith('visible', { messages: true });
+  });
+
+  it('always re-reads inbox transitions even for background sessions', () => {
+    const { actions, calls } = createActions();
+    actions.focusSessionIds = new Set(['visible']);
+    handleProviderEvent({ id: 'e', type: 'session.inbox.enqueued', data: { sessionID: 'background' } } as never, actions);
+    expect(calls.scheduleSessionRefresh).toHaveBeenCalledWith('background', { messages: true });
+  });
+
+  it('rebuilds the window when a session compacts or reverts', () => {
+    const { actions, calls } = createActions();
+    handleProviderEvent({ id: 'e', type: 'session.compaction.started', data: { sessionID: 's1' } } as never, actions);
+    expect(calls.scheduleSessionRefresh).toHaveBeenCalledWith('s1', expect.objectContaining({ messages: true, messageMode: 'replace' }));
+  });
+
   it('refreshes the project catalog when project directories change', () => {
     const { actions, calls } = createActions();
     handleProviderEvent({ id: 'e', type: 'project.updated', data: { projectID: 'p1' } } as never, actions);

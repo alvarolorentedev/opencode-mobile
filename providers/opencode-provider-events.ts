@@ -8,10 +8,13 @@ import type { Dispatch, SetStateAction } from 'react';
 
 import type { PendingPermissionRequest, PendingQuestionRequest } from '@/lib/opencode/client';
 import type { FileDiff, SessionStatus, Todo } from '@/lib/opencode/types';
+import type { TranscriptRefreshMode } from '@/providers/opencode-provider-types';
 
 export type SessionRefreshOptions = {
   messages?: boolean;
-  fullMessages?: boolean;
+  // Overrides how a scheduled message refresh treats the held window. Only
+  // server-side history rewrites (compaction/revert) pass 'replace'.
+  messageMode?: TranscriptRefreshMode;
   diff?: boolean;
   todos?: boolean;
   sessions?: boolean;
@@ -30,6 +33,10 @@ export type ProviderEventActions = {
   refreshWorktrees: () => Promise<unknown>;
   refreshMcpServers: () => Promise<unknown>;
   refreshDiagnostics: () => Promise<unknown>;
+  // Session ids whose transcript the user can currently see (active chat and
+  // conversation mode). Part-level events refresh only these, so background
+  // sessions are not re-downloaded on every streaming update.
+  focusSessionIds?: Set<string>;
   setSessionStatuses: Dispatch<SetStateAction<Record<string, SessionStatus>>>;
   setPromptError: Dispatch<SetStateAction<{ message: string; occurredAt: number; sessionId?: string } | undefined>>;
   setDiffsBySession: Dispatch<SetStateAction<Record<string, FileDiff[]>>>;
@@ -58,11 +65,22 @@ export function handleProviderEvent(event: OpencodeEvent, actions: ProviderEvent
     return;
   }
   if (/^session\.(compaction\.|revert\.)/.test(type)) {
-    if (sessionID) actions.scheduleSessionRefresh(sessionID, { sessions: true, messages: true, fullMessages: true, diff: true, todos: true });
+    if (sessionID) actions.scheduleSessionRefresh(sessionID, { sessions: true, messages: true, messageMode: 'replace', diff: true, todos: true });
     return;
   }
-  if (/^session\.(step\.|text\.|reasoning\.|tool\.|message\.|inbox\.|synthetic|skill\.|usage\.)/.test(type)) {
+  if (/^session\.inbox\./.test(type)) {
+    // Inbox transitions are infrequent and are how the app discovers prompts
+    // queued remotely, so always re-read them, even for background sessions.
     if (sessionID) actions.scheduleSessionRefresh(sessionID, { messages: true });
+    return;
+  }
+  if (/^session\.(step\.|text\.|reasoning\.|tool\.|message\.|synthetic|skill\.|usage\.)/.test(type)) {
+    // Streaming updates only re-read the transcript the user can actually see.
+    // Background sessions refresh on status transitions and completion instead
+    // of once per part.
+    if (sessionID && (!actions.focusSessionIds || actions.focusSessionIds.has(sessionID))) {
+      actions.scheduleSessionRefresh(sessionID, { messages: true });
+    }
     return;
   }
   if (type === 'permission.asked') {

@@ -47,6 +47,14 @@ import type { TerminalRuntime, TerminalStatus } from '@/providers/terminal-types
 export type { AgentOption, ChatPreferences, ModelOption, ReasoningLevel, ResponseScope, ServerCapabilities };
 export type { ProviderAuthMethod, ProviderAuthPrompt, ProviderAuthValues } from '@/lib/opencode/types';
 
+// How a transcript refresh treats the window already held in memory.
+// - initial: no usable window; download one newest page.
+// - tail: the default; download one newest page and merge it in. On no overlap
+//   with the held window, adopt the fetched page rather than paging backward.
+// - replace: drop the held window and adopt the fetched page. Reserved for
+//   server-side history rewrites (compaction and revert).
+export type TranscriptRefreshMode = 'initial' | 'tail' | 'replace';
+
 // A stored provider credential. V2 integrations can hold several labeled
 // accounts (exactly one active); V1 providers have no account list.
 export type ProviderAccount = {
@@ -365,8 +373,6 @@ export type ChatContextValue = {
     hasOlder: boolean;
     isLoadingOlder: boolean;
   };
-  refreshCurrentSession: (silent?: boolean) => Promise<void>;
-  refreshCurrentTodos: (silent?: boolean) => Promise<void>;
   replyToPermission: (requestId: string, reply: 'once' | 'always' | 'reject') => Promise<void>;
   replyToQuestion: (requestId: string, answers: PendingQuestionAnswer[]) => Promise<void>;
   rejectQuestion: (requestId: string) => Promise<void>;

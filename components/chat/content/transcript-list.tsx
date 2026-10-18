@@ -234,9 +234,9 @@ export function TranscriptList({
         </View>
       )}
       ListEmptyComponent={
-        currentSessionId && (isRefreshingMessages || hasMessages || hasOlderMessages) ? (
-          running || isRefreshingMessages ? <TranscriptSkeleton palette={palette} /> : null
-        ) : (
+        currentSessionId && isRefreshingMessages && !hasMessages ? (
+          <TranscriptSkeleton palette={palette} />
+        ) : currentSessionId && (hasMessages || hasOlderMessages) ? null : (
           <Card mode="contained" style={[styles.emptyCard, { backgroundColor: palette.surface }]}>
             <Card.Content style={styles.emptyContent}>
               <Text variant="headlineSmall" style={[styles.emptyTitle, { color: palette.text }]}>{t('chat:starter.title')}</Text>

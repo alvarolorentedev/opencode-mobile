@@ -100,23 +100,6 @@ export function listSessions(client: ScopedOpencodeClient) {
   });
 }
 export const listActiveSessions = listSessions;
-// Native retries and blocking forms are absent from the running-session set.
-// Background completion must confirm these before treating an idle list as done.
-export async function hasPendingSessionWork(client: ScopedOpencodeClient, sessionID: string) {
-  if (!client.api) return false;
-  const location = { location: { directory: client.__opencode.directory } };
-  const [messages, inbox, permissions, forms] = await Promise.all([
-    client.api.message.list({ sessionID, limit: 20, order: 'desc' }),
-    client.api.session.inbox.list({ sessionID }),
-    client.api.permission.request.list(location),
-    client.api.form.list(location),
-  ]);
-  const latest = messages.data.find((message) => message.type === 'assistant' || message.type === 'idle' || message.type === 'user');
-  return inbox.length > 0 || permissions.data.some((request) => request.sessionID === sessionID)
-    || forms.data.some((form) => form.sessionID === sessionID || form.sessionID === 'global')
-    || (latest?.type === 'assistant' && Boolean(latest.retry));
-}
-
 export type SessionSettlementState = 'running' | 'retrying' | 'blocked' | 'failed' | 'aborted' | 'finished' | 'unknown';
 export type SessionSettlement = { state: SessionSettlementState; message?: string };
 
@@ -160,7 +143,7 @@ export async function readSessionSettlement(
       client.promptInbox ? client.promptInbox.list(sessionID).catch(() => []) : Promise.resolve([]),
       listPendingPermissions(client),
       listPendingQuestions(client),
-      getSessionMessages(client, sessionID, { limit: 20 }),
+      getSessionMessages(client, sessionID, { limit: LATEST_MESSAGE_LIMIT }),
     ]);
     const latest = page.records.filter((record) => record.info.role === 'assistant').at(-1);
     return classifySessionSettlement({
@@ -178,11 +161,13 @@ export async function listArchivedSessions(client: ScopedOpencodeClient) {
   if (client.compatibility) return v1.listArchivedSessions(client.compatibility);
   return [];
 }
-export const INITIAL_MESSAGE_LIMIT = 20;
-export const HISTORY_PAGE_LIMIT = 20;
+export const TRANSCRIPT_PAGE_LIMIT = 20;
+// Smallest read that can still answer "what did the newest message say?" for
+// settlement and pending-work checks, without pulling a full transcript page.
+export const LATEST_MESSAGE_LIMIT = 3;
 export type SessionMessagePage = { records: SessionMessageRecord[]; hasMore: boolean; nextBefore?: string };
 export function getSessionMessages(client: ScopedOpencodeClient, sessionId: string, options: { limit?: number; before?: string } = {}): Promise<SessionMessagePage> {
-  const { limit = HISTORY_PAGE_LIMIT, before } = options;
+  const { limit = TRANSCRIPT_PAGE_LIMIT, before } = options;
   return coalesceRead(client, `messages:${sessionId}:${before ?? 'newest'}:${limit}`, async () => {
     if (client.compatibility) return v1.getSessionMessages(client.compatibility, sessionId, options);
     const page = await client.api!.message.list(before ? { sessionID: sessionId, limit, cursor: before } : { sessionID: sessionId, limit, order: 'desc' });

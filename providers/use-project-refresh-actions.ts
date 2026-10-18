@@ -14,6 +14,11 @@ import {
 import { getVcsDiff as svcGetVcsDiff } from '@/providers/services/project-service';
 import type { ProjectActionsInput } from '@/providers/opencode-provider-action-inputs';
 
+// Coalesce a burst of streaming part events into a single transcript read.
+// Lower than a frame budget for a snappy chat, high enough to avoid one page
+// download per event.
+const MESSAGE_REFRESH_COALESCE_MS = 400;
+
 export function useProjectRefreshActions({
   activeProjectPath,
   client,
@@ -218,7 +223,7 @@ export function useProjectRefreshActions({
       const pending = sessionRefreshOptionsRef.current[sessionId] || {};
       sessionRefreshOptionsRef.current[sessionId] = {
         messages: pending.messages || options?.messages,
-        fullMessages: pending.fullMessages || options?.fullMessages,
+        messageMode: pending.messageMode ?? options?.messageMode,
         diff: pending.diff || options?.diff,
         todos: pending.todos || options?.todos,
         sessions: pending.sessions || options?.sessions,
@@ -233,7 +238,7 @@ export function useProjectRefreshActions({
           void refreshSessions(true).catch(() => undefined);
         }
         if (mergedOptions.messages) {
-          void refreshMessages(sessionId, true, mergedOptions.fullMessages ? { full: true } : undefined).catch(() => undefined);
+          void refreshMessages(sessionId, true, mergedOptions.messageMode ? { mode: mergedOptions.messageMode } : undefined).catch(() => undefined);
         }
         if (mergedOptions.diff) {
           void refreshSessionDiff(sessionId, true).catch(() => undefined);
@@ -241,7 +246,7 @@ export function useProjectRefreshActions({
         if (mergedOptions.todos) {
           void refreshSessionTodos(sessionId).catch(() => undefined);
         }
-      }, options?.delayMs ?? 150);
+      }, options?.delayMs ?? MESSAGE_REFRESH_COALESCE_MS);
     },
     [refreshMessages, refreshSessionDiff, refreshSessionTodos, refreshSessions],
   );

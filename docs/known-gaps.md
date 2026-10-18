@@ -66,3 +66,19 @@ Closed on 2026-10-18 except for the remote reporter:
   example Sentry) would need a dependency, a consent toggle behind the existing
   diagnostics surface, and scrubbing that never sends the server URL or
   credentials. Only worth doing if a remote pipeline is explicitly funded.
+
+## 4. Transcript merge micro-optimizations
+
+Deferred on 2026-10-18 while the transcript refresh policy was simplified
+(single tail-merge, 100-record window, no backward bridging). The remaining
+render-cost machinery is intentionally untouched because it is not the source of
+the stale/empty-transcript behavior and is harder to validate:
+
+- `mergeSessionMessageWindow` / `prependSessionMessageHistory` keep record object
+  references and use `JSON.stringify` equality so unchanged records skip the
+  tokenization pass (`lib/opencode/format/window.ts`).
+- `toTranscriptEntry` caches entries in a `WeakMap` keyed by record reference.
+- `TranscriptList` re-asserts the FlashList tail across several frames
+  (`TAIL_SETTLE_FRAMES`) and restores offset on focus/foreground.
+
+Revisit only with render profiling evidence, and one mechanism at a time.

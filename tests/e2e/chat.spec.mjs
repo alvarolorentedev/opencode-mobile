@@ -157,6 +157,21 @@ test('tab navigation preserves the mounted app and an unsent chat draft', async 
   await expect(page.getByText(`Finished: ${draft}`, { exact: false }).first()).toBeVisible({ timeout: 20_000 });
 });
 
+test('returning to the chat tab keeps the loaded transcript without a skeleton', async ({ page, request }) => {
+  await resetScenario(request, 'happy-path');
+  await openReadyChat(page);
+  await sendPrompt(page, 'Keep this transcript across tabs');
+  const finished = page.getByText(/Finished: Keep this transcript across tabs/).first();
+  await expect(finished).toBeVisible({ timeout: 20_000 });
+
+  await goToTab(page, 'Projects');
+  await expect(page.getByRole('button', { name: 'Change project' })).toBeVisible();
+  await goToTab(page, 'Chat');
+
+  await expect(finished).toBeVisible();
+  await expect(page.getByTestId('transcript-skeleton')).toHaveCount(0);
+});
+
 test('chat renders GFM tables, ordered lists, and tappable links', async ({ page, request }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await resetScenario(request, 'happy-path');

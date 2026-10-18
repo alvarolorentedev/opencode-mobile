@@ -8,19 +8,17 @@ import {
 } from '@/lib/opencode/format';
 import { addUsageSteps, type SessionUsageStep } from '@/lib/opencode/usage';
 import type { ScopedOpencodeClient } from '@/lib/opencode/client';
+import type { TranscriptRefreshMode } from '@/providers/opencode-provider-types';
+import { pruneByKeepIds } from '@/providers/opencode-provider-utils';
 import {
   getSessionMessages as svcGetSessionMessages,
-  HISTORY_PAGE_LIMIT,
-  INITIAL_MESSAGE_LIMIT,
+  TRANSCRIPT_PAGE_LIMIT,
 } from '@/providers/services/session-service';
 
 // Bounds the in-memory transcript window: the newest live tail plus the older
 // pages the user pulls in by scrolling up. Dropping the oldest records keeps
 // the window contiguous and the working set small.
-const MESSAGE_WINDOW_CAP = 200;
-// How many pages a tail sync may page back to bridge a burst of new messages
-// before it gives up and adopts the fetched tail authoritatively.
-const MAX_TAIL_BRIDGE_PAGES = 5;
+const MESSAGE_WINDOW_CAP = 100;
 
 type MessageWindow = { nextBefore?: string; hasMore: boolean };
 
@@ -81,21 +79,27 @@ export function useTranscriptState({
   }, []);
 
   const refreshMessages = useCallback(
-    async (sessionId: string, silent = false, options?: { full?: boolean }) => {
+    async (sessionId: string, silent = false, options?: { mode?: TranscriptRefreshMode }) => {
       if (!silent) {
         setIsRefreshingMessages(true);
       }
       try {
         const held = messagesBySessionRef.current[sessionId] ?? [];
-        const isInitialLoad = options?.full === true || held.length === 0;
+        // Default to a cold load when nothing is held, otherwise merge the
+        // newest page into what we have. A requested mode overrides the default.
+        const mode: TranscriptRefreshMode = options?.mode ?? (held.length === 0 ? 'initial' : 'tail');
 
-        if (isInitialLoad) {
-          // Cold load: fetch only the newest page. Older history is requested
-          // lazily as the user scrolls up.
-          const page = await svcGetSessionMessages(client, sessionId, { limit: INITIAL_MESSAGE_LIMIT });
-          if (!isCurrentClient(client)) {
-            return page.records;
-          }
+        // initial, replace, and a cold tail all fetch exactly one newest page.
+        // History only grows through loadOlderMessages on an explicit scroll.
+        const page = await svcGetSessionMessages(client, sessionId, { limit: TRANSCRIPT_PAGE_LIMIT });
+        if (!isCurrentClient(client)) {
+          return page.records;
+        }
+
+        // initial and replace adopt the fetched page as the window. Only replace
+        // discards a held window on purpose (compaction/revert); an explicit
+        // initial on an already-held window is treated the same.
+        if (mode !== 'tail' || held.length === 0) {
           setMessagesBySession((current) => ({ ...current, [sessionId]: page.records }));
           setMessageWindows((current) => ({
             ...current,
@@ -105,62 +109,36 @@ export function useTranscriptState({
           return page.records;
         }
 
-        // Tail sync: fetch the newest page, then bridge backwards until it
-        // overlaps already-held records (or the bridge cap is reached) so a
-        // burst of new messages cannot leave a gap.
-        const knownIds = new Set(held.map((record) => record.info.id));
-        const olderPages: SessionMessageRecord[][] = [];
-        let before: string | undefined;
-        let resolved = false;
-        let oldestNextBefore: string | undefined;
-        let oldestHasMore = false;
-
-        for (let pageIndex = 0; pageIndex < MAX_TAIL_BRIDGE_PAGES; pageIndex += 1) {
-          const page = await svcGetSessionMessages(client, sessionId, { limit: HISTORY_PAGE_LIMIT, before });
-          if (!isCurrentClient(client)) {
-            return held;
-          }
-          if (page.records.length === 0) {
-            resolved = true;
-            break;
-          }
-          olderPages.unshift(page.records);
-          oldestNextBefore = page.nextBefore;
-          oldestHasMore = page.hasMore;
-          const overlaps = page.records.some((record) => knownIds.has(record.info.id));
-          if (overlaps || !page.hasMore || page.records.length < HISTORY_PAGE_LIMIT) {
-            resolved = true;
-            break;
-          }
-          before = page.nextBefore;
-        }
-
-        const fetched = olderPages.flat();
-        if (fetched.length === 0) {
+        if (page.records.length === 0) {
           return held;
         }
 
-        if (!resolved) {
-          // A gap larger than the bridge window: adopt the fetched tail and
-          // restart history paging from its oldest page.
-          const nextRecords = fetched.length > MESSAGE_WINDOW_CAP ? fetched.slice(fetched.length - MESSAGE_WINDOW_CAP) : fetched;
+        const knownIds = new Set(held.map((record) => record.info.id));
+        if (!page.records.some((record) => knownIds.has(record.info.id))) {
+          // A burst larger than one page landed; adopt the contiguous newest
+          // page and restart history paging from its oldest record instead of
+          // downloading bridging pages.
+          const nextRecords = page.records.length > MESSAGE_WINDOW_CAP ? page.records.slice(page.records.length - MESSAGE_WINDOW_CAP) : page.records;
           setMessagesBySession((current) => ({ ...current, [sessionId]: nextRecords }));
-          setMessageWindows((current) => ({ ...current, [sessionId]: { nextBefore: oldestNextBefore, hasMore: oldestHasMore } }));
-          recordUsageAndTodos(sessionId, fetched);
-          return fetched;
+          setMessageWindows((current) => ({
+            ...current,
+            [sessionId]: { nextBefore: page.nextBefore, hasMore: page.hasMore },
+          }));
+          recordUsageAndTodos(sessionId, page.records);
+          return page.records;
         }
 
         setMessagesBySession((current) => {
           const previous = current[sessionId] ?? held;
-          const merged = mergeSessionMessageWindow(previous, fetched);
+          const merged = mergeSessionMessageWindow(previous, page.records);
           const bounded = merged.length > MESSAGE_WINDOW_CAP ? merged.slice(merged.length - MESSAGE_WINDOW_CAP) : merged;
           if (bounded === previous) {
             return current;
           }
           return { ...current, [sessionId]: bounded };
         });
-        recordUsageAndTodos(sessionId, fetched);
-        return fetched;
+        recordUsageAndTodos(sessionId, page.records);
+        return page.records;
       } finally {
         if (!silent) {
           setIsRefreshingMessages(false);
@@ -180,7 +158,7 @@ export function useTranscriptState({
 
       setLoadingOlderBySession((current) => ({ ...current, [sessionId]: true }));
       try {
-        const page = await svcGetSessionMessages(client, sessionId, { limit: HISTORY_PAGE_LIMIT, before: meta.nextBefore });
+        const page = await svcGetSessionMessages(client, sessionId, { limit: TRANSCRIPT_PAGE_LIMIT, before: meta.nextBefore });
         if (!isCurrentClient(client)) {
           return;
         }
@@ -214,20 +192,9 @@ export function useTranscriptState({
   // Drop pagination, usage, and plan state for sessions that are no longer kept
   // in memory, mirroring the provider's transcript-cache pruning.
   const prune = useCallback((keepIds: Set<string>, limit: number) => {
-    const pruneMap = <T,>(current: Record<string, T>): Record<string, T> => {
-      const keys = Object.keys(current);
-      if (keys.length <= limit) {
-        return current;
-      }
-      const next: Record<string, T> = {};
-      for (const key of keys) {
-        if (keepIds.has(key)) next[key] = current[key];
-      }
-      return next;
-    };
-    setMessageWindows((current) => pruneMap(current));
-    setUsageStepsBySession((current) => pruneMap(current));
-    setTodoRecordsBySession((current) => pruneMap(current));
+    setMessageWindows((current) => pruneByKeepIds(current, keepIds, limit));
+    setUsageStepsBySession((current) => pruneByKeepIds(current, keepIds, limit));
+    setTodoRecordsBySession((current) => pruneByKeepIds(current, keepIds, limit));
   }, []);
 
   return {

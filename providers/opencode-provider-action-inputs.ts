@@ -32,8 +32,10 @@ import type {
   SessionDeepLinkTarget,
   ProjectCatalog,
   ProjectPathsByConnection,
+  TranscriptRefreshMode,
 } from '@/providers/opencode-provider-types';
 import type { Diagnostics } from '@/providers/services/diagnostics-service';
+import type { SessionRefreshOptions } from '@/providers/opencode-provider-events';
 
 export type ProjectActionsInput = {
   client: ScopedOpencodeClient;
@@ -77,10 +79,10 @@ export type ProjectActionsInput = {
   projectFileRequestRef: { current: number };
   scopeGenerationRef: { current: number };
   sessionRefreshTimeoutsRef: { current: Record<string, ReturnType<typeof setTimeout>> };
-  sessionRefreshOptionsRef: { current: Record<string, { messages?: boolean; fullMessages?: boolean; diff?: boolean; todos?: boolean; sessions?: boolean }> };
+  sessionRefreshOptionsRef: { current: Record<string, SessionRefreshOptions> };
   serverContract: ServerContract;
   settingsRef: { current: OpencodeConnectionSettings };
-  refreshMessages: (sessionId: string, silent?: boolean, options?: { full?: boolean }) => Promise<SessionMessageRecord[]>;
+  refreshMessages: (sessionId: string, silent?: boolean, options?: { mode?: TranscriptRefreshMode }) => Promise<SessionMessageRecord[]>;
 };
 
 export type SessionActionsInput = {
@@ -115,7 +117,7 @@ export type SessionActionsInput = {
   bootstrapTokenRef: { current: object | undefined };
   fetchSessions: (silent?: boolean) => Promise<Session[]>;
   refreshSessions: (silent?: boolean) => Promise<unknown>;
-  refreshMessages: (sessionId: string, silent?: boolean, options?: { full?: boolean }) => Promise<SessionMessageRecord[]>;
+  refreshMessages: (sessionId: string, silent?: boolean, options?: { mode?: TranscriptRefreshMode }) => Promise<SessionMessageRecord[]>;
   refreshSessionDiff: (sessionId: string, silent?: boolean, messageId?: string) => Promise<FileDiff[]>;
   refreshSessionTodos: (sessionId: string) => Promise<Todo[]>;
   refreshVcsDiff: (scope: 'uncommitted' | 'branch', silent?: boolean) => Promise<FileDiff[]>;

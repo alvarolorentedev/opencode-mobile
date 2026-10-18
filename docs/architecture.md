@@ -270,8 +270,9 @@ and provider setup remain in Settings.
   these IDs out of the current-project Chat list.
 - `providers/use-transcript-state.ts`
   Paginated transcript window state machine: newest-page load on open, scroll-up
-  history paging, bounded-window tail merge, and accumulation of session usage
-  steps and V2 `todowrite` records so a bounded window keeps exact totals.
+  history paging, single-page bounded-window tail merge, and accumulation of
+  session usage steps and V2 `todowrite` records so a bounded window keeps exact
+  totals. Only compaction/revert rewrites replace the window.
 
 MCP and worktree callback bridges use stable callbacks backed by the provider's
 latest refs. Conversation submission similarly uses the latest send action
@@ -644,8 +645,9 @@ A socket can also die without an error. A liveness watchdog re-establishes
 the subscription when a foreground stream has received no envelope for a
 staleness window (90 seconds; shortened in E2E builds), and foreground return
 bypasses the remaining backoff or cycles a stream that was backgrounded long
-enough. Reconnects keep a first-envelope authoritative reconcile; if a poll is
-already in flight, the full rebuild is queued behind it instead of being
+enough. Reconnects keep a first-envelope authoritative reconcile (sessions,
+interactions, and native surfaces) and tail-merge the transcript; if a poll is
+already in flight, the reconnect pass is queued behind it instead of being
 coalesced away. Invalid-credential and entitlement failures stop the retry
 loop and are surfaced through `ConnectionState.kind` (`auth`/`entitlement`),
 while Cloud Link reuses its prepared credential recovery.

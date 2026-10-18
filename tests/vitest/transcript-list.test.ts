@@ -67,10 +67,14 @@ describe('transcript empty state', () => {
     expect(list.props.ListEmptyComponent.type).toBe('Card');
   });
 
-  it('shows the skeleton instead of starter prompts while a session turn is running', async () => {
-    const { update } = await mountTranscriptList({ hasMessages: true, running: true });
-    const list = update({});
-    expect(list.props.ListEmptyComponent.type).toBe('TranscriptSkeleton');
+  it('does not show the skeleton while a running turn has held records but no display content', async () => {
+    const { update } = await mountTranscriptList({ hasMessages: true, isRefreshingMessages: true, running: true });
+    expect(update({}).props.ListEmptyComponent).toBeNull();
+  });
+
+  it('shows the skeleton only for a cold fetch with no held records', async () => {
+    const { update } = await mountTranscriptList({ hasMessages: false, isRefreshingMessages: true, running: true });
+    expect(update({}).props.ListEmptyComponent.type).toBe('TranscriptSkeleton');
   });
 
   it('does not offer starter prompts when only non-display history is loaded', async () => {
