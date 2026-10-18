@@ -9,14 +9,16 @@ credentials and offers a collapsed custom username, then probes again on save.
 Back, Change and retry preserve fields. Name is optional and defaults to the
 normalized hostname. Edits save without automatically reconnecting.
 
-On Android/iOS, **Scan local QR code** inside manual setup accepts the code shown
-by `opencode pair`. The phone and server must share a reachable network; the server
-must listen beyond localhost. This reuses the native permission gate and scanner
-without any Cloud Link subscription. FOSS builds omit the camera module and keep
-manual address entry. Camera denial returns to manual entry;
-backgrounding suspends the preview. A successful scan saves and connects
+On Android/iOS, the **Scan QR code** choice is a dedicated local setup flow that
+accepts the code shown by `opencode pair`. The phone and server must share a
+reachable network; the server must listen beyond localhost. It reuses the native
+permission gate and scanner without any Cloud Link subscription, and never falls
+back to the manual address form. FOSS builds omit the camera module and keep
+manual address entry. Camera denial or Back returns to the connection method
+chooser; backgrounding suspends the preview. A successful scan saves and connects
 automatically. Invalid codes allow rescan; expired/used codes ask users to run
-`opencode pair` again. Unreachable addresses offer manual entry and network guidance.
+`opencode pair` again. A failed save or connect keeps the redeemed credential and
+offers Retry plus Scan again without re-pairing.
 
 The provider handles pairing and persistence; protocol validation/redemption live
 in `lib/opencode/pairing.ts`. Current one-use codes become session-token passwords;
@@ -156,10 +158,11 @@ renders for an active Cloud Link connection.
 Settings retains connection status and saved profiles. Add connection is the
 single creation entry and opens three stacked choices: Scan QR code (local
 network), Manual, then Cloud Link. Onboarding uses the same chooser and retains
-Skip. Scan QR code and Manual open the shared full-screen
-Name/URL/Username/Password form (the scan entry opens the camera immediately);
-Cloud Link opens the guided assistant. Failed connections retain the form and
-reuse the saved profile on retry.
+Skip. Scan QR code opens its own full-screen camera flow
+(`connection-scan-flow.tsx`); Manual opens the separate full-screen
+Name/URL/Username/Password form. Cloud Link opens the guided assistant. Failed
+manual connections retain the form and reuse the saved profile on retry; the QR
+flow keeps its redeemed credential for its own retry.
 
 Cloud Link opens a full-screen, four-step illustrated assistant outside the tabs:
 

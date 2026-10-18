@@ -481,9 +481,9 @@ reply/request excerpts and step text while preserving titles, counts and status.
 
 `connection-method-chooser.tsx` renders the shared Scan QR code (local network),
 Manual, and Cloud Link choices in that order, plus a learn-more link.
-`connection-setup-form.tsx` composes the chooser and existing manual profile
-form for onboarding and returning from pairing; the scan choice opens the form
-directly in camera mode.
+`connection-setup-form.tsx` composes the chooser with two independent flows for
+onboarding and returning from pairing: the scan choice opens the camera-only
+`connection-scan-flow`, and Manual opens the manual profile form.
 `connect-onboarding.tsx` presents the four-step Cloud Link assistant (learn,
 computer setup, subscribe, pair), with shared illustration/heading/subheading
 spacing and pinned primary actions. Pair reuses the computer drawing beneath a
@@ -573,10 +573,6 @@ The component owns only local state (expanded row, dialog, switching row); profi
   placeholder is the hostname; Continue displays an abortable detection state
 - hide Username for confirmed V2, show it for V1, and offer a collapsed custom
   username when credentials are needed to identify the server
-- reuse `ConnectCameraGate` and `ConnectScanner` for native-only local QR setup,
-  without a Cloud Link entitlement, when opened with `startScanning` (the
-  Settings Connection section's Scan QR code choice); scanning automatically
-  saves and connects
 - The shared TextInput clears Paper's implicit text alignment for single-line
   iOS fields to prevent wrapping. Explicit caller alignment takes precedence;
   password masking and credential values remain native and unchanged.
@@ -588,8 +584,25 @@ Submit is a callback: the list component decides whether the values are added
 as a profile plus connected, or applied to the existing profile/current
 connection.
 Changing the address or going Back preserves fields and invalidates obsolete
-probes. Successful redemption retains its token through save/connect retries.
+probes.
 Editing uses the same form but saves without automatically reconnecting.
+
+## `components/settings/connection-scan-flow.tsx`
+
+### Responsibility
+
+- own the native-only local QR setup flow, separate from the manual address form;
+  opened by the Scan QR code choice in Settings and onboarding
+- reuse `ConnectCameraGate` and `ConnectScanner` without a Cloud Link
+  entitlement; claiming the code stays in the provider's
+  `connectionProfiles.pair`
+- save and connect through the caller's submit callback with the redeemed
+  credential, retaining it across a failed save/connect so Retry never re-pairs
+- return to the chooser on Back or camera denial, and offer Scan again after an
+  invalid/expired/unreachable code
+
+The manual address/details surface stays in `connection-profile-dialog.tsx`; the
+scan flow never renders it.
 
 ### `AiDefaultsSection`
 

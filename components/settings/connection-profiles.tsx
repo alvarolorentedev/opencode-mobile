@@ -9,6 +9,7 @@ import {
   type ConnectionProfileFormValues,
 } from '@/components/settings/connection-profile-dialog';
 import { ConnectionMethodChooser } from '@/components/settings/connection-method-chooser';
+import { ConnectionScanFlow } from '@/components/settings/connection-scan-flow';
 import { OverlaySheet } from '@/components/ui/overlay-sheet';
 import { Colors } from '@/constants/theme';
 import { findMatchingProfile, type ConnectionProfile } from '@/lib/connection-profiles';
@@ -19,7 +20,7 @@ type Palette = typeof Colors.light;
 const CURRENT_CONNECTION_KEY = 'current';
 
 type DialogState =
-  | { mode: 'add'; scan?: boolean }
+  | { mode: 'add' }
   | { mode: 'edit-profile'; profile: ConnectionProfile; password: string }
   | { mode: 'edit-current' };
 
@@ -40,6 +41,7 @@ export function ConnectionProfiles({ palette, onManageConnect, onPair }: { palet
   const [switchingProfileId, setSwitchingProfileId] = useState<string>();
   const addedProfileId = useRef<string | undefined>(undefined);
   const [choosing, setChoosing] = useState(false);
+  const [scanning, setScanning] = useState(false);
   const [dialog, setDialog] = useState<DialogState>();
 
   useFocusEffect(useCallback(() => {
@@ -93,6 +95,22 @@ export function ConnectionProfiles({ palette, onManageConnect, onPair }: { palet
     ]);
   }
 
+  async function addAndConnect(values: ConnectionProfileFormValues) {
+    const profile = await save(values, addedProfileId.current);
+    addedProfileId.current = profile.id;
+    setSwitchingProfileId(profile.id);
+    try {
+      const result = await connectProfile(profile);
+      if (result.status !== 'connected') throw new Error(result.message);
+      setDialog(undefined);
+      setScanning(false);
+      addedProfileId.current = undefined;
+      setExpandedKey(profile.id);
+    } finally {
+      setSwitchingProfileId(undefined);
+    }
+  }
+
   async function handleDialogSubmit(values: ConnectionProfileFormValues) {
     const currentDialog = dialog;
     if (!currentDialog) {
@@ -100,18 +118,7 @@ export function ConnectionProfiles({ palette, onManageConnect, onPair }: { palet
     }
 
     if (currentDialog.mode === 'add') {
-      const profile = await save(values, addedProfileId.current);
-      addedProfileId.current = profile.id;
-      setSwitchingProfileId(profile.id);
-      try {
-        const result = await connectProfile(profile);
-        if (result.status !== 'connected') throw new Error(result.message);
-        setDialog(undefined);
-        addedProfileId.current = undefined;
-        setExpandedKey(profile.id);
-      } finally {
-        setSwitchingProfileId(undefined);
-      }
+      await addAndConnect(values);
       return;
     }
 
@@ -273,14 +280,19 @@ export function ConnectionProfiles({ palette, onManageConnect, onPair }: { palet
         </Text>
       ) : null}
       <OverlaySheet visible={choosing} title={t('settings:connection.addConnection')} onClose={() => setChoosing(false)} fitContent testID="connection-method-sheet">
-        <ConnectionMethodChooser onScan={() => { setChoosing(false); setDialog({ mode: 'add', scan: true }); }} onManual={() => { setChoosing(false); setDialog({ mode: 'add' }); }} onPair={() => { setChoosing(false); onPair?.(); }} />
+        <ConnectionMethodChooser onScan={() => { setChoosing(false); setScanning(true); }} onManual={() => { setChoosing(false); setDialog({ mode: 'add' }); }} onPair={() => { setChoosing(false); onPair?.(); }} />
       </OverlaySheet>
+      {scanning ? (
+        <ConnectionScanFlow
+          onSubmit={addAndConnect}
+          onDismiss={() => { addedProfileId.current = undefined; setScanning(false); }}
+        />
+      ) : null}
       {dialog ? (
         <ConnectionProfileDialog
           title={dialog.mode === 'add' ? t('settings:connection.addConnection') : t('settings:connection.editConnection')}
           submitLabel={dialog.mode === 'add' ? t('settings:connection.saveAndConnect') : t('common:actions.save')}
           showName={dialog.mode !== 'edit-current'}
-          startScanning={dialog.mode === 'add' && Boolean(dialog.scan)}
           initial={dialog.mode === 'add' ? undefined : dialog.mode === 'edit-current' ? {
             serverUrl: settings.serverUrl,
             username: settings.username,
