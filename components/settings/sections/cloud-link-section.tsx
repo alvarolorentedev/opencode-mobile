@@ -5,20 +5,23 @@ import { ActivityIndicator, Button, HelperText, Icon, List, Text } from 'react-n
 import { ConnectSubscription } from '@/components/settings/connect-subscription';
 import { ServicesSection } from '@/components/settings/sections/services-section';
 import { CONNECT_LEARN_MORE_URL } from '@/lib/connect';
+import type { ManagedService } from '@/lib/opencode/client';
 import type { ServiceManagementApi } from '@/providers/opencode-provider-types';
 import type { ConnectSetup } from '@/providers/use-connect-state';
 import type { Palette } from './setting-rows';
 
 // Consolidated Cloud Link surface: verified access status, the connector's
 // exposed services, store subscription management, and owned machines, in that
-// order. Services only exist for a Cloud Link connection, so they live here
-// instead of their own Settings row.
-export function CloudLinkSection({ setup, services, serverUrl, palette, onManageMachines }: {
+// order. Services belong to a saved Cloud Link machine, which the provider
+// resolves even when it is not the active connection, so the group is always
+// rendered and explains itself when no machine or credentials are available.
+export function CloudLinkSection({ setup, services, palette, onManageMachines, onAddService, onEditService }: {
   setup: ConnectSetup;
   services?: ServiceManagementApi;
-  serverUrl?: string;
   palette: Palette;
   onManageMachines: () => void;
+  onAddService: () => void;
+  onEditService: (service: ManagedService) => void;
 }) {
   const { t, i18n } = useTranslation();
   const pending = setup.busy || ['purchasing', 'pending', 'verifying', 'savingSession', 'finalizing'].includes(setup.phase);
@@ -44,7 +47,7 @@ export function CloudLinkSection({ setup, services, serverUrl, palette, onManage
       <Text variant="bodyMedium" style={{ color: palette.muted }}>{t('settings:subscription.description')}</Text>
     </View>
 
-    {services?.available && serverUrl ? <ServicesSection api={services} serverUrl={serverUrl} palette={palette} /> : null}
+    {services ? <ServicesSection api={services} palette={palette} onAddService={onAddService} onEditService={onEditService} /> : null}
 
     <View>
       <Text variant="labelLarge" style={[styles.groupTitle, { color: palette.muted }]}>{t('settings:screen.categories.subscription')}</Text>

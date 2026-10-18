@@ -906,19 +906,24 @@ test('a paired device adds, edits and removes an exposed service', async ({ page
   await expect(page.getByTestId('services-section')).toBeVisible();
   await expect(page.getByTestId('service-api')).toHaveCount(0);
 
+  // Add opens the full-screen editor rather than an inline overlay form.
   await page.getByTestId('service-add').click();
+  await expect(page).toHaveURL(/\/service$/, { timeout: 15_000 });
   await page.getByTestId('service-id-input').fill('api');
   await page.getByTestId('service-path-input').fill('/test/api');
   await page.getByTestId('service-target-input').fill('127.0.0.1:3000');
   await page.getByTestId('service-save').click();
+  // Saving returns to Settings with the Cloud Link section reopened.
+  await expect(page.getByTestId('services-section')).toBeVisible({ timeout: 15_000 });
   await expect(page.getByTestId('service-api')).toContainText('/test/api');
   await expect(page.getByTestId('service-api')).toContainText(':8443/test/api/');
-  await expect(page.getByTestId('services-feedback')).toContainText('Saved');
 
+  // Edit reuses the same editor with the connector's stored values.
   await page.getByTestId('service-api').getByRole('button', { name: 'Edit' }).click();
+  await expect(page).toHaveURL(/\/service\?id=api$/, { timeout: 15_000 });
   await page.getByTestId('service-target-input').fill('127.0.0.1:3001');
   await page.getByTestId('service-save').click();
-  await expect(page.getByTestId('service-api')).toContainText('127.0.0.1:3001');
+  await expect(page.getByTestId('service-api')).toContainText('127.0.0.1:3001', { timeout: 15_000 });
 
   // A root service owns its port: the empty path serves the whole origin and
   // the picker offers a free port.
@@ -928,7 +933,7 @@ test('a paired device adds, edits and removes an exposed service', async ({ page
   await page.getByTestId('service-port-select').click();
   await page.getByRole('button', { name: '2053', exact: true }).click();
   await page.getByTestId('service-save').click();
-  await expect(page.getByTestId('service-site')).toContainText(':2053/');
+  await expect(page.getByTestId('service-site')).toContainText(':2053/', { timeout: 15_000 });
   await expect(page.getByTestId('service-site')).toContainText(':2053 → 127.0.0.1:4000');
 
   // A second root service picks another free port; the occupied one is marked.
@@ -939,7 +944,7 @@ test('a paired device adds, edits and removes an exposed service', async ({ page
   await expect(page.getByRole('button', { name: '2053 (in use)' })).toBeVisible();
   await page.getByRole('button', { name: '2083', exact: true }).click();
   await page.getByTestId('service-save').click();
-  await expect(page.getByTestId('service-site2')).toContainText(':2083/');
+  await expect(page.getByTestId('service-site2')).toContainText(':2083/', { timeout: 15_000 });
 
   await page.getByTestId('service-site2').getByRole('button', { name: 'Remove' }).click();
   await expect(page.getByTestId('service-site2')).toHaveCount(0);
@@ -949,5 +954,45 @@ test('a paired device adds, edits and removes an exposed service', async ({ page
   await page.getByTestId('service-api').getByRole('button', { name: 'Remove' }).click();
   await expect(page.getByTestId('service-api')).toHaveCount(0);
   await expect(page.getByTestId('services-feedback')).toContainText('Removed');
+});
+
+test('exposed services stay available while a different connection is active', async ({ page, request }) => {
+  await storeFixture(page, { recovered: true });
+  await mockControlPlane(page);
+  for (const id of ['device-1', 'device-2', 'device-3']) {
+    await request.post(`${SERVER}/__control/device`, { data: { device_id: id, device_secret: 'device-test-secret' } });
+  }
+  await page.addInitScript(() => localStorage.setItem('opencode-mobile.onboarding-version', JSON.stringify({ version: 1 })));
+  page.on('dialog', (dialog) => void dialog.accept());
+  await page.goto(`/pair?${pairingLink().searchParams}`);
+  await expect(page).toHaveURL(/\/workspace$/, { timeout: 30_000 });
+
+  // Expose one service while Cloud Link is the active connection.
+  await page.getByRole('tab', { name: 'Settings' }).click();
+  await page.getByRole('button', { name: /^Cloud Link/ }).click();
+  await page.getByTestId('service-add').click();
+  await page.getByTestId('service-id-input').fill('api');
+  await page.getByTestId('service-path-input').fill('/test/api');
+  await page.getByTestId('service-target-input').fill('127.0.0.1:3000');
+  await page.getByTestId('service-save').click();
+  await expect(page.getByTestId('service-api')).toHaveCount(1, { timeout: 15_000 });
+  await page.getByTestId('settings-section-overlay').getByText('Close', { exact: true }).click();
+
+  // Add and switch to a manual connection.
+  await page.getByRole('button', { name: /^Connection/ }).click();
+  await page.getByTestId('connection-add-button').click();
+  await page.getByTestId('connection-method-manual').click();
+  await page.getByTestId('connection-profile-url-input').fill(SERVER);
+  await page.getByTestId('connection-profile-continue').click();
+  await page.getByTestId('connection-profile-save-confirm').click();
+  await expect(page.getByTestId('connection-profile-save-confirm')).toHaveCount(0, { timeout: 30_000 });
+  await page.getByTestId('settings-section-overlay').getByText('Close', { exact: true }).click();
+
+  // The saved Cloud Link machine's services remain manageable and explain that
+  // they do not belong to the active connection.
+  await page.getByRole('button', { name: /^Cloud Link/ }).click();
+  await expect(page.getByTestId('services-section')).toBeVisible();
+  await expect(page.getByTestId('service-api')).toHaveCount(1, { timeout: 15_000 });
+  await expect(page.getByTestId('service-use-machine')).toBeVisible();
 });
 

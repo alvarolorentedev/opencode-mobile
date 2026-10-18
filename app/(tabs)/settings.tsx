@@ -1,6 +1,6 @@
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { type ComponentProps, type ReactNode, useEffect, useMemo, useState } from 'react';
-import { useRouter } from 'expo-router';
+import { type ComponentProps, type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useFocusEffect, useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { Alert, Platform, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -58,7 +58,7 @@ export default function SettingsScreen() {
   const { availableModels, availableProviders, configuredProviders, currentConfig, providerAccounts, providerAuthMethodsById, removeProvider } = useCapabilities();
   const { addMcpServer, mcpOAuth, connectMcpServer, disconnectMcpServer, mcpStatuses, refreshMcpServers, setMcpServerEnabled } = useMcp();
   const { chatPreferences, updateChatPreferences } = usePreferences();
-  const { connect, connection, serverCapabilities, connectSetup, services: serviceManagement, settings } = useConnection();
+  const { connect, connection, serverCapabilities, connectSetup, services: serviceManagement } = useConnection();
   const { diagnostics, eventStreamStatus, refreshDiagnostics } = useDiagnostics();
   const { approvals } = useApprovals();
   const { startOnboardingReview } = useOnboarding();
@@ -73,6 +73,9 @@ export default function SettingsScreen() {
   });
   const [isConnecting, setIsConnecting] = useState(false);
   const [openSection, setOpenSection] = useState<string>();
+  // Reopening Cloud Link after the full-screen service editor returns keeps the
+  // user in context without leaving a portal sheet over the pushed route.
+  const returnToCloudLink = useRef(false);
   const [expandedProviderId, setExpandedProviderId] = useState<string>();
   const [availableSpeechVoices, setAvailableSpeechVoices] = useState<SpeechVoiceOption[]>([]);
   const [isRefreshingSpeechVoices, setIsRefreshingSpeechVoices] = useState(false);
@@ -87,6 +90,19 @@ export default function SettingsScreen() {
       setIsConnecting(false);
     }
   }
+
+  function openServiceEditor(id?: string) {
+    returnToCloudLink.current = true;
+    setOpenSection(undefined);
+    router.push(id ? `/service?id=${encodeURIComponent(id)}` : '/service');
+  }
+
+  useFocusEffect(useCallback(() => {
+    if (!returnToCloudLink.current) return;
+    returnToCloudLink.current = false;
+    setOpenSection('cloud-link');
+    void serviceManagement.refresh();
+  }, [serviceManagement]));
 
   async function refreshSpeechVoices() {
     setIsRefreshingSpeechVoices(true);
@@ -163,7 +179,7 @@ export default function SettingsScreen() {
       title: t('settings:screen.categories.cloudLink'),
       summary: connectSetup.initialization === 'loading' ? t('settings:connect.progress.idle') : connectSetup.entitled ? t('common:labels.active') : t('settings:subscription.inactive'),
       onPress: () => { setOpenSection('cloud-link'); void serviceManagement.refresh(); },
-      render: () => <CloudLinkSection setup={connectSetup} services={serviceManagement} serverUrl={settings.serverUrl} palette={palette} onManageMachines={() => { setOpenSection(undefined); router.push('/pair?mode=manage'); }} />,
+      render: () => <CloudLinkSection setup={connectSetup} services={serviceManagement} palette={palette} onManageMachines={() => { setOpenSection(undefined); router.push('/pair?mode=manage'); }} onAddService={() => openServiceEditor()} onEditService={(service) => openServiceEditor(service.id)} />,
     }] : []),
     {
       id: 'notifications',

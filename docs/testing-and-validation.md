@@ -1087,6 +1087,11 @@ service port pool from `/_cloudlink/version`. Coverage is split by layer:
   link building for root, path and legacy services, the device Basic credential
   and request shape, canonical-value parsing, and error/status propagation
   (including the no-connection and expired-credential guards).
+- `tests/vitest/services-target.test.ts` covers the pure target resolution in
+  `providers/services-target.ts`: the active Cloud Link connection, explicit
+  selection of another saved machine, last-used fallback for a manual active
+  connection, subscription-environment filtering, no-candidate handling, and the
+  machine list's active marking.
 - The V2 fake server implements `GET/PUT/DELETE /_cloudlink/services` and
   `GET /_cloudlink/version` behind a device-credential check provisioned through
   `POST /__control/device`, with `POST /__control/connector-api` switching the
@@ -1098,8 +1103,12 @@ service port pool from `/_cloudlink/version`. Coverage is split by layer:
   and the api 1 legacy version/body shapes.
 - `tests/e2e/connect.spec.mjs` drives a real Cloud Link pairing, opens Settings →
   Services, and adds, edits and removes path and root services through the fake
-  connector, including picking a port and seeing an occupied port marked.
+  connector, including picking a port and seeing an occupied port marked. Add and
+  Edit now enter the full-screen `app/service.tsx` route and return to the
+  reopened Cloud Link section. A second flow switches to a manual connection and
+  proves the saved machine's services stay listed with the not-active notice.
 
-The connector contract is frozen; only the fake server's mirror of it changed,
-so the fake-server and E2E additions require explicit human validation under
-AGENTS.md. CI gates: `test:ci:static`, `test:fake-server:self`, `test:e2e:web`.
+The connector contract is frozen and unchanged; this change is app-side target
+resolution plus the reworked flows, so the E2E additions require explicit human
+validation under AGENTS.md. CI gates: `test:ci:static`, `test:fake-server:self`,
+`test:e2e:web`.

@@ -433,6 +433,9 @@ This is important to parity because the chat layout is intentionally dense and h
 - places Cloud Link immediately below AI & Providers, and only when the provider
   resolved `connectSetup.storeInstall` (App Store or Google Play installs); its
   summary reflects initialization or verified access status
+- opens the full-screen service editor route for Add/Edit and reopens the Cloud
+  Link section when the route returns, without leaving a portal sheet over the
+  pushed screen
 - uses the same safe-area app header and title treatment as Chat and Terminal
 - groups MCP servers and diagnostics under the `Advanced` category
 - shows a `Language` category for the app interface language
@@ -603,6 +606,28 @@ Editing uses the same form but saves without automatically reconnecting.
 
 The manual address/details surface stays in `connection-profile-dialog.tsx`; the
 scan flow never renders it.
+
+## `components/settings/service-editor.tsx`
+
+### Responsibility
+
+- render the full-screen add/edit form for one connector service: id (create
+  only), optional name, path, target, access, enabled and strip-prefix
+- mirror the connector's validation through `prepareServiceDraft`, showing
+  per-field errors before spending a round trip
+- offer the management revision 2 port picker (occupied and shared labels,
+  disabled for the mode being edited) and the legacy path-only form with an
+  update hint for older connectors
+- own only local form state; every read/write goes through the provider's
+  `services` domain, and Save returns through the caller's `onDone`
+
+## `app/service.tsx`
+
+Thin full-screen route for the service editor, registered beside `app/pair.tsx`
+under the Cloud Link guard. It resolves the edited service from the provider's
+services list, renders the shared `ServiceEditor`, and returns with
+`router.back()`; a missing id shows a recoverable message instead of an empty
+create form. No fetch or protocol logic lives here.
 
 ### `AiDefaultsSection`
 

@@ -33,7 +33,7 @@ Meaning:
 - `currentProjectPath` is the server's notion of current project
 - `serverRootPath` is the root directory reported by the server
 - `eventStreamStatus` tracks real-time subscription health independently of connection state
-- the connection domain also exposes `services`, the Cloud Link connector's remote service-management state with its connector-reported management revision and port pool (available only for `settings.connect` connections); see [api-contract.md](api-contract.md#connector-service-management-cloud-link)
+- the connection domain also exposes `services`, the Cloud Link connector's remote service-management state with its connector-reported management revision and port pool. The provider resolves the target machine from the active Cloud Link connection or a saved Cloud Link profile (so it works while another connection is active), exposes the target/machine list and unavailable reason, and keeps the list keyed by that target scope; see [api-contract.md](api-contract.md#connector-service-management-cloud-link)
 - failures carry a machine-readable `kind` (`timeout`, `offline`, `auth`, `entitlement`, `tunnel-startup`, `server-incompatible`, `unknown`) alongside the display message; `retryableStartup` remains for Cloud Link activation compatibility
 
 ## Workspace And Session Identity State

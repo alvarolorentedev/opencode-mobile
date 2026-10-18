@@ -117,6 +117,7 @@ function RootNavigator() {
       </Stack.Protected>
       <Stack.Protected guard={isConnectEnabled()}>
         <Stack.Screen name="pair" options={{ headerShown: false }} />
+        <Stack.Screen name="service" options={{ headerShown: false }} />
       </Stack.Protected>
       <Stack.Screen name="share" options={{ headerShown: false }} />
     </Stack>

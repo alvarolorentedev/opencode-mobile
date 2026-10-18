@@ -169,9 +169,32 @@ export type OnboardingContextValue = {
   stopOnboardingReview: () => void;
 };
 
+// A saved Cloud Link machine the services surface can manage. Services belong
+// to one machine, so the selector only appears when more than one exists.
+export type ServiceManagementMachine = {
+  id: string;
+  name: string;
+  isActive: boolean;
+};
+
+// The machine the services surface currently targets. It can differ from the
+// active connection: management uses this machine's own origin and device
+// credentials, and links/addresses are built from its `serverUrl`.
+export type ServiceManagementTarget = {
+  serverUrl: string;
+  profileId?: string;
+  machineId?: string;
+  machineName?: string;
+  isActiveConnection: boolean;
+};
+
+// Why no usable services surface exists right now.
+export type ServiceManagementUnavailableReason = 'no-cloud-link-machine' | 'credentials-expired';
+
 // Remote connector service management. Folded into the connection domain so the
 // provider keeps a single context entry for it; consumers read `services` and
-// call the actions it exposes. `available` is false for manual connections.
+// call the actions it exposes. `available` is false while resolving, when no
+// Cloud Link machine is saved, or when its credentials expired.
 export type ServiceManagementApi = {
   services: ManagedService[];
   // Connector-reported management revision and port pool; undefined until the
@@ -179,11 +202,19 @@ export type ServiceManagementApi = {
   // path-only mode with an update hint instead of the port picker.
   version?: ServiceManagementVersion;
   available: boolean;
+  target?: ServiceManagementTarget;
+  machines: ServiceManagementMachine[];
+  unavailableReason?: ServiceManagementUnavailableReason;
   isRefreshing: boolean;
   isSaving: boolean;
   refresh: () => Promise<void>;
   save: (id: string, input: ServiceInput) => Promise<ManagedService>;
   remove: (id: string) => Promise<void>;
+  // Switch the services target machine (saved Cloud Link profiles).
+  selectMachine: (id: string) => void;
+  // Reconnect the target machine's Cloud Link access; also makes it the active
+  // connection because fresh device credentials come from machine access.
+  activateTarget: () => Promise<boolean>;
 };
 
 export type ConnectionContextValue = {

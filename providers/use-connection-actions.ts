@@ -8,6 +8,6 @@ export function useConnectionActions(input: ConnectionActionsInput) {
   const connectActions = useConnectionConnectActions(input);
   const profileActions = useConnectionProfileActions({ ...input, ...connectActions });
   const linkActions = useConnectionLinkActions({ ...input, ...connectActions });
-  const services = useServicesState({ settings: input.settings, scopeGenerationRef: input.scopeGenerationRef });
+  const services = useServicesState({ settings: input.settings, scopeGenerationRef: input.scopeGenerationRef, connectSetup: connectActions.connectSetup });
   return { ...connectActions, ...profileActions, ...linkActions, ...services };
 }

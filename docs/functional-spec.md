@@ -361,7 +361,7 @@ Purpose:
 Behavior exposed today:
 
 - the row sits directly below AI & Providers and only appears for installs that came from the App Store or Google Play; directly installed APKs, F-Droid/FOSS builds, production web, and non-store iOS builds never show it (the development web E2E harness keeps it through `connectPilot.testing`)
-- inside the section the order is: access status summary, Exposed Services (only for an active Cloud Link connection), the subscription group (Manage subscription, Restore purchases, and native offers/Subscribe while inactive), then Machines last, with a Learn more footer row
+- inside the section the order is: access status summary, Exposed Services, the subscription group (Manage subscription, Restore purchases, and native offers/Subscribe while inactive), then Machines last, with a Learn more footer row
 - the section opens without requesting camera access, pairing a machine, purchasing, or restoring
 - progress, error, notice, and Retry feedback stays attached to the subscription actions
 - an existing Cloud Link connection profile and its deep links keep working even when the store-install check hides the section
@@ -374,9 +374,12 @@ Purpose:
 
 Behavior:
 
-- the subsection appears inside the consolidated Cloud Link Settings section only for a Cloud Link connection (`settings.connect`); manual connections never show it
-- opening (or re-opening) the Cloud Link section re-fetches `GET /_cloudlink/services` and `GET /_cloudlink/version`, because the connector's tray or CLI can change the list out from under the app
-- Add/Edit opens an inline form for id (create only), optional name, path, target, enabled, access (`private`/`public`) and strip-prefix; the id is fixed when editing
+- the subsection is always rendered inside the consolidated Cloud Link Settings section. Services belong to one Cloud Link machine: the provider targets the active connection when it is a Cloud Link machine, and otherwise resolves a saved Cloud Link profile (explicit selection, then last-used, then the only/first saved machine), because the connector's management API authenticates the device on the machine's own origin. Manual connections therefore still manage their Cloud Link machine's services
+- a Machine selector appears when more than one Cloud Link machine is saved; rows, addresses, and Copy link use the target machine's `serverUrl`, never the active connection's
+- a notice names the target machine when it is not the active connection, with a Switch to this machine action that reconnects it
+- with no saved Cloud Link machine the subsection explains that a machine must be connected instead of hiding; expired or rejected credentials surface an explicit state with Reconnect
+- opening (or re-opening) the Cloud Link section re-fetches `GET /_cloudlink/services` and `GET /_cloudlink/version` for the resolved target, because the connector's tray or CLI can change the list out from under the app
+- Add/Edit opens a full-screen route (`app/service.tsx`), not an inline overlay form; Save returns to Settings with the Cloud Link section reopened. The form covers id (create only), optional name, path, target, enabled, access (`private`/`public`) and strip-prefix; the id is fixed when editing
 - on management revision 2 the form also picks a `port` from the connector's `service_ports`; the path is optional (empty serves the port root, and the strip-prefix toggle only applies to path services), the picker marks ports already in use and disables them for the mode being edited (a root service needs a fully free port; a path service may share a root-free port)
 - revision 1 and unknown older connectors stay on the legacy path-only form on `:8443` with a non-blocking "update your desktop connector" hint; root services and the port picker require revision 2
 - the app mirrors the connector's validation before sending, and shows the connector's own message when the server rejects a request (for example `400` invalid service)
