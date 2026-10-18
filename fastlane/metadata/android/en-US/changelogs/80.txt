@@ -1,0 +1,3 @@
+- Every bottom sheet now closes with a swipe down: drag the header of the model picker, chat and project pickers, settings panels, or any other sheet to dismiss it.
+- The sheet follows your finger and fades the backdrop as you drag, and a quick flick dismisses it; lists inside a sheet still scroll normally.
+- Sheets still close with the backdrop tap, the Close button, and Android back.
