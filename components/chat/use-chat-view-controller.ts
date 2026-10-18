@@ -128,6 +128,7 @@ export function useChatViewController() {
   const progressSlice = currentTodos.length ? Math.floor(completedTodoCount / currentTodos.length * 8) : 0;
   const progressIcon = completedTodoCount === currentTodos.length ? 'check-circle' : progressSlice > 0 ? `circle-slice-${progressSlice}` : 'circle-outline';
   const displayTranscript = useMemo(() => currentTranscript.filter(isTranscriptDisplayMessage), [currentTranscript]);
+  const hasTranscriptMessages = currentMessages.length > 0;
   const currentActivityLabel = useMemo(() => {
     for (let index = currentTranscript.length - 1; index >= 0; index -= 1) {
       const entry = currentTranscript[index];
@@ -421,7 +422,7 @@ export function useChatViewController() {
     currentUsage, diffAdditions, diffCount, diffDeletions, diffDetails, diffTurns,
     displayTranscript, draft, expandedDiffId, forkSession, handleAbort, handleAttach,
     handleConfirmStopConversation, handleCopyMessage, handleNewSession, handleReviewChanges,
-    handleSendPrompt, handleSpeakEntry, handleToggleRecording, handleVoiceRecovery, hasFailedInput, recoverFailedInput, dismissFailedInput,
+    handleSendPrompt, handleSpeakEntry, handleToggleRecording, handleVoiceRecovery, hasFailedInput, recoverFailedInput, dismissFailedInput, hasTranscriptMessages,
     isCreatingSession, isRefreshingDiffs, isRefreshingMessages, isSpeechInputAvailable,
     isSpeechInputListening, isStoppingSession, isUpdatingAutoApprove, latestAssistantTurnUsage,
     pendingPrompts, pendingInteractions, progressIcon, progressVisible, refreshCurrentSession, refreshDiffs,

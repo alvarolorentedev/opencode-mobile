@@ -1,8 +1,9 @@
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { FlashList, type FlashListRef } from '@shopify/flash-list';
-import { useLayoutEffect, useMemo, useRef } from 'react';
+import { useIsFocused } from 'expo-router';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
-import { View } from 'react-native';
+import { AppState, View, type NativeScrollEvent, type NativeSyntheticEvent } from 'react-native';
 import { ActivityIndicator, Button, Card, Text, TouchableRipple } from 'react-native-paper';
 
 import { TranscriptMessage } from '@/components/chat/chat-cards';
@@ -25,6 +26,15 @@ const MAINTAIN_VISIBLE_CONTENT_POSITION = {
   startRenderingFromBottom: true,
 } as const;
 
+// Treat the transcript as "reading history" once the viewport bottom is more
+// than this many pixels from the content end; new content must not pull the
+// user back to the newest message.
+const TAIL_FOLLOW_THRESHOLD = 48;
+// FlashList renders and measures progressively, so a single scrollToEnd can run
+// against a partially measured list and settle at the top. Re-assert the tail
+// across a few frames after a session switch or data change.
+const TAIL_SETTLE_FRAMES = 4;
+
 type TranscriptListProps = {
   activeSession?: Session;
   awaitingUserInput: boolean;
@@ -34,6 +44,7 @@ type TranscriptListProps = {
   currentSessionId?: string;
   displayTranscript: TranscriptEntry[];
   flatTranscript: boolean;
+  hasMessages: boolean;
   hasOlderMessages: boolean;
   isLoadingOlderMessages: boolean;
   isRefreshingMessages: boolean;
@@ -63,6 +74,7 @@ export function TranscriptList({
   currentSessionId,
   displayTranscript,
   flatTranscript,
+  hasMessages,
   hasOlderMessages,
   isLoadingOlderMessages,
   isRefreshingMessages,
@@ -83,17 +95,82 @@ export function TranscriptList({
   transcriptFontSize,
 }: TranscriptListProps) {
   const { t } = useTranslation();
+  const focused = useIsFocused();
   const transcriptRef = useRef<FlashListRef<TranscriptEntry>>(null);
-  const shouldPositionInitialTranscriptRef = useRef(false);
-  const previousTranscriptRef = useRef({ sessionId: currentSessionId, length: displayTranscript.length });
-
+  const followTailRef = useRef(true);
+  const lastOffsetRef = useRef(0);
+  const settleFramesRef = useRef(0);
+  const settleFrameRef = useRef<number | undefined>(undefined);
+  const displayTranscriptRef = useRef(displayTranscript);
   useLayoutEffect(() => {
-    const previous = previousTranscriptRef.current;
-    if (previous.sessionId !== currentSessionId || (previous.length === 0 && displayTranscript.length > 0)) {
-      shouldPositionInitialTranscriptRef.current = true;
+    displayTranscriptRef.current = displayTranscript;
+  });
+
+  // A newly selected session always opens at its newest message.
+  useLayoutEffect(() => {
+    followTailRef.current = true;
+    lastOffsetRef.current = 0;
+  }, [currentSessionId]);
+
+  const settleToTail = useCallback(() => {
+    settleFramesRef.current = TAIL_SETTLE_FRAMES;
+    if (settleFrameRef.current !== undefined) return;
+    const run = () => {
+      settleFrameRef.current = undefined;
+      if (!followTailRef.current || displayTranscriptRef.current.length === 0) {
+        settleFramesRef.current = 0;
+        return;
+      }
+      transcriptRef.current?.scrollToEnd({ animated: false });
+      settleFramesRef.current -= 1;
+      if (settleFramesRef.current > 0) settleFrameRef.current = requestAnimationFrame(run);
+    };
+    settleFrameRef.current = requestAnimationFrame(run);
+  }, []);
+
+  useEffect(() => () => {
+    if (settleFrameRef.current !== undefined) cancelAnimationFrame(settleFrameRef.current);
+  }, []);
+
+  // Follow additions only while the user is parked at the bottom; FlashList's
+  // maintainVisibleContentPosition keeps the visible position otherwise.
+  useEffect(() => {
+    if (displayTranscript.length === 0) return;
+    if (followTailRef.current) settleToTail();
+  }, [currentSessionId, displayTranscript.length, settleToTail]);
+
+  const restorePosition = useCallback(() => {
+    if (displayTranscriptRef.current.length === 0) return;
+    if (followTailRef.current) {
+      settleToTail();
+      return;
     }
-    previousTranscriptRef.current = { sessionId: currentSessionId, length: displayTranscript.length };
-  }, [currentSessionId, displayTranscript.length]);
+    if (lastOffsetRef.current > 0) {
+      transcriptRef.current?.scrollToOffset({ offset: lastOffsetRef.current, animated: false });
+    }
+  }, [settleToTail]);
+
+  // Android detaches inactive tab screens, so returning to the tab can leave the
+  // recycled list at offset 0 or undrawn until something forces a layout.
+  useEffect(() => {
+    if (!focused) return;
+    restorePosition();
+    transcriptRef.current?.recomputeViewableItems();
+  }, [focused, restorePosition]);
+
+  // Same protection when the app returns from the background or a locked screen.
+  useEffect(() => {
+    const subscription = AppState.addEventListener('change', (state) => {
+      if (state === 'active') restorePosition();
+    });
+    return () => subscription.remove();
+  }, [restorePosition]);
+
+  const handleScroll = useCallback((event: NativeSyntheticEvent<NativeScrollEvent>) => {
+    const { contentOffset, contentSize, layoutMeasurement } = event.nativeEvent;
+    lastOffsetRef.current = contentOffset.y;
+    followTailRef.current = contentSize.height - (contentOffset.y + layoutMeasurement.height) <= TAIL_FOLLOW_THRESHOLD;
+  }, []);
 
   const extraData = useMemo(() => ({ copiedMessageId, speakingMessageId, onReviewChanges }), [copiedMessageId, speakingMessageId, onReviewChanges]);
 
@@ -113,15 +190,10 @@ export function TranscriptList({
       keyboardShouldPersistTaps="handled"
       keyExtractor={(entry) => `${entry.id}-${entry.createdAt}`}
       maintainVisibleContentPosition={MAINTAIN_VISIBLE_CONTENT_POSITION}
+      onScroll={handleScroll}
+      scrollEventThrottle={16}
       onStartReached={hasOlderMessages ? onLoadOlderMessages : undefined}
       onStartReachedThreshold={0.5}
-      onContentSizeChange={() => {
-        if (!shouldPositionInitialTranscriptRef.current || displayTranscript.length === 0) {
-          return;
-        }
-        shouldPositionInitialTranscriptRef.current = false;
-        transcriptRef.current?.scrollToEnd({ animated: false });
-      }}
       renderItem={({ item: entry }) => (
         <View style={[
           styles.transcriptItem,
@@ -161,33 +233,35 @@ export function TranscriptList({
           ) : null}
         </View>
       )}
-      ListEmptyComponent={isRefreshingMessages && currentSessionId ? (
-        <TranscriptSkeleton palette={palette} />
-      ) : (
-        <Card mode="contained" style={[styles.emptyCard, { backgroundColor: palette.surface }]}>
-          <Card.Content style={styles.emptyContent}>
-            <Text variant="headlineSmall" style={[styles.emptyTitle, { color: palette.text }]}>{t('chat:starter.title')}</Text>
-            <Text variant="bodyMedium" style={{ color: palette.muted }}>
-              {t('chat:starter.description')}
-            </Text>
-            <View style={styles.promptStack}>
-              {STARTER_PROMPT_KEYS.map((key) => (
-                <TouchableRipple
-                  accessibilityRole="button"
-                  accessibilityLabel={t(key)}
-                  key={key}
-                  style={[styles.promptCard, { borderColor: palette.border, backgroundColor: palette.background }]}
-                  onPress={() => onSelectStarterPrompt(key === 'chat:starter.prompts.implement' ? `${t(key)}\n${t('chat:starter.bugSymptoms')}` : t(key))}>
-                  <View style={styles.promptCardInner}>
-                    <MaterialCommunityIcons name="lightning-bolt" size={18} color={palette.tint} />
-                    <Text variant="bodyMedium" style={{ color: palette.text }}>{t(key)}</Text>
-                  </View>
-                </TouchableRipple>
-              ))}
-            </View>
-          </Card.Content>
-        </Card>
-      )}
+      ListEmptyComponent={
+        currentSessionId && (isRefreshingMessages || hasMessages || hasOlderMessages) ? (
+          running || isRefreshingMessages ? <TranscriptSkeleton palette={palette} /> : null
+        ) : (
+          <Card mode="contained" style={[styles.emptyCard, { backgroundColor: palette.surface }]}>
+            <Card.Content style={styles.emptyContent}>
+              <Text variant="headlineSmall" style={[styles.emptyTitle, { color: palette.text }]}>{t('chat:starter.title')}</Text>
+              <Text variant="bodyMedium" style={{ color: palette.muted }}>
+                {t('chat:starter.description')}
+              </Text>
+              <View style={styles.promptStack}>
+                {STARTER_PROMPT_KEYS.map((key) => (
+                  <TouchableRipple
+                    accessibilityRole="button"
+                    accessibilityLabel={t(key)}
+                    key={key}
+                    style={[styles.promptCard, { borderColor: palette.border, backgroundColor: palette.background }]}
+                    onPress={() => onSelectStarterPrompt(key === 'chat:starter.prompts.implement' ? `${t(key)}\n${t('chat:starter.bugSymptoms')}` : t(key))}>
+                    <View style={styles.promptCardInner}>
+                      <MaterialCommunityIcons name="lightning-bolt" size={18} color={palette.tint} />
+                      <Text variant="bodyMedium" style={{ color: palette.text }}>{t(key)}</Text>
+                    </View>
+                  </TouchableRipple>
+                ))}
+              </View>
+            </Card.Content>
+          </Card>
+        )
+      }
       ListFooterComponent={(
         <View style={styles.transcriptFooter}>
           {activeSession?.revert ? (

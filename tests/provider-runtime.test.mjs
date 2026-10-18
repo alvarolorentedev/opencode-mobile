@@ -337,6 +337,15 @@ wake(null); await runtime.settle(); runtime.unmount(); assert.equal(runtime.coun
   assert.deepEqual(fullPasses, [false], 'the reconnect rebuild waits for the in-flight poll');
   heldSessions.resolve(); heldSessions = undefined; await liveness.settle();
   assert.deepEqual(fullPasses, [false, true], 'the reconnect rebuild cannot be swallowed by the poll');
+  // A short background return must still re-assert domain data even though the
+  // stream stayed up and no restart/rebuild is requested.
+  const sessionsBeforeForeground = sessions;
+  [...listeners].forEach((listener) => listener('background'));
+  now += 1_000;
+  [...listeners].forEach((listener) => listener('active'));
+  await liveness.settle();
+  assert.equal(subscriptions, 4, 'a short background return keeps the live stream');
+  assert.ok(sessions > sessionsBeforeForeground, 'a foreground return re-asserts sessions without a restart');
   liveness.unmount();
 }
 

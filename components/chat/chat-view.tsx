@@ -31,7 +31,7 @@ export function ChatView() {
     currentUsage, diffAdditions, diffCount, diffDeletions, diffDetails, diffTurns,
     displayTranscript, draft, expandedDiffId, forkSession, handleAbort, handleAttach,
     handleConfirmStopConversation, handleCopyMessage, handleNewSession, handleReviewChanges,
-    handleSendPrompt, handleSpeakEntry, handleToggleRecording, handleVoiceRecovery, hasFailedInput, recoverFailedInput, dismissFailedInput,
+    handleSendPrompt, handleSpeakEntry, handleToggleRecording, handleVoiceRecovery, hasFailedInput, recoverFailedInput, dismissFailedInput, hasTranscriptMessages,
     isCreatingSession, isRefreshingMessages, isSpeechInputAvailable,
     isSpeechInputListening, isStoppingSession, isUpdatingAutoApprove, latestAssistantTurnUsage,
     pendingPrompts, pendingInteractions, progressIcon, progressVisible,
@@ -101,6 +101,7 @@ export function ChatView() {
           diffTurns={diffTurns}
           displayTranscript={displayTranscript}
           flatTranscript={chatPreferences.flatTranscript === true}
+          hasMessages={hasTranscriptMessages}
           slim={slim}
           transcriptFontSize={normalizeTranscriptFontSize(chatPreferences.transcriptFontSize)}
           expandedDiffId={expandedDiffId}

@@ -111,6 +111,7 @@ type ChatContentProps = {
   diffTurns: DiffTurn[]
   displayTranscript: TranscriptEntry[]
   expandedDiffId?: string
+  hasMessages: boolean
   hasOlderMessages: boolean
   isLoadingOlderMessages: boolean
   onLoadOlderMessages: () => void
@@ -143,10 +144,10 @@ type ChatContentProps = {
 ### Behavior notes
 
 - Chat keeps its transcript and pending cards mounted while changes are reviewed.
-- transcript messages use FlashList virtualization; it starts at the bottom, follows additions only from the bottom, and preserves the visible position otherwise
+- transcript messages use FlashList virtualization; it starts at the bottom, follows additions only from the bottom, and preserves the visible position otherwise. Because FlashList measures progressively, the tail is re-asserted across a few frames on a session switch or data change, and the list re-applies its tail/offset when the Chat tab regains focus or the app returns to the foreground, so an Android detach or background/lock cannot leave it at the top or undrawn. A starter-prompt card is only shown for a session with no transcript content; a session that is loading, has raw history without displayable entries, or is running shows the skeleton (or nothing) instead.
 - A centered changes chip above the composer shows file count and green additions/red deletions for the selected scope. It hides at zero files and omits line totals for filename-only patches. Tapping opens the shared Files changed overlay with refresh, source selection, and diff accordions. Changes use a compact bottom sheet (55% of the viewport where safe areas permit), a centered file-count title, close icon, and a three-dot source button instead of separate summary/source cards.
 - Changes overlay scopes: `Turn` (per-turn snapshot diff, with a picker when multiple turns have diffs), `Uncommitted`, and `Branch` (VCS working tree / default-branch diffs)
-- displays starter prompts when there are no display transcript messages
+- displays starter prompts only when the selected session has no transcript content at all
 
 ## `components/chat/chat-composer.tsx`
 

@@ -712,7 +712,10 @@ A liveness watchdog runs only while the app is foregrounded: a stream that has
 received no envelope for 90 seconds (3 seconds in E2E builds) is re-subscribed
 once per window, and a foreground return either retries immediately (when the
 stream is not connected) or cycles a stream that was backgrounded for 15 seconds
-or more. Envelope timestamps advance the window, so a healthy server never
+or more. Every foreground return additionally runs one reconciliation pass,
+because a suspended JS runtime can miss envelopes while the stream still looks
+connected and would otherwise leave a stale or empty transcript until the next
+event. Envelope timestamps advance the window, so a healthy server never
 reconnects. Stream failures classified as invalid credentials or entitlement
 (`auth`/`entitlement`) stop the retry loop and notify the provider, which routes
 Cloud Link to its prepared credential recovery and manual connections to an

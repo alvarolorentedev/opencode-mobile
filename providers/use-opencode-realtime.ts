@@ -172,6 +172,11 @@ export function useOpencodeRealtime({ catalogClient, activeProjectPath, connecte
       }
       const backgroundedFor = backgroundedAt ? Date.now() - backgroundedAt : 0;
       backgroundedAt = 0;
+      // Re-assert domain data on every foreground return. The JS runtime can be
+      // suspended while the stream still looks connected, so envelopes may have
+      // been missed and a transcript can otherwise stay stale or empty until the
+      // next event. The in-flight guard coalesces this with a restart reconcile.
+      void reconcile();
       if (statusRef.current !== 'connected' || backgroundedFor >= SSE_FOREGROUND_CYCLE_MS) requestRestart();
     });
     const watchdog = setInterval(() => {

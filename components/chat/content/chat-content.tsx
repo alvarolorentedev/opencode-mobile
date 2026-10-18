@@ -36,6 +36,7 @@ type ChatContentProps = {
   diffTurns: DiffTurn[];
   displayTranscript: TranscriptEntry[];
   flatTranscript: boolean;
+  hasMessages: boolean;
   hasOlderMessages: boolean;
   isLoadingOlderMessages: boolean;
   onLoadOlderMessages: () => void;
@@ -76,6 +77,7 @@ export function ChatContent({ ...props }: ChatContentProps) {
         currentSessionId={props.currentSessionId}
         displayTranscript={props.displayTranscript}
         flatTranscript={props.flatTranscript}
+        hasMessages={props.hasMessages}
         hasOlderMessages={props.hasOlderMessages}
         isLoadingOlderMessages={props.isLoadingOlderMessages}
         isRefreshingMessages={props.isRefreshingMessages}
