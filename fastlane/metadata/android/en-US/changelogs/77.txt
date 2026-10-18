@@ -1,0 +1,3 @@
+- Exposed services can now claim a dedicated HTTPS port, so apps that emit absolute URLs work from the port root and not only a sub-path.
+- Each service shows a full shareable link (for example `https://host:2053/` or `:8443/app`), and port conflicts are caught before saving.
+- Older Cloud Link connectors keep the legacy `:8443` paths with a clear compatibility hint.
