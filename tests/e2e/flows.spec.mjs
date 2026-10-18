@@ -58,6 +58,28 @@ async function openChatLibrary(page) {
   await expect(page.getByTestId('chat-library')).toBeVisible();
 }
 
+// Drag a bottom sheet's header straight down until it dismisses. The transparent
+// modal sheets slide in over ~250ms, so wait for the measured top to settle
+// before starting the drag; otherwise the pointer lands mid-sheet.
+async function swipeSheetHeaderDown(page, locator) {
+  await expect.poll(async () => {
+    const first = await locator.boundingBox();
+    await page.waitForTimeout(50);
+    const second = await locator.boundingBox();
+    return Boolean(first && second && Math.abs(first.y - second.y) < 1);
+  }).toBe(true);
+  const bounds = await locator.boundingBox();
+  expect(bounds).not.toBeNull();
+  const startX = bounds.x + bounds.width / 2;
+  const startY = bounds.y + 24;
+  await page.mouse.move(startX, startY);
+  await page.mouse.down();
+  for (let step = 1; step <= 8; step += 1) {
+    await page.mouse.move(startX, startY + step * 40);
+  }
+  await page.mouse.up();
+}
+
 async function closeSettingsOverlay(page) {
   const overlay = page.getByTestId('settings-section-overlay');
   if (await overlay.isVisible().catch(() => false)) await overlay.getByRole('button', { name: 'Close', exact: true }).first().click();
@@ -582,17 +604,19 @@ test('overlay sheets dismiss on a downward header swipe', async ({ page, request
   // (the drag zone) at the top of the panel.
   const sheet = page.getByLabel('Chats', { exact: true });
   await expect(sheet).toBeVisible();
-  const bounds = await sheet.boundingBox();
-  expect(bounds).not.toBeNull();
-  const startX = bounds.x + bounds.width / 2;
-  const startY = bounds.y + 24;
-  await page.mouse.move(startX, startY);
-  await page.mouse.down();
-  for (let step = 1; step <= 8; step += 1) {
-    await page.mouse.move(startX, startY + step * 40);
-  }
-  await page.mouse.up();
+  await swipeSheetHeaderDown(page, sheet);
   await expect(library).toBeHidden();
+});
+
+test('modal bottom sheets dismiss on a downward header swipe', async ({ page, request }) => {
+  await resetScenario(request, 'happy-path');
+  await openReadyChat(page);
+  await page.getByTestId('chat-model-picker-trigger').click();
+  const picker = page.getByTestId('chat-model-picker');
+  await expect(picker).toBeVisible();
+  await swipeSheetHeaderDown(page, picker);
+  await expect(picker).toBeHidden();
+  await expect(page.getByTestId('chat-model-picker-trigger')).toBeVisible();
 });
 
 for (const scenario of ['permission', 'question']) {

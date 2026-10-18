@@ -776,7 +776,10 @@ This is one of the densest parts of the architecture and would need careful pari
   while transparent `Modal` sheets (`native-select`,
   model picker) cannot use `KeyboardAvoidingView` and instead consume
   `hooks/use-keyboard-height.ts` and apply the inset as padding. Neither uses
-  `behavior="height"`.
+  `behavior="height"`. All bottom-sheet overlays dismiss on a downward header
+  drag through `components/ui/use-swipe-dismiss.ts`; the `Modal` sheets wrap
+  their content in `GestureHandlerRootView` so the gesture is recognized inside
+  the native `Modal` window.
 - The app uses custom theme tokens from `constants/theme.ts` and maps them into React Native Paper in `constants/paper-theme.ts`.
 - Markdown rendering is intentionally narrow and custom, not library-based.
 - Diff rendering is custom and optimized for readable in-app inspection, not full git-style fidelity.

@@ -11,12 +11,15 @@ import {
   Text,
   View,
 } from 'react-native';
+import { GestureDetector, GestureHandlerRootView } from 'react-native-gesture-handler';
+import Animated from 'react-native-reanimated';
 
 import { useUpdateBlocker } from '@/hooks/use-update-blocker';
 import { Colors, Fonts } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useKeyboardHeight } from '@/hooks/use-keyboard-height';
 import { TextInput } from '@/components/ui/text-input';
+import { useSwipeDismiss } from '@/components/ui/use-swipe-dismiss';
 
 export type NativeSelectOption<T extends string = string> = {
   value: T;
@@ -71,6 +74,12 @@ export function NativeSelect<T extends string>({
     setQuery('');
   }, []);
 
+  const { pan, sheetStyle, backdropStyle, handleSheetLayout } = useSwipeDismiss({
+    visible,
+    enabled: true,
+    onDismiss: close,
+  });
+
   const handleSelect = useCallback(
     (value: T) => {
       setVisible(false);
@@ -117,17 +126,21 @@ export function NativeSelect<T extends string>({
       })}
       {Platform.OS === 'ios' && !searchable ? null : (
         <Modal animationType="fade" transparent visible={visible} onRequestClose={close}>
-          <View style={[styles.overlay, { paddingBottom: keyboardHeight }]}>
-            <Pressable style={styles.backdrop} onPress={close} />
-            <View style={[styles.sheet, { backgroundColor: palette.surface, borderColor: palette.border }]}> 
-              <View style={[styles.sheetHeader, { borderBottomColor: palette.border }]}> 
-                <Text numberOfLines={1} style={[styles.sheetTitle, { color: palette.text }]}>
-                  {title || t('common:select.chooseOption')}
-                </Text>
-                <Pressable onPress={close} style={({ pressed }) => [styles.closeButton, pressed && styles.pressed]}>
-                  <Text style={[styles.closeButtonLabel, { color: palette.tint }]}>{t('common:actions.close')}</Text>
-                </Pressable>
-              </View>
+          <GestureHandlerRootView style={[styles.overlay, { paddingBottom: keyboardHeight }]}>
+            <Pressable style={StyleSheet.absoluteFill} onPress={close}>
+              <Animated.View style={[styles.backdrop, backdropStyle]} />
+            </Pressable>
+            <Animated.View onLayout={handleSheetLayout} style={[styles.sheet, { backgroundColor: palette.surface, borderColor: palette.border }, sheetStyle]}>
+              <GestureDetector gesture={pan}>
+                <View style={[styles.sheetHeader, { borderBottomColor: palette.border }]}>
+                  <Text numberOfLines={1} style={[styles.sheetTitle, { color: palette.text }]}>
+                    {title || t('common:select.chooseOption')}
+                  </Text>
+                  <Pressable onPress={close} style={({ pressed }) => [styles.closeButton, pressed && styles.pressed]}>
+                    <Text style={[styles.closeButtonLabel, { color: palette.tint }]}>{t('common:actions.close')}</Text>
+                  </Pressable>
+                </View>
+              </GestureDetector>
               {searchable ? (
                 <View style={styles.searchWrap}>
                   <TextInput
@@ -178,8 +191,8 @@ export function NativeSelect<T extends string>({
                   );
                 })}
               </ScrollView>
-            </View>
-          </View>
+            </Animated.View>
+          </GestureHandlerRootView>
         </Modal>
       )}
     </>
@@ -192,7 +205,7 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
   },
   backdrop: {
-    ...StyleSheet.absoluteFill,
+    flex: 1,
     backgroundColor: 'rgba(0, 0, 0, 0.28)',
   },
   sheet: {

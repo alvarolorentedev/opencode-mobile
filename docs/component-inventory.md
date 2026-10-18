@@ -214,6 +214,7 @@ type ChatComposerProps = {
 - own only local modal visibility and search-query state
 - return the selected `ModelOption` to the composer, which persists it through the provider
 - optionally render the shared numeric slider for discrete Low/Default/High reasoning above model search, using provider-owned preferences
+- the transparent `Modal` sheet wraps its content in `GestureHandlerRootView` and dismisses on a downward header drag via the shared `useSwipeDismiss` helper, matching `OverlaySheet`
 
 ## `components/chat/chat-header.tsx`
 
@@ -257,6 +258,7 @@ type ChatHeaderProps = {
 - shared overlay presentation for Chats, project selection, progress, diff source selection, session usage, terminal selection, and Settings categories; short overlays fit their content
 - `scrollable={false}` lets embedded virtualized lists own scrolling without a nested ScrollView
 - a full-screen `KeyboardAvoidingView` with `behavior="padding"` contains the sheet; the sheet and its scroll area shrink within the visible space so focused inputs (including the speech locale) stay reachable above the keyboard
+- dismisses on a downward header drag through the shared `useSwipeDismiss` helper, which owns the Pan gesture, threshold set, sheet-height measurement, and backdrop fade; the transparent `Modal` bottom sheets (model picker, select) reuse the same helper
 
 ## `components/ui/project-picker.tsx`
 
@@ -820,6 +822,9 @@ Behavior:
 - the searchable modal sheet lifts its options above the soft keyboard via
   `useKeyboardHeight` (transparent `Modal`s cannot use `KeyboardAvoidingView`)
   and shrinks the sheet/list so long filtered lists stay scrollable
+- the modal sheet wraps its content in `GestureHandlerRootView` and dismisses on
+  a downward header drag via the shared `useSwipeDismiss` helper, matching
+  `OverlaySheet`
 
 ### Prop contract
 

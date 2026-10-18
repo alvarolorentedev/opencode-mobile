@@ -63,6 +63,7 @@ const { OverlaySheet } = await loadTs('components/ui/overlay-sheet.tsx', {
   '@/hooks/use-update-blocker': { useUpdateBlocker: () => {} },
   '@/hooks/use-color-scheme': { useColorScheme: () => 'dark' },
   '@/hooks/use-dismiss-on-back': { useDismissOnBack: () => {} },
+  './use-swipe-dismiss': { useSwipeDismiss: () => ({ pan: {}, sheetStyle: {}, backdropStyle: {}, handleSheetLayout: () => {} }) },
 });
 
 describe('keyboard sheet layout', () => {

@@ -2,9 +2,12 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Keyboard, Modal, Pressable, SectionList, StyleSheet, Text, TextInput, View } from 'react-native';
+import { GestureDetector, GestureHandlerRootView } from 'react-native-gesture-handler';
+import Animated from 'react-native-reanimated';
 
 import { useUpdateBlocker } from '@/hooks/use-update-blocker';
 import { NumericSlider } from '@/components/ui/numeric-slider';
+import { useSwipeDismiss } from '@/components/ui/use-swipe-dismiss';
 import { useDismissOnBack } from '@/hooks/use-dismiss-on-back';
 import { useKeyboardHeight } from '@/hooks/use-keyboard-height';
 import { REASONING_OPTIONS } from '@/components/chat/chat-view-utils';
@@ -76,6 +79,11 @@ export function ModelPicker({ disabled = false, models, onSelect, recentModelIds
 
   const close = () => setVisible(false);
   useDismissOnBack(visible, close);
+  const { pan, sheetStyle, backdropStyle, handleSheetLayout } = useSwipeDismiss({
+    visible,
+    enabled: true,
+    onDismiss: close,
+  });
   const select = (model: ModelOption) => {
     close();
     onSelect(model);
@@ -141,15 +149,19 @@ export function ModelPicker({ disabled = false, models, onSelect, recentModelIds
         </ControlButton>
       )}
       <Modal animationType="slide" transparent visible={visible} onRequestClose={close}>
-        <View style={[styles.overlay, { paddingBottom: keyboardHeight }]}>
-          <Pressable accessible={false} style={styles.backdrop} onPress={close} />
-          <View testID="chat-model-picker" style={[styles.sheet, { backgroundColor: palette.surface, borderColor: palette.border }]}>
-              <View style={[styles.header, { borderBottomColor: palette.border }]}>
-                <Text style={[styles.title, { color: palette.text }]}>{t('chat:modelPicker.chooseModel')}</Text>
-                <Pressable accessibilityRole="button" accessibilityLabel={t('chat:modelPicker.closePicker')} onPress={close} style={({ pressed }) => [styles.closeButton, pressed && styles.pressed]}>
-                  <Text style={[styles.closeLabel, { color: palette.tint }]}>{t('common:actions.close')}</Text>
-                </Pressable>
-              </View>
+        <GestureHandlerRootView style={[styles.overlay, { paddingBottom: keyboardHeight }]}>
+          <Pressable accessible={false} style={StyleSheet.absoluteFill} onPress={close}>
+            <Animated.View style={[styles.backdrop, backdropStyle]} />
+          </Pressable>
+          <Animated.View testID="chat-model-picker" onLayout={handleSheetLayout} style={[styles.sheet, { backgroundColor: palette.surface, borderColor: palette.border }, sheetStyle]}>
+              <GestureDetector gesture={pan}>
+                <View style={[styles.header, { borderBottomColor: palette.border }]}>
+                  <Text style={[styles.title, { color: palette.text }]}>{t('chat:modelPicker.chooseModel')}</Text>
+                  <Pressable accessibilityRole="button" accessibilityLabel={t('chat:modelPicker.closePicker')} onPress={close} style={({ pressed }) => [styles.closeButton, pressed && styles.pressed]}>
+                    <Text style={[styles.closeLabel, { color: palette.tint }]}>{t('common:actions.close')}</Text>
+                  </Pressable>
+                </View>
+              </GestureDetector>
               {reasoning && onReasoningChange ? (
                 <View style={{ paddingHorizontal: 16, paddingTop: 12 }}>
                   <NumericSlider
@@ -206,8 +218,8 @@ export function ModelPicker({ disabled = false, models, onSelect, recentModelIds
                   </View>
                 )}
               />
-          </View>
-        </View>
+          </Animated.View>
+        </GestureHandlerRootView>
       </Modal>
     </>
   );
@@ -218,7 +230,7 @@ const styles = StyleSheet.create({
   summaryModel: { maxWidth: '100%', fontFamily: Fonts.sans, fontSize: 13, fontWeight: '600' },
   summaryReasoning: { fontFamily: Fonts.sans, fontSize: 11, fontWeight: '600' },
   overlay: { flex: 1, justifyContent: 'flex-end' },
-  backdrop: { ...StyleSheet.absoluteFill, backgroundColor: 'rgba(0, 0, 0, 0.28)', zIndex: 0 },
+  backdrop: { flex: 1, backgroundColor: 'rgba(0, 0, 0, 0.28)', zIndex: 0 },
   sheet: { borderTopLeftRadius: 24, borderTopRightRadius: 24, borderWidth: 1, elevation: 1, height: '82%', overflow: 'hidden', zIndex: 1 },
   header: { alignItems: 'center', borderBottomWidth: 1, flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: 16, paddingVertical: 12 },
   title: { fontFamily: Fonts.display, fontSize: 18, fontWeight: '700' },
