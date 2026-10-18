@@ -202,4 +202,14 @@ describe('store boundary', () => {
     expect((await api.check()).phase).toBe('available'); expect(source.openURL).not.toHaveBeenCalled();
     await api.start(); expect(source.openURL).toHaveBeenCalledWith('https://apps.apple.com/app/id123');
   });
+  it('tolerates a rejecting native installation probe instead of surfacing an error', async () => {
+    // Mirrors the iOS trap fix: a StoreKit failure must degrade to "no update",
+    // never propagate as a rejection (which trapped Promise.swift:56 via JSI).
+    const installation = vi.fn(async () => { throw new Error('StoreKit unavailable'); });
+    const fetch = vi.fn();
+    const source = await platform('ios', { updates: { enabled: true, appStoreId: '123' } }, { getAppStoreInstallation: installation }, { fetch });
+    const api = source.loadAppUpdates();
+    await expect(api.check()).resolves.toEqual({ phase: 'none' });
+    expect(fetch).not.toHaveBeenCalled();
+  });
 });
