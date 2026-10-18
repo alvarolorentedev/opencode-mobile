@@ -320,7 +320,7 @@ Hydration rules:
 - persisted settings validate known string fields and Cloud Link identity before merging over defaults
 - persisted chat preferences validate individual strings, booleans, arrays, maps, and enum values; numeric controls are clamped to their supported ranges before merging over defaults and current provider state
 - saved connection profiles are hydrated on demand and fully validated, including `modelPreferences`; entries with any malformed field are dropped and unknown fields are ignored
-- active project path is restored if present
+- active project path is restored if present, then validated against the server catalog on connect: an unlisted path falls back to the server's current/first project unless the server resolves it as a worktree
 - last-session map is restored if present and is nested by connection scope; the legacy flat map fails validation and is removed
 - each persisted key hydrates independently; a storage or credential read failure preserves the unread key and suppresses unchanged default write-back until the user changes that value or relaunches. Malformed or invalid JSON is removed without blocking other keys
 - write-back is ordered per key and skips identical successful writes. Errors are reported and failed writes remain retryable. Secure credential writes finish before active connection metadata is written
@@ -407,7 +407,7 @@ Several important UI-facing values are derived instead of stored directly.
 
 ### Projects
 
-Derived from `serverProjects`, `activeProjectPath`, and `currentProjectPath`.
+Derived only from `serverProjects` (the server's `project.list()`) and `currentProjectPath`; no entry comes from the selected path.
 
 Properties include:
 
@@ -418,7 +418,7 @@ Properties include:
 
 ### Active Project
 
-Selected from derived `projects` by `activeProjectPath`.
+Selected from derived `projects` by `activeProjectPath`. A selected worktree is not a project, so it is resolved from the worktree catalog (whose owner is server-resolved) while `activeProjectPath` keeps the worktree directory for file/PTY scoping.
 
 ### Current Transcript
 

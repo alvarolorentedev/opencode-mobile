@@ -10,6 +10,12 @@ export function resolveProject(state, directory) {
   if (worktree) return state.projects.find((entry) => entry.id === worktree.projectID);
   const existing = state.projects.find((project) => (project.canonical || project.worktree) === directory);
   if (existing) return existing;
+  // Nested paths belong to the checkout they live in, like the real server's
+  // git/hg root discovery, instead of becoming projects of their own.
+  const nestedWorktree = state.worktrees.find((entry) => directory.startsWith(`${entry.directory}/`));
+  if (nestedWorktree) return state.projects.find((entry) => entry.id === nestedWorktree.projectID);
+  const nested = state.projects.find((project) => directory.startsWith(`${project.canonical || project.worktree}/`));
+  if (nested) return nested;
   if (!directory.startsWith(`${state.rootPath}/`)) return undefined;
   const project = {
     id: `project-added-${state.projects.length}`,
@@ -19,6 +25,18 @@ export function resolveProject(state, directory) {
   };
   state.projects.push(project);
   return project;
+}
+
+// The location the server resolves for a directory: a worktree keeps its own
+// directory, nested input reports the owning checkout, and a new top-level
+// directory becomes its own project.
+export function resolveProjectDirectory(state, directory) {
+  if (!directory) return undefined;
+  const worktree = state.worktrees.find((entry) => entry.directory === directory);
+  if (worktree) return worktree.directory;
+  const nestedWorktree = state.worktrees.find((entry) => directory.startsWith(`${entry.directory}/`));
+  if (nestedWorktree) return nestedWorktree.directory;
+  return resolveProject(state, directory)?.canonical;
 }
 
 export function createState(scenario) {

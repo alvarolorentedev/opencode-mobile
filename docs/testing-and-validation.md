@@ -203,14 +203,17 @@ before seeding next-launch data, and waits for the rotated scope to persist
 before asserting preservation. Navigation completion alone does not signal
 that provider persistence has finished.
 
-The OpenCode 2 workspace regression flow omits an added directory from the
-`/api/project` catalog response and sends a prompt through the app, checking
-the HTTP 200 admission response and cleared composer. It checks that catalog
-refresh, tab navigation, reconnect, and reload preserve the selected path and keep it in the
-picker. It also opens a favorite in that workspace after refresh and reload,
-checking the retained transcript. It waits for the active-project and favorite
-storage writes before reload. Provider runtime coverage checks that session
-opening accepts the retained active path while rejecting other unlisted paths.
+The OpenCode 2 workspace regression flow adds a directory through the picker,
+checks the serve's `/api/project` response now includes it, and sends a prompt
+through the app, checking the HTTP 200 admission response and cleared composer.
+It checks that catalog refresh, tab navigation, reconnect, and reload preserve
+the selected path and keep it in the picker from the server list. It also opens
+a favorite in that workspace after refresh and reload, checking the retained
+transcript. It waits for the active-project and favorite storage writes before
+reload. Provider runtime coverage checks that an unlisted path falls back to the
+server's current project, that a server-resolved worktree stays selected, and
+that session opening accepts the retained active path while rejecting other
+unlisted paths.
 
 `.github/workflows/build.yml` owns Android validation and release. It runs on pushes to `main` and `v*` tags:
 

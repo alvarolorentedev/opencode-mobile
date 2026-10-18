@@ -110,12 +110,14 @@ await assert.rejects(browserRuntime.value.openDirectory('../outside'), /Invalid 
 await searchFiles(''); browserRuntime.flush();
 assert.equal(browserRuntime.value.path, 'docs', 'clearing search retains the browsed directory');
 
-// Catalog omissions must not discard the persisted, app-selected directory.
+// Catalog omissions drop a selection unless the server still resolves it as a
+// known location, so no phantom workspace survives a refresh.
 let workspaceCatalog = {
   currentProjectPath: '/workspace/main-clone',
   serverRootPath: '/workspace',
   serverProjects: [{ id: 'project-1', worktree: '/workspace/main-clone', time: { created: 1 } }],
 };
+let knownWorkspaceLocation = false;
 const workspaceCatalogHook = await loadTs('providers/use-workspace-catalog-actions.ts', {
   react: { useCallback: (fn) => fn, useEffect: () => {}, useRef: (current) => ({ current }) },
   '@/lib/opencode/client': { buildClient: () => ({}) },
@@ -123,6 +125,7 @@ const workspaceCatalogHook = await loadTs('providers/use-workspace-catalog-actio
   '@/providers/services/session-service': {
     loadWorkspaceCatalog: async () => workspaceCatalog,
     resolveWorkspace: async () => ({ worktree: '/workspace/added' }),
+    isKnownWorkspaceLocation: async () => knownWorkspaceLocation,
   },
 });
 function makeWorkspaceCatalogActions(activePath, isCurrentCatalogClient = () => true) {
@@ -130,7 +133,7 @@ function makeWorkspaceCatalogActions(activePath, isCurrentCatalogClient = () => 
   const activeProjectPathRef = { current: activePath };
   const scopeGenerationRef = { current: 0 };
   state.actions = workspaceCatalogHook.useWorkspaceCatalogActions({
-    catalogClient: {}, isCurrentCatalogClient, activeProjectPathRef,
+    catalogClient: { __opencode: { contract: 'v2' } }, isCurrentCatalogClient, activeProjectPathRef,
     setActiveProjectPath: (path) => { state.activePath = path; activeProjectPathRef.current = path; },
     clearProjectState: () => { state.cleared++; },
     serverProjectsRef: { current: [] }, setServerProjects: (projects) => { state.projects = projects; },
@@ -142,11 +145,18 @@ function makeWorkspaceCatalogActions(activePath, isCurrentCatalogClient = () => 
   state.scopeGenerationRef = scopeGenerationRef;
   return state;
 }
-const retainedWorkspace = makeWorkspaceCatalogActions('/workspace/other-clone');
-await retainedWorkspace.actions.refreshWorkspaceCatalog();
-assert.equal(retainedWorkspace.activePath, '/workspace/other-clone');
-assert.equal(retainedWorkspace.cleared, 0, 'catalog omission does not clear selected workspace state');
-assert.equal(retainedWorkspace.scopeGenerationRef.current, 0, 'catalog omission does not advance the project generation');
+const droppedWorkspace = makeWorkspaceCatalogActions('/workspace/other-clone');
+await droppedWorkspace.actions.refreshWorkspaceCatalog();
+assert.equal(droppedWorkspace.activePath, '/workspace/main-clone', 'an unlisted workspace falls back to the server current project');
+assert.equal(droppedWorkspace.cleared, 1, 'dropping an unlisted workspace clears project state');
+assert.equal(droppedWorkspace.scopeGenerationRef.current, 1, 'dropping an unlisted workspace advances the project generation');
+knownWorkspaceLocation = true;
+const retainedWorktree = makeWorkspaceCatalogActions('/worktrees/task');
+await retainedWorktree.actions.refreshWorkspaceCatalog();
+assert.equal(retainedWorktree.activePath, '/worktrees/task', 'a server-resolved worktree remains selected');
+assert.equal(retainedWorktree.cleared, 0, 'a server-resolved worktree does not clear project state');
+assert.equal(retainedWorktree.scopeGenerationRef.current, 0, 'a server-resolved worktree does not advance the project generation');
+knownWorkspaceLocation = false;
 const serverCurrentWorkspace = makeWorkspaceCatalogActions(undefined);
 await serverCurrentWorkspace.actions.refreshWorkspaceCatalog();
 assert.equal(serverCurrentWorkspace.activePath, '/workspace/main-clone', 'a fresh selection prefers the server current project');

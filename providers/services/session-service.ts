@@ -9,8 +9,9 @@ import type { SessionMessageRecord } from '@/lib/opencode/format';
 import { coalesceRead } from '@/lib/opencode/in-flight';
 import { toProjectView, toSessionView } from '@/lib/opencode/v2-mappers';
 import { toMessageRecord } from '@/lib/opencode/v2/mappers';
-import type { SessionStatus } from '@/lib/opencode/types';
+import type { Project, SessionStatus } from '@/lib/opencode/types';
 import * as v1 from '@/lib/opencode/compat/v1/session';
+import { listWorktrees as listV1Worktrees } from '@/lib/opencode/compat/v1/workspace';
 
 export function getSessionInbox(client: ScopedOpencodeClient, sessionId: string) {
   return coalesceRead(client, `inbox:${sessionId}`, () => client.promptInbox!.list(sessionId));
@@ -23,10 +24,37 @@ export async function loadWorkspaceCatalog(client: ScopedOpencodeClient) {
   const serverProjects = projects.map(toProjectView).sort((left, right) => compareLabels(left.worktree, right.worktree));
   return { currentProjectPath: location.directory, serverRootPath: location.directory, serverProjects: current ? serverProjects : [...serverProjects, { id: location.project.id, worktree: location.project.canonical, time: { created: 0 } }] };
 }
-export async function resolveWorkspace(client: ScopedOpencodeClient) {
+// A project plus the location the server resolved for the scoped directory.
+// V2 exposes that location explicitly: a worktree keeps its own directory while
+// the project canonical stays the main checkout; nested input resolves to the
+// owning checkout. V1 has no location field and resolves through the project.
+export type ResolvedWorkspace = Project & { directory?: string };
+export async function resolveWorkspace(client: ScopedOpencodeClient): Promise<ResolvedWorkspace> {
   if (client.compatibility) return v1.resolveWorkspace(client.compatibility);
   const location = await client.api!.location.get({ location: { directory: client.__opencode.directory } });
-  return { id: location.project.id, worktree: location.project.canonical, time: { created: 0 } };
+  return { id: location.project.id, worktree: location.project.canonical, directory: location.project.directory, time: { created: 0 } };
+}
+
+// Server-confirms that the scoped directory is a worktree the picker may keep
+// selected even though `project.list()` only reports project canonicals. Project
+// roots and the server current directory are matched from the catalog itself,
+// and nested input resolves to its checkout, so those are rejected here. V2
+// reports a worktree through the resolved location; V1 reports the owning
+// project, so a worktree directory needs the worktree inventory.
+export async function isKnownWorkspaceLocation(client: ScopedOpencodeClient): Promise<boolean> {
+  const directory = client.__opencode.directory;
+  if (!directory) return false;
+  try {
+    const resolved = await resolveWorkspace(client);
+    if (resolved.directory === directory && resolved.worktree !== directory) return true;
+    if (client.compatibility) {
+      const entries = await listV1Worktrees(client.compatibility);
+      return entries.some((entry) => entry.directory === directory);
+    }
+    return false;
+  } catch {
+    return false;
+  }
 }
 
 // V2 lists sessions through a cursor. Reading only the first page silently

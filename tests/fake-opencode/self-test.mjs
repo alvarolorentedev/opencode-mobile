@@ -355,9 +355,17 @@ try {
     try { await v2Api.integration.oauth.status(target); } catch { cancelled = true; }
     assert(cancelled, 'Cancelled OAuth attempts must be removed');
   }
+  const addedDirectory = '/workspace/v2-added-project';
+  const addedLocation = await v2Api.location.get({ location: { directory: addedDirectory } });
+  assert(addedLocation.project.canonical === addedDirectory, 'V2 location resolution must report the added directory');
+  assert((await v2Api.project.list()).some((project) => project.canonical === addedDirectory), 'V2 location boots must persist the added project');
+  const nestedLocation = await v2Api.location.get({ location: { directory: '/workspace/demo-project/src' } });
+  assert(nestedLocation.project.canonical === '/workspace/demo-project' && nestedLocation.project.directory === '/workspace/demo-project', 'V2 nested locations must resolve to their owning project');
   const createdWorktree = await v2Api.worktree.create({ projectID: 'project-demo', name: 'v2-smoke' });
   assert((await v2Api.worktree.list({ projectID: 'project-demo' })).some((entry) => entry.directory === createdWorktree.directory), 'V2 worktree inventory missing');
-  assert((await v2Api.location.get({ location: { directory: createdWorktree.directory } })).project.id === 'project-demo', 'Worktrees retain their parent project');
+  const worktreeLocation = await v2Api.location.get({ location: { directory: createdWorktree.directory } });
+  assert(worktreeLocation.project.id === 'project-demo', 'Worktrees retain their parent project');
+  assert(worktreeLocation.project.directory === createdWorktree.directory && worktreeLocation.project.canonical === '/workspace/demo-project', 'V2 worktrees must keep their own directory under the owning project');
   await v2Api.worktree.remove({ projectID: 'project-demo', directory: createdWorktree.directory, force: true });
   await v2request('/api/session', json('POST', { title: 'Other workspace session' }));
   const scopedSessions = await v2Api.session.list({ directory: v2Directory });

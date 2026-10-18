@@ -39,12 +39,14 @@ Chat has a workspace button in its chat library. Workspace keeps its project-nam
 Behavior:
 
 - projects are deduplicated by worktree path
+- the list reflects the server's `project.list()`; the app never adds an entry of its own
 - projects are sorted by most recently initialized/created first
 - the active project can be selected from the list
 - selecting a project clears the current session selection
 - the provider later rehydrates or creates the appropriate session for that project
 - the current server project may be labeled `Current`; the selected app project may be labeled `Active`
-- Add workspace accepts a directory on the OpenCode server, resolves its project, refreshes the catalog, and selects it; an invalid directory stays in the form with an error
+- a selected worktree is kept as the active location only while the server resolves it; otherwise the app falls back to the server's current/first project
+- Add workspace accepts a directory on the OpenCode server, boots it with `location.get` so the serve persists the project, refreshes the catalog, and selects the location the server resolved (the project root for nested input); an invalid directory stays in the form with an error
 
 ### 3. Open or Create a Chat Session
 

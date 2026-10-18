@@ -1380,11 +1380,6 @@ test('OpenCode 2 adds a server workspace from the shared picker', async ({ page,
   const server = spawnV2Server(port);
   try {
     await waitForServer(request, `http://127.0.0.1:${port}/api/info`);
-    await page.route('**/api/project', async (route) => {
-      const response = await route.fetch();
-      const projects = await response.json();
-      await route.fulfill({ response, json: projects.filter((project) => project.canonical !== '/workspace/v2-new-project') });
-    });
     await openReadyChat(page);
     await connectToServer(page, `http://127.0.0.1:${port}`);
     await openChatLibrary(page);
@@ -1393,6 +1388,8 @@ test('OpenCode 2 adds a server workspace from the shared picker', async ({ page,
     await page.getByTestId('workspace-add-path').fill('/workspace/v2-new-project');
     await page.getByTestId('workspace-add-submit').click();
     await expect(page.getByRole('button', { name: /^Open chats/ })).toContainText('v2-new-project');
+    const serverProjects = await (await request.get(`http://127.0.0.1:${port}/api/project`)).json();
+    expect(serverProjects.some((project) => project.canonical === '/workspace/v2-new-project')).toBe(true);
     const [promptResponse] = await Promise.all([
       page.waitForResponse((response) => response.url().startsWith(`http://127.0.0.1:${port}/api/session/`) && response.url().endsWith('/prompt') && response.request().method() === 'POST'),
       sendPrompt(page, 'Retained workspace chat'),

@@ -46,8 +46,19 @@ describe('provider model selection utilities', () => {
 
     const providerUtilsSource = await readFile(new URL('../../providers/opencode-provider-utils.ts', import.meta.url), 'utf8');
     const providerUtilsOutput = ts.transpileModule(providerUtilsSource, { compilerOptions: { module: ts.ModuleKind.ESNext, target: ts.ScriptTarget.ES2020 } }).outputText;
-    const { mergeSessionStatuses, RETRY_STATUS_STALE_MS, collectDescendantSessionIds, areSessionListsEqual, areSessionStatusMapsEqual } = await import(`data:text/javascript,${encodeURIComponent(providerUtilsOutput)}`);
+    const { mergeSessionStatuses, RETRY_STATUS_STALE_MS, collectDescendantSessionIds, areSessionListsEqual, areSessionStatusMapsEqual, buildOpencodeProjects, resolveActiveProject } = await import(`data:text/javascript,${encodeURIComponent(providerUtilsOutput)}`);
     const now = 1_000_000;
+
+    // The picker reflects only the server's project list; the selected path
+    // never adds an entry of its own.
+    const listedProjects = buildOpencodeProjects([{ id: 'p1', worktree: '/repo', time: { created: 1, updated: 5 } }], '/repo');
+    assert.deepEqual(listedProjects.map((project) => ({ path: project.path, label: project.label, isCurrent: project.isCurrent })), [{ path: '/repo', label: 'repo', isCurrent: true }]);
+    assert.equal(buildOpencodeProjects([], '/unlisted').length, 0);
+    // A worktree is the only unlisted path the active project may keep, and only
+    // while the worktree catalog resolves it.
+    const worktreeCatalog = { entries: [{ directory: '/worktrees/task', name: 'task' }], project: { id: 'p1', root: '/repo', label: 'repo' }, loading: false };
+    assert.equal(resolveActiveProject(listedProjects, '/worktrees/task', '/repo', worktreeCatalog)?.path, '/worktrees/task');
+    assert.equal(resolveActiveProject(listedProjects, '/elsewhere', '/repo', worktreeCatalog), undefined);
     const retry = { type: 'retry', attempt: 2, message: 'provider failed', next: now + 5_000 };
     const staleRetry = { type: 'retry', attempt: 2, message: 'provider failed', next: now - RETRY_STATUS_STALE_MS - 1 };
     // A list refresh cannot express retry, so an event-derived retry must survive it.

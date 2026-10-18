@@ -5,6 +5,7 @@ import type { Project, SessionStatus } from '@/lib/opencode/types';
 import type { WorkspaceCatalog } from '@/providers/opencode-provider-types';
 import { hydrateSessionCache } from '@/providers/session-cache';
 import {
+  isKnownWorkspaceLocation as svcIsKnownWorkspaceLocation,
   loadWorkspaceCatalog as svcLoadWorkspaceCatalog,
   resolveWorkspace as svcResolveWorkspace,
 } from '@/providers/services/session-service';
@@ -48,7 +49,19 @@ export function useWorkspaceCatalogActions({
         setCurrentProjectPath(result.currentProjectPath);
         setServerRootPath(result.serverRootPath);
         const currentProject = activeProjectPathRef.current;
-        const nextProject = currentProject || result.currentProjectPath || result.serverProjects[0]?.worktree;
+        // The server's project list is authoritative. A selection the catalog
+        // omits is kept only when the server resolves it as a known location
+        // (a worktree); nested or stale paths fall back instead of leaving a
+        // phantom workspace behind.
+        let nextProject = currentProject;
+        if (currentProject && !result.serverProjects.some((project) => project.worktree === currentProject) && currentProject !== result.currentProjectPath) {
+          const known = await svcIsKnownWorkspaceLocation(buildClient({ ...settingsRef.current, directory: currentProject }, targetClient.__opencode.contract));
+          if (!isCurrentCatalogClient(targetClient)) {
+            return result;
+          }
+          if (!known) nextProject = undefined;
+        }
+        if (!nextProject) nextProject = result.currentProjectPath || result.serverProjects[0]?.worktree;
         if (nextProject !== currentProject) {
           scopeGenerationRef.current += 1;
           clearProjectState();
@@ -124,8 +137,11 @@ export function useWorkspaceCatalogActions({
     if (!project.worktree) throw new Error('OpenCode did not return a workspace path.');
     await loadWorkspaceCatalog(true);
     if (connectionScopeRef.current !== connectionAtStart) throw new Error('The connection changed while adding the workspace.');
-    selectProject(path);
-    return path;
+    // Select the location the server resolved: the project root for nested
+    // input, the worktree directory for a worktree, otherwise the input itself.
+    const location = project.directory || path;
+    selectProject(location);
+    return location;
   }, [loadWorkspaceCatalog, selectProject, serverContract]);
 
   return { loadWorkspaceCatalog, refreshWorkspaceCatalog, selectProject, addWorkspace };

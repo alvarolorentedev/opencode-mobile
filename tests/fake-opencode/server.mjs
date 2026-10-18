@@ -6,7 +6,7 @@ import { WebSocketServer } from 'ws';
 import { createTerminalFixture } from './terminal.mjs';
 
 import { createSessionHelpers } from './session-helpers.mjs';
-import { createStateStore, getNow, resolveProject } from './state.mjs';
+import { createStateStore, getNow, resolveProject, resolveProjectDirectory } from './state.mjs';
 
 const port = Number.parseInt(process.env.FAKE_OPENCODE_PORT || '4096', 10);
 const scenarioName = process.env.FAKE_OPENCODE_SCENARIO || 'happy-path';
@@ -373,9 +373,10 @@ const server = http.createServer(async (req, res) => {
     }
 
     if (req.method === 'GET' && pathname === '/api/location') {
-      const project = resolveProject(state, requestUrl.searchParams.get('location[directory]'));
+      const requested = requestUrl.searchParams.get('location[directory]');
+      const project = resolveProject(state, requested);
       if (!project) { sendJson(res, 400, { error: 'Directory is outside the server workspace.' }); return; }
-      sendJson(res, 200, { directory: requestUrl.searchParams.get('location[directory]') || project.canonical, project: { id: project.id, directory: project.canonical, canonical: project.canonical } });
+      sendJson(res, 200, { directory: requested || project.canonical, project: { id: project.id, directory: resolveProjectDirectory(state, requested) || project.canonical, canonical: project.canonical } });
       return;
     }
 

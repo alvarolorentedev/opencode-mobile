@@ -3,7 +3,7 @@ import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, type PropsWit
 
 import { buildClient, defaultConnectionSettings, getRequestHeaders } from '@/lib/opencode/client';
 import { defaultChatPreferences } from '@/providers/opencode-preferences';
-import { getProjectLabel } from '@/providers/opencode-provider-utils';
+import { buildOpencodeProjects, resolveActiveProject } from '@/providers/opencode-provider-utils';
 import {
   ApprovalsContext,
   CapabilitiesContext,
@@ -133,35 +133,9 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
     setMcpAuthPrompt(undefined);
   }, [setMcpAuthPrompt]);
 
-  const projects = useMemo(() => {
-    const entries = new Map<string, import('@/providers/opencode-provider-types').OpencodeProject>();
-
-    state.serverProjects.forEach((project) => {
-      entries.set(project.worktree, {
-        id: project.id,
-        label: getProjectLabel(project.worktree),
-        path: project.worktree,
-        source: 'server',
-        updatedAt: project.time.initialized || project.time.created,
-        isCurrent: project.worktree === state.currentProjectPath,
-      });
-    });
-
-    if (state.activeProjectPath && !entries.has(state.activeProjectPath)) {
-      entries.set(state.activeProjectPath, {
-        label: getProjectLabel(state.activeProjectPath),
-        path: state.activeProjectPath,
-        source: 'server',
-        isCurrent: state.activeProjectPath === state.currentProjectPath,
-      });
-    }
-
-    return [...entries.values()].sort((left, right) => (right.updatedAt || 0) - (left.updatedAt || 0));
-  }, [state.activeProjectPath, state.currentProjectPath, state.serverProjects]);
-
-  const activeProject = useMemo(
-    () => projects.find((project) => project.path === state.activeProjectPath),
-    [projects, state.activeProjectPath],
+  const projects = useMemo(
+    () => buildOpencodeProjects(state.serverProjects, state.currentProjectPath),
+    [state.currentProjectPath, state.serverProjects],
   );
 
   const client = useMemo(
@@ -200,6 +174,10 @@ export function OpencodeProvider({ children }: PropsWithChildren) {
     authorization: getRequestHeaders(state.settings)?.Authorization,
   });
   const worktree = useWorktreeState({ ...state, client, isCurrentClient, refreshWorkspaceCatalog: refreshWorkspaceCatalogLatest });
+  const activeProject = useMemo(
+    () => resolveActiveProject(projects, state.activeProjectPath, state.currentProjectPath, worktree.worktrees),
+    [projects, state.activeProjectPath, state.currentProjectPath, worktree.worktrees],
+  );
   const mcp = useMcpState({ ...state, client, isCurrentClient, refreshChatCapabilities: refreshChatCapabilitiesLatest });
   const permissionRules = usePermissionRulesState({ client, isCurrentClient, setSavedPermissions });
 
