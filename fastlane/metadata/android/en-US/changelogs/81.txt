@@ -1,0 +1,4 @@
+- Returning to a conversation now shows the messages you already loaded instead of an empty loading screen.
+- The chat only fetches the newest page of messages, and less often, so it uses less data and battery.
+- Background chats no longer re-download their transcript on every streaming update.
+- The transcript keeps its place and no longer blanks or jumps after switching tabs or returning from the background.
