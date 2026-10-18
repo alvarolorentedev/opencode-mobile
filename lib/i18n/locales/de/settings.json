@@ -502,11 +502,17 @@
     "copyLink": "Link kopieren",
     "linkCopied": "Dienst-Link kopiert.",
     "linkUnavailable": "Für diesen Dienst konnte kein Link erstellt werden.",
+    "legacyConnector": "Dieser Desktop-Connector kennt noch keine eigenen Dienst-Ports. Aktualisiere ihn, um Apps am Port-Root und mit wählbaren Ports freizugeben.",
+    "unknownConnector": "Dieser Desktop-Connector ist älter als die App erwartet. Aktualisiere ihn für eigene Ports und Root-Dienste.",
     "enabledHint": "Datenverkehr für diesen Pfad durch den Tunnel leiten.",
+    "rootPathHint": "Lass den Pfad leer, um den gesamten Port-Root zu bedienen – für Apps mit absoluten URLs.",
+    "portOccupied": "belegt",
+    "portShared": "geteilt",
     "stripPrefixHint": "Den übereinstimmenden Pfadpräfix vor der Weiterleitung entfernen.",
     "fields": {
       "id": "ID",
       "name": "Name",
+      "port": "Port",
       "path": "Pfad",
       "target": "Ziel",
       "access": "Zugriff",
@@ -524,9 +530,13 @@
       "pathRoot": "Der Pfad darf nicht das Server-Root sein.",
       "pathReserved": "Das Präfix /_cloudlink ist reserviert.",
       "pathFormat": "Verwende einen Pfad wie /test/api ohne Query, Fragment oder Kodierung.",
+      "portRequired": "Wähle einen Dienst-Port.",
+      "portInvalid": "Wähle einen der Dienst-Ports deines Connectors.",
+      "portInUse": "Dieser Port wird bereits von einem anderen Dienst verwendet.",
+      "portPathInUse": "Dieser Port und Pfad werden bereits von einem anderen Dienst verwendet.",
       "targetFormat": "Verwende eine Adresse wie 127.0.0.1:3000.",
       "targetLoopback": "Das Ziel muss Loopback sein (127.0.0.1 oder ::1).",
-      "targetReserved": "Port 8443 ist für freigegebene Dienste reserviert.",
+      "targetReserved": "Dieser Port ist für freigegebene Dienste reserviert.",
       "targetPort": "Verwende einen unprivilegierten Port zwischen 1024 und 65535."
     }
   }

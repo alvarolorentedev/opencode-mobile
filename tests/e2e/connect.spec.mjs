@@ -912,12 +912,39 @@ test('a paired device adds, edits and removes an exposed service', async ({ page
   await page.getByTestId('service-target-input').fill('127.0.0.1:3000');
   await page.getByTestId('service-save').click();
   await expect(page.getByTestId('service-api')).toContainText('/test/api');
+  await expect(page.getByTestId('service-api')).toContainText(':8443/test/api/');
   await expect(page.getByTestId('services-feedback')).toContainText('Saved');
 
   await page.getByTestId('service-api').getByRole('button', { name: 'Edit' }).click();
   await page.getByTestId('service-target-input').fill('127.0.0.1:3001');
   await page.getByTestId('service-save').click();
   await expect(page.getByTestId('service-api')).toContainText('127.0.0.1:3001');
+
+  // A root service owns its port: the empty path serves the whole origin and
+  // the picker offers a free port.
+  await page.getByTestId('service-add').click();
+  await page.getByTestId('service-id-input').fill('site');
+  await page.getByTestId('service-target-input').fill('127.0.0.1:4000');
+  await page.getByTestId('service-port-select').click();
+  await page.getByRole('button', { name: '2053', exact: true }).click();
+  await page.getByTestId('service-save').click();
+  await expect(page.getByTestId('service-site')).toContainText(':2053/');
+  await expect(page.getByTestId('service-site')).toContainText(':2053 → 127.0.0.1:4000');
+
+  // A second root service picks another free port; the occupied one is marked.
+  await page.getByTestId('service-add').click();
+  await page.getByTestId('service-id-input').fill('site2');
+  await page.getByTestId('service-target-input').fill('127.0.0.1:4001');
+  await page.getByTestId('service-port-select').click();
+  await expect(page.getByRole('button', { name: '2053 (in use)' })).toBeVisible();
+  await page.getByRole('button', { name: '2083', exact: true }).click();
+  await page.getByTestId('service-save').click();
+  await expect(page.getByTestId('service-site2')).toContainText(':2083/');
+
+  await page.getByTestId('service-site2').getByRole('button', { name: 'Remove' }).click();
+  await expect(page.getByTestId('service-site2')).toHaveCount(0);
+  await page.getByTestId('service-site').getByRole('button', { name: 'Remove' }).click();
+  await expect(page.getByTestId('service-site')).toHaveCount(0);
 
   await page.getByTestId('service-api').getByRole('button', { name: 'Remove' }).click();
   await expect(page.getByTestId('service-api')).toHaveCount(0);

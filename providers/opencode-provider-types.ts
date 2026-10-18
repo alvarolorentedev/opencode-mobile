@@ -32,6 +32,7 @@ import type {
   PendingPermissionRequest,
   SavedPermissionRule,
   ServiceInput,
+  ServiceManagementVersion,
 } from '@/lib/opencode/client';
 import type { Diagnostics } from '@/providers/services/diagnostics-service';
 import type { SessionMessageRecord, TranscriptEntry } from '@/lib/opencode/format';
@@ -173,6 +174,10 @@ export type OnboardingContextValue = {
 // call the actions it exposes. `available` is false for manual connections.
 export type ServiceManagementApi = {
   services: ManagedService[];
+  // Connector-reported management revision and port pool; undefined until the
+  // first refresh answers. `api < 2` (or an unknown older connector) is legacy
+  // path-only mode with an update hint instead of the port picker.
+  version?: ServiceManagementVersion;
   available: boolean;
   isRefreshing: boolean;
   isSaving: boolean;

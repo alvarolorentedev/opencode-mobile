@@ -1079,20 +1079,30 @@ Native builds and real store/camera/device acceptance were not repeated.
 ## Connector service management validation
 
 A paired device adds, replaces and removes the connector's exposed services
-through `/_cloudlink/services`. Coverage is split by layer:
+through `/_cloudlink/services` and reads the connector's management revision and
+service port pool from `/_cloudlink/version`. Coverage is split by layer:
 
 - `lib/opencode/client/management.ts` is unit-tested in
   `tests/vitest/services-management.test.ts`: the path/target/id validation
-  mirror, the shareable-link builder, the device Basic credential and request
-  shape, canonical-value parsing, and error/status propagation (including the
-  no-connection and expired-credential guards).
-- The V2 fake server implements `GET/PUT/DELETE /_cloudlink/services` behind a
-  device-credential check provisioned through `POST /__control/device`, and
-  `tests/fake-opencode/self-test.mjs` asserts 401 without a device credential,
-  201 create / 200 replace, canonical path/target responses, duplicate-path and
-  non-loopback rejection, 404 on unknown delete, and list consistency.
+  mirror, the root/port rules and port-picker computation, both stored shapes
+  (`path` string and `path` null) and both version responses (`api` 1 without a
+  pool and `api` 2 with `service_ports`, plus `404` without a version header),
+  the api 2 PUT body (root and path) and the legacy api 1 body without `port`,
+  link building for root, path and legacy services, the device Basic credential
+  and request shape, canonical-value parsing, and error/status propagation
+  (including the no-connection and expired-credential guards).
+- The V2 fake server implements `GET/PUT/DELETE /_cloudlink/services` and
+  `GET /_cloudlink/version` behind a device-credential check provisioned through
+  `POST /__control/device`, with `POST /__control/connector-api` switching the
+  reported management revision. `tests/fake-opencode/self-test.mjs` asserts 401
+  without a device credential, the api 2 version shape and header, 201 create /
+  200 replace, canonical path/target responses, missing `port` and out-of-pool
+  port rejection, duplicate port/path rejection, root-service port ownership and
+  mixing rejection, shared path ports, 404 on unknown delete, list consistency,
+  and the api 1 legacy version/body shapes.
 - `tests/e2e/connect.spec.mjs` drives a real Cloud Link pairing, opens Settings →
-  Services, and adds, edits and removes a service through the fake connector.
+  Services, and adds, edits and removes path and root services through the fake
+  connector, including picking a port and seeing an occupied port marked.
 
 The connector contract is frozen; only the fake server's mirror of it changed,
 so the fake-server and E2E additions require explicit human validation under

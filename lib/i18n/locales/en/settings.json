@@ -502,11 +502,17 @@
     "copyLink": "Copy link",
     "linkCopied": "Service link copied.",
     "linkUnavailable": "Could not build a link for this service.",
+    "legacyConnector": "This desktop connector predates dedicated service ports. Update it to serve apps at the port root and choose ports.",
+    "unknownConnector": "This desktop connector is older than the app expects. Update it to use dedicated ports and root services.",
     "enabledHint": "Route traffic for this path through the tunnel.",
+    "rootPathHint": "Leave the path empty to serve the whole port root — use this for apps with absolute URLs.",
+    "portOccupied": "in use",
+    "portShared": "shared",
     "stripPrefixHint": "Remove the matched path prefix before forwarding.",
     "fields": {
       "id": "ID",
       "name": "Name",
+      "port": "Port",
       "path": "Path",
       "target": "Target",
       "access": "Access",
@@ -524,9 +530,13 @@
       "pathRoot": "The path cannot be the server root.",
       "pathReserved": "The /_cloudlink prefix is reserved.",
       "pathFormat": "Use a path like /test/api without query, fragment or encoding.",
+      "portRequired": "Choose a service port.",
+      "portInvalid": "Choose one of your connector's service ports.",
+      "portInUse": "This port is already used by another service.",
+      "portPathInUse": "This port and path are already used by another service.",
       "targetFormat": "Use an address like 127.0.0.1:3000.",
       "targetLoopback": "The target must be loopback (127.0.0.1 or ::1).",
-      "targetReserved": "Port 8443 is reserved for exposed services.",
+      "targetReserved": "That port is reserved for exposed services.",
       "targetPort": "Use an unprivileged port between 1024 and 65535."
     }
   }

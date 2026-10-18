@@ -444,19 +444,55 @@ try {
   assert((await fetch(`${v2Origin}/_cloudlink/services`)).status === 401, 'Management must require a device credential');
   assert((await fetch(`${v2Origin}/_cloudlink/services`, { headers: { Authorization: `Basic ${Buffer.from('device-smoke:wrong').toString('base64')}` } })).status === 401, 'Management must reject a wrong device secret');
   assert((await v2request('/_cloudlink/services', { headers: deviceHeaders })).services.length === 0, 'Service list must start empty');
-  const createdService = await fetch(`${v2Origin}/_cloudlink/services/api`, deviceJson('PUT', { name: 'API', path: '/test/api/', target: '127.0.0.1:3000', enabled: false, access: 'private', strip_prefix: true }));
+
+  // api 2 reports the port pool and stamps the version header.
+  const versionResponse = await fetch(`${v2Origin}/_cloudlink/version`, { headers: deviceHeaders });
+  assert(versionResponse.status === 200, 'Version endpoint must answer an authenticated device');
+  assert(versionResponse.headers.get('x-cloudlink-connector-version') === '0.1.14', 'Version header must identify the connector');
+  const version = await versionResponse.json();
+  assert(version.version === '0.1.14' && version.api === 2, 'Version must report the management API revision');
+  assert(JSON.stringify(version.service_ports) === JSON.stringify([8443, 2053, 2083, 2087, 2096]), 'Version must report the service port pool');
+  assert((await fetch(`${v2Origin}/_cloudlink/version`)).status === 401, 'Version must require a device credential');
+  assert((await fetch(`${v2Origin}/_cloudlink/services/noport`, deviceJson('PUT', { path: '/noport', target: '127.0.0.1:3000' }))).status === 400, 'api 2 must require a port');
+
+  const createdService = await fetch(`${v2Origin}/_cloudlink/services/api`, deviceJson('PUT', { name: 'API', port: 8443, path: '/test/api/', target: '127.0.0.1:3000', enabled: false, access: 'private', strip_prefix: true }));
   assert(createdService.status === 201, `Service create must return 201, got ${createdService.status}`);
   assert((await createdService.json()).service.path === '/test/api', 'Service create must return the canonical path');
-  const replacedService = await fetch(`${v2Origin}/_cloudlink/services/api`, deviceJson('PUT', { path: '/test/api', target: '127.0.0.1:3001' }));
+  const replacedService = await fetch(`${v2Origin}/_cloudlink/services/api`, deviceJson('PUT', { port: 8443, path: '/test/api', target: '127.0.0.1:3001' }));
   assert(replacedService.status === 200, 'Service replace must return 200');
   assert((await replacedService.json()).service.target === '127.0.0.1:3001', 'Service replace must return the stored target');
-  assert((await fetch(`${v2Origin}/_cloudlink/services/other`, deviceJson('PUT', { path: '/test/api', target: '127.0.0.1:3002' }))).status === 400, 'Duplicate paths must be rejected');
-  assert((await fetch(`${v2Origin}/_cloudlink/services/other`, deviceJson('PUT', { path: '/other', target: '10.0.0.1:3000' }))).status === 400, 'Non-loopback targets must be rejected');
-  assert((await fetch(`${v2Origin}/_cloudlink/services/other`, json('PUT', { path: '/other', target: '127.0.0.1:3000' }))).status === 401, 'Management must reject an anonymous write');
-  assert((await v2request('/_cloudlink/services', { headers: deviceHeaders })).services.length === 1, 'Service list must reflect the write');
+  assert((await fetch(`${v2Origin}/_cloudlink/services/other`, deviceJson('PUT', { port: 8443, path: '/test/api', target: '127.0.0.1:3002' }))).status === 400, 'Duplicate port/path pairs must be rejected');
+  assert((await fetch(`${v2Origin}/_cloudlink/services/other`, deviceJson('PUT', { port: 8443, path: '/other', target: '10.0.0.1:3000' }))).status === 400, 'Non-loopback targets must be rejected');
+  assert((await fetch(`${v2Origin}/_cloudlink/services/other`, deviceJson('PUT', { port: 9999, path: '/other', target: '127.0.0.1:3000' }))).status === 400, 'Ports outside the pool must be rejected');
+  assert((await fetch(`${v2Origin}/_cloudlink/services/other`, json('PUT', { port: 8443, path: '/other', target: '127.0.0.1:3000' }))).status === 401, 'Management must reject an anonymous write');
+
+  // A root service owns its port; path services share 8443 but never a port
+  // that already has a root service.
+  const rootService = await fetch(`${v2Origin}/_cloudlink/services/site`, deviceJson('PUT', { port: 2053, path: null, target: '127.0.0.1:4000' }));
+  assert(rootService.status === 201, 'Root service create must return 201');
+  const rootBody = (await rootService.json()).service;
+  assert(rootBody.path === null && rootBody.port === 2053, 'Root service must store a null path and its port');
+  assert((await fetch(`${v2Origin}/_cloudlink/services/mixed`, deviceJson('PUT', { port: 2053, path: '/mixed', target: '127.0.0.1:4001' }))).status === 400, 'A port cannot mix root and path services');
+  assert((await fetch(`${v2Origin}/_cloudlink/services/second`, deviceJson('PUT', { port: 2053, path: null, target: '127.0.0.1:4002' }))).status === 400, 'Two root services cannot share a port');
+  const sharedPath = await fetch(`${v2Origin}/_cloudlink/services/shared`, deviceJson('PUT', { port: 8443, path: '/shared', target: '127.0.0.1:4003' }));
+  assert(sharedPath.status === 201, 'Path services may share a port');
+  assert((await v2request('/_cloudlink/services', { headers: deviceHeaders })).services.length === 3, 'Service list must reflect every write');
   assert((await fetch(`${v2Origin}/_cloudlink/services/missing`, { method: 'DELETE', headers: deviceHeaders })).status === 404, 'Deleting an unknown service must return 404');
   assert((await fetch(`${v2Origin}/_cloudlink/services/api`, { method: 'DELETE', headers: deviceHeaders })).status === 204, 'Deleting a service must return 204');
-  assert((await v2request('/_cloudlink/services', { headers: deviceHeaders })).services.length === 0, 'Deleted service must disappear from the list');
+
+  // api 1 keeps the legacy shape: no port pool, port-less PUT bodies.
+  await v2request('/__control/reset', json('POST', { scenario: 'happy-path' }));
+  await v2request('/__control/device', json('POST', { device_id: 'device-smoke', device_secret: 'device-secret-smoke' }));
+  await v2request('/__control/connector-api', json('POST', { api: 1 }));
+  const legacyVersion = await (await fetch(`${v2Origin}/_cloudlink/version`, { headers: deviceHeaders })).json();
+  assert(legacyVersion.api === 1 && legacyVersion.service_ports === undefined, 'api 1 must omit the service port pool');
+  const legacyCreate = await fetch(`${v2Origin}/_cloudlink/services/legacy`, deviceJson('PUT', { path: '/legacy', target: '127.0.0.1:3000' }));
+  assert(legacyCreate.status === 201, 'api 1 must accept a port-less PUT body');
+  const legacyService = (await legacyCreate.json()).service;
+  assert(legacyService.port === undefined && legacyService.path === '/legacy', 'api 1 must store only the legacy fields');
+  assert((await fetch(`${v2Origin}/_cloudlink/services/root`, deviceJson('PUT', { target: '127.0.0.1:3000' }))).status === 400, 'api 1 must require a path');
+  assert((await v2request('/_cloudlink/services', { headers: deviceHeaders })).services.length === 1, 'Legacy service list must reflect the write');
+  await v2request('/__control/connector-api', json('POST', { api: 2 }));
 
   console.log('Fake OpenCode 1.18.3 server self-test passed.');
   console.log('Fake OpenCode 2.0 server self-test passed.');

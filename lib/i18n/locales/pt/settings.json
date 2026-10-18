@@ -502,11 +502,17 @@
     "copyLink": "Copiar ligação",
     "linkCopied": "Ligação do serviço copiada.",
     "linkUnavailable": "Não foi possível criar uma ligação para este serviço.",
+    "legacyConnector": "Este conector de ambiente de trabalho ainda não suporta portas dedicadas. Atualize-o para servir apps na raiz da porta e escolher portas.",
+    "unknownConnector": "Este conector de ambiente de trabalho é mais antigo do que a app espera. Atualize-o para usar portas dedicadas e serviços na raiz.",
     "enabledHint": "Encaminhar o tráfego deste caminho pelo túnel.",
+    "rootPathHint": "Deixe o caminho vazio para servir toda a raiz da porta — use isto para apps com URLs absolutas.",
+    "portOccupied": "em uso",
+    "portShared": "partilhada",
     "stripPrefixHint": "Remover o prefixo de caminho correspondente antes de encaminhar.",
     "fields": {
       "id": "ID",
       "name": "Nome",
+      "port": "Porta",
       "path": "Caminho",
       "target": "Destino",
       "access": "Acesso",
@@ -524,9 +530,13 @@
       "pathRoot": "O caminho não pode ser a raiz do servidor.",
       "pathReserved": "O prefixo /_cloudlink está reservado.",
       "pathFormat": "Use um caminho como /test/api sem consulta, fragmento ou codificação.",
+      "portRequired": "Escolha uma porta de serviço.",
+      "portInvalid": "Escolha uma das portas de serviço do seu conector.",
+      "portInUse": "Esta porta já é usada por outro serviço.",
+      "portPathInUse": "Esta porta e caminho já são usados por outro serviço.",
       "targetFormat": "Use um endereço como 127.0.0.1:3000.",
       "targetLoopback": "O destino tem de ser loopback (127.0.0.1 ou ::1).",
-      "targetReserved": "A porta 8443 está reservada para serviços expostos.",
+      "targetReserved": "Essa porta está reservada para serviços expostos.",
       "targetPort": "Use uma porta não privilegiada entre 1024 e 65535."
     }
   }

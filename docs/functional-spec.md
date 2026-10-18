@@ -373,11 +373,13 @@ Purpose:
 Behavior:
 
 - the subsection appears inside the consolidated Cloud Link Settings section only for a Cloud Link connection (`settings.connect`); manual connections never show it
-- opening (or re-opening) the Cloud Link section re-fetches `GET /_cloudlink/services`, because the connector's tray or CLI can change the list out from under the app
+- opening (or re-opening) the Cloud Link section re-fetches `GET /_cloudlink/services` and `GET /_cloudlink/version`, because the connector's tray or CLI can change the list out from under the app
 - Add/Edit opens an inline form for id (create only), optional name, path, target, enabled, access (`private`/`public`) and strip-prefix; the id is fixed when editing
+- on management revision 2 the form also picks a `port` from the connector's `service_ports`; the path is optional (empty serves the port root, and the strip-prefix toggle only applies to path services), the picker marks ports already in use and disables them for the mode being edited (a root service needs a fully free port; a path service may share a root-free port)
+- revision 1 and unknown older connectors stay on the legacy path-only form on `:8443` with a non-blocking "update your desktop connector" hint; root services and the port picker require revision 2
 - the app mirrors the connector's validation before sending, and shows the connector's own message when the server rejects a request (for example `400` invalid service)
 - a successful save renders the stored canonical values the connector returns, not the request values
-- each row shows name, `path → target`, access and enabled state, with Edit, Copy link, and Remove; Copy link copies `https://<server host>:8443<path>/`
+- each row shows name, the full `https://<server host>:<port>/` or `https://<server host>:<port><path>/` link, the address (`:2053` or `:8443/app`) → target, access and enabled state, with Edit, Copy link, and Remove
 - changes apply to the running proxy immediately and are persisted; no connector restart is required
 
 ### AI Defaults Section

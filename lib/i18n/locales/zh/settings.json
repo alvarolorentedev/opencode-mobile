@@ -502,11 +502,17 @@
     "copyLink": "复制链接",
     "linkCopied": "已复制服务链接。",
     "linkUnavailable": "无法为此服务生成链接。",
+    "legacyConnector": "此桌面连接器尚不支持专用服务端口。请更新后使用端口根路径和端口选择。",
+    "unknownConnector": "此桌面连接器比应用预期的版本更旧。请更新以使用专用端口和根服务。",
     "enabledHint": "通过隧道路由此路径的流量。",
+    "rootPathHint": "路径留空即可提供整个端口根路径——适合使用绝对 URL 的应用。",
+    "portOccupied": "已被占用",
+    "portShared": "共享",
     "stripPrefixHint": "转发前移除匹配的路径前缀。",
     "fields": {
       "id": "ID",
       "name": "名称",
+      "port": "端口",
       "path": "路径",
       "target": "目标",
       "access": "访问权限",
@@ -524,9 +530,13 @@
       "pathRoot": "路径不能是服务器根路径。",
       "pathReserved": "/_cloudlink 前缀为保留前缀。",
       "pathFormat": "请使用类似 /test/api 的路径，不含查询、片段或编码。",
+      "portRequired": "请选择服务端口。",
+      "portInvalid": "请选择连接器的服务端口之一。",
+      "portInUse": "该端口已被其他服务使用。",
+      "portPathInUse": "该端口和路径已被其他服务使用。",
       "targetFormat": "请使用类似 127.0.0.1:3000 的地址。",
       "targetLoopback": "目标必须是回环地址（127.0.0.1 或 ::1）。",
-      "targetReserved": "端口 8443 保留给已公开的服务。",
+      "targetReserved": "该端口保留给已公开的服务。",
       "targetPort": "请使用 1024 到 65535 之间的非特权端口。"
     }
   }

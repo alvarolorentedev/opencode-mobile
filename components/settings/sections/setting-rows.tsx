@@ -48,6 +48,7 @@ export function SettingSelectField<T extends string>({
   options,
   palette,
   selectedValue,
+  testID,
   valueLabel,
 }: {
   disabled?: boolean;
@@ -56,6 +57,7 @@ export function SettingSelectField<T extends string>({
   options: NativeSelectOption<T>[];
   palette: Palette;
   selectedValue?: T;
+  testID?: string;
   valueLabel: string;
 }) {
   return (
@@ -70,6 +72,7 @@ export function SettingSelectField<T extends string>({
           accessibilityRole="button"
           disabled={triggerDisabled}
           onPress={open}
+          testID={testID}
           style={({ pressed }) => [
             styles.settingSelectField,
             {

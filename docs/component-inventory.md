@@ -703,10 +703,11 @@ Main relevant props:
 
 ### Responsibility
 
-- list the connector's exposed services from `useConnection().services`, with name, `path → target`, access and enabled state
-- add/replace a service through an inline form (id fixed when editing), and remove with confirmation
+- list the connector's exposed services from `useConnection().services`, with name, full `https://<host>:<port><path>/` URL, address (`:2053` or `:8443/app`) → target, access and enabled state
+- add/replace a service through an inline form (id fixed when editing), choosing a port from the connector's `service_ports`, and remove with confirmation
+- keep the path optional on management revision 2 (empty serves the port root, with the keep-prefix toggle shown only for path services) and stay on the legacy path-only form, plus a non-blocking update hint, for revision 1 or unknown older connectors
 - mirror the connector's validation locally and surface the connector's own error message on rejection
-- copy a shareable `https://<host>:8443<path>/` link per service
+- copy the service's shareable `https://<host>:<port>/` or `https://<host>:<port><path>/` link
 - own only form, busy, error and feedback UI state; all reads/writes and canonical values come from the provider's services domain
 - rendered only for Cloud Link connections; the provider hides it for manual connections
 

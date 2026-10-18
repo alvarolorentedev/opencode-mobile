@@ -106,13 +106,16 @@ SSE reconnects with bounded backoff and reconciles sessions, pending interaction
 
 ## Connector Service Management (Cloud Link)
 
-A paired device manages the connector's exposed services directly over the tunnel, on the `server_url` origin (never the `:8443` services origin), using the same HTTP Basic credential as OpenCode traffic (`username = device_id`, `password = device_secret`). The control plane is not involved.
+A paired device manages the connector's exposed services directly over the tunnel, on the `server_url` origin (never a service port), using the same HTTP Basic credential as OpenCode traffic (`username = device_id`, `password = device_secret`). The control plane is not involved.
 
 - `GET /_cloudlink/services` → `{ services: [Service, ...] }`
-- `PUT /_cloudlink/services/{id}` → `201` created / `200` replaced, body is the bare `Service` (only `path` and `target` required), response `{ service: Service }` with stored canonical values
+- `PUT /_cloudlink/services/{id}` → `201` created / `200` replaced, body is the bare `Service` (`port` and `target` required on management revision 2), response `{ service: Service }` with stored canonical values
 - `DELETE /_cloudlink/services/{id}` → `204`
+- `GET /_cloudlink/version` → `{ version, api, service_ports }`; every authenticated `/_cloudlink` reply also stamps the connector version in `x-cloudlink-connector-version`
 
-`Service` is `{ id, name, path, target, enabled, access: 'private' | 'public', strip_prefix }`; omitted PUT fields default to `name = id`, `enabled = false`, `access = 'private'`, `strip_prefix = true`. Errors are `400` invalid, `401` unauthorized, `404` unknown id, `405` method, `413` too large, `415` wrong content type; the app shows the connector's message and never branches on its wording. The list reflects connector-side (tray/CLI) edits, so the Settings surface re-fetches on open.
+On management revision 2 (connector 0.1.14+) `Service` is `{ id, name, port, path: string | null, target, enabled, access: 'private' | 'public', strip_prefix }`. A service with no `path` owns its port root, so apps that emit absolute URLs, cookies, redirects and WebSockets work untouched; services with a `path` share a port and keep prefix stripping plus path-absolute redirect re-prefixing. `port` must be one of `service_ports`; a root service needs a fully free port, a path service may share only a root-free port, `port`/`path` pairs are unique, and at most 16 services exist. Omitted PUT fields default to `name = id`, `path = null`, `enabled = false`, `access = 'private'`, `strip_prefix = true`. Links are `https://<host>:<port>/` for root services and `https://<host>:<port><path>/` for path services.
+
+Management revision 1 and pre-version connectors keep the legacy path-only surface on `:8443`: listed services carry an implicit `port`, links stay `https://<host>:8443<path>/`, and the PUT body omits `port`. A `404` on the version endpoint without the version header means an unknown older connector: the app warns and stays in legacy mode. Root services and the port picker require revision 2 and otherwise show a non-blocking update hint. Errors are `400` invalid, `401` unauthorized, `404` unknown id, `405` method, `413` too large, `415` wrong content type; the app shows the connector's message and never branches on its wording. The list reflects connector-side (tray/CLI) edits, so the Settings surface re-fetches on open.
 
 Client code and the validation mirror live in `lib/opencode/client/management.ts`; the provider exposes it through the connection domain (`useConnection().services`). See the connector's frozen `protocol/README.md` → "Service management API (device-authenticated)".
 

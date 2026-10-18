@@ -502,11 +502,17 @@
     "copyLink": "Copier le lien",
     "linkCopied": "Lien du service copié.",
     "linkUnavailable": "Impossible de créer un lien pour ce service.",
+    "legacyConnector": "Ce connecteur de bureau ne prend pas encore en charge les ports dédiés. Mettez-le à jour pour servir des apps à la racine du port et choisir les ports.",
+    "unknownConnector": "Ce connecteur de bureau est plus ancien que prévu par l'app. Mettez-le à jour pour utiliser des ports dédiés et des services racine.",
     "enabledHint": "Acheminer le trafic de ce chemin via le tunnel.",
+    "rootPathHint": "Laissez le chemin vide pour servir toute la racine du port — utile pour les apps avec des URL absolues.",
+    "portOccupied": "utilisé",
+    "portShared": "partagé",
     "stripPrefixHint": "Retirer le préfixe de chemin correspondant avant le transfert.",
     "fields": {
       "id": "ID",
       "name": "Nom",
+      "port": "Port",
       "path": "Chemin",
       "target": "Cible",
       "access": "Accès",
@@ -524,9 +530,13 @@
       "pathRoot": "Le chemin ne peut pas être la racine du serveur.",
       "pathReserved": "Le préfixe /_cloudlink est réservé.",
       "pathFormat": "Utilisez un chemin comme /test/api sans requête, fragment ni encodage.",
+      "portRequired": "Choisissez un port de service.",
+      "portInvalid": "Choisissez l'un des ports de service de votre connecteur.",
+      "portInUse": "Ce port est déjà utilisé par un autre service.",
+      "portPathInUse": "Ce port et ce chemin sont déjà utilisés par un autre service.",
       "targetFormat": "Utilisez une adresse comme 127.0.0.1:3000.",
       "targetLoopback": "La cible doit être en loopback (127.0.0.1 ou ::1).",
-      "targetReserved": "Le port 8443 est réservé aux services exposés.",
+      "targetReserved": "Ce port est réservé aux services exposés.",
       "targetPort": "Utilisez un port non privilégié entre 1024 et 65535."
     }
   }
