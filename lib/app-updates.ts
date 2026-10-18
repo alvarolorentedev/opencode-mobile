@@ -101,7 +101,14 @@ export function loadAppUpdates(): AppUpdateApi | null {
   const destination = `https://apps.apple.com/app/id${appId}`;
   return {
     check: async () => {
-      const installation = await native.getAppStoreInstallation();
+      // Tolerate native rejections (e.g. StoreKit failures): an update check must
+      // never surface an error or an unhandled rejection, only "no update".
+      let installation: { eligible: boolean; bundleId?: string; installedVersion?: string };
+      try {
+        installation = await native.getAppStoreInstallation();
+      } catch {
+        return { phase: 'none' } as const;
+      }
       if (!installation.eligible || typeof installation.bundleId !== 'string' || installation.bundleId !== config?.ios?.bundleIdentifier || !installation.installedVersion) return { phase: 'none' };
       const controller = new AbortController();
       const timeout = setTimeout(() => controller.abort(), 10000);
