@@ -1,4 +1,4 @@
-import { withAndroidManifest, withAppBuildGradle, withDangerousMod, withGradleProperties, withMainActivity } from '@expo/config-plugins';
+import { withAndroidManifest, withAppBuildGradle, withDangerousMod, withAppDelegate, withEntitlementsPlist, withGradleProperties, withMainActivity } from '@expo/config-plugins';
 import { mergeContents } from '@expo/config-plugins/build/utils/generateCode';
 import type { ExpoConfig } from 'expo/config';
 
@@ -12,6 +12,16 @@ const isDevelopmentVariant = appVariant === 'development';
 const isFossVariant = appVariant === 'foss' || env('EXPO_PUBLIC_FOSS') === '1';
 const isE2EMode = env('EXPO_PUBLIC_E2E_MODE') === '1';
 const e2eServerUrl = env('EXPO_PUBLIC_E2E_SERVER_URL');
+// Free Apple "Personal Team" accounts cannot provision the Push Notifications
+// capability, so `expo-notifications`'s aps-environment entitlement blocks
+// on-device builds entirely for them. Strip it locally with this flag; CI and
+// paid-team builds must leave it unset so push notifications keep working.
+const disablePushEntitlement = env('EXPO_IOS_DISABLE_PUSH_ENTITLEMENT') === '1';
+// Apple bundle identifiers are unique across every developer account, not just
+// per team. The published "app.getopencode.mobile" (and its ".dev" variant)
+// are already registered to the paid team, so a free "Personal Team" account
+// can never register them. Override with a bundle id nobody else has claimed.
+const iosBundleIdentifierOverride = env('EXPO_IOS_BUNDLE_ID');
 const defaultAndroidPackage = isFossVariant ? 'app.getopencode.fdroid' : 'app.getopencode';
 const releaseAndroidPackage = env('EXPO_ANDROID_PACKAGE') ?? defaultAndroidPackage;
 const developmentAndroidPackage = env('EXPO_ANDROID_PACKAGE_DEV') ?? `${releaseAndroidPackage}.dev`;
@@ -168,6 +178,46 @@ const withAndroidAppConfig = (config: ExpoConfig) => {
   });
 };
 
+const withoutPushEntitlement = (config: ExpoConfig) =>
+  withEntitlementsPlist(config, (config) => {
+    delete config.modResults['aps-environment'];
+    return config;
+  });
+
+// Xcode 27's iOS SDK hard-fails launch for apps using only the legacy
+// UIApplicationDelegate lifecycle. `expo` ships `ExpoAppSceneDelegate`
+// (Objective-C name `EXExpoAppSceneDelegate`) for exactly this, wired via
+// Info.plist's UISceneConfigurations (see `ios.infoPlist` below). It needs the
+// generated AppDelegate to conform to `ExpoReactNativeFactoryProvider` and to
+// stop creating the window itself, since the scene delegate now does that.
+const withIosSceneLifecycle = (config: ExpoConfig) =>
+  withAppDelegate(config, (config) => {
+    if (config.modResults.language !== 'swift') {
+      throw new Error('The iOS scene-lifecycle fix requires the generated Swift AppDelegate.');
+    }
+    const classDeclaration = 'class AppDelegate: ExpoAppDelegate {';
+    const windowSetup = `#if os(iOS) || os(tvOS)
+    window = UIWindow(frame: UIScreen.main.bounds)
+    factory.startReactNative(
+      withModuleName: "main",
+      in: window,
+      launchOptions: launchOptions)
+#endif
+
+    `;
+    const contents = config.modResults.contents;
+    if (!contents.includes(classDeclaration)) {
+      throw new Error('Could not find the AppDelegate class declaration to add scene-lifecycle conformance.');
+    }
+    if (!contents.includes(windowSetup)) {
+      throw new Error('Could not find the AppDelegate window setup block to remove for scene-lifecycle support.');
+    }
+    config.modResults.contents = contents
+      .replace(classDeclaration, 'class AppDelegate: ExpoAppDelegate, ExpoReactNativeFactoryProvider {')
+      .replace(windowSetup, '');
+    return config;
+  });
+
 const config: ExpoConfig = {
   name: isDevelopmentVariant ? 'OpenCode Mobile Dev' : 'OpenCode Mobile',
   slug: 'opencode-mobile',
@@ -191,7 +241,7 @@ const config: ExpoConfig = {
     favicon: './assets/images/favicon.png',
   },
   ios: {
-    bundleIdentifier: isDevelopmentVariant ? 'app.getopencode.mobile.dev' : 'app.getopencode.mobile',
+    bundleIdentifier: iosBundleIdentifierOverride ?? (isDevelopmentVariant ? 'app.getopencode.mobile.dev' : 'app.getopencode.mobile'),
     buildNumber: '81',
     infoPlist: {
       ITSAppUsesNonExemptEncryption: false,
@@ -199,11 +249,30 @@ const config: ExpoConfig = {
       NSAppTransportSecurity: {
         NSAllowsArbitraryLoads: true,
       },
+      // Newer iOS SDKs (Xcode 27+) hard-fail launch for apps that only
+      // implement the legacy UIApplicationDelegate lifecycle. Point UIKit at
+      // Expo's `EXExpoAppSceneDelegate`, which `withIosSceneLifecycle` below
+      // wires the generated AppDelegate to support.
+      UIApplicationSceneManifest: {
+        UIApplicationSupportsMultipleScenes: false,
+        UISceneConfigurations: {
+          UIWindowSceneSessionRoleApplication: [
+            {
+              UISceneConfigurationName: 'Default Configuration',
+              UISceneDelegateClassName: 'EXExpoAppSceneDelegate',
+            },
+          ],
+        },
+      },
     },
   },
   plugins: [
     'expo-router',
     'expo-font',
+    // Config-plugin mods compose in reverse of registration order (last
+    // registered runs first), so this must be registered before
+    // expo-notifications to run after it and strip the entitlement it sets.
+    ...(disablePushEntitlement ? [withoutPushEntitlement as unknown as string] : []),
     'expo-notifications',
     'expo-background-task',
     'expo-web-browser',
@@ -297,6 +366,7 @@ const config: ExpoConfig = {
       },
     ],
     withAndroidAppConfig as unknown as string,
+    withIosSceneLifecycle as unknown as string,
   ],
   experiments: {
     typedRoutes: true,
