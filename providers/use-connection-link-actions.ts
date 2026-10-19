@@ -3,7 +3,7 @@ import { useCallback } from 'react';
 import { findProfileByConnectionScope, getProfilePassword, loadConnectionProfiles } from '@/lib/connection-profiles';
 import { buildClient } from '@/lib/opencode/client';
 import type { SessionDeepLinkTarget } from '@/providers/opencode-provider-types';
-import { restoreSession as svcRestoreSession } from '@/providers/services/session-service';
+import { restoreSession as svcRestoreSession, isAvailableProjectDirectory } from '@/providers/services/session-service';
 import type { ConnectionActionsInput } from '@/providers/opencode-provider-action-inputs';
 import type { useConnectionConnectActions } from '@/providers/use-connection-connect-actions';
 
@@ -21,6 +21,7 @@ export function useConnectionLinkActions({
   deepLinkOperationRef,
   ensureActiveSessionRef,
   pendingDeepLinkTargetRef,
+  projectPathsByConnectionRef,
   serverGenerationRef,
   serverProjectsRef,
   settingsRef,
@@ -109,8 +110,23 @@ export function useConnectionLinkActions({
       if (!targetProjectPath) {
         return finish({ ok: false, error: 'This session link does not name a project, and no project is open.' });
       }
-      if (projectPath && projectPath !== activeProjectPathRef.current && !serverProjectsRef.current.some((project) => project.worktree === projectPath)) {
-        return finish({ ok: false, error: `Project ${projectPath} is not available from the configured server.` });
+      if (projectPath && projectPath !== activeProjectPathRef.current) {
+        const opened = projectPathsByConnectionRef.current[connectionScopeRef.current] ?? [];
+        const known = serverProjectsRef.current.some((project) => project.worktree === projectPath)
+          || opened.includes(projectPath);
+        if (!known) {
+          // project.list() reports one canonical path per repository, while the
+          // same project can have sibling checkouts and worktrees. Resolve the
+          // directory instead of rejecting a path the server can serve.
+          const targetClient = buildClient({ ...settingsRef.current, directory: projectPath }, serverContractRef.current);
+          const available = await isAvailableProjectDirectory(targetClient, serverProjectsRef.current);
+          if (!ownsOperation()) {
+            return finish({ ok: false, error: 'This session link was superseded.' });
+          }
+          if (!available) {
+            return finish({ ok: false, error: `Project ${projectPath} is not available from the configured server.` });
+          }
+        }
       }
 
       pendingDeepLinkTargetRef.current = { sessionId, projectPath: targetProjectPath };
@@ -157,7 +173,7 @@ export function useConnectionLinkActions({
 
       return finish({ ok: false, error: `Session ${sessionId} was not found in the ${targetProjectPath} project.` });
     },
-    [activeProjectPathRef, connect, connectionRef, currentSessionIdRef, deepLinkOperationRef, ensureActiveSessionRef, pendingDeepLinkTargetRef, selectProject, serverGenerationRef, serverProjectsRef, switchToScope],
+    [activeProjectPathRef, connect, connectionRef, connectionScopeRef, currentSessionIdRef, deepLinkOperationRef, ensureActiveSessionRef, pendingDeepLinkTargetRef, projectPathsByConnectionRef, selectProject, serverContractRef, serverGenerationRef, serverProjectsRef, settingsRef, switchToScope],
   );
 
   const openSessionInProject = useCallback(async (projectPath: string, sessionId: string, targetConnectionScope?: string) => {

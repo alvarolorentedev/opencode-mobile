@@ -142,6 +142,7 @@ export type ConnectionActionsInput = {
   activeProjectPath?: string;
   setActiveProjectPath: Dispatch<SetStateAction<string | undefined>>;
   activeProjectPathRef: { current: string | undefined };
+  projectPathsByConnectionRef: { current: ProjectPathsByConnection };
   connectionScopeRef: { current: string };
   clearProjectState: () => void;
   softResetProjectState: () => void;

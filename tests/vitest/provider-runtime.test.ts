@@ -537,6 +537,7 @@ const sessionDeclarations = [
   extractDeclarations(connectionActionsSource, ['waitForConnectionScope', 'switchToScope', 'restoreSession', 'openDeepLinkSession']),
 ].join('\n');
 let restoreGate, restoreFailure, restoredDirectory, reopened, createdSessions = 0, fetchedSessions = 0;
+const resolvableDirectories = new Set();
 const target = { id: 'target' };
 const sessionContext = {
   exports: {}, useCallback: (fn) => fn, client: { directory: '/repo' },
@@ -557,7 +558,9 @@ const sessionContext = {
   refreshServerFeatures: async () => {}, refreshDiagnostics: async () => {}, isCurrentClient: () => true,
   setCurrentSessionId: (id) => { sessionContext.currentSessionIdRef.current = id; }, setLastSessionByConnection: () => {},
   deepLinkOperationRef: {}, currentSessionIdRef: {}, serverProjectsRef: { current: [{ worktree: '/repo' }] },
-  connect: async () => {}, selectProject: () => {}, ensureActiveSessionRef: {}, setTimeout, Date,
+  projectPathsByConnectionRef: { current: { scope: [] } },
+  isAvailableProjectDirectory: async (candidate) => resolvableDirectories.has(candidate.directory),
+  connect: async () => {}, selectProject: (path) => { sessionContext.activeProjectPathRef.current = path; }, ensureActiveSessionRef: {}, setTimeout, Date,
   connectionScopeRef: { current: 'scope' },
   loadConnectionProfiles: async () => [{ id: 'saved', serverUrl: 'https://other', username: '', scope: 'other' }],
   findProfileByConnectionScope: (profiles, scope) => profiles.find((profile) => profile.scope === scope),
@@ -594,6 +597,22 @@ assert.match((await sessionActions.openDeepLinkSession({ sessionId: 'target', pr
   /not available from the configured server/, 'other unlisted projects remain rejected');
 assert.equal(sessionContext.pendingDeepLinkTargetRef.current, undefined);
 sessionContext.serverProjectsRef.current = [{ worktree: '/repo' }];
+
+// The same repository can have checkout directories that project.list() does
+// not report as canonicals. The connection's opened list and server resolution
+// both make those locations available.
+sessionContext.projectPathsByConnectionRef.current = { scope: ['/opened-repo'] };
+sessionContext.bootstrapPromiseRef.current = null;
+assert.equal((await sessionActions.openDeepLinkSession({ sessionId: 'target', projectPath: '/opened-repo' })).ok, true,
+  'opened projects remain available even when the server catalog reports another canonical');
+sessionContext.activeProjectPathRef.current = '/repo';
+
+sessionContext.projectPathsByConnectionRef.current = { scope: [] };
+resolvableDirectories.add('/resolved-repo');
+assert.equal((await sessionActions.openDeepLinkSession({ sessionId: 'target', projectPath: '/resolved-repo' })).ok, true,
+  'server-resolved sibling checkouts and worktrees are available');
+resolvableDirectories.delete('/resolved-repo');
+sessionContext.activeProjectPathRef.current = '/repo';
 
 assert.equal((await sessionActions.openDeepLinkSession({ sessionId: 'target', projectPath: '/repo', connectionScope: 'other' })).ok, true,
   'notification links select their owning saved connection before opening a session');

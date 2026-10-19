@@ -74,6 +74,7 @@ Behavior:
 
 - the link opens the session belonging to the given server project path
 - if the project differs from the active project, the app switches to it (and persists it as the active project)
+- a project path is available when it is the active project, is opened on this connection, is a server project canonical, or the server resolves it as a checkout/worktree; repositories with multiple checkouts share a project ID, so canonical-path equality is not required
 - if the session is not found in that project, a `Could not open session` error screen is shown with the server message
 - the link does not carry a server identity; it resolves against the currently configured server
 - only sessions that appear in the project's session list can be opened; archived sessions are not reachable this way

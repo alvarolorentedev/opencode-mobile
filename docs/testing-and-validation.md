@@ -216,9 +216,13 @@ and reload, checking the retained transcript. It waits for the active-project
 and favorite storage writes before reload. Provider runtime coverage checks
 that a fresh connection seeds the server current project, that an unlisted path
 falls back to the most recent opened project, that a server-resolved worktree
-is kept and opened, and that closing a project removes it locally, including
+is kept and opened, that an opened project or a server-resolved sibling
+checkout can be opened even when `project.list()` reports another canonical for
+the same repository, that a truly unresolvable path stays rejected, and that
+closing a project removes it locally, including
 the active selection. The v1/v2 worktree flow closes a server worktree and then
-closes its local project entry.
+closes its local project entry. Worktree catalogs omit known project canonicals,
+so Remove/Reset is not offered for a repository's own checkout.
 
 `.github/workflows/build.yml` owns Android validation and release. It runs on pushes to `main` and `v*` tags:
 

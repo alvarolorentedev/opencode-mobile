@@ -57,6 +57,35 @@ export async function isKnownProjectLocation(client: ScopedOpencodeClient): Prom
   }
 }
 
+// Server-confirms that a directory may be used to open one of its sessions.
+// `project.list()` only reports a project's primary canonical path, while the
+// same repository can have additional checkout directories: sibling clones and
+// worktrees share the project ID but resolve to their own directory. Exact
+// string equality against the canonical therefore rejects valid locations, so
+// accept anything the server resolves to a root/worktree or to a known project.
+export async function isAvailableProjectDirectory(
+  client: ScopedOpencodeClient,
+  knownProjects: Project[],
+): Promise<boolean> {
+  const directory = client.__opencode.directory;
+  if (!directory) return false;
+  try {
+    const resolved = await resolveProjectLocation(client);
+    if (resolved.directory === directory
+      || resolved.worktree === directory
+      || knownProjects.some((project) => project.id === resolved.id)) {
+      return true;
+    }
+    if (client.compatibility) {
+      const entries = await listV1Worktrees(client.compatibility);
+      return entries.some((entry) => entry.directory === directory);
+    }
+    return false;
+  } catch {
+    return false;
+  }
+}
+
 // V2 lists sessions through a cursor. Reading only the first page silently
 // hides every older chat in a project, so the project list, the
 // connection-wide snapshot and the notification monitor all follow it. V1
