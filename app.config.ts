@@ -1,4 +1,4 @@
-import { withAndroidManifest, withAppBuildGradle, withDangerousMod, withAppDelegate, withEntitlementsPlist, withGradleProperties, withMainActivity } from '@expo/config-plugins';
+import { withAndroidManifest, withAppBuildGradle, withDangerousMod, withEntitlementsPlist, withGradleProperties, withMainActivity } from '@expo/config-plugins';
 import { mergeContents } from '@expo/config-plugins/build/utils/generateCode';
 import type { ExpoConfig } from 'expo/config';
 
@@ -184,40 +184,6 @@ const withoutPushEntitlement = (config: ExpoConfig) =>
     return config;
   });
 
-// Xcode 27's iOS SDK hard-fails launch for apps using only the legacy
-// UIApplicationDelegate lifecycle. `expo` ships `ExpoAppSceneDelegate`
-// (Objective-C name `EXExpoAppSceneDelegate`) for exactly this, wired via
-// Info.plist's UISceneConfigurations (see `ios.infoPlist` below). It needs the
-// generated AppDelegate to conform to `ExpoReactNativeFactoryProvider` and to
-// stop creating the window itself, since the scene delegate now does that.
-const withIosSceneLifecycle = (config: ExpoConfig) =>
-  withAppDelegate(config, (config) => {
-    if (config.modResults.language !== 'swift') {
-      throw new Error('The iOS scene-lifecycle fix requires the generated Swift AppDelegate.');
-    }
-    const classDeclaration = 'class AppDelegate: ExpoAppDelegate {';
-    const windowSetup = `#if os(iOS) || os(tvOS)
-    window = UIWindow(frame: UIScreen.main.bounds)
-    factory.startReactNative(
-      withModuleName: "main",
-      in: window,
-      launchOptions: launchOptions)
-#endif
-
-    `;
-    const contents = config.modResults.contents;
-    if (!contents.includes(classDeclaration)) {
-      throw new Error('Could not find the AppDelegate class declaration to add scene-lifecycle conformance.');
-    }
-    if (!contents.includes(windowSetup)) {
-      throw new Error('Could not find the AppDelegate window setup block to remove for scene-lifecycle support.');
-    }
-    config.modResults.contents = contents
-      .replace(classDeclaration, 'class AppDelegate: ExpoAppDelegate, ExpoReactNativeFactoryProvider {')
-      .replace(windowSetup, '');
-    return config;
-  });
-
 const config: ExpoConfig = {
   name: isDevelopmentVariant ? 'OpenCode Mobile Dev' : 'OpenCode Mobile',
   slug: 'opencode-mobile',
@@ -248,21 +214,6 @@ const config: ExpoConfig = {
       NSPhotoLibraryUsageDescription: 'Allow OpenCode Mobile to access photos you choose to attach to chat messages.',
       NSAppTransportSecurity: {
         NSAllowsArbitraryLoads: true,
-      },
-      // Newer iOS SDKs (Xcode 27+) hard-fail launch for apps that only
-      // implement the legacy UIApplicationDelegate lifecycle. Point UIKit at
-      // Expo's `EXExpoAppSceneDelegate`, which `withIosSceneLifecycle` below
-      // wires the generated AppDelegate to support.
-      UIApplicationSceneManifest: {
-        UIApplicationSupportsMultipleScenes: false,
-        UISceneConfigurations: {
-          UIWindowSceneSessionRoleApplication: [
-            {
-              UISceneConfigurationName: 'Default Configuration',
-              UISceneDelegateClassName: 'EXExpoAppSceneDelegate',
-            },
-          ],
-        },
       },
     },
   },
@@ -366,7 +317,6 @@ const config: ExpoConfig = {
       },
     ],
     withAndroidAppConfig as unknown as string,
-    withIosSceneLifecycle as unknown as string,
   ],
   experiments: {
     typedRoutes: true,
