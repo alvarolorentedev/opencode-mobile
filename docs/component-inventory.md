@@ -547,9 +547,12 @@ Editing uses the same form but saves without automatically reconnecting.
 
 - own the native-only local QR setup flow, separate from the manual address form;
   opened by the Scan QR code choice in Settings and onboarding
-- reuse `ConnectCameraGate` and `ConnectScanner` without a Cloud Link
+- reuse `ConnectCameraGate` and `ConnectScanner` full-bleed without a Cloud Link
   entitlement; claiming the code stays in the provider's
   `connectionProfiles.pair`
+- overlay the `opencode pair` instructions, scan progress and recovery messages
+  on top of the full-screen camera rather than boxing it into a step layout like
+  the Cloud Link scanner
 - save and connect through the caller's submit callback with the redeemed
   credential, retaining it across a failed save/connect so Retry never re-pairs
 - return to the chooser on Back or camera denial, and offer Scan again after an
