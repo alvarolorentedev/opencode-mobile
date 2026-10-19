@@ -124,6 +124,12 @@ describe('feed attachments', () => {
     expect(defaultChatPreferences.promptDelivery).toBe('steer');
     expect(parseChatPreferences('{"promptDelivery":"queue"}').promptDelivery).toBe('queue');
     expect(parseChatPreferences('{"promptDelivery":"invalid"}').promptDelivery).toBeUndefined();
+    expect(parseChatPreferences('{"transcriptVerbosity":"basic"}').transcriptVerbosity).toBe('basic');
+    expect(parseChatPreferences('{"transcriptVerbosity":"reasoning"}').transcriptVerbosity).toBe('reasoning');
+    expect(parseChatPreferences('{"transcriptVerbosity":"verbose"}').transcriptVerbosity).toBe('verbose');
+    // No migration: pre-1.0.83 levels fall back to the default.
+    expect(parseChatPreferences('{"transcriptVerbosity":"conversation"}').transcriptVerbosity).toBeUndefined();
+    expect(parseChatPreferences('{"transcriptVerbosity":"tools"}').transcriptVerbosity).toBeUndefined();
     for (const type of ['enqueued', 'delivered', 'cancelled', 'delivery.changed']) {
       const scheduleSessionRefresh = vi.fn();
       handleProviderEvent({ id: 'event', type: `session.inbox.${type}`, data: { sessionID: 's' } } as never, { scheduleSessionRefresh } as never);

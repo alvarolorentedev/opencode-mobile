@@ -342,17 +342,17 @@
     },
     "transcriptVerbosity": {
       "label": "Détail de la conversation",
-      "conversation": {
-        "label": "Conversation",
+      "basic": {
+        "label": "Basique",
         "description": "Afficher uniquement les messages de l’utilisateur et de l’assistant."
       },
-      "tools": {
-        "label": "Conversation + outils",
-        "description": "Afficher aussi les appels d’outils sous forme de lignes repliées."
+      "reasoning": {
+        "label": "Raisonnement",
+        "description": "Afficher aussi le raisonnement de l’assistant sous forme de lignes repliées."
       },
       "verbose": {
-        "label": "Tout",
-        "description": "Afficher aussi le raisonnement et les étapes de l’agent sous forme de lignes repliées."
+        "label": "Détaillé",
+        "description": "Afficher aussi les appels d’outils sous forme de lignes repliées."
       }
     }
   },

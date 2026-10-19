@@ -41,7 +41,7 @@ function TranscriptMessageImpl({
   onToggleSpeak,
   slim = false,
   speaking = false,
-  verbosity = 'conversation',
+  verbosity = 'basic',
 }: TranscriptMessageProps) {
   const { t } = useTranslation();
   const colorScheme = useColorScheme() ?? 'light';
@@ -138,9 +138,9 @@ function TranscriptMessageImpl({
         </View>
       ) : null}
       {collapsibleDetails.length > 0 ? (
-        <View style={styles.detailStack}>
+        <View style={[styles.detailStack, flat ? null : styles.detailStackAssistant]}>
           {collapsibleDetails.map((detail) => (
-            <CollapsibleDetail detail={detail} key={detail.id} palette={palette} />
+            <CollapsibleDetail detail={detail} fontSize={fontSize} key={detail.id} palette={palette} />
           ))}
         </View>
       ) : null}
@@ -201,4 +201,5 @@ const styles = StyleSheet.create({
   summaryRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   summaryChip: { alignSelf: 'flex-start' },
   detailStack: { alignSelf: 'stretch', gap: 6, marginTop: 6 },
+  detailStackAssistant: { marginLeft: 8, marginRight: '8%' },
 });

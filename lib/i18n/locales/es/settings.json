@@ -342,17 +342,17 @@
     },
     "transcriptVerbosity": {
       "label": "Detalle de la conversación",
-      "conversation": {
-        "label": "Conversación",
+      "basic": {
+        "label": "Básico",
         "description": "Mostrar solo mensajes del usuario y del asistente."
       },
-      "tools": {
-        "label": "Conversación + herramientas",
-        "description": "Mostrar también las llamadas a herramientas como filas contraídas."
+      "reasoning": {
+        "label": "Razonamiento",
+        "description": "Mostrar también el razonamiento del asistente como filas contraídas."
       },
       "verbose": {
-        "label": "Todo",
-        "description": "Mostrar también el razonamiento y los pasos del agente como filas contraídas."
+        "label": "Detallado",
+        "description": "Mostrar también las llamadas a herramientas como filas contraídas."
       }
     }
   },

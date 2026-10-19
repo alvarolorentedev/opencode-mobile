@@ -140,7 +140,7 @@ Current fields:
 - `mode`
 - `transcriptFontSize` (global chat message text size in pixels; defaults to 16 and is clamped to 12–24)
 - `flatTranscript` (renders the transcript full-width without bubble chrome; defaults to `false`)
-- `transcriptVerbosity` (`conversation` by default; `tools` adds collapsible tool rows, `verbose` adds reasoning, subtask, and agent/step rows)
+- `transcriptVerbosity` (`basic` by default; `reasoning` adds reasoning rows, `verbose` adds tool and patch rows)
 - `slimInterface` (shrinks control sizes, spacing, and headers on the text-heavy screens; defaults to `false`)
 - `language` (optional; `undefined` follows the OS locale)
 - `providerId`
@@ -531,13 +531,14 @@ downloading bridging pages. Only server-side history rewrites rebuild the window
 instead of merging: compaction, revert/unrevert, and (on V1) explicit message
 removal. Reconnects and foreground returns tail-merge.
 
-Transcript verbosity (`conversation` by default) controls which native timeline
-records render. `conversation` shows user and assistant text/files/errors;
-`tools` adds tool calls and patches; `verbose` adds reasoning, subtasks, and
-agent/step rows.
+Transcript verbosity (`basic` by default) controls which native timeline
+records render. `basic` shows user and assistant text/files/errors; `reasoning`
+adds reasoning rows; `verbose` adds tool calls and patches.
 Tool and reasoning details render outside message bubbles as flat collapsible
-rows, so a tool-only turn is visible without becoming a wall of bubbles. The
-display filter, the initial-pull target, and retention share the same predicate.
+rows with the same markdown renderer as messages, matching the assistant
+bubble's width. V1-only subtask/step/agent parts and the V2-synthesized
+`step-finish` usage marker are never rendered. The display filter, the
+initial-pull target, and retention share the same predicate.
 
 
 V1 pages backwards with `limit`/`before` and an `x-next-cursor` header; V2
@@ -571,13 +572,13 @@ Current part handling in `lib/opencode/format.ts` includes:
 - `tool` -> detail kind `tool`
 - `patch` -> detail kind `patch`
 - `file` -> detail kind `file`
-- `subtask` -> detail kind `subtask`
-- `step-start` / `step-finish` -> detail kind `step`
-- `agent` -> detail kind `agent`
 - `retry` -> detail kind `retry`
 - `compaction` -> detail kind `compaction`
+- `subtask` / `step-start` / `step-finish` / `agent` -> ignored (V1-only or usage markers)
 
-Display filtering then hides assistant messages that have no `text` and no `error`, while still using their details for activity summaries.
+The display filter uses the selected verbosity: `basic` keeps user/assistant
+text, files, and errors; `reasoning` adds reasoning; `verbose` adds tool calls
+and patches.
 
 That detail is important because the transcript UI is not a raw message dump.
 

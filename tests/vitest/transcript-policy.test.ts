@@ -22,13 +22,17 @@ const textRecord = (id: string, text = 'Hello'): Message => ({
   info: info(id),
   parts: [{ id: `${id}-text`, sessionID: 's', messageID: id, type: 'text' as const, text }],
 });
+const reasoningRecord = (id: string): Message => ({
+  info: info(id),
+  parts: [{ id: `${id}-reasoning`, sessionID: 's', messageID: id, type: 'reasoning' as const, text: 'thinking' }],
+});
 
 const page = (records: Message[], hasMore = false, nextBefore = hasMore ? 'cursor' : undefined) => ({ records, hasMore, nextBefore });
 
 async function mountTranscript(
   initial: Record<string, Message[]>,
   getSessionMessages: ReturnType<typeof vi.fn>,
-  verbosity: transcript.TranscriptVerbosity = 'conversation',
+  verbosity: transcript.TranscriptVerbosity = 'basic',
 ) {
   const runtime = hookRuntime();
   const { useTranscriptState } = await loadTs('providers/use-transcript-state.ts', {
@@ -83,6 +87,20 @@ describe('transcript refresh policy', () => {
     expect(getSessionMessages.mock.calls[1][2]).toEqual({ limit: 50, before: 'c1' });
     expect(ids(runtime.value.messagesBySession.s).slice(0, 10)).toEqual(Array.from({ length: 10 }, (_value, index) => `d${index}`));
     expect(runtime.value.messagesBySession.s).toHaveLength(30);
+  });
+
+  it('counts reasoning rows toward the display target at the reasoning level', async () => {
+    const getSessionMessages = vi.fn(async (_client, _id, options: { before?: string }) => {
+      if (!options.before) {
+        return page(Array.from({ length: 20 }, (_value, index) => toolRecord(`t${index}`)), true, 'c1');
+      }
+      return page(Array.from({ length: 10 }, (_value, index) => reasoningRecord(`r${index}`)), false);
+    });
+    const { runtime, value } = await mountTranscript({}, getSessionMessages, 'reasoning');
+    await value.refreshMessages('s');
+    runtime.flush();
+    expect(getSessionMessages).toHaveBeenCalledTimes(2);
+    expect(ids(runtime.value.messagesBySession.s).slice(0, 10)).toEqual(Array.from({ length: 10 }, (_value, index) => `r${index}`));
   });
 
   it('tail merge appends new records without dropping the held window', async () => {

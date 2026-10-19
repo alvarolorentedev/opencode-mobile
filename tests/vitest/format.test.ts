@@ -35,6 +35,19 @@ describe('format', () => {
     expect(toolAttachment.details[1].label).toBe('result.png');
   });
 
+  it('omits V1-only step, subtask and agent parts from the transcript', () => {
+    const entry = toTranscriptEntry({
+      info,
+      parts: [
+        { id: 'sub', type: 'subtask', description: 'do work' },
+        { id: 'start', type: 'step-start', snapshot: 'abc' },
+        { id: 'finish', type: 'step-finish', reason: 'stop', cost: 0, tokens: {} },
+        { id: 'agent', type: 'agent', name: 'build' },
+      ],
+    } as never);
+    expect(entry.details).toEqual([]);
+  });
+
   it('derives the latest todo write', () => {
     expect(deriveTodosFromMessages([
       { info, parts: [todoWritePart('tool-todo-1', [

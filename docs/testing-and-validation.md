@@ -534,10 +534,10 @@ one newest page, backfills older pages until ten entries are displayable, a tail
 merge appends without dropping held records, a non-overlapping burst adopts the
 fetched page, the 300-record cap drops non-display records before conversation
 entries, and only `replace` discards held history.
-the Vitest `transcript-visibility` suite covers verbosity (`conversation`,
-`tools`, `verbose`) across user, assistant, tool-only, reasoning-only and
+the Vitest `transcript-visibility` suite covers verbosity (`basic`, `reasoning`,
+`verbose`) across user, assistant, tool-only, reasoning-only and
 patch-only entries; `collapsible-detail` covers collapsed-by-default tool rows
-and expansion.
+and expanding their markdown body.
 `test:provider-runtime` runs actual provider callbacks and extracted hooks with
 deterministic platform/timer boundaries: out-of-order project results, stale
 same-directory server responses, safety-poll overlap, reconnect snapshots,

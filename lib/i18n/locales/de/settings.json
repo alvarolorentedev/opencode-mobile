@@ -342,17 +342,17 @@
     },
     "transcriptVerbosity": {
       "label": "Transkript-Details",
-      "conversation": {
-        "label": "Unterhaltung",
+      "basic": {
+        "label": "Einfach",
         "description": "Nur Nachrichten von Benutzer und Assistent anzeigen."
       },
-      "tools": {
-        "label": "Unterhaltung + Werkzeuge",
-        "description": "Zusätzlich Werkzeugaufrufe als eingeklappte Zeilen anzeigen."
+      "reasoning": {
+        "label": "Denkprozess",
+        "description": "Zusätzlich den Denkprozess des Assistenten als eingeklappte Zeilen anzeigen."
       },
       "verbose": {
-        "label": "Alles",
-        "description": "Zusätzlich Denkprozesse und Agent-Schritte als eingeklappte Zeilen anzeigen."
+        "label": "Ausführlich",
+        "description": "Zusätzlich Werkzeugaufrufe als eingeklappte Zeilen anzeigen."
       }
     }
   },

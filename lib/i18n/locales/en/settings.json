@@ -342,17 +342,17 @@
     },
     "transcriptVerbosity": {
       "label": "Transcript detail",
-      "conversation": {
-        "label": "Conversation",
+      "basic": {
+        "label": "Basic",
         "description": "Show user and assistant messages only."
       },
-      "tools": {
-        "label": "Conversation + tools",
-        "description": "Also show tool calls as collapsed rows."
+      "reasoning": {
+        "label": "Reasoning",
+        "description": "Also show the assistant's reasoning as collapsed rows."
       },
       "verbose": {
-        "label": "Everything",
-        "description": "Also show reasoning and agent steps as collapsed rows."
+        "label": "Verbose",
+        "description": "Also show tool calls as collapsed rows."
       }
     }
   },

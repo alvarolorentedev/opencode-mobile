@@ -1,24 +1,24 @@
 import type { SessionMessageRecord, TranscriptDetail, TranscriptEntry } from '@/lib/opencode/format';
 
-// How much of the native timeline the transcript renders. `conversation` is the
-// default: user and assistant messages only. Higher levels add tool calls and
-// reasoning as flat, collapsible rows.
-export type TranscriptVerbosity = 'conversation' | 'tools' | 'verbose';
+// How much of the native timeline the transcript renders. `basic` is the
+// default: user and assistant messages only. `reasoning` adds reasoning rows;
+// `verbose` also adds tool calls and patches.
+export type TranscriptVerbosity = 'basic' | 'reasoning' | 'verbose';
 
-export const TRANSCRIPT_VERBOSITIES: readonly TranscriptVerbosity[] = ['conversation', 'tools', 'verbose'];
+export const TRANSCRIPT_VERBOSITIES: readonly TranscriptVerbosity[] = ['basic', 'reasoning', 'verbose'];
 
 // Details rendered as collapsible (non-bubble) rows outside the message card.
+// Patches stay review chips; V1-only steps/subtasks/agent parts are not shown.
 export function isCollapsibleDetail(detail: TranscriptDetail) {
-  return detail.kind === 'tool' || detail.kind === 'reasoning' || detail.kind === 'subtask' || detail.kind === 'step' || detail.kind === 'agent';
+  return detail.kind === 'tool' || detail.kind === 'reasoning';
 }
 
 // Whether a detail is surfaced at the given verbosity. Files are attachments
-// and are always shown with their message; patches stay review chips.
+// and are always shown with their message; patches are tool output.
 export function isDetailVisible(detail: TranscriptDetail, verbosity: TranscriptVerbosity) {
-  if (verbosity === 'conversation') return false;
-  if (detail.kind === 'tool' || detail.kind === 'patch') return true;
-  return verbosity === 'verbose'
-    && (detail.kind === 'reasoning' || detail.kind === 'subtask' || detail.kind === 'step' || detail.kind === 'agent');
+  if (detail.kind === 'reasoning') return verbosity !== 'basic';
+  if (detail.kind === 'tool' || detail.kind === 'patch') return verbosity === 'verbose';
+  return false;
 }
 
 export function getTranscriptActivityLabel(entry: TranscriptEntry) {
@@ -42,15 +42,10 @@ export function getTranscriptActivityLabel(entry: TranscriptEntry) {
     return latestReasoning.label;
   }
 
-  const latestStep = [...entry.details].reverse().find((detail) => detail.kind === 'step' || detail.kind === 'subtask');
-  if (latestStep) {
-    return latestStep.label;
-  }
-
   return undefined;
 }
 
-export function isTranscriptDisplayMessage(entry: TranscriptEntry, verbosity: TranscriptVerbosity = 'conversation') {
+export function isTranscriptDisplayMessage(entry: TranscriptEntry, verbosity: TranscriptVerbosity = 'basic') {
   if (entry.role === 'user') {
     return true;
   }

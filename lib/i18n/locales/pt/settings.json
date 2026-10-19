@@ -342,17 +342,17 @@
     },
     "transcriptVerbosity": {
       "label": "Detalhe da conversa",
-      "conversation": {
-        "label": "Conversa",
+      "basic": {
+        "label": "Básico",
         "description": "Mostrar apenas mensagens do usuário e do assistente."
       },
-      "tools": {
-        "label": "Conversa + ferramentas",
-        "description": "Mostrar também chamadas de ferramentas como linhas recolhidas."
+      "reasoning": {
+        "label": "Raciocínio",
+        "description": "Mostrar também o raciocínio do assistente como linhas recolhidas."
       },
       "verbose": {
-        "label": "Tudo",
-        "description": "Mostrar também raciocínio e etapas do agente como linhas recolhidas."
+        "label": "Detalhado",
+        "description": "Mostrar também chamadas de ferramentas como linhas recolhidas."
       }
     }
   },

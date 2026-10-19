@@ -28,7 +28,7 @@ function listProps(overrides: Record<string, unknown> = {}) {
     running: false,
     slim: false,
     transcriptFontSize: 16,
-    transcriptVerbosity: 'conversation' as const,
+    transcriptVerbosity: 'basic' as const,
     ...overrides,
   };
 }

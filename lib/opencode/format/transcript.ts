@@ -83,46 +83,6 @@ export function toTranscriptEntry(record: SessionMessageRecord): TranscriptEntry
       return;
     }
 
-    if (part.type === 'subtask') {
-      details.push({
-        id,
-        kind: 'subtask',
-        label: 'Subtask',
-        body: part.description,
-      });
-      return;
-    }
-
-    if (part.type === 'step-start') {
-      details.push({
-        id,
-        kind: 'step',
-        label: 'Step started',
-        body: part.snapshot || 'OpenCode started a new step.',
-      });
-      return;
-    }
-
-    if (part.type === 'step-finish') {
-      details.push({
-        id,
-        kind: 'step',
-        label: 'Step finished',
-        body: `${part.reason}${part.snapshot ? `\n\n${part.snapshot}` : ''}`,
-      });
-      return;
-    }
-
-    if (part.type === 'agent') {
-      details.push({
-        id,
-        kind: 'agent',
-        label: 'Agent',
-        body: part.name,
-      });
-      return;
-    }
-
     if (part.type === 'retry') {
       details.push({
         id,

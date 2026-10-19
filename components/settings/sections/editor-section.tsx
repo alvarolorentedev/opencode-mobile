@@ -54,8 +54,8 @@ export function EditorSection({
       />
       <SettingSelectField
         label={t('settings:appearance.transcriptVerbosity.label')}
-        valueLabel={t(`settings:appearance.transcriptVerbosity.${chatPreferences.transcriptVerbosity || 'conversation'}.label`)}
-        selectedValue={chatPreferences.transcriptVerbosity || 'conversation'}
+        valueLabel={t(`settings:appearance.transcriptVerbosity.${chatPreferences.transcriptVerbosity || 'basic'}.label`)}
+        selectedValue={chatPreferences.transcriptVerbosity || 'basic'}
         options={TRANSCRIPT_VERBOSITIES.map((value) => ({
           value,
           label: t(`settings:appearance.transcriptVerbosity.${value}.label`),

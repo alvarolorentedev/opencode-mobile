@@ -342,17 +342,17 @@
     },
     "transcriptVerbosity": {
       "label": "对话记录详细程度",
-      "conversation": {
-        "label": "对话",
+      "basic": {
+        "label": "基础",
         "description": "仅显示用户和助手消息。"
       },
-      "tools": {
-        "label": "对话 + 工具",
-        "description": "同时以折叠行显示工具调用。"
+      "reasoning": {
+        "label": "推理",
+        "description": "同时以折叠行显示助手的推理。"
       },
       "verbose": {
-        "label": "全部",
-        "description": "同时以折叠行显示推理和代理步骤。"
+        "label": "详细",
+        "description": "同时以折叠行显示工具调用。"
       }
     }
   },

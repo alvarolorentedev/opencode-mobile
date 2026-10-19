@@ -83,3 +83,13 @@ the stale/empty-transcript behavior and is harder to validate:
   (`TAIL_SETTLE_FRAMES`) and restores offset on focus/foreground.
 
 Revisit only with render profiling evidence, and one mechanism at a time.
+
+## 5. V2 non-message timeline records
+
+Deferred on 2026-10-19 with the verbosity levels
+(`basic`/`reasoning`/`verbose`). The V2 timeline also carries `idle`, `system`,
+`synthetic`, `skill`, `shell`, `agent-switched`, `model-switched`, and
+`location-switched` records. They are fetched but not rendered at any current
+level; most are mapped to empty non-display records. A future "everything/debug"
+level would map them into transcript details (and would need to decide how to
+present shell output and skill/system text).

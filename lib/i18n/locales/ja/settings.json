@@ -342,17 +342,17 @@
     },
     "transcriptVerbosity": {
       "label": "トランスクリプトの詳細",
-      "conversation": {
-        "label": "会話",
+      "basic": {
+        "label": "基本",
         "description": "ユーザーとアシスタントのメッセージのみ表示します。"
       },
-      "tools": {
-        "label": "会話 + ツール",
-        "description": "ツール呼び出しも折りたたみ行として表示します。"
+      "reasoning": {
+        "label": "推論",
+        "description": "アシスタントの推論も折りたたみ行として表示します。"
       },
       "verbose": {
-        "label": "すべて",
-        "description": "推論とエージェントの手順も折りたたみ行として表示します。"
+        "label": "詳細",
+        "description": "ツール呼び出しも折りたたみ行として表示します。"
       }
     }
   },
