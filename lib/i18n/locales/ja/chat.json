@@ -60,7 +60,10 @@
     "allTasksCompleted": "すべてのタスクが完了しました",
     "openToSeeSteps": "開いてすべてのステップを表示",
     "progress": "進捗",
-    "untitledTask": "無題のタスク"
+    "untitledTask": "無題のタスク",
+    "loadEarlier": "表示できる内容がまだありません",
+    "loadEarlierDescription": "このターンの最新メッセージはツールのアクティビティです。会話を表示するには以前のメッセージを読み込んでください。",
+    "loadEarlierAction": "以前のメッセージを読み込む"
   },
   "cards": {
     "respondToContinue": "承認が必要",

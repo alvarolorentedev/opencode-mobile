@@ -128,7 +128,20 @@ export function useChatViewController() {
   const completedTodoCount = currentTodos.filter((todo) => todo.status === 'completed').length;
   const progressSlice = currentTodos.length ? Math.floor(completedTodoCount / currentTodos.length * 8) : 0;
   const progressIcon = completedTodoCount === currentTodos.length ? 'check-circle' : progressSlice > 0 ? `circle-slice-${progressSlice}` : 'circle-outline';
-  const displayTranscript = useMemo(() => currentTranscript.filter(isTranscriptDisplayMessage), [currentTranscript]);
+  const display = useMemo(() => {
+    const preferred = currentTranscript.filter((entry) => isTranscriptDisplayMessage(entry, chatPreferences.transcriptVerbosity));
+    if (preferred.length > 0 || currentTranscript.length === 0 || chatPreferences.transcriptVerbosity !== 'conversation') {
+      return { entries: preferred, verbosity: chatPreferences.transcriptVerbosity };
+    }
+    // Never leave the conversation blank when the loaded window only contains
+    // tool activity at conversation verbosity: surface tool rows so the list is
+    // scrollable and older messages can load.
+    return {
+      entries: currentTranscript.filter((entry) => isTranscriptDisplayMessage(entry, 'tools')),
+      verbosity: 'tools' as const,
+    };
+  }, [currentTranscript, chatPreferences.transcriptVerbosity]);
+  const displayTranscript = display.entries;
   const hasTranscriptMessages = currentMessages.length > 0;
   const currentActivityLabel = useMemo(() => getTranscriptActivityLabelForEntries(currentTranscript), [currentTranscript]);
   const selectedSession = useMemo(
@@ -413,6 +426,7 @@ export function useChatViewController() {
       expandedDiffId, hasTranscriptMessages, isRefreshingDiffs, isRefreshingMessages,
       pendingInteractions, pendingPrompts, progressIcon, progressVisible, retryAttempt,
       running, selectedDiffMessageId, speakingMessageId, transcriptPaging,
+      transcriptVerbosity: display.verbosity,
     },
     composer: {
       attachments, availableAgents, chatPreferences, commands, draft,

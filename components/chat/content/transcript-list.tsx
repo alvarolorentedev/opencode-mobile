@@ -12,6 +12,7 @@ import { STARTER_PROMPT_KEYS } from '@/components/chat/chat-view-utils';
 import { TranscriptSkeleton } from '@/components/chat/content/transcript-skeleton';
 import { Colors } from '@/constants/theme';
 import type { TranscriptEntry } from '@/lib/opencode/format';
+import type { TranscriptVerbosity } from '@/lib/opencode/transcript';
 import type { Session } from '@/lib/opencode/types';
 
 type Palette = typeof Colors.light;
@@ -63,6 +64,7 @@ type TranscriptListProps = {
   speakingMessageId?: string;
   slim: boolean;
   transcriptFontSize: number;
+  transcriptVerbosity: TranscriptVerbosity;
 };
 
 export function TranscriptList({
@@ -93,6 +95,7 @@ export function TranscriptList({
   speakingMessageId,
   slim,
   transcriptFontSize,
+  transcriptVerbosity,
 }: TranscriptListProps) {
   const { t } = useTranslation();
   const focused = useIsFocused();
@@ -172,7 +175,7 @@ export function TranscriptList({
     followTailRef.current = contentSize.height - (contentOffset.y + layoutMeasurement.height) <= TAIL_FOLLOW_THRESHOLD;
   }, []);
 
-  const extraData = useMemo(() => ({ copiedMessageId, speakingMessageId, onReviewChanges }), [copiedMessageId, speakingMessageId, onReviewChanges]);
+  const extraData = useMemo(() => ({ copiedMessageId, speakingMessageId, onReviewChanges, transcriptVerbosity }), [copiedMessageId, speakingMessageId, onReviewChanges, transcriptVerbosity]);
 
   return (
     <FlashList
@@ -207,6 +210,7 @@ export function TranscriptList({
             flat={flatTranscript}
             fontSize={transcriptFontSize}
             slim={slim}
+            verbosity={transcriptVerbosity}
             onReviewChanges={onReviewChanges}
             onCopy={() => onCopyMessage(entry)}
             onFork={entry.role === 'user' ? () => onForkMessage(entry.id) : undefined}
@@ -236,7 +240,17 @@ export function TranscriptList({
       ListEmptyComponent={
         currentSessionId && isRefreshingMessages && !hasMessages ? (
           <TranscriptSkeleton palette={palette} />
-        ) : currentSessionId && (hasMessages || hasOlderMessages) ? null : (
+        ) : currentSessionId && hasOlderMessages ? (
+          <Card mode="contained" style={[styles.emptyCard, { backgroundColor: palette.surface }]}>
+            <Card.Content style={styles.emptyContent}>
+              <Text variant="titleMedium" style={{ color: palette.text }}>{t('chat:content.loadEarlier')}</Text>
+              <Text variant="bodyMedium" style={{ color: palette.muted }}>{t('chat:content.loadEarlierDescription')}</Text>
+              <Button mode="outlined" onPress={onLoadOlderMessages} loading={isLoadingOlderMessages} disabled={isLoadingOlderMessages}>
+                {t('chat:content.loadEarlierAction')}
+              </Button>
+            </Card.Content>
+          </Card>
+        ) : currentSessionId && hasMessages ? null : (
           <Card mode="contained" style={[styles.emptyCard, { backgroundColor: palette.surface }]}>
             <Card.Content style={styles.emptyContent}>
               <Text variant="headlineSmall" style={[styles.emptyTitle, { color: palette.text }]}>{t('chat:starter.title')}</Text>

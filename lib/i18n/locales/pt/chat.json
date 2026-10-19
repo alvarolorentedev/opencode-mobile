@@ -60,7 +60,10 @@
     "allTasksCompleted": "Todas as tarefas concluídas",
     "openToSeeSteps": "Abra para ver todas as etapas",
     "progress": "Progresso",
-    "untitledTask": "Tarefa sem título"
+    "untitledTask": "Tarefa sem título",
+    "loadEarlier": "Nada para mostrar ainda",
+    "loadEarlierDescription": "As mensagens mais recentes deste turno são atividade de ferramentas. Carregue mensagens anteriores para ver a conversa.",
+    "loadEarlierAction": "Carregar mensagens anteriores"
   },
   "cards": {
     "respondToContinue": "Aprovação necessária",

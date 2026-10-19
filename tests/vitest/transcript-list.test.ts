@@ -28,6 +28,7 @@ function listProps(overrides: Record<string, unknown> = {}) {
     running: false,
     slim: false,
     transcriptFontSize: 16,
+    transcriptVerbosity: 'conversation' as const,
     ...overrides,
   };
 }
@@ -77,10 +78,11 @@ describe('transcript empty state', () => {
     expect(update({}).props.ListEmptyComponent.type).toBe('TranscriptSkeleton');
   });
 
-  it('does not offer starter prompts when only non-display history is loaded', async () => {
+  it('offers a load-earlier affordance when only non-display history is loaded', async () => {
     const { update } = await mountTranscriptList({ hasOlderMessages: true });
     const idle = update({ running: false });
-    expect(idle.props.ListEmptyComponent).toBeNull();
+    expect(idle.props.ListEmptyComponent.type).toBe('Card');
+    expect(JSON.stringify(idle.props.ListEmptyComponent)).toContain('chat:content.loadEarlier');
   });
 
   it('still offers starter prompts for a brand-new session', async () => {

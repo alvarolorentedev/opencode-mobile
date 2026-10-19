@@ -339,6 +339,21 @@
     "slimInterface": {
       "title": "Interface compacte",
       "description": "Réduit les boutons, les espacements et les en-têtes dans le chat, le terminal et le projet pour afficher plus de texte à l'écran."
+    },
+    "transcriptVerbosity": {
+      "label": "Détail de la conversation",
+      "conversation": {
+        "label": "Conversation",
+        "description": "Afficher uniquement les messages de l’utilisateur et de l’assistant."
+      },
+      "tools": {
+        "label": "Conversation + outils",
+        "description": "Afficher aussi les appels d’outils sous forme de lignes repliées."
+      },
+      "verbose": {
+        "label": "Tout",
+        "description": "Afficher aussi le raisonnement et les étapes de l’agent sous forme de lignes repliées."
+      }
     }
   },
   "connect": {

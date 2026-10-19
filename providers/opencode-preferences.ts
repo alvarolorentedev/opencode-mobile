@@ -2,6 +2,8 @@
 // Kept separate from provider orchestration so preference shape and prompt
 // wording are changed in one place.
 
+import type { TranscriptVerbosity } from '@/lib/opencode/transcript';
+
 export type ReasoningLevel = 'low' | 'default' | 'high';
 export type ResponseScope = 'brief' | 'balanced' | 'detailed';
 export const TRANSCRIPT_FONT_SIZE_MIN = 12;
@@ -21,6 +23,9 @@ export type ChatPreferences = {
   // Flat transcript renders messages full-width without bubble chrome so more
   // of the conversation is visible at once. Defaults to the bubble layout.
   flatTranscript: boolean;
+  // How much of the native timeline the transcript renders: conversation
+  // (user/assistant), tools (collapsible tool rows), or verbose (reasoning too).
+  transcriptVerbosity: TranscriptVerbosity;
   // Slim interface reduces control sizes, paddings, and header heights on the
   // text-heavy screens so the transcript/output/code gets more room.
   slimInterface: boolean;
@@ -54,6 +59,7 @@ export const defaultChatPreferences: ChatPreferences = {
   promptDelivery: 'steer',
   transcriptFontSize: DEFAULT_TRANSCRIPT_FONT_SIZE,
   flatTranscript: false,
+  transcriptVerbosity: 'conversation',
   slimInterface: false,
   enabledModelIds: [],
   providerModelSelections: {},

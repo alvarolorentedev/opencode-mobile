@@ -126,7 +126,7 @@ export function useOpencodeProviderComposition() {
     [catalogGenerationRef, serverGenerationRef],
   );
 
-  const transcript = useTranscriptState({ ...state, client, isCurrentClient });
+  const transcript = useTranscriptState({ ...state, client, isCurrentClient, transcriptVerbosity: state.chatPreferences.transcriptVerbosity });
   const inbox = usePromptInbox({ client, isCurrentClient, refreshMessages: transcript.refreshMessages });
   const terminal = useTerminalState({
     ...state,

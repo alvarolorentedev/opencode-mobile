@@ -4,6 +4,7 @@ import { HelperText, Text } from 'react-native-paper';
 
 import { NumericSlider } from '@/components/ui/numeric-slider';
 import type { ServerContract } from '@/lib/opencode/client';
+import { TRANSCRIPT_VERBOSITIES } from '@/lib/opencode/transcript';
 import type { ChatPreferences } from '@/providers/opencode-provider';
 import { normalizeTranscriptFontSize, TRANSCRIPT_FONT_SIZE_MAX, TRANSCRIPT_FONT_SIZE_MIN } from '@/providers/opencode-preferences';
 import { SettingSelectField, SettingSwitchRow, type Palette } from './setting-rows';
@@ -50,6 +51,18 @@ export function EditorSection({
         onValueChange={(flatTranscript) => updateChatPreferences({ flatTranscript })}
         palette={palette}
         value={chatPreferences.flatTranscript === true}
+      />
+      <SettingSelectField
+        label={t('settings:appearance.transcriptVerbosity.label')}
+        valueLabel={t(`settings:appearance.transcriptVerbosity.${chatPreferences.transcriptVerbosity || 'conversation'}.label`)}
+        selectedValue={chatPreferences.transcriptVerbosity || 'conversation'}
+        options={TRANSCRIPT_VERBOSITIES.map((value) => ({
+          value,
+          label: t(`settings:appearance.transcriptVerbosity.${value}.label`),
+          description: t(`settings:appearance.transcriptVerbosity.${value}.description`),
+        }))}
+        onValueChange={(transcriptVerbosity) => updateChatPreferences({ transcriptVerbosity })}
+        palette={palette}
       />
     </View>
   );

@@ -60,7 +60,10 @@
     "allTasksCompleted": "सभी कार्य पूरे हुए",
     "openToSeeSteps": "सभी चरण देखने के लिए खोलें",
     "progress": "प्रगति",
-    "untitledTask": "बिना शीर्षक कार्य"
+    "untitledTask": "बिना शीर्षक कार्य",
+    "loadEarlier": "अभी दिखाने के लिए कुछ नहीं",
+    "loadEarlierDescription": "इस टर्न के नवीनतम संदेश टूल गतिविधि हैं। बातचीत देखने के लिए पुराने संदेश लोड करें।",
+    "loadEarlierAction": "पुराने संदेश लोड करें"
   },
   "cards": {
     "respondToContinue": "अनुमोदन आवश्यक है",

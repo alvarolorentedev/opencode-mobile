@@ -339,6 +339,21 @@
     "slimInterface": {
       "title": "Slim interface",
       "description": "Shrink buttons, spacing, and headers in chat, terminal, and project so more text fits on screen."
+    },
+    "transcriptVerbosity": {
+      "label": "Transcript detail",
+      "conversation": {
+        "label": "Conversation",
+        "description": "Show user and assistant messages only."
+      },
+      "tools": {
+        "label": "Conversation + tools",
+        "description": "Also show tool calls as collapsed rows."
+      },
+      "verbose": {
+        "label": "Everything",
+        "description": "Also show reasoning and agent steps as collapsed rows."
+      }
     }
   },
   "connect": {

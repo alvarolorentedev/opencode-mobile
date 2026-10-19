@@ -18,8 +18,8 @@ fills the sheet's available height.
 `pending-prompts.tsx` renders provider-derived OpenCode 2 sending/waiting entries
 in a bounded, scrollable stack directly above the composer. It does not own
 prompt admission or delivery state. Steer/Append selection lives at the top of
-the Editor group in Advanced Settings, alongside chat text size and flat
-conversation. The General group contains slim interface, language and Reset
+the Editor group in Advanced Settings, alongside chat text size, flat
+conversation and transcript verbosity. The General group contains slim interface, language and Reset
 onboarding, which reopens the existing setup review without clearing settings.
 
 ## Purpose
@@ -93,7 +93,8 @@ declared once, at the leaves.
 ### Behavior notes
 
 - Chat keeps its transcript and pending cards mounted while changes are reviewed.
-- transcript messages use FlashList virtualization; it starts at the bottom, follows additions only from the bottom, and preserves the visible position otherwise. Because FlashList measures progressively, the tail is re-asserted across a few frames on a session switch or data change, and the list re-applies its tail/offset when the Chat tab regains focus or the app returns to the foreground, so an Android detach or background/lock cannot leave it at the top or undrawn. A starter-prompt card is shown only for a session with no transcript content; the skeleton is shown only for a cold fetch with no held records, and a session with raw history but no displayable entries shows nothing while the running indicator covers the turn.
+- transcript messages use FlashList virtualization; it starts at the bottom, follows additions only from the bottom, and preserves the visible position otherwise. Because FlashList measures progressively, the tail is re-asserted across a few frames on a session switch or data change, and the list re-applies its tail/offset when the Chat tab regains focus or the app returns to the foreground, so an Android detach or background/lock cannot leave it at the top or undrawn. A starter-prompt card is shown only for a session with no transcript content; the skeleton is shown only for a cold fetch with no held records. The initial pull backfills until 10 entries are displayable at the configured verbosity, so a tool-heavy tail cannot leave the view blank.
+- Transcript verbosity (`conversation`/`tools`/`verbose`) controls which native timeline records render. Tool, reasoning, subtask, step, and agent details render outside the message bubble as flat, collapsed rows (`cards/collapsible-detail.tsx`); a tool-only turn therefore shows rows without a bubble.
 - A centered changes chip above the composer shows file count and green additions/red deletions for the selected scope. It hides at zero files and omits line totals for filename-only patches. Tapping opens the shared Files changed overlay with refresh, source selection, and diff accordions. Changes use a compact bottom sheet (55% of the viewport where safe areas permit), a centered file-count title, close icon, and a three-dot source button instead of separate summary/source cards.
 - Changes overlay scopes: `Turn` (per-turn snapshot diff, with a picker when multiple turns have diffs), `Uncommitted`, and `Branch` (VCS working tree / default-branch diffs)
 - displays starter prompts only when the selected session has no transcript content at all

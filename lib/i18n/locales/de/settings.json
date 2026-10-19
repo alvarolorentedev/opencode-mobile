@@ -339,6 +339,21 @@
     "slimInterface": {
       "title": "Schlanke Oberfläche",
       "description": "Verkleinert Schaltflächen, Abstände und Kopfzeilen in Chat, Terminal und Projekt, damit mehr Text auf den Bildschirm passt."
+    },
+    "transcriptVerbosity": {
+      "label": "Transkript-Details",
+      "conversation": {
+        "label": "Unterhaltung",
+        "description": "Nur Nachrichten von Benutzer und Assistent anzeigen."
+      },
+      "tools": {
+        "label": "Unterhaltung + Werkzeuge",
+        "description": "Zusätzlich Werkzeugaufrufe als eingeklappte Zeilen anzeigen."
+      },
+      "verbose": {
+        "label": "Alles",
+        "description": "Zusätzlich Denkprozesse und Agent-Schritte als eingeklappte Zeilen anzeigen."
+      }
     }
   },
   "connect": {

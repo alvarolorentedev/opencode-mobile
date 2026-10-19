@@ -1,5 +1,26 @@
 import type { SessionMessageRecord, TranscriptDetail, TranscriptEntry } from '@/lib/opencode/format';
 
+// How much of the native timeline the transcript renders. `conversation` is the
+// default: user and assistant messages only. Higher levels add tool calls and
+// reasoning as flat, collapsible rows.
+export type TranscriptVerbosity = 'conversation' | 'tools' | 'verbose';
+
+export const TRANSCRIPT_VERBOSITIES: readonly TranscriptVerbosity[] = ['conversation', 'tools', 'verbose'];
+
+// Details rendered as collapsible (non-bubble) rows outside the message card.
+export function isCollapsibleDetail(detail: TranscriptDetail) {
+  return detail.kind === 'tool' || detail.kind === 'reasoning' || detail.kind === 'subtask' || detail.kind === 'step' || detail.kind === 'agent';
+}
+
+// Whether a detail is surfaced at the given verbosity. Files are attachments
+// and are always shown with their message; patches stay review chips.
+export function isDetailVisible(detail: TranscriptDetail, verbosity: TranscriptVerbosity) {
+  if (verbosity === 'conversation') return false;
+  if (detail.kind === 'tool' || detail.kind === 'patch') return true;
+  return verbosity === 'verbose'
+    && (detail.kind === 'reasoning' || detail.kind === 'subtask' || detail.kind === 'step' || detail.kind === 'agent');
+}
+
 export function getTranscriptActivityLabel(entry: TranscriptEntry) {
   const runningTool = entry.details.find((detail) => detail.kind === 'tool' && detail.status === 'running');
   if (runningTool) {
@@ -29,12 +50,19 @@ export function getTranscriptActivityLabel(entry: TranscriptEntry) {
   return undefined;
 }
 
-export function isTranscriptDisplayMessage(entry: TranscriptEntry) {
+export function isTranscriptDisplayMessage(entry: TranscriptEntry, verbosity: TranscriptVerbosity = 'conversation') {
   if (entry.role === 'user') {
     return true;
   }
 
-  return Boolean(entry.text.trim() || entry.error || entry.details.some((detail) => detail.kind === 'file'));
+  if (entry.text.trim() || entry.error || entry.details.some((detail) => detail.kind === 'file')) {
+    return true;
+  }
+
+  // A tool-only or reasoning-only turn is hidden at conversation verbosity but
+  // surfaces as collapsible rows at higher levels. Patch-only turns are tool
+  // output too.
+  return entry.details.some((detail) => isDetailVisible(detail, verbosity));
 }
 
 export function summarizeTranscriptDetails(details: TranscriptDetail[], labels?: { patches: (count: number) => string; files: (count: number) => string }) {

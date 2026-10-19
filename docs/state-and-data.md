@@ -83,7 +83,7 @@ Diff scope state:
 Important behavior:
 
 - data is fetched lazily when a session is opened or refreshed
-- the transcript window is paginated (newest 20 on open, older 20 per scroll-up, bounded at 100); see Message And Transcript Transformation
+- the transcript window is paginated (newest 20 on open, older 20 per scroll-up, bounded at 300 with a 10-entry display target); see Message And Transcript Transformation
 - message/diff/todo caches are updated by explicit refreshes, SSE events, and polling fallback
 - an incoming `session.diff` event only overwrites the turn diff when the surface is not pinned to an earlier turn
 - on V2 the server has no todo endpoint, so `currentTodos` derives from the accumulated `todowrite` tool records (`deriveTodosFromMessages`), not just the loaded window; V1 stays server-authoritative
@@ -140,6 +140,7 @@ Current fields:
 - `mode`
 - `transcriptFontSize` (global chat message text size in pixels; defaults to 16 and is clamped to 12–24)
 - `flatTranscript` (renders the transcript full-width without bubble chrome; defaults to `false`)
+- `transcriptVerbosity` (`conversation` by default; `tools` adds collapsible tool rows, `verbose` adds reasoning, subtask, and agent/step rows)
 - `slimInterface` (shrinks control sizes, spacing, and headers on the text-heavy screens; defaults to `false`)
 - `language` (optional; `undefined` follows the OS locale)
 - `providerId`
@@ -440,7 +441,7 @@ A per-session map keyed by stable step ID (`session:message:part`) retains fetch
 calls as the transcript window moves, without counting replayed calls twice.
 Model/provider breakdowns and call counts describe observed history, and are
 marked partial when the contiguous loaded window has not reached its beginning
-or has hit the 100-record cap. The app never fetches all history just for usage.
+or has hit the 300-record cap. The app never fetches all history just for usage.
 Observed step cost uses model-price USD estimates only when recorded cost is
 zero/absent and tokens are nonzero; an authoritative session cost of zero remains
 zero.
@@ -514,18 +515,30 @@ Derived from phase plus latest non-display transcript activity.
 
 ## Message And Transcript Transformation
 
-Session history is paginated. Opening a session loads only the newest 20 raw
-records; scrolling to the top of the transcript pulls the previous 20 through
-the server's backward cursor, and the loaded window is bounded at 100 records
-with the oldest records dropped on overflow. Tail activity (SSE part/message
-updates, the safety poll, idle completion) fetches exactly one newest page and
-union-merges new records into the window, so older loaded records are never
-re-downloaded. When a burst is larger than one page and the newest page no
-longer overlaps the held window, the fetched page is adopted as a fresh
-contiguous window and history paging restarts from its oldest record instead of
+Session history is paginated. Opening a session loads the newest 20 raw records;
+if that page shows fewer than 10 entries at the configured verbosity, it pages
+backward in 50-record steps (at most four extra pages) until the target is met,
+then stores the oldest cursor. Scrolling to the top pulls the previous 20 through
+the server's backward cursor. The loaded window is capped at 300 records; on
+overflow, non-display records are dropped from the oldest end first so the
+conversation entries survive a long tool-only turn. Tail activity (SSE
+part/message updates, the safety poll, idle completion) fetches exactly one newest
+page and union-merges new records into the window, so older loaded records are
+never re-downloaded. When a burst is larger than one page and the newest page no
+longer overlaps the held window, the fetched page is adopted (backfilled to the
+display target) and history paging restarts from its oldest record instead of
 downloading bridging pages. Only server-side history rewrites rebuild the window
 instead of merging: compaction, revert/unrevert, and (on V1) explicit message
 removal. Reconnects and foreground returns tail-merge.
+
+Transcript verbosity (`conversation` by default) controls which native timeline
+records render. `conversation` shows user and assistant text/files/errors;
+`tools` adds tool calls and patches; `verbose` adds reasoning, subtasks, and
+agent/step rows.
+Tool and reasoning details render outside message bubbles as flat collapsible
+rows, so a tool-only turn is visible without becoming a wall of bubbles. The
+display filter, the initial-pull target, and retention share the same predicate.
+
 
 V1 pages backwards with `limit`/`before` and an `x-next-cursor` header; V2
 translates descending API pages and opaque cursors into the same contract,
@@ -724,9 +737,11 @@ background sessions refresh on status transitions and completion. Bursts of part
 events coalesce into a single read.
 A liveness watchdog runs only while the app is foregrounded: a stream that has
 received no envelope for 90 seconds (3 seconds in E2E builds) is re-subscribed
-once per window, and a foreground return either retries immediately (when the
-stream is not connected) or cycles a stream that was backgrounded for 15 seconds
-or more. Every foreground return additionally runs one reconciliation pass,
+once per window, and keepalive frames reported through the subscription's
+`onActivity` callback also advance that window so a long silent tool call does
+not restart a healthy stream. A foreground return either retries immediately
+(when the stream is not connected) or cycles a stream that was backgrounded for
+15 seconds or more. Every foreground return additionally runs one reconciliation pass,
 because a suspended JS runtime can miss envelopes while the stream still looks
 connected and would otherwise leave a stale or empty transcript until the next
 event. Envelope timestamps advance the window, so a healthy server never

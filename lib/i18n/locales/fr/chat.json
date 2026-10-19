@@ -60,7 +60,10 @@
     "allTasksCompleted": "Toutes les tâches sont terminées",
     "openToSeeSteps": "Ouvre pour voir toutes les étapes",
     "progress": "Progression",
-    "untitledTask": "Tâche sans titre"
+    "untitledTask": "Tâche sans titre",
+    "loadEarlier": "Rien à afficher pour l’instant",
+    "loadEarlierDescription": "Les messages les plus récents de ce tour sont de l’activité d’outils. Chargez les messages précédents pour voir la conversation.",
+    "loadEarlierAction": "Charger les messages précédents"
   },
   "cards": {
     "respondToContinue": "Autorisation nécessaire",

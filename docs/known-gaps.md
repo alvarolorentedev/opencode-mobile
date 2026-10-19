@@ -70,7 +70,8 @@ Closed on 2026-10-18 except for the remote reporter:
 ## 4. Transcript merge micro-optimizations
 
 Deferred on 2026-10-18 while the transcript refresh policy was simplified
-(single tail-merge, 100-record window, no backward bridging). The remaining
+(single tail-merge, 300-record window with a 10-entry display target, no
+backward bridging). The remaining
 render-cost machinery is intentionally untouched because it is not the source of
 the stale/empty-transcript behavior and is harder to validate:
 

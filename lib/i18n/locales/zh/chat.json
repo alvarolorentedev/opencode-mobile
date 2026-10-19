@@ -60,7 +60,10 @@
     "allTasksCompleted": "所有任务已完成",
     "openToSeeSteps": "打开查看所有步骤",
     "progress": "进度",
-    "untitledTask": "未命名任务"
+    "untitledTask": "未命名任务",
+    "loadEarlier": "暂无可显示内容",
+    "loadEarlierDescription": "本回合的最新消息是工具活动。加载更早的消息以查看对话。",
+    "loadEarlierAction": "加载更早的消息"
   },
   "cards": {
     "respondToContinue": "需要批准",

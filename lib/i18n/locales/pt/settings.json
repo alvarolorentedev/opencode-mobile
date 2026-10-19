@@ -339,6 +339,21 @@
     "slimInterface": {
       "title": "Interface compacta",
       "description": "Reduz botões, espaçamento e cabeçalhos no chat, terminal e project para caber mais texto na tela."
+    },
+    "transcriptVerbosity": {
+      "label": "Detalhe da conversa",
+      "conversation": {
+        "label": "Conversa",
+        "description": "Mostrar apenas mensagens do usuário e do assistente."
+      },
+      "tools": {
+        "label": "Conversa + ferramentas",
+        "description": "Mostrar também chamadas de ferramentas como linhas recolhidas."
+      },
+      "verbose": {
+        "label": "Tudo",
+        "description": "Mostrar também raciocínio e etapas do agente como linhas recolhidas."
+      }
     }
   },
   "connect": {

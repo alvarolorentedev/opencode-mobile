@@ -339,6 +339,21 @@
     "slimInterface": {
       "title": "スリム表示",
       "description": "チャット・ターミナル・プロジェクトのボタン、余白、ヘッダーを小さくし、画面により多くのテキストを表示します。"
+    },
+    "transcriptVerbosity": {
+      "label": "トランスクリプトの詳細",
+      "conversation": {
+        "label": "会話",
+        "description": "ユーザーとアシスタントのメッセージのみ表示します。"
+      },
+      "tools": {
+        "label": "会話 + ツール",
+        "description": "ツール呼び出しも折りたたみ行として表示します。"
+      },
+      "verbose": {
+        "label": "すべて",
+        "description": "推論とエージェントの手順も折りたたみ行として表示します。"
+      }
     }
   },
   "connect": {

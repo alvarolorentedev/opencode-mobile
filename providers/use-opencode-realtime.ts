@@ -111,7 +111,7 @@ export function useOpencodeRealtime({ catalogClient, activeProjectPath, connecte
         attemptController = attempt;
         let streamError: unknown;
         try {
-          const subscription = subscribeEvents(catalogClient, attempt.signal);
+          const subscription = subscribeEvents(catalogClient, attempt.signal, () => { lastEnvelopeAt = Date.now(); });
           let reconciled = false;
           for await (const envelope of subscription) {
             if (controller.signal.aborted || attempt.signal.aborted) break;

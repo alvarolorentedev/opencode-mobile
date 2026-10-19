@@ -137,8 +137,8 @@ The Chat screen shows:
 
 Behavior details:
 
-- only user messages and assistant messages with text or errors appear in the main transcript
-- reasoning and tool activity are summarized and attached to assistant messages as metadata chips
+- the transcript has a configurable detail level: `conversation` (default) shows user and assistant messages with text, files, or errors; `tools` adds tool calls and patches; `verbose` adds reasoning, subtasks, and agent/step rows
+- tool and reasoning rows render collapsed outside message bubbles, so a long tool-only turn is never blank; the initial pull backfills until at least 10 entries are displayable at the selected level
 - a status line like `OpenCode is ...` is shown while running and not blocked on user input
 - a small floating progress view shows the current step and completed count; tapping it opens a content-sized overlay with the task list; pending permission actions replace it while blocked
 - a pending question opens a full-screen answer flow immediately; dismissal leaves an `Answer needed` card above the composer and does not reject the request
@@ -246,7 +246,7 @@ Overlay sheets also dismiss on a downward drag of their header (the grabber/titl
 ## Transcript Behavior
 
 - transcript is paginated from the bottom using a fixed page size
-- `Load earlier messages` reveals older transcript entries
+- scrolling to the top loads older transcript entries through the server cursor
 - automatic scroll-to-end happens for new content unless the view is currently paginating older items
 - long-pressing a message copies its text/error content
 - assistant messages can be played with TTS if they contain readable text

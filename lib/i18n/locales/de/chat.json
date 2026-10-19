@@ -60,7 +60,10 @@
     "allTasksCompleted": "Alle Aufgaben abgeschlossen",
     "openToSeeSteps": "Öffnen, um alle Schritte zu sehen",
     "progress": "Fortschritt",
-    "untitledTask": "Unbenannte Aufgabe"
+    "untitledTask": "Unbenannte Aufgabe",
+    "loadEarlier": "Noch nichts anzuzeigen",
+    "loadEarlierDescription": "Die neuesten Nachrichten in diesem Durchlauf sind Werkzeugaktivität. Lade frühere Nachrichten, um die Unterhaltung zu sehen.",
+    "loadEarlierAction": "Frühere Nachrichten laden"
   },
   "cards": {
     "respondToContinue": "Freigabe erforderlich",
