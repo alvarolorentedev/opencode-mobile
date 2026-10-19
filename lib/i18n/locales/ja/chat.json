@@ -28,6 +28,7 @@
     "couldNotFork": "セッションをフォークできませんでした。",
     "couldNotRevert": "セッションを取り消せませんでした。",
     "couldNotRestore": "セッションを復元できませんでした。",
+    "couldNotCancelPending": "保留中のメッセージを破棄できませんでした。",
     "couldNotUpdateAutoApprove": "自動承認を更新できませんでした。",
     "sendError": {
       "title": "OpenCode の送信に失敗しました",
@@ -48,8 +49,6 @@
   },
   "content": {
     "connectionIssue": "接続の問題",
-    "sessionReverted": "セッションが取り消されました",
-    "restoreReverted": "取り消した作業を復元",
     "runningActivity": "OpenCode は{{activity}}中です...",
     "runningRetry": "OpenCode でエラーが発生し、再試行しています（試行 {{attempt}}）...",
     "runningGeneric": "OpenCode は現在のステップを処理しています...",
@@ -285,7 +284,13 @@
   },
   "pendingPrompts": {
     "sending": "送信中…",
-    "waiting": "反映待ち…"
+    "waiting": "反映待ち…",
+    "cancel": "保留中のメッセージを破棄"
+  },
+  "revertNotice": {
+    "title": "このメッセージの時点まで取り消されました",
+    "hint": "下のプロンプトを編集して送信すると、ここから続行します。",
+    "cancel": "取り消しをキャンセル"
   },
   "approvals": {
     "mcpAuthTitle": "MCP 認証が必要です",

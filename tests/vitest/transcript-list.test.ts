@@ -5,7 +5,6 @@ type Overrides = Partial<Parameters<typeof listProps>[0]>;
 
 function listProps(overrides: Record<string, unknown> = {}) {
   return {
-    activeSession: undefined,
     awaitingUserInput: false,
     connection: { status: 'connected' as const, message: '' },
     currentSessionId: 'session-1',
@@ -22,7 +21,6 @@ function listProps(overrides: Record<string, unknown> = {}) {
     onRevertMessage: vi.fn(),
     onSelectStarterPrompt: vi.fn(),
     onToggleSpeak: vi.fn(),
-    onUnrevert: vi.fn(),
     palette: {},
     pendingInteractions: 0,
     running: false,

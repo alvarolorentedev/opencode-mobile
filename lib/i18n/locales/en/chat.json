@@ -28,6 +28,7 @@
     "couldNotFork": "Could not fork session.",
     "couldNotRevert": "Could not revert session.",
     "couldNotRestore": "Could not restore the session.",
+    "couldNotCancelPending": "Could not discard that pending message.",
     "couldNotUpdateAutoApprove": "Could not update auto-approve.",
     "sendError": {
       "title": "OpenCode send failed",
@@ -48,8 +49,6 @@
   },
   "content": {
     "connectionIssue": "Connection issue",
-    "sessionReverted": "Session is reverted",
-    "restoreReverted": "Restore reverted work",
     "runningActivity": "OpenCode is {{activity}}...",
     "runningRetry": "OpenCode hit an error and is retrying (attempt {{attempt}})...",
     "runningGeneric": "OpenCode is working through the current step...",
@@ -285,7 +284,13 @@
   },
   "pendingPrompts": {
     "sending": "Sending…",
-    "waiting": "Waiting to be used…"
+    "waiting": "Waiting to be used…",
+    "cancel": "Discard pending message"
+  },
+  "revertNotice": {
+    "title": "Reverted from this message",
+    "hint": "Edit the prompt below and send to continue from here.",
+    "cancel": "Cancel revert"
   },
   "approvals": {
     "mcpAuthTitle": "MCP authentication required",

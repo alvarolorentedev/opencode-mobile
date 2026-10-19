@@ -28,6 +28,7 @@
     "couldNotFork": "Impossible de dupliquer la session.",
     "couldNotRevert": "Impossible de revenir en arrière sur la session.",
     "couldNotRestore": "Impossible de restaurer la session.",
+    "couldNotCancelPending": "Impossible d'abandonner ce message en attente.",
     "couldNotUpdateAutoApprove": "Impossible de mettre à jour l'approbation automatique.",
     "sendError": {
       "title": "Échec de l'envoi par OpenCode",
@@ -48,8 +49,6 @@
   },
   "content": {
     "connectionIssue": "Problème de connexion",
-    "sessionReverted": "La session a été annulée",
-    "restoreReverted": "Restaurer le travail annulé",
     "runningActivity": "OpenCode est en train de {{activity}}...",
     "runningRetry": "OpenCode a rencontré une erreur et réessaie (tentative {{attempt}})...",
     "runningGeneric": "OpenCode traite l'étape en cours...",
@@ -285,7 +284,13 @@
   },
   "pendingPrompts": {
     "sending": "Envoi…",
-    "waiting": "En attente de prise en compte…"
+    "waiting": "En attente de prise en compte…",
+    "cancel": "Abandonner le message en attente"
+  },
+  "revertNotice": {
+    "title": "Annulé depuis ce message",
+    "hint": "Modifie le prompt ci-dessous et envoie-le pour continuer à partir d'ici.",
+    "cancel": "Annuler le retour en arrière"
   },
   "approvals": {
     "mcpAuthTitle": "Authentification MCP requise",

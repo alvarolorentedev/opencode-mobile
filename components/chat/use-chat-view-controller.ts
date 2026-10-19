@@ -15,6 +15,7 @@ import { openVoiceSettingsAsync } from '@/lib/voice/permissions';
 import { speakText, stopSpeaking } from '@/lib/voice/speech-output';
 import { useSpeechInput } from '@/lib/voice/use-speech-input';
 import { getTranscriptActivityLabelForEntries } from '@/providers/opencode-provider-selectors';
+import { useChatComposerNotices } from './use-chat-composer-notices';
 import { useChatDraft } from './use-chat-draft';
 import { useChatViewActions } from './use-chat-view-actions';
 import {
@@ -44,7 +45,7 @@ export function useChatViewController() {
   const { approvals } = useApprovals();
   const { conversation, clearConversationFeedback, toggleConversationMode } = useConversation();
   const {
-    pendingPrompts, abortSession, clearPromptError, commands, currentDiffs, currentDiffScope, currentMessages,
+    pendingPrompts, cancelPrompt, abortSession, clearPromptError, commands, currentDiffs, currentDiffScope, currentMessages,
     currentPendingPermissions, currentPendingQuestions, currentTodos, currentTranscript, currentUsage,
     diffTurns, executeCommand, isRefreshingDiffs, isRefreshingMessages,
     latestAssistantTurnUsage, promptError, refreshDiffs, rejectQuestion,
@@ -54,6 +55,17 @@ export function useChatViewController() {
 
   const { draft, attachments, setDraft, setAttachments, inputRef, capture, hasFailedInput, recoverFailedInput, dismissFailedInput } =
     useChatDraft(`${getConnectionUiScope(settings)}:${activeProject?.path ?? ''}`, currentSessionId);
+  const {
+    cancelingPromptId, clearRevertPrefill, handleCancelPendingPrompt, handleCancelRevert, handleRevertMessage, isCancelingRevert,
+  } = useChatComposerNotices({
+    cancelPrompt,
+    currentSessionId,
+    inputRef,
+    revertSession,
+    setDraft,
+    transcript: currentTranscript,
+    unrevertSession,
+  });
   const submittingRef = useRef(false);
   const [changesVisible, setChangesVisible] = useState(false);
   const [progressVisible, setProgressVisible] = useState(false);
@@ -265,13 +277,15 @@ export function useChatViewController() {
       }
 
       const sent = await sendPrompt(sessionId, prompt, nextAttachments);
-      if (!sent) {
+      if (sent) {
+        clearRevertPrefill(sessionId);
+      } else {
         if (snapshot.restore(sessionId)) setSendFeedback(t('chat:view.couldNotSendRetry'));
       }
     } catch (error) {
       if (snapshot.restore(sessionId)) setSendFeedback(error instanceof Error ? error.message : t('chat:view.couldNotSend'));
     } finally { submittingRef.current = false; }
-  }, [capture, commands, connection.status, currentSessionId, ensureActiveSession, executeCommand, sendPrompt, t]);
+  }, [capture, clearRevertPrefill, commands, connection.status, currentSessionId, ensureActiveSession, executeCommand, sendPrompt, t]);
 
   useEffect(() => {
     Keyboard.dismiss();
@@ -419,11 +433,11 @@ export function useChatViewController() {
       currentUsage, latestAssistantTurnUsage, selectedSession, slim,
     },
     content: {
-      activeSession, awaitingUserInput, changesVisible, completedTodoCount,
+      activeSession, awaitingUserInput, cancelingPromptId, changesVisible, completedTodoCount,
       copiedMessageId, currentActivityLabel, currentDiffs, currentDiffScope,
       currentPendingPermissions, currentPendingQuestions, currentSessionId, currentTodos,
       diffAdditions, diffCount, diffDeletions, diffDetails, diffTurns, displayTranscript,
-      expandedDiffId, hasTranscriptMessages, isRefreshingDiffs, isRefreshingMessages,
+      expandedDiffId, hasTranscriptMessages, isCancelingRevert, isRefreshingDiffs, isRefreshingMessages,
       pendingInteractions, pendingPrompts, progressIcon, progressVisible, retryAttempt,
       running, selectedDiffMessageId, speakingMessageId, transcriptPaging,
       transcriptVerbosity: display.verbosity,
@@ -440,14 +454,14 @@ export function useChatViewController() {
     },
     actions: {
       buildSendErrorDetails, clearConversationFeedback, clearPromptError, dismissFailedInput,
-      forkSession, handleAbort, handleAttach, handleConfirmStopConversation, handleCopyMessage,
-      handleNewSession, handleReviewChanges, handleSendPrompt, handleSpeakEntry,
-      handleToggleRecording, handleVoiceRecovery, recoverFailedInput, refreshDiffs,
-      rejectQuestion, replyToPermission, replyToQuestion, revertSession,
-      selectDiffMessage, setAttachments, setAutoApprove, setChangesVisible, setCopiedMessageId,
-      setDiffScope, setDraft, setExpandedDiffId, setIsUpdatingAutoApprove, setProgressVisible,
-      setSendFeedback, setSessionMenuVisible, setVoiceFeedback, toggleConversationMode,
-      unrevertSession, updateChatPreferences,
+      forkSession, handleAbort, handleAttach, handleCancelPendingPrompt, handleCancelRevert,
+      handleConfirmStopConversation, handleCopyMessage, handleNewSession, handleReviewChanges,
+      handleRevertMessage, handleSendPrompt, handleSpeakEntry, handleToggleRecording,
+      handleVoiceRecovery, recoverFailedInput, refreshDiffs, rejectQuestion, replyToPermission,
+      replyToQuestion, selectDiffMessage, setAttachments, setAutoApprove, setChangesVisible,
+      setCopiedMessageId, setDiffScope, setDraft, setExpandedDiffId, setIsUpdatingAutoApprove,
+      setProgressVisible, setSendFeedback, setSessionMenuVisible, setVoiceFeedback,
+      toggleConversationMode, updateChatPreferences,
     },
   };
 }

@@ -190,6 +190,16 @@ describe('provider-owned prompt inbox', () => {
     expect(runtime.value.pendingPromptsBySession).toEqual({});
   });
 
+  it('cancels a waiting prompt and removes it from the local stack', async () => {
+    const client = { promptInbox: { list: vi.fn(async () => [pending('m1')]), cancel: vi.fn(async () => undefined) } };
+    const runtime = await mount(client);
+    await runtime.value.refreshMessages('s'); runtime.flush();
+    expect(runtime.value.pendingPromptsBySession.s).toHaveLength(1);
+    await runtime.value.cancelPrompt('s', 'm1'); runtime.flush();
+    expect(client.promptInbox.cancel).toHaveBeenCalledWith('s', 'm1');
+    expect(runtime.value.pendingPromptsBySession.s).toHaveLength(0);
+  });
+
   it('removes failed submissions and preserves V1 sending behavior', async () => {
     const runtime = await mount({ promptInbox: { submit: async () => { throw new Error('rejected'); } } });
     await expect(runtime.value.submitPrompt({ sessionID: 's', parts: [] }, 'steer')).rejects.toThrow('rejected'); runtime.flush();

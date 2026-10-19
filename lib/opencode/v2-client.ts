@@ -18,6 +18,7 @@ export function buildV2Client(settings: OpencodeConnectionSettings): ScopedOpenc
     api, context, mcpOAuth: buildMcpOAuth(context), __opencode: { contract: 'v2', directory }, ...buildProviderAuth(context),
     promptInbox: {
       list: async (sessionID) => (await api.session.inbox.list({ sessionID })).filter((item): item is SessionInboxUser => item.type === 'user').map(toPendingPrompt),
+      cancel: async (sessionID, inboxID) => { await api.session.inbox.cancel({ sessionID, inboxID }); },
       submit: async (input: PromptInput, delivery) => {
         const { sessionID, agent, model } = input;
         if (agent) await api.session.switchAgent({ sessionID, agent });

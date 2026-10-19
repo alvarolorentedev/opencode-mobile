@@ -28,6 +28,7 @@
     "couldNotFork": "Não foi possível bifurcar a sessão.",
     "couldNotRevert": "Não foi possível reverter a sessão.",
     "couldNotRestore": "Não foi possível restaurar a sessão.",
+    "couldNotCancelPending": "Não foi possível descartar essa mensagem pendente.",
     "couldNotUpdateAutoApprove": "Não foi possível atualizar a aprovação automática.",
     "sendError": {
       "title": "Falha no envio do OpenCode",
@@ -48,8 +49,6 @@
   },
   "content": {
     "connectionIssue": "Problema de conexão",
-    "sessionReverted": "A sessão foi revertida",
-    "restoreReverted": "Restaurar trabalho revertido",
     "runningActivity": "O OpenCode está {{activity}}...",
     "runningRetry": "O OpenCode encontrou um erro e está tentando novamente (tentativa {{attempt}})...",
     "runningGeneric": "O OpenCode está processando a etapa atual...",
@@ -285,7 +284,13 @@
   },
   "pendingPrompts": {
     "sending": "Enviando…",
-    "waiting": "Aguardando ser considerado…"
+    "waiting": "Aguardando ser considerado…",
+    "cancel": "Descartar mensagem pendente"
+  },
+  "revertNotice": {
+    "title": "Revertido a partir desta mensagem",
+    "hint": "Edite o prompt abaixo e envie para continuar a partir daqui.",
+    "cancel": "Cancelar reversão"
   },
   "approvals": {
     "mcpAuthTitle": "Autenticação MCP necessária",

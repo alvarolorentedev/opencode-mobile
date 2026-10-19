@@ -349,6 +349,7 @@ export type SessionLibraryContextValue = {
 
 export type ChatContextValue = {
   pendingPrompts: PendingPrompt[];
+  cancelPrompt: (sessionId: string, promptId: string) => Promise<void>;
   currentMessages: SessionMessageRecord[];
   currentTranscript: TranscriptEntry[];
   currentUsage: SessionUsage;

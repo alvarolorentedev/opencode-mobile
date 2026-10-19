@@ -7,6 +7,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useUpdates } from '@/providers/opencode-contexts';
 import { ChatComposer } from '@/components/chat/chat-composer';
 import { PendingPrompts } from '@/components/chat/pending-prompts';
+import { RevertNotice } from '@/components/chat/revert-notice';
 import { ChatHeader } from '@/components/chat/chat-header';
 import { ChatLibrary } from '@/components/chat/chat-library';
 import { styles } from '@/components/chat/chat-view-styles';
@@ -63,7 +64,6 @@ export function ChatView() {
 
         <View style={styles.chatArea}>
           <TranscriptList
-            activeSession={content.activeSession}
             awaitingUserInput={content.awaitingUserInput}
             connection={header.connection}
             copiedMessageId={content.copiedMessageId}
@@ -90,23 +90,18 @@ export function ChatView() {
               if (!sessionId) return;
               if (Platform.OS === 'web') {
                 if (globalThis.confirm(t('chat:view.revertConfirm'))) {
-                  void actions.revertSession(sessionId, messageId).catch((error) => actions.setSendFeedback(error instanceof Error ? error.message : t('chat:view.couldNotRevert')));
+                  void actions.handleRevertMessage(sessionId, messageId).catch((error) => actions.setSendFeedback(error instanceof Error ? error.message : t('chat:view.couldNotRevert')));
                 }
                 return;
               }
               const release = block();
               Alert.alert(t('chat:view.revertTitle'), t('chat:view.revertMessage'), [
                 { text: t('common:actions.cancel'), style: 'cancel', onPress: release },
-                { text: t('chat:view.revert'), style: 'destructive', onPress: () => void actions.revertSession(sessionId, messageId).catch((error) => actions.setSendFeedback(error instanceof Error ? error.message : t('chat:view.couldNotRevert'))).finally(release) },
+                { text: t('chat:view.revert'), style: 'destructive', onPress: () => void actions.handleRevertMessage(sessionId, messageId).catch((error) => actions.setSendFeedback(error instanceof Error ? error.message : t('chat:view.couldNotRevert'))).finally(release) },
               ], { cancelable: true, onDismiss: release });
             }}
             onSelectStarterPrompt={(prompt) => actions.setDraft(prompt)}
             onToggleSpeak={(entry) => void actions.handleSpeakEntry(entry)}
-            onUnrevert={() => {
-              const sessionId = content.currentSessionId;
-              if (!sessionId) return;
-              void actions.unrevertSession(sessionId).catch((error) => actions.setSendFeedback(error instanceof Error ? error.message : t('chat:view.couldNotRestore')));
-            }}
             palette={palette}
             pendingInteractions={content.pendingInteractions}
             retryAttempt={content.retryAttempt}
@@ -210,7 +205,24 @@ export function ChatView() {
           </View>
         ) : null}
 
-        <PendingPrompts key={content.currentSessionId} prompts={content.pendingPrompts} />
+        {content.activeSession?.revert ? (
+          <RevertNotice
+            busy={content.isCancelingRevert}
+            onCancel={() => {
+              const sessionId = content.currentSessionId;
+              if (!sessionId) return;
+              void actions.handleCancelRevert(sessionId).catch((error) => actions.setSendFeedback(error instanceof Error ? error.message : t('chat:view.couldNotRestore')));
+            }}
+          />
+        ) : null}
+        <PendingPrompts
+          key={content.currentSessionId}
+          cancelingId={content.cancelingPromptId}
+          onCancel={(prompt) => {
+            void actions.handleCancelPendingPrompt(prompt).catch((error) => actions.setSendFeedback(error instanceof Error ? error.message : t('chat:view.couldNotCancelPending')));
+          }}
+          prompts={content.pendingPrompts}
+        />
         <ChatComposer
           key={`${content.currentSessionId}:${content.currentPendingPermissions.map((item) => item.id).join()}:${content.currentPendingQuestions.map((item) => item.id).join()}`}
           attachments={composer.attachments}

@@ -13,7 +13,6 @@ import { TranscriptSkeleton } from '@/components/chat/content/transcript-skeleto
 import { Colors } from '@/constants/theme';
 import type { TranscriptEntry } from '@/lib/opencode/format';
 import type { TranscriptVerbosity } from '@/lib/opencode/transcript';
-import type { Session } from '@/lib/opencode/types';
 
 type Palette = typeof Colors.light;
 type Connection = { status: 'idle' | 'connecting' | 'connected' | 'error'; message: string };
@@ -37,7 +36,6 @@ const TAIL_FOLLOW_THRESHOLD = 48;
 const TAIL_SETTLE_FRAMES = 4;
 
 type TranscriptListProps = {
-  activeSession?: Session;
   awaitingUserInput: boolean;
   connection: Connection;
   copiedMessageId?: string;
@@ -56,7 +54,6 @@ type TranscriptListProps = {
   onRevertMessage: (messageId: string) => void;
   onSelectStarterPrompt: (prompt: string) => void;
   onToggleSpeak: (entry: TranscriptEntry) => void;
-  onUnrevert: () => void;
   palette: Palette;
   pendingInteractions: number;
   retryAttempt?: number;
@@ -68,7 +65,6 @@ type TranscriptListProps = {
 };
 
 export function TranscriptList({
-  activeSession,
   awaitingUserInput,
   connection,
   copiedMessageId,
@@ -87,7 +83,6 @@ export function TranscriptList({
   onRevertMessage,
   onSelectStarterPrompt,
   onToggleSpeak,
-  onUnrevert,
   palette,
   pendingInteractions,
   retryAttempt,
@@ -278,15 +273,6 @@ export function TranscriptList({
       }
       ListFooterComponent={(
         <View style={styles.transcriptFooter}>
-          {activeSession?.revert ? (
-            <Card mode="contained" style={[styles.noticeCard, { backgroundColor: palette.surface }]}>
-              <Card.Content>
-                <Text variant="titleMedium" style={{ color: palette.text }}>{t('chat:content.sessionReverted')}</Text>
-                <Button mode="outlined" onPress={onUnrevert}>{t('chat:content.restoreReverted')}</Button>
-              </Card.Content>
-            </Card>
-          ) : null}
-
           {running && !awaitingUserInput ? (
             <View style={styles.loadingRow}>
               <ActivityIndicator color={palette.tint} />

@@ -375,6 +375,7 @@ export function useOpencodeProviderComposition() {
     mcpAuthPrompt: state.mcpAuthPrompt,
     dismissMcpAuth,
     pendingPromptsBySession: inbox.pendingPromptsBySession,
+    cancelPrompt: inbox.cancelPrompt,
     ...terminal,
     ...worktree,
     ...mcp,

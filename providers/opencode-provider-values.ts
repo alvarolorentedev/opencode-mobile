@@ -120,6 +120,7 @@ export function useOpencodeProviderValues(input: ProviderValuesInput) {
     setActiveSessionsVisible,
     messagesBySession,
     pendingPromptsBySession,
+    cancelPrompt,
     diffScopeBySession,
     diffsBySession,
     vcsDiffsByScope,
@@ -334,8 +335,8 @@ export function useOpencodeProviderValues(input: ProviderValuesInput) {
     [hasOlderMessages, isLoadingOlderMessages, loadOlderMessages],
   );
   const chatValue = useMemo<ChatContextValue>(
-    () => ({ pendingPrompts, currentMessages, currentTranscript, currentUsage, latestAssistantTurnUsage, currentDiffs, currentDiffScope, setDiffScope, diffTurns, selectedDiffMessageId, selectDiffMessage, refreshDiffs, currentTodos, currentPendingPermissions, currentPendingQuestions, isRefreshingMessages, isRefreshingDiffs, isBootstrappingChat, replyToPermission, replyToQuestion, rejectQuestion, commands, executeCommand, sendPrompt, abortSession, setAutoApprove, sendingState, promptError: visiblePromptError, clearPromptError, transcriptPaging, sharedInput }),
-    [pendingPrompts, currentMessages, currentTranscript, currentUsage, latestAssistantTurnUsage, currentDiffs, currentDiffScope, setDiffScope, diffTurns, selectedDiffMessageId, selectDiffMessage, refreshDiffs, currentTodos, currentPendingPermissions, currentPendingQuestions, isRefreshingMessages, isRefreshingDiffs, isBootstrappingChat, replyToPermission, replyToQuestion, rejectQuestion, commands, executeCommand, sendPrompt, abortSession, setAutoApprove, sendingState, visiblePromptError, clearPromptError, transcriptPaging, sharedInput],
+    () => ({ pendingPrompts, cancelPrompt, currentMessages, currentTranscript, currentUsage, latestAssistantTurnUsage, currentDiffs, currentDiffScope, setDiffScope, diffTurns, selectedDiffMessageId, selectDiffMessage, refreshDiffs, currentTodos, currentPendingPermissions, currentPendingQuestions, isRefreshingMessages, isRefreshingDiffs, isBootstrappingChat, replyToPermission, replyToQuestion, rejectQuestion, commands, executeCommand, sendPrompt, abortSession, setAutoApprove, sendingState, promptError: visiblePromptError, clearPromptError, transcriptPaging, sharedInput }),
+    [pendingPrompts, cancelPrompt, currentMessages, currentTranscript, currentUsage, latestAssistantTurnUsage, currentDiffs, currentDiffScope, setDiffScope, diffTurns, selectedDiffMessageId, selectDiffMessage, refreshDiffs, currentTodos, currentPendingPermissions, currentPendingQuestions, isRefreshingMessages, isRefreshingDiffs, isBootstrappingChat, replyToPermission, replyToQuestion, rejectQuestion, commands, executeCommand, sendPrompt, abortSession, setAutoApprove, sendingState, visiblePromptError, clearPromptError, transcriptPaging, sharedInput],
   );
 
   const conversationValue = useMemo<ConversationContextValue>(

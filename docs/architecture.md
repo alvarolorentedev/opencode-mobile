@@ -699,7 +699,8 @@ Responsibilities:
 - render the changes overlay with turn/uncommitted/branch scopes and a turn picker
 - send prompts and attachments
 - suggest and execute server-provided slash commands
-- fork from or revert to a user message, and undo a session revert
+- fork from or revert to a user message; a staged revert pre-fills the composer, and its notice can cancel the revert
+- discard waiting steer/queue prompts, restoring their text when the composer is empty
 - toggle auto-approve
 - select agent/model/reasoning
 - start/stop microphone dictation for the draft box

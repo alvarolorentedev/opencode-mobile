@@ -66,5 +66,14 @@ export function usePromptInbox({ client, isCurrentClient, refreshMessages: readM
     }
   }, [client, update]);
 
-  return { pendingPromptsBySession, refreshMessages, submitPrompt };
+  const cancelPrompt = useCallback(async (sessionId: string, promptId: string) => {
+    if (!client.promptInbox) {
+      throw new Error('Prompt cancellation is unavailable.');
+    }
+    await client.promptInbox.cancel(sessionId, promptId);
+    if (!isCurrentClient(client)) return;
+    update(sessionId, (previous) => previous.filter((prompt) => prompt.id !== promptId));
+  }, [client, isCurrentClient, update]);
+
+  return { pendingPromptsBySession, refreshMessages, submitPrompt, cancelPrompt };
 }

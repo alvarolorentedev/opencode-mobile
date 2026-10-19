@@ -201,8 +201,10 @@ Session list behavior:
 Additional session actions are available in Chat:
 
 - fork a session from a user message and open the fork
-- revert a session from a user message
-- undo the current revert
+- revert a session from a user message; the reverted prompt is placed in the composer for editing
+- send the edited prompt to commit the staged revert and continue from that point
+- discard the current revert from the composer notice; an unchanged reverted prompt is cleared from the composer
+- discard a waiting steer/queue prompt; when the composer is empty, its text is restored for editing
 
 ### 9. Inspect And Edit Project Files
 

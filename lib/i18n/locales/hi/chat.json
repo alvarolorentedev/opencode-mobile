@@ -28,6 +28,7 @@
     "couldNotFork": "सेशन फ़ोर्क नहीं किया जा सका।",
     "couldNotRevert": "सेशन वापस नहीं लाया जा सका।",
     "couldNotRestore": "सेशन पुनःस्थापित नहीं किया जा सका।",
+    "couldNotCancelPending": "उस लंबित संदेश को खारिज नहीं किया जा सका।",
     "couldNotUpdateAutoApprove": "ऑटो-स्वीकृति अपडेट नहीं की जा सकी।",
     "sendError": {
       "title": "OpenCode भेजना विफल रहा",
@@ -48,8 +49,6 @@
   },
   "content": {
     "connectionIssue": "कनेक्शन समस्या",
-    "sessionReverted": "सेशन वापस लाया गया",
-    "restoreReverted": "वापस लाए गए काम को पुनःस्थापित करें",
     "runningActivity": "OpenCode अभी {{activity}} पर काम कर रहा है...",
     "runningRetry": "OpenCode को एक त्रुटि मिली और वह फिर से प्रयास कर रहा है (प्रयास {{attempt}})...",
     "runningGeneric": "OpenCode वर्तमान चरण पर काम कर रहा है...",
@@ -285,7 +284,13 @@
   },
   "pendingPrompts": {
     "sending": "भेजा जा रहा है…",
-    "waiting": "इस्तेमाल किए जाने की प्रतीक्षा में…"
+    "waiting": "इस्तेमाल किए जाने की प्रतीक्षा में…",
+    "cancel": "लंबित संदेश खारिज करें"
+  },
+  "revertNotice": {
+    "title": "इस संदेश से पहले की स्थिति पर लौटा गया",
+    "hint": "यहाँ से जारी रखने के लिए नीचे संदेश संपादित करें और भेजें।",
+    "cancel": "वापसी रद्द करें"
   },
   "approvals": {
     "mcpAuthTitle": "MCP प्रमाणीकरण आवश्यक",

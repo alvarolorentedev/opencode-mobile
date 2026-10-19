@@ -17,7 +17,16 @@ fills the sheet's available height.
 
 `pending-prompts.tsx` renders provider-derived OpenCode 2 sending/waiting entries
 in a bounded, scrollable stack directly above the composer. It does not own
-prompt admission or delivery state. Steer/Append selection lives at the top of
+prompt admission or delivery state. Waiting entries expose a close action that
+cancels the inbox item; when the composer is empty, its text moves back into the
+composer. Sending entries keep the action disabled until admission completes.
+
+`revert-notice.tsx` renders a muted session-level notice above the pending stack
+while a revert is staged. Its close action cancels the revert. The reverted
+prompt text is edited in the composer, so the notice only carries status and the
+cancel affordance.
+
+Steer/Append selection lives at the top of
 the Editor group in Advanced Settings, alongside chat text size, flat
 conversation and transcript verbosity. The General group contains slim interface, language and Reset
 onboarding, which reopens the existing setup review without clearing settings.
@@ -67,13 +76,16 @@ The goal is to make it possible to rebuild the UI tree without having to redisco
 - provide the complete filtered transcript to the virtualized chat list
 - open/create sessions and toggle conversation mode
 - execute exact server-provided slash commands
-- route fork, revert, and unrevert actions
+- route fork, revert, and revert-cancel actions
+- place a reverted user prompt in the composer for editing; sending commits the staged revert
+- discard a waiting steer/queue prompt and move its text into an empty composer
 
 ### Main child components
 
 - `ChatHeader`
 - `ChatLibrary`
 - `TranscriptList`, `ChangesOverlay`, `PendingInteractions` (from `components/chat/content/`)
+- `PendingPrompts`, `RevertNotice`
 - `ChatComposer`
 - `Snackbar`
 
@@ -81,7 +93,7 @@ The goal is to make it possible to rebuild the UI tree without having to redisco
 
 ### Responsibility
 
-- `transcript-list.tsx`: render transcript area, empty states, connection issues, running indicators, and load older history on scroll-up
+- `transcript-list.tsx`: render transcript area, empty states, connection issues, running indicators, and load older history on scroll-up; revert status and cancellation live in the composer notice instead of the transcript footer
 - `changes-overlay.tsx`: render the Files changed overlay with refresh, scope selection, and diff accordions
 - `pending-interactions.tsx`: render server-owned tasks, permissions, and questions, including the compact progress view
 

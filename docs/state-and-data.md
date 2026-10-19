@@ -695,7 +695,10 @@ Current implementation assumes these invariants:
   reads; failed reads retain pending entries. Local sending placeholders are
   removed on failure, leaving composer retry behavior intact. Pending state is
   scoped to the client and session, recovered from the server on open/reload,
-  and included in realtime polling reconciliation.
+  and included in realtime polling reconciliation. Canceling a waiting entry
+  removes it through the native inbox cancel endpoint and can move its text
+  back into an empty composer; only the composer draft is restored, not the
+  pending attachments.
 - `promptDelivery` is a persisted chat preference (`steer` by default or `queue`,
   labeled Append). The top of Advanced Settings exposes it only for OpenCode 2.
   V1 submissions retain their existing behavior.
