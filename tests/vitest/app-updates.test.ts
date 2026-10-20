@@ -193,13 +193,13 @@ describe('store boundary', () => {
     expect(source.appStoreCandidate({ results }, '123', 'app.getopencode.mobile', '1.0.58')).toEqual({ phase: 'available', version: '1.0.59' });
     expect(source.appStoreCandidate({ results }, '999', 'app.getopencode.mobile', '1.0.58').phase).toBe('none');
   });
-  it('suppresses TestFlight and opens a constructed App Store URL only on request', async () => {
+  it('preserves StoreKit eligibility checks and opens a constructed App Store URL only on request', async () => {
     const fetch = vi.fn(async () => ({ ok: true, json: async () => ({ results: [{ trackId: 123, bundleId: 'app.getopencode.mobile', version: '1.0.59', trackViewUrl: 'https://untrusted.test' }] }) }));
     const installation = vi.fn(async () => ({ eligible: false, bundleId: 'app.getopencode.mobile', installedVersion: '1.0.58' }));
     const source = await platform('ios', { updates: { enabled: true, appStoreId: '123' } }, { getAppStoreInstallation: installation }, { fetch });
     const api = source.loadAppUpdates(); expect(await api.check()).toEqual({ phase: 'none' }); expect(fetch).not.toHaveBeenCalled();
     installation.mockResolvedValue({ eligible: true, bundleId: 'app.getopencode.mobile', installedVersion: '1.0.58' });
-    expect((await api.check()).phase).toBe('available'); expect(source.openURL).not.toHaveBeenCalled();
+    expect(await api.check()).toEqual({ phase: 'available', version: '1.0.59' }); expect(source.openURL).not.toHaveBeenCalled();
     await api.start(); expect(source.openURL).toHaveBeenCalledWith('https://apps.apple.com/app/id123');
   });
   it('tolerates a rejecting native installation probe instead of surfacing an error', async () => {

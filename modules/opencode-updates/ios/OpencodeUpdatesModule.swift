@@ -13,7 +13,7 @@ public class OpencodeUpdatesModule: Module {
       #if DEBUG || targetEnvironment(simulator)
       return ["eligible": false]
       #else
-      let verification: VerificationResult
+      let verification: VerificationResult<AppTransaction>
       do {
         verification = try await AppTransaction.shared
       } catch {
