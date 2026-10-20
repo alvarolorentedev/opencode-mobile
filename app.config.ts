@@ -1,4 +1,4 @@
-import { withAndroidManifest, withAppBuildGradle, withAppDelegate, withDangerousMod, withGradleProperties, withMainActivity } from '@expo/config-plugins';
+import { withAndroidManifest, withAppBuildGradle, withDangerousMod, withGradleProperties, withMainActivity } from '@expo/config-plugins';
 import { mergeContents } from '@expo/config-plugins/build/utils/generateCode';
 import type { ExpoConfig } from 'expo/config';
 
@@ -16,14 +16,18 @@ const defaultAndroidPackage = isFossVariant ? 'app.getopencode.fdroid' : 'app.ge
 const releaseAndroidPackage = env('EXPO_ANDROID_PACKAGE') ?? defaultAndroidPackage;
 const developmentAndroidPackage = env('EXPO_ANDROID_PACKAGE_DEV') ?? `${releaseAndroidPackage}.dev`;
 const androidPackage = isDevelopmentVariant ? developmentAndroidPackage : releaseAndroidPackage;
-const androidReleaseBuildPropertiesPlugin: [string, { android: {
-  enableMinifyInReleaseBuilds: boolean;
-  enableShrinkResourcesInReleaseBuilds: boolean;
-  extraProguardRules: string;
-} }] = [
+const buildPropertiesPlugin: [string, {
+  android?: {
+    enableMinifyInReleaseBuilds: boolean;
+    enableShrinkResourcesInReleaseBuilds: boolean;
+    extraProguardRules: string;
+  };
+  ios: { enableSceneSupport: boolean };
+}] = [
   'expo-build-properties',
   {
-    android: {
+    ios: { enableSceneSupport: true },
+    ...(!isDevelopmentVariant ? { android: {
       enableMinifyInReleaseBuilds: true,
       enableShrinkResourcesInReleaseBuilds: true,
       // Expo modules convert JS objects into native records through the Pika
@@ -43,7 +47,7 @@ const androidReleaseBuildPropertiesPlugin: [string, { android: {
         '-keep class com.reactnativeandroidwidget.RNWidgetBackgroundTaskWorker { *; }',
         '-keep class com.reactnativeandroidwidget.oss.HeadlessJsTaskWorker { *; }',
       ].join('\n'),
-    },
+    } } : {}),
   },
 ];
 
@@ -168,40 +172,6 @@ const withAndroidAppConfig = (config: ExpoConfig) => {
   });
 };
 
-// Xcode 27's iOS SDK hard-fails launch for apps using only the legacy
-// UIApplicationDelegate lifecycle. `expo` ships `ExpoAppSceneDelegate`
-// (Objective-C name `EXExpoAppSceneDelegate`) for exactly this, wired via
-// Info.plist's UISceneConfigurations (see `ios.infoPlist` below). It needs the
-// generated AppDelegate to conform to `ExpoReactNativeFactoryProvider` and to
-// stop creating the window itself, since the scene delegate now does that.
-const withIosSceneLifecycle = (config: ExpoConfig) =>
-  withAppDelegate(config, (config) => {
-    if (config.modResults.language !== 'swift') {
-      throw new Error('The iOS scene-lifecycle fix requires the generated Swift AppDelegate.');
-    }
-    const classDeclaration = 'class AppDelegate: ExpoAppDelegate {';
-    const windowSetup = `#if os(iOS) || os(tvOS)
-    window = UIWindow(frame: UIScreen.main.bounds)
-    factory.startReactNative(
-      withModuleName: "main",
-      in: window,
-      launchOptions: launchOptions)
-#endif
-
-    `;
-    const contents = config.modResults.contents;
-    if (!contents.includes(classDeclaration)) {
-      throw new Error('Could not find the AppDelegate class declaration to add scene-lifecycle conformance.');
-    }
-    if (!contents.includes(windowSetup)) {
-      throw new Error('Could not find the AppDelegate window setup block to remove for scene-lifecycle support.');
-    }
-    config.modResults.contents = contents
-      .replace(classDeclaration, 'class AppDelegate: ExpoAppDelegate, ExpoReactNativeFactoryProvider {')
-      .replace(windowSetup, '');
-    return config;
-  });
-
 const config: ExpoConfig = {
   name: isDevelopmentVariant ? 'OpenCode Mobile Dev' : 'OpenCode Mobile',
   slug: 'opencode-mobile',
@@ -232,21 +202,6 @@ const config: ExpoConfig = {
       NSPhotoLibraryUsageDescription: 'Allow OpenCode Mobile to access photos you choose to attach to chat messages.',
       NSAppTransportSecurity: {
         NSAllowsArbitraryLoads: true,
-      },
-      // Newer iOS SDKs (Xcode 27+) hard-fail launch for apps that only
-      // implement the legacy UIApplicationDelegate lifecycle. Point UIKit at
-      // Expo's `EXExpoAppSceneDelegate`, which `withIosSceneLifecycle` below
-      // wires the generated AppDelegate to support.
-      UIApplicationSceneManifest: {
-        UIApplicationSupportsMultipleScenes: false,
-        UISceneConfigurations: {
-          UIWindowSceneSessionRoleApplication: [
-            {
-              UISceneConfigurationName: 'Default Configuration',
-              UISceneDelegateClassName: 'EXExpoAppSceneDelegate',
-            },
-          ],
-        },
       },
     },
   },
@@ -283,7 +238,7 @@ const config: ExpoConfig = {
         },
       },
     ],
-    ...(isDevelopmentVariant ? [] : [androidReleaseBuildPropertiesPlugin]),
+    buildPropertiesPlugin,
     [
       'expo-speech-recognition',
       {
@@ -346,7 +301,6 @@ const config: ExpoConfig = {
       },
     ],
     withAndroidAppConfig as unknown as string,
-    withIosSceneLifecycle as unknown as string,
   ],
   experiments: {
     typedRoutes: true,
