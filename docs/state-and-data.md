@@ -2,7 +2,7 @@
 
 ## State Ownership Overview
 
-The application uses a single shared domain store implemented with React state inside `OpencodeProvider`.
+The application uses provider-owned React state. `WorkspaceProvider` owns the app-wide registry and persistence; each retained `WorkspaceRuntime` owns one connection/project branch. Existing domain hooks read the branch supplied by `WorkspaceScope`.
 
 State is split into seven practical domains:
 
@@ -83,7 +83,7 @@ Diff scope state:
 Important behavior:
 
 - data is fetched lazily when a session is opened or refreshed
-- the transcript window is paginated (newest 20 on open, older 20 per scroll-up, bounded at 100); see Message And Transcript Transformation
+- the transcript window is paginated (newest 20 on open, older 20 per scroll-up, bounded at 300 with a 10-entry display target); see Message And Transcript Transformation
 - message/diff/todo caches are updated by explicit refreshes, SSE events, and polling fallback
 - an incoming `session.diff` event only overwrites the turn diff when the surface is not pinned to an earlier turn
 - on V2 the server has no todo endpoint, so `currentTodos` derives from the accumulated `todowrite` tool records (`deriveTodosFromMessages`), not just the loaded window; V1 stays server-authoritative
@@ -140,12 +140,14 @@ Current fields:
 - `mode`
 - `transcriptFontSize` (global chat message text size in pixels; defaults to 16 and is clamped to 12–24)
 - `flatTranscript` (renders the transcript full-width without bubble chrome; defaults to `false`)
+- `transcriptVerbosity` (`basic` by default; `reasoning` adds reasoning rows, `verbose` adds tool and patch rows)
 - `slimInterface` (shrinks control sizes, spacing, and headers on the text-heavy screens; defaults to `false`)
 - `language` (optional; `undefined` follows the OS locale)
 - `providerId`
 - `modelId`
 - `enabledModelIds`
 - `providerModelSelections`
+- `modelVariantSelections` (server variant ID per model; `null` means the synthetic Default choice)
 - `recentModelIds`
 - `reasoning`
 - `autoApprove`
@@ -162,7 +164,7 @@ Current fields:
 - `includeNextActions`
 - `hideSubagentChats`
 
-These values combine true application behavior settings and output-style preferences that are sent to the model as prompt instructions.
+These values combine application behavior settings and output-style preferences that are sent to the model as prompt instructions. `modelVariantSelections` is separate: it selects a server-supported variant for the matching model, is checked against the current model catalog, and falls back to Default when unavailable. If there is no saved entry, a valid variant already set on the active session is retained when it uses the selected model.
 
 `browser`, selected file content, worktree inventory/owning project identity, and MCP status/config are server-derived and not persisted. Text edits remain local to `FilePreview` until the provider compares the current server content with the original editor baseline, writes through native v2 `file.write` (or a v1 VCS patch), and verifies the saved text. Failed comparison, write or verification retains the draft. Listing, search and file-open commits check the current client identity and request order; saves check client identity before writing and only update the selected file if that selection is still current. Identical directory paths on different servers do not make a response current.
 
@@ -440,7 +442,7 @@ A per-session map keyed by stable step ID (`session:message:part`) retains fetch
 calls as the transcript window moves, without counting replayed calls twice.
 Model/provider breakdowns and call counts describe observed history, and are
 marked partial when the contiguous loaded window has not reached its beginning
-or has hit the 100-record cap. The app never fetches all history just for usage.
+or has hit the 300-record cap. The app never fetches all history just for usage.
 Observed step cost uses model-price USD estimates only when recorded cost is
 zero/absent and tokens are nonzero; an authoritative session cost of zero remains
 zero.
@@ -514,18 +516,39 @@ Derived from phase plus latest non-display transcript activity.
 
 ## Message And Transcript Transformation
 
-Session history is paginated. Opening a session loads only the newest 20 raw
-records; scrolling to the top of the transcript pulls the previous 20 through
-the server's backward cursor, and the loaded window is bounded at 100 records
-with the oldest records dropped on overflow. Tail activity (SSE part/message
-updates, the safety poll, idle completion) fetches exactly one newest page and
-union-merges new records into the window, so older loaded records are never
-re-downloaded. When a burst is larger than one page and the newest page no
-longer overlaps the held window, the fetched page is adopted as a fresh
-contiguous window and history paging restarts from its oldest record instead of
+Session history is paginated. Opening a session loads the newest 20 raw records;
+if that page shows fewer than 10 entries at the configured verbosity, it pages
+backward in 50-record steps (at most four extra pages) until the target is met,
+then stores the oldest cursor. Scrolling to the top pulls the previous 20 through
+the server's backward cursor. The loaded window is capped at 300 records; on
+overflow, non-display records are dropped from the oldest end first so the
+conversation entries survive a long tool-only turn. Tail activity (SSE
+part/message updates, the safety poll, idle completion) fetches exactly one newest
+page and union-merges new records into the window, so older loaded records are
+never re-downloaded. When a burst is larger than one page and the newest page no
+longer overlaps the held window, the fetched page is adopted (backfilled to the
+display target) and history paging restarts from its oldest record instead of
 downloading bridging pages. Only server-side history rewrites rebuild the window
 instead of merging: compaction, revert/unrevert, and (on V1) explicit message
 removal. Reconnects and foreground returns tail-merge.
+
+Transcript verbosity (`basic` by default) controls which native timeline
+records render. `basic` shows user and assistant text/files/errors; `reasoning`
+adds reasoning rows; `verbose` adds tool calls and patches.
+Details are first-class transcript rows: message rows and detail-group rows.
+Contiguous visible details of the same tool (or contiguous reasoning) merge
+into one collapsible; a message bubble breaks the group, and hidden
+file-mutating tools are skipped before grouping. The group key is its first
+detail id, so expansion persists while streamed calls grow the group. Non-shell
+groups render bodies with the shared markdown renderer; shell groups render one
+raw, non-copyable bash block with `$ command` and its output per call, plus a
+single-line `Running <current command>` header. Group rows use the assistant
+bubble width. V1-only subtask/step/agent parts and the V2-synthesized
+`step-finish` usage marker are never rendered; `edit`, `write`, `multiedit`,
+and `apply_patch` tool details are hidden (they still drive the activity
+label). The display filter, the initial-pull target, and retention share the
+same predicate.
+
 
 V1 pages backwards with `limit`/`before` and an `x-next-cursor` header; V2
 translates descending API pages and opaque cursors into the same contract,
@@ -558,13 +581,13 @@ Current part handling in `lib/opencode/format.ts` includes:
 - `tool` -> detail kind `tool`
 - `patch` -> detail kind `patch`
 - `file` -> detail kind `file`
-- `subtask` -> detail kind `subtask`
-- `step-start` / `step-finish` -> detail kind `step`
-- `agent` -> detail kind `agent`
 - `retry` -> detail kind `retry`
 - `compaction` -> detail kind `compaction`
+- `subtask` / `step-start` / `step-finish` / `agent` -> ignored (V1-only or usage markers)
 
-Display filtering then hides assistant messages that have no `text` and no `error`, while still using their details for activity summaries.
+The display filter uses the selected verbosity: `basic` keeps user/assistant
+text, files, and errors; `reasoning` adds reasoning; `verbose` adds tool calls
+and patches.
 
 That detail is important because the transcript UI is not a raw message dump.
 
@@ -681,7 +704,10 @@ Current implementation assumes these invariants:
   reads; failed reads retain pending entries. Local sending placeholders are
   removed on failure, leaving composer retry behavior intact. Pending state is
   scoped to the client and session, recovered from the server on open/reload,
-  and included in realtime polling reconciliation.
+  and included in realtime polling reconciliation. Canceling a waiting entry
+  removes it through the native inbox cancel endpoint and can move its text
+  back into an empty composer; only the composer draft is restored, not the
+  pending attachments.
 - `promptDelivery` is a persisted chat preference (`steer` by default or `queue`,
   labeled Append). The top of Advanced Settings exposes it only for OpenCode 2.
   V1 submissions retain their existing behavior.
@@ -724,9 +750,11 @@ background sessions refresh on status transitions and completion. Bursts of part
 events coalesce into a single read.
 A liveness watchdog runs only while the app is foregrounded: a stream that has
 received no envelope for 90 seconds (3 seconds in E2E builds) is re-subscribed
-once per window, and a foreground return either retries immediately (when the
-stream is not connected) or cycles a stream that was backgrounded for 15 seconds
-or more. Every foreground return additionally runs one reconciliation pass,
+once per window, and keepalive frames reported through the subscription's
+`onActivity` callback also advance that window so a long silent tool call does
+not restart a healthy stream. A foreground return either retries immediately
+(when the stream is not connected) or cycles a stream that was backgrounded for
+15 seconds or more. Every foreground return additionally runs one reconciliation pass,
 because a suspended JS runtime can miss envelopes while the stream still looks
 connected and would otherwise leave a stale or empty transcript until the next
 event. Envelope timestamps advance the window, so a healthy server never
@@ -814,3 +842,24 @@ snapshot; unreadable preferences hide excerpts. Widget locales do not mutate app
 language. Legacy title/
 status snapshots remain readable. Headless rendering has no API access. Live
 updates stop when Android suspends JS; timestamps explicitly represent cached data.
+
+## Onboarding preference selections
+
+The assistant writes language, transcript verbosity, delivery and remembered
+provider/model through `updateChatPreferences`, immediately using the existing
+persistence and reconciliation paths. Default model is the remembered Chat
+selection, not a separate new-chat policy. Its picker and Ready use the same
+configured/enabled catalog filter as Chat. Skip does not revert earlier choices.
+Navigation omits AI and project without a connection; model selection is hidden
+offline and message delivery is also hidden on V1. No onboarding preferences,
+credentials or step progress are duplicated in the completion marker.
+
+## Workspace registry and presentation state
+
+`opencode-mobile.workspaces` is a validated version 1 DTO. It records password-free connection metadata, enabled state, server preferences, remembered workspace paths and chat focus. `getConnectionUiScope` identifies runtime owners, including stable Cloud Link machine identities; the existing canonical connection scope identifies persisted favorites, caches and secure profile credentials. Passwords remain per-profile SecureStore data. An unreadable registry is preserved; fallback startup never overwrites that unread value.
+
+A legacy active connection is matched or saved as a profile and migrated into the connected set. Other saved profiles are not connected automatically. Explicit disconnect removes a server from automatic restoration, invalidates in-flight work and detaches its transports. It does not terminate remote prompts or PTYs. Last-good data and drafts remain in memory.
+
+Provider/model/agent selections, visible and recent models, model variants and auto-approve are scoped to a server. New servers default to auto-approve off. V2 auto-approve is a local per-server policy that answers each pending request once, using the existing permission service; persistent grants keep the server's actual semantics. General UI, language and voice device preferences remain app-wide. Hide subagents defaults to true when missing; a saved false is retained.
+
+Chat focus, terminal target and Settings inspection target are independent composite references. The presentation map holds composer text/attachments, failed input, editor baseline/current text and transcript offsets. Hidden dirty drafts and PTYs participate in update blocking. Removing a connection names unsaved drafts in its confirmation. Drafts are intentionally not written to disk.

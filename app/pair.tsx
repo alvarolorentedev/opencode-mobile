@@ -27,7 +27,7 @@ export default function PairScreen() {
     }
   }, [pairLink, isHydrated, params, router]);
   if (!connectSetup.enabled) return null;
-  const onConnected = () => router.replace(!onboardingCompleted || onboardingActive ? '/onboarding/project' : '/(tabs)/projects');
+  const onConnected = () => router.replace(!onboardingCompleted || onboardingActive ? '/onboarding/ai' : '/(tabs)/projects');
   const onClose = () => router.replace(!onboardingCompleted || onboardingActive ? '/onboarding/connect' : '/(tabs)/settings');
   if (params.mode !== 'manage') return <ConnectEntry setup={connectSetup} onConnected={onConnected} onClose={onClose} onManage={() => router.push('/pair?mode=manage')} deepLink={deepLink} />;
   return <SafeAreaView style={{ flex: 1, backgroundColor: palette.background }}>

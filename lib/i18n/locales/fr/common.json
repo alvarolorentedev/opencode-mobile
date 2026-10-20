@@ -57,5 +57,32 @@
     "availableDescription": "Installez la dernière version depuis l’App Store.",
     "restart": "Redémarrer et installer",
     "openStore": "Ouvrir l’App Store"
+  },
+  "servers": {
+    "allServers": "Tous les serveurs",
+    "allProjects": "Tous les projets",
+    "server": "Serveur",
+    "projectContext": "Contexte du projet",
+    "serverSettings": "Paramètres du serveur",
+    "appSettings": "Paramètres de l’application",
+    "forServer": "Les modifications s’appliquent à {{name}}",
+    "searchProjects": "Rechercher des projets",
+    "lastSynced": "Derniers projets synchronisés",
+    "newTerminalHint": "Choisissez où démarrer ce terminal.",
+    "workingDirectory": "Répertoire de travail",
+    "chatUnchanged": "Votre chat reste sur {{name}}.",
+    "pending": "En attente ({{count}})",
+    "savedRules": "Règles enregistrées ({{count}})",
+    "onlyThisServer": "Pour ce serveur uniquement",
+    "appDiagnostics": "Diagnostic de l’application · Tous les serveurs",
+    "discardDrafts": "Les brouillons de chat et de l’éditeur non enregistrés sur ce serveur seront supprimés.",
+    "status": {
+      "idle": "Déconnecté",
+      "connecting": "Connexion en cours",
+      "connected": "Connecté",
+      "error": "Indisponible"
+    },
+    "appSettingsSummary": "Éditeur, paramètres généraux et mises à jour",
+    "serverToolsSummary": "Serveurs MCP et diagnostic"
   }
 }

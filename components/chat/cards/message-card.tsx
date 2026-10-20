@@ -45,8 +45,9 @@ function TranscriptMessageImpl({
   const palette = Colors[colorScheme];
   const isUser = entry.role === 'user';
   const attachments = entry.details.filter((detail) => detail.kind === 'file').map((detail) => ({ uri: detail.uri || '', mime: detail.mime, filename: detail.filename || detail.label }));
+  const summaryDetails = entry.details.filter((detail) => detail.kind === 'patch' || detail.kind === 'file' || detail.kind === 'retry');
   const patchSummary = t('chat:cards.updatedPatches', { count: entry.details.filter((detail) => detail.kind === 'patch').length });
-  const detailSummary = summarizeTranscriptDetails(entry.details, { patches: (count) => t('chat:cards.updatedPatches', { count }), files: (count) => t('chat:cards.fileCount', { count }) });
+  const detailSummary = summarizeTranscriptDetails(summaryDetails, { patches: (count) => t('chat:cards.updatedPatches', { count }), files: (count) => t('chat:cards.fileCount', { count }) });
   const textColor = flat ? palette.text : isUser ? palette.onBubbleUser : palette.onBubbleAssistant;
   const metaColor = flat ? palette.muted : isUser ? palette.onBubbleUser : palette.muted;
   const accentColor = flat ? palette.tint : isUser ? palette.onBubbleUser : palette.tint;

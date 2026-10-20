@@ -43,6 +43,7 @@ async function fixture({ expired = false, missing = false, storedSession = true,
   const keys = await loadTs('lib/storage-keys.ts');
   const scope = await loadTs('lib/connection-scope.ts', { 'base-64': { encode: (value) => Buffer.from(value, 'binary').toString('base64') } });
   const profiles = await loadTs('lib/connection-profiles.ts', {
+    '@/providers/workspace-storage': { WORKSPACES_STORAGE_KEY: 'opencode-mobile.workspaces', parseWorkspaces: JSON.parse },
     '@react-native-async-storage/async-storage': { __esModule: true, default: asyncStorage }, 'expo-secure-store': secureStore,
     'expo-crypto': { randomUUID: (() => { let n = 0; return () => `00000000-0000-4000-8000-${String(++n).padStart(12, '0')}`; })() },
     'react-native': native, '@/lib/connect': connect, '@/lib/connection-scope': scope,
@@ -80,7 +81,7 @@ async function fixture({ expired = false, missing = false, storedSession = true,
   imports['@/lib/opencode/client'] = {
     buildClient: (settings) => settings, detectServerContract: async () => ({ contract: 'v2' }),
     getConnectionError: (_, reason) => reason.message, getNormalizedServerUrl: (url) => url,
-    isContractMismatchError: () => false, isValidServerUrl: () => true,
+    isContractMismatchError: () => false, isAuthConnectionFailure: (kind) => kind === 'auth' || kind === 'entitlement', isValidServerUrl: () => true,
     isRetryableCloudLinkStartupError: (reason) => /1033/.test(reason.message),
     classifyConnectionFailure: (reason) => /offline|catalog/i.test(String(reason?.message)) ? 'offline' : 'unknown',
   };
@@ -104,7 +105,14 @@ async function fixture({ expired = false, missing = false, storedSession = true,
     const [activeProjectPath, setActiveProjectPath] = runtime.react.useState('/fixture');
     const [controlPlaneUrl, setControlPlaneUrl] = runtime.react.useState(CP);
     runtime.react.useLayoutEffect(() => { input.settingsRef.current = settings; input.connectionRef.current = connection; input.activeProjectPathRef.current = activeProjectPath; });
-    const result = actions.useConnectionConnectActions({ ...input, settings, setSettings, connection, setConnection, activeProjectPath, setActiveProjectPath, controlPlaneUrl, setControlPlaneUrl });
+    const bridge = runtime.react.useRef();
+    const forward = runtime.react.useCallback((...args) => bridge.current.switchConnection(...args), []);
+    const disconnect = runtime.react.useCallback(async () => bridge.current.updateSettings({ serverUrl: '', username: '', password: '', connect: undefined }), []);
+    const connectSetup = setup.useConnectState({ controlPlaneUrl, setControlPlaneUrl, switchConnection: forward, disconnect, isHydrated: true,
+      activeMachineId: settings.connect?.machineId, beforeProfileRefresh: async () => {}, onProfileRefreshed: () => {},
+      isActiveProfile: (candidate) => Boolean(input.settingsRef.current.connect && profiles.findMatchingProfile([candidate], input.settingsRef.current)) });
+    const result = actions.useConnectionConnectActions({ ...input, settings, setSettings, connection, setConnection, activeProjectPath, setActiveProjectPath, controlPlaneUrl, setControlPlaneUrl, connectSetup });
+    runtime.react.useLayoutEffect(() => { bridge.current = result; });
     const connectionProfiles = profileHook.useConnectionProfiles({ settings, switchConnection: result.switchConnection, updateSettings: result.updateSettings, profileSnapshot: result.connectSetup.profiles });
     return { ...result, settings, connection, activeProjectPath, connectionProfiles };
   }, {});

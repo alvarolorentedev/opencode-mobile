@@ -121,7 +121,7 @@ export function useConversationState({ connection, chatPreferences, currentSessi
         return undefined;
       }
 
-      const transcript = (messagesBySession[sessionId] || []).map(toTranscriptEntry).filter(isTranscriptDisplayMessage);
+      const transcript = (messagesBySession[sessionId] || []).map(toTranscriptEntry).filter((entry) => isTranscriptDisplayMessage(entry));
       return [...transcript].reverse().find((entry) => entry.role === 'assistant' && entry.text.trim());
     },
     [messagesBySession],

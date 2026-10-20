@@ -1,11 +1,13 @@
-import { useCallback, useLayoutEffect, useRef, useState, type Dispatch, type SetStateAction } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useRef, useState, type Dispatch, type SetStateAction } from 'react';
 
 import {
   hasTodoWritePart,
   mergeSessionMessageWindow,
   prependSessionMessageHistory,
+  toTranscriptEntry,
   type SessionMessageRecord,
 } from '@/lib/opencode/format';
+import { isTranscriptDisplayMessage, type TranscriptVerbosity } from '@/lib/opencode/transcript';
 import { addUsageSteps, type SessionUsageStep } from '@/lib/opencode/usage';
 import type { ScopedOpencodeClient } from '@/lib/opencode/client';
 import type { TranscriptRefreshMode } from '@/providers/opencode-provider-types';
@@ -15,12 +17,53 @@ import {
   TRANSCRIPT_PAGE_LIMIT,
 } from '@/providers/services/session-service';
 
-// Bounds the in-memory transcript window: the newest live tail plus the older
-// pages the user pulls in by scrolling up. Dropping the oldest records keeps
-// the window contiguous and the working set small.
-const MESSAGE_WINDOW_CAP = 100;
+// Hard ceiling on the in-memory transcript window. Retention keeps at least
+// DISPLAYED_MESSAGE_TARGET visible entries inside this bound.
+export const MAX_TRANSCRIPT_RECORDS = 300;
+// The initial pull must show at least this many entries at the current
+// verbosity, even when a long tool-only turn fills the newest page.
+export const DISPLAYED_MESSAGE_TARGET = 10;
+// Older pages fetched while scanning a tool-heavy tail. Larger than the scroll
+// page so the scan needs fewer round trips.
+const BACKFILL_PAGE_LIMIT = 50;
+const MAX_BACKFILL_PAGES = 4;
 
 type MessageWindow = { nextBefore?: string; hasMore: boolean };
+
+function countDisplayed(records: SessionMessageRecord[], verbosity: TranscriptVerbosity) {
+  let count = 0;
+  for (const record of records) {
+    if (isTranscriptDisplayMessage(toTranscriptEntry(record), verbosity)) {
+      count += 1;
+    }
+  }
+  return count;
+}
+
+// Drop the oldest records at the hard ceiling, discarding non-display records
+// first so conversation entries survive even after a very long tool-only run.
+function boundWindow(records: SessionMessageRecord[], verbosity: TranscriptVerbosity) {
+  let overflow = records.length - MAX_TRANSCRIPT_RECORDS;
+  if (overflow <= 0) {
+    return records;
+  }
+
+  const remove = new Set<number>();
+  for (let index = 0; index < records.length && overflow > 0; index += 1) {
+    if (!isTranscriptDisplayMessage(toTranscriptEntry(records[index]), verbosity)) {
+      remove.add(index);
+      overflow -= 1;
+    }
+  }
+  for (let index = 0; index < records.length && overflow > 0; index += 1) {
+    if (!remove.has(index)) {
+      remove.add(index);
+      overflow -= 1;
+    }
+  }
+
+  return records.filter((_record, index) => !remove.has(index));
+}
 
 // Owns the paginated transcript window for every session: the loaded messages
 // are held by the provider, while this hook owns the pagination cursors, and
@@ -29,12 +72,16 @@ type MessageWindow = { nextBefore?: string; hasMore: boolean };
 export function useTranscriptState({
   client,
   isCurrentClient,
+  currentSessionId,
+  transcriptVerbosity,
   messagesBySession,
   setMessagesBySession,
   setIsRefreshingMessages,
 }: {
   client: ScopedOpencodeClient;
   isCurrentClient: (candidate: object) => boolean;
+  currentSessionId?: string;
+  transcriptVerbosity: TranscriptVerbosity;
   messagesBySession: Record<string, SessionMessageRecord[]>;
   setMessagesBySession: Dispatch<SetStateAction<Record<string, SessionMessageRecord[]>>>;
   setIsRefreshingMessages: Dispatch<SetStateAction<boolean>>;
@@ -78,6 +125,103 @@ export function useTranscriptState({
     }
   }, []);
 
+  // A cold window starts from the newest page and pages backward until the
+  // display target is met. Normal sessions stop after the first page.
+  const loadDisplayedWindow = useCallback(
+    async (sessionId: string, first: { records: SessionMessageRecord[]; nextBefore?: string; hasMore: boolean }) => {
+      let records = first.records;
+      let nextBefore = first.nextBefore;
+      let hasMore = first.hasMore;
+      let displayed = countDisplayed(records, transcriptVerbosity);
+      let pages = 0;
+
+      while (displayed < DISPLAYED_MESSAGE_TARGET && hasMore && pages < MAX_BACKFILL_PAGES) {
+        const older = await svcGetSessionMessages(client, sessionId, { limit: BACKFILL_PAGE_LIMIT, before: nextBefore });
+        if (!isCurrentClient(client)) {
+          return undefined;
+        }
+        pages += 1;
+        if (older.records.length === 0) {
+          hasMore = false;
+          break;
+        }
+        records = [...older.records, ...records];
+        displayed += countDisplayed(older.records, transcriptVerbosity);
+        nextBefore = older.nextBefore;
+        hasMore = older.hasMore;
+        if (!older.nextBefore) break;
+      }
+
+      return { records: boundWindow(records, transcriptVerbosity), nextBefore, hasMore };
+    },
+    [client, isCurrentClient, transcriptVerbosity],
+  );
+
+  // Backfill an already-held window (verbosity changes can hide entries that
+  // were counted before).
+  const backfillDisplayed = useCallback(
+    async (sessionId: string) => {
+      const held = messagesBySessionRef.current[sessionId] ?? [];
+      const meta = messageWindowsRef.current[sessionId];
+      if (held.length === 0 || !meta?.hasMore) {
+        return;
+      }
+
+      let displayed = countDisplayed(held, transcriptVerbosity);
+      if (displayed >= DISPLAYED_MESSAGE_TARGET) {
+        return;
+      }
+
+      let nextBefore = meta.nextBefore;
+      let hasMore: boolean = meta.hasMore;
+      let pages = 0;
+      const fetched: SessionMessageRecord[][] = [];
+      while (displayed < DISPLAYED_MESSAGE_TARGET && hasMore && pages < MAX_BACKFILL_PAGES) {
+        const older = await svcGetSessionMessages(client, sessionId, { limit: BACKFILL_PAGE_LIMIT, before: nextBefore });
+        if (!isCurrentClient(client)) {
+          return;
+        }
+        pages += 1;
+        if (older.records.length === 0) {
+          hasMore = false;
+          break;
+        }
+        fetched.unshift(older.records);
+        displayed += countDisplayed(older.records, transcriptVerbosity);
+        nextBefore = older.nextBefore;
+        hasMore = older.hasMore;
+        if (!older.nextBefore) break;
+      }
+
+      if (fetched.length === 0) {
+        return;
+      }
+
+      const flat = fetched.flat();
+      setMessagesBySession((current) => {
+        const previous = current[sessionId] ?? held;
+        const prepended = prependSessionMessageHistory(previous, flat);
+        if (prepended === previous) {
+          return current;
+        }
+        return { ...current, [sessionId]: prepended };
+      });
+      setMessageWindows((current) => ({
+        ...current,
+        [sessionId]: { nextBefore, hasMore },
+      }));
+      recordUsageAndTodos(sessionId, flat);
+    },
+    [client, isCurrentClient, recordUsageAndTodos, transcriptVerbosity, setMessagesBySession],
+  );
+
+  useEffect(() => {
+    if (!currentSessionId) {
+      return;
+    }
+    void backfillDisplayed(currentSessionId).catch(() => undefined);
+  }, [backfillDisplayed, currentSessionId]);
+
   const refreshMessages = useCallback(
     async (sessionId: string, silent = false, options?: { mode?: TranscriptRefreshMode }) => {
       if (!silent) {
@@ -96,17 +240,22 @@ export function useTranscriptState({
           return page.records;
         }
 
-        // initial and replace adopt the fetched page as the window. Only replace
-        // discards a held window on purpose (compaction/revert); an explicit
-        // initial on an already-held window is treated the same.
+        // initial and replace adopt a fresh window. Only replace discards a held
+        // window on purpose (compaction/revert); an explicit initial on an
+        // already-held window is treated the same. A fresh window backfills to
+        // the displayed target so a tool-heavy tail cannot leave it blank.
         if (mode !== 'tail' || held.length === 0) {
-          setMessagesBySession((current) => ({ ...current, [sessionId]: page.records }));
+          const loaded = await loadDisplayedWindow(sessionId, page);
+          if (!loaded) {
+            return page.records;
+          }
+          setMessagesBySession((current) => ({ ...current, [sessionId]: loaded.records }));
           setMessageWindows((current) => ({
             ...current,
-            [sessionId]: { nextBefore: page.nextBefore, hasMore: page.hasMore },
+            [sessionId]: { nextBefore: loaded.nextBefore, hasMore: loaded.hasMore },
           }));
-          recordUsageAndTodos(sessionId, page.records);
-          return page.records;
+          recordUsageAndTodos(sessionId, loaded.records);
+          return loaded.records;
         }
 
         if (page.records.length === 0) {
@@ -116,22 +265,25 @@ export function useTranscriptState({
         const knownIds = new Set(held.map((record) => record.info.id));
         if (!page.records.some((record) => knownIds.has(record.info.id))) {
           // A burst larger than one page landed; adopt the contiguous newest
-          // page and restart history paging from its oldest record instead of
-          // downloading bridging pages.
-          const nextRecords = page.records.length > MESSAGE_WINDOW_CAP ? page.records.slice(page.records.length - MESSAGE_WINDOW_CAP) : page.records;
-          setMessagesBySession((current) => ({ ...current, [sessionId]: nextRecords }));
+          // page (backfilled to the displayed target) and restart history
+          // paging from its oldest record instead of downloading bridging pages.
+          const loaded = await loadDisplayedWindow(sessionId, page);
+          if (!loaded) {
+            return page.records;
+          }
+          setMessagesBySession((current) => ({ ...current, [sessionId]: loaded.records }));
           setMessageWindows((current) => ({
             ...current,
-            [sessionId]: { nextBefore: page.nextBefore, hasMore: page.hasMore },
+            [sessionId]: { nextBefore: loaded.nextBefore, hasMore: loaded.hasMore },
           }));
-          recordUsageAndTodos(sessionId, page.records);
-          return page.records;
+          recordUsageAndTodos(sessionId, loaded.records);
+          return loaded.records;
         }
 
         setMessagesBySession((current) => {
           const previous = current[sessionId] ?? held;
           const merged = mergeSessionMessageWindow(previous, page.records);
-          const bounded = merged.length > MESSAGE_WINDOW_CAP ? merged.slice(merged.length - MESSAGE_WINDOW_CAP) : merged;
+          const bounded = boundWindow(merged, transcriptVerbosity);
           if (bounded === previous) {
             return current;
           }
@@ -145,14 +297,14 @@ export function useTranscriptState({
         }
       }
     },
-    [client, isCurrentClient, recordUsageAndTodos, setIsRefreshingMessages, setMessagesBySession],
+    [client, isCurrentClient, loadDisplayedWindow, recordUsageAndTodos, setIsRefreshingMessages, setMessagesBySession, transcriptVerbosity],
   );
 
   const loadOlderMessages = useCallback(
     async (sessionId: string) => {
       const meta = messageWindowsRef.current[sessionId];
       const held = messagesBySessionRef.current[sessionId] ?? [];
-      if (!meta?.hasMore || loadingOlderBySessionRef.current[sessionId] || held.length >= MESSAGE_WINDOW_CAP) {
+      if (!meta?.hasMore || loadingOlderBySessionRef.current[sessionId] || held.length >= MAX_TRANSCRIPT_RECORDS) {
         return;
       }
 
@@ -208,5 +360,3 @@ export function useTranscriptState({
     prune,
   };
 }
-
-export { MESSAGE_WINDOW_CAP };

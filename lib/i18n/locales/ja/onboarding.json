@@ -64,14 +64,22 @@
     "server": "Server",
     "project": "Project",
     "projectMissing": "No project selected",
-    "footnote": "接続やプロジェクトは後から設定で変更できます。",
+    "footnote": "これらの設定はいつでも変更できます。",
     "start": "Start coding",
-    "done": "Done"
+    "done": "Done",
+    "serverMissing": "未接続",
+    "providers": "プロバイダー",
+    "enabledModels": "有効なモデル"
   },
   "settingsAssistant": {
     "title": "Setup assistant",
-    "summary": "Review permissions, connection, and project"
+    "summary": "権限、接続、プロバイダー、プロジェクト、設定を確認"
   },
   "reviewSetup": "設定を確認",
-  "stepIndicator": "ステップ {{step}} / {{totalSteps}}"
+  "stepIndicator": "ステップ {{step}} / {{totalSteps}}",
+  "general": {
+    "title": "一般設定",
+    "subtitle": "OpenCode Mobileを使いやすく設定しましょう。",
+    "defaultModel": "デフォルトモデル"
+  }
 }

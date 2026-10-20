@@ -28,6 +28,7 @@
     "couldNotFork": "无法派生会话。",
     "couldNotRevert": "无法回退会话。",
     "couldNotRestore": "无法恢复会话。",
+    "couldNotCancelPending": "无法丢弃该待处理消息。",
     "couldNotUpdateAutoApprove": "无法更新自动批准设置。",
     "sendError": {
       "title": "OpenCode 发送失败",
@@ -48,8 +49,6 @@
   },
   "content": {
     "connectionIssue": "连接问题",
-    "sessionReverted": "会话已回退",
-    "restoreReverted": "恢复已回退的工作",
     "runningActivity": "OpenCode 正在{{activity}}…",
     "runningRetry": "OpenCode 遇到错误，正在重试（第 {{attempt}} 次）…",
     "runningGeneric": "OpenCode 正在处理当前步骤…",
@@ -60,7 +59,10 @@
     "allTasksCompleted": "所有任务已完成",
     "openToSeeSteps": "打开查看所有步骤",
     "progress": "进度",
-    "untitledTask": "未命名任务"
+    "untitledTask": "未命名任务",
+    "loadEarlier": "暂无可显示内容",
+    "loadEarlierDescription": "本回合的最新消息是工具活动。加载更早的消息以查看对话。",
+    "loadEarlierAction": "加载更早的消息"
   },
   "cards": {
     "respondToContinue": "需要批准",
@@ -230,7 +232,8 @@
   "reasoning": {
     "low": "低",
     "default": "默认",
-    "high": "高"
+    "high": "高",
+    "max": "最高"
   },
   "diff": {
     "turn": "轮次",
@@ -282,7 +285,13 @@
   },
   "pendingPrompts": {
     "sending": "正在发送…",
-    "waiting": "等待处理…"
+    "waiting": "等待处理…",
+    "cancel": "丢弃待处理消息"
+  },
+  "revertNotice": {
+    "title": "已从此消息回退",
+    "hint": "编辑下方提示词并发送，即可从此处继续。",
+    "cancel": "取消回退"
   },
   "approvals": {
     "mcpAuthTitle": "需要 MCP 身份验证",

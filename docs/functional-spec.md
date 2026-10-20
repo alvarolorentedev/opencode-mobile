@@ -74,6 +74,7 @@ Behavior:
 
 - the link opens the session belonging to the given server project path
 - if the project differs from the active project, the app switches to it (and persists it as the active project)
+- a project path is available when it is the active project, is opened on this connection, is a server project canonical, or the server resolves it as a checkout/worktree; repositories with multiple checkouts share a project ID, so canonical-path equality is not required
 - if the session is not found in that project, a `Could not open session` error screen is shown with the server message
 - the link does not carry a server identity; it resolves against the currently configured server
 - only sessions that appear in the project's session list can be opened; archived sessions are not reachable this way
@@ -137,8 +138,8 @@ The Chat screen shows:
 
 Behavior details:
 
-- only user messages and assistant messages with text or errors appear in the main transcript
-- reasoning and tool activity are summarized and attached to assistant messages as metadata chips
+- the transcript has a configurable detail level: `basic` (default) shows user and assistant messages with text, files, or errors; `reasoning` adds reasoning; `verbose` adds tool calls and patches
+- tool and reasoning rows render collapsed outside message bubbles and match the assistant bubble's width; contiguous same-tool calls merge into one growing collapsible, shell rows show `$ command` plus output in a non-copyable bash block, and edit/write rows are hidden; the initial pull backfills until at least 10 entries are displayable at the selected level
 - a status line like `OpenCode is ...` is shown while running and not blocked on user input
 - a small floating progress view shows the current step and completed count; tapping it opens a content-sized overlay with the task list; pending permission actions replace it while blocked
 - a pending question opens a full-screen answer flow immediately; dismissal leaves an `Answer needed` card above the composer and does not reject the request
@@ -201,8 +202,10 @@ Session list behavior:
 Additional session actions are available in Chat:
 
 - fork a session from a user message and open the fork
-- revert a session from a user message
-- undo the current revert
+- revert a session from a user message; the reverted prompt is placed in the composer for editing
+- send the edited prompt to commit the staged revert and continue from that point
+- discard the current revert from the composer notice; an unchanged reverted prompt is cleared from the composer
+- discard a waiting steer/queue prompt; when the composer is empty, its text is restored for editing
 
 ### 9. Inspect And Edit Project Files
 
@@ -246,7 +249,7 @@ Overlay sheets also dismiss on a downward drag of their header (the grabber/titl
 ## Transcript Behavior
 
 - transcript is paginated from the bottom using a fixed page size
-- `Load earlier messages` reveals older transcript entries
+- scrolling to the top loads older transcript entries through the server cursor
 - automatic scroll-to-end happens for new content unless the view is currently paginating older items
 - long-pressing a message copies its text/error content
 - assistant messages can be played with TTS if they contain readable text
@@ -324,7 +327,9 @@ Behavior:
 - the initial model follows the server config (`GET /config` -> `model`, variant-tolerant); a stored selection wins when still available
 - when neither the stored nor the server-configured model resolves, no model is auto-picked: the picker shows `Select model` and prompts are sent without a model so the server default applies, instead of silently sending a possibly blocked model
 - discovered model metadata comes from nested attachment/input modality, tool-call, reasoning, status, and context/output limit capabilities
-- reasoning level affects only the generated system prompt, not local control flow
+- OpenCode 2 preserves server-reported model variant IDs, shows `Default` plus the selected model's variants, and applies a selected variant before each prompt or command; models without variants hide the selector
+- variant choices persist per model, stale variants fall back to `Default`, and a matching active session's valid server variant is used when that model has no saved choice
+- on OpenCode 1, the existing Low/Default/High reasoning control continues to affect the generated system prompt; OpenCode 2 reasoning selection is a server model variant, not a prompt hint
 
 ## Session Title Summarization
 

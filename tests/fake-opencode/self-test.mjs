@@ -502,6 +502,15 @@ try {
   assert((await v2request('/_cloudlink/services', { headers: deviceHeaders })).services.length === 1, 'Legacy service list must reflect the write');
   await v2request('/__control/connector-api', json('POST', { api: 2 }));
 
+  await v2request('/__control/reset', json('POST', { scenario: 'reasoning-variants' }));
+  const variantModel = (await v2request('/api/model')).data.find((model) => model.id === 'deepseek-v4.1-flash-free');
+  assert(JSON.stringify(variantModel?.variants.map(({ id }) => id)) === JSON.stringify(['low', 'high', 'max']), 'Reasoning variant fixture missing server variants');
+  const variantSession = (await v2request('/api/session', json('POST', { title: 'Variant contract' }))).data;
+  await v2request(`/api/session/${variantSession.id}/model`, json('POST', { model: { id: 'deepseek-v4.1-flash-free', providerID: 'opencode', variant: 'max' } }));
+  const variantState = await v2request('/__control/state');
+  assert(variantState.sessions[0].model.variant === 'max', 'V2 session model switch must retain the selected variant');
+  await v2request('/__control/reset', json('POST', { scenario: 'happy-path' }));
+
   console.log('Fake OpenCode 1.18.3 server self-test passed.');
   console.log('Fake OpenCode 2.0 server self-test passed.');
 } finally {

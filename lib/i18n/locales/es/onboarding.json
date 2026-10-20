@@ -64,14 +64,22 @@
     "server": "Server",
     "project": "Project",
     "projectMissing": "No project selected",
-    "footnote": "Puedes cambiar la conexión o el proyecto en Ajustes.",
+    "footnote": "Puedes cambiar estos ajustes en cualquier momento.",
     "start": "Start coding",
-    "done": "Done"
+    "done": "Done",
+    "serverMissing": "Sin conexión",
+    "providers": "Proveedores",
+    "enabledModels": "Modelos habilitados"
   },
   "settingsAssistant": {
     "title": "Setup assistant",
-    "summary": "Review permissions, connection, and project"
+    "summary": "Revisar permisos, conexión, proveedores, proyecto y preferencias"
   },
   "reviewSetup": "Revisar configuración",
-  "stepIndicator": "Paso {{step}} de {{totalSteps}}"
+  "stepIndicator": "Paso {{step}} de {{totalSteps}}",
+  "general": {
+    "title": "Ajustes generales",
+    "subtitle": "Adapta OpenCode Mobile a tus preferencias.",
+    "defaultModel": "Modelo predeterminado"
+  }
 }

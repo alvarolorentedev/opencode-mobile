@@ -57,5 +57,32 @@
     "availableDescription": "Install the latest version through the App Store.",
     "restart": "Restart & install",
     "openStore": "Open App Store"
+  },
+  "servers": {
+    "allServers": "All servers",
+    "allProjects": "All projects",
+    "server": "Server",
+    "projectContext": "Project context",
+    "serverSettings": "Server settings",
+    "appSettings": "App settings",
+    "forServer": "Changes apply to {{name}}",
+    "searchProjects": "Search projects",
+    "lastSynced": "Showing last synced projects",
+    "newTerminalHint": "Choose where this terminal starts.",
+    "workingDirectory": "Working directory",
+    "chatUnchanged": "Your chat stays on {{name}}.",
+    "pending": "Pending ({{count}})",
+    "savedRules": "Saved rules ({{count}})",
+    "onlyThisServer": "For this server only",
+    "appDiagnostics": "App diagnostics · All servers",
+    "discardDrafts": "Unsaved chat and editor drafts on this server will be discarded.",
+    "status": {
+      "idle": "Disconnected",
+      "connecting": "Connecting",
+      "connected": "Connected",
+      "error": "Unavailable"
+    },
+    "appSettingsSummary": "Editor, general and updates",
+    "serverToolsSummary": "MCP servers and diagnostics"
   }
 }

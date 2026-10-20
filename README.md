@@ -167,7 +167,9 @@ For remote access, prefer authenticated HTTPS, a VPN, or a secure tunnel rather 
 
 ## Community-built
 
-OpenCode Mobile is not an official OpenCode product.
+OpenCode Mobile is not an official OpenCode product. It is not built by the
+OpenCode team, is not endorsed by them, and is not affiliated with them in any
+way.
 
 It is an independent open-source project built for people who already use OpenCode and want to keep their agent workflows reachable when they step away from their desk.
 

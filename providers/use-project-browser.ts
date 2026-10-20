@@ -1,4 +1,4 @@
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useMemo, useRef, useState } from 'react';
 
 import type { ScopedOpencodeClient } from '@/lib/opencode/client';
 import { projectPath, type ProjectFileEntry } from '@/lib/opencode/project';
@@ -56,5 +56,5 @@ export function useProjectBrowser({ client, isCurrentClient }: {
     }
   }, [client, isCurrentClient, update]);
 
-  return { ...browser, openDirectory, search };
+  return useMemo(() => ({ ...browser, openDirectory, search }), [browser, openDirectory, search]);
 }

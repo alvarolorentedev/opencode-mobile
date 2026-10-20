@@ -40,6 +40,7 @@ export function DiagnosticsSection({
         <List.Item title={t('settings:diagnostics.server')} description={health ? t('settings:diagnostics.openCodeVersion', { version: health.version }) : t('settings:diagnostics.healthUnavailable')} right={() => <Chip compact>{health?.healthy ? t('settings:diagnostics.healthy') : t('common:labels.unknown')}</Chip>} />
         <List.Item title={t('settings:diagnostics.realtimeUpdates')} description={eventStreamStatus === 'connected' ? t('settings:diagnostics.eventStreamConnected') : t('settings:diagnostics.pollingFallback')} right={() => <Chip compact>{eventStreamStatus}</Chip>} />
         <List.Item title={t('settings:diagnostics.subsystems')} description={subsystemParts.join(' • ')} />
+        <Text variant="titleMedium">{t('common:servers.appDiagnostics')}</Text>
         <List.Item
           title={t('settings:diagnostics.networkUsage')}
           description={t('settings:diagnostics.networkUsageValue', { requests: dataUsage.requests, size: formatDataUsage(dataUsage.bytes) })}

@@ -168,3 +168,17 @@ it('routes repeated warm shares with distinct receipt keys and preserves other l
   expect(first).toMatch(/^\/share\?receipt=/); expect(second).not.toBe(first);
   expect(await redirectSystemPath({ path: 'opencodemobile://session/one', initial: true })).toBe('opencodemobile://session/one');
 });
+
+it('confirms a captured destination on another server even as chat focus changes', async () => {
+  const destination = { connectionScope: 'server-b', projectPath: '/repo', sessionId: 'current', title: 'B' };
+  const waiting = deferred();
+  await mount({ availableTargets: [destination], openSession: vi.fn(() => waiting.promise) });
+  runtime.value.selectTarget(destination); runtime.flush();
+  const operation = runtime.value.addToChat();
+  runtime.update({ connectionScope: 'server-b', currentSessionId: 'current' });
+  waiting.resolve({ ok: true });
+  expect(await operation).toBe(true); runtime.flush();
+  expect(runtime.value.consumeShared({ ...destination, connectionScope: 'server' })).toBeNull();
+  expect(runtime.value.consumeShared(destination)).not.toBeNull();
+  runtime.unmount();
+});

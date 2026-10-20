@@ -8,6 +8,9 @@ import { useUpdateBlocker } from '@/hooks/use-update-blocker';
 import { TextInput } from '@/components/ui/text-input';
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
+import { useRetainedState } from '@/components/ui/use-retained-state';
+import { useConnection } from '@/providers/opencode-contexts';
+import { getConnectionUiScope } from '@/lib/connection-scope';
 import { confirmAction } from '@/lib/confirm-action';
 import type { FileContent } from '@/lib/opencode/types';
 
@@ -24,7 +27,8 @@ export function FilePreview({ file, projectPath, branch, canSave, slim, onClose,
   const insets = useSafeAreaInsets();
   useUpdateBlocker(true);
   const palette = Colors[useColorScheme() ?? 'light'];
-  const [draft, setDraft] = useState<{ original: string; value: string }>();
+  const { settings } = useConnection();
+  const [draft, setDraft] = useRetainedState<{ original: string; value: string } | undefined>(`editor:${JSON.stringify([getConnectionUiScope(settings), projectPath, file.path])}`, undefined);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string>();
   const dirty = draft && draft.value !== draft.original;
@@ -33,10 +37,11 @@ export function FilePreview({ file, projectPath, branch, canSave, slim, onClose,
     if (dirty) confirmAction(t('project:files.discardTitle'), t('project:files.discardMessage'), t('project:files.discard'), t('common:actions.cancel'), run);
     else run();
   }
-  return <Modal visible animationType="slide" presentationStyle="fullScreen" onRequestClose={() => leave(onClose)}>
+  const close = () => leave(() => { setDraft(undefined); onClose(); });
+  return <Modal visible animationType="slide" presentationStyle="fullScreen" onRequestClose={close}>
     <KeyboardAvoidingView style={{ flex: 1, backgroundColor: palette.background }} behavior="padding">
       <Appbar.Header statusBarHeight={0} style={{ backgroundColor: palette.surface, paddingTop: insets.top, height: (slim ? 52 : 64) + insets.top }}>
-        <Appbar.BackAction disabled={saving} accessibilityLabel={t('project:files.close')} onPress={() => leave(onClose)} />
+        <Appbar.BackAction disabled={saving} accessibilityLabel={t('project:files.close')} onPress={close} />
         <Appbar.Content title={file.path.split('/').pop() || file.path} subtitle={file.path} />
         {canSave && !draft ? <Button onPress={() => setDraft({ original: file.content.content, value: file.content.content })}>{t('common:actions.edit')}</Button> : null}
       </Appbar.Header>

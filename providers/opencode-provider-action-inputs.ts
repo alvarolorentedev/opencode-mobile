@@ -97,6 +97,7 @@ export type SessionActionsInput = {
   currentSessionId?: string;
   diffScopeBySessionRef: { current: Record<string, DiffScope> };
   sessions: Session[];
+  availableModels: ModelOption[];
   messagesBySession: Record<string, SessionMessageRecord[]>;
   favoriteSessions: FavoriteSession[];
   pendingPermissionsBySession: Record<string, PendingPermissionRequest[]>;
@@ -142,6 +143,7 @@ export type ConnectionActionsInput = {
   activeProjectPath?: string;
   setActiveProjectPath: Dispatch<SetStateAction<string | undefined>>;
   activeProjectPathRef: { current: string | undefined };
+  projectPathsByConnectionRef: { current: ProjectPathsByConnection };
   connectionScopeRef: { current: string };
   clearProjectState: () => void;
   softResetProjectState: () => void;

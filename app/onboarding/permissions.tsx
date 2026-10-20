@@ -1,9 +1,9 @@
-import { useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Platform, StyleSheet, View } from 'react-native';
 import { Button, HelperText, Text } from 'react-native-paper';
 
+import { useOnboardingNavigation } from '@/components/onboarding/use-onboarding-navigation';
 import { OnboardingStep } from '@/components/onboarding/onboarding-step';
 import { useNotificationSetup } from '@/components/settings/use-notification-setup';
 import { Colors } from '@/constants/theme';
@@ -13,7 +13,7 @@ import { requestVoiceInputPermissionAsync } from '@/lib/voice/permissions';
 
 export default function OnboardingPermissionsScreen() {
   const { t } = useTranslation();
-  const router = useRouter();
+  const navigation = useOnboardingNavigation('permissions');
   const palette = Colors[useColorScheme() ?? 'light'];
   const notifications = useNotificationSetup();
   const [voice, setVoice] = useState<VoiceCapabilities>();
@@ -44,25 +44,23 @@ export default function OnboardingPermissionsScreen() {
 
   return (
     <OnboardingStep
-      step={2}
-      totalSteps={5}
+      step="permissions"
       title={t('onboarding:permissions.title')}
       subtitle={t('onboarding:permissions.subtitle')}
       testID="onboarding-permissions"
-      onBack={() => router.back()}
       footer={
         <>
           <Button
             mode="text"
             style={{ marginRight: 'auto' }}
             testID="onboarding-permissions-skip"
-            onPress={() => router.push('/onboarding/connect')}>
+            onPress={navigation.next}>
             {t('onboarding:permissions.skip')}
           </Button>
           <Button
             mode="contained"
             testID="onboarding-permissions-continue"
-            onPress={() => router.push('/onboarding/connect')}>
+            onPress={navigation.next}>
             {t('onboarding:permissions.continue')}
           </Button>
         </>

@@ -17,9 +17,18 @@ fills the sheet's available height.
 
 `pending-prompts.tsx` renders provider-derived OpenCode 2 sending/waiting entries
 in a bounded, scrollable stack directly above the composer. It does not own
-prompt admission or delivery state. Steer/Append selection lives at the top of
-the Editor group in Advanced Settings, alongside chat text size and flat
-conversation. The General group contains slim interface, language and Reset
+prompt admission or delivery state. Waiting entries expose a close action that
+cancels the inbox item; when the composer is empty, its text moves back into the
+composer. Sending entries keep the action disabled until admission completes.
+
+`revert-notice.tsx` renders a muted session-level notice above the pending stack
+while a revert is staged. Its close action cancels the revert. The reverted
+prompt text is edited in the composer, so the notice only carries status and the
+cancel affordance.
+
+Steer/Append selection lives at the top of
+the Editor group in Advanced Settings, alongside chat text size, flat
+conversation and transcript verbosity. The General group contains slim interface, language and Reset
 onboarding, which reopens the existing setup review without clearing settings.
 
 ## Purpose
@@ -67,13 +76,16 @@ The goal is to make it possible to rebuild the UI tree without having to redisco
 - provide the complete filtered transcript to the virtualized chat list
 - open/create sessions and toggle conversation mode
 - execute exact server-provided slash commands
-- route fork, revert, and unrevert actions
+- route fork, revert, and revert-cancel actions
+- place a reverted user prompt in the composer for editing; sending commits the staged revert
+- discard a waiting steer/queue prompt and move its text into an empty composer
 
 ### Main child components
 
 - `ChatHeader`
 - `ChatLibrary`
 - `TranscriptList`, `ChangesOverlay`, `PendingInteractions` (from `components/chat/content/`)
+- `PendingPrompts`, `RevertNotice`
 - `ChatComposer`
 - `Snackbar`
 
@@ -81,7 +93,7 @@ The goal is to make it possible to rebuild the UI tree without having to redisco
 
 ### Responsibility
 
-- `transcript-list.tsx`: render transcript area, empty states, connection issues, running indicators, and load older history on scroll-up
+- `transcript-list.tsx`: render transcript area, empty states, connection issues, running indicators, and load older history on scroll-up; revert status and cancellation live in the composer notice instead of the transcript footer
 - `changes-overlay.tsx`: render the Files changed overlay with refresh, scope selection, and diff accordions
 - `pending-interactions.tsx`: render server-owned tasks, permissions, and questions, including the compact progress view
 
@@ -93,7 +105,8 @@ declared once, at the leaves.
 ### Behavior notes
 
 - Chat keeps its transcript and pending cards mounted while changes are reviewed.
-- transcript messages use FlashList virtualization; it starts at the bottom, follows additions only from the bottom, and preserves the visible position otherwise. Because FlashList measures progressively, the tail is re-asserted across a few frames on a session switch or data change, and the list re-applies its tail/offset when the Chat tab regains focus or the app returns to the foreground, so an Android detach or background/lock cannot leave it at the top or undrawn. A starter-prompt card is shown only for a session with no transcript content; the skeleton is shown only for a cold fetch with no held records, and a session with raw history but no displayable entries shows nothing while the running indicator covers the turn.
+- transcript messages use FlashList virtualization; it starts at the bottom, follows additions only from the bottom, and preserves the visible position otherwise. Because FlashList measures progressively, the tail is re-asserted across a few frames on a session switch or data change, and the list re-applies its tail/offset when the Chat tab regains focus or the app returns to the foreground, so an Android detach or background/lock cannot leave it at the top or undrawn. A starter-prompt card is shown only for a session with no transcript content; the skeleton is shown only for a cold fetch with no held records. The initial pull backfills until 10 entries are displayable at the configured verbosity, so a tool-heavy tail cannot leave the view blank.
+- Transcript verbosity (`basic`/`reasoning`/`verbose`) controls which native timeline records render. Details are first-class rows (`cards/collapsible-detail.tsx`): contiguous same-tool calls (or contiguous reasoning) merge into one collapsible whose content grows as streamed calls arrive, a message bubble breaks the group, and hidden file-mutating tools are skipped before grouping. Non-shell groups use the shared markdown renderer; shell groups render one raw, non-copyable bash block (`$ command` + output per call) with a single-line `Running <command>` header. Group rows use the assistant bubble width. V1-only subtask/step/agent details and the `step-finish` usage marker are never rendered; `edit`/`write`/`multiedit`/`apply_patch` details are hidden.
 - A centered changes chip above the composer shows file count and green additions/red deletions for the selected scope. It hides at zero files and omits line totals for filename-only patches. Tapping opens the shared Files changed overlay with refresh, source selection, and diff accordions. Changes use a compact bottom sheet (55% of the viewport where safe areas permit), a centered file-count title, close icon, and a three-dot source button instead of separate summary/source cards.
 - Changes overlay scopes: `Turn` (per-turn snapshot diff, with a picker when multiple turns have diffs), `Uncommitted`, and `Branch` (VCS working tree / default-branch diffs)
 - displays starter prompts only when the selected session has no transcript content at all
@@ -151,7 +164,8 @@ type ChatComposerProps = {
 
 - todos are server-owned and displayed in the chat overlay with disabled status icons; the UI has no todo mutation action
 - typing `/` shows up to six matching server commands; selecting one fills the draft
-- model selection uses a searchable sheet grouped by provider; the composer trigger displays the selected model and reasoning; its accessible name includes model, provider, and reasoning
+- model selection uses a searchable sheet grouped by provider; its reasoning slider shows server variants for the selected OpenCode 2 model, including a synthetic Default, and stays hidden when that model has none; OpenCode 1 retains its legacy Low/Default/High prompt-hint slider
+- the composer trigger includes the selected variant in its accessible name when the model provides variants
 
 ## `components/chat/model-picker.tsx`
 
@@ -162,7 +176,7 @@ type ChatComposerProps = {
 - pin a `Selected` and `Recent` section above the provider groups (hidden while searching)
 - own only local modal visibility and search-query state
 - return the selected `ModelOption` to the composer, which persists it through the provider
-- optionally render the shared numeric slider for discrete Low/Default/High reasoning above model search, using provider-owned preferences
+- render the shared numeric slider for the selected model's server variants, or the legacy Low/Default/High reasoning hint on OpenCode 1
 - the transparent `Modal` sheet wraps its content in `GestureHandlerRootView` and dismisses on a downward header drag via the shared `useSwipeDismiss` helper, matching `OverlaySheet`
 
 ## `components/chat/chat-header.tsx`
@@ -547,9 +561,12 @@ Editing uses the same form but saves without automatically reconnecting.
 
 - own the native-only local QR setup flow, separate from the manual address form;
   opened by the Scan QR code choice in Settings and onboarding
-- reuse `ConnectCameraGate` and `ConnectScanner` without a Cloud Link
+- reuse `ConnectCameraGate` and `ConnectScanner` full-bleed without a Cloud Link
   entitlement; claiming the code stays in the provider's
   `connectionProfiles.pair`
+- overlay the `opencode pair` instructions, scan progress and recovery messages
+  on top of the full-screen camera rather than boxing it into a step layout like
+  the Cloud Link scanner
 - save and connect through the caller's submit callback with the redeemed
   credential, retaining it across a failed save/connect so Retry never re-pairs
 - return to the chooser on Back or camera denial, and offer Scan again after an
@@ -716,18 +733,27 @@ Main relevant props:
 
 Responsibility:
 
-- the five first-run setup steps: app presentation, permissions, add connection, project, ready
-- presentation only describes the app, with Continue navigation; preferences and provider setup live in Settings
-- permissions, connect and project are skippable; skipping advances one step without persisting anything
-- ready summarizes only the connection and project, then completes first-run setup or closes review mode
+- seven connected steps: app presentation, permissions, add connection, AI & Providers, project, General Settings, ready; disconnected navigation skips AI and project
+- presentation only describes the app, with Continue navigation; AI and General are optional and reuse Settings controls
+- permissions, connect, AI, project and General are skippable; Skip advances without additional writes or undoing earlier choices
+- General edits language, transcript detail, the remembered Chat model (connected only), and Steer/Append delivery (connected V2 only)
+- ready summarizes connection/project plus the applicable providers, enabled models and preferences, then completes first-run setup or closes review mode
 - thin controllers only; connection/project persistence and permission requests are delegated to the provider and existing helpers
 - seeded from current provider state so re-running from Settings reviews rather than resets
 
 ## `components/onboarding/onboarding-step.tsx`
 
 - shared translated step chrome: back action, step progress, title/subtitle, scrollable body, pinned footer
+- `navigation.ts` defines the visible sequence; `use-onboarding-navigation.ts` derives progress and forward/back destinations from connection availability
+- inaccessible server steps redirect to General; reconnects preserve provider setup, and Android Back uses the visible sequence
 - Review setup appears beside the step indicator when reopened from Settings
 - keeps every step visually consistent without duplicating layout
+
+## Shared onboarding settings
+
+- `components/settings/ai-settings-panel.tsx` composes the existing AI section, auth dialog, model/account callbacks, removal confirmation and feedback for Settings and onboarding
+- `general-settings.tsx` reuses language and chat preference fields, with a searchable model select using the same `getVisibleModels` filter as Chat and Review
+- `setup-summary.tsx` renders current provider values with wrapping rows and omits connection-dependent additions offline
 
 ## `components/onboarding/project-options.tsx`
 
@@ -1037,3 +1063,14 @@ picker and provider selection action; Terminal follows that directory.
   existing provider without sharing their content.
 - `modules/opencode-updates`: local Expo Android Play update module and iOS
   verified-installation helper. See [app updates](app-updates.md).
+
+## Multi-server V2 surfaces
+
+- `chat-library.tsx`: existing row and swipe treatment in one mixed list; server chips, search, server/project dropdowns and the sole Hide subagents toggle. The previous compatibility view is retained in `chat-library-v1.tsx`.
+- `project-picker.tsx`: server groups, search, retry/stale state and explicit server ownership for adding/removing projects. Existing worktree controls remain.
+- `new-terminal-sheet.tsx`: confirms server, project and resolved cwd before PTY creation. `retained-terminals.tsx` holds the renderer hosts; the terminal picker lists all retained owners.
+- `server-context-picker.tsx`: independent Settings server/project inspection. AI & Providers, MCP, diagnostics and approvals receive that context; app preferences remain global.
+- `server-approvals.tsx`: pending requests/questions, saved grants and per-server auto-approve, reusing chat permission cards and existing server actions.
+- `workspace-select.tsx`: the house NativeSelect with an outlined button trigger. `OverlaySheet` bridges workspace context through the Paper portal host.
+
+Terminal selection uses one continuous list with a server chip on each row, without empty workspace headings. With one configured workspace connection, server filters, selectors, chips and redundant scope labels are hidden across Chat, Projects, Terminal and Settings; both Settings section headings, project context and connection management remain available. Disconnected connections still count, so cached rows keep their ownership visible. Multi-server controls return automatically when a second connection is added.

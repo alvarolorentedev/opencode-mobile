@@ -134,6 +134,7 @@ export const FAVORITE_SESSIONS_MAX = 50;
 // group. `projectPath` is the server directory used to switch projects; the
 // status drives the running indicator and ordering.
 export type ActiveSessionItem = {
+  connectionScope?: string;
   sessionId: string;
   projectPath: string;
   title?: string;
@@ -349,6 +350,7 @@ export type SessionLibraryContextValue = {
 
 export type ChatContextValue = {
   pendingPrompts: PendingPrompt[];
+  cancelPrompt: (sessionId: string, promptId: string) => Promise<void>;
   currentMessages: SessionMessageRecord[];
   currentTranscript: TranscriptEntry[];
   currentUsage: SessionUsage;

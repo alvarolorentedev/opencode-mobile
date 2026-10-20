@@ -27,7 +27,7 @@ export default function ShareScreen() {
   const palette = Colors[useColorScheme() ?? 'light'];
   const { isHydrated, onboardingCompleted } = useOnboarding();
   const { connection, settings } = useConnection();
-  const { activeProject, addProject, projects, removeProject, selectProject } = useProjects();
+  const { activeProject } = useProjects();
   const { sharedInput } = useChat();
   const [pickerVisible, setPickerVisible] = useState(false);
   const [chatPickerVisible, setChatPickerVisible] = useState(false);
@@ -136,11 +136,7 @@ export default function ShareScreen() {
       <ProjectPicker
         visible={pickerVisible}
         onClose={() => setPickerVisible(false)}
-        projects={projects}
         activePath={activeProject?.path}
-        onSelect={(path) => selectProject(path)}
-        onRemove={removeProject}
-        onAdd={(directory) => addProject(directory)}
         testID="share-project-picker"
       />
       <OverlaySheet visible={chatPickerVisible} title={t('share:chooseConversation')} onClose={() => setChatPickerVisible(false)} testID="share-chat-picker">
@@ -150,7 +146,7 @@ export default function ShareScreen() {
           setChatPickerVisible(false);
         }}>{t('chat:library.newChat')}</Button> : null}
         {sharedInput.targets.filter((item) => `${item.title || ''} ${item.projectPath}`.toLocaleLowerCase().includes(search.toLocaleLowerCase())).map((item) => (
-          <Button key={`${item.projectPath}:${item.sessionId}`} style={{ minHeight: 44 }} onPress={() => {
+          <Button key={JSON.stringify([item.connectionScope, item.projectPath, item.sessionId])} style={{ minHeight: 44 }} onPress={() => {
             sharedInput.selectTarget(item); setChatPickerVisible(false);
           }}>{item.title || t('chat:library.untitledChat')} · {item.projectPath.split('/').filter(Boolean).pop()}</Button>
         ))}
