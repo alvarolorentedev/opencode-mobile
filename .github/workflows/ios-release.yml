@@ -22,8 +22,7 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  # ponytail: same steps as build.yml / pr-validate.yml validate; extract to a reusable workflow if they drift
-  validate:
+  resolve-tag:
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -58,37 +57,16 @@ jobs:
           echo "tag=$TAG" >> "$GITHUB_OUTPUT"
           echo "ref=refs/tags/$TAG" >> "$GITHUB_OUTPUT"
 
-      - name: Checkout repository
-        uses: actions/checkout@v4
-        with:
-          ref: ${{ steps.latest-tag.outputs.ref }}
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: npm
-
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Lint and typecheck
-        run: npm run test:ci:static
-
-      - name: Validate fake server harness
-        run: npm run test:fake-server:self
-
-      - name: Install Playwright browser
-        run: npx playwright install --with-deps chromium
-
-      - name: Run CI flow suite against fake OpenCode server
-        run: npm run test:e2e:web
-        env:
-          CI: 'true'
-          EXPO_PUBLIC_E2E_MODE: '1'
+  validate:
+    needs: resolve-tag
+    uses: ./.github/workflows/validate.yml
+    permissions:
+      contents: read
+    with:
+      ref: ${{ needs.resolve-tag.outputs.ref }}
 
   ios-release:
-    needs: validate
+    needs: [resolve-tag, validate]
     runs-on: macos-26
     permissions:
       contents: write
@@ -103,7 +81,7 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
-          ref: ${{ needs.validate.outputs.ref }}
+          ref: ${{ needs.resolve-tag.outputs.ref }}
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -116,7 +94,7 @@ jobs:
 
       - name: Validate release version
         env:
-          TAG: ${{ needs.validate.outputs.tag }}
+          TAG: ${{ needs.resolve-tag.outputs.tag }}
         run: |
           APP_VERSION=$(npx expo config --type public --json | python3 -c "import sys,json; print(json.load(sys.stdin)['version'])")
           if [ "$APP_VERSION" != "${TAG#v}" ]; then
@@ -252,7 +230,7 @@ jobs:
       - name: Upload to GitHub Release
         uses: softprops/action-gh-release@v3
         with:
-          tag_name: ${{ needs.validate.outputs.tag }}
+          tag_name: ${{ needs.resolve-tag.outputs.tag }}
           files: opencode-mobile.ipa
 
       - name: Upload to App Store Connect

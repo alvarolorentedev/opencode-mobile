@@ -167,7 +167,7 @@ describe('i18n locale contract', () => {
 
     // The bundled registry is generated from the folders, so a stale file means a
     // language or namespace changed without regenerating.
-    const { buildResourcesSource } = await import(new URL('../../scripts/gen-i18n.mjs', import.meta.url));
+    const { buildResourcesSource } = await import(new URL('../../scripts/gen-i18n.mjs', import.meta.url).href);
     const resourcesSource = await readFile(new URL('lib/i18n/resources.ts', root), 'utf8');
     assert.equal(
       resourcesSource,

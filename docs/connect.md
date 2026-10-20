@@ -9,14 +9,19 @@ credentials and offers a collapsed custom username, then probes again on save.
 Back, Change and retry preserve fields. Name is optional and defaults to the
 normalized hostname. Edits save without automatically reconnecting.
 
-On Android/iOS, **Scan local QR code** inside manual setup accepts the code shown
-by `opencode pair`. The phone and server must share a reachable network; the server
-must listen beyond localhost. This reuses the native permission gate and scanner
-without any Cloud Link subscription. FOSS builds omit the camera module and keep
-manual address entry. Camera denial returns to manual entry;
-backgrounding suspends the preview. A successful scan saves and connects
-automatically. Invalid codes allow rescan; expired/used codes ask users to run
-`opencode pair` again. Unreachable addresses offer manual entry and network guidance.
+On Android/iOS, the **Scan QR code** choice is a dedicated local setup flow that
+accepts the code shown by `opencode pair`. The phone and server must share a
+reachable network; the server must listen beyond localhost. It reuses the native
+permission gate and scanner without any Cloud Link subscription, and never falls
+back to the manual address form. The camera fills the screen behind an opaque
+appbar, with the `opencode pair` instructions, scan progress and recovery
+messages overlaid on top instead of sharing a scrollable step layout. FOSS builds
+omit the camera module and keep manual address entry. Camera denial or Back
+returns to the connection method chooser; backgrounding suspends the preview. A
+successful scan saves and connects automatically. Invalid codes allow rescan;
+expired/used codes ask users to run `opencode pair` again. A failed save or
+connect keeps the redeemed credential and offers Retry plus Scan again without
+re-pairing.
 
 The provider handles pairing and persistence; protocol validation/redemption live
 in `lib/opencode/pairing.ts`. Current one-use codes become session-token passwords;
@@ -127,9 +132,12 @@ Settings exposes the consolidated Cloud Link section directly below AI &
 Providers, and only for installs that came from the app stores. It folds in the
 exposed-services management that previously had its own Settings row. Its
 compact summary displays verified access status. Inside the section the order is
-status, the connector's exposed services (active Cloud Link connections only),
-the Subscription action group, and Machines last, followed by the Learn more
-footer row. The Subscription group holds native offers and Subscribe when
+status, the connector's exposed services, the Subscription action group, and
+Machines last, followed by the Learn more footer row. Services belong to a saved
+Cloud Link machine, so they stay manageable while another connection is active;
+the surface names the target machine, offers a machine selector when several are
+saved, and explains the no-machine and expired-credential states instead of
+hiding. The Subscription group holds native offers and Subscribe when
 inactive, Manage subscription and one Restore purchases. Manage
 subscription opens App Store subscriptions on iOS or the current app package's
 Google Play subscriptions page on Android, without guessing a product from
@@ -150,16 +158,18 @@ directly installed APKs and F-Droid/FOSS builds fail it and stay hidden. The
 provider exposes the resolved flag as `connectSetup.storeInstall`, so the
 Settings row never flashes for non-store installs. FOSS and production web retain
 the existing Cloud Link availability gate, the development web E2E harness keeps
-the section through `connectPilot.testing`, and the services subsection only
-renders for an active Cloud Link connection.
+the section through `connectPilot.testing`, and the services subsection resolves
+its target machine from saved Cloud Link profiles independently of the active
+connection.
 
 Settings retains connection status and saved profiles. Add connection is the
 single creation entry and opens three stacked choices: Scan QR code (local
 network), Manual, then Cloud Link. Onboarding uses the same chooser and retains
-Skip. Scan QR code and Manual open the shared full-screen
-Name/URL/Username/Password form (the scan entry opens the camera immediately);
-Cloud Link opens the guided assistant. Failed connections retain the form and
-reuse the saved profile on retry.
+Skip. Scan QR code opens its own full-screen camera flow
+(`connection-scan-flow.tsx`); Manual opens the separate full-screen
+Name/URL/Username/Password form. Cloud Link opens the guided assistant. Failed
+manual connections retain the form and reuse the saved profile on retry; the QR
+flow keeps its redeemed credential for its own retry.
 
 Cloud Link opens a full-screen, four-step illustrated assistant outside the tabs:
 
@@ -311,7 +321,7 @@ sockets and blocks all SDK/polling/background traffic.
 
 Concurrent reconnect triggers (boot, foreground refresh, activation retry,
 manual Reconnect, profile switch) join one in-flight connect when the server,
-generation, and credentials match, so workspace discovery and contract probing
+generation, and credentials match, so project discovery and contract probing
 run once. A credential rotation that lands mid-flight updates the in-flight key
 instead of letting a second stale attempt start.
 
@@ -324,9 +334,9 @@ reconnect. Offline/timeout/tunnel-startup failures stay on the bounded backoff
 path, and a foreground stream that goes silent without an error is
 re-established by the liveness watchdog.
 
-A same-machine credential rotation preserves the selected workspace, sessions,
+A same-machine credential rotation preserves the selected project, sessions,
 transcript, worktrees, MCP state, terminal transports/renderers and cursor, and
-the workspace editor selection and draft. Storage-scoped keys still migrate to
+the project editor selection and draft. Storage-scoped keys still migrate to
 the rotated credential scope. A different server, machine, or manual edit keeps
 the existing full reset.
 
@@ -336,7 +346,7 @@ and unfinished subscription finalization before requesting access. Concurrent
 reconnects share one access/save operation per environment and machine; retrying
 a completed secure-save checkpoint does not rotate credentials again. Transient
 automatic recovery failures retry after 60 seconds while foregrounded.
-Live renewal reconnects the same machine without clearing the selected workspace;
+Live renewal reconnects the same machine without clearing the selected project;
 saved profile rows refresh on credential changes and use machine identity for
 their Active badge. Credential-scoped storage keys remain unchanged. Stale
 recovery results cannot replace a newly selected connection.
@@ -476,7 +486,7 @@ For the simulator compilation after a development prebuild:
 
 ```bash
 EXPO_APP_VARIANT=development CI=1 npx expo prebuild --platform ios
-EXPO_APP_VARIANT=development xcodebuild -workspace ios/OpenCodeMobileDev.xcworkspace \
+EXPO_APP_VARIANT=development xcodebuild -project ios/OpenCodeMobileDev.xcworkspace \
   -scheme OpenCodeMobileDev -configuration Debug -sdk iphonesimulator \
   -destination 'generic/platform=iOS Simulator' CODE_SIGNING_ALLOWED=NO build
 ```

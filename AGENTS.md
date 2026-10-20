@@ -61,7 +61,7 @@ Do not put:
 Put:
 
 - connection flow
-- workspace/session state
+- project/session state
 - refresh logic
 - permission/question handling
 - capability reconciliation
@@ -157,9 +157,9 @@ Changes here require explicit human validation.
 - transcript shaping and activity derivation: `lib/opencode/` or provider selectors
 - prompt lifecycle, abort, pending interactions, refresh behavior: `providers/`
 
-### Workspace
+### Project
 
-- screen wiring and list presentation: `app/(tabs)/workspace.tsx`
+- screen wiring and list presentation: `app/(tabs)/projects.tsx`
 - project/session continuity rules: `providers/`
 - project/session fetch logic: `providers/services/session-service.ts`
 
@@ -264,7 +264,7 @@ This repo validates behavior mainly with static checks and end-to-end flows.
 Add or update tests when changing:
 
 - hydration or connect flow
-- workspace discovery or session bootstrap
+- project discovery or session bootstrap
 - prompt submission lifecycle
 - permission or question flows
 - provider/model/agent capability discovery

@@ -9,7 +9,9 @@ Node `.mjs` suites were migrated here; suite names used later in this document
 historical script names, and their equivalent today is
 `tests/vitest/<name>.test.ts`. The deterministic fake servers
 (`tests/fake-opencode/`) and the Playwright specs (`tests/e2e/`) are unchanged.
-See [known gaps](known-gaps.md) for the deferred test-infrastructure work.
+The flow specs are split by domain (`tests/e2e/<domain>.spec.mjs`) over shared
+helpers in `tests/e2e/helpers/flows.mjs`. Suites that are not yet typed are
+listed in `tsconfig.tests.json`; see [known gaps](known-gaps.md).
 
 ## Audit remediation regressions
 
@@ -38,7 +40,7 @@ transferred bytes. No response is duplicated solely for accounting.
 
 Audit implementation acceptance (2026-10-14): static CI passes with 318 Vitest
 checks, and both v1/v2 fake-server self-tests pass. The full web gate passes 134
-flows. The unchanged workspace focus assertion caught scroll anchoring dismissing
+flows. The unchanged project focus assertion caught scroll anchoring dismissing
 search input; disabled anchoring and stable row data fix it. A separate Chromium
 check at 393×852 and 1280×800 browsed 1,000 files, mounted 66 rows initially,
 retained input focus and opened the last file without horizontal overflow.
@@ -120,7 +122,7 @@ Gradle compilation remains blocked by the missing Android SDK.
 
 `widget-flow.test.ts` exercises recent reply selection, descendant/global blocker
 grouping, removal of settled requests, real todo progress/completion, redaction,
-malformed snapshots, independent workspace reads, failed-read retention, global
+malformed snapshots, independent project reads, failed-read retention, global
 events/resume/polling refresh, stale scope rejection, serialized writes, preference
 changes during queued writes, headless privacy enforcement, responsive trees,
 fixed widget locales and route targets. Existing
@@ -144,7 +146,7 @@ Native release acceptance remains blocking:
 - Share image, audio, video, PDF, text/HTML and generic files from Files/Photos and
   another app; test cold/warm launch, multiple files with identical names,
   accompanying text, oversize/unreadable items, all-rejected warnings and expiry.
-- Confirm current, other-workspace and New chat destinations, retry/Discard,
+- Confirm current, other-project and New chat destinations, retry/Discard,
   preserved draft and explicit send. Verify warm shares while the app is already
   open and incomplete onboarding.
 - Add all three widgets in a minified release, resize to minimum/large sizes,
@@ -152,7 +154,7 @@ Native release acceptance remains blocking:
   Verify existing placed widgets repaint after upgrade without removing them;
   every widget must show a background, title and content or an explicit empty
   state, rather than an invisible clickable rectangle.
-- Receive replies and blockers in another workspace with the library closed;
+- Receive replies and blockers in another project with the library closed;
   answer a permission/question and confirm its removal. Exercise child/global
   blockers, current-chat plan changes/completion and empty plans.
 - Disable previews and verify all placed widgets and persisted snapshot content;
@@ -197,20 +199,30 @@ Web tab navigation must stay within the mounted app. The custom tab button
 prevents the anchor's default browser navigation before calling the router's
 tab handler. E2E coverage checks that switching tabs sends no document request
 and preserves an unsent chat draft; a full reload can otherwise race input or
-workspace selection on slower CI runners.
+project selection on slower CI runners.
 The Cloud Link renewal fixture waits for the initial last-session bootstrap write
 before seeding next-launch data, and waits for the rotated scope to persist
 before asserting preservation. Navigation completion alone does not signal
 that provider persistence has finished.
 
-The OpenCode 2 workspace regression flow omits an added directory from the
-`/api/project` catalog response and sends a prompt through the app, checking
-the HTTP 200 admission response and cleared composer. It checks that catalog
-refresh, tab navigation, reconnect, and reload preserve the selected path and keep it in the
-picker. It also opens a favorite in that workspace after refresh and reload,
-checking the retained transcript. It waits for the active-project and favorite
-storage writes before reload. Provider runtime coverage checks that session
-opening accepts the retained active path while rejecting other unlisted paths.
+The OpenCode 2 project regression flow opens the picker, checks a server
+project that was never opened on this connection is not listed, adds a
+directory, and checks the serve's `/api/project` response now includes it. It
+sends a prompt through the app, checking the HTTP 200 admission response and
+cleared composer. It checks that catalog refresh, tab navigation, reconnect,
+and reload preserve the selected path and keep it in the picker from the
+persisted opened list. It also opens a favorite in that project after refresh
+and reload, checking the retained transcript. It waits for the active-project
+and favorite storage writes before reload. Provider runtime coverage checks
+that a fresh connection seeds the server current project, that an unlisted path
+falls back to the most recent opened project, that a server-resolved worktree
+is kept and opened, that an opened project or a server-resolved sibling
+checkout can be opened even when `project.list()` reports another canonical for
+the same repository, that a truly unresolvable path stays rejected, and that
+closing a project removes it locally, including
+the active selection. The v1/v2 worktree flow closes a server worktree and then
+closes its local project entry. Worktree catalogs omit known project canonicals,
+so Remove/Reset is not offered for a repository's own checkout.
 
 `.github/workflows/build.yml` owns Android validation and release. It runs on pushes to `main` and `v*` tags:
 
@@ -236,6 +248,8 @@ The `validate` gate runs:
   TypeScript type-checking for the app and for `tests/` (`npm run typecheck:tests`),
   the Vitest suites (`npm run test:vitest`), and the static contract suites.
   The script in `package.json` is the source of truth for the exact suite list.
+  `typecheck:tests` uses `tsconfig.tests.json`, which excludes the harness-heavy
+  suites listed there until they can be typed.
 - `npm run test:fake-server:self`
 - Playwright E2E flow tests against the fake OpenCode server
 
@@ -363,11 +377,11 @@ The V2 self-test submits prompts through the pinned `@opencode/client` SDK,
 checks that the HTTP 200 admission identifies the stored user message, and
 verifies that session events carry that session's directory. Non-session events
 use the server's main directory. Scoped session lists filter by `directory`;
-unscoped lists include every workspace for the Chat Library's recent group.
+unscoped lists include every project for the Chat Library's recent group.
 
 Its intended job is to simulate the server behaviors this client depends on, including:
 
-- workspace discovery
+- project discovery
 - config fetch/update
 - provider listing and auth metadata
 - agent listing
@@ -426,12 +440,12 @@ A prompt fails mid-turn (`session.execution.failed`) and the server schedules an
 
 ## Supported-Contract E2E Flows
 
-`tests/e2e/flows.spec.mjs` encodes these supported-contract flows:
+The Playwright flow specs (`tests/e2e/*.spec.mjs`) encode these supported-contract flows:
 
 ### Boot And Ready Chat
 
 - load app
-- if needed, switch to Workspace and select the fake project
+- if needed, switch to Project and select the fake project
 - return to Chat
 - confirm empty-state prompt and input are visible
 
@@ -439,7 +453,7 @@ A prompt fails mid-turn (`session.execution.failed`) and the server schedules an
 
 - send a prompt
 - wait for finished assistant text
-- verify the resulting chat appears in the Workspace tab
+- verify the resulting chat appears in the Projects tab
 - verify a deterministic assistant response renders a horizontally scrollable aligned GFM table, an ordered list, a tappable link, and subtly shaded monospace inline code
 
 ### Permission Blocking Flow
@@ -496,7 +510,7 @@ against a real V2 server and real code/automatic OAuth completion.
 ### SSE Failure / Polling Fallback Flow
 
 - run a prompt when the fake event stream is unavailable
-- switch to Workspace
+- switch to Project
 - verify the session still completes and becomes idle
 
 ### Connected SSE Safety And Reconnect Recovery
@@ -519,8 +533,19 @@ reads, V2 shared listing/status, and failure retry/client isolation.
 the Vitest `record-preservation` suite covers the bounded-window merge: unchanged record and
 array references are preserved, changed records are replaced, new tail records
 are appended, and scrolled-up history is prepended without duplicates.
+the Vitest `transcript-policy` suite covers the refresh modes: a cold load fetches
+one newest page, backfills older pages until ten entries are displayable, a tail
+merge appends without dropping held records, a non-overlapping burst adopts the
+fetched page, the 300-record cap drops non-display records before conversation
+entries, and only `replace` discards held history.
+the Vitest `transcript-visibility` suite covers verbosity (`basic`, `reasoning`,
+`verbose`) across user, assistant, tool-only, reasoning-only and
+patch-only entries plus hidden file-mutating tools; `transcript-rows` covers
+cross-entry grouping, bubble breaks, hidden-tool skipping and reasoning groups;
+`collapsible-detail` covers collapsed-by-default groups, expandable markdown
+bodies, and the non-copyable shell command/output block.
 `test:provider-runtime` runs actual provider callbacks and extracted hooks with
-deterministic platform/timer boundaries: out-of-order workspace results, stale
+deterministic platform/timer boundaries: out-of-order project results, stale
 same-directory server responses, safety-poll overlap, reconnect snapshots,
 subscription cleanup, a single voice submission through message updates, and
 serialized profile saves with credential rollback and callback stability.
@@ -532,7 +557,7 @@ outcome-aware copy (a server-reported failure notifies with the failure text whi
 a running task keeps its record).
 The Vitest activity-notifications suite exercises the real provider observer,
 aggregation service, and selectors with native/network boundaries mocked. It
-covers multiple workspaces, descendants, blockers, retry/queue states, failed
+covers multiple projects, descendants, blockers, retry/queue states, failed
 reads, foreground permission changes, background polling, completion cleanup,
 dismissal cycle keys, and stale reads after connection changes. V2 status tests
 reject network failures and missing active-session responses instead of idle.
@@ -548,10 +573,10 @@ permission, disabled promotion, Stop monitoring, shade dismissal, network loss,
 removing Recents, and a shortened Android foreground-service timeout. Confirm a
 new task can show after dismissal and that no idle polling service remains.
 Additional local-notification checks: tap a finished and a failed completion and
-confirm the app opens the owning connection, workspace, and session; background
+confirm the app opens the owning connection, project, and session; background
 the app during a permission prompt and confirm one needs-input alert that does not
 repeat on the next poll and re-arms after resolving; send a prompt then switch
-workspaces before it finishes and confirm the completion still arrives (on return
+projects before it finishes and confirm the completion still arrives (on return
 or via the background task); force-stop mid-task and relaunch to confirm no false
 "finished" alert fires from a cached idle status.
 Check Android 16+ promotion and a pre-16 normal notification fallback; verify
@@ -561,7 +586,7 @@ iOS device validation must confirm that a completion discovered while suspended 
 delivered only when the app next runs or the background task is granted time.
 the Vitest `record-preservation` suite is now part of the static CI gate.
 
-### Workspace Mutation And Management Flows
+### Project Mutation And Management Flows
 
 - edit a text file and save it through the conflict-checked VCS patch path
 - archive and restore a session through the experimental archived list
@@ -576,7 +601,7 @@ the Vitest `record-preservation` suite is now part of the static CI gate.
 
 ### Favorites And Saved Connection Flows
 
-- favorite sessions in the current and cross-workspace projects, then reopen them
+- favorite sessions in the current and other projects, then reopen them
 - report a favorite session that no longer exists on the server
 - settle rapid favorite taps on the last target
 - save two connections that point at separate fake servers exposing the same
@@ -584,11 +609,11 @@ the Vitest `record-preservation` suite is now part of the static CI gate.
   own sessions and restores its own model selection (the session cache,
   remembered session, and model preferences can never leak across servers)
 
-### Cross-Workspace Active Sessions
+### Cross-Project Active Sessions
 
-- list a recently used session from another workspace in the Chat Library
-  "Active across workspaces" group and switch to its project on tap
-- list a session that is still running (busy) in another workspace
+- list a recently used session from another project in the Chat Library
+  "Active across projects" group and switch to its project on tap
+- list a session that is still running (busy) in another project
 - the group is connection-wide, capped at four, and listed sessions are removed
   from the Chat list below (covered by the flow assertions and `test:active-sessions`)
 - `test:active-sessions` unit-tests the selection: running-first ordering, recent
@@ -597,14 +622,14 @@ the Vitest `record-preservation` suite is now part of the static CI gate.
 ### Onboarding Flows
 
 `tests/e2e/onboarding.spec.mjs` deliberately omits the `opencode-mobile.onboarding-version`
-seed used by `flows.spec.mjs`, so the assistant is exercised:
+seed used by the flow specs, so the assistant is exercised:
 
-- fresh install shows an informational presentation with only Continue, walks permissions → connect → workspace → ready with step numbers 1–5, checks back navigation, verifies Ready only summarizes connection/workspace, enters chat, and does not reappear on relaunch
-- every configured step can be skipped (connect and workspace included) and finishing without a workspace lands on the chat workspace prompt
+- fresh install shows an informational presentation with only Continue, walks permissions → connect → AI → project → General → ready with connected step numbers 1–7 (five visible steps before connecting), checks back navigation and the expanded setup summary, enters chat, and does not reappear on relaunch
+- every configured step can be skipped; skipping connection omits AI/project and the connection-dependent General fields and finishing without a project lands on the chat project prompt
 - a failed connection keeps the entered values and allows a retry
 - an installation with a stored settings key but no onboarding marker skips onboarding (upgrade migration)
 - clearing `localStorage` shows onboarding again
-- Advanced groups Editor and General controls; General → Reset onboarding restarts at the presentation, then reviews permissions and the prefilled connection before returning to a working chat without wiping configuration
+- Advanced groups Editor and General controls; General → Reset onboarding restarts at the presentation, then reviews permissions, the prefilled connection, providers, project and general preferences before returning to a working chat without wiping configuration
 
 Existing-install fixtures seed storage before application scripts run, avoiding
 a race with hydration and the initial onboarding-marker write. A tab-scoped
@@ -633,12 +658,12 @@ read failures never onboard an existing user.
 This strategy gives confidence in:
 
 - provider-driven app bootstrapping
-- workspace selection and session continuity
+- project selection and session continuity
 - session send/refresh lifecycle
 - blocking interactions from the server
 - provider configuration flow
 - resilience to SSE failure
-- workspace patch save, archive/restore, worktree creation, MCP addition, and PTY WebSocket streaming
+- project patch save, archive/restore, worktree creation, MCP addition, and PTY WebSocket streaming
 
 ## Coverage Gaps
 
@@ -658,11 +683,11 @@ cycle, no traffic while healthy), the queued full reconcile behind an in-flight
 safety poll, auth-failure stream stop with a single provider notification, and
 the terminal reconnect on a rotated credential client.
 `tests/vitest/connect-recovery.test.ts` covers single-flight concurrent connects
-(one workspace discovery), same-machine rotation using the soft reset (workspace
+(one project discovery), same-machine rotation using the soft reset (project
 preserved), and data-plane revocation (state cleared once, Cloud Link recovery
 reused). `tests/vitest/terminal.test.ts` covers jittered bounded reconnect
 delays and cursor-preserving reconnect with rotated credentials.
-`tests/e2e/flows.spec.mjs` adds a silently stalled SSE flow (watchdog
+`tests/e2e/realtime.spec.mjs` adds a silently stalled SSE flow (watchdog
 re-subscribes and the released stall reconciles a missed blocker, both
 protocols) and a browser offline/online drop that recovers the retained session
 without re-submitting the prompt.
@@ -746,7 +771,7 @@ The following important behaviors are present in code but are not obviously cove
 - session fork, revert/unrevert, and share/unshare
 - attachment upload behavior
 - attachment capability rejection and the 10 MB local-file limit
-- workspace patch conflict UI and worktree reset/remove
+- project patch conflict UI and worktree reset/remove
 - MCP add/connect/disconnect/enable/disable and OAuth UI completion
 - terminal reconnect/termination, ANSI handling, scrollback truncation, and native WebSocket behavior
 - auto-approve config toggling
@@ -792,7 +817,7 @@ npm run test:fake-server
 
 If the app is ever rewritten, parity should be judged at minimum against these behaviors:
 
-1. hydration -> connect -> workspace discovery -> session bootstrap
+1. hydration -> connect -> project discovery -> session bootstrap
 2. prompt send -> transcript refresh -> diff/todo refresh -> idle completion
 3. permission blocking and resolution
 4. capability discovery and provider configuration
@@ -888,17 +913,17 @@ The compact diff-sheet flow also verifies its full viewport width, initial botto
 
 ## Overlay swipe dismissal
 
-The shared `OverlaySheet` now dismisses on a downward drag of its header using `react-native-gesture-handler`, driven by `Gesture.Pan` and a Reanimated `translateY`. A web flow opens the chat library and drags its header down to assert dismissal; the existing close-button flows still cover the tap path. Pull-to-refresh was removed from the workspace, transcript, and diff views, so their manual refresh coverage moved to the workspace header button and to SSE/polling. Run `test:ci:static`, `test:fake-server:self`, and `test:e2e:web`. Native acceptance must verify the drag on a real device (gesture-handler is a native module), plus screen-reader reachability and Android Back dismissal. E2E and fake-server edits require explicit human validation under AGENTS.md.
+The shared `OverlaySheet` and the transparent `Modal` bottom sheets (model picker, select pickers) dismiss on a downward drag of their header using `react-native-gesture-handler`, driven by `Gesture.Pan` and a Reanimated `translateY` shared through `components/ui/use-swipe-dismiss.ts`. The modal sheets wrap their content in `GestureHandlerRootView` so the gesture is recognized inside the native `Modal` window. The helper resets its drag offset when a sheet opens, never when it closes: on iOS the native `Modal` keeps its children mounted through the dismissal animation, so a close-time reset snaps the dragged-off sheet back on-screen (a ghost). A web flow opens the chat library and drags its header down to assert dismissal, and a sibling flow does the same for the model picker; the existing close-button flows still cover the tap path. Pull-to-refresh was removed from the project, transcript, and diff views, so their manual refresh coverage moved to the project header button and to SSE/polling. Run `test:ci:static`, `test:fake-server:self`, and `test:e2e:web`. Native acceptance must verify the drag on a real device (gesture-handler is a native module), especially inside the `Modal` sheets, plus screen-reader reachability and Android Back dismissal. E2E and fake-server edits require explicit human validation under AGENTS.md.
 
 
 ## Session library recovery (#64)
 
-Session-read regressions cover mixed archived/active records and pagination through an active-only page. The fake V1 server reproduces the inclusive `archived=true` contract. Web flows cover idle-session reopening, double taps, archived-card restoration with retained history, and cross-workspace restoration with failure/retry. Run `test:ci:static`, `test:fake-server:self`, and `test:e2e:web`. TestFlight validation with OpenCode 1.18.34, card taps, swipe actions, and accessibility remains required. Changes in the fake-server and E2E directories require explicit human validation under AGENTS.md.
+Session-read regressions cover mixed archived/active records and pagination through an active-only page. The fake V1 server reproduces the inclusive `archived=true` contract. Web flows cover idle-session reopening, double taps, archived-card restoration with retained history, and cross-project restoration with failure/retry. Run `test:ci:static`, `test:fake-server:self`, and `test:e2e:web`. TestFlight validation with OpenCode 1.18.34, card taps, swipe actions, and accessibility remains required. Changes in the fake-server and E2E directories require explicit human validation under AGENTS.md.
 
 
-## Cross-workspace favorite CI regression
+## Cross-project favorite CI regression
 
-The favorite flow waits for server-side prompt completion and the selected workspace rather than a fixed delay. It targets the favorite row directly, since the same session may also appear in the Active group. Provider runtime coverage reproduces cache pruning while bootstrap reads have arrived but capability discovery is still pending. Pruning waits for bootstrap completion and protects the pending deep-link target, then resumes with the selected, running, and conversation sessions. Validate with Node 22 and `CI=true EXPO_PUBLIC_E2E_MODE=1`, including repeated focused favorite flows and the full three CI gates. E2E changes still require explicit human validation under AGENTS.md.
+The favorite flow waits for server-side prompt completion and the selected project rather than a fixed delay. It targets the favorite row directly, since the same session may also appear in the Active group. Provider runtime coverage reproduces cache pruning while bootstrap reads have arrived but capability discovery is still pending. Pruning waits for bootstrap completion and protects the pending deep-link target, then resumes with the selected, running, and conversation sessions. Validate with Node 22 and `CI=true EXPO_PUBLIC_E2E_MODE=1`, including repeated focused favorite flows and the full three CI gates. E2E changes still require explicit human validation under AGENTS.md.
 
 ## xterm terminal validation
 
@@ -934,10 +959,10 @@ reason. Physical keyboard/IME/accessibility and sustained-output profiling remai
 manual acceptance work. The unsigned simulator build also emits existing
 notifications/SecureStore keychain entitlement warnings.
 
-## Scoped Workspace browser validation
+## Scoped Project browser validation
 
 Both fake contracts now require scope on filesystem find/list/read, return distinct
-content for workspaces and worktrees, and retain owning project identity for
+content for projects and worktrees, and retain owning project identity for
 worktree directories outside the main checkout. Self-tests exercise the installed
 V2 SDK's filesystem and worktree operations. Protocol tests cover safe relative
 paths, folder-first sorting, directory-only inventory and binary decoding. Provider
@@ -1084,6 +1109,11 @@ service port pool from `/_cloudlink/version`. Coverage is split by layer:
   link building for root, path and legacy services, the device Basic credential
   and request shape, canonical-value parsing, and error/status propagation
   (including the no-connection and expired-credential guards).
+- `tests/vitest/services-target.test.ts` covers the pure target resolution in
+  `providers/services-target.ts`: the active Cloud Link connection, explicit
+  selection of another saved machine, last-used fallback for a manual active
+  connection, subscription-environment filtering, no-candidate handling, and the
+  machine list's active marking.
 - The V2 fake server implements `GET/PUT/DELETE /_cloudlink/services` and
   `GET /_cloudlink/version` behind a device-credential check provisioned through
   `POST /__control/device`, with `POST /__control/connector-api` switching the
@@ -1095,8 +1125,60 @@ service port pool from `/_cloudlink/version`. Coverage is split by layer:
   and the api 1 legacy version/body shapes.
 - `tests/e2e/connect.spec.mjs` drives a real Cloud Link pairing, opens Settings →
   Services, and adds, edits and removes path and root services through the fake
-  connector, including picking a port and seeing an occupied port marked.
+  connector, including picking a port and seeing an occupied port marked. Add and
+  Edit now enter the full-screen `app/service.tsx` route and return to the
+  reopened Cloud Link section. A second flow switches to a manual connection and
+  proves the saved machine's services stay listed with the not-active notice.
 
-The connector contract is frozen; only the fake server's mirror of it changed,
-so the fake-server and E2E additions require explicit human validation under
-AGENTS.md. CI gates: `test:ci:static`, `test:fake-server:self`, `test:e2e:web`.
+The connector contract is frozen and unchanged; this change is app-side target
+resolution plus the reworked flows, so the E2E additions require explicit human
+validation under AGENTS.md. CI gates: `test:ci:static`, `test:fake-server:self`,
+`test:e2e:web`.
+
+## Extended onboarding acceptance
+
+Onboarding navigation/model unit checks cover both visible sequences and shared
+configured/enabled model filtering. Web flows cover embedded provider auth/model
+toggles, remembered-model selection and Chat continuity, preference persistence,
+immediate language changes, interrupted setup, V1 delivery hiding, empty model
+catalogs, provider removal/reconciliation, back navigation and Settings review.
+Fresh-install Cloud Link pairing must continue to AI before Project. No fake
+server contract is changed. Run the static, fake-server and full web CI gates.
+Changed E2E contracts require explicit human validation under AGENTS.md; accepting
+the design mocks does not validate those test changes. Native acceptance must
+cover picker dismissal, Android Back, reconnecting provider sign-in, safe areas,
+light/dark themes, larger text and screen-reader names.
+
+Manual-connection regressions now expect AI immediately after a successful
+connection. The latest-turn diff assertion allows the documented five-second
+fallback after completion text; it keeps the same file assertions without a
+fixed delay. Screenshot flows wait for picker dismissal before capturing General
+and Review so a closing modal cannot obscure the evidence.
+
+Implementation validation (2026-10-20): all three CI-equivalent gates pass:
+static checks (77 Vitest files / 452 checks), both fake-server self-tests, and all
+148 web E2E flows. The latest-turn diff flow also passed five consecutive runs.
+The Android development build passed (876 Gradle tasks), using the existing
+locked dependencies in a local mirror; source edits stayed in the project root.
+Browser and screenshot review covered 390×844 dark and 320×700 light layouts,
+model selection, Back navigation, wrapping and pinned footers. Browser logs had
+only existing React Native web warnings, with no app errors. The i18n registry was
+regenerated in the project root and passes parity checks for all eight languages.
+Physical-device Back, larger text, screen readers and real provider OAuth remain
+unverified. Human validation of the four changed E2E specifications remains
+required under AGENTS.md; no fake-server source, dependency, release version,
+persisted schema or onboarding completion version changed.
+
+## Multi-server V2 regression coverage
+
+`tests/e2e/multi-server.spec.mjs` starts two independent V2 fakes with intentionally colliding chat IDs and project paths. It checks the mixed list and filters, draft isolation and connected-set restoration, PTY creation on B while chat stays on A, renderer continuity through disconnect/reconnect, Settings/auto-approve isolation, and replies to colliding approval IDs on the correct server. Terminal tests now confirm the explicit creation sheet.
+
+`tests/vitest/workspaces.test.ts` covers composite catalog ordering, shared SSE teardown, secret-free registry validation and hidden-draft update blocking and removal cleanup. The native notification boundary also combines server counts and keeps other servers visible during disconnect. Existing connection recovery, prompt/draft races, sharing, transcript and architecture tests remain required. Share coverage includes a confirmed cross-server destination while focus changes.
+
+Run `npm run test:ci:static`, `npm run test:fake-server:self` and `npm run test:e2e:web`. For manual review, use two independently running V2 fakes, open Connections to connect both, then inspect Chats, Projects, the New terminal sheet and each Settings server selector. Test both themes and slim mode. Browser tests do not establish native WebView retention, microphone ownership, notification delivery or OS background limits; verify those on Android/iOS hardware before release.
+
+For a seeded human-review environment, run `npm run preview:workspaces`. It builds a development web export, starts two isolated V2 fake servers and prints a `/demo.html` URL. That entry point seeds named connections and colliding chat IDs; ordinary reloads preserve subsequent choices. Its reset link clears only that preview origin's app state. Ctrl+C stops all three owned processes.
+
+The preview includes two projects on each server and a subagent fork on Build server. Send a prompt on MacBook Pro to see a normal completion; send one on Build server to exercise a permission request and its server-scoped Approvals view. Switch Hide subagents off to expose the fork. Create a terminal on Build server/secondary-project while keeping chat on MacBook Pro/demo-project.
+
+Terminal selection uses one continuous list with a server chip on each row, without empty workspace headings. With one configured workspace connection, server filters, selectors, chips and redundant scope labels are hidden across Chat, Projects, Terminal and Settings; both Settings section headings, project context and connection management remain available. Disconnected connections still count, so cached rows keep their ownership visible. Multi-server controls return automatically when a second connection is added.

@@ -34,8 +34,8 @@ export default function ChatLandingScreen() {
     return (
       <View style={[styles.center, { backgroundColor: palette.background }]}>
         <Surface style={[styles.panel, { backgroundColor: palette.surface }]} elevation={1}>
-          <Text variant="headlineSmall" style={[styles.title, { color: palette.text }]}>{t('chat:session.chooseWorkspace')}</Text>
-          <Text variant="bodyMedium" style={[styles.copy, { color: palette.muted }]}>{t('chat:session.selectWorkspace')}</Text>
+          <Text variant="headlineSmall" style={[styles.title, { color: palette.text }]}>{t('chat:session.chooseProject')}</Text>
+          <Text variant="bodyMedium" style={[styles.copy, { color: palette.muted }]}>{t('chat:session.selectProject')}</Text>
         </Surface>
       </View>
     );

@@ -9,9 +9,9 @@
         "title": "Your server does the work",
         "description": "Models and tasks run on your OpenCode server. This app keeps you connected to them."
       },
-      "workspace": {
+      "project": {
         "title": "Projects and conversations",
-        "description": "Project workspaces keep chats, files, and changes together."
+        "description": "Projects keep chats, files, and changes together."
       },
       "optional": {
         "title": "Voice and task updates",
@@ -30,13 +30,13 @@
     "hint": "Example: http://192.168.1.10:4096. If you open a web UI at this address, use its API base URL instead, usually ending in /api.",
     "pairHint": "Associez un appareil avec Cloud Link ou saisissez l’URL du serveur ci-dessous."
   },
-  "workspace": {
-    "title": "Choose a workspace",
-    "subtitle": "These are the projects your server knows about. Pick one to start in.",
+  "project": {
+    "title": "Choose a project",
+    "subtitle": "Pick a project to start in, or add a folder on the server.",
     "continue": "Continuer",
     "skip": "Skip",
     "empty": "This server did not report any projects. Add a directory on the server to get started.",
-    "loading": "Loading workspaces…"
+    "loading": "Loading projects…"
   },
   "permissions": {
     "title": "Permissions",
@@ -62,16 +62,24 @@
     "title": "You're ready",
     "subtitle": "Review your setup and start coding.",
     "server": "Server",
-    "workspace": "Workspace",
-    "workspaceMissing": "No workspace selected",
-    "footnote": "Vous pourrez modifier la connexion ou l’espace de travail dans les paramètres.",
+    "project": "Project",
+    "projectMissing": "No project selected",
+    "footnote": "Vous pouvez modifier ces paramètres à tout moment.",
     "start": "Start coding",
-    "done": "Done"
+    "done": "Done",
+    "serverMissing": "Non connecté",
+    "providers": "Fournisseurs",
+    "enabledModels": "Modèles activés"
   },
   "settingsAssistant": {
     "title": "Setup assistant",
-    "summary": "Review permissions, connection, and workspace"
+    "summary": "Vérifier les autorisations, la connexion, les fournisseurs, le projet et les préférences"
   },
   "reviewSetup": "Revoir la configuration",
-  "stepIndicator": "Étape {{step}} sur {{totalSteps}}"
+  "stepIndicator": "Étape {{step}} sur {{totalSteps}}",
+  "general": {
+    "title": "Paramètres généraux",
+    "subtitle": "Adaptez OpenCode Mobile à vos préférences.",
+    "defaultModel": "Modèle par défaut"
+  }
 }

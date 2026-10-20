@@ -28,6 +28,7 @@
     "couldNotFork": "Não foi possível bifurcar a sessão.",
     "couldNotRevert": "Não foi possível reverter a sessão.",
     "couldNotRestore": "Não foi possível restaurar a sessão.",
+    "couldNotCancelPending": "Não foi possível descartar essa mensagem pendente.",
     "couldNotUpdateAutoApprove": "Não foi possível atualizar a aprovação automática.",
     "sendError": {
       "title": "Falha no envio do OpenCode",
@@ -48,8 +49,6 @@
   },
   "content": {
     "connectionIssue": "Problema de conexão",
-    "sessionReverted": "A sessão foi revertida",
-    "restoreReverted": "Restaurar trabalho revertido",
     "runningActivity": "O OpenCode está {{activity}}...",
     "runningRetry": "O OpenCode encontrou um erro e está tentando novamente (tentativa {{attempt}})...",
     "runningGeneric": "O OpenCode está processando a etapa atual...",
@@ -60,7 +59,10 @@
     "allTasksCompleted": "Todas as tarefas concluídas",
     "openToSeeSteps": "Abra para ver todas as etapas",
     "progress": "Progresso",
-    "untitledTask": "Tarefa sem título"
+    "untitledTask": "Tarefa sem título",
+    "loadEarlier": "Nada para mostrar ainda",
+    "loadEarlierDescription": "As mensagens mais recentes deste turno são atividade de ferramentas. Carregue mensagens anteriores para ver a conversa.",
+    "loadEarlierAction": "Carregar mensagens anteriores"
   },
   "cards": {
     "respondToContinue": "Aprovação necessária",
@@ -137,7 +139,7 @@
     "estimatedCost": "Custo estimado da API {{cost}}",
     "openChats": "Chats abertos. {{title}}",
     "untitledChat": "Chat sem título",
-    "chooseWorkspace": "Escolha um espaço de trabalho",
+    "chooseProject": "Escolha um projeto",
     "newChat": "Novo chat",
     "showUsage": "Mostrar detalhes de uso da sessão",
     "stopConversationMode": "Parar modo conversa",
@@ -162,7 +164,7 @@
   "library": {
     "title": "Chats",
     "searchPlaceholder": "Buscar chats",
-    "chooseWorkspace": "Escolha um espaço de trabalho",
+    "chooseProject": "Escolha um projeto",
     "swipeHint": " · Deslize para a esquerda para ver ações",
     "active": "Ativos",
     "archived": "Arquivados",
@@ -219,7 +221,7 @@
   },
   "starter": {
     "title": "Inicie uma nova tarefa",
-    "description": "Seja específico no prompt e o OpenCode vai inspecionar o espaço de trabalho, mostrar o progresso e transmitir as alterações de arquivos.",
+    "description": "Seja específico no prompt e o OpenCode vai inspecionar o projeto, mostrar o progresso e transmitir as alterações de arquivos.",
     "prompts": {
       "polish": "Explique este projeto",
       "review": "Revise as alterações recentes",
@@ -230,7 +232,8 @@
   "reasoning": {
     "low": "Baixo",
     "default": "Padrão",
-    "high": "Alto"
+    "high": "Alto",
+    "max": "Máximo"
   },
   "diff": {
     "turn": "Turno",
@@ -260,10 +263,10 @@
     "filesChangedCompact_other": "{{files}} arquivos alterados, +{{additions}} / -{{deletions}}"
   },
   "session": {
-    "chooseWorkspace": "Escolha um espaço de trabalho",
-    "selectWorkspace": "Selecione um projeto na aba Espaços de trabalho para abrir o contexto de chat dele.",
+    "chooseProject": "Escolha um projeto",
+    "selectProject": "Selecione um projeto na aba Projetos para abrir o contexto de chat dele.",
     "opening": "Abrindo o OpenCode Mobile",
-    "loading": "Carregando a sessão mais recente deste espaço de trabalho do OpenCode Mobile."
+    "loading": "Carregando a sessão mais recente deste projeto do OpenCode Mobile."
   },
   "deepLink": {
     "missingSessionId": "Este link de sessão está sem um ID de sessão.",
@@ -282,7 +285,13 @@
   },
   "pendingPrompts": {
     "sending": "Enviando…",
-    "waiting": "Aguardando ser considerado…"
+    "waiting": "Aguardando ser considerado…",
+    "cancel": "Descartar mensagem pendente"
+  },
+  "revertNotice": {
+    "title": "Revertido a partir desta mensagem",
+    "hint": "Edite o prompt abaixo e envie para continuar a partir daqui.",
+    "cancel": "Cancelar reversão"
   },
   "approvals": {
     "mcpAuthTitle": "Autenticação MCP necessária",

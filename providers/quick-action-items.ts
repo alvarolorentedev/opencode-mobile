@@ -29,12 +29,12 @@ export function getSessionQuickActions({
     .filter((session) => Boolean(session.sessionId) && Boolean(session.projectPath))
     .slice(0, maxItems)
     .map((session) => ({
-      id: `session:${session.sessionId}`,
+      id: session.connectionScope ? `session:${session.connectionScope}:${session.projectPath}:${session.sessionId}` : `session:${session.sessionId}`,
       title: session.title?.trim() || untitledLabel,
       params: {
         sessionId: session.sessionId,
         projectPath: session.projectPath,
-        connectionScope,
+        connectionScope: session.connectionScope ?? connectionScope,
       },
     }));
 }

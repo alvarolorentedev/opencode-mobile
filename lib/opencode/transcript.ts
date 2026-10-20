@@ -1,5 +1,103 @@
 import type { SessionMessageRecord, TranscriptDetail, TranscriptEntry } from '@/lib/opencode/format';
 
+// How much of the native timeline the transcript renders. `basic` is the
+// default: user and assistant messages only. `reasoning` adds reasoning rows;
+// `verbose` also adds tool calls and patches.
+export type TranscriptVerbosity = 'basic' | 'reasoning' | 'verbose';
+
+export const TRANSCRIPT_VERBOSITIES: readonly TranscriptVerbosity[] = ['basic', 'reasoning', 'verbose'];
+
+// Details rendered as collapsible (non-bubble) rows outside the message card.
+// Patches stay review chips; V1-only steps/subtasks/agent parts are not shown.
+export function isCollapsibleDetail(detail: TranscriptDetail) {
+  return detail.kind === 'tool' || detail.kind === 'reasoning';
+}
+
+// Whether a detail is surfaced at the given verbosity. Files are attachments
+// and are always shown with their message; patches are tool output.
+export function isDetailVisible(detail: TranscriptDetail, verbosity: TranscriptVerbosity) {
+  if (detail.kind === 'reasoning') return verbosity !== 'basic';
+  if (detail.kind === 'tool' || detail.kind === 'patch') return verbosity === 'verbose';
+  return false;
+}
+
+// File-mutating tools are represented by the patch/review surface; their
+// collapsible rows would duplicate it. They still feed the activity label.
+const HIDDEN_TOOL_NAMES = new Set(['edit', 'write', 'multiedit', 'apply_patch']);
+const SHELL_TOOL_NAMES = new Set(['bash', 'shell', 'sh', 'zsh', 'fish']);
+
+export function isShellTool(tool: string) {
+  return SHELL_TOOL_NAMES.has(tool);
+}
+
+export function isDetailShown(detail: TranscriptDetail, verbosity: TranscriptVerbosity) {
+  return isDetailVisible(detail, verbosity)
+    && !(detail.kind === 'tool' && HIDDEN_TOOL_NAMES.has(detail.tool));
+}
+
+// Bubble content for a message row. Patch chips stay on text-bearing messages
+// at every level; a patch-only message is filtered out at basic separately.
+export function hasMessageBubble(entry: TranscriptEntry) {
+  return entry.role === 'user'
+    || Boolean(entry.text.trim() || entry.error)
+    || entry.details.some((detail) => detail.kind === 'file' || detail.kind === 'patch');
+}
+
+export type ToolDetail = Extract<TranscriptDetail, { kind: 'tool' }>;
+export type ReasoningDetail = Extract<TranscriptDetail, { kind: 'reasoning' }>;
+
+export type DetailGroup =
+  | { key: string; kind: 'tool'; tool: string; details: ToolDetail[] }
+  | { key: string; kind: 'reasoning'; details: ReasoningDetail[] };
+
+export type TranscriptRow =
+  | { key: string; type: 'message'; entry: TranscriptEntry }
+  | { key: string; type: 'details'; group: DetailGroup };
+
+// Flatten the transcript into message rows and contiguous detail groups. A
+// message bubble breaks contiguity; hidden tools are skipped before grouping so
+// they cannot split a visible run. The group key is its first detail id, so the
+// row identity (and its expanded state) survives as details accumulate.
+export function buildTranscriptRows(entries: TranscriptEntry[], verbosity: TranscriptVerbosity): TranscriptRow[] {
+  const rows: TranscriptRow[] = [];
+  let pending: DetailGroup | undefined;
+
+  const flush = () => {
+    if (!pending) return;
+    rows.push({ key: `details:${pending.key}`, type: 'details', group: pending });
+    pending = undefined;
+  };
+
+  for (const entry of entries) {
+    if (hasMessageBubble(entry)) {
+      flush();
+      rows.push({ key: `message:${entry.id}`, type: 'message', entry });
+    }
+
+    for (const detail of entry.details) {
+      if (!isCollapsibleDetail(detail) || !isDetailShown(detail, verbosity)) continue;
+      if (detail.kind === 'tool') {
+        if (pending?.kind === 'tool' && pending.tool === detail.tool) {
+          pending.details.push(detail);
+        } else {
+          flush();
+          pending = { key: detail.id, kind: 'tool', tool: detail.tool, details: [detail] };
+        }
+      } else if (detail.kind === 'reasoning') {
+        if (pending?.kind === 'reasoning') {
+          pending.details.push(detail);
+        } else {
+          flush();
+          pending = { key: detail.id, kind: 'reasoning', details: [detail] };
+        }
+      }
+    }
+  }
+
+  flush();
+  return rows;
+}
+
 export function getTranscriptActivityLabel(entry: TranscriptEntry) {
   const runningTool = entry.details.find((detail) => detail.kind === 'tool' && detail.status === 'running');
   if (runningTool) {
@@ -21,20 +119,22 @@ export function getTranscriptActivityLabel(entry: TranscriptEntry) {
     return latestReasoning.label;
   }
 
-  const latestStep = [...entry.details].reverse().find((detail) => detail.kind === 'step' || detail.kind === 'subtask');
-  if (latestStep) {
-    return latestStep.label;
-  }
-
   return undefined;
 }
 
-export function isTranscriptDisplayMessage(entry: TranscriptEntry) {
+export function isTranscriptDisplayMessage(entry: TranscriptEntry, verbosity: TranscriptVerbosity = 'basic') {
   if (entry.role === 'user') {
     return true;
   }
 
-  return Boolean(entry.text.trim() || entry.error || entry.details.some((detail) => detail.kind === 'file'));
+  if (entry.text.trim() || entry.error || entry.details.some((detail) => detail.kind === 'file')) {
+    return true;
+  }
+
+  // A tool-only or reasoning-only turn is hidden at conversation verbosity but
+  // surfaces as collapsible rows at higher levels. Patch-only turns are tool
+  // output too.
+  return entry.details.some((detail) => isDetailShown(detail, verbosity));
 }
 
 export function summarizeTranscriptDetails(details: TranscriptDetail[], labels?: { patches: (count: number) => string; files: (count: number) => string }) {

@@ -18,6 +18,7 @@ const root = path.join(path.dirname(fileURLToPath(import.meta.url)), '..');
 const steps = [
   { name: 'lint', entry: 'node_modules/eslint/bin/eslint.js', args: ['.'] },
   { name: 'typecheck', entry: 'node_modules/typescript/bin/tsc', args: ['--noEmit'] },
+  { name: 'typecheck:tests', entry: 'node_modules/typescript/bin/tsc', args: ['-p', 'tsconfig.tests.json'] },
   { name: 'vitest', entry: 'node_modules/vitest/vitest.mjs', args: ['run'] },
 ];
 

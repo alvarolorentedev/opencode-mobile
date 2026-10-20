@@ -27,24 +27,26 @@ import type {
 import type { AgentOption, ModelOption } from '@/providers/opencode-model-selection';
 import type { ChatPreferences } from '@/providers/opencode-preferences';
 import { defaultChatPreferences } from '@/providers/opencode-preferences';
+import type { SessionRefreshOptions } from '@/providers/opencode-provider-events';
 import type {
   ConnectionState,
   DiffScope,
   FavoriteSession,
   ProviderAuthMethod,
   ProviderOption,
+  ProjectPathsByConnection,
 } from '@/providers/opencode-provider-types';
 import type { Diagnostics } from '@/providers/services/diagnostics-service';
 
-export function useOpencodeProviderState() {
-  const [settings, setSettings] = useState<OpencodeConnectionSettings>(defaultConnectionSettings);
+export function useOpencodeProviderState(initial?: { settings: OpencodeConnectionSettings; projectPath?: string }) {
+  const [settings, setSettings] = useState<OpencodeConnectionSettings>(initial?.settings ?? defaultConnectionSettings);
   const [controlPlaneUrl, setControlPlaneUrl] = useState(() => getConnectControlPlanes()[0] ?? '');
   const [connection, setConnection] = useState<ConnectionState>({
     status: 'idle',
     message: 'Add a server URL and connect to OpenCode.',
   });
   const [serverContract, setServerContract] = useState<ServerContract>('v2');
-  const [activeProjectPath, setActiveProjectPath] = useState<string>();
+  const [activeProjectPath, setActiveProjectPath] = useState<string | undefined>(initial?.projectPath);
   const [onboardingVersion, setOnboardingVersion] = useState(0);
   const [onboardingActive, setOnboardingActive] = useState(false);
   const [sessions, setSessions] = useState<Session[]>([]);
@@ -67,7 +69,7 @@ export function useOpencodeProviderState() {
   const [isRefreshingSessions, setIsRefreshingSessions] = useState(false);
   const [isRefreshingMessages, setIsRefreshingMessages] = useState(false);
   const [isRefreshingDiffs, setIsRefreshingDiffs] = useState(false);
-  const [isRefreshingWorkspaceCatalog, setIsRefreshingWorkspaceCatalog] = useState(false);
+  const [isRefreshingProjectCatalog, setIsRefreshingProjectCatalog] = useState(false);
   const [isBootstrappingChat, setIsBootstrappingChat] = useState(false);
   const [activeSessionsVisible, setActiveSessionsVisible] = useState(false);
   const [currentConfig, setCurrentConfig] = useState<Config>();
@@ -78,9 +80,10 @@ export function useOpencodeProviderState() {
   const [chatPreferences, setChatPreferences] = useState<ChatPreferences>(defaultChatPreferences);
   const [lastSessionByConnection, setLastSessionByConnection] = useState<Record<string, Record<string, string>>>({});
   const [favoriteSessions, setFavoriteSessions] = useState<FavoriteSession[]>([]);
+  const [projectPathsByConnection, setProjectPathsByConnection] = useState<ProjectPathsByConnection>({});
   const [commands, setCommands] = useState<Command[]>([]);
-  const [workspaceFileStatuses, setWorkspaceFileStatuses] = useState<File[]>([]);
-  const [selectedWorkspaceFile, setSelectedWorkspaceFile] = useState<{ path: string; content: FileContent }>();
+  const [projectFileStatuses, setProjectFileStatuses] = useState<File[]>([]);
+  const [selectedProjectFile, setSelectedProjectFile] = useState<{ path: string; content: FileContent }>();
   const [vcsInfo, setVcsInfo] = useState<VcsInfo>();
   const [diagnostics, setDiagnostics] = useState<Diagnostics>();
 
@@ -107,13 +110,14 @@ export function useOpencodeProviderState() {
   const bootstrapPromiseRef = useRef<Promise<string | undefined> | null>(null);
   const bootstrapTokenRef = useRef<object | undefined>(undefined);
   const sessionRefreshTimeoutsRef = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
-  const sessionRefreshOptionsRef = useRef<Record<string, { messages?: boolean; fullMessages?: boolean; diff?: boolean; todos?: boolean; sessions?: boolean }>>({});
+  const sessionRefreshOptionsRef = useRef<Record<string, SessionRefreshOptions>>({});
   const diffScopeBySessionRef = useRef<Record<string, DiffScope>>({});
   const selectedDiffMessageBySessionRef = useRef<Record<string, string | undefined>>({});
   const messagesBySessionRef = useRef(messagesBySession);
   const busyNotificationsRef = useRef<Set<string>>(new Set());
   const promptSubmissionRef = useRef<{ active: boolean; sessionId?: string }>({ active: false });
-  const workspaceFileRequestRef = useRef(0);
+  const projectFileRequestRef = useRef(0);
+  const projectPathsByConnectionRef = useRef(projectPathsByConnection);
 
   // Latest-ref mirror. Updating refs in a layout effect (instead of during
   // render) is the React-sanctioned pattern: the mirrored values are only read
@@ -129,6 +133,7 @@ export function useOpencodeProviderState() {
     diffScopeBySessionRef.current = diffScopeBySession;
     selectedDiffMessageBySessionRef.current = selectedDiffMessageBySession;
     messagesBySessionRef.current = messagesBySession;
+    projectPathsByConnectionRef.current = projectPathsByConnection;
   });
 
   return {
@@ -159,7 +164,7 @@ export function useOpencodeProviderState() {
     isRefreshingSessions, setIsRefreshingSessions,
     isRefreshingMessages, setIsRefreshingMessages,
     isRefreshingDiffs, setIsRefreshingDiffs,
-    isRefreshingWorkspaceCatalog, setIsRefreshingWorkspaceCatalog,
+    isRefreshingProjectCatalog, setIsRefreshingProjectCatalog,
     isBootstrappingChat, setIsBootstrappingChat,
     activeSessionsVisible, setActiveSessionsVisible,
     currentConfig, setCurrentConfig,
@@ -170,9 +175,10 @@ export function useOpencodeProviderState() {
     chatPreferences, setChatPreferences,
     lastSessionByConnection, setLastSessionByConnection,
     favoriteSessions, setFavoriteSessions,
+    projectPathsByConnection, setProjectPathsByConnection,
     commands, setCommands,
-    workspaceFileStatuses, setWorkspaceFileStatuses,
-    selectedWorkspaceFile, setSelectedWorkspaceFile,
+    projectFileStatuses, setProjectFileStatuses,
+    selectedProjectFile, setSelectedProjectFile,
     vcsInfo, setVcsInfo,
     diagnostics, setDiagnostics,
     connectionScope,
@@ -200,7 +206,8 @@ export function useOpencodeProviderState() {
     messagesBySessionRef,
     busyNotificationsRef,
     promptSubmissionRef,
-    workspaceFileRequestRef,
+    projectFileRequestRef,
+    projectPathsByConnectionRef,
   };
 }
 

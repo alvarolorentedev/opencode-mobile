@@ -6,11 +6,23 @@ import { requireData } from '@/providers/services/require-data';
 import { coalesceRead } from '@/lib/opencode/in-flight';
 import { toFileDiffs } from '@/lib/opencode/diff';
 
-export async function loadWorkspaceCatalog(catalogClient: OpencodeClient) {
+// The installed SDK's generated client declares `Project` twice, so TypeScript
+// drops `current` from the inferred project API. Keep the workaround for that
+// upstream typing bug at the V1 compatibility boundary.
+type LegacyProjectApi = {
+  list: () => Promise<{ data?: Project[] }>;
+  current: () => Promise<{ data?: Project }>;
+};
+
+function projectApi(client: OpencodeClient): LegacyProjectApi {
+  return client.project as unknown as LegacyProjectApi;
+}
+
+export async function loadProjectCatalog(catalogClient: OpencodeClient) {
   const [pathResponse, projectsResponse, currentProjectResponse] = await Promise.all([
     catalogClient.path.get(),
-    catalogClient.project.list(),
-    catalogClient.project.current(),
+    projectApi(catalogClient).list(),
+    projectApi(catalogClient).current(),
   ]);
 
   const discoveredProjects = requireData(projectsResponse.data, 'project list request');
@@ -37,8 +49,8 @@ export async function loadWorkspaceCatalog(catalogClient: OpencodeClient) {
   };
 }
 
-export async function resolveWorkspace(client: OpencodeClient) {
-  return requireData((await client.project.current()).data, 'current project request');
+export async function resolveProjectLocation(client: OpencodeClient) {
+  return requireData((await projectApi(client).current()).data, 'current project request');
 }
 
 export async function listSessions(client: OpencodeClient) {
@@ -53,7 +65,7 @@ async function fetchSessions(client: OpencodeClient) {
   return { sessions: nextSessions.filter((session) => !session.time.archived), statuses: requireData(statusesResponse.data, 'session status request') };
 }
 
-// Cross-workspace session snapshot for the Chat Library "Active" group. Uses an
+// Cross-project session snapshot for the Chat Library "Active" group. Uses an
 // unscoped client (empty directory) so both contracts return sessions and
 // statuses for every project on the active connection, not just the active one.
 export async function listActiveSessions(client: OpencodeClient) {
@@ -76,8 +88,7 @@ export async function listArchivedSessions(client: OpencodeClient) {
   return sessions.filter((session) => Boolean(session.time.archived));
 }
 
-export const INITIAL_MESSAGE_LIMIT = 20;
-export const HISTORY_PAGE_LIMIT = 20;
+export const TRANSCRIPT_PAGE_LIMIT = 20;
 
 export type SessionMessagePage = {
   records: SessionMessageRecord[];
@@ -95,7 +106,7 @@ export async function getSessionMessages(
   sessionId: string,
   options: { limit?: number; before?: string } = {},
 ): Promise<SessionMessagePage> {
-  const limit = options.limit ?? HISTORY_PAGE_LIMIT;
+  const limit = options.limit ?? TRANSCRIPT_PAGE_LIMIT;
   const before = options.before;
   return coalesceRead(client, `messages:${sessionId}:${before ?? 'newest'}:${limit}`, () =>
     fetchSessionMessagePage(client, sessionId, limit, before));
@@ -115,7 +126,7 @@ export async function getSessionDiff(client: OpencodeClient, sessionId: string, 
   // only a cold cache pays for a newest-page read.
   let targetMessageId = messageId;
   if (!targetMessageId) {
-    const source = messages ?? (await getSessionMessages(client, sessionId, { limit: INITIAL_MESSAGE_LIMIT })).records;
+    const source = messages ?? (await getSessionMessages(client, sessionId, { limit: TRANSCRIPT_PAGE_LIMIT })).records;
     const latestUserMessage = source.slice().reverse().find(({ info }) => info.role === 'user');
     if (!latestUserMessage) {
       return [];

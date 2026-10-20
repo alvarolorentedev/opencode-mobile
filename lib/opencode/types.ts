@@ -122,6 +122,7 @@ export type Model = {
     id: string;
     providerID: string;
     name: string;
+    variants: { id: string }[];
     capabilities: {
         reasoning: boolean;
         attachment: boolean;

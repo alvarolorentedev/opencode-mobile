@@ -16,4 +16,5 @@ export type PendingPrompt = {
 export type PromptInboxApi = {
   submit: (input: PromptInput, delivery: PromptDelivery) => Promise<PendingPrompt>;
   list: (sessionId: string) => Promise<PendingPrompt[]>;
+  cancel: (sessionId: string, promptId: string) => Promise<void>;
 };

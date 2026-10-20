@@ -1,9 +1,9 @@
 {
   "screen": {
     "connectTitle": "Conectar con OpenCode",
-    "chooseWorkspace": "Elegir un espacio de trabajo",
+    "chooseProject": "Elegir un proyecto",
     "selectProject": "Selecciona un proyecto antes de abrir una terminal.",
-    "openWorkspaces": "Abrir Espacios",
+    "openProjects": "Abrir proyectos",
     "title": "Terminal"
   },
   "console": {

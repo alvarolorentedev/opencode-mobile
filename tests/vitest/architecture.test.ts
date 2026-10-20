@@ -33,11 +33,14 @@ describe('architecture ratchets', () => {
     }
 
     // 1. The provider orchestrates domains; it should not regrow into a god object.
+    // Composition lives in providers/use-opencode-provider-composition.ts and the
+    // context wiring in providers/opencode-provider-tree.tsx; the entrypoint stays
+    // a thin wrapper so it cannot accumulate orchestration again.
     const provider = await read('providers/opencode-provider.tsx');
     const providerLines = provider.split('\n').length;
     assert.ok(
-      providerLines <= 500,
-      `providers/opencode-provider.tsx is ${providerLines} lines. Extract a domain into a providers/use-*-state.ts hook instead of growing the provider.`,
+      providerLines <= 60,
+      `providers/opencode-provider.tsx is ${providerLines} lines. Keep it a thin wrapper over use-opencode-provider-composition.ts / opencode-provider-tree.tsx instead of growing the provider.`,
     );
 
     // 1b. No source file may exceed the readable-size ceiling. Generated locale
@@ -93,7 +96,7 @@ describe('architecture ratchets', () => {
           const ast = ts.createSourceFile(file, source, ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX);
           function visit(node: ts.Node) {
             if ((ts.isJsxOpeningElement(node) || ts.isJsxSelfClosingElement(node)) && node.tagName.getText(ast) === 'KeyboardAvoidingView') {
-              const behavior = node.attributes.properties.find((prop) => prop.name?.getText(ast) === 'behavior')?.initializer;
+              const behavior = node.attributes.properties.find((prop): prop is ts.JsxAttribute => ts.isJsxAttribute(prop) && prop.name.getText(ast) === 'behavior')?.initializer;
               assert.equal((behavior as ts.StringLiteral | undefined)?.text, 'padding', `${file}: keyboard avoidance must use padding on all platforms`);
               keyboardSurfaces += 1;
             }

@@ -5,11 +5,10 @@ type Overrides = Partial<Parameters<typeof listProps>[0]>;
 
 function listProps(overrides: Record<string, unknown> = {}) {
   return {
-    activeSession: undefined,
     awaitingUserInput: false,
     connection: { status: 'connected' as const, message: '' },
     currentSessionId: 'session-1',
-    displayTranscript: [] as unknown[],
+    transcriptRows: [] as unknown[],
     flatTranscript: false,
     hasMessages: false,
     hasOlderMessages: false,
@@ -22,7 +21,6 @@ function listProps(overrides: Record<string, unknown> = {}) {
     onRevertMessage: vi.fn(),
     onSelectStarterPrompt: vi.fn(),
     onToggleSpeak: vi.fn(),
-    onUnrevert: vi.fn(),
     palette: {},
     pendingInteractions: 0,
     running: false,
@@ -45,6 +43,7 @@ async function mountTranscriptList(overrides: Overrides = {}) {
     'react-native': { AppState: { addEventListener: () => ({ remove: () => undefined }) }, View: 'View' },
     'react-native-paper': { ActivityIndicator: 'ActivityIndicator', Button: 'Button', Card: 'Card', Text: 'Text', TouchableRipple: 'TouchableRipple' },
     '@/components/chat/chat-cards': { TranscriptMessage: 'TranscriptMessage' },
+    '@/components/chat/cards/collapsible-detail': { CollapsibleDetail: 'CollapsibleDetail' },
     '@/components/chat/chat-view-styles': { styles: {}, slimStyles: {} },
     '@/components/chat/chat-view-utils': { STARTER_PROMPT_KEYS: [] },
     '@/components/chat/content/transcript-skeleton': { TranscriptSkeleton: 'TranscriptSkeleton' },
@@ -67,16 +66,21 @@ describe('transcript empty state', () => {
     expect(list.props.ListEmptyComponent.type).toBe('Card');
   });
 
-  it('shows the skeleton instead of starter prompts while a session turn is running', async () => {
-    const { update } = await mountTranscriptList({ hasMessages: true, running: true });
-    const list = update({});
-    expect(list.props.ListEmptyComponent.type).toBe('TranscriptSkeleton');
+  it('does not show the skeleton while a running turn has held records but no display content', async () => {
+    const { update } = await mountTranscriptList({ hasMessages: true, isRefreshingMessages: true, running: true });
+    expect(update({}).props.ListEmptyComponent).toBeNull();
   });
 
-  it('does not offer starter prompts when only non-display history is loaded', async () => {
+  it('shows the skeleton only for a cold fetch with no held records', async () => {
+    const { update } = await mountTranscriptList({ hasMessages: false, isRefreshingMessages: true, running: true });
+    expect(update({}).props.ListEmptyComponent.type).toBe('TranscriptSkeleton');
+  });
+
+  it('offers a load-earlier affordance when only non-display history is loaded', async () => {
     const { update } = await mountTranscriptList({ hasOlderMessages: true });
     const idle = update({ running: false });
-    expect(idle.props.ListEmptyComponent).toBeNull();
+    expect(idle.props.ListEmptyComponent.type).toBe('Card');
+    expect(JSON.stringify(idle.props.ListEmptyComponent)).toContain('chat:content.loadEarlier');
   });
 
   it('still offers starter prompts for a brand-new session', async () => {

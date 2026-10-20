@@ -16,7 +16,6 @@ import type {
   McpLocalConfig,
   McpRemoteConfig,
   McpStatus,
-  Project,
   Pty,
   PtyShellsResponse,
   Session,
@@ -41,11 +40,11 @@ import type { useConnectionActions } from '@/providers/use-connection-actions';
 import type { useConversationState } from '@/providers/use-conversation-state';
 import type { usePromptLifecycle } from '@/providers/use-prompt-lifecycle';
 import type { useSessionActions } from '@/providers/use-session-actions';
-import type { useWorkspaceActions } from '@/providers/use-workspace-actions';
+import type { useProjectActions } from '@/providers/use-project-actions';
 import type { SharedInput } from '@/providers/use-share-state';
 
 type ActionInputs =
-  ReturnType<typeof useWorkspaceActions> &
+  ReturnType<typeof useProjectActions> &
   ReturnType<typeof useSessionActions> &
   ReturnType<typeof useCapabilitiesActions> &
   ReturnType<typeof usePromptLifecycle> &
@@ -72,12 +71,11 @@ export type ProviderValuesInput = ActionInputs & {
   projects: OpencodeProject[];
   activeProjectPath?: string;
   activeProject?: OpencodeProject;
-  serverProjects: Project[];
   currentProjectPath?: string;
   serverRootPath?: string;
-  isRefreshingWorkspaceCatalog: boolean;
-  workspaceFileStatuses: File[];
-  selectedWorkspaceFile?: { path: string; content: FileContent };
+  isRefreshingProjectCatalog: boolean;
+  projectFileStatuses: File[];
+  selectedProjectFile?: { path: string; content: FileContent };
   vcsInfo?: VcsInfo;
   worktrees: WorktreeCatalog;
   refreshWorktrees: () => Promise<void>;
@@ -93,6 +91,7 @@ export type ProviderValuesInput = ActionInputs & {
   setActiveSessionsVisible: Dispatch<SetStateAction<boolean>>;
   currentSessionId?: string;
   pendingPromptsBySession: Record<string, PendingPrompt[]>;
+  cancelPrompt: (sessionId: string, promptId: string) => Promise<void>;
   messagesBySession: Record<string, SessionMessageRecord[]>;
   diffScopeBySession: Record<string, DiffScope>;
   diffsBySession: Record<string, FileDiff[]>;

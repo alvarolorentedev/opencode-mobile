@@ -15,7 +15,8 @@ the short overview of the strategy and the merge gate.
 
 ## CI Gates
 
-Three workflows run the same `validate` gate:
+Three workflows run the same `validate` gate, defined once in
+`.github/workflows/validate.yml` (`workflow_call`):
 
 - `.github/workflows/build.yml` — pushes to `main` and `v*` tags
 - `.github/workflows/pr-validate.yml` — pull requests targeting `main`
@@ -23,9 +24,9 @@ Three workflows run the same `validate` gate:
 
 `validate` runs:
 
-1. `npm run test:ci:static` — lint, app TypeScript type-checking, and the Vitest
-   suites. The exact set is the script in `package.json`; do not duplicate the
-   list in prose.
+1. `npm run test:ci:static` — lint, app TypeScript type-checking, the typed-test
+   type-check (`npm run typecheck:tests`), and the Vitest suites. The exact set
+   is the script in `package.json`; do not duplicate the list in prose.
 2. `npm run test:fake-server:self`
 3. `npm run test:e2e:web` — builds the web bundle, boots the fake server, and
    runs the Playwright flows.
@@ -49,8 +50,8 @@ The highest-risk behavior in this app is orchestration across:
 - provider configuration and model availability
 - event-stream updates and polling fallback
 
-Those behaviors live primarily in `providers/opencode-provider.tsx`,
-`components/chat/chat-view.tsx`, `app/(tabs)/workspace.tsx`,
+Those behaviors live primarily in `providers/use-opencode-provider-composition.ts`,
+`components/chat/chat-view.tsx`, `app/(tabs)/projects.tsx`,
 `app/(tabs)/settings.tsx`, and `lib/opencode/client.ts`.
 
 ## Fake OpenCode Server
@@ -130,9 +131,12 @@ command remains available for manual use.
 ## Test Layout
 
 - `tests/vitest/` — Vitest suites, run by `npm run test:vitest` (part of
-  `npm run test:ci:static`). They are not type-checked by `tsc`; many drive the
-  dynamic `loadTs`/`hookRuntime` harness in `tests/helpers/runtime.mjs`.
-- `tests/e2e/` — Playwright flow specs.
+  `npm run test:ci:static`). `npm run typecheck:tests` type-checks them via
+  `tsconfig.tests.json`, which excludes the harness-heavy suites listed there;
+  many drive the dynamic `loadTs`/`hookRuntime` harness in
+  `tests/helpers/runtime.mjs`.
+- `tests/e2e/` — Playwright flow specs, split by domain over
+  `tests/e2e/helpers/flows.mjs`.
 - `tests/fake-opencode/` — the deterministic v1/v2 fake servers and their self-test.
 - `tests/foss-prepare.test.mjs` — FOSS build-tooling check, run by `npm run test:foss`.
 

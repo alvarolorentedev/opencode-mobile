@@ -4,6 +4,7 @@ import { runInNewContext } from 'node:vm';
 import ts from 'typescript';
 import { loadTs, hookRuntime, deferred } from '../helpers/runtime.mjs';
 import { describe, it } from 'vitest';
+import { pruneByKeepIds } from '@/providers/opencode-provider-utils';
 
 describe('provider runtime actions', () => {
   it('provider runtime actions', async () => {
@@ -43,14 +44,14 @@ function extractEffect(source, marker) {
   visit(ast);
   return found;
 }
-const workspaceActionsSource = await readSource('../../providers/use-workspace-file-actions.ts');
+const projectActionsSource = await readSource('../../providers/use-project-file-actions.ts');
 const promptLifecycleSource = await readSource('../../providers/use-prompt-lifecycle.ts');
 const sessionActionsSource = await readSource('../../providers/use-session-bootstrap-actions.ts');
 const connectionActionsSource = await readSource('../../providers/use-connection-link-actions.ts');
 const providerEffectsSource = await readSource('../../providers/use-opencode-provider-effects.ts');
-const names = [ 'openWorkspaceFile', 'saveWorkspaceFile', 'abortSession'];
+const names = [ 'openProjectFile', 'saveProjectFile', 'abortSession'];
 const declarations = [
-  extractDeclarations(workspaceActionsSource, ['openWorkspaceFile', 'saveWorkspaceFile']),
+  extractDeclarations(projectActionsSource, ['openProjectFile', 'saveProjectFile']),
   extractDeclarations(promptLifecycleSource, ['abortSession']),
 ].join('\n');
 let aborted = false;
@@ -59,7 +60,7 @@ let active = client, selected, patches = 0;
 const reads = new Map(), fileReads = new Map();
 const fileGate = deferred(), saveGate = deferred();
 const context = {
-  client, useCallback: (fn) => fn, workspaceSearchRequestRef: { current: 0 }, workspaceFileRequestRef: { current: 0 },
+  client, useCallback: (fn) => fn, projectSearchRequestRef: { current: 0 }, projectFileRequestRef: { current: 0 },
   activeProjectPathRef: { current: '/repo' }, isCurrentClient: (candidate) => candidate === active,
   currentSessionIdRef: {}, diffScopeBySessionRef: { current: {} },
   findFiles: (_, query) => { const gate = deferred(); reads.set(query, gate); return gate.promise; },
@@ -67,7 +68,7 @@ const context = {
     if (path.startsWith('selection-')) { const gate = deferred(); fileReads.set(path, gate); return gate.promise; }
     return path === 'save' ? saveGate.promise : fileGate.promise;
   },
-  setSelectedWorkspaceFile: (value) => { selected = value; },
+  setSelectedProjectFile: (value) => { selected = value; },
   createFullFilePatch: () => 'patch', saveFile: async () => { patches++; },
   interruptSession: async () => { aborted = true; }, refreshServerFeatures: async () => {}, refreshVcsDiff: async () => {},
   connectionScope: 'scope', pendingNotificationKey: () => 'key',
@@ -79,19 +80,19 @@ const context = {
 };
 runInNewContext(ts.transpileModule(`${declarations}\nexports.actions = { ${names.join(', ')} };`, { compilerOptions: { module: ts.ModuleKind.CommonJS } }).outputText, context);
 const actions = context.exports.actions;
-const workspaceProtocol = await loadTs('lib/opencode/workspace.ts', { '@/lib/compare-labels': { compareLabels: (a, b) => a.localeCompare(b) } });
-context.workspacePath = workspaceProtocol.workspacePath;
+const projectProtocol = await loadTs('lib/opencode/project.ts', { '@/lib/compare-labels': { compareLabels: (a, b) => a.localeCompare(b) } });
+context.projectPath = projectProtocol.projectPath;
 const browserRuntime = hookRuntime();
 const directoryReads = new Map();
-const browserHook = await loadTs('providers/use-workspace-browser.ts', {
+const browserHook = await loadTs('providers/use-project-browser.ts', {
   react: browserRuntime.react,
-  '@/lib/opencode/workspace': workspaceProtocol,
-  '@/providers/services/workspace-service': {
+  '@/lib/opencode/project': projectProtocol,
+  '@/providers/services/project-service': {
     findFiles: context.findFiles,
     listFiles: (_, path) => { const gate = deferred(); directoryReads.set(path, gate); return gate.promise; },
   },
 });
-browserRuntime.mount(browserHook.useWorkspaceBrowser, { client, isCurrentClient: (candidate) => candidate === active });
+browserRuntime.mount(browserHook.useProjectBrowser, { client, isCurrentClient: (candidate) => candidate === active });
 const searchFiles = (query) => browserRuntime.value.search(query);
 
 const first = searchFiles('first'), last = searchFiles('last');
@@ -106,72 +107,106 @@ directoryReads.get('src').resolve([{ path: 'src/old.ts', name: 'old.ts', type: '
 browserRuntime.flush();
 assert.equal(browserRuntime.value.path, 'docs');
 assert.equal(browserRuntime.value.entries[0].path, 'docs/guide.md');
-await assert.rejects(browserRuntime.value.openDirectory('../outside'), /Invalid workspace path/);
+await assert.rejects(browserRuntime.value.openDirectory('../outside'), /Invalid project path/);
 await searchFiles(''); browserRuntime.flush();
 assert.equal(browserRuntime.value.path, 'docs', 'clearing search retains the browsed directory');
 
-// Catalog omissions must not discard the persisted, app-selected directory.
-let workspaceCatalog = {
+// The picker renders the projects opened on this connection; the server
+// catalog seeds and validates them. A path the server still resolves (a
+// worktree or a deep link) is kept and opened, an unlisted one is dropped.
+let projectCatalog = {
   currentProjectPath: '/workspace/main-clone',
   serverRootPath: '/workspace',
   serverProjects: [{ id: 'project-1', worktree: '/workspace/main-clone', time: { created: 1 } }],
 };
-const workspaceCatalogHook = await loadTs('providers/use-workspace-catalog-actions.ts', {
+let knownProjectLocation = false;
+const projectCatalogHook = await loadTs('providers/use-project-catalog-actions.ts', {
   react: { useCallback: (fn) => fn, useEffect: () => {}, useRef: (current) => ({ current }) },
   '@/lib/opencode/client': { buildClient: () => ({}) },
   '@/providers/session-cache': { hydrateSessionCache: () => {} },
+  '@/providers/projects-storage': { PROJECTS_MAX: 50 },
   '@/providers/services/session-service': {
-    loadWorkspaceCatalog: async () => workspaceCatalog,
-    resolveWorkspace: async () => ({ worktree: '/workspace/added' }),
+    loadProjectCatalog: async () => projectCatalog,
+    resolveProjectLocation: async () => ({ worktree: '/workspace/added' }),
+    isKnownProjectLocation: async () => knownProjectLocation,
   },
 });
-function makeWorkspaceCatalogActions(activePath, isCurrentCatalogClient = () => true) {
-  const state = { activePath, cleared: 0, projects: [], currentPath: undefined };
+function makeProjectCatalogActions(activePath, isCurrentCatalogClient = () => true, openedPaths) {
+  const state = { activePath, cleared: 0, projects: [], currentPath: undefined, opened: openedPaths ? { scope: [...openedPaths] } : {} };
   const activeProjectPathRef = { current: activePath };
+  const serverProjectsRef = { current: [] };
+  const projectPathsByConnectionRef = { current: state.opened };
   const scopeGenerationRef = { current: 0 };
-  state.actions = workspaceCatalogHook.useWorkspaceCatalogActions({
-    catalogClient: {}, isCurrentCatalogClient, activeProjectPathRef,
+  state.actions = projectCatalogHook.useProjectCatalogActions({
+    catalogClient: { __opencode: { contract: 'v2' } }, isCurrentCatalogClient, activeProjectPathRef,
     setActiveProjectPath: (path) => { state.activePath = path; activeProjectPathRef.current = path; },
     clearProjectState: () => { state.cleared++; },
-    serverProjectsRef: { current: [] }, setServerProjects: (projects) => { state.projects = projects; },
+    projectPathsByConnectionRef, setProjectPathsByConnection: (value) => { state.opened = value; projectPathsByConnectionRef.current = value; },
+    serverProjectsRef, setServerProjects: (projects) => { state.projects = projects; serverProjectsRef.current = projects; },
     setCurrentProjectPath: (path) => { state.currentPath = path; }, setServerRootPath: () => {},
     connectionScope: 'scope', connectionScopeRef: { current: 'scope' }, isHydrated: false,
-    setSessions: () => {}, setSessionStatuses: () => {}, setIsRefreshingWorkspaceCatalog: () => {},
+    setSessions: () => {}, setSessionStatuses: () => {}, setIsRefreshingProjectCatalog: () => {},
     scopeGenerationRef, serverContract: 'v2', settingsRef: { current: {} },
   });
   state.scopeGenerationRef = scopeGenerationRef;
   return state;
 }
-const retainedWorkspace = makeWorkspaceCatalogActions('/workspace/other-clone');
-await retainedWorkspace.actions.refreshWorkspaceCatalog();
-assert.equal(retainedWorkspace.activePath, '/workspace/other-clone');
-assert.equal(retainedWorkspace.cleared, 0, 'catalog omission does not clear selected workspace state');
-assert.equal(retainedWorkspace.scopeGenerationRef.current, 0, 'catalog omission does not advance the project generation');
-const serverCurrentWorkspace = makeWorkspaceCatalogActions(undefined);
-await serverCurrentWorkspace.actions.refreshWorkspaceCatalog();
-assert.equal(serverCurrentWorkspace.activePath, '/workspace/main-clone', 'a fresh selection prefers the server current project');
-workspaceCatalog = { ...workspaceCatalog, currentProjectPath: undefined };
-const firstListedWorkspace = makeWorkspaceCatalogActions(undefined);
-await firstListedWorkspace.actions.refreshWorkspaceCatalog();
-assert.equal(firstListedWorkspace.activePath, '/workspace/main-clone', 'a fresh selection falls back to the first listed project');
-workspaceCatalog = { ...workspaceCatalog, currentProjectPath: '/workspace/main-clone' };
-const staleWorkspaceResponse = makeWorkspaceCatalogActions('/workspace/other-clone', () => false);
-await staleWorkspaceResponse.actions.refreshWorkspaceCatalog();
-assert.equal(staleWorkspaceResponse.activePath, '/workspace/other-clone');
-assert.equal(staleWorkspaceResponse.projects.length, 0, 'stale catalog responses remain ignored');
-const addedWorktree = makeWorkspaceCatalogActions('/workspace/main-clone');
-assert.equal(await addedWorktree.actions.addWorkspace('/worktrees/task'), '/worktrees/task');
-assert.equal(addedWorktree.activePath, '/worktrees/task', 'adding a directory preserves the requested worktree rather than selecting its owning project root');
+const seededProject = makeProjectCatalogActions(undefined);
+await seededProject.actions.refreshProjectCatalog();
+assert.equal(seededProject.activePath, '/workspace/main-clone', 'a fresh connection seeds the server current project');
+assert.deepEqual([...seededProject.opened.scope], ['/workspace/main-clone'], 'seeding opens the selected project');
+const droppedProject = makeProjectCatalogActions('/workspace/other-clone', () => true, ['/workspace/main-clone']);
+await droppedProject.actions.refreshProjectCatalog();
+assert.equal(droppedProject.activePath, '/workspace/main-clone', 'an unlisted project falls back to the most recent opened project');
+assert.equal(droppedProject.cleared, 1, 'dropping an unlisted project clears project state');
+assert.equal(droppedProject.scopeGenerationRef.current, 1, 'dropping an unlisted project advances the project generation');
+knownProjectLocation = true;
+const retainedWorktree = makeProjectCatalogActions('/worktrees/task', () => true, ['/workspace/main-clone']);
+await retainedWorktree.actions.refreshProjectCatalog();
+assert.equal(retainedWorktree.activePath, '/worktrees/task', 'a server-resolved worktree remains selected');
+assert.deepEqual([...retainedWorktree.opened.scope], ['/worktrees/task', '/workspace/main-clone'], 'keeping a worktree opens it for this connection');
+assert.equal(retainedWorktree.cleared, 0, 'a server-resolved worktree does not clear project state');
+assert.equal(retainedWorktree.scopeGenerationRef.current, 0, 'a server-resolved worktree does not advance the project generation');
+knownProjectLocation = false;
+const openedProject = makeProjectCatalogActions(undefined, () => true, ['/workspace/other-clone']);
+await openedProject.actions.refreshProjectCatalog();
+assert.equal(openedProject.activePath, '/workspace/other-clone', 'a fresh selection prefers the most recent opened project');
+assert.equal(openedProject.opened.scope[0], '/workspace/other-clone');
+const closedAll = makeProjectCatalogActions(undefined, () => true, []);
+await closedAll.actions.refreshProjectCatalog();
+assert.equal(closedAll.activePath, undefined, 'a connection with every project closed stays empty');
+assert.deepEqual([...closedAll.opened.scope], [], 'an explicitly empty list does not re-seed from the server');
+projectCatalog = { ...projectCatalog, currentProjectPath: undefined };
+const firstListedProject = makeProjectCatalogActions(undefined);
+await firstListedProject.actions.refreshProjectCatalog();
+assert.equal(firstListedProject.activePath, '/workspace/main-clone', 'the first server project seeds an empty connection');
+projectCatalog = { ...projectCatalog, currentProjectPath: '/workspace/main-clone' };
+const staleProjectResponse = makeProjectCatalogActions('/workspace/other-clone', () => false, ['/workspace/other-clone']);
+await staleProjectResponse.actions.refreshProjectCatalog();
+assert.equal(staleProjectResponse.activePath, '/workspace/other-clone');
+assert.equal(staleProjectResponse.projects.length, 0, 'stale catalog responses remain ignored');
+const addedWorktree = makeProjectCatalogActions('/workspace/main-clone', () => true, ['/workspace/main-clone']);
+assert.equal(await addedWorktree.actions.addProject('/worktrees/task'), '/worktrees/task');
+assert.equal(addedWorktree.activePath, '/worktrees/task', 'adding a directory selects the requested worktree rather than its owning project root');
+assert.deepEqual([...addedWorktree.opened.scope], ['/worktrees/task', '/workspace/main-clone'], 'adding a directory opens it for this connection');
+const removedProject = makeProjectCatalogActions('/workspace/main-clone', () => true, ['/workspace/main-clone', '/workspace/other-clone']);
+removedProject.actions.removeProject('/workspace/main-clone');
+assert.deepEqual([...removedProject.opened.scope], ['/workspace/other-clone'], 'closing a project drops it from the opened list');
+assert.equal(removedProject.activePath, '/workspace/other-clone', 'closing the active project selects the most recent remaining one');
+const removedLast = makeProjectCatalogActions('/workspace/main-clone', () => true, ['/workspace/main-clone']);
+removedLast.actions.removeProject('/workspace/main-clone');
+assert.deepEqual([...removedLast.opened.scope], [], 'closing the last project leaves an explicitly empty list');
+assert.equal(removedLast.activePath, undefined, 'closing the last project clears the active selection');
 
-const olderFile = actions.openWorkspaceFile('selection-first'), newerFile = actions.openWorkspaceFile('selection-last');
+const olderFile = actions.openProjectFile('selection-first'), newerFile = actions.openProjectFile('selection-last');
 fileReads.get('selection-last').resolve({ type: 'text', content: 'latest selection' }); await newerFile;
 fileReads.get('selection-first').resolve({ type: 'text', content: 'obsolete selection' });
 await assert.rejects(olderFile, /superseded/);
 assert.equal(selected.path, 'selection-last');
 const staleSearch = searchFiles('old-server');
 const staleDirectory = browserRuntime.value.openDirectory('old-server');
-const staleFile = actions.openWorkspaceFile('old-server');
-const staleSave = actions.saveWorkspaceFile('save', 'original', 'edited');
+const staleFile = actions.openProjectFile('old-server');
+const staleSave = actions.saveProjectFile('save', 'original', 'edited');
 active = { __opencode: { directory: '/repo' } };
 browserRuntime.update({ client: active });
 directoryReads.get('old-server').resolve([{ path: 'old-server/wrong.ts', name: 'wrong.ts', type: 'file' }]);
@@ -179,7 +214,7 @@ await staleDirectory; browserRuntime.flush();
 assert.equal(browserRuntime.value.initialized, false, 'a stale folder response cannot initialize the new server browser');
 reads.get('old-server').resolve(['wrong-server.ts']); fileGate.resolve({ type: 'text', content: 'wrong server' }); saveGate.resolve({ type: 'text', content: 'original' });
 await staleSearch;
-await assert.rejects(staleFile, /superseded/); await assert.rejects(staleSave, /workspace changed/);
+await assert.rejects(staleFile, /superseded/); await assert.rejects(staleSave, /project changed/);
 browserRuntime.update({ client: active });
 assert.equal(browserRuntime.value.initialized, false, 'a different server with the same path resets the browser');
 assert.deepEqual(Array.from(browserRuntime.value.results), []); assert.equal(selected.path, 'selection-last'); assert.equal(patches, 0);
@@ -189,15 +224,15 @@ active = client;
 let bytes = 'original';
 context.readFile = async () => ({ type: 'text', content: bytes });
 context.saveFile = async (_, path, content) => { patches++; bytes = content; };
-await assert.rejects(actions.saveWorkspaceFile('save', 'obsolete', 'draft'), /changed on the server/);
+await assert.rejects(actions.saveProjectFile('save', 'obsolete', 'draft'), /changed on the server/);
 assert.equal(patches, 0, 'a known conflict must never write');
-await actions.saveWorkspaceFile('save', 'original', 'edited');
+await actions.saveProjectFile('save', 'original', 'edited');
 assert.equal(bytes, 'edited'); assert.equal(selected.content.content, 'edited');
 context.saveFile = async () => { throw new Error('write offline'); };
-await assert.rejects(actions.saveWorkspaceFile('save', 'edited', 'draft'), /write offline/);
+await assert.rejects(actions.saveProjectFile('save', 'edited', 'draft'), /write offline/);
 assert.equal(selected.content.content, 'edited', 'a failed write must not replace the saved baseline');
 context.saveFile = async () => { bytes = 'external edit'; };
-await assert.rejects(actions.saveWorkspaceFile('save', 'edited', 'draft'), /did not match/);
+await assert.rejects(actions.saveProjectFile('save', 'edited', 'draft'), /did not match/);
 assert.equal(selected.content.content, 'edited', 'failed verification must not replace the saved baseline');
 
 await actions.abortSession('s');
@@ -249,6 +284,7 @@ const catalogClient = { api: { event: { async subscribe({ signal }) {
   })();
 } } } };
 const realtime = await loadTs('providers/use-opencode-realtime.ts', {
+  '@/providers/realtime-timing': { SSE_STALENESS_MS: 90000, SSE_FOREGROUND_CYCLE_MS: 15000, WATCHDOG_TICK_MS: 7000 },
   react: runtime.react,
   'react-native': { AppState: { currentState: 'active', addEventListener: () => ({ remove() {} }) } },
   '@/lib/opencode/client/errors': { classifyConnectionFailure: () => 'unknown', isAuthConnectionFailure: () => false },
@@ -285,11 +321,11 @@ wake(null); await runtime.settle(); runtime.unmount(); assert.equal(runtime.coun
 
 // SSE liveness: a stream that goes silent without an error is re-established
 // once per staleness window, a long background return re-verifies the stream,
-// and a reconnect's full rebuild is queued behind an in-flight safety poll.
+// and a reconnect reconcile is queued behind an in-flight safety poll.
 {
   const liveness = hookRuntime();
   let now = 1_000_000, subscriptions = 0, wake, sessions = 0, pending = 0, heldSessions;
-  const fullPasses = [];
+  const messageModes = [];
   const listeners = new Set();
   const client = { api: { event: { async subscribe({ signal }) {
     subscriptions++;
@@ -303,6 +339,7 @@ wake(null); await runtime.settle(); runtime.unmount(); assert.equal(runtime.coun
   } } } };
   const appState = { currentState: 'active', addEventListener: (_event, listener) => { listeners.add(listener); return { remove: () => listeners.delete(listener) }; } };
   const hook = await loadTs('providers/use-opencode-realtime.ts', {
+  '@/providers/realtime-timing': { SSE_STALENESS_MS: 90000, SSE_FOREGROUND_CYCLE_MS: 15000, WATCHDOG_TICK_MS: 7000 },
     react: liveness.react,
     'react-native': { AppState: appState },
     '@/lib/opencode/client/errors': { classifyConnectionFailure: () => 'unknown', isAuthConnectionFailure: () => false },
@@ -312,7 +349,7 @@ wake(null); await runtime.settle(); runtime.unmount(); assert.equal(runtime.coun
     catalogClient: client, activeProjectPath: '/repo', connected: true, busy: false, currentSessionId: 's',
     onEvent: () => {}, refreshSessions: async () => { sessions++; await heldSessions?.promise; },
     refreshPendingInteractions: async () => { pending++; },
-    refreshMessages: async (_id, _silent, options) => { fullPasses.push(Boolean(options?.full)); },
+    refreshMessages: async (_id, _silent, options) => { messageModes.push(options?.mode); },
     refreshSessionDiff: async () => {}, refreshSessionTodos: async () => {},
   };
   liveness.mount(hook.useOpencodeRealtime, inputs); await liveness.settle();
@@ -331,16 +368,16 @@ wake(null); await runtime.settle(); runtime.unmount(); assert.equal(runtime.coun
   await liveness.settle();
   assert.equal(subscriptions, 3, 'a long background return re-verifies the stream');
   wake({ location: { directory: '/repo' }, type: 'server.connected' }); await liveness.settle();
-  fullPasses.length = 0;
+  messageModes.length = 0;
   heldSessions = deferred();
   liveness.update({ busy: true }); liveness.fire(10000); await liveness.settle();
-  assert.deepEqual(fullPasses, [false], 'the busy safety poll tails the transcript');
+  assert.deepEqual(messageModes, [undefined], 'the busy safety poll tails the transcript');
   wake(null); await liveness.settle(); liveness.fire(1000); await liveness.settle();
   assert.equal(subscriptions, 4);
   wake({ location: { directory: '/repo' }, type: 'server.connected' }); await liveness.settle();
-  assert.deepEqual(fullPasses, [false], 'the reconnect rebuild waits for the in-flight poll');
+  assert.deepEqual(messageModes, [undefined], 'the reconnect reconcile waits for the in-flight poll');
   heldSessions.resolve(); heldSessions = undefined; await liveness.settle();
-  assert.deepEqual(fullPasses, [false, true], 'the reconnect rebuild cannot be swallowed by the poll');
+  assert.deepEqual(messageModes, [undefined, undefined], 'the reconnect reconcile cannot be swallowed by the poll');
   // A short background return must still re-assert domain data even though the
   // stream stayed up and no restart/rebuild is requested.
   const sessionsBeforeForeground = sessions;
@@ -360,6 +397,7 @@ wake(null); await runtime.settle(); runtime.unmount(); assert.equal(runtime.coun
   let fatal = 0, subscriptions = 0;
   const client = { api: { event: { async subscribe() { subscriptions++; throw new Error('401 credentials rejected'); } } } };
   const hook = await loadTs('providers/use-opencode-realtime.ts', {
+  '@/providers/realtime-timing': { SSE_STALENESS_MS: 90000, SSE_FOREGROUND_CYCLE_MS: 15000, WATCHDOG_TICK_MS: 7000 },
     react: revoked.react,
     'react-native': { AppState: { currentState: 'active', addEventListener: () => ({ remove() {} }) } },
     '@/lib/opencode/client/errors': {
@@ -494,7 +532,7 @@ profileRuntime.update({ switchConnection: async () => {} });
 assert.equal(profileRuntime.value, stableProfiles, 'profile domain values remain stable when only callback bridges change');
 profileRuntime.unmount();
 
-// Actual session callbacks: restore in the row's workspace, preserve scope,
+// Actual session callbacks: restore in the row's project, preserve scope,
 // and refresh an explicit target missing from an otherwise populated cache.
 const sessionNames = ['restoreSession', 'ensureActiveSession', 'openDeepLinkSession'];
 const sessionDeclarations = [
@@ -502,6 +540,7 @@ const sessionDeclarations = [
   extractDeclarations(connectionActionsSource, ['waitForConnectionScope', 'switchToScope', 'restoreSession', 'openDeepLinkSession']),
 ].join('\n');
 let restoreGate, restoreFailure, restoredDirectory, reopened, createdSessions = 0, fetchedSessions = 0;
+const resolvableDirectories = new Set();
 const target = { id: 'target' };
 const sessionContext = {
   exports: {}, useCallback: (fn) => fn, client: { directory: '/repo' },
@@ -522,7 +561,9 @@ const sessionContext = {
   refreshServerFeatures: async () => {}, refreshDiagnostics: async () => {}, isCurrentClient: () => true,
   setCurrentSessionId: (id) => { sessionContext.currentSessionIdRef.current = id; }, setLastSessionByConnection: () => {},
   deepLinkOperationRef: {}, currentSessionIdRef: {}, serverProjectsRef: { current: [{ worktree: '/repo' }] },
-  connect: async () => {}, selectProject: () => {}, ensureActiveSessionRef: {}, setTimeout, Date,
+  projectPathsByConnectionRef: { current: { scope: [] } },
+  isAvailableProjectDirectory: async (candidate) => resolvableDirectories.has(candidate.directory),
+  connect: async () => {}, selectProject: (path) => { sessionContext.activeProjectPathRef.current = path; }, ensureActiveSessionRef: {}, setTimeout, Date,
   connectionScopeRef: { current: 'scope' },
   loadConnectionProfiles: async () => [{ id: 'saved', serverUrl: 'https://other', username: '', scope: 'other' }],
   findProfileByConnectionScope: (profiles, scope) => profiles.find((profile) => profile.scope === scope),
@@ -546,19 +587,35 @@ sessionContext.pendingDeepLinkTargetRef.current = { sessionId: 'missing', projec
 sessionContext.bootstrapPromiseRef.current = null;
 assert.equal(await sessionActions.ensureActiveSession(), undefined); assert.equal(createdSessions, 0);
 
-// A retained active workspace may be absent from the server catalog.
+// A retained active project may be absent from the server catalog.
 sessionContext.serverProjectsRef.current = [{ worktree: '/elsewhere' }];
 sessionContext.bootstrapPromiseRef.current = null;
 sessionContext.ensureActiveSessionRef.current = sessionActions.ensureActiveSession;
 assert.equal((await sessionActions.openDeepLinkSession({ sessionId: 'target', projectPath: '/repo' })).ok, true,
-  'explicit session opening accepts the retained active workspace');
+  'explicit session opening accepts the retained active project');
 assert.match((await sessionActions.openDeepLinkSession({ sessionId: 'missing', projectPath: '/repo' })).error,
-  /was not found/, 'the retained workspace still requires an existing session');
+  /was not found/, 'the retained project still requires an existing session');
 assert.equal(createdSessions, 0, 'opening an existing session does not create a replacement');
 assert.match((await sessionActions.openDeepLinkSession({ sessionId: 'target', projectPath: '/unlisted' })).error,
-  /not available from the configured server/, 'other unlisted workspaces remain rejected');
+  /not available from the configured server/, 'other unlisted projects remain rejected');
 assert.equal(sessionContext.pendingDeepLinkTargetRef.current, undefined);
 sessionContext.serverProjectsRef.current = [{ worktree: '/repo' }];
+
+// The same repository can have checkout directories that project.list() does
+// not report as canonicals. The connection's opened list and server resolution
+// both make those locations available.
+sessionContext.projectPathsByConnectionRef.current = { scope: ['/opened-repo'] };
+sessionContext.bootstrapPromiseRef.current = null;
+assert.equal((await sessionActions.openDeepLinkSession({ sessionId: 'target', projectPath: '/opened-repo' })).ok, true,
+  'opened projects remain available even when the server catalog reports another canonical');
+sessionContext.activeProjectPathRef.current = '/repo';
+
+sessionContext.projectPathsByConnectionRef.current = { scope: [] };
+resolvableDirectories.add('/resolved-repo');
+assert.equal((await sessionActions.openDeepLinkSession({ sessionId: 'target', projectPath: '/resolved-repo' })).ok, true,
+  'server-resolved sibling checkouts and worktrees are available');
+resolvableDirectories.delete('/resolved-repo');
+sessionContext.activeProjectPathRef.current = '/repo';
 
 assert.equal((await sessionActions.openDeepLinkSession({ sessionId: 'target', projectPath: '/repo', connectionScope: 'other' })).ok, true,
   'notification links select their owning saved connection before opening a session');
@@ -627,6 +684,7 @@ const pruneContext = {
   setDiffsBySession: (update) => { cachedDiffs = update(cachedDiffs); },
   setTodosBySession: (update) => { cachedTodos = update(cachedTodos); },
   pruneTranscript: () => {},
+  pruneByKeepIds,
 };
 runInNewContext(ts.transpileModule(pruneEffect, { compilerOptions: { module: ts.ModuleKind.CommonJS } }).outputText, pruneContext);
 prune();

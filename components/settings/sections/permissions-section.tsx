@@ -1,18 +1,21 @@
 import { useTranslation } from 'react-i18next';
-import { Alert, StyleSheet, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import { Button, List, Text } from 'react-native-paper';
 
+import { confirmAction } from '@/lib/confirm-action';
 import type { SavedPermissionRule } from '@/lib/opencode/client';
 import type { Palette } from './setting-rows';
 
 // V2-only view of server-persisted "always allow" grants. The list is
 // provider-owned; this surface only confirms and forwards removal.
 export function PermissionsSection({
+  serverName,
   onRefresh,
   onRemove,
   palette,
   rules,
 }: {
+  serverName?: string;
   onRefresh: () => void;
   onRemove: (id: string) => void;
   palette: Palette;
@@ -21,14 +24,9 @@ export function PermissionsSection({
   const { t } = useTranslation();
 
   const confirmRemove = (rule: SavedPermissionRule) => {
-    Alert.alert(
-      t('settings:permissions.removeTitle'),
-      t('settings:permissions.removeMessage', { resource: rule.resource }),
-      [
-        { text: t('common:actions.cancel'), style: 'cancel' },
-        { text: t('common:actions.remove'), style: 'destructive', onPress: () => onRemove(rule.id) },
-      ],
-    );
+    confirmAction(t('settings:permissions.removeTitle'),
+      [serverName, t('settings:permissions.removeMessage', { resource: rule.resource })].filter(Boolean).join('\n'),
+      t('common:actions.remove'), t('common:actions.cancel'), () => onRemove(rule.id));
   };
 
   return (

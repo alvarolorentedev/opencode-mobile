@@ -1,22 +1,21 @@
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { StyleSheet, View } from 'react-native';
 import { Button, List, Text } from 'react-native-paper';
 
+import { useOnboardingNavigation } from '@/components/onboarding/use-onboarding-navigation';
 import { OnboardingStep } from '@/components/onboarding/onboarding-step';
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 
 export default function OnboardingWelcomeScreen() {
   const { t } = useTranslation();
-  const router = useRouter();
+  const navigation = useOnboardingNavigation('index');
   const palette = Colors[useColorScheme() ?? 'light'];
 
   return (
     <OnboardingStep
-      step={1}
-      totalSteps={5}
+      step="index"
       title={t('onboarding:welcome.title')}
       subtitle={t('onboarding:welcome.subtitle')}
       testID="onboarding-welcome"
@@ -24,7 +23,7 @@ export default function OnboardingWelcomeScreen() {
         <Button
           mode="contained"
           testID="onboarding-welcome-start"
-          onPress={() => router.push('/onboarding/permissions')}>
+          onPress={navigation.next}>
           {t('onboarding:welcome.start')}
         </Button>
       }>
@@ -41,8 +40,8 @@ export default function OnboardingWelcomeScreen() {
           left={(props) => <List.Icon {...props} icon="server" color={palette.tint} />}
         />
         <List.Item
-          title={t('onboarding:welcome.points.workspace.title')}
-          description={t('onboarding:welcome.points.workspace.description')}
+          title={t('onboarding:welcome.points.project.title')}
+          description={t('onboarding:welcome.points.project.description')}
           titleStyle={{ color: palette.text }}
           descriptionStyle={{ color: palette.muted }}
           left={(props) => <List.Icon {...props} icon="folder-outline" color={palette.tint} />}

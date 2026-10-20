@@ -96,10 +96,13 @@ describe('persistence hydration and write-back', () => {
     assert.deepEqual(JSON.parse(JSON.stringify(parseConnectionSettings('{"serverUrl":"http://test","password":"legacy","unknown":true}'))), { serverUrl: 'http://test', password: 'legacy' });
     const parsed = parseChatPreferences(JSON.stringify({ mode: 'build', enabledModelIds: null, recentModelIds: 42,
       providerModelSelections: { p: false }, speechRate: 100, workingSoundVolume: -1, transcriptFontSize: 99,
+      modelVariantSelections: { 'openai/model': 'max', 'openai/other': null },
       reasoning: 'invalid', hideSubagentChats: 'yes', language: 'es', unknown: 'ignored' }));
-    assert.deepEqual(JSON.parse(JSON.stringify(parsed)), { mode: 'build', language: 'es', transcriptFontSize: 24, speechRate: 1.5, workingSoundVolume: 0 });
+    assert.deepEqual(JSON.parse(JSON.stringify(parsed)), { mode: 'build', language: 'es', modelVariantSelections: { 'openai/model': 'max', 'openai/other': null }, transcriptFontSize: 24, speechRate: 1.5, workingSoundVolume: 0 });
     const defaults = { ...preferences.defaultChatPreferences, ...parsed };
     assert.ok(Array.isArray(defaults.enabledModelIds)); assert.ok(Array.isArray(defaults.recentModelIds));
+    assert.deepEqual(JSON.parse(JSON.stringify(parseChatPreferences('{"modelVariantSelections":{"openai/model":"max","openai/default":null}}').modelVariantSelections)), { 'openai/model': 'max', 'openai/default': null });
+    assert.equal(parseChatPreferences('{"modelVariantSelections":{"openai/model":false}}').modelVariantSelections, undefined);
     assert.equal(defaults.reasoning, 'default');
 
     const write = createPersistenceWriter(), gate = deferred(), writes: string[] = [];
@@ -123,7 +126,8 @@ describe('persistence hydration and write-back', () => {
     let credentialReads = 0;
     const keys = await loadTs('lib/storage-keys.ts');
     const stored = new Map([[keys.SETTINGS_STORAGE_KEY, '{"serverUrl":"stored-server"}'],
-      [keys.CHAT_PREFERENCES_STORAGE_KEY, '{"language":"es"}']]);
+      [keys.CHAT_PREFERENCES_STORAGE_KEY, '{"language":"es"}'],
+      [keys.PROJECTS_STORAGE_KEY, '{"scope":["/repo","/other"]}']]);
     const hook = await loadTs('providers/use-opencode-persistence.ts', {
       react: hydrationRuntime.react,
       '@react-native-async-storage/async-storage': { __esModule: true, default: {
@@ -141,6 +145,7 @@ describe('persistence hydration and write-back', () => {
       '@/providers/persisted-preferences': { parseConnectionSettings, parseChatPreferences },
       '@/providers/persistence-hydration': { loadPersistedValue, createPersistenceWriter },
       '@/providers/favorites-storage': { parseFavoriteSessions: JSON.parse, serializeFavoriteSessions: JSON.stringify },
+      '@/providers/projects-storage': { parseProjectPathsByConnection: JSON.parse, serializeProjectPathsByConnection: JSON.stringify },
       '@/providers/last-session-storage': { parseLastSessionByConnection: JSON.parse, serializeLastSessionByConnection: JSON.stringify },
       '@/providers/onboarding-state': { loadOnboardingStatus: async () => ({ version: 1 }), serializeOnboardingVersion: String },
     }, { console: { warn() {} } });
@@ -152,15 +157,18 @@ describe('persistence hydration and write-back', () => {
       const [controlPlaneUrl, setControlPlaneUrl] = hydrationRuntime.react.useState('control');
       const [favoriteSessions, setFavoriteSessions] = hydrationRuntime.react.useState([]);
       const [lastSessionByConnection, setLastSessionByConnection] = hydrationRuntime.react.useState({});
+      const [projectPathsByConnection, setProjectPathsByConnection] = hydrationRuntime.react.useState({});
       const [onboardingVersion, setOnboardingVersion] = hydrationRuntime.react.useState(0);
       return { ...hook.useOpencodePersistence({ defaultSettings, defaultChatPreferences: preferences.defaultChatPreferences,
         settings, setSettings, chatPreferences, setChatPreferences, activeProjectPath, setActiveProjectPath,
         controlPlaneUrl, setControlPlaneUrl, favoriteSessions, setFavoriteSessions,
-        lastSessionByConnection, setLastSessionByConnection, onboardingVersion, setOnboardingVersion }), chatPreferences, settings };
+        projectPathsByConnection, setProjectPathsByConnection,
+        lastSessionByConnection, setLastSessionByConnection, onboardingVersion, setOnboardingVersion }), chatPreferences, settings, projectPathsByConnection };
     }, {});
     await hydrationRuntime.settle();
     assert.equal(hydrationRuntime.value.isHydrated, true);
     assert.equal(hydrationRuntime.value.chatPreferences.language, 'es');
+    assert.deepEqual(hydrationRuntime.value.projectPathsByConnection.scope, ['/repo', '/other']);
     assert.equal(credentialReads, 0, 'Unread server metadata must not lend a stored credential to the default server.');
     assert.equal(hydrationRuntime.value.settings.password, '');
     assert.equal(stored.get(keys.SETTINGS_STORAGE_KEY), '{"serverUrl":"stored-server"}');

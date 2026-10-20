@@ -98,11 +98,12 @@ npm run build:ios:local
 
 ### Testing
 
-- `npm run test:ci:static` runs lint, app type-checking, and the Vitest suites
-  (`tests/vitest/`)
+- `npm run test:ci:static` runs lint, app type-checking, the typed-test
+  type-check (`npm run typecheck:tests`, via `tsconfig.tests.json`), and the
+  Vitest suites (`tests/vitest/`)
 - Flow validation runs against the fake OpenCode server in `tests/fake-opencode/server.mjs`
-- End-to-end suite uses Playwright (`tests/e2e/*.spec.mjs`)
-- Full testing strategy documented in `TESTING.md`; deferred test work in `docs/known-gaps.md`
+- End-to-end suite uses Playwright (`tests/e2e/*.spec.mjs`, split by domain over `tests/e2e/helpers/flows.mjs`)
+- Full testing strategy documented in `TESTING.md`; remaining deferred test work in `docs/known-gaps.md`
 
 ### Configuration
 

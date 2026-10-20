@@ -95,6 +95,7 @@ export default function TerminalDOM({ ref, instances, activeId, visible, slim, t
         let compositionTimer: ReturnType<typeof setTimeout> | undefined;
         const subscriptions = [
           terminal.onData((data) => {
+            if (!isVisible.current) return;
             const modifiers = controls.current.modifiers;
             if (entry.id === active.current && !composing && !pasting && data.length === 1 && data.charCodeAt(0) >= 32 && data.charCodeAt(0) <= 126 && (modifiers.ctrl || modifiers.alt || modifiers.shift)) {
               const encoded = encodeTerminalKey(data, modifiers);
@@ -102,7 +103,7 @@ export default function TerminalDOM({ ref, instances, activeId, visible, slim, t
             }
             send(entry.id, data);
           }),
-          terminal.onResize(({ cols, rows }) => { if (entry.id === active.current) void callbacks.current.onResize(entry.id, cols, rows); }),
+          terminal.onResize(({ cols, rows }) => { if (isVisible.current && entry.id === active.current) void callbacks.current.onResize(entry.id, cols, rows); }),
           terminal.onScroll(() => { if (entry.id === active.current) setScrolled(terminal.buffer.active.viewportY < terminal.buffer.active.baseY); }),
           terminal.onSelectionChange(() => { if (entry.id === active.current) setSelected(terminal.hasSelection()); }),
         ];
@@ -137,12 +138,12 @@ export default function TerminalDOM({ ref, instances, activeId, visible, slim, t
         owned.set(entry.id, display);
         void callbacks.current.onReady(entry.id);
       }
-      display.terminal.options.disableStdin = entry.status !== 'connected';
+      display.terminal.options.disableStdin = entry.status !== 'connected' || !visible;
       display.terminal.options.theme = theme;
       display.terminal.textarea?.setAttribute('aria-label', labels.input);
     }
     for (const [id, display] of owned) if (!instances.some((entry) => entry.id === id)) { display.dispose(); owned.delete(id); }
-  }, [instances, theme, labels.input]);
+  }, [instances, theme, labels.input, visible]);
 
   useEffect(() => {
     active.current = activeId;
@@ -177,9 +178,9 @@ export default function TerminalDOM({ ref, instances, activeId, visible, slim, t
     const data = encodeTerminalKey(key, controls.current.modifiers, display.terminal.modes.applicationCursorKeysMode);
     if (data !== undefined) { send(activeId, data); consumeModifiers(); display.terminal.focus(); }
   }
-  return <div className={`terminal-surface${slim ? ' terminal-slim' : ''}`} style={{ background: theme.background, color: theme.foreground }}>
+  return <div className={`terminal-surface${slim ? ' terminal-slim' : ''}`} aria-hidden={!visible} inert={!visible} style={{ background: theme.background, color: theme.foreground, visibility: visible ? 'visible' : 'hidden' }}>
     <div ref={root} className="terminal-displays" data-testid="terminal-displays">
-      {instances.map((entry) => <div key={entry.id} data-pty={entry.id} data-testid={entry.id === activeId ? 'terminal-output' : undefined} className="terminal-display" style={{ display: entry.id === activeId ? 'block' : 'none' }} />)}
+      {instances.map((entry) => <div key={entry.id} data-pty={entry.id} data-testid={visible && entry.id === activeId ? 'terminal-output' : undefined} className="terminal-display" style={{ display: entry.id === activeId ? 'block' : 'none' }} />)}
       {scrolled && <button className="terminal-latest" type="button" onClick={() => getDisplay()?.terminal.scrollToBottom()}>{labels.latest}</button>}
     </div>
     <TerminalAccessory state={accessory} labels={labels} disabled={disabled} expanded={expanded} onExpand={() => setExpanded((value) => !value)} onKey={accessoryKey} selected={selected} onInteract={() => getDisplay()?.terminal.focus()} onCopy={() => { const display = getDisplay(); if (display) void callbacks.current.onCopy(display.terminal.getSelection()); }} onPaste={() => { if (activeId) void callbacks.current.onPaste(activeId); }} />

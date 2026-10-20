@@ -2,7 +2,7 @@
   "tabs": {
     "chat": "チャット",
     "terminal": "ターミナル",
-    "workspace": "ワークスペース",
+    "projects": "プロジェクト",
     "settings": "設定"
   },
   "actions": {
@@ -57,5 +57,32 @@
     "availableDescription": "App Storeから最新バージョンをインストールしてください。",
     "restart": "再起動してインストール",
     "openStore": "App Storeを開く"
+  },
+  "servers": {
+    "allServers": "すべてのサーバー",
+    "allProjects": "すべてのプロジェクト",
+    "server": "サーバー",
+    "projectContext": "プロジェクトのコンテキスト",
+    "serverSettings": "サーバー設定",
+    "appSettings": "アプリ設定",
+    "forServer": "変更は {{name}} に適用されます",
+    "searchProjects": "プロジェクトを検索",
+    "lastSynced": "最後に同期したプロジェクトを表示中",
+    "newTerminalHint": "このターミナルの起動先を選択します。",
+    "workingDirectory": "作業ディレクトリ",
+    "chatUnchanged": "チャットは {{name}} のままです。",
+    "pending": "保留中 ({{count}})",
+    "savedRules": "保存済みルール ({{count}})",
+    "onlyThisServer": "このサーバーのみ",
+    "appDiagnostics": "アプリ診断 · すべてのサーバー",
+    "discardDrafts": "このサーバーの未保存のチャットとエディターの下書きは破棄されます。",
+    "status": {
+      "idle": "未接続",
+      "connecting": "接続中",
+      "connected": "接続済み",
+      "error": "利用不可"
+    },
+    "appSettingsSummary": "エディター、一般設定、更新",
+    "serverToolsSummary": "MCPサーバーと診断"
   }
 }

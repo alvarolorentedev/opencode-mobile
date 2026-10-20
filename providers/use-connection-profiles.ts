@@ -8,7 +8,7 @@ import { resolveLocalPairing } from '@/lib/opencode/pairing';
 
 export type ConnectionProfileInput = Pick<ConnectionProfile, 'name' | 'serverUrl' | 'username'> & { password: string };
 
-export function useConnectionProfiles({ settings, switchConnection, updateSettings, profileSnapshot }: Pick<ConnectionContextValue, 'settings' | 'switchConnection' | 'updateSettings'> & { profileSnapshot: ConnectionProfile[] }) {
+export function useConnectionProfiles({ settings, switchConnection, updateSettings, profileSnapshot, onSaved, onRemoved }: Pick<ConnectionContextValue, 'settings' | 'switchConnection' | 'updateSettings'> & { profileSnapshot: ConnectionProfile[]; onSaved?: (profile: ConnectionProfile, password: string, previous?: ConnectionProfile) => void; onRemoved?: (profile: ConnectionProfile) => Promise<void> }) {
   const [profiles, setProfiles] = useState<ConnectionProfile[]>([]);
   const latest = useRef({ settings, switchConnection, updateSettings });
   useLayoutEffect(() => { latest.current = { settings, switchConnection, updateSettings }; });
@@ -50,18 +50,21 @@ export function useConnectionProfiles({ settings, switchConnection, updateSettin
       throw error;
     }
     setProfiles(next);
+    onSaved?.(profile, values.password, previous);
     if (previous && previous.id === findMatchingProfile(stored, latest.current.settings)?.id) {
       latest.current.updateSettings({ serverUrl: values.serverUrl, username: values.username, password: values.password });
     }
     return profile;
-  })), [mutate]);
+  })), [mutate, onSaved]);
   const remove = useCallback((id: string) => mutate(() => mutateConnectionProfiles(async (stored, saveMetadata) => {
     if (findMatchingProfile(stored, latest.current.settings)?.id === id) throw new Error('The active connection cannot be deleted.');
     const next = stored.filter((profile) => profile.id !== id);
+    const profile = stored.find((item) => item.id === id);
+    if (profile) await onRemoved?.(profile);
     await saveMetadata(next);
     setProfiles(next);
     await deleteProfilePassword(id);
-  })), [mutate]);
+  })), [mutate, onRemoved]);
   return useMemo(() => ({ profiles, refresh, connect, passwordForEditing, probe, pair, save, remove }), [profiles, refresh, connect, passwordForEditing, probe, pair, save, remove]);
 }
 

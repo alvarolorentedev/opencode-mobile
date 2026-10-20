@@ -28,6 +28,7 @@
     "couldNotFork": "सेशन फ़ोर्क नहीं किया जा सका।",
     "couldNotRevert": "सेशन वापस नहीं लाया जा सका।",
     "couldNotRestore": "सेशन पुनःस्थापित नहीं किया जा सका।",
+    "couldNotCancelPending": "उस लंबित संदेश को खारिज नहीं किया जा सका।",
     "couldNotUpdateAutoApprove": "ऑटो-स्वीकृति अपडेट नहीं की जा सकी।",
     "sendError": {
       "title": "OpenCode भेजना विफल रहा",
@@ -48,8 +49,6 @@
   },
   "content": {
     "connectionIssue": "कनेक्शन समस्या",
-    "sessionReverted": "सेशन वापस लाया गया",
-    "restoreReverted": "वापस लाए गए काम को पुनःस्थापित करें",
     "runningActivity": "OpenCode अभी {{activity}} पर काम कर रहा है...",
     "runningRetry": "OpenCode को एक त्रुटि मिली और वह फिर से प्रयास कर रहा है (प्रयास {{attempt}})...",
     "runningGeneric": "OpenCode वर्तमान चरण पर काम कर रहा है...",
@@ -60,7 +59,10 @@
     "allTasksCompleted": "सभी कार्य पूरे हुए",
     "openToSeeSteps": "सभी चरण देखने के लिए खोलें",
     "progress": "प्रगति",
-    "untitledTask": "बिना शीर्षक कार्य"
+    "untitledTask": "बिना शीर्षक कार्य",
+    "loadEarlier": "अभी दिखाने के लिए कुछ नहीं",
+    "loadEarlierDescription": "इस टर्न के नवीनतम संदेश टूल गतिविधि हैं। बातचीत देखने के लिए पुराने संदेश लोड करें।",
+    "loadEarlierAction": "पुराने संदेश लोड करें"
   },
   "cards": {
     "respondToContinue": "अनुमोदन आवश्यक है",
@@ -137,7 +139,7 @@
     "estimatedCost": "अनुमानित API लागत {{cost}}",
     "openChats": "चैट खोलें। {{title}}",
     "untitledChat": "बिना शीर्षक चैट",
-    "chooseWorkspace": "कार्यक्षेत्र चुनें",
+    "chooseProject": "प्रोजेक्ट चुनें",
     "newChat": "नई चैट",
     "showUsage": "सेशन उपयोग विवरण दिखाएँ",
     "stopConversationMode": "बातचीत मोड रोकें",
@@ -162,7 +164,7 @@
   "library": {
     "title": "चैट",
     "searchPlaceholder": "चैट खोजें",
-    "chooseWorkspace": "कार्यक्षेत्र चुनें",
+    "chooseProject": "प्रोजेक्ट चुनें",
     "swipeHint": " · कार्रवाइयों के लिए बाएँ स्वाइप करें",
     "active": "सक्रिय",
     "archived": "संग्रहीत",
@@ -219,7 +221,7 @@
   },
   "starter": {
     "title": "नया कार्य शुरू करें",
-    "description": "प्रॉम्प्ट को विशिष्ट रखें और OpenCode कार्यक्षेत्र का निरीक्षण करेगा, प्रगति दिखाएगा, और फ़ाइल बदलाव स्ट्रीम करेगा।",
+    "description": "प्रॉम्प्ट को विशिष्ट रखें और OpenCode प्रोजेक्ट का निरीक्षण करेगा, प्रगति दिखाएगा, और फ़ाइल बदलाव स्ट्रीम करेगा।",
     "prompts": {
       "polish": "इस प्रोजेक्ट को समझाएँ",
       "review": "हाल के बदलावों की समीक्षा करें",
@@ -230,7 +232,8 @@
   "reasoning": {
     "low": "कम",
     "default": "डिफ़ॉल्ट",
-    "high": "उच्च"
+    "high": "उच्च",
+    "max": "अधिकतम"
   },
   "diff": {
     "turn": "बारी",
@@ -260,10 +263,10 @@
     "filesChangedCompact_other": "{{files}} फ़ाइलें बदलीं, +{{additions}} / -{{deletions}}"
   },
   "session": {
-    "chooseWorkspace": "कार्यक्षेत्र चुनें",
-    "selectWorkspace": "इसकी चैट संदर्भ खोलने के लिए कार्यक्षेत्र टैब में एक प्रोजेक्ट चुनें।",
+    "chooseProject": "प्रोजेक्ट चुनें",
+    "selectProject": "इसकी चैट संदर्भ खोलने के लिए प्रोजेक्ट टैब में एक प्रोजेक्ट चुनें।",
     "opening": "OpenCode Mobile खोला जा रहा है",
-    "loading": "इस OpenCode Mobile कार्यक्षेत्र का नवीनतम सेशन लोड हो रहा है।"
+    "loading": "इस OpenCode Mobile प्रोजेक्ट का नवीनतम सेशन लोड हो रहा है।"
   },
   "deepLink": {
     "missingSessionId": "इस सेशन लिंक में सेशन ID नहीं है।",
@@ -282,7 +285,13 @@
   },
   "pendingPrompts": {
     "sending": "भेजा जा रहा है…",
-    "waiting": "इस्तेमाल किए जाने की प्रतीक्षा में…"
+    "waiting": "इस्तेमाल किए जाने की प्रतीक्षा में…",
+    "cancel": "लंबित संदेश खारिज करें"
+  },
+  "revertNotice": {
+    "title": "इस संदेश से पहले की स्थिति पर लौटा गया",
+    "hint": "यहाँ से जारी रखने के लिए नीचे संदेश संपादित करें और भेजें।",
+    "cancel": "वापसी रद्द करें"
   },
   "approvals": {
     "mcpAuthTitle": "MCP प्रमाणीकरण आवश्यक",

@@ -30,22 +30,24 @@ The goal is not aspirational design documentation. It is an implementation refer
   Deferred iOS widget/Live Activity gap, shipped quick actions and the Android
   home widget, and the requirements to close the iOS side.
 - `known-gaps.md`
-  Deliberately deferred structural work: provider/chat orchestration wiring,
-  test-infrastructure leftovers, and CI/observability gaps.
+  Remaining deliberately deferred work: the untyped Vitest denylist, the
+  standalone FOSS prepare script, and remote crash reporting. Earlier
+  orchestration, test-split, CI-duplication, and local-diagnostics gaps were
+  closed on 2026-10-18.
 - `development.md` explanation on how to run the app locally.
 
 ## Current System Summary
 
-OpenCode Mobile is an Expo / React Native client for an OpenCode server. The app is intentionally thin at the screen level and thick in one shared state container: `providers/opencode-provider.tsx`.
+OpenCode Mobile is an Expo / React Native client for an OpenCode server. The app is intentionally thin at the screen level and thick in one shared composition unit: `providers/use-opencode-provider-composition.ts` (mounted by `providers/opencode-provider.tsx`).
 
 Most important behavior flows through this provider:
 
-- server connection and workspace discovery
+- server connection and project discovery
 - session lifecycle
 - prompt submission
 - transcript, diff, and todo refresh
 - session-scoped permission and question handling with event and list reconciliation
-- session lifecycle/archive, slash commands, workspace editing/worktrees, MCP, PTYs, and diagnostics
+- session lifecycle/archive, slash commands, project editing/worktrees, MCP, PTYs, and diagnostics
 - provider/model/agent capability discovery
 - local persistence
 - conversation mode orchestration
@@ -54,7 +56,7 @@ Most important behavior flows through this provider:
 The tabs mostly render and manipulate provider state:
 
 - `Chat`: active session UI
-- `Workspace`: project and session selection
+- `Project`: project and session selection
 - `Settings`: connection, provider, MCP, notification, and voice configuration
 - `Terminal`: interactive project PTYs with xterm and terminal-key accessory
 

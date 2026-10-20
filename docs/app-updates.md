@@ -3,7 +3,7 @@
 `OpencodeProvider` owns `useAppUpdates`; `useUpdates()` exposes the update notice,
 store actions and blocker registration. `lib/app-updates.ts` is the platform
 boundary. The tab shell renders a compact nonmodal banner above the tabs
-on Chat, Workspace, Settings and Terminal; onboarding, pairing and session routes do
+on Chat, Project, Settings and Terminal; onboarding, pairing and session routes do
 not offer updates. The banner uses Paper controls, the light/dark theme, including
 its fixed accent, and all eight locales. It wraps its actions on narrow screens
 and retains access to the tabs. It occupies layout space above the default tab

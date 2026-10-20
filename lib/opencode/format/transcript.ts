@@ -1,4 +1,4 @@
-import { getMessageError, getToolBody, getToolTitle } from './tool';
+import { getMessageError, getToolBody, getToolCommand, getToolTitle } from './tool';
 import type { SessionMessageRecord, TranscriptDetail, TranscriptEntry } from './types';
 
 const transcriptEntryCache = new WeakMap<SessionMessageRecord, TranscriptEntry>();
@@ -40,6 +40,8 @@ export function toTranscriptEntry(record: SessionMessageRecord): TranscriptEntry
       details.push({
         id,
         kind: 'tool',
+        tool: part.tool,
+        command: getToolCommand(part),
         label: getToolTitle(part),
         body: getToolBody(part),
         status: part.state.status,
@@ -79,46 +81,6 @@ export function toTranscriptEntry(record: SessionMessageRecord): TranscriptEntry
         uri: part.url,
         mime: part.mime,
         filename: part.filename,
-      });
-      return;
-    }
-
-    if (part.type === 'subtask') {
-      details.push({
-        id,
-        kind: 'subtask',
-        label: 'Subtask',
-        body: part.description,
-      });
-      return;
-    }
-
-    if (part.type === 'step-start') {
-      details.push({
-        id,
-        kind: 'step',
-        label: 'Step started',
-        body: part.snapshot || 'OpenCode started a new step.',
-      });
-      return;
-    }
-
-    if (part.type === 'step-finish') {
-      details.push({
-        id,
-        kind: 'step',
-        label: 'Step finished',
-        body: `${part.reason}${part.snapshot ? `\n\n${part.snapshot}` : ''}`,
-      });
-      return;
-    }
-
-    if (part.type === 'agent') {
-      details.push({
-        id,
-        kind: 'agent',
-        label: 'Agent',
-        body: part.name,
       });
       return;
     }

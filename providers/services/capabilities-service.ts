@@ -117,6 +117,7 @@ export async function discoverChatCapabilities(client: ScopedOpencodeClient, act
         providerID: provider.id,
         providerLabel: provider.name,
         modelID: model.id,
+        variants: client.compatibility ? [] : model.variants ?? [],
         supportsReasoning: model.capabilities.reasoning,
         supportsAttachments: model.capabilities.attachment,
         inputModalities: INPUT_MODALITIES.filter((modality) => model.capabilities.input[modality]),
@@ -180,7 +181,15 @@ export async function updateConfig(client: ScopedOpencodeClient, config: Config)
   return requireData((await client.compatibility.config.update({ config: config as NonNullable<Parameters<typeof client.compatibility.config.update>[0]>['config'] })).data, 'config update');
 }
 export async function getProviders(client: ScopedOpencodeClient): Promise<ProviderCatalog> {
-  return client.compatibility ? requireData((await client.compatibility.provider.list()).data, 'provider request') : getProviderCatalog(client.api!, { location: { directory: client.__opencode.directory } });
+  if (!client.compatibility) return getProviderCatalog(client.api!, { location: { directory: client.__opencode.directory } });
+  const catalog = requireData((await client.compatibility.provider.list()).data, 'provider request');
+  return {
+    ...catalog,
+    all: catalog.all.map((provider) => ({
+      ...provider,
+      models: Object.fromEntries(Object.entries(provider.models).map(([id, model]) => [id, { ...model, variants: [] }])),
+    })),
+  };
 }
 export async function setProviderCredentialsForClient(client: ScopedOpencodeClient, id: string, values: ProviderAuthValues) {
   if (client.compatibility) return setProviderCredentials(client.compatibility, id, values);

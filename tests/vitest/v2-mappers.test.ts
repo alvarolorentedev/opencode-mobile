@@ -103,6 +103,7 @@ describe('v2 response mappers', () => {
       variants: [{ id: 'high', settings: { reasoningEffort: 'high' } }],
     }) as never);
     expect(mapped.id).toBe('anthropic/sonnet');
+    expect(mapped.variants).toEqual([{ id: 'high' }]);
     expect((mapped.capabilities as never as { reasoning: boolean }).reasoning).toBe(true);
     expect((mapped.capabilities as never as { attachment: boolean }).attachment).toBe(true);
     expect((mapped.capabilities as never as { toolcall: boolean }).toolcall).toBe(true);
@@ -120,6 +121,34 @@ describe('v2 response mappers', () => {
     expect((toModelOptionRecord(model({ cost: [], variants: [] }) as never).cost as never as { input: number }).input).toBe(0);
     expect((toModelOptionRecord(model({ cost: [{ tier: { type: 'context', size: 1000 }, input: 1, output: 2, cache: { read: 0, write: 0 } }] }) as never).cost as never as { input: number }).input).toBe(1 / 1_000_000);
     expect((toModelOptionRecord(model({ compatibility: { reasoningField: 'reasoning_content' } }) as never).capabilities as never as { reasoning: boolean }).reasoning).toBe(true);
+  });
+
+  it('switches V2 sessions to the selected model variant before submitting', async () => {
+    const switchedModels: unknown[] = [];
+    h.api = {
+      session: {
+        switchModel: async (input: unknown) => { switchedModels.push(input); },
+        prompt: async () => ({ id: 'prompt-1', sessionID: 'session-1', type: 'user', payload: { text: 'hello' }, delivery: 'steer', time: { created: 1 } }),
+        inbox: { list: async () => [], cancel: async () => undefined },
+      },
+    };
+    const client = buildV2Client({ serverUrl: 'http://test', directory: '/repo', username: '', password: '' } as never);
+    await client.promptInbox!.submit({
+      sessionID: 'session-1',
+      model: { providerID: 'opencode', modelID: 'deepseek-v4.1-flash-free' },
+      variant: 'max',
+      parts: [{ type: 'text', text: 'hello' }],
+    }, 'steer');
+    await client.promptInbox!.submit({
+      sessionID: 'session-1',
+      model: { providerID: 'opencode', modelID: 'deepseek-v4.1-flash-free' },
+      variant: 'default',
+      parts: [{ type: 'text', text: 'hello' }],
+    }, 'steer');
+    expect(switchedModels).toEqual([
+      { sessionID: 'session-1', model: { id: 'deepseek-v4.1-flash-free', providerID: 'opencode', variant: 'max' } },
+      { sessionID: 'session-1', model: { id: 'deepseek-v4.1-flash-free', providerID: 'opencode' } },
+    ]);
   });
 });
 

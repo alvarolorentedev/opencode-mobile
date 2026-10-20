@@ -2,7 +2,7 @@
   "tabs": {
     "chat": "聊天",
     "terminal": "终端",
-    "workspace": "工作区",
+    "projects": "项目",
     "settings": "设置"
   },
   "actions": {
@@ -57,5 +57,32 @@
     "availableDescription": "通过 App Store 安装最新版本。",
     "restart": "重启并安装",
     "openStore": "打开 App Store"
+  },
+  "servers": {
+    "allServers": "所有服务器",
+    "allProjects": "所有项目",
+    "server": "服务器",
+    "projectContext": "项目上下文",
+    "serverSettings": "服务器设置",
+    "appSettings": "应用设置",
+    "forServer": "更改将应用于 {{name}}",
+    "searchProjects": "搜索项目",
+    "lastSynced": "正在显示上次同步的项目",
+    "newTerminalHint": "选择此终端的启动位置。",
+    "workingDirectory": "工作目录",
+    "chatUnchanged": "聊天仍保留在 {{name}}。",
+    "pending": "待处理（{{count}}）",
+    "savedRules": "已保存的规则（{{count}}）",
+    "onlyThisServer": "仅适用于此服务器",
+    "appDiagnostics": "应用诊断 · 所有服务器",
+    "discardDrafts": "此服务器上未保存的聊天和编辑器草稿将被丢弃。",
+    "status": {
+      "idle": "已断开",
+      "connecting": "正在连接",
+      "connected": "已连接",
+      "error": "不可用"
+    },
+    "appSettingsSummary": "编辑器、通用设置和更新",
+    "serverToolsSummary": "MCP 服务器和诊断"
   }
 }

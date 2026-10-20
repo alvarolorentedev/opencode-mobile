@@ -1,9 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
-  Alert,
   KeyboardAvoidingView,
-  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -21,16 +19,25 @@ import {
   Text,
 } from 'react-native-paper';
 
+import { confirmAction } from '@/lib/confirm-action';
 import { Colors, Fonts } from '@/constants/theme';
-import { TerminalView } from './terminal-view';
+import { RetainedTerminals } from './retained-terminals';
+import { NewTerminalSheet } from './new-terminal-sheet';
+import { useWorkspaceTerminals } from '@/providers/use-workspace-terminals';
+import { WorkspaceScope, useWorkspaces } from '@/providers/workspace-context';
+import type { WorkspaceTarget } from '@/providers/workspace-types';
 import { OverlaySheet } from '@/components/ui/overlay-sheet';
 import { SwipeRow } from '@/components/ui/swipe-row';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useUpdateBlocker } from '@/hooks/use-update-blocker';
-import type { Pty } from '@/lib/opencode/types';
 import { useConnection, usePreferences, useProjects, useTerminal } from '@/providers/opencode-contexts';
 
 export default function TerminalScreen() {
+  const registry = useWorkspaces();
+  return <WorkspaceScope target={registry.terminalTarget ?? registry.focus}><TerminalContent /></WorkspaceScope>;
+}
+
+function TerminalContent() {
   const { t } = useTranslation();
   const router = useRouter();
   const insets = useSafeAreaInsets();
@@ -38,13 +45,15 @@ export default function TerminalScreen() {
   const palette = Colors[colorScheme];
   const visible = useIsFocused();
   const { activeProject } = useProjects();
-  const { connect, connection } = useConnection();
+  const registry = useWorkspaces();
+  const { create, terminals: terminalEntries } = useWorkspaceTerminals();
+  const multipleServers = registry.connections.length > 1;
+  const [creating, setCreating] = useState(false);
+  const { connection } = useConnection();
   const { chatPreferences } = usePreferences();
   const slim = chatPreferences.slimInterface === true;
   const {
     activeTerminalId,
-    closeTerminal,
-    createTerminal,
     openTerminal,
     refreshTerminals,
     terminalConnection,
@@ -63,12 +72,13 @@ export default function TerminalScreen() {
     }
   }, [activeProject, connection.status, refreshTerminals, t]);
 
-  async function handleCreate() {
+  async function handleCreate(target: WorkspaceTarget) {
     setIsCreating(true);
     try {
-      await createTerminal();
+      await create(target);
     } catch (reason) {
       setError(message(reason, t('terminal:errors.create')));
+      throw reason;
     } finally {
       setIsCreating(false);
     }
@@ -85,57 +95,8 @@ export default function TerminalScreen() {
     }
   }
 
-  async function handleTerminate(id: string) {
-    setBusyId(id);
-    try {
-      await closeTerminal(id);
-    } catch (reason) {
-      setError(message(reason, t('terminal:errors.terminate')));
-    } finally {
-      setBusyId(undefined);
-    }
-  }
-
-  function confirmTerminate(terminal: Pty) {
-    const run = () => void handleTerminate(terminal.id);
-    if (Platform.OS === 'web') {
-      if (globalThis.confirm(t('terminal:console.terminateMessage', { title: terminal.title || terminal.command }))) run();
-      return;
-    }
-    Alert.alert(t('terminal:console.terminateTitle'), terminal.title || terminal.command, [
-      { text: t('common:actions.cancel'), style: 'cancel' },
-      { text: t('terminal:console.terminateAction'), style: 'destructive', onPress: run },
-    ]);
-  }
-
-  if (connection.status !== 'connected' || !activeProject) {
-    return (
-      <View style={[styles.emptyScreen, { backgroundColor: palette.background }]}>
-        <Surface style={[styles.emptyPanel, { backgroundColor: palette.surface }]} elevation={1}>
-          <Text variant="headlineSmall" style={{ color: palette.text }}>
-            {connection.status !== 'connected' ? t('terminal:screen.connectTitle') : t('terminal:screen.chooseWorkspace')}
-          </Text>
-          <Text variant="bodyMedium" style={{ color: palette.muted }}>
-            {connection.status !== 'connected'
-              ? connection.message
-              : t('terminal:screen.selectProject')}
-          </Text>
-          <Button
-            mode="contained"
-            loading={connection.status === 'connecting'}
-            onPress={() => {
-              const action = connection.status !== 'connected' ? connect() : Promise.resolve(router.push('/(tabs)/workspace'));
-              void action.catch((reason) => setError(message(reason, t('terminal:errors.connect'))));
-            }}>
-            {connection.status !== 'connected' ? t('common:actions.reconnect') : t('terminal:screen.openWorkspaces')}
-          </Button>
-        </Surface>
-        <Snackbar visible={Boolean(error)} onDismiss={() => setError(undefined)}>{error}</Snackbar>
-      </View>
-    );
-  }
-
   const activeTerminal = terminals.find((terminal) => terminal.id === activeTerminalId);
+
 
   return (
     <>
@@ -158,7 +119,7 @@ export default function TerminalScreen() {
                   {activeTerminal?.title || activeTerminal?.command || t('terminal:console.selectTerminal')}
                 </Text>
                 <Text numberOfLines={1} variant="bodySmall" style={{ color: palette.muted }}>
-                  {activeProject.path}  |  {t(`terminal:status.${terminalConnection}`)}
+                  {multipleServers ? `${registry.connections.find((entry) => entry.id === (registry.terminalTarget ?? registry.focus)?.connectionId)?.name} / ` : ''}{activeProject?.path ?? '—'}  |  {t(`terminal:status.${terminalConnection}`)}
                 </Text>
               </View>
               <MaterialCommunityIcons name="chevron-down" size={20} color={palette.muted} />
@@ -170,7 +131,7 @@ export default function TerminalScreen() {
               icon="plus"
               accessibilityLabel={t('terminal:console.create')}
               disabled={isCreating || Boolean(busyId)}
-              onPress={() => void handleCreate()}
+              onPress={() => setCreating(true)}
             />
             <Appbar.Action
               icon="refresh"
@@ -181,9 +142,22 @@ export default function TerminalScreen() {
           </View>
         </Appbar.Header>
 
-        {terminalRuntime.instances.length > 0 ? (
-          <View style={styles.output}>
-            <TerminalView key={terminalRuntime.scope} visible={visible} slim={slim} palette={palette} onError={setError} />
+        <View style={styles.output}>
+          <RetainedTerminals visible={visible} slim={slim} palette={palette} onError={setError} />
+        {connection.status !== 'connected' || !activeProject ? (
+          <View style={styles.emptyScreen}>
+            <Surface style={[styles.emptyPanel, { backgroundColor: palette.surface }]} elevation={1}>
+              <Text variant="headlineSmall">{connection.status !== 'connected' ? t('terminal:screen.connectTitle') : t('terminal:screen.chooseProject')}</Text>
+              <Text>{connection.status !== 'connected' ? connection.message : t('terminal:screen.selectProject')}</Text>
+              <Button mode="contained" loading={connection.status === 'connecting'} onPress={() => {
+                const target = registry.terminalTarget ?? registry.focus;
+                const action = connection.status !== 'connected' && target ? registry.retry(target.connectionId) : Promise.resolve(router.push('/(tabs)/projects'));
+                void action.catch((reason) => setError(message(reason, t('terminal:errors.connect'))));
+              }}>{connection.status !== 'connected' ? t('common:actions.reconnect') : t('terminal:screen.openProjects')}</Button>
+            </Surface>
+          </View>
+        ) : terminalRuntime.instances.length > 0 ? (
+          <View pointerEvents="box-none" style={styles.output}>
             {terminalRuntime.instances.find((entry) => entry.id === activeTerminalId)?.error ? <View style={styles.connectionError}>
               <Text accessibilityRole="alert" style={{ color: palette.text }}>{terminalRuntime.instances.find((entry) => entry.id === activeTerminalId)?.error}</Text>
               <Button disabled={terminalConnection === 'exited'} onPress={() => { if (activeTerminalId) void handleOpen(activeTerminalId); }}>{t('common:actions.reconnect')}</Button>
@@ -192,10 +166,10 @@ export default function TerminalScreen() {
         ) : (
           <ScrollView style={styles.output} contentContainerStyle={styles.outputContent}>
             <Card mode="contained" style={{ backgroundColor: palette.surface, borderRadius: 16 }}>
-              <Card.Title title={t('terminal:screen.title')} subtitle={activeProject.label} />
+              <Card.Title title={t('terminal:screen.title')} subtitle={activeProject?.label} />
               <Card.Content style={{ gap: 12 }}>
                 <Text style={{ color: palette.muted }}>{t('terminal:console.openOrCreate')}</Text>
-                <Button mode="contained" icon="plus" loading={isCreating} disabled={isCreating || Boolean(busyId)} onPress={() => void handleCreate()}>
+                <Button mode="contained" icon="plus" loading={isCreating} disabled={isCreating || Boolean(busyId)} onPress={() => setCreating(true)}>
                   {t('terminal:console.new')}
                 </Button>
                 <Text variant="bodySmall" style={{ color: palette.muted }}>{t('terminal:console.interactiveHint')}</Text>
@@ -203,15 +177,29 @@ export default function TerminalScreen() {
             </Card>
           </ScrollView>
         )}
+        </View>
       </KeyboardAvoidingView>
+      {creating ? <NewTerminalSheet target={registry.terminalTarget ?? (registry.focus && { ...registry.focus, projectPath: activeProject?.path ?? '' })} onClose={() => setCreating(false)} onCreate={handleCreate} /> : null}
       <OverlaySheet visible={terminalPickerVisible} fitContent testID="terminal-picker" title={t('terminal:sessions.title')} onClose={() => setTerminalPickerVisible(false)}>
-        {terminals.length === 0 ? <Text style={{ color: palette.muted }}>{t('terminal:sessions.empty')}</Text> : null}
-        {terminals.map((terminal) => <SwipeRow key={terminal.id} title={`${terminal.title || terminal.command}, ${terminal.id.slice(0, 8)}`} actions={[{ label: t('common:actions.close'), icon: 'close', onPress: () => confirmTerminate(terminal) }]}>
-          <Pressable accessibilityRole="button" accessibilityLabel={t('terminal:sessions.openLabel', { terminal: `${terminal.title || terminal.command}, ${terminal.id.slice(0, 8)}` })} accessibilityHint={t('terminal:sessions.closeHint')} accessibilityState={{ selected: terminal.id === activeTerminalId }} onPress={() => { setTerminalPickerVisible(false); void handleOpen(terminal.id); }} style={[styles.terminalOption, { borderColor: terminal.id === activeTerminalId ? palette.tint : palette.border }]}>
-            <MaterialCommunityIcons name={terminal.id === activeTerminalId ? 'check-circle' : 'console'} size={20} color={terminal.id === activeTerminalId ? palette.tint : palette.muted} />
-            <View style={styles.terminalOptionText}><Text numberOfLines={1} variant="titleSmall">{terminal.title || terminal.command}</Text><Text numberOfLines={1} variant="bodySmall" style={{ color: palette.muted }}>{terminal.command} · {terminal.id.slice(0, 8)}</Text></View>
-          </Pressable>
-        </SwipeRow>)}
+        {terminalEntries.length === 0 ? <Text style={{ color: palette.muted }}>{t('terminal:sessions.empty')}</Text> : null}
+        {terminalEntries.map(({ key, connectionId, projectPath, serverName, terminal, actions }) => {
+          const title = `${terminal.title || terminal.command}, ${terminal.id.slice(0, 8)}${multipleServers ? `, ${serverName}, ${projectPath}` : ''}`;
+          return <SwipeRow key={`${key}:${terminal.id}`} title={title} actions={[{ label: t('common:actions.close'), icon: 'close', onPress: () => {
+            confirmAction(t('terminal:console.terminateTitle'), `${serverName} / ${projectPath}`, t('terminal:console.terminateAction'), t('common:actions.cancel'), () => void actions.closeTerminal(terminal.id).catch((reason) => setError(String(reason))));
+          } }]}>
+            <Pressable accessibilityRole="button" accessibilityLabel={t('terminal:sessions.openLabel', { terminal: title })}
+              onPress={() => { void registry.selectTerminalTarget({ connectionId, projectPath }).then(() => actions.openTerminal(terminal.id)).then(() => setTerminalPickerVisible(false)).catch((reason) => setError(String(reason))); }} style={[styles.terminalOption, { borderColor: palette.border }]}>
+              <MaterialCommunityIcons name="console" size={20} color={palette.muted} />
+              <View style={styles.terminalOptionText}>
+                <View style={styles.terminalTitleLine}>
+                  <Text numberOfLines={1} style={styles.terminalOptionText}>{terminal.title || terminal.command}</Text>
+                  {multipleServers ? <Text testID="terminal-server-chip" numberOfLines={1} style={[styles.serverChip, { color: palette.muted, borderColor: palette.border }]}>{serverName}</Text> : null}
+                </View>
+                <Text numberOfLines={1} variant="bodySmall">{projectPath}</Text>
+              </View>
+            </Pressable>
+          </SwipeRow>;
+        })}
       </OverlaySheet>
       <Snackbar visible={Boolean(error)} onDismiss={() => setError(undefined)}>{error}</Snackbar>
     </>
@@ -235,6 +223,8 @@ const styles = StyleSheet.create({
   headerTitle: { fontFamily: Fonts.display, fontWeight: '700' },
   terminalOption: { minHeight: 64, borderWidth: 1, borderRadius: 14, paddingHorizontal: 14, flexDirection: 'row', alignItems: 'center', gap: 12 },
   terminalOptionText: { flex: 1, minWidth: 0 },
+  terminalTitleLine: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  serverChip: { maxWidth: 120, fontSize: 12, borderWidth: 1, borderRadius: 12, paddingHorizontal: 8, paddingVertical: 3 },
   output: { flex: 1 },
   outputContent: { flexGrow: 1, padding: 16 },
   connectionError: { padding: 8, gap: 4 },

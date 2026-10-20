@@ -24,7 +24,7 @@ upstream to provide a build flavour without them. The FOSS variant:
 - keeps local task-completion notifications by compiling `expo-notifications`
   against F-Droid's free `firebase-stubs` classes instead of `firebase-messaging`
 
-The self-hosted OpenCode experience (connections, sessions, workspace, terminal,
+The self-hosted OpenCode experience (connections, sessions, project, terminal,
 files, voice) is unchanged. Only the optional paid Cloud Link path is absent.
 
 ## Building locally

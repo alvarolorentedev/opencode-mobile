@@ -84,7 +84,9 @@ describe('connection profiles', () => {
       [/from 'react-native'/g, `from "${reactNativeStubUri}"`],
       [/from '@\/lib\/storage-keys'/g, `from "${storageKeysUri}"`],
     ]);
+    const workspaceStubUri = `data:text/javascript,${encodeURIComponent("export const WORKSPACES_STORAGE_KEY = 'opencode-mobile.workspaces'; export const parseWorkspaces = JSON.parse;")}`;
     const connectionProfilesUri = await transpileToDataUri('lib/connection-profiles.ts', [
+      [/from '@\/providers\/workspace-storage'/g, `from "${workspaceStubUri}"`],
       [/from '@\/lib\/opencode\/client\/url'/g, `from "${urlUri}"`],
       [/from '@\/lib\/connect'/g, `from "${connectUri}"`],
       [/from '@react-native-async-storage\/async-storage'/g, `from "${asyncStorageStubUri}"`],
@@ -118,6 +120,16 @@ describe('connection profiles', () => {
     const passwordStorageKey = 'opencode-mobile.connection-password';
     assert.equal(await resolveConnectionCredentials({ serverUrl: '', username: '' }), undefined);
     assert.equal(await resolveConnectionCredentials({ serverUrl: 'http://', username: '' }), undefined);
+
+    const parked = { serverUrl: 'https://parked.example', username: 'alice' };
+    await saveConnectionProfiles([{ id: 'parked', name: 'Parked', ...parked }]);
+    await saveProfilePassword('parked', 'retained-secret');
+    await asyncStorage.setItem('opencode-mobile.workspaces', JSON.stringify({ version: 1, connections: [{ settings: parked, enabled: false }] }));
+    assert.equal(await resolveConnectionCredentials(parked), undefined, 'Disconnected servers must not be polled by background tasks or widgets.');
+    assert.equal(await getProfilePassword('parked'), 'retained-secret');
+    await asyncStorage.setItem('opencode-mobile.workspaces', JSON.stringify({ version: 1, connections: [{ settings: parked, enabled: true }] }));
+    assert.deepEqual(await resolveConnectionCredentials(parked), { password: 'retained-secret' });
+    await asyncStorage.removeItem('opencode-mobile.workspaces');
 
     function resetStorage() {
       g.__profilesTestAsyncStorage.clear();

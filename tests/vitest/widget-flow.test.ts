@@ -83,7 +83,7 @@ describe('widget service', () => {
     h.messages.mockResolvedValue({ records: [assistant('reply')] });
     h.permissions.mockResolvedValue([permission('one')]); h.questions.mockResolvedValue([]);
   });
-  it('reads recent replies and all workspaces with no notification dependency, and deduplicates globals', async () => {
+  it('reads recent replies and all projects with no notification dependency, and deduplicates globals', async () => {
     const result = await readWidgetData({} as any, settings, 'v2');
     expect(h.messages).toHaveBeenCalledTimes(2); expect(h.permissions).toHaveBeenCalledTimes(2);
     expect(h.clients.mock.calls.map(([setting]) => setting.directory)).toEqual(['/repo', '/other']);
@@ -99,7 +99,7 @@ describe('widget service', () => {
     h.list.mockResolvedValue({ sessions: Array.from({ length: 20 }, (_, i) => session(`s${i}`, i, undefined, `/repo${i}`)), statuses: { s7: { type: 'busy' } } });
     h.permissions.mockResolvedValue([]); h.questions.mockResolvedValue([]);
     const previousInteractions = Object.fromEntries(Array.from({ length: 6 }, (_, i) => [`/repo${i}`, { permissions: [permission(`s${i}`)], questions: [] }]));
-    // More blocked workspaces than the widget's three visible rows must remain watched.
+    // More blocked projects than the widget's three visible rows must remain watched.
     const result = await readWidgetData({} as any, settings, 'v2', { probeAllDirectories: false, watchedDirectories: new Set(['/repo7', '/repo8', ...Object.keys(previousInteractions)]), previousInteractions });
     expect(h.permissions).toHaveBeenCalledTimes(8); expect(h.questions).toHaveBeenCalledTimes(8);
     expect(h.clients).toHaveBeenCalledTimes(11); expect(h.messages).toHaveBeenCalledTimes(3);
@@ -108,7 +108,7 @@ describe('widget service', () => {
     await readWidgetData({} as any, settings, 'v2', { probeAllDirectories: true });
     expect(h.permissions).toHaveBeenCalledTimes(20); expect(h.questions).toHaveBeenCalledTimes(20);
   });
-  it('preserves unprobed interaction data and builds only the recent clients in an idle healthy workspace catalog', async () => {
+  it('preserves unprobed interaction data and builds only the recent clients in an idle healthy project catalog', async () => {
     h.list.mockResolvedValue({ sessions: Array.from({ length: 20 }, (_, i) => session(`s${i}`, i, undefined, `/repo${i}`)), statuses: {} });
     const previous = { '/repo0': { permissions: [permission('s0')], questions: [] } };
     const result = await readWidgetData({} as any, settings, 'v2', { probeAllDirectories: false, previousInteractions: previous });
@@ -211,7 +211,7 @@ describe('widget provider lifecycle', () => {
     }
     runtime.unmount();
   });
-  it('serializes writes and updates real plan steps without refetching other workspaces', async () => {
+  it('serializes writes and updates real plan steps without refetching other projects', async () => {
     await mount(); const blocked = deferred(); save.mockImplementationOnce(() => blocked.promise);
     runtime.update({ todosBySession: { one: [{ content: 'updated step', status: 'completed', priority: 'medium' }] } });
     await runtime.settle(); const count = save.mock.calls.length;

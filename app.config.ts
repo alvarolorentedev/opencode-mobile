@@ -171,14 +171,14 @@ const withAndroidAppConfig = (config: ExpoConfig) => {
 const config: ExpoConfig = {
   name: isDevelopmentVariant ? 'OpenCode Mobile Dev' : 'OpenCode Mobile',
   slug: 'opencode-mobile',
-  version: '1.0.77',
+  version: '1.0.85',
   orientation: 'default',
   icon: './assets/images/icon.png',
   scheme: 'opencodemobile',
   userInterfaceStyle: 'automatic',
   android: {
     package: androidPackage,
-    versionCode: 77,
+    versionCode: 85,
     adaptiveIcon: {
       foregroundImage: './assets/images/adaptive-icon.png',
       backgroundColor: "#202020"
@@ -192,7 +192,7 @@ const config: ExpoConfig = {
   },
   ios: {
     bundleIdentifier: isDevelopmentVariant ? 'app.getopencode.mobile.dev' : 'app.getopencode.mobile',
-    buildNumber: '77',
+    buildNumber: '85',
     infoPlist: {
       ITSAppUsesNonExemptEncryption: false,
       NSPhotoLibraryUsageDescription: 'Allow OpenCode Mobile to access photos you choose to attach to chat messages.',
@@ -283,7 +283,7 @@ const config: ExpoConfig = {
           },
           {
             name: 'AttentionWidget', label: 'OpenCode awaiting actions',
-            description: 'Pending permissions and questions across workspaces.',
+            description: 'Pending permissions and questions across projects.',
             minWidth: '180dp', minHeight: '140dp', targetCellWidth: 4, targetCellHeight: 3,
             resizeMode: 'horizontal|vertical',
           },

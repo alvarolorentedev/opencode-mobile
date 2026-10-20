@@ -45,6 +45,7 @@ describe('ANR regression checks', () => {
     const names = ['Éclair', 'alpha', 'Alpha', ...Array.from({ length: 2000 }, (_, i) => `Model ${2000 - i}`)];
     const models = Object.fromEntries(names.map((name, i) => [String(i), {
       id: String(i), name, capabilities: { input: { text: true } }, limit: { context: 1000, output: 100 },
+      ...(i === 0 ? { variants: [{ id: 'max' }] } : {}),
     }]));
     const client = {
       config: { get: async () => ({ data: {} }) },
@@ -57,6 +58,7 @@ describe('ANR regression checks', () => {
     for (let i = 0; i < 2; i += 1) {
       const result = await discoverChatCapabilities({ compatibility: client }, '/repo');
       assert.equal(result.models.length, names.length);
+      assert.ok(result.models.every((model: any) => model.variants.length === 0), 'V1 catalog models must not expose server variants');
       assert.equal(result.models[0].modelID, '1');
       assert.deepEqual(Array.from(result.models.slice(1), (model: any) => model.label), names.filter((_, i) => i !== 1).sort((a, b) => a.localeCompare(b)));
     }

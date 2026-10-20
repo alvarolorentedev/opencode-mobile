@@ -1,22 +1,14 @@
 import { expect, test } from '@playwright/test';
 
+import { resetScenario, seedOnboarding } from './helpers/flows.mjs';
+
 // Seed a completed onboarding marker so this probe boots straight into chat.
-test.beforeEach(async ({ page }) => {
-  await page.addInitScript(() => {
-    globalThis.localStorage.setItem('opencode-mobile.onboarding-version', JSON.stringify({ version: 1 }));
-  });
+test.beforeEach(async ({ page }, info) => {
+  await seedOnboarding(page, info);
 });
 
 // TEMPORARY probe (delete after the demo): shows whether the V1 plan
 // overlay appears after a happy-path prompt completes.
-async function resetScenario(request, scenario) {
-  const response = await request.post('http://127.0.0.1:44096/__control/reset', {
-    data: { scenario },
-  });
-
-  expect(response.ok()).toBeTruthy();
-}
-
 test('probe: V1 plan overlay appears after completion', async ({ page, request }) => {
   await resetScenario(request, 'happy-path');
   await page.goto('/', { waitUntil: 'domcontentloaded' });

@@ -299,7 +299,12 @@
     "refresh": "刷新诊断",
     "networkUsage": "网络使用量",
     "networkUsageValue": "{{requests}} 次请求 · 今日已知响应大小 {{size}}",
-    "networkUsageReset": "重置"
+    "networkUsageReset": "重置",
+    "lastError": "最近的 App 错误",
+    "lastErrorValue": "{{message}} · {{time}}",
+    "lastErrorNone": "未记录到 App 错误",
+    "lastErrorFatal": "致命",
+    "lastErrorHandled": "已处理"
   },
   "mcp": {
     "title": "MCP 服务器",
@@ -333,7 +338,22 @@
     },
     "slimInterface": {
       "title": "精简界面",
-      "description": "缩小聊天、终端和工作区中的按钮、间距和标题栏，以便在屏幕上显示更多文本。"
+      "description": "缩小聊天、终端和项目中的按钮、间距和标题栏，以便在屏幕上显示更多文本。"
+    },
+    "transcriptVerbosity": {
+      "label": "对话记录详细程度",
+      "basic": {
+        "label": "基础",
+        "description": "仅显示用户和助手消息。"
+      },
+      "reasoning": {
+        "label": "推理",
+        "description": "同时以折叠行显示助手的推理。"
+      },
+      "verbose": {
+        "label": "详细",
+        "description": "同时以折叠行显示工具调用。"
+      }
     }
   },
   "connect": {
@@ -388,7 +408,6 @@
     "scanNewQr": "扫描电脑上的新二维码",
     "scanLocal": "扫描二维码",
     "scanLocalHint": "连接到同一网络上的电脑。",
-    "scanLocalUnavailable": "本地二维码扫描在 iOS 和 Android 应用中可用。",
     "manual": "手动",
     "manualHint": "输入服务器网址和凭据。",
     "nativeOnly": "Cloud Link 可在 iOS 和 Android 应用中使用。",
@@ -502,6 +521,14 @@
     "copyLink": "复制链接",
     "linkCopied": "已复制服务链接。",
     "linkUnavailable": "无法为此服务生成链接。",
+    "machine": "设备",
+    "notActive": "正在显示 {{name}} 的服务——这不是你当前的连接。",
+    "useMachine": "切换到此设备",
+    "noMachine": "连接 Cloud Link 设备以管理其公开的服务。",
+    "credentialsExpired": "此设备的 Cloud Link 访问已过期或缺失。请重新连接以管理其服务。",
+    "reconnectFailed": "无法重新连接此设备。",
+    "unavailableService": "连接器上已不存在此服务。",
+    "unavailableServiceHint": "请返回并刷新已公开的服务列表。",
     "legacyConnector": "此桌面连接器尚不支持专用服务端口。请更新后使用端口根路径和端口选择。",
     "unknownConnector": "此桌面连接器比应用预期的版本更旧。请更新以使用专用端口和根服务。",
     "enabledHint": "通过隧道路由此路径的流量。",

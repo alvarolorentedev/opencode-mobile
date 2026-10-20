@@ -9,83 +9,87 @@ requires explicit human validation under `AGENTS.md`.
 
 ## 1. Provider and chat orchestration wiring
 
-`providers/opencode-provider.tsx` is the single orchestrator and remains the
-app's main coupling hotspot. It currently sits exactly at the architecture
-ratchet limits enforced by `tests/vitest/architecture.test.ts`:
+Closed on 2026-10-18. The coupling hotspot was split without changing behavior:
 
-- the provider file is **exactly 500 lines** (`MAX_LINES` = 500), and
-- the combined domain-context surface is **exactly 135 members**
-  (`contextMembers <= 135`).
+- `providers/opencode-provider.tsx` is now a thin wrapper (~33 lines). The
+  domain hooks and their input spreads moved to
+  `providers/use-opencode-provider-composition.ts` (~410 lines), and the
+  context-provider tree moved to `providers/opencode-provider-tree.tsx`.
+- The provider line ratchet in `tests/vitest/architecture.test.ts` dropped from
+  500 to 60 in the same change, so the entrypoint cannot regrow into a god
+  object. The repo-wide 500-line ceiling still covers both new files.
+- `components/chat/chat-view.tsx` renders `TranscriptList`, `ChangesOverlay`,
+  and `PendingInteractions` directly; the `ChatContent` pass-through
+  (`components/chat/chat-content.tsx` and its barrel) is gone.
+- `useChatViewController` returns `header` / `content` / `composer` / `overlay`
+  / `actions` namespaces instead of ~85 flat members, and `ChatView` consumes
+  those namespaces directly.
 
-The caps are doing their job, but the pressure shows up as relocation rather
-than reduction:
-
-- `OpencodeProvider` spreads `...state` (and, further down, `...workspace`,
-  `...sessionActions`, `...prompt`, ...) into roughly twenty `use*` hooks, then
-  re-assembles the context values.
-- `providers/opencode-provider-action-inputs.ts` and
-  `providers/opencode-provider-values-input.ts` exist mainly to describe those
-  spreads without exceeding the line budget.
-
-The chat surface has the same shape one level down:
-
-- `components/chat/use-chat-view-controller.ts` returns ~85 flat members.
-- `components/chat/chat-view.tsx` re-destructures them and forwards ~50 props to
-  `ChatContent`.
-- `components/chat/content/chat-content.tsx` is a pure pass-through that forwards
-  ~27 more props to `TranscriptList` / `ChangesOverlay` / `PendingInteractions`.
-- Meanwhile `components/chat/chat-library.tsx` and several settings components
-  read the provider contexts directly, so the convention is not uniform.
-
-Direction to consider (do not invent a new architecture):
-
-1. Remove the `ChatContent` pass-through: render the three leaves directly in
-   `ChatView`, or let each leaf read the domain context it needs, matching
-   `chat-library.tsx`.
-2. Group `useChatViewController`'s output into cohesive namespaces (`content`,
-   `composer`, `overlay`, `actions`) to shrink the flat 85-field surface.
-3. Extract the nested context-provider tree and the `...state` spreading from
-   `opencode-provider.tsx` into a dedicated composition unit, then **lower** the
-   ratchet numbers in the same change (per the rule in `docs/architecture.md`).
-
-React Compiler is enabled (`app.config.ts`), so measure re-render behavior before
-attempting any selector-based subscription model; the memoized domain values may
-already be sufficient.
+Remaining deferred piece: a selector-based subscription model. React Compiler
+is enabled, so measure re-render behavior before attempting it; the memoized
+context values may already be sufficient.
 
 ## 2. Test infrastructure leftovers
 
-The standalone Node `.mjs` suites were consolidated into `tests/vitest/`
-(see `TESTING.md`). Three items remain:
+Partially closed on 2026-10-18:
 
-- **Test files are not type-checked.** `tsconfig.json` excludes `tests/vitest`,
-  and the suites intentionally drive the dynamic `loadTs` / `hookRuntime` harness
-  in `tests/helpers/runtime.mjs`, which returns untyped module shapes. Running
-  `tsc` over `tests/vitest` today reports hundreds of type-only errors
-  (dominated by `connect.test.ts`, `provider-runtime.test.ts`,
-  `connect-recovery.test.ts`). Making this a gate means either fixing all of them
-  or blanket `// @ts-nocheck`, neither of which clearly pays for itself. The
-  suites are exercised by running them; app-side types are still checked.
-- **`tests/foss-prepare.test.mjs`** is still a standalone Node script
-  (`npm run test:foss`, run by the `foss-release` CI job). It was left out of the
-  Vitest include because it mutates a temporary `node_modules` tree and is build
-  tooling rather than app behavior.
-- **The Playwright specs are monolithic.** `tests/e2e/flows.spec.mjs` is ~2,250
-  lines and `tests/e2e/connect.spec.mjs` is ~950 lines, with ~30 shared helpers
-  defined at the top of `flows.spec.mjs`. Splitting them by domain (extracting a
-  `tests/e2e/helpers/` module first) is mechanical but must be validated by a
-  full `npm run test:e2e:web` run, which is why it was not done blind.
+- **The Playwright specs are split.** The former ~2,300-line
+  `tests/e2e/flows.spec.mjs` is now domain specs (`chat`, `interactions`,
+  `diffs`, `projects`, `sessions`, `realtime`, `settings`, `terminal`, `v2`,
+  `compat`) sharing `tests/e2e/helpers/flows.mjs`. `onboarding.spec.mjs` and
+  `plan-overlay-probe.spec.mjs` reuse the same helpers instead of duplicating
+  them. Test titles are unchanged.
+- **The Vitest suites are type-checked with a denylist.** `tsconfig.tests.json`
+  type-checks `tests/vitest`; `npm run typecheck:tests` (part of
+  `test:ci:static`) runs it. The 23 suites that still drive the dynamic
+  `loadTs` / `hookRuntime` harness with untyped module shapes are listed under
+  `exclude`. Shrink that list as suites are cleaned up; do not add to it without
+  a note here.
+- **`tests/foss-prepare.test.mjs`** stays a standalone Node script
+  (`npm run test:foss`, run by the `foss-release` CI job). It mutates a
+  temporary `node_modules` tree and is build tooling rather than app behavior,
+  so it is deliberately not part of the Vitest include.
 
 ## 3. CI duplication and observability
 
-- **Duplicated `validate` job.** The same validate steps (static checks,
-  fake-server self-test, Playwright) are copy-pasted in
-  `.github/workflows/pr-validate.yml`, `build.yml`, and `ios-release.yml`. The
-  iOS workflow even carries a comment about drift risk. Extract a reusable
-  workflow (`workflow_call`) and have the three callers depend on it.
-- **No remote crash/error reporting.** `lib/error-reporting.ts` writes the last
-  JS error to a local file under the app's documents directory and delegates to
-  the previous handler. There is no remote crash/error pipeline, so release-time
-  failures can only be diagnosed from a user's device or the Settings
-  diagnostics surface. Adding an opt-in reporter (for example Sentry) behind the
-  existing diagnostics surface, and surfacing the recorded `LAST_JS_ERROR` in
-  Settings → Diagnostics, would close the loop.
+Closed on 2026-10-18 except for the remote reporter:
+
+- **Duplicated `validate` job.** `pr-validate.yml`, `build.yml`, and
+  `ios-release.yml` now call `.github/workflows/validate.yml`
+  (`workflow_call`). `ios-release.yml` keeps tag resolution in its own
+  `resolve-tag` job and passes the ref into the reusable workflow.
+- **Local crash diagnostics are surfaced.** `lib/error-reporting.ts` gained
+  `readLastJsError()`, `hooks/use-last-js-error.ts` owns the read lifecycle, and
+  Settings → Diagnostics shows the last recorded JS error (message, time, and a
+  fatal/handled chip) or a neutral empty state. The Refresh action re-reads it.
+- **No remote crash/error reporting.** Still deferred. An opt-in reporter (for
+  example Sentry) would need a dependency, a consent toggle behind the existing
+  diagnostics surface, and scrubbing that never sends the server URL or
+  credentials. Only worth doing if a remote pipeline is explicitly funded.
+
+## 4. Transcript merge micro-optimizations
+
+Deferred on 2026-10-18 while the transcript refresh policy was simplified
+(single tail-merge, 300-record window with a 10-entry display target, no
+backward bridging). The remaining
+render-cost machinery is intentionally untouched because it is not the source of
+the stale/empty-transcript behavior and is harder to validate:
+
+- `mergeSessionMessageWindow` / `prependSessionMessageHistory` keep record object
+  references and use `JSON.stringify` equality so unchanged records skip the
+  tokenization pass (`lib/opencode/format/window.ts`).
+- `toTranscriptEntry` caches entries in a `WeakMap` keyed by record reference.
+- `TranscriptList` re-asserts the FlashList tail across several frames
+  (`TAIL_SETTLE_FRAMES`) and restores offset on focus/foreground.
+
+Revisit only with render profiling evidence, and one mechanism at a time.
+
+## 5. V2 non-message timeline records
+
+Deferred on 2026-10-19 with the verbosity levels
+(`basic`/`reasoning`/`verbose`). The V2 timeline also carries `idle`, `system`,
+`synthetic`, `skill`, `shell`, `agent-switched`, `model-switched`, and
+`location-switched` records. They are fetched but not rendered at any current
+level; most are mapped to empty non-display records. A future "everything/debug"
+level would map them into transcript details (and would need to decide how to
+present shell output and skill/system text).

@@ -28,6 +28,7 @@
     "couldNotFork": "Impossible de dupliquer la session.",
     "couldNotRevert": "Impossible de revenir en arrière sur la session.",
     "couldNotRestore": "Impossible de restaurer la session.",
+    "couldNotCancelPending": "Impossible d'abandonner ce message en attente.",
     "couldNotUpdateAutoApprove": "Impossible de mettre à jour l'approbation automatique.",
     "sendError": {
       "title": "Échec de l'envoi par OpenCode",
@@ -48,8 +49,6 @@
   },
   "content": {
     "connectionIssue": "Problème de connexion",
-    "sessionReverted": "La session a été annulée",
-    "restoreReverted": "Restaurer le travail annulé",
     "runningActivity": "OpenCode est en train de {{activity}}...",
     "runningRetry": "OpenCode a rencontré une erreur et réessaie (tentative {{attempt}})...",
     "runningGeneric": "OpenCode traite l'étape en cours...",
@@ -60,7 +59,10 @@
     "allTasksCompleted": "Toutes les tâches sont terminées",
     "openToSeeSteps": "Ouvre pour voir toutes les étapes",
     "progress": "Progression",
-    "untitledTask": "Tâche sans titre"
+    "untitledTask": "Tâche sans titre",
+    "loadEarlier": "Rien à afficher pour l’instant",
+    "loadEarlierDescription": "Les messages les plus récents de ce tour sont de l’activité d’outils. Chargez les messages précédents pour voir la conversation.",
+    "loadEarlierAction": "Charger les messages précédents"
   },
   "cards": {
     "respondToContinue": "Autorisation nécessaire",
@@ -137,7 +139,7 @@
     "estimatedCost": "Coût API estimé {{cost}}",
     "openChats": "Chats ouverts. {{title}}",
     "untitledChat": "Chat sans titre",
-    "chooseWorkspace": "Choisis un espace de travail",
+    "chooseProject": "Choisis un projet",
     "newChat": "Nouveau chat",
     "showUsage": "Afficher les détails d'utilisation de la session",
     "stopConversationMode": "Arrêter le mode conversation",
@@ -162,7 +164,7 @@
   "library": {
     "title": "Chats",
     "searchPlaceholder": "Rechercher des chats",
-    "chooseWorkspace": "Choisis un espace de travail",
+    "chooseProject": "Choisis un projet",
     "swipeHint": " · Glisse vers la gauche pour les actions",
     "active": "Actifs",
     "archived": "Archivés",
@@ -219,7 +221,7 @@
   },
   "starter": {
     "title": "Démarrer une nouvelle tâche",
-    "description": "Garde la consigne précise et OpenCode inspectera l'espace de travail, affichera la progression et diffusera les modifications de fichiers.",
+    "description": "Garde la consigne précise et OpenCode inspectera le projet, affichera la progression et diffusera les modifications de fichiers.",
     "prompts": {
       "polish": "Explique ce projet",
       "review": "Examine les modifications récentes",
@@ -230,7 +232,8 @@
   "reasoning": {
     "low": "Faible",
     "default": "Par défaut",
-    "high": "Élevé"
+    "high": "Élevé",
+    "max": "Maximal"
   },
   "diff": {
     "turn": "Tour",
@@ -260,10 +263,10 @@
     "filesChangedCompact_other": "{{files}} fichiers modifiés, +{{additions}} / -{{deletions}}"
   },
   "session": {
-    "chooseWorkspace": "Choisis un espace de travail",
-    "selectWorkspace": "Sélectionne un projet dans l'onglet Espaces de travail pour ouvrir son contexte de chat.",
+    "chooseProject": "Choisis un projet",
+    "selectProject": "Sélectionne un projet dans l'onglet Projets pour ouvrir son contexte de chat.",
     "opening": "Ouverture d'OpenCode Mobile",
-    "loading": "Chargement de la dernière session pour cet espace de travail OpenCode Mobile."
+    "loading": "Chargement de la dernière session pour cet projet OpenCode Mobile."
   },
   "deepLink": {
     "missingSessionId": "Ce lien de session ne contient pas d'ID de session.",
@@ -282,7 +285,13 @@
   },
   "pendingPrompts": {
     "sending": "Envoi…",
-    "waiting": "En attente de prise en compte…"
+    "waiting": "En attente de prise en compte…",
+    "cancel": "Abandonner le message en attente"
+  },
+  "revertNotice": {
+    "title": "Annulé depuis ce message",
+    "hint": "Modifie le prompt ci-dessous et envoie-le pour continuer à partir d'ici.",
+    "cancel": "Annuler le retour en arrière"
   },
   "approvals": {
     "mcpAuthTitle": "Authentification MCP requise",

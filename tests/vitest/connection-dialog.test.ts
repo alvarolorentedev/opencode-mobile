@@ -8,36 +8,31 @@ function find(root: Element | Element[], testID: string): Element | undefined {
   if (root.props?.testID === testID || root.type === testID) return root;
   return find(root.props?.children, testID);
 }
-async function form(platform = 'web', onSubmit = vi.fn(), foss = false, startScanning = false) {
+async function form(onSubmit = vi.fn()) {
   const runtime = hookRuntime();
   const probe = vi.fn(async () => ({ status: 'detected', contract: 'v2' }));
-  const pair = vi.fn(async () => ({ serverUrl: 'http://192.168.1.10:49374', username: '', password: 'session-token', directory: '' }));
   const { ConnectionProfileDialog } = await loadTs('components/settings/connection-profile-dialog.tsx', {
     react: runtime.react,
-    'expo-constants': { expoConfig: { extra: { foss } } },
     'react/jsx-runtime': { jsx: (type: unknown, props: Record<string, unknown>) => ({ type, props }), jsxs: (type: unknown, props: Record<string, unknown>) => ({ type, props }), Fragment: 'Fragment' },
     'react-i18next': { useTranslation: () => ({ t: (key: string) => key }) },
-    'react-native': { Keyboard: { dismiss: () => {} }, Platform: { OS: platform }, StyleSheet: { create: (styles: unknown) => styles }, View: 'View', Modal: 'Modal', KeyboardAvoidingView: 'KeyboardAvoidingView', ScrollView: 'ScrollView' },
+    'react-native': { Keyboard: { dismiss: () => {} }, StyleSheet: { create: (styles: unknown) => styles }, View: 'View', Modal: 'Modal', KeyboardAvoidingView: 'KeyboardAvoidingView', ScrollView: 'ScrollView' },
     'react-native-paper': { Appbar: { Header: 'Header', BackAction: 'BackAction', Content: 'Content' }, Button: 'Button', HelperText: 'HelperText', Text: 'Text', TextInput: { Icon: 'Icon' } },
     'react-native-safe-area-context': { useSafeAreaInsets: () => ({ top: 0, bottom: 0 }) },
-    '@/components/settings/connect-camera-gate': { ConnectCameraGate: 'Gate' },
-    '@/components/settings/connect-scanner': { ConnectScanner: 'Scanner' },
     '@/components/ui/text-input': { TextInput: 'Input' },
     '@/constants/theme': { Colors: { light: {} } },
     '@/hooks/use-update-blocker': { useUpdateBlocker: () => {} },
     '@/hooks/use-color-scheme': { useColorScheme: () => 'light' },
     '@/lib/opencode/client': { isValidServerUrl: () => true },
     '@/lib/opencode/client/url': { getServerHostname: () => '192.168.1.10' },
-    '@/lib/opencode/pairing': { LocalPairingError: class extends Error {} },
-    '@/providers/opencode-contexts': { useConnection: () => ({ connectionProfiles: { probe, pair } }) },
+    '@/providers/opencode-contexts': { useConnection: () => ({ connectionProfiles: { probe } }) },
   }, { Error });
   const onDismiss = vi.fn();
   const onBusyChange = vi.fn();
-  runtime.mount(ConnectionProfileDialog, { title: 'Add connection', submitLabel: 'Save', onSubmit, onDismiss, onBusyChange, startScanning });
+  runtime.mount(ConnectionProfileDialog, { title: 'Add connection', submitLabel: 'Save', onSubmit, onDismiss, onBusyChange });
   const element = (id: string) => { const value = find(runtime.value, id); if (!value) throw new Error(`Missing ${id}`); return value; };
   const change = (id: string, value: string) => { element(id).props.onChangeText(value); runtime.flush(); };
   const press = async (id: string) => { element(id).props.onPress(); await runtime.settle(); };
-  return { runtime, probe, pair, onSubmit, onDismiss, onBusyChange, element, change, press };
+  return { runtime, probe, onSubmit, onDismiss, onBusyChange, element, change, press };
 }
 
 describe('manual connection form', () => {
@@ -85,30 +80,5 @@ describe('manual connection form', () => {
     gate.resolve({ status: 'detected', contract: 'v2' });
     await view.runtime.settle();
     expect(find(view.runtime.value, 'connection-profile-name-input')).toBeUndefined();
-  });
-  it('auto-connects after native scanning and retries save with the redeemed token', async () => {
-    const onSubmit = vi.fn().mockRejectedValueOnce(new Error('Secure storage unavailable')).mockResolvedValue(undefined);
-    const view = await form('android', onSubmit, false, true);
-    expect(view.element('Gate')).toBeDefined();
-    view.element('Scanner').props.onScan('one-use-code');
-    await view.runtime.settle();
-    expect(view.pair).toHaveBeenCalledOnce();
-    expect(view.element('connection-profile-password-input').props.value).toBe('session-token');
-    expect(view.element('connection-profile-error').props.children).toBe('Secure storage unavailable');
-    await view.press('connection-profile-save-confirm');
-    expect(view.pair).toHaveBeenCalledOnce();
-    expect(onSubmit).toHaveBeenCalledTimes(2);
-    expect(onSubmit.mock.calls[1][0]).toMatchObject({ password: 'session-token', name: '' });
-  });
-  it('keeps scanning hidden on web even when requested', async () => {
-    const view = await form('web', vi.fn(), false, true);
-    expect(find(view.runtime.value, 'Gate')).toBeUndefined();
-    expect(find(view.runtime.value, 'Scanner')).toBeUndefined();
-    expect(view.element('connection-profile-url-input')).toBeDefined();
-  });
-  it('keeps scanning hidden in native FOSS builds without a camera module', async () => {
-    const view = await form('android', vi.fn(), true, true);
-    expect(find(view.runtime.value, 'Gate')).toBeUndefined();
-    expect(view.element('connection-profile-url-input')).toBeDefined();
   });
 });

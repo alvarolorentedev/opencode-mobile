@@ -54,7 +54,7 @@ describe('confirmed share handoff', () => {
     expect(input.openSession).toHaveBeenCalledWith(expect.objectContaining(target), expect.any(AbortSignal));
     runtime.unmount();
   });
-  it('selects another workspace conversation without changing its destination during bootstrap', async () => {
+  it('selects another project conversation without changing its destination during bootstrap', async () => {
     await mount();
     const other = runtime.value.targets[1];
     runtime.value.selectTarget(other); runtime.flush();
@@ -167,4 +167,18 @@ it('routes repeated warm shares with distinct receipt keys and preserves other l
   const second = await redirectSystemPath({ path: 'opencodemobile://expo-sharing', initial: false });
   expect(first).toMatch(/^\/share\?receipt=/); expect(second).not.toBe(first);
   expect(await redirectSystemPath({ path: 'opencodemobile://session/one', initial: true })).toBe('opencodemobile://session/one');
+});
+
+it('confirms a captured destination on another server even as chat focus changes', async () => {
+  const destination = { connectionScope: 'server-b', projectPath: '/repo', sessionId: 'current', title: 'B' };
+  const waiting = deferred();
+  await mount({ availableTargets: [destination], openSession: vi.fn(() => waiting.promise) });
+  runtime.value.selectTarget(destination); runtime.flush();
+  const operation = runtime.value.addToChat();
+  runtime.update({ connectionScope: 'server-b', currentSessionId: 'current' });
+  waiting.resolve({ ok: true });
+  expect(await operation).toBe(true); runtime.flush();
+  expect(runtime.value.consumeShared({ ...destination, connectionScope: 'server' })).toBeNull();
+  expect(runtime.value.consumeShared(destination)).not.toBeNull();
+  runtime.unmount();
 });

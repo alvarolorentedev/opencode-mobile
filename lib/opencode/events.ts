@@ -7,13 +7,13 @@ import { extractErrorMessage, numberField, stringField } from './v2/fields';
 // with matching semantics can therefore translate without inventing SDK records.
 export type NativeProtocolEvent<E = OpenCodeEvent> = E extends OpenCodeEvent ? Omit<E, 'id' | 'created' | 'durable' | 'metadata'> : never;
 export type OpencodeEvent = NativeProtocolEvent | CompatibilityEvent;
-export async function* subscribeEvents(client: ScopedOpencodeClient, signal: AbortSignal): AsyncGenerator<OpencodeEvent> {
+export async function* subscribeEvents(client: ScopedOpencodeClient, signal: AbortSignal, onActivity?: () => void): AsyncGenerator<OpencodeEvent> {
   if (client.compatibility) {
     const subscription = await client.compatibility.global.event({ signal, sseMaxRetryAttempts: 1 });
     for await (const event of subscription.stream) yield translateCompatibilityEvent(event);
     return;
   }
-  yield* await client.api!.event.subscribe({ signal });
+  yield* await client.api!.event.subscribe({ signal, onActivity });
 }
 export function getEventSessionStatus(event: OpencodeEvent): { sessionID: string; status: SessionStatus } | undefined {
   if (event.type === 'compatibility') return compatibilityStatus(event);

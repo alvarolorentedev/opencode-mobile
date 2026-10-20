@@ -22,12 +22,19 @@ export type SharedInput = {
   consumeShared: (target: ShareTarget) => SharedPayload | null;
   clearShared: () => void;
 };
+// Headless workspace snapshots do not own device share receipts; the app scope supplies them.
+export const emptySharedInput: SharedInput = {
+  pending: null, targets: [], resolving: false, busy: false, selectTarget: () => {},
+  refreshShared: async () => {}, addToChat: async () => false, consumeShared: () => null, clearShared: () => {},
+};
 type Input = {
   hydrated: boolean;
   connectionScope: string;
   projectPath?: string;
   currentSessionId?: string;
   sessions: Session[];
+  availableTargets?: ShareTarget[];
+  createAt?: (target: ShareTarget) => Promise<Session>;
   hideSubagentChats: boolean;
   refreshTargets: () => Promise<unknown>;
   createSession: () => Promise<Session>;
@@ -111,7 +118,7 @@ export function useShareState(input: Input): SharedInput {
   }, [invalidate, refreshShared]);
 
   useEffect(() => {
-    if (!pending || !input.hydrated || !input.projectPath) return;
+    if (!pending || !input.hydrated || !input.projectPath || (input.availableTargets && targetChosen.current)) return;
     if (selected.current?.connectionScope === input.connectionScope && (targetChosen.current ||
       (selected.current.sessionId === input.currentSessionId && selected.current.projectPath === input.projectPath))) return;
     targetChosen.current = false;
@@ -120,7 +127,7 @@ export function useShareState(input: Input): SharedInput {
     const next = { connectionScope: input.connectionScope, projectPath: input.projectPath, sessionId: input.currentSessionId };
     selected.current = next;
     setTarget(next);
-  }, [input.connectionScope, input.currentSessionId, input.hydrated, input.projectPath, pending]);
+  }, [input.availableTargets, input.connectionScope, input.currentSessionId, input.hydrated, input.projectPath, pending]);
 
   useEffect(() => {
     if (!pending || !receipt.current) return;
@@ -129,7 +136,9 @@ export function useShareState(input: Input): SharedInput {
   }, [clearShared, pending]);
 
   const selectTarget = useCallback((next: ShareTarget) => {
-    if (adding.current || next.connectionScope !== latest.current.connectionScope) return;
+    if (adding.current) return;
+    if (next.connectionScope !== latest.current.connectionScope && !latest.current.availableTargets?.some((target) =>
+      target.connectionScope === next.connectionScope && target.projectPath === next.projectPath && target.sessionId === next.sessionId)) return;
     selected.current = next;
     targetChosen.current = true;
     if (receipt.current) receipt.current.confirmed = undefined;
@@ -146,10 +155,10 @@ export function useShareState(input: Input): SharedInput {
     targetChosen.current = true;
     adding.current = true; setBusy(true); setError(undefined);
     const current = () => receipt.current === held && revision.current === operation &&
-      !controller.signal.aborted && destination.connectionScope === latest.current.connectionScope;
+      !controller.signal.aborted && (latest.current.availableTargets !== undefined || destination.connectionScope === latest.current.connectionScope);
     try {
-      if (!destination.sessionId && destination.projectPath !== latest.current.projectPath) throw new Error(i18n.t('share:destinationChanged'));
-      const sessionId = destination.sessionId ?? (await latest.current.createSession()).id;
+      if (!latest.current.createAt && !destination.sessionId && destination.projectPath !== latest.current.projectPath) throw new Error(i18n.t('share:destinationChanged'));
+      const sessionId = destination.sessionId ?? (await (latest.current.createAt ? latest.current.createAt(destination) : latest.current.createSession())).id;
       if (!current()) return false;
       const resolved = { ...destination, sessionId };
       // Retain a created destination on retry instead of creating duplicates.
@@ -178,10 +187,10 @@ export function useShareState(input: Input): SharedInput {
     return payload;
   }, [clearShared]);
 
-  const targets = useMemo(() => input.sessions.filter((session) => session.directory && !session.time.archived &&
+  const targets = useMemo(() => input.availableTargets ?? input.sessions.filter((session) => session.directory && !session.time.archived &&
     (!input.hideSubagentChats || !session.parentID)).map((session) => ({
       connectionScope: input.connectionScope, projectPath: session.directory!, sessionId: session.id, title: session.title,
-    })), [input.connectionScope, input.hideSubagentChats, input.sessions]);
+    })), [input.availableTargets, input.connectionScope, input.hideSubagentChats, input.sessions]);
   return useMemo(() => ({ pending, target, targets, resolving, busy, error, selectTarget, refreshShared, addToChat, consumeShared, clearShared }),
     [pending, target, targets, resolving, busy, error, selectTarget, refreshShared, addToChat, consumeShared, clearShared]);
 }

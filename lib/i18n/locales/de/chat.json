@@ -28,6 +28,7 @@
     "couldNotFork": "Die Sitzung konnte nicht verzweigt werden.",
     "couldNotRevert": "Die Sitzung konnte nicht zurückgesetzt werden.",
     "couldNotRestore": "Die Sitzung konnte nicht wiederhergestellt werden.",
+    "couldNotCancelPending": "Diese ausstehende Nachricht konnte nicht verworfen werden.",
     "couldNotUpdateAutoApprove": "Die automatische Genehmigung konnte nicht aktualisiert werden.",
     "sendError": {
       "title": "Senden in OpenCode fehlgeschlagen",
@@ -48,8 +49,6 @@
   },
   "content": {
     "connectionIssue": "Verbindungsproblem",
-    "sessionReverted": "Sitzung wurde zurückgesetzt",
-    "restoreReverted": "Zurückgesetzte Arbeit wiederherstellen",
     "runningActivity": "OpenCode {{activity}}...",
     "runningRetry": "OpenCode ist auf einen Fehler gestoßen und versucht es erneut (Versuch {{attempt}})...",
     "runningGeneric": "OpenCode arbeitet den aktuellen Schritt ab...",
@@ -60,7 +59,10 @@
     "allTasksCompleted": "Alle Aufgaben abgeschlossen",
     "openToSeeSteps": "Öffnen, um alle Schritte zu sehen",
     "progress": "Fortschritt",
-    "untitledTask": "Unbenannte Aufgabe"
+    "untitledTask": "Unbenannte Aufgabe",
+    "loadEarlier": "Noch nichts anzuzeigen",
+    "loadEarlierDescription": "Die neuesten Nachrichten in diesem Durchlauf sind Werkzeugaktivität. Lade frühere Nachrichten, um die Unterhaltung zu sehen.",
+    "loadEarlierAction": "Frühere Nachrichten laden"
   },
   "cards": {
     "respondToContinue": "Freigabe erforderlich",
@@ -137,7 +139,7 @@
     "estimatedCost": "Geschätzte API-Kosten {{cost}}",
     "openChats": "Chats öffnen. {{title}}",
     "untitledChat": "Unbenannter Chat",
-    "chooseWorkspace": "Arbeitsbereich wählen",
+    "chooseProject": "Projekt wählen",
     "newChat": "Neuer Chat",
     "showUsage": "Nutzungsdetails der Sitzung anzeigen",
     "stopConversationMode": "Konversationsmodus beenden",
@@ -162,7 +164,7 @@
   "library": {
     "title": "Chats",
     "searchPlaceholder": "Chats durchsuchen",
-    "chooseWorkspace": "Arbeitsbereich wählen",
+    "chooseProject": "Projekt wählen",
     "swipeHint": " · Nach links wischen für Aktionen",
     "active": "Aktiv",
     "archived": "Archiviert",
@@ -219,7 +221,7 @@
   },
   "starter": {
     "title": "Neue Aufgabe starten",
-    "description": "Formuliere die Eingabeaufforderung konkret, dann untersucht OpenCode den Arbeitsbereich, zeigt den Fortschritt an und streamt Dateiänderungen zurück.",
+    "description": "Formuliere die Eingabeaufforderung konkret, dann untersucht OpenCode den Projekt, zeigt den Fortschritt an und streamt Dateiänderungen zurück.",
     "prompts": {
       "polish": "Erkläre dieses Projekt",
       "review": "Prüfe die letzten Änderungen",
@@ -230,7 +232,8 @@
   "reasoning": {
     "low": "Niedrig",
     "default": "Standard",
-    "high": "Hoch"
+    "high": "Hoch",
+    "max": "Maximal"
   },
   "diff": {
     "turn": "Runde",
@@ -260,10 +263,10 @@
     "filesChangedCompact_other": "{{files}} Dateien geändert, +{{additions}} / -{{deletions}}"
   },
   "session": {
-    "chooseWorkspace": "Arbeitsbereich wählen",
-    "selectWorkspace": "Wähle im Tab Arbeitsbereiche ein Projekt aus, um dessen Chat-Kontext zu öffnen.",
+    "chooseProject": "Projekt wählen",
+    "selectProject": "Wähle im Tab Projekte ein Projekt aus, um dessen Chat-Kontext zu öffnen.",
     "opening": "OpenCode Mobile wird geöffnet",
-    "loading": "Die neueste Sitzung für diesen OpenCode Mobile-Arbeitsbereich wird geladen."
+    "loading": "Die neueste Sitzung für diesen OpenCode Mobile-Projekt wird geladen."
   },
   "deepLink": {
     "missingSessionId": "Diesem Sitzungslink fehlt eine Sitzungs-ID.",
@@ -282,7 +285,13 @@
   },
   "pendingPrompts": {
     "sending": "Wird gesendet…",
-    "waiting": "Wartet auf Berücksichtigung…"
+    "waiting": "Wartet auf Berücksichtigung…",
+    "cancel": "Ausstehende Nachricht verwerfen"
+  },
+  "revertNotice": {
+    "title": "Ab dieser Nachricht zurückgesetzt",
+    "hint": "Bearbeite die Eingabe unten und sende sie, um von hier aus fortzufahren.",
+    "cancel": "Zurücksetzen abbrechen"
   },
   "approvals": {
     "mcpAuthTitle": "MCP-Authentifizierung erforderlich",
