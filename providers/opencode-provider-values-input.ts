@@ -91,6 +91,7 @@ export type ProviderValuesInput = ActionInputs & {
   setActiveSessionsVisible: Dispatch<SetStateAction<boolean>>;
   currentSessionId?: string;
   pendingPromptsBySession: Record<string, PendingPrompt[]>;
+  cancelPrompt: (sessionId: string, promptId: string) => Promise<void>;
   messagesBySession: Record<string, SessionMessageRecord[]>;
   diffScopeBySession: Record<string, DiffScope>;
   diffsBySession: Record<string, FileDiff[]>;

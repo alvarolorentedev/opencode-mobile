@@ -2,7 +2,7 @@ import { createSession as svcCreateSession, summarizeSession } from '@/providers
 import { useCallback } from 'react';
 
 import type { Session } from '@/lib/opencode/types';
-import { getSelectedModelParts } from '@/providers/opencode-model-selection';
+import { getSelectedModelParts, getSelectedModelVariant } from '@/providers/opencode-model-selection';
 import {
   archiveSession as svcArchiveSession,
   deleteSession as svcDeleteSession,
@@ -25,6 +25,7 @@ export function useSessionCrudActions({
   activeProjectPath,
   connectionScopeRef,
   currentSessionId,
+  availableModels,
   diffScopeBySessionRef,
   sessions,
   setLastSessionByConnection,
@@ -199,12 +200,21 @@ export function useSessionCrudActions({
 
   const executeCommand = useCallback(async (sessionId: string, command: string, args: string) => {
     const selected = getSelectedModelParts(chatPreferences.modelId);
+    const variant = client.__opencode?.contract === 'v2'
+      ? getSelectedModelVariant(
+          chatPreferences.modelId,
+          chatPreferences.modelVariantSelections,
+          availableModels,
+          sessions.find((session) => session.id === sessionId)?.model,
+        )
+      : undefined;
     await svcExecuteCommand(client, sessionId, command, args, {
       agent: chatPreferences.mode,
       model: selected ? `${selected.providerID}/${selected.modelID}` : undefined,
+      variant,
     });
     await Promise.all([refreshMessages(sessionId, true), refreshSessions(true)]).catch(() => undefined);
-  }, [chatPreferences.mode, chatPreferences.modelId, client, refreshMessages, refreshSessions]);
+  }, [availableModels, chatPreferences.mode, chatPreferences.modelId, chatPreferences.modelVariantSelections, client, refreshMessages, refreshSessions, sessions]);
 
   const summarizeSessionTitle = useCallback(
     async (sessionId: string, knownSessions?: Session[]) => {

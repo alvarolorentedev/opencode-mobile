@@ -5,7 +5,7 @@ import { useCallback, useEffect, useLayoutEffect, useRef } from 'react';
 import { AppState } from 'react-native';
 import * as Notifications from 'expo-notifications';
 
-import { activityNotifications, manageActivityCompletion, updateActivityNotification } from '@/lib/activity-notifications';
+import { activityNotifications, stopActivityNotification, updateActivityNotification } from '@/lib/activity-notifications';
 import { i18n } from '@/lib/i18n';
 import { clearPendingAttention, clearPendingTaskFinishedNotification, raisePendingAttention, trackPendingTaskFinishedNotification } from '@/lib/notifications';
 import type { OpencodeConnectionSettings, ScopedOpencodeClient, ServerContract } from '@/lib/opencode/client';
@@ -65,7 +65,6 @@ export function useActivityNotifications(input: Input) {
 
   useEffect(() => {
     if (!activityNotifications || !input.connected) return;
-    const native = activityNotifications;
     const scope = input.connectionScope;
     const catalogClient = input.catalogClient;
     let cancelled = false;
@@ -103,7 +102,7 @@ export function useActivityNotifications(input: Input) {
         if (cancelled) return;
         if (!permissionGranted) {
           monitoring = false;
-          await native.stop();
+          await stopActivityNotification(scope);
           return;
         }
         if (AppState.currentState !== 'active' && !monitoring) return;
@@ -116,7 +115,6 @@ export function useActivityNotifications(input: Input) {
           previousIds.add(localSending.id);
           watched.add(localSending.id);
           monitoring = await publish(displayed, 1);
-          if (monitoring) manageActivityCompletion(scope);
         }
         const revision = eventRevision.current;
         const snapshot = await readActivitySnapshot(
@@ -169,7 +167,6 @@ export function useActivityNotifications(input: Input) {
         if (selected) {
           displayed = selected;
           monitoring = await publish(selected, active.length);
-          if (monitoring) manageActivityCompletion(scope);
         } else if (displayed) {
           const finished = activities.find((item) => item.session.id === displayed!.session.id)
             ?? { ...displayed, active: false, state: 'stopped' as const };
@@ -177,7 +174,6 @@ export function useActivityNotifications(input: Input) {
           await publish(finished, 0);
           monitoring = false;
           displayed = undefined;
-          manageActivityCompletion();
         }
       } catch (error) {
         if (!cancelled && displayed && monitoring) {
@@ -213,8 +209,7 @@ export function useActivityNotifications(input: Input) {
       clearTimeout(timer);
       clearTimeout(eventTimer);
       subscription.remove();
-      manageActivityCompletion();
-      void native.stop().catch(() => undefined);
+      void stopActivityNotification(scope).catch(() => undefined);
     };
   }, [input.catalogClient, input.connected, input.connectionScope]);
 
@@ -225,6 +220,7 @@ export function useActivityNotifications(input: Input) {
   useEffect(() => { refreshRef.current(); }, [input.currentSessionId, input.promptError]);
 
   return useCallback((event: OpencodeEvent) => {
+    if (!latest.current.connected) return;
     const status = getEventSessionStatus(event);
     if (status) { eventStatuses.current[status.sessionID] = status.status; eventRevision.current++; }
     const type = event.type === 'compatibility' ? event.payload.type : event.type;

@@ -28,6 +28,7 @@
     "couldNotFork": "Could not fork session.",
     "couldNotRevert": "Could not revert session.",
     "couldNotRestore": "Could not restore the session.",
+    "couldNotCancelPending": "Could not discard that pending message.",
     "couldNotUpdateAutoApprove": "Could not update auto-approve.",
     "sendError": {
       "title": "OpenCode send failed",
@@ -48,8 +49,6 @@
   },
   "content": {
     "connectionIssue": "Connection issue",
-    "sessionReverted": "Session is reverted",
-    "restoreReverted": "Restore reverted work",
     "runningActivity": "OpenCode is {{activity}}...",
     "runningRetry": "OpenCode hit an error and is retrying (attempt {{attempt}})...",
     "runningGeneric": "OpenCode is working through the current step...",
@@ -60,7 +59,10 @@
     "allTasksCompleted": "All tasks completed",
     "openToSeeSteps": "Open to see all steps",
     "progress": "Progress",
-    "untitledTask": "Untitled task"
+    "untitledTask": "Untitled task",
+    "loadEarlier": "Nothing to show yet",
+    "loadEarlierDescription": "The newest messages in this turn are tool activity. Load earlier messages to see the conversation.",
+    "loadEarlierAction": "Load earlier messages"
   },
   "cards": {
     "respondToContinue": "Approval needed",
@@ -230,7 +232,8 @@
   "reasoning": {
     "low": "Low",
     "default": "Default",
-    "high": "High"
+    "high": "High",
+    "max": "Max"
   },
   "diff": {
     "turn": "Turn",
@@ -282,7 +285,13 @@
   },
   "pendingPrompts": {
     "sending": "Sending…",
-    "waiting": "Waiting to be used…"
+    "waiting": "Waiting to be used…",
+    "cancel": "Discard pending message"
+  },
+  "revertNotice": {
+    "title": "Reverted from this message",
+    "hint": "Edit the prompt below and send to continue from here.",
+    "cancel": "Cancel revert"
   },
   "approvals": {
     "mcpAuthTitle": "MCP authentication required",

@@ -2,7 +2,7 @@ import { useCallback, useRef, useState } from 'react';
 import { useFocusEffect } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { Alert, Platform, Pressable, StyleSheet, View } from 'react-native';
-import { Button, Chip, List, Text } from 'react-native-paper';
+import { Button, List, Text } from 'react-native-paper';
 
 import {
   ConnectionProfileDialog,
@@ -13,6 +13,9 @@ import { ConnectionScanFlow } from '@/components/settings/connection-scan-flow';
 import { OverlaySheet } from '@/components/ui/overlay-sheet';
 import { Colors } from '@/constants/theme';
 import { findMatchingProfile, type ConnectionProfile } from '@/lib/connection-profiles';
+import { hasWorkspaceDrafts } from '@/providers/workspace-presentation';
+import { useWorkspaces } from '@/providers/workspace-context';
+import { getConnectionUiScope } from '@/lib/connection-scope';
 import { useConnection } from '@/providers/opencode-contexts';
 
 type Palette = typeof Colors.light;
@@ -34,6 +37,7 @@ function connectionHost(serverUrl: string) {
 
 export function ConnectionProfiles({ palette, onManageConnect, onPair }: { palette: Palette; onManageConnect?: () => void; onPair?: () => void }) {
   const { t } = useTranslation();
+  const registry = useWorkspaces();
   const { settings, connection, connect, updateSettings, connectSetup, connectionProfiles } = useConnection();
   const { profiles, refresh, connect: connectProfile, passwordForEditing, save, remove } = connectionProfiles;
   const [error, setError] = useState<string>();
@@ -75,7 +79,8 @@ export function ConnectionProfiles({ palette, onManageConnect, onPair }: { palet
   }
 
   function handleDelete(profile: ConnectionProfile) {
-    const message = t('settings:connection.deleteMessage', { name: profile.name });
+    const message = [t('settings:connection.deleteMessage', { name: profile.name }),
+      hasWorkspaceDrafts(registry.presentation, getConnectionUiScope(profile)) ? t('common:servers.discardDrafts') : undefined].filter(Boolean).join('\n\n');
     const confirmRemoval = () => {
       void remove(profile.id).catch((reason) => setError(reason instanceof Error ? reason.message : String(reason)));
     };
@@ -140,6 +145,7 @@ export function ConnectionProfiles({ palette, onManageConnect, onPair }: { palet
     subtitle,
     isActive,
     isSwitching,
+    status = connection.status,
     actions,
     body,
   }: {
@@ -149,6 +155,7 @@ export function ConnectionProfiles({ palette, onManageConnect, onPair }: { palet
     subtitle: string;
     isActive: boolean;
     isSwitching?: boolean;
+    status?: typeof connection.status;
     actions: React.ReactNode;
     body: React.ReactNode;
   }) {
@@ -167,7 +174,7 @@ export function ConnectionProfiles({ palette, onManageConnect, onPair }: { palet
             <Text numberOfLines={1} variant="bodySmall" style={{ color: palette.muted }}>{subtitle}</Text>
           </View>
           {isSwitching || isActive ? (
-            <Chip compact mode="flat">{isSwitching || isReconnecting ? t('common:labels.connecting') : t('common:labels.active')}</Chip>
+            <View style={[styles.status, { backgroundColor: palette.surfaceAlt }]}><Text variant="labelLarge">{t(`common:servers.status.${isSwitching ? 'connecting' : status}`)}</Text></View>
           ) : null}
         </Pressable>
         {expanded ? (
@@ -217,8 +224,13 @@ export function ConnectionProfiles({ palette, onManageConnect, onPair }: { palet
   }
 
   profiles.forEach((profile) => {
-    const isActive = profile.id === activeProfile?.id;
+    const id = getConnectionUiScope(profile);
+    const live = registry.connections.find((entry) => entry.id === id);
+    const isActive = live?.enabled === true;
     const isSwitching = switchingProfileId === profile.id;
+    const runtime = Object.entries(registry.snapshots).find(([key]) => (JSON.parse(key) as string[])[0] === id)?.[1];
+    const status = runtime?.values.connectionValue.connection.status ?? 'idle';
+    const isReconnecting = status === 'connecting';
     rows.push(renderRow({
       rowKey: profile.id,
       testIDKey: profile.id,
@@ -226,6 +238,7 @@ export function ConnectionProfiles({ palette, onManageConnect, onPair }: { palet
       subtitle: connectionHost(profile.serverUrl),
       isActive,
       isSwitching,
+      status,
       actions: isActive ? (
         <>
           <Button
@@ -233,9 +246,10 @@ export function ConnectionProfiles({ palette, onManageConnect, onPair }: { palet
             mode="contained"
             loading={isReconnecting}
             disabled={isReconnecting || isSwitching}
-            onPress={() => void connect()}>
+            onPress={() => void registry.retry(id).catch((reason) => setError(String(reason)))}>
             {t('common:actions.reconnect')}
           </Button>
+          <Button testID={`connection-disconnect-${profile.id}`} onPress={() => void registry.disconnect(id).catch((reason) => setError(String(reason)))}>{t('common:actions.disconnect')}</Button>
           {profile.connect ? onManageConnect ? <Button mode="outlined" onPress={() => manageConnect(profile)}>{t('settings:connect.manage')}</Button> : null : <Button testID={`connection-edit-${profile.id}`} mode="outlined" onPress={() => void handleEditProfile(profile).catch((reason) => setError(reason instanceof Error ? reason.message : String(reason)))}>
             {t('common:actions.edit')}
           </Button>}
@@ -312,6 +326,7 @@ export function ConnectionProfiles({ palette, onManageConnect, onPair }: { palet
 }
 
 const styles = StyleSheet.create({
+  status: { borderRadius: 12, paddingHorizontal: 10, minHeight: 30, justifyContent: 'center' },
   list: {
     gap: 8,
   },

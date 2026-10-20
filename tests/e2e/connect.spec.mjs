@@ -478,7 +478,8 @@ for (const options of [{ lostResponse: true }, { reconciliation: true }]) {
     await expect(page).toHaveURL(/\/projects$/, { timeout: 30_000 });
     expect(state.accesses).toBe(1); expect(state.subscriptionClaims).toBe(1);
     const profiles = await page.evaluate(() => JSON.parse(localStorage.getItem('opencode-mobile.connection-profiles')));
-    expect(profiles[0].connect.machineId).toBe('machine-1'); expect(profiles[0].serverUrl).toBe(CONNECT_SERVER);
+    const connected = profiles.find((profile) => profile.connect);
+    expect(connected.connect.machineId).toBe('machine-1'); expect(connected.serverUrl).toBe(CONNECT_SERVER);
   });
 }
 
@@ -492,7 +493,8 @@ test('second-device Restore lists durable machines; access mismatch saves nothin
   await expect(page.getByTestId('connect-access-machine-1')).toBeVisible();
   await page.getByTestId('connect-access-machine-1').click();
   await expect(page.getByTestId('connect-error')).toContainText('machine_identity_mismatch');
-  expect(state.pairClaims).toBe(0); expect(await page.evaluate(() => localStorage.getItem('opencode-mobile.connection-profiles'))).toBeNull();
+  expect(state.pairClaims).toBe(0);
+  expect(await page.evaluate(() => JSON.parse(localStorage.getItem('opencode-mobile.connection-profiles')).filter((profile) => profile.connect))).toEqual([]);
 });
 
 test('second-device Restore reconnects the same owned machine without a QR', async ({ page }) => {
@@ -530,12 +532,14 @@ test('expiry stops data-plane traffic while preserving owned machine and profile
   page.on('request', (request) => { if (request.url().startsWith(CONNECT_SERVER)) requests.push(request.url()); });
   await page.waitForTimeout(2000);
   expect(requests).toEqual([]); expect(state.machines).toHaveLength(1);
-  expect(await page.evaluate(() => JSON.parse(localStorage.getItem('opencode-mobile.connection-profiles')).length)).toBe(1);
+  expect(await page.evaluate(() => JSON.parse(localStorage.getItem('opencode-mobile.connection-profiles')).filter((profile) => profile.connect).length)).toBe(1);
 });
 
 test('fresh-install subscription pairing continues onboarding', async ({ page }) => {
   await storeFixture(page); await mockControlPlane(page); await openPair(page, false);
-  await page.getByTestId('connect-purchase').click(); await expect(page.getByTestId('onboarding-project')).toBeVisible({ timeout: 30_000 });
+  await page.getByTestId('connect-purchase').click(); await expect(page.getByTestId('onboarding-ai')).toBeVisible({ timeout: 30_000 });
+  await page.getByTestId('onboarding-ai-continue').click();
+  await expect(page.getByTestId('onboarding-project')).toBeVisible();
 });
 
 
@@ -543,7 +547,7 @@ test('renewal rotates credentials while preserving profile, machine, hostname an
   await storeFixture(page); const state = await mockControlPlane(page);
   await openPair(page); await page.getByTestId('connect-purchase').click();
   await expect(page).toHaveURL(/\/projects$/, { timeout: 30_000 });
-  const previous = await page.evaluate(() => JSON.parse(localStorage.getItem('opencode-mobile.connection-profiles'))[0]);
+  const previous = await page.evaluate(() => JSON.parse(localStorage.getItem('opencode-mobile.connection-profiles')).find((profile) => profile.connect));
   const previousScope = Buffer.from(`${previous.serverUrl}\n${previous.username}`).toString('base64url');
   // Let the first connection finish its bootstrap write before seeding the
   // next-launch fixture, or that write can overwrite the remembered session.
@@ -559,7 +563,7 @@ test('renewal rotates credentials while preserving profile, machine, hostname an
   await page.goto('/pair'); await showGuidedSubscription(page); await expect(page.getByTestId('connect-restore')).toBeEnabled();
   await page.evaluate((previousUsername) => {
     const original = Storage.prototype.setItem; let fail = true;
-    Storage.prototype.setItem = function (key, value) { if (key === 'opencode-mobile.connection-profiles' && fail && JSON.parse(value)[0].username !== previousUsername) { fail = false; throw new Error('storage unavailable'); } return original.call(this, key, value); };
+    Storage.prototype.setItem = function (key, value) { if (key === 'opencode-mobile.connection-profiles' && fail && JSON.parse(value).find((profile) => profile.connect)?.username !== previousUsername) { fail = false; throw new Error('storage unavailable'); } return original.call(this, key, value); };
   }, previous.username);
   await page.getByTestId('connect-restore').click();
   await expect(page.getByTestId('connect-error')).toContainText('secure saving failed');
@@ -567,11 +571,11 @@ test('renewal rotates credentials while preserving profile, machine, hostname an
   await page.getByTestId('connect-retry').click();
   await expect(page).toHaveURL(/\/projects$/, { timeout: 30_000 });
   await expect.poll(() => page.evaluate(() => {
-    const profile = JSON.parse(localStorage.getItem('opencode-mobile.connection-profiles'))[0];
+    const profile = JSON.parse(localStorage.getItem('opencode-mobile.connection-profiles')).find((profile) => profile.connect);
     const scope = btoa(`${profile.serverUrl}\n${profile.username}`).replaceAll('+', '-').replaceAll('/', '_').replace(/=+$/, '');
     return JSON.parse(localStorage.getItem('opencode-mobile.last-session-by-project') || '{}')[scope]?.['/fixture'];
   })).toBe('remembered');
-  const updated = await page.evaluate(() => ({ profile: JSON.parse(localStorage.getItem('opencode-mobile.connection-profiles'))[0], favorites: JSON.parse(localStorage.getItem('opencode-mobile.favorite-sessions')), last: JSON.parse(localStorage.getItem('opencode-mobile.last-session-by-project')) }));
+  const updated = await page.evaluate(() => ({ profile: JSON.parse(localStorage.getItem('opencode-mobile.connection-profiles')).find((profile) => profile.connect), favorites: JSON.parse(localStorage.getItem('opencode-mobile.favorite-sessions')), last: JSON.parse(localStorage.getItem('opencode-mobile.last-session-by-project')) }));
   expect(updated.profile.id).toBe(previous.id); expect(updated.profile.name).toBe(previous.name);
   expect(updated.profile.connect.machineId).toBe(previous.connect.machineId); expect(updated.profile.serverUrl).toBe(previous.serverUrl);
   expect(updated.profile.username).not.toBe(previous.username);
@@ -580,7 +584,7 @@ test('renewal rotates credentials while preserving profile, machine, hostname an
   expect(state.pairClaims).toBe(1); expect(state.accesses).toBe(1); expect(await events(page)).not.toContain('purchase'); await assertNoStoredSecrets(page);
 });
 
-test('live renewal keeps one active connection and the selected session across panel reopening', async ({ page }) => {
+test('live renewal preserves the machine connection and selected session across panel reopening', async ({ page }) => {
   const runtimeErrors = [], dataAuth = [];
   page.on('pageerror', (error) => runtimeErrors.push(error.message));
   page.on('request', (request) => { if (request.url().startsWith(CONNECT_SERVER) && request.method() !== 'OPTIONS') dataAuth.push(request.headers().authorization); });
@@ -588,7 +592,7 @@ test('live renewal keeps one active connection and the selected session across p
   await storeFixture(page); const state = await mockControlPlane(page);
   await openPair(page); await page.getByTestId('connect-purchase').click();
   await expect(page).toHaveURL(/\/projects$/, { timeout: 30_000 });
-  const previous = await page.evaluate(() => JSON.parse(localStorage.getItem('opencode-mobile.connection-profiles'))[0]);
+  const previous = await page.evaluate(() => JSON.parse(localStorage.getItem('opencode-mobile.connection-profiles')).find((profile) => profile.connect));
   const oldScope = Buffer.from(`${previous.serverUrl}\n${previous.username}`).toString('base64url');
   await expect.poll(() => page.evaluate((scope) => Object.keys(JSON.parse(localStorage.getItem('opencode-mobile.last-session-by-project') || '{}')[scope] || {}).length, oldScope)).toBeGreaterThan(0);
   const selected = await page.evaluate((scope) => JSON.parse(localStorage.getItem('opencode-mobile.last-session-by-project'))[scope], oldScope);
@@ -600,7 +604,7 @@ test('live renewal keeps one active connection and the selected session across p
   const overlay = page.getByTestId('settings-section-overlay');
   await page.getByRole('button', { name: /^Connection/ }).click();
   const row = page.getByTestId(`connection-row-${previous.id}`);
-  await expect(row).toContainText('Active');
+  await expect(row).toContainText('Connected');
   await expect(page.getByTestId('connection-row-current')).toHaveCount(0);
   await overlay.getByText('Close', { exact: true }).click();
   await page.getByRole('button', { name: /^Cloud Link/ }).click();
@@ -610,17 +614,17 @@ test('live renewal keeps one active connection and the selected session across p
   await expect(page.getByTestId('connect-error')).toHaveCount(0);
   await overlay.getByText('Close', { exact: true }).click();
   await page.getByRole('button', { name: /^Connection/ }).click();
-  await expect(row).toContainText('Active');
+  await expect(row).toContainText('Connected');
   await expect(page.getByTestId('connection-row-current')).toHaveCount(0);
   await row.click();
   await expect(overlay).toContainText('Username: device-2');
   await overlay.getByText('Close', { exact: true }).click();
   await page.getByRole('button', { name: /^Connection/ }).click();
-  await expect(row).toContainText('Active');
+  await expect(row).toContainText('Connected');
   await expect(page.getByTestId('connection-row-current')).toHaveCount(0);
   const newScope = Buffer.from(`${previous.serverUrl}\ndevice-2`).toString('base64url');
   await expect.poll(() => page.evaluate((scope) => JSON.parse(localStorage.getItem('opencode-mobile.last-session-by-project') || '{}')[scope], newScope)).toEqual(selected);
-  expect(await page.evaluate(() => JSON.parse(localStorage.getItem('opencode-mobile.connection-profiles')).length)).toBe(1);
+  expect(await page.evaluate(() => JSON.parse(localStorage.getItem('opencode-mobile.connection-profiles')).filter((profile) => profile.connect).length)).toBe(1);
   expect(state.accesses).toBe(1); expect(state.pairClaims).toBe(1);
   expect(dataAuth).toContain(`Basic ${Buffer.from('device-2:device-test-secret').toString('base64')}`);
   await page.screenshot({ path: '/tmp/opencode-cloud-link-renewal.png' });
@@ -756,12 +760,13 @@ test('Settings has one creation entry with Scan QR, Manual and Cloud Link method
   await page.goto('/settings');
   await page.getByRole('button', { name: /^Connection/ }).click();
   await expect(page.getByTestId('connection-pair-connect')).toHaveCount(0);
-  await expect(page.getByTestId('connection-row-current')).toBeVisible();
+  await expect(page.locator('[data-testid^="connection-row-"]').first()).toBeVisible();
+  await expect(page.getByTestId('connection-row-current')).toHaveCount(0);
   await page.getByTestId('connection-add-button').click();
   await expect(page.getByTestId('connection-method-scan')).toHaveAttribute('role', 'button');
   await expect(page.getByTestId('connection-method-connect')).toHaveAttribute('role', 'button');
   await expect(page.getByTestId('connection-method-manual')).toHaveAttribute('role', 'button');
-  await expect(page.getByText('Local QR scanning is available in the iOS and Android app.')).toBeVisible();
+  await expect(page.getByText('Local QR scanning is available in the iOS and Android app.')).toHaveCount(0);
   await page.screenshot({ path: '/tmp/opencode-add-connection-chooser.png' });
   await page.getByTestId('connection-method-connect').click();
   await showGuidedSubscription(page);
@@ -779,7 +784,8 @@ test('Settings has one creation entry with Scan QR, Manual and Cloud Link method
   await page.getByTestId('connection-profile-save-confirm').click();
   await expect(page).toHaveURL(/\/projects$/, { timeout: 30_000 });
   const profiles = await page.evaluate(() => JSON.parse(localStorage.getItem('opencode-mobile.connection-profiles')));
-  expect(profiles).toHaveLength(1); expect(profiles[0].connect).toBeUndefined();
+  expect(profiles).toHaveLength(2); // The original connection is migrated to a saved profile too.
+  expect(profiles.find((profile) => profile.name === 'Manual server')?.connect).toBeUndefined();
   expect(await events(page)).not.toContain('purchase');
 });
 

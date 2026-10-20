@@ -64,14 +64,22 @@
     "server": "Server",
     "project": "Project",
     "projectMissing": "No project selected",
-    "footnote": "आप सेटिंग्स में कनेक्शन या प्रोजेक्ट बाद में बदल सकते हैं।",
+    "footnote": "आप इन सेटिंग्स को कभी भी बदल सकते हैं।",
     "start": "Start coding",
-    "done": "Done"
+    "done": "Done",
+    "serverMissing": "कनेक्ट नहीं है",
+    "providers": "प्रदाता",
+    "enabledModels": "सक्षम मॉडल"
   },
   "settingsAssistant": {
     "title": "Setup assistant",
-    "summary": "Review permissions, connection, and project"
+    "summary": "अनुमतियों, कनेक्शन, प्रदाताओं, प्रोजेक्ट और प्राथमिकताओं की समीक्षा करें"
   },
   "reviewSetup": "सेटअप की समीक्षा करें",
-  "stepIndicator": "चरण {{step}} / {{totalSteps}}"
+  "stepIndicator": "चरण {{step}} / {{totalSteps}}",
+  "general": {
+    "title": "सामान्य सेटिंग्स",
+    "subtitle": "OpenCode Mobile को अपनी पसंद के अनुसार सेट करें।",
+    "defaultModel": "डिफ़ॉल्ट मॉडल"
+  }
 }

@@ -40,7 +40,7 @@ test('protected V2 asks for credentials without claiming V1, rejects a wrong pas
     expect(await page.evaluate(() => localStorage.getItem('opencode-mobile.connection-profiles'))).toBeNull();
     await page.getByTestId('connection-profile-password-input').fill('local-password');
     await page.getByTestId('connection-profile-save-confirm').click();
-    await expect(page.getByTestId('onboarding-project')).toBeVisible();
+    await expect(page.getByTestId('onboarding-ai')).toBeVisible();
     const profiles = await page.evaluate(() => JSON.parse(localStorage.getItem('opencode-mobile.connection-profiles')));
     expect(profiles).toHaveLength(1);
     expect(profiles[0]).toMatchObject({ name: '127.0.0.1', serverUrl: origin, username: '' });
@@ -63,7 +63,7 @@ test('confirmed V2 hides Username, preserves values through Change and saves a c
     await expect(page.getByTestId('connection-profile-name-input')).toHaveValue('Office');
     await page.screenshot({ path: 'test-results/manual-v2-details.png', fullPage: true });
     await page.getByTestId('connection-profile-save-confirm').click();
-    await expect(page.getByTestId('onboarding-project')).toBeVisible();
+    await expect(page.getByTestId('onboarding-ai')).toBeVisible();
     expect(await page.evaluate(() => JSON.parse(localStorage.getItem('opencode-mobile.connection-profiles'))[0].name)).toBe('Office');
   } finally { server.kill('SIGTERM'); }
 });
@@ -79,7 +79,7 @@ test('protected V1 custom username remains available after an inconclusive probe
   await page.getByTestId('connection-profile-username-input').fill('alice');
   await page.getByTestId('connection-profile-password-input').fill('secret');
   await page.getByTestId('connection-profile-save-confirm').click();
-  await expect(page.getByTestId('onboarding-project')).toBeVisible();
+  await expect(page.getByTestId('onboarding-ai')).toBeVisible();
   expect(await page.evaluate(() => JSON.parse(localStorage.getItem('opencode-mobile.connection-profiles'))[0].username)).toBe('alice');
 });
 
@@ -93,7 +93,7 @@ test('retry after project discovery fails reuses the saved profile', async ({ pa
   expect(before).toHaveLength(1);
   await page.unroute(`${V1}/path**`);
   await page.getByTestId('connection-profile-save-confirm').click();
-  await expect(page.getByTestId('onboarding-project')).toBeVisible();
+  await expect(page.getByTestId('onboarding-ai')).toBeVisible();
   const after = await page.evaluate(() => JSON.parse(localStorage.getItem('opencode-mobile.connection-profiles')));
   expect(after).toHaveLength(1);
   expect(after[0].id).toBe(before[0].id);
@@ -121,7 +121,8 @@ test('editing a saved profile preserves its username and leaves the active conne
   await page.getByTestId('connection-profile-save-confirm').click();
   await expect(page.getByTestId('connection-profile-save-confirm')).toHaveCount(0);
   const stored = await page.evaluate(() => ({ profiles: JSON.parse(localStorage.getItem('opencode-mobile.connection-profiles')), settings: JSON.parse(localStorage.getItem('opencode-mobile.settings')) }));
-  expect(stored.profiles).toEqual([{ id: 'saved', name: 'Renamed', serverUrl: V1, username: 'alice' }]);
+  expect(stored.profiles.find((profile) => profile.id === 'saved')).toEqual({ id: 'saved', name: 'Renamed', serverUrl: V1, username: 'alice' });
+  expect(stored.profiles.some((profile) => profile.serverUrl === V1 && profile.username === '')).toBe(true);
   expect(stored.settings).toMatchObject({ serverUrl: V1, username: '' });
   expect(discovery).toBe(0);
 });

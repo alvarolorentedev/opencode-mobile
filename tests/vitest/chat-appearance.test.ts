@@ -19,5 +19,6 @@ describe('chat appearance preferences', () => {
 
     assert.equal(defaultChatPreferences.flatTranscript, false);
     assert.equal(defaultChatPreferences.slimInterface, false);
+    assert.equal(defaultChatPreferences.transcriptVerbosity, 'basic');
   });
 });

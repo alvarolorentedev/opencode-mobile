@@ -64,14 +64,22 @@
     "server": "Server",
     "project": "Project",
     "projectMissing": "No project selected",
-    "footnote": "之后可以在设置中更改连接或项目。",
+    "footnote": "你可以随时更改这些设置。",
     "start": "Start coding",
-    "done": "Done"
+    "done": "Done",
+    "serverMissing": "未连接",
+    "providers": "提供商",
+    "enabledModels": "已启用的模型"
   },
   "settingsAssistant": {
     "title": "Setup assistant",
-    "summary": "Review permissions, connection, and project"
+    "summary": "检查权限、连接、提供商、项目和偏好设置"
   },
   "reviewSetup": "检查设置",
-  "stepIndicator": "第 {{step}} 步，共 {{totalSteps}} 步"
+  "stepIndicator": "第 {{step}} 步，共 {{totalSteps}} 步",
+  "general": {
+    "title": "通用设置",
+    "subtitle": "按你的偏好设置 OpenCode Mobile。",
+    "defaultModel": "默认模型"
+  }
 }

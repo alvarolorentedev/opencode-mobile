@@ -18,6 +18,7 @@ test('terminal streams input and output over the PTY websocket', async ({ page, 
   await page.getByRole('button', { name: 'New terminal', exact: true }).click();
   const { output, input, id, snapshot } = await exerciseInteractiveTerminal(page, request, 'http://127.0.0.1:44096', 'echo web');
   await page.getByTestId('terminal-create-button').click();
+  await page.getByTestId('terminal-create-confirm').click();
   await expect(output).not.toHaveAttribute('data-pty', id);
   await expect(page.getByTestId('terminal-selector')).toContainText('Connected');
   await output.click(); await input.pressSequentially('echo second'); await input.press('Enter');

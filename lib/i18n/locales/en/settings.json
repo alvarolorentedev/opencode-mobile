@@ -339,6 +339,21 @@
     "slimInterface": {
       "title": "Slim interface",
       "description": "Shrink buttons, spacing, and headers in chat, terminal, and project so more text fits on screen."
+    },
+    "transcriptVerbosity": {
+      "label": "Transcript detail",
+      "basic": {
+        "label": "Basic",
+        "description": "Show user and assistant messages only."
+      },
+      "reasoning": {
+        "label": "Reasoning",
+        "description": "Also show the assistant's reasoning as collapsed rows."
+      },
+      "verbose": {
+        "label": "Verbose",
+        "description": "Also show tool calls as collapsed rows."
+      }
     }
   },
   "connect": {
@@ -393,7 +408,6 @@
     "scanNewQr": "Scan the new QR code on your computer",
     "scanLocal": "Scan QR code",
     "scanLocalHint": "Connect to a computer on the same network.",
-    "scanLocalUnavailable": "Local QR scanning is available in the iOS and Android app.",
     "manual": "Manual",
     "manualHint": "Enter your server URL and credentials.",
     "nativeOnly": "Cloud Link is available in the iOS and Android app.",

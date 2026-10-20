@@ -28,6 +28,7 @@
     "couldNotFork": "Die Sitzung konnte nicht verzweigt werden.",
     "couldNotRevert": "Die Sitzung konnte nicht zurückgesetzt werden.",
     "couldNotRestore": "Die Sitzung konnte nicht wiederhergestellt werden.",
+    "couldNotCancelPending": "Diese ausstehende Nachricht konnte nicht verworfen werden.",
     "couldNotUpdateAutoApprove": "Die automatische Genehmigung konnte nicht aktualisiert werden.",
     "sendError": {
       "title": "Senden in OpenCode fehlgeschlagen",
@@ -48,8 +49,6 @@
   },
   "content": {
     "connectionIssue": "Verbindungsproblem",
-    "sessionReverted": "Sitzung wurde zurückgesetzt",
-    "restoreReverted": "Zurückgesetzte Arbeit wiederherstellen",
     "runningActivity": "OpenCode {{activity}}...",
     "runningRetry": "OpenCode ist auf einen Fehler gestoßen und versucht es erneut (Versuch {{attempt}})...",
     "runningGeneric": "OpenCode arbeitet den aktuellen Schritt ab...",
@@ -60,7 +59,10 @@
     "allTasksCompleted": "Alle Aufgaben abgeschlossen",
     "openToSeeSteps": "Öffnen, um alle Schritte zu sehen",
     "progress": "Fortschritt",
-    "untitledTask": "Unbenannte Aufgabe"
+    "untitledTask": "Unbenannte Aufgabe",
+    "loadEarlier": "Noch nichts anzuzeigen",
+    "loadEarlierDescription": "Die neuesten Nachrichten in diesem Durchlauf sind Werkzeugaktivität. Lade frühere Nachrichten, um die Unterhaltung zu sehen.",
+    "loadEarlierAction": "Frühere Nachrichten laden"
   },
   "cards": {
     "respondToContinue": "Freigabe erforderlich",
@@ -230,7 +232,8 @@
   "reasoning": {
     "low": "Niedrig",
     "default": "Standard",
-    "high": "Hoch"
+    "high": "Hoch",
+    "max": "Maximal"
   },
   "diff": {
     "turn": "Runde",
@@ -282,7 +285,13 @@
   },
   "pendingPrompts": {
     "sending": "Wird gesendet…",
-    "waiting": "Wartet auf Berücksichtigung…"
+    "waiting": "Wartet auf Berücksichtigung…",
+    "cancel": "Ausstehende Nachricht verwerfen"
+  },
+  "revertNotice": {
+    "title": "Ab dieser Nachricht zurückgesetzt",
+    "hint": "Bearbeite die Eingabe unten und sende sie, um von hier aus fortzufahren.",
+    "cancel": "Zurücksetzen abbrechen"
   },
   "approvals": {
     "mcpAuthTitle": "MCP-Authentifizierung erforderlich",

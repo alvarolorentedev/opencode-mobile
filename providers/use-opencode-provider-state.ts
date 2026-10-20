@@ -38,15 +38,15 @@ import type {
 } from '@/providers/opencode-provider-types';
 import type { Diagnostics } from '@/providers/services/diagnostics-service';
 
-export function useOpencodeProviderState() {
-  const [settings, setSettings] = useState<OpencodeConnectionSettings>(defaultConnectionSettings);
+export function useOpencodeProviderState(initial?: { settings: OpencodeConnectionSettings; projectPath?: string }) {
+  const [settings, setSettings] = useState<OpencodeConnectionSettings>(initial?.settings ?? defaultConnectionSettings);
   const [controlPlaneUrl, setControlPlaneUrl] = useState(() => getConnectControlPlanes()[0] ?? '');
   const [connection, setConnection] = useState<ConnectionState>({
     status: 'idle',
     message: 'Add a server URL and connect to OpenCode.',
   });
   const [serverContract, setServerContract] = useState<ServerContract>('v2');
-  const [activeProjectPath, setActiveProjectPath] = useState<string>();
+  const [activeProjectPath, setActiveProjectPath] = useState<string | undefined>(initial?.projectPath);
   const [onboardingVersion, setOnboardingVersion] = useState(0);
   const [onboardingActive, setOnboardingActive] = useState(false);
   const [sessions, setSessions] = useState<Session[]>([]);

@@ -86,7 +86,7 @@ export function createState(scenario) {
     mcpStatuses: { filesystem: { status: 'connected' } },
     mcpRuntimeConfigs: { filesystem: { type: 'local', command: ['fake-filesystem'], disabled: false } },
     mcpOauth: {},
-    configuredProviderIds: new Set(['openai']),
+    configuredProviderIds: new Set(['openai', ...(scenario === 'reasoning-variants' ? ['opencode'] : [])]),
     // V2 stores credentials as labeled accounts; openai starts with two so
     // account switching/removal is exercised.
     credentials: [

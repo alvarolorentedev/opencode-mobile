@@ -1,0 +1,24 @@
+import { useCallback, useLayoutEffect, useMemo, useRef } from 'react';
+import { useWorkspaces } from '@/providers/workspace-context';
+import { librarySessions } from '@/providers/workspace-library';
+import type { SessionTarget } from '@/providers/workspace-types';
+export function useWorkspaceLibrary() {
+  const registry = useWorkspaces();
+  const { ensure, snapshots } = registry;
+  const latest = useRef(snapshots);
+  useLayoutEffect(() => { latest.current = snapshots; }, [snapshots]);
+  const sessions = useMemo(() => librarySessions(registry.connections, registry.snapshots, registry.focus), [registry.connections, registry.snapshots, registry.focus]);
+  const refresh = useCallback(async () => {
+    await Promise.all(Object.values(latest.current).map((runtime) => runtime.values.currentSessionValue.activeSessions.refresh()));
+  }, []);
+  const manage = useCallback(async (target: SessionTarget, action: 'rename' | 'delete' | 'favorite', title?: string) => {
+    const runtime = await ensure(target);
+    if (action !== 'favorite' && (!runtime.enabled || runtime.values.connectionValue.connection.status !== 'connected')) throw new Error('Connect this server before changing its chats.');
+    const library = runtime.values.sessionLibraryValue;
+    if (action === 'rename') await library.renameSession(target.sessionId, title ?? '');
+    else if (action === 'delete') await library.deleteSession(target.sessionId);
+    else library.toggleFavoriteSession(target.sessionId, target.projectPath, title);
+    await refresh();
+  }, [ensure, refresh]);
+  return { sessions, refresh, manage };
+}

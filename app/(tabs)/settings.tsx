@@ -2,34 +2,36 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { type ComponentProps, type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';
-import { Alert, Platform, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
   Appbar,
+  Button,
   Snackbar,
   Text,
 } from 'react-native-paper';
 
 import { Colors, Fonts } from '@/constants/theme';
+import { WorkspaceScope, useWorkspaces } from '@/providers/workspace-context';
+import { getConnectionUiScope } from '@/lib/connection-scope';
+import { ServerContextPicker } from '@/components/settings/server-context-picker';
+import { ServerApprovals } from '@/components/settings/server-approvals';
 import { McpSection } from '@/components/settings/mcp-section';
 import {
-  AiDefaultsSection,
   EditorSection,
   ConnectionSection,
   CloudLinkSection,
   DiagnosticsSection,
   GeneralSection,
   NotificationsSection,
-  PermissionsSection,
   SupportSection,
   UpdateSection,
   VoiceSection,
 } from '@/components/settings/settings-sections';
 import { useNotificationSetup } from '@/components/settings/use-notification-setup';
-import { useProviderConfiguration } from '@/components/settings/use-provider-configuration';
+import { AiSettingsPanel } from '@/components/settings/ai-settings-panel';
 import { useVoiceSetup } from '@/components/settings/use-voice-setup';
 import {
-  getProviderCopy,
   RESPONSE_SCOPE_OPTIONS,
   WORKING_SOUND_OPTIONS,
 } from '@/components/settings/settings-utils';
@@ -37,7 +39,7 @@ import { OverlaySheet } from '@/components/ui/overlay-sheet';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useLastJsError } from '@/hooks/use-last-js-error';
 import { getSpeechVoiceOptions, type SpeechVoiceOption } from '@/lib/voice/speech-output';
-import { useApprovals, useCapabilities, useConnection, useDiagnostics, useMcp, useOnboarding, usePreferences, useUpdates } from '@/providers/opencode-contexts';
+import { useApprovals, useCapabilities, useConnection, useDiagnostics, useMcp, useOnboarding, usePreferences, useProjects, useUpdates } from '@/providers/opencode-contexts';
 
 // One entry per settings section. Adding a section means adding an entry here
 // (and its presentational component); the row list and the overlay both derive
@@ -52,14 +54,20 @@ type SettingsSection = {
 };
 
 export default function SettingsScreen() {
+  const registry = useWorkspaces();
+  return <WorkspaceScope target={registry.inspectionTarget ?? registry.focus}><SettingsContent /></WorkspaceScope>;
+}
+
+function SettingsContent() {
   const insets = useSafeAreaInsets();
   const colorScheme = useColorScheme() ?? 'light';
   const palette = Colors[colorScheme];
   const { t } = useTranslation();
-  const { availableModels, availableProviders, configuredProviders, currentConfig, providerAccounts, providerAuthMethodsById, removeProvider } = useCapabilities();
+  const { configuredProviders, currentConfig } = useCapabilities();
   const { addMcpServer, mcpOAuth, connectMcpServer, disconnectMcpServer, mcpStatuses, refreshMcpServers, setMcpServerEnabled } = useMcp();
   const { chatPreferences, updateChatPreferences } = usePreferences();
-  const { connect, connection, serverCapabilities, connectSetup, services: serviceManagement } = useConnection();
+  const { connect, connection, settings, serverCapabilities, connectSetup, services: serviceManagement } = useConnection();
+  const { activeProjectPath } = useProjects();
   const { diagnostics, eventStreamStatus, refreshDiagnostics } = useDiagnostics();
   const { lastJsError, refreshLastJsError } = useLastJsError();
   const { approvals } = useApprovals();
@@ -67,22 +75,19 @@ export default function SettingsScreen() {
   const updates = useUpdates();
   const router = useRouter();
   const notifications = useNotificationSetup();
-  const providerConfig = useProviderConfiguration();
   const voiceSetup = useVoiceSetup({
     locale: chatPreferences.speechLocale,
     rate: chatPreferences.speechRate,
     voiceId: chatPreferences.speechVoiceId,
   });
   const [isConnecting, setIsConnecting] = useState(false);
+  const [advancedTab, setAdvancedTab] = useState<'mcp' | 'diagnostics'>('mcp');
   const [openSection, setOpenSection] = useState<string>();
   // Reopening Cloud Link after the full-screen service editor returns keeps the
   // user in context without leaving a portal sheet over the pushed route.
   const returnToCloudLink = useRef(false);
-  const [expandedProviderId, setExpandedProviderId] = useState<string>();
   const [availableSpeechVoices, setAvailableSpeechVoices] = useState<SpeechVoiceOption[]>([]);
   const [isRefreshingSpeechVoices, setIsRefreshingSpeechVoices] = useState(false);
-
-  const enabledModelIds = useMemo(() => new Set(chatPreferences.enabledModelIds), [chatPreferences.enabledModelIds]);
 
   async function handleConnect() {
     setIsConnecting(true);
@@ -135,29 +140,6 @@ export default function SettingsScreen() {
     [chatPreferences.workingSoundVariant],
   );
 
-  function handleModelToggle(modelId: string, checked: boolean) {
-    const nextEnabledModelIds = checked
-      ? chatPreferences.enabledModelIds.filter((id) => id !== modelId)
-      : [...chatPreferences.enabledModelIds, modelId];
-
-    updateChatPreferences({ enabledModelIds: nextEnabledModelIds });
-  }
-
-  function handleRemoveProvider(providerId: string) {
-    const label = getProviderCopy(providerId, providerId, t).label;
-    const remove = () => void removeProvider(providerId)
-      .then(() => providerConfig.setFeedback({ type: 'success', message: t('settings:providers.credentialsRemoved', { provider: label }) }))
-      .catch((error) => providerConfig.setFeedback({ type: 'error', message: error instanceof Error ? error.message : t('settings:providers.couldNotRemove') }));
-    if (Platform.OS === 'web') {
-      if (globalThis.confirm(t('settings:providers.removeWebConfirm', { provider: label }))) remove();
-      return;
-    }
-    Alert.alert(t('settings:providers.removeTitle', { provider: label }), t('settings:providers.removeMessage'), [
-      { text: t('common:actions.cancel'), style: 'cancel' },
-      { text: t('common:actions.remove'), style: 'destructive', onPress: remove },
-    ]);
-  }
-
   const sections: SettingsSection[] = [
     {
       id: 'connection',
@@ -173,7 +155,7 @@ export default function SettingsScreen() {
       title: t('settings:screen.categories.ai'),
       summary: t('settings:screen.summaries.configuredCount', { value: configuredProviders.length }),
       onPress: () => setOpenSection('ai'),
-      render: () => <AiDefaultsSection availableModels={availableModels} availableProviders={availableProviders} configuredProviders={configuredProviders} contract={serverCapabilities.contract} enabledModelIds={enabledModelIds} expandedProviderId={expandedProviderId} onActivateProviderAccount={(credentialId) => void providerAccounts.activate(credentialId)} onExpandedProviderChange={setExpandedProviderId} onModelToggle={handleModelToggle} onRemoveProvider={handleRemoveProvider} onRemoveProviderAccount={(credentialId) => void providerAccounts.remove(credentialId)} onStartProviderConfiguration={providerConfig.startProviderConfiguration} palette={palette} providerAuthMethodsById={providerAuthMethodsById} />,
+      render: () => <AiSettingsPanel />,
     },
     ...(connectSetup.enabled && connectSetup.storeInstall ? [{
       id: 'cloud-link',
@@ -200,13 +182,8 @@ export default function SettingsScreen() {
       render: () => <VoiceSection availableSpeechVoices={availableSpeechVoices} chatPreferences={chatPreferences} isRefreshingSpeechVoices={isRefreshingSpeechVoices} isRefreshingVoiceCapabilities={voiceSetup.isRefreshing} isTestingVoice={voiceSetup.isTesting} onEnableVoiceInput={() => void voiceSetup.enable()} onOpenVoiceSettings={() => void voiceSetup.openAppSettings()} onRefreshVoiceCapabilities={() => void voiceSetup.refreshStatus()} onTestVoicePlayback={() => void voiceSetup.testPlayback()} palette={palette} selectedResponseScope={selectedResponseScope} selectedSpeechVoiceLabel={selectedSpeechVoiceLabel} selectedWorkingSound={selectedWorkingSound} updateChatPreferences={updateChatPreferences} voiceCapabilities={voiceSetup.capabilities} />,
     },
     {
-      id: 'advanced',
-      icon: 'tune',
-      title: t('settings:screen.categories.advanced'),
-      summary: t('settings:screen.summaries.advanced'),
-      onPress: () => setOpenSection('advanced'),
-      render: () => (
-        <>
+      id: 'general', icon: 'cog-outline', title: t('common:servers.appSettings'), summary: t('common:servers.appSettingsSummary'),
+      onPress: () => setOpenSection('general'), render: () => <>
           <EditorSection chatPreferences={chatPreferences} contract={serverCapabilities.contract} palette={palette} updateChatPreferences={updateChatPreferences} />
           <GeneralSection chatPreferences={chatPreferences} palette={palette} updateChatPreferences={updateChatPreferences} onResetOnboarding={() => {
             setOpenSection(undefined);
@@ -214,8 +191,22 @@ export default function SettingsScreen() {
             router.push('/onboarding');
           }} />
           {updates.supported ? <UpdateSection checkPeriod={updates.checkPeriod} enabled={updates.enabled} onCheckPeriodChange={updates.setCheckPeriod} onEnabledChange={updates.setEnabled} palette={palette} /> : null}
+      </>,
+    },
+    {
+      id: 'advanced',
+      icon: 'tune',
+      title: t('settings:screen.categories.advanced'),
+      summary: t('common:servers.serverToolsSummary'),
+      onPress: () => setOpenSection('advanced'),
+      render: () => (
+        <>
+          <View style={{ flexDirection: 'row', gap: 8 }}><Button mode={advancedTab === 'mcp' ? 'contained-tonal' : 'text'} onPress={() => setAdvancedTab('mcp')}>MCP</Button><Button mode={advancedTab === 'diagnostics' ? 'contained-tonal' : 'text'} onPress={() => setAdvancedTab('diagnostics')}>{t('settings:diagnostics.title')}</Button></View>
+          {advancedTab === 'mcp' ? <>
           <McpSection configs={currentConfig?.mcp} mcpStatuses={mcpStatuses} onAdd={addMcpServer} onConnect={connectMcpServer} onDisconnect={disconnectMcpServer} onRefresh={refreshMcpServers} onSetEnabled={setMcpServerEnabled} mcpOAuth={mcpOAuth} persistentConfigAvailable={serverCapabilities.configWrite} requiresIntegrationId={serverCapabilities.contract === 'v2'} oauthAvailable={serverCapabilities.mcpOAuth} palette={palette} />
+          </> : <>
           <DiagnosticsSection diagnostics={diagnostics} eventStreamStatus={eventStreamStatus} formatterAvailable={serverCapabilities.formatter} lastJsError={lastJsError} lspAvailable={serverCapabilities.lsp} onRefresh={() => { void refreshDiagnostics(); refreshLastJsError(); }} palette={palette} />
+          </>}
         </>
       ),
     },
@@ -228,14 +219,7 @@ export default function SettingsScreen() {
         setOpenSection('permissions');
         void approvals.refreshSavedPermissions();
       },
-      render: () => (
-        <PermissionsSection
-          palette={palette}
-          rules={approvals.savedPermissions}
-          onRefresh={() => void approvals.refreshSavedPermissions()}
-          onRemove={(id) => void approvals.removeSavedPermission(id)}
-        />
-      ),
+      render: () => <ServerApprovals />,
     }] : []),
     {
       id: 'support',
@@ -263,27 +247,25 @@ export default function SettingsScreen() {
         </View>
       </Appbar.Header>
       <ScrollView style={[styles.screen, { backgroundColor: palette.background }]} contentContainerStyle={styles.content}>
-        <View style={[styles.categoryGroup, { backgroundColor: palette.surface, borderColor: palette.border }]}>
-        {sections.map((section, index) => <Pressable key={section.id} accessibilityRole="button" accessibilityLabel={`${section.title}. ${section.summary}`} onPress={section.onPress} style={[styles.category, index < sections.length - 1 && { borderBottomColor: palette.border, borderBottomWidth: StyleSheet.hairlineWidth }]}>
-          <MaterialCommunityIcons name={section.icon} size={22} color={palette.tint} />
-          <View style={styles.categoryText}><Text variant="titleMedium" style={{ color: palette.text }}>{section.title}</Text><Text variant="bodyMedium" numberOfLines={1} style={{ color: palette.muted }}>{section.summary}</Text></View>
-          <MaterialCommunityIcons name="chevron-right" size={20} color={palette.muted} />
-        </Pressable>)}
-        </View>
+        {[{ label: t('common:servers.serverSettings'), ids: ['ai', 'advanced', 'permissions'], server: true },
+          { label: t('common:servers.appSettings'), ids: ['connection', 'cloud-link', 'general', 'notifications', 'voice', 'support'], server: false }].map((group) => <View key={group.label} style={{ gap: 12, marginBottom: 20 }}>
+          <Text variant="titleMedium">{group.label}</Text>
+          {group.server ? <ServerContextPicker /> : null}
+          <View style={[styles.categoryGroup, { backgroundColor: palette.surface, borderColor: palette.border }]}>
+          {sections.filter((section) => group.ids.includes(section.id)).map((section, index) => <Pressable key={section.id} accessibilityRole="button" accessibilityLabel={`${section.title}. ${section.summary}`} onPress={section.onPress} style={[styles.category, index > 0 && { borderTopColor: palette.border, borderTopWidth: StyleSheet.hairlineWidth }]}>
+            <MaterialCommunityIcons name={section.icon} size={22} color={palette.tint} />
+            <View style={styles.categoryText}><Text variant="titleMedium" style={{ color: palette.text }}>{section.title}</Text><Text variant="bodyMedium" numberOfLines={1} style={{ color: palette.muted }}>{section.summary}</Text></View>
+            <MaterialCommunityIcons name="chevron-right" size={20} color={palette.muted} />
+          </Pressable>)}
+          </View>
+        </View>)}
       </ScrollView>
 
       <OverlaySheet visible={Boolean(activeSection)} fitContent testID="settings-section-overlay" title={activeSection?.title ?? t('common:tabs.settings')} onClose={() => setOpenSection(undefined)}>
-        {activeSection?.render?.() ?? null}
+        {['ai', 'advanced', 'permissions'].includes(activeSection?.id ?? '') ? <ServerContextPicker project={activeSection?.id === 'advanced'} /> : null}
+        <View key={['ai', 'advanced', 'permissions'].includes(activeSection?.id ?? '') ? `${getConnectionUiScope(settings)}:${activeProjectPath ?? ''}` : activeSection?.id}>{activeSection?.render?.() ?? null}</View>
       </OverlaySheet>
 
-      {providerConfig.dialog}
-
-      <Snackbar
-        visible={Boolean(providerConfig.feedback)}
-        onDismiss={providerConfig.clearFeedback}
-        duration={4000}>
-        {providerConfig.feedback?.message}
-      </Snackbar>
       <Snackbar
         visible={Boolean(notifications.feedback)}
         onDismiss={notifications.clearFeedback}

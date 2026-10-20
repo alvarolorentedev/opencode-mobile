@@ -7,6 +7,7 @@ import {
   getSessionDiff,
   listSessions,
   listArchivedSessions,
+  executeCommand,
 } from '@/providers/services/session-service';
 
 // The SDK entrypoint and the app's client helper are replaced with the test's
@@ -50,6 +51,22 @@ h.api = api;
 const client = buildV2Client({ serverUrl: 'http://test', directory: '/repo', username: '', password: '' } as never);
 
 describe('session reads', () => {
+  it('switches command sessions to the selected variant and omits Default', async () => {
+    const switchModel = vi.fn();
+    const client = {
+      api: { session: { switchModel, command: async () => undefined } },
+      __opencode: { contract: 'v2' },
+    } as never;
+
+    await executeCommand(client, 's', 'review', '', { model: 'opencode/deepseek', variant: 'max' });
+    await executeCommand(client, 's', 'review', '', { model: 'opencode/deepseek', variant: 'default' });
+
+    expect(switchModel.mock.calls).toEqual([
+      [{ sessionID: 's', model: { providerID: 'opencode', id: 'deepseek', variant: 'max' } }],
+      [{ sessionID: 's', model: { providerID: 'opencode', id: 'deepseek' } }],
+    ]);
+  });
+
   it('shares one outstanding newest-page read and pages with the cursor', async () => {
     // A cold transcript read and the diff fallback share one outstanding newest page.
     const [page] = await Promise.all([getSessionMessages(client, 's'), getSessionDiff(client, 's')]);

@@ -10,11 +10,12 @@ import { NumericSlider } from '@/components/ui/numeric-slider';
 import { useSwipeDismiss } from '@/components/ui/use-swipe-dismiss';
 import { useDismissOnBack } from '@/hooks/use-dismiss-on-back';
 import { useKeyboardHeight } from '@/hooks/use-keyboard-height';
-import { REASONING_OPTIONS } from '@/components/chat/chat-view-utils';
+import { getModelVariantLabel, REASONING_OPTIONS } from '@/components/chat/chat-view-utils';
 import { ControlButton } from '@/components/chat/chat-controls';
 import { renderProviderIcon } from '@/components/ui/provider-icon';
 import { Colors, Fonts } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
+import type { ServerContract } from '@/lib/opencode/client';
 import type { ModelOption, ReasoningLevel } from '@/providers/opencode-provider';
 
 type ModelPickerProps = {
@@ -23,6 +24,9 @@ type ModelPickerProps = {
   reasoningLabel?: string;
   reasoning?: ReasoningLevel;
   onReasoningChange?: (value: ReasoningLevel) => void;
+  serverContract: ServerContract;
+  selectedVariant?: string;
+  onVariantChange?: (value: string | undefined) => void;
   models: ModelOption[];
   onSelect: (model: ModelOption) => void;
   recentModelIds?: string[];
@@ -35,7 +39,7 @@ function getSelectedModelLabel(models: ModelOption[], selectedModelId: string | 
   return selected ? `${selected.label} · ${selected.providerLabel}` : fallback;
 }
 
-export function ModelPicker({ disabled = false, models, onSelect, recentModelIds, selectedModelId, slim = false, compact = false, reasoningLabel, reasoning, onReasoningChange }: ModelPickerProps) {
+export function ModelPicker({ disabled = false, models, onSelect, recentModelIds, selectedModelId, slim = false, compact = false, reasoningLabel, reasoning, onReasoningChange, serverContract, selectedVariant, onVariantChange }: ModelPickerProps) {
   const { t } = useTranslation();
   const colorScheme = useColorScheme() ?? 'light';
   const palette = Colors[colorScheme];
@@ -89,6 +93,9 @@ export function ModelPicker({ disabled = false, models, onSelect, recentModelIds
     onSelect(model);
   };
   const selected = models.find((model) => model.id === selectedModelId);
+  const variantIds = [undefined, ...(selected?.variants.map((variant) => variant.id) ?? [])];
+  const showVariantPicker = serverContract === 'v2' && variantIds.length > 1 && onVariantChange;
+  const showLegacyReasoning = serverContract === 'v1' && reasoning !== undefined && onReasoningChange;
   const recentModels = useMemo(() => (recentModelIds ?? [])
     .map((id) => models.find((model) => model.id === id))
     .filter((model): model is ModelOption => model !== undefined && model.id !== selectedModelId)
@@ -162,7 +169,20 @@ export function ModelPicker({ disabled = false, models, onSelect, recentModelIds
                   </Pressable>
                 </View>
               </GestureDetector>
-              {reasoning && onReasoningChange ? (
+              {showVariantPicker ? (
+                <View style={{ paddingHorizontal: 16, paddingTop: 12 }}>
+                  <NumericSlider
+                    label={t('chat:composer.reasoning')}
+                    minimum={0}
+                    maximum={variantIds.length - 1}
+                    step={1}
+                    value={Math.max(0, variantIds.findIndex((variant) => variant === selectedVariant))}
+                    valueLabel={reasoningLabel ?? getModelVariantLabel(selectedVariant, t)}
+                    onValueChange={(index) => onVariantChange?.(variantIds[index])}
+                    palette={palette}
+                  />
+                </View>
+              ) : showLegacyReasoning ? (
                 <View style={{ paddingHorizontal: 16, paddingTop: 12 }}>
                   <NumericSlider
                     label={t('chat:composer.reasoning')}

@@ -1,0 +1,4 @@
+- Choose how much of the agent timeline the chat shows: conversation only (default), plus tool calls, or everything including reasoning.
+- Tool calls and reasoning now appear as compact rows you can expand, instead of being mixed into message bubbles.
+- Opening a conversation now loads at least ten messages, so a long tool-only run no longer leaves the chat blank.
+- Chat keeps the conversation visible as new work streams in and uses less data while doing so.

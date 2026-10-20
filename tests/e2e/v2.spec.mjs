@@ -52,6 +52,7 @@ test('connects to an OpenCode 2 server and completes a prompt', async ({ page, r
     await expect(page.getByRole('button', { name: /Archive / })).toHaveCount(0);
     await page.goto('/settings', { waitUntil: 'domcontentloaded' });
     await page.getByRole('button', { name: /^Advanced/ }).click();
+    await page.getByRole('button', { name: 'Server diagnostics', exact: true }).click();
     await expect(page.getByText(/LSP/)).toHaveCount(0);
     await expect(page.getByText(/Formatters/)).toHaveCount(0);
   } finally {

@@ -216,9 +216,13 @@ and reload, checking the retained transcript. It waits for the active-project
 and favorite storage writes before reload. Provider runtime coverage checks
 that a fresh connection seeds the server current project, that an unlisted path
 falls back to the most recent opened project, that a server-resolved worktree
-is kept and opened, and that closing a project removes it locally, including
+is kept and opened, that an opened project or a server-resolved sibling
+checkout can be opened even when `project.list()` reports another canonical for
+the same repository, that a truly unresolvable path stays rejected, and that
+closing a project removes it locally, including
 the active selection. The v1/v2 worktree flow closes a server worktree and then
-closes its local project entry.
+closes its local project entry. Worktree catalogs omit known project canonicals,
+so Remove/Reset is not offered for a repository's own checkout.
 
 `.github/workflows/build.yml` owns Android validation and release. It runs on pushes to `main` and `v*` tags:
 
@@ -530,9 +534,16 @@ the Vitest `record-preservation` suite covers the bounded-window merge: unchange
 array references are preserved, changed records are replaced, new tail records
 are appended, and scrolled-up history is prepended without duplicates.
 the Vitest `transcript-policy` suite covers the refresh modes: a cold load fetches
-one newest page, a tail merge appends without dropping held records, a
-non-overlapping burst adopts the fetched page, the window is capped by dropping
-the oldest records, and only `replace` discards held history.
+one newest page, backfills older pages until ten entries are displayable, a tail
+merge appends without dropping held records, a non-overlapping burst adopts the
+fetched page, the 300-record cap drops non-display records before conversation
+entries, and only `replace` discards held history.
+the Vitest `transcript-visibility` suite covers verbosity (`basic`, `reasoning`,
+`verbose`) across user, assistant, tool-only, reasoning-only and
+patch-only entries plus hidden file-mutating tools; `transcript-rows` covers
+cross-entry grouping, bubble breaks, hidden-tool skipping and reasoning groups;
+`collapsible-detail` covers collapsed-by-default groups, expandable markdown
+bodies, and the non-copyable shell command/output block.
 `test:provider-runtime` runs actual provider callbacks and extracted hooks with
 deterministic platform/timer boundaries: out-of-order project results, stale
 same-directory server responses, safety-poll overlap, reconnect snapshots,
@@ -613,12 +624,12 @@ the Vitest `record-preservation` suite is now part of the static CI gate.
 `tests/e2e/onboarding.spec.mjs` deliberately omits the `opencode-mobile.onboarding-version`
 seed used by the flow specs, so the assistant is exercised:
 
-- fresh install shows an informational presentation with only Continue, walks permissions → connect → project → ready with step numbers 1–5, checks back navigation, verifies Ready only summarizes connection/project, enters chat, and does not reappear on relaunch
-- every configured step can be skipped (connect and project included) and finishing without a project lands on the chat project prompt
+- fresh install shows an informational presentation with only Continue, walks permissions → connect → AI → project → General → ready with connected step numbers 1–7 (five visible steps before connecting), checks back navigation and the expanded setup summary, enters chat, and does not reappear on relaunch
+- every configured step can be skipped; skipping connection omits AI/project and the connection-dependent General fields and finishing without a project lands on the chat project prompt
 - a failed connection keeps the entered values and allows a retry
 - an installation with a stored settings key but no onboarding marker skips onboarding (upgrade migration)
 - clearing `localStorage` shows onboarding again
-- Advanced groups Editor and General controls; General → Reset onboarding restarts at the presentation, then reviews permissions and the prefilled connection before returning to a working chat without wiping configuration
+- Advanced groups Editor and General controls; General → Reset onboarding restarts at the presentation, then reviews permissions, the prefilled connection, providers, project and general preferences before returning to a working chat without wiping configuration
 
 Existing-install fixtures seed storage before application scripts run, avoiding
 a race with hydration and the initial onboarding-marker write. A tab-scoped
@@ -1123,3 +1134,51 @@ The connector contract is frozen and unchanged; this change is app-side target
 resolution plus the reworked flows, so the E2E additions require explicit human
 validation under AGENTS.md. CI gates: `test:ci:static`, `test:fake-server:self`,
 `test:e2e:web`.
+
+## Extended onboarding acceptance
+
+Onboarding navigation/model unit checks cover both visible sequences and shared
+configured/enabled model filtering. Web flows cover embedded provider auth/model
+toggles, remembered-model selection and Chat continuity, preference persistence,
+immediate language changes, interrupted setup, V1 delivery hiding, empty model
+catalogs, provider removal/reconciliation, back navigation and Settings review.
+Fresh-install Cloud Link pairing must continue to AI before Project. No fake
+server contract is changed. Run the static, fake-server and full web CI gates.
+Changed E2E contracts require explicit human validation under AGENTS.md; accepting
+the design mocks does not validate those test changes. Native acceptance must
+cover picker dismissal, Android Back, reconnecting provider sign-in, safe areas,
+light/dark themes, larger text and screen-reader names.
+
+Manual-connection regressions now expect AI immediately after a successful
+connection. The latest-turn diff assertion allows the documented five-second
+fallback after completion text; it keeps the same file assertions without a
+fixed delay. Screenshot flows wait for picker dismissal before capturing General
+and Review so a closing modal cannot obscure the evidence.
+
+Implementation validation (2026-10-20): all three CI-equivalent gates pass:
+static checks (77 Vitest files / 452 checks), both fake-server self-tests, and all
+148 web E2E flows. The latest-turn diff flow also passed five consecutive runs.
+The Android development build passed (876 Gradle tasks), using the existing
+locked dependencies in a local mirror; source edits stayed in the project root.
+Browser and screenshot review covered 390×844 dark and 320×700 light layouts,
+model selection, Back navigation, wrapping and pinned footers. Browser logs had
+only existing React Native web warnings, with no app errors. The i18n registry was
+regenerated in the project root and passes parity checks for all eight languages.
+Physical-device Back, larger text, screen readers and real provider OAuth remain
+unverified. Human validation of the four changed E2E specifications remains
+required under AGENTS.md; no fake-server source, dependency, release version,
+persisted schema or onboarding completion version changed.
+
+## Multi-server V2 regression coverage
+
+`tests/e2e/multi-server.spec.mjs` starts two independent V2 fakes with intentionally colliding chat IDs and project paths. It checks the mixed list and filters, draft isolation and connected-set restoration, PTY creation on B while chat stays on A, renderer continuity through disconnect/reconnect, Settings/auto-approve isolation, and replies to colliding approval IDs on the correct server. Terminal tests now confirm the explicit creation sheet.
+
+`tests/vitest/workspaces.test.ts` covers composite catalog ordering, shared SSE teardown, secret-free registry validation and hidden-draft update blocking and removal cleanup. The native notification boundary also combines server counts and keeps other servers visible during disconnect. Existing connection recovery, prompt/draft races, sharing, transcript and architecture tests remain required. Share coverage includes a confirmed cross-server destination while focus changes.
+
+Run `npm run test:ci:static`, `npm run test:fake-server:self` and `npm run test:e2e:web`. For manual review, use two independently running V2 fakes, open Connections to connect both, then inspect Chats, Projects, the New terminal sheet and each Settings server selector. Test both themes and slim mode. Browser tests do not establish native WebView retention, microphone ownership, notification delivery or OS background limits; verify those on Android/iOS hardware before release.
+
+For a seeded human-review environment, run `npm run preview:workspaces`. It builds a development web export, starts two isolated V2 fake servers and prints a `/demo.html` URL. That entry point seeds named connections and colliding chat IDs; ordinary reloads preserve subsequent choices. Its reset link clears only that preview origin's app state. Ctrl+C stops all three owned processes.
+
+The preview includes two projects on each server and a subagent fork on Build server. Send a prompt on MacBook Pro to see a normal completion; send one on Build server to exercise a permission request and its server-scoped Approvals view. Switch Hide subagents off to expose the fork. Create a terminal on Build server/secondary-project while keeping chat on MacBook Pro/demo-project.
+
+Terminal selection uses one continuous list with a server chip on each row, without empty workspace headings. With one configured workspace connection, server filters, selectors, chips and redundant scope labels are hidden across Chat, Projects, Terminal and Settings; both Settings section headings, project context and connection management remain available. Disconnected connections still count, so cached rows keep their ownership visible. Multi-server controls return automatically when a second connection is added.

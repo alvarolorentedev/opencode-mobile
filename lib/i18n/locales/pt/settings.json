@@ -339,6 +339,21 @@
     "slimInterface": {
       "title": "Interface compacta",
       "description": "Reduz botões, espaçamento e cabeçalhos no chat, terminal e project para caber mais texto na tela."
+    },
+    "transcriptVerbosity": {
+      "label": "Detalhe da conversa",
+      "basic": {
+        "label": "Básico",
+        "description": "Mostrar apenas mensagens do usuário e do assistente."
+      },
+      "reasoning": {
+        "label": "Raciocínio",
+        "description": "Mostrar também o raciocínio do assistente como linhas recolhidas."
+      },
+      "verbose": {
+        "label": "Detalhado",
+        "description": "Mostrar também chamadas de ferramentas como linhas recolhidas."
+      }
     }
   },
   "connect": {
@@ -393,7 +408,6 @@
     "scanNewQr": "Escaneie o novo código QR no seu computador",
     "scanLocal": "Escanear código QR",
     "scanLocalHint": "Conecte-se a um computador na mesma rede.",
-    "scanLocalUnavailable": "A leitura de QR local está disponível no app para iOS e Android.",
     "manual": "Manual",
     "manualHint": "Informe a URL do servidor e suas credenciais.",
     "nativeOnly": "Cloud Link está disponível no aplicativo para iOS e Android.",

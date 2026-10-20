@@ -12,7 +12,7 @@ import {
   isPromptErrorVisible,
 } from '@/providers/opencode-provider-selectors';
 import { collectDescendantSessionIds } from '@/providers/opencode-provider-utils';
-import { MESSAGE_WINDOW_CAP } from '@/providers/use-transcript-state';
+import { MAX_TRANSCRIPT_RECORDS } from '@/providers/use-transcript-state';
 import type {
   ApprovalsContextValue,
   CapabilitiesContextValue,
@@ -120,6 +120,7 @@ export function useOpencodeProviderValues(input: ProviderValuesInput) {
     setActiveSessionsVisible,
     messagesBySession,
     pendingPromptsBySession,
+    cancelPrompt,
     diffScopeBySession,
     diffsBySession,
     vcsDiffsByScope,
@@ -268,7 +269,7 @@ export function useOpencodeProviderValues(input: ProviderValuesInput) {
   );
   const currentUsage = useMemo(
     () => getSessionUsage(activeSession, aggregateUsageSteps(usageStepsBySession[currentSessionId ?? ''] ?? [], usagePricingByModel),
-      !!currentSessionId && !!messageWindows[currentSessionId] && !messageWindows[currentSessionId].hasMore && currentMessages.length < MESSAGE_WINDOW_CAP),
+      !!currentSessionId && !!messageWindows[currentSessionId] && !messageWindows[currentSessionId].hasMore && currentMessages.length < MAX_TRANSCRIPT_RECORDS),
     [activeSession, currentMessages.length, currentSessionId, messageWindows, usageStepsBySession, usagePricingByModel],
   );
   const latestAssistantTurnUsage = useMemo(
@@ -334,8 +335,8 @@ export function useOpencodeProviderValues(input: ProviderValuesInput) {
     [hasOlderMessages, isLoadingOlderMessages, loadOlderMessages],
   );
   const chatValue = useMemo<ChatContextValue>(
-    () => ({ pendingPrompts, currentMessages, currentTranscript, currentUsage, latestAssistantTurnUsage, currentDiffs, currentDiffScope, setDiffScope, diffTurns, selectedDiffMessageId, selectDiffMessage, refreshDiffs, currentTodos, currentPendingPermissions, currentPendingQuestions, isRefreshingMessages, isRefreshingDiffs, isBootstrappingChat, replyToPermission, replyToQuestion, rejectQuestion, commands, executeCommand, sendPrompt, abortSession, setAutoApprove, sendingState, promptError: visiblePromptError, clearPromptError, transcriptPaging, sharedInput }),
-    [pendingPrompts, currentMessages, currentTranscript, currentUsage, latestAssistantTurnUsage, currentDiffs, currentDiffScope, setDiffScope, diffTurns, selectedDiffMessageId, selectDiffMessage, refreshDiffs, currentTodos, currentPendingPermissions, currentPendingQuestions, isRefreshingMessages, isRefreshingDiffs, isBootstrappingChat, replyToPermission, replyToQuestion, rejectQuestion, commands, executeCommand, sendPrompt, abortSession, setAutoApprove, sendingState, visiblePromptError, clearPromptError, transcriptPaging, sharedInput],
+    () => ({ pendingPrompts, cancelPrompt, currentMessages, currentTranscript, currentUsage, latestAssistantTurnUsage, currentDiffs, currentDiffScope, setDiffScope, diffTurns, selectedDiffMessageId, selectDiffMessage, refreshDiffs, currentTodos, currentPendingPermissions, currentPendingQuestions, isRefreshingMessages, isRefreshingDiffs, isBootstrappingChat, replyToPermission, replyToQuestion, rejectQuestion, commands, executeCommand, sendPrompt, abortSession, setAutoApprove, sendingState, promptError: visiblePromptError, clearPromptError, transcriptPaging, sharedInput }),
+    [pendingPrompts, cancelPrompt, currentMessages, currentTranscript, currentUsage, latestAssistantTurnUsage, currentDiffs, currentDiffScope, setDiffScope, diffTurns, selectedDiffMessageId, selectDiffMessage, refreshDiffs, currentTodos, currentPendingPermissions, currentPendingQuestions, isRefreshingMessages, isRefreshingDiffs, isBootstrappingChat, replyToPermission, replyToQuestion, rejectQuestion, commands, executeCommand, sendPrompt, abortSession, setAutoApprove, sendingState, visiblePromptError, clearPromptError, transcriptPaging, sharedInput],
   );
 
   const conversationValue = useMemo<ConversationContextValue>(
@@ -353,7 +354,7 @@ export function useOpencodeProviderValues(input: ProviderValuesInput) {
     [mcpStatuses, refreshMcpServers, addMcpServer, connectMcpServer, disconnectMcpServer, setMcpServerEnabled, mcpOAuth],
   );
 
-  return {
+  return useMemo(() => ({
     onboardingValue,
     connectionValue,
     diagnosticsValue,
@@ -368,5 +369,6 @@ export function useOpencodeProviderValues(input: ProviderValuesInput) {
     conversationValue,
     terminalValue,
     mcpValue,
-  };
+  }), [onboardingValue, connectionValue, diagnosticsValue, capabilitiesValue, preferencesValue, projectsValue,
+    projectFilesValue, currentSessionValue, sessionLibraryValue, chatValue, approvalsValue, conversationValue, terminalValue, mcpValue]);
 }

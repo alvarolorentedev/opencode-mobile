@@ -339,6 +339,21 @@
     "slimInterface": {
       "title": "スリム表示",
       "description": "チャット・ターミナル・プロジェクトのボタン、余白、ヘッダーを小さくし、画面により多くのテキストを表示します。"
+    },
+    "transcriptVerbosity": {
+      "label": "トランスクリプトの詳細",
+      "basic": {
+        "label": "基本",
+        "description": "ユーザーとアシスタントのメッセージのみ表示します。"
+      },
+      "reasoning": {
+        "label": "推論",
+        "description": "アシスタントの推論も折りたたみ行として表示します。"
+      },
+      "verbose": {
+        "label": "詳細",
+        "description": "ツール呼び出しも折りたたみ行として表示します。"
+      }
     }
   },
   "connect": {
@@ -393,7 +408,6 @@
     "scanNewQr": "コンピューターに表示された新しいQRコードをスキャン",
     "scanLocal": "QRコードをスキャン",
     "scanLocalHint": "同じネットワーク上のコンピューターに接続します。",
-    "scanLocalUnavailable": "ローカルQRスキャンはiOSおよびAndroidアプリで利用できます。",
     "manual": "手動",
     "manualHint": "サーバーURLと認証情報を入力します。",
     "nativeOnly": "Cloud LinkはiOSとAndroidアプリで利用できます。",

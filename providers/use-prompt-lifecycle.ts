@@ -16,7 +16,7 @@ import {
 } from '@/lib/notifications';
 import { readSessionSettlement } from '@/providers/services/session-service';
 import type { ModelOption } from '@/providers/opencode-model-selection';
-import { getSelectedModelParts } from '@/providers/opencode-model-selection';
+import { getSelectedModelParts, getSelectedModelVariant } from '@/providers/opencode-model-selection';
 import type { ChatPreferences } from '@/providers/opencode-preferences';
 import { buildSystemPrompt } from '@/providers/opencode-preferences';
 import type { SessionRefreshOptions } from '@/providers/opencode-provider-events';
@@ -186,11 +186,21 @@ export function usePromptLifecycle({
         parts.push(...preparedFileParts);
 
         if (!ownsSubmission()) return canceled();
+        const isV2 = client.__opencode?.contract === 'v2';
+        const variant = isV2
+          ? getSelectedModelVariant(
+              chatPreferences.modelId,
+              chatPreferences.modelVariantSelections,
+              availableModels,
+              currentSession?.model,
+            )
+          : undefined;
         await submitPrompt({
           sessionID: sessionId,
           agent: chatPreferences.mode,
           model: getSelectedModelParts(chatPreferences.modelId),
-          system: buildSystemPrompt(chatPreferences),
+          system: buildSystemPrompt(chatPreferences, !isV2),
+          variant,
           parts,
         }, chatPreferences.promptDelivery ?? 'steer');
         promptAccepted = true;

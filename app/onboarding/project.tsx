@@ -1,9 +1,9 @@
-import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { StyleSheet, View } from 'react-native';
 import { ActivityIndicator, Button, Text } from 'react-native-paper';
 
+import { useOnboardingNavigation } from '@/components/onboarding/use-onboarding-navigation';
 import { OnboardingStep } from '@/components/onboarding/onboarding-step';
 import { ProjectOptions } from '@/components/onboarding/project-options';
 import { TextInput } from '@/components/ui/text-input';
@@ -13,7 +13,7 @@ import { useProjects } from '@/providers/opencode-contexts';
 
 export default function OnboardingProjectScreen() {
   const { t } = useTranslation();
-  const router = useRouter();
+  const navigation = useOnboardingNavigation('project');
   const palette = Colors[useColorScheme() ?? 'light'];
   const {
     projects,
@@ -34,7 +34,7 @@ export default function OnboardingProjectScreen() {
   function choose(path: string) {
     // Persists through the existing active-project mechanism.
     selectProject(path);
-    router.push('/onboarding/ready');
+    navigation.next();
   }
 
   async function submitAdd() {
@@ -45,7 +45,7 @@ export default function OnboardingProjectScreen() {
     setAddError(undefined);
     try {
       await addProject(directory);
-      router.push('/onboarding/ready');
+      navigation.next();
     } catch (reason) {
       setAddError(reason instanceof Error ? reason.message : t('project:errors.addProject'));
     } finally {
@@ -55,13 +55,11 @@ export default function OnboardingProjectScreen() {
 
   return (
     <OnboardingStep
-      step={4}
-      totalSteps={5}
+      step="project"
       title={t('onboarding:project.title')}
       subtitle={t('onboarding:project.subtitle')}
       testID="onboarding-project"
       footerSingleLine
-      onBack={() => router.back()}
       footer={
         <>
           <Button
@@ -69,7 +67,7 @@ export default function OnboardingProjectScreen() {
             style={{ marginRight: 'auto' }}
             testID="onboarding-project-skip"
             disabled={isRefreshingProjectCatalog || isAdding}
-            onPress={() => router.push('/onboarding/ready')}>
+            onPress={navigation.next}>
             {t('onboarding:project.skip')}
           </Button>
           <Button

@@ -164,25 +164,16 @@ export async function ensureConnectionSection(page) {
 // The active connection is always a row, titled "Current connection" while it
 // has not been saved as a profile. Expand it to reach Edit and Reconnect.
 export async function openCurrentConnectionRow(page) {
-  await ensureConnectionSection(page);
-  const edit = page.getByTestId('connection-edit-current');
-  const row = page.getByTestId('connection-row-current');
-  await row.waitFor({ state: 'attached', timeout: 15_000 }).catch(() => undefined);
-  if ((await row.count()) === 0) {
-    await expect(edit).toBeVisible({ timeout: 10_000 });
-    return;
-  }
-
-  for (let attempt = 0; attempt < 4; attempt += 1) {
-    if (await edit.isVisible().catch(() => false)) {
-      return;
-    }
+  const edit = page.locator('[data-testid^="connection-edit-"]').first();
+  for (let attempt = 0; attempt < 4; attempt++) {
+    await ensureConnectionSection(page);
+    if (await edit.isVisible().catch(() => false)) return;
+    const current = page.getByTestId('connection-row-current');
+    const row = await current.count() ? current : page.locator('[data-testid^="connection-row-"]').first();
     await clickWithRetry(row);
-    if (await edit.waitFor({ state: 'visible', timeout: 1500 }).then(() => true).catch(() => false)) {
-      return;
-    }
+    if (await edit.waitFor({ state: 'visible', timeout: 1500 }).then(() => true).catch(() => false)) return;
   }
-  await expect(edit).toBeVisible({ timeout: 10_000 });
+  await expect(edit).toBeVisible();
 }
 
 // Opens the add/edit connection dialog and verifies it actually opened; the
@@ -202,7 +193,7 @@ export async function openConnectionDialog(page, trigger, openedLocator) {
 // waits for Reconnect, so these are two explicit steps.
 export async function setActiveServerUrl(page, url) {
   await openCurrentConnectionRow(page);
-  await openConnectionDialog(page, page.getByTestId('connection-edit-current'), page.getByTestId('connection-profile-url-input'));
+  await openConnectionDialog(page, page.locator('[data-testid^="connection-edit-"]').first(), page.getByTestId('connection-profile-url-input'));
   await page.getByTestId('connection-profile-url-input').fill(url);
   await clickWithRetry(page.getByTestId('connection-profile-continue'));
   await clickWithRetry(page.getByTestId('connection-profile-save-confirm'));
@@ -211,7 +202,7 @@ export async function setActiveServerUrl(page, url) {
 
 export async function reconnectActiveConnection(page) {
   await openCurrentConnectionRow(page);
-  await clickWithRetry(page.getByTestId('connection-reconnect'));
+  await clickWithRetry(page.getByTestId('connection-reconnect').or(page.locator('[data-testid^="connection-connect-"]')).first());
 }
 
 // The status card only renders inside the expanded Connection card, and the
@@ -260,21 +251,17 @@ export async function addConnection(page, { name, url }) {
 // the row the test just expanded.
 export async function connectToSavedConnection(page, name) {
   await ensureConnectionSection(page);
-  const connect = page.getByRole('button', { name: 'Connect', exact: true });
   const header = page.locator('[data-testid^="connection-row-"]').filter({ hasText: name }).first();
-
-  for (let attempt = 0; attempt < 4; attempt += 1) {
-    if (await connect.isVisible().catch(() => false)) {
-      break;
-    }
-    await clickWithRetry(header);
-    if (await connect.waitFor({ state: 'visible', timeout: 1500 }).then(() => true).catch(() => false)) {
-      break;
-    }
-  }
-
-  await expect(connect).toBeVisible({ timeout: 10_000 });
-  await clickWithRetry(connect);
+  if (await header.getAttribute('aria-expanded') !== 'true') await header.click();
+  const connect = page.getByRole('button', { name: 'Connect', exact: true });
+  if (await connect.isVisible()) { await connect.click(); return; }
+  // Connected servers stay connected. Select their project to change chat focus.
+  await goToTab(page, 'Projects');
+  await page.getByRole('button', { name: 'Change project', exact: true }).click();
+  await page.getByRole('button', { name: /^All servers: / }).click();
+  await page.getByRole('button', { name, exact: true }).last().click();
+  await page.getByRole('button', { name: /^Select / }).first().click();
+  await goToTab(page, 'Settings');
 }
 
 // The Connection card starts expanded, so reach the AI defaults card
@@ -340,6 +327,7 @@ export async function attachFile(page, name, mimeType, buffer) {
 }
 
 export async function exerciseInteractiveTerminal(page, request, origin, command) {
+  await page.getByTestId('terminal-create-confirm').click();
   const output = page.getByTestId('terminal-output');
   const input = page.getByRole('textbox', { name: 'Terminal input', exact: true });
   await expect(page.getByTestId('terminal-selector')).toContainText('Connected');

@@ -1,0 +1,2 @@
+- Set up AI preferences, language, and transcript detail during onboarding.
+- Read chat activity in clearer, expandable groups of tool details.

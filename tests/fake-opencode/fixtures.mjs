@@ -13,14 +13,34 @@ export const models = [{
   limit: { context: 128000, output: 4096 },
 }];
 
+const reasoningVariantModel = {
+  id: 'deepseek-v4.1-flash-free',
+  modelID: 'deepseek-v4.1-flash-free',
+  providerID: 'opencode',
+  name: 'DeepSeek V4.1 Flash Free',
+  capabilities: { tools: true, input: ['text'], output: ['text'] },
+  variants: ['low', 'high', 'max'].map((id) => ({ id, settings: { reasoningEffort: id } })),
+  time: { released: 0 },
+  cost: [{ input: 0, output: 0, cache: { read: 0, write: 0 } }],
+  status: 'active',
+  enabled: true,
+  limit: { context: 128000, output: 4096 },
+};
+
+const reasoningVariantProvider = { id: 'opencode', name: 'OpenCode', activation: 'auto', integrationID: 'opencode', package: 'aisdk:@ai-sdk/openai-compatible' };
+
 export const providerCatalog = [
   { id: 'openai', name: 'OpenAI', activation: 'auto', integrationID: 'openai', package: 'aisdk:@ai-sdk/openai' },
   { id: 'openrouter', name: 'OpenRouter', activation: 'auto', integrationID: 'openrouter', package: 'aisdk:@openrouter/ai-sdk-provider' },
   { id: 'opencode-go', name: 'OpenCode Go', activation: 'auto', integrationID: 'opencode-go', package: 'aisdk:@ai-sdk/openai-compatible' },
 ];
 
+export function providersForScenario(state) {
+  return state.scenario === 'reasoning-variants' ? [...providerCatalog, reasoningVariantProvider] : providerCatalog;
+}
+
 export function modelCatalog(state) {
-  return [models[0], ...providerCatalog.slice(1).map((provider) => ({
+  return [models[0], ...(state.scenario === 'reasoning-variants' ? [reasoningVariantModel] : []), ...providersForScenario(state).slice(1).map((provider) => ({
     ...models[0], id: `${provider.id}/auto`, modelID: 'auto',
     providerID: provider.id, name: 'Auto',
     enabled: state.configuredProviderIds.has(provider.id),

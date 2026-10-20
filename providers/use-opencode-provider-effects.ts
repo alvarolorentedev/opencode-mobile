@@ -1,18 +1,12 @@
 import { useEffect } from 'react';
-import { Platform } from 'react-native';
 
-import { changeAppLanguage } from '@/lib/i18n';
 import type { ScopedOpencodeClient } from '@/lib/opencode/client';
-import {
-  startWorkingSoundAsync,
-  stopWorkingSoundAsync,
-  unloadWorkingSoundAsync,
-} from '@/lib/voice/working-sound';
 import type { ConversationPhase } from '@/providers/opencode-provider-types';
 import { pruneByKeepIds } from '@/providers/opencode-provider-utils';
 import type { OpencodeProviderState } from '@/providers/use-opencode-provider-state';
 
 type ProviderEffectsInput = OpencodeProviderState & {
+  active: boolean;
   client: ScopedOpencodeClient;
   catalogClient: ScopedOpencodeClient;
   isCurrentClient: (candidate: object) => boolean;
@@ -33,6 +27,7 @@ type ProviderEffectsInput = OpencodeProviderState & {
 };
 
 export function useOpencodeProviderEffects({
+  active,
   client,
   catalogClient,
   isCurrentClient,
@@ -69,14 +64,6 @@ export function useOpencodeProviderEffects({
   initialConnectStartedRef,
 }: ProviderEffectsInput) {
   useEffect(() => {
-    if (!isHydrated) {
-      return;
-    }
-
-    changeAppLanguage(chatPreferences.language);
-  }, [chatPreferences.language, isHydrated]);
-
-  useEffect(() => {
     if (connection.status !== 'connected') {
       return;
     }
@@ -105,7 +92,7 @@ export function useOpencodeProviderEffects({
   }, [activeProjectPath, connection.status, refreshArchivedSessions, refreshMcpServers, refreshTerminals, refreshWorktrees]);
 
   useEffect(() => {
-    if (connection.status !== 'connected' || !activeProjectPath) {
+    if (!active || connection.status !== 'connected' || !activeProjectPath) {
       return;
     }
 
@@ -121,27 +108,16 @@ export function useOpencodeProviderEffects({
     return () => {
       cancelled = true;
     };
-  }, [activeProjectPath, client, connection.status, ensureActiveSessionRef, isCurrentClient, setPromptError]);
+  }, [active, activeProjectPath, client, connection.status, ensureActiveSessionRef, isCurrentClient, setPromptError]);
 
   useEffect(
     () => () => {
       Object.values(sessionRefreshTimeoutsRef.current).forEach((timeout) => clearTimeout(timeout));
       sessionRefreshTimeoutsRef.current = {};
       sessionRefreshOptionsRef.current = {};
-      void unloadWorkingSoundAsync().catch(() => undefined);
     },
     [sessionRefreshOptionsRef, sessionRefreshTimeoutsRef],
   );
-
-  useEffect(() => {
-    const busy = sendingState.active || Object.values(sessionStatuses).some((status) => status.type !== 'idle');
-    const shouldPlay = Platform.OS !== 'web' && chatPreferences.workingSoundEnabled && busy && conversationPhase !== 'listening' && conversationPhase !== 'speaking';
-    if (shouldPlay) {
-      void startWorkingSoundAsync(chatPreferences.workingSoundVariant, chatPreferences.workingSoundVolume).catch(() => undefined);
-      return;
-    }
-    void stopWorkingSoundAsync().catch(() => undefined);
-  }, [chatPreferences.workingSoundEnabled, chatPreferences.workingSoundVariant, chatPreferences.workingSoundVolume, conversationPhase, sendingState.active, sessionStatuses]);
 
   useEffect(() => {
     if (!currentSessionId) {

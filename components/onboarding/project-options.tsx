@@ -16,11 +16,13 @@ export function ProjectOptions({
   activePath,
   onSelect,
   onRemove,
+  disabled = false,
 }: {
   projects: OpencodeProject[];
   activePath?: string;
   onSelect: (path: string) => void;
   onRemove?: (path: string) => void;
+  disabled?: boolean;
 }) {
   const { t } = useTranslation();
   const palette = Colors[useColorScheme() ?? 'light'];
@@ -38,6 +40,8 @@ export function ProjectOptions({
             },
           ]}>
           <Pressable
+            disabled={disabled}
+            accessibilityState={{ disabled }}
             accessibilityRole="button"
             accessibilityLabel={t('project:picker.selectLabel', { name: project.label })}
             onPress={() => onSelect(project.path)}
