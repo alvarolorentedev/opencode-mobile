@@ -232,7 +232,8 @@
   "reasoning": {
     "low": "Bajo",
     "default": "Predeterminado",
-    "high": "Alto"
+    "high": "Alto",
+    "max": "Máximo"
   },
   "diff": {
     "turn": "Turno",

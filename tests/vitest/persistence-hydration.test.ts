@@ -96,10 +96,13 @@ describe('persistence hydration and write-back', () => {
     assert.deepEqual(JSON.parse(JSON.stringify(parseConnectionSettings('{"serverUrl":"http://test","password":"legacy","unknown":true}'))), { serverUrl: 'http://test', password: 'legacy' });
     const parsed = parseChatPreferences(JSON.stringify({ mode: 'build', enabledModelIds: null, recentModelIds: 42,
       providerModelSelections: { p: false }, speechRate: 100, workingSoundVolume: -1, transcriptFontSize: 99,
+      modelVariantSelections: { 'openai/model': 'max', 'openai/other': null },
       reasoning: 'invalid', hideSubagentChats: 'yes', language: 'es', unknown: 'ignored' }));
-    assert.deepEqual(JSON.parse(JSON.stringify(parsed)), { mode: 'build', language: 'es', transcriptFontSize: 24, speechRate: 1.5, workingSoundVolume: 0 });
+    assert.deepEqual(JSON.parse(JSON.stringify(parsed)), { mode: 'build', language: 'es', modelVariantSelections: { 'openai/model': 'max', 'openai/other': null }, transcriptFontSize: 24, speechRate: 1.5, workingSoundVolume: 0 });
     const defaults = { ...preferences.defaultChatPreferences, ...parsed };
     assert.ok(Array.isArray(defaults.enabledModelIds)); assert.ok(Array.isArray(defaults.recentModelIds));
+    assert.deepEqual(JSON.parse(JSON.stringify(parseChatPreferences('{"modelVariantSelections":{"openai/model":"max","openai/default":null}}').modelVariantSelections)), { 'openai/model': 'max', 'openai/default': null });
+    assert.equal(parseChatPreferences('{"modelVariantSelections":{"openai/model":false}}').modelVariantSelections, undefined);
     assert.equal(defaults.reasoning, 'default');
 
     const write = createPersistenceWriter(), gate = deferred(), writes: string[] = [];

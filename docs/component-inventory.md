@@ -164,7 +164,8 @@ type ChatComposerProps = {
 
 - todos are server-owned and displayed in the chat overlay with disabled status icons; the UI has no todo mutation action
 - typing `/` shows up to six matching server commands; selecting one fills the draft
-- model selection uses a searchable sheet grouped by provider; the composer trigger displays the selected model and reasoning; its accessible name includes model, provider, and reasoning
+- model selection uses a searchable sheet grouped by provider; its reasoning slider shows server variants for the selected OpenCode 2 model, including a synthetic Default, and stays hidden when that model has none; OpenCode 1 retains its legacy Low/Default/High prompt-hint slider
+- the composer trigger includes the selected variant in its accessible name when the model provides variants
 
 ## `components/chat/model-picker.tsx`
 
@@ -175,7 +176,7 @@ type ChatComposerProps = {
 - pin a `Selected` and `Recent` section above the provider groups (hidden while searching)
 - own only local modal visibility and search-query state
 - return the selected `ModelOption` to the composer, which persists it through the provider
-- optionally render the shared numeric slider for discrete Low/Default/High reasoning above model search, using provider-owned preferences
+- render the shared numeric slider for the selected model's server variants, or the legacy Low/Default/High reasoning hint on OpenCode 1
 - the transparent `Modal` sheet wraps its content in `GestureHandlerRootView` and dismisses on a downward header drag via the shared `useSwipeDismiss` helper, matching `OverlaySheet`
 
 ## `components/chat/chat-header.tsx`

@@ -43,6 +43,11 @@ export function parseChatPreferences(raw: string): Partial<ChatPreferences> {
   if (selections && typeof selections === 'object' && !Array.isArray(selections) && Object.values(selections).every((entry) => typeof entry === 'string')) {
     preferences.providerModelSelections = { ...selections };
   }
+  const variantSelections = value.modelVariantSelections;
+  if (variantSelections && typeof variantSelections === 'object' && !Array.isArray(variantSelections)
+    && Object.values(variantSelections).every((entry) => typeof entry === 'string' || entry === null)) {
+    preferences.modelVariantSelections = { ...variantSelections };
+  }
   for (const [key, options] of Object.entries({ promptDelivery: ['steer', 'queue'], reasoning: ['low', 'default', 'high'], responseScope: ['brief', 'balanced', 'detailed'], workingSoundVariant: ['soft', 'glass'], transcriptVerbosity: ['basic', 'reasoning', 'verbose'] })) {
     if (typeof value[key] === 'string' && options.includes(value[key])) preferences[key] = value[key];
   }

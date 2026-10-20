@@ -20,9 +20,9 @@ export function buildV2Client(settings: OpencodeConnectionSettings): ScopedOpenc
       list: async (sessionID) => (await api.session.inbox.list({ sessionID })).filter((item): item is SessionInboxUser => item.type === 'user').map(toPendingPrompt),
       cancel: async (sessionID, inboxID) => { await api.session.inbox.cancel({ sessionID, inboxID }); },
       submit: async (input: PromptInput, delivery) => {
-        const { sessionID, agent, model } = input;
+        const { sessionID, agent, model, variant } = input;
         if (agent) await api.session.switchAgent({ sessionID, agent });
-        if (model) await api.session.switchModel({ sessionID, model: { id: model.modelID, providerID: model.providerID } });
+        if (model) await api.session.switchModel({ sessionID, model: { id: model.modelID, providerID: model.providerID, ...(variant && variant !== 'default' ? { variant } : {}) } });
         await syncSessionInstructions(api, sessionID, input.system);
         const text = input.parts.filter((part) => part.type === 'text').map((part) => part.text).join('\n\n');
         const files = input.parts.filter((part) => part.type === 'file').map((part) => ({ uri: part.url, name: part.filename || 'Attachment' }));

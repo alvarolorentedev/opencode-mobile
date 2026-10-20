@@ -274,6 +274,8 @@ export function ChatView() {
           palette={palette}
           selectedAgentLabel={composer.selectedAgentLabel}
           showSendAction={composer.showSendAction}
+          serverContract={composer.serverContract}
+          selectedVariant={composer.selectedVariant}
           slim={header.slim}
           updateChatPreferences={actions.updateChatPreferences}
           visibleModels={composer.visibleModels}

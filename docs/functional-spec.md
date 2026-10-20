@@ -327,7 +327,9 @@ Behavior:
 - the initial model follows the server config (`GET /config` -> `model`, variant-tolerant); a stored selection wins when still available
 - when neither the stored nor the server-configured model resolves, no model is auto-picked: the picker shows `Select model` and prompts are sent without a model so the server default applies, instead of silently sending a possibly blocked model
 - discovered model metadata comes from nested attachment/input modality, tool-call, reasoning, status, and context/output limit capabilities
-- reasoning level affects only the generated system prompt, not local control flow
+- OpenCode 2 preserves server-reported model variant IDs, shows `Default` plus the selected model's variants, and applies a selected variant before each prompt or command; models without variants hide the selector
+- variant choices persist per model, stale variants fall back to `Default`, and a matching active session's valid server variant is used when that model has no saved choice
+- on OpenCode 1, the existing Low/Default/High reasoning control continues to affect the generated system prompt; OpenCode 2 reasoning selection is a server model variant, not a prompt hint
 
 ## Session Title Summarization
 

@@ -5,7 +5,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Keyboard } from 'react-native';
 
-import { getVisibleModels } from '@/providers/opencode-model-selection';
+import { getSelectedModelVariant, getVisibleModels } from '@/providers/opencode-model-selection';
 import { useUpdateBlocker } from '@/hooks/use-update-blocker';
 import { mergeSharedDraft } from '@/lib/share/parse';
 import { getConnectionScope, getConnectionUiScope } from '@/lib/connection-scope';
@@ -162,6 +162,12 @@ export function useChatViewController() {
   const selectedSession = useMemo(
     () => sessions.find((session) => session.id === currentSessionId) || activeSession,
     [activeSession, currentSessionId, sessions],
+  );
+  const selectedModelVariant = getSelectedModelVariant(
+    chatPreferences.modelId,
+    chatPreferences.modelVariantSelections,
+    availableModels,
+    selectedSession?.model,
   );
   const handleReviewChanges = useCallback((messageId: string) => {
     const turnId = getUserTurnForMessage(currentMessages, messageId);
@@ -448,6 +454,7 @@ export function useChatViewController() {
       attachments, availableAgents, chatPreferences, commands, draft,
       isCreatingSession, isSpeechInputAvailable, isSpeechInputListening,
       isStoppingSession, isUpdatingAutoApprove, selectedAgentLabel, serverCapabilities,
+      selectedVariant: selectedModelVariant, serverContract: serverCapabilities.contract,
       showSendAction, visibleModels,
     },
     overlay: {

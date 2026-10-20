@@ -434,6 +434,6 @@ The app includes device and voice support, but continuous background microphone 
 
 ### 5. Some UI Settings Modify Prompting, Not Local Logic
 
-`reasoning`, `responseScope`, and `includeNextActions` are implemented by generating system prompt instructions rather than by changing UI logic.
+On OpenCode 1, `reasoning`, `responseScope`, and `includeNextActions` are implemented by generating system prompt instructions rather than by changing UI logic. On OpenCode 2, the Reasoning selector chooses one of the selected model's server-reported variants and sends it through the session model switch; `responseScope` and `includeNextActions` remain prompt instructions.
 
 That distinction is important when validating parity.

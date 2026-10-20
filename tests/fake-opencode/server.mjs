@@ -1,4 +1,4 @@
-import { models, providerCatalog, modelCatalog } from './fixtures.mjs';
+import { models, providersForScenario, modelCatalog } from './fixtures.mjs';
 import { filesForDirectory, fileNodes, addWorktree } from './workspace.mjs';
 import http from 'node:http';
 import { Buffer } from 'node:buffer';
@@ -398,7 +398,7 @@ const server = http.createServer(async (req, res) => {
     if (req.method === 'GET' && pathname === '/api/provider') {
       sendJson(res, 200, {
         location: location(),
-        data: providerCatalog.filter((provider) => state.configuredProviderIds.has(provider.id)),
+        data: providersForScenario(state).filter((provider) => state.configuredProviderIds.has(provider.id)),
       });
       return;
     }
@@ -439,7 +439,7 @@ const server = http.createServer(async (req, res) => {
     const integrationEntry = pathname.match(/^\/api\/integration\/([^/]+)$/);
     if (req.method === 'GET' && integrationEntry) {
       const id = decodeURIComponent(integrationEntry[1]);
-      const native = providerCatalog.find((provider) => provider.integrationID === id);
+      const native = providersForScenario(state).find((provider) => provider.integrationID === id);
       const mcpName = id.startsWith('mcp-') ? id.slice(4) : undefined;
       if (!native && !state.mcpRuntimeConfigs[mcpName]) return notFound(res);
       sendJson(res, 200, { location: location(), data: { id, name: native?.name || mcpName, methods: mcpName ? [{ type: 'oauth', id: 'login', label: 'Sign in' }] : [{ type: 'key', label: 'API key' }], connections: [], ...(mcpName ? { metadata: { source: 'mcp' } } : {}) } }); return;
@@ -464,7 +464,7 @@ const server = http.createServer(async (req, res) => {
     if (req.method === 'GET' && pathname === '/api/integration') {
       sendJson(res, 200, {
         location: location(),
-        data: providerCatalog.map((provider) => ({
+        data: providersForScenario(state).map((provider) => ({
           id: provider.integrationID, name: provider.name,
           methods: [{ type: 'env', names: ['PROVIDER_API_KEY'] }, { type: 'key', label: 'API key' }],
           connections: state.credentials
@@ -479,7 +479,7 @@ const server = http.createServer(async (req, res) => {
     if (req.method === 'POST' && keyConnect) {
       if (!requireLocation(requestUrl, res)) return;
       const integrationID = decodeURIComponent(keyConnect[1]);
-      const provider = providerCatalog.find((item) => item.integrationID === integrationID);
+      const provider = providersForScenario(state).find((item) => item.integrationID === integrationID);
       const body = await readJson(req);
       if (!provider || !body?.key?.trim()) {
         sendJson(res, 400, { error: 'A known integration and API key are required' });

@@ -71,7 +71,7 @@ test('chat model picker searches and groups models by provider', async ({ page, 
   await expect(modelPicker.getByText('OpenAI', { exact: true })).not.toBeVisible();
   await expect(modelPicker.getByText('Selected', { exact: true })).not.toBeVisible();
   await modelPicker.getByRole('button', { name: /^Auto / }).click();
-  await expect(page.getByTestId('chat-model-picker-trigger')).toHaveAccessibleName('Auto · OpenRouter · Default');
+  await expect(page.getByTestId('chat-model-picker-trigger')).toHaveAccessibleName('Auto · OpenRouter');
 
   await page.getByTestId('chat-model-picker-trigger').click();
   await expect(page.getByTestId('chat-model-picker-search')).toHaveValue('');

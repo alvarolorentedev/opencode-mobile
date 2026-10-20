@@ -147,6 +147,7 @@ Current fields:
 - `modelId`
 - `enabledModelIds`
 - `providerModelSelections`
+- `modelVariantSelections` (server variant ID per model; `null` means the synthetic Default choice)
 - `recentModelIds`
 - `reasoning`
 - `autoApprove`
@@ -163,7 +164,7 @@ Current fields:
 - `includeNextActions`
 - `hideSubagentChats`
 
-These values combine true application behavior settings and output-style preferences that are sent to the model as prompt instructions.
+These values combine application behavior settings and output-style preferences that are sent to the model as prompt instructions. `modelVariantSelections` is separate: it selects a server-supported variant for the matching model, is checked against the current model catalog, and falls back to Default when unavailable. If there is no saved entry, a valid variant already set on the active session is retained when it uses the selected model.
 
 `browser`, selected file content, worktree inventory/owning project identity, and MCP status/config are server-derived and not persisted. Text edits remain local to `FilePreview` until the provider compares the current server content with the original editor baseline, writes through native v2 `file.write` (or a v1 VCS patch), and verifies the saved text. Failed comparison, write or verification retains the draft. Listing, search and file-open commits check the current client identity and request order; saves check client identity before writing and only update the selected file if that selection is still current. Identical directory paths on different servers do not make a response current.
 

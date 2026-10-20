@@ -36,6 +36,7 @@ export type ChatPreferences = {
   modelId?: string;
   enabledModelIds: string[];
   providerModelSelections: Record<string, string>;
+  modelVariantSelections: Record<string, string | null>;
   recentModelIds: string[];
   reasoning: ReasoningLevel;
   autoApprove: boolean;
@@ -63,6 +64,7 @@ export const defaultChatPreferences: ChatPreferences = {
   slimInterface: false,
   enabledModelIds: [],
   providerModelSelections: {},
+  modelVariantSelections: {},
   recentModelIds: [],
   reasoning: 'default',
   autoApprove: false,
@@ -106,9 +108,9 @@ function buildResponseStyleSystemPrompt(scope: ResponseScope, includeNextActions
   return `${scopeInstruction} ${nextActionsInstruction}`;
 }
 
-export function buildSystemPrompt(preferences: ChatPreferences) {
+export function buildSystemPrompt(preferences: ChatPreferences, includeReasoning = true) {
   return [
-    buildReasoningSystemPrompt(preferences.reasoning),
+    includeReasoning ? buildReasoningSystemPrompt(preferences.reasoning) : undefined,
     buildResponseStyleSystemPrompt(preferences.responseScope, preferences.includeNextActions),
   ]
     .filter(Boolean)

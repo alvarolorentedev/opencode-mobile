@@ -1,7 +1,7 @@
 import { Buffer } from 'node:buffer';
 import { expect, test } from '@playwright/test';
 
-import { attachFile, chooseDiffSource, connectToServer, ensureConnectionSection, getFreePort, goToTab, openChatLibrary, openReadyChat, resetScenario, seedOnboarding, sendPrompt, spawnV1Server, spawnV2Server, swipeSheetHeaderDown, waitForServer } from './helpers/flows.mjs';
+import { attachFile, backendOrigin, chooseDiffSource, connectToServer, ensureConnectionSection, getFreePort, goToTab, openChatLibrary, openReadyChat, resetScenario, seedOnboarding, sendPrompt, spawnV1Server, spawnV2Server, swipeSheetHeaderDown, waitForServer } from './helpers/flows.mjs';
 
 test.beforeEach(async ({ page }, info) => {
   await seedOnboarding(page, info);
@@ -339,6 +339,62 @@ test('composer exposes direct approvals, agent selection and thinking in the mod
   await goToTab(page, 'Projects');
   await goToTab(page, 'Chat');
   await expect(page.getByTestId('chat-model-picker')).toHaveCount(0);
+});
+
+test('model variants follow the server catalog, reach sessions, and persist per model', async ({ page, request }) => {
+  await resetScenario(request, 'reasoning-variants');
+  await openReadyChat(page);
+
+  const model = page.getByTestId('chat-model-picker-trigger');
+  await expect(model).toHaveAccessibleName('GPT-4.1 mini · OpenAI');
+  await model.click();
+  const picker = page.getByTestId('chat-model-picker');
+  await expect(picker.getByRole('slider', { name: 'Reasoning', exact: true })).toHaveCount(0);
+  await picker.getByTestId('chat-model-picker-search').fill('deepseek');
+  await picker.getByRole('button', { name: /DeepSeek V4\.1 Flash Free/ }).click();
+  await expect(model).toHaveAccessibleName('DeepSeek V4.1 Flash Free · OpenCode · Default');
+
+  await model.click();
+  const variant = page.getByRole('slider', { name: 'Reasoning', exact: true });
+  await expect(variant).toHaveAttribute('aria-valuemax', '3');
+  await expect(variant).toHaveAttribute('aria-valuetext', 'Default');
+  await variant.focus();
+  await variant.press('ArrowRight');
+  await expect(variant).toHaveAttribute('aria-valuetext', 'Low');
+  await variant.press('ArrowRight');
+  await expect(variant).toHaveAttribute('aria-valuetext', 'High');
+  await variant.press('ArrowRight');
+  await expect(variant).toHaveAttribute('aria-valuetext', 'Max');
+  await page.keyboard.press('Escape');
+  await expect(model).toHaveAccessibleName('DeepSeek V4.1 Flash Free · OpenCode · Max');
+  await expect.poll(() => page.evaluate(() => JSON.parse(localStorage.getItem('opencode-mobile.chat-preferences')).modelVariantSelections['opencode/deepseek-v4.1-flash-free'])).toBe('max');
+
+  const maxSwitch = page.waitForResponse((response) => response.request().method() === 'POST'
+    && new URL(response.url()).pathname.endsWith('/model'));
+  await sendPrompt(page, 'Use the maximum reasoning variant');
+  const maxResponse = await maxSwitch;
+  expect(maxResponse.request().postDataJSON()).toEqual({ model: { id: 'deepseek-v4.1-flash-free', providerID: 'opencode', variant: 'max' } });
+  const stateResponse = await request.get(`${backendOrigin()}/__control/state`);
+  expect(stateResponse.ok()).toBeTruthy();
+  expect((await stateResponse.json()).sessions[0].model).toEqual({ id: 'deepseek-v4.1-flash-free', providerID: 'opencode', variant: 'max' });
+
+  await page.reload();
+  await expect(page.getByTestId('chat-prompt-input')).toBeVisible();
+  await expect(model).toHaveAccessibleName('DeepSeek V4.1 Flash Free · OpenCode · Max');
+
+  await model.click();
+  const resetVariant = page.getByRole('slider', { name: 'Reasoning', exact: true });
+  await resetVariant.focus();
+  await resetVariant.press('Home');
+  await expect(resetVariant).toHaveAttribute('aria-valuetext', 'Default');
+  await page.keyboard.press('Escape');
+  await expect.poll(() => page.evaluate(() => JSON.parse(localStorage.getItem('opencode-mobile.chat-preferences')).modelVariantSelections['opencode/deepseek-v4.1-flash-free'])).toBe(null);
+  const defaultSwitch = page.waitForResponse((response) => response.request().method() === 'POST'
+    && new URL(response.url()).pathname.endsWith('/model'));
+  await sendPrompt(page, 'Use the default reasoning variant');
+  const defaultResponse = await defaultSwitch;
+  expect(defaultResponse.request().postDataJSON()).toEqual({ model: { id: 'deepseek-v4.1-flash-free', providerID: 'opencode' } });
+  expect((await (await request.get(`${backendOrigin()}/__control/state`)).json()).sessions[0].model).toEqual({ id: 'deepseek-v4.1-flash-free', providerID: 'opencode' });
 });
 
 test('starter examples fill without sending and library empty copy follows visible chats', async ({ page, request }) => {

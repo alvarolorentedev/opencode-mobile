@@ -309,7 +309,7 @@ test('saved connections keep sessions, caches, and model preferences separate', 
   await goToTab(page, 'Chat');
   await page.getByTestId('chat-model-picker-trigger').click();
   await page.getByTestId('chat-model-picker').getByRole('button', { name: /^Auto / }).click();
-  await expect(page.getByTestId('chat-model-picker-trigger')).toHaveAccessibleName('Auto · OpenRouter · Default');
+  await expect(page.getByTestId('chat-model-picker-trigger')).toHaveAccessibleName('Auto · OpenRouter');
 
   // Connection B is a separate process with separate server state but the same
   // project paths, which is the cache-isolation case.
@@ -332,7 +332,7 @@ test('saved connections keep sessions, caches, and model preferences separate', 
     await connectToSavedConnection(page, 'Server A');
     await expectConnectedTo(page, '44096');
     await goToTab(page, 'Chat');
-    await expect(page.getByTestId('chat-model-picker-trigger')).toHaveAccessibleName('Auto · OpenRouter · Default', { timeout: 15_000 });
+    await expect(page.getByTestId('chat-model-picker-trigger')).toHaveAccessibleName('Auto · OpenRouter', { timeout: 15_000 });
     await openChatLibrary(page);
     await expect(page.getByTestId('chat-library').getByRole('button', { name: 'Open Server A session' }).first()).toBeVisible({ timeout: 15_000 });
     await expect(page.getByTestId('chat-library').getByRole('button', { name: 'Open Server B session' })).toHaveCount(0);

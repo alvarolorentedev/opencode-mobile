@@ -12,7 +12,7 @@ describe('provider model selection utilities', () => {
     const source = await readFile(new URL('../../providers/opencode-model-selection.ts', import.meta.url), 'utf8');
     const output = ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.ESNext, target: ts.ScriptTarget.ES2020 } })
       .outputText.replace(/from '@\/providers\/opencode-preferences'/g, `from "${preferencesStubUri}"`);
-    const { getConfiguredProviderIds, getInitialModelId, getInitialProviderId, getModelIdForProvider, recordRecentModelId, resolveConfigModelId } = await import(`data:text/javascript,${encodeURIComponent(output)}`);
+    const { getConfiguredProviderIds, getInitialModelId, getInitialProviderId, getModelIdForProvider, getSelectedModelVariant, recordRecentModelId, resolveConfigModelId } = await import(`data:text/javascript,${encodeURIComponent(output)}`);
     const models = [{ id: 'openai/gpt', modelID: 'gpt', providerID: 'openai' }];
 
     assert.deepEqual([...getConfiguredProviderIds({ enabled_providers: ['openai'] }, [], models)], ['openai']);
@@ -33,6 +33,14 @@ describe('provider model selection utilities', () => {
     assert.equal(getInitialProviderId(models, { model: 'openrouter/blocked' }, undefined, undefined), undefined);
     assert.equal(getModelIdForProvider(models, 'openai', undefined, undefined), undefined);
     assert.equal(getModelIdForProvider(models, 'openai', 'openai/gpt', undefined), 'openai/gpt');
+
+    const variantModel = { id: 'opencode/deepseek', providerID: 'opencode', modelID: 'deepseek', variants: [{ id: 'low' }, { id: 'max' }] };
+    const sessionModel = { providerID: 'opencode', id: 'deepseek', variant: 'max' };
+    assert.equal(getSelectedModelVariant(variantModel.id, {}, [variantModel], sessionModel), 'max');
+    assert.equal(getSelectedModelVariant(variantModel.id, { [variantModel.id]: 'low' }, [variantModel], sessionModel), 'low');
+    assert.equal(getSelectedModelVariant(variantModel.id, { [variantModel.id]: null }, [variantModel], sessionModel), undefined);
+    assert.equal(getSelectedModelVariant(variantModel.id, { [variantModel.id]: 'removed' }, [variantModel], sessionModel), undefined);
+    assert.equal(getSelectedModelVariant(variantModel.id, {}, [variantModel], { ...sessionModel, providerID: 'openai' }), undefined);
 
     // Variant-qualified server values (e.g. `openrouter/~group/model`) still
     // resolve to the catalog entry and mark its provider configured.

@@ -97,6 +97,7 @@ export type SessionActionsInput = {
   currentSessionId?: string;
   diffScopeBySessionRef: { current: Record<string, DiffScope> };
   sessions: Session[];
+  availableModels: ModelOption[];
   messagesBySession: Record<string, SessionMessageRecord[]>;
   favoriteSessions: FavoriteSession[];
   pendingPermissionsBySession: Record<string, PendingPermissionRequest[]>;

@@ -255,9 +255,9 @@ export async function summarizeSession(client: ScopedOpencodeClient, input: { se
 export async function listCommands(client: ScopedOpencodeClient) {
   return client.compatibility ? v1.listCommands(client.compatibility) : (await client.api!.command.list({ location: { directory: client.__opencode.directory } })).data;
 }
-export async function executeCommand(client: ScopedOpencodeClient, sessionId: string, command: string, args: string, options?: { agent?: string; model?: string; messageId?: string }) {
+export async function executeCommand(client: ScopedOpencodeClient, sessionId: string, command: string, args: string, options?: { agent?: string; model?: string; variant?: string; messageId?: string }) {
   if (client.compatibility) return v1.executeCommand(client.compatibility, sessionId, command, args, options);
   if (options?.agent) await client.api!.session.switchAgent({ sessionID: sessionId, agent: options.agent });
-  if (options?.model) { const [providerID, ...id] = options.model.split('/'); await client.api!.session.switchModel({ sessionID: sessionId, model: { providerID, id: id.join('/') } }); }
+  if (options?.model) { const [providerID, ...id] = options.model.split('/'); await client.api!.session.switchModel({ sessionID: sessionId, model: { providerID, id: id.join('/'), ...(options.variant && options.variant !== 'default' ? { variant: options.variant } : {}) } }); }
   await client.api!.session.command({ sessionID: sessionId, name: command, text: args });
 }

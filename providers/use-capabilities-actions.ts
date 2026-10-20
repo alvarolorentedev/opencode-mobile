@@ -235,6 +235,9 @@ export function useCapabilitiesActions({
       return {
         ...current,
         ...patch,
+        modelVariantSelections: patch.modelVariantSelections
+          ? { ...current.modelVariantSelections, ...patch.modelVariantSelections }
+          : current.modelVariantSelections,
         providerId: safeProviderId,
         modelId: nextModelId,
         enabledModelIds,

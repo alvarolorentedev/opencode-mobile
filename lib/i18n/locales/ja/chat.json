@@ -232,7 +232,8 @@
   "reasoning": {
     "low": "低",
     "default": "既定",
-    "high": "高"
+    "high": "高",
+    "max": "最大"
   },
   "diff": {
     "turn": "ターン",

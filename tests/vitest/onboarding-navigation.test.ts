@@ -4,10 +4,10 @@ import { getOnboardingSteps, onboardingRoute } from '@/components/onboarding/nav
 import { getVisibleModels, type ModelOption } from '@/providers/opencode-model-selection';
 
 const models = [
-  { id: 'openai/mini', providerID: 'openai' },
-  { id: 'openai/full', providerID: 'openai' },
-  { id: 'openrouter/auto', providerID: 'openrouter' },
-] as ModelOption[];
+  { id: 'openai/mini', providerID: 'openai', variants: [] },
+  { id: 'openai/full', providerID: 'openai', variants: [] },
+  { id: 'openrouter/auto', providerID: 'openrouter', variants: [] },
+] as unknown as ModelOption[];
 
 describe('onboarding navigation and model choices', () => {
   it('inserts AI after connection and General before review', () => {

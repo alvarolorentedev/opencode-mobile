@@ -10,6 +10,7 @@ export type ModelOption = {
   providerID: string;
   providerLabel: string;
   modelID: string;
+  variants: { id: string }[];
   supportsReasoning: boolean;
   supportsAttachments: boolean;
   inputModalities: ('text' | 'audio' | 'image' | 'video' | 'pdf')[];
@@ -19,6 +20,27 @@ export type ModelOption = {
   outputLimit?: number;
   pricing?: Model['cost'];
 };
+
+export function getSelectedModelVariant(
+  modelId: string | undefined,
+  selections: Record<string, string | null>,
+  models: ModelOption[],
+  sessionModel?: { providerID: string; id: string; variant?: string },
+) {
+  const model = models.find((item) => item.id === modelId);
+  if (!model) return undefined;
+
+  if (Object.prototype.hasOwnProperty.call(selections, model.id)) {
+    const selected = selections[model.id];
+    return selected !== null && model.variants.some((variant) => variant.id === selected) ? selected : undefined;
+  }
+
+  return sessionModel?.providerID === model.providerID
+    && sessionModel.id === model.modelID
+    && model.variants.some((variant) => variant.id === sessionModel.variant)
+    ? sessionModel.variant
+    : undefined;
+}
 
 export type AgentOption = {
   id: string;
