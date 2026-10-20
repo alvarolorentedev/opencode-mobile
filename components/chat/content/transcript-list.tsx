@@ -7,12 +7,13 @@ import { AppState, View, type NativeScrollEvent, type NativeSyntheticEvent } fro
 import { ActivityIndicator, Button, Card, Text, TouchableRipple } from 'react-native-paper';
 
 import { TranscriptMessage } from '@/components/chat/chat-cards';
+import { CollapsibleDetail } from '@/components/chat/cards/collapsible-detail';
 import { styles, slimStyles } from '@/components/chat/chat-view-styles';
 import { STARTER_PROMPT_KEYS } from '@/components/chat/chat-view-utils';
 import { TranscriptSkeleton } from '@/components/chat/content/transcript-skeleton';
 import { Colors } from '@/constants/theme';
 import type { TranscriptEntry } from '@/lib/opencode/format';
-import type { TranscriptVerbosity } from '@/lib/opencode/transcript';
+import type { TranscriptRow } from '@/lib/opencode/transcript';
 
 type Palette = typeof Colors.light;
 type Connection = { status: 'idle' | 'connecting' | 'connected' | 'error'; message: string };
@@ -41,7 +42,7 @@ type TranscriptListProps = {
   copiedMessageId?: string;
   currentActivityLabel?: string;
   currentSessionId?: string;
-  displayTranscript: TranscriptEntry[];
+  transcriptRows: TranscriptRow[];
   flatTranscript: boolean;
   hasMessages: boolean;
   hasOlderMessages: boolean;
@@ -61,7 +62,6 @@ type TranscriptListProps = {
   speakingMessageId?: string;
   slim: boolean;
   transcriptFontSize: number;
-  transcriptVerbosity: TranscriptVerbosity;
 };
 
 export function TranscriptList({
@@ -70,7 +70,7 @@ export function TranscriptList({
   copiedMessageId,
   currentActivityLabel,
   currentSessionId,
-  displayTranscript,
+  transcriptRows,
   flatTranscript,
   hasMessages,
   hasOlderMessages,
@@ -90,18 +90,17 @@ export function TranscriptList({
   speakingMessageId,
   slim,
   transcriptFontSize,
-  transcriptVerbosity,
 }: TranscriptListProps) {
   const { t } = useTranslation();
   const focused = useIsFocused();
-  const transcriptRef = useRef<FlashListRef<TranscriptEntry>>(null);
+  const transcriptRef = useRef<FlashListRef<TranscriptRow>>(null);
   const followTailRef = useRef(true);
   const lastOffsetRef = useRef(0);
   const settleFramesRef = useRef(0);
   const settleFrameRef = useRef<number | undefined>(undefined);
-  const displayTranscriptRef = useRef(displayTranscript);
+  const transcriptRowsRef = useRef(transcriptRows);
   useLayoutEffect(() => {
-    displayTranscriptRef.current = displayTranscript;
+    transcriptRowsRef.current = transcriptRows;
   });
 
   // A newly selected session always opens at its newest message.
@@ -115,7 +114,7 @@ export function TranscriptList({
     if (settleFrameRef.current !== undefined) return;
     const run = () => {
       settleFrameRef.current = undefined;
-      if (!followTailRef.current || displayTranscriptRef.current.length === 0) {
+      if (!followTailRef.current || transcriptRowsRef.current.length === 0) {
         settleFramesRef.current = 0;
         return;
       }
@@ -131,14 +130,15 @@ export function TranscriptList({
   }, []);
 
   // Follow additions only while the user is parked at the bottom; FlashList's
-  // maintainVisibleContentPosition keeps the visible position otherwise.
+  // maintainVisibleContentPosition keeps the visible position otherwise. Group
+  // content grows without adding rows, so include the detail count.
   useEffect(() => {
-    if (displayTranscript.length === 0) return;
+    if (transcriptRows.length === 0) return;
     if (followTailRef.current) settleToTail();
-  }, [currentSessionId, displayTranscript.length, settleToTail]);
+  }, [currentSessionId, transcriptRows, settleToTail]);
 
   const restorePosition = useCallback(() => {
-    if (displayTranscriptRef.current.length === 0) return;
+    if (transcriptRowsRef.current.length === 0) return;
     if (followTailRef.current) {
       settleToTail();
       return;
@@ -170,13 +170,13 @@ export function TranscriptList({
     followTailRef.current = contentSize.height - (contentOffset.y + layoutMeasurement.height) <= TAIL_FOLLOW_THRESHOLD;
   }, []);
 
-  const extraData = useMemo(() => ({ copiedMessageId, speakingMessageId, onReviewChanges, transcriptVerbosity }), [copiedMessageId, speakingMessageId, onReviewChanges, transcriptVerbosity]);
+  const extraData = useMemo(() => ({ copiedMessageId, speakingMessageId, onReviewChanges }), [copiedMessageId, speakingMessageId, onReviewChanges]);
 
   return (
     <FlashList
       key={currentSessionId || 'no-session'}
       ref={transcriptRef}
-      data={displayTranscript}
+      data={transcriptRows}
       style={styles.scroll}
       contentContainerStyle={[
         styles.content,
@@ -186,35 +186,49 @@ export function TranscriptList({
       extraData={extraData}
       keyboardDismissMode="on-drag"
       keyboardShouldPersistTaps="handled"
-      keyExtractor={(entry) => `${entry.id}-${entry.createdAt}`}
+      keyExtractor={(row) => row.key}
       maintainVisibleContentPosition={MAINTAIN_VISIBLE_CONTENT_POSITION}
       onScroll={handleScroll}
       scrollEventThrottle={16}
       onStartReached={hasOlderMessages ? onLoadOlderMessages : undefined}
       onStartReachedThreshold={0.5}
-      renderItem={({ item: entry }) => (
-        <View style={[
-          styles.transcriptItem,
-          slim && slimStyles.transcriptItem,
-          flatTranscript && (slim ? slimStyles.transcriptItemFlat : styles.transcriptItemFlat),
-        ]}>
-          <TranscriptMessage
-            canSpeak={entry.role === 'assistant' && Boolean(entry.text.trim())}
-            copied={copiedMessageId === entry.id}
-            entry={entry}
-            flat={flatTranscript}
-            fontSize={transcriptFontSize}
-            slim={slim}
-            verbosity={transcriptVerbosity}
-            onReviewChanges={onReviewChanges}
-            onCopy={() => onCopyMessage(entry)}
-            onFork={entry.role === 'user' ? () => onForkMessage(entry.id) : undefined}
-            onRevert={entry.role === 'user' ? () => onRevertMessage(entry.id) : undefined}
-            onToggleSpeak={() => onToggleSpeak(entry)}
-            speaking={speakingMessageId === entry.id}
-          />
-        </View>
-      )}
+      renderItem={({ item: row }) => {
+        if (row.type === 'details') {
+          return (
+            <View style={[
+              styles.transcriptItem,
+              slim && slimStyles.transcriptItem,
+              flatTranscript && (slim ? slimStyles.transcriptItemFlat : styles.transcriptItemFlat),
+            ]}>
+              <CollapsibleDetail flat={flatTranscript} fontSize={transcriptFontSize} group={row.group} palette={palette} />
+            </View>
+          );
+        }
+
+        const entry = row.entry;
+        return (
+          <View style={[
+            styles.transcriptItem,
+            slim && slimStyles.transcriptItem,
+            flatTranscript && (slim ? slimStyles.transcriptItemFlat : styles.transcriptItemFlat),
+          ]}>
+            <TranscriptMessage
+              canSpeak={entry.role === 'assistant' && Boolean(entry.text.trim())}
+              copied={copiedMessageId === entry.id}
+              entry={entry}
+              flat={flatTranscript}
+              fontSize={transcriptFontSize}
+              slim={slim}
+              onReviewChanges={onReviewChanges}
+              onCopy={() => onCopyMessage(entry)}
+              onFork={entry.role === 'user' ? () => onForkMessage(entry.id) : undefined}
+              onRevert={entry.role === 'user' ? () => onRevertMessage(entry.id) : undefined}
+              onToggleSpeak={() => onToggleSpeak(entry)}
+              speaking={speakingMessageId === entry.id}
+            />
+          </View>
+        );
+      }}
       ListHeaderComponent={(
         <View>
           {isLoadingOlderMessages ? (

@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 
-import { isCollapsibleDetail, isDetailVisible, isTranscriptDisplayMessage, type TranscriptVerbosity } from '@/lib/opencode/transcript';
+import { isCollapsibleDetail, isDetailShown, isDetailVisible, isTranscriptDisplayMessage, type TranscriptVerbosity } from '@/lib/opencode/transcript';
 
 vi.mock('@/lib/i18n', () => ({ getFormatLocale: () => 'en' }));
 
@@ -12,7 +12,8 @@ const entry = (role: 'user' | 'assistant', details: any[] = [], text = '') => ({
   details,
 });
 
-const tool = { id: 't', kind: 'tool' as const, label: 'Edit', body: '', status: 'running' };
+const tool = { id: 't', kind: 'tool' as const, tool: 'bash', command: 'ls', label: 'bash', body: 'a.ts', status: 'running' };
+const editTool = { id: 'e', kind: 'tool' as const, tool: 'edit', label: 'Edit', body: '', status: 'completed' };
 const reasoning = { id: 'r', kind: 'reasoning' as const, label: 'Reasoning', body: 'thinking' };
 const patch = { id: 'p', kind: 'patch' as const, label: 'Patch 1 file', body: 'a.ts' };
 
@@ -48,5 +49,11 @@ describe('transcript verbosity', () => {
     expect(isTranscriptDisplayMessage(entry('assistant', [patch]), 'basic')).toBe(false);
     expect(isTranscriptDisplayMessage(entry('assistant', [patch]), 'reasoning')).toBe(false);
     expect(isTranscriptDisplayMessage(entry('assistant', [patch]), 'verbose')).toBe(true);
+  });
+
+  it('never renders file-mutating tools as collapsibles', () => {
+    expect(isDetailVisible(editTool, 'verbose')).toBe(true);
+    expect(isDetailShown(editTool, 'verbose')).toBe(false);
+    expect(isTranscriptDisplayMessage(entry('assistant', [editTool]), 'verbose')).toBe(false);
   });
 });

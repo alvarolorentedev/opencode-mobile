@@ -27,6 +27,14 @@ describe('format', () => {
     expect(failedTool.details[0].body).toBe('Build failed');
   });
 
+  it('keeps the native tool name and shell command on the detail', () => {
+    const shell = toTranscriptEntry({
+      info,
+      parts: [{ id: 'tool-3', type: 'tool', tool: 'bash', state: { status: 'running', input: { command: 'ls -la' } } }],
+    } as never);
+    expect(shell.details[0]).toMatchObject({ kind: 'tool', tool: 'bash', command: 'ls -la' });
+  });
+
   it('renders completed tool attachments', () => {
     const toolAttachment = toTranscriptEntry({
       info,

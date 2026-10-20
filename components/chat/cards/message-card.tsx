@@ -5,12 +5,11 @@ import { Keyboard, StyleSheet, View } from 'react-native';
 import { Chip, IconButton, Surface, Text } from 'react-native-paper';
 
 import { AttachmentStrip } from '@/components/chat/attachment-strip';
-import { CollapsibleDetail } from '@/components/chat/cards/collapsible-detail';
 import { MarkdownText } from '@/components/chat/chat-markdown';
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { formatTimestamp, type TranscriptEntry } from '@/lib/opencode/format';
-import { isCollapsibleDetail, isDetailVisible, summarizeTranscriptDetails, type TranscriptVerbosity } from '@/lib/opencode/transcript';
+import { summarizeTranscriptDetails } from '@/lib/opencode/transcript';
 
 type TranscriptMessageProps = {
   canSpeak?: boolean;
@@ -25,7 +24,6 @@ type TranscriptMessageProps = {
   onToggleSpeak: () => void;
   slim?: boolean;
   speaking?: boolean;
-  verbosity?: TranscriptVerbosity;
 };
 
 function TranscriptMessageImpl({
@@ -41,31 +39,23 @@ function TranscriptMessageImpl({
   onToggleSpeak,
   slim = false,
   speaking = false,
-  verbosity = 'basic',
 }: TranscriptMessageProps) {
   const { t } = useTranslation();
   const colorScheme = useColorScheme() ?? 'light';
   const palette = Colors[colorScheme];
   const isUser = entry.role === 'user';
   const attachments = entry.details.filter((detail) => detail.kind === 'file').map((detail) => ({ uri: detail.uri || '', mime: detail.mime, filename: detail.filename || detail.label }));
-  const collapsibleDetails = entry.details.filter((detail) => isCollapsibleDetail(detail) && isDetailVisible(detail, verbosity));
   const summaryDetails = entry.details.filter((detail) => detail.kind === 'patch' || detail.kind === 'file' || detail.kind === 'retry');
   const patchSummary = t('chat:cards.updatedPatches', { count: entry.details.filter((detail) => detail.kind === 'patch').length });
   const detailSummary = summarizeTranscriptDetails(summaryDetails, { patches: (count) => t('chat:cards.updatedPatches', { count }), files: (count) => t('chat:cards.fileCount', { count }) });
-  const hasBubble = isUser || Boolean(entry.text) || Boolean(entry.error) || attachments.length > 0 || detailSummary.length > 0;
   const textColor = flat ? palette.text : isUser ? palette.onBubbleUser : palette.onBubbleAssistant;
   const metaColor = flat ? palette.muted : isUser ? palette.onBubbleUser : palette.muted;
   const accentColor = flat ? palette.tint : isUser ? palette.onBubbleUser : palette.tint;
   const slimSpacing = slim ? (flat ? { paddingVertical: 2, gap: 4 } : { borderRadius: 14, gap: 6, paddingHorizontal: 10, paddingVertical: 8 }) : null;
 
-  if (!hasBubble && collapsibleDetails.length === 0) {
-    return null;
-  }
-
   return (
     <View style={[styles.messageRow, flat ? styles.messageRowFlat : isUser && styles.messageRowUser]}>
-      {hasBubble ? (
-        <View onTouchEnd={Keyboard.dismiss} style={styles.messageTouchable}>
+      <View onTouchEnd={Keyboard.dismiss} style={styles.messageTouchable}>
         <Surface
           testID={`transcript-message-${entry.id}`}
           style={[
@@ -135,15 +125,7 @@ function TranscriptMessageImpl({
             </View>
           ) : null}
         </Surface>
-        </View>
-      ) : null}
-      {collapsibleDetails.length > 0 ? (
-        <View style={[styles.detailStack, flat ? null : styles.detailStackAssistant]}>
-          {collapsibleDetails.map((detail) => (
-            <CollapsibleDetail detail={detail} fontSize={fontSize} key={detail.id} palette={palette} />
-          ))}
-        </View>
-      ) : null}
+      </View>
     </View>
   );
 }
@@ -156,7 +138,6 @@ function areTranscriptMessagePropsEqual(prev: TranscriptMessageProps, next: Tran
     prev.fontSize === next.fontSize &&
     prev.flat === next.flat &&
     prev.slim === next.slim &&
-    prev.verbosity === next.verbosity &&
     prev.copied === next.copied &&
     prev.speaking === next.speaking &&
     prev.canSpeak === next.canSpeak &&
@@ -200,6 +181,4 @@ const styles = StyleSheet.create({
   copiedPill: { flexDirection: 'row', alignItems: 'center', gap: 4, borderRadius: 999, paddingHorizontal: 8, paddingVertical: 4 },
   summaryRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   summaryChip: { alignSelf: 'flex-start' },
-  detailStack: { alignSelf: 'stretch', gap: 6, marginTop: 6 },
-  detailStackAssistant: { marginLeft: 8, marginRight: '8%' },
 });

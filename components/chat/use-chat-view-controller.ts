@@ -9,7 +9,7 @@ import { useUpdateBlocker } from '@/hooks/use-update-blocker';
 import { mergeSharedDraft } from '@/lib/share/parse';
 import { getConnectionScope, getConnectionUiScope } from '@/lib/connection-scope';
 import { type TranscriptEntry } from '@/lib/opencode/format';
-import { getTurnPatchDetails, getUserTurnForMessage, isTranscriptDisplayMessage } from '@/lib/opencode/transcript';
+import { buildTranscriptRows, getTurnPatchDetails, getUserTurnForMessage, isTranscriptDisplayMessage } from '@/lib/opencode/transcript';
 import { getLatestContextTokens } from '@/lib/opencode/usage';
 import { openVoiceSettingsAsync } from '@/lib/voice/permissions';
 import { speakText, stopSpeaking } from '@/lib/voice/speech-output';
@@ -154,6 +154,10 @@ export function useChatViewController() {
     };
   }, [currentTranscript, chatPreferences.transcriptVerbosity]);
   const displayTranscript = display.entries;
+  const transcriptRows = useMemo(
+    () => buildTranscriptRows(displayTranscript, display.verbosity),
+    [displayTranscript, display.verbosity],
+  );
   const hasTranscriptMessages = currentMessages.length > 0;
   const currentActivityLabel = useMemo(() => getTranscriptActivityLabelForEntries(currentTranscript), [currentTranscript]);
   const selectedSession = useMemo(
@@ -436,11 +440,10 @@ export function useChatViewController() {
       activeSession, awaitingUserInput, cancelingPromptId, changesVisible, completedTodoCount,
       copiedMessageId, currentActivityLabel, currentDiffs, currentDiffScope,
       currentPendingPermissions, currentPendingQuestions, currentSessionId, currentTodos,
-      diffAdditions, diffCount, diffDeletions, diffDetails, diffTurns, displayTranscript,
+      diffAdditions, diffCount, diffDeletions, diffDetails, diffTurns, transcriptRows,
       expandedDiffId, hasTranscriptMessages, isCancelingRevert, isRefreshingDiffs, isRefreshingMessages,
       pendingInteractions, pendingPrompts, progressIcon, progressVisible, retryAttempt,
       running, selectedDiffMessageId, speakingMessageId, transcriptPaging,
-      transcriptVerbosity: display.verbosity,
     },
     composer: {
       attachments, availableAgents, chatPreferences, commands, draft,

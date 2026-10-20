@@ -1,4 +1,4 @@
-import { getMessageError, getToolBody, getToolTitle } from './tool';
+import { getMessageError, getToolBody, getToolCommand, getToolTitle } from './tool';
 import type { SessionMessageRecord, TranscriptDetail, TranscriptEntry } from './types';
 
 const transcriptEntryCache = new WeakMap<SessionMessageRecord, TranscriptEntry>();
@@ -40,6 +40,8 @@ export function toTranscriptEntry(record: SessionMessageRecord): TranscriptEntry
       details.push({
         id,
         kind: 'tool',
+        tool: part.tool,
+        command: getToolCommand(part),
         label: getToolTitle(part),
         body: getToolBody(part),
         status: part.state.status,

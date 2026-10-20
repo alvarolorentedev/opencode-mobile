@@ -534,11 +534,19 @@ removal. Reconnects and foreground returns tail-merge.
 Transcript verbosity (`basic` by default) controls which native timeline
 records render. `basic` shows user and assistant text/files/errors; `reasoning`
 adds reasoning rows; `verbose` adds tool calls and patches.
-Tool and reasoning details render outside message bubbles as flat collapsible
-rows with the same markdown renderer as messages, matching the assistant
-bubble's width. V1-only subtask/step/agent parts and the V2-synthesized
-`step-finish` usage marker are never rendered. The display filter, the
-initial-pull target, and retention share the same predicate.
+Details are first-class transcript rows: message rows and detail-group rows.
+Contiguous visible details of the same tool (or contiguous reasoning) merge
+into one collapsible; a message bubble breaks the group, and hidden
+file-mutating tools are skipped before grouping. The group key is its first
+detail id, so expansion persists while streamed calls grow the group. Non-shell
+groups render bodies with the shared markdown renderer; shell groups render one
+raw, non-copyable bash block with `$ command` and its output per call, plus a
+single-line `shell - <current command>` header. Group rows use the assistant
+bubble width. V1-only subtask/step/agent parts and the V2-synthesized
+`step-finish` usage marker are never rendered; `edit`, `write`, `multiedit`,
+and `apply_patch` tool details are hidden (they still drive the activity
+label). The display filter, the initial-pull target, and retention share the
+same predicate.
 
 
 V1 pages backwards with `limit`/`before` and an `x-next-cursor` header; V2

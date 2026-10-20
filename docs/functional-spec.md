@@ -139,7 +139,7 @@ The Chat screen shows:
 Behavior details:
 
 - the transcript has a configurable detail level: `basic` (default) shows user and assistant messages with text, files, or errors; `reasoning` adds reasoning; `verbose` adds tool calls and patches
-- tool and reasoning rows render collapsed outside message bubbles, use the same markdown renderer as messages, and match the assistant bubble's width; the initial pull backfills until at least 10 entries are displayable at the selected level
+- tool and reasoning rows render collapsed outside message bubbles and match the assistant bubble's width; contiguous same-tool calls merge into one growing collapsible, shell rows show `$ command` plus output in a non-copyable bash block, and edit/write rows are hidden; the initial pull backfills until at least 10 entries are displayable at the selected level
 - a status line like `OpenCode is ...` is shown while running and not blocked on user input
 - a small floating progress view shows the current step and completed count; tapping it opens a content-sized overlay with the task list; pending permission actions replace it while blocked
 - a pending question opens a full-screen answer flow immediately; dismissal leaves an `Answer needed` card above the composer and does not reject the request

@@ -540,8 +540,10 @@ fetched page, the 300-record cap drops non-display records before conversation
 entries, and only `replace` discards held history.
 the Vitest `transcript-visibility` suite covers verbosity (`basic`, `reasoning`,
 `verbose`) across user, assistant, tool-only, reasoning-only and
-patch-only entries; `collapsible-detail` covers collapsed-by-default tool rows
-and expanding their markdown body.
+patch-only entries plus hidden file-mutating tools; `transcript-rows` covers
+cross-entry grouping, bubble breaks, hidden-tool skipping and reasoning groups;
+`collapsible-detail` covers collapsed-by-default groups, expandable markdown
+bodies, and the non-copyable shell command/output block.
 `test:provider-runtime` runs actual provider callbacks and extracted hooks with
 deterministic platform/timer boundaries: out-of-order project results, stale
 same-directory server responses, safety-poll overlap, reconnect snapshots,

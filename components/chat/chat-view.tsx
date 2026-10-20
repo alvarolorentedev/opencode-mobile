@@ -69,7 +69,7 @@ export function ChatView() {
             copiedMessageId={content.copiedMessageId}
             currentActivityLabel={content.currentActivityLabel}
             currentSessionId={content.currentSessionId}
-            displayTranscript={content.displayTranscript}
+            transcriptRows={content.transcriptRows}
             flatTranscript={composer.chatPreferences.flatTranscript === true}
             hasMessages={content.hasTranscriptMessages}
             hasOlderMessages={content.transcriptPaging.hasOlder}
@@ -109,7 +109,6 @@ export function ChatView() {
             speakingMessageId={content.speakingMessageId}
             slim={header.slim}
             transcriptFontSize={normalizeTranscriptFontSize(composer.chatPreferences.transcriptFontSize)}
-            transcriptVerbosity={content.transcriptVerbosity}
           />
           <ChangesOverlay
             changesVisible={content.changesVisible && !content.awaitingUserInput}

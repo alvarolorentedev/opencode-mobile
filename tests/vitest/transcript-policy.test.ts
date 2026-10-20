@@ -16,7 +16,7 @@ type Message = {
 const info = (id: string) => ({ id, role: 'assistant' as const, time: { created: 1 } });
 const toolRecord = (id: string): Message => ({
   info: info(id),
-  parts: [{ id: `${id}-tool`, sessionID: 's', messageID: id, type: 'tool' as const, callID: id, tool: 'edit', state: { status: 'running' as const, input: {}, title: 'Edit' } }],
+  parts: [{ id: `${id}-tool`, sessionID: 's', messageID: id, type: 'tool' as const, callID: id, tool: 'bash', state: { status: 'running' as const, input: { command: 'ls' }, title: 'bash' } }],
 });
 const textRecord = (id: string, text = 'Hello'): Message => ({
   info: info(id),
