@@ -11,10 +11,12 @@ export function LanguageSection({
   chatPreferences,
   palette,
   updateChatPreferences,
+  showDescription = true,
 }: {
   chatPreferences: ChatPreferences;
   palette: Palette;
   updateChatPreferences: (patch: Partial<ChatPreferences>) => void;
+  showDescription?: boolean;
 }) {
   const { t } = useTranslation();
   const languageOptions: NativeSelectOption<string>[] = [
@@ -26,8 +28,9 @@ export function LanguageSection({
     || t('common:labels.systemDefault');
 
   return (
-    <View style={styles.section}>
+    <View style={showDescription ? styles.section : undefined}>
       <SettingSelectField
+        testID="settings-language"
         label={t('settings:language.title')}
         onValueChange={(value) => updateChatPreferences({ language: value === 'system' ? undefined : value })}
         options={languageOptions}
@@ -35,7 +38,7 @@ export function LanguageSection({
         selectedValue={selectedValue}
         valueLabel={valueLabel}
       />
-      <HelperText type="info">{t('settings:language.description')}</HelperText>
+      {showDescription ? <HelperText type="info">{t('settings:language.description')}</HelperText> : null}
     </View>
   );
 }

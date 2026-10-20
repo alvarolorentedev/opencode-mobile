@@ -47,6 +47,7 @@ export function SettingSelectField<T extends string>({
   onValueChange,
   options,
   palette,
+  searchable = false,
   selectedValue,
   testID,
   valueLabel,
@@ -56,6 +57,7 @@ export function SettingSelectField<T extends string>({
   onValueChange: (value: T) => void;
   options: NativeSelectOption<T>[];
   palette: Palette;
+  searchable?: boolean;
   selectedValue?: T;
   testID?: string;
   valueLabel: string;
@@ -65,11 +67,14 @@ export function SettingSelectField<T extends string>({
       disabled={disabled}
       onValueChange={onValueChange}
       options={options}
+      searchable={searchable}
       selectedValue={selectedValue}
       title={label}
       renderTrigger={({ disabled: triggerDisabled, open, openState }) => (
         <Pressable
           accessibilityRole="button"
+          accessibilityLabel={`${label}. ${valueLabel}`}
+          accessibilityState={{ disabled: triggerDisabled, expanded: openState }}
           disabled={triggerDisabled}
           onPress={open}
           testID={testID}

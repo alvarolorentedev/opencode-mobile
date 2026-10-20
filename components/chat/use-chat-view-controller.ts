@@ -5,6 +5,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Keyboard } from 'react-native';
 
+import { getVisibleModels } from '@/providers/opencode-model-selection';
 import { useUpdateBlocker } from '@/hooks/use-update-blocker';
 import { mergeSharedDraft } from '@/lib/share/parse';
 import { getConnectionScope, getConnectionUiScope } from '@/lib/connection-scope';
@@ -114,12 +115,10 @@ export function useChatViewController() {
   });
   const hasDraftInput = !!draft.trim() || attachments.length > 0;
   const showSendAction = !running || hasDraftInput;
-  const visibleModels = useMemo(() => {
-    const configuredProviderIds = new Set(configuredProviders.map((provider) => provider.id));
-    const enabledModelIds = new Set(chatPreferences.enabledModelIds);
-
-    return availableModels.filter((model) => configuredProviderIds.has(model.providerID) && (enabledModelIds.size === 0 || enabledModelIds.has(model.id)));
-  }, [availableModels, chatPreferences.enabledModelIds, configuredProviders]);
+  const visibleModels = useMemo(
+    () => getVisibleModels(availableModels, configuredProviders, chatPreferences.enabledModelIds),
+    [availableModels, chatPreferences.enabledModelIds, configuredProviders],
+  );
   // Scoped to the turn the overlay shows: an unscoped list would report files
   // from every turn in the transcript.
   const diffDetails = useMemo(

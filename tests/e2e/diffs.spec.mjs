@@ -19,7 +19,8 @@ test('files changed follows the latest user turn', async ({ page, request }) => 
   await sendPrompt(page, 'Create the second file diff');
   await expect(page.getByText(/Finished: Create the second file diff/).first()).toBeVisible({ timeout: 20_000 });
   await page.getByTestId('chat-changes-chip').click();
-  await expect(page.getByText('src/feature.ts', { exact: true })).toBeVisible();
+  // Diff reconciliation may follow completion text on the five-second fallback.
+  await expect(page.getByText('src/feature.ts', { exact: true })).toBeVisible({ timeout: 20_000 });
   await expect(page.getByText('app/(tabs)/index.tsx', { exact: true })).not.toBeVisible();
 });
 

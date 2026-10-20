@@ -182,3 +182,9 @@ export function getSelectedModelParts(modelId?: string) {
     modelID: selectedModelID,
   };
 }
+
+export function getVisibleModels(models: ModelOption[], configuredProviders: { id: string }[], enabledModelIds: string[]) {
+  const providers = new Set(configuredProviders.map((provider) => provider.id));
+  const enabled = new Set(enabledModelIds);
+  return models.filter((model) => providers.has(model.providerID) && (enabled.size === 0 || enabled.has(model.id)));
+}

@@ -624,12 +624,12 @@ the Vitest `record-preservation` suite is now part of the static CI gate.
 `tests/e2e/onboarding.spec.mjs` deliberately omits the `opencode-mobile.onboarding-version`
 seed used by the flow specs, so the assistant is exercised:
 
-- fresh install shows an informational presentation with only Continue, walks permissions → connect → project → ready with step numbers 1–5, checks back navigation, verifies Ready only summarizes connection/project, enters chat, and does not reappear on relaunch
-- every configured step can be skipped (connect and project included) and finishing without a project lands on the chat project prompt
+- fresh install shows an informational presentation with only Continue, walks permissions → connect → AI → project → General → ready with connected step numbers 1–7 (five visible steps before connecting), checks back navigation and the expanded setup summary, enters chat, and does not reappear on relaunch
+- every configured step can be skipped; skipping connection omits AI/project and the connection-dependent General fields and finishing without a project lands on the chat project prompt
 - a failed connection keeps the entered values and allows a retry
 - an installation with a stored settings key but no onboarding marker skips onboarding (upgrade migration)
 - clearing `localStorage` shows onboarding again
-- Advanced groups Editor and General controls; General → Reset onboarding restarts at the presentation, then reviews permissions and the prefilled connection before returning to a working chat without wiping configuration
+- Advanced groups Editor and General controls; General → Reset onboarding restarts at the presentation, then reviews permissions, the prefilled connection, providers, project and general preferences before returning to a working chat without wiping configuration
 
 Existing-install fixtures seed storage before application scripts run, avoiding
 a race with hydration and the initial onboarding-marker write. A tab-scoped
@@ -1134,3 +1134,37 @@ The connector contract is frozen and unchanged; this change is app-side target
 resolution plus the reworked flows, so the E2E additions require explicit human
 validation under AGENTS.md. CI gates: `test:ci:static`, `test:fake-server:self`,
 `test:e2e:web`.
+
+## Extended onboarding acceptance
+
+Onboarding navigation/model unit checks cover both visible sequences and shared
+configured/enabled model filtering. Web flows cover embedded provider auth/model
+toggles, remembered-model selection and Chat continuity, preference persistence,
+immediate language changes, interrupted setup, V1 delivery hiding, empty model
+catalogs, provider removal/reconciliation, back navigation and Settings review.
+Fresh-install Cloud Link pairing must continue to AI before Project. No fake
+server contract is changed. Run the static, fake-server and full web CI gates.
+Changed E2E contracts require explicit human validation under AGENTS.md; accepting
+the design mocks does not validate those test changes. Native acceptance must
+cover picker dismissal, Android Back, reconnecting provider sign-in, safe areas,
+light/dark themes, larger text and screen-reader names.
+
+Manual-connection regressions now expect AI immediately after a successful
+connection. The latest-turn diff assertion allows the documented five-second
+fallback after completion text; it keeps the same file assertions without a
+fixed delay. Screenshot flows wait for picker dismissal before capturing General
+and Review so a closing modal cannot obscure the evidence.
+
+Implementation validation (2026-10-20): all three CI-equivalent gates pass:
+static checks (77 Vitest files / 452 checks), both fake-server self-tests, and all
+148 web E2E flows. The latest-turn diff flow also passed five consecutive runs.
+The Android development build passed (876 Gradle tasks), using the existing
+locked dependencies in a local mirror; source edits stayed in the project root.
+Browser and screenshot review covered 390×844 dark and 320×700 light layouts,
+model selection, Back navigation, wrapping and pinned footers. Browser logs had
+only existing React Native web warnings, with no app errors. The i18n registry was
+regenerated in the project root and passes parity checks for all eight languages.
+Physical-device Back, larger text, screen readers and real provider OAuth remain
+unverified. Human validation of the four changed E2E specifications remains
+required under AGENTS.md; no fake-server source, dependency, release version,
+persisted schema or onboarding completion version changed.

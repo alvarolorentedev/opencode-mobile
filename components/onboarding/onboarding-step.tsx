@@ -1,9 +1,13 @@
-import type { ReactNode } from 'react';
+import { useCallback, type ReactNode } from 'react';
+import { useFocusEffect, useIsFocused, useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';
-import { ScrollView, StyleSheet, View } from 'react-native';
+import { Platform, ScrollView, StyleSheet, View } from 'react-native';
 import { Appbar, Text } from 'react-native-paper';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { useDismissOnBack } from '@/hooks/use-dismiss-on-back';
+import { useOnboardingNavigation } from './use-onboarding-navigation';
+import type { OnboardingStepName } from './navigation';
 import { useOnboarding } from '@/providers/opencode-contexts';
 import { Colors, Fonts } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
@@ -11,36 +15,42 @@ import { useColorScheme } from '@/hooks/use-color-scheme';
 /**
  * Shared chrome for every onboarding step: back affordance, step progress,
  * title/subtitle, a scrollable body, and a pinned footer for the primary
- * action. Keeping it in one place keeps the five steps short and consistent.
+ * action. Keeping it in one place keeps the steps short and consistent.
  */
 export function OnboardingStep({
   step,
-  totalSteps,
   title,
   subtitle,
-  onBack,
+  backDisabled = false,
   children,
   footer,
   footerSingleLine = false,
   testID,
   scrollEnabled = true,
 }: {
-  step: number;
-  totalSteps: number;
+  step: OnboardingStepName;
   title: string;
   subtitle?: string;
-  onBack?: () => void;
+  backDisabled?: boolean;
   children: ReactNode;
   footer: ReactNode;
   footerSingleLine?: boolean;
   testID?: string;
   scrollEnabled?: boolean;
 }) {
+  const navigation = useOnboardingNavigation(step);
+  const router = useRouter();
+  const focused = useIsFocused();
+  const onBack = backDisabled ? undefined : navigation.back;
+  useDismissOnBack(Platform.OS === 'android' && focused && Boolean(onBack), () => onBack?.());
+  useFocusEffect(useCallback(() => {
+    if (!navigation.available) router.replace('/onboarding/general');
+  }, [navigation.available, router]));
   const insets = useSafeAreaInsets();
   const { t } = useTranslation();
   const palette = Colors[useColorScheme() ?? 'light'];
   const { onboardingActive } = useOnboarding();
-  const progress = Math.max(0, Math.min(1, step / totalSteps));
+  const progress = Math.max(0, Math.min(1, navigation.step / navigation.totalSteps));
 
   return (
     <View style={[styles.screen, { backgroundColor: palette.background }]} testID={testID}>
@@ -50,7 +60,7 @@ export function OnboardingStep({
         elevated>
         {onBack ? <Appbar.BackAction accessibilityLabel={t('common:actions.back')} onPress={onBack} /> : null}
         <Appbar.Content
-          title={`${onboardingActive ? `${t('onboarding:reviewSetup')} · ` : ''}${t('onboarding:stepIndicator', { step, totalSteps })}`}
+          title={`${onboardingActive ? `${t('onboarding:reviewSetup')} · ` : ''}${t('onboarding:stepIndicator', { step: navigation.step, totalSteps: navigation.totalSteps })}`}
           titleStyle={{ color: palette.muted, fontSize: 14 }}
         />
       </Appbar.Header>

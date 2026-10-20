@@ -2,7 +2,7 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { type ComponentProps, type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';
-import { Alert, Platform, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
   Appbar,
@@ -13,7 +13,6 @@ import {
 import { Colors, Fonts } from '@/constants/theme';
 import { McpSection } from '@/components/settings/mcp-section';
 import {
-  AiDefaultsSection,
   EditorSection,
   ConnectionSection,
   CloudLinkSection,
@@ -26,10 +25,9 @@ import {
   VoiceSection,
 } from '@/components/settings/settings-sections';
 import { useNotificationSetup } from '@/components/settings/use-notification-setup';
-import { useProviderConfiguration } from '@/components/settings/use-provider-configuration';
+import { AiSettingsPanel } from '@/components/settings/ai-settings-panel';
 import { useVoiceSetup } from '@/components/settings/use-voice-setup';
 import {
-  getProviderCopy,
   RESPONSE_SCOPE_OPTIONS,
   WORKING_SOUND_OPTIONS,
 } from '@/components/settings/settings-utils';
@@ -56,7 +54,7 @@ export default function SettingsScreen() {
   const colorScheme = useColorScheme() ?? 'light';
   const palette = Colors[colorScheme];
   const { t } = useTranslation();
-  const { availableModels, availableProviders, configuredProviders, currentConfig, providerAccounts, providerAuthMethodsById, removeProvider } = useCapabilities();
+  const { configuredProviders, currentConfig } = useCapabilities();
   const { addMcpServer, mcpOAuth, connectMcpServer, disconnectMcpServer, mcpStatuses, refreshMcpServers, setMcpServerEnabled } = useMcp();
   const { chatPreferences, updateChatPreferences } = usePreferences();
   const { connect, connection, serverCapabilities, connectSetup, services: serviceManagement } = useConnection();
@@ -67,7 +65,6 @@ export default function SettingsScreen() {
   const updates = useUpdates();
   const router = useRouter();
   const notifications = useNotificationSetup();
-  const providerConfig = useProviderConfiguration();
   const voiceSetup = useVoiceSetup({
     locale: chatPreferences.speechLocale,
     rate: chatPreferences.speechRate,
@@ -78,11 +75,8 @@ export default function SettingsScreen() {
   // Reopening Cloud Link after the full-screen service editor returns keeps the
   // user in context without leaving a portal sheet over the pushed route.
   const returnToCloudLink = useRef(false);
-  const [expandedProviderId, setExpandedProviderId] = useState<string>();
   const [availableSpeechVoices, setAvailableSpeechVoices] = useState<SpeechVoiceOption[]>([]);
   const [isRefreshingSpeechVoices, setIsRefreshingSpeechVoices] = useState(false);
-
-  const enabledModelIds = useMemo(() => new Set(chatPreferences.enabledModelIds), [chatPreferences.enabledModelIds]);
 
   async function handleConnect() {
     setIsConnecting(true);
@@ -135,29 +129,6 @@ export default function SettingsScreen() {
     [chatPreferences.workingSoundVariant],
   );
 
-  function handleModelToggle(modelId: string, checked: boolean) {
-    const nextEnabledModelIds = checked
-      ? chatPreferences.enabledModelIds.filter((id) => id !== modelId)
-      : [...chatPreferences.enabledModelIds, modelId];
-
-    updateChatPreferences({ enabledModelIds: nextEnabledModelIds });
-  }
-
-  function handleRemoveProvider(providerId: string) {
-    const label = getProviderCopy(providerId, providerId, t).label;
-    const remove = () => void removeProvider(providerId)
-      .then(() => providerConfig.setFeedback({ type: 'success', message: t('settings:providers.credentialsRemoved', { provider: label }) }))
-      .catch((error) => providerConfig.setFeedback({ type: 'error', message: error instanceof Error ? error.message : t('settings:providers.couldNotRemove') }));
-    if (Platform.OS === 'web') {
-      if (globalThis.confirm(t('settings:providers.removeWebConfirm', { provider: label }))) remove();
-      return;
-    }
-    Alert.alert(t('settings:providers.removeTitle', { provider: label }), t('settings:providers.removeMessage'), [
-      { text: t('common:actions.cancel'), style: 'cancel' },
-      { text: t('common:actions.remove'), style: 'destructive', onPress: remove },
-    ]);
-  }
-
   const sections: SettingsSection[] = [
     {
       id: 'connection',
@@ -173,7 +144,7 @@ export default function SettingsScreen() {
       title: t('settings:screen.categories.ai'),
       summary: t('settings:screen.summaries.configuredCount', { value: configuredProviders.length }),
       onPress: () => setOpenSection('ai'),
-      render: () => <AiDefaultsSection availableModels={availableModels} availableProviders={availableProviders} configuredProviders={configuredProviders} contract={serverCapabilities.contract} enabledModelIds={enabledModelIds} expandedProviderId={expandedProviderId} onActivateProviderAccount={(credentialId) => void providerAccounts.activate(credentialId)} onExpandedProviderChange={setExpandedProviderId} onModelToggle={handleModelToggle} onRemoveProvider={handleRemoveProvider} onRemoveProviderAccount={(credentialId) => void providerAccounts.remove(credentialId)} onStartProviderConfiguration={providerConfig.startProviderConfiguration} palette={palette} providerAuthMethodsById={providerAuthMethodsById} />,
+      render: () => <AiSettingsPanel />,
     },
     ...(connectSetup.enabled && connectSetup.storeInstall ? [{
       id: 'cloud-link',
@@ -276,14 +247,6 @@ export default function SettingsScreen() {
         {activeSection?.render?.() ?? null}
       </OverlaySheet>
 
-      {providerConfig.dialog}
-
-      <Snackbar
-        visible={Boolean(providerConfig.feedback)}
-        onDismiss={providerConfig.clearFeedback}
-        duration={4000}>
-        {providerConfig.feedback?.message}
-      </Snackbar>
       <Snackbar
         visible={Boolean(notifications.feedback)}
         onDismiss={notifications.clearFeedback}

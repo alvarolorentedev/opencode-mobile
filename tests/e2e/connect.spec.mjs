@@ -535,7 +535,9 @@ test('expiry stops data-plane traffic while preserving owned machine and profile
 
 test('fresh-install subscription pairing continues onboarding', async ({ page }) => {
   await storeFixture(page); await mockControlPlane(page); await openPair(page, false);
-  await page.getByTestId('connect-purchase').click(); await expect(page.getByTestId('onboarding-project')).toBeVisible({ timeout: 30_000 });
+  await page.getByTestId('connect-purchase').click(); await expect(page.getByTestId('onboarding-ai')).toBeVisible({ timeout: 30_000 });
+  await page.getByTestId('onboarding-ai-continue').click();
+  await expect(page.getByTestId('onboarding-project')).toBeVisible();
 });
 
 
@@ -761,7 +763,7 @@ test('Settings has one creation entry with Scan QR, Manual and Cloud Link method
   await expect(page.getByTestId('connection-method-scan')).toHaveAttribute('role', 'button');
   await expect(page.getByTestId('connection-method-connect')).toHaveAttribute('role', 'button');
   await expect(page.getByTestId('connection-method-manual')).toHaveAttribute('role', 'button');
-  await expect(page.getByText('Local QR scanning is available in the iOS and Android app.')).toBeVisible();
+  await expect(page.getByText('Local QR scanning is available in the iOS and Android app.')).toHaveCount(0);
   await page.screenshot({ path: '/tmp/opencode-add-connection-chooser.png' });
   await page.getByTestId('connection-method-connect').click();
   await showGuidedSubscription(page);

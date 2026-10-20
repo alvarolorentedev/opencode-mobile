@@ -541,7 +541,7 @@ file-mutating tools are skipped before grouping. The group key is its first
 detail id, so expansion persists while streamed calls grow the group. Non-shell
 groups render bodies with the shared markdown renderer; shell groups render one
 raw, non-copyable bash block with `$ command` and its output per call, plus a
-single-line `shell - <current command>` header. Group rows use the assistant
+single-line `Running <current command>` header. Group rows use the assistant
 bubble width. V1-only subtask/step/agent parts and the V2-synthesized
 `step-finish` usage marker are never rendered; `edit`, `write`, `multiedit`,
 and `apply_patch` tool details are hidden (they still drive the activity
@@ -841,3 +841,14 @@ snapshot; unreadable preferences hide excerpts. Widget locales do not mutate app
 language. Legacy title/
 status snapshots remain readable. Headless rendering has no API access. Live
 updates stop when Android suspends JS; timestamps explicitly represent cached data.
+
+## Onboarding preference selections
+
+The assistant writes language, transcript verbosity, delivery and remembered
+provider/model through `updateChatPreferences`, immediately using the existing
+persistence and reconciliation paths. Default model is the remembered Chat
+selection, not a separate new-chat policy. Its picker and Ready use the same
+configured/enabled catalog filter as Chat. Skip does not revert earlier choices.
+Navigation omits AI and project without a connection; model selection is hidden
+offline and message delivery is also hidden on V1. No onboarding preferences,
+credentials or step progress are duplicated in the completion marker.

@@ -64,14 +64,22 @@
     "server": "Server",
     "project": "Project",
     "projectMissing": "No project selected",
-    "footnote": "You can update your connection or project anytime in Settings.",
+    "footnote": "You can change these settings anytime.",
     "start": "Start coding",
-    "done": "Done"
+    "done": "Done",
+    "serverMissing": "Not connected",
+    "providers": "Providers",
+    "enabledModels": "Enabled models"
   },
   "settingsAssistant": {
     "title": "Setup assistant",
-    "summary": "Review permissions, connection, and project"
+    "summary": "Review permissions, connection, providers, project, and preferences"
   },
   "reviewSetup": "Review setup",
-  "stepIndicator": "Step {{step}} of {{totalSteps}}"
+  "stepIndicator": "Step {{step}} of {{totalSteps}}",
+  "general": {
+    "title": "General Settings",
+    "subtitle": "Make OpenCode Mobile feel right for you.",
+    "defaultModel": "Default model"
+  }
 }

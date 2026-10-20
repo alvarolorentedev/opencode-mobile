@@ -408,7 +408,6 @@
     "scanNewQr": "Scanne den neuen QR-Code auf deinem Computer",
     "scanLocal": "QR-Code scannen",
     "scanLocalHint": "Mit einem Computer im selben Netzwerk verbinden.",
-    "scanLocalUnavailable": "Lokales QR-Scannen ist in der iOS- und Android-App verfügbar.",
     "manual": "Manuell",
     "manualHint": "Gib deine Server-URL und Zugangsdaten ein.",
     "nativeOnly": "Cloud Link ist in der iOS- und Android-App verfügbar.",

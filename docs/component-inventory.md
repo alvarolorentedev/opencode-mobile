@@ -106,7 +106,7 @@ declared once, at the leaves.
 
 - Chat keeps its transcript and pending cards mounted while changes are reviewed.
 - transcript messages use FlashList virtualization; it starts at the bottom, follows additions only from the bottom, and preserves the visible position otherwise. Because FlashList measures progressively, the tail is re-asserted across a few frames on a session switch or data change, and the list re-applies its tail/offset when the Chat tab regains focus or the app returns to the foreground, so an Android detach or background/lock cannot leave it at the top or undrawn. A starter-prompt card is shown only for a session with no transcript content; the skeleton is shown only for a cold fetch with no held records. The initial pull backfills until 10 entries are displayable at the configured verbosity, so a tool-heavy tail cannot leave the view blank.
-- Transcript verbosity (`basic`/`reasoning`/`verbose`) controls which native timeline records render. Details are first-class rows (`cards/collapsible-detail.tsx`): contiguous same-tool calls (or contiguous reasoning) merge into one collapsible whose content grows as streamed calls arrive, a message bubble breaks the group, and hidden file-mutating tools are skipped before grouping. Non-shell groups use the shared markdown renderer; shell groups render one raw, non-copyable bash block (`$ command` + output per call) with a single-line `shell - <command>` header. Group rows use the assistant bubble width. V1-only subtask/step/agent details and the `step-finish` usage marker are never rendered; `edit`/`write`/`multiedit`/`apply_patch` details are hidden.
+- Transcript verbosity (`basic`/`reasoning`/`verbose`) controls which native timeline records render. Details are first-class rows (`cards/collapsible-detail.tsx`): contiguous same-tool calls (or contiguous reasoning) merge into one collapsible whose content grows as streamed calls arrive, a message bubble breaks the group, and hidden file-mutating tools are skipped before grouping. Non-shell groups use the shared markdown renderer; shell groups render one raw, non-copyable bash block (`$ command` + output per call) with a single-line `Running <command>` header. Group rows use the assistant bubble width. V1-only subtask/step/agent details and the `step-finish` usage marker are never rendered; `edit`/`write`/`multiedit`/`apply_patch` details are hidden.
 - A centered changes chip above the composer shows file count and green additions/red deletions for the selected scope. It hides at zero files and omits line totals for filename-only patches. Tapping opens the shared Files changed overlay with refresh, source selection, and diff accordions. Changes use a compact bottom sheet (55% of the viewport where safe areas permit), a centered file-count title, close icon, and a three-dot source button instead of separate summary/source cards.
 - Changes overlay scopes: `Turn` (per-turn snapshot diff, with a picker when multiple turns have diffs), `Uncommitted`, and `Branch` (VCS working tree / default-branch diffs)
 - displays starter prompts only when the selected session has no transcript content at all
@@ -732,18 +732,27 @@ Main relevant props:
 
 Responsibility:
 
-- the five first-run setup steps: app presentation, permissions, add connection, project, ready
-- presentation only describes the app, with Continue navigation; preferences and provider setup live in Settings
-- permissions, connect and project are skippable; skipping advances one step without persisting anything
-- ready summarizes only the connection and project, then completes first-run setup or closes review mode
+- seven connected steps: app presentation, permissions, add connection, AI & Providers, project, General Settings, ready; disconnected navigation skips AI and project
+- presentation only describes the app, with Continue navigation; AI and General are optional and reuse Settings controls
+- permissions, connect, AI, project and General are skippable; Skip advances without additional writes or undoing earlier choices
+- General edits language, transcript detail, the remembered Chat model (connected only), and Steer/Append delivery (connected V2 only)
+- ready summarizes connection/project plus the applicable providers, enabled models and preferences, then completes first-run setup or closes review mode
 - thin controllers only; connection/project persistence and permission requests are delegated to the provider and existing helpers
 - seeded from current provider state so re-running from Settings reviews rather than resets
 
 ## `components/onboarding/onboarding-step.tsx`
 
 - shared translated step chrome: back action, step progress, title/subtitle, scrollable body, pinned footer
+- `navigation.ts` defines the visible sequence; `use-onboarding-navigation.ts` derives progress and forward/back destinations from connection availability
+- inaccessible server steps redirect to General; reconnects preserve provider setup, and Android Back uses the visible sequence
 - Review setup appears beside the step indicator when reopened from Settings
 - keeps every step visually consistent without duplicating layout
+
+## Shared onboarding settings
+
+- `components/settings/ai-settings-panel.tsx` composes the existing AI section, auth dialog, model/account callbacks, removal confirmation and feedback for Settings and onboarding
+- `general-settings.tsx` reuses language and chat preference fields, with a searchable model select using the same `getVisibleModels` filter as Chat and Review
+- `setup-summary.tsx` renders current provider values with wrapping rows and omits connection-dependent additions offline
 
 ## `components/onboarding/project-options.tsx`
 

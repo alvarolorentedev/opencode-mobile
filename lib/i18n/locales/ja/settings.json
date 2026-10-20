@@ -408,7 +408,6 @@
     "scanNewQr": "コンピューターに表示された新しいQRコードをスキャン",
     "scanLocal": "QRコードをスキャン",
     "scanLocalHint": "同じネットワーク上のコンピューターに接続します。",
-    "scanLocalUnavailable": "ローカルQRスキャンはiOSおよびAndroidアプリで利用できます。",
     "manual": "手動",
     "manualHint": "サーバーURLと認証情報を入力します。",
     "nativeOnly": "Cloud LinkはiOSとAndroidアプリで利用できます。",
