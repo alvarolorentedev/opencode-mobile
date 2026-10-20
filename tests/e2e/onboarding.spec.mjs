@@ -173,13 +173,13 @@ test('clearing app data shows onboarding again', async ({ page }) => {
   await expect(page.getByTestId('onboarding-welcome')).toBeVisible({ timeout: 30_000 });
 });
 
-test('Advanced groups editor and general settings and resets onboarding without wiping the connection', async ({ page }) => {
+test('App settings groups editor and general settings and resets onboarding without wiping the connection', async ({ page }) => {
   await seedExistingInstall(page);
   await page.goto('/', { waitUntil: 'domcontentloaded' });
   await waitForChat(page);
 
   await page.getByRole('tab', { name: 'Settings' }).click();
-  await page.getByRole('button', { name: /^Advanced/ }).click();
+  await page.getByRole('button', { name: /^App settings\./ }).click();
   const editor = page.getByTestId('settings-editor-section');
   const general = page.getByTestId('settings-general-section');
   await expect(editor.getByRole('heading', { name: 'Editor', exact: true })).toBeVisible();

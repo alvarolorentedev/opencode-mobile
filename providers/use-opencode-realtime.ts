@@ -1,3 +1,4 @@
+import { SSE_STALENESS_MS, SSE_FOREGROUND_CYCLE_MS, WATCHDOG_TICK_MS } from '@/providers/realtime-timing';
 import { AppState } from 'react-native';
 import { subscribeEvents } from '@/lib/opencode/events';
 import { classifyConnectionFailure, isAuthConnectionFailure } from '@/lib/opencode/client/errors';
@@ -7,6 +8,7 @@ import type { ConnectionFailureKind, ScopedOpencodeClient } from '@/lib/opencode
 import type { TranscriptRefreshMode } from '@/providers/opencode-provider-types';
 
 type RealtimeActions = {
+  subscribe?: typeof subscribeEvents;
   onEvent: (event: OpencodeEvent) => void;
   onGlobalEvent?: (event: OpencodeEvent) => void;
   refreshNativeSurfaces?: (full?: boolean) => Promise<unknown>;
@@ -26,13 +28,10 @@ export function shouldPoll(streamConnected: boolean, busy: boolean) {
 // without any envelope the subscription is re-established so a dead stream
 // cannot masquerade as connected and strand blocking requests. E2E builds
 // shorten the window so a stalled transport is recoverable inside a test.
-const E2E_MODE = typeof process !== 'undefined' && process.env?.EXPO_PUBLIC_E2E_MODE === '1';
-export const SSE_STALENESS_MS = E2E_MODE ? 3000 : 90_000;
-export const SSE_FOREGROUND_CYCLE_MS = E2E_MODE ? 1000 : 15_000;
-const WATCHDOG_TICK_MS = 7000;
+export { SSE_STALENESS_MS, SSE_FOREGROUND_CYCLE_MS } from '@/providers/realtime-timing';
 
 export function useOpencodeRealtime({ catalogClient, activeProjectPath, connected, busy,
-  currentSessionId, conversationSessionId, pendingSessionIds = [], ...actions
+  currentSessionId, conversationSessionId, pendingSessionIds = [], subscribe: subscribeStream = subscribeEvents, ...actions
 }: RealtimeActions & {
   catalogClient: ScopedOpencodeClient;
   activeProjectPath?: string;
@@ -111,7 +110,7 @@ export function useOpencodeRealtime({ catalogClient, activeProjectPath, connecte
         attemptController = attempt;
         let streamError: unknown;
         try {
-          const subscription = subscribeEvents(catalogClient, attempt.signal, () => { lastEnvelopeAt = Date.now(); });
+          const subscription = subscribeStream(catalogClient, attempt.signal, () => { lastEnvelopeAt = Date.now(); });
           let reconciled = false;
           for await (const envelope of subscription) {
             if (controller.signal.aborted || attempt.signal.aborted) break;
@@ -196,7 +195,7 @@ export function useOpencodeRealtime({ catalogClient, activeProjectPath, connecte
       appState.remove();
       resumeRetry?.();
     };
-  }, [activeProjectPath, catalogClient, connected, reconcile]);
+  }, [activeProjectPath, catalogClient, connected, reconcile, subscribeStream]);
 
   useEffect(() => {
     if (!connected || !activeProjectPath || !shouldPoll(eventStreamStatus === 'connected', busy)) return;

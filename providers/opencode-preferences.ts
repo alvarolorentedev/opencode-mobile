@@ -77,7 +77,7 @@ export const defaultChatPreferences: ChatPreferences = {
   workingSoundVolume: 0.18,
   responseScope: 'brief',
   includeNextActions: true,
-  hideSubagentChats: false,
+  hideSubagentChats: true,
   showWidgetPreviews: true,
 };
 

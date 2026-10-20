@@ -103,7 +103,7 @@ test('favorites open sessions in the current project', async ({ page, request })
 
   await openChatLibrary(page);
   await chatAction(page, 'Favorite current project session', 'Favorite');
-  await expect(page.getByText('Favorites', { exact: true })).toBeVisible();
+  await expect(page.getByRole('button', { name: /^Unfavorite / }).first()).toBeVisible();
   await page.getByTestId('chat-library').getByRole('button', { name: 'Close' }).click();
   await expect(page.getByTestId('chat-library')).not.toBeVisible();
   await page.locator('#root').getByRole('button', { name: 'New chat', exact: true }).click();
@@ -145,13 +145,13 @@ test('favorites switch projects and open cross-project sessions', async ({ page,
 
   await openChatLibrary(page);
   await chatAction(page, 'Favorite Cross Project Session', 'Favorite');
-  await expect(page.getByText('Favorites', { exact: true })).toBeVisible();
+  await expect(page.getByRole('button', { name: /^Unfavorite / }).first()).toBeVisible();
 
   await page.getByRole('button', { name: 'Change project' }).click();
   await page.getByTestId('chat-project-picker').getByRole('button', { name: 'Select demo-project' }).click();
   await openChatLibrary(page);
-  await expect(page.getByTestId('chat-library').getByText('demo-project · Swipe left for actions', { exact: true })).toBeVisible();
-  await page.getByTestId(`chat-library-favorite-${sessionId}`).click();
+  await expect(page.getByTestId('chat-library').getByText('demo-project', { exact: true }).last()).toBeVisible();
+  await page.getByTestId('chat-library').getByRole('button', { name: /^Open Favorite Cross Project Session,/ }).click();
   await expect(page.getByTestId('chat-library')).not.toBeVisible();
 
   await expect(
@@ -168,7 +168,7 @@ test('favorites report sessions that are missing', async ({ page, request }) => 
 
   await openChatLibrary(page);
   await chatAction(page, 'Favorite vanishing session', 'Favorite');
-  await expect(page.getByText('Favorites', { exact: true })).toBeVisible();
+  await expect(page.getByRole('button', { name: /^Unfavorite / }).first()).toBeVisible();
 
   const deleteResponse = await request.delete('http://127.0.0.1:44096/api/session/session-1');
   expect(deleteResponse.ok()).toBeTruthy();
@@ -211,12 +211,16 @@ test('rapid favorite taps across projects settle on the last target', async ({ p
   await page.getByTestId('chat-project-picker').getByRole('button', { name: 'Select demo-project' }).click();
   await openChatLibrary(page);
   await chatAction(page, 'Primary rapid tap target', 'Favorite');
-  await expect(page.getByText('Favorites', { exact: true })).toBeVisible();
+  await expect(page.getByRole('button', { name: /^Unfavorite / }).first()).toBeVisible();
 
   // Dispatch both presses back to back so the second lands before the first
   // navigation closes the library.
-  await page.getByTestId('chat-library').getByRole('button', { name: 'Open Rapid Tap Secondary' }).first().dispatchEvent('click');
-  await page.getByTestId('chat-library').getByRole('button', { name: 'Open Primary rapid tap target' }).first().dispatchEvent('click');
+  await page.getByTestId('chat-library').getByRole('button', { name: /^Open (Rapid Tap Secondary|Primary rapid tap target)/ }).evaluateAll((nodes) => {
+    const secondary = nodes.find((node) => node.getAttribute('aria-label').startsWith('Open Rapid Tap Secondary'));
+    const primary = nodes.find((node) => node.getAttribute('aria-label').startsWith('Open Primary rapid tap target'));
+    if (!secondary || !primary) throw new Error('Both captured chat targets must be present.');
+    secondary.click(); primary.click();
+  });
 
   await expect(
     page.locator('text=/Finished: Primary rapid tap target/ >> visible=true').first(),
@@ -241,7 +245,7 @@ test('chat library lists recently used sessions from other projects and switches
   await openReadyChat(page);
   await openChatLibrary(page);
 
-  await expect(page.getByText('Running & recent', { exact: true })).toBeVisible({ timeout: 15_000 });
+  await expect(page.getByText('Running & recent', { exact: true })).toHaveCount(0);
   await expect(page.getByTestId('chat-library').getByText('Recent Secondary Session', { exact: true })).toBeVisible();
   await expect(page.getByTestId('chat-library').getByText('secondary-project', { exact: false }).first()).toBeVisible();
 
@@ -253,7 +257,7 @@ test('chat library lists recently used sessions from other projects and switches
   // The group is connection-wide, so it is still listed after switching to the
   // project that owns the session (and the session is not duplicated below).
   await openChatLibrary(page);
-  await expect(page.getByText('Running & recent', { exact: true })).toBeVisible({ timeout: 15_000 });
+  await expect(page.getByText('Running & recent', { exact: true })).toHaveCount(0);
   await expect(page.getByTestId('chat-library').getByRole('button', { name: 'Open Recent Secondary Session' })).toHaveCount(1);
 });
 
@@ -275,8 +279,8 @@ test('chat library lists running sessions from other projects', async ({ page, r
   await openReadyChat(page);
   await openChatLibrary(page);
 
-  await expect(page.getByText('Running & recent', { exact: true })).toBeVisible({ timeout: 15_000 });
-  await expect(page.getByTestId('chat-library').getByText(/Running · secondary-project/)).toBeVisible();
+  await expect(page.getByText('Running & recent', { exact: true })).toHaveCount(0);
+  await expect(page.getByTestId('chat-library').getByText(/secondary-project · Running/)).toBeVisible();
   await expect(page.getByTestId('chat-library').getByText('Running Secondary Session', { exact: true })).toBeVisible();
   await expect(page.getByTestId('chat-library').getByText('secondary-project', { exact: false }).first()).toBeVisible();
 });
@@ -327,7 +331,7 @@ test('saved connections keep sessions, caches, and model preferences separate', 
     await expect(page.getByText(/Finished: Server B session/).first()).toBeVisible({ timeout: 20_000 });
 
     // Switching to A restores A's model preference and A's own session list;
-    // B's session must never appear while connected to A.
+    // Both catalogs stay in V2's mixed list; model selection remains scoped to A.
     await goToTab(page, 'Settings');
     await connectToSavedConnection(page, 'Server A');
     await expectConnectedTo(page, '44096');
@@ -335,7 +339,7 @@ test('saved connections keep sessions, caches, and model preferences separate', 
     await expect(page.getByTestId('chat-model-picker-trigger')).toHaveAccessibleName('Auto · OpenRouter', { timeout: 15_000 });
     await openChatLibrary(page);
     await expect(page.getByTestId('chat-library').getByRole('button', { name: 'Open Server A session' }).first()).toBeVisible({ timeout: 15_000 });
-    await expect(page.getByTestId('chat-library').getByRole('button', { name: 'Open Server B session' })).toHaveCount(0);
+    await expect(page.getByTestId('chat-library').getByRole('button', { name: 'Open Server B session' })).toBeVisible();
     await page.getByTestId('chat-library').getByRole('button', { name: 'Close' }).click();
 
     // Switching back to B restores B's default model and B's own sessions.

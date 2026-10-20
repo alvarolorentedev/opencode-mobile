@@ -1063,3 +1063,14 @@ picker and provider selection action; Terminal follows that directory.
   existing provider without sharing their content.
 - `modules/opencode-updates`: local Expo Android Play update module and iOS
   verified-installation helper. See [app updates](app-updates.md).
+
+## Multi-server V2 surfaces
+
+- `chat-library.tsx`: existing row and swipe treatment in one mixed list; server chips, search, server/project dropdowns and the sole Hide subagents toggle. The previous compatibility view is retained in `chat-library-v1.tsx`.
+- `project-picker.tsx`: server groups, search, retry/stale state and explicit server ownership for adding/removing projects. Existing worktree controls remain.
+- `new-terminal-sheet.tsx`: confirms server, project and resolved cwd before PTY creation. `retained-terminals.tsx` holds the renderer hosts; the terminal picker lists all retained owners.
+- `server-context-picker.tsx`: independent Settings server/project inspection. AI & Providers, MCP, diagnostics and approvals receive that context; app preferences remain global.
+- `server-approvals.tsx`: pending requests/questions, saved grants and per-server auto-approve, reusing chat permission cards and existing server actions.
+- `workspace-select.tsx`: the house NativeSelect with an outlined button trigger. `OverlaySheet` bridges workspace context through the Paper portal host.
+
+Terminal selection uses one continuous list with a server chip on each row, without empty workspace headings. With one configured workspace connection, server filters, selectors, chips and redundant scope labels are hidden across Chat, Projects, Terminal and Settings; both Settings section headings, project context and connection management remain available. Disconnected connections still count, so cached rows keep their ownership visible. Multi-server controls return automatically when a second connection is added.

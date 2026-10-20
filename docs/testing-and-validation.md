@@ -1168,3 +1168,17 @@ Physical-device Back, larger text, screen readers and real provider OAuth remain
 unverified. Human validation of the four changed E2E specifications remains
 required under AGENTS.md; no fake-server source, dependency, release version,
 persisted schema or onboarding completion version changed.
+
+## Multi-server V2 regression coverage
+
+`tests/e2e/multi-server.spec.mjs` starts two independent V2 fakes with intentionally colliding chat IDs and project paths. It checks the mixed list and filters, draft isolation and connected-set restoration, PTY creation on B while chat stays on A, renderer continuity through disconnect/reconnect, Settings/auto-approve isolation, and replies to colliding approval IDs on the correct server. Terminal tests now confirm the explicit creation sheet.
+
+`tests/vitest/workspaces.test.ts` covers composite catalog ordering, shared SSE teardown, secret-free registry validation and hidden-draft update blocking and removal cleanup. The native notification boundary also combines server counts and keeps other servers visible during disconnect. Existing connection recovery, prompt/draft races, sharing, transcript and architecture tests remain required. Share coverage includes a confirmed cross-server destination while focus changes.
+
+Run `npm run test:ci:static`, `npm run test:fake-server:self` and `npm run test:e2e:web`. For manual review, use two independently running V2 fakes, open Connections to connect both, then inspect Chats, Projects, the New terminal sheet and each Settings server selector. Test both themes and slim mode. Browser tests do not establish native WebView retention, microphone ownership, notification delivery or OS background limits; verify those on Android/iOS hardware before release.
+
+For a seeded human-review environment, run `npm run preview:workspaces`. It builds a development web export, starts two isolated V2 fake servers and prints a `/demo.html` URL. That entry point seeds named connections and colliding chat IDs; ordinary reloads preserve subsequent choices. Its reset link clears only that preview origin's app state. Ctrl+C stops all three owned processes.
+
+The preview includes two projects on each server and a subagent fork on Build server. Send a prompt on MacBook Pro to see a normal completion; send one on Build server to exercise a permission request and its server-scoped Approvals view. Switch Hide subagents off to expose the fork. Create a terminal on Build server/secondary-project while keeping chat on MacBook Pro/demo-project.
+
+Terminal selection uses one continuous list with a server chip on each row, without empty workspace headings. With one configured workspace connection, server filters, selectors, chips and redundant scope labels are hidden across Chat, Projects, Terminal and Settings; both Settings section headings, project context and connection management remain available. Disconnected connections still count, so cached rows keep their ownership visible. Multi-server controls return automatically when a second connection is added.

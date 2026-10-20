@@ -37,6 +37,8 @@ const TAIL_FOLLOW_THRESHOLD = 48;
 const TAIL_SETTLE_FRAMES = 4;
 
 type TranscriptListProps = {
+  positionKey?: string;
+  positions?: Map<string, unknown>;
   awaitingUserInput: boolean;
   connection: Connection;
   copiedMessageId?: string;
@@ -65,6 +67,7 @@ type TranscriptListProps = {
 };
 
 export function TranscriptList({
+  positionKey, positions,
   awaitingUserInput,
   connection,
   copiedMessageId,
@@ -103,11 +106,13 @@ export function TranscriptList({
     transcriptRowsRef.current = transcriptRows;
   });
 
-  // A newly selected session always opens at its newest message.
+  const identity = positionKey ?? currentSessionId ?? 'no-session';
+  // Retained workspaces restore history; first visits start at the newest message.
   useLayoutEffect(() => {
-    followTailRef.current = true;
-    lastOffsetRef.current = 0;
-  }, [currentSessionId]);
+    const saved = positions?.get(identity) as { follow: boolean; offset: number } | undefined;
+    followTailRef.current = saved?.follow ?? true;
+    lastOffsetRef.current = saved?.offset ?? 0;
+  }, [identity, positions]);
 
   const settleToTail = useCallback(() => {
     settleFramesRef.current = TAIL_SETTLE_FRAMES;
@@ -135,7 +140,7 @@ export function TranscriptList({
   useEffect(() => {
     if (transcriptRows.length === 0) return;
     if (followTailRef.current) settleToTail();
-  }, [currentSessionId, transcriptRows, settleToTail]);
+  }, [identity, transcriptRows, settleToTail]);
 
   const restorePosition = useCallback(() => {
     if (transcriptRowsRef.current.length === 0) return;
@@ -168,13 +173,14 @@ export function TranscriptList({
     const { contentOffset, contentSize, layoutMeasurement } = event.nativeEvent;
     lastOffsetRef.current = contentOffset.y;
     followTailRef.current = contentSize.height - (contentOffset.y + layoutMeasurement.height) <= TAIL_FOLLOW_THRESHOLD;
-  }, []);
+    positions?.set(identity, { offset: lastOffsetRef.current, follow: followTailRef.current });
+  }, [identity, positions]);
 
   const extraData = useMemo(() => ({ copiedMessageId, speakingMessageId, onReviewChanges }), [copiedMessageId, speakingMessageId, onReviewChanges]);
 
   return (
     <FlashList
-      key={currentSessionId || 'no-session'}
+      key={identity}
       ref={transcriptRef}
       data={transcriptRows}
       style={styles.scroll}
@@ -188,6 +194,7 @@ export function TranscriptList({
       keyboardShouldPersistTaps="handled"
       keyExtractor={(row) => row.key}
       maintainVisibleContentPosition={MAINTAIN_VISIBLE_CONTENT_POSITION}
+      onLoad={restorePosition}
       onScroll={handleScroll}
       scrollEventThrottle={16}
       onStartReached={hasOlderMessages ? onLoadOlderMessages : undefined}

@@ -17,6 +17,7 @@ import { TranscriptList } from '@/components/chat/content/transcript-list';
 import { useChatViewController } from '@/components/chat/use-chat-view-controller';
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
+import { useWorkspaces } from '@/providers/workspace-context';
 import { normalizeTranscriptFontSize } from '@/providers/opencode-preferences';
 
 export function ChatView() {
@@ -25,6 +26,7 @@ export function ChatView() {
   const colorScheme = useColorScheme() ?? 'light';
   const palette = Colors[colorScheme];
   const insets = useSafeAreaInsets();
+  const { presentation } = useWorkspaces();
   const { header, content, composer, overlay, actions } = useChatViewController();
 
   const progressAction = !content.awaitingUserInput && content.currentTodos.length > 0 ? (
@@ -64,6 +66,8 @@ export function ChatView() {
 
         <View style={styles.chatArea}>
           <TranscriptList
+            positions={presentation}
+            positionKey={`scroll:${JSON.stringify([content.workspaceId, content.currentSessionId])}`}
             awaitingUserInput={content.awaitingUserInput}
             connection={header.connection}
             copiedMessageId={content.copiedMessageId}

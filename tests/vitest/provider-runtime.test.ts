@@ -284,6 +284,7 @@ const catalogClient = { api: { event: { async subscribe({ signal }) {
   })();
 } } } };
 const realtime = await loadTs('providers/use-opencode-realtime.ts', {
+  '@/providers/realtime-timing': { SSE_STALENESS_MS: 90000, SSE_FOREGROUND_CYCLE_MS: 15000, WATCHDOG_TICK_MS: 7000 },
   react: runtime.react,
   'react-native': { AppState: { currentState: 'active', addEventListener: () => ({ remove() {} }) } },
   '@/lib/opencode/client/errors': { classifyConnectionFailure: () => 'unknown', isAuthConnectionFailure: () => false },
@@ -338,6 +339,7 @@ wake(null); await runtime.settle(); runtime.unmount(); assert.equal(runtime.coun
   } } } };
   const appState = { currentState: 'active', addEventListener: (_event, listener) => { listeners.add(listener); return { remove: () => listeners.delete(listener) }; } };
   const hook = await loadTs('providers/use-opencode-realtime.ts', {
+  '@/providers/realtime-timing': { SSE_STALENESS_MS: 90000, SSE_FOREGROUND_CYCLE_MS: 15000, WATCHDOG_TICK_MS: 7000 },
     react: liveness.react,
     'react-native': { AppState: appState },
     '@/lib/opencode/client/errors': { classifyConnectionFailure: () => 'unknown', isAuthConnectionFailure: () => false },
@@ -395,6 +397,7 @@ wake(null); await runtime.settle(); runtime.unmount(); assert.equal(runtime.coun
   let fatal = 0, subscriptions = 0;
   const client = { api: { event: { async subscribe() { subscriptions++; throw new Error('401 credentials rejected'); } } } };
   const hook = await loadTs('providers/use-opencode-realtime.ts', {
+  '@/providers/realtime-timing': { SSE_STALENESS_MS: 90000, SSE_FOREGROUND_CYCLE_MS: 15000, WATCHDOG_TICK_MS: 7000 },
     react: revoked.react,
     'react-native': { AppState: { currentState: 'active', addEventListener: () => ({ remove() {} }) } },
     '@/lib/opencode/client/errors': {

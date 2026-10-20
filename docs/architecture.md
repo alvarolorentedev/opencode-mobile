@@ -47,7 +47,7 @@ The app has one tab group in `app/(tabs)/_layout.tsx`:
 - `settings` -> Settings
 - `terminal` -> Terminal
 
-Navigation complexity is deliberately low. There are no nested feature stacks, no per-screen providers, and no deep in-app route hierarchy.
+Navigation complexity is deliberately low. There are no nested feature stacks or deep in-app route hierarchy. Terminal and Settings use provider scope boundaries so inspecting a server or opening a PTY does not move the selected chat.
 
 This matters because state continuity is expected across tabs. Switching tabs does not reset active session context.
 
@@ -61,9 +61,7 @@ validation is still required to establish whether it resolves the flicker.
 ## Core Architectural Principle
 
 The dominant design decision is central orchestration through the provider layer:
-`providers/opencode-provider.tsx` is a thin wrapper that mounts
-`providers/opencode-provider-tree.tsx` with the values assembled by
-`providers/use-opencode-provider-composition.ts`.
+`providers/opencode-provider.tsx` mounts `WorkspaceProvider`, which owns the connection registry and app-wide coordinators. Each retained connection/project branch mounts a headless `WorkspaceRuntime`, reusing `use-opencode-provider-composition.ts`. `WorkspaceScope` supplies its existing narrow domain contexts to the selected surface.
 
 This composition unit is the application's effective domain layer. It owns:
 
@@ -888,8 +886,8 @@ because neither path provides a conditional-write contract.
 
 The shared Project/Chat picker contains worktree inventory for the owning
 project, resolved from the scoped project API rather than path prefixes. Directory
-selection uses the existing provider project action and applies across Chat,
-Project and Terminal. Creation stays in the picker; reset/remove live in row
+selection uses the workspace registry and changes Chat and Project focus;
+existing terminals retain their own workspace. Creation stays in the picker; reset/remove live in row
 menus, preserve confirmations and reject the active directory and primary checkout.
 OpenCode 2 hides reset/startup commands and maps directory-only inventory to names.
 The browser groups state and actions under one context member, keeping the public
@@ -907,3 +905,13 @@ directly at a safe moment. Local UI registers busy presence through
 `useUpdateBlocker`, retaining its own contents. `lib/app-updates.ts` wraps the local
 Expo module and iOS lookup. See [app updates](app-updates.md) for install consent,
 safety gates and FOSS exclusion.
+
+## Multi-server V2 ownership
+
+`use-workspace-connections.ts` owns explicit connect/disconnect, restoration, and composite connection/project identity. A runtime stays mounted when another chat or tab is selected. Its clients, generations, transcript windows, prompt inbox, approvals, file browser and PTY connections remain separate. `shared-event-stream.ts` fans one server subscription out to retained projects; events are still filtered by directory and the existing polling/reconciliation paths remain active.
+
+Hydration, compatibility settings writes, device sharing, Cloud Link setup/billing, updates, language, audio and native surfaces have one app-wide owner. Favorites, opened projects and remembered sessions keep their existing connection-scoped persistence. Activity observation has one owner per server, with one app-wide Android notification publisher combining counts and releasing only the disconnected server. Native shortcuts carry each row's connection scope; widget publication remains app-wide.
+
+The chat library combines the unscoped server catalogs with live project state. It keeps current/running/recency order, uses composite keys and labels each row with its server. Project selection changes chat/project focus. Terminal selection and Settings inspection are independent. Paper portals explicitly restore their caller's workspace scope; otherwise their children would inherit the app host's current chat server.
+
+Terminal renderers remain mounted when hidden. Hidden instances cannot accept input or layout resize; disconnect detaches transports without deleting remote PTYs. Composer and editor drafts and transcript reading positions live in an in-memory presentation map, keyed by owning server/project/session or file. They survive navigation, not process termination. No external store or dependency was introduced.

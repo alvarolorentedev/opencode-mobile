@@ -46,7 +46,11 @@ export function useCapabilitiesActions({
   setAvailableAgents,
   setChatPreferences,
 }: CapabilitiesActionsInput) {
+  const requireClient = useCallback(() => {
+    if (!isCurrentClient(client)) throw new Error('Connect this server before changing its providers.');
+  }, [client, isCurrentClient]);
   const refreshChatCapabilities = useCallback(async () => {
+    if (!isCurrentClient(client)) return;
     const result = await import('@/providers/services/capabilities-service').then((m) => m.discoverChatCapabilities(client, activeProjectPath));
     if (!isCurrentClient(client)) {
       return;
@@ -79,14 +83,16 @@ export function useCapabilitiesActions({
           safeProviderId ? current.providerModelSelections[safeProviderId] : undefined,
         ),
         enabledModelIds,
-        autoApprove: isAutoApproveEnabled(result.config),
+        autoApprove: client.__opencode.contract === 'v2' ? current.autoApprove : isAutoApproveEnabled(result.config),
       };
     });
-  }, [activeProjectPath, client, isCurrentClient]);
+  }, [activeProjectPath, client, isCurrentClient, setAvailableAgents, setAvailableModels, setAvailableProviders, setChatPreferences, setCurrentConfig, setProviderAuthMethodsById]);
 
   const configureProvider = useCallback(
     async (providerId: string) => {
+      requireClient();
       const latestConfig = currentConfig || await getConfig(client);
+    requireClient();
       if (!latestConfig) {
         throw new Error('OpenCode did not return its configuration.');
       }
@@ -102,6 +108,7 @@ export function useCapabilitiesActions({
         throw new Error('OpenCode did not return its updated configuration.');
       }
 
+      requireClient();
       setCurrentConfig(updatedConfig);
       await refreshChatCapabilities();
       setChatPreferences((current) => ({
@@ -109,11 +116,12 @@ export function useCapabilitiesActions({
         providerId: current.providerId || providerId,
       }));
     },
-    [client, currentConfig, refreshChatCapabilities, setChatPreferences, setCurrentConfig],
+    [client, requireClient, currentConfig, refreshChatCapabilities, setChatPreferences, setCurrentConfig],
   );
 
   const setProviderAuth = useCallback(
     async (providerId: string, values: ProviderAuthValues) => {
+      requireClient();
       const key = typeof values.key === 'string' ? values.key.trim() : '';
       if (!key) {
         throw new Error('Enter a provider credential first.');
@@ -123,25 +131,29 @@ export function useCapabilitiesActions({
       await configureProvider(providerId);
       await refreshChatCapabilities();
     },
-    [client, configureProvider, refreshChatCapabilities],
+    [client, requireClient, configureProvider, refreshChatCapabilities],
   );
 
   const removeProvider = useCallback(async (providerId: string) => {
+    requireClient();
     await removeProviderCredentials(client, providerId);
     const latestConfig = currentConfig || await getConfig(client);
+    requireClient();
     if (latestConfig && client.compatibility) {
       const updatedConfig = await updateConfig(client, {
         ...latestConfig,
         disabled_providers: [...new Set([...(latestConfig.disabled_providers || []), providerId])].sort(),
         enabled_providers: (latestConfig.enabled_providers || []).filter((id) => id !== providerId),
       });
+      requireClient();
       setCurrentConfig(updatedConfig);
     }
     await refreshChatCapabilities();
-  }, [client, currentConfig, refreshChatCapabilities, setCurrentConfig]);
+  }, [client, requireClient, currentConfig, refreshChatCapabilities, setCurrentConfig]);
 
   const startProviderOAuth = useCallback(
     async (providerId: string, methodIndex: number, inputs?: ProviderAuthValues) => {
+    requireClient();
       const authorization = await startProviderAuthorization(client, providerId, methodIndex, inputs);
       if (!authorization) {
         throw new Error('OpenCode did not return OAuth authorization details.');
@@ -153,10 +165,11 @@ export function useCapabilitiesActions({
         method: authorization.method,
       };
     },
-    [client],
+    [client, requireClient],
   );
 
   const completeAutomaticProviderOAuth = useCallback(async (providerId: string) => {
+    requireClient();
     // On V2 the server owns the automatic OAuth callback, so wait on the attempt
     // status it records. V1 only exposes the connected provider list.
     if (client.providerOAuth) {
@@ -177,36 +190,41 @@ export function useCapabilitiesActions({
       }
       await new Promise((resolve) => setTimeout(resolve, 2_000));
     }
-  }, [client, configureProvider, isCurrentClient]);
+  }, [client, requireClient, configureProvider, isCurrentClient]);
 
   const cancelProviderOAuth = useCallback(async (providerId: string) => {
+    requireClient();
     if (!client.providerOAuth) return;
     await client.providerOAuth.cancel(providerId);
-  }, [client]);
+  }, [client, requireClient]);
 
   const completeProviderOAuth = useCallback(async (providerId: string, methodIndex: number, code: string) => {
+    requireClient();
     await completeProviderAuthorization(client, providerId, methodIndex, code);
     await configureProvider(providerId);
     await refreshChatCapabilities();
-  }, [client, configureProvider, refreshChatCapabilities]);
+  }, [client, requireClient, configureProvider, refreshChatCapabilities]);
 
   const addProviderAccount = useCallback(async (providerId: string, values: ProviderAuthValues, label?: string) => {
+    requireClient();
     if (!client.accounts) throw new Error('Managing multiple provider accounts requires OpenCode 2.');
     await client.accounts.add(providerId, values, label);
     await configureProvider(providerId);
-  }, [client, configureProvider]);
+  }, [client, requireClient, configureProvider]);
 
   const activateProviderAccount = useCallback(async (credentialId: string) => {
+    requireClient();
     if (!client.accounts) throw new Error('Managing multiple provider accounts requires OpenCode 2.');
     await client.accounts.activate(credentialId);
     await refreshChatCapabilities();
-  }, [client, refreshChatCapabilities]);
+  }, [client, requireClient, refreshChatCapabilities]);
 
   const removeProviderAccount = useCallback(async (credentialId: string) => {
+    requireClient();
     if (!client.accounts) throw new Error('Managing multiple provider accounts requires OpenCode 2.');
     await client.accounts.remove(credentialId);
     await refreshChatCapabilities();
-  }, [client, refreshChatCapabilities]);
+  }, [client, requireClient, refreshChatCapabilities]);
 
   const updateChatPreferences = useCallback((patch: Partial<ChatPreferences>) => {
     setChatPreferences((current) => {
@@ -255,20 +273,23 @@ export function useCapabilitiesActions({
 
   const setAutoApprove = useCallback(
     async (enabled: boolean) => {
+      if (client.__opencode.contract === 'v2') { setChatPreferences((current) => ({ ...current, autoApprove: enabled })); return; }
       const latestConfig = currentConfig || await getConfig(client);
+    requireClient();
       const nextConfig = mergePermissionConfig(latestConfig, enabled);
       const updatedConfig = await updateConfig(client, nextConfig);
       if (!updatedConfig) {
         throw new Error('OpenCode did not return its updated configuration.');
       }
 
+      requireClient();
       setCurrentConfig(updatedConfig);
       setChatPreferences((current) => ({
         ...current,
         autoApprove: enabled,
       }));
     },
-    [client, currentConfig, setChatPreferences, setCurrentConfig],
+    [client, requireClient, currentConfig, setChatPreferences, setCurrentConfig],
   );
 
   return {

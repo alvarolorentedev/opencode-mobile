@@ -2,9 +2,10 @@ import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useIsFocused } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Alert, Platform } from 'react-native';
 import { Portal, Snackbar } from 'react-native-paper';
 
+import { confirmAction } from '@/lib/confirm-action';
+import { findMatchingProfile } from '@/lib/connection-profiles';
 import { AiDefaultsSection } from './sections/ai-defaults-section';
 import { getProviderCopy } from './settings-utils';
 import { useProviderConfiguration } from './use-provider-configuration';
@@ -18,7 +19,7 @@ export function AiSettingsPanel() {
   const insets = useSafeAreaInsets();
   const palette = Colors[useColorScheme() ?? 'light'];
   const { availableModels, availableProviders, configuredProviders, providerAccounts, providerAuthMethodsById, removeProvider } = useCapabilities();
-  const { serverCapabilities } = useConnection();
+  const { serverCapabilities, settings, connectionProfiles } = useConnection();
   const { chatPreferences, updateChatPreferences } = usePreferences();
   const providerConfig = useProviderConfiguration();
   const [expandedProviderId, setExpandedProviderId] = useState<string>();
@@ -37,14 +38,9 @@ export function AiSettingsPanel() {
     const remove = () => void removeProvider(providerId)
       .then(() => providerConfig.setFeedback({ type: 'success', message: t('settings:providers.credentialsRemoved', { provider: label }) }))
       .catch((error) => providerConfig.setFeedback({ type: 'error', message: error instanceof Error ? error.message : t('settings:providers.couldNotRemove') }));
-    if (Platform.OS === 'web') {
-      if (globalThis.confirm(t('settings:providers.removeWebConfirm', { provider: label }))) remove();
-      return;
-    }
-    Alert.alert(t('settings:providers.removeTitle', { provider: label }), t('settings:providers.removeMessage'), [
-      { text: t('common:actions.cancel'), style: 'cancel' },
-      { text: t('common:actions.remove'), style: 'destructive', onPress: remove },
-    ]);
+    const server = findMatchingProfile(connectionProfiles.profiles, settings)?.name ?? settings.serverUrl;
+    confirmAction(t('settings:providers.removeTitle', { provider: label }), `${server}\n\n${t('settings:providers.removeMessage')}`,
+      t('common:actions.remove'), t('common:actions.cancel'), remove);
   }
 
   return (

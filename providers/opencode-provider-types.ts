@@ -134,6 +134,7 @@ export const FAVORITE_SESSIONS_MAX = 50;
 // group. `projectPath` is the server directory used to switch projects; the
 // status drives the running indicator and ordering.
 export type ActiveSessionItem = {
+  connectionScope?: string;
   sessionId: string;
   projectPath: string;
   title?: string;

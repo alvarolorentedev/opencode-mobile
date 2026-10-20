@@ -10,6 +10,7 @@ import { FilesPanel } from '@/components/project/files-panel';
 import { FilePreview } from '@/components/project/file-preview';
 import { Colors, Fonts } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
+import { useRetainedState } from '@/components/ui/use-retained-state';
 import { getConnectionUiScope } from '@/lib/connection-scope';
 import { useConnection, usePreferences, useProjects, useProjectFiles } from '@/providers/opencode-contexts';
 
@@ -20,13 +21,14 @@ export default function ProjectsScreen() {
   const { connection, serverCapabilities, settings, connect } = useConnection();
   const { chatPreferences } = usePreferences();
   const slim = chatPreferences.slimInterface === true;
-  const { activeProject, addProject, projects, refreshProjectCatalog, refreshProjectStatus, removeProject, selectProject } = useProjects();
+  const { activeProject, refreshProjectCatalog, refreshProjectStatus } = useProjects();
   const { browser, openProjectFile, projectFileStatuses, selectedProjectFile, saveProjectFile, vcsInfo } = useProjectFiles();
   const [pickerVisible, setPickerVisible] = useState(false);
-  const [fileVisible, setFileVisible] = useState(false);
+
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string>();
-  const scope = `${getConnectionUiScope(settings)}:${activeProject?.path}`;
+  const scope = JSON.stringify([getConnectionUiScope(settings), activeProject?.path]);
+  const [fileVisible, setFileVisible] = useRetainedState(`file-visible:${scope}`, false);
   const ready = connection.status === 'connected' && Boolean(activeProject);
   async function refresh() {
     if (refreshing) return;
@@ -47,7 +49,7 @@ export default function ProjectsScreen() {
       </Pressable>
       <Appbar.Action testID="project-refresh-button" icon="refresh" disabled={refreshing || connection.status !== 'connected'} accessibilityLabel={t('project:screen.refreshProject')} onPress={() => void refresh()} />
     </Appbar.Header>
-    <ProjectPicker visible={pickerVisible} testID="project-picker" projects={projects} activePath={activeProject?.path} onClose={() => setPickerVisible(false)} onSelect={selectProject} onRemove={removeProject} onAdd={addProject} />
+    <ProjectPicker visible={pickerVisible} testID="project-picker" activePath={activeProject?.path} onClose={() => setPickerVisible(false)} />
     {ready ? <FilesPanel key={scope} browser={browser} projectLabel={activeProject!.label} statuses={serverCapabilities.fileStatus ? projectFileStatuses : []}
       contentStyle={[styles.content, slim && { padding: 10 }]}
       header={<>

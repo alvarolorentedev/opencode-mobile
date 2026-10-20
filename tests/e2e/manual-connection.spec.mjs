@@ -121,7 +121,8 @@ test('editing a saved profile preserves its username and leaves the active conne
   await page.getByTestId('connection-profile-save-confirm').click();
   await expect(page.getByTestId('connection-profile-save-confirm')).toHaveCount(0);
   const stored = await page.evaluate(() => ({ profiles: JSON.parse(localStorage.getItem('opencode-mobile.connection-profiles')), settings: JSON.parse(localStorage.getItem('opencode-mobile.settings')) }));
-  expect(stored.profiles).toEqual([{ id: 'saved', name: 'Renamed', serverUrl: V1, username: 'alice' }]);
+  expect(stored.profiles.find((profile) => profile.id === 'saved')).toEqual({ id: 'saved', name: 'Renamed', serverUrl: V1, username: 'alice' });
+  expect(stored.profiles.some((profile) => profile.serverUrl === V1 && profile.username === '')).toBe(true);
   expect(stored.settings).toMatchObject({ serverUrl: V1, username: '' });
   expect(discovery).toBe(0);
 });

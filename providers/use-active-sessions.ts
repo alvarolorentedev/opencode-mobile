@@ -12,6 +12,7 @@ import { listActiveSessions as svcListActiveSessions } from '@/providers/service
 const ACTIVE_SESSIONS_POLL_MS = 20000;
 const MAX_ACTIVE = 4;
 const EMPTY_SESSIONS: Session[] = [];
+const EMPTY_STATUSES: Record<string, SessionStatus> = {};
 
 type ActiveSessionsSnapshot = {
   scope?: string;
@@ -91,5 +92,5 @@ export function useActiveSessions({
     return () => clearInterval(interval);
   }, [connected, hasRunning, refreshActiveSessions, visible]);
 
-  return { activeSessions, catalogSessions: current?.sessions ?? EMPTY_SESSIONS, refreshActiveSessions };
+  return { activeSessions, catalogStatuses: current?.statuses ?? EMPTY_STATUSES, catalogSessions: current?.sessions ?? EMPTY_SESSIONS, refreshActiveSessions };
 }

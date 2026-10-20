@@ -1,7 +1,6 @@
 import type { PropsWithChildren } from 'react';
 
-import { OpencodeProviderTree } from '@/providers/opencode-provider-tree';
-import { useOpencodeProviderComposition } from '@/providers/use-opencode-provider-composition';
+import { WorkspaceProvider } from '@/providers/workspace-provider';
 
 export type {
   AgentOption,
@@ -24,10 +23,5 @@ export type {
 } from '@/providers/opencode-provider-types';
 
 export function OpencodeProvider({ children }: PropsWithChildren) {
-  const { updates, values } = useOpencodeProviderComposition();
-  return (
-    <OpencodeProviderTree updates={updates} values={values}>
-      {children}
-    </OpencodeProviderTree>
-  );
+  return <WorkspaceProvider>{children}</WorkspaceProvider>;
 }

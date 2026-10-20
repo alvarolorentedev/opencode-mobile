@@ -354,7 +354,7 @@ export function useOpencodeProviderValues(input: ProviderValuesInput) {
     [mcpStatuses, refreshMcpServers, addMcpServer, connectMcpServer, disconnectMcpServer, setMcpServerEnabled, mcpOAuth],
   );
 
-  return {
+  return useMemo(() => ({
     onboardingValue,
     connectionValue,
     diagnosticsValue,
@@ -369,5 +369,6 @@ export function useOpencodeProviderValues(input: ProviderValuesInput) {
     conversationValue,
     terminalValue,
     mcpValue,
-  };
+  }), [onboardingValue, connectionValue, diagnosticsValue, capabilitiesValue, preferencesValue, projectsValue,
+    projectFilesValue, currentSessionValue, sessionLibraryValue, chatValue, approvalsValue, conversationValue, terminalValue, mcpValue]);
 }

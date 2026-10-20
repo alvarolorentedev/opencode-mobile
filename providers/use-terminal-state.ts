@@ -7,13 +7,14 @@ import { createTerminal as svcCreateTerminal, listShells, listTerminals, removeT
 import { createTerminalConnection, type TerminalConnectionContext } from './terminal-connection';
 import type { TerminalInstance, TerminalRenderer, TerminalRuntime } from './terminal-types';
 
-export function useTerminalState({ client, isCurrentClient, serverUrl, directory, serverContract, authorization }: {
+export function useTerminalState({ client, isCurrentClient, serverUrl, directory, serverContract, authorization, enabled = true }: {
   client: ScopedOpencodeClient;
   isCurrentClient: (candidate: object) => boolean;
   serverUrl: string;
   directory: string;
   serverContract: ServerContract;
   authorization?: string;
+  enabled?: boolean;
 }) {
   const [terminals, setTerminals] = useState<Pty[]>([]);
   const [terminalShells, setTerminalShells] = useState<PtyShellsResponse>([]);
@@ -23,6 +24,8 @@ export function useTerminalState({ client, isCurrentClient, serverUrl, directory
   const scopeRef = useRef(0);
   const refreshRequest = useRef(0);
   const connections = useRef(new Map<string, ReturnType<typeof createTerminalConnection>>());
+  const enabledRef = useRef(enabled);
+  useLayoutEffect(() => { enabledRef.current = enabled; }, [enabled]);
   const foreground = useRef(AppState.currentState !== 'background' && AppState.currentState !== 'inactive');
   const publish = useCallback(() => setInstances([...connections.current.values()].map((entry) => entry.state)), []);
 
@@ -50,6 +53,10 @@ export function useTerminalState({ client, isCurrentClient, serverUrl, directory
     return () => { for (const connection of owned.values()) connection.dispose(); owned.clear(); };
   }, []);
 
+  useEffect(() => {
+    for (const connection of connections.current.values()) connection.foreground(enabled && foreground.current);
+  }, [enabled]);
+
   const resetTerminal = useCallback(() => {
     for (const connection of connections.current.values()) connection.dispose();
     connections.current.clear();
@@ -60,6 +67,7 @@ export function useTerminalState({ client, isCurrentClient, serverUrl, directory
   }, []);
 
   const refreshTerminals = useCallback(async () => {
+    if (!isCurrentClient(client)) return;
     const request = ++refreshRequest.current;
     const opened = new Set(connections.current.keys());
     const [nextTerminals, nextShells] = await Promise.all([listTerminals(client), listShells(client)]);
@@ -74,7 +82,7 @@ export function useTerminalState({ client, isCurrentClient, serverUrl, directory
   useEffect(() => {
     const subscription = AppState.addEventListener('change', (state) => {
       foreground.current = state === 'active';
-      for (const connection of connections.current.values()) connection.foreground(foreground.current);
+      for (const connection of connections.current.values()) connection.foreground(enabledRef.current && foreground.current);
       if (foreground.current && connections.current.size) void refreshTerminals().catch(() => undefined);
     });
     return () => subscription.remove();
@@ -87,7 +95,7 @@ export function useTerminalState({ client, isCurrentClient, serverUrl, directory
     if (!existing) {
       const connection = createTerminalConnection({ id: ptyId, context, publish });
       connections.current.set(ptyId, connection);
-      connection.foreground(foreground.current);
+      connection.foreground(enabledRef.current && foreground.current);
       publish();
     } else if (existing.state.status === 'error' || existing.state.status === 'idle') existing.reconnect();
     setActiveTerminalId(ptyId);
@@ -100,12 +108,13 @@ export function useTerminalState({ client, isCurrentClient, serverUrl, directory
   }, [authorization, client, directory, serverContract, serverUrl]);
 
   const createTerminal = useCallback(async (command?: string, title?: string) => {
-    const terminal = await svcCreateTerminal(client, { command: command?.trim() || undefined, title: title?.trim() || undefined });
+    if (!isCurrentClient(client)) throw new Error('Connect this server before creating a terminal.');
+    const terminal = await svcCreateTerminal(client, { command: command?.trim() || undefined, title: title?.trim() || undefined, cwd: directory });
     if (!isCurrentClient(client)) return terminal;
     await refreshTerminals();
     if (isCurrentClient(client)) await openTerminal(terminal.id);
     return terminal;
-  }, [client, isCurrentClient, openTerminal, refreshTerminals]);
+  }, [client, directory, isCurrentClient, openTerminal, refreshTerminals]);
 
   const sendTerminalInput = useCallback((ptyId: string, input: string, generation: number, expectedScope: number) => {
     if (expectedScope !== scopeRef.current) throw new Error('Terminal scope changed.');
@@ -115,6 +124,7 @@ export function useTerminalState({ client, isCurrentClient, serverUrl, directory
   }, []);
 
   const closeTerminal = useCallback(async (ptyId: string) => {
+    if (!isCurrentClient(client)) throw new Error('Connect this server before terminating its terminal.');
     await removeTerminal(client, ptyId);
     if (!isCurrentClient(client)) return;
     connections.current.get(ptyId)?.dispose(); connections.current.delete(ptyId);

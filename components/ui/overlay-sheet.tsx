@@ -1,4 +1,5 @@
-import type { ReactNode } from 'react';
+import { useContext, type ReactNode } from 'react';
+import { WorkspaceScope, WorkspaceScopeContext } from '@/providers/workspace-context';
 import { useTranslation } from 'react-i18next';
 import { KeyboardAvoidingView, Pressable, ScrollView, StyleSheet, useWindowDimensions, View } from 'react-native';
 import { GestureDetector } from 'react-native-gesture-handler';
@@ -25,6 +26,7 @@ export function OverlaySheet({ visible, title, onClose, children, headerAction, 
   blockUpdates?: boolean;
   dismissible?: boolean;
 }) {
+  const workspace = useContext(WorkspaceScopeContext);
   const insets = useSafeAreaInsets();
   useUpdateBlocker(visible && blockUpdates);
   const { height } = useWindowDimensions();
@@ -42,8 +44,7 @@ export function OverlaySheet({ visible, title, onClose, children, headerAction, 
     return null;
   }
 
-  return (
-    <Portal>
+  const content = (
       <KeyboardAvoidingView behavior="padding" style={[styles.overlay, { paddingTop: compact ? Math.max(64 + insets.top, height * 0.45) : 64 + insets.top }]} testID={testID}>
         {dismissible ? <Pressable accessibilityLabel={t('common:actions.closeWithName', { title })} onPress={onClose} style={StyleSheet.absoluteFill}>
           <Animated.View style={[styles.backdrop, backdropStyle]} />
@@ -85,8 +86,9 @@ export function OverlaySheet({ visible, title, onClose, children, headerAction, 
           </ScrollView> : <View style={[styles.content, compact && styles.compactContent, { flex: 1, minHeight: 0, paddingBottom: Math.max(insets.bottom, 24) }]}>{children}</View>}
         </Animated.View>
       </KeyboardAvoidingView>
-    </Portal>
   );
+  // Paper portals render under the app host; restore the caller's server context there.
+  return <Portal>{workspace ? <WorkspaceScope target={workspace}>{content}</WorkspaceScope> : content}</Portal>;
 }
 
 const styles = StyleSheet.create({

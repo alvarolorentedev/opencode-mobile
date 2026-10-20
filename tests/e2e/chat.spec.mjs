@@ -73,7 +73,7 @@ test('OpenCode 2 keeps steer and append prompts pinned until delivery and recove
     await expect(pending.getByTestId('pending-prompt')).toHaveCount(1);
     expect((await pending.boundingBox()).y).toBeLessThan((await page.getByPlaceholder('Ask anything...').boundingBox()).y);
     await goToTab(page, 'Settings');
-    await page.getByRole('button', { name: /^Advanced/ }).click();
+    await page.getByRole('button', { name: /^App settings\./ }).click();
     await page.getByRole('button', { name: /Messages sent while working/ }).click();
     await page.getByText('Append', { exact: true }).click();
     await goToTab(page, 'Chat');
@@ -367,7 +367,7 @@ test('model variants follow the server catalog, reach sessions, and persist per 
   await expect(variant).toHaveAttribute('aria-valuetext', 'Max');
   await page.keyboard.press('Escape');
   await expect(model).toHaveAccessibleName('DeepSeek V4.1 Flash Free · OpenCode · Max');
-  await expect.poll(() => page.evaluate(() => JSON.parse(localStorage.getItem('opencode-mobile.chat-preferences')).modelVariantSelections['opencode/deepseek-v4.1-flash-free'])).toBe('max');
+  await expect.poll(() => page.evaluate(() => JSON.parse(localStorage.getItem('opencode-mobile.workspaces')).connections.find((entry) => entry.id === JSON.parse(localStorage.getItem('opencode-mobile.workspaces')).focus.connectionId).preferences.modelVariantSelections['opencode/deepseek-v4.1-flash-free'])).toBe('max');
 
   const maxSwitch = page.waitForResponse((response) => response.request().method() === 'POST'
     && new URL(response.url()).pathname.endsWith('/model'));
@@ -388,7 +388,7 @@ test('model variants follow the server catalog, reach sessions, and persist per 
   await resetVariant.press('Home');
   await expect(resetVariant).toHaveAttribute('aria-valuetext', 'Default');
   await page.keyboard.press('Escape');
-  await expect.poll(() => page.evaluate(() => JSON.parse(localStorage.getItem('opencode-mobile.chat-preferences')).modelVariantSelections['opencode/deepseek-v4.1-flash-free'])).toBe(null);
+  await expect.poll(() => page.evaluate(() => JSON.parse(localStorage.getItem('opencode-mobile.workspaces')).connections.find((entry) => entry.id === JSON.parse(localStorage.getItem('opencode-mobile.workspaces')).focus.connectionId).preferences.modelVariantSelections['opencode/deepseek-v4.1-flash-free'])).toBe(null);
   const defaultSwitch = page.waitForResponse((response) => response.request().method() === 'POST'
     && new URL(response.url()).pathname.endsWith('/model'));
   await sendPrompt(page, 'Use the default reasoning variant');

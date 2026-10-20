@@ -6,6 +6,8 @@ import type { PendingPrompt, PromptDelivery, PromptInput } from '@/lib/opencode/
 import type { TranscriptRefreshMode } from '@/providers/opencode-provider-types';
 import { getSessionInbox } from '@/providers/services/session-service';
 
+const EMPTY_PROMPTS: Record<string, PendingPrompt[]> = {};
+
 export function usePromptInbox({ client, isCurrentClient, refreshMessages: readMessages }: {
   client: ScopedOpencodeClient;
   isCurrentClient: (candidate: object) => boolean;
@@ -14,7 +16,7 @@ export function usePromptInbox({ client, isCurrentClient, refreshMessages: readM
   const [snapshot, setSnapshot] = useState<{ client: object; prompts: Record<string, PendingPrompt[]> }>({ client, prompts: {} });
   const revisions = useRef<Record<string, number>>({});
   const counter = useRef(0);
-  const pendingPromptsBySession = snapshot.client === client ? snapshot.prompts : {};
+  const pendingPromptsBySession = snapshot.client === client ? snapshot.prompts : EMPTY_PROMPTS;
 
   const update = useCallback((sessionId: string, change: (previous: PendingPrompt[]) => PendingPrompt[]) => {
     if (!isCurrentClient(client)) return;

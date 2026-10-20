@@ -8,6 +8,7 @@ import { Keyboard } from 'react-native';
 import { getSelectedModelVariant, getVisibleModels } from '@/providers/opencode-model-selection';
 import { useUpdateBlocker } from '@/hooks/use-update-blocker';
 import { mergeSharedDraft } from '@/lib/share/parse';
+import { workspaceKey } from '@/providers/workspace-types';
 import { getConnectionScope, getConnectionUiScope } from '@/lib/connection-scope';
 import { type TranscriptEntry } from '@/lib/opencode/format';
 import { buildTranscriptRows, getTurnPatchDetails, getUserTurnForMessage, isTranscriptDisplayMessage } from '@/lib/opencode/transcript';
@@ -54,8 +55,9 @@ export function useChatViewController() {
     sendingState, setAutoApprove, setDiffScope, transcriptPaging, sharedInput,
   } = useChat();
 
+  const workspaceId = workspaceKey({ connectionId: getConnectionUiScope(settings), projectPath: activeProject?.path ?? '' });
   const { draft, attachments, setDraft, setAttachments, inputRef, capture, hasFailedInput, recoverFailedInput, dismissFailedInput } =
-    useChatDraft(`${getConnectionUiScope(settings)}:${activeProject?.path ?? ''}`, currentSessionId);
+    useChatDraft(workspaceId, currentSessionId);
   const {
     cancelingPromptId, clearRevertPrefill, handleCancelPendingPrompt, handleCancelRevert, handleRevertMessage, isCancelingRevert,
   } = useChatComposerNotices({
@@ -243,6 +245,10 @@ export function useChatViewController() {
     start: startSpeechInput,
     stop: stopSpeechInput,
   } = speechInput;
+  useEffect(() => {
+    stopSpeechInput();
+    void stopSpeaking().catch(() => undefined);
+  }, [connectionScope, activeProject?.path, stopSpeechInput]);
   useUpdateBlocker(Boolean(draft || attachments.length || isSpeechInputListening || speakingMessageId ||
     copiedMessageId || sendFeedback || voiceFeedback || isCreatingSession || isStoppingSession || isUpdatingAutoApprove));
   // Only offer a recovery action when the snackbar is actually showing a
@@ -262,7 +268,7 @@ export function useChatViewController() {
     const nextDraft = promptOverride ?? snapshot.draft;
     const nextAttachments = snapshot.attachments;
     const prompt = nextDraft.trim();
-    if ((!prompt && nextAttachments.length === 0) || connection.status !== 'connected') {
+    if (!activeProject || (!prompt && nextAttachments.length === 0) || connection.status !== 'connected') {
       return;
     }
 
@@ -294,7 +300,7 @@ export function useChatViewController() {
     } catch (error) {
       if (snapshot.restore(sessionId)) setSendFeedback(error instanceof Error ? error.message : t('chat:view.couldNotSend'));
     } finally { submittingRef.current = false; }
-  }, [capture, clearRevertPrefill, commands, connection.status, currentSessionId, ensureActiveSession, executeCommand, sendPrompt, t]);
+  }, [activeProject, capture, clearRevertPrefill, commands, connection.status, currentSessionId, ensureActiveSession, executeCommand, sendPrompt, t]);
 
   useEffect(() => {
     Keyboard.dismiss();
@@ -442,6 +448,7 @@ export function useChatViewController() {
       currentUsage, latestAssistantTurnUsage, selectedSession, slim,
     },
     content: {
+      workspaceId,
       activeSession, awaitingUserInput, cancelingPromptId, changesVisible, completedTodoCount,
       copiedMessageId, currentActivityLabel, currentDiffs, currentDiffScope,
       currentPendingPermissions, currentPendingQuestions, currentSessionId, currentTodos,

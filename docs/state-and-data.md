@@ -2,7 +2,7 @@
 
 ## State Ownership Overview
 
-The application uses a single shared domain store implemented with React state inside `OpencodeProvider`.
+The application uses provider-owned React state. `WorkspaceProvider` owns the app-wide registry and persistence; each retained `WorkspaceRuntime` owns one connection/project branch. Existing domain hooks read the branch supplied by `WorkspaceScope`.
 
 State is split into seven practical domains:
 
@@ -853,3 +853,13 @@ configured/enabled catalog filter as Chat. Skip does not revert earlier choices.
 Navigation omits AI and project without a connection; model selection is hidden
 offline and message delivery is also hidden on V1. No onboarding preferences,
 credentials or step progress are duplicated in the completion marker.
+
+## Workspace registry and presentation state
+
+`opencode-mobile.workspaces` is a validated version 1 DTO. It records password-free connection metadata, enabled state, server preferences, remembered workspace paths and chat focus. `getConnectionUiScope` identifies runtime owners, including stable Cloud Link machine identities; the existing canonical connection scope identifies persisted favorites, caches and secure profile credentials. Passwords remain per-profile SecureStore data. An unreadable registry is preserved; fallback startup never overwrites that unread value.
+
+A legacy active connection is matched or saved as a profile and migrated into the connected set. Other saved profiles are not connected automatically. Explicit disconnect removes a server from automatic restoration, invalidates in-flight work and detaches its transports. It does not terminate remote prompts or PTYs. Last-good data and drafts remain in memory.
+
+Provider/model/agent selections, visible and recent models, model variants and auto-approve are scoped to a server. New servers default to auto-approve off. V2 auto-approve is a local per-server policy that answers each pending request once, using the existing permission service; persistent grants keep the server's actual semantics. General UI, language and voice device preferences remain app-wide. Hide subagents defaults to true when missing; a saved false is retained.
+
+Chat focus, terminal target and Settings inspection target are independent composite references. The presentation map holds composer text/attachments, failed input, editor baseline/current text and transcript offsets. Hidden dirty drafts and PTYs participate in update blocking. Removing a connection names unsaved drafts in its confirmation. Drafts are intentionally not written to disk.

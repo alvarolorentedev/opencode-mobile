@@ -129,7 +129,7 @@ test('OpenCode 2 adds a server project from the shared picker', async ({ page, r
     await goToTab(page, 'Chat');
     await openChatLibrary(page);
     await chatAction(page, 'Retained project chat', 'Favorite');
-    await page.getByTestId(`chat-library-favorite-${retainedSessionId}`).click();
+    await page.getByTestId('chat-library').getByRole('button', { name: /^Open Retained project chat,/ }).click();
     await expect(page.getByTestId('chat-library')).not.toBeVisible();
     await expect(page.getByText(/Finished: Retained project chat/).first()).toBeVisible();
     await expect.poll(() => page.evaluate(() => globalThis.localStorage.getItem('opencode-mobile.favorite-sessions'))).toContain(retainedSessionId);
@@ -149,7 +149,7 @@ test('OpenCode 2 adds a server project from the shared picker', async ({ page, r
     await page.getByTestId('project-picker').getByRole('button', { name: 'Close', exact: true }).click();
     await goToTab(page, 'Chat');
     await openChatLibrary(page);
-    await page.getByTestId(`chat-library-favorite-${retainedSessionId}`).click();
+    await page.getByTestId('chat-library').getByRole('button', { name: /^Open Retained project chat,/ }).click();
     await expect(page.getByTestId('chat-library')).not.toBeVisible();
     await expect(page.getByText(/Finished: Retained project chat/).first()).toBeVisible();
   } finally {
@@ -244,6 +244,7 @@ for (const contract of ['v1', 'v2']) {
       await expect(page.getByText(/Finished: Work in the selected worktree/).first()).toBeVisible({ timeout: 20_000 });
       await goToTab(page, 'Terminal');
       await page.getByTestId('terminal-create-button').click();
+      await page.getByTestId('terminal-create-confirm').click();
       await expect(page.getByTestId('terminal-output')).toBeVisible();
       await goToTab(page, 'Projects');
       await page.reload();
