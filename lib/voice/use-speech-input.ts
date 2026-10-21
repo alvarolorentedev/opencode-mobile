@@ -37,6 +37,8 @@ type StartOptions = { continuous?: boolean };
 // including its on-device -> network retry.
 let activeOwner: string | undefined;
 let activeOnDevice = false;
+// Ownership includes the gap before an on-device -> network retry.
+let recognitionReserved = false;
 
 export function useSpeechInput({
   levelStep = 1,
@@ -134,6 +136,7 @@ export function useSpeechInput({
   useSpeechRecognitionEvent('end', () => {
     if (activeOwner !== ownerId) return;
     onEnd?.();
+    if (!fallbackTimeoutRef.current) recognitionReserved = false;
     setIsListening(false);
     setIsStarting(false);
     lastLevelRef.current = 0;
@@ -168,48 +171,53 @@ export function useSpeechInput({
       setIsStarting(true);
       ignoreErrorsUntilRef.current = 0;
 
-      const capabilities = readCapabilities();
-      setIsAvailable(capabilities.available);
-      setSupportsLocalRecognition(capabilities.onDevice);
-
-      if (!capabilities.available) {
-        const info = describeVoiceInputError('service-not-allowed', undefined, {
-          canAskAgain: canAskAgainRef.current,
-          onDeviceRequested: false,
-          restricted: restrictedRef.current,
-        });
-        setError(info.message);
-        setErrorCode('service-not-allowed');
-        setErrorAction(info.action);
-        setIsStarting(false);
-        return false;
-      }
-
-      const permissions = await ExpoSpeechRecognitionModule.requestPermissionsAsync();
-      if (request !== startRequestRef.current) return false;
-      const nextRestricted = Boolean(permissions.restricted);
-      const nextCanAskAgain = Boolean(permissions.canAskAgain);
-      restrictedRef.current = nextRestricted;
-      canAskAgainRef.current = nextCanAskAgain;
-
-      if (!permissions.granted) {
-        const info = describeVoiceInputError('not-allowed', undefined, {
-          canAskAgain: nextCanAskAgain,
-          onDeviceRequested: false,
-          restricted: nextRestricted,
-        });
-        setError(info.message);
-        setErrorCode('not-allowed');
-        setErrorAction(info.action);
-        setIsStarting(false);
-        return false;
-      }
-
-      const wantsOnDevice = !forceNetwork && !onDeviceFallbackRef.current && preferOnDevice && capabilities.onDevice;
-      lastStartOptionsRef.current = { continuous: options.continuous };
-
       try {
+        const capabilities = readCapabilities();
+        setIsAvailable(capabilities.available);
+        setSupportsLocalRecognition(capabilities.onDevice);
+
+        if (!capabilities.available) {
+          if (activeOwner === ownerId) recognitionReserved = false;
+          const info = describeVoiceInputError('service-not-allowed', undefined, {
+            canAskAgain: canAskAgainRef.current,
+            onDeviceRequested: false,
+            restricted: restrictedRef.current,
+          });
+          setError(info.message);
+          setErrorCode('service-not-allowed');
+          setErrorAction(info.action);
+          return false;
+        }
+
+        const permissions = await ExpoSpeechRecognitionModule.requestPermissionsAsync();
+        if (request !== startRequestRef.current) return false;
+        if (recognitionReserved && activeOwner !== ownerId) {
+          setError('Stop the current voice input before starting another recording.');
+          return false;
+        }
+        const nextRestricted = Boolean(permissions.restricted);
+        const nextCanAskAgain = Boolean(permissions.canAskAgain);
+        restrictedRef.current = nextRestricted;
+        canAskAgainRef.current = nextCanAskAgain;
+
+        if (!permissions.granted) {
+          if (activeOwner === ownerId) recognitionReserved = false;
+          const info = describeVoiceInputError('not-allowed', undefined, {
+            canAskAgain: nextCanAskAgain,
+            onDeviceRequested: false,
+            restricted: nextRestricted,
+          });
+          setError(info.message);
+          setErrorCode('not-allowed');
+          setErrorAction(info.action);
+          return false;
+        }
+
+        const wantsOnDevice = !forceNetwork && !onDeviceFallbackRef.current && preferOnDevice && capabilities.onDevice;
+        lastStartOptionsRef.current = { continuous: options.continuous };
+
         activeOwner = ownerId;
+        recognitionReserved = true;
         activeOnDevice = wantsOnDevice;
         acceptingResultsRef.current = true;
         ExpoSpeechRecognitionModule.start({
@@ -228,12 +236,16 @@ export function useSpeechInput({
 
         return true;
       } catch (startError) {
+        if (request !== startRequestRef.current) return false;
+        if (activeOwner === ownerId) recognitionReserved = false;
+        acceptingResultsRef.current = false;
+        setIsListening(false);
         setError(startError instanceof Error ? startError.message : 'Voice input failed to start.');
         setErrorCode(undefined);
         setErrorAction('retry');
         return false;
       } finally {
-        setIsStarting(false);
+        if (request === startRequestRef.current) setIsStarting(false);
       }
     },
     [clearPendingFallback, locale, ownerId, preferOnDevice, readCapabilities, volumeUpdateIntervalMillis],
@@ -243,6 +255,7 @@ export function useSpeechInput({
     if (activeOwner !== ownerId || !acceptingResultsRef.current) return;
     setIsStarting(false);
     if (shouldIgnoreError(event)) {
+      recognitionReserved = false;
       setErrorCode(undefined);
       setIsListening(false);
       lastLevelRef.current = 0;
@@ -267,6 +280,7 @@ export function useSpeechInput({
       return;
     }
 
+    recognitionReserved = false;
     const info = describeVoiceInputError(event.error, event.message, {
       canAskAgain: canAskAgainRef.current,
       onDeviceRequested: activeOnDevice,
@@ -301,9 +315,11 @@ export function useSpeechInput({
 
   const stop = useCallback(() => {
     startRequestRef.current++;
+    const wasRetrying = Boolean(fallbackTimeoutRef.current);
     clearPendingFallback();
     setIsStarting(false);
     if (activeOwner !== ownerId) return;
+    if (wasRetrying) recognitionReserved = false;
     ignoreErrorsUntilRef.current = Date.now() + 1500;
     try {
       ExpoSpeechRecognitionModule.stop();
@@ -318,6 +334,7 @@ export function useSpeechInput({
     clearPendingFallback();
     setIsStarting(false);
     if (activeOwner !== ownerId) return;
+    recognitionReserved = false;
     ignoreErrorsUntilRef.current = Date.now() + 1500;
     try {
       ExpoSpeechRecognitionModule.abort();

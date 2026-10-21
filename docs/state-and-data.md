@@ -243,7 +243,9 @@ Speech onset or an interim cancels that timer until the next final/end, preventi
 a previous finalized segment from submitting while the user continues speaking.
 Restarts preserve the accumulated turn; submission, cancellation and new turns
 reset it. Native events and stop/abort calls belong only to the speech hook that
-started recognition, keeping chat dictation and conversation mode isolated.
+started recognition, keeping chat dictation and conversation mode isolated. A
+competing start is rejected until the current session (including a pending
+network retry) ends, so ownership cannot strand the previous listening surface.
 
 This means conversation mode is partly state-driven and partly timer/ref-driven.
 

@@ -1191,7 +1191,9 @@ intentional repetitions, consecutive identical finals, empty results, restart
 checkpoints and turn resets. `tests/vitest/speech-input.test.ts` drives the real
 speech hook with deterministic native events: only the initiating owner receives
 results, an interim survives the on-device to network fallback, stop drains final
-results, and unmount cancels the active owner's recognition.
+results, and unmount cancels the active owner's recognition. Competing starts
+are rejected both while listening and during a pending network retry; ownership
+can move after the prior session ends without leaving its composer locked.
 
 `tests/vitest/provider-runtime.test.ts` exercises conversation restarts with and
 without finals, multiple multilingual sessions, consecutive segments, speech onset

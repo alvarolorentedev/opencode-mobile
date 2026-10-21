@@ -4,7 +4,7 @@ import type { ExpoSpeechRecognitionOptions } from 'expo-speech-recognition';
 import { hookRuntime, loadTs } from '../helpers/runtime.mjs';
 import { createTranscriptAccumulator } from '@/lib/voice/transcript-accumulate';
 
-it('isolates native owners and checkpoints interim speech through the network fallback', async () => {
+it('isolates recognition owners through competing starts, cancellation and network fallback', async () => {
   const runtime = hookRuntime();
   type Listener = (payload: unknown) => void;
   const listeners = new Map<string, Set<Listener>>();
@@ -48,12 +48,19 @@ it('isolates native owners and checkpoints interim speech through the network fa
   await runtime.value[0].start(); await runtime.settle();
   assert.equal(runtime.value[0].isListening, true, 'synchronous start belongs to its initiating hook');
   assert.equal(runtime.value[1].isListening, false);
+  assert.equal(await runtime.value[1].start(), false, 'a competing start cannot strand the listening owner');
+  await runtime.settle();
+  assert.equal(runtime.value[0].isListening, true);
+  assert.equal(runtime.value[1].isListening, false);
+  assert.equal(starts.length, 1);
   emit('speechstart');
   emit('result', { results: [{ transcript: 'Привет' }], isFinal: false });
   emit('error', { error: 'service-not-allowed' });
   emit('end'); await runtime.settle();
   assert.equal(runtime.countTimers(250), 1);
-  assert.equal(runtime.value[1].error, undefined);
+  assert.match(runtime.value[1].error, /Stop the current voice input/);
+  assert.equal(await runtime.value[1].start(), false, 'ownership remains reserved during the network retry delay');
+  assert.equal(starts.length, 1);
   runtime.fire(250); await runtime.settle();
   assert.equal(starts.length, 2);
   assert.equal(starts[1].requiresOnDeviceRecognition, false);
@@ -72,6 +79,7 @@ it('isolates native owners and checkpoints interim speech through the network fa
   await runtime.value[1].start(); await runtime.settle();
   emit('result', { results: [{ transcript: '你好' }], isFinal: true });
   assert.deepEqual(results[1], ['你好']);
+  assert.equal(runtime.value[0].isListening, false, 'the previous owner ended before ownership moved');
   assert.equal(speechStarts, 1);
   runtime.value[1].abort();
   emit('result', { results: [{ transcript: 'late aborted result' }], isFinal: true });
@@ -89,6 +97,17 @@ it('isolates native owners and checkpoints interim speech through the network fa
   grantPermission({ granted: true });
   assert.equal(await canceledStart, false, 'cancellation while permission is pending cannot restart recognition');
   assert.equal(starts.length, 3);
+  native.requestPermissionsAsync = async () => ({ granted: true });
+  await runtime.value[1].start(); await runtime.settle();
+  emit('error', { error: 'service-not-allowed' });
+  emit('end'); await runtime.settle();
+  native.requestPermissionsAsync = async () => { throw new Error('permission request failed'); };
+  runtime.fire(250); await runtime.settle();
+  assert.equal(runtime.value[1].isStarting, false);
+  assert.equal(runtime.value[1].isListening, false);
+  native.requestPermissionsAsync = async () => ({ granted: true });
+  assert.equal(await runtime.value[0].start(), true, 'a failed retry releases ownership for the next surface');
+  await runtime.settle();
   runtime.unmount();
   assert.equal(aborts, 2, 'only the active owner aborts on unmount');
   assert.equal(runtime.countTimers(250), 0);
