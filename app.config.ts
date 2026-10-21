@@ -1,4 +1,4 @@
-import { withAndroidManifest, withAppBuildGradle, withDangerousMod, withGradleProperties, withMainActivity } from '@expo/config-plugins';
+import { withAndroidManifest, withAppBuildGradle, withDangerousMod, withEntitlementsPlist, withGradleProperties, withMainActivity } from '@expo/config-plugins';
 import { mergeContents } from '@expo/config-plugins/build/utils/generateCode';
 import type { ExpoConfig } from 'expo/config';
 
@@ -12,6 +12,16 @@ const isDevelopmentVariant = appVariant === 'development';
 const isFossVariant = appVariant === 'foss' || env('EXPO_PUBLIC_FOSS') === '1';
 const isE2EMode = env('EXPO_PUBLIC_E2E_MODE') === '1';
 const e2eServerUrl = env('EXPO_PUBLIC_E2E_SERVER_URL');
+// Free Apple "Personal Team" accounts cannot provision the Push Notifications
+// capability, so `expo-notifications`'s aps-environment entitlement blocks
+// on-device builds entirely for them. Strip it locally with this flag; CI and
+// paid-team builds must leave it unset so push notifications keep working.
+const disablePushEntitlement = env('EXPO_IOS_DISABLE_PUSH_ENTITLEMENT') === '1';
+// Apple bundle identifiers are unique across every developer account, not just
+// per team. The published "app.getopencode.mobile" (and its ".dev" variant)
+// are already registered to the paid team, so a free "Personal Team" account
+// can never register them. Override with a bundle id nobody else has claimed.
+const iosBundleIdentifierOverride = env('EXPO_IOS_BUNDLE_ID');
 const defaultAndroidPackage = isFossVariant ? 'app.getopencode.fdroid' : 'app.getopencode';
 const releaseAndroidPackage = env('EXPO_ANDROID_PACKAGE') ?? defaultAndroidPackage;
 const developmentAndroidPackage = env('EXPO_ANDROID_PACKAGE_DEV') ?? `${releaseAndroidPackage}.dev`;
@@ -172,6 +182,12 @@ const withAndroidAppConfig = (config: ExpoConfig) => {
   });
 };
 
+const withoutPushEntitlement = (config: ExpoConfig) =>
+  withEntitlementsPlist(config, (config) => {
+    delete config.modResults['aps-environment'];
+    return config;
+  });
+
 const config: ExpoConfig = {
   name: isDevelopmentVariant ? 'OpenCode Mobile Dev' : 'OpenCode Mobile',
   slug: 'opencode-mobile',
@@ -195,7 +211,7 @@ const config: ExpoConfig = {
     favicon: './assets/images/favicon.png',
   },
   ios: {
-    bundleIdentifier: isDevelopmentVariant ? 'app.getopencode.mobile.dev' : 'app.getopencode.mobile',
+    bundleIdentifier: iosBundleIdentifierOverride ?? (isDevelopmentVariant ? 'app.getopencode.mobile.dev' : 'app.getopencode.mobile'),
     buildNumber: '85',
     infoPlist: {
       ITSAppUsesNonExemptEncryption: false,
@@ -208,6 +224,10 @@ const config: ExpoConfig = {
   plugins: [
     'expo-router',
     'expo-font',
+    // Config-plugin mods compose in reverse of registration order (last
+    // registered runs first), so this must be registered before
+    // expo-notifications to run after it and strip the entitlement it sets.
+    ...(disablePushEntitlement ? [withoutPushEntitlement as unknown as string] : []),
     'expo-notifications',
     'expo-background-task',
     'expo-web-browser',
