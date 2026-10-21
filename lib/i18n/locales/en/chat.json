@@ -134,6 +134,11 @@
     "sendTask": "Send task",
     "stopTask": "Stop task"
   },
+  "newChat": {
+    "title": "New chat",
+    "hint": "Choose where this chat starts.",
+    "create": "Start chat"
+  },
   "header": {
     "pricingUnavailable": "Pricing unavailable",
     "estimatedCost": "Estimated API cost {{cost}}",

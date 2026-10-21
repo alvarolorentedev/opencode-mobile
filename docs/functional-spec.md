@@ -61,7 +61,8 @@ A stale deep-link target that does not match any session returns a not-found err
 
 Manual behavior:
 
-- user can create a new session from the Chat header
+- user opens `New chat` from the Chat header or the Chats overlay; the sheet mirrors `New terminal`, preselects the current server/project and lets the user choose another before confirming. The server selector is hidden with one configured connection.
+- creating a chat switches chat focus to the selected server/project and opens the new session there
 - user can open the Chats overlay from the Chat title to search, switch, favorite, archive, and manage sessions; its header opens a second overlay to change project
 
 ### 3b. Open a Session via Deep Link

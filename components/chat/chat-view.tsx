@@ -1,4 +1,5 @@
 import * as Clipboard from 'expo-clipboard';
+import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Alert, Keyboard, KeyboardAvoidingView, Linking, Platform, Pressable, View } from 'react-native';
 import { Button, Card, FAB, Snackbar, Text } from 'react-native-paper';
@@ -10,6 +11,7 @@ import { PendingPrompts } from '@/components/chat/pending-prompts';
 import { RevertNotice } from '@/components/chat/revert-notice';
 import { ChatHeader } from '@/components/chat/chat-header';
 import { ChatLibrary } from '@/components/chat/chat-library';
+import { NewChatSheet } from '@/components/chat/new-chat-sheet';
 import { styles } from '@/components/chat/chat-view-styles';
 import { ChangesOverlay } from '@/components/chat/content/changes-overlay';
 import { PendingInteractions } from '@/components/chat/content/pending-interactions';
@@ -26,8 +28,9 @@ export function ChatView() {
   const colorScheme = useColorScheme() ?? 'light';
   const palette = Colors[colorScheme];
   const insets = useSafeAreaInsets();
-  const { presentation } = useWorkspaces();
+  const { createChat, focus, presentation } = useWorkspaces();
   const { header, content, composer, overlay, actions } = useChatViewController();
+  const [newChatVisible, setNewChatVisible] = useState(false);
 
   const progressAction = !content.awaitingUserInput && content.currentTodos.length > 0 ? (
     <FAB
@@ -53,9 +56,8 @@ export function ChatView() {
           contextLimit={header.contextModel?.contextLimit}
           contextTokens={header.contextTokens}
           insetsTop={insets.top}
-          isCreatingSession={composer.isCreatingSession}
           onConfirmStopConversation={actions.handleConfirmStopConversation}
-          onCreateSession={() => void actions.handleNewSession()}
+          onCreateSession={() => setNewChatVisible(true)}
           onOpenSessionMenu={() => actions.setSessionMenuVisible(true)}
           palette={palette}
           selectedSession={header.selectedSession}
@@ -237,7 +239,6 @@ export function ChatView() {
           currentSessionId={content.currentSessionId}
           commands={composer.commands}
           draft={composer.draft}
-          isCreatingSession={composer.isCreatingSession}
           isSpeechInputAvailable={composer.isSpeechInputAvailable}
           isSpeechInputListening={composer.isSpeechInputListening}
           isStoppingSession={composer.isStoppingSession}
@@ -286,7 +287,21 @@ export function ChatView() {
         />
       </KeyboardAvoidingView>
 
-      <ChatLibrary visible={overlay.sessionMenuVisible} onClose={() => actions.setSessionMenuVisible(false)} />
+      <ChatLibrary
+        visible={overlay.sessionMenuVisible}
+        onClose={() => actions.setSessionMenuVisible(false)}
+        onNewChat={() => {
+          actions.setSessionMenuVisible(false);
+          setNewChatVisible(true);
+        }}
+      />
+      {newChatVisible ? (
+        <NewChatSheet
+          target={focus ? { ...focus, projectPath: header.activeProject?.path ?? focus.projectPath } : undefined}
+          onClose={() => setNewChatVisible(false)}
+          onCreate={createChat}
+        />
+      ) : null}
 
       <Snackbar visible={Boolean(content.copiedMessageId)} onDismiss={() => actions.setCopiedMessageId(undefined)} duration={1800}>
         {content.copiedMessageId === '__send-error__' ? t('chat:view.errorDetailsCopied') : t('chat:view.messageCopied')}

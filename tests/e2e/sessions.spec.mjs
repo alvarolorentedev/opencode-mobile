@@ -107,6 +107,8 @@ test('favorites open sessions in the current project', async ({ page, request })
   await page.getByTestId('chat-library').getByRole('button', { name: 'Close' }).click();
   await expect(page.getByTestId('chat-library')).not.toBeVisible();
   await page.locator('#root').getByRole('button', { name: 'New chat', exact: true }).click();
+  await expect(page.getByTestId('new-chat-sheet')).toBeVisible();
+  await page.getByTestId('new-chat-confirm').click();
   await expect(page.getByText('Start a new task')).toBeVisible({ timeout: 15_000 });
   await openChatLibrary(page);
   await page.getByTestId('chat-library').getByRole('button', { name: 'Open Favorite current project session' }).first().click();

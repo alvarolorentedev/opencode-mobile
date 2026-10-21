@@ -71,6 +71,33 @@ test('V2 mixes colliding chats, filters without navigation, and retains each dra
   await expect(library.getByRole('button', { name: /^Open Chat on Build server/ })).toBeVisible();
 });
 
+test('V2 creates a chat on the selected server and project from the New chat sheet', async ({ page, request }) => {
+  const sessions = async (index) => (await (await request.get(`${servers[index].serverUrl}/api/session?directory=${encodeURIComponent(directory)}`)).json()).data;
+  const beforeA = await sessions(0);
+  const beforeB = await sessions(1);
+  await page.locator('#root').getByRole('button', { name: 'New chat', exact: true }).click();
+  await expect(page.getByTestId('new-chat-sheet')).toBeVisible();
+  await choose(page, 'new-chat-server-picker', 'Build server');
+  await expect(page.getByTestId('new-chat-confirm')).toBeDisabled();
+  await choose(page, 'new-chat-project-picker', /^demo-project/);
+  await page.getByTestId('new-chat-confirm').click();
+  await expect(page.getByTestId('new-chat-sheet')).not.toBeVisible();
+  await expect(page.getByText('Start a new task')).toBeVisible({ timeout: 15_000 });
+  await sendPrompt(page, 'Created on Build server from New chat');
+  await expect(page.getByText(/Finished: Created on Build server from New chat/).first()).toBeVisible({ timeout: 20_000 });
+  await expect.poll(async () => (await sessions(1)).length).toBe(beforeB.length + 1);
+  expect((await sessions(0)).length).toBe(beforeA.length);
+  const created = (await sessions(1)).find((session) => !beforeB.some((existing) => existing.id === session.id));
+  expect(created).toBeTruthy();
+  const history = await (await request.get(`${servers[1].serverUrl}/api/session/${created.id}/message`)).json();
+  expect(history.data.some((entry) => (entry.content ?? []).some((part) => part.type === 'text' && part.text.startsWith('Finished: Created on Build server from New chat')))).toBe(true);
+  await openChatLibrary(page);
+  await page.getByTestId('chat-library').getByRole('button', { name: 'New chat', exact: true }).click();
+  await expect(page.getByTestId('new-chat-sheet')).toBeVisible();
+  await expect(page.getByTestId('chat-library')).not.toBeVisible();
+  await page.getByTestId('new-chat-sheet').getByRole('button', { name: 'Cancel', exact: true }).click();
+});
+
 test('V2 creates a PTY on B while chat stays on A and retains its renderer', async ({ page, request }) => {
   await goToTab(page, 'Terminal');
   await page.getByTestId('terminal-create-button').click();
@@ -181,6 +208,11 @@ test('V2 terminal picker is one list with server chips and colliding PTY IDs sta
 });
 
 test('V2 single-server mode hides redundant context and restores it when a second server is added', async ({ page, request }) => {
+  await page.locator('#root').getByRole('button', { name: 'New chat', exact: true }).click();
+  await expect(page.getByTestId('new-chat-sheet')).toBeVisible();
+  await expect(page.getByTestId('new-chat-server-picker')).toHaveCount(0);
+  await expect(page.getByTestId('new-chat-project-picker')).toBeVisible();
+  await page.getByTestId('new-chat-sheet').getByRole('button', { name: 'Cancel', exact: true }).click();
   await openChatLibrary(page);
   const library = page.getByTestId('chat-library');
   await expect(library.getByTestId('chat-server-filter')).toHaveCount(0);

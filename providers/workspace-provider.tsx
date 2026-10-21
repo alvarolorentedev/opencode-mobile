@@ -86,6 +86,14 @@ export function WorkspaceProvider({ children }: PropsWithChildren) {
       return { ok: true };
     } catch (reason) { return { ok: false, error: reason instanceof Error ? reason.message : 'Could not open this chat.' }; }
   }, [activate, connections, focus?.connectionId, retry, switchConnection]);
+  const createChat = useCallback(async (target: WorkspaceTarget) => {
+    if (!target.projectPath) throw new Error('Choose a project before creating a chat.');
+    const runtime = await connectedWorkspace(target);
+    const session = await runtime.values.currentSessionValue.createSession();
+    await runtime.values.currentSessionValue.openSession(session.id);
+    await activate(target);
+    return session;
+  }, [activate, connectedWorkspace]);
   const refreshTargets = useCallback(async () => {
     await Promise.all(Object.values(snapshots).map((runtime) => runtime.values.currentSessionValue.activeSessions.refresh()));
   }, [snapshots]);
@@ -144,9 +152,9 @@ export function WorkspaceProvider({ children }: PropsWithChildren) {
       chatValue: { ...values.chatValue, sharedInput },
     };
   }, [activate, retry, connectionProfiles, connectSetup, current, openSession, resolveKey, servicesValue, sharedInput, snapshots, switchConnection, shell.projectPathsByConnection, isHydrated, shell.onboardingVersion, shell.onboardingActive]);
-  const registry = useMemo<WorkspaceRegistry>(() => ({ ...manager, removeConnection,
+  const registry = useMemo<WorkspaceRegistry>(() => ({ ...manager, createChat, removeConnection,
     terminalTarget: connections.some((entry) => entry.id === terminalTarget?.connectionId) ? terminalTarget : undefined, selectTerminalTarget,
-    inspectionTarget: connections.some((entry) => entry.id === inspectionTarget?.connectionId) ? inspectionTarget : undefined, inspect, valuesFor, presentation }), [manager, removeConnection, connections, terminalTarget, selectTerminalTarget, inspectionTarget, inspect, valuesFor, presentation]);
+    inspectionTarget: connections.some((entry) => entry.id === inspectionTarget?.connectionId) ? inspectionTarget : undefined, inspect, valuesFor, presentation }), [manager, createChat, removeConnection, connections, terminalTarget, selectTerminalTarget, inspectionTarget, inspect, valuesFor, presentation]);
   const updates = useAppUpdates({ initialized: isHydrated && shell.onboardingVersion >= CURRENT_ONBOARDING_VERSION && !shell.onboardingActive,
     blocked: Object.values(snapshots).some((runtime) => runtime.busy) || connectSetup.busy || hasWorkspaceDrafts(presentation) });
   useEffect(() => {

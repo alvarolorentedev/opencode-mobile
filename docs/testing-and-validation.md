@@ -1171,7 +1171,7 @@ persisted schema or onboarding completion version changed.
 
 ## Multi-server V2 regression coverage
 
-`tests/e2e/multi-server.spec.mjs` starts two independent V2 fakes with intentionally colliding chat IDs and project paths. It checks the mixed list and filters, draft isolation and connected-set restoration, PTY creation on B while chat stays on A, renderer continuity through disconnect/reconnect, Settings/auto-approve isolation, and replies to colliding approval IDs on the correct server. Terminal tests now confirm the explicit creation sheet.
+`tests/e2e/multi-server.spec.mjs` starts two independent V2 fakes with intentionally colliding chat IDs and project paths. It checks the mixed list and filters, draft isolation and connected-set restoration, chat and PTY creation on a chosen server, renderer continuity through disconnect/reconnect, Settings/auto-approve isolation, and replies to colliding approval IDs on the correct server. New chat and terminal tests confirm the explicit creation sheets, including the disabled confirm state until a project is selected.
 
 `tests/vitest/workspaces.test.ts` covers composite catalog ordering, shared SSE teardown, secret-free registry validation and hidden-draft update blocking and removal cleanup. The native notification boundary also combines server counts and keeps other servers visible during disconnect. Existing connection recovery, prompt/draft races, sharing, transcript and architecture tests remain required. Share coverage includes a confirmed cross-server destination while focus changes.
 
@@ -1181,7 +1181,7 @@ For a seeded human-review environment, run `npm run preview:workspaces`. It buil
 
 The preview includes two projects on each server and a subagent fork on Build server. Send a prompt on MacBook Pro to see a normal completion; send one on Build server to exercise a permission request and its server-scoped Approvals view. Switch Hide subagents off to expose the fork. Create a terminal on Build server/secondary-project while keeping chat on MacBook Pro/demo-project.
 
-Terminal selection uses one continuous list with a server chip on each row, without empty workspace headings. With one configured workspace connection, server filters, selectors, chips and redundant scope labels are hidden across Chat, Projects, Terminal and Settings; both Settings section headings, project context and connection management remain available. Disconnected connections still count, so cached rows keep their ownership visible. Multi-server controls return automatically when a second connection is added.
+Terminal selection uses one continuous list with a server chip on each row, without empty workspace headings. With one configured workspace connection, server filters, selectors, chips and redundant scope labels are hidden across Chat, Projects, Terminal and Settings, including the New chat and New terminal server pickers; both Settings section headings, project context and connection management remain available. Disconnected connections still count, so cached rows keep their ownership visible. Multi-server controls return automatically when a second connection is added.
 
 ## Dictation accumulation (#77)
 

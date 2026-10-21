@@ -25,7 +25,6 @@ type ChatHeaderProps = {
     phase: ConversationPhase;
   };
   insetsTop: number;
-  isCreatingSession: boolean;
   activeProjectLabel?: string;
   onConfirmStopConversation: () => void;
   onCreateSession: () => void;
@@ -46,7 +45,6 @@ export function ChatHeader({
   contextLimit,
   contextTokens,
   insetsTop,
-  isCreatingSession,
   onConfirmStopConversation,
   onCreateSession,
   onOpenSessionMenu,
@@ -94,7 +92,7 @@ export function ChatHeader({
           </Pressable>
         </View>
         <View style={styles.headerActions}>
-          <Appbar.Action icon="plus" accessibilityLabel={t('chat:header.newChat')} onPress={onCreateSession} disabled={isCreatingSession || connectionStatus !== 'connected'} />
+          <Appbar.Action icon="plus" accessibilityLabel={t('chat:header.newChat')} onPress={onCreateSession} />
           <Appbar.Action icon={usageIcon} onPress={() => setUsageVisible(true)} accessibilityLabel={t('chat:header.showUsage')} />
         </View>
       </Appbar.Header>

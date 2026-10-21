@@ -16,13 +16,9 @@ type ChatViewActionsInput = {
   currentSessionId?: string;
   speakingMessageId?: string;
   abortSession: (sessionId: string) => Promise<void>;
-  createSession: () => Promise<{ id: string }>;
-  openSession: (sessionId: string) => Promise<void>;
   toggleConversationMode: () => Promise<void>;
   setAttachments: Dispatch<SetStateAction<Attachment[]>>;
-  setChangesVisible: Dispatch<SetStateAction<boolean>>;
   setSendFeedback: Dispatch<SetStateAction<string | undefined>>;
-  setIsCreatingSession: Dispatch<SetStateAction<boolean>>;
   setIsStoppingSession: Dispatch<SetStateAction<boolean>>;
   setSpeakingMessageId: Dispatch<SetStateAction<string | undefined>>;
   setVoiceFeedback: Dispatch<SetStateAction<string | undefined>>;
@@ -35,13 +31,9 @@ export function useChatViewActions({
   currentSessionId,
   speakingMessageId,
   abortSession,
-  createSession,
-  openSession,
   toggleConversationMode,
   setAttachments,
-  setChangesVisible,
   setSendFeedback,
-  setIsCreatingSession,
   setIsStoppingSession,
   setSpeakingMessageId,
   setVoiceFeedback,
@@ -115,19 +107,6 @@ export function useChatViewActions({
     } finally { release(); }
   }
 
-  async function handleNewSession() {
-    setIsCreatingSession(true);
-    try {
-      const session = await createSession();
-      await openSession(session.id);
-      setChangesVisible(false);
-    } catch (error) {
-      setSendFeedback(error instanceof Error ? error.message : t('chat:view.couldNotCreateSession'));
-    } finally {
-      setIsCreatingSession(false);
-    }
-  }
-
   async function handleAbort() {
     if (!currentSessionId) {
       return;
@@ -159,7 +138,6 @@ export function useChatViewActions({
   return {
     handleSpeakEntry,
     handleAttach,
-    handleNewSession,
     handleAbort,
     handleConfirmStopConversation,
   };

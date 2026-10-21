@@ -14,18 +14,17 @@ import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { formatRelativeTime } from '@/lib/opencode/format';
 import { confirmAction } from '@/lib/confirm-action';
-import { useCurrentSession, usePreferences, useProjects, useConnection } from '@/providers/opencode-contexts';
+import { usePreferences, useProjects, useConnection } from '@/providers/opencode-contexts';
 import { useWorkspaces } from '@/providers/workspace-context';
 import { useWorkspaceLibrary } from '@/providers/use-workspace-library';
 import { sessionKey, workspaceKey } from '@/providers/workspace-types';
 import type { LibrarySession } from '@/providers/workspace-library';
 
-export function ChatLibrary({ visible, onClose }: { visible: boolean; onClose: () => void }) {
+export function ChatLibrary({ visible, onClose, onNewChat }: { visible: boolean; onClose: () => void; onNewChat: () => void }) {
   const { t } = useTranslation();
   const palette = Colors[useColorScheme() ?? 'light'];
   const { activeProject } = useProjects();
-  const { createSession, openSession } = useCurrentSession();
-  const { connection, serverCapabilities } = useConnection();
+  const { serverCapabilities } = useConnection();
   const { chatPreferences, updateChatPreferences } = usePreferences();
   const registry = useWorkspaces();
   const multipleServers = registry.connections.length > 1;
@@ -104,7 +103,7 @@ export function ChatLibrary({ visible, onClose }: { visible: boolean; onClose: (
       </SwipeRow>
     </View>;
   }
-  if (serverCapabilities.contract === 'v1') return <LegacyChatLibrary visible={visible} onClose={onClose} />;
+  if (serverCapabilities.contract === 'v1') return <LegacyChatLibrary visible={visible} onClose={onClose} onNewChat={onNewChat} />;
   return <>
     <OverlaySheet visible={visible && !projectVisible} title={t('chat:library.title')} testID="chat-library" scrollable={false} onClose={close}
       headerAction={<ProjectPickerButton onPress={() => setProjectVisible(true)} />}>
@@ -119,7 +118,7 @@ export function ChatLibrary({ visible, onClose }: { visible: boolean; onClose: (
       {renaming ? <View style={styles.filters}><TextInput testID="chat-library-title-input" style={{ flex: 1 }} value={title} onChangeText={setTitle} /><Button onPress={() => void run(sessionKey(renaming), () => library.manage(renaming, 'rename', title), () => setRenaming(undefined))}>{t('common:actions.save')}</Button></View> : null}
       <FlashList data={rows} keyExtractor={sessionKey} style={{ flex: 1 }} keyboardShouldPersistTaps="handled" renderItem={({ item }) => renderRow(item)}
         ListEmptyComponent={<Text style={{ color: palette.muted }}>{t(query.trim() ? 'chat:library.noMatchingChats' : 'chat:library.noChats')}</Text>} />
-      <Button icon="plus" disabled={!activeProject || connection.status !== 'connected' || Boolean(busy)} onPress={() => void run('new', async () => { const session = await createSession(); await openSession(session.id); }, close)}>{t('chat:library.newChat')}</Button>
+      <Button icon="plus" disabled={Boolean(busy)} onPress={onNewChat}>{t('chat:library.newChat')}</Button>
       <Text style={{ color: palette.muted, textAlign: 'center' }}>{multipleServers ? `${focusedServer} / ` : ''}{activeProject?.label}</Text>
     </OverlaySheet>
     <ProjectPicker visible={visible && projectVisible} testID="chat-project-picker" activePath={activeProject?.path} onClose={() => setProjectVisible(false)} onSelected={close} />

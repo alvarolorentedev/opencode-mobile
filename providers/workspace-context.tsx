@@ -1,11 +1,13 @@
 import { createContext, useContext, useEffect, useMemo, useState, type PropsWithChildren } from 'react';
 import { ActivityIndicator, View } from 'react-native';
 import { useUpdates } from '@/providers/opencode-contexts';
+import type { Session } from '@/lib/opencode/types';
 import { OpencodeProviderTree } from '@/providers/opencode-provider-tree';
 import { useWorkspaceConnections } from '@/providers/use-workspace-connections';
 import { workspaceKey, type WorkspaceTarget, type WorkspaceValues } from '@/providers/workspace-types';
 
 export type WorkspaceRegistry = ReturnType<typeof useWorkspaceConnections> & {
+  createChat: (target: WorkspaceTarget) => Promise<Session>;
   terminalTarget?: WorkspaceTarget;
   selectTerminalTarget: (target: WorkspaceTarget) => Promise<void>;
   inspectionTarget?: WorkspaceTarget;

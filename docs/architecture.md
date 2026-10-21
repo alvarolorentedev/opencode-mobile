@@ -378,7 +378,9 @@ independent of onboarding completion. See [Cloud Link pilot](connect.md).
 - `components/chat/chat-composer.tsx`
   Prompt input, attachments, and controls.
 - `components/chat/chat-header.tsx`
-  Session picker and conversation overlay mount point.
+  Session picker, New chat entry point, and conversation overlay mount point.
+- `components/chat/new-chat-sheet.tsx`
+  Server/project selection for creating a chat in a chosen workspace, mirroring the terminal creation sheet.
 - `components/chat/chat-cards.tsx`
   Barrel over `components/chat/cards/` (message, diff, session-diff, permission, question-flow cards).
 - `components/chat/chat-markdown.tsx`

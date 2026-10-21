@@ -134,6 +134,11 @@
     "sendTask": "タスクを送信",
     "stopTask": "タスクを停止"
   },
+  "newChat": {
+    "title": "新しいチャット",
+    "hint": "このチャットを開始する場所を選択してください。",
+    "create": "チャットを開始"
+  },
   "header": {
     "pricingUnavailable": "料金を取得できません",
     "estimatedCost": "推定 API コスト {{cost}}",

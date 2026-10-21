@@ -134,6 +134,11 @@
     "sendTask": "发送任务",
     "stopTask": "停止任务"
   },
+  "newChat": {
+    "title": "新建聊天",
+    "hint": "选择此聊天的起始位置。",
+    "create": "开始聊天"
+  },
   "header": {
     "pricingUnavailable": "价格不可用",
     "estimatedCost": "预计 API 费用 {{cost}}",
