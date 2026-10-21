@@ -10,6 +10,10 @@ it('isolates recognition owners through competing starts, cancellation and netwo
   const listeners = new Map<string, Set<Listener>>();
   const starts: ExpoSpeechRecognitionOptions[] = [];
   const appStateListeners = new Set<(state: string) => void>();
+  const appState = { currentState: 'active', addEventListener: (_event: string, listener: (state: string) => void) => {
+    appStateListeners.add(listener);
+    return { remove: () => appStateListeners.delete(listener) };
+  } };
   let stops = 0, aborts = 0, identity = 0, speechStarts = 0;
   const transcripts = [createTranscriptAccumulator(), createTranscriptAccumulator()];
   const results: string[][] = [[], []];
@@ -33,10 +37,7 @@ it('isolates recognition owners through competing starts, cancellation and netwo
     react: { ...runtime.react, useId: () => runtime.react.useRef(`owner-${identity++}`).current },
     'react-native': {
       Platform: { OS: 'android' },
-      AppState: { addEventListener: (_event: string, listener: (state: string) => void) => {
-        appStateListeners.add(listener);
-        return { remove: () => appStateListeners.delete(listener) };
-      } },
+      AppState: appState,
     },
     'expo-speech-recognition': {
       ExpoSpeechRecognitionModule: native,
@@ -134,8 +135,11 @@ it('isolates recognition owners through competing starts, cancellation and netwo
   native.requestPermissionsAsync = async () => ({ granted: true });
   assert.equal(await runtime.value[0].start(), true, 'stopping permission-only retry releases ownership without another end');
   await runtime.settle();
+  appState.currentState = 'background';
   for (const listener of appStateListeners) listener('background');
   runtime.value[0].abort();
+  assert.equal(await runtime.value[0].start(), false, 'background recognition cannot restart');
+  appState.currentState = 'active';
   const startsBeforeDrain = starts.length;
   const resultsBeforeDrain = results[0].length;
   const restart = runtime.value[0].start();
@@ -152,4 +156,37 @@ it('isolates recognition owners through competing starts, cancellation and netwo
   assert.equal(listeners.get('end')!.size, 0, 'terminal cleanup survives owner unmount');
   assert.equal(appStateListeners.size, 0);
   assert.equal(runtime.countTimers(250), 0);
+});
+
+
+it('allows an iOS permission alert to become inactive and still start after permission is granted', async () => {
+  const runtime = hookRuntime();
+  let grant!: (value: { granted: boolean }) => void;
+  const permission = new Promise<{ granted: boolean }>((resolve) => { grant = resolve; });
+  let onAppState!: (state: string) => void, onEnd!: () => void, starts = 0;
+  const appState = {
+    currentState: 'active',
+    addEventListener: (_event: string, callback: (state: string) => void) => { onAppState = callback; return { remove() {} }; },
+  };
+  const speech = await loadTs('lib/voice/use-speech-input.ts', {
+    react: { ...runtime.react, useId: () => 'permission-owner' },
+    'react-native': { Platform: { OS: 'ios' }, AppState: appState },
+    'expo-speech-recognition': {
+      useSpeechRecognitionEvent: () => {},
+      ExpoSpeechRecognitionModule: {
+        supportsOnDeviceRecognition: () => true, isRecognitionAvailable: () => true,
+        requestPermissionsAsync: () => permission,
+        addListener: (_event: string, callback: () => void) => { onEnd = callback; return { remove() {} }; },
+        start: () => { starts++; }, abort: () => {},
+      },
+    },
+    '@/lib/voice/speech-errors': await loadTs('lib/voice/speech-errors.ts'),
+  }, runtime.globals);
+  runtime.mount(speech.useSpeechInput, { preferOnDevice: true, onResult: () => {} });
+  const pendingStart = runtime.value.start();
+  appState.currentState = 'inactive'; onAppState('inactive');
+  grant({ granted: true });
+  assert.equal(await pendingStart, true);
+  assert.equal(starts, 1);
+  runtime.unmount(); onEnd();
 });

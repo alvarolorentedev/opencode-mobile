@@ -19,6 +19,7 @@ import {
 // than the conversation-mode listening restart delay, so the retry claims the
 // session before the state machine schedules its own restart.
 const NETWORK_FALLBACK_DELAY_MS = 250;
+const isAppBackgrounded = () => AppState.currentState === 'background';
 
 // A dictation/observation session on iOS keeps the app in `playAndRecord`.
 // Pinning the category and options makes the transition deterministic and keeps
@@ -169,6 +170,7 @@ export function useSpeechInput({
       let rollbackNativeStart: (() => void) | undefined;
 
       try {
+        if (isAppBackgrounded()) return false;
         if (nativeSession?.owner === ownerId) {
           if (!nativeSession.stopping) return true;
           await nativeSession.ended;
@@ -192,7 +194,7 @@ export function useSpeechInput({
         }
 
         const permissions = await ExpoSpeechRecognitionModule.requestPermissionsAsync();
-        if (request !== startRequestRef.current) return false;
+        if (request !== startRequestRef.current || isAppBackgrounded()) return false;
         if (recognitionReserved && activeOwner !== ownerId) {
           setError('Stop the current voice input before starting another recording.');
           return false;
@@ -386,7 +388,7 @@ export function useSpeechInput({
   useEffect(() => {
     mountedRef.current = true;
     const subscription = AppState.addEventListener('change', (state) => {
-      if (state !== 'active') abort();
+      if (state === 'background') abort();
     });
     return () => {
       subscription.remove();

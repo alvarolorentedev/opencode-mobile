@@ -40,15 +40,16 @@ export function useConversationListeningEffects({
 }) {
   useEffect(() => {
     const subscription = AppState.addEventListener('change', (state) => {
-      if (state !== 'active') {
-        abortSpeechInput();
+      if (state === 'background') {
+        if (conversationPhaseRef.current === 'off') abortSpeechInput();
+        else void stopConversationMode();
       }
     });
     return () => {
       subscription.remove();
       abortSpeechInput();
     };
-  }, [abortSpeechInput]);
+  }, [abortSpeechInput, conversationPhaseRef, stopConversationMode]);
 
   useEffect(() => {
     if (conversationPhase !== 'listening' || isConversationListening || isConversationListeningStarting) {

@@ -249,6 +249,9 @@ network retry) ends, so ownership cannot strand the previous listening surface.
 Abort retains a live session until native `end` drains its delayed events.
 Permission-only starts and retry gaps cancel immediately. A per-session terminal
 listener survives hook unmount to release ownership even after its UI disappears.
+Permission-dialog `inactive` transitions do not cancel a start. Actual
+backgrounding stops conversation mode, clears its unsent turn/timers and blocks
+recognition starts; returning foreground requires explicitly starting a new turn.
 
 This means conversation mode is partly state-driven and partly timer/ref-driven.
 

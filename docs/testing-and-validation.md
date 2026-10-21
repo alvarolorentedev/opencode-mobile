@@ -1200,6 +1200,9 @@ unmount. A deferred retry permission request is stopped and then resolved to
 prove it neither starts recognition nor retains the reservation. Each speech
 hook aborts its own recognition on backgrounding; inactive hooks cannot stop
 the active owner, and repeated cleanup does not queue duplicate native ends.
+An iOS pending permission request survives an `inactive` alert and granted
+permission. Provider coverage backgrounds both interim-only and finalized unsent
+turns, delivers native end, and verifies no restart or delayed submission.
 
 `tests/vitest/provider-runtime.test.ts` exercises conversation restarts with and
 without finals, multiple multilingual sessions, consecutive segments, speech onset

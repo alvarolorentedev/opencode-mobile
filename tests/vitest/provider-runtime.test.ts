@@ -423,7 +423,7 @@ wake(null); await runtime.settle(); runtime.unmount(); assert.equal(runtime.coun
 
 // Conversation state machine runs against stubbed speech/platform boundaries.
 const voiceRuntime = hookRuntime();
-let recognitionOptions, speechCallbacks, sends = 0, aborts = 0;
+let recognitionOptions, speechCallbacks, onConversationAppStateChange, sends = 0, aborts = 0;
 let lastPrompt;
 let listening = false;
 const sendGate = deferred();
@@ -435,7 +435,7 @@ const selectors = await loadTs('providers/opencode-provider-selectors.ts', {
 });
 const conversationImports = {
   react: voiceRuntime.react,
-  'react-native': { AppState: { addEventListener: () => ({ remove() {} }) } },
+  'react-native': { AppState: { addEventListener: (_event, callback) => { onConversationAppStateChange = callback; return { remove() {} }; } } },
   '@/lib/opencode/format': { toTranscriptEntry: (record) => record },
   '@/lib/opencode/transcript': { isTranscriptDisplayMessage: (entry) => Boolean(entry.text) },
   '@/lib/voice/speech-output': { stopSpeaking: async () => {}, speakText: async (options) => { speechCallbacks = options; options.onStart(); return true; } },
@@ -554,6 +554,21 @@ voiceRuntime.fire(2200); await voiceRuntime.settle();
 assert.equal(lastPrompt, 'fresh turn');
 assert.equal(sends, 6);
 await voiceRuntime.value.toggleConversationMode(); await voiceRuntime.settle();
+
+// Permission alerts do not cancel listening, but actual backgrounding cancels
+// both unfinished speech and an armed final timer before native end arrives.
+for (const isFinal of [false, true]) {
+  await voiceRuntime.value.toggleConversationMode(); await voiceRuntime.settle();
+  recognitionOptions.onResult('unsent background instruction', isFinal);
+  onConversationAppStateChange('inactive'); await voiceRuntime.settle();
+  assert.equal(voiceRuntime.value.conversation.phase, 'listening');
+  onConversationAppStateChange('background'); await voiceRuntime.settle();
+  assert.equal(voiceRuntime.value.conversation.phase, 'off');
+  recognitionOptions.onEnd();
+  voiceRuntime.fire(350); voiceRuntime.fire(2200); await voiceRuntime.settle();
+  assert.equal(sends, 6, 'a background-canceled turn cannot restart or submit after end');
+  assert.equal(voiceRuntime.countTimers(2200), 0);
+}
 
 voiceRuntime.update({ pendingQuestionsBySession: { s: [{ id: 'question' }] } });
 await voiceRuntime.value.toggleConversationMode(); await voiceRuntime.settle(); assert.equal(voiceRuntime.value.conversation.phase, 'off');
