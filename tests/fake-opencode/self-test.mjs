@@ -355,9 +355,17 @@ try {
     try { await v2Api.integration.oauth.status(target); } catch { cancelled = true; }
     assert(cancelled, 'Cancelled OAuth attempts must be removed');
   }
+  const addedDirectory = '/workspace/v2-added-project';
+  const addedLocation = await v2Api.location.get({ location: { directory: addedDirectory } });
+  assert(addedLocation.project.canonical === addedDirectory, 'V2 location resolution must report the added directory');
+  assert((await v2Api.project.list()).some((project) => project.canonical === addedDirectory), 'V2 location boots must persist the added project');
+  const nestedLocation = await v2Api.location.get({ location: { directory: '/workspace/demo-project/src' } });
+  assert(nestedLocation.project.canonical === '/workspace/demo-project' && nestedLocation.project.directory === '/workspace/demo-project', 'V2 nested locations must resolve to their owning project');
   const createdWorktree = await v2Api.worktree.create({ projectID: 'project-demo', name: 'v2-smoke' });
   assert((await v2Api.worktree.list({ projectID: 'project-demo' })).some((entry) => entry.directory === createdWorktree.directory), 'V2 worktree inventory missing');
-  assert((await v2Api.location.get({ location: { directory: createdWorktree.directory } })).project.id === 'project-demo', 'Worktrees retain their parent project');
+  const worktreeLocation = await v2Api.location.get({ location: { directory: createdWorktree.directory } });
+  assert(worktreeLocation.project.id === 'project-demo', 'Worktrees retain their parent project');
+  assert(worktreeLocation.project.directory === createdWorktree.directory && worktreeLocation.project.canonical === '/workspace/demo-project', 'V2 worktrees must keep their own directory under the owning project');
   await v2Api.worktree.remove({ projectID: 'project-demo', directory: createdWorktree.directory, force: true });
   await v2request('/api/session', json('POST', { title: 'Other workspace session' }));
   const scopedSessions = await v2Api.session.list({ directory: v2Directory });
@@ -493,6 +501,15 @@ try {
   assert((await fetch(`${v2Origin}/_cloudlink/services/root`, deviceJson('PUT', { target: '127.0.0.1:3000' }))).status === 400, 'api 1 must require a path');
   assert((await v2request('/_cloudlink/services', { headers: deviceHeaders })).services.length === 1, 'Legacy service list must reflect the write');
   await v2request('/__control/connector-api', json('POST', { api: 2 }));
+
+  await v2request('/__control/reset', json('POST', { scenario: 'reasoning-variants' }));
+  const variantModel = (await v2request('/api/model')).data.find((model) => model.id === 'deepseek-v4.1-flash-free');
+  assert(JSON.stringify(variantModel?.variants.map(({ id }) => id)) === JSON.stringify(['low', 'high', 'max']), 'Reasoning variant fixture missing server variants');
+  const variantSession = (await v2request('/api/session', json('POST', { title: 'Variant contract' }))).data;
+  await v2request(`/api/session/${variantSession.id}/model`, json('POST', { model: { id: 'deepseek-v4.1-flash-free', providerID: 'opencode', variant: 'max' } }));
+  const variantState = await v2request('/__control/state');
+  assert(variantState.sessions[0].model.variant === 'max', 'V2 session model switch must retain the selected variant');
+  await v2request('/__control/reset', json('POST', { scenario: 'happy-path' }));
 
   console.log('Fake OpenCode 1.18.3 server self-test passed.');
   console.log('Fake OpenCode 2.0 server self-test passed.');

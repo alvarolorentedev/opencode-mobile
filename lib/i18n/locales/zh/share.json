@@ -1,9 +1,9 @@
 {
   "title": "已分享至 OpenCode",
   "subtitle": "查看内容，选择对话并添加到草稿。点击发送前不会发送任何内容。",
-  "workspace": "工作区",
-  "noWorkspace": "未选择工作区",
-  "chooseWorkspace": "选择",
+  "project": "项目",
+  "noProject": "未选择项目",
+  "chooseProject": "选择",
   "notConnected": "未连接到服务器。发送前请先连接。",
   "link": "链接",
   "attachments": "附件",

@@ -6,7 +6,7 @@ import { Platform } from 'react-native';
 import { parseNotificationRoute } from '@/lib/notification-route';
 
 // Routes taps on locally scheduled completion/attention notifications through
-// the existing session deep-link resolver, so the connection, workspace and
+// the existing session deep-link resolver, so the connection, project and
 // session in the link are validated the same way as an external deep link.
 export function useNotificationRoute() {
   const handled = useRef<string | undefined>(undefined);

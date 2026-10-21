@@ -9,28 +9,85 @@ import type { SessionMessageRecord } from '@/lib/opencode/format';
 import { coalesceRead } from '@/lib/opencode/in-flight';
 import { toProjectView, toSessionView } from '@/lib/opencode/v2-mappers';
 import { toMessageRecord } from '@/lib/opencode/v2/mappers';
-import type { SessionStatus } from '@/lib/opencode/types';
+import type { Project, SessionStatus } from '@/lib/opencode/types';
 import * as v1 from '@/lib/opencode/compat/v1/session';
+import { listWorktrees as listV1Worktrees } from '@/lib/opencode/compat/v1/project';
 
 export function getSessionInbox(client: ScopedOpencodeClient, sessionId: string) {
   return coalesceRead(client, `inbox:${sessionId}`, () => client.promptInbox!.list(sessionId));
 }
-export async function loadWorkspaceCatalog(client: ScopedOpencodeClient) {
-  if (client.compatibility) return v1.loadWorkspaceCatalog(client.compatibility);
+export async function loadProjectCatalog(client: ScopedOpencodeClient) {
+  if (client.compatibility) return v1.loadProjectCatalog(client.compatibility);
   const [location, projects] = await Promise.all([client.api!.location.get(), client.api!.project.list()]);
-  if (!location?.project?.id || !location.directory || !Array.isArray(projects)) throw new Error('MalformedResponse: OpenCode did not return its workspace catalog.');
+  if (!location?.project?.id || !location.directory || !Array.isArray(projects)) throw new Error('MalformedResponse: OpenCode did not return its project catalog.');
   const current = projects.find((project) => project.id === location.project.id);
   const serverProjects = projects.map(toProjectView).sort((left, right) => compareLabels(left.worktree, right.worktree));
   return { currentProjectPath: location.directory, serverRootPath: location.directory, serverProjects: current ? serverProjects : [...serverProjects, { id: location.project.id, worktree: location.project.canonical, time: { created: 0 } }] };
 }
-export async function resolveWorkspace(client: ScopedOpencodeClient) {
-  if (client.compatibility) return v1.resolveWorkspace(client.compatibility);
+// A project plus the location the server resolved for the scoped directory.
+// V2 exposes that location explicitly: a worktree keeps its own directory while
+// the project canonical stays the main checkout; nested input resolves to the
+// owning checkout. V1 has no location field and resolves through the project.
+export type ResolvedProjectLocation = Project & { directory?: string };
+export async function resolveProjectLocation(client: ScopedOpencodeClient): Promise<ResolvedProjectLocation> {
+  if (client.compatibility) return v1.resolveProjectLocation(client.compatibility);
   const location = await client.api!.location.get({ location: { directory: client.__opencode.directory } });
-  return { id: location.project.id, worktree: location.project.canonical, time: { created: 0 } };
+  return { id: location.project.id, worktree: location.project.canonical, directory: location.project.directory, time: { created: 0 } };
+}
+
+// Server-confirms that the scoped directory is a worktree the picker may keep
+// selected even though `project.list()` only reports project canonicals. Project
+// roots and the server current directory are matched from the catalog itself,
+// and nested input resolves to its checkout, so those are rejected here. V2
+// reports a worktree through the resolved location; V1 reports the owning
+// project, so a worktree directory needs the worktree inventory.
+export async function isKnownProjectLocation(client: ScopedOpencodeClient): Promise<boolean> {
+  const directory = client.__opencode.directory;
+  if (!directory) return false;
+  try {
+    const resolved = await resolveProjectLocation(client);
+    if (resolved.directory === directory && resolved.worktree !== directory) return true;
+    if (client.compatibility) {
+      const entries = await listV1Worktrees(client.compatibility);
+      return entries.some((entry) => entry.directory === directory);
+    }
+    return false;
+  } catch {
+    return false;
+  }
+}
+
+// Server-confirms that a directory may be used to open one of its sessions.
+// `project.list()` only reports a project's primary canonical path, while the
+// same repository can have additional checkout directories: sibling clones and
+// worktrees share the project ID but resolve to their own directory. Exact
+// string equality against the canonical therefore rejects valid locations, so
+// accept anything the server resolves to a root/worktree or to a known project.
+export async function isAvailableProjectDirectory(
+  client: ScopedOpencodeClient,
+  knownProjects: Project[],
+): Promise<boolean> {
+  const directory = client.__opencode.directory;
+  if (!directory) return false;
+  try {
+    const resolved = await resolveProjectLocation(client);
+    if (resolved.directory === directory
+      || resolved.worktree === directory
+      || knownProjects.some((project) => project.id === resolved.id)) {
+      return true;
+    }
+    if (client.compatibility) {
+      const entries = await listV1Worktrees(client.compatibility);
+      return entries.some((entry) => entry.directory === directory);
+    }
+    return false;
+  } catch {
+    return false;
+  }
 }
 
 // V2 lists sessions through a cursor. Reading only the first page silently
-// hides every older chat in a workspace, so the workspace list, the
+// hides every older chat in a project, so the project list, the
 // connection-wide snapshot and the notification monitor all follow it. V1
 // returns the complete array in one response.
 const MAX_SESSION_PAGES = 10;
@@ -72,23 +129,6 @@ export function listSessions(client: ScopedOpencodeClient) {
   });
 }
 export const listActiveSessions = listSessions;
-// Native retries and blocking forms are absent from the running-session set.
-// Background completion must confirm these before treating an idle list as done.
-export async function hasPendingSessionWork(client: ScopedOpencodeClient, sessionID: string) {
-  if (!client.api) return false;
-  const location = { location: { directory: client.__opencode.directory } };
-  const [messages, inbox, permissions, forms] = await Promise.all([
-    client.api.message.list({ sessionID, limit: 20, order: 'desc' }),
-    client.api.session.inbox.list({ sessionID }),
-    client.api.permission.request.list(location),
-    client.api.form.list(location),
-  ]);
-  const latest = messages.data.find((message) => message.type === 'assistant' || message.type === 'idle' || message.type === 'user');
-  return inbox.length > 0 || permissions.data.some((request) => request.sessionID === sessionID)
-    || forms.data.some((form) => form.sessionID === sessionID || form.sessionID === 'global')
-    || (latest?.type === 'assistant' && Boolean(latest.retry));
-}
-
 export type SessionSettlementState = 'running' | 'retrying' | 'blocked' | 'failed' | 'aborted' | 'finished' | 'unknown';
 export type SessionSettlement = { state: SessionSettlementState; message?: string };
 
@@ -132,7 +172,7 @@ export async function readSessionSettlement(
       client.promptInbox ? client.promptInbox.list(sessionID).catch(() => []) : Promise.resolve([]),
       listPendingPermissions(client),
       listPendingQuestions(client),
-      getSessionMessages(client, sessionID, { limit: 20 }),
+      getSessionMessages(client, sessionID, { limit: LATEST_MESSAGE_LIMIT }),
     ]);
     const latest = page.records.filter((record) => record.info.role === 'assistant').at(-1);
     return classifySessionSettlement({
@@ -150,11 +190,13 @@ export async function listArchivedSessions(client: ScopedOpencodeClient) {
   if (client.compatibility) return v1.listArchivedSessions(client.compatibility);
   return [];
 }
-export const INITIAL_MESSAGE_LIMIT = 20;
-export const HISTORY_PAGE_LIMIT = 20;
+export const TRANSCRIPT_PAGE_LIMIT = 20;
+// Smallest read that can still answer "what did the newest message say?" for
+// settlement and pending-work checks, without pulling a full transcript page.
+export const LATEST_MESSAGE_LIMIT = 3;
 export type SessionMessagePage = { records: SessionMessageRecord[]; hasMore: boolean; nextBefore?: string };
 export function getSessionMessages(client: ScopedOpencodeClient, sessionId: string, options: { limit?: number; before?: string } = {}): Promise<SessionMessagePage> {
-  const { limit = HISTORY_PAGE_LIMIT, before } = options;
+  const { limit = TRANSCRIPT_PAGE_LIMIT, before } = options;
   return coalesceRead(client, `messages:${sessionId}:${before ?? 'newest'}:${limit}`, async () => {
     if (client.compatibility) return v1.getSessionMessages(client.compatibility, sessionId, options);
     const page = await client.api!.message.list(before ? { sessionID: sessionId, limit, cursor: before } : { sessionID: sessionId, limit, order: 'desc' });
@@ -213,9 +255,9 @@ export async function summarizeSession(client: ScopedOpencodeClient, input: { se
 export async function listCommands(client: ScopedOpencodeClient) {
   return client.compatibility ? v1.listCommands(client.compatibility) : (await client.api!.command.list({ location: { directory: client.__opencode.directory } })).data;
 }
-export async function executeCommand(client: ScopedOpencodeClient, sessionId: string, command: string, args: string, options?: { agent?: string; model?: string; messageId?: string }) {
+export async function executeCommand(client: ScopedOpencodeClient, sessionId: string, command: string, args: string, options?: { agent?: string; model?: string; variant?: string; messageId?: string }) {
   if (client.compatibility) return v1.executeCommand(client.compatibility, sessionId, command, args, options);
   if (options?.agent) await client.api!.session.switchAgent({ sessionID: sessionId, agent: options.agent });
-  if (options?.model) { const [providerID, ...id] = options.model.split('/'); await client.api!.session.switchModel({ sessionID: sessionId, model: { providerID, id: id.join('/') } }); }
+  if (options?.model) { const [providerID, ...id] = options.model.split('/'); await client.api!.session.switchModel({ sessionID: sessionId, model: { providerID, id: id.join('/'), ...(options.variant && options.variant !== 'default' ? { variant: options.variant } : {}) } }); }
   await client.api!.session.command({ sessionID: sessionId, name: command, text: args });
 }

@@ -27,12 +27,33 @@ describe('format', () => {
     expect(failedTool.details[0].body).toBe('Build failed');
   });
 
+  it('keeps the native tool name and shell command on the detail', () => {
+    const shell = toTranscriptEntry({
+      info,
+      parts: [{ id: 'tool-3', type: 'tool', tool: 'bash', state: { status: 'running', input: { command: 'ls -la' } } }],
+    } as never);
+    expect(shell.details[0]).toMatchObject({ kind: 'tool', tool: 'bash', command: 'ls -la' });
+  });
+
   it('renders completed tool attachments', () => {
     const toolAttachment = toTranscriptEntry({
       info,
       parts: [{ id: 'tool-2', type: 'tool', tool: 'capture', state: { status: 'completed', output: 'done', attachments: [{ type: 'file', mime: 'image/png', filename: 'result.png' }] } }],
     } as never);
     expect(toolAttachment.details[1].label).toBe('result.png');
+  });
+
+  it('omits V1-only step, subtask and agent parts from the transcript', () => {
+    const entry = toTranscriptEntry({
+      info,
+      parts: [
+        { id: 'sub', type: 'subtask', description: 'do work' },
+        { id: 'start', type: 'step-start', snapshot: 'abc' },
+        { id: 'finish', type: 'step-finish', reason: 'stop', cost: 0, tokens: {} },
+        { id: 'agent', type: 'agent', name: 'build' },
+      ],
+    } as never);
+    expect(entry.details).toEqual([]);
   });
 
   it('derives the latest todo write', () => {

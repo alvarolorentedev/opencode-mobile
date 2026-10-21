@@ -1,9 +1,9 @@
 {
   "title": "OpenCode に共有",
   "subtitle": "内容を確認し、会話を選んで下書きに追加します。送信をタップするまで送信されません。",
-  "workspace": "ワークスペース",
-  "noWorkspace": "ワークスペースが選択されていません",
-  "chooseWorkspace": "選択",
+  "project": "プロジェクト",
+  "noProject": "プロジェクトが選択されていません",
+  "chooseProject": "選択",
   "notConnected": "サーバーに接続されていません。送信する前に接続してください。",
   "link": "リンク",
   "attachments": "添付ファイル",

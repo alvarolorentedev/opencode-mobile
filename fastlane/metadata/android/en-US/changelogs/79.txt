@@ -1,0 +1,4 @@
+- Projects replace the old workspace naming across the app: the tab, picker, setup, and all translations now say project.
+- The project picker shows only the projects you opened on this device, matching the desktop app, instead of every project the server knows about.
+- Add a project with its server folder, and close one from its row to hide it on this device; closing never touches the server.
+- Adding a project still registers it on your OpenCode server, and worktrees remain selectable projects.

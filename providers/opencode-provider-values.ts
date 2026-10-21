@@ -12,6 +12,7 @@ import {
   isPromptErrorVisible,
 } from '@/providers/opencode-provider-selectors';
 import { collectDescendantSessionIds } from '@/providers/opencode-provider-utils';
+import { MAX_TRANSCRIPT_RECORDS } from '@/providers/use-transcript-state';
 import type {
   ApprovalsContextValue,
   CapabilitiesContextValue,
@@ -28,7 +29,7 @@ import type {
   ProjectsContextValue,
   SessionLibraryContextValue,
   TerminalContextValue,
-  WorkspaceFilesContextValue,
+  ProjectFilesContextValue,
 } from '@/providers/opencode-provider-types';
 import type { ProviderValuesInput } from '@/providers/opencode-provider-values-input';
 
@@ -70,21 +71,21 @@ export function useOpencodeProviderValues(input: ProviderValuesInput) {
     projects,
     activeProjectPath,
     activeProject,
-    serverProjects,
     currentProjectPath,
     serverRootPath,
-    isRefreshingWorkspaceCatalog,
-    refreshWorkspaceCatalog,
+    isRefreshingProjectCatalog,
+    refreshProjectCatalog,
     refreshServerFeatures,
     refreshDiagnostics,
     browser,
-    workspaceFileStatuses,
-    selectedWorkspaceFile,
+    projectFileStatuses,
+    selectedProjectFile,
     vcsInfo,
     selectProject,
-    addWorkspace,
-    openWorkspaceFile,
-    saveWorkspaceFile,
+    addProject,
+    removeProject,
+    openProjectFile,
+    saveProjectFile,
     worktrees,
     refreshWorktrees,
     createWorktree,
@@ -119,6 +120,7 @@ export function useOpencodeProviderValues(input: ProviderValuesInput) {
     setActiveSessionsVisible,
     messagesBySession,
     pendingPromptsBySession,
+    cancelPrompt,
     diffScopeBySession,
     diffsBySession,
     vcsDiffsByScope,
@@ -149,8 +151,6 @@ export function useOpencodeProviderValues(input: ProviderValuesInput) {
     setDiffScope,
     selectDiffMessage,
     refreshDiffs,
-    refreshCurrentSession,
-    refreshCurrentTodos,
     replyToPermission,
     replyToQuestion,
     rejectQuestion,
@@ -269,7 +269,7 @@ export function useOpencodeProviderValues(input: ProviderValuesInput) {
   );
   const currentUsage = useMemo(
     () => getSessionUsage(activeSession, aggregateUsageSteps(usageStepsBySession[currentSessionId ?? ''] ?? [], usagePricingByModel),
-      !!currentSessionId && !!messageWindows[currentSessionId] && !messageWindows[currentSessionId].hasMore && currentMessages.length < 200),
+      !!currentSessionId && !!messageWindows[currentSessionId] && !messageWindows[currentSessionId].hasMore && currentMessages.length < MAX_TRANSCRIPT_RECORDS),
     [activeSession, currentMessages.length, currentSessionId, messageWindows, usageStepsBySession, usagePricingByModel],
   );
   const latestAssistantTurnUsage = useMemo(
@@ -306,13 +306,13 @@ export function useOpencodeProviderValues(input: ProviderValuesInput) {
   );
 
   const projectsValue = useMemo<ProjectsContextValue>(
-    () => ({ projects, activeProjectPath, activeProject, selectProject, addWorkspace, serverProjects, currentProjectPath, serverRootPath, isRefreshingWorkspaceCatalog, refreshWorkspaceCatalog, refreshWorkspaceStatus: refreshServerFeatures }),
-    [projects, activeProjectPath, activeProject, selectProject, addWorkspace, serverProjects, currentProjectPath, serverRootPath, isRefreshingWorkspaceCatalog, refreshWorkspaceCatalog, refreshServerFeatures],
+    () => ({ projects, activeProjectPath, activeProject, selectProject, addProject, removeProject, currentProjectPath, serverRootPath, isRefreshingProjectCatalog, refreshProjectCatalog, refreshProjectStatus: refreshServerFeatures }),
+    [projects, activeProjectPath, activeProject, selectProject, addProject, removeProject, currentProjectPath, serverRootPath, isRefreshingProjectCatalog, refreshProjectCatalog, refreshServerFeatures],
   );
 
-  const workspaceFilesValue = useMemo<WorkspaceFilesContextValue>(
-    () => ({ browser, workspaceFileStatuses, selectedWorkspaceFile, vcsInfo, openWorkspaceFile, saveWorkspaceFile, worktrees, refreshWorktrees, createWorktree, resetWorktree, removeWorktree }),
-    [browser, workspaceFileStatuses, selectedWorkspaceFile, vcsInfo, openWorkspaceFile, saveWorkspaceFile, worktrees, refreshWorktrees, createWorktree, resetWorktree, removeWorktree],
+  const projectFilesValue = useMemo<ProjectFilesContextValue>(
+    () => ({ browser, projectFileStatuses, selectedProjectFile, vcsInfo, openProjectFile, saveProjectFile, worktrees, refreshWorktrees, createWorktree, resetWorktree, removeWorktree }),
+    [browser, projectFileStatuses, selectedProjectFile, vcsInfo, openProjectFile, saveProjectFile, worktrees, refreshWorktrees, createWorktree, resetWorktree, removeWorktree],
   );
 
   const activeSessionsValue = useMemo(
@@ -335,8 +335,8 @@ export function useOpencodeProviderValues(input: ProviderValuesInput) {
     [hasOlderMessages, isLoadingOlderMessages, loadOlderMessages],
   );
   const chatValue = useMemo<ChatContextValue>(
-    () => ({ pendingPrompts, currentMessages, currentTranscript, currentUsage, latestAssistantTurnUsage, currentDiffs, currentDiffScope, setDiffScope, diffTurns, selectedDiffMessageId, selectDiffMessage, refreshDiffs, currentTodos, currentPendingPermissions, currentPendingQuestions, isRefreshingMessages, isRefreshingDiffs, isBootstrappingChat, refreshCurrentSession, refreshCurrentTodos, replyToPermission, replyToQuestion, rejectQuestion, commands, executeCommand, sendPrompt, abortSession, setAutoApprove, sendingState, promptError: visiblePromptError, clearPromptError, transcriptPaging, sharedInput }),
-    [pendingPrompts, currentMessages, currentTranscript, currentUsage, latestAssistantTurnUsage, currentDiffs, currentDiffScope, setDiffScope, diffTurns, selectedDiffMessageId, selectDiffMessage, refreshDiffs, currentTodos, currentPendingPermissions, currentPendingQuestions, isRefreshingMessages, isRefreshingDiffs, isBootstrappingChat, refreshCurrentSession, refreshCurrentTodos, replyToPermission, replyToQuestion, rejectQuestion, commands, executeCommand, sendPrompt, abortSession, setAutoApprove, sendingState, visiblePromptError, clearPromptError, transcriptPaging, sharedInput],
+    () => ({ pendingPrompts, cancelPrompt, currentMessages, currentTranscript, currentUsage, latestAssistantTurnUsage, currentDiffs, currentDiffScope, setDiffScope, diffTurns, selectedDiffMessageId, selectDiffMessage, refreshDiffs, currentTodos, currentPendingPermissions, currentPendingQuestions, isRefreshingMessages, isRefreshingDiffs, isBootstrappingChat, replyToPermission, replyToQuestion, rejectQuestion, commands, executeCommand, sendPrompt, abortSession, setAutoApprove, sendingState, promptError: visiblePromptError, clearPromptError, transcriptPaging, sharedInput }),
+    [pendingPrompts, cancelPrompt, currentMessages, currentTranscript, currentUsage, latestAssistantTurnUsage, currentDiffs, currentDiffScope, setDiffScope, diffTurns, selectedDiffMessageId, selectDiffMessage, refreshDiffs, currentTodos, currentPendingPermissions, currentPendingQuestions, isRefreshingMessages, isRefreshingDiffs, isBootstrappingChat, replyToPermission, replyToQuestion, rejectQuestion, commands, executeCommand, sendPrompt, abortSession, setAutoApprove, sendingState, visiblePromptError, clearPromptError, transcriptPaging, sharedInput],
   );
 
   const conversationValue = useMemo<ConversationContextValue>(
@@ -354,14 +354,14 @@ export function useOpencodeProviderValues(input: ProviderValuesInput) {
     [mcpStatuses, refreshMcpServers, addMcpServer, connectMcpServer, disconnectMcpServer, setMcpServerEnabled, mcpOAuth],
   );
 
-  return {
+  return useMemo(() => ({
     onboardingValue,
     connectionValue,
     diagnosticsValue,
     capabilitiesValue,
     preferencesValue,
     projectsValue,
-    workspaceFilesValue,
+    projectFilesValue,
     currentSessionValue,
     sessionLibraryValue,
     chatValue,
@@ -369,5 +369,6 @@ export function useOpencodeProviderValues(input: ProviderValuesInput) {
     conversationValue,
     terminalValue,
     mcpValue,
-  };
+  }), [onboardingValue, connectionValue, diagnosticsValue, capabilitiesValue, preferencesValue, projectsValue,
+    projectFilesValue, currentSessionValue, sessionLibraryValue, chatValue, approvalsValue, conversationValue, terminalValue, mcpValue]);
 }

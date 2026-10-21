@@ -57,19 +57,19 @@ run('npx', ['expo', 'prebuild', '--platform', 'ios', '--non-interactive'], {
   },
 });
 
-// 2. Detect workspace and scheme
-const workspaces = fs.readdirSync(iosDir).filter((f) => f.endsWith('.xcworkspace'));
-if (workspaces.length === 0) fail('No .xcworkspace found after prebuild.');
-const workspacePath = path.join(iosDir, workspaces[0]);
+// 2. Detect project and scheme
+const projects = fs.readdirSync(iosDir).filter((f) => f.endsWith('.xcworkspace'));
+if (projects.length === 0) fail('No .xcworkspace found after prebuild.');
+const projectPath = path.join(iosDir, projects[0]);
 
 let scheme = process.env.IOS_SCHEME;
 if (!scheme) {
   const listOutput = execSync(
-    `xcodebuild -workspace "${workspacePath}" -list -json`,
+    `xcodebuild -project "${projectPath}" -list -json`,
     { encoding: 'utf8', stdio: ['pipe', 'pipe', 'pipe'] },
   );
   const parsed = JSON.parse(listOutput);
-  scheme = parsed.workspace?.schemes?.[0];
+  scheme = parsed.project?.schemes?.[0];
   if (!scheme) fail('Could not detect Xcode scheme. Set IOS_SCHEME.');
 }
 console.log(`Using scheme: ${scheme}`);
@@ -83,7 +83,7 @@ const archivePath = path.join(os.tmpdir(), 'build.xcarchive');
 const exportMethod = process.env.IOS_EXPORT_METHOD || 'app-store';
 
 run('xcodebuild', [
-  '-workspace', workspacePath,
+  '-project', projectPath,
   '-scheme', scheme,
   '-configuration', 'Release',
   '-archivePath', archivePath,

@@ -43,11 +43,11 @@ deprecates `setContentCaptureEnabled` for newly targeted apps.
 The app has one tab group in `app/(tabs)/_layout.tsx`:
 
 - `index` -> Chat
-- `workspace` -> Workspace
+- `project` -> Project
 - `settings` -> Settings
 - `terminal` -> Terminal
 
-Navigation complexity is deliberately low. There are no nested feature stacks, no per-screen providers, and no deep in-app route hierarchy.
+Navigation complexity is deliberately low. There are no nested feature stacks or deep in-app route hierarchy. Terminal and Settings use provider scope boundaries so inspecting a server or opening a PTY does not move the selected chat.
 
 This matters because state continuity is expected across tabs. Switching tabs does not reset active session context.
 
@@ -60,12 +60,13 @@ validation is still required to establish whether it resolves the flicker.
 
 ## Core Architectural Principle
 
-The dominant design decision is central orchestration through `providers/opencode-provider.tsx`.
+The dominant design decision is central orchestration through the provider layer:
+`providers/opencode-provider.tsx` mounts `WorkspaceProvider`, which owns the connection registry and app-wide coordinators. Each retained connection/project branch mounts a headless `WorkspaceRuntime`, reusing `use-opencode-provider-composition.ts`. `WorkspaceScope` supplies its existing narrow domain contexts to the selected surface.
 
-This file is the application's effective domain layer. It owns:
+This composition unit is the application's effective domain layer. It owns:
 
 - connection settings and connection state
-- workspace catalog and active project selection
+- project catalog and active project selection
 - session lists and session status tracking
 - current session selection and data refresh
 - transcript, diff (turn + VCS scopes), and todo caches
@@ -76,7 +77,7 @@ This file is the application's effective domain layer. It owns:
 - conversation mode state machine
 - notification completion tracking
 - global SSE subscription with reconnect and polling fallback
-- session lifecycle actions, slash commands, workspace inspection, and diagnostics
+- session lifecycle actions, slash commands, project inspection, and diagnostics
 - archived-session, worktree, MCP, and PTY terminal orchestration
 - persistence hydration and write-back
 
@@ -84,7 +85,7 @@ If this app were reimplemented, this provider would be the main source of truth 
 
 Its public contract is split into domain contexts (`providers/opencode-contexts.ts`
 + the `*ContextValue` types): onboarding, connection, diagnostics, capabilities,
-preferences, projects, workspace files, current session, session library, chat,
+preferences, projects, project files, current session, session library, chat,
 approvals, conversation, terminal, MCP, and app updates. The provider still
 owns all the state and actions; each domain value is memoized and rendered as its
 own context, so a consumer only re-renders when the domain it reads changes and
@@ -106,13 +107,22 @@ of those domains.
 
 ### First-Run Onboarding
 
-The assistant has five steps: app presentation, permissions, add connection,
-workspace, and ready. Presentation has only Continue navigation; preferences
-and provider setup remain in Settings.
+The assistant has seven connected steps: app presentation, permissions, add
+connection, AI & Providers, project, General Settings, and ready. Without a
+connection, AI & Providers and project are omitted (five visible steps). Shared
+navigation derives progress and forward/back destinations from that sequence;
+temporary reconnects retain the AI step and its sign-in dialog. Manual connection
+and Cloud Link pairing both continue to AI & Providers. General Settings edits
+language, transcript detail, the remembered Chat model, and V2 Steer/Append
+delivery. The model field requires a connection; delivery also requires V2.
+Provider setup embeds the same composition as Settings, including auth dialogs,
+model toggles, account actions, confirmations and feedback. All selections write
+through existing provider actions, and Ready summarizes current provider state.
+The completion version, preference schema and first-run migration are unchanged.
 
 - Completion lives in `opencode-mobile.onboarding-version` (managed by
   `providers/onboarding-state.ts`) and represents completion only. Connection
-  settings, passwords, active workspace, chat preferences, and OS permissions
+  settings, passwords, active project, chat preferences, and OS permissions
   stay in their existing stores.
 - `app/_layout.tsx` keeps the native splash up until `isHydrated`, then uses
   `Stack.Protected` to register either `(tabs)` + `session/[id]` (completed) or
@@ -123,20 +133,20 @@ and provider setup remain in Settings.
   explicit `runConnect` also satisfies the one-time boot connect, which stops
   completion from triggering a duplicate reconnect.
 - The assistant reuses existing infrastructure: `switchConnection` for the
-  server step, `selectProject`/`addWorkspace` for the workspace step,
+  server step, `selectProject`/`addProject` for the project step,
   and `useNotificationSetup`/`lib/voice/permissions.ts` for permissions.
-- Every configured step can be skipped: connect and workspace each expose a
+- Every configured step can be skipped: connect and project each expose a
   `skip` action that advances one step without persisting anything, matching
   the permissions skip. Skipping never mutates
-  settings, so a setup can be completed with no server or workspace and the
-  app lands on the chat workspace prompt, where the user can configure later.
+  settings, so a setup can be completed with no server or project and the
+  app lands on the chat project prompt, where the user can configure later.
 
 ### Screens
 
 - `app/(tabs)/index.tsx`
   Chat landing logic. Ensures a session exists and renders `ChatView` once available.
-- `app/(tabs)/workspace.tsx`
-  Scoped folder browsing and search, shared workspace/worktree picker, and conflict-checked text file editing.
+- `app/(tabs)/projects.tsx`
+  Scoped folder browsing and search, shared project/worktree picker, and conflict-checked text file editing.
 - `app/(tabs)/settings.tsx`
   Settings screen controller for connection, providers, MCP servers, notifications, and voice.
 - `app/(tabs)/terminal.tsx`
@@ -147,18 +157,25 @@ and provider setup remain in Settings.
   the Chat tab. Connection switching and credential resolution stay in the provider.
 - `app/share.tsx`
   Inbound-share preview. Renders the provider-staged `sharedInput` (text, link,
-  attachment tiles, skipped-item warnings), the shared workspace picker, and
+  attachment tiles, skipped-item warnings), the shared project picker, and
   Add to chat / Discard. Thin controller: it never fetches, persists, or
   submits. `app/+native-intent.ts` routes the `expo-sharing` host here.
 - `app/onboarding/*.tsx`
   First-run setup assistant steps (presentation, permissions, connect,
-  workspace, ready). Thin controllers over provider state; they do not own
-  connection/workspace/preference persistence.
+  project, ready). Thin controllers over provider state; they do not own
+  connection/project/preference persistence.
 
 ### Provider Layer
 
 - `providers/opencode-provider.tsx`
-  Main orchestrator and context source.
+  Thin entrypoint: mounts the context tree with the values from the
+  composition unit.
+- `providers/use-opencode-provider-composition.ts`
+  The orchestrator: wires the domain hooks, assembles their inputs, and derives
+  the context values. This is the application's effective domain layer.
+- `providers/opencode-provider-tree.tsx`
+  The nested domain context providers, in their documented order
+  (`UpdatesContext` innermost).
 - `providers/opencode-provider-types.ts`
   Shared public types, the domain context values, and their union.
 - `providers/opencode-contexts.ts`
@@ -186,12 +203,12 @@ and provider setup remain in Settings.
 - `providers/opencode-provider-values.ts`
   Derived selectors and the memoized domain context values rendered by
   `OpencodeProvider`.
-- `providers/use-workspace-actions.ts`
-  Workspace catalog, project selection, session/file refresh, file
-  search/read/save, and diagnostics actions.
-- `providers/use-workspace-browser.ts`
+- `providers/use-project-actions.ts`
+  Project catalog, opened-project add/close, project selection, session/file
+  refresh, file search/read/save, and diagnostics actions.
+- `providers/use-project-browser.ts`
   Scoped directory/search snapshots and request-order guards, composed by the
-  workspace file actions and exposed as one files-context member.
+  project file actions and exposed as one files-context member.
 - `providers/use-session-actions.ts`
   Session lifecycle, favorites, permissions/questions, and
   `ensureActiveSession`.
@@ -257,37 +274,41 @@ and provider setup remain in Settings.
 - `providers/active-sessions.ts`
   Pure selection of the active-session group (running-first ordering, recent tail
   capped at four, subagent/archived filtering). The Chat Library de-duplicates
-  these IDs out of the current-workspace Chat list.
+  these IDs out of the current-project Chat list.
 - `providers/use-transcript-state.ts`
   Paginated transcript window state machine: newest-page load on open, scroll-up
-  history paging, bounded-window tail merge, and accumulation of session usage
-  steps and V2 `todowrite` records so a bounded window keeps exact totals.
+  history paging, single-page bounded-window tail merge, and accumulation of
+  session usage steps and V2 `todowrite` records so a bounded window keeps exact
+  totals. Only compaction/revert rewrites replace the window.
 
 MCP and worktree callback bridges use stable callbacks backed by the provider's
 latest refs. Conversation submission similarly uses the latest send action
 without restarting a submitted turn when message state changes.
 
-These domain hooks are composed by `OpencodeProvider`, which stays the single
-orchestrator. Each hook receives the current client (and, when it must call a
-later-defined provider callback, a latest-ref) and exposes its own reset, so the
-provider's project/connection reset composes them instead of inlining state.
+These domain hooks are composed by `use-opencode-provider-composition.ts`, which
+is the single orchestrator. Each hook receives the current client (and, when it
+must call a later-defined provider callback, a latest-ref) and exposes its own
+reset, so the provider's project/connection reset composes them instead of
+inlining state.
 
 `tests/vitest/architecture.test.ts` (run by `npm run test:vitest`) enforces a repo-wide readable-size ratchet: every source
-file under `app/`, `components/`, `providers/`, and `lib/` must stay at or below
-**500 lines** (200-400 is the target; generated `lib/i18n/resources.ts` is
-exempt), the provider stays at or below 500, and the public context surface
+file under `app/`, `components/`, `providers/`, `lib/`, and `widgets/` must stay at
+or below **500 lines** (200-400 is the target; generated `lib/i18n/resources.ts` is
+exempt), `providers/opencode-provider.tsx` must stay a thin wrapper at or below
+**60 lines** because composition lives in
+`providers/use-opencode-provider-composition.ts`, and the public context surface
 cannot grow past 135 members. When a limit is genuinely outgrown, split the file
 into the right layer and, if needed, lower the number in the same change.
 
 ### Services
 
 - `providers/services/session-service.ts`
-  Fetch sessions, messages, diffs, todos, commands, and perform session lifecycle actions. Also lists the cross-workspace active-session snapshot through an unscoped client.
+  Fetch sessions, messages, diffs, todos, commands, and perform session lifecycle actions. Also lists the cross-project active-session snapshot through an unscoped client.
 - `providers/services/capabilities-service.ts`
   Discover config, providers, provider auth methods, model capabilities, and agents.
   Catalog and speech-voice label sorting share `lib/compare-labels.ts`'s
   `Intl.Collator`, avoiding a native collator allocation per comparison on Hermes.
-- `providers/services/workspace-service.ts`
+- `providers/services/project-service.ts`
   File search/read/status, VCS patch, and experimental worktree requests.
 - `providers/services/mcp-service.ts`
   MCP status, lifecycle, config enablement, and OAuth requests.
@@ -335,7 +356,7 @@ preparation refreshes credentials on the same owned machine, shares in-flight
 access requests, and waits for native initialization when recovery needs it.
 Foreground return recovers expired or missing credentials automatically; expiry
 still blocks data-plane traffic. Same-machine renewal preserves the selected
-workspace and migrates remembered state to the rotated credential scope. Saved
+project and migrates remembered state to the rotated credential scope. Saved
 profile rows match Cloud Link machine identity and refresh after rotation. The `pair` route is
 independent of onboarding completion. See [Cloud Link pilot](connect.md).
 
@@ -351,9 +372,9 @@ independent of onboarding completion. See [Cloud Link pilot](connect.md).
 ### Chat UI
 
 - `components/chat/chat-view.tsx`
-  Main chat screen render, driven by `components/chat/use-chat-view-controller.ts` and `components/chat/use-chat-view-actions.ts`.
-- `components/chat/chat-content.tsx`
-  Barrel over `components/chat/content/` (transcript list, changes overlay, pending interactions, skeleton).
+  Main chat screen render, driven by `components/chat/use-chat-view-controller.ts` and `components/chat/use-chat-view-actions.ts`. It renders the transcript list, changes overlay, and pending interactions directly; there is no pass-through wrapper.
+- `components/chat/content/`
+  The chat area leaves: transcript list, changes overlay, pending interactions, and skeleton.
 - `components/chat/chat-composer.tsx`
   Prompt input, attachments, and controls.
 - `components/chat/chat-header.tsx`
@@ -389,7 +410,7 @@ behavior.
 
 Android activity notifications are orchestrated by `use-activity-notifications`
 inside the provider. The observer reads the connection-wide catalog through
-the existing session service, receives global events before workspace filtering,
+the existing session service, receives global events before project filtering,
 and polls independently of the Chat Library. `providers/services/activity-service`
 aggregates scoped interaction, inbox, and newest-transcript reads; activity
 selection folds descendants into their root tasks. No screen owns this state.
@@ -402,7 +423,7 @@ callback that drives activity reconciliation also raises a deduped needs-input
 alert for tracked tasks while the app is not foregrounded. Notifications carry a
 non-secret route payload; `hooks/use-notification-route.ts` in the root shell
 forwards a tap into the existing `app/session/[id]` deep-link resolver so the
-connection, workspace, and session are validated the same way as an external
+connection, project, and session are validated the same way as an external
 link. When the SSE stream is healthy, the observer limits per-tick interaction
 probes to directories with running or watched work and probes every directory
 when the stream is down.
@@ -418,12 +439,12 @@ Launcher quick actions remain foreground-only and use the existing active-sessio
 selection. `providers/use-widget-state.ts` independently owns the three Android
 widget snapshots. Its service aggregates the connection-wide session catalog,
 newest messages for three recent root chats, and permission/question reads for
-running, event-dirty or known-blocked workspaces while SSE is healthy. Initial
-seeding, reconnection, foreground resume and polling fallback scan all workspaces.
+running, event-dirty or known-blocked projects while SSE is healthy. Initial
+seeding, reconnection, foreground resume and polling fallback scan all projects.
 Unprobed interaction data stays in the widget provider, including blockers
-beyond its three displayed rows. It receives global SSE events before workspace filtering
+beyond its three displayed rows. It receives global SSE events before project filtering
 and participates in the existing realtime reconciliation and 5s/10s polling;
-cross-workspace running work and blockers keep the safety poll active. Notification
+cross-project running work and blockers keep the safety poll active. Notification
 permission and Chat Library visibility do not gate widget reads.
 
 - `lib/quick-actions.ts` and `hooks/use-quick-action-route.ts`: existing launcher
@@ -507,7 +528,7 @@ mounted composer's draft and attachments instead of replacing it with new tabs.
   Also exports `getFormatLocale()`, which `lib/opencode/format.ts` uses to render
   timestamps and relative times in the active language.
 
-UI text is grouped into feature namespaces (`common`, `chat`, `workspace`,
+UI text is grouped into feature namespaces (`common`, `chat`, `project`,
 `terminal`, `settings`, `notifications`). Components translate with
 `useTranslation()` and explicit namespace prefixes. The root layout imports
 `lib/i18n` so translations are initialized before first render, and
@@ -526,10 +547,10 @@ session title and never builds notification strings itself.
 The normal startup flow is:
 
 1. Root layout mounts providers and keeps the native splash up.
-2. `useOpencodePersistence()` hydrates settings, chat preferences, active project, the connection-scoped last-session map, and the onboarding completion marker from AsyncStorage.
+2. `useOpencodePersistence()` hydrates settings, chat preferences, active project, the connection-scoped opened projects, the last-session map, and the onboarding completion marker from AsyncStorage.
 3. The routing gate resolves: existing configured installs show `(tabs)`; a fresh install shows the onboarding assistant. A fresh install does not auto-connect.
 4. After hydration, once onboarding is completed, `OpencodeProvider` calls `connect()`.
-5. `connect()` loads workspace catalog using a catalog-scoped client with no directory.
+5. `connect()` loads the project catalog using a catalog-scoped client with no directory, seeds the connection's opened-project list from the server's current project when it was never initialized, and keeps the opened and active projects in sync.
 6. Connection state becomes `connected` or `error`.
 7. If a project exists, the provider fetches sessions and chat capabilities.
 8. A follow-up effect calls `ensureActiveSession()` for the active project.
@@ -547,9 +568,9 @@ The provider creates two client instances:
 - `client`
   Bound to `settings` plus `activeProjectPath`. Used for session-scoped calls.
 - `catalogClient`
-  Bound to `settings` with an empty directory. Used for workspace discovery, diagnostics, and the global event stream.
+  Bound to `settings` with an empty directory. Used for project discovery, diagnostics, and the global event stream.
 
-This split is one of the key architectural details. Workspace discovery is intentionally decoupled from a selected project directory.
+This split is one of the key architectural details. Project discovery is intentionally decoupled from a selected project directory.
 
 ### Connection Switching
 
@@ -573,14 +594,14 @@ path.
 
 The provider fetches and caches:
 
-- workspace catalog
+- project catalog
 - sessions and statuses
 - messages per session
-- diffs per session plus workspace VCS diffs (`uncommitted`/`branch`), selected by Files Changed scope
+- diffs per session plus project VCS diffs (`uncommitted`/`branch`), selected by Files Changed scope
 - todos per session
 - pending permissions and questions by session, populated by events and refreshed from the server
 - providers, models, and agents
-- commands, workspace file status/search/read data, VCS information, and diagnostics
+- commands, project file status/search/read data, VCS information, and diagnostics
 - archived sessions, worktrees, MCP statuses, PTYs, terminal connection state, and terminal output
 - a connection-wide session snapshot (all sessions + statuses) from the unscoped catalog client, used by the Chat Library "Active" group. The global SSE stream still filters events to the active project, so this snapshot is refreshed on connect, when the library opens, and by a 20-second poll while a session is running.
 
@@ -613,8 +634,8 @@ User interactions are converted to provider actions such as:
 - `replyToQuestion` and `rejectQuestion`
 - `deleteSession`, `renameSession`, `forkSession`, `revertSession`, and share actions
 - `executeCommand`
-- workspace search/read and diagnostics refresh actions
-- workspace patch save, archive/restore, worktree, MCP, and terminal actions
+- project search/read and diagnostics refresh actions
+- project patch save, archive/restore, worktree, MCP, and terminal actions
 - `setProviderAuth`
 - `toggleConversationMode`
 - `completeOnboarding`, `startOnboardingReview`, and `stopOnboardingReview` (first-run setup completion and Settings re-entry)
@@ -631,8 +652,9 @@ A socket can also die without an error. A liveness watchdog re-establishes
 the subscription when a foreground stream has received no envelope for a
 staleness window (90 seconds; shortened in E2E builds), and foreground return
 bypasses the remaining backoff or cycles a stream that was backgrounded long
-enough. Reconnects keep a first-envelope authoritative reconcile; if a poll is
-already in flight, the full rebuild is queued behind it instead of being
+enough. Reconnects keep a first-envelope authoritative reconcile (sessions,
+interactions, and native surfaces) and tail-merge the transcript; if a poll is
+already in flight, the reconnect pass is queued behind it instead of being
 coalesced away. Invalid-credential and entitlement failures stop the retry
 loop and are surfaced through `ConnectionState.kind` (`auth`/`entitlement`),
 while Cloud Link reuses its prepared credential recovery.
@@ -662,7 +684,7 @@ The provider keeps a safety polling loop when any of the following is true:
 While SSE is connected the loop runs every 10 seconds; without a stream it is the
 primary transport and runs every 5 seconds. A submitted prompt also schedules a
 one-off transcript refresh 5 seconds after send, so a completion whose event is
-missed (for example from another workspace) still lands even with the slower
+missed (for example from another project) still lands even with the slower
 connected cadence. Polling refreshes sessions, current/conversation session
 content, and pending interactions as needed. The `/permission` and `/question`
 list APIs recover requests missed by SSE.
@@ -684,7 +706,8 @@ Responsibilities:
 - render the changes overlay with turn/uncommitted/branch scopes and a turn picker
 - send prompts and attachments
 - suggest and execute server-provided slash commands
-- fork from or revert to a user message, and undo a session revert
+- fork from or revert to a user message; a staged revert pre-fills the composer, and its notice can cancel the revert
+- discard waiting steer/queue prompts, restoring their text when the composer is empty
 - toggle auto-approve
 - select agent/model/reasoning
 - start/stop microphone dictation for the draft box
@@ -693,17 +716,17 @@ Responsibilities:
 - abort running sessions
 - create and switch sessions
 
-### Workspace Screen
+### Project Screen
 
 Responsibilities:
 
-- retain the Workspace tab and route, with Files as the main surface
+- retain the Projects tab and route, with Files as the main surface
 - browse folders and navigate breadcrumbs inside the selected directory
-- search across the active workspace, preview text, and retain the browsed folder on return
+- search across the active project, preview text, and retain the browsed folder on return
 - preserve conflict-checked text editing and confirm before discarding unsaved edits
 - show supported changed-file information and the current VCS branch
-- refresh the current folder or search, file status, and workspace catalog together
-- use the shared workspace picker for project/worktree selection and worktree management
+- refresh the current folder or search, file status, and project catalog together
+- use the shared project picker for project/worktree selection and worktree management
 
 ### Settings Screen
 
@@ -721,8 +744,8 @@ Responsibilities:
 - manage voice and response-style preferences
 - adjust the chat transcript text size, bubble/flat layout, and slim interface density
 - choose the app interface language
-- group chat text size, flat conversation and V2 Steer/Append delivery under Advanced → Editor; group slim interface, language and Reset onboarding under Advanced → General; expose the app update preference under Advanced → Update checks
-- launch Reset onboarding at the presentation screen, with the permissions, connection and workspace steps seeded from current state without wiping configuration
+- group chat text size, flat conversation, transcript verbosity and V2 Steer/Append delivery under Advanced → Editor; group slim interface, language and Reset onboarding under Advanced → General; expose the app update preference under Advanced → Update checks
+- launch Reset onboarding at the presentation screen, with permissions, connection, providers, project and general preferences seeded from current state without wiping configuration
 
 ### Terminal Screen
 
@@ -776,7 +799,10 @@ This is one of the densest parts of the architecture and would need careful pari
   while transparent `Modal` sheets (`native-select`,
   model picker) cannot use `KeyboardAvoidingView` and instead consume
   `hooks/use-keyboard-height.ts` and apply the inset as padding. Neither uses
-  `behavior="height"`.
+  `behavior="height"`. All bottom-sheet overlays dismiss on a downward header
+  drag through `components/ui/use-swipe-dismiss.ts`; the `Modal` sheets wrap
+  their content in `GestureHandlerRootView` so the gesture is recognized inside
+  the native `Modal` window.
 - The app uses custom theme tokens from `constants/theme.ts` and maps them into React Native Paper in `constants/paper-theme.ts`.
 - Markdown rendering is intentionally narrow and custom, not library-based.
 - Diff rendering is custom and optimized for readable in-app inspection, not full git-style fidelity.
@@ -787,9 +813,11 @@ This is one of the densest parts of the architecture and would need careful pari
 
 The highest-coupling areas are:
 
-### `providers/opencode-provider.tsx`
+### `providers/use-opencode-provider-composition.ts`
 
 This is the main behavioral hotspot. Changes here can affect nearly every screen.
+The wrapper (`opencode-provider.tsx`) and the tree (`opencode-provider-tree.tsx`)
+stay mechanical so orchestration pressure is visible in one file.
 
 ### Prompt lifecycle
 
@@ -808,7 +836,7 @@ Provider/model/agent choices depend on server config, configured providers, curr
 If the system is rebuilt, the safest parity-preserving architecture would keep these concepts intact:
 
 - one central orchestration layer
-- a separate workspace-discovery client from a project-scoped session client
+- a separate project-discovery client from a project-scoped session client
 - combined SSE + polling safety net
 - persisted connection/preferences/project/session identity state
 - transcript model derived from raw message parts rather than storing rendered text only
@@ -820,7 +848,7 @@ Those are implementation-defining patterns, not incidental details.
 
 ## Session library recovery (#64)
 
-Session idle events only refresh domain state; archiving remains an explicit user action. Archive restoration and optional reopening are provider-owned and preserve the target workspace and connection scope.
+Session idle events only refresh domain state; archiving remains an explicit user action. Archive restoration and optional reopening are provider-owned and preserve the target project and connection scope.
 
 ## Interactive Terminal
 
@@ -841,13 +869,13 @@ Provider resume cursors advance after that acknowledgement; growing output is
 never a React prop. Connection generations and scope IDs reject stale input.
 No credentials or socket URLs cross into the DOM surface.
 
-## Workspace file browser
+## Project file browser
 
-Workspace retains its tab label and route. Files is its main surface: the provider
+Projects retains its tab label and route. Files is its main surface: the provider
 owns the current relative directory, sorted folder/file entries, submitted search,
 results, loading/error state and request-order guards. It retains the directory
 across tab switches and resets on scoped-client changes; it is not persisted.
-Search spans the selected workspace root and clearing it restores the browsed
+Search spans the selected project root and clearing it restores the browsed
 folder. Breadcrumb navigation cannot leave that root. Listing, search, preview
 and save require a selected directory. The OpenCode 2 filesystem adapter passes
 `location[directory]` on every request and rejects malformed UTF-8/binary content.
@@ -856,10 +884,10 @@ through native v2 `file.write` or the v1 patch path, and verifies the saved text
 Unsaved edits require discard confirmation. The pre-read/write race remains
 because neither path provides a conditional-write contract.
 
-The shared Workspace/Chat picker contains worktree inventory for the owning
+The shared Project/Chat picker contains worktree inventory for the owning
 project, resolved from the scoped project API rather than path prefixes. Directory
-selection uses the existing provider workspace action and applies across Chat,
-Workspace and Terminal. Creation stays in the picker; reset/remove live in row
+selection uses the workspace registry and changes Chat and Project focus;
+existing terminals retain their own workspace. Creation stays in the picker; reset/remove live in row
 menus, preserve confirmations and reject the active directory and primary checkout.
 OpenCode 2 hides reset/startup commands and maps directory-only inventory to names.
 The browser groups state and actions under one context member, keeping the public
@@ -870,10 +898,20 @@ services and protocol modules own requests and response normalization.
 
 The existing provider owns `useAppUpdates` and its `useUpdates()` domain hook.
 The tab shell renders the nonmodal banner above its default tab bar without
-covering screen controls on Chat, Workspace, Settings and Terminal; the root
+covering screen controls on Chat, Project, Settings and Terminal; the root
 shell owns route eligibility, the transparent handoff gate and failure snackbar.
 Available Play candidates open native consent
 directly at a safe moment. Local UI registers busy presence through
 `useUpdateBlocker`, retaining its own contents. `lib/app-updates.ts` wraps the local
 Expo module and iOS lookup. See [app updates](app-updates.md) for install consent,
 safety gates and FOSS exclusion.
+
+## Multi-server V2 ownership
+
+`use-workspace-connections.ts` owns explicit connect/disconnect, restoration, and composite connection/project identity. A runtime stays mounted when another chat or tab is selected. Its clients, generations, transcript windows, prompt inbox, approvals, file browser and PTY connections remain separate. `shared-event-stream.ts` fans one server subscription out to retained projects; events are still filtered by directory and the existing polling/reconciliation paths remain active.
+
+Hydration, compatibility settings writes, device sharing, Cloud Link setup/billing, updates, language, audio and native surfaces have one app-wide owner. Favorites, opened projects and remembered sessions keep their existing connection-scoped persistence. Activity observation has one owner per server, with one app-wide Android notification publisher combining counts and releasing only the disconnected server. Native shortcuts carry each row's connection scope; widget publication remains app-wide.
+
+The chat library combines the unscoped server catalogs with live project state. It keeps current/running/recency order, uses composite keys and labels each row with its server. Project selection changes chat/project focus. Terminal selection and Settings inspection are independent. Paper portals explicitly restore their caller's workspace scope; otherwise their children would inherit the app host's current chat server.
+
+Terminal renderers remain mounted when hidden. Hidden instances cannot accept input or layout resize; disconnect detaches transports without deleting remote PTYs. Composer and editor drafts and transcript reading positions live in an in-memory presentation map, keyed by owning server/project/session or file. They survive navigation, not process termination. No external store or dependency was introduced.

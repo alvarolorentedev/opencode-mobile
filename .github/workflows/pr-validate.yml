@@ -11,34 +11,6 @@ concurrency:
 
 jobs:
   validate:
-    runs-on: ubuntu-latest
+    uses: ./.github/workflows/validate.yml
     permissions:
       contents: read
-
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: npm
-
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Lint and typecheck
-        run: npm run test:ci:static
-
-      - name: Validate fake server harness
-        run: npm run test:fake-server:self
-
-      - name: Install Playwright browser
-        run: npx playwright install --with-deps chromium
-
-      - name: Run CI flow suite against fake OpenCode server
-        run: npm run test:e2e:web
-        env:
-          CI: 'true'
-          EXPO_PUBLIC_E2E_MODE: '1'

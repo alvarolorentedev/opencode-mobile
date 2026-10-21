@@ -28,6 +28,7 @@
     "couldNotFork": "无法派生会话。",
     "couldNotRevert": "无法回退会话。",
     "couldNotRestore": "无法恢复会话。",
+    "couldNotCancelPending": "无法丢弃该待处理消息。",
     "couldNotUpdateAutoApprove": "无法更新自动批准设置。",
     "sendError": {
       "title": "OpenCode 发送失败",
@@ -48,8 +49,6 @@
   },
   "content": {
     "connectionIssue": "连接问题",
-    "sessionReverted": "会话已回退",
-    "restoreReverted": "恢复已回退的工作",
     "runningActivity": "OpenCode 正在{{activity}}…",
     "runningRetry": "OpenCode 遇到错误，正在重试（第 {{attempt}} 次）…",
     "runningGeneric": "OpenCode 正在处理当前步骤…",
@@ -60,7 +59,10 @@
     "allTasksCompleted": "所有任务已完成",
     "openToSeeSteps": "打开查看所有步骤",
     "progress": "进度",
-    "untitledTask": "未命名任务"
+    "untitledTask": "未命名任务",
+    "loadEarlier": "暂无可显示内容",
+    "loadEarlierDescription": "本回合的最新消息是工具活动。加载更早的消息以查看对话。",
+    "loadEarlierAction": "加载更早的消息"
   },
   "cards": {
     "respondToContinue": "需要批准",
@@ -137,7 +139,7 @@
     "estimatedCost": "预计 API 费用 {{cost}}",
     "openChats": "打开聊天。{{title}}",
     "untitledChat": "未命名聊天",
-    "chooseWorkspace": "选择工作区",
+    "chooseProject": "选择项目",
     "newChat": "新建聊天",
     "showUsage": "显示会话用量详情",
     "stopConversationMode": "停止对话模式",
@@ -162,7 +164,7 @@
   "library": {
     "title": "聊天",
     "searchPlaceholder": "搜索聊天",
-    "chooseWorkspace": "选择工作区",
+    "chooseProject": "选择项目",
     "swipeHint": " · 左滑查看操作",
     "active": "活跃",
     "archived": "已归档",
@@ -219,7 +221,7 @@
   },
   "starter": {
     "title": "开始新任务",
-    "description": "保持提示词具体，OpenCode 会检查工作区、显示进度，并流式返回文件更改。",
+    "description": "保持提示词具体，OpenCode 会检查项目、显示进度，并流式返回文件更改。",
     "prompts": {
       "polish": "解释这个项目",
       "review": "查看最近的更改",
@@ -230,7 +232,8 @@
   "reasoning": {
     "low": "低",
     "default": "默认",
-    "high": "高"
+    "high": "高",
+    "max": "最高"
   },
   "diff": {
     "turn": "轮次",
@@ -260,10 +263,10 @@
     "filesChangedCompact_other": "{{files}} 个文件已更改 · +{{additions}} / -{{deletions}}"
   },
   "session": {
-    "chooseWorkspace": "选择工作区",
-    "selectWorkspace": "在工作区标签页中选择一个项目，以打开其聊天上下文。",
+    "chooseProject": "选择项目",
+    "selectProject": "在项目标签页中选择一个项目，以打开其聊天上下文。",
     "opening": "正在打开 OpenCode Mobile",
-    "loading": "正在加载此 OpenCode Mobile 工作区的最新会话。"
+    "loading": "正在加载此 OpenCode Mobile 项目的最新会话。"
   },
   "deepLink": {
     "missingSessionId": "此会话链接缺少会话 ID。",
@@ -282,7 +285,13 @@
   },
   "pendingPrompts": {
     "sending": "正在发送…",
-    "waiting": "等待处理…"
+    "waiting": "等待处理…",
+    "cancel": "丢弃待处理消息"
+  },
+  "revertNotice": {
+    "title": "已从此消息回退",
+    "hint": "编辑下方提示词并发送，即可从此处继续。",
+    "cancel": "取消回退"
   },
   "approvals": {
     "mcpAuthTitle": "需要 MCP 身份验证",

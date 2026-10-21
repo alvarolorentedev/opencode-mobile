@@ -1,7 +1,10 @@
 // Small provider-agnostic helpers that do not belong to a specific domain
-// (project labels and grouping pending interactions by session).
+// (project labels, project list derivation, and grouping pending interactions
+// by session).
 
-import type { Session, SessionStatus } from '@/lib/opencode/types';
+import type { Project, Session, SessionStatus } from '@/lib/opencode/types';
+import type { OpencodeProject } from '@/providers/opencode-provider-types';
+import type { WorktreeCatalog } from '@/providers/use-worktree-state';
 
 // V2 `retry` is event-only: the session-list status endpoint derives its map
 // from the running set, which cannot express a retry. A list refresh would
@@ -32,6 +35,37 @@ export function getProjectLabel(path: string) {
   const normalized = path.trim().replace(/\/$/, '');
   const segments = normalized.split('/').filter(Boolean);
   return segments.at(-1) || normalized || 'Project';
+}
+
+// The picker mirrors the desktop Home list: it renders the projects the user
+// opened on this connection and enriches them with the server's project
+// metadata (id and display name). A remote project that was never opened is not
+// rendered.
+export function buildOpencodeProjects(openedPaths: string[], currentProjectPath: string | undefined, serverProjects: Project[]): OpencodeProject[] {
+  const remoteByPath = new Map(serverProjects.map((project) => [project.worktree, project]));
+  return openedPaths.map((path) => {
+    const remote = remoteByPath.get(path);
+    return {
+      ...(remote ? { id: remote.id } : {}),
+      label: remote?.name || getProjectLabel(path),
+      path,
+      source: 'server' as const,
+      ...(remote ? { updatedAt: remote.time.initialized || remote.time.created } : {}),
+      isCurrent: path === currentProjectPath,
+    };
+  });
+}
+
+// The active location can be a worktree: a server-known directory that belongs
+// to a project but is not a project itself. Worktrees are confirmed by the
+// worktree catalog (which resolves them server-side) so the owning project
+// labels the active entry.
+export function resolveActiveProject(projects: OpencodeProject[], activeProjectPath: string | undefined, currentProjectPath: string | undefined, worktrees: WorktreeCatalog | undefined): OpencodeProject | undefined {
+  const worktree = worktrees?.project;
+  if (activeProjectPath && worktree && worktree.root !== activeProjectPath && worktrees.entries.some((entry) => entry.directory === activeProjectPath)) {
+    return { id: worktree.id, label: worktree.label, path: activeProjectPath, source: 'server', isCurrent: activeProjectPath === currentProjectPath };
+  }
+  return projects.find((project) => project.path === activeProjectPath);
 }
 
 // Equality guards so a no-op poll refresh keeps the previous state identity and
@@ -111,4 +145,19 @@ export function groupPendingRequestsBySession<T extends { id: string; sessionID:
     acc[request.sessionID] = [...existing, request];
     return acc;
   }, {});
+}
+
+// Drop per-session entries whose session is no longer kept once the map exceeds
+// `limit`. Returns the same reference when there is nothing to prune, so
+// consumers can skip a re-render.
+export function pruneByKeepIds<T>(current: Record<string, T>, keepIds: Set<string>, limit: number): Record<string, T> {
+  const keys = Object.keys(current);
+  if (keys.length <= limit) {
+    return current;
+  }
+  const next: Record<string, T> = {};
+  for (const key of keys) {
+    if (keepIds.has(key)) next[key] = current[key];
+  }
+  return next;
 }

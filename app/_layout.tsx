@@ -72,7 +72,7 @@ function UpdateHost() {
   const pathname = usePathname();
   const updates = useUpdates();
   const { setSurfaceActive } = updates;
-  const eligible = ['/', '/workspace', '/settings', '/terminal'].includes(pathname);
+  const eligible = ['/', '/projects', '/settings', '/terminal'].includes(pathname);
   useLayoutEffect(() => {
     setSurfaceActive(eligible);
     return () => setSurfaceActive(false);
@@ -117,6 +117,7 @@ function RootNavigator() {
       </Stack.Protected>
       <Stack.Protected guard={isConnectEnabled()}>
         <Stack.Screen name="pair" options={{ headerShown: false }} />
+        <Stack.Screen name="service" options={{ headerShown: false }} />
       </Stack.Protected>
       <Stack.Screen name="share" options={{ headerShown: false }} />
     </Stack>

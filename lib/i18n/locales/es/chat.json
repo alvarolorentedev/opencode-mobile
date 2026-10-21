@@ -28,6 +28,7 @@
     "couldNotFork": "No se pudo bifurcar la sesión.",
     "couldNotRevert": "No se pudo revertir la sesión.",
     "couldNotRestore": "No se pudo restaurar la sesión.",
+    "couldNotCancelPending": "No se pudo descartar ese mensaje pendiente.",
     "couldNotUpdateAutoApprove": "No se pudo actualizar la aprobación automática.",
     "sendError": {
       "title": "Error de envío de OpenCode",
@@ -48,8 +49,6 @@
   },
   "content": {
     "connectionIssue": "Problema de conexión",
-    "sessionReverted": "La sesión está revertida",
-    "restoreReverted": "Restaurar el trabajo revertido",
     "runningActivity": "OpenCode está {{activity}}...",
     "runningRetry": "OpenCode encontró un error y lo está reintentando (intento {{attempt}})...",
     "runningGeneric": "OpenCode está avanzando en el paso actual...",
@@ -60,7 +59,10 @@
     "allTasksCompleted": "Todas las tareas completadas",
     "openToSeeSteps": "Abre para ver todos los pasos",
     "progress": "Progreso",
-    "untitledTask": "Tarea sin título"
+    "untitledTask": "Tarea sin título",
+    "loadEarlier": "Aún no hay nada que mostrar",
+    "loadEarlierDescription": "Los mensajes más recientes de este turno son actividad de herramientas. Carga mensajes anteriores para ver la conversación.",
+    "loadEarlierAction": "Cargar mensajes anteriores"
   },
   "cards": {
     "respondToContinue": "Se necesita aprobación",
@@ -137,7 +139,7 @@
     "estimatedCost": "Costo estimado de la API {{cost}}",
     "openChats": "Chats abiertos. {{title}}",
     "untitledChat": "Chat sin título",
-    "chooseWorkspace": "Elegir un espacio de trabajo",
+    "chooseProject": "Elegir un proyecto",
     "newChat": "Nuevo chat",
     "showUsage": "Mostrar detalles de uso de la sesión",
     "stopConversationMode": "Detener el modo conversación",
@@ -162,7 +164,7 @@
   "library": {
     "title": "Chats",
     "searchPlaceholder": "Buscar chats",
-    "chooseWorkspace": "Elegir un espacio de trabajo",
+    "chooseProject": "Elegir un proyecto",
     "swipeHint": " · Desliza a la izquierda para ver acciones",
     "active": "Activos",
     "archived": "Archivados",
@@ -219,7 +221,7 @@
   },
   "starter": {
     "title": "Iniciar una nueva tarea",
-    "description": "Sé específico con la instrucción y OpenCode inspeccionará el espacio de trabajo, mostrará el progreso y transmitirá los cambios en los archivos.",
+    "description": "Sé específico con la instrucción y OpenCode inspeccionará el proyecto, mostrará el progreso y transmitirá los cambios en los archivos.",
     "prompts": {
       "polish": "Explica este proyecto",
       "review": "Revisa los cambios recientes",
@@ -230,7 +232,8 @@
   "reasoning": {
     "low": "Bajo",
     "default": "Predeterminado",
-    "high": "Alto"
+    "high": "Alto",
+    "max": "Máximo"
   },
   "diff": {
     "turn": "Turno",
@@ -260,10 +263,10 @@
     "filesChangedCompact_other": "{{files}} archivos cambiados, +{{additions}} / -{{deletions}}"
   },
   "session": {
-    "chooseWorkspace": "Elegir un espacio de trabajo",
-    "selectWorkspace": "Selecciona un proyecto en la pestaña Espacios para abrir su contexto de chat.",
+    "chooseProject": "Elegir un proyecto",
+    "selectProject": "Selecciona un proyecto en la pestaña Proyectos para abrir su contexto de chat.",
     "opening": "Abriendo OpenCode Mobile",
-    "loading": "Cargando la última sesión de este espacio de trabajo de OpenCode Mobile."
+    "loading": "Cargando la última sesión de este proyecto de OpenCode Mobile."
   },
   "deepLink": {
     "missingSessionId": "Este enlace de sesión no incluye un ID de sesión.",
@@ -282,7 +285,13 @@
   },
   "pendingPrompts": {
     "sending": "Enviando…",
-    "waiting": "Esperando a que se use…"
+    "waiting": "Esperando a que se use…",
+    "cancel": "Descartar mensaje pendiente"
+  },
+  "revertNotice": {
+    "title": "Revertido desde este mensaje",
+    "hint": "Edita el mensaje de abajo y envíalo para continuar desde aquí.",
+    "cancel": "Cancelar reversión"
   },
   "approvals": {
     "mcpAuthTitle": "Se requiere autenticación MCP",

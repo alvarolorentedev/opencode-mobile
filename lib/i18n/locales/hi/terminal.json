@@ -1,9 +1,9 @@
 {
   "screen": {
     "connectTitle": "OpenCode से कनेक्ट करें",
-    "chooseWorkspace": "कार्यक्षेत्र चुनें",
+    "chooseProject": "प्रोजेक्ट चुनें",
     "selectProject": "टर्मिनल खोलने से पहले एक प्रोजेक्ट चुनें।",
-    "openWorkspaces": "कार्यक्षेत्र खोलें",
+    "openProjects": "प्रोजेक्ट खोलें",
     "title": "टर्मिनल"
   },
   "console": {

@@ -10,7 +10,7 @@ import type { PersistenceStorage } from '@/providers/persistence-hydration';
 // for users who have not completed the current flow.
 //
 // This value represents completion ONLY. Connection settings stay in
-// `opencode-mobile.settings`, passwords in SecureStore, the active workspace in
+// `opencode-mobile.settings`, passwords in SecureStore, the active project in
 // `opencode-mobile.active-project`, chat preferences in
 // `opencode-mobile.chat-preferences`, and notification/microphone state in the
 // OS. The assistant must never mirror those values here.

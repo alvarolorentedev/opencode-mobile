@@ -124,6 +124,12 @@ describe('feed attachments', () => {
     expect(defaultChatPreferences.promptDelivery).toBe('steer');
     expect(parseChatPreferences('{"promptDelivery":"queue"}').promptDelivery).toBe('queue');
     expect(parseChatPreferences('{"promptDelivery":"invalid"}').promptDelivery).toBeUndefined();
+    expect(parseChatPreferences('{"transcriptVerbosity":"basic"}').transcriptVerbosity).toBe('basic');
+    expect(parseChatPreferences('{"transcriptVerbosity":"reasoning"}').transcriptVerbosity).toBe('reasoning');
+    expect(parseChatPreferences('{"transcriptVerbosity":"verbose"}').transcriptVerbosity).toBe('verbose');
+    // No migration: pre-1.0.83 levels fall back to the default.
+    expect(parseChatPreferences('{"transcriptVerbosity":"conversation"}').transcriptVerbosity).toBeUndefined();
+    expect(parseChatPreferences('{"transcriptVerbosity":"tools"}').transcriptVerbosity).toBeUndefined();
     for (const type of ['enqueued', 'delivered', 'cancelled', 'delivery.changed']) {
       const scheduleSessionRefresh = vi.fn();
       handleProviderEvent({ id: 'event', type: `session.inbox.${type}`, data: { sessionID: 's' } } as never, { scheduleSessionRefresh } as never);
@@ -182,6 +188,16 @@ describe('provider-owned prompt inbox', () => {
     const other = { promptInbox: { list: async () => [pending()] } };
     runtime.update({ client: other, isCurrentClient: (candidate: any) => candidate === other });
     expect(runtime.value.pendingPromptsBySession).toEqual({});
+  });
+
+  it('cancels a waiting prompt and removes it from the local stack', async () => {
+    const client = { promptInbox: { list: vi.fn(async () => [pending('m1')]), cancel: vi.fn(async () => undefined) } };
+    const runtime = await mount(client);
+    await runtime.value.refreshMessages('s'); runtime.flush();
+    expect(runtime.value.pendingPromptsBySession.s).toHaveLength(1);
+    await runtime.value.cancelPrompt('s', 'm1'); runtime.flush();
+    expect(client.promptInbox.cancel).toHaveBeenCalledWith('s', 'm1');
+    expect(runtime.value.pendingPromptsBySession.s).toHaveLength(0);
   });
 
   it('removes failed submissions and preserves V1 sending behavior', async () => {

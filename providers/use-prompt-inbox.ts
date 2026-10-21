@@ -3,17 +3,20 @@ import { useCallback, useRef, useState } from 'react';
 import type { ScopedOpencodeClient } from '@/lib/opencode/client';
 import type { SessionMessageRecord } from '@/lib/opencode/format';
 import type { PendingPrompt, PromptDelivery, PromptInput } from '@/lib/opencode/prompt-inbox';
+import type { TranscriptRefreshMode } from '@/providers/opencode-provider-types';
 import { getSessionInbox } from '@/providers/services/session-service';
+
+const EMPTY_PROMPTS: Record<string, PendingPrompt[]> = {};
 
 export function usePromptInbox({ client, isCurrentClient, refreshMessages: readMessages }: {
   client: ScopedOpencodeClient;
   isCurrentClient: (candidate: object) => boolean;
-  refreshMessages: (sessionId: string, silent?: boolean, options?: { full?: boolean }) => Promise<SessionMessageRecord[]>;
+  refreshMessages: (sessionId: string, silent?: boolean, options?: { mode?: TranscriptRefreshMode }) => Promise<SessionMessageRecord[]>;
 }) {
   const [snapshot, setSnapshot] = useState<{ client: object; prompts: Record<string, PendingPrompt[]> }>({ client, prompts: {} });
   const revisions = useRef<Record<string, number>>({});
   const counter = useRef(0);
-  const pendingPromptsBySession = snapshot.client === client ? snapshot.prompts : {};
+  const pendingPromptsBySession = snapshot.client === client ? snapshot.prompts : EMPTY_PROMPTS;
 
   const update = useCallback((sessionId: string, change: (previous: PendingPrompt[]) => PendingPrompt[]) => {
     if (!isCurrentClient(client)) return;
@@ -23,7 +26,7 @@ export function usePromptInbox({ client, isCurrentClient, refreshMessages: readM
     });
   }, [client, isCurrentClient]);
 
-  const refreshMessages = useCallback(async (sessionId: string, silent = false, options?: { full?: boolean }) => {
+  const refreshMessages = useCallback(async (sessionId: string, silent = false, options?: { mode?: TranscriptRefreshMode }) => {
     if (!client.promptInbox) return readMessages(sessionId, silent, options);
     const revision = (revisions.current[sessionId] ?? 0) + 1;
     revisions.current[sessionId] = revision;
@@ -65,5 +68,14 @@ export function usePromptInbox({ client, isCurrentClient, refreshMessages: readM
     }
   }, [client, update]);
 
-  return { pendingPromptsBySession, refreshMessages, submitPrompt };
+  const cancelPrompt = useCallback(async (sessionId: string, promptId: string) => {
+    if (!client.promptInbox) {
+      throw new Error('Prompt cancellation is unavailable.');
+    }
+    await client.promptInbox.cancel(sessionId, promptId);
+    if (!isCurrentClient(client)) return;
+    update(sessionId, (previous) => previous.filter((prompt) => prompt.id !== promptId));
+  }, [client, isCurrentClient, update]);
+
+  return { pendingPromptsBySession, refreshMessages, submitPrompt, cancelPrompt };
 }

@@ -67,12 +67,12 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
-        name="workspace"
+        name="projects"
         options={{
-          title: t('common:tabs.workspace'),
-          tabBarLabel: label('/workspace', t('common:tabs.workspace')),
-          tabBarIcon: ({ color }) => <IconSymbol size={28} name="folder.fill" color={iconColor('/workspace', color)} />,
-          tabBarButton: (props) => <HapticTab {...props} route="/workspace" />,
+          title: t('common:tabs.projects'),
+          tabBarLabel: label('/projects', t('common:tabs.projects')),
+          tabBarIcon: ({ color }) => <IconSymbol size={28} name="folder.fill" color={iconColor('/projects', color)} />,
+          tabBarButton: (props) => <HapticTab {...props} route="/project" />,
         }}
       />
       <Tabs.Screen

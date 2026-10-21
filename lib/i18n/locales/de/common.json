@@ -2,7 +2,7 @@
   "tabs": {
     "chat": "Chat",
     "terminal": "Terminal",
-    "workspace": "Arbeitsbereich",
+    "projects": "Projekte",
     "settings": "Einstellungen"
   },
   "actions": {
@@ -57,5 +57,32 @@
     "availableDescription": "Installiere die neueste Version über den App Store.",
     "restart": "Neu starten & installieren",
     "openStore": "App Store öffnen"
+  },
+  "servers": {
+    "allServers": "Alle Server",
+    "allProjects": "Alle Projekte",
+    "server": "Server",
+    "projectContext": "Projektkontext",
+    "serverSettings": "Servereinstellungen",
+    "appSettings": "App-Einstellungen",
+    "forServer": "Änderungen gelten für {{name}}",
+    "searchProjects": "Projekte suchen",
+    "lastSynced": "Zuletzt synchronisierte Projekte",
+    "newTerminalHint": "Wähle, wo dieses Terminal startet.",
+    "workingDirectory": "Arbeitsverzeichnis",
+    "chatUnchanged": "Dein Chat bleibt auf {{name}}.",
+    "pending": "Ausstehend ({{count}})",
+    "savedRules": "Gespeicherte Regeln ({{count}})",
+    "onlyThisServer": "Nur für diesen Server",
+    "appDiagnostics": "App-Diagnose · Alle Server",
+    "discardDrafts": "Nicht gespeicherte Chat- und Editorentwürfe auf diesem Server werden verworfen.",
+    "status": {
+      "idle": "Getrennt",
+      "connecting": "Verbindung wird hergestellt",
+      "connected": "Verbunden",
+      "error": "Nicht verfügbar"
+    },
+    "appSettingsSummary": "Editor, allgemeine Einstellungen und Updates",
+    "serverToolsSummary": "MCP-Server und Diagnose"
   }
 }

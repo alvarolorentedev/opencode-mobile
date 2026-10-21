@@ -379,8 +379,10 @@ export function useConnectState({ controlPlaneUrl, setControlPlaneUrl, switchCon
 
   const canChangeControlPlane = enabled && isHydrated && !busy && purchaseRecovery !== 'verified' && !['purchasing', 'pending', 'saving'].includes(phase);
   const canPurchase = initialization === 'ready' && !busy && storeReady && !purchaseRecovery && !['purchasing', 'pending'].includes(phase);
-  return { enabled, storeInstall, initialization, pairLink, dismissError, controlPlaneUrl, canChangeControlPlane, canPurchase, hasToken: hasConnectSession(session), entitled: hasConnectEntitlement(session), subscriptionExpiresAt: session?.subscription_expires_at, pairing, phase, busy, error, notice, machines, profiles, savedProfile, offers, storeReady, canRetry: canRetry || phase === 'delayed', manageSubscription,
-    selectControlPlane, acceptLink, purchase, restore, retry, claim, cancelPairing, refreshMachines, connectProfile, connectMachine, forgetProfile, revokeMachine, prepareSettings };
+  return useMemo(() => ({ enabled, storeInstall, initialization, pairLink, dismissError, controlPlaneUrl, canChangeControlPlane, canPurchase, hasToken: hasConnectSession(session), entitled: hasConnectEntitlement(session), subscriptionExpiresAt: session?.subscription_expires_at, pairing, phase, busy, error, notice, machines, profiles, savedProfile, offers, storeReady, canRetry: canRetry || phase === 'delayed', manageSubscription,
+    selectControlPlane, acceptLink, purchase, restore, retry, claim, cancelPairing, refreshMachines, connectProfile, connectMachine, forgetProfile, revokeMachine, prepareSettings }), [enabled, storeInstall, initialization, pairLink, dismissError, controlPlaneUrl, canChangeControlPlane, canPurchase,
+    session, pairing, phase, busy, error, notice, machines, profiles, savedProfile, offers, storeReady, canRetry, manageSubscription,
+    selectControlPlane, acceptLink, purchase, restore, retry, claim, cancelPairing, refreshMachines, connectProfile, connectMachine, forgetProfile, revokeMachine, prepareSettings]);
 }
 
 export type ConnectSetup = ReturnType<typeof useConnectState>;

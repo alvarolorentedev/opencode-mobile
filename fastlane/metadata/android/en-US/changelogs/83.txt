@@ -1,0 +1,2 @@
+- Opening a chat from another project no longer fails when that folder is a second checkout of the same repository.
+- The project picker no longer offers a repository's own checkout as a removable worktree, avoiding an OpenCode server error.

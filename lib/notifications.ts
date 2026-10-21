@@ -116,7 +116,7 @@ function buildTaskFinishedContent(title: string, body: string): Notifications.No
 
 // Non-secret routing payload shared by completion and attention notifications.
 // It mirrors the Android activity notification link so a tap opens the owning
-// connection, workspace, and session.
+// connection, project, and session.
 export type NotificationRouteData = {
   sessionId: string;
   projectPath?: string;
@@ -392,7 +392,7 @@ export async function clearPendingTaskFinishedNotification(connectionScope: stri
 // Notification copy is translated here, at the lib boundary, so callers pass
 // only the session title and never render notification strings themselves.
 // Completion carries a non-secret route payload so a tap can open the owning
-// connection, workspace, and session.
+// connection, project, and session.
 export async function notifyTaskFinished(input: {
   sessionId: string;
   sessionTitle?: string;

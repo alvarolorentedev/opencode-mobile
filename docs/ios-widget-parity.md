@@ -18,7 +18,7 @@ the docs it references.
     sessions, debounced and only while foregrounded (Android throttles dynamic
     shortcut updates in the background).
   - `hooks/use-quick-action-route.ts` resolves a tap through the existing
-    `app/session/[id].tsx` deep-link resolver, so connection scope, workspace
+    `app/session/[id].tsx` deep-link resolver, so connection scope, project
     switching, and session validation match notifications.
 - Android home widget: `react-native-android-widget` +
   `widgets/session-widget.tsx` + `widgets/session-widget-task.tsx`, fed by the

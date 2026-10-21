@@ -7,12 +7,9 @@ export type SessionMessageRecord = {
 
 export type TranscriptDetail =
   | { id: string; kind: 'reasoning'; label: string; body: string }
-  | { id: string; kind: 'tool'; label: string; body: string; status: string }
+  | { id: string; kind: 'tool'; tool: string; command?: string; label: string; body: string; status: string }
   | { id: string; kind: 'patch'; label: string; body: string }
   | { id: string; kind: 'file'; label: string; body: string; uri?: string; mime?: string; filename?: string }
-  | { id: string; kind: 'subtask'; label: string; body: string }
-  | { id: string; kind: 'step'; label: string; body: string }
-  | { id: string; kind: 'agent'; label: string; body: string }
   | { id: string; kind: 'retry'; label: string; body: string }
   | { id: string; kind: 'compaction'; label: string; body: string };
 

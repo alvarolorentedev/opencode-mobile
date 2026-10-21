@@ -1,18 +1,21 @@
+import { SSE_STALENESS_MS, SSE_FOREGROUND_CYCLE_MS, WATCHDOG_TICK_MS } from '@/providers/realtime-timing';
 import { AppState } from 'react-native';
 import { subscribeEvents } from '@/lib/opencode/events';
 import { classifyConnectionFailure, isAuthConnectionFailure } from '@/lib/opencode/client/errors';
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import type { OpencodeEvent } from '@/lib/opencode/events';
 import type { ConnectionFailureKind, ScopedOpencodeClient } from '@/lib/opencode/client';
+import type { TranscriptRefreshMode } from '@/providers/opencode-provider-types';
 
 type RealtimeActions = {
+  subscribe?: typeof subscribeEvents;
   onEvent: (event: OpencodeEvent) => void;
   onGlobalEvent?: (event: OpencodeEvent) => void;
   refreshNativeSurfaces?: (full?: boolean) => Promise<unknown>;
   onFatalError?: (kind: ConnectionFailureKind) => void;
   refreshSessions: (silent: boolean) => Promise<unknown>;
   refreshPendingInteractions: () => Promise<unknown>;
-  refreshMessages: (sessionId: string, silent: boolean, options?: { full?: boolean }) => Promise<unknown>;
+  refreshMessages: (sessionId: string, silent: boolean, options?: { mode?: TranscriptRefreshMode }) => Promise<unknown>;
   refreshSessionDiff: (sessionId: string, silent: boolean) => Promise<unknown>;
   refreshSessionTodos: (sessionId: string) => Promise<unknown>;
 };
@@ -25,13 +28,10 @@ export function shouldPoll(streamConnected: boolean, busy: boolean) {
 // without any envelope the subscription is re-established so a dead stream
 // cannot masquerade as connected and strand blocking requests. E2E builds
 // shorten the window so a stalled transport is recoverable inside a test.
-const E2E_MODE = typeof process !== 'undefined' && process.env?.EXPO_PUBLIC_E2E_MODE === '1';
-export const SSE_STALENESS_MS = E2E_MODE ? 3000 : 90_000;
-export const SSE_FOREGROUND_CYCLE_MS = E2E_MODE ? 1000 : 15_000;
-const WATCHDOG_TICK_MS = 7000;
+export { SSE_STALENESS_MS, SSE_FOREGROUND_CYCLE_MS } from '@/providers/realtime-timing';
 
 export function useOpencodeRealtime({ catalogClient, activeProjectPath, connected, busy,
-  currentSessionId, conversationSessionId, pendingSessionIds = [], ...actions
+  currentSessionId, conversationSessionId, pendingSessionIds = [], subscribe: subscribeStream = subscribeEvents, ...actions
 }: RealtimeActions & {
   catalogClient: ScopedOpencodeClient;
   activeProjectPath?: string;
@@ -63,7 +63,7 @@ export function useOpencodeRealtime({ catalogClient, activeProjectPath, connecte
     result = Promise.allSettled([
       next.refreshSessions(true), next.refreshPendingInteractions(),
       next.refreshNativeSurfaces?.(full),
-      ...[...sessions].flatMap((id) => [next.refreshMessages(id, true, full ? { full: true } : undefined), next.refreshSessionDiff(id, true), next.refreshSessionTodos(id)]),
+      ...[...sessions].flatMap((id) => [next.refreshMessages(id, true), next.refreshSessionDiff(id, true), next.refreshSessionTodos(id)]),
     ]).finally(() => {
       if (inFlight.current !== result) return;
       inFlight.current = undefined;
@@ -110,7 +110,7 @@ export function useOpencodeRealtime({ catalogClient, activeProjectPath, connecte
         attemptController = attempt;
         let streamError: unknown;
         try {
-          const subscription = subscribeEvents(catalogClient, attempt.signal);
+          const subscription = subscribeStream(catalogClient, attempt.signal, () => { lastEnvelopeAt = Date.now(); });
           let reconciled = false;
           for await (const envelope of subscription) {
             if (controller.signal.aborted || attempt.signal.aborted) break;
@@ -195,12 +195,12 @@ export function useOpencodeRealtime({ catalogClient, activeProjectPath, connecte
       appState.remove();
       resumeRetry?.();
     };
-  }, [activeProjectPath, catalogClient, connected, reconcile]);
+  }, [activeProjectPath, catalogClient, connected, reconcile, subscribeStream]);
 
   useEffect(() => {
     if (!connected || !activeProjectPath || !shouldPoll(eventStreamStatus === 'connected', busy)) return;
     // While SSE is healthy the loop is a safety net and runs slower; without a
-    // stream it is the primary transport. Prompt completion across workspaces is
+    // stream it is the primary transport. Prompt completion across projects is
     // additionally covered by the post-send transcript refresh, so a slower
     // connected cadence cannot strand a finished turn.
     const intervalMs = eventStreamStatus === 'connected' ? 10000 : 5000;

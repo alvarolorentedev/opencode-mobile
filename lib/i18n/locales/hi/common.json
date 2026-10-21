@@ -2,7 +2,7 @@
   "tabs": {
     "chat": "चैट",
     "terminal": "टर्मिनल",
-    "workspace": "कार्यक्षेत्र",
+    "projects": "प्रोजेक्ट",
     "settings": "सेटिंग्स"
   },
   "actions": {
@@ -57,5 +57,32 @@
     "availableDescription": "App Store से नया संस्करण इंस्टॉल करें।",
     "restart": "रीस्टार्ट और इंस्टॉल करें",
     "openStore": "App Store खोलें"
+  },
+  "servers": {
+    "allServers": "सभी सर्वर",
+    "allProjects": "सभी प्रोजेक्ट",
+    "server": "सर्वर",
+    "projectContext": "प्रोजेक्ट संदर्भ",
+    "serverSettings": "सर्वर सेटिंग",
+    "appSettings": "ऐप सेटिंग",
+    "forServer": "बदलाव {{name}} पर लागू होंगे",
+    "searchProjects": "प्रोजेक्ट खोजें",
+    "lastSynced": "अंतिम सिंक किए गए प्रोजेक्ट दिखाए जा रहे हैं",
+    "newTerminalHint": "चुनें कि यह टर्मिनल कहाँ शुरू होगा।",
+    "workingDirectory": "कार्य डायरेक्टरी",
+    "chatUnchanged": "आपकी चैट {{name}} पर रहेगी।",
+    "pending": "लंबित ({{count}})",
+    "savedRules": "सहेजे गए नियम ({{count}})",
+    "onlyThisServer": "केवल इस सर्वर के लिए",
+    "appDiagnostics": "ऐप डायग्नोस्टिक्स · सभी सर्वर",
+    "discardDrafts": "इस सर्वर पर चैट और एडिटर के बिना सहेजे ड्राफ़्ट हटा दिए जाएँगे।",
+    "status": {
+      "idle": "डिस्कनेक्टेड",
+      "connecting": "कनेक्ट हो रहा है",
+      "connected": "कनेक्टेड",
+      "error": "अनुपलब्ध"
+    },
+    "appSettingsSummary": "एडिटर, सामान्य सेटिंग और अपडेट",
+    "serverToolsSummary": "MCP सर्वर और डायग्नोस्टिक्स"
   }
 }

@@ -1,9 +1,9 @@
 {
   "title": "Compartido con OpenCode",
   "subtitle": "Revisa el contenido, elige una conversación y añádelo al editor. No se envía nada hasta que pulses enviar.",
-  "workspace": "Espacio de trabajo",
-  "noWorkspace": "Ningún espacio de trabajo seleccionado",
-  "chooseWorkspace": "Elegir",
+  "project": "Proyecto",
+  "noProject": "Ningún proyecto seleccionado",
+  "chooseProject": "Elegir",
   "notConnected": "Sin conexión a un servidor. Conéctate antes de enviar.",
   "link": "Enlace",
   "attachments": "Adjuntos",

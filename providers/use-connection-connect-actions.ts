@@ -7,9 +7,7 @@ import {
   pickModelPreferences,
   mutateConnectionProfiles,
 } from '@/lib/connection-profiles';
-import { getConnectionScope } from '@/lib/connection-scope';
 import { getConnectCredentialError } from '@/lib/connect';
-import { saveConnectionPassword } from '@/lib/connection-password';
 import {
   buildClient,
   classifyConnectionFailure,
@@ -17,6 +15,7 @@ import {
   getConnectionError,
   getNormalizedServerUrl,
   isContractMismatchError,
+  isAuthConnectionFailure,
   isRetryableCloudLinkStartupError,
   isValidServerUrl,
   type ConnectionFailureKind,
@@ -24,9 +23,8 @@ import {
   type ScopedOpencodeClient,
   type ServerContract,
 } from '@/lib/opencode/client';
-import type { ConnectionProfile } from '@/lib/connection-profiles';
-import type { ChatPreferences, ConnectionState, WorkspaceCatalog } from '@/providers/opencode-provider-types';
-import { useConnectState } from '@/providers/use-connect-state';
+import type { ChatPreferences, ConnectionState, ProjectCatalog } from '@/providers/opencode-provider-types';
+import type { ConnectSetup } from '@/providers/use-connect-state';
 import type { ConnectionActionsInput } from '@/providers/opencode-provider-action-inputs';
 
 // Joining concurrent connects is keyed on the exact credentials and generation
@@ -38,9 +36,8 @@ function getConnectRequestKey(settings: OpencodeConnectionSettings, generation: 
 
 export function useConnectionConnectActions({
   settings,
+  connectSetup,
   setSettings,
-  controlPlaneUrl,
-  setControlPlaneUrl,
   activeProjectPath,
   setActiveProjectPath,
   activeProjectPathRef,
@@ -48,7 +45,7 @@ export function useConnectionConnectActions({
   softResetProjectState,
   isHydrated,
   isCurrentCatalogClient,
-  loadWorkspaceCatalog,
+  loadProjectCatalog,
   serverProjectsRef,
   setServerProjects,
   setCurrentProjectPath,
@@ -63,8 +60,6 @@ export function useConnectionConnectActions({
   setMessagesBySession,
   setDiffsBySession,
   setTodosBySession,
-  setFavoriteSessions,
-  setLastSessionByConnection,
   setChatPreferences,
   setDiagnostics,
   setSendingState,
@@ -78,7 +73,7 @@ export function useConnectionConnectActions({
   catalogGenerationRef,
   scopeGenerationRef,
   initialConnectStartedRef,
-}: ConnectionActionsInput) {
+}: ConnectionActionsInput & { connectSetup: ConnectSetup }) {
   const prepareConnectSettingsRef = useRef<(settings: OpencodeConnectionSettings) => Promise<OpencodeConnectionSettings>>(async (value) => value);
   const connectInFlightRef = useRef<{ key: string; promise: Promise<ConnectionState> } | undefined>(undefined);
 
@@ -105,7 +100,7 @@ export function useConnectionConnectActions({
           scopeGenerationRef.current += 1;
           serverGenerationRef.current += 1;
           generation = serverGenerationRef.current;
-          // A same-machine credential renewal keeps workspace, session, terminal
+          // A same-machine credential renewal keeps project, session, terminal
           // and editor state; only client-bound in-flight bookkeeping resets.
           if (sameMachineRotation) softResetProjectState(); else clearProjectState();
         }
@@ -149,7 +144,7 @@ export function useConnectionConnectActions({
     if (!current()) return connectionRef.current;
 
     const candidates: ServerContract[] = detectedContract === 'v1' ? ['v1', 'v2'] : ['v2', 'v1'];
-    let catalog: WorkspaceCatalog | undefined;
+    let catalog: ProjectCatalog | undefined;
     let activeCatalogClient: ScopedOpencodeClient | undefined;
     let usedContract: ServerContract | undefined;
     let lastError: unknown;
@@ -158,7 +153,7 @@ export function useConnectionConnectActions({
       const candidateClient = buildClient({ ...targetSettings, directory: '' }, candidate);
       catalogGenerationRef.current.set(candidateClient, serverGenerationRef.current);
       try {
-        const result = await loadWorkspaceCatalog(true, candidateClient);
+        const result = await loadProjectCatalog(true, candidateClient);
         if (!isCurrentCatalogClient(candidateClient)) {
           return connectionRef.current;
         }
@@ -185,6 +180,7 @@ export function useConnectionConnectActions({
         checkedAt: Date.now(),
       };
       setConnection(failed);
+      if (!isAuthConnectionFailure(failed.kind ?? 'unknown')) return failed;
       serverProjectsRef.current = [];
       setServerProjects([]);
       setCurrentProjectPath(undefined);
@@ -224,7 +220,7 @@ export function useConnectionConnectActions({
     }
 
     return connected;
-  }, [activeProjectPath, catalogGenerationRef, clearProjectState, softResetProjectState, isCurrentCatalogClient, loadWorkspaceCatalog, initialConnectStartedRef, serverContractRef, serverGenerationRef, scopeGenerationRef, settingsRef, setAvailableAgents, setAvailableModels, setAvailableProviders, setConnection, setCurrentConfig, setCurrentProjectPath, setProviderAuthMethodsById, setServerContract, setServerProjects, setServerRootPath, setSessionStatuses, setSessions, setSettings, serverProjectsRef, connectionRef]);
+  }, [activeProjectPath, catalogGenerationRef, clearProjectState, softResetProjectState, isCurrentCatalogClient, loadProjectCatalog, initialConnectStartedRef, serverContractRef, serverGenerationRef, scopeGenerationRef, settingsRef, setAvailableAgents, setAvailableModels, setAvailableProviders, setConnection, setCurrentConfig, setCurrentProjectPath, setProviderAuthMethodsById, setServerContract, setServerProjects, setServerRootPath, setSessionStatuses, setSessions, setSettings, serverProjectsRef, connectionRef]);
 
   const runConnect = useCallback((targetSettings: OpencodeConnectionSettings) => {
     const inFlight = connectInFlightRef.current;
@@ -244,7 +240,7 @@ export function useConnectionConnectActions({
 
   // A revoked or invalid credential on the data plane cannot heal by retrying.
   // Cloud Link reuses its prepared credential/recovery path; manual servers ask
-  // the user to reconnect. Server-derived caches are cleared, workspace
+  // the user to reconnect. Server-derived caches are cleared, project
   // selection is not.
   const handleStreamAuthFailure = useCallback((kind: ConnectionFailureKind) => {
     if (settingsRef.current.connect) {
@@ -331,21 +327,6 @@ export function useConnectionConnectActions({
     return runConnect(targetSettings);
   }, [captureActiveProfilePreferences, runConnect, settingsRef, setChatPreferences, updateSettings]);
 
-  const disconnectConnectProfile = useCallback(async (profile: ConnectionProfile) => {
-    if (!findMatchingProfile([profile], settingsRef.current)) return;
-    updateSettings({ serverUrl: '', username: '', password: '', connect: undefined });
-    await saveConnectionPassword('');
-  }, [settingsRef, updateSettings]);
-
-  const onConnectProfileRefreshed = useCallback((previous: ConnectionProfile, next: ConnectionProfile) => {
-    const oldScope = getConnectionScope(previous), newScope = getConnectionScope(next);
-    if (oldScope === newScope) return;
-    setFavoriteSessions((current) => current.map((entry) => entry.connectionScope === oldScope ? { ...entry, connectionScope: newScope } : entry));
-    setLastSessionByConnection((current) => ({ ...current, [newScope]: { ...current[oldScope], ...current[newScope] } }));
-  }, [setFavoriteSessions, setLastSessionByConnection]);
-
-  const isActiveProfile = useCallback((profile: ConnectionProfile) => Boolean(settingsRef.current.connect && findMatchingProfile([profile], settingsRef.current)), [settingsRef]);
-  const connectSetup = useConnectState({ controlPlaneUrl, setControlPlaneUrl, switchConnection, disconnect: disconnectConnectProfile, isHydrated, activeMachineId: settings.connect?.machineId, beforeProfileRefresh: captureActiveProfilePreferences, onProfileRefreshed: onConnectProfileRefreshed, isActiveProfile });
   const connectPhaseRef = useRef(connectSetup.phase);
   const activationPaused = connectSetup.phase === 'waitingForApproval' || connectSetup.phase === 'delayed';
   useLayoutEffect(() => {

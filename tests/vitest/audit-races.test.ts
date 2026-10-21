@@ -5,9 +5,11 @@ import { listPendingInteractions } from '@/lib/opencode/client/interactions';
 async function mountDraft(sessionId = 's') {
   const runtime = hookRuntime();
   const sharing = await loadTs('lib/share/parse.ts', { '@/lib/attachment-preview': {} });
-  const { useChatDraft } = await loadTs('components/chat/use-chat-draft.ts', { react: runtime.react, '@/lib/share/parse': sharing });
+  const presentation = new Map();
+  const retained = await loadTs('components/ui/use-retained-state.ts', { react: runtime.react, '@/providers/workspace-context': { useWorkspaces: () => ({ presentation }) } });
+  const { useChatDraft } = await loadTs('components/chat/use-chat-draft.ts', { react: runtime.react, '@/lib/share/parse': sharing, '@/components/ui/use-retained-state': retained });
   runtime.mount(({ owner, sessionId }: any) => useChatDraft(owner, sessionId), { owner: 'server:/repo', sessionId });
-  return runtime;
+  return Object.assign(runtime, { presentation });
 }
 
 describe('composer admission races', () => {
@@ -44,6 +46,21 @@ describe('composer admission races', () => {
     runtime.update({ sessionId: 'new' }); pending.clear('new'); pending.restore('new'); runtime.flush();
     expect(runtime.value.draft).toBe('/command'); runtime.unmount();
   });
+  it('adopts pre-bootstrap edits without leaving a hidden stale draft', async () => {
+    const runtime = await mountDraft();
+    runtime.update({ sessionId: undefined });
+    runtime.value.setDraft('A'); const pending = runtime.value.capture();
+    runtime.value.setDraft('B'); runtime.flush();
+    runtime.update({ sessionId: 'new' });
+    expect(runtime.value.draft).toBe('B');
+    pending.clear('new'); pending.restore('new'); runtime.flush();
+    expect(runtime.value.draft).toBe('B');
+    runtime.value.recoverFailedInput(); runtime.flush();
+    expect(runtime.value.draft).toBe('B\n\nA');
+    runtime.value.capture().clear('new'); runtime.flush();
+    expect([...runtime.presentation.values()].some((value) => value?.draft)).toBe(false);
+    runtime.unmount();
+  });
   it('keeps failed-input ownership across credential rotation on the same Cloud Link machine', async () => {
     const scopes = await loadTs('lib/connection-scope.ts', { 'base-64': { encode: (value: string) => Buffer.from(value, 'binary').toString('base64') } });
     const machine = { serverUrl: 'https://machine.test', username: 'device-a', connect: { controlPlaneUrl: 'https://api.opencodecloud.link', machineId: 'machine' } };
@@ -60,13 +77,13 @@ describe('partial interaction reads', () => {
     const runtime = hookRuntime();
     const utilities = await loadTs('providers/opencode-provider-utils.ts');
     let result: any = { permissions: undefined, questions: [] };
-    const { useWorkspaceRefreshActions } = await loadTs('providers/use-workspace-refresh-actions.ts', {
+    const { useProjectRefreshActions } = await loadTs('providers/use-project-refresh-actions.ts', {
       react: runtime.react, '@/lib/opencode/client': { listPendingInteractions: async () => { if (result instanceof Error) throw result; return result; } },
       '@/lib/opencode/transcript': { resolveDiffTurn: () => undefined },
-      '@/providers/opencode-provider-utils': utilities, '@/providers/session-cache': {}, '@/providers/services/session-service': {}, '@/providers/services/workspace-service': {},
+      '@/providers/opencode-provider-utils': utilities, '@/providers/session-cache': {}, '@/providers/services/session-service': {}, '@/providers/services/project-service': {},
     });
     const permissions = vi.fn(), questions = vi.fn();
-    runtime.mount(useWorkspaceRefreshActions, { client: {}, isCurrentClient: () => true, setPendingPermissionsBySession: permissions, setPendingQuestionsBySession: questions });
+    runtime.mount(useProjectRefreshActions, { client: {}, isCurrentClient: () => true, setPendingPermissionsBySession: permissions, setPendingQuestionsBySession: questions });
     await runtime.value.refreshPendingInteractions();
     expect(permissions).not.toHaveBeenCalled(); expect(questions).toHaveBeenCalledWith({});
     result = { permissions: [], questions: undefined }; await runtime.value.refreshPendingInteractions();

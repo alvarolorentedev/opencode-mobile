@@ -19,6 +19,7 @@ export function usePermissionRulesState({
   setSavedPermissions: Dispatch<SetStateAction<SavedPermissionRule[]>>;
 }) {
   const refreshSavedPermissions = useCallback(async () => {
+    if (!isCurrentClient(client)) return;
     try {
       const rules = await listSavedPermissionRules(client);
       if (!isCurrentClient(client)) {
@@ -32,6 +33,7 @@ export function usePermissionRulesState({
 
   const removeSavedPermission = useCallback(
     async (id: string) => {
+      if (!isCurrentClient(client)) throw new Error('Connect this server before changing its permissions.');
       await removeSavedPermissionRule(client, id);
       if (isCurrentClient(client)) {
         setSavedPermissions((current) => current.filter((rule) => rule.id !== id));

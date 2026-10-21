@@ -1,0 +1,3 @@
+- Exposed services stay manageable while another connection is active: they follow their Cloud Link machine, so you can add, edit, and copy links without switching back.
+- Adding or editing a service now opens a full-screen editor and returns you to Cloud Link when you save or cancel.
+- Cloud Link settings explain the states that used to hide the list, such as no saved machine or expired access, and offer to switch to the machine that owns the services.

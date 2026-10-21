@@ -33,24 +33,26 @@ type StartOptions = { continuous?: boolean };
 
 // `useSpeechInput` is mounted more than once (chat dictation and conversation
 // mode) while the native recognizer is a singleton. These module-level values
-// let only the instance that actually started the session drive the on-device
-// -> network retry, and keep the other instance from racing it or flashing a
-// transient error.
+// route native events and controls to the instance that started recognition,
+// including its on-device -> network retry.
 let activeOwner: string | undefined;
 let activeOnDevice = false;
-let fallbackInProgress = false;
 
 export function useSpeechInput({
   levelStep = 1,
   locale,
+  onEnd,
   onResult,
+  onSpeechStart,
   preferOnDevice,
   volumeUpdateIntervalMillis = 120,
 }: {
   levelStep?: number;
   locale?: string;
   preferOnDevice: boolean;
+  onEnd?: () => void;
   onResult: (transcript: string, isFinal: boolean) => void;
+  onSpeechStart?: () => void;
   volumeUpdateIntervalMillis?: number;
 }) {
   const [error, setError] = useState<string>();
@@ -65,6 +67,8 @@ export function useSpeechInput({
   // native recognizer across the chat and conversation mounts.
   const ownerId = useId();
   const ignoreErrorsUntilRef = useRef(0);
+  const startRequestRef = useRef(0);
+  const acceptingResultsRef = useRef(false);
   const lastLevelRef = useRef(0);
   // Once the on-device model proves unusable we stop asking for it, so a
   // conversation loop does not fail on every turn.
@@ -99,10 +103,7 @@ export function useSpeechInput({
       clearTimeout(fallbackTimeoutRef.current);
       fallbackTimeoutRef.current = undefined;
     }
-    if (activeOwner === ownerId) {
-      fallbackInProgress = false;
-    }
-  }, [ownerId]);
+  }, []);
 
   const readCapabilities = useCallback(() => {
     let available = false;
@@ -121,7 +122,7 @@ export function useSpeechInput({
   }, []);
 
   useSpeechRecognitionEvent('start', () => {
-    fallbackInProgress = false;
+    if (activeOwner !== ownerId) return;
     setError(undefined);
     setErrorCode(undefined);
     setErrorAction('none');
@@ -131,15 +132,22 @@ export function useSpeechInput({
   });
 
   useSpeechRecognitionEvent('end', () => {
+    if (activeOwner !== ownerId) return;
+    onEnd?.();
     setIsListening(false);
     setIsStarting(false);
     lastLevelRef.current = 0;
     setLevel(0);
   });
 
+  useSpeechRecognitionEvent('speechstart', () => {
+    if (activeOwner === ownerId) onSpeechStart?.();
+  });
+
   useSpeechRecognitionEvent('result', (event) => {
-    const transcript = event.results[0]?.transcript?.trim();
-    if (!transcript) {
+    if (activeOwner !== ownerId || !acceptingResultsRef.current) return;
+    const transcript = event.results[0]?.transcript?.trim() ?? '';
+    if (!transcript && !event.isFinal) {
       return;
     }
 
@@ -153,6 +161,7 @@ export function useSpeechInput({
   const startRecognition = useCallback(
     async (options: StartOptions = {}, forceNetwork = false) => {
       clearPendingFallback();
+      const request = ++startRequestRef.current;
       setError(undefined);
       setErrorCode(undefined);
       setErrorAction('none');
@@ -177,6 +186,7 @@ export function useSpeechInput({
       }
 
       const permissions = await ExpoSpeechRecognitionModule.requestPermissionsAsync();
+      if (request !== startRequestRef.current) return false;
       const nextRestricted = Boolean(permissions.restricted);
       const nextCanAskAgain = Boolean(permissions.canAskAgain);
       restrictedRef.current = nextRestricted;
@@ -199,6 +209,9 @@ export function useSpeechInput({
       lastStartOptionsRef.current = { continuous: options.continuous };
 
       try {
+        activeOwner = ownerId;
+        activeOnDevice = wantsOnDevice;
+        acceptingResultsRef.current = true;
         ExpoSpeechRecognitionModule.start({
           addsPunctuation: true,
           continuous: options.continuous ?? Platform.OS !== 'ios',
@@ -213,8 +226,6 @@ export function useSpeechInput({
           },
         });
 
-        activeOwner = ownerId;
-        activeOnDevice = wantsOnDevice;
         return true;
       } catch (startError) {
         setError(startError instanceof Error ? startError.message : 'Voice input failed to start.');
@@ -229,6 +240,7 @@ export function useSpeechInput({
   );
 
   useSpeechRecognitionEvent('error', (event) => {
+    if (activeOwner !== ownerId) return;
     setIsStarting(false);
     if (shouldIgnoreError(event)) {
       setErrorCode(undefined);
@@ -238,19 +250,16 @@ export function useSpeechInput({
       return;
     }
 
-    const ownsSession = activeOwner === ownerId;
-
     // The on-device model may be missing (or Siri/Dictation disabled for it)
     // while the network recognizer still works. Only the instance that started
     // this session retries, once, with network recognition.
-    if (ownsSession && canFallbackToNetwork(event.error, activeOnDevice) && !onDeviceFallbackRef.current) {
+    if (canFallbackToNetwork(event.error, activeOnDevice) && !onDeviceFallbackRef.current) {
       onDeviceFallbackRef.current = true;
       activeOnDevice = false;
       setIsListening(false);
       lastLevelRef.current = 0;
       setLevel(0);
       clearPendingFallback();
-      fallbackInProgress = true;
       fallbackTimeoutRef.current = setTimeout(() => {
         fallbackTimeoutRef.current = undefined;
         void startRecognition(lastStartOptionsRef.current, true);
@@ -258,18 +267,9 @@ export function useSpeechInput({
       return;
     }
 
-    // Another instance is mid-retry; stay quiet instead of flashing a failure
-    // that the retry may immediately resolve.
-    if (fallbackInProgress && !ownsSession) {
-      setIsListening(false);
-      lastLevelRef.current = 0;
-      setLevel(0);
-      return;
-    }
-
     const info = describeVoiceInputError(event.error, event.message, {
       canAskAgain: canAskAgainRef.current,
-      onDeviceRequested: ownsSession && activeOnDevice,
+      onDeviceRequested: activeOnDevice,
       restricted: restrictedRef.current,
     });
     setError(info.message);
@@ -281,7 +281,7 @@ export function useSpeechInput({
   });
 
   useSpeechRecognitionEvent('volumechange', (event) => {
-    if (!isListening) {
+    if (activeOwner !== ownerId || !isListening) {
       return;
     }
 
@@ -300,17 +300,24 @@ export function useSpeechInput({
   );
 
   const stop = useCallback(() => {
+    startRequestRef.current++;
     clearPendingFallback();
+    setIsStarting(false);
+    if (activeOwner !== ownerId) return;
     ignoreErrorsUntilRef.current = Date.now() + 1500;
     try {
       ExpoSpeechRecognitionModule.stop();
     } catch {
       // Ignore stop errors from transient native state.
     }
-  }, [clearPendingFallback]);
+  }, [clearPendingFallback, ownerId]);
 
   const abort = useCallback(() => {
+    startRequestRef.current++;
+    acceptingResultsRef.current = false;
     clearPendingFallback();
+    setIsStarting(false);
+    if (activeOwner !== ownerId) return;
     ignoreErrorsUntilRef.current = Date.now() + 1500;
     try {
       ExpoSpeechRecognitionModule.abort();
@@ -321,9 +328,16 @@ export function useSpeechInput({
       lastLevelRef.current = 0;
       setLevel(0);
     }
-  }, [clearPendingFallback]);
+  }, [clearPendingFallback, ownerId]);
 
-  useEffect(() => () => clearPendingFallback(), [clearPendingFallback]);
+  useEffect(() => () => {
+    clearPendingFallback();
+    startRequestRef.current++;
+    if (activeOwner === ownerId) {
+      abort();
+      activeOwner = undefined;
+    }
+  }, [abort, clearPendingFallback, ownerId]);
 
   return useMemo(
     () => ({

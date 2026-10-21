@@ -2,11 +2,12 @@ import { useTranslation } from 'react-i18next';
 import { StyleSheet, View } from 'react-native';
 import { HelperText, Text } from 'react-native-paper';
 
+import { PromptDeliveryField, TranscriptDetailField } from './chat-preference-fields';
 import { NumericSlider } from '@/components/ui/numeric-slider';
 import type { ServerContract } from '@/lib/opencode/client';
 import type { ChatPreferences } from '@/providers/opencode-provider';
 import { normalizeTranscriptFontSize, TRANSCRIPT_FONT_SIZE_MAX, TRANSCRIPT_FONT_SIZE_MIN } from '@/providers/opencode-preferences';
-import { SettingSelectField, SettingSwitchRow, type Palette } from './setting-rows';
+import { SettingSwitchRow, type Palette } from './setting-rows';
 
 export function EditorSection({
   chatPreferences,
@@ -25,14 +26,7 @@ export function EditorSection({
   return (
     <View testID="settings-editor-section" style={styles.section}>
       <Text accessibilityRole="header" variant="titleLarge" style={[styles.title, { color: palette.text }]}>{t('settings:editor.title')}</Text>
-      {contract === 'v2' ? <SettingSelectField
-        label={t('settings:providers.promptDelivery.label')}
-        valueLabel={t(`settings:providers.promptDelivery.${chatPreferences.promptDelivery || 'steer'}.label`)}
-        selectedValue={chatPreferences.promptDelivery || 'steer'}
-        options={(['steer', 'queue'] as const).map((value) => ({ value, label: t(`settings:providers.promptDelivery.${value}.label`), description: t(`settings:providers.promptDelivery.${value}.description`) }))}
-        onValueChange={(promptDelivery) => updateChatPreferences({ promptDelivery })}
-        palette={palette}
-      /> : null}
+      {contract === 'v2' ? <PromptDeliveryField chatPreferences={chatPreferences} palette={palette} updateChatPreferences={updateChatPreferences} /> : null}
       <NumericSlider
         label={t('settings:appearance.chatTextSize')}
         minimum={TRANSCRIPT_FONT_SIZE_MIN}
@@ -51,6 +45,7 @@ export function EditorSection({
         palette={palette}
         value={chatPreferences.flatTranscript === true}
       />
+      <TranscriptDetailField chatPreferences={chatPreferences} palette={palette} updateChatPreferences={updateChatPreferences} />
     </View>
   );
 }

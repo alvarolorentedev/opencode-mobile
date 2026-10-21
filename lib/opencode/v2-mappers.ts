@@ -68,6 +68,7 @@ export function toModelOptionRecord(model: ModelInfo): Model {
     id: model.id,
     name: model.name,
     providerID: model.providerID,
+    variants: (model.variants ?? []).map(({ id }) => ({ id })),
     capabilities: {
       reasoning: modelSupportsReasoning(model),
       attachment: model.capabilities.input.some((modality) => modality !== 'text'),

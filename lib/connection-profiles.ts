@@ -3,6 +3,7 @@ import { randomUUID } from 'expo-crypto';
 import * as SecureStore from 'expo-secure-store';
 import { Platform } from 'react-native';
 
+import { parseWorkspaces, WORKSPACES_STORAGE_KEY } from '@/providers/workspace-storage';
 import { getConnectionPassword } from '@/lib/connection-password';
 import { getConnectCredentialError, getConnectTestSecret, parseConnectMetadata, setConnectTestSecret, type ConnectMetadata } from '@/lib/connect';
 import { getConnectionScope, type ConnectionIdentity } from '@/lib/connection-scope';
@@ -202,6 +203,11 @@ async function writeSanitizedProfiles(profiles: ConnectionProfile[]) {
 export async function resolveConnectionCredentials(identity: ConnectionIdentity): Promise<{ password: string; connect?: ConnectMetadata } | undefined> {
   if (!identity.serverUrl.trim() || !isValidServerUrl(identity.serverUrl)) return undefined;
   const connectionScope = getConnectionScope(identity);
+  // Background notifications and widget actions honor explicit disconnects too.
+  try {
+    const raw = await AsyncStorage.getItem(WORKSPACES_STORAGE_KEY);
+    if (raw && !parseWorkspaces(raw).connections.some((entry) => entry.enabled && getConnectionScope(entry.settings) === connectionScope)) return undefined;
+  } catch { return undefined; }
 
   try {
     const profiles = await loadConnectionProfiles();

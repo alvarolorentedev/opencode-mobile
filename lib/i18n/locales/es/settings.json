@@ -299,7 +299,12 @@
     "refresh": "Actualizar diagnósticos",
     "networkUsage": "Uso de red",
     "networkUsageValue": "{{requests}} solicitudes · {{size}} de respuestas de tamaño conocido hoy",
-    "networkUsageReset": "Restablecer"
+    "networkUsageReset": "Restablecer",
+    "lastError": "Último error de la app",
+    "lastErrorValue": "{{message}} · {{time}}",
+    "lastErrorNone": "No se registraron errores",
+    "lastErrorFatal": "Fatal",
+    "lastErrorHandled": "Gestionado"
   },
   "mcp": {
     "title": "Servidores MCP",
@@ -333,7 +338,22 @@
     },
     "slimInterface": {
       "title": "Interfaz compacta",
-      "description": "Reduce botones, espaciado y encabezados en chat, terminal y espacio de trabajo para que quepa más texto en pantalla."
+      "description": "Reduce botones, espaciado y encabezados en chat, terminal y proyecto para que quepa más texto en pantalla."
+    },
+    "transcriptVerbosity": {
+      "label": "Detalle de la conversación",
+      "basic": {
+        "label": "Básico",
+        "description": "Mostrar solo mensajes del usuario y del asistente."
+      },
+      "reasoning": {
+        "label": "Razonamiento",
+        "description": "Mostrar también el razonamiento del asistente como filas contraídas."
+      },
+      "verbose": {
+        "label": "Detallado",
+        "description": "Mostrar también las llamadas a herramientas como filas contraídas."
+      }
     }
   },
   "connect": {
@@ -388,7 +408,6 @@
     "scanNewQr": "Escanea el nuevo código QR de tu ordenador",
     "scanLocal": "Escanear código QR",
     "scanLocalHint": "Conéctate a un ordenador en la misma red.",
-    "scanLocalUnavailable": "El escaneo de QR local está disponible en la app para iOS y Android.",
     "manual": "Manual",
     "manualHint": "Introduce la URL del servidor y tus credenciales.",
     "nativeOnly": "Cloud Link está disponible en la app para iOS y Android.",
@@ -502,6 +521,14 @@
     "copyLink": "Copiar enlace",
     "linkCopied": "Enlace del servicio copiado.",
     "linkUnavailable": "No se pudo crear un enlace para este servicio.",
+    "machine": "Máquina",
+    "notActive": "Servicios de {{name}}: esta no es tu conexión activa.",
+    "useMachine": "Cambiar a esta máquina",
+    "noMachine": "Conecta una máquina de Cloud Link para gestionar sus servicios expuestos.",
+    "credentialsExpired": "El acceso de Cloud Link para esta máquina caducó o no existe. Vuelve a conectarla para gestionar sus servicios.",
+    "reconnectFailed": "No se pudo volver a conectar esta máquina.",
+    "unavailableService": "Este servicio ya no existe en el conector.",
+    "unavailableServiceHint": "Vuelve y actualiza la lista de servicios expuestos.",
     "legacyConnector": "Este conector de escritorio aún no admite puertos dedicados. Actualízalo para servir apps en la raíz del puerto y elegir puertos.",
     "unknownConnector": "Este conector de escritorio es más antiguo de lo que espera la app. Actualízalo para usar puertos dedicados y servicios raíz.",
     "enabledHint": "Enruta el tráfico de esta ruta por el túnel.",

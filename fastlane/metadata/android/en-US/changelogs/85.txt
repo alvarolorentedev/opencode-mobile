@@ -1,0 +1,2 @@
+- On OpenCode 2 servers, choose a model variant (Default plus the model's own variants) from the model picker.
+- Variant choices are saved per model and applied to new prompts and commands; OpenCode 1 keeps the existing Low/Default/High reasoning control.

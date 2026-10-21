@@ -1,25 +1,17 @@
-/* eslint-disable react-hooks/immutability -- Reanimated shared values are intentionally mutated from gesture worklets and close-time resets, which the React Compiler rule cannot model. */
-import type { ReactNode } from 'react';
-import { useEffect, useState } from 'react';
+import { useContext, type ReactNode } from 'react';
+import { WorkspaceScope, WorkspaceScopeContext } from '@/providers/workspace-context';
 import { useTranslation } from 'react-i18next';
 import { KeyboardAvoidingView, Pressable, ScrollView, StyleSheet, useWindowDimensions, View } from 'react-native';
-import { Gesture, GestureDetector } from 'react-native-gesture-handler';
+import { GestureDetector } from 'react-native-gesture-handler';
 import { Icon, Portal, Text } from 'react-native-paper';
-import Animated, { runOnJS, useAnimatedStyle, useSharedValue, withSpring, withTiming } from 'react-native-reanimated';
+import Animated from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { useUpdateBlocker } from '@/hooks/use-update-blocker';
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useDismissOnBack } from '@/hooks/use-dismiss-on-back';
-
-// A downward drag past this fraction of the sheet height (or past the minimum
-// distance) commits the dismissal. A fast fling also dismisses regardless of
-// distance.
-const DISMISS_DISTANCE_FRACTION = 0.3;
-const MIN_DISMISS_DISTANCE = 72;
-const DISMISS_VELOCITY = 900;
-const DISMISS_DURATION = 180;
+import { useSwipeDismiss } from './use-swipe-dismiss';
 
 export function OverlaySheet({ visible, title, onClose, children, headerAction, testID, fitContent = false, scrollable = true, compact = false, blockUpdates = true, dismissible = true }: {
   visible: boolean;
@@ -34,6 +26,7 @@ export function OverlaySheet({ visible, title, onClose, children, headerAction, 
   blockUpdates?: boolean;
   dismissible?: boolean;
 }) {
+  const workspace = useContext(WorkspaceScopeContext);
   const insets = useSafeAreaInsets();
   useUpdateBlocker(visible && blockUpdates);
   const { height } = useWindowDimensions();
@@ -41,66 +34,27 @@ export function OverlaySheet({ visible, title, onClose, children, headerAction, 
   const palette = Colors[useColorScheme() ?? 'light'];
   // Android back dismisses the open sheet instead of navigating the screen behind it.
   useDismissOnBack(visible && dismissible, onClose);
-  const [sheetHeight, setSheetHeight] = useState(0);
-  const translateY = useSharedValue(0);
-  const dismissing = useSharedValue(false);
-
-  const sheetAnimatedStyle = useAnimatedStyle(() => ({ transform: [{ translateY: translateY.value }] }));
-  const backdropAnimatedStyle = useAnimatedStyle(() => ({
-    opacity: sheetHeight > 0 ? Math.max(0.4, 1 - (translateY.value / (sheetHeight + 1)) * 0.6) : 1,
-  }));
-
-  // Reset the drag offset while the sheet is closed so a previous drag never
-  // leaves it rendered off-screen when it reopens.
-  useEffect(() => {
-    if (!visible) {
-      translateY.value = 0;
-      dismissing.value = false;
-    }
-  }, [dismissing, translateY, visible]);
+  const { pan, sheetStyle, backdropStyle, handleSheetLayout } = useSwipeDismiss({
+    visible,
+    enabled: dismissible,
+    onDismiss: onClose,
+  });
 
   if (!visible) {
     return null;
   }
 
-  const pan = Gesture.Pan()
-    .enabled(dismissible)
-    .activeOffsetY(10)
-    .onUpdate((event) => {
-      if (dismissing.value) {
-        return;
-      }
-      translateY.value = Math.max(0, event.translationY);
-    })
-    .onEnd((event) => {
-      if (dismissing.value) {
-        return;
-      }
-      const distance = Math.max(sheetHeight * DISMISS_DISTANCE_FRACTION, MIN_DISMISS_DISTANCE);
-      if (translateY.value > distance || event.velocityY > DISMISS_VELOCITY) {
-        dismissing.value = true;
-        translateY.value = withTiming(sheetHeight + 120, { duration: DISMISS_DURATION }, (finished) => {
-          if (finished) {
-            runOnJS(onClose)();
-          }
-        });
-      } else {
-        translateY.value = withSpring(0, { damping: 22, stiffness: 240 });
-      }
-    });
-
-  return (
-    <Portal>
+  const content = (
       <KeyboardAvoidingView behavior="padding" style={[styles.overlay, { paddingTop: compact ? Math.max(64 + insets.top, height * 0.45) : 64 + insets.top }]} testID={testID}>
         {dismissible ? <Pressable accessibilityLabel={t('common:actions.closeWithName', { title })} onPress={onClose} style={StyleSheet.absoluteFill}>
-          <Animated.View style={[styles.backdrop, backdropAnimatedStyle]} />
+          <Animated.View style={[styles.backdrop, backdropStyle]} />
         </Pressable> : null}
         <Animated.View
           testID={fitContent ? `${testID}-sheet` : undefined}
           accessibilityLabel={title}
           accessibilityViewIsModal
-          onLayout={(event) => setSheetHeight(event.nativeEvent.layout.height)}
-          style={[styles.sheet, !fitContent && { flex: 1 }, { backgroundColor: palette.surface, borderColor: palette.border }, sheetAnimatedStyle]}>
+          onLayout={handleSheetLayout}
+          style={[styles.sheet, !fitContent && { flex: 1 }, { backgroundColor: palette.surface, borderColor: palette.border }, sheetStyle]}>
           <GestureDetector gesture={pan}>
             <Animated.View style={styles.dragZone}>
               {compact ? <View style={styles.grabberWrap}><View style={[styles.grabber, { backgroundColor: palette.muted }]} /></View> : null}
@@ -132,8 +86,9 @@ export function OverlaySheet({ visible, title, onClose, children, headerAction, 
           </ScrollView> : <View style={[styles.content, compact && styles.compactContent, { flex: 1, minHeight: 0, paddingBottom: Math.max(insets.bottom, 24) }]}>{children}</View>}
         </Animated.View>
       </KeyboardAvoidingView>
-    </Portal>
   );
+  // Paper portals render under the app host; restore the caller's server context there.
+  return <Portal>{workspace ? <WorkspaceScope target={workspace}>{content}</WorkspaceScope> : content}</Portal>;
 }
 
 const styles = StyleSheet.create({

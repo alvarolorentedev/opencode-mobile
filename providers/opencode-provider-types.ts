@@ -1,4 +1,4 @@
-import type { useWorkspaceBrowser } from '@/providers/use-workspace-browser';
+import type { useProjectBrowser } from '@/providers/use-project-browser';
 import type { WorktreeCatalog } from '@/providers/use-worktree-state';
 import type { PendingPrompt } from '@/lib/opencode/prompt-inbox';
 import type {
@@ -46,6 +46,14 @@ import type { TerminalRuntime, TerminalStatus } from '@/providers/terminal-types
 
 export type { AgentOption, ChatPreferences, ModelOption, ReasoningLevel, ResponseScope, ServerCapabilities };
 export type { ProviderAuthMethod, ProviderAuthPrompt, ProviderAuthValues } from '@/lib/opencode/types';
+
+// How a transcript refresh treats the window already held in memory.
+// - initial: no usable window; download one newest page.
+// - tail: the default; download one newest page and merge it in. On no overlap
+//   with the held window, adopt the fetched page rather than paging backward.
+// - replace: drop the held window and adopt the fetched page. Reserved for
+//   server-side history rewrites (compaction and revert).
+export type TranscriptRefreshMode = 'initial' | 'tail' | 'replace';
 
 // A stored provider credential. V2 integrations can hold several labeled
 // accounts (exactly one active); V1 providers have no account list.
@@ -102,11 +110,15 @@ export type OpencodeProject = {
   isCurrent?: boolean;
 };
 
+// Opened projects per connection scope, most-recent-first. The picker renders
+// this list; the server's project catalog only enriches the entries.
+export type ProjectPathsByConnection = Record<string, string[]>;
+
 // Explicit persisted model for a pinned session. `sessionId` and `projectPath`
 // are the identifiers required to reopen it; `connectionScope` says which
 // server + user owns it, so identical paths or session IDs on another server
 // never collide. `title` is retained because it cannot be reconstructed for
-// cross-workspace favorites without a server call. The project label is
+// cross-project favorites without a server call. The project label is
 // derived from `projectPath` at render time and is never persisted.
 export type FavoriteSession = {
   sessionId: string;
@@ -118,10 +130,11 @@ export type FavoriteSession = {
 
 export const FAVORITE_SESSIONS_MAX = 50;
 
-// A session outside the active workspace, surfaced in the Chat Library "Active"
-// group. `projectPath` is the server directory used to switch workspaces; the
+// A session outside the active project, surfaced in the Chat Library "Active"
+// group. `projectPath` is the server directory used to switch projects; the
 // status drives the running indicator and ordering.
 export type ActiveSessionItem = {
+  connectionScope?: string;
   sessionId: string;
   projectPath: string;
   title?: string;
@@ -140,7 +153,7 @@ export type ConnectionState = {
 };
 
 // Which diff source the Files Changed surface reads from. `turn` is the
-// per-user-message snapshot diff; the VCS scopes come from the workspace
+// per-user-message snapshot diff; the VCS scopes come from the project
 // working tree and are not tied to the current session.
 export type DiffScope = 'turn' | 'uncommitted' | 'branch';
 
@@ -151,7 +164,7 @@ export type DiffTurn = {
   preview?: string;
 };
 
-export type WorkspaceCatalog = {
+export type ProjectCatalog = {
   currentProjectPath?: string;
   serverRootPath?: string;
   serverProjects: Project[];
@@ -169,9 +182,32 @@ export type OnboardingContextValue = {
   stopOnboardingReview: () => void;
 };
 
+// A saved Cloud Link machine the services surface can manage. Services belong
+// to one machine, so the selector only appears when more than one exists.
+export type ServiceManagementMachine = {
+  id: string;
+  name: string;
+  isActive: boolean;
+};
+
+// The machine the services surface currently targets. It can differ from the
+// active connection: management uses this machine's own origin and device
+// credentials, and links/addresses are built from its `serverUrl`.
+export type ServiceManagementTarget = {
+  serverUrl: string;
+  profileId?: string;
+  machineId?: string;
+  machineName?: string;
+  isActiveConnection: boolean;
+};
+
+// Why no usable services surface exists right now.
+export type ServiceManagementUnavailableReason = 'no-cloud-link-machine' | 'credentials-expired';
+
 // Remote connector service management. Folded into the connection domain so the
 // provider keeps a single context entry for it; consumers read `services` and
-// call the actions it exposes. `available` is false for manual connections.
+// call the actions it exposes. `available` is false while resolving, when no
+// Cloud Link machine is saved, or when its credentials expired.
 export type ServiceManagementApi = {
   services: ManagedService[];
   // Connector-reported management revision and port pool; undefined until the
@@ -179,11 +215,19 @@ export type ServiceManagementApi = {
   // path-only mode with an update hint instead of the port picker.
   version?: ServiceManagementVersion;
   available: boolean;
+  target?: ServiceManagementTarget;
+  machines: ServiceManagementMachine[];
+  unavailableReason?: ServiceManagementUnavailableReason;
   isRefreshing: boolean;
   isSaving: boolean;
   refresh: () => Promise<void>;
   save: (id: string, input: ServiceInput) => Promise<ManagedService>;
   remove: (id: string) => Promise<void>;
+  // Switch the services target machine (saved Cloud Link profiles).
+  selectMachine: (id: string) => void;
+  // Reconnect the target machine's Cloud Link access; also makes it the active
+  // connection because fresh device credentials come from machine access.
+  activateTarget: () => Promise<boolean>;
 };
 
 export type ConnectionContextValue = {
@@ -241,22 +285,22 @@ export type ProjectsContextValue = {
   activeProjectPath?: string;
   activeProject?: OpencodeProject;
   selectProject: (path: string) => void;
-  addWorkspace: (directory: string) => Promise<string>;
-  serverProjects: Project[];
+  addProject: (directory: string) => Promise<string>;
+  removeProject: (path: string) => void;
   currentProjectPath?: string;
   serverRootPath?: string;
-  isRefreshingWorkspaceCatalog: boolean;
-  refreshWorkspaceCatalog: (silent?: boolean) => Promise<void>;
-  refreshWorkspaceStatus: () => Promise<void>;
+  isRefreshingProjectCatalog: boolean;
+  refreshProjectCatalog: (silent?: boolean) => Promise<void>;
+  refreshProjectStatus: () => Promise<void>;
 };
 
-export type WorkspaceFilesContextValue = {
-  browser: ReturnType<typeof useWorkspaceBrowser>;
-  workspaceFileStatuses: File[];
-  selectedWorkspaceFile?: { path: string; content: FileContent };
+export type ProjectFilesContextValue = {
+  browser: ReturnType<typeof useProjectBrowser>;
+  projectFileStatuses: File[];
+  selectedProjectFile?: { path: string; content: FileContent };
   vcsInfo?: VcsInfo;
-  openWorkspaceFile: (path: string) => Promise<void>;
-  saveWorkspaceFile: (path: string, expectedContent: string, content: string) => Promise<void>;
+  openProjectFile: (path: string) => Promise<void>;
+  saveProjectFile: (path: string, expectedContent: string, content: string) => Promise<void>;
   worktrees: WorktreeCatalog;
   refreshWorktrees: () => Promise<void>;
   createWorktree: (name?: string, startCommand?: string) => Promise<void>;
@@ -306,6 +350,7 @@ export type SessionLibraryContextValue = {
 
 export type ChatContextValue = {
   pendingPrompts: PendingPrompt[];
+  cancelPrompt: (sessionId: string, promptId: string) => Promise<void>;
   currentMessages: SessionMessageRecord[];
   currentTranscript: TranscriptEntry[];
   currentUsage: SessionUsage;
@@ -330,8 +375,6 @@ export type ChatContextValue = {
     hasOlder: boolean;
     isLoadingOlder: boolean;
   };
-  refreshCurrentSession: (silent?: boolean) => Promise<void>;
-  refreshCurrentTodos: (silent?: boolean) => Promise<void>;
   replyToPermission: (requestId: string, reply: 'once' | 'always' | 'reject') => Promise<void>;
   replyToQuestion: (requestId: string, answers: PendingQuestionAnswer[]) => Promise<void>;
   rejectQuestion: (requestId: string) => Promise<void>;
@@ -409,7 +452,7 @@ export type OpencodeContextValue = OnboardingContextValue &
   CapabilitiesContextValue &
   PreferencesContextValue &
   ProjectsContextValue &
-  WorkspaceFilesContextValue &
+  ProjectFilesContextValue &
   CurrentSessionContextValue &
   SessionLibraryContextValue &
   ChatContextValue &

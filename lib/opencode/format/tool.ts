@@ -15,6 +15,11 @@ export function getToolTitle(part: ToolPart) {
   return 'title' in part.state && part.state.title ? part.state.title : part.tool;
 }
 
+export function getToolCommand(part: ToolPart) {
+  const command = part.state.input?.command;
+  return typeof command === 'string' && command.trim() ? command.trim() : undefined;
+}
+
 export function getToolBody(part: ToolPart) {
   if ('error' in part.state && part.state.error) {
     return part.state.error;

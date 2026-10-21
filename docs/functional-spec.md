@@ -4,12 +4,12 @@
 
 The mobile app is a client for interacting with an OpenCode server from a phone or tablet. It is optimized for:
 
-- selecting a workspace hosted by the server
-- opening or creating chat sessions tied to that workspace
+- selecting a project hosted by the server
+- opening or creating chat sessions tied to that project
 - sending prompts and files to OpenCode
 - tracking transcript, file changes, todos, and blocking requests
 - configuring providers, models, and voice behavior
-- editing workspace text files, managing worktrees/MCP servers, and using project PTYs
+- editing project text files, managing worktrees/MCP servers, and using project PTYs
 - optionally using a hands-free conversation mode
 
 This document describes current user-visible behavior that should be preserved for parity.
@@ -28,23 +28,23 @@ Behavior:
 
 - server URL is normalized to include a protocol if omitted
 - password is optional; if present, basic auth is sent
-- reconnecting re-runs workspace discovery, session fetch, and capability discovery
+- reconnecting re-runs project discovery, session fetch, and capability discovery
 - connection status can be `idle`, `connecting`, `connected`, or `error`
 - connection state includes a human-readable message shown in the UI
 
-### 2. Pick a Workspace
+### 2. Pick a Project
 
-Chat has a workspace button in its chat library. Workspace keeps its project-name dropdown in the header. Both open the same anchored project picker for projects returned by the server.
+Chat has a project button in its chat library. Project keeps its project-name dropdown in the header. Both open the same anchored project picker for projects returned by the server.
 
 Behavior:
 
-- projects are deduplicated by worktree path
-- projects are sorted by most recently initialized/created first
-- the active project can be selected from the list
+- the picker lists the projects opened on this device + connection, most recent first; the server's `project.list()` only enriches id/name and never adds an entry by itself
+- opening a project (selecting, adding, or following a link) records it for the connection; closing it removes the local entry without touching the server
+- the current server project may be labeled `Current`; the selected app project may be labeled `Active`
 - selecting a project clears the current session selection
 - the provider later rehydrates or creates the appropriate session for that project
-- the current server project may be labeled `Current`; the selected app project may be labeled `Active`
-- Add workspace accepts a directory on the OpenCode server, resolves its project, refreshes the catalog, and selects it; an invalid directory stays in the form with an error
+- a selected worktree is kept as the active location only while the server resolves it; otherwise the app falls back to the most recent opened project
+- Add project accepts a directory on the OpenCode server, boots it with `location.get` so the serve persists the project, refreshes the catalog, and selects the location the server resolved (the project root for nested input), opening it in the picker; an invalid directory stays in the form with an error
 
 ### 3. Open or Create a Chat Session
 
@@ -62,7 +62,7 @@ A stale deep-link target that does not match any session returns a not-found err
 Manual behavior:
 
 - user can create a new session from the Chat header
-- user can open the Chats overlay from the Chat title to search, switch, favorite, archive, and manage sessions; its header opens a second overlay to change workspace
+- user can open the Chats overlay from the Chat title to search, switch, favorite, archive, and manage sessions; its header opens a second overlay to change project
 
 ### 3b. Open a Session via Deep Link
 
@@ -74,6 +74,7 @@ Behavior:
 
 - the link opens the session belonging to the given server project path
 - if the project differs from the active project, the app switches to it (and persists it as the active project)
+- a project path is available when it is the active project, is opened on this connection, is a server project canonical, or the server resolves it as a checkout/worktree; repositories with multiple checkouts share a project ID, so canonical-path equality is not required
 - if the session is not found in that project, a `Could not open session` error screen is shown with the server message
 - the link does not carry a server identity; it resolves against the currently configured server
 - only sessions that appear in the project's session list can be opened; archived sessions are not reachable this way
@@ -87,7 +88,7 @@ Behavior:
 
 - the share stages the content in the provider and opens the share preview
   (`/share`), which shows text, a link, attachment tiles, and any skipped items
-- the user can change the target workspace through the shared workspace picker
+- the user can change the target project through the shared project picker
   before adding the content
 - Add to chat seeds the composer draft and attachments for the active chat; the
   user still presses send, so shared content is never submitted automatically
@@ -137,8 +138,8 @@ The Chat screen shows:
 
 Behavior details:
 
-- only user messages and assistant messages with text or errors appear in the main transcript
-- reasoning and tool activity are summarized and attached to assistant messages as metadata chips
+- the transcript has a configurable detail level: `basic` (default) shows user and assistant messages with text, files, or errors; `reasoning` adds reasoning; `verbose` adds tool calls and patches
+- tool and reasoning rows render collapsed outside message bubbles and match the assistant bubble's width; contiguous same-tool calls merge into one growing collapsible, shell rows show `$ command` plus output in a non-copyable bash block, and edit/write rows are hidden; the initial pull backfills until at least 10 entries are displayable at the selected level
 - a status line like `OpenCode is ...` is shown while running and not blocked on user input
 - a small floating progress view shows the current step and completed count; tapping it opens a content-sized overlay with the task list; pending permission actions replace it while blocked
 - a pending question opens a full-screen answer flow immediately; dismissal leaves an `Answer needed` card above the composer and does not reject the request
@@ -168,12 +169,12 @@ Behavior:
 
 - scopes: `Turn` (per-user-message snapshot diff), `Uncommitted` (VCS working tree), `Branch` (VCS diff against the default branch)
 - `Turn` is the default and shows the latest user turn that recorded a change; display and fetch resolve through the same transcript selector, so a session whose newest turn made no edits still reviews the last turn that did; the source overlay lists earlier turns when more than one user turn has a recorded diff
-- `Uncommitted` and `Branch` call `vcs.diff` with modes `git`/`working` and `branch` respectively and are workspace-scoped, not session-scoped: V1 scopes with the `directory` query parameter, V2 with `location[directory]`
+- `Uncommitted` and `Branch` call `vcs.diff` with modes `git`/`working` and `branch` respectively and are project-scoped, not session-scoped: V1 scopes with the `directory` query parameter, V2 with `location[directory]`
 - top card shows the active scope title, line totals, and current status
 - `{ file, patch, additions, deletions }` diff objects are rendered as expandable line previews
 - when the selected turn has no structured turn diff, that turn's transcript patch details render as a plain changed-files list with a note that diff lines are unavailable; the list is scoped to the selected turn and never aggregates other turns
 - per-scope empty states: `No file changes yet.`, `No uncommitted changes.`, `No changes against the default branch.`
-- VCS scopes have no SSE event and are refreshed on demand (a scope change or a workspace file save while a VCS scope is active)
+- VCS scopes have no SSE event and are refreshed on demand (a scope change or a project file save while a VCS scope is active)
 
 ### 8. Manage Sessions in the Chat Library
 
@@ -190,10 +191,10 @@ The Chats overlay opened from the Chat title provides lifecycle operations throu
 Session list behavior:
 
 - search filters the active, favorite, or archived list
-- favorites remain accessible across workspaces; choosing one switches to its project
-- the Active tab opens with an "Active across workspaces" group above Favorites listing up to four sessions from the whole connected server: running (busy/retry) sessions first, then the most recently updated idle ones. It is connection-wide, so it stays the same while switching workspaces. Subagent chats are hidden by the same switch as the rest of the library, and listed sessions are removed from the Chat list below so they never appear twice
+- favorites remain accessible across projects; choosing one switches to its project
+- the Active tab opens with an "Active across projects" group above Favorites listing up to four sessions from the whole connected server: running (busy/retry) sessions first, then the most recently updated idle ones. It is connection-wide, so it stays the same while switching projects. Subagent chats are hidden by the same switch as the rest of the library, and listed sessions are removed from the Chat list below so they never appear twice
 - picking a session from that group switches to its project and opens it in one tap, reusing the deep-link flow; the group is refreshed when the library opens and polled while a session is running
-- project-scoped row actions (rename, share, archive, delete) are offered only for sessions in the active workspace, where the scoped client can act on them; other-workspace rows offer open and favorite
+- project-scoped row actions (rename, share, archive, delete) are offered only for sessions in the active project, where the scoped client can act on them; other-project rows offer open and favorite
 - each session row shows title, preview/subtitle, and status
 - active session rows are visually emphasized
 - the `Hide subagent chats` switch sits beside the Active and Archived filters in the library
@@ -201,12 +202,14 @@ Session list behavior:
 Additional session actions are available in Chat:
 
 - fork a session from a user message and open the fork
-- revert a session from a user message
-- undo the current revert
+- revert a session from a user message; the reverted prompt is placed in the composer for editing
+- send the edited prompt to commit the staged revert and continue from that point
+- discard the current revert from the composer notice; an unchanged reverted prompt is cleared from the composer
+- discard a waiting steer/queue prompt; when the composer is empty, its text is restored for editing
 
-### 9. Inspect And Edit Workspace Files
+### 9. Inspect And Edit Project Files
 
-The Workspace tab provides source inspection and text editing:
+The Projects tab provides source inspection and text editing:
 
 - Files and Worktrees use the same top-tab style as Chat
 - search file paths by query
@@ -215,11 +218,11 @@ The Workspace tab provides source inspection and text editing:
 - show the current VCS branch when available
 - edit the selected text file and save the complete replacement as a VCS patch
 
-Before save, the provider re-reads the file and rejects the operation if the server content differs from the content originally opened. Only non-base64 text files are editable; a successful full-file patch is followed by another read and workspace-status refresh.
+Before save, the provider re-reads the file and rejects the operation if the server content differs from the content originally opened. Only non-base64 text files are editable; a successful full-file patch is followed by another read and project-status refresh.
 
 ### 10. Manage Worktrees
 
-The Workspace tab can list, create, reset, and remove worktrees. Creation accepts an optional name and start command; reset and remove require destructive confirmation. These SDK operations use OpenCode's experimental worktree endpoints, so server availability and response stability are not guaranteed like the non-experimental contract.
+The Projects tab can list, create, reset, and remove worktrees. Creation accepts an optional name and start command; reset and remove require destructive confirmation. These SDK operations use OpenCode's experimental worktree endpoints, so server availability and response stability are not guaranteed like the non-experimental contract.
 
 ### 11. Use The Terminal Tab
 
@@ -239,14 +242,14 @@ When a session has no display transcript yet, the user sees:
 
 ## Overlay and Back Navigation
 
-Overlays are dismissible with the platform back action. On Android, pressing the hardware back button while an overlay is open dismisses that overlay and keeps the current screen in place; a second back press then performs the underlying navigation. Overlay sheets (chat library, session usage, workspace and terminal pickers) share this behavior through `OverlaySheet`, and the conversation-mode overlay stops the mode on back. Native modal surfaces (dialogs, model picker, file details, select pickers) follow the same dismiss-first rule through their own back handling.
+Overlays are dismissible with the platform back action. On Android, pressing the hardware back button while an overlay is open dismisses that overlay and keeps the current screen in place; a second back press then performs the underlying navigation. Overlay sheets (chat library, session usage, project and terminal pickers) share this behavior through `OverlaySheet`, and the conversation-mode overlay stops the mode on back. Native modal surfaces (dialogs, model picker, file details, select pickers) follow the same dismiss-first rule through their own back handling.
 
-Overlay sheets also dismiss on a downward drag of their header (the grabber/title strip), which uses `react-native-gesture-handler` and honors the same `dismissible` flag as the backdrop. Scrollable sheet content keeps its own scroll gesture, so dragging the list does not dismiss. There is no pull-to-refresh anywhere in the app; the workspace keeps its header refresh button, and the transcript and diff views rely on SSE/polling updates.
+Overlay sheets also dismiss on a downward drag of their header (the grabber/title strip), which uses `react-native-gesture-handler` and honors the same `dismissible` flag as the backdrop. The bottom-sheet style is consistent: the shared `OverlaySheet` and the transparent `Modal` sheets (model picker, select pickers) all share one `useSwipeDismiss` gesture, sheet-height measurement, and threshold set. Scrollable sheet content keeps its own scroll gesture, so dragging the list does not dismiss. There is no pull-to-refresh anywhere in the app; the project keeps its header refresh button, and the transcript and diff views rely on SSE/polling updates.
 
 ## Transcript Behavior
 
 - transcript is paginated from the bottom using a fixed page size
-- `Load earlier messages` reveals older transcript entries
+- scrolling to the top loads older transcript entries through the server cursor
 - automatic scroll-to-end happens for new content unless the view is currently paginating older items
 - long-pressing a message copies its text/error content
 - assistant messages can be played with TTS if they contain readable text
@@ -324,7 +327,9 @@ Behavior:
 - the initial model follows the server config (`GET /config` -> `model`, variant-tolerant); a stored selection wins when still available
 - when neither the stored nor the server-configured model resolves, no model is auto-picked: the picker shows `Select model` and prompts are sent without a model so the server default applies, instead of silently sending a possibly blocked model
 - discovered model metadata comes from nested attachment/input modality, tool-call, reasoning, status, and context/output limit capabilities
-- reasoning level affects only the generated system prompt, not local control flow
+- OpenCode 2 preserves server-reported model variant IDs, shows `Default` plus the selected model's variants, and applies a selected variant before each prompt or command; models without variants hide the selector
+- variant choices persist per model, stale variants fall back to `Default`, and a matching active session's valid server variant is used when that model has no saved choice
+- on OpenCode 1, the existing Low/Default/High reasoning control continues to affect the generated system prompt; OpenCode 2 reasoning selection is a server model variant, not a prompt hint
 
 ## Session Title Summarization
 
@@ -359,7 +364,7 @@ Purpose:
 Behavior exposed today:
 
 - the row sits directly below AI & Providers and only appears for installs that came from the App Store or Google Play; directly installed APKs, F-Droid/FOSS builds, production web, and non-store iOS builds never show it (the development web E2E harness keeps it through `connectPilot.testing`)
-- inside the section the order is: access status summary, Exposed Services (only for an active Cloud Link connection), the subscription group (Manage subscription, Restore purchases, and native offers/Subscribe while inactive), then Machines last, with a Learn more footer row
+- inside the section the order is: access status summary, Exposed Services, the subscription group (Manage subscription, Restore purchases, and native offers/Subscribe while inactive), then Machines last, with a Learn more footer row
 - the section opens without requesting camera access, pairing a machine, purchasing, or restoring
 - progress, error, notice, and Retry feedback stays attached to the subscription actions
 - an existing Cloud Link connection profile and its deep links keep working even when the store-install check hides the section
@@ -372,9 +377,12 @@ Purpose:
 
 Behavior:
 
-- the subsection appears inside the consolidated Cloud Link Settings section only for a Cloud Link connection (`settings.connect`); manual connections never show it
-- opening (or re-opening) the Cloud Link section re-fetches `GET /_cloudlink/services` and `GET /_cloudlink/version`, because the connector's tray or CLI can change the list out from under the app
-- Add/Edit opens an inline form for id (create only), optional name, path, target, enabled, access (`private`/`public`) and strip-prefix; the id is fixed when editing
+- the subsection is always rendered inside the consolidated Cloud Link Settings section. Services belong to one Cloud Link machine: the provider targets the active connection when it is a Cloud Link machine, and otherwise resolves a saved Cloud Link profile (explicit selection, then last-used, then the only/first saved machine), because the connector's management API authenticates the device on the machine's own origin. Manual connections therefore still manage their Cloud Link machine's services
+- a Machine selector appears when more than one Cloud Link machine is saved; rows, addresses, and Copy link use the target machine's `serverUrl`, never the active connection's
+- a notice names the target machine when it is not the active connection, with a Switch to this machine action that reconnects it
+- with no saved Cloud Link machine the subsection explains that a machine must be connected instead of hiding; expired or rejected credentials surface an explicit state with Reconnect
+- opening (or re-opening) the Cloud Link section re-fetches `GET /_cloudlink/services` and `GET /_cloudlink/version` for the resolved target, because the connector's tray or CLI can change the list out from under the app
+- Add/Edit opens a full-screen route (`app/service.tsx`), not an inline overlay form; Save returns to Settings with the Cloud Link section reopened. The form covers id (create only), optional name, path, target, enabled, access (`private`/`public`) and strip-prefix; the id is fixed when editing
 - on management revision 2 the form also picks a `port` from the connector's `service_ports`; the path is optional (empty serves the port root, and the strip-prefix toggle only applies to path services), the picker marks ports already in use and disables them for the mode being edited (a root service needs a fully free port; a path service may share a root-free port)
 - revision 1 and unknown older connectors stay on the legacy path-only form on `:8443` with a non-blocking "update your desktop connector" hint; root services and the port picker require revision 2
 - the app mirrors the connector's validation before sending, and shows the connector's own message when the server rejects a request (for example `400` invalid service)
@@ -442,7 +450,8 @@ Behavior:
 - reports `/global/health` status and OpenCode version when available
 - reports global event stream state, describing non-connected states as polling fallback
 - reports MCP, LSP, and formatter counts when their endpoints are available
-- each diagnostic request fails independently and can be refreshed manually
+- reports the last JS error recorded on this device (message, time, and a fatal/handled chip) or a neutral empty state
+- each diagnostic request fails independently and can be refreshed manually; Refresh also re-reads the recorded error
 
 ### MCP Servers Section
 
@@ -565,8 +574,8 @@ Behavior:
 - while the app is active, completion can be detected by local provider state and trigger a local notification
 - completion is confirmed against the server before alerting: the shared settlement read classifies the task as running, retrying, blocked, failed, aborted, finished, or unknown, and only a terminal finished/failed result clears the record and notifies. A record created in a previous app session waits for that confirmation instead of trusting a cached idle status.
 - completion copy distinguishes finished from failed; interrupted (aborted) runs are dropped without an alert
-- a record that belongs to another project is left in place instead of being cleared from the active project's session list, so switching workspaces cannot silently drop a completion. It is notified on return or by the background monitor.
-- completion and needs-input notifications carry a non-secret route payload (session, project, connection scope) so a tap reopens the owning connection, workspace, and session through the existing deep-link resolver
+- a record that belongs to another project is left in place instead of being cleared from the active project's session list, so switching projects cannot silently drop a completion. It is notified on return or by the background monitor.
+- completion and needs-input notifications carry a non-secret route payload (session, project, connection scope) so a tap reopens the owning connection, project, and session through the existing deep-link resolver
 - a locally observed needs-input alert fires once per block episode when a tracked task transitions to a permission or question prompt and the app is not foregrounded; resolving the prompt re-arms it
 - on supported native platforms outside Expo Go, a background task checks pending sessions periodically, resolves each record's own connection credentials, and emits task-complete notifications; a record whose credentials cannot be resolved yet or whose reads fail is kept for a later run rather than discarded
 
@@ -575,10 +584,10 @@ Parity implication:
 - notification tracking is coupled to prompt submission and session status transitions
 - iOS completion delivery while the app is suspended is best effort: iOS grants background time opportunistically, so a completion is delivered when the app next runs or the system schedules the background task, not immediately
 - Android native builds automatically show one silent ongoing activity notification
-  for all tasks on the connected server, including other workspaces and desktop
+  for all tasks on the connected server, including other projects and desktop
   tasks. It shows the active count and selected task's tool, thinking, retry,
   queued, or needs-input state. Subagents count as their root task. Notification
-  taps open the owning connection, workspace, and session.
+  taps open the owning connection, project, and session.
 - While work is monitored, an Android foreground service keeps provider SSE and
   polling alive when the app is backgrounded or locked. Android 16+ is asked to
   promote the notification to a status-bar chip; OS settings and device support
@@ -605,7 +614,7 @@ Parity implication:
 
 Receive files, images, audio, video, documents, text and URLs from another app's
 Share menu. Preview defaults to the current conversation; Change lets you pick
-another conversation on the active server or New chat in the current workspace.
+another conversation on the active server or New chat in the current project.
 Add opens the exact destination and seeds a reviewable composer draft, preserving
 existing text/attachments. Only Send submits. Errors retain the payload; Discard
 and the ten-minute TTL clear it. Up to ten items and 10 MB per file; rejected
@@ -676,11 +685,11 @@ The following values are not persisted and are rebuilt from the server:
 - todos
 - pending permissions and questions
 - provider/model/agent catalog
-- commands, workspace file results/status/content, VCS info, worktrees, MCP statuses, PTYs, terminal output, archived sessions, and diagnostics
+- commands, project file results/status/content, VCS info, worktrees, MCP statuses, PTYs, terminal output, archived sessions, and diagnostics
 
 ## User-Visible Edge Cases
 
-- If no project exists yet, Chat shows a `Choose a workspace` prompt.
+- If no project exists yet, Chat shows a `Choose a project` prompt.
 - If a project exists but no session is ready yet, Chat shows a loading panel.
 - If connection fails, error copy is shown in the landing/loading states and inside chat content.
 - If speech input is unavailable or denied, a user-friendly error is shown with a recovery action (retry, or open app settings after a denial).
@@ -694,12 +703,12 @@ The following values are not persisted and are rebuilt from the server:
 Any reimplementation should preserve these functional outcomes:
 
 - automatic reconnection after local settings hydration
-- workspace-first session scoping
+- project-first session scoping
 - remembered last session per project
 - transcript + diff + server-owned todo + permission surfaces
 - session delete, archive/restore, rename, fork, revert/unrevert, and share/unshare support
 - slash command discovery and execution
-- workspace file search/view/status plus conflict-checked full-file VCS patch save
+- project file search/view/status plus conflict-checked full-file VCS patch save
 - experimental worktree management and archived-session listing
 - MCP lifecycle/configuration/OAuth management
 - ticket-authenticated interactive PTYs with xterm, bounded scrollback, resize, and acknowledged reconnect

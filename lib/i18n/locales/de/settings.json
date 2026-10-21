@@ -299,7 +299,12 @@
     "refresh": "Diagnose aktualisieren",
     "networkUsage": "Netzwerknutzung",
     "networkUsageValue": "{{requests}} Anfragen · {{size}} bekannte Antwortgrößen heute",
-    "networkUsageReset": "Zurücksetzen"
+    "networkUsageReset": "Zurücksetzen",
+    "lastError": "Letzter App-Fehler",
+    "lastErrorValue": "{{message}} · {{time}}",
+    "lastErrorNone": "Keine App-Fehler aufgezeichnet",
+    "lastErrorFatal": "Fatal",
+    "lastErrorHandled": "Behandelt"
   },
   "mcp": {
     "title": "MCP-Server",
@@ -333,7 +338,22 @@
     },
     "slimInterface": {
       "title": "Schlanke Oberfläche",
-      "description": "Verkleinert Schaltflächen, Abstände und Kopfzeilen in Chat, Terminal und Arbeitsbereich, damit mehr Text auf den Bildschirm passt."
+      "description": "Verkleinert Schaltflächen, Abstände und Kopfzeilen in Chat, Terminal und Projekt, damit mehr Text auf den Bildschirm passt."
+    },
+    "transcriptVerbosity": {
+      "label": "Transkript-Details",
+      "basic": {
+        "label": "Einfach",
+        "description": "Nur Nachrichten von Benutzer und Assistent anzeigen."
+      },
+      "reasoning": {
+        "label": "Denkprozess",
+        "description": "Zusätzlich den Denkprozess des Assistenten als eingeklappte Zeilen anzeigen."
+      },
+      "verbose": {
+        "label": "Ausführlich",
+        "description": "Zusätzlich Werkzeugaufrufe als eingeklappte Zeilen anzeigen."
+      }
     }
   },
   "connect": {
@@ -388,7 +408,6 @@
     "scanNewQr": "Scanne den neuen QR-Code auf deinem Computer",
     "scanLocal": "QR-Code scannen",
     "scanLocalHint": "Mit einem Computer im selben Netzwerk verbinden.",
-    "scanLocalUnavailable": "Lokales QR-Scannen ist in der iOS- und Android-App verfügbar.",
     "manual": "Manuell",
     "manualHint": "Gib deine Server-URL und Zugangsdaten ein.",
     "nativeOnly": "Cloud Link ist in der iOS- und Android-App verfügbar.",
@@ -502,6 +521,14 @@
     "copyLink": "Link kopieren",
     "linkCopied": "Dienst-Link kopiert.",
     "linkUnavailable": "Für diesen Dienst konnte kein Link erstellt werden.",
+    "machine": "Gerät",
+    "notActive": "Dienste für {{name}} — dies ist nicht deine aktive Verbindung.",
+    "useMachine": "Zu diesem Gerät wechseln",
+    "noMachine": "Verbinde ein Cloud-Link-Gerät, um seine freigegebenen Dienste zu verwalten.",
+    "credentialsExpired": "Der Cloud-Link-Zugriff für dieses Gerät ist abgelaufen oder fehlt. Verbinde es erneut, um seine Dienste zu verwalten.",
+    "reconnectFailed": "Dieses Gerät konnte nicht erneut verbunden werden.",
+    "unavailableService": "Dieser Dienst existiert nicht mehr auf dem Connector.",
+    "unavailableServiceHint": "Gehe zurück und aktualisiere die Liste der freigegebenen Dienste.",
     "legacyConnector": "Dieser Desktop-Connector kennt noch keine eigenen Dienst-Ports. Aktualisiere ihn, um Apps am Port-Root und mit wählbaren Ports freizugeben.",
     "unknownConnector": "Dieser Desktop-Connector ist älter als die App erwartet. Aktualisiere ihn für eigene Ports und Root-Dienste.",
     "enabledHint": "Datenverkehr für diesen Pfad durch den Tunnel leiten.",

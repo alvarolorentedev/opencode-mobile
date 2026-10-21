@@ -1,14 +1,14 @@
 import type { Session, SessionStatus } from '@/lib/opencode/types';
 import type { ActiveSessionItem } from '@/providers/opencode-provider-types';
 
-// Pure active-session selection for the Chat Library "Active across workspaces"
+// Pure active-session selection for the Chat Library "Active across projects"
 // group. Kept dependency-free so node tests can transpile and exercise it
 // without pulling in the provider or RN runtime.
 //
-// The group is connection-wide (not filtered by the active workspace) so it
-// stays stable while switching workspaces. Running sessions come first (newest
+// The group is connection-wide (not filtered by the active project) so it
+// stays stable while switching projects. Running sessions come first (newest
 // updated first), then the most recently updated idle ones, capped to a short
-// list. Sessions here are de-duplicated out of the current-workspace Chat list
+// list. Sessions here are de-duplicated out of the current-project Chat list
 // by the library, so nothing appears twice.
 export function getActiveSessions({
   sessions,

@@ -1,9 +1,9 @@
 {
   "screen": {
     "connectTitle": "OpenCode に接続",
-    "chooseWorkspace": "ワークスペースを選択",
+    "chooseProject": "プロジェクトを選択",
     "selectProject": "ターミナルを開く前にプロジェクトを選択してください。",
-    "openWorkspaces": "ワークスペースを開く",
+    "openProjects": "プロジェクトを開く",
     "title": "ターミナル"
   },
   "console": {

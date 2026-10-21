@@ -105,7 +105,6 @@ describe('background notification monitor', () => {
       [/from '@\/lib\/connection-scope'/g, `from "${connectionScopeUri}"`],
     ]);
     const sessionServiceStubUri = `data:text/javascript,${encodeURIComponent(`
-      export async function hasPendingSessionWork() { return false; }
       export async function listSessions(client) {
         const [statuses, sessions] = await Promise.all([client.session.status(), client.session.list()]);
         return { statuses: statuses.data, sessions: sessions.data };

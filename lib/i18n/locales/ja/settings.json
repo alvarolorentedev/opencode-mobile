@@ -299,7 +299,12 @@
     "refresh": "診断を更新",
     "networkUsage": "ネットワーク使用量",
     "networkUsageValue": "{{requests}} 件のリクエスト · 今日の既知の応答サイズ {{size}}",
-    "networkUsageReset": "リセット"
+    "networkUsageReset": "リセット",
+    "lastError": "最後のアプリエラー",
+    "lastErrorValue": "{{message}} · {{time}}",
+    "lastErrorNone": "アプリエラーは記録されていません",
+    "lastErrorFatal": "致命的",
+    "lastErrorHandled": "処理済み"
   },
   "mcp": {
     "title": "MCP サーバー",
@@ -333,7 +338,22 @@
     },
     "slimInterface": {
       "title": "スリム表示",
-      "description": "チャット・ターミナル・ワークスペースのボタン、余白、ヘッダーを小さくし、画面により多くのテキストを表示します。"
+      "description": "チャット・ターミナル・プロジェクトのボタン、余白、ヘッダーを小さくし、画面により多くのテキストを表示します。"
+    },
+    "transcriptVerbosity": {
+      "label": "トランスクリプトの詳細",
+      "basic": {
+        "label": "基本",
+        "description": "ユーザーとアシスタントのメッセージのみ表示します。"
+      },
+      "reasoning": {
+        "label": "推論",
+        "description": "アシスタントの推論も折りたたみ行として表示します。"
+      },
+      "verbose": {
+        "label": "詳細",
+        "description": "ツール呼び出しも折りたたみ行として表示します。"
+      }
     }
   },
   "connect": {
@@ -388,7 +408,6 @@
     "scanNewQr": "コンピューターに表示された新しいQRコードをスキャン",
     "scanLocal": "QRコードをスキャン",
     "scanLocalHint": "同じネットワーク上のコンピューターに接続します。",
-    "scanLocalUnavailable": "ローカルQRスキャンはiOSおよびAndroidアプリで利用できます。",
     "manual": "手動",
     "manualHint": "サーバーURLと認証情報を入力します。",
     "nativeOnly": "Cloud LinkはiOSとAndroidアプリで利用できます。",
@@ -502,6 +521,14 @@
     "copyLink": "リンクをコピー",
     "linkCopied": "サービスのリンクをコピーしました。",
     "linkUnavailable": "このサービスのリンクを作成できませんでした。",
+    "machine": "マシン",
+    "notActive": "{{name}} のサービスを表示中 — これは現在の接続ではありません。",
+    "useMachine": "このマシンに切り替える",
+    "noMachine": "公開サービスを管理するには Cloud Link マシンを接続してください。",
+    "credentialsExpired": "このマシンの Cloud Link アクセスが期限切れか未設定です。サービスの管理には再接続してください。",
+    "reconnectFailed": "このマシンに再接続できませんでした。",
+    "unavailableService": "このサービスはコネクタ上に存在しません。",
+    "unavailableServiceHint": "戻って公開サービスの一覧を更新してください。",
     "legacyConnector": "このデスクトップコネクタは専用のサービスポートに未対応です。ポートルートでの公開とポート選択を使うには更新してください。",
     "unknownConnector": "このデスクトップコネクタはアプリの想定より古いです。専用ポートとルートサービスを使うには更新してください。",
     "enabledHint": "このパスの通信をトンネル経由でルーティングします。",

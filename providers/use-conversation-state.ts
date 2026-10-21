@@ -54,17 +54,33 @@ export function useConversationState({ connection, chatPreferences, currentSessi
   // value is the pending transcript waiting to be flushed.
   const transcriptAccumulatorRef = useRef(createTranscriptAccumulator());
   const flushPendingConversationResultRef = useRef<() => void>(() => undefined);
-  const clearPendingConversationResult = useCallback(() => {
-    transcriptAccumulatorRef.current.reset();
+  const clearConversationResultTimeout = useCallback(() => {
     if (conversationFinalResultTimeoutRef.current) {
       clearTimeout(conversationFinalResultTimeoutRef.current);
       conversationFinalResultTimeoutRef.current = undefined;
     }
   }, []);
+  const clearPendingConversationResult = useCallback(() => {
+    transcriptAccumulatorRef.current.reset();
+    clearConversationResultTimeout();
+  }, [clearConversationResultTimeout]);
+  const scheduleConversationResult = useCallback(() => {
+    clearConversationResultTimeout();
+    if (conversationPhaseRef.current !== 'listening' || !transcriptAccumulatorRef.current.value()) return;
+    conversationFinalResultTimeoutRef.current = setTimeout(() => {
+      conversationFinalResultTimeoutRef.current = undefined;
+      flushPendingConversationResultRef.current();
+    }, CONVERSATION_FINAL_RESULT_SETTLE_MS);
+  }, [clearConversationResultTimeout]);
 
   const speechInput = useSpeechInput({
     levelStep: 2,
     locale: chatPreferences.speechLocale,
+    onEnd: () => {
+      transcriptAccumulatorRef.current.checkpoint();
+      scheduleConversationResult();
+    },
+    onSpeechStart: clearConversationResultTimeout,
     onResult: (transcript, isFinal) => {
       if (conversationPhaseRef.current !== 'listening') {
         return;
@@ -77,18 +93,9 @@ export function useConversationState({ connection, chatPreferences, currentSessi
 
       setConversationLatestHeardText(mergedTranscript);
 
-      // Only a final result arms the settle timer, but any result postpones
-      // it: resumed speech must never be cut off by a submit that was
-      // scheduled before the pause.
-      if (isFinal || conversationFinalResultTimeoutRef.current) {
-        if (conversationFinalResultTimeoutRef.current) {
-          clearTimeout(conversationFinalResultTimeoutRef.current);
-        }
-        conversationFinalResultTimeoutRef.current = setTimeout(() => {
-          conversationFinalResultTimeoutRef.current = undefined;
-          flushPendingConversationResultRef.current();
-        }, CONVERSATION_FINAL_RESULT_SETTLE_MS);
-      }
+      // A new interim is unfinished speech, even if an earlier segment was final.
+      clearConversationResultTimeout();
+      if (isFinal) scheduleConversationResult();
     },
     preferOnDevice: chatPreferences.preferOnDeviceRecognition,
     volumeUpdateIntervalMillis: 400,
@@ -125,7 +132,7 @@ export function useConversationState({ connection, chatPreferences, currentSessi
         return undefined;
       }
 
-      const transcript = (messagesBySession[sessionId] || []).map(toTranscriptEntry).filter(isTranscriptDisplayMessage);
+      const transcript = (messagesBySession[sessionId] || []).map(toTranscriptEntry).filter((entry) => isTranscriptDisplayMessage(entry));
       return [...transcript].reverse().find((entry) => entry.role === 'assistant' && entry.text.trim());
     },
     [messagesBySession],
@@ -167,10 +174,13 @@ export function useConversationState({ connection, chatPreferences, currentSessi
       return false;
     }
 
-    // A restart (the recognizer ending after a pause) must keep the pending
-    // final result and its settle timer alive, so words spoken before the
-    // restart are still submitted instead of being forgotten.
-
+    const startingPhase = conversationPhaseRef.current;
+    if (startingPhase === 'listening') {
+      transcriptAccumulatorRef.current.checkpoint();
+    } else {
+      clearPendingConversationResult();
+      setConversationLatestHeardText(undefined);
+    }
     if (conversationResumeTimeoutRef.current) {
       clearTimeout(conversationResumeTimeoutRef.current);
       conversationResumeTimeoutRef.current = undefined;
@@ -186,7 +196,12 @@ export function useConversationState({ connection, chatPreferences, currentSessi
     setQueuedConversationPrompt(undefined);
     await stopWorkingSoundAsync().catch(() => undefined);
 
+    if (conversationCancelRequestedRef.current || conversationPhaseRef.current !== startingPhase) return false;
     const started = await startSpeechInput({ continuous: true });
+    if (conversationCancelRequestedRef.current || conversationPhaseRef.current !== startingPhase) {
+      abortSpeechInput();
+      return false;
+    }
     if (!started) {
       conversationPhaseRef.current = 'off';
       setConversationPhase('off');
@@ -196,7 +211,7 @@ export function useConversationState({ connection, chatPreferences, currentSessi
     conversationPhaseRef.current = 'listening';
     setConversationPhase('listening');
     return true;
-  }, [conversationSessionId, startSpeechInput]);
+  }, [abortSpeechInput, clearPendingConversationResult, conversationSessionId, startSpeechInput]);
 
   const toggleConversationMode = useCallback(async () => {
     if (conversationPhase !== 'off') {

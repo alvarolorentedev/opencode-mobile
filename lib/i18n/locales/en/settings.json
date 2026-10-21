@@ -299,7 +299,12 @@
     "refresh": "Refresh diagnostics",
     "networkUsage": "Network usage",
     "networkUsageValue": "{{requests}} requests · {{size}} known response sizes today",
-    "networkUsageReset": "Reset"
+    "networkUsageReset": "Reset",
+    "lastError": "Last app error",
+    "lastErrorValue": "{{message}} · {{time}}",
+    "lastErrorNone": "No app errors recorded",
+    "lastErrorFatal": "Fatal",
+    "lastErrorHandled": "Handled"
   },
   "mcp": {
     "title": "MCP servers",
@@ -333,7 +338,22 @@
     },
     "slimInterface": {
       "title": "Slim interface",
-      "description": "Shrink buttons, spacing, and headers in chat, terminal, and workspace so more text fits on screen."
+      "description": "Shrink buttons, spacing, and headers in chat, terminal, and project so more text fits on screen."
+    },
+    "transcriptVerbosity": {
+      "label": "Transcript detail",
+      "basic": {
+        "label": "Basic",
+        "description": "Show user and assistant messages only."
+      },
+      "reasoning": {
+        "label": "Reasoning",
+        "description": "Also show the assistant's reasoning as collapsed rows."
+      },
+      "verbose": {
+        "label": "Verbose",
+        "description": "Also show tool calls as collapsed rows."
+      }
     }
   },
   "connect": {
@@ -388,7 +408,6 @@
     "scanNewQr": "Scan the new QR code on your computer",
     "scanLocal": "Scan QR code",
     "scanLocalHint": "Connect to a computer on the same network.",
-    "scanLocalUnavailable": "Local QR scanning is available in the iOS and Android app.",
     "manual": "Manual",
     "manualHint": "Enter your server URL and credentials.",
     "nativeOnly": "Cloud Link is available in the iOS and Android app.",
@@ -502,6 +521,14 @@
     "copyLink": "Copy link",
     "linkCopied": "Service link copied.",
     "linkUnavailable": "Could not build a link for this service.",
+    "machine": "Machine",
+    "notActive": "Showing services for {{name}} — this is not your active connection.",
+    "useMachine": "Switch to this machine",
+    "noMachine": "Connect a Cloud Link machine to manage its exposed services.",
+    "credentialsExpired": "Cloud Link access for this machine expired or is missing. Reconnect to manage its services.",
+    "reconnectFailed": "Could not reconnect this machine.",
+    "unavailableService": "This service is no longer on the connector.",
+    "unavailableServiceHint": "Go back and refresh the exposed services list.",
     "legacyConnector": "This desktop connector predates dedicated service ports. Update it to serve apps at the port root and choose ports.",
     "unknownConnector": "This desktop connector is older than the app expects. Update it to use dedicated ports and root services.",
     "enabledHint": "Route traffic for this path through the tunnel.",

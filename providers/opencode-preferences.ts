@@ -2,6 +2,8 @@
 // Kept separate from provider orchestration so preference shape and prompt
 // wording are changed in one place.
 
+import type { TranscriptVerbosity } from '@/lib/opencode/transcript';
+
 export type ReasoningLevel = 'low' | 'default' | 'high';
 export type ResponseScope = 'brief' | 'balanced' | 'detailed';
 export const TRANSCRIPT_FONT_SIZE_MIN = 12;
@@ -21,6 +23,9 @@ export type ChatPreferences = {
   // Flat transcript renders messages full-width without bubble chrome so more
   // of the conversation is visible at once. Defaults to the bubble layout.
   flatTranscript: boolean;
+  // How much of the native timeline the transcript renders: basic (user and
+  // assistant), reasoning (adds reasoning rows), or verbose (adds tool rows).
+  transcriptVerbosity: TranscriptVerbosity;
   // Slim interface reduces control sizes, paddings, and header heights on the
   // text-heavy screens so the transcript/output/code gets more room.
   slimInterface: boolean;
@@ -31,6 +36,7 @@ export type ChatPreferences = {
   modelId?: string;
   enabledModelIds: string[];
   providerModelSelections: Record<string, string>;
+  modelVariantSelections: Record<string, string | null>;
   recentModelIds: string[];
   reasoning: ReasoningLevel;
   autoApprove: boolean;
@@ -54,9 +60,11 @@ export const defaultChatPreferences: ChatPreferences = {
   promptDelivery: 'steer',
   transcriptFontSize: DEFAULT_TRANSCRIPT_FONT_SIZE,
   flatTranscript: false,
+  transcriptVerbosity: 'basic',
   slimInterface: false,
   enabledModelIds: [],
   providerModelSelections: {},
+  modelVariantSelections: {},
   recentModelIds: [],
   reasoning: 'default',
   autoApprove: false,
@@ -69,7 +77,7 @@ export const defaultChatPreferences: ChatPreferences = {
   workingSoundVolume: 0.18,
   responseScope: 'brief',
   includeNextActions: true,
-  hideSubagentChats: false,
+  hideSubagentChats: true,
   showWidgetPreviews: true,
 };
 
@@ -100,9 +108,9 @@ function buildResponseStyleSystemPrompt(scope: ResponseScope, includeNextActions
   return `${scopeInstruction} ${nextActionsInstruction}`;
 }
 
-export function buildSystemPrompt(preferences: ChatPreferences) {
+export function buildSystemPrompt(preferences: ChatPreferences, includeReasoning = true) {
   return [
-    buildReasoningSystemPrompt(preferences.reasoning),
+    includeReasoning ? buildReasoningSystemPrompt(preferences.reasoning) : undefined,
     buildResponseStyleSystemPrompt(preferences.responseScope, preferences.includeNextActions),
   ]
     .filter(Boolean)

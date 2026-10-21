@@ -1,7 +1,15 @@
 import type { GlobalEvent } from '@opencode-ai/sdk/v2/client';
 import type { OpencodeEvent } from '../../events';
 import { toFileDiffs } from '../../diff';
-import type { ProviderEventActions } from '@/providers/opencode-provider-events';
+import type { ProviderEventActions, SessionRefreshOptions } from '@/providers/opencode-provider-events';
+
+// Streaming part updates only re-read a transcript the user can see. Background
+// sessions refresh on status/completion events instead of once per part.
+function scheduleVisibleRefresh(actions: ProviderEventActions, sessionId: string, options: SessionRefreshOptions) {
+  if (!sessionId) return;
+  if (actions.focusSessionIds && !actions.focusSessionIds.has(sessionId)) return;
+  actions.scheduleSessionRefresh(sessionId, options);
+}
 
 export function dispatchCompatibilityEvent(event: GlobalEvent['payload'], actions: ProviderEventActions): void {
   switch (event.type) {
@@ -50,22 +58,22 @@ export function dispatchCompatibilityEvent(event: GlobalEvent['payload'], action
       return;
     }
     case 'message.updated': {
-      actions.scheduleSessionRefresh(event.properties.sessionID, { messages: true });
+      scheduleVisibleRefresh(actions, event.properties.sessionID, { messages: true });
       return;
     }
     case 'message.removed': {
       // Removal is destructive: rebuild the transcript rather than tail-merge.
-      actions.scheduleSessionRefresh(event.properties.sessionID, { messages: true, fullMessages: true });
+      actions.scheduleSessionRefresh(event.properties.sessionID, { messages: true, messageMode: 'replace' });
       return;
     }
     case 'message.part.updated':
     case 'message.part.removed':
     case 'message.part.delta': {
-      actions.scheduleSessionRefresh(event.properties.sessionID, { messages: true });
+      scheduleVisibleRefresh(actions, event.properties.sessionID, { messages: true });
       return;
     }
     case 'session.compacted': {
-      actions.scheduleSessionRefresh(event.properties.sessionID, { sessions: true, messages: true, fullMessages: true, diff: true, todos: true });
+      actions.scheduleSessionRefresh(event.properties.sessionID, { sessions: true, messages: true, messageMode: 'replace', diff: true, todos: true });
       return;
     }
     case 'catalog.updated':
@@ -79,7 +87,7 @@ export function dispatchCompatibilityEvent(event: GlobalEvent['payload'], action
       return;
     case 'project.updated':
     case 'project.directories.updated':
-      void actions.refreshWorkspaceCatalog(true).catch(() => undefined);
+      void actions.refreshProjectCatalog(true).catch(() => undefined);
       return;
     case 'file.edited':
     case 'file.watcher.updated':
@@ -95,7 +103,7 @@ export function dispatchCompatibilityEvent(event: GlobalEvent['payload'], action
     case 'worktree.ready':
     case 'worktree.failed':
       void actions.refreshWorktrees().catch(() => undefined);
-      void actions.refreshWorkspaceCatalog(true).catch(() => undefined);
+      void actions.refreshProjectCatalog(true).catch(() => undefined);
       return;
     case 'mcp.tools.changed':
       void actions.refreshMcpServers().catch(() => undefined);

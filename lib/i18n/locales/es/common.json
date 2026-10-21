@@ -2,7 +2,7 @@
   "tabs": {
     "chat": "Chat",
     "terminal": "Terminal",
-    "workspace": "Espacio",
+    "projects": "Proyectos",
     "settings": "Ajustes"
   },
   "actions": {
@@ -57,5 +57,32 @@
     "availableDescription": "Instala la última versión desde el App Store.",
     "restart": "Reiniciar e instalar",
     "openStore": "Abrir App Store"
+  },
+  "servers": {
+    "allServers": "Todos los servidores",
+    "allProjects": "Todos los proyectos",
+    "server": "Servidor",
+    "projectContext": "Contexto del proyecto",
+    "serverSettings": "Ajustes del servidor",
+    "appSettings": "Ajustes de la app",
+    "forServer": "Los cambios se aplican a {{name}}",
+    "searchProjects": "Buscar proyectos",
+    "lastSynced": "Mostrando los últimos proyectos sincronizados",
+    "newTerminalHint": "Elige dónde se inicia este terminal.",
+    "workingDirectory": "Directorio de trabajo",
+    "chatUnchanged": "Tu chat permanece en {{name}}.",
+    "pending": "Pendientes ({{count}})",
+    "savedRules": "Reglas guardadas ({{count}})",
+    "onlyThisServer": "Solo para este servidor",
+    "appDiagnostics": "Diagnóstico de la app · Todos los servidores",
+    "discardDrafts": "Se descartarán los borradores de chat y del editor sin guardar de este servidor.",
+    "status": {
+      "idle": "Desconectado",
+      "connecting": "Conectando",
+      "connected": "Conectado",
+      "error": "No disponible"
+    },
+    "appSettingsSummary": "Editor, ajustes generales y actualizaciones",
+    "serverToolsSummary": "Servidores MCP y diagnóstico"
   }
 }

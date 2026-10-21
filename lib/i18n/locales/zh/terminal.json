@@ -1,9 +1,9 @@
 {
   "screen": {
     "connectTitle": "连接到 OpenCode",
-    "chooseWorkspace": "选择工作区",
+    "chooseProject": "选择项目",
     "selectProject": "打开终端前请先选择一个项目。",
-    "openWorkspaces": "打开工作区",
+    "openProjects": "打开项目",
     "title": "终端"
   },
   "console": {

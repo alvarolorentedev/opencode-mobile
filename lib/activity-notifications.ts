@@ -21,14 +21,38 @@ export const activityNotifications = Platform.OS === 'android' && !Constants.exp
   ? requireOptionalNativeModule<{ update: (content: ActivityContent) => Promise<boolean>; stop: () => Promise<void>; waitUntilStopped: () => Promise<void>; suppressesCompletion: () => boolean }>('OpencodeActivity')
   : null;
 
-let managedScope: string | undefined;
-export function manageActivityCompletion(scope?: string) { managedScope = scope; }
-export function isActivityCompletionManaged(scope?: string) { return Boolean(scope && scope === managedScope && activityNotifications?.suppressesCompletion()); }
-
-export function updateActivityNotification(input: {
+type ActivityInput = {
   sessionId: string; projectPath: string; connectionScope: string; title: string;
   action: string; count: number; key: string; active: boolean;
-}) {
+};
+// Android exposes one activity surface; server observers share its ownership.
+const activities = new Map<string, ActivityInput>();
+let writes: Promise<unknown> = Promise.resolve();
+export function isActivityCompletionManaged(scope?: string) {
+  return Boolean(scope && activities.get(scope)?.active && activityNotifications?.suppressesCompletion());
+}
+function publishActivity(stopWhenIdle = false): Promise<boolean> {
+  const publish = async () => {
+    const all = [...activities.values()];
+    const active = all.filter((entry) => entry.active);
+    const selected = active.at(-1) ?? (stopWhenIdle ? undefined : all.at(-1));
+    if (!selected) { await activityNotifications?.stop(); return false; }
+    return renderActivity({ ...selected, count: active.reduce((total, entry) => total + Math.max(1, entry.count), 0) });
+  };
+  const pending = writes.then(publish, publish);
+  writes = pending.catch(() => undefined);
+  return pending;
+}
+export function stopActivityNotification(scope: string) {
+  activities.delete(scope);
+  return publishActivity(true).then(() => undefined);
+}
+export function updateActivityNotification(input: ActivityInput) {
+  activities.delete(input.connectionScope);
+  activities.set(input.connectionScope, input);
+  return publishActivity();
+}
+function renderActivity(input: ActivityInput) {
   const title = input.title.trim() || i18n.t('notifications:activity.untitled');
   const link = buildSessionLink({
     sessionId: input.sessionId,

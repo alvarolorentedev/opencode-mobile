@@ -18,7 +18,7 @@ export async function migrateConnectionSessionCaches(previousScope: string, next
   }
 }
 
-// Smallest set of session fields the workspace needs to paint the chat list
+// Smallest set of session fields the project needs to paint the chat list
 // before the server answers. SDK/server Session objects are mapped down to
 // this at write time, so a future upstream field is never persisted by
 // accident, and sensitive or large fields (share URLs, metadata, tokens,

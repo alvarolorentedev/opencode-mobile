@@ -19,7 +19,7 @@ vi.mock('react-native', () => ({ AppState: {
 vi.mock('expo-notifications', () => ({ getPermissionsAsync: async () => ({ granted: h.granted }) }));
 vi.mock('@/lib/activity-notifications', () => ({
   activityNotifications: { stop: () => h.stop() },
-  manageActivityCompletion: (scope?: string) => { h.scope = scope; },
+  stopActivityNotification: () => { h.scope = undefined; return h.stop(); },
   updateActivityNotification: async (input: any) => { h.updates.push(input); return input.key !== h.dismissed; },
 }));
 vi.mock('@/lib/i18n', () => ({ i18n: { t: (key: string) => key } }));
@@ -118,7 +118,16 @@ describe('provider observer', () => {
     h.runtime.unmount(); expect(h.stop).toHaveBeenCalled(); expect(h.scope).toBeUndefined();
   });
 
-  it('retains work on failed reads and reconciles global events outside the selected workspace', async () => {
+  it('does not process attention events for a non-owning workspace observer', async () => {
+    await mount();
+    h.runtime.update({ connected: false }); await h.runtime.settle();
+    h.appState = 'background';
+    h.runtime.value({ type: 'permission.asked', data: { sessionID: 'one' } });
+    await h.runtime.settle();
+    expect(h.attention).toHaveLength(0);
+  });
+
+  it('retains work on failed reads and reconciles global events outside the selected project', async () => {
     await mount();
     h.read.mockRejectedValueOnce(new Error('offline'));
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});

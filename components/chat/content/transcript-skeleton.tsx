@@ -30,7 +30,7 @@ function TranscriptSkeletonImpl({ palette }: { palette: Palette }) {
     { role: 'assistant', width: '75%' },
   ];
   return (
-    <View style={styles.transcriptItem}>
+    <View testID="transcript-skeleton" style={styles.transcriptItem}>
       {rows.map((row, index) => (
         <Animated.View
           key={`skeleton-${index}`}
