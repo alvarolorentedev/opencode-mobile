@@ -1197,7 +1197,9 @@ can move after the prior session ends without leaving its composer locked.
 Cancellation tests defer the native end, attempt both competing and same-owner
 starts, deliver delayed canceled events, and verify terminal cleanup after
 unmount. A deferred retry permission request is stopped and then resolved to
-prove it neither starts recognition nor retains the reservation.
+prove it neither starts recognition nor retains the reservation. Each speech
+hook aborts its own recognition on backgrounding; inactive hooks cannot stop
+the active owner, and repeated cleanup does not queue duplicate native ends.
 
 `tests/vitest/provider-runtime.test.ts` exercises conversation restarts with and
 without finals, multiple multilingual sessions, consecutive segments, speech onset

@@ -9,6 +9,7 @@ it('isolates recognition owners through competing starts, cancellation and netwo
   type Listener = (payload: unknown) => void;
   const listeners = new Map<string, Set<Listener>>();
   const starts: ExpoSpeechRecognitionOptions[] = [];
+  const appStateListeners = new Set<(state: string) => void>();
   let stops = 0, aborts = 0, identity = 0, speechStarts = 0;
   const transcripts = [createTranscriptAccumulator(), createTranscriptAccumulator()];
   const results: string[][] = [[], []];
@@ -30,7 +31,13 @@ it('isolates recognition owners through competing starts, cancellation and netwo
   }
   const speech = await loadTs('lib/voice/use-speech-input.ts', {
     react: { ...runtime.react, useId: () => runtime.react.useRef(`owner-${identity++}`).current },
-    'react-native': { Platform: { OS: 'android' } },
+    'react-native': {
+      Platform: { OS: 'android' },
+      AppState: { addEventListener: (_event: string, listener: (state: string) => void) => {
+        appStateListeners.add(listener);
+        return { remove: () => appStateListeners.delete(listener) };
+      } },
+    },
     'expo-speech-recognition': {
       ExpoSpeechRecognitionModule: native,
       useSpeechRecognitionEvent: (event: string, listener: Listener) => runtime.react.useEffect(() => {
@@ -127,7 +134,7 @@ it('isolates recognition owners through competing starts, cancellation and netwo
   native.requestPermissionsAsync = async () => ({ granted: true });
   assert.equal(await runtime.value[0].start(), true, 'stopping permission-only retry releases ownership without another end');
   await runtime.settle();
-  runtime.value[0].abort();
+  for (const listener of appStateListeners) listener('background');
   runtime.value[0].abort();
   const startsBeforeDrain = starts.length;
   const resultsBeforeDrain = results[0].length;
@@ -143,5 +150,6 @@ it('isolates recognition owners through competing starts, cancellation and netwo
   assert.equal(aborts, 4, 'only the active owner aborts on unmount');
   emit('end');
   assert.equal(listeners.get('end')!.size, 0, 'terminal cleanup survives owner unmount');
+  assert.equal(appStateListeners.size, 0);
   assert.equal(runtime.countTimers(250), 0);
 });

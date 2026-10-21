@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from 'react';
-import { Platform } from 'react-native';
+import { AppState, Platform } from 'react-native';
 import {
   ExpoSpeechRecognitionModule,
   useSpeechRecognitionEvent,
@@ -385,7 +385,11 @@ export function useSpeechInput({
 
   useEffect(() => {
     mountedRef.current = true;
+    const subscription = AppState.addEventListener('change', (state) => {
+      if (state !== 'active') abort();
+    });
     return () => {
+      subscription.remove();
       mountedRef.current = false;
       abort();
       if (activeOwner === ownerId && !nativeSession) activeOwner = undefined;
