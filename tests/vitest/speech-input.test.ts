@@ -76,6 +76,11 @@ it('isolates native owners and checkpoints interim speech through the network fa
   runtime.value[1].abort();
   emit('result', { results: [{ transcript: 'late aborted result' }], isFinal: true });
   assert.deepEqual(results[1], ['你好']);
+  emit('error', { error: 'service-not-allowed' });
+  emit('start');
+  await runtime.settle();
+  assert.equal(runtime.countTimers(250), 0, 'late errors cannot restart aborted recognition');
+  assert.equal(runtime.value[1].isListening, false);
   let grantPermission!: (value: { granted: boolean }) => void;
   const permission = new Promise<{ granted: boolean }>((resolve) => { grantPermission = resolve; });
   native.requestPermissionsAsync = () => permission;

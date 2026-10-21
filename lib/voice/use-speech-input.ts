@@ -122,7 +122,7 @@ export function useSpeechInput({
   }, []);
 
   useSpeechRecognitionEvent('start', () => {
-    if (activeOwner !== ownerId) return;
+    if (activeOwner !== ownerId || !acceptingResultsRef.current) return;
     setError(undefined);
     setErrorCode(undefined);
     setErrorAction('none');
@@ -141,7 +141,7 @@ export function useSpeechInput({
   });
 
   useSpeechRecognitionEvent('speechstart', () => {
-    if (activeOwner === ownerId) onSpeechStart?.();
+    if (activeOwner === ownerId && acceptingResultsRef.current) onSpeechStart?.();
   });
 
   useSpeechRecognitionEvent('result', (event) => {
@@ -240,7 +240,7 @@ export function useSpeechInput({
   );
 
   useSpeechRecognitionEvent('error', (event) => {
-    if (activeOwner !== ownerId) return;
+    if (activeOwner !== ownerId || !acceptingResultsRef.current) return;
     setIsStarting(false);
     if (shouldIgnoreError(event)) {
       setErrorCode(undefined);
