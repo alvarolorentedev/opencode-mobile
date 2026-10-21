@@ -224,11 +224,34 @@ Supporting refs and timers hold important transient control state for:
 
 - whether cancellation was requested
 - whether a submission is in flight
-- pending transcript waiting to be flushed
+- pending transcript waiting to be flushed; results accumulate onto it across
+  recognizer segments and listening restarts instead of replacing it
 - assistant-reply baseline tracking
 - resume-listening timeout
 - final-result settle timeout
 - listening-restart timeout
+
+Chat dictation and conversation mode share `lib/voice/transcript-accumulate.ts`.
+Interims replace only the current segment; finals commit it. A recognition `end`
+checkpoints any unfinished interim before a native, network-fallback, or provider
+restart. New segments append verbatim: Unicode letters, combining marks, numbers,
+punctuation and intentional repeated words are preserved. Text overlap alone is
+not evidence of replay, so it never removes words.
+
+Conversation submission waits 2200ms after a final result or recognition end.
+Speech onset or an interim cancels that timer until the next final/end, preventing
+a previous finalized segment from submitting while the user continues speaking.
+Restarts preserve the accumulated turn; submission, cancellation and new turns
+reset it. Native events and stop/abort calls belong only to the speech hook that
+started recognition, keeping chat dictation and conversation mode isolated. A
+competing start is rejected until the current session (including a pending
+network retry) ends, so ownership cannot strand the previous listening surface.
+Abort retains a live session until native `end` drains its delayed events.
+Permission-only starts and retry gaps cancel immediately. A per-session terminal
+listener survives hook unmount to release ownership even after its UI disappears.
+Permission-dialog `inactive` transitions do not cancel a start. Actual
+backgrounding stops conversation mode, clears its unsent turn/timers and blocks
+recognition starts; returning foreground requires explicitly starting a new turn.
 
 This means conversation mode is partly state-driven and partly timer/ref-driven.
 

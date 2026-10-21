@@ -1182,3 +1182,32 @@ For a seeded human-review environment, run `npm run preview:workspaces`. It buil
 The preview includes two projects on each server and a subagent fork on Build server. Send a prompt on MacBook Pro to see a normal completion; send one on Build server to exercise a permission request and its server-scoped Approvals view. Switch Hide subagents off to expose the fork. Create a terminal on Build server/secondary-project while keeping chat on MacBook Pro/demo-project.
 
 Terminal selection uses one continuous list with a server chip on each row, without empty workspace headings. With one configured workspace connection, server filters, selectors, chips and redundant scope labels are hidden across Chat, Projects, Terminal and Settings; both Settings section headings, project context and connection management remain available. Disconnected connections still count, so cached rows keep their ownership visible. Multi-server controls return automatically when a second connection is added.
+
+## Dictation accumulation (#77)
+
+`tests/vitest/transcript-accumulate.test.ts` covers Unicode (Cyrillic, CJK, Arabic,
+Devanagari, Korean and combining marks), shorter interim/final corrections,
+intentional repetitions, consecutive identical finals, empty results, restart
+checkpoints and turn resets. `tests/vitest/speech-input.test.ts` drives the real
+speech hook with deterministic native events: only the initiating owner receives
+results, an interim survives the on-device to network fallback, stop drains final
+results, and unmount cancels the active owner's recognition. Competing starts
+are rejected both while listening and during a pending network retry; ownership
+can move after the prior session ends without leaving its composer locked.
+Cancellation tests defer the native end, attempt both competing and same-owner
+starts, deliver delayed canceled events, and verify terminal cleanup after
+unmount. A deferred retry permission request is stopped and then resolved to
+prove it neither starts recognition nor retains the reservation. Each speech
+hook aborts its own recognition on backgrounding; inactive hooks cannot stop
+the active owner, and repeated cleanup does not queue duplicate native ends.
+An iOS pending permission request survives an `inactive` alert and granted
+permission. Provider coverage backgrounds both interim-only and finalized unsent
+turns, delivers native end, and verifies no restart or delayed submission.
+
+`tests/vitest/provider-runtime.test.ts` exercises conversation restarts with and
+without finals, multiple multilingual sessions, consecutive segments, speech onset
+and unfinished interims canceling submission, late events after cancellation,
+and a clean subsequent turn. Run `test:ci:static`, `test:fake-server:self`,
+`test:e2e:web` and `build:development:android`. No E2E/fake-server source changes
+are needed relative to main. Real Android/iOS microphone timing and recognition
+quality require device testing; deterministic event tests do not establish them.

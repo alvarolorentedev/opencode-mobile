@@ -6,6 +6,7 @@ import type { SessionStatus } from '@/lib/opencode/types';
 import type { VoiceRecoveryAction } from '@/lib/voice/speech-errors';
 import { stopSpeaking } from '@/lib/voice/speech-output';
 import { useSpeechInput } from '@/lib/voice/use-speech-input';
+import { createTranscriptAccumulator } from '@/lib/voice/transcript-accumulate';
 import { stopWorkingSoundAsync } from '@/lib/voice/working-sound';
 import { getTranscript, getConversationStatusLabel, getTranscriptActivityLabelForEntries } from '@/providers/opencode-provider-selectors';
 import { CONVERSATION_FINAL_RESULT_SETTLE_MS, CONVERSATION_KEEP_AWAKE_TAG,
@@ -48,43 +49,54 @@ export function useConversationState({ connection, chatPreferences, currentSessi
   const conversationFinalResultTimeoutRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const conversationListeningRestartTimeoutRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const conversationCancelRequestedRef = useRef(false);
+  const conversationStartingRef = useRef(false);
   const conversationSubmittingRef = useRef(false);
-  const pendingConversationTranscriptRef = useRef<string | undefined>(undefined);
+  // Accumulates the words heard across recognizer segments and restarts; the
+  // value is the pending transcript waiting to be flushed.
+  const transcriptAccumulatorRef = useRef(createTranscriptAccumulator());
   const flushPendingConversationResultRef = useRef<() => void>(() => undefined);
-  const clearPendingConversationResult = useCallback(() => {
-    pendingConversationTranscriptRef.current = undefined;
+  const clearConversationResultTimeout = useCallback(() => {
     if (conversationFinalResultTimeoutRef.current) {
       clearTimeout(conversationFinalResultTimeoutRef.current);
       conversationFinalResultTimeoutRef.current = undefined;
     }
   }, []);
+  const clearPendingConversationResult = useCallback(() => {
+    transcriptAccumulatorRef.current.reset();
+    clearConversationResultTimeout();
+  }, [clearConversationResultTimeout]);
+  const scheduleConversationResult = useCallback(() => {
+    clearConversationResultTimeout();
+    if (conversationPhaseRef.current !== 'listening' || !transcriptAccumulatorRef.current.value()) return;
+    conversationFinalResultTimeoutRef.current = setTimeout(() => {
+      conversationFinalResultTimeoutRef.current = undefined;
+      flushPendingConversationResultRef.current();
+    }, CONVERSATION_FINAL_RESULT_SETTLE_MS);
+  }, [clearConversationResultTimeout]);
 
   const speechInput = useSpeechInput({
     levelStep: 2,
     locale: chatPreferences.speechLocale,
+    onEnd: () => {
+      transcriptAccumulatorRef.current.checkpoint();
+      scheduleConversationResult();
+    },
+    onSpeechStart: clearConversationResultTimeout,
     onResult: (transcript, isFinal) => {
       if (conversationPhaseRef.current !== 'listening') {
         return;
       }
 
-      const nextTranscript = transcript.trim();
-      if (!nextTranscript) {
+      const mergedTranscript = transcriptAccumulatorRef.current.push(transcript, isFinal);
+      if (!mergedTranscript) {
         return;
       }
 
-      pendingConversationTranscriptRef.current = nextTranscript;
-      setConversationLatestHeardText(nextTranscript);
-      if (conversationFinalResultTimeoutRef.current) {
-        clearTimeout(conversationFinalResultTimeoutRef.current);
-        conversationFinalResultTimeoutRef.current = undefined;
-      }
+      setConversationLatestHeardText(mergedTranscript);
 
-      if (isFinal) {
-        conversationFinalResultTimeoutRef.current = setTimeout(() => {
-          conversationFinalResultTimeoutRef.current = undefined;
-          flushPendingConversationResultRef.current();
-        }, CONVERSATION_FINAL_RESULT_SETTLE_MS);
-      }
+      // A new interim is unfinished speech, even if an earlier segment was final.
+      clearConversationResultTimeout();
+      if (isFinal) scheduleConversationResult();
     },
     preferOnDevice: chatPreferences.preferOnDeviceRecognition,
     volumeUpdateIntervalMillis: 400,
@@ -101,7 +113,7 @@ export function useConversationState({ connection, chatPreferences, currentSessi
   } = speechInput;
 
   const flushPendingConversationResult = useCallback(() => {
-    const transcript = pendingConversationTranscriptRef.current?.trim();
+    const transcript = transcriptAccumulatorRef.current.value()?.trim();
     clearPendingConversationResult();
     if (!transcript || conversationPhaseRef.current !== 'listening') {
       return;
@@ -163,7 +175,13 @@ export function useConversationState({ connection, chatPreferences, currentSessi
       return false;
     }
 
-    clearPendingConversationResult();
+    const startingPhase = conversationPhaseRef.current;
+    if (startingPhase === 'listening') {
+      transcriptAccumulatorRef.current.checkpoint();
+    } else {
+      clearPendingConversationResult();
+      setConversationLatestHeardText(undefined);
+    }
     if (conversationResumeTimeoutRef.current) {
       clearTimeout(conversationResumeTimeoutRef.current);
       conversationResumeTimeoutRef.current = undefined;
@@ -179,7 +197,12 @@ export function useConversationState({ connection, chatPreferences, currentSessi
     setQueuedConversationPrompt(undefined);
     await stopWorkingSoundAsync().catch(() => undefined);
 
+    if (conversationCancelRequestedRef.current || conversationPhaseRef.current !== startingPhase) return false;
     const started = await startSpeechInput({ continuous: true });
+    if (conversationCancelRequestedRef.current || conversationPhaseRef.current !== startingPhase) {
+      abortSpeechInput();
+      return false;
+    }
     if (!started) {
       conversationPhaseRef.current = 'off';
       setConversationPhase('off');
@@ -189,9 +212,10 @@ export function useConversationState({ connection, chatPreferences, currentSessi
     conversationPhaseRef.current = 'listening';
     setConversationPhase('listening');
     return true;
-  }, [clearPendingConversationResult, conversationSessionId, startSpeechInput]);
+  }, [abortSpeechInput, clearPendingConversationResult, conversationSessionId, startSpeechInput]);
 
   const toggleConversationMode = useCallback(async () => {
+    if (conversationStartingRef.current) return;
     if (conversationPhase !== 'off') {
       await stopConversationMode();
       return;
@@ -215,23 +239,24 @@ export function useConversationState({ connection, chatPreferences, currentSessi
       return;
     }
 
-    const sessionId = currentSessionId || (await ensureActiveSession());
-    if (!sessionId) {
-      return;
-    }
+    conversationStartingRef.current = true;
+    try {
+      const sessionId = currentSessionId || (await ensureActiveSession());
+      if (!sessionId) return;
 
-    abortSpeechInput();
-    await stopSpeaking().catch(() => undefined);
-    await stopWorkingSoundAsync().catch(() => undefined);
-    setCurrentSessionId(sessionId);
-    setConversationSessionId(sessionId);
-    applyConversationFeedback(setConversationFeedback, setConversationFeedbackAction, undefined);
-    setPendingConversationTurn(undefined);
-    setQueuedConversationPrompt(undefined);
-    assistantReplyBaselineIdRef.current = getLatestConversationAssistantEntry(sessionId)?.id;
-    const started = await startConversationListening(sessionId);
-    if (!started) {
-      setConversationSessionId(undefined);
+      abortSpeechInput();
+      await stopSpeaking().catch(() => undefined);
+      await stopWorkingSoundAsync().catch(() => undefined);
+      setCurrentSessionId(sessionId);
+      setConversationSessionId(sessionId);
+      applyConversationFeedback(setConversationFeedback, setConversationFeedbackAction, undefined);
+      setPendingConversationTurn(undefined);
+      setQueuedConversationPrompt(undefined);
+      assistantReplyBaselineIdRef.current = getLatestConversationAssistantEntry(sessionId)?.id;
+      const started = await startConversationListening(sessionId);
+      if (!started) setConversationSessionId(undefined);
+    } finally {
+      conversationStartingRef.current = false;
     }
   }, [
     abortSpeechInput,
