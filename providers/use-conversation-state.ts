@@ -49,6 +49,7 @@ export function useConversationState({ connection, chatPreferences, currentSessi
   const conversationFinalResultTimeoutRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const conversationListeningRestartTimeoutRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const conversationCancelRequestedRef = useRef(false);
+  const conversationStartingRef = useRef(false);
   const conversationSubmittingRef = useRef(false);
   // Accumulates the words heard across recognizer segments and restarts; the
   // value is the pending transcript waiting to be flushed.
@@ -214,6 +215,7 @@ export function useConversationState({ connection, chatPreferences, currentSessi
   }, [abortSpeechInput, clearPendingConversationResult, conversationSessionId, startSpeechInput]);
 
   const toggleConversationMode = useCallback(async () => {
+    if (conversationStartingRef.current) return;
     if (conversationPhase !== 'off') {
       await stopConversationMode();
       return;
@@ -237,23 +239,24 @@ export function useConversationState({ connection, chatPreferences, currentSessi
       return;
     }
 
-    const sessionId = currentSessionId || (await ensureActiveSession());
-    if (!sessionId) {
-      return;
-    }
+    conversationStartingRef.current = true;
+    try {
+      const sessionId = currentSessionId || (await ensureActiveSession());
+      if (!sessionId) return;
 
-    abortSpeechInput();
-    await stopSpeaking().catch(() => undefined);
-    await stopWorkingSoundAsync().catch(() => undefined);
-    setCurrentSessionId(sessionId);
-    setConversationSessionId(sessionId);
-    applyConversationFeedback(setConversationFeedback, setConversationFeedbackAction, undefined);
-    setPendingConversationTurn(undefined);
-    setQueuedConversationPrompt(undefined);
-    assistantReplyBaselineIdRef.current = getLatestConversationAssistantEntry(sessionId)?.id;
-    const started = await startConversationListening(sessionId);
-    if (!started) {
-      setConversationSessionId(undefined);
+      abortSpeechInput();
+      await stopSpeaking().catch(() => undefined);
+      await stopWorkingSoundAsync().catch(() => undefined);
+      setCurrentSessionId(sessionId);
+      setConversationSessionId(sessionId);
+      applyConversationFeedback(setConversationFeedback, setConversationFeedbackAction, undefined);
+      setPendingConversationTurn(undefined);
+      setQueuedConversationPrompt(undefined);
+      assistantReplyBaselineIdRef.current = getLatestConversationAssistantEntry(sessionId)?.id;
+      const started = await startConversationListening(sessionId);
+      if (!started) setConversationSessionId(undefined);
+    } finally {
+      conversationStartingRef.current = false;
     }
   }, [
     abortSpeechInput,

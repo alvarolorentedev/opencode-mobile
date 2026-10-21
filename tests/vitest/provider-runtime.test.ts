@@ -427,7 +427,15 @@ let recognitionOptions, speechCallbacks, onConversationAppStateChange, sends = 0
 let lastPrompt;
 let listening = false;
 const sendGate = deferred();
-const startSpeech = async () => { listening = true; return true; };
+let permissionRequests;
+const startSpeech = async () => {
+  if (permissionRequests) {
+    const permission = deferred();
+    permissionRequests.push(permission);
+    await permission.promise;
+  }
+  listening = true; return true;
+};
 const abortSpeech = () => { listening = false; aborts++; };
 const selectors = await loadTs('providers/opencode-provider-selectors.ts', {
   '@/lib/opencode/format': { toTranscriptEntry: (record) => record, getHistoryPreview: () => '' },
@@ -569,6 +577,24 @@ for (const isFinal of [false, true]) {
   assert.equal(sends, 6, 'a background-canceled turn cannot restart or submit after end');
   assert.equal(voiceRuntime.countTimers(2200), 0);
 }
+
+// Repeated taps during permission startup must share one attempt, so a stale
+// permission completion cannot abort a newer turn or clear its session ID.
+permissionRequests = [];
+const firstStart = voiceRuntime.value.toggleConversationMode();
+await voiceRuntime.settle();
+const duplicateStart = voiceRuntime.value.toggleConversationMode();
+await voiceRuntime.settle();
+assert.equal(permissionRequests.length, 1, 'only one conversation permission/start attempt may be pending');
+permissionRequests[0].resolve();
+await Promise.all([firstStart, duplicateStart]); await voiceRuntime.settle();
+permissionRequests = undefined;
+assert.equal(voiceRuntime.value.conversation.phase, 'listening');
+recognitionOptions.onResult('one startup, one intact turn', true);
+voiceRuntime.fire(2200); await voiceRuntime.settle();
+assert.equal(lastPrompt, 'one startup, one intact turn');
+assert.equal(sends, 7, 'the pending startup keeps its conversation session');
+await voiceRuntime.value.toggleConversationMode(); await voiceRuntime.settle();
 
 voiceRuntime.update({ pendingQuestionsBySession: { s: [{ id: 'question' }] } });
 await voiceRuntime.value.toggleConversationMode(); await voiceRuntime.settle(); assert.equal(voiceRuntime.value.conversation.phase, 'off');
