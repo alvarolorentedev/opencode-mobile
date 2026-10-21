@@ -84,6 +84,18 @@ trusted environment, and sandbox configuration. See
 
 ### iOS Builds
 
+For a free Apple Personal Team development build, choose a bundle identifier
+that is unique to your Apple account and pass it to the helper command:
+
+```bash
+EXPO_IOS_BUNDLE_ID=com.example.yourname.opencode npm run ios:personal-team -- --device
+```
+
+The helper removes only the `aps-environment` entitlement that Personal Teams
+cannot provision. This local build cannot receive push notifications. Ordinary
+iOS, CI, and paid-team builds keep the configured bundle identifiers and push
+entitlement because the opt-out is unset.
+
 Build a local iOS release:
 ```bash
 npm run build:ios:local
