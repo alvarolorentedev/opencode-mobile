@@ -13,6 +13,11 @@ it('isolates recognition owners through competing starts, cancellation and netwo
   const transcripts = [createTranscriptAccumulator(), createTranscriptAccumulator()];
   const results: string[][] = [[], []];
   const native = {
+    addListener: (event: string, listener: Listener) => {
+      if (!listeners.has(event)) listeners.set(event, new Set());
+      listeners.get(event)!.add(listener);
+      return { remove: () => listeners.get(event)!.delete(listener) };
+    },
     supportsOnDeviceRecognition: () => true,
     isRecognitionAvailable: () => true,
     requestPermissionsAsync: async () => ({ granted: true }),
@@ -72,6 +77,7 @@ it('isolates recognition owners through competing starts, cancellation and netwo
   runtime.value[1].stop(); runtime.value[1].abort();
   assert.equal(stops, 0); assert.equal(aborts, 0);
   runtime.value[0].stop();
+  runtime.value[0].stop();
   emit('result', { results: [{ transcript: 'ещё' }], isFinal: true });
   emit('end'); await runtime.settle();
   assert.equal(results[0].at(-1), 'Привет мир мир! ещё', 'stop drains the final result before end');
@@ -82,13 +88,21 @@ it('isolates recognition owners through competing starts, cancellation and netwo
   assert.equal(runtime.value[0].isListening, false, 'the previous owner ended before ownership moved');
   assert.equal(speechStarts, 1);
   runtime.value[1].abort();
+  assert.equal(await runtime.value[0].start(), false, 'an aborted live session keeps ownership until its delayed end');
   emit('result', { results: [{ transcript: 'late aborted result' }], isFinal: true });
   assert.deepEqual(results[1], ['你好']);
   emit('error', { error: 'service-not-allowed' });
   emit('start');
+  emit('volumechange', { value: 100 });
   await runtime.settle();
   assert.equal(runtime.countTimers(250), 0, 'late errors cannot restart aborted recognition');
   assert.equal(runtime.value[1].isListening, false);
+  assert.equal(runtime.value[1].level, 0);
+  emit('end'); await runtime.settle();
+  assert.equal(await runtime.value[0].start(), true, 'the next surface starts only after canceled events drain');
+  emit('result', { results: [{ transcript: 'new owner' }], isFinal: true });
+  assert.equal(results[0].at(-1), 'Привет мир мир! ещё new owner');
+  runtime.value[0].abort(); emit('end'); await runtime.settle();
   let grantPermission!: (value: { granted: boolean }) => void;
   const permission = new Promise<{ granted: boolean }>((resolve) => { grantPermission = resolve; });
   native.requestPermissionsAsync = () => permission;
@@ -96,19 +110,38 @@ it('isolates recognition owners through competing starts, cancellation and netwo
   runtime.value[0].abort();
   grantPermission({ granted: true });
   assert.equal(await canceledStart, false, 'cancellation while permission is pending cannot restart recognition');
-  assert.equal(starts.length, 3);
+  assert.equal(starts.length, 4);
   native.requestPermissionsAsync = async () => ({ granted: true });
   await runtime.value[1].start(); await runtime.settle();
   emit('error', { error: 'service-not-allowed' });
   emit('end'); await runtime.settle();
-  native.requestPermissionsAsync = async () => { throw new Error('permission request failed'); };
+  let grantRetry!: (value: { granted: boolean }) => void;
+  const retryPermission = new Promise<{ granted: boolean }>((resolve) => { grantRetry = resolve; });
+  native.requestPermissionsAsync = () => retryPermission;
   runtime.fire(250); await runtime.settle();
+  runtime.value[1].stop();
+  grantRetry({ granted: true }); await runtime.settle();
   assert.equal(runtime.value[1].isStarting, false);
   assert.equal(runtime.value[1].isListening, false);
+  assert.equal(starts.length, 5, 'stopped retry permissions cannot start native recognition');
   native.requestPermissionsAsync = async () => ({ granted: true });
-  assert.equal(await runtime.value[0].start(), true, 'a failed retry releases ownership for the next surface');
+  assert.equal(await runtime.value[0].start(), true, 'stopping permission-only retry releases ownership without another end');
   await runtime.settle();
+  runtime.value[0].abort();
+  runtime.value[0].abort();
+  const startsBeforeDrain = starts.length;
+  const resultsBeforeDrain = results[0].length;
+  const restart = runtime.value[0].start();
+  await runtime.settle();
+  assert.equal(starts.length, startsBeforeDrain, 'the same owner also waits for its canceled native session to end');
+  emit('result', { results: [{ transcript: 'delayed canceled speech' }], isFinal: true });
+  assert.equal(results[0].length, resultsBeforeDrain);
+  emit('end');
+  assert.equal(await restart, true); await runtime.settle();
+  assert.equal(starts.length, startsBeforeDrain + 1);
   runtime.unmount();
-  assert.equal(aborts, 2, 'only the active owner aborts on unmount');
+  assert.equal(aborts, 4, 'only the active owner aborts on unmount');
+  emit('end');
+  assert.equal(listeners.get('end')!.size, 0, 'terminal cleanup survives owner unmount');
   assert.equal(runtime.countTimers(250), 0);
 });

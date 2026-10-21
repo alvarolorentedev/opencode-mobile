@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { Platform } from 'react-native';
 import {
   ExpoSpeechRecognitionModule,
@@ -39,6 +39,7 @@ let activeOwner: string | undefined;
 let activeOnDevice = false;
 // Ownership includes the gap before an on-device -> network retry.
 let recognitionReserved = false;
+let nativeSession: { owner: string; stopping: boolean; ended: Promise<void> } | undefined;
 
 export function useSpeechInput({
   levelStep = 1,
@@ -70,6 +71,10 @@ export function useSpeechInput({
   const ownerId = useId();
   const ignoreErrorsUntilRef = useRef(0);
   const startRequestRef = useRef(0);
+  const startPendingRef = useRef(false);
+  const mountedRef = useRef(true);
+  const onEndRef = useRef(onEnd);
+  useLayoutEffect(() => { onEndRef.current = onEnd; }, [onEnd]);
   const acceptingResultsRef = useRef(false);
   const lastLevelRef = useRef(0);
   // Once the on-device model proves unusable we stop asking for it, so a
@@ -133,16 +138,6 @@ export function useSpeechInput({
     ignoreErrorsUntilRef.current = 0;
   });
 
-  useSpeechRecognitionEvent('end', () => {
-    if (activeOwner !== ownerId) return;
-    onEnd?.();
-    if (!fallbackTimeoutRef.current) recognitionReserved = false;
-    setIsListening(false);
-    setIsStarting(false);
-    lastLevelRef.current = 0;
-    setLevel(0);
-  });
-
   useSpeechRecognitionEvent('speechstart', () => {
     if (activeOwner === ownerId && acceptingResultsRef.current) onSpeechStart?.();
   });
@@ -169,15 +164,22 @@ export function useSpeechInput({
       setErrorCode(undefined);
       setErrorAction('none');
       setIsStarting(true);
+      startPendingRef.current = true;
       ignoreErrorsUntilRef.current = 0;
+      let rollbackNativeStart: (() => void) | undefined;
 
       try {
+        if (nativeSession?.owner === ownerId) {
+          if (!nativeSession.stopping) return true;
+          await nativeSession.ended;
+          if (request !== startRequestRef.current) return false;
+        }
         const capabilities = readCapabilities();
         setIsAvailable(capabilities.available);
         setSupportsLocalRecognition(capabilities.onDevice);
 
         if (!capabilities.available) {
-          if (activeOwner === ownerId) recognitionReserved = false;
+          if (activeOwner === ownerId && !nativeSession) recognitionReserved = false;
           const info = describeVoiceInputError('service-not-allowed', undefined, {
             canAskAgain: canAskAgainRef.current,
             onDeviceRequested: false,
@@ -201,7 +203,7 @@ export function useSpeechInput({
         canAskAgainRef.current = nextCanAskAgain;
 
         if (!permissions.granted) {
-          if (activeOwner === ownerId) recognitionReserved = false;
+          if (activeOwner === ownerId && !nativeSession) recognitionReserved = false;
           const info = describeVoiceInputError('not-allowed', undefined, {
             canAskAgain: nextCanAskAgain,
             onDeviceRequested: false,
@@ -220,6 +222,32 @@ export function useSpeechInput({
         recognitionReserved = true;
         activeOnDevice = wantsOnDevice;
         acceptingResultsRef.current = true;
+        let resolveEnd!: () => void;
+        const session = { owner: ownerId, stopping: false, ended: new Promise<void>((resolve) => { resolveEnd = resolve; }) };
+        // This listener survives hook unmount so cancellation drains before ownership moves.
+        const subscription = ExpoSpeechRecognitionModule.addListener('end', () => {
+          if (nativeSession !== session) return;
+          nativeSession = undefined;
+          subscription.remove();
+          recognitionReserved = startPendingRef.current || Boolean(fallbackTimeoutRef.current);
+          acceptingResultsRef.current = false;
+          if (mountedRef.current) {
+            setIsListening(false);
+            setIsStarting(false);
+            lastLevelRef.current = 0;
+            setLevel(0);
+          } else {
+            activeOwner = undefined;
+          }
+          resolveEnd();
+          if (mountedRef.current) onEndRef.current?.();
+        });
+        nativeSession = session;
+        rollbackNativeStart = () => {
+          subscription.remove();
+          if (nativeSession === session) nativeSession = undefined;
+          resolveEnd();
+        };
         ExpoSpeechRecognitionModule.start({
           addsPunctuation: true,
           continuous: options.continuous ?? Platform.OS !== 'ios',
@@ -237,7 +265,8 @@ export function useSpeechInput({
         return true;
       } catch (startError) {
         if (request !== startRequestRef.current) return false;
-        if (activeOwner === ownerId) recognitionReserved = false;
+        rollbackNativeStart?.();
+        if (activeOwner === ownerId && !nativeSession) recognitionReserved = false;
         acceptingResultsRef.current = false;
         setIsListening(false);
         setError(startError instanceof Error ? startError.message : 'Voice input failed to start.');
@@ -245,7 +274,11 @@ export function useSpeechInput({
         setErrorAction('retry');
         return false;
       } finally {
-        if (request === startRequestRef.current) setIsStarting(false);
+        if (request === startRequestRef.current) {
+          startPendingRef.current = false;
+          if (activeOwner === ownerId && !nativeSession && !fallbackTimeoutRef.current) recognitionReserved = false;
+          setIsStarting(false);
+        }
       }
     },
     [clearPendingFallback, locale, ownerId, preferOnDevice, readCapabilities, volumeUpdateIntervalMillis],
@@ -254,8 +287,8 @@ export function useSpeechInput({
   useSpeechRecognitionEvent('error', (event) => {
     if (activeOwner !== ownerId || !acceptingResultsRef.current) return;
     setIsStarting(false);
+    if (nativeSession?.owner === ownerId) nativeSession.stopping = true;
     if (shouldIgnoreError(event)) {
-      recognitionReserved = false;
       setErrorCode(undefined);
       setIsListening(false);
       lastLevelRef.current = 0;
@@ -280,7 +313,6 @@ export function useSpeechInput({
       return;
     }
 
-    recognitionReserved = false;
     const info = describeVoiceInputError(event.error, event.message, {
       canAskAgain: canAskAgainRef.current,
       onDeviceRequested: activeOnDevice,
@@ -295,7 +327,7 @@ export function useSpeechInput({
   });
 
   useSpeechRecognitionEvent('volumechange', (event) => {
-    if (activeOwner !== ownerId || !isListening) {
+    if (activeOwner !== ownerId || !acceptingResultsRef.current || !isListening) {
       return;
     }
 
@@ -315,11 +347,13 @@ export function useSpeechInput({
 
   const stop = useCallback(() => {
     startRequestRef.current++;
-    const wasRetrying = Boolean(fallbackTimeoutRef.current);
+    startPendingRef.current = false;
     clearPendingFallback();
     setIsStarting(false);
     if (activeOwner !== ownerId) return;
-    if (wasRetrying) recognitionReserved = false;
+    if (!nativeSession) { recognitionReserved = false; return; }
+    if (nativeSession.stopping) return;
+    nativeSession.stopping = true;
     ignoreErrorsUntilRef.current = Date.now() + 1500;
     try {
       ExpoSpeechRecognitionModule.stop();
@@ -330,31 +364,33 @@ export function useSpeechInput({
 
   const abort = useCallback(() => {
     startRequestRef.current++;
+    startPendingRef.current = false;
     acceptingResultsRef.current = false;
     clearPendingFallback();
     setIsStarting(false);
     if (activeOwner !== ownerId) return;
-    recognitionReserved = false;
+    setIsListening(false);
+    lastLevelRef.current = 0;
+    setLevel(0);
+    if (!nativeSession) { recognitionReserved = false; return; }
+    if (nativeSession.stopping) return;
+    nativeSession.stopping = true;
     ignoreErrorsUntilRef.current = Date.now() + 1500;
     try {
       ExpoSpeechRecognitionModule.abort();
     } catch {
       // Ignore abort errors from transient native state.
-    } finally {
-      setIsListening(false);
-      lastLevelRef.current = 0;
-      setLevel(0);
     }
   }, [clearPendingFallback, ownerId]);
 
-  useEffect(() => () => {
-    clearPendingFallback();
-    startRequestRef.current++;
-    if (activeOwner === ownerId) {
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
       abort();
-      activeOwner = undefined;
-    }
-  }, [abort, clearPendingFallback, ownerId]);
+      if (activeOwner === ownerId && !nativeSession) activeOwner = undefined;
+    };
+  }, [abort, ownerId]);
 
   return useMemo(
     () => ({

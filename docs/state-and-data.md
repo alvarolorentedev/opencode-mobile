@@ -246,6 +246,9 @@ reset it. Native events and stop/abort calls belong only to the speech hook that
 started recognition, keeping chat dictation and conversation mode isolated. A
 competing start is rejected until the current session (including a pending
 network retry) ends, so ownership cannot strand the previous listening surface.
+Abort retains a live session until native `end` drains its delayed events.
+Permission-only starts and retry gaps cancel immediately. A per-session terminal
+listener survives hook unmount to release ownership even after its UI disappears.
 
 This means conversation mode is partly state-driven and partly timer/ref-driven.
 
