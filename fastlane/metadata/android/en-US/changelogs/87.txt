@@ -1,0 +1,1 @@
+- New chats now open a sheet to pick the server and project first, matching New terminal; confirming creates the chat there and switches the Chat view to it.
