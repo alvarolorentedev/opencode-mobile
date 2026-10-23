@@ -179,7 +179,7 @@ describe('v2 provider discovery and API-key auth', () => {
         list: async () => ({ data: integrations }),
         connect: { key: async ({ integrationID, key }: any) => {
           savedKey = { integrationID, key };
-          integrations.find((item) => item.id === integrationID)!.connections.push({ type: 'credential', id: 'credential-go', method: 'key' });
+          (integrations.find((item) => item.id === integrationID)!.connections as any[]).push({ type: 'credential', id: 'credential-go', method: 'key' });
         } },
         oauth: { connect: async ({ methodID }: any) => {
           expect(methodID).toBe('login');
@@ -194,7 +194,7 @@ describe('v2 provider discovery and API-key auth', () => {
 
     // Real V2 servers omit unconnected providers and their models entirely.
     api.provider.list = async () => ({ data: providers.filter(({ id }) => id === 'openai') });
-    integrations.push({ id: 'mcp-tools', name: 'Tools', metadata: { source: 'mcp' }, connections: [], methods: [{ type: 'oauth', id: 'mcp-login' }] });
+    integrations.push({ id: 'mcp-tools', name: 'Tools', metadata: { source: 'mcp' }, connections: [], methods: [{ type: 'oauth', id: 'mcp-login' }] } as any);
     const catalog = (await getProviders(client));
     expect(catalog.all.some((provider: any) => provider.id === 'opencode-go')).toBe(true);
     expect(catalog.all.some((provider: any) => provider.id === 'mcp-tools')).toBe(false);
@@ -229,7 +229,7 @@ describe('v2 provider discovery and API-key auth', () => {
       },
     };
     const client = buildV2Client({ serverUrl: 'http://test', directory: '/repo', username: '', password: '' } as never);
-    const methods = (await getProviderAuthMethods(client.api!, { location: { directory: '/repo' } })) as Record<string, Array<{ prompts?: Array<Record<string, unknown>> }>>;
+    const methods = (await getProviderAuthMethods(client.api!, { location: { directory: '/repo' } })) as Record<string, { prompts?: Record<string, unknown>[] }[]>;
     expect(methods.openai[0].prompts?.map((prompt) => prompt.type)).toEqual(['select', 'boolean', 'integer']);
     expect(methods.openai[0].prompts?.[0].options).toEqual([{ label: 'A', value: 'a' }]);
     expect(methods.openai[0].prompts?.[1].defaultValue).toBe(true);

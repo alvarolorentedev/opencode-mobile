@@ -2,7 +2,7 @@ import { setTimeout as sleep } from 'node:timers/promises';
 
 import { expect, test } from '@playwright/test';
 
-import { addConnection, backendOrigin, chatAction, connectToSavedConnection, connectToServer, ensureAiSection, expectConnectedTo, getFreePort, goToTab, openChatLibrary, openReadyChat, resetScenario, seedOnboarding, sendPrompt, spawnV1Server, waitForServer } from './helpers/flows.mjs';
+import { addConnection, backendOrigin, chatAction, connectToSavedConnection, connectToServer, ensureAiSection, expectConnectedTo, fakeV2Origin, getFreePort, goToTab, openChatLibrary, openReadyChat, resetScenario, seedOnboarding, sendPrompt, spawnV1Server, waitForServer } from './helpers/flows.mjs';
 
 test.beforeEach(async ({ page }, info) => {
   await seedOnboarding(page, info);
@@ -27,7 +27,7 @@ test('sessions can be renamed and require confirmation before deletion', async (
   await expect(page.getByText('Renamed from Playwright', { exact: true }).nth(1)).not.toBeVisible();
 });
 
-test('sessions archive and restore without deletion', async ({ page, request }) => {
+test('sessions archive and restore without deletion @smoke', async ({ page, request }) => {
   await resetScenario(request, 'happy-path');
   await openReadyChat(page);
   await sendPrompt(page, 'Archive this session safely');
@@ -118,7 +118,7 @@ test('favorites open sessions in the current project', async ({ page, request })
   ).toBeVisible({ timeout: 20_000 });
 });
 
-test('favorites switch projects and open cross-project sessions', async ({ page, request }) => {
+test('favorites switch projects and open cross-project sessions @smoke', async ({ page, request }) => {
   await resetScenario(request, 'happy-path');
   const fakeServer = backendOrigin();
   const projectPath = '/workspace/secondary-project';
@@ -172,7 +172,7 @@ test('favorites report sessions that are missing', async ({ page, request }) => 
   await chatAction(page, 'Favorite vanishing session', 'Favorite');
   await expect(page.getByRole('button', { name: /^Unfavorite / }).first()).toBeVisible();
 
-  const deleteResponse = await request.delete('http://127.0.0.1:44096/api/session/session-1');
+  const deleteResponse = await request.delete(`${backendOrigin()}/api/session/session-1`);
   expect(deleteResponse.ok()).toBeTruthy();
 
   await page.getByTestId('chat-library').getByRole('button', { name: 'Open Favorite vanishing session' }).first().click();
@@ -333,13 +333,14 @@ test('saved connections keep sessions, caches, and model preferences separate', 
 
   // Connection A is the default happy-path server. Give it a session, then
   // save it as a named connection and give it a non-default model preference.
-  await connectToServer(page, 'http://127.0.0.1:44096');
+  const serverA = fakeV2Origin();
+  await connectToServer(page, serverA);
   await sendPrompt(page, 'Server A session');
   await expect(page.getByText(/Finished: Server A session/).first()).toBeVisible({ timeout: 20_000 });
 
   await goToTab(page, 'Settings');
-  await addConnection(page, { name: 'Server A', url: 'http://127.0.0.1:44096' });
-  await expectConnectedTo(page, '44096');
+  await addConnection(page, { name: 'Server A', url: serverA });
+  await expectConnectedTo(page, new URL(serverA).port);
 
   await ensureAiSection(page);
   await page.getByTestId('settings-add-provider-button').click();
@@ -373,7 +374,7 @@ test('saved connections keep sessions, caches, and model preferences separate', 
     // Both catalogs stay in V2's mixed list; model selection remains scoped to A.
     await goToTab(page, 'Settings');
     await connectToSavedConnection(page, 'Server A');
-    await expectConnectedTo(page, '44096');
+    await expectConnectedTo(page, new URL(serverA).port);
     await goToTab(page, 'Chat');
     await expect(page.getByTestId('chat-model-picker-trigger')).toHaveAccessibleName('Auto · OpenRouter', { timeout: 15_000 });
     await openChatLibrary(page);

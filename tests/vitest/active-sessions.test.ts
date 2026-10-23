@@ -1,17 +1,14 @@
 import assert from 'node:assert/strict';
-import { readFile } from 'node:fs/promises';
-import ts from 'typescript';
 import { describe, it } from 'vitest';
+
+import type { Session, SessionStatus } from '@/lib/opencode/types';
+import { getActiveSessions } from '@/providers/active-sessions';
 
 // Migrated from the standalone tests/active-sessions.test.mjs Node script.
 describe('active session grouping', () => {
-  it('orders running first, filters archived/subagents, and caps the list', async () => {
-    const source = await readFile(new URL('../../providers/active-sessions.ts', import.meta.url), 'utf8');
-    const output = ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.ESNext, target: ts.ScriptTarget.ES2020 } }).outputText;
-    const { getActiveSessions } = await import(`data:text/javascript,${encodeURIComponent(output)}`);
-
-    function session(id: string, directory: string, updated: number, extra: Record<string, unknown> = {}) {
-      return { id, directory, title: id, time: { created: 0, updated }, ...extra };
+  it('orders running first, filters archived/subagents, and caps the list', () => {
+    function session(id: string, directory: string, updated: number, extra: Record<string, unknown> = {}): Session {
+      return { id, directory, title: id, time: { created: 0, updated }, ...extra } as unknown as Session;
     }
 
     const demo = '/workspace/demo-project';
@@ -33,7 +30,7 @@ describe('active session grouping', () => {
         'running-secondary': { type: 'busy' },
         'recent-tertiary': { type: 'idle' },
         'older-secondary': { type: 'idle' },
-      },
+      } as Record<string, SessionStatus>,
     });
     assert.deepEqual(items.map((item) => item.sessionId), ['running-secondary', 'running-demo', 'recent-tertiary', 'older-secondary']);
     assert.equal(items[0].status.type, 'busy');
@@ -64,7 +61,7 @@ describe('active session grouping', () => {
         session('recent-2', tertiary, 700),
         session('recent-3', secondary, 600),
       ],
-      statuses: { 'run-1': { type: 'busy' }, 'run-2': { type: 'retry', attempt: 1, message: 'x', next: 0 }, 'run-3': { type: 'busy' } },
+      statuses: { 'run-1': { type: 'busy' }, 'run-2': { type: 'retry', attempt: 1, message: 'x', next: 0 }, 'run-3': { type: 'busy' } } as Record<string, SessionStatus>,
     });
     assert.deepEqual(capped.map((item) => item.sessionId), ['run-1', 'run-2', 'run-3', 'recent-1']);
   });

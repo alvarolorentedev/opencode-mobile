@@ -6,7 +6,7 @@ test.beforeEach(async ({ page }, info) => {
   await seedOnboarding(page, info);
 });
 
-test('connects to an OpenCode 2 server and completes a prompt', async ({ page, request }) => {
+test('connects to an OpenCode 2 server and completes a prompt @smoke', async ({ page, request }) => {
   await resetScenario(request, 'happy-path');
   const port = await getFreePort();
   const server = spawnV2Server(port);

@@ -1,7 +1,9 @@
 import { expect, test } from '@playwright/test';
 
+import { resetScenario } from './helpers/flows.mjs';
+
 async function boot(page, request, snapshot = { phase: 'available', version: '59' }, startResult = true, nativeConsent = true) {
-  await request.post('http://127.0.0.1:44096/__control/reset', { data: { scenario: 'happy-path' } });
+  await resetScenario(request, 'happy-path');
   await page.addInitScript(({ snapshot, startResult, nativeConsent }) => {
     localStorage.setItem('opencode-mobile.onboarding-version', JSON.stringify({ version: 1 }));
     globalThis.__appUpdateTest = { snapshot, startResult, nativeConsent, checks: 0, events: [] };

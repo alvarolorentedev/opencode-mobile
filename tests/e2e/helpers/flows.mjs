@@ -18,8 +18,19 @@ export const compatibilityTitles = [
   'composer exposes direct approvals, agent selection and thinking in the model picker without losing drafts',
   'project files save through a conflict-checked VCS patch',
 ];
-export const usesCompatibility = (title) => compatibilityTitles.includes(title) || title.includes('v1 compatibility');
-export const backendOrigin = () => `http://127.0.0.1:${usesCompatibility(test.info().title) ? 44097 : 44096}`;
+export const usesCompatibility = (title) => {
+  // Playwright tags (for example `@smoke`) are part of the title; ignore them
+  // when matching the fixed compatibility contract list.
+  const base = title.replace(/\s+@[^\s]+$/, '');
+  return compatibilityTitles.includes(base) || base.includes('v1 compatibility');
+};
+
+const origin = (urlKey, portKey, fallbackPort) => (
+  process.env[urlKey] || `http://127.0.0.1:${process.env[portKey] || fallbackPort}`
+);
+export const fakeV2Origin = () => origin('E2E_FAKE_V2_URL', 'E2E_FAKE_V2_PORT', 44096);
+export const fakeV1Origin = () => origin('E2E_FAKE_V1_URL', 'E2E_FAKE_V1_PORT', 44097);
+export const backendOrigin = () => (usesCompatibility(test.info().title) ? fakeV1Origin() : fakeV2Origin());
 
 export async function getFreePort() {
   return new Promise((resolve, reject) => {
@@ -404,8 +415,10 @@ export async function exerciseInteractiveTerminal(page, request, origin, command
 }
 
 export async function seedOnboarding(page, info) {
-  await page.addInitScript((legacy) => {
+  const legacy = usesCompatibility(info.title);
+  const legacyServerUrl = fakeV1Origin();
+  await page.addInitScript(({ useLegacy, serverUrl }) => {
     globalThis.localStorage.setItem('opencode-mobile.onboarding-version', JSON.stringify({ version: 1 }));
-    if (legacy) globalThis.localStorage.setItem('opencode-mobile.settings', JSON.stringify({ serverUrl: 'http://127.0.0.1:44097', username: '', directory: '' }));
-  }, usesCompatibility(info.title));
+    if (useLegacy) globalThis.localStorage.setItem('opencode-mobile.settings', JSON.stringify({ serverUrl, username: '', directory: '' }));
+  }, { useLegacy: legacy, serverUrl: legacyServerUrl });
 }

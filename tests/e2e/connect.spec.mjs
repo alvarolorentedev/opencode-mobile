@@ -1,10 +1,12 @@
 import { expect, test } from '@playwright/test';
 import { Buffer } from 'node:buffer';
 
+import { fakeV2Origin } from './helpers/flows.mjs';
+
 // Native APIs/SecureStore are substituted only in the development E2E build.
 const CONTROL_PLANE = 'https://api.opencodecloud.link';
 const STAGING = 'https://apistaging.opencodecloud.link';
-const SERVER = 'http://127.0.0.1:44096';
+const SERVER = fakeV2Origin();
 const CONNECT_SERVER = 'https://connect-machine.test';
 const PRODUCT = 'fixture.connect';
 function pairingLink(id = 'pair-1') {
@@ -152,7 +154,7 @@ async function startApprovalWait(page, startup, theme = 'dark') {
   return state;
 }
 
-test('Cloud Link waits beyond 15 seconds without recovery controls and connects automatically', async ({ page }) => {
+test('Cloud Link waits beyond 15 seconds without recovery controls and connects automatically @smoke', async ({ page }) => {
   const startup = { ready: false, attempts: 0 };
   const state = await startApprovalWait(page, startup);
   await page.clock.runFor(16_000);
@@ -353,7 +355,7 @@ test('a real buyer with a remembered staging preference automatically uses produ
   await assertNoStoredSecrets(page);
 });
 
-test('purchase completes then automatically pairs, saves securely, and connects with Basic auth', async ({ page }) => {
+test('purchase completes then automatically pairs, saves securely, and connects with Basic auth @smoke', async ({ page }) => {
   await storeFixture(page);
   const state = await mockControlPlane(page);
   const dataAuth = [];
@@ -751,10 +753,10 @@ test('invalid and untrusted QR links can be replaced with a valid subscriber lin
 
 test('Settings has one creation entry with Scan QR, Manual and Cloud Link methods', async ({ page }) => {
   await storeFixture(page); await mockControlPlane(page);
-  await page.addInitScript(() => {
+  await page.addInitScript((serverUrl) => {
     localStorage.setItem('opencode-mobile.onboarding-version', JSON.stringify({ version: 1 }));
-    localStorage.setItem('opencode-mobile.settings', JSON.stringify({ serverUrl: 'http://127.0.0.1:44096', username: '', directory: '' }));
-  });
+    localStorage.setItem('opencode-mobile.settings', JSON.stringify({ serverUrl, username: '', directory: '' }));
+  }, SERVER);
   await page.emulateMedia({ colorScheme: 'dark' });
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto('/settings');

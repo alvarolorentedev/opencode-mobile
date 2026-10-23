@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
-import { readFile } from 'node:fs/promises';
-import ts from 'typescript';
 import { describe, it } from 'vitest';
+
+import { canFallbackToNetwork, describeVoiceInputError } from '@/lib/voice/speech-errors';
 
 // Pure error-classification logic for voice input. The hook and native module
 // are not exercised here; this locks the recovery policy that UI surfaces and
@@ -9,15 +9,7 @@ import { describe, it } from 'vitest';
 //
 // Migrated from the standalone tests/voice-errors.test.mjs Node script.
 describe('voice input error classification', () => {
-  it('classifies failures into recovery actions and network fallbacks', async () => {
-    const source = await readFile(new URL('../../lib/voice/speech-errors.ts', import.meta.url), 'utf8');
-    const output = ts.transpileModule(source, {
-      compilerOptions: { module: ts.ModuleKind.ESNext, target: ts.ScriptTarget.ES2020 },
-    }).outputText;
-    const { canFallbackToNetwork, describeVoiceInputError } = await import(
-      `data:text/javascript,${encodeURIComponent(output)}`
-    );
-
+  it('classifies failures into recovery actions and network fallbacks', () => {
     // On-device failures are the only ones worth one automatic network retry.
     assert.equal(canFallbackToNetwork('service-not-allowed', true), true);
     assert.equal(canFallbackToNetwork('language-not-supported', true), true);

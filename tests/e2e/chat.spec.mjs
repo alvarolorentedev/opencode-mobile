@@ -113,7 +113,7 @@ test('OpenCode 2 keeps steer and append prompts pinned until delivery and recove
   }
 });
 
-test('happy path keeps the main chat flow stable', async ({ page, request }) => {
+test('happy path keeps the main chat flow stable @smoke', async ({ page, request }) => {
   await resetScenario(request, 'happy-path');
   await openReadyChat(page);
 
@@ -131,7 +131,7 @@ test('happy path keeps the main chat flow stable', async ({ page, request }) => 
   await expect(page.getByText('Modified', { exact: true })).toHaveCount(2);
 });
 
-test('tab navigation preserves the mounted app and an unsent chat draft', async ({ page, request }) => {
+test('tab navigation preserves the mounted app and an unsent chat draft @smoke', async ({ page, request }) => {
   await resetScenario(request, 'happy-path');
   await openReadyChat(page);
   const documentRequests = [];

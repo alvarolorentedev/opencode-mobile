@@ -3,7 +3,9 @@ import { spawn } from 'node:child_process';
 import { Buffer } from 'node:buffer';
 import net from 'node:net';
 
-const V1 = 'http://127.0.0.1:44097';
+import { fakeV1Origin } from './helpers/flows.mjs';
+
+const V1 = fakeV1Origin();
 async function openManual(page, url) {
   await page.goto('/', { waitUntil: 'domcontentloaded' });
   await page.getByTestId('onboarding-welcome-start').click();

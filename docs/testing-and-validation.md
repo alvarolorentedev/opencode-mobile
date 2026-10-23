@@ -13,6 +13,68 @@ The flow specs are split by domain (`tests/e2e/<domain>.spec.mjs`) over shared
 helpers in `tests/e2e/helpers/flows.mjs`. Suites that are not yet typed are
 listed in `tsconfig.tests.json`; see [known gaps](known-gaps.md).
 
+## Validation Cost And Fast Paths
+
+Measured on 2026-10-23 against the `validate` workflow:
+
+- static checks: 71s on CI (~83s locally), including 47s of lint, 13s app
+  type-check, 10s test type-check, and 13s for 517 Vitest tests
+- fake-server self-test: 7s
+- Playwright: 581s, of which 510s is test execution and ~69s is the web export
+  and server startup; 162 flows at measurement time (161 after removing the
+  temporary plan-overlay probe), one worker because the fake server owns one
+  global scenario
+- the whole `validate` job: 12.4min, or up to 20min when the Playwright browser
+  install stalls
+
+The browser flows, not Vitest, are the cost. They are serial because the fake
+server has a single scenario, so CI now runs four `playwright test --shard`
+jobs alongside the static job. Each shard has its own runner, fake servers and
+web export. Do not raise Playwright's `workers` setting without giving each
+worker its own fake server.
+
+For local iteration:
+
+```bash
+# Once, to produce dist-e2e with the default fake-server URL
+npm run build:web:e2e
+
+# Terminal 1: serve the existing export without rebuilding
+npm run serve:web:prebuilt
+
+# Terminal 2: run only the spec you changed
+npx playwright test tests/e2e/chat.spec.mjs
+npm run test:e2e:smoke          # 17 critical flows, ~1 minute after the export
+npm run test:e2e:last-failed    # rerun the previous failures
+```
+
+Concurrent local runs must not share fixed ports. Use the isolated wrapper,
+which allocates a fresh web/fake-V1/fake-V2 port set, or set
+`E2E_WEB_PORT`, `E2E_FAKE_V1_PORT` and `E2E_FAKE_V2_PORT` yourself:
+
+```bash
+npm run test:e2e:web:isolated -- tests/e2e/realtime.spec.mjs
+```
+
+The random-port wrapper rebuilds the export because the fake V2 URL is baked
+into the web bundle. Use the prebuilt server above when you want to skip the
+export; that path keeps the default ports and reuses the running server.
+
+`build:web:e2e` keeps Metro's cache, so a warm export is a few seconds. Set
+`E2E_CLEAR=1` if you need to rule out a stale export.
+
+`npm run validate:fast` is the pre-push loop (static, fake-server self-test and
+the smoke set). The full `test:e2e:web` gate remains required before release
+and in CI; targeted specs and the smoke set are for iteration, not a substitute
+for the full suite.
+
+ESLint and TypeScript keep local caches (`--cache`, `--incremental`), and the
+CI jobs cache `.eslintcache`, `*.tsbuildinfo` and the Playwright browser. A
+cold static run is ~45s locally; a warm one is ~15s (Vitest is the floor).
+`tests/vitest/typecheck-ratchet.test.ts` keeps
+the `tsconfig.tests.json` denylist from growing; migrate a suite off
+`loadTs`/`hookRuntime` instead of adding another entry.
+
 ## Audit remediation regressions
 
 `audit-races.test.ts` covers composer revision ownership, explicit failed-input
@@ -263,16 +325,20 @@ so Remove/Reset is not offered for a repository's own checkout.
 Release automation in `build.yml`:
 - APK/IPA workflow artifacts expire after 1 day; the permanent copy is the GitHub Release asset, Play Store upload, or TestFlight upload
 
-The `validate` gate runs:
+The `validate` gate runs two parallel job families:
 
-- `npm run test:ci:static`, the single static entrypoint. It runs lint,
-  TypeScript type-checking for the app and for `tests/` (`npm run typecheck:tests`),
-  the Vitest suites (`npm run test:vitest`), and the static contract suites.
-  The script in `package.json` is the source of truth for the exact suite list.
-  `typecheck:tests` uses `tsconfig.tests.json`, which excludes the harness-heavy
-  suites listed there until they can be typed.
-- `npm run test:fake-server:self`
-- Playwright E2E flow tests against the fake OpenCode server
+- the `static` job runs `npm run test:ci:static`, the single static entrypoint.
+  It runs lint, TypeScript type-checking for the app and for `tests/`
+  (`npm run typecheck:tests`), the Vitest suites (`npm run test:vitest`), and the
+  static contract suites. The script in `package.json` is the source of truth
+  for the exact suite list. The runner executes the independent steps
+  concurrently and keeps ESLint/TypeScript caches. `typecheck:tests` uses
+  `tsconfig.tests.json`, which excludes the harness-heavy suites listed there
+  until they can be typed.
+- the same job runs `npm run test:fake-server:self`.
+- the `e2e` job runs four Playwright shards (`--shard=N/4`) against separate
+  fake servers and a separate web export per runner. Each shard keeps one
+  worker because the fake server owns global scenario state.
 
 The `foss-release` job also runs `npm run test:foss`. It patches temporary
 copies of the installed Expo Android sources using a local stub-source fixture,
@@ -773,13 +839,14 @@ expiry. These do not prove native store acceptance. Native
 camera, secure relaunch/locked-device access, real tunnel upgrades, and
 revocation still require explicit physical-device validation.
 
-`test:connect` covers the same contract as `tests/vitest/connect-recovery.test.ts`,
-exercising the actual
-provider hooks with deterministic app-state, time, native store and storage
-boundaries. It covers healthy reopen, background expiry and retry cancellation,
-cold-launch store readiness, shared credential access, stale recovery success
-and failure after switching connections, and renewal with Settings mounted.
-Profile checks distinguish machines/environments while preserving manual scope
+`test:connect` covers the low-level Cloud Link API, pairing/trust parsing,
+credential storage and app-config contract. `tests/vitest/connect-recovery.test.ts`
+is complementary: it exercises the actual provider hooks with deterministic
+app-state, time, native store and storage boundaries. It covers healthy reopen,
+background expiry and retry cancellation, cold-launch store readiness, shared
+credential access, stale recovery success and failure after switching
+connections, and renewal with Settings mounted. Profile checks distinguish
+machines/environments while preserving manual scope
 matching. The live-renewal E2E checks one active saved row, fresh username, panel
 close/reopen and remembered-session continuity without a document reload.
 On 2026-10-11, the user explicitly confirmed the live-renewal flow and all Android
@@ -843,6 +910,9 @@ npm run typecheck
 npm run test:vitest
 npm run test:fake-server:self
 npm run test:e2e:web
+npm run validate:fast
+npm run test:e2e:smoke
+npm run test:e2e:web:isolated
 npm run build:development:android
 ```
 

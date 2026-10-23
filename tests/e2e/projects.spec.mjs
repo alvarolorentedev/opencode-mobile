@@ -6,7 +6,7 @@ test.beforeEach(async ({ page }, info) => {
   await seedOnboarding(page, info);
 });
 
-test('Chat and Project use the same project picker', async ({ page, request }) => {
+test('Chat and Project use the same project picker @smoke', async ({ page, request }) => {
   await resetScenario(request, 'happy-path');
   await openReadyChat(page);
 
@@ -93,7 +93,7 @@ test('worktrees and MCP servers can be created', async ({ page, request }) => {
   await expect(page.getByText('web-tools', { exact: true })).toBeVisible();
 });
 
-test('OpenCode 2 adds a server project from the shared picker', async ({ page, request }) => {
+test('OpenCode 2 adds a server project from the shared picker @smoke', async ({ page, request }) => {
   await resetScenario(request, 'happy-path');
   const port = await getFreePort();
   const server = spawnV2Server(port);

@@ -1,11 +1,11 @@
 import { expect, test } from '@playwright/test';
 
-import { resetScenario } from './helpers/flows.mjs';
+import { resetScenario, fakeV1Origin, fakeV2Origin } from './helpers/flows.mjs';
 
 // First-run setup coverage. Unlike the flow specs, these tests intentionally do
 // NOT seed `opencode-mobile.onboarding-version`, so the assistant is exercised.
 
-const FAKE_SERVER_URL = 'http://127.0.0.1:44096';
+const FAKE_SERVER_URL = fakeV2Origin();
 
 async function waitForChat(page) {
   await expect(page.getByText('Start a new task')).toBeVisible({ timeout: 30_000 });
@@ -17,7 +17,8 @@ async function openManual(page) {
 }
 
 async function seedExistingInstall(page) {
-  await page.addInitScript(() => {
+  const serverUrl = FAKE_SERVER_URL;
+  await page.addInitScript((url) => {
     // Seed before hydration, but only once per tab so clearing app storage and
     // reloading really exercises a fresh install.
     const seededKey = 'e2e.existing-install-seeded';
@@ -25,17 +26,17 @@ async function seedExistingInstall(page) {
     globalThis.localStorage.setItem('opencode-mobile.onboarding-version', JSON.stringify({ version: 1 }));
     globalThis.localStorage.setItem(
       'opencode-mobile.settings',
-      JSON.stringify({ serverUrl: 'http://127.0.0.1:44096', username: '', directory: '' }),
+      JSON.stringify({ serverUrl: url, username: '', directory: '' }),
     );
     globalThis.sessionStorage.setItem(seededKey, '1');
-  });
+  }, serverUrl);
 }
 
 test.beforeEach(async ({ request }) => {
   await resetScenario(request);
 });
 
-test('fresh install walks through onboarding into a working chat', async ({ page }) => {
+test('fresh install walks through onboarding into a working chat @smoke', async ({ page }) => {
   await page.goto('/', { waitUntil: 'domcontentloaded' });
 
   await expect(page.getByTestId('onboarding-welcome')).toBeVisible({ timeout: 30_000 });
@@ -150,12 +151,12 @@ test('a failed connection keeps entered values and allows retry', async ({ page 
 });
 
 test('an existing configured installation skips onboarding', async ({ page }) => {
-  await page.addInitScript(() => {
+  await page.addInitScript((serverUrl) => {
     globalThis.localStorage.setItem(
       'opencode-mobile.settings',
-      JSON.stringify({ serverUrl: 'http://127.0.0.1:44096', username: '', directory: '' }),
+      JSON.stringify({ serverUrl, username: '', directory: '' }),
     );
-  });
+  }, FAKE_SERVER_URL);
 
   await page.goto('/', { waitUntil: 'domcontentloaded' });
   await waitForChat(page);
@@ -331,7 +332,7 @@ test('offline language and transcript choices apply immediately and survive inte
 });
 
 test('v1 compatibility onboarding hides message delivery and retains the default model picker', async ({ page }) => {
-  await enterAiStep(page, 'http://127.0.0.1:44097');
+  await enterAiStep(page, fakeV1Origin());
   await page.getByTestId('onboarding-ai-skip').click();
   await page.getByTestId('onboarding-project-skip').click();
   await expect(page.getByTestId('onboarding-default-model')).toBeEnabled();

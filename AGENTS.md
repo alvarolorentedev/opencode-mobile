@@ -234,6 +234,24 @@ npm run test:e2e:web
 
 A red e2e run is blocking. If a failure looks intermittent, rerun the failing test to confirm and harden it before pushing rather than pushing over a flaky check.
 
+### Fast iteration
+
+CI shards Playwright four ways, but a local run is serial. For iteration:
+
+```bash
+npm run test:ci:static          # cached; ~15s when warm, ~45s cold
+npm run test:e2e:smoke          # 17 critical flows
+npm run test:e2e:last-failed
+npm run test:e2e:web:isolated -- tests/e2e/chat.spec.mjs
+```
+
+After one `npm run build:web:e2e`, keep `npm run serve:web:prebuilt` running in
+another terminal so Playwright reuses the export instead of rebuilding it.
+Concurrent runs should use `test:e2e:web:isolated` (fresh ports) rather than the
+shared defaults. The smoke set and targeted specs are for iteration; the full
+`test:e2e:web` gate above is still required before push/release. New coverage
+that does not need the browser belongs in Vitest.
+
 ### Local mirror for heavy checks
 
 The project root may live on an external or network drive. To speed up lint,

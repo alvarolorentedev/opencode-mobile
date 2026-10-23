@@ -31,7 +31,7 @@ for (const scenario of ['permission', 'question']) {
   });
 }
 
-test('permission requests unblock the agent flow', async ({ page, request }) => {
+test('permission requests unblock the agent flow @smoke', async ({ page, request }) => {
   await resetScenario(request, 'permission');
   await openReadyChat(page);
 
@@ -45,7 +45,7 @@ test('permission requests unblock the agent flow', async ({ page, request }) => 
   await expect(page.getByText(/permission resolved/).first()).toBeVisible({ timeout: 20_000 });
 });
 
-test('assistant questions unblock the agent flow', async ({ page, request }) => {
+test('assistant questions unblock the agent flow @smoke', async ({ page, request }) => {
   await resetScenario(request, 'question');
   await openReadyChat(page);
 

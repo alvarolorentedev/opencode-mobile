@@ -2,6 +2,11 @@ name: Validate
 
 # Single source of truth for the pre-release gate. Called by pr-validate.yml,
 # build.yml, and ios-release.yml so the checks cannot drift apart.
+#
+# Static checks and the fake-server self-test run in one job while the
+# Playwright flows are sharded across four jobs. Sharding is safe because each
+# runner gets its own fake servers and web export; the fake server itself still
+# owns global state, so each shard keeps Playwright's `workers: 1`.
 on:
   workflow_call:
     inputs:
@@ -15,7 +20,7 @@ permissions:
   contents: read
 
 jobs:
-  validate:
+  static:
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -35,17 +40,78 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      # ESLint and incremental TypeScript caches only save time; a stale entry
+      # is revalidated against file content by the tools themselves.
+      - name: Cache static-check state
+        uses: actions/cache@v4
+        with:
+          path: |
+            .eslintcache
+            tsconfig.app.tsbuildinfo
+            tsconfig.tests.tsbuildinfo
+          key: static-${{ runner.os }}-${{ hashFiles('package-lock.json', 'eslint.config.*', 'tsconfig*.json') }}-${{ github.sha }}
+          restore-keys: |
+            static-${{ runner.os }}-${{ hashFiles('package-lock.json', 'eslint.config.*', 'tsconfig*.json') }}-
+
       - name: Lint and typecheck
         run: npm run test:ci:static
 
       - name: Validate fake server harness
         run: npm run test:fake-server:self
 
+  e2e:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    strategy:
+      # One failing shard should not hide the diagnostics from the others.
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3, 4]
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.ref || github.ref }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      # The browser download is the slowest and least predictable part of the
+      # gate. Cache the binary; fall back to the full dependency install when
+      # the cache is cold.
+      - name: Cache Playwright browser
+        id: playwright-cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
+
       - name: Install Playwright browser
-        run: npx playwright install --with-deps chromium
+        run: |
+          if [ "${{ steps.playwright-cache.outputs.cache-hit }}" = "true" ]; then
+            npx playwright install chromium
+          else
+            npx playwright install --with-deps chromium
+          fi
 
       - name: Run CI flow suite against fake OpenCode server
-        run: npm run test:e2e:web
+        run: npx playwright test --shard=${{ matrix.shard }}/4
         env:
           CI: 'true'
           EXPO_PUBLIC_E2E_MODE: '1'
+
+      - name: Upload Playwright report
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report-shard-${{ matrix.shard }}
+          path: playwright-report/
+          retention-days: 3

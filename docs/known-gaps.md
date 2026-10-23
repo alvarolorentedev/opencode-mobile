@@ -44,10 +44,11 @@ Partially closed on 2026-10-18:
   them. Test titles are unchanged.
 - **The Vitest suites are type-checked with a denylist.** `tsconfig.tests.json`
   type-checks `tests/vitest`; `npm run typecheck:tests` (part of
-  `test:ci:static`) runs it. The 23 suites that still drive the dynamic
+  `test:ci:static`) runs it. The 21 suites that still drive the dynamic
   `loadTs` / `hookRuntime` harness with untyped module shapes are listed under
-  `exclude`. Shrink that list as suites are cleaned up; do not add to it without
-  a note here.
+  `exclude`. `tests/vitest/typecheck-ratchet.test.ts` prevents that list from
+  growing; shrink it by migrating suites to real imports and `vi.mock`, never by
+  adding an entry.
 - **`tests/foss-prepare.test.mjs`** stays a standalone Node script
   (`npm run test:foss`, run by the `foss-release` CI job). It mutates a
   temporary `node_modules` tree and is build tooling rather than app behavior,
@@ -69,6 +70,24 @@ Closed on 2026-10-18 except for the remote reporter:
   example Sentry) would need a dependency, a consent toggle behind the existing
   diagnostics surface, and scrubbing that never sends the server URL or
   credentials. Only worth doing if a remote pipeline is explicitly funded.
+
+## 3c. Playwright parallelism
+
+Closed on 2026-10-23:
+
+- CI runs the Playwright suite in four `--shard` jobs alongside the static job.
+  Each shard has its own fake servers and web export, so the fake server's
+  single global scenario is never shared across runners. `fullyParallel` is
+  enabled only so sharding can divide individual tests; `workers` stays at 1.
+- The browser download, `.eslintcache`, TypeScript build info and static-check
+  inputs are cached.
+- Local concurrent runs use `npm run test:e2e:web:isolated`, which allocates
+  fresh web/V1/V2 ports. `npm run test:e2e:smoke` runs the 17 tagged critical
+  flows, and `npm run serve:web:prebuilt` reuses an existing export.
+
+Still deferred: multiple Playwright workers in one process. That would require
+a fake server and app build per worker. Sharding already gives CI the wall-time
+win without making the test harness worker-aware.
 
 ## 3b. Offline outbox and native 4G validation
 

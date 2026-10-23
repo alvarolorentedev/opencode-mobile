@@ -3,13 +3,13 @@ import { setTimeout as sleep } from 'node:timers/promises';
 
 import { expect, test } from '@playwright/test';
 
-import { backendOrigin, connectToServer, ensureAiSection, ensureConnectionSection, getFreePort, goToTab, openReadyChat, reconnectActiveConnection, resetScenario, seedOnboarding, sendPrompt, setActiveServerUrl, waitForServer } from './helpers/flows.mjs';
+import { backendOrigin, connectToServer, ensureAiSection, ensureConnectionSection, fakeV1Origin, getFreePort, goToTab, openReadyChat, reconnectActiveConnection, resetScenario, seedOnboarding, sendPrompt, setActiveServerUrl, waitForServer } from './helpers/flows.mjs';
 
 test.beforeEach(async ({ page }, info) => {
   await seedOnboarding(page, info);
 });
 
-test('settings can configure an additional provider against the fake server', async ({ page, request }) => {
+test('settings can configure an additional provider against the fake server @smoke', async ({ page, request }) => {
   await resetScenario(request, 'happy-path');
   await openReadyChat(page);
 
@@ -182,11 +182,12 @@ test('settings do not suggest a duplicated /api base when the API prefix is alre
   await goToTab(page, 'Settings');
   await ensureConnectionSection(page);
 
-  await setActiveServerUrl(page, 'http://127.0.0.1:44097/api');
+  const v1Api = `${fakeV1Origin()}/api`;
+  await setActiveServerUrl(page, v1Api);
   await reconnectActiveConnection(page);
-  await expect(page.getByText(/OpenCode endpoint not found at http:\/\/127\.0\.0\.1:44097\/api\b/).first()).toBeVisible({ timeout: 15_000 });
+  await expect(page.getByText(`OpenCode endpoint not found at ${v1Api}`).first()).toBeVisible({ timeout: 15_000 });
   await expect(page.getByText(/OpenCode 1\.x and 2\.x servers/).first()).toBeVisible();
-  await expect(page.getByText(/http:\/\/127\.0\.0\.1:44097\/api\/api/)).toHaveCount(0);
+  await expect(page.getByText(`${v1Api}/api`)).toHaveCount(0);
 });
 
 test('a 1.x server exposing /api compatibility routes still connects as 1.x', async ({ page, request }) => {

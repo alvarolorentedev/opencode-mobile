@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test';
 
-import { connectToServer, exerciseInteractiveTerminal, getFreePort, goToTab, openReadyChat, resetScenario, seedOnboarding, spawnV2Server, waitForServer } from './helpers/flows.mjs';
+import { connectToServer, exerciseInteractiveTerminal, fakeV2Origin, getFreePort, goToTab, openReadyChat, resetScenario, seedOnboarding, spawnV2Server, waitForServer } from './helpers/flows.mjs';
 
 test.beforeEach(async ({ page }, info) => {
   await seedOnboarding(page, info);
@@ -16,7 +16,7 @@ test('terminal streams input and output over the PTY websocket', async ({ page, 
   await page.getByTestId('terminal-picker').getByRole('button', { name: 'Close', exact: true }).click();
   await expect(page.getByText('Type directly in the terminal. Use the accessory for terminal keys.')).toBeVisible();
   await page.getByRole('button', { name: 'New terminal', exact: true }).click();
-  const { output, input, id, snapshot } = await exerciseInteractiveTerminal(page, request, 'http://127.0.0.1:44096', 'echo web');
+  const { output, input, id, snapshot } = await exerciseInteractiveTerminal(page, request, fakeV2Origin(), 'echo web');
   await page.getByTestId('terminal-create-button').click();
   await page.getByTestId('terminal-create-confirm').click();
   await expect(output).not.toHaveAttribute('data-pty', id);
@@ -28,7 +28,7 @@ test('terminal streams input and output over the PTY websocket', async ({ page, 
   await expect(output.locator('.xterm-accessibility-tree')).toContainText('ran: echo web');
   await expect(output.locator('.xterm-accessibility-tree')).not.toContainText('ran: echo second');
   await expect.poll(async () => (await snapshot())[0].connections).toBe(2);
-  await request.post('http://127.0.0.1:44096/__control/terminal', { data: { id, action: 'fail-terminate' } });
+  await request.post(`${fakeV2Origin()}/__control/terminal`, { data: { id, action: 'fail-terminate' } });
   await page.getByTestId('terminal-selector').click();
   page.once('dialog', (dialog) => dialog.accept());
   await page.getByRole('button', { name: new RegExp(`^Close Terminal, ${id.slice(0, 8)}$`) }).click();
@@ -44,7 +44,7 @@ test('terminal streams input and output over the PTY websocket', async ({ page, 
   await expect(page.getByText('No terminals yet. Use + to create one.')).toBeVisible();
 });
 
-test('OpenCode 2 terminal streams input and output over the PTY websocket', async ({ page, request }) => {
+test('OpenCode 2 terminal streams input and output over the PTY websocket @smoke', async ({ page, request }) => {
   const port = await getFreePort();
   const server = spawnV2Server(port);
   try {

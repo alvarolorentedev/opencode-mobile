@@ -42,7 +42,7 @@ async function choose(page, trigger, name) {
   await page.getByRole('button', { name, exact: true }).last().click();
 }
 
-test('V2 mixes colliding chats, filters without navigation, and retains each draft', async ({ page }) => {
+test('V2 mixes colliding chats, filters without navigation, and retains each draft @smoke', async ({ page }) => {
   await openChat(page, 'MacBook Pro');
   await page.getByPlaceholder('Ask anything...').fill('Draft on A');
   await openChatLibrary(page);

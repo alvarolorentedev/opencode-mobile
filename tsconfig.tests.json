@@ -17,7 +17,6 @@
   ],
   "exclude": [
     "node_modules",
-    "tests/vitest/active-sessions.test.ts",
     "tests/vitest/activity-notifications.test.ts",
     "tests/vitest/anr-regressions.test.ts",
     "tests/vitest/app-updates.test.ts",
@@ -38,7 +37,6 @@
     "tests/vitest/share-flow.test.ts",
     "tests/vitest/share-ui.test.ts",
     "tests/vitest/terminal.test.ts",
-    "tests/vitest/v2-mappers.test.ts",
     "tests/vitest/widget-flow.test.ts"
   ]
 }

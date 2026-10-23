@@ -6,7 +6,7 @@ test.beforeEach(async ({ page }, info) => {
   await seedOnboarding(page, info);
 });
 
-test('polling fallback still finishes the flow when SSE is unavailable', async ({ page, request }) => {
+test('polling fallback still finishes the flow when SSE is unavailable @smoke', async ({ page, request }) => {
   await resetScenario(request, 'stream-disconnect');
   await openReadyChat(page);
 
@@ -17,7 +17,7 @@ test('polling fallback still finishes the flow when SSE is unavailable', async (
   await expect(page.getByText('app/(tabs)/index.tsx', { exact: true })).toBeVisible({ timeout: 40_000 });
 });
 
-test('busy safety polling recovers completion while SSE remains connected', async ({ page, request }) => {
+test('busy safety polling recovers completion while SSE remains connected @smoke', async ({ page, request }) => {
   const port = await getFreePort();
   const server = spawnV1Server(port);
   const origin = `http://127.0.0.1:${port}`;
