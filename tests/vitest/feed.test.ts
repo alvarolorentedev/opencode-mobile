@@ -139,13 +139,20 @@ describe('feed attachments', () => {
 });
 
 describe('provider-owned prompt inbox', () => {
-  async function mount(client: any, readMessages = vi.fn(async () => [] as any[])) {
+  async function mount(client: any, readMessages = vi.fn(async () => [] as any[]), options: { online?: boolean; connected?: boolean } = {}) {
     const runtime = hookRuntime();
     const { usePromptInbox } = await loadTs('providers/use-prompt-inbox.ts', {
       react: runtime.react,
       '@/providers/services/session-service': { getSessionInbox: (candidate: any, id: string) => candidate.promptInbox.list(id) },
+      '@/lib/opencode/client/errors': { classifyConnectionFailure: () => 'unknown' },
     });
-    runtime.mount(usePromptInbox, { client, isCurrentClient: (candidate: any) => candidate === client, refreshMessages: readMessages });
+    runtime.mount(usePromptInbox, {
+      client,
+      isCurrentClient: (candidate: any) => candidate === client,
+      refreshMessages: readMessages,
+      connected: options.connected ?? true,
+      online: options.online ?? true,
+    });
     return runtime;
   }
 
@@ -209,5 +216,27 @@ describe('provider-owned prompt inbox', () => {
     await v1.value.submitPrompt({ sessionID: 's', parts: [] }, 'queue'); v1.flush();
     expect(promptAsync).toHaveBeenCalledWith({ sessionID: 's', parts: [] });
     expect(v1.value.pendingPromptsBySession).toEqual({});
+  });
+
+  it('queues an offline submission and admits it once after connectivity returns', async () => {
+    const client = {
+      promptInbox: {
+        submit: vi.fn()
+          .mockRejectedValueOnce(new Error('Failed to fetch'))
+          .mockResolvedValueOnce(pending('m-offline')),
+        list: vi.fn(async () => []),
+      },
+    };
+    const runtime = await mount(client, vi.fn(async () => [] as any[]), { online: false });
+    await runtime.value.submitPrompt({ sessionID: 's', parts: [{ type: 'text', text: 'queued text' }] }, 'steer');
+    runtime.flush();
+    expect(runtime.value.pendingPromptsBySession.s[0]).toMatchObject({ state: 'queued', text: 'queued text' });
+
+    runtime.update({ online: true }); runtime.flush();
+    await runtime.settle();
+    runtime.flush();
+    expect(client.promptInbox.submit).toHaveBeenCalledTimes(2);
+    expect(runtime.value.pendingPromptsBySession.s).toHaveLength(1);
+    expect(runtime.value.pendingPromptsBySession.s[0]).toMatchObject({ id: 'm-offline', state: 'waiting' });
   });
 });

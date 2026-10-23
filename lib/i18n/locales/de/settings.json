@@ -319,7 +319,17 @@
     "lastErrorValue": "{{message}} · {{time}}",
     "lastErrorNone": "Keine App-Fehler aufgezeichnet",
     "lastErrorFatal": "Fatal",
-    "lastErrorHandled": "Behandelt"
+    "lastErrorHandled": "Behandelt",
+    "network": "Netzwerk",
+    "networkValue": "{{type}} · {{state}}{{generation}}",
+    "networkOnline": "online",
+    "networkOffline": "offline",
+    "networkConstrained": "eingeschränkt",
+    "networkNormal": "normal",
+    "reconnect": "Automatische Neuverbindung",
+    "reconnectValue": "Versuch {{attempt}} von {{max}}",
+    "requestLatency": "Anfragelatenz",
+    "requestLatencyValue": "p50 {{p50}} ms · p95 {{p95}} ms · {{failed}} fehlgeschlagen · {{retries}} wiederholt"
   },
   "mcp": {
     "title": "MCP-Server",

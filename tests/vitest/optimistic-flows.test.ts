@@ -365,6 +365,7 @@ describe('non-blocking prompt reconciliation', () => {
         getConnectionScope: () => 'scope',
         getConnectionUiScope: () => 'scope',
       },
+      '@/lib/opencode/attachment': { prepareAttachment: async (att: unknown) => att },
     });
     const refresh = deferredGate();
     let messagesSettled = false;

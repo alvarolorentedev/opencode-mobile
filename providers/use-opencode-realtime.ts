@@ -1,4 +1,4 @@
-import { SSE_STALENESS_MS, SSE_FOREGROUND_CYCLE_MS, WATCHDOG_TICK_MS } from '@/providers/realtime-timing';
+import { SSE_STALENESS_MS, SSE_FOREGROUND_CYCLE_MS, WATCHDOG_TICK_MS, SSE_BUSY_STALENESS_MS, SSE_CONNECT_TIMEOUT_MS, SSE_STABLE_MS } from '@/providers/realtime-timing';
 import { AppState } from 'react-native';
 import { subscribeEvents } from '@/lib/opencode/events';
 import { classifyConnectionFailure, isAuthConnectionFailure } from '@/lib/opencode/client/errors';
@@ -21,32 +21,44 @@ type RealtimeActions = {
   refreshSessionTodos: (sessionId: string) => Promise<unknown>;
 };
 
+// Test seams keep old mocks valid while production always receives the timing
+// module's values.
+const CONNECT_TIMEOUT_MS = typeof SSE_CONNECT_TIMEOUT_MS === 'number' ? SSE_CONNECT_TIMEOUT_MS : 15_000;
+const BUSY_STALENESS_MS = typeof SSE_BUSY_STALENESS_MS === 'number' ? SSE_BUSY_STALENESS_MS : SSE_STALENESS_MS;
+const STABLE_MS = typeof SSE_STABLE_MS === 'number' ? SSE_STABLE_MS : 5_000;
+
 export function shouldPoll(streamConnected: boolean, busy: boolean) {
   return !streamConnected || busy;
 }
 
-// A socket can die without an error (network switch, sleep). After this window
-// without any envelope the subscription is re-established so a dead stream
-// cannot masquerade as connected and strand blocking requests. E2E builds
-// shorten the window so a stalled transport is recoverable inside a test.
+function jitterRetryDelay(attemptDelay: number) {
+  // Full jitter above the first second avoids a synchronized retry burst after
+  // a cell-wide outage while keeping the first recovery attempt fast.
+  if (attemptDelay <= 1000) return attemptDelay;
+  return Math.round(attemptDelay * (0.8 + Math.random() * 0.4));
+}
+
 export { SSE_STALENESS_MS, SSE_FOREGROUND_CYCLE_MS } from '@/providers/realtime-timing';
 
 export function useOpencodeRealtime({ catalogClient, activeProjectPath, connected, busy,
-  currentSessionId, conversationSessionId, pendingSessionIds = [], subscribe: subscribeStream = subscribeEvents, ...actions
+  currentSessionId, conversationSessionId, pendingSessionIds = [], subscribe: subscribeStream = subscribeEvents, online = true, constrained = false, ...actions
 }: RealtimeActions & {
   catalogClient: ScopedOpencodeClient;
   activeProjectPath?: string;
   connected: boolean;
   busy: boolean;
+  online?: boolean;
+  constrained?: boolean;
   pendingSessionIds?: string[];
   currentSessionId?: string;
   conversationSessionId?: string;
 }) {
   const [eventStreamStatus, setEventStreamStatus] = useState<'idle' | 'connecting' | 'connected' | 'error'>('idle');
   const statusRef = useRef(eventStreamStatus);
-  const latest = useRef({ ...actions, currentSessionId, conversationSessionId, pendingSessionIds });
+  const latest = useRef({ ...actions, currentSessionId, conversationSessionId, pendingSessionIds, busy, constrained });
+  const pollFailedRef = useRef(false);
   useLayoutEffect(() => {
-    latest.current = { ...actions, currentSessionId, conversationSessionId, pendingSessionIds };
+    latest.current = { ...actions, currentSessionId, conversationSessionId, pendingSessionIds, busy, constrained };
     statusRef.current = eventStreamStatus;
   });
   const inFlight = useRef<Promise<unknown> | undefined>(undefined);
@@ -66,11 +78,24 @@ export function useOpencodeRealtime({ catalogClient, activeProjectPath, connecte
       ? next.refreshSessionStatuses()
       : next.refreshSessions(true);
     let result: Promise<unknown>;
-    result = Promise.allSettled([
-      sessionRefresh, next.refreshPendingInteractions(),
-      next.refreshNativeSurfaces?.(full),
-      ...[...sessions].flatMap((id) => [next.refreshMessages(id, true), next.refreshSessionDiff(id, true), next.refreshSessionTodos(id)]),
-    ]).finally(() => {
+    result = (async () => {
+      // Tier 1: identity, blocking state, and the visible transcript can run
+      // together. A slow session list must not stop the current chat from
+      // tailing its newest page.
+      const corePromise = Promise.allSettled([sessionRefresh, next.refreshPendingInteractions()]);
+      const messagesPromise = Promise.allSettled([...sessions].map((id) => next.refreshMessages(id, true)));
+      const [core, messages] = await Promise.all([corePromise, messagesPromise]);
+      pollFailedRef.current = core.some((entry) => entry.status === 'rejected');
+      if (messages.some((entry) => entry.status === 'rejected')) pollFailedRef.current = true;
+      // Tier 2: diff/todo detail waits for the transcript, so a 3G link does
+      // not carry several large bodies at once.
+      const details = await Promise.allSettled([...sessions].flatMap((id) => [next.refreshSessionDiff(id, true), next.refreshSessionTodos(id)]));
+      if (details.some((entry) => entry.status === 'rejected')) pollFailedRef.current = true;
+      // Tier 3: native surfaces/widgets are useful but never block the chat.
+      if (next.refreshNativeSurfaces) {
+        await Promise.resolve(next.refreshNativeSurfaces(full)).catch(() => undefined);
+      }
+    })().finally(() => {
       if (inFlight.current !== result) return;
       inFlight.current = undefined;
       if (pendingFull.current) {
@@ -85,7 +110,7 @@ export function useOpencodeRealtime({ catalogClient, activeProjectPath, connecte
   useEffect(() => {
     inFlight.current = undefined;
     pendingFull.current = false;
-    if (!connected || !activeProjectPath) {
+    if (!connected || !activeProjectPath || !online) {
       setEventStreamStatus('idle');
       return;
     }
@@ -95,6 +120,7 @@ export function useOpencodeRealtime({ catalogClient, activeProjectPath, connecte
     let attemptController: AbortController | undefined;
     let restart = false;
     let lastEnvelopeAt = Date.now();
+    let stableSince = 0;
     let backgroundedAt = AppState.currentState === 'active' ? 0 : Date.now();
     const wake = () => {
       if (retryTimer) clearTimeout(retryTimer);
@@ -115,15 +141,21 @@ export function useOpencodeRealtime({ catalogClient, activeProjectPath, connecte
         const attempt = new AbortController();
         attemptController = attempt;
         let streamError: unknown;
+        let timedOut = false;
+        // A TCP/TLS handshake can stall without ever producing a stream. Bound
+        // it so a 4G handoff cannot leave the app looking connected forever.
+        const connectTimer = setTimeout(() => { timedOut = true; attempt.abort(); }, CONNECT_TIMEOUT_MS);
         try {
           const subscription = subscribeStream(catalogClient, attempt.signal, () => { lastEnvelopeAt = Date.now(); });
           let reconciled = false;
           for await (const envelope of subscription) {
             if (controller.signal.aborted || attempt.signal.aborted) break;
             if (!envelope) continue;
+            clearTimeout(connectTimer);
             lastEnvelopeAt = Date.now();
             setEventStreamStatus('connected');
-            retryDelay = 1000;
+            if (!stableSince) stableSince = Date.now();
+            if (Date.now() - stableSince >= STABLE_MS) retryDelay = 1000;
             if (!reconciled) {
               reconciled = true;
               void reconcile(true);
@@ -133,11 +165,14 @@ export function useOpencodeRealtime({ catalogClient, activeProjectPath, connecte
           }
           if (!controller.signal.aborted && !attempt.signal.aborted && !restart) throw new Error('OpenCode event stream ended.');
         } catch (error) {
-          streamError = error;
+          streamError = timedOut ? new Error('OpenCode event stream timed out.') : error;
+        } finally {
+          clearTimeout(connectTimer);
         }
         if (controller.signal.aborted) break;
         if (restart) {
           restart = false;
+          stableSince = 0;
           retryDelay = 1000;
           continue;
         }
@@ -151,9 +186,10 @@ export function useOpencodeRealtime({ catalogClient, activeProjectPath, connecte
           break;
         }
         setEventStreamStatus('error');
+        stableSince = 0;
         await new Promise<void>((resolve) => {
           resumeRetry = resolve;
-          retryTimer = setTimeout(() => { retryTimer = undefined; resumeRetry = undefined; resolve(); }, retryDelay);
+          retryTimer = setTimeout(() => { retryTimer = undefined; resumeRetry = undefined; resolve(); }, jitterRetryDelay(retryDelay));
           if (restart || controller.signal.aborted) {
             clearTimeout(retryTimer);
             retryTimer = undefined;
@@ -167,6 +203,8 @@ export function useOpencodeRealtime({ catalogClient, activeProjectPath, connecte
           retryDelay = 1000;
           continue;
         }
+        // Keep the previous delay for the next attempt; only a stable stream or
+        // an explicit foreground/network restart resets it.
         retryDelay = Math.min(retryDelay * 2, 15000);
       }
     };
@@ -189,7 +227,8 @@ export function useOpencodeRealtime({ catalogClient, activeProjectPath, connecte
     });
     const watchdog = setInterval(() => {
       if (AppState.currentState !== 'active' || statusRef.current !== 'connected') return;
-      if (Date.now() - lastEnvelopeAt < SSE_STALENESS_MS) return;
+      const limit = latest.current.busy ? BUSY_STALENESS_MS : SSE_STALENESS_MS;
+      if (Date.now() - lastEnvelopeAt < limit) return;
       // One cycle per window; a subscription that never delivers an envelope is
       // retried on the next window instead of looping here.
       lastEnvelopeAt = Date.now();
@@ -203,18 +242,35 @@ export function useOpencodeRealtime({ catalogClient, activeProjectPath, connecte
       appState.remove();
       resumeRetry?.();
     };
-  }, [activeProjectPath, catalogClient, connected, reconcile, subscribeStream]);
+  }, [activeProjectPath, catalogClient, connected, online, reconcile, subscribeStream]);
 
   useEffect(() => {
-    if (!connected || !activeProjectPath || !shouldPoll(eventStreamStatus === 'connected', busy)) return;
+    if (!connected || !activeProjectPath || !online || !shouldPoll(eventStreamStatus === 'connected', busy)) return;
     // While SSE is healthy the loop is a safety net and runs slower; without a
-    // stream it is the primary transport. Prompt completion across projects is
-    // additionally covered by the post-send transcript refresh, so a slower
-    // connected cadence cannot strand a finished turn.
-    const intervalMs = eventStreamStatus === 'connected' ? 10000 : 5000;
-    const interval = setInterval(() => { void reconcile(); }, intervalMs);
-    return () => clearInterval(interval);
-  }, [activeProjectPath, busy, connected, eventStreamStatus, reconcile]);
+    // stream it is the primary transport. Repeated failed passes back off so an
+    // offline or overloaded link does not receive a request every five seconds.
+    const streamConnected = eventStreamStatus === 'connected';
+    const baseMs = streamConnected
+      ? (constrained ? 15000 : 10000)
+      : (constrained ? 8000 : 5000);
+    let cancelled = false;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    let failures = 0;
+    const tick = async () => {
+      if (cancelled) return;
+      await reconcile();
+      if (cancelled) return;
+      if (pollFailedRef.current) failures = Math.min(failures + 1, 3);
+      else failures = 0;
+      const nextMs = Math.min(baseMs * (2 ** failures), 30_000);
+      timer = setTimeout(() => { void tick(); }, nextMs);
+    };
+    timer = setTimeout(() => { void tick(); }, baseMs);
+    return () => {
+      cancelled = true;
+      if (timer) clearTimeout(timer);
+    };
+  }, [activeProjectPath, busy, connected, constrained, eventStreamStatus, online, reconcile]);
 
   return { eventStreamStatus };
 }

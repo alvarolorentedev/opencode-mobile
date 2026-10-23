@@ -10,7 +10,10 @@ export type PendingPrompt = {
   text: string;
   attachments: PromptAttachment[];
   delivery: PromptDelivery;
-  state: 'sending' | 'waiting';
+  // queued: left the device while offline; flush reconciles before admitting.
+  // uncertain: the request may have reached the server before the connection
+  // failed; never retry automatically.
+  state: 'sending' | 'waiting' | 'queued' | 'uncertain';
 };
 
 export type PromptInboxApi = {

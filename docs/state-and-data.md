@@ -33,6 +33,9 @@ Meaning:
 - `currentProjectPath` is the server's notion of current project
 - `serverRootPath` is the root directory reported by the server
 - `eventStreamStatus` tracks real-time subscription health independently of connection state
+- `network` is the normalized reachability snapshot (online, type, metered,
+  constrained, generation) owned by `providers/use-network-status.ts`
+- `reconnect` tracks the bounded connect-retry attempt and next retry time
 - the connection domain also exposes `services`, the Cloud Link connector's remote service-management state with its connector-reported management revision and port pool. The provider resolves the target machine from the active Cloud Link connection or a saved Cloud Link profile (so it works while another connection is active), exposes the target/machine list and unavailable reason, and keeps the list keyed by that target scope; see [api-contract.md](api-contract.md#connector-service-management-cloud-link)
 - failures carry a machine-readable `kind` (`timeout`, `offline`, `auth`, `entitlement`, `tunnel-startup`, `server-incompatible`, `unknown`) alongside the display message; `retryableStartup` remains for Cloud Link activation compatibility
 
@@ -355,6 +358,8 @@ Persisted values:
 - `opencode-mobile.pending-notification-sessions` (non-secret connection references, keyed by connection scope + session ID)
 - `opencode-mobile.widget-snapshot` (bounded Android replies, awaiting-action and plan snapshot: connection scope, language/privacy preference, per-surface observation times, three rows/steps, counts, validated links and optional 160-character previews; no authentication credentials, raw request metadata or tool output)
 - `opencode-mobile.sessions.<connectionScope>.<projectPath>` / `opencode-mobile.session-statuses.<connectionScope>.<projectPath>` (per connection + project cache)
+- `opencode-mobile.transcript.<connectionScope>.<projectPath>.<sessionId>` (bounded newest transcript tail: 24 records, 200k-character cap, 7-day TTL)
+- `opencode-mobile.capabilities.<connectionScope>.<projectPath>` (last-known config/providers/models/agents/auth methods, 300k-character cap, 7-day TTL)
 - `opencode-mobile.favorite-sessions` (cross-project favorites, each carrying its connection scope)
 
 ### Session cache DTO
@@ -400,6 +405,9 @@ Hydration rules:
 - each persisted key hydrates independently; a storage or credential read failure preserves the unread key and suppresses unchanged default write-back until the user changes that value or relaunches. Malformed or invalid JSON is removed without blocking other keys
 - write-back is ordered per key and skips identical successful writes. Errors are reported and failed writes remain retryable. Secure credential writes finish before active connection metadata is written
 - per connection + project session caches hydrate on app open and on every connection or project switch so the project list paints before the server answers; they are written only from confirmed fetch results, so a cached empty list means the server reported no sessions for that project. A late hydration result is discarded unless both the connection scope and project path are still current.
+- the transcript tail hydrates when a session opens with no in-memory window. It is validated, TTL-bound, and never overwrites a live refresh that painted first. Writes are debounced and bounded so streaming part events cannot cause one storage write per page.
+- the capabilities cache hydrates in parallel with the first capability refresh and is ignored once a fresh response has been applied. It keeps the composer's model/agent choices usable while a slow link answers.
+- connection credential rotation migrates the session, transcript, and capabilities caches to the rotated scope.
 - onboarding completion is resolved last, so `isHydrated` already implies the assistant's visibility is known. When the marker is absent, an installation that already has a stored settings key, saved profile metadata, or an active project is treated as completed (existing users never see onboarding); a fresh installation starts the assistant. The resolved marker (version 0 when onboarding should run, `CURRENT_ONBOARDING_VERSION` when it should not) is written back by the persistence write-back effect, which makes the decision sticky and stops the settings write effect from later re-triggering migration. Storage read failures report completed, so an unreadable store can never gate an existing user.
 
 Credentials:
@@ -774,13 +782,18 @@ Current implementation assumes these invariants:
 - OpenCode 2 prompt admission retains the server inbox ID, text, files and
   delivery mode. Pending messages stay above the composer until their ID appears
   in the transcript or the server removes them. Inbox reads precede transcript
-  reads; failed reads retain pending entries. Local sending placeholders are
-  removed on failure, leaving composer retry behavior intact. Pending state is
+  reads; failed reads retain pending entries. An offline/transport failure keeps
+  the prompt locally as `queued`; a timeout with an unknown outcome is
+  `uncertain` and is never auto-replayed. Flush reconciles the inbox and newest
+  transcript before admitting, so a request that reached the server is not
+  duplicated. Local sending placeholders are removed only for non-transport
+  failures, leaving composer retry behavior intact. Pending state is
   scoped to the client and session, recovered from the server on open/reload,
   and included in realtime polling reconciliation. Canceling a waiting entry
   removes it through the native inbox cancel endpoint and can move its text
   back into an empty composer; only the composer draft is restored, not the
-  pending attachments.
+  pending attachments. Queued/uncertain entries can be dismissed locally
+  without calling the server with a local ID.
 - `promptDelivery` is a persisted chat preference (`steer` by default or `queue`,
   labeled Append). The top of Advanced Settings exposes it only for OpenCode 2.
   V1 submissions retain their existing behavior.
@@ -801,6 +814,8 @@ Some user-visible behavior depends on transient refs not persisted anywhere:
 - transcript pagination count in chat UI
 - copied-message snackbar state
 - currently spoken message ID
+- process-lifetime queued/uncertain prompts and their admission inputs (not
+  persisted; the composer draft remains the durable copy)
 - Project file edit draft and expected original content
 - PTY list, active PTY, per-PTY connection state, and renderer registration
 
@@ -814,7 +829,9 @@ todo snapshots on the first envelope of every subscription, including reconnects
 Only one reconciliation runs at a time, and a reconnect pass is queued behind an
 in-flight safety poll rather than coalesced into it. SSE remains primary; a safety
 poll runs during active work even when SSE is connected, every 10 seconds while
-connected and every 5 seconds while disconnected. On V2 the poll reads the
+connected (15 on a constrained link) and every 5 seconds while disconnected (8
+constrained). Offline and background states pause it, and repeated failures back
+off to 30 seconds. On V2 the poll reads the
 active-session status set only; full session lists belong to reconnect,
 foreground, library-open, and session-event reconciliation. A submitted prompt also
 schedules a one-off transcript refresh after 5 seconds so a missed completion
@@ -826,19 +843,20 @@ see (the active chat, conversation mode, or a session with queued prompts);
 background sessions refresh on status transitions and completion. Bursts of part
 events coalesce into a single read.
 A liveness watchdog runs only while the app is foregrounded: a stream that has
-received no envelope for 90 seconds (3 seconds in E2E builds) is re-subscribed
-once per window, and keepalive frames reported through the subscription's
-`onActivity` callback also advance that window so a long silent tool call does
-not restart a healthy stream. A foreground return either retries immediately
-(when the stream is not connected) or cycles a stream that was backgrounded for
-15 seconds or more. Every foreground return additionally runs one reconciliation pass,
-because a suspended JS runtime can miss envelopes while the stream still looks
-connected and would otherwise leave a stale or empty transcript until the next
-event. Envelope timestamps advance the window, so a healthy server never
-reconnects. Stream failures classified as invalid credentials or entitlement
-(`auth`/`entitlement`) stop the retry loop and notify the provider, which routes
-Cloud Link to its prepared credential recovery and manual connections to an
-actionable error state.
+received no envelope or keepalive activity for 60 seconds (45 seconds while
+work or a blocking interaction is active; shortened in E2E builds) is
+re-subscribed once per window. Keepalive frames reported through the
+subscription's `onActivity` callback advance the same window so a long silent
+tool call does not restart a healthy stream. Foreground return and an
+offline→online transition retry immediately (when the stream is not connected)
+or cycle a stream that was backgrounded for 15 seconds or more. Every foreground
+return additionally runs one reconciliation pass, because a suspended JS runtime
+can miss envelopes while the stream still looks connected and would otherwise
+leave a stale or empty transcript until the next event. Envelope timestamps
+advance the window, so a healthy server never reconnects. Stream failures
+classified as invalid credentials or entitlement (`auth`/`entitlement`) stop the
+retry loop and notify the provider, which routes Cloud Link to its prepared
+credential recovery and manual connections to an actionable error state.
 An event-derived `retry` status is preserved across session-list refreshes
 (`mergeSessionStatuses`), so an automatic retry stays busy and its safety poll
 continues instead of freezing on a missed event. Stable latest-action bridges

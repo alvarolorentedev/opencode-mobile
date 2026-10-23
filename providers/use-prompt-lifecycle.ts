@@ -1,4 +1,5 @@
 import { interruptSession } from '@/providers/services/session-service';
+import { prepareAttachment } from '@/lib/opencode/attachment';
 import type { FilePartInput, TextPartInput } from '@/lib/opencode/types';
 import { useCallback, useEffect, useRef, useState, type Dispatch, type SetStateAction } from 'react';
 
@@ -156,23 +157,8 @@ export function usePromptLifecycle({
         if (attachments && attachments.length > 0) {
           for (const att of attachments) {
             const filename = att.filename || att.uri.split('/').pop();
-            const mime = att.mime || 'application/octet-stream';
-
-            // Remote and picker-provided data URLs are already server-readable.
-            if (/^(?:https?:\/\/|data:)/i.test(att.uri)) {
-              preparedFileParts.push({ type: 'file', mime, filename, url: att.uri });
-              continue;
-            }
-
             try {
-              const FileSystem = await import('expo-file-system/legacy');
-              const info = await FileSystem.getInfoAsync(att.uri);
-              if (info.exists && typeof info.size === 'number' && info.size > 10 * 1024 * 1024) {
-                throw new Error('File exceeds the 10 MB attachment limit.');
-              }
-              const base64 = await FileSystem.readAsStringAsync(att.uri, { encoding: 'base64' });
-              const dataUrl = `data:${mime};base64,${base64}`;
-              preparedFileParts.push({ type: 'file', mime, filename, url: dataUrl });
+              preparedFileParts.push(await prepareAttachment(att));
             } catch (error) {
               const reason = error instanceof Error ? error.message : 'unknown error';
               throw new Error(`Could not read attachment${filename ? ` \"${filename}\"` : ''}: ${reason}`);

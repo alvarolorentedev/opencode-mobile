@@ -58,14 +58,17 @@ describe('finite SDK reads', () => {
     expect(vi.getTimerCount()).toBe(0);
     controller.abort(); expect(transport.mock.calls[0][1]?.signal?.aborted).toBe(false);
   });
-  it('leaves SSE and mutation lifecycles unchanged', async () => {
+  it('leaves SSE streaming unbounded while mutations have a write deadline', async () => {
     const gate = deferred(), transport = vi.fn(() => gate.promise);
     vi.stubGlobal('fetch', transport);
     const stream = fetchConnection('http://server/api/event');
     const mutation = fetchConnection('http://server/api/session/s/message', { method: 'POST' });
+    const failed = expect(mutation).rejects.toThrow(/60 seconds/);
     await vi.advanceTimersByTimeAsync(READ_TIMEOUT_MS * 2);
-    expect(vi.getTimerCount()).toBe(0); expect(transport.mock.calls.every(([, options]) => !options?.signal)).toBe(true);
-    gate.resolve(new Response(null)); await Promise.all([stream, mutation]);
+    expect(transport.mock.calls[0][1]?.signal).toBeUndefined();
+    expect(transport.mock.calls[1][1]?.signal).toBeDefined();
+    await failed;
+    gate.resolve(new Response(null)); await stream;
   });
 });
 

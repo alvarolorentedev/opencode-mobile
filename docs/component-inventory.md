@@ -1070,6 +1070,10 @@ picker and provider selection action; Terminal follows that directory.
   banner above the tabs, transparent handoff interaction gate and failure snackbar;
   Android's available prompt and visible installation UI are owned by Google Play.
   All actions come from the provider.
+- `components/ui/connection-status-banner.tsx`: compact translated transport
+  notice in chat for offline, connecting, automatic reconnect, polling fallback,
+  and constrained links. It never replaces a populated transcript and reads only
+  provider-owned connection/diagnostics state.
 - `hooks/use-update-blocker.ts`: registers open/busy local surfaces with the
   existing provider without sharing their content.
 - `modules/opencode-updates`: local Expo Android Play update module and iOS

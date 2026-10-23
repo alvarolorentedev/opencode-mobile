@@ -12,6 +12,7 @@ import { addUsageSteps, type SessionUsageStep } from '@/lib/opencode/usage';
 import type { ScopedOpencodeClient } from '@/lib/opencode/client';
 import type { TranscriptRefreshMode } from '@/providers/opencode-provider-types';
 import { pruneByKeepIds } from '@/providers/opencode-provider-utils';
+import { hydrateTranscriptCache, persistTranscriptCache } from '@/providers/transcript-cache';
 import {
   getSessionMessages as svcGetSessionMessages,
   TRANSCRIPT_PAGE_LIMIT,
@@ -74,6 +75,8 @@ export function useTranscriptState({
   isCurrentClient,
   currentSessionId,
   transcriptVerbosity,
+  connectionScope,
+  activeProjectPath,
   messagesBySession,
   setMessagesBySession,
   setIsRefreshingMessages,
@@ -82,6 +85,8 @@ export function useTranscriptState({
   isCurrentClient: (candidate: object) => boolean;
   currentSessionId?: string;
   transcriptVerbosity: TranscriptVerbosity;
+  connectionScope: string;
+  activeProjectPath?: string;
   messagesBySession: Record<string, SessionMessageRecord[]>;
   setMessagesBySession: Dispatch<SetStateAction<Record<string, SessionMessageRecord[]>>>;
   setIsRefreshingMessages: Dispatch<SetStateAction<boolean>>;
@@ -101,6 +106,23 @@ export function useTranscriptState({
     messageWindowsRef.current = messageWindows;
     loadingOlderBySessionRef.current = loadingOlderBySession;
   });
+
+  const persistTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
+  const persist = useCallback((sessionId: string, records: SessionMessageRecord[]) => {
+    if (!activeProjectPath) return;
+    const existing = persistTimers.current[sessionId];
+    if (existing) clearTimeout(existing);
+    persistTimers.current[sessionId] = setTimeout(() => {
+      delete persistTimers.current[sessionId];
+      void persistTranscriptCache(connectionScope, activeProjectPath, sessionId, records);
+    }, 1200);
+  }, [activeProjectPath, connectionScope]);
+  useEffect(() => () => {
+    for (const timer of Object.values(persistTimers.current)) clearTimeout(timer);
+    persistTimers.current = {};
+  }, []);
+
+  const hydratedCacheRef = useRef<Set<string>>(new Set());
 
   const recordUsageAndTodos = useCallback((sessionId: string, records: SessionMessageRecord[]) => {
     if (records.length === 0) {
@@ -126,6 +148,24 @@ export function useTranscriptState({
       });
     }
   }, []);
+
+  useEffect(() => {
+    if (!currentSessionId || !activeProjectPath || (messagesBySessionRef.current[currentSessionId]?.length ?? 0) > 0) {
+      return;
+    }
+    const key = `${connectionScope}\u0000${activeProjectPath}\u0000${currentSessionId}`;
+    if (hydratedCacheRef.current.has(key)) return;
+    hydratedCacheRef.current.add(key);
+    const requestedSession = currentSessionId;
+    void hydrateTranscriptCache(connectionScope, activeProjectPath, requestedSession, (records) => {
+      // A live refresh may have painted first; never let the cache overwrite a
+      // fresher window or a session the user has already left.
+      if (currentSessionId !== requestedSession || (messagesBySessionRef.current[requestedSession]?.length ?? 0) > 0) return;
+      messagesBySessionRef.current = { ...messagesBySessionRef.current, [requestedSession]: records };
+      setMessagesBySession((current) => (current[requestedSession]?.length ? current : { ...current, [requestedSession]: records }));
+      recordUsageAndTodos(requestedSession, records);
+    }, () => isCurrentClient(client) && currentSessionId === requestedSession);
+  }, [activeProjectPath, client, connectionScope, currentSessionId, isCurrentClient, recordUsageAndTodos, setMessagesBySession]);
 
   // A cold window starts from the newest page and pages backward until the
   // display target is met. Normal sessions stop after the first page.
@@ -266,6 +306,7 @@ export function useTranscriptState({
             [sessionId]: { nextBefore: loaded.nextBefore, hasMore: loaded.hasMore },
           }));
           recordUsageAndTodos(sessionId, loaded.records);
+          persist(sessionId, loaded.records);
           return loaded.records;
         }
 
@@ -288,19 +329,23 @@ export function useTranscriptState({
             [sessionId]: { nextBefore: loaded.nextBefore, hasMore: loaded.hasMore },
           }));
           recordUsageAndTodos(sessionId, loaded.records);
+          persist(sessionId, loaded.records);
           return loaded.records;
         }
 
+        const merged = mergeSessionMessageWindow(held, page.records);
+        const bounded = boundWindow(merged, transcriptVerbosity);
         setMessagesBySession((current) => {
           const previous = current[sessionId] ?? held;
-          const merged = mergeSessionMessageWindow(previous, page.records);
-          const bounded = boundWindow(merged, transcriptVerbosity);
-          if (bounded === previous) {
+          const next = mergeSessionMessageWindow(previous, page.records);
+          const boundedNext = boundWindow(next, transcriptVerbosity);
+          if (boundedNext === previous) {
             return current;
           }
-          return { ...current, [sessionId]: bounded };
+          return { ...current, [sessionId]: boundedNext };
         });
         recordUsageAndTodos(sessionId, page.records);
+        persist(sessionId, bounded);
         return page.records;
       } finally {
         if (!silent) {
@@ -314,7 +359,7 @@ export function useTranscriptState({
         }
       }
     },
-    [client, isCurrentClient, loadDisplayedWindow, recordUsageAndTodos, setIsRefreshingMessages, setMessagesBySession, transcriptVerbosity],
+    [client, isCurrentClient, loadDisplayedWindow, persist, recordUsageAndTodos, setIsRefreshingMessages, setMessagesBySession, transcriptVerbosity],
   );
 
   const loadOlderMessages = useCallback(

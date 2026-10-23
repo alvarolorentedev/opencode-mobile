@@ -291,7 +291,9 @@
   "pendingPrompts": {
     "sending": "正在发送…",
     "waiting": "等待处理…",
-    "cancel": "丢弃待处理消息"
+    "cancel": "丢弃待处理消息",
+    "queued": "已排队 — 连接后将发送",
+    "uncertain": "发送状态不确定 — 重试前请检查"
   },
   "revertNotice": {
     "title": "已从此消息回退",
@@ -302,5 +304,13 @@
     "mcpAuthTitle": "需要 MCP 身份验证",
     "mcpAuthNeeded": "MCP 服务器 {{name}} 需要身份验证。请打开链接完成验证后重试。",
     "openAuthLink": "打开链接"
+  },
+  "connectionStatus": {
+    "offline": "离线 — 显示最近同步的数据",
+    "retrying": "正在重连…",
+    "error": "连接丢失 — 显示最近同步的数据",
+    "connecting": "正在连接…",
+    "polling": "实时更新已暂停 — 正在轮询",
+    "slow": "网络较慢 — 正在减少请求"
   }
 }

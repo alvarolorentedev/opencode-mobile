@@ -49,6 +49,8 @@ export function useOpencodeProviderValues(input: ProviderValuesInput) {
     switchConnection,
     connect,
     eventStreamStatus,
+    network,
+    reconnect,
     diagnostics,
     currentConfig,
     availableProviders,
@@ -292,8 +294,8 @@ export function useOpencodeProviderValues(input: ProviderValuesInput) {
   );
 
   const diagnosticsValue = useMemo<DiagnosticsContextValue>(
-    () => ({ diagnostics, refreshDiagnostics, eventStreamStatus }),
-    [diagnostics, refreshDiagnostics, eventStreamStatus],
+    () => ({ diagnostics, refreshDiagnostics, eventStreamStatus, transport: { network, reconnect } }),
+    [diagnostics, refreshDiagnostics, eventStreamStatus, network, reconnect],
   );
 
   const capabilitiesValue = useMemo<CapabilitiesContextValue>(

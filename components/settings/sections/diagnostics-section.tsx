@@ -4,13 +4,16 @@ import { StyleSheet, View } from 'react-native';
 import { Button, Chip, List, Text } from 'react-native-paper';
 
 import { formatDataUsage, resetDataUsage, useDataUsage } from '@/lib/opencode/data-usage';
+import { useRequestStats } from '@/lib/opencode/request-stats';
 import type { RecordedJsError } from '@/lib/error-reporting';
+import type { NetworkStatus } from '@/lib/network-status';
 import type { Diagnostics } from '@/providers/services/diagnostics-service';
 import type { Palette } from './setting-rows';
 
 export function DiagnosticsSection({
   diagnostics,
   eventStreamStatus,
+  transport,
   formatterAvailable = true,
   lastJsError,
   lspAvailable = true,
@@ -19,6 +22,10 @@ export function DiagnosticsSection({
 }: {
   diagnostics?: Diagnostics;
   eventStreamStatus: 'idle' | 'connecting' | 'connected' | 'error';
+  transport: {
+    network: NetworkStatus;
+    reconnect: { attempt: number; maxAttempts: number; retryAt?: number };
+  };
   formatterAvailable?: boolean;
   lastJsError?: RecordedJsError;
   lspAvailable?: boolean;
@@ -27,6 +34,7 @@ export function DiagnosticsSection({
 }) {
   const { t } = useTranslation();
   const dataUsage = useDataUsage();
+  const requestStats = useRequestStats();
   // Diagnostics was previously refreshed during every chat bootstrap. Load it
   // when this section opens instead.
   const refreshRef = useRef(onRefresh);
@@ -45,6 +53,30 @@ export function DiagnosticsSection({
         <Text variant="titleLarge" style={[styles.title, { color: palette.text }]}>{t('settings:diagnostics.title')}</Text>
         <List.Item title={t('settings:diagnostics.server')} description={health ? t('settings:diagnostics.openCodeVersion', { version: health.version }) : t('settings:diagnostics.healthUnavailable')} right={() => <Chip compact>{health?.healthy ? t('settings:diagnostics.healthy') : t('common:labels.unknown')}</Chip>} />
         <List.Item title={t('settings:diagnostics.realtimeUpdates')} description={eventStreamStatus === 'connected' ? t('settings:diagnostics.eventStreamConnected') : t('settings:diagnostics.pollingFallback')} right={() => <Chip compact>{eventStreamStatus}</Chip>} />
+        <List.Item
+          title={t('settings:diagnostics.network')}
+          description={t('settings:diagnostics.networkValue', {
+            type: transport.network.type,
+            state: transport.network.online ? t('settings:diagnostics.networkOnline') : t('settings:diagnostics.networkOffline'),
+            generation: transport.network.generation ? ` · ${transport.network.generation}` : '',
+          })}
+          right={() => <Chip compact>{transport.network.constrained ? t('settings:diagnostics.networkConstrained') : t('settings:diagnostics.networkNormal')}</Chip>}
+        />
+        {transport.reconnect.retryAt ? (
+          <List.Item
+            title={t('settings:diagnostics.reconnect')}
+            description={t('settings:diagnostics.reconnectValue', { attempt: transport.reconnect.attempt, max: transport.reconnect.maxAttempts })}
+          />
+        ) : null}
+        <List.Item
+          title={t('settings:diagnostics.requestLatency')}
+          description={t('settings:diagnostics.requestLatencyValue', {
+            p50: requestStats.p50Ms,
+            p95: requestStats.p95Ms,
+            failed: requestStats.failed,
+            retries: requestStats.retries,
+          })}
+        />
         <List.Item title={t('settings:diagnostics.subsystems')} description={subsystemParts.join(' • ')} />
         <Text variant="titleMedium">{t('common:servers.appDiagnostics')}</Text>
         <List.Item

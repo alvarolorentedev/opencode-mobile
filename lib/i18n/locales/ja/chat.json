@@ -291,7 +291,9 @@
   "pendingPrompts": {
     "sending": "送信中…",
     "waiting": "反映待ち…",
-    "cancel": "保留中のメッセージを破棄"
+    "cancel": "保留中のメッセージを破棄",
+    "queued": "キュー済み — 接続時に送信します",
+    "uncertain": "配信不明 — 再試行前に確認してください"
   },
   "revertNotice": {
     "title": "このメッセージの時点まで取り消されました",
@@ -302,5 +304,13 @@
     "mcpAuthTitle": "MCP 認証が必要です",
     "mcpAuthNeeded": "MCP サーバー {{name}} の認証が必要です。リンクを開いて完了し、再試行してください。",
     "openAuthLink": "リンクを開く"
+  },
+  "connectionStatus": {
+    "offline": "オフライン — 最後に同期したデータを表示中",
+    "retrying": "再接続中…",
+    "error": "接続が切れました — 最後に同期したデータを表示中",
+    "connecting": "接続中…",
+    "polling": "ライブ更新を一時停止 — ポーリング中",
+    "slow": "低速接続 — リクエストを削減中"
   }
 }

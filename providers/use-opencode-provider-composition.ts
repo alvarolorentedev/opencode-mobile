@@ -26,6 +26,8 @@ import { useSessionActions } from '@/providers/use-session-actions';
 import { usePromptInbox } from '@/providers/use-prompt-inbox';
 import { usePromptLifecycle } from '@/providers/use-prompt-lifecycle';
 import { useConnectionActions } from '@/providers/use-connection-actions';
+import { useConnectionRetry } from '@/providers/use-connection-retry';
+import { useNetworkStatus } from '@/providers/use-network-status';
 import { useOpencodeProviderValues } from '@/providers/opencode-provider-values';
 import { useCoalescedRefresh } from '@/providers/use-coalesced-refresh';
 
@@ -33,6 +35,7 @@ import type { WorkspaceRuntimeInput } from '@/providers/workspace-types';
 
 export function useOpencodeProviderComposition(input: WorkspaceRuntimeInput) {
   const state = useWorkspaceRuntimeState(input);
+  const network = useNetworkStatus();
   const isHydrated = input.isHydrated && input.connection.enabled;
   const {
     setConnection,
@@ -129,7 +132,13 @@ export function useOpencodeProviderComposition(input: WorkspaceRuntimeInput) {
   );
 
   const transcript = useTranscriptState({ ...state, client, isCurrentClient, transcriptVerbosity: state.chatPreferences.transcriptVerbosity });
-  const inbox = usePromptInbox({ client, isCurrentClient, refreshMessages: transcript.refreshMessages });
+  const inbox = usePromptInbox({
+    client,
+    isCurrentClient,
+    refreshMessages: transcript.refreshMessages,
+    connected: state.connection.status === 'connected',
+    online: network.online,
+  });
   // Memoized so the terminal reconnect effect only runs when headers actually
   // change, not on every render (getRequestHeaders returns a new object).
   const terminalHeaders = useMemo(() => getRequestHeaders(state.settings), [state.settings]);
@@ -141,6 +150,7 @@ export function useOpencodeProviderComposition(input: WorkspaceRuntimeInput) {
     isCurrentClient,
     serverUrl: state.settings.serverUrl,
     headers: terminalHeaders,
+    online: network.online,
   });
   const worktree = useWorktreeState({ ...state, client, isCurrentClient, refreshProjectCatalog: refreshProjectCatalogLatest });
   const activeProject = useMemo(
@@ -266,6 +276,16 @@ export function useOpencodeProviderComposition(input: WorkspaceRuntimeInput) {
     isHydrated,
     refreshActiveSessions: activeSessionsHook.refreshActiveSessions,
   }, input);
+  const reconnect = useConnectionRetry({
+    active: input.visible,
+    // Cloud Link activation owns its own startup budget and delayed retry.
+    // A generic reconnect here would add attempts the user never requested.
+    paused: Boolean(state.settings.connect),
+    status: state.connection.status,
+    kind: 'kind' in state.connection ? state.connection.kind : undefined,
+    online: network.online,
+    connect: connectionActions.connect,
+  });
 
   const { conversation, clearConversationFeedback, toggleConversationMode } = useConversationState({
     connection: state.connection,
@@ -345,6 +365,8 @@ export function useOpencodeProviderComposition(input: WorkspaceRuntimeInput) {
     subscribe: input.connection.events,
     activeProjectPath: state.activeProjectPath,
     connected: state.connection.status === 'connected',
+    online: network.online,
+    constrained: network.constrained,
     pendingSessionIds: Object.keys(inbox.pendingPromptsBySession).filter((id) => inbox.pendingPromptsBySession[id].length > 0),
     busy: Object.values(inbox.pendingPromptsBySession).some((prompts) => prompts.length > 0) || prompt.sendingState.active || conversationPhase !== 'off' || Object.values(state.sessionStatuses).some((status) => status.type !== 'idle'),
     currentSessionId: state.currentSessionId,
@@ -416,6 +438,8 @@ export function useOpencodeProviderComposition(input: WorkspaceRuntimeInput) {
     projects,
     activeProject,
     eventStreamStatus,
+    network,
+    reconnect,
     sharedInput: emptySharedInput,
   });
 

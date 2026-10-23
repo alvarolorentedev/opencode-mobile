@@ -2,10 +2,12 @@ import { encode as encodeBase64 } from 'base-64';
 import { fetch as expoFetch } from 'expo/fetch';
 
 import { recordBytes, recordRequest } from '../data-usage';
+import { recordRequestStart } from '../request-stats';
 import { getConnectCredentialError } from '@/lib/connect';
 import { joinUrlPath } from './url';
 import type { OpencodeConnectionSettings } from './types';
 import { fetchWithReadDeadline } from './read-deadline';
+import { getRequestTimeout, shouldRetryRead } from './request-policy';
 
 export function createAuthHeader(settings: OpencodeConnectionSettings) {
   const password = settings.password;
@@ -30,6 +32,42 @@ export function getRequestHeaders(settings: OpencodeConnectionSettings) {
   return Object.keys(headers).length ? headers : undefined;
 }
 
+function abortableDelay(ms: number, signal?: AbortSignal) {
+  return new Promise<void>((resolve, reject) => {
+    if (signal?.aborted) {
+      reject(new Error('OpenCode read canceled.'));
+      return;
+    }
+    const timer = setTimeout(resolve, ms);
+    signal?.addEventListener('abort', () => {
+      clearTimeout(timer);
+      reject(new Error('OpenCode read canceled.'));
+    }, { once: true });
+  });
+}
+
+async function performFetch(
+  transport: typeof fetch,
+  input: RequestInfo | URL,
+  init: RequestInit | undefined,
+  settings: OpencodeConnectionSettings | undefined,
+  timeoutMs: number | undefined,
+) {
+  const response = timeoutMs
+    ? await fetchWithReadDeadline(transport, input, init, timeoutMs)
+    : await transport(input, init);
+  recordRequest();
+  measureResponseBytes(response);
+  if (settings?.connect && response.status === 401) throw new Error('Cloud Link credentials were rejected. Pair this device again.');
+  if (settings?.connect && response.status === 403) throw new Error('Cloud Link access was denied (403). Check your subscription or device credentials.');
+  // Some SDKs discard HTML error bodies, hiding Cloudflare's tunnel-startup code.
+  if (settings?.connect && !response.ok && /text\/(?:html|plain)/i.test(response.headers.get('content-type') ?? '')) {
+    const body = await response.clone().text();
+    if (/\b1033\b/.test(body)) throw new Error('Cloudflare Error 1033');
+  }
+  return response;
+}
+
 export async function fetchConnection(input: RequestInfo | URL, init?: RequestInit, settings?: OpencodeConnectionSettings) {
   if (settings?.connect) {
     const error = getConnectCredentialError(settings.connect, settings.password);
@@ -42,18 +80,30 @@ export async function fetchConnection(input: RequestInfo | URL, init?: RequestIn
     : fetch;
   const url = typeof input === 'string' ? input : input instanceof URL ? input.toString() : input.url;
   const method = init?.method ?? (typeof input === 'object' && 'method' in input ? input.method : 'GET');
-  const finiteRead = /^(GET|HEAD)$/i.test(method) && !/\/event\/?(?:\?|$)/.test(url);
-  const response = finiteRead ? await fetchWithReadDeadline(transport, input, init) : await transport(input, init);
-  recordRequest();
-  measureResponseBytes(response);
-  if (settings?.connect && response.status === 401) throw new Error('Cloud Link credentials were rejected. Pair this device again.');
-  if (settings?.connect && response.status === 403) throw new Error('Cloud Link access was denied (403). Check your subscription or device credentials.');
-  // Some SDKs discard HTML error bodies, hiding Cloudflare's tunnel-startup code.
-  if (settings?.connect && !response.ok && /text\/(?:html|plain)/i.test(response.headers.get('content-type') ?? '')) {
-    const body = await response.clone().text();
-    if (/\b1033\b/.test(body)) throw new Error('Cloudflare Error 1033');
+  const signal = init?.signal ?? (typeof input === 'object' && 'signal' in input ? input.signal : undefined);
+  const timeoutMs = getRequestTimeout(url, method);
+  const startedAt = Date.now();
+
+  for (let attempt = 0; ; attempt += 1) {
+    const finishStats = recordRequestStart();
+    try {
+      const response = await performFetch(transport, input, init, settings, timeoutMs);
+      if (shouldRetryRead({ method, url, attempt, elapsedMs: Date.now() - startedAt, status: response.status })) {
+        finishStats({ status: response.status, retried: true });
+        // Drain tiny retryable gateway errors so the connection can be reused,
+        // but never consume a successful body.
+        await response.body?.cancel().catch(() => undefined);
+        await abortableDelay(250 + Math.round(Math.random() * 250), signal);
+        continue;
+      }
+      finishStats({ status: response.status });
+      return response;
+    } catch (error) {
+      finishStats({ error });
+      if (!shouldRetryRead({ method, url, attempt, elapsedMs: Date.now() - startedAt, error })) throw error;
+      await abortableDelay(250 + Math.round(Math.random() * 250), signal);
+    }
   }
-  return response;
 }
 
 // shortcut: counts advertised body sizes only; add streaming accounting if exact

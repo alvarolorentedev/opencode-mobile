@@ -1,8 +1,9 @@
 import { getConfig, updateConfig, getProviders, setProviderCredentialsForClient, removeProviderCredentials, startProviderAuthorization, completeProviderAuthorization } from '@/providers/services/capabilities-service';
-import { useCallback, type Dispatch, type SetStateAction } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useRef, type Dispatch, type SetStateAction } from 'react';
 
 import type { Config } from '@/lib/opencode/types';
 import type { ScopedOpencodeClient } from '@/lib/opencode/client';
+import { hydrateCapabilitiesCache, persistCapabilitiesCache, type CachedCapabilities } from '@/providers/capabilities-cache';
 import { isAutoApproveEnabled, mergePermissionConfig } from '@/providers/opencode-capabilities';
 import {
   getConfiguredProviderIds,
@@ -20,6 +21,7 @@ import type { ProviderAuthMethod, ProviderAuthValues, ProviderOption } from '@/p
 type CapabilitiesActionsInput = {
   client: ScopedOpencodeClient;
   activeProjectPath?: string;
+  connectionScope: string;
   isCurrentClient: (candidate: object) => boolean;
   currentConfig?: Config;
   availableProviders: ProviderOption[];
@@ -35,6 +37,7 @@ type CapabilitiesActionsInput = {
 export function useCapabilitiesActions({
   client,
   activeProjectPath,
+  connectionScope,
   isCurrentClient,
   currentConfig,
   availableProviders,
@@ -49,13 +52,8 @@ export function useCapabilitiesActions({
   const requireClient = useCallback(() => {
     if (!isCurrentClient(client)) throw new Error('Connect this server before changing its providers.');
   }, [client, isCurrentClient]);
-  const refreshChatCapabilities = useCallback(async () => {
-    if (!isCurrentClient(client)) return;
-    const result = await import('@/providers/services/capabilities-service').then((m) => m.discoverChatCapabilities(client, activeProjectPath));
-    if (!isCurrentClient(client)) {
-      return;
-    }
 
+  const applyCapabilities = useCallback((result: CachedCapabilities) => {
     setCurrentConfig(result.config);
     setAvailableProviders(result.providers);
     setProviderAuthMethodsById(result.providerAuthMethodsById);
@@ -86,7 +84,47 @@ export function useCapabilitiesActions({
         autoApprove: client.__opencode.contract === 'v2' ? current.autoApprove : isAutoApproveEnabled(result.config),
       };
     });
-  }, [activeProjectPath, client, isCurrentClient, setAvailableAgents, setAvailableModels, setAvailableProviders, setChatPreferences, setCurrentConfig, setProviderAuthMethodsById]);
+  }, [client.__opencode.contract, setAvailableAgents, setAvailableModels, setAvailableProviders, setChatPreferences, setCurrentConfig, setProviderAuthMethodsById]);
+
+  const hydratedRef = useRef<{ key: string; client: object } | undefined>(undefined);
+  const freshRef = useRef(false);
+  const clientRef = useRef(client);
+  useLayoutEffect(() => {
+    if (clientRef.current !== client) {
+      clientRef.current = client;
+      freshRef.current = false;
+    }
+  }, [client]);
+  useEffect(() => {
+    if (!activeProjectPath) return;
+    const key = `${connectionScope}\u0000${activeProjectPath}`;
+    if (hydratedRef.current?.key === key && hydratedRef.current.client === client) return;
+    hydratedRef.current = { key, client };
+    void hydrateCapabilitiesCache(connectionScope, activeProjectPath, (cached) => {
+      if (!freshRef.current) applyCapabilities(cached);
+    }, () => isCurrentClient(client));
+  }, [activeProjectPath, applyCapabilities, client, connectionScope, isCurrentClient]);
+
+  const refreshChatCapabilities = useCallback(async () => {
+    if (!isCurrentClient(client)) return;
+    const result = await import('@/providers/services/capabilities-service').then((m) => m.discoverChatCapabilities(client, activeProjectPath));
+    if (!isCurrentClient(client)) {
+      return;
+    }
+
+    freshRef.current = true;
+    applyCapabilities(result);
+    if (activeProjectPath) {
+      void persistCapabilitiesCache(connectionScope, activeProjectPath, {
+        config: result.config,
+        providers: result.providers,
+        connected: result.connected,
+        providerAuthMethodsById: result.providerAuthMethodsById,
+        models: result.models,
+        agents: result.agents,
+      });
+    }
+  }, [activeProjectPath, applyCapabilities, client, connectionScope, isCurrentClient]);
 
   const configureProvider = useCallback(
     async (providerId: string) => {

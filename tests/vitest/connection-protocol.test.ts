@@ -59,6 +59,8 @@ describe('local pairing', () => {
     const transport = await loadTs('lib/opencode/client/fetch.ts', {
       './read-deadline': readDeadline, 'base-64': {}, 'expo/fetch': { fetch: async () => response },
       '../data-usage': { recordBytes: () => {}, recordRequest: () => {} },
+      '../request-stats': { recordRequestStart: () => () => {} },
+      './request-policy': { getRequestTimeout: () => 30_000, shouldRetryRead: () => false },
       '@/lib/connect': { getConnectCredentialError: () => undefined }, './url': {},
     }, { fetch: async () => response });
     const html = (status: number) => new Response('<html>Cloudflare Error 1033</html>', { status, headers: { 'content-type': 'text/html' } });
@@ -78,6 +80,8 @@ describe('local pairing', () => {
     const transport = await loadTs('lib/opencode/client/fetch.ts', {
       './read-deadline': readDeadline, 'base-64': {}, 'expo/fetch': { fetch: nativeFetch },
       '../data-usage': { recordBytes: () => {}, recordRequest: () => {} },
+      '../request-stats': { recordRequestStart: () => () => {} },
+      './request-policy': { getRequestTimeout: () => 30_000, shouldRetryRead: () => false },
       '@/lib/connect': { getConnectCredentialError: () => undefined }, './url': {},
     }, { fetch: manualFetch });
     await transport.fetchConnection('http://example.test/api/info');

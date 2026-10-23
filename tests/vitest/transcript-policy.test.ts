@@ -42,6 +42,7 @@ async function mountTranscript(
     '@/lib/opencode/usage': usage,
     '@/providers/opencode-provider-utils': { pruneByKeepIds },
     '@/providers/services/session-service': { getSessionMessages, TRANSCRIPT_PAGE_LIMIT: 20 },
+    '@/providers/transcript-cache': { hydrateTranscriptCache: async () => {}, persistTranscriptCache: async () => {} },
   });
   function useHarness() {
     const [messagesBySession, setMessagesBySession] = runtime.react.useState(initial);
@@ -51,6 +52,8 @@ async function mountTranscript(
       isCurrentClient: () => true,
       currentSessionId: 's',
       transcriptVerbosity: verbosity,
+      connectionScope: 'scope',
+      activeProjectPath: '/repo',
       messagesBySession,
       setMessagesBySession,
       setIsRefreshingMessages,

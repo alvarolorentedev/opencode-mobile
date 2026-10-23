@@ -1,6 +1,7 @@
 import { useCallback } from 'react';
 
 import {
+  listPendingInteractions,
   rejectPendingQuestion,
   replyToPendingPermission,
   replyToPendingQuestion,
@@ -56,6 +57,16 @@ export function useSessionInteractionActions({
       try {
         await replyToPendingPermission(client, request.id, reply);
       } catch (error) {
+        // A lost response is not the same as a rejected reply. Re-read the
+        // pending list before restoring the card, otherwise a reply that landed
+        // server-side invites the user to answer twice.
+        const latest = typeof listPendingInteractions === 'function'
+          ? await listPendingInteractions(client).catch(() => undefined)
+          : undefined;
+        if (latest?.permissions && !latest.permissions.some((item) => item.id === request.id)) {
+          void refreshMessages(request.sessionID, true).catch(() => undefined);
+          return;
+        }
         setPendingPermissionsBySession((current) => withRequest(current, request, index));
         throw error;
       } finally {
@@ -78,7 +89,24 @@ export function useSessionInteractionActions({
       }
       // Keep the question flow mounted until the server accepts it: it owns the
       // draft answers and its inline error/retry state.
-      await replyToPendingQuestion(client, request.id, answers);
+      try {
+        await replyToPendingQuestion(client, request.id, answers);
+      } catch (error) {
+        const latest = typeof listPendingInteractions === 'function'
+          ? await listPendingInteractions(client).catch(() => undefined)
+          : undefined;
+        if (!latest?.questions?.some((item) => item.id === request.id)) {
+          if (latest?.questions) {
+            setPendingQuestionsBySession((current) => ({
+              ...current,
+              [request.sessionID]: (current[request.sessionID] || []).filter((item) => item.id !== request.id),
+            }));
+            void refreshMessages(request.sessionID, true).catch(() => undefined);
+            return;
+          }
+        }
+        throw error;
+      }
       setPendingQuestionsBySession((current) => ({
         ...current,
         [request.sessionID]: (current[request.sessionID] || []).filter((item) => item.id !== request.id),
@@ -94,7 +122,15 @@ export function useSessionInteractionActions({
       if (!request) {
         throw new Error('This question is no longer available.');
       }
-      await rejectPendingQuestion(client, request.id);
+      await rejectPendingQuestion(client, request.id).catch(async (error) => {
+        const latest = typeof listPendingInteractions === 'function'
+          ? await listPendingInteractions(client).catch(() => undefined)
+          : undefined;
+        if (!latest?.questions?.some((item) => item.id === request.id) && latest?.questions) {
+          return;
+        }
+        throw error;
+      });
       setPendingQuestionsBySession((current) => ({
         ...current,
         [request.sessionID]: (current[request.sessionID] || []).filter((item) => item.id !== request.id),

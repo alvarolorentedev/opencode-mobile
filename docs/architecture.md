@@ -261,7 +261,25 @@ The completion version, preference schema and first-run migration are unchanged.
   Conversation phases, speech submission, reply playback, timers, and cleanup.
 - `providers/use-opencode-realtime.ts`
   SSE transport/backoff, first-connect and reconnect reconciliation, and the
-  safety poll (5s disconnected, 10s while SSE is connected). Domain event handling stays in the provider.
+  safety poll (adaptive while busy; 5s/10s base by stream state, offline pause).
+  The stream has a first-byte timeout, jittered backoff, stable-stream reset,
+  and a 45s busy / 60s idle keepalive-based staleness window. See
+  [network resilience](network-resilience.md).
+- `providers/use-network-status.ts` and `lib/network-status.ts`
+  Normalized online/offline, link type, metered and constrained state. Offline
+  pauses retries; online restarts the stream and runs a critical reconcile.
+- `providers/use-connection-retry.ts`
+  Bounded, foreground-only retry for retryable connect failures (1/2/5/10/20s),
+  with immediate recovery after an offline→online transition.
+- `providers/transcript-cache.ts`
+  Bounded, connection/project/session-scoped transcript tail used to paint a
+  cold chat before the network answers.
+- `providers/capabilities-cache.ts`
+  Bounded last-known provider/model/agent catalog so the composer remains
+  usable during a slow capability refresh or cold start.
+- `lib/opencode/client/request-policy.ts`
+  Per-class deadlines (read/write/stream), idempotent-read retry eligibility,
+  and retryable gateway-status policy.
 - `providers/session-cache.ts`
   Per connection + project session/status cache DTO, validation, and hydration.
 - `providers/favorites-storage.ts`
@@ -668,18 +686,20 @@ The app uses two update strategies in parallel:
 
 ### Primary Strategy: SSE Subscription
 
-When connected and a project is active, the provider opens `catalogClient.global.event()`. Global event envelopes are filtered by `directory === activeProjectPath` before their payload is handled. If the stream ends or fails, the provider reconnects indefinitely with exponential backoff from 1 second to 15 seconds.
+When connected and a project is active, the provider opens `catalogClient.global.event()`. Global event envelopes are filtered by `directory === activeProjectPath` before their payload is handled. If the stream ends or fails, the provider reconnects indefinitely with jittered exponential backoff from 1 second to 15 seconds. A first-byte timeout bounds a stalled handshake, and the backoff only resets after the stream has been stable for five seconds.
 
 A socket can also die without an error. A liveness watchdog re-establishes
-the subscription when a foreground stream has received no envelope for a
-staleness window (90 seconds; shortened in E2E builds), and foreground return
+the subscription when a foreground stream has received no envelope or keepalive
+activity for a staleness window (60 seconds idle, 45 seconds while work or a
+blocking interaction is active; shortened in E2E builds), and foreground return
 bypasses the remaining backoff or cycles a stream that was backgrounded long
-enough. Reconnects keep a first-envelope authoritative reconcile (sessions,
-interactions, and native surfaces) and tail-merge the transcript; if a poll is
-already in flight, the reconnect pass is queued behind it instead of being
-coalesced away. Invalid-credential and entitlement failures stop the retry
-loop and are surfaced through `ConnectionState.kind` (`auth`/`entitlement`),
-while Cloud Link reuses its prepared credential recovery.
+enough. A reachability transition from offline to online also cancels the
+backoff and restarts immediately. Reconnects keep a first-envelope authoritative
+reconcile (sessions, interactions, and native surfaces) and tail-merge the
+transcript; if a poll is already in flight, the reconnect pass is queued behind
+it instead of being coalesced away. Invalid-credential and entitlement failures
+stop the retry loop and are surfaced through `ConnectionState.kind`
+(`auth`/`entitlement`), while Cloud Link reuses its prepared credential recovery.
 
 Recognized events update local state or schedule refreshes for:
 
@@ -703,15 +723,18 @@ The provider keeps a safety polling loop when any of the following is true:
 - a prompt is currently being submitted
 - conversation mode is active
 
-While SSE is connected the loop runs every 10 seconds; without a stream it is the
-primary transport and runs every 5 seconds. A submitted prompt also schedules a
-one-off transcript refresh 5 seconds after send, so a completion whose event is
-missed (for example from another project) still lands even with the slower
-connected cadence. On OpenCode 2 the safety poll reads only the active-session
-status set; full cursor-paged session lists are reserved for connect, reconnect,
-foreground return, library open, and session-list events. Polling refreshes
-current/conversation session content and pending interactions as needed. The
-`/permission` and `/question` list APIs recover requests missed by SSE.
+While SSE is connected the loop runs every 10 seconds (15 seconds on a
+constrained link); without a stream it is the primary transport and runs every 5
+seconds (8 seconds constrained). Offline and background states pause the loop,
+and repeated failed passes double the interval up to 30 seconds. A submitted
+prompt also schedules a one-off transcript refresh 5 seconds after send, so a
+completion whose event is missed (for example from another project) still lands
+even with the slower connected cadence. On OpenCode 2 the safety poll reads only
+the active-session status set; full cursor-paged session lists are reserved for
+connect, reconnect, foreground return, library open, and session-list events.
+Polling refreshes current/conversation session content and pending interactions
+as needed. The `/permission` and `/question` list APIs recover requests missed
+by SSE.
 
 Event-driven refreshes are coalesced per domain. Session-list, capability,
 server-feature, and project-catalog bursts collapse into one trailing read

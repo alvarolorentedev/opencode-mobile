@@ -354,6 +354,9 @@ Behavior:
 - editing the active connection never reconnects on its own; the row's Reconnect action does that, so an in-flight session is not dropped
 - the active connection cannot be deleted; other connections offer Delete with a confirmation
 - selecting Connect on another connection switches through `switchConnection()`, which persists the outgoing profile's model selection, restores the target profile's selection, clears all server-derived state, and reconnects with the target credentials
+- retryable connect failures retry automatically (1/2/5/10/20 s) while the workspace is visible and online; auth, entitlement, and incompatible-server failures require the user's action
+- the Chat header shows a compact offline/reconnecting/polling/slow-link notice. Offline pauses SSE retries and polling; connectivity restoration reopens the stream and runs a critical reconcile
+- a prompt attempted while offline stays visible as queued and is admitted once after reconnect. A timeout with an unknown server outcome is marked delivery-uncertain and is never replayed automatically
 - values are persisted locally; passwords and custom gateway headers stay in SecureStore while name, URL, and username live in AsyncStorage
 - Settings shows short category summaries in one compact group; tapping Connection opens a content-sized overlay with the server message, last checked timestamp, and saved connection rows
 
@@ -451,6 +454,7 @@ Behavior:
 
 - reports `/global/health` status and OpenCode version when available
 - reports global event stream state, describing non-connected states as polling fallback
+- reports normalized network type, online/offline, constrained/metered state, automatic reconnect attempts, and local p50/p95 request latency with failure/retry counts
 - reports MCP, LSP, and formatter counts when their endpoints are available
 - reports the last JS error recorded on this device (message, time, and a fatal/handled chip) or a neutral empty state
 - each diagnostic request fails independently and can be refreshed manually; Refresh also re-reads the recorded error

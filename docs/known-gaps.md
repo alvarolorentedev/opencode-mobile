@@ -70,6 +70,22 @@ Closed on 2026-10-18 except for the remote reporter:
   diagnostics surface, and scrubbing that never sends the server URL or
   credentials. Only worth doing if a remote pipeline is explicitly funded.
 
+## 3b. Offline outbox and native 4G validation
+
+The queued-prompt path introduced on 2026-10-23 is intentionally
+process-lifetime. It covers a drop during an active turn and prevents duplicate
+admission after a lost response. It does not send after the app is killed, and
+it does not persist prepared attachment data URLs (the composer draft remains
+the durable copy). A true persistent outbox would need an attachment spool,
+encryption/at-rest policy, and an explicit send-on-reconnect setting.
+
+Web E2E covers injected 4G latency, offline→online queue recovery, and the
+deterministic SSE/polling paths. Native behavior still needs physical-device
+validation on real carrier 4G, Wi-Fi↔cellular handoff, long idle/NAT expiry,
+Android data saver/background restrictions, and iOS background suspension.
+Adding NetInfo and expo-image-manipulator also requires a native build/device
+smoke test before release.
+
 ## 4. Transcript merge micro-optimizations
 
 Deferred on 2026-10-18 while the transcript refresh policy was simplified

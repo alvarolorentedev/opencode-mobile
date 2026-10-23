@@ -291,7 +291,9 @@
   "pendingPrompts": {
     "sending": "Enviando…",
     "waiting": "Esperando a que se use…",
-    "cancel": "Descartar mensaje pendiente"
+    "cancel": "Descartar mensaje pendiente",
+    "queued": "En cola: se enviará al conectarse",
+    "uncertain": "Entrega incierta: comprueba antes de reintentar"
   },
   "revertNotice": {
     "title": "Revertido desde este mensaje",
@@ -302,5 +304,13 @@
     "mcpAuthTitle": "Se requiere autenticación MCP",
     "mcpAuthNeeded": "El servidor MCP {{name}} necesita autenticación. Abre el enlace para terminar y vuelve a intentarlo.",
     "openAuthLink": "Abrir enlace"
+  },
+  "connectionStatus": {
+    "offline": "Sin conexión: mostrando los últimos datos sincronizados",
+    "retrying": "Reconectando…",
+    "error": "Conexión perdida: mostrando los últimos datos sincronizados",
+    "connecting": "Conectando…",
+    "polling": "Actualizaciones en vivo en pausa: sondeo activo",
+    "slow": "Conexión lenta: usando menos solicitudes"
   }
 }

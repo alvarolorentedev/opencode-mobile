@@ -22,11 +22,16 @@ export function PendingPrompts({ cancelingId, onCancel, prompts }: PendingPrompt
       {prompts.map((prompt) => {
         const sending = prompt.state === 'sending';
         const canceling = cancelingId === prompt.id;
+        const stateLabel = prompt.state === 'queued'
+          ? t('chat:pendingPrompts.queued')
+          : prompt.state === 'uncertain'
+            ? t('chat:pendingPrompts.uncertain')
+            : t(sending ? 'chat:pendingPrompts.sending' : 'chat:pendingPrompts.waiting');
         return (
           <View key={prompt.id} testID="pending-prompt" style={[styles.prompt, { backgroundColor: palette.surfaceAlt, borderColor: palette.border }]}>
             <View style={styles.promptBody}>
               <Text variant="labelSmall" style={{ color: palette.muted }}>
-                {t(sending ? 'chat:pendingPrompts.sending' : 'chat:pendingPrompts.waiting')}{' · '}
+                {stateLabel}{' · '}
                 {t(prompt.delivery === 'queue' ? 'settings:providers.promptDelivery.queue.label' : 'settings:providers.promptDelivery.steer.label')}
               </Text>
               {prompt.attachments.length ? <AttachmentStrip attachments={prompt.attachments} /> : null}

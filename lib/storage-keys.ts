@@ -47,3 +47,16 @@ export function sessionsCacheKey(connectionScope: string, projectPath: string) {
 export function sessionStatusesCacheKey(connectionScope: string, projectPath: string) {
   return `opencode-mobile.session-statuses.${connectionScope}.${projectPath}`;
 }
+
+// Bounded transcript tail used to paint a chat during a cold start on a slow
+// link. It is server-derived, connection- and project-scoped, and expires with
+// the same policy as the session list cache.
+export function transcriptCacheKey(connectionScope: string, projectPath: string, sessionId: string) {
+  return `opencode-mobile.transcript.${connectionScope}.${projectPath}.${sessionId}`;
+}
+
+// Last-known model/provider/agent catalog so an offline cold start can still
+// render the composer and queue a prompt. It contains no credentials.
+export function capabilitiesCacheKey(connectionScope: string, projectPath: string) {
+  return `opencode-mobile.capabilities.${connectionScope}.${projectPath}`;
+}

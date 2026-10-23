@@ -17,6 +17,31 @@ const terminalFixture = createTerminalFixture((id) => { const pty = state.ptys.f
 let suppressEvents = false;
 let stallEvents = false;
 let v2Subscribes = 0;
+// Deterministic network fault injection for resilience tests. Values apply to
+// data-plane requests only; the /__control surface stays responsive.
+const DEFAULT_NETWORK = { latencyMs: 0, jitterMs: 0, failRate: 0, status: 0, hang: false, sseKeepaliveMs: 0 };
+let networkProfile = { ...DEFAULT_NETWORK };
+
+function sleep(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+async function applyNetworkProfile(req, res, pathname) {
+  if (pathname.startsWith('/__control/')) return false;
+  const jitter = networkProfile.jitterMs > 0 ? Math.floor(Math.random() * networkProfile.jitterMs) : 0;
+  if (networkProfile.latencyMs > 0 || jitter > 0) await sleep(networkProfile.latencyMs + jitter);
+  if (networkProfile.failRate > 0 && Math.random() < networkProfile.failRate) {
+    if (networkProfile.status > 0) sendJson(res, networkProfile.status, { error: 'Injected network failure' });
+    else req.socket.destroy();
+    return true;
+  }
+  if (networkProfile.hang) {
+    await new Promise((resolve) => req.on('close', resolve));
+    return true;
+  }
+  return false;
+}
+
 // Gateway-auth contract: tests can require custom request headers (Cloudflare
 // Access service tokens and similar proxies). Records only the configured
 // header names so assertions never depend on unrelated request metadata.
@@ -188,6 +213,24 @@ const server = http.createServer(async (req, res) => {
       return;
     }
 
+    if (pathname === '/__control/network') {
+      if (req.method === 'POST') {
+        const body = await readJson(req) || {};
+        networkProfile = {
+          latencyMs: Number.isFinite(body.latencyMs) ? Math.max(0, body.latencyMs) : 0,
+          jitterMs: Number.isFinite(body.jitterMs) ? Math.max(0, body.jitterMs) : 0,
+          failRate: Number.isFinite(body.failRate) ? Math.min(1, Math.max(0, body.failRate)) : 0,
+          status: Number.isInteger(body.status) ? body.status : 0,
+          hang: Boolean(body.hang),
+          sseKeepaliveMs: Number.isFinite(body.sseKeepaliveMs) ? Math.max(0, body.sseKeepaliveMs) : 0,
+        };
+      }
+      sendJson(res, 200, { data: networkProfile });
+      return;
+    }
+
+    if (await applyNetworkProfile(req, res, pathname)) return;
+
     // Keep the transport connected while dropping domain events, or close it
     // without resetting server state to reproduce missed-event recovery.
     if (req.method === 'POST' && pathname === '/__control/event-stream') {
@@ -239,7 +282,7 @@ const server = http.createServer(async (req, res) => {
     }
 
     if (req.method === 'GET' && pathname === '/__control/state') {
-      sendJson(res, 200, { scenario: state.scenario, sessions: state.sessions, messagesBySession: state.messagesBySession, sessionStatuses: state.sessionStatuses, pendingPermissions: state.pendingPermissions, pendingQuestions: state.pendingQuestions, configuredProviderIds: [...state.configuredProviderIds], authByProvider: state.authByProvider, worktrees: state.worktrees, mcpStatuses: state.mcpStatuses, files: state.files, questionAnswers: state.lastQuestionAnswer, headers: { required: requiredHeaders, received: receivedHeaders, paths: [...headerPaths] } }); return;
+      sendJson(res, 200, { scenario: state.scenario, sessions: state.sessions, messagesBySession: state.messagesBySession, sessionStatuses: state.sessionStatuses, pendingPermissions: state.pendingPermissions, pendingQuestions: state.pendingQuestions, configuredProviderIds: [...state.configuredProviderIds], authByProvider: state.authByProvider, worktrees: state.worktrees, mcpStatuses: state.mcpStatuses, files: state.files, questionAnswers: state.lastQuestionAnswer, network: networkProfile, headers: { required: requiredHeaders, received: receivedHeaders, paths: [...headerPaths] } }); return;
     }
     if (req.method === 'GET' && pathname === '/__control/oauth-complete') {
       const attempt = state.integrationAttempts[requestUrl.searchParams.get('attemptID')];
@@ -256,6 +299,7 @@ const server = http.createServer(async (req, res) => {
       suppressEvents = false;
       stallEvents = false;
       v2Subscribes = 0;
+      networkProfile = { ...DEFAULT_NETWORK };
       sessionPageLimit = DEFAULT_SESSION_PAGE_LIMIT;
       requiredHeaders = {};
       receivedHeaders = {};
@@ -414,7 +458,13 @@ const server = http.createServer(async (req, res) => {
       v2Clients.add(res);
       v2Subscribes += 1;
       if (!stallEvents) res.write(`data: ${JSON.stringify(event('server.connected', {}))}\n\n`);
-      req.on('close', () => v2Clients.delete(res));
+      const keepalive = networkProfile.sseKeepaliveMs > 0
+        ? setInterval(() => { if (!stallEvents) res.write(': keepalive\n\n'); }, networkProfile.sseKeepaliveMs)
+        : undefined;
+      req.on('close', () => {
+        if (keepalive) clearInterval(keepalive);
+        v2Clients.delete(res);
+      });
       return;
     }
 

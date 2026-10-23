@@ -116,6 +116,7 @@ describe('prompt submission ownership', () => {
       '@/lib/notification-pending': { pendingNotificationKey: (scope: string, id: string) => `${scope}:${id}` },
       '@/lib/notifications': notifications, '@/providers/opencode-preferences': preferences, '@/providers/opencode-model-selection': models,
       '@/lib/connection-scope': scopes,
+      '@/lib/opencode/attachment': { prepareAttachment: async (att: unknown) => att },
     });
     const client = {}, currentClient = { current: client }, submission = { current: { active: false } };
     const settings = { serverUrl: 'http://server', username: '' };

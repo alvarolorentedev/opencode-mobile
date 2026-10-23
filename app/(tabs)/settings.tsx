@@ -68,7 +68,7 @@ function SettingsContent() {
   const { chatPreferences, updateChatPreferences } = usePreferences();
   const { connect, connection, settings, serverCapabilities, connectSetup, services: serviceManagement } = useConnection();
   const { activeProjectPath } = useProjects();
-  const { diagnostics, eventStreamStatus, refreshDiagnostics } = useDiagnostics();
+  const { diagnostics, eventStreamStatus, refreshDiagnostics, transport } = useDiagnostics();
   const { lastJsError, refreshLastJsError } = useLastJsError();
   const { approvals } = useApprovals();
   const { startOnboardingReview } = useOnboarding();
@@ -205,7 +205,7 @@ function SettingsContent() {
           {advancedTab === 'mcp' ? <>
           <McpSection configs={currentConfig?.mcp} mcpStatuses={mcpStatuses} onAdd={addMcpServer} onConnect={connectMcpServer} onDisconnect={disconnectMcpServer} onRefresh={refreshMcpServers} onSetEnabled={setMcpServerEnabled} mcpOAuth={mcpOAuth} persistentConfigAvailable={serverCapabilities.configWrite} requiresIntegrationId={serverCapabilities.contract === 'v2'} oauthAvailable={serverCapabilities.mcpOAuth} palette={palette} />
           </> : <>
-          <DiagnosticsSection diagnostics={diagnostics} eventStreamStatus={eventStreamStatus} formatterAvailable={serverCapabilities.formatter} lastJsError={lastJsError} lspAvailable={serverCapabilities.lsp} onRefresh={() => { void refreshDiagnostics(); refreshLastJsError(); }} palette={palette} />
+          <DiagnosticsSection diagnostics={diagnostics} eventStreamStatus={eventStreamStatus} transport={transport} formatterAvailable={serverCapabilities.formatter} lastJsError={lastJsError} lspAvailable={serverCapabilities.lsp} onRefresh={() => { void refreshDiagnostics(); refreshLastJsError(); }} palette={palette} />
           </>}
         </>
       ),

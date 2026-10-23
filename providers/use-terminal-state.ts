@@ -7,7 +7,7 @@ import { createTerminal as svcCreateTerminal, listShells, listTerminals, removeT
 import { createTerminalConnection, type TerminalConnectionContext } from './terminal-connection';
 import type { TerminalInstance, TerminalRenderer, TerminalRuntime } from './terminal-types';
 
-export function useTerminalState({ client, isCurrentClient, serverUrl, directory, serverContract, headers, enabled = true }: {
+export function useTerminalState({ client, isCurrentClient, serverUrl, directory, serverContract, headers, enabled = true, online = true }: {
   client: ScopedOpencodeClient;
   isCurrentClient: (candidate: object) => boolean;
   serverUrl: string;
@@ -15,6 +15,7 @@ export function useTerminalState({ client, isCurrentClient, serverUrl, directory
   serverContract: ServerContract;
   headers?: Record<string, string>;
   enabled?: boolean;
+  online?: boolean;
 }) {
   const [terminals, setTerminals] = useState<Pty[]>([]);
   const [terminalShells, setTerminalShells] = useState<PtyShellsResponse>([]);
@@ -54,8 +55,8 @@ export function useTerminalState({ client, isCurrentClient, serverUrl, directory
   }, []);
 
   useEffect(() => {
-    for (const connection of connections.current.values()) connection.foreground(enabled && foreground.current);
-  }, [enabled]);
+    for (const connection of connections.current.values()) connection.foreground(enabled && online && foreground.current);
+  }, [enabled, online]);
 
   const resetTerminal = useCallback(() => {
     for (const connection of connections.current.values()) connection.dispose();
@@ -82,11 +83,11 @@ export function useTerminalState({ client, isCurrentClient, serverUrl, directory
   useEffect(() => {
     const subscription = AppState.addEventListener('change', (state) => {
       foreground.current = state === 'active';
-      for (const connection of connections.current.values()) connection.foreground(enabledRef.current && foreground.current);
+      for (const connection of connections.current.values()) connection.foreground(enabledRef.current && online && foreground.current);
       if (foreground.current && connections.current.size) void refreshTerminals().catch(() => undefined);
     });
     return () => subscription.remove();
-  }, [refreshTerminals]);
+  }, [online, refreshTerminals]);
 
   const openTerminal = useCallback(async (ptyId: string) => {
     const live = latest.current;
@@ -95,11 +96,11 @@ export function useTerminalState({ client, isCurrentClient, serverUrl, directory
     if (!existing) {
       const connection = createTerminalConnection({ id: ptyId, context, publish });
       connections.current.set(ptyId, connection);
-      connection.foreground(enabledRef.current && foreground.current);
+      connection.foreground(enabledRef.current && online && foreground.current);
       publish();
     } else if (existing.state.status === 'error' || existing.state.status === 'idle') existing.reconnect();
     setActiveTerminalId(ptyId);
-  }, [context, publish]);
+  }, [context, online, publish]);
 
   // A new client (credential rotation) reuses the same transport with fresh
   // credentials; project switches dispose connections before this runs.

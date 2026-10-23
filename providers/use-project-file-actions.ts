@@ -83,7 +83,20 @@ export function useProjectFileActions({
     if (latest.content !== expectedContent) throw new Error('The file changed on the server. Reopen it before saving.');
     const patch = createFullFilePatch({ path, expectedContent, content });
     if (!patch) return;
-    await saveFile(client, path, content, patch);
+    try {
+      await saveFile(client, path, content, patch);
+    } catch (error) {
+      // A write timeout may still have committed. Read back before reporting
+      // failure so a retry cannot overwrite a save that already landed.
+      const recovered = await readFile(client, path).catch(() => undefined);
+      if (!recovered || recovered.type !== 'text' || recovered.encoding === 'base64' || recovered.content !== content) {
+        throw error;
+      }
+      if (!isCurrentClient(client)) throw error;
+      setSelectedProjectFile({ path, content: recovered });
+      await refreshServerFeatures();
+      return;
+    }
     const saved = await readFile(client, path);
     if (!isCurrentClient(client)) throw new Error('The project changed before saving completed.');
     if (saved.type !== 'text' || saved.encoding === 'base64' || saved.content !== content) throw new Error('The saved file did not match your changes. Reopen it before retrying.');

@@ -319,7 +319,17 @@
     "lastErrorValue": "{{message}} · {{time}}",
     "lastErrorNone": "No se registraron errores",
     "lastErrorFatal": "Fatal",
-    "lastErrorHandled": "Gestionado"
+    "lastErrorHandled": "Gestionado",
+    "network": "Red",
+    "networkValue": "{{type}} · {{state}}{{generation}}",
+    "networkOnline": "en línea",
+    "networkOffline": "sin conexión",
+    "networkConstrained": "restringida",
+    "networkNormal": "normal",
+    "reconnect": "Reconexión automática",
+    "reconnectValue": "Intento {{attempt}} de {{max}}",
+    "requestLatency": "Latencia de solicitudes",
+    "requestLatencyValue": "p50 {{p50}} ms · p95 {{p95}} ms · {{failed}} fallidas · {{retries}} reintentadas"
   },
   "mcp": {
     "title": "Servidores MCP",

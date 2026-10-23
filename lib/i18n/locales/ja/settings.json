@@ -319,7 +319,17 @@
     "lastErrorValue": "{{message}} · {{time}}",
     "lastErrorNone": "アプリエラーは記録されていません",
     "lastErrorFatal": "致命的",
-    "lastErrorHandled": "処理済み"
+    "lastErrorHandled": "処理済み",
+    "network": "ネットワーク",
+    "networkValue": "{{type}} · {{state}}{{generation}}",
+    "networkOnline": "オンライン",
+    "networkOffline": "オフライン",
+    "networkConstrained": "制限あり",
+    "networkNormal": "通常",
+    "reconnect": "自動再接続",
+    "reconnectValue": "試行 {{attempt}} / {{max}}",
+    "requestLatency": "リクエスト遅延",
+    "requestLatencyValue": "p50 {{p50}} ms · p95 {{p95}} ms · 失敗 {{failed}} · 再試行 {{retries}}"
   },
   "mcp": {
     "title": "MCP サーバー",

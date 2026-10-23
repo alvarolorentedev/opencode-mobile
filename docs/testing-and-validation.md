@@ -548,6 +548,20 @@ against a real V2 server and real code/automatic OAuth completion.
   `disconnect` for deterministic transport control; these controls do not change
   production endpoints
 
+### Slow Network / 4G
+
+`POST /__control/network` on the V2 fake server injects `latencyMs`, `jitterMs`,
+`failRate`, `status`, `hang`, and `sseKeepaliveMs`. The profile resets with the
+rest of `/__control/reset` and is reported by `/__control/network` and
+`/__control/state`.
+
+- congested-4G latency still completes a prompt (120 ms + 30 ms jitter)
+- an offline prompt is shown as queued, then admitted exactly once after
+  connectivity returns; the fake server asserts only one user record exists
+- protocol-level request policy, network normalization, and the transcript
+  cache are covered in `tests/vitest/network-resilience.test.ts`
+- the offline/uncertain prompt queue is covered in `tests/vitest/feed.test.ts`
+
 the Vitest `session-reads` suite exercises 4,300-record histories in both protocols,
 newest-page (20-record) retrieval, backward cursor paging, shared message/diff
 reads, V2 shared listing/status, and failure retry/client isolation.
@@ -712,6 +726,10 @@ delays and cursor-preserving reconnect with rotated credentials.
 re-subscribes and the released stall reconciles a missed blocker, both
 protocols) and a browser offline/online drop that recovers the retained session
 without re-submitting the prompt.
+`tests/e2e/network-resilience.spec.mjs` adds deterministic 4G latency and an
+offline queued prompt that is delivered once after reconnect. The fake server's
+network injector, all E2E additions, and the web offline transitions require
+explicit human validation under AGENTS.md.
 
 These fake-server and E2E changes require explicit human validation under
 AGENTS.md. Device acceptance still needs Wi-Fi/cellular transitions, sleep/wake
@@ -800,7 +818,7 @@ The following important behaviors are present in code but are not obviously cove
 - session summarization fallback behavior
 - keep-awake side effects
 - working-sound busy/idle transitions
-- native SSE transport behavior and real network reconnect timing (web missed-event recovery and deterministic backoff are covered)
+- native SSE transport behavior and real cellular reconnect timing (web missed-event recovery, deterministic backoff, injected 4G latency, and offline queue recovery are covered)
 
 These are useful candidates for future validation if the product depends on them heavily.
 

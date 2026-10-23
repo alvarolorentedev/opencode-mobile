@@ -35,6 +35,7 @@ import type {
   ProviderOption,
 } from '@/providers/opencode-provider-types';
 import type { Diagnostics } from '@/providers/services/diagnostics-service';
+import type { NetworkStatus } from '@/lib/network-status';
 import type { useCapabilitiesActions } from '@/providers/use-capabilities-actions';
 import type { useConnectionActions } from '@/providers/use-connection-actions';
 import type { useConversationState } from '@/providers/use-conversation-state';
@@ -61,6 +62,8 @@ export type ProviderValuesInput = ActionInputs & {
   settings: OpencodeConnectionSettings;
   connection: ConnectionState;
   eventStreamStatus: 'idle' | 'connecting' | 'connected' | 'error';
+  network: NetworkStatus;
+  reconnect: { attempt: number; maxAttempts: number; retryAt?: number };
   diagnostics?: Diagnostics;
   currentConfig?: Config;
   availableProviders: ProviderOption[];

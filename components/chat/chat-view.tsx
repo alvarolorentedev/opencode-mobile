@@ -17,6 +17,7 @@ import { ChangesOverlay } from '@/components/chat/content/changes-overlay';
 import { PendingInteractions } from '@/components/chat/content/pending-interactions';
 import { TranscriptList } from '@/components/chat/content/transcript-list';
 import { useChatViewController } from '@/components/chat/use-chat-view-controller';
+import { ConnectionStatusBanner } from '@/components/ui/connection-status-banner';
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useWorkspaceActions } from '@/providers/workspace-context';
@@ -65,6 +66,8 @@ export function ChatView() {
           slim={header.slim}
           usage={header.currentUsage}
         />
+
+        <ConnectionStatusBanner />
 
         <View style={styles.chatArea}>
           <TranscriptList

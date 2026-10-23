@@ -319,7 +319,17 @@
     "lastErrorValue": "{{message}} · {{time}}",
     "lastErrorNone": "未记录到 App 错误",
     "lastErrorFatal": "致命",
-    "lastErrorHandled": "已处理"
+    "lastErrorHandled": "已处理",
+    "network": "网络",
+    "networkValue": "{{type}} · {{state}}{{generation}}",
+    "networkOnline": "在线",
+    "networkOffline": "离线",
+    "networkConstrained": "受限",
+    "networkNormal": "正常",
+    "reconnect": "自动重连",
+    "reconnectValue": "第 {{attempt}} 次，共 {{max}} 次",
+    "requestLatency": "请求延迟",
+    "requestLatencyValue": "p50 {{p50}} ms · p95 {{p95}} ms · {{failed}} 次失败 · {{retries}} 次重试"
   },
   "mcp": {
     "title": "MCP 服务器",

@@ -319,7 +319,17 @@
     "lastErrorValue": "{{message}} · {{time}}",
     "lastErrorNone": "कोई ऐप त्रुटि दर्ज नहीं",
     "lastErrorFatal": "घातक",
-    "lastErrorHandled": "संभाली गई"
+    "lastErrorHandled": "संभाली गई",
+    "network": "नेटवर्क",
+    "networkValue": "{{type}} · {{state}}{{generation}}",
+    "networkOnline": "ऑनलाइन",
+    "networkOffline": "ऑफ़लाइन",
+    "networkConstrained": "सीमित",
+    "networkNormal": "सामान्य",
+    "reconnect": "स्वचालित पुनः कनेक्शन",
+    "reconnectValue": "प्रयास {{attempt}} / {{max}}",
+    "requestLatency": "अनुरोध विलंबता",
+    "requestLatencyValue": "p50 {{p50}} ms · p95 {{p95}} ms · {{failed}} विफल · {{retries}} पुनः प्रयास"
   },
   "mcp": {
     "title": "MCP सर्वर",

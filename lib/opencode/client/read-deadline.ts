@@ -1,18 +1,27 @@
-export const READ_TIMEOUT_MS = 30_000;
+import { READ_TIMEOUT_MS } from './request-policy';
+
+export { READ_TIMEOUT_MS };
 
 // SDKs consume bodies after fetch resolves. Keep the same deadline through that
 // consumption, and reject even if a native transport ignores cancellation.
-export async function fetchWithReadDeadline(fetcher: typeof fetch, input: RequestInfo | URL, init?: RequestInit): Promise<Response> {
+export async function fetchWithReadDeadline(
+  fetcher: typeof fetch,
+  input: RequestInfo | URL,
+  init?: RequestInit,
+  timeoutMs = READ_TIMEOUT_MS,
+): Promise<Response> {
   const controller = new AbortController();
   const upstream = init?.signal ?? (typeof input === 'object' && 'signal' in input ? input.signal : undefined);
   let reject!: (reason: Error) => void;
   const deadline = new Promise<never>((_, fail) => { reject = fail; });
   const abort = () => { reject(new Error('OpenCode read canceled.')); controller.abort(); cleanup(); };
   const timer = setTimeout(() => {
-    reject(new Error('OpenCode read timed out after 30 seconds.'));
+    reject(new Error(timeoutMs === READ_TIMEOUT_MS
+      ? 'OpenCode read timed out after 30 seconds.'
+      : `OpenCode request timed out after ${Math.round(timeoutMs / 1000)} seconds.`));
     controller.abort();
     cleanup();
-  }, READ_TIMEOUT_MS);
+  }, timeoutMs);
   const cleanup = () => { clearTimeout(timer); upstream?.removeEventListener('abort', abort); };
   upstream?.addEventListener('abort', abort, { once: true });
   if (upstream?.aborted) abort();

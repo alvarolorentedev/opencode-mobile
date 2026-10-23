@@ -35,6 +35,7 @@ import type {
   ServiceManagementVersion,
 } from '@/lib/opencode/client';
 import type { Diagnostics } from '@/providers/services/diagnostics-service';
+import type { NetworkStatus } from '@/lib/network-status';
 import type { SessionMessageRecord, TranscriptEntry } from '@/lib/opencode/format';
 import type { SessionUsage } from '@/lib/opencode/usage';
 import type { VoiceRecoveryAction } from '@/lib/voice/speech-errors';
@@ -249,6 +250,12 @@ export type DiagnosticsContextValue = {
   diagnostics?: Diagnostics;
   refreshDiagnostics: () => Promise<void>;
   eventStreamStatus: 'idle' | 'connecting' | 'connected' | 'error';
+  // Grouped transport state so diagnostics can show why a 4G link feels slow
+  // without widening the public context surface one field at a time.
+  transport: {
+    network: NetworkStatus;
+    reconnect: { attempt: number; maxAttempts: number; retryAt?: number };
+  };
 };
 
 export type CapabilitiesContextValue = {

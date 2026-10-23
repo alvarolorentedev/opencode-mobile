@@ -291,7 +291,9 @@
   "pendingPrompts": {
     "sending": "Wird gesendet…",
     "waiting": "Wartet auf Berücksichtigung…",
-    "cancel": "Ausstehende Nachricht verwerfen"
+    "cancel": "Ausstehende Nachricht verwerfen",
+    "queued": "In Warteschlange – wird gesendet, sobald verbunden",
+    "uncertain": "Zustellung unklar – vor erneutem Senden prüfen"
   },
   "revertNotice": {
     "title": "Ab dieser Nachricht zurückgesetzt",
@@ -302,5 +304,13 @@
     "mcpAuthTitle": "MCP-Authentifizierung erforderlich",
     "mcpAuthNeeded": "Der MCP-Server {{name}} benötigt eine Authentifizierung. Öffne den Link, um fortzufahren, und versuche es erneut.",
     "openAuthLink": "Link öffnen"
+  },
+  "connectionStatus": {
+    "offline": "Offline – zeige zuletzt synchronisierte Daten",
+    "retrying": "Neuverbindung…",
+    "error": "Verbindung verloren – zeige zuletzt synchronisierte Daten",
+    "connecting": "Verbinde…",
+    "polling": "Live-Updates pausiert – Abfrage aktiv",
+    "slow": "Langsame Verbindung – weniger Anfragen"
   }
 }

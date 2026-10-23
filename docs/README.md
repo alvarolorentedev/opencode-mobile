@@ -16,6 +16,9 @@ The goal is not aspirational design documentation. It is an implementation refer
   User-visible behavior and feature parity requirements by screen and workflow.
 - `state-and-data.md`
   Provider state model, persistence, derived data, and OpenCode protocol mapping.
+- `network-resilience.md`
+  Connectivity, request deadlines, SSE/polling recovery, offline queue, and
+  slow-network cache behavior.
 - `integrations-and-operations.md`
   External dependencies, Expo/native integrations, environment configuration, and operational notes.
 - `testing-and-validation.md`
@@ -65,10 +68,11 @@ The tabs mostly render and manipulate provider state:
 1. `architecture.md`
 2. `functional-spec.md`
 3. `state-and-data.md`
-4. `integrations-and-operations.md`
-5. `testing-and-validation.md`
-6. `api-contract.md`
-7. `component-inventory.md`
+4. `network-resilience.md`
+5. `integrations-and-operations.md`
+6. `testing-and-validation.md`
+7. `api-contract.md`
+8. `component-inventory.md`
 
 ## Scope Notes
 

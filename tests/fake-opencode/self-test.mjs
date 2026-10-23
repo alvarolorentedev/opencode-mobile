@@ -321,6 +321,15 @@ try {
   const expired = await v2request('/__control/pairing', json('POST', { expired: true }));
   assert((await fetch(`${v2Origin}/auth/connect/${expired.code}`)).status === 401, 'Expired local codes must fail');
   await v2request('/__control/reset', json('POST', { scenario: 'happy-path' }));
+  const networkBefore = await v2request('/__control/network');
+  assert(networkBefore.data.latencyMs === 0 && networkBefore.data.failRate === 0, 'Network profile must start clean');
+  await v2request('/__control/network', json('POST', { latencyMs: 60, jitterMs: 0, failRate: 0, sseKeepaliveMs: 250 }));
+  const delayedStart = Date.now();
+  await fetch(`${v2Origin}/api/info`);
+  assert(Date.now() - delayedStart >= 50, 'Injected network latency was not applied');
+  assert((await v2request('/__control/network')).data.sseKeepaliveMs === 250, 'Network profile must be reported');
+  await v2request('/__control/network', json('POST', {}));
+  assert((await v2request('/__control/network')).data.latencyMs === 0, 'Network profile must reset');
   const initialProviders = (await v2request('/api/provider')).data;
   assert(initialProviders.length === 1 && initialProviders[0].id === 'openai', 'V2 lists active providers, not its unconnected catalog');
   const integrations = (await v2request('/api/integration')).data;
