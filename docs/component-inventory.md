@@ -286,6 +286,7 @@ Responsibility:
 ### Responsibility
 
 - render assistant/user messages with `react-native-enriched-markdown` in GitHub flavor
+- code-block copy confirms with a light haptic; it does not reuse the message bubble's copied pill or border, and it does not show a snackbar
 - Message bubbles stretch within their side margins; the renderer stretches within the bubble padding and keeps its measured content height. Avoid percentage widths inside content-sized bubbles, which can mismeasure native wrapping and height.
 
 ### Supported formatting

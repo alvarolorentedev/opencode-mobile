@@ -1,6 +1,8 @@
-import { memo, useMemo } from 'react';
+import { memo, useCallback, useMemo } from 'react';
 import { Linking } from 'react-native';
 import { EnrichedMarkdownText, type MarkdownStyle } from 'react-native-enriched-markdown';
+
+import { codeCopyHaptic } from '@/lib/haptics';
 
 const allowedLinkProtocols = new Set(['http:', 'https:', 'mailto:', 'tel:']);
 
@@ -18,6 +20,9 @@ function openMarkdownLink(url: string) {
 
 function MarkdownTextImpl({ text, color, fontSize, mutedColor }: { text: string; color: string; fontSize: number; mutedColor: string }) {
   const scale = fontSize / 16;
+  const handleCopyPress = useCallback(() => {
+    codeCopyHaptic();
+  }, []);
   const markdownStyle = useMemo<MarkdownStyle>(() => ({
     paragraph: { fontSize, color, lineHeight: 26 * scale },
     h1: { fontSize: 24 * scale, fontWeight: '700', color },
@@ -55,6 +60,7 @@ function MarkdownTextImpl({ text, color, fontSize, mutedColor }: { text: string;
       containerStyle={{ alignSelf: 'stretch', minWidth: 0 }}
       markdownStyle={markdownStyle}
       onLinkPress={({ url }) => openMarkdownLink(url)}
+      onCopyPress={handleCopyPress}
     />
   );
 }

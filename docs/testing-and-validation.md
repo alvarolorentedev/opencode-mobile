@@ -1218,3 +1218,14 @@ and a clean subsequent turn. Run `test:ci:static`, `test:fake-server:self`,
 `test:e2e:web` and `build:development:android`. No E2E/fake-server source changes
 are needed relative to main. Real Android/iOS microphone timing and recognition
 quality require device testing; deterministic event tests do not establish them.
+
+## Code-block copy haptic validation
+
+`tests/vitest/chat-markdown.test.ts` invokes the native code-block copy callback
+and asserts one light-impact haptic. Copy state, Snackbars and i18n are
+unchanged. Run `test:ci:static`, `test:fake-server:self`, `test:e2e:web` and
+`build:development:android`. On Android, tap the header copy button and the
+long-press "Copy" action on a fenced block: the clipboard matches and one light
+haptic fires without the message bubble's Copied pill or border. "Copy as
+Markdown" does not emit `onCopyPress`, so it has no haptic. Native haptics
+remain device- and system-setting-dependent.
