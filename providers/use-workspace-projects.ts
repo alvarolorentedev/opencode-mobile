@@ -4,14 +4,24 @@ import { resolveProjectLocation } from '@/providers/services/session-service';
 import { getConnectionScope } from '@/lib/connection-scope';
 import { useWorkspaces } from '@/providers/workspace-context';
 import type { OpencodeProject } from '@/providers/opencode-provider-types';
+import type { WorkspaceSnapshot } from '@/providers/workspace-types';
 export function useWorkspaceProjects() {
   const registry = useWorkspaces();
   const { connections, snapshots, ensure, closeProject } = registry;
-  const groups = useMemo(() => registry.connections.map((entry) => {
-    const snapshots = Object.entries(registry.snapshots).filter(([key]) => (JSON.parse(key) as string[])[0] === entry.id).map(([, value]) => value);
-    const projects = [...new Map(snapshots.flatMap((runtime) => runtime.values.projectsValue.projects).map((project) => [project.path, project])).values()];
-    return { id: entry.id, name: entry.name, enabled: entry.enabled, projects, status: snapshots[0]?.values.connectionValue.connection.status ?? 'idle' };
-  }), [registry.connections, registry.snapshots]);
+  const groups = useMemo(() => {
+    const byConnection = new Map<string, WorkspaceSnapshot[]>();
+    for (const [key, value] of Object.entries(registry.snapshots)) {
+      const [connectionId] = JSON.parse(key) as [string, string];
+      const list = byConnection.get(connectionId);
+      if (list) list.push(value);
+      else byConnection.set(connectionId, [value]);
+    }
+    return registry.connections.map((entry) => {
+      const runtimes = byConnection.get(entry.id) ?? [];
+      const projects = [...new Map(runtimes.flatMap((runtime) => runtime.values.projectsValue.projects).map((project) => [project.path, project])).values()];
+      return { id: entry.id, name: entry.name, enabled: entry.enabled, projects, status: runtimes[0]?.values.connectionValue.connection.status ?? 'idle' };
+    });
+  }, [registry.connections, registry.snapshots]);
   const add = useCallback(async (connectionId: string, directory: string) => {
     const entry = connections.find((item) => item.id === connectionId);
     if (!entry?.enabled) throw new Error('Connect this server first.');

@@ -36,7 +36,6 @@ type PromptLifecycleInput = {
   busyNotificationsRef: { current: Set<string> };
   promptSubmissionRef: { current: { active: boolean; sessionId?: string } };
   setSelectedDiffMessageBySession: Dispatch<SetStateAction<Record<string, string | undefined>>>;
-  fetchSessions: (silent?: boolean) => Promise<Session[]>;
   refreshSessions: (silent?: boolean) => Promise<unknown>;
   refreshMessages: (sessionId: string, silent?: boolean, options?: { mode?: TranscriptRefreshMode }) => Promise<SessionMessageRecord[]>;
   refreshSessionDiff: (sessionId: string, silent?: boolean, messageId?: string) => Promise<unknown>;
@@ -59,7 +58,6 @@ export function usePromptLifecycle({
   busyNotificationsRef,
   promptSubmissionRef,
   setSelectedDiffMessageBySession,
-  fetchSessions,
   refreshSessions,
   refreshMessages,
   refreshSessionDiff,
@@ -94,6 +92,10 @@ export function usePromptLifecycle({
       promptSubmissionRef.current = submission;
       const ownsSubmission = () => promptSubmissionRef.current === submission && isCurrentClient(client);
       setPromptError(undefined);
+      // Show the in-flight state immediately. Notification bookkeeping still
+      // completes before admission so a canceled submission cannot leave a
+      // stale completion record behind.
+      setSendingState(submission);
 
       const currentSession = sessions.find((session) => session.id === sessionId);
       let promptAccepted = false;
@@ -124,7 +126,6 @@ export function usePromptLifecycle({
         }
 
         if (!ownsSubmission()) return canceled();
-        setSendingState(submission);
         const selectedModel = availableModels.find((model) => model.id === chatPreferences.modelId);
         if (attachments?.length && !selectedModel) {
           throw new Error('Select a model that supports attachments first.');
@@ -218,21 +219,21 @@ export function usePromptLifecycle({
 
         // A new user turn supersedes any earlier turn the diff surface was pinned to.
         if (owned) setSelectedDiffMessageBySession((current) => ({ ...current, [sessionId]: undefined }));
-        const nextSessions = await fetchSessions(true);
-        await Promise.all([
-          refreshMessages(sessionId, true),
-          refreshSessionDiff(sessionId, true),
-          refreshSessionTodos(sessionId),
-        ]);
-
-        const refreshedSession = nextSessions.find((session) => session.id === sessionId);
-        if (!refreshedSession?.title?.trim()) {
-          try {
-            await summarizeSessionTitle(sessionId, nextSessions);
-          } catch {
-            // Leave the session untitled if summarization is unavailable.
+        // Admission is the user-visible commit. Reconcile list ordering,
+        // transcript, diff, todos, and title in the background so a slow server
+        // cannot hold the composer or the next steer/queue submission.
+        void (async () => {
+          await Promise.all([
+            refreshMessages(sessionId, true),
+            refreshSessionDiff(sessionId, true),
+            refreshSessionTodos(sessionId),
+          ]);
+          if (!isCurrentClient(client)) return;
+          const refreshedSession = sessions.find((session) => session.id === sessionId);
+          if (!refreshedSession?.title?.trim()) {
+            await summarizeSessionTitle(sessionId, sessions);
           }
-        }
+        })().catch(() => undefined);
         return true;
       } catch (error) {
         const owned = ownsSubmission();
@@ -260,7 +261,7 @@ export function usePromptLifecycle({
         ));
       }
     },
-    [activeProjectPath, availableModels, busyNotificationsRef, chatPreferences, client, connectionScope, fetchSessions, isCurrentClient, promptSubmissionRef, refreshMessages, refreshSessionDiff, refreshSessionTodos, scheduleSessionRefresh, sessions, setPromptError, setSelectedDiffMessageBySession, settingsRef, submitPrompt, summarizeSessionTitle],
+    [activeProjectPath, availableModels, busyNotificationsRef, chatPreferences, client, connectionScope, isCurrentClient, promptSubmissionRef, refreshMessages, refreshSessionDiff, refreshSessionTodos, scheduleSessionRefresh, sessions, setPromptError, setSelectedDiffMessageBySession, settingsRef, submitPrompt, summarizeSessionTitle],
   );
 
   const abortSession = useCallback(

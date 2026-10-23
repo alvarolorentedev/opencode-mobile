@@ -213,7 +213,7 @@ export function LegacyChatLibrary({ visible, onClose, onNewChat }: { visible: bo
       <Button icon="plus" disabled={Boolean(busyId)} onPress={onNewChat}>{t('chat:library.newChat')}</Button>
     </OverlaySheet>
 
-    <ProjectPicker visible={visible && projectVisible} testID="chat-project-picker" activePath={activeProject?.path} onClose={() => setProjectVisible(false)} onSelected={close} />
+    {visible && projectVisible ? <ProjectPicker visible testID="chat-project-picker" activePath={activeProject?.path} onClose={() => setProjectVisible(false)} onSelected={close} /> : null}
   </>;
 }
 

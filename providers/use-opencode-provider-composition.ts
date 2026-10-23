@@ -27,6 +27,7 @@ import { usePromptInbox } from '@/providers/use-prompt-inbox';
 import { usePromptLifecycle } from '@/providers/use-prompt-lifecycle';
 import { useConnectionActions } from '@/providers/use-connection-actions';
 import { useOpencodeProviderValues } from '@/providers/opencode-provider-values';
+import { useCoalescedRefresh } from '@/providers/use-coalesced-refresh';
 
 import type { WorkspaceRuntimeInput } from '@/providers/workspace-types';
 
@@ -38,6 +39,9 @@ export function useOpencodeProviderComposition(input: WorkspaceRuntimeInput) {
     initialConnectStartedRef,
     setOnboardingVersion,
     setOnboardingActive,
+    currentSessionIdRef,
+    explicitSessionSelectionRef,
+    locallyCreatedSessionsRef,
     setCurrentSessionId,
     setSessions,
     setArchivedSessions,
@@ -58,6 +62,7 @@ export function useOpencodeProviderComposition(input: WorkspaceRuntimeInput) {
     bootstrapPromiseRef,
     bootstrapTokenRef,
     busyNotificationsRef,
+    suppressedPendingRequestIdsRef,
     sessionRefreshTimeoutsRef,
     sessionRefreshOptionsRef,
     clientGenerationRef,
@@ -171,9 +176,13 @@ export function useOpencodeProviderComposition(input: WorkspaceRuntimeInput) {
     bootstrapPromiseRef.current = null;
     bootstrapTokenRef.current = undefined;
     busyNotificationsRef.current.clear();
+    suppressedPendingRequestIdsRef.current.clear();
     Object.values(sessionRefreshTimeoutsRef.current).forEach((timeout) => clearTimeout(timeout));
     sessionRefreshTimeoutsRef.current = {};
     sessionRefreshOptionsRef.current = {};
+    currentSessionIdRef.current = undefined;
+    explicitSessionSelectionRef.current = undefined;
+    locallyCreatedSessionsRef.current.clear();
     setCurrentSessionId(undefined);
     setSessions([]);
     setArchivedSessions([]);
@@ -195,7 +204,7 @@ export function useOpencodeProviderComposition(input: WorkspaceRuntimeInput) {
     resetMcpState();
     resetTerminal();
     resetWorktrees();
-  }, [resetMcpState, resetPermissionRules, resetTerminal, resetTranscript, resetWorktrees, bootstrapPromiseRef, bootstrapTokenRef, busyNotificationsRef, sessionRefreshOptionsRef, sessionRefreshTimeoutsRef, setArchivedSessions, setAvailableAgents, setAvailableModels, setAvailableProviders, setCommands, setCurrentConfig, setCurrentSessionId, setMcpAuthPrompt, setPendingPermissionsBySession, setPendingQuestionsBySession, setProviderAuthMethodsById, setSelectedProjectFile, setSessionStatuses, setSessions, setVcsInfo, setProjectFileStatuses]);
+  }, [resetMcpState, resetPermissionRules, resetTerminal, resetTranscript, resetWorktrees, bootstrapPromiseRef, bootstrapTokenRef, busyNotificationsRef, suppressedPendingRequestIdsRef, sessionRefreshOptionsRef, sessionRefreshTimeoutsRef, currentSessionIdRef, explicitSessionSelectionRef, locallyCreatedSessionsRef, setArchivedSessions, setAvailableAgents, setAvailableModels, setAvailableProviders, setCommands, setCurrentConfig, setCurrentSessionId, setMcpAuthPrompt, setPendingPermissionsBySession, setPendingQuestionsBySession, setProviderAuthMethodsById, setSelectedProjectFile, setSessionStatuses, setSessions, setVcsInfo, setProjectFileStatuses]);
 
   const softResetProjectState = useCallback(() => {
     // Same-machine credential rotation: keep server-derived data (still valid
@@ -211,6 +220,12 @@ export function useOpencodeProviderComposition(input: WorkspaceRuntimeInput) {
   const project = useProjectActions({ ...state, client, catalogClient, isCurrentClient, isCurrentCatalogClient, clearProjectState, isHydrated, refreshMessages: inbox.refreshMessages });
 
   const capabilities = useCapabilitiesActions({ ...state, client, isCurrentClient });
+  // Event bursts (rename + update, config fan-out, file-save VCS events) share
+  // one refresh instead of starting overlapping reads.
+  const scheduleSessionsRefresh = useCoalescedRefresh(() => project.refreshSessions(true), 150);
+  const scheduleChatCapabilitiesRefresh = useCoalescedRefresh(capabilities.refreshChatCapabilities, 250);
+  const scheduleServerFeaturesRefresh = useCoalescedRefresh(project.refreshServerFeatures, 250);
+  const scheduleProjectCatalogRefresh = useCoalescedRefresh(() => project.refreshProjectCatalog(true), 250);
 
   const sessionActions = useSessionActions({
     ...state,
@@ -283,6 +298,10 @@ export function useOpencodeProviderComposition(input: WorkspaceRuntimeInput) {
       refreshSessions: project.refreshSessions,
       refreshArchivedSessions: sessionActions.refreshArchivedSessions,
       scheduleSessionRefresh: project.scheduleSessionRefresh,
+      scheduleSessionsRefresh,
+      scheduleServerFeaturesRefresh,
+      scheduleChatCapabilitiesRefresh,
+      scheduleProjectCatalogRefresh,
       refreshPendingInteractions: project.refreshPendingInteractions,
       refreshServerFeatures: project.refreshServerFeatures,
       refreshChatCapabilities: capabilities.refreshChatCapabilities,
@@ -292,7 +311,9 @@ export function useOpencodeProviderComposition(input: WorkspaceRuntimeInput) {
       refreshMcpServers: mcp.refreshMcpServers,
       refreshDiagnostics: project.refreshDiagnostics,
       focusSessionIds,
+      setSessions: state.setSessions,
       setSessionStatuses: state.setSessionStatuses,
+      explicitSessionSelectionRef: state.explicitSessionSelectionRef,
       setPromptError: prompt.setPromptError,
       setDiffsBySession: state.setDiffsBySession,
       setTodosBySession: state.setTodosBySession,
@@ -328,6 +349,7 @@ export function useOpencodeProviderComposition(input: WorkspaceRuntimeInput) {
     onGlobalEvent: handleActivityEvent,
     onFatalError: connectionActions.handleStreamAuthFailure,
     refreshSessions: project.refreshSessions,
+    refreshSessionStatuses: project.refreshSessionStatuses,
     refreshPendingInteractions: project.refreshPendingInteractions,
     refreshMessages: inbox.refreshMessages,
     refreshSessionDiff: project.refreshSessionDiff,

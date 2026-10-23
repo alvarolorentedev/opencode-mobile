@@ -88,12 +88,14 @@ export function useTranscriptState({
 }) {
   const [messageWindows, setMessageWindows] = useState<Record<string, MessageWindow>>({});
   const [loadingOlderBySession, setLoadingOlderBySession] = useState<Record<string, boolean>>({});
+  const [hydratingSessionIds, setHydratingSessionIds] = useState<Record<string, boolean>>({});
   const [usageStepsBySession, setUsageStepsBySession] = useState<Record<string, SessionUsageStep[]>>({});
   const [todoRecordsBySession, setTodoRecordsBySession] = useState<Record<string, SessionMessageRecord[]>>({});
 
   const messagesBySessionRef = useRef(messagesBySession);
   const messageWindowsRef = useRef(messageWindows);
   const loadingOlderBySessionRef = useRef(loadingOlderBySession);
+  const hydrationRequestRef = useRef<Record<string, number>>({});
   useLayoutEffect(() => {
     messagesBySessionRef.current = messagesBySession;
     messageWindowsRef.current = messageWindows;
@@ -224,11 +226,20 @@ export function useTranscriptState({
 
   const refreshMessages = useCallback(
     async (sessionId: string, silent = false, options?: { mode?: TranscriptRefreshMode }) => {
+      const held = messagesBySessionRef.current[sessionId] ?? [];
+      const shouldHydrate = !silent || held.length === 0;
+      let hydrationRequest: number | undefined;
+      if (shouldHydrate) {
+        hydrationRequest = (hydrationRequestRef.current[sessionId] ?? 0) + 1;
+        hydrationRequestRef.current[sessionId] = hydrationRequest;
+        setHydratingSessionIds((current) => (
+          current[sessionId] ? current : { ...current, [sessionId]: true }
+        ));
+      }
       if (!silent) {
         setIsRefreshingMessages(true);
       }
       try {
-        const held = messagesBySessionRef.current[sessionId] ?? [];
         // Default to a cold load when nothing is held, otherwise merge the
         // newest page into what we have. A requested mode overrides the default.
         const mode: TranscriptRefreshMode = options?.mode ?? (held.length === 0 ? 'initial' : 'tail');
@@ -295,6 +306,12 @@ export function useTranscriptState({
         if (!silent) {
           setIsRefreshingMessages(false);
         }
+        if (hydrationRequest !== undefined && hydrationRequestRef.current[sessionId] === hydrationRequest) {
+          delete hydrationRequestRef.current[sessionId];
+          setHydratingSessionIds((current) => (
+            current[sessionId] ? { ...current, [sessionId]: false } : current
+          ));
+        }
       }
     },
     [client, isCurrentClient, loadDisplayedWindow, recordUsageAndTodos, setIsRefreshingMessages, setMessagesBySession, transcriptVerbosity],
@@ -337,8 +354,10 @@ export function useTranscriptState({
   const reset = useCallback(() => {
     setMessageWindows({});
     setLoadingOlderBySession({});
+    setHydratingSessionIds({});
     setUsageStepsBySession({});
     setTodoRecordsBySession({});
+    hydrationRequestRef.current = {};
   }, []);
 
   // Drop pagination, usage, and plan state for sessions that are no longer kept
@@ -352,6 +371,7 @@ export function useTranscriptState({
   return {
     messageWindows,
     loadingOlderBySession,
+    hydratingSessionIds,
     usageStepsBySession,
     todoRecordsBySession,
     refreshMessages,

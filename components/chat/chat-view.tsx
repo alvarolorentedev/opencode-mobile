@@ -19,7 +19,7 @@ import { TranscriptList } from '@/components/chat/content/transcript-list';
 import { useChatViewController } from '@/components/chat/use-chat-view-controller';
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
-import { useWorkspaces } from '@/providers/workspace-context';
+import { useWorkspaceActions } from '@/providers/workspace-context';
 import { normalizeTranscriptFontSize } from '@/providers/opencode-preferences';
 
 export function ChatView() {
@@ -28,7 +28,7 @@ export function ChatView() {
   const colorScheme = useColorScheme() ?? 'light';
   const palette = Colors[colorScheme];
   const insets = useSafeAreaInsets();
-  const { createChat, focus, presentation } = useWorkspaces();
+  const { createChat, focus, presentation } = useWorkspaceActions();
   const { header, content, composer, overlay, actions } = useChatViewController();
   const [newChatVisible, setNewChatVisible] = useState(false);
 
@@ -79,6 +79,7 @@ export function ChatView() {
             flatTranscript={composer.chatPreferences.flatTranscript === true}
             hasMessages={content.hasTranscriptMessages}
             hasOlderMessages={content.transcriptPaging.hasOlder}
+            isBootstrappingChat={content.isBootstrappingChat}
             isLoadingOlderMessages={content.transcriptPaging.isLoadingOlder}
             isRefreshingMessages={content.isRefreshingMessages}
             onCopyMessage={(entry) => void actions.handleCopyMessage(entry)}

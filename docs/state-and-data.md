@@ -264,9 +264,44 @@ Primary flags:
 - `isRefreshingDiffs`
 - `isRefreshingProjectCatalog`
 - `isBootstrappingChat`
+- `hydratingSessionIds` (transcript-hook state, not a context member)
 - `sendingState`
 
 These flags drive loading indicators and control decisions such as whether conversation mode may start.
+
+Session selection is local-first. `ensureActiveSession()` and `openSession()`
+commit `currentSessionId` as soon as the target is known; transcript, diff,
+todo, interaction, capability, server-feature, and diagnostic reads continue in
+the background. `isBootstrappingChat` covers target resolution, while the
+per-session `hydratingSessionIds` map covers the first transcript read so a
+slow read for an older chat cannot clear the current chat's skeleton. The
+composer and chat header are usable during hydration; transcript content fills
+in as it arrives.
+
+An explicit `openSession()` invalidates any in-flight initial bootstrap and
+writes `currentSessionIdRef` synchronously, so a render-delayed bootstrap cannot
+reselect the remembered chat after the user created or opened a different one.
+`explicitSessionSelectionRef` bridges the render gap until the new session is in
+the live `sessionsRef`, while pending deep-link targets still validate against
+the server. A cross-server open refreshes the target server's session list
+before switching, so the target chat is confirmed against that server;
+same-server opens remain local-first.
+
+A session created or forked locally is retained for a short grace period if a
+list read that started before creation resolves afterward. This prevents a
+stale cursor page from dropping the new chat before the list catches up.
+Session-list, capability, server-feature, and project-catalog event bursts are
+coalesced; `session.deleted` removes its row immediately before reconciliation.
+The focused workspace's overridden domains are memoized independently, so a
+transcript update cannot invalidate connection, project, or onboarding
+contexts.
+
+An optimistic permission reply removes the card immediately and records its ID
+in `suppressedPendingRequestIdsRef` until the server accepts or rejects it. A
+polling/interaction refresh ignores suppressed IDs so the card cannot flicker
+back. A failed reply restores the card and clears the suppression. Question
+replies stay blocking because the question flow owns draft answers and inline
+retry state.
 
 ## Persisted Data
 
@@ -553,7 +588,10 @@ longer overlaps the held window, the fetched page is adopted (backfilled to the
 display target) and history paging restarts from its oldest record instead of
 downloading bridging pages. Only server-side history rewrites rebuild the window
 instead of merging: compaction, revert/unrevert, and (on V1) explicit message
-removal. Reconnects and foreground returns tail-merge.
+removal. Reconnects and foreground returns tail-merge. Pruning retains the
+current session plus up to three recently viewed sessions (still bounded by the
+300-record cap per session) so switching back to a recent chat paints from
+memory before the background read settles.
 
 Transcript verbosity (`basic` by default) controls which native timeline
 records render. `basic` shows user and assistant text/files/errors; `reasoning`
@@ -744,6 +782,8 @@ Some user-visible behavior depends on transient refs not persisted anywhere:
 
 - whether prompt submission is locked
 - pending deep-link target (`{ sessionId, projectPath? }`) consumed by `ensureActiveSession()` during boot
+- permission request IDs whose optimistic removal is still awaiting server acknowledgement
+- per-session transcript hydration request generations
 - pending notification IDs still awaiting completion
 - conversation timing windows
 - transcript pagination count in chat UI
@@ -762,7 +802,9 @@ todo snapshots on the first envelope of every subscription, including reconnects
 Only one reconciliation runs at a time, and a reconnect pass is queued behind an
 in-flight safety poll rather than coalesced into it. SSE remains primary; a safety
 poll runs during active work even when SSE is connected, every 10 seconds while
-connected and every 5 seconds while disconnected. A submitted prompt also
+connected and every 5 seconds while disconnected. On V2 the poll reads the
+active-session status set only; full session lists belong to reconnect,
+foreground, library-open, and session-event reconciliation. A submitted prompt also
 schedules a one-off transcript refresh after 5 seconds so a missed completion
 still lands. Every transcript refresh tail-merges one newest page; only a
 compaction or revert event rebuilds the window. Idle connected sessions do not

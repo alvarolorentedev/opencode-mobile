@@ -14,6 +14,7 @@ type RealtimeActions = {
   refreshNativeSurfaces?: (full?: boolean) => Promise<unknown>;
   onFatalError?: (kind: ConnectionFailureKind) => void;
   refreshSessions: (silent: boolean) => Promise<unknown>;
+  refreshSessionStatuses?: () => Promise<unknown>;
   refreshPendingInteractions: () => Promise<unknown>;
   refreshMessages: (sessionId: string, silent: boolean, options?: { mode?: TranscriptRefreshMode }) => Promise<unknown>;
   refreshSessionDiff: (sessionId: string, silent: boolean) => Promise<unknown>;
@@ -59,9 +60,14 @@ export function useOpencodeRealtime({ catalogClient, activeProjectPath, connecte
     }
     const next = latest.current;
     const sessions = new Set([...next.pendingSessionIds, next.currentSessionId, next.conversationSessionId].filter((id): id is string => Boolean(id)));
+    // A safety poll only needs the running set. Full cursor-paged session lists
+    // stay on reconnect/foreground reconciliation and session-list events.
+    const sessionRefresh = !full && next.refreshSessionStatuses
+      ? next.refreshSessionStatuses()
+      : next.refreshSessions(true);
     let result: Promise<unknown>;
     result = Promise.allSettled([
-      next.refreshSessions(true), next.refreshPendingInteractions(),
+      sessionRefresh, next.refreshPendingInteractions(),
       next.refreshNativeSurfaces?.(full),
       ...[...sessions].flatMap((id) => [next.refreshMessages(id, true), next.refreshSessionDiff(id, true), next.refreshSessionTodos(id)]),
     ]).finally(() => {
@@ -176,7 +182,9 @@ export function useOpencodeRealtime({ catalogClient, activeProjectPath, connecte
       // suspended while the stream still looks connected, so envelopes may have
       // been missed and a transcript can otherwise stay stale or empty until the
       // next event. The in-flight guard coalesces this with a restart reconcile.
-      void reconcile();
+      // A background suspension can miss session creation/deletion, so a
+      // foreground return still performs the authoritative full pass.
+      void reconcile(true);
       if (statusRef.current !== 'connected' || backgroundedFor >= SSE_FOREGROUND_CYCLE_MS) requestRestart();
     });
     const watchdog = setInterval(() => {

@@ -93,6 +93,14 @@ each screen declares its real dependencies instead of pulling from one
 combined domain surface. `OpencodeContextValue` remains only as the documented union
 of those domains.
 
+`WorkspaceActionsContext` exposes the stable app-level actions and presentation
+map separately from the changing workspace snapshot registry. Chat reads
+actions/focus from that context, so a background workspace publish does not
+re-render the chat. The focused workspace values are built by
+`useWorkspaceValues`, which memoizes each overridden domain independently;
+`WorkspaceRuntime` is wrapped in `React.memo` so unchanged runtimes skip
+parent-driven renders.
+
 ## Module Map
 
 ### App Shell
@@ -193,6 +201,13 @@ The completion version, preference schema and first-run migration are unchanged.
 - `providers/use-opencode-provider-state.ts`
   The provider's core state, latest-ref bridges, and connection-generation
   counters, returned as one flat object.
+- `providers/use-workspace-values.ts`
+  Layers app-scope overrides over a runtime's memoized domain values. Each
+  domain is memoized separately, so transcript updates do not invalidate
+  connection, project, or onboarding contexts.
+- `providers/use-coalesced-refresh.ts`
+  Collapses event-driven refresh bursts into one trailing call without
+  resetting the timer when callbacks are recreated.
 - `providers/use-opencode-provider-effects.ts`
   Provider lifecycle effects: language sync, active-session seeding, boot
   connect, refresh fan-out, chat bootstrap, transcript pruning, and working
@@ -556,8 +571,8 @@ The normal startup flow is:
 6. Connection state becomes `connected` or `error`.
 7. If a project exists, the provider fetches sessions and chat capabilities.
 8. A follow-up effect calls `ensureActiveSession()` for the active project.
-9. `ensureActiveSession()` honors a transient deep-link target (set by `openDeepLinkSession`), then reopens the remembered session, falls back to the newest returned session, or creates a new one. A deep-link target that does not match any session never triggers session creation.
-10. The Chat tab can then render transcript, diffs, todos, pending interactions, and controls.
+9. `ensureActiveSession()` honors a transient deep-link target (set by `openDeepLinkSession`), then reopens the remembered session, falls back to the newest returned session, or creates a new one. A deep-link target that does not match any session never triggers session creation. The selected session ID is committed before transcript, diff, todo, interaction, capability, feature, or diagnostic reads; those reads continue in the background. An explicit `openSession()` writes the selection ref immediately and invalidates any in-flight bootstrap, so a render-delayed startup pass cannot replace the chat the user just chose.
+10. The Chat tab renders the selected session's header and a transcript skeleton while the first page lands. It then fills in transcript, diffs, todos, pending interactions, and controls as the background reads settle. Cross-server opens refresh the target server's session list before committing the switch; same-server opens stay local-first.
 
 When the app is launched from (or navigated to) a session deep link, the dedicated resolver route `app/session/[id].tsx` parses `sessionId` + `project`, calls `openDeepLinkSession()`, and replaces onto the Chat tab where the session is already current.
 
@@ -687,9 +702,16 @@ While SSE is connected the loop runs every 10 seconds; without a stream it is th
 primary transport and runs every 5 seconds. A submitted prompt also schedules a
 one-off transcript refresh 5 seconds after send, so a completion whose event is
 missed (for example from another project) still lands even with the slower
-connected cadence. Polling refreshes sessions, current/conversation session
-content, and pending interactions as needed. The `/permission` and `/question`
-list APIs recover requests missed by SSE.
+connected cadence. On OpenCode 2 the safety poll reads only the active-session
+status set; full cursor-paged session lists are reserved for connect, reconnect,
+foreground return, library open, and session-list events. Polling refreshes
+current/conversation session content and pending interactions as needed. The
+`/permission` and `/question` list APIs recover requests missed by SSE.
+
+Event-driven refreshes are coalesced per domain. Session-list, capability,
+server-feature, and project-catalog bursts collapse into one trailing read
+instead of starting overlapping requests. A deleted session is removed from the
+local list immediately, before the coalesced reconciliation lands.
 
 `permission.asked` and `question.asked` insert requests under their `sessionID`; reply and rejection events remove them. Opening or refreshing a session reconciles both maps with the server. Because subagents run in child sessions, a blocking request may carry a descendant `sessionID`; the active chat surfaces the full `parentID` subtree of the current/sending session so nested prompts are shown rather than dropped.
 

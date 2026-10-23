@@ -3,6 +3,7 @@ import { describe, it, expect, vi } from 'vitest';
 import { buildV2Client } from '@/lib/opencode/v2-client';
 import { coalesceRead } from '@/lib/opencode/in-flight';
 import {
+  getActiveSessionStatuses,
   getSessionMessages,
   getSessionDiff,
   listSessions,
@@ -102,6 +103,11 @@ describe('session reads', () => {
     expect(v1.records[0].info.id).toBe('m-4280');
     expect(v1.records.at(-1)!.info.id).toBe('m-4299');
     expect(v1.nextBefore).toBe('4280');
+  });
+
+  it('reads only the active status set for safety polling', async () => {
+    await expect(getActiveSessionStatuses(client)).resolves.toEqual({ s: {} });
+    await expect(getActiveSessionStatuses({ compatibility: {} } as never)).resolves.toBeUndefined();
   });
 
   it('does not report idle when the V2 active-session read fails', async () => {

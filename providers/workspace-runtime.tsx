@@ -1,4 +1,4 @@
-import { useCallback, useLayoutEffect, useMemo, useRef, type Dispatch, type SetStateAction } from 'react';
+import { memo, useCallback, useLayoutEffect, useMemo, useRef, type Dispatch, type SetStateAction } from 'react';
 import type { OpencodeConnectionSettings } from '@/lib/opencode/client';
 import { defaultChatPreferences, type ChatPreferences } from '@/providers/opencode-preferences';
 import { serverPreferences, type useWorkspaceConnections } from '@/providers/use-workspace-connections';
@@ -13,7 +13,7 @@ type Props = Omit<WorkspaceRuntimeInput, 'setSettings' | 'setChatPreferences' | 
   publish: (key: string, snapshot: WorkspaceSnapshot) => void;
   forget: (key: string) => void;
 };
-export function WorkspaceRuntime({ defaults, updateSettings, updatePreferences, publish, forget, ...input }: Props) {
+export const WorkspaceRuntime = memo(function WorkspaceRuntime({ defaults, updateSettings, updatePreferences, publish, forget, ...input }: Props) {
   const id = input.connection.id;
   const key = workspaceKey({ connectionId: id, projectPath: input.projectPath ?? '' });
   const preferences = useMemo(() => ({ ...defaults, ...serverPreferences(defaultChatPreferences), providerId: undefined, modelId: undefined, ...input.connection.preferences }), [defaults, input.connection.preferences]);
@@ -29,4 +29,4 @@ export function WorkspaceRuntime({ defaults, updateSettings, updatePreferences, 
   useLayoutEffect(() => { publish(key, runtime); }, [key, publish, runtime]);
   useLayoutEffect(() => () => forget(key), [forget, key]);
   return null;
-}
+});

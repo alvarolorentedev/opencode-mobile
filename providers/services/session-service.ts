@@ -113,6 +113,15 @@ async function listV2Sessions(api: NativeOpencodeApi, directory?: string): Promi
   return records;
 }
 
+// Safety polling only needs the running set. Full session lists are reserved
+// for connect, reconnect, library open, and session-list events so the poll
+// does not walk every cursor page while a long task is running.
+export async function getActiveSessionStatuses(client: ScopedOpencodeClient) {
+  if (client.compatibility) return undefined;
+  const active = await client.api!.session.active();
+  return active && typeof active === 'object' ? active : undefined;
+}
+
 export function listSessions(client: ScopedOpencodeClient) {
   return coalesceRead(client, 'sessions', async () => {
     if (client.compatibility) return v1.listSessions(client.compatibility);

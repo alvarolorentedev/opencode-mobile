@@ -14,7 +14,9 @@ export function useSessionBootstrapActions({
   client,
   createSession,
   currentSessionId,
-  sessions,
+  currentSessionIdRef,
+  explicitSessionSelectionRef,
+  sessionsRef,
   messagesBySession,
   lastSessionByConnection,
   pendingDeepLinkTargetRef,
@@ -28,7 +30,6 @@ export function useSessionBootstrapActions({
   refreshPendingInteractions,
   refreshChatCapabilities,
   refreshServerFeatures,
-  refreshDiagnostics,
   setCurrentSessionId,
   setLastSessionByConnection,
   setIsBootstrappingChat,
@@ -39,15 +40,21 @@ export function useSessionBootstrapActions({
     }
 
     const pendingTarget = pendingDeepLinkTargetRef.current;
-    if (
-      currentSessionId &&
-      sessions.some((session) => session.id === currentSessionId) &&
-      (!pendingTarget || pendingTarget.sessionId === currentSessionId)
-    ) {
-      if (!messagesBySession[currentSessionId]) {
-        await refreshMessages(currentSessionId, true);
+    // The ref is updated synchronously by explicit selection. Reading it here
+    // prevents a render-delayed bootstrap from replacing a chat the user just
+    // opened or created.
+    const selectedSessionId = currentSessionIdRef.current ?? currentSessionId;
+    const explicitlySelected = explicitSessionSelectionRef.current === selectedSessionId;
+    const currentSessions = sessionsRef.current;
+    if (selectedSessionId
+      && (explicitlySelected || currentSessions.some((session) => session.id === selectedSessionId))
+      && (!pendingTarget || pendingTarget.sessionId === selectedSessionId)) {
+      if (!messagesBySession[selectedSessionId]) {
+        // Selection is already correct; hydrate in the background so callers
+        // never wait for transcript I/O before navigating.
+        void refreshMessages(selectedSessionId).catch(() => undefined);
       }
-      return currentSessionId;
+      return selectedSessionId;
     }
 
     if (bootstrapPromiseRef.current) {
@@ -60,9 +67,9 @@ export function useSessionBootstrapActions({
       setIsBootstrappingChat(true);
 
       try {
-        const nextSessions = sessions.length > 0 && (!pendingTarget || sessions.some((session) => session.id === pendingTarget.sessionId))
-          ? sessions : await fetchSessions(true);
-        if (pendingDeepLinkTargetRef.current !== pendingTarget) {
+        const nextSessions = currentSessions.length > 0 && (!pendingTarget || currentSessions.some((session) => session.id === pendingTarget.sessionId))
+          ? currentSessions : await fetchSessions(true);
+        if (bootstrapTokenRef.current !== bootstrapToken || pendingDeepLinkTargetRef.current !== pendingTarget) {
           return undefined;
         }
         const rememberedSessionId = activeProjectPath
@@ -76,18 +83,12 @@ export function useSessionBootstrapActions({
         if (!targetSession) {
           return undefined;
         }
-        await Promise.all([
-          refreshMessages(targetSession.id, true),
-          refreshSessionDiff(targetSession.id, true),
-          refreshSessionTodos(targetSession.id),
-          refreshPendingInteractions(),
-          refreshChatCapabilities(),
-          refreshServerFeatures(),
-          refreshDiagnostics(),
-        ]);
-        if (!isCurrentClient(client) || pendingDeepLinkTargetRef.current !== pendingTarget) {
+        if (bootstrapTokenRef.current !== bootstrapToken || !isCurrentClient(client) || pendingDeepLinkTargetRef.current !== pendingTarget) {
           return undefined;
         }
+        // Commit the selection before any content request. The chat can render
+        // its header and a transcript skeleton while these reads settle.
+        currentSessionIdRef.current = targetSession.id;
         setCurrentSessionId(targetSession.id);
         if (activeProjectPath) {
           setLastSessionByConnection((current) => ({
@@ -98,6 +99,14 @@ export function useSessionBootstrapActions({
             },
           }));
         }
+        void Promise.all([
+          refreshMessages(targetSession.id),
+          refreshSessionDiff(targetSession.id, true),
+          refreshSessionTodos(targetSession.id),
+          refreshPendingInteractions(),
+          refreshChatCapabilities(),
+          refreshServerFeatures(),
+        ]).catch(() => undefined);
         return targetSession.id;
       } finally {
         if (bootstrapTokenRef.current === bootstrapToken) {
@@ -112,23 +121,27 @@ export function useSessionBootstrapActions({
     return bootstrapPromise;
   }, [
     activeProjectPath,
+    bootstrapPromiseRef,
+    bootstrapTokenRef,
     connection.status,
     connectionScope,
     client,
     createSession,
     currentSessionId,
+    currentSessionIdRef,
+    explicitSessionSelectionRef,
     fetchSessions,
     lastSessionByConnection,
     isCurrentClient,
     messagesBySession,
+    pendingDeepLinkTargetRef,
     refreshMessages,
     refreshPendingInteractions,
     refreshChatCapabilities,
-    refreshDiagnostics,
     refreshServerFeatures,
     refreshSessionDiff,
     refreshSessionTodos,
-    sessions,
+    sessionsRef,
     setCurrentSessionId,
     setLastSessionByConnection,
     setIsBootstrappingChat,

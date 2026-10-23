@@ -50,7 +50,7 @@ export function useChatViewController() {
   const {
     pendingPrompts, cancelPrompt, abortSession, clearPromptError, commands, currentDiffs, currentDiffScope, currentMessages,
     currentPendingPermissions, currentPendingQuestions, currentTodos, currentTranscript, currentUsage,
-    diffTurns, executeCommand, isRefreshingDiffs, isRefreshingMessages,
+    diffTurns, executeCommand, isBootstrappingChat, isRefreshingDiffs, isRefreshingMessages,
     latestAssistantTurnUsage, promptError, refreshDiffs, rejectQuestion,
     replyToPermission, replyToQuestion, selectDiffMessage, selectedDiffMessageId, sendPrompt,
     sendingState, setAutoApprove, setDiffScope, transcriptPaging, sharedInput,
@@ -457,7 +457,7 @@ export function useChatViewController() {
       copiedMessageId, currentActivityLabel, currentDiffs, currentDiffScope,
       currentPendingPermissions, currentPendingQuestions, currentSessionId, currentTodos,
       diffAdditions, diffCount, diffDeletions, diffDetails, diffTurns, transcriptRows,
-      expandedDiffId, hasTranscriptMessages, isCancelingRevert, isRefreshingDiffs, isRefreshingMessages,
+      expandedDiffId, hasTranscriptMessages, isBootstrappingChat, isCancelingRevert, isRefreshingDiffs, isRefreshingMessages,
       pendingInteractions, pendingPrompts, progressIcon, progressVisible, retryAttempt,
       running, selectedDiffMessageId, speakingMessageId, transcriptPaging,
     },

@@ -62,8 +62,8 @@ A stale deep-link target that does not match any session returns a not-found err
 Manual behavior:
 
 - user opens `New chat` from the Chat header or the Chats overlay; the sheet mirrors `New terminal`, preselects the current server/project and lets the user choose another before confirming. The server selector is hidden with one configured connection.
-- creating a chat switches chat focus to the selected server/project and opens the new session there
-- user can open the Chats overlay from the Chat title to search, switch, favorite, archive, and manage sessions; its header opens a second overlay to change project
+- creating a chat switches chat focus to the selected server/project and opens the new session there. The sheet closes once the server returns the new session ID; transcript content hydrates in the background.
+- user can open the Chats overlay from the Chat title to search, switch, favorite, archive, and manage sessions; its header opens a second overlay to change project. Opening a chat commits the selection immediately and closes the overlay; transcript, diff, todo, and pending-interaction reads continue behind the chat skeleton.
 
 ### 3b. Open a Session via Deep Link
 
@@ -691,7 +691,7 @@ The following values are not persisted and are rebuilt from the server:
 ## User-Visible Edge Cases
 
 - If no project exists yet, Chat shows a `Choose a project` prompt.
-- If a project exists but no session is ready yet, Chat shows a loading panel.
+- If a project exists but no session is ready yet, Chat shows the chat shell with a transcript skeleton while target resolution and the first transcript read complete.
 - If connection fails, error copy is shown in the landing/loading states and inside chat content.
 - If speech input is unavailable or denied, a user-friendly error is shown with a recovery action (retry, or open app settings after a denial).
 - If on-device recognition cannot run for the chosen locale, it retries through network recognition before showing an error.

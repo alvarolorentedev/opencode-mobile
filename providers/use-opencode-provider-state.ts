@@ -50,6 +50,7 @@ export function useOpencodeProviderState(initial?: { settings: OpencodeConnectio
   const [onboardingVersion, setOnboardingVersion] = useState(0);
   const [onboardingActive, setOnboardingActive] = useState(false);
   const [sessions, setSessions] = useState<Session[]>([]);
+  const sessionsRef = useRef<Session[]>([]);
   const [archivedSessions, setArchivedSessions] = useState<GlobalSession[]>([]);
   const [sessionStatuses, setSessionStatuses] = useState<Record<string, SessionStatus>>({});
   const [currentSessionId, setCurrentSessionId] = useState<string>();
@@ -115,6 +116,9 @@ export function useOpencodeProviderState(initial?: { settings: OpencodeConnectio
   const selectedDiffMessageBySessionRef = useRef<Record<string, string | undefined>>({});
   const messagesBySessionRef = useRef(messagesBySession);
   const busyNotificationsRef = useRef<Set<string>>(new Set());
+  const explicitSessionSelectionRef = useRef<string | undefined>(undefined);
+  const locallyCreatedSessionsRef = useRef<Map<string, number>>(new Map());
+  const suppressedPendingRequestIdsRef = useRef<Set<string>>(new Set());
   const promptSubmissionRef = useRef<{ active: boolean; sessionId?: string }>({ active: false });
   const projectFileRequestRef = useRef(0);
   const projectPathsByConnectionRef = useRef(projectPathsByConnection);
@@ -130,6 +134,7 @@ export function useOpencodeProviderState(initial?: { settings: OpencodeConnectio
     activeProjectPathRef.current = activeProjectPath;
     connectionRef.current = connection;
     currentSessionIdRef.current = currentSessionId;
+    sessionsRef.current = sessions;
     diffScopeBySessionRef.current = diffScopeBySession;
     selectedDiffMessageBySessionRef.current = selectedDiffMessageBySession;
     messagesBySessionRef.current = messagesBySession;
@@ -144,7 +149,7 @@ export function useOpencodeProviderState(initial?: { settings: OpencodeConnectio
     activeProjectPath, setActiveProjectPath,
     onboardingVersion, setOnboardingVersion,
     onboardingActive, setOnboardingActive,
-    sessions, setSessions,
+    sessions, setSessions, sessionsRef,
     archivedSessions, setArchivedSessions,
     sessionStatuses, setSessionStatuses,
     currentSessionId, setCurrentSessionId,
@@ -205,6 +210,9 @@ export function useOpencodeProviderState(initial?: { settings: OpencodeConnectio
     selectedDiffMessageBySessionRef,
     messagesBySessionRef,
     busyNotificationsRef,
+    explicitSessionSelectionRef,
+    locallyCreatedSessionsRef,
+    suppressedPendingRequestIdsRef,
     promptSubmissionRef,
     projectFileRequestRef,
     projectPathsByConnectionRef,

@@ -253,3 +253,41 @@ test('V2 single-server mode hides redundant context and restores it when a secon
   await openChatLibrary(page);
   await expect(library.getByTestId('chat-server-filter')).toBeVisible();
 });
+
+test('V2 keeps server chips visible for long chat titles', async ({ page, request }) => {
+  const title = `Long-session-${'x'.repeat(96)}`;
+  await request.post(`${servers[0].serverUrl}/api/session`, { data: { title, location: { directory } } });
+  await openChatLibrary(page);
+  const row = page.getByTestId('chat-library').getByRole('button', { name: `Open ${title}, MacBook Pro, ${directory}`, exact: true });
+  const chip = row.getByTestId('chat-library-server-chip');
+  await expect(row).toBeVisible();
+  await expect(chip).toHaveText('MacBook Pro');
+  await expect(chip).toBeVisible();
+  const rowBox = await row.boundingBox();
+  const chipBox = await chip.boundingBox();
+  expect(rowBox).not.toBeNull();
+  expect(chipBox).not.toBeNull();
+  expect(chipBox.x).toBeGreaterThanOrEqual(rowBox.x);
+  expect(chipBox.x + chipBox.width).toBeLessThanOrEqual(rowBox.x + rowBox.width + 1);
+});
+
+test('V2 shows progress while opening a chat on another server', async ({ page, request }) => {
+  const title = 'Slow switch target';
+  await request.post(`${servers[1].serverUrl}/api/session`, { data: { title, location: { directory } } });
+  await openChatLibrary(page);
+  const row = page.getByTestId('chat-library').getByRole('button', { name: `Open ${title}, Build server, ${directory}`, exact: true });
+  await expect(row).toBeVisible();
+
+  let release;
+  const gate = new Promise((resolve) => { release = resolve; });
+  await page.route(`${servers[1].serverUrl}/api/session**`, async (route) => {
+    await gate;
+    await route.continue();
+  });
+
+  await row.click();
+  await expect(page.getByTestId('chat-library-busy')).toBeVisible();
+  release();
+  await expect(page.getByTestId('chat-library')).not.toBeVisible();
+  await expect(page.getByRole('button', { name: /^Open chats/ })).toContainText(title);
+});

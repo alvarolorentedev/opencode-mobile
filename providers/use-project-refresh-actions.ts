@@ -1,12 +1,14 @@
 import { useCallback } from 'react';
 
 import { listPendingInteractions } from '@/lib/opencode/client';
+import type { SessionStatus } from '@/lib/opencode/types';
 import { resolveDiffTurn } from '@/lib/opencode/transcript';
 import { areSessionListsEqual, areSessionStatusMapsEqual, groupPendingRequestsBySession, mergeSessionStatuses } from '@/providers/opencode-provider-utils';
 import type { DiffScope } from '@/providers/opencode-provider-types';
 import type { SessionRefreshOptions } from '@/providers/opencode-provider-events';
 import { persistSessionCache } from '@/providers/session-cache';
 import {
+  getActiveSessionStatuses as svcGetActiveSessionStatuses,
   listSessions as svcListSessions,
   getSessionDiff as svcGetSessionDiff,
   getSessionTodos as svcGetSessionTodos,
@@ -18,13 +20,18 @@ import type { ProjectActionsInput } from '@/providers/opencode-provider-action-i
 // Lower than a frame budget for a snappy chat, high enough to avoid one page
 // download per event.
 const MESSAGE_REFRESH_COALESCE_MS = 400;
+// A list read that started before a session was created can resolve after it.
+// Keep just-created sessions visible for a short grace period.
+const LOCAL_SESSION_GRACE_MS = 10_000;
 
 export function useProjectRefreshActions({
   activeProjectPath,
   client,
   isCurrentClient,
   setSessions,
+  sessionsRef,
   setSessionStatuses,
+  locallyCreatedSessionsRef,
   setIsRefreshingSessions,
   setIsRefreshingDiffs,
   setDiffsBySession,
@@ -32,6 +39,7 @@ export function useProjectRefreshActions({
   setTodosBySession,
   setPendingPermissionsBySession,
   setPendingQuestionsBySession,
+  suppressedPendingRequestIdsRef,
   setDiffScopeBySession,
   setSelectedDiffMessageBySession,
   selectedDiffMessageBySessionRef,
@@ -60,20 +68,37 @@ export function useProjectRefreshActions({
         if (!isCurrentClient(client)) {
           return result.sessions;
         }
-        setSessions((current) => (areSessionListsEqual(current, result.sessions) ? current : result.sessions));
+        const now = Date.now();
+        const resultIds = new Set(result.sessions.map((session) => session.id));
+        const localIds = new Set<string>();
+        for (const [id, createdAt] of locallyCreatedSessionsRef.current) {
+          if (resultIds.has(id) || now - createdAt > LOCAL_SESSION_GRACE_MS) {
+            locallyCreatedSessionsRef.current.delete(id);
+          } else {
+            localIds.add(id);
+          }
+        }
+        const retained = localIds.size
+          ? sessionsRef.current.filter((session) => localIds.has(session.id) && !resultIds.has(session.id))
+          : [];
+        const nextSessions = retained.length ? [...retained, ...result.sessions] : result.sessions;
+        setSessions((current) => (areSessionListsEqual(current, nextSessions) ? current : nextSessions));
         setSessionStatuses((current) => {
           const next = mergeSessionStatuses(current, result.statuses);
+          for (const session of retained) {
+            if (!next[session.id]) next[session.id] = current[session.id] ?? { type: 'idle' };
+          }
           return areSessionStatusMapsEqual(current, next) ? current : next;
         });
-        void persistSessionCache(connectionScope, activeProjectPath, result.sessions, result.statuses);
-        return result.sessions;
+        void persistSessionCache(connectionScope, activeProjectPath, nextSessions, result.statuses);
+        return nextSessions;
       } finally {
         if (!silent) {
           setIsRefreshingSessions(false);
         }
       }
     },
-    [activeProjectPath, client, connectionScope, isCurrentClient],
+    [activeProjectPath, client, connectionScope, isCurrentClient, locallyCreatedSessionsRef, sessionsRef],
   );
 
   const refreshSessions = useCallback(
@@ -82,6 +107,30 @@ export function useProjectRefreshActions({
     },
     [fetchSessions],
   );
+
+  const refreshSessionStatuses = useCallback(async () => {
+    if (client.compatibility) {
+      await refreshSessions(true);
+      return;
+    }
+    const active = await svcGetActiveSessionStatuses(client).catch(() => undefined);
+    if (!active) {
+      await refreshSessions(true);
+      return;
+    }
+    if (!isCurrentClient(client)) return;
+    setSessionStatuses((current) => {
+      const fetched: Record<string, SessionStatus> = {};
+      for (const id of Object.keys(current)) {
+        fetched[id] = { type: id in active ? 'busy' : 'idle' };
+      }
+      for (const id of Object.keys(active)) {
+        fetched[id] = { type: 'busy' };
+      }
+      const next = mergeSessionStatuses(current, fetched);
+      return areSessionStatusMapsEqual(current, next) ? current : next;
+    });
+  }, [client, isCurrentClient, refreshSessions, setSessionStatuses]);
 
   const refreshSessionDiff = useCallback(
     async (sessionId: string, silent = false, messageId?: string) => {
@@ -205,9 +254,15 @@ export function useProjectRefreshActions({
     if (!isCurrentClient(client)) {
       return;
     }
-    if (permissions) setPendingPermissionsBySession(groupPendingRequestsBySession(permissions));
-    if (questions) setPendingQuestionsBySession(groupPendingRequestsBySession(questions));
-  }, [client, isCurrentClient]);
+    // A reply removes its card before the server acknowledges it. Ignore a
+    // refresh that races that reply so the card cannot flicker back.
+    const suppressed = suppressedPendingRequestIdsRef?.current;
+    const visible = <T extends { id: string }>(requests: T[]) => (
+      suppressed ? requests.filter((request) => !suppressed.has(request.id)) : requests
+    );
+    if (permissions) setPendingPermissionsBySession(groupPendingRequestsBySession(visible(permissions)));
+    if (questions) setPendingQuestionsBySession(groupPendingRequestsBySession(visible(questions)));
+  }, [client, isCurrentClient, setPendingPermissionsBySession, setPendingQuestionsBySession, suppressedPendingRequestIdsRef]);
 
   const scheduleSessionRefresh = useCallback(
     (sessionId: string, options?: SessionRefreshOptions) => {
@@ -254,6 +309,7 @@ export function useProjectRefreshActions({
   return {
     fetchSessions,
     refreshSessions,
+    refreshSessionStatuses,
     refreshSessionDiff,
     refreshVcsDiff,
     setDiffScope,

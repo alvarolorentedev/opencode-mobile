@@ -19,6 +19,53 @@ describe('multi-server contracts', () => {
     expect(rows.map((row: any) => [row.connectionId, row.sessionId])).toEqual([['a', 'same'], ['b', 'busy'], ['b', 'same'], ['a', 'idle']]);
     expect(rows.filter((row: any) => row.current)).toHaveLength(1);
   });
+  it('keeps unrelated workspace domains stable when only chat data changes', async () => {
+    const driver = hookRuntime();
+    const { useWorkspaceValues } = await loadTs('providers/use-workspace-values.ts', {
+      react: driver.react,
+      '@/lib/connection-scope': identity,
+    });
+    const settings = { serverUrl: 'http://a', username: '' };
+    const base = {
+      onboardingValue: { isHydrated: true, onboardingCompleted: true, onboardingActive: false },
+      connectionValue: { settings, connect: async () => ({}), switchConnection: async () => ({}), connectionProfiles: [], connectSetup: {}, services: {} },
+      projectsValue: { activeProjectPath: '/repo', projects: [], selectProject: () => {} },
+      currentSessionValue: { currentSessionId: 's', openDeepLinkSession: async () => ({ ok: true }) },
+      sessionLibraryValue: { openSessionInProject: async () => {} },
+      chatValue: { currentMessages: [] },
+    };
+    const overrides = {
+      isHydrated: true,
+      onboardingCompleted: true,
+      onboardingActive: false,
+      connectionProfiles: [],
+      connectSetup: {},
+      servicesValue: {},
+      sharedInput: {},
+      projectPathsByConnection: {},
+      retry: async () => ({}),
+      activate: async () => {},
+      switchConnection: async () => ({}),
+      openSession: async () => ({ ok: true }),
+    };
+    driver.mount((props: any) => useWorkspaceValues(props.values, props.overrides), { values: base, overrides });
+    const first = driver.value;
+
+    driver.update({ values: { ...base, chatValue: { currentMessages: ['new'] } }, overrides });
+    const next = driver.value;
+    expect(next.chatValue).not.toBe(first.chatValue);
+    expect(next.onboardingValue).toBe(first.onboardingValue);
+    expect(next.connectionValue).toBe(first.connectionValue);
+    expect(next.projectsValue).toBe(first.projectsValue);
+    expect(next.currentSessionValue).toBe(first.currentSessionValue);
+    expect(next.sessionLibraryValue).toBe(first.sessionLibraryValue);
+
+    driver.update({ values: { ...base, chatValue: { currentMessages: ['new'] } }, overrides: { ...overrides, onboardingActive: true } });
+    expect(driver.value.onboardingValue).not.toBe(first.onboardingValue);
+    expect(driver.value.connectionValue).toBe(first.connectionValue);
+    driver.unmount();
+  });
+
   it('shares one SSE transport across workspaces and detaches only the last consumer', async () => {
     const { createSharedEventStream } = await loadTs('providers/shared-event-stream.ts', { '@/lib/opencode/events': {}, '@/providers/realtime-timing': { SSE_STALENESS_MS: 90000, WATCHDOG_TICK_MS: 7000 } });
     let opens = 0, cancelled = 0;
