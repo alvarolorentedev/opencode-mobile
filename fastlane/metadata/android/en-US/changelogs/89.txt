@@ -1,0 +1,4 @@
+- More reliable chats on slow or congested mobile networks, including faster reconnect and recovery after signal loss.
+- Prompts attempted while offline are queued and sent once connectivity returns, without duplicate delivery.
+- Chats and model choices open faster from local cache, including after a cold start.
+- Large images are compressed before upload, and network diagnostics now show link type, latency, retries, and data use.
