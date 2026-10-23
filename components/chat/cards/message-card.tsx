@@ -44,6 +44,9 @@ function TranscriptMessageImpl({
   const colorScheme = useColorScheme() ?? 'light';
   const palette = Colors[colorScheme];
   const isUser = entry.role === 'user';
+  // Non-flat user bubbles stay dark in both themes, so their code surface must
+  // use the dark palette. Flat messages follow the active theme's text color.
+  const codePalette = !flat && isUser ? Colors.dark.code : palette.code;
   const attachments = entry.details.filter((detail) => detail.kind === 'file').map((detail) => ({ uri: detail.uri || '', mime: detail.mime, filename: detail.filename || detail.label }));
   const summaryDetails = entry.details.filter((detail) => detail.kind === 'patch' || detail.kind === 'file' || detail.kind === 'retry');
   const patchSummary = t('chat:cards.updatedPatches', { count: entry.details.filter((detail) => detail.kind === 'patch').length });
@@ -108,6 +111,7 @@ function TranscriptMessageImpl({
           {attachments.length > 0 ? <AttachmentStrip attachments={attachments} /> : null}
           {entry.text ? (
             <MarkdownText
+              codePalette={codePalette}
               text={entry.text}
               color={textColor}
               fontSize={fontSize}

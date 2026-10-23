@@ -1243,3 +1243,19 @@ long-press "Copy" action on a fenced block: the clipboard matches and one light
 haptic fires without the message bubble's Copied pill or border. "Copy as
 Markdown" does not emit `onCopyPress`, so it has no haptic. Native haptics
 remain device- and system-setting-dependent.
+
+## Dark-mode markdown readability validation
+
+`tests/vitest/chat-markdown.test.ts` also asserts the renderer receives an opaque
+code-block background from the supplied palette, the matching syntax palette,
+and a transparent blockquote background. Run `test:ci:static`,
+`test:fake-server:self`, `test:e2e:web` and `build:development:android`.
+
+On Android, in both light and dark themes, send an agent message containing a
+plain fence at the root, a plain fence inside a blockquote, a plain fence inside
+a list, and a language-tagged fence. Also send a user message containing a plain
+fence, then repeat with the flat transcript preference enabled. Verify the code
+text contrasts with its background, no light block sits behind the code,
+blockquote text stays readable, and code-block copy still fires the light
+haptic. Native rendering cannot be established by the Vitest style assertions
+alone.

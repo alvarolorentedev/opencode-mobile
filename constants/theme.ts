@@ -1,7 +1,53 @@
 import { Platform } from 'react-native';
+import type { MarkdownStyle } from 'react-native-enriched-markdown';
 
 const tintColorLight = '#0F8A6C';
 const tintColorDark = '#7AE7C0';
+
+type CodeSyntaxPalette = NonNullable<NonNullable<MarkdownStyle['codeBlock']>['syntaxColors']>;
+
+export type CodePalette = {
+  background: string;
+  border: string;
+  syntax: CodeSyntaxPalette;
+};
+
+// Opaque code surfaces keep Markdown readable regardless of the bubble or
+// blockquote behind them. The syntax palettes match GitHub's light and dark
+// token colors; inheriting tokens fall back to the code block's text color.
+const lightCodePalette: CodePalette = {
+  background: '#E7EFEA',
+  border: '#D6E1DC',
+  syntax: {
+    keyword: '#CF222E',
+    string: '#0A3069',
+    number: '#0550AE',
+    constant: '#0550AE',
+    comment: '#6E7781',
+    function: '#8250DF',
+    type: '#953800',
+    property: '#0550AE',
+    tag: '#116329',
+    attribute: '#0550AE',
+  },
+};
+
+const darkCodePalette: CodePalette = {
+  background: '#0F1614',
+  border: '#2B3C38',
+  syntax: {
+    keyword: '#FF7B72',
+    string: '#A5D6FF',
+    number: '#79C0FF',
+    constant: '#79C0FF',
+    comment: '#8B949E',
+    function: '#D2A8FF',
+    type: '#FFA657',
+    property: '#79C0FF',
+    tag: '#7EE787',
+    attribute: '#79C0FF',
+  },
+};
 
 export const Colors = {
   light: {
@@ -25,6 +71,7 @@ export const Colors = {
     tabBackground: '#F9FBFA',
     tabIconDefault: '#8B989B',
     tabIconSelected: tintColorLight,
+    code: lightCodePalette,
   },
   dark: {
     text: '#EAF3EF',
@@ -47,6 +94,7 @@ export const Colors = {
     tabBackground: '#121A18',
     tabIconDefault: '#839793',
     tabIconSelected: tintColorDark,
+    code: darkCodePalette,
   },
 };
 

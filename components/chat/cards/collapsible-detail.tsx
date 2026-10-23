@@ -69,6 +69,7 @@ export function CollapsibleDetail({ group, flat = false, fontSize, palette }: { 
           <View style={styles.markdownStack}>
             {group.details.map((detail) => (
               <MarkdownText
+                codePalette={palette.code}
                 color={palette.text}
                 fontSize={fontSize}
                 key={detail.id}

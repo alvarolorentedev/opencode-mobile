@@ -2,6 +2,7 @@ import { memo, useCallback, useMemo } from 'react';
 import { Linking } from 'react-native';
 import { EnrichedMarkdownText, type MarkdownStyle } from 'react-native-enriched-markdown';
 
+import type { CodePalette } from '@/constants/theme';
 import { codeCopyHaptic } from '@/lib/haptics';
 
 const allowedLinkProtocols = new Set(['http:', 'https:', 'mailto:', 'tel:']);
@@ -18,7 +19,15 @@ function openMarkdownLink(url: string) {
   void Linking.openURL(url).catch(() => undefined);
 }
 
-function MarkdownTextImpl({ text, color, fontSize, mutedColor }: { text: string; color: string; fontSize: number; mutedColor: string }) {
+type MarkdownTextProps = {
+  codePalette: CodePalette;
+  color: string;
+  fontSize: number;
+  mutedColor: string;
+  text: string;
+};
+
+function MarkdownTextImpl({ text, color, fontSize, mutedColor, codePalette }: MarkdownTextProps) {
   const scale = fontSize / 16;
   const handleCopyPress = useCallback(() => {
     codeCopyHaptic();
@@ -34,8 +43,19 @@ function MarkdownTextImpl({ text, color, fontSize, mutedColor }: { text: string;
     list: { fontSize, color, lineHeight: 26 * scale, bulletColor: color, markerColor: color, gapWidth: 10 },
     link: { color, underline: true },
     code: { fontSize: 15 * scale, color, backgroundColor: 'rgba(0,0,0,0.08)' },
-    codeBlock: { fontSize: 15 * scale, lineHeight: 18 * scale, color, backgroundColor: 'rgba(0,0,0,0.08)', padding: 14, borderRadius: 14 },
-    blockquote: { color, fontSize: 15 * scale, borderColor: mutedColor, borderWidth: 3 },
+    codeBlock: {
+      fontSize: 15 * scale,
+      lineHeight: 18 * scale,
+      color,
+      backgroundColor: codePalette.background,
+      borderColor: codePalette.border,
+      syntaxColors: codePalette.syntax,
+      padding: 14,
+      borderRadius: 14,
+    },
+    // Clear the renderer's light default so dark-theme blockquotes and the
+    // nested code spans drawn over them stay dark.
+    blockquote: { color, fontSize: 15 * scale, borderColor: mutedColor, borderWidth: 3, backgroundColor: 'transparent' },
     table: {
       fontSize: 15 * scale,
       lineHeight: 20 * scale,
@@ -50,7 +70,7 @@ function MarkdownTextImpl({ text, color, fontSize, mutedColor }: { text: string;
       cellPaddingVertical: 6,
     },
     thematicBreak: { color: mutedColor },
-  }), [color, fontSize, mutedColor, scale]);
+  }), [codePalette, color, fontSize, mutedColor, scale]);
 
   return (
     <EnrichedMarkdownText
