@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from './helpers/fixtures.mjs';
 
 import { backendOrigin, goToTab, openReadyChat, resetScenario, seedOnboarding, sendPrompt } from './helpers/flows.mjs';
 

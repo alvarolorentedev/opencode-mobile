@@ -1,11 +1,11 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from './helpers/fixtures.mjs';
 import { spawn } from 'node:child_process';
 import { Buffer } from 'node:buffer';
 import net from 'node:net';
 
 import { fakeV1Origin } from './helpers/flows.mjs';
 
-const V1 = fakeV1Origin();
+let V1;
 async function openManual(page, url) {
   await page.goto('/', { waitUntil: 'domcontentloaded' });
   await page.getByTestId('onboarding-welcome-start').click();
@@ -26,7 +26,10 @@ async function v2Server(request, password = '') {
   return { server, origin };
 }
 
-test.beforeEach(async ({ request }) => { await request.post(`${V1}/__control/reset`, { data: { scenario: 'happy-path' } }); });
+test.beforeEach(async ({ request }) => {
+  V1 = fakeV1Origin();
+  await request.post(`${V1}/__control/reset`, { data: { scenario: 'happy-path' } });
+});
 
 test('protected V2 asks for credentials without claiming V1, rejects a wrong password and saves a hostname default once', async ({ page, request }) => {
   const { server, origin } = await v2Server(request, 'local-password');

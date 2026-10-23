@@ -1,11 +1,11 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from './helpers/fixtures.mjs';
 
 import { resetScenario, fakeV1Origin, fakeV2Origin } from './helpers/flows.mjs';
 
 // First-run setup coverage. Unlike the flow specs, these tests intentionally do
 // NOT seed `opencode-mobile.onboarding-version`, so the assistant is exercised.
 
-const FAKE_SERVER_URL = fakeV2Origin();
+let FAKE_SERVER_URL;
 
 async function waitForChat(page) {
   await expect(page.getByText('Start a new task')).toBeVisible({ timeout: 30_000 });
@@ -33,6 +33,7 @@ async function seedExistingInstall(page) {
 }
 
 test.beforeEach(async ({ request }) => {
+  FAKE_SERVER_URL = fakeV2Origin();
   await resetScenario(request);
 });
 

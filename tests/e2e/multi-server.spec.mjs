@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from './helpers/fixtures.mjs';
 import { getFreePort, spawnV2Server, waitForServer, goToTab, openChatLibrary, ensureConnectionSection, sendPrompt, addConnection } from './helpers/flows.mjs';
 
 const directory = '/workspace/demo-project';

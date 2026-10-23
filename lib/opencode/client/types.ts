@@ -76,8 +76,14 @@ export type OpencodeConnectionSettings = {
   connect?: ConnectMetadata;
 };
 
+// In the web E2E build the Playwright fixture sets this before app scripts run.
+// It is a runtime default only; saved connection settings still take priority.
+const runtimeE2EServerUrl = process.env.EXPO_PUBLIC_E2E_MODE === '1'
+  ? (globalThis as typeof globalThis & { __OPENCODE_E2E_SERVER_URL__?: string }).__OPENCODE_E2E_SERVER_URL__
+  : undefined;
+
 export const defaultConnectionSettings: OpencodeConnectionSettings = {
-  serverUrl: String(process.env.EXPO_PUBLIC_E2E_SERVER_URL || Constants.expoConfig?.extra?.e2eServerUrl || 'http://127.0.0.1:4096'),
+  serverUrl: String(runtimeE2EServerUrl || process.env.EXPO_PUBLIC_E2E_SERVER_URL || Constants.expoConfig?.extra?.e2eServerUrl || 'http://127.0.0.1:4096'),
   username: '',
   password: '',
   directory: '',

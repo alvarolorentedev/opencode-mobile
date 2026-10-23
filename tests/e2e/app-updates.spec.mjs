@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from './helpers/fixtures.mjs';
 
 import { resetScenario } from './helpers/flows.mjs';
 

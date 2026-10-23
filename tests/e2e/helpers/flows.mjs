@@ -1,4 +1,5 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from './fixtures.mjs';
+import { isReservedPort, usesCompatibility, workerBackend } from './backend.mjs';
 import { spawn } from 'node:child_process';
 import net from 'node:net';
 import { setTimeout as sleep } from 'node:timers/promises';
@@ -9,39 +10,25 @@ import { setTimeout as sleep } from 'node:timers/promises';
 // Existing flows assume the app boots straight into chat. Seed a completed
 // onboarding marker so first-run setup is skipped; the dedicated onboarding
 // spec intentionally omits this so the assistant is exercised.
-export const compatibilityTitles = [
-  'sessions archive and restore without deletion',
-  'idle chats stay active and archived cards restore and continue the same session',
-  'archived cards restore sessions in their own project and keep errors retryable',
-  'V1 providers retain API-key login alongside OAuth metadata',
-  'settings do not suggest a duplicated /api base when the API prefix is already set',
-  'composer exposes direct approvals, agent selection and thinking in the model picker without losing drafts',
-  'project files save through a conflict-checked VCS patch',
-];
-export const usesCompatibility = (title) => {
-  // Playwright tags (for example `@smoke`) are part of the title; ignore them
-  // when matching the fixed compatibility contract list.
-  const base = title.replace(/\s+@[^\s]+$/, '');
-  return compatibilityTitles.includes(base) || base.includes('v1 compatibility');
-};
-
-const origin = (urlKey, portKey, fallbackPort) => (
-  process.env[urlKey] || `http://127.0.0.1:${process.env[portKey] || fallbackPort}`
+export const fakeV2Origin = (info = test.info()) => workerBackend(info.workerIndex).v2;
+export const fakeV1Origin = (info = test.info()) => workerBackend(info.workerIndex).v1;
+export const backendOrigin = (info = test.info()) => (
+  usesCompatibility(info.title) ? fakeV1Origin(info) : fakeV2Origin(info)
 );
-export const fakeV2Origin = () => origin('E2E_FAKE_V2_URL', 'E2E_FAKE_V2_PORT', 44096);
-export const fakeV1Origin = () => origin('E2E_FAKE_V1_URL', 'E2E_FAKE_V1_PORT', 44097);
-export const backendOrigin = () => (usesCompatibility(test.info().title) ? fakeV1Origin() : fakeV2Origin());
 
 export async function getFreePort() {
-  return new Promise((resolve, reject) => {
-    const probe = net.createServer();
-    probe.unref();
-    probe.on('error', reject);
-    probe.listen(0, '127.0.0.1', () => {
-      const { port } = probe.address();
-      probe.close(() => resolve(port));
+  for (;;) {
+    const port = await new Promise((resolve, reject) => {
+      const probe = net.createServer();
+      probe.unref();
+      probe.on('error', reject);
+      probe.listen(0, '127.0.0.1', () => {
+        const { port: freePort } = probe.address();
+        probe.close(() => resolve(freePort));
+      });
     });
-  });
+    if (!isReservedPort(port)) return port;
+  }
 }
 
 export async function resetScenario(request, scenario) {
@@ -414,11 +401,8 @@ export async function exerciseInteractiveTerminal(page, request, origin, command
   return { output, input, id, snapshot };
 }
 
-export async function seedOnboarding(page, info) {
-  const legacy = usesCompatibility(info.title);
-  const legacyServerUrl = fakeV1Origin();
-  await page.addInitScript(({ useLegacy, serverUrl }) => {
+export async function seedOnboarding(page) {
+  await page.addInitScript(() => {
     globalThis.localStorage.setItem('opencode-mobile.onboarding-version', JSON.stringify({ version: 1 }));
-    if (useLegacy) globalThis.localStorage.setItem('opencode-mobile.settings', JSON.stringify({ serverUrl, username: '', directory: '' }));
-  }, { useLegacy: legacy, serverUrl: legacyServerUrl });
+  });
 }

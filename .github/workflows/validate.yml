@@ -3,10 +3,9 @@ name: Validate
 # Single source of truth for the pre-release gate. Called by pr-validate.yml,
 # build.yml, and ios-release.yml so the checks cannot drift apart.
 #
-# Static checks and the fake-server self-test run in one job while the
-# Playwright flows are sharded across four jobs. Sharding is safe because each
-# runner gets its own fake servers and web export; the fake server itself still
-# owns global state, so each shard keeps Playwright's `workers: 1`.
+# Static checks and the fake-server self-test run in one job. E2E runs in one
+# job with one web export and four Playwright workers; each worker owns a fake
+# V1/V2 server pair, so the fake server's global scenario stays isolated.
 on:
   workflow_call:
     inputs:
@@ -63,11 +62,8 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
-    strategy:
-      # One failing shard should not hide the diagnostics from the others.
-      fail-fast: false
-      matrix:
-        shard: [1, 2, 3, 4]
+    env:
+      E2E_WORKERS: '4'
 
     steps:
       - name: Checkout repository
@@ -103,7 +99,7 @@ jobs:
           fi
 
       - name: Run CI flow suite against fake OpenCode server
-        run: npx playwright test --shard=${{ matrix.shard }}/4
+        run: npx playwright test
         env:
           CI: 'true'
           EXPO_PUBLIC_E2E_MODE: '1'
@@ -112,6 +108,6 @@ jobs:
         if: failure()
         uses: actions/upload-artifact@v4
         with:
-          name: playwright-report-shard-${{ matrix.shard }}
+          name: playwright-report
           path: playwright-report/
           retention-days: 3

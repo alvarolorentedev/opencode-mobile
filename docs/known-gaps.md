@@ -75,19 +75,20 @@ Closed on 2026-10-18 except for the remote reporter:
 
 Closed on 2026-10-23:
 
-- CI runs the Playwright suite in four `--shard` jobs alongside the static job.
-  Each shard has its own fake servers and web export, so the fake server's
-  single global scenario is never shared across runners. `fullyParallel` is
-  enabled only so sharding can divide individual tests; `workers` stays at 1.
+- CI runs the Playwright suite in one job with four workers alongside the
+  static job. The web export is built and served once; each worker owns a fake
+  V1/V2 server pair, so the fake server's single global scenario is never
+  shared. The fixture selects the worker's backend URL at runtime.
 - The browser download, `.eslintcache`, TypeScript build info and static-check
   inputs are cached.
-- Local concurrent runs use `npm run test:e2e:web:isolated`, which allocates
-  fresh web/V1/V2 ports. `npm run test:e2e:smoke` runs the 17 tagged critical
-  flows, and `npm run serve:web:prebuilt` reuses an existing export.
+- Local concurrent runs use `npm run test:e2e:web:isolated`, which reserves a
+  contiguous fake-server port block and a fresh web port. `npm run
+  test:e2e:smoke` runs the 17 tagged critical flows, and `npm run
+  serve:web:prebuilt` reuses an existing export.
 
-Still deferred: multiple Playwright workers in one process. That would require
-a fake server and app build per worker. Sharding already gives CI the wall-time
-win without making the test harness worker-aware.
+Still deferred: more workers than the runner has capacity for. The worker count
+is configurable through `E2E_WORKERS` (2 locally, 4 in CI) so it can be reduced
+without changing the workflow.
 
 ## 3b. Offline outbox and native 4G validation
 

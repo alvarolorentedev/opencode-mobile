@@ -15,28 +15,28 @@ listed in `tsconfig.tests.json`; see [known gaps](known-gaps.md).
 
 ## Validation Cost And Fast Paths
 
-Measured on 2026-10-23 against the `validate` workflow:
+Measured baseline on 2026-10-23 against the previous serial workflow:
 
 - static checks: 71s on CI (~83s locally), including 47s of lint, 13s app
-  type-check, 10s test type-check, and 13s for 517 Vitest tests
+  type-check, 10s test type-check, and 13s for the Vitest suites (539 checks)
 - fake-server self-test: 7s
-- Playwright: 581s, of which 510s is test execution and ~69s is the web export
-  and server startup; 162 flows at measurement time (161 after removing the
-  temporary plan-overlay probe), one worker because the fake server owns one
-  global scenario
-- the whole `validate` job: 12.4min, or up to 20min when the Playwright browser
-  install stalls
+- Playwright: 510s of test execution for 161 flows plus ~69s for one web
+  export/server startup
+- the previous serial `validate` job: 12.4min, or up to 20min when the
+  Playwright browser install stalled
+- the new one-job/four-worker layout: 161 flows in 3.2min of test execution,
+  or 4.0min including a cold `--clear` export and server startup
 
-The browser flows, not Vitest, are the cost. They are serial because the fake
-server has a single scenario, so CI now runs four `playwright test --shard`
-jobs alongside the static job. Each shard has its own runner, fake servers and
-web export. Do not raise Playwright's `workers` setting without giving each
-worker its own fake server.
+The browser flows, not Vitest, are the cost. CI now runs one E2E job with one
+web export and four Playwright workers. Each worker owns a fake V1/V2 server
+pair, so the fake server's global scenario is isolated. The web build is
+URL-agnostic: a Playwright fixture sets the worker's backend URL at runtime,
+and saved connection settings still take priority.
 
 For local iteration:
 
 ```bash
-# Once, to produce dist-e2e with the default fake-server URL
+# Once, to produce the URL-agnostic export
 npm run build:web:e2e
 
 # Terminal 1: serve the existing export without rebuilding
@@ -44,21 +44,21 @@ npm run serve:web:prebuilt
 
 # Terminal 2: run only the spec you changed
 npx playwright test tests/e2e/chat.spec.mjs
-npm run test:e2e:smoke          # 17 critical flows, ~1 minute after the export
+npm run test:e2e:smoke          # 17 critical flows
 npm run test:e2e:last-failed    # rerun the previous failures
 ```
 
 Concurrent local runs must not share fixed ports. Use the isolated wrapper,
-which allocates a fresh web/fake-V1/fake-V2 port set, or set
-`E2E_WEB_PORT`, `E2E_FAKE_V1_PORT` and `E2E_FAKE_V2_PORT` yourself:
+which reserves a contiguous fake-server port block and a fresh web port:
 
 ```bash
 npm run test:e2e:web:isolated -- tests/e2e/realtime.spec.mjs
+E2E_SKIP_BUILD=1 npm run test:e2e:web:isolated -- tests/e2e/realtime.spec.mjs
 ```
 
-The random-port wrapper rebuilds the export because the fake V2 URL is baked
-into the web bundle. Use the prebuilt server above when you want to skip the
-export; that path keeps the default ports and reuses the running server.
+Workers default to 2 locally and 4 in CI. Override with `E2E_WORKERS`; the port
+block size follows that count. `E2E_WEB_PORT` and `E2E_FAKE_PORT_BASE` are
+available for manual setups.
 
 `build:web:e2e` keeps Metro's cache, so a warm export is a few seconds. Set
 `E2E_CLEAR=1` if you need to rule out a stale export.
@@ -336,9 +336,9 @@ The `validate` gate runs two parallel job families:
   `tsconfig.tests.json`, which excludes the harness-heavy suites listed there
   until they can be typed.
 - the same job runs `npm run test:fake-server:self`.
-- the `e2e` job runs four Playwright shards (`--shard=N/4`) against separate
-  fake servers and a separate web export per runner. Each shard keeps one
-  worker because the fake server owns global scenario state.
+- the `e2e` job builds one web export, serves it once, and runs Playwright with
+  four workers. Each worker owns a fake V1/V2 server pair; the test fixture
+  selects the worker's URL at runtime, so the export is shared.
 
 The `foss-release` job also runs `npm run test:foss`. It patches temporary
 copies of the installed Expo Android sources using a local stub-source fixture,

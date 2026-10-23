@@ -1,7 +1,7 @@
 import { spawn } from 'node:child_process';
 import { setTimeout as sleep } from 'node:timers/promises';
 
-import { expect, test } from '@playwright/test';
+import { expect, test } from './helpers/fixtures.mjs';
 
 import { backendOrigin, connectToServer, ensureAiSection, ensureConnectionSection, fakeV1Origin, getFreePort, goToTab, openReadyChat, reconnectActiveConnection, resetScenario, seedOnboarding, sendPrompt, setActiveServerUrl, waitForServer } from './helpers/flows.mjs';
 

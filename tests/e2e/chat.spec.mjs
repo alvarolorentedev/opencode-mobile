@@ -1,5 +1,5 @@
 import { Buffer } from 'node:buffer';
-import { expect, test } from '@playwright/test';
+import { expect, test } from './helpers/fixtures.mjs';
 
 import { attachFile, backendOrigin, chooseDiffSource, connectToServer, ensureConnectionSection, getFreePort, goToTab, openChatLibrary, openReadyChat, resetScenario, seedOnboarding, sendPrompt, spawnV1Server, spawnV2Server, swipeSheetHeaderDown, waitForServer } from './helpers/flows.mjs';
 

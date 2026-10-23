@@ -236,7 +236,8 @@ A red e2e run is blocking. If a failure looks intermittent, rerun the failing te
 
 ### Fast iteration
 
-CI shards Playwright four ways, but a local run is serial. For iteration:
+CI runs Playwright in one job with four workers; each worker has its own fake
+V1/V2 pair, so the per-worker global scenario stays isolated. For iteration:
 
 ```bash
 npm run test:ci:static          # cached; ~15s when warm, ~45s cold
@@ -247,10 +248,11 @@ npm run test:e2e:web:isolated -- tests/e2e/chat.spec.mjs
 
 After one `npm run build:web:e2e`, keep `npm run serve:web:prebuilt` running in
 another terminal so Playwright reuses the export instead of rebuilding it.
-Concurrent runs should use `test:e2e:web:isolated` (fresh ports) rather than the
-shared defaults. The smoke set and targeted specs are for iteration; the full
-`test:e2e:web` gate above is still required before push/release. New coverage
-that does not need the browser belongs in Vitest.
+Concurrent runs should use `test:e2e:web:isolated` (fresh port block) rather
+than the shared defaults. Override the worker count with `E2E_WORKERS`; it
+defaults to 2 locally and 4 in CI. The smoke set and targeted specs are for
+iteration; the full `test:e2e:web` gate above is still required before
+push/release. New coverage that does not need the browser belongs in Vitest.
 
 ### Local mirror for heavy checks
 

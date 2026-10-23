@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from './helpers/fixtures.mjs';
 
 // Web smoke coverage for the share route. OS share-sheet delivery and the
 // native staging path cannot run in the browser, so this only proves the route

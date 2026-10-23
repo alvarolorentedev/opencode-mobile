@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from './helpers/fixtures.mjs';
 import { Buffer } from 'node:buffer';
 
 import { fakeV2Origin } from './helpers/flows.mjs';
@@ -6,7 +6,7 @@ import { fakeV2Origin } from './helpers/flows.mjs';
 // Native APIs/SecureStore are substituted only in the development E2E build.
 const CONTROL_PLANE = 'https://api.opencodecloud.link';
 const STAGING = 'https://apistaging.opencodecloud.link';
-const SERVER = fakeV2Origin();
+let SERVER;
 const CONNECT_SERVER = 'https://connect-machine.test';
 const PRODUCT = 'fixture.connect';
 function pairingLink(id = 'pair-1') {
@@ -134,6 +134,7 @@ async function mockControlPlane(page, options = {}) {
 }
 
 test.beforeEach(async ({ request }) => {
+  SERVER = fakeV2Origin();
   expect((await request.post(`${SERVER}/__control/reset`, { data: { scenario: 'happy-path' } })).ok()).toBeTruthy();
 });
 test.afterEach(async ({ page }) => { await page.unrouteAll({ behavior: 'ignoreErrors' }); });

@@ -118,8 +118,9 @@ npm run build:ios:local
 - `npm run test:e2e:smoke` runs the 17 critical flows; `npm run test:e2e:web:isolated`
   allocates fresh ports for concurrent local runs; `npm run validate:fast` is the
   pre-push loop
-- CI shards the Playwright suite four ways and caches the browser and static-check
-  state; see `docs/testing-and-validation.md` for measured timings
+- CI runs the Playwright suite in one job with four workers, each with its own
+  fake V1/V2 pair, and caches the browser and static-check state; see
+  `docs/testing-and-validation.md` for measured timings
 - Full testing strategy documented in `TESTING.md`; remaining deferred test work in `docs/known-gaps.md`
 
 ### Configuration

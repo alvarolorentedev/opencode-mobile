@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from './helpers/fixtures.mjs';
 
 import { chooseDiffSource, connectToServer, getFreePort, goToTab, openReadyChat, resetScenario, seedOnboarding, sendPrompt, spawnV2Server, waitForServer } from './helpers/flows.mjs';
 
