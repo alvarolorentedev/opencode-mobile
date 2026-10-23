@@ -1,0 +1,3 @@
+- Manual connections can now attach custom HTTP headers per connection for gateways and proxies (Cloudflare Access, Authelia, oauth2-proxy), securely stored and sent on probes, REST, SSE, and terminal.
+- Faster chat switching with local-first session selection, optimistic replies, and coalesced refresh.
+- Code-block copy now gives haptic feedback.
