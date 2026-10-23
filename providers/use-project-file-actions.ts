@@ -1,8 +1,11 @@
 import { useCallback } from 'react';
 
 import { useProjectBrowser } from '@/providers/use-project-browser';
+import { getRequestHeaders, getServerBase } from '@/lib/opencode/client';
 import { projectPath } from '@/lib/opencode/project';
+import { projectFileDownloadUrl, projectFileFromText, projectFileMime } from '@/lib/opencode/project-file';
 import { createFullFilePatch } from '@/lib/opencode/project-patch';
+import { saveOrShareProjectFile } from '@/lib/project-file-download';
 import { listCommands as svcListCommands } from '@/providers/services/session-service';
 import { loadDiagnostics } from '@/providers/services/diagnostics-service';
 import {
@@ -10,6 +13,7 @@ import {
   getFileStatus,
   getVcsInfo,
   readFile,
+  readProjectFile,
 } from '@/providers/services/project-service';
 import type { ProjectActionsInput } from '@/providers/opencode-provider-action-inputs';
 
@@ -29,6 +33,7 @@ export function useProjectFileActions({
   projectFileRequestRef,
   currentSessionIdRef,
   diffScopeBySessionRef,
+  settingsRef,
   refreshVcsDiff,
 }: ProjectFileActionsInput) {
   const browser = useProjectBrowser({ client, isCurrentClient });
@@ -51,28 +56,57 @@ export function useProjectFileActions({
     setCommands(nextCommands || []);
     setProjectFileStatuses(nextStatuses || []);
     setVcsInfo(nextVcs);
-  }, [activeProjectPath, client, isCurrentClient]);
+  }, [activeProjectPath, client, isCurrentClient, setCommands, setProjectFileStatuses, setVcsInfo]);
 
   const refreshDiagnostics = useCallback(async () => {
     const nextDiagnostics = await loadDiagnostics(client);
     if (isCurrentClient(client)) {
       setDiagnostics(nextDiagnostics);
     }
-  }, [client, isCurrentClient]);
+  }, [client, isCurrentClient, setDiagnostics]);
 
   const openProjectFile = useCallback(async (path: string) => {
     path = projectPath(path, client.__opencode.directory || '');
     const request = ++projectFileRequestRef.current;
-    const content = await readFile(client, path);
-    if (!content) {
-      throw new Error('OpenCode did not return file content.');
-    }
-    if (content.type !== 'text' || content.encoding === 'base64') {
-      throw new Error('Binary files cannot be previewed as text.');
-    }
+    const file = await readProjectFile(client, path);
     if (!isCurrentClient(client) || request !== projectFileRequestRef.current) throw new Error('File selection was superseded.');
-    setSelectedProjectFile({ path, content });
-  }, [client, isCurrentClient]);
+    setSelectedProjectFile(file);
+  }, [client, isCurrentClient, projectFileRequestRef, setSelectedProjectFile]);
+
+  const closeProjectFile = useCallback(() => {
+    // Invalidate an in-flight open so closing cannot be undone when its read
+    // resolves after the preview has already gone away.
+    projectFileRequestRef.current += 1;
+    setSelectedProjectFile(undefined);
+  }, [projectFileRequestRef, setSelectedProjectFile]);
+
+  const downloadProjectFile = useCallback(async (path: string, signal?: AbortSignal) => {
+    path = projectPath(path, client.__opencode.directory || '');
+    if (client.compatibility) {
+      const content = await readFile(client, path);
+      if (signal?.aborted) throw new Error('Download canceled.');
+      if (!isCurrentClient(client)) throw new Error('The project changed before downloading.');
+      if (content.type !== 'text' || content.encoding === 'base64') {
+        throw new Error('Binary files cannot be downloaded from this server.');
+      }
+      await saveOrShareProjectFile({
+        filename: path.split('/').pop() || path,
+        mime: projectFileMime(path),
+        bytes: new TextEncoder().encode(content.content),
+        signal,
+      });
+      return;
+    }
+    const settings = settingsRef.current;
+    const base = getServerBase(settings.serverUrl);
+    await saveOrShareProjectFile({
+      url: projectFileDownloadUrl({ origin: base.origin, pathPrefix: base.pathPrefix, directory: client.__opencode.directory || '', path }),
+      headers: getRequestHeaders(settings),
+      filename: path.split('/').pop() || path,
+      mime: projectFileMime(path),
+      signal,
+    });
+  }, [client, isCurrentClient, settingsRef]);
 
   const saveProjectFile = useCallback(async (path: string, expectedContent: string, content: string) => {
     path = projectPath(path, client.__opencode.directory || '');
@@ -93,7 +127,7 @@ export function useProjectFileActions({
         throw error;
       }
       if (!isCurrentClient(client)) throw error;
-      setSelectedProjectFile({ path, content: recovered });
+      setSelectedProjectFile(projectFileFromText(path, recovered));
       await refreshServerFeatures();
       return;
     }
@@ -101,7 +135,7 @@ export function useProjectFileActions({
     if (!isCurrentClient(client)) throw new Error('The project changed before saving completed.');
     if (saved.type !== 'text' || saved.encoding === 'base64' || saved.content !== content) throw new Error('The saved file did not match your changes. Reopen it before retrying.');
     if (isCurrentClient(client) && request === projectFileRequestRef.current) {
-      setSelectedProjectFile({ path, content: saved });
+      setSelectedProjectFile(projectFileFromText(path, saved));
       await refreshServerFeatures();
       const activeSessionId = currentSessionIdRef.current;
       const scope = activeSessionId ? diffScopeBySessionRef.current[activeSessionId] : undefined;
@@ -109,7 +143,7 @@ export function useProjectFileActions({
         void refreshVcsDiff(scope, true);
       }
     }
-  }, [client, isCurrentClient, refreshServerFeatures, refreshVcsDiff]);
+  }, [client, currentSessionIdRef, diffScopeBySessionRef, isCurrentClient, projectFileRequestRef, refreshServerFeatures, refreshVcsDiff, setSelectedProjectFile]);
 
-  return { refreshServerFeatures, refreshDiagnostics, browser, openProjectFile, saveProjectFile };
+  return { refreshServerFeatures, refreshDiagnostics, browser, openProjectFile, saveProjectFile, closeProjectFile, downloadProjectFile };
 }

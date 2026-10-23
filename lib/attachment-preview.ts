@@ -111,6 +111,31 @@ export async function readAttachmentText(attachment: PromptAttachment, signal?: 
 }
 
 let previewCounter = 0;
+// Project files are read from the OpenCode API as bytes, so they bypass the
+// chat attachment 10 MB limit. Callers decide whether a preview is appropriate.
+export async function prepareAttachmentBytes(bytes: Uint8Array, mime: string, filename: string, signal?: AbortSignal) {
+  if (signal?.aborted) throw new Error('Attachment read canceled.');
+  if (Platform.OS === 'web') {
+    const buffer = bytes.byteOffset === 0 && bytes.byteLength === bytes.buffer.byteLength
+      ? bytes.buffer
+      : bytes.slice().buffer;
+    const uri = URL.createObjectURL(new Blob([buffer as ArrayBuffer], { type: mime }));
+    return { uri, release: () => URL.revokeObjectURL(uri) };
+  }
+  const { File, Paths } = await import('expo-file-system');
+  const name = filename.replace(/[^\w.-]/g, '_') || 'file';
+  const file = new File(Paths.cache, `preview-${Date.now()}-${++previewCounter}-${name}`);
+  try {
+    if (signal?.aborted) throw new Error('Attachment read canceled.');
+    file.create();
+    file.write(bytes);
+    return { uri: file.uri, release: () => { if (file.exists) file.delete(); } };
+  } catch (error) {
+    if (file.exists) file.delete();
+    throw error;
+  }
+}
+
 export async function prepareAttachmentFile(attachment: PromptAttachment, signal?: AbortSignal) {
   if (signal?.aborted) throw new Error('Attachment read canceled.');
   validateAttachmentUri(attachment.uri);

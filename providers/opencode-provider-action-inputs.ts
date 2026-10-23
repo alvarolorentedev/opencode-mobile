@@ -7,12 +7,12 @@ import type {
   ScopedOpencodeClient,
   ServerContract,
 } from '@/lib/opencode/client';
+import type { ProjectFile } from '@/lib/opencode/project-file';
 import type { SessionMessageRecord } from '@/lib/opencode/format';
 import type {
   Command,
   Config,
   File,
-  FileContent,
   FileDiff,
   GlobalSession,
   Project,
@@ -69,7 +69,7 @@ export type ProjectActionsInput = {
   setPendingQuestionsBySession: Dispatch<SetStateAction<Record<string, PendingQuestionRequest[]>>>;
   suppressedPendingRequestIdsRef?: { current: Set<string> };
   setProjectFileStatuses: Dispatch<SetStateAction<File[]>>;
-  setSelectedProjectFile: Dispatch<SetStateAction<{ path: string; content: FileContent } | undefined>>;
+  setSelectedProjectFile: Dispatch<SetStateAction<ProjectFile | undefined>>;
   setVcsInfo: Dispatch<SetStateAction<VcsInfo | undefined>>;
   setCommands: Dispatch<SetStateAction<Command[]>>;
   setDiagnostics: Dispatch<SetStateAction<Diagnostics | undefined>>;
@@ -130,6 +130,7 @@ export type SessionActionsInput = {
   fetchSessions: (silent?: boolean) => Promise<Session[]>;
   refreshSessions: (silent?: boolean) => Promise<unknown>;
   refreshMessages: (sessionId: string, silent?: boolean, options?: { mode?: TranscriptRefreshMode }) => Promise<SessionMessageRecord[]>;
+  beginHydration: (sessionId: string) => () => void;
   refreshSessionDiff: (sessionId: string, silent?: boolean, messageId?: string) => Promise<FileDiff[]>;
   refreshSessionTodos: (sessionId: string) => Promise<Todo[]>;
   refreshVcsDiff: (scope: 'uncommitted' | 'branch', silent?: boolean) => Promise<FileDiff[]>;

@@ -33,7 +33,15 @@
     "discardTitle": "Discard edits?",
     "discardMessage": "Your unsaved edits will be lost.",
     "discard": "Discard",
-    "preview": "File preview"
+    "preview": "File preview",
+    "download": "Download",
+    "saveOrOpen": "Save or open",
+    "documentPreview": "This file type cannot be previewed in the app.",
+    "binaryUnavailable": "This server does not return binary file contents.",
+    "previewTooLarge": "This file is too large to preview. Download it instead.",
+    "previewFailed": "This file could not be previewed.",
+    "loadingPreview": "Loading preview…",
+    "size": "Size: {{size}}"
   },
   "worktrees": {
     "title": "Worktrees",
@@ -73,6 +81,7 @@
     "createWorktree": "Could not create the worktree.",
     "resetWorktree": "Could not reset the worktree.",
     "removeWorktree": "Could not remove the worktree.",
-    "addProject": "Could not add project."
+    "addProject": "Could not add project.",
+    "downloadFile": "Could not download the file."
   }
 }

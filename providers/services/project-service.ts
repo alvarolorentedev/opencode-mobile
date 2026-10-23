@@ -1,5 +1,11 @@
 import type { ScopedOpencodeClient } from '@/lib/opencode/client';
 import { projectEntries, projectWorktrees } from '@/lib/opencode/project';
+import {
+  knownProjectFileKind,
+  projectFileFromBytes,
+  projectFileFromV1Content,
+  projectFileWithoutContent,
+} from '@/lib/opencode/project-file';
 import { decodeFile } from '@/lib/opencode/v2/shared';
 import * as v1 from '@/lib/opencode/compat/v1/project';
 const location = (client: ScopedOpencodeClient) => ({ location: { directory: client.__opencode.directory } });
@@ -14,6 +20,18 @@ export async function listFiles(client: ScopedOpencodeClient, path: string) {
 export async function readFile(client: ScopedOpencodeClient, path: string) {
   return client.compatibility ? v1.readFile(client.compatibility, path) : decodeFile(await client.api!.file.read({ ...location(client), path }));
 }
+export async function readProjectFile(client: ScopedOpencodeClient, path: string) {
+  // Archives, PDFs and installers do not need a server read just to show the
+  // document card. The provider streams their download instead.
+  if (knownProjectFileKind(path) === 'document') {
+    return projectFileWithoutContent(path, client.__opencode.contract === 'v2');
+  }
+  if (client.compatibility) {
+    return projectFileFromV1Content(path, await v1.readFile(client.compatibility, path));
+  }
+  return projectFileFromBytes(path, await client.api!.file.read({ ...location(client), path }));
+}
+
 export async function getFileStatus(client: ScopedOpencodeClient) {
   return client.compatibility ? v1.getFileStatus(client.compatibility) : (await client.api!.vcs.status(location(client))).data.map((status) => ({ path: status.file, added: status.additions, removed: status.deletions, status: status.status }));
 }

@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 
 import { projectPath, projectEntries, projectWorktrees } from '@/lib/opencode/project';
+import { projectFileDownloadUrl } from '@/lib/opencode/project-file';
 import { findFiles, listFiles, readFile, listWorktrees } from '@/providers/services/project-service';
 import { decodeFile } from '@/lib/opencode/v2/shared';
 
@@ -24,6 +25,18 @@ describe('project protocol', () => {
     expect(decodeFile(new Uint8Array([0, 65]))).toMatchObject({ type: 'binary' });
     expect(decodeFile(new Uint8Array([255, 254]))).toMatchObject({ type: 'binary' });
     expect(decodeFile(new TextEncoder().encode('hello'))).toEqual({ type: 'text', content: 'hello' });
+  });
+  it('builds a scoped, path-safe V2 download URL', () => {
+    const source = new URL(projectFileDownloadUrl({
+      origin: 'http://host',
+      pathPrefix: '/api',
+      directory: '/repo',
+      path: 'src/a b.png',
+    }));
+    expect(source.pathname).toBe('/api/fs/read/src/a%20b.png');
+    expect(source.searchParams.get('location[directory]')).toBe('/repo');
+    expect(new URL(projectFileDownloadUrl({ origin: 'http://host', pathPrefix: '/proxy/api', directory: '/repo', path: 'src/a.ts' })).pathname)
+      .toBe('/proxy/api/fs/read/src/a.ts');
   });
   it('scopes every V2 filesystem request and maps directory-only worktrees', async () => {
     const api = { file: { find: vi.fn(async () => ({ data: [{ path: 'src/a.ts', type: 'file' }] })), list: vi.fn(async () => ({ data: [{ path: 'src', type: 'directory' }] })), read: vi.fn(async () => new TextEncoder().encode('hello')) }, worktree: { list: vi.fn(async () => [{ directory: '/worktrees/task' }]) } };

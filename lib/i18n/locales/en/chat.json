@@ -64,6 +64,15 @@
     "loadEarlierDescription": "The newest messages in this turn are tool activity. Load earlier messages to see the conversation.",
     "loadEarlierAction": "Load earlier messages"
   },
+  "activity": {
+    "used": "Used {{count}} {{tools}}",
+    "thought": "Thought",
+    "thoughtCount": "Thought · {{count}}",
+    "expandActivity": "Expand activity",
+    "collapseActivity": "Collapse activity",
+    "expandItem": "Expand {{item}}",
+    "collapseItem": "Collapse {{item}}"
+  },
   "cards": {
     "respondToContinue": "Approval needed",
     "waitingForAnswer": "OpenCode is waiting for your answer before it can continue.",

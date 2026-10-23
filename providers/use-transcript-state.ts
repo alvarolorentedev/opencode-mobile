@@ -264,18 +264,28 @@ export function useTranscriptState({
     void backfillDisplayed(currentSessionId).catch(() => undefined);
   }, [backfillDisplayed, currentSessionId]);
 
+  const beginHydration = useCallback((sessionId: string) => {
+    const request = (hydrationRequestRef.current[sessionId] ?? 0) + 1;
+    hydrationRequestRef.current[sessionId] = request;
+    setHydratingSessionIds((current) => (
+      current[sessionId] ? current : { ...current, [sessionId]: true }
+    ));
+    return () => {
+      if (hydrationRequestRef.current[sessionId] !== request) {
+        return;
+      }
+      delete hydrationRequestRef.current[sessionId];
+      setHydratingSessionIds((current) => (
+        current[sessionId] ? { ...current, [sessionId]: false } : current
+      ));
+    };
+  }, []);
+
   const refreshMessages = useCallback(
     async (sessionId: string, silent = false, options?: { mode?: TranscriptRefreshMode }) => {
       const held = messagesBySessionRef.current[sessionId] ?? [];
       const shouldHydrate = !silent || held.length === 0;
-      let hydrationRequest: number | undefined;
-      if (shouldHydrate) {
-        hydrationRequest = (hydrationRequestRef.current[sessionId] ?? 0) + 1;
-        hydrationRequestRef.current[sessionId] = hydrationRequest;
-        setHydratingSessionIds((current) => (
-          current[sessionId] ? current : { ...current, [sessionId]: true }
-        ));
-      }
+      const finishHydration = shouldHydrate ? beginHydration(sessionId) : undefined;
       if (!silent) {
         setIsRefreshingMessages(true);
       }
@@ -351,15 +361,10 @@ export function useTranscriptState({
         if (!silent) {
           setIsRefreshingMessages(false);
         }
-        if (hydrationRequest !== undefined && hydrationRequestRef.current[sessionId] === hydrationRequest) {
-          delete hydrationRequestRef.current[sessionId];
-          setHydratingSessionIds((current) => (
-            current[sessionId] ? { ...current, [sessionId]: false } : current
-          ));
-        }
+        finishHydration?.();
       }
     },
-    [client, isCurrentClient, loadDisplayedWindow, persist, recordUsageAndTodos, setIsRefreshingMessages, setMessagesBySession, transcriptVerbosity],
+    [beginHydration, client, isCurrentClient, loadDisplayedWindow, persist, recordUsageAndTodos, setIsRefreshingMessages, setMessagesBySession, transcriptVerbosity],
   );
 
   const loadOlderMessages = useCallback(
@@ -417,6 +422,7 @@ export function useTranscriptState({
     messageWindows,
     loadingOlderBySession,
     hydratingSessionIds,
+    beginHydration,
     usageStepsBySession,
     todoRecordsBySession,
     refreshMessages,

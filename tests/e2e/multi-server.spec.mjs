@@ -255,20 +255,25 @@ test('V2 single-server mode hides redundant context and restores it when a secon
 });
 
 test('V2 keeps server chips visible for long chat titles', async ({ page, request }) => {
-  const title = `Long-session-${'x'.repeat(96)}`;
-  await request.post(`${servers[0].serverUrl}/api/session`, { data: { title, location: { directory } } });
+  const longTitle = `Long-session-${'x'.repeat(96)}`;
+  await request.post(`${servers[0].serverUrl}/api/session`, { data: { title: longTitle, location: { directory } } });
   await openChatLibrary(page);
-  const row = page.getByTestId('chat-library').getByRole('button', { name: `Open ${title}, MacBook Pro, ${directory}`, exact: true });
+  const row = page.getByTestId('chat-library').getByRole('button', { name: `Open ${longTitle}, MacBook Pro, ${directory}`, exact: true });
   const chip = row.getByTestId('chat-library-server-chip');
+  const titleText = row.getByText(longTitle, { exact: true });
   await expect(row).toBeVisible();
+  await expect(titleText).toBeVisible();
   await expect(chip).toHaveText('MacBook Pro');
   await expect(chip).toBeVisible();
   const rowBox = await row.boundingBox();
+  const titleBox = await titleText.boundingBox();
   const chipBox = await chip.boundingBox();
   expect(rowBox).not.toBeNull();
+  expect(titleBox).not.toBeNull();
   expect(chipBox).not.toBeNull();
   expect(chipBox.x).toBeGreaterThanOrEqual(rowBox.x);
   expect(chipBox.x + chipBox.width).toBeLessThanOrEqual(rowBox.x + rowBox.width + 1);
+  expect(chipBox.y).toBeGreaterThanOrEqual(titleBox.y + titleBox.height - 1);
 });
 
 test('V2 opens a chat on another server without waiting for its session list', async ({ page, request }) => {
@@ -279,15 +284,21 @@ test('V2 opens a chat on another server without waiting for its session list', a
   await expect(row).toBeVisible();
 
   let release;
+  let heldRequests = 0;
   const gate = new Promise((resolve) => { release = resolve; });
   await page.route(`${servers[1].serverUrl}/api/session**`, async (route) => {
-    if (route.request().method() === 'GET') await gate;
+    if (route.request().method() === 'GET') {
+      heldRequests += 1;
+      await gate;
+    }
     await route.continue();
   });
 
   try {
     await row.click();
     await expect(page.getByTestId('chat-library')).not.toBeVisible({ timeout: 10_000 });
+    await expect.poll(() => heldRequests).toBeGreaterThan(0);
+    await expect(page.getByTestId('transcript-skeleton')).toBeVisible();
   } finally {
     release();
   }

@@ -460,6 +460,7 @@ export function useChatViewController() {
       expandedDiffId, hasTranscriptMessages, isBootstrappingChat, isCancelingRevert, isRefreshingDiffs, isRefreshingMessages,
       pendingInteractions, pendingPrompts, progressIcon, progressVisible, retryAttempt,
       running, selectedDiffMessageId, speakingMessageId, transcriptPaging,
+      transcriptVerbosity: display.verbosity,
     },
     composer: {
       attachments, availableAgents, chatPreferences, commands, draft,

@@ -98,6 +98,7 @@ function sessionCrudInput(patch: Record<string, unknown> = {}) {
       fetchSessions: async () => [],
       refreshSessions: async () => undefined,
       refreshMessages: async () => [],
+      beginHydration: () => () => undefined,
       refreshSessionDiff: async () => [],
       refreshSessionTodos: async () => [],
       refreshVcsDiff: async () => [],

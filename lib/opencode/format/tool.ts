@@ -11,6 +11,39 @@ export function isCompletedToolPart(
   return part.type === 'tool' && part.state.status === 'completed';
 }
 
+const TOOL_DISPLAY_NAMES: Record<string, string> = {
+  apply_patch: 'Patch',
+  bash: 'Shell',
+  edit: 'Edit',
+  fetch: 'Fetch',
+  fish: 'Shell',
+  glob: 'Glob',
+  grep: 'Grep',
+  list: 'List',
+  multiedit: 'Edit',
+  patch: 'Patch',
+  read: 'Read',
+  search: 'Search',
+  sh: 'Shell',
+  shell: 'Shell',
+  skill: 'Skill',
+  task: 'Task',
+  todowrite: 'Plan',
+  webfetch: 'Fetch',
+  websearch: 'Search',
+  write: 'Write',
+  zsh: 'Shell',
+};
+
+export function getToolDisplayName(tool: string) {
+  const normalized = tool.trim().toLowerCase();
+  if (!normalized) {
+    return tool;
+  }
+
+  return TOOL_DISPLAY_NAMES[normalized] ?? `${normalized.charAt(0).toUpperCase()}${normalized.slice(1)}`;
+}
+
 export function getToolTitle(part: ToolPart) {
   return 'title' in part.state && part.state.title ? part.state.title : part.tool;
 }

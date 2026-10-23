@@ -11,11 +11,11 @@ import {
 import { getConnectionScope } from '@/lib/connection-scope';
 import type { SessionMessageRecord } from '@/lib/opencode/format';
 import { getConnectControlPlanes } from '@/lib/connect';
+import type { ProjectFile } from '@/lib/opencode/project-file';
 import type {
   Command,
   Config,
   File,
-  FileContent,
   FileDiff,
   GlobalSession,
   Project,
@@ -84,7 +84,7 @@ export function useOpencodeProviderState(initial?: { settings: OpencodeConnectio
   const [projectPathsByConnection, setProjectPathsByConnection] = useState<ProjectPathsByConnection>({});
   const [commands, setCommands] = useState<Command[]>([]);
   const [projectFileStatuses, setProjectFileStatuses] = useState<File[]>([]);
-  const [selectedProjectFile, setSelectedProjectFile] = useState<{ path: string; content: FileContent }>();
+  const [selectedProjectFile, setSelectedProjectFile] = useState<ProjectFile>();
   const [vcsInfo, setVcsInfo] = useState<VcsInfo>();
   const [diagnostics, setDiagnostics] = useState<Diagnostics>();
 

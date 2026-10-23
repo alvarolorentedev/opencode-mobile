@@ -7,13 +7,13 @@ import { AppState, View, type NativeScrollEvent, type NativeSyntheticEvent } fro
 import { ActivityIndicator, Button, Card, Text, TouchableRipple } from 'react-native-paper';
 
 import { TranscriptMessage } from '@/components/chat/chat-cards';
-import { CollapsibleDetail } from '@/components/chat/cards/collapsible-detail';
+import { ActivityGroupRow } from '@/components/chat/cards/activity-group';
 import { styles, slimStyles } from '@/components/chat/chat-view-styles';
 import { STARTER_PROMPT_KEYS } from '@/components/chat/chat-view-utils';
 import { TranscriptSkeleton } from '@/components/chat/content/transcript-skeleton';
 import { Colors } from '@/constants/theme';
 import type { TranscriptEntry } from '@/lib/opencode/format';
-import type { TranscriptRow } from '@/lib/opencode/transcript';
+import type { TranscriptRow, TranscriptVerbosity } from '@/lib/opencode/transcript';
 
 type Palette = typeof Colors.light;
 type Connection = { status: 'idle' | 'connecting' | 'connected' | 'error'; message: string };
@@ -65,6 +65,7 @@ type TranscriptListProps = {
   speakingMessageId?: string;
   slim: boolean;
   transcriptFontSize: number;
+  transcriptVerbosity: TranscriptVerbosity;
 };
 
 export function TranscriptList({
@@ -95,6 +96,7 @@ export function TranscriptList({
   speakingMessageId,
   slim,
   transcriptFontSize,
+  transcriptVerbosity,
 }: TranscriptListProps) {
   const { t } = useTranslation();
   const focused = useIsFocused();
@@ -202,14 +204,14 @@ export function TranscriptList({
       onStartReached={hasOlderMessages ? onLoadOlderMessages : undefined}
       onStartReachedThreshold={0.5}
       renderItem={({ item: row }) => {
-        if (row.type === 'details') {
+        if (row.type === 'activity') {
           return (
             <View style={[
               styles.transcriptItem,
               slim && slimStyles.transcriptItem,
               flatTranscript && (slim ? slimStyles.transcriptItemFlat : styles.transcriptItemFlat),
             ]}>
-              <CollapsibleDetail flat={flatTranscript} fontSize={transcriptFontSize} group={row.group} palette={palette} />
+              <ActivityGroupRow flat={flatTranscript} fontSize={transcriptFontSize} group={row.group} palette={palette} />
             </View>
           );
         }
@@ -234,6 +236,7 @@ export function TranscriptList({
               onRevert={entry.role === 'user' ? () => onRevertMessage(entry.id) : undefined}
               onToggleSpeak={() => onToggleSpeak(entry)}
               speaking={speakingMessageId === entry.id}
+              verbosity={transcriptVerbosity}
             />
           </View>
         );

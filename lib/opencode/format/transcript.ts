@@ -26,11 +26,16 @@ export function toTranscriptEntry(record: SessionMessageRecord): TranscriptEntry
     if (part.type === 'reasoning') {
       const text = part.text.trim();
       if (text) {
+        const start = part.time?.start;
+        const end = part.time?.end;
         details.push({
           id,
           kind: 'reasoning',
           label: 'Reasoning',
           body: text,
+          ...(typeof start === 'number' && typeof end === 'number'
+            ? { durationMs: Math.max(0, end - start) }
+            : {}),
         });
       }
       return;

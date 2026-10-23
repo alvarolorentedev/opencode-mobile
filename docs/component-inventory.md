@@ -13,7 +13,8 @@ stops media; temporary native files are released. PDF/Office documents use the
 system share/viewer on native and browser download/open on web. Preview loading
 and URI/file handling live in `lib/attachment-preview.ts`, with the existing
 10 MB limit. Declared oversize and encoded data are rejected before allocation; unknown-size downloads stop at the streamed limit. Closing/backgrounding aborts pending reads, and local originals are never deleted. Image tiles and the full image preview use contain fit; the preview
-fills the sheet's available height.
+fills the sheet's available height. The audio and video players live in
+`components/ui/media-preview.tsx` and are shared with project file previews.
 
 `pending-prompts.tsx` renders provider-derived OpenCode 2 sending/waiting entries
 in a bounded, scrollable stack directly above the composer. It does not own
@@ -106,7 +107,7 @@ declared once, at the leaves.
 
 - Chat keeps its transcript and pending cards mounted while changes are reviewed.
 - transcript messages use FlashList virtualization; it starts at the bottom, follows additions only from the bottom, and preserves the visible position otherwise. Because FlashList measures progressively, the tail is re-asserted across a few frames on a session switch or data change, and the list re-applies its tail/offset when the Chat tab regains focus or the app returns to the foreground, so an Android detach or background/lock cannot leave it at the top or undrawn. A starter-prompt card is shown only for a session with no transcript content; the skeleton is shown for target bootstrap or a cold fetch with no held records. The initial pull backfills until 10 entries are displayable at the configured verbosity, so a tool-heavy tail cannot leave the view blank.
-- Transcript verbosity (`basic`/`reasoning`/`verbose`) controls which native timeline records render. Details are first-class rows (`cards/collapsible-detail.tsx`): contiguous same-tool calls (or contiguous reasoning) merge into one collapsible whose content grows as streamed calls arrive, a message bubble breaks the group, and hidden file-mutating tools are skipped before grouping. Non-shell groups use the shared markdown renderer; shell groups render one raw, non-copyable bash block (`$ command` + output per call) with a single-line `Running <command>` header. Group rows use the assistant bubble width. V1-only subtask/step/agent details and the `step-finish` usage marker are never rendered; `edit`/`write`/`multiedit`/`apply_patch` details are hidden.
+- Transcript verbosity (`basic`/`reasoning`/`verbose`) controls which native timeline records render. Details are first-class activity rows (`cards/activity-group.tsx` + `cards/activity-item.tsx`): contiguous reasoning, tool, and patch details merge into one two-level run whose content grows as streamed details arrive, and a message bubble breaks the run. The level-one header reads `Used N <tools>` (hidden file-mutating tools are counted but not rendered as duplicate rows) or `Thought · N` for a reasoning-only run; a run with active work opens automatically, and a manual toggle wins afterward. Level-two child rows expand reasoning markdown, one raw non-copyable shell block (`$ command` + output), a generic tool body, or a changed-file list. Run rows use the assistant bubble width. V1-only subtask/step/agent details and the `step-finish` usage marker are never rendered; `edit`/`write`/`multiedit`/`apply_patch` details remain hidden as rows.
 - A centered changes chip above the composer shows file count and green additions/red deletions for the selected scope. It hides at zero files and omits line totals for filename-only patches. Tapping opens the shared Files changed overlay with refresh, source selection, and diff accordions. Changes use a compact bottom sheet (55% of the viewport where safe areas permit), a centered file-count title, close icon, and a three-dot source button instead of separate summary/source cards.
 - Changes overlay scopes: `Turn` (per-turn snapshot diff, with a picker when multiple turns have diffs), `Uncommitted`, and `Branch` (VCS working tree / default-branch diffs)
 - displays starter prompts only when the selected session has no transcript content at all
@@ -383,6 +384,8 @@ This is important to parity because the chat layout is intentionally dense and h
 - provides one project refresh action
 - shows files directly with breadcrumbs and scoped search; worktree controls live in the shared project picker
 - opens file viewing and editing in a focused full-screen surface
+- `components/project/file-preview.tsx` renders text editing, raster-image/audio/video previews, and a document/download fallback. Media bytes are prepared through the shared attachment cache helper, released on close, and capped at 25 MB. Download actions call the provider, which streams authenticated V2 file reads on native and creates a browser download on web.
+- `components/ui/media-preview.tsx` owns the shared audio/video players used by both chat attachments and project files
 
 ## `app/(tabs)/settings.tsx`
 
@@ -1081,7 +1084,7 @@ picker and provider selection action; Terminal follows that directory.
 
 ## Multi-server V2 surfaces
 
-- `chat-library.tsx`: existing row and swipe treatment in one mixed list; server chips that stay visible beside long titles, an in-flight row indicator while a chat opens or is managed, search, server/project dropdowns and the sole Hide subagents toggle. Its New chat action closes the library and opens the New chat sheet. The previous compatibility view is retained in `chat-library-v1.tsx`.
+- `chat-library.tsx`: existing row and swipe treatment in one mixed list; server chips that stay visible below long titles, an in-flight row indicator while a chat opens or is managed, search, server/project dropdowns and the sole Hide subagents toggle. Its New chat action closes the library and opens the New chat sheet. The previous compatibility view is retained in `chat-library-v1.tsx`.
 - `new-chat-sheet.tsx`: mirrors `new-terminal-sheet.tsx`; confirms server, project and working directory before the provider creates and opens the chat in that workspace.
 - `project-picker.tsx`: server groups, search, retry/stale state and explicit server ownership for adding/removing projects. Existing worktree controls remain.
 - `new-terminal-sheet.tsx`: confirms server, project and resolved cwd before PTY creation. `retained-terminals.tsx` holds the renderer hosts; the terminal picker lists all retained owners.

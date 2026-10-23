@@ -1,3 +1,5 @@
+import { Buffer } from 'node:buffer';
+
 const now = () => Date.now();
 
 export function getNow() {
@@ -106,6 +108,8 @@ export function createState(scenario) {
     files: {
       'app/(tabs)/index.tsx': 'export default function ChatLandingScreen() {\n  return null;\n}\n',
       'assets/binary.dat': '\0binary',
+      'assets/archive.zip': Buffer.from('PK\u0003\u0004fake zip fixture'),
+      'assets/pixel.png': Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=', 'base64'),
       'README.md': '# Demo project\n\nDeterministic fake OpenCode workspace.\n',
       'src/demo.ts': 'export const demo = "OpenCode 1.18.3";\n',
       'src/feature.ts': 'export function feature() {\n  return true;\n}\n',

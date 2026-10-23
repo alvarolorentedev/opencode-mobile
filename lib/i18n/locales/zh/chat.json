@@ -64,6 +64,15 @@
     "loadEarlierDescription": "本回合的最新消息是工具活动。加载更早的消息以查看对话。",
     "loadEarlierAction": "加载更早的消息"
   },
+  "activity": {
+    "used": "使用了 {{count}} {{tools}}",
+    "thought": "思考",
+    "thoughtCount": "思考 · {{count}}",
+    "expandActivity": "展开活动",
+    "collapseActivity": "收起活动",
+    "expandItem": "展开 {{item}}",
+    "collapseItem": "收起 {{item}}"
+  },
   "cards": {
     "respondToContinue": "需要批准",
     "waitingForAnswer": "OpenCode 正在等待你的回答，然后才能继续。",

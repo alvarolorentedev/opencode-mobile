@@ -33,7 +33,15 @@
     "discardTitle": "編集を破棄しますか？",
     "discardMessage": "未保存の編集内容は失われます。",
     "discard": "破棄",
-    "preview": "ファイルのプレビュー"
+    "preview": "ファイルのプレビュー",
+    "download": "ダウンロード",
+    "saveOrOpen": "保存または開く",
+    "documentPreview": "この種類のファイルはアプリ内でプレビューできません。",
+    "binaryUnavailable": "このサーバーはバイナリファイルの内容を返しません。",
+    "previewTooLarge": "このファイルはプレビューするには大きすぎます。代わりにダウンロードしてください。",
+    "previewFailed": "このファイルをプレビューできませんでした。",
+    "loadingPreview": "プレビューを読み込み中…",
+    "size": "サイズ: {{size}}"
   },
   "worktrees": {
     "title": "ワークツリー",
@@ -73,6 +81,7 @@
     "createWorktree": "ワークツリーを作成できませんでした。",
     "resetWorktree": "ワークツリーをリセットできませんでした。",
     "removeWorktree": "ワークツリーを削除できませんでした。",
-    "addProject": "プロジェクトを追加できませんでした。"
+    "addProject": "プロジェクトを追加できませんでした。",
+    "downloadFile": "ファイルをダウンロードできませんでした。"
   }
 }

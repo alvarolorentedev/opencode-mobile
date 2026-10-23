@@ -64,6 +64,15 @@
     "loadEarlierDescription": "इस टर्न के नवीनतम संदेश टूल गतिविधि हैं। बातचीत देखने के लिए पुराने संदेश लोड करें।",
     "loadEarlierAction": "पुराने संदेश लोड करें"
   },
+  "activity": {
+    "used": "{{count}} {{tools}} उपयोग किए",
+    "thought": "विचार",
+    "thoughtCount": "विचार · {{count}}",
+    "expandActivity": "गतिविधि विस्तृत करें",
+    "collapseActivity": "गतिविधि संक्षिप्त करें",
+    "expandItem": "{{item}} विस्तृत करें",
+    "collapseItem": "{{item}} संक्षिप्त करें"
+  },
   "cards": {
     "respondToContinue": "अनुमोदन आवश्यक है",
     "waitingForAnswer": "जारी रखने से पहले OpenCode आपके उत्तर की प्रतीक्षा कर रहा है।",

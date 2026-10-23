@@ -1,11 +1,11 @@
 import type { useProjectBrowser } from '@/providers/use-project-browser';
 import type { WorktreeCatalog } from '@/providers/use-worktree-state';
 import type { PendingPrompt } from '@/lib/opencode/prompt-inbox';
+import type { ProjectFile } from '@/lib/opencode/project-file';
 import type {
   Command,
   Config,
   File,
-  FileContent,
   FileDiff,
   GlobalSession,
   McpLocalConfig,
@@ -304,10 +304,16 @@ export type ProjectsContextValue = {
 export type ProjectFilesContextValue = {
   browser: ReturnType<typeof useProjectBrowser>;
   projectFileStatuses: File[];
-  selectedProjectFile?: { path: string; content: FileContent };
+  // The selected file, its bytes for inline media preview, and every file
+  // action share one member so the public context surface stays bounded.
+  projectFile: {
+    selected?: ProjectFile;
+    open: (path: string) => Promise<void>;
+    save: (path: string, expectedContent: string, content: string) => Promise<void>;
+    close: () => void;
+    download: (path: string, signal?: AbortSignal) => Promise<void>;
+  };
   vcsInfo?: VcsInfo;
-  openProjectFile: (path: string) => Promise<void>;
-  saveProjectFile: (path: string, expectedContent: string, content: string) => Promise<void>;
   worktrees: WorktreeCatalog;
   refreshWorktrees: () => Promise<void>;
   createWorktree: (name?: string, startCommand?: string) => Promise<void>;

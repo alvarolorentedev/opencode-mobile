@@ -119,6 +119,7 @@ export function ChatView() {
             speakingMessageId={content.speakingMessageId}
             slim={header.slim}
             transcriptFontSize={normalizeTranscriptFontSize(composer.chatPreferences.transcriptFontSize)}
+            transcriptVerbosity={content.transcriptVerbosity}
           />
           <ChangesOverlay
             changesVisible={content.changesVisible && !content.awaitingUserInput}

@@ -26,6 +26,7 @@ function listProps(overrides: Record<string, unknown> = {}) {
     running: false,
     slim: false,
     transcriptFontSize: 16,
+    transcriptVerbosity: 'basic' as const,
     ...overrides,
   };
 }
@@ -43,7 +44,7 @@ async function mountTranscriptList(overrides: Overrides = {}) {
     'react-native': { AppState: { addEventListener: () => ({ remove: () => undefined }) }, View: 'View' },
     'react-native-paper': { ActivityIndicator: 'ActivityIndicator', Button: 'Button', Card: 'Card', Text: 'Text', TouchableRipple: 'TouchableRipple' },
     '@/components/chat/chat-cards': { TranscriptMessage: 'TranscriptMessage' },
-    '@/components/chat/cards/collapsible-detail': { CollapsibleDetail: 'CollapsibleDetail' },
+    '@/components/chat/cards/activity-group': { ActivityGroupRow: 'ActivityGroupRow' },
     '@/components/chat/chat-view-styles': { styles: {}, slimStyles: {} },
     '@/components/chat/chat-view-utils': { STARTER_PROMPT_KEYS: [] },
     '@/components/chat/content/transcript-skeleton': { TranscriptSkeleton: 'TranscriptSkeleton' },

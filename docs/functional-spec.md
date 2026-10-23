@@ -141,7 +141,7 @@ The Chat screen shows:
 Behavior details:
 
 - the transcript has a configurable detail level: `basic` (default) shows user and assistant messages with text, files, or errors; `reasoning` adds reasoning; `verbose` adds tool calls and patches
-- tool and reasoning rows render collapsed outside message bubbles and match the assistant bubble's width; contiguous same-tool calls merge into one growing collapsible, shell rows show `$ command` plus output in a non-copyable bash block, and edit/write rows are hidden; the initial pull backfills until at least 10 entries are displayable at the selected level
+- reasoning, tool, and patch rows render as a two-level activity timeline outside message bubbles and match the assistant bubble's width; contiguous activity merges into one growing run with a `Used N <tools>` header, a running run opens automatically, and each child expands independently to thought text, shell output, a tool body, or a changed-file list; shell output stays a non-copyable `$ command` block, hidden edit/write calls count in the header without duplicate rows, and the initial pull backfills until at least 10 entries are displayable at the selected level
 - a status line like `OpenCode is ...` is shown while running and not blocked on user input
 - a small floating progress view shows the current step and completed count; tapping it opens a content-sized overlay with the task list; pending permission actions replace it while blocked
 - a pending question opens a full-screen answer flow immediately; dismissal leaves an `Answer needed` card above the composer and does not reject the request
@@ -216,11 +216,13 @@ The Projects tab provides source inspection and text editing:
 - Files and Worktrees use the same top-tab style as Chat
 - search file paths by query
 - open returned files in a focused full-screen viewer/editor
+- preview raster images, audio, and video from OpenCode 2 file bytes; show a download card for PDFs, archives, installers, and other binaries
+- download any readable project file from its preview; web uses a browser download, native uses the OS save/share sheet
 - show the number of changed files from file status
 - show the current VCS branch when available
 - edit the selected text file and save the complete replacement as a VCS patch
 
-Before save, the provider re-reads the file and rejects the operation if the server content differs from the content originally opened. Only non-base64 text files are editable; a successful full-file patch is followed by another read and project-status refresh.
+Before save, the provider re-reads the file and rejects the operation if the server content differs from the content originally opened. Only non-base64 text files are editable; a successful full-file patch is followed by another read and project-status refresh. OpenCode 1 does not return binary file bytes, so its binary files show an unavailable message while text preview, editing, and download continue to work. Inline media bytes are bounded at 25 MB; larger files fall back to streaming download.
 
 ### 10. Manage Worktrees
 
@@ -714,7 +716,7 @@ Any reimplementation should preserve these functional outcomes:
 - transcript + diff + server-owned todo + permission surfaces
 - session delete, archive/restore, rename, fork, revert/unrevert, and share/unshare support
 - slash command discovery and execution
-- project file search/view/status plus conflict-checked full-file VCS patch save
+- project file search/view/status, media preview and download, plus conflict-checked full-file VCS patch save
 - experimental worktree management and archived-session listing
 - MCP lifecycle/configuration/OAuth management
 - ticket-authenticated interactive PTYs with xterm, bounded scrollback, resize, and acknowledged reconnect

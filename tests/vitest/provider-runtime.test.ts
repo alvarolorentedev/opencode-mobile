@@ -68,7 +68,18 @@ const context = {
     if (path.startsWith('selection-')) { const gate = deferred(); fileReads.set(path, gate); return gate.promise; }
     return path === 'save' ? saveGate.promise : fileGate.promise;
   },
+  readProjectFile: async (_, path) => {
+    let content;
+    if (path.startsWith('selection-')) {
+      const gate = deferred(); fileReads.set(path, gate); content = await gate.promise;
+    } else {
+      content = await (path === 'save' ? saveGate.promise : fileGate.promise);
+    }
+    return { path, kind: 'text', mime: 'text/plain', size: content.content.length, content, canDownload: true };
+  },
   setSelectedProjectFile: (value) => { selected = value; },
+  projectFileFromText: (path, content) => ({ path, kind: 'text', mime: 'text/plain', size: content.content.length, content, canDownload: true }),
+  projectFileMime: () => 'text/plain',
   createFullFilePatch: () => 'patch', saveFile: async () => { patches++; },
   interruptSession: async () => { aborted = true; }, refreshServerFeatures: async () => {}, refreshVcsDiff: async () => {},
   connectionScope: 'scope', pendingNotificationKey: () => 'key',

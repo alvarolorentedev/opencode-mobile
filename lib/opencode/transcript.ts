@@ -8,9 +8,21 @@ export type TranscriptVerbosity = 'basic' | 'reasoning' | 'verbose';
 export const TRANSCRIPT_VERBOSITIES: readonly TranscriptVerbosity[] = ['basic', 'reasoning', 'verbose'];
 
 // Details rendered as collapsible (non-bubble) rows outside the message card.
-// Patches stay review chips; V1-only steps/subtasks/agent parts are not shown.
+// Patches are activity items too, but they remain review chips in the bubble
+// until verbose detail is selected. V1-only steps/subtasks/agent parts are not
+// shown.
 export function isCollapsibleDetail(detail: TranscriptDetail) {
   return detail.kind === 'tool' || detail.kind === 'reasoning';
+}
+
+export function isActivityDetail(detail: TranscriptDetail) {
+  return detail.kind === 'tool' || detail.kind === 'reasoning' || detail.kind === 'patch';
+}
+
+// Verbose detail renders patches inside the activity run, so the aggregate
+// bubble chip would duplicate the same change. Lower levels keep the chip.
+export function shouldShowPatchSummary(verbosity: TranscriptVerbosity) {
+  return verbosity !== 'verbose';
 }
 
 // Whether a detail is surfaced at the given verbosity. Files are attachments
@@ -35,37 +47,84 @@ export function isDetailShown(detail: TranscriptDetail, verbosity: TranscriptVer
     && !(detail.kind === 'tool' && HIDDEN_TOOL_NAMES.has(detail.tool));
 }
 
-// Bubble content for a message row. Patch chips stay on text-bearing messages
-// at every level; a patch-only message is filtered out at basic separately.
+// Bubble content for a message row. Patch-only assistant messages become
+// activity rows at verbose detail; text-bearing messages still keep their
+// patch chips at the lower detail levels.
 export function hasMessageBubble(entry: TranscriptEntry) {
   return entry.role === 'user'
     || Boolean(entry.text.trim() || entry.error)
-    || entry.details.some((detail) => detail.kind === 'file' || detail.kind === 'patch');
+    || entry.details.some((detail) => detail.kind === 'file');
 }
 
 export type ToolDetail = Extract<TranscriptDetail, { kind: 'tool' }>;
 export type ReasoningDetail = Extract<TranscriptDetail, { kind: 'reasoning' }>;
+export type PatchDetail = Extract<TranscriptDetail, { kind: 'patch' }>;
+export type ActivityItem = ToolDetail | ReasoningDetail | PatchDetail;
+export type ActivityTool = { name: string; count: number };
+export type ActivityStatus = 'idle' | 'running' | 'error';
 
-export type DetailGroup =
-  | { key: string; kind: 'tool'; tool: string; details: ToolDetail[] }
-  | { key: string; kind: 'reasoning'; details: ReasoningDetail[] };
+export type ActivityGroup = {
+  key: string;
+  kind: 'activity';
+  items: ActivityItem[];
+  tools: ActivityTool[];
+  callCount: number;
+  status: ActivityStatus;
+};
+
+// Kept as an alias for callers that still refer to a detail group by its old
+// name. New code should use ActivityGroup.
+export type DetailGroup = ActivityGroup;
 
 export type TranscriptRow =
   | { key: string; type: 'message'; entry: TranscriptEntry }
-  | { key: string; type: 'details'; group: DetailGroup };
+  | { key: string; type: 'activity'; group: ActivityGroup };
 
-// Flatten the transcript into message rows and contiguous detail groups. A
-// message bubble breaks contiguity; hidden tools are skipped before grouping so
-// they cannot split a visible run. The group key is its first detail id, so the
-// row identity (and its expanded state) survives as details accumulate.
+// Flatten the transcript into message rows and contiguous activity groups. A
+// message bubble breaks contiguity. Every visible reasoning/tool/patch detail
+// joins the same run, in wire order, until a bubble appears. Hidden file tools
+// are counted in the header at verbose detail so the summary matches the web
+// app, but they never become duplicate child rows. The group key is its first
+// seen detail id, so the row identity (and its expanded state) survives as
+// streamed details accumulate.
 export function buildTranscriptRows(entries: TranscriptEntry[], verbosity: TranscriptVerbosity): TranscriptRow[] {
   const rows: TranscriptRow[] = [];
-  let pending: DetailGroup | undefined;
+  let pending: ActivityGroup | undefined;
 
   const flush = () => {
     if (!pending) return;
-    rows.push({ key: `details:${pending.key}`, type: 'details', group: pending });
+    if (pending.items.length > 0) {
+      rows.push({ key: `activity:${pending.key}`, type: 'activity', group: pending });
+    }
     pending = undefined;
+  };
+
+  const ensureGroup = (id: string) => {
+    pending ??= {
+      key: id,
+      kind: 'activity',
+      items: [],
+      tools: [],
+      callCount: 0,
+      status: 'idle',
+    };
+    return pending;
+  };
+
+  const trackTool = (group: ActivityGroup, detail: ToolDetail) => {
+    group.callCount += 1;
+    const existing = group.tools.find((tool) => tool.name === detail.tool);
+    if (existing) {
+      existing.count += 1;
+    } else {
+      group.tools.push({ name: detail.tool, count: 1 });
+    }
+
+    if (detail.status === 'error') {
+      group.status = 'error';
+    } else if ((detail.status === 'running' || detail.status === 'pending') && group.status !== 'error') {
+      group.status = 'running';
+    }
   };
 
   for (const entry of entries) {
@@ -75,22 +134,16 @@ export function buildTranscriptRows(entries: TranscriptEntry[], verbosity: Trans
     }
 
     for (const detail of entry.details) {
-      if (!isCollapsibleDetail(detail) || !isDetailShown(detail, verbosity)) continue;
-      if (detail.kind === 'tool') {
-        if (pending?.kind === 'tool' && pending.tool === detail.tool) {
-          pending.details.push(detail);
-        } else {
-          flush();
-          pending = { key: detail.id, kind: 'tool', tool: detail.tool, details: [detail] };
-        }
-      } else if (detail.kind === 'reasoning') {
-        if (pending?.kind === 'reasoning') {
-          pending.details.push(detail);
-        } else {
-          flush();
-          pending = { key: detail.id, kind: 'reasoning', details: [detail] };
-        }
+      if (detail.kind === 'tool' && HIDDEN_TOOL_NAMES.has(detail.tool)) {
+        if (verbosity !== 'verbose') continue;
+        trackTool(ensureGroup(detail.id), detail);
+        continue;
       }
+
+      if (!isActivityDetail(detail) || !isDetailShown(detail, verbosity)) continue;
+      const group = ensureGroup(detail.id);
+      if (detail.kind === 'tool') trackTool(group, detail);
+      group.items.push(detail);
     }
   }
 
@@ -183,8 +236,6 @@ export function getUserTurnForMessage(records: SessionMessageRecord[], messageId
   }
   return undefined;
 }
-
-type PatchDetail = Extract<TranscriptDetail, { kind: 'patch' }>;
 
 // Positional turn ownership: v2 assistant messages carry no `parentID`, so a
 // reply belongs to the newest user message at or before it.

@@ -64,6 +64,15 @@
     "loadEarlierDescription": "Les messages les plus récents de ce tour sont de l’activité d’outils. Chargez les messages précédents pour voir la conversation.",
     "loadEarlierAction": "Charger les messages précédents"
   },
+  "activity": {
+    "used": "Utilisé {{count}} {{tools}}",
+    "thought": "Réflexion",
+    "thoughtCount": "Réflexion · {{count}}",
+    "expandActivity": "Développer l’activité",
+    "collapseActivity": "Réduire l’activité",
+    "expandItem": "Développer {{item}}",
+    "collapseItem": "Réduire {{item}}"
+  },
   "cards": {
     "respondToContinue": "Autorisation nécessaire",
     "waitingForAnswer": "OpenCode attend ta réponse avant de pouvoir continuer.",

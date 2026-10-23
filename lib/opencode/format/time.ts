@@ -15,6 +15,19 @@ export function formatTimestamp(value: number, locale = getFormatLocale()) {
   return new Date(value).toLocaleString();
 }
 
+// Compact duration for timeline rows. Whole seconds only; minute+ durations
+// keep the same `1m 05s` shape so the row width stays predictable.
+export function formatDuration(durationMs: number) {
+  const totalSeconds = Math.max(0, Math.round(durationMs / 1000));
+  if (totalSeconds < 60) {
+    return `${totalSeconds}s`;
+  }
+
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+  return seconds > 0 ? `${minutes}m ${String(seconds).padStart(2, '0')}s` : `${minutes}m`;
+}
+
 export function formatRelativeTime(value: number) {
   const diffMs = value - Date.now();
   const diffMinutes = Math.round(diffMs / 60000);

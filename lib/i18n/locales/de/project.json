@@ -33,7 +33,15 @@
     "discardTitle": "Änderungen verwerfen?",
     "discardMessage": "Nicht gespeicherte Änderungen gehen verloren.",
     "discard": "Verwerfen",
-    "preview": "Dateivorschau"
+    "preview": "Dateivorschau",
+    "download": "Herunterladen",
+    "saveOrOpen": "Speichern oder öffnen",
+    "documentPreview": "Dieser Dateityp kann in der App nicht angezeigt werden.",
+    "binaryUnavailable": "Dieser Server liefert keine binären Dateiinhalte.",
+    "previewTooLarge": "Diese Datei ist zu groß für eine Vorschau. Lade sie stattdessen herunter.",
+    "previewFailed": "Diese Datei konnte nicht angezeigt werden.",
+    "loadingPreview": "Vorschau wird geladen…",
+    "size": "Größe: {{size}}"
   },
   "worktrees": {
     "title": "Worktrees",
@@ -73,6 +81,7 @@
     "createWorktree": "Der Worktree konnte nicht erstellt werden.",
     "resetWorktree": "Der Worktree konnte nicht zurückgesetzt werden.",
     "removeWorktree": "Der Worktree konnte nicht entfernt werden.",
-    "addProject": "Der Projekt konnte nicht hinzugefügt werden."
+    "addProject": "Der Projekt konnte nicht hinzugefügt werden.",
+    "downloadFile": "Die Datei konnte nicht heruntergeladen werden."
   }
 }

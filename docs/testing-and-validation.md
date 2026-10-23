@@ -642,9 +642,10 @@ entries, and only `replace` discards held history.
 the Vitest `transcript-visibility` suite covers verbosity (`basic`, `reasoning`,
 `verbose`) across user, assistant, tool-only, reasoning-only and
 patch-only entries plus hidden file-mutating tools; `transcript-rows` covers
-cross-entry grouping, bubble breaks, hidden-tool skipping and reasoning groups;
-`collapsible-detail` covers collapsed-by-default groups, expandable markdown
-bodies, and the non-copyable shell command/output block.
+cross-entry activity grouping, bubble breaks, hidden-tool counts, patch rows and
+reasoning groups; `activity-group` covers collapsed defaults, automatic opening
+while running, manual-toggle persistence, expandable markdown, patch file lists,
+the non-copyable shell command/output block, and empty rows.
 `test:provider-runtime` runs actual provider callbacks and extracted hooks with
 deterministic platform/timer boundaries: out-of-order project results, stale
 same-directory server responses, safety-poll overlap, reconnect snapshots,
@@ -1073,13 +1074,18 @@ notifications/SecureStore keychain entitlement warnings.
 Both fake contracts now require scope on filesystem find/list/read, return distinct
 content for projects and worktrees, and retain owning project identity for
 worktree directories outside the main checkout. Self-tests exercise the installed
-V2 SDK's filesystem and worktree operations. Protocol tests cover safe relative
-paths, folder-first sorting, directory-only inventory and binary decoding. Provider
-runtime tests cover competing directory/search requests and switching servers
-with identical paths. Web flows cover initial folder lists, breadcrumbs, search
-across subfolders, preview/back, binary rejection, capability-gated editing,
-worktree selection/reload/removal, Terminal/Chat continuity, discard confirmation
-and recoverable save conflicts.
+V2 SDK's filesystem and worktree operations, raw binary reads, and the V1
+empty-binary response. Protocol tests cover safe relative paths, folder-first
+sorting, directory-only inventory, MIME/kind normalization, preview-size bounds,
+V1 limitations and authenticated download URLs. Provider runtime tests cover
+competing directory/search requests and switching servers with identical paths.
+Web flows cover initial folder lists, breadcrumbs, search across subfolders,
+preview/back, V2 image preview and download, document download, V1 binary
+unavailability, capability-gated editing, worktree selection/reload/removal,
+Terminal/Chat continuity, discard confirmation and recoverable save conflicts.
+Native acceptance still covers audio/video playback, the OS save/share sheet,
+large streaming downloads, cache cleanup, background/close behavior and
+screen-reader actions.
 
 Run `test:ci:static`, `test:fake-server:self`, `test:e2e:web` and the Android
 development build. Check physical-device Back/keyboard behavior, safe areas, larger
@@ -1280,7 +1286,7 @@ persisted schema or onboarding completion version changed.
 
 ## Multi-server V2 regression coverage
 
-`tests/e2e/multi-server.spec.mjs` starts two independent V2 fakes with intentionally colliding chat IDs and project paths. It checks the mixed list and filters, draft isolation and connected-set restoration, chat and PTY creation on a chosen server, renderer continuity through disconnect/reconnect, Settings/auto-approve isolation, replies to colliding approval IDs on the correct server, long-title server-chip containment, and the in-flight row indicator during a cross-server open. New chat and terminal tests confirm the explicit creation sheets, including the disabled confirm state until a project is selected.
+`tests/e2e/multi-server.spec.mjs` starts two independent V2 fakes with intentionally colliding chat IDs and project paths. It checks the mixed list and filters, draft isolation and connected-set restoration, chat and PTY creation on a chosen server, renderer continuity through disconnect/reconnect, Settings/auto-approve isolation, replies to colliding approval IDs on the correct server, long-title server-chip containment, and the in-flight row indicator during a cross-server open. The cross-server open flow also holds the target server's session reads to prove the library closes immediately and the chat shows its transcript skeleton until hydration completes. New chat and terminal tests confirm the explicit creation sheets, including the disabled confirm state until a project is selected.
 
 `tests/vitest/workspaces.test.ts` covers composite catalog ordering, shared SSE teardown, secret-free registry validation and hidden-draft update blocking and removal cleanup. The native notification boundary also combines server counts and keeps other servers visible during disconnect. Existing connection recovery, prompt/draft races, sharing, transcript and architecture tests remain required. Share coverage includes a confirmed cross-server destination while focus changes.
 

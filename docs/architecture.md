@@ -220,7 +220,7 @@ The completion version, preference schema and first-run migration are unchanged.
   `OpencodeProvider`.
 - `providers/use-project-actions.ts`
   Project catalog, opened-project add/close, project selection, session/file
-  refresh, file search/read/save, and diagnostics actions.
+  refresh, file search/open/save/download, and diagnostics actions.
 - `providers/use-project-browser.ts`
   Scoped directory/search snapshots and request-order guards, composed by the
   project file actions and exposed as one files-context member.
@@ -640,7 +640,7 @@ The provider fetches and caches:
 - todos per session
 - pending permissions and questions by session, populated by events and refreshed from the server
 - providers, models, and agents
-- commands, project file status/search/read data, VCS information, and diagnostics
+- commands, project file status/search/read bytes, VCS information, and diagnostics
 - archived sessions, worktrees, MCP statuses, PTYs, terminal connection state, and terminal output
 - a connection-wide session snapshot (all sessions + statuses) from the unscoped catalog client, used by the Chat Library "Active" group. The global SSE stream still filters events to the active project, so this snapshot is refreshed on connect, when the library opens, and by a 20-second poll while a session is running.
 
@@ -674,7 +674,7 @@ User interactions are converted to provider actions such as:
 - `replyToQuestion` and `rejectQuestion`
 - `deleteSession`, `renameSession`, `forkSession`, `revertSession`, and share actions
 - `executeCommand`
-- project search/read and diagnostics refresh actions
+- project search/open/save/download and diagnostics refresh actions
 - project patch save, archive/restore, worktree, MCP, and terminal actions
 - `setProviderAuth`
 - `toggleConversationMode`
@@ -930,11 +930,22 @@ across tab switches and resets on scoped-client changes; it is not persisted.
 Search spans the selected project root and clearing it restores the browsed
 folder. Breadcrumb navigation cannot leave that root. Listing, search, preview
 and save require a selected directory. The OpenCode 2 filesystem adapter passes
-`location[directory]` on every request and rejects malformed UTF-8/binary content.
-Text editing compares the server content against the editor baseline, writes
-through native v2 `file.write` or the v1 patch path, and verifies the saved text.
-Unsaved edits require discard confirmation. The pre-read/write race remains
-because neither path provides a conditional-write contract.
+`location[directory]` on every request. Text editing compares the server content
+against the editor baseline, writes through native v2 `file.write` or the v1 patch
+path, and verifies the saved text. Unsaved edits require discard confirmation.
+The pre-read/write race remains because neither path provides a conditional-write
+contract.
+
+Binary project files open in the same focused preview surface. `readProjectFile`
+uses the V2 file bytes for inline raster-image, audio and video previews; known
+archives, installers and documents skip the read and render a download card
+instead. The preview keeps at most 25 MB of media bytes and falls back to download
+for larger files. Downloads stream from the authenticated V2 filesystem route on
+native and become a browser download on web; text files use the same action.
+OpenCode 1 returns empty binary content, so its binary files show an explicit
+unavailable state while text editing and text downloads continue to work.
+`projectFile` groups the selected file and its open/save/close/download actions so
+the public context surface stays bounded.
 
 The shared Project/Chat picker contains worktree inventory for the owning
 project, resolved from the scoped project API rather than path prefixes. Directory

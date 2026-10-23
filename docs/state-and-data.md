@@ -129,7 +129,7 @@ Primary fields:
 - `commands`
 - `browser` (relative path, directory entries, search results/query, loading/error state, and listing/search actions)
 - `projectFileStatuses`
-- `selectedProjectFile`
+- `projectFile` (selected file plus open/save/close/download actions)
 - `vcsInfo`
 - `worktrees`
 - `mcpStatuses`
@@ -276,8 +276,10 @@ Session selection is local-first. `ensureActiveSession()` and `openSession()`
 commit `currentSessionId` as soon as the target is known; transcript, diff,
 todo, interaction, capability, server-feature, and diagnostic reads continue in
 the background. `isBootstrappingChat` covers target resolution, while the
-per-session `hydratingSessionIds` map covers the first transcript read so a
-slow read for an older chat cannot clear the current chat's skeleton. The
+per-session `hydratingSessionIds` map covers the first transcript read (and the
+prompt-inbox read that precedes it) so a slow read for an older chat cannot
+clear the current chat's skeleton. `openSession()` marks the selected session as
+hydrating before starting either read, so the skeleton appears immediately. The
 composer and chat header are usable during hydration; transcript content fills
 in as it arrives.
 
@@ -614,19 +616,20 @@ memory before the background read settles.
 Transcript verbosity (`basic` by default) controls which native timeline
 records render. `basic` shows user and assistant text/files/errors; `reasoning`
 adds reasoning rows; `verbose` adds tool calls and patches.
-Details are first-class transcript rows: message rows and detail-group rows.
-Contiguous visible details of the same tool (or contiguous reasoning) merge
-into one collapsible; a message bubble breaks the group, and hidden
-file-mutating tools are skipped before grouping. The group key is its first
-detail id, so expansion persists while streamed calls grow the group. Non-shell
-groups render bodies with the shared markdown renderer; shell groups render one
-raw, non-copyable bash block with `$ command` and its output per call, plus a
-single-line `Running <current command>` header. Group rows use the assistant
-bubble width. V1-only subtask/step/agent parts and the V2-synthesized
-`step-finish` usage marker are never rendered; `edit`, `write`, `multiedit`,
-and `apply_patch` tool details are hidden (they still drive the activity
-label). The display filter, the initial-pull target, and retention share the
-same predicate.
+Details are first-class transcript rows: message rows and activity-run rows.
+Contiguous visible reasoning, tool, and patch details merge into one two-level
+activity run; a message bubble breaks the run. The run key is its first detail
+id, so expansion persists while streamed details grow it. The level-one header
+reads `Used N <tools>` and counts hidden file-mutating tools in the summary
+without adding duplicate child rows; a reasoning-only run reads `Thought · N`.
+A run with a `running`/`pending` tool opens automatically, while an explicit
+user toggle wins for the life of the key. Level-two child rows expand reasoning
+Markdown, a non-copyable shell block with `$ command` and output, a generic tool
+body, or a changed-file list. Run rows use the assistant bubble width. V1-only
+subtask/step/agent parts and the V2-synthesized `step-finish` usage marker are
+never rendered; `edit`, `write`, `multiedit`, and `apply_patch` tool details are
+hidden as rows (they still drive the activity header and label). The display
+filter, the initial-pull target, and retention share the same predicate.
 
 
 V1 pages backwards with `limit`/`before` and an `x-next-cursor` header; V2
@@ -816,7 +819,7 @@ Some user-visible behavior depends on transient refs not persisted anywhere:
 - currently spoken message ID
 - process-lifetime queued/uncertain prompts and their admission inputs (not
   persisted; the composer draft remains the durable copy)
-- Project file edit draft and expected original content
+- Project file edit draft, expected original content, and the selected file's optional inline media bytes
 - PTY list, active PTY, per-PTY connection state, and renderer registration
 
 A rewrite that only mirrors persisted values would still miss important runtime behavior.
@@ -889,11 +892,19 @@ across tab switches and resets on scoped-client changes; it is not persisted.
 Search spans the selected project root and clearing it restores the browsed
 folder. Breadcrumb navigation cannot leave that root. Listing, search, preview
 and save require a selected directory. The OpenCode 2 filesystem adapter passes
-`location[directory]` on every request and rejects malformed UTF-8/binary content.
-Text editing compares the server content against the editor baseline, writes
-through native v2 `file.write` or the v1 patch path, and verifies the saved text.
-Unsaved edits require discard confirmation. The pre-read/write race remains
-because neither path provides a conditional-write contract.
+`location[directory]` on every request. Text editing compares the server content
+against the editor baseline, writes through native v2 `file.write` or the v1 patch
+path, and verifies the saved text. Unsaved edits require discard confirmation.
+The pre-read/write race remains because neither path provides a conditional-write
+contract.
+
+The selected file carries its normalized kind, MIME type, size, optional inline
+bytes and a download capability. V2 media bytes are retained only for inline
+previews up to 25 MB; known documents, archives and installers skip the read and
+download by streaming the authenticated V2 `fs/read` route. Text files download
+through the same route, or from their content on V1. V1 binary content is
+unavailable because that server contract returns an empty body. Bytes are
+process-local and are released when the preview closes; nothing is persisted.
 
 The shared Project/Chat picker contains worktree inventory for the owning
 project, resolved from the scoped project API rather than path prefixes. Adding a

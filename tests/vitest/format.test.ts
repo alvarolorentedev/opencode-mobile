@@ -1,6 +1,6 @@
 import { describe, it, expect, vi } from 'vitest';
 
-import { getMessagePreview, toTranscriptEntry, deriveTodosFromMessages } from '@/lib/opencode/format';
+import { formatDuration, getMessagePreview, toTranscriptEntry, deriveTodosFromMessages } from '@/lib/opencode/format';
 import { getUserTurnForMessage } from '@/lib/opencode/transcript';
 
 vi.mock('@/lib/i18n', () => ({ getFormatLocale: () => 'en' }));
@@ -25,6 +25,16 @@ describe('format', () => {
       parts: [{ id: 'tool-1', type: 'tool', tool: 'build', state: { status: 'error', error: 'Build failed' } }],
     } as never);
     expect(failedTool.details[0].body).toBe('Build failed');
+  });
+
+  it('maps reasoning timestamps to a compact duration', () => {
+    const reasoning = toTranscriptEntry({
+      info,
+      parts: [{ id: 'reasoning-1', type: 'reasoning', text: 'thinking', time: { start: 1000, end: 6500 } }],
+    } as never);
+    expect(reasoning.details[0]).toMatchObject({ kind: 'reasoning', durationMs: 5500 });
+    expect(formatDuration(5500)).toBe('6s');
+    expect(formatDuration(65000)).toBe('1m 05s');
   });
 
   it('keeps the native tool name and shell command on the detail', () => {

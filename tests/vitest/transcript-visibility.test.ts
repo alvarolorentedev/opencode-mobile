@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 
-import { isCollapsibleDetail, isDetailShown, isDetailVisible, isTranscriptDisplayMessage, type TranscriptVerbosity } from '@/lib/opencode/transcript';
+import { isCollapsibleDetail, isDetailShown, isDetailVisible, isTranscriptDisplayMessage, shouldShowPatchSummary, type TranscriptVerbosity } from '@/lib/opencode/transcript';
 
 vi.mock('@/lib/i18n', () => ({ getFormatLocale: () => 'en' }));
 
@@ -49,6 +49,12 @@ describe('transcript verbosity', () => {
     expect(isTranscriptDisplayMessage(entry('assistant', [patch]), 'basic')).toBe(false);
     expect(isTranscriptDisplayMessage(entry('assistant', [patch]), 'reasoning')).toBe(false);
     expect(isTranscriptDisplayMessage(entry('assistant', [patch]), 'verbose')).toBe(true);
+  });
+
+  it('keeps the patch chip at lower detail and defers to activity rows at verbose', () => {
+    expect(shouldShowPatchSummary('basic')).toBe(true);
+    expect(shouldShowPatchSummary('reasoning')).toBe(true);
+    expect(shouldShowPatchSummary('verbose')).toBe(false);
   });
 
   it('never renders file-mutating tools as collapsibles', () => {

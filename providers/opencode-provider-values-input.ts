@@ -5,12 +5,12 @@ import type { Dispatch, SetStateAction } from 'react';
 
 import type { PendingPermissionRequest, PendingQuestionRequest, SavedPermissionRule, ServerContract, OpencodeConnectionSettings } from '@/lib/opencode/client';
 import type { SessionMessageRecord } from '@/lib/opencode/format';
+import type { ProjectFile } from '@/lib/opencode/project-file';
 import type { SessionUsageStep } from '@/lib/opencode/usage';
 import type {
   Config,
   Command,
   File,
-  FileContent,
   FileDiff,
   GlobalSession,
   McpLocalConfig,
@@ -78,7 +78,7 @@ export type ProviderValuesInput = ActionInputs & {
   serverRootPath?: string;
   isRefreshingProjectCatalog: boolean;
   projectFileStatuses: File[];
-  selectedProjectFile?: { path: string; content: FileContent };
+  selectedProjectFile?: ProjectFile;
   vcsInfo?: VcsInfo;
   worktrees: WorktreeCatalog;
   refreshWorktrees: () => Promise<void>;

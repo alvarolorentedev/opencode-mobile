@@ -212,8 +212,24 @@ for (const contract of ['v1', 'v2']) {
       await expect(page.getByTestId('project-entry-src/demo.ts')).toBeVisible();
       await page.getByRole('button', { name: 'demo-project', exact: true }).click();
       await page.getByTestId('project-entry-assets').click();
-      await page.getByTestId('project-entry-assets/binary.dat').click();
-      await expect(page.getByText('Binary files cannot be previewed as text.')).toBeVisible();
+      if (contract === 'v2') {
+        await page.getByTestId('project-entry-assets/pixel.png').click();
+        await expect(page.getByTestId('project-file-image-preview')).toBeVisible();
+        const imageDownload = page.waitForEvent('download');
+        await page.getByTestId('project-file-download').click();
+        expect((await imageDownload).suggestedFilename()).toBe('pixel.png');
+        await page.getByLabel('Close file').click();
+        await page.getByTestId('project-entry-assets/archive.zip').click();
+        await expect(page.getByTestId('project-file-document-preview')).toBeVisible();
+        const archiveDownload = page.waitForEvent('download');
+        await page.getByTestId('project-file-download').click();
+        expect((await archiveDownload).suggestedFilename()).toBe('archive.zip');
+        await page.getByLabel('Close file').click();
+      } else {
+        await page.getByTestId('project-entry-assets/binary.dat').click();
+        await expect(page.getByTestId('project-file-binary-unavailable')).toBeVisible();
+        await page.getByLabel('Close file').click();
+      }
       await page.getByRole('button', { name: 'Change project' }).click();
       const picker = page.getByTestId('project-picker');
       // The connection starts with the server's current project only; open the

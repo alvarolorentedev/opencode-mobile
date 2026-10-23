@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 import { filesForDirectory, fileNodes, addWorktree } from './workspace.mjs';
 
+import { Buffer } from 'node:buffer';
 import http from 'node:http';
 import { URL } from 'node:url';
 import { WebSocketServer } from 'ws';
@@ -410,6 +411,7 @@ const server = http.createServer(async (req, res) => {
       }
       const matches = [];
       for (const [path, content] of Object.entries(state.files)) {
+        if (typeof content !== 'string') continue;
         let offset = 0;
         for (const [index, line] of content.split('\n').entries()) {
           const start = line.toLowerCase().indexOf(pattern.toLowerCase());
@@ -463,9 +465,11 @@ const server = http.createServer(async (req, res) => {
         notFound(res);
         return;
       }
+      const binary = Buffer.isBuffer(files[requestedPath]) || files[requestedPath].includes('\0');
       sendJson(res, 200, {
-        type: files[requestedPath].includes('\0') ? 'binary' : 'text',
-        content: files[requestedPath],
+        type: binary ? 'binary' : 'text',
+        // OpenCode 1 does not expose binary bytes through this endpoint.
+        content: binary ? '' : files[requestedPath],
         diff: requestedPath === 'app/(tabs)/index.tsx' && state.workspaceTaskCompleted
           ? '@@ -1,1 +1,3 @@\n-export default function OldScreen() {}\n+export default function ChatLandingScreen() {\n+  return null;\n+}'
           : undefined,

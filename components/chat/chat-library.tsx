@@ -97,9 +97,11 @@ export function ChatLibrary({ visible, onClose, onNewChat }: { visible: boolean;
           {inFlight ? <ActivityIndicator size={20} color={palette.tint} testID="chat-library-busy" />
             : <MaterialCommunityIcons name={row.current ? 'check-circle' : row.favorite ? 'star' : running ? 'progress-clock' : 'message-outline'} size={20} color={row.current || running || row.favorite ? palette.tint : palette.muted} />}
           <View style={styles.copy}>
-            <View style={styles.titleLine}>{row.favorite && row.current ? <MaterialCommunityIcons name="star" size={14} color={palette.tint} /> : null}<Text numberOfLines={1} style={[styles.title, { color: palette.text }]}>{label}</Text>
-              {multipleServers ? <Text testID="chat-library-server-chip" numberOfLines={1} style={[styles.chip, { color: palette.muted, borderColor: palette.border }]}>{row.serverName}</Text> : null}</View>
-            <Text numberOfLines={1} style={{ color: palette.muted }}>{row.projectPath.split('/').pop()} · {row.preview || (running ? t('chat:library.running') : formatRelativeTime(row.session.time.updated))}</Text>
+            <View style={styles.titleLine}>{row.favorite && row.current ? <MaterialCommunityIcons name="star" size={14} color={palette.tint} /> : null}<Text numberOfLines={1} style={[styles.title, { color: palette.text }]}>{label}</Text></View>
+            <View style={styles.metaLine}>
+              {multipleServers ? <Text testID="chat-library-server-chip" numberOfLines={1} style={[styles.chip, { color: palette.muted, borderColor: palette.border }]}>{row.serverName}</Text> : null}
+              <Text numberOfLines={1} style={[styles.metaText, { color: palette.muted }]}>{row.projectPath.split('/').pop()} · {row.preview || (running ? t('chat:library.running') : formatRelativeTime(row.session.time.updated))}</Text>
+            </View>
           </View>
         </Pressable>
       </SwipeRow>
@@ -131,5 +133,7 @@ const styles = StyleSheet.create({
   row: { minHeight: 68, borderRadius: 16, borderWidth: 1, paddingHorizontal: 14, paddingVertical: 10, flexDirection: 'row', alignItems: 'center', gap: 12 },
   copy: { flex: 1, minWidth: 0, gap: 3 }, titleLine: { flexDirection: 'row', alignItems: 'center', gap: 8, minWidth: 0 },
   title: { flex: 1, minWidth: 0, fontSize: 16, fontWeight: '600' },
+  metaLine: { flexDirection: 'row', alignItems: 'center', gap: 6, minWidth: 0 },
+  metaText: { flexShrink: 1, minWidth: 0 },
   chip: { flexShrink: 0, maxWidth: 120, fontSize: 12, borderWidth: 1, borderRadius: 12, paddingHorizontal: 8, paddingVertical: 3 },
 });

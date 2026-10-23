@@ -64,6 +64,15 @@
     "loadEarlierDescription": "Die neuesten Nachrichten in diesem Durchlauf sind Werkzeugaktivität. Lade frühere Nachrichten, um die Unterhaltung zu sehen.",
     "loadEarlierAction": "Frühere Nachrichten laden"
   },
+  "activity": {
+    "used": "Verwendet {{count}} {{tools}}",
+    "thought": "Gedanke",
+    "thoughtCount": "Gedanke · {{count}}",
+    "expandActivity": "Aktivität erweitern",
+    "collapseActivity": "Aktivität reduzieren",
+    "expandItem": "{{item}} erweitern",
+    "collapseItem": "{{item}} reduzieren"
+  },
   "cards": {
     "respondToContinue": "Freigabe erforderlich",
     "waitingForAnswer": "OpenCode wartet auf deine Antwort, bevor es fortfahren kann.",

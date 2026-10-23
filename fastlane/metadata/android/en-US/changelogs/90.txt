@@ -1,0 +1,4 @@
+- Server badges stay visible in the chat library when chat titles are long.
+- Opening a chat on another server now shows progress while the connection is prepared.
+- Chat tool activity collapses into a two-level timeline with expandable thoughts, command output, and changed files.
+- Project files now preview images, audio, and video inline, with downloads for documents and large files.

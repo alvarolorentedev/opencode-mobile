@@ -88,6 +88,8 @@ export function useOpencodeProviderValues(input: ProviderValuesInput) {
     removeProject,
     openProjectFile,
     saveProjectFile,
+    closeProjectFile,
+    downloadProjectFile,
     worktrees,
     refreshWorktrees,
     createWorktree,
@@ -313,9 +315,13 @@ export function useOpencodeProviderValues(input: ProviderValuesInput) {
     [projects, activeProjectPath, activeProject, selectProject, addProject, removeProject, currentProjectPath, serverRootPath, isRefreshingProjectCatalog, refreshProjectCatalog, refreshServerFeatures],
   );
 
+  const projectFileValue = useMemo(
+    () => ({ selected: selectedProjectFile, open: openProjectFile, save: saveProjectFile, close: closeProjectFile, download: downloadProjectFile }),
+    [selectedProjectFile, openProjectFile, saveProjectFile, closeProjectFile, downloadProjectFile],
+  );
   const projectFilesValue = useMemo<ProjectFilesContextValue>(
-    () => ({ browser, projectFileStatuses, selectedProjectFile, vcsInfo, openProjectFile, saveProjectFile, worktrees, refreshWorktrees, createWorktree, resetWorktree, removeWorktree }),
-    [browser, projectFileStatuses, selectedProjectFile, vcsInfo, openProjectFile, saveProjectFile, worktrees, refreshWorktrees, createWorktree, resetWorktree, removeWorktree],
+    () => ({ browser, projectFileStatuses, projectFile: projectFileValue, vcsInfo, worktrees, refreshWorktrees, createWorktree, resetWorktree, removeWorktree }),
+    [browser, projectFileStatuses, projectFileValue, vcsInfo, worktrees, refreshWorktrees, createWorktree, resetWorktree, removeWorktree],
   );
 
   const activeSessionsValue = useMemo(

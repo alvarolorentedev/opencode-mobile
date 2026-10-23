@@ -251,6 +251,7 @@ export function useOpencodeProviderComposition(input: WorkspaceRuntimeInput) {
     refreshMessages: inbox.refreshMessages,
     refreshActiveSessions: activeSessionsHook.refreshActiveSessions,
     refreshChatCapabilities: capabilities.refreshChatCapabilities,
+    beginHydration: transcript.beginHydration,
   });
   const ensureActiveSessionRef = useRef(sessionActions.ensureActiveSession);
 

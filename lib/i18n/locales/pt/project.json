@@ -33,7 +33,15 @@
     "discardTitle": "Descartar alterações?",
     "discardMessage": "As alterações não salvas serão perdidas.",
     "discard": "Descartar",
-    "preview": "Prévia do arquivo"
+    "preview": "Prévia do arquivo",
+    "download": "Baixar",
+    "saveOrOpen": "Salvar ou abrir",
+    "documentPreview": "Este tipo de arquivo não pode ser visualizado no aplicativo.",
+    "binaryUnavailable": "Este servidor não retorna o conteúdo de arquivos binários.",
+    "previewTooLarge": "Este arquivo é grande demais para visualizar. Baixe-o em vez disso.",
+    "previewFailed": "Não foi possível visualizar este arquivo.",
+    "loadingPreview": "Carregando visualização…",
+    "size": "Tamanho: {{size}}"
   },
   "worktrees": {
     "title": "Worktrees",
@@ -73,6 +81,7 @@
     "createWorktree": "Não foi possível criar o worktree.",
     "resetWorktree": "Não foi possível redefinir o worktree.",
     "removeWorktree": "Não foi possível remover o worktree.",
-    "addProject": "Não foi possível adicionar o projeto."
+    "addProject": "Não foi possível adicionar o projeto.",
+    "downloadFile": "Não foi possível baixar o arquivo."
   }
 }

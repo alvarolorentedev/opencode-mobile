@@ -33,7 +33,15 @@
     "discardTitle": "放弃编辑？",
     "discardMessage": "未保存的编辑将丢失。",
     "discard": "放弃",
-    "preview": "文件预览"
+    "preview": "文件预览",
+    "download": "下载",
+    "saveOrOpen": "保存或打开",
+    "documentPreview": "此文件类型无法在应用内预览。",
+    "binaryUnavailable": "此服务器不返回二进制文件内容。",
+    "previewTooLarge": "此文件太大，无法预览。请改为下载。",
+    "previewFailed": "无法预览此文件。",
+    "loadingPreview": "正在加载预览…",
+    "size": "大小：{{size}}"
   },
   "worktrees": {
     "title": "工作树",
@@ -73,6 +81,7 @@
     "createWorktree": "无法创建工作树。",
     "resetWorktree": "无法重置工作树。",
     "removeWorktree": "无法移除工作树。",
-    "addProject": "无法添加项目。"
+    "addProject": "无法添加项目。",
+    "downloadFile": "无法下载文件。"
   }
 }

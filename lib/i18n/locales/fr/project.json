@@ -33,7 +33,15 @@
     "discardTitle": "Abandonner les modifications ?",
     "discardMessage": "Vos modifications non enregistrées seront perdues.",
     "discard": "Abandonner",
-    "preview": "Aperçu du fichier"
+    "preview": "Aperçu du fichier",
+    "download": "Télécharger",
+    "saveOrOpen": "Enregistrer ou ouvrir",
+    "documentPreview": "Ce type de fichier ne peut pas être prévisualisé dans l’application.",
+    "binaryUnavailable": "Ce serveur ne renvoie pas le contenu des fichiers binaires.",
+    "previewTooLarge": "Ce fichier est trop volumineux pour être prévisualisé. Téléchargez-le à la place.",
+    "previewFailed": "Impossible de prévisualiser ce fichier.",
+    "loadingPreview": "Chargement de l’aperçu…",
+    "size": "Taille : {{size}}"
   },
   "worktrees": {
     "title": "Arbres de travail",
@@ -73,6 +81,7 @@
     "createWorktree": "Impossible de créer l'arbre de travail.",
     "resetWorktree": "Impossible de réinitialiser l'arbre de travail.",
     "removeWorktree": "Impossible de retirer l'arbre de travail.",
-    "addProject": "Impossible d'ajouter le projet."
+    "addProject": "Impossible d'ajouter le projet.",
+    "downloadFile": "Impossible de télécharger le fichier."
   }
 }

@@ -22,7 +22,7 @@ export default function ProjectsScreen() {
   const { chatPreferences } = usePreferences();
   const slim = chatPreferences.slimInterface === true;
   const { activeProject, refreshProjectCatalog, refreshProjectStatus } = useProjects();
-  const { browser, openProjectFile, projectFileStatuses, selectedProjectFile, saveProjectFile, vcsInfo } = useProjectFiles();
+  const { browser, projectFile, projectFileStatuses, vcsInfo } = useProjectFiles();
   const [pickerVisible, setPickerVisible] = useState(false);
 
   const [refreshing, setRefreshing] = useState(false);
@@ -56,7 +56,7 @@ export default function ProjectsScreen() {
         <Text variant="headlineMedium" style={{ fontWeight: '700', color: palette.text }}>{t('project:screen.filesTab')}</Text>
         {vcsInfo?.branch ? <Text style={{ color: palette.muted }}>{t('project:files.branch', { branch: vcsInfo.branch })}</Text> : null}
       </>}
-      onOpen={(path) => { void openProjectFile(path).then(() => setFileVisible(true)).catch((reason) => setError(reason instanceof Error ? reason.message : t('project:errors.openFile'))); }} />
+      onOpen={(path) => { void projectFile.open(path).then(() => setFileVisible(true)).catch((reason) => setError(reason instanceof Error ? reason.message : t('project:errors.openFile'))); }} />
       : <ScrollView style={{ flex: 1, backgroundColor: palette.background }} contentContainerStyle={[styles.content, slim && { padding: 10 }]}
         keyboardDismissMode="on-drag" keyboardShouldPersistTaps="handled">
         <Text variant="headlineMedium" style={{ fontWeight: '700', color: palette.text }}>{t('project:screen.filesTab')}</Text>
@@ -68,9 +68,9 @@ export default function ProjectsScreen() {
         }}>{connection.status !== 'connected' ? t('common:actions.reconnect') : t('project:picker.title')}</Button>
       </View>
       </ScrollView>}
-    {ready && fileVisible && selectedProjectFile ? <FilePreview key={`${scope}:${selectedProjectFile.path}`} file={selectedProjectFile}
+    {ready && fileVisible && projectFile.selected ? <FilePreview key={`${scope}:${projectFile.selected.path}`} file={projectFile.selected}
       projectPath={activeProject!.path} branch={vcsInfo?.branch} canSave={serverCapabilities.fileSave} slim={slim}
-      onClose={() => setFileVisible(false)} onSave={saveProjectFile} /> : null}
+      onClose={() => { projectFile.close(); setFileVisible(false); }} onSave={projectFile.save} onDownload={projectFile.download} /> : null}
     <Snackbar visible={Boolean(error)} onDismiss={() => setError(undefined)}>{error}</Snackbar>
   </>;
 }

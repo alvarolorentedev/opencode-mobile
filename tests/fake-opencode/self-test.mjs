@@ -141,6 +141,8 @@ try {
   assert((await request('/file?path=src&directory=/workspace/demo-project')).some((node) => node.name === 'demo.ts' && node.type === 'file'), 'Expected file list result');
   await assertStatus('/find', 400);
   assert((await request('/file/content?path=src%2Fdemo.ts&directory=/workspace/demo-project')).content.includes('1.18.3'), 'Expected file content');
+  const v1Binary = await request('/file/content?path=assets%2Fpixel.png&directory=/workspace/demo-project');
+  assert(v1Binary.type === 'binary' && v1Binary.content === '', 'V1 must not expose binary file bytes');
   assert((await request('/file/status')).length === 1, 'Expected initial file status');
   assert((await request('/vcs')).branch === 'main', 'Expected VCS info');
   assert((await request('/vcs/status')).length === 0, 'Expected clean VCS status');
@@ -358,6 +360,8 @@ try {
     assert(found.data.some((entry) => entry.path === 'src/demo.ts'), 'V2 scoped file search missing');
     const content = new TextDecoder().decode(await v2Api.file.read({ location: { directory }, path: 'src/demo.ts' }));
     assert(content.includes(directory.endsWith('secondary-project') ? directory : 'OpenCode 1.18.3'), 'V2 file reads must respect the directory');
+    const binary = await v2Api.file.read({ location: { directory }, path: 'assets/pixel.png' });
+    assert(binary.length > 8 && binary[0] === 0x89 && binary[1] === 0x50, 'V2 file reads must preserve binary bytes');
   }
   assert((await fetch(`${v2Origin}/api/fs/list`)).status === 400, 'V2 file listing requires location');
   const fileScope = { location: { directory: v2Directory } };

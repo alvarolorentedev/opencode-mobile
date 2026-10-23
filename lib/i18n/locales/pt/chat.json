@@ -64,6 +64,15 @@
     "loadEarlierDescription": "As mensagens mais recentes deste turno são atividade de ferramentas. Carregue mensagens anteriores para ver a conversa.",
     "loadEarlierAction": "Carregar mensagens anteriores"
   },
+  "activity": {
+    "used": "Usado {{count}} {{tools}}",
+    "thought": "Pensamento",
+    "thoughtCount": "Pensamento · {{count}}",
+    "expandActivity": "Expandir atividade",
+    "collapseActivity": "Recolher atividade",
+    "expandItem": "Expandir {{item}}",
+    "collapseItem": "Recolher {{item}}"
+  },
   "cards": {
     "respondToContinue": "Aprovação necessária",
     "waitingForAnswer": "O OpenCode está aguardando sua resposta antes de continuar.",

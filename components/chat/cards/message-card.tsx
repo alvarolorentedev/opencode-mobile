@@ -9,7 +9,7 @@ import { MarkdownText } from '@/components/chat/chat-markdown';
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { formatTimestamp, type TranscriptEntry } from '@/lib/opencode/format';
-import { summarizeTranscriptDetails } from '@/lib/opencode/transcript';
+import { shouldShowPatchSummary, summarizeTranscriptDetails, type TranscriptVerbosity } from '@/lib/opencode/transcript';
 
 type TranscriptMessageProps = {
   canSpeak?: boolean;
@@ -24,6 +24,7 @@ type TranscriptMessageProps = {
   onToggleSpeak: () => void;
   slim?: boolean;
   speaking?: boolean;
+  verbosity?: TranscriptVerbosity;
 };
 
 function TranscriptMessageImpl({
@@ -39,6 +40,7 @@ function TranscriptMessageImpl({
   onToggleSpeak,
   slim = false,
   speaking = false,
+  verbosity = 'basic',
 }: TranscriptMessageProps) {
   const { t } = useTranslation();
   const colorScheme = useColorScheme() ?? 'light';
@@ -48,7 +50,9 @@ function TranscriptMessageImpl({
   // use the dark palette. Flat messages follow the active theme's text color.
   const codePalette = !flat && isUser ? Colors.dark.code : palette.code;
   const attachments = entry.details.filter((detail) => detail.kind === 'file').map((detail) => ({ uri: detail.uri || '', mime: detail.mime, filename: detail.filename || detail.label }));
-  const summaryDetails = entry.details.filter((detail) => detail.kind === 'patch' || detail.kind === 'file' || detail.kind === 'retry');
+  // At verbose detail the activity rows carry patches; keeping the aggregate
+  // chip would render the same change twice.
+  const summaryDetails = entry.details.filter((detail) => detail.kind === 'file' || detail.kind === 'retry' || (detail.kind === 'patch' && shouldShowPatchSummary(verbosity)));
   const patchSummary = t('chat:cards.updatedPatches', { count: entry.details.filter((detail) => detail.kind === 'patch').length });
   const detailSummary = summarizeTranscriptDetails(summaryDetails, { patches: (count) => t('chat:cards.updatedPatches', { count }), files: (count) => t('chat:cards.fileCount', { count }) });
   const textColor = flat ? palette.text : isUser ? palette.onBubbleUser : palette.onBubbleAssistant;
@@ -142,6 +146,7 @@ function areTranscriptMessagePropsEqual(prev: TranscriptMessageProps, next: Tran
     prev.fontSize === next.fontSize &&
     prev.flat === next.flat &&
     prev.slim === next.slim &&
+    prev.verbosity === next.verbosity &&
     prev.copied === next.copied &&
     prev.speaking === next.speaking &&
     prev.canSpeak === next.canSpeak &&

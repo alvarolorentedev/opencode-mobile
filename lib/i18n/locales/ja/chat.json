@@ -64,6 +64,15 @@
     "loadEarlierDescription": "このターンの最新メッセージはツールのアクティビティです。会話を表示するには以前のメッセージを読み込んでください。",
     "loadEarlierAction": "以前のメッセージを読み込む"
   },
+  "activity": {
+    "used": "{{count}} {{tools}} を使用",
+    "thought": "思考",
+    "thoughtCount": "思考 · {{count}}",
+    "expandActivity": "アクティビティを展開",
+    "collapseActivity": "アクティビティを折りたたむ",
+    "expandItem": "{{item}} を展開",
+    "collapseItem": "{{item}} を折りたたむ"
+  },
   "cards": {
     "respondToContinue": "承認が必要",
     "waitingForAnswer": "OpenCode は続行する前にあなたの回答を待っています。",
