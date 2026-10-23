@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState, type PropsWithChildren } from 'react';
 import { ActivityIndicator, View } from 'react-native';
 import { getProfilePassword, loadConnectionProfiles, findProfileByConnectionScope, type ConnectionProfile } from '@/lib/connection-profiles';
+import { getProfileHeaders } from '@/lib/connection-headers';
 import { getConnectionScope, getConnectionUiScope } from '@/lib/connection-scope';
 import { defaultConnectionSettings } from '@/lib/opencode/client';
 import type { ConnectionContextValue, SessionDeepLinkTarget } from '@/providers/opencode-provider-types';
@@ -55,10 +56,10 @@ export function WorkspaceProvider({ children }: PropsWithChildren) {
   const connectSetup = useConnectState({ controlPlaneUrl: shell.controlPlaneUrl, setControlPlaneUrl: shell.setControlPlaneUrl,
     switchConnection, disconnect: disconnectProfile, isHydrated, activeMachineId: settings.connect?.machineId,
     beforeProfileRefresh, onProfileRefreshed: profileRefreshed, isActiveProfile });
-  const profileSaved = useCallback((profile: ConnectionProfile, password: string, previous?: ConnectionProfile) => {
+  const profileSaved = useCallback((profile: ConnectionProfile, secrets: { password: string; headers: Record<string, string> }, previous?: ConnectionProfile) => {
     const id = getConnectionUiScope(previous ?? profile);
     change((current) => current.map((entry) => entry.id === id ? { ...entry, name: profile.name } : entry));
-    updateWorkspaceSettings(id, { serverUrl: profile.serverUrl, username: profile.username, connect: profile.connect, password, directory: '' });
+    updateWorkspaceSettings(id, { serverUrl: profile.serverUrl, username: profile.username, connect: profile.connect, password: secrets.password, headers: secrets.headers, directory: '' });
   }, [change, updateWorkspaceSettings]);
   const removeConnection = useCallback(async (id: string) => {
     await removeWorkspaceConnection(id);
@@ -77,9 +78,9 @@ export function WorkspaceProvider({ children }: PropsWithChildren) {
       if (!entry && target.connectionScope) {
         const profile = findProfileByConnectionScope(await loadConnectionProfiles(), target.connectionScope);
         if (!profile) throw new Error('The saved connection for this session is not available.');
-        const password = await getProfilePassword(profile.id);
+        const [password, headers] = await Promise.all([getProfilePassword(profile.id), getProfileHeaders(profile.id)]);
         if (signal?.aborted) throw new Error('This session link was cancelled.');
-        await switchConnection({ serverUrl: profile.serverUrl, username: profile.username, connect: profile.connect, password }, profile.modelPreferences, false);
+        await switchConnection({ serverUrl: profile.serverUrl, username: profile.username, connect: profile.connect, password, headers }, profile.modelPreferences, false);
         entry = { id: getConnectionUiScope(profile), projects: [''], enabled: true };
       }
       if (!entry) throw new Error('The saved connection for this session is not available.');

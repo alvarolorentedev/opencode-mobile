@@ -348,12 +348,12 @@ Behavior:
 
 - each connection is a collapsible row; expanding shows its server URL and username, and reveals Connect, Edit, and Delete for that connection
 - the active row shows an `Active` (or `Connecting`) badge; the active connection always has a row, titled `Current connection` while it has not been saved as a profile yet
-- `Add connection` offers three choices in order: Scan QR code (local network, native only), Manual, and Cloud Link. Scan QR code and Manual open the shared scrollable full-screen form for name, server URL, username, and password; its keyboard-safe primary action, `Save & connect`, stores the profile (password in SecureStore, metadata in AsyncStorage) and switches to it. Cloud Link opens the guided assistant
+- `Add connection` offers three choices in order: Scan QR code (local network, native only), Manual, and Cloud Link. Scan QR code and Manual open the shared scrollable full-screen form for name, server URL, username, password, and (manual only) an optional set of custom HTTP headers; its keyboard-safe primary action, `Save & connect`, stores the profile (password and header values in SecureStore, metadata in AsyncStorage) and switches to it. Cloud Link opens the guided assistant
 - `Edit` opens the same form for that connection: for a saved connection it updates the stored profile (and the live settings when it is active), for the current unsaved connection it updates the live settings only
 - editing the active connection never reconnects on its own; the row's Reconnect action does that, so an in-flight session is not dropped
 - the active connection cannot be deleted; other connections offer Delete with a confirmation
 - selecting Connect on another connection switches through `switchConnection()`, which persists the outgoing profile's model selection, restores the target profile's selection, clears all server-derived state, and reconnects with the target credentials
-- values are persisted locally; passwords stay in SecureStore while name, URL, and username live in AsyncStorage
+- values are persisted locally; passwords and custom gateway headers stay in SecureStore while name, URL, and username live in AsyncStorage
 - Settings shows short category summaries in one compact group; tapping Connection opens a content-sized overlay with the server message, last checked timestamp, and saved connection rows
 
 ### Cloud Link Section

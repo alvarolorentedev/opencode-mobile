@@ -55,7 +55,12 @@
       "name": "Introduce un nombre para esta conexión.",
       "serverUrl": "Introduce la URL del servidor.",
       "invalidUrl": "Introduce una URL de servidor completa, como http://192.168.1.10:4096.",
-      "save": "No se pudo guardar esta conexión."
+      "save": "No se pudo guardar esta conexión.",
+      "headerName": "Introduce un nombre de encabezado válido.",
+      "headerValue": "Los valores de encabezado no pueden contener saltos de línea.",
+      "headerDuplicate": "Cada nombre de encabezado solo se puede usar una vez.",
+      "headerReserved": "La app gestiona este encabezado y no se puede sobrescribir.",
+      "headerLimit": "Usa como máximo 10 encabezados personalizados."
     },
     "setup": {
       "step": "Paso {{step}} de 2",
@@ -86,6 +91,16 @@
         "unreachable": "No se pudo acceder al servidor. Comprueba que ambos dispositivos estén en la misma red o introduce la dirección manualmente.",
         "loopback": "Este código solo contiene una dirección localhost. Ejecuta opencode service set hostname 0.0.0.0, después opencode service start y opencode pair en tu ordenador."
       }
+    },
+    "headers": {
+      "title": "Encabezados personalizados",
+      "add": "Añadir encabezado",
+      "name": "Nombre del encabezado",
+      "value": "Valor",
+      "remove": "Quitar encabezado",
+      "hint": "Se envía con cada solicitud a este servidor. Los valores se guardan de forma segura en este dispositivo.",
+      "showValues": "Mostrar valores",
+      "hideValues": "Ocultar valores"
     }
   },
   "providers": {

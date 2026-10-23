@@ -47,7 +47,7 @@ describe('local QR scan flow', () => {
     view.element('Scanner').props.onScan('one-use-code');
     await view.runtime.settle();
     expect(view.pair).toHaveBeenCalledOnce();
-    expect(view.onSubmit).toHaveBeenCalledWith({ name: '', serverUrl: 'http://192.168.1.10:49374', username: '', password: 'session-token' });
+    expect(view.onSubmit).toHaveBeenCalledWith({ name: '', serverUrl: 'http://192.168.1.10:49374', username: '', password: 'session-token', headers: {} });
   });
 
   it('retains the redeemed credential and retries save without pairing again', async () => {

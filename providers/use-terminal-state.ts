@@ -7,13 +7,13 @@ import { createTerminal as svcCreateTerminal, listShells, listTerminals, removeT
 import { createTerminalConnection, type TerminalConnectionContext } from './terminal-connection';
 import type { TerminalInstance, TerminalRenderer, TerminalRuntime } from './terminal-types';
 
-export function useTerminalState({ client, isCurrentClient, serverUrl, directory, serverContract, authorization, enabled = true }: {
+export function useTerminalState({ client, isCurrentClient, serverUrl, directory, serverContract, headers, enabled = true }: {
   client: ScopedOpencodeClient;
   isCurrentClient: (candidate: object) => boolean;
   serverUrl: string;
   directory: string;
   serverContract: ServerContract;
-  authorization?: string;
+  headers?: Record<string, string>;
   enabled?: boolean;
 }) {
   const [terminals, setTerminals] = useState<Pty[]>([]);
@@ -32,9 +32,9 @@ export function useTerminalState({ client, isCurrentClient, serverUrl, directory
   // Retained PTY transports read the live client/credentials through this
   // accessor so a same-machine credential rotation reconnects instead of
   // tearing down the renderer and its cursor.
-  const latest = useRef({ client, isCurrentClient, serverUrl, directory, serverContract, authorization });
+  const latest = useRef({ client, isCurrentClient, serverUrl, directory, serverContract, headers });
   useLayoutEffect(() => {
-    latest.current = { client, isCurrentClient, serverUrl, directory, serverContract, authorization };
+    latest.current = { client, isCurrentClient, serverUrl, directory, serverContract, headers };
   });
   const context = useCallback((): TerminalConnectionContext => {
     const current = latest.current;
@@ -44,7 +44,7 @@ export function useTerminalState({ client, isCurrentClient, serverUrl, directory
       serverUrl: current.serverUrl,
       directory: current.directory,
       serverContract: current.serverContract,
-      authorization: current.authorization,
+      headers: current.headers,
     };
   }, []);
 
@@ -105,7 +105,7 @@ export function useTerminalState({ client, isCurrentClient, serverUrl, directory
   // credentials; project switches dispose connections before this runs.
   useEffect(() => {
     for (const connection of connections.current.values()) connection.reconnect();
-  }, [authorization, client, directory, serverContract, serverUrl]);
+  }, [headers, client, directory, serverContract, serverUrl]);
 
   const createTerminal = useCallback(async (command?: string, title?: string) => {
     if (!isCurrentClient(client)) throw new Error('Connect this server before creating a terminal.');

@@ -55,7 +55,12 @@
       "name": "Saisis un nom pour cette connexion.",
       "serverUrl": "Saisis l'URL du serveur.",
       "invalidUrl": "Saisis une URL de serveur complète, comme http://192.168.1.10:4096.",
-      "save": "Impossible d'enregistrer cette connexion."
+      "save": "Impossible d'enregistrer cette connexion.",
+      "headerName": "Saisissez un nom d'en-tête valide.",
+      "headerValue": "Les valeurs d'en-tête ne peuvent pas contenir de sauts de ligne.",
+      "headerDuplicate": "Chaque nom d'en-tête ne peut être utilisé qu'une fois.",
+      "headerReserved": "Cet en-tête est géré par l'application et ne peut pas être remplacé.",
+      "headerLimit": "Utilisez au maximum 10 en-têtes personnalisés."
     },
     "setup": {
       "step": "Étape {{step}} sur 2",
@@ -86,6 +91,16 @@
         "unreachable": "Serveur inaccessible. Vérifiez que les appareils sont sur le même réseau ou saisissez l’adresse manuellement.",
         "loopback": "Ce code contient uniquement une adresse localhost. Exécutez opencode service set hostname 0.0.0.0, puis opencode service start et opencode pair sur votre ordinateur."
       }
+    },
+    "headers": {
+      "title": "En-têtes personnalisés",
+      "add": "Ajouter un en-tête",
+      "name": "Nom de l'en-tête",
+      "value": "Valeur",
+      "remove": "Supprimer l'en-tête",
+      "hint": "Envoyé avec chaque requête vers ce serveur. Les valeurs sont stockées en sécurité sur cet appareil.",
+      "showValues": "Afficher les valeurs",
+      "hideValues": "Masquer les valeurs"
     }
   },
   "providers": {

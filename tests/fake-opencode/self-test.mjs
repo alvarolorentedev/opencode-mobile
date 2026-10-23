@@ -160,6 +160,25 @@ try {
   const ptyTicket = (await request(`/pty/${pty.id}/connect-token`, { method: 'POST', headers: { 'x-opencode-ticket': '1' } })).ticket;
   assert(ptyTicket === `ticket-${pty.id}`, 'PTY token failed');
   await checkPtySocket(pty.id, ptyTicket);
+  // Optional gateway-header gate applies to REST and the PTY upgrade.
+  await request('/__control/headers', json('POST', { required: { 'CF-Access-Client-Id': 'v1-client', 'CF-Access-Client-Secret': 'v1-secret' } }));
+  assert((await response('/config')).status === 401, 'V1 without gateway headers must be rejected');
+  const gatewayHeaders = { 'CF-Access-Client-Id': 'v1-client', 'CF-Access-Client-Secret': 'v1-secret' };
+  assert((await response('/config', { headers: gatewayHeaders })).ok, 'V1 with gateway headers must authenticate');
+  const gate = await request('/__control/headers');
+  assert(gate.data.received['CF-Access-Client-Id'] === 'v1-client' && gate.data.paths.includes('/config'), 'V1 header evidence missing');
+  const rejectedUpgrade = new WebSocket(`ws://127.0.0.1:${port}${prefix}/pty/${pty.id}/connect?ticket=${ptyTicket}`);
+  assert(await new Promise((resolve) => {
+    rejectedUpgrade.once('open', () => resolve(false));
+    rejectedUpgrade.once('error', () => resolve(true));
+  }), 'PTY upgrade must reject missing gateway headers');
+  await new Promise((resolve, reject) => {
+    const socket = new WebSocket(`ws://127.0.0.1:${port}${prefix}/pty/${pty.id}/connect?ticket=${ptyTicket}`, { headers: gatewayHeaders });
+    socket.once('open', () => { socket.close(); resolve(); });
+    socket.once('error', reject);
+  });
+  assert((await request('/__control/headers')).data.paths.some((path) => path.startsWith(`/pty/${pty.id}/connect`)), 'PTY upgrade must carry gateway headers');
+  await request('/__control/headers', json('POST', { required: {} }));
   assert((await request('/pty')).length === 1, 'PTY list failed');
   await request(`/pty/${pty.id}`, { method: 'DELETE' });
   await assertStatus(`/pty/${pty.id}`, 404);
@@ -510,6 +529,25 @@ try {
   const variantState = await v2request('/__control/state');
   assert(variantState.sessions[0].model.variant === 'max', 'V2 session model switch must retain the selected variant');
   await v2request('/__control/reset', json('POST', { scenario: 'happy-path' }));
+
+  // Optional gateway-header gate covers REST and SSE. The fake server records
+  // which paths carried the configured header names.
+  await v2request('/__control/headers', json('POST', { required: { 'CF-Access-Client-Id': 'v2-client', 'CF-Access-Client-Secret': 'v2-secret' } }));
+  assert((await fetch(`${v2Origin}/api/info`)).status === 401, 'V2 without gateway headers must be rejected');
+  const v2Gateway = OpenCode.make({ baseUrl: v2Origin, headers: { 'CF-Access-Client-Id': 'v2-client', 'CF-Access-Client-Secret': 'v2-secret' } });
+  const gatedFiles = await v2Gateway.file.list({ location: { directory: '/workspace/demo-project' }, path: 'src' });
+  assert(gatedFiles.data.some((entry) => entry.path === 'src/demo.ts'), 'V2 SDK must send gateway headers');
+  const gatedEvents = new AbortController();
+  const gatedResponse = await fetch(`${v2Origin}/api/event`, {
+    headers: { 'CF-Access-Client-Id': 'v2-client', 'CF-Access-Client-Secret': 'v2-secret' }, signal: gatedEvents.signal,
+  });
+  assert(gatedResponse.ok, 'V2 SSE must accept gateway headers');
+  const gatedReader = gatedResponse.body.getReader();
+  assert((await nextEvent(gatedReader, (event) => event.type === 'server.connected')).type === 'server.connected', 'V2 SSE must stream after gateway authentication');
+  gatedEvents.abort();
+  const headerState = await v2request('/__control/headers');
+  assert(headerState.data.received['CF-Access-Client-Id'] === 'v2-client' && headerState.data.paths.includes('/api/event'), 'V2 header evidence missing');
+  await v2request('/__control/headers', json('POST', { required: {} }));
 
   console.log('Fake OpenCode 1.18.3 server self-test passed.');
   console.log('Fake OpenCode 2.0 server self-test passed.');

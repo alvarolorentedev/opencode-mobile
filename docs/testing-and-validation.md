@@ -39,6 +39,20 @@ Widget tests assert directory request budgets and retention beyond displayed row
 `files-panel.test.ts` guards lazy row construction and navigation for 1,000 files;
 rendered/native acceptance must still verify scrolling, keyboard and accessibility.
 
+Custom gateway-header coverage: `connection-headers.test.ts` drives row
+validation, reserved-name rejection, canonical comparison, active/profile
+SecureStore round-trips and the web test-secret path;
+`connection-profiles.test.ts` proves header resolution stays scoped to the
+owning connection and never reaches AsyncStorage; `read-deadline.test.ts` checks
+the Basic-auth + custom-header merge; `connection-dialog.test.ts` covers row
+editing, masked values and pre-probe rejection; `connect.test.ts` and
+`terminal.test.ts` prove native terminal upgrades receive the full header set.
+The fake-server self-test gates REST, SSE and PTY upgrades, and
+`manual-connection.spec.mjs` connects through a header-gated V2 server and
+asserts REST/SSE delivery plus secret-free AsyncStorage. E2E and fake-server
+changes require explicit human validation under `AGENTS.md`; the web E2E cannot
+exercise native WebSocket headers.
+
 Finite GET/HEAD API reads have one 30-second deadline through body consumption.
 Expired operations release coalescing and reject late results; SSE retains its
 existing watchdog and mutations are neither timed out nor automatically retried.

@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { OpenCode } from '@opencode/client';
 import { createOpencodeClient } from '@opencode-ai/sdk/v2/client';
-import { createAuthHeader, createPrefixFetch, createScopedFetch, fetchConnection } from '@/lib/opencode/client/fetch';
+import { createAuthHeader, createPrefixFetch, createScopedFetch, fetchConnection, getRequestHeaders } from '@/lib/opencode/client/fetch';
 import { READ_TIMEOUT_MS } from '@/lib/opencode/client/read-deadline';
 import { coalesceRead } from '@/lib/opencode/in-flight';
 import { normalizeServerUrl } from '@/lib/opencode/client/url';
@@ -76,6 +76,15 @@ describe('credential and diagnostic boundaries', () => {
     expect(Buffer.from(header!.slice(6), 'base64').toString('utf8')).toBe(`alice:${password}`);
     expect(createAuthHeader({ serverUrl: '', username: '', password: ' ', directory: '' })).toBe(`Basic ${Buffer.from('opencode: ').toString('base64')}`);
     expect(normalizeServerUrl('http://alice:private@server').valid).toBe(false);
+  });
+  it('merges per-connection gateway headers and never overrides Basic auth', () => {
+    const custom = { 'CF-Access-Client-Id': 'client-id', 'CF-Access-Client-Secret': 'client-secret' };
+    expect(getRequestHeaders({ serverUrl: 'http://server', username: 'alice', password: 'secret', directory: '', headers: custom })).toEqual({
+      ...custom,
+      Authorization: `Basic ${Buffer.from('alice:secret').toString('base64')}`,
+    });
+    expect(getRequestHeaders({ serverUrl: 'http://server', username: '', password: '', directory: '', headers: custom })).toEqual(custom);
+    expect(getRequestHeaders({ serverUrl: 'http://server', username: '', password: '', directory: '' })).toBeUndefined();
   });
   it('counts advertised bytes without cloning unknown-size responses', async () => {
     const response = new Response('large unknown body');

@@ -125,16 +125,16 @@ describe('PTY connection lifecycle', () => {
   });
   it('reconnects with rotated credentials while keeping the renderer cursor', async () => {
     const initial = {} as ScopedOpencodeClient, rotated = {} as ScopedOpencodeClient;
-    const live: TerminalConnectionContext = { client: initial, current: true, serverUrl: 'https://example.test/prefix', directory: '/workspace', serverContract: 'v1', authorization: 'Basic old' };
+    const live: TerminalConnectionContext = { client: initial, current: true, serverUrl: 'https://example.test/prefix', directory: '/workspace', serverContract: 'v1', headers: { Authorization: 'Basic old' } };
     const pty = connection(() => live);
     pty.register({ write: async () => {} }); await settle();
     const socket = services.socket.mock.results[0].value as Socket;
     socket.open(); socket.message('$ '); socket.message(metadata(2));
     await vi.advanceTimersByTimeAsync(16);
-    live.client = rotated; live.authorization = 'Basic new';
+    live.client = rotated; live.headers = { Authorization: 'Basic new', 'CF-Access-Client-Id': 'client-id' };
     pty.reconnect(); await settle();
     expect(services.token.mock.calls[1][0]).toBe(rotated);
-    expect(services.socket.mock.calls[1][1]).toBe('Basic new');
+    expect(services.socket.mock.calls[1][1]).toEqual({ Authorization: 'Basic new', 'CF-Access-Client-Id': 'client-id' });
     expect(services.url.mock.calls[1][2]).toEqual({ ticket: 'fresh-ticket', cursor: '2' });
     pty.dispose();
   });

@@ -46,12 +46,13 @@ async function loadPasswordModule(platform: 'android' | 'ios' | 'web' = 'android
 const PASSWORD_KEY = 'opencode-mobile.connection-password';
 
 describe('connection password storage', () => {
-  it('strips the password and URL credentials from persisted settings', async () => {
+  it('strips credentials, gateway headers, and URL credentials from persisted settings', async () => {
     const { module } = await loadPasswordModule();
-    expect(module.withoutConnectionPassword({
+    expect(module.withoutConnectionSecrets({
       serverUrl: 'https://alice:secret@host.test/proxy',
       username: 'alice',
       password: 'secret',
+      headers: { 'CF-Access-Client-Secret': 'gateway-secret' },
     })).toEqual({ serverUrl: 'https://host.test/proxy', username: 'alice' });
   });
 

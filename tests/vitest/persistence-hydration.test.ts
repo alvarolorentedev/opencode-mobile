@@ -124,6 +124,7 @@ describe('persistence hydration and write-back', () => {
     // not stop independent preferences from hydrating or replace stored defaults.
     const hydrationRuntime = hookRuntime();
     let credentialReads = 0;
+    let headerReads = 0;
     const keys = await loadTs('lib/storage-keys.ts');
     const stored = new Map([[keys.SETTINGS_STORAGE_KEY, '{"serverUrl":"stored-server"}'],
       [keys.CHAT_PREFERENCES_STORAGE_KEY, '{"language":"es"}'],
@@ -138,7 +139,11 @@ describe('persistence hydration and write-back', () => {
       '@/lib/connection-password': {
         getConnectionPassword: async () => { credentialReads++; return 'another-server-secret'; },
         saveConnectionPassword: async () => assert.fail('unread credentials must remain untouched'),
-        withoutConnectionPassword: ({ password: _, ...metadata }) => metadata,
+        withoutConnectionSecrets: ({ password: _, headers: __, ...metadata }) => metadata,
+      },
+      '@/lib/connection-headers': {
+        getConnectionHeaders: async () => { headerReads++; return { 'CF-Access-Client-Secret': 'another-server-header' }; },
+        saveConnectionHeaders: async () => assert.fail('unread headers must remain untouched'),
       },
       '@/lib/storage-keys': keys,
       '@/lib/opencode/client/url': profileUrls,
@@ -170,7 +175,9 @@ describe('persistence hydration and write-back', () => {
     assert.equal(hydrationRuntime.value.chatPreferences.language, 'es');
     assert.deepEqual(hydrationRuntime.value.projectPathsByConnection.scope, ['/repo', '/other']);
     assert.equal(credentialReads, 0, 'Unread server metadata must not lend a stored credential to the default server.');
+    assert.equal(headerReads, 0, 'Unread server metadata must not lend stored gateway headers to the default server.');
     assert.equal(hydrationRuntime.value.settings.password, '');
+    assert.deepEqual(JSON.parse(JSON.stringify(hydrationRuntime.value.settings.headers)), {});
     assert.equal(stored.get(keys.SETTINGS_STORAGE_KEY), '{"serverUrl":"stored-server"}');
     hydrationRuntime.unmount();
   });

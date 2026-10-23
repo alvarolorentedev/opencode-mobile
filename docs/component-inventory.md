@@ -533,7 +533,7 @@ dialog, so there is a single place to configure a connection.
 - switch to a saved connection through `switchConnection()` (which persists the outgoing profile's model selection, restores the target's, and reconnects)
 - add a connection through `Add connection` (saves metadata to AsyncStorage, password to SecureStore, and connects)
 - edit a connection through the same dialog; editing the active connection applies to the live settings but waits for Reconnect, so an in-flight session is never dropped
-- delete a saved connection and its SecureStore password, except the active one
+- delete a saved connection and its SecureStore password/header secrets, except the active one
 - mark the active Cloud Link row by trusted environment and machine ID, so rotating usernames do not create a temporary `Current connection` row; manual connections still compare `getConnectionScope()`
 
 The component owns only local state (expanded row, dialog, switching row); profile state, persistence orchestration, and credential ordering live in `providers/use-connection-profiles.ts`, backed by `lib/connection-profiles.ts`; switching/reconnecting stay in the provider. The profile hook refreshes after the Cloud Link profile snapshot changes, including inactive-machine renewal while Settings remains mounted. The UI accesses these through `useConnection().connectionProfiles`.
@@ -544,6 +544,10 @@ The component owns only local state (expanded row, dialog, switching row); profi
 
 - collect the server address first, then password and an optional name whose
   placeholder is the hostname; Continue displays an abortable detection state
+- offer a collapsible Custom headers section with key/value rows for manual
+  connections (Cloudflare Access service tokens and other gateways). Values are
+  masked by default, validated before probing/saving, and passed to the provider
+  as a normalized map; the section is never shown for Cloud Link profiles
 - hide Username for confirmed V2, show it for V1, and offer a collapsed custom
   username when credentials are needed to identify the server
 - The shared TextInput clears Paper's implicit text alignment for single-line

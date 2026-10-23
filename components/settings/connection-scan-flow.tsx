@@ -84,7 +84,7 @@ export function ConnectionScanFlow({ onSubmit, onDismiss, onBusyChange }: {
     try {
       const paired = await connectionProfiles.pair(code, controller.current.signal);
       if (current !== request.current) return;
-      const values: ConnectionProfileFormValues = { name: '', serverUrl: paired.serverUrl, username: paired.username, password: paired.password };
+      const values: ConnectionProfileFormValues = { name: '', serverUrl: paired.serverUrl, username: paired.username, password: paired.password, headers: {} };
       setRedeemed(values);
       // The provider owns save/connect; keep the redeemed credential on failure.
       setBusy('save');

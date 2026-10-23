@@ -55,7 +55,12 @@
       "name": "この接続の名前を入力してください。",
       "serverUrl": "サーバー URL を入力してください。",
       "invalidUrl": "http://192.168.1.10:4096 などの完全なサーバー URL を入力してください。",
-      "save": "この接続を保存できませんでした。"
+      "save": "この接続を保存できませんでした。",
+      "headerName": "有効なヘッダー名を入力してください。",
+      "headerValue": "ヘッダー値に改行は使用できません。",
+      "headerDuplicate": "同じヘッダー名は一度しか使用できません。",
+      "headerReserved": "このヘッダーはアプリが管理しているため上書きできません。",
+      "headerLimit": "カスタムヘッダーは最大 10 個までです。"
     },
     "setup": {
       "step": "ステップ {{step}} / 2",
@@ -86,6 +91,16 @@
         "unreachable": "サーバーに接続できません。両方のデバイスが同じネットワークにあるか確認するか、アドレスを手動で入力してください。",
         "loopback": "このコードには localhost のアドレスしかありません。コンピューターで opencode service set hostname 0.0.0.0 を実行し、続けて opencode service start と opencode pair を実行してください。"
       }
+    },
+    "headers": {
+      "title": "カスタムヘッダー",
+      "add": "ヘッダーを追加",
+      "name": "ヘッダー名",
+      "value": "値",
+      "remove": "ヘッダーを削除",
+      "hint": "このサーバーへのすべてのリクエストで送信されます。値はこのデバイスに安全に保存されます。",
+      "showValues": "値を表示",
+      "hideValues": "値を隠す"
     }
   },
   "providers": {

@@ -5,6 +5,11 @@ import { Platform } from 'react-native';
 
 import { parseWorkspaces, WORKSPACES_STORAGE_KEY } from '@/providers/workspace-storage';
 import { getConnectionPassword } from '@/lib/connection-password';
+import {
+  getProfileHeaders,
+  getConnectionHeaders,
+  type ConnectionHeaders,
+} from '@/lib/connection-headers';
 import { getConnectCredentialError, getConnectTestSecret, parseConnectMetadata, setConnectTestSecret, type ConnectMetadata } from '@/lib/connect';
 import { getConnectionScope, type ConnectionIdentity } from '@/lib/connection-scope';
 import { CONNECTION_PROFILES_STORAGE_KEY, SETTINGS_STORAGE_KEY } from '@/lib/storage-keys';
@@ -198,9 +203,9 @@ async function writeSanitizedProfiles(profiles: ConnectionProfile[]) {
  *
  * Returns `undefined` when no credential is available. Callers must keep the
  * pending record instead of dropping it or borrowing another connection's
- * password.
+ * password. Gateway headers travel with the same resolution.
  */
-export async function resolveConnectionCredentials(identity: ConnectionIdentity): Promise<{ password: string; connect?: ConnectMetadata } | undefined> {
+export async function resolveConnectionCredentials(identity: ConnectionIdentity): Promise<{ password: string; headers: ConnectionHeaders; connect?: ConnectMetadata } | undefined> {
   if (!identity.serverUrl.trim() || !isValidServerUrl(identity.serverUrl)) return undefined;
   const connectionScope = getConnectionScope(identity);
   // Background notifications and widget actions honor explicit disconnects too.
@@ -214,8 +219,8 @@ export async function resolveConnectionCredentials(identity: ConnectionIdentity)
     const profile = findProfileByConnectionScope(profiles, connectionScope);
     if (profile) {
       if (getConnectCredentialError(profile.connect, 'present')) return undefined;
-      const password = await getProfilePassword(profile.id);
-      return getConnectCredentialError(profile.connect, password) ? undefined : { password, ...(profile.connect ? { connect: profile.connect } : {}) };
+      const [password, headers] = await Promise.all([getProfilePassword(profile.id), getProfileHeaders(profile.id)]);
+      return getConnectCredentialError(profile.connect, password) ? undefined : { password, headers, ...(profile.connect ? { connect: profile.connect } : {}) };
     }
   } catch {
     // Fall through to the active connection.
@@ -231,10 +236,10 @@ export async function resolveConnectionCredentials(identity: ConnectionIdentity)
       username: typeof settings.username === 'string' ? settings.username : '',
     });
     if (activeScope !== connectionScope) return undefined;
-    const password = (await getConnectionPassword()) || '';
+    const [password, headers] = await Promise.all([getConnectionPassword(), getConnectionHeaders()]);
     const connect = parseConnectMetadata(settings.connect);
     if (settings.connect !== undefined && (!connect || getConnectCredentialError(connect, password))) return undefined;
-    return { password, ...(connect ? { connect } : {}) };
+    return { password: password || '', headers, ...(connect ? { connect } : {}) };
   } catch {
     return undefined;
   }

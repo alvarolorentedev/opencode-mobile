@@ -3,7 +3,8 @@ import { useCallback, useEffect, useState, type Dispatch, type SetStateAction } 
 
 import type { OpencodeConnectionSettings } from '@/lib/opencode/client';
 import { normalizeTrustedControlPlaneUrl } from '@/lib/connect';
-import { getConnectionPassword, saveConnectionPassword, withoutConnectionPassword } from '@/lib/connection-password';
+import { getConnectionPassword, saveConnectionPassword, withoutConnectionSecrets } from '@/lib/connection-password';
+import { getConnectionHeaders, saveConnectionHeaders, type ConnectionHeaders } from '@/lib/connection-headers';
 import { isValidServerUrl } from '@/lib/opencode/client/url';
 import {
   ACTIVE_PROJECT_STORAGE_KEY,
@@ -93,14 +94,22 @@ export function useOpencodePersistence({
         try {
           if (hasLegacyPassword) {
             await saveConnectionPassword(legacyPassword);
-            await AsyncStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(withoutConnectionPassword({ ...defaultSettings, ...persistedSettings })));
+            await AsyncStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(withoutConnectionSecrets({ ...defaultSettings, ...persistedSettings })));
           }
           password = hasConnectionIdentity ? (await getConnectionPassword()) || legacyPassword : '';
         } catch (reason) {
           writeChanged.preserveUnread(SETTINGS_STORAGE_KEY);
           console.warn('Could not hydrate connection credentials.', reason);
         }
-        setSettings({ ...defaultSettings, ...persistedSettings, password });
+        let headers: ConnectionHeaders = {};
+        try {
+          // Like the password, unread server metadata must not lend stored
+          // gateway headers to the default server.
+          if (hasConnectionIdentity) headers = await getConnectionHeaders();
+        } catch (reason) {
+          console.warn('Could not hydrate connection headers.', reason);
+        }
+        setSettings({ ...defaultSettings, ...persistedSettings, password, headers });
 
         await load(CHAT_PREFERENCES_STORAGE_KEY, parseChatPreferences, (parsed) => {
           setChatPreferences((current) => ({
@@ -146,10 +155,12 @@ export function useOpencodePersistence({
       return;
     }
 
-    const metadata = JSON.stringify(withoutConnectionPassword(settings));
+    const metadata = JSON.stringify(withoutConnectionSecrets(settings));
     const credential = JSON.stringify([settings.password, Boolean(settings.connect)]);
-    void writeChanged(SETTINGS_STORAGE_KEY, JSON.stringify([metadata, credential]), async () => {
+    const headerValue = JSON.stringify(settings.headers ?? {});
+    void writeChanged(SETTINGS_STORAGE_KEY, JSON.stringify([metadata, credential, headerValue]), async () => {
       await writeChanged('connection-password', credential, () => saveConnectionPassword(settings.password, Boolean(settings.connect)));
+      await writeChanged('connection-headers', headerValue, () => saveConnectionHeaders(settings.headers));
       await AsyncStorage.setItem(SETTINGS_STORAGE_KEY, metadata);
     }).catch((reason) => console.warn('Could not save connection settings.', reason));
   }, [isHydrated, settings, writeChanged]);

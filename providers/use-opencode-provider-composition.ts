@@ -130,6 +130,9 @@ export function useOpencodeProviderComposition(input: WorkspaceRuntimeInput) {
 
   const transcript = useTranscriptState({ ...state, client, isCurrentClient, transcriptVerbosity: state.chatPreferences.transcriptVerbosity });
   const inbox = usePromptInbox({ client, isCurrentClient, refreshMessages: transcript.refreshMessages });
+  // Memoized so the terminal reconnect effect only runs when headers actually
+  // change, not on every render (getRequestHeaders returns a new object).
+  const terminalHeaders = useMemo(() => getRequestHeaders(state.settings), [state.settings]);
   const terminal = useTerminalState({
     enabled: input.connection.enabled,
     ...state,
@@ -137,7 +140,7 @@ export function useOpencodeProviderComposition(input: WorkspaceRuntimeInput) {
     directory: state.activeProjectPath || '',
     isCurrentClient,
     serverUrl: state.settings.serverUrl,
-    authorization: getRequestHeaders(state.settings)?.Authorization,
+    headers: terminalHeaders,
   });
   const worktree = useWorktreeState({ ...state, client, isCurrentClient, refreshProjectCatalog: refreshProjectCatalogLatest });
   const activeProject = useMemo(

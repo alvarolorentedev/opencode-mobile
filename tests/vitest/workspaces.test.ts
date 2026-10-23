@@ -90,16 +90,17 @@ describe('multi-server contracts', () => {
   it('validates registry identities and never persists credentials', async () => {
     const parsing = await loadTs('providers/persisted-preferences.ts', { '@/lib/connect': { parseConnectMetadata: () => undefined }, '@/lib/opencode/client/url': { stripServerUrlCredentials: (value: string) => value }, '@/providers/opencode-preferences': { normalizeTranscriptFontSize: (value: number) => value } });
     const { parseWorkspaces, serializeWorkspaces } = await loadTs('providers/workspace-storage.ts', {
-      '@/lib/connection-password': { withoutConnectionPassword: ({ password, ...value }: any) => value }, '@/lib/connection-scope': identity,
+      '@/lib/connection-password': { withoutConnectionSecrets: ({ password, headers, ...value }: any) => value }, '@/lib/connection-scope': identity,
       '@/lib/opencode/client': { isValidServerUrl: (value: string) => value.startsWith('http') }, '@/providers/persisted-preferences': parsing,
     });
-    const entry = { id: 'http://a:', name: 'A', enabled: true, settings: { serverUrl: 'http://a', username: '', directory: '', password: 'secret' }, preferences: { autoApprove: false }, projects: ['/same'], events: () => {} };
+    const entry = { id: 'http://a:', name: 'A', enabled: true, settings: { serverUrl: 'http://a', username: '', directory: '', password: 'secret', headers: { 'CF-Access-Client-Secret': 'header-secret' } }, preferences: { autoApprove: false }, projects: ['/same'], events: () => {} };
     const serialized = serializeWorkspaces([entry], { connectionId: entry.id, projectPath: '/same' });
-    expect(serialized).not.toContain('secret'); expect(serialized).not.toContain('password');
+    expect(serialized).not.toContain('secret'); expect(serialized).not.toContain('password'); expect(serialized).not.toContain('headers');
     expect(parseWorkspaces(serialized).connections[0].enabled).toBe(true);
     expect(() => parseWorkspaces(serialized.replace('http://a:', 'wrong-id'))).toThrow();
     expect(() => parseWorkspaces(JSON.stringify({ version: 2, connections: [] }))).toThrow();
     expect(() => parseWorkspaces(JSON.stringify({ version: 1, connections: [{ ...entry, events: undefined }] }))).toThrow();
+    expect(() => parseWorkspaces(JSON.stringify({ version: 1, connections: [{ ...entry, events: undefined, settings: { serverUrl: 'http://a', username: '', directory: '', headers: { 'CF-Access-Client-Secret': 'header-secret' } } }] }))).toThrow();
   });
 });
 
@@ -169,6 +170,7 @@ it('keeps lifecycle decisions current and closes projects without resetting reta
     '@/lib/connection-scope': { ...identity, getConnectionUiScope: (value: any) => value.serverUrl.slice(7) },
     '@/lib/connection-profiles': { createProfileId: () => 'new', findMatchingProfile: () => undefined, getProfilePassword: async () => '',
       loadConnectionProfiles: async () => [], mutateConnectionProfiles: vi.fn(), saveProfilePassword: vi.fn(), deleteProfilePassword: vi.fn(), pickModelPreferences: () => ({}) },
+    '@/lib/connection-headers': { getProfileHeaders: async () => ({}), saveProfileHeaders: vi.fn(), deleteProfileHeaders: vi.fn() },
     '@/lib/opencode/client': { defaultConnectionSettings: { serverUrl: 'http://default', username: '' } },
     '@/lib/opencode/client/url': { getServerHostname: (value: string) => value },
     '@/providers/persistence-hydration': { createPersistenceWriter: () => writer },

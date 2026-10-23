@@ -126,3 +126,42 @@ test('editing a saved profile preserves its username and leaves the active conne
   expect(stored.settings).toMatchObject({ serverUrl: V1, username: '' });
   expect(discovery).toBe(0);
 });
+
+test('sends custom gateway headers on probe, API and SSE without persisting their values', async ({ page, request }) => {
+  const { server, origin } = await v2Server(request);
+  const required = { 'CF-Access-Client-Id': 'access-client-id', 'CF-Access-Client-Secret': 'access-client-secret' };
+  try {
+    expect((await request.post(`${origin}/__control/headers`, { data: { required } })).ok()).toBeTruthy();
+    await openManual(page, origin);
+    // The first probe has no header editor yet, so the Access gate is visible.
+    await expect(page.getByTestId('connection-profile-detection')).toHaveText('Enter credentials to identify the server.');
+    await page.getByTestId('connection-profile-headers-toggle').click();
+    await page.getByTestId('connection-profile-header-add').click();
+    await page.getByTestId('connection-profile-header-name-0').fill('CF-Access-Client-Id');
+    await page.getByTestId('connection-profile-header-value-0').fill('access-client-id');
+    await page.getByTestId('connection-profile-header-add').click();
+    await page.getByTestId('connection-profile-header-name-1').fill('CF-Access-Client-Secret');
+    await page.getByTestId('connection-profile-header-value-1').fill('access-client-secret');
+    await page.getByTestId('connection-profile-save-confirm').click();
+    await expect(page.getByTestId('onboarding-ai')).toBeVisible();
+
+    // The saved connection carries the headers on REST and the shared SSE stream.
+    await expect.poll(async () => {
+      const state = await (await request.get(`${origin}/__control/state`)).json();
+      return state.headers.paths;
+    }).toEqual(expect.arrayContaining(['/api/info', '/api/event']));
+    const state = await (await request.get(`${origin}/__control/state`)).json();
+    expect(state.headers.received).toEqual(required);
+    expect(state.headers.required).toEqual(required);
+
+    // Header values are secrets: no AsyncStorage-backed metadata may contain them.
+    const stored = await page.evaluate(() => JSON.stringify({
+      settings: localStorage.getItem('opencode-mobile.settings'),
+      profiles: localStorage.getItem('opencode-mobile.connection-profiles'),
+      workspaces: localStorage.getItem('opencode-mobile.workspaces'),
+    }));
+    expect(stored).not.toContain('access-client-id');
+    expect(stored).not.toContain('access-client-secret');
+    expect(stored).not.toContain('CF-Access');
+  } finally { server.kill('SIGTERM'); }
+});

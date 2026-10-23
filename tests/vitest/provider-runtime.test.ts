@@ -605,6 +605,7 @@ voiceRuntime.unmount(); assert.equal(voiceRuntime.countTimers(2200), 0); assert.
 const profileRuntime = hookRuntime();
 let storedProfiles = [], profileId = 0, failMetadata = false, failCredential = false, updates = 0;
 const passwords = new Map();
+const profileHeaders = new Map();
 const profileUrls = await loadTs('lib/opencode/client/url.ts', { './types': { defaultConnectionSettings: { serverUrl: 'http://127.0.0.1:4096' } } });
 const profilesHook = await loadTs('providers/use-connection-profiles.ts', {
   '@/lib/opencode/client/url': profileUrls,
@@ -620,29 +621,38 @@ const profilesHook = await loadTs('providers/use-connection-profiles.ts', {
     deleteProfilePassword: async (id) => { passwords.delete(id); },
     findMatchingProfile: (entries, settings) => entries.find((p) => p.serverUrl === settings.serverUrl),
   },
+  '@/lib/connection-headers': {
+    getProfileHeaders: async (id) => profileHeaders.get(id) ?? {},
+    saveProfileHeaders: async (id, headers) => { if (failCredential) throw new Error('secure storage failed'); if (headers && Object.keys(headers).length) profileHeaders.set(id, headers); else profileHeaders.delete(id); },
+    deleteProfileHeaders: async (id) => { profileHeaders.delete(id); },
+  },
 });
 profileRuntime.mount(profilesHook.useConnectionProfiles, {
   settings: { serverUrl: 'current' }, switchConnection: async () => {}, updateSettings: () => { updates++; },
 });
 const [savedA, savedB] = await Promise.all([
-  profileRuntime.value.save({ name: 'A', serverUrl: 'a', username: 'alice', password: 'a-secret' }),
-  profileRuntime.value.save({ name: 'B', serverUrl: 'b', username: 'bob', password: 'b-secret' }),
+  profileRuntime.value.save({ name: 'A', serverUrl: 'a', username: 'alice', password: 'a-secret', headers: { 'CF-Access-Client-Id': 'a-client' } }),
+  profileRuntime.value.save({ name: 'B', serverUrl: 'b', username: 'bob', password: 'b-secret', headers: { 'CF-Access-Client-Id': 'b-client' } }),
 ]);
 await profileRuntime.settle();
 assert.equal(storedProfiles.length, 2); assert.equal(updates, 0, 'saving a new inactive profile cannot change the active settings');
+assert.deepEqual(profileHeaders.get(savedA.id), { 'CF-Access-Client-Id': 'a-client' }, 'gateway headers stay in secure storage');
+assert.equal(JSON.stringify(storedProfiles).includes('a-client'), false, 'profile metadata never carries header values');
 failCredential = true;
-await assert.rejects(profileRuntime.value.save({ name: 'edited', serverUrl: 'a', username: 'alice', password: 'session-token' }, savedA.id), /secure storage failed/);
+await assert.rejects(profileRuntime.value.save({ name: 'edited', serverUrl: 'a', username: 'alice', password: 'session-token', headers: {} }, savedA.id), /secure storage failed/);
 assert.equal(storedProfiles.find((entry) => entry.id === savedA.id).name, 'A', 'credential failures leave profile metadata intact');
 assert.equal(passwords.get(savedA.id), 'a-secret');
 failCredential = false;
 failMetadata = true;
-await assert.rejects(profileRuntime.value.save({ name: 'edited', serverUrl: 'a', username: 'alice', password: 'new-secret' }, savedA.id), /metadata failed/);
+await assert.rejects(profileRuntime.value.save({ name: 'edited', serverUrl: 'a', username: 'alice', password: 'new-secret', headers: { 'CF-Access-Client-Id': 'new-client' } }, savedA.id), /metadata failed/);
 assert.equal(passwords.get(savedA.id), 'a-secret', 'failed metadata writes restore the previous credential');
+assert.deepEqual(profileHeaders.get(savedA.id), { 'CF-Access-Client-Id': 'a-client' }, 'failed metadata writes restore the previous headers');
 failMetadata = false;
 profileRuntime.update({ settings: { serverUrl: 'a' } });
 await assert.rejects(profileRuntime.value.remove(savedA.id), /active connection/);
 await profileRuntime.value.remove(savedB.id); await profileRuntime.settle();
 assert.equal(storedProfiles.length, 1); assert.equal(passwords.has(savedB.id), false);
+assert.equal(profileHeaders.has(savedB.id), false, 'removing a profile clears its gateway headers');
 const named = await profileRuntime.value.save({ name: '  ', serverUrl: 'https://EXAMPLE.test:8443/proxy', username: '', password: 'session-token' });
 assert.equal(named.name, 'example.test');
 assert.equal(passwords.get(named.id), 'session-token');

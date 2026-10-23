@@ -24,7 +24,7 @@ const CURRENT_CONNECTION_KEY = 'current';
 
 type DialogState =
   | { mode: 'add' }
-  | { mode: 'edit-profile'; profile: ConnectionProfile; password: string }
+  | { mode: 'edit-profile'; profile: ConnectionProfile; password: string; headers: Record<string, string> }
   | { mode: 'edit-current' };
 
 function connectionHost(serverUrl: string) {
@@ -39,7 +39,7 @@ export function ConnectionProfiles({ palette, onManageConnect, onPair }: { palet
   const { t } = useTranslation();
   const registry = useWorkspaces();
   const { settings, connection, connect, updateSettings, connectSetup, connectionProfiles } = useConnection();
-  const { profiles, refresh, connect: connectProfile, passwordForEditing, save, remove } = connectionProfiles;
+  const { profiles, refresh, connect: connectProfile, passwordForEditing, headersForEditing, save, remove } = connectionProfiles;
   const [error, setError] = useState<string>();
   const [expandedKey, setExpandedKey] = useState<string>();
   const [switchingProfileId, setSwitchingProfileId] = useState<string>();
@@ -74,8 +74,8 @@ export function ConnectionProfiles({ palette, onManageConnect, onPair }: { palet
   }
 
   async function handleEditProfile(profile: ConnectionProfile) {
-    const password = await passwordForEditing(profile.id);
-    setDialog({ mode: 'edit-profile', profile, password });
+    const [password, headers] = await Promise.all([passwordForEditing(profile.id), headersForEditing(profile.id)]);
+    setDialog({ mode: 'edit-profile', profile, password, headers });
   }
 
   function handleDelete(profile: ConnectionProfile) {
@@ -134,7 +134,7 @@ export function ConnectionProfiles({ palette, onManageConnect, onPair }: { palet
     }
 
     // Editing the current, not-yet-saved connection only touches live settings.
-    updateSettings({ serverUrl: values.serverUrl, username: values.username, password: values.password });
+    updateSettings({ serverUrl: values.serverUrl, username: values.username, password: values.password, headers: values.headers });
     setDialog(undefined);
   }
 
@@ -311,11 +311,13 @@ export function ConnectionProfiles({ palette, onManageConnect, onPair }: { palet
             serverUrl: settings.serverUrl,
             username: settings.username,
             password: settings.password,
+            headers: settings.headers ?? {},
           } : {
             name: dialog.profile.name,
             serverUrl: dialog.profile.serverUrl,
             username: dialog.profile.username,
             password: dialog.password,
+            headers: dialog.headers,
           }}
           onSubmit={handleDialogSubmit}
           onDismiss={() => { addedProfileId.current = undefined; setDialog(undefined); }}

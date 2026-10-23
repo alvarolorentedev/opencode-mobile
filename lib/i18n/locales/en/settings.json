@@ -55,7 +55,12 @@
       "name": "Enter a name for this connection.",
       "serverUrl": "Enter the server URL.",
       "invalidUrl": "Enter a complete server URL, such as http://192.168.1.10:4096.",
-      "save": "Could not save this connection."
+      "save": "Could not save this connection.",
+      "headerName": "Enter a valid header name.",
+      "headerValue": "Header values cannot contain line breaks.",
+      "headerDuplicate": "Each header name can only be used once.",
+      "headerReserved": "This header is managed by the app and cannot be overridden.",
+      "headerLimit": "Use at most 10 custom headers."
     },
     "setup": {
       "step": "Step {{step}} of 2",
@@ -86,6 +91,16 @@
         "unreachable": "Could not reach the server. Check that both devices are on the same network, or enter the address manually.",
         "loopback": "This code only contains a localhost address. Run opencode service set hostname 0.0.0.0, then opencode service start and opencode pair on your computer."
       }
+    },
+    "headers": {
+      "title": "Custom headers",
+      "add": "Add header",
+      "name": "Header name",
+      "value": "Value",
+      "remove": "Remove header",
+      "hint": "Sent with every request to this server. Values are stored securely on this device.",
+      "showValues": "Show values",
+      "hideValues": "Hide values"
     }
   },
   "providers": {

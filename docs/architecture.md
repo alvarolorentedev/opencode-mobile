@@ -379,6 +379,8 @@ independent of onboarding completion. See [Cloud Link pilot](connect.md).
   Canonical, deterministic, password-free connection identity (`getConnectionScope`). Every server-scoped storage key, favorite, and pending notification record derives from it; scheme/host are normalized while URL path and query casing are preserved.
 - `lib/connection-profiles.ts`
   Saved connection metadata in AsyncStorage, per-profile passwords in SecureStore, whole-DTO validation, one shared read/modify/write transaction queue (manual, Cloud Link, preferences, removal and sanitation), and credential resolution for a connection that is not currently active.
+- `lib/connection-headers.ts`
+  Manual-connection custom request headers for gateways. Stores the active and per-profile maps in SecureStore, validates names/values, rejects app-owned/transport headers, and provides the canonical comparison used by connect keys and change detection. Resolution carries these headers with the connection password.
 - `lib/connection-password.ts`
   Active connection password in SecureStore, including legacy plaintext migration.
 - `lib/notification-pending.ts`
@@ -756,7 +758,7 @@ Responsibilities:
 
 Responsibilities:
 
-- configure the active connection (server URL, username, password) from its row and reconnect manually; editing applies only after Reconnect
+- configure the active connection (server URL, username, password, custom gateway headers) from its row and reconnect manually; editing applies only after Reconnect
 - add, edit, and delete named connection profiles, and switch between them from the connection list; switching persists the outgoing profile's model selection, restores the target profile's selection, and reconnects with that profile's credentials
 - inspect server health, realtime status, LSP, and formatter counts
 - add local or remote MCP servers; connect, disconnect, enable, disable, and complete remote OAuth

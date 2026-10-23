@@ -1,13 +1,14 @@
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { KeyboardAvoidingView, Modal, ScrollView, StyleSheet, View } from 'react-native';
-import { Appbar, Button, HelperText, Text, TextInput as PaperInput } from 'react-native-paper';
+import { Appbar, Button, HelperText, IconButton, Text, TextInput as PaperInput } from 'react-native-paper';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { useUpdateBlocker } from '@/hooks/use-update-blocker';
 import { TextInput } from '@/components/ui/text-input';
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
+import { MAX_CONNECTION_HEADERS, parseConnectionHeaders, type ConnectionHeaderError } from '@/lib/connection-headers';
 import { isValidServerUrl, type ConnectionProbeResult } from '@/lib/opencode/client';
 import { getServerHostname } from '@/lib/opencode/client/url';
 import { useConnection } from '@/providers/opencode-contexts';
@@ -17,7 +18,22 @@ export type ConnectionProfileFormValues = {
   serverUrl: string;
   username: string;
   password: string;
+  headers: Record<string, string>;
 };
+
+type HeaderRow = { id: number; name: string; value: string };
+
+const HEADER_ERROR_KEYS: Record<ConnectionHeaderError, string> = {
+  name: 'settings:connection.errors.headerName',
+  value: 'settings:connection.errors.headerValue',
+  duplicate: 'settings:connection.errors.headerDuplicate',
+  reserved: 'settings:connection.errors.headerReserved',
+  limit: 'settings:connection.errors.headerLimit',
+};
+
+function initialRows(headers: Record<string, string> | undefined): HeaderRow[] {
+  return Object.entries(headers ?? {}).map(([name, value], id) => ({ id, name, value }));
+}
 
 // The form owns presentation; probing and profile persistence stay in the
 // provider. Local QR setup lives in its own flow (`connection-scan-flow.tsx`)
@@ -40,6 +56,9 @@ export function ConnectionProfileDialog({ title, submitLabel, showName = true, i
   const [serverUrl, setServerUrl] = useState(initial?.serverUrl ?? '');
   const [username, setUsername] = useState(initial?.username ?? '');
   const [password, setPassword] = useState(initial?.password ?? '');
+  const [headers, setHeaders] = useState<HeaderRow[]>(() => initialRows(initial?.headers));
+  const [headersOpen, setHeadersOpen] = useState(headers.length > 0);
+  const [showHeaderValues, setShowHeaderValues] = useState(false);
   const [step, setStep] = useState<'address' | 'details'>('address');
   const [probe, setProbe] = useState<ConnectionProbeResult>();
   const [customUsername, setCustomUsername] = useState(Boolean(initial?.username));
@@ -66,10 +85,38 @@ export function ConnectionProfileDialog({ title, submitLabel, showName = true, i
     else onDismiss();
   }
 
+  function updateHeader(id: number, patch: Partial<Pick<HeaderRow, 'name' | 'value'>>) {
+    setHeaders((current) => current.map((row) => row.id === id ? { ...row, ...patch } : row));
+    setError(undefined);
+  }
+
+  function addHeader() {
+    setHeaders((current) => {
+      if (current.length >= MAX_CONNECTION_HEADERS) return current;
+      // Derive the next id from the latest rows so rapid taps inside one batch
+      // cannot collide on a React key.
+      const id = current.reduce((highest, row) => Math.max(highest, row.id), -1) + 1;
+      return [...current, { id, name: '', value: '' }];
+    });
+    setHeadersOpen(true);
+    setError(undefined);
+  }
+
+  function removeHeader(id: number) {
+    setHeaders((current) => current.filter((row) => row.id !== id));
+    setError(undefined);
+  }
+
   async function perform(operation: 'probe' | 'save') {
     if (working.current) return;
     if (!serverUrl.trim() || !isValidServerUrl(serverUrl)) {
       setError(t(serverUrl.trim() ? 'settings:connection.errors.invalidUrl' : 'settings:connection.errors.serverUrl'));
+      return;
+    }
+    const parsedHeaders = parseConnectionHeaders(headers);
+    if (parsedHeaders.error) {
+      setHeadersOpen(true);
+      setError(t(HEADER_ERROR_KEYS[parsedHeaders.error]));
       return;
     }
     working.current = true;
@@ -78,7 +125,7 @@ export function ConnectionProfileDialog({ title, submitLabel, showName = true, i
     const current = ++request.current;
     controller.current = new AbortController();
     try {
-      const values = { name: name.trim(), serverUrl: serverUrl.trim(), username: username.trim(), password };
+      const values = { name: name.trim(), serverUrl: serverUrl.trim(), username: username.trim(), password, headers: parsedHeaders.headers ?? {} };
       const result = await connectionProfiles.probe(values, controller.current.signal);
       if (current !== request.current) return;
       setProbe(result);
@@ -124,6 +171,30 @@ export function ConnectionProfileDialog({ title, submitLabel, showName = true, i
               onChangeText={setPassword} secureTextEntry={!showPassword} disabled={Boolean(busy)} autoCapitalize="none" autoCorrect={false}
               right={<PaperInput.Icon icon={showPassword ? 'eye-off' : 'eye'} onPress={() => setShowPassword((value) => !value)} accessibilityLabel={t(showPassword ? 'settings:connection.setup.hidePassword' : 'settings:connection.setup.showPassword')} />} />
             <Text style={{ color: palette.muted }}>{t('settings:connection.setup.passwordHint')}</Text>
+            <Button testID="connection-profile-headers-toggle" mode="text" style={styles.left} disabled={Boolean(busy)} icon={headersOpen ? 'chevron-up' : 'chevron-down'}
+              onPress={() => setHeadersOpen((value) => !value)}>{t('settings:connection.headers.title')}</Button>
+            {headersOpen ? <>
+              <Text style={{ color: palette.muted }}>{t('settings:connection.headers.hint')}</Text>
+              {headers.map((row, index) => (
+                <View key={row.id} style={styles.headerBlock}>
+                  <View style={styles.headerRow}>
+                    <TextInput mode="outlined" style={styles.headerName} label={t('settings:connection.headers.name')} testID={`connection-profile-header-name-${index}`}
+                      value={row.name} onChangeText={(value) => updateHeader(row.id, { name: value })} disabled={Boolean(busy)} autoCapitalize="none" autoCorrect={false} />
+                    <IconButton testID={`connection-profile-header-remove-${index}`} icon="close" accessibilityLabel={t('settings:connection.headers.remove')}
+                      disabled={Boolean(busy)} onPress={() => removeHeader(row.id)} />
+                  </View>
+                  <TextInput mode="outlined" label={t('settings:connection.headers.value')} testID={`connection-profile-header-value-${index}`}
+                    value={row.value} onChangeText={(value) => updateHeader(row.id, { value })} secureTextEntry={!showHeaderValues}
+                    disabled={Boolean(busy)} autoCapitalize="none" autoCorrect={false} />
+                </View>
+              ))}
+              <View style={styles.headerActions}>
+                <Button testID="connection-profile-header-add" mode="outlined" icon="plus" disabled={Boolean(busy) || headers.length >= MAX_CONNECTION_HEADERS}
+                  onPress={addHeader}>{t('settings:connection.headers.add')}</Button>
+                {headers.some((row) => row.value) ? <Button testID="connection-profile-header-visibility" disabled={Boolean(busy)}
+                  onPress={() => setShowHeaderValues((value) => !value)}>{t(showHeaderValues ? 'settings:connection.headers.hideValues' : 'settings:connection.headers.showValues')}</Button> : null}
+              </View>
+            </> : null}
             {showName ? <>
               <TextInput mode="outlined" label={t('settings:connection.setup.optionalName')} testID="connection-profile-name-input" value={name} onChangeText={setName}
                 disabled={Boolean(busy)} placeholder={getServerHostname(serverUrl)} />
@@ -148,5 +219,9 @@ const styles = StyleSheet.create({
   addressRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   address: { flex: 1 },
   left: { alignSelf: 'flex-start' },
+  headerBlock: { gap: 8 },
+  headerRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  headerName: { flex: 1 },
+  headerActions: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   actions: { borderTopWidth: 1, flexDirection: 'row', justifyContent: 'flex-end', gap: 8, paddingHorizontal: 24, paddingTop: 16 },
 });

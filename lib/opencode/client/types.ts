@@ -70,6 +70,9 @@ export type OpencodeConnectionSettings = {
   username: string;
   password: string;
   directory: string;
+  // Per-connection custom request headers (gateway/service-token credentials).
+  // Runtime only: persistence stores them in SecureStore, never AsyncStorage.
+  headers?: Record<string, string>;
   connect?: ConnectMetadata;
 };
 

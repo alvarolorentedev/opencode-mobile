@@ -96,3 +96,26 @@ Deferred on 2026-10-19 with the verbosity levels
 level; most are mapped to empty non-display records. A future "everything/debug"
 level would map them into transcript details (and would need to decide how to
 present shell output and skill/system text).
+
+## 6. Gateway headers on direct file reads and browser WebSockets
+
+Closed for the OpenCode data plane on 2026-10-23: per-connection custom headers
+are sent on probes, REST, SSE, terminal connect-token requests and native
+terminal WebSocket upgrades, and values live in SecureStore. Two direct paths
+remain outside that guarantee by design:
+
+- **Attachment previews.** `lib/attachment-preview.ts` fetches attachment `uri`
+  values directly, and those URLs may be arbitrary hosts. Attaching a
+  connection's gateway headers there could leak service-token secrets to a third
+  party, so previews stay header-free until the app can restrict them to the
+  exact server origin. Server-hosted attachments behind Access will fail to
+  preview/open.
+- **WebSocket upgrades on web.** Browser `WebSocket` has no API for custom
+  headers. The terminal still authenticates its ticket request over HTTP with
+  the connection's headers; only the upgrade is header-free. Native builds send
+  the full header set. Web is limited to the development/E2E harness and has no
+  credential persistence, so this is not a production path.
+
+Cloud Link profiles and `opencode pair` QR codes cannot carry custom headers;
+the editor is manual-only. Supporting them would require a control-plane/QR
+contract change, not app-side plumbing.

@@ -9,10 +9,12 @@ import { stripServerUrlCredentials } from '@/lib/opencode/client/url';
 
 const CONNECTION_PASSWORD_STORAGE_KEY = 'opencode-mobile.connection-password';
 
-type StoredConnectionSettings = Omit<OpencodeConnectionSettings, 'password'>;
+type StoredConnectionSettings = Omit<OpencodeConnectionSettings, 'password' | 'headers'>;
 
-export function withoutConnectionPassword(settings: OpencodeConnectionSettings): StoredConnectionSettings {
-  const { password: _password, ...storedSettings } = settings;
+// Everything that must stay out of AsyncStorage: credentials and gateway
+// headers. Header secrets live under their own SecureStore keys.
+export function withoutConnectionSecrets(settings: OpencodeConnectionSettings): StoredConnectionSettings {
+  const { password: _password, headers: _headers, ...storedSettings } = settings;
   return { ...storedSettings, serverUrl: stripServerUrlCredentials(storedSettings.serverUrl) };
 }
 

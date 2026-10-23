@@ -85,6 +85,17 @@ describe('connection profiles', () => {
       [/from '@\/lib\/storage-keys'/g, `from "${storageKeysUri}"`],
     ]);
     const workspaceStubUri = `data:text/javascript,${encodeURIComponent("export const WORKSPACES_STORAGE_KEY = 'opencode-mobile.workspaces'; export const parseWorkspaces = JSON.parse;")}`;
+    const connectionHeadersStubUri = `data:text/javascript,${encodeURIComponent(`
+      const activeKey = 'opencode-mobile.connection-headers';
+      const profileKey = (id) => 'opencode-mobile.connection-profile-headers.' + id;
+      const parse = (raw) => { if (!raw) return {}; try { const value = JSON.parse(raw); return value && typeof value === 'object' ? value : {}; } catch { return {}; } };
+      const write = (key, headers) => { const text = headers && Object.keys(headers).length ? JSON.stringify(headers) : ''; if (text) globalThis.__profilesTestSecureStore.set(key, text); else globalThis.__profilesTestSecureStore.delete(key); };
+      export async function getConnectionHeaders() { return parse(globalThis.__profilesTestSecureStore.get(activeKey)); }
+      export async function saveConnectionHeaders(headers) { write(activeKey, headers); }
+      export async function getProfileHeaders(id) { return parse(globalThis.__profilesTestSecureStore.get(profileKey(id))); }
+      export async function saveProfileHeaders(id, headers) { write(profileKey(id), headers); }
+      export async function deleteProfileHeaders(id) { globalThis.__profilesTestSecureStore.delete(profileKey(id)); }
+    `)}`;
     const connectionProfilesUri = await transpileToDataUri('lib/connection-profiles.ts', [
       [/from '@\/providers\/workspace-storage'/g, `from "${workspaceStubUri}"`],
       [/from '@\/lib\/opencode\/client\/url'/g, `from "${urlUri}"`],
@@ -94,12 +105,14 @@ describe('connection profiles', () => {
       [/from 'expo-secure-store'/g, `from "${secureStoreStubUri}"`],
       [/from 'react-native'/g, `from "${reactNativeStubUri}"`],
       [/from '@\/lib\/connection-password'/g, `from "${connectionPasswordUri}"`],
+      [/from '@\/lib\/connection-headers'/g, `from "${connectionHeadersStubUri}"`],
       [/from '@\/lib\/connection-scope'/g, `from "${connectionScopeUri}"`],
       [/from '@\/lib\/storage-keys'/g, `from "${storageKeysUri}"`],
     ]);
 
     const asyncStorage = (await import(asyncStorageStubUri)).default;
     const secureStore = await import(secureStoreStubUri);
+    const connectionHeaders = await import(connectionHeadersStubUri);
     const storageKeys = await import(storageKeysUri);
     const connectionScope = await import(connectionScopeUri);
     const {
@@ -128,7 +141,7 @@ describe('connection profiles', () => {
     assert.equal(await resolveConnectionCredentials(parked), undefined, 'Disconnected servers must not be polled by background tasks or widgets.');
     assert.equal(await getProfilePassword('parked'), 'retained-secret');
     await asyncStorage.setItem('opencode-mobile.workspaces', JSON.stringify({ version: 1, connections: [{ settings: parked, enabled: true }] }));
-    assert.deepEqual(await resolveConnectionCredentials(parked), { password: 'retained-secret' });
+    assert.deepEqual(await resolveConnectionCredentials(parked), { password: 'retained-secret', headers: {} });
     await asyncStorage.removeItem('opencode-mobile.workspaces');
 
     function resetStorage() {
@@ -247,8 +260,10 @@ describe('connection profiles', () => {
         { id: 'p1', name: 'Server A', serverUrl: 'https://a.example', username: 'alice' },
       ]);
       await saveProfilePassword('p1', 'server-a-secret');
+      await connectionHeaders.saveProfileHeaders('p1', { 'CF-Access-Client-Id': 'client-id' });
       await setActiveConnection({ serverUrl: 'https://b.example', username: 'bob' });
       await secureStore.setItemAsync(passwordStorageKey, 'server-b-secret');
+      await connectionHeaders.saveConnectionHeaders({ 'CF-Access-Client-Secret': 'active-header-secret' });
 
       assert.equal(await resolveConnectionPassword({ serverUrl: 'https://a.example', username: 'alice' }), 'server-a-secret');
       assert.equal(await resolveConnectionPassword({ serverUrl: 'https://A.example/', username: 'alice' }), 'server-a-secret');
@@ -256,11 +271,22 @@ describe('connection profiles', () => {
       assert.equal(await resolveConnectionPassword({ serverUrl: 'https://c.example', username: 'carol' }), undefined);
       assert.equal(await resolveConnectionPassword({ serverUrl: 'https://a.example', username: 'mallory' }), undefined);
 
-      // Passwords never reach AsyncStorage: profiles, active settings, and the
-      // resolution path all keep them in SecureStore.
+      // Gateway headers resolve from the same connection as the password.
+      assert.deepEqual(await resolveConnectionCredentials({ serverUrl: 'https://a.example', username: 'alice' }), {
+        password: 'server-a-secret', headers: { 'CF-Access-Client-Id': 'client-id' },
+      });
+      assert.deepEqual(await resolveConnectionCredentials({ serverUrl: 'https://b.example', username: 'bob' }), {
+        password: 'server-b-secret', headers: { 'CF-Access-Client-Secret': 'active-header-secret' },
+      });
+      assert.deepEqual(await resolveConnectionCredentials({ serverUrl: 'https://c.example', username: 'carol' }), undefined);
+
+      // Passwords and headers never reach AsyncStorage: profiles, active
+      // settings, and the resolution path all keep them in SecureStore.
       for (const value of g.__profilesTestAsyncStorage.values()) {
         assert.equal(value.includes('server-a-secret'), false);
         assert.equal(value.includes('server-b-secret'), false);
+        assert.equal(value.includes('client-id'), false);
+        assert.equal(value.includes('active-header-secret'), false);
       }
     }
 
@@ -287,7 +313,7 @@ describe('connection profiles', () => {
       const claim = { server_url: 'https://m.example.test', machine_id: 'machine-1', machine_name: 'My Mac', device_id: 'device-1', device_secret: 'signed-secret-1', expires_at: new Date(Date.now() + 60_000).toISOString() };
       const first = await saveConnectProfile('https://api.opencodecloud.link', claim);
       assert.equal(await resolveConnectionPassword(first), 'signed-secret-1');
-      assert.deepEqual(await resolveConnectionCredentials(first), { password: 'signed-secret-1', connect: first.connect }, 'Background clients must carry expiry metadata into their fetch guard.');
+      assert.deepEqual(await resolveConnectionCredentials(first), { password: 'signed-secret-1', headers: {}, connect: first.connect }, 'Background clients must carry expiry metadata into their fetch guard.');
       const next = await saveConnectProfile('https://api.opencodecloud.link', { ...claim, device_id: 'device-2', device_secret: 'signed-secret-2' });
       assert.equal(next.id, first.id, 'Credential rotation preserves user-visible profile identity.');
       assert.equal(findMatchingProfile([first], next)?.id, first.id, 'Rotated Cloud Link usernames still match the saved machine.');

@@ -17,6 +17,12 @@ const terminalFixture = createTerminalFixture((id) => { const pty = state.ptys.f
 let suppressEvents = false;
 let stallEvents = false;
 let v2Subscribes = 0;
+// Gateway-auth contract: tests can require custom request headers (Cloudflare
+// Access service tokens and similar proxies). Records only the configured
+// header names so assertions never depend on unrelated request metadata.
+let requiredHeaders = {};
+let receivedHeaders = {};
+const headerPaths = new Set();
 // The real V2 session list is cursor-paged. Keep a realistic default so the
 // app must follow the cursor, and let a test shrink it without seeding dozens
 // of chats.
@@ -32,11 +38,30 @@ function sendJson(res, statusCode, payload, extraHeaders = {}) {
   res.writeHead(statusCode, {
     'Content-Type': 'application/json',
     'Access-Control-Allow-Origin': '*',
-    'Access-Control-Allow-Headers': 'Content-Type, Authorization, x-opencode-ticket',
+    'Access-Control-Allow-Headers': accessAllowHeaders(),
     'Access-Control-Allow-Methods': 'GET, POST, PUT, PATCH, DELETE, OPTIONS',
     ...extraHeaders,
   });
   res.end(JSON.stringify(payload));
+}
+
+function accessAllowHeaders() {
+  return ['Content-Type', 'Authorization', 'x-opencode-ticket', ...Object.keys(requiredHeaders)].join(', ');
+}
+
+// Returns false when a required gateway header is missing or wrong. Required
+// headers are empty by default, so ordinary fixtures are unaffected.
+function accessHeadersPresent(req, pathname) {
+  if (!Object.keys(requiredHeaders).length) return true;
+  const received = {};
+  for (const [name, expected] of Object.entries(requiredHeaders)) {
+    const actual = req.headers[name.toLowerCase()];
+    if (actual !== expected) return false;
+    received[name] = actual;
+  }
+  Object.assign(receivedHeaders, received);
+  if (pathname) headerPaths.add(pathname);
+  return true;
 }
 
 function notFound(res) {
@@ -149,10 +174,17 @@ const server = http.createServer(async (req, res) => {
     if (req.method === 'OPTIONS') {
       res.writeHead(204, {
         'Access-Control-Allow-Origin': '*',
-        'Access-Control-Allow-Headers': 'Content-Type, Authorization, x-opencode-ticket',
+        'Access-Control-Allow-Headers': accessAllowHeaders(),
         'Access-Control-Allow-Methods': 'GET, POST, PUT, PATCH, DELETE, OPTIONS',
       });
       res.end();
+      return;
+    }
+
+    // Everything except the test-control surface is behind the optional
+    // gateway-header gate, mirroring an Access-protected origin.
+    if (!pathname.startsWith('/__control/') && !accessHeadersPresent(req, pathname)) {
+      sendJson(res, 401, { error: 'Access denied' });
       return;
     }
 
@@ -180,6 +212,22 @@ const server = http.createServer(async (req, res) => {
       return;
     }
 
+    // Require (and record) gateway headers for every non-control request. POST
+    // replaces the required set; GET reports the current contract and evidence.
+    if (pathname === '/__control/headers') {
+      if (req.method === 'POST') {
+        const body = await readJson(req);
+        requiredHeaders = {};
+        receivedHeaders = {};
+        headerPaths.clear();
+        for (const [name, value] of Object.entries(body?.required ?? {})) {
+          if (typeof value === 'string' && name.trim()) requiredHeaders[name.trim()] = value;
+        }
+      }
+      sendJson(res, 200, { data: { required: requiredHeaders, received: receivedHeaders, paths: [...headerPaths] } });
+      return;
+    }
+
     // Shrink the session-list page so a test can prove the app follows cursors.
     if (pathname === '/__control/session-page') {
       if (req.method === 'POST') {
@@ -191,7 +239,7 @@ const server = http.createServer(async (req, res) => {
     }
 
     if (req.method === 'GET' && pathname === '/__control/state') {
-      sendJson(res, 200, { scenario: state.scenario, sessions: state.sessions, messagesBySession: state.messagesBySession, sessionStatuses: state.sessionStatuses, pendingPermissions: state.pendingPermissions, pendingQuestions: state.pendingQuestions, configuredProviderIds: [...state.configuredProviderIds], authByProvider: state.authByProvider, worktrees: state.worktrees, mcpStatuses: state.mcpStatuses, files: state.files, questionAnswers: state.lastQuestionAnswer }); return;
+      sendJson(res, 200, { scenario: state.scenario, sessions: state.sessions, messagesBySession: state.messagesBySession, sessionStatuses: state.sessionStatuses, pendingPermissions: state.pendingPermissions, pendingQuestions: state.pendingQuestions, configuredProviderIds: [...state.configuredProviderIds], authByProvider: state.authByProvider, worktrees: state.worktrees, mcpStatuses: state.mcpStatuses, files: state.files, questionAnswers: state.lastQuestionAnswer, headers: { required: requiredHeaders, received: receivedHeaders, paths: [...headerPaths] } }); return;
     }
     if (req.method === 'GET' && pathname === '/__control/oauth-complete') {
       const attempt = state.integrationAttempts[requestUrl.searchParams.get('attemptID')];
@@ -209,6 +257,9 @@ const server = http.createServer(async (req, res) => {
       stallEvents = false;
       v2Subscribes = 0;
       sessionPageLimit = DEFAULT_SESSION_PAGE_LIMIT;
+      requiredHeaders = {};
+      receivedHeaders = {};
+      headerPaths.clear();
       state = stateStore.resetState(body?.scenario || scenarioName);
       connectionPassword = body?.password ?? process.env.FAKE_OPENCODE_PASSWORD ?? '';
       pairingCode = undefined;
@@ -1002,6 +1053,11 @@ const server = http.createServer(async (req, res) => {
 const ptyWebSockets = new WebSocketServer({ noServer: true });
 server.on('upgrade', (req, socket, head) => {
   const requestUrl = new URL(req.url || '/', `http://${req.headers.host || `127.0.0.1:${port}`}`);
+  if (!accessHeadersPresent(req, requestUrl.pathname)) {
+    socket.write('HTTP/1.1 403 Forbidden\r\n\r\n');
+    socket.destroy();
+    return;
+  }
   const match = requestUrl.pathname.match(/^\/api\/pty\/([^/]+)\/connect$/);
   const ptyId = match?.[1] ? decodeURIComponent(match[1]) : undefined;
   if (!ptyId || requestUrl.searchParams.get('ticket') !== `ticket-${ptyId}` || !state.ptys.some((pty) => pty.id === ptyId)) {

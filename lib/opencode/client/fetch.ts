@@ -20,11 +20,14 @@ export function createAuthHeader(settings: OpencodeConnectionSettings) {
 
 export function getRequestHeaders(settings: OpencodeConnectionSettings) {
   const authHeader = createAuthHeader(settings);
-  return authHeader
-    ? {
-        Authorization: authHeader,
-      }
-    : undefined;
+  // Custom gateway headers apply to every request for this connection. Basic
+  // auth is generated last: `authorization` is rejected by header validation, so
+  // this only guarantees the app-owned value always wins.
+  const headers = {
+    ...(settings.headers ?? {}),
+    ...(authHeader ? { Authorization: authHeader } : {}),
+  };
+  return Object.keys(headers).length ? headers : undefined;
 }
 
 export async function fetchConnection(input: RequestInfo | URL, init?: RequestInit, settings?: OpencodeConnectionSettings) {

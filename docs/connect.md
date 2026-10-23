@@ -9,6 +9,19 @@ credentials and offers a collapsed custom username, then probes again on save.
 Back, Change and retry preserve fields. Name is optional and defaults to the
 normalized hostname. Edits save without automatically reconnecting.
 
+Manual connections can also carry custom HTTP headers for a gateway in front of
+the server (Cloudflare Access service tokens, Authelia, oauth2-proxy, corporate
+proxies). The details step has a collapsible **Custom headers** section with
+key/value rows. Header names and values are stored together in
+Keychain/Keystore-backed storage; AsyncStorage and profile/workspace metadata
+never contain them. Headers are applied to the setup probe, every REST/SSE
+request, terminal connect-token requests, and native terminal WebSocket
+upgrades. The app's Basic `Authorization` and transport framing headers cannot
+be overridden. Custom headers are manual-only: local pairing codes and Cloud
+Link profiles do not carry them. Browsers cannot attach headers to a WebSocket
+upgrade, so web terminals use their ticket only. Direct remote file reads for
+attachment previews bypass the client and remain a documented gap.
+
 On Android/iOS, the **Scan QR code** choice is a dedicated local setup flow that
 accepts the code shown by `opencode pair`. The phone and server must share a
 reachable network; the server must listen beyond localhost. It reuses the native

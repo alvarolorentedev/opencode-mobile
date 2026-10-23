@@ -55,7 +55,12 @@
       "name": "请输入此连接的名称。",
       "serverUrl": "请输入服务器 URL。",
       "invalidUrl": "请输入完整的服务器 URL，例如 http://192.168.1.10:4096。",
-      "save": "无法保存此连接。"
+      "save": "无法保存此连接。",
+      "headerName": "请输入有效的标头名称。",
+      "headerValue": "标头值不能包含换行符。",
+      "headerDuplicate": "每个标头名称只能使用一次。",
+      "headerReserved": "此标头由应用管理，无法覆盖。",
+      "headerLimit": "最多使用 10 个自定义标头。"
     },
     "setup": {
       "step": "第 {{step}} 步，共 2 步",
@@ -86,6 +91,16 @@
         "unreachable": "无法连接服务器。请确认两台设备连接到同一网络，或手动输入地址。",
         "loopback": "此配对码仅包含 localhost 地址。请在电脑上运行 opencode service set hostname 0.0.0.0，然后运行 opencode service start 和 opencode pair。"
       }
+    },
+    "headers": {
+      "title": "自定义标头",
+      "add": "添加标头",
+      "name": "标头名称",
+      "value": "值",
+      "remove": "移除标头",
+      "hint": "会随发往此服务器的每个请求发送。值将安全存储在此设备上。",
+      "showValues": "显示值",
+      "hideValues": "隐藏值"
     }
   },
   "providers": {

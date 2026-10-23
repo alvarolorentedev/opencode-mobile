@@ -8,6 +8,7 @@ import {
   mutateConnectionProfiles,
 } from '@/lib/connection-profiles';
 import { getConnectCredentialError } from '@/lib/connect';
+import { connectionHeadersKey, sameConnectionHeaders } from '@/lib/connection-headers';
 import {
   buildClient,
   classifyConnectionFailure,
@@ -31,7 +32,7 @@ import type { ConnectionActionsInput } from '@/providers/opencode-provider-actio
 // so a rotation that lands mid-flight starts a new attempt instead of adopting
 // stale credentials.
 function getConnectRequestKey(settings: OpencodeConnectionSettings, generation: number) {
-  return [generation, settings.serverUrl, settings.username, settings.password, settings.connect?.machineId ?? '', settings.connect?.expiresAt ?? ''].join('\u0000');
+  return [generation, settings.serverUrl, settings.username, settings.password, connectionHeadersKey(settings.headers), settings.connect?.machineId ?? '', settings.connect?.expiresAt ?? ''].join('\u0000');
 }
 
 export function useConnectionConnectActions({
@@ -264,7 +265,8 @@ export function useConnectionConnectActions({
 
   const updateSettings = useCallback((patch: Partial<OpencodeConnectionSettings>) => {
     const connectionChanged = (['serverUrl', 'username', 'password'] as const)
-      .some((key) => patch[key] !== undefined && patch[key] !== settingsRef.current[key]);
+      .some((key) => patch[key] !== undefined && patch[key] !== settingsRef.current[key])
+      || (patch.headers !== undefined && !sameConnectionHeaders(patch.headers, settingsRef.current.headers));
     if (connectionChanged) {
       scopeGenerationRef.current += 1;
       serverGenerationRef.current += 1;
@@ -303,7 +305,7 @@ export function useConnectionConnectActions({
   }, [chatPreferencesRef, settingsRef]);
 
   const switchConnection = useCallback(async (
-    next: Pick<OpencodeConnectionSettings, 'serverUrl' | 'username' | 'password' | 'connect'>,
+    next: Pick<OpencodeConnectionSettings, 'serverUrl' | 'username' | 'password' | 'headers' | 'connect'>,
     modelPreferences?: Partial<ChatPreferences>,
   ) => {
     await captureActiveProfilePreferences().catch(() => undefined);

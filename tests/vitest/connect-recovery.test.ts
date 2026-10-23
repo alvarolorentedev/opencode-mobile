@@ -48,6 +48,7 @@ async function fixture({ expired = false, missing = false, storedSession = true,
     'expo-crypto': { randomUUID: (() => { let n = 0; return () => `00000000-0000-4000-8000-${String(++n).padStart(12, '0')}`; })() },
     'react-native': native, '@/lib/connect': connect, '@/lib/connection-scope': scope,
     '@/lib/connection-password': { getConnectionPassword: async () => '' }, '@/lib/storage-keys': keys,
+    '@/lib/connection-headers': { getProfileHeaders: async () => ({}), getConnectionHeaders: async () => ({}) },
     '@/lib/opencode/client/url': await loadTs('lib/opencode/client/url.ts', { './types': { defaultConnectionSettings: { serverUrl: 'http://localhost' } } }),
   }, globals);
   const profile = await profiles.saveConnectProfile(CP, claim);
@@ -78,6 +79,11 @@ async function fixture({ expired = false, missing = false, storedSession = true,
   const setup = await loadTs('providers/connect/use-connect-machine.ts', imports, globals);
   imports['@/providers/use-connect-state'] = setup;
   imports['@/lib/connection-password'] = { saveConnectionPassword: async () => {} };
+  imports['@/lib/connection-headers'] = {
+    getProfileHeaders: async () => ({}), saveProfileHeaders: async () => {}, deleteProfileHeaders: async () => {},
+    connectionHeadersKey: (headers) => JSON.stringify(Object.entries(headers ?? {})),
+    sameConnectionHeaders: (left, right) => JSON.stringify(left ?? {}) === JSON.stringify(right ?? {}),
+  };
   imports['@/lib/opencode/client'] = {
     buildClient: (settings) => settings, detectServerContract: async () => ({ contract: 'v2' }),
     getConnectionError: (_, reason) => reason.message, getNormalizedServerUrl: (url) => url,

@@ -12,7 +12,7 @@ export type TerminalConnectionContext = {
   serverUrl: string;
   directory: string;
   serverContract: ServerContract;
-  authorization?: string;
+  headers?: Record<string, string>;
 };
 
 export function createTerminalConnection({ id, context, publish }: {
@@ -88,7 +88,7 @@ export function createTerminalConnection({ id, context, publish }: {
       const current = context();
       const next = openTerminalWebSocket(getTerminalWebSocketUrl({ serverUrl: current.serverUrl, directory: current.directory }, id, {
         ticket: token.ticket, cursor: cursor === undefined ? undefined : String(cursor),
-      }, current.serverContract), current.authorization);
+      }, current.serverContract), current.headers);
       socket = next;
       const sink = renderer;
       output = createTerminalOutputQueue({

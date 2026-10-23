@@ -12,6 +12,17 @@ The existing connection scope, storage keys and persisted DTOs remain unchanged.
 
 ### Local V2 pairing
 
+Manual connections can also attach per-connection custom HTTP headers, for
+example Cloudflare Access service tokens (`CF-Access-Client-Id`,
+`CF-Access-Client-Secret`), Authelia/oauth2-proxy cookies, or corporate proxy
+credentials. They are merged into every request built for that server: probing,
+SDK REST and SSE subscriptions, terminal connect-token requests, and the native
+terminal WebSocket upgrade. The generated Basic `Authorization` always wins, and
+framing/transport headers cannot be overridden. Header values live in secure
+storage with the password; see [persisted data](state-and-data.md#persisted-data).
+Custom headers are manual-only because pairing codes and Cloud Link profiles
+cannot carry them.
+
 V2 accepts the fixed Basic-auth username `opencode`; a blank stored username
 already resolves to it in the shared transport. The password may be a configured
 password or a session token. See [upstream authentication](https://github.com/anomalyco/opencode/blob/v2/packages/server/src/auth.ts).

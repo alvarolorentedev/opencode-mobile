@@ -55,7 +55,12 @@
       "name": "Informe um nome para esta conexão.",
       "serverUrl": "Informe a URL do servidor.",
       "invalidUrl": "Informe uma URL de servidor completa, como http://192.168.1.10:4096.",
-      "save": "Não foi possível salvar esta conexão."
+      "save": "Não foi possível salvar esta conexão.",
+      "headerName": "Insira um nome de cabeçalho válido.",
+      "headerValue": "Valores de cabeçalho não podem conter quebras de linha.",
+      "headerDuplicate": "Cada nome de cabeçalho só pode ser usado uma vez.",
+      "headerReserved": "Este cabeçalho é gerenciado pelo app e não pode ser substituído.",
+      "headerLimit": "Use no máximo 10 cabeçalhos personalizados."
     },
     "setup": {
       "step": "Passo {{step}} de 2",
@@ -86,6 +91,16 @@
         "unreachable": "Servidor inacessível. Confira se os dispositivos estão na mesma rede ou insira o endereço manualmente.",
         "loopback": "Este código contém apenas um endereço localhost. Execute opencode service set hostname 0.0.0.0, depois opencode service start e opencode pair no computador."
       }
+    },
+    "headers": {
+      "title": "Cabeçalhos personalizados",
+      "add": "Adicionar cabeçalho",
+      "name": "Nome do cabeçalho",
+      "value": "Valor",
+      "remove": "Remover cabeçalho",
+      "hint": "Enviado com cada solicitação para este servidor. Os valores são armazenados com segurança neste dispositivo.",
+      "showValues": "Mostrar valores",
+      "hideValues": "Ocultar valores"
     }
   },
   "providers": {

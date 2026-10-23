@@ -35,6 +35,11 @@ const terminalFixture = createTerminalFixture((id) => { const pty = state.ptys.f
 let suppressEvents = false;
 let stallEvents = false;
 let sseSubscribes = 0;
+// Optional gateway-header gate, mirroring an Access-protected origin. Empty by
+// default so ordinary fixtures are unaffected.
+let requiredHeaders = {};
+let receivedHeaders = {};
+const headerPaths = new Set();
 const applicablePatch = 'diff --git a/src/demo.ts b/src/demo.ts\n--- a/src/demo.ts\n+++ b/src/demo.ts\n@@ -1 +1 @@\n-export const demo = "OpenCode 1.18.3";\n+export const demo = "OpenCode SDK 1.18.3";\n';
 const editorPatch = '--- a/src/demo.ts\n+++ b/src/demo.ts\n@@ -1,1 +1,1 @@\n-export const demo = "OpenCode 1.18.3";\n+export const demo = "OpenCode SDK 1.18.3";\n';
 // Committed-on-branch fixture, distinct from the uncommitted `git` diff so the
@@ -47,10 +52,27 @@ function sendJson(res, statusCode, payload, headers = {}) {
     'Access-Control-Expose-Headers': 'x-next-cursor',
     ...headers,
     'Access-Control-Allow-Origin': '*',
-    'Access-Control-Allow-Headers': 'Content-Type, Authorization, x-opencode-directory, x-opencode-ticket',
+    'Access-Control-Allow-Headers': accessAllowHeaders(),
     'Access-Control-Allow-Methods': 'GET, POST, PUT, PATCH, DELETE, OPTIONS',
   });
   res.end(JSON.stringify(payload));
+}
+
+function accessAllowHeaders() {
+  return ['Content-Type', 'Authorization', 'x-opencode-directory', 'x-opencode-ticket', ...Object.keys(requiredHeaders)].join(', ');
+}
+
+function accessHeadersPresent(req, pathname) {
+  if (!Object.keys(requiredHeaders).length) return true;
+  const received = {};
+  for (const [name, expected] of Object.entries(requiredHeaders)) {
+    const actual = req.headers[name.toLowerCase()];
+    if (actual !== expected) return false;
+    received[name] = actual;
+  }
+  Object.assign(receivedHeaders, received);
+  if (pathname) headerPaths.add(pathname);
+  return true;
 }
 
 function notFound(res) {
@@ -162,7 +184,7 @@ const server = http.createServer(async (req, res) => {
     if (req.method === 'OPTIONS') {
       res.writeHead(204, {
         'Access-Control-Allow-Origin': '*',
-        'Access-Control-Allow-Headers': 'Content-Type, Authorization, x-opencode-directory, x-opencode-ticket',
+        'Access-Control-Allow-Headers': accessAllowHeaders(),
         'Access-Control-Allow-Methods': 'GET, POST, PUT, PATCH, DELETE, OPTIONS',
       });
       res.end();
@@ -177,6 +199,13 @@ const server = http.createServer(async (req, res) => {
       }
 
       notFound(res);
+      return;
+    }
+
+    // Everything except the test-control surface is behind the optional
+    // gateway-header gate, mirroring an Access-protected origin.
+    if (!pathname.startsWith('/__control/') && !accessHeadersPresent(req, pathname)) {
+      sendJson(res, 401, { error: 'Access denied' });
       return;
     }
 
@@ -207,6 +236,20 @@ const server = http.createServer(async (req, res) => {
       return;
     }
 
+    if (pathname === '/__control/headers') {
+      if (req.method === 'POST') {
+        const body = await readJson(req);
+        requiredHeaders = {};
+        receivedHeaders = {};
+        headerPaths.clear();
+        for (const [name, value] of Object.entries(body?.required ?? {})) {
+          if (typeof value === 'string' && name.trim()) requiredHeaders[name.trim()] = value;
+        }
+      }
+      sendJson(res, 200, { data: { required: requiredHeaders, received: receivedHeaders, paths: [...headerPaths] } });
+      return;
+    }
+
     if (req.method === 'POST' && pathname === '/__control/reset') {
       terminalFixture.reset();
       const body = await readJson(req);
@@ -218,6 +261,9 @@ const server = http.createServer(async (req, res) => {
       suppressEvents = false;
       stallEvents = false;
       sseSubscribes = 0;
+      requiredHeaders = {};
+      receivedHeaders = {};
+      headerPaths.clear();
       state = stateStore.resetState(nextScenario);
       sendJson(res, 200, { data: { scenario: state.scenario } });
       return;
@@ -1000,6 +1046,11 @@ server.on('upgrade', (req, socket, head) => {
   const pathname = basePath && requestUrl.pathname.startsWith(`${basePath}/`)
     ? requestUrl.pathname.slice(basePath.length)
     : requestUrl.pathname;
+  if (!accessHeadersPresent(req, pathname)) {
+    socket.write('HTTP/1.1 403 Forbidden\r\n\r\n');
+    socket.destroy();
+    return;
+  }
   const match = pathname.match(/^\/pty\/([^/]+)\/connect$/);
   const ptyId = match?.[1] ? decodeURIComponent(match[1]) : undefined;
   if (!ptyId || requestUrl.searchParams.get('ticket') !== `ticket-${ptyId}` || !state.ptys.some((pty) => pty.id === ptyId)) {

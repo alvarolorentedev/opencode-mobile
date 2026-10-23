@@ -2,6 +2,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { getConnectionScope, getConnectionUiScope } from '@/lib/connection-scope';
 import { createProfileId, findMatchingProfile, getProfilePassword, loadConnectionProfiles, mutateConnectionProfiles, saveProfilePassword, deleteProfilePassword, pickModelPreferences } from '@/lib/connection-profiles';
+import { deleteProfileHeaders, getProfileHeaders, saveProfileHeaders, type ConnectionHeaders } from '@/lib/connection-headers';
 import { getServerHostname } from '@/lib/opencode/client/url';
 import { defaultConnectionSettings, type OpencodeConnectionSettings } from '@/lib/opencode/client';
 import type { ChatPreferences } from '@/providers/opencode-preferences';
@@ -49,11 +50,21 @@ export function useWorkspaceConnections(shell: OpencodeProviderState, hydrated: 
     const existing = findMatchingProfile(profiles, settings);
     const profile = existing ?? { id: createProfileId(), name: getServerHostname(settings.serverUrl), serverUrl: settings.serverUrl, username: settings.username, connect: settings.connect };
     const previousPassword = existing ? await getProfilePassword(profile.id) : '';
+    const previousHeaders = existing ? await getProfileHeaders(profile.id) : {};
+    // Cloud Link credentials are device secrets with no custom headers; a
+    // manual connection keeps its gateway headers alongside the password.
+    const headers = settings.connect ? {} : settings.headers;
     await saveProfilePassword(profile.id, settings.password, Boolean(settings.connect));
+    await saveProfileHeaders(profile.id, headers);
     try { if (!existing) await save([...profiles, profile]); }
     catch (error) {
-      if (existing) await saveProfilePassword(profile.id, previousPassword, Boolean(settings.connect)).catch(() => undefined);
-      else await deleteProfilePassword(profile.id).catch(() => undefined);
+      if (existing) {
+        await saveProfilePassword(profile.id, previousPassword, Boolean(settings.connect)).catch(() => undefined);
+        await saveProfileHeaders(profile.id, previousHeaders).catch(() => undefined);
+      } else {
+        await deleteProfilePassword(profile.id).catch(() => undefined);
+        await deleteProfileHeaders(profile.id).catch(() => undefined);
+      }
       throw error;
     }
     return profile;
@@ -70,7 +81,13 @@ export function useWorkspaceConnections(shell: OpencodeProviderState, hydrated: 
       const profiles = await loadConnectionProfiles();
       const entries: ConnectionRecord[] = stored ? await Promise.all(stored.connections.map(async (entry) => {
         const profile = findMatchingProfile(profiles, entry.settings);
-        return { ...entry, settings: { ...entry.settings, password: profile ? await getProfilePassword(profile.id) : '' }, events: createSharedEventStream() };
+        let password = '';
+        let headers: ConnectionHeaders = {};
+        if (profile) {
+          password = await getProfilePassword(profile.id);
+          headers = await getProfileHeaders(profile.id);
+        }
+        return { ...entry, settings: { ...entry.settings, password, headers }, events: createSharedEventStream() };
       })) : [];
       if (!entries.length) {
         const placeholder = !initial.onboardingVersion && getConnectionUiScope(initial.settings) === getConnectionUiScope(defaultConnectionSettings);
@@ -191,7 +208,7 @@ export function useWorkspaceConnections(shell: OpencodeProviderState, hydrated: 
     }
     select({ connectionId: target.connectionId, projectPath });
   }, [connectedWorkspace, pauseConversation, select]);
-  const switchConnection = useCallback(async (settings: Pick<OpencodeConnectionSettings, 'serverUrl' | 'username' | 'password' | 'connect'>, preferences?: Partial<ChatPreferences>, selectWorkspace = true) => {
+  const switchConnection = useCallback(async (settings: Pick<OpencodeConnectionSettings, 'serverUrl' | 'username' | 'password' | 'headers' | 'connect'>, preferences?: Partial<ChatPreferences>, selectWorkspace = true) => {
     const full = { ...settings, directory: '' };
     const profile = await saveProfile(full);
     const id = getConnectionUiScope(full);

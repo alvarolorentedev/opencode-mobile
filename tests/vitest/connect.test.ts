@@ -220,12 +220,14 @@ const service = await import(await moduleUri('../../providers/services/terminal-
 const originalSocket = globalThis.WebSocket;
 globalThis.WebSocket = class { constructor(...args) { this.args = args; } };
 try {
-  const socket = service.openTerminalWebSocket('wss://m.example.test/pty/1/connect?ticket=upstream', 'Basic device-credential');
+  const socket = service.openTerminalWebSocket('wss://m.example.test/pty/1/connect?ticket=upstream', {
+    Authorization: 'Basic device-credential', 'CF-Access-Client-Id': 'client-id', 'CF-Access-Client-Secret': 'client-secret',
+  });
   assert.equal(socket.args[0], 'wss://m.example.test/pty/1/connect?ticket=upstream');
-  assert.deepEqual(socket.args[2], { headers: { Authorization: 'Basic device-credential' } });
+  assert.deepEqual(socket.args[2], { headers: { Authorization: 'Basic device-credential', 'CF-Access-Client-Id': 'client-id', 'CF-Access-Client-Secret': 'client-secret' } });
   globalThis.__connectPlatform = 'web';
   assert.equal(connect.isConnectEnabled(), false);
-  assert.deepEqual(service.openTerminalWebSocket('ws://local/pty?ticket=x', 'Basic secret').args, ['ws://local/pty?ticket=x']);
+  assert.deepEqual(service.openTerminalWebSocket('ws://local/pty?ticket=x', { Authorization: 'Basic secret' }).args, ['ws://local/pty?ticket=x']);
   connect.setConnectTestSecret('secret', 'value');
   assert.equal(connect.getConnectTestSecret('secret'), '');
   globalThis.__connectConfig.extra.e2eMode = true;

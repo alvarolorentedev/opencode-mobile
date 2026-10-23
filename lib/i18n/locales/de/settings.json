@@ -55,7 +55,12 @@
       "name": "Gib einen Namen für diese Verbindung ein.",
       "serverUrl": "Gib die Server-URL ein.",
       "invalidUrl": "Gib eine vollständige Server-URL ein, zum Beispiel http://192.168.1.10:4096.",
-      "save": "Diese Verbindung konnte nicht gespeichert werden."
+      "save": "Diese Verbindung konnte nicht gespeichert werden.",
+      "headerName": "Gib einen gültigen Header-Namen ein.",
+      "headerValue": "Header-Werte dürfen keine Zeilenumbrüche enthalten.",
+      "headerDuplicate": "Jeder Header-Name kann nur einmal verwendet werden.",
+      "headerReserved": "Dieser Header wird von der App verwaltet und kann nicht überschrieben werden.",
+      "headerLimit": "Verwende höchstens 10 benutzerdefinierte Header."
     },
     "setup": {
       "step": "Schritt {{step}} von 2",
@@ -86,6 +91,16 @@
         "unreachable": "Server nicht erreichbar. Prüfe, ob beide Geräte im selben Netzwerk sind, oder gib die Adresse manuell ein.",
         "loopback": "Dieser Code enthält nur eine localhost-Adresse. Führe opencode service set hostname 0.0.0.0, dann opencode service start und opencode pair auf deinem Computer aus."
       }
+    },
+    "headers": {
+      "title": "Benutzerdefinierte Header",
+      "add": "Header hinzufügen",
+      "name": "Header-Name",
+      "value": "Wert",
+      "remove": "Header entfernen",
+      "hint": "Wird bei jeder Anfrage an diesen Server gesendet. Werte werden sicher auf diesem Gerät gespeichert.",
+      "showValues": "Werte anzeigen",
+      "hideValues": "Werte ausblenden"
     }
   },
   "providers": {

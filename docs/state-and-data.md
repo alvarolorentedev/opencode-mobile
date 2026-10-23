@@ -312,7 +312,7 @@ The storage rule for multi-server support is:
 
 ```text
 credentials
-    -> SecureStore (connection password + per-profile passwords)
+    -> SecureStore (connection password, per-profile passwords, custom gateway headers)
 
 connection profile metadata and chat preferences
     -> AsyncStorage (never credentials)
@@ -335,9 +335,9 @@ not re-derive connection keys anywhere else.
 
 Persisted values:
 
-- `opencode-mobile.settings` (connection URL and username; the password lives in secure storage)
+- `opencode-mobile.settings` (connection URL and username; the password and custom gateway headers live in secure storage)
 - `opencode-mobile.connect-control-plane` (last automatically resolved Cloud Link environment; defaults to production, accepts only production/staging, hydrated before pairing/Cloud Link startup)
-- `opencode-mobile.connection-profiles` (saved connections with name and optional per-profile model selection; passwords live in secure storage)
+- `opencode-mobile.connection-profiles` (saved connections with name and optional per-profile model selection; passwords and custom gateway headers live in secure storage)
 - `opencode-mobile.chat-preferences` (chat preferences, including the global UI `language`; not connection-scoped)
 - `opencode-mobile.active-project`
 - `opencode-mobile.projects` (opened projects per connection scope, most-recent-first directory paths; an explicit empty list means the user closed every project and is not re-seeded)
@@ -448,8 +448,9 @@ Credentials:
   changes, including renewal of inactive saved machines.
 
 - the active connection password is stored in Keychain/Keystore-backed secure storage via `lib/connection-password.ts`; legacy plaintext `settings.password` is migrated to secure storage and stripped from AsyncStorage on hydration
-- credentials hydrate only when stored server metadata supplies a valid identity; unread metadata never lends an old password to the default server. Invalid background connection references do not resolve credentials
+- credentials hydrate only when stored server metadata supplies a valid identity; unread metadata never lends an old password or stored gateway headers to the default server. Invalid background connection references do not resolve credentials
 - each saved profile's password is stored under its own SecureStore key in `lib/connection-profiles.ts`; profile metadata in AsyncStorage never contains it
+- custom HTTP headers for gateways (Cloudflare Access service tokens, Authelia, oauth2-proxy) are a manual-connection credential. `lib/connection-headers.ts` stores the active connection's map and each profile's map in SecureStore (`opencode-mobile.connection-headers`, `opencode-mobile.connection-profile-headers.<profileId>`); names and values are validated (RFC 7230 token names, no CR/LF, 10 rows) and never written to AsyncStorage or workspace metadata. Cloud Link profiles carry no custom headers. Resolution returns the headers with the password so background notifications and widget reads use the owning connection's gateway credentials. `lib/opencode/client/fetch.ts` merges them into every request; the app-generated Basic `Authorization` always wins and transport/framing headers are rejected in the editor
 - all profile read/modify/write operations share the storage module's transaction queue, including credential rollback and read-time sanitation. A transient storage read failure never becomes a destructive empty-list write
 - new server URLs containing userinfo are rejected before probing or saving. Legacy profile/settings/notification URLs are scrubbed without importing unused URL credentials; IDs and separately configured username/password fields remain intact
 - Basic authentication preserves password whitespace and encodes username/password as UTF-8
@@ -732,11 +733,12 @@ Pending completion notification storage records:
 
 Records are keyed by connection scope + session ID, so a pending task on one
 server survives switching to another server, and identical session IDs on two
-servers never collide. The background monitor resolves the password for the
-record's own connection at runtime: first through the saved profile whose scope
-matches, then through the active connection when the record belongs to it. A
-record whose password cannot be resolved yet is kept for a later run instead of
-being discarded or reusing another connection's password.
+servers never collide. The background monitor resolves the password and custom
+gateway headers for the record's own connection at runtime: first through the
+saved profile whose scope matches, then through the active connection when the
+record belongs to it. A record whose password cannot be resolved yet is kept for
+a later run instead of being discarded or reusing another connection's password
+or headers.
 
 Pending-record reads and mutations use one module-owned queue, including
 background-monitor writes. A failed read aborts a mutation without deleting the
@@ -746,7 +748,8 @@ re-reads under that queue and removes/notifies only a record with the same
 one JS runtime; it does not provide transactions across multiple processes.
 
 Regular connection settings and profile metadata in AsyncStorage exclude the
-password; legacy plaintext settings are migrated during hydration.
+password and custom gateway headers; legacy plaintext settings are migrated
+during hydration.
 
 ## Important Data Invariants
 
@@ -921,7 +924,7 @@ credentials or step progress are duplicated in the completion marker.
 
 ## Workspace registry and presentation state
 
-`opencode-mobile.workspaces` is a validated version 1 DTO. It records password-free connection metadata, enabled state, server preferences, remembered workspace paths and chat focus. `getConnectionUiScope` identifies runtime owners, including stable Cloud Link machine identities; the existing canonical connection scope identifies persisted favorites, caches and secure profile credentials. Passwords remain per-profile SecureStore data. An unreadable registry is preserved; fallback startup never overwrites that unread value.
+`opencode-mobile.workspaces` is a validated version 1 DTO. It records credential-free connection metadata (no password or custom gateway headers), enabled state, server preferences, remembered workspace paths and chat focus. `getConnectionUiScope` identifies runtime owners, including stable Cloud Link machine identities; the existing canonical connection scope identifies persisted favorites, caches and secure profile credentials. Passwords and gateway headers remain per-profile SecureStore data. An unreadable registry is preserved; fallback startup never overwrites that unread value.
 
 A legacy active connection is matched or saved as a profile and migrated into the connected set. Other saved profiles are not connected automatically. Explicit disconnect removes a server from automatic restoration, invalidates in-flight work and detaches its transports. It does not terminate remote prompts or PTYs. Last-good data and drafts remain in memory.
 
