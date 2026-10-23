@@ -1,0 +1,2 @@
+- Voice input is more reliable: dictation is kept across pauses, backgrounding cancels cleanly, and permission prompts no longer start duplicate chats.
+- OpenCode 2 servers now support simultaneous workspaces, and free Apple Personal Team builds install without push-notification provisioning.

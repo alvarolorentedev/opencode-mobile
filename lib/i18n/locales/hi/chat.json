@@ -134,6 +134,11 @@
     "sendTask": "कार्य भेजें",
     "stopTask": "कार्य रोकें"
   },
+  "newChat": {
+    "title": "नई चैट",
+    "hint": "चुनें कि यह चैट कहाँ शुरू हो.",
+    "create": "चैट शुरू करें"
+  },
   "header": {
     "pricingUnavailable": "मूल्य निर्धारण अनुपलब्ध",
     "estimatedCost": "अनुमानित API लागत {{cost}}",

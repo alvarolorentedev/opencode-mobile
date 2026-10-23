@@ -48,6 +48,7 @@ type TranscriptListProps = {
   flatTranscript: boolean;
   hasMessages: boolean;
   hasOlderMessages: boolean;
+  isBootstrappingChat: boolean;
   isLoadingOlderMessages: boolean;
   isRefreshingMessages: boolean;
   onCopyMessage: (entry: TranscriptEntry) => void;
@@ -77,6 +78,7 @@ export function TranscriptList({
   flatTranscript,
   hasMessages,
   hasOlderMessages,
+  isBootstrappingChat,
   isLoadingOlderMessages,
   isRefreshingMessages,
   onCopyMessage,
@@ -254,7 +256,7 @@ export function TranscriptList({
         </View>
       )}
       ListEmptyComponent={
-        currentSessionId && isRefreshingMessages && !hasMessages ? (
+        (isBootstrappingChat || (currentSessionId && isRefreshingMessages)) && !hasMessages ? (
           <TranscriptSkeleton palette={palette} />
         ) : currentSessionId && hasOlderMessages ? (
           <Card mode="contained" style={[styles.emptyCard, { backgroundColor: palette.surface }]}>

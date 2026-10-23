@@ -134,6 +134,11 @@
     "sendTask": "Envoyer la tâche",
     "stopTask": "Arrêter la tâche"
   },
+  "newChat": {
+    "title": "Nouveau chat",
+    "hint": "Choisissez où ce chat démarre.",
+    "create": "Démarrer le chat"
+  },
   "header": {
     "pricingUnavailable": "Tarification indisponible",
     "estimatedCost": "Coût API estimé {{cost}}",

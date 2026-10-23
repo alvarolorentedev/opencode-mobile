@@ -7,7 +7,7 @@ import type { V2Form, V2Permission } from '@/lib/opencode/v2/shared';
 import type { Dispatch, SetStateAction } from 'react';
 
 import type { PendingPermissionRequest, PendingQuestionRequest } from '@/lib/opencode/client';
-import type { FileDiff, SessionStatus, Todo } from '@/lib/opencode/types';
+import type { FileDiff, Session, SessionStatus, Todo } from '@/lib/opencode/types';
 import type { TranscriptRefreshMode } from '@/providers/opencode-provider-types';
 
 export type SessionRefreshOptions = {
@@ -25,6 +25,12 @@ export type ProviderEventActions = {
   refreshSessions: (silent?: boolean) => Promise<unknown>;
   refreshArchivedSessions: () => Promise<unknown>;
   scheduleSessionRefresh: (sessionId: string, options?: SessionRefreshOptions) => void;
+  // Event-driven refreshes are coalesced when the provider supplies these;
+  // direct user actions keep using the immediate variants.
+  scheduleSessionsRefresh?: () => void;
+  scheduleServerFeaturesRefresh?: () => void;
+  scheduleChatCapabilitiesRefresh?: () => void;
+  scheduleProjectCatalogRefresh?: () => void;
   refreshPendingInteractions: () => Promise<unknown>;
   refreshServerFeatures: () => Promise<unknown>;
   refreshChatCapabilities: () => Promise<unknown>;
@@ -37,7 +43,9 @@ export type ProviderEventActions = {
   // conversation mode). Part-level events refresh only these, so background
   // sessions are not re-downloaded on every streaming update.
   focusSessionIds?: Set<string>;
+  setSessions?: Dispatch<SetStateAction<Session[]>>;
   setSessionStatuses: Dispatch<SetStateAction<Record<string, SessionStatus>>>;
+  explicitSessionSelectionRef?: { current: string | undefined };
   setPromptError: Dispatch<SetStateAction<{ message: string; occurredAt: number; sessionId?: string } | undefined>>;
   setDiffsBySession: Dispatch<SetStateAction<Record<string, FileDiff[]>>>;
   setTodosBySession: Dispatch<SetStateAction<Record<string, Todo[]>>>;
@@ -48,6 +56,10 @@ export type ProviderEventActions = {
 };
 
 export function handleProviderEvent(event: OpencodeEvent, actions: ProviderEventActions): void {
+  const scheduleSessions = actions.scheduleSessionsRefresh ?? (() => { void actions.refreshSessions(true).catch(() => undefined); });
+  const scheduleCapabilities = actions.scheduleChatCapabilitiesRefresh ?? (() => { void actions.refreshChatCapabilities().catch(() => undefined); });
+  const scheduleFeatures = actions.scheduleServerFeaturesRefresh ?? (() => { void actions.refreshServerFeatures().catch(() => undefined); });
+  const scheduleCatalog = actions.scheduleProjectCatalogRefresh ?? (() => { void actions.refreshProjectCatalog(true).catch(() => undefined); });
   if (event.type === 'compatibility') { dispatchCompatibilityEvent(event.payload, actions); return; }
   const data = 'data' in event ? event.data as Record<string, unknown> : {};
   const sessionID = stringField(data.sessionID);
@@ -60,8 +72,25 @@ export function handleProviderEvent(event: OpencodeEvent, actions: ProviderEvent
     return;
   }
   if (type === 'command.executed') { actions.scheduleSessionRefresh(sessionID, { sessions: true, messages: true }); return; }
-  if (/^session\.(created|renamed|moved|forked|deleted|permissions|viewed|agent\.selected|model\.selected|metadata\.updated|instructions\.updated)$/.test(type)) {
-    void actions.refreshSessions(true).catch(() => undefined);
+  if (type === 'session.deleted') {
+    if (sessionID) {
+      // Remove the row immediately so a deleted session cannot be reopened from
+      // a favorite or stale selection before the coalesced list refresh lands.
+      actions.setSessions?.((current) => current.filter((session) => session.id !== sessionID));
+      actions.setSessionStatuses((current) => {
+        const next = { ...current };
+        delete next[sessionID];
+        return next;
+      });
+      if (actions.explicitSessionSelectionRef?.current === sessionID) {
+        actions.explicitSessionSelectionRef.current = undefined;
+      }
+    }
+    scheduleSessions();
+    return;
+  }
+  if (/^session\.(created|renamed|moved|forked|permissions|viewed|agent\.selected|model\.selected|metadata\.updated|instructions\.updated)$/.test(type)) {
+    scheduleSessions();
     return;
   }
   if (/^session\.(compaction\.|revert\.)/.test(type)) {
@@ -86,7 +115,7 @@ export function handleProviderEvent(event: OpencodeEvent, actions: ProviderEvent
   if (type === 'permission.asked') {
     const request = mapPermission(data as V2Permission);
     actions.setPendingPermissionsBySession((current) => ({ ...current, [request.sessionID]: [...(current[request.sessionID] ?? []).filter((item) => item.id !== request.id), request] }));
-    void actions.refreshSessions(true).catch(() => undefined);
+    scheduleSessions();
     return;
   }
   if (type === 'permission.replied') {
@@ -98,7 +127,7 @@ export function handleProviderEvent(event: OpencodeEvent, actions: ProviderEvent
     if (!form?.id) return;
     const request = formToQuestion(form);
     actions.setPendingQuestionsBySession((current) => ({ ...current, [request.sessionID]: [...(current[request.sessionID] ?? []).filter((item) => item.id !== request.id), request] }));
-    void actions.refreshSessions(true).catch(() => undefined);
+    scheduleSessions();
     return;
   }
   if (type === 'form.replied' || type === 'form.cancelled') {
@@ -107,10 +136,10 @@ export function handleProviderEvent(event: OpencodeEvent, actions: ProviderEvent
     return;
   }
   if (/^(server\.connected|config\.|provider\.|model\.|agent\.|skill\.|command\.|integration\.|credential\.|models-dev\.|reference\.|plugin\.)/.test(type)) {
-    void actions.refreshChatCapabilities().catch(() => undefined);
+    scheduleCapabilities();
   }
-  if (type.startsWith('project.')) void actions.refreshProjectCatalog(true).catch(() => undefined);
-  if (type === 'filesystem.changed' || type.startsWith('vcs.')) void actions.refreshServerFeatures().catch(() => undefined);
+  if (type.startsWith('project.')) scheduleCatalog();
+  if (type === 'filesystem.changed' || type.startsWith('vcs.')) scheduleFeatures();
   if (type.startsWith('pty.')) void actions.refreshTerminals().catch(() => undefined);
   if (type.startsWith('worktree.')) { void actions.refreshWorktrees().catch(() => undefined); void actions.refreshProjectCatalog(true).catch(() => undefined); }
   if (type.startsWith('mcp.')) void actions.refreshMcpServers().catch(() => undefined);

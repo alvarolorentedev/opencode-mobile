@@ -4,7 +4,7 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Pressable, StyleSheet, Switch, View } from 'react-native';
-import { Button, Text } from 'react-native-paper';
+import { ActivityIndicator, Button, Text } from 'react-native-paper';
 import { OverlaySheet } from '@/components/ui/overlay-sheet';
 import { SwipeRow } from '@/components/ui/swipe-row';
 import { TextInput } from '@/components/ui/text-input';
@@ -14,22 +14,21 @@ import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { formatRelativeTime } from '@/lib/opencode/format';
 import { confirmAction } from '@/lib/confirm-action';
-import { useCurrentSession, usePreferences, useProjects, useConnection } from '@/providers/opencode-contexts';
+import { usePreferences, useProjects, useConnection } from '@/providers/opencode-contexts';
 import { useWorkspaces } from '@/providers/workspace-context';
 import { useWorkspaceLibrary } from '@/providers/use-workspace-library';
 import { sessionKey, workspaceKey } from '@/providers/workspace-types';
 import type { LibrarySession } from '@/providers/workspace-library';
 
-export function ChatLibrary({ visible, onClose }: { visible: boolean; onClose: () => void }) {
+export function ChatLibrary({ visible, onClose, onNewChat }: { visible: boolean; onClose: () => void; onNewChat: () => void }) {
   const { t } = useTranslation();
   const palette = Colors[useColorScheme() ?? 'light'];
   const { activeProject } = useProjects();
-  const { createSession, openSession } = useCurrentSession();
-  const { connection, serverCapabilities } = useConnection();
+  const { serverCapabilities } = useConnection();
   const { chatPreferences, updateChatPreferences } = usePreferences();
   const registry = useWorkspaces();
   const multipleServers = registry.connections.length > 1;
-  const library = useWorkspaceLibrary();
+  const library = useWorkspaceLibrary(visible);
   const [projectVisible, setProjectVisible] = useState(false);
   const [query, setQuery] = useState('');
   const [server, setServer] = useState('');
@@ -84,27 +83,29 @@ export function ChatLibrary({ visible, onClose }: { visible: boolean; onClose: (
     const key = sessionKey(row);
     const label = row.session.title || t('chat:library.untitledChat');
     const running = row.status.type !== 'idle';
+    const inFlight = busy === key;
     return <View style={{ paddingBottom: 8 }}>
       <SwipeRow title={label} actions={[
         { label: t('chat:library.rename'), icon: 'pencil-outline', onPress: () => { setRenaming(row); setTitle(label); } },
         { label: t(row.favorite ? 'chat:library.unfavorite' : 'chat:library.favorite'), icon: row.favorite ? 'star-off-outline' : 'star-outline', onPress: () => void run(key, () => library.manage(row, 'favorite', row.session.title)) },
         { label: t('common:actions.delete'), icon: 'delete-outline', onPress: () => confirmAction(t('chat:library.deleteConfirmTitle'), t('chat:library.deleteConfirm', { title: label }), t('common:actions.delete'), t('common:actions.cancel'), () => void run(key, () => library.manage(row, 'delete'))) },
       ]}>
-        <Pressable disabled={!row.connected} accessibilityRole="button" accessibilityState={{ selected: row.current, disabled: !row.connected }}
+        <Pressable disabled={!row.connected} accessibilityRole="button" accessibilityState={{ selected: row.current, disabled: !row.connected, busy: inFlight }}
           accessibilityLabel={`${t('chat:library.open', { title: label })}, ${row.serverName}, ${row.projectPath}`} accessibilityHint={t('chat:library.swipeChatActions')}
           onPress={() => void run(key, () => registry.activate(row, row.sessionId), close)}
           style={[styles.row, { borderColor: row.current ? palette.tint : palette.border, backgroundColor: row.current ? palette.background : 'transparent', opacity: row.connected ? 1 : 0.6 }]}>
-          <MaterialCommunityIcons name={row.current ? 'check-circle' : row.favorite ? 'star' : running ? 'progress-clock' : 'message-outline'} size={20} color={row.current || running || row.favorite ? palette.tint : palette.muted} />
+          {inFlight ? <ActivityIndicator size={20} color={palette.tint} testID="chat-library-busy" />
+            : <MaterialCommunityIcons name={row.current ? 'check-circle' : row.favorite ? 'star' : running ? 'progress-clock' : 'message-outline'} size={20} color={row.current || running || row.favorite ? palette.tint : palette.muted} />}
           <View style={styles.copy}>
             <View style={styles.titleLine}>{row.favorite && row.current ? <MaterialCommunityIcons name="star" size={14} color={palette.tint} /> : null}<Text numberOfLines={1} style={[styles.title, { color: palette.text }]}>{label}</Text>
-              {multipleServers ? <Text numberOfLines={1} style={[styles.chip, { color: palette.muted, borderColor: palette.border }]}>{row.serverName}</Text> : null}</View>
+              {multipleServers ? <Text testID="chat-library-server-chip" numberOfLines={1} style={[styles.chip, { color: palette.muted, borderColor: palette.border }]}>{row.serverName}</Text> : null}</View>
             <Text numberOfLines={1} style={{ color: palette.muted }}>{row.projectPath.split('/').pop()} · {row.preview || (running ? t('chat:library.running') : formatRelativeTime(row.session.time.updated))}</Text>
           </View>
         </Pressable>
       </SwipeRow>
     </View>;
   }
-  if (serverCapabilities.contract === 'v1') return <LegacyChatLibrary visible={visible} onClose={onClose} />;
+  if (serverCapabilities.contract === 'v1') return <LegacyChatLibrary visible={visible} onClose={onClose} onNewChat={onNewChat} />;
   return <>
     <OverlaySheet visible={visible && !projectVisible} title={t('chat:library.title')} testID="chat-library" scrollable={false} onClose={close}
       headerAction={<ProjectPickerButton onPress={() => setProjectVisible(true)} />}>
@@ -117,18 +118,18 @@ export function ChatLibrary({ visible, onClose }: { visible: boolean; onClose: (
         <Switch testID="chat-hide-subagents" accessibilityLabel={t('chat:library.hideSubagentChats')} value={chatPreferences.hideSubagentChats} onValueChange={(hideSubagentChats) => updateChatPreferences({ hideSubagentChats })} /></View>
       {error ? <Text accessibilityRole="alert" style={{ color: palette.danger }}>{error}</Text> : null}
       {renaming ? <View style={styles.filters}><TextInput testID="chat-library-title-input" style={{ flex: 1 }} value={title} onChangeText={setTitle} /><Button onPress={() => void run(sessionKey(renaming), () => library.manage(renaming, 'rename', title), () => setRenaming(undefined))}>{t('common:actions.save')}</Button></View> : null}
-      <FlashList data={rows} keyExtractor={sessionKey} style={{ flex: 1 }} keyboardShouldPersistTaps="handled" renderItem={({ item }) => renderRow(item)}
+      <FlashList data={rows} extraData={busy} keyExtractor={sessionKey} style={{ flex: 1 }} keyboardShouldPersistTaps="handled" renderItem={({ item }) => renderRow(item)}
         ListEmptyComponent={<Text style={{ color: palette.muted }}>{t(query.trim() ? 'chat:library.noMatchingChats' : 'chat:library.noChats')}</Text>} />
-      <Button icon="plus" disabled={!activeProject || connection.status !== 'connected' || Boolean(busy)} onPress={() => void run('new', async () => { const session = await createSession(); await openSession(session.id); }, close)}>{t('chat:library.newChat')}</Button>
+      <Button icon="plus" disabled={Boolean(busy)} onPress={onNewChat}>{t('chat:library.newChat')}</Button>
       <Text style={{ color: palette.muted, textAlign: 'center' }}>{multipleServers ? `${focusedServer} / ` : ''}{activeProject?.label}</Text>
     </OverlaySheet>
-    <ProjectPicker visible={visible && projectVisible} testID="chat-project-picker" activePath={activeProject?.path} onClose={() => setProjectVisible(false)} onSelected={close} />
+    {visible && projectVisible ? <ProjectPicker visible testID="chat-project-picker" activePath={activeProject?.path} onClose={() => setProjectVisible(false)} onSelected={close} /> : null}
   </>;
 }
 const styles = StyleSheet.create({
   filters: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   row: { minHeight: 68, borderRadius: 16, borderWidth: 1, paddingHorizontal: 14, paddingVertical: 10, flexDirection: 'row', alignItems: 'center', gap: 12 },
-  copy: { flex: 1, minWidth: 0, gap: 3 }, titleLine: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  title: { flex: 1, fontSize: 16, fontWeight: '600' },
-  chip: { maxWidth: 120, fontSize: 12, borderWidth: 1, borderRadius: 12, paddingHorizontal: 8, paddingVertical: 3 },
+  copy: { flex: 1, minWidth: 0, gap: 3 }, titleLine: { flexDirection: 'row', alignItems: 'center', gap: 8, minWidth: 0 },
+  title: { flex: 1, minWidth: 0, fontSize: 16, fontWeight: '600' },
+  chip: { flexShrink: 0, maxWidth: 120, fontSize: 12, borderWidth: 1, borderRadius: 12, paddingHorizontal: 8, paddingVertical: 3 },
 });

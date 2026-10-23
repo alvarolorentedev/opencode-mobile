@@ -25,9 +25,12 @@ Closed on 2026-10-18. The coupling hotspot was split without changing behavior:
   / `actions` namespaces instead of ~85 flat members, and `ChatView` consumes
   those namespaces directly.
 
-Remaining deferred piece: a selector-based subscription model. React Compiler
-is enabled, so measure re-render behavior before attempting it; the memoized
-context values may already be sufficient.
+Remaining deferred piece: a selector-based subscription model. The workspace
+root now memoizes each overridden domain independently, exposes stable chat
+actions separately from the snapshot registry, and memoizes runtime components,
+so background publishes no longer invalidate unrelated domains. A selector-based
+model remains deferred until profiling shows the remaining context fan-out is
+material.
 
 ## 2. Test infrastructure leftovers
 

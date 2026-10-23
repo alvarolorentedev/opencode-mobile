@@ -24,11 +24,11 @@ type LibraryRow =
   | { kind: 'session'; id: string; value: Session }
   | { kind: 'archived'; id: string; value: GlobalSession };
 
-export function LegacyChatLibrary({ visible, onClose }: { visible: boolean; onClose: () => void }) {
+export function LegacyChatLibrary({ visible, onClose, onNewChat }: { visible: boolean; onClose: () => void; onNewChat: () => void }) {
   const { t } = useTranslation();
   const palette = Colors[useColorScheme() ?? 'light'];
   const { activeProject, refreshProjectCatalog } = useProjects();
-  const { createSession, currentSessionId, openSession, activeSessions: activeSessionsValue } = useCurrentSession();
+  const { currentSessionId, openSession, activeSessions: activeSessionsValue } = useCurrentSession();
   const {
     archivedSessions, archiveSession, clearFavoriteSession, deleteSession,
     favoriteSessions, isFavoriteSession, openSessionInProject, refreshArchivedSessions,
@@ -210,10 +210,10 @@ export function LegacyChatLibrary({ visible, onClose }: { visible: boolean; onCl
       {error ? <Text style={{ color: palette.danger }}>{error}</Text> : null}
       <FlashList data={rows} style={{ flex: 1 }} keyExtractor={(row) => row.id} getItemType={(row) => row.kind}
         keyboardShouldPersistTaps="handled" renderItem={({ item }) => <View style={{ paddingBottom: 8 }}>{renderRow(item)}</View>} />
-      <Button icon="plus" disabled={!activeProject || Boolean(busyId)} onPress={() => void run('new', async () => { const session = await createSession(); await openSession(session.id); }, close)}>{t('chat:library.newChat')}</Button>
+      <Button icon="plus" disabled={Boolean(busyId)} onPress={onNewChat}>{t('chat:library.newChat')}</Button>
     </OverlaySheet>
 
-    <ProjectPicker visible={visible && projectVisible} testID="chat-project-picker" activePath={activeProject?.path} onClose={() => setProjectVisible(false)} onSelected={close} />
+    {visible && projectVisible ? <ProjectPicker visible testID="chat-project-picker" activePath={activeProject?.path} onClose={() => setProjectVisible(false)} onSelected={close} /> : null}
   </>;
 }
 

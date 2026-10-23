@@ -1,6 +1,6 @@
 import { useMcpAuthentication } from './use-mcp-authentication';
 import type { McpContextValue } from '@/providers/opencode-provider-types';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { StyleSheet, Switch, View } from 'react-native';
 import { Button, Chip, HelperText, List, SegmentedButtons, Text } from 'react-native-paper';
@@ -47,6 +47,8 @@ export function McpSection({
   const [busy, setBusy] = useState<string>();
   const [error, setError] = useState<string>();
   const authentication = useMcpAuthentication(mcpOAuth, palette);
+  // MCP status is lazy now: refresh when this settings section opens.
+  useEffect(() => { void onRefresh().catch(() => undefined); }, [onRefresh]);
   const names = Array.from(new Set([...Object.keys(configs || {}), ...Object.keys(mcpStatuses)])).sort();
 
   async function run(key: string, action: () => Promise<void>) {

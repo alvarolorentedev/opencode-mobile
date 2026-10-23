@@ -49,7 +49,7 @@ export default function ProjectsScreen() {
       </Pressable>
       <Appbar.Action testID="project-refresh-button" icon="refresh" disabled={refreshing || connection.status !== 'connected'} accessibilityLabel={t('project:screen.refreshProject')} onPress={() => void refresh()} />
     </Appbar.Header>
-    <ProjectPicker visible={pickerVisible} testID="project-picker" activePath={activeProject?.path} onClose={() => setPickerVisible(false)} />
+    {pickerVisible ? <ProjectPicker visible testID="project-picker" activePath={activeProject?.path} onClose={() => setPickerVisible(false)} /> : null}
     {ready ? <FilesPanel key={scope} browser={browser} projectLabel={activeProject!.label} statuses={serverCapabilities.fileStatus ? projectFileStatuses : []}
       contentStyle={[styles.content, slim && { padding: 10 }]}
       header={<>

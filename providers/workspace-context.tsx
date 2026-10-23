@@ -1,11 +1,13 @@
 import { createContext, useContext, useEffect, useMemo, useState, type PropsWithChildren } from 'react';
 import { ActivityIndicator, View } from 'react-native';
 import { useUpdates } from '@/providers/opencode-contexts';
+import type { Session } from '@/lib/opencode/types';
 import { OpencodeProviderTree } from '@/providers/opencode-provider-tree';
 import { useWorkspaceConnections } from '@/providers/use-workspace-connections';
 import { workspaceKey, type WorkspaceTarget, type WorkspaceValues } from '@/providers/workspace-types';
 
 export type WorkspaceRegistry = ReturnType<typeof useWorkspaceConnections> & {
+  createChat: (target: WorkspaceTarget) => Promise<Session>;
   terminalTarget?: WorkspaceTarget;
   selectTerminalTarget: (target: WorkspaceTarget) => Promise<void>;
   inspectionTarget?: WorkspaceTarget;
@@ -13,11 +15,22 @@ export type WorkspaceRegistry = ReturnType<typeof useWorkspaceConnections> & {
   valuesFor: (target?: WorkspaceTarget) => WorkspaceValues | undefined;
   presentation: Map<string, unknown>;
 };
+export type WorkspaceActions = {
+  createChat: (target: WorkspaceTarget) => Promise<Session>;
+  focus?: WorkspaceTarget;
+  presentation: Map<string, unknown>;
+};
 export const WorkspaceScopeContext = createContext<WorkspaceTarget | undefined>(undefined);
 export const WorkspaceContext = createContext<WorkspaceRegistry | null>(null);
+export const WorkspaceActionsContext = createContext<WorkspaceActions | null>(null);
 export function useWorkspaces() {
   const value = useContext(WorkspaceContext);
   if (!value) throw new Error('useWorkspaces must be used inside OpencodeProvider.');
+  return value;
+}
+export function useWorkspaceActions() {
+  const value = useContext(WorkspaceActionsContext);
+  if (!value) throw new Error('useWorkspaceActions must be used inside OpencodeProvider.');
   return value;
 }
 export function WorkspaceScope({ target, children }: PropsWithChildren<{ target?: WorkspaceTarget }>) {

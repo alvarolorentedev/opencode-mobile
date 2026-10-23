@@ -25,7 +25,6 @@ type ChatComposerProps = {
   connectionStatus: 'idle' | 'connecting' | 'connected' | 'error';
   conversation: { active: boolean; isListening: boolean; phase: string; statusLabel?: string };
   draft: string;
-  isCreatingSession: boolean;
   isSpeechInputAvailable: boolean;
   isSpeechInputListening: boolean;
   isStoppingSession: boolean;
@@ -60,7 +59,6 @@ export function ChatComposer({
   currentSessionId,
   commands,
   draft,
-  isCreatingSession,
   isSpeechInputAvailable,
   isSpeechInputListening,
   isStoppingSession,
@@ -94,7 +92,7 @@ export function ChatComposer({
   const primaryDisabled = primaryAction === 'stop'
     ? !currentSessionId || isStoppingSession
     : primaryAction === 'send'
-      ? connectionStatus !== 'connected' || isCreatingSession || isSpeechInputListening
+      ? connectionStatus !== 'connected' || isSpeechInputListening
       : connectionStatus !== 'connected' || !isSpeechInputAvailable;
   const selectedModel = visibleModels.find((model) => model.id === chatPreferences.modelId);
   const reasoningLabel = serverContract === 'v1'

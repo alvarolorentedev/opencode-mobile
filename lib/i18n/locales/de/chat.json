@@ -134,6 +134,11 @@
     "sendTask": "Aufgabe senden",
     "stopTask": "Aufgabe stoppen"
   },
+  "newChat": {
+    "title": "Neuer Chat",
+    "hint": "Wähle, wo dieser Chat startet.",
+    "create": "Chat starten"
+  },
   "header": {
     "pricingUnavailable": "Preise nicht verfügbar",
     "estimatedCost": "Geschätzte API-Kosten {{cost}}",

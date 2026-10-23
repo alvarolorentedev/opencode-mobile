@@ -1,3 +1,4 @@
+import { useEffect, useLayoutEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { StyleSheet, View } from 'react-native';
 import { Button, Chip, List, Text } from 'react-native-paper';
@@ -26,6 +27,11 @@ export function DiagnosticsSection({
 }) {
   const { t } = useTranslation();
   const dataUsage = useDataUsage();
+  // Diagnostics was previously refreshed during every chat bootstrap. Load it
+  // when this section opens instead.
+  const refreshRef = useRef(onRefresh);
+  useLayoutEffect(() => { refreshRef.current = onRefresh; });
+  useEffect(() => { refreshRef.current(); }, []);
   const health = diagnostics?.health.available ? diagnostics.health.data : undefined;
   const mcpCount = diagnostics?.mcp.available ? Object.keys(diagnostics.mcp.data).length : undefined;
   const lspCount = lspAvailable && diagnostics?.lsp.available ? diagnostics.lsp.data.length : undefined;

@@ -1,8 +1,9 @@
 import { createSession as svcCreateSession, summarizeSession } from '@/providers/services/session-service';
 import { useCallback } from 'react';
 
-import type { Session } from '@/lib/opencode/types';
+import type { Session, SessionStatus } from '@/lib/opencode/types';
 import { getSelectedModelParts, getSelectedModelVariant } from '@/providers/opencode-model-selection';
+import { persistSessionCache } from '@/providers/session-cache';
 import {
   archiveSession as svcArchiveSession,
   deleteSession as svcDeleteSession,
@@ -25,11 +26,20 @@ export function useSessionCrudActions({
   activeProjectPath,
   connectionScopeRef,
   currentSessionId,
+  currentSessionIdRef,
+  explicitSessionSelectionRef,
+  locallyCreatedSessionsRef,
   availableModels,
   diffScopeBySessionRef,
   sessions,
+  sessionStatuses,
+  bootstrapPromiseRef,
+  bootstrapTokenRef,
   setLastSessionByConnection,
   setCurrentSessionId,
+  setIsBootstrappingChat,
+  setSessions,
+  setSessionStatuses,
   setMessagesBySession,
   setDiffsBySession,
   setTodosBySession,
@@ -47,8 +57,22 @@ export function useSessionCrudActions({
   refreshActiveSessions,
   chatPreferences,
 }: SessionActionsInput) {
+  const persistSnapshot = useCallback((nextSessions: Session[], nextStatuses: Record<string, SessionStatus>) => {
+    if (!activeProjectPath) return;
+    void persistSessionCache(connectionScopeRef.current, activeProjectPath, nextSessions, nextStatuses);
+  }, [activeProjectPath, connectionScopeRef]);
+
   const openSession = useCallback(
     async (sessionId: string) => {
+      // Selection is local and immediate. Callers (chat library, new chat,
+      // fork) must not wait for transcript/diff hydration before navigating.
+      // An explicit selection also supersedes an in-flight initial bootstrap,
+      // which could otherwise finish later and select the remembered chat.
+      bootstrapPromiseRef.current = null;
+      bootstrapTokenRef.current = undefined;
+      setIsBootstrappingChat(false);
+      currentSessionIdRef.current = sessionId;
+      explicitSessionSelectionRef.current = sessionId;
       setCurrentSessionId(sessionId);
       if (activeProjectPath) {
         const scope = connectionScopeRef.current;
@@ -60,13 +84,19 @@ export function useSessionCrudActions({
           },
         }));
       }
-      await Promise.all([refreshMessages(sessionId), refreshSessionDiff(sessionId, true), refreshSessionTodos(sessionId), refreshPendingInteractions()]);
-      const scope = diffScopeBySessionRef.current[sessionId];
-      if (scope && scope !== 'turn') {
-        void refreshVcsDiff(scope, true);
-      }
+      void Promise.all([
+        refreshMessages(sessionId),
+        refreshSessionDiff(sessionId, true),
+        refreshSessionTodos(sessionId),
+        refreshPendingInteractions(),
+      ]).then(() => {
+        const scope = diffScopeBySessionRef.current[sessionId];
+        if (scope && scope !== 'turn') {
+          void refreshVcsDiff(scope, true);
+        }
+      }).catch(() => undefined);
     },
-    [activeProjectPath, refreshMessages, refreshPendingInteractions, refreshSessionDiff, refreshSessionTodos, refreshVcsDiff, setCurrentSessionId, setLastSessionByConnection],
+    [activeProjectPath, bootstrapPromiseRef, bootstrapTokenRef, connectionScopeRef, currentSessionIdRef, diffScopeBySessionRef, explicitSessionSelectionRef, refreshMessages, refreshPendingInteractions, refreshSessionDiff, refreshSessionTodos, refreshVcsDiff, setCurrentSessionId, setIsBootstrappingChat, setLastSessionByConnection],
   );
 
   const createSession = useCallback(
@@ -80,10 +110,17 @@ export function useSessionCrudActions({
       if (!isCurrentClient(client)) {
         throw new Error('The active project changed before the session was created.');
       }
-      await refreshSessions(true);
+      // The server already returned the session. Show it immediately and let a
+      // background read reconcile ordering/status instead of delaying the chat.
+      const nextSessions = [created, ...sessions.filter((session) => session.id !== created.id)];
+      const nextStatuses = { ...sessionStatuses, [created.id]: { type: 'idle' as const } };
+      locallyCreatedSessionsRef.current.set(created.id, Date.now());
+      setSessions((current) => [created, ...current.filter((session) => session.id !== created.id)]);
+      setSessionStatuses((current) => ({ ...current, [created.id]: { type: 'idle' } }));
+      persistSnapshot(nextSessions, nextStatuses);
       return created;
     },
-    [client, isCurrentClient, refreshSessions],
+    [client, isCurrentClient, locallyCreatedSessionsRef, persistSnapshot, sessionStatuses, sessions, setSessionStatuses, setSessions],
   );
 
   const deleteSession = useCallback(
@@ -120,12 +157,25 @@ export function useSessionCrudActions({
       setFavoriteSessions((current) => current.filter(
         (favorite) => !(favorite.connectionScope === connectionScopeRef.current && favorite.sessionId === sessionId),
       ));
+      const nextSessions = sessions.filter((session) => session.id !== sessionId);
+      const nextStatuses = { ...sessionStatuses };
+      delete nextStatuses[sessionId];
+      locallyCreatedSessionsRef.current.delete(sessionId);
+      setSessions((current) => current.filter((session) => session.id !== sessionId));
+      setSessionStatuses((current) => {
+        const next = { ...current };
+        delete next[sessionId];
+        return next;
+      });
+      persistSnapshot(nextSessions, nextStatuses);
       if (currentSessionId === sessionId) {
+        currentSessionIdRef.current = undefined;
+        explicitSessionSelectionRef.current = undefined;
         setCurrentSessionId(undefined);
       }
-      await Promise.all([refreshSessions(true), refreshActiveSessions()]);
+      void refreshActiveSessions().catch(() => undefined);
     },
-    [client, currentSessionId, isCurrentClient, refreshActiveSessions, refreshSessions, setCurrentSessionId, setDiffsBySession, setFavoriteSessions, setMessagesBySession, setPendingPermissionsBySession, setPendingQuestionsBySession, setTodosBySession],
+    [client, connectionScopeRef, currentSessionId, currentSessionIdRef, explicitSessionSelectionRef, isCurrentClient, locallyCreatedSessionsRef, persistSnapshot, refreshActiveSessions, sessionStatuses, sessions, setCurrentSessionId, setDiffsBySession, setFavoriteSessions, setMessagesBySession, setPendingPermissionsBySession, setPendingQuestionsBySession, setSessionStatuses, setSessions, setTodosBySession],
   );
 
   const refreshArchivedSessions = useCallback(async () => {
@@ -138,18 +188,52 @@ export function useSessionCrudActions({
   const archiveSession = useCallback(async (sessionId: string) => {
     await svcArchiveSession(client, sessionId);
     if (!isCurrentClient(client)) return;
-    if (currentSessionId === sessionId) setCurrentSessionId(undefined);
-    await Promise.all([refreshSessions(true), refreshArchivedSessions(), refreshActiveSessions()]);
-  }, [client, currentSessionId, isCurrentClient, refreshActiveSessions, refreshArchivedSessions, refreshSessions, setCurrentSessionId]);
+    const nextSessions = sessions.filter((session) => session.id !== sessionId);
+    const nextStatuses = { ...sessionStatuses };
+    delete nextStatuses[sessionId];
+    locallyCreatedSessionsRef.current.delete(sessionId);
+    setSessions((current) => current.filter((session) => session.id !== sessionId));
+    setSessionStatuses((current) => {
+      const next = { ...current };
+      delete next[sessionId];
+      return next;
+    });
+    persistSnapshot(nextSessions, nextStatuses);
+    if (currentSessionId === sessionId) {
+      currentSessionIdRef.current = undefined;
+      explicitSessionSelectionRef.current = undefined;
+      setCurrentSessionId(undefined);
+    }
+    void Promise.all([refreshArchivedSessions(), refreshActiveSessions()]).catch(() => undefined);
+  }, [client, currentSessionId, currentSessionIdRef, explicitSessionSelectionRef, isCurrentClient, locallyCreatedSessionsRef, persistSnapshot, refreshActiveSessions, refreshArchivedSessions, sessionStatuses, sessions, setCurrentSessionId, setSessionStatuses, setSessions]);
 
   const renameSession = useCallback(async (sessionId: string, title: string) => {
     const trimmed = title.trim();
     if (!trimmed) {
       throw new Error('Enter a session title.');
     }
-    await svcUpdateSessionTitle(client, sessionId, trimmed);
-    await refreshSessions(true);
-  }, [client, refreshSessions]);
+    const previousTitle = sessions.find((session) => session.id === sessionId)?.title;
+    const renamed = sessions.map((session) => (
+      session.id === sessionId ? { ...session, title: trimmed } : session
+    ));
+    // Rename is safe to echo locally; the server response is still required and
+    // a rejection restores the previous title.
+    setSessions((current) => current.map((session) => (
+      session.id === sessionId ? { ...session, title: trimmed } : session
+    )));
+    try {
+      await svcUpdateSessionTitle(client, sessionId, trimmed);
+      if (!isCurrentClient(client)) return;
+      persistSnapshot(renamed, sessionStatuses);
+    } catch (error) {
+      if (isCurrentClient(client)) {
+        setSessions((current) => current.map((session) => (
+          session.id === sessionId && previousTitle !== undefined ? { ...session, title: previousTitle } : session
+        )));
+      }
+      throw error;
+    }
+  }, [client, isCurrentClient, persistSnapshot, sessionStatuses, sessions, setSessions]);
 
   const forkSession = useCallback(async (sessionId: string, messageId?: string) => {
     const forked = await svcForkSession(client, sessionId, messageId);
@@ -159,10 +243,15 @@ export function useSessionCrudActions({
     if (!isCurrentClient(client)) {
       throw new Error('The active project changed before the session was forked.');
     }
-    await refreshSessions(true);
+    const nextSessions = [forked, ...sessions.filter((session) => session.id !== forked.id)];
+    const nextStatuses = { ...sessionStatuses, [forked.id]: { type: 'idle' as const } };
+    locallyCreatedSessionsRef.current.set(forked.id, Date.now());
+    setSessions((current) => [forked, ...current.filter((session) => session.id !== forked.id)]);
+    setSessionStatuses((current) => ({ ...current, [forked.id]: { type: 'idle' } }));
+    persistSnapshot(nextSessions, nextStatuses);
     await openSession(forked.id);
     return forked;
-  }, [client, isCurrentClient, openSession, refreshSessions]);
+  }, [client, isCurrentClient, locallyCreatedSessionsRef, openSession, persistSnapshot, sessionStatuses, sessions, setSessionStatuses, setSessions]);
 
   const shareSession = useCallback(async (sessionId: string) => {
     const shared = await svcShareSession(client, sessionId);

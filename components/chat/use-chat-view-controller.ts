@@ -38,7 +38,7 @@ export function useChatViewController() {
   const { t } = useTranslation();
   const { block } = useUpdates();
   const { activeProject } = useProjects();
-  const { activeSession, createSession, currentSessionId, ensureActiveSession, openSession } = useCurrentSession();
+  const { activeSession, currentSessionId, ensureActiveSession } = useCurrentSession();
   const { forkSession, revertSession, sessionStatuses, sessions, unrevertSession } = useSessionLibrary();
   const { availableAgents, availableModels, configuredProviders } = useCapabilities();
   const { chatPreferences, updateChatPreferences } = usePreferences();
@@ -50,7 +50,7 @@ export function useChatViewController() {
   const {
     pendingPrompts, cancelPrompt, abortSession, clearPromptError, commands, currentDiffs, currentDiffScope, currentMessages,
     currentPendingPermissions, currentPendingQuestions, currentTodos, currentTranscript, currentUsage,
-    diffTurns, executeCommand, isRefreshingDiffs, isRefreshingMessages,
+    diffTurns, executeCommand, isBootstrappingChat, isRefreshingDiffs, isRefreshingMessages,
     latestAssistantTurnUsage, promptError, refreshDiffs, rejectQuestion,
     replyToPermission, replyToQuestion, selectDiffMessage, selectedDiffMessageId, sendPrompt,
     sendingState, setAutoApprove, setDiffScope, transcriptPaging, sharedInput,
@@ -75,7 +75,6 @@ export function useChatViewController() {
   const [progressVisible, setProgressVisible] = useState(false);
   const [sessionMenuVisible, setSessionMenuVisible] = useState(false);
   const [isUpdatingAutoApprove, setIsUpdatingAutoApprove] = useState(false);
-  const [isCreatingSession, setIsCreatingSession] = useState(false);
   const [isStoppingSession, setIsStoppingSession] = useState(false);
   const [expandedDiffId, setExpandedDiffId] = useState<string | undefined>();
   const [copiedMessageId, setCopiedMessageId] = useState<string | undefined>();
@@ -96,7 +95,6 @@ export function useChatViewController() {
   const {
     handleSpeakEntry,
     handleAttach,
-    handleNewSession,
     handleAbort,
     handleConfirmStopConversation,
   } = useChatViewActions({
@@ -106,13 +104,9 @@ export function useChatViewController() {
     currentSessionId,
     speakingMessageId,
     abortSession,
-    createSession,
-    openSession,
     toggleConversationMode,
     setAttachments,
-    setChangesVisible,
     setSendFeedback,
-    setIsCreatingSession,
     setIsStoppingSession,
     setSpeakingMessageId,
     setVoiceFeedback,
@@ -259,7 +253,7 @@ export function useChatViewController() {
     void stopSpeaking().catch(() => undefined);
   }, [connectionScope, activeProject?.path, stopSpeechInput]);
   useUpdateBlocker(Boolean(draft || attachments.length || isSpeechInputListening || speakingMessageId ||
-    copiedMessageId || sendFeedback || voiceFeedback || isCreatingSession || isStoppingSession || isUpdatingAutoApprove));
+    copiedMessageId || sendFeedback || voiceFeedback || isStoppingSession || isUpdatingAutoApprove));
   // Only offer a recovery action when the snackbar is actually showing a
   // voice-input error, not unrelated conversation or playback feedback.
   // Dictation failures live in this component's own hook; conversation
@@ -463,13 +457,13 @@ export function useChatViewController() {
       copiedMessageId, currentActivityLabel, currentDiffs, currentDiffScope,
       currentPendingPermissions, currentPendingQuestions, currentSessionId, currentTodos,
       diffAdditions, diffCount, diffDeletions, diffDetails, diffTurns, transcriptRows,
-      expandedDiffId, hasTranscriptMessages, isCancelingRevert, isRefreshingDiffs, isRefreshingMessages,
+      expandedDiffId, hasTranscriptMessages, isBootstrappingChat, isCancelingRevert, isRefreshingDiffs, isRefreshingMessages,
       pendingInteractions, pendingPrompts, progressIcon, progressVisible, retryAttempt,
       running, selectedDiffMessageId, speakingMessageId, transcriptPaging,
     },
     composer: {
       attachments, availableAgents, chatPreferences, commands, draft,
-      isCreatingSession, isSpeechInputAvailable, isSpeechInputListening,
+      isSpeechInputAvailable, isSpeechInputListening,
       isStoppingSession, isUpdatingAutoApprove, selectedAgentLabel, serverCapabilities,
       selectedVariant: selectedModelVariant, serverContract: serverCapabilities.contract,
       showSendAction, visibleModels,
@@ -481,7 +475,7 @@ export function useChatViewController() {
     actions: {
       buildSendErrorDetails, clearConversationFeedback, clearPromptError, dismissFailedInput,
       forkSession, handleAbort, handleAttach, handleCancelPendingPrompt, handleCancelRevert,
-      handleConfirmStopConversation, handleCopyMessage, handleNewSession, handleReviewChanges,
+      handleConfirmStopConversation, handleCopyMessage, handleReviewChanges,
       handleRevertMessage, handleSendPrompt, handleSpeakEntry, handleToggleRecording,
       handleVoiceRecovery, recoverFailedInput, refreshDiffs, rejectQuestion, replyToPermission,
       replyToQuestion, selectDiffMessage, setAttachments, setAutoApprove, setChangesVisible,

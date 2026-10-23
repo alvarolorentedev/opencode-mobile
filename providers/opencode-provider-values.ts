@@ -142,6 +142,7 @@ export function useOpencodeProviderValues(input: ProviderValuesInput) {
     isRefreshingMessages,
     isRefreshingDiffs,
     isBootstrappingChat,
+    hydratingSessionIds,
     commands,
     promptError,
     clearPromptError,
@@ -330,13 +331,18 @@ export function useOpencodeProviderValues(input: ProviderValuesInput) {
 
   const hasOlderMessages = currentSessionId ? messageWindows[currentSessionId]?.hasMore === true : false;
   const isLoadingOlderMessages = currentSessionId ? loadingOlderBySession[currentSessionId] === true : false;
+  // Hydration is session-scoped so switching chats quickly cannot let an older
+  // read clear the newer session's skeleton.
+  const chatRefreshingMessages = currentSessionId
+    ? hydratingSessionIds[currentSessionId] === true
+    : isBootstrappingChat || isRefreshingMessages;
   const transcriptPaging = useMemo(
     () => ({ loadOlder: loadOlderMessages, hasOlder: hasOlderMessages, isLoadingOlder: isLoadingOlderMessages }),
     [hasOlderMessages, isLoadingOlderMessages, loadOlderMessages],
   );
   const chatValue = useMemo<ChatContextValue>(
-    () => ({ pendingPrompts, cancelPrompt, currentMessages, currentTranscript, currentUsage, latestAssistantTurnUsage, currentDiffs, currentDiffScope, setDiffScope, diffTurns, selectedDiffMessageId, selectDiffMessage, refreshDiffs, currentTodos, currentPendingPermissions, currentPendingQuestions, isRefreshingMessages, isRefreshingDiffs, isBootstrappingChat, replyToPermission, replyToQuestion, rejectQuestion, commands, executeCommand, sendPrompt, abortSession, setAutoApprove, sendingState, promptError: visiblePromptError, clearPromptError, transcriptPaging, sharedInput }),
-    [pendingPrompts, cancelPrompt, currentMessages, currentTranscript, currentUsage, latestAssistantTurnUsage, currentDiffs, currentDiffScope, setDiffScope, diffTurns, selectedDiffMessageId, selectDiffMessage, refreshDiffs, currentTodos, currentPendingPermissions, currentPendingQuestions, isRefreshingMessages, isRefreshingDiffs, isBootstrappingChat, replyToPermission, replyToQuestion, rejectQuestion, commands, executeCommand, sendPrompt, abortSession, setAutoApprove, sendingState, visiblePromptError, clearPromptError, transcriptPaging, sharedInput],
+    () => ({ pendingPrompts, cancelPrompt, currentMessages, currentTranscript, currentUsage, latestAssistantTurnUsage, currentDiffs, currentDiffScope, setDiffScope, diffTurns, selectedDiffMessageId, selectDiffMessage, refreshDiffs, currentTodos, currentPendingPermissions, currentPendingQuestions, isRefreshingMessages: chatRefreshingMessages, isRefreshingDiffs, isBootstrappingChat, replyToPermission, replyToQuestion, rejectQuestion, commands, executeCommand, sendPrompt, abortSession, setAutoApprove, sendingState, promptError: visiblePromptError, clearPromptError, transcriptPaging, sharedInput }),
+    [pendingPrompts, cancelPrompt, currentMessages, currentTranscript, currentUsage, latestAssistantTurnUsage, currentDiffs, currentDiffScope, setDiffScope, diffTurns, selectedDiffMessageId, selectDiffMessage, refreshDiffs, currentTodos, currentPendingPermissions, currentPendingQuestions, chatRefreshingMessages, isRefreshingDiffs, isBootstrappingChat, replyToPermission, replyToQuestion, rejectQuestion, commands, executeCommand, sendPrompt, abortSession, setAutoApprove, sendingState, visiblePromptError, clearPromptError, transcriptPaging, sharedInput],
   );
 
   const conversationValue = useMemo<ConversationContextValue>(

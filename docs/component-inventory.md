@@ -56,7 +56,7 @@ The goal is to make it possible to rebuild the UI tree without having to redisco
 - `progressVisible`
 - `chatLibraryVisible`
 - `isUpdatingAutoApprove`
-- `isCreatingSession`
+- `newChatVisible`
 - `isStoppingSession`
 - `expandedDiffId`
 - `copiedMessageId`
@@ -105,7 +105,7 @@ declared once, at the leaves.
 ### Behavior notes
 
 - Chat keeps its transcript and pending cards mounted while changes are reviewed.
-- transcript messages use FlashList virtualization; it starts at the bottom, follows additions only from the bottom, and preserves the visible position otherwise. Because FlashList measures progressively, the tail is re-asserted across a few frames on a session switch or data change, and the list re-applies its tail/offset when the Chat tab regains focus or the app returns to the foreground, so an Android detach or background/lock cannot leave it at the top or undrawn. A starter-prompt card is shown only for a session with no transcript content; the skeleton is shown only for a cold fetch with no held records. The initial pull backfills until 10 entries are displayable at the configured verbosity, so a tool-heavy tail cannot leave the view blank.
+- transcript messages use FlashList virtualization; it starts at the bottom, follows additions only from the bottom, and preserves the visible position otherwise. Because FlashList measures progressively, the tail is re-asserted across a few frames on a session switch or data change, and the list re-applies its tail/offset when the Chat tab regains focus or the app returns to the foreground, so an Android detach or background/lock cannot leave it at the top or undrawn. A starter-prompt card is shown only for a session with no transcript content; the skeleton is shown for target bootstrap or a cold fetch with no held records. The initial pull backfills until 10 entries are displayable at the configured verbosity, so a tool-heavy tail cannot leave the view blank.
 - Transcript verbosity (`basic`/`reasoning`/`verbose`) controls which native timeline records render. Details are first-class rows (`cards/collapsible-detail.tsx`): contiguous same-tool calls (or contiguous reasoning) merge into one collapsible whose content grows as streamed calls arrive, a message bubble breaks the group, and hidden file-mutating tools are skipped before grouping. Non-shell groups use the shared markdown renderer; shell groups render one raw, non-copyable bash block (`$ command` + output per call) with a single-line `Running <command>` header. Group rows use the assistant bubble width. V1-only subtask/step/agent details and the `step-finish` usage marker are never rendered; `edit`/`write`/`multiedit`/`apply_patch` details are hidden.
 - A centered changes chip above the composer shows file count and green additions/red deletions for the selected scope. It hides at zero files and omits line totals for filename-only patches. Tapping opens the shared Files changed overlay with refresh, source selection, and diff accordions. Changes use a compact bottom sheet (55% of the viewport where safe areas permit), a centered file-count title, close icon, and a three-dot source button instead of separate summary/source cards.
 - Changes overlay scopes: `Turn` (per-turn snapshot diff, with a picker when multiple turns have diffs), `Uncommitted`, and `Branch` (VCS working tree / default-branch diffs)
@@ -137,7 +137,6 @@ type ChatComposerProps = {
   connectionStatus: 'idle' | 'connecting' | 'connected' | 'error'
   conversation: { active: boolean; isListening: boolean; phase: string; statusLabel?: string }
   draft: string
-  isCreatingSession: boolean
   isSpeechInputAvailable: boolean
   isSpeechInputListening: boolean
   isStoppingSession: boolean
@@ -183,7 +182,7 @@ type ChatComposerProps = {
 
 ### Responsibility
 
-- top app bar with New Chat and usage actions; voice chat starts from the composer waveform only
+- top app bar with New chat and usage actions; New chat opens the server/project sheet instead of creating immediately, and voice chat starts from the composer waveform only
 - active session and project title that opens the Chats overlay
 - compact current-session usage summary and usage breakdown sheet
 - mounting point for conversation overlay
@@ -195,15 +194,19 @@ type ChatHeaderProps = {
   connectionStatus: 'idle' | 'connecting' | 'connected' | 'error'
   conversation: { active: boolean; latestHeardText?: string; phase: ConversationPhase }
   insetsTop: number
-  isCreatingSession: boolean
   onConfirmStopConversation: () => void
   onCreateSession: () => void
-  onOpenLibrary: () => void
+  onOpenSessionMenu: () => void
   palette: Palette
   selectedSession?: Session
   activeProjectLabel?: string
 }
 ```
+
+`new-chat-sheet.tsx` reuses the terminal creation-sheet pattern: server
+selector (only with multiple connections), project selector, resolved working
+directory, and an explicit confirm action. Selection stays local until confirm;
+the provider then creates and opens the session in that workspace.
 
 ## `components/chat/chat-library.tsx`
 
@@ -211,6 +214,7 @@ type ChatHeaderProps = {
 - active, favorite, current-project, and archived rows share one FlashList scroll owner; search, filters, and New Chat stay outside the virtualized list
 - "Active across projects" group above Favorites listing up to four running/recent sessions from the whole connection; listed IDs are removed from the Chat list below, and tapping one switches project and opens it through `openSessionInProject`. Project-scoped actions (rename/share/archive/delete) appear only on the current-project rows
 - re-seeds the cross-project snapshot when the overlay opens
+- derives cross-project rows only while visible, and mounts the shared project picker only while its nested overlay is open, so a closed library does no per-publish catalog work
 - keeps the Hide subagents switch alongside the Active and Archived filters
 - header action opening the shared project picker overlay
 - uses provider actions for switching projects, opening chats, and persistence
@@ -651,7 +655,7 @@ Responsibility:
 - show OpenCode health/version when available
 - show global event stream state and whether polling fallback is active
 - show MCP, LSP, and formatter counts
-- refresh diagnostics on demand
+- refresh diagnostics when the section opens and on demand; chat bootstrap no longer pays for diagnostics reads
 
 ### `PermissionsSection`
 
@@ -705,6 +709,7 @@ Main relevant props:
 - show v2 OAuth only for servers that expose an `integrationID`; hide persistent enablement when general config writes are unavailable
 - show status and failure details
 - connect/disconnect, enable/disable, remove, refresh, and complete remote OAuth
+- refresh MCP status when the section opens instead of during every connection bootstrap
 - retain only form, busy, error, and OAuth-code UI state locally
 
 ## `components/settings/sections/services-section.tsx`
@@ -1067,7 +1072,8 @@ picker and provider selection action; Terminal follows that directory.
 
 ## Multi-server V2 surfaces
 
-- `chat-library.tsx`: existing row and swipe treatment in one mixed list; server chips, search, server/project dropdowns and the sole Hide subagents toggle. The previous compatibility view is retained in `chat-library-v1.tsx`.
+- `chat-library.tsx`: existing row and swipe treatment in one mixed list; server chips that stay visible beside long titles, an in-flight row indicator while a chat opens or is managed, search, server/project dropdowns and the sole Hide subagents toggle. Its New chat action closes the library and opens the New chat sheet. The previous compatibility view is retained in `chat-library-v1.tsx`.
+- `new-chat-sheet.tsx`: mirrors `new-terminal-sheet.tsx`; confirms server, project and working directory before the provider creates and opens the chat in that workspace.
 - `project-picker.tsx`: server groups, search, retry/stale state and explicit server ownership for adding/removing projects. Existing worktree controls remain.
 - `new-terminal-sheet.tsx`: confirms server, project and resolved cwd before PTY creation. `retained-terminals.tsx` holds the renderer hosts; the terminal picker lists all retained owners.
 - `server-context-picker.tsx`: independent Settings server/project inspection. AI & Providers, MCP, diagnostics and approvals receive that context; app preferences remain global.

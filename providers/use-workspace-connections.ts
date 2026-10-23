@@ -171,6 +171,13 @@ export function useWorkspaceConnections(shell: OpencodeProviderState, hydrated: 
     const next = await connectedWorkspace(target);
     check();
     if (sessionId) {
+      // A cross-server open must confirm the target session against that
+      // server's current list before committing the switch. Same-server opens
+      // stay local-first and can close the library immediately.
+      if (target.connectionId !== selected.current?.connectionId) {
+        await next.values.sessionLibraryValue.refreshSessions(true);
+        check();
+      }
       const opened = await next.values.currentSessionValue.openDeepLinkSession({ sessionId, projectPath: target.projectPath || undefined }, signal);
       if (!opened.ok) throw new Error(opened.error);
     }
@@ -221,13 +228,17 @@ export function useWorkspaceConnections(shell: OpencodeProviderState, hydrated: 
   const updatePreferences = useCallback((id: string, value: ChatPreferences) => {
     if (!records.current.some((entry) => entry.id === id)) return;
     const preferences = serverPreferences(value);
+    const previous = records.current.find((entry) => entry.id === id);
+    const serverChanged = !previous || JSON.stringify(previous.preferences) !== JSON.stringify(preferences);
     change((current) => current.map((entry) => entry.id === id && JSON.stringify(entry.preferences) !== JSON.stringify(preferences) ? { ...entry, preferences } : entry));
     shellRef.current.setChatPreferences((current) => {
       const next = { ...value, ...serverPreferences(current) };
       return JSON.stringify(current) === JSON.stringify(next) ? current : next;
     });
+    // UI-only preference changes (text size, language, delivery, ...) must not
+    // rewrite profile metadata; only server-relevant selections do.
     const entry = records.current.find((item) => item.id === id);
-    if (entry) void mutateConnectionProfiles(async (profiles, save) => {
+    if (serverChanged && entry) void mutateConnectionProfiles(async (profiles, save) => {
       const profile = findMatchingProfile(profiles, entry.settings);
       if (profile) await save(profiles.map((item) => item.id === profile.id ? { ...item, modelPreferences: pickModelPreferences(value) } : item));
     }).catch((error) => console.warn('Could not save model preferences.', error));

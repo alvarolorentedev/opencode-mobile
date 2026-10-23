@@ -1,9 +1,13 @@
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 
 import type { ScopedOpencodeClient } from '@/lib/opencode/client';
 import type { ConversationPhase } from '@/providers/opencode-provider-types';
 import { pruneByKeepIds } from '@/providers/opencode-provider-utils';
 import type { OpencodeProviderState } from '@/providers/use-opencode-provider-state';
+
+// Keep a small bounded history so returning to a recent chat paints from
+// memory. Pruning still enforces the record cap per session.
+const RECENT_TRANSCRIPT_SESSIONS = 3;
 
 type ProviderEffectsInput = OpencodeProviderState & {
   active: boolean;
@@ -36,9 +40,6 @@ export function useOpencodeProviderEffects({
   connect,
   refreshActiveSessions,
   refreshWorktrees,
-  refreshMcpServers,
-  refreshTerminals,
-  refreshArchivedSessions,
   ensureActiveSessionRef,
   setPromptError,
   conversationPhase,
@@ -50,7 +51,10 @@ export function useOpencodeProviderEffects({
   connectionScope,
   activeProjectPath,
   currentSessionId,
+  currentSessionIdRef,
+  explicitSessionSelectionRef,
   sessions,
+  sessionsRef,
   sessionStatuses,
   lastSessionByConnection,
   setCurrentSessionId,
@@ -83,13 +87,10 @@ export function useOpencodeProviderEffects({
 
   useEffect(() => {
     if (connection.status !== 'connected' || !activeProjectPath) return;
-    void Promise.all([
-      refreshWorktrees(),
-      refreshMcpServers(),
-      refreshTerminals(),
-      refreshArchivedSessions(),
-    ]).catch(() => undefined);
-  }, [activeProjectPath, connection.status, refreshArchivedSessions, refreshMcpServers, refreshTerminals, refreshWorktrees]);
+    // Worktrees label the active project. MCP, terminals, and archived sessions
+    // load when their own tab/section opens instead of on every connect.
+    void refreshWorktrees().catch(() => undefined);
+  }, [activeProjectPath, connection.status, refreshWorktrees]);
 
   useEffect(() => {
     if (!active || connection.status !== 'connected' || !activeProjectPath) {
@@ -124,16 +125,39 @@ export function useOpencodeProviderEffects({
       return;
     }
 
-    if (sessions.some((session) => session.id === currentSessionId)) {
+    const currentSessions = sessionsRef.current;
+    if (currentSessions.some((session) => session.id === currentSessionId)) {
       return;
     }
 
     const rememberedSessionId = activeProjectPath
       ? lastSessionByConnection[connectionScope]?.[activeProjectPath]
       : undefined;
-    const fallbackSessionId = sessions.find((session) => session.id === rememberedSessionId)?.id || sessions[0]?.id;
+    const fallbackSessionId = currentSessions.find((session) => session.id === rememberedSessionId)?.id || currentSessions[0]?.id;
+    currentSessionIdRef.current = fallbackSessionId;
     setCurrentSessionId(fallbackSessionId);
-  }, [activeProjectPath, connectionScope, currentSessionId, lastSessionByConnection, sessions, setCurrentSessionId]);
+  }, [activeProjectPath, connectionScope, currentSessionId, currentSessionIdRef, lastSessionByConnection, sessions, sessionsRef, setCurrentSessionId]);
+
+  useEffect(() => {
+    const explicit = explicitSessionSelectionRef.current;
+    if (explicit && sessionsRef.current.some((session) => session.id === explicit)) {
+      explicitSessionSelectionRef.current = undefined;
+    }
+  }, [explicitSessionSelectionRef, sessions, sessionsRef]);
+
+  const recentSessionIdsRef = useRef<string[]>([]);
+  const recentProjectRef = useRef(activeProjectPath);
+  useEffect(() => {
+    if (recentProjectRef.current !== activeProjectPath) {
+      recentProjectRef.current = activeProjectPath;
+      recentSessionIdsRef.current = [];
+    }
+    if (!currentSessionId) return;
+    recentSessionIdsRef.current = [
+      currentSessionId,
+      ...recentSessionIdsRef.current.filter((id) => id !== currentSessionId),
+    ].slice(0, RECENT_TRANSCRIPT_SESSIONS);
+  }, [activeProjectPath, currentSessionId]);
 
   useEffect(() => {
     if (isBootstrappingChat) return;
@@ -142,6 +166,7 @@ export function useOpencodeProviderEffects({
     if (openingSessionId) keepIds.add(openingSessionId);
     if (currentSessionId) keepIds.add(currentSessionId);
     if (conversationSessionId) keepIds.add(conversationSessionId);
+    for (const id of recentSessionIdsRef.current) keepIds.add(id);
     for (const [id, status] of Object.entries(sessionStatuses)) {
       if (status.type !== 'idle') keepIds.add(id);
     }

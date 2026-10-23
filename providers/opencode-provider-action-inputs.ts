@@ -56,7 +56,9 @@ export type ProjectActionsInput = {
   connectionScopeRef: { current: string };
   isHydrated: boolean;
   setSessions: Dispatch<SetStateAction<Session[]>>;
+  sessionsRef: { current: Session[] };
   setSessionStatuses: Dispatch<SetStateAction<Record<string, SessionStatus>>>;
+  locallyCreatedSessionsRef: { current: Map<string, number> };
   setIsRefreshingProjectCatalog: Dispatch<SetStateAction<boolean>>;
   setIsRefreshingSessions: Dispatch<SetStateAction<boolean>>;
   setIsRefreshingDiffs: Dispatch<SetStateAction<boolean>>;
@@ -65,6 +67,7 @@ export type ProjectActionsInput = {
   setTodosBySession: Dispatch<SetStateAction<Record<string, Todo[]>>>;
   setPendingPermissionsBySession: Dispatch<SetStateAction<Record<string, PendingPermissionRequest[]>>>;
   setPendingQuestionsBySession: Dispatch<SetStateAction<Record<string, PendingQuestionRequest[]>>>;
+  suppressedPendingRequestIdsRef?: { current: Set<string> };
   setProjectFileStatuses: Dispatch<SetStateAction<File[]>>;
   setSelectedProjectFile: Dispatch<SetStateAction<{ path: string; content: FileContent } | undefined>>;
   setVcsInfo: Dispatch<SetStateAction<VcsInfo | undefined>>;
@@ -95,8 +98,12 @@ export type SessionActionsInput = {
   connectionScope: string;
   connectionScopeRef: { current: string };
   currentSessionId?: string;
+  currentSessionIdRef: { current: string | undefined };
+  explicitSessionSelectionRef: { current: string | undefined };
   diffScopeBySessionRef: { current: Record<string, DiffScope> };
   sessions: Session[];
+  sessionsRef: { current: Session[] };
+  sessionStatuses: Record<string, SessionStatus>;
   availableModels: ModelOption[];
   messagesBySession: Record<string, SessionMessageRecord[]>;
   favoriteSessions: FavoriteSession[];
@@ -105,11 +112,15 @@ export type SessionActionsInput = {
   lastSessionByConnection: Record<string, Record<string, string>>;
   setLastSessionByConnection: Dispatch<SetStateAction<Record<string, Record<string, string>>>>;
   setCurrentSessionId: Dispatch<SetStateAction<string | undefined>>;
+  setSessions: Dispatch<SetStateAction<Session[]>>;
+  setSessionStatuses: Dispatch<SetStateAction<Record<string, SessionStatus>>>;
+  locallyCreatedSessionsRef: { current: Map<string, number> };
   setMessagesBySession: Dispatch<SetStateAction<Record<string, SessionMessageRecord[]>>>;
   setDiffsBySession: Dispatch<SetStateAction<Record<string, FileDiff[]>>>;
   setTodosBySession: Dispatch<SetStateAction<Record<string, Todo[]>>>;
   setPendingPermissionsBySession: Dispatch<SetStateAction<Record<string, PendingPermissionRequest[]>>>;
   setPendingQuestionsBySession: Dispatch<SetStateAction<Record<string, PendingQuestionRequest[]>>>;
+  suppressedPendingRequestIdsRef: { current: Set<string> };
   setFavoriteSessions: Dispatch<SetStateAction<FavoriteSession[]>>;
   setArchivedSessions: Dispatch<SetStateAction<GlobalSession[]>>;
   setIsBootstrappingChat: Dispatch<SetStateAction<boolean>>;

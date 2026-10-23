@@ -102,6 +102,7 @@ export type ProviderValuesInput = ActionInputs & {
   usageStepsBySession: Record<string, SessionUsageStep[]>;
   messageWindows: Record<string, { nextBefore?: string; hasMore: boolean }>;
   loadingOlderBySession: Record<string, boolean>;
+  hydratingSessionIds: Record<string, boolean>;
   loadOlderMessages: (sessionId: string) => Promise<void>;
   pendingPermissionsBySession: Record<string, PendingPermissionRequest[]>;
   pendingQuestionsBySession: Record<string, PendingQuestionRequest[]>;

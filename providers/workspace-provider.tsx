@@ -9,7 +9,7 @@ import { CURRENT_ONBOARDING_VERSION, isOnboardingComplete } from '@/providers/on
 import { useOpencodeProviderState } from '@/providers/use-opencode-provider-state';
 import { useOpencodePersistence } from '@/providers/use-opencode-persistence';
 import { useWorkspaceConnections, serverPreferences } from '@/providers/use-workspace-connections';
-import { WorkspaceContext, type WorkspaceRegistry } from '@/providers/workspace-context';
+import { WorkspaceActionsContext, WorkspaceContext, type WorkspaceRegistry } from '@/providers/workspace-context';
 import { WorkspaceRuntime } from '@/providers/workspace-runtime';
 import { workspaceKey, type SharedWorkspaceState, type WorkspaceTarget, type WorkspaceValues, type ConnectionRecord } from '@/providers/workspace-types';
 import { useConnectState } from '@/providers/use-connect-state';
@@ -23,11 +23,13 @@ import { aggregateSessionUsage } from '@/lib/opencode/usage';
 import { clearWorkspacePresentation, hasWorkspaceDrafts } from '@/providers/workspace-presentation';
 import { librarySessions } from '@/providers/workspace-library';
 import { WorkspaceNative } from '@/providers/workspace-native';
+import { useWorkspaceValues, type WorkspaceValueOverrides } from '@/providers/use-workspace-values';
 
 export function WorkspaceProvider({ children }: PropsWithChildren) {
   const shell = useOpencodeProviderState();
   const { isHydrated } = useOpencodePersistence({ ...shell, defaultChatPreferences, defaultSettings: defaultConnectionSettings });
   const [presentation] = useState(() => new Map<string, unknown>());
+  const onboardingCompleted = isOnboardingComplete(shell.onboardingVersion);
   const manager = useWorkspaceConnections(shell, isHydrated);
   useWorkspaceAutoApprove(manager);
   const { updateSettings: updateWorkspaceSettings, retry, change, removeConnection: removeWorkspaceConnection, connectedWorkspace, isEnabled } = manager;
@@ -86,6 +88,14 @@ export function WorkspaceProvider({ children }: PropsWithChildren) {
       return { ok: true };
     } catch (reason) { return { ok: false, error: reason instanceof Error ? reason.message : 'Could not open this chat.' }; }
   }, [activate, connections, focus?.connectionId, retry, switchConnection]);
+  const createChat = useCallback(async (target: WorkspaceTarget) => {
+    if (!target.projectPath) throw new Error('Choose a project before creating a chat.');
+    const runtime = await connectedWorkspace(target);
+    const session = await runtime.values.currentSessionValue.createSession();
+    await runtime.values.currentSessionValue.openSession(session.id);
+    await activate(target);
+    return session;
+  }, [activate, connectedWorkspace]);
   const refreshTargets = useCallback(async () => {
     await Promise.all(Object.values(snapshots).map((runtime) => runtime.values.currentSessionValue.activeSessions.refresh()));
   }, [snapshots]);
@@ -115,6 +125,21 @@ export function WorkspaceProvider({ children }: PropsWithChildren) {
   }), [shell.controlPlaneUrl, shell.setControlPlaneUrl, shell.onboardingVersion, shell.setOnboardingVersion,
     shell.onboardingActive, shell.setOnboardingActive, shell.lastSessionByConnection, shell.setLastSessionByConnection,
     shell.favoriteSessions, shell.setFavoriteSessions, shell.projectPathsByConnection, shell.setProjectPathsByConnection, shell.projectPathsByConnectionRef]);
+  const workspaceOverrides = useMemo<WorkspaceValueOverrides>(() => ({
+    isHydrated,
+    onboardingCompleted,
+    onboardingActive: shell.onboardingActive,
+    connectionProfiles,
+    connectSetup,
+    servicesValue,
+    sharedInput,
+    projectPathsByConnection: shell.projectPathsByConnection,
+    retry,
+    activate,
+    switchConnection,
+    openSession,
+  }), [activate, connectionProfiles, connectSetup, isHydrated, onboardingCompleted, openSession, retry, servicesValue, sharedInput, shell.onboardingActive, shell.projectPathsByConnection, switchConnection]);
+  const focusedValues = useWorkspaceValues(current?.values, workspaceOverrides);
   const valuesFor = useCallback((target?: WorkspaceTarget): WorkspaceValues | undefined => {
     const snapshot = target ? snapshots[resolveKey(target)] : current;
     if (!snapshot) return undefined;
@@ -133,7 +158,7 @@ export function WorkspaceProvider({ children }: PropsWithChildren) {
     }
     const id = getConnectionUiScope(values.connectionValue.settings);
     return { ...values,
-      onboardingValue: { ...values.onboardingValue, isHydrated, onboardingCompleted: isOnboardingComplete(shell.onboardingVersion), onboardingActive: shell.onboardingActive },
+      onboardingValue: { ...values.onboardingValue, isHydrated, onboardingCompleted, onboardingActive: shell.onboardingActive },
       connectionValue: { ...values.connectionValue, connect: () => retry(id), switchConnection, connectionProfiles, connectSetup, services: servicesValue },
       projectsValue: { ...values.projectsValue, selectProject: (projectPath) => { void activate({ connectionId: id, projectPath }); } },
       currentSessionValue: { ...values.currentSessionValue, openDeepLinkSession: openSession },
@@ -143,10 +168,10 @@ export function WorkspaceProvider({ children }: PropsWithChildren) {
       } },
       chatValue: { ...values.chatValue, sharedInput },
     };
-  }, [activate, retry, connectionProfiles, connectSetup, current, openSession, resolveKey, servicesValue, sharedInput, snapshots, switchConnection, shell.projectPathsByConnection, isHydrated, shell.onboardingVersion, shell.onboardingActive]);
-  const registry = useMemo<WorkspaceRegistry>(() => ({ ...manager, removeConnection,
+  }, [activate, retry, connectionProfiles, connectSetup, current, onboardingCompleted, openSession, resolveKey, servicesValue, sharedInput, snapshots, switchConnection, shell.projectPathsByConnection, isHydrated, shell.onboardingActive]);
+  const registry = useMemo<WorkspaceRegistry>(() => ({ ...manager, createChat, removeConnection,
     terminalTarget: connections.some((entry) => entry.id === terminalTarget?.connectionId) ? terminalTarget : undefined, selectTerminalTarget,
-    inspectionTarget: connections.some((entry) => entry.id === inspectionTarget?.connectionId) ? inspectionTarget : undefined, inspect, valuesFor, presentation }), [manager, removeConnection, connections, terminalTarget, selectTerminalTarget, inspectionTarget, inspect, valuesFor, presentation]);
+    inspectionTarget: connections.some((entry) => entry.id === inspectionTarget?.connectionId) ? inspectionTarget : undefined, inspect, valuesFor, presentation }), [manager, createChat, removeConnection, connections, terminalTarget, selectTerminalTarget, inspectionTarget, inspect, valuesFor, presentation]);
   const updates = useAppUpdates({ initialized: isHydrated && shell.onboardingVersion >= CURRENT_ONBOARDING_VERSION && !shell.onboardingActive,
     blocked: Object.values(snapshots).some((runtime) => runtime.busy) || connectSetup.busy || hasWorkspaceDrafts(presentation) });
   useEffect(() => {
@@ -156,8 +181,10 @@ export function WorkspaceProvider({ children }: PropsWithChildren) {
     const preferences = serverPreferences(current.values.preferencesValue.chatPreferences);
     setChatPreferences((previous) => JSON.stringify(serverPreferences(previous)) === JSON.stringify(preferences) ? previous : { ...previous, ...preferences });
   }, [current, setSettings, setActiveProjectPath, setChatPreferences]);
-  const values = valuesFor();
-  return <WorkspaceContext.Provider value={registry}>
+  const values = focusedValues;
+  const workspaceActions = useMemo(() => ({ createChat, focus, presentation }), [createChat, focus, presentation]);
+  return <WorkspaceActionsContext.Provider value={workspaceActions}>
+    <WorkspaceContext.Provider value={registry}>
     {connections.flatMap((entry) => entry.projects.map((path, index) => <WorkspaceRuntime key={workspaceKey({ connectionId: entry.id, projectPath: path })}
       connection={entry} projectPath={path || undefined} shared={shared} defaults={shell.chatPreferences} isHydrated={isHydrated}
       visible={shell.projectPathsByConnection[getConnectionScope(entry.settings)]?.includes(path || current?.values.projectsValue.activeProjectPath || '') !== false && focus?.connectionId === entry.id && (focus.projectPath === path || current === snapshots[workspaceKey({ connectionId: entry.id, projectPath: path })])}
@@ -168,5 +195,6 @@ export function WorkspaceProvider({ children }: PropsWithChildren) {
       <WorkspaceNative runtime={current} preferences={shell.chatPreferences} ready={isHydrated} busy={Object.values(snapshots).some((runtime) => runtime.busy)} />
       {children}
     </OpencodeProviderTree> : <View style={{ flex: 1, backgroundColor: '#0F1614', alignItems: 'center', justifyContent: 'center' }}><ActivityIndicator color="#7AE7C0" /></View>}
-  </WorkspaceContext.Provider>;
+    </WorkspaceContext.Provider>
+  </WorkspaceActionsContext.Provider>;
 }

@@ -89,6 +89,55 @@ describe('handleProviderEvent', () => {
     );
     expect(calls.refreshSessions).toHaveBeenCalled();
   });
+
+  it('removes a deleted session locally before the coalesced list refresh', () => {
+    const { actions } = createActions();
+    const setSessions = vi.fn();
+    const setStatuses = vi.fn();
+    const schedule = vi.fn();
+    Object.assign(actions, {
+      setSessions,
+      setSessionStatuses: setStatuses,
+      scheduleSessionsRefresh: schedule,
+      explicitSessionSelectionRef: { current: 's1' },
+    });
+
+    handleProviderEvent({ id: 'e', type: 'session.deleted', data: { sessionID: 's1' } } as never, actions);
+
+    const update = setSessions.mock.calls[0][0];
+    expect(update([{ id: 's1' }, { id: 's2' }])).toEqual([{ id: 's2' }]);
+    expect(setStatuses).toHaveBeenCalledOnce();
+    expect(actions.explicitSessionSelectionRef?.current).toBeUndefined();
+    expect(schedule).toHaveBeenCalledOnce();
+  });
+
+  it('prefers coalesced refreshes when the provider supplies them', () => {
+    const { actions, calls } = createActions();
+    const scheduleSessions = vi.fn();
+    const scheduleCapabilities = vi.fn();
+    const scheduleFeatures = vi.fn();
+    const scheduleCatalog = vi.fn();
+    Object.assign(actions, {
+      scheduleSessionsRefresh: scheduleSessions,
+      scheduleChatCapabilitiesRefresh: scheduleCapabilities,
+      scheduleServerFeaturesRefresh: scheduleFeatures,
+      scheduleProjectCatalogRefresh: scheduleCatalog,
+    });
+
+    handleProviderEvent({ id: 'e', type: 'session.renamed', data: { sessionID: 's' } } as never, actions);
+    handleProviderEvent({ id: 'e', type: 'config.updated', data: {} } as never, actions);
+    handleProviderEvent({ id: 'e', type: 'filesystem.changed', data: {} } as never, actions);
+    handleProviderEvent({ id: 'e', type: 'project.updated', data: {} } as never, actions);
+
+    expect(scheduleSessions).toHaveBeenCalledOnce();
+    expect(scheduleCapabilities).toHaveBeenCalledOnce();
+    expect(scheduleFeatures).toHaveBeenCalledOnce();
+    expect(scheduleCatalog).toHaveBeenCalledOnce();
+    expect(calls.refreshSessions).not.toHaveBeenCalled();
+    expect(calls.refreshChatCapabilities).not.toHaveBeenCalled();
+    expect(calls.refreshServerFeatures).not.toHaveBeenCalled();
+    expect(calls.refreshProjectCatalog).not.toHaveBeenCalled();
+  });
 });
 
 describe('native event status and legacy translation', () => {
