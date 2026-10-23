@@ -282,10 +282,19 @@ An explicit `openSession()` invalidates any in-flight initial bootstrap and
 writes `currentSessionIdRef` synchronously, so a render-delayed bootstrap cannot
 reselect the remembered chat after the user created or opened a different one.
 `explicitSessionSelectionRef` bridges the render gap until the new session is in
-the live `sessionsRef`, while pending deep-link targets still validate against
-the server. A cross-server open refreshes the target server's session list
-before switching, so the target chat is confirmed against that server;
-same-server opens remain local-first.
+the live `sessionsRef`; pending deep-link targets still validate against the
+server.
+
+In-app navigation uses the workspace registry's `navigate(target)`: it prepares
+the owning workspace runtime, calls that runtime's local `openSession()`, then
+moves focus. It never reads or validates the server session list, so a slow
+remote link cannot turn a rendered chat tap into a "not found" error. A stale
+favorite that is absent from every loaded runtime catalog triggers one catalog
+refresh to report the missing chat; rows rendered from a catalog or project list
+never wait on a list read. External entry points (notifications, widgets, quick
+actions, and OS links) keep using `openDeepLinkSession()` from
+`app/session/[id].tsx`, which resolves the connection and validates the target
+before switching.
 
 A session created or forked locally is retained for a short grace period if a
 list read that started before creation resolves afterward. This prevents a

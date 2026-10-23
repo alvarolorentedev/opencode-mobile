@@ -263,6 +263,43 @@ test('chat library lists recently used sessions from other projects and switches
   await expect(page.getByTestId('chat-library').getByRole('button', { name: 'Open Recent Secondary Session' })).toHaveCount(1);
 });
 
+test('chat library navigation does not wait for the session list', async ({ page, request }) => {
+  await resetScenario(request, 'happy-path');
+  const fakeServer = backendOrigin();
+  const projectPath = '/workspace/secondary-project';
+
+  const createResponse = await request.post(`${fakeServer}/api/session`, {
+    data: { title: 'List independent target', location: { directory: projectPath } },
+  });
+  expect(createResponse.ok()).toBeTruthy();
+  const { id: sessionId } = (await createResponse.json()).data;
+  await request.post(`${fakeServer}/api/session/${sessionId}/prompt`, {
+    data: { text: 'List independent work' },
+  });
+  await sleep(1200);
+
+  await openReadyChat(page);
+  await openChatLibrary(page);
+  const row = page.getByTestId('chat-library').getByRole('button', { name: 'Open List independent target' }).first();
+  await expect(row).toBeVisible({ timeout: 15_000 });
+
+  // Hold every session read. In-app navigation must not await one: the sheet
+  // closes from provider state even though the target runtime's list is stalled.
+  let release;
+  const gate = new Promise((resolve) => { release = resolve; });
+  await page.route(`${fakeServer}/api/session**`, async (route) => {
+    if (route.request().method() === 'GET') await gate;
+    await route.continue();
+  });
+  try {
+    await row.click();
+    await expect(page.getByTestId('chat-library')).not.toBeVisible({ timeout: 10_000 });
+  } finally {
+    release();
+  }
+  await expect(page.locator('text=/Finished: List independent work/ >> visible=true').first()).toBeVisible({ timeout: 20_000 });
+});
+
 test('chat library lists running sessions from other projects', async ({ page, request }) => {
   await resetScenario(request, 'permission');
   const fakeServer = backendOrigin();

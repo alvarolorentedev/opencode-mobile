@@ -121,6 +121,23 @@ describe('architecture ratchets', () => {
       `Network and persistence calls belong in providers/services or lib, never in ${layerDirs.join('/')}: ${offenders.join(', ')}`,
     );
 
+    // Deep-link resolution is only for external entry points (notifications,
+    // widgets, quick actions, OS links). In-app screens navigate through the
+    // workspace registry so a slow server session list never blocks a tap.
+    const deepLinkOffenders: string[] = [];
+    for (const dir of layerDirs) {
+      for (const file of await collectSourceFiles(path.join(root, dir))) {
+        const relative = path.relative(root, file).split(path.sep).join('/');
+        if (relative === 'app/session/[id].tsx') continue;
+        if (/\bopen(?:DeepLink|External)Session\b/.test(await readFile(file, 'utf8'))) deepLinkOffenders.push(relative);
+      }
+    }
+    assert.deepEqual(
+      deepLinkOffenders,
+      [],
+      `In-app navigation must use registry.navigate(...), not openDeepLinkSession: ${deepLinkOffenders.join(', ')}`,
+    );
+
     // OpenCode 2 is the transport contract; the old SDK belongs only to its adapter.
     const legacyImports: string[] = [];
     for (const dir of ['app', 'components', 'providers', 'lib']) {

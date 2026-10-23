@@ -10,7 +10,7 @@ import type { OpencodeProviderState } from '@/providers/use-opencode-provider-st
 import { createPersistenceWriter } from '@/providers/persistence-hydration';
 import { createSharedEventStream } from '@/providers/shared-event-stream';
 import { parseWorkspaces, serializeWorkspaces, WORKSPACES_STORAGE_KEY } from '@/providers/workspace-storage';
-import { workspaceKey, type ConnectionRecord, type WorkspaceSnapshot, type WorkspaceTarget } from '@/providers/workspace-types';
+import { workspaceKey, type ConnectionRecord, type SessionTarget, type WorkspaceSnapshot, type WorkspaceTarget } from '@/providers/workspace-types';
 
 export const SERVER_PREFERENCE_KEYS = ['providerId', 'modelId', 'enabledModelIds', 'providerModelSelections', 'modelVariantSelections', 'recentModelIds', 'mode', 'autoApprove'] as const;
 export function serverPreferences(value: Partial<ChatPreferences>) {
@@ -180,25 +180,9 @@ export function useWorkspaceConnections(shell: OpencodeProviderState, hydrated: 
     const previous = selected.current && live.current[resolveKey(selected.current)];
     if (previous?.values.conversationValue.conversation.active) await previous.values.conversationValue.toggleConversationMode();
   }, [resolveKey]);
-  const activate = useCallback(async (target: WorkspaceTarget, sessionId?: string, signal?: AbortSignal) => {
-    const operation = ++activation.current;
-    const check = () => { if (signal?.aborted || operation !== activation.current) throw new Error('This session link was cancelled.'); };
-    check();
-    await pauseConversation();
-    const next = await connectedWorkspace(target);
-    check();
-    if (sessionId) {
-      // A cross-server open must confirm the target session against that
-      // server's current list before committing the switch. Same-server opens
-      // stay local-first and can close the library immediately.
-      if (target.connectionId !== selected.current?.connectionId) {
-        await next.values.sessionLibraryValue.refreshSessions(true);
-        check();
-      }
-      const opened = await next.values.currentSessionValue.openDeepLinkSession({ sessionId, projectPath: target.projectPath || undefined }, signal);
-      if (!opened.ok) throw new Error(opened.error);
-    }
-    check();
+  // Commits the workspace selection once the runtime is ready. App navigation
+  // and external links share this step; it never reads the session list.
+  const selectWorkspace = useCallback((target: WorkspaceTarget, next: WorkspaceSnapshot) => {
     const projectPath = target.projectPath || next.values.projectsValue.activeProjectPath || '';
     const scope = getConnectionScope(next.native.settings);
     const paths = shellRef.current.projectPathsByConnectionRef.current[scope] ?? [];
@@ -207,7 +191,66 @@ export function useWorkspaceConnections(shell: OpencodeProviderState, hydrated: 
       shellRef.current.projectPathsByConnectionRef.current = opened; shellRef.current.setProjectPathsByConnection(opened);
     }
     select({ connectionId: target.connectionId, projectPath });
-  }, [connectedWorkspace, pauseConversation, select]);
+  }, [select]);
+  // In-app navigation. The caller already knows the workspace and session from
+  // rendered data, so this only prepares the runtime and selects the session
+  // locally. It must not validate against a server session list: that read is
+  // slow on remote links and is unnecessary for a chat the app is showing.
+  const navigate = useCallback(async (target: SessionTarget) => {
+    const operation = ++activation.current;
+    const check = () => { if (operation !== activation.current) throw new Error('This navigation was cancelled.'); };
+    check();
+    await pauseConversation();
+    const next = await connectedWorkspace(target);
+    check();
+    // Rows are rendered from a runtime catalog or project list, so a normal tap
+    // is known locally. Only stale references (for example an old favorite)
+    // need one catalog read to report that the chat no longer exists.
+    const known = () => Object.values(live.current).some((snapshot) => (
+      snapshot.catalogSessions.some((session) => session.id === target.sessionId && (!session.directory || session.directory === target.projectPath))
+      || snapshot.values.sessionLibraryValue.sessions.some((session) => session.id === target.sessionId && (!session.directory || session.directory === target.projectPath))
+    ));
+    if (!known()) {
+      await next.values.currentSessionValue.activeSessions.refresh().catch(() => undefined);
+      const deadline = Date.now() + 2000;
+      while (!known() && Date.now() < deadline) await tick();
+      if (!known()) throw new Error(`Session ${target.sessionId} was not found in the ${target.projectPath} project.`);
+    }
+    check();
+    await next.values.currentSessionValue.openSession(target.sessionId);
+    check();
+    selectWorkspace(target, next);
+  }, [connectedWorkspace, pauseConversation, selectWorkspace]);
+  // Workspace focus without a session. Project switching and "new chat" use
+  // this; session selection happens separately through navigate/openSession.
+  const activate = useCallback(async (target: WorkspaceTarget) => {
+    const operation = ++activation.current;
+    const check = () => { if (operation !== activation.current) throw new Error('This navigation was cancelled.'); };
+    check();
+    await pauseConversation();
+    const next = await connectedWorkspace(target);
+    check();
+    selectWorkspace(target, next);
+  }, [connectedWorkspace, pauseConversation, selectWorkspace]);
+  // External link resolution (notifications, widgets, quick actions, OS links)
+  // confirms the target against the owning server before switching. In-app
+  // navigation must not use this path.
+  const openExternalSession = useCallback(async (target: SessionTarget, signal?: AbortSignal) => {
+    const operation = ++activation.current;
+    const check = () => { if (signal?.aborted || operation !== activation.current) throw new Error('This session link was cancelled.'); };
+    check();
+    await pauseConversation();
+    const next = await connectedWorkspace(target);
+    check();
+    if (target.connectionId !== selected.current?.connectionId) {
+      await next.values.sessionLibraryValue.refreshSessions(true);
+      check();
+    }
+    const opened = await next.values.currentSessionValue.openDeepLinkSession({ sessionId: target.sessionId, projectPath: target.projectPath || undefined }, signal);
+    if (!opened.ok) throw new Error(opened.error);
+    check();
+    selectWorkspace(target, next);
+  }, [connectedWorkspace, pauseConversation, selectWorkspace]);
   const switchConnection = useCallback(async (settings: Pick<OpencodeConnectionSettings, 'serverUrl' | 'username' | 'password' | 'headers' | 'connect'>, preferences?: Partial<ChatPreferences>, selectWorkspace = true) => {
     const full = { ...settings, directory: '' };
     const profile = await saveProfile(full);
@@ -276,5 +319,5 @@ export function useWorkspaceConnections(shell: OpencodeProviderState, hydrated: 
     change((current) => current.filter((entry) => entry.id !== id));
     for (const key of Object.keys(live.current)) if ((JSON.parse(key) as string[])[0] === id) forget(key);
   }, [change, disconnect, forget]);
-  return { isEnabled, closeProject, connectedWorkspace, removeConnection, connections, focus, snapshots, ready, change, select, publish, forget, ensure, resolveKey, activate, switchConnection, disconnect, retry, updateSettings, updatePreferences };
+  return { isEnabled, closeProject, connectedWorkspace, removeConnection, connections, focus, snapshots, ready, change, select, publish, forget, ensure, resolveKey, activate, navigate, openExternalSession, switchConnection, disconnect, retry, updateSettings, updatePreferences };
 }

@@ -13,7 +13,9 @@ import {
 import type { ProjectActionsInput } from '@/providers/opencode-provider-action-inputs';
 
 export function useProjectCatalogActions({
+  client,
   catalogClient,
+  isCurrentClient,
   isCurrentCatalogClient,
   activeProjectPath,
   setActiveProjectPath,
@@ -40,6 +42,11 @@ export function useProjectCatalogActions({
     projectPathsByConnectionRef.current = next;
     setProjectPathsByConnection(next);
   }, [projectPathsByConnectionRef, setProjectPathsByConnection]);
+  // Runtime refreshes use the scoped client so `location.get` reports that
+  // runtime's directory/worktree. Connect probes still use the catalog client.
+  const isCurrent = useCallback((candidate: ScopedOpencodeClient) => (
+    isCurrentClient(candidate) || isCurrentCatalogClient(candidate)
+  ), [isCurrentCatalogClient, isCurrentClient]);
 
   // Opening records a project for the connection so the picker can show it
   // again. Selection is separate: removing a project must not reopen it.
@@ -98,7 +105,7 @@ export function useProjectCatalogActions({
 
       try {
         const result = await svcLoadProjectCatalog(targetClient);
-        if (!isCurrentCatalogClient(targetClient)) {
+        if (!isCurrent(targetClient)) {
           return result;
         }
         const nextServerProjects = result.serverProjects as Project[];
@@ -116,7 +123,7 @@ export function useProjectCatalogActions({
         if (nextProject && !opened?.includes(nextProject)) {
           const listed = result.serverProjects.some((project) => project.worktree === nextProject) || nextProject === result.currentProjectPath;
           const known = listed || await svcIsKnownProjectLocation(buildClient({ ...settingsRef.current, directory: nextProject }, targetClient.__opencode.contract));
-          if (!isCurrentCatalogClient(targetClient)) {
+          if (!isCurrent(targetClient)) {
             return result;
           }
           if (!known) nextProject = undefined;
@@ -149,14 +156,14 @@ export function useProjectCatalogActions({
         }
       }
     },
-    [catalogClient, clearProjectState, connectionScopeRef, isCurrentCatalogClient, projectPathsByConnectionRef, scopeGenerationRef, serverProjectsRef, setActiveProjectPath, setCurrentProjectPath, setIsRefreshingProjectCatalog, setServerProjects, setServerRootPath, settingsRef, writeProjects],
+    [catalogClient, clearProjectState, client, connectionScopeRef, isCurrent, projectPathsByConnectionRef, scopeGenerationRef, serverProjectsRef, setActiveProjectPath, setCurrentProjectPath, setIsRefreshingProjectCatalog, setServerProjects, setServerRootPath, settingsRef, writeProjects],
   );
 
   const refreshProjectCatalog = useCallback(
     async (silent = false) => {
-      await loadProjectCatalog(silent);
+      await loadProjectCatalog(silent, client);
     },
-    [loadProjectCatalog],
+    [client, loadProjectCatalog],
   );
 
   const sessionCacheKeyRef = useRef<string | undefined>(undefined);

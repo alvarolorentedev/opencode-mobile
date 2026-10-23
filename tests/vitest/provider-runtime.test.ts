@@ -131,14 +131,18 @@ const projectCatalogHook = await loadTs('providers/use-project-catalog-actions.t
     isKnownProjectLocation: async () => knownProjectLocation,
   },
 });
-function makeProjectCatalogActions(activePath, isCurrentCatalogClient = () => true, openedPaths) {
+function makeProjectCatalogActions(activePath, isCurrent = () => true, openedPaths) {
   const state = { activePath, cleared: 0, projects: [], currentPath: undefined, opened: openedPaths ? { scope: [...openedPaths] } : {} };
   const activeProjectPathRef = { current: activePath };
   const serverProjectsRef = { current: [] };
   const projectPathsByConnectionRef = { current: state.opened };
   const scopeGenerationRef = { current: 0 };
   state.actions = projectCatalogHook.useProjectCatalogActions({
-    catalogClient: { __opencode: { contract: 'v2' } }, isCurrentCatalogClient, activeProjectPathRef,
+    client: { __opencode: { contract: 'v2' } },
+    catalogClient: { __opencode: { contract: 'v2' } },
+    isCurrentClient: isCurrent,
+    isCurrentCatalogClient: isCurrent,
+    activeProjectPathRef,
     setActiveProjectPath: (path) => { state.activePath = path; activeProjectPathRef.current = path; },
     clearProjectState: () => { state.cleared++; },
     projectPathsByConnectionRef, setProjectPathsByConnection: (value) => { state.opened = value; projectPathsByConnectionRef.current = value; },

@@ -69,6 +69,15 @@ export function useActiveSessions({
     }
   }, [catalogClient, connected, connectionScope, isCurrentCatalogClient]);
 
+  const removeSession = useCallback((sessionId: string) => {
+    setSnapshot((previous) => {
+      if (!previous.sessions.some((session) => session.id === sessionId)) return previous;
+      const statuses = { ...previous.statuses };
+      delete statuses[sessionId];
+      return { ...previous, sessions: previous.sessions.filter((session) => session.id !== sessionId), statuses };
+    });
+  }, []);
+
   const current = snapshot.scope === connectionScope ? snapshot : undefined;
   const activeSessions = useMemo(() => getActiveSessions({
     sessions: current?.sessions ?? [],
@@ -92,5 +101,5 @@ export function useActiveSessions({
     return () => clearInterval(interval);
   }, [connected, hasRunning, refreshActiveSessions, visible]);
 
-  return { activeSessions, catalogStatuses: current?.statuses ?? EMPTY_STATUSES, catalogSessions: current?.sessions ?? EMPTY_SESSIONS, refreshActiveSessions };
+  return { activeSessions, catalogStatuses: current?.statuses ?? EMPTY_STATUSES, catalogSessions: current?.sessions ?? EMPTY_SESSIONS, refreshActiveSessions, removeSession };
 }

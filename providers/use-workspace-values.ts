@@ -18,6 +18,7 @@ export type WorkspaceValueOverrides = {
   activate: (target: WorkspaceTarget) => Promise<void>;
   switchConnection: ConnectionContextValue['switchConnection'];
   openSession: (target: SessionDeepLinkTarget, signal?: AbortSignal) => Promise<{ ok: boolean; error?: string }>;
+  openSessionInProject: (projectPath: string, sessionId: string, connectionScope: string) => Promise<void>;
 };
 
 // App-scope overrides are layered over a runtime's memoized domain values.
@@ -39,6 +40,7 @@ export function useWorkspaceValues(
     activate,
     switchConnection,
     openSession,
+    openSessionInProject,
   } = overrides;
   const settings = values?.connectionValue.settings;
   const connectionId = useMemo(
@@ -85,15 +87,10 @@ export function useWorkspaceValues(
   const baseSessionLibrary = values?.sessionLibraryValue;
   const sessionLibraryValue = useMemo(() => (baseSessionLibrary ? {
     ...baseSessionLibrary,
-    openSessionInProject: async (projectPath: string, sessionId: string, targetConnectionScope?: string) => {
-      const opened = await openSession({
-        projectPath,
-        sessionId,
-        connectionScope: targetConnectionScope ?? connectionScope,
-      });
-      if (!opened.ok) throw new Error(opened.error);
-    },
-  } : undefined), [baseSessionLibrary, connectionScope, openSession]);
+    openSessionInProject: (projectPath: string, sessionId: string, targetConnectionScope?: string) => (
+      openSessionInProject(projectPath, sessionId, targetConnectionScope ?? connectionScope)
+    ),
+  } : undefined), [baseSessionLibrary, connectionScope, openSessionInProject]);
 
   const baseChat = values?.chatValue;
   const chatValue = useMemo(() => (baseChat ? {

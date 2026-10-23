@@ -95,10 +95,12 @@ describe('handleProviderEvent', () => {
     const setSessions = vi.fn();
     const setStatuses = vi.fn();
     const schedule = vi.fn();
+    const removeCatalogSession = vi.fn();
     Object.assign(actions, {
       setSessions,
       setSessionStatuses: setStatuses,
       scheduleSessionsRefresh: schedule,
+      removeCatalogSession,
       explicitSessionSelectionRef: { current: 's1' },
     });
 
@@ -107,6 +109,7 @@ describe('handleProviderEvent', () => {
     const update = setSessions.mock.calls[0][0];
     expect(update([{ id: 's1' }, { id: 's2' }])).toEqual([{ id: 's2' }]);
     expect(setStatuses).toHaveBeenCalledOnce();
+    expect(removeCatalogSession).toHaveBeenCalledWith('s1');
     expect(actions.explicitSessionSelectionRef?.current).toBeUndefined();
     expect(schedule).toHaveBeenCalledOnce();
   });

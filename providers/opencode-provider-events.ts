@@ -44,6 +44,7 @@ export type ProviderEventActions = {
   // sessions are not re-downloaded on every streaming update.
   focusSessionIds?: Set<string>;
   setSessions?: Dispatch<SetStateAction<Session[]>>;
+  removeCatalogSession?: (sessionId: string) => void;
   setSessionStatuses: Dispatch<SetStateAction<Record<string, SessionStatus>>>;
   explicitSessionSelectionRef?: { current: string | undefined };
   setPromptError: Dispatch<SetStateAction<{ message: string; occurredAt: number; sessionId?: string } | undefined>>;
@@ -77,6 +78,7 @@ export function handleProviderEvent(event: OpencodeEvent, actions: ProviderEvent
       // Remove the row immediately so a deleted session cannot be reopened from
       // a favorite or stale selection before the coalesced list refresh lands.
       actions.setSessions?.((current) => current.filter((session) => session.id !== sessionID));
+      actions.removeCatalogSession?.(sessionID);
       actions.setSessionStatuses((current) => {
         const next = { ...current };
         delete next[sessionID];

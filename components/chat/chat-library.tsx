@@ -92,7 +92,7 @@ export function ChatLibrary({ visible, onClose, onNewChat }: { visible: boolean;
       ]}>
         <Pressable disabled={!row.connected} accessibilityRole="button" accessibilityState={{ selected: row.current, disabled: !row.connected, busy: inFlight }}
           accessibilityLabel={`${t('chat:library.open', { title: label })}, ${row.serverName}, ${row.projectPath}`} accessibilityHint={t('chat:library.swipeChatActions')}
-          onPress={() => void run(key, () => registry.activate(row, row.sessionId), close)}
+          onPress={() => void run(key, () => registry.navigate(row), close)}
           style={[styles.row, { borderColor: row.current ? palette.tint : palette.border, backgroundColor: row.current ? palette.background : 'transparent', opacity: row.connected ? 1 : 0.6 }]}>
           {inFlight ? <ActivityIndicator size={20} color={palette.tint} testID="chat-library-busy" />
             : <MaterialCommunityIcons name={row.current ? 'check-circle' : row.favorite ? 'star' : running ? 'progress-clock' : 'message-outline'} size={20} color={row.current || running || row.favorite ? palette.tint : palette.muted} />}

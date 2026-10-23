@@ -271,7 +271,7 @@ test('V2 keeps server chips visible for long chat titles', async ({ page, reques
   expect(chipBox.x + chipBox.width).toBeLessThanOrEqual(rowBox.x + rowBox.width + 1);
 });
 
-test('V2 shows progress while opening a chat on another server', async ({ page, request }) => {
+test('V2 opens a chat on another server without waiting for its session list', async ({ page, request }) => {
   const title = 'Slow switch target';
   await request.post(`${servers[1].serverUrl}/api/session`, { data: { title, location: { directory } } });
   await openChatLibrary(page);
@@ -281,13 +281,15 @@ test('V2 shows progress while opening a chat on another server', async ({ page, 
   let release;
   const gate = new Promise((resolve) => { release = resolve; });
   await page.route(`${servers[1].serverUrl}/api/session**`, async (route) => {
-    await gate;
+    if (route.request().method() === 'GET') await gate;
     await route.continue();
   });
 
-  await row.click();
-  await expect(page.getByTestId('chat-library-busy')).toBeVisible();
-  release();
-  await expect(page.getByTestId('chat-library')).not.toBeVisible();
+  try {
+    await row.click();
+    await expect(page.getByTestId('chat-library')).not.toBeVisible({ timeout: 10_000 });
+  } finally {
+    release();
+  }
   await expect(page.getByRole('button', { name: /^Open chats/ })).toContainText(title);
 });

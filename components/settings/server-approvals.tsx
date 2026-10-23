@@ -47,7 +47,7 @@ export function ServerApprovals() {
         <PermissionRequestCard request={request} sourceTitle={runtime.values.sessionLibraryValue.sessions.find((session) => session.id === request.sessionID)?.title}
           onReply={async (reply) => { try { if (!registry.isEnabled(id)) throw new Error('Connect this server before replying.'); await runtime.values.chatValue.replyToPermission(request.id, reply); } catch (reason) { setError(String(reason)); throw reason; } }} />
       </View>)}
-      {[...questions.entries()].map(([key, request]) => <Button key={key} icon="message-question-outline" onPress={() => void registry.activate({ connectionId: id, projectPath: request.projectPath }, request.sessionId).then(() => router.push('/')).catch((reason) => setError(String(reason)))}>{request.title ?? t('chat:cards.assistantQuestion')}</Button>)}
+      {[...questions.entries()].map(([key, request]) => <Button key={key} icon="message-question-outline" onPress={() => void registry.navigate({ connectionId: id, projectPath: request.projectPath, sessionId: request.sessionId }).then(() => router.push('/')).catch((reason) => setError(String(reason)))}>{request.title ?? t('chat:cards.assistantQuestion')}</Button>)}
       {!requests.size && !questions.size ? <Text>{t('settings:permissions.empty')}</Text> : null}
     </>}
   </View>;

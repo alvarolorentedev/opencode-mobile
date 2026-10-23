@@ -315,6 +315,7 @@ export function useOpencodeProviderComposition(input: WorkspaceRuntimeInput) {
       refreshDiagnostics: project.refreshDiagnostics,
       focusSessionIds,
       setSessions: state.setSessions,
+      removeCatalogSession: activeSessionsHook.removeSession,
       setSessionStatuses: state.setSessionStatuses,
       explicitSessionSelectionRef: state.explicitSessionSelectionRef,
       setPromptError: prompt.setPromptError,

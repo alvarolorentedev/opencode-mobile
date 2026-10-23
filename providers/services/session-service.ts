@@ -18,7 +18,11 @@ export function getSessionInbox(client: ScopedOpencodeClient, sessionId: string)
 }
 export async function loadProjectCatalog(client: ScopedOpencodeClient) {
   if (client.compatibility) return v1.loadProjectCatalog(client.compatibility);
-  const [location, projects] = await Promise.all([client.api!.location.get(), client.api!.project.list()]);
+  const directory = client.__opencode.directory;
+  const [location, projects] = await Promise.all([
+    directory ? client.api!.location.get({ location: { directory } }) : client.api!.location.get(),
+    client.api!.project.list(),
+  ]);
   if (!location?.project?.id || !location.directory || !Array.isArray(projects)) throw new Error('MalformedResponse: OpenCode did not return its project catalog.');
   const current = projects.find((project) => project.id === location.project.id);
   const serverProjects = projects.map(toProjectView).sort((left, right) => compareLabels(left.worktree, right.worktree));
@@ -35,18 +39,18 @@ export async function resolveProjectLocation(client: ScopedOpencodeClient): Prom
   return { id: location.project.id, worktree: location.project.canonical, directory: location.project.directory, time: { created: 0 } };
 }
 
-// Server-confirms that the scoped directory is a worktree the picker may keep
-// selected even though `project.list()` only reports project canonicals. Project
-// roots and the server current directory are matched from the catalog itself,
-// and nested input resolves to its checkout, so those are rejected here. V2
-// reports a worktree through the resolved location; V1 reports the owning
-// project, so a worktree directory needs the worktree inventory.
+// Server-confirms that the scoped directory is a checkout root the picker may
+// keep selected even though `project.list()` only reports project canonicals.
+// V2 resolves each root and worktree to its own directory, so matching the
+// resolved directory is sufficient; nested input resolves to its checkout and
+// is rejected. V1 reports the owning project, so a worktree directory needs the
+// worktree inventory.
 export async function isKnownProjectLocation(client: ScopedOpencodeClient): Promise<boolean> {
   const directory = client.__opencode.directory;
   if (!directory) return false;
   try {
     const resolved = await resolveProjectLocation(client);
-    if (resolved.directory === directory && resolved.worktree !== directory) return true;
+    if (resolved.directory === directory) return true;
     if (client.compatibility) {
       const entries = await listV1Worktrees(client.compatibility);
       return entries.some((entry) => entry.directory === directory);

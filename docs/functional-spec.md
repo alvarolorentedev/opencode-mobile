@@ -78,6 +78,7 @@ Behavior:
 - a project path is available when it is the active project, is opened on this connection, is a server project canonical, or the server resolves it as a checkout/worktree; repositories with multiple checkouts share a project ID, so canonical-path equality is not required
 - if the session is not found in that project, a `Could not open session` error screen is shown with the server message
 - the link does not carry a server identity; it resolves against the currently configured server
+- this resolver is for external entry points only (notifications, widgets, quick actions, and OS links); tapping a library row inside the app uses workspace navigation and never validates against the session list
 - only sessions that appear in the project's session list can be opened; archived sessions are not reachable this way
 
 ### 3c. Receive Content Shared From Another App
@@ -194,7 +195,7 @@ Session list behavior:
 - search filters the active, favorite, or archived list
 - favorites remain accessible across projects; choosing one switches to its project
 - the Active tab opens with an "Active across projects" group above Favorites listing up to four sessions from the whole connected server: running (busy/retry) sessions first, then the most recently updated idle ones. It is connection-wide, so it stays the same while switching projects. Subagent chats are hidden by the same switch as the rest of the library, and listed sessions are removed from the Chat list below so they never appear twice
-- picking a session from that group switches to its project and opens it in one tap, reusing the deep-link flow; the group is refreshed when the library opens and polled while a session is running
+- picking a session from that group switches to its project and opens it in one tap through the workspace navigation action; the group is refreshed when the library opens and polled while a session is running
 - project-scoped row actions (rename, share, archive, delete) are offered only for sessions in the active project, where the scoped client can act on them; other-project rows offer open and favorite
 - each session row shows title, preview/subtitle, and status
 - active session rows are visually emphasized

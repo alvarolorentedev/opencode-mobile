@@ -47,6 +47,7 @@ describe('multi-server contracts', () => {
       activate: async () => {},
       switchConnection: async () => ({}),
       openSession: async () => ({ ok: true }),
+      openSessionInProject: async () => {},
     };
     driver.mount((props: any) => useWorkspaceValues(props.values, props.overrides), { values: base, overrides });
     const first = driver.value;

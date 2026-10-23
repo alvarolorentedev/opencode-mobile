@@ -212,7 +212,7 @@ the provider then creates and opens the session in that workspace.
 
 - Chats overlay with search, favorites, archived sessions, and swipe-left session actions
 - active, favorite, current-project, and archived rows share one FlashList scroll owner; search, filters, and New Chat stay outside the virtualized list
-- "Active across projects" group above Favorites listing up to four running/recent sessions from the whole connection; listed IDs are removed from the Chat list below, and tapping one switches project and opens it through `openSessionInProject`. Project-scoped actions (rename/share/archive/delete) appear only on the current-project rows
+- "Active across projects" group above Favorites listing up to four running/recent sessions from the whole connection; listed IDs are removed from the Chat list below, and tapping one switches project and opens it through the workspace navigation action (`navigate`), not the external deep-link resolver. Project-scoped actions (rename/share/archive/delete) appear only on the current-project rows
 - re-seeds the cross-project snapshot when the overlay opens
 - derives cross-project rows only while visible, and mounts the shared project picker only while its nested overlay is open, so a closed library does no per-publish catalog work
 - keeps the Hide subagents switch alongside the Active and Archived filters

@@ -35,7 +35,7 @@ export function WorkspaceProvider({ children }: PropsWithChildren) {
   useWorkspaceAutoApprove(manager);
   const { updateSettings: updateWorkspaceSettings, retry, change, removeConnection: removeWorkspaceConnection, connectedWorkspace, isEnabled } = manager;
   const { setFavoriteSessions, setLastSessionByConnection, setProjectPathsByConnection, setSettings, setActiveProjectPath, setChatPreferences } = shell;
-  const { connections, focus, snapshots, ensure, resolveKey, switchConnection, activate, disconnect } = manager;
+  const { connections, focus, snapshots, ensure, resolveKey, switchConnection, activate, navigate, openExternalSession, disconnect } = manager;
   const selectedRuntime = focus ? snapshots[resolveKey(focus)] : undefined;
   const [retainedRuntime, setRetainedRuntime] = useState(selectedRuntime);
   if (selectedRuntime && retainedRuntime !== selectedRuntime) setRetainedRuntime(selectedRuntime);
@@ -85,10 +85,26 @@ export function WorkspaceProvider({ children }: PropsWithChildren) {
       }
       if (!entry) throw new Error('The saved connection for this session is not available.');
       if (!entry.enabled) await retry(entry.id);
-      await activate({ connectionId: entry.id, projectPath: target.projectPath ?? entry.projects[0] ?? '' }, target.sessionId, signal);
+      await openExternalSession({ connectionId: entry.id, projectPath: target.projectPath ?? entry.projects[0] ?? '', sessionId: target.sessionId }, signal);
       return { ok: true };
     } catch (reason) { return { ok: false, error: reason instanceof Error ? reason.message : 'Could not open this chat.' }; }
-  }, [activate, connections, focus?.connectionId, retry, switchConnection]);
+  }, [connections, focus?.connectionId, openExternalSession, retry, switchConnection]);
+  // In-app library navigation. The session id came from rendered data, so this
+  // resolves the owning connection locally and never validates against a
+  // server list. Cross-server favorites still switch and connect the target.
+  const openSessionInProject = useCallback(async (projectPath: string, sessionId: string, targetConnectionScope: string) => {
+    const entry = connections.find((item) => getConnectionScope(item.settings) === targetConnectionScope);
+    if (!entry) {
+      // A favorite can outlive its workspace registration. That is an external
+      // target rather than a rendered row, so resolve it through the saved
+      // profile path instead of failing locally.
+      const opened = await openSession({ projectPath, sessionId, connectionScope: targetConnectionScope });
+      if (!opened.ok) throw new Error(opened.error);
+      return;
+    }
+    if (!entry.enabled) await retry(entry.id);
+    await navigate({ connectionId: entry.id, projectPath, sessionId });
+  }, [connections, navigate, openSession, retry]);
   const createChat = useCallback(async (target: WorkspaceTarget) => {
     if (!target.projectPath) throw new Error('Choose a project before creating a chat.');
     const runtime = await connectedWorkspace(target);
@@ -139,7 +155,8 @@ export function WorkspaceProvider({ children }: PropsWithChildren) {
     activate,
     switchConnection,
     openSession,
-  }), [activate, connectionProfiles, connectSetup, isHydrated, onboardingCompleted, openSession, retry, servicesValue, sharedInput, shell.onboardingActive, shell.projectPathsByConnection, switchConnection]);
+    openSessionInProject,
+  }), [activate, connectionProfiles, connectSetup, isHydrated, onboardingCompleted, openSession, openSessionInProject, retry, servicesValue, sharedInput, shell.onboardingActive, shell.projectPathsByConnection, switchConnection]);
   const focusedValues = useWorkspaceValues(current?.values, workspaceOverrides);
   const valuesFor = useCallback((target?: WorkspaceTarget): WorkspaceValues | undefined => {
     const snapshot = target ? snapshots[resolveKey(target)] : current;
@@ -163,13 +180,10 @@ export function WorkspaceProvider({ children }: PropsWithChildren) {
       connectionValue: { ...values.connectionValue, connect: () => retry(id), switchConnection, connectionProfiles, connectSetup, services: servicesValue },
       projectsValue: { ...values.projectsValue, selectProject: (projectPath) => { void activate({ connectionId: id, projectPath }); } },
       currentSessionValue: { ...values.currentSessionValue, openDeepLinkSession: openSession },
-      sessionLibraryValue: { ...values.sessionLibraryValue, openSessionInProject: async (projectPath, sessionId, connectionScope) => {
-        const opened = await openSession({ projectPath, sessionId, connectionScope: connectionScope ?? getConnectionScope(values.connectionValue.settings) });
-        if (!opened.ok) throw new Error(opened.error);
-      } },
+      sessionLibraryValue: { ...values.sessionLibraryValue, openSessionInProject: (projectPath, sessionId, connectionScope) => openSessionInProject(projectPath, sessionId, connectionScope ?? getConnectionScope(values.connectionValue.settings)) },
       chatValue: { ...values.chatValue, sharedInput },
     };
-  }, [activate, retry, connectionProfiles, connectSetup, current, onboardingCompleted, openSession, resolveKey, servicesValue, sharedInput, snapshots, switchConnection, shell.projectPathsByConnection, isHydrated, shell.onboardingActive]);
+  }, [activate, retry, connectionProfiles, connectSetup, current, onboardingCompleted, openSession, openSessionInProject, resolveKey, servicesValue, sharedInput, snapshots, switchConnection, shell.projectPathsByConnection, isHydrated, shell.onboardingActive]);
   const registry = useMemo<WorkspaceRegistry>(() => ({ ...manager, createChat, removeConnection,
     terminalTarget: connections.some((entry) => entry.id === terminalTarget?.connectionId) ? terminalTarget : undefined, selectTerminalTarget,
     inspectionTarget: connections.some((entry) => entry.id === inspectionTarget?.connectionId) ? inspectionTarget : undefined, inspect, valuesFor, presentation }), [manager, createChat, removeConnection, connections, terminalTarget, selectTerminalTarget, inspectionTarget, inspect, valuesFor, presentation]);
