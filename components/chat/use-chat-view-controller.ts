@@ -17,7 +17,6 @@ import { openVoiceSettingsAsync } from '@/lib/voice/permissions';
 import { speakText, stopSpeaking } from '@/lib/voice/speech-output';
 import { useSpeechInput } from '@/lib/voice/use-speech-input';
 import { createTranscriptAccumulator } from '@/lib/voice/transcript-accumulate';
-import { getTranscriptActivityLabelForEntries } from '@/providers/opencode-provider-selectors';
 import { useChatComposerNotices } from './use-chat-composer-notices';
 import { useChatDraft } from './use-chat-draft';
 import { useChatViewActions } from './use-chat-view-actions';
@@ -90,7 +89,6 @@ export function useChatViewController() {
 
   const status = currentSessionId ? sessionStatuses[currentSessionId] : undefined;
   const running = sendingState.active || (!!status && status.type !== 'idle');
-  const retryAttempt = status?.type === 'retry' ? status.attempt : undefined;
   const conversationActive = conversation.active;
   const {
     handleSpeakEntry,
@@ -156,7 +154,6 @@ export function useChatViewController() {
     [displayTranscript, display.verbosity],
   );
   const hasTranscriptMessages = currentMessages.length > 0;
-  const currentActivityLabel = useMemo(() => getTranscriptActivityLabelForEntries(currentTranscript), [currentTranscript]);
   const selectedSession = useMemo(
     () => sessions.find((session) => session.id === currentSessionId) || activeSession,
     [activeSession, currentSessionId, sessions],
@@ -453,13 +450,13 @@ export function useChatViewController() {
     },
     content: {
       workspaceId,
-      activeSession, awaitingUserInput, cancelingPromptId, changesVisible, completedTodoCount,
-      copiedMessageId, currentActivityLabel, currentDiffs, currentDiffScope,
+      activeSession, activityRunning: running && !awaitingUserInput, awaitingUserInput, cancelingPromptId, changesVisible, completedTodoCount,
+      copiedMessageId, currentDiffs, currentDiffScope,
       currentPendingPermissions, currentPendingQuestions, currentSessionId, currentTodos,
       diffAdditions, diffCount, diffDeletions, diffDetails, diffTurns, transcriptRows,
       expandedDiffId, hasTranscriptMessages, isBootstrappingChat, isCancelingRevert, isRefreshingDiffs, isRefreshingMessages,
-      pendingInteractions, pendingPrompts, progressIcon, progressVisible, retryAttempt,
-      running, selectedDiffMessageId, speakingMessageId, transcriptPaging,
+      pendingInteractions, pendingPrompts, progressIcon, progressVisible,
+      selectedDiffMessageId, speakingMessageId, transcriptPaging,
       transcriptVerbosity: display.verbosity,
     },
     composer: {

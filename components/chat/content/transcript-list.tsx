@@ -39,10 +39,9 @@ const TAIL_SETTLE_FRAMES = 4;
 type TranscriptListProps = {
   positionKey?: string;
   positions?: Map<string, unknown>;
-  awaitingUserInput: boolean;
+  activityRunning: boolean;
   connection: Connection;
   copiedMessageId?: string;
-  currentActivityLabel?: string;
   currentSessionId?: string;
   transcriptRows: TranscriptRow[];
   flatTranscript: boolean;
@@ -60,8 +59,6 @@ type TranscriptListProps = {
   onToggleSpeak: (entry: TranscriptEntry) => void;
   palette: Palette;
   pendingInteractions: number;
-  retryAttempt?: number;
-  running: boolean;
   speakingMessageId?: string;
   slim: boolean;
   transcriptFontSize: number;
@@ -70,10 +67,9 @@ type TranscriptListProps = {
 
 export function TranscriptList({
   positionKey, positions,
-  awaitingUserInput,
+  activityRunning,
   connection,
   copiedMessageId,
-  currentActivityLabel,
   currentSessionId,
   transcriptRows,
   flatTranscript,
@@ -91,8 +87,6 @@ export function TranscriptList({
   onToggleSpeak,
   palette,
   pendingInteractions,
-  retryAttempt,
-  running,
   speakingMessageId,
   slim,
   transcriptFontSize,
@@ -180,7 +174,15 @@ export function TranscriptList({
     positions?.set(identity, { offset: lastOffsetRef.current, follow: followTailRef.current });
   }, [identity, positions]);
 
-  const extraData = useMemo(() => ({ copiedMessageId, speakingMessageId, onReviewChanges }), [copiedMessageId, speakingMessageId, onReviewChanges]);
+  // While the session runs, the newest activity run remains the visible
+  // progress anchor even after its own tools complete.
+  const lastActivityKey = useMemo(() => {
+    for (let index = transcriptRows.length - 1; index >= 0; index -= 1) {
+      if (transcriptRows[index].type === 'activity') return transcriptRows[index].key;
+    }
+    return undefined;
+  }, [transcriptRows]);
+  const extraData = useMemo(() => ({ copiedMessageId, speakingMessageId, onReviewChanges, activityRunning, lastActivityKey }), [copiedMessageId, speakingMessageId, onReviewChanges, activityRunning, lastActivityKey]);
 
   return (
     <FlashList
@@ -211,7 +213,13 @@ export function TranscriptList({
               slim && slimStyles.transcriptItem,
               flatTranscript && (slim ? slimStyles.transcriptItemFlat : styles.transcriptItemFlat),
             ]}>
-              <ActivityGroupRow flat={flatTranscript} fontSize={transcriptFontSize} group={row.group} palette={palette} />
+              <ActivityGroupRow
+                flat={flatTranscript}
+                fontSize={transcriptFontSize}
+                group={row.group}
+                palette={palette}
+                sessionRunning={activityRunning && row.key === lastActivityKey}
+              />
             </View>
           );
         }
@@ -297,20 +305,6 @@ export function TranscriptList({
           </Card>
         )
       }
-      ListFooterComponent={(
-        <View style={styles.transcriptFooter}>
-          {running && !awaitingUserInput ? (
-            <View style={styles.loadingRow}>
-              <ActivityIndicator color={palette.tint} />
-              <Text style={{ color: palette.muted }}>
-                {retryAttempt
-                  ? t('chat:content.runningRetry', { attempt: retryAttempt })
-                  : currentActivityLabel ? t('chat:content.runningActivity', { activity: currentActivityLabel.toLowerCase() }) : t('chat:content.runningGeneric')}
-              </Text>
-            </View>
-          ) : null}
-        </View>
-      )}
     />
   );
 }

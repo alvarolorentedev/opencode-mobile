@@ -636,16 +636,21 @@ array references are preserved, changed records are replaced, new tail records
 are appended, and scrolled-up history is prepended without duplicates.
 the Vitest `transcript-policy` suite covers the refresh modes: a cold load fetches
 one newest page, backfills older pages until ten entries are displayable, a tail
-merge appends without dropping held records, a non-overlapping burst adopts the
-fetched page, the 300-record cap drops non-display records before conversation
-entries, and only `replace` discards held history.
+merge appends without dropping held records, a missing paging window is repaired
+from the newest page while held records survive, scroll-up rebuilds that window
+when it runs first, a non-overlapping burst adopts the fetched page, the
+300-record cap drops non-display records before conversation entries, and only
+`replace` discards held history. `optimistic-flows` also covers the cached
+selection that must still issue its background transcript read.
 the Vitest `transcript-visibility` suite covers verbosity (`basic`, `reasoning`,
 `verbose`) across user, assistant, tool-only, reasoning-only and
 patch-only entries plus hidden file-mutating tools; `transcript-rows` covers
-cross-entry activity grouping, bubble breaks, hidden-tool counts, patch rows and
-reasoning groups; `activity-group` covers collapsed defaults, automatic opening
-while running, manual-toggle persistence, expandable markdown, patch file lists,
-the non-copyable shell command/output block, and empty rows.
+cross-entry activity grouping, read grouping, patch deduplication, bubble breaks,
+hidden-tool counts, resolved file tools and reasoning groups; `activity-group`
+covers collapsed defaults, automatic opening while running, manual-toggle
+persistence, session-running progress on the newest completed group, header
+type lists, expandable markdown, expandable diff cards, copyable shell code,
+read rows, grep rows, and empty rows.
 `test:provider-runtime` runs actual provider callbacks and extracted hooks with
 deterministic platform/timer boundaries: out-of-order project results, stale
 same-directory server responses, safety-poll overlap, reconnect snapshots,

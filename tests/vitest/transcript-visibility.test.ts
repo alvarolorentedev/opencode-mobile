@@ -57,9 +57,16 @@ describe('transcript verbosity', () => {
     expect(shouldShowPatchSummary('verbose')).toBe(false);
   });
 
-  it('never renders file-mutating tools as collapsibles', () => {
+  it('hides unresolved file-mutating tools but keeps resolved diff cards visible', () => {
     expect(isDetailVisible(editTool, 'verbose')).toBe(true);
     expect(isDetailShown(editTool, 'verbose')).toBe(false);
     expect(isTranscriptDisplayMessage(entry('assistant', [editTool]), 'verbose')).toBe(false);
+
+    const resolved = {
+      ...editTool,
+      files: [{ file: 'a.ts', patch: '@@ -1 +1 @@\n-a\n+b', additions: 1, deletions: 1, status: 'modified' as const }],
+    };
+    expect(isDetailShown(resolved, 'verbose')).toBe(true);
+    expect(isTranscriptDisplayMessage(entry('assistant', [resolved]), 'verbose')).toBe(true);
   });
 });

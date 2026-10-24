@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 
-import { buildTranscriptRows, type ActivityGroup } from '@/lib/opencode/transcript';
+import { buildActivityChildRows, buildTranscriptRows, type ActivityGroup } from '@/lib/opencode/transcript';
 import type { TranscriptEntry } from '@/lib/opencode/format';
 
 vi.mock('@/lib/i18n', () => ({ getFormatLocale: () => 'en' }));
@@ -105,6 +105,46 @@ describe('transcript rows', () => {
       toolEntry('m2', 'bash', 'd2', 'pnpm lint', 'boom', 'error'),
     ], 'verbose');
     expect(group(failed[0]).status).toBe('error');
+  });
+
+  it('keeps resolved hidden file tools so their diffs can render', () => {
+    const edit = toolEntry('m1', 'edit', 'd1');
+    edit.details[0] = {
+      ...edit.details[0],
+      path: 'a.ts',
+      files: [{ file: 'a.ts', patch: '@@ -1 +1 @@\n-a\n+b', additions: 1, deletions: 1, status: 'modified' }],
+    } as never;
+    const rows = buildTranscriptRows([edit], 'verbose');
+    expect(group(rows[0]).items.map((item) => item.id)).toEqual(['d1']);
+    expect(group(rows[0]).tools).toEqual([{ name: 'edit', count: 1 }]);
+  });
+
+  it('groups consecutive reads and removes patch rows already covered by diffs', () => {
+    const read = (id: string, path: string) => ({
+      id,
+      kind: 'tool' as const,
+      tool: 'read',
+      label: 'read',
+      body: '',
+      status: 'completed',
+      path,
+    });
+    const edit = toolEntry('m1', 'edit', 'e1');
+    edit.details[0] = {
+      ...edit.details[0],
+      path: 'a.ts',
+      files: [{ file: 'a.ts', patch: '@@ -1 +1 @@\n-a\n+b', additions: 1, deletions: 1, status: 'modified' }],
+    } as never;
+
+    const childRows = buildActivityChildRows([
+      read('r1', 'src/a.ts'),
+      read('r2', 'src/b.ts'),
+      edit.details[0],
+      { id: 'p1', kind: 'patch', label: 'Patch 2 files', body: 'a.ts\nc.ts' },
+    ]);
+    expect(childRows.map((row) => row.kind)).toEqual(['read', 'item', 'item']);
+    expect(childRows[0]).toMatchObject({ kind: 'read', reads: [expect.objectContaining({ id: 'r1' }), expect.objectContaining({ id: 'r2' })] });
+    expect(childRows[2]).toMatchObject({ kind: 'item', item: expect.objectContaining({ kind: 'patch', body: 'c.ts' }) });
   });
 
   it('keeps a text bubble before its own activity run', () => {

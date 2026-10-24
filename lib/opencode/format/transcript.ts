@@ -1,4 +1,4 @@
-import { getMessageError, getToolBody, getToolCommand, getToolTitle } from './tool';
+import { getMessageError, getToolBody, getToolCommand, getToolPresentation, getToolTitle } from './tool';
 import type { SessionMessageRecord, TranscriptDetail, TranscriptEntry } from './types';
 
 const transcriptEntryCache = new WeakMap<SessionMessageRecord, TranscriptEntry>();
@@ -42,6 +42,7 @@ export function toTranscriptEntry(record: SessionMessageRecord): TranscriptEntry
     }
 
     if (part.type === 'tool') {
+      const presentation = getToolPresentation(part);
       details.push({
         id,
         kind: 'tool',
@@ -50,6 +51,7 @@ export function toTranscriptEntry(record: SessionMessageRecord): TranscriptEntry
         label: getToolTitle(part),
         body: getToolBody(part),
         status: part.state.status,
+        ...presentation,
       });
       if (part.state.status === 'completed') {
         part.state.attachments?.forEach((attachment, attachmentIndex) => {

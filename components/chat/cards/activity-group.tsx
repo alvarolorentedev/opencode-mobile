@@ -1,31 +1,53 @@
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Pressable, StyleSheet, View } from 'react-native';
 import { ActivityIndicator, Text } from 'react-native-paper';
 
-import { ActivityItemRow } from '@/components/chat/cards/activity-item';
+import { ActivityItemRow, ActivityReadGroupRow } from '@/components/chat/cards/activity-item';
 import { Colors } from '@/constants/theme';
 import { getToolDisplayName } from '@/lib/opencode/format';
-import type { ActivityGroup } from '@/lib/opencode/transcript';
+import { buildActivityChildRows, type ActivityGroup } from '@/lib/opencode/transcript';
 
 type Palette = typeof Colors.light;
 
 // A contiguous run of reasoning/tool/patch activity between message bubbles.
 // The header is the first collapse level. A run with active work opens itself;
 // once the user toggles it, the explicit choice wins for the life of the key.
-export function ActivityGroupRow({ flat = false, fontSize, group, palette }: { flat?: boolean; fontSize: number; group: ActivityGroup; palette: Palette }) {
+export function ActivityGroupRow({ flat = false, fontSize, group, palette, sessionRunning = false }: { flat?: boolean; fontSize: number; group: ActivityGroup; palette: Palette; sessionRunning?: boolean }) {
   const { t } = useTranslation();
   const [expanded, setExpanded] = useState<boolean | undefined>(undefined);
-  const isExpanded = expanded ?? group.status === 'running';
   const running = group.status === 'running';
+  const isExpanded = expanded ?? running;
+  const showProgress = running || sessionRunning;
 
-  const tools = group.tools.map((tool) => getToolDisplayName(tool.name)).join(', ');
-  const label = group.callCount > 0
-    ? t('chat:activity.used', { count: group.callCount, tools })
-    : group.items.length > 1
-      ? t('chat:activity.thoughtCount', { count: group.items.length })
-      : t('chat:activity.thought');
+  const childRows = useMemo(() => buildActivityChildRows(group.items), [group.items]);
+  const reasoningCount = useMemo(() => group.items.filter((item) => item.kind === 'reasoning').length, [group.items]);
+  const types = useMemo(() => {
+    const names: string[] = [];
+    const add = (name: string) => {
+      if (!names.includes(name)) names.push(name);
+    };
+
+    for (const row of childRows) {
+      if (row.kind === 'read') {
+        add(getToolDisplayName('read'));
+      } else if (row.item.kind === 'tool') {
+        add(getToolDisplayName(row.item.tool));
+      } else if (row.item.kind === 'patch') {
+        add(getToolDisplayName('patch'));
+      }
+    }
+
+    if (reasoningCount > 0) add(t('chat:activity.thought'));
+    return names;
+  }, [childRows, reasoningCount, t]);
+  const hasToolType = childRows.some((row) => row.kind === 'read' || row.item.kind === 'tool' || row.item.kind === 'patch');
+  const label = hasToolType && group.callCount > 0
+    ? t('chat:activity.used', { count: group.callCount, tools: types.join(', ') })
+    : reasoningCount > 0
+      ? t('chat:activity.thoughtCount', { count: reasoningCount })
+      : types.join(', ');
   const actionLabel = t(isExpanded ? 'chat:activity.collapseActivity' : 'chat:activity.expandActivity');
 
   return (
@@ -37,16 +59,18 @@ export function ActivityGroupRow({ flat = false, fontSize, group, palette }: { f
         onPress={() => setExpanded((value) => !(value ?? running))}
         style={({ pressed }) => [styles.header, pressed ? { backgroundColor: palette.surfaceAlt } : null]}
         testID={`transcript-activity-${group.key}`}>
-        <Text variant="bodyMedium" numberOfLines={1} style={[styles.label, { color: palette.muted }]}>{label}</Text>
+        <Text variant="bodyMedium" numberOfLines={2} style={[styles.label, { color: palette.muted }]}>{label}</Text>
         <View style={styles.spacer} />
         {group.status === 'error' ? <MaterialCommunityIcons name="alert-circle-outline" size={15} color={palette.danger} /> : null}
-        {running ? <ActivityIndicator size={12} color={palette.tint} /> : null}
+        {showProgress ? <ActivityIndicator size={12} color={palette.tint} /> : null}
         <MaterialCommunityIcons name={isExpanded ? 'chevron-down' : 'chevron-right'} size={16} color={palette.muted} />
       </Pressable>
       {isExpanded ? (
         <View style={styles.items}>
-          {group.items.map((item) => (
-            <ActivityItemRow fontSize={fontSize} item={item} key={item.id} palette={palette} />
+          {childRows.map((row) => (
+            row.kind === 'read'
+              ? <ActivityReadGroupRow key={row.key} palette={palette} reads={row.reads} />
+              : <ActivityItemRow fontSize={fontSize} item={row.item} key={row.key} palette={palette} />
           ))}
         </View>
       ) : null}

@@ -168,6 +168,48 @@ describe('local-first session selection', () => {
     runtime.unmount();
   });
 
+  it('refreshes a cached selection so its paging window can be rebuilt', async () => {
+    const runtime = hookRuntime();
+    const { useSessionBootstrapActions } = await loadTs('providers/use-session-bootstrap-actions.ts', {
+      react: runtime.react,
+    });
+    const refreshMessages = vi.fn(async () => []);
+    const input = {
+      activeProjectPath: '/repo',
+      connection: { status: 'connected' },
+      connectionScope: 'scope',
+      client: {},
+      createSession: async () => ({ id: 'created' }),
+      currentSessionId: 'target',
+      currentSessionIdRef: { current: 'target' as string | undefined },
+      explicitSessionSelectionRef: { current: undefined },
+      sessions: [{ id: 'target' }],
+      sessionsRef: { current: [{ id: 'target' }] },
+      messagesBySession: { target: [{ info: { id: 'cached' } }] },
+      lastSessionByConnection: {},
+      pendingDeepLinkTargetRef: { current: undefined },
+      bootstrapPromiseRef: { current: null },
+      bootstrapTokenRef: { current: undefined },
+      isCurrentClient: () => true,
+      fetchSessions: async () => [{ id: 'target' }],
+      refreshMessages,
+      refreshSessionDiff: async () => [],
+      refreshSessionTodos: async () => [],
+      refreshPendingInteractions: async () => undefined,
+      refreshChatCapabilities: async () => undefined,
+      refreshServerFeatures: async () => undefined,
+      setCurrentSessionId: () => undefined,
+      setLastSessionByConnection: () => undefined,
+      setIsBootstrappingChat: () => undefined,
+    };
+
+    runtime.mount(useSessionBootstrapActions, input);
+    await expect(runtime.value.ensureActiveSession()).resolves.toBe('target');
+    // Cached records still need the background read; it carries the cursor.
+    expect(refreshMessages).toHaveBeenCalledWith('target', true);
+    runtime.unmount();
+  });
+
   it('does not let a superseded bootstrap overwrite an explicit selection', async () => {
     const runtime = hookRuntime();
     const { useSessionBootstrapActions } = await loadTs('providers/use-session-bootstrap-actions.ts', {

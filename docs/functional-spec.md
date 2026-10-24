@@ -133,7 +133,7 @@ After submission:
 The Chat screen shows:
 
 - transcript messages
-- inline running status text while OpenCode is active
+- a progress circle on the active activity header and active child row while OpenCode is active
 - floating permission actions or a full-screen question flow if OpenCode is blocked waiting for the user
 - a changes tab with current file diffs
 - todos when provided by the server
@@ -141,8 +141,8 @@ The Chat screen shows:
 Behavior details:
 
 - the transcript has a configurable detail level: `basic` (default) shows user and assistant messages with text, files, or errors; `reasoning` adds reasoning; `verbose` adds tool calls and patches
-- reasoning, tool, and patch rows render as a two-level activity timeline outside message bubbles and match the assistant bubble's width; contiguous activity merges into one growing run with a `Used N <tools>` header, a running run opens automatically, and each child expands independently to thought text, shell output, a tool body, or a changed-file list; shell output stays a non-copyable `$ command` block, hidden edit/write calls count in the header without duplicate rows, and the initial pull backfills until at least 10 entries are displayable at the selected level
-- a status line like `OpenCode is ...` is shown while running and not blocked on user input
+- reasoning, tool, and patch rows render as a two-level activity timeline outside message bubbles and match the assistant bubble's width; contiguous activity merges into one growing run whose `Used <total> <types>` header lists every rendered type once, including `Thought`, a running run opens automatically, and each child expands independently; shell output is a selectable, copyable code block, grep stays a one-line pattern with its match count, consecutive reads collapse to one filename list, and edit/write/patch files render expandable diff cards with `+N −N`; the initial pull backfills until at least 10 entries are displayable at the selected level
+- no separate `OpenCode is ...` running footer is reserved; while the session runs, the newest activity header keeps the progress circle even after its own tools complete, and the active child row carries it only while that row is running
 - a small floating progress view shows the current step and completed count; tapping it opens a content-sized overlay with the task list; pending permission actions replace it while blocked
 - a pending question opens a full-screen answer flow immediately; dismissal leaves an `Answer needed` card above the composer and does not reject the request
 

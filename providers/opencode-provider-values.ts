@@ -12,6 +12,7 @@ import {
   isPromptErrorVisible,
 } from '@/providers/opencode-provider-selectors';
 import { collectDescendantSessionIds } from '@/providers/opencode-provider-utils';
+import { TRANSCRIPT_PAGE_LIMIT } from '@/providers/services/session-service';
 import { MAX_TRANSCRIPT_RECORDS } from '@/providers/use-transcript-state';
 import type {
   ApprovalsContextValue,
@@ -337,7 +338,14 @@ export function useOpencodeProviderValues(input: ProviderValuesInput) {
     [sessions, archivedSessions, sessionStatuses, favoriteSessions, toggleFavoriteSession, isFavoriteSession, clearFavoriteSession, sessionPreviewById, isRefreshingSessions, refreshSessions, deleteSession, archiveSession, restoreSession, refreshArchivedSessions, renameSession, forkSession, shareSession, unshareSession, revertSession, unrevertSession, openSessionInProject],
   );
 
-  const hasOlderMessages = currentSessionId ? messageWindows[currentSessionId]?.hasMore === true : false;
+  // A cached or retained transcript can paint before any read establishes its
+  // paging window. Offer scroll-up so the transcript layer can repair the
+  // window, but only once the held records look like a full page.
+  const hasOlderMessages = currentSessionId
+    ? messageWindows[currentSessionId]
+      ? messageWindows[currentSessionId].hasMore
+      : currentMessages.length >= TRANSCRIPT_PAGE_LIMIT
+    : false;
   const isLoadingOlderMessages = currentSessionId ? loadingOlderBySession[currentSessionId] === true : false;
   // Hydration is session-scoped so switching chats quickly cannot let an older
   // read clear the newer session's skeleton.

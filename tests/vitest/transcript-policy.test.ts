@@ -116,6 +116,46 @@ describe('transcript refresh policy', () => {
     expect(getSessionMessages).toHaveBeenCalledTimes(1);
   });
 
+  it('repairs a missing paging window for held records before paging back', async () => {
+    const newest = ['b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k'].map((id) => textRecord(id));
+    const getSessionMessages = vi.fn(async (_client, _id, options: { before?: string }) => {
+      if (!options.before) {
+        return page(newest, true, 'older-cursor');
+      }
+      return page([textRecord('a')], false);
+    });
+    const { runtime, value } = await mountTranscript({ s: [textRecord('b'), textRecord('c')] }, getSessionMessages);
+    await value.refreshMessages('s', true);
+    runtime.flush();
+    expect(runtime.value.messageWindows.s).toEqual({ nextBefore: 'older-cursor', hasMore: true });
+    expect(ids(runtime.value.messagesBySession.s)).toEqual(['b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k']);
+
+    await value.loadOlderMessages('s');
+    runtime.flush();
+    expect(getSessionMessages.mock.calls[1][2]).toEqual({ limit: 20, before: 'older-cursor' });
+    expect(ids(runtime.value.messagesBySession.s)).toEqual(['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k']);
+    expect(runtime.value.messageWindows.s.hasMore).toBe(false);
+  });
+
+  it('rebuilds a missing window when scroll-up runs before any refresh', async () => {
+    const getSessionMessages = vi.fn(async (_client, _id, options: { before?: string }) => {
+      if (!options.before) {
+        return page([textRecord('b'), textRecord('c')], true, 'older-cursor');
+      }
+      return page([textRecord('a')], false);
+    });
+    const { runtime, value } = await mountTranscript({ s: [textRecord('c')] }, getSessionMessages);
+    await value.loadOlderMessages('s');
+    runtime.flush();
+    // The fallback rebuilds the newest window; its display-target backfill
+    // pulls the older page in the same pass.
+    expect(getSessionMessages).toHaveBeenCalledTimes(2);
+    expect(getSessionMessages.mock.calls[0][2]).toEqual({ limit: 20 });
+    expect(getSessionMessages.mock.calls[1][2]).toEqual({ limit: 50, before: 'older-cursor' });
+    expect(ids(runtime.value.messagesBySession.s)).toEqual(['a', 'b', 'c']);
+    expect(runtime.value.messageWindows.s.hasMore).toBe(false);
+  });
+
   it('keeps held records for a deferred or empty tail page', async () => {
     const held = [toolRecord('a')];
     const getSessionMessages = vi.fn(async () => page([]));

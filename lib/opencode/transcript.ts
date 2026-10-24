@@ -43,8 +43,13 @@ export function isShellTool(tool: string) {
 }
 
 export function isDetailShown(detail: TranscriptDetail, verbosity: TranscriptVerbosity) {
-  return isDetailVisible(detail, verbosity)
-    && !(detail.kind === 'tool' && HIDDEN_TOOL_NAMES.has(detail.tool));
+  if (detail.kind === 'tool' && HIDDEN_TOOL_NAMES.has(detail.tool)) {
+    // File-mutating tools stay off the row list unless they resolved a diff;
+    // a resolved diff is visible content and must keep the message displayable.
+    return verbosity === 'verbose' && Boolean(detail.files?.length);
+  }
+
+  return isDetailVisible(detail, verbosity);
 }
 
 // Bubble content for a message row. Patch-only assistant messages become
@@ -79,6 +84,59 @@ export type DetailGroup = ActivityGroup;
 export type TranscriptRow =
   | { key: string; type: 'message'; entry: TranscriptEntry }
   | { key: string; type: 'activity'; group: ActivityGroup };
+
+// Rows rendered inside an activity run. Consecutive reads become one plain
+// one-line list. Patch summaries are removed when a file-change tool in the
+// same run already supplies the same files as diff cards.
+export type ActivityChildRow =
+  | { key: string; kind: 'read'; reads: ToolDetail[] }
+  | { key: string; kind: 'item'; item: ActivityItem };
+
+function normalizeActivityPath(file: string) {
+  return file.replace(/\\/g, '/').replace(/^\.\//, '');
+}
+
+export function buildActivityChildRows(items: ActivityItem[]): ActivityChildRow[] {
+  const diffFiles = new Set<string>();
+  for (const item of items) {
+    if (item.kind === 'tool' && item.files) {
+      for (const file of item.files) diffFiles.add(normalizeActivityPath(file.file));
+    }
+  }
+
+  const rows: ActivityChildRow[] = [];
+  let reads: ToolDetail[] | undefined;
+  const flushReads = () => {
+    if (!reads) return;
+    rows.push({ key: `read:${reads[0].id}`, kind: 'read', reads });
+    reads = undefined;
+  };
+
+  for (const item of items) {
+    if (item.kind === 'tool' && item.tool === 'read') {
+      reads ??= [];
+      reads.push(item);
+      continue;
+    }
+
+    flushReads();
+    if (item.kind === 'patch') {
+      const files = item.body
+        .split('\n')
+        .map((file) => file.trim())
+        .filter((file) => file && !diffFiles.has(normalizeActivityPath(file)));
+      if (files.length > 0) {
+        rows.push({ key: item.id, kind: 'item', item: { ...item, body: files.join('\n') } });
+      }
+      continue;
+    }
+
+    rows.push({ key: item.id, kind: 'item', item });
+  }
+
+  flushReads();
+  return rows;
+}
 
 // Flatten the transcript into message rows and contiguous activity groups. A
 // message bubble breaks contiguity. Every visible reasoning/tool/patch detail
@@ -136,7 +194,11 @@ export function buildTranscriptRows(entries: TranscriptEntry[], verbosity: Trans
     for (const detail of entry.details) {
       if (detail.kind === 'tool' && HIDDEN_TOOL_NAMES.has(detail.tool)) {
         if (verbosity !== 'verbose') continue;
-        trackTool(ensureGroup(detail.id), detail);
+        const group = ensureGroup(detail.id);
+        trackTool(group, detail);
+        // File-mutating tools normally stay off the row list, but a resolved
+        // diff is exactly the content the timeline needs to show.
+        if (detail.files?.length) group.items.push(detail);
         continue;
       }
 

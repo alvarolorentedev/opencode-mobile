@@ -284,6 +284,11 @@ export function useTranscriptState({
   const refreshMessages = useCallback(
     async (sessionId: string, silent = false, options?: { mode?: TranscriptRefreshMode }) => {
       const held = messagesBySessionRef.current[sessionId] ?? [];
+      // Records can already be held without a paging cursor when the transcript
+      // cache hydrates before the first network read, or when a refresh is the
+      // first pass after a window reset. A tail refresh records that window
+      // below, keeping held records when the newest page overlaps them.
+      const windowMissing = messageWindowsRef.current[sessionId] === undefined;
       const shouldHydrate = !silent || held.length === 0;
       const finishHydration = shouldHydrate ? beginHydration(sessionId) : undefined;
       if (!silent) {
@@ -321,6 +326,13 @@ export function useTranscriptState({
         }
 
         if (page.records.length === 0) {
+          if (windowMissing) {
+            setMessageWindows((current) => (
+              current[sessionId]
+                ? current
+                : { ...current, [sessionId]: { nextBefore: page.nextBefore, hasMore: page.hasMore } }
+            ));
+          }
           return held;
         }
 
@@ -354,6 +366,16 @@ export function useTranscriptState({
           }
           return { ...current, [sessionId]: boundedNext };
         });
+        if (windowMissing) {
+          // The newest page overlaps the held records, so it is contiguous with
+          // them. Keep the held history and resume paging from this page's
+          // cursor instead of leaving the window unset.
+          setMessageWindows((current) => (
+            current[sessionId]
+              ? current
+              : { ...current, [sessionId]: { nextBefore: page.nextBefore, hasMore: page.hasMore } }
+          ));
+        }
         recordUsageAndTodos(sessionId, page.records);
         persist(sessionId, bounded);
         return page.records;
@@ -369,14 +391,25 @@ export function useTranscriptState({
 
   const loadOlderMessages = useCallback(
     async (sessionId: string) => {
-      const meta = messageWindowsRef.current[sessionId];
       const held = messagesBySessionRef.current[sessionId] ?? [];
-      if (!meta?.hasMore || loadingOlderBySessionRef.current[sessionId] || held.length >= MAX_TRANSCRIPT_RECORDS) {
+      if (loadingOlderBySessionRef.current[sessionId] || held.length >= MAX_TRANSCRIPT_RECORDS) {
         return;
       }
 
       setLoadingOlderBySession((current) => ({ ...current, [sessionId]: true }));
       try {
+        let meta = messageWindowsRef.current[sessionId];
+        if (!meta) {
+          // No cursor can be trusted for this window (for example records
+          // restored from cache before the first network read). Rebuild the
+          // newest window once; the next scroll pages from the refreshed
+          // cursor. Continue immediately when the render already published it.
+          await refreshMessages(sessionId, true, { mode: 'initial' });
+          meta = messageWindowsRef.current[sessionId];
+        }
+        if (!meta?.hasMore) {
+          return;
+        }
         const page = await svcGetSessionMessages(client, sessionId, { limit: TRANSCRIPT_PAGE_LIMIT, before: meta.nextBefore });
         if (!isCurrentClient(client)) {
           return;
@@ -398,7 +431,7 @@ export function useTranscriptState({
         setLoadingOlderBySession((current) => ({ ...current, [sessionId]: false }));
       }
     },
-    [client, isCurrentClient, recordUsageAndTodos, setMessagesBySession],
+    [client, isCurrentClient, recordUsageAndTodos, refreshMessages, setMessagesBySession],
   );
 
   const reset = useCallback(() => {

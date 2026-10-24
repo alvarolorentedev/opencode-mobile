@@ -1,15 +1,42 @@
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { useState } from 'react';
+import * as Clipboard from 'expo-clipboard';
+import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Platform, Pressable, StyleSheet, View } from 'react-native';
-import { Text } from 'react-native-paper';
+import { ActivityIndicator, Text } from 'react-native-paper';
 
+import { ActivityDiffCard } from '@/components/chat/cards/activity-diff';
 import { MarkdownText } from '@/components/chat/chat-markdown';
 import { Colors } from '@/constants/theme';
-import { formatDuration, getToolDisplayName } from '@/lib/opencode/format';
-import { isShellTool, type ActivityItem } from '@/lib/opencode/transcript';
+import { formatDuration, getToolDisplayName, isFileChangeToolName } from '@/lib/opencode/format';
+import { codeCopyHaptic } from '@/lib/haptics';
+import { isShellTool, type ActivityItem, type ToolDetail } from '@/lib/opencode/transcript';
 
 type Palette = typeof Colors.light;
+
+function basename(path: string) {
+  return path.split(/[\\/]/).pop() || path;
+}
+
+// Consecutive plain reads collapse to one non-expandable line. The row shows
+// filenames only: offsets, limits and file contents stay out of the timeline.
+export function ActivityReadGroupRow({ palette, reads }: { palette: Palette; reads: ToolDetail[] }) {
+  const label = getToolDisplayName('read');
+  const active = reads.some((read) => read.status === 'running' || read.status === 'pending');
+  const names = [...new Set(reads
+    .map((read) => (read.path ? basename(read.path) : read.label))
+    .filter((name) => name && name.toLowerCase() !== 'read'))];
+
+  return (
+    <View style={styles.row} testID={`transcript-activity-read-${reads[0].id}`}>
+      <Text variant="bodyMedium" numberOfLines={1} style={[styles.label, { color: palette.text }]}>{label}</Text>
+      {names.length > 0 ? (
+        <Text variant="bodySmall" numberOfLines={1} style={[styles.command, { color: palette.text }]}>{names.join(', ')}</Text>
+      ) : <View style={styles.spacer} />}
+      {active ? <ActivityIndicator size={12} color={palette.tint} /> : null}
+    </View>
+  );
+}
 
 // One row inside an activity run. The row is the second collapse level: it
 // stays closed while the run shows the shape of the turn, then reveals the
@@ -17,6 +44,23 @@ type Palette = typeof Colors.light;
 export function ActivityItemRow({ fontSize, item, palette }: { fontSize: number; item: ActivityItem; palette: Palette }) {
   const { t } = useTranslation();
   const [expanded, setExpanded] = useState(false);
+  const [copied, setCopied] = useState(false);
+
+  useEffect(() => {
+    if (!copied) return;
+    const timer = setTimeout(() => setCopied(false), 1600);
+    return () => clearTimeout(timer);
+  }, [copied]);
+
+  if (item.kind === 'tool' && item.status !== 'error' && item.files?.length && isFileChangeToolName(item.tool)) {
+    return (
+      <View>
+        {item.files.map((diff, index) => (
+          <ActivityDiffCard diff={diff} fontSize={fontSize} key={`${diff.file}-${index}`} palette={palette} />
+        ))}
+      </View>
+    );
+  }
 
   let label = item.label;
   let meta: string | undefined;
@@ -34,7 +78,12 @@ export function ActivityItemRow({ fontSize, item, palette }: { fontSize: number;
   } else if (item.kind === 'tool') {
     label = getToolDisplayName(item.tool);
     toolStatus = item.status;
-    if (isShellTool(item.tool)) {
+    if (item.tool === 'read') {
+      command = item.path ? basename(item.path) : undefined;
+    } else if (item.tool === 'grep') {
+      command = item.pattern?.trim() ? `pattern=${item.pattern.trim()}` : item.label;
+      meta = item.matchCount !== undefined && item.matchCount > 0 ? t('chat:activity.matches', { count: item.matchCount }) : undefined;
+    } else if (isShellTool(item.tool)) {
       command = item.command?.trim();
       const output = item.body?.trim() ? item.body : undefined;
       body = [command ? `$ ${command}` : undefined, output].filter(Boolean).join('\n');
@@ -53,6 +102,17 @@ export function ActivityItemRow({ fontSize, item, palette }: { fontSize: number;
   const actionLabel = t(expanded ? 'chat:activity.collapseItem' : 'chat:activity.expandItem', { item: label });
   const secondary = command ?? (item.kind === 'tool' && item.label && item.label !== label ? item.label : undefined);
 
+  async function handleCopy() {
+    if (!body) return;
+    try {
+      await Clipboard.setStringAsync(body);
+      codeCopyHaptic();
+      setCopied(true);
+    } catch {
+      // Leave the copy affordance unchanged when the platform clipboard fails.
+    }
+  }
+
   return (
     <View>
       <Pressable
@@ -64,15 +124,16 @@ export function ActivityItemRow({ fontSize, item, palette }: { fontSize: number;
         style={({ pressed }) => [styles.row, pressed && expandable ? { backgroundColor: palette.surfaceAlt } : null]}
         testID={`transcript-activity-item-${item.id}`}>
         {toolStatus === 'running' || toolStatus === 'pending' ? (
-          <MaterialCommunityIcons name="progress-clock" size={14} color={palette.tint} />
+          <ActivityIndicator size={12} color={palette.tint} />
         ) : toolStatus === 'error' ? (
           <MaterialCommunityIcons name="alert-circle-outline" size={14} color={palette.danger} />
         ) : null}
         <Text variant="bodyMedium" numberOfLines={1} style={[styles.label, { color: palette.text }]}>{label}</Text>
-        {meta ? <Text variant="labelSmall" style={[styles.meta, { color: palette.muted }]}>{meta}</Text> : null}
         {secondary ? (
           <Text variant="bodySmall" numberOfLines={1} style={[styles.command, { color: command ? palette.text : palette.muted }]}>{secondary}</Text>
-        ) : <View style={styles.spacer} />}
+        ) : null}
+        {meta ? <Text variant="labelSmall" style={[styles.meta, { color: palette.muted }]}>{meta}</Text> : null}
+        {!secondary && !meta ? <View style={styles.spacer} /> : null}
         {expandable ? <MaterialCommunityIcons name={expanded ? 'chevron-down' : 'chevron-right'} size={15} color={palette.muted} /> : null}
       </Pressable>
       {expanded ? (
@@ -83,8 +144,16 @@ export function ActivityItemRow({ fontSize, item, palette }: { fontSize: number;
             ))}
           </View>
         ) : item.kind === 'tool' && isShellTool(item.tool) ? (
-          <View style={[styles.shellBlock, { backgroundColor: palette.background }]}>
-            <Text selectable={false} style={[styles.shellText, { color: palette.text, fontSize: Math.max(12, fontSize - 1) }]}>
+          <View style={[styles.shellBlock, { backgroundColor: palette.background, borderColor: palette.border }]}>
+            <Pressable
+              accessibilityLabel={t(copied ? 'chat:cards.copied' : 'common:actions.copy')}
+              accessibilityRole="button"
+              hitSlop={8}
+              onPress={() => void handleCopy()}
+              style={styles.shellCopy}>
+              <MaterialCommunityIcons name={copied ? 'check' : 'content-copy'} size={15} color={palette.muted} />
+            </Pressable>
+            <Text selectable style={[styles.shellText, { color: palette.text, fontSize: Math.max(12, fontSize - 1) }]}>
               {body}
             </Text>
           </View>
@@ -119,10 +188,12 @@ const styles = StyleSheet.create({
   command: { flex: 1, minWidth: 0 },
   spacer: { flex: 1, minWidth: 0 },
   markdownBody: { paddingBottom: 6, paddingHorizontal: 2, paddingTop: 2 },
-  shellBlock: { borderRadius: 8, marginBottom: 8, marginTop: 2, padding: 10 },
+  shellBlock: { borderRadius: 8, borderWidth: 1, marginBottom: 8, marginTop: 2, padding: 10, paddingTop: 12 },
+  shellCopy: { position: 'absolute', right: 4, top: 4, zIndex: 1 },
   shellText: {
     fontFamily: Platform.select({ ios: 'Menlo', android: 'monospace', default: 'monospace' }),
     lineHeight: 18,
+    paddingRight: 20,
   },
   fileList: { gap: 4, marginBottom: 8, marginTop: 2, paddingHorizontal: 2, paddingVertical: 4 },
   file: { fontFamily: Platform.select({ ios: 'Menlo', android: 'monospace', default: 'monospace' }), fontSize: 12, lineHeight: 18 },

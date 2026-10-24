@@ -49,11 +49,12 @@ export function useSessionBootstrapActions({
     if (selectedSessionId
       && (explicitlySelected || currentSessions.some((session) => session.id === selectedSessionId))
       && (!pendingTarget || pendingTarget.sessionId === selectedSessionId)) {
-      if (!messagesBySession[selectedSessionId]) {
-        // Selection is already correct; hydrate in the background so callers
-        // never wait for transcript I/O before navigating.
-        void refreshMessages(selectedSessionId).catch(() => undefined);
-      }
+      // Selection is already correct; hydrate in the background so callers
+      // never wait for transcript I/O before navigating. Refresh even when
+      // records are already present (for example from the transcript cache):
+      // the transcript layer needs that read to establish or repair its paging
+      // window, and the read stays non-blocking.
+      void refreshMessages(selectedSessionId, (messagesBySession[selectedSessionId]?.length ?? 0) > 0).catch(() => undefined);
       return selectedSessionId;
     }
 

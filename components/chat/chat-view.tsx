@@ -73,10 +73,9 @@ export function ChatView() {
           <TranscriptList
             positions={presentation}
             positionKey={`scroll:${JSON.stringify([content.workspaceId, content.currentSessionId])}`}
-            awaitingUserInput={content.awaitingUserInput}
+            activityRunning={content.activityRunning}
             connection={header.connection}
             copiedMessageId={content.copiedMessageId}
-            currentActivityLabel={content.currentActivityLabel}
             currentSessionId={content.currentSessionId}
             transcriptRows={content.transcriptRows}
             flatTranscript={composer.chatPreferences.flatTranscript === true}
@@ -114,8 +113,6 @@ export function ChatView() {
             onToggleSpeak={(entry) => void actions.handleSpeakEntry(entry)}
             palette={palette}
             pendingInteractions={content.pendingInteractions}
-            retryAttempt={content.retryAttempt}
-            running={content.running}
             speakingMessageId={content.speakingMessageId}
             slim={header.slim}
             transcriptFontSize={normalizeTranscriptFontSize(composer.chatPreferences.transcriptFontSize)}

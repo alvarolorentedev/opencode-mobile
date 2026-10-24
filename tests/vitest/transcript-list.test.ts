@@ -5,7 +5,7 @@ type Overrides = Partial<Parameters<typeof listProps>[0]>;
 
 function listProps(overrides: Record<string, unknown> = {}) {
   return {
-    awaitingUserInput: false,
+    activityRunning: false,
     connection: { status: 'connected' as const, message: '' },
     currentSessionId: 'session-1',
     transcriptRows: [] as unknown[],
@@ -23,7 +23,6 @@ function listProps(overrides: Record<string, unknown> = {}) {
     onToggleSpeak: vi.fn(),
     palette: {},
     pendingInteractions: 0,
-    running: false,
     slim: false,
     transcriptFontSize: 16,
     transcriptVerbosity: 'basic' as const,
@@ -67,19 +66,19 @@ describe('transcript empty state', () => {
     expect(list.props.ListEmptyComponent.type).toBe('Card');
   });
 
-  it('does not show the skeleton while a running turn has held records but no display content', async () => {
-    const { update } = await mountTranscriptList({ hasMessages: true, isRefreshingMessages: true, running: true });
+  it('does not show the skeleton while a refresh has held records but no display content', async () => {
+    const { update } = await mountTranscriptList({ hasMessages: true, isRefreshingMessages: true });
     expect(update({}).props.ListEmptyComponent).toBeNull();
   });
 
   it('shows the skeleton only for a cold fetch with no held records', async () => {
-    const { update } = await mountTranscriptList({ hasMessages: false, isRefreshingMessages: true, running: true });
+    const { update } = await mountTranscriptList({ hasMessages: false, isRefreshingMessages: true });
     expect(update({}).props.ListEmptyComponent.type).toBe('TranscriptSkeleton');
   });
 
   it('offers a load-earlier affordance when only non-display history is loaded', async () => {
     const { update } = await mountTranscriptList({ hasOlderMessages: true });
-    const idle = update({ running: false });
+    const idle = update({});
     expect(idle.props.ListEmptyComponent.type).toBe('Card');
     expect(JSON.stringify(idle.props.ListEmptyComponent)).toContain('chat:content.loadEarlier');
   });
@@ -88,5 +87,22 @@ describe('transcript empty state', () => {
     const { update } = await mountTranscriptList({ currentSessionId: undefined });
     const list = update({ hasOlderMessages: false });
     expect(list.props.ListEmptyComponent.type).toBe('Card');
+  });
+
+  it('does not reserve a running-status footer', async () => {
+    const { list } = await mountTranscriptList();
+    expect(list.props.ListFooterComponent).toBeUndefined();
+  });
+
+  it('marks only the last activity row as the session-running anchor', async () => {
+    const row = (key: string) => ({
+      key: `activity:${key}`,
+      type: 'activity' as const,
+      group: { key, kind: 'activity' as const, items: [], tools: [], callCount: 0, status: 'idle' as const },
+    });
+    const rows = [row('a'), row('b')];
+    const { list } = await mountTranscriptList({ activityRunning: true, transcriptRows: rows });
+    expect(JSON.stringify(list.props.renderItem({ item: rows[0] }))).toContain('"sessionRunning":false');
+    expect(JSON.stringify(list.props.renderItem({ item: rows[1] }))).toContain('"sessionRunning":true');
   });
 });

@@ -310,7 +310,8 @@ The completion version, preference schema and first-run migration are unchanged.
   these IDs out of the current-project Chat list.
 - `providers/use-transcript-state.ts`
   Paginated transcript window state machine: newest-page load on open, scroll-up
-  history paging, single-page bounded-window tail merge, and accumulation of
+  history paging, single-page bounded-window tail merge, cursor repair for
+  cached or retained records that have no paging window, and accumulation of
   session usage steps and V2 `todowrite` records so a bounded window keeps exact
   totals. Only compaction/revert rewrites replace the window.
 

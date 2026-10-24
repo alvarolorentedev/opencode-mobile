@@ -606,9 +606,15 @@ page and union-merges new records into the window, so older loaded records are
 never re-downloaded. When a burst is larger than one page and the newest page no
 longer overlaps the held window, the fetched page is adopted (backfilled to the
 display target) and history paging restarts from its oldest record instead of
-downloading bridging pages. Only server-side history rewrites rebuild the window
-instead of merging: compaction, revert/unrevert, and (on V1) explicit message
-removal. Reconnects and foreground returns tail-merge. Pruning retains the
+downloading bridging pages. Held records can exist without a stored cursor when
+the transcript cache hydrates before the first network read, or when a window
+reset leaves a retained transcript in place. A tail refresh then keeps those
+records and stores the newest page's cursor; if scroll-up runs before any
+refresh, paging rebuilds the newest window once and then pages back. This keeps
+older history reachable instead of leaving `hasOlder` false. Only server-side
+history rewrites rebuild the window instead of merging: compaction,
+revert/unrevert, and (on V1) explicit message removal. Reconnects and foreground
+returns tail-merge. Pruning retains the
 current session plus up to three recently viewed sessions (still bounded by the
 300-record cap per session) so switching back to a recent chat paints from
 memory before the background read settles.
@@ -620,16 +626,20 @@ Details are first-class transcript rows: message rows and activity-run rows.
 Contiguous visible reasoning, tool, and patch details merge into one two-level
 activity run; a message bubble breaks the run. The run key is its first detail
 id, so expansion persists while streamed details grow it. The level-one header
-reads `Used N <tools>` and counts hidden file-mutating tools in the summary
-without adding duplicate child rows; a reasoning-only run reads `Thought · N`.
+keeps the total tool-call count and lists every rendered type once, including
+`Thought` when reasoning is present; a reasoning-only run reads `Thought · N`.
 A run with a `running`/`pending` tool opens automatically, while an explicit
-user toggle wins for the life of the key. Level-two child rows expand reasoning
-Markdown, a non-copyable shell block with `$ command` and output, a generic tool
-body, or a changed-file list. Run rows use the assistant bubble width. V1-only
-subtask/step/agent parts and the V2-synthesized `step-finish` usage marker are
-never rendered; `edit`, `write`, `multiedit`, and `apply_patch` tool details are
-hidden as rows (they still drive the activity header and label). The display
-filter, the initial-pull target, and retention share the same predicate.
+user toggle wins for the life of the key. While the session itself remains
+running, the newest activity run keeps the header progress circle even after
+its own tools complete; it does not force the completed run open. Level-two rows expand reasoning
+Markdown; show the shell command collapsed and a selectable, copyable code
+block expanded; keep grep to one line with its match count; collapse consecutive
+reads to one non-expandable filename list; and render edit/write/patch files as
+expandable diff cards. Patch summaries are dropped when a file-change tool in
+the same run already supplies the same paths. Run rows use the assistant bubble
+width. V1-only subtask/step/agent parts and the V2-synthesized `step-finish`
+usage marker are never rendered. The display filter, the initial-pull target,
+and retention share the same predicate.
 
 
 V1 pages backwards with `limit`/`before` and an `x-next-cursor` header; V2

@@ -55,7 +55,7 @@ function toToolDetail(messageId: string, sessionID: string, index: number, tool:
         input,
         output: toolContentToText(state.content),
         attachments: Array.isArray(state.content) ? state.content.filter((item) => item?.type === 'file').map((file, fileIndex) => ({ ...toFileDetail(file), id: `${messageId}-tool-file-${fileIndex}`, sessionID, messageID: messageId })) : [],
-        title: stringField(tool.name, 'tool'),
+        title: stringField(state.title, stringField(tool.name, 'tool')),
         metadata: state.metadata as Record<string, unknown> | undefined,
       },
     };
@@ -78,7 +78,7 @@ function toToolDetail(messageId: string, sessionID: string, index: number, tool:
     state: {
       status: 'running',
       input,
-      title: stringField(tool.name, 'tool'),
+      title: stringField(state.title, stringField(tool.name, 'tool')),
       metadata: state.metadata as Record<string, unknown> | undefined,
     },
   };

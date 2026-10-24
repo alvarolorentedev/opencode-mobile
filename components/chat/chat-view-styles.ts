@@ -28,7 +28,6 @@ export const styles = StyleSheet.create({
   content: { padding: 12, gap: 12, paddingBottom: 20 },
   transcriptItem: { marginBottom: 12 },
   transcriptItemFlat: { marginBottom: 4 },
-  transcriptFooter: { gap: 12 },
   skeletonRow: { height: 14, borderRadius: 7, marginTop: 8 },
   skeletonUser: { alignSelf: 'flex-end' },
   skeletonAssistant: { alignSelf: 'flex-start' },
@@ -45,7 +44,6 @@ export const styles = StyleSheet.create({
   sectionCard: { borderRadius: 18 },
   sectionHeaderCard: { flexDirection: 'row', justifyContent: 'space-between', gap: 12, alignItems: 'center' },
   paginationRow: { alignItems: 'center', paddingVertical: 4 },
-  loadingRow: { flexDirection: 'row', gap: 10, alignItems: 'center', paddingHorizontal: 8, paddingBottom: 8 },
   composer: {
     paddingHorizontal: 8,
     paddingTop: 6,

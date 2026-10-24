@@ -37,6 +37,64 @@ describe('format', () => {
     expect(formatDuration(65000)).toBe('1m 05s');
   });
 
+  it('normalizes read and grep rows without keeping raw input', () => {
+    const read = toTranscriptEntry({
+      info,
+      parts: [{ id: 'read-1', type: 'tool', tool: 'read', state: { status: 'completed', input: { path: 'src/a.ts', offset: 10, limit: 20 }, output: '' } }],
+    } as never);
+    expect(read.details[0]).toMatchObject({ kind: 'tool', path: 'src/a.ts', offset: 10, limit: 20 });
+
+    const grep = toTranscriptEntry({
+      info,
+      parts: [{ id: 'grep-1', type: 'tool', tool: 'grep', state: { status: 'completed', input: { path: 'src', pattern: 'foo', include: '*.ts' }, output: '', metadata: { matches: 7 } } }],
+    } as never);
+    expect(grep.details[0]).toMatchObject({ kind: 'tool', path: 'src', pattern: 'foo', include: '*.ts', matchCount: 7 });
+  });
+
+  it('derives expandable file diffs from edit and write input', () => {
+    const edit = toTranscriptEntry({
+      info,
+      parts: [{ id: 'edit-1', type: 'tool', tool: 'edit', state: { status: 'completed', input: { path: 'src/a.ts', oldString: 'a\nb', newString: 'a\nc' }, output: 'ok' } }],
+    } as never);
+    const editDetail = edit.details[0];
+    if (editDetail.kind !== 'tool') throw new Error('expected edit tool detail');
+    expect(editDetail).toMatchObject({ path: 'src/a.ts' });
+    expect(editDetail.files).toEqual([
+      expect.objectContaining({ file: 'src/a.ts', additions: 1, deletions: 1, status: 'modified' }),
+    ]);
+    expect(editDetail.files?.[0]?.patch).toContain('@@');
+
+    const write = toTranscriptEntry({
+      info,
+      parts: [{ id: 'write-1', type: 'tool', tool: 'write', state: { status: 'completed', input: { path: 'src/new.ts', content: 'one\ntwo\n' }, output: 'ok' } }],
+    } as never);
+    const writeDetail = write.details[0];
+    if (writeDetail.kind !== 'tool') throw new Error('expected write tool detail');
+    expect(writeDetail.files).toEqual([
+      expect.objectContaining({ file: 'src/new.ts', additions: 2, deletions: 0, status: 'added' }),
+    ]);
+  });
+
+  it('prefers server-provided file diffs', () => {
+    const edit = toTranscriptEntry({
+      info,
+      parts: [{
+        id: 'edit-2',
+        type: 'tool',
+        tool: 'edit',
+        state: {
+          status: 'completed',
+          input: { path: 'src/a.ts', oldString: 'a', newString: 'b' },
+          output: 'ok',
+          metadata: { files: [{ file: 'src/a.ts', patch: '@@ -1 +1 @@\n-old\n+new', additions: 4, deletions: 2, status: 'modified' }] },
+        },
+      }],
+    } as never);
+    const detail = edit.details[0];
+    if (detail.kind !== 'tool') throw new Error('expected edit tool detail');
+    expect(detail.files?.[0]).toMatchObject({ additions: 4, deletions: 2 });
+  });
+
   it('keeps the native tool name and shell command on the detail', () => {
     const shell = toTranscriptEntry({
       info,
