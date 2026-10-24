@@ -1,5 +1,9 @@
 import { SSE_STALENESS_MS, SSE_FOREGROUND_CYCLE_MS, WATCHDOG_TICK_MS, SSE_BUSY_STALENESS_MS, SSE_CONNECT_TIMEOUT_MS, SSE_STABLE_MS } from '@/providers/realtime-timing';
 import { AppState } from 'react-native';
+import { jitterRetryDelay, MAX_RETRY_MS, RETRY_RESET_MS } from '@/providers/realtime/backoff';
+import { isStreamStale, shouldCycleForeground } from '@/providers/realtime/liveness';
+import { nextPollDelay, shouldPoll } from '@/providers/realtime/polling';
+import { collectReconcileSessionIds } from '@/providers/realtime/reconcile';
 import { subscribeEvents } from '@/lib/opencode/events';
 import { classifyConnectionFailure, isAuthConnectionFailure } from '@/lib/opencode/client/errors';
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
@@ -27,17 +31,7 @@ const CONNECT_TIMEOUT_MS = typeof SSE_CONNECT_TIMEOUT_MS === 'number' ? SSE_CONN
 const BUSY_STALENESS_MS = typeof SSE_BUSY_STALENESS_MS === 'number' ? SSE_BUSY_STALENESS_MS : SSE_STALENESS_MS;
 const STABLE_MS = typeof SSE_STABLE_MS === 'number' ? SSE_STABLE_MS : 5_000;
 
-export function shouldPoll(streamConnected: boolean, busy: boolean) {
-  return !streamConnected || busy;
-}
-
-function jitterRetryDelay(attemptDelay: number) {
-  // Full jitter above the first second avoids a synchronized retry burst after
-  // a cell-wide outage while keeping the first recovery attempt fast.
-  if (attemptDelay <= 1000) return attemptDelay;
-  return Math.round(attemptDelay * (0.8 + Math.random() * 0.4));
-}
-
+export { shouldPoll } from '@/providers/realtime/polling';
 
 export function useOpencodeRealtime({ catalogClient, activeProjectPath, connected, busy,
   currentSessionId, conversationSessionId, pendingSessionIds = [], subscribe: subscribeStream = subscribeEvents, online = true, constrained = false, ...actions
@@ -70,7 +64,7 @@ export function useOpencodeRealtime({ catalogClient, activeProjectPath, connecte
       return inFlight.current;
     }
     const next = latest.current;
-    const sessions = new Set([...next.pendingSessionIds, next.currentSessionId, next.conversationSessionId].filter((id): id is string => Boolean(id)));
+    const sessions = collectReconcileSessionIds(next);
     // A safety poll only needs the running set. Full cursor-paged session lists
     // stay on reconnect/foreground reconciliation and session-list events.
     const sessionRefresh = !full && next.refreshSessionStatuses
@@ -134,9 +128,9 @@ export function useOpencodeRealtime({ catalogClient, activeProjectPath, connecte
       wake();
     };
     const subscribe = async () => {
-      let retryDelay = 1000;
+      let retryDelay = RETRY_RESET_MS;
       while (!controller.signal.aborted) {
-        setEventStreamStatus(retryDelay === 1000 ? 'connecting' : 'error');
+        setEventStreamStatus(retryDelay === RETRY_RESET_MS ? 'connecting' : 'error');
         const attempt = new AbortController();
         attemptController = attempt;
         let streamError: unknown;
@@ -154,7 +148,7 @@ export function useOpencodeRealtime({ catalogClient, activeProjectPath, connecte
             lastEnvelopeAt = Date.now();
             setEventStreamStatus('connected');
             if (!stableSince) stableSince = Date.now();
-            if (Date.now() - stableSince >= STABLE_MS) retryDelay = 1000;
+            if (Date.now() - stableSince >= STABLE_MS) retryDelay = RETRY_RESET_MS;
             if (!reconciled) {
               reconciled = true;
               void reconcile(true);
@@ -172,7 +166,7 @@ export function useOpencodeRealtime({ catalogClient, activeProjectPath, connecte
         if (restart) {
           restart = false;
           stableSince = 0;
-          retryDelay = 1000;
+          retryDelay = RETRY_RESET_MS;
           continue;
         }
         const failureKind = classifyConnectionFailure(streamError ?? new Error('OpenCode event stream ended.'));
@@ -199,12 +193,12 @@ export function useOpencodeRealtime({ catalogClient, activeProjectPath, connecte
         if (controller.signal.aborted) break;
         if (restart) {
           restart = false;
-          retryDelay = 1000;
+          retryDelay = RETRY_RESET_MS;
           continue;
         }
         // Keep the previous delay for the next attempt; only a stable stream or
         // an explicit foreground/network restart resets it.
-        retryDelay = Math.min(retryDelay * 2, 15000);
+        retryDelay = Math.min(retryDelay * 2, MAX_RETRY_MS);
       }
     };
     void subscribe();
@@ -222,12 +216,21 @@ export function useOpencodeRealtime({ catalogClient, activeProjectPath, connecte
       // A background suspension can miss session creation/deletion, so a
       // foreground return still performs the authoritative full pass.
       void reconcile(true);
-      if (statusRef.current !== 'connected' || backgroundedFor >= SSE_FOREGROUND_CYCLE_MS) requestRestart();
+      if (shouldCycleForeground({
+        status: statusRef.current,
+        backgroundedFor,
+        foregroundThreshold: SSE_FOREGROUND_CYCLE_MS,
+      })) requestRestart();
     });
     const watchdog = setInterval(() => {
       if (AppState.currentState !== 'active' || statusRef.current !== 'connected') return;
-      const limit = latest.current.busy ? BUSY_STALENESS_MS : SSE_STALENESS_MS;
-      if (Date.now() - lastEnvelopeAt < limit) return;
+      if (!isStreamStale({
+        now: Date.now(),
+        lastEnvelopeAt,
+        busy: latest.current.busy,
+        idleLimit: SSE_STALENESS_MS,
+        busyLimit: BUSY_STALENESS_MS,
+      })) return;
       // One cycle per window; a subscription that never delivers an envelope is
       // retried on the next window instead of looping here.
       lastEnvelopeAt = Date.now();
@@ -249,9 +252,6 @@ export function useOpencodeRealtime({ catalogClient, activeProjectPath, connecte
     // stream it is the primary transport. Repeated failed passes back off so an
     // offline or overloaded link does not receive a request every five seconds.
     const streamConnected = eventStreamStatus === 'connected';
-    const baseMs = streamConnected
-      ? (constrained ? 15000 : 10000)
-      : (constrained ? 8000 : 5000);
     let cancelled = false;
     let timer: ReturnType<typeof setTimeout> | undefined;
     let failures = 0;
@@ -259,12 +259,10 @@ export function useOpencodeRealtime({ catalogClient, activeProjectPath, connecte
       if (cancelled) return;
       await reconcile();
       if (cancelled) return;
-      if (pollFailedRef.current) failures = Math.min(failures + 1, 3);
-      else failures = 0;
-      const nextMs = Math.min(baseMs * (2 ** failures), 30_000);
-      timer = setTimeout(() => { void tick(); }, nextMs);
+      failures = pollFailedRef.current ? Math.min(failures + 1, 3) : 0;
+      timer = setTimeout(() => { void tick(); }, nextPollDelay({ streamConnected, constrained, failures }));
     };
-    timer = setTimeout(() => { void tick(); }, baseMs);
+    timer = setTimeout(() => { void tick(); }, nextPollDelay({ streamConnected, constrained, failures }));
     return () => {
       cancelled = true;
       if (timer) clearTimeout(timer);
