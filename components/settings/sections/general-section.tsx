@@ -3,6 +3,7 @@ import { Platform, StyleSheet, View } from 'react-native';
 import { Button, HelperText, Text } from 'react-native-paper';
 
 import type { ChatPreferences } from '@/providers/opencode-provider';
+import { AppearanceSection } from './appearance-section';
 import { LanguageSection } from './language-section';
 import { SettingSwitchRow, type Palette } from './setting-rows';
 
@@ -16,6 +17,7 @@ export function GeneralSection({ chatPreferences, palette, updateChatPreferences
   return (
     <View testID="settings-general-section" style={styles.section}>
       <Text accessibilityRole="header" variant="titleLarge" style={[styles.title, { color: palette.text }]}>{t('settings:general.title')}</Text>
+      <AppearanceSection chatPreferences={chatPreferences} palette={palette} updateChatPreferences={updateChatPreferences} />
       <SettingSwitchRow
         title={t('settings:appearance.slimInterface.title')}
         description={t('settings:appearance.slimInterface.description')}

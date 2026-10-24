@@ -8,12 +8,11 @@ import { OverlaySheet } from '@/components/ui/overlay-sheet';
 import { AudioPreview, VideoPreview } from '@/components/ui/media-preview';
 import { attachmentKind, openAttachmentExternally, prepareAttachmentFile, readAttachmentText, validateAttachmentUri } from '@/lib/attachment-preview';
 import type { PromptAttachment } from '@/lib/opencode/prompt-inbox';
-import { Colors } from '@/constants/theme';
-import { useColorScheme } from '@/hooks/use-color-scheme';
+import { usePalette } from '@/hooks/use-palette';
 
 export function AttachmentPreview({ attachment, onClose }: { attachment: PromptAttachment; onClose: () => void }) {
   const { t } = useTranslation();
-  const palette = Colors[useColorScheme() ?? 'light'];
+  const palette = usePalette();
   const kind = attachmentKind(attachment);
   const [text, setText] = useState<string>();
   const [mediaUri, setMediaUri] = useState<string>();

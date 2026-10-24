@@ -4,14 +4,12 @@ import { StyleSheet, View } from 'react-native';
 import { ActivityIndicator, Surface, Text } from 'react-native-paper';
 
 import { ChatView } from '@/components/chat/chat-view';
-import { Colors } from '@/constants/theme';
-import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useChat, useConnection, useCurrentSession, useOnboarding, useProjects } from '@/providers/opencode-contexts';
+import { usePalette } from '@/hooks/use-palette';
 
 export default function ChatLandingScreen() {
   const { t } = useTranslation();
-  const colorScheme = useColorScheme() ?? 'light';
-  const palette = Colors[colorScheme];
+  const palette = usePalette();
   const { activeProject } = useProjects();
   const { connection } = useConnection();
   const { currentSessionId, ensureActiveSession } = useCurrentSession();

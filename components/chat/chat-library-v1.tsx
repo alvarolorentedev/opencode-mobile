@@ -10,12 +10,11 @@ import { OverlaySheet } from '@/components/ui/overlay-sheet';
 import { SwipeRow, type SwipeRowAction } from '@/components/ui/swipe-row';
 import { TextInput } from '@/components/ui/text-input';
 import { ProjectPicker, ProjectPickerButton } from '@/components/ui/project-picker';
-import { Colors } from '@/constants/theme';
-import { useColorScheme } from '@/hooks/use-color-scheme';
 import { formatRelativeTime, getSessionSubtitle } from '@/lib/opencode/format';
 import type { GlobalSession, Session } from '@/lib/opencode/types';
 import type { ActiveSessionItem, FavoriteSession } from '@/providers/opencode-provider-types';
 import { useConnection, useCurrentSession, usePreferences, useProjects, useSessionLibrary } from '@/providers/opencode-contexts';
+import { usePalette } from '@/hooks/use-palette';
 
 type LibraryRow =
   | { kind: 'heading' | 'empty'; id: string; title: string }
@@ -26,7 +25,7 @@ type LibraryRow =
 
 export function LegacyChatLibrary({ visible, onClose, onNewChat }: { visible: boolean; onClose: () => void; onNewChat: () => void }) {
   const { t } = useTranslation();
-  const palette = Colors[useColorScheme() ?? 'light'];
+  const palette = usePalette();
   const { activeProject, refreshProjectCatalog } = useProjects();
   const { currentSessionId, openSession, activeSessions: activeSessionsValue } = useCurrentSession();
   const {

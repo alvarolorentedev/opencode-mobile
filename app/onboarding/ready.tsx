@@ -6,15 +6,14 @@ import { StyleSheet, View } from 'react-native';
 import { Button, Text } from 'react-native-paper';
 
 import { OnboardingStep } from '@/components/onboarding/onboarding-step';
-import { Colors } from '@/constants/theme';
-import { useColorScheme } from '@/hooks/use-color-scheme';
 import { SetupSummary } from '@/components/onboarding/setup-summary';
 import { useOnboarding } from '@/providers/opencode-contexts';
+import { usePalette } from '@/hooks/use-palette';
 
 export default function OnboardingReadyScreen() {
   const { t } = useTranslation();
   const router = useRouter();
-  const palette = Colors[useColorScheme() ?? 'light'];
+  const palette = usePalette();
   const { onboardingActive, completeOnboarding, stopOnboardingReview } = useOnboarding();
   const [isFinishing, setIsFinishing] = useState(false);
 

@@ -5,9 +5,8 @@ import { Appbar, Button, HelperText, IconButton, Text, TextInput as PaperInput }
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { useUpdateBlocker } from '@/hooks/use-update-blocker';
+import { usePalette } from '@/hooks/use-palette';
 import { TextInput } from '@/components/ui/text-input';
-import { Colors } from '@/constants/theme';
-import { useColorScheme } from '@/hooks/use-color-scheme';
 import { MAX_CONNECTION_HEADERS, parseConnectionHeaders, type ConnectionHeaderError } from '@/lib/connection-headers';
 import { isValidServerUrl, type ConnectionProbeResult } from '@/lib/opencode/client';
 import { getServerHostname } from '@/lib/opencode/client/url';
@@ -51,7 +50,7 @@ export function ConnectionProfileDialog({ title, submitLabel, showName = true, i
   useUpdateBlocker(true);
   const { t } = useTranslation();
   const { connectionProfiles } = useConnection();
-  const palette = Colors[useColorScheme() ?? 'light'];
+  const palette = usePalette();
   const [name, setName] = useState(initial?.name ?? '');
   const [serverUrl, setServerUrl] = useState(initial?.serverUrl ?? '');
   const [username, setUsername] = useState(initial?.username ?? '');

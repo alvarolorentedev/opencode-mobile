@@ -1,6 +1,11 @@
 import { Platform } from 'react-native';
 import type { MarkdownStyle } from 'react-native-enriched-markdown';
 
+import { DEFAULT_ACCENT_COLOR, type AccentColor, type ColorScheme } from '@/constants/appearance';
+
+export { ACCENT_COLORS, DEFAULT_ACCENT_COLOR, DEFAULT_THEME_MODE, THEME_MODES } from '@/constants/appearance';
+export type { AccentColor, ColorScheme, ThemeMode } from '@/constants/appearance';
+
 const tintColorLight = '#0F8A6C';
 const tintColorDark = '#7AE7C0';
 
@@ -97,6 +102,45 @@ export const Colors = {
     code: darkCodePalette,
   },
 };
+
+export type Palette = typeof Colors.light;
+
+// Accent presets only override interactive tokens. Neutral backgrounds,
+// borders, cards, assistant bubbles, and code palettes stay shared so the
+// default green theme is byte-for-byte the original palette and every other
+// accent keeps the same contrast structure.
+type AccentTokens = Pick<Palette, 'accent' | 'bubbleUser' | 'onBubbleUser' | 'tabIconSelected' | 'tint'>;
+
+export const ACCENT_PALETTES: Record<AccentColor, Record<ColorScheme, AccentTokens>> = {
+  green: {
+    light: { tint: tintColorLight, accent: '#125F53', bubbleUser: '#135C4E', onBubbleUser: '#F5FFFB', tabIconSelected: tintColorLight },
+    dark: { tint: tintColorDark, accent: '#58D4AB', bubbleUser: '#1C6B5C', onBubbleUser: '#F3FFFB', tabIconSelected: tintColorDark },
+  },
+  blue: {
+    light: { tint: '#1F6FB2', accent: '#164E7C', bubbleUser: '#14486B', onBubbleUser: '#F4FAFF', tabIconSelected: '#1F6FB2' },
+    dark: { tint: '#7CC4FF', accent: '#58A6E0', bubbleUser: '#1B5B82', onBubbleUser: '#F2FAFF', tabIconSelected: '#7CC4FF' },
+  },
+  red: {
+    light: { tint: '#B03A48', accent: '#7E2733', bubbleUser: '#6E222C', onBubbleUser: '#FFF5F6', tabIconSelected: '#B03A48' },
+    dark: { tint: '#FF9A9A', accent: '#E07A7A', bubbleUser: '#7A2E35', onBubbleUser: '#FFF5F6', tabIconSelected: '#FF9A9A' },
+  },
+  purple: {
+    light: { tint: '#7A4BC4', accent: '#5A3396', bubbleUser: '#4A2A78', onBubbleUser: '#F8F4FF', tabIconSelected: '#7A4BC4' },
+    dark: { tint: '#C9A8FF', accent: '#A985E8', bubbleUser: '#553A85', onBubbleUser: '#F8F4FF', tabIconSelected: '#C9A8FF' },
+  },
+  pink: {
+    light: { tint: '#B93E78', accent: '#8C2C59', bubbleUser: '#75264B', onBubbleUser: '#FFF4F9', tabIconSelected: '#B93E78' },
+    dark: { tint: '#FFA6CF', accent: '#E080B3', bubbleUser: '#7E3560', onBubbleUser: '#FFF4F9', tabIconSelected: '#FFA6CF' },
+  },
+  gray: {
+    light: { tint: '#5B6664', accent: '#434C4A', bubbleUser: '#3B4442', onBubbleUser: '#F7FAF9', tabIconSelected: '#5B6664' },
+    dark: { tint: '#C3CECB', accent: '#9FADA9', bubbleUser: '#49524F', onBubbleUser: '#F7FAF9', tabIconSelected: '#C3CECB' },
+  },
+};
+
+export function getColors(scheme: ColorScheme, accent: AccentColor = DEFAULT_ACCENT_COLOR): Palette {
+  return { ...Colors[scheme], ...ACCENT_PALETTES[accent][scheme] };
+}
 
 export const Fonts = Platform.select({
   ios: {

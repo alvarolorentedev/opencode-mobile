@@ -9,8 +9,8 @@ import { useDismissOnBack } from '@/hooks/use-dismiss-on-back';
 import { useOnboardingNavigation } from './use-onboarding-navigation';
 import type { OnboardingStepName } from './navigation';
 import { useOnboarding } from '@/providers/opencode-contexts';
-import { Colors, Fonts } from '@/constants/theme';
-import { useColorScheme } from '@/hooks/use-color-scheme';
+import { Fonts } from '@/constants/theme';
+import { usePalette } from '@/hooks/use-palette';
 
 /**
  * Shared chrome for every onboarding step: back affordance, step progress,
@@ -48,7 +48,7 @@ export function OnboardingStep({
   }, [navigation.available, router]));
   const insets = useSafeAreaInsets();
   const { t } = useTranslation();
-  const palette = Colors[useColorScheme() ?? 'light'];
+  const palette = usePalette();
   const { onboardingActive } = useOnboarding();
   const progress = Math.max(0, Math.min(1, navigation.step / navigation.totalSteps));
 

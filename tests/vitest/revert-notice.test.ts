@@ -28,6 +28,7 @@ async function mountRevertNotice(props: { busy?: boolean; onCancel: () => void }
     'react-native-paper': { IconButton: 'IconButton', Text: 'Text' },
     '@/constants/theme': { Colors: { light: {} } },
     '@/hooks/use-color-scheme': { useColorScheme: () => 'light' },
+    '@/hooks/use-palette': { usePalette: () => ({}) },
   }, runtime.globals);
   return runtime.mount(RevertNotice, props);
 }

@@ -4,14 +4,12 @@ import { useTranslation } from 'react-i18next';
 import { StyleSheet, View } from 'react-native';
 import { ActivityIndicator, Button, Surface, Text } from 'react-native-paper';
 
-import { Colors } from '@/constants/theme';
-import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useCurrentSession, useOnboarding } from '@/providers/opencode-contexts';
+import { usePalette } from '@/hooks/use-palette';
 
 export default function SessionDeepLinkScreen() {
   const { t } = useTranslation();
-  const colorScheme = useColorScheme() ?? 'light';
-  const palette = Colors[colorScheme];
+  const palette = usePalette();
   const router = useRouter();
   const params = useLocalSearchParams();
   const { isHydrated } = useOnboarding();

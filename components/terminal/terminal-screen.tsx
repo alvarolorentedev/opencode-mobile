@@ -20,7 +20,7 @@ import {
 } from 'react-native-paper';
 
 import { confirmAction } from '@/lib/confirm-action';
-import { Colors, Fonts } from '@/constants/theme';
+import { Fonts } from '@/constants/theme';
 import { RetainedTerminals } from './retained-terminals';
 import { NewTerminalSheet } from './new-terminal-sheet';
 import { useWorkspaceTerminals } from '@/providers/use-workspace-terminals';
@@ -28,8 +28,8 @@ import { WorkspaceScope, useWorkspaces } from '@/providers/workspace-context';
 import type { WorkspaceTarget } from '@/providers/workspace-types';
 import { OverlaySheet } from '@/components/ui/overlay-sheet';
 import { SwipeRow } from '@/components/ui/swipe-row';
-import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useUpdateBlocker } from '@/hooks/use-update-blocker';
+import { usePalette } from '@/hooks/use-palette';
 import { useConnection, usePreferences, useProjects, useTerminal } from '@/providers/opencode-contexts';
 
 export default function TerminalScreen() {
@@ -41,8 +41,7 @@ function TerminalContent() {
   const { t } = useTranslation();
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const colorScheme = useColorScheme() ?? 'light';
-  const palette = Colors[colorScheme];
+  const palette = usePalette();
   const visible = useIsFocused();
   const { activeProject } = useProjects();
   const registry = useWorkspaces();

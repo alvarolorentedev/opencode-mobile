@@ -7,8 +7,8 @@ import { ActivityIndicator, Button, HelperText, Text } from 'react-native-paper'
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { ConnectSubscription } from '@/components/settings/connect-subscription';
-import { Colors, Fonts } from '@/constants/theme';
-import { useColorScheme } from '@/hooks/use-color-scheme';
+import { Fonts } from '@/constants/theme';
+import { usePalette } from '@/hooks/use-palette';
 import { CONNECT_LEARN_MORE_URL } from '@/lib/connect';
 import type { ConnectSetup } from '@/providers/use-connect-state';
 
@@ -20,7 +20,7 @@ export function ConnectOnboarding({ step, setup, onNext, onScan, onOptions }: {
   onOptions: () => void;
 }) {
   const { t } = useTranslation();
-  const palette = Colors[useColorScheme() ?? 'light'];
+  const palette = usePalette();
   const insets = useSafeAreaInsets();
   const { height } = useWindowDimensions();
   const illustrationHeight = height < 760 ? 96 : 160;

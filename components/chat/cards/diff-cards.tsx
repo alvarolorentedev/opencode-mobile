@@ -5,14 +5,12 @@ import { Pressable, StyleSheet, View } from 'react-native';
 import { Text } from 'react-native-paper';
 
 import { getDiffPalette, buildPatchDiff, buildCollapsedDiffBlocks } from '@/components/chat/chat-diff';
-import { Colors } from '@/constants/theme';
-import { useColorScheme } from '@/hooks/use-color-scheme';
 import type { FileDiff } from '@/lib/opencode/types';
+import { usePalette } from '@/hooks/use-palette';
 
 export function SessionDiffCard({ diff, expanded, onPress }: { diff: FileDiff; expanded: boolean; onPress: () => void }) {
   const { t } = useTranslation();
-  const colorScheme = useColorScheme() ?? 'light';
-  const palette = Colors[colorScheme];
+  const palette = usePalette();
   const diffLines = useMemo(() => (expanded ? buildPatchDiff(diff.patch || '') : []), [diff.patch, expanded]);
   const diffBlocks = useMemo(() => (expanded ? buildCollapsedDiffBlocks(diffLines) : []), [diffLines, expanded]);
   // A patch that yields no lines is a genuinely empty hunk. No patch at all
@@ -78,8 +76,7 @@ export function SessionDiffCard({ diff, expanded, onPress }: { diff: FileDiff; e
 // provide. It is a file list, not a diff, so it is never rendered as one.
 export function ChangedFilesCard({ files }: { files: string[] }) {
   const { t } = useTranslation();
-  const colorScheme = useColorScheme() ?? 'light';
-  const palette = Colors[colorScheme];
+  const palette = usePalette();
 
   return (
     <View testID="changed-files-card" style={[styles.changedFilesCard, { backgroundColor: palette.surface, borderColor: palette.border }]}>

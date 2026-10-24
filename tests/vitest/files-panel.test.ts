@@ -10,7 +10,7 @@ describe('project file list', () => {
       react: runtime.react, 'react/jsx-runtime': { jsx: element, jsxs: element }, '@shopify/flash-list': { FlashList: 'FlashList' },
       'react-i18next': { useTranslation: () => ({ t: (key: string) => key }) }, 'react-native': { View: 'View' },
       'react-native-paper': { ActivityIndicator: 'Spinner', Button: 'Button', Divider: 'Divider', List: { Item: 'Item', Icon: 'Icon' }, Text: 'Text', TextInput: { Icon: 'InputIcon' } },
-      '@/components/ui/text-input': { TextInput: 'Input' }, '@/constants/theme': { Colors: { light: {} } }, '@/hooks/use-color-scheme': { useColorScheme: () => 'light' },
+      '@/components/ui/text-input': { TextInput: 'Input' }, '@/constants/theme': { Colors: { light: {} } }, '@/hooks/use-color-scheme': { useColorScheme: () => 'light' }, '@/hooks/use-palette': { usePalette: () => ({}) },
     });
     runtime.mount(FilesPanel, { browser: { initialized: true, path: '', entries: Array.from({ length: 1000 }, (_, i) => ({ path: `file${i}.ts`, name: `file${i}.ts`, type: i === 0 ? 'directory' : 'file' })),
       openDirectory, search: vi.fn() }, statuses: [{ path: 'file1.ts', status: 'modified' }, { path: 'removed.ts', status: 'deleted' }], projectLabel: 'Repo', onOpen });

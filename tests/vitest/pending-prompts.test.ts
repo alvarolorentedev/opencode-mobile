@@ -43,6 +43,7 @@ async function mountPendingPrompts(props: {
     '@/components/chat/attachment-strip': { AttachmentStrip: 'AttachmentStrip' },
     '@/constants/theme': { Colors: { light: {} } },
     '@/hooks/use-color-scheme': { useColorScheme: () => 'light' },
+    '@/hooks/use-palette': { usePalette: () => ({}) },
   }, runtime.globals);
   return runtime.mount(PendingPrompts, props);
 }

@@ -2,21 +2,23 @@ import Constants from 'expo-constants';
 import { DarkTheme, DefaultTheme, Stack, ThemeProvider, usePathname } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
-import { useEffect, useLayoutEffect } from 'react';
+import { useEffect, useLayoutEffect, useMemo } from 'react';
 import { ActivityIndicator, Platform, StyleSheet, View } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { PaperProvider } from 'react-native-paper';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
-import { Colors } from '@/constants/theme';
+import { DEFAULT_ACCENT_COLOR } from '@/constants/appearance';
 import { getPaperTheme } from '@/constants/paper-theme';
-import { useColorScheme } from '@/hooks/use-color-scheme';
+import { usePalette } from '@/hooks/use-palette';
 import { useNotificationRoute } from '@/hooks/use-notification-route';
 import { useQuickActionRoute } from '@/hooks/use-quick-action-route';
+import { useSystemColorScheme } from '@/hooks/use-system-color-scheme';
 import { installGlobalErrorHandler } from '@/lib/error-reporting';
 import '@/lib/i18n';
 import { isConnectEnabled } from '@/lib/connect';
-import { useOnboarding, useUpdates } from '@/providers/opencode-contexts';
+import { AppearanceProvider } from '@/providers/appearance-context';
+import { useOnboarding, usePreferences, useUpdates } from '@/providers/opencode-contexts';
 import { UpdateNotice } from '@/components/ui/update-notice';
 import { OpencodeProvider } from '@/providers/opencode-provider';
 
@@ -31,8 +33,6 @@ export { ErrorBoundary } from 'expo-router';
 void SplashScreen.preventAutoHideAsync().catch(() => undefined);
 
 export default function RootLayout() {
-  const colorScheme = useColorScheme();
-  const paperTheme = getPaperTheme(colorScheme === 'dark' ? 'dark' : 'light');
   const isE2EMode = Boolean(Constants.expoConfig?.extra?.e2eMode);
 
   useEffect(() => {
@@ -55,16 +55,36 @@ export default function RootLayout() {
     <GestureHandlerRootView style={styles.root}>
       <SafeAreaProvider>
         <OpencodeProvider>
-          <PaperProvider theme={paperTheme}>
-            <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-              <RootNavigator />
-              <UpdateHost />
-              <StatusBar style="auto" />
-            </ThemeProvider>
-          </PaperProvider>
+          <AppearanceHost />
         </OpencodeProvider>
       </SafeAreaProvider>
     </GestureHandlerRootView>
+  );
+}
+
+// Preferences live in the provider, so the themed shell must sit inside it.
+// AppearanceProvider publishes the effective scheme/accent to useColorScheme
+// and usePalette for every screen and component below.
+function AppearanceHost() {
+  const { chatPreferences } = usePreferences();
+  const systemScheme = useSystemColorScheme();
+  const scheme = chatPreferences.themeMode === 'light' || chatPreferences.themeMode === 'dark'
+    ? chatPreferences.themeMode
+    : systemScheme;
+  const accent = chatPreferences.accentColor ?? DEFAULT_ACCENT_COLOR;
+  const paperTheme = useMemo(() => getPaperTheme(scheme, accent), [accent, scheme]);
+  const appearance = useMemo(() => ({ scheme, accent }), [accent, scheme]);
+
+  return (
+    <AppearanceProvider value={appearance}>
+      <PaperProvider theme={paperTheme}>
+        <ThemeProvider value={scheme === 'dark' ? DarkTheme : DefaultTheme}>
+          <RootNavigator />
+          <UpdateHost />
+          <StatusBar style={scheme === 'dark' ? 'light' : 'dark'} />
+        </ThemeProvider>
+      </PaperProvider>
+    </AppearanceProvider>
   );
 }
 
@@ -84,8 +104,7 @@ function UpdateHost() {
 // hydration. `Stack.Protected` swaps the assistant in and out without mounting
 // the tab navigator behind it, which prevents any onboarding/app flash.
 function RootNavigator() {
-  const colorScheme = useColorScheme();
-  const palette = Colors[colorScheme ?? 'light'];
+  const palette = usePalette();
   const { isHydrated, onboardingCompleted, onboardingActive } = useOnboarding();
   useNotificationRoute();
   useQuickActionRoute(isHydrated);

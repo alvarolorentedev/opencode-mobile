@@ -3,14 +3,13 @@ import { useTranslation } from 'react-i18next';
 import { Linking, Platform, View } from 'react-native';
 import { Button, List, Text } from 'react-native-paper';
 
-import { Colors } from '@/constants/theme';
-import { useColorScheme } from '@/hooks/use-color-scheme';
 import { CONNECT_LEARN_MORE_URL } from '@/lib/connect';
 import { useConnection } from '@/providers/opencode-contexts';
+import { usePalette } from '@/hooks/use-palette';
 
 export function ConnectionMethodChooser({ onScan, onManual, onPair }: { onScan: () => void; onManual: () => void; onPair: () => void }) {
   const { t } = useTranslation();
-  const palette = Colors[useColorScheme() ?? 'light'];
+  const palette = usePalette();
   const choiceStyle = { minHeight: 96, borderRadius: 16, borderWidth: 1, borderColor: palette.border, backgroundColor: palette.surface };
   const titleStyle = { color: palette.text, fontWeight: '600' as const };
   const descriptionStyle = { color: palette.muted };

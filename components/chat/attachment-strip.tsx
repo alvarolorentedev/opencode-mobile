@@ -7,12 +7,11 @@ import { Icon, IconButton } from 'react-native-paper';
 import { AttachmentPreview } from '@/components/chat/attachment-preview';
 import { attachmentKind } from '@/lib/attachment-preview';
 import type { PromptAttachment } from '@/lib/opencode/prompt-inbox';
-import { Colors } from '@/constants/theme';
-import { useColorScheme } from '@/hooks/use-color-scheme';
+import { usePalette } from '@/hooks/use-palette';
 
 function AttachmentTile({ attachment, onPress }: { attachment: PromptAttachment; onPress: () => void }) {
   const { t } = useTranslation();
-  const palette = Colors[useColorScheme() ?? 'light'];
+  const palette = usePalette();
   const [failed, setFailed] = useState(false);
   const kind = attachmentKind(attachment);
   return (

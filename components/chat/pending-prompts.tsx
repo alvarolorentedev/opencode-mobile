@@ -4,8 +4,7 @@ import { ActivityIndicator, IconButton, Text } from 'react-native-paper';
 
 import { AttachmentStrip } from '@/components/chat/attachment-strip';
 import type { PendingPrompt } from '@/lib/opencode/prompt-inbox';
-import { Colors } from '@/constants/theme';
-import { useColorScheme } from '@/hooks/use-color-scheme';
+import { usePalette } from '@/hooks/use-palette';
 
 type PendingPromptsProps = {
   cancelingId?: string;
@@ -15,7 +14,7 @@ type PendingPromptsProps = {
 
 export function PendingPrompts({ cancelingId, onCancel, prompts }: PendingPromptsProps) {
   const { t } = useTranslation();
-  const palette = Colors[useColorScheme() ?? 'light'];
+  const palette = usePalette();
   if (!prompts.length) return null;
   return (
     <ScrollView testID="pending-prompts" style={styles.stack} keyboardShouldPersistTaps="handled" contentContainerStyle={styles.content}>

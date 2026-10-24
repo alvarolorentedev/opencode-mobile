@@ -11,7 +11,7 @@ import {
   Text,
 } from 'react-native-paper';
 
-import { Colors, Fonts } from '@/constants/theme';
+import { Fonts } from '@/constants/theme';
 import { WorkspaceScope, useWorkspaces } from '@/providers/workspace-context';
 import { getConnectionUiScope } from '@/lib/connection-scope';
 import { ServerContextPicker } from '@/components/settings/server-context-picker';
@@ -36,8 +36,8 @@ import {
   WORKING_SOUND_OPTIONS,
 } from '@/components/settings/settings-utils';
 import { OverlaySheet } from '@/components/ui/overlay-sheet';
-import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useLastJsError } from '@/hooks/use-last-js-error';
+import { usePalette } from '@/hooks/use-palette';
 import { getSpeechVoiceOptions, type SpeechVoiceOption } from '@/lib/voice/speech-output';
 import { useApprovals, useCapabilities, useConnection, useDiagnostics, useMcp, useOnboarding, usePreferences, useProjects, useUpdates } from '@/providers/opencode-contexts';
 
@@ -60,8 +60,7 @@ export default function SettingsScreen() {
 
 function SettingsContent() {
   const insets = useSafeAreaInsets();
-  const colorScheme = useColorScheme() ?? 'light';
-  const palette = Colors[colorScheme];
+  const palette = usePalette();
   const { t } = useTranslation();
   const { configuredProviders, currentConfig } = useCapabilities();
   const { addMcpServer, mcpOAuth, connectMcpServer, disconnectMcpServer, mcpStatuses, refreshMcpServers, setMcpServerEnabled } = useMcp();

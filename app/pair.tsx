@@ -5,16 +5,15 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ConnectManagementPanel } from '@/components/settings/connect-panel';
 import { ConnectEntry } from '@/components/settings/connect-pairing';
-import { Colors } from '@/constants/theme';
-import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useConnection, useOnboarding } from '@/providers/opencode-contexts';
+import { usePalette } from '@/hooks/use-palette';
 
 export default function PairScreen() {
   const params = useLocalSearchParams<{ v?: string; cp?: string; id?: string; t?: string; n?: string; mode?: string }>();
   const router = useRouter();
   const { connectSetup } = useConnection();
   const { isHydrated, onboardingCompleted, onboardingActive } = useOnboarding();
-  const palette = Colors[useColorScheme() ?? 'light'];
+  const palette = usePalette();
   const { pairLink } = connectSetup;
   // Captured before the incoming link params are stripped from the route.
   const [deepLink, setDeepLink] = useState(() => Boolean(params.v || params.cp || params.id || params.t || params.n));

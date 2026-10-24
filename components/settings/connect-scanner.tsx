@@ -3,13 +3,12 @@ import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { AppState, Platform, StyleSheet, View } from 'react-native';
 import { ActivityIndicator, Button, HelperText, Text } from 'react-native-paper';
+import { usePalette } from '@/hooks/use-palette';
 
-import { Colors } from '@/constants/theme';
-import { useColorScheme } from '@/hooks/use-color-scheme';
 
 export function ConnectScanner({ onScan, enabled, hint }: { onScan: (link: string) => void; enabled: boolean; hint?: string }) {
   const { t } = useTranslation();
-  const palette = Colors[useColorScheme() ?? 'light'];
+  const palette = usePalette();
   const [permission] = useCameraPermissions();
   const [cameraError, setCameraError] = useState(false);
   const [ready, setReady] = useState(false);

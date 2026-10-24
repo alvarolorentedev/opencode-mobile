@@ -5,10 +5,9 @@ import { View, type StyleProp, type ViewStyle } from 'react-native';
 import { ActivityIndicator, Button, Divider, List, Text, TextInput as PaperTextInput } from 'react-native-paper';
 
 import { TextInput } from '@/components/ui/text-input';
-import { Colors } from '@/constants/theme';
-import { useColorScheme } from '@/hooks/use-color-scheme';
 import type { File } from '@/lib/opencode/types';
 import type { ProjectFilesContextValue } from '@/providers/opencode-provider-types';
+import { usePalette } from '@/hooks/use-palette';
 
 export function FilesPanel({ statuses, browser, projectLabel, onOpen, header, contentStyle }: {
   header?: ReactNode;
@@ -19,7 +18,7 @@ export function FilesPanel({ statuses, browser, projectLabel, onOpen, header, co
   onOpen: (path: string) => void;
 }) {
   const { t } = useTranslation();
-  const palette = Colors[useColorScheme() ?? 'light'];
+  const palette = usePalette();
   const [query, setQuery] = useState(browser.query || '');
   const { initialized, openDirectory } = browser;
   useEffect(() => { if (!initialized) void openDirectory(''); }, [initialized, openDirectory]);

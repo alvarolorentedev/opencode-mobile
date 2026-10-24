@@ -1,3 +1,4 @@
+import { ACCENT_COLORS, THEME_MODES } from '@/constants/appearance';
 import type { OpencodeConnectionSettings } from '@/lib/opencode/client';
 import { parseConnectMetadata } from '@/lib/connect';
 import { stripServerUrlCredentials } from '@/lib/opencode/client/url';
@@ -48,8 +49,8 @@ export function parseChatPreferences(raw: string): Partial<ChatPreferences> {
     && Object.values(variantSelections).every((entry) => typeof entry === 'string' || entry === null)) {
     preferences.modelVariantSelections = { ...variantSelections };
   }
-  for (const [key, options] of Object.entries({ promptDelivery: ['steer', 'queue'], reasoning: ['low', 'default', 'high'], responseScope: ['brief', 'balanced', 'detailed'], workingSoundVariant: ['soft', 'glass'], transcriptVerbosity: ['basic', 'reasoning', 'verbose'] })) {
-    if (typeof value[key] === 'string' && options.includes(value[key])) preferences[key] = value[key];
+  for (const [key, options] of Object.entries({ themeMode: THEME_MODES, accentColor: ACCENT_COLORS, promptDelivery: ['steer', 'queue'], reasoning: ['low', 'default', 'high'], responseScope: ['brief', 'balanced', 'detailed'], workingSoundVariant: ['soft', 'glass'], transcriptVerbosity: ['basic', 'reasoning', 'verbose'] })) {
+    if (typeof value[key] === 'string' && (options as readonly string[]).includes(value[key])) preferences[key] = value[key];
   }
   if (typeof value.transcriptFontSize === 'number') preferences.transcriptFontSize = normalizeTranscriptFontSize(value.transcriptFontSize);
   if (typeof value.speechRate === 'number' && Number.isFinite(value.speechRate)) preferences.speechRate = Math.min(1.5, Math.max(0.5, value.speechRate));

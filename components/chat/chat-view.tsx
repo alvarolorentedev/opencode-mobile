@@ -18,16 +18,14 @@ import { PendingInteractions } from '@/components/chat/content/pending-interacti
 import { TranscriptList } from '@/components/chat/content/transcript-list';
 import { useChatViewController } from '@/components/chat/use-chat-view-controller';
 import { ConnectionStatusBanner } from '@/components/ui/connection-status-banner';
-import { Colors } from '@/constants/theme';
-import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useWorkspaceActions } from '@/providers/workspace-context';
 import { normalizeTranscriptFontSize } from '@/providers/opencode-preferences';
+import { usePalette } from '@/hooks/use-palette';
 
 export function ChatView() {
   const { t } = useTranslation();
   const { block } = useUpdates();
-  const colorScheme = useColorScheme() ?? 'light';
-  const palette = Colors[colorScheme];
+  const palette = usePalette();
   const insets = useSafeAreaInsets();
   const { createChat, focus, presentation } = useWorkspaceActions();
   const { header, content, composer, overlay, actions } = useChatViewController();

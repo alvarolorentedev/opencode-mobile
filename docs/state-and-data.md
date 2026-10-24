@@ -141,6 +141,8 @@ Primary fields:
 Current fields:
 
 - `mode`
+- `themeMode` (`system` by default; `light` and `dark` override the OS appearance)
+- `accentColor` (`green` default, plus `blue`, `red`, `purple`, `pink`, and `gray`; only interactive palette tokens change)
 - `transcriptFontSize` (global chat message text size in pixels; defaults to 16 and is clamped to 12–24)
 - `flatTranscript` (renders the transcript full-width without bubble chrome; defaults to `false`)
 - `transcriptVerbosity` (`basic` by default; `reasoning` adds reasoning rows, `verbose` adds tool and patch rows)
@@ -166,6 +168,8 @@ Current fields:
 - `responseScope`
 - `includeNextActions`
 - `hideSubagentChats`
+
+`themeMode` and `accentColor` are app-global appearance settings stored with the chat preferences shell. They are deliberately excluded from `serverPreferences`, so switching connections never changes the theme. `providers/appearance-context.tsx` combines them with the OS scheme for `hooks/use-color-scheme.ts` and `hooks/use-palette.ts`.
 
 These values combine application behavior settings and output-style preferences that are sent to the model as prompt instructions. `modelVariantSelections` is separate: it selects a server-supported variant for the matching model, is checked against the current model catalog, and falls back to Default when unavailable. If there is no saved entry, a valid variant already set on the active session is retained when it uses the selected model.
 

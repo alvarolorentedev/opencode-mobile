@@ -355,6 +355,23 @@
     "description": "使用系统语言或为应用界面选择一种语言。"
   },
   "appearance": {
+    "theme": {
+      "label": "主题",
+      "description": "选择浅色或深色，或跟随系统设置。",
+      "system": "跟随系统",
+      "light": "浅色",
+      "dark": "深色"
+    },
+    "accent": {
+      "label": "强调色",
+      "description": "选择用于按钮、选中状态和你的消息的强调色。",
+      "green": "绿色",
+      "blue": "蓝色",
+      "red": "红色",
+      "purple": "紫色",
+      "pink": "粉色",
+      "gray": "灰色"
+    },
     "chatTextSize": "聊天文字大小",
     "chatTextSizeDescription": "调整聊天消息的文字大小。较小的文字可一次显示更多对话。",
     "flatThread": {

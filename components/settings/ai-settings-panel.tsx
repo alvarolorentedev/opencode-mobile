@@ -9,15 +9,14 @@ import { findMatchingProfile } from '@/lib/connection-profiles';
 import { AiDefaultsSection } from './sections/ai-defaults-section';
 import { getProviderCopy } from './settings-utils';
 import { useProviderConfiguration } from './use-provider-configuration';
-import { Colors } from '@/constants/theme';
-import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useCapabilities, useConnection, usePreferences } from '@/providers/opencode-contexts';
+import { usePalette } from '@/hooks/use-palette';
 
 export function AiSettingsPanel() {
   const { t } = useTranslation();
   const focused = useIsFocused();
   const insets = useSafeAreaInsets();
-  const palette = Colors[useColorScheme() ?? 'light'];
+  const palette = usePalette();
   const { availableModels, availableProviders, configuredProviders, providerAccounts, providerAuthMethodsById, removeProvider } = useCapabilities();
   const { serverCapabilities, settings, connectionProfiles } = useConnection();
   const { chatPreferences, updateChatPreferences } = usePreferences();

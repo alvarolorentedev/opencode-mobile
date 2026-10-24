@@ -2,6 +2,12 @@
 // Kept separate from provider orchestration so preference shape and prompt
 // wording are changed in one place.
 
+import {
+  DEFAULT_ACCENT_COLOR,
+  DEFAULT_THEME_MODE,
+  type AccentColor,
+  type ThemeMode,
+} from '@/constants/appearance';
 import type { TranscriptVerbosity } from '@/lib/opencode/transcript';
 
 export type ReasoningLevel = 'low' | 'default' | 'high';
@@ -18,6 +24,11 @@ export function normalizeTranscriptFontSize(value: number | undefined) {
 
 export type ChatPreferences = {
   mode: string;
+  // App-level appearance. Stored with chat preferences because the shell is
+  // global, but deliberately excluded from serverPreferences so connections do
+  // not overwrite the user's theme.
+  themeMode: ThemeMode;
+  accentColor: AccentColor;
   promptDelivery: 'steer' | 'queue';
   transcriptFontSize: number;
   // Flat transcript renders messages full-width without bubble chrome so more
@@ -57,6 +68,8 @@ export type ChatPreferences = {
 
 export const defaultChatPreferences: ChatPreferences = {
   mode: 'build',
+  themeMode: DEFAULT_THEME_MODE,
+  accentColor: DEFAULT_ACCENT_COLOR,
   promptDelivery: 'steer',
   transcriptFontSize: DEFAULT_TRANSCRIPT_FONT_SIZE,
   flatTranscript: false,

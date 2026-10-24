@@ -15,9 +15,10 @@ import { GestureDetector, GestureHandlerRootView } from 'react-native-gesture-ha
 import Animated from 'react-native-reanimated';
 
 import { useUpdateBlocker } from '@/hooks/use-update-blocker';
-import { Colors, Fonts } from '@/constants/theme';
+import { Fonts } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useKeyboardHeight } from '@/hooks/use-keyboard-height';
+import { usePalette } from '@/hooks/use-palette';
 import { TextInput } from '@/components/ui/text-input';
 import { useSwipeDismiss } from '@/components/ui/use-swipe-dismiss';
 
@@ -53,7 +54,7 @@ export function NativeSelect<T extends string>({
   title,
 }: NativeSelectProps<T>) {
   const colorScheme = useColorScheme() ?? 'light';
-  const palette = Colors[colorScheme];
+  const palette = usePalette();
   const { t } = useTranslation();
   const [visible, setVisible] = useState(false);
   const [query, setQuery] = useState('');

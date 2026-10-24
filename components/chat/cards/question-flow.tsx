@@ -5,9 +5,8 @@ import { Appbar, Button, Switch, Text } from 'react-native-paper';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { TextInput } from '@/components/ui/text-input';
-import { Colors } from '@/constants/theme';
-import { useColorScheme } from '@/hooks/use-color-scheme';
 import type { PendingQuestionAnswer, PendingQuestionPrompt, PendingQuestionRequest } from '@/lib/opencode/client';
+import { usePalette } from '@/hooks/use-palette';
 
 export function QuestionFlow({
   onReject,
@@ -25,8 +24,7 @@ export function QuestionFlow({
   visible: boolean;
 }) {
   const { t } = useTranslation();
-  const colorScheme = useColorScheme() ?? 'light';
-  const palette = Colors[colorScheme];
+  const palette = usePalette();
   const insets = useSafeAreaInsets();
   const [step, setStep] = useState(0);
   const [error, setError] = useState<string>();

@@ -8,10 +8,9 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { TextInput } from '@/components/ui/text-input';
 import { AudioPreview, VideoPreview } from '@/components/ui/media-preview';
-import { Colors } from '@/constants/theme';
-import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useRetainedState } from '@/components/ui/use-retained-state';
 import { useUpdateBlocker } from '@/hooks/use-update-blocker';
+import { usePalette } from '@/hooks/use-palette';
 import { useConnection } from '@/providers/opencode-contexts';
 import { getConnectionUiScope } from '@/lib/connection-scope';
 import { confirmAction } from '@/lib/confirm-action';
@@ -33,7 +32,7 @@ export function FilePreview({ file, projectPath, branch, canSave, slim, onClose,
   const insets = useSafeAreaInsets();
   const { height } = useWindowDimensions();
   useUpdateBlocker(true);
-  const palette = Colors[useColorScheme() ?? 'light'];
+  const palette = usePalette();
   const { settings } = useConnection();
   const [draft, setDraft] = useRetainedState<{ original: string; value: string } | undefined>(`editor:${JSON.stringify([getConnectionUiScope(settings), projectPath, file.path])}`, undefined);
   const [saving, setSaving] = useState(false);

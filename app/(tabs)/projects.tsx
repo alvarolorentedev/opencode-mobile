@@ -8,8 +8,8 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ProjectPicker } from '@/components/ui/project-picker';
 import { FilesPanel } from '@/components/project/files-panel';
 import { FilePreview } from '@/components/project/file-preview';
-import { Colors, Fonts } from '@/constants/theme';
-import { useColorScheme } from '@/hooks/use-color-scheme';
+import { Fonts } from '@/constants/theme';
+import { usePalette } from '@/hooks/use-palette';
 import { useRetainedState } from '@/components/ui/use-retained-state';
 import { getConnectionUiScope } from '@/lib/connection-scope';
 import { useConnection, usePreferences, useProjects, useProjectFiles } from '@/providers/opencode-contexts';
@@ -17,7 +17,7 @@ import { useConnection, usePreferences, useProjects, useProjectFiles } from '@/p
 export default function ProjectsScreen() {
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
-  const palette = Colors[useColorScheme() ?? 'light'];
+  const palette = usePalette();
   const { connection, serverCapabilities, settings, connect } = useConnection();
   const { chatPreferences } = usePreferences();
   const slim = chatPreferences.slimInterface === true;

@@ -480,7 +480,8 @@ const conversation = await loadTs('providers/use-conversation-state.ts', {
   '@/providers/conversation/use-conversation-playback': conversationPlayback,
   '@/providers/conversation/use-conversation-connection': conversationConnection,
 }, voiceRuntime.globals);
-const chatPreferences = (await loadTs('providers/opencode-preferences.ts')).defaultChatPreferences;
+const appearance = await loadTs('constants/appearance.ts');
+const chatPreferences = (await loadTs('providers/opencode-preferences.ts', { '@/constants/appearance': appearance })).defaultChatPreferences;
 voiceRuntime.mount(conversation.useConversationState, {
   connection: { status: 'connected', message: 'ready' }, chatPreferences, currentSessionId: 's', setCurrentSessionId: () => {},
   sessionStatuses: { s: { type: 'busy' } }, messagesBySession: {}, pendingPermissionsBySession: {}, pendingQuestionsBySession: {},

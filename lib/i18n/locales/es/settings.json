@@ -355,6 +355,23 @@
     "description": "Usa el idioma del sistema o elige uno para la interfaz de la aplicación."
   },
   "appearance": {
+    "theme": {
+      "label": "Tema",
+      "description": "Elige claro u oscuro, o sigue la configuración del sistema.",
+      "system": "Seguir sistema",
+      "light": "Claro",
+      "dark": "Oscuro"
+    },
+    "accent": {
+      "label": "Color de acento",
+      "description": "Elige el color destacado para botones, selecciones y tus mensajes.",
+      "green": "Verde",
+      "blue": "Azul",
+      "red": "Rojo",
+      "purple": "Morado",
+      "pink": "Rosa",
+      "gray": "Gris"
+    },
     "chatTextSize": "Tamaño del texto del chat",
     "chatTextSizeDescription": "Ajusta el tamaño del texto de los mensajes. Un texto más pequeño permite ver más conversación a la vez.",
     "flatThread": {

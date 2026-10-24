@@ -3,15 +3,14 @@ import { StyleSheet, View } from 'react-native';
 import { List } from 'react-native-paper';
 
 import { LANGUAGE_OPTIONS } from '@/components/settings/settings-utils';
-import { Colors } from '@/constants/theme';
-import { useColorScheme } from '@/hooks/use-color-scheme';
 import { getNormalizedServerUrl } from '@/lib/opencode/client';
 import { getVisibleModels } from '@/providers/opencode-model-selection';
 import { useCapabilities, useConnection, usePreferences, useProjects } from '@/providers/opencode-contexts';
+import { usePalette } from '@/hooks/use-palette';
 
 export function SetupSummary() {
   const { t } = useTranslation();
-  const palette = Colors[useColorScheme() ?? 'light'];
+  const palette = usePalette();
   const { settings, connection, serverCapabilities } = useConnection();
   const { activeProject } = useProjects();
   const { availableModels, configuredProviders } = useCapabilities();

@@ -1,14 +1,15 @@
 import assert from 'node:assert/strict';
-import { readFile } from 'node:fs/promises';
-import ts from 'typescript';
 import { describe, it } from 'vitest';
+
+import { loadTs } from '../helpers/runtime.mjs';
 
 // Migrated from the standalone tests/chat-appearance.test.mjs Node script.
 describe('chat appearance preferences', () => {
   it('normalizes transcript font size and keeps flat/slim defaults off', async () => {
-    const source = await readFile(new URL('../../providers/opencode-preferences.ts', import.meta.url), 'utf8');
-    const output = ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.ESNext, target: ts.ScriptTarget.ES2020 } }).outputText;
-    const { normalizeTranscriptFontSize, defaultChatPreferences } = await import(`data:text/javascript,${encodeURIComponent(output)}`);
+    const appearance = await loadTs('constants/appearance.ts');
+    const { normalizeTranscriptFontSize, defaultChatPreferences } = await loadTs('providers/opencode-preferences.ts', {
+      '@/constants/appearance': appearance,
+    });
 
     assert.equal(normalizeTranscriptFontSize(16), 16);
     assert.equal(normalizeTranscriptFontSize(12.4), 12);
@@ -20,5 +21,7 @@ describe('chat appearance preferences', () => {
     assert.equal(defaultChatPreferences.flatTranscript, false);
     assert.equal(defaultChatPreferences.slimInterface, false);
     assert.equal(defaultChatPreferences.transcriptVerbosity, 'basic');
+    assert.equal(defaultChatPreferences.themeMode, 'system');
+    assert.equal(defaultChatPreferences.accentColor, 'green');
   });
 });

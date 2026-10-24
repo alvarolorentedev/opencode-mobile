@@ -63,6 +63,7 @@ const { OverlaySheet } = await loadTs('components/ui/overlay-sheet.tsx', {
   'react-native-safe-area-context': { useSafeAreaInsets: () => ({ top: 62, bottom: 34 }) },
   '@/constants/theme': { Colors: { dark: {} } },
   '@/hooks/use-update-blocker': { useUpdateBlocker: () => {} },
+  '@/hooks/use-palette': { usePalette: () => ({}) },
   '@/hooks/use-color-scheme': { useColorScheme: () => 'dark' },
   '@/hooks/use-dismiss-on-back': { useDismissOnBack: () => {} },
   './use-swipe-dismiss': { useSwipeDismiss: () => ({ pan: {}, sheetStyle: {}, backdropStyle: {}, handleSheetLayout: () => {} }) },

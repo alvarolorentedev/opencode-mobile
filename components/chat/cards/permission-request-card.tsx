@@ -3,9 +3,8 @@ import { useTranslation } from 'react-i18next';
 import { StyleSheet, View } from 'react-native';
 import { Button, Card, Text } from 'react-native-paper';
 
-import { Colors } from '@/constants/theme';
-import { useColorScheme } from '@/hooks/use-color-scheme';
 import type { PendingPermissionRequest } from '@/lib/opencode/client';
+import { usePalette } from '@/hooks/use-palette';
 
 function getPermissionTitle(request: PendingPermissionRequest) {
   return request.permission
@@ -27,8 +26,7 @@ export function PermissionRequestCard({
   sourceTitle?: string;
 }) {
   const { t } = useTranslation();
-  const colorScheme = useColorScheme() ?? 'light';
-  const palette = Colors[colorScheme];
+  const palette = usePalette();
   const [submitting, setSubmitting] = useState<'once' | 'always' | 'reject' | undefined>(undefined);
 
   const handleReply = (reply: 'once' | 'always' | 'reject') => {

@@ -13,8 +13,8 @@ import { useKeyboardHeight } from '@/hooks/use-keyboard-height';
 import { getModelVariantLabel, REASONING_OPTIONS } from '@/components/chat/chat-view-utils';
 import { ControlButton } from '@/components/chat/chat-controls';
 import { renderProviderIcon } from '@/components/ui/provider-icon';
-import { Colors, Fonts } from '@/constants/theme';
-import { useColorScheme } from '@/hooks/use-color-scheme';
+import { Fonts } from '@/constants/theme';
+import { usePalette } from '@/hooks/use-palette';
 import type { ServerContract } from '@/lib/opencode/client';
 import type { ModelOption, ReasoningLevel } from '@/providers/opencode-provider';
 
@@ -41,8 +41,7 @@ function getSelectedModelLabel(models: ModelOption[], selectedModelId: string | 
 
 export function ModelPicker({ disabled = false, models, onSelect, recentModelIds, selectedModelId, slim = false, compact = false, reasoningLabel, reasoning, onReasoningChange, serverContract, selectedVariant, onVariantChange }: ModelPickerProps) {
   const { t } = useTranslation();
-  const colorScheme = useColorScheme() ?? 'light';
-  const palette = Colors[colorScheme];
+  const palette = usePalette();
   const [visible, setVisible] = useState(false);
   const [query, setQuery] = useState('');
   useUpdateBlocker(visible);

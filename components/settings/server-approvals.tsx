@@ -7,13 +7,12 @@ import { useApprovals, useChat, useConnection, usePreferences } from '@/provider
 import { useWorkspaces } from '@/providers/workspace-context';
 import { PermissionRequestCard } from '@/components/chat/cards/permission-request-card';
 import { PermissionsSection } from '@/components/settings/sections/permissions-section';
-import { Colors } from '@/constants/theme';
-import { useColorScheme } from '@/hooks/use-color-scheme';
 import { getConnectionUiScope } from '@/lib/connection-scope';
+import { usePalette } from '@/hooks/use-palette';
 export function ServerApprovals() {
   const { t } = useTranslation();
   const router = useRouter();
-  const palette = Colors[useColorScheme() ?? 'light'];
+  const palette = usePalette();
   const { approvals } = useApprovals();
   const { setAutoApprove } = useChat();
   const { chatPreferences } = usePreferences();

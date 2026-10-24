@@ -9,8 +9,8 @@ import { AttachmentStrip } from '@/components/chat/attachment-strip';
 import { ProjectPicker } from '@/components/ui/project-picker';
 import { OverlaySheet } from '@/components/ui/overlay-sheet';
 import { TextInput } from '@/components/ui/text-input';
-import { Colors, Fonts } from '@/constants/theme';
-import { useColorScheme } from '@/hooks/use-color-scheme';
+import { Fonts } from '@/constants/theme';
+import { usePalette } from '@/hooks/use-palette';
 import { useChat, useConnection, useOnboarding, useProjects } from '@/providers/opencode-contexts';
 
 /**
@@ -24,7 +24,7 @@ export default function ShareScreen() {
   const router = useRouter();
   const { receipt } = useLocalSearchParams<{ receipt?: string }>();
   const insets = useSafeAreaInsets();
-  const palette = Colors[useColorScheme() ?? 'light'];
+  const palette = usePalette();
   const { isHydrated, onboardingCompleted } = useOnboarding();
   const { connection, settings } = useConnection();
   const { activeProject } = useProjects();

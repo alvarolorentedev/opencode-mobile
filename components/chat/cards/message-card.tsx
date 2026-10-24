@@ -7,7 +7,7 @@ import { Chip, IconButton, Surface, Text } from 'react-native-paper';
 import { AttachmentStrip } from '@/components/chat/attachment-strip';
 import { MarkdownText } from '@/components/chat/chat-markdown';
 import { Colors } from '@/constants/theme';
-import { useColorScheme } from '@/hooks/use-color-scheme';
+import { usePalette } from '@/hooks/use-palette';
 import { formatTimestamp, type TranscriptEntry } from '@/lib/opencode/format';
 import { shouldShowPatchSummary, summarizeTranscriptDetails, type TranscriptVerbosity } from '@/lib/opencode/transcript';
 
@@ -43,8 +43,7 @@ function TranscriptMessageImpl({
   verbosity = 'basic',
 }: TranscriptMessageProps) {
   const { t } = useTranslation();
-  const colorScheme = useColorScheme() ?? 'light';
-  const palette = Colors[colorScheme];
+  const palette = usePalette();
   const isUser = entry.role === 'user';
   // Non-flat user bubbles stay dark in both themes, so their code surface must
   // use the dark palette. Flat messages follow the active theme's text color.

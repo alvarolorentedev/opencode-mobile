@@ -8,9 +8,8 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ConnectCameraGate } from '@/components/settings/connect-camera-gate';
 import { ConnectScanner } from '@/components/settings/connect-scanner';
 import type { ConnectionProfileFormValues } from '@/components/settings/connection-profile-dialog';
-import { Colors } from '@/constants/theme';
-import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useUpdateBlocker } from '@/hooks/use-update-blocker';
+import { usePalette } from '@/hooks/use-palette';
 import { LocalPairingError } from '@/lib/opencode/pairing';
 import { useConnection } from '@/providers/opencode-contexts';
 
@@ -27,7 +26,7 @@ export function ConnectionScanFlow({ onSubmit, onDismiss, onBusyChange }: {
   useUpdateBlocker(true);
   const { t } = useTranslation();
   const { connectionProfiles } = useConnection();
-  const palette = Colors[useColorScheme() ?? 'light'];
+  const palette = usePalette();
   const native = (Platform.OS === 'ios' || Platform.OS === 'android') && !Constants.expoConfig?.extra?.foss;
   const [message, setMessage] = useState<string>();
   // Redeemed credentials survive a failed save/connect so Retry never re-pairs.

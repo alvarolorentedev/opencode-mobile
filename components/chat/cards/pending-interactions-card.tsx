@@ -3,10 +3,9 @@ import { useTranslation } from 'react-i18next';
 import { StyleSheet, View } from 'react-native';
 import { Card, Text } from 'react-native-paper';
 
-import { Colors } from '@/constants/theme';
-import { useColorScheme } from '@/hooks/use-color-scheme';
 import type { PendingPermission } from '@/lib/opencode/client';
 import { PermissionRequestCard } from './permission-request-card';
+import { usePalette } from '@/hooks/use-palette';
 
 export function PendingInteractionsCard({
   onPermissionReply,
@@ -16,8 +15,7 @@ export function PendingInteractionsCard({
   permissions: PendingPermission[];
 }) {
   const { t } = useTranslation();
-  const colorScheme = useColorScheme() ?? 'light';
-  const palette = Colors[colorScheme];
+  const palette = usePalette();
 
   return (
     <Card mode="contained" style={[styles.sectionCard, { backgroundColor: palette.surface }]}> 

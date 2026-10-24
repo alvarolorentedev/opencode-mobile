@@ -3,13 +3,12 @@ import { useTranslation } from 'react-i18next';
 import { ScrollView, StyleSheet, View } from 'react-native';
 import { ActivityIndicator, Button, HelperText, Icon, RadioButton, Text } from 'react-native-paper';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Colors } from '@/constants/theme';
-import { useColorScheme } from '@/hooks/use-color-scheme';
 import type { ConnectSetup } from '@/providers/use-connect-state';
+import { usePalette } from '@/hooks/use-palette';
 
 export function ConnectSubscription({ setup, showRestore = true, onboardingHeader }: { setup: ConnectSetup; showRestore?: boolean; onboardingHeader?: ReactNode }) {
   const { t, i18n } = useTranslation();
-  const palette = Colors[useColorScheme() ?? 'light'];
+  const palette = usePalette();
   const insets = useSafeAreaInsets();
   const [selectedOffer, setSelectedOffer] = useState('');
   const selected = setup.offers.find((offer) => offer.key === selectedOffer) ?? setup.offers[0];

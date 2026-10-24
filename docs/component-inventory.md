@@ -647,6 +647,20 @@ Responsibility:
 - persist the choice through `updateChatPreferences({ language })`; `undefined` follows the OS locale
 - list the supported languages built from `SUPPORTED_LANGUAGES`
 
+### `AppearanceSection`
+
+`components/settings/sections/appearance-section.tsx`, rendered inside
+`GeneralSection` above the slim-interface switch.
+
+Responsibility:
+
+- choose the app theme mode (`follow system`, `light`, `dark`)
+- choose an accent preset (`green` default plus blue, red, purple, pink, gray)
+  from accessible swatch buttons
+- persist both through `updateChatPreferences`; `hooks/use-palette.ts` and
+  `hooks/use-color-scheme.ts` consume the provider-published appearance context
+- expose `settings-theme-mode` and `settings-accent-<name>` test IDs
+
 ### `UpdateSection`
 
 Responsibility:

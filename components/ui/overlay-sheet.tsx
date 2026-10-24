@@ -8,9 +8,8 @@ import Animated from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { useUpdateBlocker } from '@/hooks/use-update-blocker';
-import { Colors } from '@/constants/theme';
-import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useDismissOnBack } from '@/hooks/use-dismiss-on-back';
+import { usePalette } from '@/hooks/use-palette';
 import { useSwipeDismiss } from './use-swipe-dismiss';
 
 export function OverlaySheet({ visible, title, onClose, children, headerAction, testID, fitContent = false, scrollable = true, compact = false, blockUpdates = true, dismissible = true }: {
@@ -31,7 +30,7 @@ export function OverlaySheet({ visible, title, onClose, children, headerAction, 
   useUpdateBlocker(visible && blockUpdates);
   const { height } = useWindowDimensions();
   const { t } = useTranslation();
-  const palette = Colors[useColorScheme() ?? 'light'];
+  const palette = usePalette();
   // Android back dismisses the open sheet instead of navigating the screen behind it.
   useDismissOnBack(visible && dismissible, onClose);
   const { pan, sheetStyle, backdropStyle, handleSheetLayout } = useSwipeDismiss({

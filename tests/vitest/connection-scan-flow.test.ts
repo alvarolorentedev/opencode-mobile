@@ -29,6 +29,7 @@ async function flow(platform = 'android', foss = false, onSubmit = vi.fn()) {
     '@/constants/theme': { Colors: { light: {} } },
     '@/hooks/use-update-blocker': { useUpdateBlocker: () => {} },
     '@/hooks/use-color-scheme': { useColorScheme: () => 'light' },
+    '@/hooks/use-palette': { usePalette: () => ({}) },
     '@/lib/opencode/pairing': { LocalPairingError },
     '@/providers/opencode-contexts': { useConnection: () => ({ connectionProfiles: { pair } }) },
   }, { Error });

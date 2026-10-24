@@ -23,6 +23,7 @@ async function pairing(guided = true, entitled = false) {
     'react-native-safe-area-context': { useSafeAreaInsets: () => ({ top: 0, bottom: 0 }) },
     '@/constants/theme': { Colors: { light: {} } },
     '@/hooks/use-color-scheme': { useColorScheme: () => 'light' },
+    '@/hooks/use-palette': { usePalette: () => ({}) },
     '@/hooks/use-dismiss-on-back': { useDismissOnBack: vi.fn() },
     '@/hooks/use-update-blocker': { useUpdateBlocker: vi.fn() },
     '@/lib/connect': {},

@@ -856,7 +856,7 @@ This is one of the densest parts of the architecture and would need careful pari
   drag through `components/ui/use-swipe-dismiss.ts`; the `Modal` sheets wrap
   their content in `GestureHandlerRootView` so the gesture is recognized inside
   the native `Modal` window.
-- The app uses custom theme tokens from `constants/theme.ts` and maps them into React Native Paper in `constants/paper-theme.ts`.
+- The app uses custom theme tokens from `constants/theme.ts` and maps them into React Native Paper in `constants/paper-theme.ts`. `constants/appearance.ts` defines the app-wide theme mode (`system`, `light`, `dark`) and accent presets (`green` default plus blue, red, purple, pink, and gray). `providers/appearance-context.tsx` publishes the effective scheme and accent; `hooks/use-color-scheme.ts` and `hooks/use-palette.ts` are the only read paths. Accent presets override interactive tokens only, so neutral surfaces stay shared. The appearance preferences persist globally with `chatPreferences` but are excluded from `serverPreferences` so connections cannot overwrite them.
 - Markdown rendering is intentionally narrow and custom, not library-based.
 - Diff rendering is custom and optimized for readable in-app inspection, not full git-style fidelity.
 - The chat area surfaces server-owned todos in a collapsed overlay with read-only status icons. It does not mutate todo state.

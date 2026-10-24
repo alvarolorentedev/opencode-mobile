@@ -8,7 +8,7 @@ const subscribe = () => () => undefined;
  * `useSyncExternalStore` gives the server snapshot ('light') and the hydrated client snapshot
  * without a state-setting effect.
  */
-export function useColorScheme(): 'light' | 'dark' {
+export function useSystemColorScheme(): 'light' | 'dark' {
   const colorScheme = useRNColorScheme();
   const hasHydrated = useSyncExternalStore(subscribe, () => true, () => false);
 

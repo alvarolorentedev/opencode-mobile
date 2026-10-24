@@ -4,14 +4,13 @@ import { View } from 'react-native';
 import { ActivityIndicator, Button, Divider, IconButton, List, Text } from 'react-native-paper';
 
 import { TextInput } from '@/components/ui/text-input';
-import { Colors } from '@/constants/theme';
-import { useColorScheme } from '@/hooks/use-color-scheme';
 import { confirmAction } from '@/lib/confirm-action';
 import { useConnection, useProjects, useProjectFiles } from '@/providers/opencode-contexts';
+import { usePalette } from '@/hooks/use-palette';
 
 export function WorktreePicker({ visible, onSelect }: { visible: boolean; onSelect: (path: string) => void }) {
   const { t } = useTranslation();
-  const palette = Colors[useColorScheme() ?? 'light'];
+  const palette = usePalette();
   const { connection, serverCapabilities } = useConnection();
   const { activeProjectPath } = useProjects();
   const { worktrees, refreshWorktrees, createWorktree, resetWorktree, removeWorktree } = useProjectFiles();

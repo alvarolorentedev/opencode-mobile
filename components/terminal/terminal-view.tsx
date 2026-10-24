@@ -68,7 +68,7 @@ export function TerminalView({ visible, slim, palette, onError }: {
     const owned = registrations.current;
     return () => { for (const cleanup of owned.values()) cleanup(); owned.clear(); cancelWrites(); };
   }, [cancelWrites]);
-  const theme = useMemo(() => ({ background: palette.background, foreground: palette.text, cursor: palette.tint, selectionBackground: '#296455' }), [palette.background, palette.text, palette.tint]);
+  const theme = useMemo(() => ({ background: palette.background, foreground: palette.text, cursor: palette.tint, selectionBackground: `${palette.tint}55` }), [palette.background, palette.text, palette.tint]);
   const labels = useMemo(() => ({
     paste: t('terminal:accessory.paste'), copy: t('terminal:accessory.copy'), latest: t('terminal:accessory.latest'),
     input: t('terminal:accessory.input'), more: t('terminal:accessory.more'),

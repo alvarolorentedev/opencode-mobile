@@ -10,8 +10,6 @@ import { SwipeRow } from '@/components/ui/swipe-row';
 import { TextInput } from '@/components/ui/text-input';
 import { ProjectPicker, ProjectPickerButton } from '@/components/ui/project-picker';
 import { WorkspaceSelect } from '@/components/ui/workspace-select';
-import { Colors } from '@/constants/theme';
-import { useColorScheme } from '@/hooks/use-color-scheme';
 import { formatRelativeTime } from '@/lib/opencode/format';
 import { confirmAction } from '@/lib/confirm-action';
 import { usePreferences, useProjects, useConnection } from '@/providers/opencode-contexts';
@@ -19,10 +17,11 @@ import { useWorkspaces } from '@/providers/workspace-context';
 import { useWorkspaceLibrary } from '@/providers/use-workspace-library';
 import { sessionKey, workspaceKey } from '@/providers/workspace-types';
 import type { LibrarySession } from '@/providers/workspace-library';
+import { usePalette } from '@/hooks/use-palette';
 
 export function ChatLibrary({ visible, onClose, onNewChat }: { visible: boolean; onClose: () => void; onNewChat: () => void }) {
   const { t } = useTranslation();
-  const palette = Colors[useColorScheme() ?? 'light'];
+  const palette = usePalette();
   const { activeProject } = useProjects();
   const { serverCapabilities } = useConnection();
   const { chatPreferences, updateChatPreferences } = usePreferences();

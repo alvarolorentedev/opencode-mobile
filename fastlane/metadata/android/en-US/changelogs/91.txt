@@ -1,0 +1,3 @@
+- Settings can now follow the system theme or lock to light/dark, with a new accent color picker for buttons, selections, and your messages.
+- Chat activity shows file changes with per-file additions, deletions, and expandable diffs.
+- Search and tool activity now report match counts, and long transcripts page more smoothly.

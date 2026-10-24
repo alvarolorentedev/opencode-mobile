@@ -2,16 +2,15 @@ import { useTranslation } from 'react-i18next';
 import { StyleSheet, View } from 'react-native';
 import { Text } from 'react-native-paper';
 
-import { Colors } from '@/constants/theme';
-import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useConnection, useDiagnostics } from '@/providers/opencode-contexts';
+import { usePalette } from '@/hooks/use-palette';
 
 // A compact, non-blocking transport notice. It never replaces a populated
 // transcript with an error card; it only explains why fresh data or a send is
 // delayed, which is the part a 4G user cannot infer from a spinner.
 export function ConnectionStatusBanner() {
   const { t } = useTranslation();
-  const palette = Colors[useColorScheme() ?? 'light'];
+  const palette = usePalette();
   const { connection } = useConnection();
   const { eventStreamStatus, transport } = useDiagnostics();
   const retryAt = transport.reconnect.retryAt;

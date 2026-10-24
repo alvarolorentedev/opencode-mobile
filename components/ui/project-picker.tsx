@@ -9,15 +9,14 @@ import { WorkspaceSelect } from '@/components/ui/workspace-select';
 import { useWorkspaces } from '@/providers/workspace-context';
 import { useWorkspaceProjects } from '@/providers/use-workspace-projects';
 import { ProjectOptions } from '@/components/onboarding/project-options';
-import { Colors } from '@/constants/theme';
-import { useColorScheme } from '@/hooks/use-color-scheme';
 import type { WorkspaceTarget } from '@/providers/workspace-types';
 import { OverlaySheet } from './overlay-sheet';
 import { TextInput } from './text-input';
+import { usePalette } from '@/hooks/use-palette';
 
 export function ProjectPickerButton({ onPress }: { onPress: () => void }) {
   const { t } = useTranslation();
-  const palette = Colors[useColorScheme() ?? 'light'];
+  const palette = usePalette();
   return <Pressable accessibilityRole="button" accessibilityLabel={t('project:picker.changeProject')} onPress={onPress} style={styles.button}>
     <MaterialCommunityIcons name="folder-swap-outline" size={20} color={palette.tint} />
     <NativeText style={{ color: palette.tint }}>{t('common:tabs.projects')}</NativeText>
@@ -32,7 +31,7 @@ export function ProjectPicker({ visible, onClose, activePath, onSelected, testID
   testID?: string;
 }) {
   const { t } = useTranslation();
-  const palette = Colors[useColorScheme() ?? 'light'];
+  const palette = usePalette();
   const registry = useWorkspaces();
   const { groups, add, remove } = useWorkspaceProjects();
   const multipleServers = registry.connections.length > 1;

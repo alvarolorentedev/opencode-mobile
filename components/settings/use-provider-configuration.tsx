@@ -6,12 +6,11 @@ import { useTranslation } from 'react-i18next';
 
 import { ProviderConfigDialog, type ProviderOAuthStage, type ProviderSetupStep } from '@/components/settings/provider-config-dialog';
 import { getProviderCopy, supportsGenericApiKey } from '@/components/settings/settings-utils';
-import { Colors } from '@/constants/theme';
-import { useColorScheme } from '@/hooks/use-color-scheme';
 import type { ServerContract } from '@/lib/opencode/client';
 import { parseProviderOAuthRedirect } from '@/lib/opencode/oauth';
 import { useCapabilities, useConnection } from '@/providers/opencode-contexts';
 import type { ProviderAuthMethod, ProviderAuthValues } from '@/providers/opencode-provider';
+import { usePalette } from '@/hooks/use-palette';
 
 type ProviderFeedback = { type: 'success' | 'info' | 'error'; message: string };
 
@@ -71,7 +70,7 @@ export function buildEffectiveMethods(
  */
 export function useProviderConfiguration() {
   const { t } = useTranslation();
-  const palette = Colors[useColorScheme() ?? 'light'];
+  const palette = usePalette();
   const { availableProviders, providerAuthMethodsById, providerAccounts, setProviderAuth, providerOAuth } = useCapabilities();
   const { connect, serverCapabilities } = useConnection();
 

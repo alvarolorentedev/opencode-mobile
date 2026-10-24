@@ -7,14 +7,13 @@ import { useOnboardingNavigation } from '@/components/onboarding/use-onboarding-
 import { OnboardingStep } from '@/components/onboarding/onboarding-step';
 import { ProjectOptions } from '@/components/onboarding/project-options';
 import { TextInput } from '@/components/ui/text-input';
-import { Colors } from '@/constants/theme';
-import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useProjects } from '@/providers/opencode-contexts';
+import { usePalette } from '@/hooks/use-palette';
 
 export default function OnboardingProjectScreen() {
   const { t } = useTranslation();
   const navigation = useOnboardingNavigation('project');
-  const palette = Colors[useColorScheme() ?? 'light'];
+  const palette = usePalette();
   const {
     projects,
     activeProjectPath,

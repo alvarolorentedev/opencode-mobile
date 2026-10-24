@@ -1,5 +1,5 @@
-import { useColorScheme as useRNColorScheme } from 'react-native';
+import { useAppearance } from '@/providers/appearance-context';
 
 export function useColorScheme(): 'light' | 'dark' {
-  return useRNColorScheme() === 'dark' ? 'dark' : 'light';
+  return useAppearance().scheme;
 }

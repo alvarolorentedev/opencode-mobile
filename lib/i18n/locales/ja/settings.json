@@ -355,6 +355,23 @@
     "description": "システム言語を使用するか、アプリインターフェース用に1つ選択します。"
   },
   "appearance": {
+    "theme": {
+      "label": "テーマ",
+      "description": "ライトまたはダークを選択するか、システム設定に従います。",
+      "system": "システムに従う",
+      "light": "ライト",
+      "dark": "ダーク"
+    },
+    "accent": {
+      "label": "アクセントカラー",
+      "description": "ボタン、選択状態、自分のメッセージに使う強調色を選択します。",
+      "green": "グリーン",
+      "blue": "ブルー",
+      "red": "レッド",
+      "purple": "パープル",
+      "pink": "ピンク",
+      "gray": "グレー"
+    },
     "chatTextSize": "チャットの文字サイズ",
     "chatTextSizeDescription": "チャットメッセージの文字サイズを調整します。小さくすると、一度により多くの会話を表示できます。",
     "flatThread": {

@@ -4,10 +4,10 @@ import {
   type MD3Theme,
 } from 'react-native-paper';
 
-import { Colors } from '@/constants/theme';
+import { DEFAULT_ACCENT_COLOR, getColors, type AccentColor, type ColorScheme } from '@/constants/theme';
 
-export function getPaperTheme(colorScheme: 'light' | 'dark'): MD3Theme {
-  const palette = Colors[colorScheme];
+export function getPaperTheme(colorScheme: ColorScheme, accent: AccentColor = DEFAULT_ACCENT_COLOR): MD3Theme {
+  const palette = getColors(colorScheme, accent);
   const base = colorScheme === 'dark' ? MD3DarkTheme : MD3LightTheme;
 
   return {

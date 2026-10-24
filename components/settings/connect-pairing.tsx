@@ -12,10 +12,9 @@ import { ConnectSubscription } from '@/components/settings/connect-subscription'
 import { ConnectOnboarding } from '@/components/settings/connect-onboarding';
 import { OverlaySheet } from '@/components/ui/overlay-sheet';
 import { TextInput } from '@/components/ui/text-input';
-import { Colors } from '@/constants/theme';
-import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useDismissOnBack } from '@/hooks/use-dismiss-on-back';
 import { useUpdateBlocker } from '@/hooks/use-update-blocker';
+import { usePalette } from '@/hooks/use-palette';
 import { CONNECT_LEARN_MORE_URL } from '@/lib/connect';
 import type { ConnectSetup } from '@/providers/use-connect-state';
 
@@ -24,7 +23,7 @@ export function ConnectEntry(props: { setup: ConnectSetup; onConnected: () => vo
   const [startedFromChooser, setStartedFromChooser] = useState(false);
   const [busy, setBusy] = useState(false);
   const { t } = useTranslation();
-  const palette = Colors[useColorScheme() ?? 'light'];
+  const palette = usePalette();
   const insets = useSafeAreaInsets();
   const { deepLink, ...rest } = props;
   if (!choosing) {
@@ -41,7 +40,7 @@ export function ConnectEntry(props: { setup: ConnectSetup; onConnected: () => vo
 
 export function ConnectPairing({ setup, onConnected, onClose, onManage, guided = false }: { setup: ConnectSetup; onConnected: () => void; onClose: () => void; onManage: () => void; guided?: boolean }) {
   const { t } = useTranslation();
-  const palette = Colors[useColorScheme() ?? 'light'];
+  const palette = usePalette();
   const insets = useSafeAreaInsets();
   const focused = useIsFocused();
   const [active, setActive] = useState(AppState.currentState === 'active');

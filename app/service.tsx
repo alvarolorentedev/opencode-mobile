@@ -5,9 +5,8 @@ import { Appbar, HelperText, Text } from 'react-native-paper';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { ServiceEditor } from '@/components/settings/service-editor';
-import { Colors } from '@/constants/theme';
-import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useConnection } from '@/providers/opencode-contexts';
+import { usePalette } from '@/hooks/use-palette';
 
 // Full-screen add/edit route for one connector service. The services domain
 // (target machine, credentials, connector revision) stays in the provider; this
@@ -17,7 +16,7 @@ export default function ServiceScreen() {
   const router = useRouter();
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
-  const palette = Colors[useColorScheme() ?? 'light'];
+  const palette = usePalette();
   const { connectSetup, services } = useConnection();
   if (!connectSetup.enabled) return null;
   const editing = params.id ? services.services.find((service) => service.id === params.id) : undefined;

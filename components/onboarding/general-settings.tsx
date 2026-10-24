@@ -4,14 +4,13 @@ import { HelperText } from 'react-native-paper';
 import { PromptDeliveryField, TranscriptDetailField } from '@/components/settings/sections/chat-preference-fields';
 import { LanguageSection } from '@/components/settings/sections/language-section';
 import { SettingSelectField } from '@/components/settings/sections/setting-rows';
-import { Colors } from '@/constants/theme';
-import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useCapabilities, useConnection, usePreferences } from '@/providers/opencode-contexts';
 import { getVisibleModels } from '@/providers/opencode-model-selection';
+import { usePalette } from '@/hooks/use-palette';
 
 export function OnboardingGeneralSettings() {
   const { t } = useTranslation();
-  const palette = Colors[useColorScheme() ?? 'light'];
+  const palette = usePalette();
   const { chatPreferences, updateChatPreferences } = usePreferences();
   const { availableModels, configuredProviders } = useCapabilities();
   const { connection, serverCapabilities } = useConnection();

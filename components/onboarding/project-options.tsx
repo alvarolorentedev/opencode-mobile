@@ -2,9 +2,8 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
 import { Pressable, StyleSheet, Text as NativeText, View } from 'react-native';
 
-import { Colors } from '@/constants/theme';
-import { useColorScheme } from '@/hooks/use-color-scheme';
 import type { OpencodeProject } from '@/providers/opencode-provider-types';
+import { usePalette } from '@/hooks/use-palette';
 
 /**
  * Presentational project row list shared by the project picker overlay and
@@ -25,7 +24,7 @@ export function ProjectOptions({
   disabled?: boolean;
 }) {
   const { t } = useTranslation();
-  const palette = Colors[useColorScheme() ?? 'light'];
+  const palette = usePalette();
 
   return (
     <>

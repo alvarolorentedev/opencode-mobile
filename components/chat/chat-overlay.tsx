@@ -3,8 +3,9 @@ import { useTranslation } from 'react-i18next';
 import { Animated, Easing, StyleSheet, View } from 'react-native';
 import { Button, Text } from 'react-native-paper';
 
-import { Fonts } from '@/constants/theme';
+import { Fonts, getColors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
+import { useAppearance } from '@/providers/appearance-context';
 
 const PHASE_LABEL_KEYS = {
   off: 'chat:overlay.phaseOff',
@@ -30,6 +31,7 @@ export function ConversationOverlay({
   sessionTitle: string;
 }) {
   const colorScheme = useColorScheme() ?? 'light';
+  const { accent: accentColor } = useAppearance();
   const { t } = useTranslation();
   const [orbScale] = useState(() => new Animated.Value(1));
   const [orbOpacity] = useState(() => new Animated.Value(0.9));
@@ -54,7 +56,9 @@ export function ConversationOverlay({
     ]).start();
   }, [orbOpacity, orbScale, phase]);
 
-  const accent = colorScheme === 'dark' ? '#4EE0B6' : '#6FDCCA';
+  // The overlay is always dark, so use the dark accent tint regardless of the
+  // active scheme.
+  const accent = getColors('dark', accentColor).tint;
   const electric = '#2C8CFF';
   const overlayBackground = colorScheme === 'dark' ? '#020404' : '#040808';
   const overlaySurface = colorScheme === 'dark' ? 'rgba(16, 22, 21, 0.92)' : 'rgba(18, 27, 26, 0.88)';

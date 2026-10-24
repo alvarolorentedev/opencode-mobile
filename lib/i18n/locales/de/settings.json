@@ -355,6 +355,23 @@
     "description": "Verwende die Systemsprache oder wähle eine für die App-Oberfläche."
   },
   "appearance": {
+    "theme": {
+      "label": "Design",
+      "description": "Wähle Hell oder Dunkel oder folge der Systemeinstellung.",
+      "system": "System folgen",
+      "light": "Hell",
+      "dark": "Dunkel"
+    },
+    "accent": {
+      "label": "Akzentfarbe",
+      "description": "Wähle die Akzentfarbe für Schaltflächen, Auswahl und deine Nachrichten.",
+      "green": "Grün",
+      "blue": "Blau",
+      "red": "Rot",
+      "purple": "Lila",
+      "pink": "Rosa",
+      "gray": "Grau"
+    },
     "chatTextSize": "Chat-Textgröße",
     "chatTextSizeDescription": "Passe die Textgröße der Nachrichten an. Kleinere Schrift zeigt mehr vom Gespräch auf einmal.",
     "flatThread": {

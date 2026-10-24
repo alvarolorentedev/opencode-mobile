@@ -1,9 +1,8 @@
 import { useTranslation } from 'react-i18next';
 import { StyleSheet, View } from 'react-native';
 import { IconButton, Text } from 'react-native-paper';
+import { usePalette } from '@/hooks/use-palette';
 
-import { Colors } from '@/constants/theme';
-import { useColorScheme } from '@/hooks/use-color-scheme';
 
 type RevertNoticeProps = {
   busy?: boolean;
@@ -12,7 +11,7 @@ type RevertNoticeProps = {
 
 export function RevertNotice({ busy = false, onCancel }: RevertNoticeProps) {
   const { t } = useTranslation();
-  const palette = Colors[useColorScheme() ?? 'light'];
+  const palette = usePalette();
   return (
     <View style={styles.stack}>
       <View testID="chat-revert-notice" style={[styles.notice, { backgroundColor: palette.surfaceAlt, borderColor: palette.border }]}>
