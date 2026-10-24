@@ -185,7 +185,7 @@ describe('service management requests', () => {
     const fetch = vi.fn(async () => jsonResponse({ services: [service()] }));
     vi.stubGlobal('fetch', fetch);
     await expect(listManagedServices(settings)).resolves.toEqual([service()]);
-    const [url, init] = fetch.mock.calls[0] as [string, RequestInit];
+    const [url, init] = fetch.mock.calls[0] as unknown as [string, RequestInit];
     expect(url).toBe('https://m-opaque.opencodecloud.link/_cloudlink/services');
     expect(init.method).toBe('GET');
     expect((init.headers as Record<string, string>).Authorization).toBe(`Basic ${Buffer.from('device-1:device-secret').toString('base64')}`);
@@ -234,7 +234,7 @@ describe('service management requests', () => {
     const fetch = vi.fn(async () => jsonResponse({ service: service({ id: 'app', port: 2053, path: null }) }, 201));
     vi.stubGlobal('fetch', fetch);
     await expect(putManagedService(settings, 'app', { port: 2053, path: null, target: '127.0.0.1:3000' })).resolves.toEqual(service({ id: 'app', port: 2053, path: null }));
-    const [url, init] = fetch.mock.calls[0] as [string, RequestInit];
+    const [url, init] = fetch.mock.calls[0] as unknown as [string, RequestInit];
     expect(url).toBe('https://m-opaque.opencodecloud.link/_cloudlink/services/app');
     expect(init.method).toBe('PUT');
     expect(init.body).toBe(JSON.stringify({ port: 2053, path: null, target: '127.0.0.1:3000' }));
@@ -244,14 +244,14 @@ describe('service management requests', () => {
     const fetch = vi.fn(async () => jsonResponse({ service: { id: 'api', name: 'API', path: '/test/api', target: '127.0.0.1:3000', enabled: false, access: 'private', strip_prefix: true } }, 201));
     vi.stubGlobal('fetch', fetch);
     await expect(putManagedService(settings, 'api', { path: '/test/api', target: '127.0.0.1:3000' })).resolves.toEqual(service());
-    expect((fetch.mock.calls[0] as [string, RequestInit])[1].body).toBe(JSON.stringify({ path: '/test/api', target: '127.0.0.1:3000' }));
+    expect((fetch.mock.calls[0] as unknown as [string, RequestInit])[1].body).toBe(JSON.stringify({ path: '/test/api', target: '127.0.0.1:3000' }));
   });
 
   it('deletes a service', async () => {
     const fetch = vi.fn(async () => new Response(null, { status: 204 }));
     vi.stubGlobal('fetch', fetch);
     await expect(deleteManagedService(settings, 'api')).resolves.toBeUndefined();
-    expect((fetch.mock.calls[0] as [string, RequestInit])[1].method).toBe('DELETE');
+    expect((fetch.mock.calls[0] as unknown as [string, RequestInit])[1].method).toBe('DELETE');
   });
 
   it('surfaces the connector message and status on failure', async () => {

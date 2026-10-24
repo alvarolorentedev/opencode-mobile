@@ -32,7 +32,6 @@
     "tests/vitest/persistence-hydration.test.ts",
     "tests/vitest/provider-runtime.test.ts",
     "tests/vitest/read-deadline.test.ts",
-    "tests/vitest/services-management.test.ts",
     "tests/vitest/share-flow.test.ts",
     "tests/vitest/share-ui.test.ts",
     "tests/vitest/terminal.test.ts",
