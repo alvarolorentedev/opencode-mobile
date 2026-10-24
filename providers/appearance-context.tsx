@@ -1,16 +1,23 @@
-import { createContext, useContext, useMemo, type PropsWithChildren } from 'react';
+import { createContext, useContext, type PropsWithChildren } from 'react';
 
 import { DEFAULT_ACCENT_COLOR, type AccentColor, type ColorScheme } from '@/constants/appearance';
-import { useSystemColorScheme } from '@/hooks/use-system-color-scheme';
+import { getColors, type Palette } from '@/constants/theme';
 
 export type Appearance = {
   scheme: ColorScheme;
   accent: AccentColor;
+  palette: Palette;
 };
 
-// The root shell provides the effective appearance once preferences hydrate.
-// Components rendered outside the provider (tests, isolated previews) fall back
-// to the system scheme so existing call sites keep working unchanged.
+// Components rendered outside the provider (tests, isolated previews) use this
+// static fallback. Production always receives the effective appearance from
+// AppearanceHost, so the system scheme is subscribed exactly once there.
+const FALLBACK_APPEARANCE: Appearance = {
+  scheme: 'light',
+  accent: DEFAULT_ACCENT_COLOR,
+  palette: getColors('light', DEFAULT_ACCENT_COLOR),
+};
+
 const AppearanceContext = createContext<Appearance | undefined>(undefined);
 
 export function AppearanceProvider({ children, value }: PropsWithChildren<{ value: Appearance }>) {
@@ -18,8 +25,5 @@ export function AppearanceProvider({ children, value }: PropsWithChildren<{ valu
 }
 
 export function useAppearance(): Appearance {
-  const value = useContext(AppearanceContext);
-  const scheme = useSystemColorScheme();
-  const fallback = useMemo<Appearance>(() => ({ scheme, accent: DEFAULT_ACCENT_COLOR }), [scheme]);
-  return value ?? fallback;
+  return useContext(AppearanceContext) ?? FALLBACK_APPEARANCE;
 }

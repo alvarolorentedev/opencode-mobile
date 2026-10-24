@@ -76,7 +76,7 @@ function AppearanceHost() {
   const accent = chatPreferences.accentColor ?? DEFAULT_ACCENT_COLOR;
   const palette = useMemo(() => getColors(scheme, accent), [accent, scheme]);
   const paperTheme = useMemo(() => getPaperTheme(scheme, accent), [accent, scheme]);
-  const appearance = useMemo(() => ({ scheme, accent }), [accent, scheme]);
+  const appearance = useMemo(() => ({ scheme, accent, palette }), [accent, palette, scheme]);
 
   // Keep window-level chrome (web overscroll, native root view) on the themed
   // surface so navigation and safe-area edges never flash the OS color.
