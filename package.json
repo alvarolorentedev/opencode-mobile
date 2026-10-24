@@ -114,7 +114,10 @@
     "shell-quote": "^1.11.0",
     "source-map-js": "^1.2.2",
     "compression": "^1.8.2",
-    "decode-uri-component": "^0.5.0"
+    "decode-uri-component": "^0.5.0",
+    "@expo/require-utils": {
+      "typescript": "$typescript"
+    }
   },
   "private": true,
   "engines": {
