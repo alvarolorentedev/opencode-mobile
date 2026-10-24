@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { jitterRetryDelay, MAX_RETRY_MS, nextRetryDelay, RETRY_RESET_MS } from '@/providers/realtime/backoff';
 import { isStreamStale, shouldCycleForeground } from '@/providers/realtime/liveness';
 import { nextPollDelay, shouldPoll } from '@/providers/realtime/polling';
-import { collectReconcileSessionIds } from '@/providers/realtime/reconcile';
+import { collectReconcileSessionIds, createReconciler } from '@/providers/realtime/reconcile';
 
 describe('realtime backoff', () => {
   it('keeps the first recovery attempt fixed and jitters later attempts', () => {
@@ -56,5 +56,34 @@ describe('reconcile session set', () => {
       currentSessionId: 'current',
       conversationSessionId: 'conversation',
     })]).toEqual(['pending', 'current', 'conversation']);
+  });
+
+  it('queues a full reconcile behind an in-flight poll', async () => {
+    let release!: () => void;
+    const blocked = new Promise<void>((resolve) => { release = resolve; });
+    let polls = 0;
+    let fulls = 0;
+    const reconciler = createReconciler({
+      getSources: () => ({
+        pendingSessionIds: [],
+        refreshSessions: async () => { fulls += 1; },
+        refreshSessionStatuses: async () => { polls += 1; await blocked; },
+        refreshPendingInteractions: async () => {},
+        refreshMessages: async () => {},
+        refreshSessionDiff: async () => {},
+        refreshSessionTodos: async () => {},
+      }),
+      onPollFailure: () => {},
+    });
+
+    const poll = reconciler.reconcile();
+    const full = reconciler.reconcile(true);
+    expect(full).toBe(poll);
+    release();
+    await poll;
+    await Promise.resolve();
+    await Promise.resolve();
+    expect(polls).toBe(1);
+    expect(fulls).toBe(1);
   });
 });

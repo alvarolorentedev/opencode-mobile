@@ -3,10 +3,10 @@ import { AppState } from 'react-native';
 import { jitterRetryDelay, MAX_RETRY_MS, RETRY_RESET_MS } from '@/providers/realtime/backoff';
 import { isStreamStale, shouldCycleForeground } from '@/providers/realtime/liveness';
 import { nextPollDelay, shouldPoll } from '@/providers/realtime/polling';
-import { collectReconcileSessionIds } from '@/providers/realtime/reconcile';
+import { createReconciler } from '@/providers/realtime/reconcile';
 import { subscribeEvents } from '@/lib/opencode/events';
 import { classifyConnectionFailure, isAuthConnectionFailure } from '@/lib/opencode/client/errors';
-import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import type { OpencodeEvent } from '@/lib/opencode/events';
 import type { ConnectionFailureKind, ScopedOpencodeClient } from '@/lib/opencode/client';
 import type { TranscriptRefreshMode } from '@/providers/opencode-provider-types';
@@ -54,55 +54,14 @@ export function useOpencodeRealtime({ catalogClient, activeProjectPath, connecte
     latest.current = { ...actions, currentSessionId, conversationSessionId, pendingSessionIds, busy, constrained };
     statusRef.current = eventStreamStatus;
   });
-  const inFlight = useRef<Promise<unknown> | undefined>(undefined);
-  const pendingFull = useRef(false);
-  const reconcile = useCallback(function reconcile(full = false): Promise<unknown> {
-    if (inFlight.current) {
-      // A reconnect's authoritative rebuild must not be swallowed by a poll
-      // that was already running; queue it behind the in-flight pass.
-      if (full) pendingFull.current = true;
-      return inFlight.current;
-    }
-    const next = latest.current;
-    const sessions = collectReconcileSessionIds(next);
-    // A safety poll only needs the running set. Full cursor-paged session lists
-    // stay on reconnect/foreground reconciliation and session-list events.
-    const sessionRefresh = !full && next.refreshSessionStatuses
-      ? next.refreshSessionStatuses()
-      : next.refreshSessions();
-    let result: Promise<unknown>;
-    result = (async () => {
-      // Tier 1: identity, blocking state, and the visible transcript can run
-      // together. A slow session list must not stop the current chat from
-      // tailing its newest page.
-      const corePromise = Promise.allSettled([sessionRefresh, next.refreshPendingInteractions()]);
-      const messagesPromise = Promise.allSettled([...sessions].map((id) => next.refreshMessages(id, true)));
-      const [core, messages] = await Promise.all([corePromise, messagesPromise]);
-      pollFailedRef.current = core.some((entry) => entry.status === 'rejected');
-      if (messages.some((entry) => entry.status === 'rejected')) pollFailedRef.current = true;
-      // Tier 2: diff/todo detail waits for the transcript, so a 3G link does
-      // not carry several large bodies at once.
-      const details = await Promise.allSettled([...sessions].flatMap((id) => [next.refreshSessionDiff(id, true), next.refreshSessionTodos(id)]));
-      if (details.some((entry) => entry.status === 'rejected')) pollFailedRef.current = true;
-      // Tier 3: native surfaces/widgets are useful but never block the chat.
-      if (next.refreshNativeSurfaces) {
-        await Promise.resolve(next.refreshNativeSurfaces(full)).catch(() => undefined);
-      }
-    })().finally(() => {
-      if (inFlight.current !== result) return;
-      inFlight.current = undefined;
-      if (pendingFull.current) {
-        pendingFull.current = false;
-        void reconcile(true);
-      }
-    });
-    inFlight.current = result;
-    return result;
-  }, []);
+  const reconciler = useMemo(() => createReconciler({
+    getSources: () => latest.current,
+    onPollFailure: (failed) => { pollFailedRef.current = failed; },
+  }), []);
+  const { reconcile } = reconciler;
 
   useEffect(() => {
-    inFlight.current = undefined;
-    pendingFull.current = false;
+    reconciler.reset();
     if (!connected || !activeProjectPath || !online) {
       setEventStreamStatus('idle');
       return;
@@ -244,7 +203,7 @@ export function useOpencodeRealtime({ catalogClient, activeProjectPath, connecte
       appState.remove();
       resumeRetry?.();
     };
-  }, [activeProjectPath, catalogClient, connected, online, reconcile, subscribeStream]);
+  }, [activeProjectPath, catalogClient, connected, online, reconcile, reconciler, subscribeStream]);
 
   useEffect(() => {
     if (!connected || !activeProjectPath || !online || !shouldPoll(eventStreamStatus === 'connected', busy)) return;
