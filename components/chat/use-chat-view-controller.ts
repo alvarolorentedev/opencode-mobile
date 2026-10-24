@@ -10,6 +10,7 @@ import { useUpdateBlocker } from '@/hooks/use-update-blocker';
 import { mergeSharedDraft } from '@/lib/share/parse';
 import { workspaceKey } from '@/providers/workspace-types';
 import { getConnectionScope, getConnectionUiScope } from '@/lib/connection-scope';
+import { copyHaptic } from '@/lib/haptics';
 import { type TranscriptEntry } from '@/lib/opencode/format';
 import { buildTranscriptRows, getTurnPatchDetails, getUserTurnForMessage, isTranscriptDisplayMessage } from '@/lib/opencode/transcript';
 import { getLatestContextTokens } from '@/lib/opencode/usage';
@@ -398,7 +399,7 @@ export function useChatViewController() {
 
     await Clipboard.setStringAsync(value);
     setCopiedMessageId(entry.id);
-    void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => undefined);
+    copyHaptic();
   }
 
   async function handleToggleRecording() {

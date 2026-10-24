@@ -43,7 +43,7 @@ async function mountMarkdown() {
     'react/jsx-runtime': { jsx: element, jsxs: element, Fragment: 'Fragment' },
     'react-native': { Linking: { openURL: vi.fn(() => Promise.resolve()) } },
     'react-native-enriched-markdown': { EnrichedMarkdownText: 'EnrichedMarkdownText' },
-    '@/lib/haptics': { codeCopyHaptic: haptic },
+    '@/lib/haptics': { copyHaptic: haptic },
   }, runtime.globals);
   const value = runtime.mount(MarkdownText, {
     codePalette,

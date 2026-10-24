@@ -9,7 +9,7 @@ import { ActivityDiffCard } from '@/components/chat/cards/activity-diff';
 import { MarkdownText } from '@/components/chat/chat-markdown';
 import { Colors } from '@/constants/theme';
 import { formatDuration, getToolDisplayName, isFileChangeToolName } from '@/lib/opencode/format';
-import { codeCopyHaptic } from '@/lib/haptics';
+import { copyHaptic } from '@/lib/haptics';
 import { isShellTool, type ActivityItem, type ToolDetail } from '@/lib/opencode/transcript';
 
 type Palette = typeof Colors.light;
@@ -106,7 +106,7 @@ export function ActivityItemRow({ fontSize, item, palette }: { fontSize: number;
     if (!body) return;
     try {
       await Clipboard.setStringAsync(body);
-      codeCopyHaptic();
+      copyHaptic();
       setCopied(true);
     } catch {
       // Leave the copy affordance unchanged when the platform clipboard fails.

@@ -3,7 +3,7 @@ import { Linking } from 'react-native';
 import { EnrichedMarkdownText, type MarkdownStyle } from 'react-native-enriched-markdown';
 
 import type { CodePalette } from '@/constants/theme';
-import { codeCopyHaptic } from '@/lib/haptics';
+import { copyHaptic } from '@/lib/haptics';
 
 const allowedLinkProtocols = new Set(['http:', 'https:', 'mailto:', 'tel:']);
 
@@ -30,7 +30,7 @@ type MarkdownTextProps = {
 function MarkdownTextImpl({ text, color, fontSize, mutedColor, codePalette }: MarkdownTextProps) {
   const scale = fontSize / 16;
   const handleCopyPress = useCallback(() => {
-    codeCopyHaptic();
+    copyHaptic();
   }, []);
   const markdownStyle = useMemo<MarkdownStyle>(() => ({
     paragraph: { fontSize, color, lineHeight: 26 * scale },

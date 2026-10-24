@@ -287,7 +287,7 @@ Responsibility:
 ### Responsibility
 
 - render assistant/user messages with `react-native-enriched-markdown` in GitHub flavor
-- code-block copy confirms with haptic feedback (the system confirmation effect on Android, with light-impact and raw-vibration fallbacks); it does not reuse the message bubble's copied pill or border, and it does not show a snackbar
+- code-block copy uses the same success haptic as the message bubble copy; it does not reuse the message bubble's copied pill or border, and it does not show a snackbar
 - Code blocks use an opaque theme-aware background and syntax palette; user bubbles use the dark code palette because they stay dark in both themes. Blockquotes are transparent so the renderer's light blockquote default cannot bleed through in dark mode.
 - Message bubbles stretch within their side margins; the renderer stretches within the bubble padding and keeps its measured content height. Avoid percentage widths inside content-sized bubbles, which can mismeasure native wrapping and height.
 

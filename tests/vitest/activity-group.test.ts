@@ -112,7 +112,7 @@ async function mountRead(reads: transcript.ToolDetail[]) {
     '@/components/chat/cards/activity-diff': { ActivityDiffCard: 'ActivityDiffCard' },
     '@/components/chat/chat-markdown': { MarkdownText: 'MarkdownText' },
     '@/constants/theme': { Colors: { light: {} } },
-    '@/lib/haptics': { codeCopyHaptic: () => undefined },
+    '@/lib/haptics': { copyHaptic: () => undefined },
     '@/lib/opencode/format': {
       formatDuration: (ms: number) => `${Math.round(ms / 1000)}s`,
       getToolDisplayName: (name: string) => (name === 'read' ? 'Read' : name === 'bash' ? 'Shell' : name),
@@ -145,7 +145,7 @@ async function mountItem(item: transcript.ActivityItem) {
     '@/components/chat/cards/activity-diff': { ActivityDiffCard: 'ActivityDiffCard' },
     '@/components/chat/chat-markdown': { MarkdownText: 'MarkdownText' },
     '@/constants/theme': { Colors: { light: {} } },
-    '@/lib/haptics': { codeCopyHaptic: () => undefined },
+    '@/lib/haptics': { copyHaptic: () => undefined },
     '@/lib/opencode/format': {
       formatDuration: (ms: number) => `${Math.round(ms / 1000)}s`,
       getToolDisplayName: (name: string) => (name === 'bash' ? 'Shell' : name),
