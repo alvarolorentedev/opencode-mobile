@@ -245,7 +245,6 @@ for (const contract of ['v1', 'v2']) {
       await page.getByLabel('Close file').click();
       await page.getByRole('button', { name: 'Change project' }).click();
       await page.getByTestId('project-worktree-add').click();
-      await expect(page.getByTestId('project-worktree-command')).toHaveCount(contract === 'v1' ? 1 : 0);
       await page.getByTestId('project-worktree-name').fill('scoped-task');
       await page.getByTestId('project-worktree-create').click();
       await expect(picker.getByRole('button', { name: 'Select scoped-task' })).toBeVisible();
@@ -271,7 +270,6 @@ for (const contract of ['v1', 'v2']) {
       await picker.getByRole('button', { name: 'Select secondary-project' }).click();
       await page.getByRole('button', { name: 'Change project' }).click();
       await picker.getByRole('button', { name: 'Manage scoped-task' }).click();
-      await expect(picker.getByRole('button', { name: 'Reset', exact: true })).toHaveCount(contract === 'v1' ? 1 : 0);
       page.once('dialog', (dialog) => dialog.accept());
       await picker.getByRole('button', { name: 'Remove', exact: true }).click();
       await expect(picker.getByRole('button', { name: 'Manage scoped-task' })).toHaveCount(0);

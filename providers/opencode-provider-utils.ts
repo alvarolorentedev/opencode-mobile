@@ -114,7 +114,7 @@ export function areSessionStatusMapsEqual(
 // parentID tree so a blocker raised anywhere below the current/sending session
 // still surfaces instead of hanging the whole subtree. Roots are included.
 export function collectDescendantSessionIds(
-  sessions: Session[],
+  sessions: Pick<Session, 'id' | 'parentID'>[],
   rootIds: (string | undefined)[],
 ): Set<string> {
   const result = new Set(rootIds.filter((id): id is string => Boolean(id)));

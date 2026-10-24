@@ -300,8 +300,6 @@
     "pollingFallback": "पोलिंग फ़ॉलबैक सक्रिय",
     "subsystems": "उपप्रणालियाँ",
     "subsystemsMcp": "MCP {{value}}",
-    "subsystemsLsp": "LSP {{value}}",
-    "subsystemsFormatters": "फ़ॉर्मेटर {{value}}",
     "notAvailable": "लागू नहीं",
     "refresh": "निदान रीफ़्रेश करें",
     "networkUsage": "नेटवर्क उपयोग",

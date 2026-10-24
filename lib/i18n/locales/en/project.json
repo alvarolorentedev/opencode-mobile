@@ -44,11 +44,7 @@
   "worktrees": {
     "refresh": "Refresh worktrees",
     "nameLabel": "Name (optional)",
-    "startCommandLabel": "Start command (optional)",
     "empty": "No worktrees available.",
-    "resetTitle": "Reset worktree?",
-    "resetMessage": "This discards uncommitted changes in {{directory}}.",
-    "resetAction": "Reset",
     "removeTitle": "Remove worktree?",
     "removeMessage": "{{directory}} will be removed. This cannot be undone.",
     "groupTitle": "Worktrees · {{project}}",
@@ -71,7 +67,6 @@
     "openFile": "Could not open the file.",
     "saveFile": "Could not save the file.",
     "createWorktree": "Could not create the worktree.",
-    "resetWorktree": "Could not reset the worktree.",
     "removeWorktree": "Could not remove the worktree.",
     "addProject": "Could not add project.",
     "downloadFile": "Could not download the file."

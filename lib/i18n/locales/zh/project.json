@@ -44,11 +44,7 @@
   "worktrees": {
     "refresh": "刷新工作树",
     "nameLabel": "名称（可选）",
-    "startCommandLabel": "启动命令（可选）",
     "empty": "没有可用的工作树。",
-    "resetTitle": "重置工作树？",
-    "resetMessage": "这将丢弃 {{directory}} 中未提交的更改。",
-    "resetAction": "重置",
     "removeTitle": "移除工作树？",
     "removeMessage": "{{directory}} 将被移除。此操作无法撤销。",
     "groupTitle": "工作树 · {{project}}",
@@ -71,7 +67,6 @@
     "openFile": "无法打开文件。",
     "saveFile": "无法保存文件。",
     "createWorktree": "无法创建工作树。",
-    "resetWorktree": "无法重置工作树。",
     "removeWorktree": "无法移除工作树。",
     "addProject": "无法添加项目。",
     "downloadFile": "无法下载文件。"

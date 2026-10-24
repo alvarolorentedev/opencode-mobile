@@ -289,19 +289,17 @@ test('modal bottom sheets dismiss on a downward header swipe', async ({ page, re
   await expect(page.getByTestId('chat-model-picker-trigger')).toBeVisible();
 });
 
-test('composer exposes direct approvals, agent selection and thinking in the model picker without losing drafts', async ({ page, request }) => {
+test('composer exposes agent selection without losing drafts', async ({ page, request }) => {
   await page.setViewportSize({ width: 393, height: 852 });
   await resetScenario(request, 'happy-path');
   await openReadyChat(page);
   const prompt = page.getByTestId('chat-prompt-input');
-  const approvals = page.getByTestId('chat-approve-button');
   const agent = page.getByTestId('chat-agent-button');
   const model = page.getByTestId('chat-model-picker-trigger');
-  await expect(model).toHaveAccessibleName('GPT-4.1 mini · OpenAI · Default');
+  await expect(model).toHaveAccessibleName('GPT-4.1 mini · OpenAI');
   await expect(page.getByTestId('chat-secondary-button')).toHaveAccessibleName('Start dictation');
   await expect(page.getByTestId('chat-primary-button')).toHaveAccessibleName('Start conversation mode');
   await expect(page.getByRole('button', { name: 'Start conversation mode', exact: true })).toHaveCount(1);
-  await expect(approvals).toHaveAccessibleName('Approvals: Ask before actions');
   await expect(agent).toHaveAccessibleName('Agent: Build');
   await prompt.fill('Keep this draft');
   await expect(page.getByTestId('chat-primary-button')).toHaveAccessibleName('Send task');
@@ -309,30 +307,17 @@ test('composer exposes direct approvals, agent selection and thinking in the mod
   await expect(page.getByTestId('chat-secondary-button')).toHaveAccessibleName('Start dictation');
   await model.click();
   const picker = page.getByTestId('chat-model-picker');
-  const thinking = picker.getByRole('slider', { name: 'Reasoning', exact: true });
-  await expect(thinking).toHaveAttribute('aria-valuenow', '1');
-  await thinking.focus();
-  await thinking.press('End');
-  await expect(thinking).toHaveAttribute('aria-valuetext', 'High');
-  // Thinking remains adjustable while comparing/selecting models.
+  // The default catalog model has no variants, so no reasoning slider is shown.
+  await expect(picker.getByRole('slider', { name: 'Reasoning', exact: true })).toHaveCount(0);
   await expect(picker.getByText('Selected', { exact: true })).toBeVisible();
   await page.keyboard.press('Escape');
   await expect(picker).toHaveCount(0);
-  await expect(model).toHaveAccessibleName('GPT-4.1 mini · OpenAI · High');
+  await expect(model).toHaveAccessibleName('GPT-4.1 mini · OpenAI');
   await expect(prompt).toHaveValue('Keep this draft');
   await agent.click();
   await page.getByText('General', { exact: true }).click();
   await expect(agent).toHaveAccessibleName('Agent: General');
   await expect(prompt).toHaveValue('Keep this draft');
-  await page.route('**/config?**', (route) => route.request().method() === 'PATCH' ? route.fulfill({ status: 500, json: { message: 'Could not update approvals' } }) : route.continue());
-  await approvals.click();
-  await expect(page.getByText('Action failed', { exact: true })).toBeVisible();
-  await expect(approvals).toHaveAccessibleName('Approvals: Ask before actions');
-  await page.unroute('**/config?**');
-  await approvals.click();
-  await expect(approvals).toHaveAccessibleName('Approvals: Auto-approve');
-  await approvals.click();
-  await expect(approvals).toHaveAccessibleName('Approvals: Ask before actions');
   await expect(prompt).toHaveValue('Keep this draft');
   await expect(page.getByTestId('chat-primary-button')).toHaveAccessibleName('Send task');
   await expect(page.getByTestId('chat-attach-button')).toHaveAccessibleName('Attach files');

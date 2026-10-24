@@ -44,11 +44,7 @@
   "worktrees": {
     "refresh": "ワークツリーを更新",
     "nameLabel": "名前（任意）",
-    "startCommandLabel": "開始コマンド（任意）",
     "empty": "利用可能なワークツリーはありません。",
-    "resetTitle": "ワークツリーをリセットしますか？",
-    "resetMessage": "{{directory}} の未コミットの変更が破棄されます。",
-    "resetAction": "リセット",
     "removeTitle": "ワークツリーを削除しますか？",
     "removeMessage": "{{directory}} が削除されます。これは元に戻せません。",
     "groupTitle": "ワークツリー · {{project}}",
@@ -71,7 +67,6 @@
     "openFile": "ファイルを開けませんでした。",
     "saveFile": "ファイルを保存できませんでした。",
     "createWorktree": "ワークツリーを作成できませんでした。",
-    "resetWorktree": "ワークツリーをリセットできませんでした。",
     "removeWorktree": "ワークツリーを削除できませんでした。",
     "addProject": "プロジェクトを追加できませんでした。",
     "downloadFile": "ファイルをダウンロードできませんでした。"

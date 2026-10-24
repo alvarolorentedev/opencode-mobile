@@ -86,6 +86,7 @@ async function mountGroup(value: transcript.ActivityGroup, sessionRunning = fals
     '@expo/vector-icons': { MaterialCommunityIcons: 'Icon' },
     '@/components/chat/cards/activity-item': { ActivityItemRow: 'ActivityItemRow', ActivityReadGroupRow: 'ActivityReadGroupRow' },
     '@/constants/theme': { Colors: { light: {} } },
+    '@/lib/opencode/format/tool-label': { getToolLabel: (name: string) => (name === 'read' ? 'Read' : name === 'bash' ? 'Shell' : name === 'patch' ? 'Patch' : name) },
     '@/lib/opencode/format': { getToolDisplayName: (name: string) => (name === 'bash' ? 'Shell' : name === 'read' ? 'Read' : name === 'edit' ? 'Edit' : name === 'patch' ? 'Patch' : name) },
     '@/lib/opencode/transcript': { buildActivityChildRows: transcript.buildActivityChildRows },
   }, runtime.globals);
@@ -113,6 +114,7 @@ async function mountRead(reads: transcript.ToolDetail[]) {
     '@/components/chat/chat-markdown': { MarkdownText: 'MarkdownText' },
     '@/constants/theme': { Colors: { light: {} } },
     '@/lib/haptics': { copyHaptic: () => undefined },
+    '@/lib/opencode/format/tool-label': { getToolLabel: (name: string) => (name === 'read' ? 'Read' : name === 'bash' ? 'Shell' : name === 'patch' ? 'Patch' : name) },
     '@/lib/opencode/format': {
       formatDuration: (ms: number) => `${Math.round(ms / 1000)}s`,
       getToolDisplayName: (name: string) => (name === 'read' ? 'Read' : name === 'bash' ? 'Shell' : name),
@@ -146,6 +148,7 @@ async function mountItem(item: transcript.ActivityItem) {
     '@/components/chat/chat-markdown': { MarkdownText: 'MarkdownText' },
     '@/constants/theme': { Colors: { light: {} } },
     '@/lib/haptics': { copyHaptic: () => undefined },
+    '@/lib/opencode/format/tool-label': { getToolLabel: (name: string) => (name === 'read' ? 'Read' : name === 'bash' ? 'Shell' : name === 'patch' ? 'Patch' : name) },
     '@/lib/opencode/format': {
       formatDuration: (ms: number) => `${Math.round(ms / 1000)}s`,
       getToolDisplayName: (name: string) => (name === 'bash' ? 'Shell' : name),

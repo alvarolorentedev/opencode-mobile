@@ -6,7 +6,7 @@ import { ActivityIndicator, Text } from 'react-native-paper';
 
 import { ActivityItemRow, ActivityReadGroupRow } from '@/components/chat/cards/activity-item';
 import { Colors } from '@/constants/theme';
-import { getToolDisplayName } from '@/lib/opencode/format';
+import { getToolLabel } from '@/lib/opencode/format/tool-label';
 import { buildActivityChildRows, type ActivityGroup } from '@/lib/opencode/transcript';
 
 type Palette = typeof Colors.light;
@@ -31,11 +31,11 @@ export function ActivityGroupRow({ flat = false, fontSize, group, palette, sessi
 
     for (const row of childRows) {
       if (row.kind === 'read') {
-        add(getToolDisplayName('read'));
+        add(getToolLabel('read', t));
       } else if (row.item.kind === 'tool') {
-        add(getToolDisplayName(row.item.tool));
+        add(getToolLabel(row.item.tool, t));
       } else if (row.item.kind === 'patch') {
-        add(getToolDisplayName('patch'));
+        add(getToolLabel('patch', t));
       }
     }
 

@@ -300,8 +300,6 @@
     "pollingFallback": "轮询回退已启用",
     "subsystems": "子系统",
     "subsystemsMcp": "MCP {{value}}",
-    "subsystemsLsp": "LSP {{value}}",
-    "subsystemsFormatters": "格式化程序 {{value}}",
     "notAvailable": "不适用",
     "refresh": "刷新诊断",
     "networkUsage": "网络使用量",

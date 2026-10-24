@@ -300,8 +300,6 @@
     "pollingFallback": "Respaldo por sondeo activo",
     "subsystems": "Subsistemas",
     "subsystemsMcp": "MCP {{value}}",
-    "subsystemsLsp": "LSP {{value}}",
-    "subsystemsFormatters": "Formateadores {{value}}",
     "notAvailable": "n/d",
     "refresh": "Actualizar diagnósticos",
     "networkUsage": "Uso de red",

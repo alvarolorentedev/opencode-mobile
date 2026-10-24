@@ -253,6 +253,7 @@ export function ChatView() {
         <ChatComposer
           key={`${content.currentSessionId}:${content.currentPendingPermissions.map((item) => item.id).join()}:${content.currentPendingQuestions.map((item) => item.id).join()}`}
           attachments={composer.attachments}
+          autoApproveAvailable={composer.serverCapabilities.autoApprove}
           availableAgents={composer.availableAgents}
           chatPreferences={composer.chatPreferences}
           connectionStatus={header.connection.status}

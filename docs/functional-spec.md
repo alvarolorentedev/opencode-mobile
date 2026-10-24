@@ -63,7 +63,7 @@ Manual behavior:
 
 - user opens `New chat` from the Chat header or the Chats overlay; the sheet mirrors `New terminal`, preselects the current server/project and lets the user choose another before confirming. The server selector is hidden with one configured connection.
 - creating a chat switches chat focus to the selected server/project and opens the new session there. The sheet closes once the server returns the new session ID; transcript content hydrates in the background.
-- user can open the Chats overlay from the Chat title to search, switch, favorite, archive, and manage sessions; its header opens a second overlay to change project. Opening a chat commits the selection immediately and closes the overlay; transcript, diff, todo, and pending-interaction reads continue behind the chat skeleton.
+- user can open the Chats overlay from the Chat title to search, switch, favorite, and manage sessions; its header opens a second overlay to change project. Opening a chat commits the selection immediately and closes the overlay; transcript, diff, todo, and pending-interaction reads continue behind the chat skeleton.
 
 ### 3b. Open a Session via Deep Link
 
@@ -79,7 +79,7 @@ Behavior:
 - if the session is not found in that project, a `Could not open session` error screen is shown with the server message
 - the link does not carry a server identity; it resolves against the currently configured server
 - this resolver is for external entry points only (notifications, widgets, quick actions, and OS links); tapping a library row inside the app uses workspace navigation and never validates against the session list
-- only sessions that appear in the project's session list can be opened; archived sessions are not reachable this way
+- only sessions that appear in the project's session list can be opened; archived sessions are excluded
 
 ### 3c. Receive Content Shared From Another App
 
@@ -186,20 +186,17 @@ The Chats overlay opened from the Chat title provides lifecycle operations throu
 - create a new session
 - rename a session
 - permanently delete a session after confirmation
-- archive a session without deleting it
-- restore or permanently delete sessions shown by the experimental archived-session list
-- share a session and copy its URL, or unshare it
 
 Session list behavior:
 
-- search filters the active, favorite, or archived list
+- search filters the active or favorite list
 - favorites remain accessible across projects; choosing one switches to its project
 - the Active tab opens with an "Active across projects" group above Favorites listing up to four sessions from the whole connected server: running (busy/retry) sessions first, then the most recently updated idle ones. It is connection-wide, so it stays the same while switching projects. Subagent chats are hidden by the same switch as the rest of the library, and listed sessions are removed from the Chat list below so they never appear twice
 - picking a session from that group switches to its project and opens it in one tap through the workspace navigation action; the group is refreshed when the library opens and polled while a session is running
-- project-scoped row actions (rename, share, archive, delete) are offered only for sessions in the active project, where the scoped client can act on them; other-project rows offer open and favorite
+- project-scoped row actions (rename, delete) are offered only for sessions in the active project, where the scoped client can act on them; other-project rows offer open and favorite
 - each session row shows title, preview/subtitle, and status
 - active session rows are visually emphasized
-- the `Hide subagent chats` switch sits beside the Active and Archived filters in the library
+- the `Hide subagent chats` switch sits beside the Active filter in the library
 
 Additional session actions are available in Chat:
 
@@ -226,7 +223,7 @@ Before save, the provider re-reads the file and rejects the operation if the ser
 
 ### 10. Manage Worktrees
 
-The Projects tab can list, create, reset, and remove worktrees. Creation accepts an optional name and start command; reset and remove require destructive confirmation. These SDK operations use OpenCode's experimental worktree endpoints, so server availability and response stability are not guaranteed like the non-experimental contract.
+The Projects tab can list, create, and remove worktrees. Creation accepts an optional name; remove requires destructive confirmation. These SDK operations use OpenCode's experimental worktree endpoints, so server availability and response stability are not guaranteed like the non-experimental contract.
 
 ### 11. Use The Terminal Tab
 
@@ -457,7 +454,7 @@ Behavior:
 - reports `/global/health` status and OpenCode version when available
 - reports global event stream state, describing non-connected states as polling fallback
 - reports normalized network type, online/offline, constrained/metered state, automatic reconnect attempts, and local p50/p95 request latency with failure/retry counts
-- reports MCP, LSP, and formatter counts when their endpoints are available
+- reports MCP counts when the endpoint is available
 - reports the last JS error recorded on this device (message, time, and a fatal/handled chip) or a neutral empty state
 - each diagnostic request fails independently and can be refreshed manually; Refresh also re-reads the recorded error
 
@@ -693,7 +690,7 @@ The following values are not persisted and are rebuilt from the server:
 - todos
 - pending permissions and questions
 - provider/model/agent catalog
-- commands, project file results/status/content, VCS info, worktrees, MCP statuses, PTYs, terminal output, archived sessions, and diagnostics
+- commands, project file results/status/content, VCS info, worktrees, MCP statuses, PTYs, terminal output, and diagnostics
 
 ## User-Visible Edge Cases
 
@@ -714,10 +711,10 @@ Any reimplementation should preserve these functional outcomes:
 - project-first session scoping
 - remembered last session per project
 - transcript + diff + server-owned todo + permission surfaces
-- session delete, archive/restore, rename, fork, revert/unrevert, and share/unshare support
+- session delete, rename, fork, and revert/unrevert support
 - slash command discovery and execution
 - project file search/view/status, media preview and download, plus conflict-checked full-file VCS patch save
-- experimental worktree management and archived-session listing
+- experimental worktree creation/removal
 - MCP lifecycle/configuration/OAuth management
 - ticket-authenticated interactive PTYs with xterm, bounded scrollback, resize, and acknowledged reconnect
 - server diagnostics

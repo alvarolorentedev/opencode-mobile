@@ -300,8 +300,6 @@
     "pollingFallback": "Polling fallback active",
     "subsystems": "Subsystems",
     "subsystemsMcp": "MCP {{value}}",
-    "subsystemsLsp": "LSP {{value}}",
-    "subsystemsFormatters": "Formatters {{value}}",
     "notAvailable": "n/a",
     "refresh": "Refresh diagnostics",
     "networkUsage": "Network usage",

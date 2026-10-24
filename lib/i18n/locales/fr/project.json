@@ -44,11 +44,7 @@
   "worktrees": {
     "refresh": "Actualiser les arbres de travail",
     "nameLabel": "Nom (facultatif)",
-    "startCommandLabel": "Commande de démarrage (facultatif)",
     "empty": "Aucun arbre de travail disponible.",
-    "resetTitle": "Réinitialiser l'arbre de travail ?",
-    "resetMessage": "Cela supprime les modifications non validées dans {{directory}}.",
-    "resetAction": "Réinitialiser",
     "removeTitle": "Retirer l'arbre de travail ?",
     "removeMessage": "{{directory}} sera supprimé. Cette action est irréversible.",
     "groupTitle": "Arbres de travail · {{project}}",
@@ -71,7 +67,6 @@
     "openFile": "Impossible d'ouvrir le fichier.",
     "saveFile": "Impossible d'enregistrer le fichier.",
     "createWorktree": "Impossible de créer l'arbre de travail.",
-    "resetWorktree": "Impossible de réinitialiser l'arbre de travail.",
     "removeWorktree": "Impossible de retirer l'arbre de travail.",
     "addProject": "Impossible d'ajouter le projet.",
     "downloadFile": "Impossible de télécharger le fichier."

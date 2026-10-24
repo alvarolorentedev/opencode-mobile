@@ -2,11 +2,18 @@ import assert from 'node:assert/strict';
 import { describe, it } from 'vitest';
 import { getConfiguredProviderIds, getInitialModelId, getInitialProviderId, getModelIdForProvider, getSelectedModelVariant, recordRecentModelId, resolveConfigModelId } from '@/providers/opencode-model-selection';
 import { areSessionListsEqual, areSessionStatusMapsEqual, buildOpencodeProjects, collectDescendantSessionIds, mergeSessionStatuses, RETRY_STATUS_STALE_MS, resolveActiveProject } from '@/providers/opencode-provider-utils';
+import type { ModelOption } from '@/providers/opencode-model-selection';
+import type { SessionStatus } from '@/lib/opencode/types';
+
+const model = (id: string, providerID: string, modelID: string, overrides: Partial<ModelOption> = {}): ModelOption => ({
+  id, label: id, providerID, providerLabel: providerID, modelID, variants: [],
+  supportsReasoning: false, supportsAttachments: false, inputModalities: ['text'], supportsToolCalls: false, ...overrides,
+});
 
 // Migrated from the standalone tests/provider-utils.test.mjs Node script.
 describe('provider model selection utilities', () => {
   it('selects initial models/providers and merges session status maps safely', async () => {
-    const models = [{ id: 'openai/gpt', modelID: 'gpt', providerID: 'openai' }];
+    const models = [model('openai/gpt', 'openai', 'gpt')];
 
     assert.deepEqual([...getConfiguredProviderIds({ enabled_providers: ['openai'] }, [], models)], ['openai']);
     assert.deepEqual([...getConfiguredProviderIds({ disabled_providers: ['openai'], enabled_providers: ['openai'], provider: { openai: {} } }, ['openai'], models)], []);
@@ -27,7 +34,7 @@ describe('provider model selection utilities', () => {
     assert.equal(getModelIdForProvider(models, 'openai', undefined, undefined), undefined);
     assert.equal(getModelIdForProvider(models, 'openai', 'openai/gpt', undefined), 'openai/gpt');
 
-    const variantModel = { id: 'opencode/deepseek', providerID: 'opencode', modelID: 'deepseek', variants: [{ id: 'low' }, { id: 'max' }] };
+    const variantModel = model('opencode/deepseek', 'opencode', 'deepseek', { variants: [{ id: 'low' }, { id: 'max' }] });
     const sessionModel = { providerID: 'opencode', id: 'deepseek', variant: 'max' };
     assert.equal(getSelectedModelVariant(variantModel.id, {}, [variantModel], sessionModel), 'max');
     assert.equal(getSelectedModelVariant(variantModel.id, { [variantModel.id]: 'low' }, [variantModel], sessionModel), 'low');
@@ -37,7 +44,7 @@ describe('provider model selection utilities', () => {
 
     // Variant-qualified server values (e.g. `openrouter/~group/model`) still
     // resolve to the catalog entry and mark its provider configured.
-    const variantModels = [{ id: 'openrouter/deepseek-chat', modelID: 'deepseek-chat', providerID: 'openrouter' }];
+    const variantModels = [model('openrouter/deepseek-chat', 'openrouter', 'deepseek-chat')];
     assert.equal(resolveConfigModelId(variantModels, 'openrouter/~group/deepseek-chat'), 'openrouter/deepseek-chat');
     assert.deepEqual([...getConfiguredProviderIds({ enabled_providers: [] }, [], variantModels.map((model) => ({ ...model, id: model.id })))], []);
     assert.deepEqual(
@@ -61,8 +68,8 @@ describe('provider model selection utilities', () => {
     const worktreeCatalog = { entries: [{ directory: '/worktrees/task', name: 'task' }], project: { id: 'p1', root: '/repo', label: 'Repo display' }, loading: false };
     assert.equal(resolveActiveProject(listedProjects, '/worktrees/task', worktreeCatalog)?.label, 'Repo display');
     assert.equal(resolveActiveProject(listedProjects, '/elsewhere', worktreeCatalog), undefined);
-    const retry = { type: 'retry', attempt: 2, message: 'provider failed', next: now + 5_000 };
-    const staleRetry = { type: 'retry', attempt: 2, message: 'provider failed', next: now - RETRY_STATUS_STALE_MS - 1 };
+    const retry: SessionStatus = { type: 'retry', attempt: 2, message: 'provider failed', next: now + 5_000 };
+    const staleRetry: SessionStatus = { type: 'retry', attempt: 2, message: 'provider failed', next: now - RETRY_STATUS_STALE_MS - 1 };
     // A list refresh cannot express retry, so an event-derived retry must survive it.
     assert.deepEqual(mergeSessionStatuses({ s: retry }, { s: { type: 'idle' } }, now), { s: retry });
     // A server-confirmed running status wins over the local retry.
@@ -91,7 +98,7 @@ describe('provider model selection utilities', () => {
     const sessionAt = (id: string, updated: number) => ({ id, title: id, time: { created: 0, updated } });
     assert.equal(areSessionListsEqual([sessionAt('a', 1)], [sessionAt('a', 1)]), true);
     assert.equal(areSessionListsEqual([{ ...sessionAt('a', 1), cost: 1 }], [{ ...sessionAt('a', 1), cost: 2 }]), false, 'Authoritative usage updates even when updated timestamps are unchanged.');
-    assert.equal(areSessionListsEqual([{ ...sessionAt('a', 1), tokens: { input: 1 } }], [{ ...sessionAt('a', 1), tokens: { input: 2 } }]), false);
+    assert.equal(areSessionListsEqual([{ ...sessionAt('a', 1), tokens: { input: 1, output: 0, reasoning: 0, cache: { read: 0, write: 0 } } }], [{ ...sessionAt('a', 1), tokens: { input: 2, output: 0, reasoning: 0, cache: { read: 0, write: 0 } } }]), false);
     assert.equal(areSessionListsEqual([sessionAt('a', 1)], [sessionAt('a', 2)]), false);
     assert.equal(areSessionListsEqual([sessionAt('a', 1)], [sessionAt('a', 1), sessionAt('b', 1)]), false);
     assert.equal(areSessionStatusMapsEqual({ a: { type: 'idle' } }, { a: { type: 'idle' } }), true);

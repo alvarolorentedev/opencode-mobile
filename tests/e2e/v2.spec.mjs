@@ -42,8 +42,8 @@ test('connects to an OpenCode 2 server and completes a prompt @smoke', async ({ 
     // transcript's `todowrite` tool part.
     await expect(page.getByRole('button', { name: 'Open progress. 2 of 2 tasks completed' })).toBeVisible();
 
-    // Unsupported V2 actions are hidden rather than failing at tap time.
-    await expect(page.getByTestId('chat-approve-button')).toHaveCount(0);
+    // V2 keeps auto-approve and hides V1-only archive/share actions.
+    await expect(page.getByTestId('chat-approve-button')).toHaveCount(1);
     await expect(page.getByTestId('chat-agent-button')).toBeVisible();
     await openChatLibrary(page);
     await expect(page.getByRole('button', { name: 'Archived', exact: true })).toHaveCount(0);

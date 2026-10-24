@@ -600,7 +600,7 @@ against a real V2 server and real code/automatic OAuth completion.
 - verify form option labels are translated back to option values on reply (the fake server records the decoded answer)
 - verify the V2 adapter scopes `GET /api/form` and `GET /api/permission/request` with `location[directory]`; the fake server rejects unscoped list calls
 - verify the PTY WebSocket streams input/output under `/api`
-- verify unsupported actions are hidden rather than failing: no auto-approve toggle, no share/archive actions, no archived toggle, and no LSP/formatter subsystem rows
+- verify unsupported actions are hidden rather than failing: no share/archive actions or archived toggle; auto-approve is available on V2 and diagnostics show health/MCP only
 
 ### SSE Failure / Polling Fallback Flow
 
@@ -704,7 +704,6 @@ the Vitest `record-preservation` suite is now part of the static CI gate.
 ### Project Mutation And Management Flows
 
 - edit a text file and save it through the conflict-checked VCS patch path
-- archive and restore a session through the experimental archived list
 - create an experimental worktree and add a remote MCP server
 
 ### Terminal Flow
@@ -778,7 +777,7 @@ This strategy gives confidence in:
 - blocking interactions from the server
 - provider configuration flow
 - resilience to SSE failure
-- project patch save, archive/restore, worktree creation, MCP addition, and PTY WebSocket streaming
+- project patch save, worktree creation, MCP addition, and PTY WebSocket streaming
 
 ## Coverage Gaps
 
@@ -888,13 +887,13 @@ The following important behaviors are present in code but are not obviously cove
 - native speech recognition failures and permission edge cases (the pure recovery policy is covered by `test:voice-errors`; the native paths still need device validation)
 - TTS playback behavior and the completion watchdog
 - notification initialization and background monitoring
-- session fork, revert/unrevert, and share/unshare
+- session fork and revert/unrevert
 - attachment upload behavior
 - attachment capability rejection and the 10 MB local-file limit
-- project patch conflict UI and worktree reset/remove
-- MCP add/connect/disconnect/enable/disable and OAuth UI completion
+- project patch conflict UI and worktree remove
+- MCP add/connect/disconnect and OAuth UI completion
 - terminal reconnect/termination, ANSI handling, scrollback truncation, and native WebSocket behavior
-- auto-approve config toggling
+- auto-approve preference toggling
 - model enablement filtering and preference reconciliation
 - session summarization fallback behavior
 - keep-awake side effects
@@ -955,7 +954,7 @@ After that baseline, the next most valuable parity suite would add:
 
 ## Migration Coverage Status
 
-The fake server self-test covers the expanded REST contract plus a real ticket-authenticated PTY WebSocket exchange. Playwright covers patch save, archive/restore, worktree creation, MCP addition, and interactive xterm behavior including history, modifiers, Unicode, alternate screens, bracketed paste and cursor resume. It does not prove real full-screen program compatibility, native WebSocket behavior, MCP OAuth UI completion, attachment capability, provider OAuth callback, or native reconnect behavior.
+The fake server self-test covers the expanded REST contract plus a real ticket-authenticated PTY WebSocket exchange. Playwright covers patch save, worktree creation, MCP addition, and interactive xterm behavior including history, modifiers, Unicode, alternate screens, bracketed paste and cursor resume. It does not prove real full-screen program compatibility, native WebSocket behavior, MCP OAuth UI completion, attachment capability, provider OAuth callback, or native reconnect behavior.
 
 Android native validation happens on every CI run in the tagged/`main`/manual `android-release` job in `.github/workflows/build.yml`; there is no separate push-time Android development build gate.
 
@@ -1041,7 +1040,7 @@ The shared `OverlaySheet` and the transparent `Modal` bottom sheets (model picke
 
 ## Session library recovery (#64)
 
-Session-read regressions cover mixed archived/active records and pagination through an active-only page. The fake V1 server reproduces the inclusive `archived=true` contract. Web flows cover idle-session reopening, double taps, archived-card restoration with retained history, and cross-project restoration with failure/retry. Run `test:ci:static`, `test:fake-server:self`, and `test:e2e:web`. TestFlight validation with OpenCode 1.18.34, card taps, swipe actions, and accessibility remains required. Changes in the fake-server and E2E directories require explicit human validation under AGENTS.md.
+Session reads exclude archived records and paginate active-only pages. Archived sessions have no V2 equivalent and are not surfaced in the app. Web flows cover idle-session reopening, double taps, and cross-project restoration with failure/retry. Run `test:ci:static`, `test:fake-server:self`, and `test:e2e:web`. TestFlight validation with OpenCode 1.18.34, card taps, swipe actions, and accessibility remains required. Changes in the fake-server and E2E directories require explicit human validation under AGENTS.md.
 
 
 ## Cross-project favorite CI regression
@@ -1157,7 +1156,7 @@ outstanding. No version was increased.
 
 `@opencode/client` is the primary SDK, client contract and fake backend. Default construction, uncertain detection and PTY URLs use v2; affirmative v1 discovery selects the isolated compatibility implementation. Alternate-contract attempts require an actual endpoint/protocol mismatch, never auth denial or transport failure. Production v1 SDK imports are prohibited outside `lib/opencode/compat/v1/` by the architecture suite.
 
-Playwright boots native `server.mjs` on 44096 and explicit `server-v1.mjs` compatibility on 44097. Shared prompt/approval/question/polling and persisted continuity flows run on v2 with additional v1 coverage. Compatibility-only archive, approval configuration and patch saves remain covered. The self-test exercises both protocol contracts plus shared terminal infrastructure.
+Playwright boots native `server.mjs` on 44096 and explicit `server-v1.mjs` compatibility on 44097. Shared prompt/approval/question/polling and persisted continuity flows run on v2 with additional v1 coverage. Compatibility-only patch saves remain covered. The self-test exercises both protocol contracts plus shared terminal infrastructure.
 
 Focused regressions cover native message cursors/events, replay/update-safe usage and todos, same-directory connection switching, persisted session continuity, conflict rejection, write failure/draft retention, post-write verification, MCP integration discovery, automatic/code completion and cancellation while requests are in flight.
 
@@ -1175,7 +1174,7 @@ Before marking this change complete, a human must review and validate the change
 - Exercise prompt completion, questions/approvals, reconnect/polling recovery, persisted sessions and worktree switching on both contracts.
 - On a real v2 server/device, edit UTF-8 text, reject an external edit conflict, retain a failed-save draft, and verify saved content/VCS refresh. The pre-read/write race remains accepted.
 - Complete automatic and code MCP OAuth, cancel/restart, and switch connections while authorization is pending.
-- Verify terminal streaming and cursor resume after reconnect; retain v1 sharing/archive/config/diagnostic features.
+- Verify terminal streaming and cursor resume after reconnect; V1 keeps only V2-parity features.
 
 No dependency version, persisted schema or release version was changed. Existing Cloud Link work is retained.
 

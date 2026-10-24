@@ -44,11 +44,7 @@
   "worktrees": {
     "refresh": "Atualizar worktrees",
     "nameLabel": "Nome (opcional)",
-    "startCommandLabel": "Comando de inicialização (opcional)",
     "empty": "Nenhum worktree disponível.",
-    "resetTitle": "Redefinir o worktree?",
-    "resetMessage": "Isso descarta as alterações não commitadas em {{directory}}.",
-    "resetAction": "Redefinir",
     "removeTitle": "Remover o worktree?",
     "removeMessage": "{{directory}} será removido. Isso não pode ser desfeito.",
     "groupTitle": "Árvores de trabalho · {{project}}",
@@ -71,7 +67,6 @@
     "openFile": "Não foi possível abrir o arquivo.",
     "saveFile": "Não foi possível salvar o arquivo.",
     "createWorktree": "Não foi possível criar o worktree.",
-    "resetWorktree": "Não foi possível redefinir o worktree.",
     "removeWorktree": "Não foi possível remover o worktree.",
     "addProject": "Não foi possível adicionar o projeto.",
     "downloadFile": "Não foi possível baixar o arquivo."

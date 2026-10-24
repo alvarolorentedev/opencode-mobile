@@ -300,8 +300,6 @@
     "pollingFallback": "ポーリングフォールバックが有効",
     "subsystems": "サブシステム",
     "subsystemsMcp": "MCP {{value}}",
-    "subsystemsLsp": "LSP {{value}}",
-    "subsystemsFormatters": "フォーマッター {{value}}",
     "notAvailable": "該当なし",
     "refresh": "診断を更新",
     "networkUsage": "ネットワーク使用量",

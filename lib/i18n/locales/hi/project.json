@@ -44,11 +44,7 @@
   "worktrees": {
     "refresh": "वर्कट्री रीफ़्रेश करें",
     "nameLabel": "नाम (वैकल्पिक)",
-    "startCommandLabel": "प्रारंभ कमांड (वैकल्पिक)",
     "empty": "कोई वर्कट्री उपलब्ध नहीं।",
-    "resetTitle": "वर्कट्री रीसेट करें?",
-    "resetMessage": "इससे {{directory}} में अप्रतिबद्ध बदलाव खो जाएँगे।",
-    "resetAction": "रीसेट करें",
     "removeTitle": "वर्कट्री निकालें?",
     "removeMessage": "{{directory}} हटा दी जाएगी। इसे पूर्ववत नहीं किया जा सकता।",
     "groupTitle": "वर्कट्री · {{project}}",
@@ -71,7 +67,6 @@
     "openFile": "फ़ाइल खोली नहीं जा सकी।",
     "saveFile": "फ़ाइल सहेजी नहीं जा सकी।",
     "createWorktree": "वर्कट्री बनाई नहीं जा सकी।",
-    "resetWorktree": "वर्कट्री रीसेट नहीं की जा सकी।",
     "removeWorktree": "वर्कट्री हटाई नहीं जा सकी।",
     "addProject": "प्रोजेक्ट जोड़ा नहीं जा सका।",
     "downloadFile": "फ़ाइल डाउनलोड नहीं हो सकी।"

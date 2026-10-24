@@ -8,7 +8,8 @@ import { ActivityIndicator, Text } from 'react-native-paper';
 import { ActivityDiffCard } from '@/components/chat/cards/activity-diff';
 import { MarkdownText } from '@/components/chat/chat-markdown';
 import { Colors } from '@/constants/theme';
-import { formatDuration, getToolDisplayName, isFileChangeToolName } from '@/lib/opencode/format';
+import { formatDuration, isFileChangeToolName } from '@/lib/opencode/format';
+import { getToolLabel } from '@/lib/opencode/format/tool-label';
 import { copyHaptic } from '@/lib/haptics';
 import { isShellTool, type ActivityItem, type ToolDetail } from '@/lib/opencode/transcript';
 
@@ -21,7 +22,8 @@ function basename(path: string) {
 // Consecutive plain reads collapse to one non-expandable line. The row shows
 // filenames only: offsets, limits and file contents stay out of the timeline.
 export function ActivityReadGroupRow({ palette, reads }: { palette: Palette; reads: ToolDetail[] }) {
-  const label = getToolDisplayName('read');
+  const { t } = useTranslation();
+  const label = getToolLabel('read', t);
   const active = reads.some((read) => read.status === 'running' || read.status === 'pending');
   const names = [...new Set(reads
     .map((read) => (read.path ? basename(read.path) : read.label))
@@ -76,7 +78,7 @@ export function ActivityItemRow({ fontSize, item, palette }: { fontSize: number;
     body = item.body.trim() ? item.body : undefined;
     expandable = Boolean(body);
   } else if (item.kind === 'tool') {
-    label = getToolDisplayName(item.tool);
+    label = getToolLabel(item.tool, t);
     toolStatus = item.status;
     if (item.tool === 'read') {
       command = item.path ? basename(item.path) : undefined;
