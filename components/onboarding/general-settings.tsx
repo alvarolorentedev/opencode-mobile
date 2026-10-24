@@ -37,7 +37,7 @@ export function OnboardingGeneralSettings() {
           palette={palette}
         />
         {models.length === 0 ? <HelperText type="info">{t('settings:providers.noModels')}</HelperText> : null}
-        {serverCapabilities.contract === 'v2' ? <PromptDeliveryField chatPreferences={chatPreferences} palette={palette} updateChatPreferences={updateChatPreferences} /> : null}
+        {serverCapabilities.promptDeliveryAvailable ? <PromptDeliveryField chatPreferences={chatPreferences} palette={palette} updateChatPreferences={updateChatPreferences} /> : null}
       </> : null}
     </>
   );

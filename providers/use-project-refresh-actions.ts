@@ -100,10 +100,6 @@ export function useProjectRefreshActions({
   );
 
   const refreshSessionStatuses = useCallback(async () => {
-    if (client.compatibility) {
-      await refreshSessions();
-      return;
-    }
     const active = await svcGetActiveSessionStatuses(client).catch(() => undefined);
     if (!active) {
       await refreshSessions();

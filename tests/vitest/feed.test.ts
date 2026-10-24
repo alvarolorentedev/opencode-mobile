@@ -137,7 +137,7 @@ describe('provider-owned prompt inbox', () => {
     const runtime = hookRuntime();
     const { usePromptInbox } = await loadTs('providers/use-prompt-inbox.ts', {
       react: runtime.react,
-      '@/providers/services/session-service': { getSessionInbox: (candidate: any, id: string) => candidate.promptInbox.list(id) },
+      '@/providers/services/session-service': { getSessionInbox: (candidate: any, id: string) => candidate.promptInbox.list(id), submitLegacyPrompt: (candidate: any, input: unknown) => candidate.compatibility.session.promptAsync(input) },
       '@/lib/opencode/client/errors': { classifyConnectionFailure: () => 'unknown' },
       '@/lib/error-message': { getErrorMessage: (error: unknown) => error instanceof Error ? error.message : String(error) },
     });

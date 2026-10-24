@@ -31,7 +31,7 @@ export function SetupSummary() {
     ...(connected ? [
       { id: 'default-model', label: t('onboarding:general.defaultModel'), value: selected ? `${selected.label} · ${selected.providerLabel}` : t('common:labels.systemDefault') },
     ] : []),
-    ...(connected && serverCapabilities.contract === 'v2' ? [
+    ...(connected && serverCapabilities.promptDeliveryAvailable ? [
       { id: 'delivery', label: t('settings:providers.promptDelivery.label'), value: t(`settings:providers.promptDelivery.${chatPreferences.promptDelivery || 'steer'}.label`) },
     ] : []),
   ];

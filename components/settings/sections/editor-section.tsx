@@ -4,19 +4,18 @@ import { HelperText, Text } from 'react-native-paper';
 
 import { PromptDeliveryField } from './chat-preference-fields';
 import { NumericSlider } from '@/components/ui/numeric-slider';
-import type { ServerContract } from '@/lib/opencode/client';
 import type { ChatPreferences } from '@/providers/opencode-provider';
 import { normalizeTranscriptFontSize, TRANSCRIPT_FONT_SIZE_MAX, TRANSCRIPT_FONT_SIZE_MIN } from '@/providers/opencode-preferences';
 import { SettingSwitchRow, type Palette } from './setting-rows';
 
 export function EditorSection({
   chatPreferences,
-  contract,
+  promptDeliveryAvailable,
   palette,
   updateChatPreferences,
 }: {
   chatPreferences: ChatPreferences;
-  contract: ServerContract;
+  promptDeliveryAvailable: boolean;
   palette: Palette;
   updateChatPreferences: (patch: Partial<ChatPreferences>) => void;
 }) {
@@ -26,7 +25,7 @@ export function EditorSection({
   return (
     <View testID="settings-editor-section" style={styles.section}>
       <Text accessibilityRole="header" variant="titleLarge" style={[styles.title, { color: palette.text }]}>{t('settings:editor.title')}</Text>
-      {contract === 'v2' ? <PromptDeliveryField chatPreferences={chatPreferences} palette={palette} updateChatPreferences={updateChatPreferences} /> : null}
+      {promptDeliveryAvailable ? <PromptDeliveryField chatPreferences={chatPreferences} palette={palette} updateChatPreferences={updateChatPreferences} /> : null}
       <NumericSlider
         label={t('settings:appearance.chatTextSize')}
         minimum={TRANSCRIPT_FONT_SIZE_MIN}

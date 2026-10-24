@@ -6,7 +6,7 @@ import type { ScopedOpencodeClient } from '@/lib/opencode/client';
 import type { SessionMessageRecord } from '@/lib/opencode/format';
 import type { PendingPrompt, PromptDelivery, PromptInput } from '@/lib/opencode/prompt-inbox';
 import type { TranscriptRefreshMode } from '@/providers/opencode-provider-types';
-import { getSessionInbox } from '@/providers/services/session-service';
+import { getSessionInbox, submitLegacyPrompt } from '@/providers/services/session-service';
 
 const EMPTY_PROMPTS: Record<string, PendingPrompt[]> = {};
 
@@ -121,8 +121,7 @@ export function usePromptInbox({
 
   const submitPrompt = useCallback(async (input: PromptInput, delivery: PromptDelivery) => {
     if (!client.promptInbox) {
-      if (!client.compatibility) throw new Error('Prompt admission is unavailable.');
-      await client.compatibility.session.promptAsync(input);
+      await submitLegacyPrompt(client, input);
       return;
     }
     const sessionId = input.sessionID;

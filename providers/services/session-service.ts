@@ -13,6 +13,11 @@ import type { Project, SessionStatus } from '@/lib/opencode/types';
 import * as v1 from '@/lib/opencode/compat/v1/session';
 import { listWorktrees as listV1Worktrees } from '@/lib/opencode/compat/v1/project';
 
+export async function submitLegacyPrompt(client: ScopedOpencodeClient, input: Parameters<NonNullable<ScopedOpencodeClient['compatibility']>['session']['promptAsync']>[0]) {
+  if (!client.compatibility) throw new Error('Prompt admission is unavailable.');
+  await client.compatibility.session.promptAsync(input);
+}
+
 export function getSessionInbox(client: ScopedOpencodeClient, sessionId: string) {
   return coalesceRead(client, `inbox:${sessionId}`, () => client.promptInbox!.list(sessionId));
 }

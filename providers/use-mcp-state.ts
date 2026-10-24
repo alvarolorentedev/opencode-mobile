@@ -1,4 +1,3 @@
-import { startMcpOAuth as startLegacyOAuth, completeMcpOAuth as completeLegacyOAuth } from '@/lib/opencode/compat/v1/mcp';
 import type { McpContextValue } from './opencode-provider-types';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
@@ -9,6 +8,8 @@ import {
   connectMcpServer as svcConnectMcpServer,
   disconnectMcpServer as svcDisconnectMcpServer,
   getMcpStatus,
+  startLegacyMcpOAuth,
+  completeLegacyMcpOAuth,
 } from '@/providers/services/mcp-service';
 
 // MCP server status plus its lifecycle actions. Enabling or adding a server can
@@ -56,13 +57,13 @@ export function useMcpState({
       start: async (name, method, values) => {
         current(); names.add(name);
         if (client.mcpOAuth) return checked(client.mcpOAuth.start(name, method, values));
-        const result = await checked(startLegacyOAuth(client.compatibility!, name));
+        const result = await checked(startLegacyMcpOAuth(client, name));
         return { url: result.authorizationUrl, method: 'code' as const };
       },
       complete: async (name, code) => {
         current();
         if (client.mcpOAuth) await checked(client.mcpOAuth.complete(name, code.trim()));
-        else await checked(completeLegacyOAuth(client.compatibility!, name, code.trim()));
+        else await checked(completeLegacyMcpOAuth(client, name, code.trim()));
         names.delete(name); await refreshMcpServers();
       },
       wait: async (name) => {

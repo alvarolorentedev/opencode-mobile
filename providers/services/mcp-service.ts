@@ -3,6 +3,14 @@ import type { ScopedOpencodeClient } from '@/lib/opencode/client';
 import { mcpConfigToV2 } from '@/lib/opencode/v2/shared';
 import * as v1 from '@/lib/opencode/compat/v1/mcp';
 const location = (client: ScopedOpencodeClient) => ({ location: { directory: client.__opencode.directory } });
+export function startLegacyMcpOAuth(client: ScopedOpencodeClient, name: string) {
+  if (!client.compatibility) throw new Error('MCP OAuth is unavailable.');
+  return v1.startMcpOAuth(client.compatibility, name);
+}
+export function completeLegacyMcpOAuth(client: ScopedOpencodeClient, name: string, code: string) {
+  if (!client.compatibility) throw new Error('MCP OAuth is unavailable.');
+  return v1.completeMcpOAuth(client.compatibility, name, code);
+}
 export async function getMcpStatus(client: ScopedOpencodeClient): Promise<Record<string, McpStatus>> {
   if (client.compatibility) return v1.getMcpStatus(client.compatibility);
   return Object.fromEntries((await client.api!.mcp.list(location(client))).data.map((server) => [server.name, { ...server.status, ...(server.integrationID ? { integrationID: server.integrationID } : {}) }]));

@@ -181,7 +181,7 @@ function SettingsContent() {
     {
       id: 'general', icon: 'cog-outline', title: t('common:servers.appSettings'), summary: t('common:servers.appSettingsSummary'),
       onPress: () => setOpenSection('general'), render: () => <>
-          <EditorSection chatPreferences={chatPreferences} contract={serverCapabilities.contract} palette={palette} updateChatPreferences={updateChatPreferences} />
+          <EditorSection chatPreferences={chatPreferences} palette={palette} promptDeliveryAvailable={serverCapabilities.promptDeliveryAvailable} updateChatPreferences={updateChatPreferences} />
           <GeneralSection chatPreferences={chatPreferences} palette={palette} updateChatPreferences={updateChatPreferences} onResetOnboarding={() => {
             setOpenSection(undefined);
             startOnboardingReview();
@@ -200,7 +200,7 @@ function SettingsContent() {
         <>
           <View style={{ flexDirection: 'row', gap: 8 }}><Button mode={advancedTab === 'mcp' ? 'contained-tonal' : 'text'} onPress={() => setAdvancedTab('mcp')}>MCP</Button><Button mode={advancedTab === 'diagnostics' ? 'contained-tonal' : 'text'} onPress={() => setAdvancedTab('diagnostics')}>{t('settings:diagnostics.title')}</Button></View>
           {advancedTab === 'mcp' ? <>
-          <McpSection configs={currentConfig?.mcp} mcpStatuses={mcpStatuses} onAdd={addMcpServer} onConnect={connectMcpServer} onDisconnect={disconnectMcpServer} onRefresh={refreshMcpServers} mcpOAuth={mcpOAuth} requiresIntegrationId={serverCapabilities.contract === 'v2'} oauthAvailable={serverCapabilities.mcpOAuth} palette={palette} />
+          <McpSection configs={currentConfig?.mcp} mcpStatuses={mcpStatuses} onAdd={addMcpServer} onConnect={connectMcpServer} onDisconnect={disconnectMcpServer} onRefresh={refreshMcpServers} mcpOAuth={mcpOAuth} requiresIntegrationId={serverCapabilities.mcpIntegrationId} oauthAvailable={serverCapabilities.mcpOAuth} palette={palette} />
           </> : <>
           <DiagnosticsSection diagnostics={diagnostics} eventStreamStatus={eventStreamStatus} transport={transport} lastJsError={lastJsError} onRefresh={() => { void refreshDiagnostics(); refreshLastJsError(); }} palette={palette} />
           </>}
