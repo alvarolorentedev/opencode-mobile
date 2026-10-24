@@ -1,3 +1,4 @@
+import { withAlpha } from '@/lib/color';
 import { Platform, Pressable, StyleSheet, Switch as NativeSwitch, Text as NativeText, View } from 'react-native';
 import { List } from 'react-native-paper';
 
@@ -33,7 +34,7 @@ export function SettingSwitchRow({
           ios_backgroundColor={palette.border}
           onValueChange={onValueChange}
           thumbColor={Platform.OS === 'android' ? (value ? palette.tint : '#f4f3f4') : undefined}
-          trackColor={{ false: palette.border, true: `${palette.tint}66` }}
+          trackColor={{ false: palette.border, true: withAlpha(palette.tint, 0x66 / 255) }}
           value={value}
         />
       )}

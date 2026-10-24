@@ -1,3 +1,4 @@
+import { withAlpha } from '@/lib/color';
 import { useCallback, useEffect, useMemo, useRef } from 'react';
 import { Alert, Platform } from 'react-native';
 import { useTranslation } from 'react-i18next';
@@ -68,7 +69,7 @@ export function TerminalView({ visible, slim, palette, onError }: {
     const owned = registrations.current;
     return () => { for (const cleanup of owned.values()) cleanup(); owned.clear(); cancelWrites(); };
   }, [cancelWrites]);
-  const theme = useMemo(() => ({ background: palette.background, foreground: palette.text, cursor: palette.tint, selectionBackground: `${palette.tint}55` }), [palette.background, palette.text, palette.tint]);
+  const theme = useMemo(() => ({ background: palette.background, foreground: palette.text, cursor: palette.tint, selectionBackground: withAlpha(palette.tint, 0x55 / 255) }), [palette.background, palette.text, palette.tint]);
   const labels = useMemo(() => ({
     paste: t('terminal:accessory.paste'), copy: t('terminal:accessory.copy'), latest: t('terminal:accessory.latest'),
     input: t('terminal:accessory.input'), more: t('terminal:accessory.more'),

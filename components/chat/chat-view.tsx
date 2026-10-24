@@ -1,3 +1,4 @@
+import { withAlpha } from '@/lib/color';
 import * as Clipboard from 'expo-clipboard';
 import { useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -171,7 +172,7 @@ export function ChatView() {
         </View>
 
         {overlay.sendErrorMessage ? (
-          <Card mode="contained" style={[styles.sendErrorCard, { backgroundColor: `${palette.danger}14` }]}>
+          <Card mode="contained" style={[styles.sendErrorCard, { backgroundColor: withAlpha(palette.danger, 0x14 / 255) }]}>
             <Card.Content style={styles.sendErrorContent}>
               <Text variant="titleSmall" style={{ color: palette.danger }}>{t('chat:view.actionFailed')}</Text>
               <Text selectable variant="bodySmall" style={{ color: palette.text }}>{overlay.sendErrorMessage}</Text>
@@ -191,7 +192,7 @@ export function ChatView() {
         ) : null}
 
         {overlay.approvals.mcpAuth ? (
-          <Card mode="contained" style={[styles.sendErrorCard, { backgroundColor: `${palette.warning}14` }]}>
+          <Card mode="contained" style={[styles.sendErrorCard, { backgroundColor: withAlpha(palette.warning, 0x14 / 255) }]}>
             <Card.Content style={styles.sendErrorContent}>
               <Text variant="titleSmall" style={{ color: palette.warning }}>{t('chat:approvals.mcpAuthTitle')}</Text>
               <Text selectable variant="bodySmall" style={{ color: palette.text }}>{t('chat:approvals.mcpAuthNeeded', { name: overlay.approvals.mcpAuth.mcpName })}</Text>

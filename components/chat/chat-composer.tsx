@@ -1,3 +1,4 @@
+import { withAlpha } from '@/lib/color';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Keyboard, Platform, useWindowDimensions, View } from 'react-native';
@@ -136,7 +137,7 @@ export function ChatComposer({
       style={[styles.composer, slim && slimStyles.composer, { backgroundColor: palette.background, borderTopWidth: 0 }]}
       elevation={0}>
       {conversation.active ? (
-        <View style={[styles.conversationBanner, { backgroundColor: `${palette.tint}10`, borderColor: `${palette.tint}28` }]}>
+        <View style={[styles.conversationBanner, { backgroundColor: withAlpha(palette.tint, 0x10 / 255), borderColor: withAlpha(palette.tint, 0x28 / 255) }]}>
           <View style={styles.conversationBannerHeader}>
             <Text variant="labelLarge" style={{ color: palette.text }}>{t('chat:composer.conversationMode')}</Text>
             <Chip compact icon={conversation.phase === 'speaking' ? 'volume-high' : 'microphone'}>{conversation.statusLabel || t('common:labels.active')}</Chip>
@@ -161,7 +162,7 @@ export function ChatComposer({
 
       {isSpeechInputListening || conversation.isListening ? (
         <View style={styles.voiceStatusRow}>
-          <Chip compact icon="microphone" style={[styles.voiceStatusChip, { backgroundColor: `${palette.tint}14` }]}>
+          <Chip compact icon="microphone" style={[styles.voiceStatusChip, { backgroundColor: withAlpha(palette.tint, 0x14 / 255) }]}>
             {conversation.active ? t('chat:composer.conversationActive') : t('chat:composer.listening')}
           </Chip>
         </View>

@@ -1,3 +1,4 @@
+import { withAlpha } from '@/lib/color';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { memo, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -87,7 +88,7 @@ function TranscriptMessageImpl({
                 onPress={() => onCopy(entry)}
               />
               {copied ? (
-                <View style={[styles.copiedPill, { backgroundColor: flat ? `${palette.tint}18` : isUser ? `${palette.onBubbleUser}20` : `${palette.tint}18` }]}> 
+                <View style={[styles.copiedPill, { backgroundColor: flat ? withAlpha(palette.tint, 0x18 / 255) : isUser ? withAlpha(palette.onBubbleUser, 0x20 / 255) : withAlpha(palette.tint, 0x18 / 255) }]}> 
                   <MaterialCommunityIcons name="check" size={12} color={accentColor} />
                   <Text variant="labelSmall" style={{ color: accentColor }}>{t('chat:cards.copied')}</Text>
                 </View>

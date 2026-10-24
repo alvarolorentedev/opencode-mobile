@@ -1,3 +1,4 @@
+import { withAlpha } from '@/lib/color';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Animated, Easing, StyleSheet, View } from 'react-native';
@@ -61,7 +62,7 @@ export function ConversationOverlay({
   const overlaySurface = palette.surface;
   const overlayText = palette.text;
   const overlayMuted = palette.muted;
-  const orbRing = phase === 'speaking' ? `${palette.accent}55` : `${palette.tint}30`;
+  const orbRing = phase === 'speaking' ? withAlpha(palette.accent, 0x55 / 255) : withAlpha(palette.tint, 0x30 / 255);
   const phaseLabel = t(PHASE_LABEL_KEYS[phase]);
   const connectionEmoji = connectionStatus === 'error' ? '⚠️' : connectionStatus === 'connecting' ? '🔄' : undefined;
 

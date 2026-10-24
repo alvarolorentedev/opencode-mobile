@@ -1,3 +1,4 @@
+import { withAlpha } from '@/lib/color';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -60,7 +61,7 @@ function ControlButton({
   const palette = usePalette();
   const textColor = active ? palette.tint : palette.text;
   const borderColor = active ? 'transparent' : palette.border;
-  const backgroundColor = active ? `${palette.tint}18` : palette.surface;
+  const backgroundColor = active ? withAlpha(palette.tint, 0x18 / 255) : palette.surface;
   const iconSize = slim ? 14 : 16;
   const controlSize = slim ? 32 : 40;
   const innerHeight = slim ? 30 : 38;
@@ -275,7 +276,7 @@ export function ModelPicker({ disabled = false, models, onSelect, recentModelIds
                 renderItem={({ item, section }) => renderModelRow(item, !section.providerID)}
                 renderSectionHeader={({ section }) => section.providerID ? (
                     <View style={styles.groupHeader}>
-                      <View style={[styles.groupIcon, { backgroundColor: `${palette.tint}14` }]}>
+                      <View style={[styles.groupIcon, { backgroundColor: withAlpha(palette.tint, 0x14 / 255) }]}>
                         {renderProviderIcon(section.providerID, 18, palette.tint)}
                       </View>
                       <Text style={[styles.groupTitle, { color: palette.text }]}>{section.title}</Text>
