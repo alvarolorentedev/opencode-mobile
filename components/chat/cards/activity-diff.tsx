@@ -41,7 +41,7 @@ export function ActivityDiffCard({ diff, fontSize, palette }: { diff: Transcript
         <View style={[styles.badge, { backgroundColor: badge.background }]}>
           <Text style={styles.badgeText}>{badge.label}</Text>
         </View>
-        <Text variant="bodyMedium" numberOfLines={1} ellipsizeMode="middle" style={[styles.file, { color: palette.text }]}>{diff.file}</Text>
+        <Text variant="bodySmall" numberOfLines={1} ellipsizeMode="middle" style={[styles.file, { color: palette.muted }]}>{diff.file}</Text>
         <Text variant="labelMedium" style={{ color: palette.success }}>+{diff.additions}</Text>
         <Text variant="labelMedium" style={{ color: palette.danger }}>−{diff.deletions}</Text>
         <MaterialCommunityIcons name={expanded ? 'chevron-down' : 'chevron-right'} size={15} color={palette.muted} />
@@ -73,7 +73,7 @@ export function ActivityDiffCard({ diff, fontSize, palette }: { diff: Transcript
                   <Text style={[styles.marker, { color: tone.accentColor || palette.muted }]}>
                     {line.kind === 'added' ? '+' : line.kind === 'removed' ? '-' : ' '}
                   </Text>
-                  <Text selectable style={[styles.code, styles.lineText, { color: palette.text, fontSize: Math.max(11, fontSize - 2) }]}>
+                  <Text selectable style={[styles.code, styles.lineText, { color: palette.muted, fontSize: Math.max(11, fontSize - 2) }]}>
                     {line.text || ' '}
                   </Text>
                 </View>

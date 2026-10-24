@@ -29,9 +29,9 @@ export function ActivityReadGroupRow({ palette, reads }: { palette: Palette; rea
 
   return (
     <View style={styles.row} testID={`transcript-activity-read-${reads[0].id}`}>
-      <Text variant="bodyMedium" numberOfLines={1} style={[styles.label, { color: palette.text }]}>{label}</Text>
+      <Text variant="bodySmall" numberOfLines={1} style={[styles.label, { color: palette.muted }]}>{label}</Text>
       {names.length > 0 ? (
-        <Text variant="bodySmall" numberOfLines={1} style={[styles.command, { color: palette.text }]}>{names.join(', ')}</Text>
+        <Text variant="bodySmall" numberOfLines={1} style={[styles.command, { color: palette.muted }]}>{names.join(', ')}</Text>
       ) : <View style={styles.spacer} />}
       {active ? <ActivityIndicator size={12} color={palette.tint} /> : null}
     </View>
@@ -128,9 +128,9 @@ export function ActivityItemRow({ fontSize, item, palette }: { fontSize: number;
         ) : toolStatus === 'error' ? (
           <MaterialCommunityIcons name="alert-circle-outline" size={14} color={palette.danger} />
         ) : null}
-        <Text variant="bodyMedium" numberOfLines={1} style={[styles.label, { color: palette.text }]}>{label}</Text>
+        <Text variant="bodySmall" numberOfLines={1} style={[styles.label, { color: palette.muted }]}>{label}</Text>
         {secondary ? (
-          <Text variant="bodySmall" numberOfLines={1} style={[styles.command, { color: command ? palette.text : palette.muted }]}>{secondary}</Text>
+          <Text variant="bodySmall" numberOfLines={1} style={[styles.command, { color: palette.muted }]}>{secondary}</Text>
         ) : null}
         {meta ? <Text variant="labelSmall" style={[styles.meta, { color: palette.muted }]}>{meta}</Text> : null}
         {!secondary && !meta ? <View style={styles.spacer} /> : null}
@@ -140,7 +140,7 @@ export function ActivityItemRow({ fontSize, item, palette }: { fontSize: number;
         item.kind === 'patch' ? (
           <View style={styles.fileList}>
             {files.map((file) => (
-              <Text key={file} selectable variant="bodySmall" style={[styles.file, { color: palette.text }]}>{file}</Text>
+              <Text key={file} selectable variant="bodySmall" style={[styles.file, { color: palette.muted }]}>{file}</Text>
             ))}
           </View>
         ) : item.kind === 'tool' && isShellTool(item.tool) ? (
@@ -153,7 +153,7 @@ export function ActivityItemRow({ fontSize, item, palette }: { fontSize: number;
               style={styles.shellCopy}>
               <MaterialCommunityIcons name={copied ? 'check' : 'content-copy'} size={15} color={palette.muted} />
             </Pressable>
-            <Text selectable style={[styles.shellText, { color: palette.text, fontSize: Math.max(12, fontSize - 1) }]}>
+            <Text selectable style={[styles.shellText, { color: palette.muted, fontSize: Math.max(12, fontSize - 1) }]}>
               {body}
             </Text>
           </View>
@@ -161,8 +161,8 @@ export function ActivityItemRow({ fontSize, item, palette }: { fontSize: number;
           <View style={styles.markdownBody}>
             <MarkdownText
               codePalette={palette.code}
-              color={palette.text}
-              fontSize={fontSize}
+              color={palette.muted}
+              fontSize={Math.max(12, fontSize - 1)}
               mutedColor={palette.muted}
               text={body || label}
             />
