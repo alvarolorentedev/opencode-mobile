@@ -1,5 +1,5 @@
 import * as Clipboard from 'expo-clipboard';
-import { useState } from 'react';
+import { useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Alert, Keyboard, KeyboardAvoidingView, Linking, Platform, Pressable, View } from 'react-native';
 import { Button, Card, FAB, Snackbar, Text } from 'react-native-paper';
@@ -21,6 +21,7 @@ import { ConnectionStatusBanner } from '@/components/ui/connection-status-banner
 import { useWorkspaceActions } from '@/providers/workspace-context';
 import { normalizeTranscriptFontSize } from '@/providers/opencode-preferences';
 import { usePalette } from '@/hooks/use-palette';
+import type { TranscriptEntry } from '@/lib/opencode/format';
 
 export function ChatView() {
   const { t } = useTranslation();
@@ -30,6 +31,37 @@ export function ChatView() {
   const { createChat, focus, presentation } = useWorkspaceActions();
   const { header, content, composer, overlay, actions } = useChatViewController();
   const [newChatVisible, setNewChatVisible] = useState(false);
+
+  const handleCopyMessage = useCallback((entry: TranscriptEntry) => {
+    void actions.handleCopyMessage(entry);
+  }, [actions.handleCopyMessage]);
+  const handleForkMessage = useCallback((entry: TranscriptEntry) => {
+    if (!content.currentSessionId) return;
+    void actions.forkSession(content.currentSessionId, entry.id)
+      .catch((error) => actions.setSendFeedback(error instanceof Error ? error.message : t('chat:view.couldNotFork')));
+  }, [actions.forkSession, actions.setSendFeedback, content.currentSessionId, t]);
+  const handleRevertMessage = useCallback((entry: TranscriptEntry) => {
+    const sessionId = content.currentSessionId;
+    if (!sessionId) return;
+    if (Platform.OS === 'web') {
+      if (globalThis.confirm(t('chat:view.revertConfirm'))) {
+        void actions.handleRevertMessage(sessionId, entry.id)
+          .catch((error) => actions.setSendFeedback(error instanceof Error ? error.message : t('chat:view.couldNotRevert')));
+      }
+      return;
+    }
+    const release = block();
+    Alert.alert(t('chat:view.revertTitle'), t('chat:view.revertMessage'), [
+      { text: t('common:actions.cancel'), style: 'cancel', onPress: release },
+      { text: t('chat:view.revert'), style: 'destructive', onPress: () => void actions.handleRevertMessage(sessionId, entry.id).catch((error) => actions.setSendFeedback(error instanceof Error ? error.message : t('chat:view.couldNotRevert'))).finally(release) },
+    ], { cancelable: true, onDismiss: release });
+  }, [actions.handleRevertMessage, actions.setSendFeedback, block, content.currentSessionId, t]);
+  const handleSelectStarterPrompt = useCallback((prompt: string) => {
+    actions.setDraft(prompt);
+  }, [actions.setDraft]);
+  const handleToggleSpeak = useCallback((entry: TranscriptEntry) => {
+    void actions.handleSpeakEntry(entry);
+  }, [actions.handleSpeakEntry]);
 
   const progressAction = !content.awaitingUserInput && content.currentTodos.length > 0 ? (
     <FAB
@@ -82,32 +114,15 @@ export function ChatView() {
             isBootstrappingChat={content.isBootstrappingChat}
             isLoadingOlderMessages={content.transcriptPaging.isLoadingOlder}
             isRefreshingMessages={content.isRefreshingMessages}
-            onCopyMessage={(entry) => void actions.handleCopyMessage(entry)}
-            onForkMessage={(messageId) => {
-              if (!content.currentSessionId) return;
-              void actions.forkSession(content.currentSessionId, messageId).catch((error) => actions.setSendFeedback(error instanceof Error ? error.message : t('chat:view.couldNotFork')));
-            }}
+            onCopyMessage={handleCopyMessage}
+            onForkMessage={handleForkMessage}
             onLoadOlderMessages={() => {
               if (!content.currentSessionId || content.transcriptPaging.isLoadingOlder || !content.transcriptPaging.hasOlder) return;
               void content.transcriptPaging.loadOlder(content.currentSessionId);
             }}
-            onRevertMessage={(messageId) => {
-              const sessionId = content.currentSessionId;
-              if (!sessionId) return;
-              if (Platform.OS === 'web') {
-                if (globalThis.confirm(t('chat:view.revertConfirm'))) {
-                  void actions.handleRevertMessage(sessionId, messageId).catch((error) => actions.setSendFeedback(error instanceof Error ? error.message : t('chat:view.couldNotRevert')));
-                }
-                return;
-              }
-              const release = block();
-              Alert.alert(t('chat:view.revertTitle'), t('chat:view.revertMessage'), [
-                { text: t('common:actions.cancel'), style: 'cancel', onPress: release },
-                { text: t('chat:view.revert'), style: 'destructive', onPress: () => void actions.handleRevertMessage(sessionId, messageId).catch((error) => actions.setSendFeedback(error instanceof Error ? error.message : t('chat:view.couldNotRevert'))).finally(release) },
-              ], { cancelable: true, onDismiss: release });
-            }}
-            onSelectStarterPrompt={(prompt) => actions.setDraft(prompt)}
-            onToggleSpeak={(entry) => void actions.handleSpeakEntry(entry)}
+            onRevertMessage={handleRevertMessage}
+            onSelectStarterPrompt={handleSelectStarterPrompt}
+            onToggleSpeak={handleToggleSpeak}
             palette={palette}
             pendingInteractions={content.pendingInteractions}
             speakingMessageId={content.speakingMessageId}

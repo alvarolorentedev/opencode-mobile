@@ -18,10 +18,10 @@ type TranscriptMessageProps = {
   entry: TranscriptEntry;
   flat?: boolean;
   fontSize: number;
-  onCopy: () => void;
-  onFork?: () => void;
-  onRevert?: () => void;
-  onToggleSpeak: () => void;
+  onCopy: (entry: TranscriptEntry) => void;
+  onFork?: (entry: TranscriptEntry) => void;
+  onRevert?: (entry: TranscriptEntry) => void;
+  onToggleSpeak: (entry: TranscriptEntry) => void;
   slim?: boolean;
   speaking?: boolean;
 };
@@ -84,7 +84,7 @@ function TranscriptMessageImpl({
                 size={slim ? 14 : 16}
                 style={styles.messageActionButton}
                 iconColor={palette.muted}
-                onPress={onCopy}
+                onPress={() => onCopy(entry)}
               />
               {copied ? (
                 <View style={[styles.copiedPill, { backgroundColor: flat ? `${palette.tint}18` : isUser ? `${palette.onBubbleUser}20` : `${palette.tint}18` }]}> 
@@ -99,11 +99,11 @@ function TranscriptMessageImpl({
                   size={slim ? 14 : 16}
                   style={styles.messageActionButton}
                   iconColor={palette.muted}
-                  onPress={onToggleSpeak}
+                  onPress={() => onToggleSpeak(entry)}
                 />
               ) : null}
-              {onFork ? <IconButton accessibilityLabel={t('chat:cards.fork')} icon="source-fork" size={slim ? 14 : 16} style={styles.messageActionButton} iconColor={palette.muted} onPress={onFork} /> : null}
-              {onRevert ? <IconButton accessibilityLabel={t('chat:cards.revert')} icon="undo-variant" size={slim ? 14 : 16} style={styles.messageActionButton} iconColor={palette.muted} onPress={onRevert} /> : null}
+              {onFork ? <IconButton accessibilityLabel={t('chat:cards.fork')} icon="source-fork" size={slim ? 14 : 16} style={styles.messageActionButton} iconColor={palette.muted} onPress={() => onFork(entry)} /> : null}
+              {onRevert ? <IconButton accessibilityLabel={t('chat:cards.revert')} icon="undo-variant" size={slim ? 14 : 16} style={styles.messageActionButton} iconColor={palette.muted} onPress={() => onRevert(entry)} /> : null}
               <Text variant="labelSmall" style={{ color: metaColor, opacity: isUser && !flat ? 0.82 : 1 }}>
                 {formatTimestamp(entry.createdAt)}
               </Text>
@@ -145,7 +145,11 @@ function areTranscriptMessagePropsEqual(prev: TranscriptMessageProps, next: Tran
     prev.slim === next.slim &&
     prev.copied === next.copied &&
     prev.speaking === next.speaking &&
-    prev.canSpeak === next.canSpeak
+    prev.canSpeak === next.canSpeak &&
+    prev.onCopy === next.onCopy &&
+    prev.onFork === next.onFork &&
+    prev.onRevert === next.onRevert &&
+    prev.onToggleSpeak === next.onToggleSpeak
   );
 }
 

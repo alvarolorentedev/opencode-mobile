@@ -51,9 +51,9 @@ type TranscriptListProps = {
   isLoadingOlderMessages: boolean;
   isRefreshingMessages: boolean;
   onCopyMessage: (entry: TranscriptEntry) => void;
-  onForkMessage: (messageId: string) => void;
+  onForkMessage: (entry: TranscriptEntry) => void;
   onLoadOlderMessages: () => void;
-  onRevertMessage: (messageId: string) => void;
+  onRevertMessage: (entry: TranscriptEntry) => void;
   onSelectStarterPrompt: (prompt: string) => void;
   onToggleSpeak: (entry: TranscriptEntry) => void;
   palette: Palette;
@@ -234,10 +234,10 @@ export function TranscriptList({
               flat={flatTranscript}
               fontSize={transcriptFontSize}
               slim={slim}
-              onCopy={() => onCopyMessage(entry)}
-              onFork={entry.role === 'user' ? () => onForkMessage(entry.id) : undefined}
-              onRevert={entry.role === 'user' ? () => onRevertMessage(entry.id) : undefined}
-              onToggleSpeak={() => onToggleSpeak(entry)}
+              onCopy={onCopyMessage}
+              onFork={entry.role === 'user' ? onForkMessage : undefined}
+              onRevert={entry.role === 'user' ? onRevertMessage : undefined}
+              onToggleSpeak={onToggleSpeak}
               speaking={speakingMessageId === entry.id}
             />
           </View>
