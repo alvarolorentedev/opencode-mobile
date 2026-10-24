@@ -41,7 +41,7 @@ export function getProjectLabel(path: string) {
 // opened on this connection and enriches them with the server's project
 // metadata (id and display name). A remote project that was never opened is not
 // rendered.
-export function buildOpencodeProjects(openedPaths: string[], currentProjectPath: string | undefined, serverProjects: Project[]): OpencodeProject[] {
+export function buildOpencodeProjects(openedPaths: string[], serverProjects: Project[]): OpencodeProject[] {
   const remoteByPath = new Map(serverProjects.map((project) => [project.worktree, project]));
   return openedPaths.map((path) => {
     const remote = remoteByPath.get(path);
@@ -49,9 +49,6 @@ export function buildOpencodeProjects(openedPaths: string[], currentProjectPath:
       ...(remote ? { id: remote.id } : {}),
       label: remote?.name || getProjectLabel(path),
       path,
-      source: 'server' as const,
-      ...(remote ? { updatedAt: remote.time.initialized || remote.time.created } : {}),
-      isCurrent: path === currentProjectPath,
     };
   });
 }
@@ -60,10 +57,10 @@ export function buildOpencodeProjects(openedPaths: string[], currentProjectPath:
 // to a project but is not a project itself. Worktrees are confirmed by the
 // worktree catalog (which resolves them server-side) so the owning project
 // labels the active entry.
-export function resolveActiveProject(projects: OpencodeProject[], activeProjectPath: string | undefined, currentProjectPath: string | undefined, worktrees: WorktreeCatalog | undefined): OpencodeProject | undefined {
+export function resolveActiveProject(projects: OpencodeProject[], activeProjectPath: string | undefined, worktrees: WorktreeCatalog | undefined): OpencodeProject | undefined {
   const worktree = worktrees?.project;
   if (activeProjectPath && worktree && worktree.root !== activeProjectPath && worktrees.entries.some((entry) => entry.directory === activeProjectPath)) {
-    return { id: worktree.id, label: worktree.label, path: activeProjectPath, source: 'server', isCurrent: activeProjectPath === currentProjectPath };
+    return { id: worktree.id, label: worktree.label, path: activeProjectPath };
   }
   return projects.find((project) => project.path === activeProjectPath);
 }

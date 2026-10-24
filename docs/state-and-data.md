@@ -494,14 +494,12 @@ Several important UI-facing values are derived instead of stored directly.
 
 ### Projects
 
-Derived from the connection-scoped opened project paths, enriched by `serverProjects` (the server's `project.list()`) and `currentProjectPath`. A remote project the user never opened is not rendered; a path is opened when selected, added, or followed from a link.
+Derived from the connection-scoped opened project paths and enriched by `serverProjects` (the server's `project.list()`). A remote project the user never opened is not rendered; a path is opened when selected, added, or followed from a link.
 
 Properties include:
 
 - label from the server project's name, else the final path segment
-- `source: 'server'`
-- `id`/`updatedAt` when the server catalog knows the path
-- `isCurrent` when the path is the server's active directory
+- `id` when the server catalog knows the path
 - ordered by the local opened list (most recent first)
 
 ### Active Project

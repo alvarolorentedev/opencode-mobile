@@ -122,7 +122,7 @@ export type ProviderValuesInput = ActionInputs & {
   terminalRuntime: TerminalRuntime;
   terminalConnection: TerminalStatus;
   refreshTerminals: () => Promise<void>;
-  createTerminal: (command?: string, title?: string) => Promise<Pty>;
+  createTerminal: () => Promise<Pty>;
   openTerminal: (ptyId: string) => Promise<void>;
   sendTerminalInput: (ptyId: string, input: string, generation: number, scope: number) => void;
   closeTerminal: (ptyId: string) => Promise<void>;

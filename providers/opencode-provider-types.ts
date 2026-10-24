@@ -65,11 +65,7 @@ export type ProviderAccount = {
 export type ProviderOption = {
   id: string;
   label: string;
-  modelCount: number;
   configured: boolean;
-  // Integrations that serve this provider's login methods (its own id plus any
-  // linked Console integration). Used to associate stored accounts.
-  integrationIds?: string[];
   accounts?: ProviderAccount[];
 };
 
@@ -103,9 +99,6 @@ export type OpencodeProject = {
   id?: string;
   label: string;
   path: string;
-  source: 'server';
-  updatedAt?: number;
-  isCurrent?: boolean;
 };
 
 // Opened projects per connection scope, most-recent-first. The picker renders
@@ -337,7 +330,7 @@ export type SessionLibraryContextValue = {
   isFavoriteSession: (sessionId: string) => boolean;
   clearFavoriteSession: (sessionId: string) => void;
   sessionPreviewById: Record<string, string>;
-  refreshSessions: () => Promise<void>;
+  refreshSessions: () => Promise<Session[]>;
   deleteSession: (sessionId: string) => Promise<void>;
   archiveSession: (sessionId: string) => Promise<void>;
   restoreSession: (sessionId: string, options?: { projectPath?: string; open?: boolean }) => Promise<void>;
@@ -422,7 +415,7 @@ export type TerminalContextValue = {
   terminalRuntime: TerminalRuntime;
   terminalConnection: TerminalStatus;
   refreshTerminals: () => Promise<void>;
-  createTerminal: (command?: string, title?: string) => Promise<Pty>;
+  createTerminal: () => Promise<Pty>;
   openTerminal: (ptyId: string) => Promise<void>;
   sendTerminalInput: (ptyId: string, input: string, generation: number, scope: number) => void;
   closeTerminal: (ptyId: string) => Promise<void>;

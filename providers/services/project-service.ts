@@ -38,7 +38,7 @@ export async function getFileStatus(client: ScopedOpencodeClient) {
 export async function getVcsInfo(client: ScopedOpencodeClient) {
   if (client.compatibility) return v1.getVcsInfo(client.compatibility);
   const { data } = await client.api!.vcs.get(location(client));
-  return { branch: data.branch?.current, default_branch: data.branch?.default };
+  return { branch: data.branch?.current };
 }
 export async function getVcsDiff(client: ScopedOpencodeClient, mode: 'git' | 'branch', context?: number) {
   return client.compatibility ? v1.getVcsDiff(client.compatibility, mode, context) : (await client.api!.vcs.diff({ ...location(client), mode: mode === 'git' ? 'working' : 'branch', ...(context !== undefined ? { context } : {}) })).data;

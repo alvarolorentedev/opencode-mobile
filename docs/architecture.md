@@ -425,8 +425,8 @@ independent of onboarding completion. See [Cloud Link pilot](connect.md).
 
 ### Settings UI
 
-- `components/settings/settings-sections.tsx`
-  Barrel over `components/settings/sections/` (diagnostics, connection, AI defaults, notifications, voice, language, appearance) plus `setting-rows.tsx`.
+- `components/settings/sections/`
+  Settings section components (diagnostics, connection, AI defaults, notifications, voice, language, appearance) plus `setting-rows.tsx`.
 - `components/settings/provider-config-dialog.tsx`
   Provider auth modal.
 - `components/settings/settings-utils.ts`

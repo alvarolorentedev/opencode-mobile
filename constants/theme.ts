@@ -54,49 +54,57 @@ const darkCodePalette: CodePalette = {
   },
 };
 
+const greenLightTokens = {
+  tint: tintColorLight,
+  accent: '#125F53',
+  background: '#F4F7F4',
+  surface: '#FCFDFC',
+  surfaceAlt: '#E7EFEA',
+  card: '#FFFFFF',
+  muted: '#667874',
+  border: '#D6E1DC',
+  icon: '#8B989B',
+  bubbleUser: '#135C4E',
+  onBubbleUser: '#F5FFFB',
+  bubbleAssistant: '#EEF4F1',
+  tabBackground: '#F9FBFA',
+  tabIconDefault: '#8B989B',
+};
+
+const greenDarkTokens = {
+  tint: tintColorDark,
+  accent: '#58D4AB',
+  background: '#0F1614',
+  surface: '#16201D',
+  surfaceAlt: '#20302C',
+  card: '#16201D',
+  muted: '#9AADA8',
+  border: '#2B3C38',
+  icon: '#839793',
+  bubbleUser: '#1C6B5C',
+  onBubbleUser: '#F3FFFB',
+  bubbleAssistant: '#182320',
+  tabBackground: '#121A18',
+  tabIconDefault: '#839793',
+};
+
 export const Colors = {
   light: {
     text: '#172126',
-    background: '#F4F7F4',
-    surface: '#FCFDFC',
-    surfaceAlt: '#E7EFEA',
-    card: '#FFFFFF',
-    tint: tintColorLight,
-    accent: '#125F53',
-    muted: '#667874',
-    border: '#D6E1DC',
-    icon: '#8B989B',
+    ...greenLightTokens,
     success: '#147D64',
     warning: '#A56A0D',
     danger: '#B64545',
-    bubbleUser: '#135C4E',
-    onBubbleUser: '#F5FFFB',
-    bubbleAssistant: '#EEF4F1',
     onBubbleAssistant: '#182320',
-    tabBackground: '#F9FBFA',
-    tabIconDefault: '#8B989B',
     code: lightCodePalette,
   },
   dark: {
     text: '#EAF3EF',
-    background: '#0F1614',
-    surface: '#16201D',
-    surfaceAlt: '#20302C',
-    card: '#16201D',
-    tint: tintColorDark,
-    accent: '#58D4AB',
-    muted: '#9AADA8',
-    border: '#2B3C38',
-    icon: '#839793',
+    ...greenDarkTokens,
     success: '#63D9B1',
     warning: '#E6B35A',
     danger: '#F08A8A',
-    bubbleUser: '#1C6B5C',
-    onBubbleUser: '#F3FFFB',
-    bubbleAssistant: '#182320',
     onBubbleAssistant: '#EAF3EF',
-    tabBackground: '#121A18',
-    tabIconDefault: '#839793',
     code: darkCodePalette,
   },
 };
@@ -127,16 +135,8 @@ type ThemeTokens = Pick<
 
 export const ACCENT_PALETTES: Record<AccentColor, Record<ColorScheme, ThemeTokens>> = {
   green: {
-    light: {
-      tint: tintColorLight, accent: '#125F53', background: '#F4F7F4', surface: '#FCFDFC', surfaceAlt: '#E7EFEA', card: '#FFFFFF',
-      muted: '#667874', border: '#D6E1DC', icon: '#8B989B', bubbleUser: '#135C4E', onBubbleUser: '#F5FFFB',
-      bubbleAssistant: '#EEF4F1', tabBackground: '#F9FBFA', tabIconDefault: '#8B989B',
-    },
-    dark: {
-      tint: tintColorDark, accent: '#58D4AB', background: '#0F1614', surface: '#16201D', surfaceAlt: '#20302C', card: '#16201D',
-      muted: '#9AADA8', border: '#2B3C38', icon: '#839793', bubbleUser: '#1C6B5C', onBubbleUser: '#F3FFFB',
-      bubbleAssistant: '#182320', tabBackground: '#121A18', tabIconDefault: '#839793',
-    },
+    light: greenLightTokens,
+    dark: greenDarkTokens,
   },
   blue: {
     light: {

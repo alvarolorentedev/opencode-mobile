@@ -24,6 +24,15 @@ const MESSAGE_REFRESH_COALESCE_MS = 400;
 // Keep just-created sessions visible for a short grace period.
 const LOCAL_SESSION_GRACE_MS = 10_000;
 
+async function withDiffLoading<T>(silent: boolean, setLoading: (value: boolean) => void, task: () => Promise<T>) {
+  if (!silent) setLoading(true);
+  try {
+    return await task();
+  } finally {
+    if (!silent) setLoading(false);
+  }
+}
+
 export function useProjectRefreshActions({
   activeProjectPath,
   client,
@@ -50,7 +59,7 @@ export function useProjectRefreshActions({
   connectionScope,
   refreshMessages,
 }: ProjectActionsInput) {
-  const fetchSessions = useCallback(
+  const refreshSessions = useCallback(
     async () => {
       if (!activeProjectPath) {
         setSessions([]);
@@ -90,13 +99,6 @@ export function useProjectRefreshActions({
     [activeProjectPath, client, connectionScope, isCurrentClient, locallyCreatedSessionsRef, sessionsRef],
   );
 
-  const refreshSessions = useCallback(
-    async () => {
-      await fetchSessions();
-    },
-    [fetchSessions],
-  );
-
   const refreshSessionStatuses = useCallback(async () => {
     if (client.compatibility) {
       await refreshSessions();
@@ -122,60 +124,40 @@ export function useProjectRefreshActions({
   }, [client, isCurrentClient, refreshSessions, setSessionStatuses]);
 
   const refreshSessionDiff = useCallback(
-    async (sessionId: string, silent = false, messageId?: string) => {
-      if (!silent) {
-        setIsRefreshingDiffs(true);
-      }
-
-      try {
-        const messages = messagesBySessionRef.current[sessionId] ?? [];
-        const pinned = selectedDiffMessageBySessionRef.current[sessionId];
-        // Resolve through the same selector the diff surface displays with so a
-        // request can never ask the server for a different turn than the one the
-        // overlay highlights.
-        const targetMessageId = messageId ?? resolveDiffTurn(messages, pinned);
-        const data = await svcGetSessionDiff(client, sessionId, targetMessageId, messages);
-        if (!isCurrentClient(client)) {
-          return data;
-        }
-        setDiffsBySession((current) => ({
-          ...current,
-          [sessionId]: data,
-        }));
-
+    async (sessionId: string, silent = false, messageId?: string) => withDiffLoading(silent, setIsRefreshingDiffs, async () => {
+      const messages = messagesBySessionRef.current[sessionId] ?? [];
+      const pinned = selectedDiffMessageBySessionRef.current[sessionId];
+      // Resolve through the same selector the diff surface displays with so a
+      // request can never ask the server for a different turn than the one the
+      // overlay highlights.
+      const targetMessageId = messageId ?? resolveDiffTurn(messages, pinned);
+      const data = await svcGetSessionDiff(client, sessionId, targetMessageId, messages);
+      if (!isCurrentClient(client)) {
         return data;
-      } finally {
-        if (!silent) {
-          setIsRefreshingDiffs(false);
-        }
       }
-    },
+      setDiffsBySession((current) => ({
+        ...current,
+        [sessionId]: data,
+      }));
+
+      return data;
+    }),
     [client, isCurrentClient],
   );
 
   const refreshVcsDiff = useCallback(
-    async (scope: 'uncommitted' | 'branch', silent = false) => {
-      if (!silent) {
-        setIsRefreshingDiffs(true);
-      }
-
-      try {
-        const data = await svcGetVcsDiff(client, scope === 'branch' ? 'branch' : 'git');
-        if (!isCurrentClient(client)) {
-          return data;
-        }
-        setVcsDiffsByScope((current) => ({
-          ...current,
-          [scope]: data,
-        }));
-
+    async (scope: 'uncommitted' | 'branch', silent = false) => withDiffLoading(silent, setIsRefreshingDiffs, async () => {
+      const data = await svcGetVcsDiff(client, scope === 'branch' ? 'branch' : 'git');
+      if (!isCurrentClient(client)) {
         return data;
-      } finally {
-        if (!silent) {
-          setIsRefreshingDiffs(false);
-        }
       }
-    },
+      setVcsDiffsByScope((current) => ({
+        ...current,
+        [scope]: data,
+      }));
+
+      return data;
+    }),
     [client, isCurrentClient],
   );
 
@@ -296,7 +278,6 @@ export function useProjectRefreshActions({
   );
 
   return {
-    fetchSessions,
     refreshSessions,
     refreshSessionStatuses,
     refreshSessionDiff,

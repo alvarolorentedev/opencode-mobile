@@ -17,17 +17,15 @@ import { getConnectionUiScope } from '@/lib/connection-scope';
 import { ServerContextPicker } from '@/components/settings/server-context-picker';
 import { ServerApprovals } from '@/components/settings/server-approvals';
 import { McpSection } from '@/components/settings/mcp-section';
-import {
-  EditorSection,
-  ConnectionSection,
-  CloudLinkSection,
-  DiagnosticsSection,
-  GeneralSection,
-  NotificationsSection,
-  SupportSection,
-  UpdateSection,
-  VoiceSection,
-} from '@/components/settings/settings-sections';
+import { EditorSection } from '@/components/settings/sections/editor-section';
+import { ConnectionSection } from '@/components/settings/sections/connection-section';
+import { CloudLinkSection } from '@/components/settings/sections/cloud-link-section';
+import { DiagnosticsSection } from '@/components/settings/sections/diagnostics-section';
+import { GeneralSection } from '@/components/settings/sections/general-section';
+import { NotificationsSection } from '@/components/settings/sections/notifications-section';
+import { SupportSection } from '@/components/settings/sections/support-section';
+import { UpdateSection } from '@/components/settings/sections/update-section';
+import { VoiceSection } from '@/components/settings/sections/voice-section';
 import { useNotificationSetup } from '@/components/settings/use-notification-setup';
 import { AiSettingsPanel } from '@/components/settings/ai-settings-panel';
 import { useVoiceSetup } from '@/components/settings/use-voice-setup';

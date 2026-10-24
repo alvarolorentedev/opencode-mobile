@@ -47,7 +47,6 @@ export function useSessionCrudActions({
   setPendingQuestionsBySession,
   setFavoriteSessions,
   setArchivedSessions,
-  fetchSessions,
   refreshSessions,
   refreshMessages,
   refreshSessionDiff,
@@ -323,10 +322,10 @@ export function useSessionCrudActions({
 
       await summarizeSession(client, { sessionID: sessionId, ...selectedModel });
 
-      const nextSessions = await fetchSessions();
+      const nextSessions = await refreshSessions();
       return nextSessions.find((session) => session.id === sessionId);
     },
-    [chatPreferences.modelId, client, fetchSessions, sessions],
+    [chatPreferences.modelId, client, refreshSessions, sessions],
   );
 
   return {

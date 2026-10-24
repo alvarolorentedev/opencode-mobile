@@ -1,6 +1,7 @@
 import type { FormatterStatus, LspStatus, McpStatus } from '@/lib/opencode/types';
 import type { ScopedOpencodeClient } from '@/lib/opencode/client';
 
+import { getErrorMessage } from '@/lib/error-message';
 import { loadDiagnostics as loadLegacyDiagnostics } from '@/lib/opencode/compat/v1/diagnostics';
 import { getMcpStatus } from './mcp-service';
 
@@ -10,15 +11,11 @@ type OptionalDiagnostic<T> =
 
 export type Diagnostics = Awaited<ReturnType<typeof loadDiagnostics>>;
 
-function diagnosticError(error: unknown) {
-  return error instanceof Error ? error.message : String(error);
-}
-
 async function optionalDiagnostic<T>(load: () => Promise<T>): Promise<OptionalDiagnostic<T>> {
   try {
     return { available: true, data: await load() };
   } catch (error) {
-    return { available: false, error: diagnosticError(error) };
+    return { available: false, error: getErrorMessage(error) };
   }
 }
 

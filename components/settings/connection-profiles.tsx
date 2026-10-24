@@ -16,6 +16,7 @@ import { findMatchingProfile, type ConnectionProfile } from '@/lib/connection-pr
 import { hasWorkspaceDrafts } from '@/providers/workspace-presentation';
 import { useWorkspaces } from '@/providers/workspace-context';
 import { getConnectionUiScope } from '@/lib/connection-scope';
+import { getErrorMessage } from '@/lib/error-message';
 import { useConnection } from '@/providers/opencode-contexts';
 
 type Palette = typeof Colors.light;
@@ -49,7 +50,7 @@ export function ConnectionProfiles({ palette, onManageConnect, onPair }: { palet
   const [dialog, setDialog] = useState<DialogState>();
 
   useFocusEffect(useCallback(() => {
-    void refresh().catch((reason) => setError(reason instanceof Error ? reason.message : String(reason)));
+    void refresh().catch((reason) => setError(getErrorMessage(reason)));
   }, [refresh]));
 
   const activeProfile = findMatchingProfile(profiles, settings);
@@ -67,7 +68,7 @@ export function ConnectionProfiles({ palette, onManageConnect, onPair }: { palet
     try {
       await connectProfile(profile);
     } catch (reason) {
-      setError(reason instanceof Error ? reason.message : String(reason));
+      setError(getErrorMessage(reason));
     } finally {
       setSwitchingProfileId(undefined);
     }
@@ -82,7 +83,7 @@ export function ConnectionProfiles({ palette, onManageConnect, onPair }: { palet
     const message = [t('settings:connection.deleteMessage', { name: profile.name }),
       hasWorkspaceDrafts(registry.presentation, getConnectionUiScope(profile)) ? t('common:servers.discardDrafts') : undefined].filter(Boolean).join('\n\n');
     const confirmRemoval = () => {
-      void remove(profile.id).catch((reason) => setError(reason instanceof Error ? reason.message : String(reason)));
+      void remove(profile.id).catch((reason) => setError(getErrorMessage(reason)));
     };
 
     // React Native Web has no Alert, so follow the app's existing pattern of a
@@ -231,6 +232,11 @@ export function ConnectionProfiles({ palette, onManageConnect, onPair }: { palet
     const runtime = Object.entries(registry.snapshots).find(([key]) => (JSON.parse(key) as string[])[0] === id)?.[1];
     const status = runtime?.values.connectionValue.connection.status ?? 'idle';
     const isReconnecting = status === 'connecting';
+    const manageOrEdit = profile.connect
+      ? onManageConnect ? <Button mode="outlined" onPress={() => manageConnect(profile)}>{t('settings:connect.manage')}</Button> : null
+      : <Button testID={`connection-edit-${profile.id}`} mode="outlined" onPress={() => void handleEditProfile(profile).catch((reason) => setError(getErrorMessage(reason)))}>
+          {t('common:actions.edit')}
+        </Button>;
     rows.push(renderRow({
       rowKey: profile.id,
       testIDKey: profile.id,
@@ -250,9 +256,7 @@ export function ConnectionProfiles({ palette, onManageConnect, onPair }: { palet
             {t('common:actions.reconnect')}
           </Button>
           <Button testID={`connection-disconnect-${profile.id}`} onPress={() => void registry.disconnect(id).catch((reason) => setError(String(reason)))}>{t('common:actions.disconnect')}</Button>
-          {profile.connect ? onManageConnect ? <Button mode="outlined" onPress={() => manageConnect(profile)}>{t('settings:connect.manage')}</Button> : null : <Button testID={`connection-edit-${profile.id}`} mode="outlined" onPress={() => void handleEditProfile(profile).catch((reason) => setError(reason instanceof Error ? reason.message : String(reason)))}>
-            {t('common:actions.edit')}
-          </Button>}
+          {manageOrEdit}
         </>
       ) : (
         <>
@@ -264,9 +268,7 @@ export function ConnectionProfiles({ palette, onManageConnect, onPair }: { palet
             onPress={() => void handleConnect(profile)}>
             {t('common:actions.connect')}
           </Button>
-          {profile.connect ? onManageConnect ? <Button mode="outlined" onPress={() => manageConnect(profile)}>{t('settings:connect.manage')}</Button> : null : <Button testID={`connection-edit-${profile.id}`} mode="outlined" onPress={() => void handleEditProfile(profile).catch((reason) => setError(reason instanceof Error ? reason.message : String(reason)))}>
-            {t('common:actions.edit')}
-          </Button>}
+          {manageOrEdit}
           <Button testID={`connection-delete-${profile.id}`} mode="text" textColor={palette.danger} onPress={() => handleDelete(profile)}>
             {t('common:actions.delete')}
           </Button>

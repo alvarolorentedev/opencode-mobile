@@ -112,11 +112,6 @@ export type Agent = {
 export type Command = {
     name: string;
     description?: string;
-    template?: string;
-    agent?: string;
-    model?: string;
-    subtask?: boolean;
-    hints?: string[];
 };
 export type Model = {
     id: string;
@@ -185,7 +180,6 @@ export type McpLocalConfig = {
     command: string[];
     environment?: Record<string, string>;
     enabled?: boolean;
-    timeout?: number;
 };
 export type McpRemoteConfig = {
     type: 'remote';
@@ -193,7 +187,6 @@ export type McpRemoteConfig = {
     headers?: Record<string, string>;
     oauth?: McpOAuthConfig | false;
     enabled?: boolean;
-    timeout?: number;
 };
 export type McpStatus = {
     status: 'connected' | 'disabled' | 'pending';
@@ -204,7 +197,6 @@ export type McpStatus = {
 };
 export type Config = {
     model?: string;
-    default_agent?: string;
     enabled_providers?: string[];
     disabled_providers?: string[];
     provider?: Record<string, {
@@ -238,9 +230,7 @@ export type FileContent = {
 export type FileNode = {
     name: string;
     path: string;
-    absolute: string;
     type: 'file' | 'directory';
-    ignored: boolean;
 };
 export type File = {
     path: string;
@@ -250,7 +240,6 @@ export type File = {
 };
 export type VcsInfo = {
     branch?: string;
-    default_branch?: string;
 };
 export type FileDiff = {
     file?: string;
@@ -272,7 +261,6 @@ export type Pty = {
     cwd: string;
     status: 'running' | 'exited';
     pid: number;
-    exitCode?: number;
 };
 export type LspStatus = {
     id: string;
@@ -282,7 +270,6 @@ export type LspStatus = {
 };
 export type FormatterStatus = {
     name: string;
-    extensions: string[];
     enabled: boolean;
 };
 // Provider credential input values. V2 forms can carry non-string values

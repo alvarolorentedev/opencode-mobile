@@ -39,7 +39,7 @@ export const LAST_JS_ERROR_FILENAME = 'opencode-mobile.last-js-error.json';
 // Per-project session list cache. Hydrated on app open and on every project
 // switch so the project chat list paints without waiting for the server;
 // rewritten only from confirmed fetch results in
-// providers/opencode-provider.tsx fetchSessions. See providers/session-cache.ts.
+// providers/use-project-refresh-actions.ts refreshSessions. See providers/session-cache.ts.
 export function sessionsCacheKey(connectionScope: string, projectPath: string) {
   return `opencode-mobile.sessions.${connectionScope}.${projectPath}`;
 }

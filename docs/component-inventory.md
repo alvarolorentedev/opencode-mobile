@@ -177,6 +177,7 @@ type ChatComposerProps = {
 - own only local modal visibility and search-query state
 - return the selected `ModelOption` to the composer, which persists it through the provider
 - render the shared numeric slider for the selected model's server variants, or the legacy Low/Default/High reasoning hint on OpenCode 1
+- render the trigger with the local `ControlButton`, including slim sizing for the slim-interface preference
 - the transparent `Modal` sheet wraps its content in `GestureHandlerRootView` and dismisses on a downward header drag via the shared `useSwipeDismiss` helper, matching `OverlaySheet`
 
 ## `components/chat/chat-header.tsx`
@@ -312,17 +313,6 @@ Responsibility:
 - stop handler
 - conversation phase
 - session title
-
-## `components/chat/chat-controls.tsx`
-
-### Exported components
-
-- `ControlButton`
-
-### Responsibility
-
-- small reusable controls for the chat toolbar and Project header
-- accept a `slim` prop that shrinks control height, icon size, and label size for the slim-interface preference
 
 ## `components/chat/chat-diff.ts`
 
@@ -495,9 +485,9 @@ delayed activation uses neutral text with Retry and Scan the new QR code on your
 computer; the scan action resets the provider checkpoint and resumes the existing
 scanner. It preserves stored profiles. Components do not poll or classify errors.
 
-## `components/settings/settings-sections.tsx`
+## `components/settings/sections/`
 
-### Exported sections
+### Section components
 
 - `EditorSection`
 - `GeneralSection`

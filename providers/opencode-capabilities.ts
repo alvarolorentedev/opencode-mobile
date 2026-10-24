@@ -8,8 +8,6 @@ export type ServerCapabilities = {
   contract: ServerContract;
   share: boolean;
   archive: boolean;
-  todos: boolean;
-  summarize: boolean;
   fileSave: boolean;
   fileStatus: boolean;
   lsp: boolean;
@@ -26,10 +24,6 @@ export function getServerCapabilities(contract: ServerContract): ServerCapabilit
     contract,
     share: full,
     archive: full,
-    // V2 has no server-owned todo endpoint, but the plan is derived from the
-    // transcript's `todowrite` tool parts, so the surface is available on both.
-    todos: true,
-    summarize: full,
     fileSave: true,
     fileStatus: true,
     lsp: full,

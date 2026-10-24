@@ -149,9 +149,7 @@ export async function discoverChatCapabilities(client: ScopedOpencodeClient, act
       return {
         id: provider.id,
         label: provider.name,
-        modelCount: Object.keys(provider.models).length,
         configured: configuredProviderIds.has(provider.id) || providerAccounts.length > 0,
-        integrationIds,
         ...(providerAccounts.length
           ? { accounts: providerAccounts.map(({ id, label, method, active }) => ({ id, label, method, active })) }
           : {}),

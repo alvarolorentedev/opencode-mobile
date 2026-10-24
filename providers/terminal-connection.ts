@@ -1,4 +1,5 @@
 import type { ScopedOpencodeClient, ServerContract } from '@/lib/opencode/client';
+import { getErrorMessage } from '@/lib/error-message';
 import { createTerminalOutputQueue } from '@/lib/opencode/terminal-stream';
 import { createTerminalConnectToken, getTerminalWebSocketUrl, openTerminalWebSocket, resizeTerminal } from '@/providers/services/terminal-service';
 import type { TerminalInstance, TerminalRenderer } from './terminal-types';
@@ -49,7 +50,7 @@ export function createTerminalConnection({ id, context, publish }: {
   }
   function fail(error: unknown, retry: boolean) {
     if (stopped || !context().current) return;
-    const message = error instanceof Error ? error.message : String(error);
+    const message = getErrorMessage(error);
     update(retry ? 'reconnecting' : 'error', message);
     if (retry && foreground && renderer && !retryTimer) {
       const base = [1000, 2000, 4000, 8000, 15000][Math.min(attempt++, 4)];

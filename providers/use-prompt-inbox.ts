@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 
+import { getErrorMessage } from '@/lib/error-message';
 import { classifyConnectionFailure } from '@/lib/opencode/client/errors';
 import type { ScopedOpencodeClient } from '@/lib/opencode/client';
 import type { SessionMessageRecord } from '@/lib/opencode/format';
@@ -29,7 +30,7 @@ function isQueueableTransportFailure(error: unknown, online: boolean) {
   if (status !== undefined) return false;
   // Some native transports only report a generic fetch failure.
   return /fetch failed|failed to fetch|network request failed|network unavailable|timed? ?out|connection (?:closed|reset|failed)/i.test(
-    error instanceof Error ? error.message : String(error),
+    getErrorMessage(error),
   );
 }
 
@@ -37,7 +38,7 @@ function isOfflineLikeFailure(error: unknown, online: boolean) {
   if (!online) return true;
   if (classifyConnectionFailure(error) === 'offline') return true;
   return /failed to fetch|fetch failed|network request failed|network unavailable|not connected to the internet|\boffline\b/i.test(
-    error instanceof Error ? error.message : String(error),
+    getErrorMessage(error),
   );
 }
 

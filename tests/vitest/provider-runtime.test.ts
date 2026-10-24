@@ -690,12 +690,11 @@ const sessionContext = {
   serverContractRef: { current: 'v1' }, serverGenerationRef: { current: 1 },
   buildClient: (settings) => settings,
   svcRestoreSession: async (candidate) => { restoredDirectory = candidate.directory; await restoreGate?.promise; if (restoreFailure) throw new Error('restore failed'); },
-  refreshSessions: async () => {}, refreshArchivedSessions: async () => {}, refreshActiveSessions: async () => {},
+  refreshSessions: async () => { fetchedSessions++; return [target]; }, refreshArchivedSessions: async () => {}, refreshActiveSessions: async () => {},
   openSessionInProject: async (projectPath, id) => { reopened = { projectPath, id }; },
   currentSessionId: undefined, sessions: [{ id: 'cached' }], sessionsRef: { current: [{ id: 'cached' }] }, messagesBySession: {},
   pendingDeepLinkTargetRef: { current: { sessionId: 'target', projectPath: '/repo' } },
   bootstrapPromiseRef: { current: null }, bootstrapTokenRef: {},
-  fetchSessions: async () => { fetchedSessions++; return [target]; },
   lastSessionByConnection: {}, connectionScope: 'scope', createSession: async () => { createdSessions++; },
   explicitSessionSelectionRef: { current: undefined },
   setIsBootstrappingChat: () => {}, refreshMessages: async () => {}, refreshSessionDiff: async () => {},
@@ -723,6 +722,7 @@ restoreGate = deferred();
 const switchingRestore = sessionActions.restoreSession('target', { open: true });
 sessionContext.serverGenerationRef.current++; restoreGate.resolve();
 await assert.rejects(switchingRestore, /connection changed/); assert.equal(reopened, undefined); restoreGate = undefined;
+fetchedSessions = 0;
 assert.equal(await sessionActions.ensureActiveSession(), 'target'); assert.equal(fetchedSessions, 1);
 assert.equal(createdSessions, 0);
 sessionContext.pendingDeepLinkTargetRef.current = { sessionId: 'missing', projectPath: '/repo' };

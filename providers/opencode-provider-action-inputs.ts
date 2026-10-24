@@ -126,8 +126,7 @@ export type SessionActionsInput = {
   pendingDeepLinkTargetRef: { current: SessionDeepLinkTarget | undefined };
   bootstrapPromiseRef: { current: Promise<string | undefined> | null };
   bootstrapTokenRef: { current: object | undefined };
-  fetchSessions: () => Promise<Session[]>;
-  refreshSessions: () => Promise<unknown>;
+  refreshSessions: () => Promise<Session[]>;
   refreshMessages: (sessionId: string, silent?: boolean, options?: { mode?: TranscriptRefreshMode }) => Promise<SessionMessageRecord[]>;
   beginHydration: (sessionId: string) => () => void;
   refreshSessionDiff: (sessionId: string, silent?: boolean, messageId?: string) => Promise<FileDiff[]>;

@@ -1,21 +1,18 @@
 import type { FormatterStatus, LspStatus, McpStatus } from '@/lib/opencode/types';
 import type { OpencodeClient } from '@opencode-ai/sdk/v2/client';
 
+import { getErrorMessage } from '@/lib/error-message';
 import { requireData } from '@/providers/services/require-data';
 
 type OptionalDiagnostic<T> =
   | { available: true; data: T }
   | { available: false; error: string };
 
-function diagnosticError(error: unknown) {
-  return error instanceof Error ? error.message : String(error);
-}
-
 async function optionalDiagnostic<T>(load: () => Promise<T>): Promise<OptionalDiagnostic<T>> {
   try {
     return { available: true, data: await load() };
   } catch (error) {
-    return { available: false, error: diagnosticError(error) };
+    return { available: false, error: getErrorMessage(error) };
   }
 }
 

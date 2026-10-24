@@ -139,6 +139,7 @@ describe('provider-owned prompt inbox', () => {
       react: runtime.react,
       '@/providers/services/session-service': { getSessionInbox: (candidate: any, id: string) => candidate.promptInbox.list(id) },
       '@/lib/opencode/client/errors': { classifyConnectionFailure: () => 'unknown' },
+      '@/lib/error-message': { getErrorMessage: (error: unknown) => error instanceof Error ? error.message : String(error) },
     });
     runtime.mount(usePromptInbox, {
       client,

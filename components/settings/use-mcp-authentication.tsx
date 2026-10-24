@@ -1,3 +1,4 @@
+import { getErrorMessage } from '@/lib/error-message';
 import { openOAuthBrowser } from '@/lib/opencode/oauth';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { ProviderConfigDialog, type ProviderOAuthStage } from './provider-config-dialog';
@@ -48,10 +49,10 @@ export function useMcpAuthentication(oauth: McpContextValue['mcpOAuth'], palette
       setStage(result.method === 'auto' ? 'pending' : 'code');
       if (result.method === 'auto') {
         // Attach completion/error handlers before launching the browser.
-        const wait = oauth.wait(name).then(() => { if (id === revision.current) cancel(); }, (failure: unknown) => { if (id === revision.current) { setError(failure instanceof Error ? failure.message : String(failure)); setStage('idle'); } });
+        const wait = oauth.wait(name).then(() => { if (id === revision.current) cancel(); }, (failure: unknown) => { if (id === revision.current) { setError(getErrorMessage(failure)); setStage('idle'); } });
         await openOAuthBrowser(result.url); await wait;
       } else await openOAuthBrowser(result.url);
-    } catch (failure) { if (id === revision.current) setError(failure instanceof Error ? failure.message : String(failure)); }
+    } catch (failure) { if (id === revision.current) setError(getErrorMessage(failure)); }
     finally { if (id === revision.current) setBusy(false); }
   };
   const selected = methods[index];

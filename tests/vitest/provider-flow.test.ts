@@ -46,9 +46,9 @@ describe('provider addability', () => {
 
   it('keeps configured providers so another account can be added, and only providers with a login method', () => {
     const providers = [
-      { id: 'openai', label: 'OpenAI', modelCount: 3, configured: true },
-      { id: 'no-auth', label: 'No auth', modelCount: 0, configured: false },
-      { id: 'openrouter', label: 'OpenRouter', modelCount: 1, configured: false },
+      { id: 'openai', label: 'OpenAI', configured: true },
+      { id: 'no-auth', label: 'No auth', configured: false },
+      { id: 'openrouter', label: 'OpenRouter', configured: false },
     ];
     const methods = { openai: [{ type: 'oauth' as const, label: 'Sign in' }] };
 

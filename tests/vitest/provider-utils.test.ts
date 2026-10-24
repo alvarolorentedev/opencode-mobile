@@ -60,17 +60,17 @@ describe('provider model selection utilities', () => {
     // The picker renders only the projects opened on this connection and
     // enriches them with the server's project metadata.
     const remoteProjects = [{ id: 'p1', worktree: '/repo', name: 'Repo display', time: { created: 1, updated: 5 } }];
-    const listedProjects = buildOpencodeProjects(['/repo', '/unlisted'], '/repo', remoteProjects);
-    assert.deepEqual(listedProjects.map((project) => ({ path: project.path, label: project.label, id: project.id, isCurrent: project.isCurrent })), [
-      { path: '/repo', label: 'Repo display', id: 'p1', isCurrent: true },
-      { path: '/unlisted', label: 'unlisted', id: undefined, isCurrent: false },
+    const listedProjects = buildOpencodeProjects(['/repo', '/unlisted'], remoteProjects);
+    assert.deepEqual(listedProjects.map((project) => ({ path: project.path, label: project.label, id: project.id })), [
+      { path: '/repo', label: 'Repo display', id: 'p1' },
+      { path: '/unlisted', label: 'unlisted', id: undefined },
     ]);
-    assert.deepEqual(buildOpencodeProjects([], '/repo', remoteProjects), []);
+    assert.deepEqual(buildOpencodeProjects([], remoteProjects), []);
     // A worktree is labeled by its owning project and only while the worktree
     // catalog resolves it.
     const worktreeCatalog = { entries: [{ directory: '/worktrees/task', name: 'task' }], project: { id: 'p1', root: '/repo', label: 'Repo display' }, loading: false };
-    assert.equal(resolveActiveProject(listedProjects, '/worktrees/task', '/repo', worktreeCatalog)?.label, 'Repo display');
-    assert.equal(resolveActiveProject(listedProjects, '/elsewhere', '/repo', worktreeCatalog), undefined);
+    assert.equal(resolveActiveProject(listedProjects, '/worktrees/task', worktreeCatalog)?.label, 'Repo display');
+    assert.equal(resolveActiveProject(listedProjects, '/elsewhere', worktreeCatalog), undefined);
     const retry = { type: 'retry', attempt: 2, message: 'provider failed', next: now + 5_000 };
     const staleRetry = { type: 'retry', attempt: 2, message: 'provider failed', next: now - RETRY_STATUS_STALE_MS - 1 };
     // A list refresh cannot express retry, so an event-derived retry must survive it.

@@ -95,8 +95,7 @@ function sessionCrudInput(patch: Record<string, unknown> = {}) {
       setPendingQuestionsBySession: () => undefined,
       setFavoriteSessions: () => undefined,
       setArchivedSessions: () => undefined,
-      fetchSessions: async () => [],
-      refreshSessions: async () => undefined,
+      refreshSessions: async () => [],
       refreshMessages: async () => [],
       beginHydration: () => () => undefined,
       refreshSessionDiff: async () => [],
@@ -138,7 +137,7 @@ describe('local-first session selection', () => {
       bootstrapPromiseRef: { current: null },
       bootstrapTokenRef: { current: undefined },
       isCurrentClient: () => true,
-      fetchSessions: async () => [{ id: 'target' }],
+      refreshSessions: async () => [{ id: 'target' }],
       refreshMessages: async () => { refreshes += 1; await hydration.promise; return []; },
       refreshSessionDiff: async () => [],
       refreshSessionTodos: async () => [],
@@ -191,7 +190,7 @@ describe('local-first session selection', () => {
       bootstrapPromiseRef: { current: null },
       bootstrapTokenRef: { current: undefined },
       isCurrentClient: () => true,
-      fetchSessions: async () => [{ id: 'target' }],
+      refreshSessions: async () => [{ id: 'target' }],
       refreshMessages,
       refreshSessionDiff: async () => [],
       refreshSessionTodos: async () => [],
@@ -236,7 +235,7 @@ describe('local-first session selection', () => {
       bootstrapPromiseRef: { current: null },
       bootstrapTokenRef: { current: undefined },
       isCurrentClient: () => true,
-      fetchSessions: async () => fetchGate.promise,
+      refreshSessions: async () => fetchGate.promise,
       refreshMessages: async () => [],
       refreshSessionDiff: async () => [],
       refreshSessionTodos: async () => [],
@@ -293,7 +292,7 @@ describe('local-first session selection', () => {
       bootstrapPromiseRef: { current: null },
       bootstrapTokenRef: { current: undefined },
       isCurrentClient: () => true,
-      fetchSessions: async (...args: any[]) => { fetches.push(args.length); return []; },
+      refreshSessions: async (...args: any[]) => { fetches.push(args.length); return []; },
       refreshMessages: async () => [],
       refreshSessionDiff: async () => [],
       refreshSessionTodos: async () => [],
@@ -347,7 +346,7 @@ describe('local-first session selection', () => {
     const { useSessionCrudActions, services } = await loadSessionCrud(runtime);
     const refresh = deferredGate();
     const { state, input } = sessionCrudInput({
-      refreshSessions: async () => { await refresh.promise; },
+      refreshSessions: async () => { await refresh.promise; return []; },
     });
     runtime.mount(useSessionCrudActions, input);
 
@@ -431,8 +430,7 @@ describe('non-blocking prompt reconciliation', () => {
       busyNotificationsRef: { current: new Set() },
       promptSubmissionRef: { current: { active: false } },
       setSelectedDiffMessageBySession: vi.fn(),
-      fetchSessions: vi.fn(async () => [{ id: 's', title: 'chat' }]),
-      refreshSessions: vi.fn(async () => undefined),
+      refreshSessions: vi.fn(async () => [{ id: 's', title: 'chat' }]),
       refreshMessages,
       refreshSessionDiff,
       refreshSessionTodos,

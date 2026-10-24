@@ -5,8 +5,10 @@ const location = (client: ScopedOpencodeClient) => ({ location: { directory: cli
 export async function listTerminals(client: ScopedOpencodeClient) {
   return client.compatibility ? v1.listTerminals(client.compatibility) : (await client.api!.pty.list(location(client))).data;
 }
-export async function createTerminal(client: ScopedOpencodeClient, input?: { command?: string; args?: string[]; cwd?: string; title?: string; env?: Record<string, string> }) {
-  return client.compatibility ? v1.createTerminal(client.compatibility, input) : (await client.api!.pty.create({ ...location(client), ...input })).data;
+export async function createTerminal(client: ScopedOpencodeClient) {
+  return client.compatibility
+    ? v1.createTerminal(client.compatibility, client.__opencode.directory)
+    : (await client.api!.pty.create(location(client))).data;
 }
 export async function removeTerminal(client: ScopedOpencodeClient, ptyID: string) {
   return client.compatibility ? v1.removeTerminal(client.compatibility, ptyID) : client.api!.pty.remove({ ...location(client), ptyID });

@@ -1,5 +1,5 @@
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Keyboard, Modal, Pressable, SectionList, StyleSheet, Text, TextInput, View } from 'react-native';
 import { GestureDetector, GestureHandlerRootView } from 'react-native-gesture-handler';
@@ -11,7 +11,6 @@ import { useSwipeDismiss } from '@/components/ui/use-swipe-dismiss';
 import { useDismissOnBack } from '@/hooks/use-dismiss-on-back';
 import { useKeyboardHeight } from '@/hooks/use-keyboard-height';
 import { getModelVariantLabel, REASONING_OPTIONS } from '@/components/chat/chat-view-utils';
-import { ControlButton } from '@/components/chat/chat-controls';
 import { renderProviderIcon } from '@/components/ui/provider-icon';
 import { Fonts } from '@/constants/theme';
 import { usePalette } from '@/hooks/use-palette';
@@ -37,6 +36,58 @@ type ModelPickerProps = {
 function getSelectedModelLabel(models: ModelOption[], selectedModelId: string | undefined, fallback: string) {
   const selected = models.find((model) => model.id === selectedModelId);
   return selected ? `${selected.label} · ${selected.providerLabel}` : fallback;
+}
+
+function ControlButton({
+  active = false,
+  children,
+  disabled = false,
+  grow = false,
+  icon,
+  onPress,
+  slim = false,
+  testID,
+}: {
+  active?: boolean;
+  children: string;
+  disabled?: boolean;
+  grow?: boolean;
+  icon?: (props: { size: number; color: string }) => ReactNode;
+  onPress: () => void;
+  slim?: boolean;
+  testID?: string;
+}) {
+  const palette = usePalette();
+  const textColor = active ? palette.tint : palette.text;
+  const borderColor = active ? 'transparent' : palette.border;
+  const backgroundColor = active ? `${palette.tint}18` : palette.surface;
+  const iconSize = slim ? 14 : 16;
+  const controlSize = slim ? 32 : 40;
+  const innerHeight = slim ? 30 : 38;
+
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={children}
+      accessibilityState={{ disabled }}
+      disabled={disabled}
+      onPress={onPress}
+      testID={testID}
+      style={({ pressed }) => [
+        styles.controlButton,
+        grow ? styles.controlButtonGrow : null,
+        styles.controlButtonText,
+        slim && { minHeight: controlSize, paddingHorizontal: 8 },
+        { borderColor, backgroundColor, opacity: disabled ? 0.45 : pressed ? 0.82 : 1 },
+      ]}>
+      <View style={[styles.controlButtonInner, slim && { minHeight: innerHeight, gap: 6 }]}>
+        {icon ? icon({ size: iconSize, color: textColor }) : null}
+        <Text maxFontSizeMultiplier={1.5} numberOfLines={1} ellipsizeMode="tail" style={[styles.controlButtonLabel, slim && { fontSize: 13 }, { color: textColor }]}>
+          {children}
+        </Text>
+      </View>
+    </Pressable>
+  );
 }
 
 export function ModelPicker({ disabled = false, models, onSelect, recentModelIds, selectedModelId, slim = false, compact = false, reasoningLabel, reasoning, onReasoningChange, serverContract, selectedVariant, onVariantChange }: ModelPickerProps) {
@@ -245,6 +296,33 @@ export function ModelPicker({ disabled = false, models, onSelect, recentModelIds
 }
 
 const styles = StyleSheet.create({
+  controlButton: {
+    borderRadius: 999,
+    borderWidth: 1,
+  },
+  controlButtonGrow: {
+    flexGrow: 1,
+    flexBasis: 0,
+    minWidth: 0,
+  },
+  controlButtonText: {
+    flex: 1,
+    minHeight: 40,
+    paddingHorizontal: 12,
+  },
+  controlButtonInner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    minHeight: 38,
+  },
+  controlButtonLabel: {
+    flexShrink: 1,
+    fontFamily: Fonts.sans,
+    fontSize: 14,
+    fontWeight: '600',
+  },
   summary: { justifyContent: 'center', alignItems: 'flex-end', minHeight: 44, gap: 0, paddingHorizontal: 4 },
   summaryModel: { maxWidth: '100%', fontFamily: Fonts.sans, fontSize: 13, fontWeight: '600' },
   summaryReasoning: { fontFamily: Fonts.sans, fontSize: 11, fontWeight: '600' },

@@ -99,8 +99,8 @@ export function useOpencodeProviderComposition(input: WorkspaceRuntimeInput) {
   }, [setMcpAuthPrompt]);
 
   const projects = useMemo(
-    () => buildOpencodeProjects(state.projectPathsByConnection[state.connectionScope] ?? [], state.currentProjectPath, state.serverProjects),
-    [state.connectionScope, state.currentProjectPath, state.projectPathsByConnection, state.serverProjects],
+    () => buildOpencodeProjects(state.projectPathsByConnection[state.connectionScope] ?? [], state.serverProjects),
+    [state.connectionScope, state.projectPathsByConnection, state.serverProjects],
   );
 
   const client = useMemo(
@@ -154,9 +154,9 @@ export function useOpencodeProviderComposition(input: WorkspaceRuntimeInput) {
   });
   const worktree = useWorktreeState({ ...state, client, isCurrentClient, refreshProjectCatalog: refreshProjectCatalogLatest });
   const activeProject = useMemo(
-    () => resolveActiveProject(projects, state.activeProjectPath, state.currentProjectPath, worktree.worktrees) ?? (state.activeProjectPath
-      ? { path: state.activeProjectPath, label: state.activeProjectPath.split('/').filter(Boolean).pop() || state.activeProjectPath, source: 'server' as const, isCurrent: false } : undefined),
-    [projects, state.activeProjectPath, state.currentProjectPath, worktree.worktrees],
+    () => resolveActiveProject(projects, state.activeProjectPath, worktree.worktrees) ?? (state.activeProjectPath
+      ? { path: state.activeProjectPath, label: state.activeProjectPath.split('/').filter(Boolean).pop() || state.activeProjectPath } : undefined),
+    [projects, state.activeProjectPath, worktree.worktrees],
   );
   const mcp = useMcpState({ ...state, client, isCurrentClient, refreshChatCapabilities: refreshChatCapabilitiesLatest });
   const permissionRules = usePermissionRulesState({ client, isCurrentClient, setSavedPermissions });

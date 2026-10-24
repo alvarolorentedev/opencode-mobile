@@ -1,9 +1,0 @@
-export { DiagnosticsSection } from './sections/diagnostics-section';
-export { ConnectionSection } from './sections/connection-section';
-export { CloudLinkSection } from './sections/cloud-link-section';
-export { NotificationsSection } from './sections/notifications-section';
-export { VoiceSection } from './sections/voice-section';
-export { EditorSection } from './sections/editor-section';
-export { GeneralSection } from './sections/general-section';
-export { UpdateSection } from './sections/update-section';
-export { SupportSection } from './sections/support-section';

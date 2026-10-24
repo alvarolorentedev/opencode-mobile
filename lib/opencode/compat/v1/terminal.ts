@@ -6,11 +6,8 @@ export async function listTerminals(client: OpencodeClient) {
   return requireData((await client.pty.list()).data, 'terminal list request');
 }
 
-export async function createTerminal(
-  client: OpencodeClient,
-  input?: { command?: string; args?: string[]; cwd?: string; title?: string; env?: Record<string, string> },
-) {
-  return requireData((await client.pty.create(input)).data, 'terminal create request');
+export async function createTerminal(client: OpencodeClient, cwd?: string) {
+  return requireData((await client.pty.create(cwd ? { cwd } : undefined)).data, 'terminal create request');
 }
 
 export async function removeTerminal(client: OpencodeClient, ptyId: string) {

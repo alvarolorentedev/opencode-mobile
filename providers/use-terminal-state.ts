@@ -107,14 +107,14 @@ export function useTerminalState({ client, isCurrentClient, serverUrl, directory
     for (const connection of connections.current.values()) connection.reconnect();
   }, [headers, client, directory, serverContract, serverUrl]);
 
-  const createTerminal = useCallback(async (command?: string, title?: string) => {
+  const createTerminal = useCallback(async () => {
     if (!isCurrentClient(client)) throw new Error('Connect this server before creating a terminal.');
-    const terminal = await svcCreateTerminal(client, { command: command?.trim() || undefined, title: title?.trim() || undefined, cwd: directory });
+    const terminal = await svcCreateTerminal(client);
     if (!isCurrentClient(client)) return terminal;
     await refreshTerminals();
     if (isCurrentClient(client)) await openTerminal(terminal.id);
     return terminal;
-  }, [client, directory, isCurrentClient, openTerminal, refreshTerminals]);
+  }, [client, isCurrentClient, openTerminal, refreshTerminals]);
 
   const sendTerminalInput = useCallback((ptyId: string, input: string, generation: number, expectedScope: number) => {
     if (expectedScope !== scopeRef.current) throw new Error('Terminal scope changed.');

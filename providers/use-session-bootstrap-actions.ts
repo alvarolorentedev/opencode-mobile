@@ -23,7 +23,7 @@ export function useSessionBootstrapActions({
   bootstrapPromiseRef,
   bootstrapTokenRef,
   isCurrentClient,
-  fetchSessions,
+  refreshSessions,
   refreshMessages,
   refreshSessionDiff,
   refreshSessionTodos,
@@ -69,7 +69,7 @@ export function useSessionBootstrapActions({
 
       try {
         const nextSessions = currentSessions.length > 0 && (!pendingTarget || currentSessions.some((session) => session.id === pendingTarget.sessionId))
-          ? currentSessions : await fetchSessions();
+          ? currentSessions : await refreshSessions();
         if (bootstrapTokenRef.current !== bootstrapToken || pendingDeepLinkTargetRef.current !== pendingTarget) {
           return undefined;
         }
@@ -131,7 +131,7 @@ export function useSessionBootstrapActions({
     currentSessionId,
     currentSessionIdRef,
     explicitSessionSelectionRef,
-    fetchSessions,
+    refreshSessions,
     lastSessionByConnection,
     isCurrentClient,
     messagesBySession,
