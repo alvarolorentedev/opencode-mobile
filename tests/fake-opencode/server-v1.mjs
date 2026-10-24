@@ -1044,6 +1044,13 @@ const server = http.createServer(async (req, res) => {
   }
 });
 
+// Keep idle keep-alive connections alive for the whole flow. Playwright's
+// APIRequestContext reuses pooled sockets, and Node's 5s default can close one
+// just as the next control request is sent, producing an intermittent
+// "socket hang up" in long tests.
+server.keepAliveTimeout = 130_000;
+server.headersTimeout = 135_000;
+
 const ptyWebSockets = new WebSocketServer({ noServer: true });
 server.on('upgrade', (req, socket, head) => {
   const requestUrl = new URL(req.url || '/', `http://${req.headers.host || `127.0.0.1:${port}`}`);

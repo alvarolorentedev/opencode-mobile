@@ -1100,6 +1100,14 @@ const server = http.createServer(async (req, res) => {
   }
 });
 
+// Playwright's APIRequestContext pools keep-alive sockets per test. Node
+// closes idle connections after 5s by default, so a long UI step followed by a
+// control request could reuse a socket while it was being closed and surface as
+// an intermittent "socket hang up". Keep test connections alive longer than a
+// single flow; the test runner terminates the process at the end.
+server.keepAliveTimeout = 130_000;
+server.headersTimeout = 135_000;
+
 const ptyWebSockets = new WebSocketServer({ noServer: true });
 server.on('upgrade', (req, socket, head) => {
   const requestUrl = new URL(req.url || '/', `http://${req.headers.host || `127.0.0.1:${port}`}`);

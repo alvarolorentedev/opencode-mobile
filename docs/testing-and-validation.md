@@ -463,6 +463,13 @@ The deterministic backend lives under `tests/fake-opencode/`.
 - `tests/fake-opencode/server-v1.mjs` emulates the OpenCode 1.x contract.
 - `tests/fake-opencode/server.mjs` emulates the OpenCode 2.x `/api` contract (discovery, capabilities, sessions, messages, prompt, diff, permissions, forms, MCP, PTY, VCS, and the flat V2 event stream), using canonical native fixtures and shared version-neutral filesystem/terminal infrastructure.
 
+Both servers raise `keepAliveTimeout` above a single flow's duration. Playwright's
+`APIRequestContext` pools keep-alive sockets per test, and Node's 5s default
+could close an idle connection between a long UI step and the next control
+request, which surfaced as an intermittent `apiRequestContext ... socket hang
+up` failure. The test runner owns the process lifetime, so the longer timeout
+does not leave stray connections after the run.
+
 The V2 self-test submits prompts through the pinned `@opencode/client` SDK,
 checks that the HTTP 200 admission identifies the stored user message, and
 verifies that session events carry that session's directory. Non-session events
