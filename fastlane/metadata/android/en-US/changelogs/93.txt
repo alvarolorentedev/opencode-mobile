@@ -1,0 +1,3 @@
+- Chats now always show the full detailed transcript, so the separate Transcript detail setting is gone.
+- Tool activity and expanded file diffs use quieter secondary styling so messages stand out.
+- Copying a code block now gives the same haptic feedback as copying a message.
