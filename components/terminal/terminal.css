@@ -5,11 +5,11 @@
 .terminal-key-row { display: flex; gap: 4px; overflow-x: auto; overscroll-behavior: contain; scrollbar-width: thin; }
 .terminal-key-row button, .terminal-latest { font: 600 13px system-ui; color: inherit; background: color-mix(in srgb, currentColor 8%, transparent); border: 1px solid color-mix(in srgb, currentColor 20%, transparent); border-radius: 8px; min-width: 44px; min-height: 44px; flex-shrink: 0; padding: 6px 10px; touch-action: manipulation; }
 .terminal-key-row button:disabled { opacity: .4; }
-.terminal-key-row button[data-state="armed"] { background: #296455; color: white; }
-.terminal-key-row button[data-state="locked"] { background: #125641; color: white; border-color: #52d6ac; }
+.terminal-key-row button[data-state="armed"] { background: var(--terminal-accent, #296455); color: var(--terminal-on-accent, white); }
+.terminal-key-row button[data-state="locked"] { background: color-mix(in srgb, var(--terminal-accent, #125641) 80%, var(--terminal-on-accent, white)); color: var(--terminal-on-accent, white); border-color: var(--terminal-on-accent, #52d6ac); }
 .terminal-key-row button:focus-visible, .terminal-latest:focus-visible { outline: 2px solid currentColor; outline-offset: -3px; }
 .terminal-key-row + .terminal-key-row { margin-top: 4px; }
-.terminal-latest { position: absolute; bottom: 10px; right: 12px; background: #125641; color: white; z-index: 2; }
+.terminal-latest { position: absolute; bottom: 10px; right: 12px; background: var(--terminal-accent, #125641); color: var(--terminal-on-accent, white); z-index: 2; }
 .terminal-sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
 .terminal-slim .terminal-display { padding: 4px; }
 /* The terminal owns scrolling; the WebView must not scroll its entire document. */

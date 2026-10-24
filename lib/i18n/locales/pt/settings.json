@@ -356,15 +356,15 @@
   },
   "appearance": {
     "theme": {
-      "label": "Tema",
+      "label": "Modo do tema",
       "description": "Escolha claro ou escuro, ou siga a configuração do sistema.",
       "system": "Seguir sistema",
       "light": "Claro",
       "dark": "Escuro"
     },
     "accent": {
-      "label": "Cor de destaque",
-      "description": "Escolha a cor de destaque para botões, seleções e suas mensagens.",
+      "label": "Tema",
+      "description": "Escolha um tema de cor. Ele muda superfícies, destaques e balões do chat em todo o app.",
       "green": "Verde",
       "blue": "Azul",
       "red": "Vermelho",

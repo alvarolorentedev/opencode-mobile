@@ -75,7 +75,7 @@ export function TerminalView({ visible, slim, palette, onError }: {
     armed: t('terminal:accessory.armed'), locked: t('terminal:accessory.locked'), off: t('terminal:accessory.off'),
   }), [t]);
 
-  return <TerminalDOM ref={bridge} instances={terminalRuntime.instances} activeId={activeTerminalId} visible={visible} slim={slim} theme={theme} labels={labels}
+  return <TerminalDOM ref={bridge} instances={terminalRuntime.instances} activeId={activeTerminalId} visible={visible} slim={slim} theme={theme} accent={palette.tint} onAccent={palette.background} labels={labels}
     dom={{ style: { flex: 1 }, scrollEnabled: false, keyboardDisplayRequiresUserAction: true, automaticallyAdjustContentInsets: false }}
     onReady={onReady} onWritten={onWritten} onInput={onInput} onResize={onResize} onPaste={onPaste} onCopy={onCopy} onError={reportError} />;
 }

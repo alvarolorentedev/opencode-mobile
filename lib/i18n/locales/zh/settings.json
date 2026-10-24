@@ -356,15 +356,15 @@
   },
   "appearance": {
     "theme": {
-      "label": "主题",
+      "label": "主题模式",
       "description": "选择浅色或深色，或跟随系统设置。",
       "system": "跟随系统",
       "light": "浅色",
       "dark": "深色"
     },
     "accent": {
-      "label": "强调色",
-      "description": "选择用于按钮、选中状态和你的消息的强调色。",
+      "label": "主题",
+      "description": "选择颜色主题。它会改变整个应用的表面、强调色和聊天气泡。",
       "green": "绿色",
       "blue": "蓝色",
       "red": "红色",

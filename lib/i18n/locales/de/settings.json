@@ -356,15 +356,15 @@
   },
   "appearance": {
     "theme": {
-      "label": "Design",
+      "label": "Design-Modus",
       "description": "Wähle Hell oder Dunkel oder folge der Systemeinstellung.",
       "system": "System folgen",
       "light": "Hell",
       "dark": "Dunkel"
     },
     "accent": {
-      "label": "Akzentfarbe",
-      "description": "Wähle die Akzentfarbe für Schaltflächen, Auswahl und deine Nachrichten.",
+      "label": "Design",
+      "description": "Wähle ein Farbdesign. Es ändert Flächen, Akzente und Chatblasen in der gesamten App.",
       "green": "Grün",
       "blue": "Blau",
       "red": "Rot",

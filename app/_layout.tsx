@@ -2,6 +2,7 @@ import Constants from 'expo-constants';
 import { DarkTheme, DefaultTheme, Stack, ThemeProvider, usePathname } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
+import * as SystemUI from 'expo-system-ui';
 import { useEffect, useLayoutEffect, useMemo } from 'react';
 import { ActivityIndicator, Platform, StyleSheet, View } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
@@ -10,6 +11,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { DEFAULT_ACCENT_COLOR } from '@/constants/appearance';
 import { getPaperTheme } from '@/constants/paper-theme';
+import { getColors } from '@/constants/theme';
 import { usePalette } from '@/hooks/use-palette';
 import { useNotificationRoute } from '@/hooks/use-notification-route';
 import { useQuickActionRoute } from '@/hooks/use-quick-action-route';
@@ -72,8 +74,20 @@ function AppearanceHost() {
     ? chatPreferences.themeMode
     : systemScheme;
   const accent = chatPreferences.accentColor ?? DEFAULT_ACCENT_COLOR;
+  const palette = useMemo(() => getColors(scheme, accent), [accent, scheme]);
   const paperTheme = useMemo(() => getPaperTheme(scheme, accent), [accent, scheme]);
   const appearance = useMemo(() => ({ scheme, accent }), [accent, scheme]);
+
+  // Keep window-level chrome (web overscroll, native root view) on the themed
+  // surface so navigation and safe-area edges never flash the OS color.
+  useEffect(() => {
+    if (Platform.OS === 'web') {
+      if (globalThis.document?.documentElement) globalThis.document.documentElement.style.backgroundColor = palette.background;
+      if (globalThis.document?.body) globalThis.document.body.style.backgroundColor = palette.background;
+      return;
+    }
+    void SystemUI.setBackgroundColorAsync(palette.background).catch(() => undefined);
+  }, [palette.background]);
 
   return (
     <AppearanceProvider value={appearance}>

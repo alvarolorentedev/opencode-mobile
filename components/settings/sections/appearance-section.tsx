@@ -5,12 +5,13 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 
 import {
   ACCENT_COLORS,
-  ACCENT_PALETTES,
   DEFAULT_ACCENT_COLOR,
   DEFAULT_THEME_MODE,
+  getColors,
   type AccentColor,
   type ThemeMode,
 } from '@/constants/theme';
+import { useColorScheme } from '@/hooks/use-color-scheme';
 import type { ChatPreferences } from '@/providers/opencode-provider';
 import { SettingSelectField, type Palette } from './setting-rows';
 
@@ -33,6 +34,7 @@ export function AppearanceSection({
   updateChatPreferences: (patch: Partial<ChatPreferences>) => void;
 }) {
   const { t } = useTranslation();
+  const scheme = useColorScheme();
   const themeMode = chatPreferences.themeMode ?? DEFAULT_THEME_MODE;
   const accentColor = chatPreferences.accentColor ?? DEFAULT_ACCENT_COLOR;
   const themeOptions: { label: string; value: ThemeMode }[] = [
@@ -61,6 +63,7 @@ export function AppearanceSection({
         {ACCENT_COLORS.map((accent) => {
           const selected = accent === accentColor;
           const label = t(ACCENT_LABEL_KEYS[accent]);
+          const preview = getColors(scheme, accent);
           return (
             <Pressable
               key={accent}
@@ -73,12 +76,17 @@ export function AppearanceSection({
               style={({ pressed }) => [
                 styles.swatchButton,
                 {
+                  backgroundColor: selected ? palette.surfaceAlt : palette.surface,
                   borderColor: selected ? palette.tint : palette.border,
                   opacity: pressed ? 0.82 : 1,
                 },
               ]}>
-              <View style={[styles.swatch, { backgroundColor: ACCENT_PALETTES[accent].light.tint }]}>
-                {selected ? <MaterialCommunityIcons name="check" size={16} color="#FFFFFF" /> : null}
+              <View style={[styles.swatch, { backgroundColor: preview.background, borderColor: preview.border }]}>
+                <View style={[styles.swatchSurface, { backgroundColor: preview.surface, borderColor: preview.border }]}>
+                  <View style={[styles.swatchAccent, { backgroundColor: preview.tint }]}>
+                    {selected ? <MaterialCommunityIcons name="check" size={9} color={preview.background} /> : null}
+                  </View>
+                </View>
               </View>
               <Text variant="labelMedium" style={{ color: selected ? palette.text : palette.muted }}>{label}</Text>
             </Pressable>
@@ -104,5 +112,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     paddingVertical: 8,
   },
-  swatch: { alignItems: 'center', borderRadius: 9, height: 18, justifyContent: 'center', width: 18 },
+  swatch: { alignItems: 'center', borderRadius: 8, borderWidth: 1, height: 24, justifyContent: 'center', width: 28 },
+  swatchSurface: { alignItems: 'center', borderRadius: 4, borderWidth: 1, height: 16, justifyContent: 'center', width: 20 },
+  swatchAccent: { alignItems: 'center', borderRadius: 2, height: 9, justifyContent: 'center', width: 11 },
 });

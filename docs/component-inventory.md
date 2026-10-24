@@ -655,8 +655,9 @@ Responsibility:
 Responsibility:
 
 - choose the app theme mode (`follow system`, `light`, `dark`)
-- choose an accent preset (`green` default plus blue, red, purple, pink, gray)
-  from accessible swatch buttons
+- choose a color theme (`green` default plus blue, red, purple, pink, gray)
+  from accessible preview tiles that show the themed background, surface,
+  border, and accent
 - persist both through `updateChatPreferences`; `hooks/use-palette.ts` and
   `hooks/use-color-scheme.ts` consume the provider-published appearance context
 - expose `settings-theme-mode` and `settings-accent-<name>` test IDs

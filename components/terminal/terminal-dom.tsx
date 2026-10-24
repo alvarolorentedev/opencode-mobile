@@ -1,6 +1,6 @@
 'use dom';
 
-import { useEffect, useRef, useState, type Ref } from 'react';
+import { useEffect, useRef, useState, type CSSProperties, type Ref } from 'react';
 import { useDOMImperativeHandle, type DOMImperativeFactory, type DOMProps } from 'expo/dom';
 import { Terminal, type ITheme } from '@xterm/xterm';
 import { FitAddon } from '@xterm/addon-fit';
@@ -22,7 +22,7 @@ export type TerminalDOMRef = {
 type Props = {
   ref?: Ref<TerminalDOMRef>; dom?: DOMProps;
   instances: TerminalInstance[]; activeId?: string; visible: boolean; slim: boolean;
-  theme: ITheme; labels: AccessoryLabels;
+  theme: ITheme; accent: string; onAccent: string; labels: AccessoryLabels;
   onReady: (id: string) => Promise<void>;
   onWritten: (id: string, acknowledgement: number) => Promise<void>;
   onInput: (id: string, data: string, generation: number) => Promise<void>;
@@ -33,7 +33,7 @@ type Props = {
 };
 type Display = { terminal: Terminal; fit: FitAddon; paste: (text: string) => void; dispose: () => void };
 
-export default function TerminalDOM({ ref, instances, activeId, visible, slim, theme, labels, onReady, onWritten, onInput, onResize, onPaste, onCopy, onError }: Props) {
+export default function TerminalDOM({ ref, instances, activeId, visible, slim, theme, accent, onAccent, labels, onReady, onWritten, onInput, onResize, onPaste, onCopy, onError }: Props) {
   const displays = useRef(new Map<string, Display>());
   const root = useRef<HTMLDivElement>(null);
   const callbacks = useRef({ onReady, onWritten, onInput, onResize, onPaste, onCopy, onError });
@@ -178,7 +178,14 @@ export default function TerminalDOM({ ref, instances, activeId, visible, slim, t
     const data = encodeTerminalKey(key, controls.current.modifiers, display.terminal.modes.applicationCursorKeysMode);
     if (data !== undefined) { send(activeId, data); consumeModifiers(); display.terminal.focus(); }
   }
-  return <div className={`terminal-surface${slim ? ' terminal-slim' : ''}`} aria-hidden={!visible} inert={!visible} style={{ background: theme.background, color: theme.foreground, visibility: visible ? 'visible' : 'hidden' }}>
+  const terminalStyle: CSSProperties & Record<'--terminal-accent' | '--terminal-on-accent', string> = {
+    background: theme.background,
+    color: theme.foreground,
+    visibility: visible ? 'visible' : 'hidden',
+    '--terminal-accent': accent,
+    '--terminal-on-accent': onAccent,
+  };
+  return <div className={`terminal-surface${slim ? ' terminal-slim' : ''}`} aria-hidden={!visible} inert={!visible} style={terminalStyle}>
     <div ref={root} className="terminal-displays" data-testid="terminal-displays">
       {instances.map((entry) => <div key={entry.id} data-pty={entry.id} data-testid={visible && entry.id === activeId ? 'terminal-output' : undefined} className="terminal-display" style={{ display: entry.id === activeId ? 'block' : 'none' }} />)}
       {scrolled && <button className="terminal-latest" type="button" onClick={() => getDisplay()?.terminal.scrollToBottom()}>{labels.latest}</button>}

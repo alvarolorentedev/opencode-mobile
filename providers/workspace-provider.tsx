@@ -209,7 +209,7 @@ export function WorkspaceProvider({ children }: PropsWithChildren) {
     {values && current ? <OpencodeProviderTree values={values} updates={updates}>
       <WorkspaceNative runtime={current} preferences={shell.chatPreferences} ready={isHydrated} busy={Object.values(snapshots).some((runtime) => runtime.busy)} />
       {children}
-    </OpencodeProviderTree> : <View style={{ flex: 1, backgroundColor: '#0F1614', alignItems: 'center', justifyContent: 'center' }}><ActivityIndicator color="#7AE7C0" /></View>}
+    </OpencodeProviderTree> : <View style={{ flex: 1, backgroundColor: '#101212', alignItems: 'center', justifyContent: 'center' }}><ActivityIndicator color="#C3CECB" /></View>}
     </WorkspaceContext.Provider>
   </WorkspaceActionsContext.Provider>;
 }

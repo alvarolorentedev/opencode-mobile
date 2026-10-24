@@ -356,15 +356,15 @@
   },
   "appearance": {
     "theme": {
-      "label": "Theme",
+      "label": "Theme mode",
       "description": "Choose light or dark, or follow the system setting.",
       "system": "Follow system",
       "light": "Light",
       "dark": "Dark"
     },
     "accent": {
-      "label": "Accent color",
-      "description": "Pick the highlight color used for buttons, selections, and your messages.",
+      "label": "Theme",
+      "description": "Choose a color theme. It changes surfaces, accents, and chat bubbles across the app.",
       "green": "Green",
       "blue": "Blue",
       "red": "Red",

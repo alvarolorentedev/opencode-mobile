@@ -142,7 +142,7 @@ Current fields:
 
 - `mode`
 - `themeMode` (`system` by default; `light` and `dark` override the OS appearance)
-- `accentColor` (`green` default, plus `blue`, `red`, `purple`, `pink`, and `gray`; only interactive palette tokens change)
+- `accentColor` (`green` default, plus `blue`, `red`, `purple`, `pink`, and `gray`; each value selects a full light/dark palette)
 - `transcriptFontSize` (global chat message text size in pixels; defaults to 16 and is clamped to 12–24)
 - `flatTranscript` (renders the transcript full-width without bubble chrome; defaults to `false`)
 - `transcriptVerbosity` (`basic` by default; `reasoning` adds reasoning rows, `verbose` adds tool and patch rows)

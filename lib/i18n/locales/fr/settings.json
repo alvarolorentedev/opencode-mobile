@@ -356,15 +356,15 @@
   },
   "appearance": {
     "theme": {
-      "label": "Thème",
+      "label": "Mode du thème",
       "description": "Choisissez clair ou sombre, ou suivez le réglage du système.",
       "system": "Suivre le système",
       "light": "Clair",
       "dark": "Sombre"
     },
     "accent": {
-      "label": "Couleur d'accent",
-      "description": "Choisissez la couleur d'accent des boutons, des sélections et de vos messages.",
+      "label": "Thème",
+      "description": "Choisissez un thème de couleur. Il modifie les surfaces, les accents et les bulles de chat dans toute l'application.",
       "green": "Vert",
       "blue": "Bleu",
       "red": "Rouge",

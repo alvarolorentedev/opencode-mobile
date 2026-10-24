@@ -1,13 +1,14 @@
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { memo } from 'react';
+import { memo, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Keyboard, StyleSheet, View } from 'react-native';
 import { Chip, IconButton, Surface, Text } from 'react-native-paper';
 
 import { AttachmentStrip } from '@/components/chat/attachment-strip';
 import { MarkdownText } from '@/components/chat/chat-markdown';
-import { Colors } from '@/constants/theme';
+import { getColors } from '@/constants/theme';
 import { usePalette } from '@/hooks/use-palette';
+import { useAppearance } from '@/providers/appearance-context';
 import { formatTimestamp, type TranscriptEntry } from '@/lib/opencode/format';
 import { shouldShowPatchSummary, summarizeTranscriptDetails, type TranscriptVerbosity } from '@/lib/opencode/transcript';
 
@@ -44,10 +45,13 @@ function TranscriptMessageImpl({
 }: TranscriptMessageProps) {
   const { t } = useTranslation();
   const palette = usePalette();
+  const { accent } = useAppearance();
   const isUser = entry.role === 'user';
   // Non-flat user bubbles stay dark in both themes, so their code surface must
-  // use the dark palette. Flat messages follow the active theme's text color.
-  const codePalette = !flat && isUser ? Colors.dark.code : palette.code;
+  // use the selected theme's dark palette. Flat messages follow the active
+  // theme's text color.
+  const darkCodePalette = useMemo(() => getColors('dark', accent).code, [accent]);
+  const codePalette = !flat && isUser ? darkCodePalette : palette.code;
   const attachments = entry.details.filter((detail) => detail.kind === 'file').map((detail) => ({ uri: detail.uri || '', mime: detail.mime, filename: detail.filename || detail.label }));
   // At verbose detail the activity rows carry patches; keeping the aggregate
   // chip would render the same change twice.

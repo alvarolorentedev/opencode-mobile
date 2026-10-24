@@ -4,7 +4,6 @@ import { Animated, Easing, StyleSheet, View } from 'react-native';
 import { Button, Text } from 'react-native-paper';
 
 import { Fonts, getColors } from '@/constants/theme';
-import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useAppearance } from '@/providers/appearance-context';
 
 const PHASE_LABEL_KEYS = {
@@ -30,7 +29,6 @@ export function ConversationOverlay({
   phase: 'off' | 'listening' | 'submitting' | 'waiting' | 'speaking';
   sessionTitle: string;
 }) {
-  const colorScheme = useColorScheme() ?? 'light';
   const { accent: accentColor } = useAppearance();
   const { t } = useTranslation();
   const [orbScale] = useState(() => new Animated.Value(1));
@@ -56,15 +54,14 @@ export function ConversationOverlay({
     ]).start();
   }, [orbOpacity, orbScale, phase]);
 
-  // The overlay is always dark, so use the dark accent tint regardless of the
-  // active scheme.
-  const accent = getColors('dark', accentColor).tint;
-  const electric = '#2C8CFF';
-  const overlayBackground = colorScheme === 'dark' ? '#020404' : '#040808';
-  const overlaySurface = colorScheme === 'dark' ? 'rgba(16, 22, 21, 0.92)' : 'rgba(18, 27, 26, 0.88)';
-  const overlayText = '#F4FBF8';
-  const overlayMuted = 'rgba(228, 240, 236, 0.68)';
-  const orbRing = phase === 'speaking' ? `${electric}30` : `${accent}24`;
+  // The overlay is always dark, so use the selected theme's dark palette
+  // regardless of the active scheme.
+  const palette = getColors('dark', accentColor);
+  const overlayBackground = palette.background;
+  const overlaySurface = palette.surface;
+  const overlayText = palette.text;
+  const overlayMuted = palette.muted;
+  const orbRing = phase === 'speaking' ? `${palette.accent}55` : `${palette.tint}30`;
   const phaseLabel = t(PHASE_LABEL_KEYS[phase]);
   const connectionEmoji = connectionStatus === 'error' ? '⚠️' : connectionStatus === 'connecting' ? '🔄' : undefined;
 
@@ -83,9 +80,9 @@ export function ConversationOverlay({
 
         <View style={styles.voiceOverlayCenter}>
           <Animated.View style={[styles.voiceOrbShell, { borderColor: orbRing, opacity: orbOpacity, transform: [{ scale: orbScale }] }]}> 
-            <View style={styles.voiceOrbCore}>
-              <View style={[styles.voiceOrbBlobTop, { backgroundColor: '#D7F3F0' }]} />
-              <View style={[styles.voiceOrbBlobBottom, { backgroundColor: electric }]} />
+            <View style={[styles.voiceOrbCore, { backgroundColor: palette.surfaceAlt }]}>
+              <View style={[styles.voiceOrbBlobTop, { backgroundColor: palette.tint }]} />
+              <View style={[styles.voiceOrbBlobBottom, { backgroundColor: palette.accent }]} />
               <View style={[styles.voiceOrbHighlight, { backgroundColor: 'rgba(255,255,255,0.36)' }]} />
             </View>
           </Animated.View>
@@ -98,7 +95,7 @@ export function ConversationOverlay({
         </View>
 
         <View style={styles.voiceOverlayFooter}>
-          <View style={[styles.voiceOverlaySnippetCard, { backgroundColor: overlaySurface, borderColor: 'rgba(255,255,255,0.06)' }]}>
+          <View style={[styles.voiceOverlaySnippetCard, { backgroundColor: overlaySurface, borderColor: palette.border }]}>
             <Text variant="labelMedium" style={{ color: overlayMuted }}>{t('chat:overlay.lastHeard')}</Text>
             <Text numberOfLines={3} variant="bodyLarge" style={{ color: overlayText }}>
               {latestUserText?.trim() || t('chat:overlay.startSpeaking')}
@@ -107,8 +104,8 @@ export function ConversationOverlay({
           <Button
             mode="contained"
             icon="phone-hangup"
-            buttonColor="#E8ECEA"
-            textColor="#0F1715"
+            buttonColor={palette.tint}
+            textColor={palette.background}
             contentStyle={styles.voiceOverlayDoneContent}
             labelStyle={styles.voiceOverlayDoneLabel}
             onPress={onStop}>
@@ -143,7 +140,6 @@ const styles = StyleSheet.create({
     height: 212,
     borderRadius: 999,
     overflow: 'hidden',
-    backgroundColor: '#DDF7F6',
     alignItems: 'center',
     justifyContent: 'center',
   },
