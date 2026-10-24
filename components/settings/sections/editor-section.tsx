@@ -2,7 +2,7 @@ import { useTranslation } from 'react-i18next';
 import { StyleSheet, View } from 'react-native';
 import { HelperText, Text } from 'react-native-paper';
 
-import { PromptDeliveryField, TranscriptDetailField } from './chat-preference-fields';
+import { PromptDeliveryField } from './chat-preference-fields';
 import { NumericSlider } from '@/components/ui/numeric-slider';
 import type { ServerContract } from '@/lib/opencode/client';
 import type { ChatPreferences } from '@/providers/opencode-provider';
@@ -45,7 +45,6 @@ export function EditorSection({
         palette={palette}
         value={chatPreferences.flatTranscript === true}
       />
-      <TranscriptDetailField chatPreferences={chatPreferences} palette={palette} updateChatPreferences={updateChatPreferences} />
     </View>
   );
 }

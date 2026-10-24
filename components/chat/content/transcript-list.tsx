@@ -13,7 +13,7 @@ import { STARTER_PROMPT_KEYS } from '@/components/chat/chat-view-utils';
 import { TranscriptSkeleton } from '@/components/chat/content/transcript-skeleton';
 import { Colors } from '@/constants/theme';
 import type { TranscriptEntry } from '@/lib/opencode/format';
-import type { TranscriptRow, TranscriptVerbosity } from '@/lib/opencode/transcript';
+import type { TranscriptRow } from '@/lib/opencode/transcript';
 
 type Palette = typeof Colors.light;
 type Connection = { status: 'idle' | 'connecting' | 'connected' | 'error'; message: string };
@@ -53,7 +53,6 @@ type TranscriptListProps = {
   onCopyMessage: (entry: TranscriptEntry) => void;
   onForkMessage: (messageId: string) => void;
   onLoadOlderMessages: () => void;
-  onReviewChanges: (messageId: string) => void;
   onRevertMessage: (messageId: string) => void;
   onSelectStarterPrompt: (prompt: string) => void;
   onToggleSpeak: (entry: TranscriptEntry) => void;
@@ -62,7 +61,6 @@ type TranscriptListProps = {
   speakingMessageId?: string;
   slim: boolean;
   transcriptFontSize: number;
-  transcriptVerbosity: TranscriptVerbosity;
 };
 
 export function TranscriptList({
@@ -81,7 +79,6 @@ export function TranscriptList({
   onCopyMessage,
   onForkMessage,
   onLoadOlderMessages,
-  onReviewChanges,
   onRevertMessage,
   onSelectStarterPrompt,
   onToggleSpeak,
@@ -90,7 +87,6 @@ export function TranscriptList({
   speakingMessageId,
   slim,
   transcriptFontSize,
-  transcriptVerbosity,
 }: TranscriptListProps) {
   const { t } = useTranslation();
   const focused = useIsFocused();
@@ -182,7 +178,7 @@ export function TranscriptList({
     }
     return undefined;
   }, [transcriptRows]);
-  const extraData = useMemo(() => ({ copiedMessageId, speakingMessageId, onReviewChanges, activityRunning, lastActivityKey }), [copiedMessageId, speakingMessageId, onReviewChanges, activityRunning, lastActivityKey]);
+  const extraData = useMemo(() => ({ copiedMessageId, speakingMessageId, activityRunning, lastActivityKey }), [copiedMessageId, speakingMessageId, activityRunning, lastActivityKey]);
 
   return (
     <FlashList
@@ -238,13 +234,11 @@ export function TranscriptList({
               flat={flatTranscript}
               fontSize={transcriptFontSize}
               slim={slim}
-              onReviewChanges={onReviewChanges}
               onCopy={() => onCopyMessage(entry)}
               onFork={entry.role === 'user' ? () => onForkMessage(entry.id) : undefined}
               onRevert={entry.role === 'user' ? () => onRevertMessage(entry.id) : undefined}
               onToggleSpeak={() => onToggleSpeak(entry)}
               speaking={speakingMessageId === entry.id}
-              verbosity={transcriptVerbosity}
             />
           </View>
         );

@@ -285,7 +285,6 @@ test('onboarding embeds provider setup and persists the reviewed preferences and
   await addOpenRouter(page);
   await enterGeneralStep(page);
   await selectPreference(page, 'settings-language', 'English');
-  await selectPreference(page, 'settings-transcript-detail', 'Reasoning');
   await page.getByTestId('onboarding-default-model').click();
   await page.getByPlaceholder('Default model').fill('openrouter');
   await expect(page.getByRole('button', { name: 'GPT-4.1 mini · OpenAI', exact: true })).toHaveCount(0);
@@ -295,40 +294,34 @@ test('onboarding embeds provider setup and persists the reviewed preferences and
   await expect(page.getByTestId('onboarding-summary-providers')).toContainText('OpenRouter');
   await expect(page.getByTestId('onboarding-summary-models')).toContainText('Auto · OpenRouter');
   await expect(page.getByTestId('onboarding-summary-language')).toContainText('English');
-  await expect(page.getByTestId('onboarding-summary-transcript')).toContainText('Reasoning');
   await expect(page.getByTestId('onboarding-summary-default-model')).toContainText('Auto · OpenRouter');
   await expect(page.getByTestId('onboarding-summary-delivery')).toContainText('Append');
   await page.getByRole('button', { name: 'Back', exact: true }).click();
-  await selectPreference(page, 'settings-transcript-detail', 'Verbose');
   await page.getByTestId('onboarding-general-skip').click();
-  await expect(page.getByTestId('onboarding-summary-transcript')).toContainText('Verbose');
   await page.getByTestId('onboarding-ready-start').click();
   await expect(page.getByTestId('chat-model-picker-trigger')).toContainText('Auto');
   await page.reload({ waitUntil: 'domcontentloaded' });
   await expect(page.getByTestId('chat-model-picker-trigger')).toContainText('Auto');
   await expect.poll(async () => JSON.parse(await page.evaluate(() => localStorage.getItem('opencode-mobile.chat-preferences')))).toMatchObject({
-    language: 'en', transcriptVerbosity: 'verbose', promptDelivery: 'queue', modelId: 'openrouter/openrouter/auto', providerId: 'openrouter',
+    language: 'en', promptDelivery: 'queue', modelId: 'openrouter/openrouter/auto', providerId: 'openrouter',
   });
   await page.getByTestId('chat-model-picker-trigger').click();
   await page.getByTestId('chat-model-picker').getByRole('button', { name: /^GPT-4\.1 mini / }).click();
   await expect.poll(async () => JSON.parse(await page.evaluate(() => localStorage.getItem('opencode-mobile.chat-preferences'))).modelId).toBe('openai/openai/gpt-4.1-mini');
 });
 
-test('offline language and transcript choices apply immediately and survive interrupted onboarding', async ({ page }) => {
+test('offline language choice applies immediately and survives interrupted onboarding', async ({ page }) => {
   await page.goto('/', { waitUntil: 'domcontentloaded' });
   await page.getByTestId('onboarding-welcome-start').click();
   await page.getByTestId('onboarding-permissions-skip').click();
   await page.getByTestId('onboarding-connect-skip').click();
-  await selectPreference(page, 'settings-transcript-detail', 'Reasoning');
   await selectPreference(page, 'settings-language', 'Español');
   await expect(page.getByText('Ajustes generales', { exact: true })).toBeVisible();
   await page.reload({ waitUntil: 'domcontentloaded' });
   await expect(page.getByTestId('onboarding-general')).toBeVisible();
   await expect(page.getByTestId('settings-language')).toContainText('Español');
-  await expect.poll(async () => JSON.parse(await page.evaluate(() => localStorage.getItem('opencode-mobile.chat-preferences'))).transcriptVerbosity).toBe('reasoning');
   await page.getByTestId('onboarding-general-continue').click();
   await expect(page.getByTestId('onboarding-summary-language')).toContainText('Español');
-  await expect(page.getByTestId('onboarding-summary-transcript')).not.toContainText('Basic');
   await expect(page.getByTestId('onboarding-summary-delivery')).toHaveCount(0);
 });
 

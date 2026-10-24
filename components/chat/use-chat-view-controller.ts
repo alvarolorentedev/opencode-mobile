@@ -12,7 +12,7 @@ import { workspaceKey } from '@/providers/workspace-types';
 import { getConnectionScope, getConnectionUiScope } from '@/lib/connection-scope';
 import { copyHaptic } from '@/lib/haptics';
 import { type TranscriptEntry } from '@/lib/opencode/format';
-import { buildTranscriptRows, getTurnPatchDetails, getUserTurnForMessage, isTranscriptDisplayMessage } from '@/lib/opencode/transcript';
+import { buildTranscriptRows, getTurnPatchDetails } from '@/lib/opencode/transcript';
 import { getLatestContextTokens } from '@/lib/opencode/usage';
 import { openVoiceSettingsAsync } from '@/lib/voice/permissions';
 import { speakText, stopSpeaking } from '@/lib/voice/speech-output';
@@ -136,24 +136,8 @@ export function useChatViewController() {
   const completedTodoCount = currentTodos.filter((todo) => todo.status === 'completed').length;
   const progressSlice = currentTodos.length ? Math.floor(completedTodoCount / currentTodos.length * 8) : 0;
   const progressIcon = completedTodoCount === currentTodos.length ? 'check-circle' : progressSlice > 0 ? `circle-slice-${progressSlice}` : 'circle-outline';
-  const display = useMemo(() => {
-    const preferred = currentTranscript.filter((entry) => isTranscriptDisplayMessage(entry, chatPreferences.transcriptVerbosity));
-    if (preferred.length > 0 || currentTranscript.length === 0 || chatPreferences.transcriptVerbosity !== 'basic') {
-      return { entries: preferred, verbosity: chatPreferences.transcriptVerbosity };
-    }
-    // Never leave the conversation blank when the loaded window only contains
-    // tool activity at conversation verbosity: surface tool rows so the list is
-    // scrollable and older messages can load.
-    return {
-      entries: currentTranscript.filter((entry) => isTranscriptDisplayMessage(entry, 'verbose')),
-      verbosity: 'verbose' as const,
-    };
-  }, [currentTranscript, chatPreferences.transcriptVerbosity]);
-  const displayTranscript = display.entries;
-  const transcriptRows = useMemo(
-    () => buildTranscriptRows(displayTranscript, display.verbosity),
-    [displayTranscript, display.verbosity],
-  );
+  const displayTranscript = currentTranscript;
+  const transcriptRows = useMemo(() => buildTranscriptRows(currentTranscript), [currentTranscript]);
   const hasTranscriptMessages = currentMessages.length > 0;
   const selectedSession = useMemo(
     () => sessions.find((session) => session.id === currentSessionId) || activeSession,
@@ -165,16 +149,6 @@ export function useChatViewController() {
     availableModels,
     selectedSession?.model,
   );
-  const handleReviewChanges = useCallback((messageId: string) => {
-    const turnId = getUserTurnForMessage(currentMessages, messageId);
-    if (turnId) {
-      setDiffScope('turn');
-      selectDiffMessage(turnId);
-    }
-    Keyboard.dismiss();
-    setChangesVisible(true);
-  }, [currentMessages, selectDiffMessage, setDiffScope]);
-
   const contextTokens = useMemo(() => getLatestContextTokens(currentMessages) ?? 0, [currentMessages]);
   const contextModel = useMemo(
     () => availableModels.find((model) => model.providerID === selectedSession?.model?.providerID && model.modelID === selectedSession?.model?.id),
@@ -458,7 +432,6 @@ export function useChatViewController() {
       expandedDiffId, hasTranscriptMessages, isBootstrappingChat, isCancelingRevert, isRefreshingDiffs, isRefreshingMessages,
       pendingInteractions, pendingPrompts, progressIcon, progressVisible,
       selectedDiffMessageId, speakingMessageId, transcriptPaging,
-      transcriptVerbosity: display.verbosity,
     },
     composer: {
       attachments, availableAgents, chatPreferences, commands, draft,
@@ -474,7 +447,7 @@ export function useChatViewController() {
     actions: {
       buildSendErrorDetails, clearConversationFeedback, clearPromptError, dismissFailedInput,
       forkSession, handleAbort, handleAttach, handleCancelPendingPrompt, handleCancelRevert,
-      handleConfirmStopConversation, handleCopyMessage, handleReviewChanges,
+      handleConfirmStopConversation, handleCopyMessage,
       handleRevertMessage, handleSendPrompt, handleSpeakEntry, handleToggleRecording,
       handleVoiceRecovery, recoverFailedInput, refreshDiffs, rejectQuestion, replyToPermission,
       replyToQuestion, selectDiffMessage, setAttachments, setAutoApprove, setChangesVisible,

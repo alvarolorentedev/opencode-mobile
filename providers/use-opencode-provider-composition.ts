@@ -131,7 +131,7 @@ export function useOpencodeProviderComposition(input: WorkspaceRuntimeInput) {
     [catalogGenerationRef, serverGenerationRef, input.connection.enabled],
   );
 
-  const transcript = useTranscriptState({ ...state, client, isCurrentClient, transcriptVerbosity: state.chatPreferences.transcriptVerbosity });
+  const transcript = useTranscriptState({ ...state, client, isCurrentClient });
   const inbox = usePromptInbox({
     client,
     isCurrentClient,

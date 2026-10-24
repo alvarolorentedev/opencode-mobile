@@ -7,7 +7,7 @@ import {
   toTranscriptEntry,
   type SessionMessageRecord,
 } from '@/lib/opencode/format';
-import { isTranscriptDisplayMessage, type TranscriptVerbosity } from '@/lib/opencode/transcript';
+import { isTranscriptDisplayMessage } from '@/lib/opencode/transcript';
 import { addUsageSteps, type SessionUsageStep } from '@/lib/opencode/usage';
 import type { ScopedOpencodeClient } from '@/lib/opencode/client';
 import type { TranscriptRefreshMode } from '@/providers/opencode-provider-types';
@@ -21,8 +21,8 @@ import {
 // Hard ceiling on the in-memory transcript window. Retention keeps at least
 // DISPLAYED_MESSAGE_TARGET visible entries inside this bound.
 export const MAX_TRANSCRIPT_RECORDS = 300;
-// The initial pull must show at least this many entries at the current
-// verbosity, even when a long tool-only turn fills the newest page.
+// The initial pull must show at least this many entries in the fixed detailed
+// transcript, even when a long hidden-tool-only turn fills the newest page.
 export const DISPLAYED_MESSAGE_TARGET = 10;
 // Older pages fetched while scanning a tool-heavy tail. Larger than the scroll
 // page so the scan needs fewer round trips.
@@ -31,10 +31,10 @@ const MAX_BACKFILL_PAGES = 4;
 
 type MessageWindow = { nextBefore?: string; hasMore: boolean };
 
-function countDisplayed(records: SessionMessageRecord[], verbosity: TranscriptVerbosity) {
+function countDisplayed(records: SessionMessageRecord[]) {
   let count = 0;
   for (const record of records) {
-    if (isTranscriptDisplayMessage(toTranscriptEntry(record), verbosity)) {
+    if (isTranscriptDisplayMessage(toTranscriptEntry(record))) {
       count += 1;
     }
   }
@@ -43,7 +43,7 @@ function countDisplayed(records: SessionMessageRecord[], verbosity: TranscriptVe
 
 // Drop the oldest records at the hard ceiling, discarding non-display records
 // first so conversation entries survive even after a very long tool-only run.
-function boundWindow(records: SessionMessageRecord[], verbosity: TranscriptVerbosity) {
+function boundWindow(records: SessionMessageRecord[]) {
   let overflow = records.length - MAX_TRANSCRIPT_RECORDS;
   if (overflow <= 0) {
     return records;
@@ -51,7 +51,7 @@ function boundWindow(records: SessionMessageRecord[], verbosity: TranscriptVerbo
 
   const remove = new Set<number>();
   for (let index = 0; index < records.length && overflow > 0; index += 1) {
-    if (!isTranscriptDisplayMessage(toTranscriptEntry(records[index]), verbosity)) {
+    if (!isTranscriptDisplayMessage(toTranscriptEntry(records[index]))) {
       remove.add(index);
       overflow -= 1;
     }
@@ -74,7 +74,6 @@ export function useTranscriptState({
   client,
   isCurrentClient,
   currentSessionId,
-  transcriptVerbosity,
   connectionScope,
   activeProjectPath,
   messagesBySession,
@@ -84,7 +83,6 @@ export function useTranscriptState({
   client: ScopedOpencodeClient;
   isCurrentClient: (candidate: object) => boolean;
   currentSessionId?: string;
-  transcriptVerbosity: TranscriptVerbosity;
   connectionScope: string;
   activeProjectPath?: string;
   messagesBySession: Record<string, SessionMessageRecord[]>;
@@ -174,7 +172,7 @@ export function useTranscriptState({
       let records = first.records;
       let nextBefore = first.nextBefore;
       let hasMore = first.hasMore;
-      let displayed = countDisplayed(records, transcriptVerbosity);
+      let displayed = countDisplayed(records);
       let pages = 0;
 
       while (displayed < DISPLAYED_MESSAGE_TARGET && hasMore && pages < MAX_BACKFILL_PAGES) {
@@ -188,15 +186,15 @@ export function useTranscriptState({
           break;
         }
         records = [...older.records, ...records];
-        displayed += countDisplayed(older.records, transcriptVerbosity);
+        displayed += countDisplayed(older.records);
         nextBefore = older.nextBefore;
         hasMore = older.hasMore;
         if (!older.nextBefore) break;
       }
 
-      return { records: boundWindow(records, transcriptVerbosity), nextBefore, hasMore };
+      return { records: boundWindow(records), nextBefore, hasMore };
     },
-    [client, isCurrentClient, transcriptVerbosity],
+    [client, isCurrentClient],
   );
 
   // Backfill an already-held window (verbosity changes can hide entries that
@@ -209,7 +207,7 @@ export function useTranscriptState({
         return;
       }
 
-      let displayed = countDisplayed(held, transcriptVerbosity);
+      let displayed = countDisplayed(held);
       if (displayed >= DISPLAYED_MESSAGE_TARGET) {
         return;
       }
@@ -229,7 +227,7 @@ export function useTranscriptState({
           break;
         }
         fetched.unshift(older.records);
-        displayed += countDisplayed(older.records, transcriptVerbosity);
+        displayed += countDisplayed(older.records);
         nextBefore = older.nextBefore;
         hasMore = older.hasMore;
         if (!older.nextBefore) break;
@@ -254,7 +252,7 @@ export function useTranscriptState({
       }));
       recordUsageAndTodos(sessionId, flat);
     },
-    [client, isCurrentClient, recordUsageAndTodos, transcriptVerbosity, setMessagesBySession],
+    [client, isCurrentClient, recordUsageAndTodos, setMessagesBySession],
   );
 
   useEffect(() => {
@@ -356,11 +354,11 @@ export function useTranscriptState({
         }
 
         const merged = mergeSessionMessageWindow(held, page.records);
-        const bounded = boundWindow(merged, transcriptVerbosity);
+        const bounded = boundWindow(merged);
         setMessagesBySession((current) => {
           const previous = current[sessionId] ?? held;
           const next = mergeSessionMessageWindow(previous, page.records);
-          const boundedNext = boundWindow(next, transcriptVerbosity);
+          const boundedNext = boundWindow(next);
           if (boundedNext === previous) {
             return current;
           }
@@ -386,7 +384,7 @@ export function useTranscriptState({
         finishHydration?.();
       }
     },
-    [beginHydration, client, isCurrentClient, loadDisplayedWindow, persist, recordUsageAndTodos, setIsRefreshingMessages, setMessagesBySession, transcriptVerbosity],
+    [beginHydration, client, isCurrentClient, loadDisplayedWindow, persist, recordUsageAndTodos, setIsRefreshingMessages, setMessagesBySession],
   );
 
   const loadOlderMessages = useCallback(

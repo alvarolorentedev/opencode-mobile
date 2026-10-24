@@ -381,21 +381,6 @@
     "slimInterface": {
       "title": "精简界面",
       "description": "缩小聊天、终端和项目中的按钮、间距和标题栏，以便在屏幕上显示更多文本。"
-    },
-    "transcriptVerbosity": {
-      "label": "对话记录详细程度",
-      "basic": {
-        "label": "基础",
-        "description": "仅显示用户和助手消息。"
-      },
-      "reasoning": {
-        "label": "推理",
-        "description": "同时以折叠行显示助手的推理。"
-      },
-      "verbose": {
-        "label": "详细",
-        "description": "同时以折叠行显示工具调用。"
-      }
     }
   },
   "connect": {

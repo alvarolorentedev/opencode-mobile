@@ -28,7 +28,6 @@ export function SetupSummary() {
       { id: 'models', label: t('onboarding:ready.enabledModels'), value: models.map((model) => `${model.label} · ${model.providerLabel}`).join('\n') || none },
     ] : []),
     { id: 'language', label: t('settings:language.title'), value: language },
-    { id: 'transcript', label: t('settings:appearance.transcriptVerbosity.label'), value: t(`settings:appearance.transcriptVerbosity.${chatPreferences.transcriptVerbosity || 'basic'}.label`) },
     ...(connected ? [
       { id: 'default-model', label: t('onboarding:general.defaultModel'), value: selected ? `${selected.label} · ${selected.providerLabel}` : t('common:labels.systemDefault') },
     ] : []),

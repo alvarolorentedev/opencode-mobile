@@ -26,13 +26,16 @@ const reasoningRecord = (id: string): Message => ({
   info: info(id),
   parts: [{ id: `${id}-reasoning`, sessionID: 's', messageID: id, type: 'reasoning' as const, text: 'thinking' }],
 });
+const hiddenToolRecord = (id: string): Message => ({
+  info: info(id),
+  parts: [{ id: `${id}-edit`, sessionID: 's', messageID: id, type: 'tool' as const, callID: id, tool: 'edit', state: { status: 'completed' as const, input: {}, title: 'edit', output: '' } }],
+});
 
 const page = (records: Message[], hasMore = false, nextBefore = hasMore ? 'cursor' : undefined) => ({ records, hasMore, nextBefore });
 
 async function mountTranscript(
   initial: Record<string, Message[]>,
   getSessionMessages: ReturnType<typeof vi.fn>,
-  verbosity: transcript.TranscriptVerbosity = 'basic',
 ) {
   const runtime = hookRuntime();
   const { useTranscriptState } = await loadTs('providers/use-transcript-state.ts', {
@@ -51,7 +54,6 @@ async function mountTranscript(
       client: {} as never,
       isCurrentClient: () => true,
       currentSessionId: 's',
-      transcriptVerbosity: verbosity,
       connectionScope: 'scope',
       activeProjectPath: '/repo',
       messagesBySession,
@@ -79,7 +81,7 @@ describe('transcript refresh policy', () => {
   it('backfills older pages until ten displayable entries are loaded', async () => {
     const getSessionMessages = vi.fn(async (_client, _id, options: { before?: string }) => {
       if (!options.before) {
-        return page(Array.from({ length: 20 }, (_value, index) => toolRecord(`t${index}`)), true, 'c1');
+        return page(Array.from({ length: 20 }, (_value, index) => hiddenToolRecord(`h${index}`)), true, 'c1');
       }
       return page(Array.from({ length: 10 }, (_value, index) => textRecord(`d${index}`)), false);
     });
@@ -92,17 +94,12 @@ describe('transcript refresh policy', () => {
     expect(runtime.value.messagesBySession.s).toHaveLength(30);
   });
 
-  it('counts reasoning rows toward the display target at the reasoning level', async () => {
-    const getSessionMessages = vi.fn(async (_client, _id, options: { before?: string }) => {
-      if (!options.before) {
-        return page(Array.from({ length: 20 }, (_value, index) => toolRecord(`t${index}`)), true, 'c1');
-      }
-      return page(Array.from({ length: 10 }, (_value, index) => reasoningRecord(`r${index}`)), false);
-    });
-    const { runtime, value } = await mountTranscript({}, getSessionMessages, 'reasoning');
+  it('counts reasoning rows toward the display target without an extra backfill', async () => {
+    const getSessionMessages = vi.fn(async () => page(Array.from({ length: 20 }, (_value, index) => reasoningRecord(`r${index}`))));
+    const { runtime, value } = await mountTranscript({}, getSessionMessages);
     await value.refreshMessages('s');
     runtime.flush();
-    expect(getSessionMessages).toHaveBeenCalledTimes(2);
+    expect(getSessionMessages).toHaveBeenCalledTimes(1);
     expect(ids(runtime.value.messagesBySession.s).slice(0, 10)).toEqual(Array.from({ length: 10 }, (_value, index) => `r${index}`));
   });
 
@@ -174,7 +171,7 @@ describe('transcript refresh policy', () => {
     expect(getSessionMessages).toHaveBeenCalledTimes(1);
   });
 
-  it('drops tool-only records before conversation entries at the hard ceiling', async () => {
+  it('drops the oldest records at the hard ceiling when all records are displayable', async () => {
     const displayed = Array.from({ length: 10 }, (_value, index) => textRecord(`d${index}`));
     const tools = Array.from({ length: 290 }, (_value, index) => toolRecord(`t${index}`));
     const held = [...displayed, ...tools];
@@ -184,8 +181,7 @@ describe('transcript refresh policy', () => {
     runtime.flush();
     const result = runtime.value.messagesBySession.s;
     expect(result).toHaveLength(300);
-    expect(ids(result).slice(0, 10)).toEqual(Array.from({ length: 10 }, (_value, index) => `d${index}`));
-    expect(ids(result)).not.toContain('t0');
+    expect(ids(result).slice(0, 10)).toEqual(['d1', 'd2', 'd3', 'd4', 'd5', 'd6', 'd7', 'd8', 'd9', 't0']);
     expect(ids(result).at(-1)).toBe('t290');
   });
 

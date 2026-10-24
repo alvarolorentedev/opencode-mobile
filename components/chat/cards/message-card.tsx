@@ -10,7 +10,7 @@ import { getColors } from '@/constants/theme';
 import { usePalette } from '@/hooks/use-palette';
 import { useAppearance } from '@/providers/appearance-context';
 import { formatTimestamp, type TranscriptEntry } from '@/lib/opencode/format';
-import { shouldShowPatchSummary, summarizeTranscriptDetails, type TranscriptVerbosity } from '@/lib/opencode/transcript';
+import { summarizeTranscriptDetails } from '@/lib/opencode/transcript';
 
 type TranscriptMessageProps = {
   canSpeak?: boolean;
@@ -19,13 +19,11 @@ type TranscriptMessageProps = {
   flat?: boolean;
   fontSize: number;
   onCopy: () => void;
-  onReviewChanges?: (messageId: string) => void;
   onFork?: () => void;
   onRevert?: () => void;
   onToggleSpeak: () => void;
   slim?: boolean;
   speaking?: boolean;
-  verbosity?: TranscriptVerbosity;
 };
 
 function TranscriptMessageImpl({
@@ -35,13 +33,11 @@ function TranscriptMessageImpl({
   flat = false,
   fontSize,
   onCopy,
-  onReviewChanges,
   onFork,
   onRevert,
   onToggleSpeak,
   slim = false,
   speaking = false,
-  verbosity = 'basic',
 }: TranscriptMessageProps) {
   const { t } = useTranslation();
   const palette = usePalette();
@@ -53,10 +49,8 @@ function TranscriptMessageImpl({
   const darkCodePalette = useMemo(() => getColors('dark', accent).code, [accent]);
   const codePalette = !flat && isUser ? darkCodePalette : palette.code;
   const attachments = entry.details.filter((detail) => detail.kind === 'file').map((detail) => ({ uri: detail.uri || '', mime: detail.mime, filename: detail.filename || detail.label }));
-  // At verbose detail the activity rows carry patches; keeping the aggregate
-  // chip would render the same change twice.
-  const summaryDetails = entry.details.filter((detail) => detail.kind === 'file' || detail.kind === 'retry' || (detail.kind === 'patch' && shouldShowPatchSummary(verbosity)));
-  const patchSummary = t('chat:cards.updatedPatches', { count: entry.details.filter((detail) => detail.kind === 'patch').length });
+  // Patches render as activity rows; the bubble keeps only file and retry chips.
+  const summaryDetails = entry.details.filter((detail) => detail.kind === 'file' || detail.kind === 'retry');
   const detailSummary = summarizeTranscriptDetails(summaryDetails, { patches: (count) => t('chat:cards.updatedPatches', { count }), files: (count) => t('chat:cards.fileCount', { count }) });
   const textColor = flat ? palette.text : isUser ? palette.onBubbleUser : palette.onBubbleAssistant;
   const metaColor = flat ? palette.muted : isUser ? palette.onBubbleUser : palette.muted;
@@ -129,7 +123,7 @@ function TranscriptMessageImpl({
           {!isUser && detailSummary.length > 0 ? (
             <View style={styles.summaryRow}>
               {detailSummary.map((item) => (
-                <Chip key={item} onPress={item === patchSummary && onReviewChanges ? () => onReviewChanges(entry.id) : undefined} accessibilityLabel={item === patchSummary ? `${item}. ${t('chat:cards.reviewChanges')}` : item} compact mode="flat" style={[styles.summaryChip, { backgroundColor: palette.background }]}>
+                <Chip key={item} accessibilityLabel={item} compact mode="flat" style={[styles.summaryChip, { backgroundColor: palette.background }]}>
                   {item}
                 </Chip>
               ))}
@@ -149,11 +143,9 @@ function areTranscriptMessagePropsEqual(prev: TranscriptMessageProps, next: Tran
     prev.fontSize === next.fontSize &&
     prev.flat === next.flat &&
     prev.slim === next.slim &&
-    prev.verbosity === next.verbosity &&
     prev.copied === next.copied &&
     prev.speaking === next.speaking &&
-    prev.canSpeak === next.canSpeak &&
-    prev.onReviewChanges === next.onReviewChanges
+    prev.canSpeak === next.canSpeak
   );
 }
 

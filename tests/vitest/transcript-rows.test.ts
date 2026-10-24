@@ -35,7 +35,7 @@ const group = (row: ReturnType<typeof buildTranscriptRows>[number]): ActivityGro
 
 describe('transcript rows', () => {
   it('merges contiguous calls of different tools into one activity run', () => {
-    const rows = buildTranscriptRows([toolEntry('m1', 'bash', 'd1', 'ls'), toolEntry('m2', 'grep', 'd2', 'rg x')], 'verbose');
+    const rows = buildTranscriptRows([toolEntry('m1', 'bash', 'd1', 'ls'), toolEntry('m2', 'grep', 'd2', 'rg x')]);
     expect(rows).toHaveLength(1);
     expect(group(rows[0])).toMatchObject({ kind: 'activity', key: 'd1', callCount: 2, status: 'idle' });
     expect(group(rows[0]).items).toHaveLength(2);
@@ -48,7 +48,7 @@ describe('transcript rows', () => {
       toolEntry('m1', 'bash', 'd1'),
       reasoningEntry('m2', 'r2'),
       toolEntry('m2', 'bash', 'd2'),
-    ], 'verbose');
+    ]);
     expect(rows).toHaveLength(1);
     expect(group(rows[0]).callCount).toBe(2);
     expect(group(rows[0]).tools).toEqual([{ name: 'bash', count: 2 }]);
@@ -56,7 +56,7 @@ describe('transcript rows', () => {
   });
 
   it('breaks a run at a message bubble', () => {
-    const rows = buildTranscriptRows([toolEntry('m1', 'bash', 'd1'), message('m2', 'hi'), toolEntry('m3', 'bash', 'd3')], 'verbose');
+    const rows = buildTranscriptRows([toolEntry('m1', 'bash', 'd1'), message('m2', 'hi'), toolEntry('m3', 'bash', 'd3')]);
     expect(rows.map((row) => row.type)).toEqual(['activity', 'message', 'activity']);
   });
 
@@ -65,7 +65,7 @@ describe('transcript rows', () => {
       toolEntry('m1', 'bash', 'd1'),
       toolEntry('m2', 'edit', 'd2'),
       toolEntry('m3', 'bash', 'd3'),
-    ], 'verbose');
+    ]);
     expect(rows).toHaveLength(1);
     expect(group(rows[0]).callCount).toBe(3);
     expect(group(rows[0]).tools).toEqual([{ name: 'bash', count: 2 }, { name: 'edit', count: 1 }]);
@@ -73,37 +73,36 @@ describe('transcript rows', () => {
   });
 
   it('drops runs that only contain hidden tools', () => {
-    expect(buildTranscriptRows([toolEntry('m1', 'edit', 'd1')], 'verbose')).toEqual([]);
+    expect(buildTranscriptRows([toolEntry('m1', 'edit', 'd1')])).toEqual([]);
   });
 
-  it('does not surface tools at basic verbosity', () => {
-    expect(buildTranscriptRows([toolEntry('m1', 'bash', 'd1')], 'basic')).toEqual([]);
+  it('surfaces tools in the fixed verbose display', () => {
+    expect(buildTranscriptRows([toolEntry('m1', 'bash', 'd1')])).toHaveLength(1);
   });
 
-  it('groups contiguous reasoning from the reasoning level', () => {
-    const rows = buildTranscriptRows([reasoningEntry('m1', 'r1'), reasoningEntry('m2', 'r2')], 'reasoning');
+  it('groups contiguous reasoning', () => {
+    const rows = buildTranscriptRows([reasoningEntry('m1', 'r1'), reasoningEntry('m2', 'r2')]);
     expect(rows).toHaveLength(1);
     expect(group(rows[0])).toMatchObject({ kind: 'activity', key: 'r1', callCount: 0, status: 'idle' });
     expect(group(rows[0]).items).toHaveLength(2);
     expect(group(rows[0]).tools).toEqual([]);
   });
 
-  it('renders patch-only messages as activity rows at verbose detail', () => {
-    const rows = buildTranscriptRows([patchEntry('m1', 'p1')], 'verbose');
+  it('renders patch-only messages as activity rows', () => {
+    const rows = buildTranscriptRows([patchEntry('m1', 'p1')]);
     expect(rows).toHaveLength(1);
     expect(rows[0].type).toBe('activity');
     expect(group(rows[0]).items[0]).toMatchObject({ kind: 'patch', id: 'p1' });
-    expect(buildTranscriptRows([patchEntry('m1', 'p1')], 'reasoning')).toEqual([]);
   });
 
   it('marks a run running while any tool is active and error when one fails', () => {
-    const running = buildTranscriptRows([toolEntry('m1', 'bash', 'd1', 'pnpm test', 'out', 'running')], 'verbose');
+    const running = buildTranscriptRows([toolEntry('m1', 'bash', 'd1', 'pnpm test', 'out', 'running')]);
     expect(group(running[0]).status).toBe('running');
 
     const failed = buildTranscriptRows([
       toolEntry('m1', 'bash', 'd1', 'pnpm test', 'out', 'running'),
       toolEntry('m2', 'bash', 'd2', 'pnpm lint', 'boom', 'error'),
-    ], 'verbose');
+    ]);
     expect(group(failed[0]).status).toBe('error');
   });
 
@@ -114,7 +113,7 @@ describe('transcript rows', () => {
       path: 'a.ts',
       files: [{ file: 'a.ts', patch: '@@ -1 +1 @@\n-a\n+b', additions: 1, deletions: 1, status: 'modified' }],
     } as never;
-    const rows = buildTranscriptRows([edit], 'verbose');
+    const rows = buildTranscriptRows([edit]);
     expect(group(rows[0]).items.map((item) => item.id)).toEqual(['d1']);
     expect(group(rows[0]).tools).toEqual([{ name: 'edit', count: 1 }]);
   });
@@ -150,7 +149,7 @@ describe('transcript rows', () => {
   it('keeps a text bubble before its own activity run', () => {
     const entry = toolEntry('m1', 'bash', 'd1');
     entry.text = 'text';
-    const rows = buildTranscriptRows([entry, toolEntry('m2', 'bash', 'd2')], 'verbose');
+    const rows = buildTranscriptRows([entry, toolEntry('m2', 'bash', 'd2')]);
     expect(rows.map((row) => row.type)).toEqual(['message', 'activity']);
     expect(group(rows[1]).items).toHaveLength(2);
   });

@@ -1,36 +1,15 @@
 import type { SessionMessageRecord, TranscriptDetail, TranscriptEntry } from '@/lib/opencode/format';
 
-// How much of the native timeline the transcript renders. `basic` is the
-// default: user and assistant messages only. `reasoning` adds reasoning rows;
-// `verbose` also adds tool calls and patches.
-export type TranscriptVerbosity = 'basic' | 'reasoning' | 'verbose';
-
-export const TRANSCRIPT_VERBOSITIES: readonly TranscriptVerbosity[] = ['basic', 'reasoning', 'verbose'];
-
-// Details rendered as collapsible (non-bubble) rows outside the message card.
-// Patches are activity items too, but they remain review chips in the bubble
-// until verbose detail is selected. V1-only steps/subtasks/agent parts are not
-// shown.
-export function isCollapsibleDetail(detail: TranscriptDetail) {
-  return detail.kind === 'tool' || detail.kind === 'reasoning';
-}
-
+// Details rendered as non-bubble activity rows. The transcript always uses the
+// full timeline; V1-only steps/subtasks/agent parts are still omitted.
 export function isActivityDetail(detail: TranscriptDetail) {
   return detail.kind === 'tool' || detail.kind === 'reasoning' || detail.kind === 'patch';
 }
 
-// Verbose detail renders patches inside the activity run, so the aggregate
-// bubble chip would duplicate the same change. Lower levels keep the chip.
-export function shouldShowPatchSummary(verbosity: TranscriptVerbosity) {
-  return verbosity !== 'verbose';
-}
-
-// Whether a detail is surfaced at the given verbosity. Files are attachments
-// and are always shown with their message; patches are tool output.
-export function isDetailVisible(detail: TranscriptDetail, verbosity: TranscriptVerbosity) {
-  if (detail.kind === 'reasoning') return verbosity !== 'basic';
-  if (detail.kind === 'tool' || detail.kind === 'patch') return verbosity === 'verbose';
-  return false;
+// Files are attachments shown with their message; reasoning, tools, and
+// patches render as activity rows.
+export function isDetailVisible(detail: TranscriptDetail) {
+  return detail.kind === 'reasoning' || detail.kind === 'tool' || detail.kind === 'patch';
 }
 
 // File-mutating tools are represented by the patch/review surface; their
@@ -42,19 +21,18 @@ export function isShellTool(tool: string) {
   return SHELL_TOOL_NAMES.has(tool);
 }
 
-export function isDetailShown(detail: TranscriptDetail, verbosity: TranscriptVerbosity) {
+export function isDetailShown(detail: TranscriptDetail) {
   if (detail.kind === 'tool' && HIDDEN_TOOL_NAMES.has(detail.tool)) {
     // File-mutating tools stay off the row list unless they resolved a diff;
     // a resolved diff is visible content and must keep the message displayable.
-    return verbosity === 'verbose' && Boolean(detail.files?.length);
+    return Boolean(detail.files?.length);
   }
 
-  return isDetailVisible(detail, verbosity);
+  return isDetailVisible(detail);
 }
 
 // Bubble content for a message row. Patch-only assistant messages become
-// activity rows at verbose detail; text-bearing messages still keep their
-// patch chips at the lower detail levels.
+// activity rows; the changes chip above the composer remains the review entry.
 export function hasMessageBubble(entry: TranscriptEntry) {
   return entry.role === 'user'
     || Boolean(entry.text.trim() || entry.error)
@@ -141,11 +119,11 @@ export function buildActivityChildRows(items: ActivityItem[]): ActivityChildRow[
 // Flatten the transcript into message rows and contiguous activity groups. A
 // message bubble breaks contiguity. Every visible reasoning/tool/patch detail
 // joins the same run, in wire order, until a bubble appears. Hidden file tools
-// are counted in the header at verbose detail so the summary matches the web
-// app, but they never become duplicate child rows. The group key is its first
-// seen detail id, so the row identity (and its expanded state) survives as
-// streamed details accumulate.
-export function buildTranscriptRows(entries: TranscriptEntry[], verbosity: TranscriptVerbosity): TranscriptRow[] {
+// are counted in the header so the summary matches the web app, but they only
+// become rows when they resolved a diff. The group key is its first seen detail
+// id, so the row identity (and its expanded state) survives as streamed details
+// accumulate.
+export function buildTranscriptRows(entries: TranscriptEntry[]): TranscriptRow[] {
   const rows: TranscriptRow[] = [];
   let pending: ActivityGroup | undefined;
 
@@ -193,7 +171,6 @@ export function buildTranscriptRows(entries: TranscriptEntry[], verbosity: Trans
 
     for (const detail of entry.details) {
       if (detail.kind === 'tool' && HIDDEN_TOOL_NAMES.has(detail.tool)) {
-        if (verbosity !== 'verbose') continue;
         const group = ensureGroup(detail.id);
         trackTool(group, detail);
         // File-mutating tools normally stay off the row list, but a resolved
@@ -202,7 +179,7 @@ export function buildTranscriptRows(entries: TranscriptEntry[], verbosity: Trans
         continue;
       }
 
-      if (!isActivityDetail(detail) || !isDetailShown(detail, verbosity)) continue;
+      if (!isActivityDetail(detail) || !isDetailShown(detail)) continue;
       const group = ensureGroup(detail.id);
       if (detail.kind === 'tool') trackTool(group, detail);
       group.items.push(detail);
@@ -237,7 +214,7 @@ export function getTranscriptActivityLabel(entry: TranscriptEntry) {
   return undefined;
 }
 
-export function isTranscriptDisplayMessage(entry: TranscriptEntry, verbosity: TranscriptVerbosity = 'basic') {
+export function isTranscriptDisplayMessage(entry: TranscriptEntry) {
   if (entry.role === 'user') {
     return true;
   }
@@ -246,10 +223,8 @@ export function isTranscriptDisplayMessage(entry: TranscriptEntry, verbosity: Tr
     return true;
   }
 
-  // A tool-only or reasoning-only turn is hidden at conversation verbosity but
-  // surfaces as collapsible rows at higher levels. Patch-only turns are tool
-  // output too.
-  return entry.details.some((detail) => isDetailShown(detail, verbosity));
+  // Tool-only, reasoning-only, and patch-only turns render as activity rows.
+  return entry.details.some((detail) => isDetailShown(detail));
 }
 
 export function summarizeTranscriptDetails(details: TranscriptDetail[], labels?: { patches: (count: number) => string; files: (count: number) => string }) {

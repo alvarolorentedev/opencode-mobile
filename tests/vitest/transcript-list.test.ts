@@ -17,7 +17,6 @@ function listProps(overrides: Record<string, unknown> = {}) {
     onCopyMessage: vi.fn(),
     onForkMessage: vi.fn(),
     onLoadOlderMessages: vi.fn(),
-    onReviewChanges: vi.fn(),
     onRevertMessage: vi.fn(),
     onSelectStarterPrompt: vi.fn(),
     onToggleSpeak: vi.fn(),
@@ -25,7 +24,6 @@ function listProps(overrides: Record<string, unknown> = {}) {
     pendingInteractions: 0,
     slim: false,
     transcriptFontSize: 16,
-    transcriptVerbosity: 'basic' as const,
     ...overrides,
   };
 }

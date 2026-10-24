@@ -645,9 +645,9 @@ when it runs first, a non-overlapping burst adopts the fetched page, the
 300-record cap drops non-display records before conversation entries, and only
 `replace` discards held history. `optimistic-flows` also covers the cached
 selection that must still issue its background transcript read.
-the Vitest `transcript-visibility` suite covers verbosity (`basic`, `reasoning`,
-`verbose`) across user, assistant, tool-only, reasoning-only and
-patch-only entries plus hidden file-mutating tools; `transcript-rows` covers
+the Vitest `transcript-visibility` suite covers the fixed detailed display
+across user, assistant, tool-only, reasoning-only and patch-only entries plus
+hidden file-mutating tools; `transcript-rows` covers
 cross-entry activity grouping, read grouping, patch deduplication, bubble breaks,
 hidden-tool counts, resolved file tools and reasoning groups; `activity-group`
 covers collapsed defaults, automatic opening while running, manual-toggle

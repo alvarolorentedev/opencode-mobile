@@ -413,7 +413,7 @@ test('starter examples fill without sending and library empty copy follows visib
   await expect(library.getByText('No chats match your search.', { exact: true })).toBeVisible();
 });
 
-test('completed progress stays compact and patch review selects its turn after a later response', async ({ page, request }) => {
+test('completed progress stays compact and activity patches keep their turn after a later response', async ({ page, request }) => {
   const port = await getFreePort();
   const server = spawnV1Server(port);
   try {
@@ -446,8 +446,8 @@ test('completed progress stays compact and patch review selects its turn after a
     await page.getByTestId('progress-overlay').getByRole('button', { name: 'Close', exact: true }).click();
     await sendPrompt(page, 'Review second turn');
     await expect(page.getByText(/Finished: Review second turn/).first()).toBeVisible({ timeout: 20_000 });
-    await page.getByRole('button', { name: 'Updated 1 patch. Review changes' }).first().click();
-    await expect(page.getByRole('button', { name: /Change files changed source.*Selected turn diff/ })).toBeVisible();
+    await page.getByTestId(/transcript-activity-/).last().click();
+    await page.getByRole('button', { name: /1 file changed/ }).last().click();
     await expect(page.getByText('app/(tabs)/index.tsx', { exact: true })).toBeVisible();
     await expect(page.getByText('src/feature.ts', { exact: true })).toHaveCount(0);
   } finally { server.kill('SIGTERM'); }

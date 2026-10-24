@@ -454,7 +454,7 @@ const startSpeech = async () => {
 const abortSpeech = () => { listening = false; aborts++; };
 const selectors = await loadTs('providers/opencode-provider-selectors.ts', {
   '@/lib/opencode/format': { toTranscriptEntry: (record) => record, getHistoryPreview: () => '' },
-  '@/lib/opencode/transcript': { isTranscriptDisplayMessage: (entry) => Boolean(entry.text), getTranscriptActivityLabel: () => undefined },
+  '@/lib/opencode/transcript': { hasMessageBubble: (entry) => Boolean(entry.text), getTranscriptActivityLabel: () => undefined },
 });
 const conversationImports = {
   react: voiceRuntime.react,

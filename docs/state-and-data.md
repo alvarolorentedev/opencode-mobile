@@ -145,7 +145,6 @@ Current fields:
 - `accentColor` (`green` default, plus `blue`, `red`, `purple`, `pink`, and `gray`; each value selects a full light/dark palette)
 - `transcriptFontSize` (global chat message text size in pixels; defaults to 16 and is clamped to 12–24)
 - `flatTranscript` (renders the transcript full-width without bubble chrome; defaults to `false`)
-- `transcriptVerbosity` (`basic` by default; `reasoning` adds reasoning rows, `verbose` adds tool and patch rows)
 - `slimInterface` (shrinks control sizes, spacing, and headers on the text-heavy screens; defaults to `false`)
 - `language` (optional; `undefined` follows the OS locale)
 - `providerId`
@@ -599,9 +598,9 @@ Derived from phase plus latest non-display transcript activity.
 ## Message And Transcript Transformation
 
 Session history is paginated. Opening a session loads the newest 20 raw records;
-if that page shows fewer than 10 entries at the configured verbosity, it pages
-backward in 50-record steps (at most four extra pages) until the target is met,
-then stores the oldest cursor. Scrolling to the top pulls the previous 20 through
+if that page shows fewer than 10 entries in the fixed detailed transcript, it
+pages backward in 50-record steps (at most four extra pages) until the target is
+met, then stores the oldest cursor. Scrolling to the top pulls the previous 20 through
 the server's backward cursor. The loaded window is capped at 300 records; on
 overflow, non-display records are dropped from the oldest end first so the
 conversation entries survive a long tool-only turn. Tail activity (SSE
@@ -623,9 +622,9 @@ current session plus up to three recently viewed sessions (still bounded by the
 300-record cap per session) so switching back to a recent chat paints from
 memory before the background read settles.
 
-Transcript verbosity (`basic` by default) controls which native timeline
-records render. `basic` shows user and assistant text/files/errors; `reasoning`
-adds reasoning rows; `verbose` adds tool calls and patches.
+The transcript always renders the detailed native timeline: user and assistant
+text/files/errors plus reasoning, tool, and patch activity. There is no
+configurable detail level.
 Details are first-class transcript rows: message rows and activity-run rows.
 Contiguous visible reasoning, tool, and patch details merge into one two-level
 activity run; a message bubble breaks the run. The run key is its first detail
@@ -681,9 +680,9 @@ Current part handling in `lib/opencode/format.ts` includes:
 - `compaction` -> detail kind `compaction`
 - `subtask` / `step-start` / `step-finish` / `agent` -> ignored (V1-only or usage markers)
 
-The display filter uses the selected verbosity: `basic` keeps user/assistant
-text, files, and errors; `reasoning` adds reasoning; `verbose` adds tool calls
-and patches.
+The display filter keeps user/assistant text, files, and errors plus every
+reasoning, tool, and patch activity row. Hidden file-mutating tools remain
+visible only when they resolved a diff.
 
 That detail is important because the transcript UI is not a raw message dump.
 
@@ -965,8 +964,8 @@ updates stop when Android suspends JS; timestamps explicitly represent cached da
 
 ## Onboarding preference selections
 
-The assistant writes language, transcript verbosity, delivery and remembered
-provider/model through `updateChatPreferences`, immediately using the existing
+The assistant writes language, delivery and remembered provider/model through
+`updateChatPreferences`, immediately using the existing
 persistence and reconciliation paths. Default model is the remembered Chat
 selection, not a separate new-chat policy. Its picker and Ready use the same
 configured/enabled catalog filter as Chat. Skip does not revert earlier choices.

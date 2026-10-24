@@ -121,8 +121,8 @@ connection, AI & Providers and project are omitted (five visible steps). Shared
 navigation derives progress and forward/back destinations from that sequence;
 temporary reconnects retain the AI step and its sign-in dialog. Manual connection
 and Cloud Link pairing both continue to AI & Providers. General Settings edits
-language, transcript detail, the remembered Chat model, and V2 Steer/Append
-delivery. The model field requires a connection; delivery also requires V2.
+language, the remembered Chat model, and V2 Steer/Append delivery. The model
+field requires a connection; delivery also requires V2.
 Provider setup embeds the same composition as Settings, including auth dialogs,
 model toggles, account actions, confirmations and feedback. All selections write
 through existing provider actions, and Ready summarizes current provider state.
@@ -797,7 +797,7 @@ Responsibilities:
 - manage voice and response-style preferences
 - adjust the chat transcript text size, bubble/flat layout, and slim interface density
 - choose the app interface language
-- group chat text size, flat conversation, transcript verbosity and V2 Steer/Append delivery under Advanced → Editor; group slim interface, language and Reset onboarding under Advanced → General; expose the app update preference under Advanced → Update checks
+- group chat text size, flat conversation and V2 Steer/Append delivery under Advanced → Editor; group slim interface, language and Reset onboarding under Advanced → General; expose the app update preference under Advanced → Update checks
 - launch Reset onboarding at the presentation screen, with permissions, connection, providers, project and general preferences seeded from current state without wiping configuration
 
 ### Terminal Screen
