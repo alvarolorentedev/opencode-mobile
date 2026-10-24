@@ -7,7 +7,6 @@ import {
   getSessionMessages,
   getSessionDiff,
   listSessions,
-  listArchivedSessions,
   executeCommand,
 } from '@/providers/services/session-service';
 
@@ -186,26 +185,4 @@ describe('session reads', () => {
     await expect(coalesceRead(old, 'failure', async () => 'recovered')).resolves.toBe('recovered');
   });
 
-  it('lists archived sessions across V1 cursor pages', async () => {
-    const activeSession = { id: 'active', time: { updated: 3 } };
-    const archivedSession = { id: 'archive', time: { updated: 2, archived: 10 } };
-    const restoredSession = { id: 'restored', time: { updated: 1, archived: 0 } };
-    const cursors: unknown[] = [];
-    const mixedClient: any = {
-      session: {
-        list: async () => ({ data: [archivedSession, restoredSession, activeSession] }),
-        status: async () => ({ data: {} }),
-      },
-      experimental: { session: { list: async ({ archived, cursor }: any) => {
-        expect(archived).toBe(true);
-        cursors.push(cursor);
-        return cursor === undefined
-          ? { data: [activeSession], response: { headers: new Headers({ 'x-next-cursor': '2' }) } }
-          : { data: [archivedSession, restoredSession], response: { headers: new Headers() } };
-      } } },
-    };
-    expect(Array.from(await listArchivedSessions({ compatibility: mixedClient } as any), (s: any) => s.id)).toEqual(['archive']);
-    expect(cursors).toEqual([undefined, 2]);
-    expect(Array.from((await listSessions({ compatibility: mixedClient } as any)).sessions, (s: any) => s.id)).toEqual(['active', 'restored']);
-  });
 });

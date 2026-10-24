@@ -10,10 +10,9 @@ import { NativeSelect } from '@/components/ui/native-select';
 import { AttachmentStrip } from '@/components/chat/attachment-strip';
 import { ModelPicker } from '@/components/chat/model-picker';
 import { styles, slimStyles } from '@/components/chat/chat-view-styles';
-import { getAutoApproveIcon, getModelVariantLabel, REASONING_OPTIONS } from '@/components/chat/chat-view-utils';
+import { getAutoApproveIcon, getModelVariantLabel } from '@/components/chat/chat-view-utils';
 import type { AgentOption, ChatPreferences, ModelOption } from '@/providers/opencode-provider';
 import type { Command } from '@/lib/opencode/types';
-import type { ServerContract } from '@/lib/opencode/client';
 
 type Palette = typeof Colors.light;
 
@@ -41,7 +40,6 @@ type ChatComposerProps = {
   palette: Palette;
   selectedAgentLabel: string;
   showSendAction: boolean;
-  serverContract: ServerContract;
   selectedVariant?: string;
   slim?: boolean;
   currentSessionId?: string;
@@ -76,7 +74,6 @@ export function ChatComposer({
   palette,
   selectedAgentLabel,
   showSendAction,
-  serverContract,
   selectedVariant,
   slim = false,
   updateChatPreferences,
@@ -96,9 +93,7 @@ export function ChatComposer({
       ? connectionStatus !== 'connected' || isSpeechInputListening
       : connectionStatus !== 'connected' || !isSpeechInputAvailable;
   const selectedModel = visibleModels.find((model) => model.id === chatPreferences.modelId);
-  const reasoningLabel = serverContract === 'v1'
-    ? t(REASONING_OPTIONS.find((option) => option.id === chatPreferences.reasoning)?.labelKey || 'chat:composer.chooseReasoningLevel')
-    : selectedModel?.variants.length ? getModelVariantLabel(selectedVariant, t) : undefined;
+  const reasoningLabel = selectedModel?.variants.length ? getModelVariantLabel(selectedVariant, t) : undefined;
 
   // Android/web size the input from content-size events. iOS lets the native
   // multiline input grow and scroll at the cap instead of measuring a hidden
@@ -115,9 +110,6 @@ export function ChatComposer({
     <ModelPicker
       compact
       reasoningLabel={reasoningLabel}
-      reasoning={serverContract === 'v1' ? chatPreferences.reasoning : undefined}
-      onReasoningChange={serverContract === 'v1' ? (reasoning) => updateChatPreferences({ reasoning }) : undefined}
-      serverContract={serverContract}
       selectedVariant={selectedVariant}
       onVariantChange={(variant) => {
         const modelId = chatPreferences.modelId;

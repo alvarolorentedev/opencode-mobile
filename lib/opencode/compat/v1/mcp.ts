@@ -39,10 +39,3 @@ async function getConfig(client: OpencodeClient) {
   return requireData((await client.config.get()).data, 'config request');
 }
 
-export function setMcpServerEnabled(client: OpencodeClient, name: string, enabled: boolean) {
-  return updateMcpConfig(client, (mcp) => {
-    const config = mcp[name];
-    if (!config) throw new Error(`MCP server "${name}" is not configured.`);
-    mcp[name] = { ...config, enabled };
-  });
-}

@@ -23,7 +23,6 @@ export type SessionRefreshOptions = {
 
 export type ProviderEventActions = {
   refreshSessions: () => Promise<unknown>;
-  refreshArchivedSessions: () => Promise<unknown>;
   scheduleSessionRefresh: (sessionId: string, options?: SessionRefreshOptions) => void;
   // Event-driven refreshes are coalesced when the provider supplies these;
   // direct user actions keep using the immediate variants.

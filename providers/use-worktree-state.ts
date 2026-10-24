@@ -9,7 +9,6 @@ import {
   createWorktree as svcCreateWorktree,
   listWorktrees as svcListWorktrees,
   removeWorktree as svcRemoveWorktree,
-  resetWorktree as svcResetWorktree,
 } from '@/providers/services/project-service';
 
 export type WorktreeCatalog = { entries: ProjectWorktree[]; project?: { id: string; root: string; label: string }; loading: boolean; error?: string };
@@ -44,9 +43,9 @@ export function useWorktreeState({ client, isCurrentClient, refreshProjectCatalo
     }
   }, [client, isCurrentClient, serverProjectsRef]);
 
-  const createWorktree = useCallback(async (name?: string, startCommand?: string) => {
+  const createWorktree = useCallback(async (name?: string) => {
     if (!client.__opencode.directory) throw new Error('Choose a project before creating a worktree.');
-    await svcCreateWorktree(client, name?.trim() || undefined, startCommand?.trim() || undefined);
+    await svcCreateWorktree(client, name?.trim() || undefined);
     if (!isCurrentClient(client)) throw new Error('The project changed while creating the worktree.');
     await Promise.all([refreshWorktrees(), refreshProjectCatalog(true)]);
   }, [client, isCurrentClient, refreshWorktrees, refreshProjectCatalog]);
@@ -60,17 +59,11 @@ export function useWorktreeState({ client, isCurrentClient, refreshProjectCatalo
     if (!isCurrentClient(client) || !entries.some((entry) => entry.directory === directory)) throw new Error('The worktree is no longer available.');
   }, [client, isCurrentClient, serverProjectsRef]);
 
-  const resetWorktree = useCallback(async (directory: string) => {
-    await checkTarget(directory);
-    await svcResetWorktree(client, directory);
-    if (isCurrentClient(client)) await refreshWorktrees();
-  }, [client, checkTarget, isCurrentClient, refreshWorktrees]);
-
   const removeWorktree = useCallback(async (directory: string) => {
     await checkTarget(directory);
     await svcRemoveWorktree(client, directory);
     if (isCurrentClient(client)) await Promise.all([refreshWorktrees(), refreshProjectCatalog(true)]);
   }, [client, checkTarget, isCurrentClient, refreshWorktrees, refreshProjectCatalog]);
 
-  return { worktrees, refreshWorktrees, createWorktree, resetWorktree, removeWorktree, resetWorktrees };
+  return { worktrees, refreshWorktrees, createWorktree, removeWorktree, resetWorktrees };
 }

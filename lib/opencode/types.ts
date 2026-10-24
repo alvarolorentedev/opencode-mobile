@@ -262,18 +262,6 @@ export type Pty = {
     status: 'running' | 'exited';
     pid: number;
 };
-export type LspStatus = {
-    id: string;
-    name: string;
-    root: string;
-    status: string;
-};
-export type FormatterStatus = {
-    name: string;
-    enabled: boolean;
-};
-// Provider credential input values. V2 forms can carry non-string values
-// (numbers, switches, multi-selects) alongside text fields.
 export type ProviderAuthValues = Record<string, string | number | boolean | string[]>;
 export type ProviderAuthPromptWhen = {
     key: string;

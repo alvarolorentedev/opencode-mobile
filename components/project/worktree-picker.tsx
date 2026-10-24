@@ -11,25 +11,24 @@ import { usePalette } from '@/hooks/use-palette';
 export function WorktreePicker({ visible, onSelect }: { visible: boolean; onSelect: (path: string) => void }) {
   const { t } = useTranslation();
   const palette = usePalette();
-  const { connection, serverCapabilities } = useConnection();
+  const { connection } = useConnection();
   const { activeProjectPath } = useProjects();
-  const { worktrees, refreshWorktrees, createWorktree, resetWorktree, removeWorktree } = useProjectFiles();
+  const { worktrees, refreshWorktrees, createWorktree, removeWorktree } = useProjectFiles();
   const [creating, setCreating] = useState(false);
   const [name, setName] = useState('');
-  const [command, setCommand] = useState('');
   const [busy, setBusy] = useState<string>();
   const [menu, setMenu] = useState<string>();
   const [error, setError] = useState<string>();
   const ready = connection.status === 'connected' && Boolean(activeProjectPath);
   useEffect(() => { if (visible && ready) void refreshWorktrees(); }, [visible, ready, refreshWorktrees]);
-  function manage(directory: string, reset: boolean) {
+  function remove(directory: string) {
     setMenu(undefined);
-    confirmAction(t(reset ? 'project:worktrees.resetTitle' : 'project:worktrees.removeTitle'),
-      t(reset ? 'project:worktrees.resetMessage' : 'project:worktrees.removeMessage', { directory }),
-      t(reset ? 'project:worktrees.resetAction' : 'common:actions.remove'), t('common:actions.cancel'), () => {
+    confirmAction(t('project:worktrees.removeTitle'),
+      t('project:worktrees.removeMessage', { directory }),
+      t('common:actions.remove'), t('common:actions.cancel'), () => {
         setBusy(directory); setError(undefined);
-        void (reset ? resetWorktree(directory) : removeWorktree(directory))
-          .catch((reason) => setError(reason instanceof Error ? reason.message : t(reset ? 'project:errors.resetWorktree' : 'project:errors.removeWorktree')))
+        void removeWorktree(directory)
+          .catch((reason) => setError(reason instanceof Error ? reason.message : t('project:errors.removeWorktree')))
           .finally(() => setBusy(undefined));
       });
   }
@@ -44,12 +43,11 @@ export function WorktreePicker({ visible, onSelect }: { visible: boolean; onSele
     {worktrees.loading ? <ActivityIndicator /> : null}
     {creating ? <View style={{ gap: 8 }}>
       <TextInput testID="project-worktree-name" mode="outlined" label={t('project:worktrees.nameLabel')} value={name} onChangeText={setName} autoCapitalize="none" autoCorrect={false} editable={!busy} />
-      {serverCapabilities.contract === 'v1' ? <TextInput testID="project-worktree-command" mode="outlined" label={t('project:worktrees.startCommandLabel')} value={command} onChangeText={setCommand} autoCapitalize="none" autoCorrect={false} editable={!busy} /> : null}
       <View style={{ flexDirection: 'row', justifyContent: 'flex-end' }}>
         <Button disabled={Boolean(busy)} onPress={() => setCreating(false)}>{t('common:actions.cancel')}</Button>
         <Button testID="project-worktree-create" mode="contained" loading={busy === 'create'} disabled={Boolean(busy)} onPress={() => {
           setBusy('create'); setError(undefined);
-          void createWorktree(name, command).then(() => { setCreating(false); setName(''); setCommand(''); })
+          void createWorktree(name).then(() => { setCreating(false); setName(''); })
             .catch((reason) => setError(reason instanceof Error ? reason.message : t('project:errors.createWorktree'))).finally(() => setBusy(undefined));
         }}>{t('project:worktrees.create')}</Button>
       </View>
@@ -68,8 +66,7 @@ export function WorktreePicker({ visible, onSelect }: { visible: boolean; onSele
               disabled={protectedDirectory || Boolean(busy)} onPress={() => setMenu(menu === entry.directory ? undefined : entry.directory)} />
           </View>
           {menu === entry.directory ? <View style={{ flexDirection: 'row', justifyContent: 'flex-end' }}>
-            {serverCapabilities.worktreeReset ? <Button onPress={() => manage(entry.directory, true)}>{t('project:worktrees.resetAction')}</Button> : null}
-            <Button textColor={palette.danger} onPress={() => manage(entry.directory, false)}>{t('common:actions.remove')}</Button>
+            <Button textColor={palette.danger} onPress={() => remove(entry.directory)}>{t('common:actions.remove')}</Button>
           </View> : null}
           <Divider />
         </View>;

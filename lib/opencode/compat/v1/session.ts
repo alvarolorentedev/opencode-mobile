@@ -1,6 +1,6 @@
-import type { OpencodeClient, PermissionRuleset } from '@opencode-ai/sdk/v2/client';
+import type { OpencodeClient } from '@opencode-ai/sdk/v2/client';
 
-import type { GlobalSession, Project } from '@/lib/opencode/types';
+import type { Project } from '@/lib/opencode/types';
 import type { SessionMessageRecord } from '@/lib/opencode/format';
 import { requireData } from '@/providers/services/require-data';
 import { coalesceRead } from '@/lib/opencode/in-flight';
@@ -63,22 +63,6 @@ async function fetchSessions(client: OpencodeClient) {
   const nextSessions = [...requireData(sessionsResponse.data, 'session list request')]
     .sort((left, right) => right.time.updated - left.time.updated);
   return { sessions: nextSessions.filter((session) => !session.time.archived), statuses: requireData(statusesResponse.data, 'session status request') };
-}
-
-export async function listArchivedSessions(client: OpencodeClient) {
-  const MAX_ARCHIVED_PAGES = 10;
-  const sessions: GlobalSession[] = [];
-  let cursor: number | undefined;
-  let pages = 0;
-  do {
-    const response = await client.experimental.session.list({ archived: true, cursor, limit: 100 });
-    sessions.push(...requireData(response.data, 'archived session list request'));
-    const next = response.response?.headers.get('x-next-cursor');
-    cursor = next ? Number(next) : undefined;
-    pages += 1;
-  } while (cursor !== undefined && pages < MAX_ARCHIVED_PAGES);
-  // archived=true includes active sessions on V1; filter after pagination.
-  return sessions.filter((session) => Boolean(session.time.archived));
 }
 
 export const TRANSCRIPT_PAGE_LIMIT = 20;
@@ -150,35 +134,8 @@ export async function updateSessionTitle(client: OpencodeClient, sessionId: stri
   return (await client.session.update({ sessionID: sessionId, title })).data;
 }
 
-type SessionUpdate = {
-  title?: string;
-  metadata?: Record<string, unknown>;
-  permission?: PermissionRuleset;
-  time?: { archived?: number };
-};
-
-async function updateSession(client: OpencodeClient, sessionId: string, update: SessionUpdate) {
-  return requireData((await client.session.update({ sessionID: sessionId, ...update })).data, 'session update request');
-}
-
-export function archiveSession(client: OpencodeClient, sessionId: string, archived = Date.now()) {
-  return updateSession(client, sessionId, { time: { archived } });
-}
-
-export function restoreSession(client: OpencodeClient, sessionId: string) {
-  return updateSession(client, sessionId, { time: { archived: 0 } });
-}
-
 export async function forkSession(client: OpencodeClient, sessionId: string, messageId?: string) {
   return (await client.session.fork({ sessionID: sessionId, messageID: messageId })).data;
-}
-
-export async function shareSession(client: OpencodeClient, sessionId: string) {
-  return (await client.session.share({ sessionID: sessionId })).data;
-}
-
-export async function unshareSession(client: OpencodeClient, sessionId: string) {
-  return (await client.session.unshare({ sessionID: sessionId })).data;
 }
 
 export async function revertSession(client: OpencodeClient, sessionId: string, messageId: string, partId?: string) {

@@ -106,7 +106,6 @@ describe('persistence hydration and write-back', () => {
     assert.ok(Array.isArray(defaults.enabledModelIds)); assert.ok(Array.isArray(defaults.recentModelIds));
     assert.deepEqual(JSON.parse(JSON.stringify(parseChatPreferences('{"modelVariantSelections":{"openai/model":"max","openai/default":null}}').modelVariantSelections)), { 'openai/model': 'max', 'openai/default': null });
     assert.equal(parseChatPreferences('{"modelVariantSelections":{"openai/model":false}}').modelVariantSelections, undefined);
-    assert.equal(defaults.reasoning, 'default');
 
     const write = createPersistenceWriter(), gate = deferred(), writes: string[] = [];
     const first = write('settings', 'a', async () => { await gate.promise; writes.push('a'); });

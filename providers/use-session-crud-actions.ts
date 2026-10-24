@@ -1,13 +1,10 @@
-import { createSession as svcCreateSession, summarizeSession ,
-  archiveSession as svcArchiveSession,
+import {
+  createSession as svcCreateSession,
   deleteSession as svcDeleteSession,
   executeCommand as svcExecuteCommand,
   forkSession as svcForkSession,
-  listArchivedSessions as svcListArchivedSessions,
   revertSession as svcRevertSession,
-  shareSession as svcShareSession,
   unrevertSession as svcUnrevertSession,
-  unshareSession as svcUnshareSession,
   updateSessionTitle as svcUpdateSessionTitle,
 } from '@/providers/services/session-service';
 import { useCallback } from 'react';
@@ -19,9 +16,7 @@ import type { SessionActionsInput } from '@/providers/opencode-provider-action-i
 
 export function useSessionCrudActions({
   client,
-  catalogClient,
   isCurrentClient,
-  isCurrentCatalogClient,
   activeProjectPath,
   connectionScopeRef,
   currentSessionId,
@@ -46,7 +41,6 @@ export function useSessionCrudActions({
   setPendingPermissionsBySession,
   setPendingQuestionsBySession,
   setFavoriteSessions,
-  setArchivedSessions,
   refreshSessions,
   refreshMessages,
   refreshSessionDiff,
@@ -181,35 +175,6 @@ export function useSessionCrudActions({
     [client, connectionScopeRef, currentSessionId, currentSessionIdRef, explicitSessionSelectionRef, isCurrentClient, locallyCreatedSessionsRef, persistSnapshot, refreshActiveSessions, sessionStatuses, sessions, setCurrentSessionId, setDiffsBySession, setFavoriteSessions, setMessagesBySession, setPendingPermissionsBySession, setPendingQuestionsBySession, setSessionStatuses, setSessions, setTodosBySession],
   );
 
-  const refreshArchivedSessions = useCallback(async () => {
-    const next = await svcListArchivedSessions(catalogClient);
-    if (isCurrentCatalogClient(catalogClient)) {
-      setArchivedSessions([...next].sort((left, right) => right.time.updated - left.time.updated));
-    }
-  }, [catalogClient, isCurrentCatalogClient, setArchivedSessions]);
-
-  const archiveSession = useCallback(async (sessionId: string) => {
-    await svcArchiveSession(client, sessionId);
-    if (!isCurrentClient(client)) return;
-    const nextSessions = sessions.filter((session) => session.id !== sessionId);
-    const nextStatuses = { ...sessionStatuses };
-    delete nextStatuses[sessionId];
-    locallyCreatedSessionsRef.current.delete(sessionId);
-    setSessions((current) => current.filter((session) => session.id !== sessionId));
-    setSessionStatuses((current) => {
-      const next = { ...current };
-      delete next[sessionId];
-      return next;
-    });
-    persistSnapshot(nextSessions, nextStatuses);
-    if (currentSessionId === sessionId) {
-      currentSessionIdRef.current = undefined;
-      explicitSessionSelectionRef.current = undefined;
-      setCurrentSessionId(undefined);
-    }
-    void Promise.all([refreshArchivedSessions(), refreshActiveSessions()]).catch(() => undefined);
-  }, [client, currentSessionId, currentSessionIdRef, explicitSessionSelectionRef, isCurrentClient, locallyCreatedSessionsRef, persistSnapshot, refreshActiveSessions, refreshArchivedSessions, sessionStatuses, sessions, setCurrentSessionId, setSessionStatuses, setSessions]);
-
   const renameSession = useCallback(async (sessionId: string, title: string) => {
     const trimmed = title.trim();
     if (!trimmed) {
@@ -256,30 +221,6 @@ export function useSessionCrudActions({
     return forked;
   }, [client, isCurrentClient, locallyCreatedSessionsRef, openSession, persistSnapshot, sessionStatuses, sessions, setSessionStatuses, setSessions]);
 
-  const shareSession = useCallback(async (sessionId: string) => {
-    const shared = await svcShareSession(client, sessionId);
-    if (!shared) {
-      throw new Error('OpenCode did not return the shared session.');
-    }
-    if (!isCurrentClient(client)) {
-      throw new Error('The active project changed before sharing finished.');
-    }
-    await refreshSessions();
-    return shared;
-  }, [client, isCurrentClient, refreshSessions]);
-
-  const unshareSession = useCallback(async (sessionId: string) => {
-    const unshared = await svcUnshareSession(client, sessionId);
-    if (!unshared) {
-      throw new Error('OpenCode did not return the session.');
-    }
-    if (!isCurrentClient(client)) {
-      throw new Error('The active project changed before unsharing finished.');
-    }
-    await refreshSessions();
-    return unshared;
-  }, [client, isCurrentClient, refreshSessions]);
-
   const revertSession = useCallback(async (sessionId: string, messageId: string) => {
     await svcRevertSession(client, sessionId, messageId);
     await Promise.all([refreshSessions(), refreshMessages(sessionId, true, { mode: 'replace' }), refreshSessionDiff(sessionId, true)]);
@@ -308,39 +249,14 @@ export function useSessionCrudActions({
     await Promise.all([refreshMessages(sessionId, true), refreshSessions()]).catch(() => undefined);
   }, [availableModels, chatPreferences.mode, chatPreferences.modelId, chatPreferences.modelVariantSelections, client, refreshMessages, refreshSessions, sessions]);
 
-  const summarizeSessionTitle = useCallback(
-    async (sessionId: string, knownSessions?: Session[]) => {
-      const existingSession = (knownSessions || sessions).find((session) => session.id === sessionId);
-      if (existingSession?.title?.trim()) {
-        return existingSession;
-      }
-
-      const selectedModel = getSelectedModelParts(chatPreferences.modelId);
-      if (!selectedModel) {
-        return existingSession;
-      }
-
-      await summarizeSession(client, { sessionID: sessionId, ...selectedModel });
-
-      const nextSessions = await refreshSessions();
-      return nextSessions.find((session) => session.id === sessionId);
-    },
-    [chatPreferences.modelId, client, refreshSessions, sessions],
-  );
-
   return {
     openSession,
     createSession,
     deleteSession,
-    refreshArchivedSessions,
-    archiveSession,
     renameSession,
     forkSession,
-    shareSession,
-    unshareSession,
     revertSession,
     unrevertSession,
     executeCommand,
-    summarizeSessionTitle,
   };
 }

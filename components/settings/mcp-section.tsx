@@ -2,7 +2,7 @@ import { useMcpAuthentication } from './use-mcp-authentication';
 import type { McpContextValue } from '@/providers/opencode-provider-types';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { StyleSheet, Switch, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import { Button, Chip, HelperText, List, SegmentedButtons, Text } from 'react-native-paper';
 
 import { TextInput } from '@/components/ui/text-input';
@@ -20,9 +20,7 @@ export function McpSection({
   onConnect,
   onDisconnect,
   onRefresh,
-  onSetEnabled,
   mcpOAuth,
-  persistentConfigAvailable = true,
   oauthAvailable = true,
   requiresIntegrationId = false,
   palette,
@@ -33,9 +31,7 @@ export function McpSection({
   onConnect: (name: string) => Promise<void>;
   onDisconnect: (name: string) => Promise<void>;
   onRefresh: () => Promise<void>;
-  onSetEnabled: (name: string, enabled: boolean) => Promise<void>;
   mcpOAuth: McpContextValue['mcpOAuth'];
-  persistentConfigAvailable?: boolean;
   oauthAvailable?: boolean;
   requiresIntegrationId?: boolean;
   palette: Palette;
@@ -137,16 +133,6 @@ export function McpSection({
                 <HelperText type="error">{status.error}</HelperText>
               ) : null}
               <View style={styles.actions}>
-                {config && persistentConfigAvailable ? (
-                  <View style={styles.enabledControl}>
-                    <Text variant="labelMedium">{t('common:labels.enabled')}</Text>
-                    <Switch
-                      value={enabled}
-                      disabled={Boolean(busy)}
-                      onValueChange={(value) => void run(actionKey, () => onSetEnabled(serverName, value))}
-                    />
-                  </View>
-                ) : null}
                 <Button
                   compact
                   disabled={!enabled || Boolean(busy)}
@@ -174,5 +160,4 @@ const styles = StyleSheet.create({
   header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 },
   server: { borderRadius: 14, borderWidth: 1, padding: 8 },
   actions: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'flex-end', gap: 4 },
-  enabledControl: { flexDirection: 'row', alignItems: 'center', gap: 4 },
 });

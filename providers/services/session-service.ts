@@ -199,10 +199,6 @@ export async function readSessionSettlement(
     return { state: 'unknown' };
   }
 }
-export async function listArchivedSessions(client: ScopedOpencodeClient) {
-  if (client.compatibility) return v1.listArchivedSessions(client.compatibility);
-  return [];
-}
 export const TRANSCRIPT_PAGE_LIMIT = 20;
 // Smallest read that can still answer "what did the newest message say?" for
 // settlement and pending-work checks, without pulling a full transcript page.
@@ -241,14 +237,6 @@ export async function updateSessionTitle(client: ScopedOpencodeClient, sessionId
   await client.api!.session.update({ sessionID: sessionId, title });
   return toSessionView(await client.api!.session.get({ sessionID: sessionId }));
 }
-function requireCompatibility(client: ScopedOpencodeClient) {
-  if (!client.compatibility) throw new Error('This operation is not supported by OpenCode 2.');
-  return client.compatibility;
-}
-export const archiveSession = (client: ScopedOpencodeClient, sessionId: string) => v1.archiveSession(requireCompatibility(client), sessionId);
-export const restoreSession = (client: ScopedOpencodeClient, sessionId: string) => v1.restoreSession(requireCompatibility(client), sessionId);
-export const shareSession = (client: ScopedOpencodeClient, sessionId: string) => v1.shareSession(requireCompatibility(client), sessionId);
-export const unshareSession = (client: ScopedOpencodeClient, sessionId: string) => v1.unshareSession(requireCompatibility(client), sessionId);
 export async function forkSession(client: ScopedOpencodeClient, sessionId: string, messageId?: string) {
   return client.compatibility ? v1.forkSession(client.compatibility, sessionId, messageId) : toSessionView(await client.api!.session.fork({ sessionID: sessionId, ...(messageId ? { before: messageId } : {}) }));
 }
@@ -261,9 +249,6 @@ export async function unrevertSession(client: ScopedOpencodeClient, sessionId: s
 }
 export async function interruptSession(client: ScopedOpencodeClient, sessionID: string) {
   return client.compatibility ? client.compatibility.session.abort({ sessionID }) : client.api!.session.interrupt({ sessionID });
-}
-export async function summarizeSession(client: ScopedOpencodeClient, input: { sessionID: string; providerID: string; modelID: string }) {
-  return requireCompatibility(client).session.summarize(input);
 }
 export async function listCommands(client: ScopedOpencodeClient) {
   return client.compatibility ? v1.listCommands(client.compatibility) : (await client.api!.command.list({ location: { directory: client.__opencode.directory } })).data;

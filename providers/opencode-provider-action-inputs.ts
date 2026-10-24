@@ -14,7 +14,6 @@ import type {
   Config,
   File,
   FileDiff,
-  GlobalSession,
   Project,
   Session,
   SessionStatus,
@@ -121,7 +120,6 @@ export type SessionActionsInput = {
   setPendingQuestionsBySession: Dispatch<SetStateAction<Record<string, PendingQuestionRequest[]>>>;
   suppressedPendingRequestIdsRef: { current: Set<string> };
   setFavoriteSessions: Dispatch<SetStateAction<FavoriteSession[]>>;
-  setArchivedSessions: Dispatch<SetStateAction<GlobalSession[]>>;
   setIsBootstrappingChat: Dispatch<SetStateAction<boolean>>;
   pendingDeepLinkTargetRef: { current: SessionDeepLinkTarget | undefined };
   bootstrapPromiseRef: { current: Promise<string | undefined> | null };
@@ -162,7 +160,6 @@ export type ConnectionActionsInput = {
   loadProjectCatalog: (silent?: boolean, targetClient?: ScopedOpencodeClient) => Promise<ProjectCatalog>;
   selectProject: (path: string) => void;
   refreshSessions: () => Promise<unknown>;
-  refreshArchivedSessions: () => Promise<unknown>;
   refreshActiveSessions: () => Promise<unknown>;
   ensureActiveSessionRef: { current: () => Promise<string | undefined> };
   serverProjectsRef: { current: Project[] };

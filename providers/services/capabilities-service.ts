@@ -172,10 +172,6 @@ export async function discoverChatCapabilities(client: ScopedOpencodeClient, act
 export async function getConfig(client: ScopedOpencodeClient): Promise<Config> {
   return client.compatibility ? requireData((await client.compatibility.config.get()).data, 'config request') : toConfigView(await client.api!.config.get({ location: { directory: client.__opencode.directory } }));
 }
-export async function updateConfig(client: ScopedOpencodeClient, config: Config): Promise<Config> {
-  if (!client.compatibility) throw new Error('General configuration changes are unavailable on OpenCode 2.');
-  return requireData((await client.compatibility.config.update({ config: config as NonNullable<Parameters<typeof client.compatibility.config.update>[0]>['config'] })).data, 'config update');
-}
 export async function getProviders(client: ScopedOpencodeClient): Promise<ProviderCatalog> {
   if (!client.compatibility) return getProviderCatalog(client.api!, { location: { directory: client.__opencode.directory } });
   const catalog = requireData((await client.compatibility.provider.list()).data, 'provider request');

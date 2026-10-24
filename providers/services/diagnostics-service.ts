@@ -1,4 +1,4 @@
-import type { FormatterStatus, LspStatus, McpStatus } from '@/lib/opencode/types';
+import type { McpStatus } from '@/lib/opencode/types';
 import type { ScopedOpencodeClient } from '@/lib/opencode/client';
 
 import { getErrorMessage } from '@/lib/error-message';
@@ -21,15 +21,11 @@ async function optionalDiagnostic<T>(load: () => Promise<T>): Promise<OptionalDi
 
 export async function loadDiagnostics(client: ScopedOpencodeClient) {
   if (client.compatibility) return loadLegacyDiagnostics(client.compatibility);
-  const [health, mcp, lsp, formatter] = await Promise.all([
+  const [health, mcp] = await Promise.all([
     optionalDiagnostic(async () => ({ healthy: true, version: (await client.api!.server.info()).version })),
     optionalDiagnostic<Record<string, McpStatus>>(async () =>
       getMcpStatus(client)),
-    optionalDiagnostic<LspStatus[]>(async () =>
-      Promise.reject(new Error('Language servers are unavailable on OpenCode 2.'))),
-    optionalDiagnostic<FormatterStatus[]>(async () =>
-      Promise.reject(new Error('Formatters are unavailable on OpenCode 2.'))),
   ]);
 
-  return { health, mcp, lsp, formatter };
+  return { health, mcp };
 }

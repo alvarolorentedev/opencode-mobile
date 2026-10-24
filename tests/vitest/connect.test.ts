@@ -238,7 +238,12 @@ try {
 const configSource = await readFile(new URL('../../app.config.ts', import.meta.url), 'utf8');
 const compiled = ts.transpileModule(configSource, { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2020 } }).outputText;
 function appConfig(variant, controlPlaneUrl) {
-  const context = { exports: {}, require: createRequire(import.meta.url), process: { env: { EXPO_APP_VARIANT: variant, EXPO_PUBLIC_E2E_MODE: '1', EXPO_CONNECT_CONTROL_PLANE_URL: controlPlaneUrl, EXPO_CONNECT_CONTROL_PLANES: 'http://127.0.0.1:8787', EXPO_CONNECT_TEST_USER_TOKEN: 'configured-test-token' } } };
+  const testRequire = createRequire(import.meta.url);
+  const context = { exports: {}, require: (name: string) => name === './config/plugins/android.cjs'
+    ? testRequire('../../config/plugins/android.cjs')
+    : name === './config/plugins/ios.cjs'
+      ? testRequire('../../config/plugins/ios.cjs')
+      : testRequire(name), process: { env: { EXPO_APP_VARIANT: variant, EXPO_PUBLIC_E2E_MODE: '1', EXPO_CONNECT_CONTROL_PLANE_URL: controlPlaneUrl, EXPO_CONNECT_CONTROL_PLANES: 'http://127.0.0.1:8787', EXPO_CONNECT_TEST_USER_TOKEN: 'configured-test-token' } } };
   vm.runInNewContext(compiled, context);
   return context.exports.default;
 }

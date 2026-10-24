@@ -52,12 +52,8 @@ async function projectID(client: ScopedOpencodeClient) { return (await client.ap
 export async function listWorktrees(client: ScopedOpencodeClient) {
   return client.compatibility ? v1.listWorktrees(client.compatibility) : projectWorktrees(await client.api!.worktree.list({ projectID: await projectID(client) }));
 }
-export async function createWorktree(client: ScopedOpencodeClient, name?: string, startCommand?: string) {
-  return client.compatibility ? v1.createWorktree(client.compatibility, name, startCommand) : client.api!.worktree.create({ projectID: await projectID(client), ...(name ? { name } : {}) });
-}
-export async function resetWorktree(client: ScopedOpencodeClient, directory: string) {
-  if (!client.compatibility) throw new Error('Worktree reset is unavailable on OpenCode 2.');
-  return v1.resetWorktree(client.compatibility, directory);
+export async function createWorktree(client: ScopedOpencodeClient, name?: string) {
+  return client.compatibility ? v1.createWorktree(client.compatibility, name) : client.api!.worktree.create({ projectID: await projectID(client), ...(name ? { name } : {}) });
 }
 export async function removeWorktree(client: ScopedOpencodeClient, directory: string) {
   return client.compatibility ? v1.removeWorktree(client.compatibility, directory) : client.api!.worktree.remove({ projectID: await projectID(client), directory, force: true });

@@ -99,7 +99,8 @@ describe('native input regressions', () => {
       '@/components/chat/model-picker': { ModelPicker: 'ModelPicker' },
       '@/components/chat/attachment-strip': { AttachmentStrip: 'AttachmentStrip' },
       '@/components/chat/chat-view-styles': { styles, slimStyles: {} },
-      '@/components/chat/chat-view-utils': { getAutoApproveIcon: () => 'shield', REASONING_OPTIONS: [] },
+      '@/components/chat/chat-view-utils': { getAutoApproveIcon: () => 'shield' },
+      '@/lib/color': { withAlpha: (color: string) => color },
     });
     runtime.mount(ChatComposer, {
       draft: 'hello', attachments: [], availableAgents: [], visibleModels: [], commands: [],

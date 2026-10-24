@@ -32,13 +32,10 @@ export async function listWorktrees(client: OpencodeClient) {
   return projectWorktrees(requireData((await client.worktree.list()).data, 'worktree list request'));
 }
 
-export async function createWorktree(client: OpencodeClient, name?: string, startCommand?: string) {
-  return requireData((await client.worktree.create({ worktreeCreateInput: { name, startCommand } })).data, 'worktree create request');
+export async function createWorktree(client: OpencodeClient, name?: string) {
+  return requireData((await client.worktree.create({ worktreeCreateInput: { name } })).data, 'worktree create request');
 }
 
-export async function resetWorktree(client: OpencodeClient, directory: string) {
-  return requireData((await client.worktree.reset({ worktreeResetInput: { directory } })).data, 'worktree reset request');
-}
 
 export async function removeWorktree(client: OpencodeClient, directory: string) {
   return requireData((await client.worktree.remove({ worktreeRemoveInput: { directory } })).data, 'worktree remove request');

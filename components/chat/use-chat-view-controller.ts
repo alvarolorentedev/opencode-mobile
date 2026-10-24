@@ -437,7 +437,7 @@ export function useChatViewController() {
       attachments, availableAgents, chatPreferences, commands, draft,
       isSpeechInputAvailable, isSpeechInputListening,
       isStoppingSession, isUpdatingAutoApprove, selectedAgentLabel, serverCapabilities,
-      selectedVariant: selectedModelVariant, serverContract: serverCapabilities.contract,
+      selectedVariant: selectedModelVariant,
       showSendAction, visibleModels,
     },
     overlay: {

@@ -49,7 +49,7 @@ export function parseChatPreferences(raw: string): Partial<ChatPreferences> {
     && Object.values(variantSelections).every((entry) => typeof entry === 'string' || entry === null)) {
     preferences.modelVariantSelections = { ...variantSelections };
   }
-  for (const [key, options] of Object.entries({ themeMode: THEME_MODES, accentColor: ACCENT_COLORS, promptDelivery: ['steer', 'queue'], reasoning: ['low', 'default', 'high'], responseScope: ['brief', 'balanced', 'detailed'], workingSoundVariant: ['soft', 'glass'] })) {
+  for (const [key, options] of Object.entries({ themeMode: THEME_MODES, accentColor: ACCENT_COLORS, promptDelivery: ['steer', 'queue'], responseScope: ['brief', 'balanced', 'detailed'], workingSoundVariant: ['soft', 'glass'] })) {
     if (typeof value[key] === 'string' && (options as readonly string[]).includes(value[key])) preferences[key] = value[key];
   }
   if (typeof value.transcriptFontSize === 'number') preferences.transcriptFontSize = normalizeTranscriptFontSize(value.transcriptFontSize);

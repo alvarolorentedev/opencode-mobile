@@ -17,7 +17,3 @@ export async function connectMcpServer(client: ScopedOpencodeClient, name: strin
 export async function disconnectMcpServer(client: ScopedOpencodeClient, name: string) {
   return client.compatibility ? v1.disconnectMcpServer(client.compatibility, name) : client.api!.mcp.disconnect({ ...location(client), server: name });
 }
-export async function setMcpServerEnabled(client: ScopedOpencodeClient, name: string, enabled: boolean) {
-  if (!client.compatibility) throw new Error('Persistent MCP enablement is unavailable on OpenCode 2.');
-  return v1.setMcpServerEnabled(client.compatibility, name, enabled);
-}

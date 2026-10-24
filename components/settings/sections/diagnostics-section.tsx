@@ -14,9 +14,7 @@ export function DiagnosticsSection({
   diagnostics,
   eventStreamStatus,
   transport,
-  formatterAvailable = true,
   lastJsError,
-  lspAvailable = true,
   onRefresh,
   palette,
 }: {
@@ -26,9 +24,7 @@ export function DiagnosticsSection({
     network: NetworkStatus;
     reconnect: { attempt: number; maxAttempts: number; retryAt?: number };
   };
-  formatterAvailable?: boolean;
   lastJsError?: RecordedJsError;
-  lspAvailable?: boolean;
   onRefresh: () => void;
   palette: Palette;
 }) {
@@ -42,12 +38,8 @@ export function DiagnosticsSection({
   useEffect(() => { refreshRef.current(); }, []);
   const health = diagnostics?.health.available ? diagnostics.health.data : undefined;
   const mcpCount = diagnostics?.mcp.available ? Object.keys(diagnostics.mcp.data).length : undefined;
-  const lspCount = lspAvailable && diagnostics?.lsp.available ? diagnostics.lsp.data.length : undefined;
-  const formatterCount = formatterAvailable && diagnostics?.formatter.available ? diagnostics.formatter.data.length : undefined;
   const notAvailable = t('settings:diagnostics.notAvailable');
   const subsystemParts = [t('settings:diagnostics.subsystemsMcp', { value: mcpCount ?? notAvailable })];
-  if (lspAvailable) subsystemParts.push(t('settings:diagnostics.subsystemsLsp', { value: lspCount ?? notAvailable }));
-  if (formatterAvailable) subsystemParts.push(t('settings:diagnostics.subsystemsFormatters', { value: formatterCount ?? notAvailable }));
   return (
     <View style={styles.section}>
         <Text variant="titleLarge" style={[styles.title, { color: palette.text }]}>{t('settings:diagnostics.title')}</Text>

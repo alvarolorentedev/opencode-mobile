@@ -74,7 +74,10 @@ describe('ANR regression checks', () => {
     // Exercise the real Expo mod in both variants; generated native folders are
     // disposable, so the opt-out must survive clean and repeated prebuilds.
     for (const variant of ['production', 'development']) {
-      const { default: appConfig } = await load('app.config.ts', {}, { process: { env: { EXPO_APP_VARIANT: variant } } });
+      const { default: appConfig } = await load('app.config.ts', {
+        './config/plugins/android.cjs': require('../../config/plugins/android.cjs'),
+        './config/plugins/ios.cjs': require('../../config/plugins/ios.cjs'),
+      }, { process: { env: { EXPO_APP_VARIANT: variant } } });
       assert.equal(appConfig.android.softwareKeyboardLayoutMode, 'resize');
       const plugin = appConfig.plugins.find((entry: unknown) => typeof entry === 'function');
       const config = plugin({ name: 'Test', slug: 'test' });

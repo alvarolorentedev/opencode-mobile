@@ -61,7 +61,7 @@ function SettingsContent() {
   const palette = usePalette();
   const { t } = useTranslation();
   const { configuredProviders, currentConfig } = useCapabilities();
-  const { addMcpServer, mcpOAuth, connectMcpServer, disconnectMcpServer, mcpStatuses, refreshMcpServers, setMcpServerEnabled } = useMcp();
+  const { addMcpServer, mcpOAuth, connectMcpServer, disconnectMcpServer, mcpStatuses, refreshMcpServers, } = useMcp();
   const { chatPreferences, updateChatPreferences } = usePreferences();
   const { connect, connection, settings, serverCapabilities, connectSetup, services: serviceManagement } = useConnection();
   const { activeProjectPath } = useProjects();
@@ -200,9 +200,9 @@ function SettingsContent() {
         <>
           <View style={{ flexDirection: 'row', gap: 8 }}><Button mode={advancedTab === 'mcp' ? 'contained-tonal' : 'text'} onPress={() => setAdvancedTab('mcp')}>MCP</Button><Button mode={advancedTab === 'diagnostics' ? 'contained-tonal' : 'text'} onPress={() => setAdvancedTab('diagnostics')}>{t('settings:diagnostics.title')}</Button></View>
           {advancedTab === 'mcp' ? <>
-          <McpSection configs={currentConfig?.mcp} mcpStatuses={mcpStatuses} onAdd={addMcpServer} onConnect={connectMcpServer} onDisconnect={disconnectMcpServer} onRefresh={refreshMcpServers} onSetEnabled={setMcpServerEnabled} mcpOAuth={mcpOAuth} persistentConfigAvailable={serverCapabilities.configWrite} requiresIntegrationId={serverCapabilities.contract === 'v2'} oauthAvailable={serverCapabilities.mcpOAuth} palette={palette} />
+          <McpSection configs={currentConfig?.mcp} mcpStatuses={mcpStatuses} onAdd={addMcpServer} onConnect={connectMcpServer} onDisconnect={disconnectMcpServer} onRefresh={refreshMcpServers} mcpOAuth={mcpOAuth} requiresIntegrationId={serverCapabilities.contract === 'v2'} oauthAvailable={serverCapabilities.mcpOAuth} palette={palette} />
           </> : <>
-          <DiagnosticsSection diagnostics={diagnostics} eventStreamStatus={eventStreamStatus} transport={transport} formatterAvailable={serverCapabilities.formatter} lastJsError={lastJsError} lspAvailable={serverCapabilities.lsp} onRefresh={() => { void refreshDiagnostics(); refreshLastJsError(); }} palette={palette} />
+          <DiagnosticsSection diagnostics={diagnostics} eventStreamStatus={eventStreamStatus} transport={transport} lastJsError={lastJsError} onRefresh={() => { void refreshDiagnostics(); refreshLastJsError(); }} palette={palette} />
           </>}
         </>
       ),

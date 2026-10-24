@@ -253,7 +253,6 @@ export function ChatView() {
         <ChatComposer
           key={`${content.currentSessionId}:${content.currentPendingPermissions.map((item) => item.id).join()}:${content.currentPendingQuestions.map((item) => item.id).join()}`}
           attachments={composer.attachments}
-          autoApproveAvailable={composer.serverCapabilities.configWrite}
           availableAgents={composer.availableAgents}
           chatPreferences={composer.chatPreferences}
           connectionStatus={header.connection.status}
@@ -301,7 +300,6 @@ export function ChatView() {
           palette={palette}
           selectedAgentLabel={composer.selectedAgentLabel}
           showSendAction={composer.showSendAction}
-          serverContract={composer.serverContract}
           selectedVariant={composer.selectedVariant}
           slim={header.slim}
           updateChatPreferences={actions.updateChatPreferences}

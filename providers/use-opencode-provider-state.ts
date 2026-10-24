@@ -17,7 +17,6 @@ import type {
   Config,
   File,
   FileDiff,
-  GlobalSession,
   Project,
   Session,
   SessionStatus,
@@ -51,7 +50,6 @@ export function useOpencodeProviderState(initial?: { settings: OpencodeConnectio
   const [onboardingActive, setOnboardingActive] = useState(false);
   const [sessions, setSessions] = useState<Session[]>([]);
   const sessionsRef = useRef<Session[]>([]);
-  const [archivedSessions, setArchivedSessions] = useState<GlobalSession[]>([]);
   const [sessionStatuses, setSessionStatuses] = useState<Record<string, SessionStatus>>({});
   const [currentSessionId, setCurrentSessionId] = useState<string>();
   const [messagesBySession, setMessagesBySession] = useState<Record<string, SessionMessageRecord[]>>({});
@@ -149,7 +147,6 @@ export function useOpencodeProviderState(initial?: { settings: OpencodeConnectio
     onboardingVersion, setOnboardingVersion,
     onboardingActive, setOnboardingActive,
     sessions, setSessions, sessionsRef,
-    archivedSessions, setArchivedSessions,
     sessionStatuses, setSessionStatuses,
     currentSessionId, setCurrentSessionId,
     messagesBySession, setMessagesBySession,

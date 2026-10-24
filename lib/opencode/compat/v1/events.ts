@@ -17,7 +17,6 @@ export function dispatchCompatibilityEvent(event: GlobalEvent['payload'], action
     case 'session.updated':
     case 'session.deleted':
       void actions.refreshSessions().catch(() => undefined);
-      void actions.refreshArchivedSessions().catch(() => undefined);
       return;
     case 'session.status': {
       const sessionId = event.properties.sessionID;

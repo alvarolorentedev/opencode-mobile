@@ -90,10 +90,8 @@ export function useOpencodeProviderValues(input: ProviderValuesInput) {
     worktrees,
     refreshWorktrees,
     createWorktree,
-    resetWorktree,
     removeWorktree,
     sessions,
-    archivedSessions,
     sessionStatuses,
     favoriteSessions,
     toggleFavoriteSession,
@@ -106,13 +104,8 @@ export function useOpencodeProviderValues(input: ProviderValuesInput) {
     openDeepLinkSession,
     createSession,
     deleteSession,
-    archiveSession,
-    restoreSession,
-    refreshArchivedSessions,
     renameSession,
     forkSession,
-    shareSession,
-    unshareSession,
     revertSession,
     unrevertSession,
     openSessionInProject,
@@ -173,7 +166,6 @@ export function useOpencodeProviderValues(input: ProviderValuesInput) {
     addMcpServer,
     connectMcpServer,
     disconnectMcpServer,
-    setMcpServerEnabled,
     mcpOAuth,
     serverContract,
     sharedInput,
@@ -311,8 +303,8 @@ export function useOpencodeProviderValues(input: ProviderValuesInput) {
     [selectedProjectFile, openProjectFile, saveProjectFile, closeProjectFile, downloadProjectFile],
   );
   const projectFilesValue = useMemo<ProjectFilesContextValue>(
-    () => ({ browser, projectFileStatuses, projectFile: projectFileValue, vcsInfo, worktrees, refreshWorktrees, createWorktree, resetWorktree, removeWorktree }),
-    [browser, projectFileStatuses, projectFileValue, vcsInfo, worktrees, refreshWorktrees, createWorktree, resetWorktree, removeWorktree],
+    () => ({ browser, projectFileStatuses, projectFile: projectFileValue, vcsInfo, worktrees, refreshWorktrees, createWorktree, removeWorktree }),
+    [browser, projectFileStatuses, projectFileValue, vcsInfo, worktrees, refreshWorktrees, createWorktree, removeWorktree],
   );
 
   const activeSessionsValue = useMemo(
@@ -324,8 +316,8 @@ export function useOpencodeProviderValues(input: ProviderValuesInput) {
     [currentSessionId, activeSession, activeSessionsValue, ensureActiveSession, openDeepLinkSession, openSession, createSession],
   );
   const sessionLibraryValue = useMemo<SessionLibraryContextValue>(
-    () => ({ sessions, archivedSessions, sessionStatuses, favoriteSessions, toggleFavoriteSession, isFavoriteSession, clearFavoriteSession, sessionPreviewById, refreshSessions, deleteSession, archiveSession, restoreSession, refreshArchivedSessions, renameSession, forkSession, shareSession, unshareSession, revertSession, unrevertSession, openSessionInProject }),
-    [sessions, archivedSessions, sessionStatuses, favoriteSessions, toggleFavoriteSession, isFavoriteSession, clearFavoriteSession, sessionPreviewById, refreshSessions, deleteSession, archiveSession, restoreSession, refreshArchivedSessions, renameSession, forkSession, shareSession, unshareSession, revertSession, unrevertSession, openSessionInProject],
+    () => ({ sessions, sessionStatuses, favoriteSessions, toggleFavoriteSession, isFavoriteSession, clearFavoriteSession, sessionPreviewById, refreshSessions, deleteSession, renameSession, forkSession, revertSession, unrevertSession, openSessionInProject }),
+    [sessions, sessionStatuses, favoriteSessions, toggleFavoriteSession, isFavoriteSession, clearFavoriteSession, sessionPreviewById, refreshSessions, deleteSession, renameSession, forkSession, revertSession, unrevertSession, openSessionInProject],
   );
 
   // A cached or retained transcript can paint before any read establishes its
@@ -362,8 +354,8 @@ export function useOpencodeProviderValues(input: ProviderValuesInput) {
   );
 
   const mcpValue = useMemo<McpContextValue>(
-    () => ({ mcpStatuses, refreshMcpServers, addMcpServer, connectMcpServer, disconnectMcpServer, setMcpServerEnabled, mcpOAuth }),
-    [mcpStatuses, refreshMcpServers, addMcpServer, connectMcpServer, disconnectMcpServer, setMcpServerEnabled, mcpOAuth],
+    () => ({ mcpStatuses, refreshMcpServers, addMcpServer, connectMcpServer, disconnectMcpServer, mcpOAuth }),
+    [mcpStatuses, refreshMcpServers, addMcpServer, connectMcpServer, disconnectMcpServer, mcpOAuth],
   );
 
   return useMemo(() => ({

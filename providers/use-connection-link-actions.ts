@@ -3,7 +3,7 @@ import { useCallback } from 'react';
 import { findProfileByConnectionScope, getProfilePassword, loadConnectionProfiles } from '@/lib/connection-profiles';
 import { buildClient } from '@/lib/opencode/client';
 import type { SessionDeepLinkTarget } from '@/providers/opencode-provider-types';
-import { restoreSession as svcRestoreSession, isAvailableProjectDirectory } from '@/providers/services/session-service';
+import { isAvailableProjectDirectory } from '@/providers/services/session-service';
 import type { ConnectionActionsInput } from '@/providers/opencode-provider-action-inputs';
 import type { useConnectionConnectActions } from '@/providers/use-connection-connect-actions';
 
@@ -26,9 +26,6 @@ export function useConnectionLinkActions({
   serverProjectsRef,
   settingsRef,
   serverContractRef,
-  refreshSessions,
-  refreshArchivedSessions,
-  refreshActiveSessions,
 }: ConnectionLinkActionsInput) {
   const waitForConnectionScope = useCallback(async (scope: string, timeoutMs = 20000) => {
     const deadline = Date.now() + timeoutMs;
@@ -187,16 +184,5 @@ export function useConnectionLinkActions({
     }
   }, [connectionScopeRef, openDeepLinkSession, switchToScope]);
 
-  const restoreSession = useCallback(async (sessionId: string, options?: { projectPath?: string; open?: boolean }) => {
-    const projectPath = options?.projectPath || activeProjectPathRef.current;
-    const generation = serverGenerationRef.current;
-    const targetClient = buildClient({ ...settingsRef.current, directory: projectPath || '' }, serverContractRef.current);
-    await svcRestoreSession(targetClient, sessionId);
-    if (generation !== serverGenerationRef.current) throw new Error('The connection changed while restoring the session.');
-    await Promise.all([refreshSessions(), refreshArchivedSessions(), refreshActiveSessions()]);
-    if (generation !== serverGenerationRef.current) throw new Error('The connection changed while restoring the session.');
-    if (options?.open && projectPath) await openSessionInProject(projectPath, sessionId);
-  }, [activeProjectPathRef, openSessionInProject, refreshActiveSessions, refreshArchivedSessions, refreshSessions, serverContractRef, serverGenerationRef, settingsRef]);
-
-  return { openDeepLinkSession, openSessionInProject, restoreSession };
+  return { openDeepLinkSession, openSessionInProject };
 }

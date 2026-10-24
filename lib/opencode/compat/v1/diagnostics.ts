@@ -1,4 +1,4 @@
-import type { FormatterStatus, LspStatus, McpStatus } from '@/lib/opencode/types';
+import type { McpStatus } from '@/lib/opencode/types';
 import type { OpencodeClient } from '@opencode-ai/sdk/v2/client';
 
 import { getErrorMessage } from '@/lib/error-message';
@@ -17,15 +17,11 @@ async function optionalDiagnostic<T>(load: () => Promise<T>): Promise<OptionalDi
 }
 
 export async function loadDiagnostics(client: OpencodeClient) {
-  const [health, mcp, lsp, formatter] = await Promise.all([
+  const [health, mcp] = await Promise.all([
     optionalDiagnostic(async () => requireData((await client.global.health()).data, 'health diagnostic')),
     optionalDiagnostic<Record<string, McpStatus>>(async () =>
       requireData((await client.mcp.status()).data, 'MCP diagnostic')),
-    optionalDiagnostic<LspStatus[]>(async () =>
-      requireData((await client.lsp.status()).data, 'LSP diagnostic')),
-    optionalDiagnostic<FormatterStatus[]>(async () =>
-      requireData((await client.formatter.status()).data, 'formatter diagnostic')),
   ]);
 
-  return { health, mcp, lsp, formatter };
+  return { health, mcp };
 }

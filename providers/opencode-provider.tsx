@@ -11,7 +11,6 @@ export type {
   ProviderAuthPrompt,
   ProviderAuthValues,
   ProviderOption,
-  ReasoningLevel,
   ResponseScope,
 } from '@/providers/opencode-provider-types';
 

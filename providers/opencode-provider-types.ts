@@ -7,7 +7,6 @@ import type {
   Config,
   File,
   FileDiff,
-  GlobalSession,
   McpLocalConfig,
   McpRemoteConfig,
   McpStatus,
@@ -37,12 +36,12 @@ import type { SessionMessageRecord, TranscriptEntry } from '@/lib/opencode/forma
 import type { SessionUsage } from '@/lib/opencode/usage';
 import type { VoiceRecoveryAction } from '@/lib/voice/speech-errors';
 import type { AgentOption, ModelOption } from '@/providers/opencode-model-selection';
-import type { ChatPreferences, ReasoningLevel, ResponseScope } from '@/providers/opencode-preferences';
+import type { ChatPreferences, ResponseScope } from '@/providers/opencode-preferences';
 import type { ServerCapabilities } from '@/providers/opencode-capabilities';
 import type { SharedInput } from '@/providers/use-share-state';
 import type { TerminalRuntime, TerminalStatus } from '@/providers/terminal-types';
 
-export type { AgentOption, ChatPreferences, ModelOption, ReasoningLevel, ResponseScope, ServerCapabilities };
+export type { AgentOption, ChatPreferences, ModelOption, ResponseScope, ServerCapabilities };
 export type { ProviderAuthMethod, ProviderAuthPrompt, ProviderAuthValues } from '@/lib/opencode/types';
 
 // How a transcript refresh treats the window already held in memory.
@@ -300,8 +299,7 @@ export type ProjectFilesContextValue = {
   vcsInfo?: VcsInfo;
   worktrees: WorktreeCatalog;
   refreshWorktrees: () => Promise<void>;
-  createWorktree: (name?: string, startCommand?: string) => Promise<void>;
-  resetWorktree: (directory: string) => Promise<void>;
+  createWorktree: (name?: string) => Promise<void>;
   removeWorktree: (directory: string) => Promise<void>;
 };
 
@@ -323,7 +321,6 @@ export type CurrentSessionContextValue = {
 
 export type SessionLibraryContextValue = {
   sessions: Session[];
-  archivedSessions: GlobalSession[];
   sessionStatuses: Record<string, SessionStatus>;
   favoriteSessions: FavoriteSession[];
   toggleFavoriteSession: (sessionId: string, projectPath: string, title?: string) => void;
@@ -332,13 +329,8 @@ export type SessionLibraryContextValue = {
   sessionPreviewById: Record<string, string>;
   refreshSessions: () => Promise<Session[]>;
   deleteSession: (sessionId: string) => Promise<void>;
-  archiveSession: (sessionId: string) => Promise<void>;
-  restoreSession: (sessionId: string, options?: { projectPath?: string; open?: boolean }) => Promise<void>;
-  refreshArchivedSessions: () => Promise<void>;
   renameSession: (sessionId: string, title: string) => Promise<void>;
   forkSession: (sessionId: string, messageId?: string) => Promise<Session>;
-  shareSession: (sessionId: string) => Promise<Session>;
-  unshareSession: (sessionId: string) => Promise<Session>;
   revertSession: (sessionId: string, messageId: string) => Promise<void>;
   unrevertSession: (sessionId: string) => Promise<void>;
   openSessionInProject: (projectPath: string, sessionId: string, connectionScope?: string) => Promise<void>;
@@ -427,7 +419,6 @@ export type McpContextValue = {
   addMcpServer: (name: string, config: McpLocalConfig | McpRemoteConfig) => Promise<void>;
   connectMcpServer: (name: string) => Promise<void>;
   disconnectMcpServer: (name: string) => Promise<void>;
-  setMcpServerEnabled: (name: string, enabled: boolean) => Promise<void>;
   mcpOAuth: {
     methods: (name: string) => Promise<ProviderAuthMethod[]>;
     start: (name: string, method: number, values?: ProviderAuthValues) => Promise<{ url: string; instructions?: string; method: 'auto' | 'code' }>;

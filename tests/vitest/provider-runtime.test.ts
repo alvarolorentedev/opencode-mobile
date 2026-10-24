@@ -687,14 +687,14 @@ profileRuntime.update({ switchConnection: async () => {} });
 assert.equal(profileRuntime.value, stableProfiles, 'profile domain values remain stable when only callback bridges change');
 profileRuntime.unmount();
 
-// Actual session callbacks: restore in the row's project, preserve scope,
-// and refresh an explicit target missing from an otherwise populated cache.
-const sessionNames = ['restoreSession', 'ensureActiveSession', 'openDeepLinkSession'];
+// Actual session callbacks: refresh an explicit target missing from an
+// otherwise populated cache and preserve deep-link resolution.
+const sessionNames = ['ensureActiveSession', 'openDeepLinkSession'];
 const sessionDeclarations = [
   extractDeclarations(sessionActionsSource, ['ensureActiveSession']),
-  extractDeclarations(connectionActionsSource, ['waitForConnectionScope', 'switchToScope', 'restoreSession', 'openDeepLinkSession']),
+  extractDeclarations(connectionActionsSource, ['waitForConnectionScope', 'switchToScope', 'openDeepLinkSession']),
 ].join('\n');
-let restoreGate, restoreFailure, restoredDirectory, reopened, createdSessions = 0, fetchedSessions = 0;
+let createdSessions = 0, fetchedSessions = 0;
 const resolvableDirectories = new Set();
 const target = { id: 'target' };
 const sessionContext = {
@@ -703,9 +703,7 @@ const sessionContext = {
   connection: { status: 'connected' }, connectionRef: { current: { status: 'connected' } },
   serverContractRef: { current: 'v1' }, serverGenerationRef: { current: 1 },
   buildClient: (settings) => settings,
-  svcRestoreSession: async (candidate) => { restoredDirectory = candidate.directory; await restoreGate?.promise; if (restoreFailure) throw new Error('restore failed'); },
-  refreshSessions: async () => { fetchedSessions++; return [target]; }, refreshArchivedSessions: async () => {}, refreshActiveSessions: async () => {},
-  openSessionInProject: async (projectPath, id) => { reopened = { projectPath, id }; },
+  refreshSessions: async () => { fetchedSessions++; return [target]; }, refreshActiveSessions: async () => {},
   currentSessionId: undefined, sessions: [{ id: 'cached' }], sessionsRef: { current: [{ id: 'cached' }] }, messagesBySession: {},
   pendingDeepLinkTargetRef: { current: { sessionId: 'target', projectPath: '/repo' } },
   bootstrapPromiseRef: { current: null }, bootstrapTokenRef: {},
@@ -727,15 +725,6 @@ const sessionContext = {
 };
 runInNewContext(ts.transpileModule(`${sessionDeclarations}\nexports.actions = { ${sessionNames.join(', ')} };`, { compilerOptions: { module: ts.ModuleKind.CommonJS } }).outputText, sessionContext);
 const sessionActions = sessionContext.exports.actions;
-await sessionActions.restoreSession('target', { projectPath: '/elsewhere', open: true });
-assert.equal(restoredDirectory, '/elsewhere'); assert.equal(reopened.id, 'target'); assert.equal(reopened.projectPath, '/elsewhere');
-reopened = undefined; restoreFailure = true;
-await assert.rejects(sessionActions.restoreSession('target', { projectPath: '/elsewhere', open: true }), /restore failed/);
-assert.equal(reopened, undefined); restoreFailure = false;
-restoreGate = deferred();
-const switchingRestore = sessionActions.restoreSession('target', { open: true });
-sessionContext.serverGenerationRef.current++; restoreGate.resolve();
-await assert.rejects(switchingRestore, /connection changed/); assert.equal(reopened, undefined); restoreGate = undefined;
 fetchedSessions = 0;
 assert.equal(await sessionActions.ensureActiveSession(), 'target'); assert.equal(fetchedSessions, 1);
 assert.equal(createdSessions, 0);

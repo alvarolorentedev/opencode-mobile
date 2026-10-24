@@ -8,7 +8,6 @@ import {
   type AccentColor,
   type ThemeMode,
 } from '@/constants/appearance';
-export type ReasoningLevel = 'low' | 'default' | 'high';
 export type ResponseScope = 'brief' | 'balanced' | 'detailed';
 export const TRANSCRIPT_FONT_SIZE_MIN = 12;
 export const TRANSCRIPT_FONT_SIZE_MAX = 24;
@@ -44,7 +43,6 @@ export type ChatPreferences = {
   providerModelSelections: Record<string, string>;
   modelVariantSelections: Record<string, string | null>;
   recentModelIds: string[];
-  reasoning: ReasoningLevel;
   autoApprove: boolean;
   autoPlayAssistantReplies: boolean;
   preferOnDeviceRecognition: boolean;
@@ -73,7 +71,6 @@ export const defaultChatPreferences: ChatPreferences = {
   providerModelSelections: {},
   modelVariantSelections: {},
   recentModelIds: [],
-  reasoning: 'default',
   autoApprove: false,
   autoPlayAssistantReplies: false,
   preferOnDeviceRecognition: true,
@@ -87,18 +84,6 @@ export const defaultChatPreferences: ChatPreferences = {
   hideSubagentChats: true,
   showWidgetPreviews: true,
 };
-
-function buildReasoningSystemPrompt(level: ReasoningLevel) {
-  if (level === 'default') {
-    return undefined;
-  }
-
-  if (level === 'low') {
-    return 'Reasoning effort: low. Keep the solution direct, concise, and avoid unnecessary exploration unless needed.';
-  }
-
-  return 'Reasoning effort: high. Spend extra time planning, evaluating tradeoffs, and verifying the best path before acting.';
-}
 
 function buildResponseStyleSystemPrompt(scope: ResponseScope, includeNextActions: boolean) {
   const scopeInstruction =
@@ -115,11 +100,6 @@ function buildResponseStyleSystemPrompt(scope: ResponseScope, includeNextActions
   return `${scopeInstruction} ${nextActionsInstruction}`;
 }
 
-export function buildSystemPrompt(preferences: ChatPreferences, includeReasoning = true) {
-  return [
-    includeReasoning ? buildReasoningSystemPrompt(preferences.reasoning) : undefined,
-    buildResponseStyleSystemPrompt(preferences.responseScope, preferences.includeNextActions),
-  ]
-    .filter(Boolean)
-    .join('\n\n') || undefined;
+export function buildSystemPrompt(preferences: ChatPreferences) {
+  return buildResponseStyleSystemPrompt(preferences.responseScope, preferences.includeNextActions);
 }

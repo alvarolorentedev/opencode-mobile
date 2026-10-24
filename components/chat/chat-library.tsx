@@ -1,4 +1,3 @@
-import { LegacyChatLibrary } from '@/components/chat/chat-library-v1';
 import { FlashList } from '@shopify/flash-list';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useEffect, useRef, useState } from 'react';
@@ -12,7 +11,7 @@ import { ProjectPicker, ProjectPickerButton } from '@/components/ui/project-pick
 import { WorkspaceSelect } from '@/components/ui/workspace-select';
 import { formatRelativeTime } from '@/lib/opencode/format';
 import { confirmAction } from '@/lib/confirm-action';
-import { usePreferences, useProjects, useConnection } from '@/providers/opencode-contexts';
+import { usePreferences, useProjects } from '@/providers/opencode-contexts';
 import { useWorkspaces } from '@/providers/workspace-context';
 import { useWorkspaceLibrary } from '@/providers/use-workspace-library';
 import { sessionKey, workspaceKey } from '@/providers/workspace-types';
@@ -23,7 +22,6 @@ export function ChatLibrary({ visible, onClose, onNewChat }: { visible: boolean;
   const { t } = useTranslation();
   const palette = usePalette();
   const { activeProject } = useProjects();
-  const { serverCapabilities } = useConnection();
   const { chatPreferences, updateChatPreferences } = usePreferences();
   const registry = useWorkspaces();
   const multipleServers = registry.connections.length > 1;
@@ -106,7 +104,6 @@ export function ChatLibrary({ visible, onClose, onNewChat }: { visible: boolean;
       </SwipeRow>
     </View>;
   }
-  if (serverCapabilities.contract === 'v1') return <LegacyChatLibrary visible={visible} onClose={onClose} onNewChat={onNewChat} />;
   return <>
     <OverlaySheet visible={visible && !projectVisible} title={t('chat:library.title')} testID="chat-library" scrollable={false} onClose={close}
       headerAction={<ProjectPickerButton onPress={() => setProjectVisible(true)} />}>

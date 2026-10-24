@@ -11,20 +11,16 @@ import { NumericSlider } from '@/components/ui/numeric-slider';
 import { useSwipeDismiss } from '@/components/ui/use-swipe-dismiss';
 import { useDismissOnBack } from '@/hooks/use-dismiss-on-back';
 import { useKeyboardHeight } from '@/hooks/use-keyboard-height';
-import { getModelVariantLabel, REASONING_OPTIONS } from '@/components/chat/chat-view-utils';
+import { getModelVariantLabel } from '@/components/chat/chat-view-utils';
 import { renderProviderIcon } from '@/components/ui/provider-icon';
 import { Fonts } from '@/constants/theme';
 import { usePalette } from '@/hooks/use-palette';
-import type { ServerContract } from '@/lib/opencode/client';
-import type { ModelOption, ReasoningLevel } from '@/providers/opencode-provider';
+import type { ModelOption } from '@/providers/opencode-provider';
 
 type ModelPickerProps = {
   disabled?: boolean;
   compact?: boolean;
   reasoningLabel?: string;
-  reasoning?: ReasoningLevel;
-  onReasoningChange?: (value: ReasoningLevel) => void;
-  serverContract: ServerContract;
   selectedVariant?: string;
   onVariantChange?: (value: string | undefined) => void;
   models: ModelOption[];
@@ -91,7 +87,7 @@ function ControlButton({
   );
 }
 
-export function ModelPicker({ disabled = false, models, onSelect, recentModelIds, selectedModelId, slim = false, compact = false, reasoningLabel, reasoning, onReasoningChange, serverContract, selectedVariant, onVariantChange }: ModelPickerProps) {
+export function ModelPicker({ disabled = false, models, onSelect, recentModelIds, selectedModelId, slim = false, compact = false, reasoningLabel, selectedVariant, onVariantChange }: ModelPickerProps) {
   const { t } = useTranslation();
   const palette = usePalette();
   const [visible, setVisible] = useState(false);
@@ -145,8 +141,7 @@ export function ModelPicker({ disabled = false, models, onSelect, recentModelIds
   };
   const selected = models.find((model) => model.id === selectedModelId);
   const variantIds = [undefined, ...(selected?.variants.map((variant) => variant.id) ?? [])];
-  const showVariantPicker = serverContract === 'v2' && variantIds.length > 1 && onVariantChange;
-  const showLegacyReasoning = serverContract === 'v1' && reasoning !== undefined && onReasoningChange;
+  const showVariantPicker = variantIds.length > 1 && onVariantChange;
   const recentModels = useMemo(() => (recentModelIds ?? [])
     .map((id) => models.find((model) => model.id === id))
     .filter((model): model is ModelOption => model !== undefined && model.id !== selectedModelId)
@@ -230,19 +225,6 @@ export function ModelPicker({ disabled = false, models, onSelect, recentModelIds
                     value={Math.max(0, variantIds.findIndex((variant) => variant === selectedVariant))}
                     valueLabel={reasoningLabel ?? getModelVariantLabel(selectedVariant, t)}
                     onValueChange={(index) => onVariantChange?.(variantIds[index])}
-                    palette={palette}
-                  />
-                </View>
-              ) : showLegacyReasoning ? (
-                <View style={{ paddingHorizontal: 16, paddingTop: 12 }}>
-                  <NumericSlider
-                    label={t('chat:composer.reasoning')}
-                    minimum={0}
-                    maximum={REASONING_OPTIONS.length - 1}
-                    step={1}
-                    value={Math.max(0, REASONING_OPTIONS.findIndex((option) => option.id === reasoning))}
-                    valueLabel={reasoningLabel || t(REASONING_OPTIONS.find((option) => option.id === reasoning)?.labelKey || 'chat:reasoning.default')}
-                    onValueChange={(index) => onReasoningChange(REASONING_OPTIONS[index].id)}
                     palette={palette}
                   />
                 </View>

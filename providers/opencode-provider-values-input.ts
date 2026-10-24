@@ -12,7 +12,6 @@ import type {
   Command,
   File,
   FileDiff,
-  GlobalSession,
   McpLocalConfig,
   McpRemoteConfig,
   McpStatus,
@@ -79,11 +78,9 @@ export type ProviderValuesInput = ActionInputs & {
   vcsInfo?: VcsInfo;
   worktrees: WorktreeCatalog;
   refreshWorktrees: () => Promise<void>;
-  createWorktree: (name?: string, startCommand?: string) => Promise<void>;
-  resetWorktree: (directory: string) => Promise<void>;
+  createWorktree: (name?: string) => Promise<void>;
   removeWorktree: (directory: string) => Promise<void>;
   sessions: Session[];
-  archivedSessions: GlobalSession[];
   sessionStatuses: Record<string, SessionStatus>;
   favoriteSessions: FavoriteSession[];
   activeSessions: ActiveSessionItem[];
@@ -131,7 +128,6 @@ export type ProviderValuesInput = ActionInputs & {
   addMcpServer: (name: string, config: McpLocalConfig | McpRemoteConfig) => Promise<void>;
   connectMcpServer: (name: string) => Promise<void>;
   disconnectMcpServer: (name: string) => Promise<void>;
-  setMcpServerEnabled: (name: string, enabled: boolean) => Promise<void>;
   mcpOAuth: import('./opencode-provider-types').McpContextValue['mcpOAuth'];
   sharedInput: SharedInput;
 };

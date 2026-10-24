@@ -47,7 +47,6 @@ export function useOpencodeProviderComposition(input: WorkspaceRuntimeInput) {
     locallyCreatedSessionsRef,
     setCurrentSessionId,
     setSessions,
-    setArchivedSessions,
     setSessionStatuses,
     setCommands,
     setCurrentConfig,
@@ -198,7 +197,6 @@ export function useOpencodeProviderComposition(input: WorkspaceRuntimeInput) {
     locallyCreatedSessionsRef.current.clear();
     setCurrentSessionId(undefined);
     setSessions([]);
-    setArchivedSessions([]);
     setSessionStatuses({});
     resetTranscript();
     setCommands([]);
@@ -217,7 +215,7 @@ export function useOpencodeProviderComposition(input: WorkspaceRuntimeInput) {
     resetMcpState();
     resetTerminal();
     resetWorktrees();
-  }, [resetMcpState, resetPermissionRules, resetTerminal, resetTranscript, resetWorktrees, bootstrapPromiseRef, bootstrapTokenRef, busyNotificationsRef, suppressedPendingRequestIdsRef, sessionRefreshOptionsRef, sessionRefreshTimeoutsRef, currentSessionIdRef, explicitSessionSelectionRef, locallyCreatedSessionsRef, setArchivedSessions, setAvailableAgents, setAvailableModels, setAvailableProviders, setCommands, setCurrentConfig, setCurrentSessionId, setMcpAuthPrompt, setPendingPermissionsBySession, setPendingQuestionsBySession, setProviderAuthMethodsById, setSelectedProjectFile, setSessionStatuses, setSessions, setVcsInfo, setProjectFileStatuses]);
+  }, [resetMcpState, resetPermissionRules, resetTerminal, resetTranscript, resetWorktrees, bootstrapPromiseRef, bootstrapTokenRef, busyNotificationsRef, suppressedPendingRequestIdsRef, sessionRefreshOptionsRef, sessionRefreshTimeoutsRef, currentSessionIdRef, explicitSessionSelectionRef, locallyCreatedSessionsRef, setAvailableAgents, setAvailableModels, setAvailableProviders, setCommands, setCurrentConfig, setCurrentSessionId, setMcpAuthPrompt, setPendingPermissionsBySession, setPendingQuestionsBySession, setProviderAuthMethodsById, setSelectedProjectFile, setSessionStatuses, setSessions, setVcsInfo, setProjectFileStatuses]);
 
   const softResetProjectState = useCallback(() => {
     // Same-machine credential rotation: keep server-derived data (still valid
@@ -262,7 +260,6 @@ export function useOpencodeProviderComposition(input: WorkspaceRuntimeInput) {
     client,
     isCurrentClient,
     refreshMessages: inbox.refreshMessages,
-    summarizeSessionTitle: sessionActions.summarizeSessionTitle,
   });
 
   const connectionActions = useConnectionActions({
@@ -320,7 +317,6 @@ export function useOpencodeProviderComposition(input: WorkspaceRuntimeInput) {
     }
     eventActionsRef.current = {
       refreshSessions: project.refreshSessions,
-      refreshArchivedSessions: sessionActions.refreshArchivedSessions,
       scheduleSessionRefresh: project.scheduleSessionRefresh,
       scheduleSessionsRefresh,
       scheduleServerFeaturesRefresh,

@@ -40,7 +40,6 @@ type PromptLifecycleInput = {
   refreshSessionDiff: (sessionId: string, silent?: boolean, messageId?: string) => Promise<unknown>;
   refreshSessionTodos: (sessionId: string) => Promise<unknown>;
   scheduleSessionRefresh: (sessionId: string, options?: SessionRefreshOptions) => void;
-  summarizeSessionTitle: (sessionId: string, knownSessions?: Session[]) => Promise<Session | undefined>;
 };
 
 export function usePromptLifecycle({
@@ -62,7 +61,6 @@ export function usePromptLifecycle({
   refreshSessionDiff,
   refreshSessionTodos,
   scheduleSessionRefresh,
-  summarizeSessionTitle,
 }: PromptLifecycleInput) {
   const [sendingState, setSendingState] = useState<{ sessionId?: string; active: boolean }>({ active: false });
   const [promptError, setPromptError] = useState<{ message: string; occurredAt: number; sessionId?: string }>();
@@ -184,7 +182,7 @@ export function usePromptLifecycle({
           sessionID: sessionId,
           agent: chatPreferences.mode,
           model: getSelectedModelParts(chatPreferences.modelId),
-          system: buildSystemPrompt(chatPreferences, !isV2),
+          system: buildSystemPrompt(chatPreferences),
           variant,
           parts,
         }, chatPreferences.promptDelivery ?? 'steer');
@@ -213,10 +211,6 @@ export function usePromptLifecycle({
             refreshSessionTodos(sessionId),
           ]);
           if (!isCurrentClient(client)) return;
-          const refreshedSession = sessions.find((session) => session.id === sessionId);
-          if (!refreshedSession?.title?.trim()) {
-            await summarizeSessionTitle(sessionId, sessions);
-          }
         })().catch(() => undefined);
         return true;
       } catch (error) {
@@ -245,7 +239,7 @@ export function usePromptLifecycle({
         ));
       }
     },
-    [activeProjectPath, availableModels, busyNotificationsRef, chatPreferences, client, connectionScope, isCurrentClient, promptSubmissionRef, refreshMessages, refreshSessionDiff, refreshSessionTodos, scheduleSessionRefresh, sessions, setPromptError, setSelectedDiffMessageBySession, settingsRef, submitPrompt, summarizeSessionTitle],
+    [activeProjectPath, availableModels, busyNotificationsRef, chatPreferences, client, connectionScope, isCurrentClient, promptSubmissionRef, refreshMessages, refreshSessionDiff, refreshSessionTodos, scheduleSessionRefresh, sessions, setPromptError, setSelectedDiffMessageBySession, settingsRef, submitPrompt],
   );
 
   const abortSession = useCallback(

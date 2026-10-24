@@ -9,7 +9,6 @@ import {
   connectMcpServer as svcConnectMcpServer,
   disconnectMcpServer as svcDisconnectMcpServer,
   getMcpStatus,
-  setMcpServerEnabled as svcSetMcpServerEnabled,
 } from '@/providers/services/mcp-service';
 
 // MCP server status plus its lifecycle actions. Enabling or adding a server can
@@ -48,11 +47,6 @@ export function useMcpState({
     await refreshMcpServers();
   }, [client, refreshMcpServers]);
 
-  const setMcpServerEnabled = useCallback(async (name: string, enabled: boolean) => {
-    await svcSetMcpServerEnabled(client, name, enabled);
-    await Promise.all([refreshMcpServers(), refreshChatCapabilities()]);
-  }, [client, refreshChatCapabilities, refreshMcpServers]);
-
   const mcpOAuth = useMemo<McpContextValue['mcpOAuth']>(() => {
     const names = new Set<string>();
     const current = () => { if (!isCurrentClient(client)) throw new Error('The connection changed before sign-in completed.'); };
@@ -89,7 +83,6 @@ export function useMcpState({
     addMcpServer,
     connectMcpServer,
     disconnectMcpServer,
-    setMcpServerEnabled,
     mcpOAuth,
     resetMcpState,
   };
