@@ -8,7 +8,10 @@ import { usesCompatibility, workerBackend } from './backend.mjs';
 export const test = base.extend({
   e2eBackend: [
     async ({ page }, use, testInfo) => {
-      const backend = workerBackend(testInfo.workerIndex);
+      // parallelIndex stays within 0..workers-1 when Playwright restarts a
+      // worker; workerIndex keeps growing and would map to a server that does
+      // not exist.
+      const backend = workerBackend(testInfo.parallelIndex);
       const serverUrl = usesCompatibility(testInfo.title) ? backend.v1 : backend.v2;
       await page.addInitScript((url) => {
         globalThis.__OPENCODE_E2E_SERVER_URL__ = url;

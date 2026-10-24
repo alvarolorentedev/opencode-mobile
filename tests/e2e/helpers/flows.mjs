@@ -10,8 +10,8 @@ import { setTimeout as sleep } from 'node:timers/promises';
 // Existing flows assume the app boots straight into chat. Seed a completed
 // onboarding marker so first-run setup is skipped; the dedicated onboarding
 // spec intentionally omits this so the assistant is exercised.
-export const fakeV2Origin = (info = test.info()) => workerBackend(info.workerIndex).v2;
-export const fakeV1Origin = (info = test.info()) => workerBackend(info.workerIndex).v1;
+export const fakeV2Origin = (info = test.info()) => workerBackend(info.parallelIndex).v2;
+export const fakeV1Origin = (info = test.info()) => workerBackend(info.parallelIndex).v1;
 export const backendOrigin = (info = test.info()) => (
   usesCompatibility(info.title) ? fakeV1Origin(info) : fakeV2Origin(info)
 );

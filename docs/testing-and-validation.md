@@ -29,7 +29,10 @@ Measured baseline on 2026-10-23 against the previous serial workflow:
 
 The browser flows, not Vitest, are the cost. CI now runs one E2E job with one
 web export and four Playwright workers. Each worker owns a fake V1/V2 server
-pair, so the fake server's global scenario is isolated. The web build is
+pair, so the fake server's global scenario is isolated. Workers key that mapping
+on Playwright's `parallelIndex`, which stays inside `0..workers-1` when a worker
+is restarted; `workerIndex` grows on restart and would point at a server that
+was never started. The web build is
 URL-agnostic: a Playwright fixture sets the worker's backend URL at runtime,
 and saved connection settings still take priority.
 

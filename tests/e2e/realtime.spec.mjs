@@ -51,7 +51,7 @@ test('v2 provider retry survives refresh and the safety poll recovers output', a
     await openReadyChat(page);
     await connectToServer(page, origin);
     await sendPrompt(page, 'Retry recovery');
-    await expect(page.getByText(/retrying \(attempt 2\)/)).toBeVisible({ timeout: 15_000 });
+    await expect(page.getByText('Retry 2', { exact: true })).toBeVisible({ timeout: 15_000 });
     // Recovered output lands after the post-send refresh window and emits no
     // event, so the 10s busy safety poll is the only thing that can render it.
     await expect(page.getByText(/Recovered: Retry recovery/).first()).toBeVisible({ timeout: 30_000 });
@@ -152,7 +152,7 @@ test('v2 network drop recovers the retained session without replaying the prompt
     await openReadyChat(page);
     await connectToServer(page, origin);
     await sendPrompt(page, 'Network drop recovery');
-    await expect(page.getByText(/retrying \(attempt 2\)/)).toBeVisible({ timeout: 15_000 });
+    await expect(page.getByText('Retry 2', { exact: true })).toBeVisible({ timeout: 15_000 });
     await page.context().setOffline(true);
     await page.waitForTimeout(1500);
     await page.context().setOffline(false);

@@ -24,16 +24,19 @@ export function getWorkerCount() {
   return process.env.CI ? 4 : 2;
 }
 
-export function workerBackend(workerIndex) {
+// Map a worker slot to its fake V1/V2 pair. Callers pass Playwright's
+// `parallelIndex` (stable 0..workers-1), not `workerIndex`: a restarted worker
+// gets a fresh workerIndex and would point at a server that was never started.
+export function workerBackend(parallelIndex) {
   const workerCount = getWorkerCount();
-  if (!Number.isInteger(workerIndex) || workerIndex < 0 || workerIndex >= workerCount) {
-    throw new Error(`E2E worker index ${workerIndex} is outside the configured worker count ${workerCount}.`);
+  if (!Number.isInteger(parallelIndex) || parallelIndex < 0 || parallelIndex >= workerCount) {
+    throw new Error(`E2E parallel index ${parallelIndex} is outside the configured worker count ${workerCount}.`);
   }
   const base = Number(process.env.E2E_FAKE_PORT_BASE || 44096);
-  const v2Port = base + workerIndex * 2;
+  const v2Port = base + parallelIndex * 2;
   const v1Port = v2Port + 1;
   return {
-    workerIndex,
+    workerIndex: parallelIndex,
     v2Port,
     v1Port,
     v2: `http://127.0.0.1:${v2Port}`,
