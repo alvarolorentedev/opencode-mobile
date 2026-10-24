@@ -1,0 +1,3 @@
+- Color themes now recolor the whole app, including backgrounds, cards, borders, chat bubbles, code blocks, conversation mode, and the terminal.
+- Settings shows a preview of each theme, with light, dark, and system modes plus six color themes.
+- Window and status-bar chrome follow the selected theme so edges no longer flash the system color.
