@@ -259,7 +259,8 @@
     "filesChangedSimple_other": "{{files}} फ़ाइलें बदलीं",
     "filesChangedCompact_one": "{{files}} फ़ाइल बदली, +{{additions}} / -{{deletions}}",
     "filesChangedCompact_many": "{{files}} फ़ाइलें बदलीं, +{{additions}} / -{{deletions}}",
-    "filesChangedCompact_other": "{{files}} फ़ाइलें बदलीं, +{{additions}} / -{{deletions}}"
+    "filesChangedCompact_other": "{{files}} फ़ाइलें बदलीं, +{{additions}} / -{{deletions}}",
+    "turnNumber": "टर्न {{number}}"
   },
   "session": {
     "chooseProject": "प्रोजेक्ट चुनें",

@@ -155,3 +155,15 @@ remain outside that guarantee by design:
 Cloud Link profiles and `opencode pair` QR codes cannot carry custom headers;
 the editor is manual-only. Supporting them would require a control-plane/QR
 contract change, not app-side plumbing.
+
+## 7. V1 support policy
+
+V1 is maintained only for the feature intersection with V2. V1-only surfaces
+(sharing, archive/restore, title summarization, general config writes, persistent
+MCP enablement, worktree reset, and LSP/formatter diagnostics) are intentionally
+unsupported. Compatibility code stays behind `lib/opencode/compat/v1/` and the
+provider service boundary; do not add new UI branches on `contract === 'v1'`.
+
+Realtime timing and reconciliation helpers live under `providers/realtime/`.
+Keep the dual SSE/polling model and preserve its timing contract when editing
+them.

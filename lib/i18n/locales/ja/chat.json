@@ -259,7 +259,8 @@
     "filesChangedSimple_other": "{{files}} ファイルを変更",
     "filesChangedCompact_one": "{{files}} ファイルを変更 · +{{additions}} / -{{deletions}}",
     "filesChangedCompact_many": "{{files}} ファイルを変更 · +{{additions}} / -{{deletions}}",
-    "filesChangedCompact_other": "{{files}} ファイルを変更 · +{{additions}} / -{{deletions}}"
+    "filesChangedCompact_other": "{{files}} ファイルを変更 · +{{additions}} / -{{deletions}}",
+    "turnNumber": "ターン {{number}}"
   },
   "session": {
     "chooseProject": "プロジェクトを選択",

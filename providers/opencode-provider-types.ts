@@ -149,7 +149,7 @@ export type DiffScope = 'turn' | 'uncommitted' | 'branch';
 // A selectable user turn that has a recorded snapshot diff.
 export type DiffTurn = {
   id: string;
-  label: string;
+  number: number;
 };
 
 export type ProjectCatalog = {

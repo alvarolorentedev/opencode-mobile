@@ -259,7 +259,8 @@
     "filesChangedSimple_other": "{{files}} 个文件已更改",
     "filesChangedCompact_one": "{{files}} 个文件已更改 · +{{additions}} / -{{deletions}}",
     "filesChangedCompact_many": "{{files}} 个文件已更改 · +{{additions}} / -{{deletions}}",
-    "filesChangedCompact_other": "{{files}} 个文件已更改 · +{{additions}} / -{{deletions}}"
+    "filesChangedCompact_other": "{{files}} 个文件已更改 · +{{additions}} / -{{deletions}}",
+    "turnNumber": "第 {{number}} 轮"
   },
   "session": {
     "chooseProject": "选择项目",

@@ -1,18 +1,11 @@
 import assert from 'node:assert/strict';
-import { readFile } from 'node:fs/promises';
-import ts from 'typescript';
 import { describe, it } from 'vitest';
+import { getConfiguredProviderIds, getInitialModelId, getInitialProviderId, getModelIdForProvider, getSelectedModelVariant, recordRecentModelId, resolveConfigModelId } from '@/providers/opencode-model-selection';
+import { areSessionListsEqual, areSessionStatusMapsEqual, buildOpencodeProjects, collectDescendantSessionIds, mergeSessionStatuses, RETRY_STATUS_STALE_MS, resolveActiveProject } from '@/providers/opencode-provider-utils';
 
 // Migrated from the standalone tests/provider-utils.test.mjs Node script.
 describe('provider model selection utilities', () => {
   it('selects initial models/providers and merges session status maps safely', async () => {
-    // Stub the preferences alias so the data-URL import does not need the whole
-    // preferences module (getInitialMode falls back to the default mode).
-    const preferencesStubUri = `data:text/javascript,${encodeURIComponent('export const defaultChatPreferences = { mode: "build" };')}`;
-    const source = await readFile(new URL('../../providers/opencode-model-selection.ts', import.meta.url), 'utf8');
-    const output = ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.ESNext, target: ts.ScriptTarget.ES2020 } })
-      .outputText.replace(/from '@\/providers\/opencode-preferences'/g, `from "${preferencesStubUri}"`);
-    const { getConfiguredProviderIds, getInitialModelId, getInitialProviderId, getModelIdForProvider, getSelectedModelVariant, recordRecentModelId, resolveConfigModelId } = await import(`data:text/javascript,${encodeURIComponent(output)}`);
     const models = [{ id: 'openai/gpt', modelID: 'gpt', providerID: 'openai' }];
 
     assert.deepEqual([...getConfiguredProviderIds({ enabled_providers: ['openai'] }, [], models)], ['openai']);
@@ -52,9 +45,6 @@ describe('provider model selection utilities', () => {
       ['openrouter'],
     );
 
-    const providerUtilsSource = await readFile(new URL('../../providers/opencode-provider-utils.ts', import.meta.url), 'utf8');
-    const providerUtilsOutput = ts.transpileModule(providerUtilsSource, { compilerOptions: { module: ts.ModuleKind.ESNext, target: ts.ScriptTarget.ES2020 } }).outputText;
-    const { mergeSessionStatuses, RETRY_STATUS_STALE_MS, collectDescendantSessionIds, areSessionListsEqual, areSessionStatusMapsEqual, buildOpencodeProjects, resolveActiveProject } = await import(`data:text/javascript,${encodeURIComponent(providerUtilsOutput)}`);
     const now = 1_000_000;
 
     // The picker renders only the projects opened on this connection and

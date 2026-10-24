@@ -259,7 +259,8 @@
     "filesChangedSimple_other": "{{files}} Dateien geändert",
     "filesChangedCompact_one": "{{files}} Datei geändert, +{{additions}} / -{{deletions}}",
     "filesChangedCompact_many": "{{files}} Dateien geändert, +{{additions}} / -{{deletions}}",
-    "filesChangedCompact_other": "{{files}} Dateien geändert, +{{additions}} / -{{deletions}}"
+    "filesChangedCompact_other": "{{files}} Dateien geändert, +{{additions}} / -{{deletions}}",
+    "turnNumber": "Zug {{number}}"
   },
   "session": {
     "chooseProject": "Projekt wählen",

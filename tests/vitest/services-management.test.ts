@@ -3,21 +3,23 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { OpencodeConnectionSettings } from '@/lib/opencode/client/types';
 import {
   DEFAULT_SERVICES_PORT,
-  ServiceManagementError,
   buildServiceShareUrl,
   canonicalizeOptionalServicePath,
   canonicalizeServicePath,
   canonicalizeServiceTarget,
-  deleteManagedService,
   formatServiceAddress,
-  getServiceManagementVersion,
   getServicePortOptions,
   isValidServiceId,
-  listManagedServices,
   prepareServiceDraft,
-  putManagedService,
   type ManagedService,
 } from '@/lib/opencode/client/management';
+import {
+  ServiceManagementError,
+  deleteManagedService,
+  getServiceManagementVersion,
+  listManagedServices,
+  putManagedService,
+} from '@/lib/opencode/client/management-api';
 
 const h = vi.hoisted(() => ({ credentialError: undefined as string | undefined }));
 vi.mock('@/lib/connect', () => ({ getConnectCredentialError: () => h.credentialError }));

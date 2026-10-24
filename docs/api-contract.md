@@ -106,7 +106,7 @@ The provider exposes grouped `mcpOAuth.methods/start/complete/wait/cancel` actio
 
 Native PTY list/create/update/remove and `pty.connect.token` use the project location. WebSocket URLs default to `/api/pty/:id/connect`, preserving ticket, cursor and `location[directory]`; v1 uses its legacy route and directory query. Browser/native socket handling, reconnection cursor resume, output buffering and input state remain shared.
 
-Native diagnostics independently load server.info and MCP status. LSP and formatter diagnostics remain unavailable and hidden on v2 rather than reporting empty success. V1 retains its health/LSP/formatter endpoints.
+Native diagnostics load server.info and MCP status. LSP and formatter diagnostics are not part of the supported V1∩V2 surface.
 
 ## Realtime And Polling
 
@@ -133,6 +133,6 @@ Client code and the validation mirror live in `lib/opencode/client/management.ts
 
 ## Compatibility-only Features And Validation
 
-Sharing, archive/restore, title summarization, general config writes, persistent MCP enablement, worktree reset and LSP/formatter diagnostics remain available through v1 compatibility. Capability flags hide these on v2, and their service mutations reject unsupported calls.
+Sharing, archive/restore, title summarization, general config writes, persistent MCP enablement, worktree reset, and LSP/formatter diagnostics are not supported on V1 because they have no V2 equivalent.
 
 The default fake server and Playwright backend are native v2. Canonical native fixtures are translated/extended at the v1 fake boundary; filesystem and terminal infrastructure is version-neutral. Static architecture checks prohibit production v1 SDK imports outside compatibility. All three gates are required: `test:ci:static`, `test:fake-server:self`, `test:e2e:web`. Android development and real-server/device acceptance cover editing, OAuth, reconnects and terminals. Changed fake-server/E2E contracts require explicit human validation under AGENTS.md.

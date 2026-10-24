@@ -46,7 +46,6 @@ Primary fields:
 - `activeProjectPath`
 - `serverProjects`
 - `sessions`
-- `archivedSessions`
 - `sessionStatuses`
 - `currentSessionId`
 - `lastSessionByConnection`
@@ -59,7 +58,6 @@ Meaning:
 - `sessionStatuses` stores per-session runtime status from the server
 - `currentSessionId` is the selected/open session
 - `lastSessionByConnection` persists the remembered session ID per connection scope and project path, so the same path on two servers remembers different sessions
-- `archivedSessions` is the experimental cross-project archived-session result, sorted newest-first
 
 ## Session Content Caches
 
@@ -541,7 +539,7 @@ group from it:
 
 - the group is connection-wide, not filtered by the active project, so it is
   stable across project switches
-- archived sessions are always excluded; subagent chats are excluded when
+- subagent chats are excluded when
   `hideSubagentChats` is on
 - running (busy/retry) sessions sort first by most recent update, followed by the
   most recently updated idle sessions, and the whole list is capped at
@@ -692,7 +690,7 @@ The app projects native records into its own presentation models. It derives pla
 
 ### OpenCode 1 compatibility extensions
 
-`lib/opencode/compat/v1/` preserves legacy operations and event semantics. Sharing, archive/restore, title summarization, general configuration writes, persistent MCP enablement, worktree reset, and LSP/formatter diagnostics are exposed only for v1. Native v2 never reports success for unsupported mutations.
+`lib/opencode/compat/v1/` preserves legacy operations and event semantics for the V1∩V2 feature intersection. V1-only sharing, archive/restore, title summarization, general configuration writes, persistent MCP enablement, worktree reset, and LSP/formatter diagnostics are not supported.
 
 MCP authorization exposes grouped `methods/start/complete/wait/cancel` actions. Native authorization uses the MCP server's `integrationID`, carries automatic or code mode, and reuses the provider authentication form model. Connection changes invalidate results and cancel pending attempts.
 
@@ -887,7 +885,7 @@ Project browser state and request-scope guards remain provider-owned. `FilesPane
 
 ## Session library recovery (#64)
 
-The V1 experimental list with `archived=true` includes active sessions. The archive list uses the unscoped catalog client so sessions from other projects remain reachable. The session service filters archived records after traversing pages; active lists exclude records with a truthy `time.archived`. `restoreSession(id, { projectPath, open })` restores through the target project client, refreshes the lists, and optionally reopens the same session. Connection changes abort continuation. Explicit open targets absent from cached lists trigger a fresh list read rather than creation of a replacement session.
+Session lists exclude records with a truthy `time.archived`. V1 archive/restore is not supported because it has no V2 equivalent. Explicit open targets absent from cached lists trigger a fresh list read rather than creation of a replacement session.
 
 
 Transcript, diff, and todo cache pruning is paused while session bootstrap is loading. A pending deep-link target is also retained until selection completes, so early transcript reads survive slower capability/configuration requests when reopening a favorite from another project.

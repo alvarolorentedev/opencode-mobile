@@ -169,7 +169,7 @@ describe('native defaults', () => {
     const urls = await loadTs('lib/opencode/client/url.ts', { './types': { defaultConnectionSettings: settings } });
     const client = await loadTs('lib/opencode/client.ts', {
       './compat/v1/client': { buildV1Compatibility: legacy }, './v2-client': { buildV2Client: native },
-      './client/types': {}, './client/url': urls, './client/fetch': {}, './client/errors': {}, './client/probe': {}, './client/interactions': {}, './client/management': {},
+      './client/types': {}, './client/url': urls, './client/fetch': {}, './client/errors': {}, './client/probe': {}, './client/interactions': {}, './client/management': {}, './client/management-api': {},
     });
     const connection = { ...settings, directory: '/repo', serverUrl: 'https://test/proxy/api' };
     client.buildClient(connection); expect(native).toHaveBeenCalledOnce(); expect(legacy).not.toHaveBeenCalled();

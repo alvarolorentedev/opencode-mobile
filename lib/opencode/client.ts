@@ -27,15 +27,10 @@ export { getRequestHeaders, createPrefixFetch } from './client/fetch';
 export {
   DEFAULT_SERVICES_PORT,
   MAX_MANAGED_SERVICES,
-  ServiceManagementError,
   buildServiceShareUrl,
-  deleteManagedService,
   formatServiceAddress,
-  getServiceManagementVersion,
   getServicePortOptions,
-  listManagedServices,
   prepareServiceDraft,
-  putManagedService,
   type ManagedService,
   type ServiceDraft,
   type ServiceDraftErrors,
@@ -43,6 +38,13 @@ export {
   type ServiceManagementVersion,
   type ServicePortOption,
 } from './client/management';
+export {
+  ServiceManagementError,
+  deleteManagedService,
+  getServiceManagementVersion,
+  listManagedServices,
+  putManagedService,
+} from './client/management-api';
 export { getConnectionError, isContractMismatchError, isRetryableCloudLinkStartupError, classifyConnectionFailure, isAuthConnectionFailure, type ConnectionFailureKind } from './client/errors';
 export { detectServerContract, type ConnectionProbeResult } from './client/probe';
 export {

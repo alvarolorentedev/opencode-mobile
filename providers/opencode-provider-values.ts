@@ -203,7 +203,7 @@ export function useOpencodeProviderValues(input: ProviderValuesInput) {
   );
   const diffTurns = useMemo<DiffTurn[]>(() => {
     const turns = getDiffTurnMessages(currentMessages);
-    return turns.map((record, index) => ({ id: record.info.id, label: `Turn ${index + 1}` }));
+    return turns.map((record, index) => ({ id: record.info.id, number: index + 1 }));
   }, [currentMessages]);
   const selectedDiffMessageId = useMemo(
     () => (currentSessionId ? resolveDiffTurn(currentMessages, selectedDiffMessageBySession[currentSessionId]) : undefined),

@@ -164,7 +164,7 @@ type ChatComposerProps = {
 
 - todos are server-owned and displayed in the chat overlay with disabled status icons; the UI has no todo mutation action
 - typing `/` shows up to six matching server commands; selecting one fills the draft
-- model selection uses a searchable sheet grouped by provider; its reasoning slider shows server variants for the selected OpenCode 2 model, including a synthetic Default, and stays hidden when that model has none; OpenCode 1 retains its legacy Low/Default/High prompt-hint slider
+- model selection uses a searchable sheet grouped by provider; its reasoning slider shows server variants for the selected OpenCode 2 model, including a synthetic Default, and stays hidden when that model has none
 - the composer trigger includes the selected variant in its accessible name when the model provides variants
 
 ## `components/chat/model-picker.tsx`
@@ -176,7 +176,7 @@ type ChatComposerProps = {
 - pin a `Selected` and `Recent` section above the provider groups (hidden while searching)
 - own only local modal visibility and search-query state
 - return the selected `ModelOption` to the composer, which persists it through the provider
-- render the shared numeric slider for the selected model's server variants, or the legacy Low/Default/High reasoning hint on OpenCode 1
+- render the shared numeric slider for the selected model's server variants
 - render the trigger with the local `ControlButton`, including slim sizing for the slim-interface preference
 - the transparent `Modal` sheet wraps its content in `GestureHandlerRootView` and dismisses on a downward header drag via the shared `useSwipeDismiss` helper, matching `OverlaySheet`
 
@@ -212,12 +212,12 @@ the provider then creates and opens the session in that workspace.
 
 ## `components/chat/chat-library.tsx`
 
-- Chats overlay with search, favorites, archived sessions, and swipe-left session actions
-- active, favorite, current-project, and archived rows share one FlashList scroll owner; search, filters, and New Chat stay outside the virtualized list
-- "Active across projects" group above Favorites listing up to four running/recent sessions from the whole connection; listed IDs are removed from the Chat list below, and tapping one switches project and opens it through the workspace navigation action (`navigate`), not the external deep-link resolver. Project-scoped actions (rename/share/archive/delete) appear only on the current-project rows
+- Chats overlay with search, favorites, and swipe-left session actions
+- active, favorite, and current-project rows share one FlashList scroll owner; search, filters, and New Chat stay outside the virtualized list
+- "Active across projects" group above Favorites listing up to four running/recent sessions from the whole connection; listed IDs are removed from the Chat list below, and tapping one switches project and opens it through the workspace navigation action (`navigate`), not the external deep-link resolver. Project-scoped actions (rename/delete) appear only on the current-project rows
 - re-seeds the cross-project snapshot when the overlay opens
 - derives cross-project rows only while visible, and mounts the shared project picker only while its nested overlay is open, so a closed library does no per-publish catalog work
-- keeps the Hide subagents switch alongside the Active and Archived filters
+- keeps the Hide subagents switch alongside the Active filter
 - header action opening the shared project picker overlay
 - uses provider actions for switching projects, opening chats, and persistence
 - owns only local search, section, swipe row, rename, and feedback state
@@ -666,7 +666,7 @@ Responsibility:
 
 - show OpenCode health/version when available
 - show global event stream state and whether polling fallback is active
-- show MCP, LSP, and formatter counts
+- show MCP counts
 - refresh diagnostics when the section opens and on demand; chat bootstrap no longer pays for diagnostics reads
 
 ### `PermissionsSection`
@@ -718,7 +718,7 @@ Main relevant props:
 
 - add local command or remote URL MCP configurations
 - reuse `use-mcp-authentication.tsx` and `ProviderConfigDialog` for native integration forms, code or automatic OAuth, cancellation and stale-result guards
-- show v2 OAuth only for servers that expose an `integrationID`; hide persistent enablement when general config writes are unavailable
+- show v2 OAuth only for servers that expose an `integrationID`
 - show status and failure details
 - connect/disconnect, enable/disable, remove, refresh, and complete remote OAuth
 - refresh MCP status when the section opens instead of during every connection bootstrap
@@ -906,7 +906,7 @@ Most important exported contracts:
 - `OpencodeProject`
 - the `*ContextValue` domain types
 
-The domain values cover active/archived session lifecycle, commands, project editing/worktrees, MCP management, PTY terminal state/actions, diagnostics, global stream status, and OAuth callback completion in addition to chat state.
+The domain values cover session lifecycle, commands, project editing/worktrees, MCP management, PTY terminal state/actions, diagnostics, global stream status, and OAuth callback completion in addition to chat state.
 
 ## `providers/opencode-provider-selectors.ts`
 
@@ -980,7 +980,7 @@ The domain values cover active/archived session lifecycle, commands, project edi
 
 ### Responsibility
 
-- load health, MCP, LSP, and formatter status independently so one unavailable endpoint does not hide the others
+- load health and MCP status independently so one unavailable endpoint does not hide the other
 
 ## Regeneration Notes
 
@@ -1025,7 +1025,7 @@ The shared OverlaySheet compact option is opt-in for changes only; other overlay
 
 ## Session library recovery (#64)
 
-Archived Chat Library cards are accessible buttons that restore and open through the provider. The swipe Restore action remains available and passes the row directory. Library actions are serialized with an immediate operation guard; duplicate taps are ignored and the latest distinct opening is queued; results from dismissed overlays cannot replace current feedback or close a reopened overlay.
+Library actions are serialized with an immediate operation guard; duplicate taps are ignored and the latest distinct opening is queued; results from dismissed overlays cannot replace current feedback or close a reopened overlay.
 
 ## Terminal presentation
 

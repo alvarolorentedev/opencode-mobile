@@ -259,7 +259,8 @@
     "filesChangedSimple_other": "{{files}} arquivos alterados",
     "filesChangedCompact_one": "{{files}} arquivo alterado, +{{additions}} / -{{deletions}}",
     "filesChangedCompact_many": "{{files}} arquivos alterados, +{{additions}} / -{{deletions}}",
-    "filesChangedCompact_other": "{{files}} arquivos alterados, +{{additions}} / -{{deletions}}"
+    "filesChangedCompact_other": "{{files}} arquivos alterados, +{{additions}} / -{{deletions}}",
+    "turnNumber": "Turno {{number}}"
   },
   "session": {
     "chooseProject": "Escolha um projeto",

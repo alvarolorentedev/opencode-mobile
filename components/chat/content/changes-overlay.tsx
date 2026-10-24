@@ -74,7 +74,8 @@ export function ChangesOverlay({
       ? t('chat:diff.noBranchChanges')
       : t('chat:diff.noChanges');
   const scopeLabel = t(DIFF_SCOPE_OPTIONS.find((option) => option.value === currentDiffScope)?.labelKey ?? 'chat:diff.turn');
-  const selectedTurnLabel = diffTurns.find((turn) => turn.id === selectedDiffMessageId)?.label || t('chat:diff.latestTurn');
+  const selectedTurn = diffTurns.find((turn) => turn.id === selectedDiffMessageId);
+  const selectedTurnLabel = selectedTurn ? t('chat:diff.turnNumber', { number: selectedTurn.number }) : t('chat:diff.latestTurn');
   const showDiffDetails = isTurnScope && currentDiffs.length === 0;
   const changedFiles = useMemo(
     () => [...new Set(diffDetails.flatMap((detail) => detail.body.split('\n').filter(Boolean)))],
@@ -134,7 +135,7 @@ export function ChangesOverlay({
           <Text variant="labelLarge" style={{ color: palette.muted }}>{t('chat:diff.turn')}</Text>
           {diffTurns.map((turn) => <Pressable key={turn.id} accessibilityRole="button" onPress={() => { onSelectDiffMessage(turn.id); setDiffSourcesVisible(false); }} style={[styles.sessionPickerItemRow, { borderWidth: 1, borderRadius: 16, borderColor: selectedDiffMessageId === turn.id ? palette.tint : palette.border }]}>
             <MaterialCommunityIcons name={selectedDiffMessageId === turn.id ? 'check-circle' : 'circle-outline'} size={20} color={selectedDiffMessageId === turn.id ? palette.tint : palette.muted} />
-            <Text style={{ color: palette.text }}>{turn.label}</Text>
+            <Text style={{ color: palette.text }}>{t('chat:diff.turnNumber', { number: turn.number })}</Text>
           </Pressable>)}
         </> : null}
       </OverlaySheet>

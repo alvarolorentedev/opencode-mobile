@@ -78,7 +78,7 @@ This composition unit is the application's effective domain layer. It owns:
 - notification completion tracking
 - global SSE subscription with reconnect and polling fallback
 - session lifecycle actions, slash commands, project inspection, and diagnostics
-- archived-session, worktree, MCP, and PTY terminal orchestration
+- worktree, MCP, and PTY terminal orchestration
 - persistence hydration and write-back
 
 If this app were reimplemented, this provider would be the main source of truth for required behavior.
@@ -305,7 +305,7 @@ The completion version, preference schema and first-run migration are unchanged.
   server's sessions.
 - `providers/active-sessions.ts`
   Pure selection of the active-session group (running-first ordering, recent tail
-  capped at four, subagent/archived filtering). The Chat Library de-duplicates
+  capped at four, subagent filtering). The Chat Library de-duplicates
   these IDs out of the current-project Chat list.
 - `providers/use-transcript-state.ts`
   Paginated transcript window state machine: newest-page load on open, scroll-up
@@ -348,7 +348,7 @@ into the right layer and, if needed, lower the number in the same change.
 - `providers/services/terminal-service.ts`
   PTY lifecycle, connect-token, and WebSocket URL helpers.
 - `providers/services/diagnostics-service.ts`
-  Health, MCP, LSP, and formatter diagnostics with per-endpoint availability.
+  Health and MCP diagnostics with per-endpoint availability.
 
 ### OpenCode Protocol Helpers
 
@@ -369,7 +369,7 @@ into the right layer and, if needed, lower the number in the same change.
 
 Native v2 editing uses `vcs.status` and `file.write`. The provider compares the server text with the editor baseline before writing, verifies the saved text afterward, and refreshes file/VCS state. Drafts remain local on failure. The comparison cannot prevent a concurrent edit between the read and write because v2 has no conditional-write API.
 
-MCP OAuth resolves each server's exposed `integrationID`, then uses native integration start/complete/status/cancel operations. The grouped provider interface carries code/automatic mode and form prompts; cleanup cancels attempts and rejects stale connection results. General config writes, persistent MCP enablement, sharing, archive/restore, title summarization, worktree reset and LSP/formatter diagnostics remain gated to 1.x compatibility.
+MCP OAuth resolves each server's exposed `integrationID`, then uses native integration start/complete/status/cancel operations. The grouped provider interface carries code/automatic mode and form prompts; cleanup cancels attempts and rejects stale connection results. V1 supports only the V2 feature intersection: sharing, archive/restore, title summarization, general config writes, persistent MCP enablement, worktree reset, and LSP/formatter diagnostics are not supported.
 
 ### Connection Identity And Credentials
 
@@ -641,7 +641,7 @@ The provider fetches and caches:
 - pending permissions and questions by session, populated by events and refreshed from the server
 - providers, models, and agents
 - commands, project file status/search/read bytes, VCS information, and diagnostics
-- archived sessions, worktrees, MCP statuses, PTYs, terminal connection state, and terminal output
+- worktrees, MCP statuses, PTYs, terminal connection state, and terminal output
 - a connection-wide session snapshot (all sessions + statuses) from the unscoped catalog client, used by the Chat Library "Active" group. The global SSE stream still filters events to the active project, so this snapshot is refreshed on connect, when the library opens, and by a 20-second poll while a session is running.
 
 ### Provider -> Derived State
@@ -672,10 +672,10 @@ User interactions are converted to provider actions such as:
 - `abortSession`
 - `replyToPermission`
 - `replyToQuestion` and `rejectQuestion`
-- `deleteSession`, `renameSession`, `forkSession`, `revertSession`, and share actions
+- `deleteSession`, `renameSession`, `forkSession`, and `revertSession`
 - `executeCommand`
 - project search/open/save/download and diagnostics refresh actions
-- project patch save, archive/restore, worktree, MCP, and terminal actions
+- project patch save, worktree, MCP, and terminal actions
 - `setProviderAuth`
 - `toggleConversationMode`
 - `completeOnboarding`, `startOnboardingReview`, and `stopOnboardingReview` (first-run setup completion and Settings re-entry)
@@ -711,7 +711,7 @@ Recognized events update local state or schedule refreshes for:
 - session diff updates
 - todo updates
 - permission and question requests/replies
-- capability/config, project-directory, VCS, LSP, worktree, MCP, and terminal changes
+- capability/config, project-directory, VCS, worktree, MCP, and terminal changes
 - MCP authentication failures (`mcp.browser.open.failed`), surfaced as an in-chat approval alert
 
 ### Safety Strategy: Polling Fallback
@@ -786,7 +786,7 @@ Responsibilities:
 
 - configure the active connection (server URL, username, password, custom gateway headers) from its row and reconnect manually; editing applies only after Reconnect
 - add, edit, and delete named connection profiles, and switch between them from the connection list; switching persists the outgoing profile's model selection, restores the target profile's selection, and reconnects with that profile's credentials
-- inspect server health, realtime status, LSP, and formatter counts
+- inspect server health, realtime status, and MCP counts
 - add local or remote MCP servers; connect, disconnect, enable, disable, and complete remote OAuth
 - configure providers
 - remove configured provider credentials
@@ -855,7 +855,7 @@ This is one of the densest parts of the architecture and would need careful pari
   drag through `components/ui/use-swipe-dismiss.ts`; the `Modal` sheets wrap
   their content in `GestureHandlerRootView` so the gesture is recognized inside
   the native `Modal` window.
-- The app uses custom theme tokens from `constants/theme.ts` and maps them into React Native Paper in `constants/paper-theme.ts`. `constants/appearance.ts` defines the app-wide theme mode (`system`, `light`, `dark`) and color themes (`green` default plus blue, red, purple, pink, and gray). `providers/appearance-context.tsx` publishes the effective scheme and color theme; `hooks/use-color-scheme.ts` and `hooks/use-palette.ts` are the only read paths. Each theme supplies a full light/dark palette: backgrounds, surfaces, cards, borders, secondary text, tab chrome, chat bubbles, accents, and code surfaces. Text and semantic colors stay shared. The appearance preferences persist globally with `chatPreferences` but are excluded from `serverPreferences` so connections cannot overwrite them.
+- The app uses custom theme tokens from `constants/theme.ts` and maps them into React Native Paper in `constants/paper-theme.ts`. `constants/appearance.ts` defines the app-wide theme mode (`system`, `light`, `dark`) and color themes (`green` default plus blue, red, purple, pink, and gray). `providers/appearance-context.tsx` publishes the effective scheme, color theme, and memoized palette; `hooks/use-color-scheme.ts` and `hooks/use-palette.ts` are the only read paths, and only `AppearanceHost` subscribes to the system scheme. Each theme supplies a full light/dark palette: backgrounds, surfaces, cards, borders, secondary text, tab chrome, chat bubbles, accents, and code surfaces. Text and semantic colors stay shared. The appearance preferences persist globally with `chatPreferences` but are excluded from `serverPreferences` so connections cannot overwrite them.
 - Markdown rendering is intentionally narrow and custom, not library-based.
 - Diff rendering is custom and optimized for readable in-app inspection, not full git-style fidelity.
 - The chat area surfaces server-owned todos in a collapsed overlay with read-only status icons. It does not mutate todo state.
@@ -900,7 +900,7 @@ Those are implementation-defining patterns, not incidental details.
 
 ## Session library recovery (#64)
 
-Session idle events only refresh domain state; archiving remains an explicit user action. Archive restoration and optional reopening are provider-owned and preserve the target project and connection scope.
+Session idle events only refresh domain state.
 
 ## Interactive Terminal
 
