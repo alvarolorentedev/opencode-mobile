@@ -166,5 +166,5 @@ export function useOpencodeProviderEffects({
     setDiffsBySession((current) => pruneByKeepIds(current, keepIds, keepIds.size + 1));
     setTodosBySession((current) => pruneByKeepIds(current, keepIds, keepIds.size + 1));
     pruneTranscript(keepIds, keepIds.size + 1);
-  }, [currentSessionId, conversationSessionId, isBootstrappingChat, pruneTranscript, sessionStatuses, setDiffsBySession, setMessagesBySession, setTodosBySession]);
+  }, [currentSessionId, conversationSessionId, isBootstrappingChat, pendingDeepLinkTargetRef, pruneTranscript, sessionStatuses, setDiffsBySession, setMessagesBySession, setTodosBySession]);
 }

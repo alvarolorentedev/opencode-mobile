@@ -32,20 +32,20 @@ export function useSessionFavoriteActions({
       ];
       return next.length > FAVORITE_SESSIONS_MAX ? next.slice(0, FAVORITE_SESSIONS_MAX) : next;
     });
-  }, [setFavoriteSessions]);
+  }, [connectionScopeRef, setFavoriteSessions]);
 
   const isFavoriteSession = useCallback(
     (sessionId: string) => favoriteSessions.some(
       (favorite) => favorite.connectionScope === connectionScopeRef.current && favorite.sessionId === sessionId,
     ),
-    [favoriteSessions],
+    [connectionScopeRef, favoriteSessions],
   );
 
   const clearFavoriteSession = useCallback((sessionId: string) => {
     setFavoriteSessions((current) => current.filter(
       (favorite) => !(favorite.connectionScope === connectionScopeRef.current && favorite.sessionId === sessionId),
     ));
-  }, [setFavoriteSessions]);
+  }, [connectionScopeRef, setFavoriteSessions]);
 
   return { toggleFavoriteSession, isFavoriteSession, clearFavoriteSession };
 }

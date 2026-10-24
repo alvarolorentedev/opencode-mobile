@@ -96,7 +96,7 @@ export function useProjectRefreshActions({
       void persistSessionCache(connectionScope, activeProjectPath, nextSessions, result.statuses);
       return nextSessions;
     },
-    [activeProjectPath, client, connectionScope, isCurrentClient, locallyCreatedSessionsRef, sessionsRef],
+    [activeProjectPath, client, connectionScope, isCurrentClient, locallyCreatedSessionsRef, sessionsRef, setSessionStatuses, setSessions],
   );
 
   const refreshSessionStatuses = useCallback(async () => {
@@ -142,7 +142,7 @@ export function useProjectRefreshActions({
 
       return data;
     }),
-    [client, isCurrentClient],
+    [client, isCurrentClient, messagesBySessionRef, selectedDiffMessageBySessionRef, setDiffsBySession, setIsRefreshingDiffs],
   );
 
   const refreshVcsDiff = useCallback(
@@ -158,7 +158,7 @@ export function useProjectRefreshActions({
 
       return data;
     }),
-    [client, isCurrentClient],
+    [client, isCurrentClient, setIsRefreshingDiffs, setVcsDiffsByScope],
   );
 
   const setDiffScope = useCallback(
@@ -172,7 +172,7 @@ export function useProjectRefreshActions({
         void refreshVcsDiff(scope, true);
       }
     },
-    [refreshVcsDiff],
+    [currentSessionIdRef, refreshVcsDiff, setDiffScopeBySession],
   );
 
   const selectDiffMessage = useCallback(
@@ -184,7 +184,7 @@ export function useProjectRefreshActions({
       setSelectedDiffMessageBySession((current) => ({ ...current, [sessionId]: messageId }));
       void refreshSessionDiff(sessionId, true, messageId);
     },
-    [refreshSessionDiff],
+    [currentSessionIdRef, refreshSessionDiff, setSelectedDiffMessageBySession],
   );
 
   const refreshDiffs = useCallback(
@@ -200,7 +200,7 @@ export function useProjectRefreshActions({
         await refreshVcsDiff(scope, silent);
       }
     },
-    [refreshSessionDiff, refreshVcsDiff],
+    [currentSessionIdRef, diffScopeBySessionRef, refreshSessionDiff, refreshVcsDiff],
   );
 
   const refreshSessionTodos = useCallback(
@@ -217,7 +217,7 @@ export function useProjectRefreshActions({
 
       return data;
     },
-    [client, isCurrentClient],
+    [client, isCurrentClient, setTodosBySession],
   );
 
   const refreshPendingInteractions = useCallback(async () => {
@@ -274,7 +274,7 @@ export function useProjectRefreshActions({
         }
       }, options?.delayMs ?? MESSAGE_REFRESH_COALESCE_MS);
     },
-    [refreshMessages, refreshSessionDiff, refreshSessionTodos, refreshSessions],
+    [refreshMessages, refreshSessionDiff, refreshSessionTodos, refreshSessions, sessionRefreshOptionsRef, sessionRefreshTimeoutsRef],
   );
 
   return {

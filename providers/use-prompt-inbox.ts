@@ -240,7 +240,7 @@ export function usePromptInbox({
     await client.promptInbox.cancel(sessionId, promptId);
     if (!isCurrentClient(client)) return;
     update(sessionId, (previous) => previous.filter((prompt) => prompt.id !== promptId));
-  }, [client, isCurrentClient, update]);
+  }, [client, isCurrentClient, syncQueueSize, update]);
 
   return { pendingPromptsBySession, refreshMessages, submitPrompt, cancelPrompt, flushQueuedPrompts: flushQueued };
 }

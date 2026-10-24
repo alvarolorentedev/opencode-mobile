@@ -131,7 +131,7 @@ export function useProjectCatalogActions({
         }
       }
     },
-    [catalogClient, clearProjectState, client, connectionScopeRef, isCurrent, projectPathsByConnectionRef, scopeGenerationRef, serverProjectsRef, setActiveProjectPath, setCurrentProjectPath, setIsRefreshingProjectCatalog, setServerProjects, setServerRootPath, settingsRef, writeProjects],
+    [activeProjectPathRef, catalogClient, clearProjectState, connectionScopeRef, isCurrent, projectPathsByConnectionRef, scopeGenerationRef, serverProjectsRef, setActiveProjectPath, setCurrentProjectPath, setIsRefreshingProjectCatalog, setServerProjects, setServerRootPath, settingsRef, writeProjects],
   );
 
   const refreshProjectCatalog = useCallback(
@@ -163,7 +163,7 @@ export function useProjectCatalogActions({
       (cached) => setSessionStatuses(cached as Record<string, SessionStatus>),
       () => activeProjectPathRef.current === projectPath && connectionScopeRef.current === scope,
     );
-  }, [activeProjectPath, connectionScope, isHydrated]);
+  }, [activeProjectPath, activeProjectPathRef, connectionScope, connectionScopeRef, isHydrated, setSessionStatuses, setSessions]);
 
   const addProject = useCallback(async (directory: string) => {
     const path = directory.trim();

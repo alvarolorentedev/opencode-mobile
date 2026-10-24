@@ -6,7 +6,7 @@ import { nextPollDelay, shouldPoll } from '@/providers/realtime/polling';
 import { createReconciler } from '@/providers/realtime/reconcile';
 import { subscribeEvents } from '@/lib/opencode/events';
 import { classifyConnectionFailure, isAuthConnectionFailure } from '@/lib/opencode/client/errors';
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import type { OpencodeEvent } from '@/lib/opencode/events';
 import type { ConnectionFailureKind, ScopedOpencodeClient } from '@/lib/opencode/client';
 import type { TranscriptRefreshMode } from '@/providers/opencode-provider-types';
@@ -54,14 +54,20 @@ export function useOpencodeRealtime({ catalogClient, activeProjectPath, connecte
     latest.current = { ...actions, currentSessionId, conversationSessionId, pendingSessionIds, busy, constrained };
     statusRef.current = eventStreamStatus;
   });
-  const reconciler = useMemo(() => createReconciler({
-    getSources: () => latest.current,
-    onPollFailure: (failed) => { pollFailedRef.current = failed; },
-  }), []);
-  const { reconcile } = reconciler;
+  const reconcilerRef = useRef<ReturnType<typeof createReconciler> | null>(null);
+  useEffect(() => {
+    reconcilerRef.current = createReconciler({
+      getSources: () => latest.current,
+      onPollFailure: (failed) => { pollFailedRef.current = failed; },
+    });
+    return () => { reconcilerRef.current = null; };
+  }, []);
+  const reconcile = useCallback((full = false) => (
+    reconcilerRef.current?.reconcile(full) ?? Promise.resolve()
+  ), []);
 
   useEffect(() => {
-    reconciler.reset();
+    reconcilerRef.current?.reset();
     if (!connected || !activeProjectPath || !online) {
       setEventStreamStatus('idle');
       return;
@@ -203,7 +209,7 @@ export function useOpencodeRealtime({ catalogClient, activeProjectPath, connecte
       appState.remove();
       resumeRetry?.();
     };
-  }, [activeProjectPath, catalogClient, connected, online, reconcile, reconciler, subscribeStream]);
+  }, [activeProjectPath, catalogClient, connected, online, reconcile, subscribeStream]);
 
   useEffect(() => {
     if (!connected || !activeProjectPath || !online || !shouldPoll(eventStreamStatus === 'connected', busy)) return;
