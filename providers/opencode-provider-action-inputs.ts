@@ -60,7 +60,6 @@ export type ProjectActionsInput = {
   setSessionStatuses: Dispatch<SetStateAction<Record<string, SessionStatus>>>;
   locallyCreatedSessionsRef: { current: Map<string, number> };
   setIsRefreshingProjectCatalog: Dispatch<SetStateAction<boolean>>;
-  setIsRefreshingSessions: Dispatch<SetStateAction<boolean>>;
   setIsRefreshingDiffs: Dispatch<SetStateAction<boolean>>;
   setDiffsBySession: Dispatch<SetStateAction<Record<string, FileDiff[]>>>;
   setVcsDiffsByScope: Dispatch<SetStateAction<Record<'uncommitted' | 'branch', FileDiff[]>>>;
@@ -127,8 +126,8 @@ export type SessionActionsInput = {
   pendingDeepLinkTargetRef: { current: SessionDeepLinkTarget | undefined };
   bootstrapPromiseRef: { current: Promise<string | undefined> | null };
   bootstrapTokenRef: { current: object | undefined };
-  fetchSessions: (silent?: boolean) => Promise<Session[]>;
-  refreshSessions: (silent?: boolean) => Promise<unknown>;
+  fetchSessions: () => Promise<Session[]>;
+  refreshSessions: () => Promise<unknown>;
   refreshMessages: (sessionId: string, silent?: boolean, options?: { mode?: TranscriptRefreshMode }) => Promise<SessionMessageRecord[]>;
   beginHydration: (sessionId: string) => () => void;
   refreshSessionDiff: (sessionId: string, silent?: boolean, messageId?: string) => Promise<FileDiff[]>;
@@ -163,7 +162,7 @@ export type ConnectionActionsInput = {
   isCurrentCatalogClient: (candidate: object) => boolean;
   loadProjectCatalog: (silent?: boolean, targetClient?: ScopedOpencodeClient) => Promise<ProjectCatalog>;
   selectProject: (path: string) => void;
-  refreshSessions: (silent?: boolean) => Promise<unknown>;
+  refreshSessions: () => Promise<unknown>;
   refreshArchivedSessions: () => Promise<unknown>;
   refreshActiveSessions: () => Promise<unknown>;
   ensureActiveSessionRef: { current: () => Promise<string | undefined> };

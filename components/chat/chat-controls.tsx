@@ -2,59 +2,8 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import type { ComponentProps, ReactNode } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
 
-import { NativeSelect, type NativeSelectOption } from '@/components/ui/native-select';
 import { Fonts } from '@/constants/theme';
 import { usePalette } from '@/hooks/use-palette';
-
-export function SelectControl<T extends string>({
-  disabled = false,
-  grow = false,
-  icon,
-  iconName,
-  label,
-  maxWidth,
-  onValueChange,
-  options,
-  selectedValue,
-  slim = false,
-  title,
-}: {
-  disabled?: boolean;
-  grow?: boolean;
-  icon?: (props: { size: number; color: string }) => ReactNode;
-  iconName?: ComponentProps<typeof MaterialCommunityIcons>['name'];
-  label: string;
-  maxWidth?: number;
-  onValueChange: (value: T) => void;
-  options: NativeSelectOption<T>[];
-  selectedValue?: T;
-  slim?: boolean;
-  title?: string;
-}) {
-  return (
-    <NativeSelect
-      disabled={disabled}
-      onValueChange={onValueChange}
-      options={options}
-      selectedValue={selectedValue}
-      title={title}
-      renderTrigger={({ disabled: triggerDisabled, open, openState }) => (
-        <ControlButton
-          accessibilityLabel={`${title || label}: ${label}`}
-          active={openState}
-          disabled={triggerDisabled}
-          grow={grow}
-          icon={icon}
-          iconName={iconName}
-          maxWidth={maxWidth}
-          onPress={open}
-          slim={slim}>
-          {label}
-        </ControlButton>
-      )}
-    />
-  );
-}
 
 export function ControlButton({
   active = false,

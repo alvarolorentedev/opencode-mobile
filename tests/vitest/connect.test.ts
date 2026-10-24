@@ -211,7 +211,6 @@ try {
 // Verify native upgrades add Basic without putting credentials in the URL;
 // browser upgrades retain the existing ticket-only behavior.
 const service = await import(await moduleUri('../../providers/services/terminal-service.ts', [
-  [/from '@\/lib\/opencode\/v2\/shared'/g, `from "${uri('export const toShellView = (value) => value;')}"`],
   [/from '@\/lib\/opencode\/compat\/v1\/terminal'/g, `from "${uri('export {};')}"`],
   [/from 'react-native'/g, `from "${native}"`],
   [/from '@\/lib\/opencode\/client'/g, `from "${uri('export function buildPtyWebSocketUrl() {}')}"`],

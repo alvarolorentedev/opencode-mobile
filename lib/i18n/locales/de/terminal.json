@@ -12,7 +12,6 @@
     "refresh": "Terminals aktualisieren",
     "openOrCreate": "Öffne oder erstelle ein Terminal, um zu beginnen.",
     "terminateTitle": "Terminal beenden?",
-    "terminateMessage": "{{title}} beenden?",
     "terminateAction": "Beenden",
     "new": "Neues Terminal",
     "interactiveHint": "Tippe direkt im Terminal. Verwende die Leiste für Terminaltasten.",
@@ -22,15 +21,12 @@
   "sessions": {
     "title": "Terminals",
     "empty": "Noch keine Terminals. Tippe auf +, um eines zu erstellen.",
-    "openLabel": "{{terminal}} öffnen",
-    "closeHint": "Nach links wischen, um das Terminal zu schließen"
+    "openLabel": "{{terminal}} öffnen"
   },
   "errors": {
     "load": "Terminals konnten nicht geladen werden.",
     "create": "Das Terminal konnte nicht erstellt werden.",
     "open": "Das Terminal konnte nicht geöffnet werden.",
-    "terminate": "Das Terminal konnte nicht beendet werden.",
-    "send": "Die Terminal-Eingabe konnte nicht gesendet werden.",
     "connect": "Verbindung konnte nicht hergestellt werden.",
     "refresh": "Terminals konnten nicht aktualisiert werden."
   },

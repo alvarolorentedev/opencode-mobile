@@ -20,15 +20,7 @@
     }
   },
   "connect": {
-    "title": "Connect to OpenCode",
-    "subtitle": "Point OpenCode Mobile at your running server. Username and password are optional.",
-    "test": "Test connection",
-    "connect": "接続して続ける",
-    "skip": "Skip",
-    "testSuccess": "Connection succeeded.",
-    "failed": "Could not connect to the server.",
-    "hint": "Example: http://192.168.1.10:4096. If you open a web UI at this address, use its API base URL instead, usually ending in /api.",
-    "pairHint": "Cloud Linkでデバイスをペアリングするか、下にサーバーURLを入力してください。"
+    "skip": "Skip"
   },
   "project": {
     "title": "Choose a project",
@@ -72,7 +64,6 @@
     "enabledModels": "有効なモデル"
   },
   "settingsAssistant": {
-    "title": "Setup assistant",
     "summary": "権限、接続、プロバイダー、プロジェクト、設定を確認"
   },
   "reviewSetup": "設定を確認",

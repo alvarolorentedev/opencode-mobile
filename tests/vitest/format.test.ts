@@ -1,7 +1,6 @@
 import { describe, it, expect, vi } from 'vitest';
 
 import { formatDuration, getMessagePreview, toTranscriptEntry, deriveTodosFromMessages } from '@/lib/opencode/format';
-import { getUserTurnForMessage } from '@/lib/opencode/transcript';
 
 vi.mock('@/lib/i18n', () => ({ getFormatLocale: () => 'en' }));
 
@@ -147,31 +146,5 @@ describe('format', () => {
     expect(deriveTodosFromMessages([
       { info, parts: [{ id: 'tool-bash', type: 'tool', tool: 'bash', state: { status: 'completed', input: { todos: [{ content: 'Nope' }] } } }] },
     ] as never)).toEqual([]);
-  });
-});
-
-describe('transcript turn lookup', () => {
-  const turnRecords = [
-    { info: { id: 'user-a', role: 'user' }, parts: [] },
-    { info: { id: 'reply-a', role: 'assistant', parentID: 'user-a' }, parts: [] },
-    { info: { id: 'user-b', role: 'user' }, parts: [] },
-    { info: { id: 'reply-b', role: 'assistant', parentID: 'user-b' }, parts: [] },
-  ] as never[];
-
-  it('maps a reply to its user turn', () => {
-    expect(getUserTurnForMessage(turnRecords, 'reply-a')).toBe('user-a');
-    expect(getUserTurnForMessage(turnRecords, 'reply-b')).toBe('user-b');
-  });
-
-  it('returns undefined for pruned or orphaned turns', () => {
-    expect(getUserTurnForMessage(turnRecords.slice(2), 'reply-a')).toBeUndefined();
-    expect(getUserTurnForMessage([{ info: { id: 'orphan', role: 'assistant', parentID: 'missing' }, parts: [] }] as never[], 'orphan')).toBeUndefined();
-  });
-
-  it('maps a v2 reply without a parent link to the preceding user message', () => {
-    expect(getUserTurnForMessage([
-      { info: { id: 'user-a', role: 'user' }, parts: [] },
-      { info: { id: 'reply', role: 'assistant' }, parts: [] },
-    ] as never[], 'reply')).toBe('user-a');
   });
 });

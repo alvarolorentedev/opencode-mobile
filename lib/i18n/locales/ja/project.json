@@ -1,9 +1,7 @@
 {
   "screen": {
-    "syncProjects": "プロジェクトを同期",
     "refreshProject": "プロジェクトを更新",
-    "filesTab": "ファイル",
-    "worktreesTab": "ワークツリー"
+    "filesTab": "ファイル"
   },
   "files": {
     "title": "プロジェクトのファイル",
@@ -44,14 +42,10 @@
     "size": "サイズ: {{size}}"
   },
   "worktrees": {
-    "title": "ワークツリー",
-    "subtitle": "分離された作業ディレクトリを作成したり、既存のものを管理したりできます。",
     "refresh": "ワークツリーを更新",
     "nameLabel": "名前（任意）",
     "startCommandLabel": "開始コマンド（任意）",
     "empty": "利用可能なワークツリーはありません。",
-    "resetLabel": "{{name}}をリセット",
-    "removeLabel": "{{name}}を削除",
     "resetTitle": "ワークツリーをリセットしますか？",
     "resetMessage": "{{directory}} の未コミットの変更が破棄されます。",
     "resetAction": "リセット",
@@ -74,10 +68,8 @@
   },
   "errors": {
     "refreshProject": "プロジェクトを更新できませんでした。",
-    "searchFiles": "プロジェクトのファイルを検索できませんでした。",
     "openFile": "ファイルを開けませんでした。",
     "saveFile": "ファイルを保存できませんでした。",
-    "refreshWorktrees": "ワークツリーを更新できませんでした。",
     "createWorktree": "ワークツリーを作成できませんでした。",
     "resetWorktree": "ワークツリーをリセットできませんでした。",
     "removeWorktree": "ワークツリーを削除できませんでした。",

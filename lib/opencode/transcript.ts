@@ -55,10 +55,6 @@ export type ActivityGroup = {
   status: ActivityStatus;
 };
 
-// Kept as an alias for callers that still refer to a detail group by its old
-// name. New code should use ActivityGroup.
-export type DetailGroup = ActivityGroup;
-
 export type TranscriptRow =
   | { key: string; type: 'message'; entry: TranscriptEntry }
   | { key: string; type: 'activity'; group: ActivityGroup };
@@ -251,27 +247,6 @@ export function summarizeTranscriptDetails(details: TranscriptDetail[], labels?:
   }
 
   return summaries;
-}
-
-/**
- * Match a reply to its user turn. Prefers the explicit parent link, then falls
- * back to the newest user message at or before it: v2 assistant messages carry
- * no `parentID`, and a paginated window can drop the parent record entirely.
- */
-export function getUserTurnForMessage(records: SessionMessageRecord[], messageId: string) {
-  const message = records.find((record) => record.info.id === messageId)?.info;
-  if (!message) return undefined;
-  if (message.role === 'user') return message.id;
-  const parentId = message.parentID;
-  const parent = records.find((record) => record.info.role === 'user' && record.info.id === parentId)?.info.id;
-  if (parent) return parent;
-
-  let owner: string | undefined;
-  for (const record of records) {
-    if (record.info.role === 'user') owner = record.info.id;
-    if (record.info.id === messageId) return owner;
-  }
-  return undefined;
 }
 
 // Positional turn ownership: v2 assistant messages carry no `parentID`, so a

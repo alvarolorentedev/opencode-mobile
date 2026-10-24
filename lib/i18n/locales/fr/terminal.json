@@ -12,7 +12,6 @@
     "refresh": "Actualiser les terminaux",
     "openOrCreate": "Ouvre ou crée un terminal pour commencer.",
     "terminateTitle": "Arrêter le terminal ?",
-    "terminateMessage": "Arrêter {{title}} ?",
     "terminateAction": "Arrêter",
     "new": "Nouveau terminal",
     "interactiveHint": "Saisissez directement dans le terminal. Utilisez la barre pour les touches du terminal.",
@@ -22,15 +21,12 @@
   "sessions": {
     "title": "Terminaux",
     "empty": "Aucun terminal pour le moment. Utilise + pour en créer un.",
-    "openLabel": "Ouvrir {{terminal}}",
-    "closeHint": "Glisse vers la gauche pour fermer le terminal"
+    "openLabel": "Ouvrir {{terminal}}"
   },
   "errors": {
     "load": "Impossible de charger les terminaux.",
     "create": "Impossible de créer le terminal.",
     "open": "Impossible d'ouvrir le terminal.",
-    "terminate": "Impossible d'arrêter le terminal.",
-    "send": "Impossible d'envoyer l'entrée du terminal.",
     "connect": "Impossible de se connecter.",
     "refresh": "Impossible d'actualiser les terminaux."
   },

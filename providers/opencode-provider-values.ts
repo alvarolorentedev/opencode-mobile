@@ -58,7 +58,6 @@ export function useOpencodeProviderValues(input: ProviderValuesInput) {
     providerAuthMethodsById,
     availableModels,
     availableAgents,
-    configureProvider,
     completeAutomaticProviderOAuth,
     setProviderAuth,
     removeProvider,
@@ -74,8 +73,6 @@ export function useOpencodeProviderValues(input: ProviderValuesInput) {
     projects,
     activeProjectPath,
     activeProject,
-    currentProjectPath,
-    serverRootPath,
     isRefreshingProjectCatalog,
     refreshProjectCatalog,
     refreshServerFeatures,
@@ -86,7 +83,6 @@ export function useOpencodeProviderValues(input: ProviderValuesInput) {
     vcsInfo,
     selectProject,
     addProject,
-    removeProject,
     openProjectFile,
     saveProjectFile,
     closeProjectFile,
@@ -143,7 +139,6 @@ export function useOpencodeProviderValues(input: ProviderValuesInput) {
     refreshSavedPermissions,
     removeSavedPermission,
     sendingState,
-    isRefreshingSessions,
     isRefreshingMessages,
     isRefreshingDiffs,
     isBootstrappingChat,
@@ -165,7 +160,6 @@ export function useOpencodeProviderValues(input: ProviderValuesInput) {
     clearConversationFeedback,
     toggleConversationMode,
     terminals,
-    terminalShells,
     activeTerminalId,
     terminalRuntime,
     terminalConnection,
@@ -217,11 +211,7 @@ export function useOpencodeProviderValues(input: ProviderValuesInput) {
   );
   const diffTurns = useMemo<DiffTurn[]>(() => {
     const turns = getDiffTurnMessages(currentMessages);
-    return turns.map((record, index) => {
-      const textPart = record.parts.find((part) => part.type === 'text');
-      const preview = textPart && textPart.type === 'text' ? textPart.text.replace(/\s+/g, ' ').trim() : '';
-      return { id: record.info.id, label: `Turn ${index + 1}`, preview: preview ? preview.slice(0, 80) : undefined };
-    });
+    return turns.map((record, index) => ({ id: record.info.id, label: `Turn ${index + 1}` }));
   }, [currentMessages]);
   const selectedDiffMessageId = useMemo(
     () => (currentSessionId ? resolveDiffTurn(currentMessages, selectedDiffMessageBySession[currentSessionId]) : undefined),
@@ -302,8 +292,8 @@ export function useOpencodeProviderValues(input: ProviderValuesInput) {
   );
 
   const capabilitiesValue = useMemo<CapabilitiesContextValue>(
-    () => ({ currentConfig, availableProviders, providerAuthMethodsById, configuredProviders, availableModels, availableAgents, configureProvider, setProviderAuth, removeProvider, providerOAuth: { start: startProviderOAuth, complete: completeProviderOAuth, completeAutomatic: completeAutomaticProviderOAuth, cancel: cancelProviderOAuth }, providerAccounts: { add: addProviderAccount, activate: activateProviderAccount, remove: removeProviderAccount } }),
-    [currentConfig, availableProviders, providerAuthMethodsById, configuredProviders, availableModels, availableAgents, configureProvider, setProviderAuth, removeProvider, startProviderOAuth, completeProviderOAuth, completeAutomaticProviderOAuth, cancelProviderOAuth, addProviderAccount, activateProviderAccount, removeProviderAccount],
+    () => ({ currentConfig, availableProviders, providerAuthMethodsById, configuredProviders, availableModels, availableAgents, setProviderAuth, removeProvider, providerOAuth: { start: startProviderOAuth, complete: completeProviderOAuth, completeAutomatic: completeAutomaticProviderOAuth, cancel: cancelProviderOAuth }, providerAccounts: { add: addProviderAccount, activate: activateProviderAccount, remove: removeProviderAccount } }),
+    [currentConfig, availableProviders, providerAuthMethodsById, configuredProviders, availableModels, availableAgents, setProviderAuth, removeProvider, startProviderOAuth, completeProviderOAuth, completeAutomaticProviderOAuth, cancelProviderOAuth, addProviderAccount, activateProviderAccount, removeProviderAccount],
   );
 
   const preferencesValue = useMemo<PreferencesContextValue>(
@@ -312,8 +302,8 @@ export function useOpencodeProviderValues(input: ProviderValuesInput) {
   );
 
   const projectsValue = useMemo<ProjectsContextValue>(
-    () => ({ projects, activeProjectPath, activeProject, selectProject, addProject, removeProject, currentProjectPath, serverRootPath, isRefreshingProjectCatalog, refreshProjectCatalog, refreshProjectStatus: refreshServerFeatures }),
-    [projects, activeProjectPath, activeProject, selectProject, addProject, removeProject, currentProjectPath, serverRootPath, isRefreshingProjectCatalog, refreshProjectCatalog, refreshServerFeatures],
+    () => ({ projects, activeProjectPath, activeProject, selectProject, addProject, isRefreshingProjectCatalog, refreshProjectCatalog, refreshProjectStatus: refreshServerFeatures }),
+    [projects, activeProjectPath, activeProject, selectProject, addProject, isRefreshingProjectCatalog, refreshProjectCatalog, refreshServerFeatures],
   );
 
   const projectFileValue = useMemo(
@@ -334,8 +324,8 @@ export function useOpencodeProviderValues(input: ProviderValuesInput) {
     [currentSessionId, activeSession, activeSessionsValue, ensureActiveSession, openDeepLinkSession, openSession, createSession],
   );
   const sessionLibraryValue = useMemo<SessionLibraryContextValue>(
-    () => ({ sessions, archivedSessions, sessionStatuses, favoriteSessions, toggleFavoriteSession, isFavoriteSession, clearFavoriteSession, sessionPreviewById, isRefreshingSessions, refreshSessions, deleteSession, archiveSession, restoreSession, refreshArchivedSessions, renameSession, forkSession, shareSession, unshareSession, revertSession, unrevertSession, openSessionInProject }),
-    [sessions, archivedSessions, sessionStatuses, favoriteSessions, toggleFavoriteSession, isFavoriteSession, clearFavoriteSession, sessionPreviewById, isRefreshingSessions, refreshSessions, deleteSession, archiveSession, restoreSession, refreshArchivedSessions, renameSession, forkSession, shareSession, unshareSession, revertSession, unrevertSession, openSessionInProject],
+    () => ({ sessions, archivedSessions, sessionStatuses, favoriteSessions, toggleFavoriteSession, isFavoriteSession, clearFavoriteSession, sessionPreviewById, refreshSessions, deleteSession, archiveSession, restoreSession, refreshArchivedSessions, renameSession, forkSession, shareSession, unshareSession, revertSession, unrevertSession, openSessionInProject }),
+    [sessions, archivedSessions, sessionStatuses, favoriteSessions, toggleFavoriteSession, isFavoriteSession, clearFavoriteSession, sessionPreviewById, refreshSessions, deleteSession, archiveSession, restoreSession, refreshArchivedSessions, renameSession, forkSession, shareSession, unshareSession, revertSession, unrevertSession, openSessionInProject],
   );
 
   // A cached or retained transcript can paint before any read establishes its
@@ -367,8 +357,8 @@ export function useOpencodeProviderValues(input: ProviderValuesInput) {
   );
 
   const terminalValue = useMemo<TerminalContextValue>(
-    () => ({ terminals, terminalShells, activeTerminalId, terminalRuntime, terminalConnection, refreshTerminals, createTerminal, openTerminal, sendTerminalInput, closeTerminal }),
-    [terminals, terminalShells, activeTerminalId, terminalRuntime, terminalConnection, refreshTerminals, createTerminal, openTerminal, sendTerminalInput, closeTerminal],
+    () => ({ terminals, activeTerminalId, terminalRuntime, terminalConnection, refreshTerminals, createTerminal, openTerminal, sendTerminalInput, closeTerminal }),
+    [terminals, activeTerminalId, terminalRuntime, terminalConnection, refreshTerminals, createTerminal, openTerminal, sendTerminalInput, closeTerminal],
   );
 
   const mcpValue = useMemo<McpContextValue>(

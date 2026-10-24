@@ -14,7 +14,6 @@ import type {
   Project,
   ProviderAuthMethod,
   Pty,
-  PtyShellsResponse,
   ProviderAuthValues,
   Session,
   SessionStatus,
@@ -28,8 +27,6 @@ import type {
   PendingPermission,
   PendingQuestion,
   PendingQuestionAnswer,
-  PendingQuestionRequest,
-  PendingPermissionRequest,
   SavedPermissionRule,
   ServiceInput,
   ServiceManagementVersion,
@@ -148,7 +145,6 @@ export type ConnectionState = {
   status: 'idle' | 'connecting' | 'connected' | 'error';
   message: string;
   checkedAt?: number;
-  projectDirectory?: string;
   retryableStartup?: boolean;
   kind?: ConnectionFailureKind;
 };
@@ -162,7 +158,6 @@ export type DiffScope = 'turn' | 'uncommitted' | 'branch';
 export type DiffTurn = {
   id: string;
   label: string;
-  preview?: string;
 };
 
 export type ProjectCatalog = {
@@ -265,7 +260,6 @@ export type CapabilitiesContextValue = {
   configuredProviders: ProviderOption[];
   availableModels: ModelOption[];
   availableAgents: AgentOption[];
-  configureProvider: (providerId: string) => Promise<void>;
   setProviderAuth: (providerId: string, values: ProviderAuthValues) => Promise<void>;
   removeProvider: (providerId: string) => Promise<void>;
   // Grouped so the capabilities context grows one member, not one per action.
@@ -293,9 +287,6 @@ export type ProjectsContextValue = {
   activeProject?: OpencodeProject;
   selectProject: (path: string) => void;
   addProject: (directory: string) => Promise<string>;
-  removeProject: (path: string) => void;
-  currentProjectPath?: string;
-  serverRootPath?: string;
   isRefreshingProjectCatalog: boolean;
   refreshProjectCatalog: (silent?: boolean) => Promise<void>;
   refreshProjectStatus: () => Promise<void>;
@@ -346,8 +337,7 @@ export type SessionLibraryContextValue = {
   isFavoriteSession: (sessionId: string) => boolean;
   clearFavoriteSession: (sessionId: string) => void;
   sessionPreviewById: Record<string, string>;
-  isRefreshingSessions: boolean;
-  refreshSessions: (silent?: boolean) => Promise<void>;
+  refreshSessions: () => Promise<void>;
   deleteSession: (sessionId: string) => Promise<void>;
   archiveSession: (sessionId: string) => Promise<void>;
   restoreSession: (sessionId: string, options?: { projectPath?: string; open?: boolean }) => Promise<void>;
@@ -428,7 +418,6 @@ export type ConversationContextValue = {
 
 export type TerminalContextValue = {
   terminals: Pty[];
-  terminalShells: PtyShellsResponse;
   activeTerminalId?: string;
   terminalRuntime: TerminalRuntime;
   terminalConnection: TerminalStatus;
@@ -455,21 +444,4 @@ export type McpContextValue = {
   };
 };
 
-// The union of every domain, kept for documentation and the architecture
-// ratchet. No runtime context exposes this shape.
 export type UpdatesContextValue = ReturnType<typeof import('@/providers/use-app-updates').useAppUpdates>;
-
-export type OpencodeContextValue = OnboardingContextValue &
-  ConnectionContextValue &
-  DiagnosticsContextValue &
-  CapabilitiesContextValue &
-  PreferencesContextValue &
-  ProjectsContextValue &
-  ProjectFilesContextValue &
-  CurrentSessionContextValue &
-  SessionLibraryContextValue &
-  ChatContextValue &
-  ApprovalsContextValue &
-  ConversationContextValue &
-  TerminalContextValue &
-  McpContextValue & UpdatesContextValue;

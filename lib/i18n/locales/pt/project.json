@@ -1,9 +1,7 @@
 {
   "screen": {
-    "syncProjects": "Sincronizar projetos",
     "refreshProject": "Atualizar projeto",
-    "filesTab": "Arquivos",
-    "worktreesTab": "Worktrees"
+    "filesTab": "Arquivos"
   },
   "files": {
     "title": "Arquivos do projeto",
@@ -44,14 +42,10 @@
     "size": "Tamanho: {{size}}"
   },
   "worktrees": {
-    "title": "Worktrees",
-    "subtitle": "Crie diretórios de trabalho isolados ou gerencie os existentes.",
     "refresh": "Atualizar worktrees",
     "nameLabel": "Nome (opcional)",
     "startCommandLabel": "Comando de inicialização (opcional)",
     "empty": "Nenhum worktree disponível.",
-    "resetLabel": "Redefinir {{name}}",
-    "removeLabel": "Remover {{name}}",
     "resetTitle": "Redefinir o worktree?",
     "resetMessage": "Isso descarta as alterações não commitadas em {{directory}}.",
     "resetAction": "Redefinir",
@@ -74,10 +68,8 @@
   },
   "errors": {
     "refreshProject": "Não foi possível atualizar o projeto.",
-    "searchFiles": "Não foi possível buscar os arquivos do projeto.",
     "openFile": "Não foi possível abrir o arquivo.",
     "saveFile": "Não foi possível salvar o arquivo.",
-    "refreshWorktrees": "Não foi possível atualizar os worktrees.",
     "createWorktree": "Não foi possível criar o worktree.",
     "resetWorktree": "Não foi possível redefinir o worktree.",
     "removeWorktree": "Não foi possível remover o worktree.",

@@ -12,7 +12,6 @@
     "refresh": "刷新终端",
     "openOrCreate": "打开或创建终端以开始。",
     "terminateTitle": "终止终端？",
-    "terminateMessage": "终止 {{title}}？",
     "terminateAction": "终止",
     "new": "新建终端",
     "interactiveHint": "直接在终端中输入。使用工具栏上的终端按键。",
@@ -22,15 +21,12 @@
   "sessions": {
     "title": "终端",
     "empty": "尚无终端。使用 + 创建一个。",
-    "openLabel": "打开 {{terminal}}",
-    "closeHint": "左滑关闭终端"
+    "openLabel": "打开 {{terminal}}"
   },
   "errors": {
     "load": "无法加载终端。",
     "create": "无法创建终端。",
     "open": "无法打开终端。",
-    "terminate": "无法终止终端。",
-    "send": "无法发送终端输入。",
     "connect": "无法连接。",
     "refresh": "无法刷新终端。"
   },

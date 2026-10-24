@@ -1,11 +1,9 @@
 import { getProviderCatalog, getProviderAuthMethods, toConfigView, toAgentView, findIntegration } from '@/lib/opencode/v2/shared';
 import { setProviderCredentials } from '@/lib/opencode/compat/v1/auth';
-import type { Config } from '@/lib/opencode/types';
-import type { ProviderCatalog } from '@/lib/opencode/types';
+import type { Config, ProviderCatalog, ProviderAuthMethod, ProviderAuthPrompt, ProviderAuthValues } from '@/lib/opencode/types';
 
 import { compareLabels } from '@/lib/compare-labels';
 import type { ProviderAccountInfo, ScopedOpencodeClient } from '@/lib/opencode/client';
-import type { ProviderAuthMethod, ProviderAuthPrompt, ProviderAuthValues } from '@/lib/opencode/types';
 import { getConfiguredProviderIds, toAgentOption, type ModelOption } from '@/providers/opencode-model-selection';
 import { requireData } from '@/providers/services/require-data';
 

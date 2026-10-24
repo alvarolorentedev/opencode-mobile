@@ -47,7 +47,6 @@ describe('theme palette presets', () => {
       expect(palette.bubbleAssistant).toBe(tokens.bubbleAssistant);
       expect(palette.bubbleUser).toBe(tokens.bubbleUser);
       expect(palette.tabBackground).toBe(tokens.tabBackground);
-      expect(palette.tabIconSelected).toBe(tokens.tint);
       expect(palette.code.background).toBe(scheme === 'light' ? tokens.surfaceAlt : tokens.background);
       expect(palette.code.border).toBe(tokens.border);
       expect(palette.code.syntax).toEqual(Colors[scheme].code.syntax);

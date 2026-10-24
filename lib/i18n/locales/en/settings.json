@@ -6,21 +6,17 @@
       "notifications": "Notifications",
       "voice": "Voice & responses",
       "advanced": "Advanced",
-      "appearance": "Appearance",
       "support": "Support",
       "permissions": "Approvals",
       "subscription": "Subscription",
-      "services": "Services",
       "cloudLink": "Cloud Link"
     },
     "summaries": {
       "configuredCount": "{{value}} configured",
       "replyPlaybackOn": "Reply playback on",
       "replyPlaybackOff": "Reply playback off",
-      "advanced": "Editor, general, MCP servers and diagnostics",
       "support": "Rate the app, send feedback, get help",
-      "permissions": "{{value}} saved",
-      "services": "{{value}} exposed"
+      "permissions": "{{value}} saved"
     }
   },
   "support": {
@@ -46,13 +42,11 @@
     "deleteMessage": "Remove \"{{name}}\" from saved connections?",
     "deleteWebConfirm": "Delete connection\n\n{{message}}",
     "fields": {
-      "name": "Name",
       "serverUrl": "Server URL",
       "username": "Username",
       "password": "Password"
     },
     "errors": {
-      "name": "Enter a name for this connection.",
       "serverUrl": "Enter the server URL.",
       "invalidUrl": "Enter a complete server URL, such as http://192.168.1.10:4096.",
       "save": "Could not save this connection.",
@@ -82,7 +76,6 @@
       "sameNetwork": "Keep both devices on the same network.",
       "scanAutomatic": "Scan to save and connect automatically.",
       "scanAgain": "Scan again",
-      "enterAddress": "Enter address instead",
       "unreachable": "Could not reach the server. Check the address and network, then retry.",
       "credentialsRejected": "Credentials rejected. Check the password and username, or scan a new QR code.",
       "pairingErrors": {
@@ -126,7 +119,6 @@
     "credentialsRemoved": "{{provider}} credentials were removed.",
     "removeTitle": "Remove {{provider}}?",
     "removeMessage": "Stored credentials and provider configuration will be removed.",
-    "removeWebConfirm": "Remove {{provider}}?\n\nStored credentials and provider configuration will be removed.",
     "signInTitle": "Complete provider sign-in",
     "authorizationCode": "Authorization code",
     "complete": "Complete",
@@ -346,9 +338,7 @@
     "noServers": "No MCP servers configured.",
     "statusConfigured": "configured",
     "statusDisabled": "disabled",
-    "oauth": "OAuth",
-    "authorizationCode": "Authorization code (optional)",
-    "completeOAuth": "Complete OAuth"
+    "oauth": "OAuth"
   },
   "language": {
     "title": "Language",
@@ -387,16 +377,11 @@
     "entry": "Pair with Cloud Link",
     "title": "Cloud Link",
     "description": "Scan your machine’s connector QR code or open its pairing link. Manual connections remain available.",
-    "controlPlane": "Trusted control plane",
-    "scan": "Scan connector QR code",
     "pairingLink": "Pairing deep link",
     "openLink": "Open pairing link",
-    "claim": "Claim and connect",
-    "retrySaving": "Retry secure saving",
     "machines": "Your machines",
     "refreshMachines": "Refresh machines",
     "noMachines": "No machines registered for this user.",
-    "pairRequired": "Restore access to obtain credentials for this machine.",
     "revoke": "Revoke machine",
     "revokeConfirm": "Delete this machine for every device? Its public tunnel will be deleted.",
     "forget": "Forget locally",
@@ -405,9 +390,6 @@
     "savedConnection": "Connection saved: {{name}}",
     "manage": "Manage Cloud Link",
     "cameraLoading": "Opening camera",
-    "cameraPermission": "Camera permission is needed to scan the connector QR code. You can open its deep link instead.",
-    "allowCamera": "Allow camera",
-    "openSettings": "Open device settings",
     "cameraUnavailable": "Camera unavailable. Open the connector deep link instead.",
     "progress": {
       "idle": "Loading…",
@@ -425,10 +407,7 @@
       "savingSession": "Saving the Cloud Link session securely…",
       "finalizing": "Finalizing the store transaction…"
     },
-    "subscription": "Cloud Link subscription",
     "subscriptionActive": "Your Cloud Link subscription is active.",
-    "subscriptionRequired": "Purchase or Restore your store subscription to enable Cloud Link.",
-    "purchase": "Purchase",
     "restore": "Restore purchases",
     "accessUnavailable": "Access unavailable. Purchase or Restore to reactivate this machine.",
     "scanHint": "Scan your computer’s QR code to connect.",
@@ -538,7 +517,6 @@
     "editTitle": "Edit service",
     "empty": "No services exposed yet.",
     "capacity": "You can expose up to {{max}} services.",
-    "saved": "Saved {{name}}.",
     "saveFailed": "Could not save this service.",
     "removed": "Removed {{name}}.",
     "removeFailed": "Could not remove this service.",

@@ -75,7 +75,6 @@ export const Colors = {
     onBubbleAssistant: '#182320',
     tabBackground: '#F9FBFA',
     tabIconDefault: '#8B989B',
-    tabIconSelected: tintColorLight,
     code: lightCodePalette,
   },
   dark: {
@@ -98,7 +97,6 @@ export const Colors = {
     onBubbleAssistant: '#EAF3EF',
     tabBackground: '#121A18',
     tabIconDefault: '#839793',
-    tabIconSelected: tintColorDark,
     code: darkCodePalette,
   },
 };
@@ -124,7 +122,6 @@ type ThemeTokens = Pick<
   | 'surfaceAlt'
   | 'tabBackground'
   | 'tabIconDefault'
-  | 'tabIconSelected'
   | 'tint'
 >;
 
@@ -133,72 +130,72 @@ export const ACCENT_PALETTES: Record<AccentColor, Record<ColorScheme, ThemeToken
     light: {
       tint: tintColorLight, accent: '#125F53', background: '#F4F7F4', surface: '#FCFDFC', surfaceAlt: '#E7EFEA', card: '#FFFFFF',
       muted: '#667874', border: '#D6E1DC', icon: '#8B989B', bubbleUser: '#135C4E', onBubbleUser: '#F5FFFB',
-      bubbleAssistant: '#EEF4F1', tabBackground: '#F9FBFA', tabIconDefault: '#8B989B', tabIconSelected: tintColorLight,
+      bubbleAssistant: '#EEF4F1', tabBackground: '#F9FBFA', tabIconDefault: '#8B989B',
     },
     dark: {
       tint: tintColorDark, accent: '#58D4AB', background: '#0F1614', surface: '#16201D', surfaceAlt: '#20302C', card: '#16201D',
       muted: '#9AADA8', border: '#2B3C38', icon: '#839793', bubbleUser: '#1C6B5C', onBubbleUser: '#F3FFFB',
-      bubbleAssistant: '#182320', tabBackground: '#121A18', tabIconDefault: '#839793', tabIconSelected: tintColorDark,
+      bubbleAssistant: '#182320', tabBackground: '#121A18', tabIconDefault: '#839793',
     },
   },
   blue: {
     light: {
       tint: '#1F6FB2', accent: '#164E7C', background: '#F1F5F9', surface: '#FBFCFE', surfaceAlt: '#E5EDF5', card: '#FFFFFF',
       muted: '#61707E', border: '#D2DDE9', icon: '#8794A2', bubbleUser: '#14486B', onBubbleUser: '#F4FAFF',
-      bubbleAssistant: '#EBF1F8', tabBackground: '#F7FAFC', tabIconDefault: '#8794A2', tabIconSelected: '#1F6FB2',
+      bubbleAssistant: '#EBF1F8', tabBackground: '#F7FAFC', tabIconDefault: '#8794A2',
     },
     dark: {
       tint: '#7CC4FF', accent: '#58A6E0', background: '#0D1217', surface: '#151C23', surfaceAlt: '#1E2934', card: '#151C23',
       muted: '#96A6B5', border: '#293542', icon: '#81909F', bubbleUser: '#1B5B82', onBubbleUser: '#F2FAFF',
-      bubbleAssistant: '#171F27', tabBackground: '#10161C', tabIconDefault: '#81909F', tabIconSelected: '#7CC4FF',
+      bubbleAssistant: '#171F27', tabBackground: '#10161C', tabIconDefault: '#81909F',
     },
   },
   red: {
     light: {
       tint: '#B03A48', accent: '#7E2733', background: '#FAF4F4', surface: '#FEFBFB', surfaceAlt: '#F5E7E8', card: '#FFFFFF',
       muted: '#7D686C', border: '#E8D5D7', icon: '#9B868A', bubbleUser: '#6E222C', onBubbleUser: '#FFF5F6',
-      bubbleAssistant: '#F8EEEF', tabBackground: '#FCF8F8', tabIconDefault: '#9B868A', tabIconSelected: '#B03A48',
+      bubbleAssistant: '#F8EEEF', tabBackground: '#FCF8F8', tabIconDefault: '#9B868A',
     },
     dark: {
       tint: '#FF9A9A', accent: '#E07A7A', background: '#171010', surface: '#221819', surfaceAlt: '#2F2122', card: '#221819',
       muted: '#AF9A9D', border: '#3D2C2E', icon: '#998588', bubbleUser: '#7A2E35', onBubbleUser: '#FFF5F6',
-      bubbleAssistant: '#21181A', tabBackground: '#1A1213', tabIconDefault: '#998588', tabIconSelected: '#FF9A9A',
+      bubbleAssistant: '#21181A', tabBackground: '#1A1213', tabIconDefault: '#998588',
     },
   },
   purple: {
     light: {
       tint: '#7A4BC4', accent: '#5A3396', background: '#F7F4FB', surface: '#FDFBFE', surfaceAlt: '#EDE6F6', card: '#FFFFFF',
       muted: '#71697E', border: '#DBD2EA', icon: '#8F879C', bubbleUser: '#4A2A78', onBubbleUser: '#F8F4FF',
-      bubbleAssistant: '#F1ECF9', tabBackground: '#FAF7FD', tabIconDefault: '#8F879C', tabIconSelected: '#7A4BC4',
+      bubbleAssistant: '#F1ECF9', tabBackground: '#FAF7FD', tabIconDefault: '#8F879C',
     },
     dark: {
       tint: '#C9A8FF', accent: '#A985E8', background: '#120F17', surface: '#1B1622', surfaceAlt: '#271F33', card: '#1B1622',
       muted: '#A99FB8', border: '#342A43', icon: '#958BA3', bubbleUser: '#553A85', onBubbleUser: '#F8F4FF',
-      bubbleAssistant: '#1A1521', tabBackground: '#15111B', tabIconDefault: '#958BA3', tabIconSelected: '#C9A8FF',
+      bubbleAssistant: '#1A1521', tabBackground: '#15111B', tabIconDefault: '#958BA3',
     },
   },
   pink: {
     light: {
       tint: '#B93E78', accent: '#8C2C59', background: '#FBF4F7', surface: '#FEFBFC', surfaceAlt: '#F6E7EE', card: '#FFFFFF',
       muted: '#7F6873', border: '#E8D5DE', icon: '#9C8791', bubbleUser: '#75264B', onBubbleUser: '#FFF4F9',
-      bubbleAssistant: '#F9EEF3', tabBackground: '#FCF8FA', tabIconDefault: '#9C8791', tabIconSelected: '#B93E78',
+      bubbleAssistant: '#F9EEF3', tabBackground: '#FCF8FA', tabIconDefault: '#9C8791',
     },
     dark: {
       tint: '#FFA6CF', accent: '#E080B3', background: '#171013', surface: '#22171B', surfaceAlt: '#302027', card: '#22171B',
       muted: '#AF9AA3', border: '#3E2B33', icon: '#99858E', bubbleUser: '#7E3560', onBubbleUser: '#FFF4F9',
-      bubbleAssistant: '#21171B', tabBackground: '#1A1215', tabIconDefault: '#99858E', tabIconSelected: '#FFA6CF',
+      bubbleAssistant: '#21171B', tabBackground: '#1A1215', tabIconDefault: '#99858E',
     },
   },
   gray: {
     light: {
       tint: '#5B6664', accent: '#434C4A', background: '#F4F5F5', surface: '#FBFBFB', surfaceAlt: '#E8EAEA', card: '#FFFFFF',
       muted: '#6A7170', border: '#D6D9D9', icon: '#8C9291', bubbleUser: '#3B4442', onBubbleUser: '#F7FAF9',
-      bubbleAssistant: '#EFF1F1', tabBackground: '#F8F9F9', tabIconDefault: '#8C9291', tabIconSelected: '#5B6664',
+      bubbleAssistant: '#EFF1F1', tabBackground: '#F8F9F9', tabIconDefault: '#8C9291',
     },
     dark: {
       tint: '#C3CECB', accent: '#9FADA9', background: '#101212', surface: '#181B1B', surfaceAlt: '#222626', card: '#181B1B',
       muted: '#A0A6A5', border: '#2D3232', icon: '#8B9190', bubbleUser: '#49524F', onBubbleUser: '#F7FAF9',
-      bubbleAssistant: '#191C1C', tabBackground: '#131616', tabIconDefault: '#8B9190', tabIconSelected: '#C3CECB',
+      bubbleAssistant: '#191C1C', tabBackground: '#131616', tabIconDefault: '#8B9190',
     },
   },
 };
@@ -220,22 +217,16 @@ export function getColors(scheme: ColorScheme, accent: AccentColor = DEFAULT_ACC
 export const Fonts = Platform.select({
   ios: {
     sans: 'Avenir Next',
-    serif: 'ui-serif',
-    rounded: 'ui-rounded',
     mono: 'ui-monospace',
     display: 'Avenir Next',
   },
   default: {
     sans: 'normal',
-    serif: 'serif',
-    rounded: 'normal',
     mono: 'monospace',
     display: 'normal',
   },
   web: {
     sans: "'Avenir Next', 'Segoe UI', 'Trebuchet MS', sans-serif",
-    serif: "Charter, 'Iowan Old Style', Georgia, serif",
-    rounded: "'SF Pro Rounded', 'Hiragino Maru Gothic ProN', Meiryo, 'MS PGothic', sans-serif",
     mono: "SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace",
     display: "'Avenir Next', 'Segoe UI', 'Trebuchet MS', sans-serif",
   },

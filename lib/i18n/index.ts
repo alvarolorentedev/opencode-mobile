@@ -5,8 +5,6 @@ import { initReactI18next } from 'react-i18next';
 import { resolveLanguage, SUPPORTED_LANGUAGE_CODES } from '@/lib/i18n/languages';
 import { resources, TRANSLATION_NAMESPACES } from '@/lib/i18n/resources';
 
-export { DEFAULT_LANGUAGE, SUPPORTED_LANGUAGES, resolveLanguage } from '@/lib/i18n/languages';
-export type { SupportedLanguage } from '@/lib/i18n/languages';
 
 function getDeviceLanguageTags(): string[] {
   try {

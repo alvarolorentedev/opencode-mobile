@@ -70,9 +70,3 @@ export function normalizeNetworkState(state: NetInfoLike | undefined): NetworkSt
 export function networkStatusKey(status: NetworkStatus) {
   return `${status.online ? 'online' : 'offline'}:${status.type}:${status.constrained ? 'constrained' : 'normal'}`;
 }
-
-export function isOfflineError(error: unknown) {
-  return /\b(?:ENETUNREACH|ENETDOWN|ENETRESET|ECONNREFUSED|ENOTFOUND|EAI_AGAIN)\b|network(?: request failed| is unreachable| unavailable)|not connected to the internet|internet connection appears to be offline|\boffline\b|NSURLErrorDomain.*-1009\b/i.test(
-    error instanceof Error ? error.message : String(error),
-  );
-}

@@ -20,15 +20,7 @@
     }
   },
   "connect": {
-    "title": "Connect to OpenCode",
-    "subtitle": "Point OpenCode Mobile at your running server. Username and password are optional.",
-    "test": "Test connection",
-    "connect": "连接并继续",
-    "skip": "Skip",
-    "testSuccess": "Connection succeeded.",
-    "failed": "Could not connect to the server.",
-    "hint": "Example: http://192.168.1.10:4096. If you open a web UI at this address, use its API base URL instead, usually ending in /api.",
-    "pairHint": "使用 Cloud Link 配对设备，或在下方输入服务器 URL。"
+    "skip": "Skip"
   },
   "project": {
     "title": "Choose a project",
@@ -72,7 +64,6 @@
     "enabledModels": "已启用的模型"
   },
   "settingsAssistant": {
-    "title": "Setup assistant",
     "summary": "检查权限、连接、提供商、项目和偏好设置"
   },
   "reviewSetup": "检查设置",

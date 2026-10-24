@@ -2,8 +2,8 @@ import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } fr
 import { AppState } from 'react-native';
 
 import type { ScopedOpencodeClient, ServerContract } from '@/lib/opencode/client';
-import type { Pty, PtyShellsResponse } from '@/lib/opencode/types';
-import { createTerminal as svcCreateTerminal, listShells, listTerminals, removeTerminal } from '@/providers/services/terminal-service';
+import type { Pty } from '@/lib/opencode/types';
+import { createTerminal as svcCreateTerminal, listTerminals, removeTerminal } from '@/providers/services/terminal-service';
 import { createTerminalConnection, type TerminalConnectionContext } from './terminal-connection';
 import type { TerminalInstance, TerminalRenderer, TerminalRuntime } from './terminal-types';
 
@@ -18,7 +18,6 @@ export function useTerminalState({ client, isCurrentClient, serverUrl, directory
   online?: boolean;
 }) {
   const [terminals, setTerminals] = useState<Pty[]>([]);
-  const [terminalShells, setTerminalShells] = useState<PtyShellsResponse>([]);
   const [activeTerminalId, setActiveTerminalId] = useState<string>();
   const [instances, setInstances] = useState<TerminalInstance[]>([]);
   const [scope, setScope] = useState(0);
@@ -61,7 +60,7 @@ export function useTerminalState({ client, isCurrentClient, serverUrl, directory
   const resetTerminal = useCallback(() => {
     for (const connection of connections.current.values()) connection.dispose();
     connections.current.clear();
-    setTerminals([]); setTerminalShells([]); setActiveTerminalId(undefined); setInstances([]);
+    setTerminals([]); setActiveTerminalId(undefined); setInstances([]);
     refreshRequest.current++;
     scopeRef.current++;
     setScope(scopeRef.current);
@@ -71,9 +70,9 @@ export function useTerminalState({ client, isCurrentClient, serverUrl, directory
     if (!isCurrentClient(client)) return;
     const request = ++refreshRequest.current;
     const opened = new Set(connections.current.keys());
-    const [nextTerminals, nextShells] = await Promise.all([listTerminals(client), listShells(client)]);
+    const nextTerminals = await listTerminals(client);
     if (!isCurrentClient(client) || request !== refreshRequest.current) return;
-    setTerminals(nextTerminals); setTerminalShells(nextShells);
+    setTerminals(nextTerminals);
     for (const [id, connection] of connections.current) {
       const pty = nextTerminals.find((item) => item.id === id);
       if (opened.has(id) && (!pty || pty.status === 'exited') && connection.state.status !== 'exited') connection.exit();
@@ -143,5 +142,5 @@ export function useTerminalState({ client, isCurrentClient, serverUrl, directory
   const terminalRuntime = useMemo<TerminalRuntime>(() => ({ scope, instances, registerRenderer, resize }), [scope, instances, registerRenderer, resize]);
   const terminalConnection = instances.find((entry) => entry.id === activeTerminalId)?.status ?? 'idle';
 
-  return { terminals, terminalShells, activeTerminalId, terminalRuntime, terminalConnection, refreshTerminals, openTerminal, createTerminal, sendTerminalInput, closeTerminal, resetTerminal };
+  return { terminals, activeTerminalId, terminalRuntime, terminalConnection, refreshTerminals, openTerminal, createTerminal, sendTerminalInput, closeTerminal, resetTerminal };
 }

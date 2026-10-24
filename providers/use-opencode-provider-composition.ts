@@ -235,7 +235,7 @@ export function useOpencodeProviderComposition(input: WorkspaceRuntimeInput) {
   const capabilities = useCapabilitiesActions({ ...state, client, isCurrentClient });
   // Event bursts (rename + update, config fan-out, file-save VCS events) share
   // one refresh instead of starting overlapping reads.
-  const scheduleSessionsRefresh = useCoalescedRefresh(() => project.refreshSessions(true), 150);
+  const scheduleSessionsRefresh = useCoalescedRefresh(() => project.refreshSessions(), 150);
   const scheduleChatCapabilitiesRefresh = useCoalescedRefresh(capabilities.refreshChatCapabilities, 250);
   const scheduleServerFeaturesRefresh = useCoalescedRefresh(project.refreshServerFeatures, 250);
   const scheduleProjectCatalogRefresh = useCoalescedRefresh(() => project.refreshProjectCatalog(true), 250);
@@ -398,14 +398,9 @@ export function useOpencodeProviderComposition(input: WorkspaceRuntimeInput) {
     connect: connectionActions.connect,
     refreshActiveSessions: activeSessionsHook.refreshActiveSessions,
     refreshWorktrees: worktree.refreshWorktrees,
-    refreshMcpServers: mcp.refreshMcpServers,
-    refreshTerminals: terminal.refreshTerminals,
-    refreshArchivedSessions: sessionActions.refreshArchivedSessions,
     ensureActiveSessionRef,
     setPromptError: prompt.setPromptError,
-    conversationPhase,
     conversationSessionId,
-    sendingState: prompt.sendingState,
     pruneTranscript: transcript.prune,
   });
 

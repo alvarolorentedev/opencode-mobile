@@ -65,13 +65,6 @@ async function fetchSessions(client: OpencodeClient) {
   return { sessions: nextSessions.filter((session) => !session.time.archived), statuses: requireData(statusesResponse.data, 'session status request') };
 }
 
-// Cross-project session snapshot for the Chat Library "Active" group. Uses an
-// unscoped client (empty directory) so both contracts return sessions and
-// statuses for every project on the active connection, not just the active one.
-export async function listActiveSessions(client: OpencodeClient) {
-  return listSessions(client);
-}
-
 export async function listArchivedSessions(client: OpencodeClient) {
   const MAX_ARCHIVED_PAGES = 10;
   const sessions: GlobalSession[] = [];

@@ -67,7 +67,6 @@ export function useOpencodeProviderState(initial?: { settings: OpencodeConnectio
   const [serverProjects, setServerProjects] = useState<Project[]>([]);
   const [currentProjectPath, setCurrentProjectPath] = useState<string>();
   const [serverRootPath, setServerRootPath] = useState<string>();
-  const [isRefreshingSessions, setIsRefreshingSessions] = useState(false);
   const [isRefreshingMessages, setIsRefreshingMessages] = useState(false);
   const [isRefreshingDiffs, setIsRefreshingDiffs] = useState(false);
   const [isRefreshingProjectCatalog, setIsRefreshingProjectCatalog] = useState(false);
@@ -166,7 +165,6 @@ export function useOpencodeProviderState(initial?: { settings: OpencodeConnectio
     serverProjects, setServerProjects,
     currentProjectPath, setCurrentProjectPath,
     serverRootPath, setServerRootPath,
-    isRefreshingSessions, setIsRefreshingSessions,
     isRefreshingMessages, setIsRefreshingMessages,
     isRefreshingDiffs, setIsRefreshingDiffs,
     isRefreshingProjectCatalog, setIsRefreshingProjectCatalog,

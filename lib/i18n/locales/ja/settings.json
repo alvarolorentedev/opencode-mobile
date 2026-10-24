@@ -6,21 +6,17 @@
       "notifications": "通知",
       "voice": "音声と応答",
       "advanced": "詳細設定",
-      "appearance": "表示",
       "support": "サポート",
       "permissions": "承認",
       "subscription": "サブスクリプション",
-      "services": "サービス",
       "cloudLink": "Cloud Link"
     },
     "summaries": {
       "configuredCount": "{{value}} 件設定済み",
       "replyPlaybackOn": "返信の再生オン",
       "replyPlaybackOff": "返信の再生オフ",
-      "advanced": "エディター、一般、MCPサーバー、診断",
       "support": "アプリを評価、フィードバック、サポート",
-      "permissions": "{{value}} 件保存済み",
-      "services": "{{value}} 件公開"
+      "permissions": "{{value}} 件保存済み"
     }
   },
   "support": {
@@ -46,13 +42,11 @@
     "deleteMessage": "保存済みの接続から「{{name}}」を削除しますか？",
     "deleteWebConfirm": "接続を削除\n\n{{message}}",
     "fields": {
-      "name": "名前",
       "serverUrl": "サーバー URL",
       "username": "ユーザー名",
       "password": "パスワード"
     },
     "errors": {
-      "name": "この接続の名前を入力してください。",
       "serverUrl": "サーバー URL を入力してください。",
       "invalidUrl": "http://192.168.1.10:4096 などの完全なサーバー URL を入力してください。",
       "save": "この接続を保存できませんでした。",
@@ -82,7 +76,6 @@
       "sameNetwork": "両方のデバイスを同じネットワークに接続してください。",
       "scanAutomatic": "スキャンすると自動的に保存して接続します。",
       "scanAgain": "再スキャン",
-      "enterAddress": "アドレスを入力",
       "unreachable": "サーバーに接続できません。アドレスとネットワークを確認して再試行してください。",
       "credentialsRejected": "認証情報が拒否されました。パスワードとユーザー名を確認するか、新しい QR コードをスキャンしてください。",
       "pairingErrors": {
@@ -126,7 +119,6 @@
     "credentialsRemoved": "{{provider}} の認証情報を削除しました。",
     "removeTitle": "{{provider}}を削除しますか？",
     "removeMessage": "保存済みの認証情報とプロバイダー設定が削除されます。",
-    "removeWebConfirm": "{{provider}}を削除しますか？\n\n保存済みの認証情報とプロバイダー設定が削除されます。",
     "signInTitle": "プロバイダーのサインインを完了",
     "authorizationCode": "認証コード",
     "complete": "完了",
@@ -346,9 +338,7 @@
     "noServers": "MCP サーバーが設定されていません。",
     "statusConfigured": "設定済み",
     "statusDisabled": "無効",
-    "oauth": "OAuth",
-    "authorizationCode": "認証コード（任意）",
-    "completeOAuth": "OAuth を完了"
+    "oauth": "OAuth"
   },
   "language": {
     "title": "言語",
@@ -387,16 +377,11 @@
     "entry": "Pair with Cloud Link",
     "title": "Cloud Link",
     "description": "Scan your machine’s connector QR code or open its pairing link. Manual connections remain available.",
-    "controlPlane": "Trusted control plane",
-    "scan": "Scan connector QR code",
     "pairingLink": "Pairing deep link",
     "openLink": "Open pairing link",
-    "claim": "Claim and connect",
-    "retrySaving": "Retry secure saving",
     "machines": "Your machines",
     "refreshMachines": "Refresh machines",
     "noMachines": "No machines registered for this user.",
-    "pairRequired": "Restore access to obtain credentials for this machine.",
     "revoke": "Revoke machine",
     "revokeConfirm": "Delete this machine for every device? Its public tunnel will be deleted.",
     "forget": "Forget locally",
@@ -405,9 +390,6 @@
     "savedConnection": "Connection saved: {{name}}",
     "manage": "Manage Cloud Link",
     "cameraLoading": "Opening camera",
-    "cameraPermission": "Camera permission is needed to scan the connector QR code. You can open its deep link instead.",
-    "allowCamera": "Allow camera",
-    "openSettings": "Open device settings",
     "cameraUnavailable": "Camera unavailable. Open the connector deep link instead.",
     "progress": {
       "idle": "Loading…",
@@ -425,10 +407,7 @@
       "savingSession": "Saving the Cloud Link session securely…",
       "finalizing": "Finalizing the store transaction…"
     },
-    "subscription": "Cloud Link subscription",
     "subscriptionActive": "Your Cloud Link subscription is active.",
-    "subscriptionRequired": "Purchase or Restore your store subscription to enable Cloud Link.",
-    "purchase": "Purchase",
     "restore": "Restore purchases",
     "accessUnavailable": "Access unavailable. Purchase or Restore to reactivate this machine.",
     "scanHint": "コンピューターのQRコードをスキャンして接続します。",
@@ -538,7 +517,6 @@
     "editTitle": "サービスを編集",
     "empty": "公開されているサービスはまだありません。",
     "capacity": "公開できるサービスは最大 {{max}} 件です。",
-    "saved": "{{name}} を保存しました。",
     "saveFailed": "このサービスを保存できませんでした。",
     "removed": "{{name}} を削除しました。",
     "removeFailed": "このサービスを削除できませんでした。",

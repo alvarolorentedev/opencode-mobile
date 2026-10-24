@@ -8,7 +8,6 @@ import type { createSharedEventStream } from '@/providers/shared-event-stream';
 
 export type WorkspaceTarget = { connectionId: string; projectPath: string };
 export type SessionTarget = WorkspaceTarget & { sessionId: string };
-export type TerminalTarget = WorkspaceTarget & { terminalId: string };
 export const workspaceKey = ({ connectionId, projectPath }: WorkspaceTarget) => JSON.stringify([connectionId, projectPath]);
 export const sessionKey = (target: SessionTarget) => JSON.stringify([target.connectionId, target.projectPath, target.sessionId]);
 export type ConnectionRecord = {

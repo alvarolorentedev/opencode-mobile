@@ -15,7 +15,6 @@
     "retry": "重试",
     "delete": "删除",
     "dismiss": "忽略",
-    "create": "创建",
     "refresh": "刷新",
     "remove": "移除",
     "open": "打开",
@@ -24,10 +23,7 @@
     "reconnect": "重新连接",
     "disconnect": "断开连接",
     "edit": "编辑",
-    "add": "添加",
-    "submit": "提交",
     "stop": "停止",
-    "select": "选择",
     "closeWithName": "关闭 {{title}}",
     "openSettings": "打开设置"
   },
@@ -36,7 +32,6 @@
   },
   "labels": {
     "connected": "已连接",
-    "connecting": "连接中",
     "enabled": "已启用",
     "off": "关闭",
     "active": "活跃",

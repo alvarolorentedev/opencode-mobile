@@ -317,7 +317,6 @@ Responsibility:
 
 ### Exported components
 
-- `SelectControl`
 - `ControlButton`
 
 ### Responsibility
@@ -900,7 +899,7 @@ Orchestration lives in `providers/use-opencode-provider-composition.ts` and the
 context wiring in `providers/opencode-provider-tree.tsx`; the entrypoint is held
 to 60 lines by the architecture ratchet and only re-exports the public types.
 
-The public UI contract is exposed through domain hooks from `providers/opencode-contexts.ts` (`useOnboarding`, `useConnection`, `useDiagnostics`, `useCapabilities`, `usePreferences`, `useProjects`, `useProjectFiles`, `useCurrentSession`, `useSessionLibrary`, `useChat`, `useApprovals`, `useConversation`, `useTerminal`, `useMcp`), each typed by its matching `*ContextValue`. `OpencodeContextValue` is their documented union.
+The public UI contract is exposed through domain hooks from `providers/opencode-contexts.ts` (`useOnboarding`, `useConnection`, `useDiagnostics`, `useCapabilities`, `usePreferences`, `useProjects`, `useProjectFiles`, `useCurrentSession`, `useSessionLibrary`, `useChat`, `useApprovals`, `useConversation`, `useTerminal`, `useMcp`), each typed by its matching `*ContextValue`. There is no combined runtime context value.
 
 ## `providers/opencode-provider-types.ts`
 
@@ -915,7 +914,7 @@ Most important exported contracts:
 - `ProviderOption`
 - `ProviderAuthMethod`
 - `OpencodeProject`
-- the `*ContextValue` domain types and their union `OpencodeContextValue`
+- the `*ContextValue` domain types
 
 The domain values cover active/archived session lifecycle, commands, project editing/worktrees, MCP management, PTY terminal state/actions, diagnostics, global stream status, and OAuth callback completion in addition to chat state.
 
@@ -984,7 +983,7 @@ The domain values cover active/archived session lifecycle, commands, project edi
 
 ### Responsibility
 
-- expose PTY shell/list/create/get/update/remove/connect-token operations
+- expose PTY list/create/update/remove/connect-token operations
 - build the ticket-authenticated, project-scoped PTY WebSocket URL
 
 ## `providers/services/diagnostics-service.ts`

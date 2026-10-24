@@ -104,7 +104,7 @@ The provider exposes grouped `mcpOAuth.methods/start/complete/wait/cancel` actio
 
 ## Terminals And Diagnostics
 
-Native PTY list/create/update/remove and `pty.connect.token` use the project location. Shell discovery uses native config.shells. WebSocket URLs default to `/api/pty/:id/connect`, preserving ticket, cursor and `location[directory]`; v1 uses its legacy route and directory query. Browser/native socket handling, reconnection cursor resume, output buffering and input state remain shared.
+Native PTY list/create/update/remove and `pty.connect.token` use the project location. WebSocket URLs default to `/api/pty/:id/connect`, preserving ticket, cursor and `location[directory]`; v1 uses its legacy route and directory query. Browser/native socket handling, reconnection cursor resume, output buffering and input state remain shared.
 
 Native diagnostics independently load server.info and MCP status. LSP and formatter diagnostics remain unavailable and hidden on v2 rather than reporting empty success. V1 retains its health/LSP/formatter endpoints.
 

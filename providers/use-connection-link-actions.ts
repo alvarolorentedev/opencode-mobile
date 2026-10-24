@@ -193,7 +193,7 @@ export function useConnectionLinkActions({
     const targetClient = buildClient({ ...settingsRef.current, directory: projectPath || '' }, serverContractRef.current);
     await svcRestoreSession(targetClient, sessionId);
     if (generation !== serverGenerationRef.current) throw new Error('The connection changed while restoring the session.');
-    await Promise.all([refreshSessions(true), refreshArchivedSessions(), refreshActiveSessions()]);
+    await Promise.all([refreshSessions(), refreshArchivedSessions(), refreshActiveSessions()]);
     if (generation !== serverGenerationRef.current) throw new Error('The connection changed while restoring the session.');
     if (options?.open && projectPath) await openSessionInProject(projectPath, sessionId);
   }, [activeProjectPathRef, openSessionInProject, refreshActiveSessions, refreshArchivedSessions, refreshSessions, serverContractRef, serverGenerationRef, settingsRef]);

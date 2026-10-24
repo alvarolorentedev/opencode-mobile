@@ -1,20 +1,20 @@
 import type { NativeOpencodeApi } from '../client/types';
 
 import { getServerBase, type OpencodeConnectionSettings } from '../client';
-import type { ProviderAuthPrompt, Agent, Config, FileContent, PtyShellsResponse } from '../types';
+import type { ProviderAuthPrompt, Agent, Config, FileContent } from '../types';
 import { toModelOptionRecord } from '../v2-mappers';
+
+import { stringField } from './fields';
 
 export type V2Api = NativeOpencodeApi;
 
 export type V2Message = Awaited<ReturnType<V2Api['message']['list']>>['data'][number];
-export type V2Diff = Awaited<ReturnType<V2Api['session']['diff']>>[number];
 export type V2Permission = Awaited<ReturnType<V2Api['permission']['request']['list']>>['data'][number];
 export type V2Form = Awaited<ReturnType<V2Api['form']['list']>>['data'][number];
 type V2Provider = Awaited<ReturnType<V2Api['provider']['list']>>['data'][number];
 type V2Model = Awaited<ReturnType<V2Api['model']['list']>>['data'][number];
 type V2Agent = Awaited<ReturnType<V2Api['agent']['list']>>['data'][number];
 type V2Integration = Awaited<ReturnType<V2Api['integration']['list']>>['data'][number];
-type V2Shell = Awaited<ReturnType<V2Api['config']['shells']>>[number];
 export type LocationOptions = { location?: { directory?: string } };
 
 export type RawCredential = {
@@ -32,9 +32,6 @@ export type V2Context = {
   permissionSession: Map<string, string>;
   formSession: Map<string, V2Form>;
 };
-
-export { stringField, numberField, extractErrorMessage, toError } from './fields';
-import { stringField } from './fields';
 
 // V2 routes are absolute (/api/...), so baseUrl path segments are replaced. A reverse
 // proxy prefix is preserved by rewriting the outgoing request instead.
@@ -142,9 +139,9 @@ type V2FormField = {
   title?: string;
   required?: boolean;
   hidden?: boolean;
-  when?: Array<{ key: string; op: 'eq' | 'neq'; value: unknown }>;
+  when?: { key: string; op: 'eq' | 'neq'; value: unknown }[];
   placeholder?: string;
-  options?: Array<{ value: string; label: string }>;
+  options?: { value: string; label: string }[];
   default?: unknown;
   minimum?: unknown;
   maximum?: unknown;
@@ -229,10 +226,6 @@ export async function findIntegration(api: V2Api, providerID: string, location: 
 
 export function toAgentView(agent: V2Agent): Agent {
   return { name: agent.id, description: agent.description, mode: agent.mode, hidden: agent.hidden };
-}
-
-export function toShellView(shell: V2Shell): PtyShellsResponse[number] {
-  return { name: shell.name, path: shell.path, acceptable: shell.acceptable };
 }
 
 export function mcpConfigToV2(config: Record<string, unknown> | undefined) {

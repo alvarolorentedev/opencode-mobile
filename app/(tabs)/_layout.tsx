@@ -1,6 +1,5 @@
 import { Tabs, usePathname } from 'expo-router';
 import { BottomTabBar } from 'expo-router/js-tabs';
-import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { Platform, Text, View, type ColorValue } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';

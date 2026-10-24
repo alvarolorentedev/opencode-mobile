@@ -32,7 +32,6 @@ export function useProjectRefreshActions({
   sessionsRef,
   setSessionStatuses,
   locallyCreatedSessionsRef,
-  setIsRefreshingSessions,
   setIsRefreshingDiffs,
   setDiffsBySession,
   setVcsDiffsByScope,
@@ -52,70 +51,60 @@ export function useProjectRefreshActions({
   refreshMessages,
 }: ProjectActionsInput) {
   const fetchSessions = useCallback(
-    async (silent = false) => {
+    async () => {
       if (!activeProjectPath) {
         setSessions([]);
         setSessionStatuses({});
         return [];
       }
 
-      if (!silent) {
-        setIsRefreshingSessions(true);
+      const result = await svcListSessions(client);
+      if (!isCurrentClient(client)) {
+        return result.sessions;
       }
-
-      try {
-        const result = await svcListSessions(client);
-        if (!isCurrentClient(client)) {
-          return result.sessions;
-        }
-        const now = Date.now();
-        const resultIds = new Set(result.sessions.map((session) => session.id));
-        const localIds = new Set<string>();
-        for (const [id, createdAt] of locallyCreatedSessionsRef.current) {
-          if (resultIds.has(id) || now - createdAt > LOCAL_SESSION_GRACE_MS) {
-            locallyCreatedSessionsRef.current.delete(id);
-          } else {
-            localIds.add(id);
-          }
-        }
-        const retained = localIds.size
-          ? sessionsRef.current.filter((session) => localIds.has(session.id) && !resultIds.has(session.id))
-          : [];
-        const nextSessions = retained.length ? [...retained, ...result.sessions] : result.sessions;
-        setSessions((current) => (areSessionListsEqual(current, nextSessions) ? current : nextSessions));
-        setSessionStatuses((current) => {
-          const next = mergeSessionStatuses(current, result.statuses);
-          for (const session of retained) {
-            if (!next[session.id]) next[session.id] = current[session.id] ?? { type: 'idle' };
-          }
-          return areSessionStatusMapsEqual(current, next) ? current : next;
-        });
-        void persistSessionCache(connectionScope, activeProjectPath, nextSessions, result.statuses);
-        return nextSessions;
-      } finally {
-        if (!silent) {
-          setIsRefreshingSessions(false);
+      const now = Date.now();
+      const resultIds = new Set(result.sessions.map((session) => session.id));
+      const localIds = new Set<string>();
+      for (const [id, createdAt] of locallyCreatedSessionsRef.current) {
+        if (resultIds.has(id) || now - createdAt > LOCAL_SESSION_GRACE_MS) {
+          locallyCreatedSessionsRef.current.delete(id);
+        } else {
+          localIds.add(id);
         }
       }
+      const retained = localIds.size
+        ? sessionsRef.current.filter((session) => localIds.has(session.id) && !resultIds.has(session.id))
+        : [];
+      const nextSessions = retained.length ? [...retained, ...result.sessions] : result.sessions;
+      setSessions((current) => (areSessionListsEqual(current, nextSessions) ? current : nextSessions));
+      setSessionStatuses((current) => {
+        const next = mergeSessionStatuses(current, result.statuses);
+        for (const session of retained) {
+          if (!next[session.id]) next[session.id] = current[session.id] ?? { type: 'idle' };
+        }
+        return areSessionStatusMapsEqual(current, next) ? current : next;
+      });
+      void persistSessionCache(connectionScope, activeProjectPath, nextSessions, result.statuses);
+      return nextSessions;
     },
     [activeProjectPath, client, connectionScope, isCurrentClient, locallyCreatedSessionsRef, sessionsRef],
   );
 
   const refreshSessions = useCallback(
-    async (silent = false) => {
-      await fetchSessions(silent);
+    async () => {
+      await fetchSessions();
     },
     [fetchSessions],
   );
 
   const refreshSessionStatuses = useCallback(async () => {
     if (client.compatibility) {
-      await refreshSessions(true);
+      await refreshSessions();
       return;
     }
     const active = await svcGetActiveSessionStatuses(client).catch(() => undefined);
     if (!active) {
-      await refreshSessions(true);
+      await refreshSessions();
       return;
     }
     if (!isCurrentClient(client)) return;
@@ -290,7 +279,7 @@ export function useProjectRefreshActions({
         delete sessionRefreshOptionsRef.current[sessionId];
 
         if (mergedOptions.sessions) {
-          void refreshSessions(true).catch(() => undefined);
+          void refreshSessions().catch(() => undefined);
         }
         if (mergedOptions.messages) {
           void refreshMessages(sessionId, true, mergedOptions.messageMode ? { mode: mergedOptions.messageMode } : undefined).catch(() => undefined);
@@ -320,5 +309,3 @@ export function useProjectRefreshActions({
     scheduleSessionRefresh,
   };
 }
-
-export type ProjectRefreshActions = ReturnType<typeof useProjectRefreshActions>;

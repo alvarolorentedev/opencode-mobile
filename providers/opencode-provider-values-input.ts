@@ -17,7 +17,6 @@ import type {
   McpRemoteConfig,
   McpStatus,
   Pty,
-  PtyShellsResponse,
   Session,
   SessionStatus,
   Todo,
@@ -74,8 +73,6 @@ export type ProviderValuesInput = ActionInputs & {
   projects: OpencodeProject[];
   activeProjectPath?: string;
   activeProject?: OpencodeProject;
-  currentProjectPath?: string;
-  serverRootPath?: string;
   isRefreshingProjectCatalog: boolean;
   projectFileStatuses: File[];
   selectedProjectFile?: ProjectFile;
@@ -115,14 +112,12 @@ export type ProviderValuesInput = ActionInputs & {
   refreshSavedPermissions: () => Promise<void>;
   removeSavedPermission: (id: string) => Promise<void>;
   sendingState: { sessionId?: string; active: boolean };
-  isRefreshingSessions: boolean;
   isRefreshingMessages: boolean;
   isRefreshingDiffs: boolean;
   isBootstrappingChat: boolean;
   commands: Command[];
   serverContract: ServerContract;
   terminals: Pty[];
-  terminalShells: PtyShellsResponse;
   activeTerminalId?: string;
   terminalRuntime: TerminalRuntime;
   terminalConnection: TerminalStatus;

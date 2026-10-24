@@ -2,10 +2,6 @@ import type { OpencodeClient } from '@opencode-ai/sdk/v2/client';
 
 import { requireData } from '@/providers/services/require-data';
 
-export async function listShells(client: OpencodeClient) {
-  return requireData((await client.pty.shells()).data, 'shell list request');
-}
-
 export async function listTerminals(client: OpencodeClient) {
   return requireData((await client.pty.list()).data, 'terminal list request');
 }

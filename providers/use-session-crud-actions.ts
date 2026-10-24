@@ -1,10 +1,4 @@
-import { createSession as svcCreateSession, summarizeSession } from '@/providers/services/session-service';
-import { useCallback } from 'react';
-
-import type { Session, SessionStatus } from '@/lib/opencode/types';
-import { getSelectedModelParts, getSelectedModelVariant } from '@/providers/opencode-model-selection';
-import { persistSessionCache } from '@/providers/session-cache';
-import {
+import { createSession as svcCreateSession, summarizeSession ,
   archiveSession as svcArchiveSession,
   deleteSession as svcDeleteSession,
   executeCommand as svcExecuteCommand,
@@ -16,6 +10,11 @@ import {
   unshareSession as svcUnshareSession,
   updateSessionTitle as svcUpdateSessionTitle,
 } from '@/providers/services/session-service';
+import { useCallback } from 'react';
+
+import type { Session, SessionStatus } from '@/lib/opencode/types';
+import { getSelectedModelParts, getSelectedModelVariant } from '@/providers/opencode-model-selection';
+import { persistSessionCache } from '@/providers/session-cache';
 import type { SessionActionsInput } from '@/providers/opencode-provider-action-inputs';
 
 export function useSessionCrudActions({
@@ -266,7 +265,7 @@ export function useSessionCrudActions({
     if (!isCurrentClient(client)) {
       throw new Error('The active project changed before sharing finished.');
     }
-    await refreshSessions(true);
+    await refreshSessions();
     return shared;
   }, [client, isCurrentClient, refreshSessions]);
 
@@ -278,18 +277,18 @@ export function useSessionCrudActions({
     if (!isCurrentClient(client)) {
       throw new Error('The active project changed before unsharing finished.');
     }
-    await refreshSessions(true);
+    await refreshSessions();
     return unshared;
   }, [client, isCurrentClient, refreshSessions]);
 
   const revertSession = useCallback(async (sessionId: string, messageId: string) => {
     await svcRevertSession(client, sessionId, messageId);
-    await Promise.all([refreshSessions(true), refreshMessages(sessionId, true, { mode: 'replace' }), refreshSessionDiff(sessionId, true)]);
+    await Promise.all([refreshSessions(), refreshMessages(sessionId, true, { mode: 'replace' }), refreshSessionDiff(sessionId, true)]);
   }, [client, refreshMessages, refreshSessionDiff, refreshSessions]);
 
   const unrevertSession = useCallback(async (sessionId: string) => {
     await svcUnrevertSession(client, sessionId);
-    await Promise.all([refreshSessions(true), refreshMessages(sessionId, true, { mode: 'replace' }), refreshSessionDiff(sessionId, true)]);
+    await Promise.all([refreshSessions(), refreshMessages(sessionId, true, { mode: 'replace' }), refreshSessionDiff(sessionId, true)]);
   }, [client, refreshMessages, refreshSessionDiff, refreshSessions]);
 
   const executeCommand = useCallback(async (sessionId: string, command: string, args: string) => {
@@ -307,7 +306,7 @@ export function useSessionCrudActions({
       model: selected ? `${selected.providerID}/${selected.modelID}` : undefined,
       variant,
     });
-    await Promise.all([refreshMessages(sessionId, true), refreshSessions(true)]).catch(() => undefined);
+    await Promise.all([refreshMessages(sessionId, true), refreshSessions()]).catch(() => undefined);
   }, [availableModels, chatPreferences.mode, chatPreferences.modelId, chatPreferences.modelVariantSelections, client, refreshMessages, refreshSessions, sessions]);
 
   const summarizeSessionTitle = useCallback(
@@ -324,7 +323,7 @@ export function useSessionCrudActions({
 
       await summarizeSession(client, { sessionID: sessionId, ...selectedModel });
 
-      const nextSessions = await fetchSessions(true);
+      const nextSessions = await fetchSessions();
       return nextSessions.find((session) => session.id === sessionId);
     },
     [chatPreferences.modelId, client, fetchSessions, sessions],

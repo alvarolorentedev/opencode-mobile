@@ -179,7 +179,6 @@ These values combine application behavior settings and output-style preferences 
 Primary fields:
 
 - `terminals`
-- `terminalShells`
 - `activeTerminalId`
 - `terminalRuntime` (scope, opened instances, renderer registration, resize)
 - `terminalConnection`
@@ -265,7 +264,6 @@ This means conversation mode is partly state-driven and partly timer/ref-driven.
 
 Primary flags:
 
-- `isRefreshingSessions`
 - `isRefreshingMessages`
 - `isRefreshingDiffs`
 - `isRefreshingProjectCatalog`
@@ -884,7 +882,7 @@ client-scope guards.
 
 The composer owns only temporary input-height state on Android/web; iOS grows the native multiline input itself. Agent selection uses the existing selector; reasoning is a discrete slider in the existing model picker. The sole approval control is a capability-gated toolbar toggle. `ChatView` owns the draft and keys the composer by session, inner tab, and pending interaction IDs; selector modals do not persist visibility. Existing preference updates and auto-approval orchestration remain in the provider. Failed direct auto-approval changes retain the current value and use the existing send feedback.
 
-Patch review resolves an assistant message's `parentID` only against user messages in the current session (`getUserTurnForMessage`). A match sets Turn scope and selects that user turn through the existing provider actions. Missing matches open the existing changes view without selecting a historical turn. The review callback is included in transcript memoization and list extra data.
+Patch review is the changes chip above the composer and the Changes overlay. The transcript no longer renders a per-message review chip, so no parent-message lookup or transcript memoization dependency is needed for review.
 
 Project browser state and request-scope guards remain provider-owned. `FilesPanel` owns only the draft search input and renders provider loading/error state; it remounts on the password-free connection identity plus project path. It does not fetch, persist, or cache results. Setup still uses the existing connection-switch path exactly once per guarded submission.
 

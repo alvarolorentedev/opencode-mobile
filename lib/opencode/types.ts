@@ -1,7 +1,7 @@
 // App-owned presentation models. Transport records come from @opencode/client;
 // v1 wire types are confined to the compatibility boundary.
-import type { TokenUsageInfo, ModelRef, FileDiffInfo as NativeVcsFileDiff, VcsFileStatus as NativeVcsFileStatus } from '@opencode/client';
-export type { Message, Part, ToolPart, TextPartInput, FilePartInput, StepFinishPart } from './message-types';
+import type { TokenUsageInfo, ModelRef } from '@opencode/client';
+export type { Message, Part, ToolPart, TextPartInput, FilePartInput } from './message-types';
 export type SessionStatus = {
     type: 'idle';
 } | {
@@ -252,8 +252,6 @@ export type VcsInfo = {
     branch?: string;
     default_branch?: string;
 };
-export type VcsFileDiff = NativeVcsFileDiff;
-export type VcsFileStatus = NativeVcsFileStatus;
 export type FileDiff = {
     file?: string;
     patch?: string;
@@ -261,24 +259,9 @@ export type FileDiff = {
     deletions: number;
     status?: 'added' | 'deleted' | 'modified';
 };
-export type VcsApplyError = {
-    type: string;
-    message: string;
-    [key: string]: unknown;
-};
 export type Worktree = {
     name: string;
     branch: string;
-    directory: string;
-};
-export type WorktreeCreateInput = {
-    name?: string;
-    startCommand?: string;
-};
-export type WorktreeRemoveInput = {
-    directory: string;
-};
-export type WorktreeResetInput = {
     directory: string;
 };
 export type Pty = {
@@ -291,15 +274,6 @@ export type Pty = {
     pid: number;
     exitCode?: number;
 };
-export type PtyShellsResponse = {
-    name: string;
-    path: string;
-    args?: string[];
-    acceptable?: boolean;
-}[];
-export type PtyTicketConnectToken = {
-    ticket: string;
-};
 export type LspStatus = {
     id: string;
     name: string;
@@ -311,36 +285,6 @@ export type FormatterStatus = {
     extensions: string[];
     enabled: boolean;
 };
-export type Symbol = {
-    name: string;
-    kind: number;
-    location: {
-        uri: string;
-        range: {
-            start: {
-                line: number;
-                character: number;
-            };
-            end: {
-                line: number;
-                character: number;
-            };
-        };
-    };
-};
-export type ToolIds = string[];
-export type ToolListItem = {
-    id: string;
-    description: string;
-    parameters: unknown;
-};
-export type ToolList = ToolListItem[];
-export type Skills = {
-    name: string;
-    description: string;
-    location: string;
-    content?: string;
-}[];
 // Provider credential input values. V2 forms can carry non-string values
 // (numbers, switches, multi-selects) alongside text fields.
 export type ProviderAuthValues = Record<string, string | number | boolean | string[]>;

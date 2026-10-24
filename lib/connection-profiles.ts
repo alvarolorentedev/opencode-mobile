@@ -180,10 +180,6 @@ async function readConnectionProfiles(strict = false): Promise<ConnectionProfile
   return profiles;
 }
 
-export function saveConnectionProfiles(profiles: ConnectionProfile[]) {
-  return serializeProfiles(() => writeSanitizedProfiles(profiles));
-}
-
 async function writeSanitizedProfiles(profiles: ConnectionProfile[]) {
   const sanitized = profiles
     .map(toConnectionProfile)
@@ -243,10 +239,6 @@ export async function resolveConnectionCredentials(identity: ConnectionIdentity)
   } catch {
     return undefined;
   }
-}
-
-export async function resolveConnectionPassword(identity: ConnectionIdentity): Promise<string | undefined> {
-  return (await resolveConnectionCredentials(identity))?.password;
 }
 
 export async function getProfilePassword(profileId: string) {

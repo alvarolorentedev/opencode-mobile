@@ -7,8 +7,6 @@ type OptionalDiagnostic<T> =
   | { available: true; data: T }
   | { available: false; error: string };
 
-export type Diagnostics = Awaited<ReturnType<typeof loadDiagnostics>>;
-
 function diagnosticError(error: unknown) {
   return error instanceof Error ? error.message : String(error);
 }

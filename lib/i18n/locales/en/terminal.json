@@ -12,7 +12,6 @@
     "refresh": "Refresh terminals",
     "openOrCreate": "Open or create a terminal to begin.",
     "terminateTitle": "Terminate terminal?",
-    "terminateMessage": "Terminate {{title}}?",
     "terminateAction": "Terminate",
     "new": "New terminal",
     "interactiveHint": "Type directly in the terminal. Use the accessory for terminal keys.",
@@ -22,15 +21,12 @@
   "sessions": {
     "title": "Terminals",
     "empty": "No terminals yet. Use + to create one.",
-    "openLabel": "Open {{terminal}}",
-    "closeHint": "Swipe left to close terminal"
+    "openLabel": "Open {{terminal}}"
   },
   "errors": {
     "load": "Could not load terminals.",
     "create": "Could not create the terminal.",
     "open": "Could not open the terminal.",
-    "terminate": "Could not terminate the terminal.",
-    "send": "Could not send terminal input.",
     "connect": "Could not connect.",
     "refresh": "Could not refresh terminals."
   },

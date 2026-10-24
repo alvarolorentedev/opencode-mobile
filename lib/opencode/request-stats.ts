@@ -66,13 +66,6 @@ export function recordRequestStart() {
   };
 }
 
-export function resetRequestStats() {
-  durations.length = 0;
-  total = 0; failed = 0; timeouts = 0; retries = 0;
-  lastStatus = undefined; lastDurationMs = undefined;
-  emit();
-}
-
 function subscribe(listener: () => void) {
   listeners.add(listener);
   return () => { listeners.delete(listener); };

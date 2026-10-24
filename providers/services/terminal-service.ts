@@ -1,12 +1,7 @@
-import type { ScopedOpencodeClient } from '@/lib/opencode/client';
+import { buildPtyWebSocketUrl, type OpencodeConnectionSettings, type ScopedOpencodeClient, type ServerContract } from '@/lib/opencode/client';
 import { Platform } from 'react-native';
-import { buildPtyWebSocketUrl, type OpencodeConnectionSettings, type ServerContract } from '@/lib/opencode/client';
-import { toShellView } from '@/lib/opencode/v2/shared';
 import * as v1 from '@/lib/opencode/compat/v1/terminal';
 const location = (client: ScopedOpencodeClient) => ({ location: { directory: client.__opencode.directory } });
-export async function listShells(client: ScopedOpencodeClient) {
-  return client.compatibility ? v1.listShells(client.compatibility) : (await client.api!.config.shells()).map(toShellView);
-}
 export async function listTerminals(client: ScopedOpencodeClient) {
   return client.compatibility ? v1.listTerminals(client.compatibility) : (await client.api!.pty.list(location(client))).data;
 }

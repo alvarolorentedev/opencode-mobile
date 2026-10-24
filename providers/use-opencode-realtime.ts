@@ -13,7 +13,7 @@ type RealtimeActions = {
   onGlobalEvent?: (event: OpencodeEvent) => void;
   refreshNativeSurfaces?: (full?: boolean) => Promise<unknown>;
   onFatalError?: (kind: ConnectionFailureKind) => void;
-  refreshSessions: (silent: boolean) => Promise<unknown>;
+  refreshSessions: () => Promise<unknown>;
   refreshSessionStatuses?: () => Promise<unknown>;
   refreshPendingInteractions: () => Promise<unknown>;
   refreshMessages: (sessionId: string, silent: boolean, options?: { mode?: TranscriptRefreshMode }) => Promise<unknown>;
@@ -38,7 +38,6 @@ function jitterRetryDelay(attemptDelay: number) {
   return Math.round(attemptDelay * (0.8 + Math.random() * 0.4));
 }
 
-export { SSE_STALENESS_MS, SSE_FOREGROUND_CYCLE_MS } from '@/providers/realtime-timing';
 
 export function useOpencodeRealtime({ catalogClient, activeProjectPath, connected, busy,
   currentSessionId, conversationSessionId, pendingSessionIds = [], subscribe: subscribeStream = subscribeEvents, online = true, constrained = false, ...actions
@@ -76,7 +75,7 @@ export function useOpencodeRealtime({ catalogClient, activeProjectPath, connecte
     // stay on reconnect/foreground reconciliation and session-list events.
     const sessionRefresh = !full && next.refreshSessionStatuses
       ? next.refreshSessionStatuses()
-      : next.refreshSessions(true);
+      : next.refreshSessions();
     let result: Promise<unknown>;
     result = (async () => {
       // Tier 1: identity, blocking state, and the visible transcript can run

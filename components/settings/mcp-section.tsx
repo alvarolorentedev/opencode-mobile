@@ -169,12 +169,10 @@ export function McpSection({
 }
 
 const styles = StyleSheet.create({
-  card: { borderRadius: 16 },
   section: { gap: 14, paddingHorizontal: 16, paddingBottom: 16 },
   title: { fontWeight: '600' },
   header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 },
   server: { borderRadius: 14, borderWidth: 1, padding: 8 },
   actions: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'flex-end', gap: 4 },
   enabledControl: { flexDirection: 'row', alignItems: 'center', gap: 4 },
-  oauth: { gap: 8, padding: 8 },
 });

@@ -1,15 +1,11 @@
 
-import { projectEntries, projectWorktrees } from '@/lib/opencode/project';
+import { projectWorktrees } from '@/lib/opencode/project';
 import type { OpencodeClient } from '@opencode-ai/sdk/v2/client';
 
 import { requireData } from '@/providers/services/require-data';
 
 export async function findFiles(client: OpencodeClient, query: string, includeDirectories = false) {
   return requireData((await client.find.files({ query, dirs: includeDirectories ? 'true' : 'false' })).data, 'file search');
-}
-
-export async function listFiles(client: OpencodeClient, path: string) {
-  return projectEntries(requireData((await client.file.list({ path })).data, 'directory listing'), '');
 }
 
 export async function readFile(client: OpencodeClient, path: string) {

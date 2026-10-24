@@ -15,7 +15,6 @@
     "retry": "Retry",
     "delete": "Delete",
     "dismiss": "Dismiss",
-    "create": "Create",
     "refresh": "Refresh",
     "remove": "Remove",
     "open": "Open",
@@ -24,10 +23,7 @@
     "reconnect": "Reconnect",
     "disconnect": "Disconnect",
     "edit": "Edit",
-    "add": "Add",
-    "submit": "Submit",
     "stop": "Stop",
-    "select": "Select",
     "closeWithName": "Close {{title}}",
     "openSettings": "Open settings"
   },
@@ -36,7 +32,6 @@
   },
   "labels": {
     "connected": "Connected",
-    "connecting": "Connecting",
     "enabled": "Enabled",
     "off": "Off",
     "active": "Active",

@@ -1,9 +1,7 @@
 {
   "screen": {
-    "syncProjects": "同步项目",
     "refreshProject": "刷新项目",
-    "filesTab": "文件",
-    "worktreesTab": "工作树"
+    "filesTab": "文件"
   },
   "files": {
     "title": "项目文件",
@@ -44,14 +42,10 @@
     "size": "大小：{{size}}"
   },
   "worktrees": {
-    "title": "工作树",
-    "subtitle": "创建隔离的工作目录或管理现有目录。",
     "refresh": "刷新工作树",
     "nameLabel": "名称（可选）",
     "startCommandLabel": "启动命令（可选）",
     "empty": "没有可用的工作树。",
-    "resetLabel": "重置 {{name}}",
-    "removeLabel": "移除 {{name}}",
     "resetTitle": "重置工作树？",
     "resetMessage": "这将丢弃 {{directory}} 中未提交的更改。",
     "resetAction": "重置",
@@ -74,10 +68,8 @@
   },
   "errors": {
     "refreshProject": "无法刷新项目。",
-    "searchFiles": "无法搜索项目文件。",
     "openFile": "无法打开文件。",
     "saveFile": "无法保存文件。",
-    "refreshWorktrees": "无法刷新工作树。",
     "createWorktree": "无法创建工作树。",
     "resetWorktree": "无法重置工作树。",
     "removeWorktree": "无法移除工作树。",

@@ -16,7 +16,7 @@ export function dispatchCompatibilityEvent(event: GlobalEvent['payload'], action
     case 'session.created':
     case 'session.updated':
     case 'session.deleted':
-      void actions.refreshSessions(true).catch(() => undefined);
+      void actions.refreshSessions().catch(() => undefined);
       void actions.refreshArchivedSessions().catch(() => undefined);
       return;
     case 'session.status': {
@@ -155,7 +155,7 @@ export function dispatchCompatibilityEvent(event: GlobalEvent['payload'], action
       // A subagent request carries a child session id that may have been created
       // after the last session-list refresh; refresh so the active chat can map
       // it to its root session and surface the blocker.
-      void actions.refreshSessions(true).catch(() => undefined);
+      void actions.refreshSessions().catch(() => undefined);
       return;
     }
     case 'permission.replied': {
@@ -175,7 +175,7 @@ export function dispatchCompatibilityEvent(event: GlobalEvent['payload'], action
           request,
         ],
       }));
-      void actions.refreshSessions(true).catch(() => undefined);
+      void actions.refreshSessions().catch(() => undefined);
       return;
     }
     case 'question.replied':

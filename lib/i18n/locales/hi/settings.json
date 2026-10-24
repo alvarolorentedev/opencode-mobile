@@ -6,21 +6,17 @@
       "notifications": "सूचनाएँ",
       "voice": "आवाज़ और उत्तर",
       "advanced": "उन्नत",
-      "appearance": "दिखावट",
       "support": "सहायता",
       "permissions": "स्वीकृतियाँ",
       "subscription": "सदस्यता",
-      "services": "सेवाएँ",
       "cloudLink": "Cloud Link"
     },
     "summaries": {
       "configuredCount": "{{value}} कॉन्फ़िगर किए गए",
       "replyPlaybackOn": "उत्तर प्लेबैक चालू",
       "replyPlaybackOff": "उत्तर प्लेबैक बंद",
-      "advanced": "एडिटर, सामान्य, MCP सर्वर और निदान",
       "support": "ऐप को रेट करें, फ़ीडबैक भेजें, सहायता पाएँ",
-      "permissions": "{{value}} सहेजे गए",
-      "services": "{{value}} उजागर"
+      "permissions": "{{value}} सहेजे गए"
     }
   },
   "support": {
@@ -46,13 +42,11 @@
     "deleteMessage": "सहेजे गए कनेक्शन से \"{{name}}\" निकालें?",
     "deleteWebConfirm": "कनेक्शन हटाएँ\n\n{{message}}",
     "fields": {
-      "name": "नाम",
       "serverUrl": "सर्वर URL",
       "username": "उपयोगकर्ता नाम",
       "password": "पासवर्ड"
     },
     "errors": {
-      "name": "इस कनेक्शन के लिए एक नाम दर्ज करें।",
       "serverUrl": "सर्वर URL दर्ज करें।",
       "invalidUrl": "पूरा सर्वर URL दर्ज करें, जैसे http://192.168.1.10:4096।",
       "save": "यह कनेक्शन सहेजा नहीं जा सका।",
@@ -82,7 +76,6 @@
       "sameNetwork": "दोनों डिवाइस एक ही नेटवर्क पर रखें।",
       "scanAutomatic": "अपने आप सहेजने और जुड़ने के लिए स्कैन करें।",
       "scanAgain": "दोबारा स्कैन करें",
-      "enterAddress": "पता दर्ज करें",
       "unreachable": "सर्वर तक नहीं पहुँच सके। पता और नेटवर्क जाँचकर फिर कोशिश करें।",
       "credentialsRejected": "क्रेडेंशियल अस्वीकार हुए। पासवर्ड और उपयोगकर्ता नाम जाँचें या नया QR कोड स्कैन करें।",
       "pairingErrors": {
@@ -126,7 +119,6 @@
     "credentialsRemoved": "{{provider}} क्रेडेंशियल निकाल दिए गए।",
     "removeTitle": "{{provider}} निकालें?",
     "removeMessage": "संग्रहीत क्रेडेंशियल और प्रदाता कॉन्फ़िगरेशन निकाल दिए जाएँगे।",
-    "removeWebConfirm": "{{provider}} निकालें?\n\nसंग्रहीत क्रेडेंशियल और प्रदाता कॉन्फ़िगरेशन निकाल दिए जाएँगे।",
     "signInTitle": "प्रदाता साइन-इन पूरा करें",
     "authorizationCode": "प्राधिकरण कोड",
     "complete": "पूरा करें",
@@ -346,9 +338,7 @@
     "noServers": "कोई MCP सर्वर कॉन्फ़िगर नहीं है।",
     "statusConfigured": "कॉन्फ़िगर किया गया",
     "statusDisabled": "अक्षम",
-    "oauth": "OAuth",
-    "authorizationCode": "प्राधिकरण कोड (वैकल्पिक)",
-    "completeOAuth": "OAuth पूरा करें"
+    "oauth": "OAuth"
   },
   "language": {
     "title": "भाषा",
@@ -387,16 +377,11 @@
     "entry": "Pair with Cloud Link",
     "title": "Cloud Link",
     "description": "Scan your machine’s connector QR code or open its pairing link. Manual connections remain available.",
-    "controlPlane": "Trusted control plane",
-    "scan": "Scan connector QR code",
     "pairingLink": "Pairing deep link",
     "openLink": "Open pairing link",
-    "claim": "Claim and connect",
-    "retrySaving": "Retry secure saving",
     "machines": "Your machines",
     "refreshMachines": "Refresh machines",
     "noMachines": "No machines registered for this user.",
-    "pairRequired": "Restore access to obtain credentials for this machine.",
     "revoke": "Revoke machine",
     "revokeConfirm": "Delete this machine for every device? Its public tunnel will be deleted.",
     "forget": "Forget locally",
@@ -405,9 +390,6 @@
     "savedConnection": "Connection saved: {{name}}",
     "manage": "Manage Cloud Link",
     "cameraLoading": "Opening camera",
-    "cameraPermission": "Camera permission is needed to scan the connector QR code. You can open its deep link instead.",
-    "allowCamera": "Allow camera",
-    "openSettings": "Open device settings",
     "cameraUnavailable": "Camera unavailable. Open the connector deep link instead.",
     "progress": {
       "idle": "Loading…",
@@ -425,10 +407,7 @@
       "savingSession": "Saving the Cloud Link session securely…",
       "finalizing": "Finalizing the store transaction…"
     },
-    "subscription": "Cloud Link subscription",
     "subscriptionActive": "Your Cloud Link subscription is active.",
-    "subscriptionRequired": "Purchase or Restore your store subscription to enable Cloud Link.",
-    "purchase": "Purchase",
     "restore": "Restore purchases",
     "accessUnavailable": "Access unavailable. Purchase or Restore to reactivate this machine.",
     "scanHint": "कनेक्ट करने के लिए अपने कंप्यूटर का QR कोड स्कैन करें।",
@@ -538,7 +517,6 @@
     "editTitle": "सेवा संपादित करें",
     "empty": "अभी कोई सेवा उजागर नहीं है।",
     "capacity": "आप अधिकतम {{max}} सेवाएँ उजागर कर सकते हैं।",
-    "saved": "{{name}} सहेजा गया।",
     "saveFailed": "यह सेवा सहेजी नहीं जा सकी।",
     "removed": "{{name}} हटाया गया।",
     "removeFailed": "यह सेवा हटाई नहीं जा सकी।",

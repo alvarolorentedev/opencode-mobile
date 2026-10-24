@@ -69,7 +69,7 @@ export function useSessionBootstrapActions({
 
       try {
         const nextSessions = currentSessions.length > 0 && (!pendingTarget || currentSessions.some((session) => session.id === pendingTarget.sessionId))
-          ? currentSessions : await fetchSessions(true);
+          ? currentSessions : await fetchSessions();
         if (bootstrapTokenRef.current !== bootstrapToken || pendingDeepLinkTargetRef.current !== pendingTarget) {
           return undefined;
         }

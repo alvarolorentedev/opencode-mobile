@@ -15,7 +15,6 @@
     "retry": "Erneut versuchen",
     "delete": "Löschen",
     "dismiss": "Verwerfen",
-    "create": "Erstellen",
     "refresh": "Aktualisieren",
     "remove": "Entfernen",
     "open": "Öffnen",
@@ -24,10 +23,7 @@
     "reconnect": "Neu verbinden",
     "disconnect": "Trennen",
     "edit": "Bearbeiten",
-    "add": "Hinzufügen",
-    "submit": "Senden",
     "stop": "Stopp",
-    "select": "Auswählen",
     "closeWithName": "{{title}} schließen",
     "openSettings": "Einstellungen öffnen"
   },
@@ -36,7 +32,6 @@
   },
   "labels": {
     "connected": "Verbunden",
-    "connecting": "Verbindung wird hergestellt",
     "enabled": "Aktiviert",
     "off": "Aus",
     "active": "Aktiv",

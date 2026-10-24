@@ -1,6 +1,3 @@
-import { buildSessionLink } from '@/lib/session-link';
-import type { ActiveSessionItem } from '@/providers/opencode-provider-types';
-
 // Headless widgets render this bounded provider snapshot. Enabled previews
 // contain user-visible content; routing links never carry authentication data.
 export const WIDGET_SNAPSHOT_MAX_SESSIONS = 3;
@@ -28,35 +25,6 @@ export type WidgetSnapshot = {
   attention?: WidgetAttention;
   plan?: WidgetPlan;
 };
-
-export function buildWidgetSnapshot({
-  activeSessions,
-  connectionScope,
-  untitledLabel,
-  updatedAt,
-}: {
-  activeSessions: ActiveSessionItem[];
-  connectionScope: string;
-  untitledLabel: string;
-  updatedAt: number;
-}): WidgetSnapshot {
-  const sessions = connectionScope
-    ? activeSessions
-      .filter((session) => Boolean(session.sessionId) && Boolean(session.projectPath))
-      .slice(0, WIDGET_SNAPSHOT_MAX_SESSIONS)
-      .map((session) => ({
-        id: session.sessionId,
-        title: (session.title?.trim() || untitledLabel).slice(0, WIDGET_SNAPSHOT_MAX_TITLE),
-        status: session.status.type,
-        link: buildSessionLink({
-          sessionId: session.sessionId,
-          projectPath: session.projectPath,
-          connectionScope,
-        }),
-      }))
-    : [];
-  return { updatedAt, sessions };
-}
 
 function isWidgetStatus(value: unknown): value is WidgetSessionStatus {
   return typeof value === 'string' && (WIDGET_STATUSES as readonly string[]).includes(value);

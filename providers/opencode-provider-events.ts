@@ -22,7 +22,7 @@ export type SessionRefreshOptions = {
 };
 
 export type ProviderEventActions = {
-  refreshSessions: (silent?: boolean) => Promise<unknown>;
+  refreshSessions: () => Promise<unknown>;
   refreshArchivedSessions: () => Promise<unknown>;
   scheduleSessionRefresh: (sessionId: string, options?: SessionRefreshOptions) => void;
   // Event-driven refreshes are coalesced when the provider supplies these;
@@ -57,7 +57,7 @@ export type ProviderEventActions = {
 };
 
 export function handleProviderEvent(event: OpencodeEvent, actions: ProviderEventActions): void {
-  const scheduleSessions = actions.scheduleSessionsRefresh ?? (() => { void actions.refreshSessions(true).catch(() => undefined); });
+  const scheduleSessions = actions.scheduleSessionsRefresh ?? (() => { void actions.refreshSessions().catch(() => undefined); });
   const scheduleCapabilities = actions.scheduleChatCapabilitiesRefresh ?? (() => { void actions.refreshChatCapabilities().catch(() => undefined); });
   const scheduleFeatures = actions.scheduleServerFeaturesRefresh ?? (() => { void actions.refreshServerFeatures().catch(() => undefined); });
   const scheduleCatalog = actions.scheduleProjectCatalogRefresh ?? (() => { void actions.refreshProjectCatalog(true).catch(() => undefined); });

@@ -1,9 +1,7 @@
 {
   "screen": {
-    "syncProjects": "Sync projects",
     "refreshProject": "Refresh project",
-    "filesTab": "Files",
-    "worktreesTab": "Worktrees"
+    "filesTab": "Files"
   },
   "files": {
     "title": "Project files",
@@ -44,14 +42,10 @@
     "size": "Size: {{size}}"
   },
   "worktrees": {
-    "title": "Worktrees",
-    "subtitle": "Create isolated working directories or manage existing ones.",
     "refresh": "Refresh worktrees",
     "nameLabel": "Name (optional)",
     "startCommandLabel": "Start command (optional)",
     "empty": "No worktrees available.",
-    "resetLabel": "Reset {{name}}",
-    "removeLabel": "Remove {{name}}",
     "resetTitle": "Reset worktree?",
     "resetMessage": "This discards uncommitted changes in {{directory}}.",
     "resetAction": "Reset",
@@ -74,10 +68,8 @@
   },
   "errors": {
     "refreshProject": "Could not refresh the project.",
-    "searchFiles": "Could not search project files.",
     "openFile": "Could not open the file.",
     "saveFile": "Could not save the file.",
-    "refreshWorktrees": "Could not refresh worktrees.",
     "createWorktree": "Could not create the worktree.",
     "resetWorktree": "Could not reset the worktree.",
     "removeWorktree": "Could not remove the worktree.",

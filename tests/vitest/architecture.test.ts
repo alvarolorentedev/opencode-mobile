@@ -74,7 +74,7 @@ describe('architecture ratchets', () => {
       0,
     );
     assert.ok(
-      contextMembers <= 135,
+      contextMembers <= 127,
       `The domain contexts expose ${contextMembers} members in total. Add a domain hook or provider action instead of widening them.`,
     );
 
@@ -82,7 +82,7 @@ describe('architecture ratchets', () => {
     const layerDirs = ['app', 'components'];
     const networkCalls = /(^|[^\w.])fetch\s*\(|new XMLHttpRequest|from ['"]axios['"]/;
     const offenders: string[] = [];
-    const persistenceCalls = /(?:from ['"](?:@react-native-async-storage|expo-secure-store)|\b(?:loadConnectionProfiles|saveConnectionProfiles|saveProfilePassword|getProfilePassword|deleteProfilePassword)\s*\()/;
+    const persistenceCalls = /(?:from ['"](?:@react-native-async-storage|expo-secure-store)|\b(?:loadConnectionProfiles|saveProfilePassword|getProfilePassword|deleteProfilePassword)\s*\()/;
     let keyboardSurfaces = 0;
     for (const dir of layerDirs) {
       for (const file of await collectSourceFiles(path.join(root, dir))) {

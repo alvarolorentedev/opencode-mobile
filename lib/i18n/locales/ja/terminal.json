@@ -12,7 +12,6 @@
     "refresh": "ターミナルを更新",
     "openOrCreate": "ターミナルを開くか作成して開始してください。",
     "terminateTitle": "ターミナルを終了しますか？",
-    "terminateMessage": "{{title}}を終了しますか？",
     "terminateAction": "終了",
     "new": "新しいターミナル",
     "interactiveHint": "ターミナルに直接入力します。特殊キーはツールバーから使用できます。",
@@ -22,15 +21,12 @@
   "sessions": {
     "title": "ターミナル",
     "empty": "ターミナルはまだありません。+ で作成できます。",
-    "openLabel": "{{terminal}}を開く",
-    "closeHint": "左にスワイプしてターミナルを閉じる"
+    "openLabel": "{{terminal}}を開く"
   },
   "errors": {
     "load": "ターミナルを読み込めませんでした。",
     "create": "ターミナルを作成できませんでした。",
     "open": "ターミナルを開けませんでした。",
-    "terminate": "ターミナルを終了できませんでした。",
-    "send": "ターミナル入力を送信できませんでした。",
     "connect": "接続できませんでした。",
     "refresh": "ターミナルを更新できませんでした。"
   },

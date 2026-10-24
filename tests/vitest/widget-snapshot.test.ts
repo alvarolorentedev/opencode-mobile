@@ -1,78 +1,61 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
-import type { ActiveSessionItem } from '@/providers/opencode-provider-types';
+import type { Session } from '@/lib/opencode/types';
+import { recentWidgetSessions, widgetSession } from '@/providers/widget-content';
 import {
   WIDGET_SNAPSHOT_MAX_SESSIONS,
   WIDGET_SNAPSHOT_MAX_TITLE,
-  buildWidgetSnapshot,
   parseWidgetSnapshot,
 } from '@/providers/widget-snapshot';
 
-function session(overrides: Partial<ActiveSessionItem> = {}): ActiveSessionItem {
+vi.mock('@/lib/i18n', () => ({ getFormatLocale: () => 'en' }));
+
+function session(overrides: Partial<Session> = {}): Session {
   return {
-    sessionId: 's1',
-    projectPath: '/repo',
+    id: 's1',
     title: 'Fix the parser',
-    status: { type: 'idle' },
-    isCurrent: false,
-    updatedAt: 1,
+    directory: '/repo',
+    time: { created: 1, updated: 1 },
     ...overrides,
   };
 }
 
 describe('widget snapshot', () => {
   it('builds bounded, non-secret session rows with resolver links', () => {
-    const snapshot = buildWidgetSnapshot({
-      activeSessions: [
-        session({ sessionId: 'busy', status: { type: 'busy' } }),
-        session({ sessionId: 'idle' }),
-        session({ sessionId: 'retry', status: { type: 'retry', attempt: 1, message: 'x', next: 2 } }),
-        session({ sessionId: 'extra' }),
-      ],
-      connectionScope: 'scope',
-      untitledLabel: 'Untitled chat',
-      updatedAt: 1234,
-    });
+    const sessions = [
+      session({ id: 'busy', time: { created: 1, updated: 4 } }),
+      session({ id: 'idle', time: { created: 1, updated: 3 } }),
+      session({ id: 'retry', time: { created: 1, updated: 2 } }),
+      session({ id: 'extra', time: { created: 1, updated: 1 } }),
+    ];
+    const statuses = {
+      busy: { type: 'busy' as const },
+      idle: { type: 'idle' as const },
+      retry: { type: 'retry' as const, attempt: 1, message: 'x', next: 2 },
+    };
+    const recent = recentWidgetSessions(sessions);
 
-    expect(snapshot.updatedAt).toBe(1234);
-    expect(snapshot.sessions).toHaveLength(WIDGET_SNAPSHOT_MAX_SESSIONS);
-    expect(snapshot.sessions[0]).toEqual({
+    expect(recent).toHaveLength(WIDGET_SNAPSHOT_MAX_SESSIONS);
+    const rows = recent.map((entry) => widgetSession(entry, 'scope', 'Untitled chat', statuses[entry.id as keyof typeof statuses]));
+    expect(rows[0]).toEqual({
       id: 'busy',
       title: 'Fix the parser',
       status: 'busy',
       link: 'opencodemobile://session/busy?project=%2Frepo&connectionScope=scope',
     });
-    expect(snapshot.sessions.map((entry) => entry.status)).toEqual(['busy', 'idle', 'retry']);
+    expect(rows.map((entry) => entry.status)).toEqual(['busy', 'idle', 'retry']);
   });
 
-  it('publishes an empty list without a connection scope or usable routing data', () => {
-    expect(buildWidgetSnapshot({
-      activeSessions: [session()],
-      connectionScope: '',
-      untitledLabel: 'x',
-      updatedAt: 1,
-    }).sessions).toEqual([]);
-    expect(buildWidgetSnapshot({
-      activeSessions: [session({ sessionId: '', projectPath: '' })],
-      connectionScope: 'scope',
-      untitledLabel: 'x',
-      updatedAt: 1,
-    }).sessions).toEqual([]);
+  it('drops sessions without usable routing data', () => {
+    expect(recentWidgetSessions([session({ directory: undefined })])).toEqual([]);
+    expect(recentWidgetSessions([session({ parentID: 'parent' })])).toEqual([]);
+    expect(recentWidgetSessions([session({ time: { created: 1, updated: 1, archived: 2 } })])).toEqual([]);
   });
 
   it('truncates long titles and falls back to the untitled label', () => {
-    const snapshot = buildWidgetSnapshot({
-      activeSessions: [
-        session({ sessionId: 'long', title: 't'.repeat(WIDGET_SNAPSHOT_MAX_TITLE + 50) }),
-        session({ sessionId: 'blank', title: '  ' }),
-      ],
-      connectionScope: 'scope',
-      untitledLabel: 'Untitled chat',
-      updatedAt: 1,
-    });
-
-    expect(snapshot.sessions[0].title).toHaveLength(WIDGET_SNAPSHOT_MAX_TITLE);
-    expect(snapshot.sessions[1].title).toBe('Untitled chat');
+    expect(widgetSession(session({ title: 't'.repeat(WIDGET_SNAPSHOT_MAX_TITLE + 50) }), 'scope', 'Untitled chat').title)
+      .toHaveLength(WIDGET_SNAPSHOT_MAX_TITLE);
+    expect(widgetSession(session({ title: '  ' }), 'scope', 'Untitled chat').title).toBe('Untitled chat');
   });
 
   it('rejects malformed snapshot values and drops bad rows individually', () => {

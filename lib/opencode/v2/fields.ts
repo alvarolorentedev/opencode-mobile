@@ -15,7 +15,3 @@ export function extractErrorMessage(error: unknown): string {
   }
   return 'OpenCode request failed.';
 }
-
-export function toError(error: unknown): Error {
-  return error instanceof Error ? error : new Error(extractErrorMessage(error));
-}

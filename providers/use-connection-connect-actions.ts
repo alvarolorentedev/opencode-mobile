@@ -201,12 +201,10 @@ export function useConnectionConnectActions({
       setServerContract(usedContract);
     }
 
-    const projectDirectory = catalog.currentProjectPath || catalog.serverRootPath;
     const connected: ConnectionState = {
       status: 'connected',
       message: `Connected to ${getNormalizedServerUrl(targetSettings.serverUrl)} (OpenCode ${usedContract === 'v2' ? '2.x' : '1.x'})`,
       checkedAt: Date.now(),
-      projectDirectory,
     };
     setConnection(connected);
 

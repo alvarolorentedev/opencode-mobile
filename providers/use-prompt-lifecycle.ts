@@ -1,11 +1,10 @@
-import { interruptSession } from '@/providers/services/session-service';
+import { interruptSession, readSessionSettlement } from '@/providers/services/session-service';
 import { prepareAttachment } from '@/lib/opencode/attachment';
-import type { FilePartInput, TextPartInput } from '@/lib/opencode/types';
+import type { FilePartInput, TextPartInput, Session, SessionStatus } from '@/lib/opencode/types';
 import { useCallback, useEffect, useRef, useState, type Dispatch, type SetStateAction } from 'react';
 
 import type { OpencodeConnectionSettings, ScopedOpencodeClient } from '@/lib/opencode/client';
 import type { SessionMessageRecord } from '@/lib/opencode/format';
-import type { Session, SessionStatus } from '@/lib/opencode/types';
 import type { PromptDelivery, PromptInput } from '@/lib/opencode/prompt-inbox';
 import { pendingNotificationKey } from '@/lib/notification-pending';
 import { getConnectionScope, getConnectionUiScope } from '@/lib/connection-scope';
@@ -15,7 +14,6 @@ import {
   notifyTaskFinished,
   trackPendingTaskFinishedNotification,
 } from '@/lib/notifications';
-import { readSessionSettlement } from '@/providers/services/session-service';
 import type { ModelOption } from '@/providers/opencode-model-selection';
 import { getSelectedModelParts, getSelectedModelVariant } from '@/providers/opencode-model-selection';
 import type { ChatPreferences } from '@/providers/opencode-preferences';
@@ -37,7 +35,7 @@ type PromptLifecycleInput = {
   busyNotificationsRef: { current: Set<string> };
   promptSubmissionRef: { current: { active: boolean; sessionId?: string } };
   setSelectedDiffMessageBySession: Dispatch<SetStateAction<Record<string, string | undefined>>>;
-  refreshSessions: (silent?: boolean) => Promise<unknown>;
+  refreshSessions: () => Promise<unknown>;
   refreshMessages: (sessionId: string, silent?: boolean, options?: { mode?: TranscriptRefreshMode }) => Promise<SessionMessageRecord[]>;
   refreshSessionDiff: (sessionId: string, silent?: boolean, messageId?: string) => Promise<unknown>;
   refreshSessionTodos: (sessionId: string) => Promise<unknown>;
@@ -270,7 +268,7 @@ export function usePromptLifecycle({
       ));
 
       await Promise.all([
-        refreshSessions(true),
+        refreshSessions(),
         refreshMessages(sessionId, true),
         refreshSessionDiff(sessionId, true),
         refreshSessionTodos(sessionId),

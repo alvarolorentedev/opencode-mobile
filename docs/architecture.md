@@ -90,8 +90,7 @@ approvals, conversation, terminal, MCP, and app updates. The provider still
 owns all the state and actions; each domain value is memoized and rendered as its
 own context, so a consumer only re-renders when the domain it reads changes and
 each screen declares its real dependencies instead of pulling from one
-combined domain surface. `OpencodeContextValue` remains only as the documented union
-of those domains.
+combined domain surface. There is no combined runtime context value.
 
 `WorkspaceActionsContext` exposes the stable app-level actions and presentation
 map separately from the changing workspace snapshot registry. Chat reads
@@ -331,7 +330,7 @@ or below **500 lines** (200-400 is the target; generated `lib/i18n/resources.ts`
 exempt), `providers/opencode-provider.tsx` must stay a thin wrapper at or below
 **60 lines** because composition lives in
 `providers/use-opencode-provider-composition.ts`, and the public context surface
-cannot grow past 135 members. When a limit is genuinely outgrown, split the file
+cannot grow past 127 members. When a limit is genuinely outgrown, split the file
 into the right layer and, if needed, lower the number in the same change.
 
 ### Services
@@ -347,7 +346,7 @@ into the right layer and, if needed, lower the number in the same change.
 - `providers/services/mcp-service.ts`
   MCP status, lifecycle, config enablement, and OAuth requests.
 - `providers/services/terminal-service.ts`
-  PTY lifecycle, shell discovery, connect-token, and WebSocket URL helpers.
+  PTY lifecycle, connect-token, and WebSocket URL helpers.
 - `providers/services/diagnostics-service.ts`
   Health, MCP, LSP, and formatter diagnostics with per-endpoint availability.
 
@@ -804,7 +803,7 @@ Responsibilities:
 
 Responsibilities:
 
-- list available shells and project PTYs
+- list project PTYs
 - create, open/reconnect, and terminate PTYs
 - request a short-lived connect ticket and stream PTY data over a project-scoped WebSocket
 - provide xterm terminal emulation with immediate input and a system-keyboard accessory

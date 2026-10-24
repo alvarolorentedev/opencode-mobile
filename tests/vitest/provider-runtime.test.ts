@@ -204,15 +204,6 @@ const addedWorktree = makeProjectCatalogActions('/workspace/main-clone', () => t
 assert.equal(await addedWorktree.actions.addProject('/worktrees/task'), '/worktrees/task');
 assert.equal(addedWorktree.activePath, '/worktrees/task', 'adding a directory selects the requested worktree rather than its owning project root');
 assert.deepEqual([...addedWorktree.opened.scope], ['/worktrees/task', '/workspace/main-clone'], 'adding a directory opens it for this connection');
-const removedProject = makeProjectCatalogActions('/workspace/main-clone', () => true, ['/workspace/main-clone', '/workspace/other-clone']);
-removedProject.actions.removeProject('/workspace/main-clone');
-assert.deepEqual([...removedProject.opened.scope], ['/workspace/other-clone'], 'closing a project drops it from the opened list');
-assert.equal(removedProject.activePath, '/workspace/other-clone', 'closing the active project selects the most recent remaining one');
-const removedLast = makeProjectCatalogActions('/workspace/main-clone', () => true, ['/workspace/main-clone']);
-removedLast.actions.removeProject('/workspace/main-clone');
-assert.deepEqual([...removedLast.opened.scope], [], 'closing the last project leaves an explicitly empty list');
-assert.equal(removedLast.activePath, undefined, 'closing the last project clears the active selection');
-
 const olderFile = actions.openProjectFile('selection-first'), newerFile = actions.openProjectFile('selection-last');
 fileReads.get('selection-last').resolve({ type: 'text', content: 'latest selection' }); await newerFile;
 fileReads.get('selection-first').resolve({ type: 'text', content: 'obsolete selection' });
@@ -858,7 +849,7 @@ assert.deepEqual(Object.keys(cachedDiffs), ['target']); assert.deepEqual(Object.
     react: runtime.react,
     'react-native': { AppState: { currentState: 'active', addEventListener: () => ({ remove() {} }) } },
     '@/providers/services/terminal-service': {
-      listTerminals: () => pendingList ? listGate.promise : Promise.resolve(listed), listShells: async () => [],
+      listTerminals: () => pendingList ? listGate.promise : Promise.resolve(listed),
       createTerminal: async () => ({ id: 'new' }), removeTerminal: async () => { if (rejectRemoval) throw new Error('Rejected'); },
     },
     './terminal-connection': { createTerminalConnection: ({ id, publish }) => {

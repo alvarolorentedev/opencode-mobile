@@ -48,10 +48,6 @@ export async function saveFile(client: ScopedOpencodeClient, path: string, conte
   // shortcut: V2 cannot atomically check the pre-read content; concurrent edits can be overwritten until conditional writes exist.
   await client.api!.file.write({ ...location(client), path, payload: new TextEncoder().encode(content) });
 }
-export async function applyVcsPatch(client: ScopedOpencodeClient, patch: string) {
-  if (!client.compatibility) throw new Error('Patch application is unavailable on OpenCode 2.');
-  return v1.applyVcsPatch(client.compatibility, patch);
-}
 async function projectID(client: ScopedOpencodeClient) { return (await client.api!.location.get(location(client))).project.id; }
 export async function listWorktrees(client: ScopedOpencodeClient) {
   return client.compatibility ? v1.listWorktrees(client.compatibility) : projectWorktrees(await client.api!.worktree.list({ projectID: await projectID(client) }));

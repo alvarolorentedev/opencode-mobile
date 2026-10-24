@@ -72,31 +72,6 @@ export function useProjectCatalogActions({
     clearProjectState();
   }, [activeProjectPathRef, clearProjectState, openProject, scopeGenerationRef, setActiveProjectPath]);
 
-  const removeProject = useCallback((path: string) => {
-    const scope = connectionScopeRef.current;
-    const opened = projectPathsByConnectionRef.current[scope];
-    if (!opened?.includes(path)) {
-      return;
-    }
-    const remaining = opened.filter((item) => item !== path);
-    writeProjects(scope, remaining);
-    if (activeProjectPathRef.current !== path) {
-      return;
-    }
-    // Closing the active project moves to the most recent remaining project,
-    // otherwise back to a server default. An empty list stays empty until the
-    // user opens something again.
-    const fallback = remaining[0] ?? serverProjectsRef.current.find((project) => project.worktree !== path)?.worktree;
-    if (fallback) {
-      selectProject(fallback);
-      return;
-    }
-    scopeGenerationRef.current += 1;
-    clearProjectState();
-    activeProjectPathRef.current = undefined;
-    setActiveProjectPath(undefined);
-  }, [activeProjectPathRef, clearProjectState, connectionScopeRef, projectPathsByConnectionRef, scopeGenerationRef, selectProject, serverProjectsRef, setActiveProjectPath, writeProjects]);
-
   const loadProjectCatalog = useCallback(
     async (silent = false, targetClient: ScopedOpencodeClient = catalogClient): Promise<ProjectCatalog> => {
       if (!silent) {
@@ -212,5 +187,5 @@ export function useProjectCatalogActions({
     return location;
   }, [connectionScopeRef, loadProjectCatalog, selectProject, serverContract, settingsRef]);
 
-  return { loadProjectCatalog, refreshProjectCatalog, selectProject, addProject, removeProject };
+  return { loadProjectCatalog, refreshProjectCatalog, selectProject, addProject };
 }

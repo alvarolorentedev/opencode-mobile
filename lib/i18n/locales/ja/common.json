@@ -15,7 +15,6 @@
     "retry": "再試行",
     "delete": "削除",
     "dismiss": "閉じる",
-    "create": "作成",
     "refresh": "更新",
     "remove": "削除",
     "open": "開く",
@@ -24,10 +23,7 @@
     "reconnect": "再接続",
     "disconnect": "切断",
     "edit": "編集",
-    "add": "追加",
-    "submit": "送信",
     "stop": "停止",
-    "select": "選択",
     "closeWithName": "{{title}}を閉じる",
     "openSettings": "設定を開く"
   },
@@ -36,7 +32,6 @@
   },
   "labels": {
     "connected": "接続済み",
-    "connecting": "接続中",
     "enabled": "有効",
     "off": "オフ",
     "active": "アクティブ",

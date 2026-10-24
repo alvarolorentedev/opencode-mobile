@@ -1,9 +1,7 @@
 {
   "screen": {
-    "syncProjects": "Synchroniser les projets",
     "refreshProject": "Actualiser le projet",
-    "filesTab": "Fichiers",
-    "worktreesTab": "Arbres de travail"
+    "filesTab": "Fichiers"
   },
   "files": {
     "title": "Fichiers de le projet",
@@ -44,14 +42,10 @@
     "size": "Taille : {{size}}"
   },
   "worktrees": {
-    "title": "Arbres de travail",
-    "subtitle": "Crée des répertoires de travail isolés ou gère ceux qui existent déjà.",
     "refresh": "Actualiser les arbres de travail",
     "nameLabel": "Nom (facultatif)",
     "startCommandLabel": "Commande de démarrage (facultatif)",
     "empty": "Aucun arbre de travail disponible.",
-    "resetLabel": "Réinitialiser {{name}}",
-    "removeLabel": "Retirer {{name}}",
     "resetTitle": "Réinitialiser l'arbre de travail ?",
     "resetMessage": "Cela supprime les modifications non validées dans {{directory}}.",
     "resetAction": "Réinitialiser",
@@ -74,10 +68,8 @@
   },
   "errors": {
     "refreshProject": "Impossible d'actualiser le projet.",
-    "searchFiles": "Impossible de rechercher dans les fichiers de le projet.",
     "openFile": "Impossible d'ouvrir le fichier.",
     "saveFile": "Impossible d'enregistrer le fichier.",
-    "refreshWorktrees": "Impossible d'actualiser les arbres de travail.",
     "createWorktree": "Impossible de créer l'arbre de travail.",
     "resetWorktree": "Impossible de réinitialiser l'arbre de travail.",
     "removeWorktree": "Impossible de retirer l'arbre de travail.",

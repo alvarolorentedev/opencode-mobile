@@ -1,9 +1,8 @@
-import { buildClient, type ScopedOpencodeClient, type OpencodeConnectionSettings, type ServerContract } from '@/lib/opencode/client';
+import { buildClient, type OpencodeConnectionSettings, type PendingPermissionRequest, type PendingQuestionRequest, type ScopedOpencodeClient, type ServerContract } from '@/lib/opencode/client';
 import { listPendingPermissions, listPendingQuestions } from '@/lib/opencode/client/interactions';
 import { coalesceRead } from '@/lib/opencode/in-flight';
 import { getSessionMessages, listActiveSessions } from '@/providers/services/session-service';
 import { recentWidgetSessions } from '@/providers/widget-content';
-import type { PendingPermissionRequest, PendingQuestionRequest } from '@/lib/opencode/client';
 
 export type WidgetInteractions = { permissions: PendingPermissionRequest[]; questions: PendingQuestionRequest[] };
 

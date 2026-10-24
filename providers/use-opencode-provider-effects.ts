@@ -1,7 +1,6 @@
 import { useEffect, useRef } from 'react';
 
 import type { ScopedOpencodeClient } from '@/lib/opencode/client';
-import type { ConversationPhase } from '@/providers/opencode-provider-types';
 import { pruneByKeepIds } from '@/providers/opencode-provider-utils';
 import type { OpencodeProviderState } from '@/providers/use-opencode-provider-state';
 
@@ -19,14 +18,9 @@ type ProviderEffectsInput = OpencodeProviderState & {
   connect: () => Promise<unknown>;
   refreshActiveSessions: () => Promise<unknown>;
   refreshWorktrees: () => Promise<unknown>;
-  refreshMcpServers: () => Promise<unknown>;
-  refreshTerminals: () => Promise<unknown>;
-  refreshArchivedSessions: () => Promise<unknown>;
   ensureActiveSessionRef: { current: () => Promise<string | undefined> };
   setPromptError: (error: { message: string; occurredAt: number; sessionId?: string } | undefined) => void;
-  conversationPhase: ConversationPhase;
   conversationSessionId?: string;
-  sendingState: { sessionId?: string; active: boolean };
   pruneTranscript: (keepIds: Set<string>, limit: number) => void;
 };
 
@@ -42,11 +36,8 @@ export function useOpencodeProviderEffects({
   refreshWorktrees,
   ensureActiveSessionRef,
   setPromptError,
-  conversationPhase,
   conversationSessionId,
-  sendingState,
   pruneTranscript,
-  chatPreferences,
   connection,
   connectionScope,
   activeProjectPath,

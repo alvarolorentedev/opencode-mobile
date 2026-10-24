@@ -122,13 +122,18 @@ describe('connection profiles', () => {
       getProfilePassword,
       loadConnectionProfiles,
       mutateConnectionProfiles,
-      resolveConnectionPassword,
       resolveConnectionCredentials,
-      saveConnectionProfiles,
       saveProfilePassword,
       saveConnectProfile,
       toConnectionProfile,
     } = await import(connectionProfilesUri);
+
+    const resolveConnectionPassword = async (identity: { serverUrl: string; username: string }) => (
+      await resolveConnectionCredentials(identity)
+    )?.password;
+    const saveConnectionProfiles = (profiles: Awaited<ReturnType<typeof loadConnectionProfiles>>) => (
+      mutateConnectionProfiles(async (_current, save) => { await save(profiles); })
+    );
 
     const passwordStorageKey = 'opencode-mobile.connection-password';
     assert.equal(await resolveConnectionCredentials({ serverUrl: '', username: '' }), undefined);

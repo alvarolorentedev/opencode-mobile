@@ -32,7 +32,6 @@ import {
 import { parseChatPreferences, parseConnectionSettings } from '@/providers/persisted-preferences';
 import { createPersistenceWriter, loadPersistedValue } from '@/providers/persistence-hydration';
 
-export type { LastSessionByConnection } from '@/providers/last-session-storage';
 
 export function useOpencodePersistence({
   defaultChatPreferences,
