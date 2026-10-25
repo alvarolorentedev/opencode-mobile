@@ -16,7 +16,9 @@
     "new": "Neues Terminal",
     "interactiveHint": "Tippe direkt im Terminal. Verwende die Leiste für Terminaltasten.",
     "pasteTitle": "Im Terminal einfügen?",
-    "pasteMessage": "Dieser Text enthält mehrere Zeilen oder Steuerzeichen und kann Befehle ausführen. Fortfahren?"
+    "pasteMessage": "Dieser Text enthält mehrere Zeilen oder Steuerzeichen und kann Befehle ausführen. Fortfahren?",
+    "terminateMessage": "{{terminal}} ({{id}})\n{{server}} / {{project}}",
+    "copied": "In die Zwischenablage kopiert"
   },
   "sessions": {
     "title": "Terminals",

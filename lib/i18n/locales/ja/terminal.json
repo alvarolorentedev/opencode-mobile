@@ -16,7 +16,9 @@
     "new": "新しいターミナル",
     "interactiveHint": "ターミナルに直接入力します。特殊キーはツールバーから使用できます。",
     "pasteTitle": "ターミナルに貼り付けますか？",
-    "pasteMessage": "複数行または制御文字が含まれており、コマンドが実行される可能性があります。続行しますか？"
+    "pasteMessage": "複数行または制御文字が含まれており、コマンドが実行される可能性があります。続行しますか？",
+    "terminateMessage": "{{terminal}}（{{id}}）\n{{server}} / {{project}}",
+    "copied": "クリップボードにコピーしました"
   },
   "sessions": {
     "title": "ターミナル",

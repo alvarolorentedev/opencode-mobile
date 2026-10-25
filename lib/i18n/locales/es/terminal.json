@@ -16,7 +16,9 @@
     "new": "Nueva terminal",
     "interactiveHint": "Escribe directamente en el terminal. Usa la barra para las teclas del terminal.",
     "pasteTitle": "¿Pegar en el terminal?",
-    "pasteMessage": "El texto contiene varias líneas o caracteres de control y puede ejecutar comandos. ¿Continuar?"
+    "pasteMessage": "El texto contiene varias líneas o caracteres de control y puede ejecutar comandos. ¿Continuar?",
+    "terminateMessage": "{{terminal}} ({{id}})\n{{server}} / {{project}}",
+    "copied": "Copiado al portapapeles"
   },
   "sessions": {
     "title": "Terminales",

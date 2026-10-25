@@ -8,9 +8,10 @@ import { useTerminal } from '@/providers/opencode-contexts';
 import TerminalDOM, { type TerminalDOMRef } from './terminal-dom';
 import { pasteNeedsConfirmation } from './terminal-keys';
 
-export function TerminalView({ visible, slim, palette, onError }: {
+export function TerminalView({ visible, slim, palette, onCopied, onError }: {
   visible: boolean; slim: boolean;
   palette: { background: string; text: string; tint: string; surface: string };
+  onCopied?: () => void;
   onError: (message: string) => void;
 }) {
   const { t } = useTranslation();
@@ -45,7 +46,14 @@ export function TerminalView({ visible, slim, palette, onError }: {
   }, []);
   const onResize = useCallback(async (id: string, cols: number, rows: number) => { runtime.current.resize(id, cols, rows); }, []);
   const onInput = useCallback(async (id: string, text: string, generation: number) => { sendTerminalInput(id, text, generation, terminalRuntime.scope); }, [sendTerminalInput, terminalRuntime.scope]);
-  const onCopy = useCallback(async (text: string) => { try { await Clipboard.setStringAsync(text); } catch (error) { onError(String(error)); } }, [onError]);
+  const onCopy = useCallback(async (text: string) => {
+    try {
+      await Clipboard.setStringAsync(text);
+      onCopied?.();
+    } catch (error) {
+      onError(String(error));
+    }
+  }, [onCopied, onError]);
   const reportError = useCallback(async (message: string) => { onError(message); }, [onError]);
   const onPaste = useCallback(async (id: string, supplied?: string) => {
     try {

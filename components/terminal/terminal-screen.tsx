@@ -11,6 +11,7 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useRouter, useIsFocused } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
+  ActivityIndicator,
   Appbar,
   Button,
   Card,
@@ -60,10 +61,12 @@ function TerminalContent() {
     terminals,
   } = useTerminal();
   const [busyId, setBusyId] = useState<string>();
+  const [openingKey, setOpeningKey] = useState<string>();
+  const [copied, setCopied] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
   const [terminalPickerVisible, setTerminalPickerVisible] = useState(false);
   const [error, setError] = useState<string>();
-  useUpdateBlocker(isCreating || Boolean(busyId));
+  useUpdateBlocker(isCreating || Boolean(busyId) || Boolean(openingKey));
 
   useEffect(() => {
     if (connection.status === 'connected' && activeProject) {
@@ -142,7 +145,7 @@ function TerminalContent() {
         </Appbar.Header>
 
         <View style={styles.output}>
-          <RetainedTerminals visible={visible} slim={slim} palette={palette} onError={setError} />
+          <RetainedTerminals visible={visible} slim={slim} palette={palette} onCopied={() => setCopied(true)} onError={setError} />
         {connection.status !== 'connected' || !activeProject ? (
           <View style={styles.emptyScreen}>
             <Surface style={[styles.emptyPanel, { backgroundColor: palette.surface }]} elevation={1}>
@@ -183,12 +186,41 @@ function TerminalContent() {
         {terminalEntries.length === 0 ? <Text style={{ color: palette.muted }}>{t('terminal:sessions.empty')}</Text> : null}
         {terminalEntries.map(({ key, connectionId, projectPath, serverName, terminal, actions }) => {
           const title = `${terminal.title || terminal.command}, ${terminal.id.slice(0, 8)}${multipleServers ? `, ${serverName}, ${projectPath}` : ''}`;
-          return <SwipeRow key={`${key}:${terminal.id}`} title={title} actions={[{ label: t('common:actions.close'), icon: 'close', onPress: () => {
-            confirmAction(t('terminal:console.terminateTitle'), `${serverName} / ${projectPath}`, t('terminal:console.terminateAction'), t('common:actions.cancel'), () => void actions.closeTerminal(terminal.id).catch((reason) => setError(String(reason))));
+          const entryKey = `${key}:${terminal.id}`;
+          const inFlight = openingKey === entryKey;
+          const active = terminal.id === activeTerminalId && connectionId === (registry.terminalTarget ?? registry.focus)?.connectionId
+            && projectPath === activeProject?.path;
+          const disabled = Boolean(openingKey) || Boolean(busyId);
+          const open = async () => {
+            setOpeningKey(entryKey);
+            try {
+              await registry.selectTerminalTarget({ connectionId, projectPath });
+              await actions.openTerminal(terminal.id);
+              setTerminalPickerVisible(false);
+            } catch (reason) {
+              setError(message(reason, t('terminal:errors.open')));
+            } finally {
+              setOpeningKey(undefined);
+            }
+          };
+          return <SwipeRow key={entryKey} title={title} actions={[{ label: t('common:actions.close'), icon: 'close', onPress: () => {
+            confirmAction(
+              t('terminal:console.terminateTitle'),
+              t('terminal:console.terminateMessage', {
+                terminal: terminal.title || terminal.command,
+                id: terminal.id.slice(0, 8),
+                server: serverName,
+                project: projectPath,
+              }),
+              t('terminal:console.terminateAction'),
+              t('common:actions.cancel'),
+              () => void actions.closeTerminal(terminal.id).catch((reason) => setError(String(reason))),
+            );
           } }]}>
-            <Pressable accessibilityRole="button" accessibilityLabel={t('terminal:sessions.openLabel', { terminal: title })}
-              onPress={() => { void registry.selectTerminalTarget({ connectionId, projectPath }).then(() => actions.openTerminal(terminal.id)).then(() => setTerminalPickerVisible(false)).catch((reason) => setError(String(reason))); }} style={[styles.terminalOption, { borderColor: palette.border }]}>
-              <MaterialCommunityIcons name="console" size={20} color={palette.muted} />
+            <Pressable accessibilityRole="button" accessibilityState={{ selected: active, busy: inFlight, disabled }}
+              accessibilityLabel={`${t('terminal:sessions.openLabel', { terminal: title })}${active ? `, ${t('common:labels.active')}` : ''}`}
+              disabled={disabled} onPress={() => void open()} style={[styles.terminalOption, { borderColor: active ? palette.tint : palette.border, opacity: disabled && !inFlight ? 0.6 : 1 }]}>
+              {inFlight ? <ActivityIndicator size={20} color={palette.tint} /> : <MaterialCommunityIcons name={active ? 'check-circle' : 'console'} size={20} color={active ? palette.tint : palette.muted} />}
               <View style={styles.terminalOptionText}>
                 <View style={styles.terminalTitleLine}>
                   <Text numberOfLines={1} style={styles.terminalOptionText}>{terminal.title || terminal.command}</Text>
@@ -200,6 +232,7 @@ function TerminalContent() {
           </SwipeRow>;
         })}
       </OverlaySheet>
+      <Snackbar visible={copied} onDismiss={() => setCopied(false)} duration={1600}>{t('terminal:console.copied')}</Snackbar>
       <Snackbar visible={Boolean(error)} onDismiss={() => setError(undefined)}>{error}</Snackbar>
     </>
   );

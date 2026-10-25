@@ -16,7 +16,9 @@
     "new": "新建终端",
     "interactiveHint": "直接在终端中输入。使用工具栏上的终端按键。",
     "pasteTitle": "粘贴到终端？",
-    "pasteMessage": "此文本包含多行或控制字符，可能执行命令。是否继续？"
+    "pasteMessage": "此文本包含多行或控制字符，可能执行命令。是否继续？",
+    "terminateMessage": "{{terminal}}（{{id}}）\n{{server}} / {{project}}",
+    "copied": "已复制到剪贴板"
   },
   "sessions": {
     "title": "终端",
