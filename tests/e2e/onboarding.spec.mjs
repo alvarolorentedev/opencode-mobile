@@ -122,9 +122,10 @@ test('every onboarding step can be skipped', async ({ page }) => {
   await expect(page.getByTestId('onboarding-summary-providers')).toHaveCount(0);
   await page.getByTestId('onboarding-ready-start').click();
 
-  // Completing without a project lands on the chat project prompt instead
-  // of a crash, and onboarding does not reappear on relaunch.
-  await expect(page.getByText('Select a project in the Projects tab to open its chat context.')).toBeVisible({ timeout: 30_000 });
+  // Completing without a server or project lands on the connection recovery
+  // panel instead of a crash, and onboarding does not reappear on relaunch.
+  await expect(page.getByText('Connect to OpenCode Mobile')).toBeVisible({ timeout: 30_000 });
+  await expect(page.getByRole('button', { name: 'Open settings' })).toBeVisible();
   await page.reload({ waitUntil: 'domcontentloaded' });
   await expect(page.getByTestId('onboarding-welcome')).toHaveCount(0);
 });
