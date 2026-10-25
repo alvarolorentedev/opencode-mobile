@@ -8,22 +8,26 @@ const { withAndroidManifest, withAppBuildGradle, withDangerousMod, withGradlePro
 // `android.r8.optimizedResourceShrinking` opts into AGP 8.12+'s R8-integrated
 // resource shrinking, which Play's "Improve your app's memory and performance
 // with R8 optimization" check expects. AGP 9+ enables it by default.
-const withAndroidGradleProperties = (config) =>
-  withGradleProperties(config, (config) => {
-    const overrides = new Set(['org.gradle.jvmargs', 'android.r8.optimizedResourceShrinking']);
-    config.modResults = config.modResults.filter(
-      (item) => !(item.type === 'property' && overrides.has(item.key)),
-    );
-    config.modResults.push({
+function applyGradleProperties(items) {
+  const overrides = new Set(['org.gradle.jvmargs', 'android.r8.optimizedResourceShrinking']);
+  return [
+    ...items.filter((item) => !(item.type === 'property' && overrides.has(item.key))),
+    {
       type: 'property',
       key: 'org.gradle.jvmargs',
       value: '-Xmx4096m -XX:MaxMetaspaceSize=1024m -Dfile.encoding=UTF-8',
-    });
-    config.modResults.push({
+    },
+    {
       type: 'property',
       key: 'android.r8.optimizedResourceShrinking',
       value: 'true',
-    });
+    },
+  ];
+}
+
+const withAndroidGradleProperties = (config) =>
+  withGradleProperties(config, (config) => {
+    config.modResults = applyGradleProperties(config.modResults);
     return config;
   });
 
@@ -113,4 +117,4 @@ function withAndroidAppConfig(
   });
 }
 
-module.exports = { withAndroidAppConfig };
+module.exports = { applyGradleProperties, withAndroidAppConfig };
