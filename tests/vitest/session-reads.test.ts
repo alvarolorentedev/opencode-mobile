@@ -90,6 +90,23 @@ describe('session reads', () => {
     expect(olderPage.records.at(-1)!.info.id).toBe('m-4279');
   });
 
+  it('clamps transcript pages to the native 200-record limit', async () => {
+    const limits: number[] = [];
+    const previous = h.api;
+    h.api = {
+      message: {
+        list: async ({ limit }: { limit: number }) => {
+          limits.push(limit);
+          return { data: [], cursor: { next: null } };
+        },
+      },
+    };
+    const clampedClient = buildV2Client({ serverUrl: 'http://test', directory: '/repo', username: '', password: '' } as never);
+    await getSessionMessages(clampedClient, 's', { limit: 300 });
+    h.api = previous;
+    expect(limits).toEqual([200]);
+  });
+
   it('pages V1 chronologically through its header cursor', async () => {
     const v1Client: any = { session: { async messages({ limit, before }: any) {
       expect(limit).toBe(20);

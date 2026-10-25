@@ -74,9 +74,10 @@ for the full suite.
 ESLint and TypeScript keep local caches (`--cache`, `--incremental`), and the
 CI jobs cache `.eslintcache`, `*.tsbuildinfo` and the Playwright browser. A
 cold static run is ~45s locally; a warm one is ~15s (Vitest is the floor).
-`tests/vitest/typecheck-ratchet.test.ts` keeps
-the `tsconfig.tests.json` denylist from growing; migrate a suite off
-`loadTs`/`hookRuntime` instead of adding another entry.
+`tests/vitest/typecheck-ratchet.test.ts` keeps the
+`tsconfig.tests.json` denylist empty. The dynamic `loadTs`/`hookRuntime` helper
+remains available for hook-source tests and is typed by
+`tests/helpers/runtime.d.mts`.
 
 ## Audit remediation regressions
 
@@ -110,8 +111,10 @@ SecureStore round-trips and the web test-secret path;
 `connection-profiles.test.ts` proves header resolution stays scoped to the
 owning connection and never reaches AsyncStorage; `read-deadline.test.ts` checks
 the Basic-auth + custom-header merge; `connection-dialog.test.ts` covers row
-editing, masked values and pre-probe rejection; `connect.test.ts` and
-`terminal.test.ts` prove native terminal upgrades receive the full header set.
+editing, masked values and pre-probe rejection; `connection-errors.test.ts`
+locks the API-base hint to non-/api URLs and the version hint to /api URLs;
+`connect.test.ts` and `terminal.test.ts` prove native terminal upgrades receive
+the full header set.
 The fake-server self-test gates REST, SSE and PTY upgrades, and
 `manual-connection.spec.mjs` connects through a header-gated V2 server and
 asserts REST/SSE delivery plus secret-free AsyncStorage. E2E and fake-server
@@ -385,9 +388,9 @@ The `test:vitest` suite is the standard TypeScript runner (Vitest) for module
 behavior that benefits from real imports and module mocking: format/transcript
 shaping, bounded-window record preservation, session reads/pagination/coalescing,
 and the native V2 presentation projections/event dispatcher and provider-auth mapping. These suites import
-the real `@/` modules and replace platform/protocol boundaries with `vi.mock`,
-instead of transpiling sources through the legacy `loadTs` VM helper (still used
-by `test:provider-runtime`, which drives hook source through a custom renderer).
+the real `@/` modules and replace platform/protocol boundaries with `vi.mock`.
+The remaining hook-source suites use the typed `loadTs`/`hookRuntime` helper,
+which is covered by `tests/helpers/runtime.d.mts`.
 
 Subagent blocking and event coverage is unit-level: `pending-interactions.test.ts`
 covers `collectDescendantSessionIds`, descendant permission/question surfacing,
@@ -643,7 +646,7 @@ the Vitest `record-preservation` suite covers the bounded-window merge: unchange
 array references are preserved, changed records are replaced, new tail records
 are appended, and scrolled-up history is prepended without duplicates.
 the Vitest `transcript-policy` suite covers the refresh modes: a cold load issues
-one 300-record newest-window read, tail reconcile issues one 20-record read and
+one 200-record newest-window read, tail reconcile issues one 20-record read and
 keeps held history, a missing paging window is repaired with one read before the
 next scroll pages back, scroll-up loads history older than the initial window and
 reaches the first record, a non-overlapping burst adopts the fetched page without

@@ -335,8 +335,8 @@ with `Java heap space`. The generated `android/` directory is ignored, so
 
 ### Memory Profiling Targets
 
-The chat loads the newest 300 raw records per session on open, reconciles with
-the newest 20, and lazily pages older history in 300-record batches as the user
+The chat loads the newest 200 raw records per session on open, reconciles with
+the newest 20, and lazily pages older history in 200-record batches as the user
 scrolls up. Loaded history is retained for the session so the first message stays
 reachable. The persisted transcript cache remains tail-bounded. Provider caches
 are pruned to the current/conversation sessions, non-idle sessions, and one spare

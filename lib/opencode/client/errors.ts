@@ -100,7 +100,7 @@ export function getConnectionErrorMessage(error: unknown, serverUrl: string, tra
   const message = error.message || tr('settings:connection.errors.generic');
   const alreadyApiBase = /\/api$/i.test(normalizedUrl);
   const apiHint = alreadyApiBase ? '' : tr('settings:connection.errors.apiHint', { url: normalizedUrl });
-  const versionHint = tr('settings:connection.errors.versionHint');
+  const versionHint = alreadyApiBase ? tr('settings:connection.errors.versionHint') : '';
 
   if (/\b1033\b/.test(message)) {
     return tr('settings:connection.errors.tunnelStarting');

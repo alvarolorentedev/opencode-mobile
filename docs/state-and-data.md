@@ -84,7 +84,7 @@ Diff scope state:
 Important behavior:
 
 - data is fetched lazily when a session is opened or refreshed
-- the transcript window is paginated (one newest window of up to 300 on open, older 300-record batches per scroll-up); see Message And Transcript Transformation
+- the transcript window is paginated (one newest window of up to 200 on open, older 200-record batches per scroll-up); see Message And Transcript Transformation
 - message/diff/todo caches are updated by explicit refreshes, SSE events, and polling fallback
 - an incoming `session.diff` event only overwrites the turn diff when the surface is not pinned to an earlier turn
 - on V2 the server has no todo endpoint, so `currentTodos` derives from the accumulated `todowrite` tool records (`deriveTodosFromMessages`), not just the loaded window; V1 stays server-authoritative
@@ -592,8 +592,8 @@ Derived from phase plus latest non-display transcript activity.
 ## Message And Transcript Transformation
 
 Session history is paginated. Opening a session makes one newest-window read of
-up to 300 raw records and stores the backward cursor; there is no display-target
-backfill loop. Scrolling to the top pulls one older 300-record batch through the
+up to 200 raw records and stores the backward cursor; there is no display-target
+backfill loop. Scrolling to the top pulls one older 200-record batch through the
 server's backward cursor and prepends it. A single scroll trigger never chains
 additional reads. The loaded window is not capped: records the user has paged
 through stay in memory so the first message remains reachable and scrolling back
@@ -610,7 +610,7 @@ cursor; if scroll-up runs first, it repairs the newest window once and returns,
 and the next scroll pages back. This keeps older history reachable instead of
 leaving `hasOlder` false. Only server-side history rewrites rebuild the window
 instead of merging: compaction, revert/unrevert, and (on V1) explicit message
-removal. A rebuild is one newest-window read of up to 300 records, never a scan.
+removal. A rebuild is one newest-window read of up to 200 records, never a scan.
 Reconnects and foreground returns tail-merge. The persisted transcript cache stays
 tail-bounded, while retention keeps the current session plus up to three recently
 viewed sessions in memory so switching back paints before the background read

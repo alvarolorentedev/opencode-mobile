@@ -308,8 +308,8 @@ The completion version, preference schema and first-run migration are unchanged.
   capped at four, subagent filtering). The Chat Library de-duplicates
   these IDs out of the current-project Chat list.
 - `providers/use-transcript-state.ts`
-  Paginated transcript state machine: one newest 300-record window on open,
-  scroll-up history paging in 300-record batches without a cap, a single newest
+  Paginated transcript state machine: one newest 200-record window on open,
+  scroll-up history paging in 200-record batches without a cap, a single newest
   20-record tail merge, cursor repair for cached or retained records that have
   no paging window, and accumulation of session usage steps and V2 `todowrite`
   records so exact totals survive paging. Only compaction/revert rewrites

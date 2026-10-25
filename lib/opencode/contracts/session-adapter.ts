@@ -16,6 +16,9 @@ export type ResolvedProjectLocation = Project & { directory?: string };
 export type SessionMessagePage = { records: SessionMessageRecord[]; hasMore: boolean; nextBefore?: string };
 export const TRANSCRIPT_PAGE_LIMIT = 20;
 export const LATEST_MESSAGE_LIMIT = 3;
+// The native message.list query validates `limit` as 1..200 and rejects larger
+// pages with a 400, so every transcript read must stay inside that bound.
+export const MAX_MESSAGE_PAGE_LIMIT = 200;
 
 export type PromptInput = Parameters<NonNullable<ScopedOpencodeClient['compatibility']>['session']['promptAsync']>[0];
 
@@ -109,9 +112,10 @@ export function createSessionAdapter(client: ScopedOpencodeClient): SessionAdapt
   };
 
   const messages = (sessionId: string, options: { limit?: number; before?: string } = {}) => {
-    const { limit = TRANSCRIPT_PAGE_LIMIT, before } = options;
+    const before = options.before;
+    const limit = Math.min(options.limit ?? TRANSCRIPT_PAGE_LIMIT, MAX_MESSAGE_PAGE_LIMIT);
     return coalesceRead(client, `messages:${sessionId}:${before ?? 'newest'}:${limit}`, async () => {
-      if (compatibility) return v1.getSessionMessages(compatibility, sessionId, options);
+      if (compatibility) return v1.getSessionMessages(compatibility, sessionId, { limit, before });
       const page = await client.api!.message.list(before ? { sessionID: sessionId, limit, cursor: before } : { sessionID: sessionId, limit, order: 'desc' });
       const records = [...page.data].reverse().map((message) => toMessageRecord(message, sessionId)).filter((record): record is SessionMessageRecord => Boolean(record));
       const nextBefore = page.cursor.next && page.cursor.next !== before ? page.cursor.next : undefined;

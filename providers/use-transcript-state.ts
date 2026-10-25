@@ -13,14 +13,16 @@ import { pruneByKeepIds } from '@/providers/opencode-provider-utils';
 import { hydrateTranscriptCache, persistTranscriptCache } from '@/providers/transcript-cache';
 import {
   getSessionMessages as svcGetSessionMessages,
+  MAX_MESSAGE_PAGE_LIMIT,
   TRANSCRIPT_PAGE_LIMIT,
 } from '@/providers/services/session-service';
 
 // One newest-window read when a session opens (or history is rewritten).
 // Older history is fetched in full batches of the same size, one per explicit
 // scroll-to-top, so reaching the first message never triggers a page loop.
-export const INITIAL_TRANSCRIPT_LIMIT = 300;
-export const OLDER_TRANSCRIPT_LIMIT = 300;
+// The native message endpoint rejects pages larger than 200.
+export const INITIAL_TRANSCRIPT_LIMIT = MAX_MESSAGE_PAGE_LIMIT;
+export const OLDER_TRANSCRIPT_LIMIT = MAX_MESSAGE_PAGE_LIMIT;
 
 type MessageWindow = { nextBefore?: string; hasMore: boolean };
 

@@ -36,7 +36,7 @@ async function mountTranscript(
     '@/lib/opencode/transcript': transcript,
     '@/lib/opencode/usage': usage,
     '@/providers/opencode-provider-utils': { pruneByKeepIds },
-    '@/providers/services/session-service': { getSessionMessages, TRANSCRIPT_PAGE_LIMIT: 20 },
+    '@/providers/services/session-service': { getSessionMessages, MAX_MESSAGE_PAGE_LIMIT: 200, TRANSCRIPT_PAGE_LIMIT: 20 },
     '@/providers/transcript-cache': { hydrateTranscriptCache: async () => {}, persistTranscriptCache: async () => {} },
   });
   function useHarness() {
@@ -68,7 +68,7 @@ describe('transcript refresh policy', () => {
     runtime.flush();
     expect(ids(runtime.value.messagesBySession.s)).toEqual(['a', 'b']);
     expect(getSessionMessages).toHaveBeenCalledTimes(1);
-    expect(getSessionMessages.mock.calls[0][2]).toEqual({ limit: 300 });
+    expect(getSessionMessages.mock.calls[0][2]).toEqual({ limit: 200 });
   });
 
   it('tail merge appends new records without dropping the held window', async () => {
@@ -112,7 +112,7 @@ describe('transcript refresh policy', () => {
     await value.loadOlderMessages('s');
     runtime.flush();
     expect(getSessionMessages.mock.calls[0][2]).toEqual({ limit: 20 });
-    expect(getSessionMessages.mock.calls[1][2]).toEqual({ limit: 300, before: 'older-cursor' });
+    expect(getSessionMessages.mock.calls[1][2]).toEqual({ limit: 200, before: 'older-cursor' });
     expect(ids(runtime.value.messagesBySession.s)).toEqual(['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k']);
     expect(runtime.value.messageWindows.s.hasMore).toBe(false);
   });
@@ -129,14 +129,14 @@ describe('transcript refresh policy', () => {
     runtime.flush();
     // The repair is one newest-window read; it does not chain an older page.
     expect(getSessionMessages).toHaveBeenCalledTimes(1);
-    expect(getSessionMessages.mock.calls[0][2]).toEqual({ limit: 300 });
+    expect(getSessionMessages.mock.calls[0][2]).toEqual({ limit: 200 });
     expect(ids(runtime.value.messagesBySession.s)).toEqual(['b', 'c']);
     expect(runtime.value.messageWindows.s).toEqual({ nextBefore: 'older-cursor', hasMore: true });
 
     await value.loadOlderMessages('s');
     runtime.flush();
     expect(getSessionMessages).toHaveBeenCalledTimes(2);
-    expect(getSessionMessages.mock.calls[1][2]).toEqual({ limit: 300, before: 'older-cursor' });
+    expect(getSessionMessages.mock.calls[1][2]).toEqual({ limit: 200, before: 'older-cursor' });
     expect(ids(runtime.value.messagesBySession.s)).toEqual(['a', 'b', 'c']);
     expect(runtime.value.messageWindows.s.hasMore).toBe(false);
   });
@@ -172,13 +172,13 @@ describe('transcript refresh policy', () => {
     await value.refreshMessages('s');
     runtime.flush();
     expect(getSessionMessages).toHaveBeenCalledTimes(1);
-    expect(getSessionMessages.mock.calls[0][2]).toEqual({ limit: 300 });
+    expect(getSessionMessages.mock.calls[0][2]).toEqual({ limit: 200 });
     expect(runtime.value.messagesBySession.s).toHaveLength(300);
 
     await value.loadOlderMessages('s');
     runtime.flush();
     expect(getSessionMessages).toHaveBeenCalledTimes(2);
-    expect(getSessionMessages.mock.calls[1][2]).toEqual({ limit: 300, before: 'cursor-300' });
+    expect(getSessionMessages.mock.calls[1][2]).toEqual({ limit: 200, before: 'cursor-300' });
     expect(runtime.value.messagesBySession.s).toHaveLength(320);
     expect(runtime.value.messagesBySession.s[0].info.id).toBe('m0');
     expect(runtime.value.messagesBySession.s.at(-1)?.info.id).toBe('m319');
@@ -196,6 +196,6 @@ describe('transcript refresh policy', () => {
     runtime.flush();
     expect(ids(runtime.value.messagesBySession.s)).toEqual(['z']);
     expect(getSessionMessages).toHaveBeenCalledTimes(1);
-    expect(getSessionMessages.mock.calls[0][2]).toEqual({ limit: 300 });
+    expect(getSessionMessages.mock.calls[0][2]).toEqual({ limit: 200 });
   });
 });

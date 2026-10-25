@@ -12,7 +12,7 @@ import {
 import { listPendingPermissions, listPendingQuestions } from '@/lib/opencode/client/interactions';
 
 export type { ResolvedProjectLocation, SessionMessagePage } from '@/lib/opencode/contracts/session-adapter';
-export { LATEST_MESSAGE_LIMIT, TRANSCRIPT_PAGE_LIMIT } from '@/lib/opencode/contracts/session-adapter';
+export { LATEST_MESSAGE_LIMIT, MAX_MESSAGE_PAGE_LIMIT, TRANSCRIPT_PAGE_LIMIT } from '@/lib/opencode/contracts/session-adapter';
 
 export function submitLegacyPrompt(client: ScopedOpencodeClient, input: PromptInput) {
   return createSessionAdapter(client).submitPrompt(input);
