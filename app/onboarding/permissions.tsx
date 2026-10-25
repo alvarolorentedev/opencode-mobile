@@ -7,7 +7,7 @@ import { useOnboardingNavigation } from '@/components/onboarding/use-onboarding-
 import { OnboardingStep } from '@/components/onboarding/onboarding-step';
 import { useNotificationSetup } from '@/components/settings/use-notification-setup';
 import { getVoiceCapabilitiesAsync, type VoiceCapabilities } from '@/lib/voice/capabilities';
-import { requestVoiceInputPermissionAsync } from '@/lib/voice/permissions';
+import { openVoiceSettingsAsync, requestVoiceInputPermissionAsync } from '@/lib/voice/permissions';
 import { usePalette } from '@/hooks/use-palette';
 
 export default function OnboardingPermissionsScreen() {
@@ -40,6 +40,8 @@ export default function OnboardingPermissionsScreen() {
 
   const notificationsGranted = Boolean(notifications.status?.permissionGranted);
   const notificationsUnsupported = notifications.status?.notificationsSupported === false;
+  const notificationsBlocked = Boolean(notifications.status && !notificationsGranted && notifications.status.canAskAgain === false);
+  const voiceBlocked = Boolean(voicePermission?.available && !voicePermission.granted && voicePermission.canAskAgain === false);
 
   return (
     <OnboardingStep
@@ -68,12 +70,23 @@ export default function OnboardingPermissionsScreen() {
         <View style={styles.cardHeader}>
           <Text variant="titleSmall" style={{ color: palette.text }}>{t('onboarding:permissions.notifications.title')}</Text>
           <Text variant="labelSmall" style={{ color: notificationsGranted ? palette.success : palette.muted }}>
-            {notificationsGranted ? t('common:labels.enabled') : t('common:labels.off')}
+            {!notifications.status
+              ? t('onboarding:permissions.checking')
+              : notificationsGranted
+                ? t('common:labels.enabled')
+                : t('common:labels.off')}
           </Text>
         </View>
         <Text variant="bodySmall" style={{ color: palette.muted }}>{t('onboarding:permissions.notifications.body')}</Text>
         {notificationsUnsupported ? (
           <HelperText type="info">{t('onboarding:permissions.notifications.unsupported')}</HelperText>
+        ) : notificationsBlocked ? (
+          <Button
+            mode="contained-tonal"
+            testID="onboarding-open-notification-settings"
+            onPress={() => void notifications.openNotificationSettings()}>
+            {t('common:actions.openSettings')}
+          </Button>
         ) : (
           <Button
             mode="contained-tonal"
@@ -99,12 +112,23 @@ export default function OnboardingPermissionsScreen() {
         <View style={styles.cardHeader}>
           <Text variant="titleSmall" style={{ color: palette.text }}>{t('onboarding:permissions.voice.title')}</Text>
           <Text variant="labelSmall" style={{ color: voicePermission?.granted ? palette.success : palette.muted }}>
-            {voicePermission?.granted ? t('common:labels.enabled') : t('common:labels.off')}
+            {!voice
+              ? t('onboarding:permissions.checking')
+              : voicePermission?.granted
+                ? t('common:labels.enabled')
+                : t('common:labels.off')}
           </Text>
         </View>
         <Text variant="bodySmall" style={{ color: palette.muted }}>{t('onboarding:permissions.voice.body')}</Text>
         {voiceUnsupported ? (
           <HelperText type="info">{t('onboarding:permissions.voice.unsupported')}</HelperText>
+        ) : voiceBlocked ? (
+          <Button
+            mode="contained-tonal"
+            testID="onboarding-open-voice-settings"
+            onPress={() => void openVoiceSettingsAsync()}>
+            {t('common:actions.openSettings')}
+          </Button>
         ) : (
           <Button
             mode="contained-tonal"
@@ -115,7 +139,7 @@ export default function OnboardingPermissionsScreen() {
             {t('onboarding:permissions.voice.enable')}
           </Button>
         )}
-        {voicePermission && voicePermission.available && !voicePermission.granted ? (
+        {voicePermission && voicePermission.available && !voicePermission.granted && voicePermission.canAskAgain ? (
           <HelperText type="info">{t('onboarding:permissions.voice.deniedHint')}</HelperText>
         ) : null}
       </View>

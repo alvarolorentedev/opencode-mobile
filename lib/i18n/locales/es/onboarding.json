@@ -48,7 +48,8 @@
       "unsupported": "Voice input is not available on this device.",
       "enable": "Enable voice input",
       "deniedHint": "You can still turn voice input on later from Settings › Voice & responses."
-    }
+    },
+    "checking": "Comprobando…"
   },
   "ready": {
     "title": "You're ready",
