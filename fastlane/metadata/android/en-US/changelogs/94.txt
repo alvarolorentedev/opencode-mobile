@@ -1,0 +1,3 @@
+- Long chats no longer cap loaded history: scrolling up keeps paging older messages so the first one stays reachable.
+- Opening a chat loads the newest history in one pass with a lighter refresh while it runs.
+- Older servers now match current features: legacy-only archive, share, summarize, worktree reset, and diagnostics surfaces were removed.
