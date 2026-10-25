@@ -642,14 +642,13 @@ reads, V2 shared listing/status, and failure retry/client isolation.
 the Vitest `record-preservation` suite covers the bounded-window merge: unchanged record and
 array references are preserved, changed records are replaced, new tail records
 are appended, and scrolled-up history is prepended without duplicates.
-the Vitest `transcript-policy` suite covers the refresh modes: a cold load fetches
-one newest page, backfills older pages until ten entries are displayable, a tail
-merge appends without dropping held records, a missing paging window is repaired
-from the newest page while held records survive, scroll-up rebuilds that window
-when it runs first, a non-overlapping burst adopts the fetched page, the
-300-record cap drops non-display records before conversation entries, and only
-`replace` discards held history. `optimistic-flows` also covers the cached
-selection that must still issue its background transcript read.
+the Vitest `transcript-policy` suite covers the refresh modes: a cold load issues
+one 300-record newest-window read, tail reconcile issues one 20-record read and
+keeps held history, a missing paging window is repaired with one read before the
+next scroll pages back, scroll-up loads history older than the initial window and
+reaches the first record, a non-overlapping burst adopts the fetched page without
+backfilling, and only `replace` discards held history. `optimistic-flows` also
+covers the cached selection that must still issue its background transcript read.
 the Vitest `transcript-visibility` suite covers the fixed detailed display
 across user, assistant, tool-only, reasoning-only and patch-only entries plus
 hidden file-mutating tools; `transcript-rows` covers

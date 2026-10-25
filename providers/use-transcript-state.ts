@@ -4,10 +4,8 @@ import {
   hasTodoWritePart,
   mergeSessionMessageWindow,
   prependSessionMessageHistory,
-  toTranscriptEntry,
   type SessionMessageRecord,
 } from '@/lib/opencode/format';
-import { isTranscriptDisplayMessage } from '@/lib/opencode/transcript';
 import { addUsageSteps, type SessionUsageStep } from '@/lib/opencode/usage';
 import type { ScopedOpencodeClient } from '@/lib/opencode/client';
 import type { TranscriptRefreshMode } from '@/providers/opencode-provider-types';
@@ -18,58 +16,18 @@ import {
   TRANSCRIPT_PAGE_LIMIT,
 } from '@/providers/services/session-service';
 
-// Hard ceiling on the in-memory transcript window. Retention keeps at least
-// DISPLAYED_MESSAGE_TARGET visible entries inside this bound.
-export const MAX_TRANSCRIPT_RECORDS = 300;
-// The initial pull must show at least this many entries in the fixed detailed
-// transcript, even when a long hidden-tool-only turn fills the newest page.
-export const DISPLAYED_MESSAGE_TARGET = 10;
-// Older pages fetched while scanning a tool-heavy tail. Larger than the scroll
-// page so the scan needs fewer round trips.
-const BACKFILL_PAGE_LIMIT = 50;
-const MAX_BACKFILL_PAGES = 4;
+// One newest-window read when a session opens (or history is rewritten).
+// Older history is fetched in full batches of the same size, one per explicit
+// scroll-to-top, so reaching the first message never triggers a page loop.
+export const INITIAL_TRANSCRIPT_LIMIT = 300;
+export const OLDER_TRANSCRIPT_LIMIT = 300;
 
 type MessageWindow = { nextBefore?: string; hasMore: boolean };
 
-function countDisplayed(records: SessionMessageRecord[]) {
-  let count = 0;
-  for (const record of records) {
-    if (isTranscriptDisplayMessage(toTranscriptEntry(record))) {
-      count += 1;
-    }
-  }
-  return count;
-}
-
-// Drop the oldest records at the hard ceiling, discarding non-display records
-// first so conversation entries survive even after a very long tool-only run.
-function boundWindow(records: SessionMessageRecord[]) {
-  let overflow = records.length - MAX_TRANSCRIPT_RECORDS;
-  if (overflow <= 0) {
-    return records;
-  }
-
-  const remove = new Set<number>();
-  for (let index = 0; index < records.length && overflow > 0; index += 1) {
-    if (!isTranscriptDisplayMessage(toTranscriptEntry(records[index]))) {
-      remove.add(index);
-      overflow -= 1;
-    }
-  }
-  for (let index = 0; index < records.length && overflow > 0; index += 1) {
-    if (!remove.has(index)) {
-      remove.add(index);
-      overflow -= 1;
-    }
-  }
-
-  return records.filter((_record, index) => !remove.has(index));
-}
-
-// Owns the paginated transcript window for every session: the loaded messages
-// are held by the provider, while this hook owns the pagination cursors, and
-// accumulates completed model calls and V2 plan records so a bounded window
-// retains observed call usage and todos without requiring unbounded history reads.
+// Owns the paginated transcript for every session: the loaded messages are held
+// by the provider, while this hook owns the pagination cursors, and accumulates
+// completed model calls and V2 plan records so usage and todos survive paging
+// without requiring a full-history read.
 export function useTranscriptState({
   client,
   isCurrentClient,
@@ -165,103 +123,6 @@ export function useTranscriptState({
     }, () => isCurrentClient(client) && currentSessionId === requestedSession);
   }, [activeProjectPath, client, connectionScope, currentSessionId, isCurrentClient, recordUsageAndTodos, setMessagesBySession]);
 
-  // A cold window starts from the newest page and pages backward until the
-  // display target is met. Normal sessions stop after the first page.
-  const loadDisplayedWindow = useCallback(
-    async (sessionId: string, first: { records: SessionMessageRecord[]; nextBefore?: string; hasMore: boolean }) => {
-      let records = first.records;
-      let nextBefore = first.nextBefore;
-      let hasMore = first.hasMore;
-      let displayed = countDisplayed(records);
-      let pages = 0;
-
-      while (displayed < DISPLAYED_MESSAGE_TARGET && hasMore && pages < MAX_BACKFILL_PAGES) {
-        const older = await svcGetSessionMessages(client, sessionId, { limit: BACKFILL_PAGE_LIMIT, before: nextBefore });
-        if (!isCurrentClient(client)) {
-          return undefined;
-        }
-        pages += 1;
-        if (older.records.length === 0) {
-          hasMore = false;
-          break;
-        }
-        records = [...older.records, ...records];
-        displayed += countDisplayed(older.records);
-        nextBefore = older.nextBefore;
-        hasMore = older.hasMore;
-        if (!older.nextBefore) break;
-      }
-
-      return { records: boundWindow(records), nextBefore, hasMore };
-    },
-    [client, isCurrentClient],
-  );
-
-  // Backfill an already-held window (verbosity changes can hide entries that
-  // were counted before).
-  const backfillDisplayed = useCallback(
-    async (sessionId: string) => {
-      const held = messagesBySessionRef.current[sessionId] ?? [];
-      const meta = messageWindowsRef.current[sessionId];
-      if (held.length === 0 || !meta?.hasMore) {
-        return;
-      }
-
-      let displayed = countDisplayed(held);
-      if (displayed >= DISPLAYED_MESSAGE_TARGET) {
-        return;
-      }
-
-      let nextBefore = meta.nextBefore;
-      let hasMore: boolean = meta.hasMore;
-      let pages = 0;
-      const fetched: SessionMessageRecord[][] = [];
-      while (displayed < DISPLAYED_MESSAGE_TARGET && hasMore && pages < MAX_BACKFILL_PAGES) {
-        const older = await svcGetSessionMessages(client, sessionId, { limit: BACKFILL_PAGE_LIMIT, before: nextBefore });
-        if (!isCurrentClient(client)) {
-          return;
-        }
-        pages += 1;
-        if (older.records.length === 0) {
-          hasMore = false;
-          break;
-        }
-        fetched.unshift(older.records);
-        displayed += countDisplayed(older.records);
-        nextBefore = older.nextBefore;
-        hasMore = older.hasMore;
-        if (!older.nextBefore) break;
-      }
-
-      if (fetched.length === 0) {
-        return;
-      }
-
-      const flat = fetched.flat();
-      setMessagesBySession((current) => {
-        const previous = current[sessionId] ?? held;
-        const prepended = prependSessionMessageHistory(previous, flat);
-        if (prepended === previous) {
-          return current;
-        }
-        return { ...current, [sessionId]: prepended };
-      });
-      setMessageWindows((current) => ({
-        ...current,
-        [sessionId]: { nextBefore, hasMore },
-      }));
-      recordUsageAndTodos(sessionId, flat);
-    },
-    [client, isCurrentClient, recordUsageAndTodos, setMessagesBySession],
-  );
-
-  useEffect(() => {
-    if (!currentSessionId) {
-      return;
-    }
-    void backfillDisplayed(currentSessionId).catch(() => undefined);
-  }, [backfillDisplayed, currentSessionId]);
-
   const beginHydration = useCallback((sessionId: string) => {
     const request = (hydrationRequestRef.current[sessionId] ?? 0) + 1;
     hydrationRequestRef.current[sessionId] = request;
@@ -297,30 +158,29 @@ export function useTranscriptState({
         // newest page into what we have. A requested mode overrides the default.
         const mode: TranscriptRefreshMode = options?.mode ?? (held.length === 0 ? 'initial' : 'tail');
 
-        // initial, replace, and a cold tail all fetch exactly one newest page.
-        // History only grows through loadOlderMessages on an explicit scroll.
-        const page = await svcGetSessionMessages(client, sessionId, { limit: TRANSCRIPT_PAGE_LIMIT });
-        if (!isCurrentClient(client)) {
+        // Opening or rewriting history is one bounded newest-window read. It
+        // never pages backward; older history arrives through loadOlderMessages
+        // only when the user scrolls to the top.
+        if (mode !== 'tail' || held.length === 0) {
+          const page = await svcGetSessionMessages(client, sessionId, { limit: INITIAL_TRANSCRIPT_LIMIT });
+          if (!isCurrentClient(client)) {
+            return page.records;
+          }
+          setMessagesBySession((current) => ({ ...current, [sessionId]: page.records }));
+          setMessageWindows((current) => ({
+            ...current,
+            [sessionId]: { nextBefore: page.nextBefore, hasMore: page.hasMore },
+          }));
+          recordUsageAndTodos(sessionId, page.records);
+          persist(sessionId, page.records);
           return page.records;
         }
 
-        // initial and replace adopt a fresh window. Only replace discards a held
-        // window on purpose (compaction/revert); an explicit initial on an
-        // already-held window is treated the same. A fresh window backfills to
-        // the displayed target so a tool-heavy tail cannot leave it blank.
-        if (mode !== 'tail' || held.length === 0) {
-          const loaded = await loadDisplayedWindow(sessionId, page);
-          if (!loaded) {
-            return page.records;
-          }
-          setMessagesBySession((current) => ({ ...current, [sessionId]: loaded.records }));
-          setMessageWindows((current) => ({
-            ...current,
-            [sessionId]: { nextBefore: loaded.nextBefore, hasMore: loaded.hasMore },
-          }));
-          recordUsageAndTodos(sessionId, loaded.records);
-          persist(sessionId, loaded.records);
-          return loaded.records;
+        // Reconcile is one newest-page read. It must never scan or refresh the
+        // whole transcript, and it must never trim records already loaded above.
+        const page = await svcGetSessionMessages(client, sessionId, { limit: TRANSCRIPT_PAGE_LIMIT });
+        if (!isCurrentClient(client)) {
+          return page.records;
         }
 
         if (page.records.length === 0) {
@@ -336,33 +196,27 @@ export function useTranscriptState({
 
         const knownIds = new Set(held.map((record) => record.info.id));
         if (!page.records.some((record) => knownIds.has(record.info.id))) {
-          // A burst larger than one page landed; adopt the contiguous newest
-          // page (backfilled to the displayed target) and restart history
-          // paging from its oldest record instead of downloading bridging pages.
-          const loaded = await loadDisplayedWindow(sessionId, page);
-          if (!loaded) {
-            return page.records;
-          }
-          setMessagesBySession((current) => ({ ...current, [sessionId]: loaded.records }));
+          // A burst larger than one page landed. Adopt the fetched page and
+          // restart history paging from its oldest record instead of
+          // downloading bridging pages.
+          setMessagesBySession((current) => ({ ...current, [sessionId]: page.records }));
           setMessageWindows((current) => ({
             ...current,
-            [sessionId]: { nextBefore: loaded.nextBefore, hasMore: loaded.hasMore },
+            [sessionId]: { nextBefore: page.nextBefore, hasMore: page.hasMore },
           }));
-          recordUsageAndTodos(sessionId, loaded.records);
-          persist(sessionId, loaded.records);
-          return loaded.records;
+          recordUsageAndTodos(sessionId, page.records);
+          persist(sessionId, page.records);
+          return page.records;
         }
 
         const merged = mergeSessionMessageWindow(held, page.records);
-        const bounded = boundWindow(merged);
         setMessagesBySession((current) => {
           const previous = current[sessionId] ?? held;
           const next = mergeSessionMessageWindow(previous, page.records);
-          const boundedNext = boundWindow(next);
-          if (boundedNext === previous) {
+          if (next === previous) {
             return current;
           }
-          return { ...current, [sessionId]: boundedNext };
+          return { ...current, [sessionId]: next };
         });
         if (windowMissing) {
           // The newest page overlaps the held records, so it is contiguous with
@@ -375,7 +229,7 @@ export function useTranscriptState({
           ));
         }
         recordUsageAndTodos(sessionId, page.records);
-        persist(sessionId, bounded);
+        persist(sessionId, merged);
         return page.records;
       } finally {
         if (!silent) {
@@ -384,31 +238,31 @@ export function useTranscriptState({
         finishHydration?.();
       }
     },
-    [beginHydration, client, isCurrentClient, loadDisplayedWindow, persist, recordUsageAndTodos, setIsRefreshingMessages, setMessagesBySession],
+    [beginHydration, client, isCurrentClient, persist, recordUsageAndTodos, setIsRefreshingMessages, setMessagesBySession],
   );
 
   const loadOlderMessages = useCallback(
     async (sessionId: string) => {
       const held = messagesBySessionRef.current[sessionId] ?? [];
-      if (loadingOlderBySessionRef.current[sessionId] || held.length >= MAX_TRANSCRIPT_RECORDS) {
+      if (loadingOlderBySessionRef.current[sessionId]) {
         return;
       }
 
       setLoadingOlderBySession((current) => ({ ...current, [sessionId]: true }));
       try {
-        let meta = messageWindowsRef.current[sessionId];
+        const meta = messageWindowsRef.current[sessionId];
         if (!meta) {
           // No cursor can be trusted for this window (for example records
-          // restored from cache before the first network read). Rebuild the
-          // newest window once; the next scroll pages from the refreshed
-          // cursor. Continue immediately when the render already published it.
+          // restored from cache before the first network read). Repair the
+          // newest window once and return; the next scroll pages from the
+          // refreshed cursor. One explicit scroll never chains two reads.
           await refreshMessages(sessionId, true, { mode: 'initial' });
-          meta = messageWindowsRef.current[sessionId];
-        }
-        if (!meta?.hasMore) {
           return;
         }
-        const page = await svcGetSessionMessages(client, sessionId, { limit: TRANSCRIPT_PAGE_LIMIT, before: meta.nextBefore });
+        if (!meta.hasMore || !meta.nextBefore) {
+          return;
+        }
+        const page = await svcGetSessionMessages(client, sessionId, { limit: OLDER_TRANSCRIPT_LIMIT, before: meta.nextBefore });
         if (!isCurrentClient(client)) {
           return;
         }

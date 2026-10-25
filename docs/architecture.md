@@ -308,11 +308,12 @@ The completion version, preference schema and first-run migration are unchanged.
   capped at four, subagent filtering). The Chat Library de-duplicates
   these IDs out of the current-project Chat list.
 - `providers/use-transcript-state.ts`
-  Paginated transcript window state machine: newest-page load on open, scroll-up
-  history paging, single-page bounded-window tail merge, cursor repair for
-  cached or retained records that have no paging window, and accumulation of
-  session usage steps and V2 `todowrite` records so a bounded window keeps exact
-  totals. Only compaction/revert rewrites replace the window.
+  Paginated transcript state machine: one newest 300-record window on open,
+  scroll-up history paging in 300-record batches without a cap, a single newest
+  20-record tail merge, cursor repair for cached or retained records that have
+  no paging window, and accumulation of session usage steps and V2 `todowrite`
+  records so exact totals survive paging. Only compaction/revert rewrites
+  replace the window.
 
 MCP and worktree callback bridges use stable callbacks backed by the provider's
 latest refs. Conversation submission similarly uses the latest send action

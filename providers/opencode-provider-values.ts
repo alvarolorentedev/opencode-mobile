@@ -13,7 +13,6 @@ import {
 } from '@/providers/opencode-provider-selectors';
 import { collectDescendantSessionIds } from '@/providers/opencode-provider-utils';
 import { TRANSCRIPT_PAGE_LIMIT } from '@/providers/services/session-service';
-import { MAX_TRANSCRIPT_RECORDS } from '@/providers/use-transcript-state';
 import type {
   ApprovalsContextValue,
   CapabilitiesContextValue,
@@ -257,8 +256,8 @@ export function useOpencodeProviderValues(input: ProviderValuesInput) {
   );
   const currentUsage = useMemo(
     () => getSessionUsage(activeSession, aggregateUsageSteps(usageStepsBySession[currentSessionId ?? ''] ?? [], usagePricingByModel),
-      !!currentSessionId && !!messageWindows[currentSessionId] && !messageWindows[currentSessionId].hasMore && currentMessages.length < MAX_TRANSCRIPT_RECORDS),
-    [activeSession, currentMessages.length, currentSessionId, messageWindows, usageStepsBySession, usagePricingByModel],
+      !!currentSessionId && !!messageWindows[currentSessionId] && !messageWindows[currentSessionId].hasMore),
+    [activeSession, currentSessionId, messageWindows, usageStepsBySession, usagePricingByModel],
   );
   const latestAssistantTurnUsage = useMemo(
     () => getLatestAssistantTurnUsage(currentMessages, usagePricingByModel),

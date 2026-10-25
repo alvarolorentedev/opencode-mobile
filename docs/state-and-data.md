@@ -84,7 +84,7 @@ Diff scope state:
 Important behavior:
 
 - data is fetched lazily when a session is opened or refreshed
-- the transcript window is paginated (newest 20 on open, older 20 per scroll-up, bounded at 300 with a 10-entry display target); see Message And Transcript Transformation
+- the transcript window is paginated (one newest window of up to 300 on open, older 300-record batches per scroll-up); see Message And Transcript Transformation
 - message/diff/todo caches are updated by explicit refreshes, SSE events, and polling fallback
 - an incoming `session.diff` event only overwrites the turn diff when the surface is not pinned to an earlier turn
 - on V2 the server has no todo endpoint, so `currentTodos` derives from the accumulated `todowrite` tool records (`deriveTodosFromMessages`), not just the loaded window; V1 stays server-authoritative
@@ -516,8 +516,8 @@ provider reports observed usage from loaded history and labels incomplete totals
 A per-session map keyed by stable step ID (`session:message:part`) retains fetched
 calls as the transcript window moves, without counting replayed calls twice.
 Model/provider breakdowns and call counts describe observed history, and are
-marked partial when the contiguous loaded window has not reached its beginning
-or has hit the 300-record cap. The app never fetches all history just for usage.
+marked partial until the loaded window has reached the beginning of the session.
+The app never fetches all history just for usage.
 Observed step cost uses model-price USD estimates only when recorded cost is
 zero/absent and tokens are nonzero; an authoritative session cost of zero remains
 zero.
@@ -591,30 +591,30 @@ Derived from phase plus latest non-display transcript activity.
 
 ## Message And Transcript Transformation
 
-Session history is paginated. Opening a session loads the newest 20 raw records;
-if that page shows fewer than 10 entries in the fixed detailed transcript, it
-pages backward in 50-record steps (at most four extra pages) until the target is
-met, then stores the oldest cursor. Scrolling to the top pulls the previous 20 through
-the server's backward cursor. The loaded window is capped at 300 records; on
-overflow, non-display records are dropped from the oldest end first so the
-conversation entries survive a long tool-only turn. Tail activity (SSE
-part/message updates, the safety poll, idle completion) fetches exactly one newest
-page and union-merges new records into the window, so older loaded records are
-never re-downloaded. When a burst is larger than one page and the newest page no
-longer overlaps the held window, the fetched page is adopted (backfilled to the
-display target) and history paging restarts from its oldest record instead of
-downloading bridging pages. Held records can exist without a stored cursor when
-the transcript cache hydrates before the first network read, or when a window
-reset leaves a retained transcript in place. A tail refresh then keeps those
-records and stores the newest page's cursor; if scroll-up runs before any
-refresh, paging rebuilds the newest window once and then pages back. This keeps
-older history reachable instead of leaving `hasOlder` false. Only server-side
-history rewrites rebuild the window instead of merging: compaction,
-revert/unrevert, and (on V1) explicit message removal. Reconnects and foreground
-returns tail-merge. Pruning retains the
-current session plus up to three recently viewed sessions (still bounded by the
-300-record cap per session) so switching back to a recent chat paints from
-memory before the background read settles.
+Session history is paginated. Opening a session makes one newest-window read of
+up to 300 raw records and stores the backward cursor; there is no display-target
+backfill loop. Scrolling to the top pulls one older 300-record batch through the
+server's backward cursor and prepends it. A single scroll trigger never chains
+additional reads. The loaded window is not capped: records the user has paged
+through stay in memory so the first message remains reachable and scrolling back
+down needs no forward re-fetch. Tail activity (SSE part/message updates, the
+safety poll, idle completion) fetches exactly one newest page of 20 records and
+union-merges it, so reconcile is bounded and older loaded records are never
+re-downloaded or trimmed. When a burst is larger than one page and the newest
+page no longer overlaps the held window, the fetched page is adopted and history
+paging restarts from its oldest record instead of downloading bridging pages.
+Held records can exist without a stored cursor when the transcript cache hydrates
+before the first network read, or when a window reset leaves a retained transcript
+in place. A tail refresh then keeps those records and stores the newest page's
+cursor; if scroll-up runs first, it repairs the newest window once and returns,
+and the next scroll pages back. This keeps older history reachable instead of
+leaving `hasOlder` false. Only server-side history rewrites rebuild the window
+instead of merging: compaction, revert/unrevert, and (on V1) explicit message
+removal. A rebuild is one newest-window read of up to 300 records, never a scan.
+Reconnects and foreground returns tail-merge. The persisted transcript cache stays
+tail-bounded, while retention keeps the current session plus up to three recently
+viewed sessions in memory so switching back paints before the background read
+settles.
 
 The transcript always renders the detailed native timeline: user and assistant
 text/files/errors plus reasoning, tool, and patch activity. There is no

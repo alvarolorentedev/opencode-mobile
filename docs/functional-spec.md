@@ -141,7 +141,7 @@ The Chat screen shows:
 Behavior details:
 
 - the transcript always renders the detailed timeline: user and assistant text, files, and errors plus reasoning, tool, and patch activity; there is no configurable detail level
-- reasoning, tool, and patch rows render as a two-level activity timeline outside message bubbles and match the assistant bubble's width; contiguous activity merges into one growing run whose `Used <total> <types>` header lists every rendered type once, including `Thought`, a running run opens automatically, and each child expands independently; shell output is a selectable, copyable code block, grep stays a one-line pattern with its match count, consecutive reads collapse to one filename list, and edit/write/patch files render expandable diff cards with `+N −N`; the initial pull backfills until at least 10 entries are displayable in the fixed detailed transcript
+- reasoning, tool, and patch rows render as a two-level activity timeline outside message bubbles and match the assistant bubble's width; contiguous activity merges into one growing run whose `Used <total> <types>` header lists every rendered type once, including `Thought`, a running run opens automatically, and each child expands independently; shell output is a selectable, copyable code block, grep stays a one-line pattern with its match count, consecutive reads collapse to one filename list, and edit/write/patch files render expandable diff cards with `+N −N`; the initial pull loads one newest window of up to 300 records without a display-target loop
 - no separate `OpenCode is ...` running footer is reserved; while the session runs, the newest activity header keeps the progress circle even after its own tools complete, and the active child row carries it only while that row is running
 - a small floating progress view shows the current step and completed count; tapping it opens a content-sized overlay with the task list; pending permission actions replace it while blocked
 - a pending question opens a full-screen answer flow immediately; dismissal leaves an `Answer needed` card above the composer and does not reject the request
@@ -249,8 +249,9 @@ Overlay sheets also dismiss on a downward drag of their header (the grabber/titl
 
 ## Transcript Behavior
 
-- transcript is paginated from the bottom using a fixed page size
-- scrolling to the top loads older transcript entries through the server cursor
+- opening a session loads one newest window of up to 300 records
+- scrolling to the top loads one older 300-record batch through the server cursor; loaded history is not capped
+- tail reconcile fetches at most the newest 20 records and never scans or refreshes the whole transcript
 - automatic scroll-to-end happens for new content unless the view is currently paginating older items
 - long-pressing a message copies its text/error content
 - assistant messages can be played with TTS if they contain readable text

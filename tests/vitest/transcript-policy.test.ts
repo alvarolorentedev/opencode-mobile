@@ -22,14 +22,6 @@ const textRecord = (id: string, text = 'Hello'): Message => ({
   info: info(id),
   parts: [{ id: `${id}-text`, sessionID: 's', messageID: id, type: 'text' as const, text }],
 });
-const reasoningRecord = (id: string): Message => ({
-  info: info(id),
-  parts: [{ id: `${id}-reasoning`, sessionID: 's', messageID: id, type: 'reasoning' as const, text: 'thinking' }],
-});
-const hiddenToolRecord = (id: string): Message => ({
-  info: info(id),
-  parts: [{ id: `${id}-edit`, sessionID: 's', messageID: id, type: 'tool' as const, callID: id, tool: 'edit', state: { status: 'completed' as const, input: {}, title: 'edit', output: '' } }],
-});
 
 const page = (records: Message[], hasMore = false, nextBefore = hasMore ? 'cursor' : undefined) => ({ records, hasMore, nextBefore });
 
@@ -69,48 +61,38 @@ async function mountTranscript(
 const ids = (records: Message[]) => records.map((item) => item.info.id);
 
 describe('transcript refresh policy', () => {
-  it('cold load downloads one newest page when it already fills the display target', async () => {
-    const getSessionMessages = vi.fn(async () => page([textRecord('a'), textRecord('b')]));
+  it('cold load downloads one newest window with a single read', async () => {
+    const getSessionMessages = vi.fn(async (_client: unknown, _id: string, _options?: { before?: string }) => page([textRecord('a'), textRecord('b')]));
     const { runtime, value } = await mountTranscript({}, getSessionMessages);
     await value.refreshMessages('s');
     runtime.flush();
     expect(ids(runtime.value.messagesBySession.s)).toEqual(['a', 'b']);
     expect(getSessionMessages).toHaveBeenCalledTimes(1);
-  });
-
-  it('backfills older pages until ten displayable entries are loaded', async () => {
-    const getSessionMessages = vi.fn(async (_client, _id, options: { before?: string }) => {
-      if (!options.before) {
-        return page(Array.from({ length: 20 }, (_value, index) => hiddenToolRecord(`h${index}`)), true, 'c1');
-      }
-      return page(Array.from({ length: 10 }, (_value, index) => textRecord(`d${index}`)), false);
-    });
-    const { runtime, value } = await mountTranscript({}, getSessionMessages);
-    await value.refreshMessages('s');
-    runtime.flush();
-    expect(getSessionMessages).toHaveBeenCalledTimes(2);
-    expect(getSessionMessages.mock.calls[1][2]).toEqual({ limit: 50, before: 'c1' });
-    expect(ids(runtime.value.messagesBySession.s).slice(0, 10)).toEqual(Array.from({ length: 10 }, (_value, index) => `d${index}`));
-    expect(runtime.value.messagesBySession.s).toHaveLength(30);
-  });
-
-  it('counts reasoning rows toward the display target without an extra backfill', async () => {
-    const getSessionMessages = vi.fn(async () => page(Array.from({ length: 20 }, (_value, index) => reasoningRecord(`r${index}`))));
-    const { runtime, value } = await mountTranscript({}, getSessionMessages);
-    await value.refreshMessages('s');
-    runtime.flush();
-    expect(getSessionMessages).toHaveBeenCalledTimes(1);
-    expect(ids(runtime.value.messagesBySession.s).slice(0, 10)).toEqual(Array.from({ length: 10 }, (_value, index) => `r${index}`));
+    expect(getSessionMessages.mock.calls[0][2]).toEqual({ limit: 300 });
   });
 
   it('tail merge appends new records without dropping the held window', async () => {
-    const getSessionMessages = vi.fn(async () => page([toolRecord('b'), toolRecord('c')]));
+    const getSessionMessages = vi.fn(async (_client: unknown, _id: string, _options?: { before?: string }) => page([toolRecord('b'), toolRecord('c')]));
     const { runtime, value } = await mountTranscript({ s: [toolRecord('a'), toolRecord('b')] }, getSessionMessages);
     await value.refreshMessages('s');
     runtime.flush();
     expect(ids(runtime.value.messagesBySession.s)).toEqual(['a', 'b', 'c']);
-    // No backward bridging: a tail sync is a single fetch.
+    // Reconcile is a single newest-page fetch, never a backfill scan.
     expect(getSessionMessages).toHaveBeenCalledTimes(1);
+    expect(getSessionMessages.mock.calls[0][2]).toEqual({ limit: 20 });
+  });
+
+  it('tail merge keeps older loaded history beyond the initial window', async () => {
+    const held = Array.from({ length: 300 }, (_value, index) => textRecord(`h${index}`));
+    const getSessionMessages = vi.fn(async (_client: unknown, _id: string, _options?: { before?: string }) => page([textRecord('h299'), textRecord('new')]));
+    const { runtime, value } = await mountTranscript({ s: held }, getSessionMessages);
+    await value.refreshMessages('s');
+    runtime.flush();
+    expect(runtime.value.messagesBySession.s).toHaveLength(301);
+    expect(runtime.value.messagesBySession.s[0].info.id).toBe('h0');
+    expect(runtime.value.messagesBySession.s.at(-1)?.info.id).toBe('new');
+    expect(getSessionMessages).toHaveBeenCalledTimes(1);
+    expect(getSessionMessages.mock.calls[0][2]).toEqual({ limit: 20 });
   });
 
   it('repairs a missing paging window for held records before paging back', async () => {
@@ -129,12 +111,13 @@ describe('transcript refresh policy', () => {
 
     await value.loadOlderMessages('s');
     runtime.flush();
-    expect(getSessionMessages.mock.calls[1][2]).toEqual({ limit: 20, before: 'older-cursor' });
+    expect(getSessionMessages.mock.calls[0][2]).toEqual({ limit: 20 });
+    expect(getSessionMessages.mock.calls[1][2]).toEqual({ limit: 300, before: 'older-cursor' });
     expect(ids(runtime.value.messagesBySession.s)).toEqual(['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k']);
     expect(runtime.value.messageWindows.s.hasMore).toBe(false);
   });
 
-  it('rebuilds a missing window when scroll-up runs before any refresh', async () => {
+  it('repairs a missing window with one read, then pages on the next scroll', async () => {
     const getSessionMessages = vi.fn(async (_client, _id, options: { before?: string }) => {
       if (!options.before) {
         return page([textRecord('b'), textRecord('c')], true, 'older-cursor');
@@ -144,11 +127,16 @@ describe('transcript refresh policy', () => {
     const { runtime, value } = await mountTranscript({ s: [textRecord('c')] }, getSessionMessages);
     await value.loadOlderMessages('s');
     runtime.flush();
-    // The fallback rebuilds the newest window; its display-target backfill
-    // pulls the older page in the same pass.
+    // The repair is one newest-window read; it does not chain an older page.
+    expect(getSessionMessages).toHaveBeenCalledTimes(1);
+    expect(getSessionMessages.mock.calls[0][2]).toEqual({ limit: 300 });
+    expect(ids(runtime.value.messagesBySession.s)).toEqual(['b', 'c']);
+    expect(runtime.value.messageWindows.s).toEqual({ nextBefore: 'older-cursor', hasMore: true });
+
+    await value.loadOlderMessages('s');
+    runtime.flush();
     expect(getSessionMessages).toHaveBeenCalledTimes(2);
-    expect(getSessionMessages.mock.calls[0][2]).toEqual({ limit: 20 });
-    expect(getSessionMessages.mock.calls[1][2]).toEqual({ limit: 50, before: 'older-cursor' });
+    expect(getSessionMessages.mock.calls[1][2]).toEqual({ limit: 300, before: 'older-cursor' });
     expect(ids(runtime.value.messagesBySession.s)).toEqual(['a', 'b', 'c']);
     expect(runtime.value.messageWindows.s.hasMore).toBe(false);
   });
@@ -163,33 +151,51 @@ describe('transcript refresh policy', () => {
   });
 
   it('adopts the fetched page when a burst does not overlap the held window', async () => {
-    const getSessionMessages = vi.fn(async () => page([textRecord('x'), textRecord('y')]));
+    const getSessionMessages = vi.fn(async (_client: unknown, _id: string, _options?: { before?: string }) => page([textRecord('x'), textRecord('y')]));
     const { runtime, value } = await mountTranscript({ s: [toolRecord('a'), toolRecord('b')] }, getSessionMessages);
     await value.refreshMessages('s');
     runtime.flush();
     expect(ids(runtime.value.messagesBySession.s)).toEqual(['x', 'y']);
     expect(getSessionMessages).toHaveBeenCalledTimes(1);
+    expect(getSessionMessages.mock.calls[0][2]).toEqual({ limit: 20 });
   });
 
-  it('drops the oldest records at the hard ceiling when all records are displayable', async () => {
-    const displayed = Array.from({ length: 10 }, (_value, index) => textRecord(`d${index}`));
-    const tools = Array.from({ length: 290 }, (_value, index) => toolRecord(`t${index}`));
-    const held = [...displayed, ...tools];
-    const getSessionMessages = vi.fn(async () => page([toolRecord('t289'), toolRecord('t290')]));
-    const { runtime, value } = await mountTranscript({ s: held }, getSessionMessages);
+  it('loads history older than the initial window and reaches the first record', async () => {
+    const history = Array.from({ length: 320 }, (_value, index) => textRecord(`m${index}`));
+    const getSessionMessages = vi.fn(async (_client, _id, options: { before?: string }) => {
+      if (!options.before) {
+        return page(history.slice(20), true, 'cursor-300');
+      }
+      return page(history.slice(0, 20), false);
+    });
+    const { runtime, value } = await mountTranscript({}, getSessionMessages);
     await value.refreshMessages('s');
     runtime.flush();
-    const result = runtime.value.messagesBySession.s;
-    expect(result).toHaveLength(300);
-    expect(ids(result).slice(0, 10)).toEqual(['d1', 'd2', 'd3', 'd4', 'd5', 'd6', 'd7', 'd8', 'd9', 't0']);
-    expect(ids(result).at(-1)).toBe('t290');
+    expect(getSessionMessages).toHaveBeenCalledTimes(1);
+    expect(getSessionMessages.mock.calls[0][2]).toEqual({ limit: 300 });
+    expect(runtime.value.messagesBySession.s).toHaveLength(300);
+
+    await value.loadOlderMessages('s');
+    runtime.flush();
+    expect(getSessionMessages).toHaveBeenCalledTimes(2);
+    expect(getSessionMessages.mock.calls[1][2]).toEqual({ limit: 300, before: 'cursor-300' });
+    expect(runtime.value.messagesBySession.s).toHaveLength(320);
+    expect(runtime.value.messagesBySession.s[0].info.id).toBe('m0');
+    expect(runtime.value.messagesBySession.s.at(-1)?.info.id).toBe('m319');
+    expect(runtime.value.messageWindows.s.hasMore).toBe(false);
+
+    await value.loadOlderMessages('s');
+    runtime.flush();
+    expect(getSessionMessages).toHaveBeenCalledTimes(2);
   });
 
   it('replace discards the held window for a server-side rewrite', async () => {
-    const getSessionMessages = vi.fn(async () => page([textRecord('z')]));
+    const getSessionMessages = vi.fn(async (_client: unknown, _id: string, _options?: { before?: string }) => page([textRecord('z')]));
     const { runtime, value } = await mountTranscript({ s: [toolRecord('a'), toolRecord('b')] }, getSessionMessages);
     await value.refreshMessages('s', true, { mode: 'replace' });
     runtime.flush();
     expect(ids(runtime.value.messagesBySession.s)).toEqual(['z']);
+    expect(getSessionMessages).toHaveBeenCalledTimes(1);
+    expect(getSessionMessages.mock.calls[0][2]).toEqual({ limit: 300 });
   });
 });
