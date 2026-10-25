@@ -315,6 +315,11 @@ The completion version, preference schema and first-run migration are unchanged.
   that have no paging window, and accumulation of session usage steps and V2
   `todowrite` records so exact totals survive paging. Only compaction/revert
   rewrites replace the window.
+- `providers/use-transcript-read-errors.ts`
+  Client-tagged, session-scoped record of cold transcript read failures. It
+  wraps the transcript read before the prompt inbox, clears on a successful
+  read, ignores silent background failures, and hides old-client errors after a
+  reconnect so a failed read cannot be mistaken for an empty session.
 
 MCP and worktree callback bridges use stable callbacks backed by the provider's
 latest refs. Conversation submission similarly uses the latest send action

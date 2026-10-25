@@ -31,6 +31,7 @@ Behavior:
 - reconnecting re-runs project discovery, session fetch, and capability discovery
 - connection status can be `idle`, `connecting`, `connected`, or `error`
 - connection state includes a human-readable message shown in the UI
+- when Chat opens without a connected server, it shows the connection message with `Open settings`, or `Reconnect` plus `Connection settings` after a failure; a connected server without a project opens the shared project picker from the same panel instead of a dead-end instruction
 
 ### 2. Pick a Project
 
@@ -196,6 +197,7 @@ Session list behavior:
 - project-scoped row actions (rename, delete) are offered only for sessions in the active project, where the scoped client can act on them; other-project rows offer open and favorite
 - each session row shows title, preview/subtitle, and status
 - active session rows are visually emphasized
+- rename opens a focused editor with Save, Cancel, keyboard submit, and trimmed non-empty validation; Save is disabled while the rename is in flight
 - the `Hide subagent chats` switch sits beside the Active filter in the library
 
 Additional session actions are available in Chat:
@@ -227,7 +229,7 @@ The Projects tab can list, create, and remove worktrees. Creation accepts an opt
 
 ### 11. Use The Terminal Tab
 
-The fourth tab uses a content-sized terminal selector overlay. The plus action creates a PTY with the server default shell (which falls back to bash on the fake server); tapping a row opens it, and swiping left reveals its Close action. Rows show a short terminal ID to distinguish terminals with the same title and command. Users type directly into xterm; each committed input is sent immediately. The remote shell handles history, completion, editing, and Enter.
+The fourth tab uses a content-sized terminal selector overlay. The plus action creates a PTY with the server default shell (which falls back to bash on the fake server); tapping a row opens it, and swiping left reveals its Close action. Rows show a short terminal ID to distinguish terminals with the same title and command, mark the active terminal, and show an inline spinner while another row is opening. The close confirmation repeats the terminal identity (title and short ID) with its server and project. Copying a selection confirms with a snackbar. Users type directly into xterm; each committed input is sent immediately. The remote shell handles history, completion, editing, and Enter.
 
 The provider requests a short-lived PTY connect ticket and opens a project-scoped `ws:`/`wss:` connection. The UI uses xterm for ANSI/VT cursor behavior, alternate-screen programs, and 10,000-line scrollback. A system-keyboard accessory provides Esc, Tab, sticky modifiers, arrows, and an expandable function/navigation/paste row. Opened displays survive tab and terminal switches; reconnect uses acknowledged cursors and fresh tickets.
 
@@ -241,6 +243,8 @@ When a session has no display transcript yet, the user sees:
 - descriptive copy about specific prompts
 - tappable starter prompts that immediately send predefined text
 
+Starter prompts appear only after a successful empty transcript read. A failed cold read instead shows a `Could not load this chat` card with the server message and a retry action.
+
 ## Overlay and Back Navigation
 
 Overlays are dismissible with the platform back action. On Android, pressing the hardware back button while an overlay is open dismisses that overlay and keeps the current screen in place; a second back press then performs the underlying navigation. Overlay sheets (chat library, session usage, project and terminal pickers) share this behavior through `OverlaySheet`, and the conversation-mode overlay stops the mode on back. Native modal surfaces (dialogs, model picker, file details, select pickers) follow the same dismiss-first rule through their own back handling.
@@ -253,6 +257,7 @@ Overlay sheets also dismiss on a downward drag of their header (the grabber/titl
 - scrolling to the top loads one older 200-record batch through the server cursor; loaded history is not capped
 - tail reconcile fetches at most the newest 20 records and never scans or refreshes the whole transcript
 - automatic scroll-to-end happens for new content unless the view is currently paginating older items
+- when the user is away from the tail, a floating `Jump to latest` control appears and changes to `New messages` when rows arrive; tapping it restores tail-follow mode
 - long-pressing a message copies its text/error content
 - assistant messages can be played with TTS if they contain readable text
 
@@ -623,9 +628,13 @@ Share menu. Preview defaults to the current conversation; Change lets you pick
 another conversation on the active server or New chat in the current project.
 Add opens the exact destination and seeds a reviewable composer draft, preserving
 existing text/attachments. Only Send submits. Errors retain the payload; Discard
-and the ten-minute TTL clear it. Up to ten items and 10 MB per file; rejected
-items remain visible as warnings, and selected-model capability checks apply.
-iOS receive parity remains deferred.
+and the ten-minute TTL clear it. An expired payload explains that it expired
+instead of claiming there was nothing to share, and the header close action
+leaves the staged payload intact while the explicit Discard action clears it.
+The conversation picker shows loading, empty, selected, and retry states and
+keeps New chat available for the current project. Up to ten items and 10 MB per
+file; rejected items remain visible as warnings, and selected-model capability
+checks apply. iOS receive parity remains deferred.
 
 ## Quick Actions And Home Widget
 

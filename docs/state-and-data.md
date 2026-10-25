@@ -282,6 +282,14 @@ hydrating before starting either read, so the skeleton appears immediately. The
 composer and chat header are usable during hydration; transcript content fills
 in as it arrives.
 
+Cold transcript read failures are tracked separately by
+`useTranscriptReadErrors`, keyed by session and tagged with the client that
+issued the read. A non-silent failure stays visible until a later successful
+read clears it, and reconnecting or switching servers hides the old client's
+errors. This lets Chat distinguish "the read failed" from "the session is
+empty" without introducing a second transcript store or changing the paging
+window.
+
 An explicit `openSession()` invalidates any in-flight initial bootstrap and
 writes `currentSessionIdRef` synchronously, so a render-delayed bootstrap cannot
 reselect the remembered chat after the user created or opened a different one.
