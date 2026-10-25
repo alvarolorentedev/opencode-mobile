@@ -107,7 +107,7 @@ describe('manual connection form', () => {
   });
   it('ignores a probe completed after Back and guards duplicate Continue', async () => {
     const view = await form();
-    const gate = deferred();
+    const gate = deferred<{ status: string; contract: string }>();
     view.probe.mockReturnValue(gate.promise);
     view.change('connection-profile-url-input', 'http://example.test');
     view.element('connection-profile-continue').props.onPress();

@@ -18,7 +18,7 @@ afterEach(() => { vi.unstubAllGlobals(); vi.useRealTimers(); });
 
 describe('finite SDK reads', () => {
   it.each(['v1', 'v2'])('expires stalled %s headers, releases coalescing and rejects late commits', async (contract) => {
-    const gate = deferred(), transport = vi.fn().mockReturnValueOnce(gate.promise).mockImplementation(async () => new Response(contract === 'v1' ? '[]' : '{"data":[]}', { headers: { 'content-type': 'application/json' } }));
+    const gate = deferred<Response>(), transport = vi.fn(async (_input: RequestInfo | URL, _init?: RequestInit) => new Response(contract === 'v1' ? '[]' : '{"data":[]}', { headers: { 'content-type': 'application/json' } })).mockReturnValueOnce(gate.promise);
     vi.stubGlobal('fetch', transport);
     const scoped = createPrefixFetch('http://server', '');
     const client = contract === 'v1'
@@ -33,7 +33,7 @@ describe('finite SDK reads', () => {
     expect(same).toBe(pending);
     const failed = expect(pending).rejects.toThrow();
     await vi.advanceTimersByTimeAsync(READ_TIMEOUT_MS); await failed;
-    expect(transport.mock.calls[0][1].signal.aborted).toBe(true);
+    expect(transport.mock.calls[0][1]?.signal?.aborted).toBe(true);
     gate.resolve(new Response(contract === 'v1' ? '[]' : '{"data":[]}', { headers: { 'content-type': 'application/json' } }));
     await Promise.resolve(); expect(commits).toBe(0);
     await read(); expect(commits).toBe(1); expect(transport).toHaveBeenCalledTimes(2);
@@ -49,7 +49,7 @@ describe('finite SDK reads', () => {
     body.enqueue(new TextEncoder().encode(contract === 'v1' ? '[]' : '{"data":[]}')); body.close();
   });
   it('propagates a caller signal through Request-based wrappers and removes completed deadlines', async () => {
-    const transport = vi.fn(async () => new Response('{}'));
+    const transport = vi.fn(async (_input: RequestInfo | URL, _init?: RequestInit) => new Response('{}'));
     vi.stubGlobal('fetch', transport);
     const controller = new AbortController();
     const response = await createScopedFetch('http://server', '/proxy', '/repo')(new Request('http://server/session'), { signal: controller.signal });
@@ -59,7 +59,7 @@ describe('finite SDK reads', () => {
     controller.abort(); expect(transport.mock.calls[0][1]?.signal?.aborted).toBe(false);
   });
   it('leaves SSE streaming unbounded while mutations have a write deadline', async () => {
-    const gate = deferred(), transport = vi.fn(() => gate.promise);
+    const gate = deferred<Response>(), transport = vi.fn((_input: RequestInfo | URL, _init?: RequestInit) => gate.promise);
     vi.stubGlobal('fetch', transport);
     const stream = fetchConnection('http://server/api/event');
     const mutation = fetchConnection('http://server/api/session/s/message', { method: 'POST' });

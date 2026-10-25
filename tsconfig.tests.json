@@ -17,24 +17,13 @@
   ],
   "exclude": [
     "node_modules",
-    "tests/vitest/activity-notifications.test.ts",
     "tests/vitest/anr-regressions.test.ts",
-    "tests/vitest/app-updates.test.ts",
     "tests/vitest/audit-races.test.ts",
-    "tests/vitest/connect-camera-gate.test.ts",
-    "tests/vitest/connect-recovery.test.ts",
     "tests/vitest/connect.test.ts",
-    "tests/vitest/connection-dialog.test.ts",
+    "tests/vitest/connect-recovery.test.ts",
     "tests/vitest/connection-profiles.test.ts",
-    "tests/vitest/feed.test.ts",
-    "tests/vitest/native-intent.test.ts",
-    "tests/vitest/notifications-background.test.ts",
     "tests/vitest/persistence-hydration.test.ts",
     "tests/vitest/provider-runtime.test.ts",
-    "tests/vitest/read-deadline.test.ts",
-    "tests/vitest/share-flow.test.ts",
-    "tests/vitest/share-ui.test.ts",
-    "tests/vitest/terminal.test.ts",
     "tests/vitest/widget-flow.test.ts"
   ]
 }

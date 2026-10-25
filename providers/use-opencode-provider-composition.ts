@@ -29,6 +29,7 @@ import { useConnectionActions } from '@/providers/use-connection-actions';
 import { useConnectionRetry } from '@/providers/use-connection-retry';
 import { useNetworkStatus } from '@/providers/use-network-status';
 import { useOpencodeProviderValues } from '@/providers/opencode-provider-values';
+import { useOpencodeProviderReset } from '@/providers/use-opencode-provider-reset';
 import { useCoalescedRefresh } from '@/providers/use-coalesced-refresh';
 
 import type { WorkspaceRuntimeInput } from '@/providers/workspace-types';
@@ -42,29 +43,10 @@ export function useOpencodeProviderComposition(input: WorkspaceRuntimeInput) {
     initialConnectStartedRef,
     setOnboardingVersion,
     setOnboardingActive,
-    currentSessionIdRef,
-    explicitSessionSelectionRef,
-    locallyCreatedSessionsRef,
-    setCurrentSessionId,
-    setSessions,
-    setSessionStatuses,
-    setCommands,
-    setCurrentConfig,
-    setAvailableProviders,
-    setProviderAuthMethodsById,
-    setAvailableModels,
-    setAvailableAgents,
-    setPendingPermissionsBySession,
-    setPendingQuestionsBySession,
     setSavedPermissions,
     setMcpAuthPrompt,
-    setProjectFileStatuses,
-    setSelectedProjectFile,
-    setVcsInfo,
     bootstrapPromiseRef,
     bootstrapTokenRef,
-    busyNotificationsRef,
-    suppressedPendingRequestIdsRef,
     sessionRefreshTimeoutsRef,
     sessionRefreshOptionsRef,
     clientGenerationRef,
@@ -184,38 +166,14 @@ export function useOpencodeProviderComposition(input: WorkspaceRuntimeInput) {
   const { resetTerminal } = terminal;
   const { reset: resetTranscript } = transcript;
   const { resetWorktrees } = worktree;
-  const clearProjectState = useCallback(() => {
-    bootstrapPromiseRef.current = null;
-    bootstrapTokenRef.current = undefined;
-    busyNotificationsRef.current.clear();
-    suppressedPendingRequestIdsRef.current.clear();
-    Object.values(sessionRefreshTimeoutsRef.current).forEach((timeout) => clearTimeout(timeout));
-    sessionRefreshTimeoutsRef.current = {};
-    sessionRefreshOptionsRef.current = {};
-    currentSessionIdRef.current = undefined;
-    explicitSessionSelectionRef.current = undefined;
-    locallyCreatedSessionsRef.current.clear();
-    setCurrentSessionId(undefined);
-    setSessions([]);
-    setSessionStatuses({});
-    resetTranscript();
-    setCommands([]);
-    setCurrentConfig(undefined);
-    setAvailableProviders([]);
-    setProviderAuthMethodsById({});
-    setAvailableModels([]);
-    setAvailableAgents([]);
-    setPendingPermissionsBySession({});
-    setPendingQuestionsBySession({});
-    setMcpAuthPrompt(undefined);
-    resetPermissionRules();
-    setProjectFileStatuses([]);
-    setSelectedProjectFile(undefined);
-    setVcsInfo(undefined);
-    resetMcpState();
-    resetTerminal();
-    resetWorktrees();
-  }, [resetMcpState, resetPermissionRules, resetTerminal, resetTranscript, resetWorktrees, bootstrapPromiseRef, bootstrapTokenRef, busyNotificationsRef, suppressedPendingRequestIdsRef, sessionRefreshOptionsRef, sessionRefreshTimeoutsRef, currentSessionIdRef, explicitSessionSelectionRef, locallyCreatedSessionsRef, setAvailableAgents, setAvailableModels, setAvailableProviders, setCommands, setCurrentConfig, setCurrentSessionId, setMcpAuthPrompt, setPendingPermissionsBySession, setPendingQuestionsBySession, setProviderAuthMethodsById, setSelectedProjectFile, setSessionStatuses, setSessions, setVcsInfo, setProjectFileStatuses]);
+  const clearProjectState = useOpencodeProviderReset({
+    state,
+    resetMcpState,
+    resetPermissionRules,
+    resetTerminal,
+    resetTranscript,
+    resetWorktrees,
+  });
 
   const softResetProjectState = useCallback(() => {
     // Same-machine credential rotation: keep server-derived data (still valid

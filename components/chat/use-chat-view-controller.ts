@@ -1,5 +1,4 @@
 import * as Clipboard from 'expo-clipboard';
-import * as Haptics from 'expo-haptics';
 import { usePathname } from 'expo-router';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -14,13 +13,10 @@ import { copyHaptic } from '@/lib/haptics';
 import { type TranscriptEntry } from '@/lib/opencode/format';
 import { buildTranscriptRows, getTurnPatchDetails } from '@/lib/opencode/transcript';
 import { getLatestContextTokens } from '@/lib/opencode/usage';
-import { openVoiceSettingsAsync } from '@/lib/voice/permissions';
-import { speakText, stopSpeaking } from '@/lib/voice/speech-output';
-import { useSpeechInput } from '@/lib/voice/use-speech-input';
-import { createTranscriptAccumulator } from '@/lib/voice/transcript-accumulate';
 import { useChatComposerNotices } from './use-chat-composer-notices';
 import { useChatDraft } from './use-chat-draft';
 import { useChatViewActions } from './use-chat-view-actions';
+import { useChatViewVoice } from './use-chat-view-voice';
 import {
   useApprovals,
   useCapabilities,
@@ -46,7 +42,8 @@ export function useChatViewController() {
   const { connection, settings, serverCapabilities } = useConnection();
   const connectionScope = getConnectionScope(settings);
   const { approvals } = useApprovals();
-  const { conversation, clearConversationFeedback, toggleConversationMode } = useConversation();
+  const conversationContext = useConversation();
+  const { conversation, clearConversationFeedback, toggleConversationMode } = conversationContext;
   const {
     pendingPrompts, cancelPrompt, abortSession, clearPromptError, commands, currentDiffs, currentDiffScope, currentMessages,
     currentPendingPermissions, currentPendingQuestions, currentTodos, currentTranscript, currentUsage,
@@ -78,38 +75,12 @@ export function useChatViewController() {
   const [isStoppingSession, setIsStoppingSession] = useState(false);
   const [expandedDiffId, setExpandedDiffId] = useState<string | undefined>();
   const [copiedMessageId, setCopiedMessageId] = useState<string | undefined>();
-  const [speakingMessageId, setSpeakingMessageId] = useState<string | undefined>(undefined);
-  const [voiceFeedback, setVoiceFeedback] = useState<string | undefined>(undefined);
   const [sendFeedback, setSendFeedback] = useState<string | undefined>(undefined);
-  const speechDraftPrefixRef = useRef('');
-  const dictationAccumulatorRef = useRef(createTranscriptAccumulator());
-  const conversationActiveRef = useRef(false);
-  const voiceRecoveryContextRef = useRef<'conversation' | 'dictation'>('dictation');
   const lastSentAttachmentsRef = useRef<{ uri: string; mime?: string; filename?: string }[]>([]);
-  const lastAutoSpokenMessageIdRef = useRef<string | undefined>(undefined);
 
   const status = currentSessionId ? sessionStatuses[currentSessionId] : undefined;
   const running = sendingState.active || (!!status && status.type !== 'idle');
   const conversationActive = conversation.active;
-  const {
-    handleSpeakEntry,
-    handleAttach,
-    handleAbort,
-    handleConfirmStopConversation,
-  } = useChatViewActions({
-    t,
-    chatPreferences,
-    conversationActive,
-    currentSessionId,
-    speakingMessageId,
-    abortSession,
-    toggleConversationMode,
-    setAttachments,
-    setSendFeedback,
-    setIsStoppingSession,
-    setSpeakingMessageId,
-    setVoiceFeedback,
-  });
   const hasDraftInput = !!draft.trim() || attachments.length > 0;
   const showSendAction = !running || hasDraftInput;
   const visibleModels = useMemo(
@@ -195,47 +166,49 @@ export function useChatViewController() {
     () => [...displayTranscript].reverse().find((entry) => entry.role === 'assistant' && entry.text.trim()),
     [displayTranscript],
   );
-  const speechInput = useSpeechInput({
-    locale: chatPreferences.speechLocale,
-    onEnd: () => dictationAccumulatorRef.current.checkpoint(),
-    onResult: (transcript, isFinal) => {
-      if (conversationActive) {
-        return;
-      }
-      // The recognizer resets its segment on every pause; accumulate so a
-      // thinking pause never erases the words already dictated.
-      const merged = dictationAccumulatorRef.current.push(transcript, isFinal);
-      if (!merged) {
-        return;
-      }
-      setDraft(`${speechDraftPrefixRef.current}${merged}`);
-    },
-    preferOnDevice: chatPreferences.preferOnDeviceRecognition,
+  const {
+    handleToggleRecording,
+    handleVoiceRecovery,
+    isSpeechInputAvailable,
+    isSpeechInputListening,
+    setSpeakingMessageId,
+    speakingMessageId,
+    voiceFeedback,
+    setVoiceFeedback,
+    voiceRecoveryAction,
+  } = useChatViewVoice({
+    t,
+    chatPreferences,
+    conversation: conversationContext,
+    running,
+    latestAssistantEntry,
+    draft,
+    setDraft,
+    connectionScope,
+    activeProjectPath: activeProject?.path,
+    block,
   });
   const {
-    error: speechInputError,
-    errorAction: speechInputErrorAction,
-    isAvailable: isSpeechInputAvailable,
-    isListening: isSpeechInputListening,
-    start: startSpeechInput,
-    stop: stopSpeechInput,
-  } = speechInput;
-  useEffect(() => {
-    stopSpeechInput();
-    void stopSpeaking().catch(() => undefined);
-  }, [connectionScope, activeProject?.path, stopSpeechInput]);
+    handleSpeakEntry,
+    handleAttach,
+    handleAbort,
+    handleConfirmStopConversation,
+  } = useChatViewActions({
+    t,
+    chatPreferences,
+    conversationActive,
+    currentSessionId,
+    speakingMessageId,
+    abortSession,
+    toggleConversationMode,
+    setAttachments,
+    setSendFeedback,
+    setIsStoppingSession,
+    setSpeakingMessageId,
+    setVoiceFeedback,
+  });
   useUpdateBlocker(Boolean(draft || attachments.length || isSpeechInputListening || speakingMessageId ||
     copiedMessageId || sendFeedback || voiceFeedback || isStoppingSession || isUpdatingAutoApprove));
-  // Only offer a recovery action when the snackbar is actually showing a
-  // voice-input error, not unrelated conversation or playback feedback.
-  // Dictation failures live in this component's own hook; conversation
-  // failures carry their action from the provider so the two always match.
-  const dictationVoiceFailure = Boolean(voiceFeedback && voiceFeedback === speechInputError);
-  const voiceRecoveryAction = dictationVoiceFailure
-    ? speechInputErrorAction
-    : conversation.feedback
-      ? conversation.feedbackAction ?? 'none'
-      : 'none';
 
   const handleSendPrompt = useCallback(async (promptOverride?: string) => {
     if (submittingRef.current) return;
@@ -298,73 +271,6 @@ export function useChatViewController() {
     const timer = setTimeout(() => setCopiedMessageId(undefined), 1800);
     return () => clearTimeout(timer);
   }, [copiedMessageId]);
-  useEffect(() => {
-    conversationActiveRef.current = conversationActive;
-  }, [conversationActive]);
-
-  useEffect(() => {
-    if (!speechInputError) {
-      return;
-    }
-
-    voiceRecoveryContextRef.current = conversationActiveRef.current ? 'conversation' : 'dictation';
-
-    // While conversation mode is active the provider owns the listening
-    // session, including its own retry/fallback and feedback. Surfacing this
-    // hook's error too would flash a false failure during the automatic
-    // on-device -> network retry.
-    if (conversationActiveRef.current) {
-      return;
-    }
-
-    setVoiceFeedback(speechInputError);
-  }, [speechInputError]);
-  useEffect(
-    () => () => {
-      void stopSpeaking().catch(() => undefined);
-    },
-    [],
-  );
-
-  useEffect(() => {
-    if (running || conversationActive || !chatPreferences.autoPlayAssistantReplies) {
-      return;
-    }
-
-    if (!latestAssistantEntry || latestAssistantEntry.id === lastAutoSpokenMessageIdRef.current) {
-      return;
-    }
-
-    let cancelled = false;
-    void (async () => {
-      const started = await speakText({
-        language: chatPreferences.speechLocale,
-        onDone: () => {
-          if (!cancelled) setSpeakingMessageId((current) => (current === latestAssistantEntry.id ? undefined : current));
-        },
-        onError: () => {
-          if (!cancelled) {
-            setVoiceFeedback(t('chat:view.unableToPlay'));
-            setSpeakingMessageId(undefined);
-          }
-        },
-        onStart: () => {
-          if (!cancelled) setSpeakingMessageId(latestAssistantEntry.id);
-        },
-        rate: chatPreferences.speechRate,
-        text: latestAssistantEntry.text,
-        voice: chatPreferences.speechVoiceId,
-      });
-
-      if (started && !cancelled) {
-        lastAutoSpokenMessageIdRef.current = latestAssistantEntry.id;
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [chatPreferences.autoPlayAssistantReplies, chatPreferences.speechLocale, chatPreferences.speechRate, chatPreferences.speechVoiceId, conversationActive, latestAssistantEntry, running, t]);
-
   async function handleCopyMessage(entry: TranscriptEntry) {
     const value = [entry.text.trim(), entry.error?.trim()].filter(Boolean).join('\n\n');
     if (!value) {
@@ -374,48 +280,6 @@ export function useChatViewController() {
     await Clipboard.setStringAsync(value);
     setCopiedMessageId(entry.id);
     copyHaptic();
-  }
-
-  async function handleToggleRecording() {
-    if (conversationActive) {
-      return;
-    }
-
-    if (isSpeechInputListening) {
-      stopSpeechInput();
-      return;
-    }
-
-    speechDraftPrefixRef.current = draft.trim() ? `${draft.trim()} ` : '';
-    dictationAccumulatorRef.current.reset();
-    const release = block();
-    let started: boolean;
-    try { started = await startSpeechInput(); } finally { release(); }
-    if (!started) {
-      return;
-    }
-
-    void Haptics.selectionAsync().catch(() => undefined);
-  }
-
-  // Just-in-time recovery for a voice-input failure: prompt again when the OS
-  // still allows it, deep-link to app settings after a denial, or restart the
-  // surface the user was in.
-  function handleVoiceRecovery() {
-    setVoiceFeedback(undefined);
-    clearConversationFeedback();
-
-    if (voiceRecoveryAction === 'open-settings') {
-      void openVoiceSettingsAsync();
-      return;
-    }
-
-    if (voiceRecoveryContextRef.current === 'conversation') {
-      void toggleConversationMode();
-      return;
-    }
-
-    void handleToggleRecording();
   }
 
   return {

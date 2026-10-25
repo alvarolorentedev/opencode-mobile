@@ -308,7 +308,7 @@ describe('background notification monitor', () => {
     // A background network snapshot cannot clear or notify a newly re-sent task.
     storage.clear(); g.__notificationsTestScheduled.length = 0;
     await trackPendingTaskFinishedNotification(record('resend', 100));
-    const gate = deferred(), entered = deferred();
+    const gate = deferred<void>(), entered = deferred<void>();
     g.__notificationsTestResolver = () => 'secret-a';
     g.__notificationsTestClientFactory = () => ({ session: {
       status: async () => { entered.resolve(); await gate.promise; return { data: { resend: { type: 'idle' } } }; },

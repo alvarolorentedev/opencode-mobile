@@ -35,7 +35,7 @@ describe('terminal input encoding', () => {
   it('forwards system insertText without duplicating keyboard or composition input', async () => {
     const textarea = new EventTarget();
     const input = vi.fn(); let onKey!: (event: { key: string }) => void;
-    const dispose = installTerminalInput({ textarea, input, onKey: (listener) => { onKey = listener; return { dispose: vi.fn() }; } } as unknown as Terminal);
+    const dispose = installTerminalInput({ textarea, input, onKey: (listener: (event: { key: string }) => void) => { onKey = listener; return { dispose: vi.fn() }; } } as unknown as Terminal);
     const insert = (data: string) => textarea.dispatchEvent(Object.assign(new Event('input'), { inputType: 'insertText', data, isComposing: false }));
     insert('😀'); insert('a');
     expect(input.mock.calls).toEqual([['😀', true], ['a', true]]);

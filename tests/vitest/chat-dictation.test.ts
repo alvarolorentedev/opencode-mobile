@@ -6,7 +6,7 @@ import { it } from 'vitest';
 import { createTranscriptAccumulator } from '@/lib/voice/transcript-accumulate';
 
 it('keeps the existing chat draft and checkpoints unfinished dictation across recognition ends', async () => {
-  const source = await readFile(new URL('../../components/chat/use-chat-view-controller.ts', import.meta.url), 'utf8');
+  const source = await readFile(new URL('../../components/chat/use-chat-view-voice.ts', import.meta.url), 'utf8');
   const ast = ts.createSourceFile('controller.ts', source, ts.ScriptTarget.Latest, true);
   let declaration = '';
   function visit(node: ts.Node) {
@@ -20,7 +20,7 @@ it('keeps the existing chat draft and checkpoints unfinished dictation across re
   let callbacks: { onResult: (text: string, final: boolean) => void; onEnd: () => void };
   let draft = 'Typed prefix ';
   const context = {
-    conversationActive: false,
+    conversationActiveRef: { current: false },
     chatPreferences: { speechLocale: 'ru-RU', preferOnDeviceRecognition: true },
     speechDraftPrefixRef: { current: draft },
     dictationAccumulatorRef: { current: createTranscriptAccumulator() },
@@ -34,10 +34,10 @@ it('keeps the existing chat draft and checkpoints unfinished dictation across re
   callbacks!.onResult('мир', true);
   callbacks!.onResult('мир', true);
   assert.equal(draft, 'Typed prefix Привет мир мир');
-  context.conversationActive = true;
+  context.conversationActiveRef.current = true;
   callbacks!.onResult('conversation speech', true);
   assert.equal(draft, 'Typed prefix Привет мир мир');
-  context.conversationActive = false;
+  context.conversationActiveRef.current = false;
   context.speechDraftPrefixRef.current = `${draft} `;
   context.dictationAccumulatorRef.current.reset();
   callbacks!.onResult('你好', true);

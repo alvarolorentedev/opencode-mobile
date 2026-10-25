@@ -1,11 +1,11 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { deferred, hookRuntime, loadTs } from '../helpers/runtime.mjs';
-import { mergeSharedDraft, parseIncomingShare } from '@/lib/share/parse';
+import { mergeSharedDraft, parseIncomingShare, type IncomingShareItem } from '@/lib/share/parse';
 
 vi.mock('expo/fetch', () => ({ fetch: (...args: any[]) => (globalThis.fetch as any)(...args) }));
 vi.mock('@/lib/opencode/client/types', () => ({ defaultConnectionSettings: { serverUrl: 'http://localhost' } }));
 vi.mock('react-native', () => ({ Platform: { OS: 'android' } }));
-const item = { value: 'content://1', shareType: 'image', contentUri: 'file:/cache/one%20photo.png', contentType: 'image', originalName: 'photo.png', contentSize: 100 };
+const item: IncomingShareItem = { value: 'content://1', shareType: 'image', contentUri: 'file:/cache/one%20photo.png', contentType: 'image', originalName: 'photo.png', contentSize: 100 };
 let runtime: ReturnType<typeof hookRuntime>;
 let native: any;
 let input: any;

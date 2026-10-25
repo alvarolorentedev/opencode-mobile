@@ -6,11 +6,11 @@ import type { AppUpdateApi, UpdateEvent, UpdateSnapshot } from '../../lib/app-up
 const available: UpdateSnapshot = { phase: 'available', version: '59' };
 const downloaded: UpdateSnapshot = { phase: 'downloaded', version: '59' };
 async function provider({ stored = null, readError = false, snapshot = available, recovery = true, nativeConsent = false, blocked = false, check = vi.fn(async () => snapshot) }:
-  { stored?: string | null; readError?: boolean; snapshot?: UpdateSnapshot; recovery?: boolean; nativeConsent?: boolean; blocked?: boolean; check?: ReturnType<typeof vi.fn> } = {}) {
+  { stored?: string | null; readError?: boolean; snapshot?: UpdateSnapshot; recovery?: boolean; nativeConsent?: boolean; blocked?: boolean; check?: () => Promise<UpdateSnapshot> } = {}) {
   const runtime = hookRuntime();
   let event: (value: UpdateEvent) => void = () => {};
   let foreground: (value: string) => void = () => {};
-  const storage = { getItem: vi.fn(async () => { if (readError) throw Error(); return stored; }), setItem: vi.fn(async () => {}), removeItem: vi.fn(async () => {}) };
+  const storage = { getItem: vi.fn(async (_key: string) => { if (readError) throw Error(); return stored; }), setItem: vi.fn(async (_key: string, _value: string) => {}), removeItem: vi.fn(async (_key: string) => {}) };
   const unsubscribe = vi.fn();
   const api: AppUpdateApi = { nativeConsent, supportsRecovery: recovery, check, start: vi.fn(async () => true), complete: vi.fn(async () => {}),
     subscribe: (listener) => { event = listener; return unsubscribe; } };
@@ -79,7 +79,7 @@ describe('provider update safety', () => {
   });
   it('rechecks safety before native consent and suppresses cancellation for the version actually offered', async () => {
     const view = await provider({ nativeConsent: true, blocked: true });
-    const pending = deferred();
+    const pending = deferred<UpdateSnapshot>();
     view.api.check = vi.fn(() => pending.promise);
     view.runtime.update({ blocked: false });
     view.runtime.update({ blocked: true });
@@ -117,7 +117,7 @@ describe('provider update safety', () => {
     view.event({ phase: 'failed' }); expect(view.runtime.value.installing).toBe(false);
   });
   it('rechecks safety after an asynchronous read and prevents duplicate actions', async () => {
-    const view = await provider(); const pending = deferred();
+    const view = await provider(); const pending = deferred<UpdateSnapshot>();
     view.api.check = vi.fn(() => pending.promise);
     const action = view.runtime.value.update(); const duplicate = view.runtime.value.update();
     view.runtime.update({ blocked: true }); pending.resolve(available); await action; await duplicate; await view.runtime.settle();
@@ -158,7 +158,7 @@ describe('provider update safety', () => {
     view.api.check = vi.fn(async () => downloaded);
     await view.runtime.value.update(); await view.runtime.settle();
     expect(view.runtime.value.installing).toBe(false); expect(view.runtime.value.error).toBe(true); expect(view.runtime.value.notice).toBeUndefined();
-    const timeout = await provider(); timeout.api.check = vi.fn(() => new Promise(() => {}));
+    const timeout = await provider(); timeout.api.check = vi.fn(() => new Promise<UpdateSnapshot>(() => {}));
     const action = timeout.runtime.value.update(); timeout.runtime.fire(15000); await action; await timeout.runtime.settle();
     expect(timeout.runtime.value.busy).toBe(false); expect(timeout.api.start).not.toHaveBeenCalled();
   });
