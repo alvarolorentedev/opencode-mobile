@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { readFile } from 'node:fs/promises';
 import { createTerminalDecoder, createTerminalOutputQueue, MAX_TERMINAL_PENDING_BYTES } from '@/lib/opencode/terminal-stream';
 import { encodeTerminalKey, NO_MODIFIERS, pasteNeedsConfirmation } from '@/components/terminal/terminal-keys';
 import { createTerminalConnection, type TerminalConnectionContext } from '@/providers/terminal-connection';
@@ -180,5 +181,17 @@ describe('PTY connection lifecycle', () => {
     let release!: (value: { ticket: string }) => void;
     services.token.mockReturnValueOnce(new Promise((resolve) => { release = resolve; }));
     pty.reconnect(); await settle(); pty.dispose(); release({ ticket: 'stale' }); await settle(); expect(services.socket).not.toHaveBeenCalled();
+  });
+});
+
+describe('terminal presentation', () => {
+  it('stretches the DOM surface across the host root', async () => {
+    // Expo DOM mounts into a row-direction flex #root. A content-sized surface
+    // caps the fit addon at the accessory row width on tablets and landscape.
+    const css = await readFile(new URL('../../components/terminal/terminal.css', import.meta.url), 'utf8');
+    const surface = css.match(/\.terminal-surface\s*\{([^}]*)\}/)?.[1] ?? '';
+    expect(surface).toMatch(/width:\s*100%/);
+    expect(surface).toMatch(/flex:\s*1/);
+    expect(surface).toMatch(/min-width:\s*0/);
   });
 });

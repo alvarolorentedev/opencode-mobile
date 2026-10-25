@@ -1,4 +1,7 @@
-.terminal-surface { height: 100%; min-height: 0; display: flex; flex-direction: column; overflow: hidden; }
+/* Expo DOM mounts into a row-direction flex #root; without an explicit width
+   the surface shrinks to the accessory row and the fit addon reports too few
+   columns on tablets and in landscape. */
+.terminal-surface { flex: 1; width: 100%; min-width: 0; height: 100%; min-height: 0; display: flex; flex-direction: column; overflow: hidden; }
 .terminal-displays { flex: 1; min-height: 0; position: relative; overflow: hidden; }
 .terminal-display { height: 100%; box-sizing: border-box; padding: 8px; touch-action: none; }
 .terminal-accessory { border-top: 1px solid color-mix(in srgb, currentColor 20%, transparent); padding: 4px; }

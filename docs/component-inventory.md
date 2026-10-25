@@ -1044,6 +1044,9 @@ clipboard operations, and multiline/control-character paste confirmation.
 
 `terminal-dom.tsx` retains xterm instances inside one DOM surface, receives
 imperative output batches, reports fit dimensions, and sends ordered input.
+The surface stretches to the host root (Expo DOM mounts into a row-direction
+flex `#root`), so tablet and landscape widths reach the fit addon instead of
+being capped by the accessory row.
 `terminal-accessory.tsx` renders Esc/Tab/Ctrl/Alt/Shift/arrows/Fn plus F1–F12,
 Home/End/PageUp/PageDown/Insert/Delete/Paste. A modifier tap arms it once, a
 double tap locks it, and another tap clears it. Terminal/tab changes clear modifiers.
