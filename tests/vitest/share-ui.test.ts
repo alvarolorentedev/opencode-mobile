@@ -30,6 +30,7 @@ async function mount() {
     '@/constants/theme': { Colors: { light: { background: '#fff', surface: '#fff', text: '#111', muted: '#666', tint: '#080', warning: '#a60', danger: '#f00' } }, Fonts: {} },
     '@/hooks/use-color-scheme': { useColorScheme: () => 'light' },
     '@/hooks/use-palette': { usePalette: () => ({ background: '#fff', surface: '#fff', text: '#111', muted: '#666', tint: '#080', warning: '#a60', danger: '#f00' }) },
+    '@/lib/connection-scope': { getConnectionScope: () => 's' },
     '@/providers/opencode-contexts': {
       useOnboarding: () => ({ isHydrated: true, onboardingCompleted: true }),
       useConnection: () => ({ connection: { status: 'connected' }, settings: { serverUrl: 'https://server' } }),
@@ -45,7 +46,8 @@ beforeEach(() => {
   shared = { pending: { text: 'hello', attachments: [{ uri: 'file:///photo.png' }], skipped: [] },
     target: { sessionId: 'current', projectPath: '/repo', connectionScope: 's' },
     targets: [{ sessionId: 'current', projectPath: '/repo', connectionScope: 's', title: 'Current' }, { sessionId: 'other', projectPath: '/other', connectionScope: 's', title: 'Other' }],
-    resolving: false, busy: false, refreshShared: vi.fn(async () => {}), addToChat: vi.fn(async () => false), clearShared: vi.fn(), selectTarget: vi.fn() };
+    resolving: false, busy: false, targetsLoading: false, refreshShared: vi.fn(async () => {}), refreshTargets: vi.fn(async () => {}),
+    addToChat: vi.fn(async () => false), clearShared: vi.fn(), selectTarget: vi.fn() };
 });
 it('only navigates after a successful provider handoff and wires Change to an existing destination', async () => {
   const waiting = deferred(); shared.addToChat.mockReturnValue(waiting.promise);

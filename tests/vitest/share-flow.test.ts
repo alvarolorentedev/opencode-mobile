@@ -114,6 +114,37 @@ describe('confirmed share handoff', () => {
     expect(native.getResolvedSharedPayloadsAsync).toHaveBeenCalledOnce();
     runtime.fire(10 * 60 * 1000);
     expect(runtime.value.pending).toBeNull();
+    expect(runtime.value.emptyReason).toBe('expired');
+    runtime.unmount();
+  });
+
+  it('records an explicit discard separately from expiry', async () => {
+    await mount();
+    runtime.value.clearShared(); runtime.flush();
+    expect(runtime.value.pending).toBeNull();
+    expect(runtime.value.emptyReason).toBe('discarded');
+    runtime.unmount();
+  });
+
+  it('surfaces target loading failures and recovers on retry', async () => {
+    const refreshTargets = vi.fn().mockRejectedValueOnce(new Error('offline')).mockResolvedValue(undefined);
+    await mount({ refreshTargets });
+    expect(runtime.value.targetsLoading).toBe(false);
+    expect(runtime.value.targetsError).toBe('share:targetsUnavailable');
+
+    await runtime.value.refreshTargets(); await runtime.settle();
+    expect(runtime.value.targetsLoading).toBe(false);
+    expect(runtime.value.targetsError).toBeUndefined();
+    expect(refreshTargets).toHaveBeenCalledTimes(2);
+    runtime.unmount();
+  });
+
+  it('keeps the picker loading until target refresh settles', async () => {
+    const waiting = deferred();
+    await mount({ refreshTargets: vi.fn(() => waiting.promise) });
+    expect(runtime.value.targetsLoading).toBe(true);
+    waiting.resolve(undefined); await runtime.settle();
+    expect(runtime.value.targetsLoading).toBe(false);
     runtime.unmount();
   });
   it('keeps warnings when every item is rejected and refuses Add', async () => {

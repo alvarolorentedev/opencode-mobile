@@ -37,5 +37,9 @@
     "previewsDescription": "Antworten, Anfragen und Planschritte auf dem Startbildschirm anzeigen.",
     "completed": "Plan abgeschlossen",
     "openApp": "App zum Aktualisieren öffnen"
-  }
+  },
+  "expired": "Geteilte Inhalte sind abgelaufen",
+  "expiredDescription": "Teile den Inhalt erneut aus der anderen App.",
+  "noConversations": "Noch keine Unterhaltungen verfügbar.",
+  "targetsUnavailable": "Unterhaltungen konnten nicht geladen werden."
 }

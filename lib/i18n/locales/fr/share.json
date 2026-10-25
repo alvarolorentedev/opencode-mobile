@@ -37,5 +37,9 @@
     "previewsDescription": "Afficher les réponses, demandes et étapes du plan sur l’écran d’accueil.",
     "completed": "Plan terminé",
     "openApp": "Ouvrez l’app pour actualiser"
-  }
+  },
+  "expired": "Le contenu partagé a expiré",
+  "expiredDescription": "Partagez-le à nouveau depuis l’autre application.",
+  "noConversations": "Aucune conversation disponible pour le moment.",
+  "targetsUnavailable": "Impossible de charger les conversations."
 }

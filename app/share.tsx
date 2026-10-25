@@ -11,6 +11,7 @@ import { OverlaySheet } from '@/components/ui/overlay-sheet';
 import { TextInput } from '@/components/ui/text-input';
 import { Fonts } from '@/constants/theme';
 import { usePalette } from '@/hooks/use-palette';
+import { getConnectionScope } from '@/lib/connection-scope';
 import { useChat, useConnection, useOnboarding, useProjects } from '@/providers/opencode-contexts';
 
 /**
@@ -34,6 +35,7 @@ export default function ShareScreen() {
   const [search, setSearch] = useState('');
   const pending = sharedInput.pending;
   const target = sharedInput.target;
+  const connectionScope = getConnectionScope(settings);
   const targetTitle = target?.sessionId
     ? sharedInput.targets.find((item) => item.sessionId === target.sessionId)?.title || t('chat:library.untitledChat')
     : t('chat:library.newChat');
@@ -48,10 +50,12 @@ export default function ShareScreen() {
     router.dismissTo('/(tabs)');
   };
 
+  const expired = sharedInput.emptyReason === 'expired';
   const done = (
     <View style={[styles.center, { backgroundColor: palette.background }]}>
       <Surface style={[styles.panel, { backgroundColor: palette.surface }]} elevation={1}>
-        <Text variant="titleMedium" style={{ color: palette.text }}>{t('share:empty')}</Text>
+        <Text variant="titleMedium" style={{ color: palette.text }}>{expired ? t('share:expired') : t('share:empty')}</Text>
+        {expired ? <Text variant="bodyMedium" style={[styles.centerCopy, { color: palette.muted }]}>{t('share:expiredDescription')}</Text> : null}
         <Button mode="contained" onPress={discard} style={styles.panelAction}>{t('share:backToChat')}</Button>
       </Surface>
     </View>
@@ -61,7 +65,7 @@ export default function ShareScreen() {
     <View style={[styles.screen, { backgroundColor: palette.background }]}>
       <Appbar.Header statusBarHeight={insets.top} style={{ backgroundColor: palette.surface }} elevated>
         <Appbar.Content titleMaxFontSizeMultiplier={1.5} title={t('share:title')} titleStyle={{ fontFamily: Fonts.display, fontWeight: '700' }} />
-        <Appbar.Action icon="close" accessibilityLabel={t('share:discard')} onPress={discard} />
+        <Appbar.Action icon="close" accessibilityLabel={t('common:actions.close')} onPress={() => router.dismissTo('/(tabs)')} />
       </Appbar.Header>
 
       {!isHydrated || sharedInput.resolving ? (
@@ -141,15 +145,35 @@ export default function ShareScreen() {
       />
       <OverlaySheet visible={chatPickerVisible} title={t('share:chooseConversation')} onClose={() => setChatPickerVisible(false)} testID="share-chat-picker">
         <TextInput mode="outlined" value={search} onChangeText={setSearch} placeholder={t('chat:library.searchPlaceholder')} />
-        {activeProject?.path && target ? <Button icon="plus" onPress={() => {
-          sharedInput.selectTarget({ connectionScope: target.connectionScope, projectPath: activeProject.path });
+        {activeProject?.path ? <Button icon="plus" onPress={() => {
+          sharedInput.selectTarget({ connectionScope, projectPath: activeProject.path });
           setChatPickerVisible(false);
         }}>{t('chat:library.newChat')}</Button> : null}
-        {sharedInput.targets.filter((item) => `${item.title || ''} ${item.projectPath}`.toLocaleLowerCase().includes(search.toLocaleLowerCase())).map((item) => (
-          <Button key={JSON.stringify([item.connectionScope, item.projectPath, item.sessionId])} style={{ minHeight: 44 }} onPress={() => {
-            sharedInput.selectTarget(item); setChatPickerVisible(false);
-          }}>{item.title || t('chat:library.untitledChat')} · {item.projectPath.split('/').filter(Boolean).pop()}</Button>
-        ))}
+        {sharedInput.targetsLoading && sharedInput.targets.length === 0 ? <ActivityIndicator color={palette.tint} /> : null}
+        {sharedInput.targetsError ? (
+          <View style={styles.targetState}>
+            <Text accessibilityRole="alert" style={{ color: palette.danger }}>{sharedInput.targetsError}</Text>
+            <Button compact onPress={() => void sharedInput.refreshTargets()}>{t('common:actions.retry')}</Button>
+          </View>
+        ) : null}
+        {!sharedInput.targetsLoading && !sharedInput.targetsError && sharedInput.targets.length === 0 ? (
+          <Text style={{ color: palette.muted }}>{t('share:noConversations')}</Text>
+        ) : null}
+        {sharedInput.targets.filter((item) => `${item.title || ''} ${item.projectPath}`.toLocaleLowerCase().includes(search.toLocaleLowerCase())).map((item) => {
+          const isSelected = Boolean(target && item.connectionScope === target.connectionScope
+            && item.projectPath === target.projectPath && item.sessionId === target.sessionId);
+          const label = `${item.title || t('chat:library.untitledChat')} · ${item.projectPath.split('/').filter(Boolean).pop()}`;
+          return (
+            <Button key={JSON.stringify([item.connectionScope, item.projectPath, item.sessionId])} icon={isSelected ? 'check' : undefined}
+              accessibilityLabel={isSelected ? `${label}, ${t('chat:modelPicker.selected')}` : label}
+              style={{ minHeight: 44 }} onPress={() => {
+                sharedInput.selectTarget(item); setChatPickerVisible(false);
+              }}>{label}</Button>
+          );
+        })}
+        {search.trim() && sharedInput.targets.length > 0 && !sharedInput.targets.some((item) => `${item.title || ''} ${item.projectPath}`.toLocaleLowerCase().includes(search.toLocaleLowerCase())) ? (
+          <Text style={{ color: palette.muted }}>{t('chat:library.noMatchingChats')}</Text>
+        ) : null}
       </OverlaySheet>
     </View>
   );
@@ -167,4 +191,5 @@ const styles = StyleSheet.create({
   block: { borderWidth: 1, borderRadius: 12, padding: 12, gap: 4 },
   attachments: { gap: 8 },
   footer: { flexDirection: 'row', justifyContent: 'flex-end', flexWrap: 'wrap', gap: 10, marginTop: 8 },
+  targetState: { alignItems: 'flex-start', gap: 6 },
 });

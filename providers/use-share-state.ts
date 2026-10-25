@@ -13,19 +13,24 @@ export type SharedInput = {
   pending: SharedPayload | null;
   target?: ShareTarget;
   targets: ShareTarget[];
+  targetsError?: string;
+  targetsLoading: boolean;
+  emptyReason?: 'expired' | 'discarded';
   resolving: boolean;
   busy: boolean;
   error?: string;
   selectTarget: (target: ShareTarget) => void;
   refreshShared: () => Promise<void>;
+  refreshTargets: () => Promise<void>;
   addToChat: () => Promise<boolean>;
   consumeShared: (target: ShareTarget) => SharedPayload | null;
   clearShared: () => void;
 };
 // Headless workspace snapshots do not own device share receipts; the app scope supplies them.
 export const emptySharedInput: SharedInput = {
-  pending: null, targets: [], resolving: false, busy: false, selectTarget: () => {},
-  refreshShared: async () => {}, addToChat: async () => false, consumeShared: () => null, clearShared: () => {},
+  pending: null, targets: [], targetsLoading: false, resolving: false, busy: false, selectTarget: () => {},
+  refreshShared: async () => {}, refreshTargets: async () => {}, addToChat: async () => false,
+  consumeShared: () => null, clearShared: () => {},
 };
 type Input = {
   hydrated: boolean;
@@ -51,6 +56,9 @@ export function useShareState(input: Input): SharedInput {
   const [resolving, setResolving] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string>();
+  const [emptyReason, setEmptyReason] = useState<'expired' | 'discarded'>();
+  const [targetsLoading, setTargetsLoading] = useState(false);
+  const [targetsError, setTargetsError] = useState<string>();
   const receipt = useRef<{ payload: SharedPayload; receivedAt: number; confirmed?: ShareTarget } | undefined>(undefined);
   const revision = useRef(0);
   const rawSignature = useRef('');
@@ -61,19 +69,39 @@ export function useShareState(input: Input): SharedInput {
   const refreshRef = useRef<() => Promise<void>>(async () => undefined);
   const adding = useRef(false);
   const targetChosen = useRef(false);
-  const invalidate = useCallback(() => { revision.current++; opening.current?.abort(); }, []);
+  const targetRefresh = useRef(0);
+  const invalidate = useCallback(() => {
+    revision.current++;
+    targetRefresh.current++;
+    opening.current?.abort();
+  }, []);
 
-  const clearShared = useCallback(() => {
+  const clearSharedState = useCallback((reason?: 'expired' | 'discarded') => {
     invalidate();
     receipt.current = undefined;
     selected.current = undefined;
     rawSignature.current = '';
     ingestAgain.current = false;
     setPending(null); setTarget(undefined); setError(undefined); setResolving(false); setBusy(false);
+    setEmptyReason(reason); setTargetsError(undefined); setTargetsLoading(false);
     if (Platform.OS !== 'web') {
       try { clearSharedPayloads(); } catch { /* The native receipt may already be gone. */ }
     }
   }, [invalidate]);
+  const clearShared = useCallback(() => clearSharedState('discarded'), [clearSharedState]);
+
+  const refreshTargets = useCallback(async () => {
+    const operation = ++targetRefresh.current;
+    setTargetsLoading(true);
+    setTargetsError(undefined);
+    try {
+      await latest.current.refreshTargets();
+    } catch {
+      if (operation === targetRefresh.current) setTargetsError(i18n.t('share:targetsUnavailable'));
+    } finally {
+      if (operation === targetRefresh.current) setTargetsLoading(false);
+    }
+  }, []);
 
   const refreshShared = useCallback(async () => {
     if (Platform.OS === 'web') return;
@@ -96,7 +124,8 @@ export function useShareState(input: Input): SharedInput {
       selected.current = undefined;
       targetChosen.current = false;
       setTarget(undefined); setPending(payload);
-      void latest.current.refreshTargets().catch(() => undefined);
+      setEmptyReason(undefined); setTargetsError(undefined);
+      void refreshTargets();
     } catch (failure) {
       if (operation === revision.current) setError(failure instanceof Error ? failure.message : i18n.t('share:unavailable'));
     } finally {
@@ -104,7 +133,7 @@ export function useShareState(input: Input): SharedInput {
       if (operation === revision.current || receipt.current) setResolving(false);
       if (ingestAgain.current) { ingestAgain.current = false; void refreshRef.current(); }
     }
-  }, []);
+  }, [refreshTargets]);
   useLayoutEffect(() => { refreshRef.current = refreshShared; });
 
   useEffect(() => {
@@ -131,9 +160,9 @@ export function useShareState(input: Input): SharedInput {
 
   useEffect(() => {
     if (!pending || !receipt.current) return;
-    const timer = setTimeout(clearShared, Math.max(0, SHARE_TTL_MS - (Date.now() - receipt.current.receivedAt)));
+    const timer = setTimeout(() => clearSharedState('expired'), Math.max(0, SHARE_TTL_MS - (Date.now() - receipt.current.receivedAt)));
     return () => clearTimeout(timer);
-  }, [clearShared, pending]);
+  }, [clearSharedState, pending]);
 
   const selectTarget = useCallback((next: ShareTarget) => {
     if (adding.current) return;
@@ -183,14 +212,17 @@ export function useShareState(input: Input): SharedInput {
     if (!held || !confirmed || !destination.sessionId || confirmed.sessionId !== destination.sessionId ||
       confirmed.projectPath !== destination.projectPath || confirmed.connectionScope !== destination.connectionScope) return null;
     const payload = held.payload;
-    clearShared();
+    clearSharedState(undefined);
     return payload;
-  }, [clearShared]);
+  }, [clearSharedState]);
 
   const targets = useMemo(() => input.availableTargets ?? input.sessions.filter((session) => session.directory && !session.time.archived &&
     (!input.hideSubagentChats || !session.parentID)).map((session) => ({
       connectionScope: input.connectionScope, projectPath: session.directory!, sessionId: session.id, title: session.title,
     })), [input.availableTargets, input.connectionScope, input.hideSubagentChats, input.sessions]);
-  return useMemo(() => ({ pending, target, targets, resolving, busy, error, selectTarget, refreshShared, addToChat, consumeShared, clearShared }),
-    [pending, target, targets, resolving, busy, error, selectTarget, refreshShared, addToChat, consumeShared, clearShared]);
+  return useMemo(() => ({
+    pending, target, targets, targetsError, targetsLoading, emptyReason, resolving, busy, error,
+    selectTarget, refreshShared, refreshTargets, addToChat, consumeShared, clearShared,
+  }), [pending, target, targets, targetsError, targetsLoading, emptyReason, resolving, busy, error,
+    selectTarget, refreshShared, refreshTargets, addToChat, consumeShared, clearShared]);
 }

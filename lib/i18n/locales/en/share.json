@@ -37,5 +37,9 @@
     "previewsDescription": "Show reply, request, and plan text on the home screen.",
     "completed": "Plan complete",
     "openApp": "Open the app to refresh"
-  }
+  },
+  "expired": "Shared content expired",
+  "expiredDescription": "Share it again from the other app.",
+  "noConversations": "No conversations available yet.",
+  "targetsUnavailable": "Could not load conversations."
 }

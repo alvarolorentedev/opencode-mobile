@@ -37,5 +37,9 @@
     "previewsDescription": "Muestra respuestas, solicitudes y pasos del plan en la pantalla de inicio.",
     "completed": "Plan completado",
     "openApp": "Abre la app para actualizar"
-  }
+  },
+  "expired": "El contenido compartido ha caducado",
+  "expiredDescription": "Vuelve a compartirlo desde la otra aplicación.",
+  "noConversations": "Aún no hay conversaciones disponibles.",
+  "targetsUnavailable": "No se pudieron cargar las conversaciones."
 }
