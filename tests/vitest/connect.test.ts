@@ -152,9 +152,9 @@ try {
   await assert.rejects(connect.accessConnectMachine(pairing.controlPlaneUrl, 'machine-1', 'user-token'), /machine_identity_mismatch/);
   response = { ...session, acknowledgement_pending: true };
   assert.deepEqual(await connect.claimConnectSubscription(pairing.controlPlaneUrl, { store: 'apple', signedTransaction: 'native.jws.proof' }), session);
-  assert.equal(calls.at(-1).init.headers.Authorization, undefined);
-  assert.deepEqual(JSON.parse(calls.at(-1).init.body), { store: 'apple', signedTransaction: 'native.jws.proof' });
-  assert.ok(!calls.at(-1).address.includes('native.jws.proof'));
+  assert.equal(calls.at(-1)!.init.headers.Authorization, undefined);
+  assert.deepEqual(JSON.parse(calls.at(-1)!.init.body), { store: 'apple', signedTransaction: 'native.jws.proof' });
+  assert.ok(!calls.at(-1)!.address.includes('native.jws.proof'));
   const beforeClaims = calls.length;
   const sharedClaims = await Promise.all([1, 2, 3].map(() => connect.claimConnectSubscription(pairing.controlPlaneUrl, { store: 'apple', signedTransaction: 'native.jws.proof' })));
   assert.equal(calls.length, beforeClaims + 1, 'Concurrent recovery shares one verification request.');
@@ -183,7 +183,7 @@ try {
   assert.equal(calls.length, beforeCatalog + 1, 'Cached catalog is protected from consumer mutation.');
   await connect.getConnectCatalog(customControlPlane);
   assert.equal(calls.length, beforeCatalog + 2, 'Production and staging catalogs are separate.');
-  assert.equal(calls.at(-1).init.headers.Authorization, undefined);
+  assert.equal(calls.at(-1)!.init.headers.Authorization, undefined);
   response = { plans: [catalog.plans[0], catalog.plans[0]] };
   const originalNow = Date.now;
   try {
@@ -197,8 +197,8 @@ try {
   assert.equal(new connect.ConnectApiError(503, { machine_id: 'machine-1' }).machineId, 'machine-1');
   status = 204;
   await connect.revokeConnectMachine(pairing.controlPlaneUrl, 'machine-1', 'user-token');
-  assert.equal(calls.at(-1).init.method, 'DELETE');
-  assert.equal(calls.at(-1).address, 'https://api.opencodecloud.link/v1/machines/machine-1');
+  assert.equal(calls.at(-1)!.init.method, 'DELETE');
+  assert.equal(calls.at(-1)!.address, 'https://api.opencodecloud.link/v1/machines/machine-1');
   const count = calls.length;
   await assert.rejects(connect.listConnectMachines(pairing.controlPlaneUrl, ''), (error: any) => error.status === 401);
   (globalThis as any).__connectPlatform = 'web';
@@ -229,17 +229,17 @@ try {
   assert.deepEqual(service.openTerminalWebSocket('ws://local/pty?ticket=x', { Authorization: 'Basic secret' }).args, ['ws://local/pty?ticket=x']);
   connect.setConnectTestSecret('secret', 'value');
   assert.equal(connect.getConnectTestSecret('secret'), '');
-  globalThis.__connectConfig.extra.e2eMode = true;
-  globalThis.__connectConfig.extra.connectPilot.testing = true;
+  (globalThis as any).__connectConfig.extra.e2eMode = true;
+  (globalThis as any).__connectConfig.extra.connectPilot.testing = true;
   connect.setConnectTestSecret('secret', 'value');
   assert.equal(connect.getConnectTestSecret('secret'), 'value');
 } finally { globalThis.WebSocket = originalSocket; }
 
 const configSource = await readFile(new URL('../../app.config.ts', import.meta.url), 'utf8');
 const compiled = ts.transpileModule(configSource, { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2020 } }).outputText;
-function appConfig(variant, controlPlaneUrl) {
+function appConfig(variant: string, controlPlaneUrl?: string) {
   const testRequire = createRequire(import.meta.url);
-  const context = { exports: {}, require: (name: string) => name === './config/plugins/android.cjs'
+  const context = { exports: {} as any, require: (name: string) => name === './config/plugins/android.cjs'
     ? testRequire('../../config/plugins/android.cjs')
     : name === './config/plugins/ios.cjs'
       ? testRequire('../../config/plugins/ios.cjs')
@@ -262,7 +262,7 @@ assert.equal(development.extra.connectPilot.controlPlanes, undefined);
 assert.notEqual(production.ios.bundleIdentifier, development.ios.bundleIdentifier);
 assert.notEqual(production.android.package, development.android.package);
 for (const config of [production, development]) {
-  assert.ok(config.plugins.some((plugin) => Array.isArray(plugin) && plugin[0] === 'expo-camera'), 'Every native build needs camera permission configuration.');
+  assert.ok(config.plugins.some((plugin: any) => Array.isArray(plugin) && plugin[0] === 'expo-camera'), 'Every native build needs camera permission configuration.');
   (globalThis as any).__connectConfig = config;
   for (const platform of ['ios', 'android']) {
     (globalThis as any).__connectPlatform = platform;
@@ -276,11 +276,11 @@ for (const config of [production, development]) {
 const foss = appConfig('foss');
 assert.equal(foss.extra.foss, true);
 assert.equal(foss.android.package, 'app.getopencode.fdroid');
-assert.ok(!foss.plugins.some((plugin) => Array.isArray(plugin) && plugin[0] === 'expo-camera'), 'FOSS build must not configure the camera/ML Kit plugin.');
+assert.ok(!foss.plugins.some((plugin: any) => Array.isArray(plugin) && plugin[0] === 'expo-camera'), 'FOSS build must not configure the camera/ML Kit plugin.');
 assert.ok(!foss.plugins.includes('expo-iap'), 'FOSS build must not configure the Play Billing plugin.');
 {
-  const savedConfig = globalThis.__connectConfig;
-  const savedPlatform = globalThis.__connectPlatform;
+  const savedConfig = (globalThis as any).__connectConfig;
+  const savedPlatform = (globalThis as any).__connectPlatform;
   (globalThis as any).__connectConfig = { extra: { foss: true } };
   (globalThis as any).__connectPlatform = 'android';
   assert.equal(connect.isConnectEnabled(), false, 'FOSS builds must disable Cloud Link.');
@@ -293,19 +293,19 @@ for (const variant of ['development', 'production']) {
   const file = variant === 'development' ? 'build-android-development' : 'build-android-release';
   const source = (await readFile(new URL(`../../scripts/${file}.mjs`, import.meta.url), 'utf8')).replace(/^#!.*\n/, '');
   const code = ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2020, allowJs: true, esModuleInterop: true } }).outputText;
-  const commands = [];
-  const writes = [];
+  const commands: any[] = [];
+  const writes: any[] = [];
   const environment = { EXPO_APP_VARIANT: variant === 'development' ? 'production' : 'development', ANDROID_KEYSTORE_PATH: '/fake/store', ANDROID_KEYSTORE_PASSWORD: 'test', ANDROID_KEY_ALIAS: 'test', ANDROID_KEY_PASSWORD: 'test' };
   const actualRequire = createRequire(import.meta.url);
   await vm.runInNewContext(`(async () => { ${code} })()`, {
     exports: {}, Buffer,
     process: { env: environment, cwd: () => '/fake/project', exit: () => { throw new Error('Build script failed'); }, on: () => {} },
     console: { log() {}, warn() {}, error() {} },
-    require: (name) => name === 'node:child_process' ? {
-      spawnSync(command, args, options) { commands.push({ command, args, env: options?.env ?? environment }); return { status: 0, stdout: 'Alias name: test\n' }; },
+    require: (name: string) => name === 'node:child_process' ? {
+      spawnSync(command: any, args: any, options: any) { commands.push({ command, args, env: options?.env ?? environment }); return { status: 0, stdout: 'Alias name: test\n' }; },
     } : name === 'node:fs' ? {
       existsSync: () => true, copyFileSync() {}, statSync: () => ({ size: 128 }), readFileSync: () => Buffer.alloc(128),
-      appendFileSync(_path, data) { writes.push(String(data)); }, writeFileSync() {},
+      appendFileSync(_path: any, data: any) { writes.push(String(data)); }, writeFileSync() {},
     } : actualRequire(name),
   });
   const nativeCommands = commands.filter(({ command }) => command === 'npx' || command === './gradlew');
@@ -314,7 +314,7 @@ for (const variant of ['development', 'production']) {
   // Signing credentials must never reach a command line; they are injected
   // through the generated gradle.properties instead.
   for (const { args } of commands) assert.ok(!args.includes('test'), `Build commands must not carry signing secrets: ${args.join(' ')}`);
-  assert.ok(commands.some(({ command, args }) => command === './gradlew' && !args.some((arg) => String(arg).includes('signing'))), 'Gradle must not receive -Pandroid.injected.signing.* arguments.');
+  assert.ok(commands.some(({ command, args }: any) => command === './gradlew' && !args.some((arg: any) => String(arg).includes('signing'))), 'Gradle must not receive -Pandroid.injected.signing.* arguments.');
   // Only the release script signs, so only it writes signing properties.
   if (variant === 'production') {
     assert.ok(writes.some((data) => data.includes('android.injected.signing.store.password=test')), 'Signing credentials must be injected through gradle.properties.');
@@ -362,25 +362,25 @@ assert.deepEqual(storeApi.parseBillingPeriod('P3M'), { value: 3, unit: 'month' }
 
 for (const platform of ['apple', 'google']) {
   (globalThis as any).__connectPlatform = platform === 'apple' ? 'ios' : 'android';
-  const phases = [];
-  globalThis.__subscriptionEvents = phases;
+  const phases: any[] = [];
+  (globalThis as any).__subscriptionEvents = phases;
   const purchase = { id: 'transaction', productId: 'fixture', store: platform, purchaseToken: platform === 'apple' ? 'exact.native.jws' : 'exact-google-token', purchaseState: 'purchased' };
   let claimStatus = 200, claims = 0, finishFails = false;
   const nativeApi = {
     getTransactionJwsIOS: async () => 'fallback.native.jws',
-    finishTransaction: async ({ purchase: finished, isConsumable }) => {
+    finishTransaction: async ({ purchase: finished, isConsumable }: any) => {
       phases.push('finish');
       assert.equal(finished, purchase); assert.equal(isConsumable, false);
-      assert.ok(Array.from(globalThis.__connectSecrets.values()).includes(JSON.stringify(session)), 'Session must already be durable at finalization.');
+      assert.ok(Array.from((globalThis as any).__connectSecrets.values()).includes(JSON.stringify(session)), 'Session must already be durable at finalization.');
       if (finishFails) throw new Error('store unavailable');
     },
   };
-  globalThis.fetch = async (_url, init) => {
+  globalThis.fetch = async (_url: any, init: any) => {
     phases.push('claim'); claims += 1;
     assert.deepEqual(JSON.parse(init.body), platform === 'apple' ? { store: 'apple', signedTransaction: 'exact.native.jws' } : { store: 'google', purchaseToken: 'exact-google-token' });
     return new Response(JSON.stringify(session), { status: claimStatus });
   };
-  const complete = (pending) => subscriptionService.finalizeConnectPurchase(pairing.controlPlaneUrl, platform, pending, nativeApi, () => undefined);
+  const complete = (pending: any) => subscriptionService.finalizeConnectPurchase(pairing.controlPlaneUrl, platform, pending, nativeApi, () => undefined);
   // Apple finishes the StoreKit transaction in the app. Google acknowledgment is
   // the control plane's durable responsibility, so the app must never finalize it.
   const finalized = platform === 'apple' ? ['claim', 'secure', 'finish'] : ['claim', 'secure'];

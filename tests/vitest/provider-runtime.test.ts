@@ -24,13 +24,13 @@ describe('provider runtime actions', () => {
 // server exposes the same directory as the previous server. The declarations
 // now live in the extracted provider action hooks, so collect them by name from
 // their new modules instead of the OpencodeProvider body.
-async function readSource(relative) {
+async function readSource(relative: string) {
   return readFile(new URL(relative, import.meta.url), 'utf8');
 }
-function extractDeclarations(source, names) {
+function extractDeclarations(source: string, names: string[]) {
   const ast = ts.createSourceFile('module.ts', source, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS);
-  const found = [];
-  function visit(node) {
+  const found: any[] = [];
+  function visit(node: any) {
     if (ts.isVariableDeclaration(node) && ts.isIdentifier(node.name) && names.includes(node.name.text)) {
       found.push(node.parent.parent.getText(ast));
     }
@@ -42,7 +42,7 @@ function extractDeclarations(source, names) {
 function extractEffect(source, marker) {
   const ast = ts.createSourceFile('module.ts', source, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS);
   let found;
-  function visit(node) {
+  function visit(node: any) {
     if (!found
       && ts.isExpressionStatement(node)
       && ts.isCallExpression(node.expression)
