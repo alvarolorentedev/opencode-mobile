@@ -101,7 +101,8 @@
       "hint": "このサーバーへのすべてのリクエストで送信されます。値はこのデバイスに安全に保存されます。",
       "showValues": "値を表示",
       "hideValues": "値を隠す"
-    }
+    },
+    "reconnectSuccess": "{{url}} に接続しました。"
   },
   "providers": {
     "accounts": "Accounts",

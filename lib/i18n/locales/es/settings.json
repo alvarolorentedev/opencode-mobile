@@ -101,7 +101,8 @@
       "hint": "Se envía con cada solicitud a este servidor. Los valores se guardan de forma segura en este dispositivo.",
       "showValues": "Mostrar valores",
       "hideValues": "Ocultar valores"
-    }
+    },
+    "reconnectSuccess": "Conectado a {{url}}."
   },
   "providers": {
     "accounts": "Accounts",

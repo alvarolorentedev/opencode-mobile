@@ -101,7 +101,8 @@
       "hint": "Sent with every request to this server. Values are stored securely on this device.",
       "showValues": "Show values",
       "hideValues": "Hide values"
-    }
+    },
+    "reconnectSuccess": "Connected to {{url}}."
   },
   "providers": {
     "accounts": "Accounts",

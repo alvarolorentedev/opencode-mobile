@@ -54,6 +54,7 @@ function SettingsContent() {
     voiceId: chatPreferences.speechVoiceId,
   });
   const [isConnecting, setIsConnecting] = useState(false);
+  const [reconnectFeedback, setReconnectFeedback] = useState<string>();
   const [advancedTab, setAdvancedTab] = useState<'mcp' | 'diagnostics'>('mcp');
   const [openSection, setOpenSection] = useState<string>();
   // Reopening Cloud Link after the full-screen service editor returns keeps the
@@ -64,8 +65,14 @@ function SettingsContent() {
 
   async function handleConnect() {
     setIsConnecting(true);
+    setReconnectFeedback(undefined);
     try {
-      await connect();
+      const result = await connect();
+      setReconnectFeedback(result.status === 'connected'
+        ? t('settings:connection.reconnectSuccess', { url: settings.serverUrl })
+        : result.message);
+    } catch (error) {
+      setReconnectFeedback(error instanceof Error ? error.message : t('settings:connection.errors.generic'));
     } finally {
       setIsConnecting(false);
     }
@@ -169,7 +176,7 @@ function SettingsContent() {
           <View style={[styles.categoryGroup, { backgroundColor: palette.surface, borderColor: palette.border }]}>
           {sections.filter((section) => group.ids.includes(section.id)).map((section, index) => <Pressable key={section.id} accessibilityRole="button" accessibilityLabel={`${section.title}. ${section.summary}`} onPress={section.onPress} style={[styles.category, index > 0 && { borderTopColor: palette.border, borderTopWidth: StyleSheet.hairlineWidth }]}>
             <MaterialCommunityIcons name={section.icon} size={22} color={palette.tint} />
-            <View style={styles.categoryText}><Text variant="titleMedium" style={{ color: palette.text }}>{section.title}</Text><Text variant="bodyMedium" numberOfLines={1} style={{ color: palette.muted }}>{section.summary}</Text></View>
+            <View style={styles.categoryText}><Text variant="titleMedium" style={{ color: palette.text }}>{section.title}</Text><Text variant="bodyMedium" numberOfLines={section.summaryLines ?? 1} style={{ color: palette.muted }}>{section.summary}</Text></View>
             <MaterialCommunityIcons name="chevron-right" size={20} color={palette.muted} />
           </Pressable>)}
           </View>
@@ -192,6 +199,12 @@ function SettingsContent() {
         onDismiss={voiceSetup.clearFeedback}
         duration={4000}>
         {voiceSetup.feedback}
+      </Snackbar>
+      <Snackbar
+        visible={Boolean(reconnectFeedback)}
+        onDismiss={() => setReconnectFeedback(undefined)}
+        duration={4000}>
+        {reconnectFeedback}
       </Snackbar>
     </>
   );

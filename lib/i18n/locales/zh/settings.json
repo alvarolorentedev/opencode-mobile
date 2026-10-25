@@ -101,7 +101,8 @@
       "hint": "会随发往此服务器的每个请求发送。值将安全存储在此设备上。",
       "showValues": "显示值",
       "hideValues": "隐藏值"
-    }
+    },
+    "reconnectSuccess": "已连接到 {{url}}。"
   },
   "providers": {
     "accounts": "Accounts",

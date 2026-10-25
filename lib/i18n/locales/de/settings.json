@@ -101,7 +101,8 @@
       "hint": "Wird bei jeder Anfrage an diesen Server gesendet. Werte werden sicher auf diesem Gerät gespeichert.",
       "showValues": "Werte anzeigen",
       "hideValues": "Werte ausblenden"
-    }
+    },
+    "reconnectSuccess": "Verbunden mit {{url}}."
   },
   "providers": {
     "accounts": "Accounts",

@@ -30,6 +30,7 @@ export type SettingsSection = {
   icon: ComponentProps<typeof MaterialCommunityIcons>['name'];
   title: string;
   summary: string;
+  summaryLines?: number;
   onPress: () => void;
   render?: () => ReactNode;
 };
@@ -103,6 +104,7 @@ export function buildSettingsSections({
       icon: 'server-network',
       title: t('settings:screen.categories.connection'),
       summary: connection.status === 'connected' ? t('common:labels.connected') : connection.message,
+      summaryLines: 2,
       onPress: () => setOpenSection('connection'),
       render: () => <ConnectionSection connection={connection} palette={palette} onManageConnect={connectSetup.enabled ? () => { setOpenSection(undefined); router.push('/pair?mode=manage'); } : undefined} onPair={connectSetup.enabled ? () => { setOpenSection(undefined); router.push('/pair'); } : undefined} />,
     },
