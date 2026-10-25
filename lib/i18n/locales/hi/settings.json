@@ -54,7 +54,14 @@
       "headerValue": "हेडर मान में पंक्ति विराम नहीं हो सकते।",
       "headerDuplicate": "हर हेडर नाम का उपयोग केवल एक बार किया जा सकता है।",
       "headerReserved": "यह हेडर ऐप द्वारा प्रबंधित है और इसे ओवरराइड नहीं किया जा सकता।",
-      "headerLimit": "अधिकतम 10 कस्टम हेडर का उपयोग करें।"
+      "headerLimit": "अधिकतम 10 कस्टम हेडर का उपयोग करें।",
+      "generic": "OpenCode से संवाद करते समय कुछ गलत हो गया।",
+      "tunnelStarting": "Cloudflare टनल अभी शुरू हो रहा है (त्रुटि 1033)। थोड़ी देर बाद पुनः प्रयास करें।",
+      "notApi": "{{url}} पर सर्वर ने OpenCode API प्रतिक्रिया नहीं दी।{{apiHint}}{{versionHint}}",
+      "endpointNotFound": "{{url}} पर OpenCode एंडपॉइंट नहीं मिला।{{apiHint}}{{versionHint}}",
+      "webPage": "{{url}} पर सर्वर ने OpenCode API के बजाय वेब पेज लौटाया।{{apiHint}}{{versionHint}}",
+      "apiHint": " यदि यह पता वेब UI परोसता है, तो इसके बजाय इसका API बेस URL उपयोग करें, आमतौर पर {{url}}/api.",
+      "versionHint": " यह ऐप OpenCode 1.x और 2.x सर्वर का समर्थन करता है; API बेस URL जाँचें।"
     },
     "setup": {
       "step": "चरण {{step}} / 2",

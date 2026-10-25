@@ -54,7 +54,14 @@
       "headerValue": "Los valores de encabezado no pueden contener saltos de línea.",
       "headerDuplicate": "Cada nombre de encabezado solo se puede usar una vez.",
       "headerReserved": "La app gestiona este encabezado y no se puede sobrescribir.",
-      "headerLimit": "Usa como máximo 10 encabezados personalizados."
+      "headerLimit": "Usa como máximo 10 encabezados personalizados.",
+      "generic": "Algo salió mal al comunicarse con OpenCode.",
+      "tunnelStarting": "El túnel de Cloudflare aún se está iniciando (error 1033). Reinténtalo en breve.",
+      "notApi": "El servidor en {{url}} no devolvió una respuesta de la API de OpenCode.{{apiHint}}{{versionHint}}",
+      "endpointNotFound": "No se encontró el endpoint de OpenCode en {{url}}.{{apiHint}}{{versionHint}}",
+      "webPage": "El servidor en {{url}} devolvió una página web en lugar de la API de OpenCode.{{apiHint}}{{versionHint}}",
+      "apiHint": " Si esta dirección sirve una interfaz web, usa su URL base de API, normalmente {{url}}/api.",
+      "versionHint": " Esta app admite servidores OpenCode 1.x y 2.x; verifica la URL base de la API."
     },
     "setup": {
       "step": "Paso {{step}} de 2",

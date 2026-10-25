@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useLayoutEffect, useRef } from 'react';
+import { useTranslation } from 'react-i18next';
 import { AppState } from 'react-native';
 
 import {
@@ -75,6 +76,7 @@ export function useConnectionConnectActions({
   scopeGenerationRef,
   initialConnectStartedRef,
 }: ConnectionActionsInput & { connectSetup: ConnectSetup }) {
+  const { t } = useTranslation();
   const prepareConnectSettingsRef = useRef<(settings: OpencodeConnectionSettings) => Promise<OpencodeConnectionSettings>>(async (value) => value);
   const connectInFlightRef = useRef<{ key: string; promise: Promise<ConnectionState> } | undefined>(undefined);
 
@@ -123,7 +125,7 @@ export function useConnectionConnectActions({
     if (!isValidServerUrl(targetSettings.serverUrl)) {
       const failed: ConnectionState = {
         status: 'error',
-        message: getConnectionError(targetSettings.serverUrl, new Error('Invalid server URL.')),
+        message: getConnectionError(targetSettings.serverUrl, new Error('Invalid server URL.'), t),
         kind: 'unknown',
         checkedAt: Date.now(),
       };
@@ -175,7 +177,7 @@ export function useConnectionConnectActions({
       const failure = lastError ?? new Error('Could not reach the OpenCode server.');
       const failed: ConnectionState = {
         status: 'error',
-        message: getConnectionError(targetSettings.serverUrl, failure),
+        message: getConnectionError(targetSettings.serverUrl, failure, t),
         retryableStartup: Boolean(targetSettings.connect) && isRetryableCloudLinkStartupError(lastError),
         kind: classifyConnectionFailure(failure),
         checkedAt: Date.now(),

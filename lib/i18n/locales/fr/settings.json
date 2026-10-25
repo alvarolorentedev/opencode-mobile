@@ -54,7 +54,14 @@
       "headerValue": "Les valeurs d'en-tête ne peuvent pas contenir de sauts de ligne.",
       "headerDuplicate": "Chaque nom d'en-tête ne peut être utilisé qu'une fois.",
       "headerReserved": "Cet en-tête est géré par l'application et ne peut pas être remplacé.",
-      "headerLimit": "Utilisez au maximum 10 en-têtes personnalisés."
+      "headerLimit": "Utilisez au maximum 10 en-têtes personnalisés.",
+      "generic": "Une erreur est survenue lors de la communication avec OpenCode.",
+      "tunnelStarting": "Le tunnel Cloudflare démarre encore (erreur 1033). Réessayez bientôt.",
+      "notApi": "Le serveur à {{url}} n'a pas renvoyé de réponse de l'API OpenCode.{{apiHint}}{{versionHint}}",
+      "endpointNotFound": "Point de terminaison OpenCode introuvable à {{url}}.{{apiHint}}{{versionHint}}",
+      "webPage": "Le serveur à {{url}} a renvoyé une page web au lieu de l'API OpenCode.{{apiHint}}{{versionHint}}",
+      "apiHint": " Si cette adresse sert une interface web, utilisez plutôt son URL de base d'API, généralement {{url}}/api.",
+      "versionHint": " Cette application prend en charge les serveurs OpenCode 1.x et 2.x ; vérifiez l'URL de base de l'API."
     },
     "setup": {
       "step": "Étape {{step}} sur 2",

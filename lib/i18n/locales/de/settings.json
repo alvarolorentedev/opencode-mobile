@@ -54,7 +54,14 @@
       "headerValue": "Header-Werte dürfen keine Zeilenumbrüche enthalten.",
       "headerDuplicate": "Jeder Header-Name kann nur einmal verwendet werden.",
       "headerReserved": "Dieser Header wird von der App verwaltet und kann nicht überschrieben werden.",
-      "headerLimit": "Verwende höchstens 10 benutzerdefinierte Header."
+      "headerLimit": "Verwende höchstens 10 benutzerdefinierte Header.",
+      "generic": "Bei der Kommunikation mit OpenCode ist ein Fehler aufgetreten.",
+      "tunnelStarting": "Der Cloudflare-Tunnel startet noch (Fehler 1033). Versuchen Sie es gleich erneut.",
+      "notApi": "Der Server unter {{url}} hat keine OpenCode-API-Antwort zurückgegeben.{{apiHint}}{{versionHint}}",
+      "endpointNotFound": "OpenCode-Endpunkt unter {{url}} nicht gefunden.{{apiHint}}{{versionHint}}",
+      "webPage": "Der Server unter {{url}} hat eine Webseite statt der OpenCode-API zurückgegeben.{{apiHint}}{{versionHint}}",
+      "apiHint": " Wenn diese Adresse eine Weboberfläche bereitstellt, verwenden Sie stattdessen ihre API-Basis-URL, normalerweise {{url}}/api.",
+      "versionHint": " Diese App unterstützt OpenCode 1.x- und 2.x-Server; prüfen Sie die API-Basis-URL."
     },
     "setup": {
       "step": "Schritt {{step}} von 2",

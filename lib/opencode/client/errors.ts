@@ -67,57 +67,70 @@ export function isRetryableCloudLinkStartupError(error: unknown): boolean {
   return /\b1033\b|\b(?:ENOTFOUND|EAI_AGAIN|ETIMEDOUT|ECONNRESET|ESOCKETTIMEDOUT)\b|(?:unable|failed|could not) to resolve host|name or service not known|nodename nor servname|DNS.*(?:resolution|lookup|failed)|(?:connection|request|connect) timed? ?out|connection reset|NSURLErrorDomain.*(?:-1001|-1003|-1005|-1006)\b/i.test(message);
 }
 
-export function getConnectionErrorMessage(error: unknown, serverUrl: string) {
+export type ConnectionErrorTranslator = (key: string, options?: Record<string, unknown>) => string;
+
+function fallbackTranslate(key: string, options: Record<string, unknown> = {}) {
+  switch (key) {
+    case 'settings:connection.errors.invalidUrl': return 'Enter a complete server URL, such as http://192.168.1.10:4096.';
+    case 'settings:connection.errors.generic': return 'Something went wrong while talking to OpenCode.';
+    case 'settings:connection.errors.tunnelStarting': return 'The Cloudflare tunnel is still starting (Error 1033). Retry shortly.';
+    case 'settings:connection.errors.notApi': return `The server at ${options.url} did not return an OpenCode API response.${options.apiHint}${options.versionHint}`;
+    case 'settings:connection.errors.endpointNotFound': return `OpenCode endpoint not found at ${options.url}.${options.apiHint}${options.versionHint}`;
+    case 'settings:connection.errors.webPage': return `The server at ${options.url} returned a web page instead of the OpenCode API.${options.apiHint}${options.versionHint}`;
+    case 'settings:connection.errors.apiHint': return ` If this address serves a web UI, use its API base URL instead, usually ${options.url}/api.`;
+    case 'settings:connection.errors.versionHint': return ' This app supports OpenCode 1.x and 2.x servers; verify the API base URL is correct.';
+    default: return key;
+  }
+}
+
+export function getConnectionErrorMessage(error: unknown, serverUrl: string, translate?: ConnectionErrorTranslator) {
+  const tr = translate ?? fallbackTranslate;
   // The V1 SDK throws non-JSON error pages as strings.
   if (typeof error === 'string') error = new Error(error);
   const normalized = normalizeServerUrl(serverUrl);
   if (!normalized.valid) {
-    return 'Enter a complete server URL, such as http://192.168.1.10:4096.';
+    return tr('settings:connection.errors.invalidUrl');
   }
 
   if (!(error instanceof Error)) {
-    return 'Something went wrong while talking to OpenCode.';
+    return tr('settings:connection.errors.generic');
   }
 
   const normalizedUrl = normalized.displayUrl;
-  const message = error.message || 'Something went wrong while talking to OpenCode.';
+  const message = error.message || tr('settings:connection.errors.generic');
   const alreadyApiBase = /\/api$/i.test(normalizedUrl);
-  const apiHint = alreadyApiBase
-    ? ''
-    : ` If this address serves a web UI, use its API base URL instead, usually ${normalizedUrl}/api.`;
-  const versionHint = alreadyApiBase
-    ? ' This app supports OpenCode 1.x and 2.x servers; verify the API base URL is correct.'
-    : '';
+  const apiHint = alreadyApiBase ? '' : tr('settings:connection.errors.apiHint', { url: normalizedUrl });
+  const versionHint = tr('settings:connection.errors.versionHint');
 
   if (/\b1033\b/.test(message)) {
-    return 'The Cloudflare tunnel is still starting (Error 1033). Retry shortly.';
+    return tr('settings:connection.errors.tunnelStarting');
   }
 
   if (/unsupported.?content.?type|malformed.?response/i.test(message)) {
-    return `The server at ${normalizedUrl} did not return an OpenCode API response.${apiHint}${versionHint}`;
+    return tr('settings:connection.errors.notApi', { url: normalizedUrl, apiHint, versionHint });
   }
 
   if (/^UnexpectedStatus$/i.test(message)) {
-    return `OpenCode endpoint not found at ${normalizedUrl}.${apiHint}${versionHint}`;
+    return tr('settings:connection.errors.endpointNotFound', { url: normalizedUrl, apiHint, versionHint });
   }
 
   if (/text\/html/i.test(message) || /not supported by this version/i.test(message)) {
-    return `The server at ${normalizedUrl} returned a web page instead of the OpenCode API.${apiHint}${versionHint}`;
+    return tr('settings:connection.errors.webPage', { url: normalizedUrl, apiHint, versionHint });
   }
 
   if (/404|not found/i.test(message)) {
-    return `OpenCode endpoint not found at ${normalizedUrl}.${apiHint}${versionHint}`;
+    return tr('settings:connection.errors.endpointNotFound', { url: normalizedUrl, apiHint, versionHint });
   }
 
   if (/json/i.test(message) && /unexpected|parse|token/i.test(message)) {
-    return `The server at ${normalizedUrl} did not return an OpenCode API response.${apiHint}${versionHint}`;
+    return tr('settings:connection.errors.notApi', { url: normalizedUrl, apiHint, versionHint });
   }
 
   return message;
 }
 
-export function getConnectionError(serverUrl: string, error: unknown) {
-  return getConnectionErrorMessage(error, serverUrl);
+export function getConnectionError(serverUrl: string, error: unknown, translate?: ConnectionErrorTranslator) {
+  return getConnectionErrorMessage(error, serverUrl, translate);
 }
 
 export function isContractMismatchError(error: unknown) {

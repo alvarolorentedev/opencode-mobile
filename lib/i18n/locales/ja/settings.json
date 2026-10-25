@@ -54,7 +54,14 @@
       "headerValue": "ヘッダー値に改行は使用できません。",
       "headerDuplicate": "同じヘッダー名は一度しか使用できません。",
       "headerReserved": "このヘッダーはアプリが管理しているため上書きできません。",
-      "headerLimit": "カスタムヘッダーは最大 10 個までです。"
+      "headerLimit": "カスタムヘッダーは最大 10 個までです。",
+      "generic": "OpenCode との通信中に問題が発生しました。",
+      "tunnelStarting": "Cloudflare トンネルはまだ起動中です (エラー 1033)。しばらくしてから再試行してください。",
+      "notApi": "{{url}} のサーバーは OpenCode API の応答を返しませんでした。{{apiHint}}{{versionHint}}",
+      "endpointNotFound": "{{url}} に OpenCode エンドポイントが見つかりません。{{apiHint}}{{versionHint}}",
+      "webPage": "{{url}} のサーバーは OpenCode API ではなく Web ページを返しました。{{apiHint}}{{versionHint}}",
+      "apiHint": " このアドレスが Web UI を提供している場合は、代わりにその API ベース URL (通常は {{url}}/api) を使用してください。",
+      "versionHint": " このアプリは OpenCode 1.x および 2.x サーバーをサポートしています。API ベース URL を確認してください。"
     },
     "setup": {
       "step": "ステップ {{step}} / 2",

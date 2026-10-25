@@ -578,13 +578,13 @@ UI text is grouped into feature namespaces (`common`, `chat`, `project`,
 `lib/i18n` so translations are initialized before first render, and
 `OpencodeProvider` applies the persisted language preference after hydration.
 
-Domain-generated labels (`lib/opencode/format.ts` detail labels,
-`lib/opencode/transcript.ts` activity summaries, and provider/transport error
-strings) remain English. They are built outside the React tree and are partly
-memoized per message record, so translating them needs a by-kind/enum pass
-rather than an in-place `t()` call. Notification copy is the exception: it is
-translated inside `lib/notifications.ts`, so the provider passes only the
-session title and never builds notification strings itself.
+Domain labels are translated at render where the data carries a stable
+by-kind value: tool names and diff turn numbers are localized in the chat cards,
+and connection setup errors accept an injected translator while retaining an
+English fallback for non-React callers. Remaining wire/server messages and
+detail labels embedded in memoized transcript records stay English until they
+are reshaped to carry keys. Notification copy is already translated inside
+`lib/notifications.ts`, so the provider passes only the session title.
 
 ## Runtime Boot Sequence
 

@@ -54,7 +54,14 @@
       "headerValue": "标头值不能包含换行符。",
       "headerDuplicate": "每个标头名称只能使用一次。",
       "headerReserved": "此标头由应用管理，无法覆盖。",
-      "headerLimit": "最多使用 10 个自定义标头。"
+      "headerLimit": "最多使用 10 个自定义标头。",
+      "generic": "与 OpenCode 通信时出错。",
+      "tunnelStarting": "Cloudflare 隧道仍在启动（错误 1033）。请稍后重试。",
+      "notApi": "{{url}} 的服务器未返回 OpenCode API 响应。{{apiHint}}{{versionHint}}",
+      "endpointNotFound": "在 {{url}} 未找到 OpenCode 端点。{{apiHint}}{{versionHint}}",
+      "webPage": "{{url}} 的服务器返回了网页而不是 OpenCode API。{{apiHint}}{{versionHint}}",
+      "apiHint": " 如果此地址提供 Web UI，请改用其 API 基础 URL，通常是 {{url}}/api。",
+      "versionHint": " 此应用支持 OpenCode 1.x 和 2.x 服务器；请检查 API 基础 URL。"
     },
     "setup": {
       "step": "第 {{step}} 步，共 2 步",

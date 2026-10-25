@@ -54,7 +54,14 @@
       "headerValue": "Header values cannot contain line breaks.",
       "headerDuplicate": "Each header name can only be used once.",
       "headerReserved": "This header is managed by the app and cannot be overridden.",
-      "headerLimit": "Use at most 10 custom headers."
+      "headerLimit": "Use at most 10 custom headers.",
+      "generic": "Something went wrong while talking to OpenCode.",
+      "tunnelStarting": "The Cloudflare tunnel is still starting (Error 1033). Retry shortly.",
+      "notApi": "The server at {{url}} did not return an OpenCode API response.{{apiHint}}{{versionHint}}",
+      "endpointNotFound": "OpenCode endpoint not found at {{url}}.{{apiHint}}{{versionHint}}",
+      "webPage": "The server at {{url}} returned a web page instead of the OpenCode API.{{apiHint}}{{versionHint}}",
+      "apiHint": " If this address serves a web UI, use its API base URL instead, usually {{url}}/api.",
+      "versionHint": " This app supports OpenCode 1.x and 2.x servers; verify the API base URL is correct."
     },
     "setup": {
       "step": "Step {{step}} of 2",

@@ -54,7 +54,14 @@
       "headerValue": "Valores de cabeçalho não podem conter quebras de linha.",
       "headerDuplicate": "Cada nome de cabeçalho só pode ser usado uma vez.",
       "headerReserved": "Este cabeçalho é gerenciado pelo app e não pode ser substituído.",
-      "headerLimit": "Use no máximo 10 cabeçalhos personalizados."
+      "headerLimit": "Use no máximo 10 cabeçalhos personalizados.",
+      "generic": "Algo deu errado ao falar com o OpenCode.",
+      "tunnelStarting": "O túnel do Cloudflare ainda está iniciando (erro 1033). Tente novamente em breve.",
+      "notApi": "O servidor em {{url}} não retornou uma resposta da API do OpenCode.{{apiHint}}{{versionHint}}",
+      "endpointNotFound": "Endpoint do OpenCode não encontrado em {{url}}.{{apiHint}}{{versionHint}}",
+      "webPage": "O servidor em {{url}} retornou uma página web em vez da API do OpenCode.{{apiHint}}{{versionHint}}",
+      "apiHint": " Se este endereço serve uma interface web, use a URL base da API, normalmente {{url}}/api.",
+      "versionHint": " Este app suporta servidores OpenCode 1.x e 2.x; verifique a URL base da API."
     },
     "setup": {
       "step": "Passo {{step}} de 2",

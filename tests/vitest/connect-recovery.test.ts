@@ -64,7 +64,7 @@ async function fixture({ expired = false, missing = false, storedSession = true,
     isConnectPurchase: () => true, selectConnectOffers: () => [{ key: 'monthly' }],
     connectPurchaseProof: async () => ({ store: 'google', purchaseToken: 'proof' }),
   };
-  const imports: Record<string, any> = { react: runtime.react, 'react-native': native, '@/lib/connect': connect,
+  const imports: Record<string, any> = { react: runtime.react, 'react-i18next': { useTranslation: () => ({ t: (key: string) => key }) }, 'react-native': native, '@/lib/connect': connect,
     '@/lib/connect-install': { isConnectStoreInstall: async () => true },
     '@/lib/connect-store': store, '@/lib/connection-profiles': profiles, '@/lib/connection-scope': scope,
     '@/providers/connection-refresh': { migrateConnectConnectionScope: async () => {} },
