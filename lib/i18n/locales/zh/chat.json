@@ -53,7 +53,9 @@
     "loadEarlierAction": "加载更早的消息",
     "transcriptErrorTitle": "无法加载此聊天",
     "transcriptErrorDescription": "请检查连接后重试。",
-    "retryTranscript": "重试"
+    "retryTranscript": "重试",
+    "jumpToLatest": "跳到最新",
+    "newMessages": "新消息"
   },
   "activity": {
     "used": "使用了 {{count}} {{tools}}",

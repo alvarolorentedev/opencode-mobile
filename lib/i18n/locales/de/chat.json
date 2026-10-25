@@ -53,7 +53,9 @@
     "loadEarlierAction": "Frühere Nachrichten laden",
     "transcriptErrorTitle": "Chat konnte nicht geladen werden",
     "transcriptErrorDescription": "Prüfe die Verbindung und versuche es erneut.",
-    "retryTranscript": "Erneut versuchen"
+    "retryTranscript": "Erneut versuchen",
+    "jumpToLatest": "Zum Neuesten springen",
+    "newMessages": "Neue Nachrichten"
   },
   "activity": {
     "used": "Verwendet {{count}} {{tools}}",

@@ -53,7 +53,9 @@
     "loadEarlierAction": "Load earlier messages",
     "transcriptErrorTitle": "Could not load this chat",
     "transcriptErrorDescription": "Check your connection and try again.",
-    "retryTranscript": "Try again"
+    "retryTranscript": "Try again",
+    "jumpToLatest": "Jump to latest",
+    "newMessages": "New messages"
   },
   "activity": {
     "used": "Used {{count}} {{tools}}",

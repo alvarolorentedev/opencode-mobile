@@ -24,6 +24,8 @@ export const styles = StyleSheet.create({
   progressFabInline: { position: 'relative', right: 0, bottom: 0 },
   changesChip: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', alignItems: 'center', gap: 12, borderRadius: 999, minHeight: 44, maxWidth: '100%', paddingHorizontal: 18, paddingVertical: 10 },
   chatArea: { flex: 1, position: 'relative' },
+  transcriptContainer: { flex: 1 },
+  jumpToLatestWrap: { position: 'absolute', left: 0, right: 0, bottom: 12, alignItems: 'center', zIndex: 3 },
   scroll: { flex: 1 },
   content: { padding: 12, gap: 12, paddingBottom: 20 },
   transcriptItem: { marginBottom: 12 },

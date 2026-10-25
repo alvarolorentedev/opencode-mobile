@@ -53,7 +53,9 @@
     "loadEarlierAction": "पुराने संदेश लोड करें",
     "transcriptErrorTitle": "यह चैट लोड नहीं हो सकी",
     "transcriptErrorDescription": "कनेक्शन जाँचें और फिर से कोशिश करें।",
-    "retryTranscript": "फिर से कोशिश करें"
+    "retryTranscript": "फिर से कोशिश करें",
+    "jumpToLatest": "सबसे नए पर जाएँ",
+    "newMessages": "नए संदेश"
   },
   "activity": {
     "used": "{{count}} {{tools}} उपयोग किए",

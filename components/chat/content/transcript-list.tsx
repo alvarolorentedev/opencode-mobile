@@ -1,7 +1,7 @@
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { FlashList, type FlashListRef } from '@shopify/flash-list';
 import { useIsFocused } from 'expo-router';
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { AppState, View, type NativeScrollEvent, type NativeSyntheticEvent } from 'react-native';
 import { ActivityIndicator, Button, Card, Text, TouchableRipple } from 'react-native-paper';
@@ -100,6 +100,9 @@ export function TranscriptList({
   const settleFramesRef = useRef(0);
   const settleFrameRef = useRef<number | undefined>(undefined);
   const transcriptRowsRef = useRef(transcriptRows);
+  const previousRowCountRef = useRef(transcriptRows.length);
+  const [detached, setDetached] = useState(false);
+  const [unseen, setUnseen] = useState(false);
   useLayoutEffect(() => {
     transcriptRowsRef.current = transcriptRows;
   });
@@ -108,8 +111,13 @@ export function TranscriptList({
   // Retained workspaces restore history; first visits start at the newest message.
   useLayoutEffect(() => {
     const saved = positions?.get(identity) as { follow: boolean; offset: number } | undefined;
-    followTailRef.current = saved?.follow ?? true;
+    const followsTail = saved?.follow ?? true;
+    followTailRef.current = followsTail;
     lastOffsetRef.current = saved?.offset ?? 0;
+    previousRowCountRef.current = transcriptRowsRef.current.length;
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- restoring a retained scroll position changes the visible affordance.
+    setDetached(!followsTail);
+    setUnseen(false);
   }, [identity, positions]);
 
   const settleToTail = useCallback(() => {
@@ -139,6 +147,16 @@ export function TranscriptList({
     if (transcriptRows.length === 0) return;
     if (followTailRef.current) settleToTail();
   }, [identity, transcriptRows, settleToTail]);
+
+  useEffect(() => {
+    const grew = transcriptRows.length > previousRowCountRef.current;
+    previousRowCountRef.current = transcriptRows.length;
+    if (!followTailRef.current && grew) {
+      setUnseen(true);
+    } else if (followTailRef.current) {
+      setUnseen(false);
+    }
+  }, [transcriptRows]);
 
   const restorePosition = useCallback(() => {
     if (transcriptRowsRef.current.length === 0) return;
@@ -170,9 +188,20 @@ export function TranscriptList({
   const handleScroll = useCallback((event: NativeSyntheticEvent<NativeScrollEvent>) => {
     const { contentOffset, contentSize, layoutMeasurement } = event.nativeEvent;
     lastOffsetRef.current = contentOffset.y;
-    followTailRef.current = contentSize.height - (contentOffset.y + layoutMeasurement.height) <= TAIL_FOLLOW_THRESHOLD;
-    positions?.set(identity, { offset: lastOffsetRef.current, follow: followTailRef.current });
+    const followsTail = contentSize.height - (contentOffset.y + layoutMeasurement.height) <= TAIL_FOLLOW_THRESHOLD;
+    followTailRef.current = followsTail;
+    setDetached(!followsTail);
+    if (followsTail) setUnseen(false);
+    positions?.set(identity, { offset: lastOffsetRef.current, follow: followsTail });
   }, [identity, positions]);
+
+  const jumpToLatest = useCallback(() => {
+    followTailRef.current = true;
+    setDetached(false);
+    setUnseen(false);
+    positions?.set(identity, { offset: lastOffsetRef.current, follow: true });
+    settleToTail();
+  }, [identity, positions, settleToTail]);
 
   // While the session runs, the newest activity run remains the visible
   // progress anchor even after its own tools complete.
@@ -185,7 +214,8 @@ export function TranscriptList({
   const extraData = useMemo(() => ({ copiedMessageId, speakingMessageId, activityRunning, lastActivityKey }), [copiedMessageId, speakingMessageId, activityRunning, lastActivityKey]);
 
   return (
-    <FlashList
+    <View style={styles.transcriptContainer}>
+      <FlashList
       key={identity}
       ref={transcriptRef}
       data={transcriptRows}
@@ -312,6 +342,19 @@ export function TranscriptList({
           </Card>
         )
       }
-    />
+      />
+      {detached && transcriptRows.length > 0 ? (
+        <View pointerEvents="box-none" style={styles.jumpToLatestWrap}>
+          <Button
+            testID="chat-jump-to-latest"
+            compact
+            mode="contained"
+            icon="arrow-down"
+            onPress={jumpToLatest}>
+            {unseen ? t('chat:content.newMessages') : t('chat:content.jumpToLatest')}
+          </Button>
+        </View>
+      ) : null}
+    </View>
   );
 }

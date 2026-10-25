@@ -53,7 +53,9 @@
     "loadEarlierAction": "以前のメッセージを読み込む",
     "transcriptErrorTitle": "このチャットを読み込めませんでした",
     "transcriptErrorDescription": "接続を確認して、もう一度お試しください。",
-    "retryTranscript": "再試行"
+    "retryTranscript": "再試行",
+    "jumpToLatest": "最新へ移動",
+    "newMessages": "新しいメッセージ"
   },
   "activity": {
     "used": "{{count}} {{tools}} を使用",

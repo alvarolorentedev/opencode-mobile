@@ -48,12 +48,15 @@ async function mountTranscriptList(overrides: Overrides = {}) {
     '@/components/chat/content/transcript-skeleton': { TranscriptSkeleton: 'TranscriptSkeleton' },
     '@/constants/theme': { Colors: { light: {} } },
   }, { ...runtime.globals, requestAnimationFrame: () => 1, cancelAnimationFrame: () => undefined });
-  const list = runtime.mount(TranscriptList, listProps(overrides));
+  const root = runtime.mount(TranscriptList, listProps(overrides));
+  const list = root.type === 'FlashList' ? root : root.props.children[0];
   return {
     list,
+    root,
+    runtime,
     update: (patch: Overrides) => {
-      runtime.update(patch as Record<string, unknown>);
-      return runtime.value;
+      const next = runtime.update(patch as Record<string, unknown>);
+      return next.type === 'FlashList' ? next : next.props.children[0];
     },
   };
 }
@@ -95,6 +98,26 @@ describe('transcript empty state', () => {
     const { update } = await mountTranscriptList({ currentSessionId: undefined });
     const list = update({ hasOlderMessages: false });
     expect(list.props.ListEmptyComponent.type).toBe('Card');
+  });
+
+  it('offers a jump-to-latest control after scrolling away and marks new activity', async () => {
+    const { list, runtime, update } = await mountTranscriptList({ hasMessages: true, transcriptRows: [{ key: 'a' }] });
+    list.props.onScroll({ nativeEvent: { contentOffset: { y: 0 }, contentSize: { height: 1200 }, layoutMeasurement: { height: 600 } } });
+    runtime.flush();
+    expect(JSON.stringify(runtime.value.props.children[1])).toContain('chat:content.jumpToLatest');
+
+    update({ transcriptRows: [{ key: 'a' }, { key: 'b' }] });
+    expect(JSON.stringify(runtime.value.props.children[1])).toContain('chat:content.newMessages');
+  });
+
+  it('dismisses the jump-to-latest control when tapped', async () => {
+    const { list, runtime } = await mountTranscriptList({ hasMessages: true, transcriptRows: [{ key: 'a' }] });
+    list.props.onScroll({ nativeEvent: { contentOffset: { y: 0 }, contentSize: { height: 1200 }, layoutMeasurement: { height: 600 } } });
+    runtime.flush();
+    const control = runtime.value.props.children[1];
+    control.props.children.props.onPress();
+    runtime.flush();
+    expect(runtime.value.props.children[1]).toBeNull();
   });
 
   it('does not reserve a running-status footer', async () => {

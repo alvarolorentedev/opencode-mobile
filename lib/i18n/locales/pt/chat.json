@@ -53,7 +53,9 @@
     "loadEarlierAction": "Carregar mensagens anteriores",
     "transcriptErrorTitle": "Não foi possível carregar este chat",
     "transcriptErrorDescription": "Verifique a conexão e tente novamente.",
-    "retryTranscript": "Tentar novamente"
+    "retryTranscript": "Tentar novamente",
+    "jumpToLatest": "Ir para o mais recente",
+    "newMessages": "Novas mensagens"
   },
   "activity": {
     "used": "Usado {{count}} {{tools}}",
