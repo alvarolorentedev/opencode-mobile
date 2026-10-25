@@ -3,6 +3,7 @@ import { createRequire } from 'node:module';
 import path from 'node:path';
 import { runInNewContext } from 'node:vm';
 import { transformSync } from '@babel/core';
+import type { SessionStatus } from '@/lib/opencode/types';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { deferred, hookRuntime, loadTs } from '../helpers/runtime.mjs';
 import { recentWidgetSessions, widgetAttention, widgetPlan, widgetReply, widgetSession } from '@/providers/widget-content';
@@ -243,7 +244,10 @@ describe('compiled native widgets', () => {
     const sessions = [session('one', 3), session('two', 2), session('three', 1)];
     return {
       updatedAt: now, language: 'en', showPreviews: true, connectionScope: 'scope',
-      sessions: sessions.map((entry, index) => ({ ...widgetSession(entry, 'scope', 'Untitled', { type: index === 0 ? 'busy' : index === 1 ? 'retry' : 'idle' }), preview: `Reply ${entry.id}` })),
+      sessions: sessions.map((entry, index) => {
+        const status: SessionStatus = index === 0 ? { type: 'busy' } : index === 1 ? { type: 'retry', attempt: 1, message: 'retry', next: now } : { type: 'idle' };
+        return { ...widgetSession(entry, 'scope', 'Untitled', status), preview: `Reply ${entry.id}` };
+      }),
       attention: widgetAttention({ sessions, permissions: sessions.map((entry) => permission(entry.id)), questions: [question('one')], scope: 'scope', untitled: 'Untitled', now, showPreviews: true }),
       plan: widgetPlan(sessions[0], todos, 'scope', 'Untitled', now, true),
     };
@@ -327,7 +331,7 @@ describe('compiled native widgets', () => {
     const bridge = (os = 'android', ownership = 'standalone', e2eMode = false) => loadModule('lib/widgets.tsx', {
       ...imports, 'react-native': { Platform: { OS: os } }, 'expo-constants': { appOwnership: ownership, expoConfig: { extra: { e2eMode } } },
     }, dev, os);
-    const storage = { getItem: vi.fn(async (key: string) => key === storageKeys.WIDGET_SNAPSHOT_STORAGE_KEY ? JSON.stringify(snapshot()) : JSON.stringify({ showWidgetPreviews: false, language: 'en' })) };
+    const storage = { getItem: vi.fn(async (key: string): Promise<string | null> => key === storageKeys.WIDGET_SNAPSHOT_STORAGE_KEY ? JSON.stringify(snapshot()) : JSON.stringify({ showWidgetPreviews: false, language: 'en' })) };
     const snapshotStorage = loadModule('providers/widget-snapshot-storage.ts', {
       '@react-native-async-storage/async-storage': storage, '@/lib/storage-keys': storageKeys,
       '@/providers/widget-snapshot': { hideWidgetPreviews, parseWidgetSnapshot },

@@ -35,9 +35,9 @@ describe('persistence hydration and write-back', () => {
     ]);
     const storage = createStorage(values);
     const hydrated: Record<string, unknown> = {};
-    await loadPersistedValue(storage, 'settings', JSON.parse, (value) => { hydrated.settings = value; });
-    await loadPersistedValue(storage, 'preferences', JSON.parse, (value) => { hydrated.preferences = value; });
-    await loadPersistedValue(storage, 'sessions', JSON.parse, (value) => { hydrated.sessions = value; });
+    await loadPersistedValue(storage, 'settings', JSON.parse, (value: any) => { hydrated.settings = value; });
+    await loadPersistedValue(storage, 'preferences', JSON.parse, (value: any) => { hydrated.preferences = value; });
+    await loadPersistedValue(storage, 'sessions', JSON.parse, (value: any) => { hydrated.sessions = value; });
     assert.deepEqual(hydrated, {
       settings: { serverUrl: 'http://localhost' },
       preferences: { mode: 'build' },
@@ -52,8 +52,8 @@ describe('persistence hydration and write-back', () => {
     const isolatedStorage = createStorage(isolatedValues);
     const isolatedHydrated: Record<string, unknown> = {};
     await loadPersistedValue(isolatedStorage, 'settings', JSON.parse, () => assert.fail('corrupt value should not apply'));
-    await loadPersistedValue(isolatedStorage, 'preferences', JSON.parse, (value) => { isolatedHydrated.preferences = value; });
-    await loadPersistedValue(isolatedStorage, 'sessions', JSON.parse, (value) => { isolatedHydrated.sessions = value; });
+    await loadPersistedValue(isolatedStorage, 'preferences', JSON.parse, (value: any) => { isolatedHydrated.preferences = value; });
+    await loadPersistedValue(isolatedStorage, 'sessions', JSON.parse, (value: any) => { isolatedHydrated.sessions = value; });
     assert.deepEqual(isolatedHydrated, {
       preferences: { mode: 'build' },
       sessions: { '/repo': 'session-1' },
@@ -68,7 +68,7 @@ describe('persistence hydration and write-back', () => {
     const applyFailureStorage = createStorage(new Map([['apply-failure', '{"mode":"build"}'], ['after-failure', '{"mode":"plan"}']]));
     let valueAfterApplyFailure;
     await loadPersistedValue(applyFailureStorage, 'apply-failure', JSON.parse, () => { throw new Error('state update failed'); });
-    await loadPersistedValue(applyFailureStorage, 'after-failure', JSON.parse, (value) => { valueAfterApplyFailure = value; });
+    await loadPersistedValue(applyFailureStorage, 'after-failure', JSON.parse, (value: any) => { valueAfterApplyFailure = value; });
     assert.deepEqual(applyFailureStorage.removed, []);
     assert.deepEqual(valueAfterApplyFailure, { mode: 'plan' });
 
@@ -81,7 +81,7 @@ describe('persistence hydration and write-back', () => {
       const storedControlPlane = new Map([['control-plane', legacyControlPlane]]);
       const controlPlaneStorage = createStorage(storedControlPlane);
       let controlPlane = connect.CONNECT_PRODUCTION_URL;
-      await loadPersistedValue(controlPlaneStorage, 'control-plane', connect.normalizeTrustedControlPlaneUrl, (value) => { controlPlane = value; });
+      await loadPersistedValue(controlPlaneStorage, 'control-plane', connect.normalizeTrustedControlPlaneUrl, (value: any) => { controlPlane = value; });
       assert.equal(controlPlane, 'https://api.opencodecloud.link', 'Discarded legacy preferences retain the new production default.');
       assert.deepEqual(controlPlaneStorage.removed, ['control-plane']);
     }
@@ -107,7 +107,7 @@ describe('persistence hydration and write-back', () => {
     assert.deepEqual(JSON.parse(JSON.stringify(parseChatPreferences('{"modelVariantSelections":{"openai/model":"max","openai/default":null}}').modelVariantSelections)), { 'openai/model': 'max', 'openai/default': null });
     assert.equal(parseChatPreferences('{"modelVariantSelections":{"openai/model":false}}').modelVariantSelections, undefined);
 
-    const write = createPersistenceWriter(), gate = deferred(), writes: string[] = [];
+    const write = createPersistenceWriter(), gate = deferred<void>(), writes: string[] = [];
     const first = write('settings', 'a', async () => { await gate.promise; writes.push('a'); });
     const second = write('settings', 'b', async () => writes.push('b'));
     const repeated = write('settings', 'b', async () => writes.push('duplicate'));
@@ -141,7 +141,7 @@ describe('persistence hydration and write-back', () => {
       '@/lib/connection-password': {
         getConnectionPassword: async () => { credentialReads++; return 'another-server-secret'; },
         saveConnectionPassword: async () => assert.fail('unread credentials must remain untouched'),
-        withoutConnectionSecrets: ({ password: _, headers: __, ...metadata }) => metadata,
+        withoutConnectionSecrets: ({ password: _, headers: __, ...metadata }: any) => metadata,
       },
       '@/lib/connection-headers': {
         getConnectionHeaders: async () => { headerReads++; return { 'CF-Access-Client-Secret': 'another-server-header' }; },

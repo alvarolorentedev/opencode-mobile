@@ -11,7 +11,7 @@ describe('ANR regression checks', () => {
     const require = createRequire(import.meta.url);
     async function load(relative: string, imports: Record<string, unknown> = {}, globals: Record<string, unknown> = {}) {
       const source = await readFile(new URL(`../../${relative}`, import.meta.url), 'utf8');
-      const exports = {};
+      const exports: Record<string, any> = {};
       const output = ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.CommonJS } }).outputText;
       runInNewContext(`String.prototype.localeCompare = () => { throw new Error('Do not allocate a collator per comparison'); };\n${output}`, {
         exports,

@@ -104,9 +104,9 @@ describe('partial interaction reads', () => {
 
 describe('prompt submission ownership', () => {
   async function mount() {
-    const runtime = hookRuntime(), a = deferred(), b = deferred();
+    const runtime = hookRuntime(), a = deferred<void>(), b = deferred<void>();
     const notifications = { clearPendingTaskFinishedNotification: vi.fn(async () => true),
-      listPendingTaskFinishedNotifications: async () => [], notifyTaskFinished: vi.fn(), trackPendingTaskFinishedNotification: vi.fn(async () => {}) };
+      listPendingTaskFinishedNotifications: async () => [], notifyTaskFinished: vi.fn(), trackPendingTaskFinishedNotification: vi.fn(async (_input: any, _onlyIfAbsent?: boolean) => {}) };
     const refresh = vi.fn(async () => []);
     const appearance = await loadTs('constants/appearance.ts');
     const preferences = await loadTs('providers/opencode-preferences.ts', { '@/constants/appearance': appearance });
@@ -162,12 +162,12 @@ describe('prompt submission ownership', () => {
   it('does not clear B when an abort of admitted A finishes late', async () => {
     const { runtime, a, b, notifications, submission, input } = await mount();
     const first = runtime.value.sendPrompt('s', 'A'); await runtime.settle(); a.resolve(); await first; await runtime.settle();
-    const gate = deferred(); notifications.clearPendingTaskFinishedNotification.mockReturnValueOnce(gate.promise);
+    const gate = deferred<boolean>(); notifications.clearPendingTaskFinishedNotification.mockReturnValueOnce(gate.promise);
     const stop = runtime.value.abortSession('s');
     const second = runtime.value.sendPrompt('s', 'B'); await runtime.settle();
     const stamps = notifications.trackPendingTaskFinishedNotification.mock.calls.map(([record]: any) => record.requestedAt);
     expect(notifications.clearPendingTaskFinishedNotification).toHaveBeenCalledWith(input.connectionScope, 's', stamps[0]);
-    const newer = submission.current; gate.resolve(); await stop; await runtime.settle();
+    const newer = submission.current; gate.resolve(true); await stop; await runtime.settle();
     expect(submission.current).toBe(newer); expect(runtime.value.sendingState.active).toBe(true);
     b.resolve(); await second; runtime.unmount();
   });
@@ -177,7 +177,7 @@ describe('prompt submission ownership', () => {
     input.settingsRef.current = settings;
     const oldScope = scopes.getConnectionScope(settings);
     runtime.update({ connectionScope: oldScope });
-    const gate = deferred(); notifications.trackPendingTaskFinishedNotification.mockReturnValueOnce(gate.promise);
+    const gate = deferred<void>(); notifications.trackPendingTaskFinishedNotification.mockReturnValueOnce(gate.promise);
     const sending = runtime.value.sendPrompt('s', 'A'); await runtime.settle();
     input.settingsRef.current = { ...settings, username: 'device-b' };
     const nextScope = scopes.getConnectionScope(input.settingsRef.current);

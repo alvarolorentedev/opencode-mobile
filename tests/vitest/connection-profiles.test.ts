@@ -132,7 +132,7 @@ describe('connection profiles', () => {
       await resolveConnectionCredentials(identity)
     )?.password;
     const saveConnectionProfiles = (profiles: Awaited<ReturnType<typeof loadConnectionProfiles>>) => (
-      mutateConnectionProfiles(async (_current, save) => { await save(profiles); })
+      mutateConnectionProfiles(async (_current: any, save: any) => { await save(profiles); })
     );
 
     const passwordStorageKey = 'opencode-mobile.connection-password';
@@ -371,19 +371,19 @@ describe('connection profiles', () => {
       assert.equal((await loadConnectionProfiles())[0].serverUrl, 'http://host.test/proxy');
       assert.ok(!g.__profilesTestAsyncStorage.get(storageKeys.CONNECTION_PROFILES_STORAGE_KEY).includes('private'));
       const entered = Promise.withResolvers<void>(), credential = Promise.withResolvers<void>();
-      const edit = mutateConnectionProfiles(async (stored, save) => {
+      const edit = mutateConnectionProfiles(async (stored: any, save: any) => {
         entered.resolve(); await credential.promise;
         await saveProfilePassword('manual', 'manual-secret');
-        await save(stored.map((profile) => ({ ...profile, name: 'Edited' })));
+        await save(stored.map((profile: any) => ({ ...profile, name: 'Edited' })));
       });
       await entered.promise;
       const cloud = saveConnectProfile('https://api.opencodecloud.link', { server_url: 'https://cloud.test', machine_id: 'machine', machine_name: 'Cloud', device_id: 'device', device_secret: 'cloud-secret', expires_at: new Date(Date.now() + 60_000).toISOString() });
-      const preferences = mutateConnectionProfiles(async (stored, save) => save(stored.map((profile) => profile.id === 'manual' ? { ...profile, modelPreferences: { modelId: 'model' } } : profile)));
+      const preferences = mutateConnectionProfiles(async (stored: any, save: any) => save(stored.map((profile: any) => profile.id === 'manual' ? { ...profile, modelPreferences: { modelId: 'model' } } : profile)));
       credential.resolve(); await Promise.all([edit, cloud, preferences]);
       const stored = await loadConnectionProfiles();
       assert.equal(stored.length, 2);
-      assert.equal(stored.find((profile) => profile.id === 'manual')!.name, 'Edited');
-      assert.equal(stored.find((profile) => profile.id === 'manual')!.modelPreferences!.modelId, 'model');
+      assert.equal(stored.find((profile: any) => profile.id === 'manual')!.name, 'Edited');
+      assert.equal(stored.find((profile: any) => profile.id === 'manual')!.modelPreferences!.modelId, 'model');
       assert.equal(await getProfilePassword('manual'), 'manual-secret');
       assert.equal(await getProfilePassword((await cloud).id), 'cloud-secret');
       await assert.rejects(mutateConnectionProfiles(async () => { throw new Error('failed writer'); }), /failed writer/);
