@@ -237,6 +237,10 @@
       "title": "Reprendre l'écoute après la réponse",
       "description": "En mode conversation, relance l'écoute une fois la lecture vocale terminée."
     },
+    "wakePhrase": {
+      "label": "Phrase d’activation",
+      "helper": "Le mode conversation n’envoie un message qu’après avoir entendu cette phrase. Deux mots ou plus fonctionnent mieux."
+    },
     "speechLocale": {
       "label": "Langue de la synthèse vocale",
       "helper": "Laisse vide pour utiliser la langue par défaut du système pour la saisie et la lecture vocales."

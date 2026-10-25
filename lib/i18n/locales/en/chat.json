@@ -120,7 +120,7 @@
     "autoApproveEnabled": "Auto-approve",
     "askPermission": "Ask before actions",
     "conversationMode": "Conversation mode",
-    "conversationHint": "Keep talking naturally while the app stays open. It listens, sends your turn, reads the reply, and then listens again.",
+    "conversationHint": "Say “{{phrase}}”, then speak your turn. The app sends only what follows the phrase, reads the reply, and listens again.",
     "removeAttachment": "Remove {{name}}",
     "attachment": "attachment",
     "listening": "Listening",
@@ -190,11 +190,13 @@
   "overlay": {
     "conversationMode": "Conversation mode",
     "phaseOff": "Off",
+    "phaseArmed": "Say “{{phrase}}”",
     "phaseListening": "Listening",
     "phaseSubmitting": "Submitting",
     "phaseWaiting": "Waiting",
     "phaseSpeaking": "Speaking",
     "lastHeard": "Last heard",
+    "wakePhrase": "Wake phrase",
     "startSpeaking": "Start speaking naturally. What you say in the last round will appear here."
   },
   "modelPicker": {

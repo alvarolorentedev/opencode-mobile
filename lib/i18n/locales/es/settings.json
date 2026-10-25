@@ -237,6 +237,10 @@
       "title": "Reanudar la escucha tras la respuesta",
       "description": "En el modo conversación, vuelve a escuchar cuando termina la reproducción hablada."
     },
+    "wakePhrase": {
+      "label": "Frase de activación",
+      "helper": "El modo conversación solo envía un mensaje después de oír esta frase. Funciona mejor con dos o más palabras."
+    },
     "speechLocale": {
       "label": "Idioma de voz",
       "helper": "Déjalo vacío para usar el idioma predeterminado del sistema en la entrada de voz y la reproducción."

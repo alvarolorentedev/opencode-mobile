@@ -2,6 +2,7 @@ import { ACCENT_COLORS, THEME_MODES } from '@/constants/appearance';
 import type { OpencodeConnectionSettings } from '@/lib/opencode/client';
 import { parseConnectMetadata } from '@/lib/connect';
 import { stripServerUrlCredentials } from '@/lib/opencode/client/url';
+import { normalizeWakePhrase } from '@/lib/voice/wake-phrase';
 import { normalizeTranscriptFontSize, type ChatPreferences } from '@/providers/opencode-preferences';
 
 function parseObject(raw: string): Record<string, unknown> {
@@ -52,6 +53,7 @@ export function parseChatPreferences(raw: string): Partial<ChatPreferences> {
   for (const [key, options] of Object.entries({ themeMode: THEME_MODES, accentColor: ACCENT_COLORS, promptDelivery: ['steer', 'queue'], responseScope: ['brief', 'balanced', 'detailed'], workingSoundVariant: ['soft', 'glass'] })) {
     if (typeof value[key] === 'string' && (options as readonly string[]).includes(value[key])) preferences[key] = value[key];
   }
+  if (typeof value.conversationWakePhrase === 'string') preferences.conversationWakePhrase = normalizeWakePhrase(value.conversationWakePhrase);
   if (typeof value.transcriptFontSize === 'number') preferences.transcriptFontSize = normalizeTranscriptFontSize(value.transcriptFontSize);
   if (typeof value.speechRate === 'number' && Number.isFinite(value.speechRate)) preferences.speechRate = Math.min(1.5, Math.max(0.5, value.speechRate));
   if (typeof value.workingSoundVolume === 'number' && Number.isFinite(value.workingSoundVolume)) preferences.workingSoundVolume = Math.min(1, Math.max(0, value.workingSoundVolume));

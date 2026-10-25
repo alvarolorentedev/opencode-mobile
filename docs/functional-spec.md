@@ -483,6 +483,7 @@ Behavior exposed today:
 - prefer on-device voice recognition
 - auto-play assistant replies
 - working sound enable/disable
+- conversation wake phrase (default `hey code`)
 - resume listening after spoken reply in conversation mode
 - speech locale override
 - response scope (`brief`, `balanced`, `detailed`)
@@ -559,13 +560,15 @@ Entry requirements:
 
 Loop behavior:
 
-1. Start listening continuously.
-2. Collect transcript from speech recognition.
-3. When a final result settles, submit it as a prompt.
-4. Wait until the session is no longer running.
-5. Detect the latest assistant reply after the submission baseline.
-6. Speak the assistant reply.
-7. If configured, return to listening. Otherwise stop.
+1. Start listening continuously for the configured wake phrase.
+2. Collect transcript from speech recognition, discarding anything before the
+   phrase.
+3. After the phrase, capture the command; ignore noise-only segments.
+4. When a final command settles, submit it as a prompt with the phrase stripped.
+5. Wait until the session is no longer running.
+6. Detect the latest assistant reply after the submission baseline.
+7. Speak the assistant reply.
+8. If configured, return to armed. Otherwise stop.
 
 Additional behavior:
 
@@ -573,6 +576,13 @@ Additional behavior:
 - a full-screen overlay is shown
 - conversation mode stops if a permission or question requires on-screen input
 - speech/TTS failures surface feedback and may stop the mode
+- a phrase-only turn re-arms after six seconds without a command
+- if recognition ends after the phrase but before a command, the command window
+  survives the restart instead of asking for the phrase again
+- phrase matching is case- and punctuation-insensitive; a joined form such as
+  `heycode` also matches
+- the phrase is passed to the recognizer as contextual vocabulary
+- recognition still runs while armed; the gate changes submission, not capture
 
 ## Notifications Behavior
 

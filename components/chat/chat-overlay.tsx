@@ -6,9 +6,11 @@ import { Button, Text } from 'react-native-paper';
 
 import { Fonts, getColors } from '@/constants/theme';
 import { useAppearance } from '@/providers/appearance-context';
+import type { ConversationPhase } from '@/providers/opencode-provider';
 
 const PHASE_LABEL_KEYS = {
   off: 'chat:overlay.phaseOff',
+  armed: 'chat:overlay.phaseArmed',
   listening: 'chat:overlay.phaseListening',
   submitting: 'chat:overlay.phaseSubmitting',
   waiting: 'chat:overlay.phaseWaiting',
@@ -22,13 +24,15 @@ export function ConversationOverlay({
   onStop,
   phase,
   sessionTitle,
+  wakePhrase,
 }: {
   connectionStatus?: 'idle' | 'connecting' | 'connected' | 'error';
   insetsTop: number;
   latestUserText?: string;
   onStop: () => void;
-  phase: 'off' | 'listening' | 'submitting' | 'waiting' | 'speaking';
+  phase: ConversationPhase;
   sessionTitle: string;
+  wakePhrase: string;
 }) {
   const { accent: accentColor } = useAppearance();
   const { t } = useTranslation();
@@ -63,7 +67,7 @@ export function ConversationOverlay({
   const overlayText = palette.text;
   const overlayMuted = palette.muted;
   const orbRing = phase === 'speaking' ? withAlpha(palette.accent, 0x55 / 255) : withAlpha(palette.tint, 0x30 / 255);
-  const phaseLabel = t(PHASE_LABEL_KEYS[phase]);
+  const phaseLabel = t(PHASE_LABEL_KEYS[phase], { phrase: wakePhrase });
   const connectionEmoji = connectionStatus === 'error' ? '⚠️' : connectionStatus === 'connecting' ? '🔄' : undefined;
 
   return (
@@ -97,9 +101,13 @@ export function ConversationOverlay({
 
         <View style={styles.voiceOverlayFooter}>
           <View style={[styles.voiceOverlaySnippetCard, { backgroundColor: overlaySurface, borderColor: palette.border }]}>
-            <Text variant="labelMedium" style={{ color: overlayMuted }}>{t('chat:overlay.lastHeard')}</Text>
+            <Text variant="labelMedium" style={{ color: overlayMuted }}>
+              {phase === 'armed' ? t('chat:overlay.wakePhrase') : t('chat:overlay.lastHeard')}
+            </Text>
             <Text numberOfLines={3} variant="bodyLarge" style={{ color: overlayText }}>
-              {latestUserText?.trim() || t('chat:overlay.startSpeaking')}
+              {phase === 'armed'
+                ? wakePhrase
+                : latestUserText?.trim() || t('chat:overlay.startSpeaking')}
             </Text>
           </View>
           <Button

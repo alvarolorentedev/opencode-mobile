@@ -136,7 +136,7 @@ type ChatComposerProps = {
   availableAgents: AgentOption[]
   chatPreferences: ChatPreferences
   connectionStatus: 'idle' | 'connecting' | 'connected' | 'error'
-  conversation: { active: boolean; isListening: boolean; phase: string; statusLabel?: string }
+  conversation: { active: boolean; isListening: boolean; phase: string; statusLabel?: string; wakePhrase: string }
   draft: string
   isSpeechInputAvailable: boolean
   isSpeechInputListening: boolean
@@ -194,7 +194,7 @@ type ChatComposerProps = {
 ```ts
 type ChatHeaderProps = {
   connectionStatus: 'idle' | 'connecting' | 'connected' | 'error'
-  conversation: { active: boolean; latestHeardText?: string; phase: ConversationPhase }
+  conversation: { active: boolean; latestHeardText?: string; phase: ConversationPhase; wakePhrase: string }
   insetsTop: number
   onConfirmStopConversation: () => void
   onCreateSession: () => void
@@ -303,7 +303,7 @@ Responsibility:
 ### Responsibility
 
 - full-screen conversation-mode overlay
-- shows session title, phase, last heard text, and stop button
+- shows session title, phase, the wake phrase while armed, last heard command, and stop button
 
 ### Inputs
 
@@ -313,6 +313,7 @@ Responsibility:
 - stop handler
 - conversation phase
 - session title
+- configured wake phrase
 
 ## `components/chat/chat-diff.ts`
 
@@ -624,6 +625,7 @@ Responsibility:
 Responsibility:
 
 - edit speech input/output preferences
+- edit the conversation wake phrase
 - edit response style settings that become system prompt hints
 - select working sound and speech voice
 - adjust speech rate and working-sound volume with touch sliders

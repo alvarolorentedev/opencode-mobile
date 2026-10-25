@@ -165,3 +165,18 @@ provider service boundary; do not add new UI branches on `contract === 'v1'`.
 Realtime timing and reconciliation helpers live under `providers/realtime/`.
 Keep the dual SSE/polling model and preserve its timing contract when editing
 them.
+
+## 8. Conversation wake phrase limitations
+
+The wake phrase is a submission gate over the existing OS recognizer, not a
+dedicated wake-word engine. Consequences:
+
+- the recognizer still streams while `armed`, so this does not reduce
+  recognition cost, battery use or vendor audio traffic
+- phrase detection accuracy follows the OS recognizer; contextual biasing and
+  the configurable phrase mitigate but do not eliminate misses
+- conversation mode stops when the app backgrounds, as it did before; the
+  phrase is not an always-on background listener
+- ambient speech that follows a correctly detected phrase is still treated as
+  the command; the six-second command window bounds exposure but does not
+  identify the speaker

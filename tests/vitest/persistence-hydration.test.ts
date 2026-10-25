@@ -86,10 +86,12 @@ describe('persistence hydration and write-back', () => {
       assert.deepEqual(controlPlaneStorage.removed, ['control-plane']);
     }
     const appearance = await loadTs('constants/appearance.ts');
-    const preferences = await loadTs('providers/opencode-preferences.ts', { '@/constants/appearance': appearance });
+    const wakePhrase = await loadTs('lib/voice/wake-phrase.ts');
+    const preferences = await loadTs('providers/opencode-preferences.ts', { '@/constants/appearance': appearance, '@/lib/voice/wake-phrase': wakePhrase });
     const profileUrls = await loadTs('lib/opencode/client/url.ts', { './types': { defaultConnectionSettings: { serverUrl: 'http://localhost' } } });
     const { parseConnectionSettings, parseChatPreferences } = await loadTs('providers/persisted-preferences.ts', {
-      '@/constants/appearance': appearance, '@/lib/connect': connect, '@/providers/opencode-preferences': preferences, '@/lib/opencode/client/url': profileUrls,
+      '@/constants/appearance': appearance, '@/lib/connect': connect, '@/lib/voice/wake-phrase': wakePhrase,
+      '@/providers/opencode-preferences': preferences, '@/lib/opencode/client/url': profileUrls,
     });
     assert.throws(() => parseConnectionSettings('{"serverUrl":123}'), /Invalid/);
     assert.equal(parseConnectionSettings('{"serverUrl":"https://alice:secret@host.test/proxy","username":"configured"}').serverUrl, 'https://host.test/proxy');
@@ -102,6 +104,8 @@ describe('persistence hydration and write-back', () => {
     assert.deepEqual(JSON.parse(JSON.stringify(parsed)), { mode: 'build', language: 'es', modelVariantSelections: { 'openai/model': 'max', 'openai/other': null }, transcriptFontSize: 24, speechRate: 1.5, workingSoundVolume: 0 });
     assert.deepEqual(JSON.parse(JSON.stringify(parseChatPreferences(JSON.stringify({ themeMode: 'dark', accentColor: 'blue' })))), { themeMode: 'dark', accentColor: 'blue' });
     assert.deepEqual(JSON.parse(JSON.stringify(parseChatPreferences(JSON.stringify({ themeMode: 'sepia', accentColor: 'orange' })))), {});
+    assert.equal(parseChatPreferences(JSON.stringify({ conversationWakePhrase: '  hey    bot ' })).conversationWakePhrase, 'hey bot');
+    assert.equal(parseChatPreferences(JSON.stringify({ conversationWakePhrase: '   ' })).conversationWakePhrase, 'hey code');
     const defaults = { ...preferences.defaultChatPreferences, ...parsed };
     assert.ok(Array.isArray(defaults.enabledModelIds)); assert.ok(Array.isArray(defaults.recentModelIds));
     assert.deepEqual(JSON.parse(JSON.stringify(parseChatPreferences('{"modelVariantSelections":{"openai/model":"max","openai/default":null}}').modelVariantSelections)), { 'openai/model': 'max', 'openai/default': null });

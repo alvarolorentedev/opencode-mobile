@@ -467,11 +467,26 @@ const conversationImports = {
   '@/lib/opencode/format': { toTranscriptEntry: (record: any) => record },
   '@/lib/opencode/transcript': { isTranscriptDisplayMessage: (entry: any) => Boolean(entry.text) },
   '@/lib/voice/speech-output': { stopSpeaking: async () => {}, speakText: async (options: any) => { speechCallbacks = options; options.onStart(); return true; } },
-  '@/lib/voice/transcript-accumulate': await loadTs('lib/voice/transcript-accumulate.ts', {}, voiceRuntime.globals),
   '@/lib/voice/use-speech-input': { useSpeechInput: (options: any) => { recognitionOptions = options; return { abort: abortSpeech, start: startSpeech, isListening: listening, isStarting: false, level: 0 }; } },
+  '@/lib/voice/wake-feedback': { playWakePhraseCue: () => {} },
+  '@/lib/voice/wake-phrase': await loadTs('lib/voice/wake-phrase.ts', {}, voiceRuntime.globals),
   '@/lib/voice/working-sound': { stopWorkingSoundAsync: async () => {} },
+  '@/providers/conversation/use-conversation-snapshot': {
+    useConversationSnapshot: (input: any) => ({
+      active: input.conversationPhase !== 'off',
+      feedback: input.conversationFeedback,
+      feedbackAction: input.conversationFeedbackAction,
+      isListening: input.conversationPhase === 'listening',
+      level: input.conversationListeningLevel,
+      latestHeardText: input.conversationLatestHeardText,
+      phase: input.conversationPhase,
+      sessionId: input.conversationSessionId,
+      statusLabel: input.conversationPhase === 'armed' ? 'Waiting for phrase' : undefined,
+      wakePhrase: input.wakePhrase,
+    }),
+  },
   '@/providers/opencode-provider-selectors': selectors,
-  '@/providers/opencode-provider-types': { CONVERSATION_FINAL_RESULT_SETTLE_MS: 2200, CONVERSATION_KEEP_AWAKE_TAG: 'test', CONVERSATION_LISTENING_RESTART_MS: 350 },
+  '@/providers/opencode-provider-types': { CONVERSATION_COMMAND_TIMEOUT_MS: 6000, CONVERSATION_FINAL_RESULT_SETTLE_MS: 2200, CONVERSATION_KEEP_AWAKE_TAG: 'test', CONVERSATION_LISTENING_RESTART_MS: 350 },
   '@/providers/use-conversation-keep-awake': { useConversationKeepAwake: () => {} },
 };
 const conversationFeedback = await loadTs('providers/conversation/feedback.ts', {}, voiceRuntime.globals);
@@ -486,121 +501,131 @@ const conversation = await loadTs('providers/use-conversation-state.ts', {
   '@/providers/conversation/use-conversation-connection': conversationConnection,
 }, voiceRuntime.globals);
 const appearance = await loadTs('constants/appearance.ts');
-const chatPreferences = (await loadTs('providers/opencode-preferences.ts', { '@/constants/appearance': appearance })).defaultChatPreferences;
+const chatPreferences = (await loadTs('providers/opencode-preferences.ts', { '@/constants/appearance': appearance, '@/lib/voice/wake-phrase': { DEFAULT_WAKE_PHRASE: 'hey code' } })).defaultChatPreferences;
 voiceRuntime.mount(conversation.useConversationState, {
   connection: { status: 'connected', message: 'ready' }, chatPreferences, currentSessionId: 's', setCurrentSessionId: () => {},
   sessionStatuses: { s: { type: 'busy' } }, messagesBySession: {}, pendingPermissionsBySession: {}, pendingQuestionsBySession: {},
   sendingState: { active: false }, ensureActiveSession: async () => 's', sendPrompt: async (_sessionId: any, prompt: any) => { sends++; lastPrompt = prompt; await sendGate.promise; return true; },
 });
-await voiceRuntime.value.toggleConversationMode(); await voiceRuntime.settle();
-assert.equal(voiceRuntime.value.conversation.phase, 'listening');
-recognitionOptions.onResult('voice prompt', true); voiceRuntime.fire(2200); await voiceRuntime.settle();
-assert.equal(sends, 1);
-voiceRuntime.update({ messagesBySession: { s: [] }, sendPrompt: async (_sessionId: any, prompt: any) => { sends++; lastPrompt = prompt; return true; } }); await voiceRuntime.settle();
-assert.equal(sends, 1, 'a provider refresh cannot replay a submitted voice turn');
-sendGate.resolve(); await voiceRuntime.settle(); assert.equal(voiceRuntime.value.conversation.phase, 'waiting');
-voiceRuntime.update({ sessionStatuses: { s: { type: 'idle' } }, messagesBySession: { s: [{ id: 'reply', role: 'assistant', text: 'done', details: [] }] } });
-await voiceRuntime.settle(); assert.equal(voiceRuntime.value.conversation.phase, 'speaking');
-speechCallbacks.onDone(); await voiceRuntime.settle(); assert.equal(voiceRuntime.value.conversation.phase, 'listening');
-await voiceRuntime.value.toggleConversationMode(); await voiceRuntime.settle(); assert.equal(voiceRuntime.value.conversation.phase, 'off');
+const phase = () => voiceRuntime.value.conversation.phase;
+async function stopConversation() {
+  if (phase() !== 'off') {
+    await voiceRuntime.value.toggleConversationMode(); await voiceRuntime.settle();
+  }
+  assert.equal(phase(), 'off');
+}
+async function startConversation(expectedPhrase = 'hey code') {
+  await stopConversation();
+  await voiceRuntime.value.toggleConversationMode(); await voiceRuntime.settle();
+  assert.equal(phase(), 'armed');
+  assert.deepEqual(JSON.parse(JSON.stringify(recognitionOptions.contextualStrings)), [expectedPhrase]);
+}
 
-// A recognizer session that ends after a short pause (no-speech / end event)
-// schedules a listening restart. The restart must keep the pending final
-// result and its settle timer alive, and the next session must continue the
-// carried transcript instead of replacing it.
-await voiceRuntime.value.toggleConversationMode(); await voiceRuntime.settle();
-assert.equal(voiceRuntime.value.conversation.phase, 'listening');
-recognitionOptions.onResult('first half', true);
-recognitionOptions.onEnd();
-abortSpeech();
-await voiceRuntime.update({}); await voiceRuntime.settle();
-voiceRuntime.fire(350); await voiceRuntime.settle();
-assert.equal(voiceRuntime.value.conversation.phase, 'listening');
-recognitionOptions.onSpeechStart();
-recognitionOptions.onResult('second half', false);
-voiceRuntime.fire(2200); await voiceRuntime.settle();
-assert.equal(sends, 1, 'unfinished speech cancels submission even after a finalized segment');
-recognitionOptions.onResult('second half', true);
-voiceRuntime.fire(2200); await voiceRuntime.settle();
-assert.equal(sends, 2, 'a listening restart cannot discard the pending final result');
-assert.equal(lastPrompt, 'first half second half');
-await voiceRuntime.value.toggleConversationMode(); await voiceRuntime.settle();
-
-// Android keeps the session alive across a pause: each finalized segment is
-// followed by fresh-segment results that must append to the accumulated
-// transcript, never replace it, and resumed speech postpones the settle timer.
-await voiceRuntime.value.toggleConversationMode(); await voiceRuntime.settle();
-assert.equal(voiceRuntime.value.conversation.phase, 'listening');
-recognitionOptions.onResult('what is the weather', true);
-recognitionOptions.onResult('in paris', false);
+// The phrase gate is the only way into a turn. Noise without the phrase is
+// discarded, a split phrase still matches, and only the suffix is submitted.
+await startConversation();
+recognitionOptions.onResult('background chatter', true);
 await voiceRuntime.settle();
-assert.equal(voiceRuntime.value.conversation.latestHeardText, 'what is the weather in paris', 'a fresh recognizer segment cannot reset the accumulated words');
-recognitionOptions.onResult('in paris france', true);
+assert.equal(phase(), 'armed', 'noise without the wake phrase cannot start a turn');
+assert.equal(voiceRuntime.value.conversation.latestHeardText, undefined);
+recognitionOptions.onResult('hey', true);
+recognitionOptions.onResult('code open settings', true);
+await voiceRuntime.settle();
+assert.equal(phase(), 'listening');
+assert.equal(voiceRuntime.value.conversation.latestHeardText, 'open settings');
 voiceRuntime.fire(2200); await voiceRuntime.settle();
-assert.equal(sends, 3, 'segment finals accumulate into one turn');
-assert.equal(lastPrompt, 'what is the weather in paris france');
-await voiceRuntime.value.toggleConversationMode(); await voiceRuntime.settle();
+assert.equal(sends, 1);
+assert.equal(lastPrompt, 'open settings', 'the wake phrase is stripped from the prompt');
 
-// Matching words are intentional speech unless the recognizer proves replay.
-await voiceRuntime.value.toggleConversationMode(); await voiceRuntime.settle();
-assert.equal(voiceRuntime.value.conversation.phase, 'listening');
-recognitionOptions.onResult('count to three', true);
-recognitionOptions.onResult('three, four.', true);
-voiceRuntime.fire(2200); await voiceRuntime.settle();
-assert.equal(lastPrompt, 'count to three three, four.', 'fresh speech must preserve repeated words');
-await voiceRuntime.value.toggleConversationMode(); await voiceRuntime.settle();
+sendGate.resolve(); await voiceRuntime.settle();
+assert.equal(phase(), 'waiting');
+voiceRuntime.update({ sessionStatuses: { s: { type: 'idle' } }, messagesBySession: { s: [{ id: 'reply', role: 'assistant', text: 'done', details: [] }] } });
+await voiceRuntime.settle(); assert.equal(phase(), 'speaking');
+speechCallbacks.onDone(); await voiceRuntime.settle(); assert.equal(phase(), 'armed');
 
-// An end without a final checkpoints the interim, including across multiple
-// restarts. Same-session corrections still replace only the active segment.
-await voiceRuntime.value.toggleConversationMode(); await voiceRuntime.settle();
-recognitionOptions.onResult('Привет', false);
-recognitionOptions.onEnd(); abortSpeech();
-voiceRuntime.update({}); voiceRuntime.fire(350); await voiceRuntime.settle();
-recognitionOptions.onSpeechStart();
-voiceRuntime.fire(2200); await voiceRuntime.settle();
-assert.equal(sends, 4, 'speech onset cancels the previous endpoint timer before results arrive');
-recognitionOptions.onResult('мир неверно', false);
-recognitionOptions.onResult('мир', false);
-recognitionOptions.onEnd(); abortSpeech();
-voiceRuntime.update({}); voiceRuntime.fire(350); await voiceRuntime.settle();
-recognitionOptions.onResult('你好', false);
-recognitionOptions.onEnd(); abortSpeech();
-voiceRuntime.fire(2200); await voiceRuntime.settle();
-assert.equal(lastPrompt, 'Привет мир 你好', 'interims survive ends without finals and repeated restarts');
-assert.equal(sends, 5);
-await voiceRuntime.value.toggleConversationMode(); await voiceRuntime.settle();
+// A phrase-only turn opens the command window and re-arms when nothing follows.
+await startConversation();
+recognitionOptions.onResult('hey code', true);
+await voiceRuntime.settle();
+assert.equal(phase(), 'listening');
+assert.equal(voiceRuntime.value.conversation.latestHeardText, undefined);
+voiceRuntime.fire(6000); await voiceRuntime.settle();
+assert.equal(phase(), 'armed');
+assert.match(voiceRuntime.value.conversation.feedback, /did not catch a command/);
+assert.equal(sends, 1);
+voiceRuntime.value.clearConversationFeedback();
 
-// A canceled turn and its late events cannot leak into the next turn.
-await voiceRuntime.value.toggleConversationMode(); await voiceRuntime.settle();
-recognitionOptions.onResult('discard this turn', false);
-await voiceRuntime.value.toggleConversationMode(); await voiceRuntime.settle();
+// Interims revise the active command instead of appending duplicated words.
+await startConversation();
+recognitionOptions.onResult('hey code open', false);
+recognitionOptions.onResult('hey code open settings', false);
+await voiceRuntime.settle();
+assert.equal(voiceRuntime.value.conversation.latestHeardText, 'open settings');
+recognitionOptions.onResult('hey code open settings', true);
+voiceRuntime.fire(2200); await voiceRuntime.settle();
+assert.equal(lastPrompt, 'open settings'); assert.equal(sends, 2);
+
+// A command may continue across finalized segments after the phrase.
+await startConversation();
+recognitionOptions.onResult('hey code count to', true);
+await voiceRuntime.settle();
+assert.equal(phase(), 'listening');
+recognitionOptions.onResult('three', true);
+voiceRuntime.fire(2200); await voiceRuntime.settle();
+assert.equal(lastPrompt, 'count to three'); assert.equal(sends, 3);
+
+// An end without a final checkpoints an unfinished command and submits it.
+await startConversation();
+recognitionOptions.onResult('hey code run tests', false);
+recognitionOptions.onEnd();
+await voiceRuntime.settle();
+voiceRuntime.fire(2200); await voiceRuntime.settle();
+assert.equal(lastPrompt, 'run tests'); assert.equal(sends, 4);
+
+// An end while armed resets the gate; the restart cannot carry noise forward.
+await startConversation();
+recognitionOptions.onResult('background noise', false);
+recognitionOptions.onEnd(); abortSpeech();
+await voiceRuntime.update({}); voiceRuntime.fire(350); await voiceRuntime.settle();
+assert.equal(phase(), 'armed');
+assert.equal(sends, 4);
+recognitionOptions.onResult('hey code after restart', true);
+voiceRuntime.fire(2200); await voiceRuntime.settle();
+assert.equal(lastPrompt, 'after restart'); assert.equal(sends, 5);
+
+// A canceled or backgrounded turn cannot leak late events into the next one.
+await startConversation();
+recognitionOptions.onResult('hey code discard this turn', false);
+await stopConversation();
 recognitionOptions.onEnd(); recognitionOptions.onResult('late final', true);
 voiceRuntime.fire(2200); await voiceRuntime.settle();
 assert.equal(sends, 5);
-await voiceRuntime.value.toggleConversationMode(); await voiceRuntime.settle();
-recognitionOptions.onResult('fresh turn', true);
-voiceRuntime.fire(2200); await voiceRuntime.settle();
-assert.equal(lastPrompt, 'fresh turn');
-assert.equal(sends, 6);
-await voiceRuntime.value.toggleConversationMode(); await voiceRuntime.settle();
-
-// Permission alerts do not cancel listening, but actual backgrounding cancels
-// both unfinished speech and an armed final timer before native end arrives.
-for (const isFinal of [false, true]) {
-  await voiceRuntime.value.toggleConversationMode(); await voiceRuntime.settle();
-  recognitionOptions.onResult('unsent background instruction', isFinal);
-  onConversationAppStateChange('inactive'); await voiceRuntime.settle();
-  assert.equal(voiceRuntime.value.conversation.phase, 'listening');
-  onConversationAppStateChange('background'); await voiceRuntime.settle();
-  assert.equal(voiceRuntime.value.conversation.phase, 'off');
-  recognitionOptions.onEnd();
-  voiceRuntime.fire(350); voiceRuntime.fire(2200); await voiceRuntime.settle();
-  assert.equal(sends, 6, 'a background-canceled turn cannot restart or submit after end');
-  assert.equal(voiceRuntime.countTimers(2200), 0);
+for (const appState of ['inactive', 'background']) {
+  await startConversation();
+  recognitionOptions.onResult('hey code unsent background instruction', true);
+  onConversationAppStateChange(appState); await voiceRuntime.settle();
+  if (appState === 'inactive') {
+    assert.equal(phase(), 'listening', 'inactive does not cancel a turn');
+  } else {
+    assert.equal(phase(), 'off');
+    recognitionOptions.onEnd();
+    voiceRuntime.fire(350); voiceRuntime.fire(2200); await voiceRuntime.settle();
+    assert.equal(sends, 5, 'a background-canceled turn cannot restart or submit after end');
+    assert.equal(voiceRuntime.countTimers(2200), 0);
+    assert.equal(voiceRuntime.countTimers(6000), 0);
+  }
 }
 
-// Repeated taps during permission startup must share one attempt, so a stale
-// permission completion cannot abort a newer turn or clear its session ID.
+// The configured phrase is normalized and reaches the recognizer as vocabulary.
+voiceRuntime.update({ chatPreferences: { ...chatPreferences, conversationWakePhrase: '  hey    bot ' } });
+await startConversation('hey bot');
+recognitionOptions.onResult('hey bot run tests', true);
+voiceRuntime.fire(2200); await voiceRuntime.settle();
+assert.equal(lastPrompt, 'run tests'); assert.equal(sends, 6);
+voiceRuntime.update({ chatPreferences });
+
+// Repeated taps during permission startup share one attempt.
+await stopConversation();
 permissionRequests = [];
 const firstStart = voiceRuntime.value.toggleConversationMode();
 await voiceRuntime.settle();
@@ -610,17 +635,29 @@ assert.equal(permissionRequests.length, 1, 'only one conversation permission/sta
 permissionRequests[0].resolve();
 await Promise.all([firstStart, duplicateStart]); await voiceRuntime.settle();
 permissionRequests = undefined;
-assert.equal(voiceRuntime.value.conversation.phase, 'listening');
-recognitionOptions.onResult('one startup, one intact turn', true);
+assert.equal(phase(), 'armed');
+recognitionOptions.onResult('hey code one startup, one intact turn', true);
 voiceRuntime.fire(2200); await voiceRuntime.settle();
 assert.equal(lastPrompt, 'one startup, one intact turn');
 assert.equal(sends, 7, 'the pending startup keeps its conversation session');
-await voiceRuntime.value.toggleConversationMode(); await voiceRuntime.settle();
 
+// A recognition end after the phrase keeps the command window open; the user
+// does not have to repeat the wake phrase for the command.
+await startConversation();
+recognitionOptions.onResult('hey code', true);
+recognitionOptions.onEnd(); abortSpeech();
+await voiceRuntime.update({}); voiceRuntime.fire(350); await voiceRuntime.settle();
+assert.equal(phase(), 'listening');
+recognitionOptions.onResult('open settings', true);
+voiceRuntime.fire(2200); await voiceRuntime.settle();
+assert.equal(lastPrompt, 'open settings');
+assert.equal(sends, 8, 'the preserved command window appends to the matched phrase');
+
+await stopConversation();
 voiceRuntime.update({ pendingQuestionsBySession: { s: [{ id: 'question' }] } });
-await voiceRuntime.value.toggleConversationMode(); await voiceRuntime.settle(); assert.equal(voiceRuntime.value.conversation.phase, 'off');
+await voiceRuntime.value.toggleConversationMode(); await voiceRuntime.settle(); assert.equal(phase(), 'off');
 assert.match(voiceRuntime.value.conversation.feedback, /Answer the current request/);
-voiceRuntime.unmount(); assert.equal(voiceRuntime.countTimers(2200), 0); assert.ok(aborts > 0);
+voiceRuntime.unmount(); assert.equal(voiceRuntime.countTimers(2200), 0); assert.equal(voiceRuntime.countTimers(6000), 0); assert.ok(aborts > 0);
 
 // Profile orchestration stays provider-owned and serializes metadata/credentials.
 const profileRuntime = hookRuntime();

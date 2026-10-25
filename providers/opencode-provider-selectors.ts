@@ -65,6 +65,8 @@ export function getTranscriptActivityLabelForEntries(transcript: TranscriptEntry
 
 export function getConversationStatusLabel(conversationPhase: ConversationPhase, conversationCurrentActivityLabel?: string) {
   switch (conversationPhase) {
+    case 'armed':
+      return 'Waiting for phrase';
     case 'listening':
       return 'Listening';
     case 'submitting':

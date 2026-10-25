@@ -23,6 +23,7 @@ type ChatHeaderProps = {
     active: boolean;
     latestHeardText?: string;
     phase: ConversationPhase;
+    wakePhrase: string;
   };
   insetsTop: number;
   activeProjectLabel?: string;
@@ -105,6 +106,7 @@ export function ChatHeader({
             onStop={onConfirmStopConversation}
             phase={conversation.phase}
             sessionTitle={selectedSession?.title || t('chat:header.untitledChat')}
+            wakePhrase={conversation.wakePhrase}
           />
         ) : null}
       </Portal>

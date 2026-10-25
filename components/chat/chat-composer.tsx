@@ -23,7 +23,7 @@ type ChatComposerProps = {
   availableAgents: AgentOption[];
   chatPreferences: ChatPreferences;
   connectionStatus: 'idle' | 'connecting' | 'connected' | 'error';
-  conversation: { active: boolean; isListening: boolean; phase: string; statusLabel?: string };
+  conversation: { active: boolean; isListening: boolean; phase: string; statusLabel?: string; wakePhrase: string };
   draft: string;
   isSpeechInputAvailable: boolean;
   isSpeechInputListening: boolean;
@@ -135,7 +135,7 @@ export function ChatComposer({
             <Chip compact icon={conversation.phase === 'speaking' ? 'volume-high' : 'microphone'}>{conversation.statusLabel || t('common:labels.active')}</Chip>
           </View>
           <Text variant="bodySmall" style={{ color: palette.muted }}>
-            {t('chat:composer.conversationHint')}
+            {t('chat:composer.conversationHint', { phrase: conversation.wakePhrase })}
           </Text>
         </View>
       ) : null}

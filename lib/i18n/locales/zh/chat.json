@@ -120,7 +120,7 @@
     "autoApproveEnabled": "自动批准",
     "askPermission": "操作前询问",
     "conversationMode": "对话模式",
-    "conversationHint": "应用保持打开时可持续自然对话。它会监听、发送你的发言、朗读回复，然后再次监听。",
+    "conversationHint": "说“{{phrase}}”，然后说出你的内容。应用只发送短语之后的内容，朗读回复，然后继续聆听。",
     "removeAttachment": "移除 {{name}}",
     "attachment": "附件",
     "listening": "正在聆听",
@@ -190,11 +190,13 @@
   "overlay": {
     "conversationMode": "对话模式",
     "phaseOff": "关闭",
+    "phaseArmed": "说“{{phrase}}”",
     "phaseListening": "正在聆听",
     "phaseSubmitting": "正在提交",
     "phaseWaiting": "等待中",
     "phaseSpeaking": "正在朗读",
     "lastHeard": "最近听到",
+    "wakePhrase": "唤醒短语",
     "startSpeaking": "开始自然地说话。你最后一轮所说的内容将显示在这里。"
   },
   "modelPicker": {

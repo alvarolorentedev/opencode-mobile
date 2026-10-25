@@ -8,6 +8,7 @@ import {
   type AccentColor,
   type ThemeMode,
 } from '@/constants/appearance';
+import { DEFAULT_WAKE_PHRASE } from '@/lib/voice/wake-phrase';
 export type ResponseScope = 'brief' | 'balanced' | 'detailed';
 export const TRANSCRIPT_FONT_SIZE_MIN = 12;
 export const TRANSCRIPT_FONT_SIZE_MAX = 24;
@@ -47,6 +48,9 @@ export type ChatPreferences = {
   autoPlayAssistantReplies: boolean;
   preferOnDeviceRecognition: boolean;
   resumeListeningAfterReply: boolean;
+  // Conversation mode only starts a turn after hearing this phrase. Stored
+  // globally because it is a voice-input preference, not connection state.
+  conversationWakePhrase: string;
   speechLocale?: string;
   speechRate: number;
   speechVoiceId?: string;
@@ -75,6 +79,7 @@ export const defaultChatPreferences: ChatPreferences = {
   autoPlayAssistantReplies: false,
   preferOnDeviceRecognition: true,
   resumeListeningAfterReply: true,
+  conversationWakePhrase: DEFAULT_WAKE_PHRASE,
   speechRate: 1,
   workingSoundEnabled: false,
   workingSoundVariant: 'soft',

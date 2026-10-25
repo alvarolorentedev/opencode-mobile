@@ -9,6 +9,7 @@ describe('chat appearance preferences', () => {
     const appearance = await loadTs('constants/appearance.ts');
     const { normalizeTranscriptFontSize, defaultChatPreferences } = await loadTs('providers/opencode-preferences.ts', {
       '@/constants/appearance': appearance,
+      '@/lib/voice/wake-phrase': { DEFAULT_WAKE_PHRASE: 'hey code' },
     });
 
     assert.equal(normalizeTranscriptFontSize(16), 16);

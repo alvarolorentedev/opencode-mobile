@@ -109,7 +109,7 @@ describe('prompt submission ownership', () => {
       listPendingTaskFinishedNotifications: async () => [], notifyTaskFinished: vi.fn(), trackPendingTaskFinishedNotification: vi.fn(async (_input: any, _onlyIfAbsent?: boolean) => {}) };
     const refresh = vi.fn(async () => []);
     const appearance = await loadTs('constants/appearance.ts');
-    const preferences = await loadTs('providers/opencode-preferences.ts', { '@/constants/appearance': appearance });
+    const preferences = await loadTs('providers/opencode-preferences.ts', { '@/constants/appearance': appearance, '@/lib/voice/wake-phrase': { DEFAULT_WAKE_PHRASE: 'hey code' } });
     const models = await loadTs('providers/opencode-model-selection.ts', { '@/providers/opencode-preferences': preferences });
     const scopes = await loadTs('lib/connection-scope.ts', { 'base-64': { encode: (value: string) => Buffer.from(value, 'binary').toString('base64') } });
     const { usePromptLifecycle } = await loadTs('providers/use-prompt-lifecycle.ts', {

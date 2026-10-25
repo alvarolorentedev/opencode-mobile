@@ -237,6 +237,10 @@
       "title": "Voltar a ouvir após a resposta",
       "description": "No modo conversa, volte a ouvir depois que a reprodução em voz terminar."
     },
+    "wakePhrase": {
+      "label": "Frase de ativação",
+      "helper": "O modo conversa só envia uma mensagem depois de ouvir esta frase. Duas ou mais palavras funcionam melhor."
+    },
     "speechLocale": {
       "label": "Idioma da fala",
       "helper": "Deixe em branco para usar o idioma padrão do sistema na entrada de voz e na reprodução."

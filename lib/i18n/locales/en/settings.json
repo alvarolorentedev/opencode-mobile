@@ -237,6 +237,10 @@
       "title": "Resume listening after reply",
       "description": "In conversation mode, start listening again after spoken playback ends."
     },
+    "wakePhrase": {
+      "label": "Wake phrase",
+      "helper": "Conversation mode sends a message only after it hears this phrase. Two or more words work best."
+    },
     "speechLocale": {
       "label": "Speech locale",
       "helper": "Leave empty to use the system default language for voice input and playback."

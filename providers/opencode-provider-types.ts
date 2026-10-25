@@ -68,7 +68,7 @@ export type ProviderOption = {
   accounts?: ProviderAccount[];
 };
 
-export type ConversationPhase = 'off' | 'listening' | 'submitting' | 'waiting' | 'speaking';
+export type ConversationPhase = 'off' | 'armed' | 'listening' | 'submitting' | 'waiting' | 'speaking';
 
 export type SessionDeepLinkTarget = {
   sessionId: string;
@@ -79,6 +79,10 @@ export type SessionDeepLinkTarget = {
 export const CONVERSATION_KEEP_AWAKE_TAG = 'opencode-conversation-mode';
 export const CONVERSATION_FINAL_RESULT_SETTLE_MS = 2200;
 export const CONVERSATION_LISTENING_RESTART_MS = 350;
+// How long the wake phrase leaves the command window open when nothing
+// intelligible follows. Kept short so a false phrase detection re-arms instead
+// of recording ambient conversation.
+export const CONVERSATION_COMMAND_TIMEOUT_MS = 6000;
 
 export type ConversationState = {
   active: boolean;
@@ -92,6 +96,7 @@ export type ConversationState = {
   latestHeardText?: string;
   isListening: boolean;
   level: number;
+  wakePhrase: string;
 };
 
 export type OpencodeProject = {

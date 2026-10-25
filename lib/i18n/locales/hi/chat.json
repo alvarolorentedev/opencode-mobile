@@ -120,7 +120,7 @@
     "autoApproveEnabled": "अपने आप अनुमति दें",
     "askPermission": "कार्रवाई से पहले पूछें",
     "conversationMode": "बातचीत मोड",
-    "conversationHint": "ऐप खुला रहते हुए स्वाभाविक रूप से बात करते रहें। यह सुनता है, आपकी बारी भेजता है, उत्तर पढ़ता है, और फिर सुनता है।",
+    "conversationHint": "“{{phrase}}” कहें, फिर अपनी बात कहें। ऐप केवल वाक्यांश के बाद की बात भेजता है, उत्तर पढ़ता है और फिर सुनता है।",
     "removeAttachment": "{{name}} निकालें",
     "attachment": "संलग्नक",
     "listening": "सुन रहा है",
@@ -190,11 +190,13 @@
   "overlay": {
     "conversationMode": "बातचीत मोड",
     "phaseOff": "बंद",
+    "phaseArmed": "“{{phrase}}” कहें",
     "phaseListening": "सुन रहा है",
     "phaseSubmitting": "भेज रहा है",
     "phaseWaiting": "प्रतीक्षा में",
     "phaseSpeaking": "बोल रहा है",
     "lastHeard": "अंतिम बार सुना",
+    "wakePhrase": "वेक वाक्यांश",
     "startSpeaking": "स्वाभाविक रूप से बोलना शुरू करें। पिछले दौर में आपने जो कहा वह यहाँ दिखाई देगा।"
   },
   "modelPicker": {

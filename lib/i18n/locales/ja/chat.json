@@ -120,7 +120,7 @@
     "autoApproveEnabled": "自動承認",
     "askPermission": "操作の前に確認",
     "conversationMode": "会話モード",
-    "conversationHint": "アプリを開いている間は自然に話し続けられます。音声を聞き取り、あなたの発言を送信し、返信を読み上げて、また聞き取りを再開します。",
+    "conversationHint": "「{{phrase}}」と言ってから話してください。フレーズの後の内容だけを送信し、返信を読み上げて、また聞き取ります。",
     "removeAttachment": "{{name}}を削除",
     "attachment": "添付ファイル",
     "listening": "聞き取り中",
@@ -190,11 +190,13 @@
   "overlay": {
     "conversationMode": "会話モード",
     "phaseOff": "オフ",
+    "phaseArmed": "「{{phrase}}」と言ってください",
     "phaseListening": "聞き取り中",
     "phaseSubmitting": "送信中",
     "phaseWaiting": "待機中",
     "phaseSpeaking": "読み上げ中",
     "lastHeard": "最後に認識した内容",
+    "wakePhrase": "ウェイクフレーズ",
     "startSpeaking": "自然に話し始めてください。最後のラウンドで話した内容がここに表示されます。"
   },
   "modelPicker": {

@@ -7,6 +7,7 @@ import { NumericSlider } from '@/components/ui/numeric-slider';
 import { TextInput } from '@/components/ui/text-input';
 import type { VoiceCapabilities } from '@/lib/voice/capabilities';
 import type { SpeechVoiceOption } from '@/lib/voice/speech-output';
+import { DEFAULT_WAKE_PHRASE, normalizeWakePhrase } from '@/lib/voice/wake-phrase';
 import type { WorkingSoundVariant } from '@/lib/voice/working-sound';
 import type { ChatPreferences, ResponseScope } from '@/providers/opencode-provider';
 import { RESPONSE_SCOPE_OPTIONS, WORKING_SOUND_OPTIONS } from '@/components/settings/settings-utils';
@@ -155,6 +156,17 @@ export function VoiceSection({
             value={chatPreferences.resumeListeningAfterReply}
           />
         </List.Section>
+        <TextInput
+          autoCapitalize="none"
+          autoCorrect={false}
+          label={t('settings:voice.wakePhrase.label')}
+          mode="outlined"
+          placeholder={DEFAULT_WAKE_PHRASE}
+          value={chatPreferences.conversationWakePhrase}
+          onBlur={() => updateChatPreferences({ conversationWakePhrase: normalizeWakePhrase(chatPreferences.conversationWakePhrase) })}
+          onChangeText={(conversationWakePhrase) => updateChatPreferences({ conversationWakePhrase })}
+        />
+        <HelperText type="info">{t('settings:voice.wakePhrase.helper')}</HelperText>
         <TextInput mode="outlined" label={t('settings:voice.speechLocale.label')} placeholder="en-US" value={chatPreferences.speechLocale || ''} autoCapitalize="none" autoCorrect={false} onChangeText={(value) => updateChatPreferences({ speechLocale: value.trim() || undefined })} />
         <HelperText type="info">{t('settings:voice.speechLocale.helper')}</HelperText>
         <SettingSelectField label={t('settings:voice.responseScope.label')} onValueChange={(value) => updateChatPreferences({ responseScope: value })} options={responseScopeOptions} palette={palette} selectedValue={selectedResponseScope.value} valueLabel={t(`settings:voice.responseScope.${selectedResponseScope.value}.label`)} />

@@ -120,7 +120,7 @@
     "autoApproveEnabled": "Aprobar automáticamente",
     "askPermission": "Preguntar antes de actuar",
     "conversationMode": "Modo conversación",
-    "conversationHint": "Sigue hablando con naturalidad mientras la app permanece abierta. Escucha, envía tu turno, lee la respuesta y vuelve a escuchar.",
+    "conversationHint": "Di «{{phrase}}» y luego habla. La app envía solo lo que sigue a la frase, lee la respuesta y vuelve a escuchar.",
     "removeAttachment": "Quitar {{name}}",
     "attachment": "adjunto",
     "listening": "Escuchando",
@@ -190,11 +190,13 @@
   "overlay": {
     "conversationMode": "Modo conversación",
     "phaseOff": "Desactivado",
+    "phaseArmed": "Di «{{phrase}}»",
     "phaseListening": "Escuchando",
     "phaseSubmitting": "Enviando",
     "phaseWaiting": "Esperando",
     "phaseSpeaking": "Hablando",
     "lastHeard": "Último escuchado",
+    "wakePhrase": "Frase de activación",
     "startSpeaking": "Empieza a hablar con naturalidad. Lo que digas en la última ronda aparecerá aquí."
   },
   "modelPicker": {

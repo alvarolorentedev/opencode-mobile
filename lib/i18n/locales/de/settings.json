@@ -237,6 +237,10 @@
       "title": "Nach der Antwort weiter zuhören",
       "description": "Im Konversationsmodus wieder mit dem Zuhören beginnen, nachdem die Sprachwiedergabe beendet ist."
     },
+    "wakePhrase": {
+      "label": "Weckphrase",
+      "helper": "Der Konversationsmodus sendet erst eine Nachricht, wenn er diese Phrase hört. Zwei oder mehr Wörter funktionieren am besten."
+    },
     "speechLocale": {
       "label": "Sprachlocale",
       "helper": "Leer lassen, um die Standardsprache des Systems für Spracheingabe und -wiedergabe zu verwenden."

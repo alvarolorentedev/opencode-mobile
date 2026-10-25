@@ -43,6 +43,7 @@ let recognitionReserved = false;
 let nativeSession: { owner: string; stopping: boolean; ended: Promise<void> } | undefined;
 
 export function useSpeechInput({
+  contextualStrings,
   levelStep = 1,
   locale,
   onEnd,
@@ -51,6 +52,7 @@ export function useSpeechInput({
   preferOnDevice,
   volumeUpdateIntervalMillis = 120,
 }: {
+  contextualStrings?: string[];
   levelStep?: number;
   locale?: string;
   preferOnDevice: boolean;
@@ -253,6 +255,7 @@ export function useSpeechInput({
         ExpoSpeechRecognitionModule.start({
           addsPunctuation: true,
           continuous: options.continuous ?? Platform.OS !== 'ios',
+          contextualStrings: contextualStrings?.length ? contextualStrings : undefined,
           interimResults: true,
           iosCategory: IOS_RECOGNITION_CATEGORY,
           iosTaskHint: 'dictation',
@@ -283,7 +286,7 @@ export function useSpeechInput({
         }
       }
     },
-    [clearPendingFallback, locale, ownerId, preferOnDevice, readCapabilities, volumeUpdateIntervalMillis],
+    [clearPendingFallback, contextualStrings, locale, ownerId, preferOnDevice, readCapabilities, volumeUpdateIntervalMillis],
   );
 
   useSpeechRecognitionEvent('error', (event) => {

@@ -13,6 +13,7 @@ export function useConversationListeningEffects({
   conversationCancelRequestedRef,
   conversationSubmittingRef,
   conversationListeningRestartTimeoutRef,
+  shouldRestartConversation,
   startConversationListening,
   abortSpeechInput,
   speechInputError,
@@ -29,7 +30,8 @@ export function useConversationListeningEffects({
   conversationCancelRequestedRef: { current: boolean };
   conversationSubmittingRef: { current: boolean };
   conversationListeningRestartTimeoutRef: { current: ReturnType<typeof setTimeout> | undefined };
-  startConversationListening: (sessionId?: string) => Promise<boolean | void>;
+  shouldRestartConversation: () => boolean;
+  startConversationListening: (sessionId?: string, options?: { preserveCommandWindow?: boolean }) => Promise<boolean | void>;
   abortSpeechInput: () => void;
   speechInputError?: string;
   speechInputErrorAction: VoiceRecoveryAction;
@@ -52,7 +54,7 @@ export function useConversationListeningEffects({
   }, [abortSpeechInput, conversationPhaseRef, stopConversationMode]);
 
   useEffect(() => {
-    if (conversationPhase !== 'listening' || isConversationListening || isConversationListeningStarting) {
+    if ((conversationPhase !== 'armed' && conversationPhase !== 'listening') || isConversationListening || isConversationListeningStarting) {
       if (conversationListeningRestartTimeoutRef.current) {
         clearTimeout(conversationListeningRestartTimeoutRef.current);
         conversationListeningRestartTimeoutRef.current = undefined;
@@ -64,17 +66,17 @@ export function useConversationListeningEffects({
       return;
     }
 
+    const preserveCommandWindow = conversationPhase === 'listening';
     conversationListeningRestartTimeoutRef.current = setTimeout(() => {
       conversationListeningRestartTimeoutRef.current = undefined;
       if (
-        conversationPhaseRef.current !== 'listening' ||
+        !shouldRestartConversation() ||
         conversationCancelRequestedRef.current ||
         conversationSubmittingRef.current
       ) {
         return;
       }
-
-      void startConversationListening();
+      void startConversationListening(undefined, { preserveCommandWindow });
     }, CONVERSATION_LISTENING_RESTART_MS);
 
     return () => {
@@ -83,7 +85,7 @@ export function useConversationListeningEffects({
         conversationListeningRestartTimeoutRef.current = undefined;
       }
     };
-  }, [conversationCancelRequestedRef, conversationListeningRestartTimeoutRef, conversationPhase, conversationPhaseRef, conversationSubmittingRef, isConversationListening, isConversationListeningStarting, startConversationListening]);
+  }, [conversationCancelRequestedRef, conversationListeningRestartTimeoutRef, conversationPhase, conversationPhaseRef, conversationSubmittingRef, isConversationListening, isConversationListeningStarting, shouldRestartConversation, startConversationListening]);
 
   useEffect(() => {
     if (!speechInputError) {
@@ -91,7 +93,7 @@ export function useConversationListeningEffects({
     }
 
     if (
-      conversationPhaseRef.current === 'listening' &&
+      (conversationPhaseRef.current === 'listening' || conversationPhaseRef.current === 'armed') &&
       (speechInputErrorCode === 'client' || speechInputErrorCode === 'no-speech' || speechInputErrorCode === 'speech-timeout')
     ) {
       return;

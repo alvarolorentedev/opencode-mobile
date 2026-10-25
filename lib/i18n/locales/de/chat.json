@@ -120,7 +120,7 @@
     "autoApproveEnabled": "Automatisch freigeben",
     "askPermission": "Vor Aktionen fragen",
     "conversationMode": "Konversationsmodus",
-    "conversationHint": "Sprich einfach weiter, während die App geöffnet bleibt. Sie hört zu, sendet deinen Beitrag, liest die Antwort vor und hört dann wieder zu.",
+    "conversationHint": "Sage „{{phrase}}“ und sprich dann deinen Zug. Die App sendet nur, was nach der Phrase folgt, liest die Antwort vor und hört erneut zu.",
     "removeAttachment": "{{name}} entfernen",
     "attachment": "Anhang",
     "listening": "Hört zu",
@@ -190,11 +190,13 @@
   "overlay": {
     "conversationMode": "Konversationsmodus",
     "phaseOff": "Aus",
+    "phaseArmed": "Sage „{{phrase}}“",
     "phaseListening": "Hört zu",
     "phaseSubmitting": "Wird gesendet",
     "phaseWaiting": "Wartet",
     "phaseSpeaking": "Spricht",
     "lastHeard": "Zuletzt gehört",
+    "wakePhrase": "Weckphrase",
     "startSpeaking": "Sprich einfach los. Was du in der letzten Runde gesagt hast, erscheint hier."
   },
   "modelPicker": {

@@ -246,7 +246,8 @@ The completion version, preference schema and first-run migration are unchanged.
   `activation.ts` owns the bounded post-claim desktop-approval/startup wait,
   foreground suspension and delayed saved-profile checkpoint.
 - `providers/conversation/`
-  Conversation listening, playback, connection-feedback, and shared feedback
+  Conversation listening/restart, wake-phrase turn gating, playback,
+  connection feedback, the memoized conversation snapshot, and shared feedback
   helpers composed by `providers/use-conversation-state.ts`.
 - `providers/use-opencode-persistence.ts`
   AsyncStorage hydration and ordered write-back, with field validation in
@@ -257,7 +258,8 @@ The completion version, preference schema and first-run migration are unchanged.
   exposed through `useConnection().connectionProfiles`. Setup probes never switch
   the active connection; saving an edit does not reconnect.
 - `providers/use-conversation-state.ts`
-  Conversation phases, speech submission, reply playback, timers, and cleanup.
+  Conversation phases, wake-phrase-gated speech submission, reply playback,
+  timers, and cleanup.
 - `providers/use-opencode-realtime.ts`
   SSE transport/backoff, first-connect and reconnect reconciliation, and the
   safety poll (adaptive while busy; 5s/10s base by stream state, offline pause).
@@ -522,6 +524,12 @@ permission and Chat Library visibility do not gate widget reads.
   Speech recognition hook. Re-checks recognition availability at start, pins an
   explicit iOS audio session category, and retries once through network
   recognition when an on-device attempt fails.
+- `lib/voice/wake-phrase.ts`
+  Conversation-mode wake phrase normalization and matching. Interims and finals
+  are accumulated with a short tail for phrases split across segments; only the
+  text after the first phrase occurrence becomes the command.
+- `lib/voice/wake-feedback.ts`
+  Short haptic cue when the wake phrase arms a turn.
 - `lib/voice/speech-errors.ts`
   Pure error classification into a message plus a recovery action
   (`retry`, `open-settings`, `none`).
@@ -828,20 +836,30 @@ The provider delivers raw VT output in ordered acknowledged batches to xterm. It
 Conversation mode is a provider-level state machine with phases:
 
 - `off`
-- `listening`
+- `armed` (recognizer open, waiting for the configured wake phrase)
+- `listening` (phrase matched, command being captured)
 - `submitting`
 - `waiting`
 - `speaking`
 
 Supporting behaviors include:
 
-- continuous speech recognition
+- continuous speech recognition gated by a configurable wake phrase
+  (`lib/voice/wake-phrase.ts`), default `hey code`
+- phrase matching on interims and finals, with a short tail so a phrase split
+  across segments still matches
 - final-result settling delay before submission
+- a command window timeout that re-arms when only the phrase is heard
 - automatic assistant reply playback
-- optional automatic return to listening after playback
+- optional automatic return to armed after playback
 - keep-awake activation
 - blocking if pending permissions or questions exist
 - cancellation and cleanup across timers, speech input, TTS, and working sound
+
+The phrase gate is the only turn trigger: text before the phrase is discarded,
+the phrase is stripped from the prompt, and no turn is submitted while armed.
+Recognition itself still runs while armed; this is not a separate wake-word
+engine.
 
 This is one of the densest parts of the architecture and would need careful parity in any rewrite.
 

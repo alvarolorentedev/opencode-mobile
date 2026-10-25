@@ -120,7 +120,7 @@
     "autoApproveEnabled": "Autoriser automatiquement",
     "askPermission": "Demander avant chaque action",
     "conversationMode": "Mode conversation",
-    "conversationHint": "Continue à parler naturellement tant que l'app reste ouverte. Elle écoute, envoie ton tour, lit la réponse, puis écoute à nouveau.",
+    "conversationHint": "Dites « {{phrase}} », puis parlez. L’app n’envoie que ce qui suit la phrase, lit la réponse et réécoute.",
     "removeAttachment": "Retirer {{name}}",
     "attachment": "pièce jointe",
     "listening": "Écoute",
@@ -190,11 +190,13 @@
   "overlay": {
     "conversationMode": "Mode conversation",
     "phaseOff": "Désactivé",
+    "phaseArmed": "Dites « {{phrase}} »",
     "phaseListening": "Écoute",
     "phaseSubmitting": "Envoi",
     "phaseWaiting": "Attente",
     "phaseSpeaking": "Lecture",
     "lastHeard": "Dernier extrait entendu",
+    "wakePhrase": "Phrase d’activation",
     "startSpeaking": "Commence à parler naturellement. Ce que tu dis au dernier tour apparaîtra ici."
   },
   "modelPicker": {
