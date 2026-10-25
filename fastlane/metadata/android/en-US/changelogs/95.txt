@@ -1,0 +1,3 @@
+- Chat history pages now respect the server's page limit, so loading large sessions no longer fails.
+- Connection errors appear in the app language, with URL-specific hints restored.
+- Fixed-height headers cap title scaling so very large text sizes no longer clip them.
