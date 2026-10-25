@@ -1,0 +1,4 @@
+- New floating jump-to-latest button appears when scrolled up, marking unseen activity and restoring follow mode in one tap.
+- Chats that fail to load now offer retry and recovery actions, and overlapping history reads can no longer reorder messages.
+- Chat renames are cancellable with keyboard submit; the terminal marks the active session, shows opening rows, names the close target, and confirms copies.
+- Blocked onboarding permission prompts now deep-link to system settings, reconnect results surface in settings, and shared receipts explain expiry and loading states.
