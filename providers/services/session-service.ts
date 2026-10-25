@@ -1,152 +1,46 @@
-import type { SessionInfo } from '@opencode/client';
-
-import { compareLabels } from '@/lib/compare-labels';
 import type { ScopedOpencodeClient } from '@/lib/opencode/client';
-import { toFileDiffs } from '@/lib/opencode/diff';
-import { listPendingPermissions, listPendingQuestions } from '@/lib/opencode/client/interactions';
-import type { NativeOpencodeApi } from '@/lib/opencode/client/types';
 import type { SessionMessageRecord } from '@/lib/opencode/format';
 import { coalesceRead } from '@/lib/opencode/in-flight';
-import { toProjectView, toSessionView } from '@/lib/opencode/v2-mappers';
-import { toMessageRecord } from '@/lib/opencode/v2/mappers';
-import type { Project, SessionStatus } from '@/lib/opencode/types';
-import * as v1 from '@/lib/opencode/compat/v1/session';
-import { listWorktrees as listV1Worktrees } from '@/lib/opencode/compat/v1/project';
+import type { Project, Session, SessionStatus } from '@/lib/opencode/types';
+import {
+  createSessionAdapter,
+  LATEST_MESSAGE_LIMIT,
+  type PromptInput,
+  type ResolvedProjectLocation,
+  type SessionMessagePage,
+} from '@/lib/opencode/contracts/session-adapter';
+import { listPendingPermissions, listPendingQuestions } from '@/lib/opencode/client/interactions';
 
-export async function submitLegacyPrompt(client: ScopedOpencodeClient, input: Parameters<NonNullable<ScopedOpencodeClient['compatibility']>['session']['promptAsync']>[0]) {
-  if (!client.compatibility) throw new Error('Prompt admission is unavailable.');
-  await client.compatibility.session.promptAsync(input);
+export type { ResolvedProjectLocation, SessionMessagePage } from '@/lib/opencode/contracts/session-adapter';
+export { LATEST_MESSAGE_LIMIT, TRANSCRIPT_PAGE_LIMIT } from '@/lib/opencode/contracts/session-adapter';
+
+export function submitLegacyPrompt(client: ScopedOpencodeClient, input: PromptInput) {
+  return createSessionAdapter(client).submitPrompt(input);
 }
 
 export function getSessionInbox(client: ScopedOpencodeClient, sessionId: string) {
   return coalesceRead(client, `inbox:${sessionId}`, () => client.promptInbox!.list(sessionId));
 }
-export async function loadProjectCatalog(client: ScopedOpencodeClient) {
-  if (client.compatibility) return v1.loadProjectCatalog(client.compatibility);
-  const directory = client.__opencode.directory;
-  const [location, projects] = await Promise.all([
-    directory ? client.api!.location.get({ location: { directory } }) : client.api!.location.get(),
-    client.api!.project.list(),
-  ]);
-  if (!location?.project?.id || !location.directory || !Array.isArray(projects)) throw new Error('MalformedResponse: OpenCode did not return its project catalog.');
-  const current = projects.find((project) => project.id === location.project.id);
-  const serverProjects = projects.map(toProjectView).sort((left, right) => compareLabels(left.worktree, right.worktree));
-  return { currentProjectPath: location.directory, serverRootPath: location.directory, serverProjects: current ? serverProjects : [...serverProjects, { id: location.project.id, worktree: location.project.canonical, time: { created: 0 } }] };
+export function loadProjectCatalog(client: ScopedOpencodeClient) {
+  return createSessionAdapter(client).loadProjectCatalog();
 }
-// A project plus the location the server resolved for the scoped directory.
-// V2 exposes that location explicitly: a worktree keeps its own directory while
-// the project canonical stays the main checkout; nested input resolves to the
-// owning checkout. V1 has no location field and resolves through the project.
-export type ResolvedProjectLocation = Project & { directory?: string };
-export async function resolveProjectLocation(client: ScopedOpencodeClient): Promise<ResolvedProjectLocation> {
-  if (client.compatibility) return v1.resolveProjectLocation(client.compatibility);
-  const location = await client.api!.location.get({ location: { directory: client.__opencode.directory } });
-  return { id: location.project.id, worktree: location.project.canonical, directory: location.project.directory, time: { created: 0 } };
+export function resolveProjectLocation(client: ScopedOpencodeClient): Promise<ResolvedProjectLocation> {
+  return createSessionAdapter(client).resolveProjectLocation();
 }
-
-// Server-confirms that the scoped directory is a checkout root the picker may
-// keep selected even though `project.list()` only reports project canonicals.
-// V2 resolves each root and worktree to its own directory, so matching the
-// resolved directory is sufficient; nested input resolves to its checkout and
-// is rejected. V1 reports the owning project, so a worktree directory needs the
-// worktree inventory.
-export async function isKnownProjectLocation(client: ScopedOpencodeClient): Promise<boolean> {
-  const directory = client.__opencode.directory;
-  if (!directory) return false;
-  try {
-    const resolved = await resolveProjectLocation(client);
-    if (resolved.directory === directory) return true;
-    if (client.compatibility) {
-      const entries = await listV1Worktrees(client.compatibility);
-      return entries.some((entry) => entry.directory === directory);
-    }
-    return false;
-  } catch {
-    return false;
-  }
+export function isKnownProjectLocation(client: ScopedOpencodeClient): Promise<boolean> {
+  return createSessionAdapter(client).isKnownProjectLocation();
 }
-
-// Server-confirms that a directory may be used to open one of its sessions.
-// `project.list()` only reports a project's primary canonical path, while the
-// same repository can have additional checkout directories: sibling clones and
-// worktrees share the project ID but resolve to their own directory. Exact
-// string equality against the canonical therefore rejects valid locations, so
-// accept anything the server resolves to a root/worktree or to a known project.
-export async function isAvailableProjectDirectory(
-  client: ScopedOpencodeClient,
-  knownProjects: Project[],
-): Promise<boolean> {
-  const directory = client.__opencode.directory;
-  if (!directory) return false;
-  try {
-    const resolved = await resolveProjectLocation(client);
-    if (resolved.directory === directory
-      || resolved.worktree === directory
-      || knownProjects.some((project) => project.id === resolved.id)) {
-      return true;
-    }
-    if (client.compatibility) {
-      const entries = await listV1Worktrees(client.compatibility);
-      return entries.some((entry) => entry.directory === directory);
-    }
-    return false;
-  } catch {
-    return false;
-  }
+export function isAvailableProjectDirectory(client: ScopedOpencodeClient, knownProjects: Project[]): Promise<boolean> {
+  return createSessionAdapter(client).isAvailableProjectDirectory(knownProjects);
 }
-
-// V2 lists sessions through a cursor. Reading only the first page silently
-// hides every older chat in a project, so the project list, the
-// connection-wide snapshot and the notification monitor all follow it. V1
-// returns the complete array in one response.
-const MAX_SESSION_PAGES = 10;
-
-async function listV2Sessions(api: NativeOpencodeApi, directory?: string): Promise<SessionInfo[]> {
-  const scope = directory ? { directory } : {};
-  const records: SessionInfo[] = [];
-  const seen = new Set<string>();
-  let cursor: string | undefined;
-  for (let page = 0; page < MAX_SESSION_PAGES; page += 1) {
-    const response = await api.session.list(cursor ? { ...scope, cursor } : scope);
-    if (!Array.isArray(response?.data)) throw new Error('MalformedResponse: OpenCode did not return its session list.');
-    // Pages can overlap at the cursor; a page that adds nothing also stops a
-    // server that ignores the cursor from looping.
-    const fresh = response.data.filter((session) => !seen.has(session.id));
-    if (fresh.length === 0) break;
-    for (const session of fresh) seen.add(session.id);
-    records.push(...fresh);
-    const next = response.cursor?.next;
-    if (!next || next === cursor) break;
-    cursor = next;
-  }
-  return records;
+export function getActiveSessionStatuses(client: ScopedOpencodeClient) {
+  return createSessionAdapter(client).activeStatuses();
 }
-
-// Safety polling only needs the running set. Full session lists are reserved
-// for connect, reconnect, library open, and session-list events so the poll
-// does not walk every cursor page while a long task is running.
-export async function getActiveSessionStatuses(client: ScopedOpencodeClient) {
-  if (client.compatibility) return undefined;
-  const active = await client.api!.session.active();
-  return active && typeof active === 'object' ? active : undefined;
-}
-
 export function listSessions(client: ScopedOpencodeClient) {
-  return coalesceRead(client, 'sessions', async () => {
-    if (client.compatibility) return v1.listSessions(client.compatibility);
-    const [records, active] = await Promise.all([
-      listV2Sessions(client.api!, client.__opencode.directory),
-      client.api!.session.active(),
-    ]);
-    if (active == null) throw new Error('OpenCode did not return active sessions.');
-    const sessions = records.map(toSessionView).filter((session) => !session.time.archived).sort((a, b) => b.time.updated - a.time.updated);
-    const statuses: Record<string, SessionStatus> = {};
-    for (const session of records) statuses[session.id] = { type: 'idle' };
-    for (const id of Object.keys(active)) statuses[id] = { type: 'busy' };
-    return { sessions, statuses };
-  });
+  return createSessionAdapter(client).list();
 }
 export const listActiveSessions = listSessions;
+
 export type SessionSettlementState = 'running' | 'retrying' | 'blocked' | 'failed' | 'aborted' | 'finished' | 'unknown';
 export type SessionSettlement = { state: SessionSettlementState; message?: string };
 
@@ -204,63 +98,40 @@ export async function readSessionSettlement(
     return { state: 'unknown' };
   }
 }
-export const TRANSCRIPT_PAGE_LIMIT = 20;
-// Smallest read that can still answer "what did the newest message say?" for
-// settlement and pending-work checks, without pulling a full transcript page.
-export const LATEST_MESSAGE_LIMIT = 3;
-export type SessionMessagePage = { records: SessionMessageRecord[]; hasMore: boolean; nextBefore?: string };
+
 export function getSessionMessages(client: ScopedOpencodeClient, sessionId: string, options: { limit?: number; before?: string } = {}): Promise<SessionMessagePage> {
-  const { limit = TRANSCRIPT_PAGE_LIMIT, before } = options;
-  return coalesceRead(client, `messages:${sessionId}:${before ?? 'newest'}:${limit}`, async () => {
-    if (client.compatibility) return v1.getSessionMessages(client.compatibility, sessionId, options);
-    const page = await client.api!.message.list(before ? { sessionID: sessionId, limit, cursor: before } : { sessionID: sessionId, limit, order: 'desc' });
-    const records = [...page.data].reverse().map((message) => toMessageRecord(message, sessionId)).filter((record): record is SessionMessageRecord => Boolean(record));
-    const nextBefore = page.cursor.next && page.cursor.next !== before ? page.cursor.next : undefined;
-    return { records, hasMore: Boolean(nextBefore), nextBefore };
-  });
+  return createSessionAdapter(client).messages(sessionId, options);
 }
-export async function getSessionDiff(client: ScopedOpencodeClient, sessionId: string, messageId?: string, messages?: SessionMessageRecord[]) {
-  const target = messageId ?? (messages ?? (await getSessionMessages(client, sessionId)).records).slice().reverse().find((record) => record.info.role === 'user')?.info.id;
-  if (!target) return [];
-  return coalesceRead(client, `diff:${sessionId}:${target}`, async () =>
-    client.compatibility
-      ? v1.getSessionDiff(client.compatibility, sessionId, target)
-      : toFileDiffs(await client.api!.session.diff({ sessionID: sessionId, from: target })));
+export function getSessionDiff(client: ScopedOpencodeClient, sessionId: string, messageId?: string, messages?: SessionMessageRecord[]) {
+  return createSessionAdapter(client).diff(sessionId, messageId, messages);
 }
-export async function getSessionTodos(client: ScopedOpencodeClient, sessionId: string) {
-  return client.compatibility ? v1.getSessionTodos(client.compatibility, sessionId) : [];
+export function getSessionTodos(client: ScopedOpencodeClient, sessionId: string) {
+  return createSessionAdapter(client).todos(sessionId);
 }
-export async function createSession(client: ScopedOpencodeClient, title?: string) {
-  if (client.compatibility) return (await client.compatibility.session.create(title ? { title } : undefined)).data;
-  return toSessionView(await client.api!.session.create({ ...(title ? { title } : {}), ...(client.__opencode.directory ? { location: { directory: client.__opencode.directory } } : {}) }));
+export function createSession(client: ScopedOpencodeClient, title?: string): Promise<Session> {
+  return createSessionAdapter(client).create(title);
 }
-export async function deleteSession(client: ScopedOpencodeClient, sessionId: string) {
-  return client.compatibility ? v1.deleteSession(client.compatibility, sessionId) : client.api!.session.remove({ sessionID: sessionId });
+export function deleteSession(client: ScopedOpencodeClient, sessionId: string) {
+  return createSessionAdapter(client).remove(sessionId);
 }
-export async function updateSessionTitle(client: ScopedOpencodeClient, sessionId: string, title: string) {
-  if (client.compatibility) return v1.updateSessionTitle(client.compatibility, sessionId, title);
-  await client.api!.session.update({ sessionID: sessionId, title });
-  return toSessionView(await client.api!.session.get({ sessionID: sessionId }));
+export function updateSessionTitle(client: ScopedOpencodeClient, sessionId: string, title: string) {
+  return createSessionAdapter(client).updateTitle(sessionId, title);
 }
-export async function forkSession(client: ScopedOpencodeClient, sessionId: string, messageId?: string) {
-  return client.compatibility ? v1.forkSession(client.compatibility, sessionId, messageId) : toSessionView(await client.api!.session.fork({ sessionID: sessionId, ...(messageId ? { before: messageId } : {}) }));
+export function forkSession(client: ScopedOpencodeClient, sessionId: string, messageId?: string): Promise<Session> {
+  return createSessionAdapter(client).fork(sessionId, messageId);
 }
-export async function revertSession(client: ScopedOpencodeClient, sessionId: string, messageId: string, partId?: string) {
-  if (client.compatibility) return v1.revertSession(client.compatibility, sessionId, messageId, partId);
-  return client.api!.session.revert.stage({ sessionID: sessionId, messageID: messageId, ...(partId ? { partID: partId } : {}) });
+export function revertSession(client: ScopedOpencodeClient, sessionId: string, messageId: string, partId?: string) {
+  return createSessionAdapter(client).revert(sessionId, messageId, partId);
 }
-export async function unrevertSession(client: ScopedOpencodeClient, sessionId: string) {
-  return client.compatibility ? v1.unrevertSession(client.compatibility, sessionId) : client.api!.session.revert.clear({ sessionID: sessionId });
+export function unrevertSession(client: ScopedOpencodeClient, sessionId: string) {
+  return createSessionAdapter(client).unrevert(sessionId);
 }
-export async function interruptSession(client: ScopedOpencodeClient, sessionID: string) {
-  return client.compatibility ? client.compatibility.session.abort({ sessionID }) : client.api!.session.interrupt({ sessionID });
+export function interruptSession(client: ScopedOpencodeClient, sessionID: string) {
+  return createSessionAdapter(client).interrupt(sessionID);
 }
-export async function listCommands(client: ScopedOpencodeClient) {
-  return client.compatibility ? v1.listCommands(client.compatibility) : (await client.api!.command.list({ location: { directory: client.__opencode.directory } })).data;
+export function listCommands(client: ScopedOpencodeClient) {
+  return createSessionAdapter(client).commands();
 }
-export async function executeCommand(client: ScopedOpencodeClient, sessionId: string, command: string, args: string, options?: { agent?: string; model?: string; variant?: string; messageId?: string }) {
-  if (client.compatibility) return v1.executeCommand(client.compatibility, sessionId, command, args, options);
-  if (options?.agent) await client.api!.session.switchAgent({ sessionID: sessionId, agent: options.agent });
-  if (options?.model) { const [providerID, ...id] = options.model.split('/'); await client.api!.session.switchModel({ sessionID: sessionId, model: { providerID, id: id.join('/'), ...(options.variant && options.variant !== 'default' ? { variant: options.variant } : {}) } }); }
-  await client.api!.session.command({ sessionID: sessionId, name: command, text: args });
+export function executeCommand(client: ScopedOpencodeClient, sessionId: string, command: string, args: string, options?: { agent?: string; model?: string; variant?: string; messageId?: string }) {
+  return createSessionAdapter(client).executeCommand(sessionId, command, args, options);
 }

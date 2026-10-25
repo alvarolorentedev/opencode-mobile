@@ -35,12 +35,22 @@ describe('ANR regression checks', () => {
     const selection = await load('providers/opencode-model-selection.ts', {
       '@/providers/opencode-preferences': { defaultChatPreferences: { mode: 'build' } },
     });
+    const adapter = await load('lib/opencode/contracts/server-adapter.ts', {
+      '@/lib/error-message': { getErrorMessage: (error: unknown) => String(error) },
+      '@/lib/opencode/v2/shared': {},
+      '@/lib/opencode/project': {},
+      '@/lib/opencode/project-file': {},
+      '@/lib/opencode/compat/v1/auth': { setProviderCredentials: async () => {} },
+      '@/lib/opencode/compat/v1/mcp': {},
+      '@/lib/opencode/compat/v1/project': {},
+      '@/lib/opencode/compat/v1/session': {},
+      '@/lib/opencode/compat/v1/terminal': {},
+      '@/lib/opencode/compat/v1/diagnostics': {},
+    });
     const { discoverChatCapabilities } = await load('providers/services/capabilities-service.ts', {
       '@/lib/compare-labels': labels,
-      '@/lib/opencode/v2/shared': {},
-      '@/lib/opencode/compat/v1/auth': {},
+      '@/lib/opencode/contracts/server-adapter': adapter,
       '@/providers/opencode-model-selection': selection,
-      '@/providers/services/require-data': await load('providers/services/require-data.ts'),
     });
     const names = ['Éclair', 'alpha', 'Alpha', ...Array.from({ length: 2000 }, (_, i) => `Model ${2000 - i}`)];
     const models = Object.fromEntries(names.map((name, i) => [String(i), {
@@ -56,7 +66,7 @@ describe('ANR regression checks', () => {
       app: { agents: async () => ({ data: [] }) },
     };
     for (let i = 0; i < 2; i += 1) {
-      const result = await discoverChatCapabilities({ compatibility: client }, '/repo');
+      const result = await discoverChatCapabilities({ compatibility: client, __opencode: { directory: '/repo' } }, '/repo');
       assert.equal(result.models.length, names.length);
       assert.ok(result.models.every((model: any) => model.variants.length === 0), 'V1 catalog models must not expose server variants');
       assert.equal(result.models[0].modelID, '1');

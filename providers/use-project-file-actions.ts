@@ -12,6 +12,7 @@ import {
   saveFile,
   getFileStatus,
   getVcsInfo,
+  getProjectFileDownloadSource,
   readFile,
   readProjectFile,
 } from '@/providers/services/project-service';
@@ -82,17 +83,17 @@ export function useProjectFileActions({
 
   const downloadProjectFile = useCallback(async (path: string, signal?: AbortSignal) => {
     path = projectPath(path, client.__opencode.directory || '');
-    if (client.compatibility) {
-      const content = await readFile(client, path);
+    const source = await getProjectFileDownloadSource(client, path);
+    if (source.kind === 'content') {
       if (signal?.aborted) throw new Error('Download canceled.');
       if (!isCurrentClient(client)) throw new Error('The project changed before downloading.');
-      if (content.type !== 'text' || content.encoding === 'base64') {
+      if (source.content.type !== 'text' || source.content.encoding === 'base64') {
         throw new Error('Binary files cannot be downloaded from this server.');
       }
       await saveOrShareProjectFile({
         filename: path.split('/').pop() || path,
         mime: projectFileMime(path),
-        bytes: new TextEncoder().encode(content.content),
+        bytes: new TextEncoder().encode(source.content.content),
         signal,
       });
       return;

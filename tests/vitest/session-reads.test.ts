@@ -97,7 +97,7 @@ describe('session reads', () => {
       const start = Math.max(0, end - limit);
       return { data: history.slice(start, end).map((m) => ({ info: { id: m.id, role: 'user' }, parts: [] })), response: { headers: new Headers(start ? { 'x-next-cursor': String(start) } : {}) } };
     } } };
-    const v1 = await getSessionMessages({ compatibility: v1Client } as any, 's');
+    const v1 = await getSessionMessages({ compatibility: v1Client, __opencode: { directory: '/repo' } } as any, 's');
     expect(v1.records.length).toBe(20);
     expect(v1.records[0].info.id).toBe('m-4280');
     expect(v1.records.at(-1)!.info.id).toBe('m-4299');
@@ -106,7 +106,7 @@ describe('session reads', () => {
 
   it('reads only the active status set for safety polling', async () => {
     await expect(getActiveSessionStatuses(client)).resolves.toEqual({ s: {} });
-    await expect(getActiveSessionStatuses({ compatibility: {} } as never)).resolves.toBeUndefined();
+    await expect(getActiveSessionStatuses({ compatibility: {}, __opencode: { directory: '/repo' } } as never)).resolves.toBeUndefined();
   });
 
   it('does not report idle when the V2 active-session read fails', async () => {

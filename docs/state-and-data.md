@@ -690,7 +690,7 @@ The app projects native records into its own presentation models. It derives pla
 
 ### OpenCode 1 compatibility extensions
 
-`lib/opencode/compat/v1/` preserves legacy operations and event semantics for the V1∩V2 feature intersection. V1-only sharing, archive/restore, title summarization, general configuration writes, persistent MCP enablement, worktree reset, and LSP/formatter diagnostics are not supported.
+`lib/opencode/contracts/` is the typed adapter boundary; services call normalized adapter methods, and `lib/opencode/compat/v1/` preserves legacy operations and event semantics for the V1∩V2 feature intersection. V1-only sharing, archive/restore, title summarization, general configuration writes, persistent MCP enablement, worktree reset, and LSP/formatter diagnostics are not supported.
 
 MCP authorization exposes grouped `methods/start/complete/wait/cancel` actions. Native authorization uses the MCP server's `integrationID`, carries automatic or code mode, and reuses the provider authentication form model. Connection changes invalidate results and cancel pending attempts.
 

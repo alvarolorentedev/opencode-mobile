@@ -1,11 +1,9 @@
-import { getProviderCatalog, getProviderAuthMethods, toConfigView, toAgentView, findIntegration } from '@/lib/opencode/v2/shared';
-import { setProviderCredentials } from '@/lib/opencode/compat/v1/auth';
 import type { Config, ProviderCatalog, ProviderAuthMethod, ProviderAuthPrompt, ProviderAuthValues } from '@/lib/opencode/types';
 
 import { compareLabels } from '@/lib/compare-labels';
 import type { ProviderAccountInfo, ScopedOpencodeClient } from '@/lib/opencode/client';
 import { getConfiguredProviderIds, toAgentOption, type ModelOption } from '@/providers/opencode-model-selection';
-import { requireData } from '@/providers/services/require-data';
+import { createServerAdapter } from '@/lib/opencode/contracts/server-adapter';
 
 const PROMPT_TYPES: ProviderAuthPrompt['type'][] = ['text', 'select', 'number', 'integer', 'boolean', 'multiselect', 'external'];
 
@@ -95,18 +93,15 @@ export async function discoverChatCapabilities(client: ScopedOpencodeClient, act
     };
   }
 
-  const [configResponse, providersResponse, providerAuthResponse, agentsResponse, accounts] = await Promise.all([
-    getConfig(client),
-    getProviders(client),
-    client.compatibility ? client.compatibility.provider.auth().then((r) => r.data) : getProviderAuthMethods(client.api!, { location: { directory: client.__opencode.directory } }),
-    client.compatibility ? client.compatibility.app.agents().then((r) => r.data) : client.api!.agent.list({ location: { directory: client.__opencode.directory } }).then((r) => r.data.map(toAgentView)),
+  const adapter = createServerAdapter(client).capabilities;
+  const [nextConfig, providerData, authData, rawAgents, accounts] = await Promise.all([
+    adapter.config(),
+    adapter.providers(),
+    adapter.providerAuth(),
+    adapter.agents(),
     client.accounts ? client.accounts.list().catch(() => [] as ProviderAccountInfo[]) : Promise.resolve([] as ProviderAccountInfo[]),
   ]);
-
-  const nextConfig = requireData(configResponse, 'config request');
-  const providerData = requireData(providersResponse, 'provider request');
-  const authData = requireData(providerAuthResponse, 'provider auth request');
-  const agentData = requireData(agentsResponse, 'agent request');
+  const agentData = rawAgents as Parameters<typeof toAgentOption>[0][];
   const nextModels = uniqueById(providerData.all
     .flatMap((provider) =>
       Object.values(provider.models).map((model: DiscoveredModel): ModelOption => ({
@@ -115,7 +110,7 @@ export async function discoverChatCapabilities(client: ScopedOpencodeClient, act
         providerID: provider.id,
         providerLabel: provider.name,
         modelID: model.id,
-        variants: client.compatibility ? [] : model.variants ?? [],
+        variants: adapter.modelVariants(model),
         supportsReasoning: model.capabilities.reasoning,
         supportsAttachments: model.capabilities.attachment,
         inputModalities: INPUT_MODALITIES.filter((modality) => model.capabilities.input[modality]),
@@ -169,36 +164,21 @@ export async function discoverChatCapabilities(client: ScopedOpencodeClient, act
   };
 }
 
-export async function getConfig(client: ScopedOpencodeClient): Promise<Config> {
-  return client.compatibility ? requireData((await client.compatibility.config.get()).data, 'config request') : toConfigView(await client.api!.config.get({ location: { directory: client.__opencode.directory } }));
+export function getConfig(client: ScopedOpencodeClient): Promise<Config> {
+  return createServerAdapter(client).capabilities.config();
 }
-export async function getProviders(client: ScopedOpencodeClient): Promise<ProviderCatalog> {
-  if (!client.compatibility) return getProviderCatalog(client.api!, { location: { directory: client.__opencode.directory } });
-  const catalog = requireData((await client.compatibility.provider.list()).data, 'provider request');
-  return {
-    ...catalog,
-    all: catalog.all.map((provider) => ({
-      ...provider,
-      models: Object.fromEntries(Object.entries(provider.models).map(([id, model]) => [id, { ...model, variants: [] }])),
-    })),
-  };
+export function getProviders(client: ScopedOpencodeClient): Promise<ProviderCatalog> {
+  return createServerAdapter(client).capabilities.providers();
 }
-export async function setProviderCredentialsForClient(client: ScopedOpencodeClient, id: string, values: ProviderAuthValues) {
-  if (client.compatibility) return setProviderCredentials(client.compatibility, id, values);
-  await client.accounts!.add(id, values);
+export function setProviderCredentialsForClient(client: ScopedOpencodeClient, id: string, values: ProviderAuthValues) {
+  return createServerAdapter(client).capabilities.setCredentials(id, values);
 }
-export async function removeProviderCredentials(client: ScopedOpencodeClient, id: string) {
-  if (client.compatibility) return client.compatibility.auth.remove({ providerID: id });
-  let integration = await findIntegration(client.api!, id, { location: { directory: client.__opencode.directory } }, true);
-  if (!integration?.connections.some((item) => item.type === 'credential')) integration = await findIntegration(client.api!, id, { location: { directory: client.__opencode.directory } });
-  await Promise.all((integration?.connections ?? []).filter((item) => item.type === 'credential').map((item) => client.api!.credential.remove({ credentialID: item.id })));
+export function removeProviderCredentials(client: ScopedOpencodeClient, id: string) {
+  return createServerAdapter(client).capabilities.removeCredentials(id);
 }
-export async function startProviderAuthorization(client: ScopedOpencodeClient, id: string, method: number, values?: ProviderAuthValues) {
-  if (client.providerOAuth) return client.providerOAuth.start(id, method, values);
-  const auth = requireData((await client.compatibility!.provider.oauth.authorize({ providerID: id, method, inputs: values as Record<string, string> })).data, 'OAuth authorization');
-  return { url: auth.url, instructions: auth.instructions, method: auth.method };
+export function startProviderAuthorization(client: ScopedOpencodeClient, id: string, method: number, values?: ProviderAuthValues) {
+  return createServerAdapter(client).capabilities.startAuthorization(id, method, values);
 }
-export async function completeProviderAuthorization(client: ScopedOpencodeClient, id: string, method: number, code: string) {
-  if (client.providerOAuth) return client.providerOAuth.complete(id, code);
-  await client.compatibility!.provider.oauth.callback({ providerID: id, method, code });
+export function completeProviderAuthorization(client: ScopedOpencodeClient, id: string, method: number, code: string) {
+  return createServerAdapter(client).capabilities.completeAuthorization(id, method, code);
 }

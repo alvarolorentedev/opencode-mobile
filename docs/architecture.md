@@ -343,9 +343,9 @@ into the right layer and, if needed, lower the number in the same change.
   Catalog and speech-voice label sorting share `lib/compare-labels.ts`'s
   `Intl.Collator`, avoiding a native collator allocation per comparison on Hermes.
 - `providers/services/project-service.ts`
-  File search/read/status, VCS patch, and experimental worktree requests.
+  File search/read/status, VCS patch, and experimental worktree requests. Delegates contract branching to the project adapter.
 - `providers/services/mcp-service.ts`
-  MCP status, lifecycle, config enablement, and OAuth requests.
+  MCP status, lifecycle, and OAuth requests. Delegates contract branching to the MCP adapter.
 - `providers/services/terminal-service.ts`
   PTY lifecycle, connect-token, and WebSocket URL helpers.
 - `providers/services/diagnostics-service.ts`
@@ -355,14 +355,20 @@ into the right layer and, if needed, lower the number in the same change.
 
 - `lib/opencode/client.ts`
   Builds the native OpenCode 2 client by default. Connection helpers under `lib/opencode/client/` own URL normalization, authentication, prefix handling, transport, probing, and pending interactions. Affirmative 1.x health/path discovery selects compatibility, including known `/api` compatibility routes. Unknown detection starts with v2; only missing endpoints or malformed protocol responses permit another contract attempt. Authentication and transport failures remain actionable.
+- `lib/opencode/contracts/`
+  The typed `ServerAdapter` boundary. `server-adapter.ts` normalizes terminal,
+  MCP, diagnostics, project, capability, and interaction operations;
+  `session-adapter.ts` normalizes session/catalog operations; `events.ts` owns
+  event subscription translation. `client.compatibility` is read only here and
+  in `compat/v1/`, and services call normalized methods.
 - `lib/opencode/v2-client.ts`
-  Constructs `@opencode/client` and exposes a typed subset of its native API, plus app actions for provider accounts, OAuth and inbox delivery. Services consume native sessions, cursor responses, forms and operations directly.
+  Constructs `@opencode/client` and exposes a typed subset of its native API, plus app actions for provider accounts, OAuth and inbox delivery. Adapters consume native sessions, cursor responses, forms and operations directly.
 - `lib/opencode/v2/`
   Native transport, auth/MCP helpers and presentation projections. No fabricated 1.x SDK response envelopes or translated 1.x events exist on this path.
 - `lib/opencode/compat/v1/`
   The isolated 1.x compatibility implementation. Production `@opencode-ai/sdk` imports are allowed only here. It preserves legacy session, config, MCP, diagnostics and terminal behavior; its event dispatcher handles explicit compatibility extensions with no native equivalent.
 - `lib/opencode/events.ts`
-  Subscribes to native events directly, wrapping legacy events only at the compatibility boundary. Provider event handlers preserve reconnection reconciliation and polling fallback.
+  Re-exports the adapter-owned subscription. Provider event handlers preserve reconnection reconciliation and polling fallback.
 - `lib/opencode/format.ts` and `lib/opencode/types.ts`
   App-owned transcript, capability, session summary and diagnostics models. Protocol helpers and provider selectors derive these views; screens and presentation components never parse wire records. Persisted DTOs and storage keys remain stable.
 - `lib/opencode/diff.ts`

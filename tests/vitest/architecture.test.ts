@@ -148,5 +148,17 @@ describe('architecture ratchets', () => {
       }
     }
     assert.deepEqual(legacyImports, [], `V1 SDK imports belong in the compatibility boundary: ${legacyImports.join(', ')}`);
+
+    // Contract branching belongs in the typed adapter or the V1 compatibility
+    // layer. Provider hooks and UI must consume normalized service results.
+    const compatibilityOffenders: string[] = [];
+    for (const dir of ['app', 'components', 'providers', 'lib']) {
+      for (const file of await collectSourceFiles(path.join(root, dir))) {
+        const relative = path.relative(root, file).split(path.sep).join('/');
+        if (relative.startsWith('lib/opencode/compat/v1/') || relative.startsWith('lib/opencode/contracts/')) continue;
+        if (/client\.compatibility/.test(await readFile(file, 'utf8'))) compatibilityOffenders.push(relative);
+      }
+    }
+    assert.deepEqual(compatibilityOffenders, [], `Client contract branching belongs in lib/opencode/contracts or compat/v1: ${compatibilityOffenders.join(', ')}`);
   });
 });
