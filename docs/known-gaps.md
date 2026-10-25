@@ -44,7 +44,7 @@ Partially closed on 2026-10-18:
   them. Test titles are unchanged.
 - **The Vitest suites are type-checked with a denylist.** `tsconfig.tests.json`
   type-checks `tests/vitest`; `npm run typecheck:tests` (part of
-  `test:ci:static`) runs it. The 3 suites that still drive the dynamic
+  `test:ci:static`) runs it. The 2 suites that still drive the dynamic
   `loadTs` / `hookRuntime` harness with untyped module shapes are listed under
   `exclude`. `tests/vitest/typecheck-ratchet.test.ts` prevents that list from
   growing; shrink it by migrating suites to real imports and `vi.mock`, never by

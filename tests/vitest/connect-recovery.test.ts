@@ -1,32 +1,32 @@
 import assert from 'node:assert/strict';
 import { Buffer } from 'node:buffer';
-import { loadTs, hookRuntime, deferred } from '../helpers/runtime.mjs';
+import { loadTs, hookRuntime, deferred, type Deferred } from '../helpers/runtime.mjs';
 import { describe, it } from 'vitest';
 
 describe('connect recovery', () => {
   it('connect recovery', async () => {
 
 const CP = 'https://api.opencodecloud.link';
-const ref = (current) => ({ current });
+const ref = (current: any) => ({ current });
 const noop = () => {};
-async function fixture({ expired = false, missing = false, storedSession = true, storeGate, ttl = 600000, unchangedExpiry = false } = {}) {
+async function fixture({ expired = false, missing = false, storedSession = true, storeGate, ttl = 600000, unchangedExpiry = false }: { expired?: boolean; missing?: boolean; storedSession?: boolean; storeGate?: Deferred<void>; ttl?: number; unchangedExpiry?: boolean } = {}) {
   const runtime = hookRuntime();
-  let now = Date.now(), accessCalls = 0, pairClaims = 0, catalogs = 0, resets = 0, softResets = 0, accessFailure = false, catalogFailure = false, accessGate;
+  let now = Date.now(), accessCalls = 0, pairClaims = 0, catalogs = 0, resets = 0, softResets = 0, accessFailure = false, catalogFailure = false, accessGate: Deferred<void> | undefined;
   const globals = { ...runtime.globals, Date: class extends Date { static now() { return now; } } };
   const storage = new Map(), secrets = new Map(), listeners = new Set();
   const native = {
     Platform: { OS: 'android' },
-    AppState: { currentState: 'active', addEventListener(_, listener) { listeners.add(listener); return { remove: () => listeners.delete(listener) }; } },
+    AppState: { currentState: 'active', addEventListener(_: any, listener: any) { listeners.add(listener); return { remove: () => listeners.delete(listener) }; } },
   };
-  const asyncStorage = { getItem: async (key) => storage.get(key) ?? null, setItem: async (key, value) => { storage.set(key, value); }, removeItem: async (key) => { storage.delete(key); } };
-  const secureStore = { getItemAsync: async (key) => secrets.get(key) ?? null, setItemAsync: async (key, value) => { secrets.set(key, value); }, deleteItemAsync: async (key) => { secrets.delete(key); } };
+  const asyncStorage = { getItem: async (key: string) => storage.get(key) ?? null, setItem: async (key: string, value: string) => { storage.set(key, value); }, removeItem: async (key: string) => { storage.delete(key); } };
+  const secureStore = { getItemAsync: async (key: string) => secrets.get(key) ?? null, setItemAsync: async (key: string, value: string) => { secrets.set(key, value); }, deleteItemAsync: async (key: string) => { secrets.delete(key); } };
   const session = { user_id: 'owner', user_token: 'user-token', session_expires_at: new Date(now + 86400000).toISOString(), subscription_expires_at: new Date(now + 3600000).toISOString(), entitlements: ['cloudlink'] };
   const claim = { server_url: 'https://machine.test', machine_id: 'machine-a', machine_name: 'Mac', device_id: 'device-a', device_secret: 'secret-a', expires_at: new Date(now + (expired ? -1000 : ttl)).toISOString() };
   const connect = await loadTs('lib/connect.ts', {
     'expo-constants': { __esModule: true, default: { expoConfig: { extra: {} } } },
     'expo-secure-store': secureStore,
     'react-native': native,
-    'expo/fetch': { fetch: async (url) => {
+    'expo/fetch': { fetch: async (url: string) => {
       let body;
       if (url.endsWith('/catalog')) body = { plans: [{ id: 'cloudlink', entitlements: ['cloudlink'], products: [{ store: 'google', productId: 'fixture', basePlanId: 'monthly', offerIds: [] }] }] };
       else if (url.endsWith('/subscriptions/claim')) body = session;
@@ -41,7 +41,7 @@ async function fixture({ expired = false, missing = false, storedSession = true,
     } },
   }, globals);
   const keys = await loadTs('lib/storage-keys.ts');
-  const scope = await loadTs('lib/connection-scope.ts', { 'base-64': { encode: (value) => Buffer.from(value, 'binary').toString('base64') } });
+  const scope = await loadTs('lib/connection-scope.ts', { 'base-64': { encode: (value: string) => Buffer.from(value, 'binary').toString('base64') } });
   const profiles = await loadTs('lib/connection-profiles.ts', {
     '@/providers/workspace-storage': { WORKSPACES_STORAGE_KEY: 'opencode-mobile.workspaces', parseWorkspaces: JSON.parse },
     '@react-native-async-storage/async-storage': { __esModule: true, default: asyncStorage }, 'expo-secure-store': secureStore,
@@ -64,7 +64,7 @@ async function fixture({ expired = false, missing = false, storedSession = true,
     isConnectPurchase: () => true, selectConnectOffers: () => [{ key: 'monthly' }],
     connectPurchaseProof: async () => ({ store: 'google', purchaseToken: 'proof' }),
   };
-  const imports = { react: runtime.react, 'react-native': native, '@/lib/connect': connect,
+  const imports: Record<string, any> = { react: runtime.react, 'react-native': native, '@/lib/connect': connect,
     '@/lib/connect-install': { isConnectStoreInstall: async () => true },
     '@/lib/connect-store': store, '@/lib/connection-profiles': profiles, '@/lib/connection-scope': scope,
     '@/providers/connection-refresh': { migrateConnectConnectionScope: async () => {} },
@@ -81,27 +81,27 @@ async function fixture({ expired = false, missing = false, storedSession = true,
   imports['@/lib/connection-password'] = { saveConnectionPassword: async () => {} };
   imports['@/lib/connection-headers'] = {
     getProfileHeaders: async () => ({}), saveProfileHeaders: async () => {}, deleteProfileHeaders: async () => {},
-    connectionHeadersKey: (headers) => JSON.stringify(Object.entries(headers ?? {})),
-    sameConnectionHeaders: (left, right) => JSON.stringify(left ?? {}) === JSON.stringify(right ?? {}),
+    connectionHeadersKey: (headers: any) => JSON.stringify(Object.entries(headers ?? {})),
+    sameConnectionHeaders: (left: any, right: any) => JSON.stringify(left ?? {}) === JSON.stringify(right ?? {}),
   };
   imports['@/lib/opencode/client'] = {
-    buildClient: (settings) => settings, detectServerContract: async () => ({ contract: 'v2' }),
-    getConnectionError: (_, reason) => reason.message, getNormalizedServerUrl: (url) => url,
-    isContractMismatchError: () => false, isAuthConnectionFailure: (kind) => kind === 'auth' || kind === 'entitlement', isValidServerUrl: () => true,
-    isRetryableCloudLinkStartupError: (reason) => /1033/.test(reason.message),
-    classifyConnectionFailure: (reason) => /offline|catalog/i.test(String(reason?.message)) ? 'offline' : 'unknown',
+    buildClient: (settings: any) => settings, detectServerContract: async () => ({ contract: 'v2' }),
+    getConnectionError: (_: any, reason: any) => reason.message, getNormalizedServerUrl: (url: any) => url,
+    isContractMismatchError: () => false, isAuthConnectionFailure: (kind: any) => kind === 'auth' || kind === 'entitlement', isValidServerUrl: () => true,
+    isRetryableCloudLinkStartupError: (reason: any) => /1033/.test(reason.message),
+    classifyConnectionFailure: (reason: any) => /offline|catalog/i.test(String(reason?.message)) ? 'offline' : 'unknown',
   };
   const actions = await loadTs('providers/use-connection-connect-actions.ts', imports, globals);
   const profileHook = await loadTs('providers/use-connection-profiles.ts', {
     ...imports, '@/lib/opencode/client/url': {}, '@/lib/opencode/client/probe': {}, '@/lib/opencode/pairing': {},
   }, globals);
-  const input = {
-    isHydrated: true, settingsRef: ref(), connectionRef: ref({ status: 'idle' }), activeProjectPathRef: ref('/fixture'),
+  const input: any = {
+    isHydrated: true, settingsRef: ref(undefined), connectionRef: ref({ status: 'idle' }), activeProjectPathRef: ref('/fixture'),
     serverGenerationRef: ref(0), scopeGenerationRef: ref(0), catalogGenerationRef: ref(new WeakMap()),
     initialConnectStartedRef: ref(false), serverContractRef: ref('v2'), serverProjectsRef: ref([]), chatPreferencesRef: ref({ enabledModelIds: [], recentModelIds: [], providerModelSelections: {} }),
     clearProjectState: () => { resets++; },
     softResetProjectState: () => { softResets++; },
-    isCurrentCatalogClient: (client) => input.catalogGenerationRef.current.get(client) === input.serverGenerationRef.current,
+    isCurrentCatalogClient: (client: any) => input.catalogGenerationRef.current.get(client) === input.serverGenerationRef.current,
     loadProjectCatalog: async () => { catalogs++; if (catalogFailure) throw new Error(typeof catalogFailure === 'string' ? catalogFailure : 'offline'); return { currentProjectPath: '/fixture', serverProjects: [], serverRootPath: '/fixture' }; },
   };
   for (const key of ['setServerProjects', 'setCurrentProjectPath', 'setServerRootPath', 'setSessions', 'setSessionStatuses', 'setCurrentConfig', 'setAvailableProviders', 'setProviderAuthMethodsById', 'setAvailableModels', 'setAvailableAgents', 'setMessagesBySession', 'setDiffsBySession', 'setTodosBySession', 'setFavoriteSessions', 'setLastSessionByConnection', 'setChatPreferences', 'setDiagnostics', 'setSendingState']) input[key] = noop;
@@ -111,20 +111,20 @@ async function fixture({ expired = false, missing = false, storedSession = true,
     const [activeProjectPath, setActiveProjectPath] = runtime.react.useState('/fixture');
     const [controlPlaneUrl, setControlPlaneUrl] = runtime.react.useState(CP);
     runtime.react.useLayoutEffect(() => { input.settingsRef.current = settings; input.connectionRef.current = connection; input.activeProjectPathRef.current = activeProjectPath; });
-    const bridge = runtime.react.useRef();
-    const forward = runtime.react.useCallback((...args) => bridge.current.switchConnection(...args), []);
+    const bridge = runtime.react.useRef<any>(null);
+    const forward = runtime.react.useCallback((...args: any[]) => bridge.current.switchConnection(...args), []);
     const disconnect = runtime.react.useCallback(async () => bridge.current.updateSettings({ serverUrl: '', username: '', password: '', connect: undefined }), []);
     const connectSetup = setup.useConnectState({ controlPlaneUrl, setControlPlaneUrl, switchConnection: forward, disconnect, isHydrated: true,
       activeMachineId: settings.connect?.machineId, beforeProfileRefresh: async () => {}, onProfileRefreshed: () => {},
-      isActiveProfile: (candidate) => Boolean(input.settingsRef.current.connect && profiles.findMatchingProfile([candidate], input.settingsRef.current)) });
+      isActiveProfile: (candidate: any) => Boolean(input.settingsRef.current.connect && profiles.findMatchingProfile([candidate], input.settingsRef.current)) });
     const result = actions.useConnectionConnectActions({ ...input, settings, setSettings, connection, setConnection, activeProjectPath, setActiveProjectPath, controlPlaneUrl, setControlPlaneUrl, connectSetup });
     runtime.react.useLayoutEffect(() => { bridge.current = result; });
     const connectionProfiles = profileHook.useConnectionProfiles({ settings, switchConnection: result.switchConnection, updateSettings: result.updateSettings, profileSnapshot: result.connectSetup.profiles });
     return { ...result, settings, connection, activeProjectPath, connectionProfiles };
   }, {});
   return { runtime, profile, profiles, get accesses() { return accessCalls; }, get pairClaims() { return pairClaims; }, get catalogs() { return catalogs; }, get resets() { return resets; }, get softResets() { return softResets; },
-    failAccess(value) { accessFailure = value; }, failCatalog(value) { catalogFailure = value; }, blockAccess() { accessGate = deferred(); return accessGate; },
-    advance(ms) { now += ms; }, appState(state) { native.AppState.currentState = state; [...listeners].forEach((listener) => listener(state)); runtime.flush(); },
+    failAccess(value: any) { accessFailure = value; }, failCatalog(value: any) { catalogFailure = value; }, blockAccess() { accessGate = deferred<void>(); return accessGate; },
+    advance(ms: number) { now += ms; }, appState(state: string) { native.AppState.currentState = state; [...listeners].forEach((listener: any) => listener(state)); runtime.flush(); },
   };
 }
 
@@ -164,7 +164,7 @@ async function fixture({ expired = false, missing = false, storedSession = true,
 }
 // Failed native initialization surfaces an error without sending expired auth.
 {
-  const gate = deferred();
+  const gate = deferred<void>();
   const f = await fixture({ expired: true, storedSession: false, storeGate: gate });
   const boot = f.runtime.value.connect(); await f.runtime.settle();
   gate.reject(new Error('native store unavailable')); await f.runtime.settle(); await boot;
@@ -208,7 +208,7 @@ async function fixture({ expired = false, missing = false, storedSession = true,
 }
 // Cold launch waits for native-store recovery and shares access with initialization.
 {
-  const gate = deferred();
+  const gate = deferred<void>();
   const f = await fixture({ expired: true, storedSession: false, storeGate: gate });
   const boot = f.runtime.value.connect(); await f.runtime.settle();
   assert.equal(f.accesses, 0); assert.equal(f.catalogs, 0);

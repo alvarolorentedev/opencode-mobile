@@ -17,7 +17,6 @@
   ],
   "exclude": [
     "node_modules",
-    "tests/vitest/connect-recovery.test.ts",
     "tests/vitest/connect.test.ts",
     "tests/vitest/provider-runtime.test.ts"
   ]

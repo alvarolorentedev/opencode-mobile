@@ -10,15 +10,15 @@ import { describe, it } from 'vitest';
 describe('connect and Cloud Link pairing', () => {
   it('connect and Cloud Link pairing', async () => {
 
-const uri = (source) => `data:text/javascript,${encodeURIComponent(source)}`;
-async function moduleUri(file, replacements) {
+const uri = (source: string) => `data:text/javascript,${encodeURIComponent(source)}`;
+async function moduleUri(file: string, replacements: any[]) {
   let code = ts.transpileModule(await readFile(new URL(file, import.meta.url), 'utf8'), { compilerOptions: { module: ts.ModuleKind.ESNext, target: ts.ScriptTarget.ES2020 } }).outputText;
   for (const [pattern, replacement] of replacements) code = code.replace(pattern, replacement);
   return uri(code);
 }
-globalThis.__connectConfig = { extra: { connectPilot: { enabled: false, controlPlanes: ['https://api.opencodecloud.link', 'http://127.0.0.1:8787'] } } };
-globalThis.__connectPlatform = 'ios';
-globalThis.__connectSecrets = new Map();
+(globalThis as any).__connectConfig = { extra: { connectPilot: { enabled: false, controlPlanes: ['https://api.opencodecloud.link', 'http://127.0.0.1:8787'] } } };
+(globalThis as any).__connectPlatform = 'ios';
+(globalThis as any).__connectSecrets = new Map();
 const constants = uri('export default { get expoConfig() { return globalThis.__connectConfig; } };');
 const native = uri('export const Platform = { get OS() { return globalThis.__connectPlatform; } };');
 const secure = uri(`export const WHEN_UNLOCKED_THIS_DEVICE_ONLY = 1;
@@ -30,7 +30,7 @@ const connect = await import(await moduleUri('../../lib/connect.ts', [
   [/from 'expo-constants'/g, `from "${constants}"`], [/from 'react-native'/g, `from "${native}"`], [/from 'expo-secure-store'/g, `from "${secure}"`],
 ]));
 const connectionErrors = await loadTs('lib/opencode/client/errors.ts', {
-  './url': { normalizeServerUrl: (serverUrl) => ({ valid: true, displayUrl: serverUrl }) },
+  './url': { normalizeServerUrl: (serverUrl: any) => ({ valid: true, displayUrl: serverUrl }) },
 }, { Error });
 const tunnelHtmlError = new Error('<html><meta content="text/html">Cloudflare Error 1033</html>');
 assert.match(connectionErrors.getConnectionError('https://machine.example.test', tunnelHtmlError), /1033/);
@@ -119,9 +119,9 @@ await connect.savePendingConnectPairing(customControlPlane, 'apple', customPairi
 assert.deepEqual(await connect.getPendingConnectPairing(customControlPlane, 'apple'), customPairing);
 assert.equal(await connect.getPendingConnectPairing(pairing.controlPlaneUrl, 'apple'), undefined);
 
-const calls = [];
+const calls: { address: any; init: any }[] = [];
 const claim = { server_url: 'https://m.example.test', machine_id: 'machine-1', machine_name: 'Machine', device_id: 'device-1', device_secret: 'signed-credential', expires_at: new Date(Date.now() + 60_000).toISOString() };
-let status = 200, response = claim;
+let status = 200, response: any = claim;
 const originalFetch = globalThis.fetch;
 globalThis.fetch = async (address, init) => { calls.push({ address, init }); return new Response(status === 204 ? null : JSON.stringify(response), { status }); };
 try {
@@ -138,7 +138,7 @@ try {
   assert.equal(calls[0].init.redirect, 'error');
   for (const expected of [401, 403, 404, 409, 429, 502]) {
     status = expected;
-    await assert.rejects(connect.claimConnectPairing(pairing, 'user-token', 'Phone'), (error) => error.status === expected && !error.message.includes('signed-credential'));
+    await assert.rejects(connect.claimConnectPairing(pairing, 'user-token', 'Phone'), (error: any) => error.status === expected && !error.message.includes('signed-credential'));
   }
   status = 200;
   for (const invalid of [{ ...claim, device_secret: undefined }, { ...claim, expires_at: 'bad' }, { ...claim, expires_at: '2000-01-01T00:00:00Z' }, { ...claim, server_url: 'http://m.example.test' }, { ...claim, server_url: 'https://user:secret@m.example.test' }]) {
@@ -200,12 +200,12 @@ try {
   assert.equal(calls.at(-1).init.method, 'DELETE');
   assert.equal(calls.at(-1).address, 'https://api.opencodecloud.link/v1/machines/machine-1');
   const count = calls.length;
-  await assert.rejects(connect.listConnectMachines(pairing.controlPlaneUrl, ''), (error) => error.status === 401);
-  globalThis.__connectPlatform = 'web';
+  await assert.rejects(connect.listConnectMachines(pairing.controlPlaneUrl, ''), (error: any) => error.status === 401);
+  (globalThis as any).__connectPlatform = 'web';
   await assert.rejects(connect.listConnectMachines(pairing.controlPlaneUrl, 'user-token'), /iOS and Android/);
   assert.throws(() => connect.parseConnectPairing(url.toString()), /iOS and Android/);
   assert.equal(calls.length, count, 'Missing authentication and unsupported platforms must not make account requests.');
-  globalThis.__connectPlatform = 'ios';
+  (globalThis as any).__connectPlatform = 'ios';
 } finally { globalThis.fetch = originalFetch; }
 
 // Verify native upgrades add Basic without putting credentials in the URL;
@@ -217,14 +217,14 @@ const service = await import(await moduleUri('../../providers/services/terminal-
   [/from '@\/providers\/services\/require-data'/g, `from "${uri('export function requireData(value) { return value; }')}"`],
 ]));
 const originalSocket = globalThis.WebSocket;
-globalThis.WebSocket = class { constructor(...args) { this.args = args; } };
+globalThis.WebSocket = class { args: any[]; constructor(...args: any[]) { this.args = args; } } as any;
 try {
   const socket = service.openTerminalWebSocket('wss://m.example.test/pty/1/connect?ticket=upstream', {
     Authorization: 'Basic device-credential', 'CF-Access-Client-Id': 'client-id', 'CF-Access-Client-Secret': 'client-secret',
   });
   assert.equal(socket.args[0], 'wss://m.example.test/pty/1/connect?ticket=upstream');
   assert.deepEqual(socket.args[2], { headers: { Authorization: 'Basic device-credential', 'CF-Access-Client-Id': 'client-id', 'CF-Access-Client-Secret': 'client-secret' } });
-  globalThis.__connectPlatform = 'web';
+  (globalThis as any).__connectPlatform = 'web';
   assert.equal(connect.isConnectEnabled(), false);
   assert.deepEqual(service.openTerminalWebSocket('ws://local/pty?ticket=x', { Authorization: 'Basic secret' }).args, ['ws://local/pty?ticket=x']);
   connect.setConnectTestSecret('secret', 'value');
@@ -250,9 +250,9 @@ function appConfig(variant, controlPlaneUrl) {
 const production = appConfig('production'), development = appConfig('development');
 assert.equal(production.extra.connectControlPlaneUrl, undefined);
 assert.equal(development.extra.connectControlPlaneUrl, undefined);
-globalThis.__connectConfig = appConfig('production', `${customControlPlane}/`);
+(globalThis as any).__connectConfig = appConfig('production', `${customControlPlane}/`);
 assert.deepEqual(connect.getConnectControlPlanes(), [connect.CONNECT_PRODUCTION_URL, connect.CONNECT_STAGING_URL]);
-globalThis.__connectConfig = appConfig('production', 'http://localhost:8787');
+(globalThis as any).__connectConfig = appConfig('production', 'http://localhost:8787');
 assert.deepEqual(connect.getConnectControlPlanes(), [connect.CONNECT_PRODUCTION_URL, connect.CONNECT_STAGING_URL]);
 assert.equal(production.extra.connectPilot.enabled, undefined);
 assert.equal(production.extra.connectPilot.controlPlanes, undefined);
@@ -263,9 +263,9 @@ assert.notEqual(production.ios.bundleIdentifier, development.ios.bundleIdentifie
 assert.notEqual(production.android.package, development.android.package);
 for (const config of [production, development]) {
   assert.ok(config.plugins.some((plugin) => Array.isArray(plugin) && plugin[0] === 'expo-camera'), 'Every native build needs camera permission configuration.');
-  globalThis.__connectConfig = config;
+  (globalThis as any).__connectConfig = config;
   for (const platform of ['ios', 'android']) {
-    globalThis.__connectPlatform = platform;
+    (globalThis as any).__connectPlatform = platform;
     assert.equal(connect.isConnectEnabled(), true);
     assert.deepEqual(connect.parseConnectPairing(url.toString()), pairing);
   }
@@ -281,11 +281,11 @@ assert.ok(!foss.plugins.includes('expo-iap'), 'FOSS build must not configure the
 {
   const savedConfig = globalThis.__connectConfig;
   const savedPlatform = globalThis.__connectPlatform;
-  globalThis.__connectConfig = { extra: { foss: true } };
-  globalThis.__connectPlatform = 'android';
+  (globalThis as any).__connectConfig = { extra: { foss: true } };
+  (globalThis as any).__connectPlatform = 'android';
   assert.equal(connect.isConnectEnabled(), false, 'FOSS builds must disable Cloud Link.');
-  globalThis.__connectConfig = savedConfig;
-  globalThis.__connectPlatform = savedPlatform;
+  (globalThis as any).__connectConfig = savedConfig;
+  (globalThis as any).__connectPlatform = savedPlatform;
 }
 // Gradle regenerates Expo configuration; it must use the same variant as
 // prebuild, even when the caller has a conflicting variant in the environment.
@@ -361,7 +361,7 @@ assert.deepEqual(storeApi.AVAILABLE_CONNECT_PURCHASES, { onlyIncludeActiveItemsI
 assert.deepEqual(storeApi.parseBillingPeriod('P3M'), { value: 3, unit: 'month' });
 
 for (const platform of ['apple', 'google']) {
-  globalThis.__connectPlatform = platform === 'apple' ? 'ios' : 'android';
+  (globalThis as any).__connectPlatform = platform === 'apple' ? 'ios' : 'android';
   const phases = [];
   globalThis.__subscriptionEvents = phases;
   const purchase = { id: 'transaction', productId: 'fixture', store: platform, purchaseToken: platform === 'apple' ? 'exact.native.jws' : 'exact-google-token', purchaseState: 'purchased' };
@@ -430,7 +430,7 @@ for (const platform of ['apple', 'google']) {
       [/from '@\/lib\/connect-store'/g, `from "${storeUri}"`],
     ]));
     const failure = scenario === 'restore' ? 'claim' : scenario;
-    globalThis.__connectPlatform = platform === 'apple' ? 'ios' : 'android';
+    (globalThis as any).__connectPlatform = platform === 'apple' ? 'ios' : 'android';
     globalThis.__connectSecrets.clear();
     const runtime = hookRuntime();
     const staging = 'https://apistaging.opencodecloud.link';
@@ -628,7 +628,7 @@ for (const platform of ['apple', 'google']) {
       [/from '@\/lib\/connect'/g, `from "${freshConnectUri}"`],
       [/from '@\/lib\/connect-store'/g, `from "${storeUri}"`],
     ]));
-    globalThis.__connectPlatform = platform === 'apple' ? 'ios' : 'android';
+    (globalThis as any).__connectPlatform = platform === 'apple' ? 'ios' : 'android';
     globalThis.__connectSecrets.clear();
     const staging = connect.CONNECT_STAGING_URL;
     const stale = { ...session, user_token: 'stale-session', entitlements: ['cloudlink', 'connect', 'unrelated'] };
