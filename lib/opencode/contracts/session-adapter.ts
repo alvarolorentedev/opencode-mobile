@@ -30,7 +30,7 @@ export type SessionAdapter = {
   isAvailableProjectDirectory: (knownProjects: Project[]) => Promise<boolean>;
   activeStatuses: () => Promise<Record<string, SessionStatus> | undefined>;
   list: () => Promise<{ sessions: Session[]; statuses: Record<string, SessionStatus> }>;
-  messages: (sessionId: string, options?: { limit?: number; before?: string }) => Promise<SessionMessagePage>;
+  messages: (sessionId: string, options?: { limit?: number; before?: string; fresh?: boolean }) => Promise<SessionMessagePage>;
   diff: (sessionId: string, messageId?: string, messages?: SessionMessageRecord[]) => Promise<FileDiff[]>;
   todos: (sessionId: string) => Promise<Todo[]>;
   create: (title?: string) => Promise<Session>;
@@ -111,16 +111,20 @@ export function createSessionAdapter(client: ScopedOpencodeClient): SessionAdapt
     }
   };
 
-  const messages = (sessionId: string, options: { limit?: number; before?: string } = {}) => {
+  const messages = (sessionId: string, options: { limit?: number; before?: string; fresh?: boolean } = {}) => {
     const before = options.before;
     const limit = Math.min(options.limit ?? TRANSCRIPT_PAGE_LIMIT, MAX_MESSAGE_PAGE_LIMIT);
-    return coalesceRead(client, `messages:${sessionId}:${before ?? 'newest'}:${limit}`, async () => {
-      if (compatibility) return v1.getSessionMessages(compatibility, sessionId, { limit, before });
+    const read = async (): Promise<SessionMessagePage> => {
+      if (compatibility) return v1.getSessionMessages(compatibility, sessionId, { limit, before, fresh: options.fresh });
       const page = await client.api!.message.list(before ? { sessionID: sessionId, limit, cursor: before } : { sessionID: sessionId, limit, order: 'desc' });
       const records = [...page.data].reverse().map((message) => toMessageRecord(message, sessionId)).filter((record): record is SessionMessageRecord => Boolean(record));
       const nextBefore = page.cursor.next && page.cursor.next !== before ? page.cursor.next : undefined;
       return { records, hasMore: Boolean(nextBefore), nextBefore };
-    });
+    };
+    // A rewrite must not reuse a page read before the server-side change (for
+    // example a revert or compaction). Ordinary tails still coalesce.
+    if (options.fresh) return read();
+    return coalesceRead(client, `messages:${sessionId}:${before ?? 'newest'}:${limit}`, read);
   };
 
   return {

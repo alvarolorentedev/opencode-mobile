@@ -616,6 +616,19 @@ tail-bounded, while retention keeps the current session plus up to three recentl
 viewed sessions in memory so switching back paints before the background read
 settles.
 
+Merge preserves durable server order, never `time.created` order. A response
+that arrives after a newer window has been applied can still contain a record
+the newer window no longer holds (for example the prompt that started a long
+turn). Unseen records are inserted next to the page anchor they follow instead
+of being appended, so an older prompt cannot land below newer assistant
+replies. A stale page may fill gaps, but it never adopts its own window, moves
+the paging cursor backward, or rolls streamed content back. Every window
+rewrite (cold open, repair, compaction, revert) starts a new read generation, so
+older in-flight tail responses are discarded; a history prepend additionally
+requires its captured cursor to still be current. Rewrites bypass read
+coalescing, so an in-flight page read before a compaction or revert can never
+be reused as the rebuilt window.
+
 The transcript always renders the detailed native timeline: user and assistant
 text/files/errors plus reasoning, tool, and patch activity. There is no
 configurable detail level.

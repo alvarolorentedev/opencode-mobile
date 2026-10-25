@@ -185,6 +185,31 @@ describe('session reads', () => {
     expect(failure?.message).toContain('did not return its session list');
   });
 
+  it('bypasses an outstanding transcript read when a rewrite requires a fresh page', async () => {
+    const slow = deferred();
+    const previous = h.api;
+    let reads = 0;
+    h.api = {
+      message: {
+        list: async () => {
+          reads += 1;
+          return slow.promise;
+        },
+      },
+    };
+    try {
+      const freshClient = buildV2Client({ serverUrl: 'http://test', directory: '/repo', username: '', password: '' } as never);
+      const shared = getSessionMessages(freshClient, 's');
+      await Promise.resolve();
+      const fresh = getSessionMessages(freshClient, 's', { fresh: true });
+      expect(reads).toBe(2);
+      slow.resolve({ data: [], cursor: { next: null } });
+      await Promise.all([shared, fresh]);
+    } finally {
+      h.api = previous;
+    }
+  });
+
   it('coalesces outstanding reads per client scope and never caches settled ones', async () => {
     const old: any = {}, next: any = {};
     const slow = deferred();

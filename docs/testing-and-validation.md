@@ -641,17 +641,21 @@ rest of `/__control/reset` and is reported by `/__control/network` and
 
 the Vitest `session-reads` suite exercises 4,300-record histories in both protocols,
 newest-page (20-record) retrieval, backward cursor paging, shared message/diff
-reads, V2 shared listing/status, and failure retry/client isolation.
+reads, rewrite reads that bypass coalescing, V2 shared listing/status, and
+failure retry/client isolation.
 the Vitest `record-preservation` suite covers the bounded-window merge: unchanged record and
-array references are preserved, changed records are replaced, new tail records
-are appended, and scrolled-up history is prepended without duplicates.
+array references are preserved, changed records are replaced, unseen records are
+inserted relative to their page anchors, a stale page fills gaps without rolling
+content back, and scrolled-up history is prepended without duplicates.
 the Vitest `transcript-policy` suite covers the refresh modes: a cold load issues
 one 200-record newest-window read, tail reconcile issues one 20-record read and
-keeps held history, a missing paging window is repaired with one read before the
-next scroll pages back, scroll-up loads history older than the initial window and
-reaches the first record, a non-overlapping burst adopts the fetched page without
-backfilling, and only `replace` discards held history. `optimistic-flows` also
-covers the cached selection that must still issue its background transcript read.
+keeps held history, a late tail that still holds the initial prompt inserts it
+above the assistant reply, responses from before a window rewrite are discarded,
+a missing paging window is repaired with one read before the next scroll pages
+back, scroll-up loads history older than the initial window and reaches the first
+record, a non-overlapping burst adopts the fetched page without backfilling, and
+only `replace` discards held history. `optimistic-flows` also covers the cached
+selection that must still issue its background transcript read.
 the Vitest `transcript-visibility` suite covers the fixed detailed display
 across user, assistant, tool-only, reasoning-only and patch-only entries plus
 hidden file-mutating tools; `transcript-rows` covers

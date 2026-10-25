@@ -53,13 +53,41 @@ describe('mergeSessionMessageWindow', () => {
     expect(mergeSessionMessageWindow(before, [])).toBe(before);
   });
 
-  it('handles duplicate and unexpected IDs', () => {
+  it('places unseen records next to their page anchor instead of at the tail', () => {
     const duplicateAndNew = [record('m-1', 'first'), record('m-1', 'first'), record('m-9', 'unknown')];
     const mixedMerge = mergeSessionMessageWindow(before, duplicateAndNew);
     expect(mixedMerge).not.toBe(before);
     expect(mixedMerge[0]).toBe(before[0]);
-    expect(mixedMerge[1]).toBe(before[1]);
-    expect(mixedMerge[2]).toBe(duplicateAndNew[2]);
+    expect(mixedMerge[1]).toBe(duplicateAndNew[2]);
+    expect(mixedMerge[2]).toBe(before[1]);
+  });
+
+  it('puts an older unseen record before its first page anchor', () => {
+    const held = [record('m-2', 'second'), record('m-3', 'third')];
+    const stale = [record('m-1', 'first prompt'), record('m-2', 'second')];
+    const merged = mergeSessionMessageWindow(held, stale);
+    expect(merged.map((entry) => (entry as never as { info: { id: string } }).info.id)).toEqual(['m-1', 'm-2', 'm-3']);
+  });
+
+  it('puts an unseen record between anchors after the preceding anchor', () => {
+    const held = [record('m-1', 'first'), record('m-3', 'third')];
+    const fetched = [record('m-1', 'first'), record('m-2', 'second'), record('m-3', 'third')];
+    const merged = mergeSessionMessageWindow(held, fetched);
+    expect(merged.map((entry) => (entry as never as { info: { id: string } }).info.id)).toEqual(['m-1', 'm-2', 'm-3']);
+  });
+
+  it('fills gaps from a stale page without rolling streamed content back', () => {
+    const held = [record('m-2', 'second, final'), record('m-3', 'third')];
+    const stale = [record('m-1', 'first prompt'), record('m-2', 'second, earlier')];
+    const merged = mergeSessionMessageWindow(held, stale, { applyUpdates: false, adoptUnknownWindow: false });
+    expect(merged.map((entry) => (entry as never as { info: { id: string } }).info.id)).toEqual(['m-1', 'm-2', 'm-3']);
+    expect(merged[1]).toBe(held[0]);
+  });
+
+  it('does not adopt a non-overlapping page when adoption is disabled', () => {
+    const held = [record('m-2', 'second')];
+    const stale = [record('m-1', 'first')];
+    expect(mergeSessionMessageWindow(held, stale, { adoptUnknownWindow: false })).toBe(held);
   });
 
   it('adopts the fetched array when the previous window is empty', () => {

@@ -310,10 +310,11 @@ The completion version, preference schema and first-run migration are unchanged.
 - `providers/use-transcript-state.ts`
   Paginated transcript state machine: one newest 200-record window on open,
   scroll-up history paging in 200-record batches without a cap, a single newest
-  20-record tail merge, cursor repair for cached or retained records that have
-  no paging window, and accumulation of session usage steps and V2 `todowrite`
-  records so exact totals survive paging. Only compaction/revert rewrites
-  replace the window.
+  20-record tail merge with anchor-aware placement, a read generation that
+  discards pre-rewrite responses, cursor repair for cached or retained records
+  that have no paging window, and accumulation of session usage steps and V2
+  `todowrite` records so exact totals survive paging. Only compaction/revert
+  rewrites replace the window.
 
 MCP and worktree callback bridges use stable callbacks backed by the provider's
 latest refs. Conversation submission similarly uses the latest send action

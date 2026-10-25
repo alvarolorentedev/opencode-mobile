@@ -81,12 +81,13 @@ export type SessionMessagePage = {
 export async function getSessionMessages(
   client: OpencodeClient,
   sessionId: string,
-  options: { limit?: number; before?: string } = {},
+  options: { limit?: number; before?: string; fresh?: boolean } = {},
 ): Promise<SessionMessagePage> {
   const limit = options.limit ?? TRANSCRIPT_PAGE_LIMIT;
   const before = options.before;
-  return coalesceRead(client, `messages:${sessionId}:${before ?? 'newest'}:${limit}`, () =>
-    fetchSessionMessagePage(client, sessionId, limit, before));
+  const read = () => fetchSessionMessagePage(client, sessionId, limit, before);
+  if (options.fresh) return read();
+  return coalesceRead(client, `messages:${sessionId}:${before ?? 'newest'}:${limit}`, read);
 }
 
 async function fetchSessionMessagePage(client: OpencodeClient, sessionId: string, limit: number, before?: string): Promise<SessionMessagePage> {

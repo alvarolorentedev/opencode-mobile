@@ -9,7 +9,7 @@ import { hookRuntime, loadTs } from '../helpers/runtime.mjs';
 vi.mock('@/lib/i18n', () => ({ getFormatLocale: () => 'en' }));
 
 type Message = {
-  info: { id: string; role: 'assistant'; time: { created: number } };
+  info: { id: string; role: 'assistant' | 'user'; time: { created: number } };
   parts: any[];
 };
 
@@ -22,6 +22,16 @@ const textRecord = (id: string, text = 'Hello'): Message => ({
   info: info(id),
   parts: [{ id: `${id}-text`, sessionID: 's', messageID: id, type: 'text' as const, text }],
 });
+const userRecord = (id: string, text = 'Hello'): Message => ({
+  info: { id, role: 'user', time: { created: 1 } },
+  parts: [{ id: `${id}-text`, sessionID: 's', messageID: id, type: 'text' as const, text }],
+});
+
+function deferred<T>() {
+  let resolve!: (value: T) => void;
+  const promise = new Promise<T>((done) => { resolve = done; });
+  return { promise, resolve };
+}
 
 const page = (records: Message[], hasMore = false, nextBefore = hasMore ? 'cursor' : undefined) => ({ records, hasMore, nextBefore });
 
@@ -68,7 +78,7 @@ describe('transcript refresh policy', () => {
     runtime.flush();
     expect(ids(runtime.value.messagesBySession.s)).toEqual(['a', 'b']);
     expect(getSessionMessages).toHaveBeenCalledTimes(1);
-    expect(getSessionMessages.mock.calls[0][2]).toEqual({ limit: 200 });
+    expect(getSessionMessages.mock.calls[0][2]).toEqual({ limit: 200, fresh: true });
   });
 
   it('tail merge appends new records without dropping the held window', async () => {
@@ -129,7 +139,7 @@ describe('transcript refresh policy', () => {
     runtime.flush();
     // The repair is one newest-window read; it does not chain an older page.
     expect(getSessionMessages).toHaveBeenCalledTimes(1);
-    expect(getSessionMessages.mock.calls[0][2]).toEqual({ limit: 200 });
+    expect(getSessionMessages.mock.calls[0][2]).toEqual({ limit: 200, fresh: true });
     expect(ids(runtime.value.messagesBySession.s)).toEqual(['b', 'c']);
     expect(runtime.value.messageWindows.s).toEqual({ nextBefore: 'older-cursor', hasMore: true });
 
@@ -172,7 +182,7 @@ describe('transcript refresh policy', () => {
     await value.refreshMessages('s');
     runtime.flush();
     expect(getSessionMessages).toHaveBeenCalledTimes(1);
-    expect(getSessionMessages.mock.calls[0][2]).toEqual({ limit: 200 });
+    expect(getSessionMessages.mock.calls[0][2]).toEqual({ limit: 200, fresh: true });
     expect(runtime.value.messagesBySession.s).toHaveLength(300);
 
     await value.loadOlderMessages('s');
@@ -196,6 +206,78 @@ describe('transcript refresh policy', () => {
     runtime.flush();
     expect(ids(runtime.value.messagesBySession.s)).toEqual(['z']);
     expect(getSessionMessages).toHaveBeenCalledTimes(1);
-    expect(getSessionMessages.mock.calls[0][2]).toEqual({ limit: 200 });
+    expect(getSessionMessages.mock.calls[0][2]).toEqual({ limit: 200, fresh: true });
+  });
+
+  it('keeps the initial prompt above assistant records when an older tail resolves late', async () => {
+    const older = deferred<ReturnType<typeof page>>();
+    const newer = deferred<ReturnType<typeof page>>();
+    const responses = [older.promise, newer.promise];
+    let call = 0;
+    const getSessionMessages = vi.fn(async () => responses[call++]);
+    const { runtime, value } = await mountTranscript(
+      { s: [userRecord('u1', 'plan ux improvements')] },
+      getSessionMessages,
+    );
+
+    const olderRefresh = value.refreshMessages('s');
+    const newerRefresh = value.refreshMessages('s');
+
+    // The newer page no longer contains the initial prompt.
+    newer.resolve(page([textRecord('a1'), textRecord('a2')]));
+    await newerRefresh;
+    runtime.flush();
+    expect(ids(runtime.value.messagesBySession.s)).toEqual(['a1', 'a2']);
+
+    // The late page still has it; it must be inserted before a1, not appended
+    // below the assistant reply.
+    older.resolve(page([userRecord('u1', 'plan ux improvements'), textRecord('a1')]));
+    await olderRefresh;
+    runtime.flush();
+    expect(ids(runtime.value.messagesBySession.s)).toEqual(['u1', 'a1', 'a2']);
+  });
+
+  it('does not replace a newer window with a stale non-overlapping page', async () => {
+    const older = deferred<ReturnType<typeof page>>();
+    const newer = deferred<ReturnType<typeof page>>();
+    const responses = [older.promise, newer.promise];
+    let call = 0;
+    const getSessionMessages = vi.fn(async () => responses[call++]);
+    const { runtime, value } = await mountTranscript({ s: [textRecord('a1')] }, getSessionMessages);
+
+    const olderRefresh = value.refreshMessages('s');
+    const newerRefresh = value.refreshMessages('s');
+
+    newer.resolve(page([textRecord('c1'), textRecord('c2')]));
+    await newerRefresh;
+    runtime.flush();
+    expect(ids(runtime.value.messagesBySession.s)).toEqual(['c1', 'c2']);
+
+    older.resolve(page([textRecord('b1')]));
+    await olderRefresh;
+    runtime.flush();
+    expect(ids(runtime.value.messagesBySession.s)).toEqual(['c1', 'c2']);
+  });
+
+  it('drops a tail response that started before a window rewrite', async () => {
+    const tail = deferred<ReturnType<typeof page>>();
+    const rewrite = deferred<ReturnType<typeof page>>();
+    const responses = [tail.promise, rewrite.promise];
+    let call = 0;
+    const getSessionMessages = vi.fn(async () => responses[call++]);
+    const { runtime, value } = await mountTranscript({ s: [textRecord('a1')] }, getSessionMessages);
+
+    const tailRefresh = value.refreshMessages('s');
+    const rewriteRefresh = value.refreshMessages('s', true, { mode: 'replace' });
+
+    rewrite.resolve(page([textRecord('z1')]));
+    await rewriteRefresh;
+    runtime.flush();
+    expect(ids(runtime.value.messagesBySession.s)).toEqual(['z1']);
+
+    tail.resolve(page([textRecord('a1'), textRecord('a2')]));
+    await tailRefresh;
+    runtime.flush();
+    expect(ids(runtime.value.messagesBySession.s)).toEqual(['z1']);
   });
 });

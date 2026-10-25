@@ -99,7 +99,7 @@ export async function readSessionSettlement(
   }
 }
 
-export function getSessionMessages(client: ScopedOpencodeClient, sessionId: string, options: { limit?: number; before?: string } = {}): Promise<SessionMessagePage> {
+export function getSessionMessages(client: ScopedOpencodeClient, sessionId: string, options: { limit?: number; before?: string; fresh?: boolean } = {}): Promise<SessionMessagePage> {
   return createSessionAdapter(client).messages(sessionId, options);
 }
 export function getSessionDiff(client: ScopedOpencodeClient, sessionId: string, messageId?: string, messages?: SessionMessageRecord[]) {

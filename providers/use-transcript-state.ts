@@ -59,11 +59,26 @@ export function useTranscriptState({
   const messageWindowsRef = useRef(messageWindows);
   const loadingOlderBySessionRef = useRef(loadingOlderBySession);
   const hydrationRequestRef = useRef<Record<string, number>>({});
+  // Transcript reads can overlap: a cold window, a prompt-send refresh, a
+  // history page, and event-driven tails may all be in flight together. A
+  // window rewrite starts a new generation so older responses cannot replace
+  // it, while tail request ids let a late page fill gaps without adopting an
+  // older window over a newer one.
+  const readStateRef = useRef<Record<string, { generation: number; tailRequest: number; tailApplied: number }>>({});
   useLayoutEffect(() => {
     messagesBySessionRef.current = messagesBySession;
     messageWindowsRef.current = messageWindows;
     loadingOlderBySessionRef.current = loadingOlderBySession;
   });
+
+  const readStateFor = useCallback((sessionId: string) => {
+    let state = readStateRef.current[sessionId];
+    if (!state) {
+      state = { generation: 0, tailRequest: 0, tailApplied: 0 };
+      readStateRef.current[sessionId] = state;
+    }
+    return state;
+  }, []);
 
   const persistTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
   const persist = useCallback((sessionId: string, records: SessionMessageRecord[]) => {
@@ -160,12 +175,27 @@ export function useTranscriptState({
         // newest page into what we have. A requested mode overrides the default.
         const mode: TranscriptRefreshMode = options?.mode ?? (held.length === 0 ? 'initial' : 'tail');
 
+        // A window rewrite (cold open, repair, compaction, revert) starts a new
+        // generation. Responses that started before it can no longer replace
+        // the rebuilt window, even when they resolve later.
+        const readState = readStateFor(sessionId);
+        const rewrite = mode !== 'tail' || held.length === 0;
+        if (rewrite) {
+          readState.generation += 1;
+          readState.tailApplied = 0;
+        }
+        const generation = readState.generation;
+        const tailRequest = rewrite ? 0 : ++readState.tailRequest;
+        const isCurrentGeneration = () => readStateRef.current[sessionId]?.generation === generation;
+
         // Opening or rewriting history is one bounded newest-window read. It
         // never pages backward; older history arrives through loadOlderMessages
         // only when the user scrolls to the top.
-        if (mode !== 'tail' || held.length === 0) {
-          const page = await svcGetSessionMessages(client, sessionId, { limit: INITIAL_TRANSCRIPT_LIMIT });
-          if (!isCurrentClient(client)) {
+        if (rewrite) {
+          // Bypass read coalescing: an in-flight page could have been read
+          // before the compaction/revert this rewrite is reconciling.
+          const page = await svcGetSessionMessages(client, sessionId, { limit: INITIAL_TRANSCRIPT_LIMIT, fresh: true });
+          if (!isCurrentClient(client) || !isCurrentGeneration()) {
             return page.records;
           }
           setMessagesBySession((current) => ({ ...current, [sessionId]: page.records }));
@@ -181,22 +211,44 @@ export function useTranscriptState({
         // Reconcile is one newest-page read. It must never scan or refresh the
         // whole transcript, and it must never trim records already loaded above.
         const page = await svcGetSessionMessages(client, sessionId, { limit: TRANSCRIPT_PAGE_LIMIT });
-        if (!isCurrentClient(client)) {
+        if (!isCurrentClient(client) || !isCurrentGeneration()) {
           return page.records;
         }
 
+        const staleTail = tailRequest < readState.tailApplied;
         if (page.records.length === 0) {
-          if (windowMissing) {
+          if (windowMissing && !staleTail) {
             setMessageWindows((current) => (
               current[sessionId]
                 ? current
                 : { ...current, [sessionId]: { nextBefore: page.nextBefore, hasMore: page.hasMore } }
             ));
           }
+          if (!staleTail) {
+            readState.tailApplied = Math.max(readState.tailApplied, tailRequest);
+          }
           return held;
         }
 
-        const knownIds = new Set(held.map((record) => record.info.id));
+        const currentHeld = messagesBySessionRef.current[sessionId] ?? held;
+        if (staleTail) {
+          // Older responses may still hold records the newer window dropped.
+          // Fill gaps in place, but never adopt their window or move the paging
+          // cursor backward, and never roll streamed content back.
+          setMessagesBySession((current) => {
+            const previous = current[sessionId] ?? held;
+            const next = mergeSessionMessageWindow(previous, page.records, {
+              applyUpdates: false,
+              adoptUnknownWindow: false,
+            });
+            return next === previous ? current : { ...current, [sessionId]: next };
+          });
+          recordUsageAndTodos(sessionId, page.records);
+          return page.records;
+        }
+
+        readState.tailApplied = Math.max(readState.tailApplied, tailRequest);
+        const knownIds = new Set(currentHeld.map((record) => record.info.id));
         if (!page.records.some((record) => knownIds.has(record.info.id))) {
           // A burst larger than one page landed. Adopt the fetched page and
           // restart history paging from its oldest record instead of
@@ -211,7 +263,7 @@ export function useTranscriptState({
           return page.records;
         }
 
-        const merged = mergeSessionMessageWindow(held, page.records);
+        const merged = mergeSessionMessageWindow(currentHeld, page.records);
         setMessagesBySession((current) => {
           const previous = current[sessionId] ?? held;
           const next = mergeSessionMessageWindow(previous, page.records);
@@ -240,7 +292,7 @@ export function useTranscriptState({
         finishHydration?.();
       }
     },
-    [beginHydration, client, isCurrentClient, persist, recordUsageAndTodos, setIsRefreshingMessages, setMessagesBySession],
+    [beginHydration, client, isCurrentClient, persist, readStateFor, recordUsageAndTodos, setIsRefreshingMessages, setMessagesBySession],
   );
 
   const loadOlderMessages = useCallback(
@@ -264,8 +316,16 @@ export function useTranscriptState({
         if (!meta.hasMore || !meta.nextBefore) {
           return;
         }
+        const generation = readStateFor(sessionId).generation;
         const page = await svcGetSessionMessages(client, sessionId, { limit: OLDER_TRANSCRIPT_LIMIT, before: meta.nextBefore });
-        if (!isCurrentClient(client)) {
+        // A rewrite (compaction, revert, repair) invalidates this cursor; the
+        // next scroll repairs the window instead of prepending pre-rewrite
+        // history above it.
+        const currentMeta = messageWindowsRef.current[sessionId];
+        if (!isCurrentClient(client)
+          || readStateRef.current[sessionId]?.generation !== generation
+          || !currentMeta
+          || currentMeta.nextBefore !== meta.nextBefore) {
           return;
         }
         setMessagesBySession((current) => {
@@ -285,7 +345,7 @@ export function useTranscriptState({
         setLoadingOlderBySession((current) => ({ ...current, [sessionId]: false }));
       }
     },
-    [client, isCurrentClient, recordUsageAndTodos, refreshMessages, setMessagesBySession],
+    [client, isCurrentClient, readStateFor, recordUsageAndTodos, refreshMessages, setMessagesBySession],
   );
 
   const reset = useCallback(() => {
@@ -295,6 +355,7 @@ export function useTranscriptState({
     setUsageStepsBySession({});
     setTodoRecordsBySession({});
     hydrationRequestRef.current = {};
+    readStateRef.current = {};
   }, []);
 
   // Drop pagination, usage, and plan state for sessions that are no longer kept
@@ -303,6 +364,7 @@ export function useTranscriptState({
     setMessageWindows((current) => pruneByKeepIds(current, keepIds, limit));
     setUsageStepsBySession((current) => pruneByKeepIds(current, keepIds, limit));
     setTodoRecordsBySession((current) => pruneByKeepIds(current, keepIds, limit));
+    readStateRef.current = pruneByKeepIds(readStateRef.current, keepIds, limit);
   }, []);
 
   return {
