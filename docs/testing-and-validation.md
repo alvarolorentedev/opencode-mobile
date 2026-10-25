@@ -661,8 +661,9 @@ across user, assistant, tool-only, reasoning-only and patch-only entries plus
 hidden file-mutating tools; `transcript-rows` covers
 cross-entry activity grouping, read grouping, patch deduplication, bubble breaks,
 hidden-tool counts, resolved file tools and reasoning groups; `activity-group`
-covers collapsed defaults, automatic opening while running, manual-toggle
-persistence, session-running progress on the newest completed group, header
+covers collapsed defaults for running and settled runs, manual-toggle
+persistence, recycled-cell state reset, session-running progress on the newest
+completed group, header
 type lists, expandable markdown, expandable diff cards, copyable shell code,
 read rows, grep rows, and empty rows.
 `test:provider-runtime` runs actual provider callbacks and extracted hooks with

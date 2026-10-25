@@ -1,5 +1,6 @@
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { useMemo, useState } from 'react';
+import { useRecyclingState } from '@shopify/flash-list';
+import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Pressable, StyleSheet, View } from 'react-native';
 import { ActivityIndicator, Text } from 'react-native-paper';
@@ -12,13 +13,14 @@ import { buildActivityChildRows, type ActivityGroup } from '@/lib/opencode/trans
 type Palette = typeof Colors.light;
 
 // A contiguous run of reasoning/tool/patch activity between message bubbles.
-// The header is the first collapse level. A run with active work opens itself;
-// once the user toggles it, the explicit choice wins for the life of the key.
+// The header is the first collapse level. Runs always start collapsed:
+// expansion is an explicit user action, and the keyed state keeps it for the
+// life of the row. Active work only changes the progress affordance, never the
+// collapse state, so a run cannot open and close on its own while it streams.
 export function ActivityGroupRow({ flat = false, fontSize, group, palette, sessionRunning = false }: { flat?: boolean; fontSize: number; group: ActivityGroup; palette: Palette; sessionRunning?: boolean }) {
   const { t } = useTranslation();
-  const [expanded, setExpanded] = useState<boolean | undefined>(undefined);
+  const [expanded, setExpanded] = useRecyclingState(false, [group.key]);
   const running = group.status === 'running';
-  const isExpanded = expanded ?? running;
   const showProgress = running || sessionRunning;
 
   const childRows = useMemo(() => buildActivityChildRows(group.items), [group.items]);
@@ -48,24 +50,24 @@ export function ActivityGroupRow({ flat = false, fontSize, group, palette, sessi
     : reasoningCount > 0
       ? t('chat:activity.thoughtCount', { count: reasoningCount })
       : types.join(', ');
-  const actionLabel = t(isExpanded ? 'chat:activity.collapseActivity' : 'chat:activity.expandActivity');
+  const actionLabel = t(expanded ? 'chat:activity.collapseActivity' : 'chat:activity.expandActivity');
 
   return (
     <View style={[styles.container, !flat && styles.containerAssistant]}>
       <Pressable
         accessibilityLabel={`${label}. ${actionLabel}`}
         accessibilityRole="button"
-        accessibilityState={{ expanded: isExpanded }}
-        onPress={() => setExpanded((value) => !(value ?? running))}
+        accessibilityState={{ expanded }}
+        onPress={() => setExpanded((value) => !value)}
         style={({ pressed }) => [styles.header, pressed ? { backgroundColor: palette.surfaceAlt } : null]}
         testID={`transcript-activity-${group.key}`}>
         <Text variant="bodyMedium" numberOfLines={2} style={[styles.label, { color: palette.muted }]}>{label}</Text>
         <View style={styles.spacer} />
         {group.status === 'error' ? <MaterialCommunityIcons name="alert-circle-outline" size={15} color={palette.danger} /> : null}
         {showProgress ? <ActivityIndicator size={12} color={palette.tint} /> : null}
-        <MaterialCommunityIcons name={isExpanded ? 'chevron-down' : 'chevron-right'} size={16} color={palette.muted} />
+        <MaterialCommunityIcons name={expanded ? 'chevron-down' : 'chevron-right'} size={16} color={palette.muted} />
       </Pressable>
-      {isExpanded ? (
+      {expanded ? (
         <View style={styles.items}>
           {childRows.map((row) => (
             row.kind === 'read'

@@ -1,6 +1,7 @@
 import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { useRecyclingState } from '@shopify/flash-list';
 import * as Clipboard from 'expo-clipboard';
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Platform, Pressable, StyleSheet, View } from 'react-native';
 import { ActivityIndicator, Text } from 'react-native-paper';
@@ -42,17 +43,18 @@ export function ActivityReadGroupRow({ palette, reads }: { palette: Palette; rea
 
 // One row inside an activity run. The row is the second collapse level: it
 // stays closed while the run shows the shape of the turn, then reveals the
-// thought, command output, tool body, or changed-file list on demand.
+// thought, command output, tool body, or changed-file list on demand. Row state
+// is keyed by item id so a recycled list cell cannot inherit it.
 export function ActivityItemRow({ fontSize, item, palette }: { fontSize: number; item: ActivityItem; palette: Palette }) {
   const { t } = useTranslation();
-  const [expanded, setExpanded] = useState(false);
-  const [copied, setCopied] = useState(false);
+  const [expanded, setExpanded] = useRecyclingState(false, [item.id]);
+  const [copied, setCopied] = useRecyclingState(false, [item.id]);
 
   useEffect(() => {
     if (!copied) return;
     const timer = setTimeout(() => setCopied(false), 1600);
     return () => clearTimeout(timer);
-  }, [copied]);
+  }, [copied, setCopied]);
 
   if (item.kind === 'tool' && item.status !== 'error' && item.files?.length && isFileChangeToolName(item.tool)) {
     return (

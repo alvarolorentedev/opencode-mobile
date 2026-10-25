@@ -90,3 +90,23 @@ export function deferred() {
   const promise = new Promise((yes, no) => { resolve = yes; reject = no; });
   return { promise, resolve, reject };
 }
+
+// Mirrors FlashList's useRecyclingState: the value resets when the item
+// identity (deps) changes, so tests can prove recycled cells cannot inherit a
+// previous row's expansion.
+export function recyclingState(runtime) {
+  return function useRecyclingState(initial, deps) {
+    const store = runtime.react.useRef({ value: initial });
+    runtime.react.useMemo(() => {
+      store.current.value = typeof initial === 'function' ? initial() : initial;
+    }, deps);
+    const [, setVersion] = runtime.react.useState(0);
+    const setValue = (next) => {
+      const value = typeof next === 'function' ? next(store.current.value) : next;
+      if (Object.is(value, store.current.value)) return;
+      store.current.value = value;
+      setVersion((version) => version + 1);
+    };
+    return [store.current.value, setValue];
+  };
+}

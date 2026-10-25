@@ -646,10 +646,11 @@ activity run; a message bubble breaks the run. The run key is its first detail
 id, so expansion persists while streamed details grow it. The level-one header
 keeps the total tool-call count and lists every rendered type once, including
 `Thought` when reasoning is present; a reasoning-only run reads `Thought · N`.
-A run with a `running`/`pending` tool opens automatically, while an explicit
-user toggle wins for the life of the key. While the session itself remains
-running, the newest activity run keeps the header progress circle even after
-its own tools complete; it does not force the completed run open. Level-two rows expand reasoning
+A run with a `running`/`pending` tool shows the header progress indicator but
+stays collapsed: expansion is always an explicit user toggle, keyed to the run
+so a recycled list cell cannot open a different one. While the session itself
+remains running, the newest activity run keeps the header progress circle even
+after its own tools complete; running work never changes the collapse state. Level-two rows expand reasoning
 Markdown; show the shell command collapsed and a selectable, copyable code
 block expanded; keep grep to one line with its match count; collapse consecutive
 reads to one non-expandable filename list; and render edit/write/patch files as

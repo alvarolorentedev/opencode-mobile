@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest';
 
 import * as transcript from '@/lib/opencode/transcript';
-import { hookRuntime, loadTs } from '../helpers/runtime.mjs';
+import { hookRuntime, loadTs, recyclingState } from '../helpers/runtime.mjs';
 
-type Element = { type: unknown; props: { children?: unknown; text?: string; selectable?: boolean; onPress?: () => void; disabled?: boolean; accessibilityLabel?: string } };
+type Element = { type: unknown; props: { children?: unknown; text?: string; selectable?: boolean; onPress?: () => void; disabled?: boolean; accessibilityLabel?: string; accessibilityState?: { expanded?: boolean } } };
 
 function find(node: unknown, type: string, out: Element[] = []) {
   if (!node || typeof node !== 'object') return out;
@@ -76,6 +76,7 @@ async function mountGroup(value: transcript.ActivityGroup, sessionRunning = fals
   const { ActivityGroupRow } = await loadTs('components/chat/cards/activity-group.tsx', {
     react: runtime.react,
     'react/jsx-runtime': { jsx: element, jsxs: element, Fragment: 'Fragment' },
+    '@shopify/flash-list': { useRecyclingState: recyclingState(runtime) },
     'react-i18next': { useTranslation: () => ({ t: translate }) },
     'react-native': {
       Pressable: 'Pressable',
@@ -100,6 +101,7 @@ async function mountRead(reads: transcript.ToolDetail[]) {
   const { ActivityReadGroupRow } = await loadTs('components/chat/cards/activity-item.tsx', {
     react: runtime.react,
     'react/jsx-runtime': { jsx: element, jsxs: element, Fragment: 'Fragment' },
+    '@shopify/flash-list': { useRecyclingState: recyclingState(runtime) },
     'react-i18next': { useTranslation: () => ({ t: translate }) },
     'react-native': {
       Platform: { select: (options: Record<string, unknown>) => options.default },
@@ -134,6 +136,7 @@ async function mountItem(item: transcript.ActivityItem) {
   const { ActivityItemRow } = await loadTs('components/chat/cards/activity-item.tsx', {
     react: runtime.react,
     'react/jsx-runtime': { jsx: element, jsxs: element, Fragment: 'Fragment' },
+    '@shopify/flash-list': { useRecyclingState: recyclingState(runtime) },
     'react-i18next': { useTranslation: () => ({ t: translate }) },
     'react-native': {
       Platform: { select: (options: Record<string, unknown>) => options.default },
@@ -177,9 +180,9 @@ describe('activity groups', () => {
     expect(find(runtime.value, 'ActivityItemRow')).toHaveLength(3);
   });
 
-  it('auto-opens while a tool is active and keeps the header progress circle', async () => {
+  it('stays collapsed while a tool is active and keeps the header progress circle', async () => {
     const runtime = await mountGroup(group({ status: 'running', items: [tool('t1', 'pnpm test', '', 'running')] }));
-    expect(find(runtime.value, 'ActivityItemRow')).toHaveLength(1);
+    expect(find(runtime.value, 'ActivityItemRow')).toHaveLength(0);
     expect(find(runtime.value, 'ActivityIndicator')).toHaveLength(1);
   });
 
@@ -189,12 +192,33 @@ describe('activity groups', () => {
     expect(find(runtime.value, 'ActivityItemRow')).toHaveLength(0);
   });
 
-  it('keeps a manual collapse after the run settles', async () => {
+  it('keeps a manual expansion after the run settles', async () => {
     const runtime = await mountGroup(group({ status: 'running', items: [tool('t1', 'pnpm test', '', 'running')] }));
+    find(runtime.value, 'Pressable')[0].props.onPress?.();
+    runtime.flush();
+    expect(find(runtime.value, 'ActivityItemRow')).toHaveLength(1);
+    runtime.update({ group: group({ status: 'idle', items: [tool('t1', 'pnpm test', ' M a.ts')] }) });
+    expect(find(runtime.value, 'ActivityItemRow')).toHaveLength(1);
+  });
+
+  it('keeps a manual collapse while the run is active', async () => {
+    const runtime = await mountGroup(group({ status: 'running', items: [tool('t1', 'pnpm test', '', 'running')] }));
+    find(runtime.value, 'Pressable')[0].props.onPress?.();
+    runtime.flush();
+    expect(find(runtime.value, 'ActivityItemRow')).toHaveLength(1);
     find(runtime.value, 'Pressable')[0].props.onPress?.();
     runtime.flush();
     expect(find(runtime.value, 'ActivityItemRow')).toHaveLength(0);
     runtime.update({ group: group({ status: 'idle' }) });
+    expect(find(runtime.value, 'ActivityItemRow')).toHaveLength(0);
+  });
+
+  it('does not carry expansion into a run that reuses the row', async () => {
+    const runtime = await mountGroup(group());
+    find(runtime.value, 'Pressable')[0].props.onPress?.();
+    runtime.flush();
+    expect(find(runtime.value, 'ActivityItemRow')).toHaveLength(3);
+    runtime.update({ group: group({ key: 'g2' }) });
     expect(find(runtime.value, 'ActivityItemRow')).toHaveLength(0);
   });
 
@@ -293,5 +317,16 @@ describe('activity items', () => {
   it('does not make an empty tool row expandable', async () => {
     const runtime = await mountItem({ id: 't1', kind: 'tool', tool: 'read', label: 'read', body: 'No output', status: 'completed' });
     expect(find(runtime.value, 'Pressable')[0].props.disabled).toBe(true);
+  });
+
+  it('resets expansion when the row is recycled to another item', async () => {
+    const runtime = await mountItem(tool('t1'));
+    find(runtime.value, 'Pressable')[0].props.onPress?.();
+    runtime.flush();
+    expect(find(runtime.value, 'Text').some((node) => node.props.children === '$ git status --short\n M a.ts')).toBe(true);
+
+    runtime.update({ item: tool('t2') });
+    expect(find(runtime.value, 'Text').some((node) => node.props.children === '$ git status --short\n M a.ts')).toBe(false);
+    expect(find(runtime.value, 'Pressable')[0].props.accessibilityState).toEqual({ expanded: false });
   });
 });

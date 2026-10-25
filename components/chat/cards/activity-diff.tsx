@@ -1,5 +1,6 @@
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { useMemo, useState } from 'react';
+import { useRecyclingState } from '@shopify/flash-list';
+import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Pressable, StyleSheet, View } from 'react-native';
 import { Text } from 'react-native-paper';
@@ -24,7 +25,7 @@ function fileBadge(file: string) {
 // review sheet's state or layout.
 export function ActivityDiffCard({ diff, fontSize, palette }: { diff: TranscriptFileDiff; fontSize: number; palette: Palette }) {
   const { t } = useTranslation();
-  const [expanded, setExpanded] = useState(false);
+  const [expanded, setExpanded] = useRecyclingState(false, [diff.file, diff.patch]);
   const lines = useMemo(() => (expanded && diff.patch ? buildPatchDiff(diff.patch) : []), [diff.patch, expanded]);
   const blocks = useMemo(() => (expanded ? buildCollapsedDiffBlocks(lines) : []), [expanded, lines]);
   const badge = fileBadge(diff.file);
