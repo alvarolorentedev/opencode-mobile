@@ -83,7 +83,7 @@ export function ChatLibrary({ visible, onClose, onNewChat }: { visible: boolean;
     const inFlight = busy === key;
     return <View style={{ paddingBottom: 8 }}>
       <SwipeRow title={label} actions={[
-        { label: t('chat:library.rename'), icon: 'pencil-outline', onPress: () => { setRenaming(row); setTitle(label); } },
+        { label: t('chat:library.rename'), icon: 'pencil-outline', onPress: () => { setRenaming(row); setTitle(label); setError(undefined); } },
         { label: t(row.favorite ? 'chat:library.unfavorite' : 'chat:library.favorite'), icon: row.favorite ? 'star-off-outline' : 'star-outline', onPress: () => void run(key, () => library.manage(row, 'favorite', row.session.title)) },
         { label: t('common:actions.delete'), icon: 'delete-outline', onPress: () => confirmAction(t('chat:library.deleteConfirmTitle'), t('chat:library.deleteConfirm', { title: label }), t('common:actions.delete'), t('common:actions.cancel'), () => void run(key, () => library.manage(row, 'delete'))) },
       ]}>
@@ -115,7 +115,31 @@ export function ChatLibrary({ visible, onClose, onNewChat }: { visible: boolean;
       <View style={styles.filters}><Text style={{ color: palette.muted, flex: 1 }}>{t('chat:library.swipeHint').replace(/^\s*·\s*/, '')}</Text><Text>{t('chat:library.hideSubagents')}</Text>
         <Switch testID="chat-hide-subagents" accessibilityLabel={t('chat:library.hideSubagentChats')} value={chatPreferences.hideSubagentChats} onValueChange={(hideSubagentChats) => updateChatPreferences({ hideSubagentChats })} /></View>
       {error ? <Text accessibilityRole="alert" style={{ color: palette.danger }}>{error}</Text> : null}
-      {renaming ? <View style={styles.filters}><TextInput testID="chat-library-title-input" style={{ flex: 1 }} value={title} onChangeText={setTitle} /><Button onPress={() => void run(sessionKey(renaming), () => library.manage(renaming, 'rename', title), () => setRenaming(undefined))}>{t('common:actions.save')}</Button></View> : null}
+      {renaming ? (() => {
+        const renameBusy = busy === sessionKey(renaming);
+        const canSave = title.trim().length > 0 && !renameBusy;
+        const cancel = () => { setRenaming(undefined); setTitle(''); setError(undefined); };
+        const save = () => {
+          if (!canSave) return;
+          void run(sessionKey(renaming), () => library.manage(renaming, 'rename', title.trim()), () => { setRenaming(undefined); setTitle(''); });
+        };
+        return <View style={[styles.renameForm, { borderColor: palette.border, backgroundColor: palette.background }]}>
+          <TextInput
+            testID="chat-library-title-input"
+            autoFocus
+            label={t('chat:library.rename')}
+            returnKeyType="done"
+            style={{ flex: 1 }}
+            value={title}
+            onChangeText={setTitle}
+            onSubmitEditing={save}
+          />
+          <View style={styles.renameActions}>
+            <Button disabled={renameBusy} onPress={cancel}>{t('common:actions.cancel')}</Button>
+            <Button mode="contained" disabled={!canSave} loading={renameBusy} onPress={save}>{t('common:actions.save')}</Button>
+          </View>
+        </View>;
+      })() : null}
       <FlashList data={rows} extraData={busy} keyExtractor={sessionKey} style={{ flex: 1 }} keyboardShouldPersistTaps="handled" renderItem={({ item }) => renderRow(item)}
         ListEmptyComponent={<Text style={{ color: palette.muted }}>{t(query.trim() ? 'chat:library.noMatchingChats' : 'chat:library.noChats')}</Text>} />
       <Button icon="plus" disabled={Boolean(busy)} onPress={onNewChat}>{t('chat:library.newChat')}</Button>
@@ -126,6 +150,8 @@ export function ChatLibrary({ visible, onClose, onNewChat }: { visible: boolean;
 }
 const styles = StyleSheet.create({
   filters: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  renameForm: { borderWidth: 1, borderRadius: 14, padding: 10, gap: 8 },
+  renameActions: { flexDirection: 'row', justifyContent: 'flex-end', gap: 8 },
   row: { minHeight: 68, borderRadius: 16, borderWidth: 1, paddingHorizontal: 14, paddingVertical: 10, flexDirection: 'row', alignItems: 'center', gap: 12 },
   copy: { flex: 1, minWidth: 0, gap: 3 }, titleLine: { flexDirection: 'row', alignItems: 'center', gap: 8, minWidth: 0 },
   title: { flex: 1, minWidth: 0, fontSize: 16, fontWeight: '600' },
