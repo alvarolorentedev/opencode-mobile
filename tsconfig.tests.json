@@ -16,8 +16,6 @@
     ".expo/types/**/*.ts"
   ],
   "exclude": [
-    "node_modules",
-    "tests/vitest/connect.test.ts",
-    "tests/vitest/provider-runtime.test.ts"
+    "node_modules"
   ]
 }

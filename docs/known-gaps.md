@@ -42,13 +42,12 @@ Partially closed on 2026-10-18:
   `compat`) sharing `tests/e2e/helpers/flows.mjs`. `onboarding.spec.mjs` and
   `plan-overlay-probe.spec.mjs` reuse the same helpers instead of duplicating
   them. Test titles are unchanged.
-- **The Vitest suites are type-checked with a denylist.** `tsconfig.tests.json`
-  type-checks `tests/vitest`; `npm run typecheck:tests` (part of
-  `test:ci:static`) runs it. The 2 suites that still drive the dynamic
-  `loadTs` / `hookRuntime` harness with untyped module shapes are listed under
-  `exclude`. `tests/vitest/typecheck-ratchet.test.ts` prevents that list from
-  growing; shrink it by migrating suites to real imports and `vi.mock`, never by
-  adding an entry.
+- **The Vitest suites are fully type-checked.** `tsconfig.tests.json`
+  type-checks every file under `tests/vitest`; `npm run typecheck:tests` (part of
+  `test:ci:static`) runs it. The dynamic `loadTs` / `hookRuntime` harness is
+  described by `tests/helpers/runtime.d.mts`, so suites can use it without
+  weakening compilation. `tests/vitest/typecheck-ratchet.test.ts` prevents a
+  denylist from returning.
 - **`tests/foss-prepare.test.mjs`** stays a standalone Node script
   (`npm run test:foss`, run by the `foss-release` CI job). It mutates a
   temporary `node_modules` tree and is build tooling rather than app behavior,

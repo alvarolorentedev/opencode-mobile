@@ -39,9 +39,9 @@ function extractDeclarations(source: string, names: string[]) {
   visit(ast);
   return found.join('\n');
 }
-function extractEffect(source, marker) {
+function extractEffect(source: any, marker: any) {
   const ast = ts.createSourceFile('module.ts', source, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS);
-  let found;
+  let found: any;
   function visit(node: any) {
     if (!found
       && ts.isExpressionStatement(node)
@@ -67,20 +67,20 @@ const declarations = [
 ].join('\n');
 let aborted = false;
 const client = { __opencode: { directory: '/repo' }, session: { abort: async () => { aborted = true; } } };
-let active = client, selected, patches = 0;
+let active: any = client, selected: any, patches = 0;
 const reads = new Map(), fileReads = new Map();
 const fileGate = deferred(), saveGate = deferred();
-const context = {
-  client, useCallback: (fn) => fn, projectSearchRequestRef: { current: 0 }, projectFileRequestRef: { current: 0 },
-  activeProjectPathRef: { current: '/repo' }, isCurrentClient: (candidate) => candidate === active,
+const context: any = {
+  client, useCallback: (fn: any) => fn, projectSearchRequestRef: { current: 0 }, projectFileRequestRef: { current: 0 },
+  activeProjectPathRef: { current: '/repo' }, isCurrentClient: (candidate: any) => candidate === active,
   currentSessionIdRef: {}, diffScopeBySessionRef: { current: {} },
-  findFiles: (_, query) => { const gate = deferred(); reads.set(query, gate); return gate.promise; },
-  readFile: (_, path) => {
+  findFiles: (_: any, query: any) => { const gate = deferred(); reads.set(query, gate); return gate.promise; },
+  readFile: (_: any, path: any) => {
     if (path.startsWith('selection-')) { const gate = deferred(); fileReads.set(path, gate); return gate.promise; }
     return path === 'save' ? saveGate.promise : fileGate.promise;
   },
-  readProjectFile: async (_, path) => {
-    let content;
+  readProjectFile: async (_: any, path: any) => {
+    let content: any;
     if (path.startsWith('selection-')) {
       const gate = deferred(); fileReads.set(path, gate); content = await gate.promise;
     } else {
@@ -88,8 +88,8 @@ const context = {
     }
     return { path, kind: 'text', mime: 'text/plain', size: content.content.length, content, canDownload: true };
   },
-  setSelectedProjectFile: (value) => { selected = value; },
-  projectFileFromText: (path, content) => ({ path, kind: 'text', mime: 'text/plain', size: content.content.length, content, canDownload: true }),
+  setSelectedProjectFile: (value: any) => { selected = value; },
+  projectFileFromText: (path: any, content: any) => ({ path, kind: 'text', mime: 'text/plain', size: content.content.length, content, canDownload: true }),
   projectFileMime: () => 'text/plain',
   createFullFilePatch: () => 'patch', saveFile: async () => { patches++; },
   interruptSession: async () => { aborted = true; }, refreshServerFeatures: async () => {}, refreshVcsDiff: async () => {},
@@ -102,7 +102,7 @@ const context = {
 };
 runInNewContext(ts.transpileModule(`${declarations}\nexports.actions = { ${names.join(', ')} };`, { compilerOptions: { module: ts.ModuleKind.CommonJS } }).outputText, context);
 const actions = context.exports.actions;
-const projectProtocol = await loadTs('lib/opencode/project.ts', { '@/lib/compare-labels': { compareLabels: (a, b) => a.localeCompare(b) } });
+const projectProtocol = await loadTs('lib/opencode/project.ts', { '@/lib/compare-labels': { compareLabels: (a: any, b: any) => a.localeCompare(b) } });
 context.projectPath = projectProtocol.projectPath;
 const browserRuntime = hookRuntime();
 const directoryReads = new Map();
@@ -111,11 +111,11 @@ const browserHook = await loadTs('providers/use-project-browser.ts', {
   '@/lib/opencode/project': projectProtocol,
   '@/providers/services/project-service': {
     findFiles: context.findFiles,
-    listFiles: (_, path) => { const gate = deferred(); directoryReads.set(path, gate); return gate.promise; },
+    listFiles: (_: any, path: any) => { const gate = deferred(); directoryReads.set(path, gate); return gate.promise; },
   },
 });
-browserRuntime.mount(browserHook.useProjectBrowser, { client, isCurrentClient: (candidate) => candidate === active });
-const searchFiles = (query) => browserRuntime.value.search(query);
+browserRuntime.mount(browserHook.useProjectBrowser, { client, isCurrentClient: (candidate: any) => candidate === active });
+const searchFiles = (query: any) => browserRuntime.value.search(query);
 
 const first = searchFiles('first'), last = searchFiles('last');
 reads.get('last').resolve(['last.ts']); await last;
@@ -136,14 +136,14 @@ assert.equal(browserRuntime.value.path, 'docs', 'clearing search retains the bro
 // The picker renders the projects opened on this connection; the server
 // catalog seeds and validates them. A path the server still resolves (a
 // worktree or a deep link) is kept and opened, an unlisted one is dropped.
-let projectCatalog = {
+let projectCatalog: any = {
   currentProjectPath: '/workspace/main-clone',
   serverRootPath: '/workspace',
   serverProjects: [{ id: 'project-1', worktree: '/workspace/main-clone', time: { created: 1 } }],
 };
 let knownProjectLocation = false;
 const projectCatalogHook = await loadTs('providers/use-project-catalog-actions.ts', {
-  react: { useCallback: (fn) => fn, useEffect: () => {}, useRef: (current) => ({ current }) },
+  react: { useCallback: (fn: any) => fn, useEffect: () => {}, useRef: (current: any) => ({ current }) },
   '@/lib/opencode/client': { buildClient: () => ({}) },
   '@/providers/session-cache': { hydrateSessionCache: () => {} },
   '@/providers/projects-storage': { PROJECTS_MAX: 50 },
@@ -153,8 +153,8 @@ const projectCatalogHook = await loadTs('providers/use-project-catalog-actions.t
     isKnownProjectLocation: async () => knownProjectLocation,
   },
 });
-function makeProjectCatalogActions(activePath, isCurrent = () => true, openedPaths) {
-  const state = { activePath, cleared: 0, projects: [], currentPath: undefined, opened: openedPaths ? { scope: [...openedPaths] } : {} };
+function makeProjectCatalogActions(activePath: any, isCurrent = () => true, openedPaths?: any) {
+  const state: any = { activePath, cleared: 0, projects: [], currentPath: undefined, opened: openedPaths ? { scope: [...openedPaths] } : {} };
   const activeProjectPathRef = { current: activePath };
   const serverProjectsRef = { current: [] };
   const projectPathsByConnectionRef = { current: state.opened };
@@ -165,11 +165,11 @@ function makeProjectCatalogActions(activePath, isCurrent = () => true, openedPat
     isCurrentClient: isCurrent,
     isCurrentCatalogClient: isCurrent,
     activeProjectPathRef,
-    setActiveProjectPath: (path) => { state.activePath = path; activeProjectPathRef.current = path; },
+    setActiveProjectPath: (path: any) => { state.activePath = path; activeProjectPathRef.current = path; },
     clearProjectState: () => { state.cleared++; },
-    projectPathsByConnectionRef, setProjectPathsByConnection: (value) => { state.opened = value; projectPathsByConnectionRef.current = value; },
-    serverProjectsRef, setServerProjects: (projects) => { state.projects = projects; serverProjectsRef.current = projects; },
-    setCurrentProjectPath: (path) => { state.currentPath = path; }, setServerRootPath: () => {},
+    projectPathsByConnectionRef, setProjectPathsByConnection: (value: any) => { state.opened = value; projectPathsByConnectionRef.current = value; },
+    serverProjectsRef, setServerProjects: (projects: any) => { state.projects = projects; serverProjectsRef.current = projects; },
+    setCurrentProjectPath: (path: any) => { state.currentPath = path; }, setServerRootPath: () => {},
     connectionScope: 'scope', connectionScopeRef: { current: 'scope' }, isHydrated: false,
     setSessions: () => {}, setSessionStatuses: () => {}, setIsRefreshingProjectCatalog: () => {},
     scopeGenerationRef, serverContract: 'v2', settingsRef: { current: {} },
@@ -240,7 +240,7 @@ assert.deepEqual(Array.from(browserRuntime.value.results), []); assert.equal(sel
 active = client;
 let bytes = 'original';
 context.readFile = async () => ({ type: 'text', content: bytes });
-context.saveFile = async (_, path, content) => { patches++; bytes = content; };
+context.saveFile = async (_: any, path: any, content: any) => { patches++; bytes = content; };
 await assert.rejects(actions.saveProjectFile('save', 'obsolete', 'draft'), /changed on the server/);
 assert.equal(patches, 0, 'a known conflict must never write');
 await actions.saveProjectFile('save', 'original', 'edited');
@@ -257,20 +257,20 @@ assert.equal(aborted, true, 'notification storage failure must not prevent abort
 
 // The bounded transcript keeps an independent, replay-safe usage/plan ledger.
 const transcriptSource = await readSource('../../providers/use-transcript-state.ts');
-const ledgerHelpers = {
+const ledgerHelpers: any = {
   ...await loadTs('lib/opencode/usage.ts'),
   ...await loadTs('lib/opencode/format/todos.ts'),
   ...await loadTs('lib/opencode/format/window.ts'),
 };
-let usageLedger = {}, todoLedger = {};
-const ledgerContext = {
-  ...ledgerHelpers, useCallback: (action) => action,
-  setUsageStepsBySession: (update) => { usageLedger = update(usageLedger); },
-  setTodoRecordsBySession: (update) => { todoLedger = update(todoLedger); }, exports: {},
+let usageLedger: any = {}, todoLedger: any = {};
+const ledgerContext: any = {
+  ...ledgerHelpers, useCallback: (action: any) => action,
+  setUsageStepsBySession: (update: any) => { usageLedger = update(usageLedger); },
+  setTodoRecordsBySession: (update: any) => { todoLedger = update(todoLedger); }, exports: {},
 };
 const ledgerDeclaration = extractDeclarations(transcriptSource, ['recordUsageAndTodos']);
 runInNewContext(ts.transpileModule(`${ledgerDeclaration}\nexports.record = recordUsageAndTodos;`, { compilerOptions: { module: ts.ModuleKind.CommonJS } }).outputText, ledgerContext);
-const ledgerMessage = (id, time, status, cost) => ({
+const ledgerMessage = (id: any, time: any, status: any, cost: any) => ({
   info: { id, role: 'assistant', time: { created: time }, providerID: 'p', modelID: 'm' },
   parts: [
     { type: 'tool', tool: 'todowrite', state: { status: 'completed', input: { todos: [{ content: 'Task', status }] } } },
@@ -288,9 +288,9 @@ assert.ok(Math.abs(ledgerHelpers.aggregateUsageSteps(usageLedger.s).cost - 0.3) 
 // Real realtime hook: connected busy polling, reconnect reconciliation,
 // backpressure, stable subscriptions, and cancellation of reconnect timers.
 const runtime = hookRuntime();
-let events = [], wake, subscriptions = 0, sessionsRefreshed = 0, pendingRefreshed = 0;
-let heldRefresh;
-const catalogClient = { api: { event: { async subscribe({ signal }) {
+let events: any[] = [], wake: any, subscriptions = 0, sessionsRefreshed = 0, pendingRefreshed = 0;
+let heldRefresh: any;
+const catalogClient = { api: { event: { async subscribe({ signal }: any) {
   subscriptions++;
   return (async function* () {
     while (!signal.aborted) {
@@ -306,7 +306,7 @@ const realtime = await loadTs('providers/use-opencode-realtime.ts', {
   react: runtime.react,
   'react-native': { AppState: { currentState: 'active', addEventListener: () => ({ remove() {} }) } },
   '@/lib/opencode/client/errors': { classifyConnectionFailure: () => 'unknown', isAuthConnectionFailure: () => false },
-  '@/lib/opencode/events': { subscribeEvents: async function* (client, signal) { yield* await client.api.event.subscribe({ signal }); } },
+  '@/lib/opencode/events': { subscribeEvents: async function* (client: any, signal: any) { yield* await client.api.event.subscribe({ signal }); } },
 }, runtime.globals);
 assert.equal(realtime.shouldPoll(true, false), false);
 assert.equal(realtime.shouldPoll(true, true), true);
@@ -315,7 +315,7 @@ let nativeSurfacesRefreshed = 0;
 const inputs = {
   refreshNativeSurfaces: async () => { nativeSurfacesRefreshed++; },
   catalogClient, activeProjectPath: '/repo', connected: true, busy: false, currentSessionId: 's',
-  onEvent: (event) => events.push(event.type),
+  onEvent: (event: any) => events.push(event.type),
   refreshSessions: async () => { sessionsRefreshed++; await heldRefresh?.promise; },
   refreshPendingInteractions: async () => { pendingRefreshed++; },
   refreshMessages: async () => {}, refreshSessionDiff: async () => {}, refreshSessionTodos: async () => {},
@@ -342,10 +342,10 @@ wake(null); await runtime.settle(); runtime.unmount(); assert.equal(runtime.coun
 // and a reconnect reconcile is queued behind an in-flight safety poll.
 {
   const liveness = hookRuntime();
-  let now = 1_000_000, subscriptions = 0, wake, sessions = 0, pending = 0, heldSessions;
-  const messageModes = [];
-  const listeners = new Set();
-  const client = { api: { event: { async subscribe({ signal }) {
+  let now = 1_000_000, subscriptions = 0, wake: any, sessions = 0, pending = 0, heldSessions: any;
+  const messageModes: any[] = [];
+  const listeners = new Set<any>();
+  const client = { api: { event: { async subscribe({ signal }: any) {
     subscriptions++;
     return (async function* () {
       while (!signal.aborted) {
@@ -355,20 +355,20 @@ wake(null); await runtime.settle(); runtime.unmount(); assert.equal(runtime.coun
       }
     })();
   } } } };
-  const appState = { currentState: 'active', addEventListener: (_event, listener) => { listeners.add(listener); return { remove: () => listeners.delete(listener) }; } };
+  const appState = { currentState: 'active', addEventListener: (_event: any, listener: any) => { listeners.add(listener); return { remove: () => listeners.delete(listener) }; } };
   const hook = await loadTs('providers/use-opencode-realtime.ts', {
     ...realtimeDeps,
     '@/providers/realtime-timing': { SSE_STALENESS_MS: 90000, SSE_FOREGROUND_CYCLE_MS: 15000, WATCHDOG_TICK_MS: 7000 },
     react: liveness.react,
     'react-native': { AppState: appState },
     '@/lib/opencode/client/errors': { classifyConnectionFailure: () => 'unknown', isAuthConnectionFailure: () => false },
-    '@/lib/opencode/events': { subscribeEvents: async function* (instance, signal) { yield* await instance.api.event.subscribe({ signal }); } },
+    '@/lib/opencode/events': { subscribeEvents: async function* (instance: any, signal: any) { yield* await instance.api.event.subscribe({ signal }); } },
   }, { ...liveness.globals, Date: class extends Date { static now() { return now; } } });
   const inputs = {
     catalogClient: client, activeProjectPath: '/repo', connected: true, busy: false, currentSessionId: 's',
     onEvent: () => {}, refreshSessions: async () => { sessions++; await heldSessions?.promise; },
     refreshPendingInteractions: async () => { pending++; },
-    refreshMessages: async (_id, _silent, options) => { messageModes.push(options?.mode); },
+    refreshMessages: async (_id: any, _silent: any, options: any) => { messageModes.push(options?.mode); },
     refreshSessionDiff: async () => {}, refreshSessionTodos: async () => {},
   };
   liveness.mount(hook.useOpencodeRealtime, inputs); await liveness.settle();
@@ -381,28 +381,28 @@ wake(null); await runtime.settle(); runtime.unmount(); assert.equal(runtime.coun
   assert.equal(subscriptions, 2, 'a silent stream is re-established after the window');
   wake({ location: { directory: '/repo' }, type: 'server.connected' }); await liveness.settle();
   assert.equal(liveness.value.eventStreamStatus, 'connected');
-  [...listeners].forEach((listener) => listener('background'));
+  [...listeners].forEach((listener: any) => listener('background'));
   now += 16_000;
-  [...listeners].forEach((listener) => listener('active'));
+  [...listeners].forEach((listener: any) => listener('active'));
   await liveness.settle();
   assert.equal(subscriptions, 3, 'a long background return re-verifies the stream');
   wake({ location: { directory: '/repo' }, type: 'server.connected' }); await liveness.settle();
   messageModes.length = 0;
-  heldSessions = deferred();
+  heldSessions = deferred<void>();
   liveness.update({ busy: true }); liveness.fire(10000); await liveness.settle();
   assert.deepEqual(messageModes, [undefined], 'the busy safety poll tails the transcript');
   wake(null); await liveness.settle(); liveness.fire(1000); await liveness.settle();
   assert.equal(subscriptions, 4);
   wake({ location: { directory: '/repo' }, type: 'server.connected' }); await liveness.settle();
   assert.deepEqual(messageModes, [undefined], 'the reconnect reconcile waits for the in-flight poll');
-  heldSessions.resolve(); heldSessions = undefined; await liveness.settle();
+  heldSessions.resolve(undefined); heldSessions = undefined; await liveness.settle();
   assert.deepEqual(messageModes, [undefined, undefined], 'the reconnect reconcile cannot be swallowed by the poll');
   // A short background return must still re-assert domain data even though the
   // stream stayed up and no restart/rebuild is requested.
   const sessionsBeforeForeground = sessions;
-  [...listeners].forEach((listener) => listener('background'));
+  [...listeners].forEach((listener: any) => listener('background'));
   now += 1_000;
-  [...listeners].forEach((listener) => listener('active'));
+  [...listeners].forEach((listener: any) => listener('active'));
   await liveness.settle();
   assert.equal(subscriptions, 4, 'a short background return keeps the live stream');
   assert.ok(sessions > sessionsBeforeForeground, 'a foreground return re-asserts sessions without a restart');
@@ -421,14 +421,14 @@ wake(null); await runtime.settle(); runtime.unmount(); assert.equal(runtime.coun
     react: revoked.react,
     'react-native': { AppState: { currentState: 'active', addEventListener: () => ({ remove() {} }) } },
     '@/lib/opencode/client/errors': {
-      classifyConnectionFailure: (error) => /401|credential/i.test(String(error?.message)) ? 'auth' : 'unknown',
-      isAuthConnectionFailure: (kind) => kind === 'auth' || kind === 'entitlement',
+      classifyConnectionFailure: (error: any) => /401|credential/i.test(String(error?.message)) ? 'auth' : 'unknown',
+      isAuthConnectionFailure: (kind: any) => kind === 'auth' || kind === 'entitlement',
     },
-    '@/lib/opencode/events': { subscribeEvents: async function* (instance, signal) { yield* await instance.api.event.subscribe({ signal }); } },
+    '@/lib/opencode/events': { subscribeEvents: async function* (instance: any, signal: any) { yield* await instance.api.event.subscribe({ signal }); } },
   }, revoked.globals);
   revoked.mount(hook.useOpencodeRealtime, {
     catalogClient: client, activeProjectPath: '/repo', connected: true, busy: true, currentSessionId: 's',
-    onFatalError: (kind) => { fatal++; assert.equal(kind, 'auth'); },
+    onFatalError: (kind: any) => { fatal++; assert.equal(kind, 'auth'); },
     onEvent: () => {}, refreshSessions: async () => {}, refreshPendingInteractions: async () => {},
     refreshMessages: async () => {}, refreshSessionDiff: async () => {}, refreshSessionTodos: async () => {},
   });
@@ -443,11 +443,11 @@ wake(null); await runtime.settle(); runtime.unmount(); assert.equal(runtime.coun
 
 // Conversation state machine runs against stubbed speech/platform boundaries.
 const voiceRuntime = hookRuntime();
-let recognitionOptions, speechCallbacks, onConversationAppStateChange, sends = 0, aborts = 0;
+let recognitionOptions: any, speechCallbacks: any, onConversationAppStateChange: any, sends = 0, aborts = 0;
 let lastPrompt;
 let listening = false;
-const sendGate = deferred();
-let permissionRequests;
+const sendGate = deferred<void>();
+let permissionRequests: any;
 const startSpeech = async () => {
   if (permissionRequests) {
     const permission = deferred();
@@ -458,17 +458,17 @@ const startSpeech = async () => {
 };
 const abortSpeech = () => { listening = false; aborts++; };
 const selectors = await loadTs('providers/opencode-provider-selectors.ts', {
-  '@/lib/opencode/format': { toTranscriptEntry: (record) => record, getHistoryPreview: () => '' },
-  '@/lib/opencode/transcript': { hasMessageBubble: (entry) => Boolean(entry.text), getTranscriptActivityLabel: () => undefined },
+  '@/lib/opencode/format': { toTranscriptEntry: (record: any) => record, getHistoryPreview: () => '' },
+  '@/lib/opencode/transcript': { hasMessageBubble: (entry: any) => Boolean(entry.text), getTranscriptActivityLabel: () => undefined },
 });
 const conversationImports = {
   react: voiceRuntime.react,
-  'react-native': { AppState: { addEventListener: (_event, callback) => { onConversationAppStateChange = callback; return { remove() {} }; } } },
-  '@/lib/opencode/format': { toTranscriptEntry: (record) => record },
-  '@/lib/opencode/transcript': { isTranscriptDisplayMessage: (entry) => Boolean(entry.text) },
-  '@/lib/voice/speech-output': { stopSpeaking: async () => {}, speakText: async (options) => { speechCallbacks = options; options.onStart(); return true; } },
+  'react-native': { AppState: { addEventListener: (_event: any, callback: any) => { onConversationAppStateChange = callback; return { remove() {} }; } } },
+  '@/lib/opencode/format': { toTranscriptEntry: (record: any) => record },
+  '@/lib/opencode/transcript': { isTranscriptDisplayMessage: (entry: any) => Boolean(entry.text) },
+  '@/lib/voice/speech-output': { stopSpeaking: async () => {}, speakText: async (options: any) => { speechCallbacks = options; options.onStart(); return true; } },
   '@/lib/voice/transcript-accumulate': await loadTs('lib/voice/transcript-accumulate.ts', {}, voiceRuntime.globals),
-  '@/lib/voice/use-speech-input': { useSpeechInput: (options) => { recognitionOptions = options; return { abort: abortSpeech, start: startSpeech, isListening: listening, isStarting: false, level: 0 }; } },
+  '@/lib/voice/use-speech-input': { useSpeechInput: (options: any) => { recognitionOptions = options; return { abort: abortSpeech, start: startSpeech, isListening: listening, isStarting: false, level: 0 }; } },
   '@/lib/voice/working-sound': { stopWorkingSoundAsync: async () => {} },
   '@/providers/opencode-provider-selectors': selectors,
   '@/providers/opencode-provider-types': { CONVERSATION_FINAL_RESULT_SETTLE_MS: 2200, CONVERSATION_KEEP_AWAKE_TAG: 'test', CONVERSATION_LISTENING_RESTART_MS: 350 },
@@ -490,13 +490,13 @@ const chatPreferences = (await loadTs('providers/opencode-preferences.ts', { '@/
 voiceRuntime.mount(conversation.useConversationState, {
   connection: { status: 'connected', message: 'ready' }, chatPreferences, currentSessionId: 's', setCurrentSessionId: () => {},
   sessionStatuses: { s: { type: 'busy' } }, messagesBySession: {}, pendingPermissionsBySession: {}, pendingQuestionsBySession: {},
-  sendingState: { active: false }, ensureActiveSession: async () => 's', sendPrompt: async (_sessionId, prompt) => { sends++; lastPrompt = prompt; await sendGate.promise; return true; },
+  sendingState: { active: false }, ensureActiveSession: async () => 's', sendPrompt: async (_sessionId: any, prompt: any) => { sends++; lastPrompt = prompt; await sendGate.promise; return true; },
 });
 await voiceRuntime.value.toggleConversationMode(); await voiceRuntime.settle();
 assert.equal(voiceRuntime.value.conversation.phase, 'listening');
 recognitionOptions.onResult('voice prompt', true); voiceRuntime.fire(2200); await voiceRuntime.settle();
 assert.equal(sends, 1);
-voiceRuntime.update({ messagesBySession: { s: [] }, sendPrompt: async (_sessionId, prompt) => { sends++; lastPrompt = prompt; return true; } }); await voiceRuntime.settle();
+voiceRuntime.update({ messagesBySession: { s: [] }, sendPrompt: async (_sessionId: any, prompt: any) => { sends++; lastPrompt = prompt; return true; } }); await voiceRuntime.settle();
 assert.equal(sends, 1, 'a provider refresh cannot replay a submitted voice turn');
 sendGate.resolve(); await voiceRuntime.settle(); assert.equal(voiceRuntime.value.conversation.phase, 'waiting');
 voiceRuntime.update({ sessionStatuses: { s: { type: 'idle' } }, messagesBySession: { s: [{ id: 'reply', role: 'assistant', text: 'done', details: [] }] } });
@@ -624,7 +624,7 @@ voiceRuntime.unmount(); assert.equal(voiceRuntime.countTimers(2200), 0); assert.
 
 // Profile orchestration stays provider-owned and serializes metadata/credentials.
 const profileRuntime = hookRuntime();
-let storedProfiles = [], profileId = 0, failMetadata = false, failCredential = false, updates = 0;
+let storedProfiles: any[] = [], profileId = 0, failMetadata = false, failCredential = false, updates = 0;
 const passwords = new Map();
 const profileHeaders = new Map();
 const profileUrls = await loadTs('lib/opencode/client/url.ts', { './types': { defaultConnectionSettings: { serverUrl: 'http://127.0.0.1:4096' } } });
@@ -636,16 +636,16 @@ const profilesHook = await loadTs('providers/use-connection-profiles.ts', {
   '@/lib/connection-profiles': {
     createProfileId: () => `profile-${++profileId}`,
     loadConnectionProfiles: async () => [...storedProfiles],
-    mutateConnectionProfiles: async (operation) => operation([...storedProfiles], async (next) => { if (failMetadata) throw new Error('metadata failed'); storedProfiles = next; }),
-    getProfilePassword: async (id) => passwords.get(id) ?? '',
-    saveProfilePassword: async (id, password) => { if (failCredential) throw new Error('secure storage failed'); passwords.set(id, password); },
-    deleteProfilePassword: async (id) => { passwords.delete(id); },
-    findMatchingProfile: (entries, settings) => entries.find((p) => p.serverUrl === settings.serverUrl),
+    mutateConnectionProfiles: async (operation: any) => operation([...storedProfiles], async (next: any) => { if (failMetadata) throw new Error('metadata failed'); storedProfiles = next; }),
+    getProfilePassword: async (id: any) => passwords.get(id) ?? '',
+    saveProfilePassword: async (id: any, password: any) => { if (failCredential) throw new Error('secure storage failed'); passwords.set(id, password); },
+    deleteProfilePassword: async (id: any) => { passwords.delete(id); },
+    findMatchingProfile: (entries: any, settings: any) => entries.find((p: any) => p.serverUrl === settings.serverUrl),
   },
   '@/lib/connection-headers': {
-    getProfileHeaders: async (id) => profileHeaders.get(id) ?? {},
-    saveProfileHeaders: async (id, headers) => { if (failCredential) throw new Error('secure storage failed'); if (headers && Object.keys(headers).length) profileHeaders.set(id, headers); else profileHeaders.delete(id); },
-    deleteProfileHeaders: async (id) => { profileHeaders.delete(id); },
+    getProfileHeaders: async (id: any) => profileHeaders.get(id) ?? {},
+    saveProfileHeaders: async (id: any, headers: any) => { if (failCredential) throw new Error('secure storage failed'); if (headers && Object.keys(headers).length) profileHeaders.set(id, headers); else profileHeaders.delete(id); },
+    deleteProfileHeaders: async (id: any) => { profileHeaders.delete(id); },
   },
 });
 profileRuntime.mount(profilesHook.useConnectionProfiles, {
@@ -661,7 +661,7 @@ assert.deepEqual(profileHeaders.get(savedA.id), { 'CF-Access-Client-Id': 'a-clie
 assert.equal(JSON.stringify(storedProfiles).includes('a-client'), false, 'profile metadata never carries header values');
 failCredential = true;
 await assert.rejects(profileRuntime.value.save({ name: 'edited', serverUrl: 'a', username: 'alice', password: 'session-token', headers: {} }, savedA.id), /secure storage failed/);
-assert.equal(storedProfiles.find((entry) => entry.id === savedA.id).name, 'A', 'credential failures leave profile metadata intact');
+assert.equal(storedProfiles.find((entry: any) => entry.id === savedA.id).name, 'A', 'credential failures leave profile metadata intact');
 assert.equal(passwords.get(savedA.id), 'a-secret');
 failCredential = false;
 failMetadata = true;
@@ -677,7 +677,7 @@ assert.equal(profileHeaders.has(savedB.id), false, 'removing a profile clears it
 const named = await profileRuntime.value.save({ name: '  ', serverUrl: 'https://EXAMPLE.test:8443/proxy', username: '', password: 'session-token' });
 assert.equal(named.name, 'example.test');
 assert.equal(passwords.get(named.id), 'session-token');
-assert.equal('password' in storedProfiles.find((entry) => entry.id === named.id), false);
+assert.equal('password' in storedProfiles.find((entry: any) => entry.id === named.id), false);
 assert.equal(updates, 0, 'setup saves and probes leave the current connection untouched');
 assert.equal((await profileRuntime.value.probe({ serverUrl: 'http://example.test', username: '', password: '' })).status, 'detected');
 assert.equal((await profileRuntime.value.pair('code')).password, 'session-token');
@@ -697,12 +697,12 @@ const sessionDeclarations = [
 let createdSessions = 0, fetchedSessions = 0;
 const resolvableDirectories = new Set();
 const target = { id: 'target' };
-const sessionContext = {
-  exports: {}, useCallback: (fn) => fn, client: { directory: '/repo' },
+const sessionContext: any = {
+  exports: {}, useCallback: (fn: any) => fn, client: { directory: '/repo' },
   activeProjectPath: '/repo', activeProjectPathRef: { current: '/repo' }, settingsRef: { current: {} },
   connection: { status: 'connected' }, connectionRef: { current: { status: 'connected' } },
   serverContractRef: { current: 'v1' }, serverGenerationRef: { current: 1 },
-  buildClient: (settings) => settings,
+  buildClient: (settings: any) => settings,
   refreshSessions: async () => { fetchedSessions++; return [target]; }, refreshActiveSessions: async () => {},
   currentSessionId: undefined, sessions: [{ id: 'cached' }], sessionsRef: { current: [{ id: 'cached' }] }, messagesBySession: {},
   pendingDeepLinkTargetRef: { current: { sessionId: 'target', projectPath: '/repo' } },
@@ -712,14 +712,14 @@ const sessionContext = {
   setIsBootstrappingChat: () => {}, refreshMessages: async () => {}, refreshSessionDiff: async () => {},
   refreshSessionTodos: async () => {}, refreshPendingInteractions: async () => {}, refreshChatCapabilities: async () => {},
   refreshServerFeatures: async () => {}, refreshDiagnostics: async () => {}, isCurrentClient: () => true,
-  setCurrentSessionId: (id) => { sessionContext.currentSessionIdRef.current = id; }, setLastSessionByConnection: () => {},
+  setCurrentSessionId: (id: any) => { sessionContext.currentSessionIdRef.current = id; }, setLastSessionByConnection: () => {},
   deepLinkOperationRef: {}, currentSessionIdRef: {}, serverProjectsRef: { current: [{ worktree: '/repo' }] },
   projectPathsByConnectionRef: { current: { scope: [] } },
-  isAvailableProjectDirectory: async (candidate) => resolvableDirectories.has(candidate.directory),
-  connect: async () => {}, selectProject: (path) => { sessionContext.activeProjectPathRef.current = path; }, ensureActiveSessionRef: {}, setTimeout, Date,
+  isAvailableProjectDirectory: async (candidate: any) => resolvableDirectories.has(candidate.directory),
+  connect: async () => {}, selectProject: (path: any) => { sessionContext.activeProjectPathRef.current = path; }, ensureActiveSessionRef: {}, setTimeout, Date,
   connectionScopeRef: { current: 'scope' },
   loadConnectionProfiles: async () => [{ id: 'saved', serverUrl: 'https://other', username: '', scope: 'other' }],
-  findProfileByConnectionScope: (profiles, scope) => profiles.find((profile) => profile.scope === scope),
+  findProfileByConnectionScope: (profiles: any, scope: any) => profiles.find((profile: any) => profile.scope === scope),
   getProfilePassword: async () => 'secret',
   switchConnection: async () => { sessionContext.connectionScopeRef.current = 'other'; sessionContext.serverGenerationRef.current++; },
 };
@@ -767,7 +767,7 @@ assert.equal((await sessionActions.openDeepLinkSession({ sessionId: 'target', pr
 assert.match((await sessionActions.openDeepLinkSession({ sessionId: 'target', projectPath: '/repo', connectionScope: 'removed' })).error, /no longer exists/);
 
 // A genuine supersession is cancellation of an earlier request, not a new URL.
-const firstOpenGate = deferred();
+const firstOpenGate = deferred<void>();
 let opens = 0;
 sessionContext.ensureActiveSessionRef.current = async () => {
   if (++opens === 1) { await firstOpenGate.promise; return 'first'; }
@@ -776,13 +776,13 @@ sessionContext.ensureActiveSessionRef.current = async () => {
 const firstOpen = sessionActions.openDeepLinkSession({ sessionId: 'first', projectPath: '/repo' });
 assert.equal((await sessionActions.openDeepLinkSession({ sessionId: 'second', projectPath: '/repo' })).ok, true);
 firstOpenGate.resolve(); assert.match((await firstOpen).error, /superseded/);
-const switchedOpenGate = deferred();
+const switchedOpenGate = deferred<void>();
 sessionContext.ensureActiveSessionRef.current = async () => { await switchedOpenGate.promise; return 'target'; };
 const switchedOpen = sessionActions.openDeepLinkSession({ sessionId: 'target', projectPath: '/repo' });
 sessionContext.serverGenerationRef.current++; switchedOpenGate.resolve();
 assert.equal((await switchedOpen).ok, false, 'server switch cannot complete an old session open');
 assert.equal(sessionContext.pendingDeepLinkTargetRef.current, undefined);
-const canceledOpenGate = deferred();
+const canceledOpenGate = deferred<void>();
 sessionContext.ensureActiveSessionRef.current = async () => { await canceledOpenGate.promise; return 'target'; };
 const openController = new AbortController();
 const canceledOpen = sessionActions.openDeepLinkSession({ sessionId: 'target', projectPath: '/repo' }, openController.signal);
@@ -793,12 +793,12 @@ assert.equal(sessionContext.pendingDeepLinkTargetRef.current, undefined);
 // Exercise the actual library runner without loading the native rendering tree.
 const librarySource = await readFile(new URL('../../components/chat/chat-library.tsx', import.meta.url), 'utf8');
 const libraryAst = ts.createSourceFile('library.tsx', librarySource, ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX);
-const libraryBody = libraryAst.statements.find((n) => ts.isFunctionDeclaration(n) && n.name?.text === 'ChatLibrary').body;
-const runner = libraryBody.statements.find((n) => ts.isFunctionDeclaration(n) && n.name?.text === 'run').getText(libraryAst);
+const libraryBody = (libraryAst.statements.find((n) => ts.isFunctionDeclaration(n) && n.name?.text === 'ChatLibrary') as ts.FunctionDeclaration)!.body;
+const runner = libraryBody!.statements.find((n: any) => ts.isFunctionDeclaration(n) && n.name?.text === 'run')!.getText(libraryAst);
 let libraryError, completed = 0, executions = 0;
-const libraryContext = { exports: {}, operationRef: {}, queuedOpenRef: {}, setBusyId: () => {}, setError: (error) => { libraryError = error; }, t: (key) => key };
+const libraryContext: any = { exports: {}, operationRef: {}, queuedOpenRef: {}, setBusyId: () => {}, setError: (error: any) => { libraryError = error; }, t: (key: any) => key };
 runInNewContext(ts.transpileModule(`${runner}\nexports.run = run;`, { compilerOptions: { module: ts.ModuleKind.CommonJS } }).outputText, libraryContext);
-const libraryGate = deferred();
+const libraryGate = deferred<void>();
 const libraryRun = libraryContext.exports.run;
 const firstLibraryRun = libraryRun('first', async () => { executions++; await libraryGate.promise; throw new Error('superseded'); });
 await libraryRun('first', async () => { executions++; }); assert.equal(executions, 1, 'double taps cannot start another action');
@@ -807,7 +807,7 @@ await libraryRun('second', async () => {}, () => { completed++; });
 libraryGate.resolve(); await firstLibraryRun;
 assert.equal(completed, 1); assert.equal(libraryError, undefined, 'an old error cannot overwrite a newer successful opening');
 
-const queuedGate = deferred();
+const queuedGate = deferred<void>();
 const queuedFirst = libraryRun('old', async () => { await queuedGate.promise; throw new Error('obsolete error'); }, () => { completed += 100; });
 await libraryRun('middle', async () => { completed += 100; }, () => {});
 await libraryRun('latest', async () => {}, () => { completed++; });
@@ -818,29 +818,29 @@ assert.equal(libraryError, undefined);
 // The CI favorite failure opened the right session with an empty transcript.
 // Pruning must wait until bootstrap selects the session whose reads just landed.
 const pruneEffect = extractEffect(providerEffectsSource, 'const keepIds = new Set<string>()');
-let cachedMessages = { old: ['old transcript'], target: ['new transcript'] };
-let cachedDiffs = { old: ['old diff'], target: ['new diff'] };
-let cachedTodos = { old: ['old todo'], target: ['new todo'] };
-let prune;
-const pruneContext = {
-  useEffect: (effect) => { prune = effect; }, currentSessionId: undefined, conversationSessionId: undefined,
+let cachedMessages: any = { old: ['old transcript'], target: ['new transcript'] };
+let cachedDiffs: any = { old: ['old diff'], target: ['new diff'] };
+let cachedTodos: any = { old: ['old todo'], target: ['new todo'] };
+let prune: any;
+const pruneContext: any = {
+  useEffect: (effect: any) => { prune = effect; }, currentSessionId: undefined, conversationSessionId: undefined,
   sessionStatuses: {}, isBootstrappingChat: true, pendingDeepLinkTargetRef: { current: { sessionId: 'target' } },
   recentSessionIdsRef: { current: [] },
-  setMessagesBySession: (update) => { cachedMessages = update(cachedMessages); },
-  setDiffsBySession: (update) => { cachedDiffs = update(cachedDiffs); },
-  setTodosBySession: (update) => { cachedTodos = update(cachedTodos); },
+  setMessagesBySession: (update: any) => { cachedMessages = update(cachedMessages); },
+  setDiffsBySession: (update: any) => { cachedDiffs = update(cachedDiffs); },
+  setTodosBySession: (update: any) => { cachedTodos = update(cachedTodos); },
   pruneTranscript: () => {},
   pruneByKeepIds,
 };
 runInNewContext(ts.transpileModule(pruneEffect, { compilerOptions: { module: ts.ModuleKind.CommonJS } }).outputText, pruneContext);
-prune();
+prune?.();
 assert.deepEqual(cachedMessages.target, ['new transcript'], 'bootstrap reads cannot be evicted before selecting their target');
 assert.deepEqual(cachedDiffs.target, ['new diff']); assert.deepEqual(cachedTodos.target, ['new todo']);
 pruneContext.isBootstrappingChat = false;
 pruneContext.pendingDeepLinkTargetRef.current = undefined;
 pruneContext.currentSessionId = 'target';
 cachedMessages.extra = []; cachedDiffs.extra = []; cachedTodos.extra = [];
-prune();
+prune?.();
 assert.deepEqual(Object.keys(cachedMessages), ['target'], 'pruning resumes after selection and removes inactive histories');
 assert.deepEqual(Object.keys(cachedDiffs), ['target']); assert.deepEqual(Object.keys(cachedTodos), ['target']);
 
@@ -855,10 +855,10 @@ assert.deepEqual(Object.keys(cachedDiffs), ['target']); assert.deepEqual(Object.
       listTerminals: () => pendingList ? listGate.promise : Promise.resolve(listed),
       createTerminal: async () => ({ id: 'new' }), removeTerminal: async () => { if (rejectRemoval) throw new Error('Rejected'); },
     },
-    './terminal-connection': { createTerminalConnection: ({ id, publish }) => {
-      const record = { state: { id, generation: 0, status: 'connected' }, disposed: false, sent: [], reconnects: 0,
+    './terminal-connection': { createTerminalConnection: ({ id, publish }: any) => {
+      const record: any = { state: { id, generation: 0, status: 'connected' }, disposed: false, sent: [], reconnects: 0,
         foreground() {}, reconnect() { record.reconnects += 1; }, register: () => () => {}, resize() {},
-        send(input) { record.sent.push(input); },
+        send(input: any) { record.sent.push(input); },
         exit() { record.state.status = 'exited'; publish(); }, dispose() { record.disposed = true; },
       };
       records.set(id, record); return record;
