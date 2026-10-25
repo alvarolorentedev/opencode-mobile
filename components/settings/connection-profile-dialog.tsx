@@ -145,7 +145,7 @@ export function ConnectionProfileDialog({ title, submitLabel, showName = true, i
       <KeyboardAvoidingView style={[styles.screen, { backgroundColor: palette.background }]} behavior="padding">
         <Appbar.Header statusBarHeight={0} style={{ backgroundColor: palette.surface, paddingTop: insets.top, height: 64 + insets.top }}>
           <Appbar.BackAction accessibilityLabel={t('common:actions.back')} disabled={locked} onPress={back} />
-          <Appbar.Content title={title} />
+          <Appbar.Content titleMaxFontSizeMultiplier={1.5} title={title} />
         </Appbar.Header>
         <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={styles.content}>
           <Text style={{ color: palette.muted }}>{t('settings:connection.setup.step', { step: step === 'address' ? 1 : 2 })}</Text>

@@ -60,7 +60,7 @@ export default function ShareScreen() {
   return (
     <View style={[styles.screen, { backgroundColor: palette.background }]}>
       <Appbar.Header statusBarHeight={insets.top} style={{ backgroundColor: palette.surface }} elevated>
-        <Appbar.Content title={t('share:title')} titleStyle={{ fontFamily: Fonts.display, fontWeight: '700' }} />
+        <Appbar.Content titleMaxFontSizeMultiplier={1.5} title={t('share:title')} titleStyle={{ fontFamily: Fonts.display, fontWeight: '700' }} />
         <Appbar.Action icon="close" accessibilityLabel={t('share:discard')} onPress={discard} />
       </Appbar.Header>
 

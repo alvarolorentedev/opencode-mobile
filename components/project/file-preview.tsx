@@ -146,7 +146,7 @@ export function FilePreview({ file, projectPath, branch, canSave, slim, onClose,
     <KeyboardAvoidingView style={{ flex: 1, backgroundColor: palette.background }} behavior="padding">
       <Appbar.Header statusBarHeight={0} style={{ backgroundColor: palette.surface, paddingTop: insets.top, height: (slim ? 52 : 64) + insets.top }}>
         <Appbar.BackAction disabled={saving} accessibilityLabel={t('project:files.close')} onPress={close} />
-        <Appbar.Content title={filename} subtitle={file.path} />
+        <Appbar.Content titleMaxFontSizeMultiplier={1.5} title={filename} subtitle={file.path} />
         {isText && file.canDownload ? <Appbar.Action icon="download" disabled={downloading} accessibilityLabel={t('project:files.download')} onPress={download} /> : null}
         {isText && canSave && !draft ? <Button onPress={() => setDraft({ original: file.content.content, value: file.content.content })}>{t('common:actions.edit')}</Button> : null}
       </Appbar.Header>

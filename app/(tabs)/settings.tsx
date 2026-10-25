@@ -155,7 +155,7 @@ function SettingsContent() {
         statusBarHeight={0}
         elevated>
         <View style={styles.headerMain}>
-          <Text variant="titleMedium" style={[styles.headerTitle, { color: palette.text }]}>{t('common:tabs.settings')}</Text>
+          <Text maxFontSizeMultiplier={1.5} variant="titleMedium" style={[styles.headerTitle, { color: palette.text }]}>{t('common:tabs.settings')}</Text>
         </View>
         <View style={styles.headerActions}>
           <Appbar.Action icon="refresh" accessibilityLabel={t('common:actions.reconnect')} loading={isConnecting} disabled={isConnecting} onPress={() => void handleConnect()} />

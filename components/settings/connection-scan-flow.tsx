@@ -110,7 +110,7 @@ export function ConnectionScanFlow({ onSubmit, onDismiss, onBusyChange }: {
         </View>
         <Appbar.Header statusBarHeight={0} style={{ backgroundColor: palette.surface, paddingTop: insets.top, height: headerHeight }}>
           <Appbar.BackAction color={palette.text} accessibilityLabel={t('common:actions.back')} disabled={Boolean(busy)} onPress={dismiss} />
-          <Appbar.Content titleStyle={{ color: palette.text }} title={t('settings:connection.setup.scan')} />
+          <Appbar.Content titleMaxFontSizeMultiplier={1.5} titleStyle={{ color: palette.text }} title={t('settings:connection.setup.scan')} />
         </Appbar.Header>
         <View pointerEvents="none" style={[styles.instructions, { top: headerHeight + 12 }]}>
           <View style={[styles.card, { backgroundColor: palette.surface, borderColor: palette.border }]}>

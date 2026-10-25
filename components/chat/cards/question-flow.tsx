@@ -112,7 +112,7 @@ export function QuestionFlow({
       <KeyboardAvoidingView style={{ flex: 1, backgroundColor: palette.background }} behavior="padding">
         <Appbar.Header statusBarHeight={0} style={{ backgroundColor: palette.surface, paddingTop: insets.top, height: 64 + insets.top }}>
           <Appbar.BackAction accessibilityLabel={t('chat:cards.returnToChat')} onPress={onDismiss} />
-          <Appbar.Content title={t('chat:cards.assistantQuestion')} subtitle={t('chat:cards.stepOfTotal', { current: currentStep + 1, total: visibleIndexes.length })} />
+          <Appbar.Content titleMaxFontSizeMultiplier={1.5} title={t('chat:cards.assistantQuestion')} subtitle={t('chat:cards.stepOfTotal', { current: currentStep + 1, total: visibleIndexes.length })} />
         </Appbar.Header>
         <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={{ padding: 20, gap: 18 }}>
         <Text variant="labelLarge" style={{ color: palette.warning }}>{t('chat:cards.waitingForAnswerBanner')}</Text>

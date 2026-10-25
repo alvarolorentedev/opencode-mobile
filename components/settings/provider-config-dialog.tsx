@@ -230,7 +230,7 @@ export function ProviderConfigDialog({
             accessibilityLabel={step === 'configure' ? t('common:actions.back') : t('settings:providers.cancelSetup')}
             onPress={step === 'configure' ? onBack : onDismiss}
           />
-          <Appbar.Content title={t('settings:providers.configureProvider', { provider: providerLabel })} />
+          <Appbar.Content titleMaxFontSizeMultiplier={1.5} title={t('settings:providers.configureProvider', { provider: providerLabel })} />
           <Appbar.Action icon="close" accessibilityLabel={t('settings:providers.cancelSetup')} onPress={onDismiss} />
         </Appbar.Header>
 

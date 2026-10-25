@@ -26,7 +26,7 @@ export default function ServiceScreen() {
     <View style={[styles.screen, { backgroundColor: palette.background, paddingTop: insets.top }]}>
       <Appbar.Header style={{ backgroundColor: palette.surface }} statusBarHeight={0} elevated>
         <Appbar.BackAction accessibilityLabel={t('common:actions.back')} onPress={() => router.back()} color={palette.text} />
-        <Appbar.Content titleStyle={{ color: palette.text }} title={editing ? t('settings:services.editTitle') : t('settings:services.addTitle')} />
+        <Appbar.Content titleMaxFontSizeMultiplier={1.5} titleStyle={{ color: palette.text }} title={editing ? t('settings:services.editTitle') : t('settings:services.addTitle')} />
       </Appbar.Header>
       <KeyboardAvoidingView style={styles.flex} behavior="padding">
         <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={[styles.content, { paddingBottom: Math.max(insets.bottom, 24) }]}>

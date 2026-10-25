@@ -32,7 +32,7 @@ export function ConnectEntry(props: { setup: ConnectSetup; onConnected: () => vo
   return <View style={[styles.screen, { backgroundColor: palette.background }]}>
     <Appbar.Header statusBarHeight={0} style={{ backgroundColor: palette.surface, paddingTop: insets.top, height: 64 + insets.top }}>
       <Appbar.BackAction color={palette.text} disabled={busy} accessibilityLabel={t('common:actions.back')} onPress={props.onClose} />
-      <Appbar.Content titleStyle={{ color: palette.text }} title={t('settings:connection.addConnection')} />
+      <Appbar.Content titleMaxFontSizeMultiplier={1.5} titleStyle={{ color: palette.text }} title={t('settings:connection.addConnection')} />
     </Appbar.Header>
     <View style={{ padding: 20 }}><ConnectionSetupForm onBusyChange={setBusy} onPair={() => { setStartedFromChooser(true); setChoosing(false); }} onConnected={props.onConnected} /></View>
   </View>;
@@ -89,7 +89,7 @@ export function ConnectPairing({ setup, onConnected, onClose, onManage, guided =
     {canScan && !overview && focused && active && Platform.OS !== 'web' ? <View style={StyleSheet.absoluteFill}>{guided ? <ConnectCameraGate onCancel={() => setScanning(false)}><ConnectScanner enabled={setup.entitled} onScan={(value) => void scan(value)} /></ConnectCameraGate> : <ConnectScanner enabled={setup.entitled} onScan={(value) => void scan(value)} />}</View> : null}
     <Appbar.Header statusBarHeight={0} style={{ backgroundColor: palette.surface, paddingTop: insets.top, height: 64 + insets.top }}>
       <Appbar.BackAction color={palette.text} disabled={pending || scanPending} accessibilityLabel={t('common:actions.back')} onPress={back} />
-      <Appbar.Content titleStyle={[{ color: palette.text }, guided && { fontSize: 18, textAlign: 'center' }]} title={t(guided ? 'settings:connect.title' : 'settings:connect.entry')} />
+      <Appbar.Content titleMaxFontSizeMultiplier={1.5} titleStyle={[{ color: palette.text }, guided && { fontSize: 18, textAlign: 'center' }]} title={t(guided ? 'settings:connect.title' : 'settings:connect.entry')} />
       {overview ? <Appbar.Action icon="close" color={palette.text} testID="connect-close" accessibilityLabel={t('common:actions.close')} disabled={pending || scanPending} onPress={close} /> : <Appbar.Action icon="monitor-multiple" color={palette.text} testID="connect-options" accessibilityLabel={t('settings:connect.options')} disabled={pending || scanPending} onPress={() => setSheet('options')} />}
     </Appbar.Header>
     {overview ? <ConnectOnboarding step={step} setup={setup} onNext={() => setStep(step === 2 ? (setup.entitled ? 4 : 3) : step + 1)} onScan={() => setScanning(true)} onOptions={() => setSheet('options')} /> : null}
