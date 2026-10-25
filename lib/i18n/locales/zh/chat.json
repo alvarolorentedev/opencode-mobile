@@ -50,7 +50,10 @@
     "untitledTask": "未命名任务",
     "loadEarlier": "暂无可显示内容",
     "loadEarlierDescription": "本回合的最新消息是工具活动。加载更早的消息以查看对话。",
-    "loadEarlierAction": "加载更早的消息"
+    "loadEarlierAction": "加载更早的消息",
+    "transcriptErrorTitle": "无法加载此聊天",
+    "transcriptErrorDescription": "请检查连接后重试。",
+    "retryTranscript": "重试"
   },
   "activity": {
     "used": "使用了 {{count}} {{tools}}",
@@ -249,7 +252,10 @@
     "chooseProject": "选择项目",
     "selectProject": "在项目标签页中选择一个项目，以打开其聊天上下文。",
     "opening": "正在打开 OpenCode Mobile",
-    "loading": "正在加载此 OpenCode Mobile 项目的最新会话。"
+    "loading": "正在加载此 OpenCode Mobile 项目的最新会话。",
+    "connectTitle": "连接到 OpenCode Mobile",
+    "openProject": "打开项目",
+    "connectionSettings": "连接设置"
   },
   "deepLink": {
     "missingSessionId": "此会话链接缺少会话 ID。",

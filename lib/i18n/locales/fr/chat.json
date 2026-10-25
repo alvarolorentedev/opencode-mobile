@@ -50,7 +50,10 @@
     "untitledTask": "Tâche sans titre",
     "loadEarlier": "Rien à afficher pour l’instant",
     "loadEarlierDescription": "Les messages les plus récents de ce tour sont de l’activité d’outils. Chargez les messages précédents pour voir la conversation.",
-    "loadEarlierAction": "Charger les messages précédents"
+    "loadEarlierAction": "Charger les messages précédents",
+    "transcriptErrorTitle": "Impossible de charger ce chat",
+    "transcriptErrorDescription": "Vérifiez la connexion et réessayez.",
+    "retryTranscript": "Réessayer"
   },
   "activity": {
     "used": "Utilisé {{count}} {{tools}}",
@@ -249,7 +252,10 @@
     "chooseProject": "Choisis un projet",
     "selectProject": "Sélectionne un projet dans l'onglet Projets pour ouvrir son contexte de chat.",
     "opening": "Ouverture d'OpenCode Mobile",
-    "loading": "Chargement de la dernière session pour cet projet OpenCode Mobile."
+    "loading": "Chargement de la dernière session pour cet projet OpenCode Mobile.",
+    "connectTitle": "Se connecter à OpenCode Mobile",
+    "openProject": "Ouvrir un projet",
+    "connectionSettings": "Paramètres de connexion"
   },
   "deepLink": {
     "missingSessionId": "Ce lien de session ne contient pas d'ID de session.",

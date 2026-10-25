@@ -110,6 +110,8 @@ export type ProviderValuesInput = ActionInputs & {
   removeSavedPermission: (id: string) => Promise<void>;
   sendingState: { sessionId?: string; active: boolean };
   isRefreshingMessages: boolean;
+  transcriptReadError?: string;
+  retryTranscript: () => Promise<void>;
   isRefreshingDiffs: boolean;
   isBootstrappingChat: boolean;
   commands: Command[];

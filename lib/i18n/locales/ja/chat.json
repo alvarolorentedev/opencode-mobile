@@ -50,7 +50,10 @@
     "untitledTask": "無題のタスク",
     "loadEarlier": "表示できる内容がまだありません",
     "loadEarlierDescription": "このターンの最新メッセージはツールのアクティビティです。会話を表示するには以前のメッセージを読み込んでください。",
-    "loadEarlierAction": "以前のメッセージを読み込む"
+    "loadEarlierAction": "以前のメッセージを読み込む",
+    "transcriptErrorTitle": "このチャットを読み込めませんでした",
+    "transcriptErrorDescription": "接続を確認して、もう一度お試しください。",
+    "retryTranscript": "再試行"
   },
   "activity": {
     "used": "{{count}} {{tools}} を使用",
@@ -249,7 +252,10 @@
     "chooseProject": "プロジェクトを選択",
     "selectProject": "「プロジェクト」タブでプロジェクトを選択すると、そのチャットコンテキストが開きます。",
     "opening": "OpenCode Mobile を起動しています",
-    "loading": "この OpenCode Mobile プロジェクトの最新セッションを読み込んでいます。"
+    "loading": "この OpenCode Mobile プロジェクトの最新セッションを読み込んでいます。",
+    "connectTitle": "OpenCode Mobile に接続",
+    "openProject": "プロジェクトを開く",
+    "connectionSettings": "接続設定"
   },
   "deepLink": {
     "missingSessionId": "このセッションリンクにはセッション ID がありません。",

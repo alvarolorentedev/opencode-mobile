@@ -17,6 +17,7 @@ function listProps(overrides: Record<string, unknown> = {}) {
     onCopyMessage: vi.fn(),
     onForkMessage: vi.fn(),
     onLoadOlderMessages: vi.fn(),
+    onRetryTranscript: vi.fn(),
     onRevertMessage: vi.fn(),
     onSelectStarterPrompt: vi.fn(),
     onToggleSpeak: vi.fn(),
@@ -72,6 +73,15 @@ describe('transcript empty state', () => {
   it('shows the skeleton only for a cold fetch with no held records', async () => {
     const { update } = await mountTranscriptList({ hasMessages: false, isRefreshingMessages: true });
     expect(update({}).props.ListEmptyComponent.type).toBe('TranscriptSkeleton');
+  });
+
+  it('offers a retry instead of starter prompts when a cold read failed', async () => {
+    const { update } = await mountTranscriptList({ transcriptReadError: 'request timed out' });
+    const list = update({});
+    expect(list.props.ListEmptyComponent.type).toBe('Card');
+    expect(JSON.stringify(list.props.ListEmptyComponent)).toContain('chat:content.transcriptErrorTitle');
+    expect(JSON.stringify(list.props.ListEmptyComponent)).toContain('request timed out');
+    expect(JSON.stringify(list.props.ListEmptyComponent)).not.toContain('chat:starter.title');
   });
 
   it('offers a load-earlier affordance when only non-display history is loaded', async () => {

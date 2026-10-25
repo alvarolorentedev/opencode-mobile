@@ -50,7 +50,10 @@
     "untitledTask": "Unbenannte Aufgabe",
     "loadEarlier": "Noch nichts anzuzeigen",
     "loadEarlierDescription": "Die neuesten Nachrichten in diesem Durchlauf sind Werkzeugaktivität. Lade frühere Nachrichten, um die Unterhaltung zu sehen.",
-    "loadEarlierAction": "Frühere Nachrichten laden"
+    "loadEarlierAction": "Frühere Nachrichten laden",
+    "transcriptErrorTitle": "Chat konnte nicht geladen werden",
+    "transcriptErrorDescription": "Prüfe die Verbindung und versuche es erneut.",
+    "retryTranscript": "Erneut versuchen"
   },
   "activity": {
     "used": "Verwendet {{count}} {{tools}}",
@@ -249,7 +252,10 @@
     "chooseProject": "Projekt wählen",
     "selectProject": "Wähle im Tab Projekte ein Projekt aus, um dessen Chat-Kontext zu öffnen.",
     "opening": "OpenCode Mobile wird geöffnet",
-    "loading": "Die neueste Sitzung für diesen OpenCode Mobile-Projekt wird geladen."
+    "loading": "Die neueste Sitzung für diesen OpenCode Mobile-Projekt wird geladen.",
+    "connectTitle": "Mit OpenCode Mobile verbinden",
+    "openProject": "Projekt öffnen",
+    "connectionSettings": "Verbindungseinstellungen"
   },
   "deepLink": {
     "missingSessionId": "Diesem Sitzungslink fehlt eine Sitzungs-ID.",

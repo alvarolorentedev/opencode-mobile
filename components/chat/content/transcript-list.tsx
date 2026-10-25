@@ -53,6 +53,7 @@ type TranscriptListProps = {
   onCopyMessage: (entry: TranscriptEntry) => void;
   onForkMessage: (entry: TranscriptEntry) => void;
   onLoadOlderMessages: () => void;
+  onRetryTranscript: () => void;
   onRevertMessage: (entry: TranscriptEntry) => void;
   onSelectStarterPrompt: (prompt: string) => void;
   onToggleSpeak: (entry: TranscriptEntry) => void;
@@ -61,6 +62,7 @@ type TranscriptListProps = {
   speakingMessageId?: string;
   slim: boolean;
   transcriptFontSize: number;
+  transcriptReadError?: string;
 };
 
 export function TranscriptList({
@@ -79,6 +81,7 @@ export function TranscriptList({
   onCopyMessage,
   onForkMessage,
   onLoadOlderMessages,
+  onRetryTranscript,
   onRevertMessage,
   onSelectStarterPrompt,
   onToggleSpeak,
@@ -87,6 +90,7 @@ export function TranscriptList({
   speakingMessageId,
   slim,
   transcriptFontSize,
+  transcriptReadError,
 }: TranscriptListProps) {
   const { t } = useTranslation();
   const focused = useIsFocused();
@@ -263,6 +267,15 @@ export function TranscriptList({
       ListEmptyComponent={
         (isBootstrappingChat || (currentSessionId && isRefreshingMessages)) && !hasMessages ? (
           <TranscriptSkeleton palette={palette} />
+        ) : currentSessionId && transcriptReadError !== undefined && !hasMessages ? (
+          <Card mode="contained" style={[styles.emptyCard, { backgroundColor: palette.surface }]}>
+            <Card.Content style={styles.emptyContent}>
+              <Text variant="titleMedium" style={{ color: palette.text }}>{t('chat:content.transcriptErrorTitle')}</Text>
+              <Text variant="bodyMedium" style={{ color: palette.muted }}>{t('chat:content.transcriptErrorDescription')}</Text>
+              {transcriptReadError.trim() ? <Text selectable variant="bodySmall" style={{ color: palette.muted }}>{transcriptReadError}</Text> : null}
+              <Button mode="outlined" onPress={onRetryTranscript}>{t('chat:content.retryTranscript')}</Button>
+            </Card.Content>
+          </Card>
         ) : currentSessionId && hasOlderMessages ? (
           <Card mode="contained" style={[styles.emptyCard, { backgroundColor: palette.surface }]}>
             <Card.Content style={styles.emptyContent}>

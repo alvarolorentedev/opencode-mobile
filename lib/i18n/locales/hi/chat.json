@@ -50,7 +50,10 @@
     "untitledTask": "बिना शीर्षक कार्य",
     "loadEarlier": "अभी दिखाने के लिए कुछ नहीं",
     "loadEarlierDescription": "इस टर्न के नवीनतम संदेश टूल गतिविधि हैं। बातचीत देखने के लिए पुराने संदेश लोड करें।",
-    "loadEarlierAction": "पुराने संदेश लोड करें"
+    "loadEarlierAction": "पुराने संदेश लोड करें",
+    "transcriptErrorTitle": "यह चैट लोड नहीं हो सकी",
+    "transcriptErrorDescription": "कनेक्शन जाँचें और फिर से कोशिश करें।",
+    "retryTranscript": "फिर से कोशिश करें"
   },
   "activity": {
     "used": "{{count}} {{tools}} उपयोग किए",
@@ -249,7 +252,10 @@
     "chooseProject": "प्रोजेक्ट चुनें",
     "selectProject": "इसकी चैट संदर्भ खोलने के लिए प्रोजेक्ट टैब में एक प्रोजेक्ट चुनें।",
     "opening": "OpenCode Mobile खोला जा रहा है",
-    "loading": "इस OpenCode Mobile प्रोजेक्ट का नवीनतम सेशन लोड हो रहा है।"
+    "loading": "इस OpenCode Mobile प्रोजेक्ट का नवीनतम सेशन लोड हो रहा है।",
+    "connectTitle": "OpenCode Mobile से कनेक्ट करें",
+    "openProject": "प्रोजेक्ट खोलें",
+    "connectionSettings": "कनेक्शन सेटिंग्स"
   },
   "deepLink": {
     "missingSessionId": "इस सेशन लिंक में सेशन ID नहीं है।",

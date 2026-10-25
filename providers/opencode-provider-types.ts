@@ -354,6 +354,8 @@ export type ChatContextValue = {
   currentPendingPermissions: PendingPermission[];
   currentPendingQuestions: PendingQuestion[];
   isRefreshingMessages: boolean;
+  transcriptReadError?: string;
+  retryTranscript: () => Promise<void>;
   isRefreshingDiffs: boolean;
   isBootstrappingChat: boolean;
   // Grouped so the domain context surface does not grow one member per paging

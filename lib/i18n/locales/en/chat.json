@@ -50,7 +50,10 @@
     "untitledTask": "Untitled task",
     "loadEarlier": "Nothing to show yet",
     "loadEarlierDescription": "The newest messages in this turn are tool activity. Load earlier messages to see the conversation.",
-    "loadEarlierAction": "Load earlier messages"
+    "loadEarlierAction": "Load earlier messages",
+    "transcriptErrorTitle": "Could not load this chat",
+    "transcriptErrorDescription": "Check your connection and try again.",
+    "retryTranscript": "Try again"
   },
   "activity": {
     "used": "Used {{count}} {{tools}}",
@@ -249,7 +252,10 @@
     "chooseProject": "Choose a project",
     "selectProject": "Select a project in the Projects tab to open its chat context.",
     "opening": "Opening OpenCode Mobile",
-    "loading": "Loading the latest session for this OpenCode Mobile project."
+    "loading": "Loading the latest session for this OpenCode Mobile project.",
+    "connectTitle": "Connect to OpenCode Mobile",
+    "openProject": "Open project",
+    "connectionSettings": "Connection settings"
   },
   "deepLink": {
     "missingSessionId": "This session link is missing a session ID.",

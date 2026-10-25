@@ -129,6 +129,7 @@ export function ChatView() {
               if (!content.currentSessionId || content.transcriptPaging.isLoadingOlder || !content.transcriptPaging.hasOlder) return;
               void content.transcriptPaging.loadOlder(content.currentSessionId);
             }}
+            onRetryTranscript={() => { void content.retryTranscript(); }}
             onRevertMessage={handleRevertMessage}
             onSelectStarterPrompt={handleSelectStarterPrompt}
             onToggleSpeak={handleToggleSpeak}
@@ -137,6 +138,7 @@ export function ChatView() {
             speakingMessageId={content.speakingMessageId}
             slim={header.slim}
             transcriptFontSize={normalizeTranscriptFontSize(composer.chatPreferences.transcriptFontSize)}
+            transcriptReadError={content.transcriptReadError}
           />
           <ChangesOverlay
             changesVisible={content.changesVisible && !content.awaitingUserInput}

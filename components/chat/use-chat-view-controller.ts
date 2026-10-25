@@ -49,8 +49,8 @@ export function useChatViewController() {
     currentPendingPermissions, currentPendingQuestions, currentTodos, currentTranscript, currentUsage,
     diffTurns, executeCommand, isBootstrappingChat, isRefreshingDiffs, isRefreshingMessages,
     latestAssistantTurnUsage, promptError, refreshDiffs, rejectQuestion,
-    replyToPermission, replyToQuestion, selectDiffMessage, selectedDiffMessageId, sendPrompt,
-    sendingState, setAutoApprove, setDiffScope, transcriptPaging, sharedInput,
+    replyToPermission, replyToQuestion, retryTranscript, selectDiffMessage, selectedDiffMessageId, sendPrompt,
+    sendingState, setAutoApprove, setDiffScope, transcriptPaging, transcriptReadError, sharedInput,
   } = useChat();
 
   const workspaceId = workspaceKey({ connectionId: getConnectionUiScope(settings), projectPath: activeProject?.path ?? '' });
@@ -295,7 +295,7 @@ export function useChatViewController() {
       diffAdditions, diffCount, diffDeletions, diffDetails, diffTurns, transcriptRows,
       expandedDiffId, hasTranscriptMessages, isBootstrappingChat, isCancelingRevert, isRefreshingDiffs, isRefreshingMessages,
       pendingInteractions, pendingPrompts, progressIcon, progressVisible,
-      selectedDiffMessageId, speakingMessageId, transcriptPaging,
+      retryTranscript, selectedDiffMessageId, speakingMessageId, transcriptPaging, transcriptReadError,
     },
     composer: {
       attachments, availableAgents, chatPreferences, commands, draft,

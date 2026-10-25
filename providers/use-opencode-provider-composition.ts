@@ -14,6 +14,7 @@ import { useActiveSessions } from '@/providers/use-active-sessions';
 import { useActivityNotifications } from '@/providers/use-activity-notifications';
 import { usePermissionRulesState } from '@/providers/use-permission-rules-state';
 import { useTranscriptState } from '@/providers/use-transcript-state';
+import { useTranscriptReadErrors } from '@/providers/use-transcript-read-errors';
 import { useMcpState } from '@/providers/use-mcp-state';
 import { useTerminalState } from '@/providers/use-terminal-state';
 import { useWorktreeState } from '@/providers/use-worktree-state';
@@ -113,13 +114,24 @@ export function useOpencodeProviderComposition(input: WorkspaceRuntimeInput) {
   );
 
   const transcript = useTranscriptState({ ...state, client, isCurrentClient });
-  const inbox = usePromptInbox({
+  const transcriptRead = useTranscriptReadErrors({
     client,
     isCurrentClient,
     refreshMessages: transcript.refreshMessages,
+  });
+  const inbox = usePromptInbox({
+    client,
+    isCurrentClient,
+    refreshMessages: transcriptRead.readMessages,
     connected: state.connection.status === 'connected',
     online: network.online,
   });
+  const refreshInboxMessages = inbox.refreshMessages;
+  const retryTranscript = useCallback(async () => {
+    const sessionId = state.currentSessionId;
+    if (!sessionId) return;
+    await refreshInboxMessages(sessionId, false).catch(() => undefined);
+  }, [refreshInboxMessages, state.currentSessionId]);
   // Memoized so the terminal reconnect effect only runs when headers actually
   // change, not on every render (getRequestHeaders returns a new object).
   const terminalHeaders = useMemo(() => getRequestHeaders(state.settings), [state.settings]);
@@ -361,6 +373,8 @@ export function useOpencodeProviderComposition(input: WorkspaceRuntimeInput) {
   const values = useOpencodeProviderValues({
     ...state,
     ...transcript,
+    transcriptReadError: state.currentSessionId ? transcriptRead.errors[state.currentSessionId] : undefined,
+    retryTranscript,
     ...permissionRules,
     mcpAuthPrompt: state.mcpAuthPrompt,
     dismissMcpAuth,
