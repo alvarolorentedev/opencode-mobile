@@ -215,6 +215,7 @@ const service = await import(await moduleUri('../../providers/services/terminal-
   [/from 'react-native'/g, `from "${native}"`],
   [/from '@\/lib\/opencode\/client'/g, `from "${uri('export function buildPtyWebSocketUrl() {}')}"`],
   [/from '@\/providers\/services\/require-data'/g, `from "${uri('export function requireData(value) { return value; }')}"`],
+  [/from '@\/lib\/opencode\/contracts\/server-adapter'/g, `from "${uri('export function createServerAdapter() { return {}; }')}"`],
 ]));
 const originalSocket = globalThis.WebSocket;
 globalThis.WebSocket = class { args: any[]; constructor(...args: any[]) { this.args = args; } } as any;

@@ -1,23 +1,21 @@
 import { buildPtyWebSocketUrl, type OpencodeConnectionSettings, type ScopedOpencodeClient, type ServerContract } from '@/lib/opencode/client';
+import { createServerAdapter } from '@/lib/opencode/contracts/server-adapter';
 import { Platform } from 'react-native';
-import * as v1 from '@/lib/opencode/compat/v1/terminal';
-const location = (client: ScopedOpencodeClient) => ({ location: { directory: client.__opencode.directory } });
-export async function listTerminals(client: ScopedOpencodeClient) {
-  return client.compatibility ? v1.listTerminals(client.compatibility) : (await client.api!.pty.list(location(client))).data;
+
+export function listTerminals(client: ScopedOpencodeClient) {
+  return createServerAdapter(client).terminals.list();
 }
-export async function createTerminal(client: ScopedOpencodeClient) {
-  return client.compatibility
-    ? v1.createTerminal(client.compatibility, client.__opencode.directory)
-    : (await client.api!.pty.create(location(client))).data;
+export function createTerminal(client: ScopedOpencodeClient) {
+  return createServerAdapter(client).terminals.create();
 }
-export async function removeTerminal(client: ScopedOpencodeClient, ptyID: string) {
-  return client.compatibility ? v1.removeTerminal(client.compatibility, ptyID) : client.api!.pty.remove({ ...location(client), ptyID });
+export function removeTerminal(client: ScopedOpencodeClient, ptyID: string) {
+  return createServerAdapter(client).terminals.remove(ptyID);
 }
-export async function resizeTerminal(client: ScopedOpencodeClient, ptyID: string, size: { cols: number; rows: number }) {
-  return client.compatibility ? v1.resizeTerminal(client.compatibility, ptyID, size) : client.api!.pty.update({ ...location(client), ptyID, size });
+export function resizeTerminal(client: ScopedOpencodeClient, ptyID: string, size: { cols: number; rows: number }) {
+  return createServerAdapter(client).terminals.resize(ptyID, size);
 }
-export async function createTerminalConnectToken(client: ScopedOpencodeClient, ptyID: string) {
-  return client.compatibility ? v1.createTerminalConnectToken(client.compatibility, ptyID) : (await client.api!.pty.connect.token({ ...location(client), ptyID }, { headers: { 'x-opencode-ticket': '1' } })).data;
+export function createTerminalConnectToken(client: ScopedOpencodeClient, ptyID: string) {
+  return createServerAdapter(client).terminals.connectToken(ptyID);
 }
 export function getTerminalWebSocketUrl(settings: Pick<OpencodeConnectionSettings, 'serverUrl' | 'directory'>, ptyId: string, options?: { ticket?: string; cursor?: string }, contract?: ServerContract) { return buildPtyWebSocketUrl(settings, ptyId, options, contract); }
 export function openTerminalWebSocket(url: string, headers?: Record<string, string>) {
