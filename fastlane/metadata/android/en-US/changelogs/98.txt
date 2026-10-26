@@ -1,0 +1,2 @@
+- The composer now suggests trigger-only / commands, @ mentions for prompt files, agents, and skills, plus ! shell mode with results in the timeline (V2 servers).
+- New Extensions screen manages project and global MCPs, plugins, skills, and slash commands with validated edits, backups, and rollback on failure.
