@@ -901,6 +901,8 @@ client-scope guards.
 
 The composer owns only temporary input-height state on Android/web; iOS grows the native multiline input itself. Agent selection uses the existing selector; reasoning is a discrete slider in the existing model picker. The sole approval control is a capability-gated toolbar toggle. `ChatView` owns the draft and keys the composer by session, inner tab, and pending interaction IDs; selector modals do not persist visibility. Existing preference updates and auto-approval orchestration remain in the provider. Failed direct auto-approval changes retain the current value and use the existing send feedback.
 
+Composer context selections live with the retained draft, not in persistence. Selecting a `@` suggestion records the item and its display token; the provider resolves only tokens still present in the final text into native mention ranges. Agent, skill, and file discovery are V2-only (`skill.list`, `reference.list`, `file.find`), while V1 keeps its existing slash-command chips and attachment flow. Shell mode is V2-only and calls `session.shell`; shell timeline records are mapped to the existing activity presentation.
+
 Patch review is the changes chip above the composer and the Changes overlay. The transcript no longer renders a per-message review chip, so no parent-message lookup or transcript memoization dependency is needed for review.
 
 Project browser state and request-scope guards remain provider-owned. `FilesPanel` owns only the draft search input and renders provider loading/error state; it remounts on the password-free connection identity plus project path. It does not fetch, persist, or cache results. Setup still uses the existing connection-switch path exactly once per guarded submission.

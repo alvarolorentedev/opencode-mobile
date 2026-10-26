@@ -113,6 +113,16 @@ export type Command = {
     name: string;
     description?: string;
 };
+export type Skill = {
+    id: string;
+    name: string;
+    description?: string;
+};
+export type Reference = {
+    name: string;
+    path: string;
+    description?: string;
+};
 export type Model = {
     id: string;
     providerID: string;

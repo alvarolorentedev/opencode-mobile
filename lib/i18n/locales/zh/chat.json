@@ -133,7 +133,20 @@
     "startDictation": "开始语音输入",
     "stopDictation": "停止语音输入",
     "sendTask": "发送任务",
-    "stopTask": "停止任务"
+    "stopTask": "停止任务",
+    "runShell": "运行 Shell 命令",
+    "shellCommand": "Shell 命令",
+    "shellHint": "在活动项目中通过已连接的服务器运行。",
+    "shellEmpty": "在 ! 后输入 Shell 命令",
+    "suggestions": {
+      "commands": "命令",
+      "agents": "代理",
+      "skills": "技能",
+      "files": "文件",
+      "references": "引用",
+      "searching": "正在搜索项目文件…",
+      "empty": "没有匹配结果"
+    }
   },
   "newChat": {
     "title": "新建聊天",

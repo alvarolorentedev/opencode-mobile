@@ -98,6 +98,9 @@ export function toMessageRecord(message: V2Message, sessionID: string): SessionM
     const files = (message as Record<string, unknown>).files;
     if (Array.isArray(files)) {
       files.forEach((file, index) => {
+        // Context mentions are serialized as user files by the prompt API. They
+        // stay in the prompt text and must not render as uploaded attachments.
+        if (file && typeof file === 'object' && 'mention' in file) return;
         parts.push({
           id: `${message.id}-file-${index}`,
           sessionID,
@@ -176,6 +179,32 @@ export function toMessageRecord(message: V2Message, sessionID: string): SessionM
       },
       parts,
     };
+  }
+
+  if (type === 'shell') {
+    const record = message as Record<string, unknown>;
+    const status = stringField(record.status, 'running');
+    const command = stringField(record.command);
+    const output = record.output && typeof record.output === 'object' ? record.output as Record<string, unknown> : {};
+    const outputText = stringField(output.output);
+    const exit = numberField(record.exit);
+    const started = numberField((record.time as Record<string, unknown> | undefined)?.created, created);
+    const completedAt = numberField((record.time as Record<string, unknown> | undefined)?.completed);
+    const base = {
+      id: `${message.id}-shell`,
+      sessionID,
+      messageID: message.id,
+      type: 'tool' as const,
+      callID: message.id,
+      tool: 'shell',
+      state: { input: { command }, title: 'Shell' },
+    };
+    const part: ToolPart = status === 'running'
+      ? { ...base, state: { ...base.state, status: 'running', time: { start: started } } }
+      : status === 'exited' && exit === 0
+        ? { ...base, state: { ...base.state, status: 'completed', output: outputText, time: { start: started, end: completedAt || started } } }
+        : { ...base, state: { ...base.state, status: 'error', error: outputText || `Shell exited with code ${exit}.`, time: { start: started, end: completedAt || started } } };
+    return { info: { ...baseInfo, role: 'assistant', providerID: '', modelID: '' }, parts: [part] };
   }
 
   if (type.startsWith('compaction')) {

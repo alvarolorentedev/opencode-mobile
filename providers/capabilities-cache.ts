@@ -1,7 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { z } from 'zod';
 
-import type { Config } from '@/lib/opencode/types';
+import type { Config, Reference, Skill } from '@/lib/opencode/types';
 import { capabilitiesCacheKey } from '@/lib/storage-keys';
 import type { AgentOption, ModelOption } from '@/providers/opencode-model-selection';
 import type { ProviderAuthMethod, ProviderOption } from '@/providers/opencode-provider-types';
@@ -17,6 +17,8 @@ export type CachedCapabilities = {
   providerAuthMethodsById: Record<string, ProviderAuthMethod[]>;
   models: ModelOption[];
   agents: AgentOption[];
+  skills?: Skill[];
+  references?: Reference[];
 };
 
 type Storage = PersistenceStorage & Pick<typeof AsyncStorage, 'setItem'>;
@@ -29,6 +31,8 @@ const CachedCapabilitiesSchema = z.object({
   providerAuthMethodsById: z.record(z.string(), z.unknown()),
   models: z.array(z.record(z.string(), z.unknown())),
   agents: z.array(z.record(z.string(), z.unknown())),
+  skills: z.array(z.record(z.string(), z.unknown())).optional(),
+  references: z.array(z.record(z.string(), z.unknown())).optional(),
 });
 
 function parse(raw: string): CachedCapabilities {
@@ -41,6 +45,8 @@ function parse(raw: string): CachedCapabilities {
     providerAuthMethodsById: value.providerAuthMethodsById as Record<string, ProviderAuthMethod[]>,
     models: value.models as ModelOption[],
     agents: value.agents as AgentOption[],
+    skills: value.skills as Skill[] | undefined,
+    references: value.references as Reference[] | undefined,
   };
 }
 

@@ -67,13 +67,40 @@ export function createSessionHelpers({ getNow, getState, emitEvent }) {
   }
   function handlePromptSubmission(sessionID, input) {
     const state = getState(); const text = input.text?.trim() || '';
-    createMessage(sessionID, 'user', { text: text || (input.files?.length ? '' : 'Triggered from CI flow test.'), ...(input.files?.length ? { files: input.files } : {}) }, input.messageID ? { id: input.messageID } : {});
+    const agents = input.agents || [];
+    const skills = input.skills || [];
+    const files = input.files || [];
+    createMessage(sessionID, 'user', {
+      text: text || (files.length ? '' : 'Triggered from CI flow test.'),
+      ...(files.length ? { files } : {}),
+      ...(agents.length ? { agents } : {}),
+      ...(skills.length ? { skills } : {}),
+    }, input.messageID ? { id: input.messageID } : {});
+    const context = [
+      ...agents.map((agent) => `@${agent.name}`),
+      ...skills.map((skill) => `@${skill.name || skill.id}`),
+      ...files.filter((file) => file.mention).map((file) => file.mention.text),
+    ];
+    const promptText = [text, context.length ? `Context: ${context.join(' ')}` : ''].filter(Boolean).join(' ');
     state.sessionStatuses[sessionID] = { type: 'busy' }; send('session.execution.started', { sessionID });
     if (state.scenario === 'inbox') { createMessage(sessionID, 'assistant', { agent: 'build', model: FAKE_MODEL, content: [{ type: 'text', text: `Working on: ${text}` }] }); return; }
     if (state.scenario === 'permission') return createPermissionRequest(sessionID);
     if (state.scenario.startsWith('question')) return createQuestionRequest(sessionID);
-    if (state.scenario === 'retry') return scheduleRetry(sessionID, text);
-    scheduleCompletion(sessionID, text);
+    if (state.scenario === 'retry') return scheduleRetry(sessionID, promptText);
+    scheduleCompletion(sessionID, promptText);
+  }
+  function handleShell(sessionID, command) {
+    const output = `ran: ${command}`;
+    const shell = createMessage(sessionID, 'shell', {
+      command,
+      status: 'exited',
+      exit: 0,
+      output: { output, cursor: output.length, size: output.length, truncated: false },
+      time: { created: getNow(), completed: getNow() },
+    });
+    send('session.shell.ended', { sessionID, shellID: shell.id, shell: { command, status: 'exited', exit: 0 } });
+    getState().sessionStatuses[sessionID] = { type: 'idle' };
+    return shell;
   }
   function handleCommand(sessionID, body) {
     const text = `/${body.command || 'unknown'}${body.arguments?.trim() ? ` ${body.arguments.trim()}` : ''}`;
@@ -81,5 +108,5 @@ export function createSessionHelpers({ getNow, getState, emitEvent }) {
     const assistant = createMessage(sessionID, 'assistant', { agent: 'build', model: FAKE_MODEL, content: [{ type: 'text', text: `Command ${text} completed.` }] }); finish(sessionID, assistant);
     getState().sessionStatuses[sessionID] = { type: 'idle' }; send('session.execution.succeeded', { sessionID }); return assistant;
   }
-  return { getSession, getMessages, createSession, createMessage, completePrompt, scheduleCompletion, handlePromptSubmission, handleCommand, createPermissionRequest, createQuestionRequest };
+  return { getSession, getMessages, createSession, createMessage, completePrompt, scheduleCompletion, handlePromptSubmission, handleCommand, handleShell, createPermissionRequest, createQuestionRequest };
 }

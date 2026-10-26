@@ -133,7 +133,7 @@ try {
   assert(authorization.method === 'code', 'OAuth authorize body was not handled');
   await request('/provider/openai/oauth/callback', json('POST', { method: 0, code: 'fake-code' }));
 
-  assert((await request('/command')).some((command) => command.name === 'review'), 'Expected command fixture');
+  assert((await request('/command')).some((command) => command.name === 'review' && command.description), 'Expected described command fixture');
   await assertStatus('/file', 400);
   assert((await request('/find/file?query=demo&directory=/workspace/demo-project')).includes('src/demo.ts'), 'Expected file search result');
   assert((await request('/find?pattern=OpenCode')).some((match) => match.path.text === 'README.md'), 'Expected text search result');
@@ -425,6 +425,8 @@ try {
   const v2Listed = (await v2request('/api/session')).data.find((entry) => entry.id === v2Session.id);
   assert(v2Listed.tokens.input === 1200 && v2Listed.cost > 0, 'V2 session usage did not accumulate');
   assert(v2Listed.model?.id === 'openai/gpt-4.1-mini', 'V2 session list dropped the model');
+  assert((await v2request('/api/skill')).data.some((skill) => skill.id === 'opencode' && skill.description), 'V2 skill discovery missing');
+  assert((await v2request('/api/reference')).data.some((reference) => reference.name === 'docs' && reference.path === 'README.md'), 'V2 reference discovery missing');
 
   // A first page must never look like the complete workspace list.
   const pageDirectory = '/workspace/pagination-project';
@@ -447,6 +449,23 @@ try {
   assert((await v2Api.session.revert.stage({ sessionID: v2Session.id, messageID: user.id })).messageID === user.id, 'Native revert stage missing');
   await v2Api.session.revert.clear({ sessionID: v2Session.id });
   assert(!(await v2Api.session.get({ sessionID: v2Session.id })).revert, 'Native revert clear missing');
+
+  const shellText = 'Context @src/demo.ts @general @opencode';
+  const contextPrompt = await v2Api.session.prompt({
+    sessionID: v2Session.id,
+    text: shellText,
+    agents: [{ name: 'general', mention: { start: 22, end: 30, text: '@general' } }],
+    skills: [{ id: 'opencode', mention: { start: 31, end: 40, text: '@opencode' } }],
+    files: [{ uri: 'file:///workspace/demo-project/src/demo.ts', name: 'src/demo.ts', mention: { start: 8, end: 21, text: '@src/demo.ts' } }],
+  });
+  assert(contextPrompt.payload.agents?.[0]?.name === 'general', 'V2 prompt must preserve agent mentions');
+  assert(contextPrompt.payload.skills?.[0]?.id === 'opencode', 'V2 prompt must preserve skill mentions');
+  assert(contextPrompt.payload.files?.[0]?.mention?.text === '@src/demo.ts', 'V2 prompt must preserve file mentions');
+
+  await v2request(`/api/session/${v2Session.id}/shell`, json('POST', { command: 'echo prompt-context' }));
+  const shellRecord = (await v2request(`/api/session/${v2Session.id}/message`)).data.find((message) => message.type === 'shell');
+  assert(shellRecord?.command === 'echo prompt-context', 'V2 shell command missing from the timeline');
+  assert(shellRecord?.output?.output === 'ran: echo prompt-context', 'V2 shell output missing from the timeline');
 
   // Session instruction entries back the adapter's `system` prompt mapping.
   const instructionPath = `/api/experimental/session/${v2Session.id}/instructions/entries/opencode-mobile.chat-preferences`;

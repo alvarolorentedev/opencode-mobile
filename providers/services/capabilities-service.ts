@@ -88,17 +88,23 @@ export async function discoverChatCapabilities(client: ScopedOpencodeClient, act
       providerAuthMethodsById: {},
       models: [],
       agents: [],
+      skills: [],
+      references: [],
       connected: [],
       configuredModels: [],
     };
   }
 
   const adapter = createServerAdapter(client).capabilities;
-  const [nextConfig, providerData, authData, rawAgents, accounts] = await Promise.all([
+  const [nextConfig, providerData, authData, rawAgents, skills, references, accounts] = await Promise.all([
     adapter.config(),
     adapter.providers(),
     adapter.providerAuth(),
     adapter.agents(),
+    // Optional V2 composer catalogs must never blank the model/agent catalog on
+    // servers that predate them.
+    adapter.skills().catch(() => []),
+    adapter.references().catch(() => []),
     client.accounts ? client.accounts.list().catch(() => [] as ProviderAccountInfo[]) : Promise.resolve([] as ProviderAccountInfo[]),
   ]);
   const agentData = rawAgents as Parameters<typeof toAgentOption>[0][];
@@ -160,6 +166,8 @@ export async function discoverChatCapabilities(client: ScopedOpencodeClient, act
     providerAuthMethodsById: normalizeProviderAuthMethods(authData),
     models: nextModels,
     agents: nextAgents,
+    skills,
+    references,
     configuredModels,
   };
 }

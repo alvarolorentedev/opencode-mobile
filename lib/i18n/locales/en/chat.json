@@ -133,7 +133,20 @@
     "startDictation": "Start dictation",
     "stopDictation": "Stop dictation",
     "sendTask": "Send task",
-    "stopTask": "Stop task"
+    "stopTask": "Stop task",
+    "runShell": "Run shell command",
+    "shellCommand": "Shell command",
+    "shellHint": "Runs on the connected server in the active project.",
+    "shellEmpty": "Type a shell command after !",
+    "suggestions": {
+      "commands": "Commands",
+      "agents": "Agents",
+      "skills": "Skills",
+      "files": "Files",
+      "references": "References",
+      "searching": "Searching project files…",
+      "empty": "No matching results"
+    }
   },
   "newChat": {
     "title": "New chat",

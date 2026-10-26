@@ -5,7 +5,7 @@ import { useCallback, useEffect, useRef, useState, type Dispatch, type SetStateA
 
 import type { OpencodeConnectionSettings, ScopedOpencodeClient } from '@/lib/opencode/client';
 import type { SessionMessageRecord } from '@/lib/opencode/format';
-import type { PromptDelivery, PromptInput } from '@/lib/opencode/prompt-inbox';
+import type { PromptContextItem, PromptDelivery, PromptInput } from '@/lib/opencode/prompt-inbox';
 import { pendingNotificationKey } from '@/lib/notification-pending';
 import { getConnectionScope, getConnectionUiScope } from '@/lib/connection-scope';
 import {
@@ -72,6 +72,7 @@ export function usePromptLifecycle({
       sessionId: string,
       prompt: string,
       attachments?: { uri: string; mime?: string; filename?: string }[],
+      context?: PromptContextItem[],
     ) => {
       const trimmedPrompt = prompt.trim();
       if (!trimmedPrompt && (!attachments || attachments.length === 0)) {
@@ -178,6 +179,10 @@ export function usePromptLifecycle({
               currentSession?.model,
             )
           : undefined;
+        const root = activeProjectPath?.replace(/\/+$/, '');
+        const resolvedContext = context?.map((item) => item.kind === 'file' && root && !item.path.startsWith('/')
+          ? { ...item, path: `${root}/${item.path}` }
+          : item);
         await submitPrompt({
           sessionID: sessionId,
           agent: chatPreferences.mode,
@@ -185,6 +190,7 @@ export function usePromptLifecycle({
           system: buildSystemPrompt(chatPreferences),
           variant,
           parts,
+          ...(resolvedContext?.length ? { context: resolvedContext } : {}),
         }, chatPreferences.promptDelivery ?? 'steer');
         promptAccepted = true;
         const owned = ownsSubmission();

@@ -122,6 +122,7 @@ declared once, at the leaves.
 - open the model picker from the selected model/reasoning summary, with a reasoning slider above model search
 - dismiss the keyboard when opening selectors while preserving the parent-owned draft; model picker dismisses on Back/Escape or session/tab changes
 - render optional conversation banner
+- render the V2 suggestion panel for commands and context tokens, plus the shell-mode banner
 - render attachments, voice status, prompt input, and action buttons
 - On iOS the native multiline input grows itself between 44 and 110 px (40 to
   90 px in slim mode) and scrolls at the cap, so height never lags a layout pass
@@ -156,16 +157,37 @@ type ChatComposerProps = {
   visibleModels: ModelOption[]
   updateChatPreferences: (patch: Partial<ChatPreferences>) => void
   commands: Command[]
-  onCommandSelect: (command: string) => void
+  isV2: boolean
+  suggestions: ComposerSuggestionGroup[]
+  suggestionsActive: boolean
+  suggestionsSearching: boolean
+  suggestionsError?: string
+  onSuggestionSelect: (suggestion: ComposerSuggestion) => void
+  onSelectionChange: (selection: { start: number; end: number }) => void
+  shellMode: boolean
+  focusRequest: number
 }
 ```
 
 ### Important parity notes
 
 - todos are server-owned and displayed in the chat overlay with disabled status icons; the UI has no todo mutation action
-- typing `/` shows up to six matching server commands; selecting one fills the draft
+- typing `/` shows matching server commands with descriptions; typing `@` shows agents, skills, project files, and references. Selecting a row fills the draft.
+- a leading `!` switches the primary action to a V2 session shell command
+- there is no dedicated composer palette button; the text triggers are the only entry point
 - model selection uses a searchable sheet grouped by provider; its reasoning slider shows server variants for the selected OpenCode 2 model, including a synthetic Default, and stays hidden when that model has none
 - the composer trigger includes the selected variant in its accessible name when the model provides variants
+
+## `components/chat/composer-suggestions.tsx` and `use-composer-suggestions.ts`
+
+- `chat-composer.tsx` renders the presentational suggestion rows above the input.
+- `use-composer-suggestions.ts` owns only local trigger/query/file-search state; provider actions supply commands, agents, skills, references, and project file results.
+- Commands and context are grouped and filtered by the active token; file search is debounced and the suggestion rows are keyboard-persistent.
+
+## `lib/opencode/composer.ts`
+
+- Pure trigger detection, token replacement, shell-command parsing, and final-draft mention resolution.
+- Mention offsets are computed at submit time from the selected tokens, so edits and deletions cannot leave stale ranges.
 
 ## `components/chat/model-picker.tsx`
 

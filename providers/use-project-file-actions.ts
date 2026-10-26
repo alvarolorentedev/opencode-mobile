@@ -10,6 +10,7 @@ import { listCommands as svcListCommands } from '@/providers/services/session-se
 import { loadDiagnostics } from '@/providers/services/diagnostics-service';
 import {
   saveFile,
+  findFiles,
   getFileStatus,
   getVcsInfo,
   getProjectFileDownloadSource,
@@ -58,6 +59,13 @@ export function useProjectFileActions({
     setProjectFileStatuses(nextStatuses || []);
     setVcsInfo(nextVcs);
   }, [activeProjectPath, client, isCurrentClient, setCommands, setProjectFileStatuses, setVcsInfo]);
+
+  const searchProjectFiles = useCallback(async (query: string) => {
+    const trimmed = query.trim();
+    if (!trimmed) return [];
+    const directory = client.__opencode.directory || '';
+    return (await findFiles(client, trimmed)).map((path) => projectPath(path, directory));
+  }, [client]);
 
   const refreshDiagnostics = useCallback(async () => {
     const nextDiagnostics = await loadDiagnostics(client);
@@ -146,5 +154,5 @@ export function useProjectFileActions({
     }
   }, [client, currentSessionIdRef, diffScopeBySessionRef, isCurrentClient, projectFileRequestRef, refreshServerFeatures, refreshVcsDiff, setSelectedProjectFile]);
 
-  return { refreshServerFeatures, refreshDiagnostics, browser, openProjectFile, saveProjectFile, closeProjectFile, downloadProjectFile };
+  return { refreshServerFeatures, refreshDiagnostics, searchProjectFiles, browser, openProjectFile, saveProjectFile, closeProjectFile, downloadProjectFile };
 }

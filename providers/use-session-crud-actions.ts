@@ -2,6 +2,7 @@ import {
   createSession as svcCreateSession,
   deleteSession as svcDeleteSession,
   executeCommand as svcExecuteCommand,
+  executeShell as svcExecuteShell,
   forkSession as svcForkSession,
   revertSession as svcRevertSession,
   unrevertSession as svcUnrevertSession,
@@ -249,6 +250,11 @@ export function useSessionCrudActions({
     await Promise.all([refreshMessages(sessionId, true), refreshSessions()]).catch(() => undefined);
   }, [availableModels, chatPreferences.mode, chatPreferences.modelId, chatPreferences.modelVariantSelections, client, refreshMessages, refreshSessions, sessions]);
 
+  const executeShell = useCallback(async (sessionId: string, command: string) => {
+    await svcExecuteShell(client, sessionId, command);
+    await Promise.all([refreshMessages(sessionId, true), refreshSessions()]).catch(() => undefined);
+  }, [client, refreshMessages, refreshSessions]);
+
   return {
     openSession,
     createSession,
@@ -258,5 +264,6 @@ export function useSessionCrudActions({
     revertSession,
     unrevertSession,
     executeCommand,
+    executeShell,
   };
 }

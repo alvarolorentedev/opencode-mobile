@@ -1,4 +1,4 @@
-import type { Config, FileContent, FileDiff, McpLocalConfig, McpRemoteConfig, McpStatus, ProviderAuthValues, ProviderCatalog, Pty } from '@/lib/opencode/types';
+import type { Config, FileContent, FileDiff, McpLocalConfig, McpRemoteConfig, McpStatus, ProviderAuthValues, ProviderCatalog, Pty, Reference, Skill } from '@/lib/opencode/types';
 import type { ScopedOpencodeClient } from '@/lib/opencode/client';
 import { projectEntries, projectWorktrees, type ProjectFileEntry, type ProjectWorktree } from '@/lib/opencode/project';
 import { knownProjectFileKind, projectFileFromBytes, projectFileFromV1Content, projectFileWithoutContent, type ProjectFile } from '@/lib/opencode/project-file';
@@ -43,6 +43,8 @@ export type ServerAdapter = {
     providers: () => Promise<ProviderCatalog>;
     providerAuth: () => Promise<unknown>;
     agents: () => Promise<unknown>;
+    skills: () => Promise<Skill[]>;
+    references: () => Promise<Reference[]>;
     modelVariants: (model: { variants?: { id: string }[] }) => { id: string }[];
     setCredentials: (id: string, values: ProviderAuthValues) => Promise<unknown>;
     removeCredentials: (id: string) => Promise<unknown>;
@@ -145,6 +147,23 @@ export function createServerAdapter(client: ScopedOpencodeClient): ServerAdapter
       agents: () => compatibility
         ? client.compatibility!.app.agents().then((result) => result.data)
         : client.api!.agent.list(location).then((result) => result.data.map(toAgentView)),
+      // API-dependent composer context is V2-only. Returning empty lists on V1
+      // keeps the shared provider shape stable without adding a compatibility
+      // endpoint.
+      skills: () => compatibility
+        ? Promise.resolve([])
+        : client.api!.skill.list(location).then((result) => result.data.map((skill) => ({
+            id: skill.id,
+            name: skill.name,
+            description: skill.description,
+          }))),
+      references: () => compatibility
+        ? Promise.resolve([])
+        : client.api!.reference.list(location).then((result) => result.data.map((reference) => ({
+            name: reference.name,
+            path: reference.path,
+            description: reference.description,
+          }))),
       modelVariants: (model: { variants?: { id: string }[] }) => compatibility ? [] : model.variants ?? [],
       setCredentials: async (id: string, values: ProviderAuthValues) => {
         if (compatibility) return setProviderCredentials(compatibility, id, values);

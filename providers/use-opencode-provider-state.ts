@@ -18,8 +18,10 @@ import type {
   File,
   FileDiff,
   Project,
+  Reference,
   Session,
   SessionStatus,
+  Skill,
   Todo,
   VcsInfo,
 } from '@/lib/opencode/types';
@@ -75,6 +77,8 @@ export function useOpencodeProviderState(initial?: { settings: OpencodeConnectio
   const [providerAuthMethodsById, setProviderAuthMethodsById] = useState<Record<string, ProviderAuthMethod[]>>({});
   const [availableModels, setAvailableModels] = useState<ModelOption[]>([]);
   const [availableAgents, setAvailableAgents] = useState<AgentOption[]>([]);
+  const [availableSkills, setAvailableSkills] = useState<Skill[]>([]);
+  const [availableReferences, setAvailableReferences] = useState<Reference[]>([]);
   const [chatPreferences, setChatPreferences] = useState<ChatPreferences>(defaultChatPreferences);
   const [lastSessionByConnection, setLastSessionByConnection] = useState<Record<string, Record<string, string>>>({});
   const [favoriteSessions, setFavoriteSessions] = useState<FavoriteSession[]>([]);
@@ -172,6 +176,8 @@ export function useOpencodeProviderState(initial?: { settings: OpencodeConnectio
     providerAuthMethodsById, setProviderAuthMethodsById,
     availableModels, setAvailableModels,
     availableAgents, setAvailableAgents,
+    availableSkills, setAvailableSkills,
+    availableReferences, setAvailableReferences,
     chatPreferences, setChatPreferences,
     lastSessionByConnection, setLastSessionByConnection,
     favoriteSessions, setFavoriteSessions,

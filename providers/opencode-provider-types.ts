@@ -374,8 +374,12 @@ export type ChatContextValue = {
   replyToQuestion: (requestId: string, answers: PendingQuestionAnswer[]) => Promise<void>;
   rejectQuestion: (requestId: string) => Promise<void>;
   commands: Command[];
+  availableSkills: import('@/lib/opencode/types').Skill[];
+  availableReferences: import('@/lib/opencode/types').Reference[];
+  searchProjectFiles: (query: string) => Promise<string[]>;
   executeCommand: (sessionId: string, command: string, args: string) => Promise<void>;
-  sendPrompt: (sessionId: string, prompt: string, attachments?: { uri: string; mime?: string; filename?: string }[]) => Promise<boolean>;
+  executeShell: (sessionId: string, command: string) => Promise<void>;
+  sendPrompt: (sessionId: string, prompt: string, attachments?: { uri: string; mime?: string; filename?: string }[], context?: import('@/lib/opencode/prompt-inbox').PromptContextItem[]) => Promise<boolean>;
   abortSession: (sessionId: string) => Promise<void>;
   setAutoApprove: (enabled: boolean) => Promise<void>;
   sendingState: {

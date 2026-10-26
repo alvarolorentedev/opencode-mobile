@@ -12,6 +12,8 @@ export type ServerCapabilities = {
   autoApprove: boolean;
   promptDeliveryAvailable: boolean;
   mcpIntegrationId: boolean;
+  contextMentions: boolean;
+  shellCommand: boolean;
 };
 
 export function getServerCapabilities(contract: ServerContract): ServerCapabilities {
@@ -26,5 +28,8 @@ export function getServerCapabilities(contract: ServerContract): ServerCapabilit
     autoApprove: !full,
     promptDeliveryAvailable: !full,
     mcpIntegrationId: !full,
+    // API-dependent composer surfaces are V2-only for now.
+    contextMentions: !full,
+    shellCommand: !full,
   };
 }

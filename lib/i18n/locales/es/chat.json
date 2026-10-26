@@ -133,7 +133,20 @@
     "startDictation": "Iniciar dictado",
     "stopDictation": "Detener dictado",
     "sendTask": "Enviar tarea",
-    "stopTask": "Detener tarea"
+    "stopTask": "Detener tarea",
+    "runShell": "Ejecutar comando de shell",
+    "shellCommand": "Comando de shell",
+    "shellHint": "Se ejecuta en el servidor conectado dentro del proyecto activo.",
+    "shellEmpty": "Escribe un comando de shell después de !",
+    "suggestions": {
+      "commands": "Comandos",
+      "agents": "Agentes",
+      "skills": "Habilidades",
+      "files": "Archivos",
+      "references": "Referencias",
+      "searching": "Buscando archivos del proyecto…",
+      "empty": "Sin resultados"
+    }
   },
   "newChat": {
     "title": "Nuevo chat",

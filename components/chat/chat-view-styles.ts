@@ -56,6 +56,7 @@ export const styles = StyleSheet.create({
   inputContentCompact: { paddingHorizontal: 0, paddingTop: 0, paddingBottom: 0, fontFamily: Fonts.sans },
   attachmentRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, paddingHorizontal: 2 },
   conversationBanner: { borderWidth: 1, borderRadius: 18, paddingHorizontal: 14, paddingVertical: 12, gap: 8 },
+  shellBanner: { borderWidth: 1, borderRadius: 14, paddingHorizontal: 12, paddingVertical: 9, gap: 2 },
   conversationBannerHeader: { flexDirection: 'row', justifyContent: 'space-between', gap: 12, alignItems: 'center' },
   voiceStatusRow: { paddingHorizontal: 2 },
   voiceStatusChip: { alignSelf: 'flex-start' },

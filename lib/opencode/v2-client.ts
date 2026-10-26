@@ -1,5 +1,6 @@
 import { buildMcpOAuth } from './v2/mcp';
 import type { OpencodeConnectionSettings, ScopedOpencodeClient } from './client/types';
+import { resolvePromptContext } from './composer';
 import { buildV2Raw } from './v2/raw';
 import { buildProviderAuth } from './v2/capabilities';
 import { toFileDetail } from './v2/mappers';
@@ -26,7 +27,16 @@ export function buildV2Client(settings: OpencodeConnectionSettings): ScopedOpenc
         await syncSessionInstructions(api, sessionID, input.system);
         const text = input.parts.filter((part) => part.type === 'text').map((part) => part.text).join('\n\n');
         const files = input.parts.filter((part) => part.type === 'file').map((part) => ({ uri: part.url, name: part.filename || 'Attachment' }));
-        return toPendingPrompt(await api.session.prompt({ sessionID, text, delivery, ...(files.length ? { files } : {}) }));
+        const context = resolvePromptContext(text, input.context);
+        const promptFiles = [...files, ...context.files];
+        return toPendingPrompt(await api.session.prompt({
+          sessionID,
+          text,
+          delivery,
+          ...(promptFiles.length ? { files: promptFiles } : {}),
+          ...(context.agents.length ? { agents: context.agents } : {}),
+          ...(context.skills.length ? { skills: context.skills } : {}),
+        }));
       },
     },
   };

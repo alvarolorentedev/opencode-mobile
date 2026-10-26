@@ -272,7 +272,8 @@ The composer includes:
 - reasoning picker
 - auto-approve toggle
 - optional conversation mode banner
-- slash-command suggestions when the draft starts with `/` and has no space
+- server-backed suggestions when the draft starts with `/` (commands) or contains an `@` context token
+- shell mode when the draft starts with `!`
 - attachment chips
 - text input
 
@@ -292,9 +293,28 @@ Secondary action rules:
 Slash command behavior:
 
 - commands are loaded from the server for the active project
-- up to six command names matching the current prefix are suggested
+- the suggestion panel shows up to eight matching commands with their server descriptions
+- selecting a command inserts its name and closes the suggestion
 - an exact known `/command` submission is sent through the session command API with the remaining text as arguments
 - attachments prevent command interpretation and use normal prompt submission
+
+Context behavior:
+
+- typing `@` after the start of the draft or whitespace opens grouped suggestions
+- groups are agents, skills, project files, and references
+- agent and skill rows show their server descriptions; file search is debounced and bounded
+- selecting a row inserts its `@name` or `@path` token and records the structured mention for prompt submission
+- mentions that are edited out of the final draft are not sent
+- attachments and context mentions can be combined
+
+Shell behavior:
+
+- a leading `!` switches the composer to shell mode and shows a shell banner
+- the primary action runs the command through the session shell API instead of sending a prompt
+- shell output appears in the transcript as a shell activity row
+- an empty `!` command is rejected without clearing the draft
+- attachments prevent shell interpretation and use normal prompt submission
+- OpenCode 2 only. V1 keeps its existing slash-command chips and attachment flow.
 
 ## Abort Behavior
 

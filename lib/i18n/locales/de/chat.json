@@ -133,7 +133,20 @@
     "startDictation": "Diktat starten",
     "stopDictation": "Diktat stoppen",
     "sendTask": "Aufgabe senden",
-    "stopTask": "Aufgabe stoppen"
+    "stopTask": "Aufgabe stoppen",
+    "runShell": "Shell-Befehl ausführen",
+    "shellCommand": "Shell-Befehl",
+    "shellHint": "Wird auf dem verbundenen Server im aktiven Projekt ausgeführt.",
+    "shellEmpty": "Gib nach ! einen Shell-Befehl ein",
+    "suggestions": {
+      "commands": "Befehle",
+      "agents": "Agenten",
+      "skills": "Fähigkeiten",
+      "files": "Dateien",
+      "references": "Referenzen",
+      "searching": "Projektdateien werden durchsucht…",
+      "empty": "Keine Treffer"
+    }
   },
   "newChat": {
     "title": "Neuer Chat",

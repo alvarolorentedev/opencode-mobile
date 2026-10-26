@@ -445,3 +445,46 @@ test('commands execute through the primary chat action', async ({ page, request 
   await sendPrompt(page, '/review src');
   await expect(page.getByText('Command /review src completed.', { exact: true }).first()).toBeVisible({ timeout: 15_000 });
 });
+
+test('V2 composer suggestions insert commands, context, and shell commands', async ({ page, request }) => {
+  await resetScenario(request, 'happy-path');
+  await openReadyChat(page);
+  const input = page.getByTestId('chat-prompt-input');
+  const primary = page.getByTestId('chat-primary-button');
+
+  await input.fill('/rev');
+  await expect(page.getByTestId('composer-suggestion-command-review')).toContainText('Review code');
+  await page.getByTestId('composer-suggestion-command-review').click();
+  await expect(input).toHaveValue('/review ');
+
+  await input.fill('Review @gen');
+  await expect(page.getByTestId('composer-suggestion-agent-general')).toContainText('Delegate a focused task.');
+  await expect(page.getByTestId('composer-suggestion-skill-opencode')).toHaveCount(0);
+  await page.getByTestId('composer-suggestion-agent-general').click();
+  await expect(input).toHaveValue('Review @general ');
+
+  await input.fill('Review @open');
+  await expect(page.getByTestId('composer-suggestion-skill-opencode')).toContainText('Use this skill for any question about OpenCode.');
+  await page.getByTestId('composer-suggestion-skill-opencode').click();
+  await expect(input).toHaveValue('Review @opencode ');
+
+  await input.fill('Review @src/de');
+  await expect(page.getByTestId('composer-suggestion-file-src-demo.ts')).toBeVisible();
+  await page.getByTestId('composer-suggestion-file-src-demo.ts').click();
+  await expect(input).toHaveValue('Review @src/demo.ts ');
+  await primary.click();
+  await expect(page.getByText(/Finished: Review @src\/demo\.ts.*Context: @src\/demo\.ts/).first()).toBeVisible({ timeout: 20_000 });
+
+  await input.fill('!echo composer-shell');
+  await expect(page.getByTestId('chat-shell-banner')).toBeVisible();
+  await expect(primary).toHaveAccessibleName('Run shell command');
+  await primary.click();
+  const activity = page.getByTestId(/transcript-activity-/).filter({ hasText: 'Shell' }).first();
+  await expect(activity).toContainText('Shell', { timeout: 20_000 });
+  await activity.click();
+  const shellRow = page.getByTestId(/transcript-activity-item-/).filter({ hasText: 'echo composer-shell' }).last();
+  await expect(shellRow).toBeVisible();
+  await shellRow.click();
+  await expect(page.getByText(/\$ echo composer-shell/)).toBeVisible();
+  await expect(page.getByText(/ran: echo composer-shell/)).toBeVisible();
+});

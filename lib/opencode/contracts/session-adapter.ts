@@ -42,6 +42,7 @@ export type SessionAdapter = {
   interrupt: (sessionId: string) => Promise<unknown>;
   commands: () => Promise<Command[]>;
   executeCommand: (sessionId: string, command: string, args: string, options?: { agent?: string; model?: string; variant?: string; messageId?: string }) => Promise<unknown>;
+  executeShell: (sessionId: string, command: string) => Promise<unknown>;
 };
 
 const MAX_SESSION_PAGES = 10;
@@ -201,6 +202,11 @@ export function createSessionAdapter(client: ScopedOpencodeClient): SessionAdapt
         await client.api!.session.switchModel({ sessionID: sessionId, model: { providerID, id: id.join('/'), ...(options.variant && options.variant !== 'default' ? { variant: options.variant } : {}) } });
       }
       await client.api!.session.command({ sessionID: sessionId, name: command, text: args });
+    },
+    executeShell: async (sessionId, command) => {
+      // Shell execution is a V2-only composer surface; the UI never exposes it
+      // on compatibility clients.
+      await client.api!.session.shell({ sessionID: sessionId, command });
     },
   };
 }

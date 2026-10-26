@@ -269,11 +269,16 @@ export function ChatView() {
           isUpdatingAutoApprove={composer.isUpdatingAutoApprove}
           onToggleConversationMode={() => void actions.toggleConversationMode()}
           onAttach={() => void actions.handleAttach()}
-          onDraftChange={(value) => {
-            actions.setSendFeedback(undefined);
-            actions.setDraft(value);
-          }}
-          onCommandSelect={(command) => actions.setDraft(`/${command} `)}
+          onDraftChange={actions.handleDraftChange}
+          isV2={composer.isV2}
+          suggestions={composer.suggestions}
+          suggestionsActive={composer.suggestionsActive}
+          suggestionsSearching={composer.suggestionsSearching}
+          suggestionsError={composer.suggestionsError}
+          onSuggestionSelect={actions.handleSuggestionSelect}
+          onSelectionChange={actions.handleSelectionChange}
+          shellMode={composer.shellMode}
+          focusRequest={composer.focusRequest}
           onRemoveAttachment={(index) => {
             actions.setSendFeedback(undefined);
             actions.setAttachments((current) => current.filter((_, itemIndex) => itemIndex !== index));

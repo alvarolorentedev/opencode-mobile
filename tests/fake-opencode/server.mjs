@@ -158,7 +158,13 @@ const helpers = createSessionHelpers({ emitEvent, getNow, getState: () => state 
 function deliverInboxItem(item) {
   state.inboxBySession[item.sessionID] = (state.inboxBySession[item.sessionID] || []).filter((entry) => entry.id !== item.id);
   state.activePromptBySession[item.sessionID] = item.payload.text;
-  helpers.handlePromptSubmission(item.sessionID, { messageID: item.id, text: item.payload.text, files: item.payload.files });
+  helpers.handlePromptSubmission(item.sessionID, {
+    messageID: item.id,
+    text: item.payload.text,
+    files: item.payload.files,
+    agents: item.payload.agents,
+    skills: item.payload.skills,
+  });
   emitV2Event(event('session.inbox.delivered', { sessionID: item.sessionID, inboxID: item.id }));
 }
 
@@ -519,7 +525,29 @@ const server = http.createServer(async (req, res) => {
         location: location(),
         data: [
           { id: 'build', name: 'build', mode: 'primary', hidden: false, permissions: [] },
-          { id: 'general', name: 'general', mode: 'all', hidden: false, permissions: [] },
+          { id: 'general', name: 'general', mode: 'all', hidden: false, permissions: [], description: 'Delegate a focused task.' },
+          { id: 'explore', name: 'explore', mode: 'subagent', hidden: false, permissions: [], description: 'Search the codebase.' },
+        ],
+      });
+      return;
+    }
+
+    if (req.method === 'GET' && pathname === '/api/skill') {
+      sendJson(res, 200, {
+        location: location(),
+        data: [
+          { id: 'opencode', name: 'opencode', description: 'Use this skill for any question about OpenCode.', autoinvoke: false, path: '/workspace/demo-project/.opencode/skills/opencode/SKILL.md', content: 'OpenCode skill fixture.' },
+          { id: 'report', name: 'report', description: 'Use when the user wants to report an OpenCode issue.', autoinvoke: false, path: '/workspace/demo-project/.opencode/skills/report/SKILL.md', content: 'Report skill fixture.' },
+        ],
+      });
+      return;
+    }
+
+    if (req.method === 'GET' && pathname === '/api/reference') {
+      sendJson(res, 200, {
+        location: location(),
+        data: [
+          { name: 'docs', path: 'README.md', description: 'Project documentation', hidden: false, source: { type: 'local', path: 'README.md' } },
         ],
       });
       return;
@@ -810,11 +838,23 @@ const server = http.createServer(async (req, res) => {
       const body = await readJson(req);
       const files = (body?.files || []).map((file) => {
         const match = file.uri?.match(/^data:([^;,]+);base64,([\s\S]*)$/);
-        return { name: file.name, mime: match?.[1] || 'application/octet-stream', data: match?.[2] || '', source: { type: 'inline' } };
+        return {
+          name: file.name,
+          mime: match?.[1] || 'application/octet-stream',
+          data: match?.[2] || '',
+          source: { type: 'inline' },
+          ...(file.mention ? { mention: file.mention } : {}),
+        };
       });
       const item = {
         id: `message-${state.nextMessageId++}`, sessionID, type: 'user',
-        payload: { text: body?.text || '', files }, delivery: body?.delivery || 'steer', time: { created: getNow() },
+        payload: {
+          text: body?.text || '',
+          files,
+          ...(body?.agents?.length ? { agents: body.agents } : {}),
+          ...(body?.skills?.length ? { skills: body.skills } : {}),
+        },
+        delivery: body?.delivery || 'steer', time: { created: getNow() },
       };
       state.inboxBySession[sessionID] = [...(state.inboxBySession[sessionID] || []), item];
       emitV2Event(event('session.inbox.enqueued', { sessionID, inboxID: item.id, item: { type: 'user', payload: item.payload, delivery: item.delivery } }));
@@ -834,6 +874,17 @@ const server = http.createServer(async (req, res) => {
       const sessionID = pathname.split('/')[3];
       const body = await readJson(req);
       helpers.handleCommand(sessionID, { command: body?.name, arguments: body?.text });
+      res.writeHead(204, { 'Access-Control-Allow-Origin': '*' });
+      res.end();
+      return;
+    }
+
+    if (req.method === 'POST' && /^\/api\/session\/[^/]+\/shell$/.test(pathname)) {
+      const sessionID = pathname.split('/')[3];
+      if (!helpers.getSession(sessionID)) return notFound(res);
+      const body = await readJson(req);
+      if (!body?.command) return sendJson(res, 400, { error: 'Session shell requires a command' });
+      helpers.handleShell(sessionID, body.command);
       res.writeHead(204, { 'Access-Control-Allow-Origin': '*' });
       res.end();
       return;

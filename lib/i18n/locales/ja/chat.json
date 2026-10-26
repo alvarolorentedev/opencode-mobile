@@ -133,7 +133,20 @@
     "startDictation": "音声入力を開始",
     "stopDictation": "音声入力を停止",
     "sendTask": "タスクを送信",
-    "stopTask": "タスクを停止"
+    "stopTask": "タスクを停止",
+    "runShell": "シェルコマンドを実行",
+    "shellCommand": "シェルコマンド",
+    "shellHint": "接続中のサーバーでアクティブなプロジェクト内で実行されます。",
+    "shellEmpty": "! の後にシェルコマンドを入力してください",
+    "suggestions": {
+      "commands": "コマンド",
+      "agents": "エージェント",
+      "skills": "スキル",
+      "files": "ファイル",
+      "references": "参照",
+      "searching": "プロジェクトファイルを検索中…",
+      "empty": "一致する結果がありません"
+    }
   },
   "newChat": {
     "title": "新しいチャット",

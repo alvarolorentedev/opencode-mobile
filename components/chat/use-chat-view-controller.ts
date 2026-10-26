@@ -10,13 +10,17 @@ import { mergeSharedDraft } from '@/lib/share/parse';
 import { workspaceKey } from '@/providers/workspace-types';
 import { getConnectionScope, getConnectionUiScope } from '@/lib/connection-scope';
 import { copyHaptic } from '@/lib/haptics';
+import { parseShellCommand, replaceComposerTrigger } from '@/lib/opencode/composer';
 import { type TranscriptEntry } from '@/lib/opencode/format';
+import type { PromptContextItem } from '@/lib/opencode/prompt-inbox';
 import { buildTranscriptRows, getTurnPatchDetails } from '@/lib/opencode/transcript';
 import { getLatestContextTokens } from '@/lib/opencode/usage';
+import type { ComposerSuggestion } from './composer-suggestion-types';
 import { useChatComposerNotices } from './use-chat-composer-notices';
 import { useChatDraft } from './use-chat-draft';
 import { useChatViewActions } from './use-chat-view-actions';
 import { useChatViewVoice } from './use-chat-view-voice';
+import { useComposerSuggestions } from './use-composer-suggestions';
 import {
   useApprovals,
   useCapabilities,
@@ -47,14 +51,15 @@ export function useChatViewController() {
   const {
     pendingPrompts, cancelPrompt, abortSession, clearPromptError, commands, currentDiffs, currentDiffScope, currentMessages,
     currentPendingPermissions, currentPendingQuestions, currentTodos, currentTranscript, currentUsage,
-    diffTurns, executeCommand, isBootstrappingChat, isRefreshingDiffs, isRefreshingMessages,
+    diffTurns, executeCommand, executeShell, isBootstrappingChat, isRefreshingDiffs, isRefreshingMessages,
     latestAssistantTurnUsage, promptError, refreshDiffs, rejectQuestion,
     replyToPermission, replyToQuestion, retryTranscript, selectDiffMessage, selectedDiffMessageId, sendPrompt,
     sendingState, setAutoApprove, setDiffScope, transcriptPaging, transcriptReadError, sharedInput,
+    availableSkills, availableReferences, searchProjectFiles,
   } = useChat();
 
   const workspaceId = workspaceKey({ connectionId: getConnectionUiScope(settings), projectPath: activeProject?.path ?? '' });
-  const { draft, attachments, setDraft, setAttachments, inputRef, capture, hasFailedInput, recoverFailedInput, dismissFailedInput } =
+  const { draft, attachments, context, setDraft, setAttachments, setContext, inputRef, capture, hasFailedInput, recoverFailedInput, dismissFailedInput } =
     useChatDraft(workspaceId, currentSessionId);
   const {
     cancelingPromptId, clearRevertPrefill, handleCancelPendingPrompt, handleCancelRevert, handleRevertMessage, isCancelingRevert,
@@ -76,7 +81,22 @@ export function useChatViewController() {
   const [expandedDiffId, setExpandedDiffId] = useState<string | undefined>();
   const [copiedMessageId, setCopiedMessageId] = useState<string | undefined>();
   const [sendFeedback, setSendFeedback] = useState<string | undefined>(undefined);
+  const [selection, setSelection] = useState({ start: 0, end: 0 });
+  const [focusRequest, setFocusRequest] = useState(0);
   const lastSentAttachmentsRef = useRef<{ uri: string; mime?: string; filename?: string }[]>([]);
+  const isV2 = serverCapabilities.contract === 'v2';
+  const shellMode = isV2 && serverCapabilities.shellCommand && draft.startsWith('!');
+  const { trigger, groups: suggestions, searching: suggestionsSearching, error: suggestionsError } = useComposerSuggestions({
+    draft,
+    selection,
+    enabled: isV2 && serverCapabilities.contextMentions,
+    commands,
+    agents: availableAgents,
+    skills: availableSkills,
+    references: availableReferences,
+    searchFiles: searchProjectFiles,
+  });
+  const suggestionsActive = Boolean(trigger && (suggestions.length > 0 || suggestionsSearching || suggestionsError));
 
   const status = currentSessionId ? sessionStatuses[currentSessionId] : undefined;
   const running = sendingState.active || (!!status && status.type !== 'idle');
@@ -207,7 +227,7 @@ export function useChatViewController() {
     setSpeakingMessageId,
     setVoiceFeedback,
   });
-  useUpdateBlocker(Boolean(draft || attachments.length || isSpeechInputListening || speakingMessageId ||
+  useUpdateBlocker(Boolean(draft || attachments.length || context.length || isSpeechInputListening || speakingMessageId ||
     copiedMessageId || sendFeedback || voiceFeedback || isStoppingSession || isUpdatingAutoApprove));
 
   const handleSendPrompt = useCallback(async (promptOverride?: string) => {
@@ -217,6 +237,13 @@ export function useChatViewController() {
     const nextAttachments = snapshot.attachments;
     const prompt = nextDraft.trim();
     if (!activeProject || (!prompt && nextAttachments.length === 0) || connection.status !== 'connected') {
+      return;
+    }
+    const shellCommand = isV2 && serverCapabilities.shellCommand && nextAttachments.length === 0 && prompt.startsWith('!')
+      ? parseShellCommand(prompt)
+      : undefined;
+    if (isV2 && serverCapabilities.shellCommand && nextAttachments.length === 0 && prompt.startsWith('!') && !shellCommand) {
+      setSendFeedback(t('chat:composer.shellEmpty'));
       return;
     }
 
@@ -233,13 +260,18 @@ export function useChatViewController() {
       if (!snapshot.belongsHere(sessionId)) return;
       snapshot.clear(sessionId);
 
+      if (shellCommand) {
+        await executeShell(sessionId, shellCommand);
+        return;
+      }
+
       const commandMatch = nextAttachments.length === 0 ? prompt.match(/^\/(\S+)(?:\s+([\s\S]*))?$/) : undefined;
       if (commandMatch && commands.some((command) => command.name === commandMatch[1])) {
         await executeCommand(sessionId, commandMatch[1], commandMatch[2] || '');
         return;
       }
 
-      const sent = await sendPrompt(sessionId, prompt, nextAttachments);
+      const sent = await sendPrompt(sessionId, prompt, nextAttachments, snapshot.context);
       if (sent) {
         clearRevertPrefill(sessionId);
       } else {
@@ -248,7 +280,39 @@ export function useChatViewController() {
     } catch (error) {
       if (snapshot.restore(sessionId)) setSendFeedback(error instanceof Error ? error.message : t('chat:view.couldNotSend'));
     } finally { submittingRef.current = false; }
-  }, [activeProject, capture, clearRevertPrefill, commands, connection.status, currentSessionId, ensureActiveSession, executeCommand, sendPrompt, t]);
+  }, [activeProject, capture, clearRevertPrefill, commands, connection.status, currentSessionId, ensureActiveSession, executeCommand, executeShell, isV2, sendPrompt, serverCapabilities.shellCommand, t]);
+
+  const handleDraftChange = useCallback((value: string) => {
+    setSendFeedback(undefined);
+    setDraft(value);
+    setContext((current) => current.filter((item) => value.includes(item.token)));
+    setSelection((current) => {
+      // Programmatic fills and pastes do not always emit a selection event on
+      // web. Collapse the caret to the end when the text jumped by more than a
+      // single keystroke; ordinary typing keeps its native selection.
+      if (!value) return { start: 0, end: 0 };
+      if (current.end === 0 || current.end > value.length || Math.abs(value.length - current.end) > 1) {
+        return { start: value.length, end: value.length };
+      }
+      return current;
+    });
+  }, [setContext, setDraft]);
+
+  const handleSuggestionSelect = useCallback((suggestion: ComposerSuggestion) => {
+    if (!trigger) return;
+    const next = replaceComposerTrigger(draft, trigger, suggestion.insert);
+    setDraft(next.text);
+    setSelection({ start: next.cursor, end: next.cursor });
+    if (suggestion.context) {
+      setContext((current) => {
+        const item = suggestion.context as PromptContextItem;
+        return current.some((entry) => entry.kind === item.kind && entry.token === item.token)
+          ? current
+          : [...current, item];
+      });
+    }
+    setFocusRequest((current) => current + 1);
+  }, [draft, setContext, setDraft, trigger]);
 
   useEffect(() => {
     Keyboard.dismiss();
@@ -303,6 +367,8 @@ export function useChatViewController() {
       isStoppingSession, isUpdatingAutoApprove, selectedAgentLabel, serverCapabilities,
       selectedVariant: selectedModelVariant,
       showSendAction, visibleModels,
+      isV2, suggestions, suggestionsActive, suggestionsSearching, suggestionsError,
+      shellMode, focusRequest,
     },
     overlay: {
       approvals, hasFailedInput, sendErrorMessage,
@@ -312,7 +378,8 @@ export function useChatViewController() {
       buildSendErrorDetails, clearConversationFeedback, clearPromptError, dismissFailedInput,
       forkSession, handleAbort, handleAttach, handleCancelPendingPrompt, handleCancelRevert,
       handleConfirmStopConversation, handleCopyMessage,
-      handleRevertMessage, handleSendPrompt, handleSpeakEntry, handleToggleRecording,
+      handleDraftChange, handleRevertMessage, handleSelectionChange: setSelection, handleSendPrompt,
+      handleSuggestionSelect, handleSpeakEntry, handleToggleRecording,
       handleVoiceRecovery, recoverFailedInput, refreshDiffs, rejectQuestion, replyToPermission,
       replyToQuestion, selectDiffMessage, setAttachments, setAutoApprove, setChangesVisible,
       setCopiedMessageId, setDiffScope, setDraft, setExpandedDiffId, setIsUpdatingAutoApprove,

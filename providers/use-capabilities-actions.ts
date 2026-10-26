@@ -1,7 +1,7 @@
 import { getProviders, setProviderCredentialsForClient, removeProviderCredentials, startProviderAuthorization, completeProviderAuthorization } from '@/providers/services/capabilities-service';
 import { useCallback, useEffect, useLayoutEffect, useRef, type Dispatch, type SetStateAction } from 'react';
 
-import type { Config } from '@/lib/opencode/types';
+import type { Config, Reference, Skill } from '@/lib/opencode/types';
 import type { ScopedOpencodeClient } from '@/lib/opencode/client';
 import { hydrateCapabilitiesCache, persistCapabilitiesCache, type CachedCapabilities } from '@/providers/capabilities-cache';
 import {
@@ -30,6 +30,8 @@ type CapabilitiesActionsInput = {
   setProviderAuthMethodsById: Dispatch<SetStateAction<Record<string, ProviderAuthMethod[]>>>;
   setAvailableModels: Dispatch<SetStateAction<ModelOption[]>>;
   setAvailableAgents: Dispatch<SetStateAction<AgentOption[]>>;
+  setAvailableSkills: Dispatch<SetStateAction<Skill[]>>;
+  setAvailableReferences: Dispatch<SetStateAction<Reference[]>>;
   setChatPreferences: Dispatch<SetStateAction<ChatPreferences>>;
 };
 
@@ -45,6 +47,8 @@ export function useCapabilitiesActions({
   setProviderAuthMethodsById,
   setAvailableModels,
   setAvailableAgents,
+  setAvailableSkills,
+  setAvailableReferences,
   setChatPreferences,
 }: CapabilitiesActionsInput) {
   const requireClient = useCallback(() => {
@@ -57,6 +61,8 @@ export function useCapabilitiesActions({
     setProviderAuthMethodsById(result.providerAuthMethodsById);
     setAvailableModels(result.models);
     setAvailableAgents(result.agents);
+    setAvailableSkills(result.skills ?? []);
+    setAvailableReferences(result.references ?? []);
 
     setChatPreferences((current) => {
       const configuredProviderIds = getConfiguredProviderIds(result.config, result.connected, result.models);
@@ -82,7 +88,7 @@ export function useCapabilitiesActions({
         autoApprove: client.__opencode.contract === 'v2' ? current.autoApprove : false,
       };
     });
-  }, [client.__opencode.contract, setAvailableAgents, setAvailableModels, setAvailableProviders, setChatPreferences, setCurrentConfig, setProviderAuthMethodsById]);
+  }, [client.__opencode.contract, setAvailableAgents, setAvailableModels, setAvailableProviders, setAvailableReferences, setAvailableSkills, setChatPreferences, setCurrentConfig, setProviderAuthMethodsById]);
 
   const hydratedRef = useRef<{ key: string; client: object } | undefined>(undefined);
   const freshRef = useRef(false);
@@ -120,6 +126,8 @@ export function useCapabilitiesActions({
         providerAuthMethodsById: result.providerAuthMethodsById,
         models: result.models,
         agents: result.agents,
+        skills: result.skills,
+        references: result.references,
       });
     }
   }, [activeProjectPath, applyCapabilities, client, connectionScope, isCurrentClient]);

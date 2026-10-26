@@ -22,6 +22,9 @@ This app is provider-centric.
 
 Do not move domain behavior into screens or presentational components.
 
+- New features that require API compatibility are V2-only for now; see
+  `docs/api-contract.md`. Do not add new V1 adapters or fallbacks.
+
 ## Placement Rules
 
 ### `app/`

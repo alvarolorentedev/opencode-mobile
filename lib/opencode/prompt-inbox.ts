@@ -2,7 +2,20 @@ import type { FilePartInput, TextPartInput } from './message-types';
 
 export type PromptAttachment = { uri: string; mime?: string; filename?: string };
 export type PromptDelivery = 'steer' | 'queue';
-export type PromptInput = { sessionID: string; parts: (TextPartInput | FilePartInput)[]; agent?: string; model?: { providerID: string; modelID: string }; system?: string; variant?: string };
+export type PromptMention = { start: number; end: number; text: string };
+export type PromptContextItem =
+  | { kind: 'file'; path: string; token: string }
+  | { kind: 'agent'; name: string; token: string }
+  | { kind: 'skill'; id: string; name: string; token: string };
+export type PromptInput = {
+  sessionID: string;
+  parts: (TextPartInput | FilePartInput)[];
+  agent?: string;
+  model?: { providerID: string; modelID: string };
+  system?: string;
+  variant?: string;
+  context?: PromptContextItem[];
+};
 export type PendingPrompt = {
   id: string;
   sessionId: string;

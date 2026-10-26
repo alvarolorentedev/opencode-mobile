@@ -104,7 +104,7 @@ export function handleProviderEvent(event: OpencodeEvent, actions: ProviderEvent
     if (sessionID) actions.scheduleSessionRefresh(sessionID, { messages: true });
     return;
   }
-  if (/^session\.(step\.|text\.|reasoning\.|tool\.|message\.|synthetic|skill\.|usage\.)/.test(type)) {
+  if (/^session\.(step\.|text\.|reasoning\.|tool\.|message\.|synthetic|skill\.|shell\.|usage\.)/.test(type)) {
     // Streaming updates only re-read the transcript the user can actually see.
     // Background sessions refresh on status transitions and completion instead
     // of once per part.

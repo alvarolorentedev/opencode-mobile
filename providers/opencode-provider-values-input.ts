@@ -68,6 +68,8 @@ export type ProviderValuesInput = ActionInputs & {
   providerAuthMethodsById: Record<string, ProviderAuthMethod[]>;
   availableModels: ModelOption[];
   availableAgents: AgentOption[];
+  availableSkills: import('@/lib/opencode/types').Skill[];
+  availableReferences: import('@/lib/opencode/types').Reference[];
   chatPreferences: ChatPreferences;
   projects: OpencodeProject[];
   activeProjectPath?: string;

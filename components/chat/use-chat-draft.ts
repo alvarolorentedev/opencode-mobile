@@ -1,14 +1,14 @@
 import { useCallback, useLayoutEffect, useRef, type SetStateAction } from 'react';
 import { useRetainedState } from '@/components/ui/use-retained-state';
 import { mergeSharedDraft } from '@/lib/share/parse';
-import type { PromptAttachment } from '@/lib/opencode/prompt-inbox';
+import type { PromptAttachment, PromptContextItem } from '@/lib/opencode/prompt-inbox';
 
-type Input = { draft: string; attachments: PromptAttachment[] };
+type Input = { draft: string; attachments: PromptAttachment[]; context: PromptContextItem[] };
 type FailedInput = Input & { owner: string; sessionId?: string };
 
 // Local composer edits belong to the user, including edits made during admission.
 export function useChatDraft(owner: string, sessionId?: string) {
-  const [input, setInput] = useRetainedState<Input>(`composer:${JSON.stringify([owner, sessionId ?? ''])}`, { draft: '', attachments: [] });
+  const [input, setInput] = useRetainedState<Input>(`composer:${JSON.stringify([owner, sessionId ?? ''])}`, { draft: '', attachments: [], context: [] });
   const [failed, setFailed] = useRetainedState<FailedInput | undefined>(`failed-input:${JSON.stringify([owner, sessionId ?? ''])}`, undefined);
   const inputRef = useRef(input);
   const setters = useRef({ setInput, setFailed });
@@ -18,9 +18,12 @@ export function useChatDraft(owner: string, sessionId?: string) {
     const previous = context.current;
     const held = inputRef.current;
     let next = input;
-    if (previous.owner === owner && !previous.sessionId && sessionId && (held.draft || held.attachments.length)) {
-      next = input.draft || input.attachments.length ? mergeSharedDraft(input.draft, input.attachments, { text: held.draft, attachments: held.attachments, skipped: [] }) : held;
-      setters.current.setInput({ draft: '', attachments: [] });
+    const heldContext = held.context ?? [];
+    if (previous.owner === owner && !previous.sessionId && sessionId && (held.draft || held.attachments.length || heldContext.length)) {
+      next = input.draft || input.attachments.length
+        ? { ...mergeSharedDraft(input.draft, input.attachments, { text: held.draft, attachments: held.attachments, skipped: [] }), context: heldContext }
+        : held;
+      setters.current.setInput({ draft: '', attachments: [], context: [] });
       setInput(next);
     }
     context.current = { owner, sessionId }; inputRef.current = next; setters.current = { setInput, setFailed };
@@ -32,6 +35,7 @@ export function useChatDraft(owner: string, sessionId?: string) {
   }, []);
   const setDraft = useCallback((value: SetStateAction<string>) => edit({ draft: typeof value === 'function' ? value(inputRef.current.draft) : value }), [edit]);
   const setAttachments = useCallback((value: SetStateAction<PromptAttachment[]>) => edit({ attachments: typeof value === 'function' ? value(inputRef.current.attachments) : value }), [edit]);
+  const setContext = useCallback((value: SetStateAction<PromptContextItem[]>) => edit({ context: typeof value === 'function' ? value(inputRef.current.context ?? []) : value }), [edit]);
   const capture = useCallback((draftOverride?: string) => {
     const snapshot = { ...inputRef.current, draft: draftOverride ?? inputRef.current.draft };
     let expectedRevision = revision.current;
@@ -42,7 +46,7 @@ export function useChatDraft(owner: string, sessionId?: string) {
       ...snapshot,
       clear(target: string) {
         if (!belongsHere(target) || expectedRevision !== revision.current) return;
-        edit({ draft: '', attachments: [] });
+        edit({ draft: '', attachments: [], context: [] });
         expectedRevision = revision.current;
       },
       restore(target?: string) {
@@ -56,10 +60,13 @@ export function useChatDraft(owner: string, sessionId?: string) {
   }, [edit]);
   const recoverFailedInput = useCallback(() => {
     if (!failed || failed.owner !== owner || failed.sessionId !== sessionId) return;
-    edit(mergeSharedDraft(inputRef.current.draft, inputRef.current.attachments, { text: failed.draft, attachments: failed.attachments, skipped: [] }));
+    edit({
+      ...mergeSharedDraft(inputRef.current.draft, inputRef.current.attachments, { text: failed.draft, attachments: failed.attachments, skipped: [] }),
+      context: failed.context ?? [],
+    });
     setFailed(undefined);
   }, [edit, failed, owner, sessionId, setFailed]);
-  return { ...input, inputRef, setDraft, setAttachments, capture, recoverFailedInput,
+  return { ...input, inputRef, setDraft, setAttachments, setContext, capture, recoverFailedInput,
     dismissFailedInput: () => setFailed(undefined),
     hasFailedInput: !!failed && failed.owner === owner && failed.sessionId === sessionId };
 }

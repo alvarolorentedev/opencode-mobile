@@ -345,9 +345,9 @@ into the right layer and, if needed, lower the number in the same change.
 ### Services
 
 - `providers/services/session-service.ts`
-  Fetch sessions, messages, diffs, todos, commands, and perform session lifecycle actions. Also lists the cross-project active-session snapshot through an unscoped client.
+  Fetch sessions, messages, diffs, todos, commands, and perform session lifecycle actions, including V2 shell execution. Also lists the cross-project active-session snapshot through an unscoped client.
 - `providers/services/capabilities-service.ts`
-  Discover config, providers, provider auth methods, model capabilities, and agents.
+  Discover config, providers, provider auth methods, model capabilities, agents, skills, and references. Skill/reference discovery is V2-only and returns empty lists on V1.
   Catalog and speech-voice label sorting share `lib/compare-labels.ts`'s
   `Intl.Collator`, avoiding a native collator allocation per comparison on Hermes.
 - `providers/services/project-service.ts`
@@ -370,7 +370,9 @@ into the right layer and, if needed, lower the number in the same change.
   event subscription translation. `client.compatibility` is read only here and
   in `compat/v1/`, and services call normalized methods.
 - `lib/opencode/v2-client.ts`
-  Constructs `@opencode/client` and exposes a typed subset of its native API, plus app actions for provider accounts, OAuth and inbox delivery. Adapters consume native sessions, cursor responses, forms and operations directly.
+  Constructs `@opencode/client` and exposes a typed subset of its native API, plus app actions for provider accounts, OAuth and inbox delivery. Adapters consume native sessions, cursor responses, forms and operations directly. V2 prompt admission maps resolved composer context into native `files`, `agents`, and `skills` mention arrays.
+- `lib/opencode/composer.ts`
+  Pure composer trigger/token parsing and final-draft mention resolution. It owns no React state and no wire access, keeping the same rules usable by the controller, tests, and protocol helpers.
 - `lib/opencode/v2/`
   Native transport, auth/MCP helpers and presentation projections. No fabricated 1.x SDK response envelopes or translated 1.x events exist on this path.
 - `lib/opencode/compat/v1/`

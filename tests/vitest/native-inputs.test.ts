@@ -97,6 +97,7 @@ describe('native input regressions', () => {
       '@/components/ui/text-input': { TextInput },
       '@/components/ui/native-select': { NativeSelect: 'NativeSelect' },
       '@/components/chat/model-picker': { ModelPicker: 'ModelPicker' },
+      '@/components/chat/composer-suggestions': { ComposerSuggestions: 'ComposerSuggestions' },
       '@/components/chat/attachment-strip': { AttachmentStrip: 'AttachmentStrip' },
       '@/components/chat/chat-view-styles': { styles, slimStyles: {} },
       '@/components/chat/chat-view-utils': { getAutoApproveIcon: () => 'shield' },

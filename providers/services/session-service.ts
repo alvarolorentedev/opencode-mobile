@@ -135,3 +135,6 @@ export function listCommands(client: ScopedOpencodeClient) {
 export function executeCommand(client: ScopedOpencodeClient, sessionId: string, command: string, args: string, options?: { agent?: string; model?: string; variant?: string; messageId?: string }) {
   return createSessionAdapter(client).executeCommand(sessionId, command, args, options);
 }
+export function executeShell(client: ScopedOpencodeClient, sessionId: string, command: string) {
+  return createSessionAdapter(client).executeShell(sessionId, command);
+}

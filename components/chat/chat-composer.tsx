@@ -1,5 +1,5 @@
 import { withAlpha } from '@/lib/color';
-import { useState } from 'react';
+import { useEffect, useRef, useState, type ComponentProps } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Keyboard, Platform, useWindowDimensions, View } from 'react-native';
 import { Chip, IconButton, Surface, Text } from 'react-native-paper';
@@ -8,6 +8,8 @@ import { Colors } from '@/constants/theme';
 import { TextInput } from '@/components/ui/text-input';
 import { NativeSelect } from '@/components/ui/native-select';
 import { AttachmentStrip } from '@/components/chat/attachment-strip';
+import { ComposerSuggestions } from '@/components/chat/composer-suggestions';
+import type { ComposerSuggestion, ComposerSuggestionGroup } from '@/components/chat/composer-suggestion-types';
 import { ModelPicker } from '@/components/chat/model-picker';
 import { styles, slimStyles } from '@/components/chat/chat-view-styles';
 import { getAutoApproveIcon, getModelVariantLabel } from '@/components/chat/chat-view-utils';
@@ -46,7 +48,15 @@ type ChatComposerProps = {
   visibleModels: ModelOption[];
   updateChatPreferences: (patch: Partial<ChatPreferences>) => void;
   commands: Command[];
-  onCommandSelect: (command: string) => void;
+  isV2: boolean;
+  suggestions: ComposerSuggestionGroup[];
+  suggestionsActive: boolean;
+  suggestionsSearching: boolean;
+  suggestionsError?: string;
+  onSuggestionSelect: (suggestion: ComposerSuggestion) => void;
+  onSelectionChange: (selection: { start: number; end: number }) => void;
+  shellMode: boolean;
+  focusRequest: number;
 };
 
 export function ChatComposer({
@@ -64,7 +74,6 @@ export function ChatComposer({
   isUpdatingAutoApprove,
   autoApproveAvailable = true,
   onAttach,
-  onCommandSelect,
   onDraftChange,
   onRemoveAttachment,
   onSend,
@@ -78,9 +87,22 @@ export function ChatComposer({
   slim = false,
   updateChatPreferences,
   visibleModels,
+  isV2,
+  suggestions,
+  suggestionsActive,
+  suggestionsSearching,
+  suggestionsError,
+  onSuggestionSelect,
+  onSelectionChange,
+  shellMode,
+  focusRequest,
 }: ChatComposerProps) {
   const { t } = useTranslation();
   const { fontScale } = useWindowDimensions();
+  const inputRef = useRef<{ focus: () => void } | null>(null);
+  useEffect(() => {
+    if (focusRequest > 0) inputRef.current?.focus();
+  }, [focusRequest]);
   // iOS grows the native multiline input itself, and Paper's dense container
   // floors that growth at its 40 px minimum, so slim shares the same floor.
   const minInputHeight = slim ? 40 : 44;
@@ -142,13 +164,35 @@ export function ChatComposer({
 
       {attachments.length > 0 ? <AttachmentStrip attachments={attachments} onRemove={onRemoveAttachment} /> : null}
 
-      {draft.startsWith('/') && !draft.includes(' ') && commands.length > 0 ? (
+      {isV2 && suggestionsActive ? (
+        <ComposerSuggestions
+          error={suggestionsError}
+          groups={suggestions}
+          searching={suggestionsSearching}
+          onSelect={onSuggestionSelect}
+        />
+      ) : null}
+
+      {!isV2 && draft.startsWith('/') && !draft.includes(' ') && commands.length > 0 ? (
         <View style={styles.attachmentRow}>
           {commands.filter((command) => command.name.startsWith(draft.slice(1))).slice(0, 6).map((command) => (
-            <Chip key={command.name} compact mode="outlined" onPress={() => onCommandSelect(command.name)}>
+            <Chip
+              key={command.name}
+              compact
+              mode="outlined"
+              onPress={() => {
+                onDraftChange(`/${command.name} `);
+              }}>
               /{command.name}
             </Chip>
           ))}
+        </View>
+      ) : null}
+
+      {isV2 && shellMode ? (
+        <View testID="chat-shell-banner" style={[styles.shellBanner, { backgroundColor: withAlpha(palette.tint, 0x10 / 255), borderColor: withAlpha(palette.tint, 0x28 / 255) }]}>
+          <Text variant="labelLarge" style={{ color: palette.text }}>{t('chat:composer.shellCommand')}</Text>
+          <Text variant="bodySmall" style={{ color: palette.muted }}>{t('chat:composer.shellHint')}</Text>
         </View>
       ) : null}
 
@@ -162,11 +206,13 @@ export function ChatComposer({
 
       <View testID="chat-composer-card" style={[styles.composerCard, slim && { borderRadius: 22 }, { backgroundColor: palette.surfaceAlt }]}>
         <TextInput
+          ref={inputRef as unknown as ComponentProps<typeof TextInput>['ref']}
           testID="chat-prompt-input"
           mode="flat"
           dense
           value={draft}
           onChangeText={onDraftChange}
+          onSelectionChange={({ nativeEvent }) => onSelectionChange(nativeEvent.selection)}
           onContentSizeChange={Platform.OS === 'ios' ? undefined : ({ nativeEvent }) => updateInputHeight(nativeEvent.contentSize.height)}
           editable={!isSpeechInputListening}
           multiline
@@ -248,9 +294,9 @@ export function ChatComposer({
           />
           <IconButton
             testID="chat-primary-button"
-            accessibilityLabel={t(primaryAction === 'voice' ? (conversation.active ? 'chat:header.stopConversationMode' : 'chat:header.startConversationMode') : primaryAction === 'send' ? 'chat:composer.sendTask' : 'chat:composer.stopTask')}
+            accessibilityLabel={t(primaryAction === 'voice' ? (conversation.active ? 'chat:header.stopConversationMode' : 'chat:header.startConversationMode') : primaryAction === 'send' ? (shellMode ? 'chat:composer.runShell' : 'chat:composer.sendTask') : 'chat:composer.stopTask')}
             mode="contained"
-            icon={primaryAction === 'voice' ? 'waveform' : primaryAction === 'send' ? 'arrow-up' : 'stop'}
+            icon={primaryAction === 'voice' ? 'waveform' : primaryAction === 'send' ? (shellMode ? 'console-line' : 'arrow-up') : 'stop'}
             size={22}
             style={styles.composerPrimaryButton}
             containerColor={palette.text}
