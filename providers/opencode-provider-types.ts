@@ -40,6 +40,7 @@ import type { ChatPreferences, ResponseScope } from '@/providers/opencode-prefer
 import type { ServerCapabilities } from '@/providers/opencode-capabilities';
 import type { SharedInput } from '@/providers/use-share-state';
 import type { TerminalRuntime, TerminalStatus } from '@/providers/terminal-types';
+import type { ExtensionCommandDraft, ExtensionScope, ExtensionSkillDraft, ExtensionSkillRow, ExtensionSnapshot } from '@/lib/opencode/extensions/types';
 
 export type { AgentOption, ChatPreferences, ModelOption, ResponseScope, ServerCapabilities };
 export type { ProviderAuthMethod, ProviderAuthPrompt, ProviderAuthValues } from '@/lib/opencode/types';
@@ -436,6 +437,27 @@ export type McpContextValue = {
     complete: (name: string, code: string) => Promise<void>;
     wait: (name: string) => Promise<void>;
     cancel: (name: string) => Promise<void>;
+  };
+};
+
+export type ExtensionsContextValue = {
+  extensions: {
+    snapshot?: ExtensionSnapshot;
+    isRefreshing: boolean;
+    busy?: string;
+    error?: string;
+    refresh: () => Promise<void>;
+    addMcp: (scope: ExtensionScope, name: string, config: McpLocalConfig | McpRemoteConfig) => Promise<void>;
+    updateMcp: (scope: ExtensionScope, name: string, config: McpLocalConfig | McpRemoteConfig) => Promise<void>;
+    removeMcp: (scope: ExtensionScope, name: string) => Promise<void>;
+    addPlugin: (scope: ExtensionScope, target: string) => Promise<void>;
+    removePlugin: (scope: ExtensionScope, target: string) => Promise<void>;
+    saveCommand: (scope: ExtensionScope, draft: ExtensionCommandDraft, previousName?: string) => Promise<void>;
+    removeCommand: (scope: ExtensionScope, name: string) => Promise<void>;
+    createSkill: (scope: ExtensionScope, draft: ExtensionSkillDraft) => Promise<void>;
+    updateSkill: (scope: ExtensionScope, row: ExtensionSkillRow, content: string) => Promise<void>;
+    removeSkill: (scope: ExtensionScope, row: ExtensionSkillRow) => Promise<void>;
+    restoreBackup: (scope: ExtensionScope) => Promise<void>;
   };
 };
 

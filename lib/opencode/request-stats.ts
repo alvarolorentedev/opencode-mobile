@@ -22,9 +22,11 @@ let timeouts = 0;
 let retries = 0;
 let lastStatus: number | undefined;
 let lastDurationMs: number | undefined;
+let snapshot: RequestStats;
 const listeners = new Set<() => void>();
 
 function emit() {
+  snapshot = readRequestStats();
   for (const listener of listeners) listener();
 }
 
@@ -34,7 +36,7 @@ function percentile(fraction: number) {
   return sorted[Math.min(sorted.length - 1, Math.floor(sorted.length * fraction))];
 }
 
-export function getRequestStats(): RequestStats {
+function readRequestStats(): RequestStats {
   return {
     total,
     failed,
@@ -45,6 +47,12 @@ export function getRequestStats(): RequestStats {
     ...(lastStatus === undefined ? {} : { lastStatus }),
     ...(lastDurationMs === undefined ? {} : { lastDurationMs }),
   };
+}
+
+snapshot = readRequestStats();
+
+export function getRequestStats(): RequestStats {
+  return snapshot;
 }
 
 export function recordRequestStart() {

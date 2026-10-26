@@ -84,7 +84,13 @@ Native integration methods expose key/OAuth authentication and optional rich for
 
 `integration.connect.key`, `integration.oauth.connect/complete/status/cancel` and credential activate/remove operations own authentication. OAuth start carries automatic or code mode; automatic completion polls the server's pending/complete/failed/expired attempt state, with a fifteen-minute timeout. Cancellation invalidates in-flight reads and cancels attempts that arrive late. Connection changes reject stale results.
 
-The installed SDK exposes credential mutations but not credential listing. Account discovery therefore reads authenticated `GET /api/credential` through the same transport; 404/405 means no account-list surface. Account views associate labeled credentials with each provider's serving integrations. General config editing is not supported by native config.update and remains gated; connecting a provider refreshes actual server state.
+The installed SDK exposes credential mutations but not credential listing. Account discovery therefore reads authenticated `GET /api/credential` through the same transport; 404/405 means no account-list surface. Account views associate labeled credentials with each provider's serving integrations. Native `config.update` only patches the global `shell` field, so provider changes still use integration operations and a capability refresh; connecting a provider refreshes actual server state.
+
+## Extensions And Config Files
+
+Extension management is V2-only. `config.get` supplies the project and user-global config documents and discovery directories. The app reads raw JSONC with `file.read` for project files and a fixed, path-escaped `cat` shell read for global files, applies minimal JSONC edits, and writes through `file.write`. Durable MCP/plugin/command changes therefore live in the selected `opencode.json(c)` rather than the runtime-only MCP add/remove endpoints.
+
+Every config mutation is transactional: backup, same-directory temp file, byte verification, re-read/concurrent-change check, atomic rename, and a `config.get` poll for the expected key. A failed replace or reload restores the backup. System/MDM config, symlinks, ambiguous global roots, missing shell support, Windows servers, and unreadable/invalid files are read-only. Removed skills move to a hidden `.opencode-mobile-trash` directory. No config validation endpoint exists in V2; validation is local JSONC/shape checking plus the post-write server reload check, and diagnostics that only appear in server logs are not available to the client.
 
 ## Approvals And Forms
 
@@ -102,7 +108,7 @@ Native worktree list/create/remove uses the owning project ID, while the selecte
 
 ## MCP Authentication And Runtime Lifecycle
 
-Native MCP list/add/connect/disconnect operations use the selected location. Runtime additions do not claim to persist general config. Persistent enable/disable remains v1-only.
+Native MCP list/add/connect/disconnect operations use the selected location. Runtime additions remain runtime-only; the Extensions surface writes durable MCP entries to the selected project or user-global config and keeps connect/disconnect/OAuth as runtime controls. Persistent enable/disable is not exposed in the extension editor yet.
 
 OAuth resolves each MCP server's exposed `integrationID`, then reads that integration's methods and invokes native OAuth connect/complete/status/cancel. The relationship is defined by the [upstream MCP implementation](https://github.com/anomalyco/opencode/blob/dev/packages/core/src/mcp/index.ts); it is never inferred from a server name.
 

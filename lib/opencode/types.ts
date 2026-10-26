@@ -117,6 +117,9 @@ export type Skill = {
     id: string;
     name: string;
     description?: string;
+    autoinvoke?: boolean;
+    path?: string;
+    content?: string;
 };
 export type Reference = {
     name: string;

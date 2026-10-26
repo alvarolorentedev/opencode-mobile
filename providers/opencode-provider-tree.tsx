@@ -8,6 +8,7 @@ import {
   ConversationContext,
   CurrentSessionContext,
   DiagnosticsContext,
+  ExtensionsContext,
   McpContext,
   OnboardingContext,
   PreferencesContext,
@@ -48,7 +49,9 @@ export function OpencodeProviderTree({ children, updates, values }: OpencodeProv
                           <ConversationContext.Provider value={values.conversationValue}>
                             <TerminalContext.Provider value={values.terminalValue}>
                               <McpContext.Provider value={values.mcpValue}>
-                                <UpdatesContext.Provider value={updates}>{children}</UpdatesContext.Provider>
+                                <ExtensionsContext.Provider value={values.extensionsValue}>
+                                  <UpdatesContext.Provider value={updates}>{children}</UpdatesContext.Provider>
+                                </ExtensionsContext.Provider>
                               </McpContext.Provider>
                             </TerminalContext.Provider>
                           </ConversationContext.Provider>

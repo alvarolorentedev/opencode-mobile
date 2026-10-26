@@ -85,11 +85,11 @@ test('worktrees and MCP servers can be created', async ({ page, request }) => {
   await page.getByTestId('project-picker').getByRole('button', { name: 'Close', exact: true }).click();
 
   await goToTab(page, 'Settings');
-  await page.getByText('Advanced', { exact: true }).click();
+  await page.getByText('Extensions', { exact: true }).click();
   await page.getByText('Remote', { exact: true }).click();
-  await page.getByTestId('settings-mcp-name').fill('web-tools');
-  await page.getByTestId('settings-mcp-target').fill('https://example.test/mcp');
-  await page.getByTestId('settings-mcp-add').click();
+  await page.getByTestId('settings-extension-mcp-name').fill('web-tools');
+  await page.getByTestId('settings-extension-mcp-target').fill('https://example.test/mcp');
+  await page.getByTestId('settings-extension-mcp-add').click();
   await expect(page.getByText('web-tools', { exact: true })).toBeVisible();
 });
 

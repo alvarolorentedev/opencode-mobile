@@ -491,6 +491,19 @@ Behavior:
 - enables/disables and removes configuration through config updates
 - starts remote OAuth in the browser and submits an authorization code callback
 
+### Extensions Section (V2)
+
+- manages MCPs, plugins, skills, and slash commands for either the active project or the user-global configuration
+- shows the exact config path, writable/read-only safety state, and the last backup path
+- backs up and atomically replaces config files; verifies the temporary bytes and the server-reloaded key; restores the backup on failure
+- disables mutations for system-managed config, symlinks, Windows servers, ambiguous global roots, unreadable/invalid JSONC, and servers without the required shell support
+- adds/removes MCP config entries while retaining runtime connect, disconnect, and OAuth controls
+- adds/removes plugin package or local targets; warns that plugins execute code on the server
+- creates skills under the selected scope, edits local `SKILL.md` content, and moves removed skills to `.opencode-mobile-trash`
+- creates/edits/removes config-backed slash commands; file-backed commands are read-only
+- shows General entries as shared/read-only in Project scope
+- refreshes capabilities, commands, MCP status, and the extension snapshot after a successful change
+
 ### Voice Section
 
 Purpose:

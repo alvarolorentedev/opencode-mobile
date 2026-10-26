@@ -79,6 +79,10 @@ cold static run is ~45s locally; a warm one is ~15s (Vitest is the floor).
 remains available for hook-source tests and is typed by
 `tests/helpers/runtime.d.mts`.
 
+## Extension Management Coverage
+
+`extensions.test.ts` covers global/project config target resolution, JSONC-preserving MCP/plugin/command edits, skill generation, transaction backup/temp verification, rename failure recovery, and backup restoration. `tests/e2e/extensions.spec.mjs` covers project plugin/skill/command creation, MCP/plugin/skill/command removal, command suggestions in the composer, General/Project sharing, and backup restore against the fake V2 server. The fake server now exposes scoped config documents, plugin/skill/command lists, absolute extension file reads/writes, and a fixed-command shell fixture. Any change to `tests/fake-opencode/` or `tests/e2e/` still requires explicit human validation.
+
 ## Audit remediation regressions
 
 `audit-races.test.ts` covers composer revision ownership, explicit failed-input

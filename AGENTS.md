@@ -171,6 +171,7 @@ Changes here require explicit human validation.
 - section and dialog UI: `components/settings/`
 - persisted preferences and reconciliation: `providers/`
 - provider auth and capability requests: `providers/services/capabilities-service.ts` and `lib/opencode/client.ts`
+- extensions (MCP/plugin/skill/command config): `providers/use-extensions-state.ts`, `providers/services/extensions-service.ts`, and `lib/opencode/extensions/`
 - platform deep links and native integration: `lib/`
 
 ### Protocol

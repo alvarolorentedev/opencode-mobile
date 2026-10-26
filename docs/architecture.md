@@ -294,6 +294,16 @@ The completion version, preference schema and first-run migration are unchanged.
   and bounded output delivery live in `lib/opencode/terminal-stream.ts`.
 - `providers/use-mcp-state.ts`
   MCP server status plus its lifecycle actions.
+- `providers/use-extensions-state.ts`
+  Server-scoped extensions domain: scoped snapshots for MCPs, plugins, skills,
+  and commands; serialized mutations; safety preflight; and refresh fan-out.
+- `providers/services/extensions-service.ts`
+  Loads scoped extension inventories and performs backup/verify/rollback config
+  mutations and skill file operations.
+- `lib/opencode/extensions/`
+  Pure extension helpers: config scope and target resolution, JSONC-preserving
+  edits, atomic config transactions, skill file generation, and shell-safe path
+  handling.
 - `providers/use-permission-rules-state.ts`
   V2 saved "always allow" rules: list, refresh, and remove, connection-scoped
   like the rest of the provider state.
@@ -387,6 +397,8 @@ into the right layer and, if needed, lower the number in the same change.
 Native v2 editing uses `vcs.status` and `file.write`. The provider compares the server text with the editor baseline before writing, verifies the saved text afterward, and refreshes file/VCS state. Drafts remain local on failure. The comparison cannot prevent a concurrent edit between the read and write because v2 has no conditional-write API.
 
 MCP OAuth resolves each server's exposed `integrationID`, then uses native integration start/complete/status/cancel operations. The grouped provider interface carries code/automatic mode and form prompts; cleanup cancels attempts and rejects stale connection results. V1 supports only the V2 feature intersection: sharing, archive/restore, title summarization, general config writes, persistent MCP enablement, worktree reset, and LSP/formatter diagnostics are not supported.
+
+Extensions are V2-only. The app does not use the runtime-only MCP add/remove endpoints for durable changes and does not call the shell-only `config.update`. Instead, it resolves the active project config and the user-global config directory from `config.get`, edits the raw JSONC with `jsonc-parser`, and replaces the file through a same-directory temp file and atomic rename. A backup is written first; the temporary and target bytes are verified; `config.get` is polled to confirm the server loaded the expected key; failures restore the backup. Global files are read and moved with fixed, path-validated shell commands because V2 file reads are location-confined and there is no file-delete API. System and managed config, symlinks, Windows atomic replacement, ambiguous global roots, and missing shell support are read-only. Extension snapshots are server-derived and never persisted.
 
 ### Connection Identity And Credentials
 
@@ -811,6 +823,7 @@ Responsibilities:
 - add, edit, and delete named connection profiles, and switch between them from the connection list; switching persists the outgoing profile's model selection, restores the target profile's selection, and reconnects with that profile's credentials
 - inspect server health, realtime status, and MCP counts
 - add local or remote MCP servers; connect, disconnect, enable, disable, and complete remote OAuth
+- manage project or user-global MCPs, plugins, skills, and slash commands in Extensions; show the target config path, safety state, and last backup
 - configure providers
 - remove configured provider credentials
 - choose model enablement defaults

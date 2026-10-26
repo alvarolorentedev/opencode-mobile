@@ -16,6 +16,7 @@ import { usePermissionRulesState } from '@/providers/use-permission-rules-state'
 import { useTranscriptState } from '@/providers/use-transcript-state';
 import { useTranscriptReadErrors } from '@/providers/use-transcript-read-errors';
 import { useMcpState } from '@/providers/use-mcp-state';
+import { useExtensionsState } from '@/providers/use-extensions-state';
 import { useTerminalState } from '@/providers/use-terminal-state';
 import { useWorktreeState } from '@/providers/use-worktree-state';
 import { handleProviderEvent, type ProviderEventActions } from '@/providers/opencode-provider-events';
@@ -207,6 +208,13 @@ export function useOpencodeProviderComposition(input: WorkspaceRuntimeInput) {
   const scheduleChatCapabilitiesRefresh = useCoalescedRefresh(capabilities.refreshChatCapabilities, 250);
   const scheduleServerFeaturesRefresh = useCoalescedRefresh(project.refreshServerFeatures, 250);
   const scheduleProjectCatalogRefresh = useCoalescedRefresh(() => project.refreshProjectCatalog(true), 250);
+  const extensions = useExtensionsState({
+    client,
+    isCurrentClient,
+    refreshChatCapabilities: capabilities.refreshChatCapabilities,
+    refreshServerFeatures: project.refreshServerFeatures,
+    refreshMcpServers: mcp.refreshMcpServers,
+  });
 
   const sessionActions = useSessionActions({
     ...state,
@@ -383,6 +391,7 @@ export function useOpencodeProviderComposition(input: WorkspaceRuntimeInput) {
     ...terminal,
     ...worktree,
     ...mcp,
+    ...extensions,
     ...project,
     ...sessionActions,
     ...capabilities,

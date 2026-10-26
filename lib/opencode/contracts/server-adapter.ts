@@ -1,5 +1,8 @@
-import type { Config, FileContent, FileDiff, McpLocalConfig, McpRemoteConfig, McpStatus, ProviderAuthValues, ProviderCatalog, Pty, Reference, Skill } from '@/lib/opencode/types';
+import type { Command, Config, FileContent, FileDiff, McpLocalConfig, McpRemoteConfig, McpStatus, ProviderAuthValues, ProviderCatalog, Pty, Reference, Skill } from '@/lib/opencode/types';
 import type { ScopedOpencodeClient } from '@/lib/opencode/client';
+import { isInside, shellQuote } from '@/lib/opencode/extensions/scope';
+import type { ConfigEntry, RawPluginInfo, RawSkillInfo } from '@/lib/opencode/extensions/types';
+import type { ShellResult } from '@/lib/opencode/extensions/transaction';
 import { projectEntries, projectWorktrees, type ProjectFileEntry, type ProjectWorktree } from '@/lib/opencode/project';
 import { knownProjectFileKind, projectFileFromBytes, projectFileFromV1Content, projectFileWithoutContent, type ProjectFile } from '@/lib/opencode/project-file';
 import { decodeFile, findIntegration, getProviderAuthMethods, getProviderCatalog, mcpConfigToV2, toAgentView, toConfigView } from '@/lib/opencode/v2/shared';
@@ -30,6 +33,7 @@ export type ServerAdapter = {
   mcp: {
     status: () => Promise<Record<string, McpStatus>>;
     add: (name: string, config: McpLocalConfig | McpRemoteConfig) => Promise<unknown>;
+    remove: (name: string) => Promise<unknown>;
     connect: (name: string) => Promise<unknown>;
     disconnect: (name: string) => Promise<unknown>;
     startOAuth: (name: string) => Promise<{ authorizationUrl: string; instructions?: string; method?: 'auto' | 'code' }>;
@@ -50,6 +54,15 @@ export type ServerAdapter = {
     removeCredentials: (id: string) => Promise<unknown>;
     startAuthorization: (id: string, method: number, values?: ProviderAuthValues) => Promise<{ url: string; instructions?: string; method: 'auto' | 'code' }>;
     completeAuthorization: (id: string, method: number, code: string) => Promise<unknown>;
+  };
+  extensions: {
+    configEntries: () => Promise<ConfigEntry[]>;
+    plugins: () => Promise<RawPluginInfo[]>;
+    skills: () => Promise<RawSkillInfo[]>;
+    commands: () => Promise<Command[]>;
+    readText: (path: string) => Promise<string | undefined>;
+    writeText: (path: string, content: string) => Promise<void>;
+    runShell: (root: string, command: string) => Promise<ShellResult>;
   };
   projects: {
     findFiles: (query: string, includeDirectories?: boolean) => Promise<string[]>;
@@ -91,6 +104,10 @@ export function createServerAdapter(client: ScopedOpencodeClient): ServerAdapter
       if (compatibility) return v1Mcp.addMcpServer(compatibility, name, config);
       await client.api!.mcp.add({ ...location, server: name, config: mcpConfigToV2(config) });
     },
+    remove: (name: string) => {
+      if (compatibility) throw new Error('MCP runtime removal requires OpenCode 2.');
+      return client.api!.mcp.remove({ ...location, server: name });
+    },
     connect: (name: string) => compatibility
       ? v1Mcp.connectMcpServer(compatibility, name)
       : client.api!.mcp.connect({ ...location, server: name }),
@@ -112,6 +129,49 @@ export function createServerAdapter(client: ScopedOpencodeClient): ServerAdapter
     if (value === undefined) throw new Error(`OpenCode returned no ${label}.`);
     return value;
   };
+  const projectDirectory = client.__opencode.directory || '';
+  const extensionAdapter = {
+    configEntries: async () => {
+      if (compatibility) throw new Error('Extensions management requires OpenCode 2.');
+      return (await client.api!.config.get(location)) as ConfigEntry[];
+    },
+    plugins: async () => {
+      if (compatibility) throw new Error('Extensions management requires OpenCode 2.');
+      return (await client.api!.plugin.list(location)).data as RawPluginInfo[];
+    },
+    skills: async () => {
+      if (compatibility) throw new Error('Extensions management requires OpenCode 2.');
+      return (await client.api!.skill.list(location)).data as RawSkillInfo[];
+    },
+    commands: async () => {
+      if (compatibility) throw new Error('Extensions management requires OpenCode 2.');
+      return (await client.api!.command.list(location)).data;
+    },
+    readText: async (path: string) => {
+      if (compatibility) throw new Error('Extensions management requires OpenCode 2.');
+      if (isInside(projectDirectory, path)) {
+        try {
+          const result = await client.api!.file.read({ ...location, path });
+          const file = decodeFile(result);
+          if (file.type !== 'text') throw new Error('The configuration file is not text.');
+          return file.content;
+        } catch (error) {
+          if (isNotFoundError(error)) return undefined;
+          throw error;
+        }
+      }
+      const result = await runShellCommand(client, location, projectDirectory, `cat ${shellQuote(path)}`);
+      if (result.status !== 'exited') throw new Error('The server shell did not finish reading the configuration.');
+      if (result.exit === 0) return result.output;
+      if (result.exit === 1) return undefined;
+      throw new Error('The server could not read the configuration file.');
+    },
+    writeText: async (path: string, content: string) => {
+      if (compatibility) throw new Error('Extensions management requires OpenCode 2.');
+      await client.api!.file.write({ ...location, path, payload: new TextEncoder().encode(content) });
+    },
+    runShell: (root: string, command: string) => runShellCommand(client, location, root, command),
+  };
 
   return {
     terminals: {
@@ -126,6 +186,7 @@ export function createServerAdapter(client: ScopedOpencodeClient): ServerAdapter
         : client.api!.pty.connect.token({ ...location, ptyID }, { headers: { 'x-opencode-ticket': '1' } }).then((result) => result.data as { ticket?: string }),
     },
     mcp,
+    extensions: extensionAdapter,
     capabilities: {
       config: () => compatibility
         ? client.compatibility!.config.get().then((result) => requireData(result.data, 'config'))
@@ -247,4 +308,31 @@ export function createServerAdapter(client: ScopedOpencodeClient): ServerAdapter
       },
     },
   };
+}
+
+function isNotFoundError(error: unknown) {
+  const record = error && typeof error === 'object' ? error as { status?: number; message?: string } : {};
+  return record.status === 404 || Boolean(record.message && /\b404\b/.test(record.message));
+}
+
+async function runShellCommand(
+  client: ScopedOpencodeClient,
+  location: { location: { directory?: string } },
+  root: string,
+  command: string,
+): Promise<ShellResult> {
+  const created = await client.api!.shell.create({ ...location, command, cwd: root, timeout: 15000 });
+  const id = created.data.id;
+  let info = created.data;
+  try {
+    for (let attempt = 0; attempt < 200 && info.status === 'running'; attempt += 1) {
+      await new Promise((resolve) => setTimeout(resolve, 50));
+      info = (await client.api!.shell.get({ ...location, id })).data;
+    }
+    const output = (await client.api!.shell.output({ ...location, id, cursor: 0, limit: 2_000_000 })).data;
+    if (output.truncated) throw new Error('The shell output was too large to read safely.');
+    return { output: output.output, exit: info.exit, status: info.status };
+  } finally {
+    await client.api!.shell.remove({ ...location, id }).catch(() => undefined);
+  }
 }

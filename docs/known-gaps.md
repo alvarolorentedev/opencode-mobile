@@ -202,5 +202,24 @@ gaps; they are internal coordination issues worth fixing before the flows grow.
   step from provider state plus a local override, or move the adjustment into
   an effect with an explicit guard.
 
+## 10. Extension management boundaries
+
+Extensions are V2-only and edit server-side config files because the native API
+has no durable config/plugin/skill/command mutation surface. Consequences:
+
+- global and project config writes require the V2 shell API for safe global
+  reads and atomic replacement; a server without it is read-only
+- Windows servers are read-only until atomic replacement is verified there
+- there is no config validation endpoint; local JSONC/shape checks are followed
+  by a `config.get` reload check, but server-only normalization warnings are not
+  visible to the client
+- the file replace has no conditional-write API; the provider re-reads the
+  target immediately before rename, but a small race remains
+- plugin installs are asynchronous; a valid config entry can still fail to load
+- file-backed commands and system/remote skills are intentionally read-only
+- the clean long-term fix is an upstream scoped config-write/validate endpoint
+  and extension file CRUD; the current transaction and shell fallback should be
+  removed once those exist
+
 Deferred library replacements and extraction candidates are documented in
 [library-extraction.md](library-extraction.md).

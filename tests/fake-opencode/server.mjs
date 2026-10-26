@@ -7,6 +7,7 @@ import { createTerminalFixture } from './terminal.mjs';
 
 import { createSessionHelpers } from './session-helpers.mjs';
 import { createStateStore, getNow, resolveProject, resolveProjectDirectory } from './state.mjs';
+import { configEntries, extensionCommands, extensionPlugins, extensionSkills, readExtensionFile, runFakeShell, shellInfo, writeExtensionFile } from './extensions.mjs';
 
 const port = Number.parseInt(process.env.FAKE_OPENCODE_PORT || '4096', 10);
 const scenarioName = process.env.FAKE_OPENCODE_SCENARIO || 'happy-path';
@@ -498,7 +499,7 @@ const server = http.createServer(async (req, res) => {
     }
 
     if (req.method === 'GET' && pathname === '/api/config') {
-      sendJson(res, 200, [{ type: 'directory', path: state.rootPath }, { type: 'document', info: state.config }]);
+      sendJson(res, 200, configEntries(state, requestUrl.searchParams.get('location[directory]') || state.project.canonical));
       return;
     }
 
@@ -533,13 +534,8 @@ const server = http.createServer(async (req, res) => {
     }
 
     if (req.method === 'GET' && pathname === '/api/skill') {
-      sendJson(res, 200, {
-        location: location(),
-        data: [
-          { id: 'opencode', name: 'opencode', description: 'Use this skill for any question about OpenCode.', autoinvoke: false, path: '/workspace/demo-project/.opencode/skills/opencode/SKILL.md', content: 'OpenCode skill fixture.' },
-          { id: 'report', name: 'report', description: 'Use when the user wants to report an OpenCode issue.', autoinvoke: false, path: '/workspace/demo-project/.opencode/skills/report/SKILL.md', content: 'Report skill fixture.' },
-        ],
-      });
+      const directory = requestUrl.searchParams.get('location[directory]') || state.project.canonical;
+      sendJson(res, 200, { location: location(), data: extensionSkills(state, directory) });
       return;
     }
 
@@ -978,8 +974,54 @@ const server = http.createServer(async (req, res) => {
     }
 
     if (req.method === 'GET' && pathname === '/api/command') {
-      sendJson(res, 200, { location: location(), data: [{ name: 'review', description: 'Review code' }] });
+      const directory = requestUrl.searchParams.get('location[directory]') || state.project.canonical;
+      sendJson(res, 200, { location: location(), data: extensionCommands(state, directory) });
       return;
+    }
+
+    if (req.method === 'GET' && pathname === '/api/plugin') {
+      const directory = requestUrl.searchParams.get('location[directory]') || state.project.canonical;
+      sendJson(res, 200, { location: location(), data: extensionPlugins(state, directory) });
+      return;
+    }
+
+    if (req.method === 'POST' && pathname === '/api/shell') {
+      const directory = requireLocation(requestUrl, res);
+      if (!directory) return;
+      const body = await readJson(req);
+      if (!body?.command) return sendJson(res, 400, { error: 'Shell command is required' });
+      const result = runFakeShell(state, body.cwd || directory, body.command);
+      const info = shellInfo(state, body.cwd || directory, body.command, result);
+      state.shells = state.shells || new Map();
+      state.shells.set(info.id, info);
+      if (/^(mv|rm|cp) /.test(body.command)) {
+        emitV2Event(event('filesystem.changed', { path: body.command }));
+        emitV2Event(event('config.updated', {}));
+        emitV2Event(event('skill.updated', {}));
+        emitV2Event(event('command.updated', {}));
+        emitV2Event(event('plugin.updated', {}));
+      }
+      sendJson(res, 200, { location: location(), data: info });
+      return;
+    }
+
+    const shellMatch = pathname.match(/^\/api\/shell\/([^/]+)(\/output)?$/);
+    if (shellMatch) {
+      const directory = requireLocation(requestUrl, res);
+      if (!directory) return;
+      const info = state.shells?.get(shellMatch[1]);
+      if (!info) return notFound(res);
+      if (req.method === 'GET' && !shellMatch[2]) return sendJson(res, 200, { location: location(), data: info });
+      if (req.method === 'GET' && shellMatch[2]) {
+        return sendJson(res, 200, { location: location(), data: { output: info.output || '', cursor: (info.output || '').length, size: (info.output || '').length, truncated: false } });
+      }
+      if (req.method === 'DELETE') {
+        state.shells.delete(shellMatch[1]);
+        res.writeHead(204, { 'Access-Control-Allow-Origin': '*' });
+        res.end();
+        return;
+      }
+      return notFound(res);
     }
 
     if (req.method === 'GET' && pathname === '/api/mcp') {
@@ -1038,17 +1080,33 @@ const server = http.createServer(async (req, res) => {
     if (req.method === 'POST' && pathname === '/api/experimental/fs/write') {
       const directory = requireLocation(requestUrl, res); if (!directory) return;
       const path = requestUrl.searchParams.get('path'); const files = filesForDirectory(state, directory);
-      if (!files || !path || path.startsWith('/') || path.split('/').includes('..')) return sendJson(res, 400, { error: 'Invalid file path' });
       const chunks = []; for await (const chunk of req) chunks.push(chunk);
-      files[path] = Buffer.concat(chunks).toString('utf8'); state.workspaceTaskCompleted = true;
-      emitV2Event(event('filesystem.changed', { path })); sendJson(res, 200, { location: { directory }, data: { path } }); return;
+      const content = Buffer.concat(chunks).toString('utf8');
+      if (!path || path.split('/').includes('..')) return sendJson(res, 400, { error: 'Invalid file path' });
+      if (path.startsWith('/')) {
+        writeExtensionFile(state, path, content);
+      } else {
+        if (!files) return sendJson(res, 400, { error: 'Invalid file path' });
+        files[path] = content;
+      }
+      state.workspaceTaskCompleted = true;
+      emitV2Event(event('filesystem.changed', { path }));
+      emitV2Event(event('config.updated', {}));
+      sendJson(res, 200, { location: { directory }, data: { path } }); return;
     }
     if (req.method === 'GET' && pathname.startsWith('/api/fs/read/')) {
       const directory = requireLocation(requestUrl, res);
       if (!directory) return;
+      const requestedPath = decodeURIComponent(pathname.slice('/api/fs/read/'.length));
+      if (requestedPath.startsWith('/')) {
+        const content = readExtensionFile(state, requestedPath);
+        if (content === undefined) return notFound(res);
+        res.writeHead(200, { 'Content-Type': 'text/plain; charset=utf-8', 'Access-Control-Allow-Origin': '*' });
+        res.end(content);
+        return;
+      }
       const files = filesForDirectory(state, directory);
       if (!files) { sendJson(res, 400, { error: 'Unknown workspace' }); return; }
-      const requestedPath = decodeURIComponent(pathname.slice('/api/fs/read/'.length));
       if (!(requestedPath in files)) return notFound(res);
       res.writeHead(200, { 'Content-Type': 'text/plain; charset=utf-8', 'Access-Control-Allow-Origin': '*' });
       res.end(files[requestedPath]);

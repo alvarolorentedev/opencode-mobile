@@ -28,6 +28,7 @@ import type {
   ConnectionState,
   DiffScope,
   FavoriteSession,
+  ExtensionsContextValue,
   OpencodeProject,
   ProviderAuthMethod,
   ProviderOption,
@@ -133,5 +134,6 @@ export type ProviderValuesInput = ActionInputs & {
   connectMcpServer: (name: string) => Promise<void>;
   disconnectMcpServer: (name: string) => Promise<void>;
   mcpOAuth: import('./opencode-provider-types').McpContextValue['mcpOAuth'];
+  extensions: ExtensionsContextValue['extensions'];
   sharedInput: SharedInput;
 };

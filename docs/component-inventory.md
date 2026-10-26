@@ -749,6 +749,17 @@ Main relevant props:
 - refresh MCP status when the section opens instead of during every connection bootstrap
 - retain only form, busy, error, and OAuth-code UI state locally
 
+## `components/settings/extensions-section.tsx`
+
+### Responsibility
+
+- render the V2-only Extensions surface with General/Project scope, MCP/plugin/skill/command tabs, shared/read-only rows, and inline add/edit forms
+- show the exact target config path, safety state, and last-backup recovery action
+- delegate every mutation and refresh to `useExtensions()`; never fetch or persist config itself
+- keep only form drafts, selected scope/tab, editing state, and local action feedback
+- reuse the MCP authentication dialog and keep MCP runtime lifecycle actions in the existing MCP domain
+- expose test IDs for the add/remove/edit controls used by the extension flows
+
 ## `components/settings/sections/services-section.tsx`
 
 ### Responsibility

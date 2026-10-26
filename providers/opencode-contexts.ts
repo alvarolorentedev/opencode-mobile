@@ -8,6 +8,7 @@ import type {
   ConversationContextValue,
   CurrentSessionContextValue,
   DiagnosticsContextValue,
+  ExtensionsContextValue,
   McpContextValue,
   OnboardingContextValue,
   PreferencesContextValue,
@@ -36,6 +37,7 @@ export const ApprovalsContext = createContext<ApprovalsContextValue | null>(null
 export const ConversationContext = createContext<ConversationContextValue | null>(null);
 export const TerminalContext = createContext<TerminalContextValue | null>(null);
 export const McpContext = createContext<McpContextValue | null>(null);
+export const ExtensionsContext = createContext<ExtensionsContextValue | null>(null);
 export const UpdatesContext = createContext<UpdatesContextValue | null>(null);
 
 function useDomainValue<T>(context: Context<T | null>, name: string): T {
@@ -60,4 +62,5 @@ export const useApprovals = () => useDomainValue(ApprovalsContext, 'useApprovals
 export const useConversation = () => useDomainValue(ConversationContext, 'useConversation');
 export const useTerminal = () => useDomainValue(TerminalContext, 'useTerminal');
 export const useMcp = () => useDomainValue(McpContext, 'useMcp');
+export const useExtensions = () => useDomainValue(ExtensionsContext, 'useExtensions');
 export const useUpdates = () => useDomainValue(UpdatesContext, 'useUpdates');

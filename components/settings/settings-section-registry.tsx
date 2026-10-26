@@ -7,6 +7,7 @@ import type { MaterialCommunityIcons } from '@expo/vector-icons';
 
 import { ServerApprovals } from '@/components/settings/server-approvals';
 import { McpSection } from '@/components/settings/mcp-section';
+import { ExtensionsSection } from '@/components/settings/extensions-section';
 import { EditorSection } from '@/components/settings/sections/editor-section';
 import { ConnectionSection } from '@/components/settings/sections/connection-section';
 import { CloudLinkSection } from '@/components/settings/sections/cloud-link-section';
@@ -116,6 +117,14 @@ export function buildSettingsSections({
       onPress: () => setOpenSection('ai'),
       render: () => <AiSettingsPanel />,
     },
+    ...(serverCapabilities.contract === 'v2' ? [{
+      id: 'extensions',
+      icon: 'puzzle-outline' as const,
+      title: t('settings:screen.categories.extensions'),
+      summary: t('settings:screen.summaries.extensions'),
+      onPress: () => setOpenSection('extensions'),
+      render: () => <ExtensionsSection />,
+    }] : []),
     ...(connectSetup.enabled && connectSetup.storeInstall ? [{
       id: 'cloud-link',
       icon: 'cloud-outline' as const,
@@ -160,8 +169,10 @@ export function buildSettingsSections({
       onPress: () => setOpenSection('advanced'),
       render: () => (
         <>
-          <View style={{ flexDirection: 'row', gap: 8 }}><Button mode={advancedTab === 'mcp' ? 'contained-tonal' : 'text'} onPress={() => setAdvancedTab('mcp')}>MCP</Button><Button mode={advancedTab === 'diagnostics' ? 'contained-tonal' : 'text'} onPress={() => setAdvancedTab('diagnostics')}>{t('settings:diagnostics.title')}</Button></View>
-          {advancedTab === 'mcp' ? <>
+          {serverCapabilities.contract === 'v2'
+            ? <Button mode="contained-tonal" onPress={() => setAdvancedTab('diagnostics')}>{t('settings:diagnostics.title')}</Button>
+            : <View style={{ flexDirection: 'row', gap: 8 }}><Button mode={advancedTab === 'mcp' ? 'contained-tonal' : 'text'} onPress={() => setAdvancedTab('mcp')}>MCP</Button><Button mode={advancedTab === 'diagnostics' ? 'contained-tonal' : 'text'} onPress={() => setAdvancedTab('diagnostics')}>{t('settings:diagnostics.title')}</Button></View>}
+          {serverCapabilities.contract !== 'v2' && advancedTab === 'mcp' ? <>
           <McpSection configs={currentConfig?.mcp} mcpStatuses={mcp.mcpStatuses} onAdd={mcp.addMcpServer} onConnect={mcp.connectMcpServer} onDisconnect={mcp.disconnectMcpServer} onRefresh={mcp.refreshMcpServers} mcpOAuth={mcp.mcpOAuth} requiresIntegrationId={serverCapabilities.mcpIntegrationId} oauthAvailable={serverCapabilities.mcpOAuth} palette={palette} />
           </> : <>
           <DiagnosticsSection diagnostics={diagnosticsData.diagnostics} eventStreamStatus={diagnosticsData.eventStreamStatus} transport={diagnosticsData.transport} lastJsError={lastJsError} onRefresh={() => { void diagnosticsData.refreshDiagnostics(); refreshLastJsError(); }} palette={palette} />

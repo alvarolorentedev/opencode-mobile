@@ -37,6 +37,7 @@ describe('ANR regression checks', () => {
     });
     const adapter = await load('lib/opencode/contracts/server-adapter.ts', {
       '@/lib/error-message': { getErrorMessage: (error: unknown) => String(error) },
+      '@/lib/opencode/extensions/scope': { isInside: () => true, shellQuote: (value: string) => `'${value}'` },
       '@/lib/opencode/v2/shared': {},
       '@/lib/opencode/project': {},
       '@/lib/opencode/project-file': {},

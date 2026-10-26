@@ -25,12 +25,12 @@ for (const scenario of ['happy-path', 'permission', 'question', 'stream-disconne
 for (const mode of ['auto', 'code']) {
   test(`v2 MCP OAuth completes through ${mode} authorization`, async ({ page, request }) => {
     await resetScenario(request, 'happy-path'); await openReadyChat(page);
-    await goToTab(page, 'Settings'); await page.getByText('Advanced', { exact: true }).click();
+    await goToTab(page, 'Settings'); await page.getByText('Extensions', { exact: true }).click();
     await page.getByText('Remote', { exact: true }).click();
     const name = `tools-${mode}`;
-    await page.getByTestId('settings-mcp-name').fill(name);
-    await page.getByTestId('settings-mcp-target').fill('https://tools.test/mcp');
-    await page.getByTestId('settings-mcp-add').click();
+    await page.getByTestId('settings-extension-mcp-name').fill(name);
+    await page.getByTestId('settings-extension-mcp-target').fill('https://tools.test/mcp');
+    await page.getByTestId('settings-extension-mcp-add').click();
     await expect(page.getByText(name, { exact: true })).toBeVisible();
     await page.getByRole('button', { name: 'OAuth', exact: true }).click();
     await page.getByTestId('settings-provider-save-button').click();

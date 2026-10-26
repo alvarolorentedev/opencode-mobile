@@ -23,6 +23,7 @@ import type {
   DiagnosticsContextValue,
   DiffScope,
   DiffTurn,
+  ExtensionsContextValue,
   McpContextValue,
   OnboardingContextValue,
   PreferencesContextValue,
@@ -172,6 +173,7 @@ export function useOpencodeProviderValues(input: ProviderValuesInput) {
     connectMcpServer,
     disconnectMcpServer,
     mcpOAuth,
+    extensions,
     serverContract,
     sharedInput,
     servicesValue,
@@ -363,6 +365,11 @@ export function useOpencodeProviderValues(input: ProviderValuesInput) {
     [mcpStatuses, refreshMcpServers, addMcpServer, connectMcpServer, disconnectMcpServer, mcpOAuth],
   );
 
+  const extensionsValue = useMemo<ExtensionsContextValue>(
+    () => ({ extensions }),
+    [extensions],
+  );
+
   return useMemo(() => ({
     onboardingValue,
     connectionValue,
@@ -378,6 +385,7 @@ export function useOpencodeProviderValues(input: ProviderValuesInput) {
     conversationValue,
     terminalValue,
     mcpValue,
+    extensionsValue,
   }), [onboardingValue, connectionValue, diagnosticsValue, capabilitiesValue, preferencesValue, projectsValue,
-    projectFilesValue, currentSessionValue, sessionLibraryValue, chatValue, approvalsValue, conversationValue, terminalValue, mcpValue]);
+    projectFilesValue, currentSessionValue, sessionLibraryValue, chatValue, approvalsValue, conversationValue, terminalValue, mcpValue, extensionsValue]);
 }

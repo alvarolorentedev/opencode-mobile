@@ -1,5 +1,7 @@
 import { Buffer } from 'node:buffer';
 
+import { createExtensionState } from './extensions.mjs';
+
 const now = () => Date.now();
 
 export function getNow() {
@@ -59,7 +61,7 @@ export function createState(scenario) {
     canonical: '/workspace/secondary-project',
   };
 
-  return {
+  const state = {
     scenario,
     rootPath,
     project,
@@ -115,6 +117,8 @@ export function createState(scenario) {
       'src/feature.ts': 'export function feature() {\n  return true;\n}\n',
     },
   };
+  state.extensions = createExtensionState(state);
+  return state;
 }
 
 export function createStateStore(initialScenario) {
