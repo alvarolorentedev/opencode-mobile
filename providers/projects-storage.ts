@@ -1,3 +1,5 @@
+import { z } from 'zod';
+
 import type { ProjectPathsByConnection } from '@/providers/opencode-provider-types';
 
 // A project is a directory the user opened on this device + connection. The
@@ -7,13 +9,7 @@ import type { ProjectPathsByConnection } from '@/providers/opencode-provider-typ
 // so a hand-edited or corrupt value can never hydrate an unbounded list.
 export const PROJECTS_MAX = 50;
 
-function toProjectPath(value: unknown): string | undefined {
-  if (typeof value !== 'string') {
-    return undefined;
-  }
-  const path = value.trim();
-  return path.length > 0 ? path : undefined;
-}
+const ProjectPathsSchema = z.record(z.string(), z.unknown());
 
 function normalizeEntries(paths: unknown): string[] {
   if (!Array.isArray(paths)) {
@@ -22,7 +18,10 @@ function normalizeEntries(paths: unknown): string[] {
   const seen = new Set<string>();
   const result: string[] = [];
   for (const value of paths) {
-    const path = toProjectPath(value);
+    if (typeof value !== 'string') {
+      continue;
+    }
+    const path = value.trim();
     if (!path || seen.has(path)) {
       continue;
     }
@@ -36,10 +35,7 @@ function normalizeEntries(paths: unknown): string[] {
 }
 
 export function parseProjectPathsByConnection(raw: string): ProjectPathsByConnection {
-  const value: unknown = JSON.parse(raw);
-  if (typeof value !== 'object' || value === null || Array.isArray(value)) {
-    throw new Error('Expected opened projects keyed by connection.');
-  }
+  const value = ProjectPathsSchema.parse(JSON.parse(raw));
   const result: ProjectPathsByConnection = {};
   for (const [scope, paths] of Object.entries(value)) {
     if (!scope.trim()) {

@@ -1,4 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { z } from 'zod';
 
 import type { SessionMessageRecord } from '@/lib/opencode/format';
 import { transcriptCacheKey } from '@/lib/storage-keys';
@@ -11,24 +12,22 @@ const MAX_CHARS = 200_000;
 type TranscriptCacheStorage = PersistenceStorage & Pick<typeof AsyncStorage, 'setItem'>;
 type Envelope = { cachedAt: number; records: SessionMessageRecord[] };
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null && !Array.isArray(value);
-}
-
-function validMessage(value: unknown): value is SessionMessageRecord {
-  if (!isRecord(value) || !isRecord(value.info)) return false;
-  if (typeof value.info.id !== 'string' || value.info.id.length === 0) return false;
-  if (value.info.role !== 'user' && value.info.role !== 'assistant') return false;
-  return Array.isArray(value.parts) && value.parts.every(isRecord);
-}
+const CachedMessageSchema = z.object({
+  info: z.object({
+    id: z.string().min(1),
+    role: z.enum(['user', 'assistant']),
+  }).passthrough(),
+  parts: z.array(z.record(z.string(), z.unknown())),
+}).passthrough();
+const TranscriptEnvelopeSchema = z.object({
+  cachedAt: z.number().finite(),
+  records: z.array(CachedMessageSchema),
+});
 
 function parseEnvelope(raw: string): SessionMessageRecord[] {
-  const value: unknown = JSON.parse(raw);
-  if (!isRecord(value)) throw new Error('Expected a transcript cache envelope.');
-  if (typeof value.cachedAt !== 'number' || !Number.isFinite(value.cachedAt)) throw new Error('Expected a cache timestamp.');
+  const value = TranscriptEnvelopeSchema.parse(JSON.parse(raw));
   if (Date.now() - value.cachedAt > CACHE_TTL_MS) throw new Error('Transcript cache expired.');
-  if (!Array.isArray(value.records) || !value.records.every(validMessage)) throw new Error('Expected cached transcript records.');
-  return value.records;
+  return value.records as SessionMessageRecord[];
 }
 
 function bounded(records: SessionMessageRecord[]) {

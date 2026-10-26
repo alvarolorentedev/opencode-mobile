@@ -58,11 +58,14 @@ describe('connection profiles', () => {
     `)}`;
 
     const base64Uri = `data:text/javascript,${encodeURIComponent(
-      `import base64 from ${JSON.stringify(pathToFileURL(path.join(root, 'node_modules/base-64/base64.js')).href)}; export const encode = base64.encode;`,
+      `import { base64 } from ${JSON.stringify(pathToFileURL(path.join(root, 'node_modules/@scure/base/lib/index.js')).href)}; export { base64 };`,
+    )}`;
+    const zodUri = `data:text/javascript,${encodeURIComponent(
+      `import { z } from ${JSON.stringify(pathToFileURL(path.join(root, 'node_modules/zod/index.cjs')).href)}; export { z };`,
     )}`;
 
     const connectionScopeUri = await transpileToDataUri('lib/connection-scope.ts', [
-      [/from 'base-64'/g, `from "${base64Uri}"`],
+      [/from '@scure\/base'/g, `from "${base64Uri}"`],
     ]);
     const storageKeysUri = await transpileToDataUri('lib/storage-keys.ts');
     g.__profilesTestConnectConfig = { extra: { connectPilot: { enabled: true, controlPlanes: ['https://api.opencodecloud.link'] } } };
@@ -108,6 +111,7 @@ describe('connection profiles', () => {
       [/from '@\/lib\/connection-headers'/g, `from "${connectionHeadersStubUri}"`],
       [/from '@\/lib\/connection-scope'/g, `from "${connectionScopeUri}"`],
       [/from '@\/lib\/storage-keys'/g, `from "${storageKeysUri}"`],
+      [/from 'zod'/g, `from "${zodUri}"`],
     ]);
 
     const asyncStorage = (await import(asyncStorageStubUri)).default;

@@ -1,3 +1,4 @@
+import { base64 } from '@scure/base';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { isContractMismatchError } from '@/lib/opencode/client/errors';
 import { fetchConnection } from '@/lib/opencode/client/fetch';
@@ -57,7 +58,7 @@ describe('connection setup probe', () => {
 describe('local pairing', () => {
   it('preserves Cloudflare startup errors before SDK parsing, while auth denials and manual transport stay actionable', async () => {
     const transport = await loadTs('lib/opencode/client/fetch.ts', {
-      './read-deadline': readDeadline, 'base-64': {}, 'expo/fetch': { fetch: async () => response },
+      './read-deadline': readDeadline, '@scure/base': { base64 }, 'expo/fetch': { fetch: async () => response },
       '../data-usage': { recordBytes: () => {}, recordRequest: () => {} },
       '../request-stats': { recordRequestStart: () => () => {} },
       './request-policy': { getRequestTimeout: () => 30_000, shouldRetryRead: () => false },
@@ -78,7 +79,7 @@ describe('local pairing', () => {
     const manualFetch = vi.fn(async () => json({}));
     const nativeFetch = vi.fn(async () => json({}));
     const transport = await loadTs('lib/opencode/client/fetch.ts', {
-      './read-deadline': readDeadline, 'base-64': {}, 'expo/fetch': { fetch: nativeFetch },
+      './read-deadline': readDeadline, '@scure/base': { base64 }, 'expo/fetch': { fetch: nativeFetch },
       '../data-usage': { recordBytes: () => {}, recordRequest: () => {} },
       '../request-stats': { recordRequestStart: () => () => {} },
       './request-policy': { getRequestTimeout: () => 30_000, shouldRetryRead: () => false },

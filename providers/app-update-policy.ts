@@ -1,3 +1,5 @@
+import { z } from 'zod';
+
 import type { UpdateSnapshot } from '@/lib/app-updates';
 
 export const UPDATE_DISMISS_INTERVAL = 7 * 24 * 60 * 60 * 1000;
@@ -16,17 +18,20 @@ export type UpdatePreferences = {
   dismissal?: { version: string; phase: 'available' | 'downloaded'; until: number };
 };
 
+const UpdateDismissalSchema = z.object({
+  version: z.string().min(1),
+  phase: z.enum(['available', 'downloaded']),
+  until: z.number().finite().nonnegative(),
+});
+const UpdatePreferencesSchema = z.object({
+  lastCheckAt: z.number().finite().nonnegative(),
+  enabled: z.boolean().default(true),
+  checkPeriod: z.enum(UPDATE_CHECK_PERIODS).default(DEFAULT_UPDATE_CHECK_PERIOD),
+  dismissal: UpdateDismissalSchema.nullish().transform((value) => value ?? undefined),
+});
+
 export function parseUpdatePreferences(raw: string): UpdatePreferences {
-  const value = JSON.parse(raw);
-  if (!value || typeof value !== 'object' || !Number.isFinite(value.lastCheckAt) || value.lastCheckAt < 0) throw new Error('Invalid update preferences');
-  const enabled = value.enabled === undefined ? true : value.enabled;
-  if (typeof enabled !== 'boolean') throw new Error('Invalid update enabled');
-  const checkPeriod = value.checkPeriod === undefined ? DEFAULT_UPDATE_CHECK_PERIOD : value.checkPeriod;
-  if (!UPDATE_CHECK_PERIODS.includes(checkPeriod)) throw new Error('Invalid update check period');
-  const { dismissal } = value;
-  if (dismissal && (typeof dismissal.version !== 'string' || !dismissal.version ||
-    !['available', 'downloaded'].includes(dismissal.phase) || !Number.isFinite(dismissal.until) || dismissal.until < 0)) throw new Error('Invalid update dismissal');
-  return { lastCheckAt: value.lastCheckAt, enabled, checkPeriod, ...(dismissal ? { dismissal } : {}) };
+  return UpdatePreferencesSchema.parse(JSON.parse(raw));
 }
 
 export function updateCheckDue(lastCheckAt: number, now: number, interval: number) {

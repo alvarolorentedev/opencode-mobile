@@ -1,3 +1,5 @@
+import { z } from 'zod';
+
 import { FAVORITE_SESSIONS_MAX, type FavoriteSession } from '@/providers/opencode-provider-types';
 
 // Maps one persisted entry to the explicit favorite model, dropping unknown
@@ -8,43 +10,25 @@ import { FAVORITE_SESSIONS_MAX, type FavoriteSession } from '@/providers/opencod
 // `connectionScope` is required: favorites written before multi-server support
 // have no way to say which server their session belongs to, so they are
 // dropped rather than guessed.
+const FavoriteSessionSchema = z.object({
+  sessionId: z.string().refine((value) => value.trim().length > 0),
+  connectionScope: z.string().refine((value) => value.trim().length > 0).transform((value) => value.trim()),
+  projectPath: z.string().refine((value) => value.trim().length > 0),
+  title: z.string().optional().transform((value) => value?.trim() || undefined),
+  favoritedAt: z.number().finite(),
+});
+
 function toFavoriteEntry(value: unknown): FavoriteSession | undefined {
-  if (typeof value !== 'object' || value === null || Array.isArray(value)) {
-    return undefined;
-  }
-  const { sessionId, connectionScope, projectPath, title, favoritedAt } = value as Record<string, unknown>;
-  if (typeof sessionId !== 'string' || sessionId.trim().length === 0) {
-    return undefined;
-  }
-  if (typeof connectionScope !== 'string' || connectionScope.trim().length === 0) {
-    return undefined;
-  }
-  if (typeof projectPath !== 'string' || projectPath.trim().length === 0) {
-    return undefined;
-  }
-  if (typeof favoritedAt !== 'number' || !Number.isFinite(favoritedAt)) {
-    return undefined;
-  }
-  if (title !== undefined && typeof title !== 'string') {
-    return undefined;
-  }
-  const trimmedTitle = typeof title === 'string' ? title.trim() : '';
-  return {
-    sessionId,
-    connectionScope: connectionScope.trim(),
-    projectPath,
-    ...(trimmedTitle ? { title: trimmedTitle } : {}),
-    favoritedAt,
-  };
+  const parsed = FavoriteSessionSchema.safeParse(value);
+  if (!parsed.success) return undefined;
+  const { title, ...entry } = parsed.data;
+  return { ...entry, ...(title ? { title } : {}) };
 }
 
 // The maximum is enforced on hydration too, so a hand-edited or corrupt value
 // can never hydrate an unbounded list.
 export function parseFavoriteSessions(raw: string): FavoriteSession[] {
-  const value: unknown = JSON.parse(raw);
-  if (!Array.isArray(value)) {
-    throw new Error('Expected a list of favorite sessions.');
-  }
+  const value = z.array(z.unknown()).parse(JSON.parse(raw));
   return value
     .map(toFavoriteEntry)
     .filter((entry): entry is FavoriteSession => entry !== undefined)

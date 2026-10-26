@@ -55,9 +55,9 @@ Builds:
 MaintainerNotes: |-
   Expo generates android/ during prebuild, so subdir cannot be used: F-Droid
   checks it exists before init. Gradle runs from android/app after generation.
-  The FOSS preparation script excludes Play Billing and ML Kit, replaces
-  Firebase Messaging with the template's pinned firebase-stub source library,
-  and removes install-referrer.
+  The FOSS preparation script excludes Play Billing, Play Review and ML Kit,
+  replaces Firebase Messaging with the template's pinned firebase-stub source
+  library, and removes install-referrer.
   Reproducible builds are not enabled: upstream uses JDK 17 and Expo prebuilts,
   while F-Droid uses JDK 21 and builds Expo modules from source. Byte-identical
   APKs have not been verified.

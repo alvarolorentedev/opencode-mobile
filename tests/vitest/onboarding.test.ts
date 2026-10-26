@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 import ts from 'typescript';
 import { describe, it } from 'vitest';
 
@@ -24,10 +24,14 @@ describe('onboarding state', () => {
     const storageKeysUri = `data:text/javascript,${encodeURIComponent(
       transpile(await readFile(path.join(root, 'lib/storage-keys.ts'), 'utf8')),
     )}`;
+    const zodUri = `data:text/javascript,${encodeURIComponent(
+      `import { z } from ${JSON.stringify(pathToFileURL(path.join(root, 'node_modules/zod/index.cjs')).href)}; export { z };`,
+    )}`;
 
     const onboardingStateUri = `data:text/javascript,${encodeURIComponent(
       transpile(await readFile(path.join(root, 'providers/onboarding-state.ts'), 'utf8'))
-        .replace(/from ['"]@\/lib\/storage-keys['"]/g, `from ${JSON.stringify(storageKeysUri)}`),
+        .replace(/from ['"]@\/lib\/storage-keys['"]/g, `from ${JSON.stringify(storageKeysUri)}`)
+        .replace(/from 'zod'/g, `from ${JSON.stringify(zodUri)}`),
     )}`;
 
     const {

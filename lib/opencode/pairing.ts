@@ -1,4 +1,4 @@
-import { decode as decodeBase64 } from 'base-64';
+import { base64 } from '@scure/base';
 
 import { fetchConnection } from './client/fetch';
 import { probeConnection } from './client/probe';
@@ -43,8 +43,9 @@ export function parseLocalPairing(value: string): LocalPairing {
       } else if (url.pathname.endsWith('/connect')) {
         const data = url.hash.slice(1) || url.searchParams.get('data');
         if (!data) throw new Error();
-        const bytes: string = decodeBase64(decodeURIComponent(data).replace(/-/g, '+').replace(/_/g, '/'));
-        const secret = credentials(JSON.parse(decodeURIComponent(Array.from(bytes, (byte) => `%${byte.charCodeAt(0).toString(16).padStart(2, '0')}`).join(''))));
+        const normalized = decodeURIComponent(data).replace(/-/g, '+').replace(/_/g, '/');
+        const padded = normalized.padEnd(Math.ceil(normalized.length / 4) * 4, '=');
+        const secret = credentials(JSON.parse(new TextDecoder().decode(base64.decode(padded))));
         if (!secret) throw new Error();
         payload = { urls: [`${url.origin}${url.pathname.slice(0, -8)}`], username: 'opencode', ...secret };
       } else throw new Error();

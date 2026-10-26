@@ -1,3 +1,5 @@
+import { z } from 'zod';
+
 import {
   ACTIVE_PROJECT_STORAGE_KEY,
   CONNECTION_PROFILES_STORAGE_KEY,
@@ -27,6 +29,11 @@ export const ONBOARDING_VERSION_IN_PROGRESS = 0;
  * Both a bare number and a `{ version }` envelope are accepted so the marker
  * can gain fields later without breaking older clients.
  */
+const OnboardingVersionSchema = z.union([
+  z.number().finite().nonnegative(),
+  z.object({ version: z.number().finite().nonnegative() }),
+]).transform((value) => Math.floor(typeof value === 'number' ? value : value.version));
+
 export function parseOnboardingVersion(raw: string): number {
   let parsed: unknown;
   try {
@@ -35,15 +42,9 @@ export function parseOnboardingVersion(raw: string): number {
     throw new Error('Malformed onboarding version.');
   }
 
-  const value = typeof parsed === 'object' && parsed !== null && !Array.isArray(parsed)
-    ? (parsed as { version?: unknown }).version
-    : parsed;
-
-  if (typeof value !== 'number' || !Number.isFinite(value) || value < 0) {
-    throw new Error('Invalid onboarding version.');
-  }
-
-  return Math.floor(value);
+  const result = OnboardingVersionSchema.safeParse(parsed);
+  if (!result.success) throw new Error('Invalid onboarding version.');
+  return result.data;
 }
 
 export function serializeOnboardingVersion(version: number) {

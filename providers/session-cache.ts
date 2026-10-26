@@ -1,4 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { z } from 'zod';
 
 import type { Session, SessionStatus } from '@/lib/opencode/types';
 import { sessionsCacheKey, sessionStatusesCacheKey } from '@/lib/storage-keys';
@@ -39,51 +40,36 @@ export const SESSION_CACHE_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 type CachedSessionsEnvelope = { cachedAt: number; sessions: CachedSession[] };
 type CachedStatusesEnvelope = { cachedAt: number; statuses: Record<string, CachedSessionStatus> };
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null && !Array.isArray(value);
-}
-
-function isValidCachedSession(value: unknown): value is CachedSession {
-  if (!isRecord(value)) return false;
-  if (typeof value.id !== 'string' || value.id.length === 0) return false;
-  if (typeof value.title !== 'string') return false;
-  if (typeof value.createdAt !== 'number' || !Number.isFinite(value.createdAt)) return false;
-  if (typeof value.updatedAt !== 'number' || !Number.isFinite(value.updatedAt)) return false;
-  if (value.parentID !== undefined && typeof value.parentID !== 'string') return false;
-  return true;
-}
-
-function isValidCachedStatus(value: unknown): value is CachedSessionStatus {
-  return isRecord(value) && (value.type === 'idle' || value.type === 'busy' || value.type === 'retry');
-}
+const CachedSessionSchema = z.object({
+  id: z.string().min(1),
+  title: z.string(),
+  createdAt: z.number().finite(),
+  updatedAt: z.number().finite(),
+  parentID: z.string().optional(),
+});
+const CachedStatusSchema = z.object({ type: z.enum(['idle', 'busy', 'retry']) });
+const CachedSessionsEnvelopeSchema = z.object({
+  cachedAt: z.number().finite(),
+  sessions: z.array(CachedSessionSchema),
+});
+const CachedStatusesEnvelopeSchema = z.object({
+  cachedAt: z.number().finite(),
+  statuses: z.record(z.string(), CachedStatusSchema),
+});
 
 // Expired, legacy (pre-envelope), and future-shaped payloads all fail here,
 // which makes loadPersistedValue remove the key. Dropping a regenerable cache
 // is the safe fallback: the next confirmed fetch republishes it.
 function parseCachedSessions(raw: string): CachedSession[] {
-  const value: unknown = JSON.parse(raw);
-  if (!isRecord(value)) throw new Error('Expected a session cache envelope.');
-  const cachedAt = value.cachedAt;
-  if (typeof cachedAt !== 'number' || !Number.isFinite(cachedAt)) throw new Error('Expected a cache timestamp.');
-  if (Date.now() - cachedAt > SESSION_CACHE_TTL_MS) throw new Error('Session cache expired.');
-  const sessions = value.sessions;
-  if (!Array.isArray(sessions) || !sessions.every(isValidCachedSession)) {
-    throw new Error('Expected a list of cached sessions.');
-  }
-  return sessions;
+  const value = CachedSessionsEnvelopeSchema.parse(JSON.parse(raw));
+  if (Date.now() - value.cachedAt > SESSION_CACHE_TTL_MS) throw new Error('Session cache expired.');
+  return value.sessions;
 }
 
 function parseCachedStatuses(raw: string): Record<string, CachedSessionStatus> {
-  const value: unknown = JSON.parse(raw);
-  if (!isRecord(value)) throw new Error('Expected a session status cache envelope.');
-  const cachedAt = value.cachedAt;
-  if (typeof cachedAt !== 'number' || !Number.isFinite(cachedAt)) throw new Error('Expected a cache timestamp.');
-  if (Date.now() - cachedAt > SESSION_CACHE_TTL_MS) throw new Error('Session status cache expired.');
-  const statuses = value.statuses;
-  if (!isRecord(statuses) || !Object.values(statuses).every(isValidCachedStatus)) {
-    throw new Error('Expected a session status map.');
-  }
-  return statuses as Record<string, CachedSessionStatus>;
+  const value = CachedStatusesEnvelopeSchema.parse(JSON.parse(raw));
+  if (Date.now() - value.cachedAt > SESSION_CACHE_TTL_MS) throw new Error('Session status cache expired.');
+  return value.statuses;
 }
 
 export function toCachedSession(session: Session): CachedSession {

@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
-import { Buffer } from 'node:buffer';
+import { base64 } from '@scure/base';
+import { z } from 'zod';
 import { loadTs, hookRuntime, deferred, type Deferred } from '../helpers/runtime.mjs';
 import { describe, it } from 'vitest';
 
@@ -41,7 +42,7 @@ async function fixture({ expired = false, missing = false, storedSession = true,
     } },
   }, globals);
   const keys = await loadTs('lib/storage-keys.ts');
-  const scope = await loadTs('lib/connection-scope.ts', { 'base-64': { encode: (value: string) => Buffer.from(value, 'binary').toString('base64') } });
+  const scope = await loadTs('lib/connection-scope.ts', { '@scure/base': { base64 } });
   const profiles = await loadTs('lib/connection-profiles.ts', {
     '@/providers/workspace-storage': { WORKSPACES_STORAGE_KEY: 'opencode-mobile.workspaces', parseWorkspaces: JSON.parse },
     '@react-native-async-storage/async-storage': { __esModule: true, default: asyncStorage }, 'expo-secure-store': secureStore,
@@ -50,6 +51,7 @@ async function fixture({ expired = false, missing = false, storedSession = true,
     '@/lib/connection-password': { getConnectionPassword: async () => '' }, '@/lib/storage-keys': keys,
     '@/lib/connection-headers': { getProfileHeaders: async () => ({}), getConnectionHeaders: async () => ({}) },
     '@/lib/opencode/client/url': await loadTs('lib/opencode/client/url.ts', { './types': { defaultConnectionSettings: { serverUrl: 'http://localhost' } } }),
+    zod: { z },
   }, globals);
   const profile = await profiles.saveConnectProfile(CP, claim);
   if (missing) await profiles.deleteProfilePassword(profile.id);

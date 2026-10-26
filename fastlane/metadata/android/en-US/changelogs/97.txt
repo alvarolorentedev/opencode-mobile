@@ -1,0 +1,4 @@
+- Conversation mode now waits for a configurable wake phrase ("hey code" by default), with an armed phase and a haptic cue on detection.
+- Tool activity runs no longer open and close on their own; expansion is yours and sticks.
+- The terminal fills the host width in landscape, and settings sliders are now native controls.
+- Rating the app uses the native in-app review flow on Android and iOS; F-Droid builds stay review-free.

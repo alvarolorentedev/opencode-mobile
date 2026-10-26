@@ -684,10 +684,11 @@ Responsibility:
 
 Responsibility:
 
-- open the Play Store listing to rate the app, but only when a Play Store build exists (`hasPlayStoreRating()`: Android and not the foss variant)
+- open the native App Store/Play review flow through `expo-store-review` when `canRateApp()` allows it (iOS, or Android outside the foss variant)
+- fall back to the Play Store listing only when Android reports that no native review action is available
 - open the GitHub issue tracker for improvement feedback
 - open the `getopencode.app/support/` page in the browser
-- hold only URL constants/opening in `lib/support.ts`; no provider state
+- hold only URL constants, availability checks, and opening in `lib/support.ts`; no provider state
 
 ## `components/settings/provider-config-dialog.tsx`
 
@@ -1020,7 +1021,15 @@ Compact control labels scale up to 1.5× (tab-bar labels 1.3×) to keep fixed ch
 
 ## `components/ui/numeric-slider.tsx`
 
-The existing Settings numeric slider is shared with the model picker. It owns measured track width only; callers own the value and updates. It supports a 44px pointer target, discrete steps, Home/End/arrow keys on web, and increment/decrement accessibility actions on native. Settings voice/volume/font controls retain their existing ranges and provider callbacks.
+The Settings numeric slider is shared with the model picker and is backed by
+`@react-native-community/slider` (Expo SDK 57 bundled version). Callers own the
+value and updates; the component owns the label/value header and maps the app
+palette to the native track and thumb colors. The package supplies the native
+interaction and adjustable accessibility semantics. Because its web build does
+not expose range semantics or arrow keys, the wrapper forwards
+`aria-valuemin/max/now/text` and the previous keyboard stepping behavior.
+Settings voice/volume/font controls retain their existing ranges and provider
+callbacks.
 
 The composer microphone starts direct speech-to-text dictation into the draft, preserving existing text and never submitting automatically. Empty drafts show the waveform action for conversation mode; text or attachments switch it to Send. Running tasks retain Stop. The top bar has no duplicate voice-chat action; conversation overlay and Back-stop handling remain in the existing header shell.
 

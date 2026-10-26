@@ -1,4 +1,4 @@
-import { decode } from 'base-64';
+import { base64 } from '@scure/base';
 import { Platform } from 'react-native';
 import { fetch as expoFetch } from 'expo/fetch';
 
@@ -27,9 +27,8 @@ export function dataUrlBytes(uri: string) {
   const match = uri.match(/^data:([^,]*),([\s\S]*)$/i);
   if (!match) throw new Error('Invalid attachment data.');
   const encoded = assertDataUrlSize(match[1], match[2]);
-  const body: string | undefined = /;base64$/i.test(match[1]) ? decode(encoded) : undefined;
-  const bytes = body !== undefined
-    ? Uint8Array.from(body, (character) => character.charCodeAt(0))
+  const bytes = /;base64$/i.test(match[1])
+    ? base64.decode(encoded)
     : new TextEncoder().encode(decodeURIComponent(encoded));
   if (bytes.length > MAX_ATTACHMENT_BYTES) throw new Error('File exceeds the 10 MB attachment limit.');
   return bytes;

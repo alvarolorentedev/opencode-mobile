@@ -1,5 +1,5 @@
+import { base64 } from '@scure/base';
 import { File, Paths } from 'expo-file-system';
-import { encode as encodeBase64 } from 'base-64';
 
 import { initializeVoiceAudioAsync } from '@/lib/voice/speech-output';
 
@@ -91,13 +91,7 @@ function createWorkingSoundBase64(variant: WorkingSoundVariant) {
     view.setInt16(44 + index * 2, Math.round(sample * 32767), true);
   }
 
-  const bytes = new Uint8Array(buffer);
-  let binary = '';
-  for (const byte of bytes) {
-    binary += String.fromCharCode(byte);
-  }
-
-  return encodeBase64(binary);
+  return base64.encode(new Uint8Array(buffer));
 }
 
 async function ensureWorkingSoundFileAsync(variant: WorkingSoundVariant) {

@@ -1,4 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { z } from 'zod';
 
 import type { Config } from '@/lib/opencode/types';
 import { capabilitiesCacheKey } from '@/lib/storage-keys';
@@ -20,25 +21,23 @@ export type CachedCapabilities = {
 
 type Storage = PersistenceStorage & Pick<typeof AsyncStorage, 'setItem'>;
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null && !Array.isArray(value);
-}
+const CachedCapabilitiesSchema = z.object({
+  cachedAt: z.number().finite(),
+  config: z.record(z.string(), z.unknown()).optional(),
+  providers: z.array(z.record(z.string(), z.unknown())),
+  connected: z.array(z.string()),
+  providerAuthMethodsById: z.record(z.string(), z.unknown()),
+  models: z.array(z.record(z.string(), z.unknown())),
+  agents: z.array(z.record(z.string(), z.unknown())),
+});
 
 function parse(raw: string): CachedCapabilities {
-  const value: unknown = JSON.parse(raw);
-  if (!isRecord(value)) throw new Error('Expected a capabilities envelope.');
-  if (typeof value.cachedAt !== 'number' || !Number.isFinite(value.cachedAt)) throw new Error('Expected a cache timestamp.');
+  const value = CachedCapabilitiesSchema.parse(JSON.parse(raw));
   if (Date.now() - value.cachedAt > CACHE_TTL_MS) throw new Error('Capabilities cache expired.');
-  if (!Array.isArray(value.providers) || !value.providers.every(isRecord)) throw new Error('Expected cached providers.');
-  if (!Array.isArray(value.connected) || !value.connected.every((id) => typeof id === 'string')) throw new Error('Expected connected provider IDs.');
-  if (!isRecord(value.providerAuthMethodsById)) throw new Error('Expected cached auth methods.');
-  if (!Array.isArray(value.models) || !value.models.every(isRecord)) throw new Error('Expected cached models.');
-  if (!Array.isArray(value.agents) || !value.agents.every(isRecord)) throw new Error('Expected cached agents.');
-  if (value.config !== undefined && !isRecord(value.config)) throw new Error('Expected a cached config.');
   return {
     ...(value.config ? { config: value.config as Config } : {}),
     providers: value.providers as ProviderOption[],
-    connected: value.connected as string[],
+    connected: value.connected,
     providerAuthMethodsById: value.providerAuthMethodsById as Record<string, ProviderAuthMethod[]>,
     models: value.models as ModelOption[],
     agents: value.agents as AgentOption[],

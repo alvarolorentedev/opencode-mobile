@@ -6,8 +6,8 @@ import ts from 'typescript';
 import { describe, it } from 'vitest';
 
 // Same transport as the session-cache suite: transpile the TS source and import
-// it as a data URI. The only value import, `base-64`, is rewritten to the real
-// package so the encoding under test is the production one.
+// it as a data URI. The only value import, `@scure/base`, is rewritten to the
+// real package so the encoding under test is the production one.
 //
 // Migrated from the standalone tests/connection-scope.test.mjs Node script.
 describe('connection scope identity', () => {
@@ -16,7 +16,7 @@ describe('connection scope identity', () => {
     const root = path.join(here, '..', '..');
 
     const base64Uri = `data:text/javascript,${encodeURIComponent(
-      `import base64 from ${JSON.stringify(pathToFileURL(path.join(root, 'node_modules/base-64/base64.js')).href)}; export const encode = base64.encode;`,
+      `import { base64 } from ${JSON.stringify(pathToFileURL(path.join(root, 'node_modules/@scure/base/lib/index.js')).href)}; export { base64 };`,
     )}`;
 
     const source = await readFile(path.join(root, 'lib/connection-scope.ts'), 'utf8');
@@ -24,7 +24,7 @@ describe('connection scope identity', () => {
       compilerOptions: { module: ts.ModuleKind.ESNext, target: ts.ScriptTarget.ES2020 },
     }).outputText;
     const connectionScopeUri = `data:text/javascript,${encodeURIComponent(
-      transpiled.replace(/from 'base-64'/g, `from "${base64Uri}"`),
+      transpiled.replace(/from '@scure\/base'/g, `from "${base64Uri}"`),
     )}`;
 
     const { getConnectionScope, getConnectionUiScope, normalizeConnectionUrl } = await import(connectionScopeUri);

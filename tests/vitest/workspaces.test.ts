@@ -1,3 +1,4 @@
+import { z } from 'zod';
 import { describe, expect, it, vi } from 'vitest';
 import { loadTs, hookRuntime } from '../helpers/runtime.mjs';
 
@@ -90,7 +91,7 @@ describe('multi-server contracts', () => {
   });
   it('validates registry identities and never persists credentials', async () => {
     const appearance = await loadTs('constants/appearance.ts');
-    const parsing = await loadTs('providers/persisted-preferences.ts', { '@/constants/appearance': appearance, '@/lib/connect': { parseConnectMetadata: () => undefined }, '@/lib/opencode/client/url': { stripServerUrlCredentials: (value: string) => value }, '@/lib/voice/wake-phrase': { normalizeWakePhrase: (value: string) => value }, '@/providers/opencode-preferences': { normalizeTranscriptFontSize: (value: number) => value } });
+    const parsing = await loadTs('providers/persisted-preferences.ts', { '@/constants/appearance': appearance, '@/lib/connect': { parseConnectMetadata: () => undefined }, '@/lib/opencode/client/url': { stripServerUrlCredentials: (value: string) => value }, '@/lib/voice/wake-phrase': { normalizeWakePhrase: (value: string) => value }, '@/providers/opencode-preferences': { normalizeTranscriptFontSize: (value: number) => value }, zod: { z } });
     const { parseWorkspaces, serializeWorkspaces } = await loadTs('providers/workspace-storage.ts', {
       '@/lib/connection-password': { withoutConnectionSecrets: ({ password, headers, ...value }: any) => value }, '@/lib/connection-scope': identity,
       '@/lib/opencode/client': { isValidServerUrl: (value: string) => value.startsWith('http') }, '@/providers/persisted-preferences': parsing,

@@ -91,10 +91,13 @@ describe('background notification monitor', () => {
     `)}`;
 
     const base64Uri = `data:text/javascript,${encodeURIComponent(
-      `import base64 from ${JSON.stringify(pathToFileURL(path.join(root, 'node_modules/base-64/base64.js')).href)}; export const encode = base64.encode;`,
+      `import { base64 } from ${JSON.stringify(pathToFileURL(path.join(root, 'node_modules/@scure/base/lib/index.js')).href)}; export { base64 };`,
+    )}`;
+    const zodUri = `data:text/javascript,${encodeURIComponent(
+      `import { z } from ${JSON.stringify(pathToFileURL(path.join(root, 'node_modules/zod/index.cjs')).href)}; export { z };`,
     )}`;
     const connectionScopeUri = await transpileToDataUri('lib/connection-scope.ts', [
-      [/from 'base-64'/g, `from "${base64Uri}"`],
+      [/from '@scure\/base'/g, `from "${base64Uri}"`],
     ]);
     const storageKeysUri = await transpileToDataUri('lib/storage-keys.ts');
     const urlUri = await transpileToDataUri('lib/opencode/client/url.ts', [
@@ -103,6 +106,7 @@ describe('background notification monitor', () => {
     const notificationPendingUri = await transpileToDataUri('lib/notification-pending.ts', [
       [/from '@\/lib\/opencode\/client\/url'/g, `from "${urlUri}"`],
       [/from '@\/lib\/connection-scope'/g, `from "${connectionScopeUri}"`],
+      [/from 'zod'/g, `from "${zodUri}"`],
     ]);
     const sessionServiceStubUri = `data:text/javascript,${encodeURIComponent(`
       export async function listSessions(client) {

@@ -1,3 +1,5 @@
+import { z } from 'zod';
+
 import { ACCENT_COLORS, THEME_MODES } from '@/constants/appearance';
 import type { OpencodeConnectionSettings } from '@/lib/opencode/client';
 import { parseConnectMetadata } from '@/lib/connect';
@@ -5,19 +7,22 @@ import { stripServerUrlCredentials } from '@/lib/opencode/client/url';
 import { normalizeWakePhrase } from '@/lib/voice/wake-phrase';
 import { normalizeTranscriptFontSize, type ChatPreferences } from '@/providers/opencode-preferences';
 
-function parseObject(raw: string): Record<string, unknown> {
-  const value: unknown = JSON.parse(raw);
-  if (!value || typeof value !== 'object' || Array.isArray(value)) throw new Error('Expected a JSON object.');
-  return value as Record<string, unknown>;
-}
+const ConnectionSettingsSchema = z.object({
+  serverUrl: z.string().optional(),
+  username: z.string().optional(),
+  directory: z.string().optional(),
+  password: z.string().optional(),
+  connect: z.unknown().optional(),
+});
 
 export function parseConnectionSettings(raw: string): Partial<OpencodeConnectionSettings> {
-  const value = parseObject(raw);
+  const parsed = ConnectionSettingsSchema.safeParse(JSON.parse(raw));
+  if (!parsed.success) throw new Error('Invalid connection settings.');
+
+  const value = parsed.data;
   const settings: Partial<OpencodeConnectionSettings> = {};
   for (const key of ['serverUrl', 'username', 'directory', 'password'] as const) {
-    if (value[key] === undefined) continue;
-    if (typeof value[key] !== 'string') throw new Error(`Invalid connection ${key}.`);
-    settings[key] = value[key];
+    if (value[key] !== undefined) settings[key] = value[key];
   }
   if (settings.serverUrl) settings.serverUrl = stripServerUrlCredentials(settings.serverUrl);
   if (value.connect !== undefined) {
@@ -28,34 +33,49 @@ export function parseConnectionSettings(raw: string): Partial<OpencodeConnection
   return settings;
 }
 
+const optionalString = z.string().optional().catch(undefined);
+const optionalBoolean = z.boolean().optional().catch(undefined);
+const optionalNumber = (transform: (value: number) => number) => z.unknown().transform((value) => (
+  typeof value === 'number' && Number.isFinite(value) ? transform(value) : undefined
+));
+
+const ChatPreferencesSchema = z.object({
+  mode: optionalString,
+  providerId: optionalString,
+  modelId: optionalString,
+  language: optionalString,
+  speechLocale: optionalString,
+  speechVoiceId: optionalString,
+  flatTranscript: optionalBoolean,
+  slimInterface: optionalBoolean,
+  autoApprove: optionalBoolean,
+  autoPlayAssistantReplies: optionalBoolean,
+  preferOnDeviceRecognition: optionalBoolean,
+  resumeListeningAfterReply: optionalBoolean,
+  workingSoundEnabled: optionalBoolean,
+  includeNextActions: optionalBoolean,
+  hideSubagentChats: optionalBoolean,
+  showWidgetPreviews: optionalBoolean,
+  enabledModelIds: z.array(z.string()).optional().catch(undefined),
+  recentModelIds: z.array(z.string()).optional().catch(undefined),
+  providerModelSelections: z.record(z.string(), z.string()).optional().catch(undefined),
+  modelVariantSelections: z.record(z.string(), z.union([z.string(), z.null()])).optional().catch(undefined),
+  themeMode: z.enum(THEME_MODES).optional().catch(undefined),
+  accentColor: z.enum(ACCENT_COLORS).optional().catch(undefined),
+  promptDelivery: z.enum(['steer', 'queue']).optional().catch(undefined),
+  responseScope: z.enum(['brief', 'balanced', 'detailed']).optional().catch(undefined),
+  workingSoundVariant: z.enum(['soft', 'glass']).optional().catch(undefined),
+  conversationWakePhrase: z.unknown().transform((value) => (
+    typeof value === 'string' ? normalizeWakePhrase(value) : undefined
+  )).optional(),
+  transcriptFontSize: optionalNumber(normalizeTranscriptFontSize).optional(),
+  speechRate: optionalNumber((value) => Math.min(1.5, Math.max(0.5, value))).optional(),
+  workingSoundVolume: optionalNumber((value) => Math.min(1, Math.max(0, value))).optional(),
+});
+
 export function parseChatPreferences(raw: string): Partial<ChatPreferences> {
-  const value = parseObject(raw);
-  const preferences: Record<string, unknown> = {};
-  for (const key of ['mode', 'providerId', 'modelId', 'language', 'speechLocale', 'speechVoiceId']) {
-    if (typeof value[key] === 'string') preferences[key] = value[key];
-  }
-  for (const key of ['flatTranscript', 'slimInterface', 'autoApprove', 'autoPlayAssistantReplies', 'preferOnDeviceRecognition', 'resumeListeningAfterReply', 'workingSoundEnabled', 'includeNextActions', 'hideSubagentChats', 'showWidgetPreviews']) {
-    if (typeof value[key] === 'boolean') preferences[key] = value[key];
-  }
-  for (const key of ['enabledModelIds', 'recentModelIds']) {
-    const entries = value[key];
-    if (Array.isArray(entries) && entries.every((entry) => typeof entry === 'string')) preferences[key] = [...entries];
-  }
-  const selections = value.providerModelSelections;
-  if (selections && typeof selections === 'object' && !Array.isArray(selections) && Object.values(selections).every((entry) => typeof entry === 'string')) {
-    preferences.providerModelSelections = { ...selections };
-  }
-  const variantSelections = value.modelVariantSelections;
-  if (variantSelections && typeof variantSelections === 'object' && !Array.isArray(variantSelections)
-    && Object.values(variantSelections).every((entry) => typeof entry === 'string' || entry === null)) {
-    preferences.modelVariantSelections = { ...variantSelections };
-  }
-  for (const [key, options] of Object.entries({ themeMode: THEME_MODES, accentColor: ACCENT_COLORS, promptDelivery: ['steer', 'queue'], responseScope: ['brief', 'balanced', 'detailed'], workingSoundVariant: ['soft', 'glass'] })) {
-    if (typeof value[key] === 'string' && (options as readonly string[]).includes(value[key])) preferences[key] = value[key];
-  }
-  if (typeof value.conversationWakePhrase === 'string') preferences.conversationWakePhrase = normalizeWakePhrase(value.conversationWakePhrase);
-  if (typeof value.transcriptFontSize === 'number') preferences.transcriptFontSize = normalizeTranscriptFontSize(value.transcriptFontSize);
-  if (typeof value.speechRate === 'number' && Number.isFinite(value.speechRate)) preferences.speechRate = Math.min(1.5, Math.max(0.5, value.speechRate));
-  if (typeof value.workingSoundVolume === 'number' && Number.isFinite(value.workingSoundVolume)) preferences.workingSoundVolume = Math.min(1, Math.max(0, value.workingSoundVolume));
-  return preferences as Partial<ChatPreferences>;
+  const parsed = ChatPreferencesSchema.parse(JSON.parse(raw));
+  return Object.fromEntries(
+    Object.entries(parsed).filter(([, value]) => value !== undefined),
+  ) as Partial<ChatPreferences>;
 }

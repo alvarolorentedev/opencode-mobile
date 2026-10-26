@@ -17,6 +17,7 @@ if (isFossBuild) {
   const stubs = {
     'expo-iap': path.resolve(__dirname, 'lib/foss/expo-iap-stub.ts'),
     'expo-camera': path.resolve(__dirname, 'lib/foss/expo-camera-stub.tsx'),
+    'expo-store-review': path.resolve(__dirname, 'lib/foss/expo-store-review-stub.ts'),
   };
   config.resolver.resolveRequest = (context, moduleName, platform) => {
     const stub = stubs[moduleName];

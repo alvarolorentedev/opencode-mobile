@@ -1,3 +1,4 @@
+import { base64 } from '@scure/base';
 import { describe, expect, it, vi } from 'vitest';
 import { deferred, hookRuntime, loadTs } from '../helpers/runtime.mjs';
 import { listPendingInteractions } from '@/lib/opencode/client/interactions';
@@ -62,7 +63,7 @@ describe('composer admission races', () => {
     runtime.unmount();
   });
   it('keeps failed-input ownership across credential rotation on the same Cloud Link machine', async () => {
-    const scopes = await loadTs('lib/connection-scope.ts', { 'base-64': { encode: (value: string) => Buffer.from(value, 'binary').toString('base64') } });
+    const scopes = await loadTs('lib/connection-scope.ts', { '@scure/base': { base64 } });
     const machine = { serverUrl: 'https://machine.test', username: 'device-a', connect: { controlPlaneUrl: 'https://api.opencodecloud.link', machineId: 'machine' } };
     const runtime = await mountDraft();
     runtime.update({ owner: scopes.getConnectionUiScope(machine) });
@@ -111,7 +112,7 @@ describe('prompt submission ownership', () => {
     const appearance = await loadTs('constants/appearance.ts');
     const preferences = await loadTs('providers/opencode-preferences.ts', { '@/constants/appearance': appearance, '@/lib/voice/wake-phrase': { DEFAULT_WAKE_PHRASE: 'hey code' } });
     const models = await loadTs('providers/opencode-model-selection.ts', { '@/providers/opencode-preferences': preferences });
-    const scopes = await loadTs('lib/connection-scope.ts', { 'base-64': { encode: (value: string) => Buffer.from(value, 'binary').toString('base64') } });
+    const scopes = await loadTs('lib/connection-scope.ts', { '@scure/base': { base64 } });
     const { usePromptLifecycle } = await loadTs('providers/use-prompt-lifecycle.ts', {
       react: runtime.react, '@/providers/services/session-service': { interruptSession: async () => {}, readSessionSettlement: async () => ({ state: 'finished' }) },
       '@/lib/notification-pending': { pendingNotificationKey: (scope: string, id: string) => `${scope}:${id}` },

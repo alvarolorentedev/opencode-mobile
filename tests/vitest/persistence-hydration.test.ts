@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
+import { z } from 'zod';
 import ts from 'typescript';
 import { describe, it } from 'vitest';
 import { loadTs, deferred, hookRuntime } from '../helpers/runtime.mjs';
@@ -91,7 +92,7 @@ describe('persistence hydration and write-back', () => {
     const profileUrls = await loadTs('lib/opencode/client/url.ts', { './types': { defaultConnectionSettings: { serverUrl: 'http://localhost' } } });
     const { parseConnectionSettings, parseChatPreferences } = await loadTs('providers/persisted-preferences.ts', {
       '@/constants/appearance': appearance, '@/lib/connect': connect, '@/lib/voice/wake-phrase': wakePhrase,
-      '@/providers/opencode-preferences': preferences, '@/lib/opencode/client/url': profileUrls,
+      '@/providers/opencode-preferences': preferences, '@/lib/opencode/client/url': profileUrls, zod: { z },
     });
     assert.throws(() => parseConnectionSettings('{"serverUrl":123}'), /Invalid/);
     assert.equal(parseConnectionSettings('{"serverUrl":"https://alice:secret@host.test/proxy","username":"configured"}').serverUrl, 'https://host.test/proxy');

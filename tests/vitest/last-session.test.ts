@@ -27,12 +27,17 @@ describe('last-session storage scoping', () => {
     }
 
     const base64Uri = `data:text/javascript,${encodeURIComponent(
-      `import base64 from ${JSON.stringify(pathToFileURL(path.join(root, 'node_modules/base-64/base64.js')).href)}; export const encode = base64.encode;`,
+      `import { base64 } from ${JSON.stringify(pathToFileURL(path.join(root, 'node_modules/@scure/base/lib/index.js')).href)}; export { base64 };`,
+    )}`;
+    const zodUri = `data:text/javascript,${encodeURIComponent(
+      `import { z } from ${JSON.stringify(pathToFileURL(path.join(root, 'node_modules/zod/index.cjs')).href)}; export { z };`,
     )}`;
     const connectionScopeUri = await transpileToDataUri('lib/connection-scope.ts', [
-      [/from 'base-64'/g, `from "${base64Uri}"`],
+      [/from '@scure\/base'/g, `from "${base64Uri}"`],
     ]);
-    const lastSessionUri = await transpileToDataUri('providers/last-session-storage.ts');
+    const lastSessionUri = await transpileToDataUri('providers/last-session-storage.ts', [
+      [/from 'zod'/g, `from "${zodUri}"`],
+    ]);
 
     const { getConnectionScope } = await import(connectionScopeUri);
     const { parseLastSessionByConnection, serializeLastSessionByConnection } = await import(lastSessionUri);

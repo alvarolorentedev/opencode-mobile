@@ -4,7 +4,8 @@
 // (FOSS flavor) and the fdroiddata recipe so both apply the same patches.
 //
 // Patches:
-//   1. package.json   -> exclude the native expo-iap / expo-camera modules
+//   1. package.json   -> exclude the native expo-iap / expo-camera /
+//      expo-store-review modules
 //   2. expo-notifications -> drop proprietary firebase-messaging, compile
 //      against F-Droid's firebase-stubs instead (local notifications only)
 //   3. expo-application -> drop the proprietary com.android.installreferrer
@@ -29,7 +30,7 @@ function patchAutolinking(repoRoot) {
   pkg.expo = { ...(pkg.expo ?? {}) };
   pkg.expo.autolinking = { ...(pkg.expo.autolinking ?? {}) };
   pkg.expo.autolinking.exclude = [
-    ...new Set([...(pkg.expo.autolinking.exclude ?? []), 'expo-iap', 'expo-camera', 'opencode-updates']),
+    ...new Set([...(pkg.expo.autolinking.exclude ?? []), 'expo-iap', 'expo-camera', 'expo-store-review', 'opencode-updates']),
   ];
   fs.writeFileSync(packageJsonPath, `${JSON.stringify(pkg, null, 2)}\n`);
 }

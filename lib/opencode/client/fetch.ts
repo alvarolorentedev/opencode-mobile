@@ -1,4 +1,4 @@
-import { encode as encodeBase64 } from 'base-64';
+import { base64 } from '@scure/base';
 import { fetch as expoFetch } from 'expo/fetch';
 
 import { recordBytes, recordRequest } from '../data-usage';
@@ -16,8 +16,7 @@ export function createAuthHeader(settings: OpencodeConnectionSettings) {
   }
 
   const username = settings.username.trim() || 'opencode';
-  const bytes = new TextEncoder().encode(`${username}:${password}`);
-  return `Basic ${encodeBase64(Array.from(bytes, (byte) => String.fromCharCode(byte)).join(''))}`;
+  return `Basic ${base64.encode(new TextEncoder().encode(`${username}:${password}`))}`;
 }
 
 export function getRequestHeaders(settings: OpencodeConnectionSettings) {

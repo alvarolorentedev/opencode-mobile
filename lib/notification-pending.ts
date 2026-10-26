@@ -1,3 +1,5 @@
+import { z } from 'zod';
+
 import { getConnectionScope } from '@/lib/connection-scope';
 import { stripServerUrlCredentials } from '@/lib/opencode/client/url';
 import type { OpencodeConnectionSettings } from '@/lib/opencode/client';
@@ -26,39 +28,39 @@ export function pendingNotificationKey(connectionScope: string, sessionId: strin
   return `${connectionScope}\u0000${sessionId}`;
 }
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null && !Array.isArray(value);
-}
+const PendingNotificationSessionSchema = z.object({
+  sessionId: z.string().refine((value) => value.trim().length > 0),
+  sessionTitle: z.string().optional(),
+  projectPath: z.string().refine((value) => value.trim().length > 0),
+  connectionScope: z.unknown().optional(),
+  settings: z.object({
+    serverUrl: z.string().refine((value) => value.trim().length > 0),
+    username: z.string(),
+  }),
+  requestedAt: z.number().finite(),
+  attentionKey: z.string().optional(),
+});
 
 function toPendingNotificationSession(value: unknown): PendingNotificationSession | undefined {
-  if (!isRecord(value)) return undefined;
-
-  const { sessionId, sessionTitle, projectPath, connectionScope, settings, requestedAt, attentionKey } = value;
-  if (typeof sessionId !== 'string' || !sessionId.trim()) return undefined;
-  if (typeof projectPath !== 'string' || !projectPath.trim()) return undefined;
-  if (typeof requestedAt !== 'number' || !Number.isFinite(requestedAt)) return undefined;
-  if (sessionTitle !== undefined && typeof sessionTitle !== 'string') return undefined;
-  if (attentionKey !== undefined && typeof attentionKey !== 'string') return undefined;
-  if (!isRecord(settings)) return undefined;
-  const { serverUrl, username } = settings;
-  if (typeof serverUrl !== 'string' || !serverUrl.trim()) return undefined;
-  if (typeof username !== 'string') return undefined;
+  const parsed = PendingNotificationSessionSchema.safeParse(value);
+  if (!parsed.success) return undefined;
+  const { sessionId, sessionTitle, projectPath, connectionScope, settings, requestedAt, attentionKey } = parsed.data;
 
   // Records written before multi-server support carry the connection fields but
   // no scope; the scope is derived from them, never guessed, so those pending
   // tasks keep working.
   const scope = typeof connectionScope === 'string' && connectionScope.trim()
     ? connectionScope
-    : getConnectionScope({ serverUrl, username });
+    : getConnectionScope({ serverUrl: settings.serverUrl, username: settings.username });
 
   return {
     sessionId,
-    ...(typeof sessionTitle === 'string' && sessionTitle.trim() ? { sessionTitle: sessionTitle.trim() } : {}),
+    ...(sessionTitle?.trim() ? { sessionTitle: sessionTitle.trim() } : {}),
     projectPath,
     connectionScope: scope,
-    settings: { serverUrl: stripServerUrlCredentials(serverUrl), username },
+    settings: { serverUrl: stripServerUrlCredentials(settings.serverUrl), username: settings.username },
     requestedAt,
-    ...(typeof attentionKey === 'string' && attentionKey.trim() ? { attentionKey: attentionKey.trim() } : {}),
+    ...(attentionKey?.trim() ? { attentionKey: attentionKey.trim() } : {}),
   };
 }
 
@@ -70,10 +72,7 @@ function toPendingNotificationSession(value: unknown): PendingNotificationSessio
  * on the same session ID.
  */
 export function parsePendingNotificationSessions(raw: string): Record<string, PendingNotificationSession> {
-  const value: unknown = JSON.parse(raw);
-  if (!isRecord(value)) {
-    throw new Error('Expected pending notification records.');
-  }
+  const value = z.record(z.string(), z.unknown()).parse(JSON.parse(raw));
 
   const parsed: Record<string, PendingNotificationSession> = {};
   for (const entry of Object.values(value)) {

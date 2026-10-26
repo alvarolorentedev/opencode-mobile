@@ -15,6 +15,9 @@ describe('pending notification storage', () => {
   it('scopes records by connection, migrates legacy entries, and strips secrets', async () => {
     const here = path.dirname(fileURLToPath(import.meta.url));
     const root = path.join(here, '..', '..');
+    const zodUri = `data:text/javascript,${encodeURIComponent(
+      `import { z } from ${JSON.stringify(pathToFileURL(path.join(root, 'node_modules/zod/index.cjs')).href)}; export { z };`,
+    )}`;
 
     async function transpileToDataUri(relativePath: string, replacements: [RegExp, string][] = []) {
       const source = await readFile(path.join(root, relativePath), 'utf8');
@@ -24,14 +27,15 @@ describe('pending notification storage', () => {
       for (const [pattern, replacement] of replacements) {
         transpiled = transpiled.replace(pattern, replacement);
       }
+      transpiled = transpiled.replace(/from 'zod'/g, `from "${zodUri}"`);
       return `data:text/javascript,${encodeURIComponent(transpiled)}`;
     }
 
     const base64Uri = `data:text/javascript,${encodeURIComponent(
-      `import base64 from ${JSON.stringify(pathToFileURL(path.join(root, 'node_modules/base-64/base64.js')).href)}; export const encode = base64.encode;`,
+      `import { base64 } from ${JSON.stringify(pathToFileURL(path.join(root, 'node_modules/@scure/base/lib/index.js')).href)}; export { base64 };`,
     )}`;
     const connectionScopeUri = await transpileToDataUri('lib/connection-scope.ts', [
-      [/from 'base-64'/g, `from "${base64Uri}"`],
+      [/from '@scure\/base'/g, `from "${base64Uri}"`],
     ]);
     const urlUri = await transpileToDataUri('lib/opencode/client/url.ts', [
       [/from '\.\/types'/g, `from "data:text/javascript,export const defaultConnectionSettings = {serverUrl:'http://localhost'};"`],

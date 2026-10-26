@@ -17,6 +17,9 @@ describe('session cache storage', () => {
   it('scopes caches by connection, validates envelopes, and fails safe', async () => {
     const here = path.dirname(fileURLToPath(import.meta.url));
     const root = path.join(here, '..', '..');
+    const zodUri = `data:text/javascript,${encodeURIComponent(
+      `import { z } from ${JSON.stringify(pathToFileURL(path.join(root, 'node_modules/zod/index.cjs')).href)}; export { z };`,
+    )}`;
 
     async function transpileToDataUri(relativePath: string, replacements: [RegExp, string][] = []) {
       const source = await readFile(path.join(root, relativePath), 'utf8');
@@ -26,6 +29,7 @@ describe('session cache storage', () => {
       for (const [pattern, replacement] of replacements) {
         transpiled = transpiled.replace(pattern, replacement);
       }
+      transpiled = transpiled.replace(/from 'zod'/g, `from "${zodUri}"`);
       return `data:text/javascript,${encodeURIComponent(transpiled)}`;
     }
 
@@ -34,10 +38,10 @@ describe('session cache storage', () => {
     )}`;
 
     const base64Uri = `data:text/javascript,${encodeURIComponent(
-      `import base64 from ${JSON.stringify(pathToFileURL(path.join(root, 'node_modules/base-64/base64.js')).href)}; export const encode = base64.encode;`,
+      `import { base64 } from ${JSON.stringify(pathToFileURL(path.join(root, 'node_modules/@scure/base/lib/index.js')).href)}; export { base64 };`,
     )}`;
     const connectionScopeUri = await transpileToDataUri('lib/connection-scope.ts', [
-      [/from 'base-64'/g, `from "${base64Uri}"`],
+      [/from '@scure\/base'/g, `from "${base64Uri}"`],
     ]);
     const { getConnectionScope } = await import(connectionScopeUri);
 
@@ -56,7 +60,8 @@ describe('session cache storage', () => {
       sessionCacheTranspiled
         .replace(/from '@\/lib\/storage-keys'/g, `from "${await transpileToDataUri('lib/storage-keys.ts')}"`)
         .replace(/from '@\/providers\/persistence-hydration'/g, `from "${persistenceHydrationUri}"`)
-        .replace(/from '@react-native-async-storage\/async-storage'/g, `from "${asyncStorageStubUri}"`),
+        .replace(/from '@react-native-async-storage\/async-storage'/g, `from "${asyncStorageStubUri}"`)
+        .replace(/from 'zod'/g, `from "${zodUri}"`),
     )}`;
 
     // Keys embed the connection scope before the project path, so two servers with

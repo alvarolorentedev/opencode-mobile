@@ -2,12 +2,11 @@ import { describe, expect, it } from 'vitest';
 
 import { loadTs } from '../helpers/runtime.mjs';
 
-async function hasPlayStoreRating(platform: string, foss: boolean) {
-  const { hasPlayStoreRating } = await loadTs('lib/support.ts', {
+async function loadSupport(platform: string, foss: boolean) {
+  return loadTs('lib/support.ts', {
     'expo-constants': { __esModule: true, default: { expoConfig: { extra: { foss } } } },
     'react-native': { Platform: { OS: platform } },
   });
-  return hasPlayStoreRating();
 }
 
 describe('support store rating availability', () => {
@@ -17,6 +16,17 @@ describe('support store rating availability', () => {
     ['ios', false, false],
     ['web', false, false],
   ] as const)('%s (foss=%s) -> %s', async (platform, foss, expected) => {
-    expect(await hasPlayStoreRating(platform, foss)).toBe(expected);
+    const { hasPlayStoreRating } = await loadSupport(platform, foss);
+    expect(await hasPlayStoreRating()).toBe(expected);
+  });
+
+  it.each([
+    ['android', false, true],
+    ['android', true, false],
+    ['ios', false, true],
+    ['web', false, false],
+  ] as const)('canRateApp %s (foss=%s) -> %s', async (platform, foss, expected) => {
+    const { canRateApp } = await loadSupport(platform, foss);
+    expect(await canRateApp()).toBe(expected);
   });
 });

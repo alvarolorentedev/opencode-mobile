@@ -1,4 +1,4 @@
-import { encode as encodeBase64 } from 'base-64';
+import { base64 } from '@scure/base';
 
 // A connection is identified by the server it talks to plus the user it
 // authenticates as. The password is deliberately excluded so this identity can
@@ -80,23 +80,5 @@ export function getConnectionUiScope(settings: ConnectionUiIdentity): string {
 }
 
 function toKeySegment(value: string): string {
-  return encodeBase64(toUtf8BinaryString(value)).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
-}
-
-// `base-64` expects a binary string. `encodeURIComponent` is used instead of
-// TextEncoder so the identity stays available on every platform the app runs
-// on, including older Hermes builds.
-function toUtf8BinaryString(value: string): string {
-  const percentEncoded = encodeURIComponent(value);
-  let binary = '';
-  for (let index = 0; index < percentEncoded.length; index += 1) {
-    const char = percentEncoded[index];
-    if (char === '%') {
-      binary += String.fromCharCode(Number.parseInt(percentEncoded.slice(index + 1, index + 3), 16));
-      index += 2;
-    } else {
-      binary += char;
-    }
-  }
-  return binary;
+  return base64.encode(new TextEncoder().encode(value)).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
 }

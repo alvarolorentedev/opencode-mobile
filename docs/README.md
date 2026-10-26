@@ -34,9 +34,12 @@ The goal is not aspirational design documentation. It is an implementation refer
   home widget, and the requirements to close the iOS side.
 - `known-gaps.md`
   Remaining deliberately deferred work: the untyped Vitest denylist, the
-  standalone FOSS prepare script, and remote crash reporting. Earlier
-  orchestration, test-split, CI-duplication, and local-diagnostics gaps were
-  closed on 2026-10-18.
+  standalone FOSS prepare script, remote crash reporting, and render-timing
+  coupling in workspace readiness. Earlier orchestration, test-split,
+  CI-duplication, and local-diagnostics gaps were closed on 2026-10-18.
+- `library-extraction.md`
+  Library replacements, deferred native/UI evaluations, and candidate
+  standalone packages with their boundaries and risks.
 - `development.md` explanation on how to run the app locally.
 
 ## Current System Summary
@@ -73,6 +76,7 @@ The tabs mostly render and manipulate provider state:
 6. `testing-and-validation.md`
 7. `api-contract.md`
 8. `component-inventory.md`
+9. `library-extraction.md`
 
 ## Scope Notes
 

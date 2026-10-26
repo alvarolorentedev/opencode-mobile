@@ -2,6 +2,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { randomUUID } from 'expo-crypto';
 import * as SecureStore from 'expo-secure-store';
 import { Platform } from 'react-native';
+import { z } from 'zod';
 
 import { parseWorkspaces, WORKSPACES_STORAGE_KEY } from '@/providers/workspace-storage';
 import { getConnectionPassword } from '@/lib/connection-password';
@@ -53,64 +54,43 @@ export function pickModelPreferences(preferences: ChatPreferences): ProfileModel
   };
 }
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null && !Array.isArray(value);
-}
-
-// `undefined` means "field absent", and `undefined` plus a `malformed` marker is
-// not expressible, so malformed values are reported as `null`.
-function toStringArrayOrNull(value: unknown): string[] | undefined | null {
-  if (value === undefined || value === null) return undefined;
-  if (!Array.isArray(value) || !value.every((entry) => typeof entry === 'string')) return null;
-  return [...value];
-}
-
-function toStringRecordOrNull(value: unknown): Record<string, string> | undefined | null {
-  if (value === undefined || value === null) return undefined;
-  if (!isRecord(value)) return null;
-  const entries = Object.entries(value);
-  if (!entries.every(([, entry]) => typeof entry === 'string')) return null;
-  return Object.fromEntries(entries) as Record<string, string>;
-}
+const ProfileModelPreferencesSchema = z.object({
+  providerId: z.string().optional(),
+  modelId: z.string().optional(),
+  enabledModelIds: z.array(z.string()).nullish().transform((value) => value ?? undefined),
+  providerModelSelections: z.record(z.string(), z.string()).nullish().transform((value) => value ?? undefined),
+  recentModelIds: z.array(z.string()).nullish().transform((value) => value ?? undefined),
+});
+const ConnectionProfileSchema = z.object({
+  id: z.string().refine((value) => value.trim().length > 0),
+  name: z.string().refine((value) => value.trim().length > 0),
+  serverUrl: z.string().refine((value) => value.trim().length > 0),
+  username: z.string(),
+  connect: z.unknown().optional(),
+  modelPreferences: ProfileModelPreferencesSchema.nullish().transform((value) => value ?? undefined),
+});
 
 // Validates the whole persisted DTO, including model preferences. Unknown
 // fields are ignored; an entry with any malformed known field is dropped so a
 // corrupt value can never hydrate a partial profile.
 export function toConnectionProfile(value: unknown): ConnectionProfile | undefined {
-  if (!isRecord(value)) return undefined;
+  const parsed = ConnectionProfileSchema.safeParse(value);
+  if (!parsed.success) return undefined;
 
-  const { id, name, serverUrl, username, modelPreferences, connect } = value;
-  if (typeof id !== 'string' || !id.trim()) return undefined;
-  if (typeof name !== 'string' || !name.trim()) return undefined;
-  if (typeof serverUrl !== 'string' || !serverUrl.trim()) return undefined;
-  if (typeof username !== 'string') return undefined;
+  const { id, name, serverUrl, username, modelPreferences, connect } = parsed.data;
+  const trimmedUsername = username.trim();
   const parsedConnect = connect === undefined ? undefined : parseConnectMetadata(connect);
-  if (connect !== undefined && (!parsedConnect || parsedConnect.deviceId !== username.trim())) return undefined;
+  if (connect !== undefined && (!parsedConnect || parsedConnect.deviceId !== trimmedUsername)) return undefined;
 
-  let parsedPreferences: Partial<ProfileModelPreferences> | undefined;
-  if (modelPreferences !== undefined && modelPreferences !== null) {
-    if (!isRecord(modelPreferences)) return undefined;
-    const { providerId, modelId, enabledModelIds, providerModelSelections, recentModelIds } = modelPreferences;
-    if (providerId !== undefined && typeof providerId !== 'string') return undefined;
-    if (modelId !== undefined && typeof modelId !== 'string') return undefined;
-    const enabled = toStringArrayOrNull(enabledModelIds);
-    const recent = toStringArrayOrNull(recentModelIds);
-    const selections = toStringRecordOrNull(providerModelSelections);
-    if (enabled === null || recent === null || selections === null) return undefined;
-    const partial: Partial<ProfileModelPreferences> = {};
-    if (providerId !== undefined) partial.providerId = providerId;
-    if (modelId !== undefined) partial.modelId = modelId;
-    if (enabled !== undefined) partial.enabledModelIds = enabled;
-    if (selections !== undefined) partial.providerModelSelections = selections;
-    if (recent !== undefined) partial.recentModelIds = recent;
-    parsedPreferences = Object.keys(partial).length > 0 ? partial : undefined;
-  }
+  const parsedPreferences = modelPreferences && Object.keys(modelPreferences).length > 0
+    ? modelPreferences as Partial<ProfileModelPreferences>
+    : undefined;
 
   return {
     id: id.trim(),
     name: name.trim(),
     serverUrl: stripServerUrlCredentials(serverUrl),
-    username: username.trim(),
+    username: trimmedUsername,
     ...(parsedConnect ? { connect: parsedConnect } : {}),
     ...(parsedPreferences ? { modelPreferences: parsedPreferences } : {}),
   };

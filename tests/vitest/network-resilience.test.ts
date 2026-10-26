@@ -1,3 +1,4 @@
+import { z } from 'zod';
 import { describe, expect, it } from 'vitest';
 
 import { normalizeNetworkState, networkStatusKey } from '@/lib/network-status';
@@ -65,6 +66,7 @@ describe('transcript cache', () => {
       '@/lib/storage-keys': { transcriptCacheKey: (scope: string, project: string, session: string) => `${scope}:${project}:${session}` },
       '@/providers/persistence-hydration': { loadPersistedValue },
       '@react-native-async-storage/async-storage': { __esModule: true, default: storage },
+      zod: { z },
     });
     const record = {
       info: { id: 'm1', role: 'assistant', time: { created: 1, completed: 2 }, sessionID: 's' },

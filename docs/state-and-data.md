@@ -407,6 +407,7 @@ list.
 Hydration rules:
 
 - persisted settings validate known string fields and Cloud Link identity before merging over defaults
+- persisted DTOs use `zod` schemas at their storage boundary (session, transcript, capabilities, favorites, projects, remembered sessions, onboarding, updates, notifications, connection settings, and chat preferences). Schema parsing strips unknown fields, drops invalid individual entries where the prior parser did, and clears a malformed envelope. Widget snapshots and connection headers remain manual because they enforce bounded projection/redaction and RFC 7230 header rules rather than a record shape.
 - persisted chat preferences validate individual strings, booleans, arrays, maps, and enum values; numeric controls are clamped to their supported ranges before merging over defaults and current provider state
 - saved connection profiles are hydrated on demand and fully validated, including `modelPreferences`; entries with any malformed field are dropped and unknown fields are ignored
 - active project path is restored if present, and the connection's opened projects restore with it; on connect an unlisted active path falls back to the most recent opened project unless the server resolves it (a deep link or worktree)

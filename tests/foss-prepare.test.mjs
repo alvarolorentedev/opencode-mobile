@@ -31,7 +31,7 @@ try {
   assert.doesNotMatch(application, /com\.android\.installreferrer|import android\.os\.RemoteException/);
   assert.match(application, /getInstallReferrerAsync[\s\S]*promise\.resolve\(""\)/);
   assert.deepEqual(JSON.parse(read('package.json')).expo.autolinking.exclude,
-    ['existing-module', 'expo-iap', 'expo-camera', 'opencode-updates']);
+    ['existing-module', 'expo-iap', 'expo-camera', 'expo-store-review', 'opencode-updates']);
   assert.deepEqual(JSON.parse(read('package.json')).expo.autolinking.android.buildFromSource,
     ['expo-sharing'], 'FOSS preparation must keep the patched sharing receiver built from source');
 

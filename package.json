@@ -1,7 +1,7 @@
 {
   "name": "opencode-mobile",
   "main": "index.js",
-  "version": "1.0.96",
+  "version": "1.0.97",
   "scripts": {
     "start": "expo start",
     "start:dev-client": "expo start --dev-client",
@@ -42,10 +42,11 @@
     "@opencode/client": "^2.0.16",
     "@react-native-async-storage/async-storage": "2.2.0",
     "@react-native-community/netinfo": "12.0.1",
+    "@react-native-community/slider": "5.2.0",
+    "@scure/base": "^1.2.6",
     "@shopify/flash-list": "2.0.2",
     "@xterm/addon-fit": "0.11.0",
     "@xterm/xterm": "6.0.0",
-    "base-64": "^1.0.0",
     "expo": "^57.0.24",
     "expo-application": "~57.0.3",
     "expo-asset": "~57.0.18",
@@ -77,6 +78,7 @@
     "expo-speech-recognition": "^57.1.0",
     "expo-splash-screen": "~57.0.9",
     "expo-status-bar": "~57.0.1",
+    "expo-store-review": "~57.0.3",
     "expo-symbols": "~57.0.3",
     "expo-system-ui": "~57.0.4",
     "expo-task-manager": "~57.0.19",
@@ -95,7 +97,8 @@
     "react-native-safe-area-context": "~5.7.0",
     "react-native-screens": "~4.26.0",
     "react-native-web": "~0.21.0",
-    "react-native-worklets": "0.10.1"
+    "react-native-worklets": "0.10.1",
+    "zod": "^4.6.7"
   },
   "devDependencies": {
     "@playwright/test": "^1.54.2",

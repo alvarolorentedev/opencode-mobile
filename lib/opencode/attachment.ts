@@ -20,9 +20,9 @@ export async function prepareAttachment(att: PromptAttachment): Promise<Prepared
     return { type: 'file', mime, filename, url: att.uri };
   }
 
-  const FileSystem = await import('expo-file-system/legacy');
-  const info = await FileSystem.getInfoAsync(att.uri);
-  const size = info.exists && 'size' in info && typeof info.size === 'number' ? info.size : 0;
+  const { File } = await import('expo-file-system');
+  const source = new File(att.uri);
+  const size = source.exists ? source.size : 0;
   if (size > MAX_ATTACHMENT_BYTES) {
     throw new Error('File exceeds the 10 MB attachment limit.');
   }
@@ -48,6 +48,6 @@ export async function prepareAttachment(att: PromptAttachment): Promise<Prepared
     }
   }
 
-  const base64 = await FileSystem.readAsStringAsync(att.uri, { encoding: 'base64' });
+  const base64 = await source.base64();
   return { type: 'file', mime, filename, url: `data:${mime};base64,${base64}` };
 }

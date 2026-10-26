@@ -180,3 +180,27 @@ dedicated wake-word engine. Consequences:
 - ambient speech that follows a correctly detected phrase is still treated as
   the command; the six-second command window bounds exposure but does not
   identify the speaker
+
+## 9. Workspace readiness and render-time state
+
+Two render-timing couplings remain in the workspace shell. They are not library
+gaps; they are internal coordination issues worth fixing before the flows grow.
+
+- **Workspace readiness polls React state.** `providers/use-workspace-connections.ts`
+  uses `tick()` (a 25 ms `setTimeout`) inside `ensure()`, `connectedWorkspace()`,
+  and `navigate()` to wait for a retained `WorkspaceRuntime` to publish its first
+  snapshot. The wait is bounded at 20 seconds, but it couples navigation to render
+  cadence and can spin while a runtime is suspended or a connection is slow.
+  Replace it with a per-workspace readiness promise or a small event subscription
+  that resolves when the runtime publishes or the workspace is removed. Do not
+  add another shared store; the registry should remain the owner.
+- **Connect pairing changes step during render.**
+  `components/settings/connect-pairing.tsx` derives `step` from provider state,
+  then calls `setStep(4)` or `setStep(3)` directly in the render body (the
+  guided pairing transitions). This can produce React warnings and an extra
+  render pass, and it makes the transition harder to test. Derive the visible
+  step from provider state plus a local override, or move the adjustment into
+  an effect with an explicit guard.
+
+Deferred library replacements and extraction candidates are documented in
+[library-extraction.md](library-extraction.md).

@@ -28,10 +28,13 @@ describe('favorite session storage', () => {
     }
 
     const base64Uri = `data:text/javascript,${encodeURIComponent(
-      `import base64 from ${JSON.stringify(pathToFileURL(path.join(root, 'node_modules/base-64/base64.js')).href)}; export const encode = base64.encode;`,
+      `import { base64 } from ${JSON.stringify(pathToFileURL(path.join(root, 'node_modules/@scure/base/lib/index.js')).href)}; export { base64 };`,
+    )}`;
+    const zodUri = `data:text/javascript,${encodeURIComponent(
+      `import { z } from ${JSON.stringify(pathToFileURL(path.join(root, 'node_modules/zod/index.cjs')).href)}; export { z };`,
     )}`;
     const connectionScopeUri = await transpileToDataUri('lib/connection-scope.ts', [
-      [/from 'base-64'/g, `from "${base64Uri}"`],
+      [/from '@scure\/base'/g, `from "${base64Uri}"`],
     ]);
     const { getConnectionScope } = await import(connectionScopeUri);
 
@@ -44,7 +47,9 @@ describe('favorite session storage', () => {
       compilerOptions: { module: ts.ModuleKind.ESNext, target: ts.ScriptTarget.ES2020 },
     }).outputText;
     const favoritesUri = `data:text/javascript,${encodeURIComponent(
-      favoritesTranspiled.replace(/from '@\/providers\/opencode-provider-types'/g, `from "${providerTypesUri}"`),
+      favoritesTranspiled
+        .replace(/from '@\/providers\/opencode-provider-types'/g, `from "${providerTypesUri}"`)
+        .replace(/from 'zod'/g, `from "${zodUri}"`),
     )}`;
 
     const { parseFavoriteSessions, serializeFavoriteSessions } = await import(favoritesUri);
