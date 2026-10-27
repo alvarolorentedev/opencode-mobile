@@ -28,6 +28,9 @@ describe('provider runtime actions', () => {
 async function readSource(relative: string) {
   return readFile(new URL(relative, import.meta.url), 'utf8');
 }
+// The ledger and transcript-pruning paths now use exported behavior directly.
+// These remaining declarations still exercise race-sensitive action closures
+// that have no pure seam yet; migrate them as their owning hooks gain one.
 function extractDeclarations(source: string, names: string[]) {
   const ast = ts.createSourceFile('module.ts', source, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS);
   const found: any[] = [];
