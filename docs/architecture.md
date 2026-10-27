@@ -92,13 +92,28 @@ own context, so a consumer only re-renders when the domain it reads changes and
 each screen declares its real dependencies instead of pulling from one
 combined domain surface. There is no combined runtime context value.
 
-`WorkspaceActionsContext` exposes the stable app-level actions and presentation
-map separately from the changing workspace snapshot registry. Chat reads
-actions/focus from that context, so a background workspace publish does not
-re-render the chat. The focused workspace values are built by
-`useWorkspaceValues`, which memoizes each overridden domain independently;
+`WorkspaceActionsContext` exposes the app-level actions and focus separately
+from the changing workspace snapshot registry. The stable presentation map
+(composer/editor drafts, transcript positions) lives in
+`WorkspacePresentationContext`; `useRetainedState` reads it directly, so a
+background workspace publish cannot invalidate a draft consumer. Chat reads
+actions/focus from the actions context. The focused workspace values are built
+by `useWorkspaceValues`, which memoizes each overridden domain independently;
 `WorkspaceRuntime` is wrapped in `React.memo` so unchanged runtimes skip
 parent-driven renders.
+
+Connectivity is owned once by `WorkspaceProvider`. `NetInfo.configure()` is
+process-global and resets previously registered listeners, so mounting
+`useNetworkStatus()` per retained project would freeze every runtime except the
+last one mounted. The shell samples the network once and passes the snapshot to
+each runtime.
+
+Likewise, each connection has one active-session catalog owner: the first
+retained runtime reads the unscoped catalog and publishes `sessions` / `statuses`
+through the shell. Other runtimes consume that snapshot, so reconnecting several
+projects on one server does not issue several identical `listActiveSessions`
+reads. Project transcripts, prompts, approvals, and terminal streams remain
+per-runtime.
 
 ## Module Map
 
@@ -313,11 +328,12 @@ The completion version, preference schema and first-run migration are unchanged.
 - `providers/use-worktree-state.ts`
   Project-scoped worktree inventory, owning project identity, and guarded lifecycle actions.
 - `providers/use-active-sessions.ts`
-  Connection-wide running/recent session snapshot for the Chat Library. Reads the
-  unscoped catalog client, seeds on connect and on library open, polls every 20
-  seconds only while the Chat Library is open and a session is running, and tags
-  the snapshot with its connection scope so a server switch hides the previous
-  server's sessions.
+  Connection-wide running/recent session snapshot for the Chat Library. One
+  runtime per connection owns the read; the shell shares the resulting sessions
+  and statuses with the other retained projects. It seeds on connect and on
+  library open, polls every 20 seconds only while the Chat Library is open and a
+  session is running, and tags the snapshot with its connection scope so a
+  server switch hides the previous server's sessions.
 - `providers/active-sessions.ts`
   Pure selection of the active-session group (running-first ordering, recent tail
   capped at four, subagent filtering). The Chat Library de-duplicates

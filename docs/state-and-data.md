@@ -34,7 +34,8 @@ Meaning:
 - `serverRootPath` is the root directory reported by the server
 - `eventStreamStatus` tracks real-time subscription health independently of connection state
 - `network` is the normalized reachability snapshot (online, type, metered,
-  constrained, generation) owned by `providers/use-network-status.ts`
+  constrained, generation) sampled once by `WorkspaceProvider` and passed into
+  every retained runtime. NetInfo is not configured per project.
 - `reconnect` tracks the bounded connect-retry attempt and next retry time
 - the connection domain also exposes `services`, the Cloud Link connector's remote service-management state with its connector-reported management revision and port pool. The provider resolves the target machine from the active Cloud Link connection or a saved Cloud Link profile (so it works while another connection is active), exposes the target/machine list and unavailable reason, and keeps the list keyed by that target scope; see [api-contract.md](api-contract.md#connector-service-management-cloud-link)
 - failures carry a machine-readable `kind` (`timeout`, `offline`, `auth`, `entitlement`, `tunnel-startup`, `server-incompatible`, `unknown`) alongside the display message; `retryableStartup` remains for Cloud Link activation compatibility
@@ -512,6 +513,12 @@ Several important UI-facing values are derived instead of stored directly.
 
 Derived from the connection-scoped opened project paths and enriched by `serverProjects` (the server's `project.list()`). A remote project the user never opened is not rendered; a path is opened when selected, added, or followed from a link.
 
+Closing the last opened project clears focus while retaining its runtime
+snapshot. `projectClosedValues()` removes that project and its session scoped
+values from the focused/read path, so Chat, Settings, Terminal and New Chat show
+the no-project state without unmounting the runtime or deleting drafts. Reconnect
+uses the opened-project list, not the retained runtime's stale project entry.
+
 Properties include:
 
 - label from the server project's name, else the final path segment
@@ -550,8 +557,11 @@ Derived from message history using `getHistoryPreview()`.
 
 `providers/use-active-sessions.ts` keeps a connection-scoped snapshot of every
 session on the connected server (sessions + statuses) fetched through the
-unscoped catalog client. The snapshot is tagged with its connection scope; a
-scope change therefore hides it immediately without a reset pass.
+unscoped catalog client. One runtime per connection owns the read and publishes
+the snapshot through `WorkspaceProvider`; other retained projects consume it
+instead of issuing their own list read. The snapshot is tagged with its
+connection scope; a scope change therefore hides it immediately without a reset
+pass.
 `getActiveSessions()` (`providers/active-sessions.ts`) derives the Chat Library
 group from it:
 
