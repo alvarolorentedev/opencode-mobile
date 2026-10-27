@@ -20,8 +20,8 @@ import { useShareState } from '@/providers/use-share-state';
 import { useAppUpdates } from '@/providers/use-app-updates';
 import { OpencodeProviderTree } from '@/providers/opencode-provider-tree';
 import { useWorkspaceAutoApprove } from '@/providers/use-workspace-auto-approve';
-import { aggregateSessionUsage } from '@/lib/opencode/usage';
 import { clearWorkspacePresentation, hasWorkspaceDrafts } from '@/providers/workspace-presentation';
+import { projectClosedValues } from '@/providers/workspace-projection';
 import { librarySessions } from '@/providers/workspace-library';
 import { WorkspaceNative } from '@/providers/workspace-native';
 import { useWorkspaceValues, type WorkspaceValueOverrides } from '@/providers/use-workspace-values';
@@ -125,7 +125,8 @@ export function WorkspaceProvider({ children }: PropsWithChildren) {
     .map((row) => ({ connectionScope: getConnectionScope(connections.find((entry) => entry.id === row.connectionId)!.settings),
       projectPath: row.projectPath, sessionId: row.sessionId, title: `${row.serverName} · ${row.session.title}` })), [connections, snapshots, focus, shell.chatPreferences.hideSubagentChats]);
   const sharedInput = useShareState({ hydrated: isHydrated, connectionScope: getConnectionScope(settings),
-    projectPath: current?.values.projectsValue.activeProjectPath, currentSessionId: current?.values.currentSessionValue.currentSessionId,
+    projectPath: focus ? current?.values.projectsValue.activeProjectPath : undefined,
+    currentSessionId: focus ? current?.values.currentSessionValue.currentSessionId : undefined,
     availableTargets: shareTargets,
     createAt: async (target) => {
       const entry = connections.find((item) => getConnectionScope(item.settings) === target.connectionScope);
@@ -168,16 +169,7 @@ export function WorkspaceProvider({ children }: PropsWithChildren) {
     let values = snapshot.values;
     const path = values.projectsValue.activeProjectPath;
     const opened = shell.projectPathsByConnection[getConnectionScope(values.connectionValue.settings)];
-    if (!target && path && opened && !opened.includes(path)) {
-      values = { ...values,
-        projectsValue: { ...values.projectsValue, activeProject: undefined, activeProjectPath: undefined },
-        currentSessionValue: { ...values.currentSessionValue, currentSessionId: undefined, activeSession: undefined,
-          createSession: async () => { throw new Error('Choose a project before creating a chat.'); }, ensureActiveSession: async () => undefined },
-        chatValue: { ...values.chatValue, currentMessages: [], currentTranscript: [], currentTodos: [], currentDiffs: [],
-          currentPendingPermissions: [], currentPendingQuestions: [], pendingPrompts: [], currentUsage: aggregateSessionUsage([]),
-          latestAssistantTurnUsage: undefined, sendingState: { active: false }, transcriptPaging: { ...values.chatValue.transcriptPaging, hasOlder: false } },
-      };
-    }
+    if (opened && path && !opened.includes(path)) values = projectClosedValues(values);
     const id = getConnectionUiScope(values.connectionValue.settings);
     return { ...values,
       onboardingValue: { ...values.onboardingValue, isHydrated, onboardingCompleted, onboardingActive: shell.onboardingActive },
@@ -196,10 +188,10 @@ export function WorkspaceProvider({ children }: PropsWithChildren) {
   useEffect(() => {
     if (!current) return;
     setSettings(current.values.connectionValue.settings);
-    setActiveProjectPath(current.values.projectsValue.activeProjectPath);
+    setActiveProjectPath(focus ? current.values.projectsValue.activeProjectPath : undefined);
     const preferences = serverPreferences(current.values.preferencesValue.chatPreferences);
     setChatPreferences((previous) => JSON.stringify(serverPreferences(previous)) === JSON.stringify(preferences) ? previous : { ...previous, ...preferences });
-  }, [current, setSettings, setActiveProjectPath, setChatPreferences]);
+  }, [current, focus, setSettings, setActiveProjectPath, setChatPreferences]);
   const values = focusedValues;
   const workspaceActions = useMemo(() => ({ createChat, focus, presentation }), [createChat, focus, presentation]);
   return <WorkspaceActionsContext.Provider value={workspaceActions}>

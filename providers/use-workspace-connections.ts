@@ -38,6 +38,11 @@ export function useWorkspaceConnections(shell: OpencodeProviderState, hydrated: 
   }, []);
   const isEnabled = useCallback((id: string) => records.current.some((entry) => entry.id === id && entry.enabled), []);
   const select = useCallback((target: WorkspaceTarget, persist = true) => { if (persist) canPersist.current = true; selected.current = target; setFocus(target); }, []);
+  const clearFocus = useCallback((persist = true) => {
+    if (persist) canPersist.current = true;
+    selected.current = undefined;
+    setFocus(undefined);
+  }, []);
   const publish = useCallback((key: string, snapshot: WorkspaceSnapshot) => {
     if (live.current[key] === snapshot) return;
     live.current = { ...live.current, [key]: snapshot }; setSnapshots(live.current);
@@ -156,7 +161,10 @@ export function useWorkspaceConnections(shell: OpencodeProviderState, hydrated: 
     if (!entry) throw new Error('Server not found.');
     for (const [key, runtime] of Object.entries(live.current)) if ((JSON.parse(key) as string[])[0] === id) runtime.suspend();
     change((current) => current.map((item) => item.id === id ? { ...item, enabled: true, settings: { ...item.settings }, events: createSharedEventStream() } : item));
-    const runtime = await ensure({ connectionId: id, projectPath: entry.projects[0] ?? '' });
+    // entry.projects also contains retained runtimes whose projects the user
+    // closed. Reconnect must follow the opened-project list instead.
+    const projectPath = shellRef.current.projectPathsByConnection[getConnectionScope(entry.settings)]?.[0] ?? '';
+    const runtime = await ensure({ connectionId: id, projectPath });
     return runtime.values.connectionValue.connect();
   }, [change, ensure]);
   const connectedWorkspace = useCallback(async (target: WorkspaceTarget) => {
@@ -257,7 +265,9 @@ export function useWorkspaceConnections(shell: OpencodeProviderState, hydrated: 
     const id = getConnectionUiScope(full);
     const found = records.current.find((entry) => entry.id === id);
     if (found) for (const [key, runtime] of Object.entries(live.current)) if ((JSON.parse(key) as string[])[0] === id) runtime.suspend();
-    const projectPath = found?.projects[0] ?? shellRef.current.projectPathsByConnection[getConnectionScope(full)]?.[0] ?? '';
+    // A retained runtime can outlive its opened project; reconnect to the
+    // opened list, never to the first stale entry.
+    const projectPath = shellRef.current.projectPathsByConnection[getConnectionScope(full)]?.[0] ?? '';
     change((current) => found ? current.map((entry) => entry.id === id ? { ...entry, settings: full, enabled: true,
       preferences: { ...entry.preferences, ...serverPreferences(preferences ?? {}) }, events: createSharedEventStream() } : entry)
       : [...current.filter((entry) => shellRef.current.onboardingVersion > 0 || entry.enabled || entry.id !== getConnectionUiScope(defaultConnectionSettings)), { id, name: profile.name, settings: full, enabled: true, preferences: { autoApprove: false, ...serverPreferences(preferences ?? profile.modelPreferences ?? {}) }, projects: [projectPath], events: createSharedEventStream() }]);
@@ -310,10 +320,11 @@ export function useWorkspaceConnections(shell: OpencodeProviderState, hydrated: 
     const remaining = (shellRef.current.projectPathsByConnectionRef.current[scope] ?? []).filter((path) => path !== target.projectPath);
     const opened = { ...shellRef.current.projectPathsByConnectionRef.current, [scope]: remaining };
     shellRef.current.projectPathsByConnectionRef.current = opened; shellRef.current.setProjectPathsByConnection(opened);
-    if (selected.current?.connectionId === target.connectionId && selected.current.projectPath === target.projectPath && remaining.length) {
-      await activate({ connectionId: target.connectionId, projectPath: remaining[0] });
+    if (selected.current?.connectionId === target.connectionId && selected.current.projectPath === target.projectPath) {
+      if (remaining.length) await activate({ connectionId: target.connectionId, projectPath: remaining[0] });
+      else clearFocus();
     }
-  }, [activate]);
+  }, [activate, clearFocus]);
   const removeConnection = useCallback(async (id: string) => {
     await disconnect(id);
     change((current) => current.filter((entry) => entry.id !== id));

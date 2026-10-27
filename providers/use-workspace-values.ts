@@ -3,6 +3,7 @@ import { useMemo } from 'react';
 import { getConnectionScope, getConnectionUiScope } from '@/lib/connection-scope';
 import type { ConnectionContextValue, ConnectionState, ProjectPathsByConnection, SessionDeepLinkTarget } from '@/providers/opencode-provider-types';
 import type { SharedInput } from '@/providers/use-share-state';
+import { projectClosedValues } from '@/providers/workspace-projection';
 import type { WorkspaceTarget, WorkspaceValues } from '@/providers/workspace-types';
 
 export type WorkspaceValueOverrides = {
@@ -36,6 +37,7 @@ export function useWorkspaceValues(
     connectSetup,
     servicesValue,
     sharedInput,
+    projectPathsByConnection,
     retry,
     activate,
     switchConnection,
@@ -51,8 +53,18 @@ export function useWorkspaceValues(
     () => (settings ? getConnectionScope(settings) : ''),
     [settings],
   );
+  const openedProjectPaths = projectPathsByConnection[connectionScope];
+  const baseValues = useMemo(() => {
+    if (!values) return undefined;
+    const path = values.projectsValue.activeProjectPath;
+    // The opened-project list is the source of truth. A retained runtime may
+    // still hold the last closed project's state while its drafts stay alive.
+    return openedProjectPaths && path && !openedProjectPaths.includes(path)
+      ? projectClosedValues(values)
+      : values;
+  }, [values, openedProjectPaths]);
 
-  const baseOnboarding = values?.onboardingValue;
+  const baseOnboarding = baseValues?.onboardingValue;
   const onboardingValue = useMemo(() => (baseOnboarding ? {
     ...baseOnboarding,
     isHydrated,
@@ -60,7 +72,7 @@ export function useWorkspaceValues(
     onboardingActive,
   } : undefined), [baseOnboarding, isHydrated, onboardingCompleted, onboardingActive]);
 
-  const baseConnection = values?.connectionValue;
+  const baseConnection = baseValues?.connectionValue;
   const connectionValue = useMemo(() => (baseConnection ? {
     ...baseConnection,
     connect: () => retry(connectionId),
@@ -70,7 +82,7 @@ export function useWorkspaceValues(
     services: servicesValue,
   } : undefined), [baseConnection, connectionId, retry, switchConnection, connectionProfiles, connectSetup, servicesValue]);
 
-  const baseProjects = values?.projectsValue;
+  const baseProjects = baseValues?.projectsValue;
   const projectsValue = useMemo(() => (baseProjects ? {
     ...baseProjects,
     selectProject: (projectPath: string) => {
@@ -78,13 +90,13 @@ export function useWorkspaceValues(
     },
   } : undefined), [baseProjects, connectionId, activate]);
 
-  const baseCurrentSession = values?.currentSessionValue;
+  const baseCurrentSession = baseValues?.currentSessionValue;
   const currentSessionValue = useMemo(() => (baseCurrentSession ? {
     ...baseCurrentSession,
     openDeepLinkSession: openSession,
   } : undefined), [baseCurrentSession, openSession]);
 
-  const baseSessionLibrary = values?.sessionLibraryValue;
+  const baseSessionLibrary = baseValues?.sessionLibraryValue;
   const sessionLibraryValue = useMemo(() => (baseSessionLibrary ? {
     ...baseSessionLibrary,
     openSessionInProject: (projectPath: string, sessionId: string, targetConnectionScope?: string) => (
@@ -92,18 +104,18 @@ export function useWorkspaceValues(
     ),
   } : undefined), [baseSessionLibrary, connectionScope, openSessionInProject]);
 
-  const baseChat = values?.chatValue;
+  const baseChat = baseValues?.chatValue;
   const chatValue = useMemo(() => (baseChat ? {
     ...baseChat,
     sharedInput,
   } : undefined), [baseChat, sharedInput]);
 
   return useMemo(() => {
-    if (!values || !onboardingValue || !connectionValue || !projectsValue || !currentSessionValue || !sessionLibraryValue || !chatValue) {
+    if (!baseValues || !onboardingValue || !connectionValue || !projectsValue || !currentSessionValue || !sessionLibraryValue || !chatValue) {
       return undefined;
     }
     return {
-      ...values,
+      ...baseValues,
       onboardingValue,
       connectionValue,
       projectsValue,
@@ -111,5 +123,5 @@ export function useWorkspaceValues(
       sessionLibraryValue,
       chatValue,
     };
-  }, [values, onboardingValue, connectionValue, projectsValue, currentSessionValue, sessionLibraryValue, chatValue]);
+  }, [baseValues, onboardingValue, connectionValue, projectsValue, currentSessionValue, sessionLibraryValue, chatValue]);
 }
