@@ -14,7 +14,7 @@ import {
   getSessionTodos as svcGetSessionTodos,
 } from '@/providers/services/session-service';
 import { getVcsDiff as svcGetVcsDiff } from '@/providers/services/project-service';
-import type { ProjectActionsInput } from '@/providers/opencode-provider-action-inputs';
+import type { ProjectRefreshInput } from '@/providers/opencode-provider-action-inputs';
 
 // Coalesce a burst of streaming part events into a single transcript read.
 // Lower than a frame budget for a snappy chat, high enough to avoid one page
@@ -58,7 +58,7 @@ export function useProjectRefreshActions({
   sessionRefreshOptionsRef,
   connectionScope,
   refreshMessages,
-}: ProjectActionsInput) {
+}: ProjectRefreshInput) {
   const refreshSessions = useCallback(
     async () => {
       if (!activeProjectPath) {

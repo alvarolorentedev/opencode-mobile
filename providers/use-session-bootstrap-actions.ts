@@ -1,11 +1,6 @@
 import { useCallback } from 'react';
 
-import type { Session } from '@/lib/opencode/types';
-import type { SessionActionsInput } from '@/providers/opencode-provider-action-inputs';
-
-type SessionBootstrapActionsInput = SessionActionsInput & {
-  createSession: (title?: string) => Promise<Session>;
-};
+import type { SessionBootstrapInput } from '@/providers/opencode-provider-action-inputs';
 
 export function useSessionBootstrapActions({
   activeProjectPath,
@@ -33,7 +28,7 @@ export function useSessionBootstrapActions({
   setCurrentSessionId,
   setLastSessionByConnection,
   setIsBootstrappingChat,
-}: SessionBootstrapActionsInput) {
+}: SessionBootstrapInput) {
   const ensureActiveSession = useCallback(async () => {
     if (connection.status !== 'connected' || !activeProjectPath) {
       return undefined;

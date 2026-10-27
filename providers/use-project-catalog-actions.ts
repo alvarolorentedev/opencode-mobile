@@ -10,7 +10,7 @@ import {
   loadProjectCatalog as svcLoadProjectCatalog,
   resolveProjectLocation as svcResolveProjectLocation,
 } from '@/providers/services/session-service';
-import type { ProjectActionsInput } from '@/providers/opencode-provider-action-inputs';
+import type { ProjectCatalogInput } from '@/providers/opencode-provider-action-inputs';
 
 export function useProjectCatalogActions({
   client,
@@ -36,7 +36,7 @@ export function useProjectCatalogActions({
   scopeGenerationRef,
   serverContract,
   settingsRef,
-}: ProjectActionsInput) {
+}: ProjectCatalogInput) {
   const writeProjects = useCallback((scope: string, paths: string[]) => {
     const next = { ...projectPathsByConnectionRef.current, [scope]: paths.slice(0, PROJECTS_MAX) };
     projectPathsByConnectionRef.current = next;

@@ -193,3 +193,62 @@ export type ConnectionActionsInput = {
   deepLinkOperationRef: { current: object | undefined };
   initialConnectStartedRef: { current: boolean };
 };
+
+// Each extracted action hook declares only the slice it consumes. The aggregate
+// inputs above are the composition contracts used by the provider wiring; these
+// aliases keep sub-hooks from silently depending on unrelated setters and refs.
+export type ProjectCatalogInput = Pick<ProjectActionsInput,
+  'client' | 'catalogClient' | 'isCurrentClient' | 'isCurrentCatalogClient' | 'activeProjectPath' |
+  'setActiveProjectPath' | 'activeProjectPathRef' | 'clearProjectState' | 'projectPathsByConnectionRef' |
+  'setProjectPathsByConnection' | 'serverProjectsRef' | 'setServerProjects' | 'setCurrentProjectPath' |
+  'setServerRootPath' | 'connectionScope' | 'connectionScopeRef' | 'isHydrated' | 'setSessions' |
+  'setSessionStatuses' | 'setIsRefreshingProjectCatalog' | 'scopeGenerationRef' | 'serverContract' | 'settingsRef'>;
+export type ProjectRefreshInput = Pick<ProjectActionsInput,
+  'activeProjectPath' | 'client' | 'isCurrentClient' | 'setSessions' | 'sessionsRef' | 'setSessionStatuses' |
+  'locallyCreatedSessionsRef' | 'setIsRefreshingDiffs' | 'setDiffsBySession' | 'setVcsDiffsByScope' |
+  'setTodosBySession' | 'setPendingPermissionsBySession' | 'setPendingQuestionsBySession' |
+  'suppressedPendingRequestIdsRef' | 'setDiffScopeBySession' | 'setSelectedDiffMessageBySession' |
+  'selectedDiffMessageBySessionRef' | 'diffScopeBySessionRef' | 'currentSessionIdRef' | 'messagesBySessionRef' |
+  'sessionRefreshTimeoutsRef' | 'sessionRefreshOptionsRef' | 'connectionScope' | 'refreshMessages'>;
+export type ProjectFileInput = Pick<ProjectActionsInput,
+  'client' | 'isCurrentClient' | 'activeProjectPath' | 'setCommands' | 'setProjectFileStatuses' | 'setVcsInfo' |
+  'setDiagnostics' | 'setSelectedProjectFile' | 'projectFileRequestRef' | 'currentSessionIdRef' |
+  'diffScopeBySessionRef' | 'settingsRef'> & {
+  refreshVcsDiff: (scope: 'uncommitted' | 'branch', silent?: boolean) => Promise<unknown>;
+};
+
+export type SessionCrudInput = Pick<SessionActionsInput,
+  'client' | 'isCurrentClient' | 'activeProjectPath' | 'connectionScopeRef' | 'currentSessionId' |
+  'currentSessionIdRef' | 'explicitSessionSelectionRef' | 'locallyCreatedSessionsRef' | 'availableModels' |
+  'diffScopeBySessionRef' | 'sessions' | 'sessionStatuses' | 'bootstrapPromiseRef' | 'bootstrapTokenRef' |
+  'setLastSessionByConnection' | 'setCurrentSessionId' | 'setIsBootstrappingChat' | 'beginHydration' |
+  'setSessions' | 'setSessionStatuses' | 'setMessagesBySession' | 'setDiffsBySession' | 'setTodosBySession' |
+  'setPendingPermissionsBySession' | 'setPendingQuestionsBySession' | 'setFavoriteSessions' | 'refreshSessions' |
+  'refreshMessages' | 'refreshSessionDiff' | 'refreshSessionTodos' | 'refreshVcsDiff' |
+  'refreshPendingInteractions' | 'refreshActiveSessions' | 'chatPreferences'>;
+export type SessionFavoriteInput = Pick<SessionActionsInput,
+  'connectionScopeRef' | 'favoriteSessions' | 'setFavoriteSessions'>;
+export type SessionInteractionInput = Pick<SessionActionsInput,
+  'client' | 'pendingPermissionsBySession' | 'pendingQuestionsBySession' | 'setPendingPermissionsBySession' |
+  'setPendingQuestionsBySession' | 'suppressedPendingRequestIdsRef' | 'refreshMessages' | 'refreshSavedPermissions'>;
+export type SessionBootstrapInput = Pick<SessionActionsInput,
+  'activeProjectPath' | 'connection' | 'connectionScope' | 'client' | 'currentSessionId' | 'currentSessionIdRef' |
+  'explicitSessionSelectionRef' | 'sessionsRef' | 'messagesBySession' | 'lastSessionByConnection' |
+  'pendingDeepLinkTargetRef' | 'bootstrapPromiseRef' | 'bootstrapTokenRef' | 'isCurrentClient' | 'refreshSessions' |
+  'refreshMessages' | 'refreshSessionDiff' | 'refreshSessionTodos' | 'refreshPendingInteractions' |
+  'refreshChatCapabilities' | 'refreshServerFeatures' | 'setCurrentSessionId' | 'setLastSessionByConnection' |
+  'setIsBootstrappingChat'> & {
+  createSession: (title?: string) => Promise<Session>;
+};
+
+export type ConnectionConnectInput = Pick<ConnectionActionsInput,
+  'settings' | 'setSettings' | 'activeProjectPath' | 'setActiveProjectPath' | 'activeProjectPathRef' |
+  'clearProjectState' | 'softResetProjectState' | 'isHydrated' | 'isCurrentCatalogClient' | 'loadProjectCatalog' |
+  'serverProjectsRef' | 'setServerProjects' | 'setCurrentProjectPath' | 'setServerRootPath' | 'setSessions' |
+  'setSessionStatuses' | 'setCurrentConfig' | 'setAvailableProviders' | 'setProviderAuthMethodsById' |
+  'setAvailableModels' | 'setAvailableAgents' | 'setMessagesBySession' | 'setDiffsBySession' | 'setTodosBySession' |
+  'setChatPreferences' | 'setDiagnostics' | 'setSendingState' | 'setConnection' | 'setServerContract' | 'settingsRef' |
+  'chatPreferencesRef' | 'serverContractRef' | 'connectionRef' | 'serverGenerationRef' | 'catalogGenerationRef' |
+  'scopeGenerationRef' | 'initialConnectStartedRef'> & {
+  connectSetup: import('@/providers/use-connect-state').ConnectSetup;
+};

@@ -26,8 +26,7 @@ import {
   type ServerContract,
 } from '@/lib/opencode/client';
 import type { ChatPreferences, ConnectionState, ProjectCatalog } from '@/providers/opencode-provider-types';
-import type { ConnectSetup } from '@/providers/use-connect-state';
-import type { ConnectionActionsInput } from '@/providers/opencode-provider-action-inputs';
+import type { ConnectionConnectInput } from '@/providers/opencode-provider-action-inputs';
 
 // Joining concurrent connects is keyed on the exact credentials and generation
 // so a rotation that lands mid-flight starts a new attempt instead of adopting
@@ -75,7 +74,7 @@ export function useConnectionConnectActions({
   catalogGenerationRef,
   scopeGenerationRef,
   initialConnectStartedRef,
-}: ConnectionActionsInput & { connectSetup: ConnectSetup }) {
+}: ConnectionConnectInput) {
   const { t } = useTranslation();
   // Keep connect callbacks stable across renders while still formatting errors
   // with the active language.

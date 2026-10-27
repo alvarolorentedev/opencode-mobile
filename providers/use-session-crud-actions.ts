@@ -13,7 +13,7 @@ import { useCallback } from 'react';
 import type { Session, SessionStatus } from '@/lib/opencode/types';
 import { getSelectedModelParts, getSelectedModelVariant } from '@/providers/opencode-model-selection';
 import { persistSessionCache } from '@/providers/session-cache';
-import type { SessionActionsInput } from '@/providers/opencode-provider-action-inputs';
+import type { SessionCrudInput } from '@/providers/opencode-provider-action-inputs';
 
 export function useSessionCrudActions({
   client,
@@ -50,7 +50,7 @@ export function useSessionCrudActions({
   refreshPendingInteractions,
   refreshActiveSessions,
   chatPreferences,
-}: SessionActionsInput) {
+}: SessionCrudInput) {
   const persistSnapshot = useCallback((nextSessions: Session[], nextStatuses: Record<string, SessionStatus>) => {
     if (!activeProjectPath) return;
     void persistSessionCache(connectionScopeRef.current, activeProjectPath, nextSessions, nextStatuses);

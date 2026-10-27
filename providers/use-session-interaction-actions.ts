@@ -7,7 +7,7 @@ import {
   replyToPendingQuestion,
   type PendingQuestionAnswer,
 } from '@/lib/opencode/client';
-import type { SessionActionsInput } from '@/providers/opencode-provider-action-inputs';
+import type { SessionInteractionInput } from '@/providers/opencode-provider-action-inputs';
 
 type PendingRequest = { id: string; sessionID: string };
 
@@ -41,7 +41,7 @@ export function useSessionInteractionActions({
   suppressedPendingRequestIdsRef,
   refreshMessages,
   refreshSavedPermissions,
-}: SessionActionsInput) {
+}: SessionInteractionInput) {
   const replyToPermission = useCallback(
     async (requestId: string, reply: 'once' | 'always' | 'reject') => {
       const request = Object.values(pendingPermissionsBySession).flat().find((item) => item.id === requestId);

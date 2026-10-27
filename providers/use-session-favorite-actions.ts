@@ -1,13 +1,13 @@
 import { useCallback } from 'react';
 
 import { FAVORITE_SESSIONS_MAX } from '@/providers/opencode-provider-types';
-import type { SessionActionsInput } from '@/providers/opencode-provider-action-inputs';
+import type { SessionFavoriteInput } from '@/providers/opencode-provider-action-inputs';
 
 export function useSessionFavoriteActions({
   connectionScopeRef,
   favoriteSessions,
   setFavoriteSessions,
-}: SessionActionsInput) {
+}: SessionFavoriteInput) {
   const toggleFavoriteSession = useCallback((sessionId: string, projectPath: string, title?: string) => {
     const trimmedSessionId = sessionId.trim();
     const trimmedPath = projectPath.trim();

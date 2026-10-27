@@ -17,11 +17,7 @@ import {
   readFile,
   readProjectFile,
 } from '@/providers/services/project-service';
-import type { ProjectActionsInput } from '@/providers/opencode-provider-action-inputs';
-
-type ProjectFileActionsInput = ProjectActionsInput & {
-  refreshVcsDiff: (scope: 'uncommitted' | 'branch', silent?: boolean) => Promise<unknown>;
-};
+import type { ProjectFileInput } from '@/providers/opencode-provider-action-inputs';
 
 export function useProjectFileActions({
   client,
@@ -37,7 +33,7 @@ export function useProjectFileActions({
   diffScopeBySessionRef,
   settingsRef,
   refreshVcsDiff,
-}: ProjectFileActionsInput) {
+}: ProjectFileInput) {
   const browser = useProjectBrowser({ client, isCurrentClient });
 
   const refreshServerFeatures = useCallback(async () => {
