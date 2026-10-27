@@ -9,6 +9,7 @@ import {
   type ThemeMode,
 } from '@/constants/appearance';
 import { DEFAULT_WAKE_PHRASE } from '@/lib/voice/wake-phrase';
+import { DEFAULT_LOCAL_WAKE_PHRASE, DEFAULT_LOCAL_COMMAND_MODEL, type LocalCommandModelId, type LocalWakePhraseId } from '@/lib/voice/local-wake-word/types';
 export type ResponseScope = 'brief' | 'balanced' | 'detailed';
 export const TRANSCRIPT_FONT_SIZE_MIN = 12;
 export const TRANSCRIPT_FONT_SIZE_MAX = 24;
@@ -51,6 +52,13 @@ export type ChatPreferences = {
   // Conversation mode only starts a turn after hearing this phrase. Stored
   // globally because it is a voice-input preference, not connection state.
   conversationWakePhrase: string;
+  // `phrase` uses the OS recognizer text gate. `local` runs the opt-in
+  // sherpa-onnx wake-word and speaker-verification path.
+  voiceWakeMode: 'phrase' | 'local';
+  localWakePhrase: LocalWakePhraseId;
+  localCommandModel: LocalCommandModelId;
+  localSpeakerVerification: boolean;
+  localSpeakerThreshold: number;
   speechLocale?: string;
   speechRate: number;
   speechVoiceId?: string;
@@ -80,6 +88,11 @@ export const defaultChatPreferences: ChatPreferences = {
   preferOnDeviceRecognition: true,
   resumeListeningAfterReply: true,
   conversationWakePhrase: DEFAULT_WAKE_PHRASE,
+  voiceWakeMode: 'phrase',
+  localWakePhrase: DEFAULT_LOCAL_WAKE_PHRASE,
+  localCommandModel: DEFAULT_LOCAL_COMMAND_MODEL,
+  localSpeakerVerification: true,
+  localSpeakerThreshold: 0.5,
   speechRate: 1,
   workingSoundEnabled: false,
   workingSoundVariant: 'soft',

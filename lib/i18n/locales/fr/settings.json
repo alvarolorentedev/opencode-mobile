@@ -243,6 +243,31 @@
       "label": "Phrase d’activation",
       "helper": "Le mode conversation n’envoie un message qu’après avoir entendu cette phrase. Deux mots ou plus fonctionnent mieux."
     },
+    "localWake": {
+      "title": "Mot d’activation sur l’appareil",
+      "description": "Exécute un modèle local et une vérification vocale optionnelle. Télécharge {{size}} de modèles préentraînés ; revient à la phrase système si indisponible.",
+      "statusMissing": "Modèles non installés",
+      "statusInstalling": "Installation…",
+      "statusReady": "Modèles installés",
+      "statusUnsupported": "Non pris en charge dans cette version",
+      "statusError": "Échec de l’installation",
+      "install": "Installer les modèles ({{size}})",
+      "remove": "Supprimer les modèles",
+      "phraseLabel": "Phrase d’activation",
+      "phraseHelper": "Le détecteur local prend en charge ces phrases et utilise un modèle de commandes en anglais uniquement. Aucun entraînement n’est nécessaire.",
+      "speakerVerification": "Vérifier ma voix",
+      "speakerVerificationDescription": "Refuser la phrase lorsqu’elle n’est pas prononcée par la voix enregistrée.",
+      "enroll": "Enregistrer la voix",
+      "reEnroll": "Enregistrer à nouveau",
+      "removeVoice": "Supprimer la voix",
+      "enrolled": "Profil vocal enregistré.",
+      "notEnrolled": "Aucun profil vocal pour le moment.",
+      "recording": "Enregistrement… parlez naturellement pendant une dizaine de secondes.",
+      "saving": "Création du profil vocal…",
+      "unsupportedHint": "Cette version n’inclut pas le moteur vocal local natif.",
+      "commandModelLabel": "Modèle de reconnaissance des commandes",
+      "commandModelHelper": "Choisissez le modèle local utilisé pour les commandes. Les modèles multilingues sont plus volumineux."
+    },
     "speechLocale": {
       "label": "Langue de la synthèse vocale",
       "helper": "Laisse vide pour utiliser la langue par défaut du système pour la saisie et la lecture vocales."

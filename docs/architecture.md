@@ -544,6 +544,16 @@ permission and Chat Library visibility do not gate widget reads.
   text after the first phrase occurrence becomes the command.
 - `lib/voice/wake-feedback.ts`
   Short haptic cue when the wake phrase arms a turn.
+- `lib/voice/local-wake-word/`
+  Optional on-device path: pretrained sherpa-onnx KWS, speaker-embedding,
+  Silero VAD and Moonshine command models; PCM/resampling, model
+  download/extraction, keyword token files, speaker-profile storage, and
+  target-speaker turn gating. No model training is performed.
+- `lib/voice/use-local-wake-word.ts`
+  Microphone capture, KWS inference, and the verified-wake handoff.
+- `lib/voice/use-local-command-capture.ts`
+  Post-wake VAD turn segmentation, per-turn speaker verification, local command
+  ASR, and command-window completion.
 - `lib/voice/speech-errors.ts`
   Pure error classification into a message plus a recovery action
   (`retry`, `open-settings`, `none`).
@@ -875,6 +885,37 @@ The phrase gate is the only turn trigger: text before the phrase is discarded,
 the phrase is stripped from the prompt, and no turn is submitted while armed.
 Recognition itself still runs while armed; this is not a separate wake-word
 engine.
+
+### Optional on-device wake word
+
+`voiceWakeMode: 'local'` replaces the text gate with an opt-in on-device path:
+
+- `lib/voice/local-wake-word/` downloads and loads pretrained sherpa-onnx
+  models: KWS (English, open vocabulary), speaker embedding, Silero VAD, and a
+  selectable command recognizer (Moonshine tiny English by default; Whisper tiny
+  multilingual is optional). The base wake pack and the command model are
+  installed/replaced independently.
+- `lib/voice/use-local-wake-word.ts` captures 16 kHz PCM, feeds the KWS model,
+  keeps a short rolling buffer, and verifies the enrolled speaker when enabled.
+- `lib/voice/use-local-command-capture.ts` runs after a verified wake. Silero
+  VAD segments speech turns; each finalized turn is embedded and compared to the
+  enrolled profile; only matched turns go to the selected local ASR. Accepted
+  text accumulates and is submitted after a short silence (or a bounded
+  no-speech/max window). Non-matching turns are discarded before ASR.
+- The OS recognizer is not used in the local command path. The agent server still
+  receives text only.
+- Models are installed by explicit user action from
+  `components/settings/use-voice-setup.ts`; they are stored under the app's
+  document directory. No model training is involved.
+- If models or the native runtime are unavailable, conversation mode falls back
+  to the phrase gate and surfaces feedback.
+- Overlapping speakers are not separated; target-speaker gating works on
+  non-overlapping turns. Local TTS is out of scope.
+
+`providers/conversation/use-local-wake-controller.ts` owns the detector-to-command
+handoff, speaker rejection/re-arming, and the local command submission path. The
+main conversation state machine continues to own phases, submission, playback,
+and cleanup.
 
 This is one of the densest parts of the architecture and would need careful parity in any rewrite.
 

@@ -13,6 +13,7 @@ export function useConversationListeningEffects({
   conversationCancelRequestedRef,
   conversationSubmittingRef,
   conversationListeningRestartTimeoutRef,
+  localWakeModeRef,
   shouldRestartConversation,
   startConversationListening,
   abortSpeechInput,
@@ -30,8 +31,9 @@ export function useConversationListeningEffects({
   conversationCancelRequestedRef: { current: boolean };
   conversationSubmittingRef: { current: boolean };
   conversationListeningRestartTimeoutRef: { current: ReturnType<typeof setTimeout> | undefined };
+  localWakeModeRef: { current: boolean };
   shouldRestartConversation: () => boolean;
-  startConversationListening: (sessionId?: string, options?: { preserveCommandWindow?: boolean }) => Promise<boolean | void>;
+  startConversationListening: (sessionId?: string, options?: { preserveSession?: boolean }) => Promise<boolean | void>;
   abortSpeechInput: () => void;
   speechInputError?: string;
   speechInputErrorAction: VoiceRecoveryAction;
@@ -54,6 +56,15 @@ export function useConversationListeningEffects({
   }, [abortSpeechInput, conversationPhaseRef, stopConversationMode]);
 
   useEffect(() => {
+    // The local wake-word hook owns its capture lifecycle and re-arming. Do not
+    // start the OS recognizer behind it.
+    if (localWakeModeRef.current) {
+      if (conversationListeningRestartTimeoutRef.current) {
+        clearTimeout(conversationListeningRestartTimeoutRef.current);
+        conversationListeningRestartTimeoutRef.current = undefined;
+      }
+      return;
+    }
     if ((conversationPhase !== 'armed' && conversationPhase !== 'listening') || isConversationListening || isConversationListeningStarting) {
       if (conversationListeningRestartTimeoutRef.current) {
         clearTimeout(conversationListeningRestartTimeoutRef.current);
@@ -66,7 +77,7 @@ export function useConversationListeningEffects({
       return;
     }
 
-    const preserveCommandWindow = conversationPhase === 'listening';
+    const preserveSession = true;
     conversationListeningRestartTimeoutRef.current = setTimeout(() => {
       conversationListeningRestartTimeoutRef.current = undefined;
       if (
@@ -76,7 +87,7 @@ export function useConversationListeningEffects({
       ) {
         return;
       }
-      void startConversationListening(undefined, { preserveCommandWindow });
+      void startConversationListening(undefined, { preserveSession });
     }, CONVERSATION_LISTENING_RESTART_MS);
 
     return () => {
@@ -85,7 +96,7 @@ export function useConversationListeningEffects({
         conversationListeningRestartTimeoutRef.current = undefined;
       }
     };
-  }, [conversationCancelRequestedRef, conversationListeningRestartTimeoutRef, conversationPhase, conversationPhaseRef, conversationSubmittingRef, isConversationListening, isConversationListeningStarting, shouldRestartConversation, startConversationListening]);
+  }, [conversationCancelRequestedRef, conversationListeningRestartTimeoutRef, conversationPhase, conversationPhaseRef, conversationSubmittingRef, isConversationListening, isConversationListeningStarting, localWakeModeRef, shouldRestartConversation, startConversationListening]);
 
   useEffect(() => {
     if (!speechInputError) {

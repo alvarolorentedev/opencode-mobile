@@ -132,6 +132,7 @@ export function createWakePhraseSession(phrase: string) {
   let committed = '';
   let current = '';
   let matched = false;
+  let commandOnly = false;
   let lastCommand = '';
 
   const fullText = () => current || committed;
@@ -148,6 +149,10 @@ export function createWakePhraseSession(phrase: string) {
   };
 
   const evaluate = () => {
+    if (commandOnly) {
+      lastCommand = fullText();
+      return;
+    }
     const match = findWakePhrase(fullText(), normalizedPhrase);
     if (match) {
       matched = true;
@@ -165,11 +170,28 @@ export function createWakePhraseSession(phrase: string) {
     matched() {
       return matched;
     },
+    /**
+     * Mark this session as already woken. Used by the local wake-word path:
+     * the OS recognizer starts after the on-device detector, so its transcript
+     * is the whole command and must not be searched for the phrase again.
+     */
+    markMatched() {
+      matched = true;
+      commandOnly = true;
+      lastCommand = fullText();
+    },
     checkpoint() {
       if (current) {
         committed = current;
       }
       evaluate();
+      if (!matched) {
+        // Preserve only the short phrase tail across a recognition boundary so
+        // a split phrase can still match without carrying a noisy buffer.
+        const tail = retainTail(committed);
+        committed = tail;
+        current = tail;
+      }
       return { command: matched ? lastCommand : '', matched } satisfies WakePhraseSessionResult;
     },
     push(transcript: string, isFinal: boolean): WakePhraseSessionResult {
@@ -200,6 +222,7 @@ export function createWakePhraseSession(phrase: string) {
       committed = '';
       current = '';
       matched = false;
+      commandOnly = false;
       lastCommand = '';
     },
     value() {

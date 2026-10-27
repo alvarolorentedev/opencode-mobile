@@ -5,6 +5,7 @@ import type { OpencodeConnectionSettings } from '@/lib/opencode/client';
 import { parseConnectMetadata } from '@/lib/connect';
 import { stripServerUrlCredentials } from '@/lib/opencode/client/url';
 import { normalizeWakePhrase } from '@/lib/voice/wake-phrase';
+import { normalizeLocalCommandModel, normalizeLocalWakePhrase } from '@/lib/voice/local-wake-word/types';
 import { normalizeTranscriptFontSize, type ChatPreferences } from '@/providers/opencode-preferences';
 
 const ConnectionSettingsSchema = z.object({
@@ -68,6 +69,15 @@ const ChatPreferencesSchema = z.object({
   conversationWakePhrase: z.unknown().transform((value) => (
     typeof value === 'string' ? normalizeWakePhrase(value) : undefined
   )).optional(),
+  voiceWakeMode: z.enum(['phrase', 'local']).optional().catch(undefined),
+  localWakePhrase: z.unknown().transform((value) => (
+    value === undefined ? undefined : normalizeLocalWakePhrase(value)
+  )).optional(),
+  localCommandModel: z.unknown().transform((value) => (
+    value === undefined ? undefined : normalizeLocalCommandModel(value)
+  )).optional(),
+  localSpeakerVerification: optionalBoolean,
+  localSpeakerThreshold: optionalNumber((value) => Math.min(0.95, Math.max(0.2, value))).optional(),
   transcriptFontSize: optionalNumber(normalizeTranscriptFontSize).optional(),
   speechRate: optionalNumber((value) => Math.min(1.5, Math.max(0.5, value))).optional(),
   workingSoundVolume: optionalNumber((value) => Math.min(1, Math.max(0, value))).optional(),

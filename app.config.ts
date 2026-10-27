@@ -162,6 +162,10 @@ const config: ExpoConfig = {
         androidSpeechServicePackages: ['com.google.android.googlequicksearchbox', 'com.google.android.as'],
       },
     ],
+    // Optional on-device wake word and speaker models (sherpa-onnx). The
+    // Android config plugin adds the ONNX Runtime packaging rule; iOS is
+    // autolinked. Models are downloaded from the user's explicit action.
+    '@siteed/sherpa-onnx.rn',
     [
       'expo-splash-screen',
       {

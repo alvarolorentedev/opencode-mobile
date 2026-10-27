@@ -6,6 +6,8 @@ import { type NativeSelectOption } from '@/components/ui/native-select';
 import { NumericSlider } from '@/components/ui/numeric-slider';
 import { TextInput } from '@/components/ui/text-input';
 import type { VoiceCapabilities } from '@/lib/voice/capabilities';
+import { LOCAL_COMMAND_MODELS, localVoiceDownloadSizeLabel } from '@/lib/voice/local-wake-word/model-constants';
+import { LOCAL_WAKE_PHRASES, type LocalCommandModelId, type LocalWakePhraseId, type LocalVoiceModelStatus } from '@/lib/voice/local-wake-word/types';
 import type { SpeechVoiceOption } from '@/lib/voice/speech-output';
 import { DEFAULT_WAKE_PHRASE, normalizeWakePhrase } from '@/lib/voice/wake-phrase';
 import type { WorkingSoundVariant } from '@/lib/voice/working-sound';
@@ -19,6 +21,23 @@ type VoiceSectionProps = {
   isRefreshingSpeechVoices: boolean;
   isRefreshingVoiceCapabilities: boolean;
   isTestingVoice: boolean;
+  localVoice: {
+    clearError: () => void;
+    enrollment: {
+      clearProfile: () => Promise<void>;
+      enroll: () => Promise<void>;
+      error?: string;
+      hasProfile: boolean;
+      isRecording: boolean;
+      status: 'idle' | 'recording' | 'saving' | 'error';
+    };
+    error?: string;
+    install: () => Promise<void>;
+    isInstalling: boolean;
+    refresh: () => void;
+    remove: () => Promise<void>;
+    status: LocalVoiceModelStatus;
+  };
   onEnableVoiceInput: () => void;
   onOpenVoiceSettings: () => void;
   onRefreshVoiceCapabilities: () => void;
@@ -46,6 +65,7 @@ export function VoiceSection({
   isRefreshingSpeechVoices,
   isRefreshingVoiceCapabilities,
   isTestingVoice,
+  localVoice,
   onEnableVoiceInput,
   onOpenVoiceSettings,
   onRefreshVoiceCapabilities,
@@ -90,6 +110,27 @@ export function VoiceSection({
       value: voice.id,
     })),
   ];
+  const localWakePhraseOptions: NativeSelectOption<LocalWakePhraseId>[] = (
+    Object.values(LOCAL_WAKE_PHRASES)
+  ).map((phrase) => ({
+    label: phrase.label,
+    value: phrase.id,
+  }));
+  const localCommandModelOptions: NativeSelectOption<LocalCommandModelId>[] = (
+    Object.values(LOCAL_COMMAND_MODELS)
+  ).map((model) => ({
+    description: model.languages,
+    label: model.label,
+    value: model.id,
+  }));
+  const localVoiceDownloadLabel = localVoiceDownloadSizeLabel(chatPreferences.localCommandModel);
+  const localVoiceStatusLabel = {
+    error: t('settings:voice.localWake.statusError'),
+    installing: t('settings:voice.localWake.statusInstalling'),
+    missing: t('settings:voice.localWake.statusMissing'),
+    ready: t('settings:voice.localWake.statusReady'),
+    unsupported: t('settings:voice.localWake.statusUnsupported'),
+  }[localVoice.status];
 
   return (
     <View style={styles.section}>
@@ -156,6 +197,93 @@ export function VoiceSection({
             value={chatPreferences.resumeListeningAfterReply}
           />
         </List.Section>
+        <SettingSwitchRow
+          description={t('settings:voice.localWake.description', { size: localVoiceDownloadLabel })}
+          onValueChange={(value) => {
+            localVoice.clearError();
+            updateChatPreferences({ voiceWakeMode: value ? 'local' : 'phrase' });
+            localVoice.refresh();
+          }}
+          palette={palette}
+          title={t('settings:voice.localWake.title')}
+          value={chatPreferences.voiceWakeMode === 'local'}
+        />
+        {chatPreferences.voiceWakeMode === 'local' ? (
+          <View style={[styles.localVoiceCard, { backgroundColor: palette.surface, borderColor: palette.border }]}>
+            <View style={styles.localVoiceStatusRow}>
+              <Text variant="bodyMedium" style={{ color: palette.text }}>{localVoiceStatusLabel}</Text>
+              {localVoice.status === 'ready' ? (
+                <Button compact mode="text" onPress={() => { void localVoice.remove(); }}>
+                  {t('settings:voice.localWake.remove')}
+                </Button>
+              ) : null}
+            </View>
+            {localVoice.status === 'missing' || localVoice.status === 'error' ? (
+              <Button
+                loading={localVoice.isInstalling}
+                mode="contained-tonal"
+                onPress={() => { void localVoice.install(); }}
+              >
+                {t('settings:voice.localWake.install', { size: localVoiceDownloadLabel })}
+              </Button>
+            ) : null}
+            {localVoice.status === 'unsupported' ? (
+              <HelperText type="info">{t('settings:voice.localWake.unsupportedHint')}</HelperText>
+            ) : null}
+            {localVoice.error ? <HelperText type="error">{localVoice.error}</HelperText> : null}
+            <SettingSelectField
+              label={t('settings:voice.localWake.phraseLabel')}
+              onValueChange={(value) => updateChatPreferences({ localWakePhrase: value })}
+              options={localWakePhraseOptions}
+              palette={palette}
+              selectedValue={chatPreferences.localWakePhrase}
+              valueLabel={LOCAL_WAKE_PHRASES[chatPreferences.localWakePhrase].label}
+            />
+            <HelperText type="info">{t('settings:voice.localWake.phraseHelper')}</HelperText>
+            <SettingSelectField
+              label={t('settings:voice.localWake.commandModelLabel')}
+              onValueChange={(value) => updateChatPreferences({ localCommandModel: value })}
+              options={localCommandModelOptions}
+              palette={palette}
+              selectedValue={chatPreferences.localCommandModel}
+              valueLabel={LOCAL_COMMAND_MODELS[chatPreferences.localCommandModel].label}
+            />
+            <HelperText type="info">{t('settings:voice.localWake.commandModelHelper')}</HelperText>
+            <SettingSwitchRow
+              description={t('settings:voice.localWake.speakerVerificationDescription')}
+              onValueChange={(value) => updateChatPreferences({ localSpeakerVerification: value })}
+              palette={palette}
+              title={t('settings:voice.localWake.speakerVerification')}
+              value={chatPreferences.localSpeakerVerification}
+            />
+            <View style={styles.localVoiceActions}>
+              <Button
+                disabled={localVoice.status !== 'ready' || localVoice.enrollment.isRecording || localVoice.enrollment.status === 'saving'}
+                mode="outlined"
+                onPress={() => { void localVoice.enrollment.enroll(); }}
+              >
+                {localVoice.enrollment.hasProfile
+                  ? t('settings:voice.localWake.reEnroll')
+                  : t('settings:voice.localWake.enroll')}
+              </Button>
+              {localVoice.enrollment.hasProfile ? (
+                <Button compact mode="text" onPress={() => { void localVoice.enrollment.clearProfile(); }}>
+                  {t('settings:voice.localWake.removeVoice')}
+                </Button>
+              ) : null}
+            </View>
+            <HelperText type={localVoice.enrollment.error ? 'error' : 'info'}>
+              {localVoice.enrollment.error
+                || (localVoice.enrollment.status === 'recording'
+                  ? t('settings:voice.localWake.recording')
+                  : localVoice.enrollment.status === 'saving'
+                    ? t('settings:voice.localWake.saving')
+                    : localVoice.enrollment.hasProfile
+                      ? t('settings:voice.localWake.enrolled')
+                      : t('settings:voice.localWake.notEnrolled'))}
+            </HelperText>
+          </View>
+        ) : null}
         <TextInput
           autoCapitalize="none"
           autoCorrect={false}
@@ -210,4 +338,7 @@ const styles = StyleSheet.create({
   voiceCheckRow: { alignItems: 'center', flexDirection: 'row', justifyContent: 'space-between', gap: 12 },
   actionRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
   infoListSection: { marginVertical: 0 },
+  localVoiceCard: { borderRadius: 16, borderWidth: 1, gap: 10, padding: 14 },
+  localVoiceStatusRow: { alignItems: 'center', flexDirection: 'row', justifyContent: 'space-between', gap: 12 },
+  localVoiceActions: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 10 },
 });

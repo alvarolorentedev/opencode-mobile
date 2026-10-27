@@ -50,6 +50,8 @@ function SettingsContent() {
   const notifications = useNotificationSetup();
   const voiceSetup = useVoiceSetup({
     locale: chatPreferences.speechLocale,
+    localCommandModel: chatPreferences.localCommandModel,
+    localWakePhrase: chatPreferences.localWakePhrase,
     rate: chatPreferences.speechRate,
     voiceId: chatPreferences.speechVoiceId,
   });

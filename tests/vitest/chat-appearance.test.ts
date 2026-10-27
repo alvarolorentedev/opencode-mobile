@@ -10,6 +10,7 @@ describe('chat appearance preferences', () => {
     const { normalizeTranscriptFontSize, defaultChatPreferences } = await loadTs('providers/opencode-preferences.ts', {
       '@/constants/appearance': appearance,
       '@/lib/voice/wake-phrase': { DEFAULT_WAKE_PHRASE: 'hey code' },
+      '@/lib/voice/local-wake-word/types': { DEFAULT_LOCAL_WAKE_PHRASE: 'hey-code', DEFAULT_LOCAL_COMMAND_MODEL: 'moonshine-tiny-en' },
     });
 
     assert.equal(normalizeTranscriptFontSize(16), 16);

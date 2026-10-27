@@ -384,7 +384,7 @@ describe('non-blocking prompt reconciliation', () => {
   it('returns after admission while post-send reads are still pending', async () => {
     const runtime = hookRuntime();
     const appearance = await loadTs('constants/appearance.ts');
-    const preferences = await loadTs('providers/opencode-preferences.ts', { '@/constants/appearance': appearance, '@/lib/voice/wake-phrase': { DEFAULT_WAKE_PHRASE: 'hey code' } });
+    const preferences = await loadTs('providers/opencode-preferences.ts', { '@/constants/appearance': appearance, '@/lib/voice/wake-phrase': { DEFAULT_WAKE_PHRASE: 'hey code' }, '@/lib/voice/local-wake-word/types': { DEFAULT_LOCAL_WAKE_PHRASE: 'hey-code', DEFAULT_LOCAL_COMMAND_MODEL: 'moonshine-tiny-en' } });
     const models = await loadTs('providers/opencode-model-selection.ts', {
       '@/providers/opencode-preferences': preferences,
     });

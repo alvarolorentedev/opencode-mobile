@@ -446,6 +446,11 @@ const voiceRuntime = hookRuntime();
 let recognitionOptions: any, speechCallbacks: any, onConversationAppStateChange: any, sends = 0, aborts = 0;
 let lastPrompt;
 let listening = false;
+let localWakeOptions: any;
+let localCommandOptions: any;
+let localWakeStarts = 0;
+let localCommandStarts = 0;
+let localWakeStartResult = true;
 const sendGate = deferred<void>();
 let permissionRequests: any;
 const startSpeech = async () => {
@@ -468,6 +473,29 @@ const conversationImports = {
   '@/lib/opencode/transcript': { isTranscriptDisplayMessage: (entry: any) => Boolean(entry.text) },
   '@/lib/voice/speech-output': { stopSpeaking: async () => {}, speakText: async (options: any) => { speechCallbacks = options; options.onStart(); return true; } },
   '@/lib/voice/use-speech-input': { useSpeechInput: (options: any) => { recognitionOptions = options; return { abort: abortSpeech, start: startSpeech, isListening: listening, isStarting: false, level: 0 }; } },
+  '@/lib/voice/local-wake-word/types': await loadTs('lib/voice/local-wake-word/types.ts', {}, voiceRuntime.globals),
+  '@/lib/voice/use-local-wake-word': {
+    useLocalWakeWord: (options: any) => {
+      localWakeOptions = options;
+      return {
+        available: true,
+        level: 0,
+        refreshAvailability: () => true,
+        start: async () => { localWakeStarts += 1; return localWakeStartResult; },
+        status: 'idle',
+        stop: async () => {},
+      };
+    },
+  },
+  '@/lib/voice/use-local-command-capture': {
+    useLocalCommandCapture: (options: any) => {
+      localCommandOptions = options;
+      return {
+        start: async () => { localCommandStarts += 1; return true; },
+        stop: async () => {},
+      };
+    },
+  },
   '@/lib/voice/wake-feedback': { playWakePhraseCue: () => {} },
   '@/lib/voice/wake-phrase': await loadTs('lib/voice/wake-phrase.ts', {}, voiceRuntime.globals),
   '@/lib/voice/working-sound': { stopWorkingSoundAsync: async () => {} },
@@ -490,18 +518,42 @@ const conversationImports = {
   '@/providers/use-conversation-keep-awake': { useConversationKeepAwake: () => {} },
 };
 const conversationFeedback = await loadTs('providers/conversation/feedback.ts', {}, voiceRuntime.globals);
+const conversationTimers = await loadTs('providers/conversation/use-conversation-timers.ts', {
+  react: voiceRuntime.react,
+  '@/lib/voice/wake-phrase': conversationImports['@/lib/voice/wake-phrase'],
+  '@/providers/conversation/feedback': conversationFeedback,
+  '@/providers/opencode-provider-types': { CONVERSATION_COMMAND_TIMEOUT_MS: 6000, CONVERSATION_FINAL_RESULT_SETTLE_MS: 2200 },
+}, voiceRuntime.globals);
+const conversationArming = await loadTs('providers/conversation/use-conversation-arming.ts', {
+  react: voiceRuntime.react,
+  '@/lib/voice/wake-phrase': conversationImports['@/lib/voice/wake-phrase'],
+  '@/lib/voice/working-sound': conversationImports['@/lib/voice/working-sound'],
+  '@/providers/conversation/feedback': conversationFeedback,
+}, voiceRuntime.globals);
+const localWakeController = await loadTs('providers/conversation/use-local-wake-controller.ts', {
+  react: voiceRuntime.react,
+  '@/lib/voice/local-wake-word/types': conversationImports['@/lib/voice/local-wake-word/types'],
+  '@/lib/voice/use-local-command-capture': conversationImports['@/lib/voice/use-local-command-capture'],
+  '@/lib/voice/use-local-wake-word': conversationImports['@/lib/voice/use-local-wake-word'],
+  '@/lib/voice/wake-feedback': conversationImports['@/lib/voice/wake-feedback'],
+  '@/lib/voice/wake-phrase': conversationImports['@/lib/voice/wake-phrase'],
+  '@/providers/conversation/feedback': conversationFeedback,
+}, voiceRuntime.globals);
 const conversationListening = await loadTs('providers/conversation/use-conversation-listening.ts', { ...conversationImports, '@/providers/conversation/feedback': conversationFeedback }, voiceRuntime.globals);
 const conversationPlayback = await loadTs('providers/conversation/use-conversation-playback.ts', { ...conversationImports, '@/providers/conversation/feedback': conversationFeedback }, voiceRuntime.globals);
 const conversationConnection = await loadTs('providers/conversation/use-conversation-connection.ts', { ...conversationImports, '@/providers/conversation/feedback': conversationFeedback }, voiceRuntime.globals);
 const conversation = await loadTs('providers/use-conversation-state.ts', {
   ...conversationImports,
   '@/providers/conversation/feedback': conversationFeedback,
+  '@/providers/conversation/use-conversation-arming': conversationArming,
   '@/providers/conversation/use-conversation-listening': conversationListening,
   '@/providers/conversation/use-conversation-playback': conversationPlayback,
   '@/providers/conversation/use-conversation-connection': conversationConnection,
+  '@/providers/conversation/use-conversation-timers': conversationTimers,
+  '@/providers/conversation/use-local-wake-controller': localWakeController,
 }, voiceRuntime.globals);
 const appearance = await loadTs('constants/appearance.ts');
-const chatPreferences = (await loadTs('providers/opencode-preferences.ts', { '@/constants/appearance': appearance, '@/lib/voice/wake-phrase': { DEFAULT_WAKE_PHRASE: 'hey code' } })).defaultChatPreferences;
+const chatPreferences = (await loadTs('providers/opencode-preferences.ts', { '@/constants/appearance': appearance, '@/lib/voice/wake-phrase': { DEFAULT_WAKE_PHRASE: 'hey code' }, '@/lib/voice/local-wake-word/types': { DEFAULT_LOCAL_WAKE_PHRASE: 'hey-code', DEFAULT_LOCAL_COMMAND_MODEL: 'moonshine-tiny-en' } })).defaultChatPreferences;
 voiceRuntime.mount(conversation.useConversationState, {
   connection: { status: 'connected', message: 'ready' }, chatPreferences, currentSessionId: 's', setCurrentSessionId: () => {},
   sessionStatuses: { s: { type: 'busy' } }, messagesBySession: {}, pendingPermissionsBySession: {}, pendingQuestionsBySession: {},
@@ -582,14 +634,15 @@ await voiceRuntime.settle();
 voiceRuntime.fire(2200); await voiceRuntime.settle();
 assert.equal(lastPrompt, 'run tests'); assert.equal(sends, 4);
 
-// An end while armed resets the gate; the restart cannot carry noise forward.
+// A recognition end while armed preserves only the phrase tail, so a phrase
+// split across the restart still matches.
 await startConversation();
-recognitionOptions.onResult('background noise', false);
+recognitionOptions.onResult('hey', true);
 recognitionOptions.onEnd(); abortSpeech();
 await voiceRuntime.update({}); voiceRuntime.fire(350); await voiceRuntime.settle();
 assert.equal(phase(), 'armed');
 assert.equal(sends, 4);
-recognitionOptions.onResult('hey code after restart', true);
+recognitionOptions.onResult('code after restart', true);
 voiceRuntime.fire(2200); await voiceRuntime.settle();
 assert.equal(lastPrompt, 'after restart'); assert.equal(sends, 5);
 
@@ -652,6 +705,36 @@ recognitionOptions.onResult('open settings', true);
 voiceRuntime.fire(2200); await voiceRuntime.settle();
 assert.equal(lastPrompt, 'open settings');
 assert.equal(sends, 8, 'the preserved command window appends to the matched phrase');
+
+// Local mode wakes through the on-device detector, then captures only the
+// command with the OS recognizer.
+await stopConversation();
+voiceRuntime.update({ chatPreferences: { ...chatPreferences, voiceWakeMode: 'local' } });
+await voiceRuntime.value.toggleConversationMode(); await voiceRuntime.settle();
+assert.equal(phase(), 'armed');
+assert.equal(localWakeStarts, 1, 'arming starts the local detector');
+localWakeOptions.onWake();
+await voiceRuntime.settle();
+assert.equal(phase(), 'listening');
+assert.equal(localCommandStarts, 1, 'the verified wake starts local command capture');
+localCommandOptions.onPartialCommand('open settings');
+await voiceRuntime.settle();
+assert.equal(voiceRuntime.value.conversation.latestHeardText, 'open settings');
+localCommandOptions.onCommand('open settings');
+await voiceRuntime.settle();
+assert.equal(lastPrompt, 'open settings', 'the local command is submitted without an OS transcript');
+assert.equal(sends, 9);
+await voiceRuntime.value.toggleConversationMode(); await voiceRuntime.settle();
+voiceRuntime.update({ chatPreferences });
+localWakeStartResult = false;
+// A local-mode start failure falls back to the OS phrase gate.
+voiceRuntime.update({ chatPreferences: { ...chatPreferences, voiceWakeMode: 'local' } });
+await voiceRuntime.value.toggleConversationMode(); await voiceRuntime.settle();
+assert.equal(phase(), 'armed');
+assert.match(voiceRuntime.value.conversation.feedback, /phrase gate/);
+await voiceRuntime.value.toggleConversationMode(); await voiceRuntime.settle();
+voiceRuntime.update({ chatPreferences });
+localWakeStartResult = true;
 
 await stopConversation();
 voiceRuntime.update({ pendingQuestionsBySession: { s: [{ id: 'question' }] } });

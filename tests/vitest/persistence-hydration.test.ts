@@ -88,10 +88,12 @@ describe('persistence hydration and write-back', () => {
     }
     const appearance = await loadTs('constants/appearance.ts');
     const wakePhrase = await loadTs('lib/voice/wake-phrase.ts');
-    const preferences = await loadTs('providers/opencode-preferences.ts', { '@/constants/appearance': appearance, '@/lib/voice/wake-phrase': wakePhrase });
+    const localWakeTypes = await loadTs('lib/voice/local-wake-word/types.ts');
+    const preferences = await loadTs('providers/opencode-preferences.ts', { '@/constants/appearance': appearance, '@/lib/voice/wake-phrase': wakePhrase, '@/lib/voice/local-wake-word/types': localWakeTypes });
     const profileUrls = await loadTs('lib/opencode/client/url.ts', { './types': { defaultConnectionSettings: { serverUrl: 'http://localhost' } } });
     const { parseConnectionSettings, parseChatPreferences } = await loadTs('providers/persisted-preferences.ts', {
       '@/constants/appearance': appearance, '@/lib/connect': connect, '@/lib/voice/wake-phrase': wakePhrase,
+      '@/lib/voice/local-wake-word/types': localWakeTypes,
       '@/providers/opencode-preferences': preferences, '@/lib/opencode/client/url': profileUrls, zod: { z },
     });
     assert.throws(() => parseConnectionSettings('{"serverUrl":123}'), /Invalid/);

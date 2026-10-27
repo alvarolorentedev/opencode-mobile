@@ -101,4 +101,21 @@ describe('wake phrase session', () => {
     expect(session.checkpoint().command).toBe('open');
     expect(session.push('settings', true).command).toBe('open settings');
   });
+
+  it('preserves the phrase tail across an unmatched checkpoint', () => {
+    const session = createWakePhraseSession('hey code');
+    session.push('hey', true);
+    expect(session.checkpoint()).toEqual({ command: '', matched: false });
+    expect(session.push('code open settings', true)).toEqual({ command: 'open settings', matched: true });
+  });
+
+  it('treats all following text as the command after a local wake-word match', () => {
+    const session = createWakePhraseSession('hey code');
+    session.markMatched();
+    expect(session.push('open settings', false)).toEqual({ command: 'open settings', matched: true });
+    expect(session.push('open settings now', true)).toEqual({ command: 'open settings now', matched: true });
+    expect(session.command()).toBe('open settings now');
+    session.reset();
+    expect(session.push('plain text', true)).toEqual({ command: '', matched: false });
+  });
 });

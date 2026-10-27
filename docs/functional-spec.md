@@ -517,6 +517,7 @@ Behavior exposed today:
 - auto-play assistant replies
 - working sound enable/disable
 - conversation wake phrase (default `hey code`)
+- optional on-device wake word with pretrained models and voice verification
 - resume listening after spoken reply in conversation mode
 - speech locale override
 - response scope (`brief`, `balanced`, `detailed`)
@@ -616,6 +617,34 @@ Additional behavior:
   `heycode` also matches
 - the phrase is passed to the recognizer as contextual vocabulary
 - recognition still runs while armed; the gate changes submission, not capture
+
+Optional on-device wake word:
+
+- Settings → Voice selects the local detector and one of the bundled phrases
+  (`Hey code` or `Hey opencode`). The user must explicitly download the base
+  wake pack and a command-recognition model; the default Moonshine pack totals
+  ~152 MB, while Whisper tiny multilingual is ~161 MB.
+- The KWS model detects the phrase acoustically; it does not transcribe the
+  room while armed.
+- If voice verification is enabled and a profile is enrolled, the detected
+  segment must match that profile. Rejected turns stay armed and surface
+  feedback.
+- After a verified wake, the detector stops and a local command session starts.
+  A VAD splits the command window into speech turns; each turn is checked
+  against the enrolled speaker, and only matching turns are transcribed by the
+  selected local model (Moonshine English by default, or Whisper tiny
+  multilingual/auto-detect).
+- Accepted turns are accumulated until 1.2 seconds of silence, then submitted
+  as one prompt. A window with no speech ends after six seconds; the command
+  window is capped at fifteen seconds.
+- Overlapping speech is not separated. Borderline speaker matches get a
+  split-half consistency check and mixed-looking turns are discarded before
+  ASR, but simultaneous TV/child speech can still contaminate a turn. Keep the
+  tap/confirm fallback for noisy rooms.
+- If models, the native runtime, or microphone permission are unavailable,
+  conversation mode falls back to the phrase gate and says so.
+- The local path is foreground-only. Local TTS is out of scope; the wake phrase
+  remains English because the KWS model is English.
 
 ## Notifications Behavior
 

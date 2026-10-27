@@ -243,6 +243,31 @@
       "label": "唤醒短语",
       "helper": "对话模式只会在听到此短语后发送消息。建议使用两个或更多词。"
     },
+    "localWake": {
+      "title": "设备端唤醒词",
+      "description": "运行本地唤醒词模型和可选的声纹校验。下载 {{size}} 的预训练模型；不可用时回退到短语检测。",
+      "statusMissing": "模型未安装",
+      "statusInstalling": "正在安装…",
+      "statusReady": "模型已安装",
+      "statusUnsupported": "此版本不支持",
+      "statusError": "安装失败",
+      "install": "安装模型（{{size}}）",
+      "remove": "移除模型",
+      "phraseLabel": "唤醒短语",
+      "phraseHelper": "设备端检测器支持这些短语，命令识别仅使用英语模型。无需训练。",
+      "speakerVerification": "验证我的声音",
+      "speakerVerificationDescription": "当唤醒短语不是已登记声音所说时拒绝它。",
+      "enroll": "登记声音",
+      "reEnroll": "重新录制",
+      "removeVoice": "移除声音",
+      "enrolled": "已登记声纹。",
+      "notEnrolled": "尚无声纹。",
+      "recording": "录音中…请自然说话约十秒。",
+      "saving": "正在生成声纹…",
+      "unsupportedHint": "此版本不包含本地原生语音运行时。",
+      "commandModelLabel": "命令识别模型",
+      "commandModelHelper": "选择用于命令的设备端模型。多语言模型占用更多空间。"
+    },
     "speechLocale": {
       "label": "语音区域设置",
       "helper": "留空以使用系统默认语言进行语音输入和播放。"

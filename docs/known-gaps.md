@@ -223,3 +223,39 @@ has no durable config/plugin/skill/command mutation surface. Consequences:
 
 Deferred library replacements and extraction candidates are documented in
 [library-extraction.md](library-extraction.md).
+
+## 11. On-device wake word limits
+
+The optional local path uses pretrained sherpa-onnx KWS, speaker-embedding,
+Silero VAD, and Moonshine tiny English command models. No model training is
+involved, but the accuracy in heavy TV/child babble has not been benchmarked on
+physical devices yet.
+
+Known limits:
+
+- KWS runs while conversation mode is armed; it does not transcribe the room,
+  but it still owns the microphone and consumes battery. The command ASR is
+  loaded while armed so the post-wake window is not delayed.
+- The bundled phrases are tokenized at install time; arbitrary phrases are not
+  supported without runtime BPE tokenization.
+- Voice verification is an enrollment-time cosine threshold, not a production
+  speaker-verification system. Re-enrollment is required after a major voice
+  change, and the threshold may need device-specific tuning.
+- Target-speaker gating works on non-overlapping turns. Borderline matches get
+  a split-half speaker-consistency check, which discards turns that look like
+  they contain different voices. This is a heuristic, not source separation:
+  simultaneous TV/child speech can still contaminate a turn and be dropped or
+  transcribed imperfectly. A target-speaker extraction model would be needed for
+  a stronger guarantee.
+- Very short turns may be rejected before ASR because the speaker embedding is
+  unreliable below roughly a third of a second.
+- The command ASR defaults to English Moonshine; Whisper tiny multilingual is
+  selectable and does not require training, but its short-command accuracy,
+  latency, and auto-detect behavior are unbenchmarked. The wake phrase remains
+  English because the KWS model is English.
+- Local TTS is out of scope.
+- The model pack is roughly 152 MB and the native runtime is prebuilt; both
+  need review for F-Droid packaging/licensing.
+- The local path is foreground-only; it does not run with the screen off.
+- Model install/removal and voice enrollment do not yet stop an active local
+  detector. Stop conversation mode before changing the local voice setup.

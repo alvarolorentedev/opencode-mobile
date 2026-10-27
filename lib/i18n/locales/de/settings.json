@@ -243,6 +243,31 @@
       "label": "Weckphrase",
       "helper": "Der Konversationsmodus sendet erst eine Nachricht, wenn er diese Phrase hört. Zwei oder mehr Wörter funktionieren am besten."
     },
+    "localWake": {
+      "title": "Wake-Word auf dem Gerät",
+      "description": "Lokales Wake-Word-Modell und optionale Stimmprüfung. Lädt {{size}} vortrainierte Modelle; fällt bei Problemen auf die Phrasenerkennung zurück.",
+      "statusMissing": "Modelle nicht installiert",
+      "statusInstalling": "Wird installiert…",
+      "statusReady": "Modelle installiert",
+      "statusUnsupported": "In diesem Build nicht unterstützt",
+      "statusError": "Installation fehlgeschlagen",
+      "install": "Modelle installieren ({{size}})",
+      "remove": "Modelle entfernen",
+      "phraseLabel": "Wake-Phrase",
+      "phraseHelper": "Der lokale Detektor unterstützt diese Phrasen und nutzt ein englisches Sprachmodell für Befehle. Kein Training nötig.",
+      "speakerVerification": "Meine Stimme prüfen",
+      "speakerVerificationDescription": "Die Wake-Phrase ablehnen, wenn sie nicht von der hinterlegten Stimme gesprochen wird.",
+      "enroll": "Stimme hinterlegen",
+      "reEnroll": "Neu aufnehmen",
+      "removeVoice": "Stimme entfernen",
+      "enrolled": "Stimmprofil hinterlegt.",
+      "notEnrolled": "Noch kein Stimmprofil.",
+      "recording": "Aufnahme… sprich etwa zehn Sekunden natürlich.",
+      "saving": "Stimmprofil wird erstellt…",
+      "unsupportedHint": "Dieser Build enthält die native lokale Sprachlaufzeit nicht.",
+      "commandModelLabel": "Befehls-Sprachmodell",
+      "commandModelHelper": "Wähle das lokale Modell für Befehle. Mehrsprachige Modelle benötigen mehr Speicher."
+    },
     "speechLocale": {
       "label": "Sprachlocale",
       "helper": "Leer lassen, um die Standardsprache des Systems für Spracheingabe und -wiedergabe zu verwenden."

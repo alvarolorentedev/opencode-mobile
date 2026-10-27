@@ -648,6 +648,7 @@ Responsibility:
 
 - edit speech input/output preferences
 - edit the conversation wake phrase
+- install/remove optional on-device wake-word, VAD and command-ASR models, and enroll a voice profile
 - edit response style settings that become system prompt hints
 - select working sound and speech voice
 - adjust speech rate and working-sound volume with touch sliders

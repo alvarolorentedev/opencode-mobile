@@ -243,6 +243,31 @@
       "label": "Frase de activación",
       "helper": "El modo conversación solo envía un mensaje después de oír esta frase. Funciona mejor con dos o más palabras."
     },
+    "localWake": {
+      "title": "Palabra de activación en el dispositivo",
+      "description": "Ejecuta un modelo local y una comprobación de voz opcional. Descarga {{size}} de modelos preentrenados; si no está disponible, usa la frase del sistema.",
+      "statusMissing": "Modelos no instalados",
+      "statusInstalling": "Instalando…",
+      "statusReady": "Modelos instalados",
+      "statusUnsupported": "No compatible con esta compilación",
+      "statusError": "Error de instalación",
+      "install": "Instalar modelos ({{size}})",
+      "remove": "Eliminar modelos",
+      "phraseLabel": "Frase de activación",
+      "phraseHelper": "El detector local admite estas frases y usa un modelo de comandos solo en inglés. No hace falta entrenar.",
+      "speakerVerification": "Verificar mi voz",
+      "speakerVerificationDescription": "Rechaza la frase cuando no la dice la voz registrada.",
+      "enroll": "Registrar voz",
+      "reEnroll": "Grabar de nuevo",
+      "removeVoice": "Eliminar voz",
+      "enrolled": "Perfil de voz registrado.",
+      "notEnrolled": "Aún no hay perfil de voz.",
+      "recording": "Grabando… habla con naturalidad durante unos diez segundos.",
+      "saving": "Creando perfil de voz…",
+      "unsupportedHint": "Esta compilación no incluye el entorno nativo de voz local.",
+      "commandModelLabel": "Modelo de reconocimiento de comandos",
+      "commandModelHelper": "Elige el modelo local para comandos. Los modelos multilingües ocupan más espacio."
+    },
     "speechLocale": {
       "label": "Idioma de voz",
       "helper": "Déjalo vacío para usar el idioma predeterminado del sistema en la entrada de voz y la reproducción."

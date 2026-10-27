@@ -243,6 +243,31 @@
       "label": "ウェイクフレーズ",
       "helper": "会話モードはこのフレーズを聞き取った後にのみメッセージを送信します。2語以上がおすすめです。"
     },
+    "localWake": {
+      "title": "オンデバイスのウェイクワード",
+      "description": "ローカルのウェイクワードモデルと任意の声紋チェックを実行します。{{size}} の学習済みモデルをダウンロードし、利用できない場合はフレーズ判定に戻ります。",
+      "statusMissing": "モデル未インストール",
+      "statusInstalling": "インストール中…",
+      "statusReady": "モデルインストール済み",
+      "statusUnsupported": "このビルドでは未対応",
+      "statusError": "インストール失敗",
+      "install": "モデルをインストール ({{size}})",
+      "remove": "モデルを削除",
+      "phraseLabel": "ウェイクフレーズ",
+      "phraseHelper": "オンデバイス検出器はこれらのフレーズに対応し、コマンド認識は英語モデルのみです。学習は不要です。",
+      "speakerVerification": "声を確認する",
+      "speakerVerificationDescription": "登録した声ではない場合、ウェイクフレーズを拒否します。",
+      "enroll": "声を登録",
+      "reEnroll": "録音し直す",
+      "removeVoice": "声を削除",
+      "enrolled": "声紋プロファイルを登録済みです。",
+      "notEnrolled": "声紋プロファイルはまだありません。",
+      "recording": "録音中…10秒ほど自然に話してください。",
+      "saving": "声紋プロファイルを作成中…",
+      "unsupportedHint": "このビルドにはネイティブのローカル音声ランタイムが含まれていません。",
+      "commandModelLabel": "コマンド認識モデル",
+      "commandModelHelper": "コマンド用のオンデバイスモデルを選択します。多言語モデルは容量が大きくなります。"
+    },
     "speechLocale": {
       "label": "音声ロケール",
       "helper": "空欄にすると、音声入力と再生にシステムの既定言語を使用します。"

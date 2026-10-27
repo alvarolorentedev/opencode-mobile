@@ -100,6 +100,14 @@ Anti-features: voice input relies on the device's system speech recognizer,
 which on many devices is supplied by Google. If F-Droid reviewers apply
 `NonFreeNet`, declare it rather than dropping voice.
 
+The optional on-device wake word uses the `@siteed/sherpa-onnx.rn` native
+runtime and downloads pretrained models on explicit user action. The wrapper
+ships prebuilt sherpa-onnx/ONNX Runtime libraries and may include LGPL
+components (FFmpeg/Shine). Review this before the next F-Droid submission; if
+the prebuilt native artifacts or optional model downloads are not acceptable,
+gate the local wake-word setting out of the FOSS variant or build sherpa-onnx
+from source for that flavor.
+
 ## Keeping the variant working
 
 When changing dependencies or native config:

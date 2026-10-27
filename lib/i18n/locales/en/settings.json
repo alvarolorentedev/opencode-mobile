@@ -243,6 +243,31 @@
       "label": "Wake phrase",
       "helper": "Conversation mode sends a message only after it hears this phrase. Two or more words work best."
     },
+    "localWake": {
+      "title": "On-device wake word",
+      "description": "Run a local wake-word model and optional voice check. Downloads {{size}} of pretrained models; falls back to the phrase gate if unavailable.",
+      "statusMissing": "Models not installed",
+      "statusInstalling": "Installing…",
+      "statusReady": "Models installed",
+      "statusUnsupported": "Not supported in this build",
+      "statusError": "Installation failed",
+      "install": "Install models ({{size}})",
+      "remove": "Remove models",
+      "phraseLabel": "Wake phrase",
+      "phraseHelper": "The on-device detector supports these bundled phrases and uses an English-only command model. No training is required.",
+      "speakerVerification": "Verify my voice",
+      "speakerVerificationDescription": "Reject the wake phrase when it is not spoken by the enrolled voice.",
+      "enroll": "Enroll voice",
+      "reEnroll": "Record again",
+      "removeVoice": "Remove voice",
+      "enrolled": "Voice profile enrolled.",
+      "notEnrolled": "No voice profile yet.",
+      "recording": "Recording… speak naturally for about ten seconds.",
+      "saving": "Building voice profile…",
+      "unsupportedHint": "This build does not include the native on-device voice runtime.",
+      "commandModelLabel": "Command recognition model",
+      "commandModelHelper": "Choose the on-device model used for commands. Multilingual models download a larger file."
+    },
     "speechLocale": {
       "label": "Speech locale",
       "helper": "Leave empty to use the system default language for voice input and playback."
