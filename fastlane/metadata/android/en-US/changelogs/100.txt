@@ -1,0 +1,3 @@
+- Voice settings now split System and On-device modes, showing only the controls that apply to each path.
+- On-device mode gains a setup checklist with model sizes and status, and enrollment waits until models are ready.
+- Fixes on-device model archive extraction and hardens the release builds against flaky SDK downloads.

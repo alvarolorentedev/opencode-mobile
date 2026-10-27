@@ -73,21 +73,31 @@ jobs:
       - name: Setup Android SDK
         uses: android-actions/setup-android@v4
 
-      # AGP's on-demand CMake install occasionally fetches a truncated archive
-      # and fails mid-build ("Archive is not a ZIP archive"). Pre-install it
+      # AGP's on-demand SDK installs occasionally fetch a truncated archive
+      # and fail mid-build ("Archive is not a ZIP archive"). Pre-install them
       # with retries so a flaky download cannot abort Gradle.
-      - name: Install CMake
+      - name: Install CMake and NDK
         run: |
           set -eo pipefail
-          for attempt in 1 2 3; do
-            if sdkmanager --install 'cmake;3.22.1' </dev/null; then
-              exit 0
-            fi
-            rm -rf "${ANDROID_HOME:-$ANDROID_SDK_ROOT}/.temp"
-            sleep $((attempt * 5))
+          SDK_ROOT="${ANDROID_HOME:-$ANDROID_SDK_ROOT}"
+          for pkg in 'cmake;3.22.1' 'ndk;27.1.12297006'; do
+            for attempt in 1 2 3; do
+              if sdkmanager --install "$pkg" </dev/null; then
+                break
+              fi
+              rm -rf "$SDK_ROOT/.temp"
+              # A failed NDK unzip can leave a broken directory behind that
+              # blocks the next attempt, so drop it before retrying.
+              case "$pkg" in
+                ndk\;*) rm -rf "$SDK_ROOT/ndk/27.1.12297006" ;;
+              esac
+              if [ "$attempt" -eq 3 ]; then
+                echo "::error::Failed to install $pkg after 3 attempts"
+                exit 1
+              fi
+              sleep $((attempt * 5))
+            done
           done
-          echo "::error::Failed to install cmake;3.22.1 after 3 attempts"
-          exit 1
         shell: bash
 
       - name: Install dependencies
@@ -204,19 +214,29 @@ jobs:
         uses: android-actions/setup-android@v4
 
       # Same retried pre-install as android-release: protects the FOSS build
-      # from the flaky AGP-downloaded CMake archive.
-      - name: Install CMake
+      # from the flaky AGP-downloaded CMake/NDK archives.
+      - name: Install CMake and NDK
         run: |
           set -eo pipefail
-          for attempt in 1 2 3; do
-            if sdkmanager --install 'cmake;3.22.1' </dev/null; then
-              exit 0
-            fi
-            rm -rf "${ANDROID_HOME:-$ANDROID_SDK_ROOT}/.temp"
-            sleep $((attempt * 5))
+          SDK_ROOT="${ANDROID_HOME:-$ANDROID_SDK_ROOT}"
+          for pkg in 'cmake;3.22.1' 'ndk;27.1.12297006'; do
+            for attempt in 1 2 3; do
+              if sdkmanager --install "$pkg" </dev/null; then
+                break
+              fi
+              rm -rf "$SDK_ROOT/.temp"
+              # A failed NDK unzip can leave a broken directory behind that
+              # blocks the next attempt, so drop it before retrying.
+              case "$pkg" in
+                ndk\;*) rm -rf "$SDK_ROOT/ndk/27.1.12297006" ;;
+              esac
+              if [ "$attempt" -eq 3 ]; then
+                echo "::error::Failed to install $pkg after 3 attempts"
+                exit 1
+              fi
+              sleep $((attempt * 5))
+            done
           done
-          echo "::error::Failed to install cmake;3.22.1 after 3 attempts"
-          exit 1
         shell: bash
 
       - name: Install dependencies
