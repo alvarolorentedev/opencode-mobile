@@ -1,0 +1,3 @@
+- New opt-in local voice mode runs the wake word and your commands entirely on the device, with no audio leaving the phone.
+- Local mode learns your voice so only your turns are transcribed, and falls back to the system recognizer when it is off.
+- Command models can be downloaded on demand, with English Moonshine and multilingual Whisper tiny options.
