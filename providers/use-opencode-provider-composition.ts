@@ -29,7 +29,6 @@ import { usePromptInbox } from '@/providers/use-prompt-inbox';
 import { usePromptLifecycle } from '@/providers/use-prompt-lifecycle';
 import { useConnectionActions } from '@/providers/use-connection-actions';
 import { useConnectionRetry } from '@/providers/use-connection-retry';
-import { useNetworkStatus } from '@/providers/use-network-status';
 import { useOpencodeProviderValues } from '@/providers/opencode-provider-values';
 import { useOpencodeProviderReset } from '@/providers/use-opencode-provider-reset';
 import { useCoalescedRefresh } from '@/providers/use-coalesced-refresh';
@@ -38,7 +37,10 @@ import type { WorkspaceRuntimeInput } from '@/providers/workspace-types';
 
 export function useOpencodeProviderComposition(input: WorkspaceRuntimeInput) {
   const state = useWorkspaceRuntimeState(input);
-  const network = useNetworkStatus();
+  // Connectivity is owned by WorkspaceProvider. NetInfo.configure() is global
+  // and tears down existing listeners, so a per-runtime hook would freeze every
+  // workspace except the one that mounted last.
+  const network = input.network;
   const isHydrated = input.isHydrated && input.connection.enabled;
   const {
     setConnection,

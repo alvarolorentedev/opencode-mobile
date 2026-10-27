@@ -1,4 +1,5 @@
 import type { Dispatch, SetStateAction } from 'react';
+import type { NetworkStatus } from '@/lib/network-status';
 import type { OpencodeConnectionSettings } from '@/lib/opencode/client';
 import type { ChatPreferences } from '@/providers/opencode-preferences';
 import type { ConnectionContextValue } from '@/providers/opencode-provider-types';
@@ -30,6 +31,7 @@ export type WorkspaceRuntimeInput = {
   setChatPreferences: Dispatch<SetStateAction<ChatPreferences>>;
   setSettings: Dispatch<SetStateAction<OpencodeConnectionSettings>>;
   shared: SharedWorkspaceState;
+  network: NetworkStatus;
   connectSetup: ConnectionContextValue['connectSetup'];
   connectionProfiles: ConnectionContextValue['connectionProfiles'];
   servicesValue: ConnectionContextValue['services'];

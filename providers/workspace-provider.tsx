@@ -25,9 +25,13 @@ import { clearWorkspacePresentation, hasWorkspaceDrafts } from '@/providers/work
 import { librarySessions } from '@/providers/workspace-library';
 import { WorkspaceNative } from '@/providers/workspace-native';
 import { useWorkspaceValues, type WorkspaceValueOverrides } from '@/providers/use-workspace-values';
+import { useNetworkStatus } from '@/providers/use-network-status';
 
 export function WorkspaceProvider({ children }: PropsWithChildren) {
   const shell = useOpencodeProviderState();
+  // One NetInfo owner for every retained project. See use-network-status.ts:
+  // configure() is process-global and resets listeners.
+  const network = useNetworkStatus();
   const { isHydrated } = useOpencodePersistence({ ...shell, defaultChatPreferences, defaultSettings: defaultConnectionSettings });
   const [presentation] = useState(() => new Map<string, unknown>());
   const onboardingCompleted = isOnboardingComplete(shell.onboardingVersion);
@@ -201,7 +205,7 @@ export function WorkspaceProvider({ children }: PropsWithChildren) {
   return <WorkspaceActionsContext.Provider value={workspaceActions}>
     <WorkspaceContext.Provider value={registry}>
     {connections.flatMap((entry) => entry.projects.map((path, index) => <WorkspaceRuntime key={workspaceKey({ connectionId: entry.id, projectPath: path })}
-      connection={entry} projectPath={path || undefined} shared={shared} defaults={shell.chatPreferences} isHydrated={isHydrated}
+      connection={entry} projectPath={path || undefined} shared={shared} network={network} defaults={shell.chatPreferences} isHydrated={isHydrated}
       visible={shell.projectPathsByConnection[getConnectionScope(entry.settings)]?.includes(path || current?.values.projectsValue.activeProjectPath || '') !== false && focus?.connectionId === entry.id && (focus.projectPath === path || current === snapshots[workspaceKey({ connectionId: entry.id, projectPath: path })])}
       isConnectionOwner={index === 0} connectSetup={connectSetup} connectionProfiles={connectionProfiles} servicesValue={servicesValue}
       updateSettings={updateWorkspaceSettings} updatePreferences={manager.updatePreferences}

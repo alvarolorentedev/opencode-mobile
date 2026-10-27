@@ -78,6 +78,20 @@ describe('architecture ratchets', () => {
       `The domain contexts expose ${contextMembers} members in total. Add a domain hook or provider action instead of widening them.`,
     );
 
+    // 2b. NetInfo.configure() is process-global and tears down earlier listeners.
+    // It must have one owner at the workspace shell, never one per retained
+    // project runtime.
+    assert.match(
+      await read('providers/workspace-provider.tsx'),
+      /\buseNetworkStatus\(\)/,
+      'WorkspaceProvider must own the single connectivity monitor.',
+    );
+    assert.doesNotMatch(
+      await read('providers/use-opencode-provider-composition.ts'),
+      /useNetworkStatus|use-network-status/,
+      'Each workspace runtime must consume the shared network snapshot, not configure NetInfo itself.',
+    );
+
     // 3. Screens and presentational components never reach the network directly.
     const layerDirs = ['app', 'components'];
     const networkCalls = /(^|[^\w.])fetch\s*\(|new XMLHttpRequest|from ['"]axios['"]/;
