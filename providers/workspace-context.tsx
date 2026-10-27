@@ -13,16 +13,18 @@ export type WorkspaceRegistry = ReturnType<typeof useWorkspaceConnections> & {
   inspectionTarget?: WorkspaceTarget;
   inspect: (target: WorkspaceTarget) => Promise<void>;
   valuesFor: (target?: WorkspaceTarget) => WorkspaceValues | undefined;
-  presentation: Map<string, unknown>;
 };
 export type WorkspaceActions = {
   createChat: (target: WorkspaceTarget) => Promise<Session>;
   focus?: WorkspaceTarget;
-  presentation: Map<string, unknown>;
 };
 export const WorkspaceScopeContext = createContext<WorkspaceTarget | undefined>(undefined);
 export const WorkspaceContext = createContext<WorkspaceRegistry | null>(null);
 export const WorkspaceActionsContext = createContext<WorkspaceActions | null>(null);
+// Presentation state is stable and independent of the changing snapshot
+// registry. Keeping it in its own context stops drafts and scroll positions
+// from re-rendering on every background workspace publish.
+export const WorkspacePresentationContext = createContext<Map<string, unknown> | null>(null);
 export function useWorkspaces() {
   const value = useContext(WorkspaceContext);
   if (!value) throw new Error('useWorkspaces must be used inside OpencodeProvider.');
@@ -31,6 +33,11 @@ export function useWorkspaces() {
 export function useWorkspaceActions() {
   const value = useContext(WorkspaceActionsContext);
   if (!value) throw new Error('useWorkspaceActions must be used inside OpencodeProvider.');
+  return value;
+}
+export function useWorkspacePresentation() {
+  const value = useContext(WorkspacePresentationContext);
+  if (!value) throw new Error('useWorkspacePresentation must be used inside OpencodeProvider.');
   return value;
 }
 export function WorkspaceScope({ target, children }: PropsWithChildren<{ target?: WorkspaceTarget }>) {

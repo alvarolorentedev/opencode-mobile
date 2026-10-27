@@ -7,7 +7,7 @@ async function mountDraft(sessionId = 's') {
   const runtime = hookRuntime();
   const sharing = await loadTs('lib/share/parse.ts', { '@/lib/attachment-preview': {} });
   const presentation = new Map();
-  const retained = await loadTs('components/ui/use-retained-state.ts', { react: runtime.react, '@/providers/workspace-context': { useWorkspaces: () => ({ presentation }) } });
+  const retained = await loadTs('components/ui/use-retained-state.ts', { react: runtime.react, '@/providers/workspace-context': { useWorkspacePresentation: () => presentation } });
   const { useChatDraft } = await loadTs('components/chat/use-chat-draft.ts', { react: runtime.react, '@/lib/share/parse': sharing, '@/components/ui/use-retained-state': retained });
   runtime.mount(({ owner, sessionId }: any) => useChatDraft(owner, sessionId), { owner: 'server:/repo', sessionId });
   return Object.assign(runtime, { presentation });

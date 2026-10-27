@@ -19,7 +19,7 @@ import { PendingInteractions } from '@/components/chat/content/pending-interacti
 import { TranscriptList } from '@/components/chat/content/transcript-list';
 import { useChatViewController } from '@/components/chat/use-chat-view-controller';
 import { ConnectionStatusBanner } from '@/components/ui/connection-status-banner';
-import { useWorkspaceActions } from '@/providers/workspace-context';
+import { useWorkspaceActions, useWorkspacePresentation } from '@/providers/workspace-context';
 import { normalizeTranscriptFontSize } from '@/providers/opencode-preferences';
 import { usePalette } from '@/hooks/use-palette';
 import type { TranscriptEntry } from '@/lib/opencode/format';
@@ -29,7 +29,8 @@ export function ChatView() {
   const { block } = useUpdates();
   const palette = usePalette();
   const insets = useSafeAreaInsets();
-  const { createChat, focus, presentation } = useWorkspaceActions();
+  const { createChat, focus } = useWorkspaceActions();
+  const presentation = useWorkspacePresentation();
   const { header, content, composer, overlay, actions } = useChatViewController();
   const {
     handleCopyMessage: copyMessage,

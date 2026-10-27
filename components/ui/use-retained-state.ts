@@ -1,9 +1,9 @@
 import { useMemo, useState, type SetStateAction } from 'react';
-import { useWorkspaces } from '@/providers/workspace-context';
+import { useWorkspacePresentation } from '@/providers/workspace-context';
 
 // Unsaved UI state survives workspace navigation without becoming persisted domain data.
 export function useRetainedState<T>(key: string, initial: T) {
-  const { presentation } = useWorkspaces();
+  const presentation = useWorkspacePresentation();
   const [local, setLocal] = useState(() => ({ key, value: presentation.has(key) ? presentation.get(key) as T : initial }));
   const value = local.key === key ? local.value : presentation.has(key) ? presentation.get(key) as T : initial;
   const setValue = useMemo(() => (next: SetStateAction<T>) => {

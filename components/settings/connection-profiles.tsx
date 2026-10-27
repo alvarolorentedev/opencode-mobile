@@ -14,7 +14,7 @@ import { OverlaySheet } from '@/components/ui/overlay-sheet';
 import { Colors } from '@/constants/theme';
 import { findMatchingProfile, type ConnectionProfile } from '@/lib/connection-profiles';
 import { hasWorkspaceDrafts } from '@/providers/workspace-presentation';
-import { useWorkspaces } from '@/providers/workspace-context';
+import { useWorkspacePresentation, useWorkspaces } from '@/providers/workspace-context';
 import { getConnectionUiScope } from '@/lib/connection-scope';
 import { getErrorMessage } from '@/lib/error-message';
 import { useConnection } from '@/providers/opencode-contexts';
@@ -39,6 +39,7 @@ function connectionHost(serverUrl: string) {
 export function ConnectionProfiles({ palette, onManageConnect, onPair }: { palette: Palette; onManageConnect?: () => void; onPair?: () => void }) {
   const { t } = useTranslation();
   const registry = useWorkspaces();
+  const presentation = useWorkspacePresentation();
   const { settings, connection, connect, updateSettings, connectSetup, connectionProfiles } = useConnection();
   const { profiles, refresh, connect: connectProfile, passwordForEditing, headersForEditing, save, remove } = connectionProfiles;
   const [error, setError] = useState<string>();
@@ -81,7 +82,7 @@ export function ConnectionProfiles({ palette, onManageConnect, onPair }: { palet
 
   function handleDelete(profile: ConnectionProfile) {
     const message = [t('settings:connection.deleteMessage', { name: profile.name }),
-      hasWorkspaceDrafts(registry.presentation, getConnectionUiScope(profile)) ? t('common:servers.discardDrafts') : undefined].filter(Boolean).join('\n\n');
+      hasWorkspaceDrafts(presentation, getConnectionUiScope(profile)) ? t('common:servers.discardDrafts') : undefined].filter(Boolean).join('\n\n');
     const confirmRemoval = () => {
       void remove(profile.id).catch((reason) => setError(getErrorMessage(reason)));
     };

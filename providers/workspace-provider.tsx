@@ -10,7 +10,7 @@ import { CURRENT_ONBOARDING_VERSION, isOnboardingComplete } from '@/providers/on
 import { useOpencodeProviderState } from '@/providers/use-opencode-provider-state';
 import { useOpencodePersistence } from '@/providers/use-opencode-persistence';
 import { useWorkspaceConnections, serverPreferences } from '@/providers/use-workspace-connections';
-import { WorkspaceActionsContext, WorkspaceContext, type WorkspaceRegistry } from '@/providers/workspace-context';
+import { WorkspaceActionsContext, WorkspaceContext, WorkspacePresentationContext, type WorkspaceRegistry } from '@/providers/workspace-context';
 import { WorkspaceRuntime } from '@/providers/workspace-runtime';
 import { workspaceKey, type SharedWorkspaceState, type WorkspaceTarget, type WorkspaceValues, type ConnectionRecord } from '@/providers/workspace-types';
 import { useConnectState } from '@/providers/use-connect-state';
@@ -182,7 +182,7 @@ export function WorkspaceProvider({ children }: PropsWithChildren) {
   }, [activate, retry, connectionProfiles, connectSetup, current, onboardingCompleted, openSession, openSessionInProject, resolveKey, servicesValue, sharedInput, snapshots, switchConnection, shell.projectPathsByConnection, isHydrated, shell.onboardingActive]);
   const registry = useMemo<WorkspaceRegistry>(() => ({ ...manager, createChat, removeConnection,
     terminalTarget: connections.some((entry) => entry.id === terminalTarget?.connectionId) ? terminalTarget : undefined, selectTerminalTarget,
-    inspectionTarget: connections.some((entry) => entry.id === inspectionTarget?.connectionId) ? inspectionTarget : undefined, inspect, valuesFor, presentation }), [manager, createChat, removeConnection, connections, terminalTarget, selectTerminalTarget, inspectionTarget, inspect, valuesFor, presentation]);
+    inspectionTarget: connections.some((entry) => entry.id === inspectionTarget?.connectionId) ? inspectionTarget : undefined, inspect, valuesFor }), [manager, createChat, removeConnection, connections, terminalTarget, selectTerminalTarget, inspectionTarget, inspect, valuesFor]);
   const updates = useAppUpdates({ initialized: isHydrated && shell.onboardingVersion >= CURRENT_ONBOARDING_VERSION && !shell.onboardingActive,
     blocked: Object.values(snapshots).some((runtime) => runtime.busy) || connectSetup.busy || hasWorkspaceDrafts(presentation) });
   useEffect(() => {
@@ -193,8 +193,9 @@ export function WorkspaceProvider({ children }: PropsWithChildren) {
     setChatPreferences((previous) => JSON.stringify(serverPreferences(previous)) === JSON.stringify(preferences) ? previous : { ...previous, ...preferences });
   }, [current, focus, setSettings, setActiveProjectPath, setChatPreferences]);
   const values = focusedValues;
-  const workspaceActions = useMemo(() => ({ createChat, focus, presentation }), [createChat, focus, presentation]);
-  return <WorkspaceActionsContext.Provider value={workspaceActions}>
+  const workspaceActions = useMemo(() => ({ createChat, focus }), [createChat, focus]);
+  return <WorkspacePresentationContext.Provider value={presentation}>
+    <WorkspaceActionsContext.Provider value={workspaceActions}>
     <WorkspaceContext.Provider value={registry}>
     {connections.flatMap((entry) => entry.projects.map((path, index) => <WorkspaceRuntime key={workspaceKey({ connectionId: entry.id, projectPath: path })}
       connection={entry} projectPath={path || undefined} shared={shared} network={network} defaults={shell.chatPreferences} isHydrated={isHydrated}
@@ -207,5 +208,6 @@ export function WorkspaceProvider({ children }: PropsWithChildren) {
       {children}
     </OpencodeProviderTree> : <View style={{ flex: 1, backgroundColor: '#101212', alignItems: 'center', justifyContent: 'center' }}><ActivityIndicator color="#C3CECB" /></View>}
     </WorkspaceContext.Provider>
-  </WorkspaceActionsContext.Provider>;
+    </WorkspaceActionsContext.Provider>
+  </WorkspacePresentationContext.Provider>;
 }

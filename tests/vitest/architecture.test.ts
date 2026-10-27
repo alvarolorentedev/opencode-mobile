@@ -92,6 +92,12 @@ describe('architecture ratchets', () => {
       'Each workspace runtime must consume the shared network snapshot, not configure NetInfo itself.',
     );
 
+    // 2c. Presentation state is stable and must not subscribe to the changing
+    // workspace registry.
+    const retainedState = await read('components/ui/use-retained-state.ts');
+    assert.match(retainedState, /useWorkspacePresentation/);
+    assert.doesNotMatch(retainedState, /useWorkspaces/);
+
     // 3. Screens and presentational components never reach the network directly.
     const layerDirs = ['app', 'components'];
     const networkCalls = /(^|[^\w.])fetch\s*\(|new XMLHttpRequest|from ['"]axios['"]/;
