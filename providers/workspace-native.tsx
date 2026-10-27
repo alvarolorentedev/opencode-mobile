@@ -8,15 +8,15 @@ import { useWidgetState } from '@/providers/use-widget-state';
 import { useWorkspaces } from '@/providers/workspace-context';
 import type { WorkspaceSnapshot } from '@/providers/workspace-types';
 
-export function WorkspaceNative({ runtime, preferences, ready, busy }: { runtime: WorkspaceSnapshot; preferences: ChatPreferences; ready: boolean; busy: boolean }) {
+export function WorkspaceNative({ runtime, preferences, ready, busy, active = true }: { runtime: WorkspaceSnapshot; preferences: ChatPreferences; ready: boolean; busy: boolean; active?: boolean }) {
   const registry = useWorkspaces();
-  const connected = runtime.values.connectionValue.connection.status === 'connected';
+  const connected = active && runtime.values.connectionValue.connection.status === 'connected';
   const activeSessions = useMemo(() => [...new Map(Object.entries(registry.snapshots).flatMap(([key, snapshot]) => {
     if (snapshot.values.connectionValue.connection.status !== 'connected') return [];
     const [id] = JSON.parse(key) as string[];
     return snapshot.native.activeSessions.map((session) => [JSON.stringify([id, session.projectPath, session.sessionId]), { ...session, connectionScope: snapshot.native.connectionScope }] as const);
   })).values()].sort((a, b) => Number(b.status.type !== 'idle') - Number(a.status.type !== 'idle') || b.updatedAt - a.updatedAt), [registry.snapshots]);
-  useNativeSurfaces({ ready, connected: Object.values(registry.snapshots).some((snapshot) => snapshot.values.connectionValue.connection.status === 'connected'), connectionScope: runtime.native.connectionScope,
+  useNativeSurfaces({ ready, connected: active && Object.values(registry.snapshots).some((snapshot) => snapshot.values.connectionValue.connection.status === 'connected'), connectionScope: runtime.native.connectionScope,
     language: preferences.language, activeSessions });
   const widgets = useWidgetState({ ...runtime.native, hydrated: ready, connected,
     showPreviews: preferences.showWidgetPreviews !== false, language: preferences.language });

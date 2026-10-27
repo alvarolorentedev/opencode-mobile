@@ -322,9 +322,12 @@ export function useWorkspaceConnections(shell: OpencodeProviderState, hydrated: 
     shellRef.current.projectPathsByConnectionRef.current = opened; shellRef.current.setProjectPathsByConnection(opened);
     if (selected.current?.connectionId === target.connectionId && selected.current.projectPath === target.projectPath) {
       if (remaining.length) await activate({ connectionId: target.connectionId, projectPath: remaining[0] });
-      else clearFocus();
+      else {
+        await pauseConversation();
+        clearFocus();
+      }
     }
-  }, [activate, clearFocus]);
+  }, [activate, clearFocus, pauseConversation]);
   const removeConnection = useCallback(async (id: string) => {
     await disconnect(id);
     change((current) => current.filter((entry) => entry.id !== id));

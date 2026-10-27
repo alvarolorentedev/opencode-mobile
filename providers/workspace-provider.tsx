@@ -49,9 +49,11 @@ export function WorkspaceProvider({ children }: PropsWithChildren) {
   if (selectedRuntime && retainedRuntime !== selectedRuntime) setRetainedRuntime(selectedRuntime);
   const current = selectedRuntime ?? retainedRuntime;
   const settings = current?.values.connectionValue.settings ?? shell.settings;
+  const settingsConnectionId = focus?.connectionId
+    ?? (current ? getConnectionUiScope(current.values.connectionValue.settings) : undefined);
   const updateSettings = useCallback<ConnectionContextValue['updateSettings']>((patch) => {
-    if (focus) updateWorkspaceSettings(focus.connectionId, { ...settings, ...patch });
-  }, [focus, updateWorkspaceSettings, settings]);
+    if (settingsConnectionId) updateWorkspaceSettings(settingsConnectionId, { ...settings, ...patch });
+  }, [settingsConnectionId, updateWorkspaceSettings, settings]);
   const disconnectProfile = useCallback(async (profile: ConnectionProfile) => disconnect(getConnectionUiScope(profile)), [disconnect]);
   const isActiveProfile = useCallback((profile: ConnectionProfile) => isEnabled(getConnectionUiScope(profile)), [isEnabled]);
   const profileRefreshed = useCallback((previous: ConnectionProfile, next: ConnectionProfile) => {
@@ -214,7 +216,7 @@ export function WorkspaceProvider({ children }: PropsWithChildren) {
       updateSettings={updateWorkspaceSettings} updatePreferences={manager.updatePreferences}
       publish={manager.publish} forget={manager.forget} />))}
     {values && current ? <OpencodeProviderTree values={values} updates={updates}>
-      <WorkspaceNative runtime={current} preferences={shell.chatPreferences} ready={isHydrated} busy={Object.values(snapshots).some((runtime) => runtime.busy)} />
+      <WorkspaceNative runtime={current} preferences={shell.chatPreferences} ready={isHydrated} active={Boolean(focus)} busy={Object.values(snapshots).some((runtime) => runtime.busy)} />
       {children}
     </OpencodeProviderTree> : <View style={{ flex: 1, backgroundColor: '#101212', alignItems: 'center', justifyContent: 'center' }}><ActivityIndicator color="#C3CECB" /></View>}
     </WorkspaceContext.Provider>
