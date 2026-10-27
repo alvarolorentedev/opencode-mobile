@@ -280,10 +280,7 @@ async function installBaseModels(phrase: LocalWakePhraseId, runtime: NonNullable
     'wake-word model',
   );
   try {
-    const extracted = await runtime.Archive.extractTarBz2({
-      sourcePath: archiveFile.uri,
-      targetDir: kwsRoot.uri,
-    });
+    const extracted = await runtime.Archive.extractTarBz2(archiveFile.uri, kwsRoot.uri);
     if (!extracted.success) {
       throw new Error(extracted.message || 'Could not extract the wake-word model.');
     }
@@ -343,10 +340,7 @@ async function installCommandModel(
     'command-recognition model',
   );
   try {
-    const extracted = await runtime.Archive.extractTarBz2({
-      sourcePath: asrArchive.uri,
-      targetDir: asrRoot.uri,
-    });
+    const extracted = await runtime.Archive.extractTarBz2(asrArchive.uri, asrRoot.uri);
     if (!extracted.success) {
       throw new Error(extracted.message || 'Could not extract the command-recognition model.');
     }

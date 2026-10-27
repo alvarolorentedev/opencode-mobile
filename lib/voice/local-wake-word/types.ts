@@ -93,7 +93,7 @@ export type SpeakerIdService = {
 };
 
 export type ArchiveService = {
-  extractTarBz2(input: { sourcePath: string; targetDir: string }): Promise<{
+  extractTarBz2(sourcePath: string, targetDir: string): Promise<{
     success: boolean;
     message: string;
     extractedFiles: string[];
