@@ -4,6 +4,7 @@ import * as format from '@/lib/opencode/format';
 import * as transcript from '@/lib/opencode/transcript';
 import * as usage from '@/lib/opencode/usage';
 import { pruneByKeepIds } from '@/providers/opencode-provider-utils';
+import { recordSessionUsageAndTodos } from '@/providers/session-ledger';
 import { hookRuntime, loadTs } from '../helpers/runtime.mjs';
 
 vi.mock('@/lib/i18n', () => ({ getFormatLocale: () => 'en' }));
@@ -47,6 +48,7 @@ async function mountTranscript(
     '@/lib/opencode/usage': usage,
     '@/providers/opencode-provider-utils': { pruneByKeepIds },
     '@/providers/services/session-service': { getSessionMessages, MAX_MESSAGE_PAGE_LIMIT: 200, TRANSCRIPT_PAGE_LIMIT: 20 },
+    '@/providers/session-ledger': { recordSessionUsageAndTodos },
     '@/providers/transcript-cache': { hydrateTranscriptCache: async () => {}, persistTranscriptCache: async () => {} },
   });
   function useHarness() {

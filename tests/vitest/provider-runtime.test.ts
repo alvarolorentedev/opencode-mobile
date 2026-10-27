@@ -4,7 +4,8 @@ import { runInNewContext } from 'node:vm';
 import ts from 'typescript';
 import { loadTs, hookRuntime, deferred } from '../helpers/runtime.mjs';
 import { describe, it } from 'vitest';
-import { pruneByKeepIds } from '@/providers/opencode-provider-utils';
+import { pruneProviderTranscripts } from '@/providers/transcript-pruning';
+import { recordSessionUsageAndTodos } from '@/providers/session-ledger';
 import * as realtimeBackoff from '@/providers/realtime/backoff';
 import * as realtimeLiveness from '@/providers/realtime/liveness';
 import * as realtimePolling from '@/providers/realtime/polling';
@@ -39,27 +40,10 @@ function extractDeclarations(source: string, names: string[]) {
   visit(ast);
   return found.join('\n');
 }
-function extractEffect(source: any, marker: any) {
-  const ast = ts.createSourceFile('module.ts', source, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS);
-  let found: any;
-  function visit(node: any) {
-    if (!found
-      && ts.isExpressionStatement(node)
-      && ts.isCallExpression(node.expression)
-      && node.expression.expression.getText(ast) === 'useEffect'
-      && node.getText(ast).includes(marker)) {
-      found = node.getText(ast);
-    }
-    ts.forEachChild(node, visit);
-  }
-  visit(ast);
-  return found;
-}
 const projectActionsSource = await readSource('../../providers/use-project-file-actions.ts');
 const promptLifecycleSource = await readSource('../../providers/use-prompt-lifecycle.ts');
 const sessionActionsSource = await readSource('../../providers/use-session-bootstrap-actions.ts');
 const connectionActionsSource = await readSource('../../providers/use-connection-link-actions.ts');
-const providerEffectsSource = await readSource('../../providers/use-opencode-provider-effects.ts');
 const names = [ 'openProjectFile', 'saveProjectFile', 'abortSession'];
 const declarations = [
   extractDeclarations(projectActionsSource, ['openProjectFile', 'saveProjectFile']),
@@ -256,20 +240,12 @@ await actions.abortSession('s');
 assert.equal(aborted, true, 'notification storage failure must not prevent aborting server work');
 
 // The bounded transcript keeps an independent, replay-safe usage/plan ledger.
-const transcriptSource = await readSource('../../providers/use-transcript-state.ts');
 const ledgerHelpers: any = {
   ...await loadTs('lib/opencode/usage.ts'),
   ...await loadTs('lib/opencode/format/todos.ts'),
   ...await loadTs('lib/opencode/format/window.ts'),
 };
 let usageLedger: any = {}, todoLedger: any = {};
-const ledgerContext: any = {
-  ...ledgerHelpers, useCallback: (action: any) => action,
-  setUsageStepsBySession: (update: any) => { usageLedger = update(usageLedger); },
-  setTodoRecordsBySession: (update: any) => { todoLedger = update(todoLedger); }, exports: {},
-};
-const ledgerDeclaration = extractDeclarations(transcriptSource, ['recordUsageAndTodos']);
-runInNewContext(ts.transpileModule(`${ledgerDeclaration}\nexports.record = recordUsageAndTodos;`, { compilerOptions: { module: ts.ModuleKind.CommonJS } }).outputText, ledgerContext);
 const ledgerMessage = (id: any, time: any, status: any, cost: any) => ({
   info: { id, role: 'assistant', time: { created: time }, providerID: 'p', modelID: 'm' },
   parts: [
@@ -277,10 +253,15 @@ const ledgerMessage = (id: any, time: any, status: any, cost: any) => ({
     { id: 'usage', sessionID: 's', messageID: id, type: 'step-finish', cost, tokens: { input: 1, output: 1, reasoning: 0, cache: { read: 0, write: 0 } } },
   ],
 });
-ledgerContext.exports.record('s', [ledgerMessage('new', 20, 'pending', 0)]);
-ledgerContext.exports.record('s', [ledgerMessage('new', 20, 'completed', 0.2)]);
-ledgerContext.exports.record('s', [ledgerMessage('old', 10, 'pending', 0.1)]);
-ledgerContext.exports.record('s', [ledgerMessage('new', 20, 'completed', 0.2)]);
+const recordUsage = (sessionId: string, records: any[]) => recordSessionUsageAndTodos(
+  sessionId, records,
+  (update: any) => { usageLedger = update(usageLedger); },
+  (update: any) => { todoLedger = update(todoLedger); },
+);
+recordUsage('s', [ledgerMessage('new', 20, 'pending', 0)]);
+recordUsage('s', [ledgerMessage('new', 20, 'completed', 0.2)]);
+recordUsage('s', [ledgerMessage('old', 10, 'pending', 0.1)]);
+recordUsage('s', [ledgerMessage('new', 20, 'completed', 0.2)]);
 assert.equal(ledgerHelpers.deriveTodosFromMessages(todoLedger.s)[0].status, 'completed', 'loading older pages cannot revert the current plan');
 assert.equal(usageLedger.s.length, 2, 'updated/replayed calls must not duplicate usage');
 assert.ok(Math.abs(ledgerHelpers.aggregateUsageSteps(usageLedger.s).cost - 0.3) < 1e-10);
@@ -993,30 +974,29 @@ assert.equal(libraryError, undefined);
 
 // The CI favorite failure opened the right session with an empty transcript.
 // Pruning must wait until bootstrap selects the session whose reads just landed.
-const pruneEffect = extractEffect(providerEffectsSource, 'const keepIds = new Set<string>()');
 let cachedMessages: any = { old: ['old transcript'], target: ['new transcript'] };
 let cachedDiffs: any = { old: ['old diff'], target: ['new diff'] };
 let cachedTodos: any = { old: ['old todo'], target: ['new todo'] };
-let prune: any;
-const pruneContext: any = {
-  useEffect: (effect: any) => { prune = effect; }, currentSessionId: undefined, conversationSessionId: undefined,
-  sessionStatuses: {}, isBootstrappingChat: true, pendingDeepLinkTargetRef: { current: { sessionId: 'target' } },
-  recentSessionIdsRef: { current: [] },
+const pruneInput: any = {
+  isBootstrappingChat: true,
+  pendingDeepLinkTargetRef: { current: { sessionId: 'target' } },
+  currentSessionId: undefined,
+  conversationSessionId: undefined,
+  recentSessionIds: [],
+  sessionStatuses: {},
   setMessagesBySession: (update: any) => { cachedMessages = update(cachedMessages); },
   setDiffsBySession: (update: any) => { cachedDiffs = update(cachedDiffs); },
   setTodosBySession: (update: any) => { cachedTodos = update(cachedTodos); },
   pruneTranscript: () => {},
-  pruneByKeepIds,
 };
-runInNewContext(ts.transpileModule(pruneEffect, { compilerOptions: { module: ts.ModuleKind.CommonJS } }).outputText, pruneContext);
-prune?.();
+pruneProviderTranscripts(pruneInput);
 assert.deepEqual(cachedMessages.target, ['new transcript'], 'bootstrap reads cannot be evicted before selecting their target');
 assert.deepEqual(cachedDiffs.target, ['new diff']); assert.deepEqual(cachedTodos.target, ['new todo']);
-pruneContext.isBootstrappingChat = false;
-pruneContext.pendingDeepLinkTargetRef.current = undefined;
-pruneContext.currentSessionId = 'target';
+pruneInput.isBootstrappingChat = false;
+pruneInput.pendingDeepLinkTargetRef.current = undefined;
+pruneInput.currentSessionId = 'target';
 cachedMessages.extra = []; cachedDiffs.extra = []; cachedTodos.extra = [];
-prune?.();
+pruneProviderTranscripts(pruneInput);
 assert.deepEqual(Object.keys(cachedMessages), ['target'], 'pruning resumes after selection and removes inactive histories');
 assert.deepEqual(Object.keys(cachedDiffs), ['target']); assert.deepEqual(Object.keys(cachedTodos), ['target']);
 

@@ -1,16 +1,16 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState, type Dispatch, type SetStateAction } from 'react';
 
 import {
-  hasTodoWritePart,
   mergeSessionMessageWindow,
   prependSessionMessageHistory,
   type SessionMessageRecord,
 } from '@/lib/opencode/format';
-import { addUsageSteps, type SessionUsageStep } from '@/lib/opencode/usage';
+import type { SessionUsageStep } from '@/lib/opencode/usage';
 import type { ScopedOpencodeClient } from '@/lib/opencode/client';
 import type { TranscriptRefreshMode } from '@/providers/opencode-provider-types';
 import { pruneByKeepIds } from '@/providers/opencode-provider-utils';
 import { hydrateTranscriptCache, persistTranscriptCache } from '@/providers/transcript-cache';
+import { recordSessionUsageAndTodos } from '@/providers/session-ledger';
 import {
   getSessionMessages as svcGetSessionMessages,
   MAX_MESSAGE_PAGE_LIMIT,
@@ -98,28 +98,7 @@ export function useTranscriptState({
   const hydratedCacheRef = useRef<Set<string>>(new Set());
 
   const recordUsageAndTodos = useCallback((sessionId: string, records: SessionMessageRecord[]) => {
-    if (records.length === 0) {
-      return;
-    }
-
-    setUsageStepsBySession((current) => {
-      const steps = new Map((current[sessionId] ?? []).map((step) => [step.key, step] as const));
-      if (!addUsageSteps(steps, records)) {
-        return current;
-      }
-      return { ...current, [sessionId]: [...steps.values()] };
-    });
-
-    const todoRecords = records.filter(hasTodoWritePart);
-    if (todoRecords.length > 0) {
-      setTodoRecordsBySession((current) => {
-        const existing = current[sessionId] ?? [];
-        const merged = mergeSessionMessageWindow(existing, todoRecords);
-        if (merged === existing) return current;
-        // Older pages arrive after the newest page; plan writes must still be chronological.
-        return { ...current, [sessionId]: merged.sort((left, right) => left.info.time.created - right.info.time.created) };
-      });
-    }
+    recordSessionUsageAndTodos(sessionId, records, setUsageStepsBySession, setTodoRecordsBySession);
   }, []);
 
   useEffect(() => {

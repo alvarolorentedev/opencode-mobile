@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react';
 
 import type { ScopedOpencodeClient } from '@/lib/opencode/client';
-import { pruneByKeepIds } from '@/providers/opencode-provider-utils';
+import { pruneProviderTranscripts } from '@/providers/transcript-pruning';
 import type { OpencodeProviderState } from '@/providers/use-opencode-provider-state';
 
 // Keep a small bounded history so returning to a recent chat paints from
@@ -151,20 +151,17 @@ export function useOpencodeProviderEffects({
   }, [activeProjectPath, currentSessionId]);
 
   useEffect(() => {
-    if (isBootstrappingChat) return;
-    const keepIds = new Set<string>();
-    const openingSessionId = pendingDeepLinkTargetRef.current?.sessionId;
-    if (openingSessionId) keepIds.add(openingSessionId);
-    if (currentSessionId) keepIds.add(currentSessionId);
-    if (conversationSessionId) keepIds.add(conversationSessionId);
-    for (const id of recentSessionIdsRef.current) keepIds.add(id);
-    for (const [id, status] of Object.entries(sessionStatuses)) {
-      if (status.type !== 'idle') keepIds.add(id);
-    }
-
-    setMessagesBySession((current) => pruneByKeepIds(current, keepIds, keepIds.size + 1));
-    setDiffsBySession((current) => pruneByKeepIds(current, keepIds, keepIds.size + 1));
-    setTodosBySession((current) => pruneByKeepIds(current, keepIds, keepIds.size + 1));
-    pruneTranscript(keepIds, keepIds.size + 1);
+    pruneProviderTranscripts({
+      isBootstrappingChat,
+      pendingDeepLinkTargetRef,
+      currentSessionId,
+      conversationSessionId,
+      recentSessionIds: recentSessionIdsRef.current,
+      sessionStatuses,
+      setMessagesBySession,
+      setDiffsBySession,
+      setTodosBySession,
+      pruneTranscript,
+    });
   }, [currentSessionId, conversationSessionId, isBootstrappingChat, pendingDeepLinkTargetRef, pruneTranscript, sessionStatuses, setDiffsBySession, setMessagesBySession, setTodosBySession]);
 }
