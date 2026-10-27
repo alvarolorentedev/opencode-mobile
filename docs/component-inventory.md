@@ -326,12 +326,19 @@ Responsibility:
 
 - full-screen conversation-mode overlay
 - shows session title, phase, the wake phrase while armed, last heard command, and stop button
+- uses a three-line sine ribbon (`conversation-wave.tsx`) in the selected dark
+  accent palette; the existing system microphone meter drives listening
+  amplitude, while local capture and readback use phase-based motion
+- pauses the ribbon on connection problems, honours reduced motion (including
+  changes while open), and keeps End conversation outside scrollable content
+  so large text and short screens retain access to the existing stop flow
 
 ### Inputs
 
 - connection status
 - top inset
 - latest user text
+- existing conversation microphone level (0–10, clamped for presentation)
 - stop handler
 - conversation input phase and readback phase
 - session title

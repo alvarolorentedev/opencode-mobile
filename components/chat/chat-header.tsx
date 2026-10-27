@@ -24,6 +24,7 @@ type ChatHeaderProps = {
     feedback?: string;
     inputPhase: ConversationInputPhase;
     latestHeardText?: string;
+    level: number;
     phase: ConversationPhase;
     readbackPhase: ConversationReadbackPhase;
     wakePhrase: string;
@@ -108,6 +109,7 @@ export function ChatHeader({
             inputPhase={conversation.inputPhase}
             insetsTop={insetsTop}
             latestUserText={conversation.latestHeardText}
+            level={conversation.level}
             onStop={onConfirmStopConversation}
             phase={conversation.phase}
             readbackPhase={conversation.readbackPhase}

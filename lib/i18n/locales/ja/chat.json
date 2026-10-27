@@ -212,6 +212,8 @@
     "lastHeard": "最後に認識した内容",
     "wakePhrase": "ウェイクフレーズ",
     "startSpeaking": "自然に話し始めてください。最後のラウンドで話した内容がここに表示されます。",
+    "listeningHint": "どうぞ、お話しください。",
+    "endConversation": "会話を終了",
     "steerHint": "いつでも「{{phrase}}」と言って指示できます。"
   },
   "modelPicker": {

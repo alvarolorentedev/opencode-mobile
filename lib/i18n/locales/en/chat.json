@@ -212,6 +212,8 @@
     "lastHeard": "Last heard",
     "wakePhrase": "Wake phrase",
     "startSpeaking": "Start speaking naturally. What you say in the last round will appear here.",
+    "listeningHint": "Go ahead, I’m listening.",
+    "endConversation": "End conversation",
     "steerHint": "Say “{{phrase}}” anytime to steer."
   },
   "modelPicker": {

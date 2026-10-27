@@ -212,6 +212,8 @@
     "lastHeard": "Zuletzt gehört",
     "wakePhrase": "Weckphrase",
     "startSpeaking": "Sprich einfach los. Was du in der letzten Runde gesagt hast, erscheint hier.",
+    "listeningHint": "Sprich los, ich höre zu.",
+    "endConversation": "Gespräch beenden",
     "steerHint": "Sage jederzeit „{{phrase}}“, um zu steuern."
   },
   "modelPicker": {

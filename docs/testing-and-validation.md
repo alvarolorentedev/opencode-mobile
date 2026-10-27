@@ -13,6 +13,25 @@ The flow specs are split by domain (`tests/e2e/<domain>.spec.mjs`) over shared
 helpers in `tests/e2e/helpers/flows.mjs`. Suites that are not yet typed are
 listed in `tsconfig.tests.json`; see [known gaps](known-gaps.md).
 
+## Conversation ribbon
+
+`tests/vitest/conversation-overlay.test.ts` covers microphone amplitude bounds
+and invalid samples, phase-based motion, tapered paths and seamless loop
+endpoints, reduced-motion changes, animation/listener cleanup, connection
+feedback, wake/steer guidance, the existing stop callback, and wave sizing with
+large text. The overlay only consumes existing provider state; recognition,
+submission, readback and re-arming contracts are unchanged.
+
+For visual/native validation, compare the listening state to the selected Synth
+Ribbon mock at 390×844, then check short screens, landscape safe areas, long
+commands, large text and alternate accents. On physical Android and iOS devices,
+check real microphone response, local-capture baseline animation, readback,
+waiting with armed input, reduced motion, connection failure, repeated
+start/stop, Android Back confirmation and background cleanup. Web previews and
+mocked component checks cannot establish native microphone timing or frame
+performance. `react-native-svg` adds a native dependency, so development clients
+need rebuilding.
+
 ## Validation Cost And Fast Paths
 
 Measured baseline on 2026-10-23 against the previous serial workflow:

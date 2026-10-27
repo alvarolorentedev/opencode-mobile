@@ -212,6 +212,8 @@
     "lastHeard": "最近听到",
     "wakePhrase": "唤醒短语",
     "startSpeaking": "开始自然地说话。你最后一轮所说的内容将显示在这里。",
+    "listeningHint": "请说，我在听。",
+    "endConversation": "结束对话",
     "steerHint": "随时说“{{phrase}}”即可调整方向。"
   },
   "modelPicker": {

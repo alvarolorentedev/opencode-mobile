@@ -212,6 +212,8 @@
     "lastHeard": "Dernier extrait entendu",
     "wakePhrase": "Phrase d’activation",
     "startSpeaking": "Commence à parler naturellement. Ce que tu dis au dernier tour apparaîtra ici.",
+    "listeningHint": "Allez-y, je vous écoute.",
+    "endConversation": "Terminer la conversation",
     "steerHint": "Dites « {{phrase}} » à tout moment pour orienter."
   },
   "modelPicker": {

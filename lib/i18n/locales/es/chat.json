@@ -212,6 +212,8 @@
     "lastHeard": "Último escuchado",
     "wakePhrase": "Frase de activación",
     "startSpeaking": "Empieza a hablar con naturalidad. Lo que digas en la última ronda aparecerá aquí.",
+    "listeningHint": "Adelante, te escucho.",
+    "endConversation": "Finalizar conversación",
     "steerHint": "Di «{{phrase}}» en cualquier momento para dirigir."
   },
   "modelPicker": {
