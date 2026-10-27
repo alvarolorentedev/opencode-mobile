@@ -6,6 +6,8 @@ import {
   LOCAL_VOICE_KWS_TARBALL_BYTES,
   LOCAL_VOICE_SPEAKER_MODEL_BYTES,
   LOCAL_VOICE_VAD_MODEL_BYTES,
+  localCommandModelDownloadSizeLabel,
+  localVoiceBaseDownloadSizeLabel,
   localVoiceDownloadSizeLabel,
   localVoiceKeywords,
 } from '@/lib/voice/local-wake-word/model-constants';
@@ -55,7 +57,11 @@ describe('local wake phrase configuration', () => {
     expect(LOCAL_COMMAND_MODELS['whisper-tiny-multi'].files.decoder).toBe('tiny-decoder.int8.onnx');
     expect(normalizeLocalCommandModel('whisper-tiny-multi')).toBe('whisper-tiny-multi');
     expect(normalizeLocalCommandModel('unknown')).toBe('moonshine-tiny-en');
-    expect(localVoiceDownloadSizeLabel('whisper-tiny-multi')).toMatch(/^~1\d\d MB$/);
+    expect(localVoiceBaseDownloadSizeLabel()).toMatch(/^~4\d MB$/);
+    expect(localCommandModelDownloadSizeLabel('moonshine-tiny-en')).toMatch(/^~10\d MB$/);
+    expect(localCommandModelDownloadSizeLabel('whisper-tiny-multi')).toMatch(/^~11\d MB$/);
+    expect(localVoiceDownloadSizeLabel('moonshine-tiny-en')).toMatch(/^~15\d MB$/);
+    expect(localVoiceDownloadSizeLabel('whisper-tiny-multi')).toMatch(/^~16\d MB$/);
   });
 });
 

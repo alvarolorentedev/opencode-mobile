@@ -439,7 +439,7 @@ Keyboard regressions also guard against adding the header safe-area inset to
 Chat/Terminal avoidance. `native-inputs` checks that content-sized and full-height
 overlays shrink inside a stable full-screen padding frame. On iOS, verify the
 Chat composer and terminal accessory sit directly above the soft keyboard, and
-Settings → Voice & responses → Speech locale scrolls into view on focus and
+Settings → Voice → Speech locale scrolls into view on focus and
 remains reachable through keyboard dismissal, rotation, and larger text.
 
 For keyboard-layout changes, validate Android with a Bluetooth keyboard and

@@ -3,6 +3,8 @@ import { useTranslation } from 'react-i18next';
 
 import { getVoiceCapabilitiesAsync, type VoiceCapabilities } from '@/lib/voice/capabilities';
 import {
+  getLocalCommandModelStatus,
+  getLocalVoiceBaseStatus,
   getLocalVoiceModelStatus,
   installLocalVoiceModels,
   removeLocalVoiceModels,
@@ -40,6 +42,8 @@ export function useVoiceSetup({
   const [isTesting, setIsTesting] = useState(false);
   const [feedback, setFeedback] = useState<string>();
   const [localVoiceStatus, setLocalVoiceStatus] = useState<LocalVoiceModelStatus>('missing');
+  const [localVoiceBaseStatus, setLocalVoiceBaseStatus] = useState<LocalVoiceModelStatus>('missing');
+  const [localVoiceCommandStatus, setLocalVoiceCommandStatus] = useState<LocalVoiceModelStatus>('missing');
   const [isInstallingLocalVoice, setIsInstallingLocalVoice] = useState(false);
   const [localVoiceError, setLocalVoiceError] = useState<string>();
   const enrollment = useLocalVoiceEnrollment();
@@ -89,6 +93,8 @@ export function useVoiceSetup({
   }, [refreshStatus]);
 
   const refreshLocalVoiceStatus = useCallback(() => {
+    setLocalVoiceBaseStatus(getLocalVoiceBaseStatus());
+    setLocalVoiceCommandStatus(getLocalCommandModelStatus(localCommandModel));
     setLocalVoiceStatus(getLocalVoiceModelStatus(localCommandModel));
   }, [localCommandModel]);
 
@@ -103,26 +109,27 @@ export function useVoiceSetup({
     setLocalVoiceStatus('installing');
     try {
       await installLocalVoiceModels(localWakePhrase, localCommandModel);
-      setLocalVoiceStatus('ready');
+      refreshLocalVoiceStatus();
     } catch (error) {
+      refreshLocalVoiceStatus();
       setLocalVoiceStatus('error');
       setLocalVoiceError(error instanceof Error ? error.message : 'Could not install the on-device voice models.');
     } finally {
       setIsInstallingLocalVoice(false);
     }
-  }, [localCommandModel, localWakePhrase]);
+  }, [localCommandModel, localWakePhrase, refreshLocalVoiceStatus]);
 
   const removeLocalVoice = useCallback(async () => {
     setLocalVoiceError(undefined);
     try {
       await releaseLocalVoiceRuntime();
       await removeLocalVoiceModels();
-      setLocalVoiceStatus(getLocalVoiceModelStatus(localCommandModel));
+      refreshLocalVoiceStatus();
     } catch (error) {
       setLocalVoiceStatus('error');
       setLocalVoiceError(error instanceof Error ? error.message : 'Could not remove the on-device voice models.');
     }
-  }, [localCommandModel]);
+  }, [refreshLocalVoiceStatus]);
 
   useEffect(
     () => () => {
@@ -139,7 +146,9 @@ export function useVoiceSetup({
     isRefreshing,
     isTesting,
     localVoice: {
+      baseStatus: localVoiceBaseStatus,
       clearError: useCallback(() => setLocalVoiceError(undefined), []),
+      commandStatus: localVoiceCommandStatus,
       enrollment,
       error: localVoiceError,
       install: installLocalVoice,

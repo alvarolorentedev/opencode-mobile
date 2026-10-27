@@ -4,13 +4,14 @@
       "connection": "Verbindung",
       "ai": "KI & Anbieter",
       "notifications": "Benachrichtigungen",
-      "voice": "Sprache & Antworten",
+      "voice": "Sprache",
       "advanced": "Erweitert",
       "support": "Support",
       "permissions": "Genehmigungen",
       "subscription": "Abonnement",
       "cloudLink": "Cloud Link",
-      "extensions": "Extensions"
+      "extensions": "Extensions",
+      "responses": "Antworten"
     },
     "summaries": {
       "configuredCount": "{{value}} konfiguriert",
@@ -18,7 +19,12 @@
       "replyPlaybackOff": "Antwortwiedergabe aus",
       "support": "App bewerten, Feedback senden, Hilfe erhalten",
       "permissions": "{{value}} gespeichert",
-      "extensions": "MCPs, plugins, skills and commands"
+      "extensions": "MCPs, plugins, skills and commands",
+      "responses": "Antwortumfang und nächste Schritte",
+      "voiceSystem": "Systemsprache · {{phrase}}",
+      "voiceLocal": "Auf dem Gerät · {{phrase}}",
+      "responsesOn": "{{scope}} · nächste Schritte an",
+      "responsesOff": "{{scope}} · nächste Schritte aus"
     }
   },
   "support": {
@@ -224,8 +230,8 @@
   },
   "voice": {
     "onDeviceInput": {
-      "title": "Spracheingabe auf dem Gerät",
-      "description": "Bevorzuge lokale Spracherkennung und vermeide nach Möglichkeit die Cloud-Ausweichlösung."
+      "title": "Erkennung auf dem Gerät bevorzugen",
+      "description": "Lokale Erkennung bevorzugen; bei Bedarf auf die Cloud zurückgreifen."
     },
     "autoPlay": {
       "title": "Antworten des Assistenten automatisch abspielen",
@@ -244,7 +250,7 @@
       "helper": "Der Konversationsmodus sendet erst eine Nachricht, wenn er diese Phrase hört. Zwei oder mehr Wörter funktionieren am besten."
     },
     "localWake": {
-      "title": "Wake-Word auf dem Gerät",
+      "title": "Sprache auf dem Gerät",
       "description": "Lokales Wake-Word-Modell und optionale Stimmprüfung. Lädt {{size}} vortrainierte Modelle; fällt bei Problemen auf die Phrasenerkennung zurück.",
       "statusMissing": "Modelle nicht installiert",
       "statusInstalling": "Wird installiert…",
@@ -254,7 +260,7 @@
       "install": "Modelle installieren ({{size}})",
       "remove": "Modelle entfernen",
       "phraseLabel": "Wake-Phrase",
-      "phraseHelper": "Der lokale Detektor unterstützt diese Phrasen und nutzt ein englisches Sprachmodell für Befehle. Kein Training nötig.",
+      "phraseHelper": "Der Wake-Detektor unterstützt diese englischen Phrasen. Das ausgewählte Befehlsmodell bestimmt die Befehlssprache; kein Training nötig.",
       "speakerVerification": "Meine Stimme prüfen",
       "speakerVerificationDescription": "Die Wake-Phrase ablehnen, wenn sie nicht von der hinterlegten Stimme gesprochen wird.",
       "enroll": "Stimme hinterlegen",
@@ -266,7 +272,13 @@
       "saving": "Stimmprofil wird erstellt…",
       "unsupportedHint": "Dieser Build enthält die native lokale Sprachlaufzeit nicht.",
       "commandModelLabel": "Befehls-Sprachmodell",
-      "commandModelHelper": "Wähle das lokale Modell für Befehle. Mehrsprachige Modelle benötigen mehr Speicher."
+      "commandModelHelper": "Wähle das lokale Modell für Befehle. Mehrsprachige Modelle benötigen mehr Speicher.",
+      "fallback": "Fallback: System-Phrasenerkennung „{{phrase}}“.",
+      "baseModels": "Basispaket",
+      "voiceProfile": "Stimmprofil",
+      "enrollRequiresModels": "Installiere zuerst die Modelle und nimm dann deine Stimme auf.",
+      "installBase": "Basispaket installieren ({{size}})",
+      "installCommand": "Befehlsmodell installieren ({{size}})"
     },
     "speechLocale": {
       "label": "Sprachlocale",
@@ -316,7 +328,7 @@
       "title": "Sprachprüfung",
       "permission": "Mikrofon- und Sprachzugriff",
       "recognition": "Spracherkennung",
-      "onDevice": "Erkennung auf dem Gerät",
+      "onDevice": "Systemerkennung auf dem Gerät",
       "restricted": "Durch Geräterichtlinie eingeschränkt",
       "restrictedHint": "Die Spracherkennung ist auf diesem Gerät eingeschränkt. Wende dich an deine Geräteverwaltung.",
       "unavailableHint": "Aktiviere Siri & Diktat in den Geräteeinstellungen und prüfe erneut.",
@@ -325,7 +337,20 @@
       "recheck": "Sprache erneut prüfen",
       "test": "Wiedergabe testen",
       "testPhrase": "Die Sprachwiedergabe funktioniert.",
-      "testFailed": "Sprachwiedergabe fehlgeschlagen. Prüfe die gewählte Stimme und die Gerätelautstärke."
+      "testFailed": "Sprachwiedergabe fehlgeschlagen. Prüfe die gewählte Stimme und die Gerätelautstärke.",
+      "allowed": "Erlaubt",
+      "available": "Verfügbar"
+    },
+    "mode": {
+      "label": "Spracheingabe",
+      "system": "System",
+      "local": "Auf dem Gerät",
+      "systemDescription": "Nutzt die Spracherkennung des Telefons. Sie kann die Cloud des Anbieters verwenden.",
+      "localDescription": "Nutzt heruntergeladene Modelle. Audio bleibt auf dem Gerät."
+    },
+    "playback": {
+      "title": "Wiedergabe",
+      "helper": "Gilt für System- und Gerätesprache."
     }
   },
   "diagnostics": {

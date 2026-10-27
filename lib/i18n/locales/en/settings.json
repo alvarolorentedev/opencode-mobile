@@ -4,13 +4,14 @@
       "connection": "Connection",
       "ai": "AI & providers",
       "notifications": "Notifications",
-      "voice": "Voice & responses",
+      "voice": "Voice",
       "advanced": "Advanced",
       "support": "Support",
       "permissions": "Approvals",
       "subscription": "Subscription",
       "cloudLink": "Cloud Link",
-      "extensions": "Extensions"
+      "extensions": "Extensions",
+      "responses": "Responses"
     },
     "summaries": {
       "configuredCount": "{{value}} configured",
@@ -18,7 +19,12 @@
       "replyPlaybackOff": "Reply playback off",
       "support": "Rate the app, send feedback, get help",
       "permissions": "{{value}} saved",
-      "extensions": "MCPs, plugins, skills and commands"
+      "extensions": "MCPs, plugins, skills and commands",
+      "responses": "Response scope and next actions",
+      "voiceSystem": "System speech · {{phrase}}",
+      "voiceLocal": "On-device · {{phrase}}",
+      "responsesOn": "{{scope}} · next actions on",
+      "responsesOff": "{{scope}} · next actions off"
     }
   },
   "support": {
@@ -224,8 +230,8 @@
   },
   "voice": {
     "onDeviceInput": {
-      "title": "On-device voice input",
-      "description": "Prefer local speech recognition and avoid cloud fallback when possible."
+      "title": "Prefer on-device recognition",
+      "description": "Prefer local recognition; fall back to cloud if needed."
     },
     "autoPlay": {
       "title": "Auto-play assistant replies",
@@ -244,7 +250,7 @@
       "helper": "Conversation mode sends a message only after it hears this phrase. Two or more words work best."
     },
     "localWake": {
-      "title": "On-device wake word",
+      "title": "On-device voice",
       "description": "Run a local wake-word model and optional voice check. Downloads {{size}} of pretrained models; falls back to the phrase gate if unavailable.",
       "statusMissing": "Models not installed",
       "statusInstalling": "Installing…",
@@ -254,7 +260,7 @@
       "install": "Install models ({{size}})",
       "remove": "Remove models",
       "phraseLabel": "Wake phrase",
-      "phraseHelper": "The on-device detector supports these bundled phrases and uses an English-only command model. No training is required.",
+      "phraseHelper": "The wake detector supports these bundled English phrases. The selected command model handles command language; no training is required.",
       "speakerVerification": "Verify my voice",
       "speakerVerificationDescription": "Reject the wake phrase when it is not spoken by the enrolled voice.",
       "enroll": "Enroll voice",
@@ -266,7 +272,13 @@
       "saving": "Building voice profile…",
       "unsupportedHint": "This build does not include the native on-device voice runtime.",
       "commandModelLabel": "Command recognition model",
-      "commandModelHelper": "Choose the on-device model used for commands. Multilingual models download a larger file."
+      "commandModelHelper": "Choose the on-device model used for commands. Multilingual models download a larger file.",
+      "fallback": "Fallback: system phrase gate “{{phrase}}”.",
+      "baseModels": "Base pack",
+      "voiceProfile": "Voice profile",
+      "enrollRequiresModels": "Install models first, then enroll your voice.",
+      "installBase": "Install base pack ({{size}})",
+      "installCommand": "Install command model ({{size}})"
     },
     "speechLocale": {
       "label": "Speech locale",
@@ -316,7 +328,7 @@
       "title": "Voice check",
       "permission": "Microphone & speech access",
       "recognition": "Speech recognition",
-      "onDevice": "On-device recognition",
+      "onDevice": "System on-device recognition",
       "restricted": "Restricted by device policy",
       "restrictedHint": "Speech recognition is restricted on this device. Contact your device administrator.",
       "unavailableHint": "Turn on Siri & Dictation in your device Settings, then re-check.",
@@ -325,7 +337,20 @@
       "recheck": "Re-check voice",
       "test": "Test playback",
       "testPhrase": "Voice playback is working.",
-      "testFailed": "Speech playback failed. Check the selected voice and the device volume."
+      "testFailed": "Speech playback failed. Check the selected voice and the device volume.",
+      "allowed": "Allowed",
+      "available": "Available"
+    },
+    "mode": {
+      "label": "Voice input",
+      "system": "System",
+      "local": "On-device",
+      "systemDescription": "Uses the phone's speech recognizer. It may use the vendor's cloud.",
+      "localDescription": "Uses downloaded models. Audio stays on the device."
+    },
+    "playback": {
+      "title": "Playback",
+      "helper": "Applies to both System and On-device voice."
     }
   },
   "diagnostics": {

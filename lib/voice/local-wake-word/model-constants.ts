@@ -91,6 +91,14 @@ export const LOCAL_VOICE_BASE_DOWNLOAD_BYTES =
   + LOCAL_VOICE_SPEAKER_MODEL_BYTES
   + LOCAL_VOICE_VAD_MODEL_BYTES;
 
+export function localVoiceBaseDownloadSizeLabel(): string {
+  return `~${Math.round(LOCAL_VOICE_BASE_DOWNLOAD_BYTES / 1_000_000)} MB`;
+}
+
+export function localCommandModelDownloadSizeLabel(modelId: LocalCommandModelId): string {
+  return `~${Math.round(getLocalCommandModel(modelId).tarballBytes / 1_000_000)} MB`;
+}
+
 export function localVoiceDownloadSizeLabel(modelId: LocalCommandModelId): string {
   const model = getLocalCommandModel(modelId);
   return `~${Math.round((LOCAL_VOICE_BASE_DOWNLOAD_BYTES + model.tarballBytes) / 1_000_000)} MB`;

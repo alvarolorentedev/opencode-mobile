@@ -172,7 +172,7 @@ function SettingsContent() {
       </Appbar.Header>
       <ScrollView style={[styles.screen, { backgroundColor: palette.background }]} contentContainerStyle={styles.content}>
         {[{ label: t('common:servers.serverSettings'), ids: ['ai', 'extensions', 'advanced', 'permissions'], server: true },
-          { label: t('common:servers.appSettings'), ids: ['connection', 'cloud-link', 'general', 'notifications', 'voice', 'support'], server: false }].map((group) => <View key={group.label} style={{ gap: 12, marginBottom: 20 }}>
+          { label: t('common:servers.appSettings'), ids: ['connection', 'cloud-link', 'general', 'notifications', 'voice', 'responses', 'support'], server: false }].map((group) => <View key={group.label} style={{ gap: 12, marginBottom: 20 }}>
           <Text variant="titleMedium">{group.label}</Text>
           {group.server ? <ServerContextPicker /> : null}
           <View style={[styles.categoryGroup, { backgroundColor: palette.surface, borderColor: palette.border }]}>

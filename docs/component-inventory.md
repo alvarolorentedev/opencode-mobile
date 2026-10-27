@@ -521,6 +521,8 @@ scanner. It preserves stored profiles. Components do not poll or classify errors
 - `AiDefaultsSection`
 - `NotificationsSection`
 - `VoiceSection`
+- `LocalVoiceSection`
+- `ResponsesSection`
 - `LanguageSection`
 - `DiagnosticsSection`
 - `SupportSection`
@@ -646,12 +648,29 @@ Responsibility:
 
 Responsibility:
 
-- edit speech input/output preferences
-- edit the conversation wake phrase
-- install/remove optional on-device wake-word, VAD and command-ASR models, and enroll a voice profile
-- edit response style settings that become system prompt hints
-- select working sound and speech voice
-- adjust speech rate and working-sound volume with touch sliders
+- switch between System speech and On-device voice as the active input mode
+- show the active path and the wake phrase currently in use
+- edit system-recognizer preference and the system wake phrase when System is active
+- edit speech locale and playback preferences (auto-play, voice, rate, resume listening, working sound)
+- expose a collapsed device check for microphone, recognition, and on-device capability status
+- render `LocalVoiceSection` when On-device mode is selected
+
+### `LocalVoiceSection`
+
+Responsibility:
+
+- show on-device readiness, base-pack and command-model status, and installed sizes
+- install or remove pretrained models, and choose the wake phrase and command model
+- enroll, re-enroll, or remove the local voice profile
+- expose voice verification only after a profile exists
+- keep the system phrase-gate fallback visible without exposing a second editable phrase in local mode
+
+### `ResponsesSection`
+
+Responsibility:
+
+- edit response scope and next-action hints separately from voice input/output
+- pass changes through `updateChatPreferences`; no prompt construction or provider state lives here
 
 ### `LanguageSection`
 

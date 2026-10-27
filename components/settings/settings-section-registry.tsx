@@ -17,12 +17,15 @@ import { NotificationsSection } from '@/components/settings/sections/notificatio
 import { SupportSection } from '@/components/settings/sections/support-section';
 import { UpdateSection } from '@/components/settings/sections/update-section';
 import { VoiceSection } from '@/components/settings/sections/voice-section';
+import { ResponsesSection } from '@/components/settings/sections/responses-section';
 import { AiSettingsPanel } from '@/components/settings/ai-settings-panel';
 import { useNotificationSetup } from '@/components/settings/use-notification-setup';
 import { useVoiceSetup } from '@/components/settings/use-voice-setup';
 import type { RESPONSE_SCOPE_OPTIONS, WORKING_SOUND_OPTIONS } from '@/components/settings/settings-utils';
 import { useLastJsError } from '@/hooks/use-last-js-error';
 import { usePalette } from '@/hooks/use-palette';
+import { DEFAULT_WAKE_PHRASE } from '@/lib/voice/wake-phrase';
+import { LOCAL_WAKE_PHRASES } from '@/lib/voice/local-wake-word/types';
 import type { SpeechVoiceOption } from '@/lib/voice/speech-output';
 import { useApprovals, useCapabilities, useConnection, useDiagnostics, useMcp, useOnboarding, usePreferences, useUpdates } from '@/providers/opencode-contexts';
 
@@ -99,6 +102,24 @@ export function buildSettingsSections({
   setOpenSection,
   openServiceEditor,
 }: RegistryInput): SettingsSection[] {
+  const voicePhrase = chatPreferences.voiceWakeMode === 'local'
+    ? LOCAL_WAKE_PHRASES[chatPreferences.localWakePhrase].label
+    : chatPreferences.conversationWakePhrase || DEFAULT_WAKE_PHRASE;
+  const localVoiceSummary = voiceSetup.localVoice.status === 'ready'
+    ? chatPreferences.localSpeakerVerification && !voiceSetup.localVoice.enrollment.hasProfile
+      ? t('settings:voice.localWake.notEnrolled')
+      : voicePhrase
+    : voiceSetup.localVoice.status === 'installing'
+      ? t('settings:voice.localWake.statusInstalling')
+      : voiceSetup.localVoice.status === 'error'
+        ? t('settings:voice.localWake.statusError')
+        : voiceSetup.localVoice.status === 'unsupported'
+          ? t('settings:voice.localWake.statusUnsupported')
+          : t('settings:voice.localWake.statusMissing');
+  const voiceSummary = chatPreferences.voiceWakeMode === 'local'
+    ? t('settings:screen.summaries.voiceLocal', { phrase: localVoiceSummary })
+    : t('settings:screen.summaries.voiceSystem', { phrase: voicePhrase });
+
   return [
     {
       id: 'connection',
@@ -145,9 +166,19 @@ export function buildSettingsSections({
       id: 'voice',
       icon: 'waveform',
       title: t('settings:screen.categories.voice'),
-      summary: chatPreferences.autoPlayAssistantReplies ? t('settings:screen.summaries.replyPlaybackOn') : t('settings:screen.summaries.replyPlaybackOff'),
+      summary: voiceSummary,
       onPress: () => setOpenSection('voice'),
-      render: () => <VoiceSection availableSpeechVoices={availableSpeechVoices} chatPreferences={chatPreferences} isRefreshingSpeechVoices={isRefreshingSpeechVoices} isRefreshingVoiceCapabilities={voiceSetup.isRefreshing} isTestingVoice={voiceSetup.isTesting} localVoice={voiceSetup.localVoice} onEnableVoiceInput={() => void voiceSetup.enable()} onOpenVoiceSettings={() => void voiceSetup.openAppSettings()} onRefreshVoiceCapabilities={() => void voiceSetup.refreshStatus()} onTestVoicePlayback={() => void voiceSetup.testPlayback()} palette={palette} selectedResponseScope={selectedResponseScope} selectedSpeechVoiceLabel={selectedSpeechVoiceLabel} selectedWorkingSound={selectedWorkingSound} updateChatPreferences={updateChatPreferences} voiceCapabilities={voiceSetup.capabilities} />,
+      render: () => <VoiceSection availableSpeechVoices={availableSpeechVoices} chatPreferences={chatPreferences} isRefreshingSpeechVoices={isRefreshingSpeechVoices} isRefreshingVoiceCapabilities={voiceSetup.isRefreshing} isTestingVoice={voiceSetup.isTesting} localVoice={voiceSetup.localVoice} onEnableVoiceInput={() => void voiceSetup.enable()} onOpenVoiceSettings={() => void voiceSetup.openAppSettings()} onRefreshVoiceCapabilities={() => void voiceSetup.refreshStatus()} onTestVoicePlayback={() => void voiceSetup.testPlayback()} palette={palette} selectedSpeechVoiceLabel={selectedSpeechVoiceLabel} selectedWorkingSound={selectedWorkingSound} updateChatPreferences={updateChatPreferences} voiceCapabilities={voiceSetup.capabilities} />,
+    },
+    {
+      id: 'responses',
+      icon: 'message-text-outline',
+      title: t('settings:screen.categories.responses'),
+      summary: t(`settings:screen.summaries.${chatPreferences.includeNextActions ? 'responsesOn' : 'responsesOff'}`, {
+        scope: t(`settings:voice.responseScope.${selectedResponseScope.value}.label`),
+      }),
+      onPress: () => setOpenSection('responses'),
+      render: () => <ResponsesSection chatPreferences={chatPreferences} palette={palette} selectedResponseScope={selectedResponseScope} updateChatPreferences={updateChatPreferences} />,
     },
     {
       id: 'general', icon: 'cog-outline', title: t('common:servers.appSettings'), summary: t('common:servers.appSettingsSummary'),

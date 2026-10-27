@@ -4,13 +4,14 @@
       "connection": "Conexão",
       "ai": "IA e provedores",
       "notifications": "Notificações",
-      "voice": "Voz e respostas",
+      "voice": "Voz",
       "advanced": "Avançado",
       "support": "Suporte",
       "permissions": "Aprovações",
       "subscription": "Assinatura",
       "cloudLink": "Cloud Link",
-      "extensions": "Extensions"
+      "extensions": "Extensions",
+      "responses": "Respostas"
     },
     "summaries": {
       "configuredCount": "{{value}} configurados",
@@ -18,7 +19,12 @@
       "replyPlaybackOff": "Reprodução de respostas desativada",
       "support": "Avalie o app, envie feedback, obtenha ajuda",
       "permissions": "{{value}} salvos",
-      "extensions": "MCPs, plugins, skills and commands"
+      "extensions": "MCPs, plugins, skills and commands",
+      "responses": "Escopo e próximos passos",
+      "voiceSystem": "Voz do sistema · {{phrase}}",
+      "voiceLocal": "No dispositivo · {{phrase}}",
+      "responsesOn": "{{scope}} · próximos passos ativados",
+      "responsesOff": "{{scope}} · próximos passos desativados"
     }
   },
   "support": {
@@ -224,8 +230,8 @@
   },
   "voice": {
     "onDeviceInput": {
-      "title": "Entrada de voz no dispositivo",
-      "description": "Prefira reconhecimento de fala local e evite o uso da nuvem quando possível."
+      "title": "Preferir reconhecimento no dispositivo",
+      "description": "Prefira o reconhecimento local; use a nuvem se necessário."
     },
     "autoPlay": {
       "title": "Reproduzir respostas do assistente automaticamente",
@@ -244,7 +250,7 @@
       "helper": "O modo conversa só envia uma mensagem depois de ouvir esta frase. Duas ou mais palavras funcionam melhor."
     },
     "localWake": {
-      "title": "Palavra de ativação no dispositivo",
+      "title": "Voz no dispositivo",
       "description": "Executa um modelo local e uma verificação de voz opcional. Baixa {{size}} de modelos pré-treinados; usa a frase do sistema se indisponível.",
       "statusMissing": "Modelos não instalados",
       "statusInstalling": "Instalando…",
@@ -254,7 +260,7 @@
       "install": "Instalar modelos ({{size}})",
       "remove": "Remover modelos",
       "phraseLabel": "Frase de ativação",
-      "phraseHelper": "O detector local suporta estas frases e usa um modelo de comandos apenas em inglês. Não é necessário treinar.",
+      "phraseHelper": "O detector de ativação suporta estas frases em inglês. O modelo de comandos selecionado define o idioma dos comandos; não é necessário treinar.",
       "speakerVerification": "Verificar minha voz",
       "speakerVerificationDescription": "Rejeita a frase quando não for falada pela voz cadastrada.",
       "enroll": "Cadastrar voz",
@@ -266,7 +272,13 @@
       "saving": "Criando perfil de voz…",
       "unsupportedHint": "Esta versão não inclui o runtime nativo de voz local.",
       "commandModelLabel": "Modelo de reconhecimento de comandos",
-      "commandModelHelper": "Escolha o modelo local usado para comandos. Modelos multilíngues ocupam mais espaço."
+      "commandModelHelper": "Escolha o modelo local usado para comandos. Modelos multilíngues ocupam mais espaço.",
+      "fallback": "Alternativa: frase do sistema “{{phrase}}”.",
+      "baseModels": "Pacote base",
+      "voiceProfile": "Perfil de voz",
+      "enrollRequiresModels": "Instale os modelos primeiro e depois registe a sua voz.",
+      "installBase": "Instalar pacote base ({{size}})",
+      "installCommand": "Instalar modelo de comandos ({{size}})"
     },
     "speechLocale": {
       "label": "Idioma da fala",
@@ -316,7 +328,7 @@
       "title": "Verificação de voz",
       "permission": "Acesso ao microfone e à fala",
       "recognition": "Reconhecimento de fala",
-      "onDevice": "Reconhecimento no dispositivo",
+      "onDevice": "Reconhecimento do sistema no dispositivo",
       "restricted": "Restrito pela política do dispositivo",
       "restrictedHint": "O reconhecimento de fala está restrito neste dispositivo. Contacte o administrador do dispositivo.",
       "unavailableHint": "Ative Siri e Ditado nos ajustes do dispositivo e verifique novamente.",
@@ -325,7 +337,20 @@
       "recheck": "Verificar voz novamente",
       "test": "Testar reprodução",
       "testPhrase": "A reprodução de voz está a funcionar.",
-      "testFailed": "A reprodução de voz falhou. Verifique a voz selecionada e o volume do dispositivo."
+      "testFailed": "A reprodução de voz falhou. Verifique a voz selecionada e o volume do dispositivo.",
+      "allowed": "Permitido",
+      "available": "Disponível"
+    },
+    "mode": {
+      "label": "Entrada de voz",
+      "system": "Sistema",
+      "local": "No dispositivo",
+      "systemDescription": "Usa o reconhecimento de voz do telefone. Pode usar a nuvem do fabricante.",
+      "localDescription": "Usa modelos baixados. O áudio permanece no dispositivo."
+    },
+    "playback": {
+      "title": "Reprodução",
+      "helper": "Aplica-se à voz do sistema e à voz no dispositivo."
     }
   },
   "diagnostics": {

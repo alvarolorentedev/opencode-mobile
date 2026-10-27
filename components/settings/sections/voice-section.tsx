@@ -1,18 +1,18 @@
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
 import { StyleSheet, View } from 'react-native';
-import { Button, HelperText, List, Text } from 'react-native-paper';
+import { Button, HelperText, List, SegmentedButtons, Text } from 'react-native-paper';
 
 import { type NativeSelectOption } from '@/components/ui/native-select';
 import { NumericSlider } from '@/components/ui/numeric-slider';
 import { TextInput } from '@/components/ui/text-input';
 import type { VoiceCapabilities } from '@/lib/voice/capabilities';
-import { LOCAL_COMMAND_MODELS, localVoiceDownloadSizeLabel } from '@/lib/voice/local-wake-word/model-constants';
-import { LOCAL_WAKE_PHRASES, type LocalCommandModelId, type LocalWakePhraseId, type LocalVoiceModelStatus } from '@/lib/voice/local-wake-word/types';
 import type { SpeechVoiceOption } from '@/lib/voice/speech-output';
 import { DEFAULT_WAKE_PHRASE, normalizeWakePhrase } from '@/lib/voice/wake-phrase';
 import type { WorkingSoundVariant } from '@/lib/voice/working-sound';
-import type { ChatPreferences, ResponseScope } from '@/providers/opencode-provider';
-import { RESPONSE_SCOPE_OPTIONS, WORKING_SOUND_OPTIONS } from '@/components/settings/settings-utils';
+import type { ChatPreferences } from '@/providers/opencode-provider';
+import { WORKING_SOUND_OPTIONS } from '@/components/settings/settings-utils';
+import { LocalVoiceSection, type LocalVoiceState } from './local-voice-section';
 import { SettingSelectField, SettingSwitchRow, type Palette } from './setting-rows';
 
 type VoiceSectionProps = {
@@ -21,29 +21,12 @@ type VoiceSectionProps = {
   isRefreshingSpeechVoices: boolean;
   isRefreshingVoiceCapabilities: boolean;
   isTestingVoice: boolean;
-  localVoice: {
-    clearError: () => void;
-    enrollment: {
-      clearProfile: () => Promise<void>;
-      enroll: () => Promise<void>;
-      error?: string;
-      hasProfile: boolean;
-      isRecording: boolean;
-      status: 'idle' | 'recording' | 'saving' | 'error';
-    };
-    error?: string;
-    install: () => Promise<void>;
-    isInstalling: boolean;
-    refresh: () => void;
-    remove: () => Promise<void>;
-    status: LocalVoiceModelStatus;
-  };
+  localVoice: LocalVoiceState;
   onEnableVoiceInput: () => void;
   onOpenVoiceSettings: () => void;
   onRefreshVoiceCapabilities: () => void;
   onTestVoicePlayback: () => void;
   palette: Palette;
-  selectedResponseScope: { value: ResponseScope };
   selectedSpeechVoiceLabel: string;
   selectedWorkingSound: { value: WorkingSoundVariant };
   updateChatPreferences: (patch: Partial<ChatPreferences>) => void;
@@ -71,7 +54,6 @@ export function VoiceSection({
   onRefreshVoiceCapabilities,
   onTestVoicePlayback,
   palette,
-  selectedResponseScope,
   selectedSpeechVoiceLabel,
   selectedWorkingSound,
   updateChatPreferences,
@@ -79,21 +61,26 @@ export function VoiceSection({
 }: VoiceSectionProps) {
   const { t } = useTranslation();
   const voicePermission = voiceCapabilities?.permission;
-  const enabledLabel = t('common:labels.enabled');
   const offLabel = t('common:labels.off');
   const unavailableLabel = t('common:labels.unavailable');
+  const localMode = chatPreferences.voiceWakeMode === 'local';
+  const systemReady = Boolean(
+    voiceCapabilities?.recognitionAvailable && voicePermission?.granted,
+  );
   const permissionStatus = !voicePermission || voicePermission.available === false
     ? unavailableLabel
     : voicePermission.restricted
       ? t('settings:voice.check.restricted')
       : voicePermission.granted
-        ? enabledLabel
+        ? t('settings:voice.check.allowed')
         : offLabel;
-  const responseScopeOptions: NativeSelectOption<ResponseScope>[] = RESPONSE_SCOPE_OPTIONS.map((option) => ({
-    description: t(`settings:voice.responseScope.${option.value}.description`),
-    label: t(`settings:voice.responseScope.${option.value}.label`),
-    value: option.value,
-  }));
+  const systemStatusLabel = !voiceCapabilities
+    ? t('common:labels.unknown')
+    : !voiceCapabilities.recognitionAvailable
+      ? unavailableLabel
+      : voicePermission?.granted
+        ? t('common:labels.active')
+        : permissionStatus;
   const workingSoundOptions: NativeSelectOption<WorkingSoundVariant>[] = WORKING_SOUND_OPTIONS.map((option) => ({
     description: t(`settings:voice.workingSoundVariant.${option.value}.description`),
     label: t(`settings:voice.workingSoundVariant.${option.value}.label`),
@@ -110,200 +97,118 @@ export function VoiceSection({
       value: voice.id,
     })),
   ];
-  const localWakePhraseOptions: NativeSelectOption<LocalWakePhraseId>[] = (
-    Object.values(LOCAL_WAKE_PHRASES)
-  ).map((phrase) => ({
-    label: phrase.label,
-    value: phrase.id,
-  }));
-  const localCommandModelOptions: NativeSelectOption<LocalCommandModelId>[] = (
-    Object.values(LOCAL_COMMAND_MODELS)
-  ).map((model) => ({
-    description: model.languages,
-    label: model.label,
-    value: model.id,
-  }));
-  const localVoiceDownloadLabel = localVoiceDownloadSizeLabel(chatPreferences.localCommandModel);
-  const localVoiceStatusLabel = {
-    error: t('settings:voice.localWake.statusError'),
-    installing: t('settings:voice.localWake.statusInstalling'),
-    missing: t('settings:voice.localWake.statusMissing'),
-    ready: t('settings:voice.localWake.statusReady'),
-    unsupported: t('settings:voice.localWake.statusUnsupported'),
-  }[localVoice.status];
 
   return (
     <View style={styles.section}>
-        <View style={[styles.voiceCheckCard, { backgroundColor: palette.surface, borderColor: palette.border }]}>
-          <Text variant="titleSmall" style={{ color: palette.text }}>{t('settings:voice.check.title')}</Text>
-          <VoiceCheckRow label={t('settings:voice.check.permission')} palette={palette} status={permissionStatus} />
-          <VoiceCheckRow
-            label={t('settings:voice.check.recognition')}
-            palette={palette}
-            status={voiceCapabilities ? (voiceCapabilities.recognitionAvailable ? enabledLabel : unavailableLabel) : t('common:labels.unknown')}
-          />
-          <VoiceCheckRow
-            label={t('settings:voice.check.onDevice')}
-            palette={palette}
-            status={voiceCapabilities ? (voiceCapabilities.onDeviceSupported ? enabledLabel : offLabel) : t('common:labels.unknown')}
-          />
-          {voiceCapabilities && !voiceCapabilities.recognitionAvailable ? (
-            <HelperText type="info">{t('settings:voice.check.unavailableHint')}</HelperText>
-          ) : null}
-          {voicePermission?.restricted ? (
-            <HelperText type="info">{t('settings:voice.check.restrictedHint')}</HelperText>
-          ) : null}
-          {voicePermission && voicePermission.available && !voicePermission.granted && !voicePermission.canAskAgain ? (
-            <HelperText type="info">{t('settings:voice.check.deniedHint')}</HelperText>
-          ) : null}
-          <View style={styles.actionRow}>
-            {voicePermission && voicePermission.available && !voicePermission.granted && voicePermission.canAskAgain ? (
-              <Button mode="contained-tonal" onPress={onEnableVoiceInput}>{t('settings:voice.check.enable')}</Button>
-            ) : null}
-            <Button loading={isRefreshingVoiceCapabilities} mode="outlined" onPress={onRefreshVoiceCapabilities}>{t('settings:voice.check.recheck')}</Button>
-            <Button loading={isTestingVoice} mode="outlined" onPress={onTestVoicePlayback}>{t('settings:voice.check.test')}</Button>
-            {voicePermission && voicePermission.available && !voicePermission.granted ? (
-              <Button mode="text" onPress={onOpenVoiceSettings}>{t('common:actions.openSettings')}</Button>
-            ) : null}
-          </View>
-        </View>
-        <List.Section style={styles.infoListSection}>
-          <SettingSwitchRow
-            description={t('settings:voice.onDeviceInput.description')}
-            onValueChange={(value) => updateChatPreferences({ preferOnDeviceRecognition: value })}
-            palette={palette}
-            title={t('settings:voice.onDeviceInput.title')}
-            value={chatPreferences.preferOnDeviceRecognition}
-          />
-          <SettingSwitchRow
-            description={t('settings:voice.autoPlay.description')}
-            onValueChange={(value) => updateChatPreferences({ autoPlayAssistantReplies: value })}
-            palette={palette}
-            title={t('settings:voice.autoPlay.title')}
-            value={chatPreferences.autoPlayAssistantReplies}
-          />
-          <SettingSwitchRow
-            description={t('settings:voice.workingSound.description')}
-            onValueChange={(value) => updateChatPreferences({ workingSoundEnabled: value })}
-            palette={palette}
-            title={t('settings:voice.workingSound.title')}
-            value={chatPreferences.workingSoundEnabled}
-          />
-          <SettingSwitchRow
-            description={t('settings:voice.resumeListening.description')}
-            onValueChange={(value) => updateChatPreferences({ resumeListeningAfterReply: value })}
-            palette={palette}
-            title={t('settings:voice.resumeListening.title')}
-            value={chatPreferences.resumeListeningAfterReply}
-          />
-        </List.Section>
-        <SettingSwitchRow
-          description={t('settings:voice.localWake.description', { size: localVoiceDownloadLabel })}
+      <View style={styles.modeBlock}>
+        <Text variant="titleSmall" style={{ color: palette.text }}>{t('settings:voice.mode.label')}</Text>
+        <SegmentedButtons
           onValueChange={(value) => {
             localVoice.clearError();
-            updateChatPreferences({ voiceWakeMode: value ? 'local' : 'phrase' });
+            updateChatPreferences({ voiceWakeMode: value === 'local' ? 'local' : 'phrase' });
             localVoice.refresh();
           }}
+          buttons={[
+            { icon: 'cellphone', label: t('settings:voice.mode.system'), value: 'system' },
+            { icon: 'chip', label: t('settings:voice.mode.local'), value: 'local' },
+          ]}
+          value={localMode ? 'local' : 'system'}
+        />
+        <HelperText type="info">
+          {localMode
+            ? t('settings:voice.mode.localDescription')
+            : t('settings:voice.mode.systemDescription')}
+        </HelperText>
+      </View>
+
+      {localMode ? (
+        <LocalVoiceSection
+          chatPreferences={chatPreferences}
+          localVoice={localVoice}
           palette={palette}
-          title={t('settings:voice.localWake.title')}
-          value={chatPreferences.voiceWakeMode === 'local'}
+          updateChatPreferences={updateChatPreferences}
         />
-        {chatPreferences.voiceWakeMode === 'local' ? (
-          <View style={[styles.localVoiceCard, { backgroundColor: palette.surface, borderColor: palette.border }]}>
-            <View style={styles.localVoiceStatusRow}>
-              <Text variant="bodyMedium" style={{ color: palette.text }}>{localVoiceStatusLabel}</Text>
-              {localVoice.status === 'ready' ? (
-                <Button compact mode="text" onPress={() => { void localVoice.remove(); }}>
-                  {t('settings:voice.localWake.remove')}
-                </Button>
-              ) : null}
+      ) : (
+        <>
+          <View style={[styles.statusCard, { backgroundColor: palette.surface, borderColor: palette.border }]}>
+            <MaterialCommunityIcons
+              color={systemReady ? palette.success : palette.muted}
+              name={systemReady ? 'check-circle' : 'alert-circle-outline'}
+              size={22}
+            />
+            <View style={styles.localVoiceStatusText}>
+              <Text variant="titleSmall" style={{ color: palette.text }}>{t('settings:voice.mode.system')}</Text>
+              <Text variant="bodySmall" style={{ color: palette.muted }}>
+                {t('settings:voice.wakePhrase.label')}
+                {': '}
+                {chatPreferences.conversationWakePhrase || DEFAULT_WAKE_PHRASE}
+              </Text>
             </View>
-            {localVoice.status === 'missing' || localVoice.status === 'error' ? (
-              <Button
-                loading={localVoice.isInstalling}
-                mode="contained-tonal"
-                onPress={() => { void localVoice.install(); }}
-              >
-                {t('settings:voice.localWake.install', { size: localVoiceDownloadLabel })}
-              </Button>
-            ) : null}
-            {localVoice.status === 'unsupported' ? (
-              <HelperText type="info">{t('settings:voice.localWake.unsupportedHint')}</HelperText>
-            ) : null}
-            {localVoice.error ? <HelperText type="error">{localVoice.error}</HelperText> : null}
-            <SettingSelectField
-              label={t('settings:voice.localWake.phraseLabel')}
-              onValueChange={(value) => updateChatPreferences({ localWakePhrase: value })}
-              options={localWakePhraseOptions}
-              palette={palette}
-              selectedValue={chatPreferences.localWakePhrase}
-              valueLabel={LOCAL_WAKE_PHRASES[chatPreferences.localWakePhrase].label}
-            />
-            <HelperText type="info">{t('settings:voice.localWake.phraseHelper')}</HelperText>
-            <SettingSelectField
-              label={t('settings:voice.localWake.commandModelLabel')}
-              onValueChange={(value) => updateChatPreferences({ localCommandModel: value })}
-              options={localCommandModelOptions}
-              palette={palette}
-              selectedValue={chatPreferences.localCommandModel}
-              valueLabel={LOCAL_COMMAND_MODELS[chatPreferences.localCommandModel].label}
-            />
-            <HelperText type="info">{t('settings:voice.localWake.commandModelHelper')}</HelperText>
-            <SettingSwitchRow
-              description={t('settings:voice.localWake.speakerVerificationDescription')}
-              onValueChange={(value) => updateChatPreferences({ localSpeakerVerification: value })}
-              palette={palette}
-              title={t('settings:voice.localWake.speakerVerification')}
-              value={chatPreferences.localSpeakerVerification}
-            />
-            <View style={styles.localVoiceActions}>
-              <Button
-                disabled={localVoice.status !== 'ready' || localVoice.enrollment.isRecording || localVoice.enrollment.status === 'saving'}
-                mode="outlined"
-                onPress={() => { void localVoice.enrollment.enroll(); }}
-              >
-                {localVoice.enrollment.hasProfile
-                  ? t('settings:voice.localWake.reEnroll')
-                  : t('settings:voice.localWake.enroll')}
-              </Button>
-              {localVoice.enrollment.hasProfile ? (
-                <Button compact mode="text" onPress={() => { void localVoice.enrollment.clearProfile(); }}>
-                  {t('settings:voice.localWake.removeVoice')}
-                </Button>
-              ) : null}
-            </View>
-            <HelperText type={localVoice.enrollment.error ? 'error' : 'info'}>
-              {localVoice.enrollment.error
-                || (localVoice.enrollment.status === 'recording'
-                  ? t('settings:voice.localWake.recording')
-                  : localVoice.enrollment.status === 'saving'
-                    ? t('settings:voice.localWake.saving')
-                    : localVoice.enrollment.hasProfile
-                      ? t('settings:voice.localWake.enrolled')
-                      : t('settings:voice.localWake.notEnrolled'))}
-            </HelperText>
+            <Text variant="labelMedium" style={{ color: systemReady ? palette.success : palette.muted }}>
+              {systemStatusLabel}
+            </Text>
           </View>
-        ) : null}
-        <TextInput
-          autoCapitalize="none"
-          autoCorrect={false}
-          label={t('settings:voice.wakePhrase.label')}
-          mode="outlined"
-          placeholder={DEFAULT_WAKE_PHRASE}
-          value={chatPreferences.conversationWakePhrase}
-          onBlur={() => updateChatPreferences({ conversationWakePhrase: normalizeWakePhrase(chatPreferences.conversationWakePhrase) })}
-          onChangeText={(conversationWakePhrase) => updateChatPreferences({ conversationWakePhrase })}
+          <View style={styles.group}>
+            <SettingSwitchRow
+              description={t('settings:voice.onDeviceInput.description')}
+              onValueChange={(value) => updateChatPreferences({ preferOnDeviceRecognition: value })}
+              palette={palette}
+              title={t('settings:voice.onDeviceInput.title')}
+              value={chatPreferences.preferOnDeviceRecognition}
+            />
+            <TextInput
+              autoCapitalize="none"
+              autoCorrect={false}
+              label={t('settings:voice.wakePhrase.label')}
+              mode="outlined"
+              placeholder={DEFAULT_WAKE_PHRASE}
+              value={chatPreferences.conversationWakePhrase}
+              onBlur={() => updateChatPreferences({ conversationWakePhrase: normalizeWakePhrase(chatPreferences.conversationWakePhrase) })}
+              onChangeText={(conversationWakePhrase) => updateChatPreferences({ conversationWakePhrase })}
+            />
+            <HelperText type="info">{t('settings:voice.wakePhrase.helper')}</HelperText>
+          </View>
+        </>
+      )}
+
+      <TextInput
+        autoCapitalize="none"
+        autoCorrect={false}
+        label={t('settings:voice.speechLocale.label')}
+        mode="outlined"
+        placeholder="en-US"
+        value={chatPreferences.speechLocale || ''}
+        onChangeText={(value) => updateChatPreferences({ speechLocale: value.trim() || undefined })}
+      />
+      <HelperText type="info">{t('settings:voice.speechLocale.helper')}</HelperText>
+
+      <View style={styles.group}>
+        <Text variant="titleSmall" style={{ color: palette.text }}>{t('settings:voice.playback.title')}</Text>
+        <HelperText type="info">{t('settings:voice.playback.helper')}</HelperText>
+        <SettingSwitchRow
+          description={t('settings:voice.autoPlay.description')}
+          onValueChange={(value) => updateChatPreferences({ autoPlayAssistantReplies: value })}
+          palette={palette}
+          title={t('settings:voice.autoPlay.title')}
+          value={chatPreferences.autoPlayAssistantReplies}
         />
-        <HelperText type="info">{t('settings:voice.wakePhrase.helper')}</HelperText>
-        <TextInput mode="outlined" label={t('settings:voice.speechLocale.label')} placeholder="en-US" value={chatPreferences.speechLocale || ''} autoCapitalize="none" autoCorrect={false} onChangeText={(value) => updateChatPreferences({ speechLocale: value.trim() || undefined })} />
-        <HelperText type="info">{t('settings:voice.speechLocale.helper')}</HelperText>
-        <SettingSelectField label={t('settings:voice.responseScope.label')} onValueChange={(value) => updateChatPreferences({ responseScope: value })} options={responseScopeOptions} palette={palette} selectedValue={selectedResponseScope.value} valueLabel={t(`settings:voice.responseScope.${selectedResponseScope.value}.label`)} />
-        <HelperText type="info">{t(`settings:voice.responseScope.${selectedResponseScope.value}.description`)}</HelperText>
-        <SettingSwitchRow description={t('settings:voice.nextActions.description')} onValueChange={(value) => updateChatPreferences({ includeNextActions: value })} palette={palette} title={t('settings:voice.nextActions.title')} value={chatPreferences.includeNextActions} />
-        <NumericSlider label={t('settings:voice.speechRate.label')} minimum={0.5} maximum={1.5} step={0.1} value={chatPreferences.speechRate} valueLabel={`${chatPreferences.speechRate.toFixed(1)}x`} onValueChange={(speechRate) => updateChatPreferences({ speechRate })} palette={palette} />
-        <SettingSelectField label={t('settings:voice.workingSoundVariant.label')} onValueChange={(value) => updateChatPreferences({ workingSoundVariant: value })} options={workingSoundOptions} palette={palette} selectedValue={selectedWorkingSound.value} valueLabel={t(`settings:voice.workingSoundVariant.${selectedWorkingSound.value}.label`)} />
-        <HelperText type="info">{t(`settings:voice.workingSoundVariant.${selectedWorkingSound.value}.description`)}</HelperText>
-        <NumericSlider label={t('settings:voice.workingSoundVolume.label')} minimum={0} maximum={1} step={0.05} value={chatPreferences.workingSoundVolume} valueLabel={`${Math.round(chatPreferences.workingSoundVolume * 100)}%`} onValueChange={(workingSoundVolume) => updateChatPreferences({ workingSoundVolume })} palette={palette} />
+        <SettingSwitchRow
+          description={t('settings:voice.resumeListening.description')}
+          onValueChange={(value) => updateChatPreferences({ resumeListeningAfterReply: value })}
+          palette={palette}
+          title={t('settings:voice.resumeListening.title')}
+          value={chatPreferences.resumeListeningAfterReply}
+        />
+        <NumericSlider
+          label={t('settings:voice.speechRate.label')}
+          minimum={0.5}
+          maximum={1.5}
+          step={0.1}
+          value={chatPreferences.speechRate}
+          valueLabel={`${chatPreferences.speechRate.toFixed(1)}x`}
+          onValueChange={(speechRate) => updateChatPreferences({ speechRate })}
+          palette={palette}
+        />
         <SettingSelectField
           disabled={isRefreshingSpeechVoices}
           label={t('settings:voice.voiceSelect.label')}
@@ -325,20 +230,88 @@ export function VoiceSection({
           selectedValue={chatPreferences.speechVoiceId || '__system__'}
           valueLabel={selectedSpeechVoiceLabel}
         />
-        <HelperText type="info">
-          {t('settings:voice.footer')}
-        </HelperText>
+        <SettingSwitchRow
+          description={t('settings:voice.workingSound.description')}
+          onValueChange={(value) => updateChatPreferences({ workingSoundEnabled: value })}
+          palette={palette}
+          title={t('settings:voice.workingSound.title')}
+          value={chatPreferences.workingSoundEnabled}
+        />
+        {chatPreferences.workingSoundEnabled ? (
+          <>
+            <SettingSelectField
+              label={t('settings:voice.workingSoundVariant.label')}
+              onValueChange={(value) => updateChatPreferences({ workingSoundVariant: value })}
+              options={workingSoundOptions}
+              palette={palette}
+              selectedValue={selectedWorkingSound.value}
+              valueLabel={t(`settings:voice.workingSoundVariant.${selectedWorkingSound.value}.label`)}
+            />
+            <HelperText type="info">{t(`settings:voice.workingSoundVariant.${selectedWorkingSound.value}.description`)}</HelperText>
+            <NumericSlider
+              label={t('settings:voice.workingSoundVolume.label')}
+              minimum={0}
+              maximum={1}
+              step={0.05}
+              value={chatPreferences.workingSoundVolume}
+              valueLabel={`${Math.round(chatPreferences.workingSoundVolume * 100)}%`}
+              onValueChange={(workingSoundVolume) => updateChatPreferences({ workingSoundVolume })}
+              palette={palette}
+            />
+          </>
+        ) : null}
+      </View>
+
+      <View style={[styles.voiceCheckCard, { backgroundColor: palette.surface, borderColor: palette.border }]}>
+        <List.Accordion id="voice-check" title={t('settings:voice.check.title')}>
+          <View style={styles.voiceCheckBody}>
+            <VoiceCheckRow label={t('settings:voice.check.permission')} palette={palette} status={permissionStatus} />
+            <VoiceCheckRow
+              label={t('settings:voice.check.recognition')}
+              palette={palette}
+              status={voiceCapabilities ? (voiceCapabilities.recognitionAvailable ? t('settings:voice.check.available') : unavailableLabel) : t('common:labels.unknown')}
+            />
+            <VoiceCheckRow
+              label={t('settings:voice.check.onDevice')}
+              palette={palette}
+              status={voiceCapabilities ? (voiceCapabilities.onDeviceSupported ? t('settings:voice.check.available') : offLabel) : t('common:labels.unknown')}
+            />
+            {voiceCapabilities && !voiceCapabilities.recognitionAvailable ? (
+              <HelperText type="info">{t('settings:voice.check.unavailableHint')}</HelperText>
+            ) : null}
+            {voicePermission?.restricted ? (
+              <HelperText type="info">{t('settings:voice.check.restrictedHint')}</HelperText>
+            ) : null}
+            {voicePermission && voicePermission.available && !voicePermission.granted && !voicePermission.canAskAgain ? (
+              <HelperText type="info">{t('settings:voice.check.deniedHint')}</HelperText>
+            ) : null}
+            <View style={styles.actionRow}>
+              {voicePermission && voicePermission.available && !voicePermission.granted && voicePermission.canAskAgain ? (
+                <Button mode="contained-tonal" onPress={onEnableVoiceInput}>{t('settings:voice.check.enable')}</Button>
+              ) : null}
+              <Button loading={isRefreshingVoiceCapabilities} mode="outlined" onPress={onRefreshVoiceCapabilities}>{t('settings:voice.check.recheck')}</Button>
+              <Button loading={isTestingVoice} mode="outlined" onPress={onTestVoicePlayback}>{t('settings:voice.check.test')}</Button>
+              {voicePermission && voicePermission.available && !voicePermission.granted ? (
+                <Button mode="text" onPress={onOpenVoiceSettings}>{t('common:actions.openSettings')}</Button>
+              ) : null}
+            </View>
+          </View>
+        </List.Accordion>
+      </View>
+
+      <HelperText type="info">{t('settings:voice.footer')}</HelperText>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   section: { gap: 14, paddingBottom: 8 },
-  voiceCheckCard: { borderRadius: 16, borderWidth: 1, gap: 8, padding: 14 },
-  voiceCheckRow: { alignItems: 'center', flexDirection: 'row', justifyContent: 'space-between', gap: 12 },
+  modeBlock: { gap: 8 },
+  statusCard: { alignItems: 'center', borderRadius: 16, borderWidth: 1, flexDirection: 'row', gap: 12, padding: 14 },
+  localVoiceStatusText: { flex: 1, gap: 2 },
   actionRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
-  infoListSection: { marginVertical: 0 },
-  localVoiceCard: { borderRadius: 16, borderWidth: 1, gap: 10, padding: 14 },
-  localVoiceStatusRow: { alignItems: 'center', flexDirection: 'row', justifyContent: 'space-between', gap: 12 },
-  localVoiceActions: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 10 },
+  group: { gap: 10 },
+  voiceCheckCard: { borderRadius: 16, borderWidth: 1, overflow: 'hidden' },
+  voiceCheckBody: { gap: 8, paddingBottom: 12, paddingHorizontal: 14 },
+  voiceCheckRow: { alignItems: 'center', flexDirection: 'row', justifyContent: 'space-between', gap: 12 },
 });

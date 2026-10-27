@@ -4,13 +4,14 @@
       "connection": "接続",
       "ai": "AI とプロバイダー",
       "notifications": "通知",
-      "voice": "音声と応答",
+      "voice": "音声",
       "advanced": "詳細設定",
       "support": "サポート",
       "permissions": "承認",
       "subscription": "サブスクリプション",
       "cloudLink": "Cloud Link",
-      "extensions": "Extensions"
+      "extensions": "Extensions",
+      "responses": "応答"
     },
     "summaries": {
       "configuredCount": "{{value}} 件設定済み",
@@ -18,7 +19,12 @@
       "replyPlaybackOff": "返信の再生オフ",
       "support": "アプリを評価、フィードバック、サポート",
       "permissions": "{{value}} 件保存済み",
-      "extensions": "MCPs, plugins, skills and commands"
+      "extensions": "MCPs, plugins, skills and commands",
+      "responses": "応答範囲と次のアクション",
+      "voiceSystem": "システム音声 · {{phrase}}",
+      "voiceLocal": "オンデバイス · {{phrase}}",
+      "responsesOn": "{{scope}} · 次のアクション オン",
+      "responsesOff": "{{scope}} · 次のアクション オフ"
     }
   },
   "support": {
@@ -224,8 +230,8 @@
   },
   "voice": {
     "onDeviceInput": {
-      "title": "デバイス上の音声入力",
-      "description": "可能な場合はローカルの音声認識を優先し、クラウドへのフォールバックを避けます。"
+      "title": "オンデバイス認識を優先",
+      "description": "ローカル認識を優先し、必要な場合のみクラウドを使用します。"
     },
     "autoPlay": {
       "title": "アシスタントの返信を自動再生",
@@ -244,7 +250,7 @@
       "helper": "会話モードはこのフレーズを聞き取った後にのみメッセージを送信します。2語以上がおすすめです。"
     },
     "localWake": {
-      "title": "オンデバイスのウェイクワード",
+      "title": "オンデバイス音声",
       "description": "ローカルのウェイクワードモデルと任意の声紋チェックを実行します。{{size}} の学習済みモデルをダウンロードし、利用できない場合はフレーズ判定に戻ります。",
       "statusMissing": "モデル未インストール",
       "statusInstalling": "インストール中…",
@@ -254,7 +260,7 @@
       "install": "モデルをインストール ({{size}})",
       "remove": "モデルを削除",
       "phraseLabel": "ウェイクフレーズ",
-      "phraseHelper": "オンデバイス検出器はこれらのフレーズに対応し、コマンド認識は英語モデルのみです。学習は不要です。",
+      "phraseHelper": "ウェイク検出器はこれらの英語フレーズに対応します。コマンドの言語は選択したコマンドモデルが処理します。学習は不要です。",
       "speakerVerification": "声を確認する",
       "speakerVerificationDescription": "登録した声ではない場合、ウェイクフレーズを拒否します。",
       "enroll": "声を登録",
@@ -266,7 +272,13 @@
       "saving": "声紋プロファイルを作成中…",
       "unsupportedHint": "このビルドにはネイティブのローカル音声ランタイムが含まれていません。",
       "commandModelLabel": "コマンド認識モデル",
-      "commandModelHelper": "コマンド用のオンデバイスモデルを選択します。多言語モデルは容量が大きくなります。"
+      "commandModelHelper": "コマンド用のオンデバイスモデルを選択します。多言語モデルは容量が大きくなります。",
+      "fallback": "フォールバック: システムのフレーズ判定「{{phrase}}」。",
+      "baseModels": "ベースパック",
+      "voiceProfile": "声紋プロファイル",
+      "enrollRequiresModels": "先にモデルをインストールしてから、声を登録してください。",
+      "installBase": "ベースパックをインストール ({{size}})",
+      "installCommand": "コマンドモデルをインストール ({{size}})"
     },
     "speechLocale": {
       "label": "音声ロケール",
@@ -316,7 +328,7 @@
       "title": "音声チェック",
       "permission": "マイクと音声のアクセス",
       "recognition": "音声認識",
-      "onDevice": "オンデバイス認識",
+      "onDevice": "システムのオンデバイス認識",
       "restricted": "デバイスポリシーにより制限",
       "restrictedHint": "このデバイスでは音声認識が制限されています。デバイス管理者に連絡してください。",
       "unavailableHint": "デバイスの設定で Siri と音声入力（ディクテーション）を有効にしてから再確認してください。",
@@ -325,7 +337,20 @@
       "recheck": "音声を再確認",
       "test": "再生をテスト",
       "testPhrase": "音声の再生は正常です。",
-      "testFailed": "音声の再生に失敗しました。選択した音声とデバイスの音量を確認してください。"
+      "testFailed": "音声の再生に失敗しました。選択した音声とデバイスの音量を確認してください。",
+      "allowed": "許可済み",
+      "available": "利用可能"
+    },
+    "mode": {
+      "label": "音声入力",
+      "system": "システム",
+      "local": "オンデバイス",
+      "systemDescription": "スマートフォンの音声認識を使用します。ベンダーのクラウドを使う場合があります。",
+      "localDescription": "ダウンロードしたモデルを使用します。音声はデバイス上に留まります。"
+    },
+    "playback": {
+      "title": "再生",
+      "helper": "システム音声とオンデバイス音声の両方に適用されます。"
     }
   },
   "diagnostics": {

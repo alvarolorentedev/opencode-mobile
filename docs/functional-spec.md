@@ -508,24 +508,42 @@ Behavior:
 
 Purpose:
 
-- configure both speech input and speech output behavior
-- configure response style controls that are implemented as system prompt hints
+- configure speech input, playback, and conversation behavior
+- switch explicitly between System speech and On-device voice
 
 Behavior exposed today:
 
-- prefer on-device voice recognition
+- System/On-device input mode with an active-path status card
+- prefer on-device system recognition when System mode is active
 - auto-play assistant replies
 - working sound enable/disable
-- conversation wake phrase (default `hey code`)
+- conversation wake phrase (default `hey code`) when System mode is active
 - optional on-device wake word with pretrained models and voice verification
+- base-pack and command-model status, sizes, and separate install guidance
 - resume listening after spoken reply in conversation mode
 - speech locale override
-- response scope (`brief`, `balanced`, `detailed`)
-- include simple next actions toggle
 - speech rate
 - working sound variant and volume
 - TTS voice selection
 - voice check (microphone/speech permission, recognition availability, on-device support, and a playback test) with an app-settings shortcut
+
+The local setup checklist is shown only in On-device mode. It keeps voice
+enrollment disabled until the models are ready and reveals voice verification
+only after a profile exists. Response scope and next actions live in the
+separate Responses section so they do not look like voice-engine settings.
+
+### Responses Section
+
+Purpose:
+
+- configure response style controls that are implemented as system prompt hints
+
+Behavior exposed today:
+
+- response scope (`brief`, `balanced`, `detailed`)
+- include simple next actions toggle
+
+These settings are independent of the selected voice input mode.
 
 Working sound runs while a prompt is being submitted or any session is non-idle when enabled. It is stopped while conversation mode is listening or speaking and after work becomes idle.
 
@@ -620,10 +638,12 @@ Additional behavior:
 
 Optional on-device wake word:
 
-- Settings → Voice selects the local detector and one of the bundled phrases
-  (`Hey code` or `Hey opencode`). The user must explicitly download the base
-  wake pack and a command-recognition model; the default Moonshine pack totals
-  ~152 MB, while Whisper tiny multilingual is ~161 MB.
+- Settings → Voice switches the input mode to On-device and selects one of the
+  bundled phrases (`Hey code` or `Hey opencode`). The setup checklist shows the
+  base wake pack and command model separately. The user must explicitly download
+  the missing parts; the default Moonshine pack totals ~152 MB, while Whisper
+  tiny multilingual is ~161 MB. Enrolling a voice profile stays disabled until
+  the models are ready.
 - The KWS model detects the phrase acoustically; it does not transcribe the
   room while armed.
 - If voice verification is enabled and a profile is enrolled, the detected

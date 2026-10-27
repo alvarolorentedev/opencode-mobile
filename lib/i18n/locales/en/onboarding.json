@@ -47,7 +47,7 @@
       "body": "Microphone access lets you dictate prompts instead of typing them.",
       "unsupported": "Voice input is not available on this device.",
       "enable": "Enable voice input",
-      "deniedHint": "You can still turn voice input on later from Settings › Voice & responses."
+      "deniedHint": "You can still turn voice input on later from Settings › Voice."
     },
     "checking": "Checking…"
   },
