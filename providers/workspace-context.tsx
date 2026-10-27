@@ -4,7 +4,7 @@ import { useUpdates } from '@/providers/opencode-contexts';
 import type { Session } from '@/lib/opencode/types';
 import { OpencodeProviderTree } from '@/providers/opencode-provider-tree';
 import { useWorkspaceConnections } from '@/providers/use-workspace-connections';
-import { workspaceKey, type WorkspaceTarget, type WorkspaceValues } from '@/providers/workspace-types';
+import { workspaceKey, type WorkspaceCatalog, type WorkspaceTarget, type WorkspaceValues } from '@/providers/workspace-types';
 
 export type WorkspaceRegistry = ReturnType<typeof useWorkspaceConnections> & {
   createChat: (target: WorkspaceTarget) => Promise<Session>;
@@ -13,6 +13,7 @@ export type WorkspaceRegistry = ReturnType<typeof useWorkspaceConnections> & {
   inspectionTarget?: WorkspaceTarget;
   inspect: (target: WorkspaceTarget) => Promise<void>;
   valuesFor: (target?: WorkspaceTarget) => WorkspaceValues | undefined;
+  catalogs: Record<string, WorkspaceCatalog>;
 };
 export type WorkspaceActions = {
   createChat: (target: WorkspaceTarget) => Promise<Session>;

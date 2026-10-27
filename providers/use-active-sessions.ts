@@ -10,7 +10,7 @@ import { listActiveSessions as svcListActiveSessions } from '@/providers/service
 // so a slow poll is enough to keep the cross-project running list fresh
 // without spending data on every project's session list.
 const ACTIVE_SESSIONS_POLL_MS = 20000;
-const MAX_ACTIVE = 4;
+export const MAX_ACTIVE_SESSIONS = 4;
 const EMPTY_SESSIONS: Session[] = [];
 const EMPTY_STATUSES: Record<string, SessionStatus> = {};
 
@@ -84,7 +84,7 @@ export function useActiveSessions({
     statuses: current?.statuses ?? {},
     currentSessionId,
     hideSubagentChats,
-    maxTotal: MAX_ACTIVE,
+    maxTotal: MAX_ACTIVE_SESSIONS,
   }), [current, currentSessionId, hideSubagentChats]);
 
   const hasRunning = activeSessions.some((session) => session.status.type !== 'idle');

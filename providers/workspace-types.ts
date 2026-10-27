@@ -1,6 +1,7 @@
 import type { Dispatch, SetStateAction } from 'react';
 import type { NetworkStatus } from '@/lib/network-status';
 import type { OpencodeConnectionSettings } from '@/lib/opencode/client';
+import type { Session, SessionStatus } from '@/lib/opencode/types';
 import type { ChatPreferences } from '@/providers/opencode-preferences';
 import type { ConnectionContextValue } from '@/providers/opencode-provider-types';
 import type { OpencodeProviderState } from '@/providers/use-opencode-provider-state';
@@ -20,6 +21,12 @@ export type ConnectionRecord = {
   projects: string[];
   events: ReturnType<typeof createSharedEventStream>;
 };
+export type WorkspaceCatalog = {
+  sessions: Session[];
+  statuses: Record<string, SessionStatus>;
+  refresh: () => Promise<void>;
+  removeSession: (sessionId: string) => void;
+};
 export type SharedWorkspaceState = Pick<OpencodeProviderState,
   'controlPlaneUrl' | 'setControlPlaneUrl' | 'onboardingVersion' | 'setOnboardingVersion' |
   'onboardingActive' | 'setOnboardingActive' | 'lastSessionByConnection' | 'setLastSessionByConnection' |
@@ -32,6 +39,8 @@ export type WorkspaceRuntimeInput = {
   setSettings: Dispatch<SetStateAction<OpencodeConnectionSettings>>;
   shared: SharedWorkspaceState;
   network: NetworkStatus;
+  catalog?: WorkspaceCatalog;
+  onCatalog: (connectionId: string, catalog: WorkspaceCatalog) => void;
   connectSetup: ConnectionContextValue['connectSetup'];
   connectionProfiles: ConnectionContextValue['connectionProfiles'];
   servicesValue: ConnectionContextValue['services'];

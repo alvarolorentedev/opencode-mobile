@@ -291,3 +291,27 @@ it('projects a closed project out of every project-scoped workspace domain', () 
   expect(closed.terminalValue.terminals).toEqual([]);
   expect(closed.terminalValue.terminalRuntime.instances).toEqual([]);
 });
+
+it('reads the shared active-session catalog only for the owning runtime', async () => {
+  const driver = hookRuntime();
+  const listActiveSessions = vi.fn(async () => ({ sessions: [], statuses: {} }));
+  const { useActiveSessions } = await loadTs('providers/use-active-sessions.ts', {
+    react: driver.react,
+    '@/lib/opencode/client': {},
+    '@/lib/opencode/types': {},
+    '@/providers/active-sessions': { getActiveSessions: () => [] },
+    '@/providers/opencode-provider-utils': { areSessionListsEqual: () => true, areSessionStatusMapsEqual: () => true },
+    '@/providers/services/session-service': { listActiveSessions },
+  });
+  driver.mount((props: any) => useActiveSessions(props), {
+    catalogClient: {}, isCurrentCatalogClient: () => true, connectionScope: 'scope',
+    connected: false, currentSessionId: undefined, hideSubagentChats: false, visible: false,
+  });
+  await driver.value.refreshActiveSessions();
+  expect(listActiveSessions).not.toHaveBeenCalled();
+  driver.update({ connected: true });
+  await driver.value.refreshActiveSessions();
+  driver.flush();
+  expect(listActiveSessions).toHaveBeenCalledOnce();
+  driver.unmount();
+});

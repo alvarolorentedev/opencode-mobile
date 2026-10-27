@@ -10,7 +10,8 @@ import {
 } from '@/providers/onboarding-state';
 import { useOpencodeRealtime } from '@/providers/use-opencode-realtime';
 import { useConversationState } from '@/providers/use-conversation-state';
-import { useActiveSessions } from '@/providers/use-active-sessions';
+import { MAX_ACTIVE_SESSIONS, useActiveSessions } from '@/providers/use-active-sessions';
+import { getActiveSessions } from '@/providers/active-sessions';
 import { useActivityNotifications } from '@/providers/use-activity-notifications';
 import { usePermissionRulesState } from '@/providers/use-permission-rules-state';
 import { useTranscriptState } from '@/providers/use-transcript-state';
@@ -33,7 +34,10 @@ import { useOpencodeProviderValues } from '@/providers/opencode-provider-values'
 import { useOpencodeProviderReset } from '@/providers/use-opencode-provider-reset';
 import { useCoalescedRefresh } from '@/providers/use-coalesced-refresh';
 
-import type { WorkspaceRuntimeInput } from '@/providers/workspace-types';
+import type { WorkspaceCatalog, WorkspaceRuntimeInput } from '@/providers/workspace-types';
+
+const EMPTY_CATALOG: WorkspaceCatalog = { sessions: [], statuses: {}, refresh: async () => undefined, removeSession: () => {} };
+const NOOP_REFRESH = async () => undefined;
 
 export function useOpencodeProviderComposition(input: WorkspaceRuntimeInput) {
   const state = useWorkspaceRuntimeState(input);
@@ -41,6 +45,7 @@ export function useOpencodeProviderComposition(input: WorkspaceRuntimeInput) {
   // and tears down existing listeners, so a per-runtime hook would freeze every
   // workspace except the one that mounted last.
   const network = input.network;
+  const { connection: inputConnection, isConnectionOwner, onCatalog } = input;
   const isHydrated = input.isHydrated && input.connection.enabled;
   const {
     setConnection,
@@ -165,15 +170,35 @@ export function useOpencodeProviderComposition(input: WorkspaceRuntimeInput) {
       setMcpAuthPrompt(undefined);
     }
   }, [mcp.mcpStatuses, setMcpAuthPrompt, state.mcpAuthPrompt]);
-  const activeSessionsHook = useActiveSessions({
+  // One runtime per connection owns the cross-project catalog snapshot. Other
+  // retained projects consume it so reconnecting N projects does not issue N
+  // identical listActiveSessions reads.
+  const ownedActiveSessions = useActiveSessions({
     catalogClient,
     isCurrentCatalogClient,
     connectionScope: state.connectionScope,
-    connected: state.connection.status === 'connected',
+    connected: isConnectionOwner && state.connection.status === 'connected',
     currentSessionId: state.currentSessionId,
     hideSubagentChats: state.chatPreferences.hideSubagentChats === true,
-    visible: state.activeSessionsVisible,
+    visible: isConnectionOwner && state.activeSessionsVisible,
   });
+  const ownedCatalog = useMemo<WorkspaceCatalog>(() => ({
+    sessions: ownedActiveSessions.catalogSessions,
+    statuses: ownedActiveSessions.catalogStatuses,
+    refresh: ownedActiveSessions.refreshActiveSessions,
+    removeSession: ownedActiveSessions.removeSession,
+  }), [ownedActiveSessions.catalogSessions, ownedActiveSessions.catalogStatuses, ownedActiveSessions.refreshActiveSessions, ownedActiveSessions.removeSession]);
+  useLayoutEffect(() => {
+    if (isConnectionOwner) onCatalog(inputConnection.id, ownedCatalog);
+  }, [inputConnection.id, isConnectionOwner, onCatalog, ownedCatalog]);
+  const catalog = isConnectionOwner ? ownedCatalog : input.catalog ?? EMPTY_CATALOG;
+  const activeSessions = useMemo(() => getActiveSessions({
+    sessions: catalog.sessions,
+    statuses: catalog.statuses,
+    currentSessionId: state.currentSessionId,
+    hideSubagentChats: state.chatPreferences.hideSubagentChats === true,
+    maxTotal: MAX_ACTIVE_SESSIONS,
+  }), [catalog.sessions, catalog.statuses, state.currentSessionId, state.chatPreferences.hideSubagentChats]);
 
   const streamConnectedRef = useRef(false);
   const { resetMcpState } = mcp;
@@ -227,7 +252,7 @@ export function useOpencodeProviderComposition(input: WorkspaceRuntimeInput) {
     isCurrentClient,
     isCurrentCatalogClient,
     refreshMessages: inbox.refreshMessages,
-    refreshActiveSessions: activeSessionsHook.refreshActiveSessions,
+    refreshActiveSessions: catalog.refresh,
     refreshChatCapabilities: capabilities.refreshChatCapabilities,
     beginHydration: transcript.beginHydration,
   });
@@ -252,7 +277,7 @@ export function useOpencodeProviderComposition(input: WorkspaceRuntimeInput) {
     clearProjectState,
     softResetProjectState,
     isHydrated,
-    refreshActiveSessions: activeSessionsHook.refreshActiveSessions,
+    refreshActiveSessions: catalog.refresh,
   }, input);
   const reconnect = useConnectionRetry({
     active: input.visible,
@@ -312,7 +337,7 @@ export function useOpencodeProviderComposition(input: WorkspaceRuntimeInput) {
       refreshDiagnostics: project.refreshDiagnostics,
       focusSessionIds,
       setSessions: state.setSessions,
-      removeCatalogSession: activeSessionsHook.removeSession,
+      removeCatalogSession: catalog.removeSession,
       setSessionStatuses: state.setSessionStatuses,
       explicitSessionSelectionRef: state.explicitSessionSelectionRef,
       setPromptError: prompt.setPromptError,
@@ -372,7 +397,8 @@ export function useOpencodeProviderComposition(input: WorkspaceRuntimeInput) {
     isHydrated,
     onboardingCompleted,
     connect: connectionActions.connect,
-    refreshActiveSessions: activeSessionsHook.refreshActiveSessions,
+    // The catalog owner is the only runtime that seeds the shared snapshot.
+    refreshActiveSessions: isConnectionOwner ? catalog.refresh : NOOP_REFRESH,
     refreshWorktrees: worktree.refreshWorktrees,
     ensureActiveSessionRef,
     setPromptError: prompt.setPromptError,
@@ -399,8 +425,8 @@ export function useOpencodeProviderComposition(input: WorkspaceRuntimeInput) {
     ...capabilities,
     ...prompt,
     ...connectionActions,
-    activeSessions: activeSessionsHook.activeSessions,
-    refreshActiveSessions: activeSessionsHook.refreshActiveSessions,
+    activeSessions,
+    refreshActiveSessions: catalog.refresh,
     conversation,
     clearConversationFeedback,
     toggleConversationMode,
@@ -430,13 +456,13 @@ export function useOpencodeProviderComposition(input: WorkspaceRuntimeInput) {
     Object.values(state.pendingPermissionsBySession).some((items) => items.length > 0) ||
     Object.values(state.pendingQuestionsBySession).some((items) => items.length > 0) ||
     Object.values(inbox.pendingPromptsBySession).some((items) => items.length > 0) || terminal.terminalRuntime.instances.length > 0;
-  return useMemo(() => ({ enabled: input.connection.enabled, values, busy, suspend, catalogClient, catalogSessions: activeSessionsHook.catalogSessions, catalogStatuses: activeSessionsHook.catalogStatuses,
+  return useMemo(() => ({ enabled: input.connection.enabled, values, busy, suspend, catalogClient, catalogSessions: catalog.sessions, catalogStatuses: catalog.statuses,
     pendingPermissions: state.pendingPermissionsBySession, pendingQuestions: state.pendingQuestionsBySession,
     native: { settings: state.settings, catalogClient, contract: state.serverContract, isCurrentCatalogClient,
       connectionScope: state.connectionScope, currentSessionId: state.currentSessionId, sessions: state.sessions,
-      activeSessions: activeSessionsHook.activeSessions, todoRecordsBySession: transcript.todoRecordsBySession,
+      activeSessions, todoRecordsBySession: transcript.todoRecordsBySession,
       todosBySession: state.todosBySession, streamConnectedRef },
-  }), [input.connection.enabled, values, busy, suspend, catalogClient, activeSessionsHook.catalogSessions, activeSessionsHook.catalogStatuses, state.pendingPermissionsBySession,
+  }), [input.connection.enabled, values, busy, suspend, catalogClient, catalog.sessions, catalog.statuses, state.pendingPermissionsBySession,
     state.pendingQuestionsBySession, state.settings, state.serverContract, isCurrentCatalogClient, state.connectionScope,
-    state.currentSessionId, state.sessions, activeSessionsHook.activeSessions, transcript.todoRecordsBySession, state.todosBySession]);
+    state.currentSessionId, state.sessions, activeSessions, transcript.todoRecordsBySession, state.todosBySession]);
 }

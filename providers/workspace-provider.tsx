@@ -12,7 +12,7 @@ import { useOpencodePersistence } from '@/providers/use-opencode-persistence';
 import { useWorkspaceConnections, serverPreferences } from '@/providers/use-workspace-connections';
 import { WorkspaceActionsContext, WorkspaceContext, WorkspacePresentationContext, type WorkspaceRegistry } from '@/providers/workspace-context';
 import { WorkspaceRuntime } from '@/providers/workspace-runtime';
-import { workspaceKey, type SharedWorkspaceState, type WorkspaceTarget, type WorkspaceValues, type ConnectionRecord } from '@/providers/workspace-types';
+import { workspaceKey, type SharedWorkspaceState, type WorkspaceTarget, type WorkspaceValues, type ConnectionRecord, type WorkspaceCatalog } from '@/providers/workspace-types';
 import { useConnectState } from '@/providers/use-connect-state';
 import { useConnectionProfiles } from '@/providers/use-connection-profiles';
 import { useServicesState } from '@/providers/use-services-state';
@@ -34,6 +34,10 @@ export function WorkspaceProvider({ children }: PropsWithChildren) {
   const network = useNetworkStatus();
   const { isHydrated } = useOpencodePersistence({ ...shell, defaultChatPreferences, defaultSettings: defaultConnectionSettings });
   const [presentation] = useState(() => new Map<string, unknown>());
+  const [catalogs, setCatalogs] = useState<Record<string, WorkspaceCatalog>>({});
+  const publishCatalog = useCallback((connectionId: string, catalog: WorkspaceCatalog) => {
+    setCatalogs((current) => current[connectionId] === catalog ? current : { ...current, [connectionId]: catalog });
+  }, []);
   const onboardingCompleted = isOnboardingComplete(shell.onboardingVersion);
   const manager = useWorkspaceConnections(shell, isHydrated);
   useWorkspaceAutoApprove(manager);
@@ -68,6 +72,12 @@ export function WorkspaceProvider({ children }: PropsWithChildren) {
   const removeConnection = useCallback(async (id: string) => {
     await removeWorkspaceConnection(id);
     clearWorkspacePresentation(presentation, id);
+    setCatalogs((current) => {
+      if (!(id in current)) return current;
+      const next = { ...current };
+      delete next[id];
+      return next;
+    });
   }, [removeWorkspaceConnection, presentation]);
   const profileRemoved = useCallback(async (profile: ConnectionProfile) => removeConnection(getConnectionUiScope(profile)), [removeConnection]);
   const connectionProfiles = useConnectionProfiles({ settings, switchConnection, updateSettings, profileSnapshot: connectSetup.profiles, onSaved: profileSaved, onRemoved: profileRemoved });
@@ -118,8 +128,8 @@ export function WorkspaceProvider({ children }: PropsWithChildren) {
     return session;
   }, [activate, connectedWorkspace]);
   const refreshTargets = useCallback(async () => {
-    await Promise.all(Object.values(snapshots).map((runtime) => runtime.values.currentSessionValue.activeSessions.refresh()));
-  }, [snapshots]);
+    await Promise.all(Object.values(catalogs).map((catalog) => catalog.refresh()));
+  }, [catalogs]);
   const shareTargets = useMemo(() => librarySessions(connections, snapshots, focus)
     .filter((row) => row.connected && (!shell.chatPreferences.hideSubagentChats || !row.session.parentID))
     .map((row) => ({ connectionScope: getConnectionScope(connections.find((entry) => entry.id === row.connectionId)!.settings),
@@ -182,7 +192,7 @@ export function WorkspaceProvider({ children }: PropsWithChildren) {
   }, [activate, retry, connectionProfiles, connectSetup, current, onboardingCompleted, openSession, openSessionInProject, resolveKey, servicesValue, sharedInput, snapshots, switchConnection, shell.projectPathsByConnection, isHydrated, shell.onboardingActive]);
   const registry = useMemo<WorkspaceRegistry>(() => ({ ...manager, createChat, removeConnection,
     terminalTarget: connections.some((entry) => entry.id === terminalTarget?.connectionId) ? terminalTarget : undefined, selectTerminalTarget,
-    inspectionTarget: connections.some((entry) => entry.id === inspectionTarget?.connectionId) ? inspectionTarget : undefined, inspect, valuesFor }), [manager, createChat, removeConnection, connections, terminalTarget, selectTerminalTarget, inspectionTarget, inspect, valuesFor]);
+    inspectionTarget: connections.some((entry) => entry.id === inspectionTarget?.connectionId) ? inspectionTarget : undefined, inspect, valuesFor, catalogs }), [manager, createChat, removeConnection, connections, terminalTarget, selectTerminalTarget, inspectionTarget, inspect, valuesFor, catalogs]);
   const updates = useAppUpdates({ initialized: isHydrated && shell.onboardingVersion >= CURRENT_ONBOARDING_VERSION && !shell.onboardingActive,
     blocked: Object.values(snapshots).some((runtime) => runtime.busy) || connectSetup.busy || hasWorkspaceDrafts(presentation) });
   useEffect(() => {
@@ -198,7 +208,7 @@ export function WorkspaceProvider({ children }: PropsWithChildren) {
     <WorkspaceActionsContext.Provider value={workspaceActions}>
     <WorkspaceContext.Provider value={registry}>
     {connections.flatMap((entry) => entry.projects.map((path, index) => <WorkspaceRuntime key={workspaceKey({ connectionId: entry.id, projectPath: path })}
-      connection={entry} projectPath={path || undefined} shared={shared} network={network} defaults={shell.chatPreferences} isHydrated={isHydrated}
+      connection={entry} projectPath={path || undefined} shared={shared} network={network} catalog={catalogs[entry.id]} onCatalog={publishCatalog} defaults={shell.chatPreferences} isHydrated={isHydrated}
       visible={shell.projectPathsByConnection[getConnectionScope(entry.settings)]?.includes(path || current?.values.projectsValue.activeProjectPath || '') !== false && focus?.connectionId === entry.id && (focus.projectPath === path || current === snapshots[workspaceKey({ connectionId: entry.id, projectPath: path })])}
       isConnectionOwner={index === 0} connectSetup={connectSetup} connectionProfiles={connectionProfiles} servicesValue={servicesValue}
       updateSettings={updateWorkspaceSettings} updatePreferences={manager.updatePreferences}
