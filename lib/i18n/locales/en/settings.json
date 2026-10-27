@@ -235,15 +235,11 @@
     },
     "autoPlay": {
       "title": "Auto-play assistant replies",
-      "description": "Read the latest assistant response aloud when it finishes."
+      "description": "Read chat replies aloud. Conversation mode always reads."
     },
     "workingSound": {
       "title": "Working sound",
       "description": "Play a calm loop while the assistant is still working on a reply."
-    },
-    "resumeListening": {
-      "title": "Resume listening after reply",
-      "description": "In conversation mode, start listening again after spoken playback ends."
     },
     "wakePhrase": {
       "label": "Wake phrase",
@@ -351,6 +347,10 @@
     "playback": {
       "title": "Playback",
       "helper": "Applies to both System and On-device voice."
+    },
+    "readInterim": {
+      "title": "Read progress updates",
+      "description": "Read updates like “On it…”. Final replies are always read."
     }
   },
   "diagnostics": {

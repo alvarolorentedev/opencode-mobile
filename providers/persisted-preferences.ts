@@ -52,7 +52,7 @@ const ChatPreferencesSchema = z.object({
   autoApprove: optionalBoolean,
   autoPlayAssistantReplies: optionalBoolean,
   preferOnDeviceRecognition: optionalBoolean,
-  resumeListeningAfterReply: optionalBoolean,
+  readInterimAssistantReplies: optionalBoolean,
   workingSoundEnabled: optionalBoolean,
   includeNextActions: optionalBoolean,
   hideSubagentChats: optionalBoolean,

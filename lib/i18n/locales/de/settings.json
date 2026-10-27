@@ -235,15 +235,11 @@
     },
     "autoPlay": {
       "title": "Antworten des Assistenten automatisch abspielen",
-      "description": "Lies die neueste Antwort des Assistenten vor, sobald sie fertig ist."
+      "description": "Antworten im Chat vorlesen. Im Konversationsmodus immer."
     },
     "workingSound": {
       "title": "Arbeitsgeräusch",
       "description": "Spiele eine ruhige Schleife ab, während der Assistent noch an einer Antwort arbeitet."
-    },
-    "resumeListening": {
-      "title": "Nach der Antwort weiter zuhören",
-      "description": "Im Konversationsmodus wieder mit dem Zuhören beginnen, nachdem die Sprachwiedergabe beendet ist."
     },
     "wakePhrase": {
       "label": "Weckphrase",
@@ -351,6 +347,10 @@
     "playback": {
       "title": "Wiedergabe",
       "helper": "Gilt für System- und Gerätesprache."
+    },
+    "readInterim": {
+      "title": "Fortschrittsmeldungen vorlesen",
+      "description": "Updates wie „Einen Moment…“ vorlesen; Finalantworten immer."
     }
   },
   "diagnostics": {

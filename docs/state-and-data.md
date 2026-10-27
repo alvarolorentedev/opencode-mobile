@@ -156,7 +156,7 @@ Current fields:
 - `autoApprove`
 - `autoPlayAssistantReplies`
 - `preferOnDeviceRecognition`
-- `resumeListeningAfterReply`
+- `readInterimAssistantReplies`
 - `speechLocale`
 - `speechRate`
 - `speechVoiceId`
@@ -218,13 +218,20 @@ output older than that buffer.
 
 Primary fields:
 
-- `conversationPhase`
+- `conversationPhase` (input: `off`, `armed`, `listening`, `submitting`)
+- `conversationReadbackPhase` (`idle`, `waiting`, `speaking`)
 - `conversationSessionId`
 - `queuedConversationPrompt`
 - `pendingConversationTurn`
 - `conversationFeedback`
 - `conversationFeedbackAction`
 - `conversationLatestHeardText`
+
+Input and readback are independent. Submitting a turn immediately returns input
+to `armed`, so a steer or queued command can arrive while the assistant is
+working. A separate readback watcher waits for the settled assistant reply and
+then reads the final bubble aloud. Wake detection is paused only while TTS owns
+the audio session and resumes when readback finishes.
 
 Supporting refs and timers hold important transient control state for:
 
@@ -233,7 +240,6 @@ Supporting refs and timers hold important transient control state for:
 - pending transcript waiting to be flushed; results accumulate onto it across
   recognizer segments and listening restarts instead of replacing it
 - assistant-reply baseline tracking
-- resume-listening timeout
 - final-result settle timeout
 - listening-restart timeout
 

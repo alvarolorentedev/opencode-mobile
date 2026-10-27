@@ -216,7 +216,7 @@ type ChatComposerProps = {
 ```ts
 type ChatHeaderProps = {
   connectionStatus: 'idle' | 'connecting' | 'connected' | 'error'
-  conversation: { active: boolean; latestHeardText?: string; phase: ConversationPhase; wakePhrase: string }
+  conversation: { active: boolean; feedback?: string; inputPhase: ConversationInputPhase; latestHeardText?: string; phase: ConversationPhase; readbackPhase: ConversationReadbackPhase; wakePhrase: string }
   insetsTop: number
   onConfirmStopConversation: () => void
   onCreateSession: () => void
@@ -333,7 +333,7 @@ Responsibility:
 - top inset
 - latest user text
 - stop handler
-- conversation phase
+- conversation input phase and readback phase
 - session title
 - configured wake phrase
 
@@ -651,7 +651,7 @@ Responsibility:
 - switch between System speech and On-device voice as the active input mode
 - show the active path and the wake phrase currently in use
 - edit system-recognizer preference and the system wake phrase when System is active
-- edit speech locale and playback preferences (auto-play, voice, rate, resume listening, working sound)
+- edit speech locale and playback preferences (auto-play, progress readback, voice, rate, working sound)
 - expose a collapsed device check for microphone, recognition, and on-device capability status
 - render `LocalVoiceSection` when On-device mode is selected
 

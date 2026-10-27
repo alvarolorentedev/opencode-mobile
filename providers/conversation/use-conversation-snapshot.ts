@@ -3,17 +3,23 @@ import { useMemo } from 'react';
 import type { SessionMessageRecord } from '@/lib/opencode/format';
 import type { VoiceRecoveryAction } from '@/lib/voice/speech-errors';
 import { getConversationStatusLabel, getTranscript, getTranscriptActivityLabelForEntries } from '@/providers/opencode-provider-selectors';
-import type { ConversationPhase, ConversationState } from '@/providers/opencode-provider-types';
+import type {
+  ConversationInputPhase,
+  ConversationPhase,
+  ConversationReadbackPhase,
+  ConversationState,
+} from '@/providers/opencode-provider-types';
 
-// Derives the memoized conversation snapshot from provider state. Kept out of
-// the orchestration hook so the state machine stays within the file-size
-// ratchet and the snapshot has one owner.
+// Derives the memoized conversation snapshot from provider state. Input and
+// readback are independent; `phase` remains the combined label consumed by
+// surfaces that have not moved to the split fields yet.
 export function useConversationSnapshot({
   conversationFeedback,
   conversationFeedbackAction,
   conversationLatestHeardText,
   conversationListeningLevel,
-  conversationPhase,
+  conversationInputPhase,
+  conversationReadbackPhase,
   conversationSessionId,
   messagesBySession,
   wakePhrase,
@@ -22,7 +28,8 @@ export function useConversationSnapshot({
   conversationFeedbackAction?: VoiceRecoveryAction;
   conversationLatestHeardText?: string;
   conversationListeningLevel: number;
-  conversationPhase: ConversationPhase;
+  conversationInputPhase: ConversationInputPhase;
+  conversationReadbackPhase: ConversationReadbackPhase;
   conversationSessionId?: string;
   messagesBySession: Record<string, SessionMessageRecord[]>;
   wakePhrase: string;
@@ -33,7 +40,14 @@ export function useConversationSnapshot({
   );
   const conversationTranscript = useMemo(() => getTranscript(conversationMessages), [conversationMessages]);
   const conversationCurrentActivityLabel = useMemo(() => getTranscriptActivityLabelForEntries(conversationTranscript), [conversationTranscript]);
-  const conversationActive = conversationPhase !== 'off';
+  const conversationActive = conversationInputPhase !== 'off';
+  const conversationPhase: ConversationPhase = conversationInputPhase === 'listening' || conversationInputPhase === 'submitting'
+    ? conversationInputPhase
+    : conversationReadbackPhase === 'speaking'
+      ? 'speaking'
+      : conversationReadbackPhase === 'waiting'
+        ? 'waiting'
+        : conversationInputPhase;
   const conversationStatusLabel = useMemo(
     () => getConversationStatusLabel(conversationPhase, conversationCurrentActivityLabel),
     [conversationCurrentActivityLabel, conversationPhase],
@@ -44,10 +58,12 @@ export function useConversationSnapshot({
       active: conversationActive,
       feedback: conversationFeedback,
       feedbackAction: conversationFeedbackAction,
-      isListening: conversationPhase === 'listening',
-      level: conversationListeningLevel,
+      inputPhase: conversationInputPhase,
+      isListening: conversationInputPhase === 'listening',
       latestHeardText: conversationLatestHeardText,
+      level: conversationListeningLevel,
       phase: conversationPhase,
+      readbackPhase: conversationReadbackPhase,
       sessionId: conversationSessionId,
       statusLabel: conversationStatusLabel,
       wakePhrase,
@@ -56,9 +72,11 @@ export function useConversationSnapshot({
       conversationActive,
       conversationFeedback,
       conversationFeedbackAction,
+      conversationInputPhase,
       conversationLatestHeardText,
       conversationListeningLevel,
       conversationPhase,
+      conversationReadbackPhase,
       conversationSessionId,
       conversationStatusLabel,
       wakePhrase,

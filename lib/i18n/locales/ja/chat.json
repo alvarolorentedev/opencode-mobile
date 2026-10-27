@@ -146,7 +146,8 @@
       "references": "参照",
       "searching": "プロジェクトファイルを検索中…",
       "empty": "一致する結果がありません"
-    }
+    },
+    "readingReply": "返信を読み上げています。終了後に聞き取りを再開します。"
   },
   "newChat": {
     "title": "新しいチャット",
@@ -206,11 +207,12 @@
     "phaseArmed": "「{{phrase}}」と言ってください",
     "phaseListening": "聞き取り中",
     "phaseSubmitting": "送信中",
-    "phaseWaiting": "待機中",
+    "phaseWaiting": "考え中",
     "phaseSpeaking": "読み上げ中",
     "lastHeard": "最後に認識した内容",
     "wakePhrase": "ウェイクフレーズ",
-    "startSpeaking": "自然に話し始めてください。最後のラウンドで話した内容がここに表示されます。"
+    "startSpeaking": "自然に話し始めてください。最後のラウンドで話した内容がここに表示されます。",
+    "steerHint": "いつでも「{{phrase}}」と言って指示できます。"
   },
   "modelPicker": {
     "selectModel": "モデルを選択",

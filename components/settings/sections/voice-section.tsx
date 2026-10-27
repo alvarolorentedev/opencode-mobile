@@ -193,11 +193,11 @@ export function VoiceSection({
           value={chatPreferences.autoPlayAssistantReplies}
         />
         <SettingSwitchRow
-          description={t('settings:voice.resumeListening.description')}
-          onValueChange={(value) => updateChatPreferences({ resumeListeningAfterReply: value })}
+          description={t('settings:voice.readInterim.description')}
+          onValueChange={(value) => updateChatPreferences({ readInterimAssistantReplies: value })}
           palette={palette}
-          title={t('settings:voice.resumeListening.title')}
-          value={chatPreferences.resumeListeningAfterReply}
+          title={t('settings:voice.readInterim.title')}
+          value={chatPreferences.readInterimAssistantReplies}
         />
         <NumericSlider
           label={t('settings:voice.speechRate.label')}

@@ -3,7 +3,7 @@ import { useCallback, type Dispatch, type SetStateAction } from 'react';
 import { stopWorkingSoundAsync } from '@/lib/voice/working-sound';
 import { createWakePhraseSession } from '@/lib/voice/wake-phrase';
 import { applyConversationFeedback } from '@/providers/conversation/feedback';
-import type { ConversationPhase } from '@/providers/opencode-provider-types';
+import type { ConversationInputPhase } from '@/providers/opencode-provider-types';
 
 // Starts either the on-device detector or the system phrase gate and owns the
 // fresh-arm/preserve rules. Kept separate so the main state machine stays below
@@ -14,7 +14,6 @@ export function useConversationArming({
   conversationCancelRequestedRef,
   conversationListeningRestartTimeoutRef,
   conversationPhaseRef,
-  conversationResumeTimeoutRef,
   conversationSessionId,
   conversationSubmittingRef,
   conversationWakePhrase,
@@ -35,8 +34,7 @@ export function useConversationArming({
   clearPendingConversationResult: () => void;
   conversationCancelRequestedRef: { current: boolean };
   conversationListeningRestartTimeoutRef: { current: ReturnType<typeof setTimeout> | undefined };
-  conversationPhaseRef: { current: ConversationPhase };
-  conversationResumeTimeoutRef: { current: ReturnType<typeof setTimeout> | undefined };
+  conversationPhaseRef: { current: ConversationInputPhase };
   conversationSessionId?: string;
   conversationSubmittingRef: { current: boolean };
   conversationWakePhrase: string;
@@ -45,7 +43,7 @@ export function useConversationArming({
   setConversationFeedback: Dispatch<SetStateAction<string | undefined>>;
   setConversationFeedbackAction: Dispatch<SetStateAction<import('@/lib/voice/speech-errors').VoiceRecoveryAction>>;
   setConversationLatestHeardText: Dispatch<SetStateAction<string | undefined>>;
-  setConversationPhase: Dispatch<SetStateAction<ConversationPhase>>;
+  setConversationPhase: Dispatch<SetStateAction<ConversationInputPhase>>;
   setPendingConversationTurn: Dispatch<SetStateAction<string | undefined>>;
   setQueuedConversationPrompt: Dispatch<SetStateAction<string | undefined>>;
   startLocalWakeRef: { current: () => Promise<boolean> };
@@ -63,10 +61,6 @@ export function useConversationArming({
       clearPendingConversationResult();
       wakePhraseSessionRef.current = createWakePhraseSession(conversationWakePhrase);
       setConversationLatestHeardText(undefined);
-    }
-    if (conversationResumeTimeoutRef.current) {
-      clearTimeout(conversationResumeTimeoutRef.current);
-      conversationResumeTimeoutRef.current = undefined;
     }
     if (conversationListeningRestartTimeoutRef.current) {
       clearTimeout(conversationListeningRestartTimeoutRef.current);
@@ -113,7 +107,7 @@ export function useConversationArming({
     const started = await startSpeechInput({ continuous: true });
     // The ref can change while the native start resolves (stop, background, or
     // an immediately matched phrase); widen it back to the full union.
-    if (conversationCancelRequestedRef.current || (conversationPhaseRef.current as ConversationPhase) === 'off') {
+    if (conversationCancelRequestedRef.current || conversationPhaseRef.current === 'off') {
       abortSpeechInput();
       return false;
     }
@@ -130,8 +124,7 @@ export function useConversationArming({
     conversationCancelRequestedRef,
     conversationListeningRestartTimeoutRef,
     conversationPhaseRef,
-    conversationResumeTimeoutRef,
-    conversationSessionId,
+      conversationSessionId,
     conversationSubmittingRef,
     conversationWakePhrase,
     localWakeModeActiveRef,

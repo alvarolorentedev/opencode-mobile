@@ -1,0 +1,110 @@
+import { useEffect, type Dispatch, type SetStateAction } from 'react';
+
+import type { TranscriptEntry } from '@/lib/opencode/format';
+import type { VoiceRecoveryAction } from '@/lib/voice/speech-errors';
+import type {
+  ConversationInputPhase,
+  ConversationReadbackPhase,
+} from '@/providers/opencode-provider-types';
+import { applyConversationFeedback } from '@/providers/conversation/feedback';
+
+// Sends one captured turn and immediately re-arms input. Readback is a separate
+// state machine; it waits for the settled assistant reply independently.
+export function useConversationSubmit({
+  assistantReplyBaselineIdRef,
+  conversationCancelRequestedRef,
+  conversationInputPhase,
+  conversationSessionId,
+  latestAssistantRef,
+  queuedConversationPrompt,
+  sendPrompt,
+  setConversationFeedback,
+  setConversationFeedbackAction,
+  setConversationPhase,
+  setPendingConversationTurn,
+  setQueuedConversationPrompt,
+  setReadbackPhase,
+  startConversationListening,
+  stopConversationMode,
+}: {
+  assistantReplyBaselineIdRef: { current: string | undefined };
+  conversationCancelRequestedRef: { current: boolean };
+  conversationInputPhase: ConversationInputPhase;
+  conversationSessionId?: string;
+  latestAssistantRef: { current: (sessionId?: string) => TranscriptEntry | undefined };
+  queuedConversationPrompt?: string;
+  sendPrompt: (sessionId: string, prompt: string) => Promise<boolean>;
+  setConversationFeedback: Dispatch<SetStateAction<string | undefined>>;
+  setConversationFeedbackAction: Dispatch<SetStateAction<VoiceRecoveryAction>>;
+  setConversationPhase: Dispatch<SetStateAction<ConversationInputPhase>>;
+  setPendingConversationTurn: Dispatch<SetStateAction<string | undefined>>;
+  setQueuedConversationPrompt: Dispatch<SetStateAction<string | undefined>>;
+  setReadbackPhase: (phase: ConversationReadbackPhase) => void;
+  startConversationListening: (sessionId?: string, options?: { preserveSession?: boolean }) => Promise<boolean | void>;
+  stopConversationMode: () => Promise<void>;
+}) {
+  useEffect(() => {
+    if (conversationInputPhase !== 'submitting' || !queuedConversationPrompt || !conversationSessionId) {
+      return;
+    }
+
+    let cancelled = false;
+
+    const submitPrompt = async () => {
+      try {
+        // Every accepted command supersedes the previous readback baseline.
+        assistantReplyBaselineIdRef.current = latestAssistantRef.current(conversationSessionId)?.id;
+        setReadbackPhase('waiting');
+        await sendPrompt(conversationSessionId, queuedConversationPrompt);
+        if (cancelled) {
+          return;
+        }
+
+        if (conversationCancelRequestedRef.current) {
+          setQueuedConversationPrompt(undefined);
+          setPendingConversationTurn(undefined);
+          return;
+        }
+
+        setQueuedConversationPrompt(undefined);
+        setPendingConversationTurn(undefined);
+        // Input and readback are independent. Re-arm the next turn immediately
+        // so a steer or queued command can arrive while the assistant works.
+        setConversationPhase('armed');
+        void startConversationListening(conversationSessionId).catch(() => undefined);
+      } catch (error) {
+        if (cancelled) {
+          return;
+        }
+
+        const message = error instanceof Error ? error.message : 'Voice conversation failed while sending your message.';
+        setQueuedConversationPrompt(undefined);
+        setPendingConversationTurn(undefined);
+        applyConversationFeedback(setConversationFeedback, setConversationFeedbackAction, message);
+        await stopConversationMode();
+      }
+    };
+
+    void submitPrompt();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    assistantReplyBaselineIdRef,
+    conversationCancelRequestedRef,
+    conversationInputPhase,
+    conversationSessionId,
+    latestAssistantRef,
+    queuedConversationPrompt,
+    sendPrompt,
+    setConversationFeedback,
+    setConversationFeedbackAction,
+    setConversationPhase,
+    setPendingConversationTurn,
+    setQueuedConversationPrompt,
+    setReadbackPhase,
+    startConversationListening,
+    stopConversationMode,
+  ]);
+}

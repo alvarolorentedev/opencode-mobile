@@ -11,12 +11,14 @@ import { createWakePhraseSession, normalizeWakePhrase } from '@/lib/voice/wake-p
 import { playWakePhraseCue } from '@/lib/voice/wake-feedback';
 import { stopWorkingSoundAsync } from '@/lib/voice/working-sound';
 import { CONVERSATION_KEEP_AWAKE_TAG,
-  type ChatContextValue, type ChatPreferences, type ConnectionState, type ConversationPhase } from '@/providers/opencode-provider-types';
+  type ChatContextValue, type ChatPreferences, type ConnectionState, type ConversationInputPhase, type ConversationReadbackEntry, type ConversationReadbackPhase } from '@/providers/opencode-provider-types';
 import { useConversationKeepAwake } from '@/providers/use-conversation-keep-awake';
 import { applyConversationFeedback } from '@/providers/conversation/feedback';
 import { useConversationArming } from '@/providers/conversation/use-conversation-arming';
 import { useConversationListeningEffects } from '@/providers/conversation/use-conversation-listening';
 import { useConversationPlayback } from '@/providers/conversation/use-conversation-playback';
+import { useConversationReadbackInput } from '@/providers/conversation/use-conversation-readback-input';
+import { useConversationSubmit } from '@/providers/conversation/use-conversation-submit';
 import { useConversationConnectionFeedback } from '@/providers/conversation/use-conversation-connection';
 import { useConversationSnapshot } from '@/providers/conversation/use-conversation-snapshot';
 import { useConversationTimers } from '@/providers/conversation/use-conversation-timers';
@@ -41,7 +43,9 @@ export function useConversationState({ connection, chatPreferences, currentSessi
   const sendPromptRef = useRef(sendPromptAction);
   useLayoutEffect(() => { sendPromptRef.current = sendPromptAction; }, [sendPromptAction]);
   const sendPrompt = useCallback<ChatContextValue['sendPrompt']>((...args) => sendPromptRef.current(...args), []);
-  const [conversationPhase, setConversationPhase] = useState<ConversationPhase>('off');
+  const [conversationPhase, setConversationPhase] = useState<ConversationInputPhase>('off');
+  const [conversationReadbackPhase, setConversationReadbackPhase] = useState<ConversationReadbackPhase>('idle');
+  const [conversationTurnSequence, setConversationTurnSequence] = useState(0);
   const [conversationSessionId, setConversationSessionId] = useState<string>();
   const [queuedConversationPrompt, setQueuedConversationPrompt] = useState<string>();
   const [pendingConversationTurn, setPendingConversationTurn] = useState<string>();
@@ -49,9 +53,13 @@ export function useConversationState({ connection, chatPreferences, currentSessi
   const [conversationFeedbackAction, setConversationFeedbackAction] = useState<VoiceRecoveryAction>('none');
   const [conversationLatestHeardText, setConversationLatestHeardText] = useState<string>();
   const [conversationWakeSensor, setConversationWakeSensor] = useState<'phrase' | 'local'>('phrase');
-  const conversationPhaseRef = useRef<ConversationPhase>('off');
+  const conversationPhaseRef = useRef<ConversationInputPhase>('off');
+  const conversationReadbackPhaseRef = useRef<ConversationReadbackPhase>('idle');
+  const setReadbackPhase = useCallback((phase: ConversationReadbackPhase) => {
+    conversationReadbackPhaseRef.current = phase;
+    setConversationReadbackPhase(phase);
+  }, []);
   const assistantReplyBaselineIdRef = useRef<string | undefined>(undefined);
-  const conversationResumeTimeoutRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const conversationListeningRestartTimeoutRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const conversationCancelRequestedRef = useRef(false);
   const conversationStartingRef = useRef(false);
@@ -147,6 +155,7 @@ export function useConversationState({ connection, chatPreferences, currentSessi
       if (conversationPhaseRef.current === 'armed') {
         conversationPhaseRef.current = 'listening';
         setConversationPhase('listening');
+        applyConversationFeedback(setConversationFeedback, setConversationFeedbackAction, undefined);
         playWakePhraseCue();
       }
 
@@ -192,6 +201,7 @@ export function useConversationState({ connection, chatPreferences, currentSessi
     conversationPhaseRef.current = 'submitting';
     conversationSubmittingRef.current = true;
     abortSpeechInput();
+    setConversationTurnSequence((value) => value + 1);
     setPendingConversationTurn(transcript);
     setConversationPhase('submitting');
   }, [abortSpeechInput, clearPendingConversationResult]);
@@ -205,6 +215,7 @@ export function useConversationState({ connection, chatPreferences, currentSessi
     clearPendingConversationResult();
     conversationPhaseRef.current = 'submitting';
     conversationSubmittingRef.current = true;
+    setConversationTurnSequence((value) => value + 1);
     setPendingConversationTurn(trimmed);
     setConversationPhase('submitting');
   }, [clearPendingConversationResult]);
@@ -226,16 +237,30 @@ export function useConversationState({ connection, chatPreferences, currentSessi
     submitLocalCommand,
   });
 
-  const getLatestConversationAssistantEntry = useCallback(
-    (sessionId?: string) => {
+  const getConversationAssistantEntries = useCallback(
+    (sessionId?: string): ConversationReadbackEntry[] => {
       if (!sessionId) {
-        return undefined;
+        return [];
       }
 
-      const transcript = (messagesBySession[sessionId] || []).map(toTranscriptEntry).filter((entry) => isTranscriptDisplayMessage(entry));
-      return [...transcript].reverse().find((entry) => entry.role === 'assistant' && entry.text.trim());
+      return (messagesBySession[sessionId] || []).flatMap((record) => {
+        const entry = toTranscriptEntry(record);
+        if (entry.role !== 'assistant' || !isTranscriptDisplayMessage(entry) || !entry.text.trim()) {
+          return [];
+        }
+        return [{
+          completed: record.info?.time?.completed !== undefined
+            || (record.info?.role === 'assistant' && Boolean(record.info.finish)),
+          entry,
+        }];
+      });
     },
     [messagesBySession],
+  );
+
+  const getLatestConversationAssistantEntry = useCallback(
+    (sessionId?: string) => getConversationAssistantEntries(sessionId).at(-1)?.entry,
+    [getConversationAssistantEntries],
   );
 
   const latestAssistantRef = useRef(getLatestConversationAssistantEntry);
@@ -249,10 +274,6 @@ export function useConversationState({ connection, chatPreferences, currentSessi
     clearPendingConversationResult();
     localWakeModeActiveRef.current = false;
     await stopLocalWakeRef.current().catch(() => undefined);
-    if (conversationResumeTimeoutRef.current) {
-      clearTimeout(conversationResumeTimeoutRef.current);
-      conversationResumeTimeoutRef.current = undefined;
-    }
     if (conversationListeningRestartTimeoutRef.current) {
       clearTimeout(conversationListeningRestartTimeoutRef.current);
       conversationListeningRestartTimeoutRef.current = undefined;
@@ -261,6 +282,7 @@ export function useConversationState({ connection, chatPreferences, currentSessi
     conversationCancelRequestedRef.current = true;
     conversationSubmittingRef.current = false;
     conversationPhaseRef.current = 'off';
+    setReadbackPhase('idle');
     abortSpeechInput();
     await stopSpeaking().catch(() => undefined);
     await stopWorkingSoundAsync().catch(() => undefined);
@@ -270,7 +292,7 @@ export function useConversationState({ connection, chatPreferences, currentSessi
     setConversationPhase('off');
     setConversationSessionId(undefined);
     setConversationWakeSensor('phrase');
-  }, [abortSpeechInput, clearPendingConversationResult]);
+  }, [abortSpeechInput, clearPendingConversationResult, setReadbackPhase]);
 
   const startConversationListening = useConversationArming({
     abortSpeechInput,
@@ -278,7 +300,6 @@ export function useConversationState({ connection, chatPreferences, currentSessi
     conversationCancelRequestedRef,
     conversationListeningRestartTimeoutRef,
     conversationPhaseRef,
-    conversationResumeTimeoutRef,
     conversationSessionId,
     conversationSubmittingRef,
     conversationWakePhrase,
@@ -300,6 +321,15 @@ export function useConversationState({ connection, chatPreferences, currentSessi
     const phase = conversationPhaseRef.current;
     return phase === 'armed' || (phase === 'listening' && !wakePhraseSessionRef.current.command());
   }, []);
+
+  const { canRead, pauseInput, resumeInput } = useConversationReadbackInput({
+    abortSpeechInput,
+    conversationInputPhaseRef: conversationPhaseRef,
+    conversationReadbackPhaseRef,
+    conversationSessionId,
+    startConversationListening,
+    stopLocalWakeRef,
+  });
 
   const toggleConversationMode = useCallback(async () => {
     if (conversationStartingRef.current) return;
@@ -339,6 +369,7 @@ export function useConversationState({ connection, chatPreferences, currentSessi
       applyConversationFeedback(setConversationFeedback, setConversationFeedbackAction, undefined);
       setPendingConversationTurn(undefined);
       setQueuedConversationPrompt(undefined);
+      setReadbackPhase('idle');
       assistantReplyBaselineIdRef.current = getLatestConversationAssistantEntry(sessionId)?.id;
       const started = await startConversationListening(sessionId);
       if (!started) setConversationSessionId(undefined);
@@ -356,6 +387,7 @@ export function useConversationState({ connection, chatPreferences, currentSessi
     pendingQuestionsBySession,
     sendingState.active,
     setCurrentSessionId,
+    setReadbackPhase,
     startConversationListening,
     stopConversationMode,
   ]);
@@ -378,6 +410,7 @@ export function useConversationState({ connection, chatPreferences, currentSessi
     conversationSubmittingRef,
     conversationListeningRestartTimeoutRef,
     localWakeModeRef: localWakeModeActiveRef,
+    readbackPhase: conversationReadbackPhase,
     shouldRestartConversation,
     startConversationListening,
     abortSpeechInput,
@@ -398,72 +431,44 @@ export function useConversationState({ connection, chatPreferences, currentSessi
     setPendingConversationTurn(undefined);
   }, [conversationPhase, conversationSessionId, pendingConversationTurn]);
 
-  useEffect(() => {
-    if (conversationPhase !== 'submitting' || !queuedConversationPrompt || !conversationSessionId) {
-      return;
-    }
-
-    let cancelled = false;
-
-    const submitPrompt = async () => {
-      try {
-        assistantReplyBaselineIdRef.current = latestAssistantRef.current(conversationSessionId)?.id;
-        await sendPrompt(conversationSessionId, queuedConversationPrompt);
-        if (cancelled) {
-          return;
-        }
-
-        if (conversationCancelRequestedRef.current || conversationPhaseRef.current === 'off') {
-          setQueuedConversationPrompt(undefined);
-          setPendingConversationTurn(undefined);
-          return;
-        }
-
-        setQueuedConversationPrompt(undefined);
-        setConversationPhase('waiting');
-      } catch (error) {
-        if (cancelled) {
-          return;
-        }
-
-        const message = error instanceof Error ? error.message : 'Voice conversation failed while sending your message.';
-        setQueuedConversationPrompt(undefined);
-        setPendingConversationTurn(undefined);
-        applyConversationFeedback(setConversationFeedback, setConversationFeedbackAction, message);
-        await stopConversationMode();
-      }
-    };
-
-    void submitPrompt();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [
-    conversationPhase,
+  useConversationSubmit({
+    assistantReplyBaselineIdRef,
+    conversationCancelRequestedRef,
+    conversationInputPhase: conversationPhase,
     conversationSessionId,
+    latestAssistantRef,
     queuedConversationPrompt,
     sendPrompt,
+    setConversationFeedback,
+    setConversationFeedbackAction,
+    setConversationPhase,
+    setPendingConversationTurn,
+    setQueuedConversationPrompt,
+    setReadbackPhase,
+    startConversationListening,
     stopConversationMode,
-  ]);
+  });
 
   useConversationPlayback({
+    active: conversationPhase !== 'off',
     chatPreferences,
-    conversationPhase,
     conversationSessionId,
+    inputPhase: conversationPhase,
+    readbackPhase: conversationReadbackPhase,
+    turnSequence: conversationTurnSequence,
     pendingPermissionsBySession,
     pendingQuestionsBySession,
     sessionStatuses,
     sendingState,
-    getLatestConversationAssistantEntry,
+    getConversationAssistantEntries,
     assistantReplyBaselineIdRef,
-    conversationResumeTimeoutRef,
-    conversationPhaseRef,
-    startConversationListening,
-    stopConversationMode,
-    setConversationPhase,
+    canRead,
+    pauseInput,
+    resumeInput,
+    setReadbackPhase,
     setConversationFeedback,
     setConversationFeedbackAction,
+    stopConversationMode,
   });
 
   useConversationConnectionFeedback({
@@ -478,14 +483,14 @@ export function useConversationState({ connection, chatPreferences, currentSessi
     conversationFeedbackAction,
     conversationLatestHeardText,
     conversationListeningLevel,
-    conversationPhase,
+    conversationInputPhase: conversationPhase,
+    conversationReadbackPhase,
     conversationSessionId,
     messagesBySession,
     wakePhrase: activeWakePhrase,
   });
 
   useEffect(() => () => {
-    if (conversationResumeTimeoutRef.current) clearTimeout(conversationResumeTimeoutRef.current);
     if (conversationListeningRestartTimeoutRef.current) clearTimeout(conversationListeningRestartTimeoutRef.current);
     void stopSpeaking().catch(() => undefined);
   }, []);

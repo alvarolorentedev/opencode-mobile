@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, type Dispatch, type SetStateAction } fr
 
 import type { VoiceRecoveryAction } from '@/lib/voice/speech-errors';
 import type { createWakePhraseSession } from '@/lib/voice/wake-phrase';
-import { CONVERSATION_COMMAND_TIMEOUT_MS, CONVERSATION_FINAL_RESULT_SETTLE_MS, type ConversationPhase } from '@/providers/opencode-provider-types';
+import { CONVERSATION_COMMAND_TIMEOUT_MS, CONVERSATION_FINAL_RESULT_SETTLE_MS, type ConversationInputPhase } from '@/providers/opencode-provider-types';
 import { applyConversationFeedback } from '@/providers/conversation/feedback';
 
 // Owns the two conversation timers: the final-result settle and the bounded
@@ -21,13 +21,13 @@ export function useConversationTimers({
   wakePhraseSessionRef,
 }: {
   abortSpeechInputRef: { current: () => void };
-  conversationPhaseRef: { current: ConversationPhase };
+  conversationPhaseRef: { current: ConversationInputPhase };
   flushPendingConversationResultRef: { current: () => void };
   localWakeModeActiveRef: { current: boolean };
   setConversationFeedback: Dispatch<SetStateAction<string | undefined>>;
   setConversationFeedbackAction: Dispatch<SetStateAction<VoiceRecoveryAction>>;
   setConversationLatestHeardText: Dispatch<SetStateAction<string | undefined>>;
-  setConversationPhase: Dispatch<SetStateAction<ConversationPhase>>;
+  setConversationPhase: Dispatch<SetStateAction<ConversationInputPhase>>;
   startLocalWakeRef: { current: () => Promise<boolean> };
   wakePhraseSessionRef: { current: ReturnType<typeof createWakePhraseSession> };
 }) {

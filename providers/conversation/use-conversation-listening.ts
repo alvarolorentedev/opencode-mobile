@@ -2,7 +2,7 @@ import { useEffect, type Dispatch, type SetStateAction } from 'react';
 import { AppState } from 'react-native';
 
 import type { VoiceRecoveryAction } from '@/lib/voice/speech-errors';
-import { CONVERSATION_LISTENING_RESTART_MS, type ConversationPhase } from '@/providers/opencode-provider-types';
+import { CONVERSATION_LISTENING_RESTART_MS, type ConversationInputPhase, type ConversationReadbackPhase } from '@/providers/opencode-provider-types';
 import { applyConversationFeedback } from '@/providers/conversation/feedback';
 
 export function useConversationListeningEffects({
@@ -14,6 +14,7 @@ export function useConversationListeningEffects({
   conversationSubmittingRef,
   conversationListeningRestartTimeoutRef,
   localWakeModeRef,
+  readbackPhase,
   shouldRestartConversation,
   startConversationListening,
   abortSpeechInput,
@@ -24,14 +25,15 @@ export function useConversationListeningEffects({
   setConversationFeedback,
   setConversationFeedbackAction,
 }: {
-  conversationPhase: ConversationPhase;
+  conversationPhase: ConversationInputPhase;
   isConversationListening: boolean;
   isConversationListeningStarting: boolean;
-  conversationPhaseRef: { current: ConversationPhase };
+  conversationPhaseRef: { current: ConversationInputPhase };
   conversationCancelRequestedRef: { current: boolean };
   conversationSubmittingRef: { current: boolean };
   conversationListeningRestartTimeoutRef: { current: ReturnType<typeof setTimeout> | undefined };
   localWakeModeRef: { current: boolean };
+  readbackPhase: ConversationReadbackPhase;
   shouldRestartConversation: () => boolean;
   startConversationListening: (sessionId?: string, options?: { preserveSession?: boolean }) => Promise<boolean | void>;
   abortSpeechInput: () => void;
@@ -56,6 +58,15 @@ export function useConversationListeningEffects({
   }, [abortSpeechInput, conversationPhaseRef, stopConversationMode]);
 
   useEffect(() => {
+    // Readback briefly owns the audio session. The logical input stays armed,
+    // but the detector restarts only after speaking finishes.
+    if (readbackPhase === 'speaking') {
+      if (conversationListeningRestartTimeoutRef.current) {
+        clearTimeout(conversationListeningRestartTimeoutRef.current);
+        conversationListeningRestartTimeoutRef.current = undefined;
+      }
+      return;
+    }
     // The local wake-word hook owns its capture lifecycle and re-arming. Do not
     // start the OS recognizer behind it.
     if (localWakeModeRef.current) {
@@ -96,7 +107,7 @@ export function useConversationListeningEffects({
         conversationListeningRestartTimeoutRef.current = undefined;
       }
     };
-  }, [conversationCancelRequestedRef, conversationListeningRestartTimeoutRef, conversationPhase, conversationPhaseRef, conversationSubmittingRef, isConversationListening, isConversationListeningStarting, localWakeModeRef, shouldRestartConversation, startConversationListening]);
+  }, [conversationCancelRequestedRef, conversationListeningRestartTimeoutRef, conversationPhase, conversationPhaseRef, conversationSubmittingRef, isConversationListening, isConversationListeningStarting, localWakeModeRef, readbackPhase, shouldRestartConversation, startConversationListening]);
 
   useEffect(() => {
     if (!speechInputError) {

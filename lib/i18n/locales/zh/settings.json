@@ -235,15 +235,11 @@
     },
     "autoPlay": {
       "title": "自动播放助手回复",
-      "description": "助手回复完成后朗读最新的回复。"
+      "description": "朗读聊天回复。对话模式始终会朗读。"
     },
     "workingSound": {
       "title": "工作提示音",
       "description": "助手仍在处理回复时播放一段舒缓的循环音。"
-    },
-    "resumeListening": {
-      "title": "回复后恢复聆听",
-      "description": "在对话模式下，语音播放结束后再次开始聆听。"
     },
     "wakePhrase": {
       "label": "唤醒短语",
@@ -351,6 +347,10 @@
     "playback": {
       "title": "播放",
       "helper": "适用于系统语音和设备端语音。"
+    },
+    "readInterim": {
+      "title": "朗读进度更新",
+      "description": "朗读“正在处理…”等更新；最终回复始终会朗读。"
     }
   },
   "diagnostics": {

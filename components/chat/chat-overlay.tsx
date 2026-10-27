@@ -6,7 +6,7 @@ import { Button, Text } from 'react-native-paper';
 
 import { Fonts, getColors } from '@/constants/theme';
 import { useAppearance } from '@/providers/appearance-context';
-import type { ConversationPhase } from '@/providers/opencode-provider';
+import type { ConversationInputPhase, ConversationPhase, ConversationReadbackPhase } from '@/providers/opencode-provider';
 
 const PHASE_LABEL_KEYS = {
   off: 'chat:overlay.phaseOff',
@@ -19,18 +19,24 @@ const PHASE_LABEL_KEYS = {
 
 export function ConversationOverlay({
   connectionStatus,
+  feedback,
+  inputPhase,
   insetsTop,
   latestUserText,
   onStop,
   phase,
+  readbackPhase,
   sessionTitle,
   wakePhrase,
 }: {
   connectionStatus?: 'idle' | 'connecting' | 'connected' | 'error';
+  feedback?: string;
+  inputPhase: ConversationInputPhase;
   insetsTop: number;
   latestUserText?: string;
   onStop: () => void;
   phase: ConversationPhase;
+  readbackPhase: ConversationReadbackPhase;
   sessionTitle: string;
   wakePhrase: string;
 }) {
@@ -96,6 +102,16 @@ export function ConversationOverlay({
             <Text variant="headlineSmall" style={[styles.voiceOverlayPhaseTitle, { color: overlayText }]}> 
               {phaseLabel}
             </Text>
+            {inputPhase === 'armed' && readbackPhase === 'waiting' ? (
+              <Text variant="bodyMedium" style={[styles.voiceOverlayHint, { color: overlayMuted }]}>
+                {t('chat:overlay.steerHint', { phrase: wakePhrase })}
+              </Text>
+            ) : null}
+            {feedback ? (
+              <Text variant="bodySmall" style={[styles.voiceOverlayHint, { color: palette.warning }]}>
+                {feedback}
+              </Text>
+            ) : null}
           </View>
         </View>
 
@@ -178,6 +194,7 @@ const styles = StyleSheet.create({
   },
   voiceOverlayMeta: { alignItems: 'center', gap: 12, paddingHorizontal: 14, maxWidth: 320 },
   voiceOverlayPhaseTitle: { fontFamily: Fonts.display, fontWeight: '700', textAlign: 'center' },
+  voiceOverlayHint: { textAlign: 'center' },
   voiceOverlayFooter: { gap: 18 },
   voiceOverlaySnippetCard: {
     borderRadius: 24,

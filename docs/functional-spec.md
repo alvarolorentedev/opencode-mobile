@@ -516,11 +516,11 @@ Behavior exposed today:
 - System/On-device input mode with an active-path status card
 - prefer on-device system recognition when System mode is active
 - auto-play assistant replies
+- read interim assistant progress updates in conversation mode (off by default)
 - working sound enable/disable
 - conversation wake phrase (default `hey code`) when System mode is active
 - optional on-device wake word with pretrained models and voice verification
 - base-pack and command-model status, sizes, and separate install guidance
-- resume listening after spoken reply in conversation mode
 - speech locale override
 - speech rate
 - working sound variant and volume
@@ -617,17 +617,31 @@ Loop behavior:
    phrase.
 3. After the phrase, capture the command; ignore noise-only segments.
 4. When a final command settles, submit it as a prompt with the phrase stripped.
-5. Wait until the session is no longer running.
-6. Detect the latest assistant reply after the submission baseline.
-7. Speak the assistant reply.
-8. If configured, return to armed. Otherwise stop.
+5. Immediately re-arm input. The next command can steer or queue work while the
+   assistant is still running.
+6. Independently wait until the session is idle and detect the latest assistant
+   reply after the submission baseline.
+7. Speak the final assistant reply, pausing wake detection while TTS owns the
+   audio session. If `Read progress updates` is enabled, completed interim
+   assistant bubbles (“On it…”) are queued and read in order before the final
+   reply.
+8. Resume wake detection when readback finishes. Conversation mode stays active
+   until the user stops it.
+
+Submitting a new wake-phrase command drops queued progress readback and starts a
+fresh baseline for the new reply. A wake that times out without a command keeps
+the pending readback queue so a false start does not swallow the reply.
+
+Input and readback are separate state machines. `armed` does not wait for a
+reply, and `speaking` does not disable the next turn permanently.
 
 Additional behavior:
 
 - screen is kept awake while conversation mode is active
 - a full-screen overlay is shown
 - conversation mode stops if a permission or question requires on-screen input
-- speech/TTS failures surface feedback and may stop the mode
+- TTS failures surface feedback and leave input armed instead of silently ending
+  the loop
 - a phrase-only turn re-arms after six seconds without a command
 - if recognition ends after the phrase but before a command, the command window
   survives the restart instead of asking for the phrase again

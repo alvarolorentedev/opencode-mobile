@@ -69,7 +69,9 @@ export type ProviderOption = {
   accounts?: ProviderAccount[];
 };
 
-export type ConversationPhase = 'off' | 'armed' | 'listening' | 'submitting' | 'waiting' | 'speaking';
+export type ConversationInputPhase = 'off' | 'armed' | 'listening' | 'submitting';
+export type ConversationReadbackPhase = 'idle' | 'waiting' | 'speaking';
+export type ConversationPhase = ConversationInputPhase | 'waiting' | 'speaking';
 
 export type SessionDeepLinkTarget = {
   sessionId: string;
@@ -85,10 +87,20 @@ export const CONVERSATION_LISTENING_RESTART_MS = 350;
 // of recording ambient conversation.
 export const CONVERSATION_COMMAND_TIMEOUT_MS = 6000;
 
+export type ConversationReadbackEntry = {
+  entry: TranscriptEntry;
+  completed: boolean;
+};
+
 export type ConversationState = {
   active: boolean;
   sessionId?: string;
+  // `phase` is the derived label for existing UI surfaces. Input and readback
+  // are independent, so consumers that need to distinguish them use these
+  // fields directly.
   phase: ConversationPhase;
+  inputPhase: ConversationInputPhase;
+  readbackPhase: ConversationReadbackPhase;
   statusLabel?: string;
   feedback?: string;
   // Recovery action offered alongside `feedback` when it came from a voice

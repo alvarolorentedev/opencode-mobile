@@ -246,9 +246,12 @@ The completion version, preference schema and first-run migration are unchanged.
   `activation.ts` owns the bounded post-claim desktop-approval/startup wait,
   foreground suspension and delayed saved-profile checkpoint.
 - `providers/conversation/`
-  Conversation listening/restart, wake-phrase turn gating, playback,
-  connection feedback, the memoized conversation snapshot, and shared feedback
-  helpers composed by `providers/use-conversation-state.ts`.
+  Conversation input/re-arm, wake-phrase turn gating, independent reply
+  readback, connection feedback, the memoized conversation snapshot, and shared
+  feedback helpers composed by `providers/use-conversation-state.ts`.
+  `use-conversation-submit.ts` owns submit-then-rearm; `use-conversation-playback.ts`
+  owns the separate settled-reply readback watcher, and
+  `use-conversation-readback-input.ts` owns the microphone/TTS handoff.
 - `providers/use-opencode-persistence.ts`
   AsyncStorage hydration and ordered write-back, with field validation in
   `providers/persisted-preferences.ts`.
@@ -258,8 +261,8 @@ The completion version, preference schema and first-run migration are unchanged.
   exposed through `useConnection().connectionProfiles`. Setup probes never switch
   the active connection; saving an edit does not reconnect.
 - `providers/use-conversation-state.ts`
-  Conversation phases, wake-phrase-gated speech submission, reply playback,
-  timers, and cleanup.
+  Conversation input/readback orchestration, wake-phrase-gated speech
+  submission, immediate input re-arm, timers, and cleanup.
 - `providers/use-opencode-realtime.ts`
   SSE transport/backoff, first-connect and reconnect reconciliation, and the
   safety poll (adaptive while busy; 5s/10s base by stream state, offline pause).

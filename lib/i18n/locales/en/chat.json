@@ -146,7 +146,8 @@
       "references": "References",
       "searching": "Searching project files…",
       "empty": "No matching results"
-    }
+    },
+    "readingReply": "Reading the reply aloud. Listening resumes when it finishes."
   },
   "newChat": {
     "title": "New chat",
@@ -206,11 +207,12 @@
     "phaseArmed": "Say “{{phrase}}”",
     "phaseListening": "Listening",
     "phaseSubmitting": "Submitting",
-    "phaseWaiting": "Waiting",
+    "phaseWaiting": "Thinking",
     "phaseSpeaking": "Speaking",
     "lastHeard": "Last heard",
     "wakePhrase": "Wake phrase",
-    "startSpeaking": "Start speaking naturally. What you say in the last round will appear here."
+    "startSpeaking": "Start speaking naturally. What you say in the last round will appear here.",
+    "steerHint": "Say “{{phrase}}” anytime to steer."
   },
   "modelPicker": {
     "selectModel": "Select model",

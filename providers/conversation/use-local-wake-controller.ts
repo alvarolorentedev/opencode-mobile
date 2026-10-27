@@ -6,7 +6,7 @@ import type { LocalCommandModelId, LocalWakePhraseId } from '@/lib/voice/local-w
 import type { VoiceRecoveryAction } from '@/lib/voice/speech-errors';
 import { playWakePhraseCue } from '@/lib/voice/wake-feedback';
 import { applyConversationFeedback } from '@/providers/conversation/feedback';
-import type { ConversationPhase } from '@/providers/opencode-provider-types';
+import type { ConversationInputPhase } from '@/providers/opencode-provider-types';
 
 // Owns the opt-in on-device detector, the target-speaker command capture, and
 // the transition between them. The command is transcribed locally only after
@@ -29,7 +29,7 @@ export function useLocalWakeController({
 }: {
   commandModel: LocalCommandModelId;
   commandLanguage?: string;
-  conversationPhaseRef: { current: ConversationPhase };
+  conversationPhaseRef: { current: ConversationInputPhase };
   localSpeakerThreshold: number;
   localSpeakerVerification: boolean;
   localWakeModeActiveRef: { current: boolean };
@@ -37,7 +37,7 @@ export function useLocalWakeController({
   setConversationFeedback: Dispatch<SetStateAction<string | undefined>>;
   setConversationFeedbackAction: Dispatch<SetStateAction<VoiceRecoveryAction>>;
   setConversationLatestHeardText: Dispatch<SetStateAction<string | undefined>>;
-  setConversationPhase: Dispatch<SetStateAction<ConversationPhase>>;
+  setConversationPhase: Dispatch<SetStateAction<ConversationInputPhase>>;
   startLocalWakeRef: { current: () => Promise<boolean> };
   stopLocalWakeRef: { current: () => Promise<void> };
   submitLocalCommand: (text: string) => void;
@@ -102,6 +102,7 @@ export function useLocalWakeController({
       return;
     }
     playWakePhraseCue();
+    applyConversationFeedback(setConversationFeedback, setConversationFeedbackAction, undefined);
     conversationPhaseRef.current = 'listening';
     setConversationPhase('listening');
     setConversationLatestHeardText(undefined);

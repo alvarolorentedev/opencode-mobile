@@ -500,18 +500,29 @@ const conversationImports = {
   '@/lib/voice/wake-phrase': await loadTs('lib/voice/wake-phrase.ts', {}, voiceRuntime.globals),
   '@/lib/voice/working-sound': { stopWorkingSoundAsync: async () => {} },
   '@/providers/conversation/use-conversation-snapshot': {
-    useConversationSnapshot: (input: any) => ({
-      active: input.conversationPhase !== 'off',
-      feedback: input.conversationFeedback,
-      feedbackAction: input.conversationFeedbackAction,
-      isListening: input.conversationPhase === 'listening',
-      level: input.conversationListeningLevel,
-      latestHeardText: input.conversationLatestHeardText,
-      phase: input.conversationPhase,
-      sessionId: input.conversationSessionId,
-      statusLabel: input.conversationPhase === 'armed' ? 'Waiting for phrase' : undefined,
-      wakePhrase: input.wakePhrase,
-    }),
+    useConversationSnapshot: (input: any) => {
+      const phase = input.conversationInputPhase === 'listening' || input.conversationInputPhase === 'submitting'
+        ? input.conversationInputPhase
+        : input.conversationReadbackPhase === 'speaking'
+          ? 'speaking'
+          : input.conversationReadbackPhase === 'waiting'
+            ? 'waiting'
+            : input.conversationInputPhase;
+      return {
+        active: input.conversationInputPhase !== 'off',
+        feedback: input.conversationFeedback,
+        feedbackAction: input.conversationFeedbackAction,
+        inputPhase: input.conversationInputPhase,
+        isListening: input.conversationInputPhase === 'listening',
+        level: input.conversationListeningLevel,
+        latestHeardText: input.conversationLatestHeardText,
+        phase,
+        readbackPhase: input.conversationReadbackPhase,
+        sessionId: input.conversationSessionId,
+        statusLabel: phase === 'armed' ? 'Waiting for phrase' : undefined,
+        wakePhrase: input.wakePhrase,
+      };
+    },
   },
   '@/providers/opencode-provider-selectors': selectors,
   '@/providers/opencode-provider-types': { CONVERSATION_COMMAND_TIMEOUT_MS: 6000, CONVERSATION_FINAL_RESULT_SETTLE_MS: 2200, CONVERSATION_KEEP_AWAKE_TAG: 'test', CONVERSATION_LISTENING_RESTART_MS: 350 },
@@ -541,6 +552,8 @@ const localWakeController = await loadTs('providers/conversation/use-local-wake-
 }, voiceRuntime.globals);
 const conversationListening = await loadTs('providers/conversation/use-conversation-listening.ts', { ...conversationImports, '@/providers/conversation/feedback': conversationFeedback }, voiceRuntime.globals);
 const conversationPlayback = await loadTs('providers/conversation/use-conversation-playback.ts', { ...conversationImports, '@/providers/conversation/feedback': conversationFeedback }, voiceRuntime.globals);
+const conversationReadbackInput = await loadTs('providers/conversation/use-conversation-readback-input.ts', { react: voiceRuntime.react }, voiceRuntime.globals);
+const conversationSubmit = await loadTs('providers/conversation/use-conversation-submit.ts', { react: voiceRuntime.react, '@/providers/conversation/feedback': conversationFeedback }, voiceRuntime.globals);
 const conversationConnection = await loadTs('providers/conversation/use-conversation-connection.ts', { ...conversationImports, '@/providers/conversation/feedback': conversationFeedback }, voiceRuntime.globals);
 const conversation = await loadTs('providers/use-conversation-state.ts', {
   ...conversationImports,
@@ -548,6 +561,8 @@ const conversation = await loadTs('providers/use-conversation-state.ts', {
   '@/providers/conversation/use-conversation-arming': conversationArming,
   '@/providers/conversation/use-conversation-listening': conversationListening,
   '@/providers/conversation/use-conversation-playback': conversationPlayback,
+  '@/providers/conversation/use-conversation-readback-input': conversationReadbackInput,
+  '@/providers/conversation/use-conversation-submit': conversationSubmit,
   '@/providers/conversation/use-conversation-connection': conversationConnection,
   '@/providers/conversation/use-conversation-timers': conversationTimers,
   '@/providers/conversation/use-local-wake-controller': localWakeController,
@@ -591,9 +606,19 @@ assert.equal(lastPrompt, 'open settings', 'the wake phrase is stripped from the 
 
 sendGate.resolve(); await voiceRuntime.settle();
 assert.equal(phase(), 'waiting');
-voiceRuntime.update({ sessionStatuses: { s: { type: 'idle' } }, messagesBySession: { s: [{ id: 'reply', role: 'assistant', text: 'done', details: [] }] } });
+assert.equal(voiceRuntime.value.conversation.inputPhase, 'armed', 'input re-arms while the reply is still pending');
+assert.equal(voiceRuntime.value.conversation.readbackPhase, 'waiting');
+voiceRuntime.update({ sessionStatuses: { s: { type: 'idle' } }, messagesBySession: { s: [
+  { id: 'interim', role: 'assistant', text: 'On it', details: [] },
+  { id: 'reply', role: 'assistant', text: 'done', details: [] },
+] } });
 await voiceRuntime.settle(); assert.equal(phase(), 'speaking');
+voiceRuntime.fire(120); await voiceRuntime.settle();
+assert.equal(voiceRuntime.value.conversation.inputPhase, 'armed');
+assert.equal(voiceRuntime.value.conversation.readbackPhase, 'speaking');
+assert.equal(speechCallbacks.text, 'done', 'only the final assistant bubble is read');
 speechCallbacks.onDone(); await voiceRuntime.settle(); assert.equal(phase(), 'armed');
+assert.equal(voiceRuntime.value.conversation.readbackPhase, 'idle');
 
 // A phrase-only turn opens the command window and re-arms when nothing follows.
 await startConversation();
@@ -736,7 +761,38 @@ await voiceRuntime.value.toggleConversationMode(); await voiceRuntime.settle();
 voiceRuntime.update({ chatPreferences });
 localWakeStartResult = true;
 
+// Opting into progress updates reads completed interim bubbles before the final
+// settled reply while input stays armed.
+voiceRuntime.update({
+  chatPreferences: { ...chatPreferences, readInterimAssistantReplies: true },
+  messagesBySession: {},
+  sessionStatuses: { s: { type: 'busy' } },
+});
+await startConversation();
+recognitionOptions.onResult('hey code fetch news', true);
+voiceRuntime.fire(2200); await voiceRuntime.settle();
+const interimReply = {
+  id: 'on-it', role: 'assistant', text: 'On it', details: [],
+  info: { id: 'on-it', sessionID: 's', role: 'assistant', time: { created: 1, completed: 2 }, finish: 'stop' },
+};
+voiceRuntime.update({ messagesBySession: { s: [interimReply] } });
+await voiceRuntime.settle(); voiceRuntime.fire(120); await voiceRuntime.settle();
+assert.equal(phase(), 'speaking');
+assert.equal(speechCallbacks.text, 'On it');
+const finalReply = {
+  id: 'final', role: 'assistant', text: 'Here is the news', details: [],
+  info: { id: 'final', sessionID: 's', role: 'assistant', time: { created: 3, completed: 4 }, finish: 'stop' },
+};
+voiceRuntime.update({ messagesBySession: { s: [interimReply, finalReply] }, sessionStatuses: { s: { type: 'idle' } } });
+await voiceRuntime.settle();
+speechCallbacks.onDone(); await voiceRuntime.settle();
+voiceRuntime.fire(120); await voiceRuntime.settle();
+assert.equal(speechCallbacks.text, 'Here is the news', 'the settled final reply is queued after progress readback');
+speechCallbacks.onDone(); await voiceRuntime.settle();
+assert.equal(voiceRuntime.value.conversation.readbackPhase, 'idle');
 await stopConversation();
+voiceRuntime.update({ chatPreferences, messagesBySession: {}, sessionStatuses: { s: { type: 'idle' } } });
+
 voiceRuntime.update({ pendingQuestionsBySession: { s: [{ id: 'question' }] } });
 await voiceRuntime.value.toggleConversationMode(); await voiceRuntime.settle(); assert.equal(phase(), 'off');
 assert.match(voiceRuntime.value.conversation.feedback, /Answer the current request/);

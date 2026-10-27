@@ -235,15 +235,11 @@
     },
     "autoPlay": {
       "title": "アシスタントの返信を自動再生",
-      "description": "最新のアシスタント応答が完了したら読み上げます。"
+      "description": "チャットの返信を読み上げます。会話モードは常に読み上げます。"
     },
     "workingSound": {
       "title": "作業中のサウンド",
       "description": "アシスタントが返信を作成している間、穏やかなループを再生します。"
-    },
-    "resumeListening": {
-      "title": "返信後に聞き取りを再開",
-      "description": "会話モードで、読み上げの再生が終了した後に聞き取りを再開します。"
     },
     "wakePhrase": {
       "label": "ウェイクフレーズ",
@@ -351,6 +347,10 @@
     "playback": {
       "title": "再生",
       "helper": "システム音声とオンデバイス音声の両方に適用されます。"
+    },
+    "readInterim": {
+      "title": "進捗メッセージを読み上げる",
+      "description": "「対応中…」などの更新を読み上げ、最終返信は常に読み上げます。"
     }
   },
   "diagnostics": {

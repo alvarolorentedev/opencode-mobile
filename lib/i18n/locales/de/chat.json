@@ -146,7 +146,8 @@
       "references": "Referenzen",
       "searching": "Projektdateien werden durchsucht…",
       "empty": "Keine Treffer"
-    }
+    },
+    "readingReply": "Die Antwort wird vorgelesen. Danach wird wieder zugehört."
   },
   "newChat": {
     "title": "Neuer Chat",
@@ -206,11 +207,12 @@
     "phaseArmed": "Sage „{{phrase}}“",
     "phaseListening": "Hört zu",
     "phaseSubmitting": "Wird gesendet",
-    "phaseWaiting": "Wartet",
+    "phaseWaiting": "Denkt nach",
     "phaseSpeaking": "Spricht",
     "lastHeard": "Zuletzt gehört",
     "wakePhrase": "Weckphrase",
-    "startSpeaking": "Sprich einfach los. Was du in der letzten Runde gesagt hast, erscheint hier."
+    "startSpeaking": "Sprich einfach los. Was du in der letzten Runde gesagt hast, erscheint hier.",
+    "steerHint": "Sage jederzeit „{{phrase}}“, um zu steuern."
   },
   "modelPicker": {
     "selectModel": "Modell auswählen",

@@ -235,15 +235,11 @@
     },
     "autoPlay": {
       "title": "Reproducir automáticamente las respuestas del asistente",
-      "description": "Lee en voz alta la última respuesta del asistente cuando termina."
+      "description": "Leer respuestas del chat. El modo conversación siempre lee."
     },
     "workingSound": {
       "title": "Sonido de trabajo",
       "description": "Reproduce un bucle suave mientras el asistente sigue trabajando en una respuesta."
-    },
-    "resumeListening": {
-      "title": "Reanudar la escucha tras la respuesta",
-      "description": "En el modo conversación, vuelve a escuchar cuando termina la reproducción hablada."
     },
     "wakePhrase": {
       "label": "Frase de activación",
@@ -351,6 +347,10 @@
     "playback": {
       "title": "Reproducción",
       "helper": "Se aplica a la voz del sistema y a la del dispositivo."
+    },
+    "readInterim": {
+      "title": "Leer actualizaciones de progreso",
+      "description": "Leer avisos como «Voy a ello…»; la respuesta final siempre."
     }
   },
   "diagnostics": {

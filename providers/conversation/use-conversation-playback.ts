@@ -1,143 +1,294 @@
-import { useEffect, type Dispatch, type SetStateAction } from 'react';
+import { useEffect, useRef, useState, type Dispatch, type SetStateAction } from 'react';
 
 import type { PendingPermissionRequest, PendingQuestionRequest } from '@/lib/opencode/client';
-import type { TranscriptEntry } from '@/lib/opencode/format';
 import type { SessionStatus } from '@/lib/opencode/types';
 import type { VoiceRecoveryAction } from '@/lib/voice/speech-errors';
-import { speakText } from '@/lib/voice/speech-output';
+import { speakText, stopSpeaking } from '@/lib/voice/speech-output';
 import { stopWorkingSoundAsync } from '@/lib/voice/working-sound';
-import type { ConversationPhase } from '@/providers/opencode-provider-types';
+import type {
+  ConversationInputPhase,
+  ConversationReadbackEntry,
+  ConversationReadbackPhase,
+} from '@/providers/opencode-provider-types';
 import type { ChatPreferences } from '@/providers/opencode-preferences';
 import { applyConversationFeedback } from '@/providers/conversation/feedback';
 
+// Reads the settled assistant turn aloud. This is deliberately independent of
+// the input phase: after submitting, the microphone re-arms while the assistant
+// works, and readback starts later when the final reply is available.
 export function useConversationPlayback({
+  active,
   chatPreferences,
-  conversationPhase,
   conversationSessionId,
+  inputPhase,
+  readbackPhase,
   pendingPermissionsBySession,
   pendingQuestionsBySession,
   sessionStatuses,
   sendingState,
-  getLatestConversationAssistantEntry,
+  getConversationAssistantEntries,
   assistantReplyBaselineIdRef,
-  conversationResumeTimeoutRef,
-  conversationPhaseRef,
-  startConversationListening,
-  stopConversationMode,
-  setConversationPhase,
+  canRead,
+  pauseInput,
+  resumeInput,
+  setReadbackPhase,
   setConversationFeedback,
   setConversationFeedbackAction,
+  stopConversationMode,
+  turnSequence,
 }: {
+  active: boolean;
   chatPreferences: ChatPreferences;
-  conversationPhase: ConversationPhase;
   conversationSessionId?: string;
+  inputPhase: ConversationInputPhase;
+  readbackPhase: ConversationReadbackPhase;
   pendingPermissionsBySession: Record<string, PendingPermissionRequest[]>;
   pendingQuestionsBySession: Record<string, PendingQuestionRequest[]>;
   sessionStatuses: Record<string, SessionStatus>;
   sendingState: { sessionId?: string; active: boolean };
-  getLatestConversationAssistantEntry: (sessionId?: string) => TranscriptEntry | undefined;
+  getConversationAssistantEntries: (sessionId?: string) => ConversationReadbackEntry[];
   assistantReplyBaselineIdRef: { current: string | undefined };
-  conversationResumeTimeoutRef: { current: ReturnType<typeof setTimeout> | undefined };
-  conversationPhaseRef: { current: ConversationPhase };
-  startConversationListening: (sessionId?: string) => Promise<boolean | void>;
-  stopConversationMode: () => Promise<void>;
-  setConversationPhase: Dispatch<SetStateAction<ConversationPhase>>;
+  canRead: () => boolean;
+  pauseInput: () => Promise<void>;
+  resumeInput: () => void;
+  setReadbackPhase: (phase: ConversationReadbackPhase) => void;
   setConversationFeedback: Dispatch<SetStateAction<string | undefined>>;
   setConversationFeedbackAction: Dispatch<SetStateAction<VoiceRecoveryAction>>;
+  stopConversationMode: () => Promise<void>;
+  turnSequence: number;
 }) {
+  const [queue, setQueue] = useState<ConversationReadbackEntry[]>([]);
+  const queueRef = useRef<ConversationReadbackEntry[]>([]);
+  const startingRef = useRef(false);
+  const runIdRef = useRef(0);
+  const lastTurnSequenceRef = useRef(turnSequence);
+  const sessionStatus = conversationSessionId ? sessionStatuses[conversationSessionId] : undefined;
+  const isSessionRunning = conversationSessionId
+    ? sendingState.sessionId === conversationSessionId || sendingState.active || (!!sessionStatus && sessionStatus.type !== 'idle')
+    : false;
+  const sessionRunningRef = useRef(isSessionRunning);
+
   useEffect(() => {
-    if (conversationPhase !== 'waiting') {
+    sessionRunningRef.current = isSessionRunning;
+  }, [isSessionRunning]);
+
+  useEffect(() => {
+    if (!active || readbackPhase === 'idle') {
+      runIdRef.current += 1;
+      startingRef.current = false;
+      if (queueRef.current.length) {
+        queueRef.current = [];
+        setQueue([]);
+      }
+    }
+  }, [active, readbackPhase]);
+
+  useEffect(() => {
+    // A confirmed command increments the turn sequence. Drop queued readback
+    // and let the submission path establish the new reply baseline.
+    if (turnSequence === lastTurnSequenceRef.current) {
+      return;
+    }
+    lastTurnSequenceRef.current = turnSequence;
+    runIdRef.current += 1;
+    startingRef.current = false;
+    queueRef.current = [];
+    setQueue([]);
+    if (readbackPhase === 'speaking') {
+      void stopSpeaking().catch(() => undefined);
+    }
+    setReadbackPhase('waiting');
+  }, [readbackPhase, setReadbackPhase, turnSequence]);
+
+  useEffect(() => {
+    // Wake detection and TTS share the audio session. Stop the current
+    // utterance but retain its queue entry so a command timeout can resume it.
+    if (inputPhase !== 'listening' || readbackPhase !== 'speaking') {
+      return;
+    }
+
+    runIdRef.current += 1;
+    startingRef.current = false;
+    void stopSpeaking().catch(() => undefined);
+    setReadbackPhase('waiting');
+  }, [inputPhase, readbackPhase, setReadbackPhase]);
+
+  useEffect(() => {
+    if (!active || !conversationSessionId || readbackPhase === 'idle' || inputPhase !== 'armed') {
+      return;
+    }
+
+    const entries = getConversationAssistantEntries(conversationSessionId);
+    const baselineId = assistantReplyBaselineIdRef.current;
+    let newEntries: ConversationReadbackEntry[];
+
+    if (!baselineId) {
+      newEntries = entries;
+    } else {
+      const baselineIndex = entries.findIndex((item) => item.entry.id === baselineId);
+      if (baselineIndex >= 0) {
+        newEntries = entries.slice(baselineIndex + 1);
+      } else {
+        // The transcript window can move past the baseline while a new reply
+        // arrives. On a settled turn, treat the latest entry as the new reply;
+        // never replay the whole visible history.
+        newEntries = isSessionRunning ? [] : entries.slice(-1);
+      }
+    }
+
+    if (newEntries.length === 0) {
+      return;
+    }
+
+    let candidates: ConversationReadbackEntry[];
+    if (chatPreferences.readInterimAssistantReplies) {
+      if (isSessionRunning) {
+        // Read only a completed prefix. An in-progress final bubble must wait
+        // until the turn settles.
+        candidates = [];
+        for (const item of newEntries) {
+          if (!item.completed) {
+            break;
+          }
+          candidates.push(item);
+        }
+      } else {
+        candidates = newEntries;
+      }
+    } else if (isSessionRunning) {
+      candidates = [];
+    } else {
+      candidates = newEntries.slice(-1);
+    }
+
+    if (candidates.length === 0) {
+      return;
+    }
+
+    assistantReplyBaselineIdRef.current = candidates[candidates.length - 1].entry.id;
+    const nextQueue = [...queueRef.current, ...candidates];
+    queueRef.current = nextQueue;
+    setQueue(nextQueue);
+  }, [
+    active,
+    assistantReplyBaselineIdRef,
+    chatPreferences.readInterimAssistantReplies,
+    conversationSessionId,
+    getConversationAssistantEntries,
+    inputPhase,
+    isSessionRunning,
+    readbackPhase,
+  ]);
+
+  useEffect(() => {
+    if (!active || readbackPhase !== 'waiting' || inputPhase !== 'armed' || queue.length === 0 || startingRef.current) {
       return;
     }
 
     const pendingInteractions = conversationSessionId
       ? (pendingPermissionsBySession[conversationSessionId] || []).length + (pendingQuestionsBySession[conversationSessionId] || []).length
       : 0;
-    const latestAssistantEntry = getLatestConversationAssistantEntry(conversationSessionId);
-    const sessionStatus = conversationSessionId ? sessionStatuses[conversationSessionId] : undefined;
-    const isSessionRunning = conversationSessionId
-      ? sendingState.sessionId === conversationSessionId || sendingState.active || (!!sessionStatus && sessionStatus.type !== 'idle')
-      : false;
-
     if (pendingInteractions > 0) {
       applyConversationFeedback(setConversationFeedback, setConversationFeedbackAction, 'Conversation mode paused because the assistant needs your input on screen.');
       void stopConversationMode();
       return;
     }
 
-    if (isSessionRunning) {
-      return () => {
-        void stopWorkingSoundAsync().catch(() => undefined);
-      };
+    const item = queue[0];
+    if (!item) {
+      return;
     }
 
-    void stopWorkingSoundAsync().catch(() => undefined);
-    if (latestAssistantEntry && latestAssistantEntry.id !== assistantReplyBaselineIdRef.current) {
-      void (async () => {
+    const runId = ++runIdRef.current;
+    startingRef.current = true;
+    let finished = false;
+
+    const finish = (failed = false) => {
+      if (finished || runId !== runIdRef.current) {
+        return;
+      }
+      finished = true;
+      startingRef.current = false;
+
+      if (failed) {
+        queueRef.current = [];
+        setQueue([]);
+        setReadbackPhase('idle');
+        resumeInput();
+        return;
+      }
+
+      const remaining = queueRef.current.slice(1);
+      queueRef.current = remaining;
+      setQueue(remaining);
+
+      if (remaining.length > 0) {
+        // Keep the audio session while the queue drains.
+        setReadbackPhase('waiting');
+        return;
+      }
+
+      if (sessionRunningRef.current) {
+        setReadbackPhase('waiting');
+      } else {
+        setReadbackPhase('idle');
+      }
+      resumeInput();
+    };
+
+    void (async () => {
+      setReadbackPhase('speaking');
+      await stopWorkingSoundAsync().catch(() => undefined);
+      await pauseInput().catch(() => undefined);
+
+      if (runId !== runIdRef.current || !canRead()) {
+        startingRef.current = false;
+        return;
+      }
+
+      try {
         const started = await speakText({
           language: chatPreferences.speechLocale,
-          onDone: () => {
-            if (conversationPhaseRef.current !== 'off' && chatPreferences.resumeListeningAfterReply) {
-              void startConversationListening();
-            } else {
-              void stopConversationMode();
-            }
-          },
+          onDone: finish,
           onError: () => {
             applyConversationFeedback(setConversationFeedback, setConversationFeedbackAction, 'Unable to play this assistant reply.');
-            void stopConversationMode();
+            finish(true);
           },
           onStart: () => {
-            setConversationPhase('speaking');
+            applyConversationFeedback(setConversationFeedback, setConversationFeedbackAction, undefined);
+            setReadbackPhase('speaking');
           },
           rate: chatPreferences.speechRate,
-          text: latestAssistantEntry.text,
+          text: item.entry.text,
           voice: chatPreferences.speechVoiceId,
         });
 
         if (!started) {
-          if (chatPreferences.resumeListeningAfterReply) {
-            void startConversationListening();
-          } else {
-            void stopConversationMode();
-          }
+          applyConversationFeedback(setConversationFeedback, setConversationFeedbackAction, 'Unable to play this assistant reply.');
+          finish(true);
         }
-      })();
-      return;
-    }
-
-    conversationResumeTimeoutRef.current = setTimeout(() => {
-      if (conversationPhaseRef.current === 'waiting' && !isSessionRunning) {
-        void startConversationListening();
+      } catch {
+        applyConversationFeedback(setConversationFeedback, setConversationFeedbackAction, 'Unable to play this assistant reply.');
+        finish(true);
       }
-    }, 1200);
-
-    return () => {
-      if (conversationResumeTimeoutRef.current) {
-        clearTimeout(conversationResumeTimeoutRef.current);
-        conversationResumeTimeoutRef.current = undefined;
-      }
-    };
+    })();
   }, [
-    assistantReplyBaselineIdRef,
-    chatPreferences.resumeListeningAfterReply,
+    active,
+    canRead,
     chatPreferences.speechLocale,
     chatPreferences.speechRate,
     chatPreferences.speechVoiceId,
-    conversationPhase,
-    conversationPhaseRef,
-    conversationResumeTimeoutRef,
     conversationSessionId,
-    getLatestConversationAssistantEntry,
+    inputPhase,
+    pauseInput,
     pendingPermissionsBySession,
     pendingQuestionsBySession,
-    sendingState.active,
-    sendingState.sessionId,
-    sessionStatuses,
+    queue,
+    readbackPhase,
+    resumeInput,
     setConversationFeedback,
     setConversationFeedbackAction,
-    setConversationPhase,
-    startConversationListening,
+    setReadbackPhase,
     stopConversationMode,
   ]);
 }

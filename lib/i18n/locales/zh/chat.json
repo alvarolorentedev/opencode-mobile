@@ -146,7 +146,8 @@
       "references": "引用",
       "searching": "正在搜索项目文件…",
       "empty": "没有匹配结果"
-    }
+    },
+    "readingReply": "正在朗读回复。朗读结束后会继续聆听。"
   },
   "newChat": {
     "title": "新建聊天",
@@ -206,11 +207,12 @@
     "phaseArmed": "说“{{phrase}}”",
     "phaseListening": "正在聆听",
     "phaseSubmitting": "正在提交",
-    "phaseWaiting": "等待中",
+    "phaseWaiting": "思考中",
     "phaseSpeaking": "正在朗读",
     "lastHeard": "最近听到",
     "wakePhrase": "唤醒短语",
-    "startSpeaking": "开始自然地说话。你最后一轮所说的内容将显示在这里。"
+    "startSpeaking": "开始自然地说话。你最后一轮所说的内容将显示在这里。",
+    "steerHint": "随时说“{{phrase}}”即可调整方向。"
   },
   "modelPicker": {
     "selectModel": "选择模型",

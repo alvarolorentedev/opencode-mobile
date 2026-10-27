@@ -48,7 +48,7 @@ export type ChatPreferences = {
   autoApprove: boolean;
   autoPlayAssistantReplies: boolean;
   preferOnDeviceRecognition: boolean;
-  resumeListeningAfterReply: boolean;
+  readInterimAssistantReplies: boolean;
   // Conversation mode only starts a turn after hearing this phrase. Stored
   // globally because it is a voice-input preference, not connection state.
   conversationWakePhrase: string;
@@ -86,7 +86,7 @@ export const defaultChatPreferences: ChatPreferences = {
   autoApprove: false,
   autoPlayAssistantReplies: false,
   preferOnDeviceRecognition: true,
-  resumeListeningAfterReply: true,
+  readInterimAssistantReplies: false,
   conversationWakePhrase: DEFAULT_WAKE_PHRASE,
   voiceWakeMode: 'phrase',
   localWakePhrase: DEFAULT_LOCAL_WAKE_PHRASE,

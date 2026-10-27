@@ -1,7 +1,7 @@
 import { useEffect, type Dispatch, type SetStateAction } from 'react';
 
 import type { VoiceRecoveryAction } from '@/lib/voice/speech-errors';
-import type { ConnectionState, ConversationPhase } from '@/providers/opencode-provider-types';
+import type { ConnectionState, ConversationInputPhase } from '@/providers/opencode-provider-types';
 import { applyConversationFeedback } from '@/providers/conversation/feedback';
 
 export function useConversationConnectionFeedback({
@@ -11,7 +11,7 @@ export function useConversationConnectionFeedback({
   setConversationFeedbackAction,
 }: {
   connection: ConnectionState;
-  conversationPhase: ConversationPhase;
+  conversationPhase: ConversationInputPhase;
   setConversationFeedback: Dispatch<SetStateAction<string | undefined>>;
   setConversationFeedbackAction: Dispatch<SetStateAction<VoiceRecoveryAction>>;
 }) {

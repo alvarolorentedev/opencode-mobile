@@ -253,6 +253,9 @@ Known limits:
   selectable and does not require training, but its short-command accuracy,
   latency, and auto-detect behavior are unbenchmarked. The wake phrase remains
   English because the KWS model is English.
+- Reply readback uses the platform TTS engine. Wake detection pauses while TTS
+  speaks and resumes afterward; barge-in over an active readback is not
+  implemented yet.
 - Local TTS is out of scope.
 - The model pack is roughly 152 MB and the native runtime is prebuilt; both
   need review for F-Droid packaging/licensing.

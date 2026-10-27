@@ -146,7 +146,8 @@
       "references": "Referências",
       "searching": "Pesquisando arquivos do projeto…",
       "empty": "Nenhum resultado"
-    }
+    },
+    "readingReply": "A ler a resposta em voz alta. A escuta retoma no fim."
   },
   "newChat": {
     "title": "Novo chat",
@@ -206,11 +207,12 @@
     "phaseArmed": "Diga “{{phrase}}”",
     "phaseListening": "Ouvindo",
     "phaseSubmitting": "Enviando",
-    "phaseWaiting": "Aguardando",
+    "phaseWaiting": "A pensar",
     "phaseSpeaking": "Falando",
     "lastHeard": "Último trecho ouvido",
     "wakePhrase": "Frase de ativação",
-    "startSpeaking": "Comece a falar naturalmente. O que você disser na última rodada aparecerá aqui."
+    "startSpeaking": "Comece a falar naturalmente. O que você disser na última rodada aparecerá aqui.",
+    "steerHint": "Diga “{{phrase}}” a qualquer momento para orientar."
   },
   "modelPicker": {
     "selectModel": "Selecionar modelo",

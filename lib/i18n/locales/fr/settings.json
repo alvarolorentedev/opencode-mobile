@@ -235,15 +235,11 @@
     },
     "autoPlay": {
       "title": "Lecture automatique des réponses de l'assistant",
-      "description": "Lit à voix haute la dernière réponse de l'assistant lorsqu'elle est terminée."
+      "description": "Lire les réponses du chat. Le mode conversation lit toujours."
     },
     "workingSound": {
       "title": "Son de travail",
       "description": "Joue une boucle apaisante pendant que l'assistant prépare encore une réponse."
-    },
-    "resumeListening": {
-      "title": "Reprendre l'écoute après la réponse",
-      "description": "En mode conversation, relance l'écoute une fois la lecture vocale terminée."
     },
     "wakePhrase": {
       "label": "Phrase d’activation",
@@ -351,6 +347,10 @@
     "playback": {
       "title": "Lecture",
       "helper": "S’applique à la voix système et à la voix sur l’appareil."
+    },
+    "readInterim": {
+      "title": "Lire les mises à jour de progression",
+      "description": "Lire les messages comme « Je m’en occupe… » ; la réponse finale toujours."
     }
   },
   "diagnostics": {
