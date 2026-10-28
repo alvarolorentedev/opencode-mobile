@@ -2,11 +2,10 @@ import { withAlpha } from '@/lib/color';
 import * as Clipboard from 'expo-clipboard';
 import { useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Alert, Keyboard, KeyboardAvoidingView, Linking, Platform, Pressable, View } from 'react-native';
+import { Keyboard, KeyboardAvoidingView, Linking, Pressable, View } from 'react-native';
 import { Button, Card, FAB, Snackbar, Text } from 'react-native-paper';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { useUpdates } from '@/providers/opencode-contexts';
 import { ChatComposer } from '@/components/chat/chat-composer';
 import { PendingPrompts } from '@/components/chat/pending-prompts';
 import { RevertNotice } from '@/components/chat/revert-notice';
@@ -26,7 +25,6 @@ import type { TranscriptEntry } from '@/lib/opencode/format';
 
 export function ChatView() {
   const { t } = useTranslation();
-  const { block } = useUpdates();
   const palette = usePalette();
   const insets = useSafeAreaInsets();
   const { createChat, focus } = useWorkspaceActions();
@@ -53,19 +51,9 @@ export function ChatView() {
   const handleRevertMessage = useCallback((entry: TranscriptEntry) => {
     const sessionId = content.currentSessionId;
     if (!sessionId) return;
-    if (Platform.OS === 'web') {
-      if (globalThis.confirm(t('chat:view.revertConfirm'))) {
-        void revertMessage(sessionId, entry.id)
-          .catch((error) => setSendFeedback(error instanceof Error ? error.message : t('chat:view.couldNotRevert')));
-      }
-      return;
-    }
-    const release = block();
-    Alert.alert(t('chat:view.revertTitle'), t('chat:view.revertMessage'), [
-      { text: t('common:actions.cancel'), style: 'cancel', onPress: release },
-      { text: t('chat:view.revert'), style: 'destructive', onPress: () => void revertMessage(sessionId, entry.id).catch((error) => setSendFeedback(error instanceof Error ? error.message : t('chat:view.couldNotRevert'))).finally(release) },
-    ], { cancelable: true, onDismiss: release });
-  }, [block, content.currentSessionId, revertMessage, setSendFeedback, t]);
+    void revertMessage(sessionId, entry.id)
+      .catch((error) => setSendFeedback(error instanceof Error ? error.message : t('chat:view.couldNotRevert')));
+  }, [content.currentSessionId, revertMessage, setSendFeedback, t]);
   const handleSelectStarterPrompt = useCallback((prompt: string) => {
     setDraft(prompt);
   }, [setDraft]);
