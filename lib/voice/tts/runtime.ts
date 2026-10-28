@@ -1,14 +1,46 @@
-import { loadSherpaRuntime } from '@/lib/voice/local-wake-word/sherpa';
-import type { TtsService } from '@/lib/voice/local-wake-word/types';
+import { TurboModuleRegistry } from 'react-native';
+
 import { getLocalTtsPack } from '@/lib/voice/tts/catalog';
 import { getLocalTtsPackPaths } from '@/lib/voice/tts/models';
 import { LocalTtsUnavailableError, type LocalTtsPackId } from '@/lib/voice/tts/types';
 
 const IDLE_RELEASE_MS = 180000;
 
+// The vendored JS service and the native bridges disagree on config keys:
+// Android reads `ttsModelType`/`voicesFile`/`lexiconFile`, while the iOS bridge
+// exposes `modelType`/`voices`/`lexicon`. Calling the native module directly
+// with both aliases keeps Piper and Kokoro working on either platform.
+type NativeTtsModule = {
+  initTts(config: {
+    modelDir: string;
+    modelType: string;
+    ttsModelType: string;
+    modelFile: string;
+    tokensFile: string;
+    voices?: string;
+    voicesFile?: string;
+    lexicon?: string;
+    lexiconFile?: string;
+    dataDir?: string;
+    lang?: string;
+    maxNumSentences?: number;
+    numThreads?: number;
+    provider?: 'cpu' | 'gpu';
+  }): Promise<{ success: boolean; sampleRate: number; numSpeakers: number; error?: string }>;
+  generateTts(config: {
+    text: string;
+    speakerId: number;
+    speakingRate: number;
+    playAudio: boolean;
+    fileNamePrefix?: string;
+  }): Promise<{ success: boolean; filePath?: string }>;
+  stopTts(): Promise<{ stopped: boolean; message?: string }>;
+  releaseTts(): Promise<{ released: boolean }>;
+};
+
 type LoadedTts = {
   packId: LocalTtsPackId;
-  service: TtsService;
+  native: NativeTtsModule;
   sampleRate: number;
   numSpeakers: number;
 };
@@ -17,6 +49,27 @@ let loaded: LoadedTts | undefined;
 let initPromise: { packId: LocalTtsPackId; promise: Promise<LoadedTts> } | undefined;
 let generationQueue = Promise.resolve();
 let releaseTimer: ReturnType<typeof setTimeout> | undefined;
+
+function getNativeTtsModule(): NativeTtsModule | undefined {
+  try {
+    return (TurboModuleRegistry.get('SherpaOnnx') as unknown as NativeTtsModule | null) ?? undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+// The native config expects plain filesystem paths. Expo's Directory/File URIs
+// carry a file:// prefix that the Android handler strips but the iOS bridge
+// does not.
+function nativePath(path: string) {
+  if (path.startsWith('file://')) {
+    return path.slice(7);
+  }
+  if (path.startsWith('file:/')) {
+    return path.slice(6);
+  }
+  return path;
+}
 
 function clearReleaseTimer() {
   if (releaseTimer) {
@@ -34,8 +87,8 @@ function scheduleRelease() {
 }
 
 async function initialize(packId: LocalTtsPackId): Promise<LoadedTts> {
-  const runtime = loadSherpaRuntime();
-  if (!runtime?.TTS) {
+  const native = getNativeTtsModule();
+  if (!native) {
     throw new LocalTtsUnavailableError('unsupported');
   }
   const pack = getLocalTtsPack(packId);
@@ -47,24 +100,25 @@ async function initialize(packId: LocalTtsPackId): Promise<LoadedTts> {
     throw new LocalTtsUnavailableError('missing');
   }
 
-  if (loaded?.packId === packId && loaded.service.isInitialized()) {
+  if (loaded?.packId === packId) {
     return loaded;
   }
 
   if (loaded) {
-    await loaded.service.release().catch(() => undefined);
+    await loaded.native.releaseTts().catch(() => undefined);
     loaded = undefined;
   }
 
-  const initialized = await runtime.TTS.initialize({
-    modelDir: paths.modelDir,
+  const initialized = await native.initTts({
+    modelDir: nativePath(paths.modelDir),
+    modelType: pack.modelType,
     ttsModelType: pack.modelType,
     modelFile: paths.modelFile,
     tokensFile: paths.tokensFile,
-    ...(paths.dataDir ? { dataDir: paths.dataDir } : {}),
-    ...(paths.lexiconFile ? { lexiconFile: paths.lexiconFile } : {}),
-    ...(paths.voicesFile ? { voicesFile: paths.voicesFile } : {}),
-    ...(pack.modelType === 'kokoro' ? { lang: 'en' } : { lang: pack.languageCode }),
+    ...(paths.dataDir ? { dataDir: nativePath(paths.dataDir) } : {}),
+    ...(paths.lexiconFile ? { lexicon: paths.lexiconFile, lexiconFile: paths.lexiconFile } : {}),
+    ...(paths.voicesFile ? { voices: paths.voicesFile, voicesFile: paths.voicesFile } : {}),
+    lang: pack.modelType === 'kokoro' ? 'en' : pack.languageCode,
     maxNumSentences: 1,
     numThreads: 2,
     provider: 'cpu',
@@ -76,7 +130,7 @@ async function initialize(packId: LocalTtsPackId): Promise<LoadedTts> {
 
   const next = {
     packId,
-    service: runtime.TTS,
+    native,
     sampleRate: initialized.sampleRate,
     numSpeakers: initialized.numSpeakers,
   };
@@ -86,7 +140,7 @@ async function initialize(packId: LocalTtsPackId): Promise<LoadedTts> {
 
 export async function ensureLocalTtsRuntime(packId: LocalTtsPackId) {
   clearReleaseTimer();
-  if (loaded?.packId === packId && loaded.service.isInitialized()) {
+  if (loaded?.packId === packId) {
     return loaded;
   }
   if (initPromise?.packId === packId) {
@@ -119,11 +173,12 @@ export async function generateLocalTtsChunk(
   const task = generationQueue.then(async () => {
     const runtime = await ensureLocalTtsRuntime(packId);
     const clampedSpeaker = Math.max(0, Math.min(runtime.numSpeakers - 1, Math.trunc(speakerId)));
-    const result = await runtime.service.generateSpeech(text, {
+    const result = await runtime.native.generateTts({
       fileNamePrefix: `opencode-tts-${packId}`,
       playAudio: false,
       speakingRate: rate ?? 1,
       speakerId: clampedSpeaker,
+      text,
     });
     if (!result.success || !result.filePath) {
       throw new Error('The on-device voice could not synthesize this reply.');
@@ -137,9 +192,9 @@ export async function generateLocalTtsChunk(
 }
 
 export async function stopLocalTtsGeneration() {
-  const service = loaded?.service;
-  if (service) {
-    await service.stopSpeech().catch(() => undefined);
+  const runtime = loaded?.native;
+  if (runtime) {
+    await runtime.stopTts().catch(() => undefined);
   }
 }
 
@@ -149,8 +204,8 @@ export async function releaseLocalTtsRuntime() {
   loaded = undefined;
   initPromise = undefined;
   if (current) {
-    await current.service.stopSpeech().catch(() => undefined);
-    await current.service.release().catch(() => undefined);
+    await current.native.stopTts().catch(() => undefined);
+    await current.native.releaseTts().catch(() => undefined);
   }
 }
 

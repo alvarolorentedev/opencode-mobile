@@ -92,13 +92,18 @@ export function getLocalTtsPackPaths(packId: LocalTtsPackId): LocalTtsPackPaths 
     return undefined;
   }
   const directory = packDirectory(packId);
+  // The native sherpa-onnx config joins modelFile/tokensFile/lexicon/voices
+  // against modelDir, so those must stay as file names. Passing Expo file://
+  // URIs here makes the native side look for a nested `file:` path and fail
+  // initialization even though the pack is installed. Only directories are
+  // passed as absolute paths.
   return {
     modelDir: directory.uri,
-    modelFile: new File(directory, pack.files.model).uri,
-    tokensFile: new File(directory, pack.files.tokens).uri,
+    modelFile: pack.files.model,
+    tokensFile: pack.files.tokens,
     ...(pack.files.dataDir ? { dataDir: new Directory(directory, pack.files.dataDir).uri } : {}),
-    ...(pack.files.lexicon ? { lexiconFile: new File(directory, pack.files.lexicon).uri } : {}),
-    ...(pack.files.voices ? { voicesFile: new File(directory, pack.files.voices).uri } : {}),
+    ...(pack.files.lexicon ? { lexiconFile: pack.files.lexicon } : {}),
+    ...(pack.files.voices ? { voicesFile: pack.files.voices } : {}),
   };
 }
 
