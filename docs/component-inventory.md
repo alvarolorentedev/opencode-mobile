@@ -796,6 +796,7 @@ Main relevant props:
 ### Responsibility
 
 - render the V2-only Extensions surface with General/Project scope, MCP/plugin/skill/command tabs, shared/read-only rows, and inline add/edit forms
+- hide system-managed shared rows (built-in plugins, embedded skills, built-in commands) from the plugin, skill, and command tabs
 - show the exact target config path, safety state, and last-backup recovery action
 - delegate every mutation and refresh to `useExtensions()`; never fetch or persist config itself
 - keep only form drafts, selected scope/tab, editing state, and local action feedback

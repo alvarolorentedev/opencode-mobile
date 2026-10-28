@@ -502,6 +502,7 @@ Behavior:
 - creates skills under the selected scope, edits local `SKILL.md` content, and moves removed skills to `.opencode-mobile-trash`
 - creates/edits/removes config-backed slash commands; file-backed commands are read-only
 - shows General entries as shared/read-only in Project scope
+- omits OpenCode built-in plugins, embedded skills, and built-in commands because they cannot be changed from the app
 - refreshes capabilities, commands, MCP status, and the extension snapshot after a successful change
 
 ### Voice Section

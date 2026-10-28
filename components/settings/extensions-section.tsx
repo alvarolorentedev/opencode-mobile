@@ -9,6 +9,7 @@ import { usePalette } from '@/hooks/use-palette';
 import { confirmAction } from '@/lib/confirm-action';
 import { getErrorMessage } from '@/lib/error-message';
 import { slugifySkillId } from '@/lib/opencode/extensions/skills';
+import { visibleSharedRows } from '@/lib/opencode/extensions/snapshot';
 import type { ExtensionScope, ExtensionSkillRow, ExtensionSnapshot } from '@/lib/opencode/extensions/types';
 import { useExtensions, useMcp, useProjects } from '@/providers/opencode-contexts';
 
@@ -223,7 +224,7 @@ export function ExtensionsSection() {
               {row.target ? <View style={styles.actions}><Button testID={`settings-extension-plugin-remove-${row.label.replace(/[^a-z0-9]+/gi, '-')}`} compact textColor={palette.danger} disabled={busy || !row.editable} onPress={() => remove(t('settings:extensions.removeTitle'), t('settings:extensions.plugins.removeMessage', { name: row.label }), () => { void extensions.removePlugin(effectiveScope, row.target!).catch(() => undefined); })}>{t('common:actions.remove')}</Button></View> : null}
             </View>
           ))}
-          {data ? <ReadOnlyRows title={t('settings:extensions.shared')} rows={data.shared.plugins} render={(row) => <List.Item title={row.label} description={row.source} />} /> : null}
+          {data ? <ReadOnlyRows title={t('settings:extensions.shared')} rows={visibleSharedRows(data.shared.plugins)} render={(row) => <List.Item title={row.label} description={row.source} />} /> : null}
         </View>
       ) : null}
 
@@ -252,7 +253,7 @@ export function ExtensionsSection() {
               </View>
             </View>
           ))}
-          {data ? <ReadOnlyRows title={t('settings:extensions.shared')} rows={data.shared.skills} render={(row) => <List.Item title={row.name} description={row.description || row.path} />} /> : null}
+          {data ? <ReadOnlyRows title={t('settings:extensions.shared')} rows={visibleSharedRows(data.shared.skills)} render={(row) => <List.Item title={row.name} description={row.description || row.path} />} /> : null}
         </View>
       ) : null}
 
@@ -274,7 +275,7 @@ export function ExtensionsSection() {
               </View>
             </View>
           ))}
-          {data ? <ReadOnlyRows title={t('settings:extensions.shared')} rows={data.shared.commands} render={(row) => <List.Item title={`/${row.name}`} description={row.description || t('settings:extensions.shared')} />} /> : null}
+          {data ? <ReadOnlyRows title={t('settings:extensions.shared')} rows={visibleSharedRows(data.shared.commands)} render={(row) => <List.Item title={`/${row.name}`} description={row.description || t('settings:extensions.shared')} />} /> : null}
         </View>
       ) : null}
       {authentication.dialog}

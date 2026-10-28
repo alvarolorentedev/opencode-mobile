@@ -25,6 +25,22 @@ type BuildInput = {
   projectWritable: boolean;
 };
 
+/**
+ * V2 command listings expose only names and descriptions, not provenance.
+ * These descriptions mirror the server's built-in command plugin so the
+ * built-in rows can be classified as system entries. Config-backed commands
+ * are added first and take precedence, so user overrides stay manageable.
+ */
+const BUILTIN_COMMANDS = new Map([
+  ['init', 'guided AGENTS.md setup'],
+  ['review', 'review changes [commit|branch|pr], defaults to uncommitted'],
+]);
+
+function isBuiltinCommand(command: Command) {
+  const description = BUILTIN_COMMANDS.get(command.name);
+  return description !== undefined && command.description === description;
+}
+
 function sourceWritable(source: string, generalWritable: boolean, projectWritable: boolean) {
   if (source === 'general') return generalWritable;
   if (source === 'project') return projectWritable;
@@ -163,7 +179,7 @@ function commandRows({ entries, projectRoot, globalRoot, commands, generalWritab
       key: `file:${command.name}`,
       name: command.name,
       description: command.description,
-      source: 'inherited',
+      source: isBuiltinCommand(command) ? 'system' : 'inherited',
       editable: false,
     });
   }
@@ -177,6 +193,14 @@ export function buildExtensionRows(input: BuildInput): ExtensionRows {
     skills: skillRows(input),
     commands: commandRows(input),
   };
+}
+
+/**
+ * Shared rows are read-only entries from other scopes. System-managed rows are
+ * hidden because they cannot be changed from the app and only add noise.
+ */
+export function visibleSharedRows<T extends { source: string }>(rows: T[]) {
+  return rows.filter((row) => row.source !== 'system');
 }
 
 export function splitRows(rows: ExtensionRows, scope: 'general' | 'project'): { items: ExtensionRows; shared: ExtensionRows } {

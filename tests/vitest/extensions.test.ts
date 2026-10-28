@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { addPlugin, parseConfigText, readCommands, readMcpServers, readPlugins, removeCommand, removeMcpServer, setCommand, setMcpServer } from '@/lib/opencode/extensions/jsonc';
-import { buildExtensionRows, splitRows } from '@/lib/opencode/extensions/snapshot';
+import { buildExtensionRows, splitRows, visibleSharedRows } from '@/lib/opencode/extensions/snapshot';
 import { configBackupPath, restoreConfigBackup, writeConfigTransaction, type ShellResult, type TransactionIo } from '@/lib/opencode/extensions/transaction';
 import { assertSkillId, skillDocument, slugifySkillId } from '@/lib/opencode/extensions/skills';
 import { resolveGlobalConfigRoot, selectConfigTarget, sourceForPath } from '@/lib/opencode/extensions/scope';
@@ -56,6 +56,7 @@ describe('extension configuration scope', () => {
 
   it('refuses to edit system config', () => {
     expect(sourceForPath('/etc/opencode/opencode.json', '/work/app', '/home/me/.config/opencode')).toBe('system');
+    expect(sourceForPath('/builtin/opencode.md', '/work/app', '/home/me/.config/opencode')).toBe('system');
   });
 });
 
@@ -133,6 +134,58 @@ describe('extension snapshots', () => {
     expect(project.shared.plugins.map((row) => row.label)).toEqual(['global-plugin']);
     expect(project.items.skills.map((row) => row.id)).toEqual(['project-skill']);
     expect(project.shared.skills.map((row) => row.id)).toEqual(['global-skill']);
+  });
+
+  it('labels built-in entries as system and hides them from shared rows', () => {
+    const rows = buildExtensionRows({
+      entries: [],
+      projectRoot: '/work/app',
+      globalRoot: '/home/me/.config/opencode',
+      mcpStatuses: {},
+      plugins: [
+        { id: 'opencode.agent', source: { type: 'builtin' }, state: { status: 'active' } },
+        { id: 'custom-plugin', source: { type: 'package', target: 'custom-plugin' }, state: { status: 'active' } },
+      ],
+      skills: [
+        { id: 'opencode', name: 'OpenCode', path: '/builtin/opencode.md', content: 'x' },
+        { id: 'custom-skill', name: 'Custom', path: '/work/app/.opencode/skills/custom-skill/SKILL.md', content: 'x' },
+      ],
+      commands: [
+        { name: 'init', description: 'guided AGENTS.md setup' },
+        { name: 'review', description: 'review changes [commit|branch|pr], defaults to uncommitted' },
+        { name: 'deploy', description: 'Ship it' },
+      ],
+      generalWritable: true,
+      projectWritable: true,
+    });
+
+    expect(rows.plugins.find((row) => row.label === 'opencode.agent')?.source).toBe('system');
+    expect(visibleSharedRows(rows.plugins).map((row) => row.label)).toEqual(['custom-plugin']);
+    expect(rows.skills.find((row) => row.id === 'opencode')?.source).toBe('system');
+    expect(visibleSharedRows(rows.skills).map((row) => row.id)).toEqual(['custom-skill']);
+    expect(rows.commands.filter((row) => row.source === 'system').map((row) => row.name)).toEqual(['init', 'review']);
+    expect(visibleSharedRows(rows.commands).map((row) => row.name)).toEqual(['deploy']);
+  });
+
+  it('keeps config-defined commands that reuse a built-in name', () => {
+    const rows = buildExtensionRows({
+      entries: [{
+        type: 'document',
+        path: '/work/app/opencode.jsonc',
+        info: { commands: { review: { template: 'custom review' } } },
+      }],
+      projectRoot: '/work/app',
+      globalRoot: '/home/me/.config/opencode',
+      mcpStatuses: {},
+      plugins: [],
+      skills: [],
+      commands: [{ name: 'review', description: 'review changes [commit|branch|pr], defaults to uncommitted' }],
+      generalWritable: true,
+      projectWritable: true,
+    });
+
+    expect(rows.commands).toHaveLength(1);
+    expect(rows.commands[0]).toMatchObject({ name: 'review', source: 'project', editable: true });
   });
 });
 

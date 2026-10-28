@@ -216,7 +216,11 @@ has no durable config/plugin/skill/command mutation surface. Consequences:
 - the file replace has no conditional-write API; the provider re-reads the
   target immediately before rename, but a small race remains
 - plugin installs are asynchronous; a valid config entry can still fail to load
-- file-backed commands and system/remote skills are intentionally read-only
+- file-backed commands and remote-catalog skills are intentionally read-only;
+  built-in plugins, embedded skills, and built-in commands are omitted from the
+  shared list because they are system-managed
+- the V2 command list exposes no provenance, so built-in commands are matched by
+  their upstream name/description pair; new built-ins need that set updated
 - the clean long-term fix is an upstream scoped config-write/validate endpoint
   and extension file CRUD; the current transaction and shell fallback should be
   removed once those exist
