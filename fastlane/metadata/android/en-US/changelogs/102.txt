@@ -1,0 +1,2 @@
+- Built-in extensions no longer appear in shared extension lists.
+- Fixed extension saves being rolled back after renaming a config file.
