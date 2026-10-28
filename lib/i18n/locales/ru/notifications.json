@@ -1,27 +1,27 @@
 {
   "taskFinished": {
-    "title": "OpenCode finished a task",
-    "bodyFallback": "Task complete",
-    "failedTitle": "OpenCode task failed",
-    "failedBodyFallback": "The task ended with an error"
+    "title": "OpenCode завершил задачу",
+    "bodyFallback": "Задача выполнена",
+    "failedTitle": "Задача OpenCode завершилась ошибкой",
+    "failedBodyFallback": "Задача завершилась с ошибкой"
   },
   "activity": {
-    "working": "Working",
-    "thinking": "Thinking",
-    "needsInput": "Needs your input",
-    "retrying": "Retrying",
-    "queued": "Queued",
-    "finished": "Ready to review",
-    "failed": "Task failed",
-    "stopped": "Task stopped",
-    "reconnecting": "Reconnecting",
-    "paused": "Monitoring paused. Open the app to resume.",
-    "stopMonitoring": "Stop monitoring",
-    "channel": "Task activity",
-    "untitled": "Untitled task",
-    "tasks": "{{count}} tasks running"
+    "working": "Работает",
+    "thinking": "Думает",
+    "needsInput": "Нужен ваш ответ",
+    "retrying": "Повторная попытка",
+    "queued": "В очереди",
+    "finished": "Готово к проверке",
+    "failed": "Задача не выполнена",
+    "stopped": "Задача остановлена",
+    "reconnecting": "Переподключение",
+    "paused": "Мониторинг приостановлен. Откройте приложение, чтобы продолжить.",
+    "stopMonitoring": "Остановить мониторинг",
+    "channel": "Активность задач",
+    "untitled": "Задача без названия",
+    "tasks": "Выполняется задач: {{count}}"
   },
   "attention": {
-    "channel": "Task needs attention"
+    "channel": "Задача требует внимания"
   }
 }

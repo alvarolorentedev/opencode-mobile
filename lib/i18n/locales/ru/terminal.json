@@ -1,53 +1,53 @@
 {
   "screen": {
-    "connectTitle": "Connect to OpenCode",
-    "chooseProject": "Choose a project",
-    "selectProject": "Select a project before opening a terminal.",
-    "openProjects": "Open Projects",
-    "title": "Terminal"
+    "connectTitle": "Подключитесь к OpenCode",
+    "chooseProject": "Выберите проект",
+    "selectProject": "Выберите проект, прежде чем открыть терминал.",
+    "openProjects": "Открыть проекты",
+    "title": "Терминал"
   },
   "console": {
-    "selectTerminal": "Select terminal",
-    "create": "Create terminal",
-    "refresh": "Refresh terminals",
-    "openOrCreate": "Open or create a terminal to begin.",
-    "terminateTitle": "Terminate terminal?",
-    "terminateAction": "Terminate",
-    "new": "New terminal",
-    "interactiveHint": "Type directly in the terminal. Use the accessory for terminal keys.",
-    "pasteTitle": "Paste into terminal?",
-    "pasteMessage": "This paste contains multiple lines or control characters and may execute commands. Continue?",
+    "selectTerminal": "Выбрать терминал",
+    "create": "Создать терминал",
+    "refresh": "Обновить терминалы",
+    "openOrCreate": "Откройте или создайте терминал, чтобы начать.",
+    "terminateTitle": "Завершить терминал?",
+    "terminateAction": "Завершить",
+    "new": "Новый терминал",
+    "interactiveHint": "Вводите текст прямо в терминале. Специальные клавиши — на панели терминала.",
+    "pasteTitle": "Вставить в терминал?",
+    "pasteMessage": "В этой вставке несколько строк или управляющие символы — она может выполнить команды. Продолжить?",
     "terminateMessage": "{{terminal}} ({{id}})\n{{server}} / {{project}}",
-    "copied": "Copied to clipboard"
+    "copied": "Скопировано в буфер обмена"
   },
   "sessions": {
-    "title": "Terminals",
-    "empty": "No terminals yet. Use + to create one.",
-    "openLabel": "Open {{terminal}}"
+    "title": "Терминалы",
+    "empty": "Терминалов пока нет. Нажмите +, чтобы создать.",
+    "openLabel": "Открыть {{terminal}}"
   },
   "errors": {
-    "load": "Could not load terminals.",
-    "create": "Could not create the terminal.",
-    "open": "Could not open the terminal.",
-    "connect": "Could not connect.",
-    "refresh": "Could not refresh terminals."
+    "load": "Не удалось загрузить терминалы.",
+    "create": "Не удалось создать терминал.",
+    "open": "Не удалось открыть терминал.",
+    "connect": "Не удалось подключиться.",
+    "refresh": "Не удалось обновить терминалы."
   },
   "accessory": {
-    "paste": "Paste",
-    "copy": "Copy",
-    "latest": "Latest output",
-    "input": "Terminal input",
-    "more": "More terminal keys",
-    "armed": "armed",
-    "locked": "locked",
-    "off": "off"
+    "paste": "Вставить",
+    "copy": "Копировать",
+    "latest": "Последний вывод",
+    "input": "Ввод в терминал",
+    "more": "Дополнительные клавиши",
+    "armed": "активна",
+    "locked": "зафиксирована",
+    "off": "выкл."
   },
   "status": {
-    "connecting": "Connecting",
-    "connected": "Connected",
-    "reconnecting": "Reconnecting",
-    "exited": "Exited",
-    "error": "Error",
-    "idle": "Idle"
+    "connecting": "Подключение",
+    "connected": "Подключено",
+    "reconnecting": "Переподключение",
+    "exited": "Завершён",
+    "error": "Ошибка",
+    "idle": "Ожидание"
   }
 }

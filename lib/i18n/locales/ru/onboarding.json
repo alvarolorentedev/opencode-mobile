@@ -1,77 +1,77 @@
 {
   "welcome": {
     "title": "OpenCode Mobile",
-    "subtitle": "Your OpenCode projects, wherever you are.",
-    "body": "OpenCode Mobile brings your OpenCode server to your phone. Chat with coding agents, follow their work, and review changes across your projects.",
-    "start": "Continue",
+    "subtitle": "Ваши проекты OpenCode — где бы вы ни были.",
+    "body": "OpenCode Mobile подключает ваш сервер OpenCode к телефону. Общайтесь с агентами, следите за их работой и просматривайте изменения в своих проектах.",
+    "start": "Продолжить",
     "points": {
       "server": {
-        "title": "Your server does the work",
-        "description": "Models and tasks run on your OpenCode server. This app keeps you connected to them."
+        "title": "Всю работу выполняет ваш сервер",
+        "description": "Модели и задачи работают на вашем сервере OpenCode. Это приложение лишь держит вас с ним на связи."
       },
       "project": {
-        "title": "Projects and conversations",
-        "description": "Projects keep chats, files, and changes together."
+        "title": "Проекты и разговоры",
+        "description": "Проекты объединяют чаты, файлы и изменения."
       },
       "optional": {
-        "title": "Voice and task updates",
-        "description": "Voice input and completion notifications help you keep up with work on the go."
+        "title": "Голос и статусы задач",
+        "description": "Голосовой ввод и уведомления о завершении помогают не терять ход работы в дороге."
       }
     }
   },
   "connect": {
-    "skip": "Skip"
+    "skip": "Пропустить"
   },
   "project": {
-    "title": "Choose a project",
-    "subtitle": "Pick a project to start in, or add a folder on the server.",
-    "continue": "Continue",
-    "skip": "Skip",
-    "empty": "This server did not report any projects. Add a directory on the server to get started.",
-    "loading": "Loading projects…"
+    "title": "Выберите проект",
+    "subtitle": "Выберите проект для начала работы или добавьте папку на сервере.",
+    "continue": "Продолжить",
+    "skip": "Пропустить",
+    "empty": "Сервер не сообщил ни об одном проекте. Добавьте папку на сервере, чтобы начать.",
+    "loading": "Загружаем проекты…"
   },
   "permissions": {
-    "title": "Permissions",
-    "subtitle": "Optional. OpenCode Mobile only asks when you choose to enable something.",
-    "skip": "Skip",
-    "continue": "Continue",
+    "title": "Разрешения",
+    "subtitle": "Необязательно. OpenCode Mobile спрашивает, только когда вы решите что-то включить.",
+    "skip": "Пропустить",
+    "continue": "Продолжить",
     "notifications": {
-      "title": "Notifications",
-      "body": "Allow OpenCode Mobile to notify you when a task finishes while the app is in the background.",
-      "unsupported": "Notifications are not available on this platform.",
-      "enable": "Enable notifications",
-      "battery": "Review battery / background settings"
+      "title": "Уведомления",
+      "body": "Разрешите OpenCode Mobile сообщать о завершении задачи, пока приложение работает в фоне.",
+      "unsupported": "Уведомления на этой платформе недоступны.",
+      "enable": "Включить уведомления",
+      "battery": "Настройки батареи и фоновой работы"
     },
     "voice": {
-      "title": "Voice input",
-      "body": "Microphone access lets you dictate prompts instead of typing them.",
-      "unsupported": "Voice input is not available on this device.",
-      "enable": "Enable voice input",
-      "deniedHint": "You can still turn voice input on later from Settings › Voice."
+      "title": "Голосовой ввод",
+      "body": "Доступ к микрофону позволяет надиктовывать запросы вместо набора текста.",
+      "unsupported": "Голосовой ввод на этом устройстве недоступен.",
+      "enable": "Включить голосовой ввод",
+      "deniedHint": "Голосовой ввод можно включить позже в разделе «Настройки › Голос»."
     },
-    "checking": "Checking…"
+    "checking": "Проверяем…"
   },
   "ready": {
-    "title": "You're ready",
-    "subtitle": "Review your setup and start coding.",
-    "server": "Server",
-    "project": "Project",
-    "projectMissing": "No project selected",
-    "footnote": "You can change these settings anytime.",
-    "start": "Start coding",
-    "done": "Done",
-    "serverMissing": "Not connected",
-    "providers": "Providers",
-    "enabledModels": "Enabled models"
+    "title": "Всё готово",
+    "subtitle": "Проверьте настройки и начинайте работу.",
+    "server": "Сервер",
+    "project": "Проект",
+    "projectMissing": "Проект не выбран",
+    "footnote": "Эти настройки можно изменить в любой момент.",
+    "start": "Начать работу",
+    "done": "Готово",
+    "serverMissing": "Нет подключения",
+    "providers": "Провайдеры",
+    "enabledModels": "Включённые модели"
   },
   "settingsAssistant": {
-    "summary": "Review permissions, connection, providers, project, and preferences"
+    "summary": "Проверьте разрешения, подключение, провайдеров, проект и предпочтения"
   },
-  "reviewSetup": "Review setup",
-  "stepIndicator": "Step {{step}} of {{totalSteps}}",
+  "reviewSetup": "Проверить настройку",
+  "stepIndicator": "Шаг {{step}} из {{totalSteps}}",
   "general": {
-    "title": "General Settings",
-    "subtitle": "Make OpenCode Mobile feel right for you.",
-    "defaultModel": "Default model"
+    "title": "Общие настройки",
+    "subtitle": "Настройте OpenCode Mobile под себя.",
+    "defaultModel": "Модель по умолчанию"
   }
 }
