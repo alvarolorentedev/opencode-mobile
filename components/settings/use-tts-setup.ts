@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
+import { modelDownloadErrorMessageKey } from '@/lib/model-download';
 import { getLocalTtsPack, LOCAL_TTS_PACKS, localTtsSizeLabel } from '@/lib/voice/tts/catalog';
 import {
   cleanupLocalTtsStaging,
@@ -32,6 +33,7 @@ export function useTtsSetup({
   const [isInstallingPack, setIsInstallingPack] = useState<LocalTtsPackId>();
   const [isPreviewing, setIsPreviewing] = useState(false);
   const [error, setError] = useState<string>();
+  const [errorPackId, setErrorPackId] = useState<LocalTtsPackId>();
 
   const refresh = useCallback(() => {
     cleanupLocalTtsStaging();
@@ -50,20 +52,23 @@ export function useTtsSetup({
 
   const install = useCallback(async (packId: LocalTtsPackId) => {
     setError(undefined);
+    setErrorPackId(undefined);
     setIsInstallingPack(packId);
     try {
       await installLocalTtsPack(packId);
       refresh();
     } catch (installError) {
       refresh();
-      setError(installError instanceof Error ? installError.message : 'Could not install the voice model.');
+      setError(t(modelDownloadErrorMessageKey(installError)));
+      setErrorPackId(packId);
     } finally {
       setIsInstallingPack(undefined);
     }
-  }, [refresh]);
+  }, [refresh, t]);
 
   const remove = useCallback(async (packId: LocalTtsPackId) => {
     setError(undefined);
+    setErrorPackId(undefined);
     await stopSpeaking().catch(() => undefined);
     await releaseLocalTtsRuntime().catch(() => undefined);
     try {
@@ -84,9 +89,11 @@ export function useTtsSetup({
   const select = useCallback(async (packId: LocalTtsPackId) => {
     if (getLocalTtsPackStatus(packId) !== 'ready') {
       setError(t('settings:voice.localTts.installFirst'));
+      setErrorPackId(packId);
       return;
     }
     setError(undefined);
+    setErrorPackId(undefined);
     await stopSpeaking().catch(() => undefined);
     updateChatPreferences({
       localTtsPackId: packId,
@@ -97,6 +104,7 @@ export function useTtsSetup({
 
   const setEngine = useCallback(async (engine: 'system' | 'local') => {
     setError(undefined);
+    setErrorPackId(undefined);
     if (engine === 'system') {
       await stopSpeaking().catch(() => undefined);
       updateChatPreferences({ ttsEngine: 'system' });
@@ -106,6 +114,7 @@ export function useTtsSetup({
     const pack = chatPreferences.localTtsPackId ? getLocalTtsPack(chatPreferences.localTtsPackId) : undefined;
     if (!pack || getLocalTtsPackStatus(pack.id) !== 'ready') {
       setError(t('settings:voice.localTts.installFirst'));
+      setErrorPackId(undefined);
       return false;
     }
     updateChatPreferences({ ttsEngine: 'local' });
@@ -122,6 +131,7 @@ export function useTtsSetup({
       return;
     }
     setError(undefined);
+    setErrorPackId(undefined);
     setIsPreviewing(true);
     try {
       const started = await speakText({
@@ -153,6 +163,7 @@ export function useTtsSetup({
   return {
     activePack,
     error,
+    errorPackId,
     install,
     isInstallingPack,
     isPreviewing,

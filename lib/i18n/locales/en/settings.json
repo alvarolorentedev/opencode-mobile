@@ -245,6 +245,16 @@
       "label": "Wake phrase",
       "helper": "Conversation mode sends a message only after it hears this phrase. Two or more words work best."
     },
+    "modelDownloads": {
+      "timeout": "The download timed out. The connection stalled — try again on Wi-Fi or a stronger signal.",
+      "offline": "Couldn't reach the download server. Check your internet connection and try again.",
+      "server": "The download server couldn't provide the file. Try again later.",
+      "storage": "Not enough free space to install this model.",
+      "incomplete": "The download didn't finish. Try again.",
+      "integrity": "The downloaded file was damaged. Try again.",
+      "unknown": "Couldn't download the model. Check your connection and try again.",
+      "installFailed": "The model couldn't be installed. Try again."
+    },
     "localWake": {
       "title": "On-device voice",
       "description": "Run a local wake-word model and optional voice check. Downloads {{size}} of pretrained models; falls back to the phrase gate if unavailable.",

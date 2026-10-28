@@ -245,6 +245,16 @@
       "label": "Frase de ativação",
       "helper": "O modo conversa só envia uma mensagem depois de ouvir esta frase. Duas ou mais palavras funcionam melhor."
     },
+    "modelDownloads": {
+      "timeout": "O download expirou. A conexão travou — tente novamente no Wi‑Fi ou com um sinal melhor.",
+      "offline": "Não foi possível alcançar o servidor de download. Verifique sua conexão com a internet e tente novamente.",
+      "server": "O servidor de download não conseguiu fornecer o arquivo. Tente novamente mais tarde.",
+      "storage": "Não há espaço livre suficiente para instalar este modelo.",
+      "incomplete": "O download não foi concluído. Tente novamente.",
+      "integrity": "O arquivo baixado está danificado. Tente novamente.",
+      "unknown": "Não foi possível baixar o modelo. Verifique sua conexão e tente novamente.",
+      "installFailed": "Não foi possível instalar o modelo. Tente novamente."
+    },
     "localWake": {
       "title": "Voz no dispositivo",
       "description": "Executa um modelo local e uma verificação de voz opcional. Baixa {{size}} de modelos pré-treinados; usa a frase do sistema se indisponível.",

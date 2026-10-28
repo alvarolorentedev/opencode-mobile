@@ -569,6 +569,11 @@ permission and Chat Library visibility do not gate widget reads.
 
 - `lib/notifications.ts`
   Local notifications, background monitoring task, and notification debug status.
+- `lib/model-download.ts`
+  Shared model-asset transfer used by TTS, wake-word and auto-model installs:
+  foreground `DownloadTask` with the native 60 s Android stall timeout, one
+  retry for transient failures, partial-file cleanup, and classified errors
+  that the UI translates instead of showing native exception text.
 - `lib/voice/speech-output.ts`
   Single speech-output facade. Prepares text, cancels the active run, owns the
   audio session, and delegates to the system or on-device engine. Keeps the

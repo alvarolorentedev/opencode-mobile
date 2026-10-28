@@ -245,6 +245,16 @@
       "label": "Weckphrase",
       "helper": "Der Konversationsmodus sendet erst eine Nachricht, wenn er diese Phrase hört. Zwei oder mehr Wörter funktionieren am besten."
     },
+    "modelDownloads": {
+      "timeout": "Zeitüberschreitung beim Download. Die Verbindung ist hängen geblieben – versuche es erneut über WLAN oder mit besserem Empfang.",
+      "offline": "Der Download-Server ist nicht erreichbar. Prüfe deine Internetverbindung und versuche es erneut.",
+      "server": "Der Download-Server konnte die Datei nicht bereitstellen. Versuche es später erneut.",
+      "storage": "Nicht genügend freier Speicher, um dieses Modell zu installieren.",
+      "incomplete": "Der Download wurde nicht abgeschlossen. Versuche es erneut.",
+      "integrity": "Die heruntergeladene Datei ist beschädigt. Versuche es erneut.",
+      "unknown": "Das Modell konnte nicht heruntergeladen werden. Prüfe deine Verbindung und versuche es erneut.",
+      "installFailed": "Das Modell konnte nicht installiert werden. Versuche es erneut."
+    },
     "localWake": {
       "title": "Sprache auf dem Gerät",
       "description": "Lokales Wake-Word-Modell und optionale Stimmprüfung. Lädt {{size}} vortrainierte Modelle; fällt bei Problemen auf die Phrasenerkennung zurück.",

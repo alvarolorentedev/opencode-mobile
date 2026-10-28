@@ -245,6 +245,16 @@
       "label": "Frase de activación",
       "helper": "El modo conversación solo envía un mensaje después de oír esta frase. Funciona mejor con dos o más palabras."
     },
+    "modelDownloads": {
+      "timeout": "La descarga agotó el tiempo de espera. La conexión se quedó bloqueada; inténtalo de nuevo con Wi-Fi o una señal más fuerte.",
+      "offline": "No se pudo conectar con el servidor de descargas. Comprueba tu conexión a internet e inténtalo de nuevo.",
+      "server": "El servidor de descargas no pudo entregar el archivo. Inténtalo más tarde.",
+      "storage": "No hay suficiente espacio libre para instalar este modelo.",
+      "incomplete": "La descarga no terminó. Inténtalo de nuevo.",
+      "integrity": "El archivo descargado está dañado. Inténtalo de nuevo.",
+      "unknown": "No se pudo descargar el modelo. Comprueba tu conexión e inténtalo de nuevo.",
+      "installFailed": "No se pudo instalar el modelo. Inténtalo de nuevo."
+    },
     "localWake": {
       "title": "Voz en el dispositivo",
       "description": "Ejecuta un modelo local y una comprobación de voz opcional. Descarga {{size}} de modelos preentrenados; si no está disponible, usa la frase del sistema.",

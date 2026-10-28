@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
+import { modelDownloadErrorMessageKey } from '@/lib/model-download';
 import { getVoiceCapabilitiesAsync, type VoiceCapabilities } from '@/lib/voice/capabilities';
 import {
   getLocalCommandModelStatus,
@@ -115,11 +116,11 @@ export function useVoiceSetup({
     } catch (error) {
       refreshLocalVoiceStatus();
       setLocalVoiceStatus('error');
-      setLocalVoiceError(error instanceof Error ? error.message : 'Could not install the on-device voice models.');
+      setLocalVoiceError(t(modelDownloadErrorMessageKey(error)));
     } finally {
       setIsInstallingLocalVoice(false);
     }
-  }, [localCommandModel, localWakePhrase, refreshLocalVoiceStatus]);
+  }, [localCommandModel, localWakePhrase, refreshLocalVoiceStatus, t]);
 
   const removeLocalVoice = useCallback(async () => {
     setLocalVoiceError(undefined);

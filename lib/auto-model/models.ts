@@ -1,11 +1,18 @@
 import { Directory, File, Paths } from 'expo-file-system';
 import { Platform } from 'react-native';
 
+import {
+  downloadFileWithRetry,
+  modelDownloadErrorCode,
+  ModelDownloadError,
+  type ModelInstallErrorCode,
+} from '@/lib/model-download';
+
 import { AUTO_MODEL_PACK } from './catalog';
 
 const ROOT_DIRECTORY = 'opencode-auto-model';
 const installJobs = new Map<string, Promise<void>>();
-const installErrors = new Map<string, string>();
+const installErrors = new Map<string, ModelInstallErrorCode>();
 
 export type LocalAutoModelStatus = 'unsupported' | 'installing' | 'ready' | 'missing' | 'error';
 
@@ -51,7 +58,7 @@ export function getLocalAutoModelStatus(): LocalAutoModelStatus {
   return installErrors.has(AUTO_MODEL_PACK.id) ? 'error' : 'missing';
 }
 
-export function getLocalAutoModelError() {
+export function getLocalAutoModelError(): ModelInstallErrorCode | undefined {
   return installErrors.get(AUTO_MODEL_PACK.id);
 }
 
@@ -89,13 +96,22 @@ export async function installLocalAutoModel(): Promise<void> {
     const stagingFile = packFile(staging);
 
     try {
-      await File.downloadFileAsync(AUTO_MODEL_PACK.url, stagingFile, { idempotent: true });
-      if (stagingFile.size !== AUTO_MODEL_PACK.bytes) {
-        throw new Error('The classifier model download was incomplete.');
-      }
-      if (stagingFile.md5?.toLowerCase() !== AUTO_MODEL_PACK.md5) {
-        throw new Error('The classifier model failed integrity verification.');
-      }
+      await downloadFileWithRetry(AUTO_MODEL_PACK.url, stagingFile, 'classifier model', (file) => {
+        if (file.size !== AUTO_MODEL_PACK.bytes) {
+          throw new ModelDownloadError(
+            'incomplete',
+            'The classifier model download was incomplete.',
+            true,
+          );
+        }
+        if (file.md5?.toLowerCase() !== AUTO_MODEL_PACK.md5) {
+          throw new ModelDownloadError(
+            'integrity',
+            'The classifier model failed integrity verification.',
+            false,
+          );
+        }
+      });
 
       const destination = packDirectory();
       if (destination.exists) {
@@ -108,7 +124,7 @@ export async function installLocalAutoModel(): Promise<void> {
         throw new Error('The classifier model could not be installed.');
       }
     } catch (error) {
-      installErrors.set(AUTO_MODEL_PACK.id, error instanceof Error ? error.message : 'Could not install the classifier model.');
+      installErrors.set(AUTO_MODEL_PACK.id, modelDownloadErrorCode(error));
       throw error;
     } finally {
       try {

@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 
 import { releaseLocalAutoModelRuntime } from '@/lib/auto-model/runtime';
 import {
@@ -9,10 +10,16 @@ import {
   removeLocalAutoModel,
   type LocalAutoModelStatus,
 } from '@/lib/auto-model/models';
+import {
+  modelDownloadErrorCode,
+  modelDownloadMessageKeyForCode,
+  type ModelInstallErrorCode,
+} from '@/lib/model-download';
 
 export function useAutoModelSetup(refreshAvailability: () => void) {
+  const { t } = useTranslation();
   const [status, setStatus] = useState<LocalAutoModelStatus>(() => getLocalAutoModelStatus());
-  const [error, setError] = useState<string | undefined>(() => getLocalAutoModelError());
+  const [errorCode, setErrorCode] = useState<ModelInstallErrorCode | undefined>(() => getLocalAutoModelError());
   const [bytes, setBytes] = useState(() => getLocalAutoModelBytes());
 
   useEffect(() => {
@@ -28,7 +35,7 @@ export function useAutoModelSetup(refreshAvailability: () => void) {
       setStatus(next);
       setBytes(getLocalAutoModelBytes());
       if (next !== 'installing') {
-        setError(getLocalAutoModelError());
+        setErrorCode(getLocalAutoModelError());
         refreshAvailability();
       }
     }, 500);
@@ -36,16 +43,17 @@ export function useAutoModelSetup(refreshAvailability: () => void) {
   }, [refreshAvailability, status]);
 
   const install = useCallback(async () => {
-    setError(undefined);
+    setErrorCode(undefined);
     setStatus('installing');
     try {
       await installLocalAutoModel();
       setStatus(getLocalAutoModelStatus());
       setBytes(getLocalAutoModelBytes());
+      setErrorCode(undefined);
       refreshAvailability();
     } catch (reason) {
       setStatus('error');
-      setError(reason instanceof Error ? reason.message : 'Could not install the classifier model.');
+      setErrorCode(modelDownloadErrorCode(reason));
     }
   }, [refreshAvailability]);
 
@@ -54,9 +62,11 @@ export function useAutoModelSetup(refreshAvailability: () => void) {
     await removeLocalAutoModel();
     setStatus(getLocalAutoModelStatus());
     setBytes(0);
-    setError(undefined);
+    setErrorCode(undefined);
     refreshAvailability();
   }, [refreshAvailability]);
+
+  const error = errorCode ? t(modelDownloadMessageKeyForCode(errorCode)) : undefined;
 
   return { status, error, bytes, install, remove };
 }

@@ -44,7 +44,7 @@ export function LocalTtsSection({
         </View>
       </View>
 
-      {ttsSetup.error ? <HelperText type="error">{ttsSetup.error}</HelperText> : null}
+      {ttsSetup.error && !ttsSetup.errorPackId ? <HelperText type="error">{ttsSetup.error}</HelperText> : null}
 
       {ttsSetup.packs.map((pack) => {
         const status = ttsSetup.statuses[pack.id];
@@ -92,6 +92,10 @@ export function LocalTtsSection({
                 <Text variant="labelSmall" style={{ color: active ? palette.tint : palette.muted }}>{statusLabel}</Text>
               </View>
             </View>
+
+            {ttsSetup.error && ttsSetup.errorPackId === pack.id ? (
+              <HelperText type="error">{ttsSetup.error}</HelperText>
+            ) : null}
 
             {status === 'missing' ? (
               <Button

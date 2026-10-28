@@ -1,6 +1,8 @@
 import * as Crypto from 'expo-crypto';
 import { File } from 'expo-file-system';
 
+import { downloadFileWithRetry, ModelDownloadError } from '@/lib/model-download';
+
 export async function sha256Hex(file: File): Promise<string> {
   const bytes = await file.bytes();
   const digest = await Crypto.digest(Crypto.CryptoDigestAlgorithm.SHA256, bytes);
@@ -15,17 +17,20 @@ export async function downloadVerified(
   sha256: string,
   label: string,
 ) {
-  await File.downloadFileAsync(url, destination, { idempotent: true });
-  if (destination.size !== bytes) {
-    if (destination.exists) {
-      destination.delete();
+  await downloadFileWithRetry(url, destination, label, async (file) => {
+    if (file.size !== bytes) {
+      throw new ModelDownloadError(
+        'incomplete',
+        `The ${label} download was incomplete.`,
+        true,
+      );
     }
-    throw new Error(`The ${label} download was incomplete.`);
-  }
-  if (await sha256Hex(destination) !== sha256) {
-    if (destination.exists) {
-      destination.delete();
+    if (await sha256Hex(file) !== sha256) {
+      throw new ModelDownloadError(
+        'integrity',
+        `The ${label} download failed integrity verification.`,
+        false,
+      );
     }
-    throw new Error(`The ${label} download failed integrity verification.`);
-  }
+  });
 }

@@ -245,6 +245,16 @@
       "label": "Phrase d’activation",
       "helper": "Le mode conversation n’envoie un message qu’après avoir entendu cette phrase. Deux mots ou plus fonctionnent mieux."
     },
+    "modelDownloads": {
+      "timeout": "Le téléchargement a expiré. La connexion s'est bloquée ; réessayez en Wi-Fi ou avec un meilleur signal.",
+      "offline": "Impossible de joindre le serveur de téléchargement. Vérifiez votre connexion internet et réessayez.",
+      "server": "Le serveur de téléchargement n'a pas pu fournir le fichier. Réessayez plus tard.",
+      "storage": "Espace libre insuffisant pour installer ce modèle.",
+      "incomplete": "Le téléchargement ne s'est pas terminé. Réessayez.",
+      "integrity": "Le fichier téléchargé est endommagé. Réessayez.",
+      "unknown": "Impossible de télécharger le modèle. Vérifiez votre connexion et réessayez.",
+      "installFailed": "Le modèle n'a pas pu être installé. Réessayez."
+    },
     "localWake": {
       "title": "Voix sur l’appareil",
       "description": "Exécute un modèle local et une vérification vocale optionnelle. Télécharge {{size}} de modèles préentraînés ; revient à la phrase système si indisponible.",
