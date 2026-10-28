@@ -317,7 +317,36 @@
       "label": "Volume du son de travail"
     },
     "voiceSelect": {
-      "label": "Voix"
+      "label": "Voix du système",
+      "automatic": "Automatique (meilleure disponible)",
+      "enhanced": "Améliorée · {{language}}"
+    },
+    "enhancedVoices": "Installez des voix améliorées ou premium dans les réglages de synthèse vocale de l'appareil pour obtenir la voix système la plus naturelle.",
+    "playbackEngine": {
+      "label": "Moteur de lecture",
+      "systemDescription": "Utilise la voix intégrée de l'appareil. Toujours disponible.",
+      "localDescription": "Utilise une voix neuronale téléchargée. Choisissez un modèle ci-dessous."
+    },
+    "localTts": {
+      "title": "Lecture sur l'appareil",
+      "description": "Les modèles ne sont téléchargés que lorsque vous les choisissez. La voix du système reste toujours disponible.",
+      "piper": "Compacte",
+      "kokoro": "Naturelle",
+      "piperDescription": "Rapide et légère",
+      "kokoroDescription": "Anglais le plus naturel, téléchargement plus important",
+      "download": "Télécharger ({{size}})",
+      "installing": "Installation…",
+      "installed": "Installé",
+      "notInstalled": "Non installé",
+      "use": "Utiliser",
+      "preview": "Aperçu",
+      "speaker": "Voix",
+      "storage": "{{size}} utilisés par les voix sur l'appareil",
+      "downloadHint": "Les téléchargements sont vérifiés et stockés sur cet appareil.",
+      "japaneseUnavailable": "Le japonais utilise la voix du système car aucun modèle Piper n'est disponible.",
+      "fallbackToSystem": "La voix sur l'appareil est indisponible. La voix du système est utilisée.",
+      "languageMismatch": "Ce modèle parle {{language}}. Réglez la locale vocale en conséquence, sinon la voix du système sera utilisée.",
+      "installFirst": "Choisissez et installez d'abord un modèle sur l'appareil."
     },
     "footer": "Android peut vérifier périodiquement les sessions en cours en arrière-plan et publier une notification de fin. La parole en arrière-plan et la capture continue du microphone ne sont pas prises en charge.",
     "check": {

@@ -1,214 +1,75 @@
-import * as Speech from 'expo-speech';
+import {
+  activateVoiceDuckingAsync,
+  deactivateVoiceDuckingAsync,
+  initializeVoiceAudioAsync,
+} from '@/lib/voice/audio-session';
+import { prepareSpeechText } from '@/lib/voice/speech-text';
+import type { SpeakTextOptions } from '@/lib/voice/speech-types';
+import { LocalTtsUnavailableError } from '@/lib/voice/tts/types';
+import {
+  getSpeechVoiceOptions,
+  speakSystemText,
+  stopSystemSpeech,
+} from '@/lib/voice/system-tts';
 
-import { compareLabels } from '@/lib/compare-labels';
+export type { SpeakTextOptions, SpeechFallbackReason, SpeechPlayback, SpeechVoiceOption } from '@/lib/voice/speech-types';
+export { getSpeechVoiceOptions, initializeVoiceAudioAsync };
 
-export type SpeechVoiceOption = {
-  id: string;
-  label: string;
-  language: string;
+type ActiveRun = {
+  id: number;
+  controller: AbortController;
+  cancel?: () => Promise<void>;
 };
 
-let audioModeInitialized = false;
-let audioModulePromise: Promise<typeof import('expo-audio') | null> | null = null;
-let duckingActive = false;
-let voiceIdsPromise: Promise<Set<string> | undefined> | undefined;
+let runSequence = 0;
+let activeRun: ActiveRun | undefined;
 
-// Tracks the utterance the app is currently speaking so a missing callback
-// (notably on iOS, which never emits the speech error event) cannot hang callers
-// such as conversation mode.
-type PendingSpeech = {
-  finished: boolean;
-  started: boolean;
-  timer?: ReturnType<typeof setTimeout>;
-};
-
-let pendingSpeech: PendingSpeech | undefined;
-
-function getVoiceAudioMode(duckOthers: boolean): Partial<import('expo-audio').AudioMode> {
-  return {
-    allowsRecording: false,
-    interruptionMode: duckOthers ? 'duckOthers' : 'mixWithOthers',
-    playsInSilentMode: true,
-    shouldPlayInBackground: true,
-    shouldRouteThroughEarpiece: false,
-  };
+function stopCancel(cancel?: () => Promise<void>) {
+  return cancel?.().catch(() => undefined);
 }
 
-async function getAudioModuleAsync() {
-  if (!audioModulePromise) {
-    audioModulePromise = import('expo-audio')
-      .then((module) => module)
-      .catch(() => null);
-  }
-
-  return audioModulePromise;
-}
-
-export async function initializeVoiceAudioAsync() {
-  if (audioModeInitialized) {
-    return;
-  }
-
-  const audioModule = await getAudioModuleAsync();
-  if (!audioModule) {
-    return;
-  }
-
-  await audioModule.setAudioModeAsync(getVoiceAudioMode(false));
-
-  audioModeInitialized = true;
-}
-
-async function activateVoiceDuckingAsync() {
-  const audioModule = await getAudioModuleAsync();
-  if (!audioModule) {
-    return;
-  }
-
-  await initializeVoiceAudioAsync();
-  if (duckingActive) {
-    return;
-  }
-
-  await audioModule.setAudioModeAsync(getVoiceAudioMode(true));
-  duckingActive = true;
-}
-
-async function deactivateVoiceDuckingAsync() {
-  const audioModule = await getAudioModuleAsync();
-  if (!audioModule) {
-    return;
-  }
-
-  await initializeVoiceAudioAsync();
-  if (!duckingActive) {
-    return;
-  }
-
-  await audioModule.setAudioModeAsync(getVoiceAudioMode(false));
-  duckingActive = false;
-}
-
-function compactWhitespace(value: string) {
-  return value.replace(/\s+/g, ' ').trim();
-}
-
-function getSpeakableText(text: string) {
-  return compactWhitespace(
-    text
-      .replace(/```[\s\S]*?```/g, ' code block omitted ')
-      .replace(/`([^`]+)`/g, '$1')
-      .replace(/\*\*([^*]+)\*\*/g, '$1')
-      .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '$1')
-      .replace(/^#{1,6}\s+/gm, '')
-      .replace(/^[-*+]\s+/gm, '')
-      .replace(/^\d+\.\s+/gm, ''),
-  );
-}
-
-async function getAvailableVoiceIds() {
-  if (!voiceIdsPromise) {
-    voiceIdsPromise = Speech.getAvailableVoicesAsync()
-      .then((voices) => new Set(voices.map((voice) => voice.identifier)))
-      .catch(() => {
-        voiceIdsPromise = undefined;
-        return undefined;
-      });
-  }
-
-  return voiceIdsPromise;
-}
-
-// A saved voice id can disappear (OS update, removed download). The native
-// synth would then throw without ever invoking a callback, so resolve to the
-// system default instead when the id is no longer present.
-async function resolveSpeechVoice(voiceId?: string) {
-  if (!voiceId) {
-    return undefined;
-  }
-
-  const ids = await getAvailableVoiceIds();
-  if (ids && !ids.has(voiceId)) {
-    // Fall back to the system default voice rather than risk a silent failure.
-    return undefined;
-  }
-
-  return voiceId;
-}
-
-export async function getSpeechVoiceOptions() {
-  const voices = await Speech.getAvailableVoicesAsync();
-
-  return voices
-    .map((voice) => ({
-      id: voice.identifier,
-      label: `${voice.name} (${voice.language})`,
-      language: voice.language,
-    }))
-    .sort((left, right) => compareLabels(left.label, right.label));
-}
-
-// Generous upper bound for one utterance: roughly 9 characters per second at
-// normal rate, scaled by the configured rate and with a 5s floor, so slow
-// playback is not cut off but a stalled synth still resolves.
-function estimateSpeechDurationMs(text: string, rate?: number) {
-  const effectiveRate = Math.max(0.25, rate ?? 1);
-  const base = text.length * 110 + 2500;
-  return Math.min(300000, Math.max(5000, Math.round(base / effectiveRate)));
-}
-
-function clearPending(record: PendingSpeech) {
-  if (record.timer) {
-    clearTimeout(record.timer);
-    record.timer = undefined;
-  }
-  if (pendingSpeech === record) {
-    pendingSpeech = undefined;
-  }
-}
-
+/**
+ * Speak one assistant reply. Both engines share this facade so manual play,
+ * auto-play, conversation readback, and the voice check all have the same
+ * completion, cancellation, and fallback behavior.
+ */
 export async function speakText({
+  cues,
   language,
   onDone,
+  onEngineFallback,
   onError,
   onStart,
+  playback = { engine: 'system' },
   rate,
   text,
-  voice,
-}: {
-  text: string;
-  language?: string;
-  rate?: number;
-  voice?: string;
-  onStart?: () => void;
-  onDone?: () => void;
-  onError?: (error: Error) => void;
-}) {
-  const speakableText = getSpeakableText(text);
-  if (!speakableText) {
+}: SpeakTextOptions): Promise<boolean> {
+  const prepared = prepareSpeechText(text, {
+    cues,
+    language,
+    maxChars: playback.engine === 'local' ? 220 : 450,
+  });
+  if (prepared.chunks.length === 0) {
     return false;
   }
 
+  await initializeVoiceAudioAsync().catch(() => undefined);
+  await stopSpeaking();
   await activateVoiceDuckingAsync().catch(() => undefined);
-  await Speech.stop().catch(() => undefined);
-  // A superseded utterance settles without callbacks; the new one owns the
-  // completion contract from here on.
-  const previous = pendingSpeech;
-  if (previous) {
-    previous.finished = true;
-    clearPending(previous);
-  }
 
-  const resolvedVoice = await resolveSpeechVoice(voice);
-  const record: PendingSpeech = { finished: false, started: false };
+  const runId = ++runSequence;
+  const controller = new AbortController();
+  let settled = false;
+  let started = false;
 
   const finish = (error?: Error) => {
-    if (record.finished) {
+    if (settled || runId !== runSequence) {
       return;
     }
-
-    record.finished = true;
-    clearPending(record);
+    settled = true;
+    if (activeRun?.id === runId) {
+      activeRun = undefined;
+    }
     void deactivateVoiceDuckingAsync().catch(() => undefined);
     if (error) {
       onError?.(error);
@@ -217,42 +78,93 @@ export async function speakText({
     }
   };
 
-  const armWatchdog = () => {
-    if (record.timer) {
-      clearTimeout(record.timer);
+  const handleStart = () => {
+    if (settled || runId !== runSequence || started) {
+      return;
     }
-    record.timer = setTimeout(() => {
-      void Speech.stop().catch(() => undefined);
-      finish(new Error('Speech playback timed out.'));
-    }, record.started ? estimateSpeechDurationMs(speakableText, rate) : 5000);
+    started = true;
+    onStart?.();
   };
 
-  pendingSpeech = record;
-  armWatchdog();
+  const run: ActiveRun = { id: runId, controller };
+  activeRun = run;
 
-  Speech.speak(speakableText, {
-    language,
-    onDone: () => finish(),
-    onError: (error) => finish(error instanceof Error ? error : new Error('Speech playback failed.')),
-    onStart: () => {
-      record.started = true;
-      armWatchdog();
-      onStart?.();
-    },
-    onStopped: () => finish(),
-    rate,
-    voice: resolvedVoice,
-  });
+  if (playback.engine === 'local') {
+    try {
+      const [{ speakLocalText }, { stopLocalTtsGeneration }] = await Promise.all([
+        import('@/lib/voice/tts/engine'),
+        import('@/lib/voice/tts/runtime'),
+      ]);
+      run.cancel = async () => {
+        await stopLocalTtsGeneration();
+      };
 
-  return true;
+      const localStarted = await speakLocalText({
+        chunks: prepared.chunks,
+        language,
+        onDone: () => finish(),
+        onError: (error) => finish(error),
+        onStart: handleStart,
+        packId: playback.packId,
+        rate,
+        signal: controller.signal,
+        speakerId: playback.speakerId,
+      });
+
+      if (runId !== runSequence || controller.signal.aborted) {
+        return true;
+      }
+      return localStarted;
+    } catch (error) {
+      if (runId !== runSequence || controller.signal.aborted) {
+        return true;
+      }
+      if (error instanceof LocalTtsUnavailableError) {
+        try {
+          onEngineFallback?.(error.reason);
+        } catch {
+          // Feedback must never prevent the system fallback.
+        }
+      } else {
+        try {
+          onEngineFallback?.('init-failed');
+        } catch {
+          // Feedback must never prevent the system fallback.
+        }
+      }
+    }
+  }
+
+  try {
+    const started = await speakSystemText({
+      chunks: prepared.chunks,
+      language,
+      onDone: () => finish(),
+      onError: (error) => finish(error),
+      onStart: handleStart,
+      rate,
+      signal: controller.signal,
+      voice: playback.engine === 'system' ? playback.voice : undefined,
+    });
+    if (controller.signal.aborted) {
+      return true;
+    }
+    return started;
+  } catch (error) {
+    if (controller.signal.aborted) {
+      return true;
+    }
+    finish(error instanceof Error ? error : new Error('Speech playback failed.'));
+    return false;
+  }
 }
 
 export async function stopSpeaking() {
-  await Speech.stop().catch(() => undefined);
-  const record = pendingSpeech;
-  if (record && !record.finished) {
-    record.finished = true;
-    clearPending(record);
-  }
+  const run = activeRun;
+  activeRun = undefined;
+  runSequence += 1;
+  run?.controller.abort();
+  await stopCancel(run?.cancel);
+  await stopSystemSpeech();
   await deactivateVoiceDuckingAsync().catch(() => undefined);
 }

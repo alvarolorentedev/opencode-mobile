@@ -109,6 +109,12 @@ describe('persistence hydration and write-back', () => {
     assert.deepEqual(JSON.parse(JSON.stringify(parseChatPreferences(JSON.stringify({ themeMode: 'sepia', accentColor: 'orange' })))), {});
     assert.equal(parseChatPreferences(JSON.stringify({ conversationWakePhrase: '  hey    bot ' })).conversationWakePhrase, 'hey bot');
     assert.equal(parseChatPreferences(JSON.stringify({ conversationWakePhrase: '   ' })).conversationWakePhrase, 'hey code');
+    assert.deepEqual(
+      JSON.parse(JSON.stringify(parseChatPreferences(JSON.stringify({ ttsEngine: 'local', localTtsPackId: 'piper-es', localTtsSpeakerId: 2.8 })))),
+      { ttsEngine: 'local', localTtsPackId: 'piper-es', localTtsSpeakerId: 2 },
+    );
+    assert.equal(parseChatPreferences(JSON.stringify({ localTtsSpeakerId: -4 })).localTtsSpeakerId, 0);
+    assert.equal(parseChatPreferences(JSON.stringify({ ttsEngine: 'cloud' })).ttsEngine, undefined);
     const defaults = { ...preferences.defaultChatPreferences, ...parsed };
     assert.ok(Array.isArray(defaults.enabledModelIds)); assert.ok(Array.isArray(defaults.recentModelIds));
     assert.deepEqual(JSON.parse(JSON.stringify(parseChatPreferences('{"modelVariantSelections":{"openai/model":"max","openai/default":null}}').modelVariantSelections)), { 'openai/model': 'max', 'openai/default': null });

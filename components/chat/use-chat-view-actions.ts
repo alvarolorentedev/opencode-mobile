@@ -5,6 +5,7 @@ import { useUpdates } from '@/providers/opencode-contexts';
 import type { TranscriptEntry } from '@/lib/opencode/format';
 import { pickedAttachment } from '@/lib/attachment-preview';
 import { speakText, stopSpeaking } from '@/lib/voice/speech-output';
+import { getSpeechPlayback } from '@/lib/voice/speech-config';
 import type { ChatPreferences } from '@/providers/opencode-provider-types';
 
 type Attachment = { uri: string; mime?: string; filename?: string };
@@ -56,14 +57,17 @@ export function useChatViewActions({
       onDone: () => {
         setSpeakingMessageId((current) => (current === entry.id ? undefined : current));
       },
+      onEngineFallback: () => {
+        setVoiceFeedback(t('chat:view.ttsFallback'));
+      },
       onError: () => {
         setVoiceFeedback(t('chat:view.unableToPlay'));
         setSpeakingMessageId(undefined);
       },
       onStart: () => setSpeakingMessageId(entry.id),
+      playback: getSpeechPlayback(chatPreferences),
       rate: chatPreferences.speechRate,
       text: entry.text,
-      voice: chatPreferences.speechVoiceId,
     });
 
     if (!started) {

@@ -524,13 +524,45 @@ Behavior exposed today:
 - speech locale override
 - speech rate
 - working sound variant and volume
-- TTS voice selection
-- voice check (microphone/speech permission, recognition availability, on-device support, and a playback test) with an app-settings shortcut
+- playback engine: System or On-device
+- system-voice selection with automatic best-available voice selection and an Enhanced quality label
+- optional on-device voice models (Piper compact, one per translated language that has an upstream voice, and Kokoro natural English); each model is downloaded only after the user chooses it
+- per-model install status, size, removal, and preview; Kokoro exposes its individual speakers
+- voice check (microphone/speech permission, recognition availability, on-device support, selected playback engine/model, and a playback test) with an app-settings shortcut
 
-The local setup checklist is shown only in On-device mode. It keeps voice
-enrollment disabled until the models are ready and reveals voice verification
-only after a profile exists. Response scope and next actions live in the
-separate Responses section so they do not look like voice-engine settings.
+The local setup checklist is shown only in On-device voice-input mode. It keeps
+voice enrollment disabled until the models are ready and reveals voice
+verification only after a profile exists. Response scope and next actions live
+in the separate Responses section so they do not look like voice-engine
+settings.
+
+Playback is independent of the input mode. The system voice is always
+available and remains the default. On-device playback requires an explicitly
+selected, installed pack; removing the active pack switches playback back to
+System. Models are never bundled or downloaded automatically. Piper ships one
+English voice plus one voice for Spanish, Hindi, German, French, Simplified
+Chinese, and Brazilian Portuguese; Japanese stays on the system voice because
+no Piper voice is available in the pinned sherpa-onnx release. Kokoro is the
+natural English option and supports eleven speakers.
+
+All assistant readback goes through one speech pipeline:
+
+- markdown headings, links, inline code, and list markers are converted to
+  speakable prose; fenced code and tables become short localized cues
+- file paths and identifiers are expanded into readable words
+- a small pronunciation lexicon covers project terms and common acronyms
+- long replies are split at paragraph boundaries first, then at sentence
+  boundaries, with a short gap between chunks
+- system playback validates the saved voice, prefers an Enhanced voice in the
+  requested locale when the user has not chosen one, and reports a watchdog
+  error if the synthesizer never starts or finishes
+- on-device playback synthesizes WAV chunks and plays them through
+  `expo-audio`; the next chunk is generated while the current one plays, and a
+  pre-audio failure falls back to the system voice
+- if the selected pack language does not match an explicit speech locale, the
+  Settings card warns and playback uses the system voice instead of reading in
+  the wrong language
+
 
 ### Responses Section
 
@@ -677,8 +709,12 @@ Optional on-device wake word:
   tap/confirm fallback for noisy rooms.
 - If models, the native runtime, or microphone permission are unavailable,
   conversation mode falls back to the phrase gate and says so.
-- The local path is foreground-only. Local TTS is out of scope; the wake phrase
-  remains English because the KWS model is English.
+- Reply readback uses the selected playback engine. On-device readback is
+  prewarmed when conversation mode starts, pauses wake detection while speaking,
+  and resumes it when the queue drains. Barge-in over an active readback is not
+  implemented; a new command stops the current utterance.
+- The local input path is foreground-only. The wake phrase remains English
+  because the KWS model is English.
 
 ## Notifications Behavior
 

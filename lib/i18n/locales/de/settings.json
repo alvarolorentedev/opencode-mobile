@@ -317,7 +317,36 @@
       "label": "Lautstärke des Arbeitsgeräuschs"
     },
     "voiceSelect": {
-      "label": "Stimme"
+      "label": "Systemstimme",
+      "automatic": "Automatisch (beste verfügbare)",
+      "enhanced": "Erweitert · {{language}}"
+    },
+    "enhancedVoices": "Installiere erweiterte oder Premium-Stimmen in den Text-to-Speech-Einstellungen des Geräts, um die natürlichste Systemstimme zu erhalten.",
+    "playbackEngine": {
+      "label": "Wiedergabe-Engine",
+      "systemDescription": "Verwendet die integrierte Stimme des Geräts. Immer verfügbar.",
+      "localDescription": "Verwendet eine heruntergeladene neuronale Stimme. Wähle unten ein Modell."
+    },
+    "localTts": {
+      "title": "Wiedergabe auf dem Gerät",
+      "description": "Modelle werden nur heruntergeladen, wenn du sie auswählst. Die Systemstimme ist immer verfügbar.",
+      "piper": "Kompakt",
+      "kokoro": "Natürlich",
+      "piperDescription": "Schnell und leicht",
+      "kokoroDescription": "Natürlichstes Englisch, größerer Download",
+      "download": "Herunterladen ({{size}})",
+      "installing": "Wird installiert…",
+      "installed": "Installiert",
+      "notInstalled": "Nicht installiert",
+      "use": "Verwenden",
+      "preview": "Vorschau",
+      "speaker": "Stimme",
+      "storage": "{{size}} durch On-Device-Stimmen belegt",
+      "downloadHint": "Downloads werden überprüft und auf diesem Gerät gespeichert.",
+      "japaneseUnavailable": "Japanisch verwendet die Systemstimme, da kein Piper-Modell verfügbar ist.",
+      "fallbackToSystem": "Die On-Device-Stimme ist nicht verfügbar. Die Systemstimme wird verwendet.",
+      "languageMismatch": "Dieses Modell spricht {{language}}. Passe die Sprachlocale an, sonst wird die Systemstimme verwendet.",
+      "installFirst": "Wähle zuerst ein On-Device-Modell aus und installiere es."
     },
     "footer": "Android kann laufende Sitzungen regelmäßig im Hintergrund prüfen und eine Abschlussbenachrichtigung senden. Hintergrundsprache und kontinuierliche Mikrofonaufnahme werden nicht unterstützt.",
     "check": {

@@ -317,7 +317,36 @@
       "label": "Volumen del sonido de trabajo"
     },
     "voiceSelect": {
-      "label": "Voz"
+      "label": "Voz del sistema",
+      "automatic": "Automática (mejor disponible)",
+      "enhanced": "Mejorada · {{language}}"
+    },
+    "enhancedVoices": "Instala voces mejoradas o premium en los ajustes de texto a voz del dispositivo para obtener la voz del sistema más natural.",
+    "playbackEngine": {
+      "label": "Motor de reproducción",
+      "systemDescription": "Usa la voz integrada del dispositivo. Siempre disponible.",
+      "localDescription": "Usa una voz neuronal descargada. Elige un modelo abajo."
+    },
+    "localTts": {
+      "title": "Reproducción en el dispositivo",
+      "description": "Los modelos solo se descargan cuando los eliges. La voz del sistema siempre está disponible.",
+      "piper": "Compacta",
+      "kokoro": "Natural",
+      "piperDescription": "Rápida y ligera",
+      "kokoroDescription": "Inglés más natural, descarga mayor",
+      "download": "Descargar ({{size}})",
+      "installing": "Instalando…",
+      "installed": "Instalado",
+      "notInstalled": "No instalado",
+      "use": "Usar",
+      "preview": "Vista previa",
+      "speaker": "Voz",
+      "storage": "{{size}} usados por las voces en el dispositivo",
+      "downloadHint": "Las descargas se verifican y se guardan en este dispositivo.",
+      "japaneseUnavailable": "El japonés usa la voz del sistema porque no hay un modelo Piper disponible.",
+      "fallbackToSystem": "La voz en el dispositivo no está disponible. Se usará la voz del sistema.",
+      "languageMismatch": "Este modelo habla {{language}}. Ajusta la configuración regional de voz para que coincida o la reproducción usará la voz del sistema.",
+      "installFirst": "Elige e instala un modelo en el dispositivo primero."
     },
     "footer": "Android puede comprobar periódicamente las sesiones en ejecución en segundo plano y publicar una notificación de finalización. No se admiten la voz en segundo plano ni la captura continua del micrófono.",
     "check": {

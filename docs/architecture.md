@@ -551,8 +551,28 @@ permission and Chat Library visibility do not gate widget reads.
 - `lib/notifications.ts`
   Local notifications, background monitoring task, and notification debug status.
 - `lib/voice/speech-output.ts`
-  Text-to-speech, audio ducking, stale-voice fallback, and a completion watchdog
-  so a silent native failure cannot hang callers.
+  Single speech-output facade. Prepares text, cancels the active run, owns the
+  audio session, and delegates to the system or on-device engine. Keeps the
+  completion, fallback, and stale-voice contracts shared by chat, auto-play,
+  conversation readback, and the voice check.
+- `lib/voice/speech-text.ts` and `lib/voice/speech-lexicon.ts`
+  Pure markdown-to-speech normalization, pronunciation rules, path/identifier
+  expansion, and paragraph-first chunking.
+- `lib/voice/audio-session.ts`
+  Shared ducking and audio-mode setup for system and on-device playback.
+- `lib/voice/system-tts.ts`
+  `expo-speech` adapter: voice discovery and quality metadata, automatic
+  best-voice selection, chunk queue, stale-voice fallback, and completion
+  watchdog.
+- `lib/voice/speech-config.ts`
+  Pure mapping from chat preferences to a system or local playback config; no
+  native imports.
+- `lib/voice/tts/`
+  Optional on-device playback. `catalog.ts` pins downloadable Piper/Kokoro
+  packs and licenses; `models.ts` installs, verifies, removes, and reports
+  packs; `runtime.ts` owns the sherpa-onnx TTS singleton and idle release;
+  `engine.ts` synthesizes WAV chunks and orchestrates prefetch; `player.ts`
+  plays those chunks through `expo-audio` and cleans up cache files.
 - `lib/voice/use-speech-input.ts`
   Speech recognition hook. Re-checks recognition availability at start, pins an
   explicit iOS audio session category, and retries once through network

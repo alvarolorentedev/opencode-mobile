@@ -62,6 +62,11 @@ export type ChatPreferences = {
   speechLocale?: string;
   speechRate: number;
   speechVoiceId?: string;
+  // Playback engine. System is always available; local is opt-in and requires
+  // an explicitly selected, installed model pack.
+  ttsEngine: 'system' | 'local';
+  localTtsPackId?: string;
+  localTtsSpeakerId: number;
   workingSoundEnabled: boolean;
   workingSoundVariant: 'soft' | 'glass';
   workingSoundVolume: number;
@@ -94,6 +99,8 @@ export const defaultChatPreferences: ChatPreferences = {
   localSpeakerVerification: true,
   localSpeakerThreshold: 0.5,
   speechRate: 1,
+  ttsEngine: 'system',
+  localTtsSpeakerId: 0,
   workingSoundEnabled: false,
   workingSoundVariant: 'soft',
   workingSoundVolume: 0.18,

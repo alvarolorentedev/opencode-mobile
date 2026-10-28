@@ -792,7 +792,23 @@ playback test against a stale saved voice.
 
 The `test:voice-errors` static suite pins the pure recovery classification
 (retry vs open-settings vs no action) and the on-device fallback policy; it does
-not exercise the native recognizer.
+not exercise the native recognizer. `tests/vitest/speech-text.test.ts` covers
+markdown/prose normalization, chunk limits, and pronunciation rules;
+`system-tts.test.ts` covers enhanced-voice selection and missing-voice fallback;
+`tts-catalog.test.ts` pins the one-pack-per-language catalog; and
+`speech-config.test.ts` covers the system/local preference mapping.
+`tts-engine.test.ts` covers normal chunk playback, pre-start cancellation, and
+mid-playback cancellation.
+
+On-device playback still needs device validation:
+
+- install and remove each Piper pack on Android and iOS, then restart the app
+  and confirm status, preview, and offline playback
+- measure model init, first-audio latency, chunk gaps, and memory for Piper and
+  Kokoro on a low-end Android device
+- confirm stop/cancel during synthesis and playback, conversation readback
+  prewarm, and system fallback when a pack is missing
+- confirm the Japanese system-voice note and the speech-locale mismatch warning
 
 The `test:onboarding` static suite pins the completion-marker contract:
 malformed markers are removed, version 0 is sticky, an existing configuration
@@ -917,7 +933,7 @@ The following important behaviors are present in code but are not obviously cove
 
 - conversation mode state machine
 - native speech recognition failures and permission edge cases (the pure recovery policy is covered by `test:voice-errors`; the native paths still need device validation)
-- TTS playback behavior and the completion watchdog
+- native TTS playback, on-device model install/prefetch, and the completion watchdog
 - notification initialization and background monitoring
 - session fork and revert/unrevert
 - attachment upload behavior

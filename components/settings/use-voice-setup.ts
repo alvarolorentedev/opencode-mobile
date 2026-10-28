@@ -12,6 +12,7 @@ import {
 import { releaseLocalVoiceRuntime } from '@/lib/voice/local-wake-word/runtime';
 import type { LocalCommandModelId, LocalWakePhraseId, LocalVoiceModelStatus } from '@/lib/voice/local-wake-word/types';
 import { openVoiceSettingsAsync, requestVoiceInputPermissionAsync } from '@/lib/voice/permissions';
+import type { SpeechPlayback } from '@/lib/voice/speech-types';
 import { speakText, stopSpeaking } from '@/lib/voice/speech-output';
 import { useLocalVoiceEnrollment } from '@/lib/voice/use-local-voice-enrollment';
 
@@ -27,14 +28,14 @@ export function useVoiceSetup({
   locale,
   localCommandModel,
   localWakePhrase,
+  playback,
   rate,
-  voiceId,
 }: {
   locale?: string;
   localCommandModel: LocalCommandModelId;
   localWakePhrase: LocalWakePhraseId;
+  playback: SpeechPlayback;
   rate: number;
-  voiceId?: string;
 }) {
   const { t } = useTranslation();
   const [capabilities, setCapabilities] = useState<VoiceCapabilities>();
@@ -74,10 +75,11 @@ export function useVoiceSetup({
       const started = await speakText({
         language: locale,
         onDone: () => setFeedback(undefined),
+        onEngineFallback: () => setFeedback(t('settings:voice.localTts.fallbackToSystem')),
         onError: () => setFeedback(t('settings:voice.check.testFailed')),
+        playback,
         rate,
         text: t('settings:voice.check.testPhrase'),
-        voice: voiceId,
       });
       if (!started) {
         setFeedback(t('settings:voice.check.testFailed'));
@@ -85,7 +87,7 @@ export function useVoiceSetup({
     } finally {
       setIsTesting(false);
     }
-  }, [locale, rate, t, voiceId]);
+  }, [locale, playback, rate, t]);
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- hydrate voice status once on mount.

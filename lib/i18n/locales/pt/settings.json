@@ -317,7 +317,36 @@
       "label": "Volume do som de trabalho"
     },
     "voiceSelect": {
-      "label": "Voz"
+      "label": "Voz do sistema",
+      "automatic": "Automática (melhor disponível)",
+      "enhanced": "Aprimorada · {{language}}"
+    },
+    "enhancedVoices": "Instale vozes aprimoradas ou premium nas configurações de texto para fala do dispositivo para obter a voz do sistema mais natural.",
+    "playbackEngine": {
+      "label": "Motor de reprodução",
+      "systemDescription": "Usa a voz integrada do dispositivo. Sempre disponível.",
+      "localDescription": "Usa uma voz neural baixada. Escolha um modelo abaixo."
+    },
+    "localTts": {
+      "title": "Reprodução no dispositivo",
+      "description": "Os modelos só são baixados quando você os escolhe. A voz do sistema continua sempre disponível.",
+      "piper": "Compacta",
+      "kokoro": "Natural",
+      "piperDescription": "Rápida e leve",
+      "kokoroDescription": "Inglês mais natural, download maior",
+      "download": "Baixar ({{size}})",
+      "installing": "Instalando…",
+      "installed": "Instalado",
+      "notInstalled": "Não instalado",
+      "use": "Usar",
+      "preview": "Prévia",
+      "speaker": "Voz",
+      "storage": "{{size}} usados por vozes no dispositivo",
+      "downloadHint": "Os downloads são verificados e armazenados neste dispositivo.",
+      "japaneseUnavailable": "O japonês usa a voz do sistema porque não há um modelo Piper disponível.",
+      "fallbackToSystem": "A voz no dispositivo não está disponível. Usando a voz do sistema.",
+      "languageMismatch": "Este modelo fala {{language}}. Ajuste o idioma de fala para corresponder, ou a reprodução usará a voz do sistema.",
+      "installFirst": "Escolha e instale um modelo no dispositivo primeiro."
     },
     "footer": "O Android pode verificar periodicamente as sessões em execução em segundo plano e publicar uma notificação de conclusão. Fala em segundo plano e captura contínua do microfone não são compatíveis.",
     "check": {

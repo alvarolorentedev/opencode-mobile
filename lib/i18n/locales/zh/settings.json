@@ -317,7 +317,36 @@
       "label": "工作提示音音量"
     },
     "voiceSelect": {
-      "label": "语音"
+      "label": "系统语音",
+      "automatic": "自动（最佳可用）",
+      "enhanced": "增强 · {{language}}"
+    },
+    "enhancedVoices": "在设备的文字转语音设置中安装增强或高级语音，以获得最自然的系统语音。",
+    "playbackEngine": {
+      "label": "播放引擎",
+      "systemDescription": "使用设备内置语音。始终可用。",
+      "localDescription": "使用已下载的神经网络语音。在下方选择模型。"
+    },
+    "localTts": {
+      "title": "设备端播放",
+      "description": "只有在你选择后才会下载模型。系统语音始终可用。",
+      "piper": "轻量",
+      "kokoro": "自然",
+      "piperDescription": "快速轻量",
+      "kokoroDescription": "最自然的英语，下载更大",
+      "download": "下载（{{size}}）",
+      "installing": "正在安装…",
+      "installed": "已安装",
+      "notInstalled": "未安装",
+      "use": "使用",
+      "preview": "预览",
+      "speaker": "语音",
+      "storage": "设备端语音已使用 {{size}}",
+      "downloadHint": "下载内容会经过验证并保存在此设备上。",
+      "japaneseUnavailable": "日语使用系统语音，因为没有可用的 Piper 模型。",
+      "fallbackToSystem": "设备端语音不可用。正在使用系统语音。",
+      "languageMismatch": "此模型使用 {{language}}。请将语音区域设置设为匹配，否则播放将使用系统语音。",
+      "installFirst": "请先选择并安装设备端模型。"
     },
     "footer": "Android 可以定期在后台检查正在运行的会话，并发布完成通知。不支持后台语音和持续的麦克风采集。",
     "check": {

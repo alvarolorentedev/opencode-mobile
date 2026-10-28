@@ -224,7 +224,7 @@ has no durable config/plugin/skill/command mutation surface. Consequences:
 Deferred library replacements and extraction candidates are documented in
 [library-extraction.md](library-extraction.md).
 
-## 11. On-device wake word limits
+## 11. On-device voice limits
 
 The optional local path uses pretrained sherpa-onnx KWS, speaker-embedding,
 Silero VAD, and Moonshine tiny English command models. No model training is
@@ -253,12 +253,27 @@ Known limits:
   selectable and does not require training, but its short-command accuracy,
   latency, and auto-detect behavior are unbenchmarked. The wake phrase remains
   English because the KWS model is English.
-- Reply readback uses the platform TTS engine. Wake detection pauses while TTS
-  speaks and resumes afterward; barge-in over an active readback is not
-  implemented yet.
-- Local TTS is out of scope.
-- The model pack is roughly 152 MB and the native runtime is prebuilt; both
-  need review for F-Droid packaging/licensing.
-- The local path is foreground-only; it does not run with the screen off.
+- The wake-word model pack is roughly 152 MB and the native runtime is
+  prebuilt; both need review for F-Droid packaging/licensing.
+- Reply readback uses the selected playback engine. The system engine remains
+  the default and always available. On-device playback is opt-in and requires a
+  downloaded pack; wake detection pauses while TTS speaks and resumes afterward.
+  Barge-in over an active readback is not implemented yet.
+- On-device TTS limits:
+  - Piper ships one English voice plus one voice for Spanish, Hindi, German,
+    French, Simplified Chinese, and Brazilian Portuguese. Japanese stays on the
+    system voice because no Piper voice exists in the pinned release.
+  - Kokoro is English-only and is the larger, more natural option. Its model is
+    roughly 103 MB to download and needs more memory than Piper.
+  - Each pack is a separate download; models are never bundled. Downloads
+    verify byte size and SHA-256, but progress is shown as an indeterminate
+    install state rather than a percentage.
+  - Synthesis runs on the CPU and is serialized. The next chunk is generated
+    while the current one plays, so a slow device may still gap between chunks;
+    the UI falls back to System if the model cannot start.
+  - The model catalog is pinned to upstream sherpa-onnx release assets. Model
+    licensing still needs review for each pack and for F-Droid packaging.
+  - On-device playback is hidden on web; the system voice remains available.
+- The local input path is foreground-only; it does not run with the screen off.
 - Model install/removal and voice enrollment do not yet stop an active local
   detector. Stop conversation mode before changing the local voice setup.

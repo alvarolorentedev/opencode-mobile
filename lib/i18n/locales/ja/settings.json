@@ -317,7 +317,36 @@
       "label": "作業中サウンドの音量"
     },
     "voiceSelect": {
-      "label": "音声"
+      "label": "システム音声",
+      "automatic": "自動（最適な音声）",
+      "enhanced": "拡張 · {{language}}"
+    },
+    "enhancedVoices": "最も自然なシステム音声にするには、端末のテキスト読み上げ設定で拡張またはプレミアム音声をインストールしてください。",
+    "playbackEngine": {
+      "label": "再生エンジン",
+      "systemDescription": "端末の内蔵音声を使用します。常に利用できます。",
+      "localDescription": "ダウンロードしたニューラル音声を使用します。下のモデルを選択してください。"
+    },
+    "localTts": {
+      "title": "オンデバイス再生",
+      "description": "モデルは選択したときだけダウンロードされます。システム音声は常に利用できます。",
+      "piper": "コンパクト",
+      "kokoro": "ナチュラル",
+      "piperDescription": "高速で軽量",
+      "kokoroDescription": "最も自然な英語、ダウンロードは大容量",
+      "download": "ダウンロード（{{size}}）",
+      "installing": "インストール中…",
+      "installed": "インストール済み",
+      "notInstalled": "未インストール",
+      "use": "使用",
+      "preview": "プレビュー",
+      "speaker": "音声",
+      "storage": "オンデバイス音声が {{size}} 使用中",
+      "downloadHint": "ダウンロードは検証され、この端末に保存されます。",
+      "japaneseUnavailable": "日本語は Piper モデルがないため、システム音声を使用します。",
+      "fallbackToSystem": "オンデバイス音声を利用できません。システム音声を使用します。",
+      "languageMismatch": "このモデルは{{language}}を話します。音声ロケールを合わせてください。合わない場合はシステム音声を使用します。",
+      "installFirst": "先にオンデバイスモデルを選択してインストールしてください。"
     },
     "footer": "Android はバックグラウンドで実行中のセッションを定期的に確認し、完了通知を表示できます。バックグラウンドでの音声と継続的なマイク取り込みには対応していません。",
     "check": {

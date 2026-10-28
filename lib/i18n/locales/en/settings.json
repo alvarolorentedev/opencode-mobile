@@ -317,7 +317,36 @@
       "label": "Working sound volume"
     },
     "voiceSelect": {
-      "label": "Voice"
+      "label": "System voice",
+      "automatic": "Automatic (best available)",
+      "enhanced": "Enhanced · {{language}}"
+    },
+    "enhancedVoices": "Install enhanced or premium voices in your device's text-to-speech settings for the most natural system voice.",
+    "playbackEngine": {
+      "label": "Playback engine",
+      "systemDescription": "Uses the device's built-in voice. Always available.",
+      "localDescription": "Uses a downloaded neural voice. Choose a model below."
+    },
+    "localTts": {
+      "title": "On-device playback",
+      "description": "Models are downloaded only when you choose them. The system voice is always available.",
+      "piper": "Compact",
+      "kokoro": "Natural",
+      "piperDescription": "Fast and lightweight",
+      "kokoroDescription": "Most natural English, larger download",
+      "download": "Download ({{size}})",
+      "installing": "Installing…",
+      "installed": "Installed",
+      "notInstalled": "Not installed",
+      "use": "Use",
+      "preview": "Preview",
+      "speaker": "Voice",
+      "storage": "{{size}} used by on-device voices",
+      "downloadHint": "Downloads are verified and stored on this device.",
+      "japaneseUnavailable": "Japanese uses the system voice because no Piper model is available.",
+      "fallbackToSystem": "On-device voice is unavailable. Playing with the system voice.",
+      "languageMismatch": "This model speaks {{language}}. Set Speech locale to match, or playback uses the system voice.",
+      "installFirst": "Choose and install an on-device model first."
     },
     "footer": "Android can periodically check running sessions in the background and post a completion notification. Background speech and continuous microphone capture are not supported.",
     "check": {

@@ -15,6 +15,7 @@ import { WorkspaceScope, useWorkspaces } from '@/providers/workspace-context';
 import { ServerContextPicker } from '@/components/settings/server-context-picker';
 import { getConnectionUiScope } from '@/lib/connection-scope';
 import { useNotificationSetup } from '@/components/settings/use-notification-setup';
+import { useTtsSetup } from '@/components/settings/use-tts-setup';
 import { useVoiceSetup } from '@/components/settings/use-voice-setup';
 import {
   RESPONSE_SCOPE_OPTIONS,
@@ -24,6 +25,7 @@ import { OverlaySheet } from '@/components/ui/overlay-sheet';
 import { useLastJsError } from '@/hooks/use-last-js-error';
 import { usePalette } from '@/hooks/use-palette';
 import { getSpeechVoiceOptions, type SpeechVoiceOption } from '@/lib/voice/speech-output';
+import { getSpeechPlayback } from '@/lib/voice/speech-config';
 import { useApprovals, useCapabilities, useConnection, useDiagnostics, useMcp, useOnboarding, usePreferences, useProjects, useUpdates } from '@/providers/opencode-contexts';
 import { buildSettingsSections } from '@/components/settings/settings-section-registry';
 
@@ -48,13 +50,33 @@ function SettingsContent() {
   const updates = useUpdates();
   const router = useRouter();
   const notifications = useNotificationSetup();
+  const speechPlayback = useMemo(
+    () => getSpeechPlayback({
+      localTtsPackId: chatPreferences.localTtsPackId,
+      localTtsSpeakerId: chatPreferences.localTtsSpeakerId,
+      speechVoiceId: chatPreferences.speechVoiceId,
+      ttsEngine: chatPreferences.ttsEngine,
+    }),
+    [
+      chatPreferences.localTtsPackId,
+      chatPreferences.localTtsSpeakerId,
+      chatPreferences.speechVoiceId,
+      chatPreferences.ttsEngine,
+    ],
+  );
   const voiceSetup = useVoiceSetup({
     locale: chatPreferences.speechLocale,
     localCommandModel: chatPreferences.localCommandModel,
     localWakePhrase: chatPreferences.localWakePhrase,
+    playback: speechPlayback,
     rate: chatPreferences.speechRate,
-    voiceId: chatPreferences.speechVoiceId,
   });
+  const ttsSetup = useTtsSetup({
+    chatPreferences,
+    rate: chatPreferences.speechRate,
+    updateChatPreferences,
+  });
+  const refreshTtsSetup = ttsSetup.refresh;
   const [isConnecting, setIsConnecting] = useState(false);
   const [reconnectFeedback, setReconnectFeedback] = useState<string>();
   const [advancedTab, setAdvancedTab] = useState<'mcp' | 'diagnostics'>('mcp');
@@ -93,6 +115,10 @@ function SettingsContent() {
     void serviceManagement.refresh();
   }, [serviceManagement]));
 
+  useFocusEffect(useCallback(() => {
+    refreshTtsSetup();
+  }, [refreshTtsSetup]));
+
   async function refreshSpeechVoices() {
     setIsRefreshingSpeechVoices(true);
     try {
@@ -110,7 +136,7 @@ function SettingsContent() {
   }, []);
 
   const selectedSpeechVoiceLabel = useMemo(
-    () => availableSpeechVoices.find((voice) => voice.id === chatPreferences.speechVoiceId)?.label || t('common:labels.systemDefault'),
+    () => availableSpeechVoices.find((voice) => voice.id === chatPreferences.speechVoiceId)?.label || t('settings:voice.voiceSelect.automatic'),
     [availableSpeechVoices, chatPreferences.speechVoiceId, t],
   );
   const selectedResponseScope = useMemo(
@@ -144,6 +170,7 @@ function SettingsContent() {
     router,
     notifications,
     voiceSetup,
+    ttsSetup,
     availableSpeechVoices,
     isRefreshingSpeechVoices,
     selectedSpeechVoiceLabel,

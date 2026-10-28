@@ -1,6 +1,6 @@
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
-import { StyleSheet, View } from 'react-native';
+import { Platform, StyleSheet, View } from 'react-native';
 import { Button, HelperText, List, SegmentedButtons, Text } from 'react-native-paper';
 
 import { type NativeSelectOption } from '@/components/ui/native-select';
@@ -13,7 +13,9 @@ import type { WorkingSoundVariant } from '@/lib/voice/working-sound';
 import type { ChatPreferences } from '@/providers/opencode-provider';
 import { WORKING_SOUND_OPTIONS } from '@/components/settings/settings-utils';
 import { LocalVoiceSection, type LocalVoiceState } from './local-voice-section';
+import { LocalTtsSection } from './local-tts-section';
 import { SettingSelectField, SettingSwitchRow, type Palette } from './setting-rows';
+import type { useTtsSetup } from '@/components/settings/use-tts-setup';
 
 type VoiceSectionProps = {
   availableSpeechVoices: SpeechVoiceOption[];
@@ -29,6 +31,7 @@ type VoiceSectionProps = {
   palette: Palette;
   selectedSpeechVoiceLabel: string;
   selectedWorkingSound: { value: WorkingSoundVariant };
+  ttsSetup: ReturnType<typeof useTtsSetup>;
   updateChatPreferences: (patch: Partial<ChatPreferences>) => void;
   voiceCapabilities?: VoiceCapabilities;
 };
@@ -56,6 +59,7 @@ export function VoiceSection({
   palette,
   selectedSpeechVoiceLabel,
   selectedWorkingSound,
+  ttsSetup,
   updateChatPreferences,
   voiceCapabilities,
 }: VoiceSectionProps) {
@@ -64,6 +68,8 @@ export function VoiceSection({
   const offLabel = t('common:labels.off');
   const unavailableLabel = t('common:labels.unavailable');
   const localMode = chatPreferences.voiceWakeMode === 'local';
+  const localPlayback = chatPreferences.ttsEngine === 'local';
+  const activeTtsStatus = ttsSetup.activePack ? ttsSetup.statuses[ttsSetup.activePack.id] : undefined;
   const systemReady = Boolean(
     voiceCapabilities?.recognitionAvailable && voicePermission?.granted,
   );
@@ -88,11 +94,13 @@ export function VoiceSection({
   }));
   const speechVoiceOptions: NativeSelectOption<string>[] = [
     {
-      label: t('common:labels.systemDefault'),
+      label: t('settings:voice.voiceSelect.automatic'),
       value: '__system__',
     },
     ...availableSpeechVoices.map((voice) => ({
-      description: voice.language,
+      description: voice.quality === 'enhanced'
+        ? t('settings:voice.voiceSelect.enhanced', { language: voice.language })
+        : voice.language,
       label: voice.label,
       value: voice.id,
     })),
@@ -171,6 +179,29 @@ export function VoiceSection({
         </>
       )}
 
+      {Platform.OS === 'web' ? null : (
+        <>
+          <View style={styles.modeBlock}>
+            <Text variant="titleSmall" style={{ color: palette.text }}>{t('settings:voice.playbackEngine.label')}</Text>
+            <SegmentedButtons
+              onValueChange={(value) => { void ttsSetup.setEngine(value === 'local' ? 'local' : 'system'); }}
+              buttons={[
+                { icon: 'cellphone', label: t('settings:voice.mode.system'), value: 'system' },
+                { icon: 'chip', label: t('settings:voice.mode.local'), value: 'local' },
+              ]}
+              value={localPlayback ? 'local' : 'system'}
+            />
+            <HelperText type="info">
+              {localPlayback
+                ? t('settings:voice.playbackEngine.localDescription')
+                : t('settings:voice.playbackEngine.systemDescription')}
+            </HelperText>
+          </View>
+
+          <LocalTtsSection chatPreferences={chatPreferences} palette={palette} ttsSetup={ttsSetup} />
+        </>
+      )}
+
       <TextInput
         autoCapitalize="none"
         autoCorrect={false}
@@ -227,9 +258,10 @@ export function VoiceSection({
           }}
           options={speechVoiceOptions}
           palette={palette}
-          selectedValue={chatPreferences.speechVoiceId || '__system__'}
+          selectedValue={availableSpeechVoices.some((voice) => voice.id === chatPreferences.speechVoiceId) ? chatPreferences.speechVoiceId : '__system__'}
           valueLabel={selectedSpeechVoiceLabel}
         />
+        <HelperText type="info">{t('settings:voice.enhancedVoices')}</HelperText>
         <SettingSwitchRow
           description={t('settings:voice.workingSound.description')}
           onValueChange={(value) => updateChatPreferences({ workingSoundEnabled: value })}
@@ -276,6 +308,26 @@ export function VoiceSection({
               palette={palette}
               status={voiceCapabilities ? (voiceCapabilities.onDeviceSupported ? t('settings:voice.check.available') : offLabel) : t('common:labels.unknown')}
             />
+            {Platform.OS === 'web' ? null : (
+              <>
+                <VoiceCheckRow
+                  label={t('settings:voice.playbackEngine.label')}
+                  palette={palette}
+                  status={localPlayback ? t('settings:voice.mode.local') : t('settings:voice.mode.system')}
+                />
+                <VoiceCheckRow
+                  label={t('settings:voice.localTts.title')}
+                  palette={palette}
+                  status={ttsSetup.activePack
+                    ? (activeTtsStatus === 'ready'
+                      ? ttsSetup.activePack.languageLabel
+                      : activeTtsStatus === 'unsupported'
+                        ? unavailableLabel
+                        : t('settings:voice.localTts.notInstalled'))
+                    : t('settings:voice.localTts.notInstalled')}
+                />
+              </>
+            )}
             {voiceCapabilities && !voiceCapabilities.recognitionAvailable ? (
               <HelperText type="info">{t('settings:voice.check.unavailableHint')}</HelperText>
             ) : null}

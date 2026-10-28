@@ -450,12 +450,14 @@ const selectors = await loadTs('providers/opencode-provider-selectors.ts', {
   '@/lib/opencode/format': { toTranscriptEntry: (record: any) => record, getHistoryPreview: () => '' },
   '@/lib/opencode/transcript': { hasMessageBubble: (entry: any) => Boolean(entry.text), getTranscriptActivityLabel: () => undefined },
 });
+const speechConfig = await loadTs('lib/voice/speech-config.ts', {}, voiceRuntime.globals);
 const conversationImports = {
   react: voiceRuntime.react,
   'react-native': { AppState: { addEventListener: (_event: any, callback: any) => { onConversationAppStateChange = callback; return { remove() {} }; } } },
   '@/lib/opencode/format': { toTranscriptEntry: (record: any) => record },
   '@/lib/opencode/transcript': { isTranscriptDisplayMessage: (entry: any) => Boolean(entry.text) },
   '@/lib/voice/speech-output': { stopSpeaking: async () => {}, speakText: async (options: any) => { speechCallbacks = options; options.onStart(); return true; } },
+  '@/lib/voice/speech-config': speechConfig,
   '@/lib/voice/use-speech-input': { useSpeechInput: (options: any) => { recognitionOptions = options; return { abort: abortSpeech, start: startSpeech, isListening: listening, isStarting: false, level: 0 }; } },
   '@/lib/voice/local-wake-word/types': await loadTs('lib/voice/local-wake-word/types.ts', {}, voiceRuntime.globals),
   '@/lib/voice/use-local-wake-word': {

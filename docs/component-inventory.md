@@ -23,9 +23,10 @@ cancels the inbox item; when the composer is empty, its text moves back into the
 composer. Sending entries keep the action disabled until admission completes.
 
 `revert-notice.tsx` renders a muted session-level notice above the pending stack
-while a revert is staged. Its close action cancels the revert. The reverted
-prompt text is edited in the composer, so the notice only carries status and the
-cancel affordance.
+while a revert is staged. Selecting a message's revert action stages it
+immediately without a confirmation dialog. Its close action cancels the revert.
+The reverted prompt text is edited in the composer, so the notice only carries
+status and the cancel affordance.
 
 Steer/Append selection lives at the top of
 the Editor group in Advanced Settings, alongside chat text size and flat
@@ -529,6 +530,7 @@ scanner. It preserves stored profiles. Components do not poll or classify errors
 - `NotificationsSection`
 - `VoiceSection`
 - `LocalVoiceSection`
+- `LocalTtsSection`
 - `ResponsesSection`
 - `LanguageSection`
 - `DiagnosticsSection`
@@ -658,9 +660,22 @@ Responsibility:
 - switch between System speech and On-device voice as the active input mode
 - show the active path and the wake phrase currently in use
 - edit system-recognizer preference and the system wake phrase when System is active
-- edit speech locale and playback preferences (auto-play, progress readback, voice, rate, working sound)
+- choose the playback engine (System or On-device) without changing the input mode
+- edit speech locale and playback preferences (auto-play, progress readback, system voice, rate, working sound)
+- expose system voice quality labels and the enhanced-voice guidance
 - expose a collapsed device check for microphone, recognition, and on-device capability status
-- render `LocalVoiceSection` when On-device mode is selected
+- render `LocalVoiceSection` when On-device input is selected
+- render `LocalTtsSection` always on native so models can be installed before switching playback
+
+### `LocalTtsSection`
+
+Responsibility:
+
+- list the pinned Piper and Kokoro models without selecting or downloading one automatically
+- show install, installing, installed, and unsupported states with download sizes
+- install, remove, select, and preview a model through `useTtsSetup`
+- show the Kokoro speaker picker and the selected pack's language warning
+- show on-device storage use and the Japanese system-voice note
 
 ### `LocalVoiceSection`
 

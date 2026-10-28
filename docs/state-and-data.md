@@ -160,7 +160,10 @@ Current fields:
 - `readInterimAssistantReplies`
 - `speechLocale`
 - `speechRate`
-- `speechVoiceId`
+- `speechVoiceId` (system engine only)
+- `ttsEngine` (`system` default, or `local`)
+- `localTtsPackId` (explicitly selected on-device model; no default)
+- `localTtsSpeakerId` (Kokoro speaker index; `0` for Piper)
 - `workingSoundEnabled`
 - `workingSoundVariant`
 - `workingSoundVolume`
@@ -169,6 +172,8 @@ Current fields:
 - `hideSubagentChats`
 
 `themeMode` and `accentColor` are app-global appearance settings stored with the chat preferences shell. They are deliberately excluded from `serverPreferences`, so switching connections never changes the theme. `providers/appearance-context.tsx` combines them with the OS scheme for `hooks/use-color-scheme.ts` and `hooks/use-palette.ts`.
+
+The TTS engine, pack, and speaker are device-local and also excluded from `serverPreferences`. Downloaded voice models live under `opencode-tts/<packId>/` in the document directory and are not represented in preferences; Settings derives their status from the filesystem. Removing a pack deletes that directory, releases the native TTS model, and switches to the system engine when it was active. Temporary synthesis WAVs live in the cache directory and are deleted after playback, on cancel, and on the next Settings visit.
 
 These values combine application behavior settings and output-style preferences that are sent to the model as prompt instructions. `modelVariantSelections` is separate: it selects a server-supported variant for the matching model, is checked against the current model catalog, and falls back to Default when unavailable. If there is no saved entry, a valid variant already set on the active session is retained when it uses the selected model.
 

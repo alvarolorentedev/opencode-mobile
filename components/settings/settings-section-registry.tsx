@@ -20,6 +20,7 @@ import { VoiceSection } from '@/components/settings/sections/voice-section';
 import { ResponsesSection } from '@/components/settings/sections/responses-section';
 import { AiSettingsPanel } from '@/components/settings/ai-settings-panel';
 import { useNotificationSetup } from '@/components/settings/use-notification-setup';
+import type { useTtsSetup } from '@/components/settings/use-tts-setup';
 import { useVoiceSetup } from '@/components/settings/use-voice-setup';
 import type { RESPONSE_SCOPE_OPTIONS, WORKING_SOUND_OPTIONS } from '@/components/settings/settings-utils';
 import { useLastJsError } from '@/hooks/use-last-js-error';
@@ -60,6 +61,7 @@ type RegistryInput = {
   router: ReturnType<typeof useRouter>;
   notifications: ReturnType<typeof useNotificationSetup>;
   voiceSetup: ReturnType<typeof useVoiceSetup>;
+  ttsSetup: ReturnType<typeof useTtsSetup>;
   availableSpeechVoices: SpeechVoiceOption[];
   isRefreshingSpeechVoices: boolean;
   selectedSpeechVoiceLabel: string;
@@ -92,6 +94,7 @@ export function buildSettingsSections({
   router,
   notifications,
   voiceSetup,
+  ttsSetup,
   availableSpeechVoices,
   isRefreshingSpeechVoices,
   selectedSpeechVoiceLabel,
@@ -168,7 +171,7 @@ export function buildSettingsSections({
       title: t('settings:screen.categories.voice'),
       summary: voiceSummary,
       onPress: () => setOpenSection('voice'),
-      render: () => <VoiceSection availableSpeechVoices={availableSpeechVoices} chatPreferences={chatPreferences} isRefreshingSpeechVoices={isRefreshingSpeechVoices} isRefreshingVoiceCapabilities={voiceSetup.isRefreshing} isTestingVoice={voiceSetup.isTesting} localVoice={voiceSetup.localVoice} onEnableVoiceInput={() => void voiceSetup.enable()} onOpenVoiceSettings={() => void voiceSetup.openAppSettings()} onRefreshVoiceCapabilities={() => void voiceSetup.refreshStatus()} onTestVoicePlayback={() => void voiceSetup.testPlayback()} palette={palette} selectedSpeechVoiceLabel={selectedSpeechVoiceLabel} selectedWorkingSound={selectedWorkingSound} updateChatPreferences={updateChatPreferences} voiceCapabilities={voiceSetup.capabilities} />,
+      render: () => <VoiceSection availableSpeechVoices={availableSpeechVoices} chatPreferences={chatPreferences} isRefreshingSpeechVoices={isRefreshingSpeechVoices} isRefreshingVoiceCapabilities={voiceSetup.isRefreshing} isTestingVoice={voiceSetup.isTesting} localVoice={voiceSetup.localVoice} onEnableVoiceInput={() => void voiceSetup.enable()} onOpenVoiceSettings={() => void voiceSetup.openAppSettings()} onRefreshVoiceCapabilities={() => void voiceSetup.refreshStatus()} onTestVoicePlayback={() => void voiceSetup.testPlayback()} palette={palette} selectedSpeechVoiceLabel={selectedSpeechVoiceLabel} selectedWorkingSound={selectedWorkingSound} ttsSetup={ttsSetup} updateChatPreferences={updateChatPreferences} voiceCapabilities={voiceSetup.capabilities} />,
     },
     {
       id: 'responses',

@@ -73,11 +73,9 @@ describe('ANR regression checks', () => {
       assert.equal(result.models[0].modelID, '1');
       assert.deepEqual(Array.from(result.models.slice(1), (model: any) => model.label), names.filter((_, i) => i !== 1).sort((a, b) => a.localeCompare(b)));
     }
-    const { getSpeechVoiceOptions } = await load('lib/voice/speech-output.ts', {
+    const { getSpeechVoiceOptions } = await load('lib/voice/system-tts.ts', {
       '@/lib/compare-labels': labels,
-      '@/lib/opencode/v2/shared': {},
-      '@/lib/opencode/compat/v1/auth': {},
-      'expo-speech': { getAvailableVoicesAsync: async () => names.slice(0, 3).map((name) => ({ identifier: name, name, language: 'en' })) },
+      'expo-speech': { getAvailableVoicesAsync: async () => names.slice(0, 3).map((name) => ({ identifier: name, name, language: 'en', quality: 'Default' })) },
     });
     assert.deepEqual(Array.from(await getSpeechVoiceOptions(), (voice: any) => voice.label), names.slice(0, 3).map((name) => `${name} (en)`).sort((a, b) => a.localeCompare(b)));
     assert.equal(allocations, 1);
