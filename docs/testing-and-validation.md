@@ -1446,10 +1446,17 @@ response selection, Ready summaries and pinned navigation. The web preview
 retains the existing native-only playback-engine controls; no app console
 errors were observed, only the existing Expo web-support warnings.
 
-The full browser suite has 162 passing tests and one failing cross-server
-loading-skeleton assertion in `multi-server.spec.mjs:301`. It failed on three
-targeted reruns and also on an unchanged HEAD archive using the same dependency
-installation, confirming a pre-existing blocker. No server-switching source or
-test was changed. The full pre-push gate remains red; do not push over it.
+The initial full browser run had 162 passing tests and one failing cross-server
+loading-skeleton assertion in `multi-server.spec.mjs:301`, also reproduced on an
+unchanged HEAD archive. The provider's project-list reconciliation was replacing
+an explicit catalog selection with the previous session before the project list
+caught up. It now respects the existing explicit-selection ref until that list
+acknowledges the target. `optimistic-flows.test.ts` reproduces the original
+overwrite and covers preservation across stale lists, acknowledgement, and
+fallback after later removal. The existing browser regression is unchanged.
+Fix validation: all 681 static tests and both fake-server suites pass, and the
+previously failing browser regression passes three consecutive runs. The full
+browser suite and Android rebuild were started; at the user's request, committing
+the fix does not wait for those broader checks to finish.
 Human validation of the changed onboarding E2E file and physical-device audio,
 permissions, downloads, enrollment and accessibility checks remain outstanding.

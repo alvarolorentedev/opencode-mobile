@@ -110,6 +110,47 @@ function sessionCrudInput(patch: Record<string, unknown> = {}) {
 }
 
 describe('local-first session selection', () => {
+  it('keeps an explicit selection while the project catalog is stale, then reconciles later removal', async () => {
+    const runtime = hookRuntime();
+    const { useOpencodeProviderEffects } = await loadTs('providers/use-opencode-provider-effects.ts', {
+      react: runtime.react,
+      '@/providers/transcript-pruning': { pruneProviderTranscripts: vi.fn() },
+    });
+    const previous = [{ id: 'old' }];
+    const sessionsRef = { current: previous };
+    const explicitSessionSelectionRef = { current: 'target' as string | undefined };
+    const currentSessionIdRef = { current: 'target' as string | undefined };
+    const setCurrentSessionId = vi.fn();
+    runtime.mount(useOpencodeProviderEffects, {
+      connection: { status: 'idle' }, isHydrated: false, active: false,
+      activeProjectPath: '/repo', connectionScope: 'scope',
+      currentSessionId: 'target', currentSessionIdRef, explicitSessionSelectionRef,
+      sessions: previous, sessionsRef,
+      lastSessionByConnection: { scope: { '/repo': 'target' } },
+      setCurrentSessionId,
+      sessionRefreshTimeoutsRef: { current: {} }, sessionRefreshOptionsRef: { current: {} },
+    });
+    expect(setCurrentSessionId).not.toHaveBeenCalled();
+    expect(currentSessionIdRef.current).toBe('target');
+    expect(explicitSessionSelectionRef.current).toBe('target');
+
+    // Another stale list must not override the tap while the target is loading.
+    sessionsRef.current = [...previous];
+    runtime.update({ sessions: sessionsRef.current });
+    expect(setCurrentSessionId).not.toHaveBeenCalled();
+
+    sessionsRef.current = [...previous, { id: 'target' }];
+    runtime.update({ sessions: sessionsRef.current });
+    expect(explicitSessionSelectionRef.current).toBeUndefined();
+    expect(setCurrentSessionId).not.toHaveBeenCalled();
+
+    sessionsRef.current = previous;
+    runtime.update({ sessions: previous });
+    expect(setCurrentSessionId).toHaveBeenCalledWith('old');
+    expect(currentSessionIdRef.current).toBe('old');
+    runtime.unmount();
+  });
+
   it('selects the active session before transcript hydration finishes', async () => {
     const runtime = hookRuntime();
     const { useSessionBootstrapActions } = await loadTs('providers/use-session-bootstrap-actions.ts', {

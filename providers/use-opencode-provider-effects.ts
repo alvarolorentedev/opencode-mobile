@@ -112,7 +112,8 @@ export function useOpencodeProviderEffects({
   );
 
   useEffect(() => {
-    if (!currentSessionId) {
+    // A rendered catalog row can arrive before the project's session list.
+    if (!currentSessionId || explicitSessionSelectionRef.current === currentSessionId) {
       return;
     }
 
@@ -127,7 +128,7 @@ export function useOpencodeProviderEffects({
     const fallbackSessionId = currentSessions.find((session) => session.id === rememberedSessionId)?.id || currentSessions[0]?.id;
     currentSessionIdRef.current = fallbackSessionId;
     setCurrentSessionId(fallbackSessionId);
-  }, [activeProjectPath, connectionScope, currentSessionId, currentSessionIdRef, lastSessionByConnection, sessions, sessionsRef, setCurrentSessionId]);
+  }, [activeProjectPath, connectionScope, currentSessionId, currentSessionIdRef, explicitSessionSelectionRef, lastSessionByConnection, sessions, sessionsRef, setCurrentSessionId]);
 
   useEffect(() => {
     const explicit = explicitSessionSelectionRef.current;

@@ -58,6 +58,7 @@ Meaning:
 - `sessions` are the current project's sessions sorted newest-first; the native list is cursor-paged and every page is read, so a project never drops its older chats
 - `sessionStatuses` stores per-session runtime status from the server
 - `currentSessionId` is the selected/open session
+- an explicit selection stays selected while the project session list catches up with a catalog row; once the list includes it, normal reconciliation handles later removal
 - `lastSessionByConnection` persists the remembered session ID per connection scope and project path, so the same path on two servers remembers different sessions
 
 ## Session Content Caches
