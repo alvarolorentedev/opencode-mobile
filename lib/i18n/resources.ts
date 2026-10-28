@@ -62,6 +62,14 @@ import ptProject from '@/lib/i18n/locales/pt/project.json';
 import ptSettings from '@/lib/i18n/locales/pt/settings.json';
 import ptShare from '@/lib/i18n/locales/pt/share.json';
 import ptTerminal from '@/lib/i18n/locales/pt/terminal.json';
+import ruChat from '@/lib/i18n/locales/ru/chat.json';
+import ruCommon from '@/lib/i18n/locales/ru/common.json';
+import ruNotifications from '@/lib/i18n/locales/ru/notifications.json';
+import ruOnboarding from '@/lib/i18n/locales/ru/onboarding.json';
+import ruProject from '@/lib/i18n/locales/ru/project.json';
+import ruSettings from '@/lib/i18n/locales/ru/settings.json';
+import ruShare from '@/lib/i18n/locales/ru/share.json';
+import ruTerminal from '@/lib/i18n/locales/ru/terminal.json';
 import zhChat from '@/lib/i18n/locales/zh/chat.json';
 import zhCommon from '@/lib/i18n/locales/zh/common.json';
 import zhNotifications from '@/lib/i18n/locales/zh/notifications.json';
@@ -141,6 +149,16 @@ export const resources = {
     settings: ptSettings,
     share: ptShare,
     terminal: ptTerminal,
+  },
+  ru: {
+    chat: ruChat,
+    common: ruCommon,
+    notifications: ruNotifications,
+    onboarding: ruOnboarding,
+    project: ruProject,
+    settings: ruSettings,
+    share: ruShare,
+    terminal: ruTerminal,
   },
   zh: {
     chat: zhChat,

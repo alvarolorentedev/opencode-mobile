@@ -1,0 +1,83 @@
+{
+  "tabs": {
+    "chat": "Чат",
+    "terminal": "Терминал",
+    "projects": "Проекты",
+    "settings": "Настройки"
+  },
+  "actions": {
+    "cancel": "Отмена",
+    "save": "Сохранить",
+    "close": "Закрыть",
+    "back": "Назад",
+    "next": "Далее",
+    "done": "Готово",
+    "retry": "Повторить",
+    "delete": "Удалить",
+    "dismiss": "Скрыть",
+    "refresh": "Обновить",
+    "remove": "Удалить",
+    "open": "Открыть",
+    "copy": "Копировать",
+    "connect": "Подключить",
+    "reconnect": "Переподключить",
+    "disconnect": "Отключить",
+    "edit": "Изменить",
+    "stop": "Остановить",
+    "closeWithName": "Закрыть {{title}}",
+    "openSettings": "Открыть настройки"
+  },
+  "select": {
+    "chooseOption": "Выберите вариант"
+  },
+  "labels": {
+    "connected": "Подключено",
+    "enabled": "Включено",
+    "off": "Выкл",
+    "active": "Активно",
+    "unavailable": "Недоступно",
+    "unknown": "Неизвестно",
+    "none": "Нет",
+    "notSet": "не задано",
+    "systemDefault": "Системное"
+  },
+  "updates": {
+    "available": "Доступно обновление",
+    "ready": "Обновление готово",
+    "later": "Позже",
+    "failed": "Не удалось обновить. Попробуйте позже.",
+    "opening": "Открытие обновления…",
+    "installing": "Установка обновления…",
+    "readyDescription": "Перезапустите приложение для установки.",
+    "availableDescription": "Установите последнюю версию в App Store.",
+    "restart": "Перезапустить и установить",
+    "openStore": "Открыть App Store"
+  },
+  "servers": {
+    "allServers": "Все серверы",
+    "allProjects": "Все проекты",
+    "server": "Сервер",
+    "projectContext": "Контекст проекта",
+    "serverSettings": "Настройки сервера",
+    "appSettings": "Настройки приложения",
+    "forServer": "Изменения применяются к {{name}}",
+    "searchProjects": "Поиск проектов",
+    "lastSynced": "Показаны последние синхронизированные проекты",
+    "newTerminalHint": "Выберите, где начнётся терминал.",
+    "workingDirectory": "Рабочая директория",
+    "chatUnchanged": "Ваш чат останется на {{name}}.",
+    "pending": "Ожидающие ({{count}})",
+    "savedRules": "Сохранённые правила ({{count}})",
+    "onlyThisServer": "Только для этого сервера",
+    "appDiagnostics": "Диагностика приложения · Все серверы",
+    "discardDrafts": "Несохранённые черновики чата и редактора на этом сервере будут удалены.",
+    "status": {
+      "idle": "Отключён",
+      "connecting": "Подключение...",
+      "connected": "Подключён",
+      "error": "Недоступен"
+    },
+    "appSettingsSummary": "Редактор, общие, обновления",
+    "serverToolsSummary": "MCP-серверы и диагностика"
+  }
+}

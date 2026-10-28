@@ -1,0 +1,77 @@
+{
+  "welcome": {
+    "title": "OpenCode Mobile",
+    "subtitle": "Your OpenCode projects, wherever you are.",
+    "body": "OpenCode Mobile brings your OpenCode server to your phone. Chat with coding agents, follow their work, and review changes across your projects.",
+    "start": "Continue",
+    "points": {
+      "server": {
+        "title": "Your server does the work",
+        "description": "Models and tasks run on your OpenCode server. This app keeps you connected to them."
+      },
+      "project": {
+        "title": "Projects and conversations",
+        "description": "Projects keep chats, files, and changes together."
+      },
+      "optional": {
+        "title": "Voice and task updates",
+        "description": "Voice input and completion notifications help you keep up with work on the go."
+      }
+    }
+  },
+  "connect": {
+    "skip": "Skip"
+  },
+  "project": {
+    "title": "Choose a project",
+    "subtitle": "Pick a project to start in, or add a folder on the server.",
+    "continue": "Continue",
+    "skip": "Skip",
+    "empty": "This server did not report any projects. Add a directory on the server to get started.",
+    "loading": "Loading projects…"
+  },
+  "permissions": {
+    "title": "Permissions",
+    "subtitle": "Optional. OpenCode Mobile only asks when you choose to enable something.",
+    "skip": "Skip",
+    "continue": "Continue",
+    "notifications": {
+      "title": "Notifications",
+      "body": "Allow OpenCode Mobile to notify you when a task finishes while the app is in the background.",
+      "unsupported": "Notifications are not available on this platform.",
+      "enable": "Enable notifications",
+      "battery": "Review battery / background settings"
+    },
+    "voice": {
+      "title": "Voice input",
+      "body": "Microphone access lets you dictate prompts instead of typing them.",
+      "unsupported": "Voice input is not available on this device.",
+      "enable": "Enable voice input",
+      "deniedHint": "You can still turn voice input on later from Settings › Voice."
+    },
+    "checking": "Checking…"
+  },
+  "ready": {
+    "title": "You're ready",
+    "subtitle": "Review your setup and start coding.",
+    "server": "Server",
+    "project": "Project",
+    "projectMissing": "No project selected",
+    "footnote": "You can change these settings anytime.",
+    "start": "Start coding",
+    "done": "Done",
+    "serverMissing": "Not connected",
+    "providers": "Providers",
+    "enabledModels": "Enabled models"
+  },
+  "settingsAssistant": {
+    "summary": "Review permissions, connection, providers, project, and preferences"
+  },
+  "reviewSetup": "Review setup",
+  "stepIndicator": "Step {{step}} of {{totalSteps}}",
+  "general": {
+    "title": "General Settings",
+    "subtitle": "Make OpenCode Mobile feel right for you.",
+    "defaultModel": "Default model"
+  }
+}
