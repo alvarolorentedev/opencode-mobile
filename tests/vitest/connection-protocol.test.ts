@@ -186,6 +186,7 @@ describe('installed native SDK error boundary', () => {
     const raw = await loadTs('lib/opencode/v2/raw.ts', {
       '@opencode/client': { OpenCode },
       '../client': { getRequestHeaders: () => ({}), createPrefixFetch: () => async () => json({ error: 'Request denied' }, status) },
+      './config-read-cache': { bustConfigReadCache: () => undefined },
       './shared': { resolveV2Base: () => ({ base: { origin: 'http://test' }, pathPrefix: '' }) },
     }, { Error });
     const api = raw.buildV2Raw(settings).api;
