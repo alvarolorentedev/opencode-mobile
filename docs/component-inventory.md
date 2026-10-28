@@ -23,8 +23,9 @@ cancels the inbox item; when the composer is empty, its text moves back into the
 composer. Sending entries keep the action disabled until admission completes.
 
 `revert-notice.tsx` renders a muted session-level notice above the pending stack
-while a revert is staged. Selecting a message's revert action stages it
-immediately without a confirmation dialog. Its close action cancels the revert.
+while a revert is staged. Selecting a message's revert action stops any
+in-flight reply, settles it, then stages the revert immediately without a
+confirmation dialog. Its close action cancels the revert.
 The reverted prompt text is edited in the composer, so the notice only carries
 status and the cancel affordance.
 

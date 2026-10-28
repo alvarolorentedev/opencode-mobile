@@ -52,6 +52,21 @@ test('attachment tiles preview images, text and documents above the related mess
   await expect(page.getByTestId('attachment-image-preview')).toBeVisible();
 });
 
+test('reverting a running reply stops it before staging the rewind', async ({ page, request }) => {
+  await resetScenario(request, 'inbox');
+  await page.setViewportSize({ width: 390, height: 844 });
+  await openReadyChat(page);
+  await sendPrompt(page, 'Keep working on the revert');
+  await expect(page.getByText('Working on: Keep working on the revert', { exact: true }).first()).toBeVisible();
+
+  const userMessage = page.locator('[data-testid^="transcript-message-"]').filter({ has: page.getByText('Keep working on the revert', { exact: true }) });
+  await userMessage.getByRole('button', { name: 'Revert from this message' }).click();
+
+  await expect(page.getByTestId('chat-revert-notice')).toBeVisible();
+  await expect(page.getByText('Action failed', { exact: true })).toHaveCount(0);
+  await expect(page.getByPlaceholder('Ask anything...')).toHaveValue('Keep working on the revert');
+});
+
 test('OpenCode 2 keeps steer and append prompts pinned until delivery and recovers them after reload', async ({ page, request }) => {
   test.setTimeout(90_000);
   await resetScenario(request, 'happy-path');

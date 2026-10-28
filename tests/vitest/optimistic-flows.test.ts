@@ -19,6 +19,7 @@ async function loadSessionCrud(runtime: ReturnType<typeof hookRuntime>) {
     deleteSession: vi.fn(async () => undefined),
     executeCommand: vi.fn(async () => undefined),
     forkSession: vi.fn(async () => ({ id: 'forked' })),
+    interruptSession: vi.fn(async () => undefined),
     listArchivedSessions: vi.fn(async () => []),
     revertSession: vi.fn(async () => undefined),
     shareSession: vi.fn(async () => ({ id: 's' })),
@@ -26,6 +27,7 @@ async function loadSessionCrud(runtime: ReturnType<typeof hookRuntime>) {
     unrevertSession: vi.fn(async () => undefined),
     unshareSession: vi.fn(async () => ({ id: 's' })),
     updateSessionTitle: vi.fn(async () => ({ id: 's' })),
+    waitForSessionIdle: vi.fn(async () => undefined),
   };
   const { useSessionCrudActions } = await loadTs('providers/use-session-crud-actions.ts', {
     react: runtime.react,
@@ -417,6 +419,37 @@ describe('local-first session selection', () => {
     await expect(renaming).rejects.toThrow('rename failed');
     expect(state.sessions[0].title).toBe('Old');
 
+    runtime.unmount();
+  });
+
+  it('revertSession stops and settles a running session before staging', async () => {
+    const runtime = hookRuntime();
+    const { useSessionCrudActions, services } = await loadSessionCrud(runtime);
+    const order: string[] = [];
+    services.interruptSession.mockImplementation(async () => { order.push('interrupt'); });
+    services.waitForSessionIdle.mockImplementation(async () => { order.push('wait'); });
+    services.revertSession.mockImplementation(async () => { order.push('revert'); });
+    const { input } = sessionCrudInput();
+    runtime.mount(useSessionCrudActions, input);
+
+    await runtime.value.revertSession('s', 'm1');
+
+    expect(order).toEqual(['interrupt', 'wait', 'revert']);
+    expect(services.revertSession).toHaveBeenCalledWith(expect.anything(), 's', 'm1');
+    runtime.unmount();
+  });
+
+  it('revertSession does not stage when the session cannot be stopped', async () => {
+    const runtime = hookRuntime();
+    const { useSessionCrudActions, services } = await loadSessionCrud(runtime);
+    services.interruptSession.mockRejectedValueOnce(new Error('stop failed'));
+    const { input } = sessionCrudInput();
+    runtime.mount(useSessionCrudActions, input);
+
+    await expect(runtime.value.revertSession('s', 'm1')).rejects.toThrow('stop failed');
+
+    expect(services.waitForSessionIdle).not.toHaveBeenCalled();
+    expect(services.revertSession).not.toHaveBeenCalled();
     runtime.unmount();
   });
 });

@@ -822,6 +822,13 @@ const server = http.createServer(async (req, res) => {
         sendJson(res, 400, { error: 'Revert requires a session and messageID' });
         return;
       }
+      // V1 holds a session lock while a prompt runs; staging a revert against a
+      // locked session fails until the client aborts it.
+      const status = state.sessionStatuses[session.id];
+      if (status && status.type !== 'idle') {
+        sendJson(res, 409, { name: 'SessionLockedError', data: { sessionID: session.id, message: `Session ${session.id} is locked` } });
+        return;
+      }
       session.revert = { messageID: body.messageID, ...(body.partID ? { partID: body.partID } : {}) };
       session.time.updated = getNow();
       emitEvent({ type: 'session.updated', properties: { sessionID: session.id, info: session } });

@@ -739,6 +739,12 @@ const server = http.createServer(async (req, res) => {
       const session = helpers.getSession(revertPath[1]); if (!session) return notFound(res);
       if (req.method === 'POST' && revertPath[2]) {
         const body = await readJson(req);
+        // The real server refuses to stage a revert while the agent loop is
+        // active; clients must interrupt and wait for idle first.
+        if (state.sessionStatuses[session.id] && state.sessionStatuses[session.id].type !== 'idle') {
+          sendJson(res, 409, { _tag: 'SessionBusyError', sessionID: session.id, message: `Session is busy: ${session.id}` });
+          return;
+        }
         if (!helpers.getMessages(session.id).some((item) => item.id === body.messageID)) return notFound(res);
         session.revert = { messageID: body.messageID };
         emitV2Event(event('session.revert.staged', { sessionID: session.id, revert: session.revert }));
@@ -876,6 +882,23 @@ const server = http.createServer(async (req, res) => {
       const sessionID = pathname.split('/')[3];
       state.sessionStatuses[sessionID] = { type: 'idle' };
       sendJson(res, 200, { interrupted: true });
+      return;
+    }
+
+    if (req.method === 'POST' && /^\/api\/experimental\/session\/[^/]+\/wait$/.test(pathname)) {
+      const sessionID = pathname.split('/')[4];
+      if (!helpers.getSession(sessionID)) return notFound(res);
+      const waitingStartedAt = Date.now();
+      const settle = () => {
+        const status = state.sessionStatuses[sessionID];
+        if (!status || status.type === 'idle' || Date.now() - waitingStartedAt > 10_000) {
+          res.writeHead(204, { 'Access-Control-Allow-Origin': '*' });
+          res.end();
+          return;
+        }
+        setTimeout(settle, 25);
+      };
+      settle();
       return;
     }
 

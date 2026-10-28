@@ -129,6 +129,9 @@ export function unrevertSession(client: ScopedOpencodeClient, sessionId: string)
 export function interruptSession(client: ScopedOpencodeClient, sessionID: string) {
   return createSessionAdapter(client).interrupt(sessionID);
 }
+export function waitForSessionIdle(client: ScopedOpencodeClient, sessionID: string) {
+  return createSessionAdapter(client).waitForIdle(sessionID);
+}
 export function listCommands(client: ScopedOpencodeClient) {
   return createSessionAdapter(client).commands();
 }
