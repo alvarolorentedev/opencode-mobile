@@ -129,9 +129,10 @@ per-runtime.
 
 ### First-Run Onboarding
 
-The assistant has seven connected steps: app presentation, permissions, add
-connection, AI & Providers, project, General Settings, and ready. Without a
-connection, AI & Providers and project are omitted (five visible steps). Shared
+The assistant has eight connected steps: app presentation, permissions, add
+connection, AI & Providers, project, General Settings, Voice & Responses, and
+ready. Without a connection, AI & Providers and project are omitted (six visible
+steps). Shared
 navigation derives progress and forward/back destinations from that sequence;
 temporary reconnects retain the AI step and its sign-in dialog. Manual connection
 and Cloud Link pairing both continue to AI & Providers. General Settings edits
@@ -140,6 +141,10 @@ field requires a connection; delivery also requires V2.
 Provider setup embeds the same composition as Settings, including auth dialogs,
 model toggles, account actions, confirmations and feedback. All selections write
 through existing provider actions, and Ready summarizes current provider state.
+Voice & Responses reuses the Settings voice controls in an onboarding view,
+including OS/on-device input, command-model setup, playback packs, voice preview,
+auto-readback and response style. Model downloads and microphone permission are
+explicit actions. The voice panel unmounts on blur to release native audio.
 The completion version, preference schema and first-run migration are unchanged.
 
 - Completion lives in `opencode-mobile.onboarding-version` (managed by

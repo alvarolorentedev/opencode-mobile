@@ -1,4 +1,4 @@
-export const ONBOARDING_STEPS = ['index', 'permissions', 'connect', 'ai', 'project', 'general', 'ready'] as const;
+export const ONBOARDING_STEPS = ['index', 'permissions', 'connect', 'ai', 'project', 'general', 'voice', 'ready'] as const;
 export type OnboardingStepName = typeof ONBOARDING_STEPS[number];
 
 export function getOnboardingSteps(hasConnection: boolean) {

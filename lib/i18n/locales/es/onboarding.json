@@ -65,7 +65,7 @@
     "enabledModels": "Modelos habilitados"
   },
   "settingsAssistant": {
-    "summary": "Revisar permisos, conexión, proveedores, proyecto y preferencias"
+    "summary": "Revisar permisos, conexión, proveedores, proyecto, voz y preferencias"
   },
   "reviewSetup": "Revisar configuración",
   "stepIndicator": "Paso {{step}} de {{totalSteps}}",
@@ -73,5 +73,13 @@
     "title": "Ajustes generales",
     "subtitle": "Adapta OpenCode Mobile a tus preferencias.",
     "defaultModel": "Modelo predeterminado"
+  },
+  "voice": {
+    "title": "Voz y respuestas",
+    "subtitle": "Elige cómo hablar y escuchar las respuestas.",
+    "input": "Entrada de voz",
+    "playback": "Respuestas habladas",
+    "responses": "Estilo de respuesta",
+    "autoPlay": "Leer las respuestas en voz alta"
   }
 }

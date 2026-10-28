@@ -26,6 +26,7 @@ export function useLocalVoiceEnrollment() {
   const [status, setStatus] = useState<LocalVoiceEnrollmentStatus>('idle');
   const [error, setError] = useState<string>();
   const recordingRef = useRef(false);
+  const mountedRef = useRef(true);
   const chunksRef = useRef<Float32Array[]>([]);
   const resamplerRef = useRef(createResampler(SAMPLE_RATE, SAMPLE_RATE));
   const resamplerRateRef = useRef(SAMPLE_RATE);
@@ -145,13 +146,23 @@ export function useLocalVoiceEnrollment() {
     resamplerRateRef.current = SAMPLE_RATE;
     try {
       await ensureLocalSpeakerRuntime();
+      if (!mountedRef.current) return;
       const permission = await requestRecordingPermissionsAsync();
+      if (!mountedRef.current) return;
       if (!permission.granted) {
         throw new Error('Microphone permission is required to enroll your voice.');
       }
       await activateLocalWakeRecordingAsync();
+      if (!mountedRef.current) {
+        await deactivateLocalWakeRecordingAsync().catch(() => undefined);
+        return;
+      }
       recordingRef.current = true;
       await stream.start();
+      if (!mountedRef.current) {
+        await stopCapture();
+        return;
+      }
       timerRef.current = setTimeout(() => finishRef.current(), ENROLLMENT_SECONDS * 1000);
     } catch (enrollmentError) {
       recordingRef.current = false;
@@ -159,7 +170,7 @@ export function useLocalVoiceEnrollment() {
       setError(enrollmentError instanceof Error ? enrollmentError.message : 'Could not start voice enrollment.');
       await deactivateLocalWakeRecordingAsync().catch(() => undefined);
     }
-  }, [stream]);
+  }, [stream, stopCapture]);
 
   const clearProfile = useCallback(async () => {
     await clearLocalSpeakerProfile();
@@ -168,17 +179,21 @@ export function useLocalVoiceEnrollment() {
     setStatus('idle');
   }, []);
 
-  useEffect(() => () => {
-    recordingRef.current = false;
-    if (timerRef.current) {
-      clearTimeout(timerRef.current);
-    }
-    try {
-      stream.stop();
-    } catch {
-      // Ignore unmount races.
-    }
-    void deactivateLocalWakeRecordingAsync().catch(() => undefined);
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+      recordingRef.current = false;
+      if (timerRef.current) {
+        clearTimeout(timerRef.current);
+      }
+      try {
+        stream.stop();
+      } catch {
+        // Ignore unmount races.
+      }
+      void deactivateLocalWakeRecordingAsync().catch(() => undefined);
+    };
   }, [stream]);
 
   return {

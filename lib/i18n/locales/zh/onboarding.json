@@ -65,7 +65,7 @@
     "enabledModels": "已启用的模型"
   },
   "settingsAssistant": {
-    "summary": "检查权限、连接、提供商、项目和偏好设置"
+    "summary": "检查权限、连接、提供商、项目、语音和偏好设置"
   },
   "reviewSetup": "检查设置",
   "stepIndicator": "第 {{step}} 步，共 {{totalSteps}} 步",
@@ -73,5 +73,13 @@
     "title": "通用设置",
     "subtitle": "按你的偏好设置 OpenCode Mobile。",
     "defaultModel": "默认模型"
+  },
+  "voice": {
+    "title": "语音与回复",
+    "subtitle": "选择语音输入和回复朗读方式。",
+    "input": "语音输入",
+    "playback": "回复朗读",
+    "responses": "回复风格",
+    "autoPlay": "自动朗读回复"
   }
 }

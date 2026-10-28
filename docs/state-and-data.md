@@ -1027,3 +1027,17 @@ Provider/model/agent selections, visible and recent models, model variants and a
 Chat focus, terminal target and Settings inspection target are independent composite references. The presentation map holds composer text/attachments, failed input, editor baseline/current text and transcript offsets. Hidden dirty drafts and PTYs participate in update blocking. Removing a connection names unsaved drafts in its confirmation. Drafts are intentionally not written to disk.
 
 New chat creation is provider-owned: `createChat(target)` resolves and connects the target runtime, creates and opens the session there, then selects that workspace so the Chat screen follows it. The New chat sheet only holds a local draft target; no project is selected and no session is created before confirmation.
+
+
+## Voice and response onboarding preferences
+
+The optional Voice & Responses step writes through `updateChatPreferences`, using
+existing voice input, local command-model, TTS pack/speaker, OS voice, auto-play,
+response scope and next-action fields. There is no separate onboarding draft,
+persistence key, schema change or completion-version increase. Skip advances
+without undoing earlier selections. The step is available without a connection.
+
+Opening model setup does not download or activate a missing TTS pack. Downloads
+and enrollment use the existing setup hooks, and activation still requires an
+installed model. The onboarding voice panel unmounts when its route loses focus,
+so preview playback and enrollment capture are released before the next screen.

@@ -1,5 +1,5 @@
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useMemo, useRef, useState } from 'react';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
@@ -17,6 +17,7 @@ import { getConnectionUiScope } from '@/lib/connection-scope';
 import { useNotificationSetup } from '@/components/settings/use-notification-setup';
 import { useTtsSetup } from '@/components/settings/use-tts-setup';
 import { useVoiceSetup } from '@/components/settings/use-voice-setup';
+import { useSpeechVoices } from '@/components/settings/use-speech-voices';
 import {
   RESPONSE_SCOPE_OPTIONS,
   WORKING_SOUND_OPTIONS,
@@ -24,7 +25,6 @@ import {
 import { OverlaySheet } from '@/components/ui/overlay-sheet';
 import { useLastJsError } from '@/hooks/use-last-js-error';
 import { usePalette } from '@/hooks/use-palette';
-import { getSpeechVoiceOptions, type SpeechVoiceOption } from '@/lib/voice/speech-output';
 import { getSpeechPlayback } from '@/lib/voice/speech-config';
 import { useApprovals, useCapabilities, useConnection, useDiagnostics, useMcp, useOnboarding, usePreferences, useProjects, useUpdates } from '@/providers/opencode-contexts';
 import { buildSettingsSections } from '@/components/settings/settings-section-registry';
@@ -84,8 +84,7 @@ function SettingsContent() {
   // Reopening Cloud Link after the full-screen service editor returns keeps the
   // user in context without leaving a portal sheet over the pushed route.
   const returnToCloudLink = useRef(false);
-  const [availableSpeechVoices, setAvailableSpeechVoices] = useState<SpeechVoiceOption[]>([]);
-  const [isRefreshingSpeechVoices, setIsRefreshingSpeechVoices] = useState(false);
+  const { voices: availableSpeechVoices, isLoading: isRefreshingSpeechVoices } = useSpeechVoices();
 
   async function handleConnect() {
     setIsConnecting(true);
@@ -118,22 +117,6 @@ function SettingsContent() {
   useFocusEffect(useCallback(() => {
     refreshTtsSetup();
   }, [refreshTtsSetup]));
-
-  async function refreshSpeechVoices() {
-    setIsRefreshingSpeechVoices(true);
-    try {
-      setAvailableSpeechVoices(await getSpeechVoiceOptions());
-    } catch {
-      setAvailableSpeechVoices([]);
-    } finally {
-      setIsRefreshingSpeechVoices(false);
-    }
-  }
-
-  useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- hydrate speech status once on mount.
-    void refreshSpeechVoices();
-  }, []);
 
   const selectedSpeechVoiceLabel = useMemo(
     () => availableSpeechVoices.find((voice) => voice.id === chatPreferences.speechVoiceId)?.label || t('settings:voice.voiceSelect.automatic'),

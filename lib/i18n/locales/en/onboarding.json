@@ -65,7 +65,7 @@
     "enabledModels": "Enabled models"
   },
   "settingsAssistant": {
-    "summary": "Review permissions, connection, providers, project, and preferences"
+    "summary": "Review permissions, connection, providers, project, voice, and preferences"
   },
   "reviewSetup": "Review setup",
   "stepIndicator": "Step {{step}} of {{totalSteps}}",
@@ -73,5 +73,13 @@
     "title": "General Settings",
     "subtitle": "Make OpenCode Mobile feel right for you.",
     "defaultModel": "Default model"
+  },
+  "voice": {
+    "title": "Voice & Responses",
+    "subtitle": "Choose how you talk and hear replies.",
+    "input": "Voice input",
+    "playback": "Spoken replies",
+    "responses": "Response style",
+    "autoPlay": "Read replies aloud"
   }
 }

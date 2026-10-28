@@ -1417,3 +1417,39 @@ text contrasts with its background, no light block sits behind the code,
 blockquote text stays readable, and code-block copy still fires the light
 haptic. Native rendering cannot be established by the Vitest style assertions
 alone.
+
+
+## Voice and response onboarding acceptance
+
+`onboarding-navigation.test.ts` pins the eight-step connected and six-step offline
+sequences, including Voice between General and Ready. `onboarding-voice.test.ts`
+covers explicit setup actions, the install-before-activation guard, local-input
+selection, OS voice validation, unsupported web controls and enumeration errors.
+`voice-enrollment.test.ts` covers leaving setup during pending permission and
+active capture. The existing onboarding browser flows include the added step,
+Back/Skip, Ready summaries, preference persistence and narrow/light/dark layouts.
+The offline voice flow changes readback and response style without a server.
+
+Run `test:ci:static`, `test:fake-server:self`, `test:e2e:web`, and
+`build:development:android`. Changed E2E source still requires explicit human
+validation. On physical Android/iOS devices check model downloads and retry,
+voice enrollment, permission denial/settings recovery, installed model and
+speaker selection, playback preview/fallback, and leaving the screen during
+capture/playback. Check large text, safe areas and both themes. Automated web
+coverage cannot establish native recognition quality or audio-session timing.
+
+Implementation validation (2026-10-28): static checks pass (110 Vitest files,
+680 tests), both fake-server self-tests pass, all 15 onboarding browser flows
+pass, and the Android development build passes (1006 Gradle tasks). Rendered
+checks cover 390×844 dark and 320×700 light viewports, enabled readback switches,
+response selection, Ready summaries and pinned navigation. The web preview
+retains the existing native-only playback-engine controls; no app console
+errors were observed, only the existing Expo web-support warnings.
+
+The full browser suite has 162 passing tests and one failing cross-server
+loading-skeleton assertion in `multi-server.spec.mjs:301`. It failed on three
+targeted reruns and also on an unchanged HEAD archive using the same dependency
+installation, confirming a pre-existing blocker. No server-switching source or
+test was changed. The full pre-push gate remains red; do not push over it.
+Human validation of the changed onboarding E2E file and physical-device audio,
+permissions, downloads, enrollment and accessibility checks remain outstanding.

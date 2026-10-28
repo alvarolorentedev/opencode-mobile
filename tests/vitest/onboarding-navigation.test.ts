@@ -10,18 +10,20 @@ const models = [
 ] as unknown as ModelOption[];
 
 describe('onboarding navigation and model choices', () => {
-  it('inserts AI after connection and General before review', () => {
-    expect(getOnboardingSteps(true)).toEqual(['index', 'permissions', 'connect', 'ai', 'project', 'general', 'ready']);
+  it('inserts AI after connection and Voice after General', () => {
+    expect(getOnboardingSteps(true)).toEqual(['index', 'permissions', 'connect', 'ai', 'project', 'general', 'voice', 'ready']);
     expect(getOnboardingSteps(true).map(onboardingRoute)).toEqual([
       '/onboarding', '/onboarding/permissions', '/onboarding/connect', '/onboarding/ai',
-      '/onboarding/project', '/onboarding/general', '/onboarding/ready',
+      '/onboarding/project', '/onboarding/general', '/onboarding/voice', '/onboarding/ready',
     ]);
   });
 
   it('skips server-dependent steps in both directions without a connection', () => {
     const steps = getOnboardingSteps(false);
-    expect(steps).toEqual(['index', 'permissions', 'connect', 'general', 'ready']);
+    expect(steps).toEqual(['index', 'permissions', 'connect', 'general', 'voice', 'ready']);
     expect(steps[steps.indexOf('general') - 1]).toBe('connect');
+    expect(steps[steps.indexOf('voice') - 1]).toBe('general');
+    expect(steps[steps.indexOf('voice') + 1]).toBe('ready');
   });
 
   it('uses the same configured, enabled models in Chat, General, and Review', () => {

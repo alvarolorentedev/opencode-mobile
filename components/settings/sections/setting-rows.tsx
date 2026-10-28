@@ -23,6 +23,7 @@ export function SettingSwitchRow({
   return (
     <List.Item
       accessible={false}
+      onPress={() => onValueChange(!value)}
       title={title}
       description={description}
       titleStyle={{ color: palette.text }}

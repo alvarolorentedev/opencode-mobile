@@ -829,9 +829,9 @@ Main relevant props:
 
 Responsibility:
 
-- seven connected steps: app presentation, permissions, add connection, AI & Providers, project, General Settings, ready; disconnected navigation skips AI and project
+- eight connected steps: app presentation, permissions, add connection, AI & Providers, project, General Settings, Voice & Responses, ready; disconnected navigation skips AI and project
 - presentation only describes the app, with Continue navigation; AI and General are optional and reuse Settings controls
-- permissions, connect, AI, project and General are skippable; Skip advances without additional writes or undoing earlier choices
+- permissions, connect, AI, project, General and Voice & Responses are skippable; Skip advances without additional writes or undoing earlier choices
 - General edits language, the remembered Chat model (connected only), and Steer/Append delivery (connected V2 only)
 - ready summarizes connection/project plus the applicable providers, enabled models and preferences, then completes first-run setup or closes review mode
 - thin controllers only; connection/project persistence and permission requests are delegated to the provider and existing helpers
@@ -849,7 +849,9 @@ Responsibility:
 
 - `components/settings/ai-settings-panel.tsx` composes the existing AI section, auth dialog, model/account callbacks, removal confirmation and feedback for Settings and onboarding
 - `general-settings.tsx` reuses language and chat preference fields, with a searchable model select using the same `getVisibleModels` filter as Chat and Review
-- `setup-summary.tsx` renders current provider values with wrapping rows and omits connection-dependent additions offline
+- `voice-settings.tsx` reuses `VoiceSection` in its onboarding view and `ResponsesSection`, with the existing voice/TTS setup hooks; on-device model downloads, enrollment and preview are explicit actions. The route unmounts the panel on blur to release audio.
+- `components/settings/use-speech-voices.ts` shares read-only OS voice enumeration between Settings, onboarding and Ready.
+- `setup-summary.tsx` includes input mode/model, playback engine/voice, automatic readback and response style, and renders current provider values with wrapping rows and omits connection-dependent additions offline
 
 ## `components/onboarding/project-options.tsx`
 
