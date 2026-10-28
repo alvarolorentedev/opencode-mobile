@@ -1,712 +1,712 @@
 {
   "screen": {
     "categories": {
-      "connection": "Connection",
-      "ai": "AI & providers",
-      "notifications": "Notifications",
-      "voice": "Voice",
-      "advanced": "Advanced",
-      "support": "Support",
-      "permissions": "Approvals",
-      "subscription": "Subscription",
+      "connection": "Подключение",
+      "ai": "ИИ и провайдеры",
+      "notifications": "Уведомления",
+      "voice": "Голос",
+      "advanced": "Дополнительно",
+      "support": "Поддержка",
+      "permissions": "Одобрения",
+      "subscription": "Подписка",
       "cloudLink": "Cloud Link",
-      "extensions": "Extensions",
-      "responses": "Responses"
+      "extensions": "Расширения",
+      "responses": "Ответы"
     },
     "summaries": {
-      "configuredCount": "{{value}} configured",
-      "replyPlaybackOn": "Reply playback on",
-      "replyPlaybackOff": "Reply playback off",
-      "support": "Rate the app, send feedback, get help",
-      "permissions": "{{value}} saved",
-      "extensions": "MCPs, plugins, skills and commands",
-      "responses": "Response scope and next actions",
-      "voiceSystem": "System speech · {{phrase}}",
-      "voiceLocal": "On-device · {{phrase}}",
-      "responsesOn": "{{scope}} · next actions on",
-      "responsesOff": "{{scope}} · next actions off"
+      "configuredCount": "Настроено: {{value}}",
+      "replyPlaybackOn": "Проигрывание ответов включено",
+      "replyPlaybackOff": "Проигрывание ответов выключено",
+      "support": "Оцените приложение, оставьте отзыв, получите помощь",
+      "permissions": "Сохранено: {{value}}",
+      "extensions": "MCP, плагины, навыки и команды",
+      "responses": "Область ответов и следующие действия",
+      "voiceSystem": "Системная речь · {{phrase}}",
+      "voiceLocal": "На устройстве · {{phrase}}",
+      "responsesOn": "{{scope}} · следующие действия вкл.",
+      "responsesOff": "{{scope}} · следующие действия выкл."
     }
   },
   "support": {
-    "title": "Support",
-    "description": "Rate OpenCode Mobile on Google Play, send improvement feedback, or get help from the support page.",
-    "rate": "Rate us on Play Store",
-    "feedback": "Give us feedback",
-    "openSupport": "Open support page"
+    "title": "Поддержка",
+    "description": "Оцените OpenCode Mobile в Google Play, отправьте отзыв об улучшениях или получите помощь на странице поддержки.",
+    "rate": "Оценить в Play Маркете",
+    "feedback": "Оставить отзыв",
+    "openSupport": "Открыть страницу поддержки"
   },
   "connection": {
-    "currentConnection": "Current connection",
-    "noServerUrl": "No server URL set",
-    "notSavedYet": "Not saved yet. Add a connection to keep it for later.",
-    "lastChecked": "Last checked {{time}}",
-    "serverUrlValue": "Server URL: {{url}}",
-    "usernameValue": "Username: {{username}}",
-    "usernameEmpty": "(none)",
-    "addConnection": "Add connection",
-    "editConnection": "Edit connection",
-    "addDescription": "Add connections to switch between servers without retyping the URL and password.",
-    "saveAndConnect": "Save & connect",
-    "deleteTitle": "Delete connection",
-    "deleteMessage": "Remove \"{{name}}\" from saved connections?",
-    "deleteWebConfirm": "Delete connection\n\n{{message}}",
+    "currentConnection": "Текущее подключение",
+    "noServerUrl": "URL сервера не задан",
+    "notSavedYet": "Ещё не сохранено. Добавьте подключение, чтобы сохранить его.",
+    "lastChecked": "Последняя проверка: {{time}}",
+    "serverUrlValue": "URL сервера: {{url}}",
+    "usernameValue": "Имя пользователя: {{username}}",
+    "usernameEmpty": "(нет)",
+    "addConnection": "Добавить подключение",
+    "editConnection": "Изменить подключение",
+    "addDescription": "Добавляйте подключения, чтобы переключаться между серверами, не вводя снова URL и пароль.",
+    "saveAndConnect": "Сохранить и подключиться",
+    "deleteTitle": "Удалить подключение",
+    "deleteMessage": "Удалить «{{name}}» из сохранённых подключений?",
+    "deleteWebConfirm": "Удалить подключение\n\n{{message}}",
     "fields": {
-      "serverUrl": "Server URL",
-      "username": "Username",
-      "password": "Password"
+      "serverUrl": "URL сервера",
+      "username": "Имя пользователя",
+      "password": "Пароль"
     },
     "errors": {
-      "serverUrl": "Enter the server URL.",
-      "invalidUrl": "Enter a complete server URL, such as http://192.168.1.10:4096.",
-      "save": "Could not save this connection.",
-      "headerName": "Enter a valid header name.",
-      "headerValue": "Header values cannot contain line breaks.",
-      "headerDuplicate": "Each header name can only be used once.",
-      "headerReserved": "This header is managed by the app and cannot be overridden.",
-      "headerLimit": "Use at most 10 custom headers.",
-      "generic": "Something went wrong while talking to OpenCode.",
-      "tunnelStarting": "The Cloudflare tunnel is still starting (Error 1033). Retry shortly.",
-      "notApi": "The server at {{url}} did not return an OpenCode API response.{{apiHint}}{{versionHint}}",
-      "endpointNotFound": "OpenCode endpoint not found at {{url}}.{{apiHint}}{{versionHint}}",
-      "webPage": "The server at {{url}} returned a web page instead of the OpenCode API.{{apiHint}}{{versionHint}}",
-      "apiHint": " If this address serves a web UI, use its API base URL instead, usually {{url}}/api.",
-      "versionHint": " This app supports OpenCode 1.x and 2.x servers; verify the API base URL is correct."
+      "serverUrl": "Введите URL сервера.",
+      "invalidUrl": "Введите полный URL сервера, например http://192.168.1.10:4096.",
+      "save": "Не удалось сохранить это подключение.",
+      "headerName": "Введите корректное имя заголовка.",
+      "headerValue": "Значения заголовков не могут содержать переносы строк.",
+      "headerDuplicate": "Каждое имя заголовка можно использовать только один раз.",
+      "headerReserved": "Этот заголовок управляется приложением и не может быть переопределён.",
+      "headerLimit": "Используйте не более 10 пользовательских заголовков.",
+      "generic": "Что-то пошло не так при обращении к OpenCode.",
+      "tunnelStarting": "Туннель Cloudflare ещё запускается (ошибка 1033). Повторите попытку чуть позже.",
+      "notApi": "Сервер по адресу {{url}} не вернул ответ API OpenCode.{{apiHint}}{{versionHint}}",
+      "endpointNotFound": "Эндпоинт OpenCode не найден по адресу {{url}}.{{apiHint}}{{versionHint}}",
+      "webPage": "Сервер по адресу {{url}} вернул веб-страницу вместо API OpenCode.{{apiHint}}{{versionHint}}",
+      "apiHint": " Если по этому адресу открывается веб-интерфейс, используйте его базовый URL API, обычно {{url}}/api.",
+      "versionHint": " Приложение поддерживает серверы OpenCode 1.x и 2.x; проверьте правильность базового URL API."
     },
     "setup": {
-      "step": "Step {{step}} of 2",
-      "addressTitle": "Server address",
-      "detailsTitle": "Connection details",
-      "addressHint": "Connect to your OpenCode server.",
-      "continue": "Continue",
-      "change": "Change",
-      "detected": "OpenCode {{version}} detected",
-      "identify": "Enter credentials to identify the server.",
-      "customUsername": "Custom username",
-      "passwordHint": "Enter your server password.",
-      "optionalName": "Name (optional)",
-      "nameHint": "Leave blank to use the server IP or domain.",
-      "showPassword": "Show password",
-      "hidePassword": "Hide password",
-      "scan": "Scan local QR code",
-      "pairCommand": "On your computer, run opencode pair.",
-      "sameNetwork": "Keep both devices on the same network.",
-      "scanAutomatic": "Scan to save and connect automatically.",
-      "scanAgain": "Scan again",
-      "unreachable": "Could not reach the server. Check the address and network, then retry.",
-      "credentialsRejected": "Credentials rejected. Check the password and username, or scan a new QR code.",
+      "step": "Шаг {{step}} из 2",
+      "addressTitle": "Адрес сервера",
+      "detailsTitle": "Данные подключения",
+      "addressHint": "Подключитесь к своему серверу OpenCode.",
+      "continue": "Продолжить",
+      "change": "Изменить",
+      "detected": "Обнаружен OpenCode {{version}}",
+      "identify": "Введите данные, чтобы идентифицировать сервер.",
+      "customUsername": "Своё имя пользователя",
+      "passwordHint": "Введите пароль сервера.",
+      "optionalName": "Название (необязательно)",
+      "nameHint": "Оставьте пустым, чтобы использовать IP или домен сервера.",
+      "showPassword": "Показать пароль",
+      "hidePassword": "Скрыть пароль",
+      "scan": "Сканировать локальный QR-код",
+      "pairCommand": "На компьютере выполните opencode pair.",
+      "sameNetwork": "Оставьте оба устройства в одной сети.",
+      "scanAutomatic": "Сканируйте, чтобы сохранить и подключиться автоматически.",
+      "scanAgain": "Сканировать снова",
+      "unreachable": "Не удалось связаться с сервером. Проверьте адрес и сеть, затем повторите.",
+      "credentialsRejected": "Данные отклонены. Проверьте пароль и имя пользователя или отсканируйте новый QR-код.",
       "pairingErrors": {
-        "invalid": "This is not an OpenCode pairing code. Run opencode pair and scan again.",
-        "expired": "This pairing code expired or was already used. Run opencode pair again.",
-        "unreachable": "Could not reach the server. Check that both devices are on the same network, or enter the address manually.",
-        "loopback": "This code only contains a localhost address. Run opencode service set hostname 0.0.0.0, then opencode service start and opencode pair on your computer."
+        "invalid": "Это не код сопряжения OpenCode. Выполните opencode pair и отсканируйте снова.",
+        "expired": "Срок действия кода сопряжения истёк или он уже использован. Выполните opencode pair снова.",
+        "unreachable": "Не удалось связаться с сервером. Убедитесь, что оба устройства в одной сети, или введите адрес вручную.",
+        "loopback": "Этот код содержит только адрес localhost. Выполните opencode service set hostname 0.0.0.0, затем opencode service start и opencode pair на компьютере."
       }
     },
     "headers": {
-      "title": "Custom headers",
-      "add": "Add header",
-      "name": "Header name",
-      "value": "Value",
-      "remove": "Remove header",
-      "hint": "Sent with every request to this server. Values are stored securely on this device.",
-      "showValues": "Show values",
-      "hideValues": "Hide values"
+      "title": "Пользовательские заголовки",
+      "add": "Добавить заголовок",
+      "name": "Имя заголовка",
+      "value": "Значение",
+      "remove": "Удалить заголовок",
+      "hint": "Отправляется с каждым запросом к этому серверу. Значения хранятся на устройстве в защищённом виде.",
+      "showValues": "Показать значения",
+      "hideValues": "Скрыть значения"
     },
-    "reconnectSuccess": "Connected to {{url}}."
+    "reconnectSuccess": "Подключено к {{url}}."
   },
   "providers": {
-    "accounts": "Accounts",
-    "addAnotherAccount": "Add another account",
-    "removeAccount": "Remove account",
-    "selectMethod": "Select login method",
-    "apiKey": "API key",
-    "pasteApiKey": "Paste your API key",
-    "chooseModels": "Choose which configured models appear in chat. The last model you pick in chat stays selected for new chats.",
-    "configuredProviders": "Configured providers",
-    "addProvider": "Add provider",
-    "connectFirst": "Connect first to load providers.",
-    "configureAtLeastOne": "Configure at least one provider to pick defaults.",
-    "selectedCount": "{{selected}} of {{total}} selected",
-    "reasoningSupported": "Reasoning supported",
-    "standardModel": "Standard model",
-    "noModels": "No models found for your configured providers.",
-    "configuredSuccess": "{{provider}} was configured successfully.",
-    "signInFinished": "{{provider}} sign-in finished. Provider status has been refreshed.",
-    "couldNotConfigure": "Could not configure provider.",
-    "couldNotRemove": "Could not remove provider credentials.",
-    "credentialsRemoved": "{{provider}} credentials were removed.",
-    "removeTitle": "Remove {{provider}}?",
-    "removeMessage": "Stored credentials and provider configuration will be removed.",
-    "signInTitle": "Complete provider sign-in",
-    "authorizationCode": "Authorization code",
-    "complete": "Complete",
-    "continue": "Continue",
-    "cancelSetup": "Cancel provider setup",
-    "configureProvider": "Configure {{provider}}",
-    "oauthHint": "This opens the provider sign-in flow in your browser.",
-    "signInPendingHint": "Finish signing in in your browser. This screen updates automatically.",
-    "pairingCode": "Pairing code",
-    "openLink": "Open link",
-    "copyLink": "Copy link",
-    "authorizationCodeHint": "After you sign in, copy the code shown and paste it here.",
-    "setupUnavailable": "Setup details for this provider are unavailable right now.",
-    "couldNotComplete": "Could not complete sign-in.",
-    "removeCredentials": "Remove {{provider}} credentials",
+    "accounts": "Аккаунты",
+    "addAnotherAccount": "Добавить аккаунт",
+    "removeAccount": "Удалить аккаунт",
+    "selectMethod": "Выберите способ входа",
+    "apiKey": "API-ключ",
+    "pasteApiKey": "Вставьте API-ключ",
+    "chooseModels": "Выберите, какие настроенные модели показывать в чате. Последняя выбранная в чате модель остаётся выбранной для новых чатов.",
+    "configuredProviders": "Настроенные провайдеры",
+    "addProvider": "Добавить провайдера",
+    "connectFirst": "Сначала подключитесь, чтобы загрузить провайдеров.",
+    "configureAtLeastOne": "Настройте хотя бы одного провайдера, чтобы выбрать значения по умолчанию.",
+    "selectedCount": "Выбрано {{selected}} из {{total}}",
+    "reasoningSupported": "Поддерживает рассуждения",
+    "standardModel": "Обычная модель",
+    "noModels": "Для настроенных провайдеров модели не найдены.",
+    "configuredSuccess": "{{provider}} успешно настроен.",
+    "signInFinished": "Вход в {{provider}} завершён. Статус провайдера обновлён.",
+    "couldNotConfigure": "Не удалось настроить провайдера.",
+    "couldNotRemove": "Не удалось удалить данные провайдера.",
+    "credentialsRemoved": "Данные {{provider}} удалены.",
+    "removeTitle": "Удалить {{provider}}?",
+    "removeMessage": "Сохранённые данные и настройки провайдера будут удалены.",
+    "signInTitle": "Завершите вход в провайдера",
+    "authorizationCode": "Код авторизации",
+    "complete": "Завершить",
+    "continue": "Продолжить",
+    "cancelSetup": "Отменить настройку провайдера",
+    "configureProvider": "Настроить {{provider}}",
+    "oauthHint": "Откроет вход в провайдера в браузере.",
+    "signInPendingHint": "Завершите вход в браузере. Этот экран обновится автоматически.",
+    "pairingCode": "Код сопряжения",
+    "openLink": "Открыть ссылку",
+    "copyLink": "Копировать ссылку",
+    "authorizationCodeHint": "После входа скопируйте показанный код и вставьте его сюда.",
+    "setupUnavailable": "Данные настройки этого провайдера сейчас недоступны.",
+    "couldNotComplete": "Не удалось завершить вход.",
+    "removeCredentials": "Удалить данные {{provider}}",
     "promptDelivery": {
-      "label": "Messages sent while working",
+      "label": "Сообщения во время работы",
       "steer": {
-        "label": "Steer",
-        "description": "Apply the message at the next step of the current response."
+        "label": "Направить",
+        "description": "Применить сообщение на следующем шаге текущего ответа."
       },
       "queue": {
-        "label": "Append",
-        "description": "Queue the message for a later turn."
+        "label": "Дополнить",
+        "description": "Поставить сообщение в очередь на следующий шаг."
       }
     }
   },
   "providerCopy": {
     "openai": {
       "label": "OpenAI",
-      "description": "GPT models from OpenAI, including the newest reasoning and multimodal options."
+      "description": "Модели GPT от OpenAI, включая новейшие варианты с рассуждениями и мультимодальные возможности."
     },
     "anthropic": {
       "label": "Anthropic",
-      "description": "Claude models from Anthropic for coding, analysis, and long-context work."
+      "description": "Модели Claude от Anthropic для программирования, анализа и работы с длинным контекстом."
     },
     "github-copilot": {
       "label": "GitHub Copilot",
-      "description": "Use your GitHub Copilot access to sign in and enable supported foundation models."
+      "description": "Используйте доступ GitHub Copilot, чтобы войти и включить поддерживаемые базовые модели."
     },
     "google": {
       "label": "Google",
-      "description": "Gemini models from Google for multimodal and large-context tasks."
+      "description": "Модели Gemini от Google для мультимодальных задач и задач с большим контекстом."
     },
     "groq": {
       "label": "Groq",
-      "description": "Fast hosted inference for supported open and frontier models."
+      "description": "Быстрый хостинговый инференс для поддерживаемых открытых и передовых моделей."
     },
     "openrouter": {
       "label": "OpenRouter",
-      "description": "Route requests across multiple providers and model families from one account."
+      "description": "Маршрутизация запросов между множеством провайдеров и семейств моделей из одного аккаунта."
     },
     "mistral": {
       "label": "Mistral",
-      "description": "Mistral AI hosted models for general-purpose and coding workloads."
+      "description": "Хостинговые модели Mistral AI для общих задач и программирования."
     },
     "xai": {
       "label": "xAI",
-      "description": "Grok models from xAI."
+      "description": "Модели Grok от xAI."
     },
     "azure": {
       "label": "Azure OpenAI",
-      "description": "OpenAI-compatible models deployed through Azure."
+      "description": "Модели, совместимые с OpenAI, развёрнутые в Azure."
     }
   },
   "notifications": {
     "status": {
-      "checking": "Checking",
-      "enabled": "Enabled",
-      "needsSetup": "Needs setup"
+      "checking": "Проверка",
+      "enabled": "Включено",
+      "needsSetup": "Требуется настройка"
     },
     "background": {
-      "checking": "Checking",
-      "ready": "Ready",
-      "limited": "Limited"
+      "checking": "Проверка",
+      "ready": "Готово",
+      "limited": "Ограничено"
     },
     "summary": {
-      "enabled": "Notifications enabled",
-      "off": "Notifications off",
-      "background": "Background {{status}}"
+      "enabled": "Уведомления включены",
+      "off": "Уведомления выключены",
+      "background": "Фоновая работа: {{status}}"
     },
-    "enable": "Enable notifications",
-    "settings": "Notification settings",
-    "appSettings": "App settings",
-    "appSettingsDescription": "Review system settings for this app.",
-    "batteryOptimization": "Battery optimization",
-    "batteryOptimizationDescription": "Allow the app to run more reliably in the background.",
-    "batterySaver": "Battery saver",
-    "batterySaverDescription": "Battery saver can delay reminders.",
-    "refreshStatus": "Refresh status",
-    "enabledFeedback": "Notifications are enabled on this device.",
-    "disabledFeedback": "Notifications are still disabled. Open system settings to enable them manually."
+    "enable": "Включить уведомления",
+    "settings": "Настройки уведомлений",
+    "appSettings": "Настройки приложения",
+    "appSettingsDescription": "Проверьте системные настройки для этого приложения.",
+    "batteryOptimization": "Оптимизация батареи",
+    "batteryOptimizationDescription": "Разрешите приложению работать в фоне надёжнее.",
+    "batterySaver": "Экономия заряда",
+    "batterySaverDescription": "Экономия заряда может задерживать напоминания.",
+    "refreshStatus": "Обновить статус",
+    "enabledFeedback": "Уведомления включены на этом устройстве.",
+    "disabledFeedback": "Уведомления всё ещё выключены. Откройте системные настройки, чтобы включить их вручную."
   },
   "voice": {
     "onDeviceInput": {
-      "title": "Prefer on-device recognition",
-      "description": "Prefer local recognition; fall back to cloud if needed."
+      "title": "Предпочитать распознавание на устройстве",
+      "description": "Сначала локальное распознавание; при необходимости — облако."
     },
     "autoPlay": {
-      "title": "Auto-play assistant replies",
-      "description": "Read chat replies aloud. Conversation mode always reads."
+      "title": "Автовоспроизведение ответов ассистента",
+      "description": "Читать ответы в чате вслух. Режим разговора читает всегда."
     },
     "workingSound": {
-      "title": "Working sound",
-      "description": "Play a calm loop while the assistant is still working on a reply."
+      "title": "Звук работы",
+      "description": "Тихий цикл, пока ассистент ещё готовит ответ."
     },
     "wakePhrase": {
-      "label": "Wake phrase",
-      "helper": "Conversation mode sends a message only after it hears this phrase. Two or more words work best."
+      "label": "Активирующая фраза",
+      "helper": "Режим разговора отправляет сообщение только после этой фразы. Лучше всего работают два слова и более."
     },
     "localWake": {
-      "title": "On-device voice",
-      "description": "Run a local wake-word model and optional voice check. Downloads {{size}} of pretrained models; falls back to the phrase gate if unavailable.",
-      "statusMissing": "Models not installed",
-      "statusInstalling": "Installing…",
-      "statusReady": "Models installed",
-      "statusUnsupported": "Not supported in this build",
-      "statusError": "Installation failed",
-      "install": "Install models ({{size}})",
-      "remove": "Remove models",
-      "phraseLabel": "Wake phrase",
-      "phraseHelper": "The wake detector supports these bundled English phrases. The selected command model handles command language; no training is required.",
-      "speakerVerification": "Verify my voice",
-      "speakerVerificationDescription": "Reject the wake phrase when it is not spoken by the enrolled voice.",
-      "enroll": "Enroll voice",
-      "reEnroll": "Record again",
-      "removeVoice": "Remove voice",
-      "enrolled": "Voice profile enrolled.",
-      "notEnrolled": "No voice profile yet.",
-      "recording": "Recording… speak naturally for about ten seconds.",
-      "saving": "Building voice profile…",
-      "unsupportedHint": "This build does not include the native on-device voice runtime.",
-      "commandModelLabel": "Command recognition model",
-      "commandModelHelper": "Choose the on-device model used for commands. Multilingual models download a larger file.",
-      "fallback": "Fallback: system phrase gate “{{phrase}}”.",
-      "baseModels": "Base pack",
-      "voiceProfile": "Voice profile",
-      "enrollRequiresModels": "Install models first, then enroll your voice.",
-      "installBase": "Install base pack ({{size}})",
-      "installCommand": "Install command model ({{size}})"
+      "title": "Голос на устройстве",
+      "description": "Запускать локальную модель активационного слова и необязательную проверку голоса. Загружает {{size}} предобученных моделей; при недоступности используется проверка по фразе.",
+      "statusMissing": "Модели не установлены",
+      "statusInstalling": "Установка…",
+      "statusReady": "Модели установлены",
+      "statusUnsupported": "Не поддерживается в этой сборке",
+      "statusError": "Установка не удалась",
+      "install": "Установить модели ({{size}})",
+      "remove": "Удалить модели",
+      "phraseLabel": "Активирующая фраза",
+      "phraseHelper": "Детектор активации поддерживает эти встроенные английские фразы. Выбранная модель команд отвечает за язык команд; обучение не требуется.",
+      "speakerVerification": "Проверять мой голос",
+      "speakerVerificationDescription": "Отклонять активирующую фразу, если она произнесена не записанным голосом.",
+      "enroll": "Записать голос",
+      "reEnroll": "Записать заново",
+      "removeVoice": "Удалить голос",
+      "enrolled": "Голосовой профиль записан.",
+      "notEnrolled": "Голосового профиля пока нет.",
+      "recording": "Запись… говорите естественно около десяти секунд.",
+      "saving": "Создаём голосовой профиль…",
+      "unsupportedHint": "Эта сборка не включает встроенную среду голоса на устройстве.",
+      "commandModelLabel": "Модель распознавания команд",
+      "commandModelHelper": "Выберите модель на устройстве для команд. Многоязычные модели загружают файл большего размера.",
+      "fallback": "Резерв: системная проверка фразы «{{phrase}}».",
+      "baseModels": "Базовый пакет",
+      "voiceProfile": "Голосовой профиль",
+      "enrollRequiresModels": "Сначала установите модели, затем запишите голос.",
+      "installBase": "Установить базовый пакет ({{size}})",
+      "installCommand": "Установить модель команд ({{size}})"
     },
     "speechLocale": {
-      "label": "Speech locale",
-      "helper": "Leave empty to use the system default language for voice input and playback."
+      "label": "Язык речи",
+      "helper": "Оставьте пустым, чтобы использовать системный язык для голосового ввода и воспроизведения."
     },
     "responseScope": {
-      "label": "Response scope",
+      "label": "Объём ответов",
       "brief": {
-        "label": "Brief",
-        "description": "Short, tightly scoped answers for natural back-and-forth."
+        "label": "Кратко",
+        "description": "Короткие ответы по делу для естественного диалога."
       },
       "balanced": {
-        "label": "Balanced",
-        "description": "Concise answers with a little more context when helpful."
+        "label": "Сбалансированно",
+        "description": "Лаконичные ответы с немного большим контекстом, когда это полезно."
       },
       "detailed": {
-        "label": "Detailed",
-        "description": "Longer explanations and more supporting detail."
+        "label": "Подробно",
+        "description": "Более длинные объяснения и больше деталей."
       }
     },
     "nextActions": {
-      "title": "Simple next actions",
-      "description": "End replies with a short recommendation when there is a clear next move."
+      "title": "Простые следующие действия",
+      "description": "Завершать ответы короткой рекомендацией, когда есть очевидный следующий шаг."
     },
     "speechRate": {
-      "label": "Speech rate"
+      "label": "Скорость речи"
     },
     "workingSoundVariant": {
-      "label": "Working sound",
+      "label": "Звук работы",
       "soft": {
-        "label": "Soft chime",
-        "description": "Warm layered tone with a gentle pulse."
+        "label": "Мягкий звон",
+        "description": "Тёплый многослойный тон с плавным пульсом."
       },
       "glass": {
-        "label": "Glass tone",
-        "description": "Brighter, lighter ambient loop."
+        "label": "Стеклянный тон",
+        "description": "Более яркий и лёгкий фоновый цикл."
       }
     },
     "workingSoundVolume": {
-      "label": "Working sound volume"
+      "label": "Громкость звука работы"
     },
     "voiceSelect": {
-      "label": "Voice"
+      "label": "Голос"
     },
-    "footer": "Android can periodically check running sessions in the background and post a completion notification. Background speech and continuous microphone capture are not supported.",
+    "footer": "Android может периодически проверять выполняющиеся сессии в фоне и присылать уведомление о завершении. Фоновая речь и постоянная запись с микрофона не поддерживаются.",
     "check": {
-      "title": "Voice check",
-      "permission": "Microphone & speech access",
-      "recognition": "Speech recognition",
-      "onDevice": "System on-device recognition",
-      "restricted": "Restricted by device policy",
-      "restrictedHint": "Speech recognition is restricted on this device. Contact your device administrator.",
-      "unavailableHint": "Turn on Siri & Dictation in your device Settings, then re-check.",
-      "deniedHint": "Access was denied. Open settings to enable it manually.",
-      "enable": "Enable voice input",
-      "recheck": "Re-check voice",
-      "test": "Test playback",
-      "testPhrase": "Voice playback is working.",
-      "testFailed": "Speech playback failed. Check the selected voice and the device volume.",
-      "allowed": "Allowed",
-      "available": "Available"
+      "title": "Проверка голоса",
+      "permission": "Доступ к микрофону и речи",
+      "recognition": "Распознавание речи",
+      "onDevice": "Системное распознавание на устройстве",
+      "restricted": "Ограничено политикой устройства",
+      "restrictedHint": "Распознавание речи ограничено на этом устройстве. Обратитесь к администратору устройства.",
+      "unavailableHint": "Включите Siri и диктовку в настройках устройства, затем проверьте снова.",
+      "deniedHint": "Доступ запрещён. Откройте настройки, чтобы включить его вручную.",
+      "enable": "Включить голосовой ввод",
+      "recheck": "Проверить голос снова",
+      "test": "Проверить воспроизведение",
+      "testPhrase": "Воспроизведение речи работает.",
+      "testFailed": "Не удалось воспроизвести речь. Проверьте выбранный голос и громкость устройства.",
+      "allowed": "Разрешено",
+      "available": "Доступно"
     },
     "mode": {
-      "label": "Voice input",
-      "system": "System",
-      "local": "On-device",
-      "systemDescription": "Uses the phone's speech recognizer. It may use the vendor's cloud.",
-      "localDescription": "Uses downloaded models. Audio stays on the device."
+      "label": "Голосовой ввод",
+      "system": "Системный",
+      "local": "На устройстве",
+      "systemDescription": "Использует распознавание речи телефона. Может использоваться облако производителя.",
+      "localDescription": "Использует загруженные модели. Аудио остаётся на устройстве."
     },
     "playback": {
-      "title": "Playback",
-      "helper": "Applies to both System and On-device voice."
+      "title": "Воспроизведение",
+      "helper": "Применяется к системному голосу и голосу на устройстве."
     },
     "readInterim": {
-      "title": "Read progress updates",
-      "description": "Read updates like “On it…”. Final replies are always read."
+      "title": "Читать промежуточные обновления",
+      "description": "Читать обновления вроде «Уже делаю…». Итоговые ответы читаются всегда."
     }
   },
   "diagnostics": {
-    "title": "Server diagnostics",
-    "server": "Server",
+    "title": "Диагностика сервера",
+    "server": "Сервер",
     "openCodeVersion": "OpenCode {{version}}",
-    "healthUnavailable": "Health endpoint unavailable",
-    "healthy": "Healthy",
-    "realtimeUpdates": "Realtime updates",
-    "eventStreamConnected": "Global event stream connected",
-    "pollingFallback": "Polling fallback active",
-    "subsystems": "Subsystems",
+    "healthUnavailable": "Эндпоинт состояния недоступен",
+    "healthy": "В норме",
+    "realtimeUpdates": "Обновления в реальном времени",
+    "eventStreamConnected": "Глобальный поток событий подключён",
+    "pollingFallback": "Активен резервный опрос",
+    "subsystems": "Подсистемы",
     "subsystemsMcp": "MCP {{value}}",
-    "notAvailable": "n/a",
-    "refresh": "Refresh diagnostics",
-    "networkUsage": "Network usage",
-    "networkUsageValue": "{{requests}} requests · {{size}} known response sizes today",
-    "networkUsageReset": "Reset",
-    "lastError": "Last app error",
+    "notAvailable": "н/д",
+    "refresh": "Обновить диагностику",
+    "networkUsage": "Сетевой трафик",
+    "networkUsageValue": "{{requests}} запросов · {{size}} известных размеров ответов за сегодня",
+    "networkUsageReset": "Сбросить",
+    "lastError": "Последняя ошибка приложения",
     "lastErrorValue": "{{message}} · {{time}}",
-    "lastErrorNone": "No app errors recorded",
-    "lastErrorFatal": "Fatal",
-    "lastErrorHandled": "Handled",
-    "network": "Network",
+    "lastErrorNone": "Ошибки приложения не зафиксированы",
+    "lastErrorFatal": "Критическая",
+    "lastErrorHandled": "Обработана",
+    "network": "Сеть",
     "networkValue": "{{type}} · {{state}}{{generation}}",
-    "networkOnline": "online",
-    "networkOffline": "offline",
-    "networkConstrained": "constrained",
-    "networkNormal": "normal",
-    "reconnect": "Automatic reconnect",
-    "reconnectValue": "Attempt {{attempt}} of {{max}}",
-    "requestLatency": "Request latency",
-    "requestLatencyValue": "p50 {{p50}} ms · p95 {{p95}} ms · {{failed}} failed · {{retries}} retried"
+    "networkOnline": "в сети",
+    "networkOffline": "не в сети",
+    "networkConstrained": "ограничена",
+    "networkNormal": "обычная",
+    "reconnect": "Автоматическое переподключение",
+    "reconnectValue": "Попытка {{attempt}} из {{max}}",
+    "requestLatency": "Задержка запросов",
+    "requestLatencyValue": "p50 {{p50}} мс · p95 {{p95}} мс · {{failed}} с ошибкой · {{retries}} с повтором"
   },
   "mcp": {
-    "title": "MCP servers",
-    "couldNotUpdate": "Could not update MCP servers.",
-    "configurationUnavailable": "Configuration details unavailable",
-    "invalidCommand": "Enter the local command as a JSON string array.",
-    "local": "Local",
-    "remote": "Remote",
-    "serverName": "Server name",
-    "commandArguments": "Command arguments (JSON)",
+    "title": "MCP-серверы",
+    "couldNotUpdate": "Не удалось обновить MCP-серверы.",
+    "configurationUnavailable": "Данные конфигурации недоступны",
+    "invalidCommand": "Введите локальную команду как JSON-массив строк.",
+    "local": "Локальный",
+    "remote": "Удалённый",
+    "serverName": "Имя сервера",
+    "commandArguments": "Аргументы команды (JSON)",
     "url": "URL",
-    "addLocalServer": "Add local server",
-    "addRemoteServer": "Add remote server",
-    "noServers": "No MCP servers configured.",
-    "statusConfigured": "configured",
-    "statusDisabled": "disabled",
+    "addLocalServer": "Добавить локальный сервер",
+    "addRemoteServer": "Добавить удалённый сервер",
+    "noServers": "MCP-серверы не настроены.",
+    "statusConfigured": "настроен",
+    "statusDisabled": "отключён",
     "oauth": "OAuth"
   },
   "language": {
-    "title": "Language",
-    "description": "Use the system language or pick one for the app interface."
+    "title": "Язык",
+    "description": "Используйте системный язык или выберите язык интерфейса приложения."
   },
   "appearance": {
     "theme": {
-      "label": "Theme mode",
-      "description": "Choose light or dark, or follow the system setting.",
-      "system": "Follow system",
-      "light": "Light",
-      "dark": "Dark"
+      "label": "Режим темы",
+      "description": "Выберите светлую или тёмную тему либо следуйте системной настройке.",
+      "system": "Как в системе",
+      "light": "Светлая",
+      "dark": "Тёмная"
     },
     "accent": {
-      "label": "Theme",
-      "description": "Choose a color theme. It changes surfaces, accents, and chat bubbles across the app.",
-      "green": "Green",
-      "blue": "Blue",
-      "red": "Red",
-      "purple": "Purple",
-      "pink": "Pink",
-      "gray": "Gray"
+      "label": "Тема оформления",
+      "description": "Выберите цветовую тему. Она меняет фоны, акценты и пузыри чата во всём приложении.",
+      "green": "Зелёная",
+      "blue": "Синяя",
+      "red": "Красная",
+      "purple": "Фиолетовая",
+      "pink": "Розовая",
+      "gray": "Серая"
     },
-    "chatTextSize": "Chat text size",
-    "chatTextSizeDescription": "Adjust message text size in chat. Smaller text shows more of the conversation at once.",
+    "chatTextSize": "Размер текста в чате",
+    "chatTextSizeDescription": "Настройте размер текста сообщений в чате. Меньший текст показывает больше разговора сразу.",
     "flatThread": {
-      "title": "Flat conversation",
-      "description": "Show messages full-width without bubbles so more of the conversation fits on screen."
+      "title": "Плоский разговор",
+      "description": "Показывать сообщения на всю ширину без пузырей, чтобы на экране помещалось больше разговора."
     },
     "slimInterface": {
-      "title": "Slim interface",
-      "description": "Shrink buttons, spacing, and headers in chat, terminal, and project so more text fits on screen."
+      "title": "Компактный интерфейс",
+      "description": "Уменьшить кнопки, отступы и заголовки в чате, терминале и проектах, чтобы на экране помещалось больше текста."
     }
   },
   "connect": {
-    "entry": "Pair with Cloud Link",
+    "entry": "Сопряжение через Cloud Link",
     "title": "Cloud Link",
-    "description": "Scan your machine’s connector QR code or open its pairing link. Manual connections remain available.",
-    "pairingLink": "Pairing deep link",
-    "openLink": "Open pairing link",
-    "machines": "Your machines",
-    "refreshMachines": "Refresh machines",
-    "noMachines": "No machines registered for this user.",
-    "revoke": "Revoke machine",
-    "revokeConfirm": "Delete this machine for every device? Its public tunnel will be deleted.",
-    "forget": "Forget locally",
-    "forgetConfirm": "Remove this connection and its credentials from this device? Other devices will keep access.",
-    "expiresAt": "Credentials expire: {{date}}",
-    "savedConnection": "Connection saved: {{name}}",
-    "manage": "Manage Cloud Link",
-    "cameraLoading": "Opening camera",
-    "cameraUnavailable": "Camera unavailable. Open the connector deep link instead.",
+    "description": "Отсканируйте QR-код коннектора на компьютере или откройте ссылку сопряжения. Ручные подключения по-прежнему доступны.",
+    "pairingLink": "Глубокая ссылка сопряжения",
+    "openLink": "Открыть ссылку сопряжения",
+    "machines": "Ваши машины",
+    "refreshMachines": "Обновить машины",
+    "noMachines": "Для этого пользователя машины не зарегистрированы.",
+    "revoke": "Отозвать машину",
+    "revokeConfirm": "Удалить эту машину на всех устройствах? Её публичный туннель будет удалён.",
+    "forget": "Забыть на этом устройстве",
+    "forgetConfirm": "Удалить это подключение и его данные с этого устройства? На других устройствах доступ сохранится.",
+    "expiresAt": "Срок действия данных: {{date}}",
+    "savedConnection": "Подключение сохранено: {{name}}",
+    "manage": "Управление Cloud Link",
+    "cameraLoading": "Открываем камеру",
+    "cameraUnavailable": "Камера недоступна. Откройте глубокую ссылку коннектора.",
     "progress": {
-      "idle": "Loading…",
-      "claiming": "Claiming pairing…",
-      "saving": "Saving credentials securely…",
-      "connecting": "Connecting to the machine…",
-      "waitingForApproval": "Confirm this connection on your computer.",
-      "delayed": "No approval yet. Approve on your computer, or scan a fresh QR code.",
-      "paired": "Loading…",
-      "catalog": "Loading store subscriptions…",
-      "purchasing": "Waiting for the store…",
-      "pending": "Waiting for purchase approval…",
-      "restoring": "Restoring purchases…",
-      "verifying": "Verifying subscription…",
-      "savingSession": "Saving the Cloud Link session securely…",
-      "finalizing": "Finalizing the store transaction…"
+      "idle": "Загрузка…",
+      "claiming": "Запрашиваем сопряжение…",
+      "saving": "Безопасно сохраняем данные…",
+      "connecting": "Подключаемся к машине…",
+      "waitingForApproval": "Подтвердите это подключение на компьютере.",
+      "delayed": "Подтверждения пока нет. Подтвердите на компьютере или отсканируйте новый QR-код.",
+      "paired": "Загрузка…",
+      "catalog": "Загружаем подписки магазина…",
+      "purchasing": "Ожидаем магазин…",
+      "pending": "Ожидаем подтверждения покупки…",
+      "restoring": "Восстанавливаем покупки…",
+      "verifying": "Проверяем подписку…",
+      "savingSession": "Безопасно сохраняем сессию Cloud Link…",
+      "finalizing": "Завершаем транзакцию магазина…"
     },
-    "subscriptionActive": "Your Cloud Link subscription is active.",
-    "restore": "Restore purchases",
-    "accessUnavailable": "Access unavailable. Purchase or Restore to reactivate this machine.",
-    "scanHint": "Scan your computer’s QR code to connect.",
-    "scanNewQr": "Scan the new QR code on your computer",
-    "scanLocal": "Scan QR code",
-    "scanLocalHint": "Connect to a computer on the same network.",
-    "manual": "Manual",
-    "manualHint": "Enter your server URL and credentials.",
-    "nativeOnly": "Cloud Link is available in the iOS and Android app.",
-    "benefits": "Connect with a QR code, access your computer remotely through Cloud Link, and recover your machines on another device with Restore purchases.",
-    "subscribe": "Subscribe",
-    "options": "Connection options",
-    "learnMore": "Learn more about Cloud Link",
+    "subscriptionActive": "Ваша подписка Cloud Link активна.",
+    "restore": "Восстановить покупки",
+    "accessUnavailable": "Доступ недоступен. Оформите подписку или восстановите покупки, чтобы снова включить эту машину.",
+    "scanHint": "Отсканируйте QR-код на компьютере, чтобы подключиться.",
+    "scanNewQr": "Отсканируйте новый QR-код на компьютере",
+    "scanLocal": "Сканировать QR-код",
+    "scanLocalHint": "Подключиться к компьютеру в той же сети.",
+    "manual": "Вручную",
+    "manualHint": "Введите URL сервера и данные для входа.",
+    "nativeOnly": "Cloud Link доступен в приложении для iOS и Android.",
+    "benefits": "Подключайтесь по QR-коду, получайте удалённый доступ к компьютеру через Cloud Link и восстанавливайте машины на другом устройстве с помощью «Восстановить покупки».",
+    "subscribe": "Оформить подписку",
+    "options": "Варианты подключения",
+    "learnMore": "Подробнее о Cloud Link",
     "onboarding": {
-      "step": "{{step}} of {{total}}",
+      "step": "{{step}} из {{total}}",
       "step1": {
-        "title": "Your computer.\nAnywhere.",
-        "subtitle": "Use OpenCode on your computer from your phone.",
-        "action": "Get started"
+        "title": "Ваш компьютер.\nГде угодно.",
+        "subtitle": "Работайте с OpenCode на компьютере со своего телефона.",
+        "action": "Начать"
       },
       "step2": {
-        "title": "Set up your\ncomputer",
-        "subtitle": "Download Cloud Link on your computer.",
-        "action": "Cloud Link is running"
+        "title": "Настройте\nкомпьютер",
+        "subtitle": "Скачайте Cloud Link на компьютер.",
+        "action": "Cloud Link запущен"
       },
       "step3": {
-        "title": "Enable\nCloud Link",
-        "subtitle": "Subscribe to connect this app to your computer over the internet.",
-        "action": "Subscribe & continue"
+        "title": "Включите\nCloud Link",
+        "subtitle": "Оформите подписку, чтобы подключать приложение к компьютеру через интернет.",
+        "action": "Оформить и продолжить"
       },
       "step4": {
-        "title": "Pair your\ncomputer",
-        "subtitle": "Scan the QR code shown in Cloud Link on your computer.",
-        "action": "Scan QR code"
+        "title": "Сопрягите\nкомпьютер",
+        "subtitle": "Отсканируйте QR-код, показанный в Cloud Link на компьютере.",
+        "action": "Сканировать QR-код"
       },
-      "explanation": "Cloud Link connects your devices over the internet. Keep your computer on and Cloud Link running.",
-      "instruction1": "Install on your computer",
-      "instruction2": "Subscribe in this app",
-      "instruction3": "Scan to pair",
-      "openOnComputer": "On your computer, open:",
-      "copySetupUrl": "Copy computer setup URL",
-      "copied": "Setup URL copied",
-      "copyError": "Could not copy the URL. Open opencodecloud.link on your computer.",
-      "downloadHint": "Download and open Cloud Link, then keep its pairing QR code on screen.",
-      "remote": "Connect over the internet",
-      "pair": "Pair your computer with this app",
-      "billing": "Billing is handled by your app store.",
-      "checkoutHint": "Opens your app store to confirm purchase.",
-      "approveHint": "Then approve the connection on your computer.",
-      "usePairingLink": "Use pairing link"
+      "explanation": "Cloud Link соединяет устройства через интернет. Держите компьютер включённым, а Cloud Link — запущенным.",
+      "instruction1": "Установите на компьютер",
+      "instruction2": "Оформите подписку в приложении",
+      "instruction3": "Отсканируйте для сопряжения",
+      "openOnComputer": "На компьютере откройте:",
+      "copySetupUrl": "Копировать URL настройки компьютера",
+      "copied": "URL настройки скопирован",
+      "copyError": "Не удалось скопировать URL. Откройте opencodecloud.link на компьютере.",
+      "downloadHint": "Скачайте и откройте Cloud Link, затем оставьте QR-код сопряжения на экране.",
+      "remote": "Подключение через интернет",
+      "pair": "Сопрягите компьютер с этим приложением",
+      "billing": "Оплата выполняется магазином приложений.",
+      "checkoutHint": "Откроет магазин приложений для подтверждения покупки.",
+      "approveHint": "Затем подтвердите подключение на компьютере.",
+      "usePairingLink": "Использовать ссылку сопряжения"
     }
   },
   "editor": {
-    "title": "Editor"
+    "title": "Редактор"
   },
   "general": {
-    "title": "General",
-    "resetOnboarding": "Reset onboarding"
+    "title": "Общие",
+    "resetOnboarding": "Сбросить знакомство"
   },
   "autoUpdate": {
-    "title": "Update checks",
+    "title": "Проверка обновлений",
     "enable": {
-      "title": "Check for updates",
-      "description": "Offer new versions when they are available on the store."
+      "title": "Проверять обновления",
+      "description": "Предлагать новые версии, когда они появляются в магазине."
     },
     "checkPeriod": {
-      "label": "Check period",
+      "label": "Периодичность проверки",
       "available": {
-        "label": "When available",
-        "description": "Surface a new version as soon as the store reports it."
+        "label": "При появлении",
+        "description": "Показывать новую версию, как только магазин сообщит о ней."
       },
       "daily": {
-        "label": "Daily",
-        "description": "Check for a new version at most once a day."
+        "label": "Ежедневно",
+        "description": "Проверять новую версию не чаще раза в день."
       },
       "weekly": {
-        "label": "Weekly",
-        "description": "Check for a new version at most once a week."
+        "label": "Еженедельно",
+        "description": "Проверять новую версию не чаще раза в неделю."
       }
     }
   },
   "permissions": {
-    "title": "Saved permissions",
-    "description": "Rules created by “Always allow”. Removing one makes the server ask again.",
-    "empty": "No saved permissions.",
-    "remove": "Remove",
-    "removeTitle": "Remove saved permission",
-    "removeMessage": "Stop automatically allowing {{resource}}?",
-    "refresh": "Refresh"
+    "title": "Сохранённые разрешения",
+    "description": "Правила, созданные пунктом «Всегда разрешать». После удаления сервер снова начнёт спрашивать.",
+    "empty": "Сохранённых разрешений нет.",
+    "remove": "Удалить",
+    "removeTitle": "Удалить сохранённое разрешение",
+    "removeMessage": "Перестать автоматически разрешать {{resource}}?",
+    "refresh": "Обновить"
   },
   "subscription": {
-    "inactive": "No active subscription",
-    "accessThrough": "Access through {{date}}",
-    "description": "Remote access to your OpenCode machines.",
-    "manage": "Manage subscription",
-    "opensApple": "Opens App Store subscriptions",
-    "opensGoogle": "Opens Google Play",
-    "restoreDescription": "Recover an existing purchase",
-    "machines": "Machines",
-    "machinesDescription": "View and manage connected machines"
+    "inactive": "Нет активной подписки",
+    "accessThrough": "Доступ до {{date}}",
+    "description": "Удалённый доступ к вашим машинам OpenCode.",
+    "manage": "Управление подпиской",
+    "opensApple": "Откроет подписки App Store",
+    "opensGoogle": "Откроет Google Play",
+    "restoreDescription": "Восстановить существующую покупку",
+    "machines": "Машины",
+    "machinesDescription": "Просмотр подключённых машин и управление ими"
   },
   "services": {
-    "title": "Exposed services",
-    "description": "Add, replace and remove the service paths your connector exposes through its tunnel. Changes apply live.",
-    "add": "Add service",
-    "addTitle": "New service",
-    "editTitle": "Edit service",
-    "empty": "No services exposed yet.",
-    "capacity": "You can expose up to {{max}} services.",
-    "saveFailed": "Could not save this service.",
-    "removed": "Removed {{name}}.",
-    "removeFailed": "Could not remove this service.",
-    "removeTitle": "Remove {{name}}?",
-    "removeMessage": "The connector stops routing this path immediately.",
-    "removeConfirm": "Remove {{name}}? The connector stops routing this path immediately.",
-    "copyLink": "Copy link",
-    "linkCopied": "Service link copied.",
-    "linkUnavailable": "Could not build a link for this service.",
-    "machine": "Machine",
-    "notActive": "Showing services for {{name}} — this is not your active connection.",
-    "useMachine": "Switch to this machine",
-    "noMachine": "Connect a Cloud Link machine to manage its exposed services.",
-    "credentialsExpired": "Cloud Link access for this machine expired or is missing. Reconnect to manage its services.",
-    "reconnectFailed": "Could not reconnect this machine.",
-    "unavailableService": "This service is no longer on the connector.",
-    "unavailableServiceHint": "Go back and refresh the exposed services list.",
-    "legacyConnector": "This desktop connector predates dedicated service ports. Update it to serve apps at the port root and choose ports.",
-    "unknownConnector": "This desktop connector is older than the app expects. Update it to use dedicated ports and root services.",
-    "enabledHint": "Route traffic for this path through the tunnel.",
-    "rootPathHint": "Leave the path empty to serve the whole port root — use this for apps with absolute URLs.",
-    "portOccupied": "in use",
-    "portShared": "shared",
-    "stripPrefixHint": "Remove the matched path prefix before forwarding.",
+    "title": "Открытые сервисы",
+    "description": "Добавляйте, заменяйте и удаляйте пути сервисов, которые коннектор открывает через свой туннель. Изменения применяются сразу.",
+    "add": "Добавить сервис",
+    "addTitle": "Новый сервис",
+    "editTitle": "Изменить сервис",
+    "empty": "Пока нет открытых сервисов.",
+    "capacity": "Можно открыть до {{max}} сервисов.",
+    "saveFailed": "Не удалось сохранить этот сервис.",
+    "removed": "Удалён {{name}}.",
+    "removeFailed": "Не удалось удалить этот сервис.",
+    "removeTitle": "Удалить {{name}}?",
+    "removeMessage": "Коннектор сразу перестанет маршрутизировать этот путь.",
+    "removeConfirm": "Удалить {{name}}? Коннектор сразу перестанет маршрутизировать этот путь.",
+    "copyLink": "Копировать ссылку",
+    "linkCopied": "Ссылка на сервис скопирована.",
+    "linkUnavailable": "Не удалось построить ссылку для этого сервиса.",
+    "machine": "Машина",
+    "notActive": "Показаны сервисы для {{name}} — это не ваше активное подключение.",
+    "useMachine": "Переключиться на эту машину",
+    "noMachine": "Подключите машину Cloud Link, чтобы управлять её открытыми сервисами.",
+    "credentialsExpired": "Доступ Cloud Link к этой машине истёк или отсутствует. Переподключитесь, чтобы управлять её сервисами.",
+    "reconnectFailed": "Не удалось переподключить эту машину.",
+    "unavailableService": "Этого сервиса больше нет в коннекторе.",
+    "unavailableServiceHint": "Вернитесь назад и обновите список открытых сервисов.",
+    "legacyConnector": "Этот настольный коннектор старее, чем поддержка отдельных портов сервисов. Обновите его, чтобы открывать приложения в корне порта и выбирать порты.",
+    "unknownConnector": "Этот настольный коннектор старее, чем ожидает приложение. Обновите его, чтобы использовать отдельные порты и корневые сервисы.",
+    "enabledHint": "Маршрутизировать трафик этого пути через туннель.",
+    "rootPathHint": "Оставьте путь пустым, чтобы открыть весь корень порта — используйте это для приложений с абсолютными URL.",
+    "portOccupied": "занят",
+    "portShared": "общий",
+    "stripPrefixHint": "Удалять совпавший префикс пути перед перенаправлением.",
     "fields": {
       "id": "ID",
-      "name": "Name",
-      "port": "Port",
-      "path": "Path",
-      "target": "Target",
-      "access": "Access",
-      "enabled": "Enabled",
-      "stripPrefix": "Strip path prefix"
+      "name": "Название",
+      "port": "Порт",
+      "path": "Путь",
+      "target": "Цель",
+      "access": "Доступ",
+      "enabled": "Включено",
+      "stripPrefix": "Удалять префикс пути"
     },
     "access": {
-      "private": "Private",
-      "public": "Public"
+      "private": "Приватный",
+      "public": "Публичный"
     },
     "errors": {
-      "required": "This field is required.",
-      "idFormat": "Use 1-32 lowercase letters, digits or hyphens.",
-      "nameLength": "Use 64 characters or fewer.",
-      "pathRoot": "The path cannot be the server root.",
-      "pathReserved": "The /_cloudlink prefix is reserved.",
-      "pathFormat": "Use a path like /test/api without query, fragment or encoding.",
-      "portRequired": "Choose a service port.",
-      "portInvalid": "Choose one of your connector's service ports.",
-      "portInUse": "This port is already used by another service.",
-      "portPathInUse": "This port and path are already used by another service.",
-      "targetFormat": "Use an address like 127.0.0.1:3000.",
-      "targetLoopback": "The target must be loopback (127.0.0.1 or ::1).",
-      "targetReserved": "That port is reserved for exposed services.",
-      "targetPort": "Use an unprivileged port between 1024 and 65535."
+      "required": "Это поле обязательно.",
+      "idFormat": "Используйте от 1 до 32 строчных латинских букв, цифр или дефисов.",
+      "nameLength": "Используйте не более 64 символов.",
+      "pathRoot": "Путь не может быть корнем сервера.",
+      "pathReserved": "Префикс /_cloudlink зарезервирован.",
+      "pathFormat": "Используйте путь вида /test/api без запроса, фрагмента и кодирования.",
+      "portRequired": "Выберите порт сервиса.",
+      "portInvalid": "Выберите один из портов сервисов вашего коннектора.",
+      "portInUse": "Этот порт уже используется другим сервисом.",
+      "portPathInUse": "Этот порт и путь уже используются другим сервисом.",
+      "targetFormat": "Используйте адрес вида 127.0.0.1:3000.",
+      "targetLoopback": "Цель должна быть loopback (127.0.0.1 или ::1).",
+      "targetReserved": "Этот порт зарезервирован для открытых сервисов.",
+      "targetPort": "Используйте непривилегированный порт от 1024 до 65535."
     }
   },
   "extensions": {
-    "title": "Extensions",
-    "description": "Manage MCP servers, plugins, skills and slash commands for this server.",
+    "title": "Расширения",
+    "description": "Управляйте MCP-серверами, плагинами, навыками и слэш-командами для этого сервера.",
     "scope": {
-      "project": "Project",
-      "general": "General"
+      "project": "Проект",
+      "general": "Общие"
     },
     "scopeDescription": {
-      "project": "These extensions apply only to {{project}}.",
-      "general": "These extensions apply to every project on this server."
+      "project": "Эти расширения применяются только к {{project}}.",
+      "general": "Эти расширения применяются ко всем проектам на этом сервере."
     },
     "safety": {
-      "writable": "Writable. Changes are backed up and replaced atomically.",
-      "readOnly": "Read-only",
-      "target": "Config file: {{path}}",
-      "backup": "Last backup: {{path}}",
-      "restore": "Restore last backup",
-      "restoreMessage": "Restore the last saved configuration? The current file is backed up first."
+      "writable": "Доступно для записи. Изменения сохраняются в резервную копию и заменяются атомарно.",
+      "readOnly": "Только чтение",
+      "target": "Файл конфигурации: {{path}}",
+      "backup": "Последняя резервная копия: {{path}}",
+      "restore": "Восстановить последнюю копию",
+      "restoreMessage": "Восстановить последнюю сохранённую конфигурацию? Текущий файл сначала будет сохранён в резервную копию."
     },
     "tabs": {
-      "mcp": "MCPs",
-      "plugins": "Plugins",
-      "skills": "Skills",
-      "commands": "Commands"
+      "mcp": "MCP",
+      "plugins": "Плагины",
+      "skills": "Навыки",
+      "commands": "Команды"
     },
-    "shared": "Shared with all projects",
-    "sharedHint": "Shared items are managed in the scope that defines them.",
-    "removeTitle": "Remove extension",
-    "saving": "Saving and waiting for the server to reload…",
-    "unavailable": "Extension management is unavailable for this server.",
+    "shared": "Общее для всех проектов",
+    "sharedHint": "Общими элементами управляют в той области, где они заданы.",
+    "removeTitle": "Удалить расширение",
+    "saving": "Сохраняем и ждём перезагрузки сервера…",
+    "unavailable": "Управление расширениями для этого сервера недоступно.",
     "mcp": {
-      "addTitle": "Add MCP server",
-      "add": "Add MCP server",
-      "empty": "No MCP servers in this scope.",
-      "runtime": "Runtime-only MCP server",
-      "configured": "Configured",
-      "removeMessage": "Remove MCP server \"{{name}}\" from this scope?"
+      "addTitle": "Добавить MCP-сервер",
+      "add": "Добавить MCP-сервер",
+      "empty": "В этой области нет MCP-серверов.",
+      "runtime": "MCP-сервер только во время работы",
+      "configured": "Настроен",
+      "removeMessage": "Удалить MCP-сервер «{{name}}» из этой области?"
     },
     "plugins": {
-      "addTitle": "Add plugin",
-      "package": "Package or local plugin path",
-      "warning": "Plugins execute code on the server. Only add packages you trust.",
-      "add": "Add plugin",
-      "empty": "No plugins in this scope.",
-      "outdated": "Update available",
-      "removeMessage": "Remove plugin \"{{name}}\" from this scope?"
+      "addTitle": "Добавить плагин",
+      "package": "Пакет или локальный путь плагина",
+      "warning": "Плагины выполняют код на сервере. Добавляйте только те пакеты, которым доверяете.",
+      "add": "Добавить плагин",
+      "empty": "В этой области нет плагинов.",
+      "outdated": "Доступно обновление",
+      "removeMessage": "Удалить плагин «{{name}}» из этой области?"
     },
     "skills": {
-      "addTitle": "Add skill",
-      "editTitle": "Edit {{name}}",
-      "id": "Skill ID",
-      "name": "Name",
-      "descriptionLabel": "Description",
-      "instructions": "Instructions",
-      "fileContent": "SKILL.md content",
-      "autoinvokeOn": "Discoverable by the model",
-      "autoinvokeOff": "Hidden from the model by default",
-      "add": "Create skill",
-      "empty": "No skills in this scope.",
-      "removeMessage": "Move skill \"{{name}}\" to the extension trash?"
+      "addTitle": "Добавить навык",
+      "editTitle": "Изменить {{name}}",
+      "id": "ID навыка",
+      "name": "Название",
+      "descriptionLabel": "Описание",
+      "instructions": "Инструкции",
+      "fileContent": "Содержимое SKILL.md",
+      "autoinvokeOn": "Доступен модели",
+      "autoinvokeOff": "Скрыт от модели по умолчанию",
+      "add": "Создать навык",
+      "empty": "В этой области нет навыков.",
+      "removeMessage": "Переместить навык «{{name}}» в корзину расширений?"
     },
     "commands": {
-      "addTitle": "Add slash command",
-      "editTitle": "Edit /{{name}}",
-      "name": "Command name",
-      "descriptionLabel": "Description",
-      "template": "Template",
-      "templateHint": "Use $ARGUMENTS or $1, $2 for arguments. Shell blocks in templates run on the server.",
-      "empty": "No commands in this scope.",
-      "removeMessage": "Remove command \"/{{name}}\" from this scope?"
+      "addTitle": "Добавить слэш-команду",
+      "editTitle": "Изменить /{{name}}",
+      "name": "Имя команды",
+      "descriptionLabel": "Описание",
+      "template": "Шаблон",
+      "templateHint": "Используйте $ARGUMENTS или $1, $2 для аргументов. Блоки оболочки в шаблонах выполняются на сервере.",
+      "empty": "В этой области нет команд.",
+      "removeMessage": "Удалить команду «/{{name}}» из этой области?"
     },
-    "generalConfirmTitle": "Edit global configuration",
-    "generalConfirmMessage": "This changes the configuration for every project on this server. A backup is created first.\n\n{{path}}",
-    "generalConfirmAction": "Continue"
+    "generalConfirmTitle": "Изменить глобальную конфигурацию",
+    "generalConfirmMessage": "Это изменит конфигурацию для всех проектов на этом сервере. Сначала будет создана резервная копия.\n\n{{path}}",
+    "generalConfirmAction": "Продолжить"
   }
 }

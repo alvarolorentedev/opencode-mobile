@@ -150,7 +150,7 @@ describe('i18n locale contract', () => {
     assert.equal(resolveLanguage('es', ['fr-FR']), 'es', 'Supported preference wins over the device.');
     assert.equal(resolveLanguage(undefined, ['pt-BR']), 'pt', 'Device region tag resolves by base language.');
     assert.equal(resolveLanguage(undefined, ['zh-Hans-CN']), 'zh', 'Device tag resolves by base language for script tags.');
-    assert.equal(resolveLanguage('ru', ['xx-YY']), 'en', 'Unsupported preference and device fall back to en.');
+    assert.equal(resolveLanguage('xx', ['yy-YY']), 'en', 'Unsupported preference and device fall back to en.');
     assert.equal(resolveLanguage(undefined, ['xx-YY']), 'en', 'Unsupported device language falls back to en.');
     assert.equal(resolveLanguage('EN', []), 'en', 'Preference matching is case-insensitive.');
     assert.ok(SUPPORTED_LANGUAGE_CODES.includes('en'), 'English must be a supported language.');
