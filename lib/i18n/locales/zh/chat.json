@@ -223,7 +223,11 @@
     "reasoningSupported": " · 支持推理",
     "standardModel": " · 标准模型",
     "noMatchingModels": "没有匹配的模型",
-    "emptyHint": "试试模型或提供商名称。"
+    "emptyHint": "试试模型或提供商名称。",
+    "autoRouting": "Auto-routing",
+    "autoRoutingDescription": "Use a model matched to each prompt",
+    "autoRoutingUnavailable": "Set up a classifier in Settings",
+    "defaultModel": "Default model"
   },
   "starter": {
     "title": "开始新任务",

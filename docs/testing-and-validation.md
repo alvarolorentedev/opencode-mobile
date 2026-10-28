@@ -13,6 +13,26 @@ The flow specs are split by domain (`tests/e2e/<domain>.spec.mjs`) over shared
 helpers in `tests/e2e/helpers/flows.mjs`. Suites that are not yet typed are
 listed in `tsconfig.tests.json`; see [known gaps](known-gaps.md).
 
+## Auto model routing
+
+`tests/vitest/auto-model.test.ts` covers label parsing, preference
+normalization, catalog suggestions, attachment/context compatibility, explicit
+versus automatic tier resolution, and the long-chat cache guard. It deliberately
+contains no heuristic classifier behavior.
+
+`tests/e2e/auto-model.spec.mjs` uses the fake V2 `auto-routing` scenario and the
+`POST /api/experimental/generate` fixture to prove:
+
+- the OpenCode classifier probe enables routing;
+- a simple prompt switches to the cheapest tool-capable model;
+- a complex prompt switches to the reasoning model;
+- selecting an explicit model turns auto-routing off and stops classifier calls.
+
+The web build has no `llama.rn`; native validation must cover the on-device pack
+download, integrity verification, llama.rn load/inference, memory release, OOM
+fallback, and a release build. Fake-server/E2E changes require explicit human
+validation.
+
 ## Conversation ribbon
 
 `tests/vitest/conversation-overlay.test.ts` covers microphone amplitude bounds

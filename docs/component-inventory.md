@@ -121,6 +121,9 @@ declared once, at the leaves.
 - expose supported Approvals only through a direct toolbar toggle (shield when asking, warning when auto-approving); hide it for unsupported V2 servers
 - open the existing agent selector from a mode icon beside Approvals
 - open the model picker from the selected model/reasoning summary, with a reasoning slider above model search
+- when a classifier is available, the picker exposes the Auto-routing switch;
+  the trigger reads `Auto-routing` while it is enabled, and explicit model
+  selection turns it off
 - dismiss the keyboard when opening selectors while preserving the parent-owned draft; model picker dismisses on Back/Escape or session/tab changes
 - render optional conversation banner
 - render the V2 suggestion panel for commands and context tokens, plus the shell-mode banner
@@ -197,6 +200,9 @@ type ChatComposerProps = {
 - render the searchable, provider-grouped configured-model picker
 - virtualize model rows with a bounded-height native `SectionList`, so opening a large catalog does not mount every model's text views at once
 - pin a `Selected` and `Recent` section above the provider groups (hidden while searching)
+- show an `Auto-routing` switch when a classifier is available; the switch is
+  omitted when neither the on-device pack nor the OpenCode classifier can run
+- selecting an explicit model disables auto-routing through the composer
 - own only local modal visibility and search-query state
 - return the selected `ModelOption` to the composer, which persists it through the provider
 - render the shared numeric slider for the selected model's server variants
@@ -644,6 +650,18 @@ Responsibility:
 - on OpenCode 2, list a provider's labeled accounts, mark the active account, switch accounts, remove an account, or add another account
 - show models grouped by provider
 - allow toggling enabled model IDs
+
+### `AutoModelSection`
+
+Responsibility:
+
+- enable/disable prompt routing only after a classifier is usable
+- switch between the pinned on-device GGUF pack and the OpenCode classifier
+- download, verify, remove, and report the on-device pack
+- probe the V2 classifier endpoint and select its model
+- map Simple / Standard / Complex to Automatic or explicit visible models
+- expose the long-chat prompt-cache guard
+- the same panel is reused by onboarding AI & providers
 
 ### `NotificationsSection`
 

@@ -28,6 +28,9 @@ type ModelPickerProps = {
   recentModelIds?: string[];
   selectedModelId?: string;
   slim?: boolean;
+  autoRoutingEnabled?: boolean;
+  autoRoutingAvailable?: boolean;
+  onAutoRoutingChange?: (enabled: boolean) => void;
 };
 
 function getSelectedModelLabel(models: ModelOption[], selectedModelId: string | undefined, fallback: string) {
@@ -87,7 +90,7 @@ function ControlButton({
   );
 }
 
-export function ModelPicker({ disabled = false, models, onSelect, recentModelIds, selectedModelId, slim = false, compact = false, reasoningLabel, selectedVariant, onVariantChange }: ModelPickerProps) {
+export function ModelPicker({ disabled = false, models, onSelect, recentModelIds, selectedModelId, slim = false, compact = false, reasoningLabel, selectedVariant, onVariantChange, autoRoutingEnabled = false, autoRoutingAvailable = false, onAutoRoutingChange }: ModelPickerProps) {
   const { t } = useTranslation();
   const palette = usePalette();
   const [visible, setVisible] = useState(false);
@@ -140,17 +143,23 @@ export function ModelPicker({ disabled = false, models, onSelect, recentModelIds
     onSelect(model);
   };
   const selected = models.find((model) => model.id === selectedModelId);
+  const selectedModelLabel = autoRoutingEnabled
+    ? t('chat:modelPicker.autoRouting')
+    : getSelectedModelLabel(models, selectedModelId, t('chat:modelPicker.selectModel'));
+  const selectedTriggerLabel = autoRoutingEnabled
+    ? t('chat:modelPicker.autoRouting')
+    : selected?.label || t('chat:modelPicker.selectModel');
   const variantIds = [undefined, ...(selected?.variants.map((variant) => variant.id) ?? [])];
-  const showVariantPicker = variantIds.length > 1 && onVariantChange;
+  const showVariantPicker = !autoRoutingEnabled && variantIds.length > 1 && onVariantChange;
   const recentModels = useMemo(() => (recentModelIds ?? [])
     .map((id) => models.find((model) => model.id === id))
     .filter((model): model is ModelOption => model !== undefined && model.id !== selectedModelId)
     .slice(0, 3), [models, recentModelIds, selectedModelId]);
   const sections = useMemo(() => [
-    ...(!normalizedQuery && selected ? [{ key: 'selected', title: t('chat:modelPicker.selected'), providerID: undefined, data: [selected] }] : []),
+    ...(!normalizedQuery && selected ? [{ key: 'selected', title: autoRoutingEnabled ? t('chat:modelPicker.defaultModel') : t('chat:modelPicker.selected'), providerID: undefined, data: [selected] }] : []),
     ...(!normalizedQuery && recentModels.length > 0 ? [{ key: 'recent', title: t('chat:modelPicker.recent'), providerID: undefined, data: recentModels }] : []),
     ...providerGroups.map((group) => ({ key: `provider:${group.providerID}`, title: group.label, providerID: group.providerID, data: group.models })),
-  ], [normalizedQuery, selected, recentModels, providerGroups, t]);
+  ], [autoRoutingEnabled, normalizedQuery, selected, recentModels, providerGroups, t]);
   const renderModelRow = (model: ModelOption, showProvider = false) => {
     const isSelected = model.id === selectedModelId;
     return (
@@ -181,12 +190,12 @@ export function ModelPicker({ disabled = false, models, onSelect, recentModelIds
         <Pressable
           testID="chat-model-picker-trigger"
           accessibilityRole="button"
-          accessibilityLabel={`${getSelectedModelLabel(models, selectedModelId, t('chat:modelPicker.selectModel'))}${reasoningLabel ? ` · ${reasoningLabel}` : ''}`}
+          accessibilityLabel={`${selectedModelLabel}${reasoningLabel ? ` · ${reasoningLabel}` : ''}`}
           accessibilityState={{ disabled: disabled || models.length === 0 }}
           disabled={disabled || models.length === 0}
           onPress={() => { Keyboard.dismiss(); setVisible(true); }}
           style={({ pressed }) => [styles.summary, { opacity: disabled ? 0.45 : pressed ? 0.7 : 1 }]}>
-          <Text maxFontSizeMultiplier={1.5} numberOfLines={1} style={[styles.summaryModel, { color: palette.text }]}>{selected?.label || t('chat:modelPicker.selectModel')}</Text>
+          <Text maxFontSizeMultiplier={1.5} numberOfLines={1} style={[styles.summaryModel, { color: palette.text }]}>{selectedTriggerLabel}</Text>
           {reasoningLabel ? <Text maxFontSizeMultiplier={1.5} numberOfLines={1} style={[styles.summaryReasoning, { color: palette.text }]}>{reasoningLabel}</Text> : null}
         </Pressable>
       ) : (
@@ -198,7 +207,7 @@ export function ModelPicker({ disabled = false, models, onSelect, recentModelIds
           onPress={() => setVisible(true)}
           slim={slim}
           testID="chat-model-picker-trigger">
-          {getSelectedModelLabel(models, selectedModelId, t('chat:modelPicker.selectModel'))}
+          {selectedModelLabel}
         </ControlButton>
       )}
       <Modal animationType="slide" transparent visible={visible} onRequestClose={close}>
@@ -215,6 +224,38 @@ export function ModelPicker({ disabled = false, models, onSelect, recentModelIds
                   </Pressable>
                 </View>
               </GestureDetector>
+              {onAutoRoutingChange ? (
+                <Pressable
+                  accessibilityRole="switch"
+                  accessibilityState={{ checked: autoRoutingEnabled, disabled: !autoRoutingAvailable }}
+                  disabled={!autoRoutingAvailable}
+                  onPress={() => {
+                    if (!autoRoutingAvailable) return;
+                    onAutoRoutingChange(!autoRoutingEnabled);
+                    close();
+                  }}
+                  testID="chat-model-auto-routing"
+                  style={({ pressed }) => [
+                    styles.autoRoutingRow,
+                    {
+                      backgroundColor: autoRoutingEnabled ? withAlpha(palette.tint, 0x12 / 255) : palette.background,
+                      borderColor: autoRoutingEnabled ? palette.tint : palette.border,
+                      opacity: autoRoutingAvailable ? (pressed ? 0.82 : 1) : 0.5,
+                    },
+                  ]}>
+                  <View style={styles.autoRoutingText}>
+                    <Text style={[styles.autoRoutingTitle, { color: palette.text }]}>{t('chat:modelPicker.autoRouting')}</Text>
+                    <Text style={[styles.autoRoutingDescription, { color: palette.muted }]}>
+                      {autoRoutingAvailable ? t('chat:modelPicker.autoRoutingDescription') : t('chat:modelPicker.autoRoutingUnavailable')}
+                    </Text>
+                  </View>
+                  <MaterialCommunityIcons
+                    name={autoRoutingEnabled ? 'check-circle-outline' : 'circle-outline'}
+                    size={22}
+                    color={autoRoutingEnabled ? palette.tint : palette.muted}
+                  />
+                </Pressable>
+              ) : null}
               {showVariantPicker ? (
                 <View style={{ paddingHorizontal: 16, paddingTop: 12 }}>
                   <NumericSlider
@@ -314,6 +355,10 @@ const styles = StyleSheet.create({
   sheet: { borderTopLeftRadius: 24, borderTopRightRadius: 24, borderWidth: 1, elevation: 1, height: '82%', overflow: 'hidden', zIndex: 1 },
   header: { alignItems: 'center', borderBottomWidth: 1, flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: 16, paddingVertical: 12 },
   title: { fontFamily: Fonts.display, fontSize: 18, fontWeight: '700' },
+  autoRoutingRow: { alignItems: 'center', borderRadius: 14, borderWidth: 1, flexDirection: 'row', gap: 12, marginHorizontal: 12, marginTop: 12, paddingHorizontal: 14, paddingVertical: 10 },
+  autoRoutingText: { flex: 1, gap: 2 },
+  autoRoutingTitle: { fontFamily: Fonts.sans, fontSize: 15, fontWeight: '700' },
+  autoRoutingDescription: { fontFamily: Fonts.sans, fontSize: 12 },
   closeButton: { borderRadius: 999, minHeight: 36, justifyContent: 'center', paddingHorizontal: 10 },
   closeLabel: { fontFamily: Fonts.sans, fontSize: 15, fontWeight: '600' },
   searchShell: { alignItems: 'center', borderRadius: 14, borderWidth: 1, flexDirection: 'row', gap: 8, margin: 12, paddingHorizontal: 12 },

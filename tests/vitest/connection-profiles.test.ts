@@ -99,7 +99,9 @@ describe('connection profiles', () => {
       export async function saveProfileHeaders(id, headers) { write(profileKey(id), headers); }
       export async function deleteProfileHeaders(id) { globalThis.__profilesTestSecureStore.delete(profileKey(id)); }
     `)}`;
+    const autoModelPreferencesUri = await transpileToDataUri('lib/auto-model/preferences.ts', []);
     const connectionProfilesUri = await transpileToDataUri('lib/connection-profiles.ts', [
+      [/from '@\/lib\/auto-model\/preferences'/g, `from "${autoModelPreferencesUri}"`],
       [/from '@\/providers\/workspace-storage'/g, `from "${workspaceStubUri}"`],
       [/from '@\/lib\/opencode\/client\/url'/g, `from "${urlUri}"`],
       [/from '@\/lib\/connect'/g, `from "${connectUri}"`],

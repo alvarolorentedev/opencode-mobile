@@ -223,7 +223,11 @@
     "reasoningSupported": " · Reasoning unterstützt",
     "standardModel": " · Standardmodell",
     "noMatchingModels": "Keine passenden Modelle",
-    "emptyHint": "Versuch einen Modell- oder Anbieternamen."
+    "emptyHint": "Versuch einen Modell- oder Anbieternamen.",
+    "autoRouting": "Auto-routing",
+    "autoRoutingDescription": "Use a model matched to each prompt",
+    "autoRoutingUnavailable": "Set up a classifier in Settings",
+    "defaultModel": "Default model"
   },
   "starter": {
     "title": "Neue Aufgabe starten",

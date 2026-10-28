@@ -223,7 +223,11 @@
     "reasoningSupported": " · 推論に対応",
     "standardModel": " · 標準モデル",
     "noMatchingModels": "一致するモデルがありません",
-    "emptyHint": "モデル名またはプロバイダー名を入力してください。"
+    "emptyHint": "モデル名またはプロバイダー名を入力してください。",
+    "autoRouting": "Auto-routing",
+    "autoRoutingDescription": "Use a model matched to each prompt",
+    "autoRoutingUnavailable": "Set up a classifier in Settings",
+    "defaultModel": "Default model"
   },
   "starter": {
     "title": "新しいタスクを開始",

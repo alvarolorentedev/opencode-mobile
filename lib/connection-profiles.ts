@@ -14,6 +14,7 @@ import {
 import { getConnectCredentialError, getConnectTestSecret, parseConnectMetadata, setConnectTestSecret, type ConnectMetadata } from '@/lib/connect';
 import { getConnectionScope, type ConnectionIdentity } from '@/lib/connection-scope';
 import { CONNECTION_PROFILES_STORAGE_KEY, SETTINGS_STORAGE_KEY } from '@/lib/storage-keys';
+import { normalizeAutoModelPreferences } from '@/lib/auto-model/preferences';
 import type { ChatPreferences } from '@/providers/opencode-preferences';
 import { isValidServerUrl, stripServerUrlCredentials } from '@/lib/opencode/client/url';
 
@@ -21,7 +22,7 @@ import { isValidServerUrl, stripServerUrlCredentials } from '@/lib/opencode/clie
 // are stored per profile in SecureStore and are never part of this model.
 type ProfileModelPreferences = Pick<
   ChatPreferences,
-  'providerId' | 'modelId' | 'enabledModelIds' | 'providerModelSelections' | 'recentModelIds'
+  'providerId' | 'modelId' | 'enabledModelIds' | 'providerModelSelections' | 'recentModelIds' | 'autoModel'
 >;
 
 export type ConnectionProfile = {
@@ -51,6 +52,10 @@ export function pickModelPreferences(preferences: ChatPreferences): ProfileModel
     enabledModelIds: [...preferences.enabledModelIds],
     providerModelSelections: { ...preferences.providerModelSelections },
     recentModelIds: [...preferences.recentModelIds],
+    autoModel: {
+      ...preferences.autoModel,
+      tiers: { ...preferences.autoModel.tiers },
+    },
   };
 }
 
@@ -60,6 +65,9 @@ const ProfileModelPreferencesSchema = z.object({
   enabledModelIds: z.array(z.string()).nullish().transform((value) => value ?? undefined),
   providerModelSelections: z.record(z.string(), z.string()).nullish().transform((value) => value ?? undefined),
   recentModelIds: z.array(z.string()).nullish().transform((value) => value ?? undefined),
+  autoModel: z.unknown().optional().transform((value) => (
+    value === undefined ? undefined : normalizeAutoModelPreferences(value)
+  )),
 });
 const ConnectionProfileSchema = z.object({
   id: z.string().refine((value) => value.trim().length > 0),

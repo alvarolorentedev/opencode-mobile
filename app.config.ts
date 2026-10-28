@@ -68,6 +68,7 @@ const buildPropertiesPlugin: [string, {
         '-keep class expo.modules.adapters.react.apploader.** { *; }',
         '-keep class com.reactnativeandroidwidget.RNWidgetBackgroundTaskWorker { *; }',
         '-keep class com.reactnativeandroidwidget.oss.HeadlessJsTaskWorker { *; }',
+        '-keep class com.rnllama.** { *; }',
       ].join('\n'),
     } } : {}),
   },
@@ -166,6 +167,9 @@ const config: ExpoConfig = {
     // Android config plugin adds the ONNX Runtime packaging rule; iOS is
     // autolinked. Models are downloaded from the user's explicit action.
     '@siteed/sherpa-onnx.rn',
+    // On-device prompt classifier runtime. The model pack itself is downloaded
+    // separately; only the llama.cpp native libraries ship in the app.
+    ['llama.rn', { enableEntitlements: true, entitlementsProfile: 'production', forceCxx20: true, enableOpenCLAndHexagon: false }],
     [
       'expo-splash-screen',
       {

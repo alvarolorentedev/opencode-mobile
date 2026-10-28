@@ -154,6 +154,8 @@ Current fields:
 - `providerModelSelections`
 - `modelVariantSelections` (server variant ID per model; `null` means the synthetic Default choice)
 - `recentModelIds`
+- `autoModel` (enabled, classifier mode, classifier model, per-tier `auto` or
+  model ID, and long-chat cache protection)
 - `reasoning`
 - `autoApprove`
 - `autoPlayAssistantReplies`
@@ -177,6 +179,13 @@ Current fields:
 The TTS engine, pack, and speaker are device-local and also excluded from `serverPreferences`. Downloaded voice models live under `opencode-tts/<packId>/` in the document directory and are not represented in preferences; Settings derives their status from the filesystem. Removing a pack deletes that directory, releases the native TTS model, and switches to the system engine when it was active. Temporary synthesis WAVs live in the cache directory and are deleted after playback, on cancel, and on the next Settings visit.
 
 These values combine application behavior settings and output-style preferences that are sent to the model as prompt instructions. `modelVariantSelections` is separate: it selects a server-supported variant for the matching model, is checked against the current model catalog, and falls back to Default when unavailable. If there is no saved entry, a valid variant already set on the active session is retained when it uses the selected model.
+
+`autoModel` is server-scoped with the rest of the model selections. Its tier
+values are `auto` or a model ID; unavailable IDs are retained and treated as
+unavailable at send time rather than erased during a slow capability refresh.
+On-device routing requires the pinned GGUF pack; OpenCode routing requires a
+successful `generate.text` probe. Neither mode falls back to a heuristic
+classifier. See [auto model routing](auto-model-routing.md).
 
 `browser`, selected file content, worktree inventory/owning project identity, and MCP status/config are server-derived and not persisted. Text edits remain local to `FilePreview` until the provider compares the current server content with the original editor baseline, writes through native v2 `file.write` (or a v1 VCS patch), and verifies the saved text. Failed comparison, write or verification retains the draft. Listing, search and file-open commits check the current client identity and request order; saves check client identity before writing and only update the selected file if that selection is still current. Identical directory paths on different servers do not make a response current.
 
@@ -374,7 +383,7 @@ Persisted values:
 
 - `opencode-mobile.settings` (connection URL and username; the password and custom gateway headers live in secure storage)
 - `opencode-mobile.connect-control-plane` (last automatically resolved Cloud Link environment; defaults to production, accepts only production/staging, hydrated before pairing/Cloud Link startup)
-- `opencode-mobile.connection-profiles` (saved connections with name and optional per-profile model selection; passwords and custom gateway headers live in secure storage)
+- `opencode-mobile.connection-profiles` (saved connections with name and optional per-profile model selection including auto-routing tiers; passwords and custom gateway headers live in secure storage)
 - `opencode-mobile.chat-preferences` (chat preferences, including the global UI `language`; not connection-scoped)
 - `opencode-mobile.active-project`
 - `opencode-mobile.projects` (opened projects per connection scope, most-recent-first directory paths; an explicit empty list means the user closed every project and is not re-seeded)

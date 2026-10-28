@@ -19,7 +19,8 @@ import { getSelectedModelParts, getSelectedModelVariant } from '@/providers/open
 import type { ChatPreferences } from '@/providers/opencode-preferences';
 import { buildSystemPrompt } from '@/providers/opencode-preferences';
 import type { SessionRefreshOptions } from '@/providers/opencode-provider-events';
-import type { TranscriptRefreshMode } from '@/providers/opencode-provider-types';
+import type { ProviderOption, TranscriptRefreshMode } from '@/providers/opencode-provider-types';
+import { usePromptRouting } from '@/providers/use-prompt-routing';
 
 type PromptLifecycleInput = {
   submitPrompt: (input: PromptInput, delivery: PromptDelivery) => Promise<void>;
@@ -30,6 +31,8 @@ type PromptLifecycleInput = {
   sessions: Session[];
   sessionStatuses: Record<string, SessionStatus>;
   availableModels: ModelOption[];
+  availableProviders: ProviderOption[];
+  messagesBySession: Record<string, SessionMessageRecord[]>;
   chatPreferences: ChatPreferences;
   settingsRef: { current: OpencodeConnectionSettings };
   busyNotificationsRef: { current: Set<string> };
@@ -51,6 +54,8 @@ export function usePromptLifecycle({
   sessions,
   sessionStatuses,
   availableModels,
+  availableProviders,
+  messagesBySession,
   chatPreferences,
   settingsRef,
   busyNotificationsRef,
@@ -63,6 +68,16 @@ export function usePromptLifecycle({
   scheduleSessionRefresh,
 }: PromptLifecycleInput) {
   const [sendingState, setSendingState] = useState<{ sessionId?: string; active: boolean }>({ active: false });
+  const routePrompt = usePromptRouting({
+    client,
+    isCurrentClient,
+    availableModels,
+    availableProviders,
+    chatPreferences,
+    sessions,
+    sessionStatuses,
+    messagesBySession,
+  });
   const [promptError, setPromptError] = useState<{ message: string; occurredAt: number; sessionId?: string }>();
   const requestedAtRef = useRef(0);
   const latestSubmissionRef = useRef<{ active: boolean; sessionId: string; requestedAt: number; owner: string } | undefined>(undefined);
@@ -95,6 +110,7 @@ export function usePromptLifecycle({
       // stale completion record behind.
       setSendingState(submission);
 
+      const routingPromise = routePrompt({ sessionId, prompt: trimmedPrompt, attachments }).catch(() => undefined);
       const currentSession = sessions.find((session) => session.id === sessionId);
       let promptAccepted = false;
       const trackingKey = pendingNotificationKey(connectionScope, sessionId);
@@ -124,27 +140,6 @@ export function usePromptLifecycle({
         }
 
         if (!ownsSubmission()) return canceled();
-        const selectedModel = availableModels.find((model) => model.id === chatPreferences.modelId);
-        if (attachments?.length && !selectedModel) {
-          throw new Error('Select a model that supports attachments first.');
-        }
-        if (attachments?.length && !selectedModel?.supportsAttachments) {
-          throw new Error(`${selectedModel?.label || 'The selected model'} does not support file attachments.`);
-        }
-        if (attachments?.length && selectedModel?.inputModalities?.length) {
-          const unsupported = attachments.find((attachment) => {
-            const mime = attachment.mime || '';
-            const modality = mime.startsWith('image/') ? 'image'
-              : mime.startsWith('audio/') ? 'audio'
-                : mime.startsWith('video/') ? 'video'
-                  : mime === 'application/pdf' ? 'pdf'
-                    : undefined;
-            return modality && !selectedModel.inputModalities.includes(modality);
-          });
-          if (unsupported) {
-            throw new Error(`${selectedModel.label} does not support ${unsupported.mime || 'this attachment type'} input.`);
-          }
-        }
 
         // Prepare file parts. For local URIs (file://, content://, asset://) read the
         // file and convert it to a data URL so the server receives the attachment bytes.
@@ -170,10 +165,35 @@ export function usePromptLifecycle({
         parts.push(...preparedFileParts);
 
         if (!ownsSubmission()) return canceled();
+        const routed = await routingPromise;
+        if (!ownsSubmission()) return canceled();
+        const effectiveModelId = routed?.model.id ?? chatPreferences.modelId;
+        const selectedModel = availableModels.find((model) => model.id === effectiveModelId);
+        if (attachments?.length && !selectedModel) {
+          throw new Error('Select a model that supports attachments first.');
+        }
+        if (attachments?.length && !selectedModel?.supportsAttachments) {
+          throw new Error(`${selectedModel?.label || 'The selected model'} does not support file attachments.`);
+        }
+        if (attachments?.length && selectedModel?.inputModalities?.length) {
+          const unsupported = attachments.find((attachment) => {
+            const mime = attachment.mime || '';
+            const modality = mime.startsWith('image/') ? 'image'
+              : mime.startsWith('audio/') ? 'audio'
+                : mime.startsWith('video/') ? 'video'
+                  : mime === 'application/pdf' ? 'pdf'
+                    : undefined;
+            return modality && !selectedModel.inputModalities.includes(modality);
+          });
+          if (unsupported) {
+            throw new Error(`${selectedModel.label} does not support ${unsupported.mime || 'this attachment type'} input.`);
+          }
+        }
+
         const isV2 = client.__opencode?.contract === 'v2';
-        const variant = isV2
-          ? getSelectedModelVariant(
-              chatPreferences.modelId,
+        const variant = isV2 && !routed?.sameAsCurrent
+          ? routed?.variant ?? getSelectedModelVariant(
+              effectiveModelId,
               chatPreferences.modelVariantSelections,
               availableModels,
               currentSession?.model,
@@ -186,7 +206,7 @@ export function usePromptLifecycle({
         await submitPrompt({
           sessionID: sessionId,
           agent: chatPreferences.mode,
-          model: getSelectedModelParts(chatPreferences.modelId),
+          model: routed?.sameAsCurrent ? undefined : getSelectedModelParts(effectiveModelId),
           system: buildSystemPrompt(chatPreferences),
           variant,
           parts,
@@ -245,7 +265,7 @@ export function usePromptLifecycle({
         ));
       }
     },
-    [activeProjectPath, availableModels, busyNotificationsRef, chatPreferences, client, connectionScope, isCurrentClient, promptSubmissionRef, refreshMessages, refreshSessionDiff, refreshSessionTodos, scheduleSessionRefresh, sessions, setPromptError, setSelectedDiffMessageBySession, settingsRef, submitPrompt],
+    [activeProjectPath, availableModels, busyNotificationsRef, chatPreferences, client, connectionScope, isCurrentClient, promptSubmissionRef, refreshMessages, refreshSessionDiff, refreshSessionTodos, routePrompt, scheduleSessionRefresh, sessions, setPromptError, setSelectedDiffMessageBySession, settingsRef, submitPrompt],
   );
 
   const abortSession = useCallback(

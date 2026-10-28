@@ -12,7 +12,7 @@ import { createSharedEventStream } from '@/providers/shared-event-stream';
 import { parseWorkspaces, serializeWorkspaces, WORKSPACES_STORAGE_KEY } from '@/providers/workspace-storage';
 import { workspaceKey, type ConnectionRecord, type SessionTarget, type WorkspaceSnapshot, type WorkspaceTarget } from '@/providers/workspace-types';
 
-export const SERVER_PREFERENCE_KEYS = ['providerId', 'modelId', 'enabledModelIds', 'providerModelSelections', 'modelVariantSelections', 'recentModelIds', 'mode', 'autoApprove'] as const;
+export const SERVER_PREFERENCE_KEYS = ['providerId', 'modelId', 'enabledModelIds', 'providerModelSelections', 'modelVariantSelections', 'recentModelIds', 'mode', 'autoApprove', 'autoModel'] as const;
 export function serverPreferences(value: Partial<ChatPreferences>) {
   return Object.fromEntries(SERVER_PREFERENCE_KEYS.filter((key) => key in value).map((key) => [key, value[key]])) as Partial<ChatPreferences>;
 }

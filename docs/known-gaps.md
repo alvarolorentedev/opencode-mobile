@@ -281,3 +281,11 @@ Known limits:
 - The local input path is foreground-only; it does not run with the screen off.
 - Model install/removal and voice enrollment do not yet stop an active local
   detector. Stop conversation mode before changing the local voice setup.
+- Auto model routing's on-device classifier is not validated on native yet. The
+  Qwen2.5-0.5B Q4_K_M pack is roughly 491 MB, requires a llama.rn New
+  Architecture build, and has only a size/MD5 integrity check (the pinned
+  SHA-256 is documented but cannot be streamed through expo-crypto without
+  loading the whole pack into JS memory). Web has no on-device classifier.
+- Auto-routing tier suggestions use price/context/reasoning metadata as a
+  capability proxy. They do not benchmark model quality or prompt-cache behavior;
+  the long-chat guard is a fixed conservative threshold, not measured savings.

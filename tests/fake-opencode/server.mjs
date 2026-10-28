@@ -289,7 +289,7 @@ const server = http.createServer(async (req, res) => {
     }
 
     if (req.method === 'GET' && pathname === '/__control/state') {
-      sendJson(res, 200, { scenario: state.scenario, sessions: state.sessions, messagesBySession: state.messagesBySession, sessionStatuses: state.sessionStatuses, pendingPermissions: state.pendingPermissions, pendingQuestions: state.pendingQuestions, configuredProviderIds: [...state.configuredProviderIds], authByProvider: state.authByProvider, worktrees: state.worktrees, mcpStatuses: state.mcpStatuses, files: state.files, questionAnswers: state.lastQuestionAnswer, network: networkProfile, headers: { required: requiredHeaders, received: receivedHeaders, paths: [...headerPaths] } }); return;
+      sendJson(res, 200, { scenario: state.scenario, sessions: state.sessions, messagesBySession: state.messagesBySession, sessionStatuses: state.sessionStatuses, pendingPermissions: state.pendingPermissions, pendingQuestions: state.pendingQuestions, configuredProviderIds: [...state.configuredProviderIds], authByProvider: state.authByProvider, worktrees: state.worktrees, mcpStatuses: state.mcpStatuses, files: state.files, questionAnswers: state.lastQuestionAnswer, classifierCalls: state.classifierCalls || 0, network: networkProfile, headers: { required: requiredHeaders, received: receivedHeaders, paths: [...headerPaths] } }); return;
     }
     if (req.method === 'GET' && pathname === '/__control/oauth-complete') {
       const attempt = state.integrationAttempts[requestUrl.searchParams.get('attemptID')];
@@ -513,6 +513,19 @@ const server = http.createServer(async (req, res) => {
 
     if (req.method === 'GET' && pathname === '/api/model') {
       sendJson(res, 200, { location: location(), data: modelCatalog(state).filter((model) => model.enabled) });
+      return;
+    }
+
+    if (req.method === 'POST' && pathname === '/api/experimental/generate') {
+      const body = await readJson(req);
+      const message = body?.prompt?.match(/"""\n([\s\S]*?)\n"""/)?.[1] || body?.prompt || '';
+      const text = /refactor|architecture|migrate|complex/i.test(message)
+        ? 'complex'
+        : /simple|hello|hi\b|2 \+ 2/i.test(message)
+          ? 'simple'
+          : 'standard';
+      state.classifierCalls = (state.classifierCalls || 0) + 1;
+      sendJson(res, 200, { data: { text } });
       return;
     }
 

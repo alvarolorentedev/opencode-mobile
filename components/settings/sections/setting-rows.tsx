@@ -9,12 +9,14 @@ export type Palette = typeof Colors.light;
 
 export function SettingSwitchRow({
   description,
+  disabled = false,
   onValueChange,
   palette,
   title,
   value,
 }: {
   description: string;
+  disabled?: boolean;
   onValueChange: (value: boolean) => void;
   palette: Palette;
   title: string;
@@ -23,15 +25,18 @@ export function SettingSwitchRow({
   return (
     <List.Item
       accessible={false}
+      disabled={disabled}
       onPress={() => onValueChange(!value)}
       title={title}
       description={description}
       titleStyle={{ color: palette.text }}
       descriptionStyle={{ color: palette.muted }}
+      style={disabled ? { opacity: 0.55 } : undefined}
       right={() => (
         <NativeSwitch
           accessibilityLabel={title}
           accessibilityHint={description}
+          disabled={disabled}
           ios_backgroundColor={palette.border}
           onValueChange={onValueChange}
           thumbColor={Platform.OS === 'android' ? (value ? palette.tint : '#f4f3f4') : undefined}

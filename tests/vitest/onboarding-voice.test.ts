@@ -13,8 +13,9 @@ const translation = { useTranslation: () => ({ t: (key: string) => key }) };
 
 async function voice(os = 'android', ready = false) {
   const runtime = hookRuntime();
+  const autoModelPreferences = await loadTs('lib/auto-model/preferences.ts');
   const { defaultChatPreferences } = await loadTs('providers/opencode-preferences.ts', {
-    '@/constants/appearance': {}, '@/lib/voice/wake-phrase': {}, '@/lib/voice/local-wake-word/types': {},
+    '@/constants/appearance': {}, '@/lib/auto-model/preferences': autoModelPreferences, '@/lib/voice/wake-phrase': {}, '@/lib/voice/local-wake-word/types': {},
   });
   const update = vi.fn();
   const localVoice = { clearError: vi.fn(), refresh: vi.fn() };

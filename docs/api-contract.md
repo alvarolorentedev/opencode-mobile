@@ -14,7 +14,7 @@ The existing connection scope, storage keys and persisted DTOs remain unchanged.
 
 New capabilities that require an API surface outside the existing V1 compatibility layer are implemented for OpenCode 2 only. Until this policy changes, do not add new V1 adapters, endpoint shims, fallbacks, or V1 fake-server handlers for these capabilities. The UI hides or disables them when the active contract is V1.
 
-V1 remains supported for existing behavior and maintenance fixes. Current examples of V2-only capabilities include composer context mentions (`@`), session shell commands (`!`), skill/reference discovery, and composer autocomplete suggestions.
+V1 remains supported for existing behavior and maintenance fixes. Current examples of V2-only capabilities include composer context mentions (`@`), session shell commands (`!`), skill/reference discovery, composer autocomplete suggestions, and the OpenCode auto-model classifier call. On-device auto-routing has no API dependency and can run on either contract.
 
 ### Local V2 pairing
 
@@ -75,6 +75,24 @@ Native prompts use `session.prompt({ sessionID, text, files, agents, skills, del
 The native admission record identifies the accepted input. Completion is observed through events and message reads. `delivery` supports steer at a step boundary and queue/append at a later turn. Native inbox list/update/cancel operations preserve message identity, attachment bytes and pending state. V1 retains `session.promptAsync` with text/file parts and its `system` field.
 
 Attachment capability checks, 10 MB local-file limits, temporary-file cleanup and URI/base64 preparation remain app-owned. File-only messages retain attachment details. Commands use native `session.command({ name, text })` after model/agent selection; v1 receives its legacy command/arguments fields. A leading `!` uses `session.shell({ sessionID, command })` and renders the native `shell` timeline record as the existing shell activity row. Abort uses native `session.interrupt`; title summarization is v1-only.
+
+## Auto Model Classifier
+
+Auto model routing can use the V2 experimental classifier endpoint:
+
+```text
+POST /api/experimental/generate
+{ prompt, model: { id, providerID, variant? } }
+→ { data: { text } }
+```
+
+The app sends a constrained routing prompt and accepts only `simple`,
+`standard`, or `complex`. The endpoint is V2-only and experimental, so the
+OpenCode classifier option is gated by a probe. `404`/`405` marks the endpoint
+unsupported; `401`/`403` marks authentication required; transport and `503`
+failures remain retryable. A send-time failure leaves the prompt on the normal
+default model. No V1 adapter is added. On-device routing uses the pinned GGUF
+pack through `llama.rn` and is separate from this endpoint.
 
 ## Capabilities And Provider Authentication
 

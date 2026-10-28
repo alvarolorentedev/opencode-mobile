@@ -284,6 +284,15 @@ export type CapabilitiesContextValue = {
     activate: (credentialId: string) => Promise<void>;
     remove: (credentialId: string) => Promise<void>;
   };
+  // Classifier readiness for auto model routing. A missing local model or an
+  // unsupported OpenCode endpoint makes the composer option unavailable.
+  modelRouting: {
+    available: boolean;
+    serverStatus: import('@/providers/services/model-routing-service').ServerClassifierStatus;
+    checkServerClassifier: (modelId?: string) => Promise<import('@/providers/services/model-routing-service').ServerClassifierStatus>;
+    resetServerClassifier: () => void;
+    refreshAvailability: () => void;
+  };
 };
 
 export type PreferencesContextValue = {

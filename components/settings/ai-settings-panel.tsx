@@ -7,6 +7,7 @@ import { Portal, Snackbar } from 'react-native-paper';
 import { confirmAction } from '@/lib/confirm-action';
 import { findMatchingProfile } from '@/lib/connection-profiles';
 import { AiDefaultsSection } from './sections/ai-defaults-section';
+import { AutoModelSection } from './sections/auto-model-section';
 import { getProviderCopy } from './settings-utils';
 import { useProviderConfiguration } from './use-provider-configuration';
 import { useCapabilities, useConnection, usePreferences } from '@/providers/opencode-contexts';
@@ -17,7 +18,7 @@ export function AiSettingsPanel() {
   const focused = useIsFocused();
   const insets = useSafeAreaInsets();
   const palette = usePalette();
-  const { availableModels, availableProviders, configuredProviders, providerAccounts, providerAuthMethodsById, removeProvider } = useCapabilities();
+  const { availableModels, availableProviders, configuredProviders, providerAccounts, providerAuthMethodsById, removeProvider, modelRouting } = useCapabilities();
   const { serverCapabilities, settings, connectionProfiles } = useConnection();
   const { chatPreferences, updateChatPreferences } = usePreferences();
   const providerConfig = useProviderConfiguration();
@@ -59,6 +60,15 @@ export function AiSettingsPanel() {
         onStartProviderConfiguration={providerConfig.startProviderConfiguration}
         palette={palette}
         providerAuthMethodsById={providerAuthMethodsById}
+      />
+      <AutoModelSection
+        availableModels={availableModels}
+        configuredProviders={configuredProviders}
+        chatPreferences={chatPreferences}
+        contract={serverCapabilities.contract}
+        modelRouting={modelRouting}
+        palette={palette}
+        updateChatPreferences={updateChatPreferences}
       />
       {providerConfig.dialog}
       <Portal>

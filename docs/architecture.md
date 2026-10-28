@@ -213,6 +213,18 @@ The completion version, preference schema and first-run migration are unchanged.
   Server capability flags and the auto-approve permission policy.
 - `providers/opencode-model-selection.ts`
   Model/agent catalog shapes and pure provider/model selection rules.
+- `providers/opencode-auto-model.ts`
+  Pure auto-routing rules: tier suggestions, explicit/automatic resolution,
+  attachment/context compatibility, and the long-chat cache guard.
+- `providers/use-prompt-routing.ts`
+  Send-time classifier selection and tier resolution. Requires a real
+  on-device or OpenCode classifier; it never falls back to heuristics.
+- `providers/services/model-routing-service.ts`
+  V2 OpenCode classifier probe/call (`POST /api/experimental/generate`) and
+  result parsing.
+- `lib/auto-model/`
+  Pinned GGUF catalog, verified download/install state, llama.rn runtime, and
+  prompt/grammar helpers shared by local and OpenCode classifiers.
 - `providers/opencode-provider-utils.ts`
   Small provider-agnostic helpers (project labels, pending-request grouping).
 - `providers/opencode-provider-selectors.ts`
@@ -247,8 +259,10 @@ The completion version, preference schema and first-run migration are unchanged.
   Session lifecycle, favorites, permissions/questions, and
   `ensureActiveSession`.
 - `providers/use-prompt-lifecycle.ts`
-  `sendPrompt`/`abortSession`, the submission guard, and task-completion
-  notification tracking.
+  `sendPrompt`/`abortSession`, the submission guard, task-completion notification
+  tracking, and the initial auto-routing await. Classification starts in
+  parallel with attachment preparation; a missing classifier leaves the send on
+  the normal default model.
 - `providers/use-prompt-inbox.ts`
   OpenCode 2 prompt admission and session-scoped pending messages. Wraps the
   existing transcript refresh to reconcile inbox delivery through SSE and polling.

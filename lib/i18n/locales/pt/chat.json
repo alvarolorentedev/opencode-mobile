@@ -223,7 +223,11 @@
     "reasoningSupported": " · Com suporte a raciocínio",
     "standardModel": " · Modelo padrão",
     "noMatchingModels": "Nenhum modelo correspondente",
-    "emptyHint": "Tente o nome de um modelo ou provedor."
+    "emptyHint": "Tente o nome de um modelo ou provedor.",
+    "autoRouting": "Auto-routing",
+    "autoRoutingDescription": "Use a model matched to each prompt",
+    "autoRoutingUnavailable": "Set up a classifier in Settings",
+    "defaultModel": "Default model"
   },
   "starter": {
     "title": "Inicie uma nova tarefa",

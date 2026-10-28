@@ -554,7 +554,8 @@ const conversation = await loadTs('providers/use-conversation-state.ts', {
   '@/providers/conversation/use-local-wake-controller': localWakeController,
 }, voiceRuntime.globals);
 const appearance = await loadTs('constants/appearance.ts');
-const chatPreferences = (await loadTs('providers/opencode-preferences.ts', { '@/constants/appearance': appearance, '@/lib/voice/wake-phrase': { DEFAULT_WAKE_PHRASE: 'hey code' }, '@/lib/voice/local-wake-word/types': { DEFAULT_LOCAL_WAKE_PHRASE: 'hey-code', DEFAULT_LOCAL_COMMAND_MODEL: 'moonshine-tiny-en' } })).defaultChatPreferences;
+const autoModelPreferences = await loadTs('lib/auto-model/preferences.ts');
+const chatPreferences = (await loadTs('providers/opencode-preferences.ts', { '@/constants/appearance': appearance, '@/lib/auto-model/preferences': autoModelPreferences, '@/lib/voice/wake-phrase': { DEFAULT_WAKE_PHRASE: 'hey code' }, '@/lib/voice/local-wake-word/types': { DEFAULT_LOCAL_WAKE_PHRASE: 'hey-code', DEFAULT_LOCAL_COMMAND_MODEL: 'moonshine-tiny-en' } })).defaultChatPreferences;
 voiceRuntime.mount(conversation.useConversationState, {
   connection: { status: 'connected', message: 'ready' }, chatPreferences, currentSessionId: 's', setCurrentSessionId: () => {},
   sessionStatuses: { s: { type: 'busy' } }, messagesBySession: {}, pendingPermissionsBySession: {}, pendingQuestionsBySession: {},
