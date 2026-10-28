@@ -1,0 +1,27 @@
+{
+  "taskFinished": {
+    "title": "OpenCode finished a task",
+    "bodyFallback": "Task complete",
+    "failedTitle": "OpenCode task failed",
+    "failedBodyFallback": "The task ended with an error"
+  },
+  "activity": {
+    "working": "Working",
+    "thinking": "Thinking",
+    "needsInput": "Needs your input",
+    "retrying": "Retrying",
+    "queued": "Queued",
+    "finished": "Ready to review",
+    "failed": "Task failed",
+    "stopped": "Task stopped",
+    "reconnecting": "Reconnecting",
+    "paused": "Monitoring paused. Open the app to resume.",
+    "stopMonitoring": "Stop monitoring",
+    "channel": "Task activity",
+    "untitled": "Untitled task",
+    "tasks": "{{count}} tasks running"
+  },
+  "attention": {
+    "channel": "Task needs attention"
+  }
+}

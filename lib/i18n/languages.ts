@@ -13,6 +13,7 @@ export type SupportedLanguage = {
 // app.config.ts.
 export const SUPPORTED_LANGUAGES: SupportedLanguage[] = [
   { code: 'en', nativeName: 'English' },
+  { code: 'ru', nativeName: 'Русский' },
   { code: 'es', nativeName: 'Español' },
   { code: 'hi', nativeName: 'हिन्दी' },
   { code: 'de', nativeName: 'Deutsch' },

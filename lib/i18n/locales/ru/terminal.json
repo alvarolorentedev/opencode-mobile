@@ -1,0 +1,53 @@
+{
+  "screen": {
+    "connectTitle": "Connect to OpenCode",
+    "chooseProject": "Choose a project",
+    "selectProject": "Select a project before opening a terminal.",
+    "openProjects": "Open Projects",
+    "title": "Terminal"
+  },
+  "console": {
+    "selectTerminal": "Select terminal",
+    "create": "Create terminal",
+    "refresh": "Refresh terminals",
+    "openOrCreate": "Open or create a terminal to begin.",
+    "terminateTitle": "Terminate terminal?",
+    "terminateAction": "Terminate",
+    "new": "New terminal",
+    "interactiveHint": "Type directly in the terminal. Use the accessory for terminal keys.",
+    "pasteTitle": "Paste into terminal?",
+    "pasteMessage": "This paste contains multiple lines or control characters and may execute commands. Continue?",
+    "terminateMessage": "{{terminal}} ({{id}})\n{{server}} / {{project}}",
+    "copied": "Copied to clipboard"
+  },
+  "sessions": {
+    "title": "Terminals",
+    "empty": "No terminals yet. Use + to create one.",
+    "openLabel": "Open {{terminal}}"
+  },
+  "errors": {
+    "load": "Could not load terminals.",
+    "create": "Could not create the terminal.",
+    "open": "Could not open the terminal.",
+    "connect": "Could not connect.",
+    "refresh": "Could not refresh terminals."
+  },
+  "accessory": {
+    "paste": "Paste",
+    "copy": "Copy",
+    "latest": "Latest output",
+    "input": "Terminal input",
+    "more": "More terminal keys",
+    "armed": "armed",
+    "locked": "locked",
+    "off": "off"
+  },
+  "status": {
+    "connecting": "Connecting",
+    "connected": "Connected",
+    "reconnecting": "Reconnecting",
+    "exited": "Exited",
+    "error": "Error",
+    "idle": "Idle"
+  }
+}

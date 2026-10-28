@@ -149,8 +149,8 @@ const config: ExpoConfig = {
       'expo-localization',
       {
         supportedLocales: {
-          ios: ['en', 'es', 'hi', 'de', 'fr', 'zh', 'pt', 'ja'],
-          android: ['en', 'es', 'hi', 'de', 'fr', 'zh', 'pt', 'ja'],
+          ios: ['en', 'ru', 'es', 'hi', 'de', 'fr', 'zh', 'pt', 'ja'],
+          android: ['en', 'ru', 'es', 'hi', 'de', 'fr', 'zh', 'pt', 'ja'],
         },
       },
     ],
