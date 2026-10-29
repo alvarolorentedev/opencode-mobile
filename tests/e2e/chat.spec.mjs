@@ -1,7 +1,7 @@
 import { Buffer } from 'node:buffer';
 import { expect, test } from './helpers/fixtures.mjs';
 
-import { attachFile, backendOrigin, chooseDiffSource, connectToServer, ensureConnectionSection, getFreePort, goToTab, openChatLibrary, openReadyChat, resetScenario, seedOnboarding, sendPrompt, spawnV1Server, spawnV2Server, swipeSheetHeaderDown, waitForServer } from './helpers/flows.mjs';
+import { attachFile, backendOrigin, chooseDiffSource, connectToServer, ensureConnectionSection, getFreePort, goToTab, openChatLibrary, openReadyChat, resetScenario, seedOnboarding, sendPrompt, spawnV1Server, spawnV2Server, swipeSheetHeaderDown, waitForServer, workspaceProjectButton } from './helpers/flows.mjs';
 
 test.beforeEach(async ({ page }, info) => {
   await seedOnboarding(page, info);
@@ -163,7 +163,7 @@ test('tab navigation preserves the mounted app and an unsent chat draft @smoke',
   await goToTab(page, 'Settings');
   await ensureConnectionSection(page);
   await goToTab(page, 'Projects');
-  await expect(page.getByRole('button', { name: 'Change project' })).toBeVisible();
+  await expect(workspaceProjectButton(page)).toBeVisible();
   await goToTab(page, 'Chat');
   await expect(page.getByPlaceholder('Ask anything...')).toHaveValue(draft);
   expect(documentRequests).toEqual([]);
@@ -180,7 +180,7 @@ test('returning to the chat tab keeps the loaded transcript without a skeleton',
   await expect(finished).toBeVisible({ timeout: 20_000 });
 
   await goToTab(page, 'Projects');
-  await expect(page.getByRole('button', { name: 'Change project' })).toBeVisible();
+  await expect(workspaceProjectButton(page)).toBeVisible();
   await goToTab(page, 'Chat');
 
   await expect(finished).toBeVisible();

@@ -78,7 +78,8 @@ test('V2 creates a chat on the selected server and project from the New chat she
   await page.locator('#root').getByRole('button', { name: 'New chat', exact: true }).click();
   await expect(page.getByTestId('new-chat-sheet')).toBeVisible();
   await choose(page, 'new-chat-server-picker', 'Build server');
-  await expect(page.getByTestId('new-chat-confirm')).toBeDisabled();
+  // The sheet preselects the server's first project, so confirm is immediately available.
+  await expect(page.getByTestId('new-chat-confirm')).toBeEnabled();
   await choose(page, 'new-chat-project-picker', /^demo-project/);
   await page.getByTestId('new-chat-confirm').click();
   await expect(page.getByTestId('new-chat-sheet')).not.toBeVisible();
@@ -218,7 +219,7 @@ test('V2 single-server mode hides redundant context and restores it when a secon
   await expect(library.getByTestId('chat-server-filter')).toHaveCount(0);
   await expect(library.getByText('MacBook Pro', { exact: true })).toHaveCount(0);
   await expect(library.getByTestId('chat-project-filter')).toBeVisible();
-  await library.getByRole('button', { name: 'Change project', exact: true }).click();
+  await library.getByTestId('chat-library-project-button').click();
   const projects = page.getByTestId('chat-project-picker');
   await expect(projects.getByRole('button', { name: /^All servers:/ })).toHaveCount(0);
   await expect(projects.getByText('MacBook Pro', { exact: true })).toHaveCount(0);

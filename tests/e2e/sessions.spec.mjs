@@ -82,7 +82,7 @@ test('favorites switch projects and open cross-project sessions @smoke', async (
   await chatAction(page, 'Favorite Cross Project Session', 'Favorite');
   await expect(page.getByRole('button', { name: /^Unfavorite / }).first()).toBeVisible();
 
-  await page.getByRole('button', { name: 'Change project' }).click();
+  await page.getByTestId('chat-library-project-button').click();
   await page.getByTestId('chat-project-picker').getByRole('button', { name: 'Select demo-project' }).click();
   await openChatLibrary(page);
   await expect(page.getByTestId('chat-library').getByText('demo-project', { exact: true }).last()).toBeVisible();
@@ -142,7 +142,7 @@ test('rapid favorite taps across projects settle on the last target', async ({ p
   await openChatLibrary(page);
   await chatAction(page, 'Rapid Tap Secondary', 'Favorite');
 
-  await page.getByRole('button', { name: 'Change project' }).click();
+  await page.getByTestId('chat-library-project-button').click();
   await page.getByTestId('chat-project-picker').getByRole('button', { name: 'Select demo-project' }).click();
   await openChatLibrary(page);
   await chatAction(page, 'Primary rapid tap target', 'Favorite');

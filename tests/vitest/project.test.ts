@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 
-import { projectPath, projectEntries, projectWorktrees } from '@/lib/opencode/project';
+import { projectPath, projectEntries, projectCheckouts, projectWorktrees } from '@/lib/opencode/project';
 import { projectFileDownloadUrl } from '@/lib/opencode/project-file';
 import { findFiles, listFiles, readFile, listWorktrees } from '@/providers/services/project-service';
 import { decodeFile } from '@/lib/opencode/v2/shared';
@@ -18,6 +18,27 @@ describe('project protocol', () => {
   it('normalizes worktree names without inventing branch information', () => {
     expect(projectWorktrees(['/worktrees/task', { directory: '/worktrees/fix', name: 'Fix', branch: 'fix' }])).toEqual([
       { directory: '/worktrees/task', name: 'task', branch: undefined }, { directory: '/worktrees/fix', name: 'Fix', branch: 'fix' },
+    ]);
+  });
+  it('builds a main checkout plus linked worktrees in display order', () => {
+    const entries = projectWorktrees([
+      { directory: '/worktrees/b', name: 'Beta', branch: 'beta' },
+      { directory: '/worktrees/a', name: 'Alpha', branch: 'alpha' },
+    ]);
+    expect(projectCheckouts('/repo', entries, '/worktrees/b', 'beta')).toEqual([
+      { directory: '/repo', name: 'Local', branch: undefined, isMain: true },
+      { directory: '/worktrees/a', name: 'Alpha', branch: 'alpha', isMain: false },
+      { directory: '/worktrees/b', name: 'Beta', branch: 'beta', isMain: false },
+    ]);
+    expect(projectCheckouts('/repo', entries, '/repo', 'main')[0].branch).toBe('main');
+  });
+  it('keeps the active checkout visible while the worktree catalog is loading', () => {
+    expect(projectCheckouts('/repo', [], '/worktrees/task', 'task')).toEqual([
+      { directory: '/repo', name: 'Local', branch: undefined, isMain: true },
+      { directory: '/worktrees/task', name: 'task', branch: 'task', isMain: false },
+    ]);
+    expect(projectCheckouts(undefined, [], '/worktrees/task', 'task')).toEqual([
+      { directory: '/worktrees/task', name: 'task', branch: 'task', isMain: true },
     ]);
   });
   it('rejects binary and malformed UTF-8 before text preview', () => {

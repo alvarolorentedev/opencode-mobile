@@ -2,21 +2,25 @@ import { createContext, useContext, useEffect, useMemo, useState, type PropsWith
 import { ActivityIndicator, View } from 'react-native';
 import { useUpdates } from '@/providers/opencode-contexts';
 import type { Session } from '@/lib/opencode/types';
+import type { ProjectPathsByConnection } from '@/providers/opencode-provider-types';
 import { OpencodeProviderTree } from '@/providers/opencode-provider-tree';
 import { useWorkspaceConnections } from '@/providers/use-workspace-connections';
-import { workspaceKey, type WorkspaceCatalog, type WorkspaceTarget, type WorkspaceValues } from '@/providers/workspace-types';
+import { workspaceKey, type NewWorktreeChatResult, type NewWorktreeChatTarget, type WorkspaceCatalog, type WorkspaceTarget, type WorkspaceValues } from '@/providers/workspace-types';
 
 export type WorkspaceRegistry = ReturnType<typeof useWorkspaceConnections> & {
   createChat: (target: WorkspaceTarget) => Promise<Session>;
+  createChatInWorktree: (target: NewWorktreeChatTarget) => Promise<NewWorktreeChatResult>;
   terminalTarget?: WorkspaceTarget;
   selectTerminalTarget: (target: WorkspaceTarget) => Promise<void>;
   inspectionTarget?: WorkspaceTarget;
   inspect: (target: WorkspaceTarget) => Promise<void>;
   valuesFor: (target?: WorkspaceTarget) => WorkspaceValues | undefined;
   catalogs: Record<string, WorkspaceCatalog>;
+  projectPathsByConnection: ProjectPathsByConnection;
 };
 export type WorkspaceActions = {
   createChat: (target: WorkspaceTarget) => Promise<Session>;
+  createChatInWorktree: (target: NewWorktreeChatTarget) => Promise<NewWorktreeChatResult>;
   focus?: WorkspaceTarget;
 };
 export const WorkspaceScopeContext = createContext<WorkspaceTarget | undefined>(undefined);

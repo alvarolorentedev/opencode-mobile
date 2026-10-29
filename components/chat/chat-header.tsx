@@ -1,7 +1,7 @@
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Pressable, Text as NativeText, View } from 'react-native';
+import { Pressable, View } from 'react-native';
 import { Appbar, Portal, ProgressBar, Text } from 'react-native-paper';
 
 import { useDismissOnBack } from '@/hooks/use-dismiss-on-back';
@@ -11,6 +11,7 @@ import type { Session } from '@/lib/opencode/types';
 import { formatEstimatedCost, formatTokenCount, type SessionUsage } from '@/lib/opencode/usage';
 
 import { ConversationOverlay } from '@/components/chat/chat-overlay';
+import { WorkspaceBreadcrumb } from '@/components/ui/workspace-breadcrumb';
 import { OverlaySheet } from '@/components/ui/overlay-sheet';
 import { styles } from '@/components/chat/chat-view-styles';
 import type { ConversationConfirmationState, ConversationInputPhase, ConversationPhase, ConversationReadbackPhase } from '@/providers/opencode-provider';
@@ -31,7 +32,6 @@ type ChatHeaderProps = {
     wakePhrase: string;
   };
   insetsTop: number;
-  activeProjectLabel?: string;
   onConfirmStopConversation: () => void;
   onCreateSession: () => void;
   onOpenSessionMenu: () => void;
@@ -47,7 +47,6 @@ type ChatHeaderProps = {
 export function ChatHeader({
   connectionStatus,
   conversation,
-  activeProjectLabel,
   contextLimit,
   contextTokens,
   insetsTop,
@@ -79,7 +78,7 @@ export function ChatHeader({
   return (
     <>
       <Appbar.Header
-        style={[styles.header, { backgroundColor: palette.surface, paddingTop: insetsTop, height: (slim ? 52 : 64) + insetsTop }]}
+        style={[styles.header, { backgroundColor: palette.surface, paddingTop: insetsTop, height: (slim ? 60 : 72) + insetsTop }]}
         statusBarHeight={0}
         elevated>
         <View style={styles.headerMain}>
@@ -89,13 +88,13 @@ export function ChatHeader({
                 <Text maxFontSizeMultiplier={1.5} numberOfLines={1} variant="titleMedium" style={[styles.headerTitle, { color: palette.text }]}>
                   {selectedSession?.title || t('chat:header.untitledChat')}
                 </Text>
-                <NativeText maxFontSizeMultiplier={1.5} numberOfLines={1} style={[styles.headerUsage, { color: palette.muted }]}>
-                  {activeProjectLabel || t('chat:header.chooseProject')}
-                </NativeText>
               </View>
               <MaterialCommunityIcons name="chevron-down" size={20} color={palette.muted} />
             </View>
           </Pressable>
+          <View style={styles.headerBreadcrumb}>
+            <WorkspaceBreadcrumb compact={slim} testIDPrefix="chat-workspace" />
+          </View>
         </View>
         <View style={styles.headerActions}>
           <Appbar.Action icon="plus" accessibilityLabel={t('chat:header.newChat')} onPress={onCreateSession} />

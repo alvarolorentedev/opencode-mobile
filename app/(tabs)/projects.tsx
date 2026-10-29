@@ -1,14 +1,12 @@
-import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { ScrollView, StyleSheet, View } from 'react-native';
 import { Appbar, Button, Snackbar, Text } from 'react-native-paper';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { ProjectPicker } from '@/components/ui/project-picker';
+import { WorkspaceBreadcrumb } from '@/components/ui/workspace-breadcrumb';
 import { FilesPanel } from '@/components/project/files-panel';
 import { FilePreview } from '@/components/project/file-preview';
-import { Fonts } from '@/constants/theme';
 import { usePalette } from '@/hooks/use-palette';
 import { useRetainedState } from '@/components/ui/use-retained-state';
 import { getConnectionUiScope } from '@/lib/connection-scope';
@@ -23,7 +21,6 @@ export default function ProjectsScreen() {
   const slim = chatPreferences.slimInterface === true;
   const { activeProject, refreshProjectCatalog, refreshProjectStatus } = useProjects();
   const { browser, projectFile, projectFileStatuses, vcsInfo } = useProjectFiles();
-  const [pickerVisible, setPickerVisible] = useState(false);
 
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string>();
@@ -40,16 +37,11 @@ export default function ProjectsScreen() {
   }
   return <>
     <Appbar.Header statusBarHeight={0} style={{ backgroundColor: palette.surface, paddingTop: insets.top, height: (slim ? 52 : 64) + insets.top }}>
-      <Pressable accessibilityRole="button" accessibilityLabel={t('project:picker.changeProject')} onPress={() => setPickerVisible(true)} style={styles.selector}>
-        <View style={{ flex: 1, minWidth: 0 }}>
-          <Text numberOfLines={1} variant="titleMedium" style={{ color: palette.text, fontFamily: Fonts.display, fontWeight: '700' }}>{activeProject?.label || t('common:tabs.projects')}</Text>
-          <Text numberOfLines={1} variant="bodySmall" style={{ color: palette.muted }}>{connection.status === 'connected' ? activeProject?.path : connection.message}</Text>
-        </View>
-        <MaterialCommunityIcons name="chevron-down" size={20} color={palette.muted} />
-      </Pressable>
+      <View style={styles.breadcrumbHeader}>
+        <WorkspaceBreadcrumb compact={slim} testIDPrefix="projects-workspace" />
+      </View>
       <Appbar.Action testID="project-refresh-button" icon="refresh" disabled={refreshing || connection.status !== 'connected'} accessibilityLabel={t('project:screen.refreshProject')} onPress={() => void refresh()} />
     </Appbar.Header>
-    {pickerVisible ? <ProjectPicker visible testID="project-picker" activePath={activeProject?.path} onClose={() => setPickerVisible(false)} /> : null}
     {ready ? <FilesPanel key={scope} browser={browser} projectLabel={activeProject!.label} statuses={serverCapabilities.fileStatus ? projectFileStatuses : []}
       contentStyle={[styles.content, slim && { padding: 10 }]}
       header={<>
@@ -62,10 +54,9 @@ export default function ProjectsScreen() {
         <Text variant="headlineMedium" style={{ fontWeight: '700', color: palette.text }}>{t('project:screen.filesTab')}</Text>
       <View style={{ gap: 12 }}>
         <Text style={{ color: palette.muted }}>{connection.status !== 'connected' ? connection.message : t('project:picker.empty')}</Text>
-        <Button mode="outlined" loading={connection.status === 'connecting'} onPress={() => {
-          if (connection.status === 'connected') setPickerVisible(true);
-          else void connect().catch((reason) => setError(reason instanceof Error ? reason.message : t('project:errors.refreshProject')));
-        }}>{connection.status !== 'connected' ? t('common:actions.reconnect') : t('project:picker.title')}</Button>
+        {connection.status !== 'connected' ? <Button mode="outlined" loading={connection.status === 'connecting'} onPress={() => {
+          void connect().catch((reason) => setError(reason instanceof Error ? reason.message : t('project:errors.refreshProject')));
+        }}>{t('common:actions.reconnect')}</Button> : null}
       </View>
       </ScrollView>}
     {ready && fileVisible && projectFile.selected ? <FilePreview key={`${scope}:${projectFile.selected.path}`} file={projectFile.selected}
@@ -76,6 +67,6 @@ export default function ProjectsScreen() {
 }
 
 const styles = StyleSheet.create({
-  selector: { flex: 1, flexDirection: 'row', gap: 8, alignItems: 'center', paddingHorizontal: 16, minHeight: 48, minWidth: 0 },
+  breadcrumbHeader: { flex: 1, justifyContent: 'center', minWidth: 0, paddingHorizontal: 16 },
   content: { padding: 16, gap: 12, paddingBottom: 28, width: '100%', maxWidth: 1100, alignSelf: 'center' },
 });

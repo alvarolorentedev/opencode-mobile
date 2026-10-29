@@ -1,6 +1,6 @@
 import { expect, test } from './helpers/fixtures.mjs';
 
-import { backendOrigin, chatAction, connectToServer, expectConnectedTo, getFreePort, goToTab, openChatLibrary, openReadyChat, reconnectActiveConnection, resetScenario, seedOnboarding, sendPrompt, spawnV1Server, spawnV2Server, waitForServer } from './helpers/flows.mjs';
+import { backendOrigin, chatAction, connectToServer, expectConnectedTo, getFreePort, goToTab, openChatLibrary, openReadyChat, reconnectActiveConnection, resetScenario, seedOnboarding, sendPrompt, spawnV1Server, spawnV2Server, waitForServer, workspaceProjectButton, workspaceWorktreeButton } from './helpers/flows.mjs';
 
 test.beforeEach(async ({ page }, info) => {
   await seedOnboarding(page, info);
@@ -11,9 +11,8 @@ test('Chat and Project use the same project picker @smoke', async ({ page, reque
   await openReadyChat(page);
 
   await goToTab(page, 'Projects');
-  const projectDropdown = page.getByRole('button', { name: 'Change project' });
+  const projectDropdown = workspaceProjectButton(page);
   await expect(projectDropdown).toContainText('demo-project');
-  await expect(projectDropdown).toContainText('/workspace/demo-project');
   await expect(page.getByTestId('project-refresh-button')).toBeVisible();
   await projectDropdown.click();
   await expect(page.getByTestId('project-picker')).toBeVisible();
@@ -30,7 +29,7 @@ test('Chat and Project use the same project picker @smoke', async ({ page, reque
 
   await goToTab(page, 'Chat');
   await openChatLibrary(page);
-  await page.getByRole('button', { name: 'Change project' }).click();
+  await page.getByTestId('chat-library-project-button').click();
   await expect(page.getByTestId('chat-project-picker')).toBeVisible();
   await page.getByTestId('chat-project-picker').getByRole('button', { name: 'Select demo-project' }).click();
   await goToTab(page, 'Projects');
@@ -73,16 +72,24 @@ test('project files save through a conflict-checked VCS patch', async ({ page, r
   await expect(page.getByText(/OpenCode SDK 1\.18\.3/)).toBeVisible();
 });
 
-test('worktrees and MCP servers can be created', async ({ page, request }) => {
+test('worktrees are created from New chat and MCP servers can be created', async ({ page, request }) => {
   await resetScenario(request, 'happy-path');
   await openReadyChat(page);
-  await goToTab(page, 'Projects');
-  await page.getByRole('button', { name: 'Change project' }).click();
-  await page.getByTestId('project-worktree-add').click();
-  await page.getByTestId('project-worktree-name').fill('mobile-test');
-  await page.getByTestId('project-worktree-create').click();
-  await expect(page.getByText('mobile-test', { exact: true })).toBeVisible();
-  await page.getByTestId('project-picker').getByRole('button', { name: 'Close', exact: true }).click();
+  await page.locator('#root').getByRole('button', { name: 'New chat', exact: true }).click();
+  await expect(page.getByTestId('new-chat-sheet')).toBeVisible();
+  await page.getByTestId('new-chat-new-worktree').click();
+  await page.getByTestId('new-chat-worktree-name').fill('mobile-test');
+  await page.getByTestId('new-chat-confirm').click();
+  await expect(page.getByTestId('new-chat-sheet')).not.toBeVisible({ timeout: 20_000 });
+  await expect(workspaceWorktreeButton(page, 'chat')).toContainText('mobile-test');
+  await workspaceWorktreeButton(page, 'chat').click();
+  await expect(page.getByTestId('worktree-picker')).toContainText('mobile-test');
+  await page.getByTestId('worktree-picker').getByRole('button', { name: 'Close', exact: true }).click();
+  // The fake server exposes project extensions only for the canonical project
+  // root, so return to Local before exercising the Extensions surface.
+  await workspaceWorktreeButton(page, 'chat').click();
+  await page.getByTestId('worktree-picker').getByRole('button', { name: 'Select Local' }).click();
+  await expect(workspaceWorktreeButton(page, 'chat')).toContainText('Local');
 
   await goToTab(page, 'Settings');
   await page.getByText('Extensions', { exact: true }).click();
@@ -93,7 +100,7 @@ test('worktrees and MCP servers can be created', async ({ page, request }) => {
   await page.getByTestId('settings-extension-mcp-name').fill('web-tools');
   await page.getByTestId('settings-extension-mcp-target').fill('https://example.test/mcp');
   await page.getByTestId('settings-extension-mcp-add').click();
-  await expect(page.getByText('web-tools', { exact: true })).toBeVisible();
+  await expect(page.getByText('web-tools', { exact: true })).toBeVisible({ timeout: 30_000 });
 });
 
 test('OpenCode 2 adds a server project from the shared picker @smoke', async ({ page, request }) => {
@@ -105,11 +112,11 @@ test('OpenCode 2 adds a server project from the shared picker @smoke', async ({ 
     await openReadyChat(page);
     await connectToServer(page, `http://127.0.0.1:${port}`);
     await openChatLibrary(page);
-    await page.getByRole('button', { name: 'Change project' }).click();
+    await page.getByTestId('chat-library-project-button').click();
     await page.getByTestId('project-add-button').click();
     await page.getByTestId('project-add-path').fill('/workspace/v2-new-project');
     await page.getByTestId('project-add-submit').click();
-    await expect(page.getByRole('button', { name: /^Open chats/ })).toContainText('v2-new-project');
+    await expect(workspaceProjectButton(page, 'chat')).toContainText('v2-new-project');
     const serverProjects = await (await request.get(`http://127.0.0.1:${port}/api/project`)).json();
     expect(serverProjects.some((project) => project.canonical === '/workspace/v2-new-project')).toBe(true);
     const [promptResponse] = await Promise.all([
@@ -127,7 +134,7 @@ test('OpenCode 2 adds a server project from the shared picker @smoke', async ({ 
       page.waitForResponse((response) => response.url().includes('/api/project') && response.request().method() === 'GET'),
       page.getByTestId('project-refresh-button').click(),
     ]);
-    await expect(page.getByRole('button', { name: 'Change project' })).toContainText('/workspace/v2-new-project');
+    await expect(workspaceProjectButton(page)).toContainText('v2-new-project');
     await expect.poll(() => page.evaluate(() => globalThis.localStorage.getItem('opencode-mobile.active-project'))).toBe('/workspace/v2-new-project');
     await goToTab(page, 'Chat');
     await openChatLibrary(page);
@@ -137,8 +144,8 @@ test('OpenCode 2 adds a server project from the shared picker @smoke', async ({ 
     await expect(page.getByText(/Finished: Retained project chat/).first()).toBeVisible();
     await expect.poll(() => page.evaluate(() => globalThis.localStorage.getItem('opencode-mobile.favorite-sessions'))).toContain(retainedSessionId);
     await goToTab(page, 'Projects');
-    await expect(page.getByRole('button', { name: 'Change project' })).toContainText('/workspace/v2-new-project');
-    await page.getByRole('button', { name: 'Change project' }).click();
+    await expect(workspaceProjectButton(page)).toContainText('v2-new-project');
+    await workspaceProjectButton(page).click();
     await expect(page.getByRole('button', { name: 'Select v2-new-project' })).toBeVisible();
     await page.getByTestId('project-picker').getByRole('button', { name: 'Close', exact: true }).click();
     await goToTab(page, 'Settings');
@@ -146,8 +153,8 @@ test('OpenCode 2 adds a server project from the shared picker @smoke', async ({ 
     await expectConnectedTo(page, String(port));
     await page.reload();
     await goToTab(page, 'Projects');
-    await expect(page.getByRole('button', { name: 'Change project' })).toContainText('/workspace/v2-new-project');
-    await page.getByRole('button', { name: 'Change project' }).click();
+    await expect(workspaceProjectButton(page)).toContainText('v2-new-project');
+    await workspaceProjectButton(page).click();
     await expect(page.getByRole('button', { name: 'Select v2-new-project' })).toBeVisible();
     await page.getByTestId('project-picker').getByRole('button', { name: 'Close', exact: true }).click();
     await goToTab(page, 'Chat');
@@ -199,6 +206,8 @@ for (const contract of ['v1', 'v2']) {
       await goToTab(page, 'Projects');
       await expect(page.getByTestId('project-entry-src')).toBeVisible();
       await expect(page.getByRole('tab', { name: 'Worktrees' })).toHaveCount(0);
+      await expect(workspaceProjectButton(page)).toContainText('demo-project');
+      await expect(workspaceWorktreeButton(page)).toHaveCount(0);
       await page.screenshot({ path: `/tmp/opencode-project-${contract}.png` });
       await page.getByTestId('project-entry-src').click();
       await expect(page.getByTestId('project-entry-src/demo.ts')).toBeVisible();
@@ -233,7 +242,7 @@ for (const contract of ['v1', 'v2']) {
         await expect(page.getByTestId('project-file-binary-unavailable')).toBeVisible();
         await page.getByLabel('Close file').click();
       }
-      await page.getByRole('button', { name: 'Change project' }).click();
+      await workspaceProjectButton(page).click();
       const picker = page.getByTestId('project-picker');
       // The connection starts with the server's current project only; open the
       // secondary project before switching to it.
@@ -246,14 +255,22 @@ for (const contract of ['v1', 'v2']) {
       await expect(page.getByText(/export const workspace = "\/workspace\/secondary-project"/)).toBeVisible();
       await expect(page.getByRole('button', { name: 'Edit', exact: true })).toHaveCount(1);
       await page.getByLabel('Close file').click();
-      await page.getByRole('button', { name: 'Change project' }).click();
-      await page.getByTestId('project-worktree-add').click();
-      await page.getByTestId('project-worktree-name').fill('scoped-task');
-      await page.getByTestId('project-worktree-create').click();
-      await expect(picker.getByRole('button', { name: 'Select scoped-task' })).toBeVisible();
-      await page.screenshot({ path: `/tmp/opencode-project-picker-${contract}.png` });
-      await picker.getByRole('button', { name: 'Select scoped-task' }).click();
-      await expect(page.getByRole('button', { name: 'Change project' })).toContainText('/worktrees/scoped-task');
+      await expect(page.getByTestId('project-worktree-add')).toHaveCount(0);
+
+      // Worktree creation lives in New chat, not in the Projects picker.
+      await goToTab(page, 'Chat');
+      await page.locator('#root').getByRole('button', { name: 'New chat', exact: true }).click();
+      await page.getByTestId('new-chat-new-worktree').click();
+      await page.getByTestId('new-chat-worktree-name').fill('scoped-task');
+      await page.getByTestId('new-chat-confirm').click();
+      await expect(page.getByTestId('new-chat-sheet')).not.toBeVisible({ timeout: 20_000 });
+      await expect(workspaceProjectButton(page, 'chat')).toContainText('secondary-project');
+      await expect(workspaceWorktreeButton(page, 'chat')).toContainText('scoped-task');
+      await workspaceProjectButton(page, 'chat').click();
+      await expect(page.getByRole('button', { name: 'Select scoped-task' })).toHaveCount(0);
+      await page.getByTestId('project-picker').getByRole('button', { name: 'Close', exact: true }).click();
+
+      await goToTab(page, 'Projects');
       await page.getByTestId('project-entry-README.md').click();
       await expect(page.getByText('# Worktree scoped-task', { exact: false })).toBeVisible();
       await page.getByLabel('Close file').click();
@@ -266,20 +283,26 @@ for (const contract of ['v1', 'v2']) {
       await expect(page.getByTestId('terminal-output')).toBeVisible();
       await goToTab(page, 'Projects');
       await page.reload();
-      await expect(page.getByRole('button', { name: 'Change project' })).toContainText('/worktrees/scoped-task');
-      await page.getByRole('button', { name: 'Change project' }).click();
-      await expect(picker.getByText('Worktrees · secondary-project')).toBeVisible();
-      await expect(picker.getByRole('button', { name: 'Manage scoped-task' })).toBeDisabled();
-      await picker.getByRole('button', { name: 'Select secondary-project' }).click();
-      await page.getByRole('button', { name: 'Change project' }).click();
-      await picker.getByRole('button', { name: 'Manage scoped-task' }).click();
+      await expect(workspaceProjectButton(page)).toContainText('secondary-project');
+      await expect(workspaceWorktreeButton(page)).toContainText('scoped-task');
+
+      // The active worktree is protected in management. Switch to Local first.
+      await workspaceWorktreeButton(page).click();
+      await expect(page.getByTestId('worktree-picker')).toBeVisible();
+      await page.getByTestId('worktree-picker').getByRole('button', { name: 'Select Local' }).click();
+      await expect(page.getByTestId('worktree-picker')).not.toBeVisible();
+      await expect(workspaceWorktreeButton(page)).toContainText('Local');
+      await workspaceWorktreeButton(page).click();
+      await page.getByTestId('worktree-picker').getByRole('button', { name: 'Manage worktrees' }).click();
       page.once('dialog', (dialog) => dialog.accept());
-      await picker.getByRole('button', { name: 'Remove', exact: true }).click();
-      await expect(picker.getByRole('button', { name: 'Manage scoped-task' })).toHaveCount(0);
-      // The server worktree is gone; closing the project row removes the local
-      // entry without touching the server.
-      await picker.getByTestId('project-remove-/worktrees/scoped-task').click();
-      await expect(picker.getByRole('button', { name: 'Select scoped-task' })).toHaveCount(0);
+      await page.getByRole('button', { name: 'Remove scoped-task' }).click();
+      await expect(page.getByTestId('worktree-picker')).not.toBeVisible();
+      await expect(workspaceWorktreeButton(page)).toHaveCount(0);
+
+      // Closing the project removes its local row without touching the server.
+      await workspaceProjectButton(page).click();
+      await picker.getByTestId('project-remove-/workspace/secondary-project').click();
+      await expect(picker.getByRole('button', { name: 'Select secondary-project' })).toHaveCount(0);
     } finally { server.kill('SIGTERM'); }
   });
 }

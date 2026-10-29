@@ -2,6 +2,7 @@ import type { Dispatch, SetStateAction } from 'react';
 import type { NetworkStatus } from '@/lib/network-status';
 import type { OpencodeConnectionSettings } from '@/lib/opencode/client';
 import type { Session, SessionStatus } from '@/lib/opencode/types';
+import type { ProjectWorktree } from '@/lib/opencode/project';
 import type { ChatPreferences } from '@/providers/opencode-preferences';
 import type { ConnectionContextValue } from '@/providers/opencode-provider-types';
 import type { OpencodeProviderState } from '@/providers/use-opencode-provider-state';
@@ -10,6 +11,8 @@ import type { createSharedEventStream } from '@/providers/shared-event-stream';
 
 export type WorkspaceTarget = { connectionId: string; projectPath: string };
 export type SessionTarget = WorkspaceTarget & { sessionId: string };
+export type NewWorktreeChatTarget = { connectionId: string; projectRoot: string; name?: string };
+export type NewWorktreeChatResult = { session?: Session; checkout?: ProjectWorktree; error?: string };
 export const workspaceKey = ({ connectionId, projectPath }: WorkspaceTarget) => JSON.stringify([connectionId, projectPath]);
 export const sessionKey = (target: SessionTarget) => JSON.stringify([target.connectionId, target.projectPath, target.sessionId]);
 export type ConnectionRecord = {

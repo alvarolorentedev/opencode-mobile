@@ -50,7 +50,16 @@
     "groupTitle": "वर्कट्री · {{project}}",
     "selectGuidance": "कार्य क्षेत्र के रूप में उपयोग करने के लिए निर्देशिका पर टैप करें।",
     "create": "वर्कट्री बनाएँ",
-    "manage": "{{name}} प्रबंधित करें"
+    "manage": "{{name}} प्रबंधित करें",
+    "title": "वर्कट्री",
+    "subtitle": "{{project}}",
+    "local": "लोकल",
+    "localHint": "इस सर्वर पर मुख्य चेकआउट",
+    "change": "वर्कट्री बदलें। {{name}}",
+    "manageTitle": "वर्कट्री प्रबंधित करें",
+    "removeLabel": "{{name}} हटाएँ",
+    "cannotRemoveActive": "इसे हटाने से पहले किसी दूसरी वर्कट्री पर जाएँ।",
+    "noOther": "कोई अन्य वर्कट्री नहीं।"
   },
   "picker": {
     "title": "प्रोजेक्ट चुनें",
@@ -60,7 +69,8 @@
     "add": "प्रोजेक्ट जोड़ें",
     "selectLabel": "{{name}} चुनें",
     "removeLabel": "{{name}} हटाएं",
-    "empty": "कोई प्रोजेक्ट उपलब्ध नहीं।"
+    "empty": "कोई प्रोजेक्ट उपलब्ध नहीं।",
+    "changeProjectWithName": "प्रोजेक्ट बदलें। {{name}}"
   },
   "errors": {
     "refreshProject": "प्रोजेक्ट रीफ़्रेश नहीं किया जा सका।",

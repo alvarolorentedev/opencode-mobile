@@ -156,7 +156,17 @@
   "newChat": {
     "title": "新建聊天",
     "hint": "选择此聊天的起始位置。",
-    "create": "开始聊天"
+    "create": "开始聊天",
+    "runIn": "运行于",
+    "newWorktree": "新建工作树",
+    "worktreeName": "工作树名称（可选）",
+    "worktreeHint": "在服务器上创建分支和检出，然后在此启动聊天。",
+    "createWorktreeChat": "创建工作树并开始聊天",
+    "creatingWorktree": "正在创建工作树…",
+    "startingChat": "正在开始聊天…",
+    "startChatFailed": "无法启动聊天。",
+    "worktreeCreatedChatFailed": "工作树已创建。开始聊天以继续。",
+    "noCheckouts": "没有可用的检出。"
   },
   "header": {
     "pricingUnavailable": "价格不可用",

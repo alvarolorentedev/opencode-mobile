@@ -156,7 +156,17 @@
   "newChat": {
     "title": "新しいチャット",
     "hint": "このチャットを開始する場所を選択してください。",
-    "create": "チャットを開始"
+    "create": "チャットを開始",
+    "runIn": "実行場所",
+    "newWorktree": "新しいワークツリー",
+    "worktreeName": "ワークツリー名（任意）",
+    "worktreeHint": "サーバーにブランチとチェックアウトを作成し、そこでチャットを開始します。",
+    "createWorktreeChat": "ワークツリーを作成してチャットを開始",
+    "creatingWorktree": "ワークツリーを作成中…",
+    "startingChat": "チャットを開始中…",
+    "startChatFailed": "チャットを開始できませんでした。",
+    "worktreeCreatedChatFailed": "ワークツリーを作成しました。続行するにはチャットを開始してください。",
+    "noCheckouts": "利用可能なチェックアウトがありません。"
   },
   "header": {
     "pricingUnavailable": "料金を取得できません",

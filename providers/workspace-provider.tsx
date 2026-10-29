@@ -12,7 +12,7 @@ import { useOpencodePersistence } from '@/providers/use-opencode-persistence';
 import { useWorkspaceConnections, serverPreferences } from '@/providers/use-workspace-connections';
 import { WorkspaceActionsContext, WorkspaceContext, WorkspacePresentationContext, type WorkspaceRegistry } from '@/providers/workspace-context';
 import { WorkspaceRuntime } from '@/providers/workspace-runtime';
-import { workspaceKey, type SharedWorkspaceState, type WorkspaceTarget, type WorkspaceValues, type ConnectionRecord, type WorkspaceCatalog } from '@/providers/workspace-types';
+import { workspaceKey, type NewWorktreeChatResult, type NewWorktreeChatTarget, type SharedWorkspaceState, type WorkspaceTarget, type WorkspaceValues, type ConnectionRecord, type WorkspaceCatalog } from '@/providers/workspace-types';
 import { useConnectState } from '@/providers/use-connect-state';
 import { useConnectionProfiles } from '@/providers/use-connection-profiles';
 import { useServicesState } from '@/providers/use-services-state';
@@ -130,6 +130,20 @@ export function WorkspaceProvider({ children }: PropsWithChildren) {
     await activate(target);
     return session;
   }, [activate, connectedWorkspace]);
+  const createChatInWorktree = useCallback(async (target: NewWorktreeChatTarget): Promise<NewWorktreeChatResult> => {
+    let checkout: import('@/lib/opencode/project').ProjectWorktree | undefined;
+    try {
+      const root = await connectedWorkspace({ connectionId: target.connectionId, projectPath: target.projectRoot });
+      checkout = await root.values.projectFilesValue.createWorktree(target.name);
+      const runtime = await connectedWorkspace({ connectionId: target.connectionId, projectPath: checkout.directory });
+      const session = await runtime.values.currentSessionValue.createSession();
+      await runtime.values.currentSessionValue.openSession(session.id);
+      await activate({ connectionId: target.connectionId, projectPath: checkout.directory });
+      return { session, checkout };
+    } catch (reason) {
+      return { checkout, error: reason instanceof Error ? reason.message : 'Could not create the worktree chat.' };
+    }
+  }, [activate, connectedWorkspace]);
   const refreshTargets = useCallback(async () => {
     await Promise.all(Object.values(catalogs).map((catalog) => catalog.refresh()));
   }, [catalogs]);
@@ -196,9 +210,9 @@ export function WorkspaceProvider({ children }: PropsWithChildren) {
       chatValue: { ...values.chatValue, sharedInput },
     };
   }, [voiceSetupTest, activate, retry, connectionProfiles, connectSetup, current, onboardingCompleted, openSession, openSessionInProject, resolveKey, servicesValue, sharedInput, snapshots, switchConnection, shell.projectPathsByConnection, isHydrated, shell.onboardingActive]);
-  const registry = useMemo<WorkspaceRegistry>(() => ({ ...manager, createChat, removeConnection,
+  const registry = useMemo<WorkspaceRegistry>(() => ({ ...manager, createChat, createChatInWorktree, removeConnection,
     terminalTarget: connections.some((entry) => entry.id === terminalTarget?.connectionId) ? terminalTarget : undefined, selectTerminalTarget,
-    inspectionTarget: connections.some((entry) => entry.id === inspectionTarget?.connectionId) ? inspectionTarget : undefined, inspect, valuesFor, catalogs }), [manager, createChat, removeConnection, connections, terminalTarget, selectTerminalTarget, inspectionTarget, inspect, valuesFor, catalogs]);
+    inspectionTarget: connections.some((entry) => entry.id === inspectionTarget?.connectionId) ? inspectionTarget : undefined, inspect, valuesFor, catalogs, projectPathsByConnection: shell.projectPathsByConnection }), [manager, createChat, createChatInWorktree, removeConnection, connections, terminalTarget, selectTerminalTarget, inspectionTarget, inspect, valuesFor, catalogs, shell.projectPathsByConnection]);
   const updates = useAppUpdates({ initialized: isHydrated && shell.onboardingVersion >= CURRENT_ONBOARDING_VERSION && !shell.onboardingActive,
     blocked: Object.values(snapshots).some((runtime) => runtime.busy) || connectSetup.busy || hasWorkspaceDrafts(presentation) });
   useEffect(() => {
@@ -209,7 +223,7 @@ export function WorkspaceProvider({ children }: PropsWithChildren) {
     setChatPreferences((previous) => JSON.stringify(serverPreferences(previous)) === JSON.stringify(preferences) ? previous : { ...previous, ...preferences });
   }, [current, focus, setSettings, setActiveProjectPath, setChatPreferences]);
   const values = focusedValues;
-  const workspaceActions = useMemo(() => ({ createChat, focus }), [createChat, focus]);
+  const workspaceActions = useMemo(() => ({ createChat, createChatInWorktree, focus }), [createChat, createChatInWorktree, focus]);
   return <VoiceSetupTestContext.Provider value={voiceSetupTest}><WorkspacePresentationContext.Provider value={presentation}>
     <WorkspaceActionsContext.Provider value={workspaceActions}>
     <WorkspaceContext.Provider value={registry}>

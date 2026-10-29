@@ -343,25 +343,37 @@ export function useWorkspaceConnections(shell: OpencodeProviderState, hydrated: 
       if (profile) await save(profiles.map((item) => item.id === profile.id ? { ...item, modelPreferences: pickModelPreferences(value) } : item));
     }).catch((error) => console.warn('Could not save model preferences.', error));
   }, [change]);
-  const closeProject = useCallback(async (target: WorkspaceTarget) => {
-    const entry = records.current.find((item) => item.id === target.connectionId);
-    if (!entry) return;
-    const scope = getConnectionScope(entry.settings);
-    const remaining = (shellRef.current.projectPathsByConnectionRef.current[scope] ?? []).filter((path) => path !== target.projectPath);
-    const opened = { ...shellRef.current.projectPathsByConnectionRef.current, [scope]: remaining };
-    shellRef.current.projectPathsByConnectionRef.current = opened; shellRef.current.setProjectPathsByConnection(opened);
-    if (selected.current?.connectionId === target.connectionId && selected.current.projectPath === target.projectPath) {
-      if (remaining.length) await activate({ connectionId: target.connectionId, projectPath: remaining[0] });
-      else {
-        await pauseConversation();
-        clearFocus();
+  const closeProjects = useCallback(async (targets: WorkspaceTarget[]) => {
+    const byConnection = new Map<string, Set<string>>();
+    for (const target of targets) {
+      const paths = byConnection.get(target.connectionId);
+      if (paths) paths.add(target.projectPath);
+      else byConnection.set(target.connectionId, new Set([target.projectPath]));
+    }
+    for (const [connectionId, paths] of byConnection) {
+      const entry = records.current.find((item) => item.id === connectionId);
+      if (!entry) continue;
+      const scope = getConnectionScope(entry.settings);
+      const remaining = (shellRef.current.projectPathsByConnectionRef.current[scope] ?? []).filter((path) => !paths.has(path));
+      const opened = { ...shellRef.current.projectPathsByConnectionRef.current, [scope]: remaining };
+      shellRef.current.projectPathsByConnectionRef.current = opened;
+      shellRef.current.setProjectPathsByConnection(opened);
+      if (selected.current?.connectionId === connectionId && paths.has(selected.current.projectPath)) {
+        if (remaining.length) await activate({ connectionId, projectPath: remaining[0] });
+        else {
+          await pauseConversation();
+          clearFocus();
+        }
       }
     }
   }, [activate, clearFocus, pauseConversation]);
+  const closeProject = useCallback(async (target: WorkspaceTarget) => {
+    await closeProjects([target]);
+  }, [closeProjects]);
   const removeConnection = useCallback(async (id: string) => {
     await disconnect(id);
     change((current) => current.filter((entry) => entry.id !== id));
     for (const key of Object.keys(live.current)) if ((JSON.parse(key) as string[])[0] === id) forget(key);
   }, [change, disconnect, forget]);
-  return { isEnabled, closeProject, connectedWorkspace, removeConnection, connections, focus, snapshots, ready, change, select, publish, forget, ensure, resolveKey, activate, navigate, openExternalSession, switchConnection, disconnect, retry, updateSettings, updatePreferences };
+  return { isEnabled, closeProject, closeProjects, connectedWorkspace, removeConnection, connections, focus, snapshots, ready, change, select, publish, forget, ensure, resolveKey, activate, navigate, openExternalSession, switchConnection, disconnect, retry, updateSettings, updatePreferences };
 }

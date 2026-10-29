@@ -156,7 +156,17 @@
   "newChat": {
     "title": "Novo chat",
     "hint": "Escolha onde este chat começa.",
-    "create": "Iniciar chat"
+    "create": "Iniciar chat",
+    "runIn": "Executar em",
+    "newWorktree": "Novo worktree",
+    "worktreeName": "Nome do worktree (opcional)",
+    "worktreeHint": "Cria uma branch e um checkout no servidor e inicia o chat ali.",
+    "createWorktreeChat": "Criar worktree e iniciar chat",
+    "creatingWorktree": "Criando worktree…",
+    "startingChat": "Iniciando chat…",
+    "startChatFailed": "Não foi possível iniciar o chat.",
+    "worktreeCreatedChatFailed": "Worktree criado. Inicie o chat para continuar.",
+    "noCheckouts": "Nenhum checkout disponível."
   },
   "header": {
     "pricingUnavailable": "Preço indisponível",

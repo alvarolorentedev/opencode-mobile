@@ -4,7 +4,6 @@ import { useTranslation } from 'react-i18next';
 import { Pressable, StyleSheet, Text as NativeText, View } from 'react-native';
 import { Button, Text } from 'react-native-paper';
 
-import { WorktreePicker } from '@/components/project/worktree-picker';
 import { WorkspaceSelect } from '@/components/ui/workspace-select';
 import { useWorkspaces } from '@/providers/workspace-context';
 import { useWorkspaceProjects } from '@/providers/use-workspace-projects';
@@ -17,7 +16,7 @@ import { usePalette } from '@/hooks/use-palette';
 export function ProjectPickerButton({ onPress }: { onPress: () => void }) {
   const { t } = useTranslation();
   const palette = usePalette();
-  return <Pressable accessibilityRole="button" accessibilityLabel={t('project:picker.changeProject')} onPress={onPress} style={styles.button}>
+  return <Pressable testID="chat-library-project-button" accessibilityRole="button" accessibilityLabel={t('project:picker.changeProject')} onPress={onPress} style={styles.button}>
     <MaterialCommunityIcons name="folder-swap-outline" size={20} color={palette.tint} />
     <NativeText style={{ color: palette.tint }}>{t('common:tabs.projects')}</NativeText>
   </Pressable>;
@@ -72,12 +71,11 @@ export function ProjectPicker({ visible, onClose, activePath, onSelected, testID
       </View> : null}
       {group.status !== 'connected' ? <Text style={{ color: palette.muted }}>{t('common:servers.lastSynced')}</Text> : null}
       <ProjectOptions disabled={group.status !== 'connected'} projects={group.projects.filter((project) => `${project.label} ${project.path}`.toLowerCase().includes(query.trim().toLowerCase()))}
-        activePath={registry.focus?.connectionId === group.id ? activePath : undefined}
+        activePath={registry.focus?.connectionId === group.id ? group.projects.find((project) => project.checkouts.some((checkout) => checkout.directory === activePath))?.path : undefined}
         onSelect={(path) => { if (group.status !== 'connected') return; void activate({ connectionId: group.id, projectPath: path }).catch((reason) => setError(String(reason))); }}
         onRemove={(path) => { void remove({ connectionId: group.id, projectPath: path }).catch((reason) => setError(String(reason))); }} />
     </View>)}
     {error ? <Text style={{ color: palette.danger }}>{error}</Text> : null}
-    {visible ? <WorktreePicker key={activePath} visible onSelect={(path) => { if (registry.focus) void activate({ connectionId: registry.focus.connectionId, projectPath: path }).catch((reason) => setError(String(reason))); }} /> : null}
     <Button testID="project-add-button" icon="plus" onPress={() => { setAddServer(server || registry.focus?.connectionId || groups[0]?.id || ''); setAdding(true); }}>{t('project:picker.add')}</Button>
     </>}
   </OverlaySheet>;

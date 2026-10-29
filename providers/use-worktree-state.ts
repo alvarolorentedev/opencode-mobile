@@ -45,9 +45,10 @@ export function useWorktreeState({ client, isCurrentClient, refreshProjectCatalo
 
   const createWorktree = useCallback(async (name?: string) => {
     if (!client.__opencode.directory) throw new Error('Choose a project before creating a worktree.');
-    await svcCreateWorktree(client, name?.trim() || undefined);
+    const created = await svcCreateWorktree(client, name?.trim() || undefined);
     if (!isCurrentClient(client)) throw new Error('The project changed while creating the worktree.');
     await Promise.all([refreshWorktrees(), refreshProjectCatalog(true)]);
+    return created;
   }, [client, isCurrentClient, refreshWorktrees, refreshProjectCatalog]);
 
   const checkTarget = useCallback(async (directory: string) => {

@@ -81,7 +81,7 @@ export type ProviderValuesInput = ActionInputs & {
   vcsInfo?: VcsInfo;
   worktrees: WorktreeCatalog;
   refreshWorktrees: () => Promise<void>;
-  createWorktree: (name?: string) => Promise<void>;
+  createWorktree: (name?: string) => Promise<import('@/lib/opencode/project').ProjectWorktree>;
   removeWorktree: (directory: string) => Promise<void>;
   sessions: Session[];
   sessionStatuses: Record<string, SessionStatus>;

@@ -75,7 +75,7 @@ export type ServerAdapter = {
     vcsDiff: (mode: 'git' | 'branch', context?: number) => Promise<FileDiff[]>;
     saveFile: (path: string, content: string, patch: string) => Promise<unknown>;
     listWorktrees: () => Promise<ProjectWorktree[]>;
-    createWorktree: (name?: string) => Promise<unknown>;
+    createWorktree: (name?: string) => Promise<ProjectWorktree>;
     removeWorktree: (directory: string) => Promise<unknown>;
   };
 };
@@ -290,9 +290,12 @@ export function createServerAdapter(client: ScopedOpencodeClient): ServerAdapter
       listWorktrees: async () => compatibility
         ? v1Project.listWorktrees(compatibility)
         : projectWorktrees(await client.api!.worktree.list({ projectID: await projectID() })),
-      createWorktree: (name?: string) => compatibility
-        ? v1Project.createWorktree(compatibility, name)
-        : projectID().then((projectID) => client.api!.worktree.create({ projectID, ...(name ? { name } : {}) })),
+      createWorktree: async (name?: string) => {
+        const created = compatibility
+          ? await v1Project.createWorktree(compatibility, name)
+          : await projectID().then((projectID) => client.api!.worktree.create({ projectID, ...(name ? { name } : {}) }));
+        return projectWorktrees([created as { directory: string }])[0];
+      },
       removeWorktree: (directory: string) => compatibility
         ? v1Project.removeWorktree(compatibility, directory)
         : projectID().then((projectID) => client.api!.worktree.remove({ projectID, directory, force: true })),

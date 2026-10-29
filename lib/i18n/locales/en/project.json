@@ -50,7 +50,16 @@
     "groupTitle": "Worktrees · {{project}}",
     "selectGuidance": "Tap a directory to use it as your project.",
     "create": "Create worktree",
-    "manage": "Manage {{name}}"
+    "manage": "Manage {{name}}",
+    "title": "Worktree",
+    "subtitle": "{{project}}",
+    "local": "Local",
+    "localHint": "Main checkout on this server",
+    "change": "Change worktree. {{name}}",
+    "manageTitle": "Manage worktrees",
+    "removeLabel": "Remove {{name}}",
+    "cannotRemoveActive": "Switch to another worktree before removing this one.",
+    "noOther": "No other worktrees."
   },
   "picker": {
     "title": "Choose project",
@@ -60,7 +69,8 @@
     "add": "Add project",
     "selectLabel": "Select {{name}}",
     "removeLabel": "Remove {{name}}",
-    "empty": "No projects available."
+    "empty": "No projects available.",
+    "changeProjectWithName": "Change project. {{name}}"
   },
   "errors": {
     "refreshProject": "Could not refresh the project.",

@@ -3,75 +3,140 @@ import { useTranslation } from 'react-i18next';
 import { View } from 'react-native';
 import { ActivityIndicator, Button, Divider, IconButton, List, Text } from 'react-native-paper';
 
-import { TextInput } from '@/components/ui/text-input';
+import { OverlaySheet } from '@/components/ui/overlay-sheet';
 import { confirmAction } from '@/lib/confirm-action';
-import { useConnection, useProjects, useProjectFiles } from '@/providers/opencode-contexts';
 import { usePalette } from '@/hooks/use-palette';
+import { useProjectFiles } from '@/providers/opencode-contexts';
+import { useProjectCheckouts } from '@/providers/use-project-checkouts';
+import { useWorkspaces } from '@/providers/workspace-context';
 
-export function WorktreePicker({ visible, onSelect }: { visible: boolean; onSelect: (path: string) => void }) {
+export function WorktreeSwitcher({ onClose }: { onClose: () => void }) {
   const { t } = useTranslation();
   const palette = usePalette();
-  const { connection } = useConnection();
-  const { activeProjectPath } = useProjects();
-  const { worktrees, refreshWorktrees, createWorktree, removeWorktree } = useProjectFiles();
-  const [creating, setCreating] = useState(false);
-  const [name, setName] = useState('');
+  const registry = useWorkspaces();
+  const { activeProject, checkouts, activeCheckout, worktrees } = useProjectCheckouts();
+  const { refreshWorktrees, removeWorktree } = useProjectFiles();
+  const [managing, setManaging] = useState(false);
   const [busy, setBusy] = useState<string>();
-  const [menu, setMenu] = useState<string>();
   const [error, setError] = useState<string>();
-  const ready = connection.status === 'connected' && Boolean(activeProjectPath);
-  useEffect(() => { if (visible && ready) void refreshWorktrees(); }, [visible, ready, refreshWorktrees]);
+
+  useEffect(() => {
+    void refreshWorktrees().catch(() => undefined);
+  }, [refreshWorktrees]);
+
+  async function select(directory: string) {
+    if (busy || directory === activeCheckout?.directory) {
+      if (directory === activeCheckout?.directory) onClose();
+      return;
+    }
+    const connectionId = registry.focus?.connectionId;
+    if (!connectionId) {
+      setError(t('project:errors.refreshProject'));
+      return;
+    }
+    setBusy(directory);
+    setError(undefined);
+    try {
+      await registry.activate({ connectionId, projectPath: directory });
+      onClose();
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : t('project:errors.refreshProject'));
+    } finally {
+      setBusy(undefined);
+    }
+  }
+
   function remove(directory: string) {
-    setMenu(undefined);
-    confirmAction(t('project:worktrees.removeTitle'),
+    confirmAction(
+      t('project:worktrees.removeTitle'),
       t('project:worktrees.removeMessage', { directory }),
-      t('common:actions.remove'), t('common:actions.cancel'), () => {
-        setBusy(directory); setError(undefined);
+      t('common:actions.remove'),
+      t('common:actions.cancel'),
+      () => {
+        setBusy(directory);
+        setError(undefined);
         void removeWorktree(directory)
           .catch((reason) => setError(reason instanceof Error ? reason.message : t('project:errors.removeWorktree')))
           .finally(() => setBusy(undefined));
-      });
+      },
+    );
   }
-  if (!ready) return null;
-  return <View style={{ gap: 8 }}>
-    <Divider />
-    <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-      <Text variant="titleSmall" style={{ flex: 1 }}>{t('project:worktrees.groupTitle', { project: worktrees.project?.label || '' })}</Text>
-      <IconButton icon="refresh" accessibilityLabel={t('project:worktrees.refresh')} disabled={worktrees.loading || Boolean(busy)} onPress={() => void refreshWorktrees()} />
-    </View>
-    {error || worktrees.error ? <Text accessibilityLiveRegion="polite" style={{ color: palette.danger }}>{error || worktrees.error}</Text> : null}
-    {worktrees.loading ? <ActivityIndicator /> : null}
-    {creating ? <View style={{ gap: 8 }}>
-      <TextInput testID="project-worktree-name" mode="outlined" label={t('project:worktrees.nameLabel')} value={name} onChangeText={setName} autoCapitalize="none" autoCorrect={false} editable={!busy} />
-      <View style={{ flexDirection: 'row', justifyContent: 'flex-end' }}>
-        <Button disabled={Boolean(busy)} onPress={() => setCreating(false)}>{t('common:actions.cancel')}</Button>
-        <Button testID="project-worktree-create" mode="contained" loading={busy === 'create'} disabled={Boolean(busy)} onPress={() => {
-          setBusy('create'); setError(undefined);
-          void createWorktree(name).then(() => { setCreating(false); setName(''); })
-            .catch((reason) => setError(reason instanceof Error ? reason.message : t('project:errors.createWorktree'))).finally(() => setBusy(undefined));
-        }}>{t('project:worktrees.create')}</Button>
-      </View>
-    </View> : <>
-      <Text style={{ color: palette.muted }}>{t('project:worktrees.selectGuidance')}</Text>
-      {!worktrees.loading && !worktrees.error && !worktrees.entries.length ? <Text style={{ color: palette.muted }}>{t('project:worktrees.empty')}</Text> : null}
-      {worktrees.entries.filter((entry) => entry.directory !== worktrees.project?.root).map((entry) => {
-        const protectedDirectory = entry.directory === activeProjectPath;
-        return <View key={entry.directory}>
-          <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-            <List.Item accessibilityRole="button" style={{ flex: 1 }} title={entry.name} titleNumberOfLines={2} description={entry.branch ? `${entry.branch} · ${entry.directory}` : entry.directory} descriptionNumberOfLines={2}
-              accessibilityLabel={t('project:picker.selectLabel', { name: entry.name })}
-              left={(props) => <List.Icon {...props} color={protectedDirectory ? palette.tint : palette.muted} icon={protectedDirectory ? 'check-circle' : 'source-branch'} />}
-              disabled={Boolean(busy)} onPress={() => onSelect(entry.directory)} />
-            <IconButton icon="dots-vertical" accessibilityLabel={t('project:worktrees.manage', { name: entry.name })} accessibilityState={{ expanded: menu === entry.directory }}
-              disabled={protectedDirectory || Boolean(busy)} onPress={() => setMenu(menu === entry.directory ? undefined : entry.directory)} />
+
+  const title = managing ? t('project:worktrees.manageTitle') : t('project:worktrees.title');
+  const linked = checkouts.filter((checkout) => !checkout.isMain);
+  return (
+    <OverlaySheet
+      visible
+      title={title}
+      testID="worktree-picker"
+      onClose={() => { if (!busy) onClose(); }}
+      headerAction={(
+        <IconButton
+          icon="refresh"
+          accessibilityLabel={t('project:worktrees.refresh')}
+          disabled={worktrees.loading || Boolean(busy)}
+          onPress={() => void refreshWorktrees().catch((reason) => setError(reason instanceof Error ? reason.message : t('project:errors.refreshProject')))}
+        />
+      )}>
+      <Text style={{ color: palette.muted }}>{t('project:worktrees.subtitle', { project: activeProject?.label ?? '' })}</Text>
+      {worktrees.error ? <Text accessibilityLiveRegion="polite" style={{ color: palette.danger }}>{worktrees.error}</Text> : null}
+      {error ? <Text accessibilityLiveRegion="polite" style={{ color: palette.danger }}>{error}</Text> : null}
+      {worktrees.loading && !checkouts.length ? <ActivityIndicator /> : null}
+      {!checkouts.length && !worktrees.loading ? <Text style={{ color: palette.muted }}>{t('project:worktrees.empty')}</Text> : null}
+      {checkouts.map((checkout) => {
+        const selected = checkout.directory === activeCheckout?.directory;
+        const name = checkout.isMain ? t('project:worktrees.local') : checkout.name;
+        const description = checkout.isMain ? t('project:worktrees.localHint') : [checkout.branch, checkout.directory].filter(Boolean).join(' · ');
+        const protectedCheckout = checkout.isMain || selected;
+        if (managing) {
+          return (
+            <View key={checkout.directory}>
+              <View style={{ alignItems: 'center', flexDirection: 'row' }}>
+                <List.Item
+                  testID={`worktree-manage-${checkout.directory}`}
+                  style={{ flex: 1 }}
+                  title={name}
+                  titleNumberOfLines={2}
+                  description={description}
+                  descriptionNumberOfLines={2}
+                  left={(props) => <List.Icon {...props} color={checkout.isMain ? palette.tint : palette.muted} icon={checkout.isMain ? 'home-outline' : 'source-branch'} />} />
+                <IconButton
+                  icon="delete-outline"
+                  accessibilityLabel={t('project:worktrees.removeLabel', { name })}
+                  disabled={protectedCheckout || Boolean(busy)}
+                  onPress={() => remove(checkout.directory)} />
+              </View>
+              {selected && !checkout.isMain ? <Text style={{ color: palette.muted, paddingHorizontal: 16, paddingBottom: 8 }}>{t('project:worktrees.cannotRemoveActive')}</Text> : null}
+              <Divider />
+            </View>
+          );
+        }
+        return (
+          <View key={checkout.directory}>
+            <List.Item
+              testID={`worktree-option-${checkout.directory}`}
+              accessibilityRole="button"
+              accessibilityState={{ selected, disabled: Boolean(busy) }}
+              accessibilityLabel={t('project:picker.selectLabel', { name })}
+              title={name}
+              titleNumberOfLines={2}
+              description={description}
+              descriptionNumberOfLines={2}
+              left={(props) => <List.Icon {...props} color={selected ? palette.tint : palette.muted} icon={selected ? 'check-circle' : checkout.isMain ? 'home-outline' : 'source-branch'} />}
+              disabled={Boolean(busy)}
+              onPress={() => void select(checkout.directory)} />
+            <Divider />
           </View>
-          {menu === entry.directory ? <View style={{ flexDirection: 'row', justifyContent: 'flex-end' }}>
-            <Button textColor={palette.danger} onPress={() => remove(entry.directory)}>{t('common:actions.remove')}</Button>
-          </View> : null}
-          <Divider />
-        </View>;
+        );
       })}
-      <Button testID="project-worktree-add" icon="plus" mode="outlined" disabled={Boolean(busy) || worktrees.loading} onPress={() => { setCreating(true); setError(undefined); }}>{t('project:worktrees.create')}</Button>
-    </>}
-  </View>;
+      {!managing && linked.length ? (
+        <Button icon="cog-outline" onPress={() => setManaging(true)}>{t('project:worktrees.manageTitle')}</Button>
+      ) : null}
+      {managing ? (
+        <Button onPress={() => setManaging(false)}>{t('common:actions.done')}</Button>
+      ) : !linked.length ? (
+        <Text style={{ color: palette.muted }}>{t('project:worktrees.noOther')}</Text>
+      ) : null}
+    </OverlaySheet>
+  );
 }

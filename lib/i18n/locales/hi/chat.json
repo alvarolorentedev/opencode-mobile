@@ -156,7 +156,17 @@
   "newChat": {
     "title": "नई चैट",
     "hint": "चुनें कि यह चैट कहाँ शुरू हो.",
-    "create": "चैट शुरू करें"
+    "create": "चैट शुरू करें",
+    "runIn": "इसमें चलाएँ",
+    "newWorktree": "नई वर्कट्री",
+    "worktreeName": "वर्कट्री नाम (वैकल्पिक)",
+    "worktreeHint": "सर्वर पर एक ब्रांच और चेकआउट बनाकर वहाँ चैट शुरू करता है।",
+    "createWorktreeChat": "वर्कट्री बनाएँ और चैट शुरू करें",
+    "creatingWorktree": "वर्कट्री बन रही है…",
+    "startingChat": "चैट शुरू हो रही है…",
+    "startChatFailed": "चैट शुरू नहीं हो सकी।",
+    "worktreeCreatedChatFailed": "वर्कट्री बन गई। जारी रखने के लिए चैट शुरू करें।",
+    "noCheckouts": "कोई चेकआउट उपलब्ध नहीं।"
   },
   "header": {
     "pricingUnavailable": "मूल्य निर्धारण अनुपलब्ध",

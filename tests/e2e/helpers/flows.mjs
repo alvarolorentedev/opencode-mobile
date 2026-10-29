@@ -39,6 +39,9 @@ export async function resetScenario(request, scenario) {
   expect(response.ok()).toBeTruthy();
 }
 
+export const workspaceProjectButton = (page, surface = 'projects') => page.getByTestId(`${surface}-workspace-project-button`);
+export const workspaceWorktreeButton = (page, surface = 'projects') => page.getByTestId(`${surface}-workspace-worktree-button`);
+
 export async function openReadyChat(page) {
   await page.goto('/', { waitUntil: 'domcontentloaded' });
   await expect(page.getByText('Start a new task')).toBeVisible({ timeout: 30_000 });
@@ -255,7 +258,7 @@ export async function connectToSavedConnection(page, name) {
   if (await connect.isVisible()) { await connect.click(); return; }
   // Connected servers stay connected. Select their project to change chat focus.
   await goToTab(page, 'Projects');
-  await page.getByRole('button', { name: 'Change project', exact: true }).click();
+  await workspaceProjectButton(page).click();
   await page.getByRole('button', { name: /^All servers: / }).click();
   await page.getByRole('button', { name, exact: true }).last().click();
   await page.getByRole('button', { name: /^Select / }).first().click();

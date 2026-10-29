@@ -156,7 +156,17 @@
   "newChat": {
     "title": "Nouveau chat",
     "hint": "Choisissez où ce chat démarre.",
-    "create": "Démarrer le chat"
+    "create": "Démarrer le chat",
+    "runIn": "Exécuter dans",
+    "newWorktree": "Nouvel arbre de travail",
+    "worktreeName": "Nom de l’arbre de travail (facultatif)",
+    "worktreeHint": "Crée une branche et un checkout sur le serveur, puis démarre le chat ici.",
+    "createWorktreeChat": "Créer l’arbre de travail et démarrer le chat",
+    "creatingWorktree": "Création de l’arbre de travail…",
+    "startingChat": "Démarrage du chat…",
+    "startChatFailed": "Impossible de démarrer le chat.",
+    "worktreeCreatedChatFailed": "Arbre de travail créé. Démarrez le chat pour continuer.",
+    "noCheckouts": "Aucun checkout disponible."
   },
   "header": {
     "pricingUnavailable": "Tarification indisponible",

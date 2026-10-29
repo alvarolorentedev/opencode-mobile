@@ -50,7 +50,16 @@
     "groupTitle": "工作树 · {{project}}",
     "selectGuidance": "点击目录，将其用作项目。",
     "create": "创建工作树",
-    "manage": "管理 {{name}}"
+    "manage": "管理 {{name}}",
+    "title": "工作树",
+    "subtitle": "{{project}}",
+    "local": "本地",
+    "localHint": "此服务器上的主检出",
+    "change": "切换工作树。{{name}}",
+    "manageTitle": "管理工作树",
+    "removeLabel": "移除 {{name}}",
+    "cannotRemoveActive": "请先切换到其他工作树，再移除此工作树。",
+    "noOther": "没有其他工作树。"
   },
   "picker": {
     "title": "选择项目",
@@ -60,7 +69,8 @@
     "add": "添加项目",
     "selectLabel": "选择 {{name}}",
     "removeLabel": "移除 {{name}}",
-    "empty": "没有可用的项目。"
+    "empty": "没有可用的项目。",
+    "changeProjectWithName": "更改项目。{{name}}"
   },
   "errors": {
     "refreshProject": "无法刷新项目。",

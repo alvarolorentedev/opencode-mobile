@@ -3,6 +3,12 @@ import type { FileNode, Worktree } from './types';
 
 export type ProjectFileEntry = Pick<FileNode, 'path' | 'name' | 'type'>;
 export type ProjectWorktree = Pick<Worktree, 'directory' | 'name'> & { branch?: string };
+export type ProjectCheckout = {
+  directory: string;
+  name: string;
+  branch?: string;
+  isMain: boolean;
+};
 
 export function projectPath(path: string, root: string, allowRoot = false): string {
   if (!root.trim()) throw new Error('Choose a project before accessing files.');
@@ -30,4 +36,47 @@ export function projectWorktrees(entries: (string | Pick<Worktree, 'directory'> 
     return { directory, name: (typeof entry === 'string' ? undefined : entry.name) || directory.split(/[\\/]/).filter(Boolean).pop() || directory,
       branch: typeof entry === 'string' ? undefined : entry.branch };
   });
+}
+
+// The main checkout is always first. The active checkout is included even when
+// the worktree catalog is still loading, so the header never loses the current
+// location while it resolves.
+export function projectCheckouts(
+  root: string | undefined,
+  entries: ProjectWorktree[],
+  activePath?: string,
+  activeBranch?: string,
+): ProjectCheckout[] {
+  const mainRoot = root?.trim();
+  const byDirectory = new Map<string, ProjectCheckout>();
+  if (mainRoot) {
+    byDirectory.set(mainRoot, {
+      directory: mainRoot,
+      name: 'Local',
+      branch: activePath === mainRoot ? activeBranch : undefined,
+      isMain: true,
+    });
+  }
+  for (const entry of entries) {
+    if (!entry.directory || entry.directory === mainRoot || byDirectory.has(entry.directory)) {
+      continue;
+    }
+    byDirectory.set(entry.directory, {
+      directory: entry.directory,
+      name: entry.name || entry.directory.split(/[\\/]/).filter(Boolean).pop() || entry.directory,
+      branch: entry.branch,
+      isMain: false,
+    });
+  }
+  if (activePath && !byDirectory.has(activePath)) {
+    byDirectory.set(activePath, {
+      directory: activePath,
+      name: activePath.split(/[\\/]/).filter(Boolean).pop() || activePath,
+      branch: activeBranch,
+      isMain: !mainRoot,
+    });
+  }
+  return [...byDirectory.values()].sort((left, right) => (
+    left.isMain === right.isMain ? compareLabels(left.name, right.name) : left.isMain ? -1 : 1
+  ));
 }

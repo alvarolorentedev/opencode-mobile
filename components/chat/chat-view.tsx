@@ -27,7 +27,7 @@ export function ChatView() {
   const { t } = useTranslation();
   const palette = usePalette();
   const insets = useSafeAreaInsets();
-  const { createChat, focus } = useWorkspaceActions();
+  const { focus } = useWorkspaceActions();
   const presentation = useWorkspacePresentation();
   const { header, content, composer, overlay, actions } = useChatViewController();
   const {
@@ -79,7 +79,6 @@ export function ChatView() {
         style={[styles.screen, { backgroundColor: palette.background }]}
         behavior="padding">
         <ChatHeader
-          activeProjectLabel={header.activeProject?.label}
           connectionStatus={header.connection.status}
           conversation={header.conversation}
           contextLimit={header.contextModel?.contextLimit}
@@ -319,7 +318,6 @@ export function ChatView() {
         <NewChatSheet
           target={focus ? { ...focus, projectPath: header.activeProject?.path ?? focus.projectPath } : undefined}
           onClose={() => setNewChatVisible(false)}
-          onCreate={createChat}
         />
       ) : null}
 

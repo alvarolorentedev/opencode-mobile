@@ -50,7 +50,16 @@
     "groupTitle": "ワークツリー · {{project}}",
     "selectGuidance": "ディレクトリをタップしてプロジェクトに設定します。",
     "create": "ワークツリーを作成",
-    "manage": "{{name}} を管理"
+    "manage": "{{name}} を管理",
+    "title": "ワークツリー",
+    "subtitle": "{{project}}",
+    "local": "ローカル",
+    "localHint": "このサーバーのメインチェックアウト",
+    "change": "ワークツリーを変更。{{name}}",
+    "manageTitle": "ワークツリーを管理",
+    "removeLabel": "{{name}} を削除",
+    "cannotRemoveActive": "このワークツリーを削除する前に、別のワークツリーへ切り替えてください。",
+    "noOther": "他のワークツリーはありません。"
   },
   "picker": {
     "title": "プロジェクトを選択",
@@ -60,7 +69,8 @@
     "add": "プロジェクトを追加",
     "selectLabel": "{{name}}を選択",
     "removeLabel": "{{name}}を削除",
-    "empty": "利用可能なプロジェクトはありません。"
+    "empty": "利用可能なプロジェクトはありません。",
+    "changeProjectWithName": "プロジェクトを変更。{{name}}"
   },
   "errors": {
     "refreshProject": "プロジェクトを更新できませんでした。",

@@ -50,7 +50,16 @@
     "groupTitle": "Worktrees · {{project}}",
     "selectGuidance": "Ein Verzeichnis antippen, um es als Projekt zu verwenden.",
     "create": "Worktree erstellen",
-    "manage": "{{name}} verwalten"
+    "manage": "{{name}} verwalten",
+    "title": "Worktree",
+    "subtitle": "{{project}}",
+    "local": "Lokal",
+    "localHint": "Haupt-Checkout auf diesem Server",
+    "change": "Worktree wechseln. {{name}}",
+    "manageTitle": "Worktrees verwalten",
+    "removeLabel": "{{name}} entfernen",
+    "cannotRemoveActive": "Wechsle zu einem anderen Worktree, bevor du diesen entfernst.",
+    "noOther": "Keine weiteren Worktrees."
   },
   "picker": {
     "title": "Projekt wählen",
@@ -60,7 +69,8 @@
     "add": "Projekt hinzufügen",
     "selectLabel": "{{name}} auswählen",
     "removeLabel": "{{name}} entfernen",
-    "empty": "Keine Projekte verfügbar."
+    "empty": "Keine Projekte verfügbar.",
+    "changeProjectWithName": "Projekt wechseln. {{name}}"
   },
   "errors": {
     "refreshProject": "Der Projekt konnte nicht aktualisiert werden.",

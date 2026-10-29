@@ -50,7 +50,16 @@
     "groupTitle": "Árvores de trabalho · {{project}}",
     "selectGuidance": "Toque em um diretório para usá-lo como projeto.",
     "create": "Criar árvore de trabalho",
-    "manage": "Gerenciar {{name}}"
+    "manage": "Gerenciar {{name}}",
+    "title": "Worktree",
+    "subtitle": "{{project}}",
+    "local": "Local",
+    "localHint": "Checkout principal neste servidor",
+    "change": "Trocar worktree. {{name}}",
+    "manageTitle": "Gerenciar worktrees",
+    "removeLabel": "Remover {{name}}",
+    "cannotRemoveActive": "Troque para outro worktree antes de remover este.",
+    "noOther": "Nenhum outro worktree."
   },
   "picker": {
     "title": "Escolher projeto",
@@ -60,7 +69,8 @@
     "add": "Adicionar projeto",
     "selectLabel": "Selecionar {{name}}",
     "removeLabel": "Remover {{name}}",
-    "empty": "Nenhum projeto disponível."
+    "empty": "Nenhum projeto disponível.",
+    "changeProjectWithName": "Trocar projeto. {{name}}"
   },
   "errors": {
     "refreshProject": "Não foi possível atualizar o projeto.",
