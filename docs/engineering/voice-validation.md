@@ -41,16 +41,6 @@ device-independent results separately:
 Do not call this a phone benchmark. Device CPU, microphone, audio session and
 native bridge timing are measured separately.
 
-## Recorded validation
-
-2026-10-29, local checkout:
-
-- `npm run test:ci:static`: passed, 759 Vitest checks.
-- `npm run test:fake-server:self`: passed for both V1 and V2 fixtures.
-- `npm run test:e2e:web`: passed, 169 flows.
-- No physical-device wake/ASR benchmark was run in this environment. Do not
-  treat the automated results as microphone, battery or acoustic evidence.
-
 ## Physical-device checklist
 
 Run on at least one low-end Android device and one current iPhone, with wired,

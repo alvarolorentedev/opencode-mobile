@@ -144,7 +144,7 @@ Native diagnostics load server.info and MCP status. LSP and formatter diagnostic
 
 Native events are dispatched directly. Execution/legacy-native status events maintain busy/idle/retry state; message/text/reasoning/tool/inbox events schedule transcript reads; compaction/revert reconciles full windows. Capability, project, filesystem/VCS, worktree, MCP and PTY events refresh their provider-owned domains.
 
-V1 translates events with matching semantics at `compat/v1/events.ts`. Legacy message deltas, question metadata, configuration and diagnostic events retain explicit compatibility extensions. The native path never converts events to v1.
+V1 translates events with matching semantics at `lib/opencode/compat/v1/events.ts`. Legacy message deltas, question metadata, configuration and diagnostic events retain explicit compatibility extensions. The native path never converts events to v1.
 
 SSE reconnects with bounded backoff and reconciles sessions, pending interactions and active transcript state after recovery. Polling continues when SSE is unavailable and while busy even with a connected stream, so missed events cannot strand a prompt. Retry state keeps safety polling alive until execution resumes or completes. Completion notifications, review selections and conversation mode use provider-derived state on both contracts.
 
@@ -161,7 +161,7 @@ On management revision 2 (connector 0.1.14+) `Service` is `{ id, name, port, pat
 
 Management revision 1 and pre-version connectors keep the legacy path-only surface on `:8443`: listed services carry an implicit `port`, links stay `https://<host>:8443<path>/`, and the PUT body omits `port`. A `404` on the version endpoint without the version header means an unknown older connector: the app warns and stays in legacy mode. Root services and the port picker require revision 2 and otherwise show a non-blocking update hint. Errors are `400` invalid, `401` unauthorized, `404` unknown id, `405` method, `413` too large, `415` wrong content type; the app shows the connector's message and never branches on its wording. The list reflects connector-side (tray/CLI) edits, so the Settings surface re-fetches on open.
 
-Client code and the validation mirror live in `lib/opencode/client/management.ts`; the provider exposes it through the connection domain (`useConnection().services`). The provider resolves the target machine from the active Cloud Link connection or a saved Cloud Link profile, so management keeps working while another connection is active and links use the target machine's own origin. See the connector's frozen `protocol/README.md` → "Service management API (device-authenticated)".
+Client code and the validation mirror live in `lib/opencode/client/management.ts`; the provider exposes it through the connection domain (`useConnection().services`). The provider resolves the target machine from the active Cloud Link connection or a saved Cloud Link profile, so management keeps working while another connection is active and links use the target machine's own origin. See the connector repository's frozen service-management protocol documentation → "Service management API (device-authenticated)".
 
 ## Compatibility-only Features And Validation
 

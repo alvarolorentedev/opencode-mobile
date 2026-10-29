@@ -1,3 +1,4 @@
+// Persistence hydration and write-back. See docs/architecture/state-and-data.md#persisted-data.
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useCallback, useEffect, useState, type Dispatch, type SetStateAction } from 'react';
 

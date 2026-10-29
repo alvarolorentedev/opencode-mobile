@@ -22,6 +22,7 @@ transport, persistence, or the client protocol. Read
 | Concern | Owning layer |
 | --- | --- |
 | App-wide connection registry, focus, and persistence | `providers/workspace-provider.tsx`, `providers/use-workspace-connections.ts`, `providers/use-opencode-persistence.ts` |
+| Provider-specific agent guidance | `providers/AGENTS.md` (loaded when working in `providers/`) |
 | Per-workspace domain orchestration | `providers/use-opencode-provider-composition.ts` and its domain hooks |
 | Public domain contexts and hooks | `providers/opencode-provider-types.ts`, `providers/opencode-contexts.ts`, `providers/opencode-provider-tree.tsx` |
 | Provider-facing API aggregation | `providers/services/` |
@@ -41,6 +42,9 @@ transport, persistence, or the client protocol. Read
   path already supports them. See [ADR 0003](../adr/0003-v2-first-protocol-boundary.md).
 - If you change a boundary, protocol, or ownership rule, add an
   [ADR](../adr/README.md) and update the relevant page here.
+- `tests/vitest/architecture.test.ts` enforces the size, context-surface,
+  network/persistence, and compatibility boundaries. Fix a failure by moving
+  code to the right layer; do not raise the limit.
 
 ## Change checklist
 

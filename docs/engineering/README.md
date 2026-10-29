@@ -12,8 +12,13 @@ build, or understand an operational constraint.
 | Document | Owns |
 | --- | --- |
 | [development.md](development.md) | Requirements, setup, common commands, native builds, configuration, and store update setup |
+| [task-recipes.md](task-recipes.md) | Step-by-step checklists for translations, settings, fake-server/E2E, and provider state |
 | [testing-overview.md](testing-overview.md) | Short testing strategy and merge-gate overview |
-| [testing-and-validation.md](testing-and-validation.md) | Authoritative test strategy, fake-server scenarios, E2E coverage, fast paths, and validation costs |
+| [testing-and-validation.md](testing-and-validation.md) | Validation index: choose a command, fake server, E2E, or feature coverage |
+| [validation/strategy.md](validation/strategy.md) | Validation principles, costs, CI gates, coverage gaps, commands, and suite map |
+| [validation/fake-server.md](validation/fake-server.md) | Fake server files, scenarios, and scenario-adding workflow |
+| [validation/e2e.md](validation/e2e.md) | Playwright spec map and supported flow coverage |
+| [validation/regressions.md](validation/regressions.md) | Feature-to-spec map and manual/device checks |
 | [integrations-and-operations.md](integrations-and-operations.md) | External dependencies, Expo/native integrations, environment rules, operational scripts, and release notes |
 | [voice-validation.md](voice-validation.md) | Offline wake-word benchmark and physical-device voice checklist |
 | [library-extraction.md](library-extraction.md) | Library replacements, deferred evaluations, and candidate extraction boundaries |
@@ -25,9 +30,10 @@ build, or understand an operational constraint.
 | Task | Start |
 | --- | --- |
 | Install and run locally | [development.md](development.md) |
-| Run the pre-push gate | [development.md](development.md) and [testing-and-validation.md](testing-and-validation.md) |
-| Change a fake-server scenario | [testing-and-validation.md](testing-and-validation.md) and `tests/fake-opencode/` |
-| Change E2E behavior | [testing-and-validation.md](testing-and-validation.md) and `tests/e2e/` |
+| Follow a task checklist | [task-recipes.md](task-recipes.md) |
+| Run the pre-push gate | [development.md](development.md) and [validation/strategy.md](validation/strategy.md) |
+| Change a fake-server scenario | [validation/fake-server.md](validation/fake-server.md) and `tests/fake-opencode/` |
+| Change E2E behavior | [validation/e2e.md](validation/e2e.md) and `tests/e2e/` |
 | Ship Android/iOS | [development.md](development.md) + [integrations-and-operations.md](integrations-and-operations.md) |
 | Ship F-Droid | [fdroid.md](fdroid.md) |
 | Diagnose offline/slow-network behavior | [network resilience](../architecture/network-resilience.md) |
@@ -35,8 +41,8 @@ build, or understand an operational constraint.
 
 ## Rules
 
-- Do not duplicate the command list across docs. `package.json` is the source
-  of truth; this section explains when and why to run a command.
+- Do not duplicate the full command list across docs. `package.json` is the
+  source of truth; task checklists name only the commands they need.
 - Changes under `tests/e2e/` or `tests/fake-opencode/` require explicit human
   validation, even when automated checks pass.
 - A behavior or contract change updates the matching architecture/product doc

@@ -53,41 +53,12 @@ Partially closed on 2026-10-18:
   temporary `node_modules` tree and is build tooling rather than app behavior,
   so it is deliberately not part of the Vitest include.
 
-## 3. CI duplication and observability
+## 3. Remote crash reporting
 
-Closed on 2026-10-18 except for the remote reporter:
-
-- **Duplicated `validate` job.** `pr-validate.yml`, `build.yml`, and
-  `ios-release.yml` now call `.github/workflows/validate.yml`
-  (`workflow_call`). `ios-release.yml` keeps tag resolution in its own
-  `resolve-tag` job and passes the ref into the reusable workflow.
-- **Local crash diagnostics are surfaced.** `lib/error-reporting.ts` gained
-  `readLastJsError()`, `hooks/use-last-js-error.ts` owns the read lifecycle, and
-  Settings → Diagnostics shows the last recorded JS error (message, time, and a
-  fatal/handled chip) or a neutral empty state. The Refresh action re-reads it.
-- **No remote crash/error reporting.** Still deferred. An opt-in reporter (for
-  example Sentry) would need a dependency, a consent toggle behind the existing
-  diagnostics surface, and scrubbing that never sends the server URL or
-  credentials. Only worth doing if a remote pipeline is explicitly funded.
-
-## 3c. Playwright parallelism
-
-Closed on 2026-10-23:
-
-- CI runs the Playwright suite in one job with four workers alongside the
-  static job. The web export is built and served once; each worker owns a fake
-  V1/V2 server pair, so the fake server's single global scenario is never
-  shared. The fixture selects the worker's backend URL at runtime.
-- The browser download, `.eslintcache`, TypeScript build info and static-check
-  inputs are cached.
-- Local concurrent runs use `npm run test:e2e:web:isolated`, which reserves a
-  contiguous fake-server port block and a fresh web port. `npm run
-  test:e2e:smoke` runs the 17 tagged critical flows, and `npm run
-  serve:web:prebuilt` reuses an existing export.
-
-Still deferred: more workers than the runner has capacity for. The worker count
-is configurable through `E2E_WORKERS` (2 locally, 4 in CI) so it can be reduced
-without changing the workflow.
+Deferred. An opt-in reporter (for example Sentry) would need a dependency, a
+consent toggle behind the existing diagnostics surface, and scrubbing that never
+sends the server URL or credentials. Only worth doing if a remote pipeline is
+explicitly funded.
 
 ## 3b. Offline outbox and native 4G validation
 

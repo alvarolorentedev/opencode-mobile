@@ -1,3 +1,4 @@
+// Per-workspace domain composition. See docs/architecture/overview.md#top-level-runtime-composition.
 import { emptySharedInput } from '@/providers/use-share-state';
 import type { OpencodeEvent } from '@/lib/opencode/events';
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef } from 'react';

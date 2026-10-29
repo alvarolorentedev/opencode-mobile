@@ -1,5 +1,17 @@
 # Functional Specification
 
+## Read by task
+
+| Task | Read |
+| --- | --- |
+| Chat, composer, transcript | [Chat Screen Detailed Behavior](#chat-screen-detailed-behavior) |
+| Settings and preferences | [Settings Screen Detailed Behavior](#settings-screen-detailed-behavior) |
+| Conversation mode | [Conversation Mode Detailed Behavior](#conversation-mode-detailed-behavior) |
+| Notifications | [Notifications Behavior](#notifications-behavior) |
+| Sharing and widgets | [Android inbound sharing](#android-inbound-sharing), [Quick Actions And Home Widget](#quick-actions-and-home-widget) |
+| Persistence and edge cases | [Persistence Requirements](#persistence-requirements), [User-Visible Edge Cases](#user-visible-edge-cases) |
+| Parity review | [Parity Checklist](#parity-checklist) |
+
 ## Product Purpose
 
 The mobile app is a client for interacting with an OpenCode server from a phone or tablet. It is optimized for:

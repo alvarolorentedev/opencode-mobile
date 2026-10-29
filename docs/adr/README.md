@@ -57,6 +57,7 @@ coverage, and documentation links.
 | [0006](0006-semantic-design-tokens-and-paper.md) | Semantic design tokens with React Native Paper | Accepted |
 | [0007](0007-storybook-component-catalog.md) | Storybook for reusable components | Accepted |
 | [0008](0008-documentation-information-architecture.md) | Documentation information architecture and checks | Accepted |
+| [0009](0009-agent-first-documentation-routing.md) | Agent-first documentation routing and drift checks | Accepted |
 
 ## Template
 

@@ -39,6 +39,14 @@ The unit suite runs under Vitest 5, which requires Node `^22.12.0 || ^24.0.0 || 
    is needed. The resolved environment survives relaunch. Products come from its backend catalog,
    never app configuration. See [Cloud Link prerequisites and validation](../product/cloud-link.md).
 
+### Optional local agent tooling
+
+Expo publishes official AI agent skills for generic Expo and React Native work
+(`npx skills add expo/skills`, or the Claude Code / Codex plugin). They
+complement this repository's `AGENTS.md`, design system, and fake-server
+contract; when generic advice conflicts with the repo docs, the repo wins. Do
+not vendor the skills or add them as project dependencies.
+
 ### Common Commands
 
 ```bash

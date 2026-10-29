@@ -4,6 +4,17 @@ Related ADRs: [0002 provider-centric orchestration](../adr/0002-provider-centric
 [0004 SSE with polling fallback](../adr/0004-sse-with-polling-fallback.md) ·
 [0005 thin routes and presentational components](../adr/0005-thin-routes-and-presentational-components.md)
 
+## Read by task
+
+| Task | Read |
+| --- | --- |
+| Understand layers and boot | [High-Level Shape](#high-level-shape), [Top-Level Runtime Composition](#top-level-runtime-composition), [Runtime Boot Sequence](#runtime-boot-sequence) |
+| Find the owning file | [Module Map](#module-map) |
+| Change provider/session data flow | [Data Flow Model](#data-flow-model), [Real-Time Update Architecture](#real-time-update-architecture) |
+| Change a screen | [Navigation Architecture](#navigation-architecture), [Screen Responsibilities](#screen-responsibilities) |
+| Change conversation mode | [Conversation Mode Architecture](#conversation-mode-architecture) |
+| Check a hotspot | [Architectural Hotspots](#architectural-hotspots) |
+
 ## High-Level Shape
 
 The app uses a simple structural pattern:
@@ -420,7 +431,7 @@ into the right layer and, if needed, lower the number in the same change.
   MCP, diagnostics, project, capability, and interaction operations;
   `session-adapter.ts` normalizes session/catalog operations; `events.ts` owns
   event subscription translation. `client.compatibility` is read only here and
-  in `compat/v1/`, and services call normalized methods.
+  in `lib/opencode/compat/v1/`, and services call normalized methods.
 - `lib/opencode/v2-client.ts`
   Constructs `@opencode/client` and exposes a typed subset of its native API, plus app actions for provider accounts, OAuth and inbox delivery. Adapters consume native sessions, cursor responses, forms and operations directly. V2 prompt admission maps resolved composer context into native `files`, `agents`, and `skills` mention arrays.
 - `lib/opencode/composer.ts`
@@ -1071,25 +1082,6 @@ It spans provider state, timers, speech recognition, TTS, keep-awake, and chat s
 
 Provider/model/agent choices depend on server config, configured providers, current preferences, and stored selections.
 
-## Reimplementation Guidance
-
-If the system is rebuilt, the safest parity-preserving architecture would keep these concepts intact:
-
-- one central orchestration layer
-- a separate project-discovery client from a project-scoped session client
-- combined SSE + polling safety net
-- persisted connection/preferences/project/session identity state
-- transcript model derived from raw message parts rather than storing rendered text only
-- explicit conversation mode state machine
-- event-driven handling for session-scoped permission blocking flows
-
-Those are implementation-defining patterns, not incidental details.
-
-
-## Session library recovery (#64)
-
-Session idle events only refresh domain state.
-
 ## Interactive Terminal
 
 The Terminal route delegates presentation to `components/terminal/`. One Expo
@@ -1112,17 +1104,14 @@ No credentials or socket URLs cross into the DOM surface.
 ## Project file browser
 
 Projects retains its tab label and route. Files is its main surface: the provider
-owns the current relative directory, sorted folder/file entries, submitted search,
-results, loading/error state and request-order guards. It retains the directory
-across tab switches and resets on scoped-client changes; it is not persisted.
-Search spans the selected project root and clearing it restores the browsed
-folder. Breadcrumb navigation cannot leave that root. Listing, search, preview
-and save require a selected directory. The OpenCode 2 filesystem adapter passes
-`location[directory]` on every request. Text editing compares the server content
-against the editor baseline, writes through native v2 `file.write` or the v1 patch
-path, and verifies the saved text. Unsaved edits require discard confirmation.
-The pre-read/write race remains because neither path provides a conditional-write
-contract.
+owns the current relative directory, sorted entries, submitted search, results,
+loading/error state, and request-order guards. It resets on scoped-client changes
+and is not persisted. Listing, search, preview, and save require a selected
+directory; text edits are verified against the editor baseline and unsaved edits
+require discard confirmation. The selected file, preview bytes, and
+open/save/close/download actions are grouped in one context member. See
+[state and data](state-and-data.md#project-file-browser) for the ownership
+details.
 
 Binary project files open in the same focused preview surface. `readProjectFile`
 uses the V2 file bytes for inline raster-image, audio and video previews; known

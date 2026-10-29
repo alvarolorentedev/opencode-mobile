@@ -2,6 +2,18 @@
 
 Related ADR: [0002 provider-centric orchestration](../adr/0002-provider-centric-orchestration.md)
 
+## Read by task
+
+| Task | Read |
+| --- | --- |
+| Understand ownership | [State Ownership Overview](#state-ownership-overview) |
+| Change connection or preferences | [Connection And Environment State](#connection-and-environment-state), [Capabilities And Preferences State](#capabilities-and-preferences-state), [Persisted Data](#persisted-data) |
+| Change projects or sessions | [Project And Session Identity State](#project-and-session-identity-state), [Session Content Caches](#session-content-caches) |
+| Change transcript shaping | [Message And Transcript Transformation](#message-and-transcript-transformation), [Derived Data](#derived-data) |
+| Change terminal or conversation mode | [Terminal State](#terminal-state), [Conversation State](#conversation-state) |
+| Change realtime recovery | [Realtime Recovery Ownership](#realtime-recovery-ownership) |
+| Check invariants | [Important Data Invariants](#important-data-invariants) |
+
 ## State Ownership Overview
 
 The application uses provider-owned React state. `WorkspaceProvider` owns the app-wide registry and persistence; each retained `WorkspaceRuntime` owns one connection/project branch. Existing domain hooks read the branch supplied by `WorkspaceScope`.
@@ -749,19 +761,8 @@ visible only when they resolved a diff.
 
 That detail is important because the transcript UI is not a raw message dump.
 
-## OpenCode API Surface Used By The App
-
-### Native OpenCode 2 baseline
-
-The primary SDK is `@opencode/client`. Services use native location/project discovery, session create/list/active/update/fork/revert/interrupt, message cursors, turn diffs, instructions, inbox delivery, model/agent selection, command execution, permission requests/replies, forms, provider integrations/accounts, file read/write/search/list, VCS status/diff, MCP runtime lifecycle and OAuth, worktrees, PTY tokens and the native event stream.
-
-The app projects native records into its own presentation models. It derives plans from accumulated `todowrite` records and usage from accumulated assistant calls rather than the bounded transcript page. Session hydration restores persisted summaries as summaries, never as complete SDK records. Stored keys and DTO schemas are unchanged.
-
-### OpenCode 1 compatibility extensions
-
-`lib/opencode/contracts/` is the typed adapter boundary; services call normalized adapter methods, and `lib/opencode/compat/v1/` preserves legacy operations and event semantics for the V1∩V2 feature intersection. V1-only sharing, archive/restore, title summarization, general configuration writes, persistent MCP enablement, worktree reset, and LSP/formatter diagnostics are not supported.
-
-MCP authorization exposes grouped `methods/start/complete/wait/cancel` actions. Native authorization uses the MCP server's `integrationID`, carries automatic or code mode, and reuses the provider authentication form model. Connection changes invalidate results and cancel pending attempts.
+The endpoint and compatibility surface is documented in the
+[API contract](api-contract.md).
 
 ## Capability Discovery Model
 
@@ -966,9 +967,9 @@ Patch review is the changes chip above the composer and the Changes overlay. The
 Project browser state and request-scope guards remain provider-owned. `FilesPanel` owns only the draft search input and renders provider loading/error state; it remounts on the password-free connection identity plus project path. It does not fetch, persist, or cache results. Setup still uses the existing connection-switch path exactly once per guarded submission.
 
 
-## Session library recovery (#64)
+## Archived Sessions And Deep Links
 
-Session lists exclude records with a truthy `time.archived`. V1 archive/restore is not supported because it has no V2 equivalent. Explicit open targets absent from cached lists trigger a fresh list read rather than creation of a replacement session.
+Session lists exclude records with a truthy `time.archived`. V1 archive/restore is not supported because it has no V2 equivalent. Explicit open targets absent from cached lists trigger a fresh list read rather than creation of a replacement session. Session idle events only refresh domain state.
 
 
 Transcript, diff, and todo cache pruning is paused while session bootstrap is loading. A pending deep-link target is also retained until selection completes, so early transcript reads survive slower capability/configuration requests when reopening a favorite from another project.

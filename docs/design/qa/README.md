@@ -27,13 +27,15 @@ review found something worth preserving.
   reader, physical device, and so on)
 - The final result: `passed`, `passed with follow-ups`, or `blocked`
 
-Use [template.md](template.md) as the starting point. Append the completed
-report to [log.md](log.md) rather than creating a new file per review.
+Use [template.md](template.md) as the starting point. Attach the completed
+report to the pull request or design review. Do not commit a running log of
+historical reviews or local artifact paths.
 
 ## Rules
 
 - Do not claim screen-reader or native acceptance from screenshots.
 - Do not hide unresolved P0/P1 findings behind a "passed" summary.
-- Keep evidence paths stable; if an artifact is temporary, say so.
+- Describe temporary artifacts instead of linking to local paths that do not
+  exist in a clean checkout.
 - A design review that changes the system itself needs an
   [ADR](../../adr/README.md).

@@ -1,3 +1,4 @@
+// Shared Playwright flow helpers. See docs/engineering/validation/e2e.md.
 import { expect, test } from './fixtures.mjs';
 import { isReservedPort, usesCompatibility, workerBackend } from './backend.mjs';
 import { spawn } from 'node:child_process';

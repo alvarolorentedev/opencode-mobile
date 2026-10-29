@@ -1,3 +1,4 @@
+// Deterministic V2 fake server. See docs/engineering/validation/fake-server.md.
 import { models, providersForScenario, modelCatalog } from './fixtures.mjs';
 import { filesForDirectory, fileNodes, addWorktree } from './workspace.mjs';
 import http from 'node:http';

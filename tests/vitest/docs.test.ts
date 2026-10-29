@@ -52,6 +52,64 @@ function anchorsIn(file: string) {
     .map((match) => headingSlug(match[1]));
 }
 
+// Paths that are intentionally not in this checkout: historical locations
+// named by ADRs, placeholders, external repositories, generated output, and
+// proposed platform files. Keep this list short and explain each entry.
+const INLINE_PATH_ALLOWLIST = new Set([
+  // Retired flat documentation paths named as history in ADR 0008.
+  'docs/architecture.md',
+  'docs/state-and-data.md',
+  'docs/api-contract.md',
+  'docs/network-resilience.md',
+  'docs/functional-spec.md',
+  'docs/auto-model-routing.md',
+  'docs/connect.md',
+  'docs/app-updates.md',
+  'docs/ios-share-parity.md',
+  'docs/ios-widget-parity.md',
+  'docs/design-system.md',
+  'docs/component-inventory.md',
+  'docs/development.md',
+  'docs/testing-and-validation.md',
+  'docs/integrations-and-operations.md',
+  'docs/voice-validation.md',
+  'docs/library-extraction.md',
+  'docs/fdroid.md',
+  'docs/known-gaps.md',
+  'design-qa.md',
+  'TESTING.md',
+  // Section names in ADR 0008's historical context.
+  'architecture/',
+  'product/',
+  'design/',
+  'engineering/',
+  'adr/',
+  // Placeholders, external repositories, generated output, and proposals.
+  'docs/adr/NNNN-short-kebab-title.md',
+  'protocol/README.md',
+  'widgets/ios/session-widget.tsx',
+  'storybook-static/',
+  'packages/',
+  'Foundations/',
+  'Controls/',
+  'Feedback/',
+  // Removed paths named as history in known-gaps.md.
+  'components/chat/chat-content.tsx',
+  'tests/e2e/flows.spec.mjs',
+]);
+
+function isInlinePath(value: string) {
+  if (!value.includes('/')) return false;
+  if (/^(?:https?:|mailto:|tel:|data:|file:|\/|~|#|@)/.test(value)) return false;
+  if (/[\s*<>{}[\]|]/.test(value)) return false;
+  if (value.includes('...')) return false;
+  if (/^(?:npm|npx|git|node|expo|cd|curl|brew|adb|gradle)\b/.test(value)) return false;
+  const filePart = value.split('#')[0].replace(/[),.;:]+$/, '');
+  if (!filePart) return false;
+  if (filePart.endsWith('/')) return true;
+  return /\.(?:tsx?|m?js|json|md|png|jpe?g|mp4|ya?ml|xml|gradle|swift|kt|html|css|txt)$/.test(filePart);
+}
+
 describe('documentation contract', () => {
   it('keeps every doc reachable from a README and every relative link valid', () => {
     const docs = walk(docsRoot);
@@ -75,7 +133,12 @@ describe('documentation contract', () => {
     );
 
     const broken: string[] = [];
-    const files = [...docs, path.join(root, 'AGENTS.md'), path.join(root, 'README.md')];
+    const files = [
+      ...docs,
+      path.join(root, 'AGENTS.md'),
+      path.join(root, 'README.md'),
+      path.join(root, 'providers', 'AGENTS.md'),
+    ];
     for (const file of files) {
       for (const target of linksIn(file)) {
         const resolved = resolveLink(file, target);
@@ -189,5 +252,101 @@ describe('documentation contract', () => {
       [],
       'The initial Storybook catalog is incomplete.',
     );
+  });
+
+  it('keeps inline paths, npm scripts, and the agent routing surface valid', () => {
+    const files = [
+      ...walk(docsRoot),
+      path.join(root, 'AGENTS.md'),
+      path.join(root, 'README.md'),
+      path.join(root, 'providers', 'AGENTS.md'),
+    ];
+    const pkg = JSON.parse(readFileSync(path.join(root, 'package.json'), 'utf8'));
+    const scripts = new Set(Object.keys(pkg.scripts ?? {}));
+    const missingPaths: string[] = [];
+    const missingScripts: string[] = [];
+
+    for (const file of files) {
+      const source = readFileSync(file, 'utf8');
+      for (const match of source.matchAll(/`([^`\n]+)`/g)) {
+        const raw = match[1].trim();
+        if (!isInlinePath(raw)) continue;
+        const cleaned = raw.split('#')[0].replace(/[),.;:]+$/, '');
+        if (INLINE_PATH_ALLOWLIST.has(cleaned) || INLINE_PATH_ALLOWLIST.has(raw)) continue;
+        if (!existsSync(path.join(root, cleaned))) {
+          missingPaths.push(`${relative(file)} -> ${raw}`);
+        }
+      }
+      for (const match of source.matchAll(/npm run ([a-z0-9:._-]+)/g)) {
+        if (!scripts.has(match[1])) {
+          missingScripts.push(`${relative(file)} -> npm run ${match[1]}`);
+        }
+      }
+    }
+
+    const uniquePaths = [...new Set(missingPaths)];
+    const uniqueScripts = [...new Set(missingScripts)];
+    assert.deepEqual(uniquePaths, [], `Inline repository paths must resolve:\n${uniquePaths.join('\n')}`);
+    assert.deepEqual(uniqueScripts, [], `Documented npm scripts must exist:\n${uniqueScripts.join('\n')}`);
+
+    const agents = readFileSync(path.join(root, 'AGENTS.md'), 'utf8');
+    for (const reference of [
+      'docs/README.md',
+      'docs/engineering/task-recipes.md',
+      'providers/AGENTS.md',
+      'docs/adr/README.md',
+      'docs/design/storybook.md',
+    ]) {
+      assert.ok(agents.includes(reference), `AGENTS.md must reference ${reference}.`);
+    }
+    assert.ok(!agents.includes('Read first:'), 'AGENTS.md must route by task, not preload the docs tree.');
+
+    const recipes = readFileSync(path.join(root, 'docs/engineering/task-recipes.md'), 'utf8');
+    for (const heading of [
+      '## Translations',
+      '## Settings section or row',
+      '## Fake-server scenario and E2E flow',
+      '## Provider state field or endpoint',
+    ]) {
+      assert.ok(recipes.includes(heading), `task-recipes.md needs ${heading}.`);
+    }
+
+    const providers = readFileSync(path.join(root, 'providers/AGENTS.md'), 'utf8');
+    assert.ok(
+      providers.includes('docs/architecture/state-and-data.md'),
+      'providers/AGENTS.md must link the state model.',
+    );
+
+    const componentIndex = readFileSync(path.join(root, 'docs/design/component-inventory.md'), 'utf8');
+    for (const file of [
+      'components/chat.md',
+      'components/settings.md',
+      'components/screens.md',
+      'components/onboarding.md',
+      'components/shared.md',
+    ]) {
+      assert.ok(componentIndex.includes(file), `component-inventory.md must link ${file}.`);
+    }
+
+    const validationIndex = readFileSync(path.join(root, 'docs/engineering/testing-and-validation.md'), 'utf8');
+    for (const file of [
+      'validation/strategy.md',
+      'validation/fake-server.md',
+      'validation/e2e.md',
+      'validation/regressions.md',
+    ]) {
+      assert.ok(validationIndex.includes(file), `testing-and-validation.md must link ${file}.`);
+    }
+
+    for (const file of [
+      'docs/architecture/overview.md',
+      'docs/architecture/state-and-data.md',
+      'docs/product/functional-spec.md',
+    ]) {
+      assert.ok(
+        readFileSync(path.join(root, file), 'utf8').includes('## Read by task'),
+        `${file} needs a Read by task section.`,
+      );
+    }
   });
 });

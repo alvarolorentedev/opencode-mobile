@@ -1,3 +1,5 @@
+// Chat screen controller. See docs/design/components/chat.md#chat-components
+// and docs/product/functional-spec.md#chat-screen-detailed-behavior.
 import { withAlpha } from '@/lib/color';
 import * as Clipboard from 'expo-clipboard';
 import { useCallback, useState } from 'react';

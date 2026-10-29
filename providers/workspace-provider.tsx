@@ -1,3 +1,5 @@
+// App-wide workspace registry, connection focus, and persistence.
+// See docs/architecture/state-and-data.md#state-ownership-overview.
 import { useCallback, useEffect, useMemo, useState, type PropsWithChildren } from 'react';
 import { ActivityIndicator, View } from 'react-native';
 import { getProfilePassword, loadConnectionProfiles, findProfileByConnectionScope, type ConnectionProfile } from '@/lib/connection-profiles';

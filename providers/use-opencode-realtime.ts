@@ -1,3 +1,5 @@
+// SSE with polling fallback and reconnect reconciliation.
+// See docs/architecture/network-resilience.md.
 import { SSE_STALENESS_MS, SSE_FOREGROUND_CYCLE_MS, WATCHDOG_TICK_MS, SSE_BUSY_STALENESS_MS, SSE_CONNECT_TIMEOUT_MS, SSE_STABLE_MS } from '@/providers/realtime-timing';
 import { AppState } from 'react-native';
 import { jitterRetryDelay, MAX_RETRY_MS, RETRY_RESET_MS } from '@/providers/realtime/backoff';

@@ -2,19 +2,33 @@
 
 Follow the current implementation docs in `docs/`. Do not invent a new architecture.
 
-Read first:
+## Start here
 
-1. `docs/README.md` (task router and section map)
-2. `docs/architecture/overview.md`
-3. `docs/architecture/state-and-data.md`
-4. `docs/design/component-inventory.md`
-5. `docs/engineering/testing-and-validation.md`
+Read `docs/README.md` first. It is the task router. Then read only the row for
+your task; do not preload the whole docs tree.
+
+| Task touches | Read before editing | Validate with |
+| --- | --- | --- |
+| Copy/translations | [Task recipes § Translations](docs/engineering/task-recipes.md#translations) | `npm run gen:i18n`, i18n test |
+| Settings UI | [Task recipes § Settings](docs/engineering/task-recipes.md#settings-section-or-row), [component inventory § Settings](docs/design/components/settings.md#settings-components) | Storybook build, settings E2E |
+| Chat UI/transcript | [component inventory § Chat](docs/design/components/chat.md#chat-components), [functional spec § Chat](docs/product/functional-spec.md#chat-screen-detailed-behavior) | chat/diffs E2E |
+| Provider state/session/persistence | [overview § Module Map](docs/architecture/overview.md#module-map), [state and data](docs/architecture/state-and-data.md#state-ownership-overview) + owning domain | provider/persistence Vitest, targeted E2E |
+| Protocol/endpoint/event | [API contract](docs/architecture/api-contract.md), [ADR 0003](docs/adr/0003-v2-first-protocol-boundary.md), [fake server](docs/engineering/validation/fake-server.md) | `test:fake-server:self`, targeted E2E |
+| SSE/polling/offline | [network resilience](docs/architecture/network-resilience.md), [state and data § Realtime](docs/architecture/state-and-data.md#realtime-recovery-ownership) | realtime E2E |
+| Tests/fake server | [validation index](docs/engineering/testing-and-validation.md), [fake server](docs/engineering/validation/fake-server.md) | `test:fake-server:self`, targeted E2E |
+| Native/platform/config | [development](docs/engineering/development.md), [integrations](docs/engineering/integrations-and-operations.md) | `build:development:android` |
+| Docs/ADR | [docs router](docs/README.md), [ADR index](docs/adr/README.md) | `npm run test:docs` |
+| Release | [development](docs/engineering/development.md), [integrations](docs/engineering/integrations-and-operations.md), [app updates](docs/product/app-updates.md) / [F-Droid](docs/engineering/fdroid.md) | full pre-push gate |
+
+Provider-specific guidance lives in [providers/AGENTS.md](providers/AGENTS.md);
+it loads when you work in `providers/`. The "First time in this repo" path in
+`docs/README.md` is a one-time onboarding read, not a per-task requirement.
 
 ## Documentation Map
 
 - `docs/architecture/` — runtime composition, state ownership, protocol, realtime
 - `docs/product/` — user-visible behavior and feature parity
-- `docs/design/` — design system, components, Storybook, UX proposals, design QA
+- `docs/design/` — design system, components, Storybook, and design QA
 - `docs/engineering/` — setup, validation, operations, release, deferred work
 - `docs/adr/` — architecture decisions and the decision workflow
 
@@ -51,7 +65,8 @@ coverage, and documentation links.
 
 This app is provider-centric.
 
-- `providers/opencode-provider.tsx` owns domain state and orchestration.
+- `providers/` owns domain state and orchestration; `opencode-provider.tsx` is
+  the thin entrypoint and `use-opencode-provider-composition.ts` composes the domains.
 - `app/` owns routing and thin screen wiring.
 - `components/` owns presentation and local UI state.
 - `providers/services/` owns provider-facing API aggregation.
@@ -62,6 +77,21 @@ Do not move domain behavior into screens or presentational components.
 
 - New features that require API compatibility are V2-only for now; see
   `docs/architecture/api-contract.md`. Do not add new V1 adapters or fallbacks.
+
+## Architecture Ratchets
+
+`tests/vitest/architecture.test.ts` enforces the documented layering:
+
+- `providers/opencode-provider.tsx` stays a thin wrapper (at most 60 lines)
+- no source file exceeds 500 lines
+- the combined domain-context surface stays at or below 127 members
+- `app/` and `components/` never call the network or credential persistence directly
+- V1 SDK imports and compatibility branching stay inside
+  `lib/opencode/compat/v1/` and `lib/opencode/contracts/`
+- keyboard avoidance and tab-layout rules stay intact
+
+Fix a failure by moving code to the right layer or splitting the file; do not
+raise the limit.
 
 ## Placement Rules
 
@@ -274,7 +304,7 @@ Update together when needed:
 
 For each task:
 
-1. Read the relevant docs and implementation.
+1. Use the Start here table; read only the relevant doc section and implementation.
 2. Identify the correct layer.
 3. Make the smallest change that preserves documented behavior.
 4. Add or update tests when the behavior contract changes.
@@ -325,6 +355,7 @@ V1/V2 pair, so the per-worker global scenario stays isolated. For iteration:
 
 ```bash
 npm run test:ci:static          # cached; ~15s when warm, ~45s cold
+npm run validate:fast           # static + fake-server self-test + smoke flows
 npm run test:e2e:smoke          # 17 critical flows
 npm run test:e2e:last-failed
 npm run test:e2e:web:isolated -- tests/e2e/chat.spec.mjs

@@ -1,3 +1,5 @@
+// Client construction and the V1/V2 contract boundary.
+// See docs/architecture/api-contract.md.
 import { buildV1Compatibility } from './compat/v1/client';
 
 import { buildV2Client } from './v2-client';
