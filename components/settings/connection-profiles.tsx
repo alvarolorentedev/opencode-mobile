@@ -1,8 +1,10 @@
+import { SettingTarget } from './settings-panel';
+import { SettingButton as Button } from './sections/setting-rows';
 import { useCallback, useRef, useState } from 'react';
 import { useFocusEffect } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { Alert, Platform, Pressable, StyleSheet, View } from 'react-native';
-import { Button, List, Text } from 'react-native-paper';
+import { List, Text } from 'react-native-paper';
 
 import {
   ConnectionProfileDialog,
@@ -288,9 +290,9 @@ export function ConnectionProfiles({ palette, onManageConnect, onPair }: { palet
     <>
       <View style={styles.list}>{rows}</View>
       {error ? <Text style={{ color: palette.danger }}>{error}</Text> : null}
-      <Button testID="connection-add-button" mode="outlined" icon="plus" onPress={() => setChoosing(true)}>
+      <SettingTarget label={t('settings:connection.addConnection')}><Button testID="connection-add-button" mode="outlined" icon="plus" onPress={() => setChoosing(true)}>
         {t('settings:connection.addConnection')}
-      </Button>
+      </Button></SettingTarget>
       {profiles.length === 0 ? (
         <Text variant="bodySmall" style={{ color: palette.muted }}>
           {t('settings:connection.addDescription')}

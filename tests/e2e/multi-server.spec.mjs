@@ -235,9 +235,9 @@ test('V2 single-server mode hides redundant context and restores it when a secon
   await page.getByTestId('new-terminal-sheet').getByRole('button', { name: 'Cancel', exact: true }).click();
   await goToTab(page, 'Settings');
   await expect(page.getByTestId('settings-server-picker')).toHaveCount(0);
-  await expect(page.getByText('Server settings', { exact: true })).toBeVisible();
+  await expect(page.getByText('Selected server', { exact: true })).toBeVisible();
   await page.screenshot({ path: test.info().outputPath('single-server-settings.png') });
-  await page.getByRole('button', { name: /^Advanced/ }).click();
+  await page.getByTestId('settings-category-advanced').click();
   await expect(page.getByTestId('settings-project-picker')).toBeVisible();
   await expect(page.getByTestId('settings-server-picker')).toHaveCount(0);
   await goToTab(page, 'Settings');

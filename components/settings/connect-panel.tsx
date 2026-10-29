@@ -1,8 +1,9 @@
+import { SettingButton as Button } from './sections/setting-rows';
 import { useIsFocused } from 'expo-router';
 import { useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Alert, Platform, StyleSheet, View } from 'react-native';
-import { Button, HelperText, Text } from 'react-native-paper';
+import { HelperText, Text } from 'react-native-paper';
 import { ConnectSubscription } from '@/components/settings/connect-subscription';
 import type { ConnectSetup } from '@/providers/use-connect-state';
 import { usePalette } from '@/hooks/use-palette';

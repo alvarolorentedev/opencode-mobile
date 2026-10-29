@@ -1,7 +1,8 @@
+import { SettingButton as Button, SettingSelectField, SettingSwitchRow, type Palette } from './setting-rows';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
 import { StyleSheet, View } from 'react-native';
-import { Button, HelperText, Text } from 'react-native-paper';
+import { HelperText, Text } from 'react-native-paper';
 
 import { type NativeSelectOption } from '@/components/ui/native-select';
 import {
@@ -18,7 +19,8 @@ import {
 } from '@/lib/voice/local-wake-word/types';
 import { DEFAULT_WAKE_PHRASE } from '@/lib/voice/wake-phrase';
 import type { ChatPreferences } from '@/providers/opencode-provider';
-import { SettingSelectField, SettingSwitchRow, type Palette } from './setting-rows';
+import { SettingTarget } from '../settings-panel';
+
 
 export type LocalVoiceState = {
   baseStatus: LocalVoiceModelStatus;
@@ -135,7 +137,7 @@ export function LocalVoiceSection({
   }));
 
   return (
-    <View style={[styles.localVoiceCard, { backgroundColor: palette.surface, borderColor: palette.border }]}>
+    <SettingTarget label={t('settings:voice.localWake.title')}><View style={[styles.localVoiceCard, { backgroundColor: palette.surface, borderColor: palette.border }]}>
       <View style={styles.localVoiceStatusRow}>
         <MaterialCommunityIcons
           color={localStatusColor}
@@ -211,7 +213,7 @@ export function LocalVoiceSection({
           />
           <HelperText type="info">{t('settings:voice.localWake.commandModelHelper')}</HelperText>
 
-          <View style={styles.profileRow}>
+          <SettingTarget label={t('settings:voice.localWake.voiceProfile')}><View style={styles.profileRow}>
             <MaterialCommunityIcons
               color={localVoice.enrollment.hasProfile ? palette.success : palette.muted}
               name={localVoice.enrollment.hasProfile ? 'account-check-outline' : 'account-outline'}
@@ -242,6 +244,7 @@ export function LocalVoiceSection({
             ) : null}
           </View>
 
+          </SettingTarget>
           {localVoice.enrollment.hasProfile ? (
             <SettingSwitchRow
               description={t('settings:voice.localWake.speakerVerificationDescription')}
@@ -258,7 +261,7 @@ export function LocalVoiceSection({
           </HelperText>
         </>
       ) : null}
-    </View>
+    </View></SettingTarget>
   );
 }
 

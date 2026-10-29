@@ -34,6 +34,7 @@ test('OpenCode classifier routes simple and complex prompts and explicit models 
 
   await goToTab(page, 'Settings');
   await ensureAiSection(page);
+  await page.getByRole('button', { name: 'Auto model routing', exact: true }).click();
 
   await page.getByTestId('settings-auto-model-classifier').click();
   await page.getByRole('button', { name: 'OpenCode classifier', exact: true }).click();

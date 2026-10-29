@@ -1,10 +1,12 @@
+import { SettingButton as Button, SettingTextInput as TextInput } from './sections/setting-rows';
 import { useEffect, useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { StyleSheet, View } from 'react-native';
-import { ActivityIndicator, Button, Chip, HelperText, List, SegmentedButtons, Text } from 'react-native-paper';
+import { ActivityIndicator, Chip, HelperText, List, SegmentedButtons, Text } from 'react-native-paper';
 
-import { TextInput } from '@/components/ui/text-input';
+
 import { useMcpAuthentication } from '@/components/settings/use-mcp-authentication';
+import { SettingTarget, useSettingsTarget } from './settings-panel';
 import { usePalette } from '@/hooks/use-palette';
 import { confirmAction } from '@/lib/confirm-action';
 import { getErrorMessage } from '@/lib/error-message';
@@ -51,12 +53,13 @@ export function ExtensionsSection() {
   const { activeProjectPath } = useProjects();
   const { extensions } = useExtensions();
   const [scope, setScope] = useState<ExtensionScope>(activeProjectPath ? 'project' : 'general');
-  const [tab, setTab] = useState<Tab>('mcp');
+  const target = useSettingsTarget();
+  const [tab, setTab] = useState<Tab>(() => (['plugins', 'skills', 'commands'] as const).find((entry) => target?.group?.startsWith(`extensions-${entry}`)) ?? 'mcp');
   const [generalConfirmed, setGeneralConfirmed] = useState(false);
   const [mcpBusy, setMcpBusy] = useState<string>();
   const [actionError, setActionError] = useState<string>();
   const [mcpName, setMcpName] = useState('');
-  const [mcpType, setMcpType] = useState<'local' | 'remote'>('local');
+  const [mcpType, setMcpType] = useState<'local' | 'remote'>(target?.group === 'extensions-mcp-remote' ? 'remote' : 'local');
   const [mcpTarget, setMcpTarget] = useState('');
   const [pluginTarget, setPluginTarget] = useState('');
   const [skillId, setSkillId] = useState('');
@@ -167,6 +170,7 @@ export function ExtensionsSection() {
 
   return (
     <View style={styles.content}>
+      <SettingTarget label={t(`settings:extensions.tabs.${tab}`)}>
       <Text variant="titleLarge" style={[styles.title, { color: palette.text }]}>{t('settings:extensions.title')}</Text>
       <Text variant="bodyMedium" style={{ color: palette.muted }}>{t('settings:extensions.description')}</Text>
       <SegmentedButtons
@@ -281,7 +285,7 @@ export function ExtensionsSection() {
       {authentication.dialog}
       {extensions.busy ? <HelperText type="info">{t('settings:extensions.saving')}</HelperText> : null}
       {!data && !extensions.isRefreshing ? <HelperText type="info">{t('settings:extensions.unavailable')}</HelperText> : null}
-    </View>
+    </SettingTarget></View>
   );
 }
 

@@ -1,7 +1,8 @@
+import { SettingButton as Button, SettingSelectField, SettingSwitchRow, type Palette } from './setting-rows';
 import { useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Platform, StyleSheet, View } from 'react-native';
-import { Button, HelperText, Text } from 'react-native-paper';
+import { HelperText, Text } from 'react-native-paper';
 
 import { getAutoModelSuggestions } from '@/providers/opencode-auto-model';
 import { getVisibleModels } from '@/providers/opencode-model-selection';
@@ -12,7 +13,8 @@ import type { ChatPreferences, ModelOption, ProviderOption } from '@/providers/o
 import type { AutoModelClassifier } from '@/providers/opencode-preferences';
 import type { CapabilitiesContextValue } from '@/providers/opencode-provider-types';
 import { useAutoModelSetup } from '@/components/settings/use-auto-model-setup';
-import { SettingSelectField, SettingSwitchRow, type Palette } from './setting-rows';
+import { SettingsDisclosure } from '../settings-panel';
+
 
 type AutoModelSectionProps = {
   availableModels: ModelOption[];
@@ -140,8 +142,9 @@ export function AutoModelSection({
   }
 
   return (
+    <SettingsDisclosure id="auto-model" title={t('settings:modelRouting.title')}
+      attention={autoModel.enabled || Boolean(setup.error) || setup.status === 'installing' || serverStatus === 'auth' || serverStatus === 'unavailable'}>
     <View testID="settings-auto-model-section" style={styles.section}>
-      <Text accessibilityRole="header" variant="titleMedium" style={{ color: palette.text }}>{t('settings:modelRouting.title')}</Text>
       <Text variant="bodyMedium" style={{ color: palette.muted }}>{t('settings:modelRouting.description')}</Text>
 
       <SettingSwitchRow
@@ -252,7 +255,7 @@ export function AutoModelSection({
         title={t('settings:modelRouting.protect.title')}
         value={autoModel.protectLongChats}
       />
-    </View>
+    </View></SettingsDisclosure>
   );
 }
 

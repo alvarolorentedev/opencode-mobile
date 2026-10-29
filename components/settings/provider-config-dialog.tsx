@@ -1,14 +1,15 @@
+import { SettingButton as Button, SettingTextInput as TextInput } from './sections/setting-rows';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import * as Clipboard from 'expo-clipboard';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { KeyboardAvoidingView, Linking, Modal, Pressable, ScrollView, StyleSheet, View } from 'react-native';
-import { ActivityIndicator, Appbar, Button, Chip, HelperText, Switch, Text } from 'react-native-paper';
+import { ActivityIndicator, Appbar, Chip, HelperText, Switch, Text } from 'react-native-paper';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { useUpdateBlocker } from '@/hooks/use-update-blocker';
 import { NativeSelect } from '@/components/ui/native-select';
-import { TextInput } from '@/components/ui/text-input';
+
 
 import { Colors } from '@/constants/theme';
 import { extractPairingCode } from '@/lib/opencode/oauth';

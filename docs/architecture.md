@@ -960,6 +960,8 @@ engine.
   installed/replaced independently.
 - `lib/voice/use-local-wake-word.ts` captures 16 kHz PCM, feeds the KWS model,
   keeps a short rolling buffer, and verifies the enrolled speaker when enabled.
+  Frames are queued while a native KWS call is in flight, and a rejected speaker
+  check leaves the detector running so the next attempt is captured immediately.
 - `lib/voice/use-local-command-capture.ts` runs after a verified wake. Silero
   VAD segments speech turns; each finalized turn is embedded and compared to the
   enrolled profile; only matched turns go to the selected local ASR. Accepted
@@ -976,7 +978,7 @@ engine.
   non-overlapping turns. Local TTS is out of scope.
 
 `providers/conversation/use-local-wake-controller.ts` owns the detector-to-command
-handoff, speaker rejection/re-arming, and the local command submission path. The
+handoff, speaker-rejection feedback, and the local command submission path. The
 main conversation state machine continues to own phases, submission, playback,
 and cleanup.
 
@@ -1130,3 +1132,14 @@ The chat library combines the unscoped server catalogs with live project state. 
 Chat focus fails over automatically. When the focused runtime reports an error, or its connection is disabled or removed, `use-workspace-connections.ts` selects the last healthy connected server, then any other connected server, and persists that focus. The failed server stays registered and enabled so Settings can reconnect it; if no other server is connected, the existing Chat connection panel remains the terminal state.
 
 Terminal renderers remain mounted when hidden. Hidden instances cannot accept input or layout resize; disconnect detaches transports without deleting remote PTYs. Composer and editor drafts and transcript reading positions live in an in-memory presentation map, keyed by owning server/project/session or file. They survive navigation, not process termination. No external store or dependency was introduced.
+
+## Settings presentation and design system
+
+The shared [design system](design-system.md) defines presentation foundations and
+feature acceptance. Settings keeps its existing category-sheet navigation, with
+app preferences first, connection management next, and inspected-server tools
+last. The section registry owns category grouping and localized search metadata;
+`SettingsHome` renders navigation/search, and `SettingsPanel` owns only scrolling,
+search highlighting and announcement. Shared rows/fields/buttons also serve setup
+flows. Search never indexes current values or changes a preference; provider
+ownership, inspection scope, persistence and API contracts are unchanged.

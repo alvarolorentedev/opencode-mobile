@@ -184,23 +184,26 @@ test('clearing app data shows onboarding again', async ({ page }) => {
   await expect(page.getByTestId('onboarding-welcome')).toBeVisible({ timeout: 30_000 });
 });
 
-test('App settings groups editor and general settings and resets onboarding without wiping the connection', async ({ page }) => {
+test('settings categories separate everyday preferences and review setup without wiping the connection', async ({ page }) => {
   await seedExistingInstall(page);
   await page.goto('/', { waitUntil: 'domcontentloaded' });
   await waitForChat(page);
-
   await page.getByRole('tab', { name: 'Settings' }).click();
-  await page.getByRole('button', { name: /^App settings\./ }).click();
-  const editor = page.getByTestId('settings-editor-section');
-  const general = page.getByTestId('settings-general-section');
-  await expect(editor.getByRole('heading', { name: 'Editor', exact: true })).toBeVisible();
-  await expect(editor.getByText('Chat text size', { exact: true })).toBeVisible();
-  await expect(editor.getByRole('switch', { name: 'Flat conversation', exact: true })).toBeVisible();
-  await expect(editor.getByRole('switch', { name: 'Slim interface', exact: true })).toHaveCount(0);
-  await expect(general.getByRole('heading', { name: 'General', exact: true })).toBeVisible();
-  await expect(general.getByRole('switch', { name: 'Slim interface', exact: true })).toBeVisible();
-  await expect(general.getByText('Language', { exact: true })).toBeVisible();
-  await general.getByRole('button', { name: 'Reset onboarding', exact: true }).click();
+  await page.getByTestId('settings-category-responses').click();
+  const sheet = page.getByTestId('settings-section-overlay');
+  await expect(sheet.getByRole('slider', { name: 'Chat text size', exact: true })).toBeVisible();
+  await expect(sheet.getByRole('switch', { name: 'Flat conversation', exact: true })).toBeVisible();
+  await expect(sheet.getByRole('switch', { name: 'Slim interface', exact: true })).toHaveCount(0);
+  await sheet.getByRole('button', { name: 'Close', exact: true }).click();
+  await page.getByTestId('settings-category-appearance').click();
+  await expect(sheet.getByRole('switch', { name: 'Slim interface', exact: true })).toBeVisible();
+  await expect(page.getByTestId('settings-theme-mode')).toBeVisible();
+  await sheet.getByRole('button', { name: 'Close', exact: true }).click();
+  await page.getByTestId('settings-category-language').click();
+  await expect(page.getByTestId('settings-language')).toBeVisible();
+  await sheet.getByRole('button', { name: 'Close', exact: true }).click();
+  await page.getByTestId('settings-category-support').click();
+  await sheet.getByRole('button', { name: 'Review setup', exact: true }).click();
 
   await expect(page.getByTestId('onboarding-welcome')).toBeVisible({ timeout: 15_000 });
   await expect(page.getByText('Review setup · Step 1 of 8')).toBeVisible();

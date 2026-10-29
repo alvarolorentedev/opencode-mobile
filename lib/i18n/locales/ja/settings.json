@@ -4,14 +4,17 @@
       "connection": "接続",
       "ai": "AI とプロバイダー",
       "notifications": "通知",
-      "voice": "音声",
+      "voice": "音声とオーディオ",
       "advanced": "詳細設定",
       "support": "サポート",
       "permissions": "承認",
       "subscription": "サブスクリプション",
       "cloudLink": "Cloud Link",
       "extensions": "Extensions",
-      "responses": "応答"
+      "responses": "応答",
+      "appearance": "外観",
+      "chat": "チャットと応答",
+      "about": "アプリ情報とヘルプ"
     },
     "summaries": {
       "configuredCount": "{{value}} 件設定済み",
@@ -24,7 +27,35 @@
       "voiceSystem": "システム音声 · {{phrase}}",
       "voiceLocal": "オンデバイス · {{phrase}}",
       "responsesOn": "{{scope}} · 次のアクション オン",
-      "responsesOff": "{{scope}} · 次のアクション オフ"
+      "responsesOff": "{{scope}} · 次のアクション オフ",
+      "appearance": "テーマ、色、インターフェースの密度",
+      "diagnostics": "接続状態とトラブルシューティング"
+    },
+    "groups": {
+      "app": "アプリの設定",
+      "connections": "接続",
+      "server": "選択中のサーバー"
+    },
+    "intro": "アプリを好みに合わせて接続を管理します。",
+    "search": {
+      "placeholder": "設定を検索",
+      "clear": "検索をクリア",
+      "empty": "一致する設定がありません。別の言葉を試してください。",
+      "results": "一致する設定：{{count}} 件"
+    },
+    "keywords": {
+      "appearance": "表示 テーマ 色 ダーク ライト コンパクト 密度",
+      "responses": "チャット メッセージ テキスト フォント サイズ 応答 スタイル 誘導 追加 キュー 吹き出し",
+      "voice": "音声 オーディオ サウンド マイク 入力 再生 言語 ウェイクフレーズ",
+      "notifications": "通知 アラート バッテリー ウィジェット",
+      "language": "言語 翻訳 インターフェース",
+      "support": "ヘルプ フィードバック サポート 更新 バージョン セットアップ",
+      "connection": "接続 サーバー アドレス パスワード 認証情報 再接続 QR",
+      "cloud-link": "リモート接続 Cloud Link サブスクリプション コンピューター サービス",
+      "ai": "AI プロバイダー アカウント モデル 認証 分類器 ルーティング",
+      "extensions": "拡張機能 MCP プラグイン スキル コマンド",
+      "permissions": "権限 承認 保存済みルール 自動許可",
+      "advanced": "診断 ネットワーク 接続 リアルタイム ポーリング エラー 使用量"
     }
   },
   "support": {
@@ -566,7 +597,7 @@
   },
   "general": {
     "title": "一般",
-    "resetOnboarding": "初期設定をやり直す"
+    "resetOnboarding": "セットアップを見直す"
   },
   "autoUpdate": {
     "title": "アップデートの確認",

@@ -88,7 +88,7 @@ test('OpenCode 2 keeps steer and append prompts pinned until delivery and recove
     await expect(pending.getByTestId('pending-prompt')).toHaveCount(1);
     expect((await pending.boundingBox()).y).toBeLessThan((await page.getByPlaceholder('Ask anything...').boundingBox()).y);
     await goToTab(page, 'Settings');
-    await page.getByRole('button', { name: /^App settings\./ }).click();
+    await page.getByTestId('settings-category-responses').click();
     await page.getByRole('button', { name: /Messages sent while working/ }).click();
     await page.getByText('Append', { exact: true }).click();
     await goToTab(page, 'Chat');

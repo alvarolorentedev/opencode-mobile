@@ -2,6 +2,7 @@ import Slider from '@react-native-community/slider';
 import { Platform, StyleSheet, View } from 'react-native';
 import { Text } from 'react-native-paper';
 
+import { ControlSize } from '@/constants/design-tokens';
 import { Colors } from '@/constants/theme';
 
 type Palette = typeof Colors.light;
@@ -51,7 +52,7 @@ export function NumericSlider({
   return (
     <View style={styles.numericSlider}>
       <View style={styles.numericSliderHeader}>
-        <Text style={{ color: palette.text }}>{label}</Text>
+        <Text style={{ color: palette.text, flex: 1 }}>{label}</Text>
         <Text style={{ color: palette.muted }}>{valueLabel}</Text>
       </View>
       <Slider
@@ -75,5 +76,5 @@ export function NumericSlider({
 const styles = StyleSheet.create({
   numericSlider: { gap: 4 },
   numericSliderHeader: { flexDirection: 'row', justifyContent: 'space-between', gap: 8 },
-  slider: { height: 44, marginHorizontal: 4 },
+  slider: { height: ControlSize.target, marginHorizontal: 4 },
 });

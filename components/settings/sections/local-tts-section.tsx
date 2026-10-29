@@ -1,13 +1,14 @@
+import { SettingButton as Button, SettingSelectField, type Palette } from './setting-rows';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
 import { StyleSheet, View } from 'react-native';
-import { Button, HelperText, Text } from 'react-native-paper';
+import { HelperText, Text } from 'react-native-paper';
 
 import type { NativeSelectOption } from '@/components/ui/native-select';
 import { isPackLanguageCompatible, LOCAL_TTS_SYSTEM_ONLY_LANGUAGES } from '@/lib/voice/tts/catalog';
 import type { ChatPreferences } from '@/providers/opencode-preferences';
 import type { useTtsSetup } from '@/components/settings/use-tts-setup';
-import { SettingSelectField, type Palette } from './setting-rows';
+
 
 export function LocalTtsSection({
   chatPreferences,

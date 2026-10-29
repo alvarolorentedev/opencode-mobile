@@ -366,6 +366,29 @@ If summarization fails, the session simply remains untitled.
 
 ## Settings Screen Detailed Behavior
 
+Settings follows the [design system](design-system.md). Home shows App preferences
+(Appearance, Chat & responses, Voice & audio, Notifications, Language, About &
+support), Connections (Connection and eligible Cloud Link), then Selected server
+(AI & providers, Extensions, Approvals, Server diagnostics). Every category opens
+in the existing content-sized sheet; longer content scrolls below its fixed
+Close header. Connection and provider forms retain their keyboard-safe surfaces.
+
+Local search matches localized labels, descriptions and curated category keywords.
+Results identify a setting and category; selecting one reveals its control,
+including a collapsed group or extension tab, without changing values or
+submitting a form. Closing retains the query; Clear restores categories. No
+credentials, current values or server-returned content are indexed. Platform and
+capability gates apply to the catalog as well as the rendered controls.
+
+Appearance contains theme/color/density; Chat & responses contains transcript
+size/layout, response style and supported prompt delivery. Notifications also
+contains Android widget previews. About & support contains app version, support,
+platform-supported update preferences and Review setup, which preserves existing
+configuration. Voice shows everyday playback/sound controls first; input setup,
+playback packs, diagnostics and automatic model routing use expandable groups.
+Required setup, downloads and errors stay visible. Shared onboarding controls
+retain their intentional step order and explicit permission/download actions.
+
 ### Connection Section
 
 Lists the connections the user has saved plus the connection currently in use.
@@ -384,7 +407,7 @@ Behavior:
 - the Chat header shows a compact offline/reconnecting/polling/slow-link notice. Offline pauses SSE retries and polling; connectivity restoration reopens the stream and runs a critical reconcile
 - a prompt attempted while offline stays visible as queued and is admitted once after reconnect. A timeout with an unknown server outcome is marked delivery-uncertain and is never replayed automatically
 - values are persisted locally; passwords and custom gateway headers stay in SecureStore while name, URL, and username live in AsyncStorage
-- Settings shows short category summaries in one compact group; tapping Connection opens a content-sized overlay with the server message, last checked timestamp, and saved connection rows
+- Settings shows Connection in the Connections group; its content-sized overlay contains the server message, last checked timestamp, labeled Reconnect action, and saved connection rows
 
 ### Cloud Link Section
 
@@ -394,7 +417,7 @@ Purpose:
 
 Behavior exposed today:
 
-- the row sits directly below AI & Providers and only appears for installs that came from the App Store or Google Play; directly installed APKs, F-Droid/FOSS builds, production web, and non-store iOS builds never show it (the development web E2E harness keeps it through `connectPilot.testing`)
+- the row sits below Connection in the Connections group and only appears for installs that came from the App Store or Google Play; directly installed APKs, F-Droid/FOSS builds, production web, and non-store iOS builds never show it (the development web E2E harness keeps it through `connectPilot.testing`)
 - inside the section the order is: access status summary, Exposed Services, the subscription group (Manage subscription, Restore purchases, and native offers/Subscribe while inactive), then Machines last, with a Learn more footer row
 - the section opens without requesting camera access, pairing a machine, purchasing, or restoring
 - progress, error, notice, and Retry feedback stays attached to the subscription actions
@@ -696,7 +719,11 @@ Optional on-device wake word:
   room while armed.
 - If voice verification is enabled and a profile is enrolled, the detected
   segment must match that profile. Rejected turns stay armed and surface
-  feedback.
+  feedback. Capture stays live across a rejection, so the user can repeat the
+  phrase immediately instead of waiting for a detector restart.
+- Wake audio is buffered while the native KWS bridge is busy. A slow inference
+  pass or model warm-up therefore delays detection instead of cutting the
+  phrase apart.
 - After a verified wake, the detector stops and a local command session starts.
   A VAD splits the command window into speech turns; each turn is checked
   against the enrolled speaker, and only matching turns are transcribed by the

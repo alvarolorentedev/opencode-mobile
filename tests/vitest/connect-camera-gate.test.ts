@@ -23,7 +23,8 @@ describe('Cloud Link camera permission gate', () => {
     const onCancel = vi.fn();
     const { ConnectCameraGate } = await loadTs('components/settings/connect-camera-gate.tsx', {
       react: runtime.react,
-      'react/jsx-runtime': { jsx: (type: unknown, props: Record<string, unknown>) => ({ type, props }), Fragment: 'Fragment' },
+      './sections/setting-rows': { SettingButton: 'Button' },
+    'react/jsx-runtime': { jsx: (type: unknown, props: Record<string, unknown>) => ({ type, props }), Fragment: 'Fragment' },
       'expo-camera': { useCameraPermissions },
       'react-i18next': { useTranslation: () => ({ t: (key: string) => key }) },
       'react-native': { Platform: { OS: 'android' }, StyleSheet: { create: (styles: unknown) => styles }, View: 'View' },
@@ -44,7 +45,8 @@ describe('Cloud Link camera permission gate', () => {
     const useCameraPermissions = vi.fn(() => [null, vi.fn()]);
     const { ConnectCameraGate } = await loadTs('components/settings/connect-camera-gate.tsx', {
       react: runtime.react,
-      'react/jsx-runtime': { jsx: (type: unknown, props: Record<string, unknown>) => ({ type, props }), Fragment: 'Fragment' },
+      './sections/setting-rows': { SettingButton: 'Button' },
+    'react/jsx-runtime': { jsx: (type: unknown, props: Record<string, unknown>) => ({ type, props }), Fragment: 'Fragment' },
       'expo-camera': { useCameraPermissions },
       'react-i18next': { useTranslation: () => ({ t: (key: string) => key }) },
       'react-native': { Platform: { OS: 'web' }, StyleSheet: { create: (styles: unknown) => styles }, View: 'View' },

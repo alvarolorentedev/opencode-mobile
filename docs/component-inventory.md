@@ -30,7 +30,7 @@ The reverted prompt text is edited in the composer, so the notice only carries
 status and the cancel affordance.
 
 Steer/Append selection lives at the top of
-the Editor group in Advanced Settings, alongside chat text size and flat
+Chat & responses, alongside chat text size and flat
 conversation. The General group contains slim interface, language and Reset
 onboarding, which reopens the existing setup review without clearing settings.
 
@@ -430,19 +430,23 @@ This is important to parity because the chat layout is intentionally dense and h
 
 ### Presentation
 
-- shows compact settings rows in one group and opens one category at a time
-- places Cloud Link immediately below AI & Providers, and only when the provider
-  resolved `connectSetup.storeInstall` (App Store or Google Play installs); its
-  summary reflects initialization or verified access status
-- opens the full-screen service editor route for Add/Edit and reopens the Cloud
-  Link section when the route returns, without leaving a portal sheet over the
-  pushed screen
-- uses the same safe-area app header and title treatment as Chat and Terminal
-- groups MCP servers and diagnostics under the `Advanced` category
-- shows a `Language` category for the app interface language
-- shows a `Support` category for store rating, feedback, and the support page
-- shows compact category summaries and renders one category at a time in the shared overlay
-- opens connection and provider forms in keyboard-safe full-screen surfaces
+- `SettingsHome` renders searchable categories in App preferences, Connections,
+  and Selected server order from the section registry's `group` and `targets`.
+- Appearance, Chat & responses, Voice & audio, Notifications, Language and
+  About & support replace the mixed App settings sheet. Cloud Link follows
+  Connection and retains its store-install gate; diagnostics is named directly.
+- Category sheets use `OverlaySheet` with a `SettingsPanel` scroll area and fixed
+  title/Close header. Full-screen service editing restores Cloud Link on return.
+- `SettingTarget` reveals/highlights a matching localized label without changing
+  its value. `SettingsDisclosure` expands for a search group or attention state.
+- `SettingSwitchRow`, `SettingSelectField`, `SettingTextInput`, `SettingSlider`
+  and `SettingButton` share wrapping copy, theme colors and accessible targets;
+  the same components are reused by setup. Technical setup uses disclosures.
+- Search metadata is gated with the same platform/capability state as controls,
+  and never includes credentials/current values. Server/project inspection
+  continues through the existing independent workspace scope.
+- See [design-system.md](design-system.md) for component contracts, interaction
+  states, foundations and the checklist for future features.
 
 ## `app/(tabs)/terminal.tsx`
 
@@ -724,7 +728,7 @@ Responsibility:
 ### `AppearanceSection`
 
 `components/settings/sections/appearance-section.tsx`, rendered inside
-`GeneralSection` above the slim-interface switch.
+the Appearance category above the slim-interface switch.
 
 Responsibility:
 
@@ -740,7 +744,7 @@ Responsibility:
 
 Responsibility:
 
-- Advanced → Update checks group for the app update feature
+- About & support → Update checks group for the app update feature
 - toggle update checks and pick the check period (When available, Daily, Weekly)
 - read and mutate the provider-owned update preference through `useUpdates()`
 - render nothing when the update module is unavailable (`supported` is false)
@@ -1109,7 +1113,7 @@ But parity is easiest if these responsibilities remain separated:
 - `providers/use-transcript-read-errors.ts` owns cold transcript read failures independently of the transcript window. Non-silent failures are tagged with the current client, cleared by a successful read, and hidden after a reconnect or server switch. `TranscriptList` renders a retry card for a cold failure with no held records and never falls through to starter prompts. The retry action reuses the inbox-backed transcript read.
 - `TranscriptList` exposes `Jump to latest` whenever the list is detached from the tail. New rows switch the label to `New messages`; tapping restores follow mode and saves the restored position. The control floats above the transcript without adding a list row.
 - Onboarding permission cards show `Checking…` until status resolves. When the OS will no longer prompt, the enable action becomes `Open settings` via the shared notification/voice setting helpers instead of repeatedly requesting a blocked permission.
-- Settings reconnect surfaces the returned `ConnectionState` in a snackbar and keeps a two-line connection summary. The reconnect button only indicates an in-flight request while it runs.
+- The Connection sheet’s labeled Reconnect action surfaces the returned `ConnectionState` in a snackbar and keeps a two-line connection summary. The reconnect button only indicates an in-flight request while it runs.
 - The terminal picker marks the active PTY, shows a per-row opening spinner, repeats the target title and short ID in the close confirmation, and confirms copy with a snackbar.
 - Share staging distinguishes `expired` from `discarded`; the close action is non-destructive, while the footer Discard clears the payload. Target loading, failure/retry, empty, selected, and search-empty states live in the conversation picker.
 - Chat library rename auto-focuses, supports keyboard submit, offers Cancel, and disables Save for blank or in-flight titles.

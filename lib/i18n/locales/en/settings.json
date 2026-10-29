@@ -4,14 +4,17 @@
       "connection": "Connection",
       "ai": "AI & providers",
       "notifications": "Notifications",
-      "voice": "Voice",
+      "voice": "Voice & audio",
       "advanced": "Advanced",
       "support": "Support",
       "permissions": "Approvals",
       "subscription": "Subscription",
       "cloudLink": "Cloud Link",
       "extensions": "Extensions",
-      "responses": "Responses"
+      "responses": "Responses",
+      "appearance": "Appearance",
+      "chat": "Chat & responses",
+      "about": "About & support"
     },
     "summaries": {
       "configuredCount": "{{value}} configured",
@@ -24,7 +27,35 @@
       "voiceSystem": "System speech · {{phrase}}",
       "voiceLocal": "On-device · {{phrase}}",
       "responsesOn": "{{scope}} · next actions on",
-      "responsesOff": "{{scope}} · next actions off"
+      "responsesOff": "{{scope}} · next actions off",
+      "appearance": "Theme, color and interface density",
+      "diagnostics": "Connection health and troubleshooting"
+    },
+    "groups": {
+      "app": "App preferences",
+      "connections": "Connections",
+      "server": "Selected server"
+    },
+    "intro": "Personalize the app and manage your connections.",
+    "search": {
+      "placeholder": "Search settings",
+      "clear": "Clear search",
+      "empty": "No matching settings. Try another word.",
+      "results": "Matching settings: {{count}}"
+    },
+    "keywords": {
+      "appearance": "display theme color colour dark light compact density",
+      "responses": "chat messages text font size replies response style steer append queue bubbles",
+      "voice": "voice audio speech sound microphone input playback language wake phrase",
+      "notifications": "notifications alerts battery widgets",
+      "language": "language locale translation interface",
+      "support": "help feedback support updates version setup assistant",
+      "connection": "connections server address password credentials reconnect QR",
+      "cloud-link": "remote connection Cloud Link subscription machines services",
+      "ai": "AI providers accounts models authentication classifier routing",
+      "extensions": "extensions MCP plugins skills commands",
+      "permissions": "permissions approvals saved rules automatic allow",
+      "advanced": "diagnostics network connection realtime polling errors usage"
     }
   },
   "support": {
@@ -566,7 +597,7 @@
   },
   "general": {
     "title": "General",
-    "resetOnboarding": "Reset onboarding"
+    "resetOnboarding": "Review setup"
   },
   "autoUpdate": {
     "title": "Update checks",

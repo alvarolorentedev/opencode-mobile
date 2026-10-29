@@ -10,6 +10,10 @@ The goal is not aspirational design documentation. It is an implementation refer
 
 ## Document Index
 
+- `design-system.md`
+  Shared visual foundations, settings components, interaction states, accessibility,
+  search destinations, and the checklist for future features.
+
 - `architecture.md`
   Architecture, module boundaries, runtime boot flow, and state ownership.
 - `functional-spec.md`

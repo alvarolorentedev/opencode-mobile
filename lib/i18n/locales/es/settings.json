@@ -4,14 +4,17 @@
       "connection": "Conexión",
       "ai": "IA y proveedores",
       "notifications": "Notificaciones",
-      "voice": "Voz",
+      "voice": "Voz y audio",
       "advanced": "Avanzado",
       "support": "Soporte",
       "permissions": "Aprobaciones",
       "subscription": "Suscripción",
       "cloudLink": "Cloud Link",
       "extensions": "Extensions",
-      "responses": "Respuestas"
+      "responses": "Respuestas",
+      "appearance": "Apariencia",
+      "chat": "Chat y respuestas",
+      "about": "Acerca de y ayuda"
     },
     "summaries": {
       "configuredCount": "{{value}} configurados",
@@ -24,7 +27,35 @@
       "voiceSystem": "Voz del sistema · {{phrase}}",
       "voiceLocal": "En el dispositivo · {{phrase}}",
       "responsesOn": "{{scope}} · próximos pasos activados",
-      "responsesOff": "{{scope}} · próximos pasos desactivados"
+      "responsesOff": "{{scope}} · próximos pasos desactivados",
+      "appearance": "Tema, color y densidad de la interfaz",
+      "diagnostics": "Estado de la conexión y solución de problemas"
+    },
+    "groups": {
+      "app": "Preferencias de la app",
+      "connections": "Conexiones",
+      "server": "Servidor seleccionado"
+    },
+    "intro": "Personaliza la app y administra tus conexiones.",
+    "search": {
+      "placeholder": "Buscar ajustes",
+      "clear": "Borrar búsqueda",
+      "empty": "No hay ajustes coincidentes. Prueba otra palabra.",
+      "results": "Ajustes encontrados: {{count}}"
+    },
+    "keywords": {
+      "appearance": "pantalla tema color oscuro claro compacto densidad",
+      "responses": "chat mensajes texto fuente tamaño respuestas estilo dirigir añadir cola burbujas",
+      "voice": "voz audio habla sonido micrófono entrada reproducción idioma frase activación",
+      "notifications": "notificaciones alertas batería widgets",
+      "language": "idioma traducción interfaz",
+      "support": "ayuda comentarios soporte actualizaciones versión asistente configuración",
+      "connection": "conexiones servidor dirección contraseña credenciales reconectar QR",
+      "cloud-link": "conexión remota Cloud Link suscripción equipos servicios",
+      "ai": "IA proveedores cuentas modelos autenticación clasificador enrutamiento",
+      "extensions": "extensiones MCP plugins habilidades comandos",
+      "permissions": "permisos aprobaciones reglas guardadas permitir automático",
+      "advanced": "diagnóstico red conexión tiempo real sondeo errores uso"
     }
   },
   "support": {
@@ -566,7 +597,7 @@
   },
   "general": {
     "title": "General",
-    "resetOnboarding": "Reiniciar la configuración inicial"
+    "resetOnboarding": "Revisar configuración"
   },
   "autoUpdate": {
     "title": "Comprobar actualizaciones",

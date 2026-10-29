@@ -23,7 +23,7 @@ async function form(onSubmit = vi.fn()) {
     'react-native': { Keyboard: { dismiss: () => {} }, StyleSheet: { create: (styles: unknown) => styles }, View: 'View', Modal: 'Modal', KeyboardAvoidingView: 'KeyboardAvoidingView', ScrollView: 'ScrollView' },
     'react-native-paper': { Appbar: { Header: 'Header', BackAction: 'BackAction', Content: 'Content' }, Button: 'Button', HelperText: 'HelperText', IconButton: 'IconButton', Text: 'Text', TextInput: { Icon: 'Icon' } },
     'react-native-safe-area-context': { useSafeAreaInsets: () => ({ top: 0, bottom: 0 }) },
-    '@/components/ui/text-input': { TextInput: 'Input' },
+    './sections/setting-rows': { SettingButton: 'Button', SettingTextInput: 'Input' },
     '@/constants/theme': { Colors: { light: {} } },
     '@/hooks/use-update-blocker': { useUpdateBlocker: () => {} },
     '@/hooks/use-color-scheme': { useColorScheme: () => 'light' },

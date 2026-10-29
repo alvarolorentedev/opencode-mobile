@@ -1,12 +1,13 @@
+import { SettingButton as Button, SettingSlider as NumericSlider, SettingTextInput as TextInput, SettingSelectField, SettingSwitchRow, type Palette } from './setting-rows';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Platform, StyleSheet, View } from 'react-native';
-import { Button, HelperText, List, SegmentedButtons, Text } from 'react-native-paper';
+import { HelperText, SegmentedButtons, Text } from 'react-native-paper';
 
 import { type NativeSelectOption } from '@/components/ui/native-select';
-import { NumericSlider } from '@/components/ui/numeric-slider';
-import { TextInput } from '@/components/ui/text-input';
+import { SettingTarget, SettingsDisclosure } from '../settings-panel';
+
 import type { VoiceCapabilities } from '@/lib/voice/capabilities';
 import type { SpeechVoiceOption } from '@/lib/voice/speech-output';
 import { DEFAULT_WAKE_PHRASE, normalizeWakePhrase } from '@/lib/voice/wake-phrase';
@@ -15,7 +16,7 @@ import type { ChatPreferences } from '@/providers/opencode-provider';
 import { WORKING_SOUND_OPTIONS } from '@/components/settings/settings-utils';
 import { LocalVoiceSection, type LocalVoiceState } from './local-voice-section';
 import { LocalTtsSection } from './local-tts-section';
-import { SettingSelectField, SettingSwitchRow, type Palette } from './setting-rows';
+
 import type { useTtsSetup } from '@/components/settings/use-tts-setup';
 
 type VoiceSectionProps = {
@@ -110,9 +111,8 @@ export function VoiceSection({
     })),
   ];
 
-  return (
-    <View style={styles.section}>
-      <View style={styles.modeBlock}>
+  const input = <>
+      <SettingTarget label={t('settings:voice.mode.label')}><View style={styles.modeBlock}>
         <Text variant={onboarding ? 'titleMedium' : 'titleSmall'} style={{ color: palette.text }}>{t(onboarding ? 'onboarding:voice.input' : 'settings:voice.mode.label')}</Text>
         <SegmentedButtons
           onValueChange={(value) => {
@@ -133,6 +133,7 @@ export function VoiceSection({
         </HelperText>
       </View>
 
+      </SettingTarget>
       {localMode ? (
         <LocalVoiceSection
           chatPreferences={chatPreferences}
@@ -194,40 +195,6 @@ export function VoiceSection({
         ) : <HelperText type="info">{t('onboarding:permissions.voice.unsupported')}</HelperText>
       ) : null}
 
-      {onboarding ? <View style={[styles.divider, { backgroundColor: palette.border }]} /> : null}
-      {onboarding ? <Text variant="titleMedium" style={{ color: palette.text }}>{t('onboarding:voice.playback')}</Text> : null}
-      {Platform.OS === 'web' ? null : (
-        <>
-          <View style={styles.modeBlock}>
-            {onboarding ? null : <Text variant="titleSmall" style={{ color: palette.text }}>{t('settings:voice.playbackEngine.label')}</Text>}
-            <SegmentedButtons
-              onValueChange={(value) => {
-                setShowLocalTtsSetup(value === 'local');
-                if (onboarding && value === 'local' && activeTtsStatus !== 'ready') return;
-                void ttsSetup.setEngine(value === 'local' ? 'local' : 'system');
-              }}
-              buttons={[
-                { icon: 'cellphone', label: t('settings:voice.mode.system'), value: 'system' },
-                { icon: 'chip', label: t('settings:voice.mode.local'), value: 'local' },
-              ]}
-              value={localPlayback ? 'local' : 'system'}
-            />
-            <HelperText type="info">
-              {localPlayback
-                ? t('settings:voice.playbackEngine.localDescription')
-                : t('settings:voice.playbackEngine.systemDescription')}
-            </HelperText>
-          </View>
-
-          {!onboarding || localPlayback || showLocalTtsSetup ? (
-            <>
-              {onboarding && !localPlayback ? <HelperText type="info">{t('settings:voice.localTts.installFirst')}</HelperText> : null}
-              <LocalTtsSection chatPreferences={chatPreferences} palette={palette} ttsSetup={ttsSetup} />
-            </>
-          ) : null}
-        </>
-      )}
-
       {onboarding ? null : <>
         <TextInput
           autoCapitalize="none"
@@ -241,6 +208,8 @@ export function VoiceSection({
         <HelperText type="info">{t('settings:voice.speechLocale.helper')}</HelperText>
       </>}
 
+  </>;
+  const playback = <>
       <View style={styles.group}>
         {onboarding ? null : <>
           <Text variant="titleSmall" style={{ color: palette.text }}>{t('settings:voice.playback.title')}</Text>
@@ -272,7 +241,7 @@ export function VoiceSection({
             palette={palette}
           />
         </>}
-        {!onboarding || !localPlayback ? <>
+        {!localPlayback ? <>
           <SettingSelectField
             disabled={isRefreshingSpeechVoices}
             label={t('settings:voice.voiceSelect.label')}
@@ -343,9 +312,63 @@ export function VoiceSection({
         </>}
       </View>
 
+      {Platform.OS === 'web' ? null : (
+        <>
+          <SettingTarget label={t('settings:voice.playbackEngine.label')}><View style={styles.modeBlock}>
+            {onboarding ? null : <Text variant="titleSmall" style={{ color: palette.text }}>{t('settings:voice.playbackEngine.label')}</Text>}
+            <SegmentedButtons
+              onValueChange={(value) => {
+                setShowLocalTtsSetup(value === 'local');
+                if (onboarding && value === 'local' && activeTtsStatus !== 'ready') return;
+                void ttsSetup.setEngine(value === 'local' ? 'local' : 'system');
+              }}
+              buttons={[
+                { icon: 'cellphone', label: t('settings:voice.mode.system'), value: 'system' },
+                { icon: 'chip', label: t('settings:voice.mode.local'), value: 'local' },
+              ]}
+              value={localPlayback ? 'local' : 'system'}
+            />
+            <HelperText type="info">
+              {localPlayback
+                ? t('settings:voice.playbackEngine.localDescription')
+                : t('settings:voice.playbackEngine.systemDescription')}
+            </HelperText>
+          </View>
+
+          </SettingTarget>
+          {!onboarding || localPlayback || showLocalTtsSetup ? (
+            <>
+              {onboarding && !localPlayback ? <HelperText type="info">{t('settings:voice.localTts.installFirst')}</HelperText> : null}
+              <SettingsDisclosure plain={onboarding} id="voice-tts" title={t('settings:voice.localTts.title')}
+                attention={Boolean(ttsSetup.error) || (localPlayback && activeTtsStatus !== 'ready') || Object.values(ttsSetup.statuses).includes('installing')}>
+                <SettingTarget label={t('settings:voice.localTts.title')}><LocalTtsSection chatPreferences={chatPreferences} palette={palette} ttsSetup={ttsSetup} /></SettingTarget>
+              </SettingsDisclosure>
+            </>
+          ) : null}
+        </>
+      )}
+
+  </>;
+  return (
+    <View style={styles.section}>
+      {!onboarding && voicePermission?.available && !voicePermission.granted ? <>
+        <HelperText type="info">{t('settings:voice.check.deniedHint')}</HelperText>
+        <Button mode="outlined" onPress={voicePermission.canAskAgain ? onEnableVoiceInput : onOpenVoiceSettings}>
+          {t(voicePermission.canAskAgain ? 'settings:voice.check.enable' : 'common:actions.openSettings')}
+        </Button>
+      </> : null}
+      {onboarding ? input : null}
+      {onboarding ? <View style={[styles.divider, { backgroundColor: palette.border }]} /> : null}
+      {onboarding ? <Text variant="titleMedium" style={{ color: palette.text }}>{t('onboarding:voice.playback')}</Text> : null}
+      {playback}
+      {onboarding ? null : <SettingsDisclosure id="voice-input" title={t('settings:voice.mode.label')}
+        attention={localMode && (localVoice.status !== 'ready' || Boolean(localVoice.error) || Boolean(localVoice.enrollment.error) || localVoice.enrollment.isRecording || (chatPreferences.localSpeakerVerification && !localVoice.enrollment.hasProfile))}>
+        {input}
+      </SettingsDisclosure>}
       {onboarding ? null : <>
         <View style={[styles.voiceCheckCard, { backgroundColor: palette.surface, borderColor: palette.border }]}>
-          <List.Accordion id="voice-check" title={t('settings:voice.check.title')}>
+          <SettingsDisclosure id="voice-check" title={t('settings:voice.check.title')}>
+          <SettingTarget label={t('settings:voice.check.title')}>
             <View style={styles.voiceCheckBody}>
               <VoiceCheckRow label={t('settings:voice.check.permission')} palette={palette} status={permissionStatus} />
               <VoiceCheckRow
@@ -398,7 +421,7 @@ export function VoiceSection({
                 ) : null}
               </View>
             </View>
-          </List.Accordion>
+          </SettingTarget></SettingsDisclosure>
         </View>
 
         <HelperText type="info">{t('settings:voice.footer')}</HelperText>

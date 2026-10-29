@@ -1,6 +1,8 @@
+import { SettingButton as Button } from './setting-rows';
+import { SettingTarget } from '../settings-panel';
 import { useTranslation } from 'react-i18next';
 import { Linking, Platform, StyleSheet, View } from 'react-native';
-import { ActivityIndicator, Button, HelperText, Icon, List, Text } from 'react-native-paper';
+import { ActivityIndicator, HelperText, Icon, List, Text } from 'react-native-paper';
 
 import { ConnectSubscription } from '@/components/settings/connect-subscription';
 import { ServicesSection } from '@/components/settings/sections/services-section';
@@ -47,20 +49,20 @@ export function CloudLinkSection({ setup, services, palette, onManageMachines, o
       <Text variant="bodyMedium" style={{ color: palette.muted }}>{t('settings:subscription.description')}</Text>
     </View>
 
-    {services ? <ServicesSection api={services} palette={palette} onAddService={onAddService} onEditService={onEditService} /> : null}
+    {services ? <SettingTarget label={t('settings:services.title')}><ServicesSection api={services} palette={palette} onAddService={onAddService} onEditService={onEditService} /></SettingTarget> : null}
 
     <View>
       <Text variant="labelLarge" style={[styles.groupTitle, { color: palette.muted }]}>{t('settings:screen.categories.subscription')}</Text>
       {!setup.entitled && setup.initialization === 'ready' ? <ConnectSubscription setup={setup} showRestore={false} /> : null}
-      <List.Item testID="subscription-manage" accessibilityRole="button" disabled={disabled} onPress={() => void setup.manageSubscription()}
+      <SettingTarget label={t('settings:subscription.manage')}><List.Item testID="subscription-manage" accessibilityRole="button" disabled={disabled} onPress={() => void setup.manageSubscription()}
         title={t('settings:subscription.manage')} description={t(Platform.OS === 'ios' ? 'settings:subscription.opensApple' : 'settings:subscription.opensGoogle')}
         titleStyle={{ color: palette.text }} descriptionStyle={{ color: palette.muted }} titleNumberOfLines={0} descriptionNumberOfLines={0} style={{ opacity: disabled ? 0.45 : 1 }}
-        left={(props) => <List.Icon {...props} icon="credit-card-outline" color={actionColor} />} right={(props) => <List.Icon {...props} icon="open-in-new" color={palette.muted} />} />
+        left={(props) => <List.Icon {...props} icon="credit-card-outline" color={actionColor} />} right={(props) => <List.Icon {...props} icon="open-in-new" color={palette.muted} />} /></SettingTarget>
       <View style={{ borderTopWidth: StyleSheet.hairlineWidth, borderColor: palette.border }} />
-      <List.Item testID="connect-restore" accessibilityRole="button" disabled={disabled} onPress={() => void setup.restore()}
+      <SettingTarget label={t('settings:connect.restore')}><List.Item testID="connect-restore" accessibilityRole="button" disabled={disabled} onPress={() => void setup.restore()}
         title={t('settings:connect.restore')} description={t('settings:subscription.restoreDescription')}
         titleStyle={{ color: palette.text }} descriptionStyle={{ color: palette.muted }} titleNumberOfLines={0} descriptionNumberOfLines={0} style={{ opacity: disabled ? 0.45 : 1 }}
-        left={(props) => <List.Icon {...props} icon="restore" color={actionColor} />} />
+        left={(props) => <List.Icon {...props} icon="restore" color={actionColor} />} /></SettingTarget>
     </View>
 
     {pending ? <Text testID="connect-progress" style={{ color: palette.text }}>{t(`settings:connect.progress.${setup.phase}`)}</Text> : null}
@@ -70,10 +72,10 @@ export function CloudLinkSection({ setup, services, palette, onManageMachines, o
 
     <View>
       <Text variant="labelLarge" style={[styles.groupTitle, { color: palette.muted }]}>{t('settings:subscription.machines')}</Text>
-      <List.Item testID="subscription-machines" accessibilityRole="button" disabled={pending} onPress={onManageMachines}
+      <SettingTarget label={t('settings:connect.machines')}><List.Item testID="subscription-machines" accessibilityRole="button" disabled={pending} onPress={onManageMachines}
         title={t('settings:connect.machines')} description={t('settings:subscription.machinesDescription')}
         titleStyle={{ color: palette.text }} descriptionStyle={{ color: palette.muted }} titleNumberOfLines={0} descriptionNumberOfLines={0} style={{ opacity: pending ? 0.45 : 1 }}
-        left={(props) => <List.Icon {...props} icon="monitor" color={pending ? palette.muted : palette.tint} />} right={(props) => <List.Icon {...props} icon="chevron-right" color={palette.muted} />} />
+        left={(props) => <List.Icon {...props} icon="monitor" color={pending ? palette.muted : palette.tint} />} right={(props) => <List.Icon {...props} icon="chevron-right" color={palette.muted} />} /></SettingTarget>
     </View>
 
     <List.Item testID="cloud-link-learn-more" accessibilityRole="button" onPress={() => void Linking.openURL(CONNECT_LEARN_MORE_URL).catch(() => undefined)}

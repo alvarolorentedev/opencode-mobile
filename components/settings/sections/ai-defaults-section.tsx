@@ -4,6 +4,7 @@ import { Checkbox, Chip, HelperText, List, Text } from 'react-native-paper';
 
 import { NativeSelect } from '@/components/ui/native-select';
 import { renderProviderIcon } from '@/components/ui/provider-icon';
+import { SettingTarget } from '../settings-panel';
 import { Fonts } from '@/constants/theme';
 import { getAddableProviders, getProviderCopy } from '@/components/settings/settings-utils';
 import type { ServerContract } from '@/lib/opencode/client';
@@ -58,7 +59,7 @@ export function AiDefaultsSection({
         <Text variant="bodyMedium" style={{ color: palette.muted }}>
           {t('settings:providers.chooseModels')}
         </Text>
-        <View style={styles.providerHeader}>
+        <SettingTarget label={t('settings:providers.configuredProviders')}><View style={styles.providerHeader}>
           <Text variant="labelLarge" style={{ color: palette.text }}>{t('settings:providers.configuredProviders')}</Text>
           {addableProviders.length > 0 ? (
             <NativeSelect
@@ -92,6 +93,7 @@ export function AiDefaultsSection({
           ) : null}
         </View>
 
+        </SettingTarget>
         <View style={styles.chipWrap}>
           {configuredProviders.map((provider) => (
             <Chip key={provider.id} icon={({ size, color }) => renderProviderIcon(provider.id, size, color)} compact onPress={() => onStartProviderConfiguration(provider.id)} closeIconAccessibilityLabel={t('settings:providers.removeCredentials', { provider: getProviderCopy(provider.id, provider.label, t).label })} onClose={() => onRemoveProvider(provider.id)}>

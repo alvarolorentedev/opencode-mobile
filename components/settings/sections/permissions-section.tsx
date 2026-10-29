@@ -1,7 +1,9 @@
+import { SettingButton as Button } from './setting-rows';
 import { useTranslation } from 'react-i18next';
 import { StyleSheet, View } from 'react-native';
-import { Button, List, Text } from 'react-native-paper';
+import { List, Text } from 'react-native-paper';
 
+import { SettingTarget } from '../settings-panel';
 import { confirmAction } from '@/lib/confirm-action';
 import type { SavedPermissionRule } from '@/lib/opencode/client';
 import type { Palette } from './setting-rows';
@@ -30,7 +32,7 @@ export function PermissionsSection({
   };
 
   return (
-    <View style={styles.section}>
+    <SettingTarget label={t('settings:permissions.title')}><View style={styles.section}>
       <Text variant="titleLarge" style={[styles.title, { color: palette.text }]}>{t('settings:permissions.title')}</Text>
       <Text variant="bodySmall" style={{ color: palette.muted }}>{t('settings:permissions.description')}</Text>
       {rules.length === 0 ? (
@@ -48,7 +50,7 @@ export function PermissionsSection({
       <View style={styles.actions}>
         <Button mode="outlined" onPress={onRefresh}>{t('settings:permissions.refresh')}</Button>
       </View>
-    </View>
+    </View></SettingTarget>
   );
 }
 

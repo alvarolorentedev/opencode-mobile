@@ -1480,3 +1480,21 @@ browser suite and Android rebuild were started; at the user's request, committin
 the fix does not wait for those broader checks to finish.
 Human validation of the changed onboarding E2E file and physical-device audio,
 permissions, downloads, enrollment and accessibility checks remain outstanding.
+
+## Settings usability and design-system coverage
+
+`settings-search.test.ts` covers localized multi-word/diacritic matching, empty
+and category-only searches, exclusion of current values, platform/capability
+gates, and advanced-group/extension-tab destinations. Existing setup component
+contracts continue to check explicit voice installation and credential handling.
+Settings browser flows cover advanced search reveal without preference changes,
+query preservation/clear/no results, narrow light-theme appearance persistence,
+and localized search. Updated onboarding, prompt-delivery, model-routing,
+diagnostics and update-offer flows follow the relocated controls.
+
+Visual acceptance checks should compare Settings home and every category/dialog
+at 320/390-point phone widths, landscape and tablet width; include dark/light,
+alternate accents, long translations and large text. Physical devices remain
+necessary for TalkBack/VoiceOver, keyboard/Back, safe areas, permissions, audio,
+enrollment and downloads. E2E contract changes require explicit human validation
+under `AGENTS.md`; passing web checks alone does not complete native acceptance.

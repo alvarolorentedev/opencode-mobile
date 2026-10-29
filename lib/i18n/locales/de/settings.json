@@ -4,14 +4,17 @@
       "connection": "Verbindung",
       "ai": "KI & Anbieter",
       "notifications": "Benachrichtigungen",
-      "voice": "Sprache",
+      "voice": "Sprache und Audio",
       "advanced": "Erweitert",
       "support": "Support",
       "permissions": "Genehmigungen",
       "subscription": "Abonnement",
       "cloudLink": "Cloud Link",
       "extensions": "Extensions",
-      "responses": "Antworten"
+      "responses": "Antworten",
+      "appearance": "Darstellung",
+      "chat": "Chat und Antworten",
+      "about": "Info und Hilfe"
     },
     "summaries": {
       "configuredCount": "{{value}} konfiguriert",
@@ -24,7 +27,35 @@
       "voiceSystem": "Systemsprache · {{phrase}}",
       "voiceLocal": "Auf dem Gerät · {{phrase}}",
       "responsesOn": "{{scope}} · nächste Schritte an",
-      "responsesOff": "{{scope}} · nächste Schritte aus"
+      "responsesOff": "{{scope}} · nächste Schritte aus",
+      "appearance": "Design, Farbe und Oberflächendichte",
+      "diagnostics": "Verbindungsstatus und Fehlerbehebung"
+    },
+    "groups": {
+      "app": "App-Einstellungen",
+      "connections": "Verbindungen",
+      "server": "Ausgewählter Server"
+    },
+    "intro": "Passe die App an und verwalte deine Verbindungen.",
+    "search": {
+      "placeholder": "Einstellungen suchen",
+      "clear": "Suche löschen",
+      "empty": "Keine passenden Einstellungen. Versuche ein anderes Wort.",
+      "results": "Gefundene Einstellungen: {{count}}"
+    },
+    "keywords": {
+      "appearance": "Anzeige Design Thema Farbe dunkel hell kompakt Dichte",
+      "responses": "Chat Nachrichten Text Schrift Größe Antworten Stil steuern anhängen Warteschlange Sprechblasen",
+      "voice": "Sprache Audio Stimme Ton Mikrofon Eingabe Wiedergabe Weckphrase",
+      "notifications": "Benachrichtigungen Hinweise Akku Widgets",
+      "language": "Sprache Übersetzung Oberfläche",
+      "support": "Hilfe Feedback Support Updates Version Einrichtungsassistent",
+      "connection": "Verbindungen Server Adresse Passwort Zugangsdaten neu verbinden QR",
+      "cloud-link": "Fernzugriff Cloud Link Abonnement Computer Dienste",
+      "ai": "KI Anbieter Konten Modelle Anmeldung Klassifikator Routing",
+      "extensions": "Erweiterungen MCP Plugins Fähigkeiten Befehle",
+      "permissions": "Berechtigungen Freigaben gespeicherte Regeln automatisch erlauben",
+      "advanced": "Diagnose Netzwerk Verbindung Echtzeit Abfragen Fehler Nutzung"
     }
   },
   "support": {
@@ -566,7 +597,7 @@
   },
   "general": {
     "title": "Allgemein",
-    "resetOnboarding": "Einrichtung neu starten"
+    "resetOnboarding": "Einrichtung überprüfen"
   },
   "autoUpdate": {
     "title": "Update-Prüfung",

@@ -31,7 +31,8 @@ async function voice(os = 'android', ready = false) {
     '@/lib/voice/wake-phrase': { normalizeWakePhrase: (value: string) => value },
     '@/components/settings/settings-utils': { WORKING_SOUND_OPTIONS: [] },
     './local-voice-section': { LocalVoiceSection: 'LocalVoice' }, './local-tts-section': { LocalTtsSection: 'LocalTts' },
-    './setting-rows': { SettingSelectField: 'Select', SettingSwitchRow: 'Switch' },
+    './setting-rows': { SettingButton: 'Button', SettingSelectField: 'Select', SettingSwitchRow: 'Switch', SettingSlider: 'Slider', SettingTextInput: 'Input' },
+    '../settings-panel': { SettingTarget: 'Target', SettingsDisclosure: 'Disclosure' },
   });
   runtime.mount(VoiceSection, {
     onboarding: true, chatPreferences: defaultChatPreferences, palette: {},

@@ -4,14 +4,17 @@
       "connection": "连接",
       "ai": "AI 与提供商",
       "notifications": "通知",
-      "voice": "语音",
+      "voice": "语音与音频",
       "advanced": "高级",
       "support": "支持",
       "permissions": "审批",
       "subscription": "订阅",
       "cloudLink": "Cloud Link",
       "extensions": "Extensions",
-      "responses": "回复"
+      "responses": "回复",
+      "appearance": "外观",
+      "chat": "聊天与回复",
+      "about": "关于与帮助"
     },
     "summaries": {
       "configuredCount": "已配置 {{value}} 个",
@@ -24,7 +27,35 @@
       "voiceSystem": "系统语音 · {{phrase}}",
       "voiceLocal": "设备端 · {{phrase}}",
       "responsesOn": "{{scope}} · 下一步开启",
-      "responsesOff": "{{scope}} · 下一步关闭"
+      "responsesOff": "{{scope}} · 下一步关闭",
+      "appearance": "主题、颜色和界面密度",
+      "diagnostics": "连接状态与故障排查"
+    },
+    "groups": {
+      "app": "应用偏好",
+      "connections": "连接",
+      "server": "所选服务器"
+    },
+    "intro": "个性化应用并管理连接。",
+    "search": {
+      "placeholder": "搜索设置",
+      "clear": "清除搜索",
+      "empty": "没有匹配的设置，请尝试其他关键词。",
+      "results": "匹配的设置：{{count}}"
+    },
+    "keywords": {
+      "appearance": "显示 主题 颜色 深色 浅色 紧凑 密度",
+      "responses": "聊天 消息 文字 字体 大小 回复 风格 引导 追加 队列 气泡",
+      "voice": "语音 音频 声音 麦克风 输入 播放 语言 唤醒词",
+      "notifications": "通知 提醒 电池 小组件",
+      "language": "语言 翻译 界面",
+      "support": "帮助 反馈 支持 更新 版本 设置向导",
+      "connection": "连接 服务器 地址 密码 凭据 重新连接 二维码",
+      "cloud-link": "远程连接 Cloud Link 订阅 计算机 服务",
+      "ai": "人工智能 提供商 账户 模型 身份验证 分类器 路由",
+      "extensions": "扩展 MCP 插件 技能 命令",
+      "permissions": "权限 审批 已保存规则 自动允许",
+      "advanced": "诊断 网络 连接 实时 轮询 错误 用量"
     }
   },
   "support": {
@@ -566,7 +597,7 @@
   },
   "general": {
     "title": "常规",
-    "resetOnboarding": "重新进行初始设置"
+    "resetOnboarding": "检查设置"
   },
   "autoUpdate": {
     "title": "更新检查",

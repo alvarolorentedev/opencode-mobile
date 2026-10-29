@@ -4,14 +4,17 @@
       "connection": "Connexion",
       "ai": "IA et fournisseurs",
       "notifications": "Notifications",
-      "voice": "Voix",
+      "voice": "Voix et audio",
       "advanced": "Avancé",
       "support": "Assistance",
       "permissions": "Approbations",
       "subscription": "Abonnement",
       "cloudLink": "Cloud Link",
       "extensions": "Extensions",
-      "responses": "Réponses"
+      "responses": "Réponses",
+      "appearance": "Apparence",
+      "chat": "Chat et réponses",
+      "about": "À propos et aide"
     },
     "summaries": {
       "configuredCount": "{{value}} configurés",
@@ -24,7 +27,35 @@
       "voiceSystem": "Voix système · {{phrase}}",
       "voiceLocal": "Sur l’appareil · {{phrase}}",
       "responsesOn": "{{scope}} · prochaines étapes activées",
-      "responsesOff": "{{scope}} · prochaines étapes désactivées"
+      "responsesOff": "{{scope}} · prochaines étapes désactivées",
+      "appearance": "Thème, couleur et densité de l’interface",
+      "diagnostics": "État de la connexion et dépannage"
+    },
+    "groups": {
+      "app": "Préférences de l’app",
+      "connections": "Connexions",
+      "server": "Serveur sélectionné"
+    },
+    "intro": "Personnalisez l’app et gérez vos connexions.",
+    "search": {
+      "placeholder": "Rechercher un réglage",
+      "clear": "Effacer la recherche",
+      "empty": "Aucun réglage correspondant. Essayez un autre mot.",
+      "results": "Réglages trouvés : {{count}}"
+    },
+    "keywords": {
+      "appearance": "affichage thème couleur sombre clair compact densité",
+      "responses": "chat messages texte police taille réponses style orienter ajouter file bulles",
+      "voice": "voix audio parole son microphone entrée lecture langue phrase activation",
+      "notifications": "notifications alertes batterie widgets",
+      "language": "langue traduction interface",
+      "support": "aide commentaires assistance mises à jour version assistant configuration",
+      "connection": "connexions serveur adresse mot de passe identifiants reconnecter QR",
+      "cloud-link": "connexion distante Cloud Link abonnement ordinateurs services",
+      "ai": "IA fournisseurs comptes modèles authentification classificateur routage",
+      "extensions": "extensions MCP plugins compétences commandes",
+      "permissions": "permissions approbations règles enregistrées autoriser automatique",
+      "advanced": "diagnostic réseau connexion temps réel interrogation erreurs utilisation"
     }
   },
   "support": {
@@ -566,7 +597,7 @@
   },
   "general": {
     "title": "Général",
-    "resetOnboarding": "Relancer la configuration initiale"
+    "resetOnboarding": "Revoir la configuration"
   },
   "autoUpdate": {
     "title": "Recherche de mises à jour",

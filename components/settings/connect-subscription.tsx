@@ -1,7 +1,8 @@
+import { SettingButton as Button } from './sections/setting-rows';
 import { useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ScrollView, StyleSheet, View } from 'react-native';
-import { ActivityIndicator, Button, HelperText, Icon, RadioButton, Text } from 'react-native-paper';
+import { ActivityIndicator, HelperText, Icon, RadioButton, Text } from 'react-native-paper';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { ConnectSetup } from '@/providers/use-connect-state';
 import { usePalette } from '@/hooks/use-palette';
