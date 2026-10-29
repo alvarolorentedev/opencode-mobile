@@ -20,12 +20,16 @@ async function controlState(request) {
   return response.json();
 }
 
-async function waitForIdle(request) {
+async function waitForIdle(page, request) {
   await expect.poll(async () => {
     const state = await controlState(request);
     const sessionId = state.sessions[0]?.id;
     return sessionId ? state.sessionStatuses?.[sessionId]?.type ?? 'idle' : 'none';
   }, { timeout: 15_000 }).toBe('idle');
+  // The server can report idle before the client has processed the completion.
+  // Auto-routing skips busy sessions, so wait for the composer to leave the
+  // running state before sending the next routed prompt.
+  await expect(page.getByTestId('chat-primary-button')).toHaveAccessibleName('Start conversation mode', { timeout: 15_000 });
 }
 
 test('OpenCode classifier routes simple and complex prompts and explicit models turn it off', async ({ page, request }) => {
@@ -48,14 +52,14 @@ test('OpenCode classifier routes simple and complex prompts and explicit models 
     const session = (await controlState(request)).sessions[0];
     return session?.model?.id ?? session?.model?.modelID;
   }, { timeout: 15_000 }).toBe('openai/gpt-4.1-nano');
-  await waitForIdle(request);
+  await waitForIdle(page, request);
 
   await sendPrompt(page, 'Refactor the whole codebase');
   await expect.poll(async () => {
     const session = (await controlState(request)).sessions[0];
     return session?.model?.id ?? session?.model?.modelID;
   }, { timeout: 15_000 }).toBe('openai/o3-mini');
-  await waitForIdle(request);
+  await waitForIdle(page, request);
 
   const classified = (await controlState(request)).classifierCalls;
   expect(classified).toBeGreaterThanOrEqual(3);
@@ -69,6 +73,6 @@ test('OpenCode classifier routes simple and complex prompts and explicit models 
     const session = (await controlState(request)).sessions[0];
     return session?.model?.id ?? session?.model?.modelID;
   }, { timeout: 15_000 }).toBe('openai/gpt-4.1-mini');
-  await waitForIdle(request);
+  await waitForIdle(page, request);
   expect((await controlState(request)).classifierCalls).toBe(classified);
 });
