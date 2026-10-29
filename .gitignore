@@ -11,6 +11,7 @@ dist-e2e/
 web-build/
 playwright-report/
 test-results/
+storybook-static/
 expo-env.d.ts
 
 # Native

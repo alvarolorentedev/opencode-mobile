@@ -4,10 +4,48 @@ Follow the current implementation docs in `docs/`. Do not invent a new architect
 
 Read first:
 
-1. `docs/architecture.md`
-2. `docs/state-and-data.md`
-3. `docs/component-inventory.md`
-4. `docs/testing-and-validation.md`
+1. `docs/README.md` (task router and section map)
+2. `docs/architecture/overview.md`
+3. `docs/architecture/state-and-data.md`
+4. `docs/design/component-inventory.md`
+5. `docs/engineering/testing-and-validation.md`
+
+## Documentation Map
+
+- `docs/architecture/` — runtime composition, state ownership, protocol, realtime
+- `docs/product/` — user-visible behavior and feature parity
+- `docs/design/` — design system, components, Storybook, UX proposals, design QA
+- `docs/engineering/` — setup, validation, operations, release, deferred work
+- `docs/adr/` — architecture decisions and the decision workflow
+
+Each section has a `README.md` with an index and ownership map. Put a new doc in
+the narrowest section that owns the concern. Update the section README in the
+same change.
+
+## Architecture Decision Records
+
+Decisions are part of the normal workflow, not an afterthought.
+
+Write an ADR when a change:
+
+- selects a framework, transport, storage model, or protocol boundary
+- changes ownership between `app/`, `components/`, `providers/`, `lib/`, or
+  `providers/services/`
+- adds or removes a compatibility path or supported platform
+- establishes a design-system primitive, token family, or accessibility policy
+- rejects a viable alternative for a reason future maintainers need to know
+- changes the documentation or decision workflow itself
+
+Process:
+
+1. Read `docs/adr/README.md`.
+2. Copy `docs/adr/template.md` to `docs/adr/NNNN-short-kebab-title.md`.
+3. Add the ADR to the index in `docs/adr/README.md`.
+4. Link it from the affected implementation doc and the change summary.
+5. Supersede, never rewrite, an accepted ADR.
+
+`tests/vitest/docs.test.ts` enforces ADR numbering, required sections, index
+coverage, and documentation links.
 
 ## Architecture Rule
 
@@ -23,7 +61,7 @@ This app is provider-centric.
 Do not move domain behavior into screens or presentational components.
 
 - New features that require API compatibility are V2-only for now; see
-  `docs/api-contract.md`. Do not add new V1 adapters or fallbacks.
+  `docs/architecture/api-contract.md`. Do not add new V1 adapters or fallbacks.
 
 ## Placement Rules
 
@@ -142,6 +180,9 @@ Changes here require explicit human validation.
 - Preserve continuity across tabs.
 - Respect the dual realtime model: SSE plus polling fallback.
 - Prefer deterministic state transitions over clever indirection.
+- Reuse design tokens and shared controls; do not add literal colors or
+  one-off primitives.
+- Add or update a Storybook story for reusable presentation components.
 - Add every new or changed user-facing string to every supported locale in
   `lib/i18n/locales/<code>/`, preserving interpolation placeholders and plural
   categories.
@@ -154,6 +195,8 @@ Changes here require explicit human validation.
 - duplicated provider-derived state in local UI state
 - protocol changes hidden in UI code
 - shipping user-facing copy that only exists in English
+- parallel component copies instead of extending the shared design system
+- provider-orchestration stories in Storybook
 - unrelated refactors
 
 ## Change Mapping
@@ -177,6 +220,21 @@ Changes here require explicit human validation.
 - provider auth and capability requests: `providers/services/capabilities-service.ts` and `lib/opencode/client.ts`
 - extensions (MCP/plugin/skill/command config): `providers/use-extensions-state.ts`, `providers/services/extensions-service.ts`, and `lib/opencode/extensions/`
 - platform deep links and native integration: `lib/`
+
+### Design system and Storybook
+
+- tokens, palettes, theme mapping: `constants/theme.ts`, `constants/appearance.ts`, `constants/paper-theme.ts`, `constants/design-tokens.ts`
+- shared settings controls: `components/settings/sections/setting-rows.tsx`
+- component responsibilities: `docs/design/component-inventory.md`
+- design rules and acceptance: `docs/design/design-system.md`
+- Storybook config: `.storybook/`
+- stories: co-located `components/**/*.stories.tsx`
+
+Add a story when introducing or changing a reusable primitive or shared
+control. Stories render the production component with the real appearance and
+Paper providers. Do not add provider-orchestration or full-screen stories to
+Storybook; cover those with E2E flows. Run `npm run build:storybook` when
+changing stories or Storybook config. See `docs/design/storybook.md`.
 
 ### User-facing copy and translations
 
@@ -210,7 +268,7 @@ Update together when needed:
 - payload normalization and limits: `lib/share/parse.ts`
 - routing and preview: `app/+native-intent.ts` and `app/share.tsx`
 - receive plugin config and platform gaps: `app.config.ts` and
-  `docs/ios-share-parity.md`
+  `docs/product/parity/ios-share.md`
 
 ## Development Loop
 
@@ -223,7 +281,9 @@ For each task:
 5. Add or update every new or changed user-facing string in all supported
    locales, then run `npm run gen:i18n` and the i18n test.
 6. Update docs when architecture, behavior, or contracts change.
-7. Run validation proportional to risk.
+7. Record any durable decision in `docs/adr/` and update its index.
+8. Add or update a Storybook story when reusable presentation changes.
+9. Run validation proportional to risk.
 
 ## Validation
 
@@ -240,6 +300,8 @@ Run when relevant:
   - `npm run test:fake-server:self`
 - provider, session, blocking flow, SSE, polling, or user-flow changes:
   - `npm run test:e2e:web`
+- Storybook stories or config:
+  - `npm run build:storybook`
 - native or Android-risk changes:
   - `npm run build:development:android`
 
@@ -250,6 +312,7 @@ CI runs the `validate` job. It must be green, so run the same checks locally and
 ```bash
 npm run test:ci:static
 npm run test:fake-server:self
+npm run build:storybook
 npm run test:e2e:web
 ```
 
@@ -327,6 +390,8 @@ A change is done when:
   feature is not complete
 - any `tests/e2e/` or `tests/fake-opencode/` changes have explicit human validation
 - documentation in `docs/` is updated when behavior, architecture, or contracts changed
-- the pre-push CI-equivalent checks pass (`test:ci:static`, `test:fake-server:self`, `test:e2e:web`)
+- any durable decision has an ADR in `docs/adr/` and an index entry
+- reusable presentation changes have a Storybook story and `npm run build:storybook` passes
+- the pre-push CI-equivalent checks pass (`test:ci:static`, `test:fake-server:self`, `build:storybook`, `test:e2e:web`)
 - validation matches the risk of the change
 - the final summary states what changed, what was verified, and any remaining risk

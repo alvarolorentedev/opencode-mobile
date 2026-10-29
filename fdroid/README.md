@@ -5,7 +5,7 @@ FOSS build to the **main F-Droid repository**. There is no self-hosted F-Droid
 repo; users install either from F-Droid or from the `opencode-mobile-fdroid.apk`
 asset on GitHub releases.
 
-See [`docs/fdroid.md`](../docs/fdroid.md) for how the FOSS variant is produced.
+See [`docs/engineering/fdroid.md`](../docs/engineering/fdroid.md) for how the FOSS variant is produced.
 
 ## Submitting to fdroiddata
 
@@ -22,7 +22,7 @@ See [`docs/fdroid.md`](../docs/fdroid.md) for how the FOSS variant is produced.
    hashes, so a pre-merge topic-branch SHA can become unavailable to F-Droid.
 4. Decide the signing approach before first publication. Reproducible builds
    are currently not enabled; the reasons are recorded in `MaintainerNotes`
-   and [`docs/fdroid.md`](../docs/fdroid.md). Only after unsigned APK equivalence
+   and [`docs/engineering/fdroid.md`](../docs/engineering/fdroid.md). Only after unsigned APK equivalence
    has been verified should you enable `Binaries`/`AllowedAPKSigningKeys` or
    extract upstream signatures:
    ```bash

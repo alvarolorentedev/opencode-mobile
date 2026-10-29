@@ -128,7 +128,7 @@ retrieved from the author's [Google Play listing](https://play.google.com/store/
 on 2026-10-07. Keep this content in the upstream repository; copy only the build
 recipe to fdroiddata. A local or uncommitted asset is not available to F-Droid.
 
-See [`fdroid/checklist.md`](../fdroid/checklist.md) for the submission review and
+See [`fdroid/checklist.md`](../../fdroid/checklist.md) for the submission review and
 the remaining publication conditions.
 
 The shared FOSS preparation also excludes the local `opencode-updates` Expo module

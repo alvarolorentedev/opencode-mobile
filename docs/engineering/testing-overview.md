@@ -3,7 +3,7 @@
 This repo uses CI-enforced flow validation instead of broad unit test coverage.
 
 The authoritative, detailed reference is
-[`docs/testing-and-validation.md`](docs/testing-and-validation.md). This file is
+[`testing-and-validation.md`](./testing-and-validation.md). This file is
 the short overview of the strategy and the merge gate.
 
 ## Principles
@@ -28,7 +28,8 @@ Three workflows run the same `validate` gate, defined once in
    type-check (`npm run typecheck:tests`), and the Vitest suites. The exact set
    is the script in `package.json`; do not duplicate the list in prose.
 2. `npm run test:fake-server:self`
-3. `npm run test:e2e:web` — builds the web bundle, boots the fake server, and
+3. `npm run build:storybook` — builds the web component catalog.
+4. `npm run test:e2e:web` — builds the web bundle, boots the fake server, and
    runs the Playwright flows.
 
 The three workflows currently repeat the `validate` steps inline. A reusable
@@ -140,7 +141,7 @@ command remains available for manual use.
 - `tests/fake-opencode/` — the deterministic v1/v2 fake servers and their self-test.
 - `tests/foss-prepare.test.mjs` — FOSS build-tooling check, run by `npm run test:foss`.
 
-See [known gaps](docs/known-gaps.md) for deferred test-infrastructure work.
+See [known gaps](./known-gaps.md) for deferred test-infrastructure work.
 
 ## v2 primary acceptance
 

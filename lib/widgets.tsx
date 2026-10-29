@@ -7,7 +7,7 @@ import { WIDGET_NAMES, SessionWidget, widgetKind } from '@/widgets/session-widge
 
 // Platform bridge for the Android home widget. The provider publishes a
 // snapshot on confirmed state changes; this only repaints any placed widgets.
-// iOS has no widget surface yet (see docs/ios-widget-parity.md), and web/E2E
+// iOS has no widget surface yet (see docs/product/parity/ios-widget.md), and web/E2E
 // runs never call into the native module.
 export const homeWidgetSupported = Platform.OS === 'android' && Constants.appOwnership !== 'expo' && !Constants.expoConfig?.extra?.e2eMode;
 

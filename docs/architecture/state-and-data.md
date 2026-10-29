@@ -1,5 +1,7 @@
 # State And Data Model
 
+Related ADR: [0002 provider-centric orchestration](../adr/0002-provider-centric-orchestration.md)
+
 ## State Ownership Overview
 
 The application uses provider-owned React state. `WorkspaceProvider` owns the app-wide registry and persistence; each retained `WorkspaceRuntime` owns one connection/project branch. Existing domain hooks read the branch supplied by `WorkspaceScope`.
@@ -37,7 +39,7 @@ Meaning:
   constrained, generation) sampled once by `WorkspaceProvider` and passed into
   every retained runtime. NetInfo is not configured per project.
 - `reconnect` tracks the bounded connect-retry attempt and next retry time
-- the connection domain also exposes `services`, the Cloud Link connector's remote service-management state with its connector-reported management revision and port pool. The provider resolves the target machine from the active Cloud Link connection or a saved Cloud Link profile (so it works while another connection is active), exposes the target/machine list and unavailable reason, and keeps the list keyed by that target scope; see [api-contract.md](api-contract.md#connector-service-management-cloud-link)
+- the connection domain also exposes `services`, the Cloud Link connector's remote service-management state with its connector-reported management revision and port pool. The provider resolves the target machine from the active Cloud Link connection or a saved Cloud Link profile (so it works while another connection is active), exposes the target/machine list and unavailable reason, and keeps the list keyed by that target scope; see [api-contract.md](./api-contract.md#connector-service-management-cloud-link)
 - failures carry a machine-readable `kind` (`timeout`, `offline`, `auth`, `entitlement`, `tunnel-startup`, `server-incompatible`, `unknown`) alongside the display message; `retryableStartup` remains for Cloud Link activation compatibility
 
 ## Project And Session Identity State
@@ -193,7 +195,7 @@ values are `auto` or a model ID; unavailable IDs are retained and treated as
 unavailable at send time rather than erased during a slow capability refresh.
 On-device routing requires the pinned GGUF pack; OpenCode routing requires a
 successful `generate.text` probe. Neither mode falls back to a heuristic
-classifier. See [auto model routing](auto-model-routing.md).
+classifier. See [auto model routing](../product/auto-model-routing.md).
 
 `browser`, selected file content, worktree inventory/owning project identity, and MCP status/config are server-derived and not persisted. Text edits remain local to `FilePreview` until the provider compares the current server content with the original editor baseline, writes through native v2 `file.write` (or a v1 VCS patch), and verifies the saved text. Failed comparison, write or verification retains the draft. Listing, search and file-open commits check the current client identity and request order; saves check client identity before writing and only update the selected file if that selection is still current. Identical directory paths on different servers do not make a response current.
 
@@ -459,7 +461,7 @@ Credentials:
   URL, machine ID/name, device ID, expiry). Secrets and environment/store-scoped subscription
   sessions use SecureStore. Expired/missing Cloud Link credentials never fall back to
   active passwords; expiry stops streams/sockets. Development web E2E substitutes
-  memory only. See [Cloud Link pilot](connect.md).
+  memory only. See [Cloud Link pilot](../product/cloud-link.md).
 - Cloud Link setup exposes initialization readiness separately from operation phase.
   Provider-owned `pairLink` securely accepts scanned/deep-linked QR data and
   automatically claims after initialization settles and entitlement is verified.
@@ -472,7 +474,7 @@ Credentials:
   request time, pauses attempts in background and survives foreground return;
   delayed retries are explicit. Valid credentials are reused without near-expiry
   rotation during startup; actual credential expiry remains blocking. This wait
-  does not apply to normal reconnects. See [Cloud Link](connect.md).
+  does not apply to normal reconnects. See [Cloud Link](../product/cloud-link.md).
 - `connectSetup.subscriptionExpiresAt` exposes only the verified session's
   paid-through timestamp, not its bearer token or a renewal prediction.
   `manageSubscription()` uses the existing operation lock and refuses to open
@@ -994,12 +996,13 @@ through the same route, or from their content on V1. V1 binary content is
 unavailable because that server contract returns an empty body. Bytes are
 process-local and are released when the preview closes; nothing is persisted.
 
-The shared Project/Chat picker contains worktree inventory for the owning
-project, resolved from the scoped project API rather than path prefixes. Adding a
-validated directory selects the requested path, including a worktree, rather than
-its owning project root. Selection uses the existing provider project action and applies across Chat,
-Project and Terminal. Creation stays in the picker; reset/remove live in row
-menus, preserve confirmations and reject the active directory and primary checkout.
+The workspace breadcrumb groups worktrees under their owning project, resolved
+from the scoped project API rather than path prefixes. The project picker shows
+projects only; the worktree selector appears only when a project has multiple
+checkouts. Adding a validated directory selects the requested path, including a
+worktree, rather than its owning project root. Selection applies across Chat,
+Projects and Terminal. Creation lives in New chat; removal preserves
+confirmations and rejects the active checkout and primary checkout.
 OpenCode 2 hides reset/startup commands and maps directory-only inventory to names.
 The browser groups state and actions under one context member, keeping the public
 context below the 135-member ceiling. Screens and components call provider actions;
@@ -1014,7 +1017,7 @@ update-check preference and the version/stage dismissal are persisted under
 tokens report presence only. Downloaded state is recovered from Play and never
 triggers installation automatically. Safe available candidates on Play open native
 consent directly; only downloaded candidates render an Android banner. iOS
-candidates retain an explicit App Store action. See [app updates](app-updates.md).
+candidates retain an explicit App Store action. See [app updates](../product/app-updates.md).
 
 ## Inbound share and widget state
 

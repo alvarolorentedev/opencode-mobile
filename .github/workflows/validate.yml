@@ -58,6 +58,9 @@ jobs:
       - name: Validate fake server harness
         run: npm run test:fake-server:self
 
+      - name: Build component catalog
+        run: npm run build:storybook
+
   e2e:
     runs-on: ubuntu-latest
     permissions:

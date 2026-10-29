@@ -1,9 +1,14 @@
 # Design system
 
+Related ADR: [0006 semantic design tokens with React Native Paper](../adr/0006-semantic-design-tokens-and-paper.md)
+
 This is the implementation reference for new features. Settings and its shared
 onboarding controls are the first complete application of these rules. Existing
 Chat, Projects, Terminal and Cloud Link patterns remain valid; adopt the shared
 foundations when touching their presentation, without unrelated restyling.
+
+Related: [Design section](README.md) · [Component inventory](component-inventory.md)
+· [Storybook](storybook.md) · [Design QA](qa/README.md)
 
 ## Sources of truth
 
@@ -153,6 +158,22 @@ the setting and its category; a category-only match opens the category. Closing
 a result retains the query. Clear search restores the grouped list. Unsupported
 controls are omitted; setup-dependent controls retain their disabled explanation.
 
+## Storybook catalog
+
+Reusable presentation components have co-located stories under
+`components/**/*.stories.tsx` and run in the web Storybook. The catalog is for
+shared primitives and controls, not provider orchestration or full screens.
+
+- Run `npm run storybook` for the local catalog.
+- Run `npm run build:storybook` to verify the catalog builds.
+- Use the real appearance provider and Paper theme; do not create a parallel
+  visual wrapper.
+- Cover the states that are hard to reach in the app: disabled, error, loading,
+  long values, narrow width, light/dark, and accent presets.
+- Add or update a story when a reusable primitive or shared control changes.
+
+See [Storybook](storybook.md) for configuration and the story checklist.
+
 ## Accessibility, localization and feature acceptance
 
 Use explicit accessible labels, checked/expanded/disabled states, logical focus
@@ -173,9 +194,10 @@ light/dark and all accent themes; use existing palette contrast tests as a floor
 Before shipping a feature, verify correct state ownership, shared components,
 complete searchable destinations, current/empty/loading/error states, disabled
 prerequisites, keyboard/Back/Close behavior, persistence/scope continuity,
-translations and regression coverage. Update implementation docs when behavior
-changes. E2E or fake-server changes require explicit human validation under
-`AGENTS.md`, even after the automated gates pass.
+translations and regression coverage. Reusable primitives need a Storybook
+story and a passing `npm run build:storybook`. Update implementation docs when
+behavior changes. E2E or fake-server changes require explicit human validation
+under `AGENTS.md`, even after the automated gates pass.
 
 ## Conditional controls and guided device setup
 

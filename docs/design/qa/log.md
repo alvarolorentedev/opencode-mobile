@@ -1,3 +1,11 @@
+# Design QA log
+
+Completed visual and interaction acceptance reports, newest first where dates
+allow. Use [template.md](template.md) and the [QA process](README.md) for new
+reviews.
+
+---
+
 # Voice & audio · option 3 design QA
 
 final result: passed

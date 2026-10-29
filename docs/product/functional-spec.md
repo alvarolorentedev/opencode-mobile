@@ -101,7 +101,7 @@ Behavior:
 - files keep the existing 10 MB limit and URI allow-list, and the selected
   model's attachment capability is still enforced at send
 - web cannot receive native share payloads; iOS support is deferred (see
-  [iOS share parity](ios-share-parity.md))
+  [iOS share parity](./parity/ios-share.md))
 
 ### 4. Send a Prompt
 
@@ -212,7 +212,7 @@ Additional session actions are available in Chat:
 
 The Projects tab provides source inspection and text editing:
 
-- Files and Worktrees use the same top-tab style as Chat
+- Files stays the only Projects surface; project and worktree selection use the shared header breadcrumb
 - search file paths by query
 - open returned files in a focused full-screen viewer/editor
 - preview raster images, audio, and video from OpenCode 2 file bytes; show a download card for PDFs, archives, installers, and other binaries
@@ -225,7 +225,7 @@ Before save, the provider re-reads the file and rejects the operation if the ser
 
 ### 10. Manage Worktrees
 
-The Projects tab can list, create, and remove worktrees. Creation accepts an optional name; remove requires destructive confirmation. These SDK operations use OpenCode's experimental worktree endpoints, so server availability and response stability are not guaranteed like the non-experimental contract.
+Projects uses a two-level workspace selector. The project picker lists projects only; a worktree selector appears beside it only when the project has more than one checkout. Worktree creation happens in New chat and accepts an optional name. Removal is in a separate management mode in the worktree switcher and requires destructive confirmation. These SDK operations use OpenCode's experimental worktree endpoints, so server availability and response stability are not guaranteed like the non-experimental contract.
 
 ### 11. Use The Terminal Tab
 
@@ -366,7 +366,7 @@ If summarization fails, the session simply remains untitled.
 
 ## Settings Screen Detailed Behavior
 
-Settings follows the [design system](design-system.md). Home shows App preferences
+Settings follows the [design system](../design/design-system.md). Home shows App preferences
 (Appearance, Chat & responses, Voice & audio, Notifications, Language, About &
 support), Connections (Connection and eligible Cloud Link), then Selected server
 (AI & providers, Extensions, Approvals, Server diagnostics). Every category opens
@@ -865,7 +865,7 @@ Android home widgets:
   from snapshots and all placed widgets; titles/counts/status remain.
 - Gallery labels/descriptions are English-only; rendered widget copy is translated.
 
-iOS widgets and Live Activities remain [deferred](ios-widget-parity.md).
+iOS widgets and Live Activities remain [deferred](./parity/ios-widget.md).
 
 ## Persistence Requirements
 

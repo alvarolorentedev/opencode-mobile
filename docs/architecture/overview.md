@@ -1,5 +1,9 @@
 # Architecture
 
+Related ADRs: [0002 provider-centric orchestration](../adr/0002-provider-centric-orchestration.md) ·
+[0004 SSE with polling fallback](../adr/0004-sse-with-polling-fallback.md) ·
+[0005 thin routes and presentational components](../adr/0005-thin-routes-and-presentational-components.md)
+
 ## High-Level Shape
 
 The app uses a simple structural pattern:
@@ -302,7 +306,7 @@ The completion version, preference schema and first-run migration are unchanged.
   safety poll (adaptive while busy; 5s/10s base by stream state, offline pause).
   The stream has a first-byte timeout, jittered backoff, stable-stream reset,
   and a 45s busy / 60s idle keepalive-based staleness window. See
-  [network resilience](network-resilience.md).
+  [network resilience](./network-resilience.md).
 - `providers/use-network-status.ts` and `lib/network-status.ts`
   Normalized online/offline, link type, metered and constrained state. Offline
   pauses retries; online restarts the stream and runs a critical reconcile.
@@ -458,7 +462,7 @@ Foreground return recovers expired or missing credentials automatically; expiry
 still blocks data-plane traffic. Same-machine renewal preserves the selected
 project and migrates remembered state to the rotated credential scope. Saved
 profile rows match Cloud Link machine identity and refresh after rotation. The `pair` route is
-independent of onboarding completion. See [Cloud Link pilot](connect.md).
+independent of onboarding completion. See [Cloud Link pilot](../product/cloud-link.md).
 
 - `lib/connection-scope.ts`
   Canonical, deterministic, password-free connection identity (`getConnectionScope`). Every server-scoped storage key, favorite, and pending notification record derives from it; scheme/host are normalized while URL path and query casing are preserved.
@@ -507,7 +511,7 @@ finalization and automatic pairing still belong to the existing provider flow.
 `lib/connect-install.ts` (resolved into `connectSetup.storeInstall`) gates the
 Cloud Link Settings row to App Store and Google Play installs; the row sits
 directly below AI & Providers and orders status, exposed services, subscription,
-then machines. See [Cloud Link](connect.md) for entry, camera and deep-link
+then machines. See [Cloud Link](../product/cloud-link.md) for entry, camera and deep-link
 behavior.
 
 ### Platform Integrations
@@ -598,7 +602,7 @@ permission and Chat Library visibility do not gate widget reads.
   `engine.ts` synthesizes WAV chunks and orchestrates prefetch; `player.ts`
   plays those chunks through `expo-audio` and cleans up cache files. The
   `@siteed/sherpa-onnx.rn` dependency is pinned and patched for Android JNI and
-  iOS config-key compatibility; see `docs/known-gaps.md` section 12 before
+  iOS config-key compatibility; see `docs/engineering/known-gaps.md` section 12 before
   upgrading it.
 - `lib/voice/use-speech-input.ts`
   Speech recognition hook. Re-checks recognition availability at start, pins an
@@ -636,7 +640,7 @@ permission and Chat Library visibility do not gate widget reads.
 The Android `expo-sharing` receive plugin accepts single/multiple files (`*/*`).
 `app/+native-intent.ts` routes shares to the preview with a receipt key so a
 new intent refreshes an already-visible screen. The iOS extension remains
-[deferred](ios-share-parity.md). A version-checked prebuild patch in
+[deferred](../product/parity/ios-share.md). A version-checked prebuild patch in
 `scripts/prepare-android-sharing.cjs` fixes Expo Sharing 57.0.22 stream handling,
 accompanying text, unique cache copies and bounded reads; review it on upgrade.
 Android autolinking builds only `expo-sharing` from source so the patched Kotlin
@@ -893,7 +897,7 @@ Responsibilities:
 - preserve conflict-checked text editing and confirm before discarding unsaved edits
 - show supported changed-file information and the current VCS branch
 - refresh the current folder or search, file status, and project catalog together
-- use the shared project picker for project/worktree selection and worktree management
+- use the shared workspace breadcrumb for project selection and the conditional worktree selector; create worktrees from New chat and manage them from the switcher
 
 ### Settings Screen
 
@@ -1150,7 +1154,7 @@ shell owns route eligibility, the transparent handoff gate and failure snackbar.
 Available Play candidates open native consent
 directly at a safe moment. Local UI registers busy presence through
 `useUpdateBlocker`, retaining its own contents. `lib/app-updates.ts` wraps the local
-Expo module and iOS lookup. See [app updates](app-updates.md) for install consent,
+Expo module and iOS lookup. See [app updates](../product/app-updates.md) for install consent,
 safety gates and FOSS exclusion.
 
 ## Multi-server V2 ownership
@@ -1167,7 +1171,7 @@ Terminal renderers remain mounted when hidden. Hidden instances cannot accept in
 
 ## Settings presentation and design system
 
-The shared [design system](design-system.md) defines presentation foundations and
+The shared [design system](../design/design-system.md) defines presentation foundations and
 feature acceptance. Settings keeps its existing category-sheet navigation, with
 app preferences first, connection management next, and inspected-server tools
 last. The section registry owns category grouping and localized search metadata;

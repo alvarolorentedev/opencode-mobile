@@ -70,7 +70,7 @@ Used for persistence of user settings and lightweight workflow continuity state.
 
 ### Localization
 
-`expo-localization` detects the device/app locale for the i18n runtime. `i18next` / `react-i18next` provide the runtime, English is bundled as the source and fallback language, and translations are organized by feature namespace under `lib/i18n/locales/`. `lib/i18n/resources.ts` is generated from those folders with `npm run gen:i18n` (`test:i18n` verifies it is current). Shipped locales: English (source), Spanish, Hindi, German, French, Simplified Chinese, Portuguese, Japanese, and Russian. The `supportedLocales` plugin option exposes the shipped languages to iOS and Android. The active in-app language is a normal persisted preference (stored with chat preferences); an unset preference follows the OS locale. See `docs/state-and-data.md` and `docs/architecture.md`.
+`expo-localization` detects the device/app locale for the i18n runtime. `i18next` / `react-i18next` provide the runtime, English is bundled as the source and fallback language, and translations are organized by feature namespace under `lib/i18n/locales/`. `lib/i18n/resources.ts` is generated from those folders with `npm run gen:i18n` (`test:i18n` verifies it is current). Shipped locales: English (source), Spanish, Hindi, German, French, Simplified Chinese, Portuguese, Japanese, and Russian. The `supportedLocales` plugin option exposes the shipped languages to iOS and Android. The active in-app language is a normal persisted preference (stored with chat preferences); an unset preference follows the OS locale. See `docs/architecture/state-and-data.md` and `docs/architecture/overview.md`.
 
 ### Notifications
 
@@ -125,7 +125,7 @@ Titles/counts/status remain. Snapshot writes are ordered before repaint and reje
 stale connection results. The existing two R8 WorkManager keep rules remain.
 Gallery labels/descriptions are English because the plugin emits non-translatable
 resources; widget contents support every shipped language. iOS remains
-[deferred](ios-widget-parity.md).
+[deferred](../product/parity/ios-widget.md).
 
 ### Voice Output
 
@@ -197,7 +197,7 @@ identity, confirmation and cancellation. Preview offers current chat, another
 conversation on the active connection, or New chat. Add awaits provider session
 resolution; the matching composer consumes once and retains existing draft
 content. Errors keep the preview available. Nothing auto-submits. Web receives
-no native payloads; the iOS Share Extension remains [deferred](ios-share-parity.md).
+no native payloads; the iOS Share Extension remains [deferred](../product/parity/ios-share.md).
 
 ### Platform Settings Deep Links
 
@@ -410,7 +410,7 @@ Android has the richest current support for:
 
 ### iOS
 
-iOS is supported by Expo/React Native setup, but some operational tooling in the repo is Android-focused. Voice and TTS behavior are still explicitly supported. Launcher quick actions are supported; home/Lock Screen widgets and Live Activities are deferred (see [iOS widget parity](ios-widget-parity.md)).
+iOS is supported by Expo/React Native setup, but some operational tooling in the repo is Android-focused. Voice and TTS behavior are still explicitly supported. Launcher quick actions are supported; home/Lock Screen widgets and Live Activities are deferred (see [iOS widget parity](../product/parity/ios-widget.md)).
 
 ### Session Deep Links
 

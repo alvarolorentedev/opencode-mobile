@@ -187,7 +187,18 @@ OpenCode Mobile is built with:
 
 For local development, architecture, testing, and release instructions:
 
-[**Read the development guide →**](docs/development.md)
+[**Read the development guide →**](docs/engineering/development.md)
+
+For the full documentation map, architecture, product behavior, design system,
+and decisions:
+
+[**Browse the documentation hub →**](docs/README.md)
+
+Reusable UI primitives and shared controls are catalogued in Storybook:
+
+```bash
+npm run storybook
+```
 
 ## Contributing
 

@@ -231,7 +231,7 @@ has no durable config/plugin/skill/command mutation surface. Consequences:
   removed once those exist
 
 Deferred library replacements and extraction candidates are documented in
-[library-extraction.md](library-extraction.md).
+[library-extraction.md](./library-extraction.md).
 
 ## 11. On-device voice limits
 

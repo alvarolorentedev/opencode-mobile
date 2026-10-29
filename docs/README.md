@@ -1,91 +1,99 @@
 # OpenCode Mobile Documentation
 
-This folder documents the current implementation of `opencode-mobile` as it exists in the codebase today.
+This directory is the implementation reference for `opencode-mobile`. It
+documents the app as it exists in the repository today: current behavior,
+current boundaries, and the reasons behind them. It is not aspirational product
+documentation.
 
-The goal is not aspirational design documentation. It is an implementation reference for:
+Use this page as the router. Start with the task you are doing, then follow the
+section README. Each section has a short index and a "where does this live?"
+map so agents do not have to guess from filenames.
 
-- understanding the current modularization and runtime architecture
-- preserving feature parity if the app is reimplemented
-- making maintenance work safer by documenting hidden coupling and operational assumptions
+## Start here
 
-## Document Index
+| I need to… | Read |
+| --- | --- |
+| Understand the runtime, layers, and boot flow | [Architecture overview](architecture/overview.md) |
+| Change provider state, refresh, persistence, or session behavior | [State and data](architecture/state-and-data.md) + [Architecture overview](architecture/overview.md) |
+| Change an OpenCode endpoint, event, or compatibility boundary | [API contract](architecture/api-contract.md) + [ADR 0003](adr/0003-v2-first-protocol-boundary.md) |
+| Work on SSE, polling, reconnect, offline, or slow networks | [Network resilience](architecture/network-resilience.md) |
+| Add or change a user-visible workflow | [Functional specification](product/functional-spec.md) |
+| Build or restyle UI | [Design system](design/design-system.md) + [Component inventory](design/component-inventory.md) |
+| Add or change a reusable component | [Design system](design/design-system.md) + [Storybook guide](design/storybook.md) |
+| Add a feature that needs an architectural decision | [ADR process](adr/README.md) |
+| Set up the app, build, or release | [Development](engineering/development.md) |
+| Run or extend tests | [Testing and validation](engineering/testing-and-validation.md) + [Testing overview](engineering/testing-overview.md) |
+| Work on Cloud Link / remote pairing | [Cloud Link](product/cloud-link.md) |
+| Work on voice input or spoken replies | [Design system](design/design-system.md) + [Voice validation](engineering/voice-validation.md) |
+| Check deliberately deferred work | [Known gaps](engineering/known-gaps.md) |
+| Evaluate a library or extraction | [Library extraction](engineering/library-extraction.md) |
 
-- `design-system.md`
-  Shared visual foundations, settings components, interaction states, accessibility,
-  search destinations, and the checklist for future features.
+## Sections
 
-- `architecture.md`
-  Architecture, module boundaries, runtime boot flow, and state ownership.
-- `functional-spec.md`
-  User-visible behavior and feature parity requirements by screen and workflow.
-- `state-and-data.md`
-  Provider state model, persistence, derived data, and OpenCode protocol mapping.
-- `network-resilience.md`
-  Connectivity, request deadlines, SSE/polling recovery, offline queue, and
-  slow-network cache behavior.
-- `integrations-and-operations.md`
-  External dependencies, Expo/native integrations, environment configuration, and operational notes.
-- `testing-and-validation.md`
-  Current validation strategy, fake server behavior, and test coverage boundaries.
-- `voice-validation.md`
-  Offline wake-word benchmark protocol and physical-device voice checklist.
-- `api-contract.md`
-  Endpoint-by-endpoint client contract with example request and response shapes.
-- `component-inventory.md`
-  UI and support component inventory with responsibilities and prop contracts.
-- `ios-share-parity.md`
-  Deferred iOS inbound-share gap and the requirements to close it.
-- `ios-widget-parity.md`
-  Deferred iOS widget/Live Activity gap, shipped quick actions and the Android
-  home widget, and the requirements to close the iOS side.
-- `known-gaps.md`
-  Remaining deliberately deferred work: the untyped Vitest denylist, the
-  standalone FOSS prepare script, remote crash reporting, and render-timing
-  coupling in workspace readiness. Earlier orchestration, test-split,
-  CI-duplication, and local-diagnostics gaps were closed on 2026-10-18.
-- `library-extraction.md`
-  Library replacements, deferred native/UI evaluations, and candidate
-  standalone packages with their boundaries and risks.
-- `development.md` explanation on how to run the app locally.
+| Section | Purpose | Index |
+| --- | --- | --- |
+| Architecture | How the app is composed, where state lives, and how it talks to OpenCode | [architecture/README.md](architecture/README.md) |
+| Product | What the app does for users, feature by feature | [product/README.md](product/README.md) |
+| Design | Visual language, reusable components, Storybook, UX proposals, and design QA | [design/README.md](design/README.md) |
+| Engineering | Local setup, validation, operations, release, and deferred engineering work | [engineering/README.md](engineering/README.md) |
+| Decisions | Architecture Decision Records (ADRs) and the decision workflow | [adr/README.md](adr/README.md) |
 
-## Current System Summary
+## Recommended reading paths
 
-OpenCode Mobile is an Expo / React Native client for an OpenCode server. The app is intentionally thin at the screen level and thick in one shared composition unit: `providers/use-opencode-provider-composition.ts` (mounted by `providers/opencode-provider.tsx`).
+### New agent or contributor
 
-Most important behavior flows through this provider:
+1. [Architecture overview](architecture/overview.md)
+2. [State and data](architecture/state-and-data.md)
+3. [Component inventory](design/component-inventory.md)
+4. [Testing and validation](engineering/testing-and-validation.md)
+5. [ADR index](adr/README.md)
 
-- server connection and project discovery
-- session lifecycle
-- prompt submission
-- transcript, diff, and todo refresh
-- session-scoped permission and question handling with event and list reconciliation
-- session lifecycle/archive, slash commands, project editing/worktrees, MCP, PTYs, and diagnostics
-- provider/model/agent capability discovery
-- local persistence
-- conversation mode orchestration
-- notification tracking
+### UI or design change
 
-The tabs mostly render and manipulate provider state:
+1. [Design system](design/design-system.md)
+2. [Component inventory](design/component-inventory.md)
+3. [Storybook guide](design/storybook.md)
+4. [Design QA log](design/qa/log.md)
+5. [Functional specification](product/functional-spec.md) for the affected flow
 
-- `Chat`: active session UI
-- `Project`: project and session selection
-- `Settings`: connection, provider, MCP, notification, and voice configuration
-- `Terminal`: interactive project PTYs with xterm and terminal-key accessory
+### Protocol or provider change
 
-## Recommended Reading Order
+1. [Architecture overview](architecture/overview.md)
+2. [State and data](architecture/state-and-data.md)
+3. [API contract](architecture/api-contract.md)
+4. [Network resilience](architecture/network-resilience.md)
+5. [Testing and validation](engineering/testing-and-validation.md)
 
-1. `architecture.md`
-2. `functional-spec.md`
-3. `state-and-data.md`
-4. `network-resilience.md`
-5. `integrations-and-operations.md`
-6. `testing-and-validation.md`
-7. `api-contract.md`
-8. `component-inventory.md`
-9. `library-extraction.md`
+### Release or operations change
 
-## Scope Notes
+1. [Development](engineering/development.md)
+2. [Testing overview](engineering/testing-overview.md)
+3. [Integrations and operations](engineering/integrations-and-operations.md)
+4. [App updates](product/app-updates.md) and [F-Droid](engineering/fdroid.md) when relevant
 
-- This documentation focuses on the mobile app implementation, not the full OpenCode server internals.
-- Descriptions are based on the current source code and test fixtures in this repository.
-- Where behavior is platform-dependent, the current implementation is described exactly, including limitations.
+## Documentation rules
+
+- **Update docs in the same change as the behavior.** A code change that alters
+  architecture, behavior, a protocol, a user flow, or a design contract is not
+  complete until the matching doc is updated.
+- **Record decisions in ADRs.** If a change selects an approach, changes a
+  boundary, or rejects a viable alternative, add an ADR under `docs/adr/`.
+  Do not bury the reason in a code comment or a pull-request description.
+- **Keep one source of truth.** Do not duplicate command lists, endpoint
+  tables, or token values across docs. Link to the owning page instead.
+- **Keep the router current.** Every doc must be reachable from this page or a
+  section README. `tests/vitest/docs.test.ts` enforces links and ADR shape.
+- **Use relative links.** Link to files with relative Markdown links so the
+  tree stays portable.
+- **State status.** Proposals and deferred work must say so near the top;
+  implementation docs describe shipped behavior.
+
+## Scope notes
+
+- This documentation covers the mobile app implementation, not OpenCode server
+  internals.
+- Descriptions are based on the source code and deterministic fake-server
+  fixtures in this repository.
+- Platform-dependent behavior is described exactly, including limitations.
+- `docs/design/qa/log.md` records visual acceptance evidence; it is not a
+  substitute for physical-device, screen-reader, or store acceptance.

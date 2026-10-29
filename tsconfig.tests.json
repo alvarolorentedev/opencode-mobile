@@ -3,7 +3,7 @@
   // `exclude` drive the dynamic `loadTs` / `hookRuntime` harness in
   // tests/helpers/runtime.mjs and would need a typed harness before they can be
   // added. Shrink this list as suites are cleaned up; never add to it without a
-  // note in docs/known-gaps.md.
+  // note in docs/engineering/known-gaps.md.
   "extends": "./tsconfig.json",
   "compilerOptions": {
     "noEmit": true,

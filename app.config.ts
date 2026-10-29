@@ -130,7 +130,7 @@ const config: ExpoConfig = {
     [
       // Receiving shares into the app. Android share intents are enabled here;
       // the iOS Share Extension is deferred and tracked in
-      // docs/ios-share-parity.md. The JS side stages payloads in
+      // docs/product/parity/ios-share.md. The JS side stages payloads in
       // providers/use-share-state.ts and previews them in app/share.tsx.
       'expo-sharing',
       {
@@ -193,7 +193,7 @@ const config: ExpoConfig = {
       // changes (providers/use-widget-state.ts). The picker label and
       // description are written to strings.xml as non-translatable by the
       // plugin, so they stay English. iOS has no widget surface yet; see
-      // docs/ios-widget-parity.md. The library is MIT-licensed and pure
+      // docs/product/parity/ios-widget.md. The library is MIT-licensed and pure
       // Android, so the FOSS variant keeps it.
       'react-native-android-widget',
       {

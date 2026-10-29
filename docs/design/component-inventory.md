@@ -1,5 +1,11 @@
 # Component Inventory
 
+Related: [Design system](design-system.md) · [Storybook](storybook.md) ·
+[Design section](README.md)
+
+This inventory is the map of current UI and support components. Use it before
+adding a new control, and add a Storybook story when the component is reusable.
+
 ## Chat attachments and pending messages
 
 `attachment-strip.tsx` renders shared 56 px square tiles in the composer,
@@ -34,11 +40,11 @@ Chat & responses, alongside timeline detail, chat text size, and flat
 conversation. The General group contains slim interface, language and Reset
 onboarding, which reopens the existing setup review without clearing settings.
 
-## Purpose
+## How to use this inventory
 
 This document inventories the current UI and support components, their responsibilities, and their prop contracts where relevant to parity.
 
-The goal is to make it possible to rebuild the UI tree without having to rediscover each component's role from source.
+The goal is to make it possible to rebuild the UI tree without having to rediscover each component's role from source. Start here when deciding whether a new component is needed; extend an existing component or shared control before adding a parallel one.
 
 ## Chat Components
 
@@ -259,6 +265,13 @@ the provider then creates and opens the session in that workspace.
 - a full-screen `KeyboardAvoidingView` with `behavior="padding"` contains the sheet; the sheet and its scroll area shrink within the visible space so focused inputs (including the speech locale) stay reachable above the keyboard
 - dismisses on a downward header drag through the shared `useSwipeDismiss` helper, which owns the Pan gesture, threshold set, sheet-height measurement, and backdrop fade; the transparent `Modal` bottom sheets (model picker, select) reuse the same helper
 
+## `components/ui/workspace-breadcrumb.tsx`
+
+- renders the two-level workspace selector used by Chat and Projects
+- project selection is always available; the worktree selector appears only when the active project has more than one checkout
+- owns only sheet visibility; project/worktree selection and catalog state come from the provider
+- mounts the project picker and the selection-only `WorktreeSwitcher`
+
 ## `components/ui/project-picker.tsx`
 
 - shared Chat project button and project picker overlay also used by Project's existing dropdown
@@ -407,10 +420,10 @@ This is important to parity because the chat layout is intentionally dense and h
 
 ### Presentation
 
-- keeps its active-project title, path, and dropdown trigger in the header; the dropdown opens the shared project picker overlay
+- keeps the shared workspace breadcrumb in the header: project selection is separate from the conditional worktree selector
 - the shared picker lists the connection's opened projects, can close them locally, and can add a server directory as a project
 - provides one project refresh action
-- shows files directly with breadcrumbs and scoped search; worktree controls live in the shared project picker
+- shows files directly with breadcrumbs and scoped search; worktree creation lives in New chat, not Projects
 - opens file viewing and editing in a focused full-screen surface
 - `components/project/file-preview.tsx` renders text editing, raster-image/audio/video previews, and a document/download fallback. Media bytes are prepared through the shared attachment cache helper, released on close, and capped at 25 MB. Download actions call the provider, which streams authenticated V2 file reads on native and creates a browser download on web.
 - `components/ui/media-preview.tsx` owns the shared audio/video players used by both chat attachments and project files
@@ -446,8 +459,10 @@ This is important to parity because the chat layout is intentionally dense and h
 - Search metadata is gated with the same platform/capability state as controls,
   and never includes credentials/current values. Server/project inspection
   continues through the existing independent workspace scope.
-- See [design-system.md](design-system.md) for component contracts, interaction
+- See [design-system.md](./design-system.md) for component contracts, interaction
   states, foundations and the checklist for future features.
+- See [Storybook](storybook.md) for live examples of the shared settings
+  controls and other reusable primitives.
 
 ## `app/(tabs)/terminal.tsx`
 
@@ -520,7 +535,7 @@ management route, closing with a learn-more row. It uses the shared Settings
 overlay and provider state; it
 never opens the camera or starts a purchase merely by opening the section.
 `connect-panel.tsx` renders the separate machine/profile management view. `app/pair.tsx` ingests links and navigates only; deep links skip the camera gate.
-Domain state/actions come from `useConnection().connectSetup`; see [Cloud Link](connect.md).
+Domain state/actions come from `useConnection().connectSetup`; see [Cloud Link](../product/cloud-link.md).
 
 After a valid Cloud Link claim, the pairing surface shows desktop-confirmation
 progress and hides recovery controls while the provider checks activation. A
@@ -1197,10 +1212,9 @@ screen-reader mode is enabled. Native screen-reader/input validation remains req
 - `components/project/file-preview.tsx` renders the full-screen text preview,
   local edit draft, save feedback and discard confirmation. It calls the existing
   provider save action; unsupported editing is capability-gated.
-- `components/project/worktree-picker.tsx` renders the owning project's worktree
-  rows, selection indicators, creation form and row management menus inside the
-  shared `ProjectPicker`. Forms, menu visibility and confirmations are local;
-  inventory and lifecycle actions remain provider-owned.
+- `components/project/worktree-picker.tsx` renders the selection-only
+  `WorktreeSwitcher`, with a separate management mode for removal. Creation is
+  owned by New chat; inventory and lifecycle actions remain provider-owned.
 
 These surfaces reuse the existing palette, theme, slim preference, inputs and
 picker overlay. Projects retains its tab label and route. Chat uses the same
@@ -1219,13 +1233,13 @@ picker and provider selection action; Terminal follows that directory.
 - `hooks/use-update-blocker.ts`: registers open/busy local surfaces with the
   existing provider without sharing their content.
 - `modules/opencode-updates`: local Expo Android Play update module and iOS
-  verified-installation helper. See [app updates](app-updates.md).
+  verified-installation helper. See [app updates](../product/app-updates.md).
 
 ## Multi-server V2 surfaces
 
 - `chat-library.tsx`: existing row and swipe treatment in one mixed list; server chips that stay visible below long titles, an in-flight row indicator while a chat opens or is managed, search, server/project dropdowns and the sole Hide subagents toggle. Its New chat action closes the library and opens the New chat sheet. The previous compatibility view is retained in `chat-library-v1.tsx`.
-- `new-chat-sheet.tsx`: mirrors `new-terminal-sheet.tsx`; confirms server, project and working directory before the provider creates and opens the chat in that workspace.
-- `project-picker.tsx`: server groups, search, retry/stale state and explicit server ownership for adding/removing projects. Existing worktree controls remain.
+- `new-chat-sheet.tsx`: confirms server, project, and checkout, and is the only worktree creation entry point. It can create a worktree and start the chat, with partial-success recovery.
+- `project-picker.tsx`: server groups, search, retry/stale state, and project-only rows. Worktree selection is a separate second-level control.
 - `new-terminal-sheet.tsx`: confirms server, project and resolved cwd before PTY creation. `retained-terminals.tsx` holds the renderer hosts; the terminal picker lists all retained owners.
 - `server-context-picker.tsx`: independent Settings server/project inspection. AI & Providers, MCP, diagnostics and approvals receive that context; app preferences remain global.
 - `server-approvals.tsx`: pending requests/questions, saved grants and per-server auto-approve, reusing chat permission cards and existing server actions.

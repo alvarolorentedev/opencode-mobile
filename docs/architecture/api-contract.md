@@ -1,5 +1,7 @@
 # API Contract
 
+Related ADR: [0003 V2-first protocol boundary](../adr/0003-v2-first-protocol-boundary.md)
+
 ## Primary Contract And Compatibility
 
 OpenCode 2 is the primary contract, using the installed `@opencode/client` 2.0.16 SDK and its native `/api` operations. `ScopedOpencodeClient` exposes a typed subset as `api`, with explicit account, OAuth and inbox actions. Native responses, pagination cursors and events are consumed directly; no fabricated v1 response envelopes exist on this path.
@@ -25,7 +27,7 @@ credentials. They are merged into every request built for that server: probing,
 SDK REST and SSE subscriptions, terminal connect-token requests, and the native
 terminal WebSocket upgrade. The generated Basic `Authorization` always wins, and
 framing/transport headers cannot be overridden. Header values live in secure
-storage with the password; see [persisted data](state-and-data.md#persisted-data).
+storage with the password; see [persisted data](./state-and-data.md#persisted-data).
 Custom headers are manual-only because pairing codes and Cloud Link profiles
 cannot carry them.
 

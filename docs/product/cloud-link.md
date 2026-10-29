@@ -39,7 +39,7 @@ re-pairing.
 The provider handles pairing and persistence; protocol validation/redemption live
 in `lib/opencode/pairing.ts`. Current one-use codes become session-token passwords;
 older V2 credential QR formats remain supported. Failed save/connect retries reuse
-the credential and existing profile ID. See [API contract](api-contract.md#local-v2-pairing).
+the credential and existing profile ID. See [API contract](../architecture/api-contract.md#local-v2-pairing).
 
 ## Cloud Link subscription flow
 

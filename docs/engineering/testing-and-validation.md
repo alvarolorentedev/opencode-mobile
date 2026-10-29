@@ -1,7 +1,5 @@
 # Testing And Validation
 
-# Testing And Validation
-
 All static and unit/contract suites now run under Vitest from `tests/vitest/`
 (`npm run test:vitest`, invoked by `npm run test:ci:static`). The standalone
 Node `.mjs` suites were migrated here; suite names used later in this document
@@ -11,7 +9,18 @@ historical script names, and their equivalent today is
 (`tests/fake-opencode/`) and the Playwright specs (`tests/e2e/`) are unchanged.
 The flow specs are split by domain (`tests/e2e/<domain>.spec.mjs`) over shared
 helpers in `tests/e2e/helpers/flows.mjs`. Suites that are not yet typed are
-listed in `tsconfig.tests.json`; see [known gaps](known-gaps.md).
+listed in `tsconfig.tests.json`; see [known gaps](./known-gaps.md).
+
+## Documentation and catalog checks
+
+`tests/vitest/docs.test.ts` (`npm run test:docs`) enforces the documentation
+contract: every doc is reachable from a section README, relative links and
+anchors resolve, ADR numbering/structure/index are current, and the docs router
+and Storybook catalog are wired. It runs as part of `test:ci:static`.
+
+`npm run build:storybook` builds the web catalog for reusable presentation
+components. It is not part of the app or E2E export. See
+[Storybook](../design/storybook.md).
 
 ## Auto model routing
 
@@ -83,6 +92,8 @@ Measured baseline on 2026-10-23 against the previous serial workflow:
 - static checks: 71s on CI (~83s locally), including 47s of lint, 13s app
   type-check, 10s test type-check, and 13s for the Vitest suites (539 checks)
 - fake-server self-test: 7s
+- Storybook catalog build: ~5s locally; it is a static web build, not part of
+  the app or E2E export
 - Playwright: 510s of test execution for 161 flows plus ~69s for one web
   export/server startup
 - the previous serial `validate` job: 12.4min, or up to 20min when the
@@ -337,7 +348,7 @@ Share/Widget extensions remain deferred.
 
 ## Current Strategy
 
-Cloud Link Subscription Settings coverage is described in [connect.md](connect.md).
+Cloud Link Subscription Settings coverage is described in [connect.md](../product/cloud-link.md).
 Validate the selected grouped-action layout in dark/light themes, narrow widths,
 larger text, sheet dismissal and screen-reader navigation. Check real App Store
 and Google Play handoff separately from the mocked E2E driver. E2E additions
@@ -376,9 +387,11 @@ that a fresh connection seeds the server current project, that an unlisted path
 falls back to the most recent opened project, that a server-resolved worktree
 is kept and opened, that an opened project or a server-resolved sibling
 checkout can be opened even when `project.list()` reports another canonical for
-the same repository, that a truly unresolvable path stays rejected. The v1/v2 worktree flow closes
-a server worktree and then closes its local project entry. Worktree catalogs omit known project canonicals,
-so Remove/Reset is not offered for a repository's own checkout.
+the same repository, that a truly unresolvable path stays rejected. The v1/v2 worktree flow creates a worktree from New chat, switches between
+checkouts, protects the active checkout from removal, and closes the project
+group. Project pickers exclude worktree rows. Worktree catalogs omit known
+project canonicals, so Remove/Reset is not offered for a repository's own
+checkout.
 
 `.github/workflows/build.yml` owns Android validation and release. It runs on pushes to `main` and `v*` tags:
 
@@ -926,7 +939,7 @@ Android development prebuild completed; Gradle compilation stopped with
 `SDK location not found`. Explicit human validation of these E2E changes and
 the physical-device flows remains pending.
 
-Cloud Link subscription checks are described in [connect.md](connect.md). Provider
+Cloud Link subscription checks are described in [connect.md](../product/cloud-link.md). Provider
 checks cover rejected/false native initialization and billing failures
 during product and existing-purchase queries on both stores. Retry reconnects and
 replays initialization while checkout stays disabled; purchase checkpoints retain
@@ -1224,7 +1237,7 @@ navigation using a development fixture. Mobile checks cover 390×844 dark and
 320×700 light layouts, 44-point controls, usable tabs and an uncovered composer.
 The provider tests also cover deferred native consent, enabled checks and a
 version changing between discovery and native handoff. No fake server protocol is changed. Real Play/App Store and
-accessibility acceptance remains required; see [app updates](app-updates.md).
+accessibility acceptance remains required; see [app updates](../product/app-updates.md).
 E2E changes require explicit human validation under AGENTS.md.
 
 Implementation verification on 2026-10-09: static CI, fake-server self-tests, all
@@ -1304,7 +1317,7 @@ Implementation validation (2026-10-13): static CI passes (290 Vitest checks), bo
 fake-server self-tests pass, and the full web suite passes 134 flows. After the
 short-screen illustration adjustment, all 44 Cloud Link flows pass again with
 fresh dark and narrow-light captures. Browser comparison is recorded in
-`design-qa.md`. Android development prebuild passes; Gradle remains blocked by
+`docs/design/qa/log.md`. Android development prebuild passes; Gradle remains blocked by
 `SDK location not found`. No dependency, release version or protocol changed.
 
 Pair illustration refinement (2026-10-13): the thick scanner icon is replaced
