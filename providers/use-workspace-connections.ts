@@ -9,6 +9,7 @@ import type { ChatPreferences } from '@/providers/opencode-preferences';
 import type { OpencodeProviderState } from '@/providers/use-opencode-provider-state';
 import { createPersistenceWriter } from '@/providers/persistence-hydration';
 import { createSharedEventStream } from '@/providers/shared-event-stream';
+import { connectedWorkspaceTarget } from '@/providers/workspace-focus';
 import { parseWorkspaces, serializeWorkspaces, WORKSPACES_STORAGE_KEY } from '@/providers/workspace-storage';
 import { workspaceKey, type ConnectionRecord, type SessionTarget, type WorkspaceSnapshot, type WorkspaceTarget } from '@/providers/workspace-types';
 
@@ -24,6 +25,8 @@ export function useWorkspaceConnections(shell: OpencodeProviderState, hydrated: 
   const [ready, setReady] = useState(false);
   const [snapshots, setSnapshots] = useState<Record<string, WorkspaceSnapshot>>({});
   const records = useRef(connections), selected = useRef(focus), live = useRef(snapshots);
+  const lastAvailable = useRef<string | undefined>(undefined);
+  const previousAvailable = useRef<string | undefined>(undefined);
   const shellRef = useRef(shell);
   const mounted = useRef(true);
   const canPersist = useRef(true);
@@ -140,6 +143,31 @@ export function useWorkspaceConnections(shell: OpencodeProviderState, hydrated: 
       return id === target.connectionId && live.current[key].values.projectsValue.activeProjectPath === target.projectPath;
     }) ?? exact;
   }, []);
+  // Remember the two most recent healthy chat owners so a failure returns to
+  // the server the user was actually using instead of an arbitrary connected one.
+  useEffect(() => {
+    if (!focus || !records.current.find((entry) => entry.id === focus.connectionId)?.enabled) return;
+    if (live.current[resolveKey(focus)]?.values.connectionValue.connection.status !== 'connected') return;
+    if (lastAvailable.current === focus.connectionId) return;
+    previousAvailable.current = lastAvailable.current;
+    lastAvailable.current = focus.connectionId;
+  }, [focus, resolveKey, snapshots]);
+  // A server that errors or is explicitly disconnected must not leave Chat on
+  // its failure screen while another enabled server is still connected.
+  useEffect(() => {
+    if (!ready || !focus) return;
+    const entry = records.current.find((item) => item.id === focus.connectionId);
+    const status = live.current[resolveKey(focus)]?.values.connectionValue.connection.status;
+    if (entry?.enabled && status !== 'error') return;
+    const preferredConnectionId = lastAvailable.current === focus.connectionId ? previousAvailable.current : lastAvailable.current;
+    const target = connectedWorkspaceTarget(records.current, live.current, {
+      excludedConnectionId: focus.connectionId,
+      preferredConnectionId,
+    });
+    // Never turn an unread registry into a writable one just because a server
+    // failed during startup; focus locally and let the next user action persist.
+    if (target) select(target, canPersist.current);
+  }, [connections, focus, ready, resolveKey, select, snapshots]);
   const ensure = useCallback(async (target: WorkspaceTarget) => {
     let key = resolveKey(target);
     if (!live.current[key]) change((current) => current.map((entry) => entry.id === target.connectionId && !entry.projects.includes(target.projectPath)

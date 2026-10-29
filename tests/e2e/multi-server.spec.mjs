@@ -276,6 +276,26 @@ test('V2 keeps server chips visible for long chat titles', async ({ page, reques
   expect(chipBox.y).toBeGreaterThanOrEqual(titleBox.y + titleBox.height - 1);
 });
 
+test('V2 automatically fails over to a connected server when another connection fails', async ({ page }) => {
+  const failed = servers[1];
+  await page.route(`${failed.serverUrl}/**`, (route) => route.fulfill({
+    status: 503,
+    headers: { 'access-control-allow-origin': '*' },
+    json: { error: 'Temporarily unavailable' },
+  }));
+  await goToTab(page, 'Settings');
+  await ensureConnectionSection(page);
+  await page.getByTestId('connection-row-server-1').click();
+  await page.getByTestId('connection-disconnect-server-1').click();
+  await expect(page.getByTestId('connection-connect-server-1')).toBeVisible();
+  await page.getByTestId('connection-connect-server-1').click();
+  await expect(page.getByTestId('connection-row-server-1')).toContainText('Unavailable', { timeout: 15_000 });
+  await goToTab(page, 'Chat');
+  await expect(page.getByText('Connect to OpenCode Mobile')).toHaveCount(0);
+  await expect(page.getByRole('button', { name: /^Open chats/ })).toContainText('Chat on MacBook Pro');
+  await expect(page.getByPlaceholder('Ask anything...')).toBeVisible();
+});
+
 test('V2 opens a chat on another server without waiting for its session list', async ({ page, request }) => {
   const title = 'Slow switch target';
   await request.post(`${servers[1].serverUrl}/api/session`, { data: { title, location: { directory } } });

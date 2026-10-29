@@ -31,7 +31,7 @@ Behavior:
 - reconnecting re-runs project discovery, session fetch, and capability discovery
 - connection status can be `idle`, `connecting`, `connected`, or `error`
 - connection state includes a human-readable message shown in the UI
-- when Chat opens without a connected server, it shows the connection message with `Open settings`, or `Reconnect` plus `Connection settings` after a failure; a connected server without a project opens the shared project picker from the same panel instead of a dead-end instruction
+- when the focused server fails or is disconnected, Chat automatically moves to the last healthy enabled server, then any other connected server; the failed server stays enabled and visible in Settings for Reconnect. If no other server is connected, Chat shows the connection message with `Open settings`, or `Reconnect` plus `Connection settings` after a failure; a connected server without a project opens the shared project picker from the same panel instead of a dead-end instruction
 
 ### 2. Pick a Project
 
@@ -379,6 +379,7 @@ Behavior:
 - editing the active connection never reconnects on its own; the row's Reconnect action does that, so an in-flight session is not dropped
 - the active connection cannot be deleted; other connections offer Delete with a confirmation
 - selecting Connect on another connection switches through `switchConnection()`, which persists the outgoing profile's model selection, restores the target profile's selection, clears all server-derived state, and reconnects with the target credentials
+- if the focused connection errors or is disconnected while another enabled connection is healthy, chat focus moves automatically to the last healthy server (or the next connected server) and is persisted; the failed connection remains listed for Reconnect
 - retryable connect failures retry automatically (1/2/5/10/20 s) while the workspace is visible and online; auth, entitlement, and incompatible-server failures require the user's action
 - the Chat header shows a compact offline/reconnecting/polling/slow-link notice. Offline pauses SSE retries and polling; connectivity restoration reopens the stream and runs a critical reconcile
 - a prompt attempted while offline stays visible as queued and is admitted once after reconnect. A timeout with an unknown server outcome is marked delivery-uncertain and is never replayed automatically
