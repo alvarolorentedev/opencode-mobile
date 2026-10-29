@@ -60,6 +60,11 @@ export function getInitialMode(agents: AgentOption[], config?: Config, storedMod
   if (storedMode && agents.some((agent) => agent.id === storedMode)) {
     return storedMode;
   }
+  // A capability read can be empty while a server reconnects. Keep the stored
+  // agent instead of replacing it with the default until agents are available.
+  if (!agents.length) {
+    return storedMode ?? defaultChatPreferences.mode;
+  }
 
   const configuredAgent = config?.agent
     ? Object.entries(config.agent).find(([, value]) => value && value.disable !== true)?.[0]
@@ -109,6 +114,12 @@ export function getInitialModelId(models: ModelOption[], config?: Config, stored
     return storedModelId;
   }
 
+  // An empty catalog is a transient reconnect state, not proof that the stored
+  // model disappeared. Keeping it lets the next successful read validate it.
+  if (!models.length) {
+    return storedModelId;
+  }
+
   // No stored or server match: leave unset so prompts fall through to the
   // server's configured model instead of a possibly blocked auto-pick.
   return resolveConfigModelId(models, config?.model);
@@ -116,6 +127,10 @@ export function getInitialModelId(models: ModelOption[], config?: Config, stored
 
 export function getInitialProviderId(models: ModelOption[], config?: Config, storedProviderId?: string, modelId?: string) {
   if (storedProviderId && models.some((model) => model.providerID === storedProviderId)) {
+    return storedProviderId;
+  }
+
+  if (!models.length) {
     return storedProviderId;
   }
 
@@ -153,10 +168,24 @@ export function getModelIdForProvider(models: ModelOption[], providerId?: string
 }
 
 export function getEnabledModelIds(models: ModelOption[], storedModelIds?: string[]) {
-  const availableModelIds = new Set(models.map((model) => model.id));
-  const nextEnabledModelIds = (storedModelIds || []).filter((modelId) => availableModelIds.has(modelId));
+  const stored = storedModelIds ?? [];
+  // A reconnect can briefly expose no models. Do not interpret that as "the
+  // user enabled nothing" or erase choices for providers that are still loading.
+  if (!models.length) {
+    return [...stored];
+  }
 
-  return nextEnabledModelIds.length > 0 ? nextEnabledModelIds : models.map((model) => model.id);
+  const available = models.map((model) => model.id);
+  if (!stored.length) {
+    return available;
+  }
+  // Keep stored IDs that are currently unavailable alongside the ones that
+  // resolved. The picker only renders available models, so a provider that is
+  // still loading can return without losing its enabled selection. If none of
+  // the stored IDs exist at all, fall back to the full catalog so the user is
+  // not left with an empty picker.
+  const availableModelIds = new Set(available);
+  return stored.some((modelId) => availableModelIds.has(modelId)) ? [...new Set(stored)] : available;
 }
 
 export function recordRecentModelId(recentModelIds: string[], modelId?: string) {

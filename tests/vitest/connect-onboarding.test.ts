@@ -15,6 +15,7 @@ async function pairing(guided = true, entitled = false) {
   const setup = { initialization: 'ready', phase: 'idle', busy: false, entitled, cancelPairing: vi.fn(async () => true), pairLink: vi.fn(), dismissError: vi.fn() };
   const { ConnectPairing } = await loadTs('components/settings/connect-pairing.tsx', {
     react: runtime.react,
+    './sections/setting-rows': { SettingButton: 'Button' },
     'react/jsx-runtime': { jsx: (type: unknown, props: object) => ({ type, props }), jsxs: (type: unknown, props: object) => ({ type, props }) },
     'expo-router': { useIsFocused: () => true },
     'react-i18next': { useTranslation: () => ({ t: (key: string) => key }) },

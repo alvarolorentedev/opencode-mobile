@@ -1,10 +1,13 @@
+import { SettingButton as Button, SettingSwitchRow } from './sections/setting-rows';
 import { useEffect, useState } from 'react';
-import { View, Switch } from 'react-native';
-import { Button, Text } from 'react-native-paper';
+import { View } from 'react-native';
+import { Text } from 'react-native-paper';
 import { useTranslation } from 'react-i18next';
 import { useRouter } from 'expo-router';
 import { useApprovals, useChat, useConnection, usePreferences } from '@/providers/opencode-contexts';
 import { useWorkspaces } from '@/providers/workspace-context';
+
+import { useSettingsTarget } from './settings-panel';
 import { PermissionRequestCard } from '@/components/chat/cards/permission-request-card';
 import { PermissionsSection } from '@/components/settings/sections/permissions-section';
 import { getConnectionUiScope } from '@/lib/connection-scope';
@@ -19,7 +22,8 @@ export function ServerApprovals() {
   const { settings, connection } = useConnection();
   const registry = useWorkspaces();
   const multipleServers = registry.connections.length > 1;
-  const [section, setSection] = useState<'pending' | 'saved'>('pending');
+  const target = useSettingsTarget();
+  const [section, setSection] = useState<'pending' | 'saved'>(target?.group === 'saved' ? 'saved' : 'pending');
   const [error, setError] = useState<string>();
   const { refreshSavedPermissions } = approvals;
   useEffect(() => { void refreshSavedPermissions(); }, [refreshSavedPermissions]);
@@ -34,8 +38,9 @@ export function ServerApprovals() {
     for (const request of Object.values(runtime.pendingQuestions).flat()) questions.set(request.id, { sessionId: request.sessionID, projectPath: sessionPath(request.sessionID), title: request.title });
   }
   return <View style={{ gap: 14 }}>
-    <View style={{ flexDirection: 'row', alignItems: 'center' }}><View style={{ flex: 1 }}><Text>{t('chat:composer.autoApproveEnabled')}</Text>{multipleServers ? <Text variant="bodySmall">{t('common:servers.onlyThisServer')}</Text> : null}</View>
-      <Switch accessibilityLabel={t('chat:composer.autoApproveEnabled')} value={chatPreferences.autoApprove} disabled={connection.status !== 'connected'} onValueChange={(value) => void setAutoApprove(value).catch((reason) => setError(String(reason)))} /></View>
+    <SettingSwitchRow title={t('chat:composer.autoApproveEnabled')} description={multipleServers ? t('common:servers.onlyThisServer') : ''}
+      palette={palette} value={chatPreferences.autoApprove} disabled={connection.status !== 'connected'}
+      onValueChange={(value) => void setAutoApprove(value).catch((reason) => setError(String(reason)))} />
     <View style={{ flexDirection: 'row', gap: 8 }}><Button mode={section === 'pending' ? 'contained-tonal' : 'text'} onPress={() => setSection('pending')}>{t('common:servers.pending', { count: requests.size + questions.size })}</Button>
       <Button mode={section === 'saved' ? 'contained-tonal' : 'text'} onPress={() => setSection('saved')}>{t('common:servers.savedRules', { count: approvals.savedPermissions.length })}</Button></View>
     {error ? <Text accessibilityRole="alert" style={{ color: palette.danger }}>{error}</Text> : null}

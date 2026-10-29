@@ -13,6 +13,7 @@ import {
 } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import type { ChatPreferences } from '@/providers/opencode-provider';
+import { SettingTarget } from '../settings-panel';
 import { SettingSelectField, type Palette } from './setting-rows';
 
 const ACCENT_LABEL_KEYS: Record<AccentColor, string> = {
@@ -56,6 +57,7 @@ export function AppearanceSection({
       />
       <HelperText type="info">{t('settings:appearance.theme.description')}</HelperText>
 
+      <SettingTarget label={t('settings:appearance.accent.label')}>
       <Text variant="titleSmall" style={[styles.accentTitle, { color: palette.text }]}>
         {t('settings:appearance.accent.label')}
       </Text>
@@ -84,7 +86,7 @@ export function AppearanceSection({
               <View style={[styles.swatch, { backgroundColor: preview.background, borderColor: preview.border }]}>
                 <View style={[styles.swatchSurface, { backgroundColor: preview.surface, borderColor: preview.border }]}>
                   <View style={[styles.swatchAccent, { backgroundColor: preview.tint }]}>
-                    {selected ? <MaterialCommunityIcons name="check" size={9} color={preview.background} /> : null}
+                    {selected ? <MaterialCommunityIcons name="check" size={12} color={preview.background} /> : null}
                   </View>
                 </View>
               </View>
@@ -94,6 +96,7 @@ export function AppearanceSection({
         })}
       </View>
       <HelperText type="info">{t('settings:appearance.accent.description')}</HelperText>
+      </SettingTarget>
     </View>
   );
 }
@@ -108,7 +111,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     flexDirection: 'row',
     gap: 8,
-    minHeight: 44,
+    minHeight: 48,
     paddingHorizontal: 10,
     paddingVertical: 8,
   },

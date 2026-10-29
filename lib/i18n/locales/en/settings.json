@@ -4,14 +4,17 @@
       "connection": "Connection",
       "ai": "AI & providers",
       "notifications": "Notifications",
-      "voice": "Voice",
+      "voice": "Voice & audio",
       "advanced": "Advanced",
       "support": "Support",
       "permissions": "Approvals",
       "subscription": "Subscription",
       "cloudLink": "Cloud Link",
       "extensions": "Extensions",
-      "responses": "Responses"
+      "responses": "Responses",
+      "appearance": "Appearance",
+      "chat": "Chat & responses",
+      "about": "About & support"
     },
     "summaries": {
       "configuredCount": "{{value}} configured",
@@ -24,7 +27,35 @@
       "voiceSystem": "System speech · {{phrase}}",
       "voiceLocal": "On-device · {{phrase}}",
       "responsesOn": "{{scope}} · next actions on",
-      "responsesOff": "{{scope}} · next actions off"
+      "responsesOff": "{{scope}} · next actions off",
+      "appearance": "Theme, color and interface density",
+      "diagnostics": "Connection health and troubleshooting"
+    },
+    "groups": {
+      "app": "App preferences",
+      "connections": "Connections",
+      "server": "Selected server"
+    },
+    "intro": "Personalize the app and manage your connections.",
+    "search": {
+      "placeholder": "Search settings",
+      "clear": "Clear search",
+      "empty": "No matching settings. Try another word.",
+      "results": "Matching settings: {{count}}"
+    },
+    "keywords": {
+      "appearance": "display theme color colour dark light compact density",
+      "responses": "chat messages text font size replies response style steer append queue bubbles",
+      "voice": "voice audio speech sound microphone input playback language wake phrase",
+      "notifications": "notifications alerts battery widgets",
+      "language": "language locale translation interface",
+      "support": "help feedback support updates version setup assistant",
+      "connection": "connections server address password credentials reconnect QR",
+      "cloud-link": "remote connection Cloud Link subscription machines services",
+      "ai": "AI providers accounts models authentication classifier routing",
+      "extensions": "extensions MCP plugins skills commands",
+      "permissions": "permissions approvals saved rules automatic allow",
+      "advanced": "diagnostics network connection realtime polling errors usage"
     }
   },
   "support": {
@@ -234,7 +265,7 @@
       "description": "Prefer local recognition; fall back to cloud if needed."
     },
     "autoPlay": {
-      "title": "Auto-play assistant replies",
+      "title": "Read replies aloud",
       "description": "Read chat replies aloud. Conversation mode always reads."
     },
     "workingSound": {
@@ -244,6 +275,16 @@
     "wakePhrase": {
       "label": "Wake phrase",
       "helper": "Conversation mode sends a message only after it hears this phrase. Two or more words work best."
+    },
+    "modelDownloads": {
+      "timeout": "The download timed out. The connection stalled — try again on Wi-Fi or a stronger signal.",
+      "offline": "Couldn't reach the download server. Check your internet connection and try again.",
+      "server": "The download server couldn't provide the file. Try again later.",
+      "storage": "Not enough free space to install this model.",
+      "incomplete": "The download didn't finish. Try again.",
+      "integrity": "The downloaded file was damaged. Try again.",
+      "unknown": "Couldn't download the model. Check your connection and try again.",
+      "installFailed": "The model couldn't be installed. Try again."
     },
     "localWake": {
       "title": "On-device voice",
@@ -277,7 +318,7 @@
       "installCommand": "Install command model ({{size}})"
     },
     "speechLocale": {
-      "label": "Speech locale",
+      "label": "Language",
       "helper": "Leave empty to use the system default language for voice input and playback."
     },
     "responseScope": {
@@ -317,7 +358,36 @@
       "label": "Working sound volume"
     },
     "voiceSelect": {
-      "label": "Voice"
+      "label": "Voice",
+      "automatic": "Automatic",
+      "enhanced": "Enhanced · {{language}}"
+    },
+    "enhancedVoices": "Install enhanced or premium voices in your device's text-to-speech settings for the most natural system voice.",
+    "playbackEngine": {
+      "label": "Playback engine",
+      "systemDescription": "Uses the device's built-in voice. Always available.",
+      "localDescription": "Uses a downloaded neural voice. Choose a model below."
+    },
+    "localTts": {
+      "title": "On-device playback",
+      "description": "Models are downloaded only when you choose them. The system voice is always available.",
+      "piper": "Compact",
+      "kokoro": "Natural",
+      "piperDescription": "Fast and lightweight",
+      "kokoroDescription": "Most natural English, larger download",
+      "download": "Download ({{size}})",
+      "installing": "Installing…",
+      "installed": "Installed",
+      "notInstalled": "Not installed",
+      "use": "Use",
+      "preview": "Preview",
+      "speaker": "Voice",
+      "storage": "{{size}} used by on-device voices",
+      "downloadHint": "Downloads are verified and stored on this device.",
+      "japaneseUnavailable": "Japanese uses the system voice because no Piper model is available.",
+      "fallbackToSystem": "On-device voice is unavailable. Playing with the system voice.",
+      "languageMismatch": "This model speaks {{language}}. Set Speech locale to match, or playback uses the system voice.",
+      "installFirst": "Choose and install an on-device model first."
     },
     "footer": "Android can periodically check running sessions in the background and post a completion notification. Background speech and continuous microphone capture are not supported.",
     "check": {
@@ -351,6 +421,57 @@
     "readInterim": {
       "title": "Read progress updates",
       "description": "Read updates like “On it…”. Final replies are always read."
+    },
+    "setup": {
+      "title": "On-device voice input",
+      "step": "Step {{step}} of {{total}}",
+      "followSystem": "Follow system",
+      "setUpInput": "Set up on-device input",
+      "manageInput": "Manage on-device input",
+      "notActive": "Finish setup to activate on-device input.",
+      "chooseVoice": "Choose a voice",
+      "manageDownloads": "Manage downloads",
+      "more": "More audio settings",
+      "advanced": "Advanced options",
+      "notNow": "Not now",
+      "downloadContinue": "Download & continue",
+      "tools": "Voice tools",
+      "downloadSize": "{{size}} to download · Wi-Fi recommended",
+      "englishModel": "Moonshine · Fast, for English commands",
+      "multilingualModel": "Whisper · For commands in multiple languages",
+      "microphone": "Microphone access",
+      "allow": "Allow",
+      "sequence": "Wake → Speak → Send",
+      "serverNote": "Speech recognition runs on your phone. Your request still goes to your OpenCode server.",
+      "profileNote": "Optional: record a 12-second sample so only your voice can wake the app. The voice profile stays on your phone. Skipping lets anyone say the wake phrase.",
+      "skipProfile": "Skip voice profile",
+      "skipTest": "Skip test & finish",
+      "startTest": "Start test",
+      "stopTest": "Stop test",
+      "testNote": "The test won’t send a request. Microphone listening stops when you leave this screen.",
+      "busy": "Stop conversation mode before setting up voice input.",
+      "intro": {
+        "title": "Your voice, hands-free",
+        "description": "Say “{{phrase}}”, then tell OpenCode what to do."
+      },
+      "prepare": {
+        "title": "Prepare your phone",
+        "description": "Choose a language, allow the microphone and download the voice tools once."
+      },
+      "profile": {
+        "title": "Make it yours",
+        "description": "Choose whether the app should respond only to your voice."
+      },
+      "test": {
+        "title": "Try “{{phrase}}”",
+        "description": "Start the test, then say the wake phrase at a normal speaking volume.",
+        "idle": "Ready when you are",
+        "starting": "Starting microphone…",
+        "listening": "Listening for the wake phrase…",
+        "detected": "Wake phrase detected. You’re ready!",
+        "error": "Couldn’t run the test. Check microphone access and try again.",
+        "busy": "Stop conversation mode to run the test."
+      }
     }
   },
   "diagnostics": {
@@ -527,7 +648,7 @@
   },
   "general": {
     "title": "General",
-    "resetOnboarding": "Reset onboarding"
+    "resetOnboarding": "Review setup"
   },
   "autoUpdate": {
     "title": "Update checks",
@@ -708,5 +829,71 @@
     "generalConfirmTitle": "Edit global configuration",
     "generalConfirmMessage": "This changes the configuration for every project on this server. A backup is created first.\n\n{{path}}",
     "generalConfirmAction": "Continue"
+  },
+  "modelRouting": {
+    "title": "Auto model routing",
+    "description": "Classify each prompt and choose a model by complexity. Routing is skipped when the classifier is unavailable.",
+    "enable": {
+      "title": "Enable auto-routing",
+      "description": "Choose a model for each prompt based on its complexity.",
+      "unavailable": "Set up a classifier below before enabling routing."
+    },
+    "classifier": {
+      "label": "Classifier",
+      "local": {
+        "label": "On-device model",
+        "description": "Runs on this phone. The model is downloaded once."
+      },
+      "server": {
+        "label": "OpenCode classifier",
+        "description": "Calls a model through OpenCode before sending the prompt."
+      }
+    },
+    "local": {
+      "statusLabel": "On-device model",
+      "status": {
+        "unsupported": "Not supported on this platform",
+        "installing": "Downloading",
+        "ready": "Ready",
+        "missing": "Not installed",
+        "error": "Install failed"
+      },
+      "installed": "Installed ({{size}})",
+      "remove": "Remove model",
+      "download": "Download model ({{size}})",
+      "license": "{{model}} · {{license}}. The model runs only on this device."
+    },
+    "server": {
+      "modelLabel": "Classifier model",
+      "cheapest": "Cheapest available",
+      "check": "Check classifier",
+      "status": {
+        "unknown": "Not checked. Check the classifier to enable routing.",
+        "checking": "Checking the classifier...",
+        "available": "Classifier available.",
+        "unsupported": "This server does not expose the classifier endpoint.",
+        "unavailable": "Classifier unavailable. Check the connection and retry.",
+        "auth": "Sign in to this server before using the classifier."
+      }
+    },
+    "tiers": {
+      "simple": {
+        "label": "Simple model"
+      },
+      "standard": {
+        "label": "Standard model"
+      },
+      "complex": {
+        "label": "Complex model"
+      },
+      "automatic": "Automatic",
+      "automaticDescription": "Choose from the enabled models",
+      "automaticValue": "Automatic · {{model}}",
+      "unavailable": "Unavailable"
+    },
+    "protect": {
+      "title": "Protect long chats",
+      "description": "Avoid downgrading models on long conversations where prompt-cache savings may be larger."
+    }
   }
 }

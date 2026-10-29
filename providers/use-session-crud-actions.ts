@@ -4,9 +4,11 @@ import {
   executeCommand as svcExecuteCommand,
   executeShell as svcExecuteShell,
   forkSession as svcForkSession,
+  interruptSession as svcInterruptSession,
   revertSession as svcRevertSession,
   unrevertSession as svcUnrevertSession,
   updateSessionTitle as svcUpdateSessionTitle,
+  waitForSessionIdle as svcWaitForSessionIdle,
 } from '@/providers/services/session-service';
 import { useCallback } from 'react';
 
@@ -223,6 +225,11 @@ export function useSessionCrudActions({
   }, [client, isCurrentClient, locallyCreatedSessionsRef, openSession, persistSnapshot, sessionStatuses, sessions, setSessionStatuses, setSessions]);
 
   const revertSession = useCallback(async (sessionId: string, messageId: string) => {
+    // A revert cannot be staged while the session is running. Interrupt first,
+    // then let the server finish settling before staging the rewind. Both calls
+    // are idle no-ops, and local status can lag the server either way.
+    await svcInterruptSession(client, sessionId);
+    await svcWaitForSessionIdle(client, sessionId);
     await svcRevertSession(client, sessionId, messageId);
     await Promise.all([refreshSessions(), refreshMessages(sessionId, true, { mode: 'replace' }), refreshSessionDiff(sessionId, true)]);
   }, [client, refreshMessages, refreshSessionDiff, refreshSessions]);

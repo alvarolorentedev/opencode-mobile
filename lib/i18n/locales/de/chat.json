@@ -7,13 +7,10 @@
     "stopConversationTitle": "Konversation beenden?",
     "stopConversationMessage": "Dadurch wird der Konversationsmodus beendet und OpenCode hört auf, auf deinen nächsten Beitrag zu warten.",
     "keepGoing": "Weiter",
-    "revertTitle": "Ab dieser Nachricht zurücksetzen?",
-    "revertMessage": "OpenCode setzt die Sitzungsänderungen nach diesem Punkt zurück.",
-    "revertConfirm": "Ab dieser Nachricht zurücksetzen?\n\nOpenCode setzt die Sitzungsänderungen nach diesem Punkt zurück.",
-    "revert": "Zurücksetzen",
     "couldNotSendRetry": "OpenCode konnte diese Nachricht nicht senden. Versuch es gleich noch einmal.",
     "couldNotSend": "OpenCode konnte diese Nachricht nicht senden.",
     "unableToPlay": "Diese Antwort des Assistenten kann nicht abgespielt werden.",
+    "ttsFallback": "Die On-Device-Stimme ist nicht verfügbar. Die Systemstimme wird verwendet.",
     "stopConversationBeforePlay": "Beende den Konversationsmodus, bevor du eine Antwort manuell abspielst.",
     "noReadableText": "In dieser Antwort des Assistenten gibt es keinen lesbaren Text.",
     "fileTooLarge": "Die Datei überschreitet das Anhangslimit von 10 MB.",
@@ -216,6 +213,8 @@
     "lastHeard": "Zuletzt gehört",
     "wakePhrase": "Weckphrase",
     "startSpeaking": "Sprich einfach los. Was du in der letzten Runde gesagt hast, erscheint hier.",
+    "listeningHint": "Sprich los, ich höre zu.",
+    "endConversation": "Gespräch beenden",
     "steerHint": "Sage jederzeit „{{phrase}}“, um zu steuern."
   },
   "modelPicker": {
@@ -228,7 +227,11 @@
     "reasoningSupported": " · Reasoning unterstützt",
     "standardModel": " · Standardmodell",
     "noMatchingModels": "Keine passenden Modelle",
-    "emptyHint": "Versuch einen Modell- oder Anbieternamen."
+    "emptyHint": "Versuch einen Modell- oder Anbieternamen.",
+    "autoRouting": "Auto-routing",
+    "autoRoutingDescription": "Use a model matched to each prompt",
+    "autoRoutingUnavailable": "Set up a classifier in Settings",
+    "defaultModel": "Default model"
   },
   "starter": {
     "title": "Neue Aufgabe starten",

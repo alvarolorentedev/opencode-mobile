@@ -70,6 +70,7 @@ export function useOpencodeProviderValues(input: ProviderValuesInput) {
     activateProviderAccount,
     removeProviderAccount,
     setAutoApprove,
+    modelRouting,
     chatPreferences,
     updateChatPreferences,
     projects,
@@ -291,8 +292,8 @@ export function useOpencodeProviderValues(input: ProviderValuesInput) {
   );
 
   const capabilitiesValue = useMemo<CapabilitiesContextValue>(
-    () => ({ currentConfig, availableProviders, providerAuthMethodsById, configuredProviders, availableModels, availableAgents, setProviderAuth, removeProvider, providerOAuth: { start: startProviderOAuth, complete: completeProviderOAuth, completeAutomatic: completeAutomaticProviderOAuth, cancel: cancelProviderOAuth }, providerAccounts: { add: addProviderAccount, activate: activateProviderAccount, remove: removeProviderAccount } }),
-    [currentConfig, availableProviders, providerAuthMethodsById, configuredProviders, availableModels, availableAgents, setProviderAuth, removeProvider, startProviderOAuth, completeProviderOAuth, completeAutomaticProviderOAuth, cancelProviderOAuth, addProviderAccount, activateProviderAccount, removeProviderAccount],
+    () => ({ currentConfig, availableProviders, providerAuthMethodsById, configuredProviders, availableModels, availableAgents, setProviderAuth, removeProvider, providerOAuth: { start: startProviderOAuth, complete: completeProviderOAuth, completeAutomatic: completeAutomaticProviderOAuth, cancel: cancelProviderOAuth }, providerAccounts: { add: addProviderAccount, activate: activateProviderAccount, remove: removeProviderAccount }, modelRouting }),
+    [currentConfig, availableProviders, providerAuthMethodsById, configuredProviders, availableModels, availableAgents, setProviderAuth, removeProvider, startProviderOAuth, completeProviderOAuth, completeAutomaticProviderOAuth, cancelProviderOAuth, addProviderAccount, activateProviderAccount, removeProviderAccount, modelRouting],
   );
 
   const preferencesValue = useMemo<PreferencesContextValue>(

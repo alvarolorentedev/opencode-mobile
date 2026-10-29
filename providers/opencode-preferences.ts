@@ -8,6 +8,7 @@ import {
   type AccentColor,
   type ThemeMode,
 } from '@/constants/appearance';
+import { defaultAutoModelPreferences, type AutoModelPreferences } from '@/lib/auto-model/preferences';
 import { DEFAULT_WAKE_PHRASE } from '@/lib/voice/wake-phrase';
 import { DEFAULT_LOCAL_WAKE_PHRASE, DEFAULT_LOCAL_COMMAND_MODEL, type LocalCommandModelId, type LocalWakePhraseId } from '@/lib/voice/local-wake-word/types';
 export type ResponseScope = 'brief' | 'balanced' | 'detailed';
@@ -20,6 +21,9 @@ export function normalizeTranscriptFontSize(value: number | undefined) {
     ? Math.min(TRANSCRIPT_FONT_SIZE_MAX, Math.max(TRANSCRIPT_FONT_SIZE_MIN, Math.round(value)))
     : DEFAULT_TRANSCRIPT_FONT_SIZE;
 }
+
+export { defaultAutoModelPreferences, normalizeAutoModelPreferences } from '@/lib/auto-model/preferences';
+export type { AutoModelClassifier, AutoModelPreferences, AutoModelTierPreference } from '@/lib/auto-model/preferences';
 
 export type ChatPreferences = {
   mode: string;
@@ -45,6 +49,9 @@ export type ChatPreferences = {
   providerModelSelections: Record<string, string>;
   modelVariantSelections: Record<string, string | null>;
   recentModelIds: string[];
+  // Per-connection model routing preferences. Model IDs are validated against
+  // the active catalog at send time rather than erased when a catalog is slow.
+  autoModel: AutoModelPreferences;
   autoApprove: boolean;
   autoPlayAssistantReplies: boolean;
   preferOnDeviceRecognition: boolean;
@@ -62,6 +69,11 @@ export type ChatPreferences = {
   speechLocale?: string;
   speechRate: number;
   speechVoiceId?: string;
+  // Playback engine. System is always available; local is opt-in and requires
+  // an explicitly selected, installed model pack.
+  ttsEngine: 'system' | 'local';
+  localTtsPackId?: string;
+  localTtsSpeakerId: number;
   workingSoundEnabled: boolean;
   workingSoundVariant: 'soft' | 'glass';
   workingSoundVolume: number;
@@ -83,6 +95,7 @@ export const defaultChatPreferences: ChatPreferences = {
   providerModelSelections: {},
   modelVariantSelections: {},
   recentModelIds: [],
+  autoModel: defaultAutoModelPreferences,
   autoApprove: false,
   autoPlayAssistantReplies: false,
   preferOnDeviceRecognition: true,
@@ -94,6 +107,8 @@ export const defaultChatPreferences: ChatPreferences = {
   localSpeakerVerification: true,
   localSpeakerThreshold: 0.5,
   speechRate: 1,
+  ttsEngine: 'system',
+  localTtsSpeakerId: 0,
   workingSoundEnabled: false,
   workingSoundVariant: 'soft',
   workingSoundVolume: 0.18,

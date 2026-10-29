@@ -19,6 +19,7 @@ async function flow(platform = 'android', foss = false, onSubmit = vi.fn()) {
   const { ConnectionScanFlow } = await loadTs('components/settings/connection-scan-flow.tsx', {
     react: runtime.react,
     'expo-constants': { expoConfig: { extra: { foss } } },
+    './sections/setting-rows': { SettingButton: 'Button' },
     'react/jsx-runtime': { jsx: (type: unknown, props: Record<string, unknown>) => ({ type, props }), jsxs: (type: unknown, props: Record<string, unknown>) => ({ type, props }), Fragment: 'Fragment' },
     'react-i18next': { useTranslation: () => ({ t: (key: string) => key }) },
     'react-native': { Platform: { OS: platform }, StyleSheet: { create: (styles: unknown) => styles }, View: 'View', Modal: 'Modal', ScrollView: 'ScrollView' },

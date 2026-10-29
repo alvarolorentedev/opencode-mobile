@@ -65,7 +65,7 @@
     "enabledModels": "Aktivierte Modelle"
   },
   "settingsAssistant": {
-    "summary": "Berechtigungen, Verbindung, Anbieter, Projekt und Einstellungen prüfen"
+    "summary": "Berechtigungen, Verbindung, Anbieter, Projekt, Stimme und Einstellungen überprüfen"
   },
   "reviewSetup": "Einrichtung prüfen",
   "stepIndicator": "Schritt {{step}} von {{totalSteps}}",
@@ -73,5 +73,13 @@
     "title": "Allgemeine Einstellungen",
     "subtitle": "Passe OpenCode Mobile an deine Wünsche an.",
     "defaultModel": "Standardmodell"
+  },
+  "voice": {
+    "title": "Stimme und Antworten",
+    "subtitle": "Wähle, wie du sprichst und Antworten hörst.",
+    "input": "Spracheingabe",
+    "playback": "Gesprochene Antworten",
+    "responses": "Antwortstil",
+    "autoPlay": "Antworten vorlesen"
   }
 }

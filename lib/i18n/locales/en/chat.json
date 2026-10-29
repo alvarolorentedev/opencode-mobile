@@ -7,13 +7,10 @@
     "stopConversationTitle": "Stop conversation?",
     "stopConversationMessage": "This will stop conversation mode and OpenCode will stop listening for your next turn.",
     "keepGoing": "Keep going",
-    "revertTitle": "Revert from this message?",
-    "revertMessage": "OpenCode will revert session changes after this point.",
-    "revertConfirm": "Revert from this message?\n\nOpenCode will revert session changes after this point.",
-    "revert": "Revert",
     "couldNotSendRetry": "OpenCode could not send that message. Try again in a moment.",
     "couldNotSend": "OpenCode could not send that message.",
     "unableToPlay": "Unable to play this assistant reply.",
+    "ttsFallback": "On-device voice is unavailable. Using the system voice.",
     "stopConversationBeforePlay": "Stop conversation mode before playing a reply manually.",
     "noReadableText": "There is no readable text in this assistant reply.",
     "fileTooLarge": "File exceeds the 10 MB attachment limit.",
@@ -216,6 +213,8 @@
     "lastHeard": "Last heard",
     "wakePhrase": "Wake phrase",
     "startSpeaking": "Start speaking naturally. What you say in the last round will appear here.",
+    "listeningHint": "Go ahead, I’m listening.",
+    "endConversation": "End conversation",
     "steerHint": "Say “{{phrase}}” anytime to steer."
   },
   "modelPicker": {
@@ -228,7 +227,11 @@
     "reasoningSupported": " · Reasoning supported",
     "standardModel": " · Standard model",
     "noMatchingModels": "No matching models",
-    "emptyHint": "Try a model or provider name."
+    "emptyHint": "Try a model or provider name.",
+    "autoRouting": "Auto-routing",
+    "autoRoutingDescription": "Use a model matched to each prompt",
+    "autoRoutingUnavailable": "Set up a classifier in Settings",
+    "defaultModel": "Default model"
   },
   "starter": {
     "title": "Start a new task",

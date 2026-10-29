@@ -1,7 +1,7 @@
 {
   "name": "opencode-mobile",
   "main": "index.js",
-  "version": "1.0.100",
+  "version": "1.0.105",
   "scripts": {
     "start": "expo start",
     "start:dev-client": "expo start --dev-client",
@@ -34,7 +34,8 @@
     "prebuild:ios": "expo prebuild --platform ios --non-interactive",
     "build:ios:local": "node ./scripts/build-ios-release.mjs",
     "test:foss": "node ./tests/foss-prepare.test.mjs",
-    "preview:workspaces": "EXPO_PUBLIC_E2E_MODE=1 EXPO_APP_VARIANT=development npm run build:web:ci && node ./tests/fake-opencode/preview-workspaces.mjs"
+    "preview:workspaces": "EXPO_PUBLIC_E2E_MODE=1 EXPO_APP_VARIANT=development npm run build:web:ci && node ./tests/fake-opencode/preview-workspaces.mjs",
+    "postinstall": "patch-package"
   },
   "dependencies": {
     "@expo/vector-icons": "^15.0.3",
@@ -45,7 +46,7 @@
     "@react-native-community/slider": "5.2.0",
     "@scure/base": "^1.2.6",
     "@shopify/flash-list": "2.0.2",
-    "@siteed/sherpa-onnx.rn": "^1.3.1",
+    "@siteed/sherpa-onnx.rn": "1.3.1",
     "@xterm/addon-fit": "0.11.0",
     "@xterm/xterm": "6.0.0",
     "expo": "^57.0.24",
@@ -87,6 +88,7 @@
     "expo-web-browser": "~57.0.3",
     "i18next": "^26.4.2",
     "jsonc-parser": "^3.3.1",
+    "llama.rn": "^0.12.9",
     "react": "19.2.3",
     "react-dom": "19.2.3",
     "react-i18next": "^17.0.15",
@@ -98,6 +100,7 @@
     "react-native-reanimated": "4.5.1",
     "react-native-safe-area-context": "~5.7.0",
     "react-native-screens": "~4.26.0",
+    "react-native-svg": "15.15.4",
     "react-native-web": "~0.21.0",
     "react-native-worklets": "0.10.1",
     "zod": "^4.6.7"
@@ -108,6 +111,7 @@
     "@types/react": "~19.2.4",
     "eslint": "^9.25.0",
     "eslint-config-expo": "~57.0.2",
+    "patch-package": "^8.0.1",
     "serve": "^14.2.4",
     "typescript": "~6.0.3",
     "vite": "^8.3.2",

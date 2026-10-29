@@ -93,7 +93,8 @@ describe('multi-server contracts', () => {
   });
   it('validates registry identities and never persists credentials', async () => {
     const appearance = await loadTs('constants/appearance.ts');
-    const parsing = await loadTs('providers/persisted-preferences.ts', { '@/constants/appearance': appearance, '@/lib/connect': { parseConnectMetadata: () => undefined }, '@/lib/opencode/client/url': { stripServerUrlCredentials: (value: string) => value }, '@/lib/voice/wake-phrase': { normalizeWakePhrase: (value: string) => value }, '@/lib/voice/local-wake-word/types': { normalizeLocalWakePhrase: (value: string) => value, normalizeLocalCommandModel: (value: string) => value }, '@/providers/opencode-preferences': { normalizeTranscriptFontSize: (value: number) => value }, zod: { z } });
+    const autoModelPreferences = await loadTs('lib/auto-model/preferences.ts');
+    const parsing = await loadTs('providers/persisted-preferences.ts', { '@/constants/appearance': appearance, '@/lib/auto-model/preferences': autoModelPreferences, '@/lib/connect': { parseConnectMetadata: () => undefined }, '@/lib/opencode/client/url': { stripServerUrlCredentials: (value: string) => value }, '@/lib/voice/wake-phrase': { normalizeWakePhrase: (value: string) => value }, '@/lib/voice/local-wake-word/types': { normalizeLocalWakePhrase: (value: string) => value, normalizeLocalCommandModel: (value: string) => value }, '@/providers/opencode-preferences': { normalizeTranscriptFontSize: (value: number) => value }, zod: { z } });
     const { parseWorkspaces, serializeWorkspaces } = await loadTs('providers/workspace-storage.ts', {
       '@/lib/connection-password': { withoutConnectionSecrets: ({ password, headers, ...value }: any) => value }, '@/lib/connection-scope': identity,
       '@/lib/opencode/client': { isValidServerUrl: (value: string) => value.startsWith('http') }, '@/providers/persisted-preferences': parsing,
@@ -169,6 +170,7 @@ it('keeps lifecycle decisions current and closes projects without resetting reta
   const shell: any = { settings: entries[0].settings, onboardingVersion: 1, chatPreferences: {}, projectPathsByConnection: paths,
     projectPathsByConnectionRef: { current: paths }, setProjectPathsByConnection: vi.fn(), setSettings: vi.fn() };
   const writer = Object.assign(async () => {}, { preserveUnread: vi.fn() });
+  const workspaceFocus = await loadTs('providers/workspace-focus.ts');
   const { useWorkspaceConnections } = await loadTs('providers/use-workspace-connections.ts', {
     react: driver.react,
     '@react-native-async-storage/async-storage': { __esModule: true, default: { getItem: async () => 'stored', setItem: async () => {} } },
@@ -180,6 +182,7 @@ it('keeps lifecycle decisions current and closes projects without resetting reta
     '@/lib/opencode/client/url': { getServerHostname: (value: string) => value },
     '@/providers/persistence-hydration': { createPersistenceWriter: () => writer },
     '@/providers/shared-event-stream': { createSharedEventStream: () => () => {} },
+    '@/providers/workspace-focus': workspaceFocus,
     '@/providers/workspace-storage': { WORKSPACES_STORAGE_KEY: 'workspaces', parseWorkspaces: () => ({ connections: entries, focus: { connectionId: 'a', projectPath: '/repo' } }), serializeWorkspaces: () => 'stored' },
     '@/providers/workspace-types': { workspaceKey: ({ connectionId, projectPath }: any) => JSON.stringify([connectionId, projectPath]) },
   }, driver.globals);
@@ -204,6 +207,72 @@ it('keeps lifecycle decisions current and closes projects without resetting reta
 });
 
 
+it('selects a connected fallback for failover and prefers the last healthy server', async () => {
+  const { connectedWorkspaceTarget } = await loadTs('providers/workspace-focus.ts');
+  const connection = (id: string, enabled = true) => ({ id, enabled });
+  const snapshot = (id: string, status: string, path = '/repo', activeProjectPath = path) => ({ values: {
+    connectionValue: { connection: { status } }, projectsValue: { activeProjectPath },
+  }, native: { settings: { serverUrl: `http://${id}`, username: '' } } });
+  const snapshots = {
+    '["a","/repo"]': snapshot('a', 'connected'),
+    '["b","/repo"]': snapshot('b', 'connecting'),
+    '["c","/repo"]': snapshot('c', 'connected', '/c', '/c'),
+    '["d","/repo"]': snapshot('d', 'connected'),
+  };
+  expect(connectedWorkspaceTarget([connection('a', false), connection('b'), connection('c'), connection('d')], snapshots))
+    .toEqual({ connectionId: 'c', projectPath: '/c' });
+  expect(connectedWorkspaceTarget([connection('a'), connection('b'), connection('c'), connection('d')], snapshots, { preferredConnectionId: 'd' }))
+    .toEqual({ connectionId: 'd', projectPath: '/repo' });
+  expect(connectedWorkspaceTarget([connection('a', false), connection('b'), connection('c'), connection('d')], snapshots, { excludedConnectionId: 'c' }))
+    .toEqual({ connectionId: 'd', projectPath: '/repo' });
+  expect(connectedWorkspaceTarget([connection('b')], snapshots)).toBeUndefined();
+});
+
+it('moves chat focus to a connected server when the focused server fails', async () => {
+  const driver = hookRuntime();
+  const entries = ['a', 'b'].map((id) => ({ id, name: id, settings: { serverUrl: `http://${id}`, username: '', password: '', directory: '' }, projects: ['/repo'], preferences: {}, enabled: true }));
+  const paths = { 'http://a:': ['/repo'], 'http://b:': ['/repo'] };
+  const shell: any = { settings: entries[1].settings, onboardingVersion: 1, chatPreferences: {}, projectPathsByConnection: paths,
+    projectPathsByConnectionRef: { current: paths }, setProjectPathsByConnection: vi.fn(), setSettings: vi.fn() };
+  const writer = Object.assign(async () => {}, { preserveUnread: vi.fn() });
+  const workspaceFocus = await loadTs('providers/workspace-focus.ts');
+  const { useWorkspaceConnections } = await loadTs('providers/use-workspace-connections.ts', {
+    react: driver.react,
+    '@react-native-async-storage/async-storage': { __esModule: true, default: { getItem: async () => 'stored', setItem: async () => {} } },
+    '@/lib/connection-scope': { ...identity, getConnectionUiScope: (value: any) => value.serverUrl.slice(7) },
+    '@/lib/connection-profiles': { createProfileId: () => 'new', findMatchingProfile: () => undefined, getProfilePassword: async () => '',
+      loadConnectionProfiles: async () => [], mutateConnectionProfiles: vi.fn(), saveProfilePassword: vi.fn(), deleteProfilePassword: vi.fn(), pickModelPreferences: () => ({}) },
+    '@/lib/connection-headers': { getProfileHeaders: async () => ({}), saveProfileHeaders: vi.fn(), deleteProfileHeaders: vi.fn() },
+    '@/lib/opencode/client': { defaultConnectionSettings: { serverUrl: 'http://default', username: '' } },
+    '@/lib/opencode/client/url': { getServerHostname: (value: string) => value },
+    '@/providers/persistence-hydration': { createPersistenceWriter: () => writer },
+    '@/providers/shared-event-stream': { createSharedEventStream: () => () => {} },
+    '@/providers/workspace-focus': workspaceFocus,
+    '@/providers/workspace-storage': { WORKSPACES_STORAGE_KEY: 'workspaces', parseWorkspaces: () => ({ connections: entries, focus: { connectionId: 'b', projectPath: '/repo' } }), serializeWorkspaces: () => 'stored' },
+    '@/providers/workspace-types': { workspaceKey: ({ connectionId, projectPath }: any) => JSON.stringify([connectionId, projectPath]) },
+  }, driver.globals);
+  driver.mount(({ shell }: any) => useWorkspaceConnections(shell, true), { shell });
+  await driver.settle();
+  const snapshot = (id: string, status: string) => ({ enabled: true, native: { settings: entries.find((entry) => entry.id === id)!.settings }, suspend: vi.fn(),
+    values: { projectsValue: { activeProjectPath: '/repo' }, conversationValue: { conversation: { active: false }, toggleConversationMode: vi.fn(async () => {}) }, connectionValue: { connection: { status } } } });
+  driver.value.publish('["a","/repo"]', snapshot('a', 'connected'));
+  driver.value.publish('["b","/repo"]', snapshot('b', 'connected'));
+  await driver.settle();
+  expect(driver.value.focus).toEqual({ connectionId: 'b', projectPath: '/repo' });
+  driver.value.publish('["b","/repo"]', snapshot('b', 'error'));
+  await driver.settle();
+  expect(driver.value.focus).toEqual({ connectionId: 'a', projectPath: '/repo' });
+  driver.value.publish('["b","/repo"]', snapshot('b', 'connected'));
+  driver.value.select({ connectionId: 'b', projectPath: '/repo' });
+  await driver.settle();
+  expect(driver.value.focus).toEqual({ connectionId: 'b', projectPath: '/repo' });
+  await driver.value.disconnect('b');
+  await driver.settle();
+  expect(driver.value.focus).toEqual({ connectionId: 'a', projectPath: '/repo' });
+  expect(driver.value.isEnabled('b')).toBe(false);
+  driver.unmount();
+});
+
 it('flattens terminal catalogs once per server PTY and keeps the owning workspace actions', async () => {
   const { workspaceTerminals } = await loadTs('providers/use-workspace-terminals.ts', { react: {}, '@/providers/workspace-context': {} });
   const connections = ['a', 'b'].map((id) => ({ id, name: id, settings: { serverUrl: `http://${id}` } }));
@@ -224,6 +293,7 @@ it('clears focus and keeps the retained runtime when the last opened project clo
   const shell: any = { settings: entries[0].settings, onboardingVersion: 1, chatPreferences: {}, projectPathsByConnection: paths,
     projectPathsByConnectionRef: { current: paths }, setProjectPathsByConnection: vi.fn(), setSettings: vi.fn() };
   const writer = Object.assign(async () => {}, { preserveUnread: vi.fn() });
+  const workspaceFocus = await loadTs('providers/workspace-focus.ts');
   const { useWorkspaceConnections } = await loadTs('providers/use-workspace-connections.ts', {
     react: driver.react,
     '@react-native-async-storage/async-storage': { __esModule: true, default: { getItem: async () => 'stored', setItem: async () => {} } },
@@ -235,6 +305,7 @@ it('clears focus and keeps the retained runtime when the last opened project clo
     '@/lib/opencode/client/url': { getServerHostname: (value: string) => value },
     '@/providers/persistence-hydration': { createPersistenceWriter: () => writer },
     '@/providers/shared-event-stream': { createSharedEventStream: () => () => {} },
+    '@/providers/workspace-focus': workspaceFocus,
     '@/providers/workspace-storage': { WORKSPACES_STORAGE_KEY: 'workspaces', parseWorkspaces: () => ({ connections: entries, focus: { connectionId: 'a', projectPath: '/repo' } }), serializeWorkspaces: () => 'stored' },
     '@/providers/workspace-types': { workspaceKey: ({ connectionId, projectPath }: any) => JSON.stringify([connectionId, projectPath]) },
   }, driver.globals);

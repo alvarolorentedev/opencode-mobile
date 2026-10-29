@@ -5,6 +5,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import type { TranscriptEntry } from '@/lib/opencode/format';
 import { openVoiceSettingsAsync } from '@/lib/voice/permissions';
 import { speakText, stopSpeaking } from '@/lib/voice/speech-output';
+import { getSpeechPlayback } from '@/lib/voice/speech-config';
 import { useSpeechInput } from '@/lib/voice/use-speech-input';
 import { createTranscriptAccumulator } from '@/lib/voice/transcript-accumulate';
 import type { ChatPreferences, ConversationContextValue } from '@/providers/opencode-provider-types';
@@ -105,6 +106,9 @@ export function useChatViewVoice({
         onDone: () => {
           if (!cancelled) setSpeakingMessageId((current) => (current === latestAssistantEntry.id ? undefined : current));
         },
+        onEngineFallback: () => {
+          if (!cancelled) setVoiceFeedback(t('chat:view.ttsFallback'));
+        },
         onError: () => {
           if (!cancelled) {
             setVoiceFeedback(t('chat:view.unableToPlay'));
@@ -114,9 +118,14 @@ export function useChatViewVoice({
         onStart: () => {
           if (!cancelled) setSpeakingMessageId(latestAssistantEntry.id);
         },
+        playback: getSpeechPlayback({
+          localTtsPackId: chatPreferences.localTtsPackId,
+          localTtsSpeakerId: chatPreferences.localTtsSpeakerId,
+          speechVoiceId: chatPreferences.speechVoiceId,
+          ttsEngine: chatPreferences.ttsEngine,
+        }),
         rate: chatPreferences.speechRate,
         text: latestAssistantEntry.text,
-        voice: chatPreferences.speechVoiceId,
       });
 
       if (started && !cancelled) lastAutoSpokenMessageIdRef.current = latestAssistantEntry.id;
@@ -124,7 +133,7 @@ export function useChatViewVoice({
     return () => {
       cancelled = true;
     };
-  }, [chatPreferences.autoPlayAssistantReplies, chatPreferences.speechLocale, chatPreferences.speechRate, chatPreferences.speechVoiceId, conversationActive, latestAssistantEntry, running, t]);
+  }, [chatPreferences.autoPlayAssistantReplies, chatPreferences.localTtsPackId, chatPreferences.localTtsSpeakerId, chatPreferences.speechLocale, chatPreferences.speechRate, chatPreferences.speechVoiceId, chatPreferences.ttsEngine, conversationActive, latestAssistantEntry, running, t]);
 
   const handleToggleRecording = useCallback(async () => {
     if (conversationActiveRef.current) return;
@@ -135,6 +144,7 @@ export function useChatViewVoice({
 
     speechDraftPrefixRef.current = draft.trim() ? `${draft.trim()} ` : '';
     dictationAccumulatorRef.current.reset();
+    await stopSpeaking().catch(() => undefined);
     const release = block();
     let started: boolean;
     try {

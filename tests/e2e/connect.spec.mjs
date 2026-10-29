@@ -151,7 +151,10 @@ async function startApprovalWait(page, startup, theme = 'dark') {
   await submitLink(page, pairingLink().toString());
   await expect(page.getByTestId('connect-progress')).toHaveText('Confirm this connection on your computer.');
   await expect.poll(() => startup.attempts).toBeGreaterThan(0);
-  await page.clock.pauseAt(await page.evaluate(() => Date.now() + 100));
+  // Pause before the first 3s startup retry. The headroom keeps a slow CI
+  // scheduler from advancing the page clock past the pause target, which
+  // throws "Cannot fast-forward to the past".
+  await page.clock.pauseAt(await page.evaluate(() => Date.now() + 2_000));
   return state;
 }
 
@@ -568,9 +571,13 @@ test('renewal rotates credentials while preserving profile, machine, hostname an
     const original = Storage.prototype.setItem; let fail = true;
     Storage.prototype.setItem = function (key, value) { if (key === 'opencode-mobile.connection-profiles' && fail && JSON.parse(value).find((profile) => profile.connect)?.username !== previousUsername) { fail = false; throw new Error('storage unavailable'); } return original.call(this, key, value); };
   }, previous.username);
+  const scopeBeforeRestore = await page.evaluate(() => JSON.parse(localStorage.getItem('opencode-mobile.favorite-sessions'))[0].connectionScope);
   await page.getByTestId('connect-restore').click();
   await expect(page.getByTestId('connect-error')).toContainText('secure saving failed');
-  expect(await page.evaluate(() => JSON.parse(localStorage.getItem('opencode-mobile.favorite-sessions'))[0].connectionScope)).toBe(previousScope);
+  // A background renewal can rotate the scope before this explicit restore.
+  // Compare against the immediate pre-restore scope so the rollback contract is
+  // still asserted without depending on an earlier connection's timing.
+  await expect.poll(() => page.evaluate(() => JSON.parse(localStorage.getItem('opencode-mobile.favorite-sessions'))[0].connectionScope)).toBe(scopeBeforeRestore);
   await page.getByTestId('connect-retry').click();
   await expect(page).toHaveURL(/\/projects$/, { timeout: 30_000 });
   await expect.poll(() => page.evaluate(() => {

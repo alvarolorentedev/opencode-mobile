@@ -40,7 +40,7 @@ export function useChatViewController() {
   const { activeProject } = useProjects();
   const { activeSession, currentSessionId, ensureActiveSession } = useCurrentSession();
   const { forkSession, revertSession, sessionStatuses, sessions, unrevertSession } = useSessionLibrary();
-  const { availableAgents, availableModels, configuredProviders } = useCapabilities();
+  const { availableAgents, availableModels, configuredProviders, modelRouting } = useCapabilities();
   const { chatPreferences, updateChatPreferences } = usePreferences();
   const slim = chatPreferences.slimInterface === true;
   const { connection, settings, serverCapabilities } = useConnection();
@@ -366,6 +366,11 @@ export function useChatViewController() {
       isSpeechInputAvailable, isSpeechInputListening,
       isStoppingSession, isUpdatingAutoApprove, selectedAgentLabel, serverCapabilities,
       selectedVariant: selectedModelVariant,
+      autoRoutingEnabled: chatPreferences.autoModel.enabled,
+      autoRoutingAvailable: modelRouting.available,
+      onAutoRoutingChange: (enabled: boolean) => updateChatPreferences({
+        autoModel: { ...chatPreferences.autoModel, enabled },
+      }),
       showSendAction, visibleModels,
       isV2, suggestions, suggestionsActive, suggestionsSearching, suggestionsError,
       shellMode, focusRequest,

@@ -7,8 +7,10 @@ import { loadTs } from '../helpers/runtime.mjs';
 describe('chat appearance preferences', () => {
   it('normalizes transcript font size and keeps flat/slim defaults off', async () => {
     const appearance = await loadTs('constants/appearance.ts');
+    const autoModelPreferences = await loadTs('lib/auto-model/preferences.ts');
     const { normalizeTranscriptFontSize, defaultChatPreferences } = await loadTs('providers/opencode-preferences.ts', {
       '@/constants/appearance': appearance,
+      '@/lib/auto-model/preferences': autoModelPreferences,
       '@/lib/voice/wake-phrase': { DEFAULT_WAKE_PHRASE: 'hey code' },
       '@/lib/voice/local-wake-word/types': { DEFAULT_LOCAL_WAKE_PHRASE: 'hey-code', DEFAULT_LOCAL_COMMAND_MODEL: 'moonshine-tiny-en' },
     });

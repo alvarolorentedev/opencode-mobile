@@ -217,3 +217,63 @@ test('a 1.x server exposing /api compatibility routes still connects as 1.x', as
     server.kill('SIGTERM');
   }
 });
+
+test('settings search reveals advanced controls, preserves the query and keeps preferences unchanged @smoke', async ({ page, request }) => {
+  await resetScenario(request, 'happy-path');
+  await openReadyChat(page);
+  await goToTab(page, 'Settings');
+  const search = page.getByTestId('settings-search');
+  const before = await page.evaluate(() => localStorage.getItem('opencode-mobile.chat-preferences'));
+  await search.fill('wake phrase');
+  await page.getByRole('button', { name: 'Wake phrase. Voice & audio', exact: true }).click();
+  const sheet = page.getByTestId('settings-section-overlay');
+  const destination = page.getByTestId('settings-search-destination');
+  await expect(sheet.getByRole('button', { name: 'More audio settings', exact: true })).toHaveAttribute('aria-expanded', 'true');
+  await expect(destination.getByRole('textbox')).toHaveValue('hey code');
+  await expect(destination).toBeInViewport();
+  expect(await page.evaluate(() => localStorage.getItem('opencode-mobile.chat-preferences'))).toBe(before);
+  await sheet.getByRole('button', { name: 'Close', exact: true }).click();
+  await expect(search).toHaveValue('wake phrase');
+  await search.fill('not-a-setting');
+  await expect(page.getByText('No matching settings. Try another word.', { exact: true })).toBeVisible();
+  await page.getByRole('button', { name: 'Clear search', exact: true }).click();
+  await expect(search).toHaveValue('');
+  await expect(page.getByTestId('settings-category-appearance')).toBeVisible();
+});
+
+test('appearance changes persist and settings remain usable at narrow widths', async ({ page, request }) => {
+  await page.setViewportSize({ width: 320, height: 700 });
+  await resetScenario(request, 'happy-path');
+  await openReadyChat(page);
+  await goToTab(page, 'Settings');
+  await page.getByTestId('settings-category-appearance').click();
+  const sheet = page.getByTestId('settings-section-overlay');
+  await page.getByTestId('settings-theme-mode').click();
+  await page.getByRole('button', { name: 'Light', exact: true }).click();
+  await page.getByTestId('settings-accent-purple').click();
+  await expect(page.getByTestId('settings-accent-purple')).toHaveAttribute('aria-checked', 'true');
+  const slim = sheet.getByRole('switch', { name: 'Slim interface', exact: true });
+  await slim.click();
+  await expect(slim).toHaveAttribute('aria-checked', 'true');
+  await sheet.getByRole('button', { name: 'Close', exact: true }).click();
+  await page.reload();
+  await page.getByTestId('settings-category-appearance').click();
+  await expect(page.getByTestId('settings-theme-mode')).toContainText('Light');
+  await expect(page.getByTestId('settings-accent-purple')).toHaveAttribute('aria-checked', 'true');
+  await expect(sheet.getByRole('switch', { name: 'Slim interface', exact: true })).toHaveAttribute('aria-checked', 'true');
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(320);
+  await page.screenshot({ path: test.info().outputPath('settings-appearance-narrow-light.png') });
+});
+
+test('search follows the interface language and opens the matching category', async ({ page, request }) => {
+  await resetScenario(request, 'happy-path');
+  await openReadyChat(page);
+  await goToTab(page, 'Settings');
+  await page.getByTestId('settings-category-language').click();
+  await page.getByTestId('settings-language').click();
+  await page.getByRole('button', { name: 'Español', exact: true }).click();
+  await page.getByTestId('settings-section-overlay').getByRole('button', { name: 'Cerrar', exact: true }).click();
+  await page.getByTestId('settings-search').fill('tema');
+  await page.getByRole('button', { name: 'Modo del tema. Apariencia', exact: true }).click();
+  await expect(page.getByTestId('settings-search-destination').getByTestId('settings-theme-mode')).toBeVisible();
+});

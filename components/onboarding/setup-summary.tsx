@@ -3,6 +3,9 @@ import { StyleSheet, View } from 'react-native';
 import { List } from 'react-native-paper';
 
 import { LANGUAGE_OPTIONS } from '@/components/settings/settings-utils';
+import { useSpeechVoices } from '@/components/settings/use-speech-voices';
+import { LOCAL_COMMAND_MODELS } from '@/lib/voice/local-wake-word/model-constants';
+import { getLocalTtsPack } from '@/lib/voice/tts/catalog';
 import { getNormalizedServerUrl } from '@/lib/opencode/client';
 import { getVisibleModels } from '@/providers/opencode-model-selection';
 import { useCapabilities, useConnection, usePreferences, useProjects } from '@/providers/opencode-contexts';
@@ -15,6 +18,12 @@ export function SetupSummary() {
   const { activeProject } = useProjects();
   const { availableModels, configuredProviders } = useCapabilities();
   const { chatPreferences } = usePreferences();
+  const { voices } = useSpeechVoices();
+  const voiceLabel = voices.find((voice) => voice.id === chatPreferences.speechVoiceId)?.label || t('settings:voice.voiceSelect.automatic');
+  const ttsPack = getLocalTtsPack(chatPreferences.localTtsPackId);
+  const playbackLabel = chatPreferences.ttsEngine === 'local' && ttsPack
+    ? `${t('settings:voice.mode.local')} · ${ttsPack.vendor} · ${ttsPack.languageLabel} · ${ttsPack.speakers.find((speaker) => speaker.id === chatPreferences.localTtsSpeakerId)?.label || ttsPack.speakers[0]?.label}`
+    : `${t('settings:voice.mode.system')} · ${voiceLabel}`;
   const connected = connection.status === 'connected';
   const models = getVisibleModels(availableModels, configuredProviders, chatPreferences.enabledModelIds);
   const selected = models.find((model) => model.id === chatPreferences.modelId);
@@ -34,6 +43,11 @@ export function SetupSummary() {
     ...(connected && serverCapabilities.promptDeliveryAvailable ? [
       { id: 'delivery', label: t('settings:providers.promptDelivery.label'), value: t(`settings:providers.promptDelivery.${chatPreferences.promptDelivery || 'steer'}.label`) },
     ] : []),
+    { id: 'voice-input', label: t('onboarding:voice.input'), value: chatPreferences.voiceWakeMode === 'local' ? `${t('settings:voice.mode.local')} · ${LOCAL_COMMAND_MODELS[chatPreferences.localCommandModel].label}` : t('settings:voice.mode.system') },
+    { id: 'voice-playback', label: t('onboarding:voice.playback'), value: playbackLabel },
+    { id: 'voice-autoplay', label: t('onboarding:voice.autoPlay'), value: t(chatPreferences.autoPlayAssistantReplies ? 'common:labels.enabled' : 'common:labels.off') },
+    { id: 'response-style', label: t('onboarding:voice.responses'), value: t(`settings:voice.responseScope.${chatPreferences.responseScope}.label`) },
+    { id: 'next-actions', label: t('settings:voice.nextActions.title'), value: t(chatPreferences.includeNextActions ? 'common:labels.enabled' : 'common:labels.off') },
   ];
 
   return (

@@ -1,3 +1,83 @@
+# Voice & audio · option 3 design QA
+
+final result: passed
+
+Reviewed 2026-10-29 in the Codex in-app browser. No actionable P0/P1/P2 visual
+findings remain in the reviewed app-owned content. This is visual acceptance,
+not physical-device microphone, recognition, audio-session or screen-reader acceptance.
+
+## Visual truth and evidence
+
+- Exact selected source: option 3, ImageGen result
+  `exec-b7eb02c2-93af-497c-9502-d11e658d0367.png` (1829 × 860 board), under
+  `/Users/alvarolorente/.codex/generated_images/01a18641-3d31-72b3-b1d5-1299ea364175/`.
+- Production web states: `output/voice-settings-system.jpg` and
+  `output/voice-settings-local.jpg`, 390 × 844, density 1. The existing web
+  platform gate omits native playback-engine tabs; their conditional content and
+  install-before-activation behavior are covered by component contracts.
+- Setup: `output/voice-setup-{intro,prepare,profile,test,detected}.jpg`, 390 × 844.
+  Later native-only states use the disposable `output/voice-preview-entry.jsx`
+  presentation fixture with simulated readiness/permission/audio. It imports the
+  production components; it does not establish native recognition quality.
+- Narrow/light: `output/voice-setup-light-narrow.jpg`, 320 × 700. Supporting
+  content scrolls while Back/Close and the primary footer remain reachable.
+- Downloads: `output/voice-downloads.jpg`, 390 × 844; one model dropdown and only
+  the selected model's actions. No catalog of expanded model cards remains.
+- Opened the source together with the rendered captures in
+  `output/voice-compare-{intro,prepare,test}.jpg`. Each source panel is cropped
+  inside its app frame and fitted to 390 × 844 beside the density-1 implementation.
+  The original board's captions and frame are excluded. Inspected full screens
+  and the readable selector/action regions at this scale.
+
+## Findings and fixes
+
+- P1: Paper's web progress wrapper initially expanded to the parent height and
+  pushed setup below the fold. A 4-point wrapper now bounds it; revised intro
+  and prepare captures show the complete heading/illustration/content hierarchy.
+- P2: Mint raster outlines were too pale on light backgrounds. Assets now use
+  the active theme tint, verified in the narrow light capture.
+- P2: Long compact field labels could crowd the selected value. Labels now have
+  a bounded share of the row and both texts may wrap; phone-width dropdowns stay
+  within their surface and retain complete accessible names.
+- P2: Reusing the outer sheet's scroll target in a full-screen flow would reveal
+  the wrong surface. Each flow now owns its SettingsPanel; step changes reset
+  that panel while retaining the modal/header.
+
+## Required fidelity surfaces
+
+- Typography: platform/Paper family retained, 24-point bold step headings,
+  readable 16-point instructions and 14-point support text. App-owned text wraps.
+- Spacing/layout: one header, 16-point gutters, 160-point transparent illustration
+  slot, compact model rows, 800-point content cap and pinned primary actions.
+- Colors/tokens: semantic app palette and selected accent replace the mock's
+  gradient/glow. Light/dark outline and text contrast were visually checked.
+- Imagery: four individually generated transparent mint line illustrations,
+  1881 × 836 RGBA, theme-tinted through Image. Prompts cover person/speech/phone,
+  phone/download tray, person/voiceprint, and phone/waveforms; no baked UI text.
+- Copy/content: separate Voice input and Spoken replies; explicit on-device
+  prerequisites; optional profile; precise local-recognition/server-request copy;
+  Start/Stop/Done and no-submission test guidance. All eight locale catalogs pass.
+
+Intentional house-pattern differences: left-aligned step text, a native progress
+bar in place of four decorative pills, standard Paper controls, and one primary
+Start test button in place of the mock's second decorative microphone control.
+The bubble's wake phrase is localized nearby rather than baked into an image.
+The Prepare action requires microphone permission, unlike the static mock's
+unconditionally enabled button. These preserve the selected information hierarchy
+while using the existing component system. No unresolved P3 follow-up is required.
+
+## Interaction and implementation checklist
+
+Verified System/local presentation switching; opening setup without activation;
+Continue/Back/Close; English → Spanish selecting Whisper and changing the missing
+size from ~152 MB to ~161 MB; explicit simulated permission/download; optional
+profile skip; Start/Stop/detected/Done; and the focused model manager/dropdown.
+Unit coverage establishes cancellation, retry, existing-profile preservation,
+verification choice preservation, and conversation/test exclusion. Real native
+capture, downloads and playback remain physical-device acceptance work.
+
+---
+
 # Cloud Link onboarding design QA
 
 final result: passed

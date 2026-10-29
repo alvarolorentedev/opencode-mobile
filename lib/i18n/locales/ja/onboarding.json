@@ -65,7 +65,7 @@
     "enabledModels": "有効なモデル"
   },
   "settingsAssistant": {
-    "summary": "権限、接続、プロバイダー、プロジェクト、設定を確認"
+    "summary": "権限、接続、プロバイダー、プロジェクト、音声、設定を確認"
   },
   "reviewSetup": "設定を確認",
   "stepIndicator": "ステップ {{step}} / {{totalSteps}}",
@@ -73,5 +73,13 @@
     "title": "一般設定",
     "subtitle": "OpenCode Mobileを使いやすく設定しましょう。",
     "defaultModel": "デフォルトモデル"
+  },
+  "voice": {
+    "title": "音声と応答",
+    "subtitle": "話しかけ方と応答の読み上げを設定します。",
+    "input": "音声入力",
+    "playback": "応答の読み上げ",
+    "responses": "応答スタイル",
+    "autoPlay": "応答を自動で読み上げる"
   }
 }

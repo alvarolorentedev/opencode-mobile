@@ -6,6 +6,7 @@ import { parseConnectMetadata } from '@/lib/connect';
 import { stripServerUrlCredentials } from '@/lib/opencode/client/url';
 import { normalizeWakePhrase } from '@/lib/voice/wake-phrase';
 import { normalizeLocalCommandModel, normalizeLocalWakePhrase } from '@/lib/voice/local-wake-word/types';
+import { normalizeAutoModelPreferences } from '@/lib/auto-model/preferences';
 import { normalizeTranscriptFontSize, type ChatPreferences } from '@/providers/opencode-preferences';
 
 const ConnectionSettingsSchema = z.object({
@@ -47,6 +48,9 @@ const ChatPreferencesSchema = z.object({
   language: optionalString,
   speechLocale: optionalString,
   speechVoiceId: optionalString,
+  ttsEngine: z.enum(['system', 'local']).optional().catch(undefined),
+  localTtsPackId: optionalString,
+  localTtsSpeakerId: optionalNumber((value) => Math.min(999, Math.max(0, Math.trunc(value)))).optional(),
   flatTranscript: optionalBoolean,
   slimInterface: optionalBoolean,
   autoApprove: optionalBoolean,
@@ -61,6 +65,9 @@ const ChatPreferencesSchema = z.object({
   recentModelIds: z.array(z.string()).optional().catch(undefined),
   providerModelSelections: z.record(z.string(), z.string()).optional().catch(undefined),
   modelVariantSelections: z.record(z.string(), z.union([z.string(), z.null()])).optional().catch(undefined),
+  autoModel: z.unknown().transform((value) => (
+    value === undefined ? undefined : normalizeAutoModelPreferences(value)
+  )).optional(),
   themeMode: z.enum(THEME_MODES).optional().catch(undefined),
   accentColor: z.enum(ACCENT_COLORS).optional().catch(undefined),
   promptDelivery: z.enum(['steer', 'queue']).optional().catch(undefined),

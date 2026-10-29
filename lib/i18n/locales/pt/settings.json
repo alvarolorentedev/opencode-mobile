@@ -4,14 +4,17 @@
       "connection": "Conexão",
       "ai": "IA e provedores",
       "notifications": "Notificações",
-      "voice": "Voz",
+      "voice": "Voz e áudio",
       "advanced": "Avançado",
       "support": "Suporte",
       "permissions": "Aprovações",
       "subscription": "Assinatura",
       "cloudLink": "Cloud Link",
       "extensions": "Extensions",
-      "responses": "Respostas"
+      "responses": "Respostas",
+      "appearance": "Aparência",
+      "chat": "Chat e respostas",
+      "about": "Sobre e ajuda"
     },
     "summaries": {
       "configuredCount": "{{value}} configurados",
@@ -24,7 +27,35 @@
       "voiceSystem": "Voz do sistema · {{phrase}}",
       "voiceLocal": "No dispositivo · {{phrase}}",
       "responsesOn": "{{scope}} · próximos passos ativados",
-      "responsesOff": "{{scope}} · próximos passos desativados"
+      "responsesOff": "{{scope}} · próximos passos desativados",
+      "appearance": "Tema, cor e densidade da interface",
+      "diagnostics": "Estado da conexão e solução de problemas"
+    },
+    "groups": {
+      "app": "Preferências do app",
+      "connections": "Conexões",
+      "server": "Servidor selecionado"
+    },
+    "intro": "Personalize o app e gerencie suas conexões.",
+    "search": {
+      "placeholder": "Buscar configurações",
+      "clear": "Limpar busca",
+      "empty": "Nenhuma configuração encontrada. Tente outra palavra.",
+      "results": "Configurações encontradas: {{count}}"
+    },
+    "keywords": {
+      "appearance": "tela tema cor escuro claro compacto densidade",
+      "responses": "chat mensagens texto fonte tamanho respostas estilo direcionar adicionar fila balões",
+      "voice": "voz áudio fala som microfone entrada reprodução idioma frase ativação",
+      "notifications": "notificações alertas bateria widgets",
+      "language": "idioma tradução interface",
+      "support": "ajuda comentários suporte atualizações versão assistente configuração",
+      "connection": "conexões servidor endereço senha credenciais reconectar QR",
+      "cloud-link": "conexão remota Cloud Link assinatura computadores serviços",
+      "ai": "IA provedores contas modelos autenticação classificador roteamento",
+      "extensions": "extensões MCP plugins habilidades comandos",
+      "permissions": "permissões aprovações regras salvas permitir automático",
+      "advanced": "diagnóstico rede conexão tempo real consulta erros uso"
     }
   },
   "support": {
@@ -234,7 +265,7 @@
       "description": "Prefira o reconhecimento local; use a nuvem se necessário."
     },
     "autoPlay": {
-      "title": "Reproduzir respostas do assistente automaticamente",
+      "title": "Ler respostas em voz alta",
       "description": "Ler respostas do chat. O modo de conversa lê sempre."
     },
     "workingSound": {
@@ -244,6 +275,16 @@
     "wakePhrase": {
       "label": "Frase de ativação",
       "helper": "O modo conversa só envia uma mensagem depois de ouvir esta frase. Duas ou mais palavras funcionam melhor."
+    },
+    "modelDownloads": {
+      "timeout": "O download expirou. A conexão travou — tente novamente no Wi‑Fi ou com um sinal melhor.",
+      "offline": "Não foi possível alcançar o servidor de download. Verifique sua conexão com a internet e tente novamente.",
+      "server": "O servidor de download não conseguiu fornecer o arquivo. Tente novamente mais tarde.",
+      "storage": "Não há espaço livre suficiente para instalar este modelo.",
+      "incomplete": "O download não foi concluído. Tente novamente.",
+      "integrity": "O arquivo baixado está danificado. Tente novamente.",
+      "unknown": "Não foi possível baixar o modelo. Verifique sua conexão e tente novamente.",
+      "installFailed": "Não foi possível instalar o modelo. Tente novamente."
     },
     "localWake": {
       "title": "Voz no dispositivo",
@@ -277,7 +318,7 @@
       "installCommand": "Instalar modelo de comandos ({{size}})"
     },
     "speechLocale": {
-      "label": "Idioma da fala",
+      "label": "Idioma",
       "helper": "Deixe em branco para usar o idioma padrão do sistema na entrada de voz e na reprodução."
     },
     "responseScope": {
@@ -317,7 +358,36 @@
       "label": "Volume do som de trabalho"
     },
     "voiceSelect": {
-      "label": "Voz"
+      "label": "Voz",
+      "automatic": "Automática",
+      "enhanced": "Aprimorada · {{language}}"
+    },
+    "enhancedVoices": "Instale vozes aprimoradas ou premium nas configurações de texto para fala do dispositivo para obter a voz do sistema mais natural.",
+    "playbackEngine": {
+      "label": "Motor de reprodução",
+      "systemDescription": "Usa a voz integrada do dispositivo. Sempre disponível.",
+      "localDescription": "Usa uma voz neural baixada. Escolha um modelo abaixo."
+    },
+    "localTts": {
+      "title": "Reprodução no dispositivo",
+      "description": "Os modelos só são baixados quando você os escolhe. A voz do sistema continua sempre disponível.",
+      "piper": "Compacta",
+      "kokoro": "Natural",
+      "piperDescription": "Rápida e leve",
+      "kokoroDescription": "Inglês mais natural, download maior",
+      "download": "Baixar ({{size}})",
+      "installing": "Instalando…",
+      "installed": "Instalado",
+      "notInstalled": "Não instalado",
+      "use": "Usar",
+      "preview": "Prévia",
+      "speaker": "Voz",
+      "storage": "{{size}} usados por vozes no dispositivo",
+      "downloadHint": "Os downloads são verificados e armazenados neste dispositivo.",
+      "japaneseUnavailable": "O japonês usa a voz do sistema porque não há um modelo Piper disponível.",
+      "fallbackToSystem": "A voz no dispositivo não está disponível. Usando a voz do sistema.",
+      "languageMismatch": "Este modelo fala {{language}}. Ajuste o idioma de fala para corresponder, ou a reprodução usará a voz do sistema.",
+      "installFirst": "Escolha e instale um modelo no dispositivo primeiro."
     },
     "footer": "O Android pode verificar periodicamente as sessões em execução em segundo plano e publicar uma notificação de conclusão. Fala em segundo plano e captura contínua do microfone não são compatíveis.",
     "check": {
@@ -351,6 +421,57 @@
     "readInterim": {
       "title": "Ler atualizações de progresso",
       "description": "Ler avisos como «Já vou…»; a resposta final é sempre lida."
+    },
+    "setup": {
+      "title": "Entrada de voz no dispositivo",
+      "step": "Passo {{step}} de {{total}}",
+      "followSystem": "Seguir o sistema",
+      "setUpInput": "Configurar entrada local",
+      "manageInput": "Gerir entrada local",
+      "notActive": "Conclua a configuração para ativar a entrada local.",
+      "chooseVoice": "Escolher uma voz",
+      "manageDownloads": "Gerir transferências",
+      "more": "Mais definições de áudio",
+      "advanced": "Opções avançadas",
+      "notNow": "Agora não",
+      "downloadContinue": "Transferir e continuar",
+      "tools": "Ferramentas de voz",
+      "downloadSize": "{{size}} para transferir · Wi-Fi recomendado",
+      "englishModel": "Moonshine · Rápido, para comandos em inglês",
+      "multilingualModel": "Whisper · Para comandos em vários idiomas",
+      "microphone": "Acesso ao microfone",
+      "allow": "Permitir",
+      "sequence": "Ativar → Falar → Enviar",
+      "serverNote": "O reconhecimento de voz é executado no telemóvel. O pedido continua a ser enviado ao servidor OpenCode.",
+      "profileNote": "Opcional: grave uma amostra de 12 segundos para que apenas a sua voz ative a app. O perfil de voz fica no telemóvel. Sem perfil, qualquer pessoa pode dizer a frase de ativação.",
+      "skipProfile": "Ignorar perfil de voz",
+      "skipTest": "Ignorar teste e concluir",
+      "startTest": "Iniciar teste",
+      "stopTest": "Parar teste",
+      "testNote": "O teste não envia pedidos. O microfone para de ouvir ao sair deste ecrã.",
+      "busy": "Pare o modo de conversa antes de configurar a entrada de voz.",
+      "intro": {
+        "title": "A sua voz, mãos livres",
+        "description": "Diga «{{phrase}}» e indique ao OpenCode o que fazer."
+      },
+      "prepare": {
+        "title": "Prepare o telemóvel",
+        "description": "Escolha um idioma, permita o microfone e transfira as ferramentas de voz uma só vez."
+      },
+      "profile": {
+        "title": "Personalize a sua voz",
+        "description": "Escolha se a app deve responder apenas à sua voz."
+      },
+      "test": {
+        "title": "Experimente «{{phrase}}»",
+        "description": "Inicie o teste e diga a frase de ativação num volume normal.",
+        "idle": "Tudo pronto para começar",
+        "starting": "A iniciar o microfone…",
+        "listening": "A ouvir a frase de ativação…",
+        "detected": "Frase detetada. Tudo pronto!",
+        "error": "Não foi possível executar o teste. Verifique o acesso ao microfone e tente novamente.",
+        "busy": "Pare o modo de conversa para executar o teste."
+      }
     }
   },
   "diagnostics": {
@@ -527,7 +648,7 @@
   },
   "general": {
     "title": "Geral",
-    "resetOnboarding": "Reiniciar a configuração inicial"
+    "resetOnboarding": "Revisar configuração"
   },
   "autoUpdate": {
     "title": "Verificar atualizações",
@@ -708,5 +829,71 @@
     "generalConfirmTitle": "Edit global configuration",
     "generalConfirmMessage": "This changes the configuration for every project on this server. A backup is created first.\n\n{{path}}",
     "generalConfirmAction": "Continue"
+  },
+  "modelRouting": {
+    "title": "Auto model routing",
+    "description": "Classify each prompt and choose a model by complexity. Routing is skipped when the classifier is unavailable.",
+    "enable": {
+      "title": "Enable auto-routing",
+      "description": "Choose a model for each prompt based on its complexity.",
+      "unavailable": "Set up a classifier below before enabling routing."
+    },
+    "classifier": {
+      "label": "Classifier",
+      "local": {
+        "label": "On-device model",
+        "description": "Runs on this phone. The model is downloaded once."
+      },
+      "server": {
+        "label": "OpenCode classifier",
+        "description": "Calls a model through OpenCode before sending the prompt."
+      }
+    },
+    "local": {
+      "statusLabel": "On-device model",
+      "status": {
+        "unsupported": "Not supported on this platform",
+        "installing": "Downloading",
+        "ready": "Ready",
+        "missing": "Not installed",
+        "error": "Install failed"
+      },
+      "installed": "Installed ({{size}})",
+      "remove": "Remove model",
+      "download": "Download model ({{size}})",
+      "license": "{{model}} · {{license}}. The model runs only on this device."
+    },
+    "server": {
+      "modelLabel": "Classifier model",
+      "cheapest": "Cheapest available",
+      "check": "Check classifier",
+      "status": {
+        "unknown": "Not checked. Check the classifier to enable routing.",
+        "checking": "Checking the classifier...",
+        "available": "Classifier available.",
+        "unsupported": "This server does not expose the classifier endpoint.",
+        "unavailable": "Classifier unavailable. Check the connection and retry.",
+        "auth": "Sign in to this server before using the classifier."
+      }
+    },
+    "tiers": {
+      "simple": {
+        "label": "Simple model"
+      },
+      "standard": {
+        "label": "Standard model"
+      },
+      "complex": {
+        "label": "Complex model"
+      },
+      "automatic": "Automatic",
+      "automaticDescription": "Choose from the enabled models",
+      "automaticValue": "Automatic · {{model}}",
+      "unavailable": "Unavailable"
+    },
+    "protect": {
+      "title": "Protect long chats",
+      "description": "Avoid downgrading models on long conversations where prompt-cache savings may be larger."
+    }
   }
 }

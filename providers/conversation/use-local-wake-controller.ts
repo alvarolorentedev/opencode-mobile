@@ -150,6 +150,8 @@ export function useLocalWakeController({
       if (conversationPhaseRef.current !== 'armed') {
         return;
       }
+      // Normal rejection keeps the wake detector live; this only re-arms if
+      // capture was stopped elsewhere in the meantime.
       rearmWake(300);
     },
     onWake: () => { void handleWake(); },

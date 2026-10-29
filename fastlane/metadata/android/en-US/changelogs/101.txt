@@ -1,0 +1,4 @@
+- Conversation mode gains an animated voice ribbon, and readback no longer blocks the mic: input re-arms right after submit with steering while the assistant talks, plus an optional progress-updates readout.
+- System speech is polished with markdown-aware chunked playback and an Enhanced voice option; on-device Piper/Kokoro playback is an opt-in per language, and onboarding now covers voice and response preferences.
+- Reverting a message stages immediately with no confirmation popup (undo from the notice), and your explicit chat selection survives catalog refreshes.
+- Workspace fixes keep settings, widgets, and project focus consistent.

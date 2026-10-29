@@ -7,13 +7,10 @@
     "stopConversationTitle": "Parar a conversa?",
     "stopConversationMessage": "Isso vai parar o modo conversa e o OpenCode vai parar de ouvir o seu próximo turno.",
     "keepGoing": "Continuar",
-    "revertTitle": "Reverter a partir desta mensagem?",
-    "revertMessage": "O OpenCode vai reverter as alterações da sessão a partir deste ponto.",
-    "revertConfirm": "Reverter a partir desta mensagem?\n\nO OpenCode vai reverter as alterações da sessão a partir deste ponto.",
-    "revert": "Reverter",
     "couldNotSendRetry": "O OpenCode não conseguiu enviar essa mensagem. Tente novamente em instantes.",
     "couldNotSend": "O OpenCode não conseguiu enviar essa mensagem.",
     "unableToPlay": "Não foi possível reproduzir esta resposta do assistente.",
+    "ttsFallback": "A voz no dispositivo não está disponível. Usando a voz do sistema.",
     "stopConversationBeforePlay": "Pare o modo conversa antes de reproduzir uma resposta manualmente.",
     "noReadableText": "Não há texto legível nesta resposta do assistente.",
     "fileTooLarge": "O arquivo excede o limite de anexo de 10 MB.",
@@ -216,6 +213,8 @@
     "lastHeard": "Último trecho ouvido",
     "wakePhrase": "Frase de ativação",
     "startSpeaking": "Comece a falar naturalmente. O que você disser na última rodada aparecerá aqui.",
+    "listeningHint": "Pode falar, estou ouvindo.",
+    "endConversation": "Encerrar conversa",
     "steerHint": "Diga “{{phrase}}” a qualquer momento para orientar."
   },
   "modelPicker": {
@@ -228,7 +227,11 @@
     "reasoningSupported": " · Com suporte a raciocínio",
     "standardModel": " · Modelo padrão",
     "noMatchingModels": "Nenhum modelo correspondente",
-    "emptyHint": "Tente o nome de um modelo ou provedor."
+    "emptyHint": "Tente o nome de um modelo ou provedor.",
+    "autoRouting": "Auto-routing",
+    "autoRoutingDescription": "Use a model matched to each prompt",
+    "autoRoutingUnavailable": "Set up a classifier in Settings",
+    "defaultModel": "Default model"
   },
   "starter": {
     "title": "Inicie uma nova tarefa",

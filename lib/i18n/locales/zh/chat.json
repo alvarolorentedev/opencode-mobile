@@ -7,13 +7,10 @@
     "stopConversationTitle": "停止对话？",
     "stopConversationMessage": "这将停止对话模式，OpenCode 将不再监听你的下一轮发言。",
     "keepGoing": "继续",
-    "revertTitle": "从此消息回退？",
-    "revertMessage": "OpenCode 将回退此消息之后的会话更改。",
-    "revertConfirm": "从此消息回退？\n\nOpenCode 将回退此消息之后的会话更改。",
-    "revert": "回退",
     "couldNotSendRetry": "OpenCode 无法发送该消息。请稍后重试。",
     "couldNotSend": "OpenCode 无法发送该消息。",
     "unableToPlay": "无法播放此助手回复。",
+    "ttsFallback": "设备端语音不可用。正在使用系统语音。",
     "stopConversationBeforePlay": "请先停止对话模式，再手动播放回复。",
     "noReadableText": "此助手回复中没有可读文本。",
     "fileTooLarge": "文件超过 10 MB 的附件大小限制。",
@@ -216,6 +213,8 @@
     "lastHeard": "最近听到",
     "wakePhrase": "唤醒短语",
     "startSpeaking": "开始自然地说话。你最后一轮所说的内容将显示在这里。",
+    "listeningHint": "请说，我在听。",
+    "endConversation": "结束对话",
     "steerHint": "随时说“{{phrase}}”即可调整方向。"
   },
   "modelPicker": {
@@ -228,7 +227,11 @@
     "reasoningSupported": " · 支持推理",
     "standardModel": " · 标准模型",
     "noMatchingModels": "没有匹配的模型",
-    "emptyHint": "试试模型或提供商名称。"
+    "emptyHint": "试试模型或提供商名称。",
+    "autoRouting": "Auto-routing",
+    "autoRoutingDescription": "Use a model matched to each prompt",
+    "autoRoutingUnavailable": "Set up a classifier in Settings",
+    "defaultModel": "Default model"
   },
   "starter": {
     "title": "开始新任务",

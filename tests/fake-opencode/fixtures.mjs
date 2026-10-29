@@ -39,7 +39,36 @@ export function providersForScenario(state) {
   return state.scenario === 'reasoning-variants' ? [...providerCatalog, reasoningVariantProvider] : providerCatalog;
 }
 
+const autoRoutingModels = [
+  {
+    ...models[0],
+    id: 'openai/gpt-4.1-mini',
+    modelID: 'gpt-4.1-mini',
+    name: 'GPT-4.1 mini',
+    cost: [{ input: 1, output: 2, cache: { read: 0.5, write: 1 } }],
+  },
+  {
+    ...models[0],
+    id: 'openai/gpt-4.1-nano',
+    modelID: 'gpt-4.1-nano',
+    name: 'GPT-4.1 nano',
+    cost: [{ input: 0.1, output: 0.2, cache: { read: 0.05, write: 0.1 } }],
+  },
+  {
+    ...models[0],
+    id: 'openai/o3-mini',
+    modelID: 'o3-mini',
+    name: 'o3-mini',
+    variants: [{ id: 'low', settings: { reasoningEffort: 'low' } }, { id: 'high', settings: { reasoningEffort: 'high' } }],
+    cost: [{ input: 10, output: 20, cache: { read: 5, write: 10 } }],
+    limit: { context: 200000, output: 100000 },
+  },
+];
+
 export function modelCatalog(state) {
+  if (state.scenario === 'auto-routing') {
+    return autoRoutingModels;
+  }
   return [models[0], ...(state.scenario === 'reasoning-variants' ? [reasoningVariantModel] : []), ...providersForScenario(state).slice(1).map((provider) => ({
     ...models[0], id: `${provider.id}/auto`, modelID: 'auto',
     providerID: provider.id, name: 'Auto',

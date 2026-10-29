@@ -1,8 +1,9 @@
+import { SettingButton as Button, SettingSwitchRow } from './sections/setting-rows';
 import type { ComponentProps, ReactNode } from 'react';
 import type { TFunction } from 'i18next';
 import { useRouter } from 'expo-router';
-import { View } from 'react-native';
-import { Button } from 'react-native-paper';
+import { Platform, View } from 'react-native';
+import {} from 'react-native-paper';
 import type { MaterialCommunityIcons } from '@expo/vector-icons';
 
 import { ServerApprovals } from '@/components/settings/server-approvals';
@@ -12,6 +13,10 @@ import { EditorSection } from '@/components/settings/sections/editor-section';
 import { ConnectionSection } from '@/components/settings/sections/connection-section';
 import { CloudLinkSection } from '@/components/settings/sections/cloud-link-section';
 import { DiagnosticsSection } from '@/components/settings/sections/diagnostics-section';
+import { AppearanceSection } from '@/components/settings/sections/appearance-section';
+import { LanguageSection } from '@/components/settings/sections/language-section';
+import { settingsTargets } from '@/components/settings/settings-targets';
+import type { SettingsTarget } from '@/components/settings/settings-search';
 import { GeneralSection } from '@/components/settings/sections/general-section';
 import { NotificationsSection } from '@/components/settings/sections/notifications-section';
 import { SupportSection } from '@/components/settings/sections/support-section';
@@ -20,6 +25,7 @@ import { VoiceSection } from '@/components/settings/sections/voice-section';
 import { ResponsesSection } from '@/components/settings/sections/responses-section';
 import { AiSettingsPanel } from '@/components/settings/ai-settings-panel';
 import { useNotificationSetup } from '@/components/settings/use-notification-setup';
+import type { useTtsSetup } from '@/components/settings/use-tts-setup';
 import { useVoiceSetup } from '@/components/settings/use-voice-setup';
 import type { RESPONSE_SCOPE_OPTIONS, WORKING_SOUND_OPTIONS } from '@/components/settings/settings-utils';
 import { useLastJsError } from '@/hooks/use-last-js-error';
@@ -31,6 +37,9 @@ import { useApprovals, useCapabilities, useConnection, useDiagnostics, useMcp, u
 
 export type SettingsSection = {
   id: string;
+  group: 'app' | 'connections' | 'server';
+  keywords?: string;
+  targets?: SettingsTarget[];
   icon: ComponentProps<typeof MaterialCommunityIcons>['name'];
   title: string;
   summary: string;
@@ -45,6 +54,9 @@ type RegistryInput = {
   connection: ReturnType<typeof useConnection>['connection'];
   connectSetup: ReturnType<typeof useConnection>['connectSetup'];
   serviceManagement: ReturnType<typeof useConnection>['services'];
+  autoModelAvailable: boolean;
+  onReconnect: () => void;
+  isReconnecting: boolean;
   configuredProviders: ReturnType<typeof useCapabilities>['configuredProviders'];
   currentConfig: ReturnType<typeof useCapabilities>['currentConfig'];
   mcp: ReturnType<typeof useMcp>;
@@ -60,6 +72,7 @@ type RegistryInput = {
   router: ReturnType<typeof useRouter>;
   notifications: ReturnType<typeof useNotificationSetup>;
   voiceSetup: ReturnType<typeof useVoiceSetup>;
+  ttsSetup: ReturnType<typeof useTtsSetup>;
   availableSpeechVoices: SpeechVoiceOption[];
   isRefreshingSpeechVoices: boolean;
   selectedSpeechVoiceLabel: string;
@@ -78,6 +91,9 @@ export function buildSettingsSections({
   connectSetup,
   serviceManagement,
   configuredProviders,
+  autoModelAvailable,
+  onReconnect,
+  isReconnecting,
   currentConfig,
   mcp,
   chatPreferences,
@@ -92,6 +108,7 @@ export function buildSettingsSections({
   router,
   notifications,
   voiceSetup,
+  ttsSetup,
   availableSpeechVoices,
   isRefreshingSpeechVoices,
   selectedSpeechVoiceLabel,
@@ -120,18 +137,18 @@ export function buildSettingsSections({
     ? t('settings:screen.summaries.voiceLocal', { phrase: localVoiceSummary })
     : t('settings:screen.summaries.voiceSystem', { phrase: voicePhrase });
 
-  return [
+  const sections: SettingsSection[] = [
     {
-      id: 'connection',
+      id: 'connection', group: 'connections' as const,
       icon: 'server-network',
       title: t('settings:screen.categories.connection'),
       summary: connection.status === 'connected' ? t('common:labels.connected') : connection.message,
       summaryLines: 2,
       onPress: () => setOpenSection('connection'),
-      render: () => <ConnectionSection connection={connection} palette={palette} onManageConnect={connectSetup.enabled ? () => { setOpenSection(undefined); router.push('/pair?mode=manage'); } : undefined} onPair={connectSetup.enabled ? () => { setOpenSection(undefined); router.push('/pair'); } : undefined} />,
+      render: () => <ConnectionSection onReconnect={onReconnect} isReconnecting={isReconnecting} connection={connection} palette={palette} onManageConnect={connectSetup.enabled ? () => { setOpenSection(undefined); router.push('/pair?mode=manage'); } : undefined} onPair={connectSetup.enabled ? () => { setOpenSection(undefined); router.push('/pair'); } : undefined} />,
     },
     {
-      id: 'ai',
+      id: 'ai', group: 'server' as const,
       icon: 'creation',
       title: t('settings:screen.categories.ai'),
       summary: t('settings:screen.summaries.configuredCount', { value: configuredProviders.length }),
@@ -139,7 +156,7 @@ export function buildSettingsSections({
       render: () => <AiSettingsPanel />,
     },
     ...(serverCapabilities.contract === 'v2' ? [{
-      id: 'extensions',
+      id: 'extensions', group: 'server' as const,
       icon: 'puzzle-outline' as const,
       title: t('settings:screen.categories.extensions'),
       summary: t('settings:screen.summaries.extensions'),
@@ -147,7 +164,7 @@ export function buildSettingsSections({
       render: () => <ExtensionsSection />,
     }] : []),
     ...(connectSetup.enabled && connectSetup.storeInstall ? [{
-      id: 'cloud-link',
+      id: 'cloud-link', group: 'connections' as const,
       icon: 'cloud-outline' as const,
       title: t('settings:screen.categories.cloudLink'),
       summary: connectSetup.initialization === 'loading' ? t('settings:connect.progress.idle') : connectSetup.entitled ? t('common:labels.active') : t('settings:subscription.inactive'),
@@ -155,53 +172,58 @@ export function buildSettingsSections({
       render: () => <CloudLinkSection setup={connectSetup} services={serviceManagement} palette={palette} onManageMachines={() => { setOpenSection(undefined); router.push('/pair?mode=manage'); }} onAddService={() => openServiceEditor()} onEditService={(service) => openServiceEditor(service.id)} />,
     }] : []),
     {
-      id: 'notifications',
+      id: 'notifications', group: 'app' as const,
       icon: 'bell-outline',
       title: t('settings:screen.categories.notifications'),
-      summary: notifications.status?.permissionGranted ? t('common:labels.enabled') : t('common:labels.off'),
+      summary: !notifications.status ? t('settings:notifications.status.checking') : notifications.status.permissionGranted ? t('common:labels.enabled') : t('common:labels.off'),
       onPress: () => setOpenSection('notifications'),
-      render: () => <NotificationsSection isRefreshingNotificationStatus={notifications.isRefreshing} notificationStatus={notifications.status} onEnableNotifications={() => void notifications.enable()} onOpenAppSettings={() => void notifications.openAppSettings()} onOpenBatterySaverSettings={() => void notifications.openBatterySaverSettings()} onOpenBatterySettings={() => void notifications.openBatterySettings()} onOpenNotificationSettings={() => void notifications.openNotificationSettings()} onRefreshStatus={() => void notifications.refreshStatus()} palette={palette} />,
+      render: () => <>
+        <NotificationsSection isRefreshingNotificationStatus={notifications.isRefreshing} notificationStatus={notifications.status} onEnableNotifications={() => void notifications.enable()} onOpenAppSettings={() => void notifications.openAppSettings()} onOpenBatterySaverSettings={() => void notifications.openBatterySaverSettings()} onOpenBatterySettings={() => void notifications.openBatterySettings()} onOpenNotificationSettings={() => void notifications.openNotificationSettings()} onRefreshStatus={() => void notifications.refreshStatus()} palette={palette} />
+        {Platform.OS === 'android' ? <SettingSwitchRow title={t('share:widgets.previewsTitle')} description={t('share:widgets.previewsDescription')} value={chatPreferences.showWidgetPreviews !== false} palette={palette} onValueChange={(showWidgetPreviews) => updateChatPreferences({ showWidgetPreviews })} /> : null}
+      </>,
     },
     {
-      id: 'voice',
+      id: 'voice', group: 'app' as const,
       icon: 'waveform',
       title: t('settings:screen.categories.voice'),
       summary: voiceSummary,
       onPress: () => setOpenSection('voice'),
-      render: () => <VoiceSection availableSpeechVoices={availableSpeechVoices} chatPreferences={chatPreferences} isRefreshingSpeechVoices={isRefreshingSpeechVoices} isRefreshingVoiceCapabilities={voiceSetup.isRefreshing} isTestingVoice={voiceSetup.isTesting} localVoice={voiceSetup.localVoice} onEnableVoiceInput={() => void voiceSetup.enable()} onOpenVoiceSettings={() => void voiceSetup.openAppSettings()} onRefreshVoiceCapabilities={() => void voiceSetup.refreshStatus()} onTestVoicePlayback={() => void voiceSetup.testPlayback()} palette={palette} selectedSpeechVoiceLabel={selectedSpeechVoiceLabel} selectedWorkingSound={selectedWorkingSound} updateChatPreferences={updateChatPreferences} voiceCapabilities={voiceSetup.capabilities} />,
+      render: () => <VoiceSection availableSpeechVoices={availableSpeechVoices} chatPreferences={chatPreferences} isRefreshingSpeechVoices={isRefreshingSpeechVoices} isRefreshingVoiceCapabilities={voiceSetup.isRefreshing} isTestingVoice={voiceSetup.isTesting} localVoice={voiceSetup.localVoice} onEnableVoiceInput={() => void voiceSetup.enable()} onOpenVoiceSettings={() => void voiceSetup.openAppSettings()} onRefreshVoiceCapabilities={() => void voiceSetup.refreshStatus()} onTestVoicePlayback={() => void voiceSetup.testPlayback()} palette={palette} selectedSpeechVoiceLabel={selectedSpeechVoiceLabel} selectedWorkingSound={selectedWorkingSound} ttsSetup={ttsSetup} updateChatPreferences={updateChatPreferences} voiceCapabilities={voiceSetup.capabilities} />,
     },
     {
-      id: 'responses',
+      id: 'responses', group: 'app' as const,
       icon: 'message-text-outline',
-      title: t('settings:screen.categories.responses'),
+      title: t('settings:screen.categories.chat'),
       summary: t(`settings:screen.summaries.${chatPreferences.includeNextActions ? 'responsesOn' : 'responsesOff'}`, {
         scope: t(`settings:voice.responseScope.${selectedResponseScope.value}.label`),
       }),
       onPress: () => setOpenSection('responses'),
-      render: () => <ResponsesSection chatPreferences={chatPreferences} palette={palette} selectedResponseScope={selectedResponseScope} updateChatPreferences={updateChatPreferences} />,
-    },
-    {
-      id: 'general', icon: 'cog-outline', title: t('common:servers.appSettings'), summary: t('common:servers.appSettingsSummary'),
-      onPress: () => setOpenSection('general'), render: () => <>
-          <EditorSection chatPreferences={chatPreferences} palette={palette} promptDeliveryAvailable={serverCapabilities.promptDeliveryAvailable} updateChatPreferences={updateChatPreferences} />
-          <GeneralSection chatPreferences={chatPreferences} palette={palette} updateChatPreferences={updateChatPreferences} onResetOnboarding={() => {
-            setOpenSection(undefined);
-            startOnboardingReview();
-            router.push('/onboarding');
-          }} />
-          {updates.supported ? <UpdateSection checkPeriod={updates.checkPeriod} enabled={updates.enabled} onCheckPeriodChange={updates.setCheckPeriod} onEnabledChange={updates.setEnabled} palette={palette} /> : null}
+      render: () => <>
+        <EditorSection chatPreferences={chatPreferences} palette={palette} promptDeliveryAvailable={serverCapabilities.promptDeliveryAvailable} updateChatPreferences={updateChatPreferences} />
+        <ResponsesSection chatPreferences={chatPreferences} palette={palette} selectedResponseScope={selectedResponseScope} updateChatPreferences={updateChatPreferences} />
       </>,
     },
     {
-      id: 'advanced',
+      id: 'appearance', group: 'app', icon: 'palette-outline', title: t('settings:screen.categories.appearance'), summary: t('settings:screen.summaries.appearance'),
+      onPress: () => setOpenSection('appearance'), render: () => <>
+        <AppearanceSection chatPreferences={chatPreferences} palette={palette} updateChatPreferences={updateChatPreferences} />
+        <SettingSwitchRow title={t('settings:appearance.slimInterface.title')} description={t('settings:appearance.slimInterface.description')} value={chatPreferences.slimInterface === true} palette={palette} onValueChange={(slimInterface) => updateChatPreferences({ slimInterface })} />
+      </>,
+    },
+    {
+      id: 'language', group: 'app', icon: 'translate', title: t('settings:language.title'), summary: t('settings:language.description'),
+      onPress: () => setOpenSection('language'), render: () => <LanguageSection chatPreferences={chatPreferences} palette={palette} updateChatPreferences={updateChatPreferences} />,
+    },
+    {
+      id: 'advanced', group: 'server' as const,
       icon: 'tune',
-      title: t('settings:screen.categories.advanced'),
-      summary: t('common:servers.serverToolsSummary'),
+      title: t('settings:diagnostics.title'),
+      summary: t('settings:screen.summaries.diagnostics'),
       onPress: () => setOpenSection('advanced'),
       render: () => (
         <>
           {serverCapabilities.contract === 'v2'
-            ? <Button mode="contained-tonal" onPress={() => setAdvancedTab('diagnostics')}>{t('settings:diagnostics.title')}</Button>
+            ? null
             : <View style={{ flexDirection: 'row', gap: 8 }}><Button mode={advancedTab === 'mcp' ? 'contained-tonal' : 'text'} onPress={() => setAdvancedTab('mcp')}>MCP</Button><Button mode={advancedTab === 'diagnostics' ? 'contained-tonal' : 'text'} onPress={() => setAdvancedTab('diagnostics')}>{t('settings:diagnostics.title')}</Button></View>}
           {serverCapabilities.contract !== 'v2' && advancedTab === 'mcp' ? <>
           <McpSection configs={currentConfig?.mcp} mcpStatuses={mcp.mcpStatuses} onAdd={mcp.addMcpServer} onConnect={mcp.connectMcpServer} onDisconnect={mcp.disconnectMcpServer} onRefresh={mcp.refreshMcpServers} mcpOAuth={mcp.mcpOAuth} requiresIntegrationId={serverCapabilities.mcpIntegrationId} oauthAvailable={serverCapabilities.mcpOAuth} palette={palette} />
@@ -212,7 +234,7 @@ export function buildSettingsSections({
       ),
     },
     ...(serverCapabilities.savedPermissions ? [{
-      id: 'permissions',
+      id: 'permissions', group: 'server' as const,
       icon: 'shield-key-outline' as const,
       title: t('settings:screen.categories.permissions'),
       summary: t('settings:screen.summaries.permissions', { value: approvals.savedPermissions.length }),
@@ -223,12 +245,34 @@ export function buildSettingsSections({
       render: () => <ServerApprovals />,
     }] : []),
     {
-      id: 'support',
+      id: 'support', group: 'app' as const,
       icon: 'lifebuoy',
-      title: t('settings:screen.categories.support'),
+      title: t('settings:screen.categories.about'),
       summary: t('settings:screen.summaries.support'),
       onPress: () => setOpenSection('support'),
-      render: () => <SupportSection palette={palette} />,
+      render: () => <>
+        <SupportSection palette={palette} />
+        {updates.supported ? <UpdateSection checkPeriod={updates.checkPeriod} enabled={updates.enabled} onCheckPeriodChange={updates.setCheckPeriod} onEnabledChange={updates.setEnabled} palette={palette} /> : null}
+        <GeneralSection palette={palette} onResetOnboarding={() => {
+          setOpenSection(undefined);
+          startOnboardingReview();
+          router.push('/onboarding');
+        }} />
+      </>,
     },
   ];
+  const order = ['appearance', 'responses', 'voice', 'notifications', 'language', 'support', 'connection', 'cloud-link', 'ai', 'extensions', 'permissions', 'advanced'];
+  return sections.sort((a, b) => order.indexOf(a.id) - order.indexOf(b.id)).map((section) => ({
+    ...section,
+    keywords: t(`settings:screen.keywords.${section.id}`),
+    targets: settingsTargets(t, section.id, {
+      native: Platform.OS !== 'web', android: Platform.OS === 'android',
+      localInput: chatPreferences.voiceWakeMode === 'local', localInputSupported: voiceSetup.localVoice.status !== 'unsupported',
+      enrolled: voiceSetup.localVoice.enrollment.hasProfile, localPlayback: chatPreferences.ttsEngine === 'local',
+      speakerAvailable: (ttsSetup.activePack?.speakers.length ?? 0) > 1, workingSound: chatPreferences.workingSoundEnabled,
+      delivery: serverCapabilities.promptDeliveryAvailable, updates: updates.supported, autoModel: autoModelAvailable,
+      classifier: chatPreferences.autoModel.classifier,
+    }),
+  }));
 }
+

@@ -1,8 +1,9 @@
-// Off-the-shelf on-device wake word support.
+// Shared types for the sherpa-onnx native runtime.
 //
-// The mandatory local-voice path is:
+// The wake-word path is:
 //   mic -> sherpa-onnx KWS -> optional speaker check -> OS recognizer command
-// Local STT/TTS are deliberately not part of this path yet.
+// The same native module also exposes TTS for the optional on-device playback
+// engine; STT and TTS model packs remain independent.
 
 export type LocalWakePhraseId = 'hey-code' | 'hey-opencode';
 
@@ -151,10 +152,58 @@ export type AsrService = {
   release(): Promise<{ released: boolean }>;
 };
 
+export type TtsModelType = 'vits' | 'kokoro' | 'matcha';
+
+export type TtsService = {
+  initialize(config: {
+    modelDir: string;
+    ttsModelType: TtsModelType;
+    modelFile: string;
+    tokensFile: string;
+    voicesFile?: string;
+    vocoderFile?: string;
+    lexiconFile?: string;
+    dataDir?: string;
+    dictDir?: string;
+    lang?: string;
+    ruleFstsFile?: string;
+    ruleFarsFile?: string;
+    numThreads?: number;
+    provider?: 'cpu' | 'gpu';
+    noiseScale?: number;
+    noiseScaleW?: number;
+    lengthScale?: number;
+    maxNumSentences?: number;
+    silenceScale?: number;
+  }): Promise<{
+    success: boolean;
+    sampleRate: number;
+    numSpeakers: number;
+    error?: string;
+  }>;
+  isInitialized(): boolean;
+  getSampleRate(): number;
+  getNumSpeakers(): number;
+  generateSpeech(text: string, options?: {
+    speakerId?: number;
+    speakingRate?: number;
+    playAudio?: boolean;
+    fileNamePrefix?: string;
+    lengthScale?: number;
+    noiseScale?: number;
+    noiseScaleW?: number;
+  }): Promise<{ success: boolean; filePath?: string }>;
+  stopSpeech(): Promise<{ stopped: boolean; message?: string }>;
+  release(): Promise<{ released: boolean }>;
+};
+
 export type SherpaRuntime = {
   ASR: AsrService;
   KWS: KwsService;
   SpeakerId: SpeakerIdService;
   VAD: VadService;
   Archive: ArchiveService;
+  // Optional so an older native build still loads the wake-word path and the
+  // app can fall back to system TTS.
+  TTS?: TtsService;
 };

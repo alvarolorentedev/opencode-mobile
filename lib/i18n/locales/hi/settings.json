@@ -4,14 +4,17 @@
       "connection": "कनेक्शन",
       "ai": "AI और प्रदाता",
       "notifications": "सूचनाएँ",
-      "voice": "आवाज़",
+      "voice": "आवाज़ और ऑडियो",
       "advanced": "उन्नत",
       "support": "सहायता",
       "permissions": "स्वीकृतियाँ",
       "subscription": "सदस्यता",
       "cloudLink": "Cloud Link",
       "extensions": "Extensions",
-      "responses": "प्रतिक्रियाएँ"
+      "responses": "प्रतिक्रियाएँ",
+      "appearance": "दिखावट",
+      "chat": "चैट और जवाब",
+      "about": "जानकारी और सहायता"
     },
     "summaries": {
       "configuredCount": "{{value}} कॉन्फ़िगर किए गए",
@@ -24,7 +27,35 @@
       "voiceSystem": "सिस्टम आवाज़ · {{phrase}}",
       "voiceLocal": "डिवाइस पर · {{phrase}}",
       "responsesOn": "{{scope}} · अगले कदम चालू",
-      "responsesOff": "{{scope}} · अगले कदम बंद"
+      "responsesOff": "{{scope}} · अगले कदम बंद",
+      "appearance": "थीम, रंग और इंटरफ़ेस का घनत्व",
+      "diagnostics": "कनेक्शन की स्थिति और समस्या निवारण"
+    },
+    "groups": {
+      "app": "ऐप की प्राथमिकताएँ",
+      "connections": "कनेक्शन",
+      "server": "चुना गया सर्वर"
+    },
+    "intro": "ऐप को अपनी पसंद के अनुसार बनाएँ और कनेक्शन प्रबंधित करें।",
+    "search": {
+      "placeholder": "सेटिंग खोजें",
+      "clear": "खोज साफ़ करें",
+      "empty": "कोई सेटिंग नहीं मिली। कोई दूसरा शब्द आज़माएँ।",
+      "results": "मिली सेटिंग: {{count}}"
+    },
+    "keywords": {
+      "appearance": "डिस्प्ले थीम रंग गहरा हल्का कॉम्पैक्ट घनत्व",
+      "responses": "चैट संदेश टेक्स्ट फ़ॉन्ट आकार जवाब शैली निर्देश जोड़ें कतार बबल",
+      "voice": "आवाज़ ऑडियो ध्वनि माइक्रोफ़ोन इनपुट प्लेबैक भाषा वेक फ़्रेज़",
+      "notifications": "सूचनाएँ अलर्ट बैटरी विजेट",
+      "language": "भाषा अनुवाद इंटरफ़ेस",
+      "support": "मदद फ़ीडबैक सहायता अपडेट संस्करण सेटअप सहायक",
+      "connection": "कनेक्शन सर्वर पता पासवर्ड क्रेडेंशियल फिर कनेक्ट QR",
+      "cloud-link": "दूरस्थ कनेक्शन Cloud Link सदस्यता कंप्यूटर सेवाएँ",
+      "ai": "AI प्रदाता खाते मॉडल प्रमाणीकरण वर्गीकरण रूटिंग",
+      "extensions": "एक्सटेंशन MCP प्लगइन कौशल कमांड",
+      "permissions": "अनुमतियाँ स्वीकृतियाँ सहेजे नियम अपने आप अनुमति",
+      "advanced": "निदान नेटवर्क कनेक्शन रीयलटाइम पोलिंग त्रुटियाँ उपयोग"
     }
   },
   "support": {
@@ -234,7 +265,7 @@
       "description": "स्थानीय पहचान को प्राथमिकता दें; ज़रूरत पड़ने पर क्लाउड का उपयोग करें।"
     },
     "autoPlay": {
-      "title": "सहायक उत्तर स्वतः चलाएँ",
+      "title": "जवाब ज़ोर से पढ़ें",
       "description": "चैट प्रतिक्रियाएँ पढ़ें। कन्वर्सेशन मोड हमेशा पढ़ता है।"
     },
     "workingSound": {
@@ -244,6 +275,16 @@
     "wakePhrase": {
       "label": "वेक वाक्यांश",
       "helper": "कन्वर्सेशन मोड इस वाक्यांश को सुनने के बाद ही संदेश भेजता है। दो या अधिक शब्द सबसे अच्छे काम करते हैं।"
+    },
+    "modelDownloads": {
+      "timeout": "डाउनलोड का समय समाप्त हो गया। कनेक्शन रुक गया — Wi‑Fi या बेहतर सिग्नल पर फिर से कोशिश करें।",
+      "offline": "डाउनलोड सर्वर तक नहीं पहुँचा जा सका। अपना इंटरनेट कनेक्शन जाँचें और फिर से कोशिश करें।",
+      "server": "डाउनलोड सर्वर फ़ाइल नहीं दे सका। बाद में फिर से कोशिश करें।",
+      "storage": "यह मॉडल इंस्टॉल करने के लिए पर्याप्त खाली जगह नहीं है।",
+      "incomplete": "डाउनलोड पूरा नहीं हुआ। फिर से कोशिश करें।",
+      "integrity": "डाउनलोड की गई फ़ाइल खराब है। फिर से कोशिश करें।",
+      "unknown": "मॉडल डाउनलोड नहीं हो सका। अपना कनेक्शन जाँचें और फिर से कोशिश करें।",
+      "installFailed": "मॉडल इंस्टॉल नहीं हो सका। फिर से कोशिश करें।"
     },
     "localWake": {
       "title": "डिवाइस पर आवाज़",
@@ -277,7 +318,7 @@
       "installCommand": "कमांड मॉडल इंस्टॉल करें ({{size}})"
     },
     "speechLocale": {
-      "label": "वाक् लोकेल",
+      "label": "भाषा",
       "helper": "आवाज़ इनपुट और प्लेबैक के लिए सिस्टम की डिफ़ॉल्ट भाषा उपयोग करने हेतु खाली छोड़ें।"
     },
     "responseScope": {
@@ -317,7 +358,36 @@
       "label": "कार्य ध्वनि वॉल्यूम"
     },
     "voiceSelect": {
-      "label": "आवाज़"
+      "label": "आवाज़",
+      "automatic": "अपने आप",
+      "enhanced": "उन्नत · {{language}}"
+    },
+    "enhancedVoices": "सबसे स्वाभाविक सिस्टम आवाज़ के लिए डिवाइस की टेक्स्ट-टू-स्पीच सेटिंग्स में उन्नत या प्रीमियम आवाज़ें इंस्टॉल करें।",
+    "playbackEngine": {
+      "label": "प्लेबैक इंजन",
+      "systemDescription": "डिवाइस की अंतर्निहित आवाज़ का उपयोग करता है। हमेशा उपलब्ध।",
+      "localDescription": "डाउनलोड की गई न्यूरल आवाज़ का उपयोग करता है। नीचे एक मॉडल चुनें।"
+    },
+    "localTts": {
+      "title": "डिवाइस पर प्लेबैक",
+      "description": "मॉडल केवल तब डाउनलोड होते हैं जब आप उन्हें चुनते हैं। सिस्टम आवाज़ हमेशा उपलब्ध रहती है।",
+      "piper": "कॉम्पैक्ट",
+      "kokoro": "प्राकृतिक",
+      "piperDescription": "तेज़ और हल्का",
+      "kokoroDescription": "सबसे प्राकृतिक अंग्रेज़ी, बड़ा डाउनलोड",
+      "download": "डाउनलोड करें ({{size}})",
+      "installing": "इंस्टॉल हो रहा है…",
+      "installed": "इंस्टॉल हो गया",
+      "notInstalled": "इंस्टॉल नहीं है",
+      "use": "उपयोग करें",
+      "preview": "पूर्वावलोकन",
+      "speaker": "आवाज़",
+      "storage": "डिवाइस आवाज़ों द्वारा {{size}} उपयोग में",
+      "downloadHint": "डाउनलोड सत्यापित होकर इस डिवाइस पर संग्रहीत होते हैं।",
+      "japaneseUnavailable": "जापानी के लिए सिस्टम आवाज़ का उपयोग होता है क्योंकि कोई Piper मॉडल उपलब्ध नहीं है।",
+      "fallbackToSystem": "डिवाइस पर आवाज़ उपलब्ध नहीं है। सिस्टम आवाज़ का उपयोग किया जा रहा है।",
+      "languageMismatch": "यह मॉडल {{language}} बोलता है। वाक् लोकेल मिलाएँ, अन्यथा प्लेबैक सिस्टम आवाज़ का उपयोग करेगा।",
+      "installFirst": "पहले डिवाइस पर एक मॉडल चुनें और इंस्टॉल करें।"
     },
     "footer": "Android समय-समय पर पृष्ठभूमि में चल रहे सेशन जाँच सकता है और पूर्णता सूचना पोस्ट कर सकता है। पृष्ठभूमि वाक् और निरंतर माइक्रोफ़ोन कैप्चर समर्थित नहीं हैं।",
     "check": {
@@ -351,6 +421,57 @@
     "readInterim": {
       "title": "प्रगति अपडेट पढ़ें",
       "description": "“अभी कर रहा हूँ…” जैसे अपडेट पढ़ें; अंतिम प्रतिक्रिया हमेशा।"
+    },
+    "setup": {
+      "title": "डिवाइस पर वॉइस इनपुट",
+      "step": "चरण {{step}} / {{total}}",
+      "followSystem": "सिस्टम का अनुसरण करें",
+      "setUpInput": "डिवाइस पर इनपुट सेट करें",
+      "manageInput": "डिवाइस पर इनपुट प्रबंधित करें",
+      "notActive": "डिवाइस पर इनपुट चालू करने के लिए सेटअप पूरा करें।",
+      "chooseVoice": "आवाज़ चुनें",
+      "manageDownloads": "डाउनलोड प्रबंधित करें",
+      "more": "अन्य ऑडियो सेटिंग्स",
+      "advanced": "उन्नत विकल्प",
+      "notNow": "अभी नहीं",
+      "downloadContinue": "डाउनलोड करें और जारी रखें",
+      "tools": "वॉइस टूल",
+      "downloadSize": "डाउनलोड: {{size}} · Wi-Fi बेहतर है",
+      "englishModel": "Moonshine · अंग्रेज़ी निर्देशों के लिए तेज़",
+      "multilingualModel": "Whisper · कई भाषाओं में निर्देशों के लिए",
+      "microphone": "माइक्रोफ़ोन की अनुमति",
+      "allow": "अनुमति दें",
+      "sequence": "जगाएँ → बोलें → भेजें",
+      "serverNote": "बोली की पहचान आपके फ़ोन पर होती है। आपका अनुरोध फिर भी आपके OpenCode सर्वर पर भेजा जाता है।",
+      "profileNote": "वैकल्पिक: 12 सेकंड का नमूना रिकॉर्ड करें ताकि ऐप केवल आपकी आवाज़ से जागे। वॉइस प्रोफ़ाइल आपके फ़ोन पर रहती है। छोड़ने पर कोई भी सक्रियण वाक्यांश बोल सकता है।",
+      "skipProfile": "वॉइस प्रोफ़ाइल छोड़ें",
+      "skipTest": "जाँच छोड़ें और पूरा करें",
+      "startTest": "जाँच शुरू करें",
+      "stopTest": "जाँच रोकें",
+      "testNote": "यह जाँच कोई अनुरोध नहीं भेजेगी। इस स्क्रीन से जाने पर माइक्रोफ़ोन सुनना बंद कर देगा।",
+      "busy": "वॉइस इनपुट सेट करने से पहले बातचीत मोड रोकें।",
+      "intro": {
+        "title": "आपकी आवाज़, हाथों को आराम",
+        "description": "“{{phrase}}” कहें, फिर OpenCode को बताएँ कि क्या करना है।"
+      },
+      "prepare": {
+        "title": "अपना फ़ोन तैयार करें",
+        "description": "भाषा चुनें, माइक्रोफ़ोन की अनुमति दें और वॉइस टूल एक बार डाउनलोड करें।"
+      },
+      "profile": {
+        "title": "अपनी आवाज़ के लिए बनाएँ",
+        "description": "चुनें कि ऐप केवल आपकी आवाज़ पर प्रतिक्रिया दे या नहीं।"
+      },
+      "test": {
+        "title": "“{{phrase}}” बोलकर देखें",
+        "description": "जाँच शुरू करें, फिर सामान्य आवाज़ में सक्रियण वाक्यांश बोलें।",
+        "idle": "जब आप तैयार हों",
+        "starting": "माइक्रोफ़ोन शुरू हो रहा है…",
+        "listening": "सक्रियण वाक्यांश सुन रहा है…",
+        "detected": "वाक्यांश पहचाना गया। सब तैयार है!",
+        "error": "जाँच नहीं हो सकी। माइक्रोफ़ोन की अनुमति जाँचें और फिर कोशिश करें।",
+        "busy": "जाँच करने के लिए बातचीत मोड रोकें।"
+      }
     }
   },
   "diagnostics": {
@@ -527,7 +648,7 @@
   },
   "general": {
     "title": "सामान्य",
-    "resetOnboarding": "प्रारंभिक सेटअप फिर से शुरू करें"
+    "resetOnboarding": "सेटअप की समीक्षा करें"
   },
   "autoUpdate": {
     "title": "अपडेट की जाँच",
@@ -708,5 +829,71 @@
     "generalConfirmTitle": "Edit global configuration",
     "generalConfirmMessage": "This changes the configuration for every project on this server. A backup is created first.\n\n{{path}}",
     "generalConfirmAction": "Continue"
+  },
+  "modelRouting": {
+    "title": "Auto model routing",
+    "description": "Classify each prompt and choose a model by complexity. Routing is skipped when the classifier is unavailable.",
+    "enable": {
+      "title": "Enable auto-routing",
+      "description": "Choose a model for each prompt based on its complexity.",
+      "unavailable": "Set up a classifier below before enabling routing."
+    },
+    "classifier": {
+      "label": "Classifier",
+      "local": {
+        "label": "On-device model",
+        "description": "Runs on this phone. The model is downloaded once."
+      },
+      "server": {
+        "label": "OpenCode classifier",
+        "description": "Calls a model through OpenCode before sending the prompt."
+      }
+    },
+    "local": {
+      "statusLabel": "On-device model",
+      "status": {
+        "unsupported": "Not supported on this platform",
+        "installing": "Downloading",
+        "ready": "Ready",
+        "missing": "Not installed",
+        "error": "Install failed"
+      },
+      "installed": "Installed ({{size}})",
+      "remove": "Remove model",
+      "download": "Download model ({{size}})",
+      "license": "{{model}} · {{license}}. The model runs only on this device."
+    },
+    "server": {
+      "modelLabel": "Classifier model",
+      "cheapest": "Cheapest available",
+      "check": "Check classifier",
+      "status": {
+        "unknown": "Not checked. Check the classifier to enable routing.",
+        "checking": "Checking the classifier...",
+        "available": "Classifier available.",
+        "unsupported": "This server does not expose the classifier endpoint.",
+        "unavailable": "Classifier unavailable. Check the connection and retry.",
+        "auth": "Sign in to this server before using the classifier."
+      }
+    },
+    "tiers": {
+      "simple": {
+        "label": "Simple model"
+      },
+      "standard": {
+        "label": "Standard model"
+      },
+      "complex": {
+        "label": "Complex model"
+      },
+      "automatic": "Automatic",
+      "automaticDescription": "Choose from the enabled models",
+      "automaticValue": "Automatic · {{model}}",
+      "unavailable": "Unavailable"
+    },
+    "protect": {
+      "title": "Protect long chats",
+      "description": "Avoid downgrading models on long conversations where prompt-cache savings may be larger."
+    }
   }
 }

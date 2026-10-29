@@ -1,5 +1,4 @@
 import { Directory, File, Paths } from 'expo-file-system';
-import * as Crypto from 'expo-crypto';
 import { Platform } from 'react-native';
 
 import {
@@ -20,6 +19,7 @@ import {
   type LocalCommandModelDefinition,
 } from '@/lib/voice/local-wake-word/model-constants';
 import { loadSherpaRuntime } from '@/lib/voice/local-wake-word/sherpa';
+import { downloadVerified } from '@/lib/voice/model-files';
 import type { LocalCommandModelId, LocalWakePhraseId, LocalVoiceModelStatus } from '@/lib/voice/local-wake-word/types';
 
 const ROOT_DIRECTORY = 'opencode-voice';
@@ -227,28 +227,6 @@ export function writeLocalVoiceKeywords(phrase: LocalWakePhraseId): boolean {
   return true;
 }
 
-async function downloadVerified(
-  url: string,
-  destination: File,
-  bytes: number,
-  sha256: string,
-  label: string,
-) {
-  await File.downloadFileAsync(url, destination, { idempotent: true });
-  if (destination.size !== bytes) {
-    if (destination.exists) {
-      destination.delete();
-    }
-    throw new Error(`The ${label} download was incomplete.`);
-  }
-  if (await sha256Hex(destination) !== sha256) {
-    if (destination.exists) {
-      destination.delete();
-    }
-    throw new Error(`The ${label} download failed integrity verification.`);
-  }
-}
-
 async function installBaseModels(phrase: LocalWakePhraseId, runtime: NonNullable<ReturnType<typeof loadSherpaRuntime>>) {
   if (getLocalVoiceBaseStatus() === 'ready') {
     writeLocalVoiceKeywords(phrase);
@@ -388,10 +366,4 @@ export async function removeLocalVoiceModels(): Promise<void> {
 
 export function localVoiceModelsExist(modelId: LocalCommandModelId): boolean {
   return getLocalVoiceModelStatus(modelId) === 'ready';
-}
-
-async function sha256Hex(file: File): Promise<string> {
-  const bytes = await file.bytes();
-  const digest = await Crypto.digest(Crypto.CryptoDigestAlgorithm.SHA256, bytes);
-  return Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, '0')).join('');
 }

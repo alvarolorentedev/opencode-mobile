@@ -216,7 +216,11 @@ has no durable config/plugin/skill/command mutation surface. Consequences:
 - the file replace has no conditional-write API; the provider re-reads the
   target immediately before rename, but a small race remains
 - plugin installs are asynchronous; a valid config entry can still fail to load
-- file-backed commands and system/remote skills are intentionally read-only
+- file-backed commands and remote-catalog skills are intentionally read-only;
+  built-in plugins, embedded skills, and built-in commands are omitted from the
+  shared list because they are system-managed
+- the V2 command list exposes no provenance, so built-in commands are matched by
+  their upstream name/description pair; new built-ins need that set updated
 - the clean long-term fix is an upstream scoped config-write/validate endpoint
   and extension file CRUD; the current transaction and shell fallback should be
   removed once those exist
@@ -224,7 +228,7 @@ has no durable config/plugin/skill/command mutation surface. Consequences:
 Deferred library replacements and extraction candidates are documented in
 [library-extraction.md](library-extraction.md).
 
-## 11. On-device wake word limits
+## 11. On-device voice limits
 
 The optional local path uses pretrained sherpa-onnx KWS, speaker-embedding,
 Silero VAD, and Moonshine tiny English command models. No model training is
@@ -253,12 +257,73 @@ Known limits:
   selectable and does not require training, but its short-command accuracy,
   latency, and auto-detect behavior are unbenchmarked. The wake phrase remains
   English because the KWS model is English.
-- Reply readback uses the platform TTS engine. Wake detection pauses while TTS
-  speaks and resumes afterward; barge-in over an active readback is not
-  implemented yet.
-- Local TTS is out of scope.
-- The model pack is roughly 152 MB and the native runtime is prebuilt; both
-  need review for F-Droid packaging/licensing.
-- The local path is foreground-only; it does not run with the screen off.
+- The wake-word model pack is roughly 152 MB and the native runtime is
+  prebuilt; both need review for F-Droid packaging/licensing.
+- Reply readback uses the selected playback engine. The system engine remains
+  the default and always available. On-device playback is opt-in and requires a
+  downloaded pack; wake detection pauses while TTS speaks and resumes afterward.
+  Barge-in over an active readback is not implemented yet.
+- On-device TTS limits:
+  - Piper ships one English voice plus one voice for Spanish, Hindi, German,
+    French, Simplified Chinese, and Brazilian Portuguese. Japanese stays on the
+    system voice because no Piper voice exists in the pinned release.
+  - Kokoro is English-only and is the larger, more natural option. Its model is
+    roughly 103 MB to download and needs more memory than Piper.
+  - Each pack is a separate download; models are never bundled. Downloads
+    verify byte size and SHA-256, but progress is shown as an indeterminate
+    install state rather than a percentage.
+  - Synthesis runs on the CPU and is serialized. The next chunk is generated
+    while the current one plays, so a slow device may still gap between chunks;
+    the UI falls back to System if the model cannot start.
+  - The model catalog is pinned to upstream sherpa-onnx release assets. Model
+    licensing still needs review for each pack and for F-Droid packaging.
+  - On-device playback is hidden on web; the system voice remains available.
+- The local input path is foreground-only; it does not run with the screen off.
 - Model install/removal and voice enrollment do not yet stop an active local
   detector. Stop conversation mode before changing the local voice setup.
+- Auto model routing's on-device classifier is not validated on native yet. The
+  Qwen2.5-0.5B Q4_K_M pack is roughly 491 MB, requires a llama.rn New
+  Architecture build, and has only a size/MD5 integrity check (the pinned
+  SHA-256 is documented but cannot be streamed through expo-crypto without
+  loading the whole pack into JS memory). Web has no on-device classifier.
+- Auto-routing tier suggestions use price/context/reasoning metadata as a
+  capability proxy. They do not benchmark model quality or prompt-cache behavior;
+  the long-chat guard is a fixed conservative threshold, not measured savings.
+
+## 12. Vendored sherpa-onnx patch
+
+`@siteed/sherpa-onnx.rn` is pinned to `1.3.1` and patched through
+`patches/@siteed+sherpa-onnx.rn+1.3.1.patch`. Do not bump the package without
+re-checking the patch, the native ABI test, and a physical-device build.
+
+Why the patch exists:
+
+- The Android package bundles the sherpa-onnx 1.13.0 JNI library, whose
+  `OfflineTtsModelConfig` reader expects `zipvoice` and `supertonic` fields. The
+  bundled Kotlin class declared neither, so `initTts` aborted the process with a
+  JNI `NoSuchFieldError` before any model loaded. This affects Piper and Kokoro
+  alike, and downgrading is not a fix: every published 1.x release checked
+  (1.1.x, 1.2.0, 1.3.0, 1.3.1) has the same mismatch. The patch adds both
+  classes and fields in upstream order.
+- The iOS TurboModule bridge forwards `modelType`/`voices`/`lexicon`, while the
+  bundled Swift handler read `ttsModelType`/`voicesFile`/`lexiconFile`. Without
+  the alias patch, on-device playback falls back to the wrong model type and
+  never receives Kokoro voices.
+
+How it is applied:
+
+- `package.json` runs `patch-package` from `postinstall`. A clean
+  `npm install` or `npm ci` installs 1.3.1 and reapplies the patch to
+  `node_modules`. A failed hunk fails the install instead of shipping a broken
+  native build.
+- The changed files are native source, so a JS reload or OTA update is not
+  enough. Rebuild Android/iOS after changing the patch.
+- `tests/vitest/tts-native-abi.test.ts` asserts the installed Kotlin declares
+  the fields in the expected order and that the patch entry still carries them.
+
+Exit plan:
+
+- `1.3.2-beta.0` contains the Android JNI fix. When a stable release carries it,
+  upgrade, drop the Android hunk, and keep the iOS alias hunk only if the
+  bridge/handler key mismatch is still present. Re-run the native ABI test and
+  validate preview and message playback on a device.

@@ -31,7 +31,7 @@ Behavior:
 - reconnecting re-runs project discovery, session fetch, and capability discovery
 - connection status can be `idle`, `connecting`, `connected`, or `error`
 - connection state includes a human-readable message shown in the UI
-- when Chat opens without a connected server, it shows the connection message with `Open settings`, or `Reconnect` plus `Connection settings` after a failure; a connected server without a project opens the shared project picker from the same panel instead of a dead-end instruction
+- when the focused server fails or is disconnected, Chat automatically moves to the last healthy enabled server, then any other connected server; the failed server stays enabled and visible in Settings for Reconnect. If no other server is connected, Chat shows the connection message with `Open settings`, or `Reconnect` plus `Connection settings` after a failure; a connected server without a project opens the shared project picker from the same panel instead of a dead-end instruction
 
 ### 2. Pick a Project
 
@@ -203,7 +203,7 @@ Session list behavior:
 Additional session actions are available in Chat:
 
 - fork a session from a user message and open the fork
-- revert a session from a user message; the reverted prompt is placed in the composer for editing
+- revert a session from a user message; an in-flight reply is stopped and settled first, then the reverted prompt is placed in the composer for editing
 - send the edited prompt to commit the staged revert and continue from that point
 - discard the current revert from the composer notice; an unchanged reverted prompt is cleared from the composer
 - discard a waiting steer/queue prompt; when the composer is empty, its text is restored for editing
@@ -366,6 +366,29 @@ If summarization fails, the session simply remains untitled.
 
 ## Settings Screen Detailed Behavior
 
+Settings follows the [design system](design-system.md). Home shows App preferences
+(Appearance, Chat & responses, Voice & audio, Notifications, Language, About &
+support), Connections (Connection and eligible Cloud Link), then Selected server
+(AI & providers, Extensions, Approvals, Server diagnostics). Every category opens
+in the existing content-sized sheet; longer content scrolls below its fixed
+Close header. Connection and provider forms retain their keyboard-safe surfaces.
+
+Local search matches localized labels, descriptions and curated category keywords.
+Results identify a setting and category; selecting one reveals its control,
+including a collapsed group or extension tab, without changing values or
+submitting a form. Closing retains the query; Clear restores categories. No
+credentials, current values or server-returned content are indexed. Platform and
+capability gates apply to the catalog as well as the rendered controls.
+
+Appearance contains theme/color/density; Chat & responses contains transcript
+size/layout, response style and supported prompt delivery. Notifications also
+contains Android widget previews. About & support contains app version, support,
+platform-supported update preferences and Review setup, which preserves existing
+configuration. Voice shows everyday playback/sound controls first; input setup,
+playback packs, diagnostics and automatic model routing use expandable groups.
+Required setup, downloads and errors stay visible. Shared onboarding controls
+retain their intentional step order and explicit permission/download actions.
+
 ### Connection Section
 
 Lists the connections the user has saved plus the connection currently in use.
@@ -379,11 +402,12 @@ Behavior:
 - editing the active connection never reconnects on its own; the row's Reconnect action does that, so an in-flight session is not dropped
 - the active connection cannot be deleted; other connections offer Delete with a confirmation
 - selecting Connect on another connection switches through `switchConnection()`, which persists the outgoing profile's model selection, restores the target profile's selection, clears all server-derived state, and reconnects with the target credentials
+- if the focused connection errors or is disconnected while another enabled connection is healthy, chat focus moves automatically to the last healthy server (or the next connected server) and is persisted; the failed connection remains listed for Reconnect
 - retryable connect failures retry automatically (1/2/5/10/20 s) while the workspace is visible and online; auth, entitlement, and incompatible-server failures require the user's action
 - the Chat header shows a compact offline/reconnecting/polling/slow-link notice. Offline pauses SSE retries and polling; connectivity restoration reopens the stream and runs a critical reconcile
 - a prompt attempted while offline stays visible as queued and is admitted once after reconnect. A timeout with an unknown server outcome is marked delivery-uncertain and is never replayed automatically
 - values are persisted locally; passwords and custom gateway headers stay in SecureStore while name, URL, and username live in AsyncStorage
-- Settings shows short category summaries in one compact group; tapping Connection opens a content-sized overlay with the server message, last checked timestamp, and saved connection rows
+- Settings shows Connection in the Connections group; its content-sized overlay contains the server message, last checked timestamp, labeled Reconnect action, and saved connection rows
 
 ### Cloud Link Section
 
@@ -393,7 +417,7 @@ Purpose:
 
 Behavior exposed today:
 
-- the row sits directly below AI & Providers and only appears for installs that came from the App Store or Google Play; directly installed APKs, F-Droid/FOSS builds, production web, and non-store iOS builds never show it (the development web E2E harness keeps it through `connectPilot.testing`)
+- the row sits below Connection in the Connections group and only appears for installs that came from the App Store or Google Play; directly installed APKs, F-Droid/FOSS builds, production web, and non-store iOS builds never show it (the development web E2E harness keeps it through `connectPilot.testing`)
 - inside the section the order is: access status summary, Exposed Services, the subscription group (Manage subscription, Restore purchases, and native offers/Subscribe while inactive), then Machines last, with a Learn more footer row
 - the section opens without requesting camera access, pairing a machine, purchasing, or restoring
 - progress, error, notice, and Retry feedback stays attached to the subscription actions
@@ -502,6 +526,7 @@ Behavior:
 - creates skills under the selected scope, edits local `SKILL.md` content, and moves removed skills to `.opencode-mobile-trash`
 - creates/edits/removes config-backed slash commands; file-backed commands are read-only
 - shows General entries as shared/read-only in Project scope
+- omits OpenCode built-in plugins, embedded skills, and built-in commands because they cannot be changed from the app
 - refreshes capabilities, commands, MCP status, and the extension snapshot after a successful change
 
 ### Voice Section
@@ -524,13 +549,45 @@ Behavior exposed today:
 - speech locale override
 - speech rate
 - working sound variant and volume
-- TTS voice selection
-- voice check (microphone/speech permission, recognition availability, on-device support, and a playback test) with an app-settings shortcut
+- playback engine: System or On-device
+- system-voice selection with automatic best-available voice selection and an Enhanced quality label
+- optional on-device voice models (Piper compact, one per translated language that has an upstream voice, and Kokoro natural English); each model is downloaded only after the user chooses it
+- per-model install status, size, removal, and preview; Kokoro exposes its individual speakers
+- voice check (microphone/speech permission, recognition availability, on-device support, selected playback engine/model, and a playback test) with an app-settings shortcut
 
-The local setup checklist is shown only in On-device mode. It keeps voice
-enrollment disabled until the models are ready and reveals voice verification
-only after a profile exists. Response scope and next actions live in the
-separate Responses section so they do not look like voice-engine settings.
+The local setup checklist is shown only in On-device voice-input mode. It keeps
+voice enrollment disabled until the models are ready and reveals voice
+verification only after a profile exists. Response scope and next actions live
+in the separate Responses section so they do not look like voice-engine
+settings.
+
+Playback is independent of the input mode. The system voice is always
+available and remains the default. On-device playback requires an explicitly
+selected, installed pack; removing the active pack switches playback back to
+System. Models are never bundled or downloaded automatically. Piper ships one
+English voice plus one voice for Spanish, Hindi, German, French, Simplified
+Chinese, and Brazilian Portuguese; Japanese stays on the system voice because
+no Piper voice is available in the pinned sherpa-onnx release. Kokoro is the
+natural English option and supports eleven speakers.
+
+All assistant readback goes through one speech pipeline:
+
+- markdown headings, links, inline code, and list markers are converted to
+  speakable prose; fenced code and tables become short localized cues
+- file paths and identifiers are expanded into readable words
+- a small pronunciation lexicon covers project terms and common acronyms
+- long replies are split at paragraph boundaries first, then at sentence
+  boundaries, with a short gap between chunks
+- system playback validates the saved voice, prefers an Enhanced voice in the
+  requested locale when the user has not chosen one, and reports a watchdog
+  error if the synthesizer never starts or finishes
+- on-device playback synthesizes WAV chunks and plays them through
+  `expo-audio`; the next chunk is generated while the current one plays, and a
+  pre-audio failure falls back to the system voice
+- if the selected pack language does not match an explicit speech locale, the
+  Settings card warns and playback uses the system voice instead of reading in
+  the wrong language
+
 
 ### Responses Section
 
@@ -662,7 +719,11 @@ Optional on-device wake word:
   room while armed.
 - If voice verification is enabled and a profile is enrolled, the detected
   segment must match that profile. Rejected turns stay armed and surface
-  feedback.
+  feedback. Capture stays live across a rejection, so the user can repeat the
+  phrase immediately instead of waiting for a detector restart.
+- Wake audio is buffered while the native KWS bridge is busy. A slow inference
+  pass or model warm-up therefore delays detection instead of cutting the
+  phrase apart.
 - After a verified wake, the detector stops and a local command session starts.
   A VAD splits the command window into speech turns; each turn is checked
   against the enrolled speaker, and only matching turns are transcribed by the
@@ -677,8 +738,12 @@ Optional on-device wake word:
   tap/confirm fallback for noisy rooms.
 - If models, the native runtime, or microphone permission are unavailable,
   conversation mode falls back to the phrase gate and says so.
-- The local path is foreground-only. Local TTS is out of scope; the wake phrase
-  remains English because the KWS model is English.
+- Reply readback uses the selected playback engine. On-device readback is
+  prewarmed when conversation mode starts, pauses wake detection while speaking,
+  and resumes it when the queue drains. Barge-in over an active readback is not
+  implemented; a new command stops the current utterance.
+- The local input path is foreground-only. The wake phrase remains English
+  because the KWS model is English.
 
 ## Notifications Behavior
 

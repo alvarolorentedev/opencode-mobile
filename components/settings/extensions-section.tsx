@@ -1,14 +1,17 @@
+import { SettingButton as Button, SettingTextInput as TextInput } from './sections/setting-rows';
 import { useEffect, useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { StyleSheet, View } from 'react-native';
-import { ActivityIndicator, Button, Chip, HelperText, List, SegmentedButtons, Text } from 'react-native-paper';
+import { ActivityIndicator, Chip, HelperText, List, SegmentedButtons, Text } from 'react-native-paper';
 
-import { TextInput } from '@/components/ui/text-input';
+
 import { useMcpAuthentication } from '@/components/settings/use-mcp-authentication';
+import { SettingTarget, useSettingsTarget } from './settings-panel';
 import { usePalette } from '@/hooks/use-palette';
 import { confirmAction } from '@/lib/confirm-action';
 import { getErrorMessage } from '@/lib/error-message';
 import { slugifySkillId } from '@/lib/opencode/extensions/skills';
+import { visibleSharedRows } from '@/lib/opencode/extensions/snapshot';
 import type { ExtensionScope, ExtensionSkillRow, ExtensionSnapshot } from '@/lib/opencode/extensions/types';
 import { useExtensions, useMcp, useProjects } from '@/providers/opencode-contexts';
 
@@ -50,12 +53,13 @@ export function ExtensionsSection() {
   const { activeProjectPath } = useProjects();
   const { extensions } = useExtensions();
   const [scope, setScope] = useState<ExtensionScope>(activeProjectPath ? 'project' : 'general');
-  const [tab, setTab] = useState<Tab>('mcp');
+  const target = useSettingsTarget();
+  const [tab, setTab] = useState<Tab>(() => (['plugins', 'skills', 'commands'] as const).find((entry) => target?.group?.startsWith(`extensions-${entry}`)) ?? 'mcp');
   const [generalConfirmed, setGeneralConfirmed] = useState(false);
   const [mcpBusy, setMcpBusy] = useState<string>();
   const [actionError, setActionError] = useState<string>();
   const [mcpName, setMcpName] = useState('');
-  const [mcpType, setMcpType] = useState<'local' | 'remote'>('local');
+  const [mcpType, setMcpType] = useState<'local' | 'remote'>(target?.group === 'extensions-mcp-remote' ? 'remote' : 'local');
   const [mcpTarget, setMcpTarget] = useState('');
   const [pluginTarget, setPluginTarget] = useState('');
   const [skillId, setSkillId] = useState('');
@@ -166,6 +170,7 @@ export function ExtensionsSection() {
 
   return (
     <View style={styles.content}>
+      <SettingTarget label={t(`settings:extensions.tabs.${tab}`)}>
       <Text variant="titleLarge" style={[styles.title, { color: palette.text }]}>{t('settings:extensions.title')}</Text>
       <Text variant="bodyMedium" style={{ color: palette.muted }}>{t('settings:extensions.description')}</Text>
       <SegmentedButtons
@@ -223,7 +228,7 @@ export function ExtensionsSection() {
               {row.target ? <View style={styles.actions}><Button testID={`settings-extension-plugin-remove-${row.label.replace(/[^a-z0-9]+/gi, '-')}`} compact textColor={palette.danger} disabled={busy || !row.editable} onPress={() => remove(t('settings:extensions.removeTitle'), t('settings:extensions.plugins.removeMessage', { name: row.label }), () => { void extensions.removePlugin(effectiveScope, row.target!).catch(() => undefined); })}>{t('common:actions.remove')}</Button></View> : null}
             </View>
           ))}
-          {data ? <ReadOnlyRows title={t('settings:extensions.shared')} rows={data.shared.plugins} render={(row) => <List.Item title={row.label} description={row.source} />} /> : null}
+          {data ? <ReadOnlyRows title={t('settings:extensions.shared')} rows={visibleSharedRows(data.shared.plugins)} render={(row) => <List.Item title={row.label} description={row.source} />} /> : null}
         </View>
       ) : null}
 
@@ -252,7 +257,7 @@ export function ExtensionsSection() {
               </View>
             </View>
           ))}
-          {data ? <ReadOnlyRows title={t('settings:extensions.shared')} rows={data.shared.skills} render={(row) => <List.Item title={row.name} description={row.description || row.path} />} /> : null}
+          {data ? <ReadOnlyRows title={t('settings:extensions.shared')} rows={visibleSharedRows(data.shared.skills)} render={(row) => <List.Item title={row.name} description={row.description || row.path} />} /> : null}
         </View>
       ) : null}
 
@@ -274,13 +279,13 @@ export function ExtensionsSection() {
               </View>
             </View>
           ))}
-          {data ? <ReadOnlyRows title={t('settings:extensions.shared')} rows={data.shared.commands} render={(row) => <List.Item title={`/${row.name}`} description={row.description || t('settings:extensions.shared')} />} /> : null}
+          {data ? <ReadOnlyRows title={t('settings:extensions.shared')} rows={visibleSharedRows(data.shared.commands)} render={(row) => <List.Item title={`/${row.name}`} description={row.description || t('settings:extensions.shared')} />} /> : null}
         </View>
       ) : null}
       {authentication.dialog}
       {extensions.busy ? <HelperText type="info">{t('settings:extensions.saving')}</HelperText> : null}
       {!data && !extensions.isRefreshing ? <HelperText type="info">{t('settings:extensions.unavailable')}</HelperText> : null}
-    </View>
+    </SettingTarget></View>
   );
 }
 

@@ -14,7 +14,7 @@ The existing connection scope, storage keys and persisted DTOs remain unchanged.
 
 New capabilities that require an API surface outside the existing V1 compatibility layer are implemented for OpenCode 2 only. Until this policy changes, do not add new V1 adapters, endpoint shims, fallbacks, or V1 fake-server handlers for these capabilities. The UI hides or disables them when the active contract is V1.
 
-V1 remains supported for existing behavior and maintenance fixes. Current examples of V2-only capabilities include composer context mentions (`@`), session shell commands (`!`), skill/reference discovery, and composer autocomplete suggestions.
+V1 remains supported for existing behavior and maintenance fixes. Current examples of V2-only capabilities include composer context mentions (`@`), session shell commands (`!`), skill/reference discovery, composer autocomplete suggestions, and the OpenCode auto-model classifier call. On-device auto-routing has no API dependency and can run on either contract.
 
 ### Local V2 pairing
 
@@ -61,7 +61,7 @@ SDK success responses retain their native shapes. Failed HTTP responses preserve
 
 - Project catalog: `location.get()` and `project.list()`; project views retain ID, canonical path, name, VCS and sandboxes. The picker's list is the connection-scoped opened projects (persisted on the device), and the server catalog only enriches them; `location.get` validates a path that is not opened. The worktree inventory is filtered against known project canonicals, because a repository with multiple checkouts can report its own project root as a worktree; those directories cannot be removed or reset through the server.
 - Sessions: `session.list()` plus `session.active()`, create/get/update/remove/fork, model/agent selection, instructions and interrupt. Native session listing is cursor-paged, so the service follows `cursor.next` (bounded, deduplicated) until the project's chats are exhausted; reading only the first page silently hides every older chat. Native active sets omit retries, so the provider preserves event-derived retry state across refreshes.
-- Fork uses native `before`; revert uses `session.revert.stage()` and `clear()`. Waiting prompt cancellation uses `session.inbox.cancel({ sessionID, inboxID })`; unavailable items are a server-side no-op.
+- Fork uses native `before`; revert interrupts any active execution, waits for the server to settle with `session.wait()`, then stages with `session.revert.stage()` and clears with `clear()`. V1 abort releases its session lock synchronously, so no wait endpoint is needed there. Waiting prompt cancellation uses `session.inbox.cancel({ sessionID, inboxID })`; unavailable items are a server-side no-op.
 - Messages: `message.list({ sessionID, limit: 200, order: 'desc' })` for the initial newest window, `message.list({ sessionID, limit: 20, order: 'desc' })` for tail reconcile, then opaque `cursor` without an `order` override for older 200-record pages. The native query validates `limit` as 1..200, so the adapter clamps larger requests. Native `cursor.next` is retained in the provider window. Loaded history is not capped; each explicit scroll-to-top issues one older batch. Each page is treated as a contiguous slice of durable order: unseen records are placed relative to their page anchors, and responses from a superseded window generation are ignored. Window rewrites bypass read coalescing so a pre-compaction/pre-revert page is not reused. Message order is durable sequence, never `time.created`.
 - The V2 `message.list` endpoint accepts `type` as a **single** native record type (`user`, `assistant`, `idle`, `system`, `shell`, `skill`, `synthetic`, `compaction`, `agent-switched`, `model-switched`, `location-switched`), filtered before pagination and repeated with each cursor. The app does not filter the mixed timeline because it needs both user and assistant records; the fixed detailed display filter decides which records render. Shell records map to a synthetic shell tool detail with command, output, and exit status.
 - Turn diffs: `session.diff({ sessionID, from: userMessageID })`; working/branch views use scoped `vcs.diff({ mode: 'working' | 'branch' })`. Native assistant snapshot files provide review navigation and filename-only fallback details. The two contracts describe a turn diff differently: v2 serves `{ file, patch, additions, deletions, status }`, while v1 serves whole-file `{ file, before, after, … }` with no patch. `lib/opencode/diff.ts` normalizes both shapes at their boundaries and rebuilds a single-hunk patch when the server exposes contents but no patch, so a v1 turn diff renders its changed lines instead of a filename with an empty body.
@@ -76,6 +76,24 @@ The native admission record identifies the accepted input. Completion is observe
 
 Attachment capability checks, 10 MB local-file limits, temporary-file cleanup and URI/base64 preparation remain app-owned. File-only messages retain attachment details. Commands use native `session.command({ name, text })` after model/agent selection; v1 receives its legacy command/arguments fields. A leading `!` uses `session.shell({ sessionID, command })` and renders the native `shell` timeline record as the existing shell activity row. Abort uses native `session.interrupt`; title summarization is v1-only.
 
+## Auto Model Classifier
+
+Auto model routing can use the V2 experimental classifier endpoint:
+
+```text
+POST /api/experimental/generate
+{ prompt, model: { id, providerID, variant? } }
+→ { data: { text } }
+```
+
+The app sends a constrained routing prompt and accepts only `simple`,
+`standard`, or `complex`. The endpoint is V2-only and experimental, so the
+OpenCode classifier option is gated by a probe. `404`/`405` marks the endpoint
+unsupported; `401`/`403` marks authentication required; transport and `503`
+failures remain retryable. A send-time failure leaves the prompt on the normal
+default model. No V1 adapter is added. On-device routing uses the pinned GGUF
+pack through `llama.rn` and is separate from this endpoint.
+
 ## Capabilities And Provider Authentication
 
 Native discovery combines config documents, providers, models, agents and integrations. Integration catalogs keep unconnected providers addable while excluding MCP integrations. `activation: auto` is catalog policy, not proof of a connected account. Connection state derives from credentials/environment connections or enabled models. Provider models retain native IDs, including distinct variants sharing a modelID. Model reasoning support derives from compatibility and variant settings.
@@ -88,7 +106,7 @@ The installed SDK exposes credential mutations but not credential listing. Accou
 
 ## Extensions And Config Files
 
-Extension management is V2-only. `config.get` supplies the project and user-global config documents and discovery directories. The app reads raw JSONC with `file.read` for project files and a fixed, path-escaped `cat` shell read for global files, applies minimal JSONC edits, and writes through `file.write`. Durable MCP/plugin/command changes therefore live in the selected `opencode.json(c)` rather than the runtime-only MCP add/remove endpoints.
+Extension management is V2-only. `config.get` supplies the project and user-global config documents and discovery directories. The app reads raw JSONC with `file.read` for project files and a fixed, path-escaped `cat` shell read for global files, applies minimal JSONC edits, and writes through `file.write`. Project config reads append a per-request cache-busting parameter so a cached pre-create 404 cannot be revalidated as a `304` against the renamed temp file's older mtime. Durable MCP/plugin/command changes therefore live in the selected `opencode.json(c)` rather than the runtime-only MCP add/remove endpoints.
 
 Every config mutation is transactional: backup, same-directory temp file, byte verification, re-read/concurrent-change check, atomic rename, and a `config.get` poll for the expected key. A failed replace or reload restores the backup. System/MDM config, symlinks, ambiguous global roots, missing shell support, Windows servers, and unreadable/invalid files are read-only. Removed skills move to a hidden `.opencode-mobile-trash` directory. No config validation endpoint exists in V2; validation is local JSONC/shape checking plus the post-write server reload check, and diagnostics that only appear in server logs are not available to the client.
 

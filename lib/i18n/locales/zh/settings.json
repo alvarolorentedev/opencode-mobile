@@ -4,14 +4,17 @@
       "connection": "连接",
       "ai": "AI 与提供商",
       "notifications": "通知",
-      "voice": "语音",
+      "voice": "语音与音频",
       "advanced": "高级",
       "support": "支持",
       "permissions": "审批",
       "subscription": "订阅",
       "cloudLink": "Cloud Link",
       "extensions": "Extensions",
-      "responses": "回复"
+      "responses": "回复",
+      "appearance": "外观",
+      "chat": "聊天与回复",
+      "about": "关于与帮助"
     },
     "summaries": {
       "configuredCount": "已配置 {{value}} 个",
@@ -24,7 +27,35 @@
       "voiceSystem": "系统语音 · {{phrase}}",
       "voiceLocal": "设备端 · {{phrase}}",
       "responsesOn": "{{scope}} · 下一步开启",
-      "responsesOff": "{{scope}} · 下一步关闭"
+      "responsesOff": "{{scope}} · 下一步关闭",
+      "appearance": "主题、颜色和界面密度",
+      "diagnostics": "连接状态与故障排查"
+    },
+    "groups": {
+      "app": "应用偏好",
+      "connections": "连接",
+      "server": "所选服务器"
+    },
+    "intro": "个性化应用并管理连接。",
+    "search": {
+      "placeholder": "搜索设置",
+      "clear": "清除搜索",
+      "empty": "没有匹配的设置，请尝试其他关键词。",
+      "results": "匹配的设置：{{count}}"
+    },
+    "keywords": {
+      "appearance": "显示 主题 颜色 深色 浅色 紧凑 密度",
+      "responses": "聊天 消息 文字 字体 大小 回复 风格 引导 追加 队列 气泡",
+      "voice": "语音 音频 声音 麦克风 输入 播放 语言 唤醒词",
+      "notifications": "通知 提醒 电池 小组件",
+      "language": "语言 翻译 界面",
+      "support": "帮助 反馈 支持 更新 版本 设置向导",
+      "connection": "连接 服务器 地址 密码 凭据 重新连接 二维码",
+      "cloud-link": "远程连接 Cloud Link 订阅 计算机 服务",
+      "ai": "人工智能 提供商 账户 模型 身份验证 分类器 路由",
+      "extensions": "扩展 MCP 插件 技能 命令",
+      "permissions": "权限 审批 已保存规则 自动允许",
+      "advanced": "诊断 网络 连接 实时 轮询 错误 用量"
     }
   },
   "support": {
@@ -234,7 +265,7 @@
       "description": "优先使用本地识别，必要时再使用云端。"
     },
     "autoPlay": {
-      "title": "自动播放助手回复",
+      "title": "自动朗读回复",
       "description": "朗读聊天回复。对话模式始终会朗读。"
     },
     "workingSound": {
@@ -244,6 +275,16 @@
     "wakePhrase": {
       "label": "唤醒短语",
       "helper": "对话模式只会在听到此短语后发送消息。建议使用两个或更多词。"
+    },
+    "modelDownloads": {
+      "timeout": "下载超时。连接已停滞，请改用 Wi‑Fi 或信号更好的网络重试。",
+      "offline": "无法连接到下载服务器。请检查网络连接后重试。",
+      "server": "下载服务器暂时无法提供文件。请稍后重试。",
+      "storage": "没有足够的可用空间来安装此模型。",
+      "incomplete": "下载未完成。请重试。",
+      "integrity": "下载的文件已损坏。请重试。",
+      "unknown": "无法下载模型。请检查网络连接后重试。",
+      "installFailed": "模型安装失败。请重试。"
     },
     "localWake": {
       "title": "设备端语音",
@@ -277,7 +318,7 @@
       "installCommand": "安装命令模型（{{size}}）"
     },
     "speechLocale": {
-      "label": "语音区域设置",
+      "label": "语言",
       "helper": "留空以使用系统默认语言进行语音输入和播放。"
     },
     "responseScope": {
@@ -317,7 +358,36 @@
       "label": "工作提示音音量"
     },
     "voiceSelect": {
-      "label": "语音"
+      "label": "声音",
+      "automatic": "自动",
+      "enhanced": "增强 · {{language}}"
+    },
+    "enhancedVoices": "在设备的文字转语音设置中安装增强或高级语音，以获得最自然的系统语音。",
+    "playbackEngine": {
+      "label": "播放引擎",
+      "systemDescription": "使用设备内置语音。始终可用。",
+      "localDescription": "使用已下载的神经网络语音。在下方选择模型。"
+    },
+    "localTts": {
+      "title": "设备端播放",
+      "description": "只有在你选择后才会下载模型。系统语音始终可用。",
+      "piper": "轻量",
+      "kokoro": "自然",
+      "piperDescription": "快速轻量",
+      "kokoroDescription": "最自然的英语，下载更大",
+      "download": "下载（{{size}}）",
+      "installing": "正在安装…",
+      "installed": "已安装",
+      "notInstalled": "未安装",
+      "use": "使用",
+      "preview": "预览",
+      "speaker": "语音",
+      "storage": "设备端语音已使用 {{size}}",
+      "downloadHint": "下载内容会经过验证并保存在此设备上。",
+      "japaneseUnavailable": "日语使用系统语音，因为没有可用的 Piper 模型。",
+      "fallbackToSystem": "设备端语音不可用。正在使用系统语音。",
+      "languageMismatch": "此模型使用 {{language}}。请将语音区域设置设为匹配，否则播放将使用系统语音。",
+      "installFirst": "请先选择并安装设备端模型。"
     },
     "footer": "Android 可以定期在后台检查正在运行的会话，并发布完成通知。不支持后台语音和持续的麦克风采集。",
     "check": {
@@ -351,6 +421,57 @@
     "readInterim": {
       "title": "朗读进度更新",
       "description": "朗读“正在处理…”等更新；最终回复始终会朗读。"
+    },
+    "setup": {
+      "title": "设备端语音输入",
+      "step": "第 {{step}} 步，共 {{total}} 步",
+      "followSystem": "跟随系统",
+      "setUpInput": "设置设备端输入",
+      "manageInput": "管理设备端输入",
+      "notActive": "完成设置后即可启用设备端输入。",
+      "chooseVoice": "选择声音",
+      "manageDownloads": "管理下载",
+      "more": "更多音频设置",
+      "advanced": "高级选项",
+      "notNow": "暂不设置",
+      "downloadContinue": "下载并继续",
+      "tools": "语音工具",
+      "downloadSize": "需下载 {{size}} · 建议使用 Wi-Fi",
+      "englishModel": "Moonshine · 适用于英语指令，速度快",
+      "multilingualModel": "Whisper · 适用于多语言指令",
+      "microphone": "麦克风权限",
+      "allow": "允许",
+      "sequence": "唤醒 → 说话 → 发送",
+      "serverNote": "语音识别在手机上运行。你的请求仍会发送到 OpenCode 服务器。",
+      "profileNote": "可选：录制一段 12 秒的语音，让应用只响应你的声音。声纹保存在手机上。跳过后，任何人都可以通过唤醒短语激活应用。",
+      "skipProfile": "跳过声纹设置",
+      "skipTest": "跳过测试并完成",
+      "startTest": "开始测试",
+      "stopTest": "停止测试",
+      "testNote": "测试不会发送请求。离开此页面后麦克风会停止监听。",
+      "busy": "请先停止对话模式，再设置语音输入。",
+      "intro": {
+        "title": "动动嘴，无需动手",
+        "description": "说出“{{phrase}}”，然后告诉 OpenCode 要做什么。"
+      },
+      "prepare": {
+        "title": "准备你的手机",
+        "description": "选择语言，允许使用麦克风，并一次性下载语音工具。"
+      },
+      "profile": {
+        "title": "专属于你的声音",
+        "description": "选择是否让应用只响应你的声音。"
+      },
+      "test": {
+        "title": "试试说“{{phrase}}”",
+        "description": "开始测试，然后以正常音量说出唤醒短语。",
+        "idle": "准备就绪",
+        "starting": "正在启动麦克风…",
+        "listening": "正在监听唤醒短语…",
+        "detected": "已检测到唤醒短语，一切就绪！",
+        "error": "无法运行测试。请检查麦克风权限后重试。",
+        "busy": "请停止对话模式以运行测试。"
+      }
     }
   },
   "diagnostics": {
@@ -527,7 +648,7 @@
   },
   "general": {
     "title": "常规",
-    "resetOnboarding": "重新进行初始设置"
+    "resetOnboarding": "检查设置"
   },
   "autoUpdate": {
     "title": "更新检查",
@@ -708,5 +829,71 @@
     "generalConfirmTitle": "Edit global configuration",
     "generalConfirmMessage": "This changes the configuration for every project on this server. A backup is created first.\n\n{{path}}",
     "generalConfirmAction": "Continue"
+  },
+  "modelRouting": {
+    "title": "Auto model routing",
+    "description": "Classify each prompt and choose a model by complexity. Routing is skipped when the classifier is unavailable.",
+    "enable": {
+      "title": "Enable auto-routing",
+      "description": "Choose a model for each prompt based on its complexity.",
+      "unavailable": "Set up a classifier below before enabling routing."
+    },
+    "classifier": {
+      "label": "Classifier",
+      "local": {
+        "label": "On-device model",
+        "description": "Runs on this phone. The model is downloaded once."
+      },
+      "server": {
+        "label": "OpenCode classifier",
+        "description": "Calls a model through OpenCode before sending the prompt."
+      }
+    },
+    "local": {
+      "statusLabel": "On-device model",
+      "status": {
+        "unsupported": "Not supported on this platform",
+        "installing": "Downloading",
+        "ready": "Ready",
+        "missing": "Not installed",
+        "error": "Install failed"
+      },
+      "installed": "Installed ({{size}})",
+      "remove": "Remove model",
+      "download": "Download model ({{size}})",
+      "license": "{{model}} · {{license}}. The model runs only on this device."
+    },
+    "server": {
+      "modelLabel": "Classifier model",
+      "cheapest": "Cheapest available",
+      "check": "Check classifier",
+      "status": {
+        "unknown": "Not checked. Check the classifier to enable routing.",
+        "checking": "Checking the classifier...",
+        "available": "Classifier available.",
+        "unsupported": "This server does not expose the classifier endpoint.",
+        "unavailable": "Classifier unavailable. Check the connection and retry.",
+        "auth": "Sign in to this server before using the classifier."
+      }
+    },
+    "tiers": {
+      "simple": {
+        "label": "Simple model"
+      },
+      "standard": {
+        "label": "Standard model"
+      },
+      "complex": {
+        "label": "Complex model"
+      },
+      "automatic": "Automatic",
+      "automaticDescription": "Choose from the enabled models",
+      "automaticValue": "Automatic · {{model}}",
+      "unavailable": "Unavailable"
+    },
+    "protect": {
+      "title": "Protect long chats",
+      "description": "Avoid downgrading models on long conversations where prompt-cache savings may be larger."
+    }
   }
 }

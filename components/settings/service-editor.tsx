@@ -1,9 +1,10 @@
+import { SettingButton as Button, SettingTextInput as TextInput, SettingSelectField, SettingSwitchRow, type Palette } from './sections/setting-rows';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { StyleSheet, View } from 'react-native';
-import { Button, HelperText } from 'react-native-paper';
+import { HelperText } from 'react-native-paper';
 
-import { TextInput } from '@/components/ui/text-input';
+
 import {
   DEFAULT_SERVICES_PORT,
   getServicePortOptions,
@@ -14,7 +15,7 @@ import {
   type ServicePortOption,
 } from '@/lib/opencode/client';
 import type { ServiceManagementApi } from '@/providers/opencode-provider-types';
-import { SettingSelectField, SettingSwitchRow, type Palette } from './sections/setting-rows';
+
 
 function draftFor(service?: ManagedService): ServiceDraft {
   return service

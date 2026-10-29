@@ -129,9 +129,10 @@ per-runtime.
 
 ### First-Run Onboarding
 
-The assistant has seven connected steps: app presentation, permissions, add
-connection, AI & Providers, project, General Settings, and ready. Without a
-connection, AI & Providers and project are omitted (five visible steps). Shared
+The assistant has eight connected steps: app presentation, permissions, add
+connection, AI & Providers, project, General Settings, Voice & Responses, and
+ready. Without a connection, AI & Providers and project are omitted (six visible
+steps). Shared
 navigation derives progress and forward/back destinations from that sequence;
 temporary reconnects retain the AI step and its sign-in dialog. Manual connection
 and Cloud Link pairing both continue to AI & Providers. General Settings edits
@@ -140,6 +141,10 @@ field requires a connection; delivery also requires V2.
 Provider setup embeds the same composition as Settings, including auth dialogs,
 model toggles, account actions, confirmations and feedback. All selections write
 through existing provider actions, and Ready summarizes current provider state.
+Voice & Responses reuses the Settings voice controls in an onboarding view,
+including OS/on-device input, command-model setup, playback packs, voice preview,
+auto-readback and response style. Model downloads and microphone permission are
+explicit actions. The voice panel unmounts on blur to release native audio.
 The completion version, preference schema and first-run migration are unchanged.
 
 - Completion lives in `opencode-mobile.onboarding-version` (managed by
@@ -208,6 +213,18 @@ The completion version, preference schema and first-run migration are unchanged.
   Server capability flags and the auto-approve permission policy.
 - `providers/opencode-model-selection.ts`
   Model/agent catalog shapes and pure provider/model selection rules.
+- `providers/opencode-auto-model.ts`
+  Pure auto-routing rules: tier suggestions, explicit/automatic resolution,
+  attachment/context compatibility, and the long-chat cache guard.
+- `providers/use-prompt-routing.ts`
+  Send-time classifier selection and tier resolution. Requires a real
+  on-device or OpenCode classifier; it never falls back to heuristics.
+- `providers/services/model-routing-service.ts`
+  V2 OpenCode classifier probe/call (`POST /api/experimental/generate`) and
+  result parsing.
+- `lib/auto-model/`
+  Pinned GGUF catalog, verified download/install state, llama.rn runtime, and
+  prompt/grammar helpers shared by local and OpenCode classifiers.
 - `providers/opencode-provider-utils.ts`
   Small provider-agnostic helpers (project labels, pending-request grouping).
 - `providers/opencode-provider-selectors.ts`
@@ -242,8 +259,10 @@ The completion version, preference schema and first-run migration are unchanged.
   Session lifecycle, favorites, permissions/questions, and
   `ensureActiveSession`.
 - `providers/use-prompt-lifecycle.ts`
-  `sendPrompt`/`abortSession`, the submission guard, and task-completion
-  notification tracking.
+  `sendPrompt`/`abortSession`, the submission guard, task-completion notification
+  tracking, and the initial auto-routing await. Classification starts in
+  parallel with attachment preparation; a missing classifier leaves the send on
+  the normal default model.
 - `providers/use-prompt-inbox.ts`
   OpenCode 2 prompt admission and session-scoped pending messages. Wraps the
   existing transcript refresh to reconcile inbox delivery through SSE and polling.
@@ -417,7 +436,7 @@ Native v2 editing uses `vcs.status` and `file.write`. The provider compares the 
 
 MCP OAuth resolves each server's exposed `integrationID`, then uses native integration start/complete/status/cancel operations. The grouped provider interface carries code/automatic mode and form prompts; cleanup cancels attempts and rejects stale connection results. V1 supports only the V2 feature intersection: sharing, archive/restore, title summarization, general config writes, persistent MCP enablement, worktree reset, and LSP/formatter diagnostics are not supported.
 
-Extensions are V2-only. The app does not use the runtime-only MCP add/remove endpoints for durable changes and does not call the shell-only `config.update`. Instead, it resolves the active project config and the user-global config directory from `config.get`, edits the raw JSONC with `jsonc-parser`, and replaces the file through a same-directory temp file and atomic rename. A backup is written first; the temporary and target bytes are verified; `config.get` is polled to confirm the server loaded the expected key; failures restore the backup. Global files are read and moved with fixed, path-validated shell commands because V2 file reads are location-confined and there is no file-delete API. System and managed config, symlinks, Windows atomic replacement, ambiguous global roots, and missing shell support are read-only. Extension snapshots are server-derived and never persisted.
+Extensions are V2-only. The app does not use the runtime-only MCP add/remove endpoints for durable changes and does not call the shell-only `config.update`. Instead, it resolves the active project config and the user-global config directory from `config.get`, edits the raw JSONC with `jsonc-parser`, and replaces the file through a same-directory temp file and atomic rename. A backup is written first; the temporary and target bytes are verified; `config.get` is polled to confirm the server loaded the expected key; failures restore the backup. Project config reads append a per-request cache-busting parameter because a cached pre-create 404 can otherwise revalidate as a `304` against the renamed temp file's older mtime. Global files are read and moved with fixed, path-validated shell commands because V2 file reads are location-confined and there is no file-delete API. System and managed config, symlinks, Windows atomic replacement, ambiguous global roots, and missing shell support are read-only. Built-in plugins, embedded `/builtin/` skills, and upstream built-in commands are classified as system rows and omitted from the shared read-only list; they remain in the snapshot so name-collision checks still block conflicting user entries. Extension snapshots are server-derived and never persisted.
 
 ### Connection Identity And Credentials
 
@@ -550,9 +569,37 @@ permission and Chat Library visibility do not gate widget reads.
 
 - `lib/notifications.ts`
   Local notifications, background monitoring task, and notification debug status.
+- `lib/model-download.ts`
+  Shared model-asset transfer used by TTS, wake-word and auto-model installs:
+  foreground `DownloadTask` with the native 60 s Android stall timeout, one
+  retry for transient failures, partial-file cleanup, and classified errors
+  that the UI translates instead of showing native exception text.
 - `lib/voice/speech-output.ts`
-  Text-to-speech, audio ducking, stale-voice fallback, and a completion watchdog
-  so a silent native failure cannot hang callers.
+  Single speech-output facade. Prepares text, cancels the active run, owns the
+  audio session, and delegates to the system or on-device engine. Keeps the
+  completion, fallback, and stale-voice contracts shared by chat, auto-play,
+  conversation readback, and the voice check.
+- `lib/voice/speech-text.ts` and `lib/voice/speech-lexicon.ts`
+  Pure markdown-to-speech normalization, pronunciation rules, path/identifier
+  expansion, and paragraph-first chunking.
+- `lib/voice/audio-session.ts`
+  Shared ducking and audio-mode setup for system and on-device playback.
+- `lib/voice/system-tts.ts`
+  `expo-speech` adapter: voice discovery and quality metadata, automatic
+  best-voice selection, chunk queue, stale-voice fallback, and completion
+  watchdog.
+- `lib/voice/speech-config.ts`
+  Pure mapping from chat preferences to a system or local playback config; no
+  native imports.
+- `lib/voice/tts/`
+  Optional on-device playback. `catalog.ts` pins downloadable Piper/Kokoro
+  packs and licenses; `models.ts` installs, verifies, removes, and reports
+  packs; `runtime.ts` owns the sherpa-onnx TTS singleton and idle release;
+  `engine.ts` synthesizes WAV chunks and orchestrates prefetch; `player.ts`
+  plays those chunks through `expo-audio` and cleans up cache files. The
+  `@siteed/sherpa-onnx.rn` dependency is pinned and patched for Android JNI and
+  iOS config-key compatibility; see `docs/known-gaps.md` section 12 before
+  upgrading it.
 - `lib/voice/use-speech-input.ts`
   Speech recognition hook. Re-checks recognition availability at start, pins an
   explicit iOS audio session category, and retries once through network
@@ -680,9 +727,9 @@ This split is one of the key architectural details. Project discovery is intenti
 Saved connections are a first-class concept built on `getConnectionScope()`. A
 switch is deliberately ordered:
 
-1. persist the outgoing profile's model preferences,
+1. persist the outgoing profile's server-scoped preferences,
 2. update credentials and settings, which resets every server-derived in-memory slice,
-3. restore the target profile's model preferences (validated again by capability discovery after connecting),
+3. restore the target profile's server-scoped preferences (validated again by capability discovery after connecting). A retained workspace keeps its live values authoritative; the profile only fills fields the entry is missing, so a lagging profile write cannot roll back a newer selection,
 4. reconnect with the target settings passed explicitly to `runConnect()` instead of reading a render-delayed ref, then
 5. hydrate only state whose connection scope matches the new settings.
 
@@ -916,6 +963,8 @@ engine.
   installed/replaced independently.
 - `lib/voice/use-local-wake-word.ts` captures 16 kHz PCM, feeds the KWS model,
   keeps a short rolling buffer, and verifies the enrolled speaker when enabled.
+  Frames are queued while a native KWS call is in flight, and a rejected speaker
+  check leaves the detector running so the next attempt is captured immediately.
 - `lib/voice/use-local-command-capture.ts` runs after a verified wake. Silero
   VAD segments speech turns; each finalized turn is embedded and compared to the
   enrolled profile; only matched turns go to the selected local ASR. Accepted
@@ -932,7 +981,7 @@ engine.
   non-overlapping turns. Local TTS is out of scope.
 
 `providers/conversation/use-local-wake-controller.ts` owns the detector-to-command
-handoff, speaker rejection/re-arming, and the local command submission path. The
+handoff, speaker-rejection feedback, and the local command submission path. The
 main conversation state machine continues to own phases, submission, playback,
 and cleanup.
 
@@ -1083,4 +1132,35 @@ Hydration, compatibility settings writes, device sharing, Cloud Link setup/billi
 
 The chat library combines the unscoped server catalogs with live project state. It keeps current/running/recency order, uses composite keys and labels each row with its server. Project selection changes chat/project focus. Terminal selection and Settings inspection are independent. Paper portals explicitly restore their caller's workspace scope; otherwise their children would inherit the app host's current chat server.
 
+Chat focus fails over automatically. When the focused runtime reports an error, or its connection is disabled or removed, `use-workspace-connections.ts` selects the last healthy connected server, then any other connected server, and persists that focus. The failed server stays registered and enabled so Settings can reconnect it; if no other server is connected, the existing Chat connection panel remains the terminal state.
+
 Terminal renderers remain mounted when hidden. Hidden instances cannot accept input or layout resize; disconnect detaches transports without deleting remote PTYs. Composer and editor drafts and transcript reading positions live in an in-memory presentation map, keyed by owning server/project/session or file. They survive navigation, not process termination. No external store or dependency was introduced.
+
+## Settings presentation and design system
+
+The shared [design system](design-system.md) defines presentation foundations and
+feature acceptance. Settings keeps its existing category-sheet navigation, with
+app preferences first, connection management next, and inspected-server tools
+last. The section registry owns category grouping and localized search metadata;
+`SettingsHome` renders navigation/search, and `SettingsPanel` owns only scrolling,
+search highlighting and announcement. Shared rows/fields/buttons also serve setup
+flows. Search never indexes current values or changes a preference; provider
+ownership, inspection scope, persistence and API contracts are unchanged.
+
+## Guided voice setup and isolated microphone test
+
+`VoiceSection` shares compact mode-dependent controls between Settings and
+onboarding. `VoiceInputSetup` owns only four-step navigation and presentation;
+`useVoiceSetup` continues to own installation, permission snapshots and enrollment
+through native wrappers in `lib/voice/`. Model selections and readiness remain
+derived from existing preferences/install state. No API or persisted schema changes.
+
+`WorkspaceProvider` owns one `useVoiceSetupTest` instance and exposes the narrow
+`useVoiceTest` domain hook. It reuses `useLocalWakeWord`, maps detection to test
+feedback and never calls command capture, session creation or prompt submission.
+Any active workspace conversation blocks setup testing; workspace conversation
+actions reserve microphone access during asynchronous startup and stop the test
+before starting. Dismissal, tab blur, backgrounding and
+completion release capture, including pending native starts. Idle test cleanup
+does not stop another audio owner. Enrollment cancellation invalidates pending
+permission/embedding work while retaining saved profiles and installed files.

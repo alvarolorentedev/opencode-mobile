@@ -7,13 +7,10 @@
     "stopConversationTitle": "Arrêter la conversation ?",
     "stopConversationMessage": "Cela arrêtera le mode conversation et OpenCode cessera d'écouter ton prochain tour.",
     "keepGoing": "Continuer",
-    "revertTitle": "Revenir depuis ce message ?",
-    "revertMessage": "OpenCode annulera les modifications de la session après ce point.",
-    "revertConfirm": "Revenir depuis ce message ?\n\nOpenCode annulera les modifications de la session après ce point.",
-    "revert": "Revenir",
     "couldNotSendRetry": "OpenCode n'a pas pu envoyer ce message. Réessaie dans un instant.",
     "couldNotSend": "OpenCode n'a pas pu envoyer ce message.",
     "unableToPlay": "Impossible de lire cette réponse de l'assistant.",
+    "ttsFallback": "La voix sur l'appareil est indisponible. La voix du système est utilisée.",
     "stopConversationBeforePlay": "Arrête le mode conversation avant de lire une réponse manuellement.",
     "noReadableText": "Cette réponse de l'assistant ne contient aucun texte lisible.",
     "fileTooLarge": "Le fichier dépasse la limite de pièce jointe de 10 Mo.",
@@ -216,6 +213,8 @@
     "lastHeard": "Dernier extrait entendu",
     "wakePhrase": "Phrase d’activation",
     "startSpeaking": "Commence à parler naturellement. Ce que tu dis au dernier tour apparaîtra ici.",
+    "listeningHint": "Allez-y, je vous écoute.",
+    "endConversation": "Terminer la conversation",
     "steerHint": "Dites « {{phrase}} » à tout moment pour orienter."
   },
   "modelPicker": {
@@ -228,7 +227,11 @@
     "reasoningSupported": " · Raisonnement pris en charge",
     "standardModel": " · Modèle standard",
     "noMatchingModels": "Aucun modèle correspondant",
-    "emptyHint": "Essaie un nom de modèle ou de fournisseur."
+    "emptyHint": "Essaie un nom de modèle ou de fournisseur.",
+    "autoRouting": "Auto-routing",
+    "autoRoutingDescription": "Use a model matched to each prompt",
+    "autoRoutingUnavailable": "Set up a classifier in Settings",
+    "defaultModel": "Default model"
   },
   "starter": {
     "title": "Démarrer une nouvelle tâche",

@@ -1,12 +1,15 @@
 import { OpenCode } from '@opencode/client';
 import { createPrefixFetch, getRequestHeaders, type OpencodeConnectionSettings } from '../client';
+import { bustConfigReadCache } from './config-read-cache';
 import { resolveV2Base, type RawCredential, type V2Context } from './shared';
 export function buildV2Raw(settings: OpencodeConnectionSettings): V2Context {
   const { base, pathPrefix } = resolveV2Base(settings);
   const headers = getRequestHeaders(settings);
   const fetch = createPrefixFetch(base.origin, pathPrefix, settings);
   const sdkFetch: typeof globalThis.fetch = async (input, init) => {
-    const response = await fetch(input, init);
+    const method = init?.method ?? (typeof input === 'object' && 'method' in input ? input.method : undefined);
+    const url = input instanceof URL ? input : new URL(typeof input === 'string' ? input : input.url);
+    const response = await fetch(bustConfigReadCache(url, method) ?? input, init);
     if (response.ok) return response;
     const text = await response.text();
     let cause: unknown;

@@ -68,6 +68,7 @@ const buildPropertiesPlugin: [string, {
         '-keep class expo.modules.adapters.react.apploader.** { *; }',
         '-keep class com.reactnativeandroidwidget.RNWidgetBackgroundTaskWorker { *; }',
         '-keep class com.reactnativeandroidwidget.oss.HeadlessJsTaskWorker { *; }',
+        '-keep class com.rnllama.** { *; }',
       ].join('\n'),
     } } : {}),
   },
@@ -86,14 +87,14 @@ const iapPlugin: PluginList = ['expo-iap'];
 const config: ExpoConfig = {
   name: isDevelopmentVariant ? 'OpenCode Mobile Dev' : 'OpenCode Mobile',
   slug: 'opencode-mobile',
-  version: '1.0.100',
+  version: '1.0.105',
   orientation: 'default',
   icon: './assets/images/icon.png',
   scheme: 'opencodemobile',
   userInterfaceStyle: 'automatic',
   android: {
     package: androidPackage,
-    versionCode: 100,
+    versionCode: 105,
     adaptiveIcon: {
       foregroundImage: './assets/images/adaptive-icon.png',
       backgroundColor: "#202020"
@@ -107,7 +108,7 @@ const config: ExpoConfig = {
   },
   ios: {
     bundleIdentifier: iosBundleIdentifierOverride ?? (isDevelopmentVariant ? 'app.getopencode.mobile.dev' : 'app.getopencode.mobile'),
-    buildNumber: '100',
+    buildNumber: '105',
     infoPlist: {
       ITSAppUsesNonExemptEncryption: false,
       NSPhotoLibraryUsageDescription: 'Allow OpenCode Mobile to access photos you choose to attach to chat messages.',
@@ -166,6 +167,9 @@ const config: ExpoConfig = {
     // Android config plugin adds the ONNX Runtime packaging rule; iOS is
     // autolinked. Models are downloaded from the user's explicit action.
     '@siteed/sherpa-onnx.rn',
+    // On-device prompt classifier runtime. The model pack itself is downloaded
+    // separately; only the llama.cpp native libraries ship in the app.
+    ['llama.rn', { enableEntitlements: true, entitlementsProfile: 'production', forceCxx20: true, enableOpenCLAndHexagon: false }],
     [
       'expo-splash-screen',
       {

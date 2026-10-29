@@ -1,9 +1,10 @@
+import { SettingButton as Button } from './sections/setting-rows';
 import * as Clipboard from 'expo-clipboard';
 import { Image } from 'expo-image';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ScrollView, StyleSheet, useWindowDimensions, View } from 'react-native';
-import { ActivityIndicator, Button, HelperText, Text } from 'react-native-paper';
+import { ActivityIndicator, HelperText, Text } from 'react-native-paper';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { ConnectSubscription } from '@/components/settings/connect-subscription';

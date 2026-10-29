@@ -58,6 +58,7 @@ Meaning:
 - `sessions` are the current project's sessions sorted newest-first; the native list is cursor-paged and every page is read, so a project never drops its older chats
 - `sessionStatuses` stores per-session runtime status from the server
 - `currentSessionId` is the selected/open session
+- an explicit selection stays selected while the project session list catches up with a catalog row; once the list includes it, normal reconciliation handles later removal
 - `lastSessionByConnection` persists the remembered session ID per connection scope and project path, so the same path on two servers remembers different sessions
 
 ## Session Content Caches
@@ -153,6 +154,8 @@ Current fields:
 - `providerModelSelections`
 - `modelVariantSelections` (server variant ID per model; `null` means the synthetic Default choice)
 - `recentModelIds`
+- `autoModel` (enabled, classifier mode, classifier model, per-tier `auto` or
+  model ID, and long-chat cache protection)
 - `reasoning`
 - `autoApprove`
 - `autoPlayAssistantReplies`
@@ -160,7 +163,10 @@ Current fields:
 - `readInterimAssistantReplies`
 - `speechLocale`
 - `speechRate`
-- `speechVoiceId`
+- `speechVoiceId` (system engine only)
+- `ttsEngine` (`system` default, or `local`)
+- `localTtsPackId` (explicitly selected on-device model; no default)
+- `localTtsSpeakerId` (Kokoro speaker index; `0` for Piper)
 - `workingSoundEnabled`
 - `workingSoundVariant`
 - `workingSoundVolume`
@@ -170,7 +176,16 @@ Current fields:
 
 `themeMode` and `accentColor` are app-global appearance settings stored with the chat preferences shell. They are deliberately excluded from `serverPreferences`, so switching connections never changes the theme. `providers/appearance-context.tsx` combines them with the OS scheme for `hooks/use-color-scheme.ts` and `hooks/use-palette.ts`.
 
+The TTS engine, pack, and speaker are device-local and also excluded from `serverPreferences`. Downloaded voice models live under `opencode-tts/<packId>/` in the document directory and are not represented in preferences; Settings derives their status from the filesystem. Removing a pack deletes that directory, releases the native TTS model, and switches to the system engine when it was active. Temporary synthesis WAVs live in the cache directory and are deleted after playback, on cancel, and on the next Settings visit.
+
 These values combine application behavior settings and output-style preferences that are sent to the model as prompt instructions. `modelVariantSelections` is separate: it selects a server-supported variant for the matching model, is checked against the current model catalog, and falls back to Default when unavailable. If there is no saved entry, a valid variant already set on the active session is retained when it uses the selected model.
+
+`autoModel` is server-scoped with the rest of the model selections. Its tier
+values are `auto` or a model ID; unavailable IDs are retained and treated as
+unavailable at send time rather than erased during a slow capability refresh.
+On-device routing requires the pinned GGUF pack; OpenCode routing requires a
+successful `generate.text` probe. Neither mode falls back to a heuristic
+classifier. See [auto model routing](auto-model-routing.md).
 
 `browser`, selected file content, worktree inventory/owning project identity, and MCP status/config are server-derived and not persisted. Text edits remain local to `FilePreview` until the provider compares the current server content with the original editor baseline, writes through native v2 `file.write` (or a v1 VCS patch), and verifies the saved text. Failed comparison, write or verification retains the draft. Listing, search and file-open commits check the current client identity and request order; saves check client identity before writing and only update the selected file if that selection is still current. Identical directory paths on different servers do not make a response current.
 
@@ -368,7 +383,7 @@ Persisted values:
 
 - `opencode-mobile.settings` (connection URL and username; the password and custom gateway headers live in secure storage)
 - `opencode-mobile.connect-control-plane` (last automatically resolved Cloud Link environment; defaults to production, accepts only production/staging, hydrated before pairing/Cloud Link startup)
-- `opencode-mobile.connection-profiles` (saved connections with name and optional per-profile model selection; passwords and custom gateway headers live in secure storage)
+- `opencode-mobile.connection-profiles` (saved connections with name and the optional server-scoped preferences: provider/model, enabled models, per-provider and variant selections, agent mode, auto-approve, and auto-routing tiers; passwords and custom gateway headers live in secure storage)
 - `opencode-mobile.chat-preferences` (chat preferences, including the global UI `language`; not connection-scoped)
 - `opencode-mobile.active-project`
 - `opencode-mobile.projects` (opened projects per connection scope, most-recent-first directory paths; an explicit empty list means the user closed every project and is not re-seeded)
@@ -765,6 +780,18 @@ Preference reconciliation then determines safe values for:
 
 This logic prevents stale persisted provider/model values from breaking the UI when server capabilities change.
 
+Reconnect reads are not always complete: a server can briefly expose no
+providers, models, or agents while it starts up, and capability discovery returns
+an empty catalog when no project is active. Those snapshots must not destroy the
+stored choices. An empty model catalog preserves the provider, model, and enabled
+IDs; an empty agent catalog preserves the stored agent; and enabled IDs for
+providers that are temporarily missing stay stored without being rendered. The
+catalog is only reconciled once models are present. A partial catalog keeps
+unavailable enabled IDs alongside available ones, while a catalog in which none
+of the stored IDs resolve falls back to enabling the full catalog so the picker
+is never left empty. Empty capability refreshes are also not written over the
+last-known-good capabilities cache.
+
 ## Notification Tracking Data
 
 On Android native builds, the provider also observes all tasks on the connected
@@ -1017,8 +1044,44 @@ credentials or step progress are duplicated in the completion marker.
 
 A legacy active connection is matched or saved as a profile and migrated into the connected set. Other saved profiles are not connected automatically. Explicit disconnect removes a server from automatic restoration, invalidates in-flight work and detaches its transports. It does not terminate remote prompts or PTYs. Last-good data and drafts remain in memory.
 
+Chat focus is validated against live runtimes. When the focused connection errors or is explicitly disconnected while another enabled server is connected, the workspace manager moves focus to the last healthy server (or the first other connected server) and persists that selection. The failed server remains enabled and visible in Settings so it can be reconnected without replacing the working chat.
+
 Provider/model/agent selections, visible and recent models, model variants and auto-approve are scoped to a server. New servers default to auto-approve off. V2 auto-approve is a local per-server policy that answers each pending request once, using the existing permission service; persistent grants keep the server's actual semantics. General UI, language and voice device preferences remain app-wide. Hide subagents defaults to true when missing; a saved false is retained.
 
 Chat focus, terminal target and Settings inspection target are independent composite references. The presentation map holds composer text/attachments, failed input, editor baseline/current text and transcript offsets. Hidden dirty drafts and PTYs participate in update blocking. Removing a connection names unsaved drafts in its confirmation. Drafts are intentionally not written to disk.
 
 New chat creation is provider-owned: `createChat(target)` resolves and connects the target runtime, creates and opens the session there, then selects that workspace so the Chat screen follows it. The New chat sheet only holds a local draft target; no project is selected and no session is created before confirmation.
+
+
+## Voice and response onboarding preferences
+
+The optional Voice & Responses step writes through `updateChatPreferences`, using
+existing voice input, local command-model, TTS pack/speaker, OS voice, auto-play,
+response scope and next-action fields. There is no separate onboarding draft,
+persistence key, schema change or completion-version increase. Skip advances
+without undoing earlier selections. The step is available without a connection.
+
+Opening model setup does not download or activate a missing TTS pack. Downloads
+and enrollment use the existing setup hooks, and activation still requires an
+installed model. The onboarding voice panel unmounts when its route loses focus,
+so preview playback and enrollment capture are released before the next screen.
+
+## Guided on-device voice setup
+
+The input/playback tab can temporarily show an unprepared local engine while the
+active preference remains System. Opening setup is read-only; language/model
+choices, permission, download, profile actions and Done are explicit writes.
+Done requires ready voice models and microphone permission before setting
+`voiceWakeMode: local`. Cancel leaves the active mode unchanged. Existing
+installed packs and saved profiles are reused and survive dismissal.
+
+A newly skipped voice profile writes `localSpeakerVerification: false`; recording
+a profile preserves the current verification preference, which its switch edits
+explicitly. Reviewing an existing profile preserves its verification setting. Removing a profile explicitly disables it.
+Step progress, selected unprepared tabs and test feedback are not persisted.
+
+Local input reads/requests recording permission independently of OS speech
+recognition permission. The provider-owned wake test has busy, idle, starting,
+listening, detected and error states, no transcript and no prompt callback. A
+generation guard prevents dismissed/backgrounded starts from restoring listening.
+Enrollment uses the same cancellation principle before saving embeddings.

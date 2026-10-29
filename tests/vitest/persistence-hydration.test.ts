@@ -89,10 +89,11 @@ describe('persistence hydration and write-back', () => {
     const appearance = await loadTs('constants/appearance.ts');
     const wakePhrase = await loadTs('lib/voice/wake-phrase.ts');
     const localWakeTypes = await loadTs('lib/voice/local-wake-word/types.ts');
-    const preferences = await loadTs('providers/opencode-preferences.ts', { '@/constants/appearance': appearance, '@/lib/voice/wake-phrase': wakePhrase, '@/lib/voice/local-wake-word/types': localWakeTypes });
+    const autoModelPreferences = await loadTs('lib/auto-model/preferences.ts');
+    const preferences = await loadTs('providers/opencode-preferences.ts', { '@/constants/appearance': appearance, '@/lib/auto-model/preferences': autoModelPreferences, '@/lib/voice/wake-phrase': wakePhrase, '@/lib/voice/local-wake-word/types': localWakeTypes });
     const profileUrls = await loadTs('lib/opencode/client/url.ts', { './types': { defaultConnectionSettings: { serverUrl: 'http://localhost' } } });
     const { parseConnectionSettings, parseChatPreferences } = await loadTs('providers/persisted-preferences.ts', {
-      '@/constants/appearance': appearance, '@/lib/connect': connect, '@/lib/voice/wake-phrase': wakePhrase,
+      '@/constants/appearance': appearance, '@/lib/auto-model/preferences': autoModelPreferences, '@/lib/connect': connect, '@/lib/voice/wake-phrase': wakePhrase,
       '@/lib/voice/local-wake-word/types': localWakeTypes,
       '@/providers/opencode-preferences': preferences, '@/lib/opencode/client/url': profileUrls, zod: { z },
     });
@@ -109,6 +110,12 @@ describe('persistence hydration and write-back', () => {
     assert.deepEqual(JSON.parse(JSON.stringify(parseChatPreferences(JSON.stringify({ themeMode: 'sepia', accentColor: 'orange' })))), {});
     assert.equal(parseChatPreferences(JSON.stringify({ conversationWakePhrase: '  hey    bot ' })).conversationWakePhrase, 'hey bot');
     assert.equal(parseChatPreferences(JSON.stringify({ conversationWakePhrase: '   ' })).conversationWakePhrase, 'hey code');
+    assert.deepEqual(
+      JSON.parse(JSON.stringify(parseChatPreferences(JSON.stringify({ ttsEngine: 'local', localTtsPackId: 'piper-es', localTtsSpeakerId: 2.8 })))),
+      { ttsEngine: 'local', localTtsPackId: 'piper-es', localTtsSpeakerId: 2 },
+    );
+    assert.equal(parseChatPreferences(JSON.stringify({ localTtsSpeakerId: -4 })).localTtsSpeakerId, 0);
+    assert.equal(parseChatPreferences(JSON.stringify({ ttsEngine: 'cloud' })).ttsEngine, undefined);
     const defaults = { ...preferences.defaultChatPreferences, ...parsed };
     assert.ok(Array.isArray(defaults.enabledModelIds)); assert.ok(Array.isArray(defaults.recentModelIds));
     assert.deepEqual(JSON.parse(JSON.stringify(parseChatPreferences('{"modelVariantSelections":{"openai/model":"max","openai/default":null}}').modelVariantSelections)), { 'openai/model': 'max', 'openai/default': null });

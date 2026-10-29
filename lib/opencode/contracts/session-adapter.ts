@@ -40,6 +40,7 @@ export type SessionAdapter = {
   revert: (sessionId: string, messageId: string, partId?: string) => Promise<unknown>;
   unrevert: (sessionId: string) => Promise<unknown>;
   interrupt: (sessionId: string) => Promise<unknown>;
+  waitForIdle: (sessionId: string) => Promise<unknown>;
   commands: () => Promise<Command[]>;
   executeCommand: (sessionId: string, command: string, args: string, options?: { agent?: string; model?: string; variant?: string; messageId?: string }) => Promise<unknown>;
   executeShell: (sessionId: string, command: string) => Promise<unknown>;
@@ -193,6 +194,10 @@ export function createSessionAdapter(client: ScopedOpencodeClient): SessionAdapt
       : client.api!.session.revert.stage({ sessionID: sessionId, messageID: messageId, ...(partId ? { partID: partId } : {}) }),
     unrevert: (sessionId) => compatibility ? v1.unrevertSession(compatibility, sessionId) : client.api!.session.revert.clear({ sessionID: sessionId }),
     interrupt: (sessionId) => compatibility ? compatibility.session.abort({ sessionID: sessionId }) : client.api!.session.interrupt({ sessionID: sessionId }),
+    // V2 acknowledges an interrupt before the execution settles, so a revert
+    // staged immediately after would hit 409 Session is busy. V1 abort releases
+    // its session lock synchronously and has no wait endpoint.
+    waitForIdle: (sessionId) => compatibility ? Promise.resolve() : client.api!.session.wait({ sessionID: sessionId }),
     commands: () => compatibility ? v1.listCommands(compatibility) : client.api!.command.list({ location: { directory } }).then((result) => result.data),
     executeCommand: async (sessionId, command, args, options) => {
       if (compatibility) return v1.executeCommand(compatibility, sessionId, command, args, options);

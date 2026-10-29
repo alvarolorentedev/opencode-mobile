@@ -43,6 +43,9 @@ type ChatComposerProps = {
   selectedAgentLabel: string;
   showSendAction: boolean;
   selectedVariant?: string;
+  autoRoutingEnabled: boolean;
+  autoRoutingAvailable: boolean;
+  onAutoRoutingChange: (enabled: boolean) => void;
   slim?: boolean;
   currentSessionId?: string;
   visibleModels: ModelOption[];
@@ -84,6 +87,9 @@ export function ChatComposer({
   selectedAgentLabel,
   showSendAction,
   selectedVariant,
+  autoRoutingEnabled,
+  autoRoutingAvailable,
+  onAutoRoutingChange,
   slim = false,
   updateChatPreferences,
   visibleModels,
@@ -114,8 +120,9 @@ export function ChatComposer({
     : primaryAction === 'send'
       ? connectionStatus !== 'connected' || isSpeechInputListening
       : connectionStatus !== 'connected' || !isSpeechInputAvailable;
+  const autoRoutingActive = autoRoutingEnabled && autoRoutingAvailable;
   const selectedModel = visibleModels.find((model) => model.id === chatPreferences.modelId);
-  const reasoningLabel = selectedModel?.variants.length ? getModelVariantLabel(selectedVariant, t) : undefined;
+  const reasoningLabel = !autoRoutingActive && selectedModel?.variants.length ? getModelVariantLabel(selectedVariant, t) : undefined;
 
   // Android/web size the input from content-size events. iOS lets the native
   // multiline input grow and scroll at the cap instead of measuring a hidden
@@ -139,10 +146,19 @@ export function ChatComposer({
       }}
       disabled={visibleModels.length === 0}
       models={visibleModels}
-      onSelect={(model) => updateChatPreferences({ providerId: model.providerID, modelId: model.id })}
+      onSelect={(model) => updateChatPreferences({
+        providerId: model.providerID,
+        modelId: model.id,
+        ...(chatPreferences.autoModel.enabled
+          ? { autoModel: { ...chatPreferences.autoModel, enabled: false } }
+          : {}),
+      })}
       recentModelIds={chatPreferences.recentModelIds}
       selectedModelId={chatPreferences.modelId}
       slim={slim}
+      autoRoutingEnabled={autoRoutingActive}
+      autoRoutingAvailable={autoRoutingAvailable}
+      onAutoRoutingChange={autoRoutingAvailable ? onAutoRoutingChange : undefined}
     />
   );
 

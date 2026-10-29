@@ -1,7 +1,8 @@
+import { SettingButton as Button } from './sections/setting-rows';
 import Constants from 'expo-constants';
 import { useTranslation } from 'react-i18next';
 import { Linking, Platform, View } from 'react-native';
-import { Button, List, Text } from 'react-native-paper';
+import { List, Text } from 'react-native-paper';
 
 import { CONNECT_LEARN_MORE_URL } from '@/lib/connect';
 import { useConnection } from '@/providers/opencode-contexts';

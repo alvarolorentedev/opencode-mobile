@@ -1,0 +1,3 @@
+- New opt-in auto model routing: each prompt is classified as Simple, Standard, or Complex and answered with the matching model to save tokens on easy prompts.
+- Choose an on-device classifier (one-time model download, fully private) or an OpenCode classifier call; routing is skipped when no classifier is available.
+- Picking a model explicitly turns routing off for that chat; per-tier model mapping and long-chat cache protection live in Settings.

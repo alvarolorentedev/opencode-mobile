@@ -1,12 +1,12 @@
 import { useTranslation } from 'react-i18next';
 import { StyleSheet, View } from 'react-native';
-import { HelperText, Text } from 'react-native-paper';
+import { HelperText } from 'react-native-paper';
 
 import { PromptDeliveryField } from './chat-preference-fields';
-import { NumericSlider } from '@/components/ui/numeric-slider';
+import { SettingSlider as NumericSlider, SettingSwitchRow, type Palette } from './setting-rows';
 import type { ChatPreferences } from '@/providers/opencode-provider';
 import { normalizeTranscriptFontSize, TRANSCRIPT_FONT_SIZE_MAX, TRANSCRIPT_FONT_SIZE_MIN } from '@/providers/opencode-preferences';
-import { SettingSwitchRow, type Palette } from './setting-rows';
+
 
 export function EditorSection({
   chatPreferences,
@@ -24,8 +24,6 @@ export function EditorSection({
 
   return (
     <View testID="settings-editor-section" style={styles.section}>
-      <Text accessibilityRole="header" variant="titleLarge" style={[styles.title, { color: palette.text }]}>{t('settings:editor.title')}</Text>
-      {promptDeliveryAvailable ? <PromptDeliveryField chatPreferences={chatPreferences} palette={palette} updateChatPreferences={updateChatPreferences} /> : null}
       <NumericSlider
         label={t('settings:appearance.chatTextSize')}
         minimum={TRANSCRIPT_FONT_SIZE_MIN}
@@ -37,6 +35,7 @@ export function EditorSection({
         palette={palette}
       />
       <HelperText type="info">{t('settings:appearance.chatTextSizeDescription')}</HelperText>
+      {promptDeliveryAvailable ? <PromptDeliveryField chatPreferences={chatPreferences} palette={palette} updateChatPreferences={updateChatPreferences} /> : null}
       <SettingSwitchRow
         title={t('settings:appearance.flatThread.title')}
         description={t('settings:appearance.flatThread.description')}
@@ -50,5 +49,4 @@ export function EditorSection({
 
 const styles = StyleSheet.create({
   section: { gap: 14, paddingBottom: 8 },
-  title: { fontWeight: '600' },
 });

@@ -1,7 +1,9 @@
+import { SettingButton as Button } from './setting-rows';
 import { useTranslation } from 'react-i18next';
 import { Platform, StyleSheet, View } from 'react-native';
-import { Button, List, Text } from 'react-native-paper';
+import { List, Text } from 'react-native-paper';
 
+import { SettingTarget } from '../settings-panel';
 import type { NotificationDebugStatus } from '@/lib/notifications';
 import type { Palette } from './setting-rows';
 
@@ -55,38 +57,38 @@ export function NotificationsSection({
           </View>
         </View>
         <View style={styles.actionRow}>
-          <Button mode="contained" disabled={notificationsEnabled} onPress={onEnableNotifications}>
+          <SettingTarget label={t('settings:notifications.enable')}><Button mode="contained" disabled={notificationsEnabled} onPress={onEnableNotifications}>
             {t('settings:notifications.enable')}
-          </Button>
-          <Button mode="outlined" onPress={onOpenNotificationSettings}>
+          </Button></SettingTarget>
+          <SettingTarget label={t('settings:notifications.settings')}><Button mode="outlined" onPress={onOpenNotificationSettings}>
             {t('settings:notifications.settings')}
-          </Button>
+          </Button></SettingTarget>
         </View>
         <List.Section style={styles.infoListSection}>
-          <List.Item
+          <SettingTarget label={t('settings:notifications.appSettings')}><List.Item
             title={t('settings:notifications.appSettings')}
             description={t('settings:notifications.appSettingsDescription')}
             titleStyle={{ color: palette.text }}
             descriptionStyle={{ color: palette.muted }}
             right={() => <Button onPress={onOpenAppSettings}>{t('common:actions.open')}</Button>}
-          />
+          /></SettingTarget>
           {Platform.OS === 'android' ? (
-            <List.Item
+            <SettingTarget label={t('settings:notifications.batteryOptimization')}><List.Item
               title={t('settings:notifications.batteryOptimization')}
               description={t('settings:notifications.batteryOptimizationDescription')}
               titleStyle={{ color: palette.text }}
               descriptionStyle={{ color: palette.muted }}
               right={() => <Button disabled={!notificationsEnabled} onPress={onOpenBatterySettings}>{t('common:actions.open')}</Button>}
-            />
+            /></SettingTarget>
           ) : null}
           {Platform.OS === 'android' ? (
-            <List.Item
+            <SettingTarget label={t('settings:notifications.batterySaver')}><List.Item
               title={t('settings:notifications.batterySaver')}
               description={t('settings:notifications.batterySaverDescription')}
               titleStyle={{ color: palette.text }}
               descriptionStyle={{ color: palette.muted }}
               right={() => <Button disabled={!notificationsEnabled} onPress={onOpenBatterySaverSettings}>{t('common:actions.open')}</Button>}
-            />
+            /></SettingTarget>
           ) : null}
         </List.Section>
         <Button mode="text" loading={isRefreshingNotificationStatus} onPress={onRefreshStatus}>

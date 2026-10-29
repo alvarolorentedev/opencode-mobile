@@ -23,12 +23,14 @@ cancels the inbox item; when the composer is empty, its text moves back into the
 composer. Sending entries keep the action disabled until admission completes.
 
 `revert-notice.tsx` renders a muted session-level notice above the pending stack
-while a revert is staged. Its close action cancels the revert. The reverted
-prompt text is edited in the composer, so the notice only carries status and the
-cancel affordance.
+while a revert is staged. Selecting a message's revert action stops any
+in-flight reply, settles it, then stages the revert immediately without a
+confirmation dialog. Its close action cancels the revert.
+The reverted prompt text is edited in the composer, so the notice only carries
+status and the cancel affordance.
 
 Steer/Append selection lives at the top of
-the Editor group in Advanced Settings, alongside chat text size and flat
+Chat & responses, alongside chat text size and flat
 conversation. The General group contains slim interface, language and Reset
 onboarding, which reopens the existing setup review without clearing settings.
 
@@ -120,6 +122,9 @@ declared once, at the leaves.
 - expose supported Approvals only through a direct toolbar toggle (shield when asking, warning when auto-approving); hide it for unsupported V2 servers
 - open the existing agent selector from a mode icon beside Approvals
 - open the model picker from the selected model/reasoning summary, with a reasoning slider above model search
+- when a classifier is available, the picker exposes the Auto-routing switch;
+  the trigger reads `Auto-routing` while it is enabled, and explicit model
+  selection turns it off
 - dismiss the keyboard when opening selectors while preserving the parent-owned draft; model picker dismisses on Back/Escape or session/tab changes
 - render optional conversation banner
 - render the V2 suggestion panel for commands and context tokens, plus the shell-mode banner
@@ -196,6 +201,9 @@ type ChatComposerProps = {
 - render the searchable, provider-grouped configured-model picker
 - virtualize model rows with a bounded-height native `SectionList`, so opening a large catalog does not mount every model's text views at once
 - pin a `Selected` and `Recent` section above the provider groups (hidden while searching)
+- show an `Auto-routing` switch when a classifier is available; the switch is
+  omitted when neither the on-device pack nor the OpenCode classifier can run
+- selecting an explicit model disables auto-routing through the composer
 - own only local modal visibility and search-query state
 - return the selected `ModelOption` to the composer, which persists it through the provider
 - render the shared numeric slider for the selected model's server variants
@@ -326,12 +334,19 @@ Responsibility:
 
 - full-screen conversation-mode overlay
 - shows session title, phase, the wake phrase while armed, last heard command, and stop button
+- uses a three-line sine ribbon (`conversation-wave.tsx`) in the selected dark
+  accent palette; the existing system microphone meter drives listening
+  amplitude, while local capture and readback use phase-based motion
+- pauses the ribbon on connection problems, honours reduced motion (including
+  changes while open), and keeps End conversation outside scrollable content
+  so large text and short screens retain access to the existing stop flow
 
 ### Inputs
 
 - connection status
 - top inset
 - latest user text
+- existing conversation microphone level (0–10, clamped for presentation)
 - stop handler
 - conversation input phase and readback phase
 - session title
@@ -415,19 +430,23 @@ This is important to parity because the chat layout is intentionally dense and h
 
 ### Presentation
 
-- shows compact settings rows in one group and opens one category at a time
-- places Cloud Link immediately below AI & Providers, and only when the provider
-  resolved `connectSetup.storeInstall` (App Store or Google Play installs); its
-  summary reflects initialization or verified access status
-- opens the full-screen service editor route for Add/Edit and reopens the Cloud
-  Link section when the route returns, without leaving a portal sheet over the
-  pushed screen
-- uses the same safe-area app header and title treatment as Chat and Terminal
-- groups MCP servers and diagnostics under the `Advanced` category
-- shows a `Language` category for the app interface language
-- shows a `Support` category for store rating, feedback, and the support page
-- shows compact category summaries and renders one category at a time in the shared overlay
-- opens connection and provider forms in keyboard-safe full-screen surfaces
+- `SettingsHome` renders searchable categories in App preferences, Connections,
+  and Selected server order from the section registry's `group` and `targets`.
+- Appearance, Chat & responses, Voice & audio, Notifications, Language and
+  About & support replace the mixed App settings sheet. Cloud Link follows
+  Connection and retains its store-install gate; diagnostics is named directly.
+- Category sheets use `OverlaySheet` with a `SettingsPanel` scroll area and fixed
+  title/Close header. Full-screen service editing restores Cloud Link on return.
+- `SettingTarget` reveals/highlights a matching localized label without changing
+  its value. `SettingsDisclosure` expands for a search group or attention state.
+- `SettingSwitchRow`, `SettingSelectField`, `SettingTextInput`, `SettingSlider`
+  and `SettingButton` share wrapping copy, theme colors and accessible targets;
+  the same components are reused by setup. Technical setup uses disclosures.
+- Search metadata is gated with the same platform/capability state as controls,
+  and never includes credentials/current values. Server/project inspection
+  continues through the existing independent workspace scope.
+- See [design-system.md](design-system.md) for component contracts, interaction
+  states, foundations and the checklist for future features.
 
 ## `app/(tabs)/terminal.tsx`
 
@@ -521,7 +540,8 @@ scanner. It preserves stored profiles. Components do not poll or classify errors
 - `AiDefaultsSection`
 - `NotificationsSection`
 - `VoiceSection`
-- `LocalVoiceSection`
+- `VoiceInputSetup` / `VoiceFlowScreen` / `VoiceMoreSettings`
+- `LocalTtsSection`
 - `ResponsesSection`
 - `LanguageSection`
 - `DiagnosticsSection`
@@ -636,6 +656,18 @@ Responsibility:
 - show models grouped by provider
 - allow toggling enabled model IDs
 
+### `AutoModelSection`
+
+Responsibility:
+
+- enable/disable prompt routing only after a classifier is usable
+- switch between the pinned on-device GGUF pack and the OpenCode classifier
+- download, verify, remove, and report the on-device pack
+- probe the V2 classifier endpoint and select its model
+- map Simple / Standard / Complex to Automatic or explicit visible models
+- expose the long-chat prompt-cache guard
+- the same panel is reused by onboarding AI & providers
+
 ### `NotificationsSection`
 
 Responsibility:
@@ -646,24 +678,35 @@ Responsibility:
 
 ### `VoiceSection`
 
-Responsibility:
+- Two independent input/playback mode selectors, placed before their dependent controls.
+- System input shows speech language; local input shows one setup/manage row.
+- System playback shows only OS voices; native local playback shows one pack dropdown,
+  installed size, optional speaker picker and Manage downloads. Missing selections
+  expose setup without activating an engine or starting a download.
+- Preview and Read replies aloud remain visible; rate, progress readback, working
+  sound, system wake phrase and troubleshooting live in `VoiceMoreSettings`.
+- Shared by Settings and first-run onboarding; tab blur stops preview and capture.
 
-- switch between System speech and On-device voice as the active input mode
-- show the active path and the wake phrase currently in use
-- edit system-recognizer preference and the system wake phrase when System is active
-- edit speech locale and playback preferences (auto-play, progress readback, voice, rate, working sound)
-- expose a collapsed device check for microphone, recognition, and on-device capability status
-- render `LocalVoiceSection` when On-device mode is selected
+### `VoiceInputSetup` and `VoiceFlowScreen`
 
-### `LocalVoiceSection`
+- A focused full-screen flow with one Back/title/Close header and a pinned footer.
+- Four illustrated steps: understand, prepare, optional voice profile, isolated wake test.
+- Prepare uses language/model dropdowns, the size of missing files and explicit
+  microphone/download actions; advanced options retain pack removal and wake phrase.
+- Reuses existing models/profiles. Skipping a new profile explicitly disables
+  speaker verification; an existing profile and preference are preserved.
+- Done activates local input only after models and microphone permission are ready.
+  Close leaves the active mode unchanged and preserves downloads/saved profiles.
+- Presentation/step state is local. Native side effects use the setup hooks; the
+  test reads the app-wide provider's `useVoiceTest()` interface.
+- `LocalVoiceState` is the setup hook's inferred state type, not another state owner.
 
-Responsibility:
+### `LocalTtsSection`
 
-- show on-device readiness, base-pack and command-model status, and installed sizes
-- install or remove pretrained models, and choose the wake phrase and command model
-- enroll, re-enroll, or remove the local voice profile
-- expose voice verification only after a profile exists
-- keep the system phrase-gate fallback visible without exposing a second editable phrase in local mode
+- Focused download manager with one pack dropdown and actions for that pack.
+- Shows size, status, download/retry, explicit Use, Preview and Remove.
+- Retains language mismatch, Japanese system-voice guidance and total storage.
+- Uses `useTtsSetup`; installing does not automatically select or activate a pack.
 
 ### `ResponsesSection`
 
@@ -683,7 +726,7 @@ Responsibility:
 ### `AppearanceSection`
 
 `components/settings/sections/appearance-section.tsx`, rendered inside
-`GeneralSection` above the slim-interface switch.
+the Appearance category above the slim-interface switch.
 
 Responsibility:
 
@@ -699,7 +742,7 @@ Responsibility:
 
 Responsibility:
 
-- Advanced → Update checks group for the app update feature
+- About & support → Update checks group for the app update feature
 - toggle update checks and pick the check period (When available, Daily, Weekly)
 - read and mutate the provider-owned update preference through `useUpdates()`
 - render nothing when the update module is unavailable (`supported` is false)
@@ -774,6 +817,7 @@ Main relevant props:
 ### Responsibility
 
 - render the V2-only Extensions surface with General/Project scope, MCP/plugin/skill/command tabs, shared/read-only rows, and inline add/edit forms
+- hide system-managed shared rows (built-in plugins, embedded skills, built-in commands) from the plugin, skill, and command tabs
 - show the exact target config path, safety state, and last-backup recovery action
 - delegate every mutation and refresh to `useExtensions()`; never fetch or persist config itself
 - keep only form drafts, selected scope/tab, editing state, and local action feedback
@@ -807,9 +851,9 @@ Main relevant props:
 
 Responsibility:
 
-- seven connected steps: app presentation, permissions, add connection, AI & Providers, project, General Settings, ready; disconnected navigation skips AI and project
+- eight connected steps: app presentation, permissions, add connection, AI & Providers, project, General Settings, Voice & Responses, ready; disconnected navigation skips AI and project
 - presentation only describes the app, with Continue navigation; AI and General are optional and reuse Settings controls
-- permissions, connect, AI, project and General are skippable; Skip advances without additional writes or undoing earlier choices
+- permissions, connect, AI, project, General and Voice & Responses are skippable; Skip advances without additional writes or undoing earlier choices
 - General edits language, the remembered Chat model (connected only), and Steer/Append delivery (connected V2 only)
 - ready summarizes connection/project plus the applicable providers, enabled models and preferences, then completes first-run setup or closes review mode
 - thin controllers only; connection/project persistence and permission requests are delegated to the provider and existing helpers
@@ -827,7 +871,9 @@ Responsibility:
 
 - `components/settings/ai-settings-panel.tsx` composes the existing AI section, auth dialog, model/account callbacks, removal confirmation and feedback for Settings and onboarding
 - `general-settings.tsx` reuses language and chat preference fields, with a searchable model select using the same `getVisibleModels` filter as Chat and Review
-- `setup-summary.tsx` renders current provider values with wrapping rows and omits connection-dependent additions offline
+- `voice-settings.tsx` reuses `VoiceSection` in its onboarding view and `ResponsesSection`, with the existing voice/TTS setup hooks; on-device model downloads, enrollment and preview are explicit actions. The route unmounts the panel on blur to release audio.
+- `components/settings/use-speech-voices.ts` shares read-only OS voice enumeration between Settings, onboarding and Ready.
+- `setup-summary.tsx` includes input mode/model, playback engine/voice, automatic readback and response style, and renders current provider values with wrapping rows and omits connection-dependent additions offline
 
 ## `components/onboarding/project-options.tsx`
 
@@ -1061,11 +1107,11 @@ But parity is easiest if these responsibilities remain separated:
 - Approval cards separate the current resources from server-provided future `always` patterns and explain that the server controls rule duration. Missing patterns explicitly have unspecified scope. Question descriptions appear before selection, while existing custom/multiple/conditional answer handling remains intact.
 - Starter examples fill the draft; the bug example appends a symptoms prompt. Terminal's empty state calls the existing creation handler and describes line-at-a-time commands.
 - Icon actions and provider-credential removal expose translated action names. All supported locales carry matching keys and plural forms.
-- `app/(tabs)/index.tsx` branches the pre-chat state instead of showing one passive panel: `connecting` and hydration use a spinner, a disconnected server offers `Reconnect` (error) or `Open settings` (idle) plus `Connection settings`, and a connected server without a project opens the shared `ProjectPicker` directly.
+- `app/(tabs)/index.tsx` branches the pre-chat state instead of showing one passive panel: `connecting` and hydration use a spinner, a disconnected server offers `Reconnect` (error) or `Open settings` (idle) plus `Connection settings`, and a connected server without a project opens the shared `ProjectPicker` directly. The workspace manager fails chat focus over to the last healthy connected server before this panel can mistake one failed server for the whole app.
 - `providers/use-transcript-read-errors.ts` owns cold transcript read failures independently of the transcript window. Non-silent failures are tagged with the current client, cleared by a successful read, and hidden after a reconnect or server switch. `TranscriptList` renders a retry card for a cold failure with no held records and never falls through to starter prompts. The retry action reuses the inbox-backed transcript read.
 - `TranscriptList` exposes `Jump to latest` whenever the list is detached from the tail. New rows switch the label to `New messages`; tapping restores follow mode and saves the restored position. The control floats above the transcript without adding a list row.
 - Onboarding permission cards show `Checking…` until status resolves. When the OS will no longer prompt, the enable action becomes `Open settings` via the shared notification/voice setting helpers instead of repeatedly requesting a blocked permission.
-- Settings reconnect surfaces the returned `ConnectionState` in a snackbar and keeps a two-line connection summary. The reconnect button only indicates an in-flight request while it runs.
+- The Connection sheet’s labeled Reconnect action surfaces the returned `ConnectionState` in a snackbar and keeps a two-line connection summary. The reconnect button only indicates an in-flight request while it runs.
 - The terminal picker marks the active PTY, shows a per-row opening spinner, repeats the target title and short ID in the close confirmation, and confirms copy with a snackbar.
 - Share staging distinguishes `expired` from `discarded`; the close action is non-destructive, while the footer Discard clears the payload. Target loading, failure/retry, empty, selected, and search-empty states live in the conversation picker.
 - Chat library rename auto-focuses, supports keyboard submit, offers Cancel, and disables Save for blank or in-flight titles.

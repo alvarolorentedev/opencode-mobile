@@ -13,6 +13,45 @@ The flow specs are split by domain (`tests/e2e/<domain>.spec.mjs`) over shared
 helpers in `tests/e2e/helpers/flows.mjs`. Suites that are not yet typed are
 listed in `tsconfig.tests.json`; see [known gaps](known-gaps.md).
 
+## Auto model routing
+
+`tests/vitest/auto-model.test.ts` covers label parsing, preference
+normalization, catalog suggestions, attachment/context compatibility, explicit
+versus automatic tier resolution, and the long-chat cache guard. It deliberately
+contains no heuristic classifier behavior.
+
+`tests/e2e/auto-model.spec.mjs` uses the fake V2 `auto-routing` scenario and the
+`POST /api/experimental/generate` fixture to prove:
+
+- the OpenCode classifier probe enables routing;
+- a simple prompt switches to the cheapest tool-capable model;
+- a complex prompt switches to the reasoning model;
+- selecting an explicit model turns auto-routing off and stops classifier calls.
+
+The web build has no `llama.rn`; native validation must cover the on-device pack
+download, integrity verification, llama.rn load/inference, memory release, OOM
+fallback, and a release build. Fake-server/E2E changes require explicit human
+validation.
+
+## Conversation ribbon
+
+`tests/vitest/conversation-overlay.test.ts` covers microphone amplitude bounds
+and invalid samples, phase-based motion, tapered paths and seamless loop
+endpoints, reduced-motion changes, animation/listener cleanup, connection
+feedback, wake/steer guidance, the existing stop callback, and wave sizing with
+large text. The overlay only consumes existing provider state; recognition,
+submission, readback and re-arming contracts are unchanged.
+
+For visual/native validation, compare the listening state to the selected Synth
+Ribbon mock at 390×844, then check short screens, landscape safe areas, long
+commands, large text and alternate accents. On physical Android and iOS devices,
+check real microphone response, local-capture baseline animation, readback,
+waiting with armed input, reduced motion, connection failure, repeated
+start/stop, Android Back confirmation and background cleanup. Web previews and
+mocked component checks cannot establish native microphone timing or frame
+performance. `react-native-svg` adds a native dependency, so development clients
+need rebuilding.
+
 ## Validation Cost And Fast Paths
 
 Measured baseline on 2026-10-23 against the previous serial workflow:
@@ -773,7 +812,23 @@ playback test against a stale saved voice.
 
 The `test:voice-errors` static suite pins the pure recovery classification
 (retry vs open-settings vs no action) and the on-device fallback policy; it does
-not exercise the native recognizer.
+not exercise the native recognizer. `tests/vitest/speech-text.test.ts` covers
+markdown/prose normalization, chunk limits, and pronunciation rules;
+`system-tts.test.ts` covers enhanced-voice selection and missing-voice fallback;
+`tts-catalog.test.ts` pins the one-pack-per-language catalog; and
+`speech-config.test.ts` covers the system/local preference mapping.
+`tts-engine.test.ts` covers normal chunk playback, pre-start cancellation, and
+mid-playback cancellation.
+
+On-device playback still needs device validation:
+
+- install and remove each Piper pack on Android and iOS, then restart the app
+  and confirm status, preview, and offline playback
+- measure model init, first-audio latency, chunk gaps, and memory for Piper and
+  Kokoro on a low-end Android device
+- confirm stop/cancel during synthesis and playback, conversation readback
+  prewarm, and system fallback when a pack is missing
+- confirm the Japanese system-voice note and the speech-locale mismatch warning
 
 The `test:onboarding` static suite pins the completion-marker contract:
 malformed markers are removed, version 0 is sticky, an existing configuration
@@ -898,7 +953,7 @@ The following important behaviors are present in code but are not obviously cove
 
 - conversation mode state machine
 - native speech recognition failures and permission edge cases (the pure recovery policy is covered by `test:voice-errors`; the native paths still need device validation)
-- TTS playback behavior and the completion watchdog
+- native TTS playback, on-device model install/prefetch, and the completion watchdog
 - notification initialization and background monitoring
 - session fork and revert/unrevert
 - attachment upload behavior
@@ -1313,9 +1368,9 @@ persisted schema or onboarding completion version changed.
 
 ## Multi-server V2 regression coverage
 
-`tests/e2e/multi-server.spec.mjs` starts two independent V2 fakes with intentionally colliding chat IDs and project paths. It checks the mixed list and filters, draft isolation and connected-set restoration, chat and PTY creation on a chosen server, renderer continuity through disconnect/reconnect, Settings/auto-approve isolation, replies to colliding approval IDs on the correct server, long-title server-chip containment, and the in-flight row indicator during a cross-server open. The cross-server open flow also holds the target server's session reads to prove the library closes immediately and the chat shows its transcript skeleton until hydration completes. New chat and terminal tests confirm the explicit creation sheets, including the disabled confirm state until a project is selected.
+`tests/e2e/multi-server.spec.mjs` starts two independent V2 fakes with intentionally colliding chat IDs and project paths. It checks the mixed list and filters, draft isolation and connected-set restoration, chat and PTY creation on a chosen server, renderer continuity through disconnect/reconnect, automatic chat failover when a newly connected server fails, Settings/auto-approve isolation, replies to colliding approval IDs on the correct server, long-title server-chip containment, and the in-flight row indicator during a cross-server open. The cross-server open flow also holds the target server's session reads to prove the library closes immediately and the chat shows its transcript skeleton until hydration completes. New chat and terminal tests confirm the explicit creation sheets, including the disabled confirm state until a project is selected.
 
-`tests/vitest/workspaces.test.ts` covers composite catalog ordering, shared SSE teardown, secret-free registry validation, last-project closure/projection, single-owner active-session reads, and hidden-draft update blocking and removal cleanup. The native notification boundary also combines server counts and keeps other servers visible during disconnect. Existing connection recovery, prompt/draft races, sharing, transcript and architecture tests remain required. Share coverage includes a confirmed cross-server destination while focus changes.
+`tests/vitest/workspaces.test.ts` covers composite catalog ordering, shared SSE teardown, secret-free registry validation, automatic failover selection and focus movement after a connection error, last-project closure/projection, single-owner active-session reads, and hidden-draft update blocking and removal cleanup. The native notification boundary also combines server counts and keeps other servers visible during disconnect. Existing connection recovery, prompt/draft races, sharing, transcript and architecture tests remain required. Share coverage includes a confirmed cross-server destination while focus changes.
 
 Run `npm run test:ci:static`, `npm run test:fake-server:self` and `npm run test:e2e:web`. For manual review, use two independently running V2 fakes, open Connections to connect both, then inspect Chats, Projects, the New terminal sheet and each Settings server selector. Test both themes and slim mode. Browser tests do not establish native WebView retention, microphone ownership, notification delivery or OS background limits; verify those on Android/iOS hardware before release.
 
@@ -1382,3 +1437,103 @@ text contrasts with its background, no light block sits behind the code,
 blockquote text stays readable, and code-block copy still fires the light
 haptic. Native rendering cannot be established by the Vitest style assertions
 alone.
+
+
+## Voice and response onboarding acceptance
+
+`onboarding-navigation.test.ts` pins the eight-step connected and six-step offline
+sequences, including Voice between General and Ready. `onboarding-voice.test.ts`
+covers explicit setup actions, the install-before-activation guard, local-input
+selection, OS voice validation, unsupported web controls and enumeration errors.
+`voice-enrollment.test.ts` covers leaving setup during pending permission and
+active capture. The existing onboarding browser flows include the added step,
+Back/Skip, Ready summaries, preference persistence and narrow/light/dark layouts.
+The offline voice flow changes readback and response style without a server.
+
+Run `test:ci:static`, `test:fake-server:self`, `test:e2e:web`, and
+`build:development:android`. Changed E2E source still requires explicit human
+validation. On physical Android/iOS devices check model downloads and retry,
+voice enrollment, permission denial/settings recovery, installed model and
+speaker selection, playback preview/fallback, and leaving the screen during
+capture/playback. Check large text, safe areas and both themes. Automated web
+coverage cannot establish native recognition quality or audio-session timing.
+
+Implementation validation (2026-10-28): static checks pass (110 Vitest files,
+680 tests), both fake-server self-tests pass, all 15 onboarding browser flows
+pass, and the Android development build passes (1006 Gradle tasks). Rendered
+checks cover 390×844 dark and 320×700 light viewports, enabled readback switches,
+response selection, Ready summaries and pinned navigation. The web preview
+retains the existing native-only playback-engine controls; no app console
+errors were observed, only the existing Expo web-support warnings.
+
+The initial full browser run had 162 passing tests and one failing cross-server
+loading-skeleton assertion in `multi-server.spec.mjs:301`, also reproduced on an
+unchanged HEAD archive. The provider's project-list reconciliation was replacing
+an explicit catalog selection with the previous session before the project list
+caught up. It now respects the existing explicit-selection ref until that list
+acknowledges the target. `optimistic-flows.test.ts` reproduces the original
+overwrite and covers preservation across stale lists, acknowledgement, and
+fallback after later removal. The existing browser regression is unchanged.
+Fix validation: all 681 static tests and both fake-server suites pass, and the
+previously failing browser regression passes three consecutive runs. The full
+browser suite and Android rebuild were started; at the user's request, committing
+the fix does not wait for those broader checks to finish.
+Human validation of the changed onboarding E2E file and physical-device audio,
+permissions, downloads, enrollment and accessibility checks remain outstanding.
+
+## Settings usability and design-system coverage
+
+`settings-search.test.ts` covers localized multi-word/diacritic matching, empty
+and category-only searches, exclusion of current values, platform/capability
+gates, and advanced-group/extension-tab destinations. Existing setup component
+contracts continue to check explicit voice installation and credential handling.
+Settings browser flows cover advanced search reveal without preference changes,
+query preservation/clear/no results, narrow light-theme appearance persistence,
+and localized search. Updated onboarding, prompt-delivery, model-routing,
+diagnostics and update-offer flows follow the relocated controls.
+
+Visual acceptance checks should compare Settings home and every category/dialog
+at 320/390-point phone widths, landscape and tablet width; include dark/light,
+alternate accents, long translations and large text. Physical devices remain
+necessary for TalkBack/VoiceOver, keyboard/Back, safe areas, permissions, audio,
+enrollment and downloads. E2E contract changes require explicit human validation
+under `AGENTS.md`; passing web checks alone does not complete native acceptance.
+
+## Compact voice settings and guided local input
+
+`onboarding-voice.test.ts` checks mode-dependent controls, no implicit downloads or
+activation, installed-engine reuse and OS voice validation.
+`voice-input-setup.test.ts` covers prerequisite gating, failed download retry,
+explicitly skipping verification, preserving existing profile preferences and
+dismissal. `voice-setup-test.test.ts` checks isolated detection, active-conversation
+exclusion (including pending conversation startup), pending-start cancellation,
+background cleanup and retry. Enrollment
+coverage now includes Cancel without unmounting the parent Settings screen.
+
+The Settings search browser assertion now reveals More audio settings for Wake
+phrase. The MCP creation flow also waits for its initial snapshot and verifies Remote
+mode before filling a URL, preventing a click during the loading layout shift.
+These E2E edits require explicit human validation under AGENTS.md. No fake-server source or protocol changed.
+
+Run all three CI gates plus the Android development build. Browser checks cover
+System/local input navigation, illustrated setup, compact selectors, search,
+light/dark and narrow layouts. Disposable visual fixtures may simulate native
+readiness to inspect later steps; those captures do not validate native audio.
+Physical Android/iOS acceptance remains necessary for microphone allow/deny and
+settings recovery, downloads/retry, speaker enrollment, wake detection, leaving
+mid-capture, safe areas, Back and screen readers.
+
+Implementation validation (2026-10-29): static CI passes (736 checks in the
+working tree), both fake-server self-tests pass, and the complete web suite passes
+all 169 flows. Android development assembly passes (1101 Gradle tasks, 5m 9s).
+Checks ran in a synchronized local mirror; runtime/assets/test checksums match the
+project root. The mirror includes the user's pre-existing uncommitted native TTS
+ABI patch/test, which remain outside this settings change. Design QA passes for
+the reviewed content and records its simulated native states explicitly. No
+protocol, dependency, release version or persistence schema changed.
+
+The initial final web rerun exposed one MCP-form layout race after an earlier
+169/169 pass. The failing flow passed five isolated reproductions; it now waits
+for writable initial data and checks the URL placeholder before entering a URL.
+The subsequent complete suite passes. Physical-device audio/accessibility
+acceptance and explicit human validation of the two E2E edits remain separate.

@@ -1,12 +1,13 @@
+import { SettingButton as Button, SettingTextInput as TextInput } from './sections/setting-rows';
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { KeyboardAvoidingView, Modal, ScrollView, StyleSheet, View } from 'react-native';
-import { Appbar, Button, HelperText, IconButton, Text, TextInput as PaperInput } from 'react-native-paper';
+import { Appbar, HelperText, IconButton, Text, TextInput as PaperInput } from 'react-native-paper';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { useUpdateBlocker } from '@/hooks/use-update-blocker';
 import { usePalette } from '@/hooks/use-palette';
-import { TextInput } from '@/components/ui/text-input';
+
 import { MAX_CONNECTION_HEADERS, parseConnectionHeaders, type ConnectionHeaderError } from '@/lib/connection-headers';
 import { isValidServerUrl, type ConnectionProbeResult } from '@/lib/opencode/client';
 import { getServerHostname } from '@/lib/opencode/client/url';

@@ -51,6 +51,10 @@ export default function RootLayout() {
     void import('@/lib/voice/speech-output')
       .then(({ initializeVoiceAudioAsync }) => initializeVoiceAudioAsync())
       .catch(() => undefined);
+
+    void import('@/lib/voice/tts/player')
+      .then(({ cleanupLocalTtsAudioCache }) => cleanupLocalTtsAudioCache())
+      .catch(() => undefined);
   }, [isE2EMode]);
 
   return (

@@ -1,0 +1,79 @@
+diff --git a/node_modules/@siteed/sherpa-onnx.rn/ios/handlers/SherpaOnnxTtsHandler.swift b/node_modules/@siteed/sherpa-onnx.rn/ios/handlers/SherpaOnnxTtsHandler.swift
+index 9214bcd..22b1e85 100644
+--- a/node_modules/@siteed/sherpa-onnx.rn/ios/handlers/SherpaOnnxTtsHandler.swift
++++ b/node_modules/@siteed/sherpa-onnx.rn/ios/handlers/SherpaOnnxTtsHandler.swift
+@@ -51,12 +51,15 @@ import CSherpaOnnx
+             }
+             let modelDir = modelDirRaw // file:// stripping handled in JS layer (cleanFilePath)
+             
+-            let modelType = config["ttsModelType"] as? String ?? "vits"
++            // The TurboModule bridge forwards `modelType`/`voices`/`lexicon`/
++            // `vocoder`; the JS service uses the `*File` names. Accept both so
++            // Piper and Kokoro initialize regardless of which layer supplies them.
++            let modelType = config["ttsModelType"] as? String ?? config["modelType"] as? String ?? "vits"
+             let modelFile = config["modelFile"] as? String // Read 'modelFile'
+             let tokensFile = config["tokensFile"] as? String ?? "tokens.txt" // Read 'tokensFile' or default
+-            let voicesFile = config["voicesFile"] as? String
+-            let lexiconFile = config["lexiconFile"] as? String
+-            let vocoderFile = config["vocoderFile"] as? String
++            let voicesFile = config["voicesFile"] as? String ?? config["voices"] as? String
++            let lexiconFile = config["lexiconFile"] as? String ?? config["lexicon"] as? String
++            let vocoderFile = config["vocoderFile"] as? String ?? config["vocoder"] as? String
+             let dataDirInput = config["dataDir"] as? String
+             let numThreads = config["numThreads"] as? Int ?? 1
+             let debug = config["debug"] as? Bool ?? false
+diff --git a/node_modules/@siteed/sherpa-onnx.rn/android/src/main/kotlin/com/k2fsa/sherpa/onnx/Tts.kt b/node_modules/@siteed/sherpa-onnx.rn/android/src/main/kotlin/com/k2fsa/sherpa/onnx/Tts.kt
+index 603409e..75b5ec6 100644
+--- a/node_modules/@siteed/sherpa-onnx.rn/android/src/main/kotlin/com/k2fsa/sherpa/onnx/Tts.kt
++++ b/node_modules/@siteed/sherpa-onnx.rn/android/src/main/kotlin/com/k2fsa/sherpa/onnx/Tts.kt
+@@ -37,6 +37,20 @@
+     var lengthScale: Float = 1.0f,
+ )
+ 
++// MODIFIED(v1.13.0): added to match JNI ABI; upstream Kotlin bundled here was missing this class
++data class OfflineTtsZipVoiceModelConfig(
++    var tokens: String = "",
++    var encoder: String = "",
++    var decoder: String = "",
++    var vocoder: String = "",
++    var dataDir: String = "",
++    var lexicon: String = "",
++    var featScale: Float = 0.1f,
++    var tShift: Float = 0.5f,
++    var targetRms: Float = 0.1f,
++    var guidanceScale: Float = 1.0f,
++)
++
+ data class OfflineTtsKittenModelConfig(
+     var model: String = "",
+     var voices: String = "",
+@@ -56,13 +70,29 @@
+     var voiceEmbeddingCacheCapacity: Int = 0,
+ )
+ 
++// MODIFIED(v1.13.0): added to match JNI ABI; upstream Kotlin bundled here was missing this class
++data class OfflineTtsSupertonicModelConfig(
++    var durationPredictor: String = "",
++    var textEncoder: String = "",
++    var vectorEstimator: String = "",
++    var vocoder: String = "",
++    var ttsJson: String = "",
++    var unicodeIndexer: String = "",
++    var voiceStyle: String = "",
++)
++
+ data class OfflineTtsModelConfig(
+     var vits: OfflineTtsVitsModelConfig = OfflineTtsVitsModelConfig(),
+     var matcha: OfflineTtsMatchaModelConfig = OfflineTtsMatchaModelConfig(),
+     var kokoro: OfflineTtsKokoroModelConfig = OfflineTtsKokoroModelConfig(),
++    // MODIFIED(v1.13.0): added zipvoice to match JNI ABI; without it initTts aborts the process
++    // with NoSuchFieldError before any model loads. Field order must match upstream.
++    var zipvoice: OfflineTtsZipVoiceModelConfig = OfflineTtsZipVoiceModelConfig(),
+     // MODIFIED(v1.12.28): added kitten and pocket fields to match JNI ABI; upstream was missing these
+     var kitten: OfflineTtsKittenModelConfig = OfflineTtsKittenModelConfig(),
+     var pocket: OfflineTtsPocketModelConfig = OfflineTtsPocketModelConfig(),
++    // MODIFIED(v1.13.0): added supertonic to match JNI ABI
++    var supertonic: OfflineTtsSupertonicModelConfig = OfflineTtsSupertonicModelConfig(),
+     var numThreads: Int = 1,
+     var debug: Boolean = false,
+     var provider: String = "cpu",

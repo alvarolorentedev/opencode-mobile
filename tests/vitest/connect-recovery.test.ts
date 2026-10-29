@@ -50,6 +50,7 @@ async function fixture({ expired = false, missing = false, storedSession = true,
     'react-native': native, '@/lib/connect': connect, '@/lib/connection-scope': scope,
     '@/lib/connection-password': { getConnectionPassword: async () => '' }, '@/lib/storage-keys': keys,
     '@/lib/connection-headers': { getProfileHeaders: async () => ({}), getConnectionHeaders: async () => ({}) },
+    '@/lib/auto-model/preferences': { normalizeAutoModelPreferences: (value: unknown) => value },
     '@/lib/opencode/client/url': await loadTs('lib/opencode/client/url.ts', { './types': { defaultConnectionSettings: { serverUrl: 'http://localhost' } } }),
     zod: { z },
   }, globals);

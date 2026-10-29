@@ -1,8 +1,9 @@
+import { SettingButton as Button, SettingSelectField, type Palette } from './setting-rows';
 import * as Clipboard from 'expo-clipboard';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Alert, Platform, StyleSheet, View } from 'react-native';
-import { Button, Chip, HelperText, List, Text } from 'react-native-paper';
+import { Chip, HelperText, List, Text } from 'react-native-paper';
 
 import {
   MAX_MANAGED_SERVICES,
@@ -11,7 +12,7 @@ import {
   type ManagedService,
 } from '@/lib/opencode/client';
 import type { ServiceManagementApi } from '@/providers/opencode-provider-types';
-import { SettingSelectField, type Palette } from './setting-rows';
+
 
 // Presentational surface for the connector's remote service management API.
 // Services belong to one Cloud Link machine; the provider resolves that target

@@ -82,7 +82,7 @@ export function OverlaySheet({ visible, title, onClose, children, headerAction, 
           </GestureDetector>
           {scrollable ? <ScrollView keyboardShouldPersistTaps="handled" style={fitContent ? styles.fitContentScroll : undefined} contentContainerStyle={[styles.content, compact && styles.compactContent, { paddingBottom: Math.max(insets.bottom, 24) }]}>
             {children}
-          </ScrollView> : <View style={[styles.content, compact && styles.compactContent, { flex: 1, minHeight: 0, paddingBottom: Math.max(insets.bottom, 24) }]}>{children}</View>}
+          </ScrollView> : <View style={[styles.content, compact && styles.compactContent, { ...(fitContent ? { flexShrink: 1 } : { flex: 1 }), minHeight: 0, paddingBottom: Math.max(insets.bottom, 24) }]}>{children}</View>}
         </Animated.View>
       </KeyboardAvoidingView>
   );
@@ -100,10 +100,10 @@ const styles = StyleSheet.create({
   grabber: { width: 36, height: 4, borderRadius: 2 },
   compactHeader: { minHeight: 56, paddingHorizontal: 8 },
   compactTitle: { flex: 1, textAlign: 'center', fontWeight: '700' },
-  compactAction: { width: 44, minHeight: 44, alignItems: 'center', justifyContent: 'center' },
+  compactAction: { width: 44, minHeight: 48, alignItems: 'center', justifyContent: 'center' },
   compactContent: { padding: 0, gap: 0 },
   headerActions: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  closeButton: { minHeight: 44, justifyContent: 'center', paddingHorizontal: 8 },
+  closeButton: { minHeight: 48, justifyContent: 'center', paddingHorizontal: 8 },
   fitContentScroll: { flexGrow: 0, flexShrink: 1 },
   content: { padding: 12, gap: 8 },
 });

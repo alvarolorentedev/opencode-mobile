@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 
+import { modelDownloadErrorMessageKey } from '@/lib/model-download';
 import { getVoiceCapabilitiesAsync, type VoiceCapabilities } from '@/lib/voice/capabilities';
 import {
   getLocalCommandModelStatus,
@@ -11,7 +12,8 @@ import {
 } from '@/lib/voice/local-wake-word/models';
 import { releaseLocalVoiceRuntime } from '@/lib/voice/local-wake-word/runtime';
 import type { LocalCommandModelId, LocalWakePhraseId, LocalVoiceModelStatus } from '@/lib/voice/local-wake-word/types';
-import { openVoiceSettingsAsync, requestVoiceInputPermissionAsync } from '@/lib/voice/permissions';
+import { getLocalVoicePermissionAsync, requestLocalVoicePermissionAsync, openVoiceSettingsAsync, requestVoiceInputPermissionAsync } from '@/lib/voice/permissions';
+import type { SpeechPlayback } from '@/lib/voice/speech-types';
 import { speakText, stopSpeaking } from '@/lib/voice/speech-output';
 import { useLocalVoiceEnrollment } from '@/lib/voice/use-local-voice-enrollment';
 
@@ -27,14 +29,14 @@ export function useVoiceSetup({
   locale,
   localCommandModel,
   localWakePhrase,
+  playback,
   rate,
-  voiceId,
 }: {
   locale?: string;
   localCommandModel: LocalCommandModelId;
   localWakePhrase: LocalWakePhraseId;
+  playback: SpeechPlayback;
   rate: number;
-  voiceId?: string;
 }) {
   const { t } = useTranslation();
   const [capabilities, setCapabilities] = useState<VoiceCapabilities>();
@@ -47,6 +49,17 @@ export function useVoiceSetup({
   const [isInstallingLocalVoice, setIsInstallingLocalVoice] = useState(false);
   const [localVoiceError, setLocalVoiceError] = useState<string>();
   const enrollment = useLocalVoiceEnrollment();
+  const [microphone, setMicrophone] = useState<{ granted: boolean; canAskAgain: boolean }>();
+  const refreshMicrophone = useCallback(async () => {
+    try { setMicrophone(await getLocalVoicePermissionAsync()); } catch { setMicrophone({ granted: false, canAskAgain: false }); }
+  }, []);
+  const enableMicrophone = useCallback(async () => {
+    try { setMicrophone(await requestLocalVoicePermissionAsync()); } catch { setMicrophone({ granted: false, canAskAgain: false }); }
+  }, []);
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- read native microphone permission on mount without prompting.
+    void refreshMicrophone();
+  }, [refreshMicrophone]);
 
   const refreshStatus = useCallback(async () => {
     setIsRefreshing(true);
@@ -74,10 +87,11 @@ export function useVoiceSetup({
       const started = await speakText({
         language: locale,
         onDone: () => setFeedback(undefined),
+        onEngineFallback: () => setFeedback(t('settings:voice.localTts.fallbackToSystem')),
         onError: () => setFeedback(t('settings:voice.check.testFailed')),
+        playback,
         rate,
         text: t('settings:voice.check.testPhrase'),
-        voice: voiceId,
       });
       if (!started) {
         setFeedback(t('settings:voice.check.testFailed'));
@@ -85,7 +99,7 @@ export function useVoiceSetup({
     } finally {
       setIsTesting(false);
     }
-  }, [locale, rate, t, voiceId]);
+  }, [locale, playback, rate, t]);
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- hydrate voice status once on mount.
@@ -110,14 +124,16 @@ export function useVoiceSetup({
     try {
       await installLocalVoiceModels(localWakePhrase, localCommandModel);
       refreshLocalVoiceStatus();
+      return true;
     } catch (error) {
       refreshLocalVoiceStatus();
       setLocalVoiceStatus('error');
-      setLocalVoiceError(error instanceof Error ? error.message : 'Could not install the on-device voice models.');
+      setLocalVoiceError(t(modelDownloadErrorMessageKey(error)));
+      return false;
     } finally {
       setIsInstallingLocalVoice(false);
     }
-  }, [localCommandModel, localWakePhrase, refreshLocalVoiceStatus]);
+  }, [localCommandModel, localWakePhrase, refreshLocalVoiceStatus, t]);
 
   const removeLocalVoice = useCallback(async () => {
     setLocalVoiceError(undefined);
@@ -147,6 +163,9 @@ export function useVoiceSetup({
     isTesting,
     localVoice: {
       baseStatus: localVoiceBaseStatus,
+      microphone,
+      enableMicrophone,
+      refreshMicrophone,
       clearError: useCallback(() => setLocalVoiceError(undefined), []),
       commandStatus: localVoiceCommandStatus,
       enrollment,
@@ -162,3 +181,5 @@ export function useVoiceSetup({
     testPlayback,
   };
 }
+
+export type LocalVoiceState = ReturnType<typeof useVoiceSetup>['localVoice'];

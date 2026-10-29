@@ -7,13 +7,10 @@
     "stopConversationTitle": "¿Detener la conversación?",
     "stopConversationMessage": "Esto detendrá el modo conversación y OpenCode dejará de escuchar tu siguiente turno.",
     "keepGoing": "Seguir",
-    "revertTitle": "¿Revertir desde este mensaje?",
-    "revertMessage": "OpenCode revertirá los cambios de la sesión posteriores a este punto.",
-    "revertConfirm": "¿Revertir desde este mensaje?\n\nOpenCode revertirá los cambios de la sesión posteriores a este punto.",
-    "revert": "Revertir",
     "couldNotSendRetry": "OpenCode no pudo enviar ese mensaje. Inténtalo de nuevo en un momento.",
     "couldNotSend": "OpenCode no pudo enviar ese mensaje.",
     "unableToPlay": "No se puede reproducir esta respuesta del asistente.",
+    "ttsFallback": "La voz en el dispositivo no está disponible. Se usará la voz del sistema.",
     "stopConversationBeforePlay": "Detén el modo conversación antes de reproducir una respuesta manualmente.",
     "noReadableText": "No hay texto legible en esta respuesta del asistente.",
     "fileTooLarge": "El archivo supera el límite de adjuntos de 10 MB.",
@@ -216,6 +213,8 @@
     "lastHeard": "Último escuchado",
     "wakePhrase": "Frase de activación",
     "startSpeaking": "Empieza a hablar con naturalidad. Lo que digas en la última ronda aparecerá aquí.",
+    "listeningHint": "Adelante, te escucho.",
+    "endConversation": "Finalizar conversación",
     "steerHint": "Di «{{phrase}}» en cualquier momento para dirigir."
   },
   "modelPicker": {
@@ -228,7 +227,11 @@
     "reasoningSupported": " · Compatible con razonamiento",
     "standardModel": " · Modelo estándar",
     "noMatchingModels": "No hay modelos coincidentes",
-    "emptyHint": "Prueba con un nombre de modelo o proveedor."
+    "emptyHint": "Prueba con un nombre de modelo o proveedor.",
+    "autoRouting": "Auto-routing",
+    "autoRoutingDescription": "Use a model matched to each prompt",
+    "autoRoutingUnavailable": "Set up a classifier in Settings",
+    "defaultModel": "Default model"
   },
   "starter": {
     "title": "Iniciar una nueva tarea",

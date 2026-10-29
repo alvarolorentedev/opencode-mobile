@@ -1,8 +1,9 @@
+import { SettingButton as Button } from './sections/setting-rows';
 import { useIsFocused } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { AppState, KeyboardAvoidingView, Linking, Platform, StyleSheet, View } from 'react-native';
-import { ActivityIndicator, Appbar, Button, HelperText, Text } from 'react-native-paper';
+import { ActivityIndicator, Appbar, HelperText, Text } from 'react-native-paper';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { ConnectCameraGate } from '@/components/settings/connect-camera-gate';

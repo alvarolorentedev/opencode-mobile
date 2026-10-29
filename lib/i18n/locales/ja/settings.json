@@ -4,14 +4,17 @@
       "connection": "接続",
       "ai": "AI とプロバイダー",
       "notifications": "通知",
-      "voice": "音声",
+      "voice": "音声とオーディオ",
       "advanced": "詳細設定",
       "support": "サポート",
       "permissions": "承認",
       "subscription": "サブスクリプション",
       "cloudLink": "Cloud Link",
       "extensions": "Extensions",
-      "responses": "応答"
+      "responses": "応答",
+      "appearance": "外観",
+      "chat": "チャットと応答",
+      "about": "アプリ情報とヘルプ"
     },
     "summaries": {
       "configuredCount": "{{value}} 件設定済み",
@@ -24,7 +27,35 @@
       "voiceSystem": "システム音声 · {{phrase}}",
       "voiceLocal": "オンデバイス · {{phrase}}",
       "responsesOn": "{{scope}} · 次のアクション オン",
-      "responsesOff": "{{scope}} · 次のアクション オフ"
+      "responsesOff": "{{scope}} · 次のアクション オフ",
+      "appearance": "テーマ、色、インターフェースの密度",
+      "diagnostics": "接続状態とトラブルシューティング"
+    },
+    "groups": {
+      "app": "アプリの設定",
+      "connections": "接続",
+      "server": "選択中のサーバー"
+    },
+    "intro": "アプリを好みに合わせて接続を管理します。",
+    "search": {
+      "placeholder": "設定を検索",
+      "clear": "検索をクリア",
+      "empty": "一致する設定がありません。別の言葉を試してください。",
+      "results": "一致する設定：{{count}} 件"
+    },
+    "keywords": {
+      "appearance": "表示 テーマ 色 ダーク ライト コンパクト 密度",
+      "responses": "チャット メッセージ テキスト フォント サイズ 応答 スタイル 誘導 追加 キュー 吹き出し",
+      "voice": "音声 オーディオ サウンド マイク 入力 再生 言語 ウェイクフレーズ",
+      "notifications": "通知 アラート バッテリー ウィジェット",
+      "language": "言語 翻訳 インターフェース",
+      "support": "ヘルプ フィードバック サポート 更新 バージョン セットアップ",
+      "connection": "接続 サーバー アドレス パスワード 認証情報 再接続 QR",
+      "cloud-link": "リモート接続 Cloud Link サブスクリプション コンピューター サービス",
+      "ai": "AI プロバイダー アカウント モデル 認証 分類器 ルーティング",
+      "extensions": "拡張機能 MCP プラグイン スキル コマンド",
+      "permissions": "権限 承認 保存済みルール 自動許可",
+      "advanced": "診断 ネットワーク 接続 リアルタイム ポーリング エラー 使用量"
     }
   },
   "support": {
@@ -234,7 +265,7 @@
       "description": "ローカル認識を優先し、必要な場合のみクラウドを使用します。"
     },
     "autoPlay": {
-      "title": "アシスタントの返信を自動再生",
+      "title": "応答を自動で読み上げる",
       "description": "チャットの返信を読み上げます。会話モードは常に読み上げます。"
     },
     "workingSound": {
@@ -244,6 +275,16 @@
     "wakePhrase": {
       "label": "ウェイクフレーズ",
       "helper": "会話モードはこのフレーズを聞き取った後にのみメッセージを送信します。2語以上がおすすめです。"
+    },
+    "modelDownloads": {
+      "timeout": "ダウンロードがタイムアウトしました。接続が止まりました。Wi‑Fi または電波の良い場所でもう一度お試しください。",
+      "offline": "ダウンロードサーバーに接続できませんでした。インターネット接続を確認して、もう一度お試しください。",
+      "server": "ダウンロードサーバーがファイルを提供できませんでした。しばらくしてからもう一度お試しください。",
+      "storage": "このモデルをインストールするための空き容量が足りません。",
+      "incomplete": "ダウンロードが完了しませんでした。もう一度お試しください。",
+      "integrity": "ダウンロードしたファイルが破損しています。もう一度お試しください。",
+      "unknown": "モデルをダウンロードできませんでした。接続を確認して、もう一度お試しください。",
+      "installFailed": "モデルをインストールできませんでした。もう一度お試しください。"
     },
     "localWake": {
       "title": "オンデバイス音声",
@@ -277,7 +318,7 @@
       "installCommand": "コマンドモデルをインストール ({{size}})"
     },
     "speechLocale": {
-      "label": "音声ロケール",
+      "label": "言語",
       "helper": "空欄にすると、音声入力と再生にシステムの既定言語を使用します。"
     },
     "responseScope": {
@@ -317,7 +358,36 @@
       "label": "作業中サウンドの音量"
     },
     "voiceSelect": {
-      "label": "音声"
+      "label": "音声",
+      "automatic": "自動",
+      "enhanced": "拡張 · {{language}}"
+    },
+    "enhancedVoices": "最も自然なシステム音声にするには、端末のテキスト読み上げ設定で拡張またはプレミアム音声をインストールしてください。",
+    "playbackEngine": {
+      "label": "再生エンジン",
+      "systemDescription": "端末の内蔵音声を使用します。常に利用できます。",
+      "localDescription": "ダウンロードしたニューラル音声を使用します。下のモデルを選択してください。"
+    },
+    "localTts": {
+      "title": "オンデバイス再生",
+      "description": "モデルは選択したときだけダウンロードされます。システム音声は常に利用できます。",
+      "piper": "コンパクト",
+      "kokoro": "ナチュラル",
+      "piperDescription": "高速で軽量",
+      "kokoroDescription": "最も自然な英語、ダウンロードは大容量",
+      "download": "ダウンロード（{{size}}）",
+      "installing": "インストール中…",
+      "installed": "インストール済み",
+      "notInstalled": "未インストール",
+      "use": "使用",
+      "preview": "プレビュー",
+      "speaker": "音声",
+      "storage": "オンデバイス音声が {{size}} 使用中",
+      "downloadHint": "ダウンロードは検証され、この端末に保存されます。",
+      "japaneseUnavailable": "日本語は Piper モデルがないため、システム音声を使用します。",
+      "fallbackToSystem": "オンデバイス音声を利用できません。システム音声を使用します。",
+      "languageMismatch": "このモデルは{{language}}を話します。音声ロケールを合わせてください。合わない場合はシステム音声を使用します。",
+      "installFirst": "先にオンデバイスモデルを選択してインストールしてください。"
     },
     "footer": "Android はバックグラウンドで実行中のセッションを定期的に確認し、完了通知を表示できます。バックグラウンドでの音声と継続的なマイク取り込みには対応していません。",
     "check": {
@@ -351,6 +421,57 @@
     "readInterim": {
       "title": "進捗メッセージを読み上げる",
       "description": "「対応中…」などの更新を読み上げ、最終返信は常に読み上げます。"
+    },
+    "setup": {
+      "title": "デバイス上の音声入力",
+      "step": "ステップ {{step}} / {{total}}",
+      "followSystem": "システムに従う",
+      "setUpInput": "デバイス上の入力を設定",
+      "manageInput": "デバイス上の入力を管理",
+      "notActive": "設定を完了するとデバイス上の入力が有効になります。",
+      "chooseVoice": "音声を選択",
+      "manageDownloads": "ダウンロードを管理",
+      "more": "その他の音声設定",
+      "advanced": "詳細オプション",
+      "notNow": "今はしない",
+      "downloadContinue": "ダウンロードして続ける",
+      "tools": "音声ツール",
+      "downloadSize": "ダウンロード容量 {{size}} · Wi-Fi 推奨",
+      "englishModel": "Moonshine · 英語コマンド向け、高速",
+      "multilingualModel": "Whisper · 多言語コマンド向け",
+      "microphone": "マイクへのアクセス",
+      "allow": "許可",
+      "sequence": "起動 → 話す → 送信",
+      "serverNote": "音声認識はスマートフォン上で実行されます。リクエストは OpenCode サーバーに送信されます。",
+      "profileNote": "任意：12 秒間の音声を録音すると、あなたの声だけでアプリを起動できます。声紋は端末に保存されます。スキップすると誰でも起動フレーズを使えます。",
+      "skipProfile": "声紋設定をスキップ",
+      "skipTest": "テストをスキップして完了",
+      "startTest": "テストを開始",
+      "stopTest": "テストを停止",
+      "testNote": "テストではリクエストを送信しません。この画面を離れるとマイクの待ち受けが停止します。",
+      "busy": "音声入力を設定する前に会話モードを停止してください。",
+      "intro": {
+        "title": "声で、ハンズフリー",
+        "description": "「{{phrase}}」と言ってから、OpenCode に指示してください。"
+      },
+      "prepare": {
+        "title": "スマートフォンを準備",
+        "description": "言語を選び、マイクを許可して、音声ツールを一度だけダウンロードします。"
+      },
+      "profile": {
+        "title": "自分の声に合わせる",
+        "description": "あなたの声だけに反応するかどうかを選びます。"
+      },
+      "test": {
+        "title": "「{{phrase}}」を試す",
+        "description": "テストを開始し、普段の声の大きさで起動フレーズを言ってください。",
+        "idle": "準備完了",
+        "starting": "マイクを起動中…",
+        "listening": "起動フレーズを待ち受け中…",
+        "detected": "起動フレーズを検出しました。準備完了です！",
+        "error": "テストを実行できませんでした。マイクの権限を確認して再試行してください。",
+        "busy": "テストするには会話モードを停止してください。"
+      }
     }
   },
   "diagnostics": {
@@ -527,7 +648,7 @@
   },
   "general": {
     "title": "一般",
-    "resetOnboarding": "初期設定をやり直す"
+    "resetOnboarding": "セットアップを見直す"
   },
   "autoUpdate": {
     "title": "アップデートの確認",
@@ -708,5 +829,71 @@
     "generalConfirmTitle": "Edit global configuration",
     "generalConfirmMessage": "This changes the configuration for every project on this server. A backup is created first.\n\n{{path}}",
     "generalConfirmAction": "Continue"
+  },
+  "modelRouting": {
+    "title": "Auto model routing",
+    "description": "Classify each prompt and choose a model by complexity. Routing is skipped when the classifier is unavailable.",
+    "enable": {
+      "title": "Enable auto-routing",
+      "description": "Choose a model for each prompt based on its complexity.",
+      "unavailable": "Set up a classifier below before enabling routing."
+    },
+    "classifier": {
+      "label": "Classifier",
+      "local": {
+        "label": "On-device model",
+        "description": "Runs on this phone. The model is downloaded once."
+      },
+      "server": {
+        "label": "OpenCode classifier",
+        "description": "Calls a model through OpenCode before sending the prompt."
+      }
+    },
+    "local": {
+      "statusLabel": "On-device model",
+      "status": {
+        "unsupported": "Not supported on this platform",
+        "installing": "Downloading",
+        "ready": "Ready",
+        "missing": "Not installed",
+        "error": "Install failed"
+      },
+      "installed": "Installed ({{size}})",
+      "remove": "Remove model",
+      "download": "Download model ({{size}})",
+      "license": "{{model}} · {{license}}. The model runs only on this device."
+    },
+    "server": {
+      "modelLabel": "Classifier model",
+      "cheapest": "Cheapest available",
+      "check": "Check classifier",
+      "status": {
+        "unknown": "Not checked. Check the classifier to enable routing.",
+        "checking": "Checking the classifier...",
+        "available": "Classifier available.",
+        "unsupported": "This server does not expose the classifier endpoint.",
+        "unavailable": "Classifier unavailable. Check the connection and retry.",
+        "auth": "Sign in to this server before using the classifier."
+      }
+    },
+    "tiers": {
+      "simple": {
+        "label": "Simple model"
+      },
+      "standard": {
+        "label": "Standard model"
+      },
+      "complex": {
+        "label": "Complex model"
+      },
+      "automatic": "Automatic",
+      "automaticDescription": "Choose from the enabled models",
+      "automaticValue": "Automatic · {{model}}",
+      "unavailable": "Unavailable"
+    },
+    "protect": {
+      "title": "Protect long chats",
+      "description": "Avoid downgrading models on long conversations where prompt-cache savings may be larger."
+    }
   }
 }

@@ -478,6 +478,14 @@ try {
   assert(missingInstruction.status === 404, `V2 instruction put for a missing session returned ${missingInstruction.status}`);
 
   await fetch(`${v2Origin}/__control/reset`, json('POST', { scenario: 'inbox' }));
+  const busyRevertSession = await v2Api.session.create({ title: 'Busy revert contract' });
+  const busyRevertPrompt = await v2Api.session.prompt({ sessionID: busyRevertSession.id, text: 'Keep this session busy' });
+  const busyRevert = await fetch(`${v2Origin}/api/session/${busyRevertSession.id}/revert/stage`, json('POST', { messageID: busyRevertPrompt.id }));
+  assert(busyRevert.status === 409, 'V2 must reject a revert staged while the session is busy');
+  await v2Api.session.interrupt({ sessionID: busyRevertSession.id });
+  await v2Api.session.wait({ sessionID: busyRevertSession.id });
+  assert((await v2Api.session.revert.stage({ sessionID: busyRevertSession.id, messageID: busyRevertPrompt.id })).messageID === busyRevertPrompt.id, 'V2 revert must stage after the session settles');
+  await v2Api.session.revert.clear({ sessionID: busyRevertSession.id });
   const inboxSession = await v2Api.session.create({ title: 'Inbox contract' });
   await v2Api.session.prompt({ sessionID: inboxSession.id, text: 'Initial response' });
   const steered = await v2Api.session.prompt({ sessionID: inboxSession.id, text: 'Steering hint', delivery: 'steer' });

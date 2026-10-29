@@ -1,11 +1,12 @@
+import { SettingButton as Button, SettingTextInput as TextInput } from './sections/setting-rows';
 import { useMcpAuthentication } from './use-mcp-authentication';
 import type { McpContextValue } from '@/providers/opencode-provider-types';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { StyleSheet, View } from 'react-native';
-import { Button, Chip, HelperText, List, SegmentedButtons, Text } from 'react-native-paper';
+import { Chip, HelperText, List, SegmentedButtons, Text } from 'react-native-paper';
 
-import { TextInput } from '@/components/ui/text-input';
+
 
 import { Colors } from '@/constants/theme';
 import type { Config, McpLocalConfig, McpRemoteConfig, McpStatus } from '@/lib/opencode/types';

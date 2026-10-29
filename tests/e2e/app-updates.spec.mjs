@@ -37,7 +37,7 @@ test('downloads without installing; open sheets suppress the ready offer', async
   expect(composer.y + composer.height).toBeLessThanOrEqual(banner.y);
   expect(banner.y + banner.height).toBeLessThanOrEqual(tabs.y);
   await page.getByRole('tab', { name: /Settings/ }).click();
-  await page.getByRole('button', { name: /^Advanced\./ }).click();
+  await page.getByTestId('settings-category-advanced').click();
   await expect(page.getByTestId('settings-section-overlay')).toBeVisible();
   await page.evaluate(() => globalThis.__appUpdateTest.emit({ phase: 'downloaded' }));
   await expect(notice(page)).toHaveCount(0);

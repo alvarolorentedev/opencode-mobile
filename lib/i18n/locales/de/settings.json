@@ -4,14 +4,17 @@
       "connection": "Verbindung",
       "ai": "KI & Anbieter",
       "notifications": "Benachrichtigungen",
-      "voice": "Sprache",
+      "voice": "Sprache und Audio",
       "advanced": "Erweitert",
       "support": "Support",
       "permissions": "Genehmigungen",
       "subscription": "Abonnement",
       "cloudLink": "Cloud Link",
       "extensions": "Extensions",
-      "responses": "Antworten"
+      "responses": "Antworten",
+      "appearance": "Darstellung",
+      "chat": "Chat und Antworten",
+      "about": "Info und Hilfe"
     },
     "summaries": {
       "configuredCount": "{{value}} konfiguriert",
@@ -24,7 +27,35 @@
       "voiceSystem": "Systemsprache · {{phrase}}",
       "voiceLocal": "Auf dem Gerät · {{phrase}}",
       "responsesOn": "{{scope}} · nächste Schritte an",
-      "responsesOff": "{{scope}} · nächste Schritte aus"
+      "responsesOff": "{{scope}} · nächste Schritte aus",
+      "appearance": "Design, Farbe und Oberflächendichte",
+      "diagnostics": "Verbindungsstatus und Fehlerbehebung"
+    },
+    "groups": {
+      "app": "App-Einstellungen",
+      "connections": "Verbindungen",
+      "server": "Ausgewählter Server"
+    },
+    "intro": "Passe die App an und verwalte deine Verbindungen.",
+    "search": {
+      "placeholder": "Einstellungen suchen",
+      "clear": "Suche löschen",
+      "empty": "Keine passenden Einstellungen. Versuche ein anderes Wort.",
+      "results": "Gefundene Einstellungen: {{count}}"
+    },
+    "keywords": {
+      "appearance": "Anzeige Design Thema Farbe dunkel hell kompakt Dichte",
+      "responses": "Chat Nachrichten Text Schrift Größe Antworten Stil steuern anhängen Warteschlange Sprechblasen",
+      "voice": "Sprache Audio Stimme Ton Mikrofon Eingabe Wiedergabe Weckphrase",
+      "notifications": "Benachrichtigungen Hinweise Akku Widgets",
+      "language": "Sprache Übersetzung Oberfläche",
+      "support": "Hilfe Feedback Support Updates Version Einrichtungsassistent",
+      "connection": "Verbindungen Server Adresse Passwort Zugangsdaten neu verbinden QR",
+      "cloud-link": "Fernzugriff Cloud Link Abonnement Computer Dienste",
+      "ai": "KI Anbieter Konten Modelle Anmeldung Klassifikator Routing",
+      "extensions": "Erweiterungen MCP Plugins Fähigkeiten Befehle",
+      "permissions": "Berechtigungen Freigaben gespeicherte Regeln automatisch erlauben",
+      "advanced": "Diagnose Netzwerk Verbindung Echtzeit Abfragen Fehler Nutzung"
     }
   },
   "support": {
@@ -234,7 +265,7 @@
       "description": "Lokale Erkennung bevorzugen; bei Bedarf auf die Cloud zurückgreifen."
     },
     "autoPlay": {
-      "title": "Antworten des Assistenten automatisch abspielen",
+      "title": "Antworten vorlesen",
       "description": "Antworten im Chat vorlesen. Im Konversationsmodus immer."
     },
     "workingSound": {
@@ -244,6 +275,16 @@
     "wakePhrase": {
       "label": "Weckphrase",
       "helper": "Der Konversationsmodus sendet erst eine Nachricht, wenn er diese Phrase hört. Zwei oder mehr Wörter funktionieren am besten."
+    },
+    "modelDownloads": {
+      "timeout": "Zeitüberschreitung beim Download. Die Verbindung ist hängen geblieben – versuche es erneut über WLAN oder mit besserem Empfang.",
+      "offline": "Der Download-Server ist nicht erreichbar. Prüfe deine Internetverbindung und versuche es erneut.",
+      "server": "Der Download-Server konnte die Datei nicht bereitstellen. Versuche es später erneut.",
+      "storage": "Nicht genügend freier Speicher, um dieses Modell zu installieren.",
+      "incomplete": "Der Download wurde nicht abgeschlossen. Versuche es erneut.",
+      "integrity": "Die heruntergeladene Datei ist beschädigt. Versuche es erneut.",
+      "unknown": "Das Modell konnte nicht heruntergeladen werden. Prüfe deine Verbindung und versuche es erneut.",
+      "installFailed": "Das Modell konnte nicht installiert werden. Versuche es erneut."
     },
     "localWake": {
       "title": "Sprache auf dem Gerät",
@@ -277,7 +318,7 @@
       "installCommand": "Befehlsmodell installieren ({{size}})"
     },
     "speechLocale": {
-      "label": "Sprachlocale",
+      "label": "Sprache",
       "helper": "Leer lassen, um die Standardsprache des Systems für Spracheingabe und -wiedergabe zu verwenden."
     },
     "responseScope": {
@@ -317,7 +358,36 @@
       "label": "Lautstärke des Arbeitsgeräuschs"
     },
     "voiceSelect": {
-      "label": "Stimme"
+      "label": "Stimme",
+      "automatic": "Automatisch",
+      "enhanced": "Erweitert · {{language}}"
+    },
+    "enhancedVoices": "Installiere erweiterte oder Premium-Stimmen in den Text-to-Speech-Einstellungen des Geräts, um die natürlichste Systemstimme zu erhalten.",
+    "playbackEngine": {
+      "label": "Wiedergabe-Engine",
+      "systemDescription": "Verwendet die integrierte Stimme des Geräts. Immer verfügbar.",
+      "localDescription": "Verwendet eine heruntergeladene neuronale Stimme. Wähle unten ein Modell."
+    },
+    "localTts": {
+      "title": "Wiedergabe auf dem Gerät",
+      "description": "Modelle werden nur heruntergeladen, wenn du sie auswählst. Die Systemstimme ist immer verfügbar.",
+      "piper": "Kompakt",
+      "kokoro": "Natürlich",
+      "piperDescription": "Schnell und leicht",
+      "kokoroDescription": "Natürlichstes Englisch, größerer Download",
+      "download": "Herunterladen ({{size}})",
+      "installing": "Wird installiert…",
+      "installed": "Installiert",
+      "notInstalled": "Nicht installiert",
+      "use": "Verwenden",
+      "preview": "Vorschau",
+      "speaker": "Stimme",
+      "storage": "{{size}} durch On-Device-Stimmen belegt",
+      "downloadHint": "Downloads werden überprüft und auf diesem Gerät gespeichert.",
+      "japaneseUnavailable": "Japanisch verwendet die Systemstimme, da kein Piper-Modell verfügbar ist.",
+      "fallbackToSystem": "Die On-Device-Stimme ist nicht verfügbar. Die Systemstimme wird verwendet.",
+      "languageMismatch": "Dieses Modell spricht {{language}}. Passe die Sprachlocale an, sonst wird die Systemstimme verwendet.",
+      "installFirst": "Wähle zuerst ein On-Device-Modell aus und installiere es."
     },
     "footer": "Android kann laufende Sitzungen regelmäßig im Hintergrund prüfen und eine Abschlussbenachrichtigung senden. Hintergrundsprache und kontinuierliche Mikrofonaufnahme werden nicht unterstützt.",
     "check": {
@@ -351,6 +421,57 @@
     "readInterim": {
       "title": "Fortschrittsmeldungen vorlesen",
       "description": "Updates wie „Einen Moment…“ vorlesen; Finalantworten immer."
+    },
+    "setup": {
+      "title": "Spracheingabe auf dem Gerät",
+      "step": "Schritt {{step}} von {{total}}",
+      "followSystem": "Systemsprache verwenden",
+      "setUpInput": "Lokale Spracheingabe einrichten",
+      "manageInput": "Lokale Spracheingabe verwalten",
+      "notActive": "Schließe die Einrichtung ab, um die lokale Eingabe zu aktivieren.",
+      "chooseVoice": "Stimme auswählen",
+      "manageDownloads": "Downloads verwalten",
+      "more": "Weitere Audioeinstellungen",
+      "advanced": "Erweiterte Optionen",
+      "notNow": "Nicht jetzt",
+      "downloadContinue": "Herunterladen und fortfahren",
+      "tools": "Sprachwerkzeuge",
+      "downloadSize": "{{size}} zum Download · WLAN empfohlen",
+      "englishModel": "Moonshine · Schnell, für englische Befehle",
+      "multilingualModel": "Whisper · Für Befehle in mehreren Sprachen",
+      "microphone": "Mikrofonzugriff",
+      "allow": "Erlauben",
+      "sequence": "Aktivieren → Sprechen → Senden",
+      "serverNote": "Die Spracherkennung läuft auf deinem Telefon. Deine Anfrage wird weiterhin an deinen OpenCode-Server gesendet.",
+      "profileNote": "Optional: Nimm eine 12-sekündige Probe auf, damit nur deine Stimme die App aktiviert. Das Stimmprofil bleibt auf deinem Telefon. Ohne Profil kann jeder das Aktivierungswort sagen.",
+      "skipProfile": "Stimmprofil überspringen",
+      "skipTest": "Test überspringen und abschließen",
+      "startTest": "Test starten",
+      "stopTest": "Test stoppen",
+      "testNote": "Der Test sendet keine Anfrage. Das Mikrofon stoppt beim Verlassen dieser Ansicht.",
+      "busy": "Beende den Gesprächsmodus, bevor du die Spracheingabe einrichtest.",
+      "intro": {
+        "title": "Deine Stimme, freihändig",
+        "description": "Sage „{{phrase}}“ und dann, was OpenCode tun soll."
+      },
+      "prepare": {
+        "title": "Telefon vorbereiten",
+        "description": "Wähle eine Sprache, erlaube das Mikrofon und lade die Sprachwerkzeuge einmalig herunter."
+      },
+      "profile": {
+        "title": "Auf dich abstimmen",
+        "description": "Wähle, ob die App nur auf deine Stimme reagieren soll."
+      },
+      "test": {
+        "title": "Probiere „{{phrase}}“",
+        "description": "Starte den Test und sage das Aktivierungswort in normaler Lautstärke.",
+        "idle": "Bereit, wenn du es bist",
+        "starting": "Mikrofon wird gestartet…",
+        "listening": "Warte auf das Aktivierungswort…",
+        "detected": "Aktivierungswort erkannt. Alles bereit!",
+        "error": "Test fehlgeschlagen. Prüfe den Mikrofonzugriff und versuche es erneut.",
+        "busy": "Beende den Gesprächsmodus, um den Test zu starten."
+      }
     }
   },
   "diagnostics": {
@@ -527,7 +648,7 @@
   },
   "general": {
     "title": "Allgemein",
-    "resetOnboarding": "Einrichtung neu starten"
+    "resetOnboarding": "Einrichtung überprüfen"
   },
   "autoUpdate": {
     "title": "Update-Prüfung",
@@ -708,5 +829,71 @@
     "generalConfirmTitle": "Edit global configuration",
     "generalConfirmMessage": "This changes the configuration for every project on this server. A backup is created first.\n\n{{path}}",
     "generalConfirmAction": "Continue"
+  },
+  "modelRouting": {
+    "title": "Auto model routing",
+    "description": "Classify each prompt and choose a model by complexity. Routing is skipped when the classifier is unavailable.",
+    "enable": {
+      "title": "Enable auto-routing",
+      "description": "Choose a model for each prompt based on its complexity.",
+      "unavailable": "Set up a classifier below before enabling routing."
+    },
+    "classifier": {
+      "label": "Classifier",
+      "local": {
+        "label": "On-device model",
+        "description": "Runs on this phone. The model is downloaded once."
+      },
+      "server": {
+        "label": "OpenCode classifier",
+        "description": "Calls a model through OpenCode before sending the prompt."
+      }
+    },
+    "local": {
+      "statusLabel": "On-device model",
+      "status": {
+        "unsupported": "Not supported on this platform",
+        "installing": "Downloading",
+        "ready": "Ready",
+        "missing": "Not installed",
+        "error": "Install failed"
+      },
+      "installed": "Installed ({{size}})",
+      "remove": "Remove model",
+      "download": "Download model ({{size}})",
+      "license": "{{model}} · {{license}}. The model runs only on this device."
+    },
+    "server": {
+      "modelLabel": "Classifier model",
+      "cheapest": "Cheapest available",
+      "check": "Check classifier",
+      "status": {
+        "unknown": "Not checked. Check the classifier to enable routing.",
+        "checking": "Checking the classifier...",
+        "available": "Classifier available.",
+        "unsupported": "This server does not expose the classifier endpoint.",
+        "unavailable": "Classifier unavailable. Check the connection and retry.",
+        "auth": "Sign in to this server before using the classifier."
+      }
+    },
+    "tiers": {
+      "simple": {
+        "label": "Simple model"
+      },
+      "standard": {
+        "label": "Standard model"
+      },
+      "complex": {
+        "label": "Complex model"
+      },
+      "automatic": "Automatic",
+      "automaticDescription": "Choose from the enabled models",
+      "automaticValue": "Automatic · {{model}}",
+      "unavailable": "Unavailable"
+    },
+    "protect": {
+      "title": "Protect long chats",
+      "description": "Avoid downgrading models on long conversations where prompt-cache savings may be larger."
+    }
   }
 }

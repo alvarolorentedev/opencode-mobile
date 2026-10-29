@@ -1,9 +1,10 @@
-import { useEffect, useRef, useState, type Dispatch, type SetStateAction } from 'react';
+import { useEffect, useMemo, useRef, useState, type Dispatch, type SetStateAction } from 'react';
 
 import type { PendingPermissionRequest, PendingQuestionRequest } from '@/lib/opencode/client';
 import type { SessionStatus } from '@/lib/opencode/types';
 import type { VoiceRecoveryAction } from '@/lib/voice/speech-errors';
 import { speakText, stopSpeaking } from '@/lib/voice/speech-output';
+import { getSpeechPlayback } from '@/lib/voice/speech-config';
 import { stopWorkingSoundAsync } from '@/lib/voice/working-sound';
 import type {
   ConversationInputPhase,
@@ -63,10 +64,35 @@ export function useConversationPlayback({
   const runIdRef = useRef(0);
   const lastTurnSequenceRef = useRef(turnSequence);
   const sessionStatus = conversationSessionId ? sessionStatuses[conversationSessionId] : undefined;
+  const playback = useMemo(
+    () => getSpeechPlayback({
+      localTtsPackId: chatPreferences.localTtsPackId,
+      localTtsSpeakerId: chatPreferences.localTtsSpeakerId,
+      speechVoiceId: chatPreferences.speechVoiceId,
+      ttsEngine: chatPreferences.ttsEngine,
+    }),
+    [
+      chatPreferences.localTtsPackId,
+      chatPreferences.localTtsSpeakerId,
+      chatPreferences.speechVoiceId,
+      chatPreferences.ttsEngine,
+    ],
+  );
   const isSessionRunning = conversationSessionId
     ? sendingState.sessionId === conversationSessionId || sendingState.active || (!!sessionStatus && sessionStatus.type !== 'idle')
     : false;
   const sessionRunningRef = useRef(isSessionRunning);
+
+  useEffect(() => {
+    if (!active || playback.engine !== 'local') {
+      return;
+    }
+    // Start loading the neural voice while the user is still speaking so the
+    // first readback does not pay the full model-init cost.
+    void import('@/lib/voice/tts/runtime')
+      .then(({ prewarmLocalTts }) => prewarmLocalTts(playback.packId))
+      .catch(() => undefined);
+  }, [active, playback]);
 
   useEffect(() => {
     sessionRunningRef.current = isSessionRunning;
@@ -247,20 +273,27 @@ export function useConversationPlayback({
       }
 
       try {
+        let fallbackNotice = false;
         const started = await speakText({
           language: chatPreferences.speechLocale,
           onDone: finish,
+          onEngineFallback: () => {
+            fallbackNotice = true;
+            applyConversationFeedback(setConversationFeedback, setConversationFeedbackAction, 'On-device voice is unavailable. Using the system voice.');
+          },
           onError: () => {
             applyConversationFeedback(setConversationFeedback, setConversationFeedbackAction, 'Unable to play this assistant reply.');
             finish(true);
           },
           onStart: () => {
-            applyConversationFeedback(setConversationFeedback, setConversationFeedbackAction, undefined);
+            if (!fallbackNotice) {
+              applyConversationFeedback(setConversationFeedback, setConversationFeedbackAction, undefined);
+            }
             setReadbackPhase('speaking');
           },
+          playback,
           rate: chatPreferences.speechRate,
           text: item.entry.text,
-          voice: chatPreferences.speechVoiceId,
         });
 
         if (!started) {
@@ -283,6 +316,7 @@ export function useConversationPlayback({
     pauseInput,
     pendingPermissionsBySession,
     pendingQuestionsBySession,
+    playback,
     queue,
     readbackPhase,
     resumeInput,

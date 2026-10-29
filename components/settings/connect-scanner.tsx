@@ -1,8 +1,9 @@
+import { SettingButton as Button } from './sections/setting-rows';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { AppState, Platform, StyleSheet, View } from 'react-native';
-import { ActivityIndicator, Button, HelperText, Text } from 'react-native-paper';
+import { ActivityIndicator, HelperText, Text } from 'react-native-paper';
 import { usePalette } from '@/hooks/use-palette';
 
 

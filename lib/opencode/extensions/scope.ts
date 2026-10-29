@@ -48,6 +48,16 @@ export function isSystemConfigPath(value: string) {
   return SYSTEM_DIRECTORIES.some((directory) => normalized === directory || normalized.startsWith(`${directory}/`));
 }
 
+/**
+ * Built-in skills are served by the server from a virtual `/builtin/` path
+ * rather than from a config directory.
+ */
+export function isBuiltinSkillPath(value: string | undefined) {
+  if (!value) return false;
+  const normalized = pathKey(value);
+  return normalized === '/builtin' || normalized.startsWith('/builtin/');
+}
+
 function isOpenCodeConfigDirectory(value: string) {
   const normalized = value.replace(/\\/g, '/').replace(/\/+$/, '').toLowerCase();
   return normalized.endsWith('/opencode') && !normalized.endsWith('/.opencode');
@@ -100,7 +110,7 @@ export function selectConfigTarget(entries: ConfigEntry[], scope: ExtensionScope
 
 export function sourceForPath(path: string | undefined, projectRoot?: string, globalRoot?: string): ExtensionSource {
   if (!path) return 'inherited';
-  if (isSystemConfigPath(path)) return 'system';
+  if (isSystemConfigPath(path) || isBuiltinSkillPath(path)) return 'system';
   if (projectRoot && isInside(projectRoot, path)) return 'project';
   if (globalRoot && isInside(globalRoot, path)) return 'general';
   return 'inherited';
