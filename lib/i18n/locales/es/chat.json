@@ -148,7 +148,10 @@
       "searching": "Buscando archivos del proyecto…",
       "empty": "Sin resultados"
     },
-    "readingReply": "Leyendo la respuesta en voz alta. La escucha se reanuda al terminar."
+    "readingReply": "Leyendo la respuesta en voz alta. La escucha se reanuda al terminar.",
+    "confirming": "Confirmación",
+    "confirmHint": "Revisa el comando reconocido y luego envía, reintenta, edita o cancela.",
+    "noWakeHint": "Escuchando tu comando. La confirmación protege lo que se envía."
   },
   "newChat": {
     "title": "Nuevo chat",
@@ -215,7 +218,8 @@
     "startSpeaking": "Empieza a hablar con naturalidad. Lo que digas en la última ronda aparecerá aquí.",
     "listeningHint": "Adelante, te escucho.",
     "endConversation": "Finalizar conversación",
-    "steerHint": "Di «{{phrase}}» en cualquier momento para dirigir."
+    "steerHint": "Di «{{phrase}}» en cualquier momento para dirigir.",
+    "phaseConfirming": "Confirma el comando"
   },
   "modelPicker": {
     "selectModel": "Seleccionar modelo",
@@ -341,5 +345,24 @@
     "write": "Escribir",
     "thought": "Pensamiento",
     "unknown": "Desconocido"
+  },
+  "confirmation": {
+    "title": "Confirma el comando",
+    "readback": "Entendí: «{{command}}». ¿Es correcto?",
+    "longReadback": "He oído un comando largo. Revisa el texto en pantalla y confirma.",
+    "listening": "Di sí, reintentar, editar o cancelar.",
+    "prompting": "Leyendo el comando en voz alta…",
+    "editHint": "Corrige el comando y envíalo.",
+    "expired": "La confirmación caducó. El comando no se envió.",
+    "send": "Enviar",
+    "heard": "Escuchado: {{text}}",
+    "ambiguous": "No lo entendí. Di sí, reintentar, editar o cancelar.",
+    "timeout": "No oí una confirmación. El comando no se envió.",
+    "unavailable": "No pude iniciar la escucha de confirmación. Revisa el comando y pulsa Enviar, Reintentar o Cancelar.",
+    "sessionChanged": "La conversación cambió. El comando no se envió.",
+    "ttsFallback": "La voz local no está disponible. Se usará la voz del sistema.",
+    "emptyEdit": "Escribe un comando antes de enviarlo.",
+    "connectionLost": "OpenCode no está conectado. El comando no se envió.",
+    "retryPrompt": "No entendí la confirmación. Di sí, reintentar, editar o cancelar."
   }
 }

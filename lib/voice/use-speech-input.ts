@@ -30,7 +30,7 @@ const IOS_RECOGNITION_CATEGORY: SetCategoryOptions = {
   mode: 'measurement',
 };
 
-type StartOptions = { continuous?: boolean };
+type StartOptions = { contextualStrings?: string[]; continuous?: boolean };
 
 // `useSpeechInput` is mounted more than once (chat dictation and conversation
 // mode) while the native recognizer is a singleton. These module-level values
@@ -220,7 +220,11 @@ export function useSpeechInput({
         }
 
         const wantsOnDevice = !forceNetwork && !onDeviceFallbackRef.current && preferOnDevice && capabilities.onDevice;
-        lastStartOptionsRef.current = { continuous: options.continuous };
+        lastStartOptionsRef.current = {
+          contextualStrings: options.contextualStrings,
+          continuous: options.continuous,
+        };
+        const startContextualStrings = options.contextualStrings ?? contextualStrings;
 
         activeOwner = ownerId;
         recognitionReserved = true;
@@ -255,7 +259,7 @@ export function useSpeechInput({
         ExpoSpeechRecognitionModule.start({
           addsPunctuation: true,
           continuous: options.continuous ?? Platform.OS !== 'ios',
-          contextualStrings: contextualStrings?.length ? contextualStrings : undefined,
+          contextualStrings: startContextualStrings?.length ? startContextualStrings : undefined,
           interimResults: true,
           iosCategory: IOS_RECOGNITION_CATEGORY,
           iosTaskHint: 'dictation',

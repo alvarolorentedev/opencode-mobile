@@ -932,7 +932,8 @@ Conversation mode is a provider-level state machine with phases:
 
 - `off`
 - `armed` (recognizer open, waiting for the configured wake phrase)
-- `listening` (phrase matched, command being captured)
+- `listening` (phrase matched, or no-wake mode is idle, command being captured)
+- `confirming` (transcript captured; waiting for voice/touch confirmation)
 - `submitting`
 - `waiting`
 - `speaking`
@@ -941,20 +942,27 @@ Supporting behaviors include:
 
 - continuous speech recognition gated by a configurable wake phrase
   (`lib/voice/wake-phrase.ts`), default `hey code`
+- optional no-wake mode (`wakePhraseRequired: false`): conversation mode starts
+  in `listening`, re-arms after every reply, and relies on confirmation as the
+  submission gate. System recognition shows a vendor-privacy warning.
 - phrase matching on interims and finals, with a short tail so a phrase split
   across segments still matches
 - final-result settling delay before submission
 - a command window timeout that re-arms when only the phrase is heard
+- optional pre-submission confirmation (enabled by default). The pending command
+  is provider-owned, never enters chat state, and only an explicit confirm or an
+  exact final voice confirmation reaches `submitPrompt`.
 - automatic assistant reply playback
 - optional automatic return to armed after playback
 - keep-awake activation
 - blocking if pending permissions or questions exist
 - cancellation and cleanup across timers, speech input, TTS, and working sound
 
-The phrase gate is the only turn trigger: text before the phrase is discarded,
-the phrase is stripped from the prompt, and no turn is submitted while armed.
-Recognition itself still runs while armed; this is not a separate wake-word
-engine.
+The phrase gate is the only turn trigger when enabled: text before the phrase is
+discarded, the phrase is stripped from the prompt, and no turn is submitted while
+armed. Recognition itself still runs while armed; this is not a separate
+wake-word engine. With `wakePhraseRequired: false`, every recognized command is
+still reviewed by default and the app remains foreground-only.
 
 ### Optional on-device wake word
 
@@ -965,15 +973,19 @@ engine.
   selectable command recognizer (Moonshine tiny English by default; Whisper tiny
   multilingual is optional). The base wake pack and the command model are
   installed/replaced independently.
-- `lib/voice/use-local-wake-word.ts` captures 16 kHz PCM, feeds the KWS model,
+- `lib/voice/use-local-wake-word.ts` captures 16 kHz PCM, resamples with an
+  anti-aliasing FIR when the device delivers 44.1/48 kHz, feeds the KWS model,
   keeps a short rolling buffer, and verifies the enrolled speaker when enabled.
-  Frames are queued while a native KWS call is in flight, and a rejected speaker
-  check leaves the detector running so the next attempt is captured immediately.
-- `lib/voice/use-local-command-capture.ts` runs after a verified wake. Silero
-  VAD segments speech turns; each finalized turn is embedded and compared to the
-  enrolled profile; only matched turns go to the selected local ASR. Accepted
-  text accumulates and is submitted after a short silence (or a bounded
-  no-speech/max window). Non-matching turns are discarded before ASR.
+  Frames are queued while a native KWS call is in flight. On acceptance, the
+  post-keyword queue is handed to command capture; on rejection, the detector
+  stays live for an immediate retry. Repeated native failures surface and recover
+  instead of leaving a silently deaf detector.
+- `lib/voice/use-local-command-capture.ts` runs after a verified wake (or directly
+  in local no-wake mode). Silero VAD segments speech turns; each finalized turn is
+  embedded and compared to the enrolled profile; only matched turns go to the
+  selected local ASR. Accepted text accumulates and is submitted after a short
+  silence (or a bounded no-speech/max window). Non-matching turns are discarded
+  before ASR.
 - The OS recognizer is not used in the local command path. The agent server still
   receives text only.
 - Models are installed by explicit user action from
@@ -987,7 +999,20 @@ engine.
 `providers/conversation/use-local-wake-controller.ts` owns the detector-to-command
 handoff, speaker-rejection feedback, and the local command submission path. The
 main conversation state machine continues to own phases, submission, playback,
-and cleanup.
+and cleanup. On an accepted wake, audio captured while speaker verification and
+runtime warm-up were running is handed to command capture instead of discarded.
+
+### Voice confirmation
+
+`providers/conversation/use-conversation-confirmation.ts` owns the `confirming`
+state. `lib/voice/confirmation.ts` provides strict localized intent matching and
+the bounded readback policy. A final transcript is shown, optionally read back
+with the selected TTS engine, then confirmed by an exact final `yes`, a touch
+Send action, or edited text. Retry captures the command again without requiring
+the wake phrase; cancel returns to wake/no-wake listening. Ambiguous speech and
+timeouts never submit. The confirmation recognizer is never active while TTS is
+speaking and waits for an echo guard, so the app cannot confirm its own readback.
+The pending command is not persisted or written to the transcript.
 
 This is one of the densest parts of the architecture and would need careful parity in any rewrite.
 

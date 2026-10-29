@@ -1,23 +1,26 @@
 import { useTranslation } from 'react-i18next';
-import { ScrollView, StyleSheet, useWindowDimensions, View } from 'react-native';
+import { KeyboardAvoidingView, ScrollView, StyleSheet, useWindowDimensions, View } from 'react-native';
 import { Button, Text } from 'react-native-paper';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { ConversationConfirmation } from '@/components/chat/conversation-confirmation';
 import { ConversationWave } from '@/components/chat/conversation-wave';
 import { Fonts, getColors } from '@/constants/theme';
 import { useAppearance } from '@/providers/appearance-context';
-import type { ConversationInputPhase, ConversationPhase, ConversationReadbackPhase } from '@/providers/opencode-provider-types';
+import type { ConversationConfirmationState, ConversationInputPhase, ConversationPhase, ConversationReadbackPhase } from '@/providers/opencode-provider-types';
 
 const PHASE_LABEL_KEYS = {
   off: 'chat:overlay.phaseOff',
   armed: 'chat:overlay.phaseArmed',
   listening: 'chat:overlay.phaseListening',
+  confirming: 'chat:overlay.phaseConfirming',
   submitting: 'chat:overlay.phaseSubmitting',
   waiting: 'chat:overlay.phaseWaiting',
   speaking: 'chat:overlay.phaseSpeaking',
 } as const;
 
 export function ConversationOverlay({
+  confirmation,
   connectionStatus,
   feedback,
   inputPhase,
@@ -30,6 +33,7 @@ export function ConversationOverlay({
   sessionTitle,
   wakePhrase,
 }: {
+  confirmation?: ConversationConfirmationState;
   connectionStatus?: 'idle' | 'connecting' | 'connected' | 'error';
   feedback?: string;
   inputPhase: ConversationInputPhase;
@@ -57,7 +61,7 @@ export function ConversationOverlay({
   const waveHeight = Math.min(170, Math.max(56, (height - insetsTop - insets.bottom) / (fontScale > 1.3 ? 8 : 5)));
 
   return (
-    <View accessibilityViewIsModal testID="conversation-overlay" style={[styles.overlay, { backgroundColor: palette.background, paddingTop: insetsTop + 22, paddingBottom: Math.max(insets.bottom, 20), paddingLeft: Math.max(insets.left, 22), paddingRight: Math.max(insets.right, 22) }]}>
+    <KeyboardAvoidingView accessibilityViewIsModal behavior="padding" testID="conversation-overlay" style={[styles.overlay, { backgroundColor: palette.background, paddingTop: insetsTop + 22, paddingBottom: Math.max(insets.bottom, 20), paddingLeft: Math.max(insets.left, 22), paddingRight: Math.max(insets.right, 22) }]}>
       <ScrollView style={styles.scroll} contentContainerStyle={styles.content}>
         <View style={styles.header}>
           <Text variant="labelLarge" style={[styles.eyebrow, { color: palette.muted }]}>{t('chat:overlay.conversationMode')}</Text>
@@ -75,10 +79,14 @@ export function ConversationOverlay({
           {feedback ? <Text accessibilityLiveRegion="polite" variant="bodyMedium" style={[styles.hint, { color: palette.warning }]}>{feedback}</Text> : null}
         </View>
 
-        <View style={styles.snippet}>
-          <Text variant="labelMedium" style={[styles.eyebrow, { color: palette.muted }]}>{t(showWakePhrase ? 'chat:overlay.wakePhrase' : 'chat:overlay.lastHeard')}</Text>
-          <Text variant="bodyLarge" style={[styles.heard, { color: palette.text }]}>{showWakePhrase ? wakePhrase : latestUserText?.trim() || t('chat:overlay.startSpeaking')}</Text>
-        </View>
+        {confirmation?.active ? (
+          <ConversationConfirmation key={confirmation.text} confirmation={confirmation} palette={palette} />
+        ) : (
+          <View style={styles.snippet}>
+            <Text variant="labelMedium" style={[styles.eyebrow, { color: palette.muted }]}>{t(showWakePhrase ? 'chat:overlay.wakePhrase' : 'chat:overlay.lastHeard')}</Text>
+            <Text variant="bodyLarge" style={[styles.heard, { color: palette.text }]}>{showWakePhrase ? wakePhrase : latestUserText?.trim() || t('chat:overlay.startSpeaking')}</Text>
+          </View>
+        )}
       </ScrollView>
 
       <View style={styles.footer}>
@@ -87,7 +95,7 @@ export function ConversationOverlay({
           {t('chat:overlay.endConversation')}
         </Button>
       </View>
-    </View>
+    </KeyboardAvoidingView>
   );
 }
 

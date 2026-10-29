@@ -31,7 +31,8 @@ export function useConversationReadbackInput({
   }, [abortSpeechInput, stopLocalWakeRef]);
 
   const resumeInput = useCallback(() => {
-    if (conversationInputPhaseRef.current === 'off') {
+    const phase = conversationInputPhaseRef.current;
+    if (phase === 'off' || phase === 'confirming' || phase === 'submitting') {
       return;
     }
     void startConversationListening(conversationSessionId).catch(() => undefined);

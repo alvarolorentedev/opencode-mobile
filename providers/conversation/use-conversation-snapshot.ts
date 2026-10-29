@@ -4,6 +4,7 @@ import type { SessionMessageRecord } from '@/lib/opencode/format';
 import type { VoiceRecoveryAction } from '@/lib/voice/speech-errors';
 import { getConversationStatusLabel, getTranscript, getTranscriptActivityLabelForEntries } from '@/providers/opencode-provider-selectors';
 import type {
+  ConversationConfirmationState,
   ConversationInputPhase,
   ConversationPhase,
   ConversationReadbackPhase,
@@ -14,6 +15,7 @@ import type {
 // readback are independent; `phase` remains the combined label consumed by
 // surfaces that have not moved to the split fields yet.
 export function useConversationSnapshot({
+  conversationConfirmation,
   conversationFeedback,
   conversationFeedbackAction,
   conversationLatestHeardText,
@@ -23,7 +25,9 @@ export function useConversationSnapshot({
   conversationSessionId,
   messagesBySession,
   wakePhrase,
+  wakePhraseRequired,
 }: {
+  conversationConfirmation?: ConversationConfirmationState;
   conversationFeedback?: string;
   conversationFeedbackAction?: VoiceRecoveryAction;
   conversationLatestHeardText?: string;
@@ -33,6 +37,7 @@ export function useConversationSnapshot({
   conversationSessionId?: string;
   messagesBySession: Record<string, SessionMessageRecord[]>;
   wakePhrase: string;
+  wakePhraseRequired: boolean;
 }): ConversationState {
   const conversationMessages = useMemo(
     () => (conversationSessionId ? messagesBySession[conversationSessionId] || [] : []),
@@ -41,13 +46,20 @@ export function useConversationSnapshot({
   const conversationTranscript = useMemo(() => getTranscript(conversationMessages), [conversationMessages]);
   const conversationCurrentActivityLabel = useMemo(() => getTranscriptActivityLabelForEntries(conversationTranscript), [conversationTranscript]);
   const conversationActive = conversationInputPhase !== 'off';
-  const conversationPhase: ConversationPhase = conversationInputPhase === 'listening' || conversationInputPhase === 'submitting'
-    ? conversationInputPhase
+  // Without a wake phrase, `listening` is the idle input state. Readback must
+  // still surface as waiting/speaking instead of looking like an active turn.
+  const phaseInput = !wakePhraseRequired && conversationInputPhase === 'listening' && conversationReadbackPhase !== 'idle'
+    ? 'armed'
+    : conversationInputPhase;
+  const conversationPhase: ConversationPhase = phaseInput === 'listening'
+    || phaseInput === 'submitting'
+    || phaseInput === 'confirming'
+    ? phaseInput
     : conversationReadbackPhase === 'speaking'
       ? 'speaking'
       : conversationReadbackPhase === 'waiting'
         ? 'waiting'
-        : conversationInputPhase;
+        : phaseInput;
   const conversationStatusLabel = useMemo(
     () => getConversationStatusLabel(conversationPhase, conversationCurrentActivityLabel),
     [conversationCurrentActivityLabel, conversationPhase],
@@ -56,6 +68,7 @@ export function useConversationSnapshot({
   return useMemo<ConversationState>(
     () => ({
       active: conversationActive,
+      confirmation: conversationConfirmation,
       feedback: conversationFeedback,
       feedbackAction: conversationFeedbackAction,
       inputPhase: conversationInputPhase,
@@ -67,9 +80,11 @@ export function useConversationSnapshot({
       sessionId: conversationSessionId,
       statusLabel: conversationStatusLabel,
       wakePhrase,
+      wakePhraseRequired,
     }),
     [
       conversationActive,
+      conversationConfirmation,
       conversationFeedback,
       conversationFeedbackAction,
       conversationInputPhase,
@@ -80,6 +95,7 @@ export function useConversationSnapshot({
       conversationSessionId,
       conversationStatusLabel,
       wakePhrase,
+      wakePhraseRequired,
     ],
   );
 }

@@ -9,6 +9,7 @@ import {
   type ThemeMode,
 } from '@/constants/appearance';
 import { defaultAutoModelPreferences, type AutoModelPreferences } from '@/lib/auto-model/preferences';
+import type { TimelineDetail } from '@/lib/opencode/transcript';
 import { DEFAULT_WAKE_PHRASE } from '@/lib/voice/wake-phrase';
 import { DEFAULT_LOCAL_WAKE_PHRASE, DEFAULT_LOCAL_COMMAND_MODEL, type LocalCommandModelId, type LocalWakePhraseId } from '@/lib/voice/local-wake-word/types';
 export type ResponseScope = 'brief' | 'balanced' | 'detailed';
@@ -34,6 +35,10 @@ export type ChatPreferences = {
   accentColor: AccentColor;
   promptDelivery: 'steer' | 'queue';
   transcriptFontSize: number;
+  // How much non-bubble activity appears in the feed. `messages` keeps only
+  // message bubbles, `reasoning` adds reasoning rows, and `everything` keeps
+  // the full detailed timeline.
+  timelineDetail: TimelineDetail;
   // Flat transcript renders messages full-width without bubble chrome so more
   // of the conversation is visible at once. Defaults to the bubble layout.
   flatTranscript: boolean;
@@ -55,10 +60,15 @@ export type ChatPreferences = {
   autoApprove: boolean;
   autoPlayAssistantReplies: boolean;
   preferOnDeviceRecognition: boolean;
+  // Conversation-mode voice commands are reviewed before submission by default.
+  confirmVoiceCommands: boolean;
   readInterimAssistantReplies: boolean;
   // Conversation mode only starts a turn after hearing this phrase. Stored
   // globally because it is a voice-input preference, not connection state.
   conversationWakePhrase: string;
+  // When false, conversation mode listens immediately and re-arms after every
+  // reply. Confirmation remains the submission gate.
+  wakePhraseRequired: boolean;
   // `phrase` uses the OS recognizer text gate. `local` runs the opt-in
   // sherpa-onnx wake-word and speaker-verification path.
   voiceWakeMode: 'phrase' | 'local';
@@ -89,6 +99,7 @@ export const defaultChatPreferences: ChatPreferences = {
   accentColor: DEFAULT_ACCENT_COLOR,
   promptDelivery: 'steer',
   transcriptFontSize: DEFAULT_TRANSCRIPT_FONT_SIZE,
+  timelineDetail: 'everything',
   flatTranscript: false,
   slimInterface: false,
   enabledModelIds: [],
@@ -99,8 +110,10 @@ export const defaultChatPreferences: ChatPreferences = {
   autoApprove: false,
   autoPlayAssistantReplies: false,
   preferOnDeviceRecognition: true,
+  confirmVoiceCommands: true,
   readInterimAssistantReplies: false,
   conversationWakePhrase: DEFAULT_WAKE_PHRASE,
+  wakePhraseRequired: true,
   voiceWakeMode: 'phrase',
   localWakePhrase: DEFAULT_LOCAL_WAKE_PHRASE,
   localCommandModel: DEFAULT_LOCAL_COMMAND_MODEL,

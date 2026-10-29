@@ -45,8 +45,8 @@
     },
     "keywords": {
       "appearance": "pantalla tema color oscuro claro compacto densidad",
-      "responses": "chat mensajes texto fuente tamaño respuestas estilo dirigir añadir cola burbujas",
-      "voice": "voz audio habla sonido micrófono entrada reproducción idioma frase activación",
+      "responses": "chat mensajes texto fuente tamaño respuestas estilo dirigir añadir cola burbujas cronología actividad razonamiento herramientas ediciones detalle",
+      "voice": "voz audio habla sonido micrófono entrada reproducción idioma frase activación confirm",
       "notifications": "notificaciones alertas batería widgets",
       "language": "idioma traducción interfaz",
       "support": "ayuda comentarios soporte actualizaciones versión asistente configuración",
@@ -315,7 +315,8 @@
       "voiceProfile": "Perfil de voz",
       "enrollRequiresModels": "Instala primero los modelos y luego registra tu voz.",
       "installBase": "Instalar paquete base ({{size}})",
-      "installCommand": "Instalar modelo de comandos ({{size}})"
+      "installCommand": "Instalar modelo de comandos ({{size}})",
+      "enrollmentNoisy": "La grabación contenía voces diferentes o demasiado ruido de fondo. Inténtalo de nuevo en una habitación silenciosa."
     },
     "speechLocale": {
       "label": "Idioma",
@@ -472,6 +473,15 @@
         "error": "No se pudo realizar la prueba. Comprueba el acceso al micrófono y vuelve a intentarlo.",
         "busy": "Detén el modo conversación para hacer la prueba."
       }
+    },
+    "confirmCommands": {
+      "title": "Confirmar comandos de voz antes de enviar",
+      "description": "Revisa o confirma el texto reconocido antes de enviarlo a OpenCode."
+    },
+    "requireWakePhrase": {
+      "title": "Requerir frase de activación",
+      "description": "Si se desactiva, el modo conversación escucha de inmediato y se reactiva tras cada respuesta. La confirmación sigue protegiendo los comandos.",
+      "systemWarning": "Con el reconocimiento del sistema, la voz ambiente puede enviarse a tu proveedor de voz. Usa la entrada en el dispositivo para escuchar de forma privada."
     }
   },
   "diagnostics": {
@@ -547,6 +557,22 @@
     },
     "chatTextSize": "Tamaño del texto del chat",
     "chatTextSizeDescription": "Ajusta el tamaño del texto de los mensajes. Un texto más pequeño permite ver más conversación a la vez.",
+    "timelineDetail": {
+      "label": "Detalle de la cronología",
+      "description": "Elige cuánta actividad aparece en el chat: mensajes, razonamiento, herramientas y ediciones.",
+      "messages": {
+        "label": "Solo mensajes",
+        "description": "Muestra solo burbujas de mensajes y adjuntos."
+      },
+      "reasoning": {
+        "label": "Razonamiento",
+        "description": "Muestra los mensajes y el razonamiento del asistente."
+      },
+      "everything": {
+        "label": "Todo",
+        "description": "Muestra la cronología completa, incluidos razonamiento, herramientas, ediciones y otra actividad."
+      }
+    },
     "flatThread": {
       "title": "Conversación plana",
       "description": "Muestra los mensajes a todo el ancho sin burbujas para que quepa más conversación en pantalla."

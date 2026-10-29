@@ -69,6 +69,8 @@ export function getConversationStatusLabel(conversationPhase: ConversationPhase,
       return 'Waiting for phrase';
     case 'listening':
       return 'Listening';
+    case 'confirming':
+      return 'Confirm command';
     case 'submitting':
       return 'Sending';
     case 'waiting':

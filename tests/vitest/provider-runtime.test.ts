@@ -458,6 +458,7 @@ const conversationImports = {
   '@/lib/opencode/transcript': { isTranscriptDisplayMessage: (entry: any) => Boolean(entry.text) },
   '@/lib/voice/speech-output': { stopSpeaking: async () => {}, speakText: async (options: any) => { speechCallbacks = options; options.onStart(); return true; } },
   '@/lib/voice/speech-config': speechConfig,
+  '@/lib/voice/confirmation': await loadTs('lib/voice/confirmation.ts', {}, voiceRuntime.globals),
   '@/lib/voice/use-speech-input': { useSpeechInput: (options: any) => { recognitionOptions = options; return { abort: abortSpeech, start: startSpeech, isListening: listening, isStarting: false, level: 0 }; } },
   '@/lib/voice/local-wake-word/types': await loadTs('lib/voice/local-wake-word/types.ts', {}, voiceRuntime.globals),
   '@/lib/voice/use-local-wake-word': {
@@ -475,7 +476,7 @@ const conversationImports = {
   },
   '@/lib/voice/use-local-command-capture': {
     useLocalCommandCapture: (options: any) => {
-      localCommandOptions = options;
+      if (!options.finishOnFirstTurn) localCommandOptions = options;
       return {
         start: async () => { localCommandStarts += 1; return true; },
         stop: async () => {},
@@ -487,15 +488,19 @@ const conversationImports = {
   '@/lib/voice/working-sound': { stopWorkingSoundAsync: async () => {} },
   '@/providers/conversation/use-conversation-snapshot': {
     useConversationSnapshot: (input: any) => {
-      const phase = input.conversationInputPhase === 'listening' || input.conversationInputPhase === 'submitting'
-        ? input.conversationInputPhase
+      const phaseInput = !input.wakePhraseRequired && input.conversationInputPhase === 'listening' && input.conversationReadbackPhase !== 'idle'
+        ? 'armed'
+        : input.conversationInputPhase;
+      const phase = phaseInput === 'listening' || phaseInput === 'submitting' || phaseInput === 'confirming'
+        ? phaseInput
         : input.conversationReadbackPhase === 'speaking'
           ? 'speaking'
           : input.conversationReadbackPhase === 'waiting'
             ? 'waiting'
-            : input.conversationInputPhase;
+            : phaseInput;
       return {
         active: input.conversationInputPhase !== 'off',
+        confirmation: input.conversationConfirmation,
         feedback: input.conversationFeedback,
         feedbackAction: input.conversationFeedbackAction,
         inputPhase: input.conversationInputPhase,
@@ -507,6 +512,7 @@ const conversationImports = {
         sessionId: input.conversationSessionId,
         statusLabel: phase === 'armed' ? 'Waiting for phrase' : undefined,
         wakePhrase: input.wakePhrase,
+        wakePhraseRequired: input.wakePhraseRequired,
       };
     },
   },
@@ -541,10 +547,46 @@ const conversationPlayback = await loadTs('providers/conversation/use-conversati
 const conversationReadbackInput = await loadTs('providers/conversation/use-conversation-readback-input.ts', { react: voiceRuntime.react }, voiceRuntime.globals);
 const conversationSubmit = await loadTs('providers/conversation/use-conversation-submit.ts', { react: voiceRuntime.react, '@/providers/conversation/feedback': conversationFeedback }, voiceRuntime.globals);
 const conversationConnection = await loadTs('providers/conversation/use-conversation-connection.ts', { ...conversationImports, '@/providers/conversation/feedback': conversationFeedback }, voiceRuntime.globals);
+const assistantEntries = await loadTs('providers/conversation/assistant-entries.ts', {
+  '@/lib/opencode/format': conversationImports['@/lib/opencode/format'],
+  '@/lib/opencode/transcript': conversationImports['@/lib/opencode/transcript'],
+}, voiceRuntime.globals);
+const useAssistantEntries = await loadTs('providers/conversation/use-conversation-assistant-entries.ts', {
+  react: voiceRuntime.react,
+  '@/providers/conversation/assistant-entries': assistantEntries,
+}, voiceRuntime.globals);
+const confirmationTypes = await loadTs('providers/conversation/confirmation-types.ts', {}, voiceRuntime.globals);
+const useLatest = await loadTs('providers/conversation/use-latest.ts', { react: voiceRuntime.react }, voiceRuntime.globals);
+const confirmationActions = await loadTs('providers/conversation/use-conversation-confirmation-actions.ts', {
+  react: voiceRuntime.react,
+  '@/providers/conversation/feedback': conversationFeedback,
+}, voiceRuntime.globals);
+const confirmation = await loadTs('providers/conversation/use-conversation-confirmation.ts', {
+  react: voiceRuntime.react,
+  '@/lib/i18n': { i18n: {
+    getFixedT: () => (key: string, args?: { command?: string }) => args?.command ? `${key}:${args.command}` : key,
+    t: (key: string, args?: { command?: string }) => args?.command ? `${key}:${args.command}` : key,
+  } },
+  '@/lib/voice/confirmation': conversationImports['@/lib/voice/confirmation'],
+  '@/lib/voice/speech-config': speechConfig,
+  '@/lib/voice/speech-output': conversationImports['@/lib/voice/speech-output'],
+  '@/providers/conversation/confirmation-types': confirmationTypes,
+  '@/providers/conversation/feedback': conversationFeedback,
+  '@/providers/conversation/use-latest': useLatest,
+}, voiceRuntime.globals);
+const sessionControl = await loadTs('providers/conversation/use-conversation-session-control.ts', {
+  react: voiceRuntime.react,
+  '@/lib/voice/working-sound': conversationImports['@/lib/voice/working-sound'],
+  '@/providers/conversation/feedback': conversationFeedback,
+}, voiceRuntime.globals);
 const conversation = await loadTs('providers/use-conversation-state.ts', {
   ...conversationImports,
   '@/providers/conversation/feedback': conversationFeedback,
   '@/providers/conversation/use-conversation-arming': conversationArming,
+  '@/providers/conversation/use-conversation-assistant-entries': useAssistantEntries,
+  '@/providers/conversation/use-conversation-confirmation': confirmation,
+  '@/providers/conversation/use-conversation-confirmation-actions': confirmationActions,
+  '@/providers/conversation/use-conversation-session-control': sessionControl,
   '@/providers/conversation/use-conversation-listening': conversationListening,
   '@/providers/conversation/use-conversation-playback': conversationPlayback,
   '@/providers/conversation/use-conversation-readback-input': conversationReadbackInput,
@@ -555,7 +597,12 @@ const conversation = await loadTs('providers/use-conversation-state.ts', {
 }, voiceRuntime.globals);
 const appearance = await loadTs('constants/appearance.ts');
 const autoModelPreferences = await loadTs('lib/auto-model/preferences.ts');
-const chatPreferences = (await loadTs('providers/opencode-preferences.ts', { '@/constants/appearance': appearance, '@/lib/auto-model/preferences': autoModelPreferences, '@/lib/voice/wake-phrase': { DEFAULT_WAKE_PHRASE: 'hey code' }, '@/lib/voice/local-wake-word/types': { DEFAULT_LOCAL_WAKE_PHRASE: 'hey-code', DEFAULT_LOCAL_COMMAND_MODEL: 'moonshine-tiny-en' } })).defaultChatPreferences;
+const chatPreferences = {
+  ...(await loadTs('providers/opencode-preferences.ts', { '@/constants/appearance': appearance, '@/lib/auto-model/preferences': autoModelPreferences, '@/lib/voice/wake-phrase': { DEFAULT_WAKE_PHRASE: 'hey code' }, '@/lib/voice/local-wake-word/types': { DEFAULT_LOCAL_WAKE_PHRASE: 'hey-code', DEFAULT_LOCAL_COMMAND_MODEL: 'moonshine-tiny-en' } })).defaultChatPreferences,
+  // The legacy flow assertions cover direct submission; confirmation has its
+  // own block below.
+  confirmVoiceCommands: false,
+};
 voiceRuntime.mount(conversation.useConversationState, {
   connection: { status: 'connected', message: 'ready' }, chatPreferences, currentSessionId: 's', setCurrentSessionId: () => {},
   sessionStatuses: { s: { type: 'busy' } }, messagesBySession: {}, pendingPermissionsBySession: {}, pendingQuestionsBySession: {},
@@ -783,6 +830,80 @@ voiceRuntime.update({ chatPreferences, messagesBySession: {}, sessionStatuses: {
 voiceRuntime.update({ pendingQuestionsBySession: { s: [{ id: 'question' }] } });
 await voiceRuntime.value.toggleConversationMode(); await voiceRuntime.settle(); assert.equal(phase(), 'off');
 assert.match(voiceRuntime.value.conversation.feedback, /Answer the current request/);
+// A captured system command is gated by confirmation when the preference is
+// enabled. TTS completion + the echo guard is the only path to the confirmation
+// recognizer, and confirmation speech never reaches OpenCode.
+await stopConversation();
+voiceRuntime.update({ chatPreferences: { ...chatPreferences, confirmVoiceCommands: true }, pendingQuestionsBySession: {} });
+await startConversation();
+recognitionOptions.onResult('hey code refactor the login component', true);
+voiceRuntime.fire(2200); await voiceRuntime.settle();
+assert.equal(phase(), 'confirming');
+assert.equal(voiceRuntime.value.conversation.confirmation?.phase, 'prompting');
+assert.equal(sends, 10, 'an unconfirmed command is not sent');
+voiceRuntime.fire(120); await voiceRuntime.settle();
+assert.match(speechCallbacks.text, /refactor the login component/);
+speechCallbacks.onDone(); await voiceRuntime.settle();
+voiceRuntime.fire(300); await voiceRuntime.settle();
+assert.equal(voiceRuntime.value.conversation.confirmation?.phase, 'listening');
+recognitionOptions.onResult('yes', true);
+await voiceRuntime.settle();
+assert.equal(lastPrompt, 'refactor the login component');
+assert.equal(sends, 11, 'the confirmed command is sent once');
+recognitionOptions.onResult('yes', true);
+await voiceRuntime.settle();
+assert.equal(sends, 11, 'confirmation speech cannot become a second prompt');
+await stopConversation();
+// No-wake mode still requires confirmation when it is enabled.
+voiceRuntime.update({
+  chatPreferences: { ...chatPreferences, wakePhraseRequired: false, confirmVoiceCommands: true, voiceWakeMode: 'phrase' },
+});
+await voiceRuntime.value.toggleConversationMode(); await voiceRuntime.settle();
+assert.equal(phase(), 'listening');
+recognitionOptions.onResult('run tests', true);
+voiceRuntime.fire(2200); await voiceRuntime.settle();
+assert.equal(phase(), 'confirming');
+assert.equal(sends, 11, 'no-wake ambient command is not sent before confirmation');
+voiceRuntime.value.conversation.confirmation?.actions.cancel();
+await voiceRuntime.settle();
+assert.equal(phase(), 'listening');
+assert.equal(sends, 11);
+await stopConversation();
+// No-wake system mode treats every final transcript as a command.
+voiceRuntime.update({
+  chatPreferences: { ...chatPreferences, wakePhraseRequired: false, confirmVoiceCommands: false, voiceWakeMode: 'phrase' },
+});
+await voiceRuntime.value.toggleConversationMode(); await voiceRuntime.settle();
+assert.equal(phase(), 'listening', 'no-wake system starts listening immediately');
+recognitionOptions.onResult('open settings', true);
+voiceRuntime.fire(2200); await voiceRuntime.settle();
+assert.equal(lastPrompt, 'open settings');
+assert.equal(sends, 12);
+voiceRuntime.update({
+  messagesBySession: { s: [{ id: 'no-wake-reply', role: 'assistant', text: 'done', details: [] }] },
+  sessionStatuses: { s: { type: 'idle' } },
+});
+await voiceRuntime.settle(); voiceRuntime.fire(120); await voiceRuntime.settle();
+assert.equal(phase(), 'speaking', 'no-wake listening still yields to reply readback');
+assert.equal(speechCallbacks.text, 'done');
+speechCallbacks.onDone(); await voiceRuntime.settle();
+await stopConversation();
+// No-wake local mode skips KWS and starts command capture directly.
+const commandStartsBefore = localCommandStarts;
+const wakeStartsBefore = localWakeStarts;
+voiceRuntime.update({
+  chatPreferences: { ...chatPreferences, wakePhraseRequired: false, confirmVoiceCommands: false, voiceWakeMode: 'local' },
+});
+await voiceRuntime.value.toggleConversationMode(); await voiceRuntime.settle();
+assert.equal(phase(), 'listening');
+assert.equal(localCommandStarts, commandStartsBefore + 1);
+assert.equal(localWakeStarts, wakeStartsBefore, 'no-wake local does not start the KWS detector');
+localCommandOptions.onCommand('open settings');
+await voiceRuntime.settle();
+assert.equal(lastPrompt, 'open settings');
+assert.equal(sends, 13);
+await stopConversation();
+voiceRuntime.update({ chatPreferences });
 voiceRuntime.unmount(); assert.equal(voiceRuntime.countTimers(2200), 0); assert.equal(voiceRuntime.countTimers(6000), 0); assert.ok(aborts > 0);
 
 // Profile orchestration stays provider-owned and serializes metadata/credentials.

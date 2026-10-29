@@ -23,9 +23,17 @@ export function useLocalWakeController({
   setConversationFeedbackAction,
   setConversationLatestHeardText,
   setConversationPhase,
+  startLocalCommandRef,
+  startLocalConfirmationRef,
   startLocalWakeRef,
+  stopLocalCommandRef,
+  stopLocalConfirmationRef,
   stopLocalWakeRef,
   submitLocalCommand,
+  onLocalConfirmation,
+  onLocalConfirmationEnd,
+  onLocalConfirmationError,
+  wakePhraseRequired,
 }: {
   commandModel: LocalCommandModelId;
   commandLanguage?: string;
@@ -38,12 +46,22 @@ export function useLocalWakeController({
   setConversationFeedbackAction: Dispatch<SetStateAction<VoiceRecoveryAction>>;
   setConversationLatestHeardText: Dispatch<SetStateAction<string | undefined>>;
   setConversationPhase: Dispatch<SetStateAction<ConversationInputPhase>>;
+  startLocalCommandRef: { current: (samples?: Float32Array) => Promise<boolean> };
+  startLocalConfirmationRef: { current: () => Promise<boolean> };
   startLocalWakeRef: { current: () => Promise<boolean> };
+  stopLocalCommandRef: { current: () => Promise<void> };
+  stopLocalConfirmationRef: { current: () => Promise<void> };
   stopLocalWakeRef: { current: () => Promise<void> };
   submitLocalCommand: (text: string) => void;
+  onLocalConfirmation: (text: string) => void;
+  onLocalConfirmationEnd: () => void;
+  onLocalConfirmationError: (message: string) => void;
+  wakePhraseRequired: boolean;
 }) {
-  const startCommandRef = useRef<() => Promise<boolean>>(async () => false);
+  const startCommandRef = useRef<(samples?: Float32Array) => Promise<boolean>>(async () => false);
   const stopCommandRef = useRef<() => Promise<void>>(async () => undefined);
+  const startConfirmationRef = useRef<() => Promise<boolean>>(async () => false);
+  const stopConfirmationRef = useRef<() => Promise<void>>(async () => undefined);
 
   const rearmWake = useCallback((delayMs = 350) => {
     setTimeout(() => {
@@ -52,6 +70,14 @@ export function useLocalWakeController({
       }
     }, delayMs);
   }, [conversationPhaseRef, localWakeModeActiveRef, startLocalWakeRef]);
+
+  const rearmCommand = useCallback((delayMs = 350) => {
+    setTimeout(() => {
+      if (localWakeModeActiveRef.current && conversationPhaseRef.current === 'listening') {
+        void startCommandRef.current();
+      }
+    }, delayMs);
+  }, [conversationPhaseRef, localWakeModeActiveRef]);
 
   const command = useLocalCommandCapture({
     commandModel,
@@ -62,6 +88,14 @@ export function useLocalWakeController({
         return;
       }
       applyConversationFeedback(setConversationFeedback, setConversationFeedbackAction, message);
+      if (!wakePhraseRequired) {
+        conversationPhaseRef.current = 'listening';
+        setConversationPhase('listening');
+        setConversationLatestHeardText(undefined);
+        void stopCommandRef.current().catch(() => undefined);
+        rearmCommand(500);
+        return;
+      }
       void stopCommandRef.current().catch(() => undefined);
       conversationPhaseRef.current = 'armed';
       setConversationPhase('armed');
@@ -77,6 +111,13 @@ export function useLocalWakeController({
         setConversationFeedbackAction,
         'I did not catch a command in your voice. Try again.',
       );
+      if (!wakePhraseRequired) {
+        conversationPhaseRef.current = 'listening';
+        setConversationPhase('listening');
+        setConversationLatestHeardText(undefined);
+        rearmCommand(300);
+        return;
+      }
       conversationPhaseRef.current = 'armed';
       setConversationPhase('armed');
       setConversationLatestHeardText(undefined);
@@ -92,13 +133,51 @@ export function useLocalWakeController({
     verifySpeaker: localSpeakerVerification,
   });
 
+  // Confirmation is a short, single-turn capture. The wake phrase and the
+  // command turn were already speaker-checked, so a sub-second "yes" is not
+  // rejected again for having too little embedding audio.
+  const confirmation = useLocalCommandCapture({
+    commandModel,
+    language: commandLanguage,
+    onCommand: onLocalConfirmation,
+    onError: onLocalConfirmationError,
+    onNoCommand: onLocalConfirmationEnd,
+    onPartialCommand: () => undefined,
+    phrase: localWakePhrase,
+    speakerThreshold: localSpeakerThreshold,
+    verifySpeaker: false,
+    endSilenceMs: 700,
+    finishOnFirstTurn: true,
+    maxDurationMs: 6000,
+    minTurnSamples: Math.round(0.2 * 16000),
+    noSpeechMs: 4000,
+  });
+
   useLayoutEffect(() => {
     startCommandRef.current = command.start;
     stopCommandRef.current = command.stop;
-  }, [command.start, command.stop]);
+    startConfirmationRef.current = confirmation.start;
+    stopConfirmationRef.current = confirmation.stop;
+  }, [command.start, command.stop, confirmation.start, confirmation.stop]);
 
-  const handleWake = useCallback(async () => {
-    if (!localWakeModeActiveRef.current || conversationPhaseRef.current !== 'armed') {
+  useLayoutEffect(() => {
+    startLocalCommandRef.current = command.start;
+    stopLocalCommandRef.current = command.stop;
+    startLocalConfirmationRef.current = confirmation.start;
+    stopLocalConfirmationRef.current = confirmation.stop;
+  }, [
+    command.start,
+    command.stop,
+    confirmation.start,
+    confirmation.stop,
+    startLocalCommandRef,
+    startLocalConfirmationRef,
+    stopLocalCommandRef,
+    stopLocalConfirmationRef,
+  ]);
+
+  const handleWake = useCallback(async (initialSamples?: Float32Array) => {
+    if (!wakePhraseRequired || !localWakeModeActiveRef.current || conversationPhaseRef.current !== 'armed') {
       return;
     }
     playWakePhraseCue();
@@ -106,7 +185,7 @@ export function useLocalWakeController({
     conversationPhaseRef.current = 'listening';
     setConversationPhase('listening');
     setConversationLatestHeardText(undefined);
-    const started = await startCommandRef.current();
+    const started = await startCommandRef.current(initialSamples);
     if (!started) {
       conversationPhaseRef.current = 'armed';
       setConversationPhase('armed');
@@ -118,7 +197,7 @@ export function useLocalWakeController({
       void stopCommandRef.current().catch(() => undefined);
       rearmWake(300);
     }
-  }, [conversationPhaseRef, localWakeModeActiveRef, rearmWake, setConversationFeedback, setConversationFeedbackAction, setConversationLatestHeardText, setConversationPhase]);
+  }, [conversationPhaseRef, localWakeModeActiveRef, rearmWake, setConversationFeedback, setConversationFeedbackAction, setConversationLatestHeardText, setConversationPhase, wakePhraseRequired]);
 
   const localWake = useLocalWakeWord({
     commandModel,
@@ -130,6 +209,7 @@ export function useLocalWakeController({
       applyConversationFeedback(setConversationFeedback, setConversationFeedbackAction, message);
       if (conversationPhaseRef.current === 'listening') {
         void stopCommandRef.current().catch(() => undefined);
+        void stopConfirmationRef.current().catch(() => undefined);
         conversationPhaseRef.current = 'armed';
         setConversationPhase('armed');
         setConversationLatestHeardText(undefined);
@@ -154,7 +234,7 @@ export function useLocalWakeController({
       // capture was stopped elsewhere in the meantime.
       rearmWake(300);
     },
-    onWake: () => { void handleWake(); },
+    onWake: (samples) => { void handleWake(samples); },
     phrase: localWakePhrase,
     speakerThreshold: localSpeakerThreshold,
     verifySpeaker: localSpeakerVerification,
@@ -167,6 +247,7 @@ export function useLocalWakeController({
 
   const start = useCallback(async () => {
     await stopCommandRef.current().catch(() => undefined);
+    await stopConfirmationRef.current().catch(() => undefined);
     localWakeModeActiveRef.current = true;
     const started = await startWakeWord();
     if (!started) {
@@ -178,6 +259,7 @@ export function useLocalWakeController({
   const stop = useCallback(async () => {
     localWakeModeActiveRef.current = false;
     await stopCommandRef.current().catch(() => undefined);
+    await stopConfirmationRef.current().catch(() => undefined);
     await stopWakeWord().catch(() => undefined);
   }, [localWakeModeActiveRef, stopWakeWord]);
 

@@ -148,7 +148,10 @@
       "searching": "Recherche des fichiers du projet…",
       "empty": "Aucun résultat"
     },
-    "readingReply": "Lecture de la réponse à voix haute. L’écoute reprend à la fin."
+    "readingReply": "Lecture de la réponse à voix haute. L’écoute reprend à la fin.",
+    "confirming": "Confirmation",
+    "confirmHint": "Vérifiez la commande reconnue, puis envoyez, réessayez, modifiez ou annulez.",
+    "noWakeHint": "J’écoute votre commande. La confirmation protège ce qui est envoyé."
   },
   "newChat": {
     "title": "Nouveau chat",
@@ -215,7 +218,8 @@
     "startSpeaking": "Commencez à parler naturellement. Ce que vous dites au dernier tour apparaîtra ici.",
     "listeningHint": "Allez-y, je vous écoute.",
     "endConversation": "Terminer la conversation",
-    "steerHint": "Dites « {{phrase}} » à tout moment pour orienter."
+    "steerHint": "Dites « {{phrase}} » à tout moment pour orienter.",
+    "phaseConfirming": "Confirmer la commande"
   },
   "modelPicker": {
     "selectModel": "Sélectionner un modèle",
@@ -341,5 +345,24 @@
     "write": "Écrire",
     "thought": "Réflexion",
     "unknown": "Inconnu"
+  },
+  "confirmation": {
+    "title": "Confirmer la commande",
+    "readback": "J’ai compris : « {{command}} ». Est-ce correct ?",
+    "longReadback": "J’ai entendu une commande longue. Vérifiez le texte à l’écran, puis confirmez.",
+    "listening": "Dites oui, réessayer, modifier ou annuler.",
+    "prompting": "Lecture de la commande…",
+    "editHint": "Corrigez la commande, puis envoyez-la.",
+    "expired": "La confirmation a expiré. La commande n’a pas été envoyée.",
+    "send": "Envoyer",
+    "heard": "Entendu : {{text}}",
+    "ambiguous": "Je n’ai pas compris. Dites oui, réessayer, modifier ou annuler.",
+    "timeout": "Je n’ai pas entendu de confirmation. La commande n’a pas été envoyée.",
+    "unavailable": "Impossible de démarrer l’écoute de confirmation. Vérifiez la commande et appuyez sur Envoyer, Réessayer ou Annuler.",
+    "sessionChanged": "La conversation a changé. La commande n’a pas été envoyée.",
+    "ttsFallback": "La voix locale est indisponible. La voix du système est utilisée.",
+    "emptyEdit": "Saisissez une commande avant d’envoyer.",
+    "connectionLost": "OpenCode n’est pas connecté. La commande n’a pas été envoyée.",
+    "retryPrompt": "Je n’ai pas saisi la confirmation. Dites oui, réessayer, modifier ou annuler."
   }
 }

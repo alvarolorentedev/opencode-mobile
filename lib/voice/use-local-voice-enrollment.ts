@@ -2,10 +2,11 @@ import { requestRecordingPermissionsAsync, useAudioStream, type AudioStreamBuffe
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Platform } from 'react-native';
 
+import { i18n } from '@/lib/i18n';
 import { activateLocalWakeRecordingAsync, deactivateLocalWakeRecordingAsync } from '@/lib/voice/local-wake-word/audio-session';
-import { createResampler, int16ToFloat32 } from '@/lib/voice/local-wake-word/pcm';
+import { createResampler, int16ToFloat32, selectSpeechSegment } from '@/lib/voice/local-wake-word/pcm';
 import { computeLocalSpeakerEmbedding, ensureLocalSpeakerRuntime } from '@/lib/voice/local-wake-word/runtime';
-import { averageEmbeddings } from '@/lib/voice/local-wake-word/similarity';
+import { averageEmbeddings, cosineSimilarity } from '@/lib/voice/local-wake-word/similarity';
 import {
   clearLocalSpeakerProfile,
   loadLocalSpeakerProfile,
@@ -54,7 +55,7 @@ export function useLocalVoiceEnrollment() {
       return;
     }
     try {
-      const samples = int16ToFloat32(buffer.data);
+      const samples = int16ToFloat32(buffer.data, buffer.channels);
       if (buffer.sampleRate !== resamplerRateRef.current) {
         resamplerRef.current = createResampler(buffer.sampleRate, SAMPLE_RATE);
         resamplerRateRef.current = buffer.sampleRate;
@@ -116,13 +117,34 @@ export function useLocalVoiceEnrollment() {
         if (end - start < SAMPLE_RATE) {
           continue;
         }
-        const embedding = await computeLocalSpeakerEmbedding(samples.subarray(start, end));
+        const speech = selectSpeechSegment(
+          samples.subarray(start, end),
+          SAMPLE_RATE,
+          4,
+        );
+        if (speech.length < Math.round(0.5 * SAMPLE_RATE)) {
+          continue;
+        }
+        const embedding = await computeLocalSpeakerEmbedding(speech);
         if (!mountedRef.current || generation !== generationRef.current) return;
         if (embedding) {
           embeddings.push(embedding);
         }
       }
-      const embedding = embeddings.length > 1 ? averageEmbeddings(embeddings) : embeddings[0];
+      if (embeddings.length < 2) {
+        throw new Error('Speak for longer, with at least two clear sentences, then try again.');
+      }
+      // A single recording can contain a second voice or a noisy passage. If
+      // the per-chunk embeddings disagree, the profile would reject the real
+      // user later; ask for a clean retry instead.
+      for (let left = 0; left < embeddings.length; left++) {
+        for (let right = left + 1; right < embeddings.length; right++) {
+          if (cosineSimilarity(embeddings[left], embeddings[right]) < 0.35) {
+            throw new Error(i18n.t('settings:voice.localWake.enrollmentNoisy'));
+          }
+        }
+      }
+      const embedding = averageEmbeddings(embeddings);
       if (!embedding) {
         throw new Error('Could not build a voice profile from that sample.');
       }

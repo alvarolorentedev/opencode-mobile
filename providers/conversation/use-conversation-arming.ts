@@ -25,9 +25,11 @@ export function useConversationArming({
   setConversationPhase,
   setPendingConversationTurn,
   setQueuedConversationPrompt,
+  startLocalCommandRef,
   startLocalWakeRef,
   startSpeechInput,
   voiceWakeMode,
+  wakePhraseRequired,
   wakePhraseSessionRef,
 }: {
   abortSpeechInput: () => void;
@@ -46,9 +48,11 @@ export function useConversationArming({
   setConversationPhase: Dispatch<SetStateAction<ConversationInputPhase>>;
   setPendingConversationTurn: Dispatch<SetStateAction<string | undefined>>;
   setQueuedConversationPrompt: Dispatch<SetStateAction<string | undefined>>;
+  startLocalCommandRef: { current: () => Promise<boolean> };
   startLocalWakeRef: { current: () => Promise<boolean> };
   startSpeechInput: (options?: { continuous?: boolean }) => Promise<boolean>;
   voiceWakeMode: 'phrase' | 'local';
+  wakePhraseRequired: boolean;
   wakePhraseSessionRef: { current: ReturnType<typeof createWakePhraseSession> };
 }) {
   return useCallback(async (sessionId?: string, options?: { preserveSession?: boolean }) => {
@@ -81,15 +85,22 @@ export function useConversationArming({
 
     if (!preserve) {
       // Set the logical phase before starting so a result emitted immediately
-      // after the native start is routed through the phrase gate instead of
-      // being dropped as stale output.
-      conversationPhaseRef.current = 'armed';
-      setConversationPhase('armed');
+      // after the native start is routed correctly instead of being dropped as
+      // stale output. Without a wake phrase, every recognized utterance is a
+      // command and confirmation is the submission gate.
+      conversationPhaseRef.current = wakePhraseRequired ? 'armed' : 'listening';
+      setConversationPhase(wakePhraseRequired ? 'armed' : 'listening');
+      if (!wakePhraseRequired) {
+        wakePhraseSessionRef.current.reset();
+        wakePhraseSessionRef.current.markMatched();
+      }
       if (voiceWakeMode === 'local') {
         abortSpeechInput();
         localWakeModeActiveRef.current = true;
         onSensorChange('local');
-        const localStarted = await startLocalWakeRef.current();
+        const localStarted = wakePhraseRequired
+          ? await startLocalWakeRef.current()
+          : await startLocalCommandRef.current();
         if (localStarted) {
           return true;
         }
@@ -135,9 +146,11 @@ export function useConversationArming({
     setConversationPhase,
     setPendingConversationTurn,
     setQueuedConversationPrompt,
+    startLocalCommandRef,
     startLocalWakeRef,
     startSpeechInput,
     voiceWakeMode,
+    wakePhraseRequired,
     wakePhraseSessionRef,
   ]);
 }

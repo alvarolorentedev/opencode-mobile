@@ -76,8 +76,42 @@ describe('transcript rows', () => {
     expect(buildTranscriptRows([toolEntry('m1', 'edit', 'd1')])).toEqual([]);
   });
 
-  it('surfaces tools in the fixed verbose display', () => {
+  it('surfaces tools in the default everything detail', () => {
     expect(buildTranscriptRows([toolEntry('m1', 'bash', 'd1')])).toHaveLength(1);
+  });
+
+  it('renders only message bubbles in messages detail', () => {
+    const rows = buildTranscriptRows([
+      reasoningEntry('m1', 'r1'),
+      toolEntry('m2', 'bash', 'd1'),
+      message('m3', 'hi'),
+      patchEntry('m4', 'p1'),
+    ], 'messages');
+    expect(rows).toEqual([{ key: 'message:m3', type: 'message', entry: message('m3', 'hi') }]);
+  });
+
+  it('renders reasoning activity without tools or patches in reasoning detail', () => {
+    const rows = buildTranscriptRows([
+      reasoningEntry('m1', 'r1'),
+      toolEntry('m2', 'bash', 'd1'),
+      patchEntry('m3', 'p1'),
+      message('m4', 'hi'),
+      reasoningEntry('m5', 'r2'),
+    ], 'reasoning');
+    expect(rows.map((row) => row.type)).toEqual(['activity', 'message', 'activity']);
+    expect(group(rows[0]).items.map((item) => item.id)).toEqual(['r1']);
+    expect(group(rows[0])).toMatchObject({ callCount: 0, tools: [] });
+    expect(group(rows[2]).items.map((item) => item.id)).toEqual(['r2']);
+  });
+
+  it('keeps the full activity timeline in everything detail', () => {
+    const rows = buildTranscriptRows([
+      reasoningEntry('m1', 'r1'),
+      toolEntry('m2', 'bash', 'd1'),
+      patchEntry('m3', 'p1'),
+    ], 'everything');
+    expect(group(rows[0]).items.map((item) => item.id)).toEqual(['r1', 'd1', 'p1']);
+    expect(group(rows[0]).callCount).toBe(1);
   });
 
   it('groups contiguous reasoning', () => {

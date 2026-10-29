@@ -102,14 +102,20 @@ describe('persistence hydration and write-back', () => {
     assert.throws(() => parseConnectionSettings('{"username":"alice","connect":{}}'), /Invalid/);
     assert.deepEqual(JSON.parse(JSON.stringify(parseConnectionSettings('{"serverUrl":"http://test","password":"legacy","unknown":true}'))), { serverUrl: 'http://test', password: 'legacy' });
     const parsed = parseChatPreferences(JSON.stringify({ mode: 'build', enabledModelIds: null, recentModelIds: 42,
-      providerModelSelections: { p: false }, speechRate: 100, workingSoundVolume: -1, transcriptFontSize: 99,
+      providerModelSelections: { p: false }, speechRate: 100, workingSoundVolume: -1, transcriptFontSize: 99, timelineDetail: 'reasoning',
       modelVariantSelections: { 'openai/model': 'max', 'openai/other': null },
       reasoning: 'invalid', hideSubagentChats: 'yes', language: 'es', unknown: 'ignored' }));
-    assert.deepEqual(JSON.parse(JSON.stringify(parsed)), { mode: 'build', language: 'es', modelVariantSelections: { 'openai/model': 'max', 'openai/other': null }, transcriptFontSize: 24, speechRate: 1.5, workingSoundVolume: 0 });
+    assert.deepEqual(JSON.parse(JSON.stringify(parsed)), { mode: 'build', language: 'es', modelVariantSelections: { 'openai/model': 'max', 'openai/other': null }, transcriptFontSize: 24, speechRate: 1.5, workingSoundVolume: 0, timelineDetail: 'reasoning' });
+    assert.equal(parseChatPreferences(JSON.stringify({ timelineDetail: 'chatty' })).timelineDetail, undefined);
     assert.deepEqual(JSON.parse(JSON.stringify(parseChatPreferences(JSON.stringify({ themeMode: 'dark', accentColor: 'blue' })))), { themeMode: 'dark', accentColor: 'blue' });
     assert.deepEqual(JSON.parse(JSON.stringify(parseChatPreferences(JSON.stringify({ themeMode: 'sepia', accentColor: 'orange' })))), {});
     assert.equal(parseChatPreferences(JSON.stringify({ conversationWakePhrase: '  hey    bot ' })).conversationWakePhrase, 'hey bot');
     assert.equal(parseChatPreferences(JSON.stringify({ conversationWakePhrase: '   ' })).conversationWakePhrase, 'hey code');
+    assert.equal(parseChatPreferences(JSON.stringify({ mode: 'build' })).confirmVoiceCommands, undefined);
+    assert.equal(parseChatPreferences(JSON.stringify({ confirmVoiceCommands: false })).confirmVoiceCommands, false);
+    assert.equal(parseChatPreferences(JSON.stringify({ confirmVoiceCommands: 'yes' })).confirmVoiceCommands, undefined);
+    assert.equal(parseChatPreferences(JSON.stringify({ wakePhraseRequired: false })).wakePhraseRequired, false);
+    assert.equal(parseChatPreferences(JSON.stringify({ wakePhraseRequired: 'no' })).wakePhraseRequired, undefined);
     assert.deepEqual(
       JSON.parse(JSON.stringify(parseChatPreferences(JSON.stringify({ ttsEngine: 'local', localTtsPackId: 'piper-es', localTtsSpeakerId: 2.8 })))),
       { ttsEngine: 'local', localTtsPackId: 'piper-es', localTtsSpeakerId: 2 },

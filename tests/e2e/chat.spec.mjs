@@ -453,6 +453,38 @@ test('completed progress stays compact and activity patches keep their turn afte
   } finally { server.kill('SIGTERM'); }
 });
 
+test('timeline detail hides activity and restores it from the settings slider', async ({ page, request }) => {
+  await resetScenario(request, 'happy-path');
+  await page.setViewportSize({ width: 390, height: 844 });
+  await openReadyChat(page);
+  await sendPrompt(page, 'Review the timeline detail');
+  await expect(page.getByText(/Finished: Review the timeline detail/).first()).toBeVisible({ timeout: 20_000 });
+  const activity = page.getByTestId(/transcript-activity-/);
+  await expect(activity).toHaveCount(1);
+
+  await goToTab(page, 'Settings');
+  await page.getByTestId('settings-category-responses').click();
+  const slider = page.getByTestId('settings-timeline-detail');
+  await expect(slider).toHaveAttribute('aria-valuetext', 'Everything');
+  await slider.focus();
+  await slider.press('Home');
+  await expect(slider).toHaveAttribute('aria-valuetext', 'Messages only');
+  await expect.poll(async () => JSON.parse(await page.evaluate(() => localStorage.getItem('opencode-mobile.chat-preferences')))).toMatchObject({ timelineDetail: 'messages' });
+
+  await goToTab(page, 'Chat');
+  await expect(page.getByText(/Finished: Review the timeline detail/).first()).toBeVisible();
+  await expect(activity).toHaveCount(0);
+
+  await goToTab(page, 'Settings');
+  await page.getByTestId('settings-category-responses').click();
+  await expect(slider).toHaveAttribute('aria-valuetext', 'Messages only');
+  await slider.focus();
+  await slider.press('End');
+  await expect(slider).toHaveAttribute('aria-valuetext', 'Everything');
+  await goToTab(page, 'Chat');
+  await expect(activity).toHaveCount(1);
+});
+
 test('commands execute through the primary chat action', async ({ page, request }) => {
   await resetScenario(request, 'happy-path');
   await openReadyChat(page);

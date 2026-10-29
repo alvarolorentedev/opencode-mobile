@@ -45,8 +45,8 @@
     },
     "keywords": {
       "appearance": "affichage thème couleur sombre clair compact densité",
-      "responses": "chat messages texte police taille réponses style orienter ajouter file bulles",
-      "voice": "voix audio parole son microphone entrée lecture langue phrase activation",
+      "responses": "chat messages texte police taille réponses style orienter ajouter file bulles chronologie activité raisonnement outils modifications détail",
+      "voice": "voix audio parole son microphone entrée lecture langue phrase activation confirm",
       "notifications": "notifications alertes batterie widgets",
       "language": "langue traduction interface",
       "support": "aide commentaires assistance mises à jour version assistant configuration",
@@ -315,7 +315,8 @@
       "voiceProfile": "Profil vocal",
       "enrollRequiresModels": "Installez d’abord les modèles, puis enregistrez votre voix.",
       "installBase": "Installer le pack de base ({{size}})",
-      "installCommand": "Installer le modèle de commandes ({{size}})"
+      "installCommand": "Installer le modèle de commandes ({{size}})",
+      "enrollmentNoisy": "L’enregistrement contenait différentes voix ou trop de bruit de fond. Réessayez dans une pièce calme."
     },
     "speechLocale": {
       "label": "Langue",
@@ -472,6 +473,15 @@
         "error": "Le test a échoué. Vérifiez l’accès au microphone et réessayez.",
         "busy": "Arrêtez le mode conversation pour lancer le test."
       }
+    },
+    "confirmCommands": {
+      "title": "Confirmer les commandes vocales avant l’envoi",
+      "description": "Vérifiez ou confirmez la parole reconnue avant de l’envoyer à OpenCode."
+    },
+    "requireWakePhrase": {
+      "title": "Exiger la phrase d’activation",
+      "description": "Si désactivé, le mode conversation écoute immédiatement et réécoute après chaque réponse. La confirmation protège toujours les commandes.",
+      "systemWarning": "Avec la reconnaissance système, la voix ambiante peut être envoyée à votre fournisseur vocal. Utilisez l’entrée locale pour une écoute privée."
     }
   },
   "diagnostics": {
@@ -547,6 +557,22 @@
     },
     "chatTextSize": "Taille du texte des messages",
     "chatTextSizeDescription": "Ajustez la taille du texte des messages. Une taille plus petite permet d’afficher davantage de conversation à la fois.",
+    "timelineDetail": {
+      "label": "Détail de la chronologie",
+      "description": "Choisissez la quantité d’activité affichée dans le fil : messages, raisonnement, outils et modifications.",
+      "messages": {
+        "label": "Messages uniquement",
+        "description": "Afficher uniquement les bulles de messages et les pièces jointes."
+      },
+      "reasoning": {
+        "label": "Raisonnement",
+        "description": "Afficher les messages et le raisonnement de l’assistant."
+      },
+      "everything": {
+        "label": "Tout",
+        "description": "Afficher la chronologie complète, y compris le raisonnement, les outils, les modifications et les autres activités."
+      }
+    },
     "flatThread": {
       "title": "Conversation à plat",
       "description": "Affiche les messages sur toute la largeur sans bulles pour afficher davantage de conversation à l'écran."

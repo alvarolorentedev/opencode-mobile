@@ -10,6 +10,7 @@ import {
   localVoiceBaseDownloadSizeLabel,
   localVoiceDownloadSizeLabel,
   localVoiceKeywords,
+  missingLocalVoiceKeywordTokens,
 } from '@/lib/voice/local-wake-word/model-constants';
 import {
   createAudioRingBuffer,
@@ -17,6 +18,7 @@ import {
   float32ToInt16,
   int16ToFloat32,
   rmsLevel,
+  selectSpeechSegment,
 } from '@/lib/voice/local-wake-word/pcm';
 import {
   averageEmbeddings,
@@ -31,9 +33,19 @@ import {
 
 describe('local wake phrase configuration', () => {
   it('ships pretrained keyword tokens instead of requiring model training', () => {
-    expect(localVoiceKeywords('hey-code')).toBe('▁HE Y ▁CO DE\n');
-    expect(localVoiceKeywords('hey-opencode')).toBe('▁HE Y ▁O P EN CO DE\n');
+    expect(localVoiceKeywords('hey-code')).toBe('▁HE Y ▁CO DE :1 #0.25\n');
+    expect(localVoiceKeywords('hey-opencode')).toBe('▁HE Y ▁O P EN CO DE :1 #0.25\n');
     expect(Object.keys(LOCAL_WAKE_PHRASES)).toEqual(['hey-code', 'hey-opencode']);
+  });
+
+  it('validates keyword pieces against the installed tokens file', () => {
+    expect(missingLocalVoiceKeywordTokens('hey-code', [
+      '▁HE 1',
+      'Y 2',
+      '▁CO 3',
+      'DE 4',
+    ].join('\n'))).toEqual([]);
+    expect(missingLocalVoiceKeywordTokens('hey-code', '▁HE 1\nY 2\n')).toEqual(['▁CO', 'DE']);
   });
 
   it('normalizes unknown phrase ids', () => {
@@ -87,6 +99,36 @@ describe('local voice PCM helpers', () => {
     expect(output.length).toBeGreaterThan(1500);
     expect(output.length).toBeLessThan(1700);
     expect(output.every((value) => Number.isFinite(value))).toBe(true);
+  });
+
+  it('attenuates out-of-band frequencies instead of aliasing them into the wake band', () => {
+    const rate = 48000;
+    const resampler = createResampler(rate, 16000);
+    const input = new Float32Array(rate);
+    for (let index = 0; index < input.length; index++) {
+      input[index] = Math.sin((index / rate) * Math.PI * 2 * 10000);
+    }
+    const output = resampler.push(input);
+    const rms = Math.sqrt(output.reduce((sum, value) => sum + value * value, 0) / output.length);
+    // A 10 kHz tone would fold to 6 kHz without the low-pass stage.
+    expect(rms).toBeLessThan(0.02);
+  });
+
+  it('downmixes interleaved stereo samples', () => {
+    const pcm = new Int16Array([16384, -16384, 32767, 32767]);
+    expect(Array.from(int16ToFloat32(pcm.buffer, 2))).toEqual([0, 0.999969482421875]);
+  });
+
+  it('keeps the last speech-like region and trims long silence', () => {
+    const rate = 16000;
+    const samples = new Float32Array(rate * 3);
+    for (let index = rate; index < rate * 2; index++) {
+      samples[index] = Math.sin((index / rate) * Math.PI * 2 * 220) * 0.3;
+    }
+    const selected = selectSpeechSegment(samples, rate, 2);
+    expect(selected.length).toBeGreaterThan(rate * 0.8);
+    expect(selected.length).toBeLessThanOrEqual(rate * 2);
+    expect(rmsLevel(selected)).toBeGreaterThan(0.1);
   });
 
   it('keeps only the configured tail of the audio ring buffer', () => {

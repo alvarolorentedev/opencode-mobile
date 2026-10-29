@@ -45,8 +45,8 @@
     },
     "keywords": {
       "appearance": "display theme color colour dark light compact density",
-      "responses": "chat messages text font size replies response style steer append queue bubbles",
-      "voice": "voice audio speech sound microphone input playback language wake phrase",
+      "responses": "chat messages text font size replies response style steer append queue bubbles timeline activity reasoning tools edits detail",
+      "voice": "voice audio speech sound microphone input playback language wake phrase confirm",
       "notifications": "notifications alerts battery widgets",
       "language": "language locale translation interface",
       "support": "help feedback support updates version setup assistant",
@@ -315,7 +315,8 @@
       "voiceProfile": "Voice profile",
       "enrollRequiresModels": "Install models first, then enroll your voice.",
       "installBase": "Install base pack ({{size}})",
-      "installCommand": "Install command model ({{size}})"
+      "installCommand": "Install command model ({{size}})",
+      "enrollmentNoisy": "That recording contained different voices or too much background noise. Try again in a quiet room."
     },
     "speechLocale": {
       "label": "Language",
@@ -472,6 +473,15 @@
         "error": "Couldn’t run the test. Check microphone access and try again.",
         "busy": "Stop conversation mode to run the test."
       }
+    },
+    "confirmCommands": {
+      "title": "Confirm voice commands before sending",
+      "description": "Review or confirm recognized speech before it is sent to OpenCode."
+    },
+    "requireWakePhrase": {
+      "title": "Require wake phrase",
+      "description": "When off, conversation mode listens immediately and re-arms after every reply. Confirmation still protects commands.",
+      "systemWarning": "With system recognition, ambient speech may be sent to your speech vendor. Use on-device input for private listening."
     }
   },
   "diagnostics": {
@@ -547,6 +557,22 @@
     },
     "chatTextSize": "Chat text size",
     "chatTextSizeDescription": "Adjust message text size in chat. Smaller text shows more of the conversation at once.",
+    "timelineDetail": {
+      "label": "Timeline detail",
+      "description": "Choose how much activity appears in the feed: messages, reasoning, tools, and edits.",
+      "messages": {
+        "label": "Messages only",
+        "description": "Show only message bubbles and attachments."
+      },
+      "reasoning": {
+        "label": "Reasoning",
+        "description": "Show messages plus the assistant's reasoning."
+      },
+      "everything": {
+        "label": "Everything",
+        "description": "Show the full timeline, including reasoning, tools, edits, and other activity."
+      }
+    },
     "flatThread": {
       "title": "Flat conversation",
       "description": "Show messages full-width without bubbles so more of the conversation fits on screen."

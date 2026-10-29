@@ -80,6 +80,8 @@
     "input": "音声入力",
     "playback": "応答の読み上げ",
     "responses": "応答スタイル",
-    "autoPlay": "応答を自動で読み上げる"
+    "autoPlay": "応答を自動で読み上げる",
+    "confirm": "コマンドを確認",
+    "wakeRequired": "ウェイクフレーズ"
   }
 }

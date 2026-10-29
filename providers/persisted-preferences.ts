@@ -56,6 +56,7 @@ const ChatPreferencesSchema = z.object({
   autoApprove: optionalBoolean,
   autoPlayAssistantReplies: optionalBoolean,
   preferOnDeviceRecognition: optionalBoolean,
+  confirmVoiceCommands: optionalBoolean,
   readInterimAssistantReplies: optionalBoolean,
   workingSoundEnabled: optionalBoolean,
   includeNextActions: optionalBoolean,
@@ -71,11 +72,13 @@ const ChatPreferencesSchema = z.object({
   themeMode: z.enum(THEME_MODES).optional().catch(undefined),
   accentColor: z.enum(ACCENT_COLORS).optional().catch(undefined),
   promptDelivery: z.enum(['steer', 'queue']).optional().catch(undefined),
+  timelineDetail: z.enum(['messages', 'reasoning', 'everything']).optional().catch(undefined),
   responseScope: z.enum(['brief', 'balanced', 'detailed']).optional().catch(undefined),
   workingSoundVariant: z.enum(['soft', 'glass']).optional().catch(undefined),
   conversationWakePhrase: z.unknown().transform((value) => (
     typeof value === 'string' ? normalizeWakePhrase(value) : undefined
   )).optional(),
+  wakePhraseRequired: optionalBoolean,
   voiceWakeMode: z.enum(['phrase', 'local']).optional().catch(undefined),
   localWakePhrase: z.unknown().transform((value) => (
     value === undefined ? undefined : normalizeLocalWakePhrase(value)

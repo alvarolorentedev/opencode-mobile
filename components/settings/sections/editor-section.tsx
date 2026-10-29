@@ -2,7 +2,7 @@ import { useTranslation } from 'react-i18next';
 import { StyleSheet, View } from 'react-native';
 import { HelperText } from 'react-native-paper';
 
-import { PromptDeliveryField } from './chat-preference-fields';
+import { PromptDeliveryField, TimelineDetailField } from './chat-preference-fields';
 import { SettingSlider as NumericSlider, SettingSwitchRow, type Palette } from './setting-rows';
 import type { ChatPreferences } from '@/providers/opencode-provider';
 import { normalizeTranscriptFontSize, TRANSCRIPT_FONT_SIZE_MAX, TRANSCRIPT_FONT_SIZE_MIN } from '@/providers/opencode-preferences';
@@ -24,6 +24,7 @@ export function EditorSection({
 
   return (
     <View testID="settings-editor-section" style={styles.section}>
+      <TimelineDetailField chatPreferences={chatPreferences} palette={palette} updateChatPreferences={updateChatPreferences} />
       <NumericSlider
         label={t('settings:appearance.chatTextSize')}
         minimum={TRANSCRIPT_FONT_SIZE_MIN}

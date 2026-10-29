@@ -27,6 +27,8 @@ The goal is not aspirational design documentation. It is an implementation refer
   External dependencies, Expo/native integrations, environment configuration, and operational notes.
 - `testing-and-validation.md`
   Current validation strategy, fake server behavior, and test coverage boundaries.
+- `voice-validation.md`
+  Offline wake-word benchmark protocol and physical-device voice checklist.
 - `api-contract.md`
   Endpoint-by-endpoint client contract with example request and response shapes.
 - `component-inventory.md`

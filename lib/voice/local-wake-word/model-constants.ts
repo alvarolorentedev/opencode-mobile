@@ -105,7 +105,23 @@ export function localVoiceDownloadSizeLabel(modelId: LocalCommandModelId): strin
 }
 
 export function localVoiceKeywords(phrase: LocalWakePhraseId) {
-  return `${LOCAL_WAKE_PHRASES[normalizeLocalWakePhrase(phrase)].tokens}\n`;
+  const keyword = LOCAL_WAKE_PHRASES[normalizeLocalWakePhrase(phrase)];
+  return `${keyword.tokens} :${keyword.score} #${keyword.threshold}\n`;
+}
+
+export function localVoiceKeywordTokens(phrase: LocalWakePhraseId) {
+  return LOCAL_WAKE_PHRASES[normalizeLocalWakePhrase(phrase)].tokens.split(/\s+/u).filter(Boolean);
+}
+
+/** Return keyword pieces that are missing from the model's tokens.txt. */
+export function missingLocalVoiceKeywordTokens(phrase: LocalWakePhraseId, tokensFile: string) {
+  const available = new Set(
+    tokensFile
+      .split(/\r?\n/u)
+      .map((line) => line.trim().split(/\s+/u)[0])
+      .filter(Boolean),
+  );
+  return localVoiceKeywordTokens(phrase).filter((token) => !available.has(token));
 }
 
 // Kept for tests/callers that only need the default model's sizes.

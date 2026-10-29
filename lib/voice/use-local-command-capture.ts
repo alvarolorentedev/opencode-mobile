@@ -19,8 +19,11 @@ const SAMPLE_RATE = 16000;
 const PRE_ROLL_SAMPLES = Math.round(0.4 * SAMPLE_RATE);
 const MIN_TURN_SAMPLES = Math.round(0.35 * SAMPLE_RATE);
 const END_SILENCE_MS = 1200;
+const VAD_END_SILENCE_SAMPLES = Math.round(0.4 * SAMPLE_RATE);
 const NO_SPEECH_MS = 6000;
 const MAX_COMMAND_MS = 15000;
+const HANDOFF_SETTLE_MS = 80;
+const MAX_HANDOFF_SAMPLES = Math.round(2.5 * SAMPLE_RATE);
 // A borderline whole-turn score gets a second look at the first/last half of
 // the turn. If the two halves look like different speakers, the turn likely
 // contains overlapping voices and is discarded before ASR.
@@ -34,6 +37,13 @@ export type LocalCommandCaptureOptions = {
   phrase: LocalWakePhraseId;
   speakerThreshold: number;
   verifySpeaker: boolean;
+  // Confirmation capture uses a shorter single-turn window; command capture
+  // keeps the defaults below.
+  endSilenceMs?: number;
+  finishOnFirstTurn?: boolean;
+  maxDurationMs?: number;
+  minTurnSamples?: number;
+  noSpeechMs?: number;
   onCommand: (text: string) => void;
   onNoCommand: () => void;
   onPartialCommand: (text: string) => void;
@@ -53,9 +63,15 @@ export function useLocalCommandCapture({
   phrase,
   speakerThreshold,
   verifySpeaker,
+  endSilenceMs = END_SILENCE_MS,
+  finishOnFirstTurn = false,
+  maxDurationMs = MAX_COMMAND_MS,
+  minTurnSamples = MIN_TURN_SAMPLES,
+  noSpeechMs = NO_SPEECH_MS,
 }: LocalCommandCaptureOptions) {
   const activeRef = useRef(false);
   const generationRef = useRef(0);
+  const startPromiseRef = useRef<Promise<boolean> | undefined>(undefined);
   const finishingRef = useRef(false);
   const turnActiveRef = useRef(false);
   const turnChunksRef = useRef<Float32Array[]>([]);
@@ -80,9 +96,19 @@ export function useLocalCommandCapture({
   const languageRef = useRef(language);
   const verifySpeakerRef = useRef(verifySpeaker);
   const thresholdRef = useRef(speakerThreshold);
+  const endSilenceRef = useRef(endSilenceMs);
+  const finishOnFirstTurnRef = useRef(finishOnFirstTurn);
+  const maxDurationRef = useRef(maxDurationMs);
+  const minTurnSamplesRef = useRef(minTurnSamples);
+  const noSpeechRef = useRef(noSpeechMs);
   useEffect(() => { phraseRef.current = phrase; }, [phrase]);
   useEffect(() => { commandModelRef.current = commandModel; }, [commandModel]);
   useEffect(() => { languageRef.current = language; }, [language]);
+  useEffect(() => { endSilenceRef.current = endSilenceMs; }, [endSilenceMs]);
+  useEffect(() => { finishOnFirstTurnRef.current = finishOnFirstTurn; }, [finishOnFirstTurn]);
+  useEffect(() => { maxDurationRef.current = maxDurationMs; }, [maxDurationMs]);
+  useEffect(() => { minTurnSamplesRef.current = minTurnSamples; }, [minTurnSamples]);
+  useEffect(() => { noSpeechRef.current = noSpeechMs; }, [noSpeechMs]);
 
   useEffect(() => { onCommandRef.current = onCommand; }, [onCommand]);
   useEffect(() => { onNoCommandRef.current = onNoCommand; }, [onNoCommand]);
@@ -117,6 +143,7 @@ export function useLocalCommandCapture({
   const stopCapture = useCallback(async () => {
     activeRef.current = false;
     finishingRef.current = true;
+    startPromiseRef.current = undefined;
     generationRef.current += 1;
     turnActiveRef.current = false;
     turnChunksRef.current = [];
@@ -138,8 +165,9 @@ export function useLocalCommandCapture({
     }
     finishingRef.current = true;
     clearTimers();
-    // Let an in-flight turn finish its speaker check and ASR so accepted text
-    // is not lost, then release the microphone.
+    // Let queued VAD frames and their turns finish their speaker check and ASR
+    // so accepted text is not lost, then release the microphone.
+    await vadQueueRef.current.catch(() => undefined);
     await processingRef.current.catch(() => undefined);
     await stopCapture();
     const text = commandTextRef.current.trim();
@@ -160,7 +188,7 @@ export function useLocalCommandCapture({
         return;
       }
       void finishCommand();
-    }, END_SILENCE_MS);
+    }, endSilenceRef.current);
   }, [finishCommand]);
 
   const scheduleNoSpeech = useCallback(() => {
@@ -173,12 +201,19 @@ export function useLocalCommandCapture({
         return;
       }
       void finishCommand();
-    }, NO_SPEECH_MS);
+    }, noSpeechRef.current);
   }, [finishCommand]);
 
   const processTurn = useCallback((chunks: Float32Array[], generation: number) => {
     const total = chunks.reduce((sum, chunk) => sum + chunk.length, 0);
-    if (total < MIN_TURN_SAMPLES) {
+    if (total < minTurnSamplesRef.current) {
+      // A cough or door slam can start a VAD turn without producing a usable
+      // command. Do not leave the window waiting for the max-duration timer.
+      if (commandTextRef.current.trim()) {
+        scheduleEnd();
+      } else {
+        scheduleNoSpeech();
+      }
       return;
     }
     const samples = new Float32Array(total);
@@ -229,7 +264,13 @@ export function useLocalCommandCapture({
       if (text) {
         commandTextRef.current = `${commandTextRef.current} ${text}`.trim();
         onPartialCommandRef.current(commandTextRef.current);
-        scheduleEnd();
+        if (finishOnFirstTurnRef.current) {
+          // Let the current processing chain settle before finishCommand()
+          // awaits it; calling it inline would await itself.
+          setTimeout(() => { void finishCommand(); }, 0);
+        } else {
+          scheduleEnd();
+        }
       } else if (commandTextRef.current.trim()) {
         scheduleEnd();
       } else {
@@ -240,7 +281,7 @@ export function useLocalCommandCapture({
         onErrorRef.current(error instanceof Error ? error.message : 'On-device command recognition failed.');
       }
     });
-  }, [scheduleEnd, scheduleNoSpeech]);
+  }, [finishCommand, scheduleEnd, scheduleNoSpeech]);
 
   const processFrame = useCallback(async (samples: Float32Array, preRoll: Float32Array, generation: number) => {
     if (finishingRef.current) {
@@ -275,7 +316,7 @@ export function useLocalCommandCapture({
       turnChunksRef.current.push(samples);
       silenceSamplesRef.current += samples.length;
       const ended = result.segments.length > 0
-        || silenceSamplesRef.current >= Math.round(0.35 * SAMPLE_RATE);
+        || silenceSamplesRef.current >= VAD_END_SILENCE_SAMPLES;
       if (ended) {
         const chunks = turnChunksRef.current;
         turnChunksRef.current = [];
@@ -291,7 +332,7 @@ export function useLocalCommandCapture({
       return;
     }
     try {
-      const samples = int16ToFloat32(buffer.data);
+      const samples = int16ToFloat32(buffer.data, buffer.channels);
       if (buffer.sampleRate !== resamplerRateRef.current) {
         resamplerRef.current = createResampler(buffer.sampleRate, SAMPLE_RATE);
         resamplerRateRef.current = buffer.sampleRate;
@@ -311,58 +352,138 @@ export function useLocalCommandCapture({
     onBufferRef.current = handleAudioBuffer;
   }, [handleAudioBuffer]);
 
-  const start = useCallback(async () => {
-    if (activeRef.current) {
-      return true;
+  useEffect(() => {
+    if (!activeRef.current || audio.isStreaming) {
+      return;
     }
-    if (Platform.OS === 'web') {
-      onErrorRef.current('On-device command capture is not available on web.');
-      return false;
-    }
-    try {
-      await ensureLocalCommandRuntime(phraseRef.current, commandModelRef.current, languageRef.current);
-      const permission = await requestRecordingPermissionsAsync();
-      if (!permission.granted) {
-        onErrorRef.current('Microphone permission is required for the on-device command capture.');
-        return false;
+    const timer = setTimeout(() => {
+      if (!activeRef.current || audio.isStreaming) {
+        return;
       }
-      profileRef.current = await loadLocalSpeakerProfile();
-      if (verifySpeakerRef.current && !profileRef.current?.length) {
-        onErrorRef.current('Enroll your voice before using speaker-filtered command capture.');
-        return false;
-      }
+      onErrorRef.current('The microphone stopped while capturing the command.');
+      void stopCapture();
+    }, 750);
+    return () => clearTimeout(timer);
+  }, [audio.isStreaming, stopCapture]);
 
-      generationRef.current += 1;
-      clearTimers();
-      commandTextRef.current = '';
-      finishingRef.current = false;
-      turnActiveRef.current = false;
-      turnChunksRef.current = [];
-      silenceSamplesRef.current = 0;
-      preRollRef.current.clear();
-      resamplerRef.current = createResampler(SAMPLE_RATE, SAMPLE_RATE);
-      resamplerRateRef.current = SAMPLE_RATE;
-      processingRef.current = Promise.resolve();
-      vadQueueRef.current = Promise.resolve();
-      await resetVad();
-      await activateLocalWakeRecordingAsync();
-      activeRef.current = true;
-      await stream.start();
-      scheduleNoSpeech();
-      maxTimerRef.current = setTimeout(() => {
-        maxTimerRef.current = undefined;
-        if (activeRef.current && !finishingRef.current) {
-          void finishCommand();
-        }
-      }, MAX_COMMAND_MS);
-      return true;
-    } catch (error) {
-      activeRef.current = false;
-      await deactivateLocalWakeRecordingAsync().catch(() => undefined);
-      onErrorRef.current(error instanceof Error ? error.message : 'Could not start on-device command capture.');
-      return false;
+  const start = useCallback((initialSamples?: Float32Array) => {
+    if (activeRef.current) {
+      return Promise.resolve(true);
     }
-  }, [clearTimers, finishCommand, scheduleNoSpeech, stream]);
+    if (startPromiseRef.current) {
+      return startPromiseRef.current;
+    }
+    const promise = (async () => {
+      if (Platform.OS === 'web') {
+        onErrorRef.current('On-device command capture is not available on web.');
+        return false;
+      }
+      const requestGeneration = ++generationRef.current;
+      try {
+        await ensureLocalCommandRuntime(
+          phraseRef.current,
+          commandModelRef.current,
+          languageRef.current,
+          { verifySpeaker: verifySpeakerRef.current },
+        );
+        if (requestGeneration !== generationRef.current) {
+          return false;
+        }
+        const permission = await requestRecordingPermissionsAsync();
+        if (requestGeneration !== generationRef.current) {
+          return false;
+        }
+        if (!permission.granted) {
+          onErrorRef.current('Microphone permission is required for the on-device command capture.');
+          return false;
+        }
+        profileRef.current = await loadLocalSpeakerProfile();
+        if (requestGeneration !== generationRef.current) {
+          return false;
+        }
+        if (verifySpeakerRef.current && !profileRef.current?.length) {
+          onErrorRef.current('Enroll your voice before using speaker-filtered command capture.');
+          return false;
+        }
+
+        const handoff = initialSamples && initialSamples.length > 0
+          ? (initialSamples.length > MAX_HANDOFF_SAMPLES
+            ? initialSamples.subarray(initialSamples.length - MAX_HANDOFF_SAMPLES)
+            : initialSamples)
+          : undefined;
+        clearTimers();
+        commandTextRef.current = '';
+        finishingRef.current = false;
+        turnActiveRef.current = false;
+        turnChunksRef.current = [];
+        silenceSamplesRef.current = 0;
+        preRollRef.current = createAudioRingBuffer(
+          Math.max(PRE_ROLL_SAMPLES, (handoff?.length ?? 0) + PRE_ROLL_SAMPLES),
+        );
+        if (handoff) {
+          preRollRef.current.push(handoff);
+        }
+        resamplerRef.current = createResampler(SAMPLE_RATE, SAMPLE_RATE);
+        resamplerRateRef.current = SAMPLE_RATE;
+        processingRef.current = Promise.resolve();
+        vadQueueRef.current = Promise.resolve();
+        await resetVad();
+        if (requestGeneration !== generationRef.current) {
+          return false;
+        }
+        // Let the wake detector's AudioRecord release before claiming the
+        // microphone again. The handoff samples above cover this gap.
+        await new Promise((resolve) => setTimeout(resolve, HANDOFF_SETTLE_MS));
+        if (requestGeneration !== generationRef.current) {
+          return false;
+        }
+        await activateLocalWakeRecordingAsync();
+        if (requestGeneration !== generationRef.current) {
+          await deactivateLocalWakeRecordingAsync().catch(() => undefined);
+          return false;
+        }
+        activeRef.current = true;
+        scheduleNoSpeech();
+        if (handoff) {
+          const preRoll = preRollRef.current.tail(preRollRef.current.size());
+          const task = vadQueueRef.current.then(() => processFrame(handoff, preRoll, requestGeneration));
+          vadQueueRef.current = task.then(() => undefined, () => undefined);
+        }
+        await stream.start();
+        if (requestGeneration !== generationRef.current) {
+          activeRef.current = false;
+          try {
+            stream.stop();
+          } catch {
+            // Ignore a native stop race.
+          }
+          await deactivateLocalWakeRecordingAsync().catch(() => undefined);
+          return false;
+        }
+        maxTimerRef.current = setTimeout(() => {
+          maxTimerRef.current = undefined;
+          if (activeRef.current && !finishingRef.current) {
+            void finishCommand();
+          }
+        }, maxDurationRef.current);
+        return true;
+      } catch (error) {
+        activeRef.current = false;
+        await deactivateLocalWakeRecordingAsync().catch(() => undefined);
+        if (requestGeneration === generationRef.current) {
+          onErrorRef.current(error instanceof Error ? error.message : 'Could not start on-device command capture.');
+        }
+        return false;
+      }
+    })();
+    startPromiseRef.current = promise;
+    void promise.finally(() => {
+      if (startPromiseRef.current === promise) {
+        startPromiseRef.current = undefined;
+      }
+    });
+    return promise;
+  }, [clearTimers, finishCommand, processFrame, scheduleNoSpeech, stream]);
 
   const stop = useCallback(async () => {
     await stopCapture();

@@ -95,6 +95,48 @@ describe('on-device wake word capture', () => {
     );
   });
 
+  it('hands audio captured during the speaker check to command capture', async () => {
+    const view = await wakeWordHarness();
+    await view.runtime.value.start();
+    await view.runtime.settle();
+
+    const firstEmbedding = deferred<number[] | undefined>();
+    view.embedding.mockImplementationOnce(() => firstEmbedding.promise);
+    view.accept.mockResolvedValueOnce({ success: true, detected: true, keyword: '▁HE Y ▁CO DE' });
+    view.feed(1000);
+    await view.runtime.settle();
+
+    view.feed(2000);
+    expect(view.accept).toHaveBeenCalledTimes(1);
+
+    firstEmbedding.resolve([1, 0]);
+    await view.runtime.settle();
+
+    expect(view.onWake).toHaveBeenCalledOnce();
+    expect(Array.from(view.onWake.mock.calls[0][0])).toEqual(
+      new Array(160).fill(2000 / 32768),
+    );
+    expect(view.stream.stop).toHaveBeenCalledOnce();
+  });
+
+  it('surfaces repeated native KWS failures instead of going silently deaf', async () => {
+    const view = await wakeWordHarness();
+    await view.runtime.value.start();
+    await view.runtime.settle();
+
+    view.accept.mockRejectedValue(new Error('native KWS failed'));
+    view.feed(1000);
+    await view.runtime.settle();
+    view.feed(2000);
+    await view.runtime.settle();
+    view.feed(3000);
+    await view.runtime.settle();
+
+    expect(view.onError).toHaveBeenCalled();
+    expect(view.onWake).not.toHaveBeenCalled();
+    expect(view.stream.stop).toHaveBeenCalled();
+  });
+
   it('keeps the detector live after a speaker rejection so an immediate retry is heard', async () => {
     const view = await wakeWordHarness();
     await view.runtime.value.start();

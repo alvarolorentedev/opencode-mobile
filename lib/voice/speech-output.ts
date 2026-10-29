@@ -70,12 +70,18 @@ export async function speakText({
     if (activeRun?.id === runId) {
       activeRun = undefined;
     }
-    void deactivateVoiceDuckingAsync().catch(() => undefined);
-    if (error) {
-      onError?.(error);
-    } else {
-      onDone?.();
-    }
+    // The next capture must not start while the audio session still belongs to
+    // TTS/ducking. Callers use this completion to re-open the microphone.
+    void deactivateVoiceDuckingAsync().catch(() => undefined).finally(() => {
+      if (runId !== runSequence) {
+        return;
+      }
+      if (error) {
+        onError?.(error);
+      } else {
+        onDone?.();
+      }
+    });
   };
 
   const handleStart = () => {

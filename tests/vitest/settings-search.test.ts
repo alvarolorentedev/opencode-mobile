@@ -42,6 +42,7 @@ describe('settings search', () => {
     expect(labels('voice', { native: true, workingSound: true })).toContain(t('settings:voice.workingSoundVolume.label'));
     expect(labels('responses')).not.toContain(t('settings:providers.promptDelivery.label'));
     expect(labels('responses', { delivery: true })).toContain(t('settings:providers.promptDelivery.label'));
+    expect(labels('responses')).toContain(t('settings:appearance.timelineDetail.label'));
     expect(labels('support')).not.toContain(t('settings:autoUpdate.enable.title'));
     expect(labels('ai')).not.toContain(t('settings:modelRouting.enable.title'));
     expect(labels('ai', { autoModel: true })).toContain(t('settings:modelRouting.enable.title'));

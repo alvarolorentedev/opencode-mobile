@@ -15,7 +15,9 @@ import {
   LOCAL_VOICE_VAD_MODEL_SHA256,
   LOCAL_VOICE_VAD_MODEL_URL,
   getLocalCommandModel,
+  localVoiceKeywordTokens,
   localVoiceKeywords,
+  missingLocalVoiceKeywordTokens,
   type LocalCommandModelDefinition,
 } from '@/lib/voice/local-wake-word/model-constants';
 import { loadSherpaRuntime } from '@/lib/voice/local-wake-word/sherpa';
@@ -225,6 +227,23 @@ export function writeLocalVoiceKeywords(phrase: LocalWakePhraseId): boolean {
   }
   file.write(localVoiceKeywords(phrase));
   return true;
+}
+
+/**
+ * Verify that every keyword BPE piece exists in the installed model. This turns
+ * a future model/token mismatch into an actionable start error instead of a
+ * detector that never fires.
+ */
+export async function validateLocalVoiceKeywords(phrase: LocalWakePhraseId): Promise<string[]> {
+  const paths = getLocalVoiceBasePaths();
+  if (!paths) {
+    return [];
+  }
+  const tokensFile = new File(paths.kwsModelDir, paths.kwsTokens);
+  if (!tokensFile.exists) {
+    return localVoiceKeywordTokens(phrase);
+  }
+  return missingLocalVoiceKeywordTokens(phrase, await tokensFile.text());
 }
 
 async function installBaseModels(phrase: LocalWakePhraseId, runtime: NonNullable<ReturnType<typeof loadSherpaRuntime>>) {

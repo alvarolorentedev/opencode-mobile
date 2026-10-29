@@ -81,6 +81,23 @@ export function VoiceSection(props: VoiceSectionProps) {
       })}
     </SettingTarget>
     <Text variant="bodySmall" style={{ color: palette.muted }}>{t(localInput ? 'settings:voice.mode.localDescription' : 'settings:voice.mode.systemDescription')}</Text>
+    <SettingSwitchRow
+      title={t('settings:voice.requireWakePhrase.title')}
+      description={t('settings:voice.requireWakePhrase.description')}
+      palette={palette}
+      value={prefs.wakePhraseRequired}
+      onValueChange={(wakePhraseRequired) => updateChatPreferences({ wakePhraseRequired })}
+    />
+    {!localInput && !prefs.wakePhraseRequired ? (
+      <HelperText type="info">{t('settings:voice.requireWakePhrase.systemWarning')}</HelperText>
+    ) : null}
+    <SettingSwitchRow
+      title={t('settings:voice.confirmCommands.title')}
+      description={t('settings:voice.confirmCommands.description')}
+      palette={palette}
+      value={prefs.confirmVoiceCommands}
+      onValueChange={(confirmVoiceCommands) => updateChatPreferences({ confirmVoiceCommands })}
+    />
     {localInput ? <>
       <SettingTarget label={t('settings:voice.localWake.title')}>
         <Button mode="outlined" icon="chevron-right" disabled={voiceSetupTest?.status === 'busy'} contentStyle={{ flexDirection: 'row-reverse' }} onPress={() => setFlow('setup')}>

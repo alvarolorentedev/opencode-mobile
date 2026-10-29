@@ -14,9 +14,11 @@ export function VoiceMoreSettings({ localInput, chatPreferences: prefs, isRefres
   return <SettingsDisclosure id="voice-more" title={t('settings:voice.setup.more')}>
     {!localInput ? <>
       <SettingSwitchRow title={t('settings:voice.onDeviceInput.title')} description={t('settings:voice.onDeviceInput.description')} palette={palette} value={prefs.preferOnDeviceRecognition} onValueChange={(value) => updateChatPreferences({ preferOnDeviceRecognition: value })} />
-      <SettingTextInput label={t('settings:voice.wakePhrase.label')} mode="outlined" autoCapitalize="none" autoCorrect={false} placeholder={DEFAULT_WAKE_PHRASE} value={prefs.conversationWakePhrase}
-        onBlur={() => updateChatPreferences({ conversationWakePhrase: normalizeWakePhrase(prefs.conversationWakePhrase) })} onChangeText={(conversationWakePhrase) => updateChatPreferences({ conversationWakePhrase })} />
-      <HelperText type="info">{t('settings:voice.wakePhrase.helper')}</HelperText>
+      {prefs.wakePhraseRequired ? <>
+        <SettingTextInput label={t('settings:voice.wakePhrase.label')} mode="outlined" autoCapitalize="none" autoCorrect={false} placeholder={DEFAULT_WAKE_PHRASE} value={prefs.conversationWakePhrase}
+          onBlur={() => updateChatPreferences({ conversationWakePhrase: normalizeWakePhrase(prefs.conversationWakePhrase) })} onChangeText={(conversationWakePhrase) => updateChatPreferences({ conversationWakePhrase })} />
+        <HelperText type="info">{t('settings:voice.wakePhrase.helper')}</HelperText>
+      </> : null}
     </> : null}
     <SettingSwitchRow title={t('settings:voice.readInterim.title')} description={t('settings:voice.readInterim.description')} palette={palette} value={prefs.readInterimAssistantReplies} onValueChange={(value) => updateChatPreferences({ readInterimAssistantReplies: value })} />
     <SettingSlider label={t('settings:voice.speechRate.label')} minimum={0.5} maximum={1.5} step={0.1} value={prefs.speechRate} valueLabel={`${prefs.speechRate.toFixed(1)}x`} palette={palette} onValueChange={(speechRate) => updateChatPreferences({ speechRate })} />

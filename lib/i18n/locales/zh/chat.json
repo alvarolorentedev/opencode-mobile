@@ -148,7 +148,10 @@
       "searching": "正在搜索项目文件…",
       "empty": "没有匹配结果"
     },
-    "readingReply": "正在朗读回复。朗读结束后会继续聆听。"
+    "readingReply": "正在朗读回复。朗读结束后会继续聆听。",
+    "confirming": "确认中",
+    "confirmHint": "查看识别出的命令，然后发送、重试、编辑或取消。",
+    "noWakeHint": "正在聆听你的命令。确认步骤会保护发送的内容。"
   },
   "newChat": {
     "title": "新建聊天",
@@ -215,7 +218,8 @@
     "startSpeaking": "开始自然地说话。你最后一轮所说的内容将显示在这里。",
     "listeningHint": "请说，我在听。",
     "endConversation": "结束对话",
-    "steerHint": "随时说“{{phrase}}”即可调整方向。"
+    "steerHint": "随时说“{{phrase}}”即可调整方向。",
+    "phaseConfirming": "确认命令"
   },
   "modelPicker": {
     "selectModel": "选择模型",
@@ -341,5 +345,24 @@
     "write": "写入",
     "thought": "思考",
     "unknown": "未知"
+  },
+  "confirmation": {
+    "title": "确认命令",
+    "readback": "我听到的是：“{{command}}”。正确吗？",
+    "longReadback": "我听到了一条较长的命令。请查看屏幕上的文字并确认。",
+    "listening": "请说“是”、“重试”、“编辑”或“取消”。",
+    "prompting": "正在朗读命令…",
+    "editHint": "修改命令后发送。",
+    "expired": "确认已超时。命令未发送。",
+    "send": "发送",
+    "heard": "听到：{{text}}",
+    "ambiguous": "我没有理解。请说“是”、“重试”、“编辑”或“取消”。",
+    "timeout": "我没有听到确认。命令未发送。",
+    "unavailable": "无法开始确认收听。请查看命令并点按“发送”、“重试”或“取消”。",
+    "sessionChanged": "对话已更改。命令未发送。",
+    "ttsFallback": "设备语音不可用。正在使用系统语音。",
+    "emptyEdit": "发送前请输入命令。",
+    "connectionLost": "OpenCode 未连接。命令未发送。",
+    "retryPrompt": "我没有听清确认。请说“是”、“重试”、“编辑”或“取消”。"
   }
 }

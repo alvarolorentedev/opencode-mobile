@@ -1,4 +1,4 @@
-import { useEffect, type Dispatch, type SetStateAction } from 'react';
+import { useEffect, useRef, type Dispatch, type SetStateAction } from 'react';
 
 import type { TranscriptEntry } from '@/lib/opencode/format';
 import type { VoiceRecoveryAction } from '@/lib/voice/speech-errors';
@@ -15,6 +15,7 @@ export function useConversationSubmit({
   conversationCancelRequestedRef,
   conversationInputPhase,
   conversationSessionId,
+  conversationTurnSequence,
   latestAssistantRef,
   queuedConversationPrompt,
   sendPrompt,
@@ -31,6 +32,7 @@ export function useConversationSubmit({
   conversationCancelRequestedRef: { current: boolean };
   conversationInputPhase: ConversationInputPhase;
   conversationSessionId?: string;
+  conversationTurnSequence: number;
   latestAssistantRef: { current: (sessionId?: string) => TranscriptEntry | undefined };
   queuedConversationPrompt?: string;
   sendPrompt: (sessionId: string, prompt: string) => Promise<boolean>;
@@ -43,10 +45,18 @@ export function useConversationSubmit({
   startConversationListening: (sessionId?: string, options?: { preserveSession?: boolean }) => Promise<boolean | void>;
   stopConversationMode: () => Promise<void>;
 }) {
+  const handledTurnRef = useRef<number | undefined>(undefined);
+
   useEffect(() => {
     if (conversationInputPhase !== 'submitting' || !queuedConversationPrompt || !conversationSessionId) {
       return;
     }
+    // Confirmation adds voice, touch and edit paths that can re-enter this
+    // effect. One turn ID may only ever reach sendPrompt once.
+    if (handledTurnRef.current === conversationTurnSequence) {
+      return;
+    }
+    handledTurnRef.current = conversationTurnSequence;
 
     let cancelled = false;
 
@@ -95,6 +105,7 @@ export function useConversationSubmit({
     conversationCancelRequestedRef,
     conversationInputPhase,
     conversationSessionId,
+    conversationTurnSequence,
     latestAssistantRef,
     queuedConversationPrompt,
     sendPrompt,

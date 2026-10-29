@@ -148,7 +148,10 @@
       "searching": "Projektdateien werden durchsucht…",
       "empty": "Keine Treffer"
     },
-    "readingReply": "Die Antwort wird vorgelesen. Danach wird wieder zugehört."
+    "readingReply": "Die Antwort wird vorgelesen. Danach wird wieder zugehört.",
+    "confirming": "Bestätigung",
+    "confirmHint": "Prüfe den erkannten Befehl und sende, wiederhole, bearbeite oder brich ab.",
+    "noWakeHint": "Ich höre auf deinen Befehl. Die Bestätigung schützt das Gesendete."
   },
   "newChat": {
     "title": "Neuer Chat",
@@ -215,7 +218,8 @@
     "startSpeaking": "Sprich einfach los. Was du in der letzten Runde gesagt hast, erscheint hier.",
     "listeningHint": "Sprich los, ich höre zu.",
     "endConversation": "Gespräch beenden",
-    "steerHint": "Sage jederzeit „{{phrase}}“, um zu steuern."
+    "steerHint": "Sage jederzeit „{{phrase}}“, um zu steuern.",
+    "phaseConfirming": "Befehl bestätigen"
   },
   "modelPicker": {
     "selectModel": "Modell auswählen",
@@ -341,5 +345,24 @@
     "write": "Schreiben",
     "thought": "Gedanke",
     "unknown": "Unbekannt"
+  },
+  "confirmation": {
+    "title": "Befehl bestätigen",
+    "readback": "Ich habe verstanden: „{{command}}“. Ist das richtig?",
+    "longReadback": "Ich habe einen langen Befehl gehört. Prüfe den Text auf dem Bildschirm und bestätige.",
+    "listening": "Sage ja, wiederholen, bearbeiten oder abbrechen.",
+    "prompting": "Der Befehl wird vorgelesen…",
+    "editHint": "Korrigiere den Befehl und sende ihn.",
+    "expired": "Die Bestätigung ist abgelaufen. Der Befehl wurde nicht gesendet.",
+    "send": "Senden",
+    "heard": "Gehört: {{text}}",
+    "ambiguous": "Das habe ich nicht verstanden. Sage ja, wiederholen, bearbeiten oder abbrechen.",
+    "timeout": "Ich habe keine Bestätigung gehört. Der Befehl wurde nicht gesendet.",
+    "unavailable": "Die Bestätigung konnte nicht gestartet werden. Prüfe den Befehl und tippe auf Senden, Wiederholen oder Abbrechen.",
+    "sessionChanged": "Die Unterhaltung hat sich geändert. Der Befehl wurde nicht gesendet.",
+    "ttsFallback": "Die lokale Stimme ist nicht verfügbar. Die Systemstimme wird verwendet.",
+    "emptyEdit": "Gib vor dem Senden einen Befehl ein.",
+    "connectionLost": "OpenCode ist nicht verbunden. Der Befehl wurde nicht gesendet.",
+    "retryPrompt": "Ich habe die Bestätigung nicht verstanden. Sage ja, wiederholen, bearbeiten oder abbrechen."
   }
 }

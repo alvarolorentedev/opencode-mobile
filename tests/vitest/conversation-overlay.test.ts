@@ -5,7 +5,7 @@ import { hookRuntime, loadTs } from '../helpers/runtime.mjs';
 type Element = { type: unknown; props: Record<string, any> };
 const element = (type: unknown, props: Element['props']) => ({ type, props });
 const jsx = { jsx: element, jsxs: element };
-const native = { StyleSheet: { create: (styles: unknown) => styles, absoluteFillObject: {} }, View: 'View' };
+const native = { KeyboardAvoidingView: 'KeyboardAvoidingView', StyleSheet: { create: (styles: unknown) => styles, absoluteFillObject: {} }, View: 'View' };
 
 async function loadWave(reducedMotion = false) {
   const runtime = hookRuntime();
@@ -123,6 +123,7 @@ async function renderOverlay(patch: Record<string, unknown> = {}, dimensions = {
     'react-native-safe-area-context': { useSafeAreaInsets: () => ({ top: 44, bottom: 34, left: 0, right: 0 }) },
     'react-i18next': { useTranslation: () => ({ t: (key: string, args?: { phrase: string }) => args ? `${key}:${args.phrase}` : key }) },
     '@/components/chat/conversation-wave': { ConversationWave: 'ConversationWave' },
+    '@/components/chat/conversation-confirmation': { ConversationConfirmation: 'ConversationConfirmation' },
     '@/constants/theme': { Fonts: { display: 'Avenir Next' }, getColors: () => palette },
     '@/providers/appearance-context': { useAppearance: () => ({ accent: 'green' }) },
   });
@@ -144,6 +145,20 @@ describe('conversation overlay', () => {
     expect(end.props.children).toBe('chat:overlay.endConversation');
     end.props.onPress();
     expect(onStop).toHaveBeenCalledOnce();
+  });
+
+  it('hands an active confirmation to the dedicated card instead of the last-heard snippet', async () => {
+    const confirmation = {
+      active: true,
+      phase: 'listening',
+      text: 'Refactor the login component',
+      speaking: false,
+      actions: { cancel: vi.fn(), confirm: vi.fn(), edit: vi.fn(), retry: vi.fn() },
+    };
+    const { nodes } = await renderOverlay({ confirmation, inputPhase: 'confirming', phase: 'confirming' });
+    expect(nodes.find((node) => node.type === 'ConversationConfirmation')?.props.confirmation).toBe(confirmation);
+    expect(nodes.some((node) => node.props.children === 'chat:overlay.phaseConfirming:hey code')).toBe(true);
+    expect(nodes.some((node) => node.props.children === 'Make the header simpler')).toBe(false);
   });
 
   it('shows the configured wake phrase while armed and steering guidance only while input is available', async () => {

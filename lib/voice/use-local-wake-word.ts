@@ -4,7 +4,7 @@ import { Platform } from 'react-native';
 
 import { activateLocalWakeRecordingAsync, deactivateLocalWakeRecordingAsync } from '@/lib/voice/local-wake-word/audio-session';
 import { getLocalVoiceModelStatus } from '@/lib/voice/local-wake-word/models';
-import { createAudioRingBuffer, createResampler, int16ToFloat32 } from '@/lib/voice/local-wake-word/pcm';
+import { createAudioRingBuffer, createResampler, int16ToFloat32, selectSpeechSegment } from '@/lib/voice/local-wake-word/pcm';
 import { acceptWakeWordSamples, computeLocalSpeakerEmbedding, ensureLocalCommandRuntime, ensureLocalVoiceRuntime, resetWakeWordStream } from '@/lib/voice/local-wake-word/runtime';
 import { cosineSimilarity } from '@/lib/voice/local-wake-word/similarity';
 import { loadLocalSpeakerProfile } from '@/lib/voice/local-wake-word/speaker-profile';
@@ -18,6 +18,9 @@ const SPEAKER_SEGMENT_SECONDS = 2;
 // model loading stalls the device for a few seconds.
 const MAX_KWS_QUEUE_SECONDS = 5;
 const MAX_KWS_QUEUE_SAMPLES = MAX_KWS_QUEUE_SECONDS * SAMPLE_RATE;
+const MAX_HANDOFF_SAMPLES = Math.round(2.5 * SAMPLE_RATE);
+const MAX_CONSECUTIVE_FAILURES = 3;
+const STREAM_RECOVERY_MS = 750;
 
 export type LocalWakeWordOptions = {
   commandModel: LocalCommandModelId;
@@ -25,7 +28,7 @@ export type LocalWakeWordOptions = {
   phrase: LocalWakePhraseId;
   verifySpeaker: boolean;
   speakerThreshold: number;
-  onWake: () => void;
+  onWake: (samples?: Float32Array) => void;
   onRejected: () => void;
   onError: (message: string) => void;
 };
@@ -47,6 +50,9 @@ export function useLocalWakeWord({
   const kwsQueueSamplesRef = useRef(0);
   const generationRef = useRef(0);
   const startPromiseRef = useRef<Promise<boolean> | undefined>(undefined);
+  const consecutiveFailuresRef = useRef(0);
+  const failingRef = useRef(false);
+  const recoveringStreamRef = useRef(false);
   const onBufferRef = useRef<(buffer: AudioStreamBuffer) => void>(() => undefined);
   const resamplerRef = useRef(createResampler(SAMPLE_RATE, SAMPLE_RATE));
   const resamplerRateRef = useRef(SAMPLE_RATE);
@@ -82,6 +88,23 @@ export function useLocalWakeWord({
     kwsQueueRef.current = [];
     kwsQueueSamplesRef.current = 0;
   }, []);
+
+  const failWake = useCallback((message: string) => {
+    if (failingRef.current) {
+      return;
+    }
+    failingRef.current = true;
+    activeRef.current = false;
+    generationRef.current += 1;
+    clearKwsQueue();
+    try {
+      stream.stop();
+    } catch {
+      // Ignore a native stop race; deactivation still follows.
+    }
+    void deactivateLocalWakeRecordingAsync().catch(() => undefined);
+    onErrorRef.current(message);
+  }, [clearKwsQueue, stream]);
 
   const keepOnlyUnprocessedAudio = useCallback(() => {
     // The KWS queue holds frames captured after the detected phrase. Rebuild
@@ -125,9 +148,12 @@ export function useLocalWakeWord({
       // for a stop/start cycle, so an immediate retry is heard.
       const profile = profileRef.current;
       const segment = verifySpeakerRef.current && profile?.length
-        ? ringRef.current.tail(SPEAKER_SEGMENT_SECONDS * SAMPLE_RATE)
+        ? selectSpeechSegment(
+          ringRef.current.tail(SPEAKER_SEGMENT_SECONDS * SAMPLE_RATE),
+          SAMPLE_RATE,
+        )
         : undefined;
-      if (segment && profile) {
+      if (segment && segment.length > 0 && profile) {
         const embedding = await computeLocalSpeakerEmbedding(segment);
         if (generation !== generationRef.current || !activeRef.current) {
           return;
@@ -144,33 +170,45 @@ export function useLocalWakeWord({
       if (generation !== generationRef.current || !activeRef.current) {
         return;
       }
-      // Verified (or verification is off): hand the microphone to command
-      // capture. Invalidate any in-flight KWS work before stopping.
+      // Verified (or verification is off): hand every frame captured after the
+      // keyword to command capture. Those frames were recorded while the
+      // speaker check was running; dropping them clips the start of the
+      // command and makes local transcription look unreliable.
+      const pending = takeKwsQueue();
+      const handoff = pending && pending.length > MAX_HANDOFF_SAMPLES
+        ? pending.subarray(pending.length - MAX_HANDOFF_SAMPLES)
+        : pending;
       activeRef.current = false;
       generationRef.current += 1;
-      clearKwsQueue();
       try {
         stream.stop();
       } catch {
         // Ignore a native stop race; the provider will start the OS recognizer.
       }
-      onWakeRef.current();
+      onWakeRef.current(handoff);
     } catch (error) {
       // A broken speaker or wake pass should fall back to a clean re-arm rather
       // than leaving the detector running in a failing state.
-      activeRef.current = false;
-      generationRef.current += 1;
-      clearKwsQueue();
-      try {
-        stream.stop();
-      } catch {
-        // Ignore a native stop race.
-      }
-      onErrorRef.current(error instanceof Error ? error.message : 'On-device wake word failed.');
+      failWake(error instanceof Error ? error.message : 'On-device wake word failed.');
     } finally {
       busyRef.current = false;
     }
-  }, [clearKwsQueue, keepOnlyUnprocessedAudio, stream]);
+  }, [failWake, keepOnlyUnprocessedAudio, stream, takeKwsQueue]);
+
+  const recoverKwsFailure = useCallback(async (message: string) => {
+    consecutiveFailuresRef.current += 1;
+    if (consecutiveFailuresRef.current >= MAX_CONSECUTIVE_FAILURES) {
+      failWake(message);
+      return false;
+    }
+    try {
+      await resetWakeWordStream();
+    } catch {
+      failWake(message);
+      return false;
+    }
+    return true;
+  }, [failWake]);
 
   const drainKwsQueue = useCallback(async () => {
     if (kwsRunningRef.current) {
@@ -187,27 +225,41 @@ export function useLocalWakeWord({
         let result;
         try {
           result = await acceptWakeWordSamples(chunk);
-        } catch {
+        } catch (error) {
+          const recovered = await recoverKwsFailure(
+            error instanceof Error ? error.message : 'On-device wake word failed.',
+          );
+          if (!recovered) {
+            break;
+          }
           continue;
         }
-        if (generation !== generationRef.current) {
+        if (generation !== generationRef.current || !activeRef.current) {
           break;
         }
-        if (result?.detected) {
+        if (!result?.success) {
+          const recovered = await recoverKwsFailure(result?.error || 'On-device wake word failed.');
+          if (!recovered) {
+            break;
+          }
+          continue;
+        }
+        consecutiveFailuresRef.current = 0;
+        if (result.detected) {
           await handleDetected();
         }
       }
     } finally {
       kwsRunningRef.current = false;
     }
-  }, [handleDetected, takeKwsQueue]);
+  }, [handleDetected, recoverKwsFailure, takeKwsQueue]);
 
   const handleAudioBuffer = useCallback((buffer: AudioStreamBuffer) => {
     if (!activeRef.current) {
       return;
     }
     try {
-      const samples = int16ToFloat32(buffer.data);
+      const samples = int16ToFloat32(buffer.data, buffer.channels);
       if (buffer.sampleRate !== resamplerRateRef.current) {
         resamplerRef.current = createResampler(buffer.sampleRate, SAMPLE_RATE);
         resamplerRateRef.current = buffer.sampleRate;
@@ -229,18 +281,51 @@ export function useLocalWakeWord({
       }
       void drainKwsQueue();
     } catch {
-      // A malformed frame should not tear down conversation mode.
+      consecutiveFailuresRef.current += 1;
+      if (consecutiveFailuresRef.current >= MAX_CONSECUTIVE_FAILURES) {
+        failWake('The microphone audio could not be processed.');
+      }
     }
-  }, [drainKwsQueue]);
+  }, [drainKwsQueue, failWake]);
 
   useEffect(() => {
     onBufferRef.current = handleAudioBuffer;
   }, [handleAudioBuffer]);
 
+  useEffect(() => {
+    if (!activeRef.current || audio.isStreaming) {
+      return;
+    }
+    const timer = setTimeout(() => {
+      if (!activeRef.current || audio.isStreaming || recoveringStreamRef.current) {
+        return;
+      }
+      recoveringStreamRef.current = true;
+      void (async () => {
+        try {
+          await resetWakeWordStream();
+          if (!activeRef.current) {
+            return;
+          }
+          await activateLocalWakeRecordingAsync();
+          await stream.start();
+        } catch {
+          failWake('The microphone stopped while listening for the wake word.');
+        } finally {
+          recoveringStreamRef.current = false;
+        }
+      })();
+    }, STREAM_RECOVERY_MS);
+    return () => clearTimeout(timer);
+  }, [audio.isStreaming, failWake, stream]);
+
   const stop = useCallback(async () => {
     activeRef.current = false;
     busyRef.current = false;
     startPromiseRef.current = undefined;
+    failingRef.current = false;
+    consecutiveFailuresRef.current = 0;
+    recoveringStreamRef.current = false;
     generationRef.current += 1;
     clearKwsQueue();
     try {
@@ -273,7 +358,7 @@ export function useLocalWakeWord({
           onErrorRef.current('Install the on-device wake-word models first.');
           return false;
         }
-        await ensureLocalVoiceRuntime(phraseRef.current);
+        await ensureLocalVoiceRuntime(phraseRef.current, { verifySpeaker: verifySpeakerRef.current });
         if (startGeneration !== generationRef.current) {
           return false;
         }
@@ -292,6 +377,9 @@ export function useLocalWakeWord({
         }
         clearKwsQueue();
         busyRef.current = false;
+        failingRef.current = false;
+        consecutiveFailuresRef.current = 0;
+        recoveringStreamRef.current = false;
         ringRef.current.clear();
         resamplerRef.current = createResampler(SAMPLE_RATE, SAMPLE_RATE);
         resamplerRateRef.current = SAMPLE_RATE;
@@ -325,7 +413,12 @@ export function useLocalWakeWord({
         }
         // Warm the much larger VAD/ASR models while the wake detector is live, so
         // the command window after a wake is not delayed by model loading.
-        void ensureLocalCommandRuntime(phraseRef.current, commandModelRef.current, languageRef.current).catch(() => undefined);
+        void ensureLocalCommandRuntime(
+          phraseRef.current,
+          commandModelRef.current,
+          languageRef.current,
+          { verifySpeaker: verifySpeakerRef.current },
+        ).catch(() => undefined);
         return true;
       } catch (error) {
         activeRef.current = false;

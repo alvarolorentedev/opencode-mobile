@@ -80,6 +80,8 @@
     "input": "语音输入",
     "playback": "回复朗读",
     "responses": "回复风格",
-    "autoPlay": "自动朗读回复"
+    "autoPlay": "自动朗读回复",
+    "confirm": "确认命令",
+    "wakeRequired": "唤醒词"
   }
 }

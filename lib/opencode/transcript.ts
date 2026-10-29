@@ -1,7 +1,13 @@
 import type { SessionMessageRecord, TranscriptDetail, TranscriptEntry } from '@/lib/opencode/format';
 
-// Details rendered as non-bubble activity rows. The transcript always uses the
-// full timeline; V1-only steps/subtasks/agent parts are still omitted.
+// How much non-bubble activity the transcript renders. The order is the
+// settings control order, from least to most detail.
+export const TIMELINE_DETAIL_ORDER = ['messages', 'reasoning', 'everything'] as const;
+export type TimelineDetail = (typeof TIMELINE_DETAIL_ORDER)[number];
+export const DEFAULT_TIMELINE_DETAIL: TimelineDetail = 'everything';
+
+// Details rendered as non-bubble activity rows. V1-only steps/subtasks/agent
+// parts are still omitted.
 export function isActivityDetail(detail: TranscriptDetail) {
   return detail.kind === 'tool' || detail.kind === 'reasoning' || detail.kind === 'patch';
 }
@@ -113,13 +119,15 @@ export function buildActivityChildRows(items: ActivityItem[]): ActivityChildRow[
 }
 
 // Flatten the transcript into message rows and contiguous activity groups. A
-// message bubble breaks contiguity. Every visible reasoning/tool/patch detail
-// joins the same run, in wire order, until a bubble appears. Hidden file tools
-// are counted in the header so the summary matches the web app, but they only
-// become rows when they resolved a diff. The group key is its first seen detail
-// id, so the row identity (and its expanded state) survives as streamed details
-// accumulate.
-export function buildTranscriptRows(entries: TranscriptEntry[]): TranscriptRow[] {
+// message bubble breaks contiguity. The selected detail level filters activity
+// only: `messages` hides all activity, `reasoning` keeps reasoning rows, and
+// `everything` uses the full timeline. At full detail, every visible
+// reasoning/tool/patch detail joins the same run, in wire order, until a bubble
+// appears. Hidden file tools are counted in the header so the summary matches
+// the web app, but they only become rows when they resolved a diff. The group
+// key is its first seen detail id, so the row identity (and its expanded state)
+// survives as streamed details accumulate.
+export function buildTranscriptRows(entries: TranscriptEntry[], timelineDetail: TimelineDetail = DEFAULT_TIMELINE_DETAIL): TranscriptRow[] {
   const rows: TranscriptRow[] = [];
   let pending: ActivityGroup | undefined;
 
@@ -163,6 +171,16 @@ export function buildTranscriptRows(entries: TranscriptEntry[]): TranscriptRow[]
     if (hasMessageBubble(entry)) {
       flush();
       rows.push({ key: `message:${entry.id}`, type: 'message', entry });
+    }
+
+    if (timelineDetail === 'messages') continue;
+
+    if (timelineDetail === 'reasoning') {
+      for (const detail of entry.details) {
+        if (detail.kind !== 'reasoning') continue;
+        ensureGroup(detail.id).items.push(detail);
+      }
+      continue;
     }
 
     for (const detail of entry.details) {

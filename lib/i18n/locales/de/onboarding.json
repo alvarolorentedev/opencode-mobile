@@ -80,6 +80,8 @@
     "input": "Spracheingabe",
     "playback": "Gesprochene Antworten",
     "responses": "Antwortstil",
-    "autoPlay": "Antworten vorlesen"
+    "autoPlay": "Antworten vorlesen",
+    "confirm": "Befehle bestätigen",
+    "wakeRequired": "Aktivierungsphrase"
   }
 }

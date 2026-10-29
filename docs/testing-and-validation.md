@@ -38,19 +38,43 @@ validation.
 `tests/vitest/conversation-overlay.test.ts` covers microphone amplitude bounds
 and invalid samples, phase-based motion, tapered paths and seamless loop
 endpoints, reduced-motion changes, animation/listener cleanup, connection
-feedback, wake/steer guidance, the existing stop callback, and wave sizing with
-large text. The overlay only consumes existing provider state; recognition,
-submission, readback and re-arming contracts are unchanged.
+feedback, wake/steer guidance, the existing stop callback, wave sizing with large
+text, and the confirmation card replacing the last-heard snippet.
 
-For visual/native validation, compare the listening state to the selected Synth
-Ribbon mock at 390×844, then check short screens, landscape safe areas, long
-commands, large text and alternate accents. On physical Android and iOS devices,
-check real microphone response, local-capture baseline animation, readback,
-waiting with armed input, reduced motion, connection failure, repeated
-start/stop, Android Back confirmation and background cleanup. Web previews and
-mocked component checks cannot establish native microphone timing or frame
-performance. `react-native-svg` adds a native dependency, so development clients
-need rebuilding.
+`tests/vitest/confirmation.test.ts` pins strict localized intent matching,
+punctuation normalization, ambiguity rejection, bounded readback policy and the
+default-enabled preference. `tests/vitest/conversation-confirmation.test.ts`
+drives the real confirmation hook through TTS completion, echo guard, voice
+confirm/retry/edit/cancel, ambiguity, timeout, disabled mode, duplicate
+confirmation and the no-submit-before-confirm contract.
+`tests/vitest/provider-runtime.test.ts` covers the integrated system and local
+paths, including no-wake mode and confirmation speech never becoming a prompt.
+`tests/vitest/local-command-capture.test.ts` proves post-wake handoff audio is
+seeded into VAD/ASR and short discarded turns reschedule the timeout.
+`tests/vitest/local-wake-word-hook.test.ts` covers queued-frame handoff and
+repeated native KWS failure recovery. `tests/vitest/local-wake-word.test.ts`
+covers anti-aliased resampling, stereo downmix, speaker-segment trimming and
+keyword token validation.
+
+For visual/native validation, compare the listening and confirmation states at
+390×844, then check short screens, landscape safe areas, long commands, large
+text and alternate accents. On physical Android and iOS devices, check real
+microphone response, local-capture baseline animation, readback, waiting with
+armed input, reduced motion, connection failure, repeated start/stop, Android
+Back confirmation and background cleanup. Web previews and mocked component
+checks cannot establish native microphone timing or frame performance.
+`react-native-svg` adds a native dependency, so development clients need
+rebuilding.
+
+Confirmation/no-wake device acceptance must cover:
+
+- both input modes with confirmation enabled and disabled
+- exact final yes, ambiguous extra words, retry, edit, cancel, timeout
+- TTS readback with system/local playback and no self-confirmation
+- no-wake system mode with TV/music/babble, foreground only
+- local no-wake mode with speaker verification on/off
+- background, incoming call, microphone interruption and Bluetooth route change
+- exactly one prompt after confirmation and no confirmation speech in the chat
 
 ## Validation Cost And Fast Paths
 
@@ -404,9 +428,12 @@ cache isolation, connection-scoped last sessions, non-secret pending
 notification records with per-connection credential resolution, and legacy
 values that fail safe instead of being guessed.
 
-The `test:chat-appearance` suite checks that the chat font-size preference
-defaults safely and stays within the supported 12–24 px range, and that the
-flat-transcript and slim-interface preferences default to off.
+The chat appearance tests check that the chat font-size preference defaults
+safely and stays within the supported 12–24 px range, that timeline detail
+defaults to `everything` and validates its three values, and that the
+flat-transcript and slim-interface preferences default to off. Transcript-row
+tests cover all three detail levels, and the chat browser flow switches the
+settings slider to hide and restore activity.
 
 `tests/vitest/native-inputs.test.ts` exercises the real composer and shared
 input with the existing hook driver and mocked platform boundaries. It covers
@@ -703,9 +730,9 @@ back, scroll-up loads history older than the initial window and reaches the firs
 record, a non-overlapping burst adopts the fetched page without backfilling, and
 only `replace` discards held history. `optimistic-flows` also covers the cached
 selection that must still issue its background transcript read.
-the Vitest `transcript-visibility` suite covers the fixed detailed display
-across user, assistant, tool-only, reasoning-only and patch-only entries plus
-hidden file-mutating tools; `transcript-rows` covers
+the Vitest `transcript-visibility` suite covers display eligibility across
+user, assistant, tool-only, reasoning-only and patch-only entries plus hidden
+file-mutating tools; `transcript-rows` covers all three timeline detail levels,
 cross-entry activity grouping, read grouping, patch deduplication, bubble breaks,
 hidden-tool counts, resolved file tools and reasoning groups; `activity-group`
 covers collapsed defaults for running and settled runs, manual-toggle

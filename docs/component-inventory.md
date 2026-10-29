@@ -30,7 +30,7 @@ The reverted prompt text is edited in the composer, so the notice only carries
 status and the cancel affordance.
 
 Steer/Append selection lives at the top of
-Chat & responses, alongside chat text size and flat
+Chat & responses, alongside timeline detail, chat text size, and flat
 conversation. The General group contains slim interface, language and Reset
 onboarding, which reopens the existing setup review without clearing settings.
 
@@ -109,7 +109,7 @@ declared once, at the leaves.
 
 - Chat keeps its transcript and pending cards mounted while changes are reviewed.
 - transcript messages use FlashList virtualization; it starts at the bottom, follows additions only from the bottom, and preserves the visible position otherwise. Because FlashList measures progressively, the tail is re-asserted across a few frames on a session switch or data change, and the list re-applies its tail/offset when the Chat tab regains focus or the app returns to the foreground, so an Android detach or background/lock cannot leave it at the top or undrawn. A starter-prompt card is shown only for a session with no transcript content; the skeleton is shown for target bootstrap or a cold fetch with no held records. The initial pull is one newest window of up to 200 records, and each scroll-to-top loads one older 200-record batch without a backfill loop.
-- The transcript always renders the detailed native timeline. Details are first-class activity rows (`cards/activity-group.tsx` + `cards/activity-item.tsx`): contiguous reasoning, tool, and patch details merge into one two-level run whose content grows as streamed details arrive, and a message bubble breaks the run. The level-one header keeps the total tool-call count and lists every rendered type once, including `Thought` when reasoning is present, or `Thought · N` for a reasoning-only run; runs start collapsed, active work only shows the progress affordance, and an explicit manual toggle is the only thing that expands them. Level-two rows: thoughts expand markdown; shells show the command collapsed and a selectable, copyable code block expanded; grep stays a one-line pattern plus match count; consecutive reads collapse to one non-expandable comma-separated filename list; edit/write/patch tools render per-file diff cards with `+N −N` and an expandable unified diff. Run rows use the assistant bubble width. V1-only subtask/step/agent details and the `step-finish` usage marker are never rendered.
+- The transcript renders the selected timeline detail: `Messages only` keeps message bubbles, attachments, and errors; `Reasoning` adds reasoning activity; `Everything` (the default) renders the full native timeline. Details are first-class activity rows (`cards/activity-group.tsx` + `cards/activity-item.tsx`): at full detail, contiguous reasoning, tool, and patch details merge into one two-level run whose content grows as streamed details arrive, and a message bubble breaks the run. The level-one header keeps the total tool-call count and lists every rendered type once, including `Thought` when reasoning is present, or `Thought · N` for a reasoning-only run; runs start collapsed, active work only shows the progress affordance, and an explicit manual toggle is the only thing that expands them. Level-two rows: thoughts expand markdown; shells show the command collapsed and a selectable, copyable code block expanded; grep stays a one-line pattern plus match count; consecutive reads collapse to one non-expandable comma-separated filename list; edit/write/patch tools render per-file diff cards with `+N −N` and an expandable unified diff. Run rows use the assistant bubble width. V1-only subtask/step/agent details and the `step-finish` usage marker are never rendered.
 - A centered changes chip above the composer shows file count and green additions/red deletions for the selected scope. It hides at zero files and omits line totals for filename-only patches. Tapping opens the shared Files changed overlay with refresh, source selection, and diff accordions. Changes use a compact bottom sheet (55% of the viewport where safe areas permit), a centered file-count title, close icon, and a three-dot source button instead of separate summary/source cards.
 - Changes overlay scopes: `Turn` (per-turn snapshot diff, with a picker when multiple turns have diffs), `Uncommitted`, and `Branch` (VCS working tree / default-branch diffs)
 - displays starter prompts only when the selected session has no transcript content at all
@@ -142,7 +142,7 @@ type ChatComposerProps = {
   availableAgents: AgentOption[]
   chatPreferences: ChatPreferences
   connectionStatus: 'idle' | 'connecting' | 'connected' | 'error'
-  conversation: { active: boolean; isListening: boolean; phase: string; statusLabel?: string; wakePhrase: string }
+  conversation: { active: boolean; confirmation?: ConversationConfirmationState; isListening: boolean; phase: string; statusLabel?: string; wakePhrase: string; wakePhraseRequired: boolean }
   draft: string
   isSpeechInputAvailable: boolean
   isSpeechInputListening: boolean
@@ -224,7 +224,7 @@ type ChatComposerProps = {
 ```ts
 type ChatHeaderProps = {
   connectionStatus: 'idle' | 'connecting' | 'connected' | 'error'
-  conversation: { active: boolean; feedback?: string; inputPhase: ConversationInputPhase; latestHeardText?: string; phase: ConversationPhase; readbackPhase: ConversationReadbackPhase; wakePhrase: string }
+  conversation: { active: boolean; confirmation?: ConversationConfirmationState; feedback?: string; inputPhase: ConversationInputPhase; latestHeardText?: string; phase: ConversationPhase; readbackPhase: ConversationReadbackPhase; wakePhrase: string; wakePhraseRequired: boolean }
   insetsTop: number
   onConfirmStopConversation: () => void
   onCreateSession: () => void
@@ -333,7 +333,7 @@ Responsibility:
 ### Responsibility
 
 - full-screen conversation-mode overlay
-- shows session title, phase, the wake phrase while armed, last heard command, and stop button
+- shows session title, phase, the wake phrase while armed, last heard command, the confirmation card, and stop button
 - uses a three-line sine ribbon (`conversation-wave.tsx`) in the selected dark
   accent palette; the existing system microphone meter drives listening
   amplitude, while local capture and readback use phase-based motion
@@ -351,6 +351,7 @@ Responsibility:
 - conversation input phase and readback phase
 - session title
 - configured wake phrase
+- active confirmation text, phase, errors and confirm/retry/edit/cancel actions
 
 ## `components/chat/chat-diff.ts`
 
@@ -679,12 +680,14 @@ Responsibility:
 ### `VoiceSection`
 
 - Two independent input/playback mode selectors, placed before their dependent controls.
+- Confirm voice commands and Require wake phrase are shared by System and local
+  input; no-wake mode shows the system-recognition privacy warning.
 - System input shows speech language; local input shows one setup/manage row.
 - System playback shows only OS voices; native local playback shows one pack dropdown,
   installed size, optional speaker picker and Manage downloads. Missing selections
   expose setup without activating an engine or starting a download.
 - Preview and Read replies aloud remain visible; rate, progress readback, working
-  sound, system wake phrase and troubleshooting live in `VoiceMoreSettings`.
+  sound, wake phrase (when required) and troubleshooting live in `VoiceMoreSettings`.
 - Shared by Settings and first-run onboarding; tab blur stops preview and capture.
 
 ### `VoiceInputSetup` and `VoiceFlowScreen`
@@ -707,6 +710,17 @@ Responsibility:
 - Shows size, status, download/retry, explicit Use, Preview and Remove.
 - Retains language mismatch, Japanese system-voice guidance and total storage.
 - Uses `useTtsSetup`; installing does not automatically select or activate a pack.
+
+### `EditorSection`
+
+Responsibility:
+
+- choose timeline detail (`Messages only`, `Reasoning`, `Everything`) with a
+  three-step slider and the selected level's description
+- adjust chat text size and the flat-conversation preference
+- optionally edit prompt delivery when the active server supports it
+- pass changes through `updateChatPreferences`; the feed filter is applied when
+  `useChatViewController` derives transcript rows, not in this section
 
 ### `ResponsesSection`
 

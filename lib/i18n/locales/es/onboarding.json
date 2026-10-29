@@ -80,6 +80,8 @@
     "input": "Entrada de voz",
     "playback": "Respuestas habladas",
     "responses": "Estilo de respuesta",
-    "autoPlay": "Leer las respuestas en voz alta"
+    "autoPlay": "Leer las respuestas en voz alta",
+    "confirm": "Confirmar comandos",
+    "wakeRequired": "Frase de activación"
   }
 }

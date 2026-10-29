@@ -14,6 +14,7 @@ export function NumericSlider({
   onValueChange,
   palette,
   step,
+  testID,
   value,
   valueLabel,
 }: {
@@ -23,6 +24,7 @@ export function NumericSlider({
   onValueChange: (value: number) => void;
   palette: Palette;
   step: number;
+  testID?: string;
   value: number;
   valueLabel: string;
 }) {
@@ -66,6 +68,7 @@ export function NumericSlider({
         onValueChange={onValueChange}
         step={step}
         style={styles.slider}
+        testID={testID}
         thumbTintColor={palette.tint}
         value={value}
       />

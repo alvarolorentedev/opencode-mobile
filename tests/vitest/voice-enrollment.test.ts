@@ -11,10 +11,11 @@ async function enrollment(permission = Promise.resolve({ granted: true }), embed
     react: runtime.react,
     'react-native': { Platform: { OS: 'android' } },
     'expo-audio': { useAudioStream: (options: any) => { onBuffer = options.onBuffer; return { stream }; }, requestRecordingPermissionsAsync: () => permission },
+    '@/lib/i18n': { i18n: { t: (key: string) => key } },
     '@/lib/voice/local-wake-word/audio-session': { activateLocalWakeRecordingAsync: async () => undefined, deactivateLocalWakeRecordingAsync: deactivate },
-    '@/lib/voice/local-wake-word/pcm': { createResampler: () => ({ push: (samples: Float32Array) => samples }), int16ToFloat32: () => new Float32Array(64_000) },
+    '@/lib/voice/local-wake-word/pcm': { createResampler: () => ({ push: (samples: Float32Array) => samples }), int16ToFloat32: () => new Float32Array(64_000), selectSpeechSegment: (samples: Float32Array) => samples },
     '@/lib/voice/local-wake-word/runtime': { ensureLocalSpeakerRuntime: async () => undefined, computeLocalSpeakerEmbedding: () => embedding },
-    '@/lib/voice/local-wake-word/similarity': { averageEmbeddings: vi.fn() },
+    '@/lib/voice/local-wake-word/similarity': { averageEmbeddings: vi.fn(), cosineSimilarity: () => 1 },
     '@/lib/voice/local-wake-word/speaker-profile': { loadLocalSpeakerProfile: async () => undefined, saveLocalSpeakerProfile: save },
   }, runtime.globals);
   runtime.mount(useLocalVoiceEnrollment, {});

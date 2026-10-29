@@ -45,6 +45,8 @@ export function SetupSummary() {
     ] : []),
     { id: 'voice-input', label: t('onboarding:voice.input'), value: chatPreferences.voiceWakeMode === 'local' ? `${t('settings:voice.mode.local')} · ${LOCAL_COMMAND_MODELS[chatPreferences.localCommandModel].label}` : t('settings:voice.mode.system') },
     { id: 'voice-playback', label: t('onboarding:voice.playback'), value: playbackLabel },
+    { id: 'voice-wake-required', label: t('onboarding:voice.wakeRequired'), value: t(chatPreferences.wakePhraseRequired ? 'common:labels.enabled' : 'common:labels.off') },
+    { id: 'voice-confirm', label: t('onboarding:voice.confirm'), value: t(chatPreferences.confirmVoiceCommands ? 'common:labels.enabled' : 'common:labels.off') },
     { id: 'voice-autoplay', label: t('onboarding:voice.autoPlay'), value: t(chatPreferences.autoPlayAssistantReplies ? 'common:labels.enabled' : 'common:labels.off') },
     { id: 'response-style', label: t('onboarding:voice.responses'), value: t(`settings:voice.responseScope.${chatPreferences.responseScope}.label`) },
     { id: 'next-actions', label: t('settings:voice.nextActions.title'), value: t(chatPreferences.includeNextActions ? 'common:labels.enabled' : 'common:labels.off') },

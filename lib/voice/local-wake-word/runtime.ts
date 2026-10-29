@@ -1,10 +1,11 @@
-import { getLocalCommandModelPaths, getLocalVoiceBasePaths, writeLocalVoiceKeywords, type LocalVoiceBasePaths } from '@/lib/voice/local-wake-word/models';
+import { getLocalCommandModelPaths, getLocalVoiceBasePaths, validateLocalVoiceKeywords, writeLocalVoiceKeywords, type LocalVoiceBasePaths } from '@/lib/voice/local-wake-word/models';
 import { getLocalCommandModel } from '@/lib/voice/local-wake-word/model-constants';
 import { loadSherpaRuntime } from '@/lib/voice/local-wake-word/sherpa';
-import type {
-  LocalCommandModelId,
-  LocalWakePhraseId,
-  SherpaRuntime,
+import {
+  LOCAL_WAKE_PHRASES,
+  type LocalCommandModelId,
+  type LocalWakePhraseId,
+  type SherpaRuntime,
 } from '@/lib/voice/local-wake-word/types';
 
 const SAMPLE_RATE = 16000;
@@ -80,6 +81,10 @@ async function ensureSpeaker(runtime: LoadedRuntime) {
 }
 
 async function ensureKws(runtime: LoadedRuntime, phrase: LocalWakePhraseId) {
+  const missing = await validateLocalVoiceKeywords(phrase);
+  if (missing.length > 0) {
+    throw new Error(`The wake phrase tokens are not in the installed model: ${missing.join(', ')}.`);
+  }
   writeLocalVoiceKeywords(phrase);
   if (kwsPhrase === phrase) {
     return;
@@ -88,6 +93,7 @@ async function ensureKws(runtime: LoadedRuntime, phrase: LocalWakePhraseId) {
     await kwsInitPromise.promise;
     return;
   }
+  const keyword = LOCAL_WAKE_PHRASES[phrase];
   const promise = (async () => {
     if (kwsPhrase) {
       await runtime.sherpa.KWS.release().catch(() => undefined);
@@ -103,8 +109,11 @@ async function ensureKws(runtime: LoadedRuntime, phrase: LocalWakePhraseId) {
       },
       keywordsFile: runtime.basePaths.kwsKeywords,
       maxActivePaths: 4,
-      keywordsScore: 1.5,
-      keywordsThreshold: 0.25,
+      // Upstream defaults. The per-keyword file also carries these values so a
+      // future phrase-specific sweep can tune each phrase independently.
+      keywordsScore: keyword.score,
+      keywordsThreshold: keyword.threshold,
+      numTrailingBlanks: 1,
       numThreads: 2,
     });
     if (!initialized.success) {
@@ -124,9 +133,16 @@ async function ensureKws(runtime: LoadedRuntime, phrase: LocalWakePhraseId) {
 
 // Wake-path models only. The much larger command ASR is loaded separately so
 // the microphone can start listening before the command model is resident.
-export async function ensureLocalVoiceRuntime(phrase: LocalWakePhraseId): Promise<LoadedRuntime> {
+export async function ensureLocalVoiceRuntime(
+  phrase: LocalWakePhraseId,
+  options: { verifySpeaker?: boolean } = {},
+): Promise<LoadedRuntime> {
   const runtime = await getRuntime();
-  await ensureSpeaker(runtime);
+  // Speaker verification is optional. A missing/corrupt speaker model must not
+  // prevent the wake detector from running when the user turned it off.
+  if (options.verifySpeaker !== false) {
+    await ensureSpeaker(runtime);
+  }
   await ensureKws(runtime, phrase);
   return runtime;
 }
@@ -141,8 +157,9 @@ export async function ensureLocalCommandRuntime(
   phrase: LocalWakePhraseId,
   modelId: LocalCommandModelId,
   language?: string,
+  options: { verifySpeaker?: boolean } = {},
 ): Promise<LoadedRuntime> {
-  const runtime = await ensureLocalVoiceRuntime(phrase);
+  const runtime = await ensureLocalVoiceRuntime(phrase, options);
   const commandPaths = getLocalCommandModelPaths(modelId);
   if (!commandPaths) {
     throw new Error('The selected command-recognition model is not installed.');
@@ -306,6 +323,9 @@ export async function recognizeLocalCommand(samples: Float32Array): Promise<stri
 }
 
 export async function releaseLocalVoiceRuntime(): Promise<void> {
+  // Drain queued native calls before releasing the models. Releasing while a
+  // KWS/VAD/ASR call is in flight can surface as a native use-after-free.
+  await Promise.all([kwsQueue, speakerQueue, vadQueue, asrQueue].map((queue) => queue.catch(() => undefined)));
   const loaded = await runtimePromise?.catch(() => undefined);
   kwsPhrase = undefined;
   asrModel = undefined;

@@ -25,7 +25,7 @@ type ChatComposerProps = {
   availableAgents: AgentOption[];
   chatPreferences: ChatPreferences;
   connectionStatus: 'idle' | 'connecting' | 'connected' | 'error';
-  conversation: { active: boolean; isListening: boolean; phase: string; readbackPhase: 'idle' | 'waiting' | 'speaking'; statusLabel?: string; wakePhrase: string };
+  conversation: { active: boolean; confirmation?: import('@/providers/opencode-provider-types').ConversationConfirmationState; isListening: boolean; phase: string; readbackPhase: 'idle' | 'waiting' | 'speaking'; statusLabel?: string; wakePhrase: string; wakePhraseRequired: boolean };
   draft: string;
   isSpeechInputAvailable: boolean;
   isSpeechInputListening: boolean;
@@ -170,12 +170,18 @@ export function ChatComposer({
         <View style={[styles.conversationBanner, { backgroundColor: withAlpha(palette.tint, 0x10 / 255), borderColor: withAlpha(palette.tint, 0x28 / 255) }]}>
           <View style={styles.conversationBannerHeader}>
             <Text variant="labelLarge" style={{ color: palette.text }}>{t('chat:composer.conversationMode')}</Text>
-            <Chip compact icon={conversation.phase === 'speaking' ? 'volume-high' : 'microphone'}>{conversation.statusLabel || t('common:labels.active')}</Chip>
+            <Chip compact icon={conversation.phase === 'speaking' ? 'volume-high' : 'microphone'}>
+              {conversation.phase === 'confirming' ? t('chat:composer.confirming') : conversation.statusLabel || t('common:labels.active')}
+            </Chip>
           </View>
           <Text variant="bodySmall" style={{ color: palette.muted }}>
             {conversation.readbackPhase === 'speaking'
               ? t('chat:composer.readingReply')
-              : t('chat:composer.conversationHint', { phrase: conversation.wakePhrase })}
+              : conversation.confirmation?.active
+                ? t('chat:composer.confirmHint')
+                : conversation.wakePhraseRequired
+                  ? t('chat:composer.conversationHint', { phrase: conversation.wakePhrase })
+                  : t('chat:composer.noWakeHint')}
           </Text>
         </View>
       ) : null}

@@ -178,8 +178,13 @@ dedicated wake-word engine. Consequences:
 - conversation mode stops when the app backgrounds, as it did before; the
   phrase is not an always-on background listener
 - ambient speech that follows a correctly detected phrase is still treated as
-  the command; the six-second command window bounds exposure but does not
-  identify the speaker
+  the command; confirmation (enabled by default) prevents it from being sent
+  without review, but does not identify the speaker
+- `wakePhraseRequired: false` removes the gate entirely: system recognition
+  streams ambient speech to the OS vendor while conversation mode is foregrounded,
+  and every recognized utterance becomes a confirmation candidate. Local mode
+  skips KWS and starts command capture directly. Confirmation, endpointing and
+  speaker verification (when enrolled) are the remaining safeguards.
 
 ## 9. Workspace readiness and render-time state
 
@@ -239,12 +244,16 @@ Known limits:
 
 - KWS runs while conversation mode is armed; it does not transcribe the room,
   but it still owns the microphone and consumes battery. The command ASR is
-  loaded while armed so the post-wake window is not delayed.
-- The bundled phrases are tokenized at install time; arbitrary phrases are not
-  supported without runtime BPE tokenization.
+  loaded while armed so the post-wake window is not delayed. With
+  `wakePhraseRequired: false`, local mode skips KWS and opens command capture
+  directly; that is more power-hungry and relies on confirmation.
+- The bundled phrases are tokenized at install time and validated against the
+  installed model's `tokens.txt`; arbitrary phrases are not supported without
+  runtime BPE tokenization.
 - Voice verification is an enrollment-time cosine threshold, not a production
-  speaker-verification system. Re-enrollment is required after a major voice
-  change, and the threshold may need device-specific tuning.
+  speaker-verification system. Enrollment now uses speech-only segments and
+  rejects inconsistent clips, but the threshold may still need device-specific
+  tuning. Re-enrollment is required after a major voice change.
 - Target-speaker gating works on non-overlapping turns. Borderline matches get
   a split-half speaker-consistency check, which discards turns that look like
   they contain different voices. This is a heuristic, not source separation:
@@ -252,17 +261,23 @@ Known limits:
   transcribed imperfectly. A target-speaker extraction model would be needed for
   a stronger guarantee.
 - Very short turns may be rejected before ASR because the speaker embedding is
-  unreliable below roughly a third of a second.
+  unreliable below roughly a third of a second. Confirmation capture deliberately
+  skips the per-turn speaker check: the wake and command turns already passed it,
+  and a short "yes" would otherwise be rejected.
+- No-wake mode is foreground-only and relies on confirmation to prevent ambient
+  speech from being sent. With system recognition, ambient speech may reach the
+  vendor's recognizer; the settings warning makes that trade-off explicit.
 - The command ASR defaults to English Moonshine; Whisper tiny multilingual is
   selectable and does not require training, but its short-command accuracy,
   latency, and auto-detect behavior are unbenchmarked. The wake phrase remains
   English because the KWS model is English.
 - The wake-word model pack is roughly 152 MB and the native runtime is
   prebuilt; both need review for F-Droid packaging/licensing.
-- Reply readback uses the selected playback engine. The system engine remains
-  the default and always available. On-device playback is opt-in and requires a
-  downloaded pack; wake detection pauses while TTS speaks and resumes afterward.
-  Barge-in over an active readback is not implemented yet.
+- Reply and confirmation readback use the selected playback engine. The system
+  engine remains the default and always available. On-device playback is opt-in
+  and requires a downloaded pack; capture pauses while TTS speaks, waits for the
+  audio session to settle, and resumes after an echo guard. Barge-in over an
+  active readback is not implemented yet.
 - On-device TTS limits:
   - Piper ships one English voice plus one voice for Spanish, Hindi, German,
     French, Simplified Chinese, and Brazilian Portuguese. Japanese stays on the

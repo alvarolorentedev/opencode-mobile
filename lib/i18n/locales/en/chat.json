@@ -148,7 +148,10 @@
       "searching": "Searching project files…",
       "empty": "No matching results"
     },
-    "readingReply": "Reading the reply aloud. Listening resumes when it finishes."
+    "readingReply": "Reading the reply aloud. Listening resumes when it finishes.",
+    "confirming": "Confirm command",
+    "confirmHint": "Review the recognized command, then send, retry, edit, or cancel.",
+    "noWakeHint": "Listening for your command. Confirmation protects what gets sent."
   },
   "newChat": {
     "title": "New chat",
@@ -215,7 +218,8 @@
     "startSpeaking": "Start speaking naturally. What you say in the last round will appear here.",
     "listeningHint": "Go ahead, I’m listening.",
     "endConversation": "End conversation",
-    "steerHint": "Say “{{phrase}}” anytime to steer."
+    "steerHint": "Say “{{phrase}}” anytime to steer.",
+    "phaseConfirming": "Confirm command"
   },
   "modelPicker": {
     "selectModel": "Select model",
@@ -341,5 +345,24 @@
     "write": "Write",
     "thought": "Thought",
     "unknown": "Unknown"
+  },
+  "confirmation": {
+    "title": "Confirm command",
+    "readback": "I understood: “{{command}}”. Is that correct?",
+    "longReadback": "I heard a long command. Check the text on screen, then confirm.",
+    "listening": "Say yes, retry, edit, or cancel.",
+    "prompting": "Reading the command back…",
+    "editHint": "Correct the command, then send it.",
+    "expired": "Confirmation timed out. The command was not sent.",
+    "send": "Send",
+    "heard": "Heard: {{text}}",
+    "ambiguous": "I didn’t understand. Say yes, retry, edit, or cancel.",
+    "timeout": "I didn’t hear a confirmation. The command was not sent.",
+    "unavailable": "I couldn’t start confirmation listening. Review the command and tap Send, Retry, or Cancel.",
+    "sessionChanged": "The conversation changed. The command was not sent.",
+    "ttsFallback": "On-device voice is unavailable. Using the system voice.",
+    "emptyEdit": "Enter a command before sending.",
+    "connectionLost": "OpenCode is not connected. The command was not sent.",
+    "retryPrompt": "I didn’t catch a confirmation. Say yes, retry, edit, or cancel."
   }
 }

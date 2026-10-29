@@ -145,6 +145,7 @@ Current fields:
 - `themeMode` (`system` by default; `light` and `dark` override the OS appearance)
 - `accentColor` (`green` default, plus `blue`, `red`, `purple`, `pink`, and `gray`; each value selects a full light/dark palette)
 - `transcriptFontSize` (global chat message text size in pixels; defaults to 16 and is clamped to 12–24)
+- `timelineDetail` (`messages`, `reasoning`, or `everything`; defaults to `everything`. It controls rendered activity only, not which transcript records are fetched or retained)
 - `flatTranscript` (renders the transcript full-width without bubble chrome; defaults to `false`)
 - `slimInterface` (shrinks control sizes, spacing, and headers on the text-heavy screens; defaults to `false`)
 - `language` (optional; `undefined` follows the OS locale)
@@ -160,6 +161,13 @@ Current fields:
 - `autoApprove`
 - `autoPlayAssistantReplies`
 - `preferOnDeviceRecognition`
+- `confirmVoiceCommands` (default true; conversation-mode submission gate)
+- `conversationWakePhrase`
+- `wakePhraseRequired` (default true; when false conversation mode listens
+  immediately and re-arms after each reply)
+- `voiceWakeMode` (`phrase` or on-device `local`)
+- `localWakePhrase`, `localCommandModel`, `localSpeakerVerification`,
+  `localSpeakerThreshold`
 - `readInterimAssistantReplies`
 - `speechLocale`
 - `speechRate`
@@ -672,13 +680,14 @@ requires its captured cursor to still be current. Rewrites bypass read
 coalescing, so an in-flight page read before a compaction or revert can never
 be reused as the rebuilt window.
 
-The transcript always renders the detailed native timeline: user and assistant
-text/files/errors plus reasoning, tool, and patch activity. There is no
-configurable detail level.
-Details are first-class transcript rows: message rows and activity-run rows.
-Contiguous visible reasoning, tool, and patch details merge into one two-level
-activity run; a message bubble breaks the run. The run key is its first detail
-id, so expansion persists while streamed details grow it. The level-one header
+The transcript renders the selected `timelineDetail` level: `messages` keeps
+user and assistant text/files/errors only, `reasoning` adds reasoning activity,
+and `everything` (the default) renders the full native timeline with reasoning,
+tool, and patch activity. The preference filters the derived rows; it never
+changes the fetched window, transcript cache, diff data, or retention. At
+`everything` detail, contiguous visible reasoning, tool, and patch details merge
+into one two-level activity run; a message bubble breaks the run. The run key is
+its first detail id, so expansion persists while streamed details grow it. The level-one header
 keeps the total tool-call count and lists every rendered type once, including
 `Thought` when reasoning is present; a reasoning-only run reads `Thought · N`.
 A run with a `running`/`pending` tool shows the header progress indicator but
@@ -692,8 +701,9 @@ reads to one non-expandable filename list; and render edit/write/patch files as
 expandable diff cards. Patch summaries are dropped when a file-change tool in
 the same run already supplies the same paths. Run rows use the assistant bubble
 width. V1-only subtask/step/agent parts and the V2-synthesized `step-finish`
-usage marker are never rendered. The display filter, the initial-pull target,
-and retention share the same predicate.
+usage marker are never rendered. The detail filter is applied only while
+deriving rows; the initial-pull target and retention continue to use the full
+fetched message records.
 
 
 V1 pages backwards with `limit`/`before` and an `x-next-cursor` header; V2
@@ -1057,9 +1067,17 @@ New chat creation is provider-owned: `createChat(target)` resolves and connects 
 
 The optional Voice & Responses step writes through `updateChatPreferences`, using
 existing voice input, local command-model, TTS pack/speaker, OS voice, auto-play,
-response scope and next-action fields. There is no separate onboarding draft,
-persistence key, schema change or completion-version increase. Skip advances
-without undoing earlier selections. The step is available without a connection.
+confirmation, wake-required, response scope and next-action fields. There is no
+separate onboarding draft, persistence key, schema change or completion-version
+increase. Skip advances without undoing earlier selections. The step is available
+without a connection.
+
+`confirmVoiceCommands` defaults to true for new and migrated preferences. It gates
+only conversation-mode voice commands; normal chat dictation still inserts text
+into the composer. `wakePhraseRequired` also defaults to true. When false,
+conversation mode starts in `listening` and re-arms after each reply; confirmation
+remains the submission gate. Neither setting starts background listening, and
+system recognition shows the vendor-privacy warning when the wake phrase is off.
 
 Opening model setup does not download or activate a missing TTS pack. Downloads
 and enrollment use the existing setup hooks, and activation still requires an

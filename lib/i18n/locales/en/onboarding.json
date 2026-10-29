@@ -80,6 +80,8 @@
     "input": "Voice input",
     "playback": "Spoken replies",
     "responses": "Response style",
-    "autoPlay": "Read replies aloud"
+    "autoPlay": "Read replies aloud",
+    "confirm": "Confirm commands",
+    "wakeRequired": "Wake phrase"
   }
 }

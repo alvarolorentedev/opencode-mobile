@@ -128,7 +128,10 @@ export function useChatViewController() {
   const progressSlice = currentTodos.length ? Math.floor(completedTodoCount / currentTodos.length * 8) : 0;
   const progressIcon = completedTodoCount === currentTodos.length ? 'check-circle' : progressSlice > 0 ? `circle-slice-${progressSlice}` : 'circle-outline';
   const displayTranscript = currentTranscript;
-  const transcriptRows = useMemo(() => buildTranscriptRows(currentTranscript), [currentTranscript]);
+  const transcriptRows = useMemo(
+    () => buildTranscriptRows(currentTranscript, chatPreferences.timelineDetail),
+    [chatPreferences.timelineDetail, currentTranscript],
+  );
   const hasTranscriptMessages = currentMessages.length > 0;
   const selectedSession = useMemo(
     () => sessions.find((session) => session.id === currentSessionId) || activeSession,

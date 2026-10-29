@@ -23,6 +23,10 @@ export type LocalWakePhrase = {
   // BPE pieces for sherpa-onnx's English open-vocabulary KWS model. These are
   // generated from the model's bpe.model; no model training is involved.
   tokens: string;
+  // Per-keyword decoder tuning. The values are written into keywords.txt so
+  // each phrase can be tuned independently without changing the model.
+  score: number;
+  threshold: number;
 };
 
 export const LOCAL_WAKE_PHRASES: Record<LocalWakePhraseId, LocalWakePhrase> = {
@@ -30,11 +34,15 @@ export const LOCAL_WAKE_PHRASES: Record<LocalWakePhraseId, LocalWakePhrase> = {
     id: 'hey-code',
     label: 'Hey code',
     tokens: '▁HE Y ▁CO DE',
+    score: 1,
+    threshold: 0.25,
   },
   'hey-opencode': {
     id: 'hey-opencode',
     label: 'Hey opencode',
     tokens: '▁HE Y ▁O P EN CO DE',
+    score: 1,
+    threshold: 0.25,
   },
 };
 
@@ -61,6 +69,7 @@ export type KwsService = {
     keywordsScore?: number;
     keywordsThreshold?: number;
     maxActivePaths?: number;
+    numTrailingBlanks?: number;
   }): Promise<{ success: boolean; error?: string }>;
   acceptWaveform(
     sampleRate: number,

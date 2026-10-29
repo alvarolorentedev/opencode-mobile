@@ -45,8 +45,8 @@
     },
     "keywords": {
       "appearance": "显示 主题 颜色 深色 浅色 紧凑 密度",
-      "responses": "聊天 消息 文字 字体 大小 回复 风格 引导 追加 队列 气泡",
-      "voice": "语音 音频 声音 麦克风 输入 播放 语言 唤醒词",
+      "responses": "聊天 消息 文字 字体 大小 回复 风格 引导 追加 队列 气泡 时间线 活动 推理 工具 编辑 详情",
+      "voice": "语音 音频 声音 麦克风 输入 播放 语言 唤醒词 confirm",
       "notifications": "通知 提醒 电池 小组件",
       "language": "语言 翻译 界面",
       "support": "帮助 反馈 支持 更新 版本 设置向导",
@@ -315,7 +315,8 @@
       "voiceProfile": "声纹档案",
       "enrollRequiresModels": "请先安装模型，再录入你的声音。",
       "installBase": "安装基础包（{{size}}）",
-      "installCommand": "安装命令模型（{{size}}）"
+      "installCommand": "安装命令模型（{{size}}）",
+      "enrollmentNoisy": "录音中包含不同的声音或过多背景噪音。请在安静的房间重试。"
     },
     "speechLocale": {
       "label": "语言",
@@ -472,6 +473,15 @@
         "error": "无法运行测试。请检查麦克风权限后重试。",
         "busy": "请停止对话模式以运行测试。"
       }
+    },
+    "confirmCommands": {
+      "title": "发送前确认语音命令",
+      "description": "在发送到 OpenCode 前查看或确认识别出的语音。"
+    },
+    "requireWakePhrase": {
+      "title": "需要唤醒词",
+      "description": "关闭后，对话模式会立即开始收听，并在每次回复后重新收听。确认步骤仍会保护命令。",
+      "systemWarning": "使用系统识别时，环境语音可能会发送给语音服务商。如需私密收听，请使用设备端输入。"
     }
   },
   "diagnostics": {
@@ -547,6 +557,22 @@
     },
     "chatTextSize": "聊天文字大小",
     "chatTextSizeDescription": "调整聊天消息的文字大小。较小的文字可一次显示更多对话。",
+    "timelineDetail": {
+      "label": "时间线详情",
+      "description": "选择信息流中显示的活动量：消息、推理、工具和编辑。",
+      "messages": {
+        "label": "仅消息",
+        "description": "仅显示消息气泡和附件。"
+      },
+      "reasoning": {
+        "label": "推理",
+        "description": "显示消息和助手的推理。"
+      },
+      "everything": {
+        "label": "全部",
+        "description": "显示完整时间线，包括推理、工具、编辑和其他活动。"
+      }
+    },
     "flatThread": {
       "title": "扁平对话",
       "description": "以全宽显示消息，不显示气泡，从而在一屏内显示更多对话。"

@@ -13,7 +13,7 @@ import { formatEstimatedCost, formatTokenCount, type SessionUsage } from '@/lib/
 import { ConversationOverlay } from '@/components/chat/chat-overlay';
 import { OverlaySheet } from '@/components/ui/overlay-sheet';
 import { styles } from '@/components/chat/chat-view-styles';
-import type { ConversationInputPhase, ConversationPhase, ConversationReadbackPhase } from '@/providers/opencode-provider';
+import type { ConversationConfirmationState, ConversationInputPhase, ConversationPhase, ConversationReadbackPhase } from '@/providers/opencode-provider';
 
 type Palette = typeof Colors.light;
 
@@ -21,6 +21,7 @@ type ChatHeaderProps = {
   connectionStatus: 'idle' | 'connecting' | 'connected' | 'error';
   conversation: {
     active: boolean;
+    confirmation?: ConversationConfirmationState;
     feedback?: string;
     inputPhase: ConversationInputPhase;
     latestHeardText?: string;
@@ -104,6 +105,7 @@ export function ChatHeader({
       <Portal>
         {conversation.active ? (
           <ConversationOverlay
+            confirmation={conversation.confirmation}
             connectionStatus={connectionStatus}
             feedback={conversation.feedback}
             inputPhase={conversation.inputPhase}

@@ -45,8 +45,8 @@
     },
     "keywords": {
       "appearance": "Anzeige Design Thema Farbe dunkel hell kompakt Dichte",
-      "responses": "Chat Nachrichten Text Schrift Größe Antworten Stil steuern anhängen Warteschlange Sprechblasen",
-      "voice": "Sprache Audio Stimme Ton Mikrofon Eingabe Wiedergabe Weckphrase",
+      "responses": "Chat Nachrichten Text Schrift Größe Antworten Stil steuern anhängen Warteschlange Sprechblasen Zeitleiste Aktivität Denkprozess Werkzeuge Bearbeitungen Detail",
+      "voice": "Sprache Audio Stimme Ton Mikrofon Eingabe Wiedergabe Weckphrase confirm",
       "notifications": "Benachrichtigungen Hinweise Akku Widgets",
       "language": "Sprache Übersetzung Oberfläche",
       "support": "Hilfe Feedback Support Updates Version Einrichtungsassistent",
@@ -315,7 +315,8 @@
       "voiceProfile": "Stimmprofil",
       "enrollRequiresModels": "Installiere zuerst die Modelle und nimm dann deine Stimme auf.",
       "installBase": "Basispaket installieren ({{size}})",
-      "installCommand": "Befehlsmodell installieren ({{size}})"
+      "installCommand": "Befehlsmodell installieren ({{size}})",
+      "enrollmentNoisy": "Die Aufnahme enthielt verschiedene Stimmen oder zu viel Hintergrundgeräusch. Versuche es in einem ruhigen Raum erneut."
     },
     "speechLocale": {
       "label": "Sprache",
@@ -472,6 +473,15 @@
         "error": "Test fehlgeschlagen. Prüfe den Mikrofonzugriff und versuche es erneut.",
         "busy": "Beende den Gesprächsmodus, um den Test zu starten."
       }
+    },
+    "confirmCommands": {
+      "title": "Sprachbefehle vor dem Senden bestätigen",
+      "description": "Überprüfe oder bestätige erkannte Sprache, bevor sie an OpenCode gesendet wird."
+    },
+    "requireWakePhrase": {
+      "title": "Aktivierungsphrase verlangen",
+      "description": "Wenn deaktiviert, hört der Konversationsmodus sofort zu und lauscht nach jeder Antwort erneut. Die Bestätigung schützt Befehle weiterhin.",
+      "systemWarning": "Bei der Systemerkennung kann Umgebungsgeräusch an deinen Sprachanbieter gesendet werden. Nutze die lokale Eingabe für privates Zuhören."
     }
   },
   "diagnostics": {
@@ -547,6 +557,22 @@
     },
     "chatTextSize": "Chat-Textgröße",
     "chatTextSizeDescription": "Passe die Textgröße der Nachrichten an. Kleinere Schrift zeigt mehr vom Gespräch auf einmal.",
+    "timelineDetail": {
+      "label": "Zeitleisten-Detail",
+      "description": "Wähle, wie viel Aktivität im Feed erscheint: Nachrichten, Denkprozess, Werkzeuge und Bearbeitungen.",
+      "messages": {
+        "label": "Nur Nachrichten",
+        "description": "Nur Nachrichtenblasen und Anhänge anzeigen."
+      },
+      "reasoning": {
+        "label": "Denkprozess",
+        "description": "Nachrichten und den Denkprozess des Assistenten anzeigen."
+      },
+      "everything": {
+        "label": "Alles",
+        "description": "Die vollständige Zeitleiste mit Denkprozess, Werkzeugen, Bearbeitungen und anderer Aktivität anzeigen."
+      }
+    },
     "flatThread": {
       "title": "Flache Unterhaltung",
       "description": "Zeigt Nachrichten in voller Breite ohne Sprechblasen, damit mehr vom Gespräch auf den Bildschirm passt."

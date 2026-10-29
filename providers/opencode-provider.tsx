@@ -5,6 +5,7 @@ import { WorkspaceProvider } from '@/providers/workspace-provider';
 export type {
   AgentOption,
   ChatPreferences,
+  ConversationConfirmationState,
   ConversationInputPhase,
   ConversationPhase,
   ConversationReadbackEntry,

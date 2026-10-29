@@ -59,8 +59,15 @@ describe('mode-dependent voice settings', () => {
     expect(view.enable).toHaveBeenCalledOnce();
     buttons.find((button) => button.props.icon === 'play')!.props.onPress();
     expect(view.preview).toHaveBeenCalledOnce();
-    all(view.runtime.value, 'Switch')[0].props.onValueChange(true);
+    const autoPlay = all(view.runtime.value, 'Switch').find((item) => item.props.title === 'settings:voice.autoPlay.title')!;
+    autoPlay.props.onValueChange(true);
     expect(view.update).toHaveBeenLastCalledWith({ autoPlayAssistantReplies: true });
+    const confirm = all(view.runtime.value, 'Switch').find((item) => item.props.title === 'settings:voice.confirmCommands.title')!;
+    confirm.props.onValueChange(false);
+    expect(view.update).toHaveBeenLastCalledWith({ confirmVoiceCommands: false });
+    const wake = all(view.runtime.value, 'Switch').find((item) => item.props.title === 'settings:voice.requireWakePhrase.title')!;
+    wake.props.onValueChange(false);
+    expect(view.update).toHaveBeenLastCalledWith({ wakePhraseRequired: false });
   });
 
   it('shows the unprepared local playback tab without activating or downloading', async () => {

@@ -148,7 +148,10 @@
       "searching": "Pesquisando arquivos do projeto…",
       "empty": "Nenhum resultado"
     },
-    "readingReply": "A ler a resposta em voz alta. A escuta retoma no fim."
+    "readingReply": "A ler a resposta em voz alta. A escuta retoma no fim.",
+    "confirming": "Confirmação",
+    "confirmHint": "Revise o comando reconhecido e envie, tente novamente, edite ou cancele.",
+    "noWakeHint": "Ouvindo seu comando. A confirmação protege o que é enviado."
   },
   "newChat": {
     "title": "Novo chat",
@@ -215,7 +218,8 @@
     "startSpeaking": "Comece a falar naturalmente. O que você disser na última rodada aparecerá aqui.",
     "listeningHint": "Pode falar, estou ouvindo.",
     "endConversation": "Encerrar conversa",
-    "steerHint": "Diga “{{phrase}}” a qualquer momento para orientar."
+    "steerHint": "Diga “{{phrase}}” a qualquer momento para orientar.",
+    "phaseConfirming": "Confirme o comando"
   },
   "modelPicker": {
     "selectModel": "Selecionar modelo",
@@ -341,5 +345,24 @@
     "write": "Escrever",
     "thought": "Pensamento",
     "unknown": "Desconhecido"
+  },
+  "confirmation": {
+    "title": "Confirme o comando",
+    "readback": "Entendi: “{{command}}”. Está correto?",
+    "longReadback": "Ouvi um comando longo. Verifique o texto na tela e confirme.",
+    "listening": "Diga sim, tentar novamente, editar ou cancelar.",
+    "prompting": "Lendo o comando em voz alta…",
+    "editHint": "Corrija o comando e envie.",
+    "expired": "A confirmação expirou. O comando não foi enviado.",
+    "send": "Enviar",
+    "heard": "Ouvido: {{text}}",
+    "ambiguous": "Não entendi. Diga sim, tentar novamente, editar ou cancelar.",
+    "timeout": "Não ouvi uma confirmação. O comando não foi enviado.",
+    "unavailable": "Não foi possível iniciar a escuta de confirmação. Revise o comando e toque em Enviar, Tentar novamente ou Cancelar.",
+    "sessionChanged": "A conversa mudou. O comando não foi enviado.",
+    "ttsFallback": "A voz local não está disponível. Usando a voz do sistema.",
+    "emptyEdit": "Digite um comando antes de enviar.",
+    "connectionLost": "O OpenCode não está conectado. O comando não foi enviado.",
+    "retryPrompt": "Não entendi a confirmação. Diga sim, tentar novamente, editar ou cancelar."
   }
 }

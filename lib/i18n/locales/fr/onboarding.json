@@ -80,6 +80,8 @@
     "input": "Saisie vocale",
     "playback": "Réponses vocales",
     "responses": "Style de réponse",
-    "autoPlay": "Lire les réponses à voix haute"
+    "autoPlay": "Lire les réponses à voix haute",
+    "confirm": "Confirmer les commandes",
+    "wakeRequired": "Phrase d’activation"
   }
 }

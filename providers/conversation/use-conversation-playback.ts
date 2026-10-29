@@ -37,6 +37,8 @@ export function useConversationPlayback({
   setConversationFeedbackAction,
   stopConversationMode,
   turnSequence,
+  inputBusy,
+  wakePhraseRequired,
 }: {
   active: boolean;
   chatPreferences: ChatPreferences;
@@ -57,6 +59,8 @@ export function useConversationPlayback({
   setConversationFeedbackAction: Dispatch<SetStateAction<VoiceRecoveryAction>>;
   stopConversationMode: () => Promise<void>;
   turnSequence: number;
+  inputBusy: boolean;
+  wakePhraseRequired: boolean;
 }) {
   const [queue, setQueue] = useState<ConversationReadbackEntry[]>([]);
   const queueRef = useRef<ConversationReadbackEntry[]>([]);
@@ -64,6 +68,10 @@ export function useConversationPlayback({
   const runIdRef = useRef(0);
   const lastTurnSequenceRef = useRef(turnSequence);
   const sessionStatus = conversationSessionId ? sessionStatuses[conversationSessionId] : undefined;
+  // In no-wake mode `listening` is the idle input phase, not an active turn.
+  // Do not start reply readback while a command is already being captured.
+  const inputReady = inputPhase === 'armed'
+    || (!wakePhraseRequired && inputPhase === 'listening' && !inputBusy);
   const playback = useMemo(
     () => getSpeechPlayback({
       localTtsPackId: chatPreferences.localTtsPackId,
@@ -129,7 +137,7 @@ export function useConversationPlayback({
   useEffect(() => {
     // Wake detection and TTS share the audio session. Stop the current
     // utterance but retain its queue entry so a command timeout can resume it.
-    if (inputPhase !== 'listening' || readbackPhase !== 'speaking') {
+    if (!wakePhraseRequired || inputPhase !== 'listening' || readbackPhase !== 'speaking') {
       return;
     }
 
@@ -137,10 +145,10 @@ export function useConversationPlayback({
     startingRef.current = false;
     void stopSpeaking().catch(() => undefined);
     setReadbackPhase('waiting');
-  }, [inputPhase, readbackPhase, setReadbackPhase]);
+  }, [inputPhase, readbackPhase, setReadbackPhase, wakePhraseRequired]);
 
   useEffect(() => {
-    if (!active || !conversationSessionId || readbackPhase === 'idle' || inputPhase !== 'armed') {
+    if (!active || !conversationSessionId || readbackPhase === 'idle' || !inputReady) {
       return;
     }
 
@@ -201,13 +209,16 @@ export function useConversationPlayback({
     chatPreferences.readInterimAssistantReplies,
     conversationSessionId,
     getConversationAssistantEntries,
+    inputBusy,
     inputPhase,
+    inputReady,
     isSessionRunning,
     readbackPhase,
+    wakePhraseRequired,
   ]);
 
   useEffect(() => {
-    if (!active || readbackPhase !== 'waiting' || inputPhase !== 'armed' || queue.length === 0 || startingRef.current) {
+    if (!active || readbackPhase !== 'waiting' || !inputReady || queue.length === 0 || startingRef.current) {
       return;
     }
 
@@ -312,7 +323,9 @@ export function useConversationPlayback({
     chatPreferences.speechRate,
     chatPreferences.speechVoiceId,
     conversationSessionId,
+    inputBusy,
     inputPhase,
+    inputReady,
     pauseInput,
     pendingPermissionsBySession,
     pendingQuestionsBySession,

@@ -41,10 +41,8 @@ import type { ServerCapabilities } from '@/providers/opencode-capabilities';
 import type { SharedInput } from '@/providers/use-share-state';
 import type { TerminalRuntime, TerminalStatus } from '@/providers/terminal-types';
 import type { ExtensionCommandDraft, ExtensionScope, ExtensionSkillDraft, ExtensionSkillRow, ExtensionSnapshot } from '@/lib/opencode/extensions/types';
-
 export type { AgentOption, ChatPreferences, ModelOption, ResponseScope, ServerCapabilities };
 export type { ProviderAuthMethod, ProviderAuthPrompt, ProviderAuthValues } from '@/lib/opencode/types';
-
 // How a transcript refresh treats the window already held in memory.
 // - initial: no usable window; download one newest page.
 // - tail: the default; download one newest page and merge it in. On no overlap
@@ -52,7 +50,6 @@ export type { ProviderAuthMethod, ProviderAuthPrompt, ProviderAuthValues } from 
 // - replace: drop the held window and adopt the fetched page. Reserved for
 //   server-side history rewrites (compaction and revert).
 export type TranscriptRefreshMode = 'initial' | 'tail' | 'replace';
-
 // A stored provider credential. V2 integrations can hold several labeled
 // accounts (exactly one active); V1 providers have no account list.
 export type ProviderAccount = {
@@ -61,7 +58,6 @@ export type ProviderAccount = {
   method: 'key' | 'oauth';
   active: boolean;
 };
-
 export type ProviderOption = {
   id: string;
   label: string;
@@ -69,9 +65,25 @@ export type ProviderOption = {
   accounts?: ProviderAccount[];
 };
 
-export type ConversationInputPhase = 'off' | 'armed' | 'listening' | 'submitting';
+export type ConversationInputPhase = 'off' | 'armed' | 'listening' | 'confirming' | 'submitting';
 export type ConversationReadbackPhase = 'idle' | 'waiting' | 'speaking';
+export type ConversationConfirmationPhase = 'prompting' | 'listening' | 'editing' | 'expired';
 export type ConversationPhase = ConversationInputPhase | 'waiting' | 'speaking';
+
+export type ConversationConfirmationState = {
+  active: boolean;
+  phase: ConversationConfirmationPhase;
+  text: string;
+  heard?: string;
+  error?: string;
+  speaking: boolean;
+  actions: {
+    cancel: () => void;
+    confirm: (text?: string) => void;
+    edit: () => void;
+    retry: () => void;
+  };
+};
 
 export type SessionDeepLinkTarget = {
   sessionId: string;
@@ -107,9 +119,11 @@ export type ConversationState = {
   // input failure.
   feedbackAction?: VoiceRecoveryAction;
   latestHeardText?: string;
+  confirmation?: ConversationConfirmationState;
   isListening: boolean;
   level: number;
   wakePhrase: string;
+  wakePhraseRequired: boolean;
 };
 
 export type OpencodeProject = {

@@ -141,8 +141,8 @@ The Chat screen shows:
 
 Behavior details:
 
-- the transcript always renders the detailed timeline: user and assistant text, files, and errors plus reasoning, tool, and patch activity; there is no configurable detail level
-- reasoning, tool, and patch rows render as a two-level activity timeline outside message bubbles and match the assistant bubble's width; contiguous activity merges into one growing run whose `Used <total> <types>` header lists every rendered type once, including `Thought`, runs start collapsed and expand only on an explicit tap, and each child expands independently; shell output is a selectable, copyable code block, grep stays a one-line pattern with its match count, consecutive reads collapse to one filename list, and edit/write/patch files render expandable diff cards with `+N −N`; the initial pull loads one newest window of up to 200 records without a display-target loop
+- the transcript honors the `timelineDetail` preference, which defaults to `Everything`: `Messages only` renders user and assistant bubbles with files and errors, `Reasoning` adds reasoning activity, and `Everything` renders the full detailed timeline with reasoning, tools, and patches
+- at `Everything` detail, reasoning, tool, and patch rows render as a two-level activity timeline outside message bubbles and match the assistant bubble's width; contiguous activity merges into one growing run whose `Used <total> <types>` header lists every rendered type once, including `Thought`, runs start collapsed and expand only on an explicit tap, and each child expands independently; shell output is a selectable, copyable code block, grep stays a one-line pattern with its match count, consecutive reads collapse to one filename list, and edit/write/patch files render expandable diff cards with `+N −N`; the initial pull loads one newest window of up to 200 records without a display-target loop
 - no separate `OpenCode is ...` running footer is reserved; while the session runs, the newest activity header keeps the progress circle even after its own tools complete, and the active child row carries it only while that row is running
 - a small floating progress view shows the current step and completed count; tapping it opens a content-sized overlay with the task list; pending permission actions replace it while blocked
 - a pending question opens a full-screen answer flow immediately; dismissal leaves an `Answer needed` card above the composer and does not reject the request
@@ -541,9 +541,11 @@ Behavior exposed today:
 - System/On-device input mode with an active-path status card
 - prefer on-device system recognition when System mode is active
 - auto-play assistant replies
+- confirm voice commands before sending (on by default)
+- require a wake phrase (on by default; off enables immediate listening and re-arm)
 - read interim assistant progress updates in conversation mode (off by default)
 - working sound enable/disable
-- conversation wake phrase (default `hey code`) when System mode is active
+- conversation wake phrase (default `hey code`) when System mode is active and required
 - optional on-device wake word with pretrained models and voice verification
 - base-pack and command-model status, sizes, and separate install guidance
 - speech locale override
@@ -669,35 +671,43 @@ Entry requirements:
 
 Loop behavior:
 
-1. Start listening continuously for the configured wake phrase.
-2. Collect transcript from speech recognition, discarding anything before the
-   phrase.
+1. If the wake phrase is required, listen continuously for it; otherwise start
+   listening immediately.
+2. Collect transcript from speech recognition. With a wake phrase, discard
+   everything before the phrase; without one, treat every recognized utterance
+   as a command.
 3. After the phrase, capture the command; ignore noise-only segments.
-4. When a final command settles, submit it as a prompt with the phrase stripped.
-5. Immediately re-arm input. The next command can steer or queue work while the
+4. When a final command settles, show it for confirmation when enabled. Only an
+   exact final “yes” or a touch Send submits; retry captures again without the
+   wake phrase, edit sends corrected text, and cancel/timeout never submit.
+5. When confirmation is disabled, submit the settled command directly.
+6. Immediately re-arm input. The next command can steer or queue work while the
    assistant is still running.
-6. Independently wait until the session is idle and detect the latest assistant
+7. Independently wait until the session is idle and detect the latest assistant
    reply after the submission baseline.
-7. Speak the final assistant reply, pausing wake detection while TTS owns the
-   audio session. If `Read progress updates` is enabled, completed interim
-   assistant bubbles (“On it…”) are queued and read in order before the final
-   reply.
-8. Resume wake detection when readback finishes. Conversation mode stays active
-   until the user stops it.
+8. Speak the final assistant reply, pausing input while TTS owns the audio
+   session. If `Read progress updates` is enabled, completed interim assistant
+   bubbles (“On it…”) are queued and read in order before the final reply.
+9. Resume listening when readback finishes. Conversation mode stays active until
+   the user stops it.
 
-Submitting a new wake-phrase command drops queued progress readback and starts a
-fresh baseline for the new reply. A wake that times out without a command keeps
-the pending readback queue so a false start does not swallow the reply.
+Submitting a new command drops queued progress readback and starts a fresh
+baseline for the new reply. A wake that times out without a command keeps the
+pending readback queue so a false start does not swallow the reply. The
+confirmation prompt is bounded and uses a short spoken fallback for long
+commands; the full text stays visible.
 
-Input and readback are separate state machines. `armed` does not wait for a
-reply, and `speaking` does not disable the next turn permanently.
+Input and readback are separate state machines. `armed` (or no-wake `listening`)
+does not wait for a reply, and `speaking` does not disable the next turn
+permanently. In no-wake mode, reply readback still takes priority over idle
+listening but waits for an in-progress command to finish.
 
 Additional behavior:
 
 - screen is kept awake while conversation mode is active
 - a full-screen overlay is shown
 - conversation mode stops if a permission or question requires on-screen input
-- TTS failures surface feedback and leave input armed instead of silently ending
+- TTS failures surface feedback and leave input ready instead of silently ending
   the loop
 - a phrase-only turn re-arms after six seconds without a command
 - if recognition ends after the phrase but before a command, the command window
@@ -706,6 +716,10 @@ Additional behavior:
   `heycode` also matches
 - the phrase is passed to the recognizer as contextual vocabulary
 - recognition still runs while armed; the gate changes submission, not capture
+- confirmation stays local to the selected input mode; confirmation speech is
+  never sent as a prompt
+- no-wake system recognition warns that ambient speech may reach the vendor;
+  no-wake mode is foreground-only
 
 Optional on-device wake word:
 
@@ -723,12 +737,14 @@ Optional on-device wake word:
   phrase immediately instead of waiting for a detector restart.
 - Wake audio is buffered while the native KWS bridge is busy. A slow inference
   pass or model warm-up therefore delays detection instead of cutting the
-  phrase apart.
+  phrase apart. Audio captured after the keyword is handed to command capture,
+  so the first command words are not lost.
 - After a verified wake, the detector stops and a local command session starts.
   A VAD splits the command window into speech turns; each turn is checked
   against the enrolled speaker, and only matching turns are transcribed by the
   selected local model (Moonshine English by default, or Whisper tiny
-  multilingual/auto-detect).
+  multilingual/auto-detect). With the wake phrase disabled, local mode starts
+  command capture directly and skips KWS.
 - Accepted turns are accumulated until 1.2 seconds of silence, then submitted
   as one prompt. A window with no speech ends after six seconds; the command
   window is capped at fifteen seconds.
@@ -738,10 +754,12 @@ Optional on-device wake word:
   tap/confirm fallback for noisy rooms.
 - If models, the native runtime, or microphone permission are unavailable,
   conversation mode falls back to the phrase gate and says so.
-- Reply readback uses the selected playback engine. On-device readback is
-  prewarmed when conversation mode starts, pauses wake detection while speaking,
-  and resumes it when the queue drains. Barge-in over an active readback is not
-  implemented; a new command stops the current utterance.
+- Reply and confirmation readback use the selected playback engine. On-device
+  readback is prewarmed when conversation mode starts, pauses capture while
+  speaking, waits for the audio session to settle, and resumes after an echo
+  guard. Barge-in over an active readback is not implemented when a wake phrase
+  is required; a new command stops the current utterance. No-wake mode waits for
+  an in-progress command before starting reply readback.
 - The local input path is foreground-only. The wake phrase remains English
   because the KWS model is English.
 
