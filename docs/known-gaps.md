@@ -289,3 +289,41 @@ Known limits:
 - Auto-routing tier suggestions use price/context/reasoning metadata as a
   capability proxy. They do not benchmark model quality or prompt-cache behavior;
   the long-chat guard is a fixed conservative threshold, not measured savings.
+
+## 12. Vendored sherpa-onnx patch
+
+`@siteed/sherpa-onnx.rn` is pinned to `1.3.1` and patched through
+`patches/@siteed+sherpa-onnx.rn+1.3.1.patch`. Do not bump the package without
+re-checking the patch, the native ABI test, and a physical-device build.
+
+Why the patch exists:
+
+- The Android package bundles the sherpa-onnx 1.13.0 JNI library, whose
+  `OfflineTtsModelConfig` reader expects `zipvoice` and `supertonic` fields. The
+  bundled Kotlin class declared neither, so `initTts` aborted the process with a
+  JNI `NoSuchFieldError` before any model loaded. This affects Piper and Kokoro
+  alike, and downgrading is not a fix: every published 1.x release checked
+  (1.1.x, 1.2.0, 1.3.0, 1.3.1) has the same mismatch. The patch adds both
+  classes and fields in upstream order.
+- The iOS TurboModule bridge forwards `modelType`/`voices`/`lexicon`, while the
+  bundled Swift handler read `ttsModelType`/`voicesFile`/`lexiconFile`. Without
+  the alias patch, on-device playback falls back to the wrong model type and
+  never receives Kokoro voices.
+
+How it is applied:
+
+- `package.json` runs `patch-package` from `postinstall`. A clean
+  `npm install` or `npm ci` installs 1.3.1 and reapplies the patch to
+  `node_modules`. A failed hunk fails the install instead of shipping a broken
+  native build.
+- The changed files are native source, so a JS reload or OTA update is not
+  enough. Rebuild Android/iOS after changing the patch.
+- `tests/vitest/tts-native-abi.test.ts` asserts the installed Kotlin declares
+  the fields in the expected order and that the patch entry still carries them.
+
+Exit plan:
+
+- `1.3.2-beta.0` contains the Android JNI fix. When a stable release carries it,
+  upgrade, drop the Android hunk, and keep the iOS alias hunk only if the
+  bridge/handler key mismatch is still present. Re-run the native ABI test and
+  validate preview and message playback on a device.

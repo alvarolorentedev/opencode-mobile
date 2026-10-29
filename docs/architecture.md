@@ -596,7 +596,10 @@ permission and Chat Library visibility do not gate widget reads.
   packs and licenses; `models.ts` installs, verifies, removes, and reports
   packs; `runtime.ts` owns the sherpa-onnx TTS singleton and idle release;
   `engine.ts` synthesizes WAV chunks and orchestrates prefetch; `player.ts`
-  plays those chunks through `expo-audio` and cleans up cache files.
+  plays those chunks through `expo-audio` and cleans up cache files. The
+  `@siteed/sherpa-onnx.rn` dependency is pinned and patched for Android JNI and
+  iOS config-key compatibility; see `docs/known-gaps.md` section 12 before
+  upgrading it.
 - `lib/voice/use-speech-input.ts`
   Speech recognition hook. Re-checks recognition availability at start, pins an
   explicit iOS audio session category, and retries once through network
