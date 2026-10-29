@@ -1,0 +1,4 @@
+- Settings has a new searchable, grouped layout with clearer categories and consistent spacing.
+- The on-device "Hey code" wake word is more reliable: retries are heard immediately and wake audio is no longer dropped while detection is busy.
+- Chat fails over to another connected server automatically, and saved model choices survive reconnects.
+- Voice model downloads recover more gracefully, on-device TTS paths are fixed, and reverting a running reply stops it before staging the rewind.
