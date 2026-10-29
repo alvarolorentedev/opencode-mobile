@@ -128,6 +128,7 @@ describe('connection profiles', () => {
       getProfilePassword,
       loadConnectionProfiles,
       mutateConnectionProfiles,
+      pickModelPreferences,
       resolveConnectionCredentials,
       saveProfilePassword,
       saveConnectProfile,
@@ -178,7 +179,10 @@ describe('connection profiles', () => {
           modelId: 'gpt-5',
           enabledModelIds: ['openai/gpt-5'],
           providerModelSelections: { openai: 'gpt-5' },
+          modelVariantSelections: { 'openai/gpt-5': 'high', 'openai/other': null },
           recentModelIds: ['openai/gpt-5'],
+          mode: 'plan',
+          autoApprove: true,
           ignored: 'nope',
         },
       });
@@ -192,8 +196,36 @@ describe('connection profiles', () => {
           modelId: 'gpt-5',
           enabledModelIds: ['openai/gpt-5'],
           providerModelSelections: { openai: 'gpt-5' },
+          modelVariantSelections: { 'openai/gpt-5': 'high', 'openai/other': null },
           recentModelIds: ['openai/gpt-5'],
+          mode: 'plan',
+          autoApprove: true,
         },
+      });
+
+      // Every server-scoped preference must survive a profile save, not only the
+      // model fields, so a rebuilt workspace can restore the full selection.
+      const autoModel = { enabled: false, classifier: 'local', tiers: { simple: 'auto', standard: 'auto', complex: 'auto' }, protectLongChats: true };
+      assert.deepEqual(pickModelPreferences({
+        providerId: 'openai',
+        modelId: 'gpt-5',
+        enabledModelIds: ['openai/gpt-5'],
+        providerModelSelections: { openai: 'gpt-5' },
+        modelVariantSelections: { 'openai/gpt-5': 'high' },
+        recentModelIds: ['openai/gpt-5'],
+        mode: 'plan',
+        autoApprove: true,
+        autoModel,
+      } as any), {
+        providerId: 'openai',
+        modelId: 'gpt-5',
+        enabledModelIds: ['openai/gpt-5'],
+        providerModelSelections: { openai: 'gpt-5' },
+        modelVariantSelections: { 'openai/gpt-5': 'high' },
+        recentModelIds: ['openai/gpt-5'],
+        mode: 'plan',
+        autoApprove: true,
+        autoModel,
       });
     }
 
@@ -213,7 +245,10 @@ describe('connection profiles', () => {
       assert.equal(toConnectionProfile({ ...base, modelPreferences: { modelId: {} } }), undefined);
       assert.equal(toConnectionProfile({ ...base, modelPreferences: { enabledModelIds: [1] } }), undefined);
       assert.equal(toConnectionProfile({ ...base, modelPreferences: { providerModelSelections: { a: 1 } } }), undefined);
+      assert.equal(toConnectionProfile({ ...base, modelPreferences: { modelVariantSelections: { a: 1 } } }), undefined);
       assert.equal(toConnectionProfile({ ...base, modelPreferences: { recentModelIds: 'x' } }), undefined);
+      assert.equal(toConnectionProfile({ ...base, modelPreferences: { mode: 5 } }), undefined);
+      assert.equal(toConnectionProfile({ ...base, modelPreferences: { autoApprove: 'yes' } }), undefined);
 
       // Absent or empty preferences stay absent rather than becoming blank values.
       assert.deepEqual(toConnectionProfile({ ...base, modelPreferences: null }), base);

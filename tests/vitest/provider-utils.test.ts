@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'vitest';
-import { getConfiguredProviderIds, getInitialModelId, getInitialProviderId, getModelIdForProvider, getSelectedModelVariant, recordRecentModelId, resolveConfigModelId } from '@/providers/opencode-model-selection';
+import { getConfiguredProviderIds, getEnabledModelIds, getInitialMode, getInitialModelId, getInitialProviderId, getModelIdForProvider, getSelectedModelVariant, recordRecentModelId, resolveConfigModelId } from '@/providers/opencode-model-selection';
 import { areSessionListsEqual, areSessionStatusMapsEqual, buildOpencodeProjects, collectDescendantSessionIds, mergeSessionStatuses, RETRY_STATUS_STALE_MS, resolveActiveProject } from '@/providers/opencode-provider-utils';
 import type { ModelOption } from '@/providers/opencode-model-selection';
 import type { SessionStatus } from '@/lib/opencode/types';
@@ -105,5 +105,30 @@ describe('provider model selection utilities', () => {
     assert.equal(areSessionStatusMapsEqual({ a: { type: 'idle' } }, { a: { type: 'busy' } }), false);
     assert.equal(areSessionStatusMapsEqual({ a: { type: 'idle' } }, {}), false);
     assert.equal(areSessionStatusMapsEqual({ a: retry }, { a: { type: 'retry', attempt: 3, message: 'provider failed', next: retry.next } }), false);
+  });
+
+  it('preserves stored server choices across empty or partial capability catalogs', () => {
+    const models = [model('openai/gpt', 'openai', 'gpt'), model('opencode/deepseek', 'opencode', 'deepseek')];
+    const agents = [{ id: 'build', label: 'Build' }];
+
+    // Reconnect reads can be empty before the server has loaded providers and
+    // agents. The stored choices must survive until a complete read arrives.
+    assert.equal(getInitialMode([], undefined, 'general'), 'general');
+    assert.equal(getInitialMode([], undefined, undefined), 'build');
+    assert.equal(getInitialMode(agents, undefined, 'general'), 'build');
+    assert.equal(getInitialProviderId([], { model: 'openai/gpt' }, 'opencode', 'opencode/deepseek'), 'opencode');
+    assert.equal(getInitialModelId([], { model: 'openai/gpt' }, 'opencode/deepseek'), 'opencode/deepseek');
+    assert.deepEqual(getEnabledModelIds([], ['opencode/deepseek']), ['opencode/deepseek']);
+    assert.deepEqual(getEnabledModelIds([], undefined), []);
+
+    // A partial catalog keeps an unavailable stored ID so a provider that is
+    // still loading can return with its previous selection intact. When none of
+    // the stored IDs resolve, the full catalog is enabled instead of leaving the
+    // picker empty.
+    assert.deepEqual(getEnabledModelIds(models, []), ['openai/gpt', 'opencode/deepseek']);
+    assert.deepEqual(getEnabledModelIds(models, ['opencode/deepseek']), ['opencode/deepseek']);
+    assert.deepEqual(getEnabledModelIds([models[0]], ['openai/gpt', 'opencode/deepseek']), ['openai/gpt', 'opencode/deepseek']);
+    assert.deepEqual(getEnabledModelIds([models[0]], ['opencode/deepseek']), ['openai/gpt']);
+    assert.deepEqual(getEnabledModelIds(models, ['opencode/deepseek', 'opencode/deepseek']), ['opencode/deepseek']);
   });
 });

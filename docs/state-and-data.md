@@ -383,7 +383,7 @@ Persisted values:
 
 - `opencode-mobile.settings` (connection URL and username; the password and custom gateway headers live in secure storage)
 - `opencode-mobile.connect-control-plane` (last automatically resolved Cloud Link environment; defaults to production, accepts only production/staging, hydrated before pairing/Cloud Link startup)
-- `opencode-mobile.connection-profiles` (saved connections with name and optional per-profile model selection including auto-routing tiers; passwords and custom gateway headers live in secure storage)
+- `opencode-mobile.connection-profiles` (saved connections with name and the optional server-scoped preferences: provider/model, enabled models, per-provider and variant selections, agent mode, auto-approve, and auto-routing tiers; passwords and custom gateway headers live in secure storage)
 - `opencode-mobile.chat-preferences` (chat preferences, including the global UI `language`; not connection-scoped)
 - `opencode-mobile.active-project`
 - `opencode-mobile.projects` (opened projects per connection scope, most-recent-first directory paths; an explicit empty list means the user closed every project and is not re-seeded)
@@ -779,6 +779,18 @@ Preference reconciliation then determines safe values for:
 - auto-approve UI state
 
 This logic prevents stale persisted provider/model values from breaking the UI when server capabilities change.
+
+Reconnect reads are not always complete: a server can briefly expose no
+providers, models, or agents while it starts up, and capability discovery returns
+an empty catalog when no project is active. Those snapshots must not destroy the
+stored choices. An empty model catalog preserves the provider, model, and enabled
+IDs; an empty agent catalog preserves the stored agent; and enabled IDs for
+providers that are temporarily missing stay stored without being rendered. The
+catalog is only reconciled once models are present. A partial catalog keeps
+unavailable enabled IDs alongside available ones, while a catalog in which none
+of the stored IDs resolve falls back to enabling the full catalog so the picker
+is never left empty. Empty capability refreshes are also not written over the
+last-known-good capabilities cache.
 
 ## Notification Tracking Data
 

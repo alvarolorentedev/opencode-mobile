@@ -216,7 +216,10 @@ export function useCapabilitiesActions({
   }, [activeProjectPath, applyCapabilities, client, connectionScope, isCurrentClient]);
 
   const refreshChatCapabilities = useCallback(async () => {
-    if (!isCurrentClient(client)) return;
+    // discoverChatCapabilities returns an empty catalog without a project. That
+    // snapshot is not authoritative, so never let it reconcile (and erase) the
+    // server-scoped choices while the project context is still resolving.
+    if (!isCurrentClient(client) || !activeProjectPath) return;
     const result = await import('@/providers/services/capabilities-service').then((m) => m.discoverChatCapabilities(client, activeProjectPath));
     if (!isCurrentClient(client)) {
       return;
@@ -224,7 +227,9 @@ export function useCapabilitiesActions({
 
     freshRef.current = true;
     applyCapabilities(result);
-    if (activeProjectPath) {
+    // Do not replace a useful last-known catalog with an empty reconnect read.
+    // The next successful response will refresh the cache again.
+    if (result.models.length > 0) {
       void persistCapabilitiesCache(connectionScope, activeProjectPath, {
         config: result.config,
         providers: result.providers,

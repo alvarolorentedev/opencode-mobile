@@ -724,9 +724,9 @@ This split is one of the key architectural details. Project discovery is intenti
 Saved connections are a first-class concept built on `getConnectionScope()`. A
 switch is deliberately ordered:
 
-1. persist the outgoing profile's model preferences,
+1. persist the outgoing profile's server-scoped preferences,
 2. update credentials and settings, which resets every server-derived in-memory slice,
-3. restore the target profile's model preferences (validated again by capability discovery after connecting),
+3. restore the target profile's server-scoped preferences (validated again by capability discovery after connecting). A retained workspace keeps its live values authoritative; the profile only fills fields the entry is missing, so a lagging profile write cannot roll back a newer selection,
 4. reconnect with the target settings passed explicitly to `runConnect()` instead of reading a render-delayed ref, then
 5. hydrate only state whose connection scope matches the new settings.
 

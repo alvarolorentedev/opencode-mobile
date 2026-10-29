@@ -269,7 +269,9 @@ export function useWorkspaceConnections(shell: OpencodeProviderState, hydrated: 
     // opened list, never to the first stale entry.
     const projectPath = shellRef.current.projectPathsByConnection[getConnectionScope(full)]?.[0] ?? '';
     change((current) => found ? current.map((entry) => entry.id === id ? { ...entry, settings: full, enabled: true,
-      preferences: { ...entry.preferences, ...serverPreferences(preferences ?? {}) }, events: createSharedEventStream() } : entry)
+      // A retained workspace already holds the live server choices. A profile
+      // write can lag behind it, so only fill fields the entry is missing.
+      preferences: { ...serverPreferences(preferences ?? {}), ...entry.preferences }, events: createSharedEventStream() } : entry)
       : [...current.filter((entry) => shellRef.current.onboardingVersion > 0 || entry.enabled || entry.id !== getConnectionUiScope(defaultConnectionSettings)), { id, name: profile.name, settings: full, enabled: true, preferences: { autoApprove: false, ...serverPreferences(preferences ?? profile.modelPreferences ?? {}) }, projects: [projectPath], events: createSharedEventStream() }]);
     const target = { connectionId: id, projectPath };
     const runtime = await ensure(target);
