@@ -18,21 +18,23 @@ async function voice(os = 'android', ready = false) {
     '@/constants/appearance': {}, '@/lib/auto-model/preferences': autoModelPreferences, '@/lib/voice/wake-phrase': {}, '@/lib/voice/local-wake-word/types': {},
   });
   const update = vi.fn();
-  const localVoice = { clearError: vi.fn(), refresh: vi.fn() };
-  const ttsSetup = { activePack: ready ? { id: 'piper-en' } : undefined, statuses: { 'piper-en': ready ? 'ready' : 'missing' }, setEngine: vi.fn(), install: vi.fn() };
+  const localVoice = { status: ready ? 'ready' : 'missing', microphone: { granted: ready }, clearError: vi.fn(), refresh: vi.fn(), enrollment: { hasProfile: ready, cancel: vi.fn(async () => {}) } };
+  const pack = { id: 'piper-en', vendor: 'Piper', languageLabel: 'English', speakers: [{ id: 0, label: 'English' }] };
+  const ttsSetup = { packs: [pack], activePack: ready ? pack : undefined, sizeLabel: () => '21 MB', statuses: { 'piper-en': ready ? 'ready' : 'missing' }, setEngine: vi.fn(), install: vi.fn() };
   const enable = vi.fn();
   const preview = vi.fn();
   const { VoiceSection } = await loadTs('components/settings/sections/voice-section.tsx', {
-    react: runtime.react, 'react/jsx-runtime': jsx, 'react-i18next': translation,
+    react: runtime.react, 'react/jsx-runtime': jsx, 'react-i18next': translation, 'expo-router': { useIsFocused: () => true },
     'react-native': { ...native, Platform: { OS: os } },
-    'react-native-paper': { Button: 'Button', HelperText: 'HelperText', List: { Accordion: 'Accordion' }, SegmentedButtons: 'Segments', Text: 'Text' },
-    '@expo/vector-icons': { MaterialCommunityIcons: 'Icon' },
-    '@/components/ui/numeric-slider': { NumericSlider: 'Slider' }, '@/components/ui/text-input': { TextInput: 'Input' },
-    '@/lib/voice/wake-phrase': { normalizeWakePhrase: (value: string) => value },
-    '@/components/settings/settings-utils': { WORKING_SOUND_OPTIONS: [] },
-    './local-voice-section': { LocalVoiceSection: 'LocalVoice' }, './local-tts-section': { LocalTtsSection: 'LocalTts' },
-    './setting-rows': { SettingButton: 'Button', SettingSelectField: 'Select', SettingSwitchRow: 'Switch', SettingSlider: 'Slider', SettingTextInput: 'Input' },
-    '../settings-panel': { SettingTarget: 'Target', SettingsDisclosure: 'Disclosure' },
+    'react-native-paper': { HelperText: 'HelperText', SegmentedButtons: 'Segments', Text: 'Text' },
+    '@/lib/voice/speech-output': { stopSpeaking: vi.fn() },
+    '@/providers/use-voice-setup-test': { useVoiceTest: () => undefined },
+    '@/lib/voice/tts/catalog': { isPackLanguageCompatible: () => true },
+    '../voice-input-setup': { VoiceInputSetup: 'Setup' }, '../voice-flow-screen': { VoiceFlowScreen: 'Flow' },
+    '../voice-language': { voiceLanguageOptions: () => [{ label: 'Follow system', value: '' }] },
+    './local-tts-section': { LocalTtsSection: 'LocalTts' }, './voice-more-settings': { VoiceMoreSettings: 'More' },
+    './setting-rows': { SettingButton: 'Button', SettingSelectField: 'Select', SettingSwitchRow: 'Switch' },
+    '../settings-panel': { SettingTarget: 'Target', useSettingsTarget: () => undefined },
   });
   runtime.mount(VoiceSection, {
     onboarding: true, chatPreferences: defaultChatPreferences, palette: {},
@@ -44,14 +46,14 @@ async function voice(os = 'android', ready = false) {
   return { runtime, update, localVoice, ttsSetup, enable, preview, preferences: defaultChatPreferences };
 }
 
-describe('onboarding voice controls', () => {
-  it('keeps setup read-only until an explicit action and hides advanced settings', async () => {
+describe('mode-dependent voice settings', () => {
+  it('is read-only on entry, with no local packs under System', async () => {
     const view = await voice();
     expect(view.update).not.toHaveBeenCalled();
     expect(view.ttsSetup.install).not.toHaveBeenCalled();
     expect(view.enable).not.toHaveBeenCalled();
-    expect(all(view.runtime.value, 'Slider')).toHaveLength(0);
-    expect(all(view.runtime.value, 'Accordion')).toHaveLength(0);
+    expect(all(view.runtime.value, 'LocalTts')).toHaveLength(0);
+    expect(all(view.runtime.value, 'Select')).toHaveLength(2);
     const buttons = all(view.runtime.value, 'Button');
     buttons.find((button) => button.props.children === 'settings:voice.check.enable')!.props.onPress();
     expect(view.enable).toHaveBeenCalledOnce();
@@ -61,37 +63,44 @@ describe('onboarding voice controls', () => {
     expect(view.update).toHaveBeenLastCalledWith({ autoPlayAssistantReplies: true });
   });
 
-  it('opens model setup without activating or downloading a missing playback pack', async () => {
+  it('shows the unprepared local playback tab without activating or downloading', async () => {
     const view = await voice();
     all(view.runtime.value, 'Segments')[1].props.onValueChange('local');
     view.runtime.flush();
-    expect(all(view.runtime.value, 'LocalTts')).toHaveLength(1);
     expect(view.ttsSetup.setEngine).not.toHaveBeenCalled();
     expect(view.ttsSetup.install).not.toHaveBeenCalled();
-    expect(all(view.runtime.value, 'Segments')[1].props.value).toBe('system');
-    all(view.runtime.value, 'Segments')[1].props.onValueChange('system');
+    expect(all(view.runtime.value, 'Segments')[1].props.value).toBe('local');
+    expect(all(view.runtime.value, 'Select').some((field) => field.props.options.some((option: any) => option.value === '__system__'))).toBe(false);
+    all(view.runtime.value, 'Button').find((button) => button.props.children === 'settings:voice.setup.manageDownloads')!.props.onPress();
     view.runtime.flush();
-    expect(all(view.runtime.value, 'LocalTts')).toHaveLength(0);
+    expect(all(view.runtime.value, 'LocalTts')).toHaveLength(1);
+    all(view.runtime.value, 'Segments')[1].props.onValueChange('system');
     expect(view.ttsSetup.setEngine).toHaveBeenCalledWith('system');
   });
 
-  it('reuses installed playback and local input models, preserving setup errors', async () => {
-    const view = await voice('android', true);
-    all(view.runtime.value, 'Segments')[1].props.onValueChange('local');
-    expect(view.ttsSetup.setEngine).toHaveBeenCalledWith('local');
-    all(view.runtime.value, 'Segments')[0].props.onValueChange('local');
-    expect(view.update).toHaveBeenCalledWith({ voiceWakeMode: 'local' });
-    expect(view.localVoice.refresh).toHaveBeenCalledOnce();
-    view.runtime.update({ chatPreferences: { ...view.preferences, voiceWakeMode: 'local', localCommandModel: 'whisper-tiny-multi' }, localVoice: { ...view.localVoice, error: 'Download failed' } });
-    const local = all(view.runtime.value, 'LocalVoice')[0];
-    expect(local.props.chatPreferences.localCommandModel).toBe('whisper-tiny-multi');
-    expect(local.props.localVoice.error).toBe('Download failed');
+  it('reuses ready engines and opens a single setup flow for unprepared input', async () => {
+    const ready = await voice('android', true);
+    all(ready.runtime.value, 'Segments')[1].props.onValueChange('local');
+    expect(ready.ttsSetup.setEngine).toHaveBeenCalledWith('local');
+    all(ready.runtime.value, 'Segments')[0].props.onValueChange('local');
+    expect(ready.update).toHaveBeenCalledWith({ voiceWakeMode: 'local' });
+    const missing = await voice();
+    all(missing.runtime.value, 'Segments')[0].props.onValueChange('local');
+    missing.runtime.flush();
+    expect(missing.update).not.toHaveBeenCalled();
+    all(missing.runtime.value, 'Button').find((button) => button.props.children === 'settings:voice.setup.setUpInput')!.props.onPress();
+    missing.runtime.flush();
+    expect(all(missing.runtime.value, 'Setup')).toHaveLength(1);
+    all(missing.runtime.value, 'Setup')[0].props.onClose();
+    missing.runtime.flush();
+    expect(all(missing.runtime.value, 'Segments')[0].props.value).toBe('system');
+    expect(missing.update).not.toHaveBeenCalled();
+    expect(missing.ttsSetup.install).not.toHaveBeenCalled();
   });
 
-  it('uses valid OS voices and keeps unsupported web setup non-blocking', async () => {
+  it('validates OS voices and keeps unsupported web input non-blocking', async () => {
     const view = await voice('web');
-    expect(all(view.runtime.value, 'Segments')).toHaveLength(1);
-    const field = all(view.runtime.value, 'Select')[0];
+    const field = all(view.runtime.value, 'Select').find((item) => item.props.label === 'settings:voice.voiceSelect.label')!;
     field.props.onValueChange('missing');
     expect(view.update).not.toHaveBeenCalled();
     field.props.onValueChange('voice-en');

@@ -1498,3 +1498,42 @@ alternate accents, long translations and large text. Physical devices remain
 necessary for TalkBack/VoiceOver, keyboard/Back, safe areas, permissions, audio,
 enrollment and downloads. E2E contract changes require explicit human validation
 under `AGENTS.md`; passing web checks alone does not complete native acceptance.
+
+## Compact voice settings and guided local input
+
+`onboarding-voice.test.ts` checks mode-dependent controls, no implicit downloads or
+activation, installed-engine reuse and OS voice validation.
+`voice-input-setup.test.ts` covers prerequisite gating, failed download retry,
+explicitly skipping verification, preserving existing profile preferences and
+dismissal. `voice-setup-test.test.ts` checks isolated detection, active-conversation
+exclusion (including pending conversation startup), pending-start cancellation,
+background cleanup and retry. Enrollment
+coverage now includes Cancel without unmounting the parent Settings screen.
+
+The Settings search browser assertion now reveals More audio settings for Wake
+phrase. The MCP creation flow also waits for its initial snapshot and verifies Remote
+mode before filling a URL, preventing a click during the loading layout shift.
+These E2E edits require explicit human validation under AGENTS.md. No fake-server source or protocol changed.
+
+Run all three CI gates plus the Android development build. Browser checks cover
+System/local input navigation, illustrated setup, compact selectors, search,
+light/dark and narrow layouts. Disposable visual fixtures may simulate native
+readiness to inspect later steps; those captures do not validate native audio.
+Physical Android/iOS acceptance remains necessary for microphone allow/deny and
+settings recovery, downloads/retry, speaker enrollment, wake detection, leaving
+mid-capture, safe areas, Back and screen readers.
+
+Implementation validation (2026-10-29): static CI passes (736 checks in the
+working tree), both fake-server self-tests pass, and the complete web suite passes
+all 169 flows. Android development assembly passes (1101 Gradle tasks, 5m 9s).
+Checks ran in a synchronized local mirror; runtime/assets/test checksums match the
+project root. The mirror includes the user's pre-existing uncommitted native TTS
+ABI patch/test, which remain outside this settings change. Design QA passes for
+the reviewed content and records its simulated native states explicitly. No
+protocol, dependency, release version or persistence schema changed.
+
+The initial final web rerun exposed one MCP-form layout race after an earlier
+169/169 pass. The failing flow passed five isolated reproductions; it now waits
+for writable initial data and checks the URL placeholder before entering a URL.
+The subsequent complete suite passes. Physical-device audio/accessibility
+acceptance and explicit human validation of the two E2E edits remain separate.

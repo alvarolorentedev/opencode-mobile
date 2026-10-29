@@ -265,7 +265,7 @@
       "description": "优先使用本地识别，必要时再使用云端。"
     },
     "autoPlay": {
-      "title": "自动播放助手回复",
+      "title": "自动朗读回复",
       "description": "朗读聊天回复。对话模式始终会朗读。"
     },
     "workingSound": {
@@ -318,7 +318,7 @@
       "installCommand": "安装命令模型（{{size}}）"
     },
     "speechLocale": {
-      "label": "语音区域设置",
+      "label": "语言",
       "helper": "留空以使用系统默认语言进行语音输入和播放。"
     },
     "responseScope": {
@@ -358,8 +358,8 @@
       "label": "工作提示音音量"
     },
     "voiceSelect": {
-      "label": "系统语音",
-      "automatic": "自动（最佳可用）",
+      "label": "声音",
+      "automatic": "自动",
       "enhanced": "增强 · {{language}}"
     },
     "enhancedVoices": "在设备的文字转语音设置中安装增强或高级语音，以获得最自然的系统语音。",
@@ -421,6 +421,57 @@
     "readInterim": {
       "title": "朗读进度更新",
       "description": "朗读“正在处理…”等更新；最终回复始终会朗读。"
+    },
+    "setup": {
+      "title": "设备端语音输入",
+      "step": "第 {{step}} 步，共 {{total}} 步",
+      "followSystem": "跟随系统",
+      "setUpInput": "设置设备端输入",
+      "manageInput": "管理设备端输入",
+      "notActive": "完成设置后即可启用设备端输入。",
+      "chooseVoice": "选择声音",
+      "manageDownloads": "管理下载",
+      "more": "更多音频设置",
+      "advanced": "高级选项",
+      "notNow": "暂不设置",
+      "downloadContinue": "下载并继续",
+      "tools": "语音工具",
+      "downloadSize": "需下载 {{size}} · 建议使用 Wi-Fi",
+      "englishModel": "Moonshine · 适用于英语指令，速度快",
+      "multilingualModel": "Whisper · 适用于多语言指令",
+      "microphone": "麦克风权限",
+      "allow": "允许",
+      "sequence": "唤醒 → 说话 → 发送",
+      "serverNote": "语音识别在手机上运行。你的请求仍会发送到 OpenCode 服务器。",
+      "profileNote": "可选：录制一段 12 秒的语音，让应用只响应你的声音。声纹保存在手机上。跳过后，任何人都可以通过唤醒短语激活应用。",
+      "skipProfile": "跳过声纹设置",
+      "skipTest": "跳过测试并完成",
+      "startTest": "开始测试",
+      "stopTest": "停止测试",
+      "testNote": "测试不会发送请求。离开此页面后麦克风会停止监听。",
+      "busy": "请先停止对话模式，再设置语音输入。",
+      "intro": {
+        "title": "动动嘴，无需动手",
+        "description": "说出“{{phrase}}”，然后告诉 OpenCode 要做什么。"
+      },
+      "prepare": {
+        "title": "准备你的手机",
+        "description": "选择语言，允许使用麦克风，并一次性下载语音工具。"
+      },
+      "profile": {
+        "title": "专属于你的声音",
+        "description": "选择是否让应用只响应你的声音。"
+      },
+      "test": {
+        "title": "试试说“{{phrase}}”",
+        "description": "开始测试，然后以正常音量说出唤醒短语。",
+        "idle": "准备就绪",
+        "starting": "正在启动麦克风…",
+        "listening": "正在监听唤醒短语…",
+        "detected": "已检测到唤醒短语，一切就绪！",
+        "error": "无法运行测试。请检查麦克风权限后重试。",
+        "busy": "请停止对话模式以运行测试。"
+      }
     }
   },
   "diagnostics": {

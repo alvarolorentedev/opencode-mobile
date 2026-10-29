@@ -1065,3 +1065,23 @@ Opening model setup does not download or activate a missing TTS pack. Downloads
 and enrollment use the existing setup hooks, and activation still requires an
 installed model. The onboarding voice panel unmounts when its route loses focus,
 so preview playback and enrollment capture are released before the next screen.
+
+## Guided on-device voice setup
+
+The input/playback tab can temporarily show an unprepared local engine while the
+active preference remains System. Opening setup is read-only; language/model
+choices, permission, download, profile actions and Done are explicit writes.
+Done requires ready voice models and microphone permission before setting
+`voiceWakeMode: local`. Cancel leaves the active mode unchanged. Existing
+installed packs and saved profiles are reused and survive dismissal.
+
+A newly skipped voice profile writes `localSpeakerVerification: false`; recording
+a profile preserves the current verification preference, which its switch edits
+explicitly. Reviewing an existing profile preserves its verification setting. Removing a profile explicitly disables it.
+Step progress, selected unprepared tabs and test feedback are not persisted.
+
+Local input reads/requests recording permission independently of OS speech
+recognition permission. The provider-owned wake test has busy, idle, starting,
+listening, detected and error states, no transcript and no prompt callback. A
+generation guard prevents dismissed/backgrounded starts from restoring listening.
+Enrollment uses the same cancellation principle before saving embeddings.

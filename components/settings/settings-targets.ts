@@ -26,16 +26,18 @@ export function settingsTargets(t: TFunction, section: string, options: {
     case 'notifications': return [field('notifications.enable'), field('notifications.settings'), field('notifications.appSettings'),
       ...(options.android ? [field('notifications.batteryOptimization'), field('notifications.batterySaver'), { label: t('share:widgets.previewsTitle'), description: t('share:widgets.previewsDescription') }] : [])];
     case 'voice': return [
-      field('voice.autoPlay.title', undefined, 'voice.autoPlay.description'), field('voice.readInterim.title', undefined, 'voice.readInterim.description'),
-      field('voice.speechRate.label'), ...(!options.localPlayback ? [field('voice.voiceSelect.label')] : []), field('voice.workingSound.title', undefined, 'voice.workingSound.description'),
-      ...(options.workingSound ? [field('voice.workingSoundVariant.label'), field('voice.workingSoundVolume.label')] : []),
-      field('voice.mode.label', 'voice-input'), field('voice.speechLocale.label', 'voice-input', 'voice.speechLocale.helper'),
-      ...(options.localInput ? [field('voice.localWake.title', 'voice-input'), ...(options.localInputSupported ? [field('voice.localWake.phraseLabel', 'voice-input'), field('voice.localWake.commandModelLabel', 'voice-input'), field('voice.localWake.voiceProfile', 'voice-input'),
-        ...(options.enrolled ? [field('voice.localWake.speakerVerification', 'voice-input', 'voice.localWake.speakerVerificationDescription')] : [])] : [])]
-        : [field('voice.wakePhrase.label', 'voice-input', 'voice.wakePhrase.helper'), field('voice.onDeviceInput.title', 'voice-input', 'voice.onDeviceInput.description')]),
-      ...(options.native ? [field('voice.playbackEngine.label'), field('voice.localTts.title', 'voice-tts'),
-        ...(options.speakerAvailable ? [field('voice.localTts.speaker', 'voice-tts')] : [])] : []),
-      field('voice.check.title', 'voice-check'),
+      field('voice.autoPlay.title', undefined, 'voice.autoPlay.description'),
+      field('voice.readInterim.title', 'voice-more', 'voice.readInterim.description'), field('voice.speechRate.label', 'voice-more'),
+      ...(!options.localPlayback ? [field('voice.voiceSelect.label')] : []),
+      field('voice.workingSound.title', 'voice-more', 'voice.workingSound.description'),
+      ...(options.workingSound ? [field('voice.workingSoundVariant.label', 'voice-more'), field('voice.workingSoundVolume.label', 'voice-more')] : []),
+      field('voice.mode.label'), field('voice.speechLocale.label', options.localInput ? 'voice-setup-prepare' : undefined, 'voice.speechLocale.helper'),
+      ...(options.localInput ? [field('voice.localWake.title'), ...(options.localInputSupported ? [field('voice.localWake.phraseLabel', 'voice-setup-prepare'), field('voice.localWake.commandModelLabel', 'voice-setup-prepare'), field('voice.localWake.voiceProfile', 'voice-setup-profile'),
+        ...(options.enrolled ? [field('voice.localWake.speakerVerification', 'voice-setup-profile', 'voice.localWake.speakerVerificationDescription')] : [])] : [])]
+        : [field('voice.wakePhrase.label', 'voice-more', 'voice.wakePhrase.helper'), field('voice.onDeviceInput.title', 'voice-more', 'voice.onDeviceInput.description')]),
+      ...(options.native ? [field('voice.playbackEngine.label'), ...(options.localPlayback ? [field('voice.localTts.title', 'voice-tts'),
+        ...(options.speakerAvailable ? [field('voice.localTts.speaker')] : [])] : [])] : []),
+      ...(!options.localInput ? [field('voice.check.title', 'voice-more')] : []),
     ];
     case 'ai': return [field('providers.configuredProviders'),
       ...(options.autoModel ? [field('modelRouting.enable.title', 'auto-model', 'modelRouting.enable.description'), field('modelRouting.classifier.label', 'auto-model'),

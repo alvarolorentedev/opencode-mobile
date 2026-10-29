@@ -265,7 +265,7 @@
       "description": "Prefer local recognition; fall back to cloud if needed."
     },
     "autoPlay": {
-      "title": "Auto-play assistant replies",
+      "title": "Read replies aloud",
       "description": "Read chat replies aloud. Conversation mode always reads."
     },
     "workingSound": {
@@ -318,7 +318,7 @@
       "installCommand": "Install command model ({{size}})"
     },
     "speechLocale": {
-      "label": "Speech locale",
+      "label": "Language",
       "helper": "Leave empty to use the system default language for voice input and playback."
     },
     "responseScope": {
@@ -358,8 +358,8 @@
       "label": "Working sound volume"
     },
     "voiceSelect": {
-      "label": "System voice",
-      "automatic": "Automatic (best available)",
+      "label": "Voice",
+      "automatic": "Automatic",
       "enhanced": "Enhanced · {{language}}"
     },
     "enhancedVoices": "Install enhanced or premium voices in your device's text-to-speech settings for the most natural system voice.",
@@ -421,6 +421,57 @@
     "readInterim": {
       "title": "Read progress updates",
       "description": "Read updates like “On it…”. Final replies are always read."
+    },
+    "setup": {
+      "title": "On-device voice input",
+      "step": "Step {{step}} of {{total}}",
+      "followSystem": "Follow system",
+      "setUpInput": "Set up on-device input",
+      "manageInput": "Manage on-device input",
+      "notActive": "Finish setup to activate on-device input.",
+      "chooseVoice": "Choose a voice",
+      "manageDownloads": "Manage downloads",
+      "more": "More audio settings",
+      "advanced": "Advanced options",
+      "notNow": "Not now",
+      "downloadContinue": "Download & continue",
+      "tools": "Voice tools",
+      "downloadSize": "{{size}} to download · Wi-Fi recommended",
+      "englishModel": "Moonshine · Fast, for English commands",
+      "multilingualModel": "Whisper · For commands in multiple languages",
+      "microphone": "Microphone access",
+      "allow": "Allow",
+      "sequence": "Wake → Speak → Send",
+      "serverNote": "Speech recognition runs on your phone. Your request still goes to your OpenCode server.",
+      "profileNote": "Optional: record a 12-second sample so only your voice can wake the app. The voice profile stays on your phone. Skipping lets anyone say the wake phrase.",
+      "skipProfile": "Skip voice profile",
+      "skipTest": "Skip test & finish",
+      "startTest": "Start test",
+      "stopTest": "Stop test",
+      "testNote": "The test won’t send a request. Microphone listening stops when you leave this screen.",
+      "busy": "Stop conversation mode before setting up voice input.",
+      "intro": {
+        "title": "Your voice, hands-free",
+        "description": "Say “{{phrase}}”, then tell OpenCode what to do."
+      },
+      "prepare": {
+        "title": "Prepare your phone",
+        "description": "Choose a language, allow the microphone and download the voice tools once."
+      },
+      "profile": {
+        "title": "Make it yours",
+        "description": "Choose whether the app should respond only to your voice."
+      },
+      "test": {
+        "title": "Try “{{phrase}}”",
+        "description": "Start the test, then say the wake phrase at a normal speaking volume.",
+        "idle": "Ready when you are",
+        "starting": "Starting microphone…",
+        "listening": "Listening for the wake phrase…",
+        "detected": "Wake phrase detected. You’re ready!",
+        "error": "Couldn’t run the test. Check microphone access and try again.",
+        "busy": "Stop conversation mode to run the test."
+      }
     }
   },
   "diagnostics": {

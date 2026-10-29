@@ -7,6 +7,7 @@ import { projectClosedValues } from '@/providers/workspace-projection';
 import type { WorkspaceTarget, WorkspaceValues } from '@/providers/workspace-types';
 
 export type WorkspaceValueOverrides = {
+  voiceSetupTest?: ReturnType<typeof import('./use-voice-setup-test').useVoiceSetupTest>;
   isHydrated: boolean;
   onboardingCompleted: boolean;
   onboardingActive: boolean;
@@ -30,6 +31,7 @@ export function useWorkspaceValues(
   overrides: WorkspaceValueOverrides,
 ): WorkspaceValues | undefined {
   const {
+    voiceSetupTest,
     isHydrated,
     onboardingCompleted,
     onboardingActive,
@@ -110,6 +112,12 @@ export function useWorkspaceValues(
     sharedInput,
   } : undefined), [baseChat, sharedInput]);
 
+  const baseConversation = baseValues?.conversationValue;
+  const conversationValue = useMemo(() => baseConversation && voiceSetupTest ? {
+    ...baseConversation,
+    toggleConversationMode: () => voiceSetupTest.runConversation(baseConversation.toggleConversationMode),
+  } : baseConversation, [baseConversation, voiceSetupTest]);
+
   return useMemo(() => {
     if (!baseValues || !onboardingValue || !connectionValue || !projectsValue || !currentSessionValue || !sessionLibraryValue || !chatValue) {
       return undefined;
@@ -122,6 +130,7 @@ export function useWorkspaceValues(
       currentSessionValue,
       sessionLibraryValue,
       chatValue,
+      conversationValue: conversationValue!,
     };
-  }, [baseValues, onboardingValue, connectionValue, projectsValue, currentSessionValue, sessionLibraryValue, chatValue]);
+  }, [baseValues, onboardingValue, connectionValue, projectsValue, currentSessionValue, sessionLibraryValue, chatValue, conversationValue]);
 }

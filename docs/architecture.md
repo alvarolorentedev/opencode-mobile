@@ -1143,3 +1143,21 @@ last. The section registry owns category grouping and localized search metadata;
 search highlighting and announcement. Shared rows/fields/buttons also serve setup
 flows. Search never indexes current values or changes a preference; provider
 ownership, inspection scope, persistence and API contracts are unchanged.
+
+## Guided voice setup and isolated microphone test
+
+`VoiceSection` shares compact mode-dependent controls between Settings and
+onboarding. `VoiceInputSetup` owns only four-step navigation and presentation;
+`useVoiceSetup` continues to own installation, permission snapshots and enrollment
+through native wrappers in `lib/voice/`. Model selections and readiness remain
+derived from existing preferences/install state. No API or persisted schema changes.
+
+`WorkspaceProvider` owns one `useVoiceSetupTest` instance and exposes the narrow
+`useVoiceTest` domain hook. It reuses `useLocalWakeWord`, maps detection to test
+feedback and never calls command capture, session creation or prompt submission.
+Any active workspace conversation blocks setup testing; workspace conversation
+actions reserve microphone access during asynchronous startup and stop the test
+before starting. Dismissal, tab blur, backgrounding and
+completion release capture, including pending native starts. Idle test cleanup
+does not stop another audio owner. Enrollment cancellation invalidates pending
+permission/embedding work while retaining saved profiles and installed files.

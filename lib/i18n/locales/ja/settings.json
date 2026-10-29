@@ -265,7 +265,7 @@
       "description": "ローカル認識を優先し、必要な場合のみクラウドを使用します。"
     },
     "autoPlay": {
-      "title": "アシスタントの返信を自動再生",
+      "title": "応答を自動で読み上げる",
       "description": "チャットの返信を読み上げます。会話モードは常に読み上げます。"
     },
     "workingSound": {
@@ -318,7 +318,7 @@
       "installCommand": "コマンドモデルをインストール ({{size}})"
     },
     "speechLocale": {
-      "label": "音声ロケール",
+      "label": "言語",
       "helper": "空欄にすると、音声入力と再生にシステムの既定言語を使用します。"
     },
     "responseScope": {
@@ -358,8 +358,8 @@
       "label": "作業中サウンドの音量"
     },
     "voiceSelect": {
-      "label": "システム音声",
-      "automatic": "自動（最適な音声）",
+      "label": "音声",
+      "automatic": "自動",
       "enhanced": "拡張 · {{language}}"
     },
     "enhancedVoices": "最も自然なシステム音声にするには、端末のテキスト読み上げ設定で拡張またはプレミアム音声をインストールしてください。",
@@ -421,6 +421,57 @@
     "readInterim": {
       "title": "進捗メッセージを読み上げる",
       "description": "「対応中…」などの更新を読み上げ、最終返信は常に読み上げます。"
+    },
+    "setup": {
+      "title": "デバイス上の音声入力",
+      "step": "ステップ {{step}} / {{total}}",
+      "followSystem": "システムに従う",
+      "setUpInput": "デバイス上の入力を設定",
+      "manageInput": "デバイス上の入力を管理",
+      "notActive": "設定を完了するとデバイス上の入力が有効になります。",
+      "chooseVoice": "音声を選択",
+      "manageDownloads": "ダウンロードを管理",
+      "more": "その他の音声設定",
+      "advanced": "詳細オプション",
+      "notNow": "今はしない",
+      "downloadContinue": "ダウンロードして続ける",
+      "tools": "音声ツール",
+      "downloadSize": "ダウンロード容量 {{size}} · Wi-Fi 推奨",
+      "englishModel": "Moonshine · 英語コマンド向け、高速",
+      "multilingualModel": "Whisper · 多言語コマンド向け",
+      "microphone": "マイクへのアクセス",
+      "allow": "許可",
+      "sequence": "起動 → 話す → 送信",
+      "serverNote": "音声認識はスマートフォン上で実行されます。リクエストは OpenCode サーバーに送信されます。",
+      "profileNote": "任意：12 秒間の音声を録音すると、あなたの声だけでアプリを起動できます。声紋は端末に保存されます。スキップすると誰でも起動フレーズを使えます。",
+      "skipProfile": "声紋設定をスキップ",
+      "skipTest": "テストをスキップして完了",
+      "startTest": "テストを開始",
+      "stopTest": "テストを停止",
+      "testNote": "テストではリクエストを送信しません。この画面を離れるとマイクの待ち受けが停止します。",
+      "busy": "音声入力を設定する前に会話モードを停止してください。",
+      "intro": {
+        "title": "声で、ハンズフリー",
+        "description": "「{{phrase}}」と言ってから、OpenCode に指示してください。"
+      },
+      "prepare": {
+        "title": "スマートフォンを準備",
+        "description": "言語を選び、マイクを許可して、音声ツールを一度だけダウンロードします。"
+      },
+      "profile": {
+        "title": "自分の声に合わせる",
+        "description": "あなたの声だけに反応するかどうかを選びます。"
+      },
+      "test": {
+        "title": "「{{phrase}}」を試す",
+        "description": "テストを開始し、普段の声の大きさで起動フレーズを言ってください。",
+        "idle": "準備完了",
+        "starting": "マイクを起動中…",
+        "listening": "起動フレーズを待ち受け中…",
+        "detected": "起動フレーズを検出しました。準備完了です！",
+        "error": "テストを実行できませんでした。マイクの権限を確認して再試行してください。",
+        "busy": "テストするには会話モードを停止してください。"
+      }
     }
   },
   "diagnostics": {

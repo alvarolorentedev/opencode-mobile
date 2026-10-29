@@ -228,7 +228,7 @@ test('settings search reveals advanced controls, preserves the query and keeps p
   await page.getByRole('button', { name: 'Wake phrase. Voice & audio', exact: true }).click();
   const sheet = page.getByTestId('settings-section-overlay');
   const destination = page.getByTestId('settings-search-destination');
-  await expect(sheet.getByRole('button', { name: 'Voice input', exact: true })).toHaveAttribute('aria-expanded', 'true');
+  await expect(sheet.getByRole('button', { name: 'More audio settings', exact: true })).toHaveAttribute('aria-expanded', 'true');
   await expect(destination.getByRole('textbox')).toHaveValue('hey code');
   await expect(destination).toBeInViewport();
   expect(await page.evaluate(() => localStorage.getItem('opencode-mobile.chat-preferences'))).toBe(before);

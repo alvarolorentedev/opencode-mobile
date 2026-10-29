@@ -540,7 +540,7 @@ scanner. It preserves stored profiles. Components do not poll or classify errors
 - `AiDefaultsSection`
 - `NotificationsSection`
 - `VoiceSection`
-- `LocalVoiceSection`
+- `VoiceInputSetup` / `VoiceFlowScreen` / `VoiceMoreSettings`
 - `LocalTtsSection`
 - `ResponsesSection`
 - `LanguageSection`
@@ -678,37 +678,35 @@ Responsibility:
 
 ### `VoiceSection`
 
-Responsibility:
+- Two independent input/playback mode selectors, placed before their dependent controls.
+- System input shows speech language; local input shows one setup/manage row.
+- System playback shows only OS voices; native local playback shows one pack dropdown,
+  installed size, optional speaker picker and Manage downloads. Missing selections
+  expose setup without activating an engine or starting a download.
+- Preview and Read replies aloud remain visible; rate, progress readback, working
+  sound, system wake phrase and troubleshooting live in `VoiceMoreSettings`.
+- Shared by Settings and first-run onboarding; tab blur stops preview and capture.
 
-- switch between System speech and On-device voice as the active input mode
-- show the active path and the wake phrase currently in use
-- edit system-recognizer preference and the system wake phrase when System is active
-- choose the playback engine (System or On-device) without changing the input mode
-- edit speech locale and playback preferences (auto-play, progress readback, system voice, rate, working sound)
-- expose system voice quality labels and the enhanced-voice guidance
-- expose a collapsed device check for microphone, recognition, and on-device capability status
-- render `LocalVoiceSection` when On-device input is selected
-- render `LocalTtsSection` always on native so models can be installed before switching playback
+### `VoiceInputSetup` and `VoiceFlowScreen`
+
+- A focused full-screen flow with one Back/title/Close header and a pinned footer.
+- Four illustrated steps: understand, prepare, optional voice profile, isolated wake test.
+- Prepare uses language/model dropdowns, the size of missing files and explicit
+  microphone/download actions; advanced options retain pack removal and wake phrase.
+- Reuses existing models/profiles. Skipping a new profile explicitly disables
+  speaker verification; an existing profile and preference are preserved.
+- Done activates local input only after models and microphone permission are ready.
+  Close leaves the active mode unchanged and preserves downloads/saved profiles.
+- Presentation/step state is local. Native side effects use the setup hooks; the
+  test reads the app-wide provider's `useVoiceTest()` interface.
+- `LocalVoiceState` is the setup hook's inferred state type, not another state owner.
 
 ### `LocalTtsSection`
 
-Responsibility:
-
-- list the pinned Piper and Kokoro models without selecting or downloading one automatically
-- show install, installing, installed, and unsupported states with download sizes
-- install, remove, select, and preview a model through `useTtsSetup`
-- show the Kokoro speaker picker and the selected pack's language warning
-- show on-device storage use and the Japanese system-voice note
-
-### `LocalVoiceSection`
-
-Responsibility:
-
-- show on-device readiness, base-pack and command-model status, and installed sizes
-- install or remove pretrained models, and choose the wake phrase and command model
-- enroll, re-enroll, or remove the local voice profile
-- expose voice verification only after a profile exists
-- keep the system phrase-gate fallback visible without exposing a second editable phrase in local mode
+- Focused download manager with one pack dropdown and actions for that pack.
+- Shows size, status, download/retry, explicit Use, Preview and Remove.
+- Retains language mismatch, Japanese system-voice guidance and total storage.
+- Uses `useTtsSetup`; installing does not automatically select or activate a pack.
 
 ### `ResponsesSection`
 

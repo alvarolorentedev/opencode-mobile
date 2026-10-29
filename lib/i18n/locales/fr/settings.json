@@ -265,7 +265,7 @@
       "description": "Privilégiez la reconnaissance locale ; utilisez le cloud si nécessaire."
     },
     "autoPlay": {
-      "title": "Lecture automatique des réponses de l'assistant",
+      "title": "Lire les réponses à voix haute",
       "description": "Lire les réponses du chat. Le mode conversation lit toujours."
     },
     "workingSound": {
@@ -318,7 +318,7 @@
       "installCommand": "Installer le modèle de commandes ({{size}})"
     },
     "speechLocale": {
-      "label": "Langue de la synthèse vocale",
+      "label": "Langue",
       "helper": "Laisse vide pour utiliser la langue par défaut du système pour la saisie et la lecture vocales."
     },
     "responseScope": {
@@ -358,8 +358,8 @@
       "label": "Volume du son de travail"
     },
     "voiceSelect": {
-      "label": "Voix du système",
-      "automatic": "Automatique (meilleure disponible)",
+      "label": "Voix",
+      "automatic": "Automatique",
       "enhanced": "Améliorée · {{language}}"
     },
     "enhancedVoices": "Installez des voix améliorées ou premium dans les réglages de synthèse vocale de l'appareil pour obtenir la voix système la plus naturelle.",
@@ -421,6 +421,57 @@
     "readInterim": {
       "title": "Lire les mises à jour de progression",
       "description": "Lire les messages comme « Je m’en occupe… » ; la réponse finale toujours."
+    },
+    "setup": {
+      "title": "Saisie vocale sur l’appareil",
+      "step": "Étape {{step}} sur {{total}}",
+      "followSystem": "Suivre le système",
+      "setUpInput": "Configurer la saisie locale",
+      "manageInput": "Gérer la saisie locale",
+      "notActive": "Terminez la configuration pour activer la saisie locale.",
+      "chooseVoice": "Choisir une voix",
+      "manageDownloads": "Gérer les téléchargements",
+      "more": "Autres réglages audio",
+      "advanced": "Options avancées",
+      "notNow": "Pas maintenant",
+      "downloadContinue": "Télécharger et continuer",
+      "tools": "Outils vocaux",
+      "downloadSize": "{{size}} à télécharger · Wi-Fi recommandé",
+      "englishModel": "Moonshine · Rapide, pour les commandes en anglais",
+      "multilingualModel": "Whisper · Pour les commandes multilingues",
+      "microphone": "Accès au microphone",
+      "allow": "Autoriser",
+      "sequence": "Activer → Parler → Envoyer",
+      "serverNote": "La reconnaissance vocale s’exécute sur votre téléphone. Votre demande est toujours envoyée à votre serveur OpenCode.",
+      "profileNote": "Facultatif : enregistrez un échantillon de 12 secondes pour que seule votre voix active l’app. Le profil vocal reste sur votre téléphone. Sans profil, tout le monde peut prononcer la phrase d’activation.",
+      "skipProfile": "Ignorer le profil vocal",
+      "skipTest": "Ignorer le test et terminer",
+      "startTest": "Démarrer le test",
+      "stopTest": "Arrêter le test",
+      "testNote": "Le test n’envoie aucune demande. L’écoute s’arrête quand vous quittez cet écran.",
+      "busy": "Arrêtez le mode conversation avant de configurer la saisie vocale.",
+      "intro": {
+        "title": "Votre voix, les mains libres",
+        "description": "Dites « {{phrase}} », puis indiquez à OpenCode quoi faire."
+      },
+      "prepare": {
+        "title": "Préparez votre téléphone",
+        "description": "Choisissez une langue, autorisez le microphone et téléchargez les outils vocaux une seule fois."
+      },
+      "profile": {
+        "title": "Personnalisez votre voix",
+        "description": "Choisissez si l’app doit répondre uniquement à votre voix."
+      },
+      "test": {
+        "title": "Essayez « {{phrase}} »",
+        "description": "Démarrez le test, puis prononcez la phrase d’activation à un volume normal.",
+        "idle": "Prêt quand vous l’êtes",
+        "starting": "Démarrage du microphone…",
+        "listening": "En attente de la phrase d’activation…",
+        "detected": "Phrase détectée. Tout est prêt !",
+        "error": "Le test a échoué. Vérifiez l’accès au microphone et réessayez.",
+        "busy": "Arrêtez le mode conversation pour lancer le test."
+      }
     }
   },
   "diagnostics": {

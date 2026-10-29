@@ -86,7 +86,10 @@ test('worktrees and MCP servers can be created', async ({ page, request }) => {
 
   await goToTab(page, 'Settings');
   await page.getByText('Extensions', { exact: true }).click();
+  // The initial snapshot changes the form's position; wait before choosing its mode.
+  await expect(page.getByTestId('settings-extension-mcp-add')).toBeEnabled();
   await page.getByText('Remote', { exact: true }).click();
+  await expect(page.getByTestId('settings-extension-mcp-target')).toHaveAttribute('placeholder', 'https://example.com/mcp');
   await page.getByTestId('settings-extension-mcp-name').fill('web-tools');
   await page.getByTestId('settings-extension-mcp-target').fill('https://example.test/mcp');
   await page.getByTestId('settings-extension-mcp-add').click();

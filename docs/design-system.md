@@ -88,7 +88,7 @@ beside a complete label are decorative. Never substitute letter glyphs for icons
 | --- | --- | --- |
 | Navigate to a settings category | `SettingsHome` registry row | Icon, title, current summary, chevron; entire row opens its sheet |
 | Boolean preference | `SettingSwitchRow` | One accessible switch target; label press and switch graphic share one action |
-| Choose one value | `SettingSelectField` / `NativeSelect` | Label and wrapping value; searchable choices for long catalogs |
+| Choose one value | `SettingSelectField` / `NativeSelect` | Label and wrapping value; `compact` puts label/value on one row; searchable choices for long catalogs |
 | Primary/secondary action | `SettingButton` | Existing Paper modes with a 48-point target and shared control radius |
 | Edit a settings form | `SettingTextInput` | Shared outline/radius; retain validation, secure entry and keyboard options |
 | Adjust a numeric preference | `SettingSlider` / `NumericSlider` | Label, readable value, existing range, adjustable semantics and web arrow keys |
@@ -172,3 +172,28 @@ prerequisites, keyboard/Back/Close behavior, persistence/scope continuity,
 translations and regression coverage. Update implementation docs when behavior
 changes. E2E or fake-server changes require explicit human validation under
 `AGENTS.md`, even after the automated gates pass.
+
+## Conditional controls and guided device setup
+
+Place an engine/method selector immediately after its section heading, followed
+only by controls belonging to the selected method. Voice input and Spoken replies
+are independent sections; avoid repeating their headings inside status cards or
+disclosures. Keep daily actions visible and move occasional controls into one
+More audio settings disclosure.
+
+Model catalogs use a compact select row, never a stack of model cards. Keep the
+selected model's status/size beside Manage downloads; open a focused manager for
+download/removal. Selecting an unprepared engine may expose setup but must not
+download, request permission or silently activate it.
+
+Use `VoiceFlowScreen` for the focused voice flow: one Back/title/Close header,
+scrollable content, centered width constraint and pinned primary action. The four
+steps explain the feature, prepare prerequisites, offer optional enrollment and
+test without submitting. Illustrations are transparent raster assets; interface
+text remains selectable/localized. Keep storage/privacy explanations precise:
+speech recognition is local, but requests still reach the OpenCode server.
+
+Search destinations `voice-more`, `voice-setup-prepare`, `voice-setup-profile` and
+`voice-tts` reveal their existing control without invoking it. Each full-screen
+flow owns its own `SettingsPanel` so search highlighting/scrolling stays inside
+the visible surface. Native/system capabilities retain their platform gates.

@@ -39,7 +39,8 @@ export function SettingSwitchRow({ description, disabled = false, onValueChange,
   </SettingTarget>;
 }
 
-export function SettingSelectField<T extends string>({ disabled = false, label, onValueChange, options, palette, searchable = false, selectedValue, testID, valueLabel }: {
+export function SettingSelectField<T extends string>({ compact = false, disabled = false, label, onValueChange, options, palette, searchable = false, selectedValue, testID, valueLabel }: {
+  compact?: boolean;
   disabled?: boolean;
   label: string;
   onValueChange: (value: T) => void;
@@ -59,9 +60,9 @@ export function SettingSelectField<T extends string>({ disabled = false, label, 
           accessibilityState={{ disabled: triggerDisabled, expanded: openState }} aria-disabled={triggerDisabled} aria-expanded={openState} disabled={triggerDisabled} onPress={open} testID={testID}
           onFocus={() => setFocused(true)} onBlur={() => setFocused(false)}
           style={({ pressed }) => [styles.selectField, { backgroundColor: palette.background, borderColor: openState || focused ? palette.tint : palette.border, opacity: triggerDisabled ? 0.55 : pressed ? 0.82 : 1 }]}>
-          <View style={styles.textWrap}>
-            <Text variant="labelMedium" style={{ color: palette.muted }}>{label}</Text>
-            <Text variant="bodyLarge" style={[styles.value, { color: palette.text }]}>{valueLabel}</Text>
+          <View style={[styles.textWrap, compact && styles.compactSelect]}>
+            <Text variant="labelMedium" style={[{ color: palette.muted }, compact && styles.compactLabel]}>{label}</Text>
+            <Text variant="bodyLarge" style={[styles.value, compact && styles.compactValue, { color: palette.text }]}>{valueLabel}</Text>
           </View>
           <Icon source="chevron-down" size={24} color={palette.muted} />
         </Pressable>
@@ -88,4 +89,7 @@ const styles = StyleSheet.create({
   selectField: { minHeight: ControlSize.field, borderRadius: Shape.control, borderWidth: 1, padding: Spacing.md, flexDirection: 'row', alignItems: 'center', gap: Spacing.md },
   textWrap: { flex: 1, minWidth: 0, gap: Spacing.xs },
   value: { fontWeight: '600' },
+  compactSelect: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: Spacing.md },
+  compactLabel: { flexShrink: 1, maxWidth: '40%' },
+  compactValue: { flex: 1, textAlign: 'right' },
 });

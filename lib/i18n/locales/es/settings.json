@@ -265,7 +265,7 @@
       "description": "Prefiere el reconocimiento local; usa la nube si es necesario."
     },
     "autoPlay": {
-      "title": "Reproducir automáticamente las respuestas del asistente",
+      "title": "Leer las respuestas en voz alta",
       "description": "Leer respuestas del chat. El modo conversación siempre lee."
     },
     "workingSound": {
@@ -318,7 +318,7 @@
       "installCommand": "Instalar modelo de comandos ({{size}})"
     },
     "speechLocale": {
-      "label": "Idioma de voz",
+      "label": "Idioma",
       "helper": "Déjalo vacío para usar el idioma predeterminado del sistema en la entrada de voz y la reproducción."
     },
     "responseScope": {
@@ -358,8 +358,8 @@
       "label": "Volumen del sonido de trabajo"
     },
     "voiceSelect": {
-      "label": "Voz del sistema",
-      "automatic": "Automática (mejor disponible)",
+      "label": "Voz",
+      "automatic": "Automática",
       "enhanced": "Mejorada · {{language}}"
     },
     "enhancedVoices": "Instala voces mejoradas o premium en los ajustes de texto a voz del dispositivo para obtener la voz del sistema más natural.",
@@ -421,6 +421,57 @@
     "readInterim": {
       "title": "Leer actualizaciones de progreso",
       "description": "Leer avisos como «Voy a ello…»; la respuesta final siempre."
+    },
+    "setup": {
+      "title": "Entrada de voz en el dispositivo",
+      "step": "Paso {{step}} de {{total}}",
+      "followSystem": "Seguir el sistema",
+      "setUpInput": "Configurar entrada local",
+      "manageInput": "Gestionar entrada local",
+      "notActive": "Completa la configuración para activar la entrada local.",
+      "chooseVoice": "Elige una voz",
+      "manageDownloads": "Gestionar descargas",
+      "more": "Más ajustes de audio",
+      "advanced": "Opciones avanzadas",
+      "notNow": "Ahora no",
+      "downloadContinue": "Descargar y continuar",
+      "tools": "Herramientas de voz",
+      "downloadSize": "{{size}} por descargar · Se recomienda Wi-Fi",
+      "englishModel": "Moonshine · Rápido, para órdenes en inglés",
+      "multilingualModel": "Whisper · Para órdenes en varios idiomas",
+      "microphone": "Acceso al micrófono",
+      "allow": "Permitir",
+      "sequence": "Activar → Hablar → Enviar",
+      "serverNote": "El reconocimiento de voz se ejecuta en tu teléfono. Tu solicitud se envía a tu servidor OpenCode.",
+      "profileNote": "Opcional: graba una muestra de 12 segundos para que solo tu voz active la app. El perfil de voz se queda en tu teléfono. Si lo omites, cualquiera podrá decir la frase de activación.",
+      "skipProfile": "Omitir perfil de voz",
+      "skipTest": "Omitir prueba y terminar",
+      "startTest": "Iniciar prueba",
+      "stopTest": "Detener prueba",
+      "testNote": "La prueba no enviará ninguna solicitud. El micrófono deja de escuchar al salir de esta pantalla.",
+      "busy": "Detén el modo conversación antes de configurar la entrada de voz.",
+      "intro": {
+        "title": "Tu voz, manos libres",
+        "description": "Di «{{phrase}}» y después indica a OpenCode qué hacer."
+      },
+      "prepare": {
+        "title": "Prepara tu teléfono",
+        "description": "Elige un idioma, permite el micrófono y descarga las herramientas de voz una sola vez."
+      },
+      "profile": {
+        "title": "Hazlo tuyo",
+        "description": "Elige si la app debe responder solo a tu voz."
+      },
+      "test": {
+        "title": "Prueba «{{phrase}}»",
+        "description": "Inicia la prueba y di la frase de activación con un volumen de voz normal.",
+        "idle": "Todo listo para empezar",
+        "starting": "Iniciando micrófono…",
+        "listening": "Escuchando la frase de activación…",
+        "detected": "Frase detectada. ¡Todo listo!",
+        "error": "No se pudo realizar la prueba. Comprueba el acceso al micrófono y vuelve a intentarlo.",
+        "busy": "Detén el modo conversación para hacer la prueba."
+      }
     }
   },
   "diagnostics": {

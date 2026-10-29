@@ -25,6 +25,7 @@ import { projectClosedValues } from '@/providers/workspace-projection';
 import { librarySessions } from '@/providers/workspace-library';
 import { WorkspaceNative } from '@/providers/workspace-native';
 import { useWorkspaceValues, type WorkspaceValueOverrides } from '@/providers/use-workspace-values';
+import { useVoiceSetupTest, VoiceSetupTestContext } from '@/providers/use-voice-setup-test';
 import { useNetworkStatus } from '@/providers/use-network-status';
 
 export function WorkspaceProvider({ children }: PropsWithChildren) {
@@ -159,7 +160,9 @@ export function WorkspaceProvider({ children }: PropsWithChildren) {
   }), [shell.controlPlaneUrl, shell.setControlPlaneUrl, shell.onboardingVersion, shell.setOnboardingVersion,
     shell.onboardingActive, shell.setOnboardingActive, shell.lastSessionByConnection, shell.setLastSessionByConnection,
     shell.favoriteSessions, shell.setFavoriteSessions, shell.projectPathsByConnection, shell.setProjectPathsByConnection, shell.projectPathsByConnectionRef]);
+  const voiceSetupTest = useVoiceSetupTest(shell.chatPreferences, Object.values(snapshots).some((snapshot) => snapshot.values.conversationValue.conversation.phase !== 'off'));
   const workspaceOverrides = useMemo<WorkspaceValueOverrides>(() => ({
+    voiceSetupTest,
     isHydrated,
     onboardingCompleted,
     onboardingActive: shell.onboardingActive,
@@ -173,7 +176,7 @@ export function WorkspaceProvider({ children }: PropsWithChildren) {
     switchConnection,
     openSession,
     openSessionInProject,
-  }), [activate, connectionProfiles, connectSetup, isHydrated, onboardingCompleted, openSession, openSessionInProject, retry, servicesValue, sharedInput, shell.onboardingActive, shell.projectPathsByConnection, switchConnection]);
+  }), [voiceSetupTest, activate, connectionProfiles, connectSetup, isHydrated, onboardingCompleted, openSession, openSessionInProject, retry, servicesValue, sharedInput, shell.onboardingActive, shell.projectPathsByConnection, switchConnection]);
   const focusedValues = useWorkspaceValues(current?.values, workspaceOverrides);
   const valuesFor = useCallback((target?: WorkspaceTarget): WorkspaceValues | undefined => {
     const snapshot = target ? snapshots[resolveKey(target)] : current;
@@ -184,6 +187,7 @@ export function WorkspaceProvider({ children }: PropsWithChildren) {
     if (opened && path && !opened.includes(path)) values = projectClosedValues(values);
     const id = getConnectionUiScope(values.connectionValue.settings);
     return { ...values,
+      conversationValue: { ...values.conversationValue, toggleConversationMode: () => voiceSetupTest.runConversation(values.conversationValue.toggleConversationMode) },
       onboardingValue: { ...values.onboardingValue, isHydrated, onboardingCompleted, onboardingActive: shell.onboardingActive },
       connectionValue: { ...values.connectionValue, connect: () => retry(id), switchConnection, connectionProfiles, connectSetup, services: servicesValue },
       projectsValue: { ...values.projectsValue, selectProject: (projectPath) => { void activate({ connectionId: id, projectPath }); } },
@@ -191,7 +195,7 @@ export function WorkspaceProvider({ children }: PropsWithChildren) {
       sessionLibraryValue: { ...values.sessionLibraryValue, openSessionInProject: (projectPath, sessionId, connectionScope) => openSessionInProject(projectPath, sessionId, connectionScope ?? getConnectionScope(values.connectionValue.settings)) },
       chatValue: { ...values.chatValue, sharedInput },
     };
-  }, [activate, retry, connectionProfiles, connectSetup, current, onboardingCompleted, openSession, openSessionInProject, resolveKey, servicesValue, sharedInput, snapshots, switchConnection, shell.projectPathsByConnection, isHydrated, shell.onboardingActive]);
+  }, [voiceSetupTest, activate, retry, connectionProfiles, connectSetup, current, onboardingCompleted, openSession, openSessionInProject, resolveKey, servicesValue, sharedInput, snapshots, switchConnection, shell.projectPathsByConnection, isHydrated, shell.onboardingActive]);
   const registry = useMemo<WorkspaceRegistry>(() => ({ ...manager, createChat, removeConnection,
     terminalTarget: connections.some((entry) => entry.id === terminalTarget?.connectionId) ? terminalTarget : undefined, selectTerminalTarget,
     inspectionTarget: connections.some((entry) => entry.id === inspectionTarget?.connectionId) ? inspectionTarget : undefined, inspect, valuesFor, catalogs }), [manager, createChat, removeConnection, connections, terminalTarget, selectTerminalTarget, inspectionTarget, inspect, valuesFor, catalogs]);
@@ -206,7 +210,7 @@ export function WorkspaceProvider({ children }: PropsWithChildren) {
   }, [current, focus, setSettings, setActiveProjectPath, setChatPreferences]);
   const values = focusedValues;
   const workspaceActions = useMemo(() => ({ createChat, focus }), [createChat, focus]);
-  return <WorkspacePresentationContext.Provider value={presentation}>
+  return <VoiceSetupTestContext.Provider value={voiceSetupTest}><WorkspacePresentationContext.Provider value={presentation}>
     <WorkspaceActionsContext.Provider value={workspaceActions}>
     <WorkspaceContext.Provider value={registry}>
     {connections.flatMap((entry) => entry.projects.map((path, index) => <WorkspaceRuntime key={workspaceKey({ connectionId: entry.id, projectPath: path })}
@@ -221,5 +225,5 @@ export function WorkspaceProvider({ children }: PropsWithChildren) {
     </OpencodeProviderTree> : <View style={{ flex: 1, backgroundColor: '#101212', alignItems: 'center', justifyContent: 'center' }}><ActivityIndicator color="#C3CECB" /></View>}
     </WorkspaceContext.Provider>
     </WorkspaceActionsContext.Provider>
-  </WorkspacePresentationContext.Provider>;
+  </WorkspacePresentationContext.Provider></VoiceSetupTestContext.Provider>;
 }

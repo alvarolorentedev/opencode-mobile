@@ -1,3 +1,4 @@
+import { getRecordingPermissionsAsync, requestRecordingPermissionsAsync } from 'expo-audio';
 import * as Linking from 'expo-linking';
 import { ExpoSpeechRecognitionModule } from 'expo-speech-recognition';
 
@@ -54,4 +55,12 @@ export async function requestVoiceInputPermissionAsync(): Promise<VoiceInputPerm
  */
 export async function openVoiceSettingsAsync(): Promise<void> {
   await Linking.openSettings().catch(() => undefined);
+}
+
+// Local PCM input needs microphone access, without requiring OS speech recognition.
+export async function getLocalVoicePermissionAsync() {
+  try { return toPermission(await getRecordingPermissionsAsync()); } catch { return UNAVAILABLE; }
+}
+export async function requestLocalVoicePermissionAsync() {
+  try { return toPermission(await requestRecordingPermissionsAsync()); } catch { return UNAVAILABLE; }
 }

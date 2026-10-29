@@ -265,7 +265,7 @@
       "description": "Lokale Erkennung bevorzugen; bei Bedarf auf die Cloud zurückgreifen."
     },
     "autoPlay": {
-      "title": "Antworten des Assistenten automatisch abspielen",
+      "title": "Antworten vorlesen",
       "description": "Antworten im Chat vorlesen. Im Konversationsmodus immer."
     },
     "workingSound": {
@@ -318,7 +318,7 @@
       "installCommand": "Befehlsmodell installieren ({{size}})"
     },
     "speechLocale": {
-      "label": "Sprachlocale",
+      "label": "Sprache",
       "helper": "Leer lassen, um die Standardsprache des Systems für Spracheingabe und -wiedergabe zu verwenden."
     },
     "responseScope": {
@@ -358,8 +358,8 @@
       "label": "Lautstärke des Arbeitsgeräuschs"
     },
     "voiceSelect": {
-      "label": "Systemstimme",
-      "automatic": "Automatisch (beste verfügbare)",
+      "label": "Stimme",
+      "automatic": "Automatisch",
       "enhanced": "Erweitert · {{language}}"
     },
     "enhancedVoices": "Installiere erweiterte oder Premium-Stimmen in den Text-to-Speech-Einstellungen des Geräts, um die natürlichste Systemstimme zu erhalten.",
@@ -421,6 +421,57 @@
     "readInterim": {
       "title": "Fortschrittsmeldungen vorlesen",
       "description": "Updates wie „Einen Moment…“ vorlesen; Finalantworten immer."
+    },
+    "setup": {
+      "title": "Spracheingabe auf dem Gerät",
+      "step": "Schritt {{step}} von {{total}}",
+      "followSystem": "Systemsprache verwenden",
+      "setUpInput": "Lokale Spracheingabe einrichten",
+      "manageInput": "Lokale Spracheingabe verwalten",
+      "notActive": "Schließe die Einrichtung ab, um die lokale Eingabe zu aktivieren.",
+      "chooseVoice": "Stimme auswählen",
+      "manageDownloads": "Downloads verwalten",
+      "more": "Weitere Audioeinstellungen",
+      "advanced": "Erweiterte Optionen",
+      "notNow": "Nicht jetzt",
+      "downloadContinue": "Herunterladen und fortfahren",
+      "tools": "Sprachwerkzeuge",
+      "downloadSize": "{{size}} zum Download · WLAN empfohlen",
+      "englishModel": "Moonshine · Schnell, für englische Befehle",
+      "multilingualModel": "Whisper · Für Befehle in mehreren Sprachen",
+      "microphone": "Mikrofonzugriff",
+      "allow": "Erlauben",
+      "sequence": "Aktivieren → Sprechen → Senden",
+      "serverNote": "Die Spracherkennung läuft auf deinem Telefon. Deine Anfrage wird weiterhin an deinen OpenCode-Server gesendet.",
+      "profileNote": "Optional: Nimm eine 12-sekündige Probe auf, damit nur deine Stimme die App aktiviert. Das Stimmprofil bleibt auf deinem Telefon. Ohne Profil kann jeder das Aktivierungswort sagen.",
+      "skipProfile": "Stimmprofil überspringen",
+      "skipTest": "Test überspringen und abschließen",
+      "startTest": "Test starten",
+      "stopTest": "Test stoppen",
+      "testNote": "Der Test sendet keine Anfrage. Das Mikrofon stoppt beim Verlassen dieser Ansicht.",
+      "busy": "Beende den Gesprächsmodus, bevor du die Spracheingabe einrichtest.",
+      "intro": {
+        "title": "Deine Stimme, freihändig",
+        "description": "Sage „{{phrase}}“ und dann, was OpenCode tun soll."
+      },
+      "prepare": {
+        "title": "Telefon vorbereiten",
+        "description": "Wähle eine Sprache, erlaube das Mikrofon und lade die Sprachwerkzeuge einmalig herunter."
+      },
+      "profile": {
+        "title": "Auf dich abstimmen",
+        "description": "Wähle, ob die App nur auf deine Stimme reagieren soll."
+      },
+      "test": {
+        "title": "Probiere „{{phrase}}“",
+        "description": "Starte den Test und sage das Aktivierungswort in normaler Lautstärke.",
+        "idle": "Bereit, wenn du es bist",
+        "starting": "Mikrofon wird gestartet…",
+        "listening": "Warte auf das Aktivierungswort…",
+        "detected": "Aktivierungswort erkannt. Alles bereit!",
+        "error": "Test fehlgeschlagen. Prüfe den Mikrofonzugriff und versuche es erneut.",
+        "busy": "Beende den Gesprächsmodus, um den Test zu starten."
+      }
     }
   },
   "diagnostics": {
