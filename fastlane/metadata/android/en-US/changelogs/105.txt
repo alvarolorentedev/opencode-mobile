@@ -1,0 +1,3 @@
+- Voice settings are simpler: choose input and playback modes from one compact panel, with a guided on-device setup, microphone test and playback preview.
+- On-device voice models download only when you choose them, failed downloads can be retried, and enrollment now cancels cleanly.
+- Fixed the Android crash when previewing or playing Piper/Kokoro on-device voices.
