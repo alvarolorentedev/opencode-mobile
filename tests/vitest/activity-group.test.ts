@@ -26,7 +26,7 @@ function translate(key: string, values: Record<string, unknown> = {}) {
   if (key === 'chat:activity.expandItem') return `Expand ${values.item}`;
   if (key === 'chat:activity.collapseItem') return `Collapse ${values.item}`;
   if (key === 'chat:activity.matches') return `· (${values.count} matches)`;
-  if (key === 'chat:cards.filesChangedSimple') return `${values.files} files changed`;
+  if (key === 'chat:diff.filesChangedSimple') return `${values.files} files changed`;
   return key;
 }
 

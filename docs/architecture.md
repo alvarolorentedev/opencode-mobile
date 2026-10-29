@@ -672,15 +672,19 @@ mounted composer's draft and attachments instead of replacing it with new tabs.
   Regenerate with `npm run gen:i18n`; `test:i18n` fails when it is stale.
 - `lib/i18n/locales/<lang>/<namespace>.json`
   Committed translation files; English is the source of truth and fallback.
+  Every new or changed user-facing string must be added to every language folder
+  with matching interpolation placeholders and plural categories. A missing
+  translation that falls back to English at runtime means the feature is not
+  complete.
 - `lib/i18n/index.ts`
   Also exports `getFormatLocale()`, which `lib/opencode/format.ts` uses to render
   timestamps and relative times in the active language.
 
 UI text is grouped into feature namespaces (`common`, `chat`, `project`,
-`terminal`, `settings`, `notifications`). Components translate with
-`useTranslation()` and explicit namespace prefixes. The root layout imports
-`lib/i18n` so translations are initialized before first render, and
-`OpencodeProvider` applies the persisted language preference after hydration.
+`terminal`, `settings`, `notifications`, `onboarding`, `share`). Components
+translate with `useTranslation()` and explicit namespace prefixes. The root
+layout imports `lib/i18n` so translations are initialized before first render,
+and `OpencodeProvider` applies the persisted language preference after hydration.
 
 Domain labels are translated at render where the data carries a stable
 by-kind value: tool names and diff turn numbers are localized in the chat cards,

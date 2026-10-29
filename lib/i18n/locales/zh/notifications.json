@@ -8,7 +8,7 @@
   "activity": {
     "working": "处理中",
     "thinking": "思考中",
-    "needsInput": "需要您的输入",
+    "needsInput": "需要你的输入",
     "retrying": "正在重试",
     "queued": "排队中",
     "finished": "可以查看结果",

@@ -5,13 +5,13 @@
     "errorDetailsCopied": "Détails de l'erreur copiés",
     "messageCopied": "Message copié dans le presse-papiers",
     "stopConversationTitle": "Arrêter la conversation ?",
-    "stopConversationMessage": "Cela arrêtera le mode conversation et OpenCode cessera d'écouter ton prochain tour.",
+    "stopConversationMessage": "Cela arrêtera le mode conversation et OpenCode cessera d’écouter votre prochain tour.",
     "keepGoing": "Continuer",
     "couldNotSendRetry": "OpenCode n'a pas pu envoyer ce message. Réessaie dans un instant.",
     "couldNotSend": "OpenCode n'a pas pu envoyer ce message.",
     "unableToPlay": "Impossible de lire cette réponse de l'assistant.",
     "ttsFallback": "La voix sur l'appareil est indisponible. La voix du système est utilisée.",
-    "stopConversationBeforePlay": "Arrête le mode conversation avant de lire une réponse manuellement.",
+    "stopConversationBeforePlay": "Arrêtez le mode conversation avant de lire une réponse manuellement.",
     "noReadableText": "Cette réponse de l'assistant ne contient aucun texte lisible.",
     "fileTooLarge": "Le fichier dépasse la limite de pièce jointe de 10 Mo.",
     "couldNotAttach": "Impossible de joindre ce fichier.",
@@ -41,7 +41,7 @@
   "content": {
     "connectionIssue": "Problème de connexion",
     "answerNeeded": "Réponse requise",
-    "waitingForAnswer": "OpenCode attend ta réponse",
+    "waitingForAnswer": "OpenCode attend votre réponse",
     "openProgressLabel": "Ouvrir la progression. {{completed}} tâches sur {{total}} terminées",
     "progress": "Progression",
     "untitledTask": "Tâche sans titre",
@@ -69,13 +69,13 @@
   },
   "cards": {
     "respondToContinue": "Autorisation nécessaire",
-    "waitingForAnswer": "OpenCode attend ta réponse avant de pouvoir continuer.",
+    "waitingForAnswer": "OpenCode attend votre réponse avant de pouvoir continuer.",
     "couldNotSubmitAnswer": "Impossible d'envoyer la réponse.",
     "couldNotRejectQuestion": "Impossible de rejeter la question.",
     "returnToChat": "Revenir au chat",
     "assistantQuestion": "Question de l'assistant",
     "stepOfTotal": "{{current}} sur {{total}}",
-    "waitingForAnswerBanner": "OpenCode attend ta réponse",
+    "waitingForAnswerBanner": "OpenCode attend votre réponse",
     "questionOfTotal": "Question {{current}} sur {{total}}",
     "yes": "Oui",
     "no": "Non",
@@ -91,7 +91,7 @@
     "hiddenLines_many": "... {{count}} lignes inchangées",
     "hiddenLines_other": "... {{count}} lignes inchangées",
     "filesChanged": "Fichiers modifiés",
-    "you": "Toi",
+    "you": "Vous",
     "opencode": "OpenCode",
     "copied": "Copié",
     "permissionRequest": "Autorisation nécessaire",
@@ -117,7 +117,7 @@
     "requestedBy": "Demandé par {{name}}"
   },
   "composer": {
-    "chooseAssistantMode": "Choisis le mode de l'assistant",
+    "chooseAssistantMode": "Choisissez le mode de l’assistant",
     "autoApproveEnabled": "Autoriser automatiquement",
     "askPermission": "Demander avant chaque action",
     "conversationMode": "Mode conversation",
@@ -126,7 +126,7 @@
     "attachment": "pièce jointe",
     "listening": "Écoute",
     "conversationActive": "Conversation active",
-    "placeholder": "Demande n'importe quoi...",
+    "placeholder": "Demandez n’importe quoi…",
     "agent": "Agent",
     "reasoning": "Raisonnement",
     "approvals": "Autorisations",
@@ -160,7 +160,7 @@
     "estimatedCost": "Coût API estimé {{cost}}",
     "openChats": "Chats ouverts. {{title}}",
     "untitledChat": "Chat sans titre",
-    "chooseProject": "Choisis un projet",
+    "chooseProject": "Choisissez un projet",
     "newChat": "Nouveau chat",
     "showUsage": "Afficher les détails d'utilisation de la session",
     "stopConversationMode": "Arrêter le mode conversation",
@@ -197,7 +197,7 @@
     "unfavorite": "Retirer des favoris",
     "deleteConfirmTitle": "Supprimer la session ?",
     "deleteConfirm": "« {{title}} » et toutes ses données seront définitivement supprimés.",
-    "swipeChatActions": "Glisse vers la gauche pour les actions du chat",
+    "swipeChatActions": "Glissez vers la gauche pour les actions du chat",
     "newChat": "Nouveau chat",
     "running": "En cours",
     "noMatchingChats": "Aucun chat ne correspond à votre recherche."
@@ -212,7 +212,7 @@
     "phaseSpeaking": "Lecture",
     "lastHeard": "Dernier extrait entendu",
     "wakePhrase": "Phrase d’activation",
-    "startSpeaking": "Commence à parler naturellement. Ce que tu dis au dernier tour apparaîtra ici.",
+    "startSpeaking": "Commencez à parler naturellement. Ce que vous dites au dernier tour apparaîtra ici.",
     "listeningHint": "Allez-y, je vous écoute.",
     "endConversation": "Terminer la conversation",
     "steerHint": "Dites « {{phrase}} » à tout moment pour orienter."
@@ -228,14 +228,14 @@
     "standardModel": " · Modèle standard",
     "noMatchingModels": "Aucun modèle correspondant",
     "emptyHint": "Essaie un nom de modèle ou de fournisseur.",
-    "autoRouting": "Auto-routing",
-    "autoRoutingDescription": "Use a model matched to each prompt",
-    "autoRoutingUnavailable": "Set up a classifier in Settings",
-    "defaultModel": "Default model"
+    "autoRouting": "Routage automatique",
+    "autoRoutingDescription": "Utiliser un modèle adapté à chaque requête",
+    "autoRoutingUnavailable": "Configurez un classificateur dans les réglages",
+    "defaultModel": "Modèle par défaut"
   },
   "starter": {
     "title": "Démarrer une nouvelle tâche",
-    "description": "Garde la consigne précise et OpenCode inspectera le projet, affichera la progression et diffusera les modifications de fichiers.",
+    "description": "Gardez la consigne précise et OpenCode inspectera le projet, affichera la progression et diffusera les modifications de fichiers.",
     "prompts": {
       "polish": "Explique ce projet",
       "review": "Examine les modifications récentes",
@@ -277,8 +277,8 @@
     "turnNumber": "Tour {{number}}"
   },
   "session": {
-    "chooseProject": "Choisis un projet",
-    "selectProject": "Sélectionne un projet dans l'onglet Projets pour ouvrir son contexte de chat.",
+    "chooseProject": "Choisissez un projet",
+    "selectProject": "Sélectionnez un projet dans l’onglet Projets pour ouvrir son contexte de chat.",
     "opening": "Ouverture d'OpenCode Mobile",
     "loading": "Chargement de la dernière session pour cet projet OpenCode Mobile.",
     "connectTitle": "Se connecter à OpenCode Mobile",
@@ -290,7 +290,7 @@
     "couldNotOpen": "Impossible d'ouvrir ce lien de session.",
     "errorTitle": "Impossible d'ouvrir la session",
     "openingTitle": "Ouverture de la session",
-    "loading": "Chargement de cette session depuis ton serveur OpenCode.",
+    "loading": "Chargement de cette session depuis votre serveur OpenCode.",
     "backToChat": "Revenir au chat"
   },
   "attachments": {
@@ -309,7 +309,7 @@
   },
   "revertNotice": {
     "title": "Annulé depuis ce message",
-    "hint": "Modifie le prompt ci-dessous et envoie-le pour continuer à partir d'ici.",
+    "hint": "Modifiez le prompt ci-dessous et envoyez-le pour continuer à partir d’ici.",
     "cancel": "Annuler le retour en arrière"
   },
   "approvals": {

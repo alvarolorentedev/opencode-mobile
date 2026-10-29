@@ -142,6 +142,9 @@ Changes here require explicit human validation.
 - Preserve continuity across tabs.
 - Respect the dual realtime model: SSE plus polling fallback.
 - Prefer deterministic state transitions over clever indirection.
+- Add every new or changed user-facing string to every supported locale in
+  `lib/i18n/locales/<code>/`, preserving interpolation placeholders and plural
+  categories.
 
 ## Avoid
 
@@ -150,6 +153,7 @@ Changes here require explicit human validation.
 - new shared state stores outside the provider
 - duplicated provider-derived state in local UI state
 - protocol changes hidden in UI code
+- shipping user-facing copy that only exists in English
 - unrelated refactors
 
 ## Change Mapping
@@ -173,6 +177,17 @@ Changes here require explicit human validation.
 - provider auth and capability requests: `providers/services/capabilities-service.ts` and `lib/opencode/client.ts`
 - extensions (MCP/plugin/skill/command config): `providers/use-extensions-state.ts`, `providers/services/extensions-service.ts`, and `lib/opencode/extensions/`
 - platform deep links and native integration: `lib/`
+
+### User-facing copy and translations
+
+- source strings: `lib/i18n/locales/en/<namespace>.json`
+- translated strings: `lib/i18n/locales/<language>/<namespace>.json` for every
+  entry in `SUPPORTED_LANGUAGES`
+- registry: `lib/i18n/resources.ts` (generated; run `npm run gen:i18n`)
+- contract test: `tests/vitest/i18n.test.ts`
+
+A feature is not complete while any new or changed string is missing from a
+supported locale or relies on runtime English fallback.
 
 ### Protocol
 
@@ -205,8 +220,10 @@ For each task:
 2. Identify the correct layer.
 3. Make the smallest change that preserves documented behavior.
 4. Add or update tests when the behavior contract changes.
-5. Update docs when architecture, behavior, or contracts change.
-6. Run validation proportional to risk.
+5. Add or update every new or changed user-facing string in all supported
+   locales, then run `npm run gen:i18n` and the i18n test.
+6. Update docs when architecture, behavior, or contracts change.
+7. Run validation proportional to risk.
 
 ## Validation
 
@@ -304,6 +321,10 @@ A change is done when:
 - code is in the correct layer
 - behavior is preserved or intentionally updated
 - tests are added or updated for changed behavior
+- every new or changed user-facing string is present in all supported locales
+  with matching interpolation placeholders and plural categories, and the i18n
+  parity test passes; runtime English fallback in a shipped locale means the
+  feature is not complete
 - any `tests/e2e/` or `tests/fake-opencode/` changes have explicit human validation
 - documentation in `docs/` is updated when behavior, architecture, or contracts changed
 - the pre-push CI-equivalent checks pass (`test:ci:static`, `test:fake-server:self`, `test:e2e:web`)

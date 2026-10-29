@@ -1,65 +1,65 @@
 {
   "welcome": {
     "title": "OpenCode Mobile",
-    "subtitle": "Your OpenCode projects, wherever you are.",
-    "body": "OpenCode Mobile brings your OpenCode server to your phone. Chat with coding agents, follow their work, and review changes across your projects.",
-    "start": "Continue",
+    "subtitle": "你的 OpenCode 项目，随时随地。",
+    "body": "OpenCode Mobile 将你的 OpenCode 服务器带到手机上。与编程助手聊天、跟踪它们的工作，并查看项目中的更改。",
+    "start": "继续",
     "points": {
       "server": {
-        "title": "Your server does the work",
-        "description": "Models and tasks run on your OpenCode server. This app keeps you connected to them."
+        "title": "服务器负责执行",
+        "description": "模型和任务在你的 OpenCode 服务器上运行。此应用让你保持与它们连接。"
       },
       "project": {
-        "title": "Projects and conversations",
-        "description": "Projects keep chats, files, and changes together."
+        "title": "项目与对话",
+        "description": "项目将聊天、文件和更改集中在一起。"
       },
       "optional": {
-        "title": "Voice and task updates",
-        "description": "Voice input and completion notifications help you keep up with work on the go."
+        "title": "语音与任务更新",
+        "description": "语音输入和完成通知帮助你在外出时随时掌握工作进展。"
       }
     }
   },
   "connect": {
-    "skip": "Skip"
+    "skip": "跳过"
   },
   "project": {
-    "title": "Choose a project",
-    "subtitle": "Pick a project to start in, or add a folder on the server.",
+    "title": "选择项目",
+    "subtitle": "选择一个项目开始，或在服务器上添加文件夹。",
     "continue": "继续",
-    "skip": "Skip",
-    "empty": "This server did not report any projects. Add a directory on the server to get started.",
-    "loading": "Loading projects…"
+    "skip": "跳过",
+    "empty": "此服务器未报告任何项目。请在服务器上添加目录以开始。",
+    "loading": "正在加载项目…"
   },
   "permissions": {
-    "title": "Permissions",
-    "subtitle": "Optional. OpenCode Mobile only asks when you choose to enable something.",
-    "skip": "Skip",
-    "continue": "Continue",
+    "title": "权限",
+    "subtitle": "可选。只有当你选择启用某项功能时，OpenCode Mobile 才会询问。",
+    "skip": "跳过",
+    "continue": "继续",
     "notifications": {
-      "title": "Notifications",
-      "body": "Allow OpenCode Mobile to notify you when a task finishes while the app is in the background.",
-      "unsupported": "Notifications are not available on this platform.",
-      "enable": "Enable notifications",
-      "battery": "Review battery / background settings"
+      "title": "通知",
+      "body": "允许 OpenCode Mobile 在应用处于后台且任务完成时通知你。",
+      "unsupported": "此平台不支持通知。",
+      "enable": "启用通知",
+      "battery": "查看电池和后台设置"
     },
     "voice": {
-      "title": "Voice input",
-      "body": "Microphone access lets you dictate prompts instead of typing them.",
-      "unsupported": "Voice input is not available on this device.",
-      "enable": "Enable voice input",
-      "deniedHint": "You can still turn voice input on later from Settings › Voice."
+      "title": "语音输入",
+      "body": "允许访问麦克风后，你可以口述提示词，而无需手动输入。",
+      "unsupported": "此设备不支持语音输入。",
+      "enable": "启用语音输入",
+      "deniedHint": "你稍后可以在“设置 › 语音”中开启语音输入。"
     },
     "checking": "正在检查…"
   },
   "ready": {
-    "title": "You're ready",
-    "subtitle": "Review your setup and start coding.",
-    "server": "Server",
-    "project": "Project",
-    "projectMissing": "No project selected",
+    "title": "一切就绪",
+    "subtitle": "检查你的设置并开始编程。",
+    "server": "服务器",
+    "project": "项目",
+    "projectMissing": "未选择项目",
     "footnote": "你可以随时更改这些设置。",
-    "start": "Start coding",
-    "done": "Done",
+    "start": "开始编程",
+    "done": "完成",
     "serverMissing": "未连接",
     "providers": "提供商",
     "enabledModels": "已启用的模型"

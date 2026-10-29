@@ -1,65 +1,65 @@
 {
   "welcome": {
     "title": "OpenCode Mobile",
-    "subtitle": "Your OpenCode projects, wherever you are.",
-    "body": "OpenCode Mobile brings your OpenCode server to your phone. Chat with coding agents, follow their work, and review changes across your projects.",
-    "start": "Continue",
+    "subtitle": "どこにいても、あなたの OpenCode プロジェクトを。",
+    "body": "OpenCode Mobile は OpenCode サーバーをスマートフォンに届けます。コーディングエージェントとチャットし、作業を追い、プロジェクトの変更を確認できます。",
+    "start": "続ける",
     "points": {
       "server": {
-        "title": "Your server does the work",
-        "description": "Models and tasks run on your OpenCode server. This app keeps you connected to them."
+        "title": "作業はサーバーが行います",
+        "description": "モデルとタスクは OpenCode サーバーで実行されます。このアプリはサーバーとの接続を保ちます。"
       },
       "project": {
-        "title": "Projects and conversations",
-        "description": "Projects keep chats, files, and changes together."
+        "title": "プロジェクトと会話",
+        "description": "プロジェクトはチャット、ファイル、変更をまとめます。"
       },
       "optional": {
-        "title": "Voice and task updates",
-        "description": "Voice input and completion notifications help you keep up with work on the go."
+        "title": "音声とタスクの更新",
+        "description": "音声入力と完了通知により、外出先でも作業の進行を把握できます。"
       }
     }
   },
   "connect": {
-    "skip": "Skip"
+    "skip": "スキップ"
   },
   "project": {
-    "title": "Choose a project",
-    "subtitle": "Pick a project to start in, or add a folder on the server.",
+    "title": "プロジェクトを選択",
+    "subtitle": "開始するプロジェクトを選ぶか、サーバーにフォルダーを追加してください。",
     "continue": "続行",
-    "skip": "Skip",
-    "empty": "This server did not report any projects. Add a directory on the server to get started.",
-    "loading": "Loading projects…"
+    "skip": "スキップ",
+    "empty": "このサーバーはプロジェクトを報告していません。開始するにはサーバーにディレクトリを追加してください。",
+    "loading": "プロジェクトを読み込み中…"
   },
   "permissions": {
-    "title": "Permissions",
-    "subtitle": "Optional. OpenCode Mobile only asks when you choose to enable something.",
-    "skip": "Skip",
-    "continue": "Continue",
+    "title": "権限",
+    "subtitle": "任意です。OpenCode Mobile は、何かを有効にすることを選んだときだけ確認します。",
+    "skip": "スキップ",
+    "continue": "続ける",
     "notifications": {
-      "title": "Notifications",
-      "body": "Allow OpenCode Mobile to notify you when a task finishes while the app is in the background.",
-      "unsupported": "Notifications are not available on this platform.",
-      "enable": "Enable notifications",
-      "battery": "Review battery / background settings"
+      "title": "通知",
+      "body": "アプリがバックグラウンドにある間にタスクが完了したとき、OpenCode Mobile から通知を受け取れるようにします。",
+      "unsupported": "このプラットフォームでは通知を利用できません。",
+      "enable": "通知を有効にする",
+      "battery": "バッテリーとバックグラウンドの設定を確認"
     },
     "voice": {
-      "title": "Voice input",
-      "body": "Microphone access lets you dictate prompts instead of typing them.",
-      "unsupported": "Voice input is not available on this device.",
-      "enable": "Enable voice input",
-      "deniedHint": "You can still turn voice input on later from Settings › Voice."
+      "title": "音声入力",
+      "body": "マイクへのアクセスを許可すると、プロンプトを入力する代わりに音声で入力できます。",
+      "unsupported": "このデバイスでは音声入力を利用できません。",
+      "enable": "音声入力を有効にする",
+      "deniedHint": "音声入力は後から「設定 › 音声」で有効にできます。"
     },
     "checking": "確認中…"
   },
   "ready": {
-    "title": "You're ready",
-    "subtitle": "Review your setup and start coding.",
-    "server": "Server",
-    "project": "Project",
-    "projectMissing": "No project selected",
+    "title": "準備ができました",
+    "subtitle": "設定を確認してコーディングを始めましょう。",
+    "server": "サーバー",
+    "project": "プロジェクト",
+    "projectMissing": "プロジェクトが選択されていません",
     "footnote": "これらの設定はいつでも変更できます。",
-    "start": "Start coding",
-    "done": "Done",
+    "start": "コーディングを始める",
+    "done": "完了",
     "serverMissing": "未接続",
     "providers": "プロバイダー",
     "enabledModels": "有効なモデル"

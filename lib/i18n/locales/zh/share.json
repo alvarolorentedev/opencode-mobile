@@ -36,7 +36,11 @@
     "previewsTitle": "显示小组件预览",
     "previewsDescription": "在主屏幕上显示回复、请求和计划内容。",
     "completed": "计划已完成",
-    "openApp": "打开应用以刷新"
+    "openApp": "打开应用以刷新",
+    "moreChats_other": "+{{count}} 个聊天",
+    "moreChats_one": "+{{count}} 个聊天",
+    "moreChats_few": "+{{count}} 个聊天",
+    "moreChats_many": "+{{count}} 个聊天"
   },
   "expired": "共享内容已过期",
   "expiredDescription": "请从另一个应用重新共享。",

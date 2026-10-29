@@ -22,7 +22,7 @@
       "replyPlaybackOff": "Lecture des réponses désactivée",
       "support": "Notez l'app, envoyez vos retours, obtenez de l'aide",
       "permissions": "{{value}} enregistrées",
-      "extensions": "MCPs, plugins, skills and commands",
+      "extensions": "MCPs, plugins, compétences et commandes",
       "responses": "Portée et prochaines étapes",
       "voiceSystem": "Voix système · {{phrase}}",
       "voiceLocal": "Sur l’appareil · {{phrase}}",
@@ -68,14 +68,14 @@
   "connection": {
     "currentConnection": "Connexion actuelle",
     "noServerUrl": "Aucune URL de serveur définie",
-    "notSavedYet": "Pas encore enregistrée. Ajoute une connexion pour la conserver.",
+    "notSavedYet": "Pas encore enregistrée. Ajoutez une connexion pour la conserver.",
     "lastChecked": "Dernière vérification {{time}}",
     "serverUrlValue": "URL du serveur : {{url}}",
     "usernameValue": "Nom d'utilisateur : {{username}}",
     "usernameEmpty": "(aucun)",
     "addConnection": "Ajouter une connexion",
     "editConnection": "Modifier la connexion",
-    "addDescription": "Ajoute des connexions pour passer d'un serveur à l'autre sans ressaisir l'URL et le mot de passe.",
+    "addDescription": "Ajoutez des connexions pour passer d’un serveur à l’autre sans ressaisir l’URL et le mot de passe.",
     "saveAndConnect": "Enregistrer et se connecter",
     "deleteTitle": "Supprimer la connexion",
     "deleteMessage": "Retirer « {{name}} » des connexions enregistrées ?",
@@ -86,8 +86,8 @@
       "password": "Mot de passe"
     },
     "errors": {
-      "serverUrl": "Saisis l'URL du serveur.",
-      "invalidUrl": "Saisis une URL de serveur complète, comme http://192.168.1.10:4096.",
+      "serverUrl": "Saisissez l’URL du serveur.",
+      "invalidUrl": "Saisissez une URL de serveur complète, comme http://192.168.1.10:4096.",
       "save": "Impossible d'enregistrer cette connexion.",
       "headerName": "Saisissez un nom d'en-tête valide.",
       "headerValue": "Les valeurs d'en-tête ne peuvent pas contenir de sauts de ligne.",
@@ -144,21 +144,21 @@
     "reconnectSuccess": "Connecté à {{url}}."
   },
   "providers": {
-    "accounts": "Accounts",
-    "addAnotherAccount": "Add another account",
-    "removeAccount": "Remove account",
-    "selectMethod": "Select login method",
+    "accounts": "Comptes",
+    "addAnotherAccount": "Ajouter un autre compte",
+    "removeAccount": "Supprimer le compte",
+    "selectMethod": "Choisir la méthode de connexion",
     "apiKey": "Clé API",
-    "pasteApiKey": "Colle ta clé API",
-    "chooseModels": "Choisis les modèles configurés à afficher dans le chat. Le dernier modèle choisi dans le chat reste sélectionné pour les nouveaux chats.",
+    "pasteApiKey": "Collez votre clé API",
+    "chooseModels": "Choisissez les modèles configurés à afficher dans le chat. Le dernier modèle choisi dans le chat reste sélectionné pour les nouveaux chats.",
     "configuredProviders": "Fournisseurs configurés",
     "addProvider": "Ajouter un fournisseur",
-    "connectFirst": "Connecte-toi d'abord pour charger les fournisseurs.",
+    "connectFirst": "Connectez-vous d’abord pour charger les fournisseurs.",
     "configureAtLeastOne": "Configure au moins un fournisseur pour choisir les valeurs par défaut.",
     "selectedCount": "{{selected}} sur {{total}} sélectionnés",
     "reasoningSupported": "Raisonnement pris en charge",
     "standardModel": "Modèle standard",
-    "noModels": "Aucun modèle trouvé pour tes fournisseurs configurés.",
+    "noModels": "Aucun modèle trouvé pour vos fournisseurs configurés.",
     "configuredSuccess": "{{provider}} a été configuré avec succès.",
     "signInFinished": "Connexion à {{provider}} terminée. L'état du fournisseur a été actualisé.",
     "couldNotConfigure": "Impossible de configurer le fournisseur.",
@@ -172,8 +172,8 @@
     "continue": "Continuer",
     "cancelSetup": "Annuler la configuration du fournisseur",
     "configureProvider": "Configurer {{provider}}",
-    "oauthHint": "Cela ouvre le flux de connexion du fournisseur dans ton navigateur.",
-    "signInPendingHint": "Termine la connexion dans ton navigateur. Cet écran se met à jour automatiquement.",
+    "oauthHint": "Cela ouvre le flux de connexion du fournisseur dans votre navigateur.",
+    "signInPendingHint": "Terminez la connexion dans votre navigateur. Cet écran se met à jour automatiquement.",
     "pairingCode": "Code d'appairage",
     "openLink": "Ouvrir le lien",
     "copyLink": "Copier le lien",
@@ -204,7 +204,7 @@
     },
     "github-copilot": {
       "label": "GitHub Copilot",
-      "description": "Utilise ton accès GitHub Copilot pour te connecter et activer les modèles de base pris en charge."
+      "description": "Utilisez votre accès GitHub Copilot pour vous connecter et activer les modèles de base pris en charge."
     },
     "google": {
       "label": "Google",
@@ -257,7 +257,7 @@
     "batterySaverDescription": "L'économiseur de batterie peut retarder les rappels.",
     "refreshStatus": "Actualiser l'état",
     "enabledFeedback": "Les notifications sont activées sur cet appareil.",
-    "disabledFeedback": "Les notifications sont toujours désactivées. Ouvre les réglages système pour les activer manuellement."
+    "disabledFeedback": "Les notifications sont toujours désactivées. Ouvrez les réglages système pour les activer manuellement."
   },
   "voice": {
     "onDeviceInput": {
@@ -319,7 +319,7 @@
     },
     "speechLocale": {
       "label": "Langue",
-      "helper": "Laisse vide pour utiliser la langue par défaut du système pour la saisie et la lecture vocales."
+      "helper": "Laissez vide pour utiliser la langue par défaut du système pour la saisie et la lecture vocales."
     },
     "responseScope": {
       "label": "Étendue des réponses",
@@ -408,7 +408,7 @@
       "available": "Disponible"
     },
     "mode": {
-      "label": "Entrée vocale",
+      "label": "Saisie vocale",
       "system": "Système",
       "local": "Sur l’appareil",
       "systemDescription": "Utilise la reconnaissance vocale du téléphone. Elle peut passer par le cloud du fabricant.",
@@ -510,7 +510,7 @@
     "title": "Serveurs MCP",
     "couldNotUpdate": "Impossible de mettre à jour les serveurs MCP.",
     "configurationUnavailable": "Détails de configuration indisponibles",
-    "invalidCommand": "Saisis la commande locale sous forme de tableau JSON de chaînes.",
+    "invalidCommand": "Saisissez la commande locale sous forme de tableau JSON de chaînes.",
     "local": "Local",
     "remote": "Distant",
     "serverName": "Nom du serveur",
@@ -525,7 +525,7 @@
   },
   "language": {
     "title": "Langue",
-    "description": "Utilise la langue du système ou choisis-en une pour l'interface de l'app."
+    "description": "Utilisez la langue du système ou choisissez-en une pour l’interface de l’app."
   },
   "appearance": {
     "theme": {
@@ -557,42 +557,42 @@
     }
   },
   "connect": {
-    "entry": "Pair with Cloud Link",
+    "entry": "Associer avec Cloud Link",
     "title": "Cloud Link",
-    "description": "Scan your machine’s connector QR code or open its pairing link. Manual connections remain available.",
-    "pairingLink": "Pairing deep link",
-    "openLink": "Open pairing link",
-    "machines": "Your machines",
-    "refreshMachines": "Refresh machines",
-    "noMachines": "No machines registered for this user.",
-    "revoke": "Revoke machine",
-    "revokeConfirm": "Delete this machine for every device? Its public tunnel will be deleted.",
-    "forget": "Forget locally",
-    "forgetConfirm": "Remove this connection and its credentials from this device? Other devices will keep access.",
-    "expiresAt": "Credentials expire: {{date}}",
-    "savedConnection": "Connection saved: {{name}}",
-    "manage": "Manage Cloud Link",
-    "cameraLoading": "Opening camera",
-    "cameraUnavailable": "Camera unavailable. Open the connector deep link instead.",
+    "description": "Scannez le code QR du connecteur de votre machine ou ouvrez son lien d’association. Les connexions manuelles restent disponibles.",
+    "pairingLink": "Lien profond d’association",
+    "openLink": "Ouvrir le lien d’association",
+    "machines": "Vos machines",
+    "refreshMachines": "Actualiser les machines",
+    "noMachines": "Aucune machine enregistrée pour cet utilisateur.",
+    "revoke": "Révoquer la machine",
+    "revokeConfirm": "Supprimer cette machine sur tous les appareils ? Son tunnel public sera supprimé.",
+    "forget": "Oublier sur cet appareil",
+    "forgetConfirm": "Supprimer cette connexion et ses identifiants de cet appareil ? Les autres appareils conserveront l’accès.",
+    "expiresAt": "Les identifiants expirent : {{date}}",
+    "savedConnection": "Connexion enregistrée : {{name}}",
+    "manage": "Gérer Cloud Link",
+    "cameraLoading": "Ouverture de la caméra",
+    "cameraUnavailable": "Caméra indisponible. Ouvrez plutôt le lien profond du connecteur.",
     "progress": {
-      "idle": "Loading…",
-      "claiming": "Claiming pairing…",
-      "saving": "Saving credentials securely…",
-      "connecting": "Connecting to the machine…",
+      "idle": "Chargement…",
+      "claiming": "Demande d’association…",
+      "saving": "Enregistrement sécurisé des identifiants…",
+      "connecting": "Connexion à la machine…",
       "waitingForApproval": "Confirmez cette connexion sur votre ordinateur.",
       "delayed": "Aucune approbation pour le moment. Approuvez sur votre ordinateur ou scannez un nouveau code QR.",
-      "paired": "Loading…",
-      "catalog": "Loading store subscriptions…",
-      "purchasing": "Waiting for the store…",
-      "pending": "Waiting for purchase approval…",
-      "restoring": "Restoring purchases…",
-      "verifying": "Verifying subscription…",
-      "savingSession": "Saving the Cloud Link session securely…",
-      "finalizing": "Finalizing the store transaction…"
+      "paired": "Chargement…",
+      "catalog": "Chargement des abonnements de la boutique…",
+      "purchasing": "En attente de la boutique…",
+      "pending": "En attente de l’approbation de l’achat…",
+      "restoring": "Restauration des achats…",
+      "verifying": "Vérification de l’abonnement…",
+      "savingSession": "Enregistrement sécurisé de la session Cloud Link…",
+      "finalizing": "Finalisation de la transaction de la boutique…"
     },
-    "subscriptionActive": "Your Cloud Link subscription is active.",
-    "restore": "Restore purchases",
-    "accessUnavailable": "Access unavailable. Purchase or Restore to reactivate this machine.",
+    "subscriptionActive": "Votre abonnement Cloud Link est actif.",
+    "restore": "Restaurer les achats",
+    "accessUnavailable": "Accès indisponible. Achetez ou restaurez pour réactiver cette machine.",
     "scanHint": "Scannez le code QR de votre ordinateur pour vous connecter.",
     "scanNewQr": "Scannez le nouveau code QR sur votre ordinateur",
     "scanLocal": "Scanner le code QR",
@@ -638,7 +638,7 @@
       "remote": "Connexion par internet",
       "pair": "Associez votre ordinateur à cette app",
       "billing": "La facturation est gérée par votre boutique d’applications.",
-      "checkoutHint": "Ouvre votre boutique d’applications pour confirmer l’achat.",
+      "checkoutHint": "Ouvrez votre boutique d’applications pour confirmer l’achat.",
       "approveHint": "Puis approuvez la connexion sur votre ordinateur.",
       "usePairingLink": "Utiliser un lien d’association"
     }
@@ -686,8 +686,8 @@
     "accessThrough": "Accès jusqu’au {{date}}",
     "description": "Accès à distance à vos machines OpenCode.",
     "manage": "Gérer l’abonnement",
-    "opensApple": "Ouvre les abonnements de l’App Store",
-    "opensGoogle": "Ouvre Google Play",
+    "opensApple": "Ouvrez les abonnements de l’App Store",
+    "opensGoogle": "Ouvrez Google Play",
     "restoreDescription": "Récupérer un achat existant",
     "machines": "Machines",
     "machinesDescription": "Voir et gérer les machines connectées"
@@ -757,143 +757,143 @@
   },
   "extensions": {
     "title": "Extensions",
-    "description": "Manage MCP servers, plugins, skills and slash commands for this server.",
+    "description": "Gérez les serveurs MCP, les plugins, les compétences et les commandes slash pour ce serveur.",
     "scope": {
-      "project": "Project",
-      "general": "General"
+      "project": "Projet",
+      "general": "Général"
     },
     "scopeDescription": {
-      "project": "These extensions apply only to {{project}}.",
-      "general": "These extensions apply to every project on this server."
+      "project": "Ces extensions s’appliquent uniquement à {{project}}.",
+      "general": "Ces extensions s’appliquent à tous les projets de ce serveur."
     },
     "safety": {
-      "writable": "Writable. Changes are backed up and replaced atomically.",
-      "readOnly": "Read-only",
-      "target": "Config file: {{path}}",
-      "backup": "Last backup: {{path}}",
-      "restore": "Restore last backup",
-      "restoreMessage": "Restore the last saved configuration? The current file is backed up first."
+      "writable": "Inscriptible. Les modifications sont sauvegardées puis remplacées de façon atomique.",
+      "readOnly": "Lecture seule",
+      "target": "Fichier de configuration : {{path}}",
+      "backup": "Dernière sauvegarde : {{path}}",
+      "restore": "Restaurer la dernière sauvegarde",
+      "restoreMessage": "Restaurer la dernière configuration enregistrée ? Le fichier actuel sera d’abord sauvegardé."
     },
     "tabs": {
       "mcp": "MCPs",
       "plugins": "Plugins",
-      "skills": "Skills",
-      "commands": "Commands"
+      "skills": "Compétences",
+      "commands": "Commandes"
     },
-    "shared": "Shared with all projects",
-    "sharedHint": "Shared items are managed in the scope that defines them.",
-    "removeTitle": "Remove extension",
-    "saving": "Saving and waiting for the server to reload…",
-    "unavailable": "Extension management is unavailable for this server.",
+    "shared": "Partagé avec tous les projets",
+    "sharedHint": "Les éléments partagés sont gérés dans la portée qui les définit.",
+    "removeTitle": "Supprimer l’extension",
+    "saving": "Enregistrement et attente du rechargement du serveur…",
+    "unavailable": "La gestion des extensions n’est pas disponible pour ce serveur.",
     "mcp": {
-      "addTitle": "Add MCP server",
-      "add": "Add MCP server",
-      "empty": "No MCP servers in this scope.",
-      "runtime": "Runtime-only MCP server",
-      "configured": "Configured",
-      "removeMessage": "Remove MCP server \"{{name}}\" from this scope?"
+      "addTitle": "Ajouter un serveur MCP",
+      "add": "Ajouter un serveur MCP",
+      "empty": "Aucun serveur MCP dans cette portée.",
+      "runtime": "Serveur MCP à l’exécution uniquement",
+      "configured": "Configuré",
+      "removeMessage": "Supprimer le serveur MCP « {{name}} » de cette portée ?"
     },
     "plugins": {
-      "addTitle": "Add plugin",
-      "package": "Package or local plugin path",
-      "warning": "Plugins execute code on the server. Only add packages you trust.",
-      "add": "Add plugin",
-      "empty": "No plugins in this scope.",
-      "outdated": "Update available",
-      "removeMessage": "Remove plugin \"{{name}}\" from this scope?"
+      "addTitle": "Ajouter un plugin",
+      "package": "Paquet ou chemin local du plugin",
+      "warning": "Les plugins exécutent du code sur le serveur. N’ajoutez que des paquets de confiance.",
+      "add": "Ajouter un plugin",
+      "empty": "Aucun plugin dans cette portée.",
+      "outdated": "Mise à jour disponible",
+      "removeMessage": "Supprimer le plugin « {{name}} » de cette portée ?"
     },
     "skills": {
-      "addTitle": "Add skill",
-      "editTitle": "Edit {{name}}",
-      "id": "Skill ID",
-      "name": "Name",
+      "addTitle": "Ajouter une compétence",
+      "editTitle": "Modifier {{name}}",
+      "id": "ID de la compétence",
+      "name": "Nom",
       "descriptionLabel": "Description",
       "instructions": "Instructions",
-      "fileContent": "SKILL.md content",
-      "autoinvokeOn": "Discoverable by the model",
-      "autoinvokeOff": "Hidden from the model by default",
-      "add": "Create skill",
-      "empty": "No skills in this scope.",
-      "removeMessage": "Move skill \"{{name}}\" to the extension trash?"
+      "fileContent": "Contenu de SKILL.md",
+      "autoinvokeOn": "Détectable par le modèle",
+      "autoinvokeOff": "Masqué par défaut pour le modèle",
+      "add": "Créer une compétence",
+      "empty": "Aucune compétence dans cette portée.",
+      "removeMessage": "Déplacer la compétence « {{name}} » vers la corbeille des extensions ?"
     },
     "commands": {
-      "addTitle": "Add slash command",
-      "editTitle": "Edit /{{name}}",
-      "name": "Command name",
+      "addTitle": "Ajouter une commande slash",
+      "editTitle": "Modifier /{{name}}",
+      "name": "Nom de la commande",
       "descriptionLabel": "Description",
-      "template": "Template",
-      "templateHint": "Use $ARGUMENTS or $1, $2 for arguments. Shell blocks in templates run on the server.",
-      "empty": "No commands in this scope.",
-      "removeMessage": "Remove command \"/{{name}}\" from this scope?"
+      "template": "Modèle",
+      "templateHint": "Utilisez $ARGUMENTS ou $1, $2 pour les arguments. Les blocs shell des modèles s’exécutent sur le serveur.",
+      "empty": "Aucune commande dans cette portée.",
+      "removeMessage": "Supprimer la commande « /{{name}} » de cette portée ?"
     },
-    "generalConfirmTitle": "Edit global configuration",
-    "generalConfirmMessage": "This changes the configuration for every project on this server. A backup is created first.\n\n{{path}}",
-    "generalConfirmAction": "Continue"
+    "generalConfirmTitle": "Modifier la configuration globale",
+    "generalConfirmMessage": "Cela modifie la configuration de tous les projets de ce serveur. Une sauvegarde est créée au préalable.\n\n{{path}}",
+    "generalConfirmAction": "Continuer"
   },
   "modelRouting": {
-    "title": "Auto model routing",
-    "description": "Classify each prompt and choose a model by complexity. Routing is skipped when the classifier is unavailable.",
+    "title": "Routage automatique des modèles",
+    "description": "Classez chaque requête et choisissez un modèle selon sa complexité. Le routage est ignoré si le classificateur n’est pas disponible.",
     "enable": {
-      "title": "Enable auto-routing",
-      "description": "Choose a model for each prompt based on its complexity.",
-      "unavailable": "Set up a classifier below before enabling routing."
+      "title": "Activer le routage automatique",
+      "description": "Choisir un modèle pour chaque requête selon sa complexité.",
+      "unavailable": "Configurez un classificateur ci-dessous avant d’activer le routage."
     },
     "classifier": {
-      "label": "Classifier",
+      "label": "Classificateur",
       "local": {
-        "label": "On-device model",
-        "description": "Runs on this phone. The model is downloaded once."
+        "label": "Modèle sur l’appareil",
+        "description": "S’exécute sur ce téléphone. Le modèle est téléchargé une seule fois."
       },
       "server": {
-        "label": "OpenCode classifier",
-        "description": "Calls a model through OpenCode before sending the prompt."
+        "label": "Classificateur OpenCode",
+        "description": "Appelle un modèle via OpenCode avant d’envoyer la requête."
       }
     },
     "local": {
-      "statusLabel": "On-device model",
+      "statusLabel": "Modèle sur l’appareil",
       "status": {
-        "unsupported": "Not supported on this platform",
-        "installing": "Downloading",
-        "ready": "Ready",
-        "missing": "Not installed",
-        "error": "Install failed"
+        "unsupported": "Non pris en charge sur cette plateforme",
+        "installing": "Téléchargement",
+        "ready": "Prêt",
+        "missing": "Non installé",
+        "error": "Échec de l’installation"
       },
-      "installed": "Installed ({{size}})",
-      "remove": "Remove model",
-      "download": "Download model ({{size}})",
-      "license": "{{model}} · {{license}}. The model runs only on this device."
+      "installed": "Installé ({{size}})",
+      "remove": "Supprimer le modèle",
+      "download": "Télécharger le modèle ({{size}})",
+      "license": "{{model}} · {{license}}. Le modèle s’exécute uniquement sur cet appareil."
     },
     "server": {
-      "modelLabel": "Classifier model",
-      "cheapest": "Cheapest available",
-      "check": "Check classifier",
+      "modelLabel": "Modèle du classificateur",
+      "cheapest": "Le moins cher disponible",
+      "check": "Vérifier le classificateur",
       "status": {
-        "unknown": "Not checked. Check the classifier to enable routing.",
-        "checking": "Checking the classifier...",
-        "available": "Classifier available.",
-        "unsupported": "This server does not expose the classifier endpoint.",
-        "unavailable": "Classifier unavailable. Check the connection and retry.",
-        "auth": "Sign in to this server before using the classifier."
+        "unknown": "Non vérifié. Vérifiez le classificateur pour activer le routage.",
+        "checking": "Vérification du classificateur...",
+        "available": "Classificateur disponible.",
+        "unsupported": "Ce serveur n’expose pas le point de terminaison du classificateur.",
+        "unavailable": "Classificateur indisponible. Vérifiez la connexion et réessayez.",
+        "auth": "Connectez-vous à ce serveur avant d’utiliser le classificateur."
       }
     },
     "tiers": {
       "simple": {
-        "label": "Simple model"
+        "label": "Modèle simple"
       },
       "standard": {
-        "label": "Standard model"
+        "label": "Modèle standard"
       },
       "complex": {
-        "label": "Complex model"
+        "label": "Modèle complexe"
       },
-      "automatic": "Automatic",
-      "automaticDescription": "Choose from the enabled models",
-      "automaticValue": "Automatic · {{model}}",
-      "unavailable": "Unavailable"
+      "automatic": "Automatique",
+      "automaticDescription": "Choisir parmi les modèles activés",
+      "automaticValue": "Automatique · {{model}}",
+      "unavailable": "Indisponible"
     },
     "protect": {
-      "title": "Protect long chats",
-      "description": "Avoid downgrading models on long conversations where prompt-cache savings may be larger."
+      "title": "Protéger les longs chats",
+      "description": "Évitez de rétrograder les modèles dans les longues conversations où les économies de cache de requêtes peuvent être plus importantes."
     }
   }
 }

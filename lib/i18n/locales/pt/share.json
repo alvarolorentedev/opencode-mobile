@@ -36,7 +36,11 @@
     "previewsTitle": "Mostrar prévias nos widgets",
     "previewsDescription": "Mostrar respostas, solicitações e etapas do plano na tela inicial.",
     "completed": "Plano concluído",
-    "openApp": "Abra o app para atualizar"
+    "openApp": "Abra o app para atualizar",
+    "moreChats_one": "+{{count}} chat a mais",
+    "moreChats_many": "+{{count}} chats a mais",
+    "moreChats_other": "+{{count}} chats a mais",
+    "moreChats_few": "+{{count}} chats a mais"
   },
   "expired": "O conteúdo compartilhado expirou",
   "expiredDescription": "Compartilhe-o novamente no outro aplicativo.",

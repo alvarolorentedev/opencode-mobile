@@ -36,7 +36,11 @@
     "previewsTitle": "Afficher les aperçus des widgets",
     "previewsDescription": "Afficher les réponses, demandes et étapes du plan sur l’écran d’accueil.",
     "completed": "Plan terminé",
-    "openApp": "Ouvrez l’app pour actualiser"
+    "openApp": "Ouvrez l’app pour actualiser",
+    "moreChats_one": "+{{count}} autre chat",
+    "moreChats_many": "+{{count}} autres chats",
+    "moreChats_other": "+{{count}} autres chats",
+    "moreChats_few": "+{{count}} autres chats"
   },
   "expired": "Le contenu partagé a expiré",
   "expiredDescription": "Partagez-le à nouveau depuis l’autre application.",

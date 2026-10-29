@@ -11,7 +11,7 @@
     "search": "Rechercher",
     "changedFiles": "{{value}} fichiers modifiés",
     "close": "Fermer le fichier",
-    "savingNotice": "L'enregistrement applique tes modifications sous forme de correctif VCS à l'arbre de travail. Vérifie les changements avant de continuer.",
+    "savingNotice": "L’enregistrement applique vos modifications sous forme de correctif VCS à l’arbre de travail. Vérifiez les changements avant de continuer.",
     "savePatch": "Enregistrer le correctif",
     "editingUnavailable": "La modification n'est pas disponible sur ce serveur.",
     "added": "Ajouté",
@@ -55,7 +55,7 @@
   "picker": {
     "title": "Choisir un projet",
     "changeProject": "Changer de projet",
-    "enterPath": "Saisis un chemin de dossier sur le serveur OpenCode.",
+    "enterPath": "Saisissez un chemin de dossier sur le serveur OpenCode.",
     "serverDirectory": "Répertoire du serveur",
     "add": "Ajouter un projet",
     "selectLabel": "Sélectionner {{name}}",

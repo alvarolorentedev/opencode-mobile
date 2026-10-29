@@ -10,7 +10,7 @@
       "permissions": "审批",
       "subscription": "订阅",
       "cloudLink": "Cloud Link",
-      "extensions": "Extensions",
+      "extensions": "扩展",
       "responses": "回复",
       "appearance": "外观",
       "chat": "聊天与回复",
@@ -22,7 +22,7 @@
       "replyPlaybackOff": "回复播放已关闭",
       "support": "评价应用、发送反馈、获取帮助",
       "permissions": "已保存 {{value}} 项",
-      "extensions": "MCPs, plugins, skills and commands",
+      "extensions": "MCP、插件、技能和命令",
       "responses": "回复范围和下一步",
       "voiceSystem": "系统语音 · {{phrase}}",
       "voiceLocal": "设备端 · {{phrase}}",
@@ -144,10 +144,10 @@
     "reconnectSuccess": "已连接到 {{url}}。"
   },
   "providers": {
-    "accounts": "Accounts",
-    "addAnotherAccount": "Add another account",
-    "removeAccount": "Remove account",
-    "selectMethod": "Select login method",
+    "accounts": "账户",
+    "addAnotherAccount": "添加其他账户",
+    "removeAccount": "移除账户",
+    "selectMethod": "选择登录方式",
     "apiKey": "API 密钥",
     "pasteApiKey": "粘贴你的 API 密钥",
     "chooseModels": "选择在聊天中显示哪些已配置的模型。你在聊天中最后选择的模型会保留用于新聊天。",
@@ -313,7 +313,7 @@
       "fallback": "回退：系统短语检测“{{phrase}}”。",
       "baseModels": "基础包",
       "voiceProfile": "声纹档案",
-      "enrollRequiresModels": "请先安装模型，再录入您的声音。",
+      "enrollRequiresModels": "请先安装模型，再录入你的声音。",
       "installBase": "安装基础包（{{size}}）",
       "installCommand": "安装命令模型（{{size}}）"
     },
@@ -557,42 +557,42 @@
     }
   },
   "connect": {
-    "entry": "Pair with Cloud Link",
+    "entry": "通过 Cloud Link 配对",
     "title": "Cloud Link",
-    "description": "Scan your machine’s connector QR code or open its pairing link. Manual connections remain available.",
-    "pairingLink": "Pairing deep link",
-    "openLink": "Open pairing link",
-    "machines": "Your machines",
-    "refreshMachines": "Refresh machines",
-    "noMachines": "No machines registered for this user.",
-    "revoke": "Revoke machine",
-    "revokeConfirm": "Delete this machine for every device? Its public tunnel will be deleted.",
-    "forget": "Forget locally",
-    "forgetConfirm": "Remove this connection and its credentials from this device? Other devices will keep access.",
-    "expiresAt": "Credentials expire: {{date}}",
-    "savedConnection": "Connection saved: {{name}}",
-    "manage": "Manage Cloud Link",
-    "cameraLoading": "Opening camera",
-    "cameraUnavailable": "Camera unavailable. Open the connector deep link instead.",
+    "description": "扫描你的设备连接器二维码，或打开其配对链接。手动连接仍然可用。",
+    "pairingLink": "配对深度链接",
+    "openLink": "打开配对链接",
+    "machines": "你的设备",
+    "refreshMachines": "刷新设备",
+    "noMachines": "此用户没有注册任何设备。",
+    "revoke": "撤销设备",
+    "revokeConfirm": "在所有设备上删除此设备？其公共隧道也将被删除。",
+    "forget": "在此设备上忘记",
+    "forgetConfirm": "从此设备移除此连接及其凭据？其他设备将保留访问权限。",
+    "expiresAt": "凭据到期时间：{{date}}",
+    "savedConnection": "连接已保存：{{name}}",
+    "manage": "管理 Cloud Link",
+    "cameraLoading": "正在打开相机",
+    "cameraUnavailable": "相机不可用。请改为打开连接器的深度链接。",
     "progress": {
-      "idle": "Loading…",
-      "claiming": "Claiming pairing…",
-      "saving": "Saving credentials securely…",
-      "connecting": "Connecting to the machine…",
+      "idle": "加载中…",
+      "claiming": "正在请求配对…",
+      "saving": "正在安全保存凭据…",
+      "connecting": "正在连接到设备…",
       "waitingForApproval": "请在电脑上确认此连接。",
       "delayed": "尚未批准。请在电脑上批准，或扫描新的二维码。",
-      "paired": "Loading…",
-      "catalog": "Loading store subscriptions…",
-      "purchasing": "Waiting for the store…",
-      "pending": "Waiting for purchase approval…",
-      "restoring": "Restoring purchases…",
-      "verifying": "Verifying subscription…",
-      "savingSession": "Saving the Cloud Link session securely…",
-      "finalizing": "Finalizing the store transaction…"
+      "paired": "加载中…",
+      "catalog": "正在加载商店订阅…",
+      "purchasing": "正在等待商店…",
+      "pending": "正在等待购买批准…",
+      "restoring": "正在恢复购买…",
+      "verifying": "正在验证订阅…",
+      "savingSession": "正在安全保存 Cloud Link 会话…",
+      "finalizing": "正在完成商店交易…"
     },
-    "subscriptionActive": "Your Cloud Link subscription is active.",
-    "restore": "Restore purchases",
-    "accessUnavailable": "Access unavailable. Purchase or Restore to reactivate this machine.",
+    "subscriptionActive": "你的 Cloud Link 订阅已生效。",
+    "restore": "恢复购买",
+    "accessUnavailable": "访问不可用。请购买或恢复以重新激活此设备。",
     "scanHint": "扫描电脑的二维码以连接。",
     "scanNewQr": "扫描电脑上的新二维码",
     "scanLocal": "扫描二维码",
@@ -600,7 +600,7 @@
     "manual": "手动",
     "manualHint": "输入服务器网址和凭据。",
     "nativeOnly": "Cloud Link 可在 iOS 和 Android 应用中使用。",
-    "benefits": "通过二维码连接，使用 Cloud Link 远程访问电脑，并通过“恢复购买”在另一台设备上恢复您的机器。",
+    "benefits": "通过二维码连接，使用 Cloud Link 远程访问电脑，并通过“恢复购买”在另一台设备上恢复你的设备。",
     "subscribe": "订阅",
     "options": "连接选项",
     "learnMore": "了解 Cloud Link",
@@ -756,144 +756,144 @@
     }
   },
   "extensions": {
-    "title": "Extensions",
-    "description": "Manage MCP servers, plugins, skills and slash commands for this server.",
+    "title": "扩展",
+    "description": "管理此服务器的 MCP 服务器、插件、技能和斜杠命令。",
     "scope": {
-      "project": "Project",
-      "general": "General"
+      "project": "项目",
+      "general": "通用"
     },
     "scopeDescription": {
-      "project": "These extensions apply only to {{project}}.",
-      "general": "These extensions apply to every project on this server."
+      "project": "这些扩展仅适用于 {{project}}。",
+      "general": "这些扩展适用于此服务器上的所有项目。"
     },
     "safety": {
-      "writable": "Writable. Changes are backed up and replaced atomically.",
-      "readOnly": "Read-only",
-      "target": "Config file: {{path}}",
-      "backup": "Last backup: {{path}}",
-      "restore": "Restore last backup",
-      "restoreMessage": "Restore the last saved configuration? The current file is backed up first."
+      "writable": "可写。更改会先备份，然后以原子方式替换。",
+      "readOnly": "只读",
+      "target": "配置文件：{{path}}",
+      "backup": "上次备份：{{path}}",
+      "restore": "恢复上次备份",
+      "restoreMessage": "恢复上次保存的配置？当前文件会先备份。"
     },
     "tabs": {
-      "mcp": "MCPs",
-      "plugins": "Plugins",
-      "skills": "Skills",
-      "commands": "Commands"
+      "mcp": "MCP",
+      "plugins": "插件",
+      "skills": "技能",
+      "commands": "命令"
     },
-    "shared": "Shared with all projects",
-    "sharedHint": "Shared items are managed in the scope that defines them.",
-    "removeTitle": "Remove extension",
-    "saving": "Saving and waiting for the server to reload…",
-    "unavailable": "Extension management is unavailable for this server.",
+    "shared": "与所有项目共享",
+    "sharedHint": "共享项目在定义它们的范围内管理。",
+    "removeTitle": "移除扩展",
+    "saving": "正在保存并等待服务器重新加载…",
+    "unavailable": "此服务器不支持扩展管理。",
     "mcp": {
-      "addTitle": "Add MCP server",
-      "add": "Add MCP server",
-      "empty": "No MCP servers in this scope.",
-      "runtime": "Runtime-only MCP server",
-      "configured": "Configured",
-      "removeMessage": "Remove MCP server \"{{name}}\" from this scope?"
+      "addTitle": "添加 MCP 服务器",
+      "add": "添加 MCP 服务器",
+      "empty": "此范围内没有 MCP 服务器。",
+      "runtime": "仅运行时 MCP 服务器",
+      "configured": "已配置",
+      "removeMessage": "从此范围移除 MCP 服务器“{{name}}”？"
     },
     "plugins": {
-      "addTitle": "Add plugin",
-      "package": "Package or local plugin path",
-      "warning": "Plugins execute code on the server. Only add packages you trust.",
-      "add": "Add plugin",
-      "empty": "No plugins in this scope.",
-      "outdated": "Update available",
-      "removeMessage": "Remove plugin \"{{name}}\" from this scope?"
+      "addTitle": "添加插件",
+      "package": "包名或本地插件路径",
+      "warning": "插件会在服务器上执行代码。只添加你信任的包。",
+      "add": "添加插件",
+      "empty": "此范围内没有插件。",
+      "outdated": "有可用更新",
+      "removeMessage": "从此范围移除插件“{{name}}”？"
     },
     "skills": {
-      "addTitle": "Add skill",
-      "editTitle": "Edit {{name}}",
-      "id": "Skill ID",
-      "name": "Name",
-      "descriptionLabel": "Description",
-      "instructions": "Instructions",
-      "fileContent": "SKILL.md content",
-      "autoinvokeOn": "Discoverable by the model",
-      "autoinvokeOff": "Hidden from the model by default",
-      "add": "Create skill",
-      "empty": "No skills in this scope.",
-      "removeMessage": "Move skill \"{{name}}\" to the extension trash?"
+      "addTitle": "添加技能",
+      "editTitle": "编辑 {{name}}",
+      "id": "技能 ID",
+      "name": "名称",
+      "descriptionLabel": "描述",
+      "instructions": "说明",
+      "fileContent": "SKILL.md 内容",
+      "autoinvokeOn": "模型可发现",
+      "autoinvokeOff": "默认对模型隐藏",
+      "add": "创建技能",
+      "empty": "此范围内没有技能。",
+      "removeMessage": "将技能“{{name}}”移到扩展回收站？"
     },
     "commands": {
-      "addTitle": "Add slash command",
-      "editTitle": "Edit /{{name}}",
-      "name": "Command name",
-      "descriptionLabel": "Description",
-      "template": "Template",
-      "templateHint": "Use $ARGUMENTS or $1, $2 for arguments. Shell blocks in templates run on the server.",
-      "empty": "No commands in this scope.",
-      "removeMessage": "Remove command \"/{{name}}\" from this scope?"
+      "addTitle": "添加斜杠命令",
+      "editTitle": "编辑 /{{name}}",
+      "name": "命令名称",
+      "descriptionLabel": "描述",
+      "template": "模板",
+      "templateHint": "使用 $ARGUMENTS 或 $1、$2 表示参数。模板中的 Shell 块会在服务器上运行。",
+      "empty": "此范围内没有命令。",
+      "removeMessage": "从此范围移除命令“/{{name}}”？"
     },
-    "generalConfirmTitle": "Edit global configuration",
-    "generalConfirmMessage": "This changes the configuration for every project on this server. A backup is created first.\n\n{{path}}",
-    "generalConfirmAction": "Continue"
+    "generalConfirmTitle": "编辑全局配置",
+    "generalConfirmMessage": "这会更改此服务器上所有项目的配置。系统会先创建备份。\n\n{{path}}",
+    "generalConfirmAction": "继续"
   },
   "modelRouting": {
-    "title": "Auto model routing",
-    "description": "Classify each prompt and choose a model by complexity. Routing is skipped when the classifier is unavailable.",
+    "title": "自动模型路由",
+    "description": "对每个提示词进行分类，并按复杂度选择模型。分类器不可用时会跳过路由。",
     "enable": {
-      "title": "Enable auto-routing",
-      "description": "Choose a model for each prompt based on its complexity.",
-      "unavailable": "Set up a classifier below before enabling routing."
+      "title": "启用自动路由",
+      "description": "根据复杂度为每个提示词选择模型。",
+      "unavailable": "请先在下方配置分类器，再启用路由。"
     },
     "classifier": {
-      "label": "Classifier",
+      "label": "分类器",
       "local": {
-        "label": "On-device model",
-        "description": "Runs on this phone. The model is downloaded once."
+        "label": "设备端模型",
+        "description": "在此手机上运行。模型只需下载一次。"
       },
       "server": {
-        "label": "OpenCode classifier",
-        "description": "Calls a model through OpenCode before sending the prompt."
+        "label": "OpenCode 分类器",
+        "description": "在发送提示词前通过 OpenCode 调用模型。"
       }
     },
     "local": {
-      "statusLabel": "On-device model",
+      "statusLabel": "设备端模型",
       "status": {
-        "unsupported": "Not supported on this platform",
-        "installing": "Downloading",
-        "ready": "Ready",
-        "missing": "Not installed",
-        "error": "Install failed"
+        "unsupported": "此平台不支持",
+        "installing": "正在下载",
+        "ready": "就绪",
+        "missing": "未安装",
+        "error": "安装失败"
       },
-      "installed": "Installed ({{size}})",
-      "remove": "Remove model",
-      "download": "Download model ({{size}})",
-      "license": "{{model}} · {{license}}. The model runs only on this device."
+      "installed": "已安装 ({{size}})",
+      "remove": "移除模型",
+      "download": "下载模型 ({{size}})",
+      "license": "{{model}} · {{license}}。模型仅在此设备上运行。"
     },
     "server": {
-      "modelLabel": "Classifier model",
-      "cheapest": "Cheapest available",
-      "check": "Check classifier",
+      "modelLabel": "分类器模型",
+      "cheapest": "可用的最便宜选项",
+      "check": "检查分类器",
       "status": {
-        "unknown": "Not checked. Check the classifier to enable routing.",
-        "checking": "Checking the classifier...",
-        "available": "Classifier available.",
-        "unsupported": "This server does not expose the classifier endpoint.",
-        "unavailable": "Classifier unavailable. Check the connection and retry.",
-        "auth": "Sign in to this server before using the classifier."
+        "unknown": "未检查。请检查分类器以启用路由。",
+        "checking": "正在检查分类器...",
+        "available": "分类器可用。",
+        "unsupported": "此服务器未提供分类器端点。",
+        "unavailable": "分类器不可用。请检查连接并重试。",
+        "auth": "使用分类器前请先登录此服务器。"
       }
     },
     "tiers": {
       "simple": {
-        "label": "Simple model"
+        "label": "简单模型"
       },
       "standard": {
-        "label": "Standard model"
+        "label": "标准模型"
       },
       "complex": {
-        "label": "Complex model"
+        "label": "复杂模型"
       },
-      "automatic": "Automatic",
-      "automaticDescription": "Choose from the enabled models",
-      "automaticValue": "Automatic · {{model}}",
-      "unavailable": "Unavailable"
+      "automatic": "自动",
+      "automaticDescription": "从已启用的模型中选择",
+      "automaticValue": "自动 · {{model}}",
+      "unavailable": "不可用"
     },
     "protect": {
-      "title": "Protect long chats",
-      "description": "Avoid downgrading models on long conversations where prompt-cache savings may be larger."
+      "title": "保护长对话",
+      "description": "在提示词缓存节省可能更大的长对话中，避免降低模型等级。"
     }
   }
 }

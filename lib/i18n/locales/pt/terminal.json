@@ -43,9 +43,9 @@
     "off": "desativado"
   },
   "status": {
-    "connecting": "A ligar",
-    "connected": "Ligado",
-    "reconnecting": "A religar",
+    "connecting": "Conectando",
+    "connected": "Conectado",
+    "reconnecting": "Reconectando",
     "exited": "Terminado",
     "error": "Erro",
     "idle": "Inativo"

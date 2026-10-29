@@ -1,65 +1,65 @@
 {
   "welcome": {
     "title": "OpenCode Mobile",
-    "subtitle": "Your OpenCode projects, wherever you are.",
-    "body": "OpenCode Mobile brings your OpenCode server to your phone. Chat with coding agents, follow their work, and review changes across your projects.",
-    "start": "Continue",
+    "subtitle": "Tus proyectos de OpenCode, donde quiera que estés.",
+    "body": "OpenCode Mobile lleva tu servidor de OpenCode a tu teléfono. Chatea con agentes de programación, sigue su trabajo y revisa los cambios en tus proyectos.",
+    "start": "Continuar",
     "points": {
       "server": {
-        "title": "Your server does the work",
-        "description": "Models and tasks run on your OpenCode server. This app keeps you connected to them."
+        "title": "Tu servidor hace el trabajo",
+        "description": "Los modelos y las tareas se ejecutan en tu servidor de OpenCode. Esta app te mantiene conectado a ellos."
       },
       "project": {
-        "title": "Projects and conversations",
-        "description": "Projects keep chats, files, and changes together."
+        "title": "Proyectos y conversaciones",
+        "description": "Los proyectos reúnen chats, archivos y cambios."
       },
       "optional": {
-        "title": "Voice and task updates",
-        "description": "Voice input and completion notifications help you keep up with work on the go."
+        "title": "Voz y avisos de tareas",
+        "description": "La entrada de voz y las notificaciones de finalización te ayudan a seguir el trabajo estés donde estés."
       }
     }
   },
   "connect": {
-    "skip": "Skip"
+    "skip": "Omitir"
   },
   "project": {
-    "title": "Choose a project",
-    "subtitle": "Pick a project to start in, or add a folder on the server.",
+    "title": "Elige un proyecto",
+    "subtitle": "Elige un proyecto para empezar o añade una carpeta en el servidor.",
     "continue": "Continuar",
-    "skip": "Skip",
-    "empty": "This server did not report any projects. Add a directory on the server to get started.",
-    "loading": "Loading projects…"
+    "skip": "Omitir",
+    "empty": "Este servidor no informó de ningún proyecto. Añade un directorio en el servidor para empezar.",
+    "loading": "Cargando proyectos…"
   },
   "permissions": {
-    "title": "Permissions",
-    "subtitle": "Optional. OpenCode Mobile only asks when you choose to enable something.",
-    "skip": "Skip",
-    "continue": "Continue",
+    "title": "Permisos",
+    "subtitle": "Opcional. OpenCode Mobile solo pregunta cuando decides activar algo.",
+    "skip": "Omitir",
+    "continue": "Continuar",
     "notifications": {
-      "title": "Notifications",
-      "body": "Allow OpenCode Mobile to notify you when a task finishes while the app is in the background.",
-      "unsupported": "Notifications are not available on this platform.",
-      "enable": "Enable notifications",
-      "battery": "Review battery / background settings"
+      "title": "Notificaciones",
+      "body": "Permite que OpenCode Mobile te avise cuando termine una tarea mientras la app está en segundo plano.",
+      "unsupported": "Las notificaciones no están disponibles en esta plataforma.",
+      "enable": "Activar notificaciones",
+      "battery": "Revisar ajustes de batería y segundo plano"
     },
     "voice": {
-      "title": "Voice input",
-      "body": "Microphone access lets you dictate prompts instead of typing them.",
-      "unsupported": "Voice input is not available on this device.",
-      "enable": "Enable voice input",
-      "deniedHint": "You can still turn voice input on later from Settings › Voice."
+      "title": "Entrada de voz",
+      "body": "El acceso al micrófono te permite dictar mensajes en lugar de escribirlos.",
+      "unsupported": "La entrada de voz no está disponible en este dispositivo.",
+      "enable": "Activar entrada de voz",
+      "deniedHint": "Puedes activar la entrada de voz más tarde en Ajustes › Voz."
     },
     "checking": "Comprobando…"
   },
   "ready": {
-    "title": "You're ready",
-    "subtitle": "Review your setup and start coding.",
-    "server": "Server",
-    "project": "Project",
-    "projectMissing": "No project selected",
+    "title": "Todo listo",
+    "subtitle": "Revisa tu configuración y empieza a programar.",
+    "server": "Servidor",
+    "project": "Proyecto",
+    "projectMissing": "Ningún proyecto seleccionado",
     "footnote": "Puedes cambiar estos ajustes en cualquier momento.",
-    "start": "Start coding",
-    "done": "Done",
+    "start": "Empezar a programar",
+    "done": "Listo",
     "serverMissing": "Sin conexión",
     "providers": "Proveedores",
     "enabledModels": "Modelos habilitados"

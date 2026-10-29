@@ -10,7 +10,7 @@
       "permissions": "Aprovações",
       "subscription": "Assinatura",
       "cloudLink": "Cloud Link",
-      "extensions": "Extensions",
+      "extensions": "Extensões",
       "responses": "Respostas",
       "appearance": "Aparência",
       "chat": "Chat e respostas",
@@ -22,7 +22,7 @@
       "replyPlaybackOff": "Reprodução de respostas desativada",
       "support": "Avalie o app, envie feedback, obtenha ajuda",
       "permissions": "{{value}} salvos",
-      "extensions": "MCPs, plugins, skills and commands",
+      "extensions": "MCPs, plugins, habilidades e comandos",
       "responses": "Escopo e próximos passos",
       "voiceSystem": "Voz do sistema · {{phrase}}",
       "voiceLocal": "No dispositivo · {{phrase}}",
@@ -144,10 +144,10 @@
     "reconnectSuccess": "Conectado a {{url}}."
   },
   "providers": {
-    "accounts": "Accounts",
-    "addAnotherAccount": "Add another account",
-    "removeAccount": "Remove account",
-    "selectMethod": "Select login method",
+    "accounts": "Contas",
+    "addAnotherAccount": "Adicionar outra conta",
+    "removeAccount": "Remover conta",
+    "selectMethod": "Escolher método de login",
     "apiKey": "Chave de API",
     "pasteApiKey": "Cole sua chave de API",
     "chooseModels": "Escolha quais modelos configurados aparecem no chat. O último modelo que você escolher no chat continua selecionado para novos chats.",
@@ -431,31 +431,31 @@
       "notActive": "Conclua a configuração para ativar a entrada local.",
       "chooseVoice": "Escolher uma voz",
       "manageDownloads": "Gerir transferências",
-      "more": "Mais definições de áudio",
+      "more": "Mais configurações de áudio",
       "advanced": "Opções avançadas",
       "notNow": "Agora não",
-      "downloadContinue": "Transferir e continuar",
+      "downloadContinue": "Baixar e continuar",
       "tools": "Ferramentas de voz",
-      "downloadSize": "{{size}} para transferir · Wi-Fi recomendado",
+      "downloadSize": "{{size}} para baixar · Wi-Fi recomendado",
       "englishModel": "Moonshine · Rápido, para comandos em inglês",
       "multilingualModel": "Whisper · Para comandos em vários idiomas",
       "microphone": "Acesso ao microfone",
       "allow": "Permitir",
       "sequence": "Ativar → Falar → Enviar",
-      "serverNote": "O reconhecimento de voz é executado no telemóvel. O pedido continua a ser enviado ao servidor OpenCode.",
-      "profileNote": "Opcional: grave uma amostra de 12 segundos para que apenas a sua voz ative a app. O perfil de voz fica no telemóvel. Sem perfil, qualquer pessoa pode dizer a frase de ativação.",
+      "serverNote": "O reconhecimento de voz é executado no celular. A solicitação continua sendo enviada ao servidor OpenCode.",
+      "profileNote": "Opcional: grave uma amostra de 12 segundos para que apenas a sua voz ative o app. O perfil de voz fica no celular. Sem perfil, qualquer pessoa pode dizer a frase de ativação.",
       "skipProfile": "Ignorar perfil de voz",
       "skipTest": "Ignorar teste e concluir",
       "startTest": "Iniciar teste",
       "stopTest": "Parar teste",
-      "testNote": "O teste não envia pedidos. O microfone para de ouvir ao sair deste ecrã.",
+      "testNote": "O teste não envia pedidos. O microfone para de ouvir ao sair desta tela.",
       "busy": "Pare o modo de conversa antes de configurar a entrada de voz.",
       "intro": {
         "title": "A sua voz, mãos livres",
         "description": "Diga «{{phrase}}» e indique ao OpenCode o que fazer."
       },
       "prepare": {
-        "title": "Prepare o telemóvel",
+        "title": "Prepare o celular",
         "description": "Escolha um idioma, permita o microfone e transfira as ferramentas de voz uma só vez."
       },
       "profile": {
@@ -557,42 +557,42 @@
     }
   },
   "connect": {
-    "entry": "Pair with Cloud Link",
+    "entry": "Parear com o Cloud Link",
     "title": "Cloud Link",
-    "description": "Scan your machine’s connector QR code or open its pairing link. Manual connections remain available.",
-    "pairingLink": "Pairing deep link",
-    "openLink": "Open pairing link",
-    "machines": "Your machines",
-    "refreshMachines": "Refresh machines",
-    "noMachines": "No machines registered for this user.",
-    "revoke": "Revoke machine",
-    "revokeConfirm": "Delete this machine for every device? Its public tunnel will be deleted.",
-    "forget": "Forget locally",
-    "forgetConfirm": "Remove this connection and its credentials from this device? Other devices will keep access.",
-    "expiresAt": "Credentials expire: {{date}}",
-    "savedConnection": "Connection saved: {{name}}",
-    "manage": "Manage Cloud Link",
-    "cameraLoading": "Opening camera",
-    "cameraUnavailable": "Camera unavailable. Open the connector deep link instead.",
+    "description": "Escaneie o código QR do conector da sua máquina ou abra o link de pareamento. As conexões manuais continuam disponíveis.",
+    "pairingLink": "Link direto de pareamento",
+    "openLink": "Abrir link de pareamento",
+    "machines": "Suas máquinas",
+    "refreshMachines": "Atualizar máquinas",
+    "noMachines": "Nenhuma máquina registrada para este usuário.",
+    "revoke": "Revogar máquina",
+    "revokeConfirm": "Excluir esta máquina em todos os dispositivos? O túnel público dela será excluído.",
+    "forget": "Esquecer neste dispositivo",
+    "forgetConfirm": "Remover esta conexão e as credenciais dela deste dispositivo? Os outros dispositivos manterão o acesso.",
+    "expiresAt": "As credenciais expiram em: {{date}}",
+    "savedConnection": "Conexão salva: {{name}}",
+    "manage": "Gerenciar Cloud Link",
+    "cameraLoading": "Abrindo a câmera",
+    "cameraUnavailable": "Câmera indisponível. Abra o link direto do conector.",
     "progress": {
-      "idle": "Loading…",
-      "claiming": "Claiming pairing…",
-      "saving": "Saving credentials securely…",
-      "connecting": "Connecting to the machine…",
+      "idle": "Carregando…",
+      "claiming": "Solicitando pareamento…",
+      "saving": "Salvando credenciais com segurança…",
+      "connecting": "Conectando à máquina…",
       "waitingForApproval": "Confirme esta conexão no seu computador.",
       "delayed": "Ainda não houve aprovação. Aprove no seu computador ou escaneie um novo código QR.",
-      "paired": "Loading…",
-      "catalog": "Loading store subscriptions…",
-      "purchasing": "Waiting for the store…",
-      "pending": "Waiting for purchase approval…",
-      "restoring": "Restoring purchases…",
-      "verifying": "Verifying subscription…",
-      "savingSession": "Saving the Cloud Link session securely…",
-      "finalizing": "Finalizing the store transaction…"
+      "paired": "Carregando…",
+      "catalog": "Carregando assinaturas da loja…",
+      "purchasing": "Aguardando a loja…",
+      "pending": "Aguardando aprovação da compra…",
+      "restoring": "Restaurando compras…",
+      "verifying": "Verificando assinatura…",
+      "savingSession": "Salvando a sessão do Cloud Link com segurança…",
+      "finalizing": "Finalizando a transação da loja…"
     },
-    "subscriptionActive": "Your Cloud Link subscription is active.",
-    "restore": "Restore purchases",
-    "accessUnavailable": "Access unavailable. Purchase or Restore to reactivate this machine.",
+    "subscriptionActive": "Sua assinatura do Cloud Link está ativa.",
+    "restore": "Restaurar compras",
+    "accessUnavailable": "Acesso indisponível. Compre ou restaure para reativar esta máquina.",
     "scanHint": "Leia o código QR do seu computador para conectar.",
     "scanNewQr": "Escaneie o novo código QR no seu computador",
     "scanLocal": "Escanear código QR",
@@ -700,7 +700,7 @@
     "editTitle": "Editar serviço",
     "empty": "Ainda não há serviços expostos.",
     "capacity": "Pode expor até {{max}} serviços.",
-    "saveFailed": "Não foi possível guardar este serviço.",
+    "saveFailed": "Não foi possível salvar este serviço.",
     "removed": "{{name}} removido.",
     "removeFailed": "Não foi possível remover este serviço.",
     "removeTitle": "Remover {{name}}?",
@@ -714,7 +714,7 @@
     "useMachine": "Mudar para esta máquina",
     "noMachine": "Ligue uma máquina Cloud Link para gerir os seus serviços expostos.",
     "credentialsExpired": "O acesso Cloud Link desta máquina expirou ou está ausente. Volte a ligá-la para gerir os seus serviços.",
-    "reconnectFailed": "Não foi possível voltar a ligar esta máquina.",
+    "reconnectFailed": "Não foi possível reconectar esta máquina.",
     "unavailableService": "Este serviço já não existe no conector.",
     "unavailableServiceHint": "Volte atrás e atualize a lista de serviços expostos.",
     "legacyConnector": "Este conector de ambiente de trabalho ainda não suporta portas dedicadas. Atualize-o para servir apps na raiz da porta e escolher portas.",
@@ -756,144 +756,144 @@
     }
   },
   "extensions": {
-    "title": "Extensions",
-    "description": "Manage MCP servers, plugins, skills and slash commands for this server.",
+    "title": "Extensões",
+    "description": "Gerencie servidores MCP, plugins, habilidades e comandos de barra para este servidor.",
     "scope": {
-      "project": "Project",
-      "general": "General"
+      "project": "Projeto",
+      "general": "Geral"
     },
     "scopeDescription": {
-      "project": "These extensions apply only to {{project}}.",
-      "general": "These extensions apply to every project on this server."
+      "project": "Estas extensões se aplicam apenas a {{project}}.",
+      "general": "Estas extensões se aplicam a todos os projetos deste servidor."
     },
     "safety": {
-      "writable": "Writable. Changes are backed up and replaced atomically.",
-      "readOnly": "Read-only",
-      "target": "Config file: {{path}}",
-      "backup": "Last backup: {{path}}",
-      "restore": "Restore last backup",
-      "restoreMessage": "Restore the last saved configuration? The current file is backed up first."
+      "writable": "Gravação permitida. As alterações são copiadas e substituídas de forma atômica.",
+      "readOnly": "Somente leitura",
+      "target": "Arquivo de configuração: {{path}}",
+      "backup": "Último backup: {{path}}",
+      "restore": "Restaurar o último backup",
+      "restoreMessage": "Restaurar a última configuração salva? O arquivo atual será copiado primeiro."
     },
     "tabs": {
       "mcp": "MCPs",
       "plugins": "Plugins",
-      "skills": "Skills",
-      "commands": "Commands"
+      "skills": "Habilidades",
+      "commands": "Comandos"
     },
-    "shared": "Shared with all projects",
-    "sharedHint": "Shared items are managed in the scope that defines them.",
-    "removeTitle": "Remove extension",
-    "saving": "Saving and waiting for the server to reload…",
-    "unavailable": "Extension management is unavailable for this server.",
+    "shared": "Compartilhado com todos os projetos",
+    "sharedHint": "Os itens compartilhados são gerenciados no escopo que os define.",
+    "removeTitle": "Remover extensão",
+    "saving": "Salvando e aguardando o servidor recarregar…",
+    "unavailable": "O gerenciamento de extensões não está disponível para este servidor.",
     "mcp": {
-      "addTitle": "Add MCP server",
-      "add": "Add MCP server",
-      "empty": "No MCP servers in this scope.",
-      "runtime": "Runtime-only MCP server",
-      "configured": "Configured",
-      "removeMessage": "Remove MCP server \"{{name}}\" from this scope?"
+      "addTitle": "Adicionar servidor MCP",
+      "add": "Adicionar servidor MCP",
+      "empty": "Nenhum servidor MCP neste escopo.",
+      "runtime": "Servidor MCP somente em tempo de execução",
+      "configured": "Configurado",
+      "removeMessage": "Remover o servidor MCP \"{{name}}\" deste escopo?"
     },
     "plugins": {
-      "addTitle": "Add plugin",
-      "package": "Package or local plugin path",
-      "warning": "Plugins execute code on the server. Only add packages you trust.",
-      "add": "Add plugin",
-      "empty": "No plugins in this scope.",
-      "outdated": "Update available",
-      "removeMessage": "Remove plugin \"{{name}}\" from this scope?"
+      "addTitle": "Adicionar plugin",
+      "package": "Pacote ou caminho local do plugin",
+      "warning": "Plugins executam código no servidor. Adicione apenas pacotes em que você confia.",
+      "add": "Adicionar plugin",
+      "empty": "Nenhum plugin neste escopo.",
+      "outdated": "Atualização disponível",
+      "removeMessage": "Remover o plugin \"{{name}}\" deste escopo?"
     },
     "skills": {
-      "addTitle": "Add skill",
-      "editTitle": "Edit {{name}}",
-      "id": "Skill ID",
-      "name": "Name",
-      "descriptionLabel": "Description",
-      "instructions": "Instructions",
-      "fileContent": "SKILL.md content",
-      "autoinvokeOn": "Discoverable by the model",
-      "autoinvokeOff": "Hidden from the model by default",
-      "add": "Create skill",
-      "empty": "No skills in this scope.",
-      "removeMessage": "Move skill \"{{name}}\" to the extension trash?"
+      "addTitle": "Adicionar habilidade",
+      "editTitle": "Editar {{name}}",
+      "id": "ID da habilidade",
+      "name": "Nome",
+      "descriptionLabel": "Descrição",
+      "instructions": "Instruções",
+      "fileContent": "Conteúdo do SKILL.md",
+      "autoinvokeOn": "Visível para o modelo",
+      "autoinvokeOff": "Oculto do modelo por padrão",
+      "add": "Criar habilidade",
+      "empty": "Nenhuma habilidade neste escopo.",
+      "removeMessage": "Mover a habilidade \"{{name}}\" para a lixeira de extensões?"
     },
     "commands": {
-      "addTitle": "Add slash command",
-      "editTitle": "Edit /{{name}}",
-      "name": "Command name",
-      "descriptionLabel": "Description",
-      "template": "Template",
-      "templateHint": "Use $ARGUMENTS or $1, $2 for arguments. Shell blocks in templates run on the server.",
-      "empty": "No commands in this scope.",
-      "removeMessage": "Remove command \"/{{name}}\" from this scope?"
+      "addTitle": "Adicionar comando de barra",
+      "editTitle": "Editar /{{name}}",
+      "name": "Nome do comando",
+      "descriptionLabel": "Descrição",
+      "template": "Modelo",
+      "templateHint": "Use $ARGUMENTS ou $1, $2 para os argumentos. Blocos de shell nos modelos são executados no servidor.",
+      "empty": "Nenhum comando neste escopo.",
+      "removeMessage": "Remover o comando \"/{{name}}\" deste escopo?"
     },
-    "generalConfirmTitle": "Edit global configuration",
-    "generalConfirmMessage": "This changes the configuration for every project on this server. A backup is created first.\n\n{{path}}",
-    "generalConfirmAction": "Continue"
+    "generalConfirmTitle": "Editar configuração global",
+    "generalConfirmMessage": "Isso altera a configuração de todos os projetos deste servidor. Um backup é criado primeiro.\n\n{{path}}",
+    "generalConfirmAction": "Continuar"
   },
   "modelRouting": {
-    "title": "Auto model routing",
-    "description": "Classify each prompt and choose a model by complexity. Routing is skipped when the classifier is unavailable.",
+    "title": "Roteamento automático de modelos",
+    "description": "Classifique cada prompt e escolha um modelo pela complexidade. O roteamento é ignorado quando o classificador não está disponível.",
     "enable": {
-      "title": "Enable auto-routing",
-      "description": "Choose a model for each prompt based on its complexity.",
-      "unavailable": "Set up a classifier below before enabling routing."
+      "title": "Ativar roteamento automático",
+      "description": "Escolher um modelo para cada prompt com base na complexidade.",
+      "unavailable": "Configure um classificador abaixo antes de ativar o roteamento."
     },
     "classifier": {
-      "label": "Classifier",
+      "label": "Classificador",
       "local": {
-        "label": "On-device model",
-        "description": "Runs on this phone. The model is downloaded once."
+        "label": "Modelo no dispositivo",
+        "description": "Executado neste celular. O modelo é baixado uma vez."
       },
       "server": {
-        "label": "OpenCode classifier",
-        "description": "Calls a model through OpenCode before sending the prompt."
+        "label": "Classificador do OpenCode",
+        "description": "Chama um modelo pelo OpenCode antes de enviar o prompt."
       }
     },
     "local": {
-      "statusLabel": "On-device model",
+      "statusLabel": "Modelo no dispositivo",
       "status": {
-        "unsupported": "Not supported on this platform",
-        "installing": "Downloading",
-        "ready": "Ready",
-        "missing": "Not installed",
-        "error": "Install failed"
+        "unsupported": "Não compatível com esta plataforma",
+        "installing": "Baixando",
+        "ready": "Pronto",
+        "missing": "Não instalado",
+        "error": "Falha na instalação"
       },
-      "installed": "Installed ({{size}})",
-      "remove": "Remove model",
-      "download": "Download model ({{size}})",
-      "license": "{{model}} · {{license}}. The model runs only on this device."
+      "installed": "Instalado ({{size}})",
+      "remove": "Remover modelo",
+      "download": "Baixar modelo ({{size}})",
+      "license": "{{model}} · {{license}}. O modelo é executado apenas neste dispositivo."
     },
     "server": {
-      "modelLabel": "Classifier model",
-      "cheapest": "Cheapest available",
-      "check": "Check classifier",
+      "modelLabel": "Modelo do classificador",
+      "cheapest": "Mais barato disponível",
+      "check": "Verificar classificador",
       "status": {
-        "unknown": "Not checked. Check the classifier to enable routing.",
-        "checking": "Checking the classifier...",
-        "available": "Classifier available.",
-        "unsupported": "This server does not expose the classifier endpoint.",
-        "unavailable": "Classifier unavailable. Check the connection and retry.",
-        "auth": "Sign in to this server before using the classifier."
+        "unknown": "Não verificado. Verifique o classificador para ativar o roteamento.",
+        "checking": "Verificando o classificador...",
+        "available": "Classificador disponível.",
+        "unsupported": "Este servidor não expõe o endpoint do classificador.",
+        "unavailable": "Classificador indisponível. Verifique a conexão e tente novamente.",
+        "auth": "Entre neste servidor antes de usar o classificador."
       }
     },
     "tiers": {
       "simple": {
-        "label": "Simple model"
+        "label": "Modelo simples"
       },
       "standard": {
-        "label": "Standard model"
+        "label": "Modelo padrão"
       },
       "complex": {
-        "label": "Complex model"
+        "label": "Modelo complexo"
       },
-      "automatic": "Automatic",
-      "automaticDescription": "Choose from the enabled models",
-      "automaticValue": "Automatic · {{model}}",
-      "unavailable": "Unavailable"
+      "automatic": "Automático",
+      "automaticDescription": "Escolher entre os modelos ativados",
+      "automaticValue": "Automático · {{model}}",
+      "unavailable": "Indisponível"
     },
     "protect": {
-      "title": "Protect long chats",
-      "description": "Avoid downgrading models on long conversations where prompt-cache savings may be larger."
+      "title": "Proteger chats longos",
+      "description": "Evite rebaixar modelos em conversas longas, onde a economia de cache de prompt pode ser maior."
     }
   }
 }

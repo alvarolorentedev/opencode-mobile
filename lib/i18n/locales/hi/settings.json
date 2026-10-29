@@ -10,7 +10,7 @@
       "permissions": "स्वीकृतियाँ",
       "subscription": "सदस्यता",
       "cloudLink": "Cloud Link",
-      "extensions": "Extensions",
+      "extensions": "एक्सटेंशन",
       "responses": "प्रतिक्रियाएँ",
       "appearance": "दिखावट",
       "chat": "चैट और जवाब",
@@ -22,7 +22,7 @@
       "replyPlaybackOff": "उत्तर प्लेबैक बंद",
       "support": "ऐप को रेट करें, फ़ीडबैक भेजें, सहायता पाएँ",
       "permissions": "{{value}} सहेजे गए",
-      "extensions": "MCPs, plugins, skills and commands",
+      "extensions": "MCP, प्लगइन, कौशल और कमांड",
       "responses": "प्रतिक्रिया सीमा और अगले कदम",
       "voiceSystem": "सिस्टम आवाज़ · {{phrase}}",
       "voiceLocal": "डिवाइस पर · {{phrase}}",
@@ -144,10 +144,10 @@
     "reconnectSuccess": "{{url}} से कनेक्ट हो गया।"
   },
   "providers": {
-    "accounts": "Accounts",
-    "addAnotherAccount": "Add another account",
-    "removeAccount": "Remove account",
-    "selectMethod": "Select login method",
+    "accounts": "खाते",
+    "addAnotherAccount": "दूसरा खाता जोड़ें",
+    "removeAccount": "खाता हटाएँ",
+    "selectMethod": "लॉगिन विधि चुनें",
     "apiKey": "API कुंजी",
     "pasteApiKey": "अपनी API कुंजी पेस्ट करें",
     "chooseModels": "चुनें कि चैट में कौन-से कॉन्फ़िगर किए गए मॉडल दिखें। चैट में आपके द्वारा चुना गया अंतिम मॉडल नई चैट के लिए चयनित रहता है।",
@@ -557,42 +557,42 @@
     }
   },
   "connect": {
-    "entry": "Pair with Cloud Link",
+    "entry": "Cloud Link से जोड़ें",
     "title": "Cloud Link",
-    "description": "Scan your machine’s connector QR code or open its pairing link. Manual connections remain available.",
-    "pairingLink": "Pairing deep link",
-    "openLink": "Open pairing link",
-    "machines": "Your machines",
-    "refreshMachines": "Refresh machines",
-    "noMachines": "No machines registered for this user.",
-    "revoke": "Revoke machine",
-    "revokeConfirm": "Delete this machine for every device? Its public tunnel will be deleted.",
-    "forget": "Forget locally",
-    "forgetConfirm": "Remove this connection and its credentials from this device? Other devices will keep access.",
-    "expiresAt": "Credentials expire: {{date}}",
-    "savedConnection": "Connection saved: {{name}}",
-    "manage": "Manage Cloud Link",
-    "cameraLoading": "Opening camera",
-    "cameraUnavailable": "Camera unavailable. Open the connector deep link instead.",
+    "description": "अपनी मशीन के कनेक्टर का QR कोड स्कैन करें या उसका पेयरिंग लिंक खोलें। मैन्युअल कनेक्शन अभी भी उपलब्ध हैं।",
+    "pairingLink": "पेयरिंग डीप लिंक",
+    "openLink": "पेयरिंग लिंक खोलें",
+    "machines": "आपकी मशीनें",
+    "refreshMachines": "मशीनें रीफ़्रेश करें",
+    "noMachines": "इस उपयोगकर्ता के लिए कोई मशीन पंजीकृत नहीं है।",
+    "revoke": "मशीन रद्द करें",
+    "revokeConfirm": "इस मशीन को हर डिवाइस से हटाएँ? इसका सार्वजनिक टनल भी हटा दिया जाएगा।",
+    "forget": "इस डिवाइस से भूल जाएँ",
+    "forgetConfirm": "इस कनेक्शन और इसके क्रेडेंशियल इस डिवाइस से हटाएँ? अन्य डिवाइस पर पहुँच बनी रहेगी।",
+    "expiresAt": "क्रेडेंशियल की समय-सीमा: {{date}}",
+    "savedConnection": "कनेक्शन सहेजा गया: {{name}}",
+    "manage": "Cloud Link प्रबंधित करें",
+    "cameraLoading": "कैमरा खोला जा रहा है",
+    "cameraUnavailable": "कैमरा उपलब्ध नहीं है। इसके बजाय कनेक्टर का डीप लिंक खोलें।",
     "progress": {
-      "idle": "Loading…",
-      "claiming": "Claiming pairing…",
-      "saving": "Saving credentials securely…",
-      "connecting": "Connecting to the machine…",
+      "idle": "लोड हो रहा है…",
+      "claiming": "पेयरिंग का अनुरोध किया जा रहा है…",
+      "saving": "क्रेडेंशियल सुरक्षित रूप से सहेजे जा रहे हैं…",
+      "connecting": "मशीन से कनेक्ट हो रहा है…",
       "waitingForApproval": "अपने कंप्यूटर पर इस कनेक्शन की पुष्टि करें।",
       "delayed": "अभी तक स्वीकृति नहीं मिली। अपने कंप्यूटर पर स्वीकृति दें या नया QR कोड स्कैन करें।",
-      "paired": "Loading…",
-      "catalog": "Loading store subscriptions…",
-      "purchasing": "Waiting for the store…",
-      "pending": "Waiting for purchase approval…",
-      "restoring": "Restoring purchases…",
-      "verifying": "Verifying subscription…",
-      "savingSession": "Saving the Cloud Link session securely…",
-      "finalizing": "Finalizing the store transaction…"
+      "paired": "लोड हो रहा है…",
+      "catalog": "स्टोर सदस्यताएँ लोड हो रही हैं…",
+      "purchasing": "स्टोर की प्रतीक्षा हो रही है…",
+      "pending": "खरीद की स्वीकृति की प्रतीक्षा हो रही है…",
+      "restoring": "खरीदारी बहाल की जा रही है…",
+      "verifying": "सदस्यता सत्यापित की जा रही है…",
+      "savingSession": "Cloud Link सत्र सुरक्षित रूप से सहेजा जा रहा है…",
+      "finalizing": "स्टोर लेनदेन पूरा किया जा रहा है…"
     },
-    "subscriptionActive": "Your Cloud Link subscription is active.",
-    "restore": "Restore purchases",
-    "accessUnavailable": "Access unavailable. Purchase or Restore to reactivate this machine.",
+    "subscriptionActive": "आपकी Cloud Link सदस्यता सक्रिय है।",
+    "restore": "खरीदारी बहाल करें",
+    "accessUnavailable": "पहुँच उपलब्ध नहीं है। इस मशीन को फिर से सक्रिय करने के लिए खरीदें या बहाल करें।",
     "scanHint": "कनेक्ट करने के लिए अपने कंप्यूटर का QR कोड स्कैन करें।",
     "scanNewQr": "अपने कंप्यूटर पर नया QR कोड स्कैन करें",
     "scanLocal": "QR कोड स्कैन करें",
@@ -756,144 +756,144 @@
     }
   },
   "extensions": {
-    "title": "Extensions",
-    "description": "Manage MCP servers, plugins, skills and slash commands for this server.",
+    "title": "एक्सटेंशन",
+    "description": "इस सर्वर के लिए MCP सर्वर, प्लगइन, कौशल और स्लैश कमांड प्रबंधित करें।",
     "scope": {
-      "project": "Project",
-      "general": "General"
+      "project": "प्रोजेक्ट",
+      "general": "सामान्य"
     },
     "scopeDescription": {
-      "project": "These extensions apply only to {{project}}.",
-      "general": "These extensions apply to every project on this server."
+      "project": "ये एक्सटेंशन केवल {{project}} पर लागू होते हैं।",
+      "general": "ये एक्सटेंशन इस सर्वर के हर प्रोजेक्ट पर लागू होते हैं।"
     },
     "safety": {
-      "writable": "Writable. Changes are backed up and replaced atomically.",
-      "readOnly": "Read-only",
-      "target": "Config file: {{path}}",
-      "backup": "Last backup: {{path}}",
-      "restore": "Restore last backup",
-      "restoreMessage": "Restore the last saved configuration? The current file is backed up first."
+      "writable": "लेखन योग्य। बदलावों का बैकअप लिया जाता है और उन्हें परमाणु रूप से बदला जाता है।",
+      "readOnly": "केवल पढ़ने योग्य",
+      "target": "कॉन्फ़िग फ़ाइल: {{path}}",
+      "backup": "अंतिम बैकअप: {{path}}",
+      "restore": "अंतिम बैकअप बहाल करें",
+      "restoreMessage": "अंतिम सहेजा गया कॉन्फ़िग बहाल करें? वर्तमान फ़ाइल का पहले बैकअप लिया जाएगा।"
     },
     "tabs": {
-      "mcp": "MCPs",
-      "plugins": "Plugins",
-      "skills": "Skills",
-      "commands": "Commands"
+      "mcp": "MCP",
+      "plugins": "प्लगइन",
+      "skills": "कौशल",
+      "commands": "कमांड"
     },
-    "shared": "Shared with all projects",
-    "sharedHint": "Shared items are managed in the scope that defines them.",
-    "removeTitle": "Remove extension",
-    "saving": "Saving and waiting for the server to reload…",
-    "unavailable": "Extension management is unavailable for this server.",
+    "shared": "सभी प्रोजेक्ट के साथ साझा",
+    "sharedHint": "साझा आइटम उसी दायरे में प्रबंधित किए जाते हैं जो उन्हें परिभाषित करता है।",
+    "removeTitle": "एक्सटेंशन हटाएँ",
+    "saving": "सहेजा जा रहा है और सर्वर के पुनः लोड होने की प्रतीक्षा की जा रही है…",
+    "unavailable": "इस सर्वर के लिए एक्सटेंशन प्रबंधन उपलब्ध नहीं है।",
     "mcp": {
-      "addTitle": "Add MCP server",
-      "add": "Add MCP server",
-      "empty": "No MCP servers in this scope.",
-      "runtime": "Runtime-only MCP server",
-      "configured": "Configured",
-      "removeMessage": "Remove MCP server \"{{name}}\" from this scope?"
+      "addTitle": "MCP सर्वर जोड़ें",
+      "add": "MCP सर्वर जोड़ें",
+      "empty": "इस दायरे में कोई MCP सर्वर नहीं है।",
+      "runtime": "केवल रनटाइम MCP सर्वर",
+      "configured": "कॉन्फ़िगर किया गया",
+      "removeMessage": "इस दायरे से MCP सर्वर \"{{name}}\" हटाएँ?"
     },
     "plugins": {
-      "addTitle": "Add plugin",
-      "package": "Package or local plugin path",
-      "warning": "Plugins execute code on the server. Only add packages you trust.",
-      "add": "Add plugin",
-      "empty": "No plugins in this scope.",
-      "outdated": "Update available",
-      "removeMessage": "Remove plugin \"{{name}}\" from this scope?"
+      "addTitle": "प्लगइन जोड़ें",
+      "package": "पैकेज या स्थानीय प्लगइन पथ",
+      "warning": "प्लगइन सर्वर पर कोड चलाते हैं। केवल उन्हीं पैकेजों को जोड़ें जिन पर आप भरोसा करते हैं।",
+      "add": "प्लगइन जोड़ें",
+      "empty": "इस दायरे में कोई प्लगइन नहीं है।",
+      "outdated": "अपडेट उपलब्ध",
+      "removeMessage": "इस दायरे से प्लगइन \"{{name}}\" हटाएँ?"
     },
     "skills": {
-      "addTitle": "Add skill",
-      "editTitle": "Edit {{name}}",
-      "id": "Skill ID",
-      "name": "Name",
-      "descriptionLabel": "Description",
-      "instructions": "Instructions",
-      "fileContent": "SKILL.md content",
-      "autoinvokeOn": "Discoverable by the model",
-      "autoinvokeOff": "Hidden from the model by default",
-      "add": "Create skill",
-      "empty": "No skills in this scope.",
-      "removeMessage": "Move skill \"{{name}}\" to the extension trash?"
+      "addTitle": "कौशल जोड़ें",
+      "editTitle": "{{name}} संपादित करें",
+      "id": "कौशल ID",
+      "name": "नाम",
+      "descriptionLabel": "विवरण",
+      "instructions": "निर्देश",
+      "fileContent": "SKILL.md सामग्री",
+      "autoinvokeOn": "मॉडल के लिए खोजने योग्य",
+      "autoinvokeOff": "डिफ़ॉल्ट रूप से मॉडल से छिपा",
+      "add": "कौशल बनाएँ",
+      "empty": "इस दायरे में कोई कौशल नहीं है।",
+      "removeMessage": "कौशल \"{{name}}\" को एक्सटेंशन ट्रैश में ले जाएँ?"
     },
     "commands": {
-      "addTitle": "Add slash command",
-      "editTitle": "Edit /{{name}}",
-      "name": "Command name",
-      "descriptionLabel": "Description",
-      "template": "Template",
-      "templateHint": "Use $ARGUMENTS or $1, $2 for arguments. Shell blocks in templates run on the server.",
-      "empty": "No commands in this scope.",
-      "removeMessage": "Remove command \"/{{name}}\" from this scope?"
+      "addTitle": "स्लैश कमांड जोड़ें",
+      "editTitle": "/{{name}} संपादित करें",
+      "name": "कमांड नाम",
+      "descriptionLabel": "विवरण",
+      "template": "टेम्पलेट",
+      "templateHint": "तर्कों के लिए $ARGUMENTS या $1, $2 का उपयोग करें। टेम्पलेट में शेल ब्लॉक सर्वर पर चलते हैं।",
+      "empty": "इस दायरे में कोई कमांड नहीं है।",
+      "removeMessage": "इस दायरे से कमांड \"/{{name}}\" हटाएँ?"
     },
-    "generalConfirmTitle": "Edit global configuration",
-    "generalConfirmMessage": "This changes the configuration for every project on this server. A backup is created first.\n\n{{path}}",
-    "generalConfirmAction": "Continue"
+    "generalConfirmTitle": "वैश्विक कॉन्फ़िग संपादित करें",
+    "generalConfirmMessage": "यह इस सर्वर के हर प्रोजेक्ट का कॉन्फ़िग बदल देगा। पहले एक बैकअप बनाया जाएगा।\n\n{{path}}",
+    "generalConfirmAction": "जारी रखें"
   },
   "modelRouting": {
-    "title": "Auto model routing",
-    "description": "Classify each prompt and choose a model by complexity. Routing is skipped when the classifier is unavailable.",
+    "title": "स्वचालित मॉडल रूटिंग",
+    "description": "हर प्रॉम्प्ट को वर्गीकृत करें और जटिलता के अनुसार मॉडल चुनें। क्लासिफायर उपलब्ध न होने पर रूटिंग छोड़ दी जाती है।",
     "enable": {
-      "title": "Enable auto-routing",
-      "description": "Choose a model for each prompt based on its complexity.",
-      "unavailable": "Set up a classifier below before enabling routing."
+      "title": "स्वचालित रूटिंग सक्षम करें",
+      "description": "हर प्रॉम्प्ट के लिए उसकी जटिलता के अनुसार मॉडल चुनें।",
+      "unavailable": "रूटिंग सक्षम करने से पहले नीचे क्लासिफायर सेट करें।"
     },
     "classifier": {
-      "label": "Classifier",
+      "label": "क्लासिफायर",
       "local": {
-        "label": "On-device model",
-        "description": "Runs on this phone. The model is downloaded once."
+        "label": "डिवाइस पर मॉडल",
+        "description": "इस फ़ोन पर चलता है। मॉडल एक बार डाउनलोड होता है।"
       },
       "server": {
-        "label": "OpenCode classifier",
-        "description": "Calls a model through OpenCode before sending the prompt."
+        "label": "OpenCode क्लासिफायर",
+        "description": "प्रॉम्प्ट भेजने से पहले OpenCode के माध्यम से मॉडल कॉल करता है।"
       }
     },
     "local": {
-      "statusLabel": "On-device model",
+      "statusLabel": "डिवाइस पर मॉडल",
       "status": {
-        "unsupported": "Not supported on this platform",
-        "installing": "Downloading",
-        "ready": "Ready",
-        "missing": "Not installed",
-        "error": "Install failed"
+        "unsupported": "इस प्लेटफ़ॉर्म पर समर्थित नहीं",
+        "installing": "डाउनलोड हो रहा है",
+        "ready": "तैयार",
+        "missing": "इंस्टॉल नहीं है",
+        "error": "इंस्टॉल विफल"
       },
-      "installed": "Installed ({{size}})",
-      "remove": "Remove model",
-      "download": "Download model ({{size}})",
-      "license": "{{model}} · {{license}}. The model runs only on this device."
+      "installed": "इंस्टॉल है ({{size}})",
+      "remove": "मॉडल हटाएँ",
+      "download": "मॉडल डाउनलोड करें ({{size}})",
+      "license": "{{model}} · {{license}}। मॉडल केवल इस डिवाइस पर चलता है।"
     },
     "server": {
-      "modelLabel": "Classifier model",
-      "cheapest": "Cheapest available",
-      "check": "Check classifier",
+      "modelLabel": "क्लासिफायर मॉडल",
+      "cheapest": "उपलब्ध सबसे सस्ता",
+      "check": "क्लासिफायर जाँचें",
       "status": {
-        "unknown": "Not checked. Check the classifier to enable routing.",
-        "checking": "Checking the classifier...",
-        "available": "Classifier available.",
-        "unsupported": "This server does not expose the classifier endpoint.",
-        "unavailable": "Classifier unavailable. Check the connection and retry.",
-        "auth": "Sign in to this server before using the classifier."
+        "unknown": "जाँचा नहीं गया। रूटिंग सक्षम करने के लिए क्लासिफायर जाँचें।",
+        "checking": "क्लासिफायर जाँचा जा रहा है...",
+        "available": "क्लासिफायर उपलब्ध है।",
+        "unsupported": "यह सर्वर क्लासिफायर एंडपॉइंट उपलब्ध नहीं कराता।",
+        "unavailable": "क्लासिफायर उपलब्ध नहीं है। कनेक्शन जाँचें और फिर से कोशिश करें।",
+        "auth": "क्लासिफायर का उपयोग करने से पहले इस सर्वर में साइन इन करें।"
       }
     },
     "tiers": {
       "simple": {
-        "label": "Simple model"
+        "label": "सरल मॉडल"
       },
       "standard": {
-        "label": "Standard model"
+        "label": "मानक मॉडल"
       },
       "complex": {
-        "label": "Complex model"
+        "label": "जटिल मॉडल"
       },
-      "automatic": "Automatic",
-      "automaticDescription": "Choose from the enabled models",
-      "automaticValue": "Automatic · {{model}}",
-      "unavailable": "Unavailable"
+      "automatic": "स्वचालित",
+      "automaticDescription": "सक्षम मॉडलों में से चुनें",
+      "automaticValue": "स्वचालित · {{model}}",
+      "unavailable": "उपलब्ध नहीं"
     },
     "protect": {
-      "title": "Protect long chats",
-      "description": "Avoid downgrading models on long conversations where prompt-cache savings may be larger."
+      "title": "लंबी चैट सुरक्षित रखें",
+      "description": "लंबी बातचीत में मॉडल को नीचे ग्रेड न करें, जहाँ प्रॉम्प्ट कैश की बचत अधिक हो सकती है।"
     }
   }
 }

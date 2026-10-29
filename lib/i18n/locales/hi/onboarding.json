@@ -1,65 +1,65 @@
 {
   "welcome": {
     "title": "OpenCode Mobile",
-    "subtitle": "Your OpenCode projects, wherever you are.",
-    "body": "OpenCode Mobile brings your OpenCode server to your phone. Chat with coding agents, follow their work, and review changes across your projects.",
-    "start": "Continue",
+    "subtitle": "आपके OpenCode प्रोजेक्ट, आप जहाँ भी हों।",
+    "body": "OpenCode Mobile आपके OpenCode सर्वर को आपके फ़ोन पर लाता है। कोडिंग एजेंटों से चैट करें, उनके काम को फ़ॉलो करें और अपने प्रोजेक्ट में बदलाव देखें।",
+    "start": "जारी रखें",
     "points": {
       "server": {
-        "title": "Your server does the work",
-        "description": "Models and tasks run on your OpenCode server. This app keeps you connected to them."
+        "title": "काम आपका सर्वर करता है",
+        "description": "मॉडल और कार्य आपके OpenCode सर्वर पर चलते हैं। यह ऐप आपको उनसे जोड़े रखता है।"
       },
       "project": {
-        "title": "Projects and conversations",
-        "description": "Projects keep chats, files, and changes together."
+        "title": "प्रोजेक्ट और बातचीत",
+        "description": "प्रोजेक्ट चैट, फ़ाइलों और बदलावों को एक साथ रखते हैं।"
       },
       "optional": {
-        "title": "Voice and task updates",
-        "description": "Voice input and completion notifications help you keep up with work on the go."
+        "title": "आवाज़ और कार्य अपडेट",
+        "description": "आवाज़ इनपुट और पूरा होने की सूचनाएँ आपको चलते-फिरते काम से अपडेट रखने में मदद करती हैं।"
       }
     }
   },
   "connect": {
-    "skip": "Skip"
+    "skip": "छोड़ें"
   },
   "project": {
-    "title": "Choose a project",
-    "subtitle": "Pick a project to start in, or add a folder on the server.",
+    "title": "प्रोजेक्ट चुनें",
+    "subtitle": "शुरू करने के लिए प्रोजेक्ट चुनें या सर्वर पर फ़ोल्डर जोड़ें।",
     "continue": "जारी रखें",
-    "skip": "Skip",
-    "empty": "This server did not report any projects. Add a directory on the server to get started.",
-    "loading": "Loading projects…"
+    "skip": "छोड़ें",
+    "empty": "इस सर्वर ने कोई प्रोजेक्ट नहीं बताया। शुरू करने के लिए सर्वर पर एक डायरेक्टरी जोड़ें।",
+    "loading": "प्रोजेक्ट लोड हो रहे हैं…"
   },
   "permissions": {
-    "title": "Permissions",
-    "subtitle": "Optional. OpenCode Mobile only asks when you choose to enable something.",
-    "skip": "Skip",
-    "continue": "Continue",
+    "title": "अनुमतियाँ",
+    "subtitle": "वैकल्पिक। OpenCode Mobile तभी पूछता है जब आप कुछ सक्षम करना चुनते हैं।",
+    "skip": "छोड़ें",
+    "continue": "जारी रखें",
     "notifications": {
-      "title": "Notifications",
-      "body": "Allow OpenCode Mobile to notify you when a task finishes while the app is in the background.",
-      "unsupported": "Notifications are not available on this platform.",
-      "enable": "Enable notifications",
-      "battery": "Review battery / background settings"
+      "title": "सूचनाएँ",
+      "body": "OpenCode Mobile को अनुमति दें कि जब ऐप बैकग्राउंड में हो और कोई कार्य पूरा हो, तो वह आपको सूचित करे।",
+      "unsupported": "इस प्लेटफ़ॉर्म पर सूचनाएँ उपलब्ध नहीं हैं।",
+      "enable": "सूचनाएँ सक्षम करें",
+      "battery": "बैटरी और बैकग्राउंड सेटिंग्स देखें"
     },
     "voice": {
-      "title": "Voice input",
-      "body": "Microphone access lets you dictate prompts instead of typing them.",
-      "unsupported": "Voice input is not available on this device.",
-      "enable": "Enable voice input",
-      "deniedHint": "You can still turn voice input on later from Settings › Voice."
+      "title": "वॉइस इनपुट",
+      "body": "माइक्रोफ़ोन एक्सेस से आप प्रॉम्प्ट टाइप करने की बजाय बोलकर लिख सकते हैं।",
+      "unsupported": "इस डिवाइस पर वॉइस इनपुट उपलब्ध नहीं है।",
+      "enable": "वॉइस इनपुट सक्षम करें",
+      "deniedHint": "आप बाद में सेटिंग्स › आवाज़ से वॉइस इनपुट चालू कर सकते हैं।"
     },
     "checking": "जाँच हो रही है…"
   },
   "ready": {
-    "title": "You're ready",
-    "subtitle": "Review your setup and start coding.",
-    "server": "Server",
-    "project": "Project",
-    "projectMissing": "No project selected",
+    "title": "आप तैयार हैं",
+    "subtitle": "अपनी सेटअप की समीक्षा करें और कोडिंग शुरू करें।",
+    "server": "सर्वर",
+    "project": "प्रोजेक्ट",
+    "projectMissing": "कोई प्रोजेक्ट चयनित नहीं",
     "footnote": "आप इन सेटिंग्स को कभी भी बदल सकते हैं।",
-    "start": "Start coding",
-    "done": "Done",
+    "start": "कोडिंग शुरू करें",
+    "done": "हो गया",
     "serverMissing": "कनेक्ट नहीं है",
     "providers": "प्रदाता",
     "enabledModels": "सक्षम मॉडल"

@@ -36,7 +36,11 @@
     "previewsTitle": "ウィジェットのプレビューを表示",
     "previewsDescription": "ホーム画面に返信、リクエスト、計画の内容を表示します。",
     "completed": "計画完了",
-    "openApp": "アプリを開いて更新してください"
+    "openApp": "アプリを開いて更新してください",
+    "moreChats_other": "+{{count}} 件のチャット",
+    "moreChats_one": "+{{count}} 件のチャット",
+    "moreChats_few": "+{{count}} 件のチャット",
+    "moreChats_many": "+{{count}} 件のチャット"
   },
   "expired": "共有された内容の有効期限が切れました",
   "expiredDescription": "もう一度、共有元のアプリから共有してください。",

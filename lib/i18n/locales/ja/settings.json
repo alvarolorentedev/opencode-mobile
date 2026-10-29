@@ -10,7 +10,7 @@
       "permissions": "承認",
       "subscription": "サブスクリプション",
       "cloudLink": "Cloud Link",
-      "extensions": "Extensions",
+      "extensions": "拡張機能",
       "responses": "応答",
       "appearance": "外観",
       "chat": "チャットと応答",
@@ -22,7 +22,7 @@
       "replyPlaybackOff": "返信の再生オフ",
       "support": "アプリを評価、フィードバック、サポート",
       "permissions": "{{value}} 件保存済み",
-      "extensions": "MCPs, plugins, skills and commands",
+      "extensions": "MCP、プラグイン、スキル、コマンド",
       "responses": "応答範囲と次のアクション",
       "voiceSystem": "システム音声 · {{phrase}}",
       "voiceLocal": "オンデバイス · {{phrase}}",
@@ -144,10 +144,10 @@
     "reconnectSuccess": "{{url}} に接続しました。"
   },
   "providers": {
-    "accounts": "Accounts",
-    "addAnotherAccount": "Add another account",
-    "removeAccount": "Remove account",
-    "selectMethod": "Select login method",
+    "accounts": "アカウント",
+    "addAnotherAccount": "別のアカウントを追加",
+    "removeAccount": "アカウントを削除",
+    "selectMethod": "ログイン方法を選択",
     "apiKey": "API キー",
     "pasteApiKey": "API キーを貼り付け",
     "chooseModels": "チャットに表示する設定済みモデルを選択します。チャットで最後に選んだモデルが新しいチャットでも選択されたままになります。",
@@ -557,42 +557,42 @@
     }
   },
   "connect": {
-    "entry": "Pair with Cloud Link",
+    "entry": "Cloud Link とペアリング",
     "title": "Cloud Link",
-    "description": "Scan your machine’s connector QR code or open its pairing link. Manual connections remain available.",
-    "pairingLink": "Pairing deep link",
-    "openLink": "Open pairing link",
-    "machines": "Your machines",
-    "refreshMachines": "Refresh machines",
-    "noMachines": "No machines registered for this user.",
-    "revoke": "Revoke machine",
-    "revokeConfirm": "Delete this machine for every device? Its public tunnel will be deleted.",
-    "forget": "Forget locally",
-    "forgetConfirm": "Remove this connection and its credentials from this device? Other devices will keep access.",
-    "expiresAt": "Credentials expire: {{date}}",
-    "savedConnection": "Connection saved: {{name}}",
-    "manage": "Manage Cloud Link",
-    "cameraLoading": "Opening camera",
-    "cameraUnavailable": "Camera unavailable. Open the connector deep link instead.",
+    "description": "マシンのコネクターの QR コードをスキャンするか、ペアリングリンクを開きます。手動接続も引き続き利用できます。",
+    "pairingLink": "ペアリングのディープリンク",
+    "openLink": "ペアリングリンクを開く",
+    "machines": "あなたのマシン",
+    "refreshMachines": "マシンを更新",
+    "noMachines": "このユーザーに登録されているマシンはありません。",
+    "revoke": "マシンを取り消す",
+    "revokeConfirm": "このマシンをすべてのデバイスから削除しますか？パブリックトンネルも削除されます。",
+    "forget": "このデバイスから忘れる",
+    "forgetConfirm": "この接続と認証情報をこのデバイスから削除しますか？他のデバイスのアクセスは維持されます。",
+    "expiresAt": "認証情報の有効期限: {{date}}",
+    "savedConnection": "接続を保存しました: {{name}}",
+    "manage": "Cloud Link を管理",
+    "cameraLoading": "カメラを開いています",
+    "cameraUnavailable": "カメラを利用できません。代わりにコネクターのディープリンクを開いてください。",
     "progress": {
-      "idle": "Loading…",
-      "claiming": "Claiming pairing…",
-      "saving": "Saving credentials securely…",
-      "connecting": "Connecting to the machine…",
+      "idle": "読み込み中…",
+      "claiming": "ペアリングを要求中…",
+      "saving": "認証情報を安全に保存中…",
+      "connecting": "マシンに接続中…",
       "waitingForApproval": "コンピューターでこの接続を承認してください。",
       "delayed": "まだ承認されていません。コンピューターで承認するか、新しいQRコードをスキャンしてください。",
-      "paired": "Loading…",
-      "catalog": "Loading store subscriptions…",
-      "purchasing": "Waiting for the store…",
-      "pending": "Waiting for purchase approval…",
-      "restoring": "Restoring purchases…",
-      "verifying": "Verifying subscription…",
-      "savingSession": "Saving the Cloud Link session securely…",
-      "finalizing": "Finalizing the store transaction…"
+      "paired": "読み込み中…",
+      "catalog": "ストアのサブスクリプションを読み込み中…",
+      "purchasing": "ストアの応答を待機中…",
+      "pending": "購入の承認を待機中…",
+      "restoring": "購入を復元中…",
+      "verifying": "サブスクリプションを確認中…",
+      "savingSession": "Cloud Link セッションを安全に保存中…",
+      "finalizing": "ストアの取引を完了中…"
     },
-    "subscriptionActive": "Your Cloud Link subscription is active.",
-    "restore": "Restore purchases",
-    "accessUnavailable": "Access unavailable. Purchase or Restore to reactivate this machine.",
+    "subscriptionActive": "Cloud Link のサブスクリプションは有効です。",
+    "restore": "購入を復元",
+    "accessUnavailable": "アクセスを利用できません。購入または復元して、このマシンを再度有効にしてください。",
     "scanHint": "コンピューターのQRコードをスキャンして接続します。",
     "scanNewQr": "コンピューターに表示された新しいQRコードをスキャン",
     "scanLocal": "QRコードをスキャン",
@@ -756,144 +756,144 @@
     }
   },
   "extensions": {
-    "title": "Extensions",
-    "description": "Manage MCP servers, plugins, skills and slash commands for this server.",
+    "title": "拡張機能",
+    "description": "このサーバーの MCP サーバー、プラグイン、スキル、スラッシュコマンドを管理します。",
     "scope": {
-      "project": "Project",
-      "general": "General"
+      "project": "プロジェクト",
+      "general": "一般"
     },
     "scopeDescription": {
-      "project": "These extensions apply only to {{project}}.",
-      "general": "These extensions apply to every project on this server."
+      "project": "これらの拡張機能は {{project}} にのみ適用されます。",
+      "general": "これらの拡張機能は、このサーバーのすべてのプロジェクトに適用されます。"
     },
     "safety": {
-      "writable": "Writable. Changes are backed up and replaced atomically.",
-      "readOnly": "Read-only",
-      "target": "Config file: {{path}}",
-      "backup": "Last backup: {{path}}",
-      "restore": "Restore last backup",
-      "restoreMessage": "Restore the last saved configuration? The current file is backed up first."
+      "writable": "書き込み可能。変更はバックアップされ、アトミックに置き換えられます。",
+      "readOnly": "読み取り専用",
+      "target": "設定ファイル: {{path}}",
+      "backup": "最後のバックアップ: {{path}}",
+      "restore": "最後のバックアップを復元",
+      "restoreMessage": "最後に保存した設定を復元しますか？現在のファイルは先にバックアップされます。"
     },
     "tabs": {
-      "mcp": "MCPs",
-      "plugins": "Plugins",
-      "skills": "Skills",
-      "commands": "Commands"
+      "mcp": "MCP",
+      "plugins": "プラグイン",
+      "skills": "スキル",
+      "commands": "コマンド"
     },
-    "shared": "Shared with all projects",
-    "sharedHint": "Shared items are managed in the scope that defines them.",
-    "removeTitle": "Remove extension",
-    "saving": "Saving and waiting for the server to reload…",
-    "unavailable": "Extension management is unavailable for this server.",
+    "shared": "すべてのプロジェクトと共有",
+    "sharedHint": "共有アイテムは、それを定義しているスコープで管理されます。",
+    "removeTitle": "拡張機能を削除",
+    "saving": "保存し、サーバーの再読み込みを待っています…",
+    "unavailable": "このサーバーでは拡張機能の管理を利用できません。",
     "mcp": {
-      "addTitle": "Add MCP server",
-      "add": "Add MCP server",
-      "empty": "No MCP servers in this scope.",
-      "runtime": "Runtime-only MCP server",
-      "configured": "Configured",
-      "removeMessage": "Remove MCP server \"{{name}}\" from this scope?"
+      "addTitle": "MCP サーバーを追加",
+      "add": "MCP サーバーを追加",
+      "empty": "このスコープに MCP サーバーはありません。",
+      "runtime": "実行時のみの MCP サーバー",
+      "configured": "設定済み",
+      "removeMessage": "このスコープから MCP サーバー「{{name}}」を削除しますか？"
     },
     "plugins": {
-      "addTitle": "Add plugin",
-      "package": "Package or local plugin path",
-      "warning": "Plugins execute code on the server. Only add packages you trust.",
-      "add": "Add plugin",
-      "empty": "No plugins in this scope.",
-      "outdated": "Update available",
-      "removeMessage": "Remove plugin \"{{name}}\" from this scope?"
+      "addTitle": "プラグインを追加",
+      "package": "パッケージまたはローカルプラグインのパス",
+      "warning": "プラグインはサーバー上でコードを実行します。信頼できるパッケージのみ追加してください。",
+      "add": "プラグインを追加",
+      "empty": "このスコープにプラグインはありません。",
+      "outdated": "アップデートがあります",
+      "removeMessage": "このスコープからプラグイン「{{name}}」を削除しますか？"
     },
     "skills": {
-      "addTitle": "Add skill",
-      "editTitle": "Edit {{name}}",
-      "id": "Skill ID",
-      "name": "Name",
-      "descriptionLabel": "Description",
-      "instructions": "Instructions",
-      "fileContent": "SKILL.md content",
-      "autoinvokeOn": "Discoverable by the model",
-      "autoinvokeOff": "Hidden from the model by default",
-      "add": "Create skill",
-      "empty": "No skills in this scope.",
-      "removeMessage": "Move skill \"{{name}}\" to the extension trash?"
+      "addTitle": "スキルを追加",
+      "editTitle": "{{name}} を編集",
+      "id": "スキル ID",
+      "name": "名前",
+      "descriptionLabel": "説明",
+      "instructions": "手順",
+      "fileContent": "SKILL.md の内容",
+      "autoinvokeOn": "モデルから検出可能",
+      "autoinvokeOff": "デフォルトでモデルから非表示",
+      "add": "スキルを作成",
+      "empty": "このスコープにスキルはありません。",
+      "removeMessage": "スキル「{{name}}」を拡張機能のゴミ箱に移動しますか？"
     },
     "commands": {
-      "addTitle": "Add slash command",
-      "editTitle": "Edit /{{name}}",
-      "name": "Command name",
-      "descriptionLabel": "Description",
-      "template": "Template",
-      "templateHint": "Use $ARGUMENTS or $1, $2 for arguments. Shell blocks in templates run on the server.",
-      "empty": "No commands in this scope.",
-      "removeMessage": "Remove command \"/{{name}}\" from this scope?"
+      "addTitle": "スラッシュコマンドを追加",
+      "editTitle": "/{{name}} を編集",
+      "name": "コマンド名",
+      "descriptionLabel": "説明",
+      "template": "テンプレート",
+      "templateHint": "引数には $ARGUMENTS または $1、$2 を使用します。テンプレート内のシェルブロックはサーバー上で実行されます。",
+      "empty": "このスコープにコマンドはありません。",
+      "removeMessage": "このスコープからコマンド「/{{name}}」を削除しますか？"
     },
-    "generalConfirmTitle": "Edit global configuration",
-    "generalConfirmMessage": "This changes the configuration for every project on this server. A backup is created first.\n\n{{path}}",
-    "generalConfirmAction": "Continue"
+    "generalConfirmTitle": "グローバル設定を編集",
+    "generalConfirmMessage": "これはこのサーバーのすべてのプロジェクトの設定を変更します。先にバックアップが作成されます。\n\n{{path}}",
+    "generalConfirmAction": "続ける"
   },
   "modelRouting": {
-    "title": "Auto model routing",
-    "description": "Classify each prompt and choose a model by complexity. Routing is skipped when the classifier is unavailable.",
+    "title": "モデルの自動ルーティング",
+    "description": "各プロンプトを分類し、複雑さに応じてモデルを選択します。分類器が利用できない場合、ルーティングはスキップされます。",
     "enable": {
-      "title": "Enable auto-routing",
-      "description": "Choose a model for each prompt based on its complexity.",
-      "unavailable": "Set up a classifier below before enabling routing."
+      "title": "自動ルーティングを有効にする",
+      "description": "各プロンプトの複雑さに応じてモデルを選択します。",
+      "unavailable": "ルーティングを有効にする前に、下で分類器をセットアップしてください。"
     },
     "classifier": {
-      "label": "Classifier",
+      "label": "分類器",
       "local": {
-        "label": "On-device model",
-        "description": "Runs on this phone. The model is downloaded once."
+        "label": "デバイス上のモデル",
+        "description": "このスマートフォンで実行されます。モデルは一度だけダウンロードされます。"
       },
       "server": {
-        "label": "OpenCode classifier",
-        "description": "Calls a model through OpenCode before sending the prompt."
+        "label": "OpenCode 分類器",
+        "description": "プロンプトを送信する前に、OpenCode 経由でモデルを呼び出します。"
       }
     },
     "local": {
-      "statusLabel": "On-device model",
+      "statusLabel": "デバイス上のモデル",
       "status": {
-        "unsupported": "Not supported on this platform",
-        "installing": "Downloading",
-        "ready": "Ready",
-        "missing": "Not installed",
-        "error": "Install failed"
+        "unsupported": "このプラットフォームではサポートされていません",
+        "installing": "ダウンロード中",
+        "ready": "準備完了",
+        "missing": "未インストール",
+        "error": "インストールに失敗しました"
       },
-      "installed": "Installed ({{size}})",
-      "remove": "Remove model",
-      "download": "Download model ({{size}})",
-      "license": "{{model}} · {{license}}. The model runs only on this device."
+      "installed": "インストール済み ({{size}})",
+      "remove": "モデルを削除",
+      "download": "モデルをダウンロード ({{size}})",
+      "license": "{{model}} · {{license}}。モデルはこのデバイス上でのみ実行されます。"
     },
     "server": {
-      "modelLabel": "Classifier model",
-      "cheapest": "Cheapest available",
-      "check": "Check classifier",
+      "modelLabel": "分類器モデル",
+      "cheapest": "利用可能な中で最も安価",
+      "check": "分類器を確認",
       "status": {
-        "unknown": "Not checked. Check the classifier to enable routing.",
-        "checking": "Checking the classifier...",
-        "available": "Classifier available.",
-        "unsupported": "This server does not expose the classifier endpoint.",
-        "unavailable": "Classifier unavailable. Check the connection and retry.",
-        "auth": "Sign in to this server before using the classifier."
+        "unknown": "未確認です。ルーティングを有効にするには分類器を確認してください。",
+        "checking": "分類器を確認中...",
+        "available": "分類器を利用できます。",
+        "unsupported": "このサーバーは分類器のエンドポイントを公開していません。",
+        "unavailable": "分類器を利用できません。接続を確認して再試行してください。",
+        "auth": "分類器を使用する前に、このサーバーにサインインしてください。"
       }
     },
     "tiers": {
       "simple": {
-        "label": "Simple model"
+        "label": "シンプルモデル"
       },
       "standard": {
-        "label": "Standard model"
+        "label": "標準モデル"
       },
       "complex": {
-        "label": "Complex model"
+        "label": "複雑なモデル"
       },
-      "automatic": "Automatic",
-      "automaticDescription": "Choose from the enabled models",
-      "automaticValue": "Automatic · {{model}}",
-      "unavailable": "Unavailable"
+      "automatic": "自動",
+      "automaticDescription": "有効なモデルから選択",
+      "automaticValue": "自動 · {{model}}",
+      "unavailable": "利用不可"
     },
     "protect": {
-      "title": "Protect long chats",
-      "description": "Avoid downgrading models on long conversations where prompt-cache savings may be larger."
+      "title": "長いチャットを保護",
+      "description": "プロンプトキャッシュの節約が大きくなる可能性がある長い会話では、モデルのダウングレードを避けます。"
     }
   }
 }

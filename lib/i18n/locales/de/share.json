@@ -36,7 +36,11 @@
     "previewsTitle": "Widget-Vorschauen anzeigen",
     "previewsDescription": "Antworten, Anfragen und Planschritte auf dem Startbildschirm anzeigen.",
     "completed": "Plan abgeschlossen",
-    "openApp": "App zum Aktualisieren öffnen"
+    "openApp": "App zum Aktualisieren öffnen",
+    "moreChats_one": "+{{count}} weiterer Chat",
+    "moreChats_other": "+{{count}} weitere Chats",
+    "moreChats_few": "+{{count}} weitere Chats",
+    "moreChats_many": "+{{count}} weitere Chats"
   },
   "expired": "Geteilte Inhalte sind abgelaufen",
   "expiredDescription": "Teile den Inhalt erneut aus der anderen App.",

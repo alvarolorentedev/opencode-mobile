@@ -461,7 +461,9 @@ agree, and that `app.config.ts` exposes the same `supportedLocales`. Regenerate
 the registry with `npm run gen:i18n`. During local iteration,
 `npm run test:i18n:loose` sets `I18N_ALLOW_MISSING=1` and tolerates keys that a
 non-English locale has not translated yet (they fall back to English at runtime);
-CI runs the strict form and enforces full parity.
+CI runs the strict form and enforces full parity. Loose mode is for iteration
+only: a feature with new or changed copy is not complete until the strict suite
+passes in every supported locale.
 
 The `test:architecture` suite is a ratchet on the documented layering: the
 provider file size, the combined domain-context surface, and a rule that
@@ -1360,7 +1362,7 @@ locked dependencies in a local mirror; source edits stayed in the project root.
 Browser and screenshot review covered 390×844 dark and 320×700 light layouts,
 model selection, Back navigation, wrapping and pinned footers. Browser logs had
 only existing React Native web warnings, with no app errors. The i18n registry was
-regenerated in the project root and passes parity checks for all eight languages.
+regenerated in the project root and passes parity checks for all nine languages.
 Physical-device Back, larger text, screen readers and real provider OAuth remain
 unverified. Human validation of the four changed E2E specifications remains
 required under AGENTS.md; no fake-server source, dependency, release version,

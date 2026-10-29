@@ -10,7 +10,7 @@
       "permissions": "Genehmigungen",
       "subscription": "Abonnement",
       "cloudLink": "Cloud Link",
-      "extensions": "Extensions",
+      "extensions": "Erweiterungen",
       "responses": "Antworten",
       "appearance": "Darstellung",
       "chat": "Chat und Antworten",
@@ -22,7 +22,7 @@
       "replyPlaybackOff": "Antwortwiedergabe aus",
       "support": "App bewerten, Feedback senden, Hilfe erhalten",
       "permissions": "{{value}} gespeichert",
-      "extensions": "MCPs, plugins, skills and commands",
+      "extensions": "MCPs, Plugins, Fähigkeiten und Befehle",
       "responses": "Antwortumfang und nächste Schritte",
       "voiceSystem": "Systemsprache · {{phrase}}",
       "voiceLocal": "Auf dem Gerät · {{phrase}}",
@@ -95,12 +95,12 @@
       "headerReserved": "Dieser Header wird von der App verwaltet und kann nicht überschrieben werden.",
       "headerLimit": "Verwende höchstens 10 benutzerdefinierte Header.",
       "generic": "Bei der Kommunikation mit OpenCode ist ein Fehler aufgetreten.",
-      "tunnelStarting": "Der Cloudflare-Tunnel startet noch (Fehler 1033). Versuchen Sie es gleich erneut.",
+      "tunnelStarting": "Der Cloudflare-Tunnel startet noch (Fehler 1033). Versuche es gleich erneut.",
       "notApi": "Der Server unter {{url}} hat keine OpenCode-API-Antwort zurückgegeben.{{apiHint}}{{versionHint}}",
       "endpointNotFound": "OpenCode-Endpunkt unter {{url}} nicht gefunden.{{apiHint}}{{versionHint}}",
       "webPage": "Der Server unter {{url}} hat eine Webseite statt der OpenCode-API zurückgegeben.{{apiHint}}{{versionHint}}",
-      "apiHint": " Wenn diese Adresse eine Weboberfläche bereitstellt, verwenden Sie stattdessen ihre API-Basis-URL, normalerweise {{url}}/api.",
-      "versionHint": " Diese App unterstützt OpenCode 1.x- und 2.x-Server; prüfen Sie die API-Basis-URL."
+      "apiHint": " Wenn diese Adresse eine Weboberfläche bereitstellt, verwende stattdessen die API-Basis-URL, normalerweise {{url}}/api.",
+      "versionHint": " Diese App unterstützt OpenCode 1.x- und 2.x-Server; prüfe die API-Basis-URL."
     },
     "setup": {
       "step": "Schritt {{step}} von 2",
@@ -144,10 +144,10 @@
     "reconnectSuccess": "Verbunden mit {{url}}."
   },
   "providers": {
-    "accounts": "Accounts",
-    "addAnotherAccount": "Add another account",
-    "removeAccount": "Remove account",
-    "selectMethod": "Select login method",
+    "accounts": "Konten",
+    "addAnotherAccount": "Weiteres Konto hinzufügen",
+    "removeAccount": "Konto entfernen",
+    "selectMethod": "Anmeldemethode wählen",
     "apiKey": "API-Schlüssel",
     "pasteApiKey": "Füge deinen API-Schlüssel ein",
     "chooseModels": "Wähle aus, welche konfigurierten Modelle im Chat erscheinen. Das zuletzt im Chat gewählte Modell bleibt für neue Chats ausgewählt.",
@@ -557,42 +557,42 @@
     }
   },
   "connect": {
-    "entry": "Pair with Cloud Link",
+    "entry": "Mit Cloud Link koppeln",
     "title": "Cloud Link",
-    "description": "Scan your machine’s connector QR code or open its pairing link. Manual connections remain available.",
-    "pairingLink": "Pairing deep link",
-    "openLink": "Open pairing link",
-    "machines": "Your machines",
-    "refreshMachines": "Refresh machines",
-    "noMachines": "No machines registered for this user.",
-    "revoke": "Revoke machine",
-    "revokeConfirm": "Delete this machine for every device? Its public tunnel will be deleted.",
-    "forget": "Forget locally",
-    "forgetConfirm": "Remove this connection and its credentials from this device? Other devices will keep access.",
-    "expiresAt": "Credentials expire: {{date}}",
-    "savedConnection": "Connection saved: {{name}}",
-    "manage": "Manage Cloud Link",
-    "cameraLoading": "Opening camera",
-    "cameraUnavailable": "Camera unavailable. Open the connector deep link instead.",
+    "description": "Scanne den QR-Code des Connectors auf deinem Rechner oder öffne seinen Kopplungslink. Manuelle Verbindungen bleiben verfügbar.",
+    "pairingLink": "Kopplungs-Deep-Link",
+    "openLink": "Kopplungslink öffnen",
+    "machines": "Deine Rechner",
+    "refreshMachines": "Rechner aktualisieren",
+    "noMachines": "Für diesen Benutzer sind keine Rechner registriert.",
+    "revoke": "Rechner widerrufen",
+    "revokeConfirm": "Diesen Rechner auf allen Geräten löschen? Sein öffentlicher Tunnel wird gelöscht.",
+    "forget": "Lokal vergessen",
+    "forgetConfirm": "Diese Verbindung und ihre Zugangsdaten von diesem Gerät entfernen? Andere Geräte behalten den Zugriff.",
+    "expiresAt": "Zugangsdaten laufen ab: {{date}}",
+    "savedConnection": "Verbindung gespeichert: {{name}}",
+    "manage": "Cloud Link verwalten",
+    "cameraLoading": "Kamera wird geöffnet",
+    "cameraUnavailable": "Kamera nicht verfügbar. Öffne stattdessen den Connector-Deep-Link.",
     "progress": {
-      "idle": "Loading…",
-      "claiming": "Claiming pairing…",
-      "saving": "Saving credentials securely…",
-      "connecting": "Connecting to the machine…",
+      "idle": "Wird geladen…",
+      "claiming": "Kopplung wird angefordert…",
+      "saving": "Zugangsdaten werden sicher gespeichert…",
+      "connecting": "Verbindung zum Rechner wird hergestellt…",
       "waitingForApproval": "Bestätige diese Verbindung auf deinem Computer.",
       "delayed": "Noch keine Bestätigung. Bestätige auf deinem Computer oder scanne einen neuen QR-Code.",
-      "paired": "Loading…",
-      "catalog": "Loading store subscriptions…",
-      "purchasing": "Waiting for the store…",
-      "pending": "Waiting for purchase approval…",
-      "restoring": "Restoring purchases…",
-      "verifying": "Verifying subscription…",
-      "savingSession": "Saving the Cloud Link session securely…",
-      "finalizing": "Finalizing the store transaction…"
+      "paired": "Wird geladen…",
+      "catalog": "Store-Abonnements werden geladen…",
+      "purchasing": "Warten auf den Store…",
+      "pending": "Warten auf Kaufbestätigung…",
+      "restoring": "Käufe werden wiederhergestellt…",
+      "verifying": "Abo wird geprüft…",
+      "savingSession": "Cloud-Link-Sitzung wird sicher gespeichert…",
+      "finalizing": "Store-Transaktion wird abgeschlossen…"
     },
-    "subscriptionActive": "Your Cloud Link subscription is active.",
-    "restore": "Restore purchases",
-    "accessUnavailable": "Access unavailable. Purchase or Restore to reactivate this machine.",
+    "subscriptionActive": "Dein Cloud-Link-Abo ist aktiv.",
+    "restore": "Käufe wiederherstellen",
+    "accessUnavailable": "Zugriff nicht verfügbar. Kaufe oder stelle Käufe wieder her, um diesen Rechner zu reaktivieren.",
     "scanHint": "Scanne den QR-Code deines Computers, um dich zu verbinden.",
     "scanNewQr": "Scanne den neuen QR-Code auf deinem Computer",
     "scanLocal": "QR-Code scannen",
@@ -756,144 +756,144 @@
     }
   },
   "extensions": {
-    "title": "Extensions",
-    "description": "Manage MCP servers, plugins, skills and slash commands for this server.",
+    "title": "Erweiterungen",
+    "description": "Verwalte MCP-Server, Plugins, Fähigkeiten und Slash-Befehle für diesen Server.",
     "scope": {
-      "project": "Project",
-      "general": "General"
+      "project": "Projekt",
+      "general": "Allgemein"
     },
     "scopeDescription": {
-      "project": "These extensions apply only to {{project}}.",
-      "general": "These extensions apply to every project on this server."
+      "project": "Diese Erweiterungen gelten nur für {{project}}.",
+      "general": "Diese Erweiterungen gelten für alle Projekte auf diesem Server."
     },
     "safety": {
-      "writable": "Writable. Changes are backed up and replaced atomically.",
-      "readOnly": "Read-only",
-      "target": "Config file: {{path}}",
-      "backup": "Last backup: {{path}}",
-      "restore": "Restore last backup",
-      "restoreMessage": "Restore the last saved configuration? The current file is backed up first."
+      "writable": "Beschreibbar. Änderungen werden gesichert und atomar ersetzt.",
+      "readOnly": "Nur lesen",
+      "target": "Konfigurationsdatei: {{path}}",
+      "backup": "Letzte Sicherung: {{path}}",
+      "restore": "Letzte Sicherung wiederherstellen",
+      "restoreMessage": "Die zuletzt gespeicherte Konfiguration wiederherstellen? Die aktuelle Datei wird zuvor gesichert."
     },
     "tabs": {
       "mcp": "MCPs",
       "plugins": "Plugins",
-      "skills": "Skills",
-      "commands": "Commands"
+      "skills": "Fähigkeiten",
+      "commands": "Befehle"
     },
-    "shared": "Shared with all projects",
-    "sharedHint": "Shared items are managed in the scope that defines them.",
-    "removeTitle": "Remove extension",
-    "saving": "Saving and waiting for the server to reload…",
-    "unavailable": "Extension management is unavailable for this server.",
+    "shared": "Mit allen Projekten geteilt",
+    "sharedHint": "Geteilte Elemente werden in dem Bereich verwaltet, der sie definiert.",
+    "removeTitle": "Erweiterung entfernen",
+    "saving": "Wird gespeichert und auf das Neuladen des Servers gewartet…",
+    "unavailable": "Die Erweiterungsverwaltung ist für diesen Server nicht verfügbar.",
     "mcp": {
-      "addTitle": "Add MCP server",
-      "add": "Add MCP server",
-      "empty": "No MCP servers in this scope.",
-      "runtime": "Runtime-only MCP server",
-      "configured": "Configured",
-      "removeMessage": "Remove MCP server \"{{name}}\" from this scope?"
+      "addTitle": "MCP-Server hinzufügen",
+      "add": "MCP-Server hinzufügen",
+      "empty": "Keine MCP-Server in diesem Bereich.",
+      "runtime": "MCP-Server nur zur Laufzeit",
+      "configured": "Konfiguriert",
+      "removeMessage": "MCP-Server „{{name}}“ aus diesem Bereich entfernen?"
     },
     "plugins": {
-      "addTitle": "Add plugin",
-      "package": "Package or local plugin path",
-      "warning": "Plugins execute code on the server. Only add packages you trust.",
-      "add": "Add plugin",
-      "empty": "No plugins in this scope.",
-      "outdated": "Update available",
-      "removeMessage": "Remove plugin \"{{name}}\" from this scope?"
+      "addTitle": "Plugin hinzufügen",
+      "package": "Paket oder lokaler Plugin-Pfad",
+      "warning": "Plugins führen Code auf dem Server aus. Füge nur Pakete hinzu, denen du vertraust.",
+      "add": "Plugin hinzufügen",
+      "empty": "Keine Plugins in diesem Bereich.",
+      "outdated": "Update verfügbar",
+      "removeMessage": "Plugin „{{name}}“ aus diesem Bereich entfernen?"
     },
     "skills": {
-      "addTitle": "Add skill",
-      "editTitle": "Edit {{name}}",
-      "id": "Skill ID",
+      "addTitle": "Fähigkeit hinzufügen",
+      "editTitle": "{{name}} bearbeiten",
+      "id": "Fähigkeits-ID",
       "name": "Name",
-      "descriptionLabel": "Description",
-      "instructions": "Instructions",
-      "fileContent": "SKILL.md content",
-      "autoinvokeOn": "Discoverable by the model",
-      "autoinvokeOff": "Hidden from the model by default",
-      "add": "Create skill",
-      "empty": "No skills in this scope.",
-      "removeMessage": "Move skill \"{{name}}\" to the extension trash?"
+      "descriptionLabel": "Beschreibung",
+      "instructions": "Anweisungen",
+      "fileContent": "Inhalt von SKILL.md",
+      "autoinvokeOn": "Für das Modell auffindbar",
+      "autoinvokeOff": "Standardmäßig vor dem Modell verborgen",
+      "add": "Fähigkeit erstellen",
+      "empty": "Keine Fähigkeiten in diesem Bereich.",
+      "removeMessage": "Fähigkeit „{{name}}“ in den Erweiterungs-Papierkorb verschieben?"
     },
     "commands": {
-      "addTitle": "Add slash command",
-      "editTitle": "Edit /{{name}}",
-      "name": "Command name",
-      "descriptionLabel": "Description",
-      "template": "Template",
-      "templateHint": "Use $ARGUMENTS or $1, $2 for arguments. Shell blocks in templates run on the server.",
-      "empty": "No commands in this scope.",
-      "removeMessage": "Remove command \"/{{name}}\" from this scope?"
+      "addTitle": "Slash-Befehl hinzufügen",
+      "editTitle": "/{{name}} bearbeiten",
+      "name": "Befehlsname",
+      "descriptionLabel": "Beschreibung",
+      "template": "Vorlage",
+      "templateHint": "Verwende $ARGUMENTS oder $1, $2 für Argumente. Shell-Blöcke in Vorlagen werden auf dem Server ausgeführt.",
+      "empty": "Keine Befehle in diesem Bereich.",
+      "removeMessage": "Befehl „/{{name}}“ aus diesem Bereich entfernen?"
     },
-    "generalConfirmTitle": "Edit global configuration",
-    "generalConfirmMessage": "This changes the configuration for every project on this server. A backup is created first.\n\n{{path}}",
-    "generalConfirmAction": "Continue"
+    "generalConfirmTitle": "Globale Konfiguration bearbeiten",
+    "generalConfirmMessage": "Dies ändert die Konfiguration für alle Projekte auf diesem Server. Zuvor wird eine Sicherung erstellt.\n\n{{path}}",
+    "generalConfirmAction": "Weiter"
   },
   "modelRouting": {
-    "title": "Auto model routing",
-    "description": "Classify each prompt and choose a model by complexity. Routing is skipped when the classifier is unavailable.",
+    "title": "Automatisches Modell-Routing",
+    "description": "Klassifiziere jede Eingabe und wähle ein Modell nach Komplexität. Das Routing wird übersprungen, wenn der Klassifizierer nicht verfügbar ist.",
     "enable": {
-      "title": "Enable auto-routing",
-      "description": "Choose a model for each prompt based on its complexity.",
-      "unavailable": "Set up a classifier below before enabling routing."
+      "title": "Automatisches Routing aktivieren",
+      "description": "Wähle für jede Eingabe ein Modell passend zu ihrer Komplexität.",
+      "unavailable": "Richte unten einen Klassifizierer ein, bevor du das Routing aktivierst."
     },
     "classifier": {
-      "label": "Classifier",
+      "label": "Klassifizierer",
       "local": {
-        "label": "On-device model",
-        "description": "Runs on this phone. The model is downloaded once."
+        "label": "Modell auf dem Gerät",
+        "description": "Läuft auf diesem Telefon. Das Modell wird einmal heruntergeladen."
       },
       "server": {
-        "label": "OpenCode classifier",
-        "description": "Calls a model through OpenCode before sending the prompt."
+        "label": "OpenCode-Klassifizierer",
+        "description": "Ruft vor dem Senden der Eingabe ein Modell über OpenCode auf."
       }
     },
     "local": {
-      "statusLabel": "On-device model",
+      "statusLabel": "Modell auf dem Gerät",
       "status": {
-        "unsupported": "Not supported on this platform",
-        "installing": "Downloading",
-        "ready": "Ready",
-        "missing": "Not installed",
-        "error": "Install failed"
+        "unsupported": "Auf dieser Plattform nicht unterstützt",
+        "installing": "Wird heruntergeladen",
+        "ready": "Bereit",
+        "missing": "Nicht installiert",
+        "error": "Installation fehlgeschlagen"
       },
-      "installed": "Installed ({{size}})",
-      "remove": "Remove model",
-      "download": "Download model ({{size}})",
-      "license": "{{model}} · {{license}}. The model runs only on this device."
+      "installed": "Installiert ({{size}})",
+      "remove": "Modell entfernen",
+      "download": "Modell herunterladen ({{size}})",
+      "license": "{{model}} · {{license}}. Das Modell läuft nur auf diesem Gerät."
     },
     "server": {
-      "modelLabel": "Classifier model",
-      "cheapest": "Cheapest available",
-      "check": "Check classifier",
+      "modelLabel": "Klassifizierer-Modell",
+      "cheapest": "Günstigstes verfügbares",
+      "check": "Klassifizierer prüfen",
       "status": {
-        "unknown": "Not checked. Check the classifier to enable routing.",
-        "checking": "Checking the classifier...",
-        "available": "Classifier available.",
-        "unsupported": "This server does not expose the classifier endpoint.",
-        "unavailable": "Classifier unavailable. Check the connection and retry.",
-        "auth": "Sign in to this server before using the classifier."
+        "unknown": "Nicht geprüft. Prüfe den Klassifizierer, um das Routing zu aktivieren.",
+        "checking": "Klassifizierer wird geprüft...",
+        "available": "Klassifizierer verfügbar.",
+        "unsupported": "Dieser Server stellt den Klassifizierer-Endpunkt nicht bereit.",
+        "unavailable": "Klassifizierer nicht verfügbar. Prüfe die Verbindung und versuche es erneut.",
+        "auth": "Melde dich bei diesem Server an, bevor du den Klassifizierer verwendest."
       }
     },
     "tiers": {
       "simple": {
-        "label": "Simple model"
+        "label": "Einfaches Modell"
       },
       "standard": {
-        "label": "Standard model"
+        "label": "Standardmodell"
       },
       "complex": {
-        "label": "Complex model"
+        "label": "Komplexes Modell"
       },
-      "automatic": "Automatic",
-      "automaticDescription": "Choose from the enabled models",
-      "automaticValue": "Automatic · {{model}}",
-      "unavailable": "Unavailable"
+      "automatic": "Automatisch",
+      "automaticDescription": "Aus den aktivierten Modellen wählen",
+      "automaticValue": "Automatisch · {{model}}",
+      "unavailable": "Nicht verfügbar"
     },
     "protect": {
-      "title": "Protect long chats",
-      "description": "Avoid downgrading models on long conversations where prompt-cache savings may be larger."
+      "title": "Lange Chats schützen",
+      "description": "Vermeide das Herabstufen von Modellen in langen Unterhaltungen, in denen die Prompt-Cache-Ersparnis größer sein kann."
     }
   }
 }

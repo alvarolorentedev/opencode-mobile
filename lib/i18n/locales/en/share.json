@@ -36,7 +36,11 @@
     "previewsTitle": "Show widget previews",
     "previewsDescription": "Show reply, request, and plan text on the home screen.",
     "completed": "Plan complete",
-    "openApp": "Open the app to refresh"
+    "openApp": "Open the app to refresh",
+    "moreChats_one": "+{{count}} more chat",
+    "moreChats_other": "+{{count}} more chats",
+    "moreChats_few": "+{{count}} more chats",
+    "moreChats_many": "+{{count}} more chats"
   },
   "expired": "Shared content expired",
   "expiredDescription": "Share it again from the other app.",

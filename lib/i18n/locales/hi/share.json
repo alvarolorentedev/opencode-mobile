@@ -36,7 +36,11 @@
     "previewsTitle": "विजेट पूर्वावलोकन दिखाएँ",
     "previewsDescription": "होम स्क्रीन पर जवाब, अनुरोध और योजना का पाठ दिखाएँ।",
     "completed": "योजना पूरी",
-    "openApp": "अपडेट करने के लिए ऐप खोलें"
+    "openApp": "अपडेट करने के लिए ऐप खोलें",
+    "moreChats_one": "+{{count}} और चैट",
+    "moreChats_other": "+{{count}} और चैट",
+    "moreChats_few": "+{{count}} और चैट",
+    "moreChats_many": "+{{count}} और चैट"
   },
   "expired": "साझा की गई सामग्री की अवधि समाप्त हो गई है",
   "expiredDescription": "इसे दूसरे ऐप से फिर से साझा करें।",

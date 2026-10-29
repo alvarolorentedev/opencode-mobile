@@ -228,10 +228,10 @@
     "standardModel": " · Modelo padrão",
     "noMatchingModels": "Nenhum modelo correspondente",
     "emptyHint": "Tente o nome de um modelo ou provedor.",
-    "autoRouting": "Auto-routing",
-    "autoRoutingDescription": "Use a model matched to each prompt",
-    "autoRoutingUnavailable": "Set up a classifier in Settings",
-    "defaultModel": "Default model"
+    "autoRouting": "Roteamento automático",
+    "autoRoutingDescription": "Use um modelo adequado para cada prompt",
+    "autoRoutingUnavailable": "Configure um classificador nas configurações",
+    "defaultModel": "Modelo padrão"
   },
   "starter": {
     "title": "Inicie uma nova tarefa",

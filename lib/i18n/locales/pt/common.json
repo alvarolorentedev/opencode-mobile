@@ -58,8 +58,8 @@
     "allProjects": "Todos os projetos",
     "server": "Servidor",
     "projectContext": "Contexto do projeto",
-    "serverSettings": "Definições do servidor",
-    "appSettings": "Definições da aplicação",
+    "serverSettings": "Configurações do servidor",
+    "appSettings": "Configurações do aplicativo",
     "forServer": "As alterações aplicam-se a {{name}}",
     "searchProjects": "Pesquisar projetos",
     "lastSynced": "A mostrar os últimos projetos sincronizados",
@@ -69,15 +69,15 @@
     "pending": "Pendentes ({{count}})",
     "savedRules": "Regras guardadas ({{count}})",
     "onlyThisServer": "Apenas para este servidor",
-    "appDiagnostics": "Diagnóstico da aplicação · Todos os servidores",
+    "appDiagnostics": "Diagnóstico do aplicativo · Todos os servidores",
     "discardDrafts": "Os rascunhos de chat e do editor não guardados neste servidor serão descartados.",
     "status": {
       "idle": "Desligado",
-      "connecting": "A ligar",
-      "connected": "Ligado",
+      "connecting": "Conectando",
+      "connected": "Conectado",
       "error": "Indisponível"
     },
-    "appSettingsSummary": "Editor, definições gerais e atualizações",
+    "appSettingsSummary": "Editor, configurações gerais e atualizações",
     "serverToolsSummary": "Servidores MCP e diagnóstico"
   }
 }

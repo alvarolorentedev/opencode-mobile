@@ -228,10 +228,10 @@
     "standardModel": " · 標準モデル",
     "noMatchingModels": "一致するモデルがありません",
     "emptyHint": "モデル名またはプロバイダー名を入力してください。",
-    "autoRouting": "Auto-routing",
-    "autoRoutingDescription": "Use a model matched to each prompt",
-    "autoRoutingUnavailable": "Set up a classifier in Settings",
-    "defaultModel": "Default model"
+    "autoRouting": "自動ルーティング",
+    "autoRoutingDescription": "各プロンプトに合ったモデルを使用",
+    "autoRoutingUnavailable": "設定で分類器をセットアップ",
+    "defaultModel": "デフォルトモデル"
   },
   "starter": {
     "title": "新しいタスクを開始",
@@ -326,7 +326,7 @@
     "slow": "低速接続 — リクエストを削減中"
   },
   "tools": {
-    "shell": "Shell",
+    "shell": "シェル",
     "patch": "パッチ",
     "edit": "編集",
     "read": "読み取り",

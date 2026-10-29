@@ -14,6 +14,7 @@ const SPEECH_CUES: Record<string, { codeBlock: string; table: string }> = {
   hi: { codeBlock: 'कोड ब्लॉक छोड़ा गया।', table: 'तालिका छोड़ी गई।' },
   ja: { codeBlock: 'コードブロックは省略しました。', table: '表は省略しました。' },
   pt: { codeBlock: 'Bloco de código omitido.', table: 'Tabela omitida.' },
+  ru: { codeBlock: 'Блок кода пропущен.', table: 'Таблица пропущена.' },
   zh: { codeBlock: '已省略代码块。', table: '已省略表格。' },
 };
 

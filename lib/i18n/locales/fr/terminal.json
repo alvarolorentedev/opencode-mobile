@@ -1,8 +1,8 @@
 {
   "screen": {
     "connectTitle": "Se connecter à OpenCode",
-    "chooseProject": "Choisis un projet",
-    "selectProject": "Sélectionne un projet avant d'ouvrir un terminal.",
+    "chooseProject": "Choisissez un projet",
+    "selectProject": "Sélectionnez un projet avant d’ouvrir un terminal.",
     "openProjects": "Ouvrir les projets",
     "title": "Terminal"
   },
@@ -10,7 +10,7 @@
     "selectTerminal": "Sélectionner un terminal",
     "create": "Créer un terminal",
     "refresh": "Actualiser les terminaux",
-    "openOrCreate": "Ouvre ou crée un terminal pour commencer.",
+    "openOrCreate": "Ouvrez ou créez un terminal pour commencer.",
     "terminateTitle": "Arrêter le terminal ?",
     "terminateAction": "Arrêter",
     "new": "Nouveau terminal",
@@ -22,7 +22,7 @@
   },
   "sessions": {
     "title": "Terminaux",
-    "empty": "Aucun terminal pour le moment. Utilise + pour en créer un.",
+    "empty": "Aucun terminal pour le moment. Utilisez + pour en créer un.",
     "openLabel": "Ouvrir {{terminal}}"
   },
   "errors": {
@@ -43,7 +43,7 @@
     "off": "désactivé"
   },
   "status": {
-    "connecting": "Connexion",
+    "connecting": "Connexion en cours",
     "connected": "Connecté",
     "reconnecting": "Reconnexion",
     "exited": "Terminé",

@@ -228,10 +228,10 @@
     "standardModel": " · मानक मॉडल",
     "noMatchingModels": "कोई मेल खाता मॉडल नहीं",
     "emptyHint": "कोई मॉडल या प्रदाता नाम आज़माएँ।",
-    "autoRouting": "Auto-routing",
-    "autoRoutingDescription": "Use a model matched to each prompt",
-    "autoRoutingUnavailable": "Set up a classifier in Settings",
-    "defaultModel": "Default model"
+    "autoRouting": "स्वचालित रूटिंग",
+    "autoRoutingDescription": "हर प्रॉम्प्ट के लिए उपयुक्त मॉडल चुनें",
+    "autoRoutingUnavailable": "सेटिंग्स में क्लासिफायर सेट करें",
+    "defaultModel": "डिफ़ॉल्ट मॉडल"
   },
   "starter": {
     "title": "नया कार्य शुरू करें",
@@ -326,7 +326,7 @@
     "slow": "धीमा कनेक्शन — कम अनुरोध"
   },
   "tools": {
-    "shell": "Shell",
+    "shell": "शेल",
     "patch": "पैच",
     "edit": "संपादित करें",
     "read": "पढ़ें",

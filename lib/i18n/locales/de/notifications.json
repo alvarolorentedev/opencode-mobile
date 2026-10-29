@@ -6,7 +6,7 @@
     "failedBodyFallback": "Die Aufgabe wurde mit einem Fehler beendet"
   },
   "activity": {
-    "working": "Aktiv",
+    "working": "In Arbeit",
     "thinking": "Denkt nach",
     "needsInput": "Eingabe erforderlich",
     "retrying": "Neuer Versuch",
@@ -14,7 +14,7 @@
     "finished": "Bereit zur Prüfung",
     "failed": "Aufgabe fehlgeschlagen",
     "stopped": "Aufgabe gestoppt",
-    "reconnecting": "Verbindung wird hergestellt",
+    "reconnecting": "Verbindung wird wiederhergestellt",
     "paused": "Überwachung pausiert. App zum Fortsetzen öffnen.",
     "stopMonitoring": "Überwachung stoppen",
     "channel": "Aufgabenaktivität",

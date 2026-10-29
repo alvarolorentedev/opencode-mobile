@@ -228,10 +228,10 @@
     "standardModel": " · Modelo estándar",
     "noMatchingModels": "No hay modelos coincidentes",
     "emptyHint": "Prueba con un nombre de modelo o proveedor.",
-    "autoRouting": "Auto-routing",
-    "autoRoutingDescription": "Use a model matched to each prompt",
-    "autoRoutingUnavailable": "Set up a classifier in Settings",
-    "defaultModel": "Default model"
+    "autoRouting": "Enrutamiento automático",
+    "autoRoutingDescription": "Usa un modelo adecuado para cada mensaje",
+    "autoRoutingUnavailable": "Configura un clasificador en Ajustes",
+    "defaultModel": "Modelo predeterminado"
   },
   "starter": {
     "title": "Iniciar una nueva tarea",

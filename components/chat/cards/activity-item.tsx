@@ -99,7 +99,7 @@ export function ActivityItemRow({ fontSize, item, palette }: { fontSize: number;
     }
   } else {
     files = item.body.split('\n').map((file) => file.trim()).filter(Boolean);
-    label = t('chat:cards.filesChangedSimple', { files: files.length, count: files.length });
+    label = t('chat:diff.filesChangedSimple', { files: files.length, count: files.length });
     expandable = files.length > 0;
   }
 

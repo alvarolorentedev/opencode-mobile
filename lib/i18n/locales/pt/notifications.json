@@ -6,7 +6,7 @@
     "failedBodyFallback": "A tarefa terminou com um erro"
   },
   "activity": {
-    "working": "Ativo",
+    "working": "Trabalhando",
     "thinking": "Pensando",
     "needsInput": "Precisa da sua resposta",
     "retrying": "Tentando novamente",
