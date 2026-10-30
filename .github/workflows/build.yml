@@ -77,6 +77,9 @@ jobs:
     permissions:
       contents: write
     steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
       - name: Verify the validation gate
         env:
           VALIDATE: ${{ needs.validate.result }}
