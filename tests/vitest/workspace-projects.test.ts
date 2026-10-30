@@ -2,12 +2,13 @@ import { describe, expect, it } from 'vitest';
 
 import { buildWorkspaceProjectGroups } from '@/providers/workspace-project-groups';
 
-function snapshot({ path, root = '/repo', entries = [], branch = 'main', activePath = path }: {
+function snapshot({ path, root = '/repo', entries = [], branch = 'main', activePath = path, status = 'connected' }: {
   path: string;
   root?: string;
   entries?: { directory: string; name: string; branch?: string }[];
   branch?: string;
   activePath?: string;
+  status?: string;
 }) {
   return {
     values: {
@@ -16,7 +17,7 @@ function snapshot({ path, root = '/repo', entries = [], branch = 'main', activeP
         worktrees: { entries, project: { id: 'project-1', root, label: 'repo' }, loading: false },
         vcsInfo: { branch },
       },
-      connectionValue: { connection: { status: 'connected' } },
+      connectionValue: { connection: { status } },
     },
   } as never;
 }
@@ -51,5 +52,18 @@ describe('workspace project groups', () => {
     expect(groups[0].projects).toHaveLength(1);
     expect(groups[0].projects[0].path).toBe('/repo');
     expect(groups[0].projects[0].checkouts.map((checkout) => checkout.directory)).toEqual(['/repo', '/repo/wt']);
+  });
+
+  it('omits disabled and non-connected connections', () => {
+    const groups = buildWorkspaceProjectGroups([
+      { id: 'connected', name: 'Connected', enabled: true } as never,
+      { id: 'disabled', name: 'Disabled', enabled: false } as never,
+      { id: 'unavailable', name: 'Unavailable', enabled: true } as never,
+    ], {
+      '["connected","/repo"]': snapshot({ path: '/repo' }),
+      '["disabled","/repo"]': snapshot({ path: '/repo' }),
+      '["unavailable","/repo"]': snapshot({ path: '/repo', status: 'error' }),
+    });
+    expect(groups.map((group) => group.id)).toEqual(['connected']);
   });
 });

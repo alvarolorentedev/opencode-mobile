@@ -27,8 +27,7 @@ export function NewChatSheet({ target: initial, onClose }: { target?: WorkspaceT
   const [error, setError] = useState<string>();
   const [notice, setNotice] = useState<string>();
 
-  const defaultServer = groups.find((group) => group.id === initial?.connectionId && group.enabled)
-    ?? groups.find((group) => group.enabled)
+  const defaultServer = groups.find((group) => group.id === initial?.connectionId)
     ?? groups[0];
   const defaultProject = defaultServer?.projects.find((entry) => entry.checkouts.some((checkout) => checkout.directory === initial?.projectPath))
     ?? defaultServer?.projects[0];
@@ -138,7 +137,7 @@ export function NewChatSheet({ target: initial, onClose }: { target?: WorkspaceT
           value={effectiveConnectionId}
           testID="new-chat-server-picker"
           disabled={Boolean(busy)}
-          options={groups.filter((entry) => entry.enabled).map((entry) => ({ value: entry.id, label: entry.name, description: t(`common:servers.status.${entry.status}`) }))}
+          options={groups.map((entry) => ({ value: entry.id, label: entry.name, description: t(`common:servers.status.${entry.status}`) }))}
           onChange={selectServer} />
       ) : null}
       <WorkspaceSelect

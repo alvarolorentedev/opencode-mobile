@@ -135,6 +135,8 @@ AI & providers, Extensions, Approvals and Server diagnostics use the independent
 inspection target. Server selection is made once on Settings home when multiple
 servers exist; server category sheets show a read-only context caption instead
 of repeating the selector, and preserve project selection where applicable.
+Only connected servers are selectable; disconnected, connecting and unavailable
+profiles stay in Connection management for reconnection.
 Inspecting settings must not move the active chat or alter preference scope.
 
 Each category is declared once in `buildSettingsSections()`: stable `id`,

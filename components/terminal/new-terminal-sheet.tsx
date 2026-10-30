@@ -11,7 +11,7 @@ export function NewTerminalSheet({ target: initial, onClose, onCreate }: { targe
   const { t } = useTranslation();
   const registry = useWorkspaces();
   const { groups } = useWorkspaceProjects();
-  const multipleServers = registry.connections.length > 1;
+  const multipleServers = groups.length > 1;
   const [target, setTarget] = useState(initial);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string>();
@@ -21,7 +21,7 @@ export function NewTerminalSheet({ target: initial, onClose, onCreate }: { targe
   return <OverlaySheet visible title={t('terminal:console.new')} testID="new-terminal-sheet" fitContent onClose={() => { if (!busy) onClose(); }}>
     <Text>{t('common:servers.newTerminalHint')}</Text>
     {multipleServers ? <WorkspaceSelect title={t('common:servers.server')} value={target?.connectionId} testID="terminal-server-picker" disabled={busy}
-      options={groups.filter((entry) => entry.enabled).map((entry) => ({ value: entry.id, label: entry.name, description: t(`common:servers.status.${entry.status}`) }))}
+      options={groups.map((entry) => ({ value: entry.id, label: entry.name, description: t(`common:servers.status.${entry.status}`) }))}
       onChange={(connectionId) => setTarget({ connectionId, projectPath: '' })} /> : null}
     <WorkspaceSelect title={t('common:servers.projectContext')} value={target?.projectPath} testID="terminal-project-picker" disabled={busy || !server}
       options={server?.projects.map((entry) => ({ value: entry.path, label: entry.label, description: entry.path })) ?? []}

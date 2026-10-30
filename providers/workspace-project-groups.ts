@@ -49,6 +49,9 @@ export function buildWorkspaceProjectGroups(
     else byConnection.set(connectionId, [snapshot]);
   }
 
+  // Only connected servers own selectable project groups. Disconnected and
+  // non-connected profiles stay in Connection management so they can be
+  // reconnected without appearing in settings or project selectors.
   return connections.map((entry) => {
     const runtimes = byConnection.get(entry.id) ?? [];
     const byRoot = new Map<string, WorkspaceProject>();
@@ -90,5 +93,5 @@ export function buildWorkspaceProjectGroups(
       status: runtimes[0]?.values.connectionValue.connection.status ?? 'idle',
       projects: [...byRoot.values()].sort((left, right) => compareLabels(left.label, right.label)),
     };
-  });
+  }).filter((group) => group.enabled && group.status === 'connected');
 }

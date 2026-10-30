@@ -33,14 +33,18 @@ export function ProjectPicker({ visible, onClose, activePath, onSelected, testID
   const palette = usePalette();
   const registry = useWorkspaces();
   const { groups, add, remove } = useWorkspaceProjects();
-  const multipleServers = registry.connections.length > 1;
+  const multipleServers = groups.length > 1;
   const [server, setServer] = useState('');
   const [query, setQuery] = useState('');
-  const [addServer, setAddServer] = useState(registry.focus?.connectionId ?? '');
+  const [addServer, setAddServer] = useState('');
   const [adding, setAdding] = useState(false);
   const [directory, setDirectory] = useState('');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string>();
+  const focusConnectionId = groups.some((group) => group.id === registry.focus?.connectionId)
+    ? registry.focus?.connectionId ?? ''
+    : groups[0]?.id ?? '';
+  const addTarget = multipleServers ? addServer : groups[0]?.id;
   const close = () => { setAdding(false); setDirectory(''); setError(undefined); onClose(); };
   const activate = async (target: WorkspaceTarget) => {
     await registry.activate(target);
@@ -55,28 +59,25 @@ export function ProjectPicker({ visible, onClose, activePath, onSelected, testID
       {error ? <Text style={{ color: palette.danger }}>{error}</Text> : null}
       <View style={styles.formActions}>
         <Button disabled={saving} onPress={() => { setAdding(false); setError(undefined); }}>{t('common:actions.cancel')}</Button>
-        <Button testID="project-add-submit" mode="contained" loading={saving} disabled={saving || !directory.trim()} onPress={() => {
+        <Button testID="project-add-submit" mode="contained" loading={saving} disabled={saving || !directory.trim() || !addTarget} onPress={() => {
+          if (!addTarget) return;
           setSaving(true); setError(undefined);
-          void add(multipleServers ? addServer : groups[0].id, directory).then(activate).catch((reason) => setError(reason instanceof Error ? reason.message : t('project:errors.addProject'))).finally(() => setSaving(false));
+          void add(addTarget, directory).then(activate).catch((reason) => setError(reason instanceof Error ? reason.message : t('project:errors.addProject'))).finally(() => setSaving(false));
         }}>{t('project:picker.add')}</Button>
       </View>
     </View> : <>
     <TextInput testID="project-search" mode="outlined" label={t('common:servers.searchProjects')} placeholder={t('common:servers.searchProjects')} value={query} onChangeText={setQuery} />
     {multipleServers ? <WorkspaceSelect title={t('common:servers.allServers')} value={server} options={[{ value: '', label: t('common:servers.allServers') }, ...groups.map((group) => ({ value: group.id, label: group.name }))]} onChange={setServer} /> : null}
+    {!groups.length ? <Text style={{ color: palette.muted }}>{t('project:picker.empty')}</Text> : null}
     {groups.filter((group) => !multipleServers || !server || server === group.id).map((group) => <View key={group.id} style={{ gap: 10 }}>
-      {multipleServers || group.status !== 'connected' ? <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-        {multipleServers ? <Text variant="titleMedium" style={{ flex: 1 }}>{group.name}</Text> : null}
-        <Text style={{ color: group.status === 'connected' ? palette.tint : palette.warning }}>{t(`common:servers.status.${group.status}`)}</Text>
-        {group.status !== 'connected' ? <Button onPress={() => void registry.retry(group.id).catch((reason) => setError(String(reason)))}>{t('common:actions.reconnect')}</Button> : null}
-      </View> : null}
-      {group.status !== 'connected' ? <Text style={{ color: palette.muted }}>{t('common:servers.lastSynced')}</Text> : null}
-      <ProjectOptions disabled={group.status !== 'connected'} projects={group.projects.filter((project) => `${project.label} ${project.path}`.toLowerCase().includes(query.trim().toLowerCase()))}
+      {multipleServers ? <Text variant="titleMedium">{group.name}</Text> : null}
+      <ProjectOptions projects={group.projects.filter((project) => `${project.label} ${project.path}`.toLowerCase().includes(query.trim().toLowerCase()))}
         activePath={registry.focus?.connectionId === group.id ? group.projects.find((project) => project.checkouts.some((checkout) => checkout.directory === activePath))?.path : undefined}
-        onSelect={(path) => { if (group.status !== 'connected') return; void activate({ connectionId: group.id, projectPath: path }).catch((reason) => setError(String(reason))); }}
+        onSelect={(path) => { void activate({ connectionId: group.id, projectPath: path }).catch((reason) => setError(String(reason))); }}
         onRemove={(path) => { void remove({ connectionId: group.id, projectPath: path }).catch((reason) => setError(String(reason))); }} />
     </View>)}
     {error ? <Text style={{ color: palette.danger }}>{error}</Text> : null}
-    <Button testID="project-add-button" icon="plus" onPress={() => { setAddServer(server || registry.focus?.connectionId || groups[0]?.id || ''); setAdding(true); }}>{t('project:picker.add')}</Button>
+    <Button testID="project-add-button" icon="plus" disabled={!groups.length} onPress={() => { setAddServer(server || focusConnectionId); setAdding(true); }}>{t('project:picker.add')}</Button>
     </>}
   </OverlaySheet>;
 }

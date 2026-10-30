@@ -1,5 +1,5 @@
 import { expect, test } from './helpers/fixtures.mjs';
-import { getFreePort, spawnV2Server, waitForServer, goToTab, openChatLibrary, ensureConnectionSection, sendPrompt, addConnection } from './helpers/flows.mjs';
+import { getFreePort, spawnV2Server, waitForServer, goToTab, openChatLibrary, ensureConnectionSection, closeSettingsOverlay, sendPrompt, addConnection } from './helpers/flows.mjs';
 
 const directory = '/workspace/demo-project';
 let servers;
@@ -131,12 +131,24 @@ test('V2 creates a PTY on B while chat stays on A and retains its renderer', asy
   await page.getByTestId('connection-row-server-1').click();
   await page.getByTestId('connection-disconnect-server-1').click();
   await expect(page.getByTestId('connection-connect-server-1')).toBeVisible();
+  await closeSettingsOverlay(page);
+  await expect(page.getByTestId('settings-server-picker')).toHaveCount(0);
   await openChat(page, 'MacBook Pro');
   await expect(page.getByPlaceholder('Ask anything...')).toHaveValue('');
+  await goToTab(page, 'Projects');
+  await page.getByTestId('projects-workspace-project-button').click();
+  const projectPicker = page.getByTestId('project-picker');
+  await expect(projectPicker.getByText('Build server', { exact: true })).toHaveCount(0);
+  await expect(projectPicker.getByText('Showing last synced projects', { exact: true })).toHaveCount(0);
+  await projectPicker.getByRole('button', { name: 'Close', exact: true }).click();
   await goToTab(page, 'Settings');
   await ensureConnectionSection(page);
   await page.getByTestId('connection-row-server-1').click();
   await page.getByTestId('connection-connect-server-1').click();
+  await closeSettingsOverlay(page);
+  await expect(page.getByTestId('settings-server-picker')).toBeVisible({ timeout: 30_000 });
+  await choose(page, 'settings-server-picker', 'MacBook Pro');
+  await expect(page.getByTestId('settings-server-picker')).toContainText('MacBook Pro');
   await goToTab(page, 'Chat');
   await expect(page.getByRole('button', { name: /^Open chats/ })).toContainText('Chat on Build server');
   await expect(page.getByPlaceholder('Ask anything...')).toHaveValue('Retain B while disconnected');
