@@ -6,7 +6,8 @@ name: Validate
 # PRs run the critical smoke set plus the specs affected by the changed paths;
 # shared contracts, unknown paths, and manual dispatches still run everything.
 # Pushes to main always run the full E2E suite (docs-only pushes run static
-# checks only). Release tags reuse the exact-SHA main validation instead.
+# checks only). Release builds verify a successful full main validation for the
+# tagged SHA instead of rerunning the suite.
 on:
   workflow_call:
     inputs:

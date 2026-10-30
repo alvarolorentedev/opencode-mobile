@@ -40,7 +40,7 @@ scenario before adding a new spec; see [ADR 0010](../../adr/0010-risk-based-vali
 | Fake server or E2E infrastructure | self-test + full E2E + human validation | full |
 | Native voice, notifications, permissions, widgets | existing targeted tests + device checklist | smoke + manual |
 | Dependencies, app config, build/CI config | static + full E2E | full |
-| Release tag | exact-SHA full validation + native builds | n/a |
+| Release tag | exact-SHA full validation + native builds from the green `Build` run | n/a |
 
 Escalate to the full suite when the change touches `providers/`,
 `lib/opencode/`, `providers/services/`, `tests/fake-opencode/`, `tests/e2e/`,
@@ -110,10 +110,14 @@ on the main commit before a release tag can reuse it.
 `validate.yml` is the single reusable gate (`workflow_call`). Three callers
 use it:
 
-- `build.yml` — pushes to `main` and `v*` tags; tags reuse the full `main`
-  validation for the same SHA unless `force_validate` is set
+- `build.yml` — pushes to `main`, plus a `force_validate` dispatch for emergency
+  full validation
 - `pr-validate.yml` — pull requests targeting `main`
 - `ios-release.yml` — manual iOS release dispatch
+
+`release.yml` does not call the gate. It is triggered by a green `Build` run on
+`main` and verifies that exact SHA before creating a tag-backed release; a
+manual dispatch still requires an existing successful full validation.
 
 The gate classifies changed paths first, then runs:
 

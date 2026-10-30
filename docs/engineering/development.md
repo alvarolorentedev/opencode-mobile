@@ -87,12 +87,12 @@ trusted environment, and sandbox configuration. See
 [F-Droid and FOSS builds](./fdroid.md) for the FOSS variant's scope and distribution.
 
 **Release Automation**:
-- Pushes to `main` run the full validation gate; documentation-only pushes run static checks only. The Android release jobs (`android-release`, `foss-release`) run on `v*` tags, or on a manual **Build** dispatch with `build_android: true` when a sideload APK is needed
-- Before tagging a release, wait for the full `Build` validation on `main` to pass. A tag reuses that exact-SHA validation instead of running the full suite again. The `force_validate` dispatch input runs the full gate as an emergency override
-- Android and FOSS release builds run in parallel after the gate. A release-preparation job creates the GitHub Release once before both APK uploads
-- Release builds upload APKs as the `android-release-artifacts` artifact (1-day retention); `v*` tag runs also build the release AAB for the Play Store upload
-- The GitHub Release asset and production Play Store upload happen only on `v*` tags
-- Release ABIs are trimmed per ref: `v*` tags build `armeabi-v7a,arm64-v8a`; other builds build `arm64-v8a` only. Override locally with `ANDROID_RELEASE_ABIS`. See [Android Build / Release Notes](./integrations-and-operations.md#release-abis-and-gradle-memory)
+- Pushes to `main` run the full validation gate; documentation-only pushes run static checks only. Tag pushes do not trigger builds, so `main` and its tag can be pushed together
+- A `v*` tag at the validated commit marks a release. When the green `Build` run for that commit completes, the **Release** workflow (`.github/workflows/release.yml`) checks that the tag matches `app.config.ts`, creates a draft GitHub Release once, and builds Android and FOSS in parallel
+- The workflow attaches both APKs to the draft and publishes it only after both uploads succeed. A failed build leaves an unpublished draft instead of a released empty release
+- Manual **Release** dispatch: pass `tag` and set `publish: true` to repair or rebuild a release; pass no tag (or `publish: false`) to build sideload APKs without touching a release. `Build` keeps a `force_validate` dispatch for emergency full validation
+- Release builds upload APKs as `android-release-artifacts` and `foss-release-artifacts` (1-day retention); published releases also build the release AAB for the Play Store upload
+- Release ABIs are trimmed per mode: published releases build `armeabi-v7a,arm64-v8a`; build-only runs build `arm64-v8a,x86_64`. Override locally with `ANDROID_RELEASE_ABIS`. See [Android Build / Release Notes](./integrations-and-operations.md#release-abis-and-gradle-memory)
 
 ### iOS Builds
 

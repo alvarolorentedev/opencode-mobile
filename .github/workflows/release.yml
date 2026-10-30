@@ -1,0 +1,468 @@
+name: Release
+
+# Release builds are triggered by a green Build run on main, not by the tag
+# push itself. The tag is only the marker: when a version tag exists at the
+# validated commit, this workflow creates the Release and builds the APKs.
+# Pushing main and its tag together can therefore never race validation.
+on:
+  workflow_run:
+    workflows: [Build]
+    types: [completed]
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Existing v* tag to build (empty builds the selected ref)'
+        required: false
+        default: ''
+        type: string
+      publish:
+        description: 'Create/publish the GitHub Release and upload APKs (requires a tag)'
+        required: false
+        default: false
+        type: boolean
+
+concurrency:
+  group: release-${{ github.event.workflow_run.head_sha || github.sha }}
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+  actions: read
+
+jobs:
+  # Resolves the validated commit, checks the tag/version pair, and creates the
+  # draft Release before the parallel builds so uploads never race creation.
+  prepare:
+    if: ${{ github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    outputs:
+      build: ${{ steps.resolve.outputs.build }}
+      publish: ${{ steps.resolve.outputs.publish }}
+      tag: ${{ steps.resolve.outputs.tag }}
+      sha: ${{ steps.resolve.outputs.sha }}
+    steps:
+      - name: Checkout target
+        uses: actions/checkout@v4
+        with:
+          # workflow_run checks out the exact validated SHA. A manual dispatch
+          # may name a tag; otherwise it builds the selected ref.
+          ref: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.head_sha || inputs.tag || github.sha }}
+          fetch-depth: 0
+          fetch-tags: true
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Resolve release target
+        id: resolve
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          EVENT: ${{ github.event_name }}
+          RUN_CONCLUSION: ${{ github.event.workflow_run.conclusion }}
+          INPUT_TAG: ${{ inputs.tag }}
+          INPUT_PUBLISH: ${{ inputs.publish }}
+        run: |
+          set -euo pipefail
+
+          SHA=$(git rev-parse HEAD)
+          VERSION=$(node -e "
+            const fs = require('fs');
+            const match = fs.readFileSync('app.config.ts', 'utf8').match(/version:\s*'([^']+)'/);
+            if (!match) process.exit(1);
+            process.stdout.write(match[1]);
+          ")
+          EXPECTED="v$VERSION"
+          TAG=$(git describe --tags --exact-match --match 'v[0-9]*' HEAD 2>/dev/null || true)
+          BUILD=false
+          PUBLISH=false
+
+          if [ "$EVENT" = "workflow_run" ]; then
+            if [ "$RUN_CONCLUSION" != "success" ]; then
+              echo "Build run concluded '$RUN_CONCLUSION'; nothing to release."
+            elif [ -z "$TAG" ]; then
+              echo "No version tag at $SHA; merging this commit is not a release."
+            else
+              BUILD=true
+              PUBLISH=true
+            fi
+          else
+            BUILD=true
+            if [ -n "$INPUT_TAG" ]; then
+              if [ "$TAG" != "$INPUT_TAG" ]; then
+                echo "::error::Tag $INPUT_TAG does not point at checked-out commit $SHA (found '$TAG')."
+                exit 1
+              fi
+              if [ "$INPUT_PUBLISH" = "true" ]; then PUBLISH=true; fi
+            elif [ "$INPUT_PUBLISH" = "true" ]; then
+              echo "::error::publish requires a tag input."
+              exit 1
+            fi
+          fi
+
+          if [ -n "$TAG" ] && [ "$TAG" != "$EXPECTED" ]; then
+            echo "::error::Tag $TAG does not match app version $VERSION ($EXPECTED)."
+            exit 1
+          fi
+
+          if [ "$PUBLISH" = "true" ]; then
+            TARGET_SHA="$SHA" GITHUB_TOKEN="$GH_TOKEN" node scripts/ci/assert-validated.mjs
+            if gh release view "$TAG" >/dev/null 2>&1; then
+              echo "Release $TAG already exists."
+            else
+              gh release create "$TAG" --draft --verify-tag --title "$TAG" --generate-notes
+            fi
+          fi
+
+          {
+            echo "build=$BUILD"
+            echo "publish=$PUBLISH"
+            echo "tag=$TAG"
+            echo "sha=$SHA"
+          } >> "$GITHUB_OUTPUT"
+
+  android-release:
+    needs: prepare
+    if: ${{ needs.prepare.outputs.build == 'true' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    permissions:
+      contents: write
+
+    env:
+      EXPO_APP_VARIANT: production
+      EXPO_ANDROID_PACKAGE: ${{ vars.EXPO_ANDROID_PACKAGE }}
+
+    steps:
+      - name: Checkout release commit
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.prepare.outputs.sha }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Cache Gradle
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: gradle-${{ runner.os }}-${{ hashFiles('**/gradle-wrapper.properties','**/build.gradle*','**/settings.gradle*') }}
+          restore-keys: gradle-${{ runner.os }}-
+
+      - name: Setup Java
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v4
+
+      # AGP's on-demand SDK installs occasionally fetch a truncated archive
+      # and fail mid-build ("Archive is not a ZIP archive"). Pre-install them
+      # with retries so a flaky download cannot abort Gradle.
+      - name: Install CMake and NDK
+        run: |
+          set -eo pipefail
+          SDK_ROOT="${ANDROID_HOME:-$ANDROID_SDK_ROOT}"
+          if [ -z "$SDK_ROOT" ]; then
+            echo "::error::ANDROID_HOME and ANDROID_SDK_ROOT are both unset"
+            exit 1
+          fi
+          for pkg in 'cmake;3.22.1' 'ndk;27.1.12297006'; do
+            case "$pkg" in
+              'cmake;3.22.1') [ -x "$SDK_ROOT/cmake/3.22.1/bin/cmake" ] && continue ;;
+              'ndk;27.1.12297006') [ -d "$SDK_ROOT/ndk/27.1.12297006" ] && continue ;;
+            esac
+            for attempt in 1 2 3 4 5; do
+              # Pin the install root so sdkmanager and Gradle cannot pick
+              # different SDK directories on the same runner.
+              if sdkmanager --sdk_root="$SDK_ROOT" --install "$pkg" </dev/null; then
+                break
+              fi
+              rm -rf "$SDK_ROOT/.temp"
+              # A failed unzip can leave a broken package directory behind
+              # that blocks the next attempt, so drop it before retrying.
+              case "$pkg" in
+                ndk\;*) rm -rf "$SDK_ROOT/ndk/27.1.12297006" ;;
+                cmake\;*) rm -rf "$SDK_ROOT/cmake/3.22.1" ;;
+              esac
+              if [ "$attempt" -eq 5 ]; then
+                echo "::error::Failed to install $pkg after 5 attempts"
+                exit 1
+              fi
+              sleep $((attempt * 5))
+            done
+          done
+        shell: bash
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Decode keystore & verify
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+        run: |
+          set -eo pipefail
+          # Compute secret length robustly and without adding newlines
+          SECRET_LEN=$(printf '%s' "$ANDROID_KEYSTORE_BASE64" | tr -d '[:space:]' | wc -c)
+          echo "Secret length: $SECRET_LEN"
+          if [ "$SECRET_LEN" -lt 100 ]; then
+            echo "Keystore secret is unexpectedly short; refusing to continue."
+            exit 1
+          fi
+
+          KEYSTORE_PATH="$RUNNER_TEMP/release.keystore"
+          # Decode safely using printf to avoid echo interpretation issues
+          printf '%s' "$ANDROID_KEYSTORE_BASE64" | tr -d '[:space:]' | base64 --decode > "$KEYSTORE_PATH"
+          FILE_SIZE=$(stat -c%s "$KEYSTORE_PATH")
+          echo "Decoded size: $FILE_SIZE"
+          if [ "$FILE_SIZE" -lt 100 ]; then
+            echo "Decoded keystore is unexpectedly small; refusing to continue."
+            exit 1
+          fi
+          echo "Keystore on disk:"
+          sha256sum "$KEYSTORE_PATH" || true
+          ls -l "$KEYSTORE_PATH" || true
+        shell: bash
+
+      - name: Build Android release
+        run: npm run build:android
+        env:
+          ANDROID_KEYSTORE_PATH: ${{ runner.temp }}/release.keystore
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+          # Published releases ship a Play-ready AAB (32-bit + 64-bit ARM);
+          # manual builds include x86_64 so the APK runs on the emulator.
+          ANDROID_RELEASE_ABIS: ${{ needs.prepare.outputs.publish == 'true' && 'armeabi-v7a,arm64-v8a' || 'arm64-v8a,x86_64' }}
+
+      - name: Verify APK signature
+        run: |
+          set -eo pipefail
+          APK=android/app/build/outputs/apk/release/app-release.apk
+          APKSIGNER=""
+          for root in "$ANDROID_HOME" "$ANDROID_SDK_ROOT"; do
+            [ -n "$root" ] && [ -d "$root/build-tools" ] || continue
+            CANDIDATE=$(find "$root/build-tools" -name apksigner -type f | sort -V | tail -1)
+            if [ -n "$CANDIDATE" ]; then APKSIGNER="$CANDIDATE"; break; fi
+          done
+          if [ -z "$APKSIGNER" ]; then
+            echo "::error::apksigner not found in Android SDK (ANDROID_HOME=$ANDROID_HOME ANDROID_SDK_ROOT=$ANDROID_SDK_ROOT)"
+            exit 1
+          fi
+          "$APKSIGNER" verify --verbose --print-certs "$APK"
+        shell: bash
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-release-artifacts
+          path: android/app/build/outputs/apk/release/app-release.apk
+          retention-days: 1
+
+      - name: Attach APK to the Release
+        if: needs.prepare.outputs.publish == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          cp android/app/build/outputs/apk/release/app-release.apk opencode-mobile.apk
+          gh release upload "${{ needs.prepare.outputs.tag }}" opencode-mobile.apk --clobber
+
+      - name: Upload to Play Store (internal)
+        if: needs.prepare.outputs.publish == 'true'
+        uses: r0adkll/upload-google-play@v1
+        with:
+          serviceAccountJsonPlainText: ${{ secrets.GOOGLE_PLAY_SERVICE_ACCOUNT_JSON }}
+          packageName: ${{ vars.EXPO_ANDROID_PACKAGE }}
+          releaseFiles: android/app/build/outputs/bundle/release/app-release.aab
+          tracks: internal
+          status: completed
+
+  foss-release:
+    needs: prepare
+    if: ${{ needs.prepare.outputs.build == 'true' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    permissions:
+      contents: write
+
+    env:
+      OPENCODE_BUILD_FLAVOR: foss
+      EXPO_PUBLIC_FOSS: '1'
+      EXPO_ANDROID_PACKAGE: app.getopencode.fdroid
+
+    steps:
+      - name: Checkout release commit
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.prepare.outputs.sha }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Cache Gradle
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: gradle-foss-${{ runner.os }}-${{ hashFiles('**/gradle-wrapper.properties','**/build.gradle*','**/settings.gradle*') }}
+          restore-keys: gradle-foss-${{ runner.os }}-
+
+      - name: Setup Java
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v4
+
+      # Same retried pre-install as android-release: protects the FOSS build
+      # from the flaky AGP-downloaded CMake/NDK archives.
+      - name: Install CMake and NDK
+        run: |
+          set -eo pipefail
+          SDK_ROOT="${ANDROID_HOME:-$ANDROID_SDK_ROOT}"
+          if [ -z "$SDK_ROOT" ]; then
+            echo "::error::ANDROID_HOME and ANDROID_SDK_ROOT are both unset"
+            exit 1
+          fi
+          for pkg in 'cmake;3.22.1' 'ndk;27.1.12297006'; do
+            case "$pkg" in
+              'cmake;3.22.1') [ -x "$SDK_ROOT/cmake/3.22.1/bin/cmake" ] && continue ;;
+              'ndk;27.1.12297006') [ -d "$SDK_ROOT/ndk/27.1.12297006" ] && continue ;;
+            esac
+            for attempt in 1 2 3 4 5; do
+              # Pin the install root so sdkmanager and Gradle cannot pick
+              # different SDK directories on the same runner.
+              if sdkmanager --sdk_root="$SDK_ROOT" --install "$pkg" </dev/null; then
+                break
+              fi
+              rm -rf "$SDK_ROOT/.temp"
+              # A failed unzip can leave a broken package directory behind
+              # that blocks the next attempt, so drop it before retrying.
+              case "$pkg" in
+                ndk\;*) rm -rf "$SDK_ROOT/ndk/27.1.12297006" ;;
+                cmake\;*) rm -rf "$SDK_ROOT/cmake/3.22.1" ;;
+              esac
+              if [ "$attempt" -eq 5 ]; then
+                echo "::error::Failed to install $pkg after 5 attempts"
+                exit 1
+              fi
+              sleep $((attempt * 5))
+            done
+          done
+        shell: bash
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Validate FOSS dependency preparation
+        run: npm run test:foss
+
+      - name: Decode keystore
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+        run: |
+          set -eo pipefail
+          KEYSTORE_PATH="$RUNNER_TEMP/release.keystore"
+          printf '%s' "$ANDROID_KEYSTORE_BASE64" | tr -d '[:space:]' | base64 --decode > "$KEYSTORE_PATH"
+          test "$(stat -c%s "$KEYSTORE_PATH")" -ge 100
+          echo "Keystore on disk:"
+          sha256sum "$KEYSTORE_PATH" || true
+        shell: bash
+
+      # Builds the de-Googled FOSS flavor: no Play Billing (expo-iap), no ML Kit
+      # barcode scanner (expo-camera), and expo-notifications compiled against
+      # F-Droid's firebase-stubs instead of firebase-messaging.
+      - name: Build FOSS Android release
+        run: npm run build:foss:android
+        env:
+          ANDROID_KEYSTORE_PATH: ${{ runner.temp }}/release.keystore
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+
+      - name: Verify APK signature
+        run: |
+          set -eo pipefail
+          APK=android/app/build/outputs/apk/release/app-release.apk
+          APKSIGNER=""
+          for root in "$ANDROID_HOME" "$ANDROID_SDK_ROOT"; do
+            [ -n "$root" ] && [ -d "$root/build-tools" ] || continue
+            CANDIDATE=$(find "$root/build-tools" -name apksigner -type f | sort -V | tail -1)
+            if [ -n "$CANDIDATE" ]; then APKSIGNER="$CANDIDATE"; break; fi
+          done
+          if [ -z "$APKSIGNER" ]; then
+            echo "::error::apksigner not found in Android SDK (ANDROID_HOME=$ANDROID_HOME ANDROID_SDK_ROOT=$ANDROID_SDK_ROOT)"
+            exit 1
+          fi
+          "$APKSIGNER" verify --verbose --print-certs "$APK"
+        shell: bash
+
+      - name: Verify the FOSS APK has no proprietary Google libraries
+        run: |
+          set -eo pipefail
+          APK=android/app/build/outputs/apk/release/app-release.apk
+          # expo-notifications still compiles against firebase-stub classes, so
+          # com.google.firebase.* is expected; check the libraries we removed.
+          for needle in \
+            'com/android/billingclient' \
+            'com/google/mlkit' \
+            'com/android/installreferrer' \
+            'play-services-code-scanner'; do
+            if unzip -p "$APK" 'classes*.dex' | grep -a -q -F "$needle"; then
+              echo "::error::FOSS APK unexpectedly contains: $needle"
+              exit 1
+            fi
+          done
+          echo "FOSS APK clean of the removed proprietary Google libraries."
+        shell: bash
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: foss-release-artifacts
+          path: android/app/build/outputs/apk/release/app-release.apk
+          retention-days: 1
+
+      - name: Attach APK to the Release
+        if: needs.prepare.outputs.publish == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          cp android/app/build/outputs/apk/release/app-release.apk opencode-mobile-fdroid.apk
+          gh release upload "${{ needs.prepare.outputs.tag }}" opencode-mobile-fdroid.apk --clobber
+
+  # Publishes only after both APKs are attached, so a failed build can never
+  # leave a published release with missing assets.
+  publish:
+    needs: [prepare, android-release, foss-release]
+    if: ${{ always() && needs.prepare.outputs.publish == 'true' && needs.android-release.result == 'success' && needs.foss-release.result == 'success' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: write
+    steps:
+      - name: Publish the Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          TAG="${{ needs.prepare.outputs.tag }}"
+          if [ "$(gh release view "$TAG" --json isDraft --jq .isDraft)" = "true" ]; then
+            gh release edit "$TAG" --draft=false
+          fi
+          gh release view "$TAG" --json tagName,assets --jq '"\(.tagName): \([.assets[].name] | join(", "))"'

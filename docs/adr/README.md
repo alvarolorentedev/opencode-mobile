@@ -58,7 +58,8 @@ coverage, and documentation links.
 | [0007](0007-storybook-component-catalog.md) | Storybook for reusable components | Accepted |
 | [0008](0008-documentation-information-architecture.md) | Documentation information architecture and checks | Accepted |
 | [0009](0009-agent-first-documentation-routing.md) | Agent-first documentation routing and drift checks | Accepted |
-| [0010](0010-risk-based-validation-and-selective-pr-e2e.md) | Risk-based validation and selective PR E2E | Accepted |
+| [0010](0010-risk-based-validation-and-selective-pr-e2e.md) | Risk-based validation and selective PR E2E | Superseded by ADR 0011 |
+| [0011](0011-release-from-green-main-builds.md) | Release from green main builds, not tag pushes | Accepted |
 
 ## Template
 

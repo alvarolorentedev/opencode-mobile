@@ -1,6 +1,6 @@
 # ADR 0010: Risk-based validation and selective PR E2E
 
-- Status: Accepted
+- Status: Superseded by ADR 0011
 - Date: 2026-10-30
 - Deciders: maintainers
 - Supersedes: —
