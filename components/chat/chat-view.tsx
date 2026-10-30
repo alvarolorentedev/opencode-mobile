@@ -103,6 +103,7 @@ export function ChatView() {
             positions={presentation}
             positionKey={`scroll:${JSON.stringify([content.workspaceId, content.currentSessionId])}`}
             activityRunning={content.activityRunning}
+            activityStatusLabel={content.activityStatusLabel}
             connection={header.connection}
             copiedMessageId={content.copiedMessageId}
             currentSessionId={content.currentSessionId}

@@ -188,9 +188,12 @@ cross-entry activity grouping, read grouping, patch deduplication, bubble breaks
 hidden-tool counts, resolved file tools and reasoning groups; `activity-group`
 covers collapsed defaults for running and settled runs, manual-toggle
 persistence, recycled-cell state reset, session-running progress on the newest
-completed group, header
-type lists, expandable markdown, expandable diff cards, copyable shell code,
-read rows, grep rows, and empty rows.
+completed group, non-interactive live status rows when no activity row can
+carry progress, header type lists, expandable markdown, expandable diff cards,
+copyable shell code, read rows, grep rows, and empty rows. `chat.spec` verifies
+that a live activity row appears at turn startup in the default detail, that
+`Messages only` keeps it visible while the server works, and that it hides after
+the turn settles.
 `test:provider-runtime` runs actual provider callbacks and extracted hooks with
 deterministic platform/timer boundaries: out-of-order project results, stale
 same-directory server responses, safety-poll overlap, reconnect snapshots,

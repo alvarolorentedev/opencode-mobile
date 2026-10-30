@@ -16,6 +16,7 @@ import type { PromptContextItem } from '@/lib/opencode/prompt-inbox';
 import { buildTranscriptRows, getTurnPatchDetails } from '@/lib/opencode/transcript';
 import { getLatestContextTokens } from '@/lib/opencode/usage';
 import type { ComposerSuggestion } from './composer-suggestion-types';
+import { getChatActivityState, getCurrentTurnActivityKey } from './chat-view-utils';
 import { useChatComposerNotices } from './use-chat-composer-notices';
 import { useChatDraft } from './use-chat-draft';
 import { useChatViewActions } from './use-chat-view-actions';
@@ -78,6 +79,7 @@ export function useChatViewController() {
   const [sessionMenuVisible, setSessionMenuVisible] = useState(false);
   const [isUpdatingAutoApprove, setIsUpdatingAutoApprove] = useState(false);
   const [isStoppingSession, setIsStoppingSession] = useState(false);
+  const [isSubmittingPrompt, setIsSubmittingPrompt] = useState(false);
   const [expandedDiffId, setExpandedDiffId] = useState<string | undefined>();
   const [copiedMessageId, setCopiedMessageId] = useState<string | undefined>();
   const [sendFeedback, setSendFeedback] = useState<string | undefined>(undefined);
@@ -132,6 +134,20 @@ export function useChatViewController() {
     () => buildTranscriptRows(currentTranscript, chatPreferences.timelineDetail),
     [chatPreferences.timelineDetail, currentTranscript],
   );
+  // A live status row is only needed when no transcript activity row can carry
+  // the progress affordance. Messages-only transcripts never build one, and the
+  // first moments of a turn precede the first reasoning/tool detail.
+  const pendingActivity = pendingPrompts.some((prompt) => prompt.state === 'sending' || prompt.state === 'waiting');
+  const activityState = getChatActivityState({
+    awaitingUserInput,
+    sendingStateActive: sendingState.active,
+    submitting: isSubmittingPrompt,
+    pendingActive: pendingActivity,
+    status,
+  });
+  const activityStatusLabel = activityState && !getCurrentTurnActivityKey(transcriptRows)
+    ? t(`chat:activity.${activityState}`)
+    : undefined;
   const hasTranscriptMessages = currentMessages.length > 0;
   const selectedSession = useMemo(
     () => sessions.find((session) => session.id === currentSessionId) || activeSession,
@@ -251,6 +267,7 @@ export function useChatViewController() {
     }
 
     submittingRef.current = true;
+    setIsSubmittingPrompt(true);
     let sessionId = currentSessionId;
     try {
       setSendFeedback(undefined);
@@ -282,7 +299,10 @@ export function useChatViewController() {
       }
     } catch (error) {
       if (snapshot.restore(sessionId)) setSendFeedback(error instanceof Error ? error.message : t('chat:view.couldNotSend'));
-    } finally { submittingRef.current = false; }
+    } finally {
+      submittingRef.current = false;
+      setIsSubmittingPrompt(false);
+    }
   }, [activeProject, capture, clearRevertPrefill, commands, connection.status, currentSessionId, ensureActiveSession, executeCommand, executeShell, isV2, sendPrompt, serverCapabilities.shellCommand, t]);
 
   const handleDraftChange = useCallback((value: string) => {
@@ -356,7 +376,7 @@ export function useChatViewController() {
     },
     content: {
       workspaceId,
-      activeSession, activityRunning: running && !awaitingUserInput, awaitingUserInput, cancelingPromptId, changesVisible, completedTodoCount,
+      activeSession, activityRunning: (running || isSubmittingPrompt) && !awaitingUserInput, activityStatusLabel, awaitingUserInput, cancelingPromptId, changesVisible, completedTodoCount,
       copiedMessageId, currentDiffs, currentDiffScope,
       currentPendingPermissions, currentPendingQuestions, currentSessionId, currentTodos,
       diffAdditions, diffCount, diffDeletions, diffDetails, diffTurns, transcriptRows,

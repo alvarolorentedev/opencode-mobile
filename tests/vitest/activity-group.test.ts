@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import * as transcript from '@/lib/opencode/transcript';
 import { hookRuntime, loadTs, recyclingState } from '../helpers/runtime.mjs';
 
-type Element = { type: unknown; props: { children?: unknown; text?: string; selectable?: boolean; onPress?: () => void; disabled?: boolean; accessibilityLabel?: string; accessibilityState?: { expanded?: boolean } } };
+type Element = { type: unknown; props: { children?: unknown; text?: string; selectable?: boolean; onPress?: () => void; disabled?: boolean; accessibilityLabel?: string; accessibilityLiveRegion?: string; accessibilityState?: { expanded?: boolean }; testID?: string } };
 
 function find(node: unknown, type: string, out: Element[] = []) {
   if (!node || typeof node !== 'object') return out;
@@ -70,7 +70,7 @@ const group = (overrides: Partial<transcript.ActivityGroup> = {}): transcript.Ac
   ...overrides,
 });
 
-async function mountGroup(value: transcript.ActivityGroup, sessionRunning = false) {
+async function mountGroup(value: transcript.ActivityGroup, sessionRunning = false, statusLabel?: string) {
   const runtime = hookRuntime();
   const element = (type: unknown, props: unknown) => ({ type, props });
   const { ActivityGroupRow } = await loadTs('components/chat/cards/activity-group.tsx', {
@@ -91,7 +91,7 @@ async function mountGroup(value: transcript.ActivityGroup, sessionRunning = fals
     '@/lib/opencode/format': { getToolDisplayName: (name: string) => (name === 'bash' ? 'Shell' : name === 'read' ? 'Read' : name === 'edit' ? 'Edit' : name === 'patch' ? 'Patch' : name) },
     '@/lib/opencode/transcript': { buildActivityChildRows: transcript.buildActivityChildRows },
   }, runtime.globals);
-  runtime.mount(ActivityGroupRow, { flat: false, fontSize: 16, group: value, palette: {}, sessionRunning });
+  runtime.mount(ActivityGroupRow, { flat: false, fontSize: 16, group: value, palette: {}, sessionRunning, statusLabel });
   return runtime;
 }
 
@@ -190,6 +190,15 @@ describe('activity groups', () => {
     const runtime = await mountGroup(group(), true);
     expect(find(runtime.value, 'ActivityIndicator')).toHaveLength(1);
     expect(find(runtime.value, 'ActivityItemRow')).toHaveLength(0);
+  });
+
+  it('renders a non-interactive live status row with the supplied label', async () => {
+    const runtime = await mountGroup(group({ key: 'session-status', callCount: 0, tools: [], items: [], status: 'running' }), false, 'OpenCode is working…');
+    expect(find(runtime.value, 'Text').some((node) => node.props.children === 'OpenCode is working…')).toBe(true);
+    expect(find(runtime.value, 'ActivityIndicator')).toHaveLength(1);
+    expect(find(runtime.value, 'Pressable')).toHaveLength(0);
+    expect(find(runtime.value, 'View').some((node) => node.props.testID === 'transcript-activity-session-status'
+      && node.props.accessibilityLiveRegion === 'polite')).toBe(true);
   });
 
   it('keeps a manual expansion after the run settles', async () => {

@@ -146,7 +146,7 @@ After submission:
 The Chat screen shows:
 
 - transcript messages
-- a progress circle on the active activity header and active child row while OpenCode is active
+- a progress circle on the active activity header and active child row while OpenCode is active; when no activity row can show it yet (the first moments of a turn or `Messages only`), a live activity row carries the current state
 - floating permission actions or a full-screen question flow if OpenCode is blocked waiting for the user
 - a changes tab with current file diffs
 - todos when provided by the server
@@ -155,7 +155,7 @@ Behavior details:
 
 - the transcript honors the `timelineDetail` preference, which defaults to `Everything`: `Messages only` renders user and assistant bubbles with files and errors, `Reasoning` adds reasoning activity, and `Everything` renders the full detailed timeline with reasoning, tools, and patches
 - at `Everything` detail, reasoning, tool, and patch rows render as a two-level activity timeline outside message bubbles and match the assistant bubble's width; contiguous activity merges into one growing run whose `Used <total> <types>` header lists every rendered type once, including `Thought`, runs start collapsed and expand only on an explicit tap, and each child expands independently; shell output is a selectable, copyable code block, grep stays a one-line pattern with its match count, consecutive reads collapse to one filename list, and edit/write/patch files render expandable diff cards with `+N −N`; the initial pull loads one newest window of up to 200 records without a display-target loop
-- no separate `OpenCode is ...` running footer is reserved; while the session runs, the newest activity header keeps the progress circle even after its own tools complete, and the active child row carries it only while that row is running
+- no separate `OpenCode is ...` running footer is reserved; while the session runs, the newest activity header keeps the progress circle even after its own tools complete, and the active child row carries it only while that row is running. If the transcript has no activity row to carry it (including `Messages only`), a transient non-expandable activity row shows `Sending…`, `Waiting for OpenCode…`, `OpenCode is working…`, or `OpenCode is retrying…` in the same activity-row position; it coexists with the pending-prompt stack and disappears when the session settles or a real activity row takes over
 - a small floating progress view shows the current step and completed count; tapping it opens a content-sized overlay with the task list; pending permission actions replace it while blocked
 - a pending question opens a full-screen answer flow immediately; dismissal leaves an `Answer needed` card above the composer and does not reject the request
 

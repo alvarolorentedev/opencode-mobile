@@ -9,14 +9,29 @@ import { ActivityIndicator, Button, Card, Text, TouchableRipple } from 'react-na
 import { TranscriptMessage } from '@/components/chat/chat-cards';
 import { ActivityGroupRow } from '@/components/chat/cards/activity-group';
 import { styles, slimStyles } from '@/components/chat/chat-view-styles';
-import { STARTER_PROMPT_KEYS } from '@/components/chat/chat-view-utils';
+import { getCurrentTurnActivityKey, STARTER_PROMPT_KEYS } from '@/components/chat/chat-view-utils';
 import { TranscriptSkeleton } from '@/components/chat/content/transcript-skeleton';
 import { Colors } from '@/constants/theme';
 import type { TranscriptEntry } from '@/lib/opencode/format';
-import type { TranscriptRow } from '@/lib/opencode/transcript';
+import type { ActivityGroup, TranscriptRow } from '@/lib/opencode/transcript';
 
 type Palette = typeof Colors.light;
 type Connection = { status: 'idle' | 'connecting' | 'connected' | 'error'; message: string };
+
+// A transient status occupies the same activity-row footprint while no real
+// activity row exists (the start of a turn or a Messages-only transcript).
+type ActivityStatusRow = { key: string; type: 'activityStatus'; label: string };
+type TranscriptListItem = TranscriptRow | ActivityStatusRow;
+
+const ACTIVITY_STATUS_KEY = 'activity-status:session';
+const ACTIVITY_STATUS_GROUP: ActivityGroup = {
+  key: 'session-status',
+  kind: 'activity',
+  items: [],
+  tools: [],
+  callCount: 0,
+  status: 'running',
+};
 
 // Stable reference so FlashList does not treat every parent render as a prop
 // change. Combined with the memoized TranscriptMessage rows this keeps
@@ -40,6 +55,7 @@ type TranscriptListProps = {
   positionKey?: string;
   positions?: Map<string, unknown>;
   activityRunning: boolean;
+  activityStatusLabel?: string;
   connection: Connection;
   copiedMessageId?: string;
   currentSessionId?: string;
@@ -68,6 +84,7 @@ type TranscriptListProps = {
 export function TranscriptList({
   positionKey, positions,
   activityRunning,
+  activityStatusLabel,
   connection,
   copiedMessageId,
   currentSessionId,
@@ -94,17 +111,22 @@ export function TranscriptList({
 }: TranscriptListProps) {
   const { t } = useTranslation();
   const focused = useIsFocused();
-  const transcriptRef = useRef<FlashListRef<TranscriptRow>>(null);
+  const rows = useMemo<TranscriptListItem[]>(() => (
+    activityStatusLabel
+      ? [...transcriptRows, { key: ACTIVITY_STATUS_KEY, type: 'activityStatus', label: activityStatusLabel }]
+      : transcriptRows
+  ), [activityStatusLabel, transcriptRows]);
+  const transcriptRef = useRef<FlashListRef<TranscriptListItem>>(null);
   const followTailRef = useRef(true);
   const lastOffsetRef = useRef(0);
   const settleFramesRef = useRef(0);
   const settleFrameRef = useRef<number | undefined>(undefined);
-  const transcriptRowsRef = useRef(transcriptRows);
-  const previousRowCountRef = useRef(transcriptRows.length);
+  const transcriptRowsRef = useRef<TranscriptListItem[]>(rows);
+  const previousRowCountRef = useRef(rows.length);
   const [detached, setDetached] = useState(false);
   const [unseen, setUnseen] = useState(false);
   useLayoutEffect(() => {
-    transcriptRowsRef.current = transcriptRows;
+    transcriptRowsRef.current = rows;
   });
 
   const identity = positionKey ?? currentSessionId ?? 'no-session';
@@ -144,19 +166,19 @@ export function TranscriptList({
   // maintainVisibleContentPosition keeps the visible position otherwise. Group
   // content grows without adding rows, so include the detail count.
   useEffect(() => {
-    if (transcriptRows.length === 0) return;
+    if (rows.length === 0) return;
     if (followTailRef.current) settleToTail();
-  }, [identity, transcriptRows, settleToTail]);
+  }, [identity, rows, settleToTail]);
 
   useEffect(() => {
-    const grew = transcriptRows.length > previousRowCountRef.current;
-    previousRowCountRef.current = transcriptRows.length;
+    const grew = rows.length > previousRowCountRef.current;
+    previousRowCountRef.current = rows.length;
     if (!followTailRef.current && grew) {
       setUnseen(true);
     } else if (followTailRef.current) {
       setUnseen(false);
     }
-  }, [transcriptRows]);
+  }, [rows]);
 
   const restorePosition = useCallback(() => {
     if (transcriptRowsRef.current.length === 0) return;
@@ -203,22 +225,17 @@ export function TranscriptList({
     settleToTail();
   }, [identity, positions, settleToTail]);
 
-  // While the session runs, the newest activity run remains the visible
-  // progress anchor even after its own tools complete.
-  const lastActivityKey = useMemo(() => {
-    for (let index = transcriptRows.length - 1; index >= 0; index -= 1) {
-      if (transcriptRows[index].type === 'activity') return transcriptRows[index].key;
-    }
-    return undefined;
-  }, [transcriptRows]);
-  const extraData = useMemo(() => ({ copiedMessageId, speakingMessageId, activityRunning, lastActivityKey }), [copiedMessageId, speakingMessageId, activityRunning, lastActivityKey]);
+  // While the session runs, the current turn's newest activity run remains the
+  // visible progress anchor even after its own tools complete.
+  const lastActivityKey = useMemo(() => getCurrentTurnActivityKey(transcriptRows), [transcriptRows]);
+  const extraData = useMemo(() => ({ activityStatusLabel, copiedMessageId, speakingMessageId, activityRunning, lastActivityKey }), [activityStatusLabel, copiedMessageId, speakingMessageId, activityRunning, lastActivityKey]);
 
   return (
     <View style={styles.transcriptContainer}>
       <FlashList
       key={identity}
       ref={transcriptRef}
-      data={transcriptRows}
+      data={rows}
       style={styles.scroll}
       contentContainerStyle={[
         styles.content,
@@ -236,6 +253,24 @@ export function TranscriptList({
       onStartReached={hasOlderMessages ? onLoadOlderMessages : undefined}
       onStartReachedThreshold={0.5}
       renderItem={({ item: row }) => {
+        if (row.type === 'activityStatus') {
+          return (
+            <View style={[
+              styles.transcriptItem,
+              slim && slimStyles.transcriptItem,
+              flatTranscript && (slim ? slimStyles.transcriptItemFlat : styles.transcriptItemFlat),
+            ]}>
+              <ActivityGroupRow
+                flat={flatTranscript}
+                fontSize={transcriptFontSize}
+                group={ACTIVITY_STATUS_GROUP}
+                palette={palette}
+                statusLabel={row.label}
+              />
+            </View>
+          );
+        }
+
         if (row.type === 'activity') {
           return (
             <View style={[
@@ -343,7 +378,7 @@ export function TranscriptList({
         )
       }
       />
-      {detached && transcriptRows.length > 0 ? (
+      {detached && rows.length > 0 ? (
         <View pointerEvents="box-none" style={styles.jumpToLatestWrap}>
           <Button
             testID="chat-jump-to-latest"

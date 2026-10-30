@@ -17,9 +17,12 @@ type Palette = typeof Colors.light;
 // expansion is an explicit user action, and the keyed state keeps it for the
 // life of the row. Active work only changes the progress affordance, never the
 // collapse state, so a run cannot open and close on its own while it streams.
-export function ActivityGroupRow({ flat = false, fontSize, group, palette, sessionRunning = false }: { flat?: boolean; fontSize: number; group: ActivityGroup; palette: Palette; sessionRunning?: boolean }) {
+// `statusLabel` renders a transient live-status row with the same footprint
+// when no real activity run exists; it is not expandable and has no chevron.
+export function ActivityGroupRow({ flat = false, fontSize, group, palette, sessionRunning = false, statusLabel }: { flat?: boolean; fontSize: number; group: ActivityGroup; palette: Palette; sessionRunning?: boolean; statusLabel?: string }) {
   const { t } = useTranslation();
   const [expanded, setExpanded] = useRecyclingState(false, [group.key]);
+  const statusOnly = statusLabel !== undefined;
   const running = group.status === 'running';
   const showProgress = running || sessionRunning;
 
@@ -45,29 +48,45 @@ export function ActivityGroupRow({ flat = false, fontSize, group, palette, sessi
     return names;
   }, [childRows, reasoningCount, t]);
   const hasToolType = childRows.some((row) => row.kind === 'read' || row.item.kind === 'tool' || row.item.kind === 'patch');
-  const label = hasToolType && group.callCount > 0
+  const label = statusLabel ?? (hasToolType && group.callCount > 0
     ? t('chat:activity.used', { count: group.callCount, tools: types.join(', ') })
     : reasoningCount > 0
       ? t('chat:activity.thoughtCount', { count: reasoningCount })
-      : types.join(', ');
+      : types.join(', '));
   const actionLabel = t(expanded ? 'chat:activity.collapseActivity' : 'chat:activity.expandActivity');
+  const header = (
+    <>
+      <Text variant="bodyMedium" numberOfLines={2} style={[styles.label, { color: palette.muted }]}>{label}</Text>
+      <View style={styles.spacer} />
+      {group.status === 'error' ? <MaterialCommunityIcons name="alert-circle-outline" size={15} color={palette.danger} /> : null}
+      {showProgress ? <ActivityIndicator size={12} color={palette.tint} /> : null}
+      {statusOnly ? null : <MaterialCommunityIcons name={expanded ? 'chevron-down' : 'chevron-right'} size={16} color={palette.muted} />}
+    </>
+  );
 
   return (
     <View style={[styles.container, !flat && styles.containerAssistant]}>
-      <Pressable
-        accessibilityLabel={`${label}. ${actionLabel}`}
-        accessibilityRole="button"
-        accessibilityState={{ expanded }}
-        onPress={() => setExpanded((value) => !value)}
-        style={({ pressed }) => [styles.header, pressed ? { backgroundColor: palette.surfaceAlt } : null]}
-        testID={`transcript-activity-${group.key}`}>
-        <Text variant="bodyMedium" numberOfLines={2} style={[styles.label, { color: palette.muted }]}>{label}</Text>
-        <View style={styles.spacer} />
-        {group.status === 'error' ? <MaterialCommunityIcons name="alert-circle-outline" size={15} color={palette.danger} /> : null}
-        {showProgress ? <ActivityIndicator size={12} color={palette.tint} /> : null}
-        <MaterialCommunityIcons name={expanded ? 'chevron-down' : 'chevron-right'} size={16} color={palette.muted} />
-      </Pressable>
-      {expanded ? (
+      {statusOnly ? (
+        <View
+          accessible
+          accessibilityLabel={label}
+          accessibilityLiveRegion="polite"
+          style={styles.header}
+          testID={`transcript-activity-${group.key}`}>
+          {header}
+        </View>
+      ) : (
+        <Pressable
+          accessibilityLabel={`${label}. ${actionLabel}`}
+          accessibilityRole="button"
+          accessibilityState={{ expanded }}
+          onPress={() => setExpanded((value) => !value)}
+          style={({ pressed }) => [styles.header, pressed ? { backgroundColor: palette.surfaceAlt } : null]}
+          testID={`transcript-activity-${group.key}`}>
+          {header}
+        </Pressable>
+      )}
+      {!statusOnly && expanded ? (
         <View style={styles.items}>
           {childRows.map((row) => (
             row.kind === 'read'

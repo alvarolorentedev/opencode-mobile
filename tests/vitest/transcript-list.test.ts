@@ -1,4 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
+
+import { getCurrentTurnActivityKey } from '@/components/chat/chat-view-utils';
 import { hookRuntime, loadTs } from '../helpers/runtime.mjs';
 
 type Overrides = Partial<Parameters<typeof listProps>[0]>;
@@ -6,6 +8,7 @@ type Overrides = Partial<Parameters<typeof listProps>[0]>;
 function listProps(overrides: Record<string, unknown> = {}) {
   return {
     activityRunning: false,
+    activityStatusLabel: undefined as string | undefined,
     connection: { status: 'connected' as const, message: '' },
     currentSessionId: 'session-1',
     transcriptRows: [] as unknown[],
@@ -44,7 +47,7 @@ async function mountTranscriptList(overrides: Overrides = {}) {
     '@/components/chat/chat-cards': { TranscriptMessage: 'TranscriptMessage' },
     '@/components/chat/cards/activity-group': { ActivityGroupRow: 'ActivityGroupRow' },
     '@/components/chat/chat-view-styles': { styles: {}, slimStyles: {} },
-    '@/components/chat/chat-view-utils': { STARTER_PROMPT_KEYS: [] },
+    '@/components/chat/chat-view-utils': { getCurrentTurnActivityKey, STARTER_PROMPT_KEYS: [] },
     '@/components/chat/content/transcript-skeleton': { TranscriptSkeleton: 'TranscriptSkeleton' },
     '@/constants/theme': { Colors: { light: {} } },
   }, { ...runtime.globals, requestAnimationFrame: () => 1, cancelAnimationFrame: () => undefined });
@@ -123,6 +126,16 @@ describe('transcript empty state', () => {
   it('does not reserve a running-status footer', async () => {
     const { list } = await mountTranscriptList();
     expect(list.props.ListFooterComponent).toBeUndefined();
+  });
+
+  it('appends a live status row in the activity area when requested', async () => {
+    const idle = await mountTranscriptList();
+    expect(idle.list.props.data).toEqual([]);
+
+    const { list } = await mountTranscriptList({ activityStatusLabel: 'OpenCode is working…' });
+    expect(list.props.data).toHaveLength(1);
+    expect(list.props.data[0]).toMatchObject({ type: 'activityStatus', label: 'OpenCode is working…' });
+    expect(JSON.stringify(list.props.renderItem({ item: list.props.data[0] }))).toContain('OpenCode is working…');
   });
 
   it('marks only the last activity row as the session-running anchor', async () => {

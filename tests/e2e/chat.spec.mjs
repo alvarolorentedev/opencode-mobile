@@ -62,6 +62,7 @@ test('reverting a running reply stops it before staging the rewind', async ({ pa
   await page.setViewportSize({ width: 390, height: 844 });
   await openReadyChat(page);
   await sendPrompt(page, 'Keep working on the revert');
+  await expect(page.getByTestId('transcript-activity-session-status')).toContainText('OpenCode is working…');
   await expect(page.getByText('Working on: Keep working on the revert', { exact: true }).first()).toBeVisible();
 
   const userMessage = page.locator('[data-testid^="transcript-message-"]').filter({ has: page.getByText('Keep working on the revert', { exact: true }) });
@@ -456,6 +457,24 @@ test('completed progress stays compact and activity patches keep their turn afte
     await expect(page.getByText('app/(tabs)/index.tsx', { exact: true })).toBeVisible();
     await expect(page.getByText('src/feature.ts', { exact: true })).toHaveCount(0);
   } finally { server.kill('SIGTERM'); }
+});
+
+test('Messages only keeps a live activity row while the server is working', async ({ page, request }) => {
+  await resetScenario(request, 'inbox');
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.addInitScript(() => {
+    globalThis.localStorage.setItem('opencode-mobile.chat-preferences', JSON.stringify({ timelineDetail: 'messages' }));
+  });
+  await openReadyChat(page);
+  await sendPrompt(page, 'Keep working without activity rows');
+
+  const liveActivity = page.getByTestId('transcript-activity-session-status');
+  await expect(liveActivity).toBeVisible({ timeout: 15_000 });
+  await expect(liveActivity).toContainText('OpenCode is working…');
+  await expect(page.locator('[data-testid^="transcript-activity-"]:not([data-testid="transcript-activity-session-status"])')).toHaveCount(0);
+
+  await page.getByTestId('chat-primary-button').click();
+  await expect(liveActivity).toBeHidden({ timeout: 15_000 });
 });
 
 test('timeline detail hides activity and restores it from the settings slider', async ({ page, request }) => {
