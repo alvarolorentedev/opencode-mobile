@@ -165,7 +165,7 @@ selection action. Terminal follows that directory.
 - `new-chat-sheet.tsx`: confirms server, project, and checkout, and is the only worktree creation entry point. It can create a worktree and start the chat, with partial-success recovery.
 - `project-picker.tsx`: server groups, search, retry/stale state, and project-only rows. Worktree selection is a separate second-level control.
 - `new-terminal-sheet.tsx`: confirms server, project and resolved cwd before PTY creation. `retained-terminals.tsx` holds the renderer hosts; the terminal picker lists all retained owners.
-- `server-context-picker.tsx`: independent Settings server/project inspection. AI & Providers, MCP, diagnostics and approvals receive that context; app preferences remain global.
+- `server-context-picker.tsx`: independent Settings server/project inspection. Server selection lives on Settings home; server category sheets keep its read-only context caption and only retain the project picker for MCP/diagnostics. AI & Providers, MCP, diagnostics and approvals receive that context; app preferences remain global.
 - `server-approvals.tsx`: pending requests/questions, saved grants and per-server auto-approve, reusing chat permission cards and existing server actions.
 - `workspace-select.tsx`: the house NativeSelect with an outlined button trigger. `OverlaySheet` bridges workspace context through the Paper portal host.
 

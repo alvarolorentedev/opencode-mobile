@@ -384,6 +384,8 @@ support), Connections (Connection and eligible Cloud Link), then Selected server
 (AI & providers, Extensions, Approvals, Server diagnostics). Every category opens
 in the existing content-sized sheet; longer content scrolls below its fixed
 Close header. Connection and provider forms retain their keyboard-safe surfaces.
+Server selection is made once on Settings home; server category sheets do not
+repeat the selector, and MCP/diagnostics keep their project context control.
 
 Local search matches localized labels, descriptions and curated category keywords.
 Results identify a setting and category; selecting one reveals its control,

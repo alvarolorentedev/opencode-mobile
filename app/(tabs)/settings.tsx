@@ -188,7 +188,7 @@ function SettingsContent() {
 
       <OverlaySheet visible={Boolean(activeSection)} fitContent scrollable={false} testID="settings-section-overlay" title={activeSection?.title ?? t('common:tabs.settings')} onClose={() => { setOpenSection(undefined); setSearchTarget(undefined); }}>
         <SettingsPanel target={searchTarget}>
-          {activeSection?.group === 'server' ? <ServerContextPicker project={activeSection.id === 'advanced' || activeSection.id === 'extensions'} /> : null}
+          {activeSection?.group === 'server' ? <ServerContextPicker server={false} project={activeSection.id === 'advanced' || activeSection.id === 'extensions'} /> : null}
           <View key={activeSection?.group === 'server' ? `${activeSection.id}:${getConnectionUiScope(settings)}:${activeProjectPath ?? ''}` : activeSection?.id}>{activeSection?.render?.() ?? null}</View>
         </SettingsPanel>
       </OverlaySheet>

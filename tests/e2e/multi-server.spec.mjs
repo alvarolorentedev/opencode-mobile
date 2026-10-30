@@ -150,6 +150,7 @@ test('V2 settings inspection and auto-approve are independent of chat', async ({
   await page.getByRole('button', { name: /^Approvals/ }).click();
   const overlay = page.getByTestId('settings-section-overlay');
   await expect(overlay.getByText('Changes apply to Build server')).toBeVisible();
+  await expect(overlay.getByTestId('settings-server-picker')).toHaveCount(0);
   await overlay.getByRole('switch', { name: 'Auto-approve', exact: true }).click();
   await expect.poll(async () => page.evaluate(() => JSON.parse(localStorage.getItem('opencode-mobile.workspaces')).connections.map((entry) => entry.preferences.autoApprove))).toEqual([false, true]);
   await overlay.getByRole('button', { name: 'Close', exact: true }).click();
@@ -250,6 +251,11 @@ test('V2 single-server mode hides redundant context and restores it when a secon
   await addConnection(page, { name: 'Second server', url: serverUrl });
   await goToTab(page, 'Settings');
   await expect(page.getByTestId('settings-server-picker')).toBeVisible();
+  await page.getByTestId('settings-category-advanced').click();
+  const advancedOverlay = page.getByTestId('settings-section-overlay');
+  await expect(advancedOverlay.getByTestId('settings-project-picker')).toBeVisible();
+  await expect(advancedOverlay.getByTestId('settings-server-picker')).toHaveCount(0);
+  await advancedOverlay.getByRole('button', { name: 'Close', exact: true }).click();
   await goToTab(page, 'Chat');
   await openChatLibrary(page);
   await expect(library.getByTestId('chat-server-filter')).toBeVisible();

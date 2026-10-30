@@ -132,9 +132,10 @@ Home order is App preferences, Connections, Selected server. App preferences
 contains Appearance, Chat & responses, Voice & audio, Notifications, Language,
 and About & support. Connection management and Cloud Link have their own group.
 AI & providers, Extensions, Approvals and Server diagnostics use the independent
-inspection target. Show server selection only when multiple servers exist;
-preserve project selection where applicable. Inspecting settings must not move
-the active chat or alter preference scope.
+inspection target. Server selection is made once on Settings home when multiple
+servers exist; server category sheets show a read-only context caption instead
+of repeating the selector, and preserve project selection where applicable.
+Inspecting settings must not move the active chat or alter preference scope.
 
 Each category is declared once in `buildSettingsSections()`: stable `id`,
 `group`, icon, localized title/summary, open action and renderer. Its `targets`
