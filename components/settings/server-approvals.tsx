@@ -45,7 +45,7 @@ export function ServerApprovals() {
       <Button mode={section === 'saved' ? 'contained-tonal' : 'text'} onPress={() => setSection('saved')}>{t('common:servers.savedRules', { count: approvals.savedPermissions.length })}</Button></View>
     {error ? <Text accessibilityRole="alert" style={{ color: palette.danger }}>{error}</Text> : null}
     {section === 'saved' ? <PermissionsSection palette={palette} rules={approvals.savedPermissions} serverName={registry.connections.find((entry) => entry.id === id)?.name}
-      onRefresh={() => void approvals.refreshSavedPermissions()} onRemove={(rule) => void approvals.removeSavedPermission(rule).catch((reason) => setError(String(reason)))} /> : <>
+      onRemove={(rule) => void approvals.removeSavedPermission(rule).catch((reason) => setError(String(reason)))} /> : <>
       {[...requests.values()].map(({ key, runtime, projectPath, request }) => <View key={`${key}:${request.id}`} style={{ gap: 8 }}>
         <Text>{multipleServers ? `${settings.serverUrl} / ` : ''}{projectPath}</Text>
         <PermissionRequestCard request={request} sourceTitle={runtime.values.sessionLibraryValue.sessions.find((session) => session.id === request.sessionID)?.title}

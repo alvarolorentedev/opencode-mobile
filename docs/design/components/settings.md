@@ -35,7 +35,7 @@ offers when inactive, one Restore row), and a Machines shortcut to the existing
 management route, closing with a learn-more row. It uses the shared Settings
 overlay and provider state; it
 never opens the camera or starts a purchase merely by opening the section.
-`connect-panel.tsx` renders the separate machine/profile management view. `app/pair.tsx` ingests links and navigates only; deep links skip the camera gate.
+`connect-panel.tsx` renders the separate machine/profile management view. It loads the machine list when the view opens and on app resume, so the surface has no refresh action. `app/pair.tsx` ingests links and navigates only; deep links skip the camera gate.
 Domain state/actions come from `useConnection().connectSetup`; see [Cloud Link](../../product/cloud-link.md).
 
 After a valid Cloud Link claim, the pairing surface shows desktop-confirmation
@@ -192,6 +192,8 @@ Responsibility:
 - show notification readiness
 - request notification permission
 - deep-link into app, notification, and battery settings
+- re-read permission and background-task state when the section opens and when
+  the app resumes; it has no manual refresh action
 
 #### `VoiceSection`
 
@@ -204,6 +206,8 @@ Responsibility:
   expose setup without activating an engine or starting a download.
 - Preview and Read replies aloud remain visible; rate, progress readback, working
   sound, wake phrase (when required) and troubleshooting live in `VoiceMoreSettings`.
+- Voice capability and permission checks re-run when the section opens and when
+  the app resumes; troubleshooting has no manual re-check action.
 - Shared by Settings and first-run onboarding; tab blur stops preview and capture.
 
 #### `VoiceInputSetup` and `VoiceFlowScreen`
@@ -291,7 +295,9 @@ Responsibility:
 Responsibility:
 
 - V2-only Settings view of server-persisted "always allow" rules
-- show each rule's resource and action, confirm-remove one, refresh on demand
+- show each rule's resource and action, confirm-remove one
+- read the list when the section opens and after an "always allow" reply; the
+  surface has no manual refresh action
 - reads and mutates provider-owned `savedPermissions` through the chat
   `approvals` value; performs no fetch itself
 
@@ -338,8 +344,10 @@ Main relevant props:
 - reuse `use-mcp-authentication.tsx` and `ProviderConfigDialog` for native integration forms, code or automatic OAuth, cancellation and stale-result guards
 - show v2 OAuth only for servers that expose an `integrationID`
 - show status and failure details
-- connect/disconnect, enable/disable, remove, refresh, and complete remote OAuth
-- refresh MCP status when the section opens instead of during every connection bootstrap
+- connect/disconnect, enable/disable, remove, and complete remote OAuth
+- refresh MCP status when the section opens, on MCP events, and after runtime
+  actions instead of during every connection bootstrap; the surface has no
+  manual refresh action
 - retain only form, busy, error, and OAuth-code UI state locally
 
 ### `components/settings/extensions-section.tsx`
@@ -363,6 +371,8 @@ Main relevant props:
 - keep the path optional on management revision 2 (empty serves the port root, with the keep-prefix toggle shown only for path services) and stay on the legacy path-only form, plus a non-blocking update hint, for revision 1 or unknown older connectors
 - mirror the connector's validation locally and surface the connector's own error message on rejection
 - copy the service's shareable `https://<host>:<port>/` or `https://<host>:<port><path>/` link
+- refresh the list when the section opens and after every save/remove; the
+  surface has no manual refresh action
 - own only form, busy, error and feedback UI state; all reads/writes and canonical values come from the provider's services domain
 - rendered only for Cloud Link connections; the provider hides it for manual connections
 

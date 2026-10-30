@@ -3,7 +3,7 @@ import * as IntentLauncher from 'expo-intent-launcher';
 import * as Linking from 'expo-linking';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Platform } from 'react-native';
+import { AppState, Platform } from 'react-native';
 
 import {
   ensureNotificationPermissionsAsync,
@@ -94,6 +94,16 @@ export function useNotificationSetup() {
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- hydrate notification status once on mount.
     void refreshStatus();
+  }, [refreshStatus]);
+
+  useEffect(() => {
+    // Permission and background-task state can change in system settings while
+    // the app is backgrounded. Re-read it when the app becomes active instead
+    // of exposing a manual refresh action.
+    const subscription = AppState.addEventListener('change', (state) => {
+      if (state === 'active') void refreshStatus();
+    });
+    return () => subscription.remove();
   }, [refreshStatus]);
 
   return {

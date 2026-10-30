@@ -69,10 +69,10 @@ function TerminalContent() {
   useUpdateBlocker(isCreating || Boolean(busyId) || Boolean(openingKey));
 
   useEffect(() => {
-    if (connection.status === 'connected' && activeProject) {
+    if (visible && connection.status === 'connected' && activeProject) {
       void refreshTerminals().catch((reason) => setError(message(reason, t('terminal:errors.load'))));
     }
-  }, [activeProject, connection.status, refreshTerminals, t]);
+  }, [activeProject, connection.status, refreshTerminals, t, visible]);
 
   async function handleCreate(target: WorkspaceTarget) {
     setIsCreating(true);
@@ -114,7 +114,10 @@ function TerminalContent() {
               testID="terminal-selector"
               accessibilityRole="button"
               accessibilityLabel={t('terminal:console.selectTerminal')}
-              onPress={() => setTerminalPickerVisible(true)}
+              onPress={() => {
+                setTerminalPickerVisible(true);
+                void refreshTerminals().catch((reason) => setError(message(reason, t('terminal:errors.refresh'))));
+              }}
               style={({ pressed }) => [styles.headerSelector, pressed && styles.headerSelectorPressed]}>
               <View style={styles.headerCopy}>
                 <Text numberOfLines={1} variant="titleMedium" style={[styles.headerTitle, { color: palette.text }]}>
@@ -134,12 +137,6 @@ function TerminalContent() {
               accessibilityLabel={t('terminal:console.create')}
               disabled={isCreating || Boolean(busyId)}
               onPress={() => setCreating(true)}
-            />
-            <Appbar.Action
-              icon="refresh"
-              accessibilityLabel={t('terminal:console.refresh')}
-              disabled={Boolean(busyId) || isCreating}
-              onPress={() => void refreshTerminals().catch((reason) => setError(message(reason, t('terminal:errors.refresh'))))}
             />
           </View>
         </Appbar.Header>

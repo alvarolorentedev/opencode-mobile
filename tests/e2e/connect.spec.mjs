@@ -56,7 +56,7 @@ async function submitLink(page, link) {
 async function manage(page) {
   await page.getByTestId('connect-options').click();
   await page.getByTestId('connect-manage').click();
-  await expect(page.getByTestId('connect-refresh-machines')).toBeVisible();
+  await expect(page.getByTestId('connect-management-panel')).toBeVisible();
 }
 async function events(page) { return page.evaluate(() => globalThis.__connectStoreTest.events); }
 async function openSubscriptionSettings(page) {
@@ -241,7 +241,7 @@ for (const theme of ['dark', 'light']) {
     await page.getByRole('button', { name: /^Cloud Link/ }).click();
     await page.getByTestId('subscription-machines').click();
     await expect(page).toHaveURL(/\/pair\?mode=manage$/);
-    await expect(page.getByTestId('connect-refresh-machines')).toBeVisible();
+    await expect(page.getByTestId('connect-access-machine-1')).toBeVisible();
     await expect(page.getByTestId('subscription-section')).toHaveCount(0);
     expect(state.pairClaims).toBe(0);
     await assertNoStoredSecrets(page);

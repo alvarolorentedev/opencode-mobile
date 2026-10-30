@@ -9,7 +9,6 @@
   "console": {
     "selectTerminal": "Seleccionar terminal",
     "create": "Crear terminal",
-    "refresh": "Actualizar terminales",
     "openOrCreate": "Abre o crea una terminal para empezar.",
     "terminateTitle": "¿Terminar la terminal?",
     "terminateAction": "Terminar",

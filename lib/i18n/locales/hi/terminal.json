@@ -9,7 +9,6 @@
   "console": {
     "selectTerminal": "टर्मिनल चुनें",
     "create": "टर्मिनल बनाएँ",
-    "refresh": "टर्मिनल रीफ़्रेश करें",
     "openOrCreate": "शुरू करने के लिए टर्मिनल खोलें या बनाएँ।",
     "terminateTitle": "टर्मिनल बंद करें?",
     "terminateAction": "बंद करें",

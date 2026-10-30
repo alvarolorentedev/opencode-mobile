@@ -255,7 +255,6 @@
     "batteryOptimizationDescription": "Allow the app to run more reliably in the background.",
     "batterySaver": "Battery saver",
     "batterySaverDescription": "Battery saver can delay reminders.",
-    "refreshStatus": "Refresh status",
     "enabledFeedback": "Notifications are enabled on this device.",
     "disabledFeedback": "Notifications are still disabled. Open system settings to enable them manually."
   },
@@ -398,10 +397,9 @@
       "onDevice": "System on-device recognition",
       "restricted": "Restricted by device policy",
       "restrictedHint": "Speech recognition is restricted on this device. Contact your device administrator.",
-      "unavailableHint": "Turn on Siri & Dictation in your device Settings, then re-check.",
+      "unavailableHint": "Turn on Siri & Dictation in your device Settings.",
       "deniedHint": "Access was denied. Open settings to enable it manually.",
       "enable": "Enable voice input",
-      "recheck": "Re-check voice",
       "test": "Test playback",
       "testPhrase": "Voice playback is working.",
       "testFailed": "Speech playback failed. Check the selected voice and the device volume.",
@@ -589,7 +587,6 @@
     "pairingLink": "Pairing deep link",
     "openLink": "Open pairing link",
     "machines": "Your machines",
-    "refreshMachines": "Refresh machines",
     "noMachines": "No machines registered for this user.",
     "revoke": "Revoke machine",
     "revokeConfirm": "Delete this machine for every device? Its public tunnel will be deleted.",
@@ -704,8 +701,7 @@
     "empty": "No saved permissions.",
     "remove": "Remove",
     "removeTitle": "Remove saved permission",
-    "removeMessage": "Stop automatically allowing {{resource}}?",
-    "refresh": "Refresh"
+    "removeMessage": "Stop automatically allowing {{resource}}?"
   },
   "subscription": {
     "inactive": "No active subscription",
@@ -721,6 +717,7 @@
   "services": {
     "title": "Exposed services",
     "description": "Add, replace and remove the service paths your connector exposes through its tunnel. Changes apply live.",
+    "loadFailed": "Could not load exposed services.",
     "add": "Add service",
     "addTitle": "New service",
     "editTitle": "Edit service",
@@ -742,7 +739,7 @@
     "credentialsExpired": "Cloud Link access for this machine expired or is missing. Reconnect to manage its services.",
     "reconnectFailed": "Could not reconnect this machine.",
     "unavailableService": "This service is no longer on the connector.",
-    "unavailableServiceHint": "Go back and refresh the exposed services list.",
+    "unavailableServiceHint": "Go back and reopen the exposed services list.",
     "legacyConnector": "This desktop connector predates dedicated service ports. Update it to serve apps at the port root and choose ports.",
     "unknownConnector": "This desktop connector is older than the app expects. Update it to use dedicated ports and root services.",
     "enabledHint": "Route traffic for this path through the tunnel.",

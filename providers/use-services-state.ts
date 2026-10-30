@@ -68,6 +68,7 @@ export function useServicesState({
   const [profileAccess, setProfileAccess] = useState<{ profileId: string; password: string }>();
   const [list, setList] = useState<{ scope: string; services: ManagedService[]; version?: ServiceManagementVersion }>({ scope: '', services: [] });
   const [credentialFailureScope, setCredentialFailureScope] = useState<string>();
+  const [loadFailureScope, setLoadFailureScope] = useState<string>();
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const requested = useRef(false);
@@ -139,6 +140,7 @@ export function useServicesState({
   const services = useMemo(() => (scopeKey && list.scope === scopeKey ? list.services : []), [list, scopeKey]);
   const version = useMemo(() => (scopeKey && list.scope === scopeKey ? list.version : undefined), [list, scopeKey]);
   const credentialFailure = Boolean(scopeKey && credentialFailureScope === scopeKey);
+  const loadFailed = Boolean(scopeKey && loadFailureScope === scopeKey);
   const available = resolution.status === 'ready' && !credentialFailure;
   const unavailableReason: ServiceManagementUnavailableReason | undefined = resolution.status === 'none'
     ? 'no-cloud-link-machine'
@@ -168,14 +170,18 @@ export function useServicesState({
           version: nextVersion ?? (current.scope === scope ? current.version : undefined),
         }));
         setCredentialFailureScope((current) => (current === scope ? undefined : current));
+        setLoadFailureScope((current) => (current === scope ? undefined : current));
       }
     } catch (error) {
       // A rejected list must not surface as an unhandled error. A credential
-      // rejection becomes an explicit expired state; transient transport
-      // failures stay silent and never show stale entries.
+      // rejection becomes an explicit expired state; other failures keep the
+      // empty list but expose a Retry action instead of stale entries.
       if (scopeGenerationRef.current === generation) {
         setList({ scope, services: [] });
-        if (error instanceof ServiceManagementError && error.status === 401) setCredentialFailureScope(scope);
+        if (error instanceof ServiceManagementError && error.status === 401) {
+          setCredentialFailureScope(scope);
+          setLoadFailureScope((current) => (current === scope ? undefined : current));
+        } else setLoadFailureScope(scope);
       }
     } finally {
       // A stale result was discarded; allow the surface to re-fetch once the
@@ -243,6 +249,7 @@ export function useServicesState({
     target,
     machines,
     unavailableReason,
+    loadFailed,
     isRefreshing,
     isSaving,
     refresh,
@@ -250,7 +257,7 @@ export function useServicesState({
     remove,
     selectMachine,
     activateTarget,
-  }), [activateTarget, available, isRefreshing, isSaving, machines, refresh, remove, save, selectMachine, services, target, unavailableReason, version]);
+  }), [activateTarget, available, isRefreshing, isSaving, loadFailed, machines, refresh, remove, save, selectMachine, services, target, unavailableReason, version]);
 
   return { servicesValue };
 }

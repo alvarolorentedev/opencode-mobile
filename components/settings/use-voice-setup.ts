@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { AppState } from 'react-native';
 
 import { modelDownloadErrorMessageKey } from '@/lib/model-download';
 import { getVoiceCapabilitiesAsync, type VoiceCapabilities } from '@/lib/voice/capabilities';
@@ -105,6 +106,18 @@ export function useVoiceSetup({
     // eslint-disable-next-line react-hooks/set-state-in-effect -- hydrate voice status once on mount.
     void refreshStatus();
   }, [refreshStatus]);
+
+  useEffect(() => {
+    // Voice permissions and installed engines can change in system settings
+    // while the app is backgrounded. Re-read them on resume instead of
+    // exposing a manual re-check action.
+    const subscription = AppState.addEventListener('change', (state) => {
+      if (state !== 'active') return;
+      void refreshStatus();
+      void refreshMicrophone();
+    });
+    return () => subscription.remove();
+  }, [refreshMicrophone, refreshStatus]);
 
   const refreshLocalVoiceStatus = useCallback(() => {
     setLocalVoiceBaseStatus(getLocalVoiceBaseStatus());

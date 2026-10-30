@@ -42,7 +42,6 @@
     "size": "サイズ: {{size}}"
   },
   "worktrees": {
-    "refresh": "ワークツリーを更新",
     "nameLabel": "名前（任意）",
     "empty": "利用可能なワークツリーはありません。",
     "removeTitle": "ワークツリーを削除しますか？",

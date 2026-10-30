@@ -8,26 +8,22 @@ import type { NotificationDebugStatus } from '@/lib/notifications';
 import type { Palette } from './setting-rows';
 
 type NotificationsSectionProps = {
-  isRefreshingNotificationStatus: boolean;
   notificationStatus?: NotificationDebugStatus;
   onEnableNotifications: () => void;
   onOpenAppSettings: () => void;
   onOpenBatterySaverSettings: () => void;
   onOpenBatterySettings: () => void;
   onOpenNotificationSettings: () => void;
-  onRefreshStatus: () => void;
   palette: Palette;
 };
 
 export function NotificationsSection({
-  isRefreshingNotificationStatus,
   notificationStatus,
   onEnableNotifications,
   onOpenAppSettings,
   onOpenBatterySaverSettings,
   onOpenBatterySettings,
   onOpenNotificationSettings,
-  onRefreshStatus,
   palette,
 }: NotificationsSectionProps) {
   const { t } = useTranslation();
@@ -91,9 +87,6 @@ export function NotificationsSection({
             /></SettingTarget>
           ) : null}
         </List.Section>
-        <Button mode="text" loading={isRefreshingNotificationStatus} onPress={onRefreshStatus}>
-          {t('settings:notifications.refreshStatus')}
-        </Button>
     </View>
   );
 }

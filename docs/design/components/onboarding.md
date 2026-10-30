@@ -15,6 +15,7 @@ Responsibility:
 - ready summarizes connection/project plus the applicable providers, enabled models and preferences, then completes first-run setup or closes review mode
 - thin controllers only; connection/project persistence and permission requests are delegated to the provider and existing helpers
 - seeded from current provider state so re-running from Settings reviews rather than resets
+- the project step reads the provider catalog and offers Retry only when it is empty; there is no permanent refresh action in the footer
 
 ### `components/onboarding/onboarding-step.tsx`
 

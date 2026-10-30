@@ -514,7 +514,7 @@ Behavior:
 - Android users can be deep-linked to notification settings and battery-related settings
 - `Enable notifications` requests permission and refreshes status
 - startup initializes notification handling without displaying a permission prompt
-- `Refresh status` re-queries permission and background-task registration state
+- permission and background-task registration are re-read when the section opens and when the app returns to the foreground; the section has no manual refresh action
 
 ### Diagnostics Section
 
@@ -528,7 +528,8 @@ Behavior:
 ### MCP Servers Section
 
 - adds local MCP commands or remote MCP URLs
-- refreshes status and connects or disconnects servers
+- refreshes status when the section opens, on MCP events, and after runtime actions; it has no manual refresh action
+- connects or disconnects servers
 - enables/disables and removes configuration through config updates
 - starts remote OAuth in the browser and submits an authorization code callback
 
@@ -572,7 +573,7 @@ Behavior exposed today:
 - system-voice selection with automatic best-available voice selection and an Enhanced quality label
 - optional on-device voice models (Piper compact, one per translated language that has an upstream voice, and Kokoro natural English); each model is downloaded only after the user chooses it
 - per-model install status, size, removal, and preview; Kokoro exposes its individual speakers
-- voice check (microphone/speech permission, recognition availability, on-device support, selected playback engine/model, and a playback test) with an app-settings shortcut
+- voice check (microphone/speech permission, recognition availability, on-device support, selected playback engine/model, and a playback test) with an app-settings shortcut; capability and permission checks re-run when the section opens and when the app returns to the foreground, without a manual re-check action
 
 The local setup checklist is shown only in On-device voice-input mode. It keeps
 voice enrollment disabled until the models are ready and reveals voice

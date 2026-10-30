@@ -26,12 +26,10 @@ export type VoiceSectionProps = {
   availableSpeechVoices: SpeechVoiceOption[];
   chatPreferences: ChatPreferences;
   isRefreshingSpeechVoices: boolean;
-  isRefreshingVoiceCapabilities: boolean;
   isTestingVoice: boolean;
   localVoice: LocalVoiceState;
   onEnableVoiceInput: () => void;
   onOpenVoiceSettings: () => void;
-  onRefreshVoiceCapabilities: () => void;
   onTestVoicePlayback: () => void;
   palette: Palette;
   selectedSpeechVoiceLabel: string;

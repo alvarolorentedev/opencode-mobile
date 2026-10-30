@@ -78,10 +78,7 @@ export function McpSection({
 
   return (
     <View style={styles.section}>
-        <View style={styles.header}>
-          <Text variant="titleLarge" style={[styles.title, { color: palette.text }]}>{t('settings:mcp.title')}</Text>
-          <Button compact loading={busy === 'refresh'} onPress={() => void run('refresh', onRefresh)}>{t('common:actions.refresh')}</Button>
-        </View>
+        <Text variant="titleLarge" style={[styles.title, { color: palette.text }]}>{t('settings:mcp.title')}</Text>
         <SegmentedButtons
           value={addType}
           onValueChange={(value) => { setAddType(value as 'local' | 'remote'); setTarget(''); }}
@@ -158,7 +155,6 @@ export function McpSection({
 const styles = StyleSheet.create({
   section: { gap: 14, paddingHorizontal: 16, paddingBottom: 16 },
   title: { fontWeight: '600' },
-  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 },
   server: { borderRadius: 14, borderWidth: 1, padding: 8 },
   actions: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'flex-end', gap: 4 },
 });

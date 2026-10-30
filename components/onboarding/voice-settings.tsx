@@ -36,12 +36,10 @@ export function OnboardingVoiceSettings() {
         availableSpeechVoices={voices}
         chatPreferences={chatPreferences}
         isRefreshingSpeechVoices={loadingVoices}
-        isRefreshingVoiceCapabilities={voiceSetup.isRefreshing}
         isTestingVoice={voiceSetup.isTesting}
         localVoice={voiceSetup.localVoice}
         onEnableVoiceInput={() => void voiceSetup.enable()}
         onOpenVoiceSettings={() => void voiceSetup.openAppSettings()}
-        onRefreshVoiceCapabilities={() => void voiceSetup.refreshStatus()}
         onTestVoicePlayback={() => void voiceSetup.testPlayback()}
         palette={palette}
         selectedSpeechVoiceLabel={voices.find((voice) => voice.id === speechVoiceId)?.label || t('settings:voice.voiceSelect.automatic')}

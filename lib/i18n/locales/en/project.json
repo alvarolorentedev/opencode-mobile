@@ -42,7 +42,6 @@
     "size": "Size: {{size}}"
   },
   "worktrees": {
-    "refresh": "Refresh worktrees",
     "nameLabel": "Name (optional)",
     "empty": "No worktrees available.",
     "removeTitle": "Remove worktree?",

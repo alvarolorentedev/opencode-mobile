@@ -94,11 +94,15 @@ export function ServicesSection({ api, palette, onAddService, onEditService }: {
 
   return (
     <View testID="services-section" style={styles.section}>
-      <View style={styles.header}>
-        <Text variant="titleLarge" style={[styles.title, { color: palette.text }]}>{t('settings:services.title')}</Text>
-        <Button compact loading={api.isRefreshing} disabled={api.isSaving || !api.available} onPress={() => void api.refresh()}>{t('common:actions.refresh')}</Button>
-      </View>
+      <Text variant="titleLarge" style={[styles.title, { color: palette.text }]}>{t('settings:services.title')}</Text>
       <Text variant="bodyMedium" style={{ color: palette.muted }}>{t('settings:services.description')}</Text>
+
+      {api.loadFailed ? (
+        <View style={styles.loadFailure}>
+          <HelperText type="error">{t('settings:services.loadFailed')}</HelperText>
+          <Button compact mode="outlined" onPress={() => void api.refresh()}>{t('common:actions.retry')}</Button>
+        </View>
+      ) : null}
 
       {api.machines.length > 1 ? (
         <SettingSelectField
@@ -180,8 +184,8 @@ export function ServicesSection({ api, palette, onAddService, onEditService }: {
 
 const styles = StyleSheet.create({
   section: { gap: 14, paddingBottom: 8 },
-  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 },
   title: { fontWeight: '600' },
+  loadFailure: { alignItems: 'flex-start', gap: 4 },
   target: { borderRadius: 14, borderWidth: 1, gap: 10, padding: 12 },
   expired: { alignItems: 'flex-start', gap: 4 },
   service: { borderRadius: 14, borderWidth: 1, padding: 8 },

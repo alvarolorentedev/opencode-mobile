@@ -9,7 +9,6 @@
   "console": {
     "selectTerminal": "ターミナルを選択",
     "create": "ターミナルを作成",
-    "refresh": "ターミナルを更新",
     "openOrCreate": "ターミナルを開くか作成して開始してください。",
     "terminateTitle": "ターミナルを終了しますか？",
     "terminateAction": "終了",

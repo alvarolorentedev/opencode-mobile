@@ -2,7 +2,7 @@ import { SettingButton as Button } from './sections/setting-rows';
 import { useIsFocused } from 'expo-router';
 import { useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Alert, Platform, StyleSheet, View } from 'react-native';
+import { Alert, AppState, Platform, StyleSheet, View } from 'react-native';
 import { HelperText, Text } from 'react-native-paper';
 import { ConnectSubscription } from '@/components/settings/connect-subscription';
 import type { ConnectSetup } from '@/providers/use-connect-state';
@@ -12,11 +12,26 @@ export function ConnectManagementPanel({ setup, onConnected, onClose }: { setup:
   const { t } = useTranslation();
   const palette = usePalette();
   const focused = useIsFocused();
+  const { hasToken, machines, refreshMachines } = setup;
   const connected = useRef(setup.phase === 'paired');
+  const machinesRequested = useRef(false);
   useEffect(() => {
     if (setup.phase !== 'paired') { connected.current = false; return; }
     if (focused && !connected.current && !setup.error) { connected.current = true; onConnected(); }
   }, [focused, onConnected, setup.error, setup.phase]);
+  useEffect(() => {
+    if (!hasToken) { machinesRequested.current = false; return; }
+    if (machines || machinesRequested.current) return;
+    machinesRequested.current = true;
+    void refreshMachines();
+  }, [hasToken, machines, refreshMachines]);
+  useEffect(() => {
+    if (!hasToken) return;
+    const subscription = AppState.addEventListener('change', (state) => {
+      if (state === 'active') void refreshMachines();
+    });
+    return () => subscription.remove();
+  }, [hasToken, refreshMachines]);
   const runConnect = (action: Promise<boolean>) => { void action; };
   function confirm(title: string, message: string, action: () => void) {
     if (Platform.OS === 'web') { if (globalThis.confirm(message)) action(); return; }
@@ -26,7 +41,7 @@ export function ConnectManagementPanel({ setup, onConnected, onClose }: { setup:
     ]);
   }
   return (
-    <View testID="connect-panel" style={styles.section}>
+    <View testID="connect-management-panel" style={styles.section}>
       <Text style={{ color: palette.text }} variant="titleLarge">{t('settings:connect.title')}</Text>
       <Text style={{ color: palette.text }}>{t('settings:connect.description')}</Text>
       {setup.entitled ? <Text style={{ color: palette.text }} testID="connect-subscription-active">{t('settings:connect.subscriptionActive')}</Text> : setup.initialization === 'ready' ? <ConnectSubscription setup={setup} /> : null}
@@ -40,9 +55,8 @@ export function ConnectManagementPanel({ setup, onConnected, onClose }: { setup:
         {setup.phase !== 'delayed' ? <Button testID="connect-retry-connection" mode="outlined" disabled={setup.busy} onPress={() => runConnect(setup.connectProfile(setup.savedProfile!))}>{t('common:actions.reconnect')}</Button> : null}
       </> : null}
       <Text style={{ color: palette.text }} variant="titleMedium">{t('settings:connect.machines')}</Text>
-      <Button testID="connect-refresh-machines" mode="outlined" disabled={setup.busy || !setup.hasToken} onPress={() => { void setup.refreshMachines(); }}>{t('settings:connect.refreshMachines')}</Button>
-      {setup.machines?.length === 0 ? <Text style={{ color: palette.text }} testID="connect-no-machines">{t('settings:connect.noMachines')}</Text> : null}
-      {setup.machines?.map((machine) => {
+      {machines?.length === 0 ? <Text style={{ color: palette.text }} testID="connect-no-machines">{t('settings:connect.noMachines')}</Text> : null}
+      {machines?.map((machine) => {
         const profile = setup.profiles.find((item) => item.connect?.controlPlaneUrl === setup.controlPlaneUrl && item.connect.machineId === machine.id);
         return <View key={machine.id} testID={`connect-machine-${machine.id}`} style={styles.machine}>
           <Text style={{ color: palette.text }} variant="titleMedium">{machine.name}</Text><Text style={{ color: palette.text }}>{machine.public_url}</Text>

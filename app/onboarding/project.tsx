@@ -69,14 +69,6 @@ export default function OnboardingProjectScreen() {
             onPress={navigation.next}>
             {t('onboarding:project.skip')}
           </Button>
-          <Button
-            mode="outlined"
-            testID="onboarding-project-refresh"
-            loading={isRefreshingProjectCatalog}
-            disabled={isRefreshingProjectCatalog || isAdding}
-            onPress={() => void refreshProjectCatalog()}>
-            {t('common:actions.refresh')}
-          </Button>
           {activeProject ? (
             <Button
               mode="contained"
@@ -95,7 +87,16 @@ export default function OnboardingProjectScreen() {
       ) : null}
 
       {!isRefreshingProjectCatalog && projects.length === 0 ? (
-        <Text style={{ color: palette.muted }}>{t('onboarding:project.empty')}</Text>
+        <>
+          <Text style={{ color: palette.muted }}>{t('onboarding:project.empty')}</Text>
+          <Button
+            mode="outlined"
+            testID="onboarding-project-retry"
+            disabled={isAdding}
+            onPress={() => void refreshProjectCatalog()}>
+            {t('common:actions.retry')}
+          </Button>
+        </>
       ) : null}
 
       <ProjectOptions activePath={activeProjectPath} onSelect={choose} projects={projects} />

@@ -12,13 +12,11 @@ import type { Palette } from './setting-rows';
 // provider-owned; this surface only confirms and forwards removal.
 export function PermissionsSection({
   serverName,
-  onRefresh,
   onRemove,
   palette,
   rules,
 }: {
   serverName?: string;
-  onRefresh: () => void;
   onRemove: (id: string) => void;
   palette: Palette;
   rules: SavedPermissionRule[];
@@ -47,9 +45,6 @@ export function PermissionsSection({
           right={() => <Button compact onPress={() => confirmRemove(rule)}>{t('settings:permissions.remove')}</Button>}
         />
       ))}
-      <View style={styles.actions}>
-        <Button mode="outlined" onPress={onRefresh}>{t('settings:permissions.refresh')}</Button>
-      </View>
     </View></SettingTarget>
   );
 }
@@ -57,5 +52,4 @@ export function PermissionsSection({
 const styles = StyleSheet.create({
   section: { gap: 12, paddingHorizontal: 16, paddingBottom: 16 },
   title: { fontWeight: '600' },
-  actions: { flexDirection: 'row', justifyContent: 'flex-end' },
 });

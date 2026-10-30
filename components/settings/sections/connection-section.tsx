@@ -23,7 +23,7 @@ export function ConnectionSection({ connection, palette, onPair, onManageConnect
     <View style={styles.section}>
         <Text variant="bodyMedium" style={{ color: palette.muted }}>{connection.message}</Text>
         {connection.checkedAt ? <Text variant="bodySmall" style={{ color: palette.muted }}>{t('settings:connection.lastChecked', { time: formatTimestamp(connection.checkedAt) })}</Text> : null}
-        {onReconnect ? <SettingTarget label={t('common:actions.reconnect')}><Button mode="outlined" icon="refresh" loading={isReconnecting} disabled={isReconnecting} onPress={onReconnect}>{t('common:actions.reconnect')}</Button></SettingTarget> : null}
+        {onReconnect ? <SettingTarget label={t('common:actions.reconnect')}><Button mode="outlined" icon="link-variant" loading={isReconnecting} disabled={isReconnecting} onPress={onReconnect}>{t('common:actions.reconnect')}</Button></SettingTarget> : null}
         <ConnectionProfiles palette={palette} onManageConnect={onManageConnect} onPair={onPair} />
     </View>
   );

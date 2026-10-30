@@ -255,7 +255,6 @@
     "batteryOptimizationDescription": "Permite que la aplicación funcione de forma más fiable en segundo plano.",
     "batterySaver": "Ahorro de batería",
     "batterySaverDescription": "El ahorro de batería puede retrasar los recordatorios.",
-    "refreshStatus": "Actualizar estado",
     "enabledFeedback": "Las notificaciones están activadas en este dispositivo.",
     "disabledFeedback": "Las notificaciones siguen desactivadas. Abre los ajustes del sistema para activarlas manualmente."
   },
@@ -398,10 +397,9 @@
       "onDevice": "Reconocimiento del sistema en el dispositivo",
       "restricted": "Restringido por la política del dispositivo",
       "restrictedHint": "El reconocimiento de voz está restringido en este dispositivo. Contacta con el administrador del dispositivo.",
-      "unavailableHint": "Activa Siri y Dictado en los Ajustes del dispositivo y vuelve a comprobar.",
+      "unavailableHint": "Activa Siri y Dictado en los Ajustes del dispositivo.",
       "deniedHint": "Se denegó el acceso. Abre los ajustes para activarlo manualmente.",
       "enable": "Activar entrada de voz",
-      "recheck": "Volver a comprobar",
       "test": "Probar reproducción",
       "testPhrase": "La reproducción de voz funciona.",
       "testFailed": "Falló la reproducción de voz. Comprueba la voz seleccionada y el volumen del dispositivo.",
@@ -589,7 +587,6 @@
     "pairingLink": "Enlace profundo de vinculación",
     "openLink": "Abrir enlace de vinculación",
     "machines": "Tus equipos",
-    "refreshMachines": "Actualizar equipos",
     "noMachines": "No hay equipos registrados para este usuario.",
     "revoke": "Revocar equipo",
     "revokeConfirm": "¿Eliminar este equipo en todos los dispositivos? Se eliminará su túnel público.",
@@ -704,8 +701,7 @@
     "empty": "No hay permisos guardados.",
     "remove": "Eliminar",
     "removeTitle": "Eliminar permiso guardado",
-    "removeMessage": "¿Dejar de permitir automáticamente {{resource}}?",
-    "refresh": "Actualizar"
+    "removeMessage": "¿Dejar de permitir automáticamente {{resource}}?"
   },
   "subscription": {
     "inactive": "Sin suscripción activa",
@@ -721,6 +717,7 @@
   "services": {
     "title": "Servicios expuestos",
     "description": "Añade, reemplaza y elimina los servicios que tu conector expone por el túnel. Los cambios se aplican al instante.",
+    "loadFailed": "No se pudieron cargar los servicios expuestos.",
     "add": "Añadir servicio",
     "addTitle": "Nuevo servicio",
     "editTitle": "Editar servicio",
@@ -742,7 +739,7 @@
     "credentialsExpired": "El acceso de Cloud Link para esta máquina caducó o no existe. Vuelve a conectarla para gestionar sus servicios.",
     "reconnectFailed": "No se pudo volver a conectar esta máquina.",
     "unavailableService": "Este servicio ya no existe en el conector.",
-    "unavailableServiceHint": "Vuelve y actualiza la lista de servicios expuestos.",
+    "unavailableServiceHint": "Vuelve y vuelve a abrir la lista de servicios expuestos.",
     "legacyConnector": "Este conector de escritorio aún no admite puertos dedicados. Actualízalo para servir apps en la raíz del puerto y elegir puertos.",
     "unknownConnector": "Este conector de escritorio es más antiguo de lo que espera la app. Actualízalo para usar puertos dedicados y servicios raíz.",
     "enabledHint": "Enruta el tráfico de esta ruta por el túnel.",

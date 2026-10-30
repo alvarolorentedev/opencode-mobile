@@ -42,7 +42,6 @@
     "size": "Taille : {{size}}"
   },
   "worktrees": {
-    "refresh": "Actualiser les arbres de travail",
     "nameLabel": "Nom (facultatif)",
     "empty": "Aucun arbre de travail disponible.",
     "removeTitle": "Retirer l'arbre de travail ?",

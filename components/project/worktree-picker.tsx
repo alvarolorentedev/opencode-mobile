@@ -69,18 +69,15 @@ export function WorktreeSwitcher({ onClose }: { onClose: () => void }) {
       visible
       title={title}
       testID="worktree-picker"
-      onClose={() => { if (!busy) onClose(); }}
-      headerAction={(
-        <IconButton
-          icon="refresh"
-          accessibilityLabel={t('project:worktrees.refresh')}
-          disabled={worktrees.loading || Boolean(busy)}
-          onPress={() => void refreshWorktrees().catch((reason) => setError(reason instanceof Error ? reason.message : t('project:errors.refreshProject')))}
-        />
-      )}>
+      onClose={() => { if (!busy) onClose(); }}>
       <Text style={{ color: palette.muted }}>{t('project:worktrees.subtitle', { project: activeProject?.label ?? '' })}</Text>
       {worktrees.error ? <Text accessibilityLiveRegion="polite" style={{ color: palette.danger }}>{worktrees.error}</Text> : null}
       {error ? <Text accessibilityLiveRegion="polite" style={{ color: palette.danger }}>{error}</Text> : null}
+      {worktrees.error && !worktrees.loading ? (
+        <Button mode="text" onPress={() => void refreshWorktrees().catch((reason) => setError(reason instanceof Error ? reason.message : t('project:errors.refreshProject')))}>
+          {t('common:actions.retry')}
+        </Button>
+      ) : null}
       {worktrees.loading && !checkouts.length ? <ActivityIndicator /> : null}
       {!checkouts.length && !worktrees.loading ? <Text style={{ color: palette.muted }}>{t('project:worktrees.empty')}</Text> : null}
       {checkouts.map((checkout) => {

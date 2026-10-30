@@ -8,7 +8,7 @@ import { DEFAULT_WAKE_PHRASE, normalizeWakePhrase } from '@/lib/voice/wake-phras
 import { SettingButton as Button, SettingSlider, SettingSwitchRow, SettingSelectField, SettingTextInput, type Palette } from './setting-rows';
 import type { VoiceSectionProps } from './voice-section';
 
-export function VoiceMoreSettings({ localInput, chatPreferences: prefs, isRefreshingVoiceCapabilities, isTestingVoice, onEnableVoiceInput, onOpenVoiceSettings, onRefreshVoiceCapabilities, onTestVoicePlayback, palette, updateChatPreferences, voiceCapabilities }: VoiceSectionProps & { localInput: boolean }) {
+export function VoiceMoreSettings({ localInput, chatPreferences: prefs, isTestingVoice, onEnableVoiceInput, onOpenVoiceSettings, onTestVoicePlayback, palette, updateChatPreferences, voiceCapabilities }: VoiceSectionProps & { localInput: boolean }) {
   const { t } = useTranslation();
   const permission = voiceCapabilities?.permission;
   return <SettingsDisclosure id="voice-more" title={t('settings:voice.setup.more')}>
@@ -37,7 +37,6 @@ export function VoiceMoreSettings({ localInput, chatPreferences: prefs, isRefres
         <HelperText type="info">{t(permission?.restricted ? 'settings:voice.check.restrictedHint' : 'settings:voice.check.deniedHint')}</HelperText>
         <Button mode="outlined" onPress={permission?.canAskAgain ? onEnableVoiceInput : onOpenVoiceSettings}>{t(permission?.canAskAgain ? 'settings:voice.check.enable' : 'common:actions.openSettings')}</Button>
       </> : null}
-      <Button loading={isRefreshingVoiceCapabilities} mode="outlined" onPress={onRefreshVoiceCapabilities}>{t('settings:voice.check.recheck')}</Button>
       <Button loading={isTestingVoice} mode="outlined" onPress={onTestVoicePlayback}>{t('settings:voice.check.test')}</Button>
     </SettingTarget> : null}
     <Text variant="bodySmall" style={{ color: palette.muted }}>{t('settings:voice.footer')}</Text>

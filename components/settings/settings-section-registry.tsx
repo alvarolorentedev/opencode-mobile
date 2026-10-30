@@ -176,9 +176,9 @@ export function buildSettingsSections({
       icon: 'bell-outline',
       title: t('settings:screen.categories.notifications'),
       summary: !notifications.status ? t('settings:notifications.status.checking') : notifications.status.permissionGranted ? t('common:labels.enabled') : t('common:labels.off'),
-      onPress: () => setOpenSection('notifications'),
+      onPress: () => { setOpenSection('notifications'); void notifications.refreshStatus(); },
       render: () => <>
-        <NotificationsSection isRefreshingNotificationStatus={notifications.isRefreshing} notificationStatus={notifications.status} onEnableNotifications={() => void notifications.enable()} onOpenAppSettings={() => void notifications.openAppSettings()} onOpenBatterySaverSettings={() => void notifications.openBatterySaverSettings()} onOpenBatterySettings={() => void notifications.openBatterySettings()} onOpenNotificationSettings={() => void notifications.openNotificationSettings()} onRefreshStatus={() => void notifications.refreshStatus()} palette={palette} />
+        <NotificationsSection notificationStatus={notifications.status} onEnableNotifications={() => void notifications.enable()} onOpenAppSettings={() => void notifications.openAppSettings()} onOpenBatterySaverSettings={() => void notifications.openBatterySaverSettings()} onOpenBatterySettings={() => void notifications.openBatterySettings()} onOpenNotificationSettings={() => void notifications.openNotificationSettings()} palette={palette} />
         {Platform.OS === 'android' ? <SettingSwitchRow title={t('share:widgets.previewsTitle')} description={t('share:widgets.previewsDescription')} value={chatPreferences.showWidgetPreviews !== false} palette={palette} onValueChange={(showWidgetPreviews) => updateChatPreferences({ showWidgetPreviews })} /> : null}
       </>,
     },
@@ -187,8 +187,8 @@ export function buildSettingsSections({
       icon: 'waveform',
       title: t('settings:screen.categories.voice'),
       summary: voiceSummary,
-      onPress: () => setOpenSection('voice'),
-      render: () => <VoiceSection availableSpeechVoices={availableSpeechVoices} chatPreferences={chatPreferences} isRefreshingSpeechVoices={isRefreshingSpeechVoices} isRefreshingVoiceCapabilities={voiceSetup.isRefreshing} isTestingVoice={voiceSetup.isTesting} localVoice={voiceSetup.localVoice} onEnableVoiceInput={() => void voiceSetup.enable()} onOpenVoiceSettings={() => void voiceSetup.openAppSettings()} onRefreshVoiceCapabilities={() => void voiceSetup.refreshStatus()} onTestVoicePlayback={() => void voiceSetup.testPlayback()} palette={palette} selectedSpeechVoiceLabel={selectedSpeechVoiceLabel} selectedWorkingSound={selectedWorkingSound} ttsSetup={ttsSetup} updateChatPreferences={updateChatPreferences} voiceCapabilities={voiceSetup.capabilities} />,
+      onPress: () => { setOpenSection('voice'); void voiceSetup.refreshStatus(); },
+      render: () => <VoiceSection availableSpeechVoices={availableSpeechVoices} chatPreferences={chatPreferences} isRefreshingSpeechVoices={isRefreshingSpeechVoices} isTestingVoice={voiceSetup.isTesting} localVoice={voiceSetup.localVoice} onEnableVoiceInput={() => void voiceSetup.enable()} onOpenVoiceSettings={() => void voiceSetup.openAppSettings()} onTestVoicePlayback={() => void voiceSetup.testPlayback()} palette={palette} selectedSpeechVoiceLabel={selectedSpeechVoiceLabel} selectedWorkingSound={selectedWorkingSound} ttsSetup={ttsSetup} updateChatPreferences={updateChatPreferences} voiceCapabilities={voiceSetup.capabilities} />,
     },
     {
       id: 'responses', group: 'app' as const,

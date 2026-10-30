@@ -255,7 +255,6 @@
     "batteryOptimizationDescription": "Permets à l'app de fonctionner plus fiablement en arrière-plan.",
     "batterySaver": "Économiseur de batterie",
     "batterySaverDescription": "L'économiseur de batterie peut retarder les rappels.",
-    "refreshStatus": "Actualiser l'état",
     "enabledFeedback": "Les notifications sont activées sur cet appareil.",
     "disabledFeedback": "Les notifications sont toujours désactivées. Ouvrez les réglages système pour les activer manuellement."
   },
@@ -398,10 +397,9 @@
       "onDevice": "Reconnaissance système sur l’appareil",
       "restricted": "Restreint par la stratégie de l'appareil",
       "restrictedHint": "La reconnaissance vocale est restreinte sur cet appareil. Contactez l'administrateur de l'appareil.",
-      "unavailableHint": "Activez Siri et Dictée dans les réglages de l'appareil, puis vérifiez à nouveau.",
+      "unavailableHint": "Activez Siri et Dictée dans les réglages de l'appareil.",
       "deniedHint": "L'accès a été refusé. Ouvrez les réglages pour l'activer manuellement.",
       "enable": "Activer la saisie vocale",
-      "recheck": "Revérifier la voix",
       "test": "Tester la lecture",
       "testPhrase": "La lecture vocale fonctionne.",
       "testFailed": "La lecture vocale a échoué. Vérifiez la voix sélectionnée et le volume de l'appareil.",
@@ -589,7 +587,6 @@
     "pairingLink": "Lien profond d’association",
     "openLink": "Ouvrir le lien d’association",
     "machines": "Vos machines",
-    "refreshMachines": "Actualiser les machines",
     "noMachines": "Aucune machine enregistrée pour cet utilisateur.",
     "revoke": "Révoquer la machine",
     "revokeConfirm": "Supprimer cette machine sur tous les appareils ? Son tunnel public sera supprimé.",
@@ -704,8 +701,7 @@
     "empty": "Aucune autorisation enregistrée.",
     "remove": "Supprimer",
     "removeTitle": "Supprimer l’autorisation enregistrée",
-    "removeMessage": "Ne plus autoriser automatiquement {{resource}} ?",
-    "refresh": "Actualiser"
+    "removeMessage": "Ne plus autoriser automatiquement {{resource}} ?"
   },
   "subscription": {
     "inactive": "Aucun abonnement actif",
@@ -721,6 +717,7 @@
   "services": {
     "title": "Services exposés",
     "description": "Ajoutez, remplacez et supprimez les services exposés par votre connecteur via le tunnel. Les modifications s'appliquent immédiatement.",
+    "loadFailed": "Impossible de charger les services exposés.",
     "add": "Ajouter un service",
     "addTitle": "Nouveau service",
     "editTitle": "Modifier le service",
@@ -742,7 +739,7 @@
     "credentialsExpired": "L'accès Cloud Link de cette machine a expiré ou est absent. Reconnectez-la pour gérer ses services.",
     "reconnectFailed": "Impossible de reconnecter cette machine.",
     "unavailableService": "Ce service n'existe plus sur le connecteur.",
-    "unavailableServiceHint": "Revenez en arrière et actualisez la liste des services exposés.",
+    "unavailableServiceHint": "Revenez en arrière et rouvrez la liste des services exposés.",
     "legacyConnector": "Ce connecteur de bureau ne prend pas encore en charge les ports dédiés. Mettez-le à jour pour servir des apps à la racine du port et choisir les ports.",
     "unknownConnector": "Ce connecteur de bureau est plus ancien que prévu par l'app. Mettez-le à jour pour utiliser des ports dédiés et des services racine.",
     "enabledHint": "Acheminer le trafic de ce chemin via le tunnel.",

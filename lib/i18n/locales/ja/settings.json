@@ -255,7 +255,6 @@
     "batteryOptimizationDescription": "アプリがバックグラウンドでより安定して動作できるようにします。",
     "batterySaver": "バッテリー節約",
     "batterySaverDescription": "バッテリー節約機能はリマインダーを遅延させる場合があります。",
-    "refreshStatus": "状態を更新",
     "enabledFeedback": "このデバイスで通知が有効になっています。",
     "disabledFeedback": "通知はまだ無効です。手動で有効にするにはシステム設定を開いてください。"
   },
@@ -398,10 +397,9 @@
       "onDevice": "システムのオンデバイス認識",
       "restricted": "デバイスポリシーにより制限",
       "restrictedHint": "このデバイスでは音声認識が制限されています。デバイス管理者に連絡してください。",
-      "unavailableHint": "デバイスの設定で Siri と音声入力（ディクテーション）を有効にしてから再確認してください。",
+      "unavailableHint": "デバイスの設定で Siri と音声入力（ディクテーション）を有効にしてください。",
       "deniedHint": "アクセスが拒否されました。設定を開いて手動で有効にしてください。",
       "enable": "音声入力を有効にする",
-      "recheck": "音声を再確認",
       "test": "再生をテスト",
       "testPhrase": "音声の再生は正常です。",
       "testFailed": "音声の再生に失敗しました。選択した音声とデバイスの音量を確認してください。",
@@ -589,7 +587,6 @@
     "pairingLink": "ペアリングのディープリンク",
     "openLink": "ペアリングリンクを開く",
     "machines": "あなたのマシン",
-    "refreshMachines": "マシンを更新",
     "noMachines": "このユーザーに登録されているマシンはありません。",
     "revoke": "マシンを取り消す",
     "revokeConfirm": "このマシンをすべてのデバイスから削除しますか？パブリックトンネルも削除されます。",
@@ -704,8 +701,7 @@
     "empty": "保存された権限はありません。",
     "remove": "削除",
     "removeTitle": "保存された権限を削除",
-    "removeMessage": "{{resource}} の自動許可を停止しますか？",
-    "refresh": "更新"
+    "removeMessage": "{{resource}} の自動許可を停止しますか？"
   },
   "subscription": {
     "inactive": "有効なサブスクリプションはありません",
@@ -721,6 +717,7 @@
   "services": {
     "title": "公開サービス",
     "description": "コネクタがトンネル経由で公開するサービスを追加・置換・削除します。変更はすぐに反映されます。",
+    "loadFailed": "公開サービスを読み込めませんでした。",
     "add": "サービスを追加",
     "addTitle": "新しいサービス",
     "editTitle": "サービスを編集",
@@ -742,7 +739,7 @@
     "credentialsExpired": "このマシンの Cloud Link アクセスが期限切れか未設定です。サービスの管理には再接続してください。",
     "reconnectFailed": "このマシンに再接続できませんでした。",
     "unavailableService": "このサービスはコネクタ上に存在しません。",
-    "unavailableServiceHint": "戻って公開サービスの一覧を更新してください。",
+    "unavailableServiceHint": "戻って公開サービスの一覧を開き直してください。",
     "legacyConnector": "このデスクトップコネクタは専用のサービスポートに未対応です。ポートルートでの公開とポート選択を使うには更新してください。",
     "unknownConnector": "このデスクトップコネクタはアプリの想定より古いです。専用ポートとルートサービスを使うには更新してください。",
     "enabledHint": "このパスの通信をトンネル経由でルーティングします。",

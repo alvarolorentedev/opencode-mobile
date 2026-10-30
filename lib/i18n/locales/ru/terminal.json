@@ -9,7 +9,6 @@
   "console": {
     "selectTerminal": "Выбрать терминал",
     "create": "Создать терминал",
-    "refresh": "Обновить терминалы",
     "openOrCreate": "Откройте или создайте терминал, чтобы начать.",
     "terminateTitle": "Завершить терминал?",
     "terminateAction": "Завершить",

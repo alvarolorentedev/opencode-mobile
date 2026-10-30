@@ -255,7 +255,6 @@
     "batteryOptimizationDescription": "允许应用在后台更可靠地运行。",
     "batterySaver": "省电模式",
     "batterySaverDescription": "省电模式可能会延迟提醒。",
-    "refreshStatus": "刷新状态",
     "enabledFeedback": "此设备上的通知已启用。",
     "disabledFeedback": "通知仍处于禁用状态。打开系统设置以手动启用。"
   },
@@ -398,10 +397,9 @@
       "onDevice": "系统设备端识别",
       "restricted": "受设备策略限制",
       "restrictedHint": "此设备上的语音识别受到限制。请联系设备管理员。",
-      "unavailableHint": "请在设备设置中开启 Siri 与听写，然后重新检查。",
+      "unavailableHint": "请在设备设置中开启 Siri 与听写。",
       "deniedHint": "访问被拒绝。打开设置以手动开启。",
       "enable": "启用语音输入",
-      "recheck": "重新检查语音",
       "test": "测试播放",
       "testPhrase": "语音播放正常。",
       "testFailed": "语音播放失败。请检查所选语音和设备音量。",
@@ -589,7 +587,6 @@
     "pairingLink": "配对深度链接",
     "openLink": "打开配对链接",
     "machines": "你的设备",
-    "refreshMachines": "刷新设备",
     "noMachines": "此用户没有注册任何设备。",
     "revoke": "撤销设备",
     "revokeConfirm": "在所有设备上删除此设备？其公共隧道也将被删除。",
@@ -704,8 +701,7 @@
     "empty": "没有已保存的权限。",
     "remove": "移除",
     "removeTitle": "移除已保存的权限",
-    "removeMessage": "不再自动允许 {{resource}}？",
-    "refresh": "刷新"
+    "removeMessage": "不再自动允许 {{resource}}？"
   },
   "subscription": {
     "inactive": "没有有效订阅",
@@ -721,6 +717,7 @@
   "services": {
     "title": "已公开的服务",
     "description": "添加、替换和移除连接器通过隧道公开的服务路径。更改会立即生效。",
+    "loadFailed": "无法加载已公开的服务。",
     "add": "添加服务",
     "addTitle": "新服务",
     "editTitle": "编辑服务",
@@ -742,7 +739,7 @@
     "credentialsExpired": "此设备的 Cloud Link 访问已过期或缺失。请重新连接以管理其服务。",
     "reconnectFailed": "无法重新连接此设备。",
     "unavailableService": "连接器上已不存在此服务。",
-    "unavailableServiceHint": "请返回并刷新已公开的服务列表。",
+    "unavailableServiceHint": "请返回并重新打开已公开的服务列表。",
     "legacyConnector": "此桌面连接器尚不支持专用服务端口。请更新后使用端口根路径和端口选择。",
     "unknownConnector": "此桌面连接器比应用预期的版本更旧。请更新以使用专用端口和根服务。",
     "enabledHint": "通过隧道路由此路径的流量。",

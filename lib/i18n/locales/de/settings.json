@@ -255,7 +255,6 @@
     "batteryOptimizationDescription": "Erlaube der App, im Hintergrund zuverlässiger zu laufen.",
     "batterySaver": "Energiesparmodus",
     "batterySaverDescription": "Der Energiesparmodus kann Erinnerungen verzögern.",
-    "refreshStatus": "Status aktualisieren",
     "enabledFeedback": "Benachrichtigungen sind auf diesem Gerät aktiviert.",
     "disabledFeedback": "Benachrichtigungen sind weiterhin deaktiviert. Öffne die Systemeinstellungen, um sie manuell zu aktivieren."
   },
@@ -398,10 +397,9 @@
       "onDevice": "Systemerkennung auf dem Gerät",
       "restricted": "Durch Geräterichtlinie eingeschränkt",
       "restrictedHint": "Die Spracherkennung ist auf diesem Gerät eingeschränkt. Wende dich an deine Geräteverwaltung.",
-      "unavailableHint": "Aktiviere Siri & Diktat in den Geräteeinstellungen und prüfe erneut.",
+      "unavailableHint": "Aktiviere Siri & Diktat in den Geräteeinstellungen.",
       "deniedHint": "Der Zugriff wurde verweigert. Öffne die Einstellungen, um ihn manuell zu aktivieren.",
       "enable": "Spracheingabe aktivieren",
-      "recheck": "Sprache erneut prüfen",
       "test": "Wiedergabe testen",
       "testPhrase": "Die Sprachwiedergabe funktioniert.",
       "testFailed": "Sprachwiedergabe fehlgeschlagen. Prüfe die gewählte Stimme und die Gerätelautstärke.",
@@ -589,7 +587,6 @@
     "pairingLink": "Kopplungs-Deep-Link",
     "openLink": "Kopplungslink öffnen",
     "machines": "Deine Rechner",
-    "refreshMachines": "Rechner aktualisieren",
     "noMachines": "Für diesen Benutzer sind keine Rechner registriert.",
     "revoke": "Rechner widerrufen",
     "revokeConfirm": "Diesen Rechner auf allen Geräten löschen? Sein öffentlicher Tunnel wird gelöscht.",
@@ -704,8 +701,7 @@
     "empty": "Keine gespeicherten Berechtigungen.",
     "remove": "Entfernen",
     "removeTitle": "Gespeicherte Berechtigung entfernen",
-    "removeMessage": "{{resource}} nicht mehr automatisch erlauben?",
-    "refresh": "Aktualisieren"
+    "removeMessage": "{{resource}} nicht mehr automatisch erlauben?"
   },
   "subscription": {
     "inactive": "Kein aktives Abonnement",
@@ -721,6 +717,7 @@
   "services": {
     "title": "Freigegebene Dienste",
     "description": "Dienste des Connectors über den Tunnel hinzufügen, ersetzen und entfernen. Änderungen wirken sofort.",
+    "loadFailed": "Freigegebene Dienste konnten nicht geladen werden.",
     "add": "Dienst hinzufügen",
     "addTitle": "Neuer Dienst",
     "editTitle": "Dienst bearbeiten",
@@ -742,7 +739,7 @@
     "credentialsExpired": "Der Cloud-Link-Zugriff für dieses Gerät ist abgelaufen oder fehlt. Verbinde es erneut, um seine Dienste zu verwalten.",
     "reconnectFailed": "Dieses Gerät konnte nicht erneut verbunden werden.",
     "unavailableService": "Dieser Dienst existiert nicht mehr auf dem Connector.",
-    "unavailableServiceHint": "Gehe zurück und aktualisiere die Liste der freigegebenen Dienste.",
+    "unavailableServiceHint": "Gehe zurück und öffne die Liste der freigegebenen Dienste erneut.",
     "legacyConnector": "Dieser Desktop-Connector kennt noch keine eigenen Dienst-Ports. Aktualisiere ihn, um Apps am Port-Root und mit wählbaren Ports freizugeben.",
     "unknownConnector": "Dieser Desktop-Connector ist älter als die App erwartet. Aktualisiere ihn für eigene Ports und Root-Dienste.",
     "enabledHint": "Datenverkehr für diesen Pfad durch den Tunnel leiten.",

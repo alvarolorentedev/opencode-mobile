@@ -9,7 +9,6 @@
   "console": {
     "selectTerminal": "选择终端",
     "create": "创建终端",
-    "refresh": "刷新终端",
     "openOrCreate": "打开或创建终端以开始。",
     "terminateTitle": "终止终端？",
     "terminateAction": "终止",

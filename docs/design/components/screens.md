@@ -66,6 +66,7 @@ Route-level controllers and platform-specific presentation surfaces. Back to the
 
 - fourth tab and thin controller over provider-owned PTY state
 - render a content-sized PTY selector overlay; each terminal opens on tap and reveals Close on swipe
+- refresh the PTY list when the tab regains focus or the selector opens; there is no header refresh action
 - create default-shell PTYs and select/reconnect existing PTYs
 - delegate rendering and keyboard controls to `components/terminal/`
 - stream immediate terminal input through provider actions; the server owns line editing/history
@@ -136,8 +137,10 @@ screen-reader mode is enabled. Native screen-reader/input validation remains req
   local edit draft, save feedback and discard confirmation. It calls the existing
   provider save action; unsupported editing is capability-gated.
 - `components/project/worktree-picker.tsx` renders the selection-only
-  `WorktreeSwitcher`, with a separate management mode for removal. Creation is
-  owned by New chat; inventory and lifecycle actions remain provider-owned.
+  `WorktreeSwitcher`, with a separate management mode for removal. It reads the
+  inventory when the sheet opens and on worktree events; a failed read offers
+  Retry instead of a permanent refresh action. Creation is owned by New chat;
+  inventory and lifecycle actions remain provider-owned.
 
 These surfaces reuse the existing palette, theme, slim preference, inputs and
 picker overlay. Projects retains its tab label and route. Chat reports the

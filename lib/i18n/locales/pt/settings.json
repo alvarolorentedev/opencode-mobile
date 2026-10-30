@@ -255,7 +255,6 @@
     "batteryOptimizationDescription": "Permita que o app funcione de forma mais confiável em segundo plano.",
     "batterySaver": "Economia de bateria",
     "batterySaverDescription": "A economia de bateria pode atrasar os lembretes.",
-    "refreshStatus": "Atualizar status",
     "enabledFeedback": "As notificações estão ativadas neste dispositivo.",
     "disabledFeedback": "As notificações ainda estão desativadas. Abra as configurações do sistema para ativá-las manualmente."
   },
@@ -398,10 +397,9 @@
       "onDevice": "Reconhecimento do sistema no dispositivo",
       "restricted": "Restrito pela política do dispositivo",
       "restrictedHint": "O reconhecimento de fala está restrito neste dispositivo. Contacte o administrador do dispositivo.",
-      "unavailableHint": "Ative Siri e Ditado nos ajustes do dispositivo e verifique novamente.",
+      "unavailableHint": "Ative Siri e Ditado nos ajustes do dispositivo.",
       "deniedHint": "O acesso foi negado. Abra os ajustes para ativá-lo manualmente.",
       "enable": "Ativar entrada de voz",
-      "recheck": "Verificar voz novamente",
       "test": "Testar reprodução",
       "testPhrase": "A reprodução de voz está a funcionar.",
       "testFailed": "A reprodução de voz falhou. Verifique a voz selecionada e o volume do dispositivo.",
@@ -589,7 +587,6 @@
     "pairingLink": "Link direto de pareamento",
     "openLink": "Abrir link de pareamento",
     "machines": "Suas máquinas",
-    "refreshMachines": "Atualizar máquinas",
     "noMachines": "Nenhuma máquina registrada para este usuário.",
     "revoke": "Revogar máquina",
     "revokeConfirm": "Excluir esta máquina em todos os dispositivos? O túnel público dela será excluído.",
@@ -704,8 +701,7 @@
     "empty": "Nenhuma permissão salva.",
     "remove": "Remover",
     "removeTitle": "Remover permissão salva",
-    "removeMessage": "Parar de permitir automaticamente {{resource}}?",
-    "refresh": "Atualizar"
+    "removeMessage": "Parar de permitir automaticamente {{resource}}?"
   },
   "subscription": {
     "inactive": "Nenhuma assinatura ativa",
@@ -721,6 +717,7 @@
   "services": {
     "title": "Serviços expostos",
     "description": "Adicione, substitua e remova os serviços que o seu conector expõe pelo túnel. As mudanças aplicam-se de imediato.",
+    "loadFailed": "Não foi possível carregar os serviços expostos.",
     "add": "Adicionar serviço",
     "addTitle": "Novo serviço",
     "editTitle": "Editar serviço",
@@ -742,7 +739,7 @@
     "credentialsExpired": "O acesso Cloud Link desta máquina expirou ou está ausente. Volte a ligá-la para gerir os seus serviços.",
     "reconnectFailed": "Não foi possível reconectar esta máquina.",
     "unavailableService": "Este serviço já não existe no conector.",
-    "unavailableServiceHint": "Volte atrás e atualize a lista de serviços expostos.",
+    "unavailableServiceHint": "Volte e reabra a lista de serviços expostos.",
     "legacyConnector": "Este conector de ambiente de trabalho ainda não suporta portas dedicadas. Atualize-o para servir apps na raiz da porta e escolher portas.",
     "unknownConnector": "Este conector de ambiente de trabalho é mais antigo do que a app espera. Atualize-o para usar portas dedicadas e serviços na raiz.",
     "enabledHint": "Encaminhar o tráfego deste caminho pelo túnel.",

@@ -225,9 +225,8 @@ export type ServiceManagementTarget = {
 export type ServiceManagementUnavailableReason = 'no-cloud-link-machine' | 'credentials-expired';
 
 // Remote connector service management. Folded into the connection domain so the
-// provider keeps a single context entry for it; consumers read `services` and
-// call the actions it exposes. `available` is false while resolving, when no
-// Cloud Link machine is saved, or when its credentials expired.
+// provider keeps one context entry. `available` is false while resolving,
+// without a saved Cloud Link machine, or when its credentials expired.
 export type ServiceManagementApi = {
   services: ManagedService[];
   // Connector-reported management revision and port pool; undefined until the
@@ -238,6 +237,7 @@ export type ServiceManagementApi = {
   target?: ServiceManagementTarget;
   machines: ServiceManagementMachine[];
   unavailableReason?: ServiceManagementUnavailableReason;
+  loadFailed: boolean;
   isRefreshing: boolean;
   isSaving: boolean;
   refresh: () => Promise<void>;

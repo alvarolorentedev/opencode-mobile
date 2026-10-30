@@ -42,7 +42,6 @@
     "size": "大小：{{size}}"
   },
   "worktrees": {
-    "refresh": "刷新工作树",
     "nameLabel": "名称（可选）",
     "empty": "没有可用的工作树。",
     "removeTitle": "移除工作树？",
