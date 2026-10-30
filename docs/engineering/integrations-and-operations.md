@@ -319,10 +319,10 @@ Glide image loading.
 
 Release artifacts are built for a trimmed set of ABIs via
 `-PreactNativeArchitectures`, passed by `scripts/build-android-release.mjs` from
-the `ANDROID_RELEASE_ABIS` environment variable (default `arm64-v8a`). CI builds
-version `v*` tags with `armeabi-v7a,arm64-v8a` (Play-ready, 32-bit + 64-bit ARM)
-and other builds with `arm64-v8a` only. x86/x86_64 are omitted because only
-emulators need them, and emulators are served by
+the `ANDROID_RELEASE_ABIS` environment variable (default `arm64-v8a`). Published
+releases build `armeabi-v7a,arm64-v8a` (Play-ready, 32-bit + 64-bit ARM) and
+manual build-only runs build `arm64-v8a,x86_64`. x86/x86_64 are omitted from
+published releases because only emulators need them, and emulators are served by
 `npm run build:development:android`, which keeps all four ABIs. Building fewer
 ABIs cuts per-ABI native compile and packaging work and lowers bundletool's peak
 memory.
