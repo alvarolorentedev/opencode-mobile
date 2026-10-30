@@ -36,7 +36,7 @@ export default function ProjectsScreen() {
     finally { setRefreshing(false); }
   }
   return <>
-    <Appbar.Header statusBarHeight={0} style={{ backgroundColor: palette.surface, paddingTop: insets.top, height: (slim ? 52 : 64) + insets.top }}>
+    <Appbar.Header statusBarHeight={0} elevated style={{ backgroundColor: palette.surface, paddingTop: insets.top, height: (slim ? 52 : 64) + insets.top }}>
       <View style={styles.breadcrumbHeader}>
         <WorkspaceBreadcrumb compact={slim} testIDPrefix="projects-workspace" />
       </View>
@@ -44,10 +44,7 @@ export default function ProjectsScreen() {
     </Appbar.Header>
     {ready ? <FilesPanel key={scope} browser={browser} projectLabel={activeProject!.label} statuses={serverCapabilities.fileStatus ? projectFileStatuses : []}
       contentStyle={[styles.content, slim && { padding: 10 }]}
-      header={<>
-        <Text variant="headlineMedium" style={{ fontWeight: '700', color: palette.text }}>{t('project:screen.filesTab')}</Text>
-        {vcsInfo?.branch ? <Text style={{ color: palette.muted }}>{t('project:files.branch', { branch: vcsInfo.branch })}</Text> : null}
-      </>}
+      header={<Text variant="headlineMedium" style={{ fontWeight: '700', color: palette.text }}>{t('project:screen.filesTab')}</Text>}
       onOpen={(path) => { void projectFile.open(path).then(() => setFileVisible(true)).catch((reason) => setError(reason instanceof Error ? reason.message : t('project:errors.openFile'))); }} />
       : <ScrollView style={{ flex: 1, backgroundColor: palette.background }} contentContainerStyle={[styles.content, slim && { padding: 10 }]}
         keyboardDismissMode="on-drag" keyboardShouldPersistTaps="handled">

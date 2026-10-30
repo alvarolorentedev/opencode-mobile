@@ -11,7 +11,7 @@ import type { Session } from '@/lib/opencode/types';
 import { formatEstimatedCost, formatTokenCount, type SessionUsage } from '@/lib/opencode/usage';
 
 import { ConversationOverlay } from '@/components/chat/chat-overlay';
-import { WorkspaceBreadcrumb } from '@/components/ui/workspace-breadcrumb';
+import { ChatWorkspaceContext } from '@/components/chat/chat-workspace-context';
 import { OverlaySheet } from '@/components/ui/overlay-sheet';
 import { styles } from '@/components/chat/chat-view-styles';
 import type { ConversationConfirmationState, ConversationInputPhase, ConversationPhase, ConversationReadbackPhase } from '@/providers/opencode-provider';
@@ -78,22 +78,23 @@ export function ChatHeader({
   return (
     <>
       <Appbar.Header
-        style={[styles.header, { backgroundColor: palette.surface, paddingTop: insetsTop, height: (slim ? 60 : 72) + insetsTop }]}
+        style={[styles.header, { backgroundColor: palette.surface, paddingTop: insetsTop, height: (slim ? 52 : 64) + insetsTop }]}
         statusBarHeight={0}
         elevated>
         <View style={styles.headerMain}>
-          <Pressable accessibilityRole="button" accessibilityLabel={t('chat:header.openChats', { title: selectedSession?.title || t('chat:header.untitledChat') })} onPress={onOpenSessionMenu} style={({ pressed }) => [styles.headerSessionAnchor, pressed && styles.headerSessionAnchorPressed]}>
-            <View style={styles.headerSessionContent}>
-              <View style={styles.headerSessionTextWrap}>
-                <Text maxFontSizeMultiplier={1.5} numberOfLines={1} variant="titleMedium" style={[styles.headerTitle, { color: palette.text }]}>
-                  {selectedSession?.title || t('chat:header.untitledChat')}
-                </Text>
-              </View>
+          <View style={styles.headerSessionTextWrap}>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={t('chat:header.openChats', { title: selectedSession?.title || t('chat:header.untitledChat') })}
+              hitSlop={{ top: 6, left: 6, right: 6 }}
+              onPress={onOpenSessionMenu}
+              style={({ pressed }) => [styles.headerSessionAnchor, pressed && styles.headerSessionAnchorPressed]}>
+              <Text maxFontSizeMultiplier={1.5} numberOfLines={1} variant="titleMedium" style={[styles.headerTitle, { color: palette.text }]}>
+                {selectedSession?.title || t('chat:header.untitledChat')}
+              </Text>
               <MaterialCommunityIcons name="chevron-down" size={20} color={palette.muted} />
-            </View>
-          </Pressable>
-          <View style={styles.headerBreadcrumb}>
-            <WorkspaceBreadcrumb compact={slim} testIDPrefix="chat-workspace" />
+            </Pressable>
+            <ChatWorkspaceContext compact={slim} />
           </View>
         </View>
         <View style={styles.headerActions}>

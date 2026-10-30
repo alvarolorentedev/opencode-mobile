@@ -42,6 +42,7 @@ export async function resetScenario(request, scenario) {
 
 export const workspaceProjectButton = (page, surface = 'projects') => page.getByTestId(`${surface}-workspace-project-button`);
 export const workspaceWorktreeButton = (page, surface = 'projects') => page.getByTestId(`${surface}-workspace-worktree-button`);
+export const chatWorkspaceContext = (page) => page.getByTestId('chat-workspace-context');
 
 // Pause Playwright's already-installed fake clock without a page-side
 // Date.now() read. The round trip through page.evaluate() can take longer than

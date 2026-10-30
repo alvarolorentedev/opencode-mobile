@@ -15,7 +15,8 @@ Route-level controllers and platform-specific presentation surfaces. Back to the
 
 #### Presentation
 
-- keeps the shared workspace breadcrumb in the header: project selection is separate from the conditional worktree selector
+- keeps the one-line workspace breadcrumb in the header: project selection is separate from the conditional worktree selector, with a larger project title and read-at-a-glance branch context
+- the branch is shown once, in the header; the Files content title does not repeat it
 - the shared picker lists the connection's opened projects, can close them locally, and can add a server directory as a project
 - provides one project refresh action
 - shows files directly with breadcrumbs and scoped search; worktree creation lives in New chat, not Projects
@@ -139,8 +140,9 @@ screen-reader mode is enabled. Native screen-reader/input validation remains req
   owned by New chat; inventory and lifecycle actions remain provider-owned.
 
 These surfaces reuse the existing palette, theme, slim preference, inputs and
-picker overlay. Projects retains its tab label and route. Chat uses the same
-picker and provider selection action; Terminal follows that directory.
+picker overlay. Projects retains its tab label and route. Chat reports the
+workspace read-only; its chat library keeps the shared picker and provider
+selection action. Terminal follows that directory.
 
 ## App update notice
 

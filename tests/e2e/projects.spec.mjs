@@ -1,6 +1,6 @@
 import { expect, test } from './helpers/fixtures.mjs';
 
-import { backendOrigin, chatAction, connectToServer, expectConnectedTo, getFreePort, goToTab, openChatLibrary, openReadyChat, reconnectActiveConnection, resetScenario, seedOnboarding, sendPrompt, spawnV1Server, spawnV2Server, waitForServer, workspaceProjectButton, workspaceWorktreeButton } from './helpers/flows.mjs';
+import { backendOrigin, chatAction, chatWorkspaceContext, connectToServer, expectConnectedTo, getFreePort, goToTab, openChatLibrary, openReadyChat, reconnectActiveConnection, resetScenario, seedOnboarding, sendPrompt, spawnV1Server, spawnV2Server, waitForServer, workspaceProjectButton, workspaceWorktreeButton } from './helpers/flows.mjs';
 
 test.beforeEach(async ({ page }, info) => {
   await seedOnboarding(page, info);
@@ -81,15 +81,19 @@ test('worktrees are created from New chat and MCP servers can be created', async
   await page.getByTestId('new-chat-worktree-name').fill('mobile-test');
   await page.getByTestId('new-chat-confirm').click();
   await expect(page.getByTestId('new-chat-sheet')).not.toBeVisible({ timeout: 20_000 });
-  await expect(workspaceWorktreeButton(page, 'chat')).toContainText('mobile-test');
-  await workspaceWorktreeButton(page, 'chat').click();
+  await expect(chatWorkspaceContext(page)).toContainText('mobile-test');
+  // Chat only reports the workspace. Selection lives on the Projects header.
+  await expect(page.getByTestId('chat-workspace-project-button')).toHaveCount(0);
+  await expect(page.getByTestId('chat-workspace-worktree-button')).toHaveCount(0);
+  await goToTab(page, 'Projects');
+  await workspaceWorktreeButton(page).click();
   await expect(page.getByTestId('worktree-picker')).toContainText('mobile-test');
   await page.getByTestId('worktree-picker').getByRole('button', { name: 'Close', exact: true }).click();
   // The fake server exposes project extensions only for the canonical project
   // root, so return to Local before exercising the Extensions surface.
-  await workspaceWorktreeButton(page, 'chat').click();
+  await workspaceWorktreeButton(page).click();
   await page.getByTestId('worktree-picker').getByRole('button', { name: 'Select Local' }).click();
-  await expect(workspaceWorktreeButton(page, 'chat')).toContainText('Local');
+  await expect(workspaceWorktreeButton(page)).toContainText('Local');
 
   await goToTab(page, 'Settings');
   await page.getByText('Extensions', { exact: true }).click();
@@ -116,7 +120,7 @@ test('OpenCode 2 adds a server project from the shared picker @smoke', async ({ 
     await page.getByTestId('project-add-button').click();
     await page.getByTestId('project-add-path').fill('/workspace/v2-new-project');
     await page.getByTestId('project-add-submit').click();
-    await expect(workspaceProjectButton(page, 'chat')).toContainText('v2-new-project');
+    await expect(chatWorkspaceContext(page)).toContainText('v2-new-project');
     const serverProjects = await (await request.get(`http://127.0.0.1:${port}/api/project`)).json();
     expect(serverProjects.some((project) => project.canonical === '/workspace/v2-new-project')).toBe(true);
     const [promptResponse] = await Promise.all([
@@ -264,13 +268,15 @@ for (const contract of ['v1', 'v2']) {
       await page.getByTestId('new-chat-worktree-name').fill('scoped-task');
       await page.getByTestId('new-chat-confirm').click();
       await expect(page.getByTestId('new-chat-sheet')).not.toBeVisible({ timeout: 20_000 });
-      await expect(workspaceProjectButton(page, 'chat')).toContainText('secondary-project');
-      await expect(workspaceWorktreeButton(page, 'chat')).toContainText('scoped-task');
-      await workspaceProjectButton(page, 'chat').click();
-      await expect(page.getByRole('button', { name: 'Select scoped-task' })).toHaveCount(0);
-      await page.getByTestId('project-picker').getByRole('button', { name: 'Close', exact: true }).click();
+      await expect(chatWorkspaceContext(page)).toContainText('secondary-project');
+      await expect(chatWorkspaceContext(page)).toContainText('scoped-task');
+      await expect(page.getByTestId('chat-workspace-project-button')).toHaveCount(0);
+      await expect(page.getByTestId('chat-workspace-worktree-button')).toHaveCount(0);
 
       await goToTab(page, 'Projects');
+      await workspaceProjectButton(page).click();
+      await expect(page.getByRole('button', { name: 'Select scoped-task' })).toHaveCount(0);
+      await page.getByTestId('project-picker').getByRole('button', { name: 'Close', exact: true }).click();
       await page.getByTestId('project-entry-README.md').click();
       await expect(page.getByText('# Worktree scoped-task', { exact: false })).toBeVisible();
       await page.getByLabel('Close file').click();

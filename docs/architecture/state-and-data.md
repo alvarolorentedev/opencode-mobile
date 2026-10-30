@@ -997,13 +997,15 @@ through the same route, or from their content on V1. V1 binary content is
 unavailable because that server contract returns an empty body. Bytes are
 process-local and are released when the preview closes; nothing is persisted.
 
-The workspace breadcrumb groups worktrees under their owning project, resolved
-from the scoped project API rather than path prefixes. The project picker shows
+The workspace header groups worktrees under their owning project, resolved from
+the scoped project API rather than path prefixes. The project picker shows
 projects only; the worktree selector appears only when a project has multiple
-checkouts. Adding a validated directory selects the requested path, including a
-worktree, rather than its owning project root. Selection applies across Chat,
-Projects and Terminal. Creation lives in New chat; removal preserves
-confirmations and rejects the active checkout and primary checkout.
+checkouts. Projects owns the interactive selector; Chat shows the same values as
+a read-only subtitle under the session title. Adding a validated directory
+selects the requested path, including a worktree, rather than its owning project
+root. Selection applies across Chat, Projects and Terminal. Creation lives in
+New chat; removal preserves confirmations and rejects the active checkout and
+primary checkout.
 OpenCode 2 hides reset/startup commands and maps directory-only inventory to names.
 The browser groups state and actions under one context member, keeping the public
 context below the 135-member ceiling. Screens and components call provider actions;

@@ -47,7 +47,7 @@ Behavior:
 
 ### 2. Pick a Project
 
-Chat has a project button in its chat library. Project keeps its project-name dropdown in the header. Both open the same anchored project picker for projects returned by the server.
+Chat shows the active project and worktree as read-only context under the session title; the Chat header has no workspace selector. Its chat library keeps a project button. Projects keeps the project/worktree selector in the header. The library button and Projects header open the same anchored project picker for projects returned by the server.
 
 Behavior:
 
@@ -224,7 +224,7 @@ Additional session actions are available in Chat:
 
 The Projects tab provides source inspection and text editing:
 
-- Files stays the only Projects surface; project and worktree selection use the shared header breadcrumb
+- Files stays the only Projects surface; project and worktree selection use the Projects header, while Chat shows the same workspace as non-interactive context
 - search file paths by query
 - open returned files in a focused full-screen viewer/editor
 - preview raster images, audio, and video from OpenCode 2 file bytes; show a download card for PDFs, archives, installers, and other binaries
@@ -237,7 +237,7 @@ Before save, the provider re-reads the file and rejects the operation if the ser
 
 ### 10. Manage Worktrees
 
-Projects uses a two-level workspace selector. The project picker lists projects only; a worktree selector appears beside it only when the project has more than one checkout. Worktree creation happens in New chat and accepts an optional name. Removal is in a separate management mode in the worktree switcher and requires destructive confirmation. These SDK operations use OpenCode's experimental worktree endpoints, so server availability and response stability are not guaranteed like the non-experimental contract.
+Projects uses a two-level workspace selector in one header line. The project picker lists projects only; a worktree selector appears beside it only when the project has more than one checkout. The Chat header reports the selected project/worktree as read-only context and does not attach selection actions. Worktree creation happens in New chat and accepts an optional name. Removal is in a separate management mode in the worktree switcher and requires destructive confirmation. These SDK operations use OpenCode's experimental worktree endpoints, so server availability and response stability are not guaranteed like the non-experimental contract.
 
 ### 11. Use The Terminal Tab
 

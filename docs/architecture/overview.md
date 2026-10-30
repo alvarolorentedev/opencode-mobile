@@ -906,9 +906,9 @@ Responsibilities:
 - browse folders and navigate breadcrumbs inside the selected directory
 - search across the active project, preview text, and retain the browsed folder on return
 - preserve conflict-checked text editing and confirm before discarding unsaved edits
-- show supported changed-file information and the current VCS branch
+- show supported changed-file information; the header carries the current VCS branch as workspace context
 - refresh the current folder or search, file status, and project catalog together
-- use the shared workspace breadcrumb for project selection and the conditional worktree selector; create worktrees from New chat and manage them from the switcher
+- use the one-line Projects workspace header for project selection and the conditional worktree selector; Chat reports the same workspace read-only; create worktrees from New chat and manage them from the switcher
 
 ### Settings Screen
 

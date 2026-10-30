@@ -211,7 +211,7 @@ type ChatComposerProps = {
 #### Responsibility
 
 - top app bar with New chat and usage actions; New chat opens the server/project sheet instead of creating immediately, and voice chat starts from the composer waveform only
-- active session and project title that opens the Chats overlay
+- active session title that opens the Chats overlay, with read-only project/worktree context below it
 - compact current-session usage summary and usage breakdown sheet
 - mounting point for conversation overlay
 
@@ -220,16 +220,30 @@ type ChatComposerProps = {
 ```ts
 type ChatHeaderProps = {
   connectionStatus: 'idle' | 'connecting' | 'connected' | 'error'
-  conversation: { active: boolean; confirmation?: ConversationConfirmationState; feedback?: string; inputPhase: ConversationInputPhase; latestHeardText?: string; phase: ConversationPhase; readbackPhase: ConversationReadbackPhase; wakePhrase: string; wakePhraseRequired: boolean }
+  conversation: { active: boolean; confirmation?: ConversationConfirmationState; feedback?: string; inputPhase: ConversationInputPhase; latestHeardText?: string; level: number; phase: ConversationPhase; readbackPhase: ConversationReadbackPhase; wakePhrase: string }
   insetsTop: number
   onConfirmStopConversation: () => void
   onCreateSession: () => void
   onOpenSessionMenu: () => void
   palette: Palette
   selectedSession?: Session
-  activeProjectLabel?: string
+  contextLimit?: number
+  contextTokens?: number
+  latestAssistantTurnUsage?: SessionUsage
+  slim?: boolean
+  usage: SessionUsage
 }
 ```
+
+`ChatWorkspaceContext` renders the muted project/worktree/branch line below
+the title. It has no press handler, picker, or chevron; workspace selection
+stays in Projects and New chat.
+
+### `components/chat/chat-workspace-context.tsx`
+
+- renders the active project, worktree, and branch as one muted subtitle under the session title
+- reads the shared checkout catalog but owns no state
+- exposes no press handler, picker, or chevron; Chat cannot change the workspace from its header
 
 `new-chat-sheet.tsx` reuses the terminal creation-sheet pattern: server
 selector (only with multiple connections), project selector, resolved working
@@ -257,8 +271,9 @@ the provider then creates and opens the session in that workspace.
 
 ### `components/ui/workspace-breadcrumb.tsx`
 
-- renders the two-level workspace selector used by Chat and Projects
+- renders the one-line Projects header selector: project title at ~16pt, worktree at ~13pt, branch as quiet ~11.5pt context
 - project selection is always available; the worktree selector appears only when the active project has more than one checkout
+- Chat does not mount this selector; it uses `ChatWorkspaceContext` instead
 - owns only sheet visibility; project/worktree selection and catalog state come from the provider
 - mounts the project picker and the selection-only `WorktreeSwitcher`
 
