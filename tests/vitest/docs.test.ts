@@ -85,6 +85,10 @@ const INLINE_PATH_ALLOWLIST = new Set([
   'engineering/',
   'adr/',
   // Placeholders, external repositories, generated output, and proposals.
+  // Generated/gitignored dirs referenced by docs (expo prebuild, Playwright).
+  'android/',
+  'ios/',
+  'test-results/',
   'docs/adr/NNNN-short-kebab-title.md',
   'protocol/README.md',
   'widgets/ios/session-widget.tsx',
