@@ -87,7 +87,9 @@ trusted environment, and sandbox configuration. See
 [F-Droid and FOSS builds](./fdroid.md) for the FOSS variant's scope and distribution.
 
 **Release Automation**:
-- Pushes to `main` run the validation gate only; the Android release jobs (`android-release`, `foss-release`) run on `v*` tags, or on a manual **Build** dispatch with `build_android: true` when a sideload APK is needed
+- Pushes to `main` run the full validation gate; documentation-only pushes run static checks only. The Android release jobs (`android-release`, `foss-release`) run on `v*` tags, or on a manual **Build** dispatch with `build_android: true` when a sideload APK is needed
+- Before tagging a release, wait for the full `Build` validation on `main` to pass. A tag reuses that exact-SHA validation instead of running the full suite again. The `force_validate` dispatch input runs the full gate as an emergency override
+- Android and FOSS release builds run in parallel after the gate. A release-preparation job creates the GitHub Release once before both APK uploads
 - Release builds upload APKs as the `android-release-artifacts` artifact (1-day retention); `v*` tag runs also build the release AAB for the Play Store upload
 - The GitHub Release asset and production Play Store upload happen only on `v*` tags
 - Release ABIs are trimmed per ref: `v*` tags build `armeabi-v7a,arm64-v8a`; other builds build `arm64-v8a` only. Override locally with `ANDROID_RELEASE_ABIS`. See [Android Build / Release Notes](./integrations-and-operations.md#release-abis-and-gradle-memory)
@@ -125,12 +127,14 @@ npm run build:ios:local
   Vitest suites (`tests/vitest/`)
 - Flow validation runs against the fake OpenCode server in `tests/fake-opencode/server.mjs`
 - End-to-end suite uses Playwright (`tests/e2e/*.spec.mjs`, split by domain over `tests/e2e/helpers/flows.mjs`)
-- `npm run test:e2e:smoke` runs the 17 critical flows; `npm run test:e2e:web:isolated`
+- `npm run test:e2e:smoke` runs the 17 critical flows; `npm run test:e2e:changed`
+  selects smoke plus the specs affected by the current diff; `npm run test:e2e:web:isolated`
   allocates fresh ports for concurrent local runs; `npm run validate:fast` is the
   pre-push loop
 - CI runs the Playwright suite in one job with four workers, each with its own
-  fake V1/V2 pair, and caches the browser and static-check state; see
-  `docs/engineering/testing-and-validation.md` for measured timings
+  fake V1/V2 pair, resets the worker backend before every test, and caches the
+  browser and static-check state; PRs run a risk-based slice while `main` runs
+  the full suite
 - Full testing strategy documented in `docs/engineering/testing-overview.md`; remaining deferred test work in `docs/engineering/known-gaps.md`
 
 ### Configuration

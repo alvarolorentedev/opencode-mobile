@@ -32,7 +32,7 @@ sections; the reference docs are large on purpose.
 | Work on Cloud Link / remote pairing | [Cloud Link](product/cloud-link.md) |
 | Work on voice input or spoken replies | [Design system](design/design-system.md) + [Voice validation](engineering/voice-validation.md) |
 | Change native configuration, build, or release | [Development](engineering/development.md) + [Integrations and operations](engineering/integrations-and-operations.md) |
-| Run or extend tests | [Validation index](engineering/testing-and-validation.md) + [Validation strategy](engineering/validation/strategy.md) |
+| Run or extend tests, or choose a test level | [Validation index](engineering/testing-and-validation.md) + [Validation strategy](engineering/validation/strategy.md#test-selection-matrix) |
 | Add a feature that needs an architectural decision | [ADR process](adr/README.md) |
 | Check deliberately deferred work | [Known gaps](engineering/known-gaps.md) |
 | Evaluate a library or extraction | [Library extraction](engineering/library-extraction.md) |

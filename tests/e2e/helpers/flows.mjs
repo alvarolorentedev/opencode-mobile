@@ -43,6 +43,14 @@ export async function resetScenario(request, scenario) {
 export const workspaceProjectButton = (page, surface = 'projects') => page.getByTestId(`${surface}-workspace-project-button`);
 export const workspaceWorktreeButton = (page, surface = 'projects') => page.getByTestId(`${surface}-workspace-worktree-button`);
 
+// Pause Playwright's already-installed fake clock without a page-side
+// Date.now() read. The round trip through page.evaluate() can take longer than
+// the pause headroom under CI load, so the target is computed immediately
+// before the pause command. 2.5s stays below the first 3s startup retry.
+export async function pauseClockBefore(page, aheadMs = 2_500) {
+  await page.clock.pauseAt(Date.now() + aheadMs);
+}
+
 export async function openReadyChat(page) {
   await page.goto('/', { waitUntil: 'domcontentloaded' });
   await expect(page.getByText('Start a new task')).toBeVisible({ timeout: 30_000 });

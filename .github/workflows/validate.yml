@@ -3,9 +3,10 @@ name: Validate
 # Single source of truth for the pre-release gate. Called by pr-validate.yml,
 # build.yml, and ios-release.yml so the checks cannot drift apart.
 #
-# Static checks and the fake-server self-test run in one job. E2E runs in one
-# job with one web export and four Playwright workers; each worker owns a fake
-# V1/V2 server pair, so the fake server's global scenario stays isolated.
+# PRs run the critical smoke set plus the specs affected by the changed paths;
+# shared contracts, unknown paths, and manual dispatches still run everything.
+# Pushes to main always run the full E2E suite (docs-only pushes run static
+# checks only). Release tags reuse the exact-SHA main validation instead.
 on:
   workflow_call:
     inputs:
@@ -14,13 +15,60 @@ on:
         required: false
         default: ''
         type: string
+      force_full:
+        description: 'Run the complete E2E suite regardless of changed paths.'
+        required: false
+        default: false
+        type: boolean
 
 permissions:
   contents: read
 
 jobs:
-  static:
+  changes:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    outputs:
+      e2e_mode: ${{ steps.select.outputs.e2e_mode }}
+      e2e_specs: ${{ steps.select.outputs.e2e_specs }}
+      storybook: ${{ steps.select.outputs.storybook }}
+      reason: ${{ steps.select.outputs.reason }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.ref || github.sha }}
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Select validation slice
+        id: select
+        env:
+          EVENT: ${{ github.event_name }}
+          BASE: ${{ github.event_name == 'pull_request' && format('origin/{0}', github.base_ref) || github.event.before }}
+          HEAD_REF: ${{ github.event_name == 'pull_request' && 'HEAD' || github.sha }}
+          FORCE_FULL: ${{ inputs.force_full }}
+        run: |
+          if [ "$FORCE_FULL" = "true" ]; then
+            printf 'e2e_mode=full\ne2e_specs=\nstorybook=true\nreason=force_full\n' >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          if [ "$EVENT" = "pull_request" ]; then
+            git fetch --no-tags origin "${{ github.base_ref }}"
+          fi
+          node scripts/ci/select-validation.mjs --event "$EVENT" --base "$BASE" --head "$HEAD_REF" --github-output
+
+  static:
+    needs: changes
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
     permissions:
       contents: read
 
@@ -28,7 +76,7 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
-          ref: ${{ inputs.ref || github.ref }}
+          ref: ${{ inputs.ref || github.sha }}
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -48,7 +96,7 @@ jobs:
             .eslintcache
             tsconfig.app.tsbuildinfo
             tsconfig.tests.tsbuildinfo
-          key: static-${{ runner.os }}-${{ hashFiles('package-lock.json', 'eslint.config.*', 'tsconfig*.json') }}-${{ github.sha }}
+          key: static-${{ runner.os }}-${{ hashFiles('package-lock.json', 'eslint.config.*', 'tsconfig*.json') }}
           restore-keys: |
             static-${{ runner.os }}-${{ hashFiles('package-lock.json', 'eslint.config.*', 'tsconfig*.json') }}-
 
@@ -59,20 +107,26 @@ jobs:
         run: npm run test:fake-server:self
 
       - name: Build component catalog
+        if: needs.changes.outputs.storybook == 'true'
         run: npm run build:storybook
 
   e2e:
+    needs: changes
+    if: needs.changes.outputs.e2e_mode != 'none'
     runs-on: ubuntu-latest
+    timeout-minutes: 25
     permissions:
       contents: read
     env:
       E2E_WORKERS: '4'
+      CI: 'true'
+      EXPO_PUBLIC_E2E_MODE: '1'
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
-          ref: ${{ inputs.ref || github.ref }}
+          ref: ${{ inputs.ref || github.sha }}
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -82,6 +136,9 @@ jobs:
 
       - name: Install dependencies
         run: npm ci
+
+      - name: Check E2E test budget
+        run: npm run test:e2e:budget
 
       # The browser download is the slowest and least predictable part of the
       # gate. Cache the binary; fall back to the full dependency install when
@@ -101,16 +158,50 @@ jobs:
             npx playwright install --with-deps chromium
           fi
 
-      - name: Run CI flow suite against fake OpenCode server
+      - name: Run full CI flow suite
+        if: needs.changes.outputs.e2e_mode == 'full'
         run: npx playwright test
-        env:
-          CI: 'true'
-          EXPO_PUBLIC_E2E_MODE: '1'
 
-      - name: Upload Playwright report
+      - name: Run critical smoke flows
+        if: needs.changes.outputs.e2e_mode == 'smoke' || needs.changes.outputs.e2e_mode == 'affected'
+        run: npx playwright test --grep @smoke
+
+      # The smoke step produced dist-e2e. Serve it directly for the affected
+      # slice instead of exporting a second time.
+      - name: Run affected flows
+        if: needs.changes.outputs.e2e_mode == 'affected'
+        run: E2E_SKIP_BUILD=1 npx playwright test ${{ needs.changes.outputs.e2e_specs }}
+
+      - name: Upload Playwright diagnostics
         if: failure()
         uses: actions/upload-artifact@v4
         with:
-          name: playwright-report
-          path: playwright-report/
+          name: playwright-diagnostics
+          path: |
+            playwright-report/
+            test-results/
           retention-days: 3
+
+  gate:
+    # Stable required check: docs-only changes may skip E2E, but a failed or
+    # cancelled static/E2E job must still fail the gate.
+    if: always()
+    needs: [changes, static, e2e]
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    steps:
+      - name: Verify validation jobs
+        env:
+          CHANGES: ${{ needs.changes.result }}
+          STATIC: ${{ needs.static.result }}
+          E2E: ${{ needs.e2e.result }}
+        run: |
+          echo "changes=$CHANGES static=$STATIC e2e=$E2E"
+          test "$CHANGES" = "success"
+          test "$STATIC" = "success"
+          case "$E2E" in
+            success|skipped) ;;
+            *) exit 1 ;;
+          esac

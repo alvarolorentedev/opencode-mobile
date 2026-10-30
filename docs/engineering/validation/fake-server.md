@@ -15,6 +15,12 @@ request, which surfaced as an intermittent `apiRequestContext ... socket hang
 up` failure. The test runner owns the process lifetime, so the longer timeout
 does not leave stray connections after the run.
 
+Each Playwright worker owns one V1/V2 pair. The `resetBackend` auto fixture
+posts `/__control/reset` before every test, so sessions, scenario state, network
+injection, and pending blockers cannot leak between flows. Tests may still call
+`resetScenario` to select a non-default scenario after that reset. The reset is
+a test-harness contract; it does not change production endpoints.
+
 The V2 self-test submits prompts through the pinned `@opencode/client` SDK,
 checks that the HTTP 200 admission identifies the stored user message, and
 verifies that session events carry that session's directory. Non-session events

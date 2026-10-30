@@ -38,7 +38,14 @@ export default defineConfig({
   timeout: 60_000,
   fullyParallel: true,
   workers: workerCount,
-  reporter: [['list'], ['html', { open: 'never' }]],
+  // A committed .only would silently shrink the gate. Retries stay at zero:
+  // flaky tests must be fixed, not hidden.
+  forbidOnly: Boolean(process.env.CI),
+  retries: 0,
+  reporter: process.env.CI
+    ? [['list'], ['github'], ['html', { open: 'never' }]]
+    : [['list'], ['html', { open: 'never' }]],
+  outputDir: 'test-results',
   use: {
     baseURL: `http://127.0.0.1:${webPort}`,
     trace: 'retain-on-failure',

@@ -24,6 +24,7 @@ concurrency:
 jobs:
   resolve-tag:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     permissions:
       contents: read
     outputs:
@@ -68,6 +69,7 @@ jobs:
   ios-release:
     needs: [resolve-tag, validate]
     runs-on: macos-26
+    timeout-minutes: 180
     permissions:
       contents: write
 

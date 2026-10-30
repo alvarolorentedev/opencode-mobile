@@ -1,7 +1,7 @@
 import { expect, test } from './helpers/fixtures.mjs';
 import { Buffer } from 'node:buffer';
 
-import { fakeV2Origin } from './helpers/flows.mjs';
+import { fakeV2Origin, pauseClockBefore } from './helpers/flows.mjs';
 
 // Native APIs/SecureStore are substituted only in the development E2E build.
 const CONTROL_PLANE = 'https://api.opencodecloud.link';
@@ -151,10 +151,10 @@ async function startApprovalWait(page, startup, theme = 'dark') {
   await submitLink(page, pairingLink().toString());
   await expect(page.getByTestId('connect-progress')).toHaveText('Confirm this connection on your computer.');
   await expect.poll(() => startup.attempts).toBeGreaterThan(0);
-  // Pause before the first 3s startup retry. The headroom keeps a slow CI
-  // scheduler from advancing the page clock past the pause target, which
-  // throws "Cannot fast-forward to the past".
-  await page.clock.pauseAt(await page.evaluate(() => Date.now() + 2_000));
+  // Pause before the first 3s startup retry. Computing the target in Node
+  // immediately before pauseAt avoids the page.evaluate round trip that used to
+  // let CI load advance the fake clock past the target.
+  await pauseClockBefore(page);
   return state;
 }
 

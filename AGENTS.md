@@ -337,11 +337,12 @@ Run when relevant:
 
 ### Before Push
 
-CI runs the `validate` job. It must be green, so run the same checks locally and do not push until they pass:
+CI runs the `Validate` gate. It must be green, so run the same checks locally and do not push until they pass:
 
 ```bash
 npm run test:ci:static
 npm run test:fake-server:self
+npm run test:e2e:budget
 npm run build:storybook
 npm run test:e2e:web
 ```
@@ -355,9 +356,11 @@ V1/V2 pair, so the per-worker global scenario stays isolated. For iteration:
 
 ```bash
 npm run test:ci:static          # cached; ~15s when warm, ~45s cold
-npm run validate:fast           # static + fake-server self-test + smoke flows
+npm run validate:fast           # static + fake-server + budget + smoke flows
 npm run test:e2e:smoke          # 17 critical flows
+npm run test:e2e:changed        # smoke + specs affected by the current diff
 npm run test:e2e:last-failed
+npm run test:e2e:budget         # expanded test/spec count guardrail
 npm run test:e2e:web:isolated -- tests/e2e/chat.spec.mjs
 ```
 
@@ -408,6 +411,34 @@ Add or update tests when changing:
 
 Any change to `tests/e2e/` or `tests/fake-opencode/` requires explicit human validation, even if automated checks pass.
 
+### Choose the cheapest test level
+
+| Change | Default |
+| --- | --- |
+| Docs, ADRs, Markdown | `npm run test:docs` + static |
+| Pure logic, parsers, selectors, state transitions | targeted Vitest |
+| Provider/session/persistence orchestration | Vitest integration + affected E2E |
+| Protocol, endpoint, event, service adapter | fake-server self-test + contract Vitest + affected E2E |
+| UI presentation or settings row | static + Storybook + affected spec |
+| Critical user journey not provable lower | extend an existing Playwright spec |
+| Native voice/notifications/device behavior | existing targeted checks + manual/device validation |
+
+Run the full E2E suite when the change touches `providers/`, `lib/opencode/`,
+`providers/services/`, `tests/fake-opencode/`, `tests/e2e/`, dependencies,
+app/build/CI configuration, a root layout, or more than two domains. Unmapped
+paths also mean full. The authoritative matrix is
+[Validation strategy § Test selection](docs/engineering/validation/strategy.md#test-selection-matrix).
+
+Before adding a test, answer: what regression does it catch, is it already
+covered, can a lower level catch it, does it assert behavior, is it
+deterministic, and what runtime cost does it add? Do not add a new E2E spec when
+the owning domain spec can be extended. Update `tests/e2e/budget.json` in the
+same change when adding an intentional test or spec.
+
+No new test is required for documentation-only changes, behavior-preserving
+refactors with existing coverage, generated files, or copy covered by i18n
+parity and an existing flow. State why coverage is sufficient in the PR.
+
 ## Definition Of Done
 
 A change is done when:
@@ -423,6 +454,6 @@ A change is done when:
 - documentation in `docs/` is updated when behavior, architecture, or contracts changed
 - any durable decision has an ADR in `docs/adr/` and an index entry
 - reusable presentation changes have a Storybook story and `npm run build:storybook` passes
-- the pre-push CI-equivalent checks pass (`test:ci:static`, `test:fake-server:self`, `build:storybook`, `test:e2e:web`)
+- the pre-push CI-equivalent checks pass (`test:ci:static`, `test:fake-server:self`, `test:e2e:budget`, `build:storybook`, `test:e2e:web`)
 - validation matches the risk of the change
 - the final summary states what changed, what was verified, and any remaining risk

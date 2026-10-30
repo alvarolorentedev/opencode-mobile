@@ -24,22 +24,25 @@ it:
 - `pr-validate.yml` — pull requests targeting `main`
 - `ios-release.yml` — manual iOS release dispatch
 
-`validate` runs:
+`validate` classifies changed paths, then runs:
 
 1. `npm run test:ci:static` — lint, app and test type-checking, and Vitest.
    `package.json` is the source of truth for the exact suite list.
 2. `npm run test:fake-server:self`
-3. `npm run build:storybook`
-4. `npm run test:e2e:web` — one web export, four Playwright workers, each with
-   its own fake V1/V2 server pair.
+3. `npm run build:storybook` when UI or Storybook files changed.
+4. E2E — smoke plus affected specs on PRs; the full suite on code-bearing
+   `main` pushes; no rerun on release tags that already have a green exact-SHA
+   main validation.
 
 The three callers use the reusable workflow; the gate is defined once in
-`validate.yml`. Change the gate there, not in the caller workflows.
+`validate.yml`. Change the gate there, not in the caller workflows. The stable
+required check is `validate / gate`, which accepts a skipped E2E job only for a
+docs-only or Storybook-only change.
 
 `ios-release` also builds and signs the iOS archive after `validate`; the Android
-release jobs (`android-release`, `foss-release`) run after `validate` on `v*`
-tags or a manual dispatch with `build_android: true`. Release artifacts expire;
-the permanent copy is the GitHub Release asset or store upload.
+release jobs (`android-release`, `foss-release`) run in parallel after the gate
+on `v*` tags or a manual dispatch with `build_android: true`. Release artifacts
+expire; the permanent copy is the GitHub Release asset or store upload.
 
 ## Why this repo uses flow tests
 

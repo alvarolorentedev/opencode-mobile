@@ -19,7 +19,38 @@ Back to the [validation index](../testing-and-validation.md) · [engineering ind
 | Native module, keyboard, permissions, release config | `npm run build:development:android` plus device checks |
 
 Baseline before push: `npm run test:ci:static`, `npm run test:fake-server:self`,
-`npm run build:storybook`, and `npm run test:e2e:web`.
+`npm run test:e2e:budget`, `npm run build:storybook`, and `npm run test:e2e:web`.
+
+## Test selection matrix
+
+Pick the cheapest level that can detect the regression. Extend an existing
+scenario before adding a new spec; see [ADR 0010](../../adr/0010-risk-based-validation-and-selective-pr-e2e.md).
+
+| Change | Preferred test level | PR E2E |
+| --- | --- | --- |
+| Docs, ADRs, repository Markdown | docs test + static | none |
+| Translations | strict i18n test + static | smoke |
+| Pure utility, parser, formatter, selector | targeted Vitest | none or affected spec |
+| Presentational component or design token | Storybook + static + affected spec | smoke + affected spec |
+| Settings section or row | Storybook + `settings.spec.mjs` | smoke + settings |
+| Chat, composer, transcript | `chat`, `interactions`, `diffs` specs | smoke + affected specs |
+| Provider, session, persistence | Vitest integration + affected E2E | full |
+| Protocol, endpoint, event, service adapter | fake-server self-test + contract Vitest + E2E | full |
+| SSE, polling, reconnect, offline | deterministic Vitest + `realtime`/`network-resilience` | full |
+| Fake server or E2E infrastructure | self-test + full E2E + human validation | full |
+| Native voice, notifications, permissions, widgets | existing targeted tests + device checklist | smoke + manual |
+| Dependencies, app config, build/CI config | static + full E2E | full |
+| Release tag | exact-SHA full validation + native builds | n/a |
+
+Escalate to the full suite when the change touches `providers/`,
+`lib/opencode/`, `providers/services/`, `tests/fake-opencode/`, `tests/e2e/`,
+dependencies, app/build configuration, workflows, a root layout, or more than
+two domains. An unmapped path also means full.
+
+No new test is required for documentation-only changes, behavior-preserving
+refactors with existing coverage, generated files, or copy covered by locale
+parity and an existing flow. Agents must explain why existing coverage is
+sufficient in the PR verification section.
 
 ## Documentation and catalog checks
 
@@ -58,6 +89,8 @@ npm run serve:web:prebuilt
 npx playwright test tests/e2e/chat.spec.mjs
 npm run test:e2e:smoke          # critical flows
 npm run test:e2e:last-failed    # rerun the previous failures
+npm run test:e2e:changed        # smoke + specs selected from the current diff
+npm run test:e2e:budget         # check the expanded test/spec budget
 ```
 
 Concurrent local runs must not share fixed ports. Use the isolated wrapper:
@@ -69,31 +102,46 @@ E2E_SKIP_BUILD=1 npm run test:e2e:web:isolated -- tests/e2e/realtime.spec.mjs
 
 Workers default to 2 locally and 4 in CI. Override with `E2E_WORKERS`.
 `npm run validate:fast` is the pre-push loop (static, fake-server self-test,
-and the smoke set); the full `test:e2e:web` gate is still required before
-release.
+E2E budget, and the smoke set); the full `test:e2e:web` gate is still required
+on the main commit before a release tag can reuse it.
 
 ## CI gates
 
 `validate.yml` is the single reusable gate (`workflow_call`). Three callers
 use it:
 
-- `build.yml` — pushes to `main` and `v*` tags
+- `build.yml` — pushes to `main` and `v*` tags; tags reuse the full `main`
+  validation for the same SHA unless `force_validate` is set
 - `pr-validate.yml` — pull requests targeting `main`
 - `ios-release.yml` — manual iOS release dispatch
 
-The gate runs:
+The gate classifies changed paths first, then runs:
 
 1. `npm run test:ci:static` — lint, app and test type-checking, and Vitest.
    `package.json` is the source of truth for the exact suite list.
 2. `npm run test:fake-server:self`
-3. `npm run build:storybook`
-4. `npm run test:e2e:web` — one web export, four Playwright workers, each with
-   its own fake V1/V2 server pair.
+3. `npm run build:storybook` when UI or Storybook files changed.
+4. E2E:
+   - PRs: smoke plus the affected specs, or the full suite for shared or
+     unmapped paths.
+   - `main`: the full suite for code-bearing pushes; docs-only pushes skip E2E.
+   - release tags: no rerun; the tag must point at a successful full `main`
+     validation.
+
+The E2E job also runs `npm run test:e2e:budget` before launching a browser. Its
+failure message asks for extending an existing scenario or an explicit budget
+update.
+
+Use `validate / gate` as the required branch-protection check. It accepts a
+skipped E2E job only when the selector chose no E2E; a failed or cancelled job
+still fails.
 
 `build.yml` also owns Android release jobs and runs `npm run test:foss` for the
-FOSS variant. `ios-release.yml` validates, builds, signs, and optionally uploads
-the iOS archive. Release artifacts expire; the permanent copy is the GitHub
-Release asset or store upload.
+FOSS variant. Android and FOSS builds run in parallel after the gate, and a
+release-preparation job creates the GitHub Release once before both uploads.
+`ios-release.yml` validates, builds, signs, and optionally uploads the iOS
+archive. Release artifacts expire; the permanent copy is the GitHub Release
+asset or store upload.
 
 ## What automated checks do not prove
 

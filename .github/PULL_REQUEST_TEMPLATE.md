@@ -12,6 +12,16 @@
 - [ ] `npm run build:storybook` when a story or Storybook config changed
 - [ ] Native/device check when the change touches native modules, permissions, keyboard, safe areas, or store behavior
 
+## Test decision
+
+<!-- Required when adding or changing a test. "No new test" is valid with a reason. -->
+
+- Test level: unit / integration / contract / E2E / existing coverage / none
+- Regression caught:
+- Existing coverage checked:
+- Why not a cheaper level:
+- If no new test: why the current contract is sufficient
+
 ## Documentation
 
 - [ ] Updated the affected doc in `docs/architecture/`, `docs/product/`, `docs/design/`, or `docs/engineering/`

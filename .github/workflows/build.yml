@@ -18,6 +18,11 @@ on:
         required: false
         default: ''
         type: string
+      force_validate:
+        description: 'Emergency override: run full validation even for a release tag'
+        required: false
+        default: false
+        type: boolean
 
 # A new push cancels the previous in-progress run on the same ref, so stale
 # builds don't race current ones. Tag releases are exempt: a release in
@@ -28,16 +33,72 @@ concurrency:
 
 jobs:
   validate:
+    # Tags reuse the exact-SHA validation from main. The emergency override
+    # reruns the complete gate when a release must not depend on history.
+    if: ${{ !startsWith(github.ref, 'refs/tags/v') || (github.event_name == 'workflow_dispatch' && inputs.force_validate) }}
     uses: ./.github/workflows/validate.yml
     permissions:
       contents: read
+    with:
+      force_full: ${{ github.event_name == 'workflow_dispatch' && inputs.force_validate }}
+
+  assert-validated:
+    if: ${{ startsWith(github.ref, 'refs/tags/v') && !(github.event_name == 'workflow_dispatch' && inputs.force_validate) }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      actions: read
+      contents: read
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Require a successful full validation for this SHA
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TARGET_SHA: ${{ github.sha }}
+        run: node scripts/ci/assert-validated.mjs
+
+  # One job normalizes the tag/main-dispatch conditions for both release
+  # builds. It also creates the GitHub Release once before the parallel APK
+  # uploads, avoiding a create race between them.
+  release-gate:
+    needs: [validate, assert-validated]
+    if: ${{ always() && (startsWith(github.ref, 'refs/tags/v') || (github.event_name == 'workflow_dispatch' && inputs.build_android)) }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    steps:
+      - name: Verify the validation gate
+        env:
+          VALIDATE: ${{ needs.validate.result }}
+          ASSERT_VALIDATED: ${{ needs.assert-validated.result }}
+        run: |
+          echo "validate=$VALIDATE assert-validated=$ASSERT_VALIDATED"
+          test "$VALIDATE" = "success" || test "$ASSERT_VALIDATED" = "success"
+
+      - name: Ensure the GitHub Release exists
+        if: startsWith(github.ref, 'refs/tags/v')
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1 \
+            || gh release create "$GITHUB_REF_NAME" --title "$GITHUB_REF_NAME" --generate-notes
 
   # Release builds only run for `v*` tags or a manual dispatch that asks for
   # an APK; plain pushes to `main` stop at the validation gate.
   android-release:
-    needs: validate
-    if: ${{ startsWith(github.ref, 'refs/tags/v') || (github.event_name == 'workflow_dispatch' && inputs.build_android) }}
+    needs: release-gate
     runs-on: ubuntu-latest
+    timeout-minutes: 60
     permissions:
       contents: write
 
@@ -80,19 +141,30 @@ jobs:
         run: |
           set -eo pipefail
           SDK_ROOT="${ANDROID_HOME:-$ANDROID_SDK_ROOT}"
+          if [ -z "$SDK_ROOT" ]; then
+            echo "::error::ANDROID_HOME and ANDROID_SDK_ROOT are both unset"
+            exit 1
+          fi
           for pkg in 'cmake;3.22.1' 'ndk;27.1.12297006'; do
-            for attempt in 1 2 3; do
-              if sdkmanager --install "$pkg" </dev/null; then
+            case "$pkg" in
+              'cmake;3.22.1') [ -x "$SDK_ROOT/cmake/3.22.1/bin/cmake" ] && continue ;;
+              'ndk;27.1.12297006') [ -d "$SDK_ROOT/ndk/27.1.12297006" ] && continue ;;
+            esac
+            for attempt in 1 2 3 4 5; do
+              # Pin the install root so sdkmanager and Gradle cannot pick
+              # different SDK directories on the same runner.
+              if sdkmanager --sdk_root="$SDK_ROOT" --install "$pkg" </dev/null; then
                 break
               fi
               rm -rf "$SDK_ROOT/.temp"
-              # A failed NDK unzip can leave a broken directory behind that
-              # blocks the next attempt, so drop it before retrying.
+              # A failed unzip can leave a broken package directory behind
+              # that blocks the next attempt, so drop it before retrying.
               case "$pkg" in
                 ndk\;*) rm -rf "$SDK_ROOT/ndk/27.1.12297006" ;;
+                cmake\;*) rm -rf "$SDK_ROOT/cmake/3.22.1" ;;
               esac
-              if [ "$attempt" -eq 3 ]; then
-                echo "::error::Failed to install $pkg after 3 attempts"
+              if [ "$attempt" -eq 5 ]; then
+                echo "::error::Failed to install $pkg after 5 attempts"
                 exit 1
               fi
               sleep $((attempt * 5))
@@ -145,9 +217,14 @@ jobs:
         run: |
           set -eo pipefail
           APK=android/app/build/outputs/apk/release/app-release.apk
-          APKSIGNER=$(find "${ANDROID_HOME:-$ANDROID_SDK_ROOT}/build-tools" -name apksigner -type f | sort -V | tail -1)
+          APKSIGNER=""
+          for root in "$ANDROID_HOME" "$ANDROID_SDK_ROOT"; do
+            [ -n "$root" ] && [ -d "$root/build-tools" ] || continue
+            CANDIDATE=$(find "$root/build-tools" -name apksigner -type f | sort -V | tail -1)
+            if [ -n "$CANDIDATE" ]; then APKSIGNER="$CANDIDATE"; break; fi
+          done
           if [ -z "$APKSIGNER" ]; then
-            echo "::error::apksigner not found in Android SDK"
+            echo "::error::apksigner not found in Android SDK (ANDROID_HOME=$ANDROID_HOME ANDROID_SDK_ROOT=$ANDROID_SDK_ROOT)"
             exit 1
           fi
           "$APKSIGNER" verify --verbose --print-certs "$APK"
@@ -174,9 +251,9 @@ jobs:
           status: completed
 
   foss-release:
-    needs: [validate, android-release]
-    if: ${{ always() && needs.validate.result == 'success' && (startsWith(github.ref, 'refs/tags/v') || (github.event_name == 'workflow_dispatch' && inputs.build_android)) }}
+    needs: release-gate
     runs-on: ubuntu-latest
+    timeout-minutes: 60
     permissions:
       contents: write
 
@@ -219,19 +296,30 @@ jobs:
         run: |
           set -eo pipefail
           SDK_ROOT="${ANDROID_HOME:-$ANDROID_SDK_ROOT}"
+          if [ -z "$SDK_ROOT" ]; then
+            echo "::error::ANDROID_HOME and ANDROID_SDK_ROOT are both unset"
+            exit 1
+          fi
           for pkg in 'cmake;3.22.1' 'ndk;27.1.12297006'; do
-            for attempt in 1 2 3; do
-              if sdkmanager --install "$pkg" </dev/null; then
+            case "$pkg" in
+              'cmake;3.22.1') [ -x "$SDK_ROOT/cmake/3.22.1/bin/cmake" ] && continue ;;
+              'ndk;27.1.12297006') [ -d "$SDK_ROOT/ndk/27.1.12297006" ] && continue ;;
+            esac
+            for attempt in 1 2 3 4 5; do
+              # Pin the install root so sdkmanager and Gradle cannot pick
+              # different SDK directories on the same runner.
+              if sdkmanager --sdk_root="$SDK_ROOT" --install "$pkg" </dev/null; then
                 break
               fi
               rm -rf "$SDK_ROOT/.temp"
-              # A failed NDK unzip can leave a broken directory behind that
-              # blocks the next attempt, so drop it before retrying.
+              # A failed unzip can leave a broken package directory behind
+              # that blocks the next attempt, so drop it before retrying.
               case "$pkg" in
                 ndk\;*) rm -rf "$SDK_ROOT/ndk/27.1.12297006" ;;
+                cmake\;*) rm -rf "$SDK_ROOT/cmake/3.22.1" ;;
               esac
-              if [ "$attempt" -eq 3 ]; then
-                echo "::error::Failed to install $pkg after 3 attempts"
+              if [ "$attempt" -eq 5 ]; then
+                echo "::error::Failed to install $pkg after 5 attempts"
                 exit 1
               fi
               sleep $((attempt * 5))
@@ -272,9 +360,14 @@ jobs:
         run: |
           set -eo pipefail
           APK=android/app/build/outputs/apk/release/app-release.apk
-          APKSIGNER=$(find "${ANDROID_HOME:-$ANDROID_SDK_ROOT}/build-tools" -name apksigner -type f | sort -V | tail -1)
+          APKSIGNER=""
+          for root in "$ANDROID_HOME" "$ANDROID_SDK_ROOT"; do
+            [ -n "$root" ] && [ -d "$root/build-tools" ] || continue
+            CANDIDATE=$(find "$root/build-tools" -name apksigner -type f | sort -V | tail -1)
+            if [ -n "$CANDIDATE" ]; then APKSIGNER="$CANDIDATE"; break; fi
+          done
           if [ -z "$APKSIGNER" ]; then
-            echo "::error::apksigner not found in Android SDK"
+            echo "::error::apksigner not found in Android SDK (ANDROID_HOME=$ANDROID_HOME ANDROID_SDK_ROOT=$ANDROID_SDK_ROOT)"
             exit 1
           fi
           "$APKSIGNER" verify --verbose --print-certs "$APK"

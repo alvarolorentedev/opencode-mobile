@@ -43,9 +43,14 @@ test('attachment tiles preview images, text and documents above the related mess
   await sendPrompt(page, 'Explain the attached pixel');
   const message = page.locator('[data-testid^="transcript-message-"]').filter({ has: page.getByText('Explain the attached pixel', { exact: true }) });
   await expect(message.getByTestId('attachment-tile')).toBeVisible();
-  const previewBox = await message.getByTestId('attachment-tile').boundingBox();
-  const textBox = await message.getByText('Explain the attached pixel', { exact: true }).boundingBox();
-  expect(previewBox.y + previewBox.height).toBeLessThanOrEqual(textBox.y);
+  // Compare document order rather than viewport coordinates. The transcript
+  // auto-scrolls while the message settles, so two boundingBox() reads can be
+  // taken at different scroll positions and report a false vertical inversion.
+  await expect.poll(async () => message.evaluate((node) => {
+    const tile = node.querySelector('[data-testid="attachment-tile"]');
+    const text = [...node.querySelectorAll('*')].find((element) => element.textContent === 'Explain the attached pixel');
+    return Boolean(tile && text && tile.compareDocumentPosition(text) & Node.DOCUMENT_POSITION_FOLLOWING);
+  })).toBe(true);
   await page.reload();
   await expect(message.getByTestId('attachment-tile')).toBeVisible({ timeout: 20_000 });
   await message.getByTestId('attachment-tile').click();

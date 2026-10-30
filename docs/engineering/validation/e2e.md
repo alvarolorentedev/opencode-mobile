@@ -5,6 +5,40 @@ contract. They are intentionally flow-level, not component snapshots.
 
 Back to the [validation index](../testing-and-validation.md) · [engineering index](../README.md).
 
+## Determinism rules
+
+- Reset the worker fake server before every test. The shared fixture does this
+  automatically; a test must not depend on state left by a previous flow.
+- Wait for an explicit readiness signal: a prompt admission response, a server
+  status transition, a visible message, or a named request. Do not use a sleep
+  to guess that work finished.
+- Install fake clocks once and compute pause targets from a fixed base. Never
+  read `Date.now()` in the page after installing the clock and then pause at a
+  value derived from that read.
+- Assert DOM order or stable state, not viewport coordinates measured across an
+  auto-scroll or layout pass. If geometry is the contract, poll until two
+  consecutive measurements agree.
+- Keep retries at zero. Do not raise a timeout to hide a race; fix the missing
+  readiness signal or the fake-server isolation.
+- Spawn custom servers inside `try/finally` and use the isolated port wrapper
+  for concurrent local runs.
+- On failure, open the uploaded HTML report or trace, then reproduce with the
+  single spec and title. The GitHub annotation names the failing test; the
+  `test-results/` artifact contains the trace and screenshots, and the fixture
+  attaches page errors and the fake-server state when available.
+
+Known harness signatures:
+
+| Error | First place to look |
+| --- | --- |
+| `clock.pauseAt: Cannot fast-forward to the past` | fake-clock target calculation |
+| `E2E worker index ... outside the configured worker count` | worker-to-server mapping |
+| `apiRequestContext ... socket hang up` | fake-server lifecycle/keep-alive |
+| `expect(...).toBeLessThanOrEqual` on bounding boxes | scroll/layout timing, not styling |
+
+A `pageerror` or an application error toast in the trace is an app regression;
+a clock/port/worker error is test infrastructure.
+
 ## Spec map
 
 | Area | Spec |

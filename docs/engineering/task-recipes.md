@@ -85,14 +85,20 @@ for a flow.
 3. Implement the route or event in `tests/fake-opencode/server.mjs`.
 4. Add the contract assertion to `tests/fake-opencode/self-test.mjs`.
 5. Add a `resetScenario` case in `tests/e2e/helpers/flows.mjs` if the scenario
-   needs an explicit reset.
-6. Cover the flow in `tests/e2e/<domain>.spec.mjs`.
+   needs an explicit reset. Do not rely on the previous test leaving state
+   behind; the shared fixture resets the worker backend before every test.
+6. Extend the owning `tests/e2e/<domain>.spec.mjs`; add a new spec file only
+   when no existing domain owns the flow, and update
+   `tests/e2e/budget.json` with a justification.
+7. Use an explicit readiness signal. Do not add `waitForTimeout`, retries, or a
+   larger timeout to hide a race; see [E2E determinism rules](validation/e2e.md#determinism-rules).
 
 **Validate:**
 
 ```bash
 npm run test:fake-server:self
 npx playwright test tests/e2e/<domain>.spec.mjs
+npm run test:e2e:budget
 npm run test:e2e:web   # before push
 ```
 
