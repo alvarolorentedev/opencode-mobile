@@ -1,0 +1,3 @@
+- Added full Russian language support with complete translations across all screens.
+- Voice control is more reliable: spoken commands ask for confirmation before sending, and the wake phrase is now optional.
+- New chat and project pickers separate projects from worktrees with clearer navigation.
