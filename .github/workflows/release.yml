@@ -21,6 +21,11 @@ on:
         required: false
         default: false
         type: boolean
+      upload_to_store:
+        description: 'Also upload the AAB to the Play internal track'
+        required: false
+        default: false
+        type: boolean
 
 concurrency:
   group: release-${{ github.event.workflow_run.head_sha || github.sha }}
@@ -40,6 +45,7 @@ jobs:
     outputs:
       build: ${{ steps.resolve.outputs.build }}
       publish: ${{ steps.resolve.outputs.publish }}
+      store: ${{ steps.resolve.outputs.store }}
       tag: ${{ steps.resolve.outputs.tag }}
       sha: ${{ steps.resolve.outputs.sha }}
     steps:
@@ -65,6 +71,8 @@ jobs:
           RUN_CONCLUSION: ${{ github.event.workflow_run.conclusion }}
           INPUT_TAG: ${{ inputs.tag }}
           INPUT_PUBLISH: ${{ inputs.publish }}
+          INPUT_STORE: ${{ inputs.upload_to_store }}
+          GH_REPO: ${{ github.repository }}
         run: |
           set -euo pipefail
 
@@ -79,6 +87,7 @@ jobs:
           TAG=$(git describe --tags --exact-match --match 'v[0-9]*' HEAD 2>/dev/null || true)
           BUILD=false
           PUBLISH=false
+          STORE=false
 
           if [ "$EVENT" = "workflow_run" ]; then
             if [ "$RUN_CONCLUSION" != "success" ]; then
@@ -88,6 +97,7 @@ jobs:
             else
               BUILD=true
               PUBLISH=true
+              STORE=true
             fi
           else
             BUILD=true
@@ -96,7 +106,10 @@ jobs:
                 echo "::error::Tag $INPUT_TAG does not point at checked-out commit $SHA (found '$TAG')."
                 exit 1
               fi
-              if [ "$INPUT_PUBLISH" = "true" ]; then PUBLISH=true; fi
+              if [ "$INPUT_PUBLISH" = "true" ]; then
+                PUBLISH=true
+                if [ "$INPUT_STORE" = "true" ]; then STORE=true; fi
+              fi
             elif [ "$INPUT_PUBLISH" = "true" ]; then
               echo "::error::publish requires a tag input."
               exit 1
@@ -120,6 +133,7 @@ jobs:
           {
             echo "build=$BUILD"
             echo "publish=$PUBLISH"
+            echo "store=$STORE"
             echo "tag=$TAG"
             echo "sha=$SHA"
           } >> "$GITHUB_OUTPUT"
@@ -273,12 +287,13 @@ jobs:
         if: needs.prepare.outputs.publish == 'true'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
         run: |
           cp android/app/build/outputs/apk/release/app-release.apk opencode-mobile.apk
           gh release upload "${{ needs.prepare.outputs.tag }}" opencode-mobile.apk --clobber
 
       - name: Upload to Play Store (internal)
-        if: needs.prepare.outputs.publish == 'true'
+        if: needs.prepare.outputs.publish == 'true' && needs.prepare.outputs.store == 'true'
         uses: r0adkll/upload-google-play@v1
         with:
           serviceAccountJsonPlainText: ${{ secrets.GOOGLE_PLAY_SERVICE_ACCOUNT_JSON }}
@@ -443,6 +458,7 @@ jobs:
         if: needs.prepare.outputs.publish == 'true'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
         run: |
           cp android/app/build/outputs/apk/release/app-release.apk opencode-mobile-fdroid.apk
           gh release upload "${{ needs.prepare.outputs.tag }}" opencode-mobile-fdroid.apk --clobber
@@ -460,9 +476,17 @@ jobs:
       - name: Publish the Release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
         run: |
           TAG="${{ needs.prepare.outputs.tag }}"
           if [ "$(gh release view "$TAG" --json isDraft --jq .isDraft)" = "true" ]; then
             gh release edit "$TAG" --draft=false
           fi
-          gh release view "$TAG" --json tagName,assets --jq '"\(.tagName): \([.assets[].name] | join(", "))"'
+          ASSETS=$(gh release view "$TAG" --json assets --jq '.assets[].name')
+          for asset in opencode-mobile.apk opencode-mobile-fdroid.apk; do
+            if ! printf '%s\n' "$ASSETS" | grep -qx "$asset"; then
+              echo "::error::Release $TAG is missing $asset; refusing to publish."
+              exit 1
+            fi
+          done
+          gh release view "$TAG" --json tagName,isDraft,assets --jq '"\(.tagName) draft=\(.isDraft): " + ([.assets[].name] | join(", "))'
