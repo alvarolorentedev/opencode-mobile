@@ -1,0 +1,3 @@
+- Modernized app foundation on Expo SDK 58 with refreshed UI components, steadier navigation, and more reliable pairing.
+- Reorganized workspaces around a shared runtime for steadier chat, projects, and terminal continuity, including full Russian translations.
+- App updates recover cleanly after interruptions, pairing cancellation stays quiet, and on-device AI uses matching prebuilt engines.
