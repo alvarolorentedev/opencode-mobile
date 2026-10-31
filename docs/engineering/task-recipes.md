@@ -99,7 +99,7 @@ for a flow.
 npm run test:fake-server:self
 npx playwright test tests/e2e/<domain>.spec.mjs
 npm run test:e2e:budget
-npm run test:e2e:web   # before push
+npm run test:e2e:web   # when the change affects the full flow; CI runs smoke on push
 ```
 
 **Human validation:** any change under `tests/e2e/` or `tests/fake-opencode/`

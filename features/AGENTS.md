@@ -12,4 +12,4 @@ Runtime mounts domain state; screens never become another shared owner.
 
 Colocate Vitest tests in colocated __tests__/ directories and stories with reusable components. Existing
 Playwright flows and fake-server fixtures remain central. Follow the risk-based
-validation matrix and preserve the full pre-push gate.
+validation matrix; CI is the integration authority and the tag release runs the full gate.

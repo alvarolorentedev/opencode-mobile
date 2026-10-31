@@ -66,7 +66,7 @@ the docs it references.
 5. **Apple / signing** — create the widget extension App ID and the App Group,
    regenerate the distribution profile with the App Groups capability, and add
    the extension to the manual-signing release pipeline in
-   `.github/workflows/ios-release.yml` (`ExportOptions.plist`
+   `.github/workflows/release.yml` (`ExportOptions.plist`
    `provisioningProfiles` entry plus a second profile/GitHub secret). The plugin
    writes `extra.eas.build.experimental.ios.appExtensions` for EAS builds, which
    this repo does not use.

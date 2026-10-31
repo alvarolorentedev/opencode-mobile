@@ -74,7 +74,8 @@ the [validation matrix](validation/strategy.md) and [native ownership](../../mod
 ```bash
 npm run lint           # Run linter
 npm run typecheck      # Type checking
-npm run test:e2e:web   # End-to-end tests
+npm run test:e2e:smoke # Critical Playwright flows
+npm run test:e2e:web   # Full end-to-end suite
 npm run storybook      # Open the reusable component catalog
 npm run build:storybook # Build-check the Storybook catalog
 npm run android        # Build Android app
@@ -103,19 +104,20 @@ npm run build:foss:android
 
 Install `android/app/build/outputs/apk/debug/app-debug.apk` (**OpenCode Mobile
 Dev**) and use `EXPO_APP_VARIANT=development npm run start:dev-client`. Both prebuild and Gradle use the
-development variant. The APK built from a push to `main` uses production and
-also exposes Cloud Link subscriptions. See [Cloud Link](../product/cloud-link.md) for native store,
+development variant. Release APKs are built by the `v*` tag workflow and also
+expose Cloud Link subscriptions. See [Cloud Link](../product/cloud-link.md) for native store,
 trusted environment, and sandbox configuration. See
 [F-Droid and FOSS builds](./fdroid.md) for the FOSS variant's scope and distribution.
 
-**Release Automation**:
-- Pushes to `main` run the full validation gate; documentation-only pushes run static checks only. Tag pushes do not trigger builds, so `main` and its tag can be pushed together
-- A `v*` tag at the validated commit marks a release. When the green `Build` run for that commit completes, the **Release** workflow (`.github/workflows/release.yml`) checks that the tag matches `app.config.ts`, creates a draft GitHub Release once, and builds Android and FOSS in parallel
-- Push the tag with the release commit so it exists when the green run completes. A tag added afterwards needs a manual **Release** dispatch
-- The workflow attaches both APKs to the draft and publishes it only after both uploads succeed. A failed build leaves an unpublished draft instead of a released empty release
-- Manual **Release** dispatch: pass `tag` and set `publish: true` to repair or rebuild a release; pass no tag (or `publish: false`) to build sideload APKs without touching a release. `upload_to_store: true` also pushes the AAB to the Play internal track; green-main releases do that automatically. `Build` keeps a `force_validate` dispatch for emergency full validation
-- Release builds upload APKs as `android-release-artifacts` and `foss-release-artifacts` (1-day retention); published releases also build the release AAB for the Play Store upload
-- Release ABIs are trimmed per mode: tagged builds use `armeabi-v7a,arm64-v8a`, including build-only runs used for device acceptance before publication; untagged build-only runs use `arm64-v8a,x86_64`. Override locally with `ANDROID_RELEASE_ABIS`. See [Android Build / Release Notes](./integrations-and-operations.md#release-abis-and-gradle-memory)
+**Release Automation** (`.github/workflows/release.yml`):
+- Pushes to `main` and pull requests run `ci.yml`: static checks, Vitest/architecture, fake-server validation, Storybook, FOSS preparation and critical Playwright smoke flows
+- A `v*` tag push runs `release.yml` automatically. It verifies the tag, `app.config.ts` version, Android versionCode, iOS buildNumber and changelog; requires the tag commit to belong to `main`; runs full validation once; and builds Android Play, FOSS Android and signed iOS in parallel
+- Android release artifacts are **`arm64-v8a` only**. 32-bit-only Android devices are unsupported. There is no ABI override or emulator-specific release build
+- Validated Android builds upload to Google Play **internal testing**; the signed IPA uploads to **TestFlight** when App Store Connect API credentials are configured
+- The GitHub Release is created as a draft only after validation, builds and store uploads succeed, then published with the APKs, IPA, AAB, mapping and SHA256SUMS.txt
+- Nothing is automatically promoted to a production store track. `workflow_dispatch` is recovery-only and requires an existing tag
+- Static release verification covers signing, package identity, version, ABI, native libraries, R8/ProGuard safety, the WorkManager constructor, FOSS exclusions and 16 KB page-size alignment. It cannot guarantee successful device startup; Google Play internal testing and TestFlight are the real-device validation environments
+- See [Android Build / Release Notes](./integrations-and-operations.md#release-abi-and-16-kb-page-size)
 
 ### iOS Builds
 
@@ -136,12 +138,12 @@ Build a local iOS release:
 npm run build:ios:local
 ```
 
-**Release Automation** (`.github/workflows/ios-release.yml`, manual only):
-- Run the **iOS Release** workflow via `workflow_dispatch`; pass a `tag` (e.g. `v1.0.51`) or leave it blank to use the latest `v*` tag, then it runs the validate gate against that tag and builds and signs the archive
-- It ignores the ref selected when dispatching; the resolved tag is validated against the app version and the GitHub Release asset is published for it, while the `.ipa` is uploaded as the `ios-release-ipa` artifact (1-day retention)
-- Set `upload_to_store: true` to upload to App Store Connect (TestFlight)
-- The pipeline never runs on push or tag, so routine Android releases don't trigger a macOS build
-- The `.ipa` artifact can be found in the workflow run's artifacts section
+**Release Automation** (`.github/workflows/release.yml`):
+- A `v*` tag builds and signs the iOS archive automatically in parallel with Android
+- The IPA is verified for signature, bundle identifier, version, build number, production push entitlement and provisioning-profile identity
+- When App Store Connect API credentials are configured, the IPA is validated and uploaded to TestFlight automatically
+- The signed IPA is attached to the GitHub Release. No manual iOS workflow dispatch is required
+- App Store production submission and phased release remain separate manual store-console actions
 
 ### Testing
 
@@ -150,14 +152,12 @@ npm run build:ios:local
   Vitest suites (`tests/vitest/`)
 - Flow validation runs against the fake OpenCode server in `tests/fake-opencode/server.mjs`
 - End-to-end suite uses Playwright (`tests/e2e/*.spec.mjs`, split by domain over `tests/e2e/helpers/flows.mjs`)
-- `npm run test:e2e:smoke` runs the 17 critical flows; `npm run test:e2e:changed`
-  selects smoke plus the specs affected by the current diff; `npm run test:e2e:web:isolated`
-  allocates fresh ports for concurrent local runs; `npm run validate:fast` is the
-  pre-push loop
-- CI runs the Playwright suite in one job with four workers, each with its own
-  fake V1/V2 pair, resets the worker backend before every test, and caches the
-  browser and static-check state; PRs run a risk-based slice while `main` runs
-  the full suite
+- `npm run test:e2e:smoke` runs the critical flows; `npm run test:e2e:web:isolated`
+  allocates fresh ports for concurrent local runs; `npm run validate:fast` is an
+  optional focused loop
+- `ci.yml` runs the smoke set in one job with four workers; `release.yml` runs the
+  full Playwright suite once on a version tag. Each worker has its own fake V1/V2
+  pair, and the worker backend resets before every test
 - Full testing strategy documented in `docs/engineering/testing-overview.md`; remaining deferred test work in `docs/engineering/known-gaps.md`
 
 ### Configuration

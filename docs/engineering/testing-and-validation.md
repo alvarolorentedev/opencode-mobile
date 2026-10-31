@@ -12,7 +12,7 @@ Back to the [engineering index](README.md) · [documentation hub](../README.md).
 | Change the fake server or a scenario | [fake-server.md](validation/fake-server.md) |
 | Add or change an E2E flow | [e2e.md](validation/e2e.md) |
 | Find the spec for a feature | [regressions.md](validation/regressions.md) |
-| Run the pre-push gate | [strategy.md](validation/strategy.md#start-here) and [testing overview](testing-overview.md) |
+| Run focused checks and inspect CI | [strategy.md](validation/strategy.md#start-here) and [testing overview](testing-overview.md) |
 
 Historical per-feature validation narratives were removed. The current contract
 is the E2E spec plus the owning architecture, product, or design doc. Deferred

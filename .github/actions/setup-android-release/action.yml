@@ -1,0 +1,60 @@
+name: Setup Android release toolchain
+description: Install Java, Gradle caching, Android SDK, CMake and the pinned NDK.
+
+inputs:
+  java-version:
+    description: Temurin Java version
+    required: false
+    default: '17'
+
+runs:
+  using: composite
+  steps:
+    - name: Setup Java
+      uses: actions/setup-java@v5
+      with:
+        distribution: temurin
+        java-version: ${{ inputs.java-version }}
+
+    - name: Setup Gradle
+      uses: gradle/actions/setup-gradle@v4
+      with:
+        cache-read-only: false
+        gradle-home-cache-cleanup: true
+
+    - name: Setup Android SDK
+      uses: android-actions/setup-android@v4
+
+    # AGP's on-demand SDK installs occasionally fetch a truncated archive.
+    # Pre-install the pinned CMake/NDK with retries so a flaky download cannot
+    # abort Gradle, and pin the SDK root so sdkmanager and Gradle agree.
+    - name: Install CMake and NDK
+      shell: bash
+      run: |
+        set -eo pipefail
+        SDK_ROOT="${ANDROID_HOME:-$ANDROID_SDK_ROOT}"
+        if [ -z "$SDK_ROOT" ]; then
+          echo "::error::ANDROID_HOME and ANDROID_SDK_ROOT are both unset"
+          exit 1
+        fi
+        for pkg in 'cmake;3.22.1' 'ndk;27.1.12297006'; do
+          case "$pkg" in
+            'cmake;3.22.1') [ -x "$SDK_ROOT/cmake/3.22.1/bin/cmake" ] && continue ;;
+            'ndk;27.1.12297006') [ -d "$SDK_ROOT/ndk/27.1.12297006" ] && continue ;;
+          esac
+          for attempt in 1 2 3 4 5; do
+            if sdkmanager --sdk_root="$SDK_ROOT" --install "$pkg" </dev/null; then
+              break
+            fi
+            rm -rf "$SDK_ROOT/.temp"
+            case "$pkg" in
+              ndk\;*) rm -rf "$SDK_ROOT/ndk/27.1.12297006" ;;
+              cmake\;*) rm -rf "$SDK_ROOT/cmake/3.22.1" ;;
+            esac
+            if [ "$attempt" -eq 5 ]; then
+              echo "::error::Failed to install $pkg after 5 attempts"
+              exit 1
+            fi
+            sleep $((attempt * 5))
+          done
+        done

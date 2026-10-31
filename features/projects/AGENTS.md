@@ -26,6 +26,7 @@ Preserve cancellation, scope/auth guards, cleanup, persistence formats, localize
 copy, text scaling and keyboard/Back/portal behavior. No new V1 compatibility.
 Run this feature's colocated Vitest suites, static checks and the owning existing
 E2E flows (projects sessions). Reusable UI changes need colocated Storybook stories/build.
-State/services changes require full E2E under the validation matrix. Native/device
-behavior needs the existing manual checks. Full pre-push gates remain mandatory;
+State/services changes require the owning E2E flows; the tag release runs full E2E.
+Native/device behavior needs the existing manual checks when available. CI is the
+integration authority;
 edits to browser/fake-server contracts require explicit human validation.

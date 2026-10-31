@@ -17,7 +17,7 @@ npm run build:storybook  # static build check, output in storybook-static/
 
 `storybook-static/` is generated and gitignored. Run the build check when you
 change a story, a shared component used by a story, or the Storybook config. CI
-runs the same build in the static validate job.
+runs the same build in the `ci.yml` static job.
 
 ## Configuration
 

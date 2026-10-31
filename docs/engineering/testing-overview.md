@@ -17,32 +17,33 @@ merge-gate overview.
 
 ## Merge gate
 
-`validate.yml` is the single reusable gate (`workflow_call`). Three callers use
-it:
+Two workflows own validation:
 
-- `build.yml` — pushes to `main` and `v*` tags
-- `pr-validate.yml` — pull requests targeting `main`
-- `ios-release.yml` — manual iOS release dispatch
+- `ci.yml` — pushes to `main`, pull requests, and reusable `workflow_call` from
+  the release workflow.
+- `release.yml` — `v*` tag pushes, plus recovery-only manual dispatch.
 
-`validate` classifies changed paths, then runs:
+`ci.yml` runs in parallel:
 
-1. `npm run test:ci:static` — lint, app and test type-checking, and Vitest.
-   `package.json` is the source of truth for the exact suite list.
-2. `npm run test:fake-server:self`
-3. `npm run build:storybook` when UI or Storybook files changed.
-4. E2E — smoke plus affected specs on PRs; the full suite on code-bearing
-   `main` pushes; no rerun on release tags that already have a green exact-SHA
-   main validation.
+1. `static` — `npm run test:ci:static` (lint, app/test type-checking, Vitest and
+   architecture checks), fake-server self-test, FOSS preparation, E2E budget,
+   Storybook build and Android release-check self-test.
+2. `e2e` — critical `@smoke` Playwright flows. The release workflow calls the
+   same job with `mode: full` to run the complete suite once.
 
-The three callers use the reusable workflow; the gate is defined once in
-`validate.yml`. Change the gate there, not in the caller workflows. The stable
-required check is `validate / gate`, which accepts a skipped E2E job only for a
-docs-only or Storybook-only change.
+There is no changed-path classifier and no gate job. Required checks are
+`CI / static` and `CI / e2e`.
 
-`ios-release` also builds and signs the iOS archive after `validate`; the Android
-release jobs (`android-release`, `foss-release`) run in parallel after the gate
-on `v*` tags or a manual dispatch with `build_android: true`. Release artifacts
-expire; the permanent copy is the GitHub Release asset or store upload.
+`release.yml` runs full validation once, then builds Android Play, FOSS Android
+and signed iOS in parallel. It statically verifies signing, package identity,
+version, ARM64-only ABI, native libraries, R8/ProGuard safety, the WorkManager
+constructor, FOSS exclusions and 16 KB page-size alignment before uploading to
+Google Play internal testing, TestFlight and the GitHub Release.
+
+Static artifact verification cannot guarantee successful device startup. Play
+internal testing and TestFlight are the real-device validation environments.
+There is no emulator or self-hosted device job. Release artifacts expire; the
+permanent copy is the GitHub Release asset or store upload.
 
 ## Why this repo uses flow tests
 

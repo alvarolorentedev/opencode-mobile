@@ -451,9 +451,10 @@ fake OpenCode server. SSE deliberately falls back to polling. The development
 E2E build substitutes memory for secure storage; reload loses credentials.
 Production web has neither this store driver nor credential persistence.
 
-Run `test:ci:static`, `test:fake-server:self`, `test:e2e:web`, the Android
-development build and an iOS development build. E2E changes require explicit
-human validation under AGENTS.md, even when automated checks pass.
+Run `test:ci:static`, `test:fake-server:self`, the affected Playwright flows, and
+a native development build when the environment supports it. The tag release
+runs the full E2E suite and native release verification. E2E changes require
+explicit human validation under AGENTS.md, even when automated checks pass.
 
 Google acknowledgement ownership validation on 2026-10-12: the app no longer
 acknowledges Play purchases. It finishes only the StoreKit transaction on iOS,

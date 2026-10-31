@@ -49,9 +49,18 @@ Partially closed on 2026-10-18:
   weakening compilation. `tests/vitest/typecheck-ratchet.test.ts` prevents a
   denylist from returning.
 - **`tests/foss-prepare.test.mjs`** stays a standalone Node script
-  (`npm run test:foss`, run by the `foss-release` CI job). It mutates a
-  temporary `node_modules` tree and is build tooling rather than app behavior,
-  so it is deliberately not part of the Vitest include.
+  (`npm run test:foss`, run by the `ci.yml` static job). It mutates a temporary
+  `node_modules` tree and is build tooling rather than app behavior, so it is
+  deliberately not part of the Vitest include.
+
+### Static release verification limit
+
+Release artifacts are checked statically for signing, package identity, version,
+ARM64-only ABI, native libraries, R8/ProGuard safety, the WorkManager constructor,
+FOSS exclusions and 16 KB page-size alignment. These checks cannot prove that the
+app starts, renders or initializes native modules on a device. Google Play
+internal testing and TestFlight are the real-device validation environments.
+There is no emulator, self-hosted device runner or paid device farm in CI.
 
 ## 3. Remote crash reporting
 

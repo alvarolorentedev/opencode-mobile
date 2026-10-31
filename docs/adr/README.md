@@ -59,7 +59,7 @@ coverage, and documentation links.
 | [0008](0008-documentation-information-architecture.md) | Documentation information architecture and checks | Accepted |
 | [0009](0009-agent-first-documentation-routing.md) | Agent-first documentation routing and drift checks | Accepted |
 | [0010](0010-risk-based-validation-and-selective-pr-e2e.md) | Risk-based validation and selective PR E2E | Superseded by ADR 0011 |
-| [0011](0011-release-from-green-main-builds.md) | Release from green main builds, not tag pushes | Accepted |
+| [0011](0011-release-from-green-main-builds.md) | Release from green main builds, not tag pushes | Superseded by ADR 0018 |
 | [0012](0012-shell-mediated-project-file-actions.md) | Shell-mediated project file actions | Accepted |
 | [0013](0013-source-owned-ui-and-complex-forms.md) | Source-owned Reusables, Uniwind tokens and complex forms | Accepted |
 | [0014](0014-server-data-and-explicit-lifecycles.md) | Scoped server data and explicit application lifecycles | Accepted |
@@ -68,6 +68,8 @@ coverage, and documentation links.
 
 | [0016](0016-supported-expo-native-integrations.md) | Supported Expo native integrations and agent tooling | Superseded by ADR 0017 |
 | [0017](0017-native-defaults-and-prebuilt-engines.md) | Upstream update defaults and pinned prebuilt engines | Accepted |
+| [0018](0018-tag-driven-release-pipeline.md) | Tag-driven release pipeline with static artifact verification | Accepted |
+| [0019](0019-arm64-only-android-releases.md) | ARM64-only Android release artifacts | Accepted |
 
 ## Template
 

@@ -1,0 +1,89 @@
+name: Setup iOS signing
+description: Create a temporary keychain, import the distribution certificate and install the provisioning profile.
+
+inputs:
+  certificate-base64:
+    description: Base64-encoded distribution certificate (.p12)
+    required: true
+  certificate-password:
+    description: Password for the distribution certificate
+    required: true
+  profile-base64:
+    description: Base64-encoded provisioning profile
+    required: true
+  team-id:
+    description: Apple Developer Team ID
+    required: true
+  bundle-id:
+    description: Expected application bundle identifier
+    required: true
+
+outputs:
+  keychain-path:
+    description: Temporary signing keychain path
+    value: ${{ steps.keychain.outputs.path }}
+  profile-name:
+    description: Provisioning profile name
+    value: ${{ steps.profile.outputs.name }}
+  profile-uuid:
+    description: Provisioning profile UUID
+    value: ${{ steps.profile.outputs.uuid }}
+
+runs:
+  using: composite
+  steps:
+    - name: Create temporary keychain
+      id: keychain
+      shell: bash
+      run: |
+        set -eo pipefail
+        KEYCHAIN_PATH="$RUNNER_TEMP/app-signing.keychain-db"
+        KEYCHAIN_PASSWORD=$(openssl rand -hex 24)
+        security create-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+        security set-keychain-settings -lut 21600 "$KEYCHAIN_PATH"
+        security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+        security list-keychains -d user -s "$KEYCHAIN_PATH"
+        echo "KEYCHAIN_PATH=$KEYCHAIN_PATH" >> "$GITHUB_ENV"
+        echo "KEYCHAIN_PASSWORD=$KEYCHAIN_PASSWORD" >> "$GITHUB_ENV"
+        echo "path=$KEYCHAIN_PATH" >> "$GITHUB_OUTPUT"
+
+    - name: Import distribution certificate
+      shell: bash
+      env:
+        APPLE_CERTIFICATE_BASE64: ${{ inputs.certificate-base64 }}
+        APPLE_CERTIFICATE_PASSWORD: ${{ inputs.certificate-password }}
+      run: |
+        set -eo pipefail
+        CERT_PATH="$RUNNER_TEMP/certificate.p12"
+        printf '%s' "$APPLE_CERTIFICATE_BASE64" | tr -d '[:space:]' | base64 -D > "$CERT_PATH"
+        security import "$CERT_PATH" -P "$APPLE_CERTIFICATE_PASSWORD" -A -t cert -f pkcs12 -k "$KEYCHAIN_PATH"
+        security set-key-partition-list -S apple-tool:,apple: -k "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+        security find-identity -v -p codesigning "$KEYCHAIN_PATH"
+
+    - name: Install provisioning profile
+      id: profile
+      shell: bash
+      env:
+        APPLE_PROVISIONING_PROFILE_BASE64: ${{ inputs.profile-base64 }}
+        APPLE_TEAM_ID: ${{ inputs.team-id }}
+        IOS_BUNDLE_IDENTIFIER: ${{ inputs.bundle-id }}
+      run: |
+        set -eo pipefail
+        PROFILE_PATH="$RUNNER_TEMP/profile.mobileprovision"
+        PROFILE_PLIST="$RUNNER_TEMP/profile.plist"
+        printf '%s' "$APPLE_PROVISIONING_PROFILE_BASE64" | tr -d '[:space:]' | base64 -D > "$PROFILE_PATH"
+        security cms -D -i "$PROFILE_PATH" > "$PROFILE_PLIST"
+        PROFILE_UUID=$(plutil -extract UUID raw "$PROFILE_PLIST")
+        PROFILE_NAME=$(plutil -extract Name raw "$PROFILE_PLIST")
+        PROFILE_TEAM_ID=$(plutil -extract TeamIdentifier.0 raw "$PROFILE_PLIST")
+        PROFILE_APP_IDENTIFIER=$(plutil -extract Entitlements.application-identifier raw "$PROFILE_PLIST")
+        if [ "$PROFILE_TEAM_ID" != "$APPLE_TEAM_ID" ] || [ "${PROFILE_APP_IDENTIFIER#*.}" != "$IOS_BUNDLE_IDENTIFIER" ]; then
+          echo "::error::Provisioning profile does not match team $APPLE_TEAM_ID and bundle $IOS_BUNDLE_IDENTIFIER"
+          exit 1
+        fi
+        mkdir -p ~/Library/MobileDevice/Provisioning\ Profiles
+        cp "$PROFILE_PATH" ~/Library/MobileDevice/Provisioning\ Profiles/"$PROFILE_UUID".mobileprovision
+        echo "PROFILE_NAME=$PROFILE_NAME" >> "$GITHUB_ENV"
+        echo "PROFILE_UUID=$PROFILE_UUID" >> "$GITHUB_ENV"
+        echo "name=$PROFILE_NAME" >> "$GITHUB_OUTPUT"
+        echo "uuid=$PROFILE_UUID" >> "$GITHUB_OUTPUT"

@@ -350,26 +350,49 @@ AGP 9's strict R8 mode does not implicitly retain constructors for a class-only
 keep rule. Room 2.6.1's consumer rule preserves `WorkDatabase_Impl` but loses its
 reflectively invoked public zero-argument constructor. `app.config.ts` explicitly
 keeps that constructor so WorkManager's startup provider can initialize before
-React Native. Release APK checks cover this exact member; see the
-[native launch check](validation/strategy.md#android-release-launch-check).
+React Native. Release artifact checks cover this exact member; see the
+[Android release artifact check](validation/strategy.md#android-release-artifact-check).
 
-### Release ABIs And Gradle Memory
+### Release ABI And 16 KB Page Size
 
-Release artifacts are built for a trimmed set of ABIs via
-`-PreactNativeArchitectures`, passed by `scripts/build-android-release.mjs` from
-the `ANDROID_RELEASE_ABIS` environment variable (default `arm64-v8a`). Published
-releases and tagged build-only runs build `armeabi-v7a,arm64-v8a` (Play-ready,
-32-bit + 64-bit ARM); untagged build-only runs build `arm64-v8a,x86_64`. x86/x86_64 are omitted from
-published releases because only emulators need them, and emulators are served by
-`npm run build:development:android`, which keeps all four ABIs. Building fewer
-ABIs cuts per-ABI native compile and packaging work and lowers bundletool's peak
-memory.
+Every Android release artifact is `arm64-v8a` only: Play APK/AAB, FOSS APK and
+local release builds. `armeabi-v7a`, `x86` and `x86_64` are removed from release
+configurations. This is an intentional product decision; 32-bit-only Android
+devices are unsupported. Development builds are not release artifacts and may
+retain the Expo template ABIs for local emulator use.
+
+`config/plugins/android.cjs` writes `reactNativeArchitectures=arm64-v8a` into the
+generated release `android/gradle.properties`. `scripts/build-android-release.mjs`
+asserts that property and also passes `-PreactNativeArchitectures=arm64-v8a`.
+There is no `ANDROID_RELEASE_ABIS` override and no per-tag ABI branch.
+
+`scripts/ci/verify-android-release.mjs` verifies that the APK and AAB contain
+only ARM64 native libraries. It also checks 16 KB ELF `PT_LOAD` alignment for
+every native library and runs `zipalign -c -P 16` on the APK. A prebuilt library
+that fails alignment blocks the release and must be updated, patched or removed.
 
 `app.config.ts` also raises the Gradle daemon JVM args (via `withGradleProperties`)
 above the Expo template default of `-Xmx2048m -XX:MaxMetaspaceSize=512m`, which
 was insufficient for `:app:packageReleaseBundle` and failed the release build
 with `Java heap space`. The generated `android/` directory is ignored, so
 `app.config.ts` remains the source of truth for both settings.
+
+### Release Pipeline
+
+`ci.yml` runs on `main` pushes and pull requests: static checks, Vitest and
+architecture checks, fake-server validation, FOSS preparation, Storybook and
+critical Playwright smoke flows. It never receives release signing secrets.
+
+`release.yml` runs on a `v*` tag. It verifies the tag, version and build numbers,
+requires the commit to belong to `main`, runs full validation once, builds
+Android Play, FOSS and signed iOS in parallel, statically verifies the artifacts,
+uploads to Google Play internal testing and TestFlight, and publishes the GitHub Release
+after all mandatory jobs pass. Nothing is automatically promoted to a production
+store track.
+
+Static verification cannot guarantee successful device startup. Play internal
+testing and TestFlight are the real-device validation environments. There is no
+emulator or self-hosted device job.
 
 ### Memory Profiling Targets
 

@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 
 const require = createRequire(import.meta.url);
 const { applyGradleProperties, withAndroidAppConfig } = require('../../config/plugins/android.cjs') as {
-  applyGradleProperties: (items: any[]) => any[];
+  applyGradleProperties: (items: any[], options?: { isDevelopmentVariant?: boolean }) => any[];
   withAndroidAppConfig: (config: any, options: { isDevelopmentVariant: boolean; isFossVariant: boolean }) => any;
 };
 const { withoutPushEntitlement } = require('../../config/plugins/ios.cjs') as {
@@ -27,12 +27,25 @@ describe('Expo config plugins', () => {
       { type: 'property', key: 'keep.me', value: 'yes' },
       { type: 'comment', value: 'keep' },
     ];
-    expect(applyGradleProperties(items)).toEqual([
+    expect(applyGradleProperties(items, { isDevelopmentVariant: false })).toEqual([
       { type: 'property', key: 'keep.me', value: 'yes' },
       { type: 'comment', value: 'keep' },
       { type: 'property', key: 'rnllamaBuildFromSource', value: 'false' },
       { type: 'property', key: 'org.gradle.jvmargs', value: '-Xmx4096m -XX:MaxMetaspaceSize=1024m -Dfile.encoding=UTF-8' },
+      { type: 'property', key: 'reactNativeArchitectures', value: 'arm64-v8a' },
     ]);
+  });
+
+  it('leaves development ABIs untouched', () => {
+    const items = [
+      { type: 'property', key: 'reactNativeArchitectures', value: 'armeabi-v7a,arm64-v8a,x86,x86_64' },
+    ];
+    const result = applyGradleProperties(items, { isDevelopmentVariant: true });
+    expect(result).toContainEqual({
+      type: 'property',
+      key: 'reactNativeArchitectures',
+      value: 'armeabi-v7a,arm64-v8a,x86,x86_64',
+    });
   });
 
   it('overrides the ML Kit scanner orientation only in non-FOSS builds', async () => {

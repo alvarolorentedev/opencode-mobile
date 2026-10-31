@@ -15,37 +15,40 @@ Back to the [validation index](../testing-and-validation.md) · [engineering ind
 | Presentational component or story | `npm run build:storybook` |
 | Provider/session/persistence logic | targeted Vitest, then fake server/E2E if the contract moved |
 | Protocol, endpoint, or event | `npm run test:fake-server:self`, targeted E2E |
-| User flow, blocking interaction, SSE, polling | `npm run test:e2e:web` |
-| Native module, keyboard, permissions, release config | `npm run build:development:android` plus device checks |
+| User flow, blocking interaction, SSE, polling | focused Playwright spec or `npm run test:e2e:web` |
+| Native module, keyboard, permissions, release config | `npm run build:development:android` when an SDK is available; release tag builds authoritatively |
 
-Baseline before push: `npm run test:ci:static`, `npm run test:fake-server:self`,
-`npm run test:e2e:budget`, `npm run build:storybook`, and `npm run test:e2e:web`.
+`ci.yml` is the per-push gate: static checks, Vitest/architecture, fake-server
+validation, FOSS preparation, Storybook, E2E budget and critical smoke flows.
+`release.yml` runs the full Playwright suite and native release builds once on a
+`v*` tag. Do not run the complete suite before every push; use the matrix below
+to choose focused checks.
 
 ## Test selection matrix
 
 Pick the cheapest level that can detect the regression. Extend an existing
 scenario before adding a new spec; see [ADR 0010](../../adr/0010-risk-based-validation-and-selective-pr-e2e.md).
 
-| Change | Preferred test level | PR E2E |
+| Change | Preferred local test level | CI/release E2E |
 | --- | --- | --- |
-| Docs, ADRs, repository Markdown | docs test + static | none |
+| Docs, ADRs, repository Markdown | docs test + static | smoke |
 | Translations | strict i18n test + static | smoke |
-| Pure utility, parser, formatter, selector | targeted Vitest | none or affected spec |
-| Presentational component or design token | Storybook + static + affected spec | smoke + affected spec |
-| Settings section or row | Storybook + `settings.spec.mjs` | smoke + settings |
-| Chat, composer, transcript | `chat`, `interactions`, `diffs` specs | smoke + affected specs |
-| Provider, session, persistence | Vitest integration + affected E2E | full |
-| Protocol, endpoint, event, service adapter | fake-server self-test + contract Vitest + E2E | full |
-| SSE, polling, reconnect, offline | deterministic Vitest + `realtime`/`network-resilience` | full |
-| Fake server or E2E infrastructure | self-test + full E2E + human validation | full |
-| Native voice, notifications, permissions, widgets | existing targeted tests + device checklist | smoke + manual |
-| Dependencies, app config, build/CI config | static + full E2E | full |
-| Release tag | exact-SHA full validation + native builds from the green `Build` run | n/a |
+| Pure utility, parser, formatter, selector | targeted Vitest | smoke or affected spec |
+| Presentational component or design token | Storybook + static + affected spec | smoke |
+| Settings section or row | Storybook + `settings.spec.mjs` | smoke |
+| Chat, composer, transcript | `chat`, `interactions`, `diffs` specs | smoke |
+| Provider, session, persistence | Vitest integration + affected E2E | smoke on push; full on release |
+| Protocol, endpoint, event, service adapter | fake-server self-test + contract Vitest + affected E2E | smoke on push; full on release |
+| SSE, polling, reconnect, offline | deterministic Vitest + `realtime`/`network-resilience` | smoke on push; full on release |
+| Fake server or E2E infrastructure | self-test + affected E2E + human validation | smoke on push; full on release |
+| Native voice, notifications, permissions, widgets | existing targeted tests + device checklist | smoke on push; manual device checks |
+| Dependencies, app config, build/CI config | static + affected E2E | smoke on push; full on release |
+| Release tag | full validation + ARM64-only native builds + static artifact verification | full |
 
-Escalate to the full suite when the change touches `runtime/`,
+Run the affected specs locally when the change touches `runtime/`,
 `shared/protocol/opencode/`, `shared/protocol/services/`, `tests/fake-opencode/`, `tests/e2e/`,
 dependencies, app/build configuration, workflows, a root layout, or more than
-two domains. An unmapped path also means full.
+two domains. The release tag runs the full suite before distribution.
 
 No new test is required for documentation-only changes, behavior-preserving
 refactors with existing coverage, generated files, or copy covered by locale
@@ -89,7 +92,6 @@ npm run serve:web:prebuilt
 npx playwright test tests/e2e/chat.spec.mjs
 npm run test:e2e:smoke          # critical flows
 npm run test:e2e:last-failed    # rerun the previous failures
-npm run test:e2e:changed        # smoke + specs selected from the current diff
 npm run test:e2e:budget         # check the expanded test/spec budget
 ```
 
@@ -101,51 +103,40 @@ E2E_SKIP_BUILD=1 npm run test:e2e:web:isolated -- tests/e2e/realtime.spec.mjs
 ```
 
 Workers default to 2 locally and 4 in CI. Override with `E2E_WORKERS`.
-`npm run validate:fast` is the pre-push loop (static, fake-server self-test,
-E2E budget, and the smoke set); the full `test:e2e:web` gate is still required
-on the main commit before a release tag can reuse it.
+`npm run validate:fast` is an optional focused loop (static, fake-server
+self-test, E2E budget and smoke). The full `test:e2e:web` suite runs on the
+release tag and is not required before every push.
 
 ## CI gates
 
-`validate.yml` is the single reusable gate (`workflow_call`). Three callers
-use it:
+Two workflows own validation:
 
-- `build.yml` — pushes to `main`, plus a `force_validate` dispatch for emergency
-  full validation
-- `pr-validate.yml` — pull requests targeting `main`
-- `ios-release.yml` — manual iOS release dispatch
+- `ci.yml` — pushes to `main`, pull requests, and reusable `workflow_call` from
+  `release.yml`.
+- `release.yml` — `v*` tag pushes, plus recovery-only manual dispatch.
 
-`release.yml` does not call the gate. It is triggered by a green `Build` run on
-`main` and verifies that exact SHA before creating a tag-backed release; a
-manual dispatch still requires an existing successful full validation.
+`ci.yml` runs in parallel:
 
-The gate classifies changed paths first, then runs:
+1. `static` — `npm run test:ci:static` (lint, app/test type-checking, Vitest and
+   architecture checks), fake-server self-test, FOSS preparation, E2E budget,
+   Storybook build and Android release-check self-test.
+2. `e2e` — critical `@smoke` Playwright flows. The release workflow calls the
+   same job with `mode: full`.
 
-1. `npm run test:ci:static` — lint, app and test type-checking, and Vitest.
-   `package.json` is the source of truth for the exact suite list.
-2. `npm run test:fake-server:self`
-3. `npm run build:storybook` when UI or Storybook files changed.
-4. E2E:
-   - PRs: smoke plus the affected specs, or the full suite for shared or
-     unmapped paths.
-   - `main`: the full suite for code-bearing pushes; docs-only pushes skip E2E.
-   - release tags: no rerun; the tag must point at a successful full `main`
-     validation.
+There is no changed-path classifier and no gate job. Required branch-protection
+checks are `CI / static` and `CI / e2e`.
 
-The E2E job also runs `npm run test:e2e:budget` before launching a browser. Its
-failure message asks for extending an existing scenario or an explicit budget
-update.
+`release.yml` verifies the tag, version and build numbers, requires the tag commit
+to belong to `main`, runs full validation once, and builds Android Play, FOSS
+Android and signed iOS in parallel. It statically verifies signing, package
+identity, version, ARM64-only ABI, native libraries, R8/ProGuard safety, the
+WorkManager constructor, FOSS exclusions and 16 KB page-size alignment before
+uploading to Google Play internal testing, TestFlight and the GitHub Release.
 
-Use `validate / gate` as the required branch-protection check. It accepts a
-skipped E2E job only when the selector chose no E2E; a failed or cancelled job
-still fails.
-
-`build.yml` also owns Android release jobs and runs `npm run test:foss` for the
-FOSS variant. Android and FOSS builds run in parallel after the gate, and a
-release-preparation job creates the GitHub Release once before both uploads.
-`ios-release.yml` validates, builds, signs, and optionally uploads the iOS
-archive. Release artifacts expire; the permanent copy is the GitHub Release
-asset or store upload.
+Static artifact verification cannot guarantee successful device startup. Play
+internal testing and TestFlight are the real-device validation environments.
+There is no emulator or self-hosted device job. Release artifacts expire; the
+permanent copy is the GitHub Release asset or store upload.
 
 ## Coordinated native dependency acceptance
 
@@ -175,28 +166,29 @@ or simulator evidence cannot satisfy them. Roll back by reverting the coordinate
 commits and lockfile, then regenerate native projects. Published versions require
 a higher-numbered forward release.
 
-## Android release launch check
+## Android release artifact check
 
-Use the actual signed production APK on an ARM64 emulator or test device with
-synthetic data and `adb`/`apkanalyzer` from the Android SDK. Set `ANDROID_SERIAL`
-when more than one device is connected:
+Every release job runs `scripts/ci/verify-android-release.mjs` before upload. It
+requires only `arm64-v8a`, expected native libraries, 16 KB ELF and APK alignment,
+a valid signature matching `ANDROID_CERT_SHA256`, the expected package/version,
+a non-empty R8 mapping, the public `WorkDatabase_Impl()` constructor and the FOSS
+exclusions. Both release jobs also run:
 
 ```bash
 python3 tests/native/android-launch.py --self-test
+python3 tests/native/android-launch.py --check-apk-only --apk /path/to/app-release.apk
+```
+
+The manual `--apk` mode remains available for a developer with a connected device:
+
+```bash
 python3 tests/native/android-launch.py --apk /path/to/opencode-mobile.apk --output output/android-launch
 ```
 
-The check rejects debug APKs and a missing public `WorkDatabase_Impl()` constructor,
-installs with `adb install -r` (preserving data), cold-launches, waits 15 seconds,
-and requires the same live foreground process plus rendered text and an enabled
-control. It saves launch output, logcat, UI XML and a screenshot. On a disposable
-emulator, run once after a fresh install and once over the last working release
-with saved credentials, session continuity and changed preferences; inspect those
-values after upgrading. Never uninstall or clear a user's installation for this check.
-
-Both release jobs run `--check-apk-only` before uploading artifacts to catch the
-specific R8 regression cheaply. This artifact check does not replace the actual
-release launch and upgrade acceptance above.
+It is not a CI requirement. Google Play internal testing and TestFlight are the
+real-device validation environments. Static artifact verification cannot guarantee
+successful startup, rendering or native initialization; a device-only failure is
+fixed forward with a new version and tag.
 
 ## What automated checks do not prove
 

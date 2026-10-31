@@ -131,6 +131,14 @@ run('npx', ['expo', 'prebuild', '--platform', 'android', '--clean'], {
   env: { ...buildEnv, CI: '1' },
 });
 
+// Release artifacts are ARM64-only. The config plugin writes the Gradle
+// property; assert it here so a prebuild regression cannot silently reintroduce
+// 32-bit or emulator ABIs.
+const generatedGradleProperties = fs.readFileSync(gradlePropertiesPath, 'utf8');
+if (!/^reactNativeArchitectures=arm64-v8a$/m.test(generatedGradleProperties)) {
+  fail('Generated android/gradle.properties must set reactNativeArchitectures=arm64-v8a for release builds.');
+}
+
 const keystorePassword = requireEnv('ANDROID_KEYSTORE_PASSWORD');
 const keyAlias = requireEnv('ANDROID_KEY_ALIAS');
 const keyPassword = requireEnv('ANDROID_KEY_PASSWORD');
@@ -245,7 +253,7 @@ if (detectedStoreType === 'pkcs12') {
 }
 
 // The FOSS build produces an ARM64 APK for the F-Droid package. The Play build
-// also produces the AAB and honors ANDROID_RELEASE_ABIS.
+// produces both the AAB and APK in one Gradle invocation.
 const gradleTasks = isFossVariant ? ['assembleRelease'] : ['bundleRelease', 'assembleRelease'];
 
 // Pass signing props to Gradle via gradle.properties. The Android Gradle Plugin
@@ -260,11 +268,9 @@ writeSigningProperties({
 
 run('./gradlew', [
   ...gradleTasks,
-  // Trim ABIs for release artifacts. Play needs at most armeabi-v7a + arm64-v8a;
-  // x86/x86_64 only matter for emulators (covered by development builds). CI sets
-  // the wider set on version tags. Building fewer ABIs cuts native compile and
-  // packaging work, plus bundletool's peak memory.
-  `-PreactNativeArchitectures=${getOptionalEnv('ANDROID_RELEASE_ABIS') ?? 'arm64-v8a'}`,
+  // ARM64-only is a product decision. There is no per-build ABI override:
+  // Play, FOSS and local release builds all produce the same ABI.
+  '-PreactNativeArchitectures=arm64-v8a',
 ], {
   cwd: androidDir,
   env: buildEnv,

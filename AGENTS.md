@@ -28,10 +28,10 @@ public APIs and the strictly limited shared UI/runtime exception.
 | Domain state/session/persistence | [State and data](docs/architecture/state-and-data.md#state-ownership-overview), [runtime guidance](runtime/AGENTS.md) | Owning Vitest and full E2E |
 | Protocol/endpoints/events | [API contract](docs/architecture/api-contract.md), [ADR 0003](docs/adr/0003-v2-first-protocol-boundary.md), [fake server](docs/engineering/validation/fake-server.md) | Contract Vitest, fake-server self-test and full E2E |
 | SSE/polling/offline | [Network resilience](docs/architecture/network-resilience.md) | Runtime Vitest and realtime/network E2E |
-| Native/platform/config | [Development](docs/engineering/development.md), [integrations](docs/engineering/integrations-and-operations.md) | Android build and relevant native/device checks |
-| Tests/fake server | [Validation index](docs/engineering/testing-and-validation.md), [strategy](docs/engineering/validation/strategy.md) | Cheapest sufficient level; full when required |
+| Native/platform/config | [Development](docs/engineering/development.md), [integrations](docs/engineering/integrations-and-operations.md) | CI release build; local native checks when the environment supports them |
+| Tests/fake server | [Validation index](docs/engineering/testing-and-validation.md), [strategy](docs/engineering/validation/strategy.md) | Cheapest sufficient level; full E2E runs on the release tag |
 | Docs/ADR | [Docs router](docs/README.md), [ADR process](docs/adr/README.md) | `npm run test:docs` and static |
-| Release | [Development](docs/engineering/development.md), [integrations](docs/engineering/integrations-and-operations.md), [updates](docs/product/app-updates.md)/[F-Droid](docs/engineering/fdroid.md) | Full pre-push gate |
+| Release | [Development](docs/engineering/development.md), [ADR 0018](docs/adr/0018-tag-driven-release-pipeline.md), [integrations](docs/engineering/integrations-and-operations.md), [updates](docs/product/app-updates.md)/[F-Droid](docs/engineering/fdroid.md) | Push a version tag; GitHub Actions validates, builds and distributes |
 
 ## Boundary rules
 
@@ -95,38 +95,51 @@ Follow [the ADR process](docs/adr/README.md): copy the numbered template, update
    and strict parity checks. English runtime fallback is not completion.
 5. Update current implementation docs and section README links in the same change.
 6. Record durable decisions with an ADR; supersede accepted decisions, never rewrite them.
-7. Validate proportionally, then run the complete pre-push gate before pushing.
+7. Run focused checks while developing, push to `main` or update the PR branch, and
+   inspect GitHub Actions. Fix failures there. CI is the final integration authority;
+   do not run the complete suite or native release builds before every push.
 
 ## Validation
 
-Baseline: `npm run lint` and `npm run typecheck`. Feature tests are colocated;
-`tests/vitest/test-discovery.test.ts` prevents suites silently disappearing from
-Vitest or TypeScript. Do not increase the test-typecheck exclusion budget.
+Baseline for touched code: `npm run lint` and `npm run typecheck`. Feature tests are
+colocated; `tests/vitest/test-discovery.test.ts` prevents suites silently disappearing
+from Vitest or TypeScript. Do not increase the test-typecheck exclusion budget.
 
-Run full E2E for runtime, domain state/services, protocol, shared persistence/query
-infrastructure, dependencies/build/CI, root layouts, unmapped paths or changes across
-more than two domains. See the [authoritative matrix](docs/engineering/validation/strategy.md#test-selection-matrix).
+`ci.yml` runs static checks, Vitest/architecture, fake-server validation, Storybook,
+FOSS preparation and critical Playwright smoke flows on every push to `main` and every
+PR. `release.yml` runs the full browser E2E suite and native release builds once on a
+`v*` tag. Use the [test-selection matrix](docs/engineering/validation/strategy.md#test-selection-matrix)
+to choose focused local checks; the full suite is not a per-push requirement.
 
-Before push, all of these must pass:
+A red CI run blocks merge. Confirm and harden flaky failures instead of adding retries.
+Native/Android-risk changes may be checked locally with `npm run build:development:android`
+when an SDK is available, but the tag release is the authoritative native build. Play
+internal testing and TestFlight are the real-device validation environments. Static
+release verification cannot guarantee successful device startup.
 
-```bash
-npm run test:ci:static
-npm run test:fake-server:self
-npm run test:e2e:budget
-npm run build:storybook
-npm run test:e2e:web
-```
+Any edit under `tests/e2e/` or `tests/fake-opencode/` requires explicit human validation
+even when automation passes. Do not add E2E specs when existing owning specs or
+lower-level tests suffice; update the budget in the same change when intentionally
+adding browser coverage.
 
-A red or flaky E2E run blocks push. Confirm and harden failures. Native/Android-risk
-changes also require `npm run build:development:android`; preserve iOS and FOSS
-entrypoints and use relevant device checks. Any edit under `tests/e2e/` or
-`tests/fake-opencode/` requires explicit human validation even when automation passes.
-Do not add E2E specs when existing owning specs or lower-level tests suffice; update
-its budget in the same change when intentionally adding browser coverage.
+For iteration, use `validate:fast`, `test:e2e:smoke` or `test:e2e:last-failed`.
+Concurrent runs use `test:e2e:web:isolated`; preserve per-worker backend isolation.
 
-For iteration, use `validate:fast`, `test:e2e:smoke`, `test:e2e:changed` or
-`test:e2e:last-failed`. Concurrent runs use `test:e2e:web:isolated`; preserve per-worker
-backend isolation. The full gate is still required before push/release.
+## Release
+
+Android release artifacts are `arm64-v8a` only; 32-bit-only Android devices are
+unsupported. Do not add `armeabi-v7a`, `x86` or `x86_64` to a release build.
+
+For every release version increase:
+
+1. Update `version`, `android.versionCode` and `ios.buildNumber` in `app.config.ts`.
+2. Update the matching `package.json` version.
+3. Add `fastlane/metadata/android/en-US/changelogs/<versionCode>.txt`.
+4. Commit to `main`, then create and push the `v<version>` tag.
+
+GitHub Actions performs validation, signing, Google Play internal upload, TestFlight upload
+and GitHub Release publication. Do not run manual packaging, signing, upload or release
+scripts. Never move or delete a release tag; fix forward with a new version.
 
 A local temporary mirror may run heavy checks. Make every source edit here, sync
 before checking, treat mirror output as read-only, and never commit/tag/push there.

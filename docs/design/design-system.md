@@ -286,23 +286,20 @@ flows. See the [test-selection matrix](../engineering/validation/strategy.md#tes
 | Shared tokens or theme mapping | Generation check, appearance contrast/mapping tests, foundations stories |
 | Primitive or shared settings control | Static checks, production Storybook story, owning flow spec |
 | Complex form | Schema/control tests and the existing connection, provider, extension or Cloud Link flow |
-| Dependencies, root providers, Metro or Vite | Full gate below, native exports and platform builds |
+| Dependencies, root providers, Metro or Vite | Focused checks below; the tag release runs full E2E and native builds |
 
 ```bash
 npm run gen:ui-tokens -- --check
 npm run test:ci:static
 npm run test:fake-server:self
-npm run test:e2e:budget
 npm run build:storybook
-npm run test:e2e:web
-npx expo export --platform android --platform ios --output-dir output/native-export
-npm run build:development:android
-npm run build:foss:android
-npm run prebuild:ios
-npm run build:ios:local
+npx playwright test tests/e2e/<owning-flow>.spec.mjs
 ```
 
-Signed distribution commands require the existing signing environment described
+`ci.yml` runs smoke on every push; `release.yml` runs the full browser suite and
+native release builds on a version tag. Run the broader native commands below
+when the change is high-risk or the environment supports them; they are not a
+per-push requirement. Signed distribution uses the tag release pipeline described
 in [Development](../engineering/development.md). An unsigned Release simulator
 build can check native compilation after iOS prebuild:
 

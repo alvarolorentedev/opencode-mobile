@@ -211,9 +211,9 @@ packages with one consumer:
 
 - Static changes: `npm run test:ci:static`.
 - Fake-server changes: `npm run test:fake-server:self`.
-- Provider, realtime, session, blocking, or SSE/polling changes:
-  `npm run test:e2e:web`.
-- Native-library additions: `npm run build:development:android` plus iOS/Android
-  device checks.
+- Provider, realtime, session, blocking, or SSE/polling changes: the affected
+  Playwright specs; the tag release runs the full `test:e2e:web` suite.
+- Native-library additions: `npm run build:development:android` when an SDK is
+  available, plus iOS/Android device checks; the tag release is authoritative.
 - Any change to `tests/e2e/` or `tests/fake-opencode/` requires explicit human
   validation under `AGENTS.md`.

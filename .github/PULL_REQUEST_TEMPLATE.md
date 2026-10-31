@@ -4,13 +4,17 @@
 
 ## Verification
 
-<!-- List the commands and flows you ran. Note anything not run and why. -->
+<!-- List the focused commands and flows you ran. CI is the integration authority. -->
 
-- [ ] `npm run test:ci:static`
+- [ ] `npm run lint` and `npm run typecheck` for touched code
+- [ ] `npm run test:ci:static` for broad, provider, protocol, persistence, or architecture changes
 - [ ] `npm run test:fake-server:self` when the fake server or protocol changed
-- [ ] `npm run test:e2e:web` when a user flow, provider flow, or realtime behavior changed
+- [ ] Affected Playwright spec when a user flow, provider flow, or realtime behavior changed
 - [ ] `npm run build:storybook` when a story or Storybook config changed
-- [ ] Native/device check when the change touches native modules, permissions, keyboard, safe areas, or store behavior
+- [ ] Native/device check when available and relevant; the tag release performs the authoritative native build
+- [ ] `ci.yml` is green
+
+Full browser E2E and native release builds run automatically on the `v*` release tag.
 
 ## Test decision
 

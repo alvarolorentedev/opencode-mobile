@@ -4,7 +4,7 @@
 - Date: 2026-10-30
 - Deciders: maintainers
 - Supersedes: —
-- Related: [Validation strategy](../engineering/validation/strategy.md), [E2E flows](../engineering/validation/e2e.md), [AGENTS.md](../../AGENTS.md), [`scripts/ci/validation-map.mjs`](../../scripts/ci/validation-map.mjs)
+- Related: [Validation strategy](../engineering/validation/strategy.md), [E2E flows](../engineering/validation/e2e.md), [AGENTS.md](../../AGENTS.md), [ADR 0018](0018-tag-driven-release-pipeline.md)
 
 ## Context
 

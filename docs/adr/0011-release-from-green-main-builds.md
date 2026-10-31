@@ -1,10 +1,10 @@
 # ADR 0011: Release from green main builds, not tag pushes
 
-- Status: Accepted
+- Status: Superseded by ADR 0018
 - Date: 2026-10-30
 - Deciders: maintainers
 - Supersedes: [ADR 0010](0010-risk-based-validation-and-selective-pr-e2e.md)
-- Related: [`.github/workflows/build.yml`](../../.github/workflows/build.yml), [`.github/workflows/release.yml`](../../.github/workflows/release.yml), [`scripts/ci/assert-validated.mjs`](../../scripts/ci/assert-validated.mjs), [Development](../engineering/development.md), [Validation strategy](../engineering/validation/strategy.md)
+- Related: [ADR 0018](0018-tag-driven-release-pipeline.md), [`.github/workflows/release.yml`](../../.github/workflows/release.yml), [Development](../engineering/development.md), [Validation strategy](../engineering/validation/strategy.md)
 
 ## Context
 

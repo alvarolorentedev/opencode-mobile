@@ -1,0 +1,143 @@
+name: CI
+
+# Fast integration gate for trunk-based development and community pull requests.
+# Full browser E2E and native release builds run once in release.yml on a v* tag.
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+  workflow_call:
+    inputs:
+      mode:
+        description: 'Validation depth: smoke or full'
+        required: false
+        default: smoke
+        type: string
+      ref:
+        description: 'Git ref to validate. Defaults to the caller/event ref.'
+        required: false
+        default: ''
+        type: string
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref_type != 'tag' }}
+
+permissions:
+  contents: read
+
+jobs:
+  static:
+    name: static
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.ref || github.sha }}
+          persist-credentials: false
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Cache static-check state
+        uses: actions/cache@v4
+        with:
+          path: |
+            .eslintcache
+            tsconfig.app.tsbuildinfo
+            tsconfig.tests.tsbuildinfo
+          key: static-${{ runner.os }}-${{ hashFiles('package-lock.json', 'eslint.config.*', 'tsconfig*.json') }}
+          restore-keys: |
+            static-${{ runner.os }}-${{ hashFiles('package-lock.json', 'eslint.config.*', 'tsconfig*.json') }}-
+
+      - name: Lint, typecheck, Vitest and architecture checks
+        run: npm run test:ci:static
+
+      - name: Validate fake server harness
+        run: npm run test:fake-server:self
+
+      - name: Validate FOSS preparation
+        run: npm run test:foss
+
+      - name: Check E2E test budget
+        run: npm run test:e2e:budget
+
+      - name: Build component catalog
+        run: npm run build:storybook
+
+      - name: Self-test Android release artifact checks
+        run: python3 tests/native/android-launch.py --self-test
+
+  e2e:
+    name: e2e
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    permissions:
+      contents: read
+    env:
+      E2E_WORKERS: '4'
+      CI: 'true'
+      EXPO_PUBLIC_E2E_MODE: '1'
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.ref || github.sha }}
+          persist-credentials: false
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Cache Playwright browser
+        id: playwright-cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
+
+      - name: Install Playwright browser
+        run: |
+          if [ "${{ steps.playwright-cache.outputs.cache-hit }}" = "true" ]; then
+            npx playwright install chromium
+          else
+            npx playwright install --with-deps chromium
+          fi
+
+      - name: Run critical smoke flows
+        if: inputs.mode != 'full'
+        run: npx playwright test --grep @smoke
+
+      - name: Run full CI flow suite
+        if: inputs.mode == 'full'
+        run: npx playwright test
+
+      - name: Upload Playwright diagnostics
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-diagnostics
+          path: |
+            playwright-report/
+            test-results/
+          retention-days: 3

@@ -1,160 +1,52 @@
 name: Release
 
-# Release builds are triggered by a green Build run on main, not by the tag
-# push itself. The tag is only the marker: when a version tag exists at the
-# validated commit, this workflow creates the Release and builds the APKs.
-# Pushing main and its tag together can therefore never race validation.
+# A version tag is the release command. Validation, native builds and internal
+# distribution run automatically; nothing is promoted to production.
 on:
-  workflow_run:
-    workflows: [Build]
-    types: [completed]
-    branches: [main]
+  push:
+    tags:
+      - 'v*'
   workflow_dispatch:
     inputs:
       tag:
-        description: 'Existing v* tag to build (empty builds the selected ref)'
-        required: false
-        default: ''
+        description: 'Existing v* tag to rebuild (recovery only)'
+        required: true
         type: string
-      publish:
-        description: 'Create/publish the GitHub Release and upload APKs (requires a tag)'
-        required: false
-        default: false
-        type: boolean
-      upload_to_store:
-        description: 'Also upload the AAB to the Play internal track'
-        required: false
-        default: false
-        type: boolean
 
 concurrency:
-  group: release-${{ github.event.workflow_run.head_sha || github.sha }}
+  group: release
   cancel-in-progress: false
 
 permissions:
-  contents: write
-  actions: read
+  contents: read
+
+env:
+  CI: 'true'
+  EXPO_NO_TELEMETRY: '1'
 
 jobs:
-  # Resolves the validated commit, checks the tag/version pair, and creates the
-  # draft Release before the parallel builds so uploads never race creation.
-  prepare:
-    if: ${{ github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success' }}
+  verify:
+    name: verify
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    permissions:
+      contents: read
     outputs:
-      build: ${{ steps.resolve.outputs.build }}
-      publish: ${{ steps.resolve.outputs.publish }}
-      store: ${{ steps.resolve.outputs.store }}
-      tag: ${{ steps.resolve.outputs.tag }}
-      sha: ${{ steps.resolve.outputs.sha }}
+      tag: ${{ steps.release.outputs.tag }}
+      sha: ${{ steps.release.outputs.sha }}
+      version: ${{ steps.release.outputs.version }}
+      version_code: ${{ steps.release.outputs.version_code }}
+      build_number: ${{ steps.release.outputs.build_number }}
+      testflight_configured: ${{ steps.release.outputs.testflight_configured }}
+
     steps:
-      - name: Checkout target
+      - name: Checkout release tag
         uses: actions/checkout@v4
         with:
-          # workflow_run checks out the exact validated SHA. A manual dispatch
-          # may name a tag; otherwise it builds the selected ref.
-          ref: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.head_sha || inputs.tag || github.sha }}
+          ref: ${{ inputs.tag != '' && format('refs/tags/{0}', inputs.tag) || github.ref }}
           fetch-depth: 0
           fetch-tags: true
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: 22
-
-      - name: Resolve release target
-        id: resolve
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          EVENT: ${{ github.event_name }}
-          RUN_CONCLUSION: ${{ github.event.workflow_run.conclusion }}
-          INPUT_TAG: ${{ inputs.tag }}
-          INPUT_PUBLISH: ${{ inputs.publish }}
-          INPUT_STORE: ${{ inputs.upload_to_store }}
-          GH_REPO: ${{ github.repository }}
-        run: |
-          set -euo pipefail
-
-          SHA=$(git rev-parse HEAD)
-          VERSION=$(node -e "
-            const fs = require('fs');
-            const match = fs.readFileSync('app.config.ts', 'utf8').match(/version:\s*'([^']+)'/);
-            if (!match) process.exit(1);
-            process.stdout.write(match[1]);
-          ")
-          EXPECTED="v$VERSION"
-          TAG=$(git describe --tags --exact-match --match 'v[0-9]*' HEAD 2>/dev/null || true)
-          BUILD=false
-          PUBLISH=false
-          STORE=false
-
-          if [ "$EVENT" = "workflow_run" ]; then
-            if [ "$RUN_CONCLUSION" != "success" ]; then
-              echo "Build run concluded '$RUN_CONCLUSION'; nothing to release."
-            elif [ -z "$TAG" ]; then
-              echo "No version tag at $SHA; merging this commit is not a release."
-            else
-              BUILD=true
-              PUBLISH=true
-              STORE=true
-            fi
-          else
-            BUILD=true
-            if [ -n "$INPUT_TAG" ]; then
-              if [ "$TAG" != "$INPUT_TAG" ]; then
-                echo "::error::Tag $INPUT_TAG does not point at checked-out commit $SHA (found '$TAG')."
-                exit 1
-              fi
-              if [ "$INPUT_PUBLISH" = "true" ]; then
-                PUBLISH=true
-                if [ "$INPUT_STORE" = "true" ]; then STORE=true; fi
-              fi
-            elif [ "$INPUT_PUBLISH" = "true" ]; then
-              echo "::error::publish requires a tag input."
-              exit 1
-            fi
-          fi
-
-          if [ -n "$TAG" ] && [ "$TAG" != "$EXPECTED" ]; then
-            echo "::error::Tag $TAG does not match app version $VERSION ($EXPECTED)."
-            exit 1
-          fi
-
-          if [ "$PUBLISH" = "true" ]; then
-            TARGET_SHA="$SHA" GITHUB_TOKEN="$GH_TOKEN" node scripts/ci/assert-validated.mjs
-            if gh release view "$TAG" >/dev/null 2>&1; then
-              echo "Release $TAG already exists."
-            else
-              gh release create "$TAG" --draft --verify-tag --title "$TAG" --generate-notes
-            fi
-          fi
-
-          {
-            echo "build=$BUILD"
-            echo "publish=$PUBLISH"
-            echo "store=$STORE"
-            echo "tag=$TAG"
-            echo "sha=$SHA"
-          } >> "$GITHUB_OUTPUT"
-
-  android-release:
-    needs: prepare
-    if: ${{ needs.prepare.outputs.build == 'true' }}
-    runs-on: ubuntu-latest
-    timeout-minutes: 60
-    permissions:
-      contents: write
-
-    env:
-      EXPO_APP_VARIANT: production
-      EXPO_ANDROID_PACKAGE: ${{ vars.EXPO_ANDROID_PACKAGE }}
-
-    steps:
-      - name: Checkout release commit
-        uses: actions/checkout@v4
-        with:
-          ref: ${{ needs.prepare.outputs.sha }}
+          persist-credentials: false
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -162,159 +54,228 @@ jobs:
           node-version: 22
           cache: npm
 
-      - name: Cache Gradle
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/.gradle/caches
-            ~/.gradle/wrapper
-          key: gradle-${{ runner.os }}-${{ hashFiles('**/gradle-wrapper.properties','**/build.gradle*','**/settings.gradle*') }}
-          restore-keys: gradle-${{ runner.os }}-
-
-      - name: Setup Java
-        uses: actions/setup-java@v5
-        with:
-          distribution: temurin
-          java-version: 17
-
-      - name: Setup Android SDK
-        uses: android-actions/setup-android@v4
-
-      # AGP's on-demand SDK installs occasionally fetch a truncated archive
-      # and fail mid-build ("Archive is not a ZIP archive"). Pre-install them
-      # with retries so a flaky download cannot abort Gradle.
-      - name: Install CMake and NDK
+      - name: Resolve and verify release metadata
+        id: release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+          INPUT_TAG: ${{ inputs.tag }}
+          ANDROID_CERT_SHA256: ${{ vars.ANDROID_CERT_SHA256 }}
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+          GOOGLE_PLAY_SERVICE_ACCOUNT_JSON: ${{ secrets.GOOGLE_PLAY_SERVICE_ACCOUNT_JSON }}
+          APPLE_CERTIFICATE_BASE64: ${{ secrets.APPLE_CERTIFICATE_BASE64 }}
+          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+          APPLE_PROVISIONING_PROFILE_BASE64: ${{ secrets.APPLE_PROVISIONING_PROFILE_BASE64 }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          APPSTORE_API_KEY_ID: ${{ secrets.APPSTORE_API_KEY_ID }}
+          APPSTORE_API_ISSUER_ID: ${{ secrets.APPSTORE_API_ISSUER_ID }}
+          APPSTORE_API_PRIVATE_KEY: ${{ secrets.APPSTORE_API_PRIVATE_KEY }}
         run: |
-          set -eo pipefail
-          SDK_ROOT="${ANDROID_HOME:-$ANDROID_SDK_ROOT}"
-          if [ -z "$SDK_ROOT" ]; then
-            echo "::error::ANDROID_HOME and ANDROID_SDK_ROOT are both unset"
+          set -euo pipefail
+
+          TAG="${INPUT_TAG:-${GITHUB_REF_NAME}}"
+          if ! printf '%s' "$TAG" | grep -Eq '^v[0-9]+\.[0-9]+\.[0-9]+$'; then
+            echo "::error::Tag '$TAG' is not a vMAJOR.MINOR.PATCH release tag."
             exit 1
           fi
-          for pkg in 'cmake;3.22.1' 'ndk;27.1.12297006'; do
-            case "$pkg" in
-              'cmake;3.22.1') [ -x "$SDK_ROOT/cmake/3.22.1/bin/cmake" ] && continue ;;
-              'ndk;27.1.12297006') [ -d "$SDK_ROOT/ndk/27.1.12297006" ] && continue ;;
-            esac
-            for attempt in 1 2 3 4 5; do
-              # Pin the install root so sdkmanager and Gradle cannot pick
-              # different SDK directories on the same runner.
-              if sdkmanager --sdk_root="$SDK_ROOT" --install "$pkg" </dev/null; then
-                break
-              fi
-              rm -rf "$SDK_ROOT/.temp"
-              # A failed unzip can leave a broken package directory behind
-              # that blocks the next attempt, so drop it before retrying.
-              case "$pkg" in
-                ndk\;*) rm -rf "$SDK_ROOT/ndk/27.1.12297006" ;;
-                cmake\;*) rm -rf "$SDK_ROOT/cmake/3.22.1" ;;
-              esac
-              if [ "$attempt" -eq 5 ]; then
-                echo "::error::Failed to install $pkg after 5 attempts"
-                exit 1
-              fi
-              sleep $((attempt * 5))
-            done
-          done
-        shell: bash
+
+          git fetch --no-tags origin main:refs/remotes/origin/main
+          SHA=$(git rev-parse HEAD)
+          TAG_SHA=$(git rev-parse "${TAG}^{commit}")
+          if [ "$SHA" != "$TAG_SHA" ]; then
+            echo "::error::Tag $TAG points at $TAG_SHA, but HEAD is $SHA."
+            exit 1
+          fi
+          if ! git merge-base --is-ancestor HEAD origin/main; then
+            echo "::error::Tag $TAG is not on main. Releases must come from main."
+            exit 1
+          fi
+
+          npm ci
+          npx expo config --type public --json > "$RUNNER_TEMP/expo-config.json"
+          VERSION=$(jq -r '.version' "$RUNNER_TEMP/expo-config.json")
+          VERSION_CODE=$(jq -r '.android.versionCode // empty' "$RUNNER_TEMP/expo-config.json")
+          BUILD_NUMBER=$(jq -r '.ios.buildNumber // empty' "$RUNNER_TEMP/expo-config.json")
+          PACKAGE_VERSION=$(jq -r '.version' package.json)
+
+          if [ "$TAG" != "v$VERSION" ]; then
+            echo "::error::Tag $TAG does not match app version $VERSION."
+            exit 1
+          fi
+          if [ "$PACKAGE_VERSION" != "$VERSION" ]; then
+            echo "::error::package.json version $PACKAGE_VERSION does not match app version $VERSION."
+            exit 1
+          fi
+          if ! printf '%s' "$VERSION_CODE" | grep -Eq '^[0-9]+$'; then
+            echo "::error::android.versionCode must be numeric."
+            exit 1
+          fi
+          if ! printf '%s' "$BUILD_NUMBER" | grep -Eq '^[0-9]+$'; then
+            echo "::error::ios.buildNumber must be numeric."
+            exit 1
+          fi
+          if [ "$VERSION_CODE" != "$BUILD_NUMBER" ]; then
+            echo "::error::android.versionCode ($VERSION_CODE) and ios.buildNumber ($BUILD_NUMBER) must match."
+            exit 1
+          fi
+          CHANGELOG="fastlane/metadata/android/en-US/changelogs/${VERSION_CODE}.txt"
+          if [ ! -s "$CHANGELOG" ]; then
+            echo "::error::Missing or empty release changelog: $CHANGELOG"
+            exit 1
+          fi
+
+          : "${ANDROID_CERT_SHA256:?Missing repository variable: ANDROID_CERT_SHA256}"
+          : "${ANDROID_KEYSTORE_BASE64:?Missing secret: ANDROID_KEYSTORE_BASE64}"
+          : "${ANDROID_KEYSTORE_PASSWORD:?Missing secret: ANDROID_KEYSTORE_PASSWORD}"
+          : "${ANDROID_KEY_ALIAS:?Missing secret: ANDROID_KEY_ALIAS}"
+          : "${ANDROID_KEY_PASSWORD:?Missing secret: ANDROID_KEY_PASSWORD}"
+          : "${GOOGLE_PLAY_SERVICE_ACCOUNT_JSON:?Missing secret: GOOGLE_PLAY_SERVICE_ACCOUNT_JSON}"
+          : "${APPLE_CERTIFICATE_BASE64:?Missing secret: APPLE_CERTIFICATE_BASE64}"
+          : "${APPLE_CERTIFICATE_PASSWORD:?Missing secret: APPLE_CERTIFICATE_PASSWORD}"
+          : "${APPLE_PROVISIONING_PROFILE_BASE64:?Missing secret: APPLE_PROVISIONING_PROFILE_BASE64}"
+          : "${APPLE_TEAM_ID:?Missing secret: APPLE_TEAM_ID}"
+
+          TESTFLIGHT_CONFIGURED=false
+          if [ -n "${APPSTORE_API_KEY_ID:-}" ] && [ -n "${APPSTORE_API_ISSUER_ID:-}" ] && [ -n "${APPSTORE_API_PRIVATE_KEY:-}" ]; then
+            TESTFLIGHT_CONFIGURED=true
+          fi
+
+          if RELEASE_JSON=$(gh release view "$TAG" --json isDraft 2>/dev/null); then
+            if [ "$(printf '%s' "$RELEASE_JSON" | jq -r '.isDraft')" != "true" ]; then
+              echo "::error::Release $TAG is already published. Bump the version for a new release."
+              exit 1
+            fi
+          fi
+
+          {
+            echo "tag=$TAG"
+            echo "sha=$SHA"
+            echo "version=$VERSION"
+            echo "version_code=$VERSION_CODE"
+            echo "build_number=$BUILD_NUMBER"
+            echo "testflight_configured=$TESTFLIGHT_CONFIGURED"
+          } >> "$GITHUB_OUTPUT"
+
+          {
+            echo "## Release $TAG"
+            echo ""
+            echo "- Commit: \`$SHA\`"
+            echo "- Version: \`$VERSION\`"
+            echo "- Android versionCode: \`$VERSION_CODE\`"
+            echo "- iOS buildNumber: \`$BUILD_NUMBER\`"
+            echo "- TestFlight configured: \`$TESTFLIGHT_CONFIGURED\`"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  validate:
+    name: validate
+    needs: verify
+    uses: ./.github/workflows/ci.yml
+    permissions:
+      contents: read
+    with:
+      mode: full
+      ref: refs/tags/${{ needs.verify.outputs.tag }}
+
+  android:
+    name: android
+    needs: verify
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    permissions:
+      contents: read
+    env:
+      EXPO_APP_VARIANT: production
+      EXPO_ANDROID_PACKAGE: ${{ vars.EXPO_ANDROID_PACKAGE }}
+      ANDROID_CERT_SHA256: ${{ vars.ANDROID_CERT_SHA256 }}
+
+    steps:
+      - name: Checkout release commit
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.verify.outputs.sha }}
+          persist-credentials: false
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Setup Android release toolchain
+        uses: ./.github/actions/setup-android-release
 
       - name: Install dependencies
         run: npm ci
 
-      - name: Decode keystore & verify
-        env:
-          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+      - name: Download bundletool
         run: |
-          set -eo pipefail
-          # Compute secret length robustly and without adding newlines
-          SECRET_LEN=$(printf '%s' "$ANDROID_KEYSTORE_BASE64" | tr -d '[:space:]' | wc -c)
-          echo "Secret length: $SECRET_LEN"
-          if [ "$SECRET_LEN" -lt 100 ]; then
-            echo "Keystore secret is unexpectedly short; refusing to continue."
-            exit 1
-          fi
-
-          KEYSTORE_PATH="$RUNNER_TEMP/release.keystore"
-          # Decode safely using printf to avoid echo interpretation issues
-          printf '%s' "$ANDROID_KEYSTORE_BASE64" | tr -d '[:space:]' | base64 --decode > "$KEYSTORE_PATH"
-          FILE_SIZE=$(stat -c%s "$KEYSTORE_PATH")
-          echo "Decoded size: $FILE_SIZE"
-          if [ "$FILE_SIZE" -lt 100 ]; then
-            echo "Decoded keystore is unexpectedly small; refusing to continue."
-            exit 1
-          fi
-          echo "Keystore on disk:"
-          sha256sum "$KEYSTORE_PATH" || true
-          ls -l "$KEYSTORE_PATH" || true
-        shell: bash
+          set -euo pipefail
+          curl --fail --silent --show-error --location --retry 3 \
+            --output "$RUNNER_TEMP/bundletool.jar" \
+            "https://github.com/google/bundletool/releases/download/1.18.1/bundletool-all-1.18.1.jar"
 
       - name: Build Android release
-        run: npm run build:android
         env:
-          ANDROID_KEYSTORE_PATH: ${{ runner.temp }}/release.keystore
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
           ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
           ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
           ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
-          # Tagged acceptance builds use the published ARM ABIs too;
-          # untagged builds include x86_64 for Intel emulators.
-          ANDROID_RELEASE_ABIS: ${{ needs.prepare.outputs.tag != '' && 'armeabi-v7a,arm64-v8a' || 'arm64-v8a,x86_64' }}
+        run: npm run build:android
 
       - name: Check release startup constructor
         run: |
           python3 tests/native/android-launch.py --self-test
-          python3 tests/native/android-launch.py --check-apk-only --apk android/app/build/outputs/apk/release/app-release.apk
+          python3 tests/native/android-launch.py --check-apk-only \
+            --apk android/app/build/outputs/apk/release/app-release.apk
 
-      - name: Verify APK signature
+      - name: Verify Android release artifacts
+        env:
+          ANDROID_CERT_SHA256: ${{ vars.ANDROID_CERT_SHA256 }}
         run: |
-          set -eo pipefail
-          APK=android/app/build/outputs/apk/release/app-release.apk
-          APKSIGNER=""
-          for root in "$ANDROID_HOME" "$ANDROID_SDK_ROOT"; do
-            [ -n "$root" ] && [ -d "$root/build-tools" ] || continue
-            CANDIDATE=$(find "$root/build-tools" -name apksigner -type f | sort -V | tail -1)
-            if [ -n "$CANDIDATE" ]; then APKSIGNER="$CANDIDATE"; break; fi
-          done
-          if [ -z "$APKSIGNER" ]; then
-            echo "::error::apksigner not found in Android SDK (ANDROID_HOME=$ANDROID_HOME ANDROID_SDK_ROOT=$ANDROID_SDK_ROOT)"
-            exit 1
-          fi
-          "$APKSIGNER" verify --verbose --print-certs "$APK"
-        shell: bash
+          node scripts/ci/verify-android-release.mjs \
+            --apk android/app/build/outputs/apk/release/app-release.apk \
+            --aab android/app/build/outputs/bundle/release/app-release.aab \
+            --mapping android/app/build/outputs/mapping/release/mapping.txt \
+            --bundletool "$RUNNER_TEMP/bundletool.jar" \
+            --package "${{ vars.EXPO_ANDROID_PACKAGE || 'app.getopencode' }}" \
+            --version "${{ needs.verify.outputs.version }}" \
+            --version-code "${{ needs.verify.outputs.version_code }}" \
+            --abi arm64-v8a \
+            --cert-sha256 "$ANDROID_CERT_SHA256"
 
-      - name: Upload build artifact
+      - name: Stage release artifacts
+        run: |
+          set -euo pipefail
+          mkdir -p release-artifacts
+          cp android/app/build/outputs/apk/release/app-release.apk release-artifacts/opencode-mobile.apk
+          cp android/app/build/outputs/bundle/release/app-release.aab release-artifacts/opencode-mobile.aab
+          cp android/app/build/outputs/mapping/release/mapping.txt release-artifacts/mapping.txt
+          cd release-artifacts
+          sha256sum opencode-mobile.apk opencode-mobile.aab mapping.txt > SHA256SUMS.txt
+
+      - name: Upload Android release artifact
         uses: actions/upload-artifact@v4
         with:
-          name: android-release-artifacts
-          path: android/app/build/outputs/apk/release/app-release.apk
-          retention-days: 1
+          name: android-play
+          path: release-artifacts/
+          retention-days: 3
+          compression-level: 0
+          if-no-files-found: error
 
-      - name: Attach APK to the Release
-        if: needs.prepare.outputs.publish == 'true'
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          GH_REPO: ${{ github.repository }}
-        run: |
-          cp android/app/build/outputs/apk/release/app-release.apk opencode-mobile.apk
-          gh release upload "${{ needs.prepare.outputs.tag }}" opencode-mobile.apk --clobber
+      - name: Remove signing material
+        if: always()
+        run: rm -f android/release.keystore "$RUNNER_TEMP/release.keystore"
 
-      - name: Upload to Play Store (internal)
-        if: needs.prepare.outputs.publish == 'true' && needs.prepare.outputs.store == 'true'
-        uses: r0adkll/upload-google-play@v1
-        with:
-          serviceAccountJsonPlainText: ${{ secrets.GOOGLE_PLAY_SERVICE_ACCOUNT_JSON }}
-          packageName: ${{ vars.EXPO_ANDROID_PACKAGE }}
-          releaseFiles: android/app/build/outputs/bundle/release/app-release.aab
-          tracks: internal
-          status: completed
-
-  foss-release:
-    needs: prepare
-    if: ${{ needs.prepare.outputs.build == 'true' }}
+  foss:
+    name: foss
+    needs: verify
     runs-on: ubuntu-latest
     timeout-minutes: 60
     permissions:
-      contents: write
-
+      contents: read
     env:
       OPENCODE_BUILD_FLAVOR: foss
       EXPO_PUBLIC_FOSS: '1'
@@ -324,7 +285,8 @@ jobs:
       - name: Checkout release commit
         uses: actions/checkout@v4
         with:
-          ref: ${{ needs.prepare.outputs.sha }}
+          ref: ${{ needs.verify.outputs.sha }}
+          persist-credentials: false
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -332,171 +294,403 @@ jobs:
           node-version: 22
           cache: npm
 
-      - name: Cache Gradle
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/.gradle/caches
-            ~/.gradle/wrapper
-          key: gradle-foss-${{ runner.os }}-${{ hashFiles('**/gradle-wrapper.properties','**/build.gradle*','**/settings.gradle*') }}
-          restore-keys: gradle-foss-${{ runner.os }}-
-
-      - name: Setup Java
-        uses: actions/setup-java@v5
-        with:
-          distribution: temurin
-          java-version: 17
-
-      - name: Setup Android SDK
-        uses: android-actions/setup-android@v4
-
-      # Same retried pre-install as android-release: protects the FOSS build
-      # from the flaky AGP-downloaded CMake/NDK archives.
-      - name: Install CMake and NDK
-        run: |
-          set -eo pipefail
-          SDK_ROOT="${ANDROID_HOME:-$ANDROID_SDK_ROOT}"
-          if [ -z "$SDK_ROOT" ]; then
-            echo "::error::ANDROID_HOME and ANDROID_SDK_ROOT are both unset"
-            exit 1
-          fi
-          for pkg in 'cmake;3.22.1' 'ndk;27.1.12297006'; do
-            case "$pkg" in
-              'cmake;3.22.1') [ -x "$SDK_ROOT/cmake/3.22.1/bin/cmake" ] && continue ;;
-              'ndk;27.1.12297006') [ -d "$SDK_ROOT/ndk/27.1.12297006" ] && continue ;;
-            esac
-            for attempt in 1 2 3 4 5; do
-              # Pin the install root so sdkmanager and Gradle cannot pick
-              # different SDK directories on the same runner.
-              if sdkmanager --sdk_root="$SDK_ROOT" --install "$pkg" </dev/null; then
-                break
-              fi
-              rm -rf "$SDK_ROOT/.temp"
-              # A failed unzip can leave a broken package directory behind
-              # that blocks the next attempt, so drop it before retrying.
-              case "$pkg" in
-                ndk\;*) rm -rf "$SDK_ROOT/ndk/27.1.12297006" ;;
-                cmake\;*) rm -rf "$SDK_ROOT/cmake/3.22.1" ;;
-              esac
-              if [ "$attempt" -eq 5 ]; then
-                echo "::error::Failed to install $pkg after 5 attempts"
-                exit 1
-              fi
-              sleep $((attempt * 5))
-            done
-          done
-        shell: bash
+      - name: Setup Android release toolchain
+        uses: ./.github/actions/setup-android-release
 
       - name: Install dependencies
         run: npm ci
 
-      - name: Validate FOSS dependency preparation
-        run: npm run test:foss
-
-      - name: Decode keystore
+      - name: Build FOSS Android release
         env:
           ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
-        run: |
-          set -eo pipefail
-          KEYSTORE_PATH="$RUNNER_TEMP/release.keystore"
-          printf '%s' "$ANDROID_KEYSTORE_BASE64" | tr -d '[:space:]' | base64 --decode > "$KEYSTORE_PATH"
-          test "$(stat -c%s "$KEYSTORE_PATH")" -ge 100
-          echo "Keystore on disk:"
-          sha256sum "$KEYSTORE_PATH" || true
-        shell: bash
-
-      # Builds the de-Googled FOSS flavor: no Play Billing (expo-iap), no ML Kit
-      # barcode scanner (expo-camera), and expo-notifications compiled against
-      # F-Droid's firebase-stubs instead of firebase-messaging.
-      - name: Build FOSS Android release
-        run: npm run build:foss:android
-        env:
-          ANDROID_KEYSTORE_PATH: ${{ runner.temp }}/release.keystore
           ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
           ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
           ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: npm run build:foss:android
 
       - name: Check release startup constructor
         run: |
           python3 tests/native/android-launch.py --self-test
-          python3 tests/native/android-launch.py --check-apk-only --apk android/app/build/outputs/apk/release/app-release.apk
+          python3 tests/native/android-launch.py --check-apk-only \
+            --apk android/app/build/outputs/apk/release/app-release.apk
 
-      - name: Verify APK signature
+      - name: Verify FOSS release artifact
+        env:
+          ANDROID_CERT_SHA256: ${{ vars.ANDROID_CERT_SHA256 }}
         run: |
-          set -eo pipefail
-          APK=android/app/build/outputs/apk/release/app-release.apk
-          APKSIGNER=""
-          for root in "$ANDROID_HOME" "$ANDROID_SDK_ROOT"; do
-            [ -n "$root" ] && [ -d "$root/build-tools" ] || continue
-            CANDIDATE=$(find "$root/build-tools" -name apksigner -type f | sort -V | tail -1)
-            if [ -n "$CANDIDATE" ]; then APKSIGNER="$CANDIDATE"; break; fi
-          done
-          if [ -z "$APKSIGNER" ]; then
-            echo "::error::apksigner not found in Android SDK (ANDROID_HOME=$ANDROID_HOME ANDROID_SDK_ROOT=$ANDROID_SDK_ROOT)"
-            exit 1
-          fi
-          "$APKSIGNER" verify --verbose --print-certs "$APK"
-        shell: bash
+          node scripts/ci/verify-android-release.mjs \
+            --apk android/app/build/outputs/apk/release/app-release.apk \
+            --mapping android/app/build/outputs/mapping/release/mapping.txt \
+            --package app.getopencode.fdroid \
+            --version "${{ needs.verify.outputs.version }}" \
+            --version-code "${{ needs.verify.outputs.version_code }}" \
+            --abi arm64-v8a \
+            --cert-sha256 "$ANDROID_CERT_SHA256" \
+            --foss
 
-      - name: Verify the FOSS APK has no proprietary Google libraries
+      - name: Stage release artifacts
         run: |
-          set -eo pipefail
-          APK=android/app/build/outputs/apk/release/app-release.apk
-          # expo-notifications still compiles against firebase-stub classes, so
-          # com.google.firebase.* is expected; check the libraries we removed.
-          for needle in \
-            'com/android/billingclient' \
-            'com/google/mlkit' \
-            'com/android/installreferrer' \
-            'play-services-code-scanner'; do
-            if unzip -p "$APK" 'classes*.dex' | grep -a -q -F "$needle"; then
-              echo "::error::FOSS APK unexpectedly contains: $needle"
-              exit 1
-            fi
-          done
-          echo "FOSS APK clean of the removed proprietary Google libraries."
-        shell: bash
+          set -euo pipefail
+          mkdir -p release-artifacts
+          cp android/app/build/outputs/apk/release/app-release.apk release-artifacts/opencode-mobile-fdroid.apk
+          cd release-artifacts
+          sha256sum opencode-mobile-fdroid.apk > SHA256SUMS.txt
 
-      - name: Upload build artifact
+      - name: Upload FOSS release artifact
         uses: actions/upload-artifact@v4
         with:
-          name: foss-release-artifacts
-          path: android/app/build/outputs/apk/release/app-release.apk
-          retention-days: 1
+          name: android-foss
+          path: release-artifacts/
+          retention-days: 3
+          compression-level: 0
+          if-no-files-found: error
 
-      - name: Attach APK to the Release
-        if: needs.prepare.outputs.publish == 'true'
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          GH_REPO: ${{ github.repository }}
+      - name: Remove signing material
+        if: always()
+        run: rm -f android/release.keystore "$RUNNER_TEMP/release.keystore"
+
+  ios:
+    name: ios
+    needs: verify
+    runs-on: macos-26
+    timeout-minutes: 90
+    permissions:
+      contents: read
+    env:
+      EXPO_APP_VARIANT: production
+      IOS_BUNDLE_IDENTIFIER: ${{ vars.EXPO_IOS_BUNDLE_IDENTIFIER || 'app.getopencode.mobile' }}
+      EXPO_IOS_APP_STORE_ID: ${{ vars.EXPO_IOS_APP_STORE_ID }}
+      EXPO_IOS_APP_STORE_COUNTRY: ${{ vars.EXPO_IOS_APP_STORE_COUNTRY }}
+
+    steps:
+      - name: Checkout release commit
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.verify.outputs.sha }}
+          persist-credentials: false
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Generate iOS native project
+        run: CI=1 npx expo prebuild --platform ios --clean
+
+      - name: Detect workspace
+        id: workspace
         run: |
-          cp android/app/build/outputs/apk/release/app-release.apk opencode-mobile-fdroid.apk
-          gh release upload "${{ needs.prepare.outputs.tag }}" opencode-mobile-fdroid.apk --clobber
+          set -euo pipefail
+          WORKSPACE=$(find ios -maxdepth 1 -name '*.xcworkspace' -print -quit)
+          if [ -z "$WORKSPACE" ]; then
+            echo "::error::No .xcworkspace found after prebuild."
+            exit 1
+          fi
+          echo "path=$WORKSPACE" >> "$GITHUB_OUTPUT"
+          echo "name=$(basename "$WORKSPACE" .xcworkspace)" >> "$GITHUB_OUTPUT"
 
-  # Publishes only after both APKs are attached, so a failed build can never
-  # leave a published release with missing assets.
-  publish:
-    needs: [prepare, android-release, foss-release]
-    if: ${{ always() && needs.prepare.outputs.publish == 'true' && needs.android-release.result == 'success' && needs.foss-release.result == 'success' }}
+      - name: Setup iOS signing
+        id: signing
+        uses: ./.github/actions/setup-ios-signing
+        with:
+          certificate-base64: ${{ secrets.APPLE_CERTIFICATE_BASE64 }}
+          certificate-password: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+          profile-base64: ${{ secrets.APPLE_PROVISIONING_PROFILE_BASE64 }}
+          team-id: ${{ secrets.APPLE_TEAM_ID }}
+          bundle-id: ${{ vars.EXPO_IOS_BUNDLE_IDENTIFIER || 'app.getopencode.mobile' }}
+
+      - name: Build signed archive
+        env:
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: |
+          set -euo pipefail
+          xcodebuild -workspace "${{ steps.workspace.outputs.path }}" \
+            -scheme "${{ steps.workspace.outputs.name }}" \
+            -configuration Release \
+            -archivePath "$RUNNER_TEMP/build.xcarchive" \
+            -destination "generic/platform=iOS" \
+            DEVELOPMENT_TEAM="$APPLE_TEAM_ID" \
+            MARKETING_VERSION="${{ needs.verify.outputs.version }}" \
+            CURRENT_PROJECT_VERSION="${{ needs.verify.outputs.build_number }}" \
+            CODE_SIGN_STYLE=Manual \
+            CODE_SIGN_IDENTITY="Apple Distribution" \
+            PROVISIONING_PROFILE_SPECIFIER="$PROFILE_UUID" \
+            OTHER_CODE_SIGN_FLAGS="--keychain $KEYCHAIN_PATH" \
+            COMPILER_INDEX_STORE_ENABLE=NO \
+            -resultBundlePath "$RUNNER_TEMP/ios.xcresult" \
+            archive
+
+      - name: Export IPA
+        env:
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: |
+          set -euo pipefail
+          cat > "$RUNNER_TEMP/ExportOptions.plist" <<EOF
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0">
+          <dict>
+            <key>method</key>
+            <string>app-store-connect</string>
+            <key>teamID</key>
+            <string>$APPLE_TEAM_ID</string>
+            <key>signingStyle</key>
+            <string>manual</string>
+            <key>provisioningProfiles</key>
+            <dict>
+              <key>$IOS_BUNDLE_IDENTIFIER</key>
+              <string>$PROFILE_NAME</string>
+            </dict>
+            <key>uploadSymbols</key>
+            <true/>
+          </dict>
+          </plist>
+          EOF
+          xcodebuild -exportArchive \
+            -archivePath "$RUNNER_TEMP/build.xcarchive" \
+            -exportOptionsPlist "$RUNNER_TEMP/ExportOptions.plist" \
+            -exportPath "$RUNNER_TEMP/ios-build"
+
+      - name: Verify signed IPA
+        run: |
+          set -euo pipefail
+          IPA=$(find "$RUNNER_TEMP/ios-build" -name '*.ipa' -print -quit)
+          if [ -z "$IPA" ]; then
+            echo "::error::No IPA produced."
+            exit 1
+          fi
+          rm -rf "$RUNNER_TEMP/ipa"
+          unzip -q "$IPA" -d "$RUNNER_TEMP/ipa"
+          APP_PATH=$(find "$RUNNER_TEMP/ipa/Payload" -maxdepth 1 -name '*.app' -print -quit)
+          if [ -z "$APP_PATH" ]; then
+            echo "::error::No .app found inside the IPA."
+            exit 1
+          fi
+          codesign --verify --deep --strict --verbose=2 "$APP_PATH"
+          BUNDLE_ID=$(plutil -extract CFBundleIdentifier raw "$APP_PATH/Info.plist")
+          VERSION=$(plutil -extract CFBundleShortVersionString raw "$APP_PATH/Info.plist")
+          BUILD=$(plutil -extract CFBundleVersion raw "$APP_PATH/Info.plist")
+          test "$BUNDLE_ID" = "$IOS_BUNDLE_IDENTIFIER"
+          test "$VERSION" = "${{ needs.verify.outputs.version }}"
+          test "$BUILD" = "${{ needs.verify.outputs.build_number }}"
+          codesign -d --entitlements :- "$APP_PATH" > "$RUNNER_TEMP/entitlements.plist" 2>/dev/null
+          ENTITLEMENT=$(/usr/libexec/PlistBuddy -c "Print :aps-environment" "$RUNNER_TEMP/entitlements.plist")
+          test "$ENTITLEMENT" = "production"
+          security cms -D -i "$APP_PATH/embedded.mobileprovision" > "$RUNNER_TEMP/embedded-profile.plist"
+          PROFILE_TEAM=$(plutil -extract TeamIdentifier.0 raw "$RUNNER_TEMP/embedded-profile.plist")
+          PROFILE_APP=$(plutil -extract Entitlements.application-identifier raw "$RUNNER_TEMP/embedded-profile.plist")
+          test "$PROFILE_TEAM" = "${{ secrets.APPLE_TEAM_ID }}"
+          test "${PROFILE_APP#*.}" = "$IOS_BUNDLE_IDENTIFIER"
+          EXPIRES=$(plutil -extract ExpirationDate raw "$RUNNER_TEMP/embedded-profile.plist")
+          EXPIRES_EPOCH=$(date -j -f "%Y-%m-%dT%H:%M:%SZ" "$EXPIRES" +%s)
+          test "$EXPIRES_EPOCH" -gt "$(date +%s)"
+          mkdir -p release-artifacts
+          cp "$IPA" release-artifacts/opencode-mobile.ipa
+          cd release-artifacts
+          sha256sum opencode-mobile.ipa > SHA256SUMS.txt
+
+      - name: Upload iOS release artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ios
+          path: release-artifacts/
+          retention-days: 3
+          compression-level: 0
+          if-no-files-found: error
+
+      - name: Upload iOS build diagnostics
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ios-build-diagnostics
+          path: ${{ runner.temp }}/ios.xcresult
+          retention-days: 3
+          if-no-files-found: ignore
+
+      - name: Cleanup keychain
+        if: always()
+        run: |
+          if [ -n "${KEYCHAIN_PATH:-}" ] && [ -f "$KEYCHAIN_PATH" ]; then
+            security delete-keychain "$KEYCHAIN_PATH" || true
+          fi
+
+  distribute-play:
+    name: distribute-play
+    needs: [verify, validate, android]
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 15
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout release commit
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.verify.outputs.sha }}
+          persist-credentials: false
+
+      - name: Download Android release artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: android-play
+          path: release-assets
+
+      - name: Verify artifact checksum
+        run: cd release-assets && sha256sum -c SHA256SUMS.txt
+
+      - name: Prepare Play release notes
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/whatsnew"
+          cp "fastlane/metadata/android/en-US/changelogs/${{ needs.verify.outputs.version_code }}.txt" \
+            "$RUNNER_TEMP/whatsnew/whatsnew-en-US"
+
+      - name: Upload AAB to Play internal testing
+        uses: r0adkll/upload-google-play@v1
+        with:
+          serviceAccountJsonPlainText: ${{ secrets.GOOGLE_PLAY_SERVICE_ACCOUNT_JSON }}
+          packageName: ${{ vars.EXPO_ANDROID_PACKAGE || 'app.getopencode' }}
+          releaseFiles: release-assets/opencode-mobile.aab
+          mappingFile: release-assets/mapping.txt
+          whatsNewDirectory: ${{ runner.temp }}/whatsnew
+          tracks: internal
+          status: completed
+          releaseName: ${{ needs.verify.outputs.tag }}
+
+      - name: Record Play distribution
+        run: |
+          echo "Uploaded ${{ needs.verify.outputs.tag }} (versionCode ${{ needs.verify.outputs.version_code }}) to Google Play internal testing." >> "$GITHUB_STEP_SUMMARY"
+
+  distribute-testflight:
+    name: distribute-testflight
+    needs: [verify, validate, ios]
+    runs-on: macos-26
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    env:
+      APPSTORE_API_KEY_ID: ${{ secrets.APPSTORE_API_KEY_ID }}
+      APPSTORE_API_ISSUER_ID: ${{ secrets.APPSTORE_API_ISSUER_ID }}
+      APPSTORE_API_PRIVATE_KEY: ${{ secrets.APPSTORE_API_PRIVATE_KEY }}
+
+    steps:
+      - name: Download iOS release artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: ios
+          path: release-assets
+
+      - name: Verify artifact checksum
+        run: cd release-assets && sha256sum -c SHA256SUMS.txt
+
+      - name: Upload IPA to TestFlight
+        if: env.APPSTORE_API_KEY_ID != '' && env.APPSTORE_API_ISSUER_ID != '' && env.APPSTORE_API_PRIVATE_KEY != ''
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/private_keys"
+          KEY_PATH="$RUNNER_TEMP/private_keys/AuthKey_${APPSTORE_API_KEY_ID}.p8"
+          printf '%s\n' "$APPSTORE_API_PRIVATE_KEY" > "$KEY_PATH"
+          chmod 600 "$KEY_PATH"
+          xcrun altool --validate-app \
+            --type ios \
+            --file release-assets/opencode-mobile.ipa \
+            --apiKey "$APPSTORE_API_KEY_ID" \
+            --apiIssuer "$APPSTORE_API_ISSUER_ID"
+          xcrun altool --upload-app \
+            --type ios \
+            --file release-assets/opencode-mobile.ipa \
+            --apiKey "$APPSTORE_API_KEY_ID" \
+            --apiIssuer "$APPSTORE_API_ISSUER_ID"
+          echo "Uploaded ${{ needs.verify.outputs.tag }} (build ${{ needs.verify.outputs.build_number }}) to TestFlight." >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Note TestFlight not configured
+        if: env.APPSTORE_API_KEY_ID == '' || env.APPSTORE_API_ISSUER_ID == '' || env.APPSTORE_API_PRIVATE_KEY == ''
+        run: echo "::warning::App Store Connect API key is not configured; skipping TestFlight upload. The signed IPA is still published to GitHub." >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Remove App Store Connect key
+        if: always()
+        run: rm -rf "$RUNNER_TEMP/private_keys"
+
+  publish-github:
+    name: publish-github
+    needs: [verify, validate, android, foss, ios, distribute-play, distribute-testflight]
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
     permissions:
       contents: write
+
     steps:
-      - name: Publish the Release
+      - name: Download Android Play artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: android-play
+          path: release-assets/android-play
+
+      - name: Download FOSS artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: android-foss
+          path: release-assets/android-foss
+
+      - name: Download iOS artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: ios
+          path: release-assets/ios
+
+      - name: Verify artifact checksums
+        run: |
+          set -euo pipefail
+          (cd release-assets/android-play && sha256sum -c SHA256SUMS.txt)
+          (cd release-assets/android-foss && sha256sum -c SHA256SUMS.txt)
+          (cd release-assets/ios && sha256sum -c SHA256SUMS.txt)
+
+      - name: Assemble release assets
+        run: |
+          set -euo pipefail
+          mkdir -p release-assets/final
+          cp release-assets/android-play/opencode-mobile.apk release-assets/final/
+          cp release-assets/android-play/opencode-mobile.aab release-assets/final/
+          cp release-assets/android-play/mapping.txt release-assets/final/
+          cp release-assets/android-foss/opencode-mobile-fdroid.apk release-assets/final/
+          cp release-assets/ios/opencode-mobile.ipa release-assets/final/
+          cd release-assets/final
+          sha256sum opencode-mobile.apk opencode-mobile-fdroid.apk opencode-mobile.ipa opencode-mobile.aab mapping.txt > SHA256SUMS.txt
+
+      - name: Publish GitHub Release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GH_REPO: ${{ github.repository }}
         run: |
-          TAG="${{ needs.prepare.outputs.tag }}"
-          if [ "$(gh release view "$TAG" --json isDraft --jq .isDraft)" = "true" ]; then
-            gh release edit "$TAG" --draft=false
+          set -euo pipefail
+          TAG="${{ needs.verify.outputs.tag }}"
+          ASSETS="opencode-mobile.apk opencode-mobile-fdroid.apk opencode-mobile.ipa opencode-mobile.aab mapping.txt SHA256SUMS.txt"
+
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            IS_DRAFT=$(gh release view "$TAG" --json isDraft --jq .isDraft)
+            if [ "$IS_DRAFT" != "true" ]; then
+              echo "Release $TAG is already published; verifying assets."
+            fi
+          else
+            gh release create "$TAG" --draft --verify-tag --title "$TAG" --generate-notes
           fi
-          ASSETS=$(gh release view "$TAG" --json assets --jq '.assets[].name')
-          for asset in opencode-mobile.apk opencode-mobile-fdroid.apk; do
-            if ! printf '%s\n' "$ASSETS" | grep -qx "$asset"; then
+
+          gh release upload "$TAG" release-assets/final/* --clobber
+
+          PRESENT=$(gh release view "$TAG" --json assets --jq '.assets[].name')
+          for asset in $ASSETS; do
+            if ! printf '%s\n' "$PRESENT" | grep -qx "$asset"; then
               echo "::error::Release $TAG is missing $asset; refusing to publish."
               exit 1
             fi
           done
-          gh release view "$TAG" --json tagName,isDraft,assets --jq '"\(.tagName) draft=\(.isDraft): " + ([.assets[].name] | join(", "))'
+
+          if [ "$(gh release view "$TAG" --json isDraft --jq .isDraft)" = "true" ]; then
+            gh release edit "$TAG" --draft=false
+          fi
+
+          echo "Published $TAG with: $ASSETS" >> "$GITHUB_STEP_SUMMARY"

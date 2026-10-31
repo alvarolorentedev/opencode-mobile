@@ -5,13 +5,15 @@ acceptance. Mocked or simulated results are never reported as device benchmarks.
 
 ## Automated coverage
 
-Run the repository gates:
+Run the focused voice checks and the affected flows:
 
 ```bash
 npm run test:ci:static
 npm run test:fake-server:self
-npm run test:e2e:web
+npx playwright test tests/e2e/chat.spec.mjs tests/e2e/settings.spec.mjs
 ```
+
+The tag release runs the full browser suite and native release verification.
 
 Relevant Vitest suites:
 

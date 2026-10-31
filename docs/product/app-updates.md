@@ -70,8 +70,8 @@ after verifying the published listing belongs to `app.getopencode.mobile`.
 `EXPO_IOS_APP_STORE_COUNTRY` optionally selects a two-letter lookup storefront;
 omitting it uses Apple's default. These values are embedded at build time.
 Android works independently of these settings. No ID is guessed.
-The iOS release workflow reads the corresponding GitHub repository variables;
-leaving the ID unset keeps the feature disabled in that pipeline.
+The tag-driven release workflow reads the corresponding GitHub repository
+variables; leaving the ID unset keeps the feature disabled in that pipeline.
 
 Without a valid ID, iOS does no native or network lookup. Expo Application's
 `getAppleStoreEnvironmentAsync()` uses a verified StoreKit AppTransaction and must

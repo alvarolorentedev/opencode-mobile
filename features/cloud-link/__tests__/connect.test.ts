@@ -309,7 +309,10 @@ for (const variant of ['development', 'production']) {
     require: (name: string) => name === 'node:child_process' ? {
       spawnSync(command: any, args: any, options: any) { commands.push({ command, args, env: options?.env ?? environment }); return { status: 0, stdout: 'Alias name: test\n' }; },
     } : name === 'node:fs' ? {
-      existsSync: () => true, copyFileSync() {}, statSync: () => ({ size: 128 }), readFileSync: () => Buffer.alloc(128),
+      existsSync: () => true, copyFileSync() {}, statSync: () => ({ size: 128 }),
+      readFileSync: (_path: any, encoding?: string) => encoding === 'utf8'
+        ? 'reactNativeArchitectures=arm64-v8a\n'
+        : Buffer.alloc(128),
       appendFileSync(_path: any, data: any) { writes.push(String(data)); }, writeFileSync() {},
     } : actualRequire(name),
   });

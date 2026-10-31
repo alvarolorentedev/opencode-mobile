@@ -31,7 +31,7 @@ build, or understand an operational constraint.
 | --- | --- |
 | Install and run locally | [development.md](development.md) |
 | Follow a task checklist | [task-recipes.md](task-recipes.md) |
-| Run the pre-push gate | [development.md](development.md) and [validation/strategy.md](validation/strategy.md) |
+| Run focused checks and inspect CI | [development.md](development.md) and [validation/strategy.md](validation/strategy.md) |
 | Change a fake-server scenario | [validation/fake-server.md](validation/fake-server.md) and `tests/fake-opencode/` |
 | Change E2E behavior | [validation/e2e.md](validation/e2e.md) and `tests/e2e/` |
 | Ship Android/iOS | [development.md](development.md) + [integrations-and-operations.md](integrations-and-operations.md) |
