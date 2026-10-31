@@ -1,25 +1,27 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 
 import { getConnectCredentialError } from '@/lib/connect';
 import { findMatchingProfile, getProfilePassword, type ConnectionProfile } from '@/lib/connection-profiles';
+import { getConnectionScope, getConnectionUiScope } from '@/lib/connection-scope';
 import {
   deleteManagedService,
   getServiceManagementVersion,
   listManagedServices,
   putManagedService,
   ServiceManagementError,
-  type ManagedService,
   type OpencodeConnectionSettings,
-  type ServiceInput,
-  type ServiceManagementVersion,
+  type ServiceInput
 } from '@/lib/opencode/client';
 import type {
   ServiceManagementApi,
   ServiceManagementTarget,
   ServiceManagementUnavailableReason,
 } from '@/providers/opencode-provider-types';
+import { useQueryForeground } from '@/providers/queries/client';
 import { buildServiceMachines, chooseServiceTarget } from '@/providers/services-target';
 import type { ConnectSetup } from '@/providers/use-connect-state';
+import type { ConnectionRecord } from '@/providers/workspace-types';
+import { useQueries, useQueryClient } from '@tanstack/react-query';
 
 // Remote connector service management state. Services belong to one Cloud Link
 // machine: the target can differ from the active connection, because the
@@ -37,10 +39,6 @@ type ServicesResolution =
   | { status: 'expired'; target: ServiceManagementTarget }
   | { status: 'ready'; target: ServiceManagementTarget; settings: OpencodeConnectionSettings };
 
-function scopeOf(settings: OpencodeConnectionSettings) {
-  return `${settings.serverUrl}\u0000${settings.username}`;
-}
-
 function targetForProfile(profile: ConnectionProfile): ServiceManagementTarget {
   return {
     serverUrl: profile.serverUrl,
@@ -54,26 +52,24 @@ function targetForProfile(profile: ConnectionProfile): ServiceManagementTarget {
 export function useServicesState({
   settings,
   connectSetup,
-  scopeGenerationRef,
+  connections,
+  visible,
 }: {
   settings: OpencodeConnectionSettings;
   connectSetup: ConnectSetup;
-  scopeGenerationRef: { current: number };
+  connections: ConnectionRecord[];
+  visible: boolean;
 }) {
   const profiles = connectSetup.profiles;
   const { connectProfile, retry: retryConnect, savedProfile } = connectSetup;
   const preferredProfileId = savedProfile?.connect ? savedProfile.id : undefined;
   const environmentUrl = settings.connect?.controlPlaneUrl ?? connectSetup.controlPlaneUrl;
   const [selectedProfileId, setSelectedProfileId] = useState<string>();
-  const [profileAccess, setProfileAccess] = useState<{ profileId: string; password: string }>();
-  const [list, setList] = useState<{ scope: string; services: ManagedService[]; version?: ServiceManagementVersion }>({ scope: '', services: [] });
-  const [credentialFailureScope, setCredentialFailureScope] = useState<string>();
-  const [loadFailureScope, setLoadFailureScope] = useState<string>();
-  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [profileAccess, setProfileAccess] = useState<{ profileId: string; password: string; revision: number }>();
+  const cache = useQueryClient();
+  const foreground = useQueryForeground() && visible;
+  const [requested, setRequested] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
-  const requested = useRef(false);
-  const refreshedScope = useRef<string | undefined>(undefined);
-
   const choice = useMemo(() => chooseServiceTarget({
     profiles,
     controlPlaneUrl: environmentUrl,
@@ -90,10 +86,10 @@ export function useServicesState({
     const profile = choice.profile;
     let cancelled = false;
     void getProfilePassword(profile.id).then((password) => {
-      if (!cancelled) setProfileAccess({ profileId: profile.id, password });
+      if (!cancelled) setProfileAccess((current) => ({ profileId: profile.id, password, revision: (current?.revision ?? 0) + (current?.password === password ? 0 : 1) }));
     }, () => {
       // A failed SecureStore read degrades to an expired target.
-      if (!cancelled) setProfileAccess({ profileId: profile.id, password: '' });
+      if (!cancelled) setProfileAccess((current) => ({ profileId: profile.id, password: '', revision: (current?.revision ?? 0) + 1 }));
     });
     return () => { cancelled = true; };
   }, [choice, connectSetup.enabled]);
@@ -130,105 +126,53 @@ export function useServicesState({
       };
   }, [choice, connectSetup.enabled, connectSetup.initialization, profileAccess, profiles, settings]);
 
-  const scopeKey = resolution.status === 'ready' ? scopeOf(resolution.settings) : undefined;
-  // A rotated credential is a different fetch target even when the origin and
-  // device id are unchanged, so recovery re-lists without an explicit tap.
-  const targetIdentity = scopeKey && resolution.status === 'ready' ? `${scopeKey}\u0000${resolution.settings.password}` : undefined;
-
-  // Derived values reset to empty the moment the target changes, before any
-  // fetch runs, so a previous machine's services never leak into the new one.
-  const services = useMemo(() => (scopeKey && list.scope === scopeKey ? list.services : []), [list, scopeKey]);
-  const version = useMemo(() => (scopeKey && list.scope === scopeKey ? list.version : undefined), [list, scopeKey]);
-  const credentialFailure = Boolean(scopeKey && credentialFailureScope === scopeKey);
-  const loadFailed = Boolean(scopeKey && loadFailureScope === scopeKey);
+  const targetSettings = resolution.status === 'ready' ? resolution.settings : undefined;
+  const owner = targetSettings ? connections.find((entry) => entry.id === getConnectionUiScope(targetSettings)) : undefined;
+  const scope = targetSettings ? getConnectionScope(targetSettings) : undefined;
+  const machineKey = targetSettings?.connect?.machineId ?? choice.kind;
+  const authRevision = owner?.authRevision ?? profileAccess?.revision ?? 0;
+  const key = useMemo(() => ['cloudlink-services', machineKey, scope, authRevision], [machineKey, scope, authRevision]);
+  useEffect(() => () => {
+    void cache.cancelQueries({ queryKey: key });
+    cache.removeQueries({ queryKey: key });
+  }, [cache, key]);
+  const listOptions = useMemo(() => ({ queryKey: [...key, 'list'], staleTime: 0,
+    queryFn: ({ signal }: { signal: AbortSignal }) => listManagedServices(targetSettings!, signal) }), [key, targetSettings]);
+  const versionOptions = useMemo(() => ({ queryKey: [...key, 'version'], staleTime: 0,
+    queryFn: ({ signal }: { signal: AbortSignal }) => getServiceManagementVersion(targetSettings!, signal) }), [key, targetSettings]);
+  const [list] = useQueries({ queries: [listOptions].filter(() => requested && foreground && Boolean(targetSettings)) });
+  const [versionQuery] = useQueries({ queries: [versionOptions].filter(() => requested && foreground && Boolean(targetSettings)) });
+  const services = useMemo(() => list?.error ? [] : list?.data ?? [], [list?.error, list?.data]);
+  const version = versionQuery?.data;
+  const credentialFailure = list?.error instanceof ServiceManagementError && list?.error.status === 401;
+  const loadFailed = Boolean(list?.error) && !credentialFailure;
   const available = resolution.status === 'ready' && !credentialFailure;
   const unavailableReason: ServiceManagementUnavailableReason | undefined = resolution.status === 'none'
-    ? 'no-cloud-link-machine'
-    : resolution.status === 'expired' || credentialFailure ? 'credentials-expired' : undefined;
+    ? 'no-cloud-link-machine' : resolution.status === 'expired' || credentialFailure ? 'credentials-expired' : undefined;
   const target = resolution.status === 'ready' || resolution.status === 'expired' ? resolution.target : undefined;
   const machines = useMemo(() => buildServiceMachines(profiles, settings.connect?.machineId, environmentUrl), [environmentUrl, profiles, settings.connect?.machineId]);
-
   const refresh = useCallback(async () => {
-    requested.current = true;
-    if (resolution.status !== 'ready') return;
-    const { settings: targetSettings } = resolution;
-    const scope = scopeOf(targetSettings);
-    const generation = scopeGenerationRef.current;
-    setIsRefreshing(true);
-    try {
-      // A failed version probe must not hide a valid list: pre-version
-      // connectors answer 404 (handled inside), transient failures keep the
-      // last known revision.
-      const [next, nextVersion] = await Promise.all([
-        listManagedServices(targetSettings),
-        getServiceManagementVersion(targetSettings).catch(() => undefined),
-      ]);
-      if (scopeGenerationRef.current === generation) {
-        setList((current) => ({
-          scope,
-          services: next,
-          version: nextVersion ?? (current.scope === scope ? current.version : undefined),
-        }));
-        setCredentialFailureScope((current) => (current === scope ? undefined : current));
-        setLoadFailureScope((current) => (current === scope ? undefined : current));
-      }
-    } catch (error) {
-      // A rejected list must not surface as an unhandled error. A credential
-      // rejection becomes an explicit expired state; other failures keep the
-      // empty list but expose a Retry action instead of stale entries.
-      if (scopeGenerationRef.current === generation) {
-        setList({ scope, services: [] });
-        if (error instanceof ServiceManagementError && error.status === 401) {
-          setCredentialFailureScope(scope);
-          setLoadFailureScope((current) => (current === scope ? undefined : current));
-        } else setLoadFailureScope(scope);
-      }
-    } finally {
-      // A stale result was discarded; allow the surface to re-fetch once the
-      // active scope settles instead of leaving a transient gap.
-      if (scopeGenerationRef.current !== generation) refreshedScope.current = undefined;
-      setIsRefreshing(false);
-    }
-  }, [resolution, scopeGenerationRef]);
-
-  // Re-fetch when the resolved target changes after the surface asked for data
-  // once. Keeps the section's open-time refresh working while the password
-  // resolution finishes asynchronously, and after a credential rotation.
-  useEffect(() => {
-    if (!targetIdentity) {
-      refreshedScope.current = undefined;
-      return;
-    }
-    if (!requested.current || refreshedScope.current === targetIdentity) return;
-    refreshedScope.current = targetIdentity;
-    void refresh();
-  }, [refresh, targetIdentity]);
-
+    setRequested(true);
+    if (!targetSettings || !foreground) return;
+    await Promise.allSettled([cache.fetchQuery(listOptions), cache.fetchQuery(versionOptions)]);
+  }, [cache, foreground, listOptions, targetSettings, versionOptions]);
   const save = useCallback(async (id: string, input: ServiceInput) => {
-    if (resolution.status !== 'ready') throw new Error('Connect a Cloud Link machine before managing services.');
-    const generation = scopeGenerationRef.current;
+    if (!targetSettings) throw new Error('Connect a Cloud Link machine before managing services.');
     setIsSaving(true);
     try {
-      const saved = await putManagedService(resolution.settings, id, input);
-      if (scopeGenerationRef.current === generation) await refresh();
+      await cache.cancelQueries({ queryKey: key });
+      const saved = await putManagedService(targetSettings, id, input);
+      await cache.invalidateQueries({ queryKey: key });
       return saved;
-    } finally {
-      setIsSaving(false);
-    }
-  }, [refresh, resolution, scopeGenerationRef]);
-
+    } finally { setIsSaving(false); }
+  }, [cache, key, targetSettings]);
   const remove = useCallback(async (id: string) => {
-    if (resolution.status !== 'ready') throw new Error('Connect a Cloud Link machine before managing services.');
-    const generation = scopeGenerationRef.current;
+    if (!targetSettings) throw new Error('Connect a Cloud Link machine before managing services.');
     setIsSaving(true);
-    try {
-      await deleteManagedService(resolution.settings, id);
-      if (scopeGenerationRef.current === generation) await refresh();
-    } finally {
-      setIsSaving(false);
-    }
-  }, [refresh, resolution, scopeGenerationRef]);
-
+    try { await cache.cancelQueries({ queryKey: key }); await deleteManagedService(targetSettings, id); await cache.invalidateQueries({ queryKey: key }); }
+    finally { setIsSaving(false); }
+  }, [cache, key, targetSettings]);
+  const isRefreshing = Boolean(list?.isFetching || versionQuery?.isFetching);
   const selectMachine = useCallback((id: string) => {
     setSelectedProfileId((current) => (current === id ? current : id));
   }, []);

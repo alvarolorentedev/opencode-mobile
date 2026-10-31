@@ -1,8 +1,8 @@
-import type { OpencodeEvent } from '@/lib/opencode/events';
 import { dispatchCompatibilityEvent } from '@/lib/opencode/compat/v1/events';
+import type { OpencodeEvent } from '@/lib/opencode/events';
 import { getEventSessionStatus } from '@/lib/opencode/events';
-import { formToQuestion, mapPermission } from '@/lib/opencode/v2/mappers';
 import { stringField } from '@/lib/opencode/v2/fields';
+import { formToQuestion, mapPermission } from '@/lib/opencode/v2/mappers';
 import type { V2Form, V2Permission } from '@/lib/opencode/v2/shared';
 import type { Dispatch, SetStateAction } from 'react';
 
@@ -24,20 +24,9 @@ export type SessionRefreshOptions = {
 export type ProviderEventActions = {
   refreshSessions: () => Promise<unknown>;
   scheduleSessionRefresh: (sessionId: string, options?: SessionRefreshOptions) => void;
-  // Event-driven refreshes are coalesced when the provider supplies these;
-  // direct user actions keep using the immediate variants.
   scheduleSessionsRefresh?: () => void;
-  scheduleServerFeaturesRefresh?: () => void;
-  scheduleChatCapabilitiesRefresh?: () => void;
-  scheduleProjectCatalogRefresh?: () => void;
   refreshPendingInteractions: () => Promise<unknown>;
-  refreshServerFeatures: () => Promise<unknown>;
-  refreshChatCapabilities: () => Promise<unknown>;
-  refreshProjectCatalog: (silent?: boolean) => Promise<unknown>;
   refreshTerminals: () => Promise<unknown>;
-  refreshWorktrees: () => Promise<unknown>;
-  refreshMcpServers: () => Promise<unknown>;
-  refreshDiagnostics: () => Promise<unknown>;
   // Session ids whose transcript the user can currently see (active chat and
   // conversation mode). Part-level events refresh only these, so background
   // sessions are not re-downloaded on every streaming update.
@@ -57,9 +46,6 @@ export type ProviderEventActions = {
 
 export function handleProviderEvent(event: OpencodeEvent, actions: ProviderEventActions): void {
   const scheduleSessions = actions.scheduleSessionsRefresh ?? (() => { void actions.refreshSessions().catch(() => undefined); });
-  const scheduleCapabilities = actions.scheduleChatCapabilitiesRefresh ?? (() => { void actions.refreshChatCapabilities().catch(() => undefined); });
-  const scheduleFeatures = actions.scheduleServerFeaturesRefresh ?? (() => { void actions.refreshServerFeatures().catch(() => undefined); });
-  const scheduleCatalog = actions.scheduleProjectCatalogRefresh ?? (() => { void actions.refreshProjectCatalog(true).catch(() => undefined); });
   if (event.type === 'compatibility') { dispatchCompatibilityEvent(event.payload, actions); return; }
   const data = 'data' in event ? event.data as Record<string, unknown> : {};
   const sessionID = stringField(data.sessionID);
@@ -68,7 +54,7 @@ export function handleProviderEvent(event: OpencodeEvent, actions: ProviderEvent
   if (status) {
     actions.setSessionStatuses((current) => ({ ...current, [status.sessionID]: status.status }));
     actions.scheduleSessionRefresh(status.sessionID, { sessions: true, messages: true, diff: true, todos: true, delayMs: status.status.type === 'idle' ? 50 : undefined });
-    if (status.status.type === 'idle') { void actions.refreshPendingInteractions().catch(() => undefined); void actions.refreshServerFeatures().catch(() => undefined); }
+    if (status.status.type === 'idle') { void actions.refreshPendingInteractions().catch(() => undefined); }
     return;
   }
   if (type === 'command.executed') { actions.scheduleSessionRefresh(sessionID, { sessions: true, messages: true }); return; }
@@ -136,13 +122,5 @@ export function handleProviderEvent(event: OpencodeEvent, actions: ProviderEvent
     actions.setPendingQuestionsBySession((current) => Object.fromEntries(Object.entries(current).map(([id, questions]) => [id, questions.filter((item) => item.id !== data.id)])));
     return;
   }
-  if (/^(server\.connected|config\.|provider\.|model\.|agent\.|skill\.|command\.|integration\.|credential\.|models-dev\.|reference\.|plugin\.)/.test(type)) {
-    scheduleCapabilities();
-  }
-  if (type.startsWith('project.')) scheduleCatalog();
-  if (type === 'filesystem.changed' || type.startsWith('vcs.')) scheduleFeatures();
   if (type.startsWith('pty.')) void actions.refreshTerminals().catch(() => undefined);
-  if (type.startsWith('worktree.')) { void actions.refreshWorktrees().catch(() => undefined); void actions.refreshProjectCatalog(true).catch(() => undefined); }
-  if (type.startsWith('mcp.')) void actions.refreshMcpServers().catch(() => undefined);
-  if (type.startsWith('lsp.')) void actions.refreshDiagnostics().catch(() => undefined);
 }

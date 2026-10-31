@@ -99,6 +99,8 @@ describe('provider model selection utilities', () => {
     assert.equal(areSessionListsEqual([sessionAt('a', 1)], [sessionAt('a', 1)]), true);
     assert.equal(areSessionListsEqual([{ ...sessionAt('a', 1), cost: 1 }], [{ ...sessionAt('a', 1), cost: 2 }]), false, 'Authoritative usage updates even when updated timestamps are unchanged.');
     assert.equal(areSessionListsEqual([{ ...sessionAt('a', 1), tokens: { input: 1, output: 0, reasoning: 0, cache: { read: 0, write: 0 } } }], [{ ...sessionAt('a', 1), tokens: { input: 2, output: 0, reasoning: 0, cache: { read: 0, write: 0 } } }]), false);
+    assert.equal(areSessionListsEqual([sessionAt('a', 1)], [{ ...sessionAt('a', 1), revert: { messageID: 'm' } }]), false, 'Revert checkpoints must update even within the same server timestamp.');
+    assert.equal(areSessionListsEqual([{ ...sessionAt('a', 1), revert: { messageID: 'm' } }], [sessionAt('a', 1)]), false);
     assert.equal(areSessionListsEqual([sessionAt('a', 1)], [sessionAt('a', 2)]), false);
     assert.equal(areSessionListsEqual([sessionAt('a', 1)], [sessionAt('a', 1), sessionAt('b', 1)]), false);
     assert.equal(areSessionStatusMapsEqual({ a: { type: 'idle' } }, { a: { type: 'idle' } }), true);

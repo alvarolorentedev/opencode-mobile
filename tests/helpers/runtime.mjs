@@ -1,16 +1,42 @@
 import { readFile } from 'node:fs/promises';
 import { runInNewContext } from 'node:vm';
 import ts from 'typescript';
+import path from 'node:path';
+import { queryRuntime } from './query-runtime.mjs';
 
 export async function loadTs(relative, imports = {}, globals = {}) {
   const source = await readFile(new URL(`../../${relative}`, import.meta.url), 'utf8');
   /** @type {any} */
   const exports = {};
-  runInNewContext(ts.transpileModule(source, {
+  const output = ts.transpileModule(source, {
     compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2020, jsx: ts.JsxEmit.ReactJSX },
-  }).outputText, {
+  }).outputText;
+  const resolved = { ...imports };
+  if (imports.react) {
+    resolved['@/providers/capabilities-snapshot'] ??= { clearCapabilitiesSnapshots: async () => {} };
+    resolved['@/providers/services/session-service'] ??= {};
+    resolved['@tanstack/react-query'] ??= queryRuntime(imports.react);
+    resolved['@/providers/queries/client'] ??= {
+      useQueryIdentity: () => ({ connectionId: 'test', connectionScope: 'scope', authRevision: 0 }),
+      useQueryActivity: () => true, useQueryForeground: () => true,
+    };
+  }
+  if (resolved['@/lib/opencode/client']) resolved['@/lib/opencode/client'] = { withReadSignal: (client) => client, ...resolved['@/lib/opencode/client'] };
+  for (const match of output.matchAll(/require\("([^"]+)"\)/g)) {
+    const name = match[1];
+    const relativeClient = name.endsWith('/queries/client');
+    if (relativeClient && resolved['@/providers/queries/client']) { resolved[name] = resolved['@/providers/queries/client']; continue; }
+    if (name in resolved) continue;
+    const local = (relative.startsWith('providers/queries/') && name.startsWith('./')) || name.startsWith('./queries/') || name.startsWith('@/providers/queries/') || ['@/providers/workspace-lifecycle', '@/lib/opencode/server-data-events', './lifecycle', './connection-lifecycle'].includes(name);
+    if (local) {
+      const file = name.startsWith('@/') ? name.slice(2) : path.join(path.dirname(relative), name);
+      const dependencies = { '@/lib/opencode/client': { withReadSignal: (client) => client }, '@/providers/services/capabilities-service': {}, '@/providers/services/session-service': {}, '@/providers/services/project-service': {}, '@/lib/opencode/contracts/server-adapter': {}, '@/providers/opencode-model-selection': {}, ...resolved };
+      resolved[name] = await loadTs(`${file}.ts`, dependencies, globals);
+    }
+  }
+  runInNewContext(output, {
     exports, console, Headers, URL, AbortController, TextEncoder, TextDecoder, Response, setTimeout, clearTimeout, setInterval, clearInterval,
-    require(name) { if (!(name in imports)) throw new Error(`Missing test import ${name} in ${relative}`); return imports[name]; },
+    require(name) { if (!(name in resolved)) throw new Error(`Missing test import ${name} in ${relative}`); return resolved[name]; },
     ...globals,
   });
   return exports;
@@ -38,6 +64,13 @@ export function hookRuntime() {
     });
   };
   const react = {
+    createContext: (value) => ({ value }),
+    useContext: (context) => context.value,
+    useReducer(reduce, initial) {
+      const [value, setValue] = react.useState(initial);
+      const dispatch = react.useCallback((event) => setValue((current) => reduce(current, event)), [reduce]);
+      return [value, dispatch];
+    },
     useState(initial) {
       const i = index++;
       if (!slots[i]) {

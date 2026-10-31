@@ -1,9 +1,9 @@
-import type { Config, ProviderCatalog, ProviderAuthMethod, ProviderAuthPrompt, ProviderAuthValues } from '@/lib/opencode/types';
+import type { ProviderAuthMethod, ProviderAuthPrompt, ProviderAuthValues, ProviderCatalog } from '@/lib/opencode/types';
 
 import { compareLabels } from '@/lib/compare-labels';
 import type { ProviderAccountInfo, ScopedOpencodeClient } from '@/lib/opencode/client';
-import { getConfiguredProviderIds, toAgentOption, type ModelOption } from '@/providers/opencode-model-selection';
 import { createServerAdapter } from '@/lib/opencode/contracts/server-adapter';
+import { getConfiguredProviderIds, type ModelOption } from '@/providers/opencode-model-selection';
 
 const PROMPT_TYPES: ProviderAuthPrompt['type'][] = ['text', 'select', 'number', 'integer', 'boolean', 'multiselect', 'external'];
 
@@ -80,34 +80,13 @@ function uniqueById<T extends { id: string }>(items: T[]) {
   });
 }
 
-export async function discoverChatCapabilities(client: ScopedOpencodeClient, activeProjectPath?: string) {
-  if (!activeProjectPath) {
-    return {
-      config: undefined,
-      providers: [],
-      providerAuthMethodsById: {},
-      models: [],
-      agents: [],
-      skills: [],
-      references: [],
-      connected: [],
-      configuredModels: [],
-    };
-  }
-
+export async function discoverProviderCapabilities(client: ScopedOpencodeClient) {
   const adapter = createServerAdapter(client).capabilities;
-  const [nextConfig, providerData, authData, rawAgents, skills, references, accounts] = await Promise.all([
-    adapter.config(),
-    adapter.providers(),
-    adapter.providerAuth(),
-    adapter.agents(),
-    // Optional V2 composer catalogs must never blank the model/agent catalog on
-    // servers that predate them.
-    adapter.skills().catch(() => []),
-    adapter.references().catch(() => []),
+  const [discovery, accounts] = await Promise.all([
+    adapter.discovery(),
     client.accounts ? client.accounts.list().catch(() => [] as ProviderAccountInfo[]) : Promise.resolve([] as ProviderAccountInfo[]),
   ]);
-  const agentData = rawAgents as Parameters<typeof toAgentOption>[0][];
+  const { providers: providerData, auth: authData } = discovery;
   const nextModels = uniqueById(providerData.all
     .flatMap((provider) =>
       Object.values(provider.models).map((model: DiscoveredModel): ModelOption => ({
@@ -133,8 +112,7 @@ export async function discoverChatCapabilities(client: ScopedOpencodeClient, act
       return Number(rightDefault) - Number(leftDefault) || compareLabels(left.label, right.label);
     }));
 
-  const configuredProviderIds = getConfiguredProviderIds(nextConfig, providerData.connected, nextModels);
-  const configuredModels = nextModels.filter((model) => configuredProviderIds.has(model.providerID));
+  const configuredProviderIds = getConfiguredProviderIds(undefined, providerData.connected, nextModels);
   const accountsByIntegration = new Map<string, ProviderAccountInfo[]>();
   accounts.forEach((account) => {
     const list = accountsByIntegration.get(account.providerId) ?? [];
@@ -157,24 +135,15 @@ export async function discoverChatCapabilities(client: ScopedOpencodeClient, act
       };
     })
     .sort((left, right) => compareLabels(left.label, right.label)));
-  const nextAgents = uniqueById(agentData.map(toAgentOption));
 
   return {
-    config: nextConfig,
     providers: nextProviders,
     connected: providerData.connected,
     providerAuthMethodsById: normalizeProviderAuthMethods(authData),
     models: nextModels,
-    agents: nextAgents,
-    skills,
-    references,
-    configuredModels,
   };
 }
 
-export function getConfig(client: ScopedOpencodeClient): Promise<Config> {
-  return createServerAdapter(client).capabilities.config();
-}
 export function getProviders(client: ScopedOpencodeClient): Promise<ProviderCatalog> {
   return createServerAdapter(client).capabilities.providers();
 }

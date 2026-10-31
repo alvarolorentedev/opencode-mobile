@@ -83,12 +83,13 @@ export function toConfigView(entries: unknown): Config {
   };
 }
 
-export async function getProviderCatalog(api: V2Api, location: LocationOptions) {
+export type ProviderDiscovery = { providers: Awaited<ReturnType<V2Api['provider']['list']>>; integrations: Awaited<ReturnType<V2Api['integration']['list']>> };
+export async function getProviderCatalog(api: V2Api, location: LocationOptions, discovery?: ProviderDiscovery) {
   const [providersResponse, modelsResponse, defaultResponse, integrationsResponse] = await Promise.all([
-    api.provider.list(location),
+    discovery ? Promise.resolve(discovery.providers) : api.provider.list(location),
     api.model.list(location),
     api.model.default(location).catch(() => ({ data: null })),
-    api.integration.list(location),
+    discovery ? Promise.resolve(discovery.integrations) : api.integration.list(location),
   ]);
   const providers: V2Provider[] = providersResponse.data ?? [];
   const models: V2Model[] = modelsResponse.data ?? [];
@@ -187,8 +188,8 @@ export function formToPrompts(form: unknown): ProviderAuthPrompt[] | undefined {
   return prompts.length > 0 ? prompts : undefined;
 }
 
-export async function getProviderAuthMethods(api: V2Api, location: LocationOptions) {
-  const [integrationsResponse, providersResponse] = await Promise.all([api.integration.list(location), api.provider.list(location)]);
+export async function getProviderAuthMethods(api: V2Api, location: LocationOptions, discovery?: ProviderDiscovery) {
+  const [integrationsResponse, providersResponse] = discovery ? [discovery.integrations, discovery.providers] : await Promise.all([api.integration.list(location), api.provider.list(location)]);
   const result: Record<string, unknown[]> = {};
   const providers = providersResponse.data ?? [];
   const ids = new Set([...providers.map((provider) => provider.id), ...(integrationsResponse.data ?? [])

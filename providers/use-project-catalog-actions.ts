@@ -1,19 +1,22 @@
 import { useCallback, useEffect, useRef } from 'react';
 
 import { buildClient, type ScopedOpencodeClient } from '@/lib/opencode/client';
-import type { Project, SessionStatus } from '@/lib/opencode/types';
+import type { SessionStatus } from '@/lib/opencode/types';
+import type { ProjectCatalogInput } from '@/providers/opencode-provider-action-inputs';
 import type { ProjectCatalog } from '@/providers/opencode-provider-types';
-import { hydrateSessionCache } from '@/providers/session-cache';
 import { PROJECTS_MAX } from '@/providers/projects-storage';
+import { fetchProjectCatalog } from '@/providers/queries/catalogs';
+import { useQueryActivity, useQueryIdentity } from '@/providers/queries/client';
 import {
   isKnownProjectLocation as svcIsKnownProjectLocation,
-  loadProjectCatalog as svcLoadProjectCatalog,
   resolveProjectLocation as svcResolveProjectLocation,
 } from '@/providers/services/session-service';
-import type { ProjectCatalogInput } from '@/providers/opencode-provider-action-inputs';
+import { hydrateSessionCache } from '@/providers/session-cache';
+import { useQueryClient } from '@tanstack/react-query';
 
 export function useProjectCatalogActions({
   client,
+  connected,
   catalogClient,
   isCurrentClient,
   isCurrentCatalogClient,
@@ -23,20 +26,18 @@ export function useProjectCatalogActions({
   clearProjectState,
   projectPathsByConnectionRef,
   setProjectPathsByConnection,
-  serverProjectsRef,
-  setServerProjects,
-  setCurrentProjectPath,
-  setServerRootPath,
   connectionScope,
   connectionScopeRef,
   isHydrated,
   setSessions,
   setSessionStatuses,
-  setIsRefreshingProjectCatalog,
   scopeGenerationRef,
   serverContract,
   settingsRef,
 }: ProjectCatalogInput) {
+  const active = useQueryActivity();
+  const cache = useQueryClient();
+  const identity = useQueryIdentity();
   const writeProjects = useCallback((scope: string, paths: string[]) => {
     const next = { ...projectPathsByConnectionRef.current, [scope]: paths.slice(0, PROJECTS_MAX) };
     projectPathsByConnectionRef.current = next;
@@ -74,20 +75,10 @@ export function useProjectCatalogActions({
 
   const loadProjectCatalog = useCallback(
     async (silent = false, targetClient: ScopedOpencodeClient = catalogClient): Promise<ProjectCatalog> => {
-      if (!silent) {
-        setIsRefreshingProjectCatalog(true);
-      }
-
-      try {
-        const result = await svcLoadProjectCatalog(targetClient);
+      const result = await fetchProjectCatalog(cache, identity, targetClient, !silent);
         if (!isCurrent(targetClient)) {
           return result;
         }
-        const nextServerProjects = result.serverProjects as Project[];
-        serverProjectsRef.current = nextServerProjects;
-        setServerProjects(nextServerProjects);
-        setCurrentProjectPath(result.currentProjectPath);
-        setServerRootPath(result.serverRootPath);
 
         const scope = connectionScopeRef.current;
         const opened = projectPathsByConnectionRef.current[scope];
@@ -125,13 +116,8 @@ export function useProjectCatalogActions({
           setActiveProjectPath(undefined);
         }
         return result;
-      } finally {
-        if (!silent) {
-          setIsRefreshingProjectCatalog(false);
-        }
-      }
     },
-    [activeProjectPathRef, catalogClient, clearProjectState, connectionScopeRef, isCurrent, projectPathsByConnectionRef, scopeGenerationRef, serverProjectsRef, setActiveProjectPath, setCurrentProjectPath, setIsRefreshingProjectCatalog, setServerProjects, setServerRootPath, settingsRef, writeProjects],
+    [cache, identity, activeProjectPathRef, catalogClient, clearProjectState, connectionScopeRef, isCurrent, projectPathsByConnectionRef, scopeGenerationRef, setActiveProjectPath, settingsRef, writeProjects],
   );
 
   const refreshProjectCatalog = useCallback(
@@ -140,6 +126,10 @@ export function useProjectCatalogActions({
     },
     [client, loadProjectCatalog],
   );
+
+  useEffect(() => {
+    if (connected && active && isHydrated) void loadProjectCatalog(true, client).catch(() => undefined);
+  }, [active, client, connected, isHydrated, loadProjectCatalog]);
 
   const sessionCacheKeyRef = useRef<string | undefined>(undefined);
   useEffect(() => {

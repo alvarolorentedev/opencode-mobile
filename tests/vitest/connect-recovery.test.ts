@@ -88,13 +88,24 @@ async function fixture({ expired = false, missing = false, storedSession = true,
     sameConnectionHeaders: (left: any, right: any) => JSON.stringify(left ?? {}) === JSON.stringify(right ?? {}),
   };
   imports['@/lib/opencode/client'] = {
-    buildClient: (settings: any) => settings, detectServerContract: async () => ({ contract: 'v2' }),
+    buildClient: (settings: any) => ({ ...settings, __opencode: { contract: 'v2', directory: settings.directory || undefined } }), detectServerContract: async () => ({ contract: 'v2' }),
     getConnectionError: (_: any, reason: any) => reason.message, getNormalizedServerUrl: (url: any) => url,
     isContractMismatchError: () => false, isAuthConnectionFailure: (kind: any) => kind === 'auth' || kind === 'entitlement', isValidServerUrl: () => true,
     isRetryableCloudLinkStartupError: (reason: any) => /1033/.test(reason.message),
     classifyConnectionFailure: (reason: any) => /offline|catalog/i.test(String(reason?.message)) ? 'offline' : 'unknown',
   };
-  const actions = await loadTs('providers/use-connection-connect-actions.ts', imports, globals);
+  const actions = await loadTs('providers/connection-runtime.tsx', { ...imports,
+    'react/jsx-runtime': {},
+    '@/lib/opencode/server-data-events': {},
+    './connection-lifecycle': await loadTs('providers/connection-lifecycle.ts'),
+    './use-connection-retry': await loadTs('providers/use-connection-retry.ts', { ...imports, '@/lib/opencode/client/errors': { isRetryableConnectionFailure: () => true } }, globals),
+    './use-active-sessions': {}, './use-coalesced-refresh': {},
+    '@/providers/services/session-service': {
+      listServerProjects: async () => { catalogs++; if (catalogFailure) throw new Error(typeof catalogFailure === 'string' ? catalogFailure : 'offline'); return []; },
+      readCatalogLocation: async () => ({ currentProjectPath: '/fixture', serverRootPath: '/fixture', project: { id: 'p', worktree: '/fixture' } }),
+      combineProjectCatalog: (_: any, serverProjects: any, location: any) => ({ ...location, serverProjects }),
+    },
+  }, globals);
   const profileHook = await loadTs('providers/use-connection-profiles.ts', {
     ...imports, '@/lib/opencode/client/url': {}, '@/lib/opencode/client/probe': {}, '@/lib/opencode/pairing': {},
   }, globals);
@@ -110,20 +121,30 @@ async function fixture({ expired = false, missing = false, storedSession = true,
   for (const key of ['setServerProjects', 'setCurrentProjectPath', 'setServerRootPath', 'setSessions', 'setSessionStatuses', 'setCurrentConfig', 'setAvailableProviders', 'setProviderAuthMethodsById', 'setAvailableModels', 'setAvailableAgents', 'setMessagesBySession', 'setDiffsBySession', 'setTodosBySession', 'setFavoriteSessions', 'setLastSessionByConnection', 'setChatPreferences', 'setDiagnostics', 'setSendingState']) input[key] = noop;
   runtime.mount(() => {
     const [settings, setSettings] = runtime.react.useState({ serverUrl: profile.serverUrl, username: profile.username, password: missing ? '' : claim.device_secret, directory: '', connect: profile.connect });
-    const [connection, setConnection] = runtime.react.useState({ status: 'idle', message: '' });
-    const [activeProjectPath, setActiveProjectPath] = runtime.react.useState('/fixture');
+    const [activeProjectPath] = runtime.react.useState('/fixture');
     const [controlPlaneUrl, setControlPlaneUrl] = runtime.react.useState(CP);
-    runtime.react.useLayoutEffect(() => { input.settingsRef.current = settings; input.connectionRef.current = connection; input.activeProjectPathRef.current = activeProjectPath; });
+    const [savedProfiles, setProfiles] = runtime.react.useState([]);
+    const revision = runtime.react.useRef(0);
+    const activeSettings = runtime.react.useRef(settings);
+    runtime.react.useLayoutEffect(() => { input.settingsRef.current = settings; activeSettings.current = settings; });
     const bridge = runtime.react.useRef<any>(null);
     const forward = runtime.react.useCallback((...args: any[]) => bridge.current.switchConnection(...args), []);
     const disconnect = runtime.react.useCallback(async () => bridge.current.updateSettings({ serverUrl: '', username: '', password: '', connect: undefined }), []);
-    const connectSetup = setup.useConnectState({ controlPlaneUrl, setControlPlaneUrl, switchConnection: forward, disconnect, isHydrated: true,
+    const connectSetup = setup.useConnectState({ profiles: savedProfiles, setProfiles, controlPlaneUrl, setControlPlaneUrl, switchConnection: forward, disconnect, isHydrated: true,
       activeMachineId: settings.connect?.machineId, beforeProfileRefresh: async () => {}, onProfileRefreshed: () => {},
       isActiveProfile: (candidate: any) => Boolean(input.settingsRef.current.connect && profiles.findMatchingProfile([candidate], input.settingsRef.current)) });
-    const result = actions.useConnectionConnectActions({ ...input, settings, setSettings, connection, setConnection, activeProjectPath, setActiveProjectPath, controlPlaneUrl, setControlPlaneUrl, connectSetup });
-    runtime.react.useLayoutEffect(() => { bridge.current = result; });
-    const connectionProfiles = profileHook.useConnectionProfiles({ settings, switchConnection: result.switchConnection, updateSettings: result.updateSettings, profileSnapshot: result.connectSetup.profiles });
-    return { ...result, settings, connection, activeProjectPath, connectionProfiles };
+    const changeSettings = runtime.react.useCallback((_id: string, next: any) => { revision.current++; setSettings(next); }, []);
+    const result = actions.useConnectionLifecycle({ id: scope.getConnectionUiScope(settings), settings, enabled: true, revision: revision.current, projects: ['/fixture'], preferences: {}, events: {} }, connectSetup, changeSettings, true, true);
+    const switchConnection = runtime.react.useCallback(async (next: any) => {
+      revision.current++; setSettings({ ...next, directory: '' }); await Promise.resolve(); runtime.flush();
+      return runtime.value.connect();
+    }, []);
+    const updateSettings = runtime.react.useCallback((patch: any) => { revision.current++; setSettings((current: any) => ({ ...current, ...patch })); }, []);
+    runtime.react.useLayoutEffect(() => result.onInvalidated(() => { resets++; }), [result.onInvalidated]);
+    const complete = { ...result, connectSetup, switchConnection, updateSettings };
+    runtime.react.useLayoutEffect(() => { bridge.current = complete; });
+    const connectionProfiles = profileHook.useConnectionProfiles({ settings, switchConnection, updateSettings, profiles: savedProfiles, setProfiles });
+    return { ...complete, settings, connection: result.connection, activeProjectPath, connectionProfiles };
   }, {});
   return { runtime, profile, profiles, get accesses() { return accessCalls; }, get pairClaims() { return pairClaims; }, get catalogs() { return catalogs; }, get resets() { return resets; }, get softResets() { return softResets; },
     failAccess(value: any) { accessFailure = value; }, failCatalog(value: any) { catalogFailure = value; }, blockAccess() { accessGate = deferred<void>(); return accessGate; },
@@ -232,7 +253,7 @@ async function fixture({ expired = false, missing = false, storedSession = true,
   assert.equal(f.runtime.value.connectSetup.selectControlPlane('https://apistaging.opencodecloud.link'), false, 'An access request must retain its authenticated environment.');
   gate.resolve(); await Promise.all([first, second]); await f.runtime.settle();
   assert.equal(f.accesses, 1); assert.equal(f.resets, 1, 'only the expiry reset clears state');
-  assert.equal(f.softResets, 1, 'a same-machine credential rotation keeps server-derived state');
+  assert.equal(f.runtime.value.activeProjectPath, '/fixture', 'a same-machine credential rotation keeps the workspace identity');
   assert.equal(f.catalogs, 1, 'concurrent connects share one project discovery');
   assert.equal(f.runtime.value.connection.status, 'connected');
   assert.equal(f.runtime.value.activeProjectPath, '/fixture', 'a same-machine rotation keeps the selected project');
@@ -331,10 +352,11 @@ const approvalQR = 'opencodemobile://pair?v=1&cp=https%3A%2F%2Fapi.opencodecloud
 // A still-valid post-claim credential is not rotated after a minute of waiting.
 {
   const f = await fixture({ ttl: 240000 }); await f.runtime.settle(); f.failCatalog('Cloudflare Error 1033');
+  const beforeAccess = f.accesses;
   await f.runtime.value.connectSetup.pairLink(approvalQR); await f.runtime.settle();
   f.advance(63000); f.runtime.fire(3000); await f.runtime.settle();
   assert.equal(f.runtime.value.connectSetup.phase, 'waitingForApproval');
-  assert.equal(f.accesses, 0, 'Near-expiry preparation must reuse valid activation credentials.');
+  assert.equal(f.accesses, beforeAccess, 'Near-expiry preparation must reuse valid activation credentials.');
   f.runtime.unmount();
 }
 // A connection selected during the wait cannot be replaced by the old activation.
@@ -346,7 +368,7 @@ const approvalQR = 'opencodemobile://pair?v=1&cp=https%3A%2F%2Fapi.opencodecloud
   await f.runtime.settle(); f.advance(3000); f.runtime.fire(3000); await f.runtime.settle();
   assert.equal(f.runtime.value.connectSetup.phase, 'idle');
   assert.equal(f.runtime.value.settings.serverUrl, 'http://manual.test');
-  assert.equal(f.catalogs, before, 'A stale activation must not switch back to its saved profile.');
+  assert.equal(f.catalogs, before + 1, 'Only the new connection probes; stale activation cannot switch back.');
   f.runtime.unmount();
 }
 

@@ -28,8 +28,8 @@ export function getVcsDiff(client: ScopedOpencodeClient, mode: 'git' | 'branch',
 export function saveFile(client: ScopedOpencodeClient, path: string, content: string, patch: string) {
   return createServerAdapter(client).projects.saveFile(path, content, patch);
 }
-export function listWorktrees(client: ScopedOpencodeClient) {
-  return createServerAdapter(client).projects.listWorktrees();
+export function listWorktrees(client: ScopedOpencodeClient, projectId?: string) {
+  return createServerAdapter(client).projects.listWorktrees(projectId);
 }
 export function createWorktree(client: ScopedOpencodeClient, name?: string) {
   return createServerAdapter(client).projects.createWorktree(name);

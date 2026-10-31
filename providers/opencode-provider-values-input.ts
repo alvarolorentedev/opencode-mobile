@@ -1,15 +1,15 @@
-import type { WorktreeCatalog } from '@/providers/use-worktree-state';
-import type { TerminalRuntime, TerminalStatus } from './terminal-types';
 import type { PendingPrompt } from '@/lib/opencode/prompt-inbox';
+import type { WorktreeCatalog } from '@/providers/use-worktree-state';
 import type { Dispatch, SetStateAction } from 'react';
+import type { TerminalRuntime, TerminalStatus } from './terminal-types';
 
-import type { PendingPermissionRequest, PendingQuestionRequest, SavedPermissionRule, ServerContract, OpencodeConnectionSettings } from '@/lib/opencode/client';
+import type { NetworkStatus } from '@/lib/network-status';
+import type { OpencodeConnectionSettings, PendingPermissionRequest, PendingQuestionRequest, SavedPermissionRule, ServerContract } from '@/lib/opencode/client';
 import type { SessionMessageRecord } from '@/lib/opencode/format';
 import type { ProjectFile } from '@/lib/opencode/project-file';
-import type { SessionUsageStep } from '@/lib/opencode/usage';
 import type {
-  Config,
   Command,
+  Config,
   File,
   FileDiff,
   McpLocalConfig,
@@ -21,26 +21,27 @@ import type {
   Todo,
   VcsInfo,
 } from '@/lib/opencode/types';
+import type { SessionUsageStep } from '@/lib/opencode/usage';
 import type { AgentOption, ModelOption } from '@/providers/opencode-model-selection';
 import type { ChatPreferences } from '@/providers/opencode-preferences';
 import type {
   ActiveSessionItem,
+  ConnectionContextValue,
   ConnectionState,
   DiffScope,
-  FavoriteSession,
   ExtensionsContextValue,
+  FavoriteSession,
   OpencodeProject,
   ProviderAuthMethod,
   ProviderOption,
 } from '@/providers/opencode-provider-types';
 import type { Diagnostics } from '@/providers/services/diagnostics-service';
-import type { NetworkStatus } from '@/lib/network-status';
 import type { useCapabilitiesActions } from '@/providers/use-capabilities-actions';
-import type { useConnectionActions } from '@/providers/use-connection-actions';
+import type { useConnectionLinkActions } from '@/providers/use-connection-link-actions';
 import type { useConversationState } from '@/providers/use-conversation-state';
+import type { useProjectActions } from '@/providers/use-project-actions';
 import type { usePromptLifecycle } from '@/providers/use-prompt-lifecycle';
 import type { useSessionActions } from '@/providers/use-session-actions';
-import type { useProjectActions } from '@/providers/use-project-actions';
 import type { SharedInput } from '@/providers/use-share-state';
 
 type ActionInputs =
@@ -48,7 +49,7 @@ type ActionInputs =
   ReturnType<typeof useSessionActions> &
   ReturnType<typeof useCapabilitiesActions> &
   ReturnType<typeof usePromptLifecycle> &
-  ReturnType<typeof useConnectionActions> &
+  ReturnType<typeof useConnectionLinkActions> & Pick<ConnectionContextValue, 'connect' | 'switchConnection' | 'updateSettings' | 'connectSetup' | 'connectionProfiles'> & { servicesValue: ConnectionContextValue['services'] } &
   ReturnType<typeof useConversationState>;
 
 export type ProviderValuesInput = ActionInputs & {

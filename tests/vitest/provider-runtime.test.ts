@@ -1,4 +1,6 @@
 import assert from 'node:assert/strict';
+import { QueryClient } from '@tanstack/react-query';
+import { projectQueryKey } from '@/providers/queries/keys';
 import { readFile } from 'node:fs/promises';
 import { runInNewContext } from 'node:vm';
 import ts from 'typescript';
@@ -58,6 +60,9 @@ let active: any = client, selected: any, patches = 0;
 const reads = new Map(), fileReads = new Map();
 const fileGate = deferred(), saveGate = deferred();
 const context: any = {
+  cache: new QueryClient({ defaultOptions: { queries: { retry: false, gcTime: Infinity } } }),
+  identity: { connectionId: 'test', connectionScope: 'scope', authRevision: 0 }, projectQueryKey, withReadSignal: (client: any) => client,
+  setSelectedPath: () => {},
   client, useCallback: (fn: any) => fn, projectSearchRequestRef: { current: 0 }, projectFileRequestRef: { current: 0 },
   activeProjectPathRef: { current: '/repo' }, isCurrentClient: (candidate: any) => candidate === active,
   currentSessionIdRef: {}, diffScopeBySessionRef: { current: {} },
@@ -135,7 +140,9 @@ const projectCatalogHook = await loadTs('providers/use-project-catalog-actions.t
   '@/providers/session-cache': { hydrateSessionCache: () => {} },
   '@/providers/projects-storage': { PROJECTS_MAX: 50 },
   '@/providers/services/session-service': {
-    loadProjectCatalog: async () => projectCatalog,
+    listServerProjects: async () => projectCatalog.serverProjects,
+    readCatalogLocation: async () => projectCatalog,
+    combineProjectCatalog: () => projectCatalog,
     resolveProjectLocation: async () => ({ worktree: '/workspace/added' }),
     isKnownProjectLocation: async () => knownProjectLocation,
   },
@@ -206,6 +213,7 @@ const olderFile = actions.openProjectFile('selection-first'), newerFile = action
 fileReads.get('selection-last').resolve({ type: 'text', content: 'latest selection' }); await newerFile;
 fileReads.get('selection-first').resolve({ type: 'text', content: 'obsolete selection' });
 await assert.rejects(olderFile, /superseded/);
+selected = context.cache.getQueryData(projectQueryKey(context.identity, client as any, 'preview', 'selection-last'));
 assert.equal(selected.path, 'selection-last');
 const staleSearch = searchFiles('old-server');
 const staleDirectory = browserRuntime.value.openDirectory('old-server');
@@ -913,6 +921,7 @@ const passwords = new Map();
 const profileHeaders = new Map();
 const profileUrls = await loadTs('lib/opencode/client/url.ts', { './types': { defaultConnectionSettings: { serverUrl: 'http://127.0.0.1:4096' } } });
 const profilesHook = await loadTs('providers/use-connection-profiles.ts', {
+  '@/lib/connection-scope': { getConnectionScope: (value: any) => value.serverUrl },
   '@/lib/opencode/client/url': profileUrls,
   '@/lib/opencode/client/probe': { probeConnection: async () => ({ status: 'detected', contract: 'v2' }) },
   '@/lib/opencode/pairing': { resolveLocalPairing: async () => ({ serverUrl: 'http://example.test', username: '', password: 'session-token' }) },
@@ -932,7 +941,10 @@ const profilesHook = await loadTs('providers/use-connection-profiles.ts', {
     deleteProfileHeaders: async (id: any) => { profileHeaders.delete(id); },
   },
 });
-profileRuntime.mount(profilesHook.useConnectionProfiles, {
+profileRuntime.mount((input: any) => {
+  const [profiles, setProfiles] = profileRuntime.react.useState([]);
+  return profilesHook.useConnectionProfiles({ ...input, profiles, setProfiles });
+}, {
   settings: { serverUrl: 'current' }, switchConnection: async () => {}, updateSettings: () => { updates++; },
 });
 const [savedA, savedB] = await Promise.all([
@@ -976,13 +988,13 @@ profileRuntime.unmount();
 const sessionNames = ['ensureActiveSession', 'openDeepLinkSession'];
 const sessionDeclarations = [
   extractDeclarations(sessionActionsSource, ['ensureActiveSession']),
-  extractDeclarations(connectionActionsSource, ['waitForConnectionScope', 'switchToScope', 'openDeepLinkSession']),
+  extractDeclarations(connectionActionsSource, ['openDeepLinkSession']),
 ].join('\n');
 let createdSessions = 0, fetchedSessions = 0;
 const resolvableDirectories = new Set();
 const target = { id: 'target' };
 const sessionContext: any = {
-  exports: {}, useCallback: (fn: any) => fn, client: { directory: '/repo' },
+  exports: {}, operation: { current: 0 }, withReadSignal: (client: any) => client, useCallback: (fn: any) => fn, client: { directory: '/repo' },
   activeProjectPath: '/repo', activeProjectPathRef: { current: '/repo' }, settingsRef: { current: {} },
   connection: { status: 'connected' }, connectionRef: { current: { status: 'connected' } },
   serverContractRef: { current: 'v1' }, serverGenerationRef: { current: 1 },
@@ -1007,6 +1019,8 @@ const sessionContext: any = {
   getProfilePassword: async () => 'secret',
   switchConnection: async () => { sessionContext.connectionScopeRef.current = 'other'; sessionContext.serverGenerationRef.current++; },
 };
+sessionContext.listSessions = async () => ({ sessions: await sessionContext.refreshSessions() });
+sessionContext.openSession = async (id: string) => { sessionContext.currentSessionIdRef.current = id; };
 runInNewContext(ts.transpileModule(`${sessionDeclarations}\nexports.actions = { ${sessionNames.join(', ')} };`, { compilerOptions: { module: ts.ModuleKind.CommonJS } }).outputText, sessionContext);
 const sessionActions = sessionContext.exports.actions;
 fetchedSessions = 0;
@@ -1016,63 +1030,37 @@ sessionContext.pendingDeepLinkTargetRef.current = { sessionId: 'missing', projec
 sessionContext.bootstrapPromiseRef.current = null;
 assert.equal(await sessionActions.ensureActiveSession(), undefined); assert.equal(createdSessions, 0);
 
-// A retained active project may be absent from the server catalog.
-sessionContext.serverProjectsRef.current = [{ worktree: '/elsewhere' }];
-sessionContext.bootstrapPromiseRef.current = null;
-sessionContext.ensureActiveSessionRef.current = sessionActions.ensureActiveSession;
-assert.equal((await sessionActions.openDeepLinkSession({ sessionId: 'target', projectPath: '/repo' })).ok, true,
-  'explicit session opening accepts the retained active project');
-assert.match((await sessionActions.openDeepLinkSession({ sessionId: 'missing', projectPath: '/repo' })).error,
-  /was not found/, 'the retained project still requires an existing session');
-assert.equal(createdSessions, 0, 'opening an existing session does not create a replacement');
-assert.match((await sessionActions.openDeepLinkSession({ sessionId: 'target', projectPath: '/unlisted' })).error,
-  /not available from the configured server/, 'other unlisted projects remain rejected');
-assert.equal(sessionContext.pendingDeepLinkTargetRef.current, undefined);
-sessionContext.serverProjectsRef.current = [{ worktree: '/repo' }];
-
-// The same repository can have checkout directories that project.list() does
-// not report as canonicals. The connection's opened list and server resolution
-// both make those locations available.
-sessionContext.projectPathsByConnectionRef.current = { scope: ['/opened-repo'] };
-sessionContext.bootstrapPromiseRef.current = null;
-assert.equal((await sessionActions.openDeepLinkSession({ sessionId: 'target', projectPath: '/opened-repo' })).ok, true,
-  'opened projects remain available even when the server catalog reports another canonical');
-sessionContext.activeProjectPathRef.current = '/repo';
-
-sessionContext.projectPathsByConnectionRef.current = { scope: [] };
-resolvableDirectories.add('/resolved-repo');
-assert.equal((await sessionActions.openDeepLinkSession({ sessionId: 'target', projectPath: '/resolved-repo' })).ok, true,
-  'server-resolved sibling checkouts and worktrees are available');
-resolvableDirectories.delete('/resolved-repo');
-sessionContext.activeProjectPathRef.current = '/repo';
-
-assert.equal((await sessionActions.openDeepLinkSession({ sessionId: 'target', projectPath: '/repo', connectionScope: 'other' })).ok, true,
-  'notification links select their owning saved connection before opening a session');
-assert.match((await sessionActions.openDeepLinkSession({ sessionId: 'target', projectPath: '/repo', connectionScope: 'removed' })).error, /no longer exists/);
-
-// A genuine supersession is cancellation of an earlier request, not a new URL.
+// Local deep-link validation remains authoritative and never creates a chat.
+// Cross-connection/project preparation is covered through the workspace manager
+// in workspaces.test.ts, rather than by the removed runtime switching loop.
+sessionContext.pendingDeepLinkTargetRef.current = undefined;
+assert.equal((await sessionActions.openDeepLinkSession({ sessionId: 'target', projectPath: '/repo' })).ok, true);
+assert.equal(sessionContext.currentSessionIdRef.current, 'target');
+assert.match((await sessionActions.openDeepLinkSession({ sessionId: 'missing', projectPath: '/repo' })).error, /was not found/);
+assert.equal(createdSessions, 0);
 const firstOpenGate = deferred<void>();
 let opens = 0;
-sessionContext.ensureActiveSessionRef.current = async () => {
-  if (++opens === 1) { await firstOpenGate.promise; return 'first'; }
-  sessionContext.currentSessionIdRef.current = 'second'; return 'second';
+sessionContext.listSessions = async () => {
+  if (++opens === 1) await firstOpenGate.promise;
+  return { sessions: [{ id: 'first' }, { id: 'second' }] };
 };
 const firstOpen = sessionActions.openDeepLinkSession({ sessionId: 'first', projectPath: '/repo' });
 assert.equal((await sessionActions.openDeepLinkSession({ sessionId: 'second', projectPath: '/repo' })).ok, true);
 firstOpenGate.resolve(); assert.match((await firstOpen).error, /superseded/);
+assert.equal(sessionContext.currentSessionIdRef.current, 'second');
 const switchedOpenGate = deferred<void>();
-sessionContext.ensureActiveSessionRef.current = async () => { await switchedOpenGate.promise; return 'target'; };
+sessionContext.listSessions = async () => { await switchedOpenGate.promise; return { sessions: [target] }; };
 const switchedOpen = sessionActions.openDeepLinkSession({ sessionId: 'target', projectPath: '/repo' });
-sessionContext.serverGenerationRef.current++; switchedOpenGate.resolve();
-assert.equal((await switchedOpen).ok, false, 'server switch cannot complete an old session open');
-assert.equal(sessionContext.pendingDeepLinkTargetRef.current, undefined);
+sessionContext.isCurrentClient = () => false; switchedOpenGate.resolve();
+assert.equal((await switchedOpen).ok, false, 'a server switch cannot complete an old session open');
+sessionContext.isCurrentClient = () => true;
 const canceledOpenGate = deferred<void>();
-sessionContext.ensureActiveSessionRef.current = async () => { await canceledOpenGate.promise; return 'target'; };
+sessionContext.listSessions = async () => { await canceledOpenGate.promise; return { sessions: [target] }; };
 const openController = new AbortController();
 const canceledOpen = sessionActions.openDeepLinkSession({ sessionId: 'target', projectPath: '/repo' }, openController.signal);
 openController.abort(); canceledOpenGate.resolve();
 assert.equal((await canceledOpen).ok, false);
-assert.equal(sessionContext.pendingDeepLinkTargetRef.current, undefined);
+assert.equal(sessionContext.currentSessionIdRef.current, 'second', 'cancelled links preserve the selected session');
 
 // Exercise the actual library runner without loading the native rendering tree.
 const librarySource = await readFile(new URL('../../components/chat/chat-library.tsx', import.meta.url), 'utf8');

@@ -59,10 +59,10 @@ export {
 } from './client/interactions';
 
 const readFactories = new WeakMap<ScopedOpencodeClient, (signal: AbortSignal) => ScopedOpencodeClient>();
-export function buildClient(settings: OpencodeConnectionSettings, contract: ServerContract = 'v2', signal?: AbortSignal): ScopedOpencodeClient {
-  const client = contract === 'v2' ? buildV2Client(settings, signal)
-    : { compatibility: buildV1Compatibility(settings, signal), __opencode: { contract, directory: settings.directory.trim() || undefined } };
-  readFactories.set(client, (signal) => buildClient(settings, contract, signal));
+export function buildClient(settings: OpencodeConnectionSettings, contract: ServerContract = 'v2', signal?: AbortSignal, lifetimeSignal?: AbortSignal): ScopedOpencodeClient {
+  const client = contract === 'v2' ? buildV2Client(settings, signal, lifetimeSignal)
+    : { compatibility: buildV1Compatibility(settings, signal, lifetimeSignal), __opencode: { contract, directory: settings.directory.trim() || undefined } };
+  readFactories.set(client, (readSignal) => buildClient(settings, contract, readSignal, lifetimeSignal ?? signal));
   return client;
 }
 export function withReadSignal(client: ScopedOpencodeClient, signal: AbortSignal): ScopedOpencodeClient {

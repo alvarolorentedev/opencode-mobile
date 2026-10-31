@@ -1,12 +1,13 @@
-import { SSE_STALENESS_MS, WATCHDOG_TICK_MS } from '@/providers/realtime-timing';
-import { subscribeEvents, type OpencodeEvent } from '@/lib/opencode/events';
 import type { ScopedOpencodeClient } from '@/lib/opencode/client';
+import { subscribeEvents, type OpencodeEvent } from '@/lib/opencode/events';
+import { SSE_STALENESS_MS, WATCHDOG_TICK_MS } from '@/providers/realtime-timing';
 
 type Listener = { queue: OpencodeEvent[]; wake: () => void; heartbeat: () => void; error?: unknown; ended: boolean };
 // A server has one transport even when several retained projects consume events.
 export function createSharedEventStream(source = subscribeEvents) {
+  const observers = new Set<(event: OpencodeEvent) => void>();
   let stream: { controller: AbortController; listeners: Set<Listener>; last?: OpencodeEvent } | undefined;
-  return async function* subscribe(client: ScopedOpencodeClient, signal: AbortSignal, heartbeat: () => void = () => {}) {
+  const subscribe = async function* (client: ScopedOpencodeClient, signal: AbortSignal, heartbeat: () => void = () => {}) {
     if (signal.aborted) return;
     const owned = stream ?? { controller: new AbortController(), listeners: new Set<Listener>() };
     const listener: Listener = { queue: owned.last ? [owned.last] : [], wake: () => {}, heartbeat, ended: false };
@@ -28,6 +29,7 @@ export function createSharedEventStream(source = subscribeEvents) {
             if (!event) continue;
             activityAt = Date.now();
             owned.last = event;
+            for (const observer of observers) observer(event);
             for (const item of owned.listeners) {
               if (item.queue.length >= 256) { item.error = new Error('Event consumer fell behind. Reconnecting.'); item.ended = true; }
               else item.queue.push(event);
@@ -56,4 +58,7 @@ export function createSharedEventStream(source = subscribeEvents) {
       if (!owned.listeners.size) { owned.controller.abort(); if (stream === owned) stream = undefined; }
     }
   };
+  return Object.assign(subscribe, { observe(listener: (event: OpencodeEvent) => void) {
+    observers.add(listener); return () => { observers.delete(listener); };
+  } });
 }

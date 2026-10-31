@@ -1,14 +1,18 @@
 import { useCallback, useMemo, useRef, useState } from 'react';
 
-import type { ScopedOpencodeClient } from '@/lib/opencode/client';
 import { getErrorMessage } from '@/lib/error-message';
+import type { ScopedOpencodeClient } from '@/lib/opencode/client';
 import type { ExtensionCommandDraft, ExtensionScope, ExtensionSkillDraft, ExtensionSkillRow, ExtensionSnapshot } from '@/lib/opencode/extensions/types';
 import type { McpLocalConfig, McpRemoteConfig } from '@/lib/opencode/types';
+import { commandsOptions, configurationOptions, skillsOptions } from '@/providers/queries/catalogs';
+import { useQueryActivity, useQueryIdentity } from '@/providers/queries/client';
+import { extensionInspectionOptions, pluginsOptions } from '@/providers/queries/extensions';
+import { mcpOptions } from '@/providers/queries/mcp';
 import {
   addMcpServer,
   addPlugin,
   createSkill,
-  loadExtensionSnapshot,
+  extensionSnapshot,
   removeCommand,
   removeMcpServer,
   removePlugin,
@@ -18,78 +22,59 @@ import {
   updateMcpServer,
   updateSkill,
 } from '@/providers/services/extensions-service';
+import { useQueries, useQueryClient } from '@tanstack/react-query';
 
 type ExtensionsInput = {
   client: ScopedOpencodeClient;
   isCurrentClient: (candidate: object) => boolean;
-  refreshChatCapabilities: () => Promise<unknown>;
-  refreshServerFeatures: () => Promise<unknown>;
-  refreshMcpServers: () => Promise<unknown>;
 };
 
 export function useExtensionsState({
   client,
   isCurrentClient,
-  refreshChatCapabilities,
-  refreshServerFeatures,
-  refreshMcpServers,
 }: ExtensionsInput) {
-  type Loaded = { client: ScopedOpencodeClient; snapshot: ExtensionSnapshot };
-  const [loaded, setLoaded] = useState<Loaded>();
-  const [isRefreshing, setIsRefreshing] = useState(false);
+  const cache = useQueryClient();
+  const identity = useQueryIdentity();
+  const active = useQueryActivity();
+  const [requested, setRequested] = useState(false);
+  const subscribed = active && requested;
+  const [configuration] = useQueries({ queries: [configurationOptions(identity, client)].filter(() => subscribed) });
+  const [commands] = useQueries({ queries: [commandsOptions(identity, client)].filter(() => subscribed) });
+  const [skills] = useQueries({ queries: [skillsOptions(identity, client)].filter(() => subscribed) });
+  const [plugins] = useQueries({ queries: [pluginsOptions(identity, client)].filter(() => subscribed) });
+  const [mcp] = useQueries({ queries: [mcpOptions(identity, client)].filter(() => subscribed) });
+  const [inspection] = useQueries({ queries: [extensionInspectionOptions(identity, client)].filter(() => subscribed) });
+  const snapshot = useMemo(() => configuration?.data?.entries && skills?.data?.details && inspection?.data
+    ? extensionSnapshot({ entries: configuration?.data.entries, skills: skills?.data.details, commands: commands?.data ?? [], plugins: plugins?.data ?? [], mcpStatuses: mcp?.data ?? {} }, inspection?.data)
+    : undefined, [configuration?.data, skills?.data, commands?.data, plugins?.data, mcp?.data, inspection?.data]);
   const [busy, setBusy] = useState<string>();
   const [error, setError] = useState<string>();
   const busyRef = useRef<string | undefined>(undefined);
-  const loadedRef = useRef<Loaded | undefined>(undefined);
-  const snapshot = loaded?.client === client ? loaded.snapshot : undefined;
-
-  const resetExtensions = useCallback(() => {
-    loadedRef.current = undefined;
-    setLoaded(undefined);
-    setError(undefined);
-    setBusy(undefined);
-  }, []);
-
   const refresh = useCallback(async () => {
-    if (client.__opencode.contract !== 'v2') {
-      loadedRef.current = undefined;
-      setLoaded(undefined);
-      return;
-    }
-    setIsRefreshing(true);
-    try {
-      const next = await loadExtensionSnapshot(client);
-      if (isCurrentClient(client)) {
-        const value = { client, snapshot: next };
-        loadedRef.current = value;
-        setLoaded(value);
-        setError(undefined);
-      }
-    } catch (failure) {
-      if (isCurrentClient(client)) setError(getErrorMessage(failure));
-      throw failure;
-    } finally {
-      setIsRefreshing(false);
-    }
-  }, [client, isCurrentClient]);
-
+    if (client.__opencode.contract !== 'v2' || !isCurrentClient(client) || !active) return;
+    setRequested(true);
+    await Promise.all([
+      cache.fetchQuery({ ...configurationOptions(identity, client), staleTime: 0 }),
+      cache.fetchQuery({ ...skillsOptions(identity, client), staleTime: 0 }),
+      cache.fetchQuery({ ...commandsOptions(identity, client), staleTime: 0 }),
+      cache.fetchQuery({ ...pluginsOptions(identity, client), staleTime: 0 }),
+      cache.fetchQuery(mcpOptions(identity, client)),
+    ]);
+    await cache.fetchQuery(extensionInspectionOptions(identity, client));
+  }, [active, cache, client, identity, isCurrentClient]);
   const run = useCallback(async (key: string, action: (current: ExtensionSnapshot) => Promise<void>) => {
     if (busyRef.current) throw new Error('Another extension change is already in progress.');
-    const current = loadedRef.current?.client === client ? loadedRef.current.snapshot : undefined;
+    const current = snapshot;
     if (!current) throw new Error('Refresh extensions before making a change.');
     busyRef.current = key;
     setBusy(key);
     setError(undefined);
     try {
+      await cache.cancelQueries({ queryKey: ['opencode', identity.connectionId] });
       await action(current);
       if (!isCurrentClient(client)) return;
-      await refresh();
-      if (!isCurrentClient(client)) return;
-      await Promise.all([
-        refreshChatCapabilities().catch(() => undefined),
-        refreshServerFeatures().catch(() => undefined),
-        refreshMcpServers().catch(() => undefined),
-      ]);
+      await cache.invalidateQueries({ predicate: (query) => query.queryKey[0] === 'opencode' && query.queryKey[1] === identity.connectionId
+        && ['capabilities', 'configuration', 'agents', 'skills', 'references', 'commands', 'plugins', 'mcp', 'extension-inspection'].includes(String(query.queryKey[7])) });
     } catch (failure) {
       if (isCurrentClient(client)) setError(getErrorMessage(failure));
       throw failure;
@@ -97,15 +82,16 @@ export function useExtensionsState({
       busyRef.current = undefined;
       setBusy(undefined);
     }
-  }, [client, isCurrentClient, refresh, refreshChatCapabilities, refreshMcpServers, refreshServerFeatures]);
+  }, [cache, client, identity, isCurrentClient, snapshot]);
 
   const extensions = useMemo(() => ({
     snapshot,
-    isRefreshing,
+    isRefreshing: Boolean(inspection?.isFetching || configuration?.isFetching || skills?.isFetching || plugins?.isFetching),
     busy,
-    error,
+    error: error ?? inspection?.error?.message ?? configuration?.error?.message,
     refresh,
     addMcp: (scope: ExtensionScope, name: string, config: McpLocalConfig | McpRemoteConfig) =>
+      // eslint-disable-next-line react-hooks/refs -- These are deferred user actions; the memo only constructs callbacks.
       run('add-mcp', (current) => addMcpServer(client, current, scope, name, config)),
     updateMcp: (scope: ExtensionScope, name: string, config: McpLocalConfig | McpRemoteConfig) =>
       run('update-mcp', (current) => updateMcpServer(client, current, scope, name, config)),
@@ -127,7 +113,7 @@ export function useExtensionsState({
       run('remove-skill', (current) => removeSkill(client, current, scope, row)),
     restoreBackup: (scope: ExtensionScope) =>
       run('restore-backup', (current) => restoreConfig(client, current, scope)),
-  }), [busy, client, error, isRefreshing, refresh, run, snapshot]);
+  }), [busy, client, error, inspection?.isFetching, inspection?.error, configuration?.isFetching, configuration?.error, skills?.isFetching, plugins?.isFetching, refresh, run, snapshot]);
 
-  return { extensions, resetExtensions };
+  return { extensions };
 }

@@ -24,7 +24,9 @@ export type PromptInput = Parameters<NonNullable<ScopedOpencodeClient['compatibi
 
 export type SessionAdapter = {
   submitPrompt: (input: PromptInput) => Promise<void>;
-  loadProjectCatalog: () => Promise<Awaited<ReturnType<typeof v1.loadProjectCatalog>>>;
+  catalogProjects: () => Promise<Project[]>;
+  catalogLocation: () => Promise<{ currentProjectPath: string; serverRootPath: string; project: Project }>;
+  combineCatalog: (projects: Project[], location: { currentProjectPath: string; serverRootPath: string; project: Project }) => { currentProjectPath: string; serverRootPath: string; serverProjects: Project[] };
   resolveProjectLocation: () => Promise<ResolvedProjectLocation>;
   isKnownProjectLocation: () => Promise<boolean>;
   isAvailableProjectDirectory: (knownProjects: Project[]) => Promise<boolean>;
@@ -134,16 +136,25 @@ export function createSessionAdapter(client: ScopedOpencodeClient): SessionAdapt
       if (!compatibility) throw new Error('Prompt admission is unavailable.');
       await compatibility.session.promptAsync(input);
     },
-    loadProjectCatalog: async () => {
-      if (compatibility) return v1.loadProjectCatalog(compatibility);
-      const [location, projects] = await Promise.all([
-        directory ? client.api!.location.get({ location: { directory } }) : client.api!.location.get(),
-        client.api!.project.list(),
-      ]);
-      if (!location?.project?.id || !location.directory || !Array.isArray(projects)) throw new Error('MalformedResponse: OpenCode did not return its project catalog.');
-      const current = projects.find((project) => project.id === location.project.id);
-      const serverProjects = projects.map(toProjectView).sort((left, right) => compareLabels(left.worktree, right.worktree));
-      return { currentProjectPath: location.directory, serverRootPath: location.directory, serverProjects: current ? serverProjects : [...serverProjects, { id: location.project.id, worktree: location.project.canonical, time: { created: 0 } }] };
+    catalogProjects: async () => {
+      if (compatibility) return v1.catalogProjects(compatibility);
+      const projects = await client.api!.project.list();
+      if (!Array.isArray(projects)) throw new Error('MalformedResponse: OpenCode did not return its project catalog.');
+      return projects.map(toProjectView);
+    },
+    catalogLocation: async () => {
+      if (compatibility) return v1.catalogLocation(compatibility);
+      const location = await client.api!.location.get(directory ? { location: { directory } } : undefined);
+      if (!location?.project?.id || !location.directory) throw new Error('MalformedResponse: OpenCode did not return its project location.');
+      return { currentProjectPath: location.directory, serverRootPath: location.directory, project: { id: location.project.id, worktree: location.project.canonical, time: { created: 0 } } };
+    },
+    combineCatalog: (projects, location) => {
+      const seed: [string, Project][] = !compatibility && projects.some((project) => project.id === location.project.id) ? [] : [[location.project.worktree, location.project]];
+      const entries = new Map<string, Project>([...seed, ...projects.map((project): [string, Project] => [project.worktree, project])]);
+      const serverProjects = [...entries.values()].sort(compatibility
+        ? (left, right) => (right.time.initialized || right.time.created) - (left.time.initialized || left.time.created)
+        : (left, right) => compareLabels(left.worktree, right.worktree));
+      return { currentProjectPath: location.currentProjectPath, serverRootPath: location.serverRootPath, serverProjects };
     },
     resolveProjectLocation,
     isKnownProjectLocation,

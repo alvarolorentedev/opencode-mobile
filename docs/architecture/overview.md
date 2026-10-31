@@ -244,9 +244,11 @@ The completion version, preference schema and first-run migration are unchanged.
   Small provider-agnostic helpers (project labels, pending-request grouping).
 - `providers/opencode-provider-selectors.ts`
   Derived selectors extracted from the provider body.
-- `providers/use-opencode-provider-state.ts`
-  The provider's core state, latest-ref bridges, and connection-generation
-  counters, returned as one flat object.
+- `providers/use-workspace-shell-state.ts` and `providers/use-session-runtime-state.ts`
+  App preferences/persisted metadata and per-project workflow state, respectively.
+- `providers/queries/` and `providers/use-workspace-server-data.ts`
+  TanStack Query owns routine server responses; domain hooks expose derived views.
+  See [server read ownership](state-and-data.md#routine-server-reads).
 - `providers/use-workspace-values.ts`
   Layers app-scope overrides over a runtime's memoized domain values. Each
   domain is memoized separately, so transcript updates do not invalidate
@@ -255,9 +257,7 @@ The completion version, preference schema and first-run migration are unchanged.
   Collapses event-driven refresh bursts into one trailing call without
   resetting the timer when callbacks are recreated.
 - `providers/use-opencode-provider-effects.ts`
-  Provider lifecycle effects: language sync, active-session seeding, boot
-  connect, refresh fan-out, chat bootstrap, transcript pruning, and working
-  sound.
+  Project lifecycle effects: session bootstrap, transcript pruning, and working sound.
 - `providers/opencode-provider-events.ts`
   Pure global-event dispatch (`handleProviderEvent(event, actions)`), kept
   testable outside React.
@@ -268,7 +268,7 @@ The completion version, preference schema and first-run migration are unchanged.
   Project catalog, opened-project add/close, project selection, session/file
   refresh, file search/open/save/download, and diagnostics actions.
 - `providers/use-project-browser.ts`
-  Scoped directory/search snapshots and request-order guards, composed by the
+  Directory/search query selection and project-scope guards, composed by the
   project file actions and exposed as one files-context member.
 - `providers/use-session-actions.ts`
   Session lifecycle, favorites, permissions/questions, and
@@ -282,10 +282,12 @@ The completion version, preference schema and first-run migration are unchanged.
   OpenCode 2 prompt admission and session-scoped pending messages. Wraps the
   existing transcript refresh to reconcile inbox delivery through SSE and polling.
 - `providers/use-capabilities-actions.ts`
-  Chat capability discovery, provider auth/OAuth, and auto-approve.
-- `providers/use-connection-actions.ts`
-  Connect/switch/profile orchestration, deep-link restore, and session
-  restore.
+  Provider auth/OAuth, preference reconciliation, and auto-approve; capability responses live in Query.
+- `providers/connection-runtime.tsx`
+  One connection lifecycle, retry/renewal policy, active-session catalog and routine
+  event invalidation owner shared by all retained project runtimes.
+- `providers/workspace-lifecycle.ts`
+  Cancellable readiness promises resolved by committed runtime publications.
 - `providers/connect/`
   Cloud Link pairing, subscription, and access state machine
   (`use-connect-machine.ts`), with catalog discovery (`catalog.ts`), purchase
@@ -327,9 +329,9 @@ The completion version, preference schema and first-run migration are unchanged.
 - `providers/transcript-cache.ts`
   Bounded, connection/project/session-scoped transcript tail used to paint a
   cold chat before the network answers.
-- `providers/capabilities-cache.ts`
-  Bounded last-known provider/model/agent catalog so the composer remains
-  usable during a slow capability refresh or cold start.
+- `providers/capabilities-snapshot.ts`
+  Bounded, credential-free cold-start DTOs seed empty Query entries with their
+  original timestamps; fresh network results win over late disk reads.
 - `lib/opencode/client/request-policy.ts`
   Per-class deadlines (read/write/stream), idempotent-read retry eligibility,
   and retryable gateway-status policy.

@@ -4,22 +4,16 @@ import type { useWorkspaceRuntimeState } from '@/providers/use-workspace-runtime
 
 type ResetInput = {
   state: ReturnType<typeof useWorkspaceRuntimeState>;
-  resetMcpState: () => void;
-  resetPermissionRules: () => void;
   resetTerminal: () => void;
   resetTranscript: () => void;
-  resetWorktrees: () => void;
 };
 
 // Connection switches must discard every value scoped to the previous server
 // before a new generation starts serving reads.
 export function useOpencodeProviderReset({
   state,
-  resetMcpState,
-  resetPermissionRules,
   resetTerminal,
   resetTranscript,
-  resetWorktrees,
 }: ResetInput) {
   const {
     bootstrapPromiseRef,
@@ -34,19 +28,10 @@ export function useOpencodeProviderReset({
     setCurrentSessionId,
     setSessions,
     setSessionStatuses,
-    setCommands,
-    setCurrentConfig,
-    setAvailableProviders,
-    setProviderAuthMethodsById,
-    setAvailableModels,
-    setAvailableAgents,
-    setPendingPermissionsBySession,
+                setPendingPermissionsBySession,
     setPendingQuestionsBySession,
     setMcpAuthPrompt,
-    setProjectFileStatuses,
-    setSelectedProjectFile,
-    setVcsInfo,
-  } = state;
+        } = state;
 
   return useCallback(() => {
     bootstrapPromiseRef.current = null;
@@ -63,29 +48,14 @@ export function useOpencodeProviderReset({
     setSessions([]);
     setSessionStatuses({});
     resetTranscript();
-    setCommands([]);
-    setCurrentConfig(undefined);
-    setAvailableProviders([]);
-    setProviderAuthMethodsById({});
-    setAvailableModels([]);
-    setAvailableAgents([]);
     setPendingPermissionsBySession({});
     setPendingQuestionsBySession({});
     setMcpAuthPrompt(undefined);
-    resetPermissionRules();
-    setProjectFileStatuses([]);
-    setSelectedProjectFile(undefined);
-    setVcsInfo(undefined);
-    resetMcpState();
     resetTerminal();
-    resetWorktrees();
   }, [
-    resetMcpState,
-    resetPermissionRules,
-    resetTerminal,
+        resetTerminal,
     resetTranscript,
-    resetWorktrees,
-    bootstrapPromiseRef,
+      bootstrapPromiseRef,
     bootstrapTokenRef,
     busyNotificationsRef,
     suppressedPendingRequestIdsRef,
@@ -94,20 +64,11 @@ export function useOpencodeProviderReset({
     currentSessionIdRef,
     explicitSessionSelectionRef,
     locallyCreatedSessionsRef,
-    setAvailableAgents,
-    setAvailableModels,
-    setAvailableProviders,
-    setCommands,
-    setCurrentConfig,
-    setCurrentSessionId,
+              setCurrentSessionId,
     setMcpAuthPrompt,
     setPendingPermissionsBySession,
     setPendingQuestionsBySession,
-    setProviderAuthMethodsById,
-    setSelectedProjectFile,
-    setSessionStatuses,
+        setSessionStatuses,
     setSessions,
-    setVcsInfo,
-    setProjectFileStatuses,
-  ]);
+      ]);
 }

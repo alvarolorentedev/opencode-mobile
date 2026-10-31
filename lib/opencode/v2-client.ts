@@ -12,8 +12,8 @@ export function toPendingPrompt(item: SessionInboxUser): PendingPrompt {
   return { id: item.id, sessionId: item.sessionID, createdAt: item.time.created, text: item.payload.text, delivery: item.delivery, state: 'waiting', attachments: (item.payload.files ?? []).map((file) => { const detail = toFileDetail(file); return { uri: detail.url, mime: detail.mime, filename: detail.filename }; }) };
 }
 
-export function buildV2Client(settings: OpencodeConnectionSettings, signal?: AbortSignal): ScopedOpencodeClient {
-  const context = buildV2Raw(settings, signal);
+export function buildV2Client(settings: OpencodeConnectionSettings, signal?: AbortSignal, lifetimeSignal?: AbortSignal): ScopedOpencodeClient {
+  const context = buildV2Raw(settings, signal, lifetimeSignal);
   const { api, directory } = context;
   return {
     api, context, mcpOAuth: buildMcpOAuth(context), __opencode: { contract: 'v2', directory }, ...buildProviderAuth(context),

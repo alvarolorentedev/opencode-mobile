@@ -49,7 +49,7 @@ describe('ANR regression checks', () => {
       '@/lib/opencode/compat/v1/terminal': {},
       '@/lib/opencode/compat/v1/diagnostics': {},
     });
-    const { discoverChatCapabilities } = await load('providers/services/capabilities-service.ts', {
+    const { discoverProviderCapabilities } = await load('providers/services/capabilities-service.ts', {
       '@/lib/compare-labels': labels,
       '@/lib/opencode/contracts/server-adapter': adapter,
       '@/providers/opencode-model-selection': selection,
@@ -68,7 +68,7 @@ describe('ANR regression checks', () => {
       app: { agents: async () => ({ data: [] }) },
     };
     for (let i = 0; i < 2; i += 1) {
-      const result = await discoverChatCapabilities({ compatibility: client, __opencode: { directory: '/repo' } }, '/repo');
+      const result = await discoverProviderCapabilities({ compatibility: client, __opencode: { directory: '/repo' } });
       assert.equal(result.models.length, names.length);
       assert.ok(result.models.every((model: any) => model.variants.length === 0), 'V1 catalog models must not expose server variants');
       assert.equal(result.models[0].modelID, '1');

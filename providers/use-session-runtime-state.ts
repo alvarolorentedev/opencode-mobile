@@ -1,55 +1,30 @@
 import { useLayoutEffect, useMemo, useRef, useState } from 'react';
 
+import { getConnectionScope } from '@/lib/connection-scope';
 import {
-  defaultConnectionSettings,
-  type OpencodeConnectionSettings,
   type PendingPermissionRequest,
   type PendingQuestionRequest,
-  type SavedPermissionRule,
-  type ServerContract,
+  type ServerContract
 } from '@/lib/opencode/client';
-import { getConnectionScope } from '@/lib/connection-scope';
 import type { SessionMessageRecord } from '@/lib/opencode/format';
-import { getConnectControlPlanes } from '@/lib/connect';
-import type { ProjectFile } from '@/lib/opencode/project-file';
 import type {
-  Command,
-  Config,
-  File,
   FileDiff,
-  Project,
-  Reference,
   Session,
   SessionStatus,
-  Skill,
-  Todo,
-  VcsInfo,
+  Todo
 } from '@/lib/opencode/types';
-import type { AgentOption, ModelOption } from '@/providers/opencode-model-selection';
-import type { ChatPreferences } from '@/providers/opencode-preferences';
-import { defaultChatPreferences } from '@/providers/opencode-preferences';
 import type { SessionRefreshOptions } from '@/providers/opencode-provider-events';
 import type {
   ConnectionState,
-  DiffScope,
-  FavoriteSession,
-  ProviderAuthMethod,
-  ProviderOption,
-  ProjectPathsByConnection,
+  DiffScope
 } from '@/providers/opencode-provider-types';
-import type { Diagnostics } from '@/providers/services/diagnostics-service';
 
-export function useOpencodeProviderState(initial?: { settings: OpencodeConnectionSettings; projectPath?: string }) {
-  const [settings, setSettings] = useState<OpencodeConnectionSettings>(initial?.settings ?? defaultConnectionSettings);
-  const [controlPlaneUrl, setControlPlaneUrl] = useState(() => getConnectControlPlanes()[0] ?? '');
-  const [connection, setConnection] = useState<ConnectionState>({
-    status: 'idle',
-    message: 'Add a server URL and connect to OpenCode.',
-  });
-  const [serverContract, setServerContract] = useState<ServerContract>('v2');
-  const [activeProjectPath, setActiveProjectPath] = useState<string | undefined>(initial?.projectPath);
-  const [onboardingVersion, setOnboardingVersion] = useState(0);
-  const [onboardingActive, setOnboardingActive] = useState(false);
+import type { WorkspaceRuntimeInput } from './workspace-types';
+export function useSessionRuntimeState(input: WorkspaceRuntimeInput, connection: ConnectionState, serverContract: ServerContract) {
+  const settings = input.connection.settings;
+  const setSettings = input.setSettings;
+  const chatPreferences = input.preferences;
+  const [activeProjectPath, setActiveProjectPath] = useState<string | undefined>(input.projectPath);
   const [sessions, setSessions] = useState<Session[]>([]);
   const sessionsRef = useRef<Session[]>([]);
   const [sessionStatuses, setSessionStatuses] = useState<Record<string, SessionStatus>>({});
@@ -63,31 +38,10 @@ export function useOpencodeProviderState(initial?: { settings: OpencodeConnectio
   const [pendingPermissionsBySession, setPendingPermissionsBySession] = useState<Record<string, PendingPermissionRequest[]>>({});
   const [pendingQuestionsBySession, setPendingQuestionsBySession] = useState<Record<string, PendingQuestionRequest[]>>({});
   const [mcpAuthPrompt, setMcpAuthPrompt] = useState<{ mcpName: string; url: string }>();
-  const [savedPermissions, setSavedPermissions] = useState<SavedPermissionRule[]>([]);
-  const [serverProjects, setServerProjects] = useState<Project[]>([]);
-  const [currentProjectPath, setCurrentProjectPath] = useState<string>();
-  const [serverRootPath, setServerRootPath] = useState<string>();
   const [isRefreshingMessages, setIsRefreshingMessages] = useState(false);
   const [isRefreshingDiffs, setIsRefreshingDiffs] = useState(false);
-  const [isRefreshingProjectCatalog, setIsRefreshingProjectCatalog] = useState(false);
   const [isBootstrappingChat, setIsBootstrappingChat] = useState(false);
   const [activeSessionsVisible, setActiveSessionsVisible] = useState(false);
-  const [currentConfig, setCurrentConfig] = useState<Config>();
-  const [availableProviders, setAvailableProviders] = useState<ProviderOption[]>([]);
-  const [providerAuthMethodsById, setProviderAuthMethodsById] = useState<Record<string, ProviderAuthMethod[]>>({});
-  const [availableModels, setAvailableModels] = useState<ModelOption[]>([]);
-  const [availableAgents, setAvailableAgents] = useState<AgentOption[]>([]);
-  const [availableSkills, setAvailableSkills] = useState<Skill[]>([]);
-  const [availableReferences, setAvailableReferences] = useState<Reference[]>([]);
-  const [chatPreferences, setChatPreferences] = useState<ChatPreferences>(defaultChatPreferences);
-  const [lastSessionByConnection, setLastSessionByConnection] = useState<Record<string, Record<string, string>>>({});
-  const [favoriteSessions, setFavoriteSessions] = useState<FavoriteSession[]>([]);
-  const [projectPathsByConnection, setProjectPathsByConnection] = useState<ProjectPathsByConnection>({});
-  const [commands, setCommands] = useState<Command[]>([]);
-  const [projectFileStatuses, setProjectFileStatuses] = useState<File[]>([]);
-  const [selectedProjectFile, setSelectedProjectFile] = useState<ProjectFile>();
-  const [vcsInfo, setVcsInfo] = useState<VcsInfo>();
-  const [diagnostics, setDiagnostics] = useState<Diagnostics>();
 
   const connectionScope = useMemo(
     () => getConnectionScope({ serverUrl: settings.serverUrl, username: settings.username }),
@@ -100,15 +54,12 @@ export function useOpencodeProviderState(initial?: { settings: OpencodeConnectio
   const activeProjectPathRef = useRef(activeProjectPath);
   const connectionRef = useRef(connection);
   const serverContractRef = useRef<ServerContract>('v2');
-  const serverProjectsRef = useRef<Project[]>([]);
   const currentSessionIdRef = useRef<string | undefined>(undefined);
   const pendingDeepLinkTargetRef = useRef<import('@/providers/opencode-provider-types').SessionDeepLinkTarget | undefined>(undefined);
   const deepLinkOperationRef = useRef<object | undefined>(undefined);
   const scopeGenerationRef = useRef(0);
   const serverGenerationRef = useRef(0);
   const clientGenerationRef = useRef(new WeakMap<object, number>());
-  const catalogGenerationRef = useRef(new WeakMap<object, number>());
-  const initialConnectStartedRef = useRef(false);
   const bootstrapPromiseRef = useRef<Promise<string | undefined> | null>(null);
   const bootstrapTokenRef = useRef<object | undefined>(undefined);
   const sessionRefreshTimeoutsRef = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
@@ -122,7 +73,6 @@ export function useOpencodeProviderState(initial?: { settings: OpencodeConnectio
   const suppressedPendingRequestIdsRef = useRef<Set<string>>(new Set());
   const promptSubmissionRef = useRef<{ active: boolean; sessionId?: string }>({ active: false });
   const projectFileRequestRef = useRef(0);
-  const projectPathsByConnectionRef = useRef(projectPathsByConnection);
 
   // Latest-ref mirror. Updating refs in a layout effect (instead of during
   // render) is the React-sanctioned pattern: the mirrored values are only read
@@ -139,17 +89,13 @@ export function useOpencodeProviderState(initial?: { settings: OpencodeConnectio
     diffScopeBySessionRef.current = diffScopeBySession;
     selectedDiffMessageBySessionRef.current = selectedDiffMessageBySession;
     messagesBySessionRef.current = messagesBySession;
-    projectPathsByConnectionRef.current = projectPathsByConnection;
   });
 
   return {
     settings, setSettings,
-    controlPlaneUrl, setControlPlaneUrl,
-    connection, setConnection,
-    serverContract, setServerContract,
+    connection,
+    serverContract,
     activeProjectPath, setActiveProjectPath,
-    onboardingVersion, setOnboardingVersion,
-    onboardingActive, setOnboardingActive,
     sessions, setSessions, sessionsRef,
     sessionStatuses, setSessionStatuses,
     currentSessionId, setCurrentSessionId,
@@ -162,31 +108,10 @@ export function useOpencodeProviderState(initial?: { settings: OpencodeConnectio
     pendingPermissionsBySession, setPendingPermissionsBySession,
     pendingQuestionsBySession, setPendingQuestionsBySession,
     mcpAuthPrompt, setMcpAuthPrompt,
-    savedPermissions, setSavedPermissions,
-    serverProjects, setServerProjects,
-    currentProjectPath, setCurrentProjectPath,
-    serverRootPath, setServerRootPath,
     isRefreshingMessages, setIsRefreshingMessages,
     isRefreshingDiffs, setIsRefreshingDiffs,
-    isRefreshingProjectCatalog, setIsRefreshingProjectCatalog,
     isBootstrappingChat, setIsBootstrappingChat,
     activeSessionsVisible, setActiveSessionsVisible,
-    currentConfig, setCurrentConfig,
-    availableProviders, setAvailableProviders,
-    providerAuthMethodsById, setProviderAuthMethodsById,
-    availableModels, setAvailableModels,
-    availableAgents, setAvailableAgents,
-    availableSkills, setAvailableSkills,
-    availableReferences, setAvailableReferences,
-    chatPreferences, setChatPreferences,
-    lastSessionByConnection, setLastSessionByConnection,
-    favoriteSessions, setFavoriteSessions,
-    projectPathsByConnection, setProjectPathsByConnection,
-    commands, setCommands,
-    projectFileStatuses, setProjectFileStatuses,
-    selectedProjectFile, setSelectedProjectFile,
-    vcsInfo, setVcsInfo,
-    diagnostics, setDiagnostics,
     connectionScope,
     settingsRef,
     chatPreferencesRef,
@@ -194,15 +119,12 @@ export function useOpencodeProviderState(initial?: { settings: OpencodeConnectio
     activeProjectPathRef,
     connectionRef,
     serverContractRef,
-    serverProjectsRef,
     currentSessionIdRef,
     pendingDeepLinkTargetRef,
     deepLinkOperationRef,
     scopeGenerationRef,
     serverGenerationRef,
     clientGenerationRef,
-    catalogGenerationRef,
-    initialConnectStartedRef,
     bootstrapPromiseRef,
     bootstrapTokenRef,
     sessionRefreshTimeoutsRef,
@@ -216,8 +138,7 @@ export function useOpencodeProviderState(initial?: { settings: OpencodeConnectio
     suppressedPendingRequestIdsRef,
     promptSubmissionRef,
     projectFileRequestRef,
-    projectPathsByConnectionRef,
   };
 }
 
-export type OpencodeProviderState = ReturnType<typeof useOpencodeProviderState>;
+export type SessionRuntimeState = ReturnType<typeof useSessionRuntimeState>;

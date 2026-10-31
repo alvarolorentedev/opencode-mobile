@@ -1,7 +1,7 @@
-import { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 
-import { isRetryableConnectionFailure } from '@/lib/opencode/client/errors';
 import type { ConnectionFailureKind } from '@/lib/opencode/client';
+import { isRetryableConnectionFailure } from '@/lib/opencode/client/errors';
 
 const RETRY_DELAYS_MS = [1000, 2000, 5000, 10_000, 20_000] as const;
 
@@ -73,9 +73,9 @@ export function useConnectionRetry({
     && online
     && (!kind || isRetryableConnectionFailure(kind))
     && attempt < RETRY_DELAYS_MS.length;
-  return {
+  return useMemo(() => ({
     retryAt: canRetry ? retryAt : undefined,
     attempt: status === 'error' ? attempt : 0,
     maxAttempts: RETRY_DELAYS_MS.length,
-  };
+  }), [canRetry, retryAt, status, attempt]);
 }

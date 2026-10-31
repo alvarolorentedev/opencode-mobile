@@ -81,11 +81,14 @@ describe('multi-server contracts', () => {
       yield { type: 'connected' };
       await gate;
     });
+    const observed = vi.fn();
+    const detach = subscribe.observe(observed);
     const a = new AbortController(), b = new AbortController();
     const first = subscribe({}, a.signal), second = subscribe({}, b.signal);
     expect((await first.next()).value.type).toBe('connected');
     expect((await second.next()).value.type).toBe('connected');
     expect(opens).toBe(1);
+    expect(observed).toHaveBeenCalledOnce(); detach();
     const pending = first.next(); a.abort(); await pending;
     expect(cancelled).toBe(0);
     const other = second.next(); b.abort(); await other;
@@ -182,6 +185,7 @@ it('keeps lifecycle decisions current and closes projects without resetting reta
     '@/lib/opencode/client/url': { getServerHostname: (value: string) => value },
     '@/providers/persistence-hydration': { createPersistenceWriter: () => writer },
     '@/providers/shared-event-stream': { createSharedEventStream: () => () => {} },
+    '@/providers/services/session-service': { listActiveSessions: vi.fn(async () => ({ sessions: [], statuses: {} })) },
     '@/providers/workspace-focus': workspaceFocus,
     '@/providers/workspace-storage': { WORKSPACES_STORAGE_KEY: 'workspaces', parseWorkspaces: () => ({ connections: entries, focus: { connectionId: 'a', projectPath: '/repo' } }), serializeWorkspaces: () => 'stored' },
     '@/providers/workspace-types': { workspaceKey: ({ connectionId, projectPath }: any) => JSON.stringify([connectionId, projectPath]) },
@@ -191,15 +195,26 @@ it('keeps lifecycle decisions current and closes projects without resetting reta
   await driver.settle();
   expect(isEnabled('a')).toBe(true);
   const snapshot = (id: string, path: string) => ({ enabled: true, native: { settings: driver.value.connections.find((entry: any) => entry.id === id).settings },
-    suspend: vi.fn(), values: { projectsValue: { activeProjectPath: path }, conversationValue: { conversation: { active: true }, toggleConversationMode: vi.fn(async () => {}) }, connectionValue: { connection: { status: 'connected' } } } });
+    catalogSessions: [], suspend: vi.fn(), values: { sessionLibraryValue: { sessions: [], refreshSessions: vi.fn(async () => []) }, currentSessionValue: { openSession: vi.fn(async () => {}), openDeepLinkSession: vi.fn(async () => ({ ok: true })) }, projectsValue: { activeProjectPath: path }, conversationValue: { conversation: { active: true }, toggleConversationMode: vi.fn(async () => {}) }, connectionValue: { connection: { status: 'connected' } } } });
   const original = snapshot('a', '/repo'), other = snapshot('a', '/other'), b = snapshot('b', '/repo');
   driver.value.publish('["a","/repo"]', original); driver.value.publish('["a","/other"]', other); driver.value.publish('["b","/repo"]', b); driver.flush();
+  original.catalogSessions = [{ id: 'collision', directory: '/repo' }] as never[];
+  await expect(driver.value.navigate({ connectionId: 'b', projectPath: '/repo', sessionId: 'collision' })).rejects.toThrow('was not found');
+  expect(b.values.currentSessionValue.openSession).not.toHaveBeenCalled();
+  b.catalogSessions = [{ id: 'collision', directory: '/repo' }] as never[];
+  await driver.value.navigate({ connectionId: 'b', projectPath: '/repo', sessionId: 'collision' }); driver.flush();
+  expect(b.values.currentSessionValue.openSession).toHaveBeenCalledWith('collision');
+  driver.value.select({ connectionId: 'a', projectPath: '/repo' }); driver.flush();
+  await driver.value.openExternalSession({ connectionId: 'b', projectPath: '/repo', sessionId: 'collision' });
+  expect(b.values.currentSessionValue.openDeepLinkSession).toHaveBeenCalledWith({ sessionId: 'collision', projectPath: '/repo' }, expect.any(AbortSignal));
+  expect(original.values.currentSessionValue.openDeepLinkSession).not.toHaveBeenCalled();
+  driver.value.select({ connectionId: 'a', projectPath: '/repo' }); driver.flush();
   await driver.value.closeProject({ connectionId: 'a', projectPath: '/repo' }); driver.flush();
   expect(driver.value.focus).toEqual({ connectionId: 'a', projectPath: '/other' });
   expect(shell.projectPathsByConnectionRef.current['http://a:']).toEqual(['/other']);
   expect(driver.value.snapshots['["a","/repo"]']).toBe(original);
   expect(original.suspend).not.toHaveBeenCalled();
-  expect(original.values.conversationValue.toggleConversationMode).toHaveBeenCalledOnce();
+  expect(original.values.conversationValue.toggleConversationMode).toHaveBeenCalledTimes(4);
   await driver.value.disconnect('a'); driver.flush();
   expect(isEnabled('a')).toBe(false); expect(isEnabled('b')).toBe(true);
   expect(original.suspend).toHaveBeenCalledOnce(); expect(other.suspend).toHaveBeenCalledOnce(); expect(b.suspend).not.toHaveBeenCalled();

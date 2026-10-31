@@ -51,9 +51,10 @@ async function performFetch(
   init: RequestInit | undefined,
   settings: OpencodeConnectionSettings | undefined,
   timeoutMs: number | undefined,
+  lifetimeSignal?: AbortSignal,
 ) {
   const response = timeoutMs
-    ? await fetchWithReadDeadline(transport, input, init, timeoutMs)
+    ? await fetchWithReadDeadline(transport, input, init, timeoutMs, lifetimeSignal)
     : await transport(input, init);
   recordRequest();
   measureResponseBytes(response);
@@ -67,7 +68,7 @@ async function performFetch(
   return response;
 }
 
-export async function fetchConnection(input: RequestInfo | URL, init?: RequestInit, settings?: OpencodeConnectionSettings) {
+export async function fetchConnection(input: RequestInfo | URL, init?: RequestInit, settings?: OpencodeConnectionSettings, lifetimeSignal?: AbortSignal) {
   if (settings?.connect) {
     const error = getConnectCredentialError(settings.connect, settings.password);
     if (error) throw new Error(error);
@@ -84,9 +85,10 @@ export async function fetchConnection(input: RequestInfo | URL, init?: RequestIn
   const startedAt = Date.now();
 
   for (let attempt = 0; ; attempt += 1) {
+    if (lifetimeSignal?.aborted) throw new Error('OpenCode read canceled.');
     const finishStats = recordRequestStart();
     try {
-      const response = await performFetch(transport, input, init, settings, timeoutMs);
+      const response = await performFetch(transport, input, init, settings, timeoutMs, lifetimeSignal);
       if (shouldRetryRead({ method, url, attempt, elapsedMs: Date.now() - startedAt, status: response.status })) {
         finishStats({ status: response.status, retried: true });
         // Drain tiny retryable gateway errors so the connection can be reused,
@@ -120,7 +122,7 @@ function measureResponseBytes(response: Response) {
   }
 }
 
-export function createScopedFetch(baseUrl: string, pathPrefix: string, directory?: string, settings?: OpencodeConnectionSettings, readSignal?: AbortSignal) {
+export function createScopedFetch(baseUrl: string, pathPrefix: string, directory?: string, settings?: OpencodeConnectionSettings, readSignal?: AbortSignal, lifetimeSignal?: AbortSignal) {
   return async (input: RequestInfo | URL, init?: RequestInit) => {
     const currentUrl =
       typeof input === 'string'
@@ -138,7 +140,7 @@ export function createScopedFetch(baseUrl: string, pathPrefix: string, directory
     }
 
     if (typeof input === 'string' || input instanceof URL) {
-      return fetchConnection(parsed.toString(), readSignal ? { ...init, signal: readSignal } : init, settings);
+      return fetchConnection(parsed.toString(), readSignal ? { ...init, signal: readSignal } : init, settings, lifetimeSignal);
     }
 
     return fetchConnection(parsed.toString(), {
@@ -149,11 +151,11 @@ export function createScopedFetch(baseUrl: string, pathPrefix: string, directory
       signal: input.signal,
       ...init,
       ...(readSignal ? { signal: readSignal } : {}),
-    }, settings);
+    }, settings, lifetimeSignal);
   };
 }
 
-export function createPrefixFetch(origin: string, pathPrefix: string, settings?: OpencodeConnectionSettings, readSignal?: AbortSignal) {
+export function createPrefixFetch(origin: string, pathPrefix: string, settings?: OpencodeConnectionSettings, readSignal?: AbortSignal, lifetimeSignal?: AbortSignal) {
   return async (input: RequestInfo | URL, init?: RequestInit) => {
     const currentUrl =
       typeof input === 'string'
@@ -168,7 +170,7 @@ export function createPrefixFetch(origin: string, pathPrefix: string, settings?:
     }
 
     if (typeof input === 'string' || input instanceof URL) {
-      return fetchConnection(parsed.toString(), readSignal ? { ...init, signal: readSignal } : init, settings);
+      return fetchConnection(parsed.toString(), readSignal ? { ...init, signal: readSignal } : init, settings, lifetimeSignal);
     }
 
     return fetchConnection(parsed.toString(), {
@@ -179,6 +181,6 @@ export function createPrefixFetch(origin: string, pathPrefix: string, settings?:
       signal: input.signal,
       ...init,
       ...(readSignal ? { signal: readSignal } : {}),
-    }, settings);
+    }, settings, lifetimeSignal);
   };
 }

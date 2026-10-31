@@ -35,11 +35,20 @@ const CachedCapabilitiesSchema = z.object({
   references: z.array(z.record(z.string(), z.unknown())).optional(),
 });
 
-function parse(raw: string): CachedCapabilities {
+function persistedConfig(config?: Config): Config | undefined {
+  return config && {
+    model: config.model, enabled_providers: config.enabled_providers, disabled_providers: config.disabled_providers,
+    provider: Object.fromEntries(Object.keys(config.provider ?? {}).map((id) => [id, {}])),
+    agent: Object.fromEntries(Object.entries(config.agent ?? {}).map(([id, agent]) => [id, { disable: agent?.disable }])),
+  };
+}
+
+function parse(raw: string): CachedCapabilities & { cachedAt: number } {
   const value = CachedCapabilitiesSchema.parse(JSON.parse(raw));
-  if (Date.now() - value.cachedAt > CACHE_TTL_MS) throw new Error('Capabilities cache expired.');
+  if (Date.now() - value.cachedAt > CACHE_TTL_MS || value.cachedAt > Date.now()) throw new Error('Capabilities cache expired.');
   return {
-    ...(value.config ? { config: value.config as Config } : {}),
+    cachedAt: value.cachedAt,
+    ...(value.config ? { config: persistedConfig(value.config as Config) } : {}),
     providers: value.providers as ProviderOption[],
     connected: value.connected,
     providerAuthMethodsById: value.providerAuthMethodsById as Record<string, ProviderAuthMethod[]>,
@@ -50,38 +59,52 @@ function parse(raw: string): CachedCapabilities {
   };
 }
 
-export async function hydrateCapabilitiesCache(
+export async function hydrateCapabilitiesSnapshot(
   connectionScope: string,
   projectPath: string,
-  apply: (value: CachedCapabilities) => void,
+  apply: (value: CachedCapabilities, cachedAt: number) => void,
   isCurrent: () => boolean,
   storage: Storage = AsyncStorage,
 ) {
   if (!connectionScope || !projectPath) return;
   await loadPersistedValue(storage, capabilitiesCacheKey(connectionScope, projectPath), parse, (value) => {
-    if (isCurrent()) apply(value);
+    if (isCurrent()) apply(value, value.cachedAt);
   });
 }
 
-export async function persistCapabilitiesCache(
+export async function persistCapabilitiesSnapshot(
   connectionScope: string,
   projectPath: string,
   value: CachedCapabilities,
+  cachedAt: number,
   storage: Storage = AsyncStorage,
 ) {
   if (!connectionScope || !projectPath) return;
-  const serialized = JSON.stringify({ cachedAt: Date.now(), ...value });
+  const config = persistedConfig(value.config);
+  const serialized = JSON.stringify({ ...value, config, cachedAt });
   if (serialized.length > MAX_CHARS) return;
   await storage.setItem(capabilitiesCacheKey(connectionScope, projectPath), serialized).catch(() => undefined);
 }
 
-export async function migrateCapabilitiesCaches(previousScope: string, nextScope: string) {
+export async function migrateCapabilitiesSnapshots(previousScope: string, nextScope: string) {
   const keys = await AsyncStorage.getAllKeys();
   const prefix = 'opencode-mobile.capabilities.';
   for (const key of keys.filter((entry) => entry.startsWith(`${prefix}${previousScope}.`))) {
     const raw = await AsyncStorage.getItem(key);
     if (!raw) continue;
-    try { parse(raw); } catch { continue; }
-    await AsyncStorage.setItem(`${prefix}${nextScope}.${key.slice(`${prefix}${previousScope}.`.length)}`, raw);
+    let value;
+    try { value = parse(raw); } catch { await AsyncStorage.removeItem(key); continue; }
+    const nextKey = `${prefix}${nextScope}.${key.slice(`${prefix}${previousScope}.`.length)}`;
+    const existing = await AsyncStorage.getItem(nextKey);
+    let newer = false;
+    try { newer = Boolean(existing && parse(existing).cachedAt >= value.cachedAt); } catch {}
+    if (!newer) await AsyncStorage.setItem(nextKey, JSON.stringify(value));
+    if (key !== nextKey) await AsyncStorage.removeItem(key);
   }
+}
+
+export async function clearCapabilitiesSnapshots(scope: string) {
+  const prefix = `opencode-mobile.capabilities.${scope}.`;
+  const keys = (await AsyncStorage.getAllKeys()).filter((key) => key.startsWith(prefix));
+  if (keys.length) await AsyncStorage.multiRemove(keys);
 }

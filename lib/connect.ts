@@ -194,11 +194,14 @@ export class ConnectApiError extends Error {
   }
 }
 
-async function connectRequest(controlPlaneUrl: string, path: string, token?: string, method = 'GET', body?: object) {
+async function connectRequest(controlPlaneUrl: string, path: string, token?: string, method = 'GET', body?: object, signal?: AbortSignal) {
   const base = requireControlPlane(controlPlaneUrl);
   if (token !== undefined && !token.trim()) throw new ConnectApiError(401);
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), 30_000);
+  const abort = () => controller.abort();
+  signal?.addEventListener('abort', abort, { once: true });
+  if (signal?.aborted) abort();
   try {
     let response: Response;
     try {
@@ -213,30 +216,13 @@ async function connectRequest(controlPlaneUrl: string, path: string, token?: str
     try { value = await response.json(); } catch { throw new Error('Invalid control plane response. Retry to recover the completed request.'); }
     if (!response.ok) throw new ConnectApiError(response.status, value);
     return value;
-  } finally { clearTimeout(timer); }
+  } finally { clearTimeout(timer); signal?.removeEventListener('abort', abort); }
 }
 
-const catalogCache = new Map<string, { expiresAt: number; value: ConnectCatalog }>();
-const catalogRequests = new Map<string, Promise<ConnectCatalog>>();
 const subscriptionClaims = new Map<string, Promise<ConnectSession>>();
 
-export async function getConnectCatalog(controlPlaneUrl: string): Promise<ConnectCatalog> {
-  const base = requireControlPlane(controlPlaneUrl);
-  const cached = catalogCache.get(base);
-  if (cached && cached.expiresAt > Date.now()) return JSON.parse(JSON.stringify(cached.value)) as ConnectCatalog;
-  let pending = catalogRequests.get(base);
-  if (!pending) {
-    pending = fetchConnectCatalog(base).then((value) => {
-      catalogCache.set(base, { value, expiresAt: Date.now() + 5 * 60_000 });
-      return value;
-    }).finally(() => catalogRequests.delete(base));
-    catalogRequests.set(base, pending);
-  }
-  return JSON.parse(JSON.stringify(await pending)) as ConnectCatalog;
-}
-
-async function fetchConnectCatalog(controlPlaneUrl: string): Promise<ConnectCatalog> {
-  const value = await connectRequest(controlPlaneUrl, '/v1/subscriptions/catalog') as ConnectCatalog | undefined;
+export async function getConnectCatalog(controlPlaneUrl: string, signal?: AbortSignal): Promise<ConnectCatalog> {
+  const value = await connectRequest(controlPlaneUrl, '/v1/subscriptions/catalog', undefined, 'GET', undefined, signal) as ConnectCatalog | undefined;
   if (!value || !Array.isArray(value.plans) || !value.plans.length) throw new Error('Cloud Link subscription catalog is unavailable.');
   const identities = new Set<string>();
   return { plans: value.plans.map((plan) => {
@@ -289,8 +275,8 @@ export function parseConnectClaim(controlPlaneUrl: string, value: unknown): Conn
   return Object.fromEntries(fields.map((key) => [key, result[key]])) as ConnectClaim;
 }
 
-export async function listConnectMachines(controlPlaneUrl: string, token: string): Promise<ConnectMachine[]> {
-  const value = await connectRequest(controlPlaneUrl, '/v1/machines', token) as { machines?: unknown } | undefined;
+export async function listConnectMachines(controlPlaneUrl: string, token: string, signal?: AbortSignal): Promise<ConnectMachine[]> {
+  const value = await connectRequest(controlPlaneUrl, '/v1/machines', token, 'GET', undefined, signal) as { machines?: unknown } | undefined;
   if (!Array.isArray(value?.machines)) throw new Error('Invalid machine list response.');
   const fields = ['id', 'name', 'hostname', 'public_url', 'created_at'] as const;
   return value.machines.map((entry) => {

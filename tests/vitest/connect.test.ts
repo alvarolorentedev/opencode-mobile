@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { QueryClient } from '@tanstack/react-query';
 import { Buffer } from 'node:buffer';
 import { readFile } from 'node:fs/promises';
 import { createRequire } from 'node:module';
@@ -175,13 +176,15 @@ try {
   const catalog = { plans: [{ id: 'connect', entitlements: ['connect'], products: [{ store: 'apple', productId: 'test.apple' }, { store: 'google', productId: 'test.google', basePlanId: 'monthly', offerIds: ['trial'] }] }] };
   response = catalog;
   const beforeCatalog = calls.length;
-  const catalogs = await Promise.all([1, 2].map(() => connect.getConnectCatalog(pairing.controlPlaneUrl)));
+  const queryCache = new QueryClient({ defaultOptions: { queries: { retry: false, gcTime: Infinity, staleTime: 300_000 } } });
+  const readCatalog = (url: string) => queryCache.fetchQuery({ queryKey: ['cloudlink', url, 'catalog'], queryFn: () => connect.getConnectCatalog(url) });
+  const catalogs = await Promise.all([1, 2].map(() => readCatalog(pairing.controlPlaneUrl)));
   assert.deepEqual(catalogs[0], catalog);
   assert.equal(calls.length, beforeCatalog + 1, 'Concurrent catalog reads share one request.');
-  catalogs[0].plans.length = 0;
-  assert.deepEqual(await connect.getConnectCatalog(pairing.controlPlaneUrl), catalog);
+  const view = structuredClone(catalogs[0]); view.plans.length = 0;
+  assert.deepEqual(await readCatalog(pairing.controlPlaneUrl), catalog);
   assert.equal(calls.length, beforeCatalog + 1, 'Cached catalog is protected from consumer mutation.');
-  await connect.getConnectCatalog(customControlPlane);
+  await readCatalog(customControlPlane);
   assert.equal(calls.length, beforeCatalog + 2, 'Production and staging catalogs are separate.');
   assert.equal(calls.at(-1)!.init.headers.Authorization, undefined);
   response = { plans: [catalog.plans[0], catalog.plans[0]] };
@@ -189,9 +192,9 @@ try {
   try {
     const expired = originalNow() + 5 * 60_000 + 1;
     Date.now = () => expired;
-    await assert.rejects(connect.getConnectCatalog(pairing.controlPlaneUrl), /Ambiguous/);
+    await assert.rejects(readCatalog(pairing.controlPlaneUrl), /Ambiguous/);
     response = catalog;
-    assert.deepEqual(await connect.getConnectCatalog(pairing.controlPlaneUrl), catalog, 'Failed refreshes can be retried.');
+    assert.deepEqual(await readCatalog(pairing.controlPlaneUrl), catalog, 'Failed refreshes can be retried.');
   } finally { Date.now = originalNow; }
   assert.equal(new connect.ConnectApiError(409, { machine_id: 'machine-1' }).machineId, 'machine-1');
   assert.equal(new connect.ConnectApiError(503, { machine_id: 'machine-1' }).machineId, 'machine-1');
@@ -503,7 +506,8 @@ for (const platform of ['apple', 'google']) {
     try {
       runtime.mount(() => {
         const [controlPlaneUrl, setControlPlaneUrl] = runtime.react.useState(pairing.controlPlaneUrl);
-        return hook.useConnectState({ controlPlaneUrl, setControlPlaneUrl, isHydrated: true,
+        const [profiles, setProfiles] = runtime.react.useState([]);
+        return hook.useConnectState({ profiles, setProfiles, controlPlaneUrl, setControlPlaneUrl, isHydrated: true,
           switchConnection: async () => ({ status: 'connected' }), disconnect: async () => {},
           beforeProfileRefresh: async () => {}, onProfileRefreshed: () => {}, isActiveProfile: () => true,
         });
@@ -694,7 +698,8 @@ for (const platform of ['apple', 'google']) {
     try {
       runtime.mount(() => {
         const [controlPlaneUrl, setControlPlaneUrl] = runtime.react.useState(staging);
-        return hook.useConnectState({ controlPlaneUrl, setControlPlaneUrl, isHydrated: true,
+        const [profiles, setProfiles] = runtime.react.useState([]);
+        return hook.useConnectState({ profiles, setProfiles, controlPlaneUrl, setControlPlaneUrl, isHydrated: true,
           switchConnection: async () => { events.push('connect'); return { status: 'connected' }; },
           disconnect: async () => {}, beforeProfileRefresh: async () => {}, onProfileRefreshed: () => {}, isActiveProfile: () => true,
         });

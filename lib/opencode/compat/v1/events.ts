@@ -35,7 +35,6 @@ export function dispatchCompatibilityEvent(event: GlobalEvent['payload'], action
       }));
       actions.scheduleSessionRefresh(sessionId, { sessions: true, messages: true, diff: true, todos: true, delayMs: 50 });
       void actions.refreshPendingInteractions().catch(() => undefined);
-      void actions.refreshServerFeatures().catch(() => undefined);
       return;
     }
     case 'session.error': {
@@ -75,48 +74,18 @@ export function dispatchCompatibilityEvent(event: GlobalEvent['payload'], action
       actions.scheduleSessionRefresh(event.properties.sessionID, { sessions: true, messages: true, messageMode: 'replace', diff: true, todos: true });
       return;
     }
-    case 'catalog.updated':
-      void actions.refreshChatCapabilities().catch(() => undefined);
-      return;
-    case 'reference.updated':
-    case 'plugin.added':
-    case 'models-dev.refreshed':
-    case 'integration.updated':
-      void actions.refreshChatCapabilities().catch(() => undefined);
-      return;
-    case 'project.updated':
-    case 'project.directories.updated':
-      void actions.refreshProjectCatalog(true).catch(() => undefined);
-      return;
-    case 'file.edited':
-    case 'file.watcher.updated':
-    case 'vcs.branch.updated':
-      void actions.refreshServerFeatures().catch(() => undefined);
-      return;
     case 'pty.created':
     case 'pty.updated':
     case 'pty.exited':
     case 'pty.deleted':
       void actions.refreshTerminals().catch(() => undefined);
       return;
-    case 'worktree.ready':
-    case 'worktree.failed':
-      void actions.refreshWorktrees().catch(() => undefined);
-      void actions.refreshProjectCatalog(true).catch(() => undefined);
-      return;
-    case 'mcp.tools.changed':
-      void actions.refreshMcpServers().catch(() => undefined);
-      return;
     case 'mcp.browser.open.failed': {
       // The server could not open the MCP OAuth URL itself. Surface it so the
       // user can complete authentication instead of the tool silently hanging.
       actions.setMcpAuthPrompt({ mcpName: event.properties.mcpName, url: event.properties.url });
-      void actions.refreshMcpServers().catch(() => undefined);
       return;
     }
-    case 'lsp.updated':
-      void actions.refreshDiagnostics().catch(() => undefined);
-      return;
     case 'session.diff': {
       const sessionId = event.properties.sessionID;
       // V1 serves whole-file `before`/`after` contents, not a unified patch, so

@@ -1,3 +1,4 @@
+import { setServerQueryOnline } from '@/providers/queries/client';
 import NetInfo from '@react-native-community/netinfo';
 import { useEffect, useState } from 'react';
 
@@ -20,16 +21,12 @@ export function useNetworkStatus(): NetworkStatus {
     // failures remain authoritative.
     NetInfo.configure({ reachabilityShouldRun: () => false, shouldFetchWiFiSSID: false });
     const apply = (state: Parameters<typeof normalizeNetworkState>[0]) => {
-      if (active) setStatus((current) => {
-        const next = normalizeNetworkState(state);
-        return current.online === next.online
-          && current.type === next.type
-          && current.expensive === next.expensive
-          && current.constrained === next.constrained
-          && current.generation === next.generation
-          ? current
-          : next;
-      });
+      if (!active) return;
+      const next = normalizeNetworkState(state);
+      setServerQueryOnline(next.online);
+      setStatus((current) => current.online === next.online && current.type === next.type
+        && current.expensive === next.expensive && current.constrained === next.constrained
+        && current.generation === next.generation ? current : next);
     };
     // `addEventListener` immediately invokes the listener with the current
     // state on native, so the first sample does not wait for a transition.

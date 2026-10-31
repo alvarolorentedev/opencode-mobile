@@ -1,11 +1,12 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { QueryObserver } from '@tanstack/react-query';
-import { createServerQueryClient } from '@/providers/queries/client';
-import { connectionQueryKey, projectQueryKey } from '@/providers/queries/keys';
+import { AppState, Platform } from 'react-native';
+import { createServerQueryClient, isServerQueryForeground } from '@/providers/queries/client';
+import { connectionQueryKey, projectQueryKey, replaceQueryPartition } from '@/providers/queries/keys';
 import { createWorkspaceWaiters } from '@/providers/workspace-lifecycle';
 import { connectionTransition, type ConnectionLifecycle } from '@/providers/connection-lifecycle';
 import { connectTransition, initialConnectLifecycle } from '@/providers/connect/lifecycle';
-import { serverDataResources } from '@/lib/opencode/server-data-events';
+import { isServerConnectedEvent, serverDataResources } from '@/lib/opencode/server-data-events';
 
 vi.mock('react-native', () => ({ AppState: { currentState: 'active' }, Platform: { OS: 'web' } }));
 afterEach(() => vi.useRealTimers());
@@ -13,12 +14,39 @@ const identity = { connectionId: 'machine-a', connectionScope: 'server-user-a', 
 const client = { __opencode: { contract: 'v2' as const, directory: '/repo' } };
 
 describe('server query ownership', () => {
+  it('gates a native background launch before AppState effects subscribe', () => {
+    try {
+      Object.assign(Platform, { OS: 'android' });
+      Object.assign(AppState, { currentState: 'background' });
+      expect(isServerQueryForeground()).toBe(false);
+      Object.assign(AppState, { currentState: 'active' });
+      expect(isServerQueryForeground()).toBe(true);
+    } finally { Object.assign(Platform, { OS: 'web' }); Object.assign(AppState, { currentState: 'active' }); }
+  });
   it('partitions colliding paths by connection, credential generation and protocol without keying credentials', () => {
     const a = projectQueryKey(identity, client, 'directory', 'src');
     const b = projectQueryKey({ ...identity, connectionId: 'machine-b' }, client, 'directory', 'src');
     const rotated = projectQueryKey({ ...identity, authRevision: 1 }, client, 'directory', 'src');
     expect(new Set([a, b, rotated].map((key) => JSON.stringify(key))).size).toBe(3);
     expect(connectionQueryKey(identity, 'v1')).not.toEqual(connectionQueryKey(identity, 'v2'));
+  });
+  it('renews only the owning partition and preserves timestamps without stale data winning', () => {
+    const cache = createServerQueryClient();
+    const next = { ...identity, connectionScope: 'renewed-user', authRevision: 1 };
+    const other = { ...identity, connectionId: 'machine-b' };
+    const key = projectQueryKey(identity, client, 'capabilities');
+    cache.setQueryData(key, ['old'], { updatedAt: 123 });
+    cache.setQueryData(projectQueryKey(identity, client, 'configuration'), { model: 'old' }, { updatedAt: 123 });
+    cache.setQueryData(projectQueryKey(other, client, 'capabilities'), ['other']);
+    cache.setQueryData(projectQueryKey(next, client, 'configuration'), { model: 'fresh' }, { updatedAt: 456 });
+    replaceQueryPartition(cache, identity, next, true);
+    expect(cache.getQueryState(projectQueryKey(next, client, 'capabilities'))?.dataUpdatedAt).toBe(123);
+    expect(cache.getQueryData(projectQueryKey(next, client, 'configuration'))).toEqual({ model: 'fresh' });
+    expect(cache.getQueryData(projectQueryKey(other, client, 'capabilities'))).toEqual(['other']);
+    expect(cache.getQueryData(key)).toBeUndefined();
+    replaceQueryPartition(cache, next, { ...next, authRevision: 2 }, false);
+    expect(cache.getQueryData(projectQueryKey({ ...next, authRevision: 2 }, client, 'capabilities'))).toBeUndefined();
+    cache.clear();
   });
   it('deduplicates simultaneous readers and leaves retry/polling to the transport and workflow', async () => {
     const cache = createServerQueryClient();
@@ -88,7 +116,11 @@ it('rejects late connection settlement and preserves Cloud Link purchase recover
   expect(connectTransition(verified, { type: 'failed', message: 'Save failed' })).toMatchObject({ retryable: true, purchaseRecovery: 'verified', phase: 'idle' });
 });
 it('maps routine events independently from transcript/prompt/terminal reconciliation', () => {
+  expect(isServerConnectedEvent({ type: 'compatibility', payload: { type: 'server.connected' } } as never)).toBe(true);
+  expect(serverDataResources({ type: 'server.connected' } as never)).toEqual(expect.arrayContaining(['projects', 'location', 'mcp', 'file-status', 'preview']));
   expect(serverDataResources({ type: 'filesystem.changed' } as never)).toContain('directory');
+  expect(serverDataResources({ type: 'session.status', data: { sessionID: 's', status: { type: 'idle' } } } as never)).toContain('file-status');
+  expect(serverDataResources({ type: 'session.execution.succeeded', data: { sessionID: 's' } } as never)).toContain('file-status');
   expect(serverDataResources({ type: 'credential.updated' } as never)).toContain('capabilities');
   expect(serverDataResources({ type: 'session.text.delta' } as never)).toEqual([]);
   expect(serverDataResources({ type: 'pty.updated' } as never)).toEqual([]);

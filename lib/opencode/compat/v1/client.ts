@@ -4,7 +4,7 @@ import { createScopedFetch, getRequestHeaders } from '../../client/fetch';
 import { normalizeServerUrl } from '../../client/url';
 import type { OpencodeConnectionSettings } from '../../client/types';
 export type LegacyClient = OpencodeClient;
-export function buildV1Compatibility(settings: OpencodeConnectionSettings, signal?: AbortSignal): LegacyClient {
+export function buildV1Compatibility(settings: OpencodeConnectionSettings, signal?: AbortSignal, lifetimeSignal?: AbortSignal): LegacyClient {
   const server = normalizeServerUrl(settings.serverUrl);
-  return createOpencodeClient({ baseUrl: server.origin, fetch: createScopedFetch(server.origin, server.pathPrefix, settings.directory.trim() || undefined, settings, signal), headers: getRequestHeaders(settings), responseStyle: 'fields', throwOnError: true });
+  return createOpencodeClient({ baseUrl: server.origin, fetch: createScopedFetch(server.origin, server.pathPrefix, settings.directory.trim() || undefined, settings, signal, lifetimeSignal), headers: getRequestHeaders(settings), responseStyle: 'fields', throwOnError: true });
 }

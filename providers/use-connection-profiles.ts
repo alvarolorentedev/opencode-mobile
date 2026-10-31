@@ -1,11 +1,15 @@
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
-import { createProfileId, deleteProfilePassword, findMatchingProfile, getProfilePassword,
-  loadConnectionProfiles, mutateConnectionProfiles, saveProfilePassword, type ConnectionProfile } from '@/lib/connection-profiles';
 import { deleteProfileHeaders, getProfileHeaders, saveProfileHeaders, type ConnectionHeaders } from '@/lib/connection-headers';
-import type { ConnectionContextValue } from '@/providers/opencode-provider-types';
+import {
+  createProfileId, deleteProfilePassword, findMatchingProfile, getProfilePassword,
+  loadConnectionProfiles, mutateConnectionProfiles, saveProfilePassword, type ConnectionProfile
+} from '@/lib/connection-profiles';
+import { getConnectionScope } from '@/lib/connection-scope';
 import { probeConnection } from '@/lib/opencode/client/probe';
 import { getServerHostname, normalizeServerUrl } from '@/lib/opencode/client/url';
 import { resolveLocalPairing } from '@/lib/opencode/pairing';
+import { clearCapabilitiesSnapshots } from '@/providers/capabilities-snapshot';
+import type { ConnectionContextValue } from '@/providers/opencode-provider-types';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef } from 'react';
 
 export type ConnectionProfileInput = Pick<ConnectionProfile, 'name' | 'serverUrl' | 'username'> & {
   password: string;
@@ -14,8 +18,7 @@ export type ConnectionProfileInput = Pick<ConnectionProfile, 'name' | 'serverUrl
 
 export type ConnectionProfileSecrets = { password: string; headers: ConnectionHeaders };
 
-export function useConnectionProfiles({ settings, switchConnection, updateSettings, profileSnapshot, onSaved, onRemoved }: Pick<ConnectionContextValue, 'settings' | 'switchConnection' | 'updateSettings'> & { profileSnapshot: ConnectionProfile[]; onSaved?: (profile: ConnectionProfile, secrets: ConnectionProfileSecrets, previous?: ConnectionProfile) => void; onRemoved?: (profile: ConnectionProfile) => Promise<void> }) {
-  const [profiles, setProfiles] = useState<ConnectionProfile[]>([]);
+export function useConnectionProfiles({ settings, switchConnection, updateSettings, profiles, setProfiles, onSaved, onRemoved }: Pick<ConnectionContextValue, 'settings' | 'switchConnection' | 'updateSettings'> & { profiles: ConnectionProfile[]; setProfiles: import('react').Dispatch<import('react').SetStateAction<ConnectionProfile[]>>; onSaved?: (profile: ConnectionProfile, secrets: ConnectionProfileSecrets, previous?: ConnectionProfile) => void; onRemoved?: (profile: ConnectionProfile) => Promise<void> }) {
   const latest = useRef({ settings, switchConnection, updateSettings });
   useLayoutEffect(() => { latest.current = { settings, switchConnection, updateSettings }; });
   const mutations = useRef<Promise<unknown>>(Promise.resolve());
@@ -27,10 +30,10 @@ export function useConnectionProfiles({ settings, switchConnection, updateSettin
   const refresh = useCallback(() => mutate(async () => {
     const stored = await loadConnectionProfiles(true);
     setProfiles(stored);
-  }), [mutate]);
+  }), [mutate, setProfiles]);
   useEffect(() => {
     void refresh().catch((reason) => console.warn('Could not refresh connection profiles.', reason));
-  }, [profileSnapshot, refresh]);
+  }, [refresh]);
   const connect = useCallback(async (profile: ConnectionProfile) => {
     const [password, headers] = await Promise.all([getProfilePassword(profile.id), getProfileHeaders(profile.id)]);
     return latest.current.switchConnection({ serverUrl: profile.serverUrl, username: profile.username, password, headers, connect: profile.connect }, profile.modelPreferences);
@@ -49,6 +52,7 @@ export function useConnectionProfiles({ settings, switchConnection, updateSettin
     const profile: ConnectionProfile = { ...previous, id: id ?? createProfileId(), name, serverUrl: values.serverUrl.trim(), username: values.username.trim() };
     const oldPassword = previous ? await getProfilePassword(profile.id) : '';
     const oldHeaders = previous ? await getProfileHeaders(profile.id) : {};
+    if (previous && (oldPassword !== values.password || JSON.stringify(oldHeaders) !== JSON.stringify(values.headers))) await clearCapabilitiesSnapshots(getConnectionScope(previous));
     await saveProfilePassword(profile.id, values.password);
     await saveProfileHeaders(profile.id, values.headers);
     const next = [...stored.filter((entry) => entry.id !== profile.id), profile];
@@ -65,7 +69,7 @@ export function useConnectionProfiles({ settings, switchConnection, updateSettin
       latest.current.updateSettings({ serverUrl: values.serverUrl, username: values.username, password: values.password, headers: values.headers });
     }
     return profile;
-  })), [mutate, onSaved]);
+  })), [mutate, onSaved, setProfiles]);
   const remove = useCallback((id: string) => mutate(() => mutateConnectionProfiles(async (stored, saveMetadata) => {
     if (findMatchingProfile(stored, latest.current.settings)?.id === id) throw new Error('The active connection cannot be deleted.');
     const next = stored.filter((profile) => profile.id !== id);
@@ -75,7 +79,7 @@ export function useConnectionProfiles({ settings, switchConnection, updateSettin
     setProfiles(next);
     await deleteProfilePassword(id);
     await deleteProfileHeaders(id);
-  })), [mutate, onRemoved]);
+  })), [mutate, onRemoved, setProfiles]);
   return useMemo(() => ({ profiles, refresh, connect, passwordForEditing, headersForEditing, probe, pair, save, remove }), [profiles, refresh, connect, passwordForEditing, headersForEditing, probe, pair, save, remove]);
 }
 

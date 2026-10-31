@@ -126,19 +126,23 @@ send a queued prompt after being killed.
 
 ## Cached read path
 
-Two bounded AsyncStorage caches are keyed by connection scope + project (and
+Bounded AsyncStorage snapshots are keyed by connection scope + project (and
 session for transcripts):
 
 - `providers/transcript-cache.ts`: newest 24 records, 200k-character cap, 7-day
   TTL. Hydrates when a session opens before the live read, so a chat paints on a
   cold 3G start. Writes are debounced and capped so streaming bursts do not
   cause a storage write per page.
-- `providers/capabilities-cache.ts`: last-known config, providers, models,
+- `providers/capabilities-snapshot.ts`: last-known config, providers, models,
   agents, and auth methods, 300k-character cap and 7-day TTL. A cached model
   list keeps the composer usable while the first capability refresh is in
   flight. A fresh response always wins over a cache response that lands later.
 
-Cloud Link credential rotation migrates all three connection-scoped caches
+Routine server reads use [scoped TanStack Query entries](state-and-data.md#routine-server-reads).
+Background retained workspaces unsubscribe; stale active reads recover on foreground/online
+return. Query owns no polling timer or automatic mutation replay.
+
+Cloud Link credential rotation migrates all three connection-scoped snapshots
 (session list, transcript, capabilities) to the rotated scope.
 
 ## Mutations

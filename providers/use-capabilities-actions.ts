@@ -1,12 +1,13 @@
-import { getProviders, setProviderCredentialsForClient, removeProviderCredentials, startProviderAuthorization, completeProviderAuthorization } from '@/providers/services/capabilities-service';
+import { completeProviderAuthorization, getProviders, removeProviderCredentials, setProviderCredentialsForClient, startProviderAuthorization } from '@/providers/services/capabilities-service';
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type Dispatch, type SetStateAction } from 'react';
 
 import { getLocalAutoModelStatus } from '@/lib/auto-model/models';
 import { normalizeAutoModelPreferences } from '@/lib/auto-model/preferences';
-import type { Config, Reference, Skill } from '@/lib/opencode/types';
 import type { ScopedOpencodeClient } from '@/lib/opencode/client';
-import { hydrateCapabilitiesCache, persistCapabilitiesCache, type CachedCapabilities } from '@/providers/capabilities-cache';
+import type { Config } from '@/lib/opencode/types';
+import { type CachedCapabilities } from '@/providers/capabilities-snapshot';
 import { getClassifierModelId } from '@/providers/opencode-auto-model';
+import type { ModelOption } from '@/providers/opencode-model-selection';
 import {
   getConfiguredProviderIds,
   getEnabledModelIds,
@@ -18,8 +19,9 @@ import {
   recordRecentModelId,
 } from '@/providers/opencode-model-selection';
 import type { ChatPreferences } from '@/providers/opencode-preferences';
-import type { AgentOption, ModelOption } from '@/providers/opencode-model-selection';
-import type { ProviderAuthMethod, ProviderAuthValues, ProviderOption } from '@/providers/opencode-provider-types';
+import type { ProviderAuthValues, ProviderOption } from '@/providers/opencode-provider-types';
+import { useQueryClient } from '@tanstack/react-query';
+import { useQueryIdentity } from '@/providers/queries/client';
 import { probeServerClassifier, type ServerClassifierStatus } from '@/providers/services/model-routing-service';
 
 type CapabilitiesActionsInput = {
@@ -28,36 +30,28 @@ type CapabilitiesActionsInput = {
   connectionScope: string;
   isCurrentClient: (candidate: object) => boolean;
   currentConfig?: Config;
+  capabilities?: CachedCapabilities;
+  refreshChatCapabilities: () => Promise<void>;
   availableProviders: ProviderOption[];
   availableModels: ModelOption[];
   chatPreferences: ChatPreferences;
-  setCurrentConfig: Dispatch<SetStateAction<Config | undefined>>;
-  setAvailableProviders: Dispatch<SetStateAction<ProviderOption[]>>;
-  setProviderAuthMethodsById: Dispatch<SetStateAction<Record<string, ProviderAuthMethod[]>>>;
-  setAvailableModels: Dispatch<SetStateAction<ModelOption[]>>;
-  setAvailableAgents: Dispatch<SetStateAction<AgentOption[]>>;
-  setAvailableSkills: Dispatch<SetStateAction<Skill[]>>;
-  setAvailableReferences: Dispatch<SetStateAction<Reference[]>>;
   setChatPreferences: Dispatch<SetStateAction<ChatPreferences>>;
 };
 
 export function useCapabilitiesActions({
   client,
   activeProjectPath,
-  connectionScope,
+  capabilities,
+  refreshChatCapabilities,
   isCurrentClient,
   availableProviders,
   availableModels,
   chatPreferences,
-  setCurrentConfig,
-  setAvailableProviders,
-  setProviderAuthMethodsById,
-  setAvailableModels,
-  setAvailableAgents,
-  setAvailableSkills,
-  setAvailableReferences,
   setChatPreferences,
 }: CapabilitiesActionsInput) {
+  const identity = useQueryIdentity();
+  const cache = useQueryClient();
+  const connectionScope = JSON.stringify([identity.connectionId, identity.connectionScope, identity.authRevision, activeProjectPath]);
   const [serverProbe, setServerProbe] = useState<{ client: ScopedOpencodeClient; scope: string; status: ServerClassifierStatus }>(() => ({
     client,
     scope: connectionScope,
@@ -77,9 +71,11 @@ export function useCapabilitiesActions({
     setServerProbe({ client, scope: connectionScope, status });
   }, [client, connectionScope]);
 
-  const requireClient = useCallback(() => {
+  const requireClient = useCallback(async () => {
     if (!isCurrentClient(client)) throw new Error('Connect this server before changing its providers.');
-  }, [client, isCurrentClient]);
+    await cache.cancelQueries({ queryKey: ['opencode', identity.connectionId] });
+    if (!isCurrentClient(client)) throw new Error('The connection changed before updating its providers.');
+  }, [cache, client, identity.connectionId, isCurrentClient]);
 
   const checkServerClassifier = useCallback(async (modelId?: string) => {
     const classifierModelId = modelId ?? getClassifierModelId(chatPreferences.autoModel, visibleModels);
@@ -162,14 +158,6 @@ export function useCapabilitiesActions({
   }, [chatPreferences.autoModel, checkServerClassifier, client.__opencode.contract, connectionScope, visibleModels]);
 
   const applyCapabilities = useCallback((result: CachedCapabilities) => {
-    setCurrentConfig(result.config);
-    setAvailableProviders(result.providers);
-    setProviderAuthMethodsById(result.providerAuthMethodsById);
-    setAvailableModels(result.models);
-    setAvailableAgents(result.agents);
-    setAvailableSkills(result.skills ?? []);
-    setAvailableReferences(result.references ?? []);
-
     setChatPreferences((current) => {
       const configuredProviderIds = getConfiguredProviderIds(result.config, result.connected, result.models);
       const configuredModels = result.models.filter((model) => configuredProviderIds.has(model.providerID));
@@ -194,58 +182,12 @@ export function useCapabilitiesActions({
         autoApprove: client.__opencode.contract === 'v2' ? current.autoApprove : false,
       };
     });
-  }, [client.__opencode.contract, setAvailableAgents, setAvailableModels, setAvailableProviders, setAvailableReferences, setAvailableSkills, setChatPreferences, setCurrentConfig, setProviderAuthMethodsById]);
-
-  const hydratedRef = useRef<{ key: string; client: object } | undefined>(undefined);
-  const freshRef = useRef(false);
-  const clientRef = useRef(client);
-  useLayoutEffect(() => {
-    if (clientRef.current !== client) {
-      clientRef.current = client;
-      freshRef.current = false;
-    }
-  }, [client]);
-  useEffect(() => {
-    if (!activeProjectPath) return;
-    const key = `${connectionScope}\u0000${activeProjectPath}`;
-    if (hydratedRef.current?.key === key && hydratedRef.current.client === client) return;
-    hydratedRef.current = { key, client };
-    void hydrateCapabilitiesCache(connectionScope, activeProjectPath, (cached) => {
-      if (!freshRef.current) applyCapabilities(cached);
-    }, () => isCurrentClient(client));
-  }, [activeProjectPath, applyCapabilities, client, connectionScope, isCurrentClient]);
-
-  const refreshChatCapabilities = useCallback(async () => {
-    // discoverChatCapabilities returns an empty catalog without a project. That
-    // snapshot is not authoritative, so never let it reconcile (and erase) the
-    // server-scoped choices while the project context is still resolving.
-    if (!isCurrentClient(client) || !activeProjectPath) return;
-    const result = await import('@/providers/services/capabilities-service').then((m) => m.discoverChatCapabilities(client, activeProjectPath));
-    if (!isCurrentClient(client)) {
-      return;
-    }
-
-    freshRef.current = true;
-    applyCapabilities(result);
-    // Do not replace a useful last-known catalog with an empty reconnect read.
-    // The next successful response will refresh the cache again.
-    if (result.models.length > 0) {
-      void persistCapabilitiesCache(connectionScope, activeProjectPath, {
-        config: result.config,
-        providers: result.providers,
-        connected: result.connected,
-        providerAuthMethodsById: result.providerAuthMethodsById,
-        models: result.models,
-        agents: result.agents,
-        skills: result.skills,
-        references: result.references,
-      });
-    }
-  }, [activeProjectPath, applyCapabilities, client, connectionScope, isCurrentClient]);
+  }, [client.__opencode.contract, setChatPreferences]);
+  useEffect(() => { if (capabilities && activeProjectPath) applyCapabilities(capabilities); }, [activeProjectPath, applyCapabilities, capabilities]);
 
   const setProviderAuth = useCallback(
     async (providerId: string, values: ProviderAuthValues) => {
-      requireClient();
+      await requireClient();
       const key = typeof values.key === 'string' ? values.key.trim() : '';
       if (!key) {
         throw new Error('Enter a provider credential first.');
@@ -258,14 +200,14 @@ export function useCapabilitiesActions({
   );
 
   const removeProvider = useCallback(async (providerId: string) => {
-    requireClient();
+    await requireClient();
     await removeProviderCredentials(client, providerId);
     await refreshChatCapabilities();
   }, [client, requireClient, refreshChatCapabilities]);
 
   const startProviderOAuth = useCallback(
     async (providerId: string, methodIndex: number, inputs?: ProviderAuthValues) => {
-    requireClient();
+    await requireClient();
       const authorization = await startProviderAuthorization(client, providerId, methodIndex, inputs);
       if (!authorization) {
         throw new Error('OpenCode did not return OAuth authorization details.');
@@ -281,7 +223,7 @@ export function useCapabilitiesActions({
   );
 
   const completeAutomaticProviderOAuth = useCallback(async (providerId: string) => {
-    requireClient();
+    await requireClient();
     // On V2 the server owns the automatic OAuth callback, so wait on the attempt
     // status it records. V1 only exposes the connected provider list.
     if (client.providerOAuth) {
@@ -305,32 +247,33 @@ export function useCapabilitiesActions({
   }, [client, isCurrentClient, refreshChatCapabilities, requireClient]);
 
   const cancelProviderOAuth = useCallback(async (providerId: string) => {
-    requireClient();
+    await requireClient();
     if (!client.providerOAuth) return;
     await client.providerOAuth.cancel(providerId);
   }, [client, requireClient]);
 
   const completeProviderOAuth = useCallback(async (providerId: string, methodIndex: number, code: string) => {
-    requireClient();
+    await requireClient();
     await completeProviderAuthorization(client, providerId, methodIndex, code);
     await refreshChatCapabilities();
   }, [client, requireClient, refreshChatCapabilities]);
 
   const addProviderAccount = useCallback(async (providerId: string, values: ProviderAuthValues, label?: string) => {
-    requireClient();
+    await requireClient();
     if (!client.accounts) throw new Error('Managing multiple provider accounts requires OpenCode 2.');
     await client.accounts.add(providerId, values, label);
-  }, [client, requireClient]);
+    await refreshChatCapabilities();
+  }, [client, refreshChatCapabilities, requireClient]);
 
   const activateProviderAccount = useCallback(async (credentialId: string) => {
-    requireClient();
+    await requireClient();
     if (!client.accounts) throw new Error('Managing multiple provider accounts requires OpenCode 2.');
     await client.accounts.activate(credentialId);
     await refreshChatCapabilities();
   }, [client, requireClient, refreshChatCapabilities]);
 
   const removeProviderAccount = useCallback(async (credentialId: string) => {
-    requireClient();
+    await requireClient();
     if (!client.accounts) throw new Error('Managing multiple provider accounts requires OpenCode 2.');
     await client.accounts.remove(credentialId);
     await refreshChatCapabilities();

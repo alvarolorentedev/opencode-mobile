@@ -4,11 +4,11 @@ import type { ConnectionProfile } from '@/lib/connection-profiles';
 import { getConnectionScope } from '@/lib/connection-scope';
 import { parsePendingNotificationSessions, serializePendingNotificationSessions } from '@/lib/notification-pending';
 import { FAVORITE_SESSIONS_STORAGE_KEY, LAST_SESSION_BY_PROJECT_STORAGE_KEY, PENDING_NOTIFICATION_SESSIONS_STORAGE_KEY } from '@/lib/storage-keys';
+import { migrateCapabilitiesSnapshots } from '@/providers/capabilities-snapshot';
 import { parseFavoriteSessions, serializeFavoriteSessions } from '@/providers/favorites-storage';
 import { parseLastSessionByConnection, serializeLastSessionByConnection } from '@/providers/last-session-storage';
 import { migrateConnectionSessionCaches } from '@/providers/session-cache';
 import { migrateTranscriptCaches } from '@/providers/transcript-cache';
-import { migrateCapabilitiesCaches } from '@/providers/capabilities-cache';
 
 export async function migrateConnectConnectionScope(previous: ConnectionProfile, next: ConnectionProfile) {
   const oldScope = getConnectionScope(previous), newScope = getConnectionScope(next);
@@ -39,7 +39,7 @@ export async function migrateConnectConnectionScope(previous: ConnectionProfile,
     }
     await migrateConnectionSessionCaches(oldScope, newScope);
     await migrateTranscriptCaches(oldScope, newScope);
-    await migrateCapabilitiesCaches(oldScope, newScope);
+    await migrateCapabilitiesSnapshots(oldScope, newScope);
   } catch (reason) { await rollback(); throw reason; }
   return rollback;
 }

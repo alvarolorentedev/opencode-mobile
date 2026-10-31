@@ -3,6 +3,6 @@ import { createServerAdapter, type Diagnostics } from '@/lib/opencode/contracts/
 
 export type { Diagnostics } from '@/lib/opencode/contracts/server-adapter';
 
-export function loadDiagnostics(client: ScopedOpencodeClient): Promise<Diagnostics> {
-  return createServerAdapter(client).diagnostics.load();
+export function loadHealth(client: ScopedOpencodeClient): Promise<Diagnostics['health']> {
+  return createServerAdapter(client).diagnostics.health();
 }

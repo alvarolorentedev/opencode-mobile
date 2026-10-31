@@ -187,7 +187,8 @@ test('chat library lists recently used sessions from other projects and switches
   await page.getByTestId('chat-library').getByRole('button', { name: 'Open Recent Secondary Session' }).first().click();
 
   await expect(page.locator('text=/Finished: Recent secondary work/ >> visible=true').first()).toBeVisible({ timeout: 20_000 });
-  await expect(page.getByText('secondary-project', { exact: true }).first()).toBeVisible({ timeout: 20_000 });
+  // The canonical VCS query may already have supplied the branch in the header.
+  await expect(page.getByText(/^secondary-project(?: · .+)?$/).first()).toBeVisible({ timeout: 20_000 });
 
   // The group is connection-wide, so it is still listed after switching to the
   // project that owns the session (and the session is not duplicated below).

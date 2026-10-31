@@ -8,6 +8,7 @@ type SetStateAction<T> = T | ((previous: T) => T);
 type Dispatch<T> = (value: T) => void;
 
 export type ReactHooks = {
+  useReducer<S, E>(reduce: (state: S, event: E) => S, initial: S): [S, (event: E) => void];
   useState<T>(initial: T | (() => T)): [T, Dispatch<SetStateAction<T>>];
   useState<T = undefined>(): [T | undefined, Dispatch<SetStateAction<T | undefined>>];
   useEffect(effect: () => void | (() => void), deps?: readonly unknown[]): void;

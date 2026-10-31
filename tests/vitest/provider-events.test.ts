@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 
+import { serverDataResources } from '@/lib/opencode/server-data-events';
 import { handleProviderEvent, type ProviderEventActions } from '@/providers/opencode-provider-events';
 
 function createActions() {
@@ -44,7 +45,7 @@ describe('handleProviderEvent', () => {
       actions,
     );
     expect(calls.setMcpAuthPrompt).toHaveBeenCalledWith({ mcpName: 'remote', url: 'https://example.com/auth' });
-    expect(calls.refreshMcpServers).toHaveBeenCalled();
+    expect(calls.refreshMcpServers).not.toHaveBeenCalled();
   });
 
   it('refreshes the transcript tail on a part delta', () => {
@@ -78,7 +79,8 @@ describe('handleProviderEvent', () => {
   it('refreshes the project catalog when project directories change', () => {
     const { actions, calls } = createActions();
     handleProviderEvent({ id: 'e', type: 'project.updated', data: { projectID: 'p1' } } as never, actions);
-    expect(calls.refreshProjectCatalog).toHaveBeenCalledWith(true);
+    expect(calls.refreshProjectCatalog).not.toHaveBeenCalled();
+    expect(serverDataResources({ type: 'project.updated' } as never)).toContain('projects');
   });
 
   it('refreshes sessions when a subagent asks for permission', () => {
@@ -114,7 +116,7 @@ describe('handleProviderEvent', () => {
     expect(schedule).toHaveBeenCalledOnce();
   });
 
-  it('prefers coalesced refreshes when the provider supplies them', () => {
+  it('keeps routine query invalidation separate from coalesced session reconciliation', () => {
     const { actions, calls } = createActions();
     const scheduleSessions = vi.fn();
     const scheduleCapabilities = vi.fn();
@@ -133,9 +135,12 @@ describe('handleProviderEvent', () => {
     handleProviderEvent({ id: 'e', type: 'project.updated', data: {} } as never, actions);
 
     expect(scheduleSessions).toHaveBeenCalledOnce();
-    expect(scheduleCapabilities).toHaveBeenCalledOnce();
-    expect(scheduleFeatures).toHaveBeenCalledOnce();
-    expect(scheduleCatalog).toHaveBeenCalledOnce();
+    expect(serverDataResources({ type: 'config.updated' } as never)).toContain('configuration');
+    expect(serverDataResources({ type: 'filesystem.changed' } as never)).toContain('directory');
+    expect(serverDataResources({ type: 'project.updated' } as never)).toContain('projects');
+    expect(scheduleCapabilities).not.toHaveBeenCalled();
+    expect(scheduleFeatures).not.toHaveBeenCalled();
+    expect(scheduleCatalog).not.toHaveBeenCalled();
     expect(calls.refreshSessions).not.toHaveBeenCalled();
     expect(calls.refreshChatCapabilities).not.toHaveBeenCalled();
     expect(calls.refreshServerFeatures).not.toHaveBeenCalled();

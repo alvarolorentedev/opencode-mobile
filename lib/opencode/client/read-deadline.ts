@@ -9,6 +9,7 @@ export async function fetchWithReadDeadline(
   input: RequestInfo | URL,
   init?: RequestInit,
   timeoutMs = READ_TIMEOUT_MS,
+  lifetimeSignal?: AbortSignal,
 ): Promise<Response> {
   const controller = new AbortController();
   const upstream = init?.signal ?? (typeof input === 'object' && 'signal' in input ? input.signal : undefined);
@@ -22,9 +23,10 @@ export async function fetchWithReadDeadline(
     controller.abort();
     cleanup();
   }, timeoutMs);
-  const cleanup = () => { clearTimeout(timer); upstream?.removeEventListener('abort', abort); };
+  const cleanup = () => { clearTimeout(timer); upstream?.removeEventListener('abort', abort); lifetimeSignal?.removeEventListener('abort', abort); };
   upstream?.addEventListener('abort', abort, { once: true });
-  if (upstream?.aborted) abort();
+  lifetimeSignal?.addEventListener('abort', abort, { once: true });
+  if (upstream?.aborted || lifetimeSignal?.aborted) abort();
   // A response may be inspected without consuming its body.
   void deadline.catch(() => undefined);
   const wrap = (response: Response, original = true): Response => new Proxy(response, {

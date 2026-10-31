@@ -1,11 +1,11 @@
-import { createContext, useContext, useEffect, useMemo, useState, type PropsWithChildren } from 'react';
-import { ActivityIndicator, View } from 'react-native';
-import { useUpdates } from '@/providers/opencode-contexts';
 import type { Session } from '@/lib/opencode/types';
-import type { ProjectPathsByConnection } from '@/providers/opencode-provider-types';
+import { useUpdates } from '@/providers/opencode-contexts';
 import { OpencodeProviderTree } from '@/providers/opencode-provider-tree';
+import type { ProjectPathsByConnection } from '@/providers/opencode-provider-types';
 import { useWorkspaceConnections } from '@/providers/use-workspace-connections';
 import { workspaceKey, type NewWorktreeChatResult, type NewWorktreeChatTarget, type WorkspaceCatalog, type WorkspaceTarget, type WorkspaceValues } from '@/providers/workspace-types';
+import { createContext, useContext, useEffect, useMemo, useState, type PropsWithChildren } from 'react';
+import { ActivityIndicator, View } from 'react-native';
 
 export type WorkspaceRegistry = ReturnType<typeof useWorkspaceConnections> & {
   createChat: (target: WorkspaceTarget) => Promise<Session>;
@@ -50,11 +50,15 @@ export function WorkspaceScope({ target, children }: PropsWithChildren<{ target?
   const updates = useUpdates();
   const { ensure, valuesFor } = registry;
   const incoming = useMemo(() => valuesFor(target), [target, valuesFor]);
-  const [retained, setRetained] = useState(incoming);
-  if (incoming && retained !== incoming) setRetained(incoming);
-  const values = incoming ?? retained;
+  const [retainedTarget, setRetainedTarget] = useState(target);
+  const values = incoming ?? (retainedTarget ? valuesFor(retainedTarget) : undefined);
   const key = target && workspaceKey(target);
-  useEffect(() => { if (target && !incoming) void ensure(target).catch(() => undefined); }, [key, target, incoming, ensure]);
+  useEffect(() => {
+    if (!target) return;
+    const controller = new AbortController();
+    void ensure(target, { signal: controller.signal }).then(() => setRetainedTarget(target)).catch(() => undefined);
+    return () => controller.abort();
+  }, [key, target, ensure]);
   return values ? <WorkspaceScopeContext.Provider value={target ?? registry.focus}><OpencodeProviderTree values={values} updates={updates}>{children}</OpencodeProviderTree></WorkspaceScopeContext.Provider>
     : <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}><ActivityIndicator /></View>;
 }

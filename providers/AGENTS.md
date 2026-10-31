@@ -10,9 +10,12 @@ before changing provider state. This file is a map, not a second specification.
   instance.
 - `use-workspace-connections.ts` owns explicit connect/disconnect, restoration,
   composite connection/project identity, and focus failover.
+- `connection-runtime.tsx` owns one connection lifecycle and active catalog;
+  `providers/queries/` owns routine server reads and targeted invalidation. Hidden retained
+  workspaces disable and unsubscribe observers.
 - `workspace-runtime.tsx` mounts one retained runtime per connection/project
   branch. Its clients, generations, transcript windows, prompt inbox, approvals,
-  file browser, and PTY connections stay separate.
+  file selection, and PTY connections stay separate.
 - `use-opencode-provider-composition.ts` composes the domain hooks;
   `opencode-provider.tsx` stays a thin wrapper.
 - `opencode-contexts.ts` exposes domain contexts. `opencode-provider-types.ts`

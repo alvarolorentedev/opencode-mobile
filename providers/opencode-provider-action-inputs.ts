@@ -7,39 +7,30 @@ import type {
   ScopedOpencodeClient,
   ServerContract,
 } from '@/lib/opencode/client';
-import type { ProjectFile } from '@/lib/opencode/project-file';
 import type { SessionMessageRecord } from '@/lib/opencode/format';
 import type {
-  Command,
-  Config,
-  File,
   FileDiff,
-  Project,
   Session,
   SessionStatus,
-  Todo,
-  VcsInfo,
+  Todo
 } from '@/lib/opencode/types';
-import type { AgentOption, ModelOption } from '@/providers/opencode-model-selection';
+import type { ModelOption } from '@/providers/opencode-model-selection';
 import type { ChatPreferences } from '@/providers/opencode-preferences';
+import type { SessionRefreshOptions } from '@/providers/opencode-provider-events';
 import type {
   ConnectionState,
   DiffScope,
   FavoriteSession,
-  ProviderAuthMethod,
-  ProviderOption,
-  SessionDeepLinkTarget,
-  ProjectCatalog,
   ProjectPathsByConnection,
-  TranscriptRefreshMode,
+  SessionDeepLinkTarget,
+  TranscriptRefreshMode
 } from '@/providers/opencode-provider-types';
-import type { Diagnostics } from '@/providers/services/diagnostics-service';
-import type { SessionRefreshOptions } from '@/providers/opencode-provider-events';
 
 export type ProjectActionsInput = {
   fileClipboard?: import('./use-file-clipboard').FileClipboard;
   connectionId: string;
   connected: boolean;
+  refreshServerFeatures: () => Promise<void>;
   client: ScopedOpencodeClient;
   catalogClient: ScopedOpencodeClient;
   isCurrentClient: (candidate: object) => boolean;
@@ -50,10 +41,6 @@ export type ProjectActionsInput = {
   clearProjectState: () => void;
   projectPathsByConnectionRef: { current: ProjectPathsByConnection };
   setProjectPathsByConnection: Dispatch<SetStateAction<ProjectPathsByConnection>>;
-  serverProjectsRef: { current: Project[] };
-  setServerProjects: Dispatch<SetStateAction<Project[]>>;
-  setCurrentProjectPath: Dispatch<SetStateAction<string | undefined>>;
-  setServerRootPath: Dispatch<SetStateAction<string | undefined>>;
   connectionScope: string;
   connectionScopeRef: { current: string };
   isHydrated: boolean;
@@ -61,7 +48,6 @@ export type ProjectActionsInput = {
   sessionsRef: { current: Session[] };
   setSessionStatuses: Dispatch<SetStateAction<Record<string, SessionStatus>>>;
   locallyCreatedSessionsRef: { current: Map<string, number> };
-  setIsRefreshingProjectCatalog: Dispatch<SetStateAction<boolean>>;
   setIsRefreshingDiffs: Dispatch<SetStateAction<boolean>>;
   setDiffsBySession: Dispatch<SetStateAction<Record<string, FileDiff[]>>>;
   setVcsDiffsByScope: Dispatch<SetStateAction<Record<'uncommitted' | 'branch', FileDiff[]>>>;
@@ -69,11 +55,6 @@ export type ProjectActionsInput = {
   setPendingPermissionsBySession: Dispatch<SetStateAction<Record<string, PendingPermissionRequest[]>>>;
   setPendingQuestionsBySession: Dispatch<SetStateAction<Record<string, PendingQuestionRequest[]>>>;
   suppressedPendingRequestIdsRef?: { current: Set<string> };
-  setProjectFileStatuses: Dispatch<SetStateAction<File[]>>;
-  setSelectedProjectFile: Dispatch<SetStateAction<ProjectFile | undefined>>;
-  setVcsInfo: Dispatch<SetStateAction<VcsInfo | undefined>>;
-  setCommands: Dispatch<SetStateAction<Command[]>>;
-  setDiagnostics: Dispatch<SetStateAction<Diagnostics | undefined>>;
   setDiffScopeBySession: Dispatch<SetStateAction<Record<string, DiffScope>>>;
   setSelectedDiffMessageBySession: Dispatch<SetStateAction<Record<string, string | undefined>>>;
   selectedDiffMessageBySessionRef: { current: Record<string, string | undefined> };
@@ -142,70 +123,15 @@ export type SessionActionsInput = {
   chatPreferences: ChatPreferences;
 };
 
-export type ConnectionActionsInput = {
-  settings: OpencodeConnectionSettings;
-  setSettings: Dispatch<SetStateAction<OpencodeConnectionSettings>>;
-  controlPlaneUrl: string;
-  setControlPlaneUrl: Dispatch<SetStateAction<string>>;
-  connection: ConnectionState;
-  setConnection: Dispatch<SetStateAction<ConnectionState>>;
-  serverContract: ServerContract;
-  setServerContract: Dispatch<SetStateAction<ServerContract>>;
-  activeProjectPath?: string;
-  setActiveProjectPath: Dispatch<SetStateAction<string | undefined>>;
-  activeProjectPathRef: { current: string | undefined };
-  projectPathsByConnectionRef: { current: ProjectPathsByConnection };
-  connectionScopeRef: { current: string };
-  clearProjectState: () => void;
-  softResetProjectState: () => void;
-  isHydrated: boolean;
-  isCurrentCatalogClient: (candidate: object) => boolean;
-  loadProjectCatalog: (silent?: boolean, targetClient?: ScopedOpencodeClient) => Promise<ProjectCatalog>;
-  selectProject: (path: string) => void;
-  refreshSessions: () => Promise<unknown>;
-  refreshActiveSessions: () => Promise<unknown>;
-  ensureActiveSessionRef: { current: () => Promise<string | undefined> };
-  serverProjectsRef: { current: Project[] };
-  setServerProjects: Dispatch<SetStateAction<Project[]>>;
-  setCurrentProjectPath: Dispatch<SetStateAction<string | undefined>>;
-  setServerRootPath: Dispatch<SetStateAction<string | undefined>>;
-  setSessions: Dispatch<SetStateAction<Session[]>>;
-  setSessionStatuses: Dispatch<SetStateAction<Record<string, SessionStatus>>>;
-  setCurrentConfig: Dispatch<SetStateAction<Config | undefined>>;
-  setAvailableProviders: Dispatch<SetStateAction<ProviderOption[]>>;
-  setProviderAuthMethodsById: Dispatch<SetStateAction<Record<string, ProviderAuthMethod[]>>>;
-  setAvailableModels: Dispatch<SetStateAction<ModelOption[]>>;
-  setAvailableAgents: Dispatch<SetStateAction<AgentOption[]>>;
-  setMessagesBySession: Dispatch<SetStateAction<Record<string, SessionMessageRecord[]>>>;
-  setDiffsBySession: Dispatch<SetStateAction<Record<string, FileDiff[]>>>;
-  setTodosBySession: Dispatch<SetStateAction<Record<string, Todo[]>>>;
-  setFavoriteSessions: Dispatch<SetStateAction<FavoriteSession[]>>;
-  setLastSessionByConnection: Dispatch<SetStateAction<Record<string, Record<string, string>>>>;
-  setChatPreferences: Dispatch<SetStateAction<ChatPreferences>>;
-  setDiagnostics: Dispatch<SetStateAction<Diagnostics | undefined>>;
-  setSendingState: Dispatch<SetStateAction<{ sessionId?: string; active: boolean }>>;
-  settingsRef: { current: OpencodeConnectionSettings };
-  chatPreferencesRef: { current: ChatPreferences };
-  serverContractRef: { current: ServerContract };
-  connectionRef: { current: ConnectionState };
-  serverGenerationRef: { current: number };
-  catalogGenerationRef: { current: WeakMap<object, number> };
-  scopeGenerationRef: { current: number };
-  currentSessionIdRef: { current: string | undefined };
-  pendingDeepLinkTargetRef: { current: SessionDeepLinkTarget | undefined };
-  deepLinkOperationRef: { current: object | undefined };
-  initialConnectStartedRef: { current: boolean };
-};
-
 // Each extracted action hook declares only the slice it consumes. The aggregate
 // inputs above are the composition contracts used by the provider wiring; these
 // aliases keep sub-hooks from silently depending on unrelated setters and refs.
 export type ProjectCatalogInput = Pick<ProjectActionsInput,
-  'client' | 'catalogClient' | 'isCurrentClient' | 'isCurrentCatalogClient' | 'activeProjectPath' |
+  'connected' | 'client' | 'catalogClient' | 'isCurrentClient' | 'isCurrentCatalogClient' | 'activeProjectPath' |
   'setActiveProjectPath' | 'activeProjectPathRef' | 'clearProjectState' | 'projectPathsByConnectionRef' |
-  'setProjectPathsByConnection' | 'serverProjectsRef' | 'setServerProjects' | 'setCurrentProjectPath' |
-  'setServerRootPath' | 'connectionScope' | 'connectionScopeRef' | 'isHydrated' | 'setSessions' |
-  'setSessionStatuses' | 'setIsRefreshingProjectCatalog' | 'scopeGenerationRef' | 'serverContract' | 'settingsRef'>;
+  'setProjectPathsByConnection' |
+  'connectionScope' | 'connectionScopeRef' | 'isHydrated' | 'setSessions' |
+  'setSessionStatuses' | 'scopeGenerationRef' | 'serverContract' | 'settingsRef'>;
 export type ProjectRefreshInput = Pick<ProjectActionsInput,
   'activeProjectPath' | 'client' | 'isCurrentClient' | 'setSessions' | 'sessionsRef' | 'setSessionStatuses' |
   'locallyCreatedSessionsRef' | 'setIsRefreshingDiffs' | 'setDiffsBySession' | 'setVcsDiffsByScope' |
@@ -214,9 +140,9 @@ export type ProjectRefreshInput = Pick<ProjectActionsInput,
   'selectedDiffMessageBySessionRef' | 'diffScopeBySessionRef' | 'currentSessionIdRef' | 'messagesBySessionRef' |
   'sessionRefreshTimeoutsRef' | 'sessionRefreshOptionsRef' | 'connectionScope' | 'refreshMessages'>;
 export type ProjectFileInput = Pick<ProjectActionsInput,
-  'fileClipboard' | 'connectionId' | 'connected' | 'client' | 'isCurrentClient' | 'activeProjectPath' | 'setCommands' | 'setProjectFileStatuses' | 'setVcsInfo' |
-  'setDiagnostics' | 'setSelectedProjectFile' | 'projectFileRequestRef' | 'currentSessionIdRef' |
-  'diffScopeBySessionRef' | 'settingsRef'> & {
+  'fileClipboard' | 'connectionId' | 'connected' | 'client' | 'isCurrentClient' | 'activeProjectPath' |
+  'projectFileRequestRef' | 'currentSessionIdRef' |
+  'diffScopeBySessionRef' | 'settingsRef' | 'refreshServerFeatures'> & {
   refreshVcsDiff: (scope: 'uncommitted' | 'branch', silent?: boolean) => Promise<unknown>;
 };
 
@@ -242,16 +168,4 @@ export type SessionBootstrapInput = Pick<SessionActionsInput,
   'refreshChatCapabilities' | 'refreshServerFeatures' | 'setCurrentSessionId' | 'setLastSessionByConnection' |
   'setIsBootstrappingChat'> & {
   createSession: (title?: string) => Promise<Session>;
-};
-
-export type ConnectionConnectInput = Pick<ConnectionActionsInput,
-  'settings' | 'setSettings' | 'activeProjectPath' | 'setActiveProjectPath' | 'activeProjectPathRef' |
-  'clearProjectState' | 'softResetProjectState' | 'isHydrated' | 'isCurrentCatalogClient' | 'loadProjectCatalog' |
-  'serverProjectsRef' | 'setServerProjects' | 'setCurrentProjectPath' | 'setServerRootPath' | 'setSessions' |
-  'setSessionStatuses' | 'setCurrentConfig' | 'setAvailableProviders' | 'setProviderAuthMethodsById' |
-  'setAvailableModels' | 'setAvailableAgents' | 'setMessagesBySession' | 'setDiffsBySession' | 'setTodosBySession' |
-  'setChatPreferences' | 'setDiagnostics' | 'setSendingState' | 'setConnection' | 'setServerContract' | 'settingsRef' |
-  'chatPreferencesRef' | 'serverContractRef' | 'connectionRef' | 'serverGenerationRef' | 'catalogGenerationRef' |
-  'scopeGenerationRef' | 'initialConnectStartedRef'> & {
-  connectSetup: import('@/providers/use-connect-state').ConnectSetup;
 };

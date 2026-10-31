@@ -78,8 +78,8 @@ export async function probeConnection(settings: OpencodeConnectionSettings, sign
   return { status: responses.every((response) => !response) ? 'unreachable' : 'unknown' };
 }
 
-export async function detectServerContract(settings: OpencodeConnectionSettings): Promise<ContractProbeResult> {
-  const result = await probeConnection(settings);
+export async function detectServerContract(settings: OpencodeConnectionSettings, signal?: AbortSignal): Promise<ContractProbeResult> {
+  const result = await probeConnection(settings, signal);
   // Setup must preserve uncertainty; existing connection fallback starts with V2.
   return result.status === 'detected' ? { contract: result.contract, version: result.version } : { contract: 'v2' };
 }

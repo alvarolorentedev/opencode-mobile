@@ -2,22 +2,16 @@ import { useEffect, useRef } from 'react';
 
 import type { ScopedOpencodeClient } from '@/lib/opencode/client';
 import { pruneProviderTranscripts } from '@/providers/transcript-pruning';
-import type { OpencodeProviderState } from '@/providers/use-opencode-provider-state';
+import type { useWorkspaceRuntimeState } from '@/providers/use-workspace-runtime-state';
 
 // Keep a small bounded history so returning to a recent chat paints from
 // memory. Pruning still enforces the record cap per session.
 const RECENT_TRANSCRIPT_SESSIONS = 3;
 
-type ProviderEffectsInput = OpencodeProviderState & {
+type ProviderEffectsInput = ReturnType<typeof useWorkspaceRuntimeState> & {
   active: boolean;
   client: ScopedOpencodeClient;
-  catalogClient: ScopedOpencodeClient;
   isCurrentClient: (candidate: object) => boolean;
-  isHydrated: boolean;
-  onboardingCompleted: boolean;
-  connect: () => Promise<unknown>;
-  refreshActiveSessions: () => Promise<unknown>;
-  refreshWorktrees: () => Promise<unknown>;
   ensureActiveSessionRef: { current: () => Promise<string | undefined> };
   setPromptError: (error: { message: string; occurredAt: number; sessionId?: string } | undefined) => void;
   conversationSessionId?: string;
@@ -27,13 +21,7 @@ type ProviderEffectsInput = OpencodeProviderState & {
 export function useOpencodeProviderEffects({
   active,
   client,
-  catalogClient,
   isCurrentClient,
-  isHydrated,
-  onboardingCompleted,
-  connect,
-  refreshActiveSessions,
-  refreshWorktrees,
   ensureActiveSessionRef,
   setPromptError,
   conversationSessionId,
@@ -56,33 +44,7 @@ export function useOpencodeProviderEffects({
   pendingDeepLinkTargetRef,
   sessionRefreshTimeoutsRef,
   sessionRefreshOptionsRef,
-  initialConnectStartedRef,
 }: ProviderEffectsInput) {
-  useEffect(() => {
-    if (connection.status !== 'connected') {
-      return;
-    }
-    void refreshActiveSessions().catch(() => undefined);
-  }, [catalogClient, connection.status, refreshActiveSessions]);
-
-  useEffect(() => {
-    if (!isHydrated || initialConnectStartedRef.current) {
-      return;
-    }
-
-    initialConnectStartedRef.current = true;
-    if (onboardingCompleted) {
-      void connect();
-    }
-  }, [connect, initialConnectStartedRef, isHydrated, onboardingCompleted]);
-
-  useEffect(() => {
-    if (connection.status !== 'connected' || !activeProjectPath) return;
-    // Worktrees label the active project. MCP, terminals, and archived sessions
-    // load when their own tab/section opens instead of on every connect.
-    void refreshWorktrees().catch(() => undefined);
-  }, [activeProjectPath, connection.status, refreshWorktrees]);
-
   useEffect(() => {
     if (!active || connection.status !== 'connected' || !activeProjectPath) {
       return;

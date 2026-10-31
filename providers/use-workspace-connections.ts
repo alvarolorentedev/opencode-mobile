@@ -1,46 +1,58 @@
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
-import { getConnectionScope, getConnectionUiScope } from '@/lib/connection-scope';
-import { createProfileId, findMatchingProfile, getProfilePassword, loadConnectionProfiles, mutateConnectionProfiles, saveProfilePassword, deleteProfilePassword, pickModelPreferences } from '@/lib/connection-profiles';
 import { deleteProfileHeaders, getProfileHeaders, saveProfileHeaders, type ConnectionHeaders } from '@/lib/connection-headers';
-import { getServerHostname } from '@/lib/opencode/client/url';
+import { createProfileId, deleteProfilePassword, findMatchingProfile, getProfilePassword, loadConnectionProfiles, mutateConnectionProfiles, pickModelPreferences, saveProfilePassword } from '@/lib/connection-profiles';
+import { getConnectionScope, getConnectionUiScope } from '@/lib/connection-scope';
 import { defaultConnectionSettings, type OpencodeConnectionSettings } from '@/lib/opencode/client';
+import { getServerHostname } from '@/lib/opencode/client/url';
+import { clearCapabilitiesSnapshots } from '@/providers/capabilities-snapshot';
 import type { ChatPreferences } from '@/providers/opencode-preferences';
-import type { OpencodeProviderState } from '@/providers/use-opencode-provider-state';
 import { createPersistenceWriter } from '@/providers/persistence-hydration';
+import { listActiveSessions } from '@/providers/services/session-service';
 import { createSharedEventStream } from '@/providers/shared-event-stream';
+import type { WorkspaceShellState } from '@/providers/use-workspace-shell-state';
 import { connectedWorkspaceTarget } from '@/providers/workspace-focus';
+import { createWorkspaceWaiters } from '@/providers/workspace-lifecycle';
 import { parseWorkspaces, serializeWorkspaces, WORKSPACES_STORAGE_KEY } from '@/providers/workspace-storage';
 import { workspaceKey, type ConnectionRecord, type SessionTarget, type WorkspaceSnapshot, type WorkspaceTarget } from '@/providers/workspace-types';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 
 export const SERVER_PREFERENCE_KEYS = ['providerId', 'modelId', 'enabledModelIds', 'providerModelSelections', 'modelVariantSelections', 'recentModelIds', 'mode', 'autoApprove', 'autoModel'] as const;
 export function serverPreferences(value: Partial<ChatPreferences>) {
   return Object.fromEntries(SERVER_PREFERENCE_KEYS.filter((key) => key in value).map((key) => [key, value[key]])) as Partial<ChatPreferences>;
 }
-const tick = () => new Promise<void>((resolve) => setTimeout(resolve, 25));
 
-export function useWorkspaceConnections(shell: OpencodeProviderState, hydrated: boolean) {
+export function useWorkspaceConnections(shell: WorkspaceShellState, hydrated: boolean) {
   const [connections, setConnections] = useState<ConnectionRecord[]>([]);
   const [focus, setFocus] = useState<WorkspaceTarget>();
+  const [retainedFocus, setRetainedFocus] = useState<WorkspaceTarget>();
   const [ready, setReady] = useState(false);
   const [snapshots, setSnapshots] = useState<Record<string, WorkspaceSnapshot>>({});
   const records = useRef(connections), selected = useRef(focus), live = useRef(snapshots);
   const lastAvailable = useRef<string | undefined>(undefined);
   const previousAvailable = useRef<string | undefined>(undefined);
   const shellRef = useRef(shell);
-  const mounted = useRef(true);
+  const [waiters] = useState(createWorkspaceWaiters);
+  const navigation = useRef<AbortController | undefined>(undefined);
   const canPersist = useRef(true);
   const activation = useRef(0);
   const [write] = useState(createPersistenceWriter);
   useLayoutEffect(() => { shellRef.current = shell; });
-  useEffect(() => { mounted.current = true; return () => { mounted.current = false; }; }, []);
+  useEffect(() => { waiters.resume(); return () => { waiters.dispose(); navigation.current?.abort(); }; }, [waiters]);
   const change = useCallback((update: (current: ConnectionRecord[]) => ConnectionRecord[]) => {
     const next = update(records.current);
     if (next.length === records.current.length && next.every((entry, index) => entry === records.current[index])) return;
-    records.current = next; setConnections(next);
-  }, []);
+    const revisioned = next.map((entry) => {
+      const previous = records.current.find((value) => value.id === entry.id);
+      return previous && (previous.settings !== entry.settings || previous.enabled !== entry.enabled || previous.events !== entry.events)
+        ? { ...entry, revision: (previous.revision ?? 0) + 1, authRevision: (previous.authRevision ?? 0) + (previous.settings.password !== entry.settings.password || JSON.stringify(previous.settings.headers) !== JSON.stringify(entry.settings.headers) || getConnectionScope(previous.settings) !== getConnectionScope(entry.settings) ? 1 : 0) } : entry;
+    });
+    records.current = revisioned; setConnections(revisioned); waiters.notify();
+  }, [waiters]);
   const isEnabled = useCallback((id: string) => records.current.some((entry) => entry.id === id && entry.enabled), []);
-  const select = useCallback((target: WorkspaceTarget, persist = true) => { if (persist) canPersist.current = true; selected.current = target; setFocus(target); }, []);
+  const select = useCallback((target: WorkspaceTarget, persist = true) => {
+    if (persist) canPersist.current = true; selected.current = target; setFocus(target);
+    if (Object.entries(live.current).some(([key, value]) => (JSON.parse(key) as string[])[0] === target.connectionId && ((JSON.parse(key) as string[])[1] === target.projectPath || value.values.projectsValue.activeProjectPath === target.projectPath))) setRetainedFocus(target);
+  }, []);
   const clearFocus = useCallback((persist = true) => {
     if (persist) canPersist.current = true;
     selected.current = undefined;
@@ -49,10 +61,15 @@ export function useWorkspaceConnections(shell: OpencodeProviderState, hydrated: 
   const publish = useCallback((key: string, snapshot: WorkspaceSnapshot) => {
     if (live.current[key] === snapshot) return;
     live.current = { ...live.current, [key]: snapshot }; setSnapshots(live.current);
-  }, []);
+    const target = selected.current;
+    if (target && (JSON.parse(key) as string[])[0] === target.connectionId && ((JSON.parse(key) as string[])[1] === target.projectPath || snapshot.values.projectsValue.activeProjectPath === target.projectPath)) {
+      setRetainedFocus((previous) => previous?.connectionId === target.connectionId && previous.projectPath === target.projectPath ? previous : target);
+    }
+    waiters.notify();
+  }, [waiters]);
   const forget = useCallback((key: string) => {
-    const next = { ...live.current }; delete next[key]; live.current = next; setSnapshots(next);
-  }, []);
+    const next = { ...live.current }; delete next[key]; live.current = next; setSnapshots(next); waiters.notify();
+  }, [waiters]);
 
   const saveProfile = useCallback(async (settings: OpencodeConnectionSettings) => mutateConnectionProfiles(async (profiles, save) => {
     const existing = findMatchingProfile(profiles, settings);
@@ -62,6 +79,7 @@ export function useWorkspaceConnections(shell: OpencodeProviderState, hydrated: 
     // Cloud Link credentials are device secrets with no custom headers; a
     // manual connection keeps its gateway headers alongside the password.
     const headers = settings.connect ? {} : settings.headers;
+    if (!settings.connect && (previousPassword !== settings.password || JSON.stringify(previousHeaders) !== JSON.stringify(settings.headers ?? {}))) await clearCapabilitiesSnapshots(getConnectionScope(settings));
     await saveProfilePassword(profile.id, settings.password, Boolean(settings.connect));
     await saveProfileHeaders(profile.id, headers);
     try { if (!existing) await save([...profiles, profile]); }
@@ -168,21 +186,17 @@ export function useWorkspaceConnections(shell: OpencodeProviderState, hydrated: 
     // failed during startup; focus locally and let the next user action persist.
     if (target) select(target, canPersist.current);
   }, [connections, focus, ready, resolveKey, select, snapshots]);
-  const ensure = useCallback(async (target: WorkspaceTarget) => {
-    let key = resolveKey(target);
-    if (!live.current[key]) change((current) => current.map((entry) => entry.id === target.connectionId && !entry.projects.includes(target.projectPath)
+  const readWorkspace = useCallback((target: WorkspaceTarget) => {
+    const entry = records.current.find((item) => item.id === target.connectionId);
+    if (!entry) throw new Error('This server is no longer available.');
+    const snapshot = live.current[resolveKey(target)];
+    return snapshot && snapshot.enabled === entry.enabled && (snapshot.revision ?? 0) === (entry.revision ?? 0) ? snapshot : undefined;
+  }, [resolveKey]);
+  const ensure = useCallback(async (target: WorkspaceTarget, options?: { signal?: AbortSignal }) => {
+    if (!live.current[resolveKey(target)]) change((current) => current.map((entry) => entry.id === target.connectionId && !entry.projects.includes(target.projectPath)
       ? { ...entry, projects: [...entry.projects, target.projectPath] } : entry));
-    const deadline = Date.now() + 20000;
-    while (mounted.current && Date.now() < deadline) {
-      key = resolveKey(target);
-      const snapshot = live.current[key];
-      const entry = records.current.find((item) => item.id === target.connectionId);
-      if (snapshot && snapshot.enabled === entry?.enabled && snapshot.native.settings === entry.settings) return snapshot;
-      if (!records.current.some((entry) => entry.id === target.connectionId)) throw new Error('This server is no longer available.');
-      await tick();
-    }
-    throw new Error('Could not open this workspace.');
-  }, [change, resolveKey]);
+    return waiters.wait(() => readWorkspace(target), options?.signal);
+  }, [change, readWorkspace, resolveKey, waiters]);
   const retry = useCallback(async (id: string) => {
     canPersist.current = true;
     const entry = records.current.find((item) => item.id === id);
@@ -195,23 +209,36 @@ export function useWorkspaceConnections(shell: OpencodeProviderState, hydrated: 
     const runtime = await ensure({ connectionId: id, projectPath });
     return runtime.values.connectionValue.connect();
   }, [change, ensure]);
-  const connectedWorkspace = useCallback(async (target: WorkspaceTarget) => {
+  const connectedWorkspace = useCallback(async (target: WorkspaceTarget, options?: { signal?: AbortSignal }) => {
     const entry = records.current.find((item) => item.id === target.connectionId);
     if (!entry?.enabled) throw new Error('Connect this server before opening its workspace.');
-    let snapshot = await ensure(target);
+    const snapshot = await ensure(target, options);
+    let failure: unknown;
     if (snapshot.values.connectionValue.connection.status !== 'connected') {
-      const status = snapshot.values.connectionValue.connection.status === 'error' ? await retry(target.connectionId) : await snapshot.values.connectionValue.connect();
-      if (status.status !== 'connected') throw new Error(status.message);
+      if (options?.signal?.aborted) throw new Error('This navigation was cancelled.');
+      const attempt = snapshot.values.connectionValue.connection.status === 'error' ? retry(target.connectionId) : snapshot.values.connectionValue.connect();
+      void attempt.catch((error) => { failure = error; waiters.notify(); });
     }
-    const deadline = Date.now() + 20000;
-    while (mounted.current && Date.now() < deadline) {
-      snapshot = await ensure(target);
-      if (snapshot.values.connectionValue.connection.status === 'connected') return snapshot;
+    return waiters.wait(() => {
+      if (failure) throw failure;
       if (!records.current.find((item) => item.id === target.connectionId)?.enabled) throw new Error('Server disconnected.');
-      await tick();
+      const current = readWorkspace(target);
+      const connection = current?.values.connectionValue.connection;
+      if (connection?.status === 'error') throw new Error(connection.message);
+      return connection?.status === 'connected' ? current : undefined;
+    }, options?.signal);
+  }, [ensure, readWorkspace, retry, waiters]);
+  const beginActivation = useCallback((externalSignal?: AbortSignal) => {
+    navigation.current?.abort();
+    const controller = new AbortController(); navigation.current = controller;
+    if (externalSignal) {
+      const cancel = () => controller.abort();
+      externalSignal.addEventListener('abort', cancel, { once: true });
+      controller.signal.addEventListener('abort', () => externalSignal.removeEventListener('abort', cancel), { once: true });
+      if (externalSignal.aborted) controller.abort();
     }
-    throw new Error('Could not connect to this workspace.');
-  }, [ensure, retry]);
+    return controller.signal;
+  }, []);
   const pauseConversation = useCallback(async () => {
     const previous = selected.current && live.current[resolveKey(selected.current)];
     if (previous?.values.conversationValue.conversation.active) await previous.values.conversationValue.toggleConversationMode();
@@ -233,50 +260,57 @@ export function useWorkspaceConnections(shell: OpencodeProviderState, hydrated: 
   // locally. It must not validate against a server session list: that read is
   // slow on remote links and is unnecessary for a chat the app is showing.
   const navigate = useCallback(async (target: SessionTarget) => {
+    const signal = beginActivation();
     const operation = ++activation.current;
-    const check = () => { if (operation !== activation.current) throw new Error('This navigation was cancelled.'); };
+    const check = () => { if (signal.aborted || operation !== activation.current) throw new Error('This navigation was cancelled.'); };
     check();
     await pauseConversation();
-    const next = await connectedWorkspace(target);
+    const next = await connectedWorkspace(target, { signal });
     check();
     // Rows are rendered from a runtime catalog or project list, so a normal tap
     // is known locally. Only stale references (for example an old favorite)
     // need one catalog read to report that the chat no longer exists.
-    const known = () => Object.values(live.current).some((snapshot) => (
+    const known = () => Object.entries(live.current).some(([key, snapshot]) => (
+      (JSON.parse(key) as string[])[0] === target.connectionId && (
       snapshot.catalogSessions.some((session) => session.id === target.sessionId && (!session.directory || session.directory === target.projectPath))
       || snapshot.values.sessionLibraryValue.sessions.some((session) => session.id === target.sessionId && (!session.directory || session.directory === target.projectPath))
-    ));
+    )));
     if (!known()) {
-      await next.values.currentSessionValue.activeSessions.refresh().catch(() => undefined);
-      const deadline = Date.now() + 2000;
-      while (!known() && Date.now() < deadline) await tick();
-      if (!known()) throw new Error(`Session ${target.sessionId} was not found in the ${target.projectPath} project.`);
+      const catalog = await listActiveSessions(next.catalogClient);
+      check();
+      if (!catalog.sessions.some((session) => session.id === target.sessionId && (!session.directory || session.directory === target.projectPath))) {
+        throw new Error(`Session ${target.sessionId} was not found in the ${target.projectPath} project.`);
+      }
     }
     check();
     await next.values.currentSessionValue.openSession(target.sessionId);
     check();
     selectWorkspace(target, next);
-  }, [connectedWorkspace, pauseConversation, selectWorkspace]);
+    navigation.current?.abort();
+  }, [beginActivation, connectedWorkspace, pauseConversation, selectWorkspace]);
   // Workspace focus without a session. Project switching and "new chat" use
   // this; session selection happens separately through navigate/openSession.
   const activate = useCallback(async (target: WorkspaceTarget) => {
+    const signal = beginActivation();
     const operation = ++activation.current;
-    const check = () => { if (operation !== activation.current) throw new Error('This navigation was cancelled.'); };
+    const check = () => { if (signal.aborted || operation !== activation.current) throw new Error('This navigation was cancelled.'); };
     check();
     await pauseConversation();
-    const next = await connectedWorkspace(target);
+    const next = await connectedWorkspace(target, { signal });
     check();
     selectWorkspace(target, next);
-  }, [connectedWorkspace, pauseConversation, selectWorkspace]);
+    navigation.current?.abort();
+  }, [beginActivation, connectedWorkspace, pauseConversation, selectWorkspace]);
   // External link resolution (notifications, widgets, quick actions, OS links)
   // confirms the target against the owning server before switching. In-app
   // navigation must not use this path.
-  const openExternalSession = useCallback(async (target: SessionTarget, signal?: AbortSignal) => {
+  const openExternalSession = useCallback(async (target: SessionTarget, externalSignal?: AbortSignal) => {
+    const signal = beginActivation(externalSignal);
     const operation = ++activation.current;
-    const check = () => { if (signal?.aborted || operation !== activation.current) throw new Error('This session link was cancelled.'); };
+    const check = () => { if (signal.aborted || operation !== activation.current) throw new Error('This session link was cancelled.'); };
     check();
     await pauseConversation();
-    const next = await connectedWorkspace(target);
+    const next = await connectedWorkspace(target, { signal });
     check();
     if (target.connectionId !== selected.current?.connectionId) {
       await next.values.sessionLibraryValue.refreshSessions();
@@ -286,7 +320,8 @@ export function useWorkspaceConnections(shell: OpencodeProviderState, hydrated: 
     if (!opened.ok) throw new Error(opened.error);
     check();
     selectWorkspace(target, next);
-  }, [connectedWorkspace, pauseConversation, selectWorkspace]);
+    navigation.current?.abort();
+  }, [beginActivation, connectedWorkspace, pauseConversation, selectWorkspace]);
   const switchConnection = useCallback(async (settings: Pick<OpencodeConnectionSettings, 'serverUrl' | 'username' | 'password' | 'headers' | 'connect'>, preferences?: Partial<ChatPreferences>, selectWorkspace = true) => {
     const full = { ...settings, directory: '' };
     const profile = await saveProfile(full);
@@ -300,14 +335,20 @@ export function useWorkspaceConnections(shell: OpencodeProviderState, hydrated: 
       // A retained workspace already holds the live server choices. A profile
       // write can lag behind it, so only fill fields the entry is missing.
       preferences: { ...serverPreferences(preferences ?? {}), ...entry.preferences }, events: createSharedEventStream() } : entry)
-      : [...current.filter((entry) => shellRef.current.onboardingVersion > 0 || entry.enabled || entry.id !== getConnectionUiScope(defaultConnectionSettings)), { id, name: profile.name, settings: full, enabled: true, preferences: { autoApprove: false, ...serverPreferences(preferences ?? profile.modelPreferences ?? {}) }, projects: [projectPath], events: createSharedEventStream() }]);
+      : [...current, { id, name: profile.name, settings: full, enabled: true, preferences: { autoApprove: false, ...serverPreferences(preferences ?? profile.modelPreferences ?? {}) }, projects: [projectPath], events: createSharedEventStream() }]);
     const target = { connectionId: id, projectPath };
     const runtime = await ensure(target);
-    if (selectWorkspace) { await pauseConversation(); select(target); }
+    if (selectWorkspace) {
+      await pauseConversation(); select(target);
+      // Retire the onboarding placeholder only after its replacement published,
+      // so changing servers never unmounts the onboarding route tree.
+      change((current) => current.filter((entry) => entry.id === id || entry.enabled || entry.id !== getConnectionUiScope(defaultConnectionSettings)));
+    }
     return runtime.values.connectionValue.connect();
   }, [change, ensure, pauseConversation, saveProfile, select]);
   const disconnect = useCallback(async (id: string) => {
     canPersist.current = true;
+    navigation.current?.abort();
     for (const [key, runtime] of Object.entries(live.current)) if ((JSON.parse(key) as string[])[0] === id) {
       if (runtime.values.conversationValue.conversation.active) await runtime.values.conversationValue.toggleConversationMode();
       runtime.suspend();
@@ -375,5 +416,5 @@ export function useWorkspaceConnections(shell: OpencodeProviderState, hydrated: 
     change((current) => current.filter((entry) => entry.id !== id));
     for (const key of Object.keys(live.current)) if ((JSON.parse(key) as string[])[0] === id) forget(key);
   }, [change, disconnect, forget]);
-  return { isEnabled, closeProject, closeProjects, connectedWorkspace, removeConnection, connections, focus, snapshots, ready, change, select, publish, forget, ensure, resolveKey, activate, navigate, openExternalSession, switchConnection, disconnect, retry, updateSettings, updatePreferences };
+  return { isEnabled, closeProject, closeProjects, connectedWorkspace, removeConnection, connections, focus, retainedFocus, snapshots, ready, change, select, publish, forget, ensure, resolveKey, activate, navigate, openExternalSession, switchConnection, disconnect, retry, updateSettings, updatePreferences };
 }

@@ -1,11 +1,10 @@
-import { createServerAdapter } from '@/lib/opencode/contracts/server-adapter';
 import type { ScopedOpencodeClient } from '@/lib/opencode/client';
-import type { McpLocalConfig, McpRemoteConfig } from '@/lib/opencode/types';
+import { createServerAdapter } from '@/lib/opencode/contracts/server-adapter';
 import { addPlugin as addPluginText, createConfigText, parseConfigText, pluginTarget, readCommands, readMcpServers, readPlugins, removeCommand as removeCommandText, removeMcpServer as removeMcpServerText, removePlugin as removePluginText, setCommand, setMcpServer } from '@/lib/opencode/extensions/jsonc';
+import { isInside, isSystemConfigPath, isWindowsPath, parentPath, pathKey, resolveGlobalConfigRoot, selectConfigTarget, shellQuote } from '@/lib/opencode/extensions/scope';
+import { assertSkillId, isEditableSkillPath, skillDocument, skillFile, skillTrashPath, trashRoot } from '@/lib/opencode/extensions/skills';
 import { buildExtensionRows, splitRows } from '@/lib/opencode/extensions/snapshot';
 import { configBackupPath, restoreConfigBackup, writeConfigTransaction, type TransactionIo } from '@/lib/opencode/extensions/transaction';
-import { assertSkillId, isEditableSkillPath, skillDocument, skillFile, skillTrashPath, trashRoot } from '@/lib/opencode/extensions/skills';
-import { isInside, isSystemConfigPath, isWindowsPath, parentPath, pathKey, resolveGlobalConfigRoot, selectConfigTarget, shellQuote } from '@/lib/opencode/extensions/scope';
 import type {
   ConfigTarget,
   ExtensionCommandDraft,
@@ -19,6 +18,7 @@ import type {
   ExtensionSkillRow,
   ExtensionSnapshot,
 } from '@/lib/opencode/extensions/types';
+import type { McpLocalConfig, McpRemoteConfig } from '@/lib/opencode/types';
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -115,18 +115,11 @@ async function buildTarget({
   return { target, safety };
 }
 
-export async function loadExtensionSnapshot(client: ScopedOpencodeClient): Promise<ExtensionSnapshot> {
+export type ExtensionSources = { entries: import('@/lib/opencode/extensions/types').ConfigEntry[]; plugins: import('@/lib/opencode/extensions/types').RawPluginInfo[]; skills: import('@/lib/opencode/extensions/types').RawSkillInfo[]; commands: import('@/lib/opencode/types').Command[]; mcpStatuses: Record<string, import('@/lib/opencode/types').McpStatus> };
+export async function inspectExtensions(client: ScopedOpencodeClient, entries: ExtensionSources['entries']) {
   if (client.__opencode.contract !== 'v2') throw new Error('Extensions management requires OpenCode 2.');
-  const adapter = createServerAdapter(client);
-  const ext = adapter.extensions;
+  const ext = createServerAdapter(client).extensions;
   const projectRoot = client.__opencode.directory || '';
-  const [entries, plugins, skills, commands, mcpStatusesResult] = await Promise.all([
-    ext.configEntries(),
-    ext.plugins().catch(() => []),
-    ext.skills().catch(() => []),
-    ext.commands().catch(() => []),
-    adapter.mcp.status().catch(() => ({})),
-  ]);
   const globalRoot = resolveGlobalConfigRoot(entries, projectRoot || undefined);
   const projectBase = projectRoot ? selectConfigTarget(entries, 'project', projectRoot) : undefined;
   const generalBase = globalRoot ? selectConfigTarget(entries, 'general', globalRoot) : undefined;
@@ -137,11 +130,16 @@ export async function loadExtensionSnapshot(client: ScopedOpencodeClient): Promi
     buildTarget({ ext, base: generalBase, projectRoot, shellAvailable, windows }),
   ]);
 
+  return { generalTarget, projectTarget, globalRoot, projectRoot, loadedAt: Date.now() };
+}
+export function extensionSnapshot(sources: ExtensionSources, inspection: Awaited<ReturnType<typeof inspectExtensions>>): ExtensionSnapshot {
+  const { entries, plugins, skills, commands, mcpStatuses } = sources;
+  const { generalTarget, projectTarget, globalRoot, projectRoot, loadedAt } = inspection;
   const rows = buildExtensionRows({
     entries,
     projectRoot: projectRoot || undefined,
     globalRoot,
-    mcpStatuses: mcpStatusesResult,
+    mcpStatuses,
     plugins,
     skills,
     commands,
@@ -162,7 +160,7 @@ export async function loadExtensionSnapshot(client: ScopedOpencodeClient): Promi
     items: projectRows.items,
     shared: projectRows.shared,
   };
-  return { general, project, loadedAt: Date.now() };
+  return { general, project, loadedAt };
 }
 
 function scopeSnapshot(snapshot: ExtensionSnapshot, scope: ExtensionScope) {

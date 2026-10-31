@@ -86,9 +86,10 @@ function parseServicePorts(value: unknown): number[] {
 // failure, so it degrades to the legacy api 1 contract.
 export async function getServiceManagementVersion(
   settings: OpencodeConnectionSettings,
+  signal?: AbortSignal,
 ): Promise<ServiceManagementVersion> {
   try {
-    const { value, connectorVersion } = await managementRequest(settings, '/version', { method: 'GET' });
+    const { value, connectorVersion } = await managementRequest(settings, '/version', { method: 'GET', signal });
     const body = (value ?? {}) as { api?: unknown; service_ports?: unknown; version?: unknown };
     const version = typeof body.version === 'string' && body.version.trim() ? body.version.trim() : connectorVersion;
     const api = typeof body.api === 'number' && Number.isInteger(body.api) && body.api >= 0 ? body.api : 1;
@@ -141,8 +142,8 @@ function parseService(value: unknown): ManagedService {
   };
 }
 
-export async function listManagedServices(settings: OpencodeConnectionSettings): Promise<ManagedService[]> {
-  const { value } = await managementRequest(settings, '/services', { method: 'GET' });
+export async function listManagedServices(settings: OpencodeConnectionSettings, signal?: AbortSignal): Promise<ManagedService[]> {
+  const { value } = await managementRequest(settings, '/services', { method: 'GET', signal });
   const list = (value as { services?: unknown } | undefined)?.services;
   if (!Array.isArray(list)) throw new ServiceManagementError(0, 'The connector returned an invalid service list.');
   return list.map(parseService);

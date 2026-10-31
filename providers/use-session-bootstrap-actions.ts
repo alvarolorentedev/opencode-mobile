@@ -23,8 +23,6 @@ export function useSessionBootstrapActions({
   refreshSessionDiff,
   refreshSessionTodos,
   refreshPendingInteractions,
-  refreshChatCapabilities,
-  refreshServerFeatures,
   setCurrentSessionId,
   setLastSessionByConnection,
   setIsBootstrappingChat,
@@ -100,8 +98,6 @@ export function useSessionBootstrapActions({
           refreshSessionDiff(targetSession.id, true),
           refreshSessionTodos(targetSession.id),
           refreshPendingInteractions(),
-          refreshChatCapabilities(),
-          refreshServerFeatures(),
         ]).catch(() => undefined);
         return targetSession.id;
       } finally {
@@ -133,9 +129,7 @@ export function useSessionBootstrapActions({
     pendingDeepLinkTargetRef,
     refreshMessages,
     refreshPendingInteractions,
-    refreshChatCapabilities,
-    refreshServerFeatures,
-    refreshSessionDiff,
+        refreshSessionDiff,
     refreshSessionTodos,
     sessionsRef,
     setCurrentSessionId,

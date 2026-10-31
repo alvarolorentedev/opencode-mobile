@@ -58,6 +58,17 @@ describe('finite SDK reads', () => {
     expect(vi.getTimerCount()).toBe(0);
     controller.abort(); expect(transport.mock.calls[0][1]?.signal?.aborted).toBe(false);
   });
+  it.each(['query', 'connection'])('cancels a read from its %s lifetime even when transport cannot abort', async (owner) => {
+    const query = new AbortController(), connection = new AbortController();
+    const transport = vi.fn((_input: RequestInfo | URL, _init?: RequestInit) => new Promise<Response>(() => {}));
+    vi.stubGlobal('fetch', transport);
+    const pending = createPrefixFetch('http://server', '', undefined, query.signal, connection.signal)('http://server/api/project');
+    const cancelled = expect(pending).rejects.toThrow(/canceled/);
+    (owner === 'query' ? query : connection).abort();
+    await cancelled;
+    expect(transport.mock.calls[0][1]?.signal?.aborted).toBe(true);
+    expect(vi.getTimerCount()).toBe(0);
+  });
   it('leaves SSE streaming unbounded while mutations have a write deadline', async () => {
     const gate = deferred<Response>(), transport = vi.fn((_input: RequestInfo | URL, _init?: RequestInit) => gate.promise);
     vi.stubGlobal('fetch', transport);

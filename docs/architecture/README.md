@@ -23,6 +23,7 @@ transport, persistence, or the client protocol. Read
 | --- | --- |
 | App-wide connection registry, focus, and persistence | `providers/workspace-provider.tsx`, `providers/use-workspace-connections.ts`, `providers/use-opencode-persistence.ts` |
 | Provider-specific agent guidance | `providers/AGENTS.md` (loaded when working in `providers/`) |
+| Routine server reads and connection lifecycle | `providers/queries/`, `providers/connection-runtime.tsx` ([ADR 0014](../adr/0014-server-data-and-explicit-lifecycles.md)) |
 | Per-workspace domain orchestration | `providers/use-opencode-provider-composition.ts` and its domain hooks |
 | Public domain contexts and hooks | `providers/opencode-provider-types.ts`, `providers/opencode-contexts.ts`, `providers/opencode-provider-tree.tsx` |
 | Provider-facing API aggregation | `providers/services/` |

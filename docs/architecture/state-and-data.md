@@ -1,6 +1,6 @@
 # State And Data Model
 
-Related ADR: [0002 provider-centric orchestration](../adr/0002-provider-centric-orchestration.md)
+Related ADRs: [0002 provider-centric orchestration](../adr/0002-provider-centric-orchestration.md), [0014 scoped server data and lifecycles](../adr/0014-server-data-and-explicit-lifecycles.md)
 
 ## Read by task
 
@@ -16,7 +16,7 @@ Related ADR: [0002 provider-centric orchestration](../adr/0002-provider-centric-
 
 ## State Ownership Overview
 
-The application uses provider-owned React state. `WorkspaceProvider` owns the app-wide registry and persistence; each retained `WorkspaceRuntime` owns one connection/project branch. Existing domain hooks read the branch supplied by `WorkspaceScope`.
+The application is provider-centric. `WorkspaceProvider` owns the registry, focus, preferences and persistence. One `ConnectionRuntime` per enabled connection owns probing, recovery, credential renewal and the shared session catalog. Each retained `WorkspaceRuntime` owns project workflows. TanStack Query owns routine server responses. Existing narrow domain hooks expose the branch supplied by `WorkspaceScope`.
 
 State is split into seven practical domains:
 
@@ -27,6 +27,55 @@ State is split into seven practical domains:
 5. conversation mode state
 6. notification tracking support state
 7. terminal state
+
+## Routine server reads
+
+`providers/queries/` defines the canonical Query options. Do not mirror these
+responses into React state or add another cache in a service:
+
+| Data | Query resource / owner |
+| --- | --- |
+| Project catalog | Connection-wide `projects`, project `location`; pure combined view |
+| Provider/model/auth discovery | Project `capabilities`; one provider/integration discovery read |
+| Config and agents | `configuration`, `agents` |
+| Skills, references, commands, plugins | `skills`, `references`, `commands`, `plugins` |
+| Extension inspection | `extension-inspection`; reuses canonical configuration |
+| Files and VCS | `directory(path)`, `search(query)`, `preview(path)`, `file-status`, `vcs`, `worktrees` |
+| Diagnostics and MCP | `diagnostics` health plus shared `mcp` status |
+| Saved permission grants | Connection-wide `saved-permissions` |
+| Cloud Link HTTP catalogs | Trusted environment/store catalog and authenticated machine list |
+| Connector services | Target scope/auth revision plus `list` and `version` |
+
+OpenCode keys are `['opencode', connectionId, connectionScope, authRevision,
+contract, 'project', directory, resource, ...parameters]`; connection-wide reads
+use `'server', resource` after the contract. Credentials never appear in keys.
+Credential changes cancel/remove the old partition. Same-machine Cloud Link
+renewal copies only existing data with original timestamps into the replacement
+partition, retaining stable presentation and workflow identity.
+
+The default freshness is 60 seconds and unused data is collected after five
+minutes; previews use zero retention. There are no query polling intervals,
+automatic query retries or mutation replay. Existing transport retry/deadline
+policy remains authoritative. Explicit user refreshes and mutations invalidate
+canonical entries. Native store eligibility, purchases, claim checkpoints and
+entitlement recovery remain transactional Cloud Link state, outside Query.
+
+Only the currently visible Chat/Project, Settings inspection or Terminal target
+provides query demand; remembering a target does not keep it subscribed.
+Retained/background workspaces give `useQueries` an empty query list. This
+destroys observers and releases their held results; disabling a retained observer
+alone would still hold its last response. Optional surfaces subscribe after demand. AppState gates foreground reads;
+the shell's single NetInfo monitor updates Query online state. Foreground/online
+return refetches stale active entries, without waking inactive workspaces.
+One shared SSE transport per connection coalesces routine invalidation; scoped
+events affect the matching project and global catalog. Each project independently
+reconciles sessions, prompts, transcripts, diffs and approvals through the existing
+SSE/polling workflow. `server-data-events.ts` maps resources without owning data.
+
+Capability disk snapshots seed only empty entries with their original update
+timestamps, and cannot overwrite a newer network response. Configuration snapshots
+keep selection fields, never provider secrets. Native purchase proof, voice,
+terminal transports and streaming content are never ordinary catalog queries.
 
 ## Connection And Environment State
 
@@ -358,8 +407,8 @@ before switching.
 A session created or forked locally is retained for a short grace period if a
 list read that started before creation resolves afterward. This prevents a
 stale cursor page from dropping the new chat before the list catches up.
-Session-list, capability, server-feature, and project-catalog event bursts are
-coalesced; `session.deleted` removes its row immediately before reconciliation.
+Session-list workflow refreshes and connection-owned routine Query invalidations are
+coalesced independently; `session.deleted` removes its row immediately before reconciliation.
 The focused workspace's overridden domains are memoized independently, so a
 transcript update cannot invalidate connection, project, or onboarding
 contexts.
@@ -1068,6 +1117,12 @@ offline and message delivery is also hidden on V1. No onboarding preferences,
 credentials or step progress are duplicated in the completion marker.
 
 ## Workspace registry and presentation state
+
+Activation waits on explicit committed runtime publications (`workspace-lifecycle.ts`),
+with one deadline and AbortSignal cleanup. New activation cancels the previous one.
+No readiness polling or render-time React state writes are used. Transport reads
+consume AbortSignal; generation checks reject late results when native work cannot
+be canceled.
 
 `opencode-mobile.workspaces` is a validated version 1 DTO. It records credential-free connection metadata (no password or custom gateway headers), enabled state, server preferences, remembered workspace paths and chat focus. `getConnectionUiScope` identifies runtime owners, including stable Cloud Link machine identities; the existing canonical connection scope identifies persisted favorites, caches and secure profile credentials. Passwords and gateway headers remain per-profile SecureStore data. An unreadable registry is preserved; fallback startup never overwrites that unread value.
 

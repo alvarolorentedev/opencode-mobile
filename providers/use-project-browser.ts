@@ -1,79 +1,45 @@
-import { useCallback, useLayoutEffect, useMemo, useRef, useState } from 'react';
-
 import type { ScopedOpencodeClient } from '@/lib/opencode/client';
 import { projectPath, type ProjectFileEntry } from '@/lib/opencode/project';
-import { findFiles, listFiles } from '@/providers/services/project-service';
+import { useQueryActivity, useQueryIdentity } from '@/providers/queries/client';
+import { directoryOptions, searchOptions } from '@/providers/queries/files';
+import { useQueries, useQueryClient } from '@tanstack/react-query';
+import { useCallback, useMemo, useState } from 'react';
 
 export type ProjectBrowserState = {
-  path: string;
-  entries: ProjectFileEntry[];
-  results: string[];
-  query?: string;
-  initialized: boolean;
-  loading: boolean;
-  searching: boolean;
-  error?: string;
+  path: string; entries: ProjectFileEntry[]; results: string[]; query?: string;
+  initialized: boolean; loading: boolean; searching: boolean; error?: string;
 };
-
-const emptyBrowser: ProjectBrowserState = { path: '', entries: [], results: [], initialized: false, loading: false, searching: false };
-
-export function useProjectBrowser({ client, isCurrentClient }: {
-  client: ScopedOpencodeClient;
-  isCurrentClient: (candidate: object) => boolean;
-}) {
-  const [state, setState] = useState({ client, browser: emptyBrowser });
-  const directoryRequest = useRef(0);
-  const searchRequest = useRef(0);
-  const browser = state.client === client ? state.browser : emptyBrowser;
-  const latest = useRef(browser);
-  useLayoutEffect(() => { latest.current = browser; }, [browser]);
-  const update = useCallback((change: Partial<ProjectBrowserState>) => {
-    setState((current) => ({ client, browser: { ...(current.client === client ? current.browser : emptyBrowser), ...change } }));
-  }, [client]);
-
-  const openDirectory = useCallback(async (requestedPath: string) => {
-    const path = projectPath(requestedPath, client.__opencode.directory || '', true);
-    const request = ++directoryRequest.current;
-    searchRequest.current += 1;
-    update({ path, entries: [], initialized: true, loading: true, searching: false, query: undefined, results: [], error: undefined });
-    try {
-      const entries = await listFiles(client, path);
-      if (isCurrentClient(client) && request === directoryRequest.current) update({ entries, loading: false });
-    } catch (reason) {
-      if (isCurrentClient(client) && request === directoryRequest.current) update({ loading: false, error: reason instanceof Error ? reason.message : 'Could not list this folder.' });
-    }
-  }, [client, isCurrentClient, update]);
-
-  const search = useCallback(async (query: string) => {
+const EMPTY: never[] = [];
+export function useProjectBrowser({ client, isCurrentClient }: { client: ScopedOpencodeClient; isCurrentClient: (client: object) => boolean }) {
+  const cache = useQueryClient();
+  const identity = useQueryIdentity();
+  const active = useQueryActivity();
+  const [selection, setSelection] = useState<{ client: object; path: string; query?: string }>();
+  const current = selection?.client === client ? selection : undefined;
+  const path = current?.path ?? '';
+  const query = current?.query;
+  const [directory] = useQueries({ queries: [{ ...directoryOptions(identity, client, path), enabled: Boolean(current) && !query }].filter(() => active) });
+  const [searchResult] = useQueries({ queries: [{ ...searchOptions(identity, client, query ?? ''), enabled: Boolean(query) }].filter(() => active) });
+  const openDirectory = useCallback(async (requested: string) => {
+    const path = projectPath(requested, client.__opencode.directory || '', true);
+    if (!isCurrentClient(client) || !active) return;
+    setSelection({ client, path });
+    await cache.fetchQuery(directoryOptions(identity, client, path)).catch(() => undefined);
+  }, [active, cache, client, identity, isCurrentClient]);
+  const search = useCallback(async (requested: string) => {
     projectPath('', client.__opencode.directory || '', true);
-    const request = ++searchRequest.current;
-    const trimmed = query.trim();
-    update({ query: trimmed || undefined, results: [], searching: Boolean(trimmed), error: undefined });
-    if (!trimmed) return;
-    try {
-      const results = (await findFiles(client, trimmed)).map((path) => projectPath(path, client.__opencode.directory || ''));
-      if (isCurrentClient(client) && request === searchRequest.current) update({ results, searching: false });
-    } catch (reason) {
-      if (isCurrentClient(client) && request === searchRequest.current) update({ searching: false, error: reason instanceof Error ? reason.message : 'Could not search project files.' });
-    }
-  }, [client, isCurrentClient, update]);
-
+    if (!isCurrentClient(client) || !active) return;
+    const query = requested.trim() || undefined;
+    setSelection((previous) => ({ client, path: previous?.client === client ? previous.path : '', query }));
+    if (query) await cache.fetchQuery(searchOptions(identity, client, query)).catch(() => undefined);
+  }, [active, cache, client, identity, isCurrentClient]);
   const refresh = useCallback(async () => {
-    const snapshot = latest.current;
-    if (!snapshot.initialized) return;
-    const directory = directoryRequest.current, searchId = searchRequest.current;
-    const current = () => isCurrentClient(client) && directory === directoryRequest.current && searchId === searchRequest.current;
-    try {
-      if (snapshot.query) {
-        const results = (await findFiles(client, snapshot.query)).map((path) => projectPath(path, client.__opencode.directory || ''));
-        if (current()) update({ results, error: undefined });
-      } else {
-        const entries = await listFiles(client, snapshot.path);
-        if (current()) update({ entries, error: undefined });
-      }
-    } catch (error) {
-      if (current()) { update({ error: error instanceof Error ? error.message : 'Could not list this folder.' }); throw error; }
-    }
-  }, [client, isCurrentClient, update]);
-  return useMemo(() => ({ ...browser, openDirectory, search, refresh }), [browser, openDirectory, search, refresh]);
+    if (!current || !active || !isCurrentClient(client)) return;
+    if (query) await cache.fetchQuery(searchOptions(identity, client, query));
+    else await cache.fetchQuery(directoryOptions(identity, client, path));
+  }, [active, cache, client, current, identity, isCurrentClient, path, query]);
+  return useMemo(() => ({ path, query, initialized: Boolean(current), entries: directory?.data ?? EMPTY, results: searchResult?.data ?? EMPTY,
+    loading: !query && Boolean(directory?.isFetching), searching: Boolean(query && searchResult?.isFetching),
+    error: (query ? searchResult?.error : directory?.error)?.message, openDirectory, search, refresh,
+  }), [path, query, current, directory?.data, directory?.isFetching, directory?.error, searchResult?.data, searchResult?.isFetching, searchResult?.error, openDirectory, search, refresh]);
 }

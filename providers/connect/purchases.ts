@@ -2,11 +2,11 @@ import type { Purchase } from 'expo-iap';
 
 import type { ConnectCatalog, ConnectSession, ConnectStore } from '@/lib/connect';
 import { AVAILABLE_CONNECT_PURCHASES, isConnectPurchase, type ConnectStoreApi } from '@/lib/connect-store';
+import type { ConnectPhase } from '@/providers/connect/catalog';
 import {
   finalizeConnectPurchase,
   type PendingConnectPurchase,
 } from '@/providers/services/connect-subscription-service';
-import type { ConnectPhase } from '@/providers/connect/catalog';
 
 export async function finishConnectPurchase({
   controlPlaneUrl,
@@ -52,17 +52,17 @@ export async function finishConnectPurchase({
 
 export async function listConnectPurchases({
   apiRef,
-  catalogRef,
+  catalog,
   store,
 }: {
   apiRef: { current: ConnectStoreApi | undefined };
-  catalogRef: { current: ConnectCatalog | undefined };
+  catalog: ConnectCatalog | undefined;
   store: ConnectStore;
 }) {
   const api = apiRef.current;
   if (!api) throw new Error('Purchases and Restore require a native development/store build.');
   const purchases = await api.getAvailablePurchases(AVAILABLE_CONNECT_PURCHASES);
-  return purchases.filter((purchase) => isConnectPurchase(catalogRef.current, purchase, store) && purchase.purchaseState === 'purchased').sort((a, b) => b.transactionDate - a.transactionDate);
+  return purchases.filter((purchase) => isConnectPurchase(catalog, purchase, store) && purchase.purchaseState === 'purchased').sort((a, b) => b.transactionDate - a.transactionDate);
 }
 
 export async function recoverConnectSession({

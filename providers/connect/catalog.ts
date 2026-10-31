@@ -1,28 +1,24 @@
-import { getConnectCatalog, isConnectEntitlement, type ConnectCatalog, type ConnectStore } from '@/lib/connect';
+import { isConnectEntitlement, type ConnectCatalog, type ConnectStore } from '@/lib/connect';
 import { selectConnectOffers, type ConnectOffer, type ConnectStoreApi } from '@/lib/connect-store';
 
 export type ConnectPhase = 'idle' | 'catalog' | 'purchasing' | 'pending' | 'restoring' | 'verifying' | 'savingSession' | 'finalizing' | 'claiming' | 'saving' | 'connecting' | 'waitingForApproval' | 'delayed' | 'paired';
 
 export async function loadConnectCatalog({
-  controlPlaneUrl,
+  catalog,
   store,
   apiRef,
-  catalogRef,
   setOffers,
   setPhase,
 }: {
-  controlPlaneUrl: string;
+  catalog: ConnectCatalog;
   store: ConnectStore;
   apiRef: { current: ConnectStoreApi | undefined };
-  catalogRef: { current: ConnectCatalog | undefined };
   setOffers: (offers: ConnectOffer[]) => void;
   setPhase: (phase: ConnectPhase) => void;
 }) {
   const api = apiRef.current;
   if (!api) throw new Error('Purchases and Restore require a native development/store build.');
   setPhase('catalog');
-  const catalog = await getConnectCatalog(controlPlaneUrl);
-  catalogRef.current = catalog;
   const products = catalog.plans.filter((plan) => plan.entitlements.some(isConnectEntitlement)).flatMap((plan) => plan.products.filter((product) => product.store === store));
   if (!products.length) throw new Error('Cloud Link subscriptions are not configured for this store.');
   const native = await api.fetchProducts({ skus: [...new Set(products.map((product) => product.productId))], type: 'subs' });

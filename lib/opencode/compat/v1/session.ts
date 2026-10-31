@@ -18,37 +18,14 @@ function projectApi(client: OpencodeClient): LegacyProjectApi {
   return client.project as unknown as LegacyProjectApi;
 }
 
-export async function loadProjectCatalog(catalogClient: OpencodeClient) {
-  const [pathResponse, projectsResponse, currentProjectResponse] = await Promise.all([
-    catalogClient.path.get(),
-    projectApi(catalogClient).list(),
-    projectApi(catalogClient).current(),
-  ]);
-
-  const discoveredProjects = requireData(projectsResponse.data, 'project list request');
-  const currentProject = requireData(currentProjectResponse.data, 'current project request');
-  const path = requireData(pathResponse.data, 'path request');
-  const dedupedProjects = new Map<string, Project>();
-
-  if (currentProject?.worktree) {
-    dedupedProjects.set(currentProject.worktree, currentProject);
-  }
-
-  discoveredProjects.forEach((project) => {
-    dedupedProjects.set(project.worktree, project);
-  });
-
-  const nextProjects = [...dedupedProjects.values()].sort(
-    (left, right) => (right.time.initialized || right.time.created) - (left.time.initialized || left.time.created),
-  );
-
-  return {
-    currentProjectPath: currentProject?.worktree,
-    serverRootPath: path.directory,
-    serverProjects: nextProjects,
-  };
+export async function catalogProjects(client: OpencodeClient) {
+  return requireData((await projectApi(client).list()).data, 'project list request');
 }
-
+export async function catalogLocation(client: OpencodeClient) {
+  const [path, project] = await Promise.all([client.path.get(), projectApi(client).current()]);
+  const current = requireData(project.data, 'current project request');
+  return { currentProjectPath: current.worktree, serverRootPath: requireData(path.data, 'path request').directory, project: current };
+}
 export async function resolveProjectLocation(client: OpencodeClient) {
   return requireData((await projectApi(client).current()).data, 'current project request');
 }

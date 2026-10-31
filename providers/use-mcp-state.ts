@@ -1,38 +1,39 @@
-import type { McpContextValue } from './opencode-provider-types';
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import type { McpContextValue } from './opencode-provider-types';
 
 import type { ScopedOpencodeClient } from '@/lib/opencode/client';
-import type { McpLocalConfig, McpRemoteConfig, McpStatus } from '@/lib/opencode/types';
+import type { McpLocalConfig, McpRemoteConfig } from '@/lib/opencode/types';
+import { useQueryActivity, useQueryIdentity } from '@/providers/queries/client';
+import { mcpOptions } from '@/providers/queries/mcp';
 import {
+  completeLegacyMcpOAuth,
+  startLegacyMcpOAuth,
   addMcpServer as svcAddMcpServer,
   connectMcpServer as svcConnectMcpServer,
   disconnectMcpServer as svcDisconnectMcpServer,
-  getMcpStatus,
-  startLegacyMcpOAuth,
-  completeLegacyMcpOAuth,
 } from '@/providers/services/mcp-service';
+import { useQueries, useQueryClient } from '@tanstack/react-query';
 
-// MCP server status plus its lifecycle actions. Enabling or adding a server can
-// change the capability set, so those actions refresh chat capabilities through
-// the injected callback.
+const EMPTY_STATUSES: Record<string, import('@/lib/opencode/types').McpStatus> = {};
+// Status shares the same query as diagnostics and extension discovery.
 export function useMcpState({
   client,
   isCurrentClient,
-  refreshChatCapabilities,
 }: {
   client: ScopedOpencodeClient;
   isCurrentClient: (candidate: object) => boolean;
-  refreshChatCapabilities: () => Promise<void>;
 }) {
-  const [mcpStatuses, setMcpStatuses] = useState<Record<string, McpStatus>>({});
-
-  const resetMcpState = useCallback(() => setMcpStatuses({}), []);
-
+  const identity = useQueryIdentity();
+  const cache = useQueryClient();
+  const active = useQueryActivity();
+  const [requested, setRequested] = useState(false);
+  const [query] = useQueries({ queries: [{ ...mcpOptions(identity, client), enabled: active && requested, subscribed: active && requested }].filter(() => active && requested) });
   const refreshMcpServers = useCallback(async () => {
-    const next = await getMcpStatus(client);
-    if (isCurrentClient(client)) setMcpStatuses(next);
-  }, [client, isCurrentClient]);
-
+    setRequested(true);
+    await cache.invalidateQueries({ queryKey: mcpOptions(identity, client).queryKey, refetchType: 'none' });
+    if (active && isCurrentClient(client)) await cache.fetchQuery(mcpOptions(identity, client));
+  }, [active, cache, client, identity, isCurrentClient]);
+  const refreshChatCapabilities = useCallback(() => cache.invalidateQueries({ predicate: (query) => query.queryKey[0] === 'opencode' && query.queryKey[1] === identity.connectionId && ['capabilities', 'configuration', 'skills', 'references', 'extension-inspection'].includes(String(query.queryKey[7])) }), [cache, identity]);
   const addMcpServer = useCallback(async (name: string, config: McpLocalConfig | McpRemoteConfig) => {
     await svcAddMcpServer(client, name.trim(), config);
     await Promise.all([refreshMcpServers(), refreshChatCapabilities()]);
@@ -79,12 +80,11 @@ export function useMcpState({
   useEffect(() => () => (mcpOAuth as McpContextValue['mcpOAuth'] & { dispose: () => void }).dispose(), [mcpOAuth]);
 
   return {
-    mcpStatuses,
+    mcpStatuses: query?.data ?? EMPTY_STATUSES,
     refreshMcpServers,
     addMcpServer,
     connectMcpServer,
     disconnectMcpServer,
     mcpOAuth,
-    resetMcpState,
   };
 }

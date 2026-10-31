@@ -1,4 +1,4 @@
-import type { Command, Config, FileContent, FileDiff, McpLocalConfig, McpRemoteConfig, McpStatus, ProviderAuthValues, ProviderCatalog, Pty, Reference, Skill } from '@/lib/opencode/types';
+import type { Config, FileContent, FileDiff, McpLocalConfig, McpRemoteConfig, McpStatus, ProviderAuthValues, ProviderCatalog, Pty, Reference } from '@/lib/opencode/types';
 import type { ScopedOpencodeClient } from '@/lib/opencode/client';
 import { isInside, shellQuote } from '@/lib/opencode/extensions/scope';
 import type { ConfigEntry, RawPluginInfo, RawSkillInfo } from '@/lib/opencode/extensions/types';
@@ -12,7 +12,7 @@ import * as v1Mcp from '@/lib/opencode/compat/v1/mcp';
 import * as v1Project from '@/lib/opencode/compat/v1/project';
 import { setProviderCredentials } from '@/lib/opencode/compat/v1/auth';
 import * as v1Terminal from '@/lib/opencode/compat/v1/terminal';
-import { loadDiagnostics as loadLegacyDiagnostics } from '@/lib/opencode/compat/v1/diagnostics';
+import { loadHealth as loadLegacyHealth } from '@/lib/opencode/compat/v1/diagnostics';
 
 type OptionalDiagnostic<T> =
   | { available: true; data: T }
@@ -41,14 +41,14 @@ export type ServerAdapter = {
     completeOAuth: (name: string, code: string) => Promise<unknown>;
   };
   diagnostics: {
-    load: () => Promise<Diagnostics>;
+    health: () => Promise<Diagnostics['health']>;
   };
   capabilities: {
-    config: () => Promise<Config>;
+    configuration: () => Promise<{ config: Config; entries?: ConfigEntry[] }>;
+    discovery: () => Promise<{ providers: ProviderCatalog; auth: unknown }>;
+    skillDetails: () => Promise<RawSkillInfo[]>;
     providers: () => Promise<ProviderCatalog>;
-    providerAuth: () => Promise<unknown>;
     agents: () => Promise<unknown>;
-    skills: () => Promise<Skill[]>;
     references: () => Promise<Reference[]>;
     modelVariants: (model: { variants?: { id: string }[] }) => { id: string }[];
     setCredentials: (id: string, values: ProviderAuthValues) => Promise<unknown>;
@@ -60,7 +60,6 @@ export type ServerAdapter = {
     configEntries: () => Promise<ConfigEntry[]>;
     plugins: () => Promise<RawPluginInfo[]>;
     skills: () => Promise<RawSkillInfo[]>;
-    commands: () => Promise<Command[]>;
     readText: (path: string) => Promise<string | undefined>;
     writeText: (path: string, content: string) => Promise<void>;
     runShell: (root: string, command: string) => Promise<ShellResult>;
@@ -80,7 +79,7 @@ export type ServerAdapter = {
     vcsInfo: () => Promise<{ branch?: string }>;
     vcsDiff: (mode: 'git' | 'branch', context?: number) => Promise<FileDiff[]>;
     saveFile: (path: string, content: string, patch: string) => Promise<unknown>;
-    listWorktrees: () => Promise<ProjectWorktree[]>;
+    listWorktrees: (knownProjectId?: string) => Promise<ProjectWorktree[]>;
     createWorktree: (name?: string) => Promise<ProjectWorktree>;
     removeWorktree: (directory: string) => Promise<unknown>;
   };
@@ -149,10 +148,6 @@ export function createServerAdapter(client: ScopedOpencodeClient): ServerAdapter
       if (compatibility) throw new Error('Extensions management requires OpenCode 2.');
       return (await client.api!.skill.list(location)).data as RawSkillInfo[];
     },
-    commands: async () => {
-      if (compatibility) throw new Error('Extensions management requires OpenCode 2.');
-      return (await client.api!.command.list(location)).data;
-    },
     readText: async (path: string) => {
       if (compatibility) throw new Error('Extensions management requires OpenCode 2.');
       if (isInside(projectDirectory, path)) {
@@ -194,9 +189,22 @@ export function createServerAdapter(client: ScopedOpencodeClient): ServerAdapter
     mcp,
     extensions: extensionAdapter,
     capabilities: {
-      config: () => compatibility
-        ? client.compatibility!.config.get().then((result) => requireData(result.data, 'config'))
-        : client.api!.config.get(location).then((result) => toConfigView(result)),
+      configuration: async () => {
+        if (compatibility) return { config: requireData((await compatibility.config.get()).data, 'config') };
+        const entries = await extensionAdapter.configEntries();
+        return { config: toConfigView(entries), entries };
+      },
+      discovery: async () => {
+        if (compatibility) {
+          const catalog = requireData((await compatibility.provider.list()).data, 'provider catalog');
+          return { providers: { ...catalog, all: catalog.all.map((provider) => ({ ...provider, models: Object.fromEntries(Object.entries(provider.models).map(([id, model]) => [id, { ...model, variants: [] }])) })) }, auth: (await compatibility.provider.auth()).data };
+        }
+        const [providers, integrations] = await Promise.all([client.api!.provider.list(location), client.api!.integration.list(location)]);
+        const discovery = { providers, integrations };
+        const [catalog, auth] = await Promise.all([getProviderCatalog(client.api!, location, discovery), getProviderAuthMethods(client.api!, location, discovery)]);
+        return { providers: catalog, auth };
+      },
+      skillDetails: () => compatibility ? Promise.resolve([]) : extensionAdapter.skills(),
       providers: async () => {
         if (!compatibility) return getProviderCatalog(client.api!, location);
         const catalog = requireData((await compatibility.provider.list()).data, 'provider catalog');
@@ -208,22 +216,10 @@ export function createServerAdapter(client: ScopedOpencodeClient): ServerAdapter
           })),
         };
       },
-      providerAuth: () => compatibility
-        ? client.compatibility!.provider.auth().then((result) => result.data)
-        : getProviderAuthMethods(client.api!, location),
       agents: () => compatibility
         ? client.compatibility!.app.agents().then((result) => result.data)
         : client.api!.agent.list(location).then((result) => result.data.map(toAgentView)),
-      // API-dependent composer context is V2-only. Returning empty lists on V1
-      // keeps the shared provider shape stable without adding a compatibility
-      // endpoint.
-      skills: () => compatibility
-        ? Promise.resolve([])
-        : client.api!.skill.list(location).then((result) => result.data.map((skill) => ({
-            id: skill.id,
-            name: skill.name,
-            description: skill.description,
-          }))),
+      // Composer context stays V2-only.
       references: () => compatibility
         ? Promise.resolve([])
         : client.api!.reference.list(location).then((result) => result.data.map((reference) => ({
@@ -308,9 +304,9 @@ export function createServerAdapter(client: ScopedOpencodeClient): ServerAdapter
         if (compatibility) return v1Project.applyVcsPatch(compatibility, patch);
         await client.api!.file.write({ ...location, path, payload: new TextEncoder().encode(content) });
       },
-      listWorktrees: async () => compatibility
+      listWorktrees: async (knownProjectId?: string) => compatibility
         ? v1Project.listWorktrees(compatibility)
-        : projectWorktrees(await client.api!.worktree.list({ projectID: await projectID() })),
+        : projectWorktrees(await client.api!.worktree.list({ projectID: knownProjectId ?? await projectID() })),
       createWorktree: async (name?: string) => {
         const created = compatibility
           ? await v1Project.createWorktree(compatibility, name)
@@ -322,14 +318,8 @@ export function createServerAdapter(client: ScopedOpencodeClient): ServerAdapter
         : projectID().then((projectID) => client.api!.worktree.remove({ projectID, directory, force: true })),
     },
     diagnostics: {
-      load: async () => {
-        if (compatibility) return loadLegacyDiagnostics(compatibility);
-        const [health, mcpStatus] = await Promise.all([
-          optionalDiagnostic(async () => ({ healthy: true, version: (await client.api!.server.info()).version })),
-          optionalDiagnostic<Record<string, McpStatus>>(() => mcp.status()),
-        ]);
-        return { health, mcp: mcpStatus };
-      },
+      health: () => compatibility ? loadLegacyHealth(compatibility) : optionalDiagnostic(async () => ({ healthy: true, version: (await client.api!.server.info()).version })),
+
     },
   };
 }

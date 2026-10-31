@@ -1,7 +1,5 @@
 import type { ScopedOpencodeClient } from '@/lib/opencode/client';
-import type { SessionMessageRecord } from '@/lib/opencode/format';
-import { coalesceRead } from '@/lib/opencode/in-flight';
-import type { Project, Session, SessionStatus } from '@/lib/opencode/types';
+import { listPendingPermissions, listPendingQuestions } from '@/lib/opencode/client/interactions';
 import {
   createSessionAdapter,
   LATEST_MESSAGE_LIMIT,
@@ -9,10 +7,12 @@ import {
   type ResolvedProjectLocation,
   type SessionMessagePage,
 } from '@/lib/opencode/contracts/session-adapter';
-import { listPendingPermissions, listPendingQuestions } from '@/lib/opencode/client/interactions';
+import type { SessionMessageRecord } from '@/lib/opencode/format';
+import { coalesceRead } from '@/lib/opencode/in-flight';
+import type { Project, Session, SessionStatus } from '@/lib/opencode/types';
 
-export type { ResolvedProjectLocation, SessionMessagePage } from '@/lib/opencode/contracts/session-adapter';
-export { LATEST_MESSAGE_LIMIT, MAX_MESSAGE_PAGE_LIMIT, TRANSCRIPT_PAGE_LIMIT } from '@/lib/opencode/contracts/session-adapter';
+export { LATEST_MESSAGE_LIMIT,MAX_MESSAGE_PAGE_LIMIT,TRANSCRIPT_PAGE_LIMIT } from '@/lib/opencode/contracts/session-adapter';
+export type { ResolvedProjectLocation,SessionMessagePage } from '@/lib/opencode/contracts/session-adapter';
 
 export function submitLegacyPrompt(client: ScopedOpencodeClient, input: PromptInput) {
   return createSessionAdapter(client).submitPrompt(input);
@@ -20,9 +20,6 @@ export function submitLegacyPrompt(client: ScopedOpencodeClient, input: PromptIn
 
 export function getSessionInbox(client: ScopedOpencodeClient, sessionId: string) {
   return coalesceRead(client, `inbox:${sessionId}`, () => client.promptInbox!.list(sessionId));
-}
-export function loadProjectCatalog(client: ScopedOpencodeClient) {
-  return createSessionAdapter(client).loadProjectCatalog();
 }
 export function resolveProjectLocation(client: ScopedOpencodeClient): Promise<ResolvedProjectLocation> {
   return createSessionAdapter(client).resolveProjectLocation();
@@ -140,4 +137,10 @@ export function executeCommand(client: ScopedOpencodeClient, sessionId: string, 
 }
 export function executeShell(client: ScopedOpencodeClient, sessionId: string, command: string) {
   return createSessionAdapter(client).executeShell(sessionId, command);
+}
+
+export function listServerProjects(client: ScopedOpencodeClient) { return createSessionAdapter(client).catalogProjects(); }
+export function readCatalogLocation(client: ScopedOpencodeClient) { return createSessionAdapter(client).catalogLocation(); }
+export function combineProjectCatalog(client: ScopedOpencodeClient, projects: Project[], location: Awaited<ReturnType<typeof readCatalogLocation>>) {
+  return createSessionAdapter(client).combineCatalog(projects, location);
 }

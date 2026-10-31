@@ -1,103 +1,95 @@
-import { useCallback, useMemo } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 
-import { useProjectEntryActions } from '@/providers/use-project-entry-actions';
-import { useProjectBrowser } from '@/providers/use-project-browser';
-import { getRequestHeaders, getServerBase } from '@/lib/opencode/client';
+import { getRequestHeaders, getServerBase, withReadSignal } from '@/lib/opencode/client';
 import { projectPath } from '@/lib/opencode/project';
 import { projectFileDownloadUrl, projectFileFromText, projectFileMime } from '@/lib/opencode/project-file';
 import { createFullFilePatch } from '@/lib/opencode/project-patch';
 import { saveOrShareProjectFile } from '@/lib/project-file-download';
-import { listCommands as svcListCommands } from '@/providers/services/session-service';
-import { loadDiagnostics } from '@/providers/services/diagnostics-service';
+import type { ProjectFileInput } from '@/providers/opencode-provider-action-inputs';
+import { fileStatusOptions, vcsInfoOptions } from '@/providers/queries/catalogs';
+import { useQueryActivity, useQueryIdentity } from '@/providers/queries/client';
+import { searchOptions } from '@/providers/queries/files';
+import { projectQueryKey } from '@/providers/queries/keys';
+import { healthOptions, mcpOptions } from '@/providers/queries/mcp';
+import type { Diagnostics } from '@/providers/services/diagnostics-service';
 import {
-  saveFile,
-  findFiles,
-  getFileStatus,
-  getVcsInfo,
   getProjectFileDownloadSource,
   readFile,
   readProjectFile,
+  saveFile,
 } from '@/providers/services/project-service';
-import type { ProjectFileInput } from '@/providers/opencode-provider-action-inputs';
+import { useProjectBrowser } from '@/providers/use-project-browser';
+import { useProjectEntryActions } from '@/providers/use-project-entry-actions';
+import { useQueries, useQueryClient } from '@tanstack/react-query';
 
 export function useProjectFileActions({
   fileClipboard, connectionId, connected,
   client,
   isCurrentClient,
-  activeProjectPath,
-  setCommands,
-  setProjectFileStatuses,
-  setVcsInfo,
-  setDiagnostics,
-  setSelectedProjectFile,
   projectFileRequestRef,
   currentSessionIdRef,
   diffScopeBySessionRef,
   settingsRef,
   refreshVcsDiff,
+  refreshServerFeatures,
 }: ProjectFileInput) {
+  const cache = useQueryClient();
+  const identity = useQueryIdentity();
+  const active = useQueryActivity();
+  const [selectedPath, setSelectedPath] = useState<{ client: object; path: string }>();
+  const path = selectedPath?.client === client ? selectedPath.path : undefined;
+  const previewKey = projectQueryKey(identity, client, 'preview', path);
+  const [diagnosticsRequested, setDiagnosticsRequested] = useState(false);
+  const [preview] = useQueries({ queries: [{ queryKey: previewKey, enabled: false, gcTime: 0,
+    queryFn: ({ signal }: { signal: AbortSignal }) => readProjectFile(withReadSignal(client, signal), path!) }].filter(() => active) });
+  const [health] = useQueries({ queries: [{ ...healthOptions(identity, client), enabled: diagnosticsRequested }].filter(() => active) });
+  const [diagnosticMcp] = useQueries({ queries: [{ ...mcpOptions(identity, client), enabled: diagnosticsRequested }].filter(() => active) });
+  const diagnostics = useMemo<Diagnostics | undefined>(() => health?.data ? { health: health?.data, mcp: diagnosticMcp?.error
+    ? { available: false, error: diagnosticMcp?.error.message } : { available: true, data: diagnosticMcp?.data ?? {} } } : undefined, [health?.data, diagnosticMcp?.data, diagnosticMcp?.error]);
   const directoryBrowser = useProjectBrowser({ client, isCurrentClient });
-
-  const refreshServerFeatures = useCallback(async () => {
-    if (!activeProjectPath) {
-      setCommands([]);
-      setProjectFileStatuses([]);
-      setVcsInfo(undefined);
-      return;
-    }
-    const [nextCommands, nextStatuses, nextVcs] = await Promise.all([
-      svcListCommands(client).catch(() => []),
-      getFileStatus(client).catch(() => []),
-      getVcsInfo(client).catch(() => undefined),
-    ]);
-    if (!isCurrentClient(client)) {
-      return;
-    }
-    setCommands(nextCommands || []);
-    setProjectFileStatuses(nextStatuses || []);
-    setVcsInfo(nextVcs);
-  }, [activeProjectPath, client, isCurrentClient, setCommands, setProjectFileStatuses, setVcsInfo]);
-
+  const setSelectedProjectFile = useCallback((file: import('@/lib/opencode/project-file').ProjectFile) => {
+    cache.setQueryData(projectQueryKey(identity, client, 'preview', file.path), file);
+  }, [cache, client, identity]);
   const refreshEntries = useCallback(async () => {
     if (!isCurrentClient(client)) return;
-    const [statuses, vcs] = await Promise.all([getFileStatus(client), getVcsInfo(client)]);
+    await Promise.all([cache.fetchQuery(fileStatusOptions(identity, client)), cache.fetchQuery(vcsInfoOptions(identity, client))]);
     if (!isCurrentClient(client)) return;
-    setProjectFileStatuses(statuses); setVcsInfo(vcs);
     await directoryBrowser.refresh();
     const scope = diffScopeBySessionRef.current[currentSessionIdRef.current || ''];
     if (scope === 'uncommitted' || scope === 'branch') await refreshVcsDiff(scope, true);
-  }, [client, currentSessionIdRef, diffScopeBySessionRef, directoryBrowser, isCurrentClient, refreshVcsDiff, setProjectFileStatuses, setVcsInfo]);
+  }, [client, currentSessionIdRef, diffScopeBySessionRef, directoryBrowser, isCurrentClient, refreshVcsDiff, cache, identity]);
   const actions = useProjectEntryActions({ client, isCurrentClient, connectionId, clipboard: fileClipboard, refresh: refreshEntries, enabled: connected });
   const browser = useMemo(() => ({ ...directoryBrowser, actions }), [directoryBrowser, actions]);
 
   const searchProjectFiles = useCallback(async (query: string) => {
     const trimmed = query.trim();
     if (!trimmed) return [];
-    const directory = client.__opencode.directory || '';
-    return (await findFiles(client, trimmed)).map((path) => projectPath(path, directory));
-  }, [client]);
+    return cache.fetchQuery(searchOptions(identity, client, trimmed));
+  }, [cache, client, identity]);
 
   const refreshDiagnostics = useCallback(async () => {
-    const nextDiagnostics = await loadDiagnostics(client);
-    if (isCurrentClient(client)) {
-      setDiagnostics(nextDiagnostics);
-    }
-  }, [client, isCurrentClient, setDiagnostics]);
+    if (!active) return;
+    setDiagnosticsRequested(true);
+    await Promise.allSettled([cache.fetchQuery(healthOptions(identity, client)), cache.fetchQuery(mcpOptions(identity, client))]);
+  }, [active, cache, client, identity]);
 
   const openProjectFile = useCallback(async (path: string) => {
     path = projectPath(path, client.__opencode.directory || '');
     const request = ++projectFileRequestRef.current;
-    const file = await readProjectFile(client, path);
+    const key = projectQueryKey(identity, client, 'preview', path);
+    setSelectedPath({ client, path });
+    await cache.fetchQuery({ queryKey: key, gcTime: 0, staleTime: 0, queryFn: ({ signal }) => readProjectFile(withReadSignal(client, signal), path) });
     if (!isCurrentClient(client) || request !== projectFileRequestRef.current) throw new Error('File selection was superseded.');
-    setSelectedProjectFile(file);
-  }, [client, isCurrentClient, projectFileRequestRef, setSelectedProjectFile]);
+  }, [cache, client, identity, isCurrentClient, projectFileRequestRef]);
 
   const closeProjectFile = useCallback(() => {
     // Invalidate an in-flight open so closing cannot be undone when its read
     // resolves after the preview has already gone away.
     projectFileRequestRef.current += 1;
-    setSelectedProjectFile(undefined);
-  }, [projectFileRequestRef, setSelectedProjectFile]);
+    setSelectedPath(undefined);
+    void cache.cancelQueries({ queryKey: projectQueryKey(identity, client, 'preview') });
+    cache.removeQueries({ queryKey: projectQueryKey(identity, client, 'preview') });
+  }, [cache, client, identity, projectFileRequestRef]);
 
   const downloadProjectFile = useCallback(async (path: string, signal?: AbortSignal) => {
     path = projectPath(path, client.__opencode.directory || '');
@@ -164,5 +156,5 @@ export function useProjectFileActions({
     }
   }, [client, currentSessionIdRef, diffScopeBySessionRef, isCurrentClient, projectFileRequestRef, refreshServerFeatures, refreshVcsDiff, setSelectedProjectFile]);
 
-  return { refreshServerFeatures, refreshDiagnostics, searchProjectFiles, browser, openProjectFile, saveProjectFile, closeProjectFile, downloadProjectFile };
+  return { selectedProjectFile: preview?.data, diagnostics, refreshServerFeatures, refreshDiagnostics, searchProjectFiles, browser, openProjectFile, saveProjectFile, closeProjectFile, downloadProjectFile };
 }
