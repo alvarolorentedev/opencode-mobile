@@ -6,6 +6,90 @@ test.beforeEach(async ({ page }, info) => {
   await seedOnboarding(page, info);
 });
 
+async function entryActions(page, path, capture = false) {
+  const more = page.getByTestId(`project-entry-more-${path}`);
+  await more.evaluate((element) => {
+    let parent = element.parentElement;
+    while (parent && parent.scrollWidth <= parent.clientWidth) parent = parent.parentElement;
+    if (parent) parent.scrollLeft = parent.scrollWidth;
+  });
+  if (capture) await page.screenshot({ path: test.info().outputPath('file-actions-swipe.png') });
+  await more.click();
+  await expect(page.getByTestId('project-entry-actions')).toBeVisible();
+  if (capture) await page.screenshot({ path: test.info().outputPath('file-actions-sheet.png') });
+}
+
+test('file swipe actions rename, copy, cut, paste and confirm replacement', async ({ page, request }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await openReadyChat(page); await goToTab(page, 'Projects');
+  await page.getByTestId('project-entry-src').click();
+  await expect(page.getByTestId('project-entry-rename-src/demo.ts')).toBeEnabled();
+  await entryActions(page, 'src/demo.ts', true);
+  await page.getByTestId('project-entry-action-copy-path').click();
+  await expect(page.getByText('Path copied.', { exact: true })).toBeVisible();
+  await entryActions(page, 'src/demo.ts');
+  await page.getByTestId('project-entry-action-rename').click();
+  await page.getByTestId('project-entry-name').fill('renamed.ts');
+  await page.screenshot({ path: test.info().outputPath('file-actions-rename.png') });
+  await page.getByTestId('project-entry-save').click();
+  await expect(page.getByTestId('project-entry-src/renamed.ts')).toBeVisible();
+  await expect(page.getByTestId('project-entry-src/demo.ts')).toHaveCount(0);
+  await entryActions(page, 'src/renamed.ts');
+  await page.getByTestId('project-entry-action-copy').click();
+  await page.getByRole('button', { name: 'demo-project', exact: true }).click();
+  await page.getByTestId('project-file-paste').click();
+  await expect(page.getByTestId('project-entry-renamed.ts')).toBeVisible();
+  await expect(page.getByTestId('project-file-clipboard')).toBeVisible();
+  let confirmations = 0;
+  page.on('dialog', async (dialog) => { confirmations++; await dialog.accept(); });
+  await page.getByTestId('project-file-paste').click();
+  await expect.poll(() => confirmations).toBe(1);
+  await expect(page.getByTestId('project-file-paste')).toBeEnabled();
+  await entryActions(page, 'renamed.ts'); await page.getByTestId('project-entry-action-cut').click();
+  await entryActions(page, 'assets', true); await page.getByTestId('project-entry-action-paste').click();
+  await expect(page.getByTestId('project-file-clipboard')).toHaveCount(0);
+  await expect(page.getByTestId('project-entry-renamed.ts')).toHaveCount(0);
+  await page.getByTestId('project-entry-assets').click();
+  await expect(page.getByTestId('project-entry-assets/renamed.ts')).toBeVisible();
+  const content = await request.get(`${backendOrigin()}/api/fs/read/assets/renamed.ts?location[directory]=/workspace/demo-project`);
+  expect(await content.text()).toContain('OpenCode 1.18.3');
+  await page.getByTestId('project-entry-assets/renamed.ts').click();
+  await expect(page.getByText(/export const demo/)).toBeVisible();
+});
+
+test('file clipboard survives workspace switches and folder collisions stay blocked', async ({ page }) => {
+  await openReadyChat(page); await goToTab(page, 'Projects');
+  await expect(page.getByTestId('project-entry-rename-src')).toBeEnabled();
+  await entryActions(page, 'src'); await page.getByTestId('project-entry-action-copy').click();
+  const project = workspaceProjectButton(page);
+  await project.click(); await page.getByTestId('project-add-button').click();
+  await page.getByTestId('project-add-path').fill('/workspace/secondary-project');
+  await page.getByTestId('project-add-submit').click();
+  await expect(project).toContainText('secondary-project');
+  await expect(page.getByTestId('project-file-clipboard')).toContainText('/workspace/demo-project');
+  await expect(page.getByTestId('project-file-paste')).toBeEnabled();
+  await page.getByTestId('project-file-paste').click();
+  await expect(page.getByRole('alert')).toContainText('Folders cannot be replaced');
+  await page.getByTestId('project-entry-assets').click();
+  await page.getByTestId('project-file-paste').click();
+  await expect(page.getByTestId('project-entry-assets/src')).toBeVisible();
+  await page.getByTestId('project-entry-assets/src').click();
+  await page.getByTestId('project-entry-assets/src/demo.ts').click();
+  await expect(page.getByText(/OpenCode 1.18.3/)).toBeVisible();
+});
+
+test('v1 compatibility keeps Copy path while file mutations are disabled', async ({ page }) => {
+  await openReadyChat(page); await goToTab(page, 'Projects');
+  const row = page.getByTestId('project-entry-src');
+  const bounds = await row.boundingBox();
+  await page.mouse.move(bounds.x + 25, bounds.y + bounds.height / 2); await page.mouse.down();
+  await expect(page.getByTestId('project-entry-actions')).toBeVisible(); await page.mouse.up();
+  await expect(page.getByTestId('project-entry-action-copy-path')).toBeEnabled();
+  await expect(page.getByTestId('project-entry-action-rename')).toBeDisabled();
+  await expect(page.getByTestId('project-entry-action-copy')).toBeDisabled();
+  await expect(page.getByTestId('project-entry-actions')).toContainText('require OpenCode 2');
+});
+
 test('Chat and Project use the same project picker @smoke', async ({ page, request }) => {
   await resetScenario(request, 'happy-path');
   await openReadyChat(page);

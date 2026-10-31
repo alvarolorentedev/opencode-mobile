@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useRef, useState } from 'react';
+import { useCallback, useLayoutEffect, useMemo, useRef, useState } from 'react';
 
 import type { ScopedOpencodeClient } from '@/lib/opencode/client';
 import { projectPath, type ProjectFileEntry } from '@/lib/opencode/project';
@@ -25,6 +25,8 @@ export function useProjectBrowser({ client, isCurrentClient }: {
   const directoryRequest = useRef(0);
   const searchRequest = useRef(0);
   const browser = state.client === client ? state.browser : emptyBrowser;
+  const latest = useRef(browser);
+  useLayoutEffect(() => { latest.current = browser; }, [browser]);
   const update = useCallback((change: Partial<ProjectBrowserState>) => {
     setState((current) => ({ client, browser: { ...(current.client === client ? current.browser : emptyBrowser), ...change } }));
   }, [client]);
@@ -56,5 +58,22 @@ export function useProjectBrowser({ client, isCurrentClient }: {
     }
   }, [client, isCurrentClient, update]);
 
-  return useMemo(() => ({ ...browser, openDirectory, search }), [browser, openDirectory, search]);
+  const refresh = useCallback(async () => {
+    const snapshot = latest.current;
+    if (!snapshot.initialized) return;
+    const directory = directoryRequest.current, searchId = searchRequest.current;
+    const current = () => isCurrentClient(client) && directory === directoryRequest.current && searchId === searchRequest.current;
+    try {
+      if (snapshot.query) {
+        const results = (await findFiles(client, snapshot.query)).map((path) => projectPath(path, client.__opencode.directory || ''));
+        if (current()) update({ results, error: undefined });
+      } else {
+        const entries = await listFiles(client, snapshot.path);
+        if (current()) update({ entries, error: undefined });
+      }
+    } catch (error) {
+      if (current()) { update({ error: error instanceof Error ? error.message : 'Could not list this folder.' }); throw error; }
+    }
+  }, [client, isCurrentClient, update]);
+  return useMemo(() => ({ ...browser, openDirectory, search, refresh }), [browser, openDirectory, search, refresh]);
 }

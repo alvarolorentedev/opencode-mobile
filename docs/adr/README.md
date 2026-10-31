@@ -60,6 +60,7 @@ coverage, and documentation links.
 | [0009](0009-agent-first-documentation-routing.md) | Agent-first documentation routing and drift checks | Accepted |
 | [0010](0010-risk-based-validation-and-selective-pr-e2e.md) | Risk-based validation and selective PR E2E | Superseded by ADR 0011 |
 | [0011](0011-release-from-green-main-builds.md) | Release from green main builds, not tag pushes | Accepted |
+| [0012](0012-shell-mediated-project-file-actions.md) | Shell-mediated project file actions | Accepted |
 
 ## Template
 

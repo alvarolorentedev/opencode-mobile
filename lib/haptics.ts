@@ -5,3 +5,7 @@ import * as Haptics from 'expo-haptics';
 export function copyHaptic() {
   void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => undefined);
 }
+
+export function longPressHaptic() {
+  void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => undefined);
+}

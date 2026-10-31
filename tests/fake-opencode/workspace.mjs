@@ -11,10 +11,10 @@ export function filesForDirectory(state, directory) {
   return state.filesByDirectory[directory];
 }
 
-export function fileNodes(files, directory, requestedPath = '') {
+export function fileNodes(files, directory, requestedPath = '', emptyDirectories = []) {
   const prefix = requestedPath ? `${requestedPath}/` : '';
   const nodes = new Map();
-  for (const path of Object.keys(files).sort()) {
+  for (const path of [...Object.keys(files), ...[...emptyDirectories].map((path) => `${path}/`)].sort()) {
     if (!path.startsWith(prefix)) continue;
     const remainder = path.slice(prefix.length), name = remainder.split('/')[0];
     if (!name) continue;

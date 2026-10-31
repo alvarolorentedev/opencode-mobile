@@ -37,3 +37,7 @@ export function createWorktree(client: ScopedOpencodeClient, name?: string) {
 export function removeWorktree(client: ScopedOpencodeClient, directory: string) {
   return createServerAdapter(client).projects.removeWorktree(directory);
 }
+
+export function projectEntryOperations(client: ScopedOpencodeClient) {
+  return createServerAdapter(client).projects.entryOperations;
+}

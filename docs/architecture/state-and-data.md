@@ -976,6 +976,19 @@ Transcript, diff, and todo cache pruning is paused while session bootstrap is lo
 
 ## Project file browser
 
+The browser's `actions` group owns file-operation availability, feedback,
+preflight, rename and paste. `WorkspaceProvider` owns one process-local clipboard
+and mutation lock per connection, passed through shared runtime inputs. Entries
+carry source root, relative path, file/directory type and copy/cut mode. They
+survive tab/project/worktree focus changes, remain isolated between connections,
+and clear on disconnect, connection removal/reconfiguration or successful Cut.
+Copy remains available for repeated pastes. Registered runtime refresh callbacks
+read the latest browser location so mutation completion cannot restore old
+navigation. Both affected workspaces refresh file/VCS state and active VCS diffs.
+No clipboard or busy state is persisted. See
+[ADR 0012](../adr/0012-shell-mediated-project-file-actions.md).
+
+
 Projects retains its tab label and route. Files is its main surface: the provider
 owns the current relative directory, sorted folder/file entries, submitted search,
 results, loading/error state and request-order guards. It retains the directory

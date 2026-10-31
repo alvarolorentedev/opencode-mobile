@@ -28,6 +28,7 @@ import { librarySessions } from '@/providers/workspace-library';
 import { WorkspaceNative } from '@/providers/workspace-native';
 import { useWorkspaceValues, type WorkspaceValueOverrides } from '@/providers/use-workspace-values';
 import { useVoiceSetupTest, VoiceSetupTestContext } from '@/providers/use-voice-setup-test';
+import { useFileClipboard } from '@/providers/use-file-clipboard';
 import { useNetworkStatus } from '@/providers/use-network-status';
 
 export function WorkspaceProvider({ children }: PropsWithChildren) {
@@ -47,6 +48,7 @@ export function WorkspaceProvider({ children }: PropsWithChildren) {
   const { updateSettings: updateWorkspaceSettings, retry, change, removeConnection: removeWorkspaceConnection, connectedWorkspace, isEnabled } = manager;
   const { setFavoriteSessions, setLastSessionByConnection, setProjectPathsByConnection, setSettings, setActiveProjectPath, setChatPreferences } = shell;
   const { connections, focus, snapshots, ensure, resolveKey, switchConnection, activate, navigate, openExternalSession, disconnect } = manager;
+  const fileClipboard = useFileClipboard(connections);
   const selectedRuntime = focus ? snapshots[resolveKey(focus)] : undefined;
   const [retainedRuntime, setRetainedRuntime] = useState(selectedRuntime);
   if (selectedRuntime && retainedRuntime !== selectedRuntime) setRetainedRuntime(selectedRuntime);
@@ -166,6 +168,7 @@ export function WorkspaceProvider({ children }: PropsWithChildren) {
     sessions: current?.catalogSessions ?? [], hideSubagentChats: shell.chatPreferences.hideSubagentChats, refreshTargets,
     createSession: async () => { if (!current) throw new Error('Choose a workspace.'); return current.values.currentSessionValue.createSession(); }, openSession });
   const shared = useMemo<SharedWorkspaceState>(() => ({
+    fileClipboard,
     controlPlaneUrl: shell.controlPlaneUrl, setControlPlaneUrl: shell.setControlPlaneUrl,
     onboardingVersion: shell.onboardingVersion, setOnboardingVersion: shell.setOnboardingVersion,
     onboardingActive: shell.onboardingActive, setOnboardingActive: shell.setOnboardingActive,
@@ -173,7 +176,7 @@ export function WorkspaceProvider({ children }: PropsWithChildren) {
     favoriteSessions: shell.favoriteSessions, setFavoriteSessions: shell.setFavoriteSessions,
     projectPathsByConnectionRef: shell.projectPathsByConnectionRef,
     projectPathsByConnection: shell.projectPathsByConnection, setProjectPathsByConnection: shell.setProjectPathsByConnection,
-  }), [shell.controlPlaneUrl, shell.setControlPlaneUrl, shell.onboardingVersion, shell.setOnboardingVersion,
+  }), [fileClipboard, shell.controlPlaneUrl, shell.setControlPlaneUrl, shell.onboardingVersion, shell.setOnboardingVersion,
     shell.onboardingActive, shell.setOnboardingActive, shell.lastSessionByConnection, shell.setLastSessionByConnection,
     shell.favoriteSessions, shell.setFavoriteSessions, shell.projectPathsByConnection, shell.setProjectPathsByConnection, shell.projectPathsByConnectionRef]);
   const voiceSetupTest = useVoiceSetupTest(shell.chatPreferences, Object.values(snapshots).some((snapshot) => snapshot.values.conversationValue.conversation.phase !== 'off'));
@@ -216,7 +219,7 @@ export function WorkspaceProvider({ children }: PropsWithChildren) {
     terminalTarget: connections.some((entry) => entry.id === terminalTarget?.connectionId) ? terminalTarget : undefined, selectTerminalTarget,
     inspectionTarget: connections.some((entry) => entry.id === inspectionTarget?.connectionId) ? inspectionTarget : undefined, inspect, valuesFor, catalogs, projectPathsByConnection: shell.projectPathsByConnection }), [manager, createChat, createChatInWorktree, removeConnection, connections, terminalTarget, selectTerminalTarget, inspectionTarget, inspect, valuesFor, catalogs, shell.projectPathsByConnection]);
   const updates = useAppUpdates({ initialized: isHydrated && shell.onboardingVersion >= CURRENT_ONBOARDING_VERSION && !shell.onboardingActive,
-    blocked: Object.values(snapshots).some((runtime) => runtime.busy) || connectSetup.busy || hasWorkspaceDrafts(presentation) });
+    blocked: Object.values(fileClipboard.busy).some(Boolean) || Object.values(snapshots).some((runtime) => runtime.busy) || connectSetup.busy || hasWorkspaceDrafts(presentation) });
   useEffect(() => {
     if (!current) return;
     setSettings(current.values.connectionValue.settings);

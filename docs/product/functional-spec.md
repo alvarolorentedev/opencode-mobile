@@ -235,6 +235,22 @@ The Projects tab provides source inspection and text editing:
 
 Before save, the provider re-reads the file and rejects the operation if the server content differs from the content originally opened. Only non-base64 text files are editable; a successful full-file patch is followed by another read and project-status refresh. OpenCode 1 does not return binary file bytes, so its binary files show an unavailable message while text preview, editing, and download continue to work. Inline media bytes are bounded at 25 MB; larger files fall back to streaming download.
 
+File and folder rows, including file-search results, expose Copy path, Rename
+and More on swipe-left. More and long-press open the same type-aware actions
+sheet with Copy path, Rename, Copy and Cut; folders also offer Paste into this
+folder when the connection has a clipboard entry. Tap still opens the entry.
+Rename uses a focused Save/Cancel sheet, validates a single non-empty basename,
+and never overwrites. The Changed files section keeps its existing behavior.
+
+Copy path writes the absolute server path to the device clipboard. Copy/Cut
+stage one internal entry per connection; the strip below breadcrumbs shows its
+source with Paste and Clear. Paste targets the browsed directory or selected
+folder. It can cross projects/worktrees on the same connection. File replacement
+requires confirmation; folder collisions and type mismatches are rejected.
+Cut removes the source only after a verified paste; Copy remains reusable.
+Mutations require V2 and supported server shell utilities. Errors preserve input
+and clipboard state; uncertain results instruct the user to inspect both paths.
+
 ### 10. Manage Worktrees
 
 Projects uses a two-level workspace selector in one header line. The project picker lists projects only; a worktree selector appears beside it only when the project has more than one checkout. The Chat header reports the selected project/worktree as read-only context and does not attach selection actions. Worktree creation happens in New chat and accepts an optional name. Removal is in a separate management mode in the worktree switcher and requires destructive confirmation. These SDK operations use OpenCode's experimental worktree endpoints, so server availability and response stability are not guaranteed like the non-experimental contract.

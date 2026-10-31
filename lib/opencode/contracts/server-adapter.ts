@@ -2,6 +2,7 @@ import type { Command, Config, FileContent, FileDiff, McpLocalConfig, McpRemoteC
 import type { ScopedOpencodeClient } from '@/lib/opencode/client';
 import { isInside, shellQuote } from '@/lib/opencode/extensions/scope';
 import type { ConfigEntry, RawPluginInfo, RawSkillInfo } from '@/lib/opencode/extensions/types';
+import { ENTRY_PROBE, EntryOperationError, inspectEntry, mutateEntry, type EntryOperation } from '@/lib/opencode/project-entry-operations';
 import type { ShellResult } from '@/lib/opencode/extensions/transaction';
 import { projectEntries, projectWorktrees, type ProjectFileEntry, type ProjectWorktree } from '@/lib/opencode/project';
 import { knownProjectFileKind, projectFileFromBytes, projectFileFromV1Content, projectFileWithoutContent, type ProjectFile } from '@/lib/opencode/project-file';
@@ -65,6 +66,11 @@ export type ServerAdapter = {
     runShell: (root: string, command: string) => Promise<ShellResult>;
   };
   projects: {
+    entryOperations: {
+      probe: () => Promise<boolean>;
+      inspect: (operation: EntryOperation) => Promise<string>;
+      mutate: (operation: EntryOperation, expected: string) => Promise<void>;
+    };
     findFiles: (query: string, includeDirectories?: boolean) => Promise<string[]>;
     listFiles: (path: string) => Promise<ProjectFileEntry[]>;
     readFile: (path: string) => Promise<FileContent>;
@@ -249,6 +255,21 @@ export function createServerAdapter(client: ScopedOpencodeClient): ServerAdapter
       },
     },
     projects: {
+      entryOperations: {
+        probe: async () => {
+          if (compatibility || !projectDirectory.startsWith('/')) return false;
+          const result = await runShellCommand(client, location, projectDirectory, ENTRY_PROBE);
+          return result.status === 'exited' && result.exit === 0;
+        },
+        inspect: (operation) => {
+          if (compatibility) throw new EntryOperationError('unsupported');
+          return inspectEntry((root, command) => runShellCommand(client, location, root, command), operation);
+        },
+        mutate: (operation, expected) => {
+          if (compatibility) throw new EntryOperationError('unsupported');
+          return mutateEntry((root, command) => runShellCommand(client, location, root, command), operation, expected);
+        },
+      },
       findFiles: async (query: string, includeDirectories = false) => {
         if (compatibility) return v1Project.findFiles(compatibility, query, includeDirectories);
         return (await client.api!.file.find({ ...location, query, limit: 100, ...(includeDirectories ? {} : { type: 'file' }) })).data.map((entry) => entry.path);

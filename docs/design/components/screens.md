@@ -21,6 +21,11 @@ Route-level controllers and platform-specific presentation surfaces. Back to the
 - provides one project refresh action
 - shows files directly with breadcrumbs and scoped search; worktree creation lives in New chat, not Projects
 - opens file viewing and editing in a focused full-screen surface
+- File entries reuse `SwipeRow` for Copy path, Rename and More. Long-press and
+  More open `entry-action-sheet.tsx`; its `entry-action-content.tsx` renders
+  type-aware actions or a focused rename form. `file-clipboard-strip.tsx` shows
+  provider-owned Copy/Cut state and Paste/Clear. Errors stay visible, pending
+  actions are disabled, and keyboard/back dismissal follows `OverlaySheet`.
 - `components/project/file-preview.tsx` renders text editing, raster-image/audio/video previews, and a document/download fallback. Media bytes are prepared through the shared attachment cache helper, released on close, and capped at 25 MB. Download actions call the provider, which streams authenticated V2 file reads on native and creates a browser download on web.
 - `components/ui/media-preview.tsx` owns the shared audio/video players used by both chat attachments and project files
 

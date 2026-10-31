@@ -4,7 +4,17 @@ import { spawn } from 'node:child_process';
 import { Buffer } from 'node:buffer';
 import { setTimeout as sleep } from 'node:timers/promises';
 import WebSocket from 'ws';
+import { createState } from './state.mjs';
+import { runProjectFileShell } from './project-files.mjs';
 import { OpenCode } from '@opencode/client';
+
+const filesState = createState('happy-path');
+const fileCommand = (target, expected = '') => `sh -c '' opencode-files '/workspace/demo-project' 'src/demo.ts' 'file' '/workspace/secondary-project' '${target}' 'copy' ${expected ? `'${expected}'` : ''}`;
+assert(runProjectFileShell(filesState, fileCommand('copied.ts')).output === 'missing', 'File preflight must inspect the destination');
+assert(runProjectFileShell(filesState, fileCommand('copied.ts', 'missing')).output === 'ok', 'File copy must succeed');
+assert(filesState.filesByDirectory['/workspace/secondary-project']['copied.ts'] === filesState.files['src/demo.ts'], 'File copy must retain bytes across workspaces');
+assert(runProjectFileShell(filesState, fileCommand('copied.ts', 'missing')).output === 'OCF:changed', 'Stale destination token must be rejected');
+assert(runProjectFileShell(filesState, fileCommand('../outside')).output === 'OCF:unsafe', 'File mutations must reject traversal');
 
 const port = 4196;
 const prefix = '/api';

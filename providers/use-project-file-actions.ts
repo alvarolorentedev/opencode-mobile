@@ -1,5 +1,6 @@
-import { useCallback } from 'react';
+import { useCallback, useMemo } from 'react';
 
+import { useProjectEntryActions } from '@/providers/use-project-entry-actions';
 import { useProjectBrowser } from '@/providers/use-project-browser';
 import { getRequestHeaders, getServerBase } from '@/lib/opencode/client';
 import { projectPath } from '@/lib/opencode/project';
@@ -20,6 +21,7 @@ import {
 import type { ProjectFileInput } from '@/providers/opencode-provider-action-inputs';
 
 export function useProjectFileActions({
+  fileClipboard, connectionId, connected,
   client,
   isCurrentClient,
   activeProjectPath,
@@ -34,7 +36,7 @@ export function useProjectFileActions({
   settingsRef,
   refreshVcsDiff,
 }: ProjectFileInput) {
-  const browser = useProjectBrowser({ client, isCurrentClient });
+  const directoryBrowser = useProjectBrowser({ client, isCurrentClient });
 
   const refreshServerFeatures = useCallback(async () => {
     if (!activeProjectPath) {
@@ -55,6 +57,18 @@ export function useProjectFileActions({
     setProjectFileStatuses(nextStatuses || []);
     setVcsInfo(nextVcs);
   }, [activeProjectPath, client, isCurrentClient, setCommands, setProjectFileStatuses, setVcsInfo]);
+
+  const refreshEntries = useCallback(async () => {
+    if (!isCurrentClient(client)) return;
+    const [statuses, vcs] = await Promise.all([getFileStatus(client), getVcsInfo(client)]);
+    if (!isCurrentClient(client)) return;
+    setProjectFileStatuses(statuses); setVcsInfo(vcs);
+    await directoryBrowser.refresh();
+    const scope = diffScopeBySessionRef.current[currentSessionIdRef.current || ''];
+    if (scope === 'uncommitted' || scope === 'branch') await refreshVcsDiff(scope, true);
+  }, [client, currentSessionIdRef, diffScopeBySessionRef, directoryBrowser, isCurrentClient, refreshVcsDiff, setProjectFileStatuses, setVcsInfo]);
+  const actions = useProjectEntryActions({ client, isCurrentClient, connectionId, clipboard: fileClipboard, refresh: refreshEntries, enabled: connected });
+  const browser = useMemo(() => ({ ...directoryBrowser, actions }), [directoryBrowser, actions]);
 
   const searchProjectFiles = useCallback(async (query: string) => {
     const trimmed = query.trim();

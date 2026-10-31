@@ -1,5 +1,6 @@
 // Deterministic V2 fake server. See docs/engineering/validation/fake-server.md.
 import { models, providersForScenario, modelCatalog } from './fixtures.mjs';
+import { runProjectFileShell } from './project-files.mjs';
 import { filesForDirectory, fileNodes, addWorktree } from './workspace.mjs';
 import http from 'node:http';
 import { Buffer } from 'node:buffer';
@@ -1027,11 +1028,12 @@ const server = http.createServer(async (req, res) => {
       if (!directory) return;
       const body = await readJson(req);
       if (!body?.command) return sendJson(res, 400, { error: 'Shell command is required' });
-      const result = runFakeShell(state, body.cwd || directory, body.command);
+      const fileResult = runProjectFileShell(state, body.command);
+      const result = fileResult || runFakeShell(state, body.cwd || directory, body.command);
       const info = shellInfo(state, body.cwd || directory, body.command, result);
       state.shells = state.shells || new Map();
       state.shells.set(info.id, info);
-      if (/^(mv|rm|cp) /.test(body.command)) {
+      if (fileResult?.output === 'ok' || /^(mv|rm|cp) /.test(body.command)) {
         emitV2Event(event('filesystem.changed', { path: body.command }));
         emitV2Event(event('config.updated', {}));
         emitV2Event(event('skill.updated', {}));
@@ -1076,8 +1078,9 @@ const server = http.createServer(async (req, res) => {
     }
 
     if (req.method === 'GET' && pathname === '/api/vcs/status') {
-      if (!requireLocation(requestUrl, res)) return;
-      sendJson(res, 200, { location: location(), data: state.workspaceTaskCompleted ? [{ file: 'src/demo.ts', additions: 1, deletions: 1, status: 'modified' }, { file: 'app/(tabs)/index.tsx', additions: 6, deletions: 1, status: 'modified' }] : [] });
+      const directory = requireLocation(requestUrl, res);
+      if (!directory) return;
+      sendJson(res, 200, { location: location(), data: [...Object.values(state.fileOperationStatuses?.[directory] || {}), ...(state.workspaceTaskCompleted ? [{ file: 'src/demo.ts', additions: 1, deletions: 1, status: 'modified' }, { file: 'app/(tabs)/index.tsx', additions: 6, deletions: 1, status: 'modified' }] : [])] });
       return;
     }
 
@@ -1109,7 +1112,7 @@ const server = http.createServer(async (req, res) => {
       const query = (requestUrl.searchParams.get('query') || '').toLowerCase();
       const entries = pathname === '/api/fs/find'
         ? Object.keys(files).filter((path) => path.toLowerCase().includes(query)).sort().map((path) => ({ path, type: 'file' }))
-        : fileNodes(files, directory, requestUrl.searchParams.get('path') || '').map(({ path, type }) => ({ path, type }));
+        : fileNodes(files, directory, requestUrl.searchParams.get('path') || '', state.emptyDirectories?.[directory]).map(({ path, type }) => ({ path, type }));
       sendJson(res, 200, { location: { directory }, data: entries });
       return;
     }

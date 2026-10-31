@@ -37,6 +37,9 @@ import type { Diagnostics } from '@/providers/services/diagnostics-service';
 import type { SessionRefreshOptions } from '@/providers/opencode-provider-events';
 
 export type ProjectActionsInput = {
+  fileClipboard?: import('./use-file-clipboard').FileClipboard;
+  connectionId: string;
+  connected: boolean;
   client: ScopedOpencodeClient;
   catalogClient: ScopedOpencodeClient;
   isCurrentClient: (candidate: object) => boolean;
@@ -211,7 +214,7 @@ export type ProjectRefreshInput = Pick<ProjectActionsInput,
   'selectedDiffMessageBySessionRef' | 'diffScopeBySessionRef' | 'currentSessionIdRef' | 'messagesBySessionRef' |
   'sessionRefreshTimeoutsRef' | 'sessionRefreshOptionsRef' | 'connectionScope' | 'refreshMessages'>;
 export type ProjectFileInput = Pick<ProjectActionsInput,
-  'client' | 'isCurrentClient' | 'activeProjectPath' | 'setCommands' | 'setProjectFileStatuses' | 'setVcsInfo' |
+  'fileClipboard' | 'connectionId' | 'connected' | 'client' | 'isCurrentClient' | 'activeProjectPath' | 'setCommands' | 'setProjectFileStatuses' | 'setVcsInfo' |
   'setDiagnostics' | 'setSelectedProjectFile' | 'projectFileRequestRef' | 'currentSessionIdRef' |
   'diffScopeBySessionRef' | 'settingsRef'> & {
   refreshVcsDiff: (scope: 'uncommitted' | 'branch', silent?: boolean) => Promise<unknown>;

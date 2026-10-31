@@ -326,7 +326,7 @@ export type ProjectsContextValue = {
 };
 
 export type ProjectFilesContextValue = {
-  browser: ReturnType<typeof useProjectBrowser>;
+  browser: ReturnType<typeof useProjectBrowser> & { actions: import('./use-project-entry-actions').ProjectEntryActions };
   projectFileStatuses: File[];
   // The selected file, its bytes for inline media preview, and every file
   // action share one member so the public context surface stays bounded.

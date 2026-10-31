@@ -40,6 +40,7 @@ describe('ANR regression checks', () => {
       '@/lib/opencode/extensions/scope': { isInside: () => true, shellQuote: (value: string) => `'${value}'` },
       '@/lib/opencode/v2/shared': {},
       '@/lib/opencode/project': {},
+      '@/lib/opencode/project-entry-operations': {},
       '@/lib/opencode/project-file': {},
       '@/lib/opencode/compat/v1/auth': { setProviderCredentials: async () => {} },
       '@/lib/opencode/compat/v1/mcp': {},

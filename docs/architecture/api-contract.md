@@ -126,6 +126,16 @@ The pre-read cannot prevent a concurrent edit between comparison and write: nati
 
 Native worktree list/create/remove uses the owning project ID, while the selected location remains the worktree directory. Reset is v1-only.
 
+Project entry rename/copy/move is V2-only and uses the existing scoped server
+shell, with a fixed POSIX program and quoted positional arguments. The adapter
+probes required utilities, validates each root-relative path, rejects symlink
+traversal/symlink-containing trees, and stages and verifies copies. File
+replacement requires a revalidated destination fingerprint; folder collisions
+are rejected. Cut deletes the source only after destination verification. The
+existing shell timeout applies; uncertain outcomes are never retried. See
+[ADR 0012](../adr/0012-shell-mediated-project-file-actions.md) for publication
+limits, including partial new directory copies and concurrent external edits.
+
 ## MCP Authentication And Runtime Lifecycle
 
 Native MCP list/add/connect/disconnect operations use the selected location. Runtime additions remain runtime-only; the Extensions surface writes durable MCP entries to the selected project or user-global config and keeps connect/disconnect/OAuth as runtime controls. Persistent enable/disable is not exposed in the extension editor yet.

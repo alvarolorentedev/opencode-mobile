@@ -227,7 +227,7 @@ export function useOpencodeProviderComposition(input: WorkspaceRuntimeInput) {
     sessionRefreshOptionsRef.current = {};
   }, [bootstrapPromiseRef, bootstrapTokenRef, sessionRefreshOptionsRef, sessionRefreshTimeoutsRef]);
 
-  const project = useProjectActions({ ...state, client, catalogClient, isCurrentClient, isCurrentCatalogClient, clearProjectState, isHydrated, refreshMessages: inbox.refreshMessages });
+  const project = useProjectActions({ ...state, connectionId: inputConnection.id, connected: state.connection.status === 'connected', client, catalogClient, isCurrentClient, isCurrentCatalogClient, clearProjectState, isHydrated, refreshMessages: inbox.refreshMessages });
 
   const capabilities = useCapabilitiesActions({ ...state, client, isCurrentClient });
   // Event bursts (rename + update, config fan-out, file-save VCS events) share

@@ -33,7 +33,7 @@ export type WorkspaceCatalog = {
 export type SharedWorkspaceState = Pick<OpencodeProviderState,
   'controlPlaneUrl' | 'setControlPlaneUrl' | 'onboardingVersion' | 'setOnboardingVersion' |
   'onboardingActive' | 'setOnboardingActive' | 'lastSessionByConnection' | 'setLastSessionByConnection' |
-  'favoriteSessions' | 'setFavoriteSessions' | 'projectPathsByConnection' | 'setProjectPathsByConnection' | 'projectPathsByConnectionRef'>;
+  'favoriteSessions' | 'setFavoriteSessions' | 'projectPathsByConnection' | 'setProjectPathsByConnection' | 'projectPathsByConnectionRef'> & { fileClipboard?: import('./use-file-clipboard').FileClipboard };
 export type WorkspaceRuntimeInput = {
   connection: ConnectionRecord;
   projectPath?: string;
