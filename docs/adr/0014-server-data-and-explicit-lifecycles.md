@@ -1,6 +1,6 @@
 # ADR 0014: Scoped server data and explicit application lifecycles
 
-- Status: Proposed
+- Status: Accepted
 - Date: 2026-10-31
 - Deciders: maintainers
 - Supersedes: —
@@ -15,8 +15,8 @@ Generic server caches and application workflows need separate owners.
 ## Decision
 
 Use TanStack Query for routine server reads, with connection, authentication,
-protocol and directory partitions. Retained/background workspaces unsubscribe
-from optional reads; query polling and automatic mutation replay stay disabled.
+protocol and directory partitions. Retained/background workspaces remove their Query observers
+(and held results) with empty query lists; query polling and automatic mutation replay stay disabled.
 Existing domain contexts expose query-derived views without mirrored caches.
 
 Use explicit React transitions for connection, workspace activation and Cloud
@@ -43,8 +43,14 @@ network results. Existing persistence formats and protocol boundaries remain.
 - Add XState: adds actor integration without removing the native transaction boundaries.
 - Add Redux or Zustand: introduces another shared state owner.
 
+## Rollback
+
+Revert the migration and query-foundation commits together. Query data is
+memory-only and persisted DTO versions remain unchanged; retain secure
+credentials and preferences. No new native module or native build is required.
+
 ## Follow-up
 
-- [ ] Replace each migrated cache and refresh owner in the same implementation stage.
-- [ ] Validate request counts, retained workspaces, concurrent connections and recovery.
-- [ ] Complete the existing static, fake-server, Storybook and full E2E gates.
+Keep native purchase/entitlement and device lifecycle validation in the existing
+manual workflow. Changes to browser/fake-server contracts retain the explicit
+maintainer validation required by the repository agent instructions.

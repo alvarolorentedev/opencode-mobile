@@ -1,6 +1,6 @@
 # Network Resilience
 
-Related ADR: [0004 SSE with polling fallback](../adr/0004-sse-with-polling-fallback.md)
+Related ADRs: [0004 SSE with polling fallback](../adr/0004-sse-with-polling-fallback.md), [0014 scoped server data and lifecycles](../adr/0014-server-data-and-explicit-lifecycles.md)
 
 The app targets real-world 4G as its normal remote-link floor and keeps 3G
 usable in a degraded mode. It does not assume that "connected" means the radio
