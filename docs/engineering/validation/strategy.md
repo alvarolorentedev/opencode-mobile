@@ -175,6 +175,29 @@ or simulator evidence cannot satisfy them. Roll back by reverting the coordinate
 commits and lockfile, then regenerate native projects. Published versions require
 a higher-numbered forward release.
 
+## Android release launch check
+
+Use the actual signed production APK on an ARM64 emulator or test device with
+synthetic data and `adb`/`apkanalyzer` from the Android SDK. Set `ANDROID_SERIAL`
+when more than one device is connected:
+
+```bash
+python3 tests/native/android-launch.py --self-test
+python3 tests/native/android-launch.py --apk /path/to/opencode-mobile.apk --output output/android-launch
+```
+
+The check rejects debug APKs and a missing public `WorkDatabase_Impl()` constructor,
+installs with `adb install -r` (preserving data), cold-launches, waits 15 seconds,
+and requires the same live foreground process plus rendered text and an enabled
+control. It saves launch output, logcat, UI XML and a screenshot. On a disposable
+emulator, run once after a fresh install and once over the last working release
+with saved credentials, session continuity and changed preferences; inspect those
+values after upgrading. Never uninstall or clear a user's installation for this check.
+
+Both release jobs run `--check-apk-only` before uploading artifacts to catch the
+specific R8 regression cheaply. This artifact check does not replace the actual
+release launch and upgrade acceptance above.
+
 ## What automated checks do not prove
 
 Web checks do not establish native frame rate, launch latency, battery use,

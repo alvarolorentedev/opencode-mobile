@@ -346,13 +346,20 @@ template includes its Reanimated rules; native dependencies also contribute
 consumer rules for Expo task/notification modules, React Native, Worklets, and
 Glide image loading.
 
+AGP 9's strict R8 mode does not implicitly retain constructors for a class-only
+keep rule. Room 2.6.1's consumer rule preserves `WorkDatabase_Impl` but loses its
+reflectively invoked public zero-argument constructor. `app.config.ts` explicitly
+keeps that constructor so WorkManager's startup provider can initialize before
+React Native. Release APK checks cover this exact member; see the
+[native launch check](validation/strategy.md#android-release-launch-check).
+
 ### Release ABIs And Gradle Memory
 
 Release artifacts are built for a trimmed set of ABIs via
 `-PreactNativeArchitectures`, passed by `scripts/build-android-release.mjs` from
 the `ANDROID_RELEASE_ABIS` environment variable (default `arm64-v8a`). Published
-releases build `armeabi-v7a,arm64-v8a` (Play-ready, 32-bit + 64-bit ARM) and
-manual build-only runs build `arm64-v8a,x86_64`. x86/x86_64 are omitted from
+releases and tagged build-only runs build `armeabi-v7a,arm64-v8a` (Play-ready,
+32-bit + 64-bit ARM); untagged build-only runs build `arm64-v8a,x86_64`. x86/x86_64 are omitted from
 published releases because only emulators need them, and emulators are served by
 `npm run build:development:android`, which keeps all four ABIs. Building fewer
 ABIs cuts per-ABI native compile and packaging work and lowers bundletool's peak

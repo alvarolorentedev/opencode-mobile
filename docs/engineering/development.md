@@ -115,7 +115,7 @@ trusted environment, and sandbox configuration. See
 - The workflow attaches both APKs to the draft and publishes it only after both uploads succeed. A failed build leaves an unpublished draft instead of a released empty release
 - Manual **Release** dispatch: pass `tag` and set `publish: true` to repair or rebuild a release; pass no tag (or `publish: false`) to build sideload APKs without touching a release. `upload_to_store: true` also pushes the AAB to the Play internal track; green-main releases do that automatically. `Build` keeps a `force_validate` dispatch for emergency full validation
 - Release builds upload APKs as `android-release-artifacts` and `foss-release-artifacts` (1-day retention); published releases also build the release AAB for the Play Store upload
-- Release ABIs are trimmed per mode: published releases build `armeabi-v7a,arm64-v8a`; build-only runs build `arm64-v8a,x86_64`. Override locally with `ANDROID_RELEASE_ABIS`. See [Android Build / Release Notes](./integrations-and-operations.md#release-abis-and-gradle-memory)
+- Release ABIs are trimmed per mode: tagged builds use `armeabi-v7a,arm64-v8a`, including build-only runs used for device acceptance before publication; untagged build-only runs use `arm64-v8a,x86_64`. Override locally with `ANDROID_RELEASE_ABIS`. See [Android Build / Release Notes](./integrations-and-operations.md#release-abis-and-gradle-memory)
 
 ### iOS Builds
 

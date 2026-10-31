@@ -255,9 +255,14 @@ jobs:
           ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
           ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
           ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
-          # Published releases ship a Play-ready AAB (32-bit + 64-bit ARM);
-          # manual builds include x86_64 so the APK runs on the emulator.
-          ANDROID_RELEASE_ABIS: ${{ needs.prepare.outputs.publish == 'true' && 'armeabi-v7a,arm64-v8a' || 'arm64-v8a,x86_64' }}
+          # Tagged acceptance builds use the published ARM ABIs too;
+          # untagged builds include x86_64 for Intel emulators.
+          ANDROID_RELEASE_ABIS: ${{ needs.prepare.outputs.tag != '' && 'armeabi-v7a,arm64-v8a' || 'arm64-v8a,x86_64' }}
+
+      - name: Check release startup constructor
+        run: |
+          python3 tests/native/android-launch.py --self-test
+          python3 tests/native/android-launch.py --check-apk-only --apk android/app/build/outputs/apk/release/app-release.apk
 
       - name: Verify APK signature
         run: |
@@ -410,6 +415,11 @@ jobs:
           ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
           ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
           ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+
+      - name: Check release startup constructor
+        run: |
+          python3 tests/native/android-launch.py --self-test
+          python3 tests/native/android-launch.py --check-apk-only --apk android/app/build/outputs/apk/release/app-release.apk
 
       - name: Verify APK signature
         run: |

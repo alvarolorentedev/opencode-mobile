@@ -1,0 +1,1 @@
+Fix Android startup crash caused by release optimization removing the WorkManager database constructor. Existing connections, sessions and preferences are preserved.
