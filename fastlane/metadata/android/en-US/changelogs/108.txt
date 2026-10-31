@@ -1,0 +1,3 @@
+- Project files now support copy, move, rename, and delete with safe confirmations, plus clipboard actions across folders.
+- Sheets and pickers dismiss the keyboard on open, and lists refresh automatically without manual buttons.
+- Chat and Projects headers are clearer, selectors hide disconnected servers, and live activity stays visible during turns.
