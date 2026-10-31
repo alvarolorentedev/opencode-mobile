@@ -23,6 +23,7 @@ describe('architecture ratchets', () => {
       const files: string[] = [];
       for (const entry of await readdir(dir, { withFileTypes: true })) {
         const full = path.join(dir, entry.name);
+        if (entry.name.startsWith('._') || entry.name === '__tests__') continue;
         if (entry.isDirectory()) {
           files.push(...(await collectSourceFiles(full)));
         } else if (/\.(ts|tsx)$/.test(entry.name)) {
@@ -33,24 +34,23 @@ describe('architecture ratchets', () => {
     }
 
     // 1. The provider orchestrates domains; it should not regrow into a god object.
-    // Composition lives in providers/use-opencode-provider-composition.ts and the
-    // context wiring in providers/opencode-provider-tree.tsx; the entrypoint stays
+    // Composition lives in runtime/composition/use-opencode-provider-composition.ts and the
+    // context wiring in runtime/workspace/domain-provider-tree.tsx; the entrypoint stays
     // a thin wrapper so it cannot accumulate orchestration again.
-    const provider = await read('providers/opencode-provider.tsx');
+    const provider = await read('runtime/composition/opencode-provider.tsx');
     const providerLines = provider.split('\n').length;
     assert.ok(
       providerLines <= 60,
-      `providers/opencode-provider.tsx is ${providerLines} lines. Keep it a thin wrapper over use-opencode-provider-composition.ts / opencode-provider-tree.tsx instead of growing the provider.`,
+      `runtime/composition/opencode-provider.tsx is ${providerLines} lines. Keep it a thin wrapper over use-opencode-provider-composition.ts / opencode-provider-tree.tsx instead of growing the provider.`,
     );
 
     // 1b. No source file may exceed the readable-size ceiling. Generated locale
     // registries are exempt. 400 is the target, 500 the hard limit.
     const MAX_LINES = 500;
-    const LINE_LIMIT_EXEMPT = new Set(['lib/i18n/resources.ts']);
+    const LINE_LIMIT_EXEMPT = new Set(['shared/i18n/resources.ts']);
     const oversized: string[] = [];
-    // `widgets/` holds the headless native widget trees and task handler; they are
-    // not app routes, so they live outside app/ but still follow the size ratchet.
-    for (const dir of ['app', 'components', 'providers', 'lib', 'widgets']) {
+    // All feature, runtime and shared production modules retain the size ratchet.
+    for (const dir of ['app', 'features', 'runtime', 'shared']) {
       for (const file of await collectSourceFiles(path.join(root, dir))) {
         const relative = path.relative(root, file);
         if (LINE_LIMIT_EXEMPT.has(relative)) continue;
@@ -66,7 +66,8 @@ describe('architecture ratchets', () => {
 
     // 2. The public context surface stays a deliberate contract, not an accidental
     // dump. Count members across every domain context value.
-    const types = await read('providers/opencode-provider-types.ts');
+    const typeFiles = (await collectSourceFiles(path.join(root, 'features'))).filter((file) => file.endsWith('/model/types.ts'));
+    const types = (await Promise.all(typeFiles.map((file) => readFile(file, 'utf8')))).join('\n') + await read('shared/preferences/types.ts');
     const domainBlocks = [...types.matchAll(/export type \w+ContextValue = \{([\s\S]*?)\n\};/g)];
     assert.ok(domainBlocks.length >= 2, 'Domain context value types must exist.');
     const contextMembers = domainBlocks.reduce(
@@ -82,24 +83,24 @@ describe('architecture ratchets', () => {
     // It must have one owner at the workspace shell, never one per retained
     // project runtime.
     assert.match(
-      await read('providers/workspace-provider.tsx'),
+      await read('runtime/workspace/workspace-provider.tsx'),
       /\buseNetworkStatus\(\)/,
       'WorkspaceProvider must own the single connectivity monitor.',
     );
     assert.doesNotMatch(
-      await read('providers/use-opencode-provider-composition.ts'),
+      await read('runtime/composition/use-opencode-provider-composition.ts'),
       /useNetworkStatus|use-network-status/,
       'Each workspace runtime must consume the shared network snapshot, not configure NetInfo itself.',
     );
 
     // 2c. Presentation state is stable and must not subscribe to the changing
     // workspace registry.
-    const retainedState = await read('components/ui/use-retained-state.ts');
+    const retainedState = await read('runtime/presentation/use-retained-state.ts');
     assert.match(retainedState, /useWorkspacePresentation/);
     assert.doesNotMatch(retainedState, /useWorkspaces/);
 
     // 3. Screens and presentational components never reach the network directly.
-    const layerDirs = ['app', 'components'];
+    const layerDirs = ['app', 'features', 'shared/ui'];
     const networkCalls = /(^|[^\w.])fetch\s*\(|new XMLHttpRequest|from ['"]axios['"]/;
     const offenders: string[] = [];
     const persistenceCalls = /(?:from ['"](?:@react-native-async-storage|expo-secure-store)|\b(?:loadConnectionProfiles|saveProfilePassword|getProfilePassword|deleteProfilePassword)\s*\()/;
@@ -107,6 +108,7 @@ describe('architecture ratchets', () => {
     for (const dir of layerDirs) {
       for (const file of await collectSourceFiles(path.join(root, dir))) {
         const source = await readFile(file, 'utf8');
+        if (dir === 'features' && !path.relative(root, file).includes('/ui/')) continue;
         if (networkCalls.test(source) || persistenceCalls.test(source)) {
           offenders.push(path.relative(root, file));
         }
@@ -127,7 +129,7 @@ describe('architecture ratchets', () => {
       }
     }
     assert.ok(keyboardSurfaces > 0, 'Keyboard layout surfaces must be checked.');
-    for (const screen of ['components/chat/chat-view.tsx', 'components/terminal/terminal-screen.tsx']) {
+    for (const screen of ['features/chat/ui/chat-view.tsx', 'features/terminal/ui/terminal-screen.tsx']) {
       assert.doesNotMatch(await read(screen), /keyboardVerticalOffset/, `${screen}: full-screen avoidance must not add the header's safe-area inset again`);
     }
     assert.match(
@@ -138,7 +140,7 @@ describe('architecture ratchets', () => {
     assert.deepEqual(
       offenders,
       [],
-      `Network and persistence calls belong in providers/services or lib, never in ${layerDirs.join('/')}: ${offenders.join(', ')}`,
+      `Network and persistence calls belong in feature services or shared protocol/storage, never in ${layerDirs.join('/')}: ${offenders.join(', ')}`,
     );
 
     // Deep-link resolution is only for external entry points (notifications,
@@ -148,7 +150,7 @@ describe('architecture ratchets', () => {
     for (const dir of layerDirs) {
       for (const file of await collectSourceFiles(path.join(root, dir))) {
         const relative = path.relative(root, file).split(path.sep).join('/');
-        if (relative === 'app/session/[id].tsx') continue;
+        if (relative === 'features/sessions/ui/session-link-screen.tsx' || relative.includes('/state/') || relative.includes('/services/') || relative.includes('/model/') || relative.endsWith('/runtime.ts') || relative.endsWith('/context.ts') || relative.endsWith('/index.ts')) continue;
         if (/\bopen(?:DeepLink|External)Session\b/.test(await readFile(file, 'utf8'))) deepLinkOffenders.push(relative);
       }
     }
@@ -160,10 +162,10 @@ describe('architecture ratchets', () => {
 
     // OpenCode 2 is the transport contract; the old SDK belongs only to its adapter.
     const legacyImports: string[] = [];
-    for (const dir of ['app', 'components', 'providers', 'lib']) {
+    for (const dir of ['app', 'features', 'runtime', 'shared']) {
       for (const file of await collectSourceFiles(path.join(root, dir))) {
         const relative = path.relative(root, file).split(path.sep).join('/');
-        if (relative.startsWith('lib/opencode/compat/v1/')) continue;
+        if (relative.startsWith('shared/protocol/opencode/compat/v1/')) continue;
         if (/(?:from\s*|import\s*\(|require\s*\()["']@opencode-ai\/sdk/.test(await readFile(file, 'utf8'))) legacyImports.push(relative);
       }
     }
@@ -172,10 +174,10 @@ describe('architecture ratchets', () => {
     // Contract branching belongs in the typed adapter or the V1 compatibility
     // layer. Provider hooks and UI must consume normalized service results.
     const compatibilityOffenders: string[] = [];
-    for (const dir of ['app', 'components', 'providers', 'lib']) {
+    for (const dir of ['app', 'features', 'runtime', 'shared']) {
       for (const file of await collectSourceFiles(path.join(root, dir))) {
         const relative = path.relative(root, file).split(path.sep).join('/');
-        if (relative.startsWith('lib/opencode/compat/v1/') || relative.startsWith('lib/opencode/contracts/')) continue;
+        if (relative.startsWith('shared/protocol/opencode/compat/v1/') || relative.startsWith('shared/protocol/opencode/contracts/')) continue;
         if (/client\.compatibility/.test(await readFile(file, 'utf8'))) compatibilityOffenders.push(relative);
       }
     }

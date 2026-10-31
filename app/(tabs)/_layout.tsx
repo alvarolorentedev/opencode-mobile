@@ -4,11 +4,11 @@ import { useTranslation } from 'react-i18next';
 import { Platform, Text, View, type ColorValue } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { HapticTab } from '@/components/haptic-tab';
-import { IconSymbol } from '@/components/ui/icon-symbol';
-import { UpdateBanner } from '@/components/ui/update-notice';
-import { usePalette } from '@/hooks/use-palette';
-import { useUpdates } from '@/providers/opencode-contexts';
+import { HapticTab } from '@/runtime/shell/haptic-tab';
+import { IconSymbol } from '@/shared/ui/icon-symbol';
+import { UpdateBanner } from '@/features/updates/index';
+import { usePalette } from '@/shared/ui/theme/use-palette';
+import { useUpdates } from '@/features/updates/context';
 
 export default function TabLayout() {
   const { t } = useTranslation();

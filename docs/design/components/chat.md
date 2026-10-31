@@ -13,10 +13,10 @@ technology. Composer removal is a separate 44 px action.
 text, explicit audio playback, and inline video playback. Closing/backgrounding
 stops media; temporary native files are released. PDF/Office documents use the
 system share/viewer on native and browser download/open on web. Preview loading
-and URI/file handling live in `lib/attachment-preview.ts`, with the existing
+and URI/file handling live in `shared/platform/attachments.ts`, with the existing
 10 MB limit. Declared oversize and encoded data are rejected before allocation; unknown-size downloads stop at the streamed limit. Closing/backgrounding aborts pending reads, and local originals are never deleted. Image tiles and the full image preview use contain fit; the preview
 fills the sheet's available height. The audio and video players live in
-`components/ui/media-preview.tsx` and are shared with project file previews.
+`shared/ui/media-preview.tsx` and are shared with project file previews.
 
 `pending-prompts.tsx` renders provider-derived OpenCode 2 sending/waiting entries
 in a bounded, scrollable stack directly above the composer. It does not own
@@ -38,7 +38,7 @@ onboarding, which reopens the existing setup review without clearing settings.
 
 ## Chat Components
 
-### `components/chat/chat-view.tsx`
+### `features/chat/ui/chat-view.tsx`
 
 #### Responsibility
 
@@ -83,12 +83,12 @@ onboarding, which reopens the existing setup review without clearing settings.
 
 - `ChatHeader`
 - `ChatLibrary`
-- `TranscriptList`, `ChangesOverlay`, `PendingInteractions` (from `components/chat/content/`)
+- `TranscriptList`, `ChangesOverlay`, `PendingInteractions` (from `features/chat/ui/content/`)
 - `PendingPrompts`, `RevertNotice`
 - `ChatComposer`
 - `Snackbar`
 
-### `components/chat/content/`
+### `features/chat/ui/content/`
 
 #### Responsibility
 
@@ -105,12 +105,12 @@ declared once, at the leaves.
 
 - Chat keeps its transcript and pending cards mounted while changes are reviewed.
 - transcript messages use FlashList virtualization; it starts at the bottom, follows additions only from the bottom, and preserves the visible position otherwise. Because FlashList measures progressively, the tail is re-asserted across a few frames on a session switch or data change, and the list re-applies its tail/offset when the Chat tab regains focus or the app returns to the foreground, so an Android detach or background/lock cannot leave it at the top or undrawn. A starter-prompt card is shown only for a session with no transcript content; the skeleton is shown for target bootstrap or a cold fetch with no held records. The initial pull is one newest window of up to 200 records, and each scroll-to-top loads one older 200-record batch without a backfill loop.
-- The transcript renders the selected timeline detail: `Messages only` keeps message bubbles, attachments, and errors; `Reasoning` adds reasoning activity; `Everything` (the default) renders the full native timeline. Independent of that filter, a live non-expandable activity row appears while work is running and the transcript has no real activity row to carry the progress spinner. It shows `Sending…`, `Waiting for OpenCode…`, `OpenCode is working…`, or `OpenCode is retrying…`, coexists with the pending-prompt stack, and disappears when the session settles or a real activity row can show the spinner. Details are first-class activity rows (`components/chat/cards/activity-group.tsx` + `components/chat/cards/activity-item.tsx`): at full detail, contiguous reasoning, tool, and patch details merge into one two-level run whose content grows as streamed details arrive, and a message bubble breaks the run. The level-one header keeps the total tool-call count and lists every rendered type once, including `Thought` when reasoning is present, or `Thought · N` for a reasoning-only run; runs start collapsed, active work only shows the progress affordance, and an explicit manual toggle is the only thing that expands them. Level-two rows: thoughts expand markdown; shells show the command collapsed and a selectable, copyable code block expanded; grep stays a one-line pattern plus match count; consecutive reads collapse to one non-expandable comma-separated filename list; edit/write/patch tools render per-file diff cards with `+N −N` and an expandable unified diff. Run rows use the assistant bubble width. V1-only subtask/step/agent details and the `step-finish` usage marker are never rendered.
+- The transcript renders the selected timeline detail: `Messages only` keeps message bubbles, attachments, and errors; `Reasoning` adds reasoning activity; `Everything` (the default) renders the full native timeline. Independent of that filter, a live non-expandable activity row appears while work is running and the transcript has no real activity row to carry the progress spinner. It shows `Sending…`, `Waiting for OpenCode…`, `OpenCode is working…`, or `OpenCode is retrying…`, coexists with the pending-prompt stack, and disappears when the session settles or a real activity row can show the spinner. Details are first-class activity rows (`features/chat/ui/cards/activity-group.tsx` + `features/chat/ui/cards/activity-item.tsx`): at full detail, contiguous reasoning, tool, and patch details merge into one two-level run whose content grows as streamed details arrive, and a message bubble breaks the run. The level-one header keeps the total tool-call count and lists every rendered type once, including `Thought` when reasoning is present, or `Thought · N` for a reasoning-only run; runs start collapsed, active work only shows the progress affordance, and an explicit manual toggle is the only thing that expands them. Level-two rows: thoughts expand markdown; shells show the command collapsed and a selectable, copyable code block expanded; grep stays a one-line pattern plus match count; consecutive reads collapse to one non-expandable comma-separated filename list; edit/write/patch tools render per-file diff cards with `+N −N` and an expandable unified diff. Run rows use the assistant bubble width. V1-only subtask/step/agent details and the `step-finish` usage marker are never rendered.
 - A centered changes chip above the composer shows file count and green additions/red deletions for the selected scope. It hides at zero files and omits line totals for filename-only patches. Tapping opens the shared Files changed overlay with refresh, source selection, and diff accordions. Changes use a compact bottom sheet (55% of the viewport where safe areas permit), a centered file-count title, close icon, and a three-dot source button instead of separate summary/source cards.
 - Changes overlay scopes: `Turn` (per-turn snapshot diff, with a picker when multiple turns have diffs), `Uncommitted`, and `Branch` (VCS working tree / default-branch diffs)
 - displays starter prompts only when the selected session has no transcript content at all
 
-### `components/chat/chat-composer.tsx`
+### `features/chat/ui/chat-composer.tsx`
 
 #### Responsibility
 
@@ -179,18 +179,18 @@ type ChatComposerProps = {
 - model selection uses a searchable sheet grouped by provider; its reasoning slider shows server variants for the selected OpenCode 2 model, including a synthetic Default, and stays hidden when that model has none
 - the composer trigger includes the selected variant in its accessible name when the model provides variants
 
-### `components/chat/composer-suggestions.tsx` and `use-composer-suggestions.ts`
+### `features/chat/ui/composer-suggestions.tsx` and `use-composer-suggestions.ts`
 
 - `chat-composer.tsx` renders the presentational suggestion rows above the input.
 - `use-composer-suggestions.ts` owns only local trigger/query/file-search state; provider actions supply commands, agents, skills, references, and project file results.
 - Commands and context are grouped and filtered by the active token; file search is debounced and the suggestion rows are keyboard-persistent.
 
-### `lib/opencode/composer.ts`
+### `features/chat/model/composer.ts`
 
 - Pure trigger detection, token replacement, shell-command parsing, and final-draft mention resolution.
 - Mention offsets are computed at submit time from the selected tokens, so edits and deletions cannot leave stale ranges.
 
-### `components/chat/model-picker.tsx`
+### `features/ai/ui/model-picker.tsx`
 
 #### Responsibility
 
@@ -206,7 +206,7 @@ type ChatComposerProps = {
 - render the trigger with the local `ControlButton`, including slim sizing for the slim-interface preference
 - the transparent `Modal` sheet wraps its content in `GestureHandlerRootView` and dismisses on a downward header drag via the shared `useSwipeDismiss` helper, matching `OverlaySheet`
 
-### `components/chat/chat-header.tsx`
+### `features/chat/ui/chat-header.tsx`
 
 #### Responsibility
 
@@ -239,7 +239,7 @@ type ChatHeaderProps = {
 the title. It has no press handler, picker, or chevron; workspace selection
 stays in Projects and New chat.
 
-### `components/chat/chat-workspace-context.tsx`
+### `features/chat/ui/chat-workspace-context.tsx`
 
 - renders the active project, worktree, and branch as one muted subtitle under the session title
 - reads the shared checkout catalog but owns no state
@@ -250,7 +250,7 @@ selector (only with multiple connections), project selector, resolved working
 directory, and an explicit confirm action. Selection stays local until confirm;
 the provider then creates and opens the session in that workspace.
 
-### `components/chat/chat-library.tsx`
+### `features/sessions/ui/chat-library.tsx`
 
 - Chats overlay with search, favorites, and swipe-left session actions
 - active, favorite, and current-project rows share one FlashList scroll owner; search, filters, and New Chat stay outside the virtualized list
@@ -262,7 +262,7 @@ the provider then creates and opens the session in that workspace.
 - uses provider actions for switching projects, opening chats, and persistence
 - owns only local search, section, swipe row, rename, and feedback state
 
-### `components/ui/overlay-sheet.tsx`
+### `shared/ui/overlay-sheet.tsx`
 
 - shared overlay presentation for Chats, project selection, progress, diff source selection, session usage, terminal selection, and Settings categories; short overlays fit their content
 - `scrollable={false}` lets embedded virtualized lists own scrolling without a nested ScrollView
@@ -270,7 +270,7 @@ the provider then creates and opens the session in that workspace.
 - dismisses the keyboard when it opens through the shared `useDismissKeyboardOnOpen` hook, so a focused composer or search field cannot keep the keyboard covering the sheet; sheets whose content auto-focuses a field when it mounts (project rename) opt out with `dismissKeyboard={false}`
 - dismisses on a downward header drag through the shared `useSwipeDismiss` helper, which owns the Pan gesture, threshold set, sheet-height measurement, and backdrop fade; the transparent `Modal` bottom sheets (model picker, select) reuse the same helper
 
-### `components/ui/workspace-breadcrumb.tsx`
+### `features/projects/ui/workspace-breadcrumb.tsx`
 
 - renders the one-line Projects header selector: project title at ~16pt, worktree at ~13pt, branch as quiet ~11.5pt context
 - project selection is always available; the worktree selector appears only when the active project has more than one checkout
@@ -278,13 +278,13 @@ the provider then creates and opens the session in that workspace.
 - owns only sheet visibility; project/worktree selection and catalog state come from the provider
 - mounts the project picker and the selection-only `WorktreeSwitcher`
 
-### `components/ui/project-picker.tsx`
+### `features/projects/ui/project-picker.tsx`
 
 - shared Chat project button and project picker overlay also used by Project's existing dropdown
 - renders the connection's opened projects; a row's close control removes it locally, and adding lets the user enter a directory on the OpenCode server that the provider resolves and selects
 - owns no domain state or persistence
 
-### `components/chat/chat-cards.tsx`
+### `features/chat/ui/chat-cards.tsx`
 
 #### Exported components
 
@@ -332,7 +332,7 @@ Responsibility:
 - show copy state, optional TTS button, fork/revert actions for user messages, timestamp, markdown text, error, and summary chips
 - an explicit copy button keeps copying available without capturing table-scroll gestures; taps still dismiss the keyboard
 
-### `components/chat/chat-markdown.tsx`
+### `features/chat/ui/chat-markdown.tsx`
 
 #### Responsibility
 
@@ -347,7 +347,7 @@ Responsibility:
 - GitHub-flavored Markdown, including tables, ordered and unordered lists, links, emphasis, blockquotes, and fenced code blocks
 - native text selection and link handling on iOS/Android, plus semantic HTML rendering on web
 
-### `components/chat/chat-overlay.tsx`
+### `features/chat/ui/chat-overlay.tsx`
 
 #### Responsibility
 
@@ -372,7 +372,7 @@ Responsibility:
 - configured wake phrase
 - active confirmation text, phase, errors and confirm/retry/edit/cancel actions
 
-### `components/chat/chat-diff.ts`
+### `features/chat/ui/chat-diff.ts`
 
 #### Responsibility
 
@@ -385,7 +385,7 @@ Responsibility:
 - treats the common prefix and suffix as context and the middle as one changed block
 - preserves context/add/remove rows with line numbers
 
-### `components/chat/chat-view-utils.ts`
+### `features/chat/ui/chat-view-utils.ts`
 
 #### Responsibility
 
@@ -398,7 +398,7 @@ Current values used by the UI:
 - transcript page size = `20`
 - auto-approve icon mapping
 
-### `components/chat/chat-view-styles.ts`
+### `features/chat/ui/chat-view-styles.ts`
 
 #### Responsibility
 

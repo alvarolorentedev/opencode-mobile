@@ -469,7 +469,7 @@ Behavior:
 - a notice names the target machine when it is not the active connection, with a Switch to this machine action that reconnects it
 - with no saved Cloud Link machine the subsection explains that a machine must be connected instead of hiding; expired or rejected credentials surface an explicit state with Reconnect
 - opening (or re-opening) the Cloud Link section re-fetches `GET /_cloudlink/services` and `GET /_cloudlink/version` for the resolved target, because the connector's tray or CLI can change the list out from under the app
-- Add/Edit opens a full-screen route (`app/service.tsx`), not an inline overlay form; Save returns to Settings with the Cloud Link section reopened. The form covers id (create only), optional name, path, target, enabled, access (`private`/`public`) and strip-prefix; the id is fixed when editing
+- Add/Edit opens a full-screen route (`features/cloud-link/ui/service-screen.tsx`), not an inline overlay form; Save returns to Settings with the Cloud Link section reopened. The form covers id (create only), optional name, path, target, enabled, access (`private`/`public`) and strip-prefix; the id is fixed when editing
 - on management revision 2 the form also picks a `port` from the connector's `service_ports`; the path is optional (empty serves the port root, and the strip-prefix toggle only applies to path services), the picker marks ports already in use and disables them for the mode being edited (a root service needs a fully free port; a path service may share a root-free port)
 - revision 1 and unknown older connectors stay on the legacy path-only form on `:8443` with a non-blocking "update your desktop connector" hint; root services and the port picker require revision 2
 - the app mirrors the connector's validation before sending, and shows the connector's own message when the server rejects a request (for example `400` invalid service)
@@ -867,7 +867,7 @@ recent tasks without opening the app.
 Quick actions:
 
 - dynamic-only items, capped at four: `New chat` plus up to three running/recent
-  sessions from the connection-wide active-session selection (`providers/active-sessions.ts`)
+  sessions from the connection-wide active-session selection (`features/sessions/model/active-sessions.ts`)
 - session labels fall back to the untitled chat copy; labels follow the app
   language and refresh when sessions or the language change
 - publishing is debounced and only happens while the app is foregrounded;

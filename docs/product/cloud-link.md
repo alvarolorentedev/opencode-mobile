@@ -37,7 +37,7 @@ connect keeps the redeemed credential and offers Retry plus Scan again without
 re-pairing.
 
 The provider handles pairing and persistence; protocol validation/redemption live
-in `lib/opencode/pairing.ts`. Current one-use codes become session-token passwords;
+in `shared/protocol/opencode/pairing.ts`. Current one-use codes become session-token passwords;
 older V2 credential QR formats remain supported. Failed save/connect retries reuse
 the credential and existing profile ID. See [API contract](../architecture/api-contract.md#local-v2-pairing).
 
@@ -163,7 +163,7 @@ feedback. Conflicting store operations disable actions. Your machines closes the
 sheet and opens `pair?mode=manage`; opening Cloud Link alone never requests
 camera access, pairs a machine, purchases, or performs interactive Restore.
 
-`lib/connect-install.ts` decides whether Settings may offer the section.
+`shared/platform/install-identity.ts` decides whether Settings may offer the section.
 `isConnectStoreInstall()` resolves the iOS application release type and only
 accepts `AppStore`, while on Android it accepts a resolved Play Install Referrer
 call; the Play Store only answers that service for packages it installed, so
@@ -339,7 +339,7 @@ run once. A credential rotation that lands mid-flight updates the in-flight key
 instead of letting a second stale attempt start.
 
 Data-plane authentication failures are not retried in a loop. The realtime
-subscription classifies failures (`lib/opencode/client/errors.ts`) and stops
+subscription classifies failures (`shared/protocol/opencode/client/errors.ts`) and stops
 its retry loop for `auth`/`entitlement`, notifying the provider once: Cloud Link
 runs the same prepared credential recovery used by foreground renewal, while
 manual connections surface an actionable error that requires an explicit
@@ -425,13 +425,13 @@ uncaught browser errors in the new flows. Android development prebuild passed;
 Gradle stopped because no Android SDK location is configured. Live store handoff,
 native larger text and screen-reader acceptance remain unverified.
 
-`tests/vitest/connect.test.ts` covers trusted catalog/API/proof/session contracts and the actual
+`features/cloud-link/__tests__/connect.test.ts` covers trusted catalog/API/proof/session contracts and the actual
 claim → secure-write → finalization aggregation on both stores, including
 failures, retries, rediscovered transactions, and bounded Cloudflare 1033 tunnel
 startup recovery after pairing. It also tests catalog/base-plan/
 offer selection, native JWS forwarding, Family Sharing exclusion, DEFERRED
 replacement, URL safety, app identity/camera/build variants and WebSocket headers.
-`tests/vitest/connection-profiles.test.ts` checks stable profile identity, credential rotation,
+`shared/storage/__tests__/connection-profiles.test.ts` checks stable profile identity, credential rotation,
 hostname preservation, rollback, secret exclusion and expiry.
 Control-plane checks cover the fixed allowlist, URL normalization/rejection,
 explicit pairing trust, and environment-isolated sessions and pending QR records.
@@ -456,7 +456,7 @@ human validation under AGENTS.md, even when automated checks pass.
 Google acknowledgement ownership validation on 2026-10-12: the app no longer
 acknowledges Play purchases. It finishes only the StoreKit transaction on iOS,
 while the control plane owns Google acknowledgement with durable retry.
-`tests/vitest/connect.test.ts` asserts Android never calls `finishTransaction`; Cloud Link E2E
+`features/cloud-link/__tests__/connect.test.ts` asserts Android never calls `finishTransaction`; Cloud Link E2E
 asserts purchase/Restore/recovery still claim and secure a session without a
 client finalization step. Locally, static CI, both fake-server self-tests and the
 39 Cloud Link E2E flows passed. The updated E2E assertions require explicit human

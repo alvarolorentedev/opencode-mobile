@@ -6,7 +6,7 @@ and it defines the extraction candidates that could become standalone packages.
 
 ## Implemented
 
-- **Slider**: `components/ui/numeric-slider.tsx` now uses
+- **Slider**: `shared/ui/numeric-slider.tsx` now uses
   `@react-native-community/slider` (Expo SDK 57 bundled version). The component
   keeps its label/value header and palette props; the package owns gestures,
   accessibility, and native controls. Its web build does not expose range
@@ -28,15 +28,15 @@ and it defines the extraction candidates that could become standalone packages.
   Basic authentication, pairing payloads, attachment data URLs, and the
   generated working sound. This removes an untyped, unmaintained direct
   dependency and makes byte handling explicit.
-- **File API**: `lib/opencode/attachment.ts` now uses the Expo SDK 57 `File`
+- **File API**: `shared/protocol/opencode/attachment.ts` now uses the Expo SDK 57 `File`
   API instead of the `expo-file-system/legacy` module.
 
 Two persistence boundaries remain intentionally manual:
 
-- `providers/widget-snapshot.ts` is a bounded projection with per-row salvage,
+- `features/widgets/model/widget-snapshot.ts` is a bounded projection with per-row salvage,
   preview redaction, and nested attention/plan fallbacks. A schema would be
   larger than the projection and would obscure the redaction contract.
-- `lib/connection-headers.ts` enforces RFC 7230 token rules, reserved-header
+- `shared/storage/connection-headers.ts` enforces RFC 7230 token rules, reserved-header
   rejection, duplicate detection, and editor error codes. Those are domain
   rules rather than a record shape.
 
@@ -48,7 +48,7 @@ native or UI validation that the web/static suites cannot provide.
 ### Keyboard handling: `react-native-keyboard-controller`
 
 Expo SDK 57 bundles `react-native-keyboard-controller` 1.21.9. It could replace
-`hooks/use-keyboard-height.ts` and several `KeyboardAvoidingView` workarounds,
+`shared/ui/hooks/use-keyboard-height.ts` and several `KeyboardAvoidingView` workarounds,
 and it may help the Android keyboard-flicker path described for issue #62.
 
 Deferred because it has no obvious web implementation, the app's web E2E suite
@@ -60,7 +60,7 @@ surface first, not replace every `KeyboardAvoidingView` at once.
 ### App updates: `expo-in-app-updates`
 
 `expo-in-app-updates` already wraps Google Play Core and the App Store, which
-overlaps with `modules/opencode-updates` and `lib/app-updates.ts`.
+overlaps with `modules/opencode-updates` and `shared/platform/app-updates.ts`.
 
 Deferred because:
 
@@ -72,7 +72,7 @@ Deferred because:
   public App Store test.
 
 If the package covers those behaviors, delete the local module and most of
-`lib/app-updates.ts`; otherwise upstream the missing behavior instead of
+`shared/platform/app-updates.ts`; otherwise upstream the missing behavior instead of
 publishing a competing module.
 
 ### Bottom sheets: `@gorhom/bottom-sheet`
@@ -88,7 +88,7 @@ snap points, keyboard behavior, or gesture edge cases become a real problem.
 ### Diff rendering: `parse-diff` / `react-native-diffs`
 
 `parse-diff` could replace the unified-patch parser in
-`components/chat/chat-diff.ts`. `react-native-diffs` provides a full native diff
+`features/chat/ui/chat-diff.ts`. `react-native-diffs` provides a full native diff
 viewer but uses Nitro Modules/MarkdownView and does not fit the existing compact
 accordion cards without a redesign.
 
@@ -104,11 +104,11 @@ publish only when there is a second consumer or clear ecosystem demand.
 
 | Candidate | What Moves | Reuse Value | Effort | Recommendation |
 |---|---|---|---|---|
-| Expo terminal kit | `components/terminal/terminal-dom`, touch, input, accessory, keys, CSS, and the generic decoder/queue from `lib/opencode/terminal-stream.ts` | High: Expo DOM + xterm with mobile touch selection, IME handling, accessory keys, resize, and acknowledged output is missing from the RN ecosystem | 2–3 weeks | Extract first or second |
+| Expo terminal kit | `features/terminal/ui/terminal-dom`, touch, input, accessory, keys, CSS, and the generic decoder/queue from `shared/protocol/opencode/terminal-stream.ts` | High: Expo DOM + xterm with mobile touch selection, IME handling, accessory keys, resize, and acknowledged output is missing from the RN ecosystem | 2–3 weeks | Extract first or second |
 | OpenCode fake server | `tests/fake-opencode/*` (v1/v2 servers, fixtures, SSE/PTY controls, self-test) | High: client authors need a deterministic OpenCode backend for contract, SSE, permission, question, and PTY tests | 1–2 weeks | Extract or upstream first |
-| Expo secure connections | `lib/connection-scope.ts`, `connection-profiles.ts`, `connection-headers.ts`, `connection-password.ts` | Medium-high: multi-server self-hosted apps need scoped metadata, secure secrets, validation, ordering, and rotation | 2–3 weeks | Later, if demand exists |
-| Resilient event stream | `providers/realtime/*`, the transport half of `use-opencode-realtime.ts`, `shared-event-stream.ts` | Medium-high: RN SSE libraries handle transport, not liveness, AppState, NetInfo, polling fallback, and backoff | 1–2 weeks | Later, with a second consumer |
-| Expo speech input | `lib/voice/use-speech-input.ts`, errors, transcript accumulation, wake phrase, permissions, capabilities | Medium-high: owner coordination, on-device→network fallback, and wake-phrase gating sit above `expo-speech-recognition` | 2–3 weeks | Later |
+| Expo secure connections | `shared/contracts/connection-scope.ts`, `connection-profiles.ts`, `connection-headers.ts`, `connection-password.ts` | Medium-high: multi-server self-hosted apps need scoped metadata, secure secrets, validation, ordering, and rotation | 2–3 weeks | Later, if demand exists |
+| Resilient event stream | `runtime/realtime/*`, the transport half of `use-opencode-realtime.ts`, `shared-event-stream.ts` | Medium-high: RN SSE libraries handle transport, not liveness, AppState, NetInfo, polling fallback, and backoff | 1–2 weeks | Later, with a second consumer |
+| Expo speech input | `shared/platform/voice/use-speech-input.ts`, errors, transcript accumulation, wake phrase, permissions, capabilities | Medium-high: owner coordination, on-device→network fallback, and wake-phrase gating sit above `expo-speech-recognition` | 2–3 weeks | Later |
 | Ongoing activity service | `modules/opencode-activity` and the generic activity notification helpers | Medium: Android `dataSync` foreground service, promoted ongoing notification, and headless keepalive are common needs | 2–3 weeks | Check Notifee and existing foreground-service modules first |
 | Source-owned UI | `CatalogSelect`, `OverlaySheet`, `NumericSlider`, `SwipeRow` | Medium: searchable select and swipe-dismiss sheets are missing RN primitives | 1 week | Internal package only unless a design-system release is intended |
 
@@ -157,7 +157,7 @@ client test harness.
   handling, accompanying text, unique bounded cache copies, and the resource
   keep rule would remove a version-pinned patch and the `buildFromSource`
   autolinking workaround.
-- `lib/opencode/contracts/` + `lib/opencode/compat/v1/` → `@opencode/client` or
+- `shared/protocol/opencode/contracts/` + `shared/protocol/opencode/compat/v1/` → `@opencode/client` or
   a published compatibility package. This is the largest protocol maintenance
   surface in the app and belongs with the SDK.
 - Content-capture opt-out in `config/plugins/android.cjs` → a small Expo config

@@ -1,3 +1,4 @@
+import { loadTs } from '../helpers/runtime.mjs';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { createRequire } from 'node:module';
@@ -24,7 +25,7 @@ describe('ANR regression checks', () => {
     // The complete catalog and voice paths share one collator, including repeated
     // discovery. Keep locale-aware ordering and server-default model priority.
     let allocations = 0;
-    const labels = await load('lib/compare-labels.ts', {}, {
+    const labels = await load('shared/utilities/compare-labels.ts', {}, {
       Intl: { Collator: class {
         constructor() {
           allocations += 1;
@@ -32,28 +33,20 @@ describe('ANR regression checks', () => {
         }
       } },
     });
-    const selection = await load('providers/opencode-model-selection.ts', {
-      '@/providers/opencode-preferences': { defaultChatPreferences: { mode: 'build' } },
-    });
-    const adapter = await load('lib/opencode/contracts/server-adapter.ts', {
-      '@/lib/error-message': { getErrorMessage: (error: unknown) => String(error) },
-      '@/lib/opencode/extensions/scope': { isInside: () => true, shellQuote: (value: string) => `'${value}'` },
-      '@/lib/opencode/v2/shared': {},
-      '@/lib/opencode/project': {},
-      '@/lib/opencode/project-entry-operations': {},
-      '@/lib/opencode/project-file': {},
-      '@/lib/opencode/compat/v1/auth': { setProviderCredentials: async () => {} },
-      '@/lib/opencode/compat/v1/mcp': {},
-      '@/lib/opencode/compat/v1/project': {},
-      '@/lib/opencode/compat/v1/session': {},
-      '@/lib/opencode/compat/v1/terminal': {},
-      '@/lib/opencode/compat/v1/diagnostics': {},
-    });
-    const { discoverProviderCapabilities } = await load('providers/services/capabilities-service.ts', {
-      '@/lib/compare-labels': labels,
-      '@/lib/opencode/contracts/server-adapter': adapter,
-      '@/providers/opencode-model-selection': selection,
-    });
+    const selection = await load('features/ai/model/opencode-model-selection.ts', {
+    "@/shared/preferences/opencode-preferences": { defaultChatPreferences: { mode: 'build' } }
+  });
+    const adapter = await loadTs('shared/protocol/opencode/contracts/server-adapter.ts', {
+    '@/shared/protocol/opencode/client/types': { defaultConnectionSettings: { serverUrl: 'http://test' } },
+    "@/shared/utilities/error-message": { getErrorMessage: (error: unknown) => String(error) },
+    "@/shared/protocol/opencode/extensions/scope": { isInside: () => true, shellQuote: (value: string) => `'${value}'` },
+    "@/shared/protocol/opencode/compat/v1/auth": { setProviderCredentials: async () => {} }
+  });
+    const { discoverProviderCapabilities } = await load('features/ai/services/capabilities-service.ts', {
+    '@/shared/utilities/compare-labels': labels,
+    '@/shared/protocol/opencode/contracts/server-adapter': adapter,
+    "@/features/ai/model/opencode-model-selection": selection
+  });
     const names = ['Éclair', 'alpha', 'Alpha', ...Array.from({ length: 2000 }, (_, i) => `Model ${2000 - i}`)];
     const models = Object.fromEntries(names.map((name, i) => [String(i), {
       id: String(i), name, capabilities: { input: { text: true } }, limit: { context: 1000, output: 100 },
@@ -74,10 +67,10 @@ describe('ANR regression checks', () => {
       assert.equal(result.models[0].modelID, '1');
       assert.deepEqual(Array.from(result.models.slice(1), (model: any) => model.label), names.filter((_, i) => i !== 1).sort((a, b) => a.localeCompare(b)));
     }
-    const { getSpeechVoiceOptions } = await load('lib/voice/system-tts.ts', {
-      '@/lib/compare-labels': labels,
-      'expo-speech': { getAvailableVoicesAsync: async () => names.slice(0, 3).map((name) => ({ identifier: name, name, language: 'en', quality: 'Default' })) },
-    });
+    const { getSpeechVoiceOptions } = await load('shared/platform/voice/system-tts.ts', {
+    '@/shared/utilities/compare-labels': labels,
+    'expo-speech': { getAvailableVoicesAsync: async () => names.slice(0, 3).map((name) => ({ identifier: name, name, language: 'en', quality: 'Default' })) }
+  });
     assert.deepEqual(Array.from(await getSpeechVoiceOptions(), (voice: any) => voice.label), names.slice(0, 3).map((name) => `${name} (en)`).sort((a, b) => a.localeCompare(b)));
     assert.equal(allocations, 1);
 
@@ -85,9 +78,9 @@ describe('ANR regression checks', () => {
     // disposable, so the opt-out must survive clean and repeated prebuilds.
     for (const variant of ['production', 'development']) {
       const { default: appConfig } = await load('app.config.ts', {
-        './config/plugins/android.cjs': require('../../config/plugins/android.cjs'),
-        './config/plugins/ios.cjs': require('../../config/plugins/ios.cjs'),
-      }, { process: { env: { EXPO_APP_VARIANT: variant } } });
+    './config/plugins/android.cjs': require('../../config/plugins/android.cjs'),
+    './config/plugins/ios.cjs': require('../../config/plugins/ios.cjs')
+  }, { process: { env: { EXPO_APP_VARIANT: variant } } });
       assert.equal(appConfig.android.softwareKeyboardLayoutMode, 'resize');
       const plugin = appConfig.plugins.find((entry: unknown) => typeof entry === 'function');
       const config = plugin({ name: 'Test', slug: 'test' });

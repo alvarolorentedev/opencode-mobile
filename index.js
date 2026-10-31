@@ -1,4 +1,4 @@
 import 'react-native-gesture-handler';
-import './lib/activity-keepalive';
-import './widgets/session-widget-task';
+import './features/notifications/background';
+import './features/widgets/background';
 import 'expo-router/entry';

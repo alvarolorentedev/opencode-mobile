@@ -31,18 +31,18 @@ runs the same build in the static validate job.
 Stories are co-located with components:
 
 ```text
-components/ui/text-field.tsx
-components/ui/text-field.stories.tsx
-components/settings/sections/setting-rows.tsx
-components/settings/sections/setting-rows.stories.tsx
+shared/ui/text-field.tsx
+shared/ui/text-field.stories.tsx
+shared/ui/settings/setting-rows.tsx
+shared/ui/settings/setting-rows.stories.tsx
 ```
 
 ## What belongs
 
 Add a story when a component is reusable or shared:
 
-- primitives in `components/ui/`
-- shared settings controls in `components/settings/sections/`
+- primitives in `shared/ui/`
+- shared settings controls in `features/settings/ui/sections/`
 - reusable feedback/status components
 - foundations such as palette, spacing, shape, and typography
 

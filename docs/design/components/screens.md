@@ -4,7 +4,7 @@ Route-level controllers and platform-specific presentation surfaces. Back to the
 
 ## Screen Controllers
 
-### `app/(tabs)/projects.tsx`
+### `features/projects/ui/projects-screen.tsx`
 
 #### Responsibility
 
@@ -26,10 +26,10 @@ Route-level controllers and platform-specific presentation surfaces. Back to the
   type-aware actions or a focused rename form. `file-clipboard-strip.tsx` shows
   provider-owned Copy/Cut state and Paste/Clear. Errors stay visible, pending
   actions are disabled, and keyboard/back dismissal follows `OverlaySheet`.
-- `components/project/file-preview.tsx` renders text editing, raster-image/audio/video previews, and a document/download fallback. Media bytes are prepared through the shared attachment cache helper, released on close, and capped at 25 MB. Download actions call the provider, which streams authenticated V2 file reads on native and creates a browser download on web.
-- `components/ui/media-preview.tsx` owns the shared audio/video players used by both chat attachments and project files
+- `features/projects/ui/file-preview.tsx` renders text editing, raster-image/audio/video previews, and a document/download fallback. Media bytes are prepared through the shared attachment cache helper, released on close, and capped at 25 MB. Download actions call the provider, which streams authenticated V2 file reads on native and creates a browser download on web.
+- `shared/ui/media-preview.tsx` owns the shared audio/video players used by both chat attachments and project files
 
-### `app/(tabs)/settings.tsx`
+### `features/settings/ui/settings-screen.tsx`
 
 #### Responsibility
 
@@ -73,10 +73,10 @@ Route-level controllers and platform-specific presentation surfaces. Back to the
 - render a content-sized PTY selector overlay; each terminal opens on tap and reveals Close on swipe
 - refresh the PTY list when the tab regains focus or the selector opens; there is no header refresh action
 - create default-shell PTYs and select/reconnect existing PTYs
-- delegate rendering and keyboard controls to `components/terminal/`
+- delegate rendering and keyboard controls to `features/terminal/ui/`
 - stream immediate terminal input through provider actions; the server owns line editing/history
 
-### `app/share.tsx`
+### `features/sharing/ui/share-screen.tsx`
 
 Thin preview/controller over provider-owned `sharedInput`: resolving, setup,
 empty/error, shared text/link, attachment tiles and skipped-item warnings.
@@ -90,7 +90,7 @@ Discard cancels and clears staged content. Components never fetch or persist.
 
 ## Android widget presentation
 
-`widgets/session-widget.tsx` renders Latest replies, Awaiting actions and Plan
+`features/widgets/ui/session-widget.tsx` renders Latest replies, Awaiting actions and Plan
 progress as RemoteViews. Height determines one to three rows; both palettes,
 accessible names, text truncation and absolute update timestamps are shared.
 The renderer opts out of React Compiler with a module-level `"use no memo"`
@@ -134,14 +134,14 @@ screen-reader mode is enabled. Native screen-reader/input validation remains req
 
 ## Project file browser components
 
-- `components/project/files-panel.tsx` renders sorted folders/files, breadcrumbs,
+- `features/projects/ui/files-panel.tsx` renders sorted folders/files, breadcrumbs,
   explicit project-wide search scope, changed files, loading/empty/error states,
   and retry actions. Only the unsubmitted search input is local; listing/search
   state and actions come from the provider's `browser` member.
-- `components/project/file-preview.tsx` renders the full-screen text preview,
+- `features/projects/ui/file-preview.tsx` renders the full-screen text preview,
   local edit draft, save feedback and discard confirmation. It calls the existing
   provider save action; unsupported editing is capability-gated.
-- `components/project/worktree-picker.tsx` renders the selection-only
+- `features/projects/ui/worktree-picker.tsx` renders the selection-only
   `WorktreeSwitcher`, with a separate management mode for removal. It reads the
   inventory when the sheet opens and on worktree events; a failed read offers
   Retry instead of a permanent refresh action. Creation is owned by New chat;
@@ -154,15 +154,15 @@ selection action. Terminal follows that directory.
 
 ## App update notice
 
-- `components/ui/update-notice.tsx`: compact, translated nonmodal ready/App Store
+- `features/updates/ui/update-notice.tsx`: compact, translated nonmodal ready/App Store
   banner above the tabs, transparent handoff interaction gate and failure snackbar;
   Android's available prompt and visible installation UI are owned by Google Play.
   All actions come from the provider.
-- `components/ui/connection-status-banner.tsx`: compact translated transport
+- `features/connections/ui/connection-status-banner.tsx`: compact translated transport
   notice in chat for offline, connecting, automatic reconnect, polling fallback,
   and constrained links. It never replaces a populated transcript and reads only
   provider-owned connection/diagnostics state.
-- `hooks/use-update-blocker.ts`: registers open/busy local surfaces with the
+- `runtime/presentation/use-update-blocker.ts`: registers open/busy local surfaces with the
   existing provider without sharing their content.
 - `modules/opencode-updates`: local Expo Android Play update module and iOS
   verified-installation helper. See [app updates](../../product/app-updates.md).

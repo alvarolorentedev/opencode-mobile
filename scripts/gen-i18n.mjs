@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Generates lib/i18n/resources.ts from lib/i18n/locales/*/*.json.
+// Generates shared/i18n/resources.ts from shared/i18n/locales/*/*.json.
 //
 //   node scripts/gen-i18n.mjs           write the registry
 //   node scripts/gen-i18n.mjs --check   fail when the registry is out of date
@@ -14,8 +14,8 @@ import { fileURLToPath } from 'node:url';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const root = path.join(here, '..');
-const localesDir = path.join(root, 'lib', 'i18n', 'locales');
-const outputPath = path.join(root, 'lib', 'i18n', 'resources.ts');
+const localesDir = path.join(root, 'shared', 'i18n', 'locales');
+const outputPath = path.join(root, 'shared', 'i18n', 'resources.ts');
 
 function pascal(value) {
   return value
@@ -36,31 +36,31 @@ async function readLocales() {
     .sort();
 
   if (!languages.includes('en')) {
-    throw new Error('lib/i18n/locales/en must exist as the source locale.');
+    throw new Error('shared/i18n/locales/en must exist as the source locale.');
   }
 
   const namespaces = (await readdir(path.join(localesDir, 'en')))
-    .filter((file) => file.endsWith('.json'))
+    .filter((file) => !file.startsWith('._') && file.endsWith('.json'))
     .map((file) => file.replace(/\.json$/, ''))
     .sort();
 
   if (namespaces.length === 0) {
-    throw new Error('lib/i18n/locales/en must define at least one namespace.');
+    throw new Error('shared/i18n/locales/en must define at least one namespace.');
   }
 
   for (const language of languages) {
     const files = new Set(
-      (await readdir(path.join(localesDir, language))).filter((file) => file.endsWith('.json')),
+      (await readdir(path.join(localesDir, language))).filter((file) => !file.startsWith('._') && file.endsWith('.json')),
     );
     for (const namespace of namespaces) {
       if (!files.has(`${namespace}.json`)) {
-        throw new Error(`lib/i18n/locales/${language}/${namespace}.json is missing.`);
+        throw new Error(`shared/i18n/locales/${language}/${namespace}.json is missing.`);
       }
     }
     for (const file of files) {
       const namespace = file.replace(/\.json$/, '');
       if (!namespaces.includes(namespace)) {
-        throw new Error(`lib/i18n/locales/${language}/${file} has no English counterpart.`);
+        throw new Error(`shared/i18n/locales/${language}/${file} has no English counterpart.`);
       }
     }
   }
@@ -76,7 +76,7 @@ export async function buildResourcesSource() {
   for (const language of languages) {
     for (const namespace of namespaces) {
       imports.push(
-        `import ${importName(language, namespace)} from '@/lib/i18n/locales/${language}/${namespace}.json';`,
+        `import ${importName(language, namespace)} from '@/shared/i18n/locales/${language}/${namespace}.json';`,
       );
     }
   }
@@ -92,7 +92,7 @@ export async function buildResourcesSource() {
     '// GENERATED FILE - DO NOT EDIT BY HAND.',
     '//',
     '// Regenerate with `npm run gen:i18n`. `npm run test:i18n` fails when this',
-    '// file is out of date with lib/i18n/locales/*/*.json.',
+    '// file is out of date with shared/i18n/locales/*/*.json.',
     '//',
     '// Translation files are committed JSON and bundled at build time. There is no',
     '// runtime or network loading, so switching languages never depends on I/O.',
@@ -115,7 +115,7 @@ async function main() {
 
   if (check) {
     if (current !== source) {
-      console.error('lib/i18n/resources.ts is out of date. Run `npm run gen:i18n`.');
+      console.error('shared/i18n/resources.ts is out of date. Run `npm run gen:i18n`.');
       process.exitCode = 1;
     }
     return;
@@ -126,7 +126,7 @@ async function main() {
   }
 
   await writeFile(outputPath, source);
-  console.log('Wrote lib/i18n/resources.ts');
+  console.log('Wrote shared/i18n/resources.ts');
 }
 
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {

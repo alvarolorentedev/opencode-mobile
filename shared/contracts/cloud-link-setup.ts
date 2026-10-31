@@ -1,0 +1,45 @@
+import type { ConnectPairing, ConnectMachine, parseConnectPairing } from '@/shared/contracts/cloud-link';
+import type { ConnectionProfile } from '@/shared/contracts/connection-profiles';
+import type { ConnectOffer } from '@/shared/platform/billing/connect-store';
+import type { OpencodeConnectionSettings } from '@/shared/protocol/opencode/client';
+
+export type ConnectPhase = 'idle' | 'catalog' | 'purchasing' | 'pending' | 'restoring' | 'verifying' | 'savingSession' | 'finalizing' | 'claiming' | 'saving' | 'connecting' | 'waitingForApproval' | 'delayed' | 'paired';
+
+export type ConnectSetup = {
+  enabled: boolean;
+  storeInstall: boolean;
+  initialization: "loading" | "ready" | "error";
+  pairLink: (link: Parameters<typeof parseConnectPairing>[0]) => Promise<boolean>;
+  dismissError: () => void;
+  controlPlaneUrl: string;
+  canChangeControlPlane: boolean;
+  canPurchase: boolean;
+  hasToken: boolean;
+  entitled: boolean;
+  subscriptionExpiresAt: string | undefined;
+  pairing: ConnectPairing | undefined;
+  phase: ConnectPhase;
+  busy: boolean;
+  error: string | undefined;
+  notice: string | undefined;
+  machines: ConnectMachine[] | undefined;
+  profiles: ConnectionProfile[];
+  savedProfile: ConnectionProfile | undefined;
+  offers: ConnectOffer[];
+  storeReady: boolean;
+  canRetry: boolean;
+  manageSubscription: () => Promise<boolean>;
+  selectControlPlane: (url: string) => string | false;
+  acceptLink: (link: Parameters<typeof parseConnectPairing>[0]) => Promise<boolean>;
+  purchase: (key: string) => Promise<boolean>;
+  restore: () => Promise<boolean>;
+  retry: () => Promise<boolean>;
+  claim: () => Promise<boolean>;
+  cancelPairing: () => Promise<boolean>;
+  refreshMachines: () => Promise<boolean>;
+  connectProfile: (profile: ConnectionProfile) => Promise<boolean>;
+  connectMachine: (id: string) => Promise<boolean>;
+  forgetProfile: (profile: ConnectionProfile) => Promise<boolean>;
+  revokeMachine: (id: string) => Promise<boolean>;
+  prepareSettings: (settings: OpencodeConnectionSettings) => Promise<OpencodeConnectionSettings>;
+};

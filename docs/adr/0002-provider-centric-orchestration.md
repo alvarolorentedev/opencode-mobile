@@ -1,6 +1,6 @@
 # ADR 0002: Provider-centric domain orchestration
 
-- Status: Accepted
+- Status: Superseded by ADR 0015
 - Date: 2026-10-29
 - Deciders: maintainers
 - Supersedes: —

@@ -12,6 +12,7 @@ transport, persistence, or the client protocol. Read
 
 | Document | Owns |
 | --- | --- |
+| [feature-boundaries.md](feature-boundaries.md) | Product ownership, public APIs, exact scope-aware UI exception and migration inventory |
 | [overview.md](overview.md) | Runtime composition, module map, boot flow, screen/provider boundaries, realtime model, and cross-cutting invariants |
 | [state-and-data.md](state-and-data.md) | Provider state ownership, persistence, derived data, transcript transformation, and capability discovery |
 | [api-contract.md](api-contract.md) | OpenCode 2 contract, V1 compatibility boundary, endpoint usage, and request/response expectations |
@@ -21,23 +22,23 @@ transport, persistence, or the client protocol. Read
 
 | Concern | Owning layer |
 | --- | --- |
-| App-wide connection registry, focus, and persistence | `providers/workspace-provider.tsx`, `providers/use-workspace-connections.ts`, `providers/use-opencode-persistence.ts` |
-| Provider-specific agent guidance | `providers/AGENTS.md` (loaded when working in `providers/`) |
-| Routine server reads and connection lifecycle | `providers/queries/`, `providers/connection-runtime.tsx` ([ADR 0014](../adr/0014-server-data-and-explicit-lifecycles.md)) |
-| Per-workspace domain orchestration | `providers/use-opencode-provider-composition.ts` and its domain hooks |
-| Public domain contexts and hooks | `providers/opencode-provider-types.ts`, `providers/opencode-contexts.ts`, `providers/opencode-provider-tree.tsx` |
-| Provider-facing API aggregation | `providers/services/` |
-| Client construction, endpoint wrappers, protocol types | `lib/opencode/` |
-| V1 compatibility only | `lib/opencode/compat/v1/` |
+| App-wide connection registry, focus, and persistence | `runtime/workspace/workspace-provider.tsx`, `runtime/workspace/use-workspace-connections.ts`, `runtime/persistence/use-opencode-persistence.ts` |
+| Provider-specific agent guidance | `runtime/AGENTS.md` (loaded when working in `runtime/`) |
+| Routine server reads and connection lifecycle | `shared/server-data/`, `runtime/connections/connection-runtime.tsx` ([ADR 0014](../adr/0014-server-data-and-explicit-lifecycles.md)) |
+| Per-workspace domain orchestration | `runtime/composition/use-opencode-provider-composition.ts` and its domain hooks |
+| Public domain contexts and hooks | `shared/contracts/domain.ts`, `features/chat/context.ts`, `runtime/workspace/domain-provider-tree.tsx` |
+| Provider-facing API aggregation | `shared/protocol/services/` |
+| Client construction, endpoint wrappers, protocol types | `shared/protocol/opencode/` |
+| V1 compatibility only | `shared/protocol/opencode/compat/v1/` |
 | Routing and thin screen wiring | `app/` |
-| Presentation and local UI state | `components/` |
+| Presentation and local UI state | `features/` |
 | Behavioral contract | `tests/fake-opencode/` and `tests/e2e/` |
 
 ## Rules
 
 - The app is provider-centric. Domain state and orchestration belong in
-  `providers/`, not in screens or presentational components.
-- Keep protocol normalization close to `lib/opencode/`.
+  `runtime/`, not in screens or presentational components.
+- Keep protocol normalization close to `shared/protocol/opencode/`.
 - Preserve the dual realtime model: SSE is primary, polling is the safety net.
 - New API-dependent features are V2-only unless an existing V1 compatibility
   path already supports them. See [ADR 0003](../adr/0003-v2-first-protocol-boundary.md).

@@ -36,7 +36,7 @@ export function hookRuntime(): HookRuntime;
 export function deferred<T = unknown>(): Deferred<T>;
 export function recyclingState(runtime: HookRuntime): <T>(initial: T | (() => T), deps: readonly unknown[]) => [T, Dispatch<SetStateAction<T>>];
 export function loadTs(
-  relativePath: string,
+  relativePath: string | string[],
   imports?: Record<string, unknown>,
   globals?: Record<string, unknown>,
 ): Promise<any>;

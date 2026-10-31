@@ -17,6 +17,7 @@ sections; the reference docs are large on purpose.
 | I need to… | Read |
 | --- | --- |
 | Use a step-by-step recipe | [Task recipes](engineering/task-recipes.md) |
+| Find a feature or change an import boundary | [Feature ownership](architecture/feature-boundaries.md) |
 | Understand the runtime, layers, and boot flow | [Architecture overview](architecture/overview.md) |
 | Change provider state, refresh, persistence, or session behavior | [State and data](architecture/state-and-data.md#state-ownership-overview) + [Architecture overview § Module Map](architecture/overview.md#module-map) |
 | Change an OpenCode endpoint, event, or compatibility boundary | [API contract](architecture/api-contract.md) + [ADR 0003](adr/0003-v2-first-protocol-boundary.md) |

@@ -1,343 +1,108 @@
 # AGENTS.md
 
-Follow the current implementation docs in `docs/`. Do not invent a new architecture.
+Read [docs/README.md](docs/README.md) first. It is the task router. Read the
+owning feature's `AGENTS.md` and only the relevant implementation documentation.
+Do not preload the documentation tree or invent another architecture.
+
+## Implementation ownership
+
+- `app/`: thin Expo Router entrypoints, route/layout declarations and metadata.
+- `features/`: product presentation, domain state/actions, services, rules and tests.
+- `runtime/`: cross-feature state and lifecycle composition. One application owner,
+  one connection owner, and retained connection/project branches preserve continuity.
+- `shared/`: feature-independent controls, contracts, protocol, platform, storage,
+  query infrastructure, i18n and utilities.
+- `modules/`: native Expo modules; preserve discovery and registered module names.
+- `tests/e2e/` and `tests/fake-opencode/`: the behavioral contract, with central harnesses.
+
+See [feature boundaries](docs/architecture/feature-boundaries.md) for ownership,
+public APIs and the strictly limited shared UI/runtime exception.
 
 ## Start here
 
-Read `docs/README.md` first. It is the task router. Then read only the row for
-your task; do not preload the whole docs tree.
-
 | Task touches | Read before editing | Validate with |
 | --- | --- | --- |
-| Copy/translations | [Task recipes § Translations](docs/engineering/task-recipes.md#translations) | `npm run gen:i18n`, i18n test |
-| Settings UI | [Task recipes § Settings](docs/engineering/task-recipes.md#settings-section-or-row), [component inventory § Settings](docs/design/components/settings.md#settings-components) | Storybook build, settings E2E |
-| Chat UI/transcript | [component inventory § Chat](docs/design/components/chat.md#chat-components), [functional spec § Chat](docs/product/functional-spec.md#chat-screen-detailed-behavior) | chat/diffs E2E |
-| Provider state/session/persistence | [overview § Module Map](docs/architecture/overview.md#module-map), [state and data](docs/architecture/state-and-data.md#state-ownership-overview) + owning domain | provider/persistence Vitest, targeted E2E |
-| Protocol/endpoint/event | [API contract](docs/architecture/api-contract.md), [ADR 0003](docs/adr/0003-v2-first-protocol-boundary.md), [fake server](docs/engineering/validation/fake-server.md) | `test:fake-server:self`, targeted E2E |
-| SSE/polling/offline | [network resilience](docs/architecture/network-resilience.md), [state and data § Realtime](docs/architecture/state-and-data.md#realtime-recovery-ownership) | realtime E2E |
-| Tests/fake server | [validation index](docs/engineering/testing-and-validation.md), [fake server](docs/engineering/validation/fake-server.md) | `test:fake-server:self`, targeted E2E |
-| Native/platform/config | [development](docs/engineering/development.md), [integrations](docs/engineering/integrations-and-operations.md) | `build:development:android` |
-| Docs/ADR | [docs router](docs/README.md), [ADR index](docs/adr/README.md) | `npm run test:docs` |
-| Release | [development](docs/engineering/development.md), [integrations](docs/engineering/integrations-and-operations.md), [app updates](docs/product/app-updates.md) / [F-Droid](docs/engineering/fdroid.md) | full pre-push gate |
+| Copy/translations | [Translations recipe](docs/engineering/task-recipes.md#translations) | `npm run gen:i18n`, strict i18n test |
+| Settings or reusable UI | [Settings recipe](docs/engineering/task-recipes.md#settings-section-or-row), [design system](docs/design/design-system.md), owning component inventory | Storybook and affected E2E |
+| Chat/transcript | [Chat inventory](docs/design/components/chat.md#chat-components), [Chat behavior](docs/product/functional-spec.md#chat-screen-detailed-behavior) | Chat/diffs E2E |
+| Domain state/session/persistence | [State and data](docs/architecture/state-and-data.md#state-ownership-overview), [runtime guidance](runtime/AGENTS.md) | Owning Vitest and full E2E |
+| Protocol/endpoints/events | [API contract](docs/architecture/api-contract.md), [ADR 0003](docs/adr/0003-v2-first-protocol-boundary.md), [fake server](docs/engineering/validation/fake-server.md) | Contract Vitest, fake-server self-test and full E2E |
+| SSE/polling/offline | [Network resilience](docs/architecture/network-resilience.md) | Runtime Vitest and realtime/network E2E |
+| Native/platform/config | [Development](docs/engineering/development.md), [integrations](docs/engineering/integrations-and-operations.md) | Android build and relevant native/device checks |
+| Tests/fake server | [Validation index](docs/engineering/testing-and-validation.md), [strategy](docs/engineering/validation/strategy.md) | Cheapest sufficient level; full when required |
+| Docs/ADR | [Docs router](docs/README.md), [ADR process](docs/adr/README.md) | `npm run test:docs` and static |
+| Release | [Development](docs/engineering/development.md), [integrations](docs/engineering/integrations-and-operations.md), [updates](docs/product/app-updates.md)/[F-Droid](docs/engineering/fdroid.md) | Full pre-push gate |
 
-Provider-specific guidance lives in [providers/AGENTS.md](providers/AGENTS.md);
-it loads when you work in `providers/`. The "First time in this repo" path in
-`docs/README.md` is a one-time onboarding read, not a per-task requirement.
+## Boundary rules
 
-## Documentation Map
+Keep domain state out of routes and presentation. Settings and Onboarding may
+compose public UI from other features; that does not transfer state ownership.
 
-- `docs/architecture/` — runtime composition, state ownership, protocol, realtime
-- `docs/product/` — user-visible behavior and feature parity
-- `docs/design/` — design system, components, Storybook, and design QA
-- `docs/engineering/` — setup, validation, operations, release, deferred work
-- `docs/adr/` — architecture decisions and the decision workflow
+Use a feature's named `index.ts`, `context.ts` or `runtime.ts` exports across
+features. Inside a feature, import its implementation directly. Do not add private
+cross-feature imports, wildcard public exports, cycles, parallel component copies
+or compatibility shims. `config/architecture.json` is the enforced edge/export
+policy; keep its changes deliberate and documented.
 
-Each section has a `README.md` with an index and ownership map. Put a new doc in
-the narrowest section that owns the concern. Update the section README in the
-same change.
+Presentation never fetches, persists credentials, normalizes raw server payloads,
+or directly invokes arbitrary native SDKs. Reuse domain actions, pure contracts
+and the shared platform interfaces. Shared UI remains feature-independent. Only
+the exact existing controls listed in the architecture documentation may import
+specified symbols from `runtime/ui.ts`; no new bridge context or duplicated state.
+
+Protocol normalization belongs in `shared/protocol/`. Existing V1 imports and
+compatibility branching stay in the compatibility/contract boundary. New
+API-dependent features are V2-only; never add a new V1 adapter or fallback.
+
+Preserve the single connectivity/query owners, connection-wide catalogs/streams,
+credential-generation guards, retained workspace state and stable presentation map.
+Do not mirror Query responses into another state store. Preserve SSE plus polling,
+foreground/demand gates and the separation between inspection, terminal and chat focus.
+
+## Ratchets and UI foundation
+
+- The provider entrypoint stays at most 60 lines; production source files at most 500.
+- Combined domain-context surface stays at or below 127 members. Do not raise limits.
+- Fix layering failures by moving code to its owner, not by adding broad exceptions.
+- Preserve keyboard avoidance, tab layout, native modal hosts, workspace scope,
+  keyboard/Back behavior, localization, text scaling and specialized renderers.
+- Read [ADR 0013](docs/adr/0013-source-owned-ui-and-complex-forms.md) before UI
+  foundation changes. Use the source-owned controls in `shared/ui/`, CVA and `cn()`.
+- Author tokens only in `shared/ui/theme/ui-tokens.json`; run `npm run gen:ui-tokens`
+  and check mode. No new styling engine, Paper wrappers or generic form framework.
+- Complex forms use existing React Hook Form/Zod validators. Simple preferences
+  remain immediate. Registry upgrades are reviewed source diffs with provenance.
+- Reusable presentation changes need a colocated production-component Storybook
+  story and `npm run build:storybook`; see [Storybook](docs/design/storybook.md); orchestration/full screens belong in E2E.
 
 ## Architecture Decision Records
 
-Decisions are part of the normal workflow, not an afterthought.
-
-Write an ADR when a change:
-
-- selects a framework, transport, storage model, or protocol boundary
-- changes ownership between `app/`, `components/`, `providers/`, `lib/`, or
-  `providers/services/`
-- adds or removes a compatibility path or supported platform
-- establishes a design-system primitive, token family, or accessibility policy
-- rejects a viable alternative for a reason future maintainers need to know
-- changes the documentation or decision workflow itself
-
-Process:
-
-1. Read `docs/adr/README.md`.
-2. Copy `docs/adr/template.md` to `docs/adr/NNNN-short-kebab-title.md`.
-3. Add the ADR to the index in `docs/adr/README.md`.
-4. Link it from the affected implementation doc and the change summary.
-5. Supersede, never rewrite, an accepted ADR.
-
-`tests/vitest/docs.test.ts` enforces ADR numbering, required sections, index
-coverage, and documentation links.
-
-## Architecture Rule
-
-This app is provider-centric.
-
-- `providers/` owns domain state and orchestration; `opencode-provider.tsx` is
-  the thin entrypoint and `use-opencode-provider-composition.ts` composes the domains.
-- `app/` owns routing and thin screen wiring.
-- `components/` owns presentation and local UI state.
-- `providers/services/` owns provider-facing API aggregation.
-- `lib/` owns protocol, formatting, storage keys, notifications, and voice helpers.
-- `tests/fake-opencode/` and `tests/e2e/` define the behavioral contract.
-
-Do not move domain behavior into screens or presentational components.
-
-- New features that require API compatibility are V2-only for now; see
-  `docs/architecture/api-contract.md`. Do not add new V1 adapters or fallbacks.
-
-## Architecture Ratchets
-
-`tests/vitest/architecture.test.ts` enforces the documented layering:
-
-- `providers/opencode-provider.tsx` stays a thin wrapper (at most 60 lines)
-- no source file exceeds 500 lines
-- the combined domain-context surface stays at or below 127 members
-- `app/` and `components/` never call the network or credential persistence directly
-- V1 SDK imports and compatibility branching stay inside
-  `lib/opencode/compat/v1/` and `lib/opencode/contracts/`
-- keyboard avoidance and tab-layout rules stay intact
-
-Fix a failure by moving code to the right layer or splitting the file; do not
-raise the limit.
-
-## Placement Rules
-
-### `app/`
-
-Put:
-
-- route entrypoints
-- tab/layout wiring
-- thin screen controllers
-- calls into `useOpencode()`
-
-Do not put:
-
-- fetch logic
-- session orchestration
-- capability reconciliation
-- protocol shaping
-
-### `components/`
-
-Put:
-
-- rendering
-- local UI state
-- chat/settings UI composition
-- surface-specific helpers
-
-Do not put:
-
-- API calls
-- persistence
-- shared domain state
-- cross-session caches
-
-### `providers/`
-
-Put:
-
-- connection flow
-- project/session state
-- refresh logic
-- permission/question handling
-- capability reconciliation
-- conversation mode state machine
-- SSE and polling fallback
-- persistence hydration and write-back
-
-Shared behavior across tabs belongs here.
-
-### `providers/services/`
-
-Put:
-
-- session fetch helpers
-- capability/config/provider discovery helpers
-
-Services aggregate requests. They do not own app state.
-
-### `lib/opencode/`
-
-Put:
-
-- client construction
-- endpoint wrappers
-- protocol types
-- message formatting
-- transcript transformation
-
-Raw server-shape handling belongs here, not in UI code.
-
-### `lib/`
-
-Put:
-
-- notifications
-- speech input/output
-- storage keys
-- platform integration helpers
-
-Platform side effects should start here or from the root shell, not from arbitrary components.
-
-### `tests/fake-opencode/`
-
-Put:
-
-- deterministic server scenarios
-- endpoint fixtures
-- SSE behavior
-- permission/question blocking logic
-
-If the client contract changes, update the fake server.
-Changes here require explicit human validation.
-
-### `tests/e2e/`
-
-Put:
-
-- boot flow coverage
-- prompt lifecycle coverage
-- blocking interaction flows
-- provider setup flows
-- SSE fallback coverage
-
-Prefer flow coverage over low-value unit tests for orchestration changes.
-Changes here require explicit human validation.
-
-## Practices
-
-- Keep screens thin.
-- Keep presentational components dumb except for local UI state.
-- Put code in the narrowest correct layer.
-- Extend existing helpers, selectors, and services before adding abstractions.
-- Keep protocol normalization close to `lib/opencode/`.
-- Keep persistence logic close to `providers/use-opencode-persistence.ts`.
-- Preserve continuity across tabs.
-- Respect the dual realtime model: SSE plus polling fallback.
-- Prefer deterministic state transitions over clever indirection.
-- Reuse design tokens and shared controls; do not add literal colors or
-  one-off primitives.
-- Add or update a Storybook story for reusable presentation components.
-- Add every new or changed user-facing string to every supported locale in
-  `lib/i18n/locales/<code>/`, preserving interpolation placeholders and plural
-  categories.
-
-## Avoid
-
-- fetch logic in components
-- formatting or protocol parsing in screens
-- new shared state stores outside the provider
-- duplicated provider-derived state in local UI state
-- protocol changes hidden in UI code
-- shipping user-facing copy that only exists in English
-- parallel component copies instead of extending the shared design system
-- provider-orchestration stories in Storybook
-- unrelated refactors
-
-## Change Mapping
-
-### Chat
-
-- visuals, composer presentation, pagination, local interaction state: `components/chat/`
-- transcript shaping and activity derivation: `lib/opencode/` or provider selectors
-- prompt lifecycle, abort, pending interactions, refresh behavior: `providers/`
-
-### Project
-
-- screen wiring and list presentation: `app/(tabs)/projects.tsx`
-- project/session continuity rules: `providers/`
-- project/session fetch logic: `providers/services/session-service.ts`
-
-### Settings
-
-- section and dialog UI: `components/settings/`
-- persisted preferences and reconciliation: `providers/`
-- provider auth and capability requests: `providers/services/capabilities-service.ts` and `lib/opencode/client.ts`
-- extensions (MCP/plugin/skill/command config): `providers/use-extensions-state.ts`, `providers/services/extensions-service.ts`, and `lib/opencode/extensions/`
-- platform deep links and native integration: `lib/`
-
-### Design system and Storybook
-
-- tokens, palettes, theme mapping: `constants/theme.ts`, `constants/appearance.ts`, `constants/ui-tokens.generated.css`, `constants/design-tokens.ts`
-- shared settings controls: `components/settings/sections/setting-rows.tsx`
-- component responsibilities: `docs/design/component-inventory.md`
-- design rules and acceptance: `docs/design/design-system.md`
-- Storybook config: `.storybook/`
-- stories: co-located `components/**/*.stories.tsx`
-
-Add a story when introducing or changing a reusable primitive or shared
-control. Stories render the production component with the real appearance and
-appearance and portal providers. Do not add provider-orchestration or full-screen stories to
-Storybook; cover those with E2E flows. Run `npm run build:storybook` when
-changing stories or Storybook config. See `docs/design/storybook.md`.
-
-### User-facing copy and translations
-
-- source strings: `lib/i18n/locales/en/<namespace>.json`
-- translated strings: `lib/i18n/locales/<language>/<namespace>.json` for every
-  entry in `SUPPORTED_LANGUAGES`
-- registry: `lib/i18n/resources.ts` (generated; run `npm run gen:i18n`)
-- contract test: `tests/vitest/i18n.test.ts`
-
-A feature is not complete while any new or changed string is missing from a
-supported locale or relies on runtime English fallback.
-
-### Protocol
-
-Update together when needed:
-
-- `lib/opencode/client.ts`
-- `lib/opencode/types.ts`
-- `lib/opencode/format.ts`
-- matching fake-server handlers in `tests/fake-opencode/`
-
-### Conversation mode, voice, notifications
-
-- orchestration and state machine: `providers/`
-- native wrappers: `lib/voice/` and `lib/notifications.ts`
-- UI affordances: `components/chat/`
-
-### Inbound sharing
-
-- staging and lifecycle: `providers/use-share-state.ts`
-- payload normalization and limits: `lib/share/parse.ts`
-- routing and preview: `app/+native-intent.ts` and `app/share.tsx`
-- receive plugin config and platform gaps: `app.config.ts` and
-  `docs/product/parity/ios-share.md`
-
-## Development Loop
-
-For each task:
-
-1. Use the Start here table; read only the relevant doc section and implementation.
-2. Identify the correct layer.
-3. Make the smallest change that preserves documented behavior.
-4. Add or update tests when the behavior contract changes.
-5. Add or update every new or changed user-facing string in all supported
-   locales, then run `npm run gen:i18n` and the i18n test.
-6. Update docs when architecture, behavior, or contracts change.
-7. Record any durable decision in `docs/adr/` and update its index.
-8. Add or update a Storybook story when reusable presentation changes.
-9. Run validation proportional to risk.
+Follow [the ADR process](docs/adr/README.md): copy the numbered template, update the index and link the decision from its implementation document. Supersede accepted ADRs without rewriting their reasoning.
+
+## Development loop
+
+1. Find the owner through the router and scoped guidance; extend existing code.
+2. Make the smallest complete change, preserving error handling and trust validation.
+3. Update behavior coverage at the cheapest sufficient level. Existing coverage is
+   sufficient for behavior-preserving moves; explain that in the PR.
+4. Add every new/changed user-facing string to every supported locale under
+   `shared/i18n/locales/`, retaining placeholders/plurals. Run `npm run gen:i18n`
+   and strict parity checks. English runtime fallback is not completion.
+5. Update current implementation docs and section README links in the same change.
+6. Record durable decisions with an ADR; supersede accepted decisions, never rewrite them.
+7. Validate proportionally, then run the complete pre-push gate before pushing.
 
 ## Validation
 
-Baseline:
+Baseline: `npm run lint` and `npm run typecheck`. Feature tests are colocated;
+`tests/vitest/test-discovery.test.ts` prevents suites silently disappearing from
+Vitest or TypeScript. Do not increase the test-typecheck exclusion budget.
 
-```bash
-npm run lint
-npm run typecheck
-```
+Run full E2E for runtime, domain state/services, protocol, shared persistence/query
+infrastructure, dependencies/build/CI, root layouts, unmapped paths or changes across
+more than two domains. See the [authoritative matrix](docs/engineering/validation/strategy.md#test-selection-matrix).
 
-Run when relevant:
-
-- fake backend or protocol changes:
-  - `npm run test:fake-server:self`
-- provider, session, blocking flow, SSE, polling, or user-flow changes:
-  - `npm run test:e2e:web`
-- Storybook stories or config:
-  - `npm run build:storybook`
-- native or Android-risk changes:
-  - `npm run build:development:android`
-
-### Before Push
-
-CI runs the `Validate` gate. It must be green, so run the same checks locally and do not push until they pass:
+Before push, all of these must pass:
 
 ```bash
 npm run test:ci:static
@@ -347,127 +112,26 @@ npm run build:storybook
 npm run test:e2e:web
 ```
 
-A red e2e run is blocking. If a failure looks intermittent, rerun the failing test to confirm and harden it before pushing rather than pushing over a flaky check.
+A red or flaky E2E run blocks push. Confirm and harden failures. Native/Android-risk
+changes also require `npm run build:development:android`; preserve iOS and FOSS
+entrypoints and use relevant device checks. Any edit under `tests/e2e/` or
+`tests/fake-opencode/` requires explicit human validation even when automation passes.
+Do not add E2E specs when existing owning specs or lower-level tests suffice; update
+its budget in the same change when intentionally adding browser coverage.
 
-### Fast iteration
+For iteration, use `validate:fast`, `test:e2e:smoke`, `test:e2e:changed` or
+`test:e2e:last-failed`. Concurrent runs use `test:e2e:web:isolated`; preserve per-worker
+backend isolation. The full gate is still required before push/release.
 
-CI runs Playwright in one job with four workers; each worker has its own fake
-V1/V2 pair, so the per-worker global scenario stays isolated. For iteration:
+A local temporary mirror may run heavy checks. Make every source edit here, sync
+before checking, treat mirror output as read-only, and never commit/tag/push there.
+Run generators that update committed files here. Exclude AppleDouble `._*` metadata
+from mirrors; preserve nested native/fastlane Android directories.
 
-```bash
-npm run test:ci:static          # cached; ~15s when warm, ~45s cold
-npm run validate:fast           # static + fake-server + budget + smoke flows
-npm run test:e2e:smoke          # 17 critical flows
-npm run test:e2e:changed        # smoke + specs affected by the current diff
-npm run test:e2e:last-failed
-npm run test:e2e:budget         # expanded test/spec count guardrail
-npm run test:e2e:web:isolated -- tests/e2e/chat.spec.mjs
-```
+For every release version increase, add concise release notes in
+`fastlane/metadata/android/en-US/changelogs/<android.versionCode>.txt` matching
+`app.config.ts`, and include the changelog in the release commit.
 
-After one `npm run build:web:e2e`, keep `npm run serve:web:prebuilt` running in
-another terminal so Playwright reuses the export instead of rebuilding it.
-Concurrent runs should use `test:e2e:web:isolated` (fresh port block) rather
-than the shared defaults. Override the worker count with `E2E_WORKERS`; it
-defaults to 2 locally and 4 in CI. The smoke set and targeted specs are for
-iteration; the full `test:e2e:web` gate above is still required before
-push/release. New coverage that does not need the browser belongs in Vitest.
-
-### Local mirror for heavy checks
-
-The project root may live on an external or network drive. To speed up lint,
-typecheck, the `test:*` suites, and native builds, you may copy the working tree
-to a local temporary directory on this machine (for example under
-`/private/var/folders/...` or `$TMPDIR`).
-
-The project root on the (possibly remote) drive remains the single source of
-truth:
-
-- make every source edit in the project root, never in the mirror
-- sync the working tree (or at least the changed files) into the mirror before
-  running a check, and treat mirror output as read-only evidence
-- never commit, tag, or push from the mirror
-- when a check regenerates a committed file (for example `npm run gen:i18n`),
-  run the generator in the project root and commit the root copy, not the
-  mirror's
-
-For every release version increase, add or update
-`fastlane/metadata/android/en-US/changelogs/<android.versionCode>.txt` with
-concise user-facing release notes. The filename must match `android.versionCode`
-in `app.config.ts`, and the changelog must be included in the release commit.
-
-## Tests
-
-This repo validates behavior mainly with static checks and end-to-end flows.
-
-Add or update tests when changing:
-
-- hydration or connect flow
-- project discovery or session bootstrap
-- prompt submission lifecycle
-- permission or question flows
-- provider/model/agent capability discovery
-- SSE or polling fallback behavior
-- fake server contract behavior
-
-Any change to `tests/e2e/` or `tests/fake-opencode/` requires explicit human validation, even if automated checks pass.
-
-### Choose the cheapest test level
-
-| Change | Default |
-| --- | --- |
-| Docs, ADRs, Markdown | `npm run test:docs` + static |
-| Pure logic, parsers, selectors, state transitions | targeted Vitest |
-| Provider/session/persistence orchestration | Vitest integration + affected E2E |
-| Protocol, endpoint, event, service adapter | fake-server self-test + contract Vitest + affected E2E |
-| UI presentation or settings row | static + Storybook + affected spec |
-| Critical user journey not provable lower | extend an existing Playwright spec |
-| Native voice/notifications/device behavior | existing targeted checks + manual/device validation |
-
-Run the full E2E suite when the change touches `providers/`, `lib/opencode/`,
-`providers/services/`, `tests/fake-opencode/`, `tests/e2e/`, dependencies,
-app/build/CI configuration, a root layout, or more than two domains. Unmapped
-paths also mean full. The authoritative matrix is
-[Validation strategy § Test selection](docs/engineering/validation/strategy.md#test-selection-matrix).
-
-Before adding a test, answer: what regression does it catch, is it already
-covered, can a lower level catch it, does it assert behavior, is it
-deterministic, and what runtime cost does it add? Do not add a new E2E spec when
-the owning domain spec can be extended. Update `tests/e2e/budget.json` in the
-same change when adding an intentional test or spec.
-
-No new test is required for documentation-only changes, behavior-preserving
-refactors with existing coverage, generated files, or copy covered by i18n
-parity and an existing flow. State why coverage is sufficient in the PR.
-
-## Definition Of Done
-
-A change is done when:
-
-- code is in the correct layer
-- behavior is preserved or intentionally updated
-- tests are added or updated for changed behavior
-- every new or changed user-facing string is present in all supported locales
-  with matching interpolation placeholders and plural categories, and the i18n
-  parity test passes; runtime English fallback in a shipped locale means the
-  feature is not complete
-- any `tests/e2e/` or `tests/fake-opencode/` changes have explicit human validation
-- documentation in `docs/` is updated when behavior, architecture, or contracts changed
-- any durable decision has an ADR in `docs/adr/` and an index entry
-- reusable presentation changes have a Storybook story and `npm run build:storybook` passes
-- the pre-push CI-equivalent checks pass (`test:ci:static`, `test:fake-server:self`, `test:e2e:budget`, `build:storybook`, `test:e2e:web`)
-- validation matches the risk of the change
-- the final summary states what changed, what was verified, and any remaining risk
-
-## Source-owned UI and complex forms
-
-Read [the design system](docs/design/design-system.md) and
-[ADR 0013](docs/adr/0013-source-owned-ui-and-complex-forms.md) before changing the UI foundation.
-Use the Uniwind Reusables source in `components/ui/`; use CVA and `cn()` for
-variants and semantic classes for static presentation. Tokens are authored only
-in `constants/ui-tokens.json`; run `npm run gen:ui-tokens` and its check mode.
-Do not introduce another UI/styling engine, Paper-shaped wrappers, duplicate
-controls, or a generic form framework. Complex forms use React Hook Form and
-Zod with existing domain validators. Simple preferences remain immediate.
-Registry upgrades are reviewed source diffs with provenance, never blind
-regeneration. Preserve native modal hosts, workspace scope, keyboard/Back,
-localization, text scaling and existing renderer/virtualization behavior.
+A change is done when ownership, behavior, localization, docs/ADRs, stories,
+validation and required human checks are satisfied. The final summary states what
+changed, what passed and any remaining risk.

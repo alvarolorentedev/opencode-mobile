@@ -17,6 +17,14 @@ function walk(dir: string, out: string[] = []): string[] {
   return out;
 }
 
+function agentGuides(dir: string): string[] {
+  return readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
+    if (entry.name.startsWith('.') || ['node_modules', 'android', 'ios', 'output', 'dist', 'dist-e2e', 'storybook-static', 'test-results', 'playwright-report'].includes(entry.name)) return [];
+    const file = path.join(dir, entry.name);
+    return entry.isDirectory() ? agentGuides(file) : entry.name === 'AGENTS.md' && file !== path.join(root, 'AGENTS.md') ? [file] : [];
+  });
+}
+
 function relative(file: string) {
   return path.relative(root, file).split(path.sep).join('/');
 }
@@ -141,7 +149,7 @@ describe('documentation contract', () => {
       ...docs,
       path.join(root, 'AGENTS.md'),
       path.join(root, 'README.md'),
-      path.join(root, 'providers', 'AGENTS.md'),
+      ...agentGuides(root),
     ];
     for (const file of files) {
       for (const target of linksIn(file)) {
@@ -246,9 +254,9 @@ describe('documentation contract', () => {
     assert.ok(existsSync(path.join(root, '.storybook', 'preview.tsx')), '.storybook/preview.tsx is missing.');
 
     const stories = [
-      path.join(root, 'components', 'ui', 'text-field.stories.tsx'),
-      path.join(root, 'components', 'ui', 'update-notice.stories.tsx'),
-      path.join(root, 'components', 'settings', 'sections', 'setting-rows.stories.tsx'),
+      path.join(root, 'shared/ui/text-field.stories.tsx'),
+      path.join(root, 'features/updates/ui/update-notice.stories.tsx'),
+      path.join(root, 'shared/ui/settings/setting-rows.stories.tsx'),
       path.join(root, '.storybook', 'stories', 'foundations.stories.tsx'),
     ];
     assert.deepEqual(
@@ -263,7 +271,7 @@ describe('documentation contract', () => {
       ...walk(docsRoot),
       path.join(root, 'AGENTS.md'),
       path.join(root, 'README.md'),
-      path.join(root, 'providers', 'AGENTS.md'),
+      ...agentGuides(root),
     ];
     const pkg = JSON.parse(readFileSync(path.join(root, 'package.json'), 'utf8'));
     const scripts = new Set(Object.keys(pkg.scripts ?? {}));
@@ -278,6 +286,11 @@ describe('documentation contract', () => {
         if (!isInlinePath(raw)) continue;
         const cleaned = raw.split('#')[0].replace(/[),.;:]+$/, '');
         if (INLINE_PATH_ALLOWLIST.has(cleaned) || INLINE_PATH_ALLOWLIST.has(raw)) continue;
+        if (relative(file).startsWith('docs/adr/')) {
+          const rows = readFileSync(path.join(root, 'docs/architecture/feature-file-map.csv'), 'utf8').trim().split(/\r?\n/).slice(1).map((row) => row.split(','));
+          const moved = rows.filter(([old]) => old === cleaned || cleaned.endsWith('/') && old.startsWith(cleaned));
+          if (moved.length && moved.every(([, target]) => existsSync(path.join(root, target)))) continue;
+        }
         if (!existsSync(path.join(root, cleaned))) {
           missingPaths.push(`${relative(file)} -> ${raw}`);
         }
@@ -298,7 +311,7 @@ describe('documentation contract', () => {
     for (const reference of [
       'docs/README.md',
       'docs/engineering/task-recipes.md',
-      'providers/AGENTS.md',
+      'runtime/AGENTS.md',
       'docs/adr/README.md',
       'docs/design/storybook.md',
     ]) {
@@ -316,10 +329,10 @@ describe('documentation contract', () => {
       assert.ok(recipes.includes(heading), `task-recipes.md needs ${heading}.`);
     }
 
-    const providers = readFileSync(path.join(root, 'providers/AGENTS.md'), 'utf8');
+    const providers = readFileSync(path.join(root, 'runtime/AGENTS.md'), 'utf8');
     assert.ok(
       providers.includes('docs/architecture/state-and-data.md'),
-      'providers/AGENTS.md must link the state model.',
+      'runtime/AGENTS.md must link the state model.',
     );
 
     const componentIndex = readFileSync(path.join(root, 'docs/design/component-inventory.md'), 'utf8');

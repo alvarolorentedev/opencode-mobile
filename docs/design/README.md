@@ -25,15 +25,15 @@ rule here should map to a token, component, or test in the repository.
 
 ## Design workflow
 
-1. **Start from the system.** Author shared values in `constants/ui-tokens.json`.
-   Use the generated CSS and TypeScript projections in `constants/theme.ts`
-   and `constants/design-tokens.ts`; appearance preferences remain in
-   `constants/appearance.ts`. Do not duplicate tokens in components.
+1. **Start from the system.** Author shared values in `shared/ui/theme/ui-tokens.json`.
+   Use the generated CSS and TypeScript projections in `shared/ui/theme/theme.ts`
+   and `shared/ui/theme/design-tokens.ts`; appearance preferences remain in
+   `shared/ui/theme/appearance.ts`. Do not duplicate tokens in components.
 2. **Reuse before adding.** Check the [component inventory](component-inventory.md)
    and the matching area file before creating a new control.
 3. **Build the component in its correct layer.** Presentation and local UI
-   state live in `components/`; provider state and orchestration stay in
-   `providers/`. See [architecture](../architecture/README.md).
+   state live in `features/`; provider state and orchestration stay in
+   `runtime/`. See [architecture](../architecture/README.md).
 4. **Add a Storybook story** for reusable primitives and shared controls. See
    [storybook.md](storybook.md).
 5. **Validate states, not just the happy path.** Cover loading, empty, disabled,

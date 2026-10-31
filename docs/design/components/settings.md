@@ -28,14 +28,14 @@ Its assistant layout has a static single-offer summary (selection for multiple
 offers), native pricing at body size, inline recovery, and a Restore text link
 above Subscribe & continue. Other Settings/management callers retain their
 existing compact layout.
-`components/settings/sections/cloud-link-section.tsx` renders the consolidated Cloud Link surface in
+`features/cloud-link/ui/settings/cloud-link-section.tsx` renders the consolidated Cloud Link surface in
 this order: the access summary, the connector's exposed services (when a Cloud
 Link connection is active), Subscription actions (native store management,
 offers when inactive, one Restore row), and a Machines shortcut to the existing
 management route, closing with a learn-more row. It uses the shared Settings
 overlay and provider state; it
 never opens the camera or starts a purchase merely by opening the section.
-`connect-panel.tsx` renders the separate machine/profile management view. It loads the machine list when the view opens and on app resume, so the surface has no refresh action. `app/pair.tsx` ingests links and navigates only; deep links skip the camera gate.
+`connect-panel.tsx` renders the separate machine/profile management view. It loads the machine list when the view opens and on app resume, so the surface has no refresh action. `features/cloud-link/ui/pair-screen.tsx` ingests links and navigates only; deep links skip the camera gate.
 Domain state/actions come from `useConnection().connectSetup`; see [Cloud Link](../../product/cloud-link.md).
 
 After a valid Cloud Link claim, the pairing surface shows desktop-confirmation
@@ -44,7 +44,7 @@ delayed activation uses neutral text with Retry and Scan the new QR code on your
 computer; the scan action resets the provider checkpoint and resumes the existing
 scanner. It preserves stored profiles. Components do not poll or classify errors.
 
-### `components/settings/sections/`
+### `features/settings/ui/sections/`
 
 #### Section components
 
@@ -78,7 +78,7 @@ The server URL/username/password fields are no longer a standalone form; they
 live inside the connection rows (current connection row) or the add/edit
 dialog, so there is a single place to configure a connection.
 
-### `components/settings/connection-profiles.tsx`
+### `features/connections/ui/connection-profiles.tsx`
 
 #### Responsibility
 
@@ -91,9 +91,9 @@ dialog, so there is a single place to configure a connection.
 - delete a saved connection and its SecureStore password/header secrets, except the active one
 - mark the active Cloud Link row by trusted environment and machine ID, so rotating usernames do not create a temporary `Current connection` row; manual connections still compare `getConnectionScope()`
 
-The component owns only local state (expanded row, dialog, switching row); profile state, persistence orchestration, and credential ordering live in `providers/use-connection-profiles.ts`, backed by `lib/connection-profiles.ts`; switching/reconnecting stay in the provider. The profile hook refreshes after the Cloud Link profile snapshot changes, including inactive-machine renewal while Settings remains mounted. The UI accesses these through `useConnection().connectionProfiles`.
+The component owns only local state (expanded row, dialog, switching row); profile state, persistence orchestration, and credential ordering live in `features/connections/state/use-connection-profiles.ts`, backed by `shared/storage/connection-profiles.ts`; switching/reconnecting stay in the provider. The profile hook refreshes after the Cloud Link profile snapshot changes, including inactive-machine renewal while Settings remains mounted. The UI accesses these through `useConnection().connectionProfiles`.
 
-### `components/settings/connection-profile-dialog.tsx`
+### `features/connections/ui/connection-profile-dialog.tsx`
 
 #### Responsibility
 
@@ -117,7 +117,7 @@ Changing the address or going Back preserves fields and invalidates obsolete
 probes.
 Editing uses the same form but saves without automatically reconnecting.
 
-### `components/settings/connection-scan-flow.tsx`
+### `features/connections/ui/connection-scan-flow.tsx`
 
 #### Responsibility
 
@@ -137,7 +137,7 @@ Editing uses the same form but saves without automatically reconnecting.
 The manual address/details surface stays in `connection-profile-dialog.tsx`; the
 scan flow never renders it.
 
-### `components/settings/service-editor.tsx`
+### `features/cloud-link/ui/service-editor.tsx`
 
 #### Responsibility
 
@@ -151,9 +151,9 @@ scan flow never renders it.
 - own only local form state; every read/write goes through the provider's
   `services` domain, and Save returns through the caller's `onDone`
 
-### `app/service.tsx`
+### `features/cloud-link/ui/service-screen.tsx`
 
-Thin full-screen route for the service editor, registered beside `app/pair.tsx`
+Thin full-screen route for the service editor, registered beside `features/cloud-link/ui/pair-screen.tsx`
 under the Cloud Link guard. It resolves the edited service from the provider's
 services list, renders the shared `ServiceEditor`, and returns with
 `router.back()`; a missing id shows a recoverable message instead of an empty
@@ -257,7 +257,7 @@ Responsibility:
 
 #### `AppearanceSection`
 
-`components/settings/sections/appearance-section.tsx`, rendered inside
+`features/settings/ui/sections/appearance-section.tsx`, rendered inside
 the Appearance category above the slim-interface switch.
 
 Responsibility:
@@ -266,8 +266,8 @@ Responsibility:
 - choose a color theme (`green` default plus blue, red, purple, pink, gray)
   from accessible preview tiles that show the themed background, surface,
   border, and accent
-- persist both through `updateChatPreferences`; `hooks/use-palette.ts` and
-  `hooks/use-color-scheme.ts` consume the provider-published appearance context
+- persist both through `updateChatPreferences`; `shared/ui/theme/use-palette.ts` and
+  `shared/ui/theme/use-color-scheme.ts` consume the provider-published appearance context
 - expose `settings-theme-mode` and `settings-accent-<name>` test IDs
 
 #### `UpdateSection`
@@ -307,9 +307,9 @@ Responsibility:
 - fall back to the Play Store listing only when Android reports that no native review action is available
 - open the GitHub issue tracker for improvement feedback
 - open the `https://getopencode.app/support/` page in the browser
-- hold only URL constants, availability checks, and opening in `lib/support.ts`; no provider state
+- hold only URL constants, availability checks, and opening in `shared/platform/support.ts`; no provider state
 
-### `components/settings/provider-config-dialog.tsx`
+### `features/ai/ui/provider-config-dialog.tsx`
 
 #### Responsibility
 
@@ -334,7 +334,7 @@ Main relevant props:
 - `step`
 - `visiblePrompts`
 
-### `components/settings/mcp-section.tsx`
+### `features/extensions/ui/mcp-section.tsx`
 
 #### Responsibility
 
@@ -348,7 +348,7 @@ Main relevant props:
   manual refresh action
 - retain only form, busy, error, and OAuth-code UI state locally
 
-### `components/settings/extensions-section.tsx`
+### `features/extensions/ui/extensions-section.tsx`
 
 #### Responsibility
 
@@ -360,7 +360,7 @@ Main relevant props:
 - reuse the MCP authentication dialog and keep MCP runtime lifecycle actions in the existing MCP domain
 - expose test IDs for the add/remove/edit controls used by the extension flows
 
-### `components/settings/sections/services-section.tsx`
+### `features/cloud-link/ui/settings/services-section.tsx`
 
 #### Responsibility
 
@@ -374,7 +374,7 @@ Main relevant props:
 - own only form, busy, error and feedback UI state; all reads/writes and canonical values come from the provider's services domain
 - rendered only for Cloud Link connections; the provider hides it for manual connections
 
-### `components/settings/settings-utils.ts`
+### `features/ai/model/settings-utils.ts`
 
 #### Responsibility
 

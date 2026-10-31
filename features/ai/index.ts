@@ -1,0 +1,11 @@
+export { AiSettingsPanel } from './ui/ai-settings-panel';
+export type { CachedCapabilities } from './services/capabilities-snapshot';
+export type { CapabilitiesContextValue } from './model/types';
+export { getModelVariantLabel } from './model/model-variant-label';
+export { getSelectedModelVariant } from './model/opencode-model-selection';
+export { getVisibleModels } from './model/opencode-model-selection';
+export { ModelPicker } from './ui/model-picker';
+export { ProviderConfigDialog } from './ui/provider-config-dialog';
+export type { ProviderOAuthStage } from './ui/provider-config-dialog';
+export type { ProviderOption } from './model/types';
+export type { useCapabilitiesActions } from './state/use-capabilities-actions';

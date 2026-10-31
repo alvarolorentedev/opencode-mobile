@@ -3,21 +3,16 @@ import i18n from 'i18next';
 import { initReactI18next } from 'react-i18next';
 import { View } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
-import { PortalHost } from '@/components/ui/portal';
+import { PortalHost } from '@/shared/ui/portal';
 import '@/global.css';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
-import {
-  ACCENT_COLORS,
-  DEFAULT_ACCENT_COLOR,
-  type AccentColor,
-  type ColorScheme,
-} from '@/constants/appearance';
-import { getColors } from '@/constants/theme';
-import { resources, TRANSLATION_NAMESPACES } from '@/lib/i18n/resources';
-import { UpdatesContext } from '@/providers/opencode-contexts';
-import type { UpdatesContextValue } from '@/providers/opencode-provider-types';
-import { AppearanceProvider } from '@/providers/appearance-context';
+import { ACCENT_COLORS, DEFAULT_ACCENT_COLOR, type AccentColor, type ColorScheme } from '@/shared/ui/theme/appearance';
+import { getColors } from '@/shared/ui/theme/theme';
+import { resources, TRANSLATION_NAMESPACES } from '@/shared/i18n/resources';
+import { UpdatesContext } from '@/features/updates/context';
+import type { UpdatesContextValue } from '@/features/updates/index';
+import { AppearanceProvider } from '@/shared/ui/theme/appearance-context';
 
 if (!i18n.isInitialized) {
   // eslint-disable-next-line import/no-named-as-default-member -- i18next exposes the instance plugin API on the default export

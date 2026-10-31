@@ -50,10 +50,10 @@ coverage, and documentation links.
 | ADR | Decision | Status |
 | --- | --- | --- |
 | [0001](0001-record-architecture-decisions.md) | Record architecture decisions as ADRs | Accepted |
-| [0002](0002-provider-centric-orchestration.md) | Provider-centric domain orchestration | Accepted |
+| [0002](0002-provider-centric-orchestration.md) | Provider-centric domain orchestration | Superseded by ADR 0015 |
 | [0003](0003-v2-first-protocol-boundary.md) | V2-first protocol boundary with isolated V1 compatibility | Accepted |
 | [0004](0004-sse-with-polling-fallback.md) | SSE primary with polling fallback | Accepted |
-| [0005](0005-thin-routes-and-presentational-components.md) | Thin routes and presentational components | Accepted |
+| [0005](0005-thin-routes-and-presentational-components.md) | Thin routes and presentational components | Superseded by ADR 0015 |
 | [0006](0006-semantic-design-tokens-and-paper.md) | Semantic design tokens with React Native Paper | Superseded by ADR 0013 |
 | [0007](0007-storybook-component-catalog.md) | Storybook for reusable components | Superseded by ADR 0013 |
 | [0008](0008-documentation-information-architecture.md) | Documentation information architecture and checks | Accepted |
@@ -63,6 +63,8 @@ coverage, and documentation links.
 | [0012](0012-shell-mediated-project-file-actions.md) | Shell-mediated project file actions | Accepted |
 | [0013](0013-source-owned-ui-and-complex-forms.md) | Source-owned Reusables, Uniwind tokens and complex forms | Accepted |
 | [0014](0014-server-data-and-explicit-lifecycles.md) | Scoped server data and explicit application lifecycles | Accepted |
+
+| [0015](0015-feature-oriented-implementation.md) | Feature ownership with shared runtime composition | Accepted |
 
 ## Template
 

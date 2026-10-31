@@ -1,6 +1,6 @@
 # ADR 0005: Thin routes and presentational components
 
-- Status: Accepted
+- Status: Superseded by ADR 0015
 - Date: 2026-10-29
 - Deciders: maintainers
 - Supersedes: —

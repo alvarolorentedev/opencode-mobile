@@ -47,7 +47,7 @@ permissions for reviewer inspection:
 | --- | --- |
 | Cleartext Traffic Permitted (MAJOR) | Intentional: users can connect to their own OpenCode server over HTTP, including LAN/VPN deployments. `app.config.ts` explicitly enables this. Use HTTPS across untrusted networks. |
 | INTERNET (MINOR) | Required for the user-configured OpenCode API and SSE connection. |
-| RECORD_AUDIO (MINOR) | Optional voice input; `lib/voice/permissions.ts` requests microphone consent at runtime. Typed chat works without granting it. |
+| RECORD_AUDIO (MINOR) | Optional voice input; `shared/platform/voice/permissions.ts` requests microphone consent at runtime. Typed chat works without granting it. |
 | READ_EXTERNAL_STORAGE / WRITE_EXTERNAL_STORAGE (2 MINOR) | Inherited from the Expo Android template, expo-file-system and expo-image. The source manifests cap these legacy declarations at Android SDK 32. App attachments use the system document picker with a copy in app cache; the app does not request broad storage permission at runtime. |
 | SYSTEM_ALERT_WINDOW (MINOR) | Inherited from Expo's generated base manifest. The app does not request overlay access or draw overlays; this declaration grants no special overlay access without the user enabling it. It is retained in the currently verified APK. |
 

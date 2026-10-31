@@ -17,8 +17,8 @@ or the OpenCode server can answer right now. The design has four rules:
 
 ## Connectivity
 
-`providers/use-network-status.ts` subscribes to NetInfo and normalizes it
-through `lib/network-status.ts`:
+`shared/network/use-network-status.ts` subscribes to NetInfo and normalizes it
+through `shared/network/network-status.ts`:
 
 - `online`: false only when the radio is disconnected or explicitly reports no
   internet.
@@ -39,7 +39,7 @@ not overwrite the selected connection or clear server-derived caches.
 
 ## Request policy
 
-`lib/opencode/client/request-policy.ts` and `read-deadline.ts` define:
+`shared/protocol/opencode/client/request-policy.ts` and `read-deadline.ts` define:
 
 | Request | Deadline | Automatic retry |
 |---|---|---|
@@ -53,13 +53,13 @@ is classified as cancellation, not as a transient failure. A read that has
 already spent most of its budget is not retried, because doubling a 3G wait is
 worse than surfacing the failure.
 
-`lib/opencode/request-stats.ts` keeps a bounded local ring buffer of durations,
+`shared/network/request-stats.ts` keeps a bounded local ring buffer of durations,
 failures, timeouts, retries, and the last status. Settings → Diagnostics shows
 p50/p95 plus today's data usage. It stores no URLs, bodies, or credentials.
 
 ## Realtime and polling
 
-`providers/use-opencode-realtime.ts` keeps SSE primary and polling as a safety
+`runtime/realtime/use-opencode-realtime.ts` keeps SSE primary and polling as a safety
 net.
 
 - A stream attempt has a first-byte/connect timeout (15 s).
@@ -93,7 +93,7 @@ in-flight poll instead of being swallowed by it.
 
 ## Connect recovery
 
-`providers/use-connection-retry.ts` retries retryable connect failures while
+`features/connections/state/use-connection-retry.ts` retries retryable connect failures while
 the workspace is visible and online:
 
 - 1/2/5/10/20 s, bounded to five attempts;
@@ -105,7 +105,7 @@ the workspace is visible and online:
 
 ## Offline prompt queue
 
-`providers/use-prompt-inbox.ts` keeps a process-lifetime queue:
+`features/chat/state/use-prompt-inbox.ts` keeps a process-lifetime queue:
 
 - A submission that fails with an offline/transport-level error stays visible
   with `Queued — will send when connected`.
@@ -129,11 +129,11 @@ send a queued prompt after being killed.
 Bounded AsyncStorage snapshots are keyed by connection scope + project (and
 session for transcripts):
 
-- `providers/transcript-cache.ts`: newest 24 records, 200k-character cap, 7-day
+- `features/chat/services/transcript-cache.ts`: newest 24 records, 200k-character cap, 7-day
   TTL. Hydrates when a session opens before the live read, so a chat paints on a
   cold 3G start. Writes are debounced and capped so streaming bursts do not
   cause a storage write per page.
-- `providers/capabilities-snapshot.ts`: last-known config, providers, models,
+- `features/ai/services/capabilities-snapshot.ts`: last-known config, providers, models,
   agents, and auth methods, 300k-character cap and 7-day TTL. A cached model
   list keeps the composer usable while the first capability refresh is in
   flight. A fresh response always wins over a cache response that lands later.
@@ -147,7 +147,7 @@ Cloud Link credential rotation migrates all three connection-scoped snapshots
 
 ## Mutations
 
-`providers/use-session-interaction-actions.ts` treats a lost permission/question
+`features/sessions/state/use-session-interaction-actions.ts` treats a lost permission/question
 response as uncertain:
 
 - permission: re-list pending requests; if the request is gone, keep the card
@@ -160,7 +160,7 @@ Prompt delivery uses the queue/reconcile rule above.
 
 ## Attachments
 
-`lib/opencode/attachment.ts` enforces the 10 MB per-file limit and re-encodes
+`shared/protocol/opencode/attachment.ts` enforces the 10 MB per-file limit and re-encodes
 local images larger than 1 MB to a 2048 px-wide JPEG before Base64 encoding.
 Compression is best-effort; the original bytes remain valid if the native
 manipulator is unavailable. This avoids turning a 10 MB camera image into a
@@ -181,7 +181,7 @@ jitter, deterministic failure rate/status, hang, and SSE keepalive cadence.
 - congested 4G latency while a prompt completes;
 - an offline prompt being queued and delivered exactly once after reconnect.
 
-Unit coverage lives in `tests/vitest/network-resilience.test.ts` (normalization,
+Unit coverage lives in `runtime/__tests__/network-resilience.test.ts` (normalization,
 request policy, transcript cache), `feed.test.ts` (offline queue), and the
 existing realtime/provider tests. Native behavior still requires physical-device
 validation on real 4G, including Wi-Fi↔cellular handoff and a long idle stream.

@@ -13,15 +13,15 @@ docs it references.
 - Receive plugin: `expo-sharing` config plugin in `app.config.ts` with
   `android.enabled: true`, `singleShareMimeTypes: ['*/*']`, `multipleShareMimeTypes: ['*/*']`. The iOS block is
   intentionally absent.
-- Staging: `providers/use-share-state.ts` calls
+- Staging: `features/sharing/state/use-share-state.ts` calls
   `getSharedPayloads()` / `getResolvedSharedPayloadsAsync()` on mount and on
-  `AppState` `active`, parses via `lib/share/parse.ts`, and stages an in-memory
+  `AppState` `active`, parses via `features/sharing/model/parse.ts`, and stages an in-memory
   `SharedPayload` (bounded 10-minute TTL, never persisted).
-- Routing: `app/+native-intent.ts` redirects the `expo-sharing` host to
+- Routing: `features/sharing/model/native-intent.ts` redirects the `expo-sharing` host to
   `/share`; every other deep link passes through.
-- Preview: `app/share.tsx` shows text/link/attachment tiles, a current-chat destination, searchable conversation chooser
+- Preview: `features/sharing/ui/share-screen.tsx` shows text/link/attachment tiles, a current-chat destination, searchable conversation chooser
   with project labels/New chat, and Add to chat / Discard. Nothing is submitted here.
-- Composer handoff: `components/chat/use-chat-view-controller.ts` consumes the
+- Composer handoff: `features/chat/ui/use-chat-view-controller.ts` consumes the
   confirmed payload into `draft`/`attachments` once the route is focused and
   connection/project/session match, preserving existing draft content. The
   composer still owns the explicit send.
@@ -60,17 +60,17 @@ docs it references.
    config change (`ios/` is gitignored and regenerated on every build).
 4. **`+native-intent.ts` host check** — confirm the generated extension opens the
    app with host `expo-sharing` (as documented by Expo); adjust
-   `app/+native-intent.ts` if the emitted scheme/host differs.
+   `features/sharing/model/native-intent.ts` if the emitted scheme/host differs.
 5. **Simulator vs device** — simulator builds do not prove App Group signing.
    Device builds are required before this is considered done.
 
 ## Parity requirements (must match Android behavior)
 
-- Text, URL, images, and files from the share sheet stage into `app/share.tsx`.
+- Text, URL, images, and files from the share sheet stage into `features/sharing/ui/share-screen.tsx`.
 - The selected model's attachment capability is still enforced at send
-  (`providers/use-prompt-lifecycle.ts`).
+  (`features/chat/state/use-prompt-lifecycle.ts`).
 - The 10 MB per-file limit and URI allow-list still apply (shared via
-  `lib/share/parse.ts`).
+  `features/sharing/model/parse.ts`).
 - Nothing auto-submits; the composer is the only send path.
 - A cold start with an incomplete onboarding shows the "finish setup" state and
   retains the staged payload to the 10-minute TTL; Discard clears it.

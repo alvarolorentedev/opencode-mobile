@@ -70,7 +70,7 @@ Used for persistence of user settings and lightweight workflow continuity state.
 
 ### Localization
 
-`expo-localization` detects the device/app locale for the i18n runtime. `i18next` / `react-i18next` provide the runtime, English is bundled as the source and fallback language, and translations are organized by feature namespace under `lib/i18n/locales/`. `lib/i18n/resources.ts` is generated from those folders with `npm run gen:i18n` (`test:i18n` verifies it is current). Shipped locales: English (source), Spanish, Hindi, German, French, Simplified Chinese, Portuguese, Japanese, and Russian. The `supportedLocales` plugin option exposes the shipped languages to iOS and Android. The active in-app language is a normal persisted preference (stored with chat preferences); an unset preference follows the OS locale. See `docs/architecture/state-and-data.md` and `docs/architecture/overview.md`.
+`expo-localization` detects the device/app locale for the i18n runtime. `i18next` / `react-i18next` provide the runtime, English is bundled as the source and fallback language, and translations are organized by feature namespace under `shared/i18n/locales/`. `shared/i18n/resources.ts` is generated from those folders with `npm run gen:i18n` (`test:i18n` verifies it is current). Shipped locales: English (source), Spanish, Hindi, German, French, Simplified Chinese, Portuguese, Japanese, and Russian. The `supportedLocales` plugin option exposes the shipped languages to iOS and Android. The active in-app language is a normal persisted preference (stored with chat preferences); an unset preference follows the OS locale. See `docs/architecture/state-and-data.md` and `docs/architecture/overview.md`.
 
 ### Notifications
 
@@ -102,11 +102,11 @@ Important current rule:
 and Android: New chat plus up to three running/recent sessions. The package is
 dynamic-only here — no config plugin, no static shortcuts — so nothing is added
 to `Info.plist` or `shortcuts.xml`, and installation on existing devices only
-gains items after the first app launch. `lib/quick-actions.ts` owns the bridge
+gains items after the first app launch. `shared/platform/quick-actions.ts` owns the bridge
 and no-ops on web/Expo Go/E2E; publishing is debounced and foreground-only
 because Android throttles dynamic shortcut updates in the background. Session
 items carry only the non-secret `{ sessionId, projectPath, connectionScope }`
-payload and route through `app/session/[id].tsx`.
+payload and route through `features/sessions/ui/session-link-screen.tsx`.
 
 ### Android Home Widgets
 
@@ -366,13 +366,13 @@ with large project catalogs if storage growth becomes visible.
 The app splits persisted connection data:
 
 - server URL and username (and saved connection profile metadata such as the profile name and model selection) live in AsyncStorage
-- the active connection password and each saved profile password live in Keychain/Keystore-backed SecureStore via `lib/connection-password.ts` and `lib/connection-profiles.ts`, never in AsyncStorage
+- the active connection password and each saved profile password live in Keychain/Keystore-backed SecureStore via `shared/storage/connection-password.ts` and `shared/storage/connection-profiles.ts`, never in AsyncStorage
 - legacy plaintext `settings.password` is migrated to SecureStore and stripped during hydration
 - `opencode-mobile.widget-snapshot` stores bounded routing data, counts/status, timestamps and enabled reply/request/plan excerpts. Authentication credentials, raw request metadata and tool output are excluded; disable Show widget previews to remove excerpts.
 
 Operational implication:
 
-- server-derived persisted state (session caches, remembered sessions, favorites, pending notifications) is scoped by the password-free connection scope from `lib/connection-scope.ts`, so credentials never appear in those keys or DTOs
+- server-derived persisted state (session caches, remembered sessions, favorites, pending notifications) is scoped by the password-free connection scope from `shared/contracts/connection-scope.ts`, so credentials never appear in those keys or DTOs
 - a rewrite must keep the credential split when adding new persisted fields
 
 ### Notification Tracking Storage

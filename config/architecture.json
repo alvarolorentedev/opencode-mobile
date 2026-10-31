@@ -1,0 +1,315 @@
+{
+  "features": {
+    "connections": [],
+    "projects": [
+      "connections"
+    ],
+    "voice": [],
+    "updates": [],
+    "ai": [
+      "connections"
+    ],
+    "sessions": [
+      "projects",
+      "ai",
+      "connections"
+    ],
+    "cloud-link": [
+      "connections"
+    ],
+    "extensions": [
+      "projects",
+      "connections",
+      "ai"
+    ],
+    "notifications": [
+      "sessions"
+    ],
+    "widgets": [
+      "sessions"
+    ],
+    "sharing": [
+      "projects",
+      "sessions",
+      "connections"
+    ],
+    "terminal": [
+      "projects",
+      "sessions",
+      "connections"
+    ],
+    "chat": [
+      "sessions",
+      "projects",
+      "connections",
+      "ai",
+      "voice",
+      "notifications",
+      "sharing",
+      "updates"
+    ],
+    "onboarding": [
+      "connections",
+      "cloud-link",
+      "ai",
+      "projects",
+      "sessions",
+      "voice",
+      "notifications",
+      "chat"
+    ],
+    "settings": [
+      "ai",
+      "chat",
+      "cloud-link",
+      "connections",
+      "extensions",
+      "notifications",
+      "onboarding",
+      "projects",
+      "sessions",
+      "updates",
+      "voice"
+    ]
+  },
+  "exports": {
+    "features/updates/index.ts": [
+      "UpdateBanner",
+      "UpdateNotice",
+      "UpdatesContextValue",
+      "UpdateSection",
+      "useAppUpdates"
+    ],
+    "features/chat/index.ts": [
+      "ChatContextValue",
+      "ChatLandingScreen",
+      "PromptDeliveryField",
+      "RESPONSE_SCOPE_OPTIONS",
+      "ResponsesSection",
+      "TimelineDetailField",
+      "usePromptLifecycle"
+    ],
+    "features/projects/index.ts": [
+      "FileClipboard",
+      "ProjectActionsInput",
+      "ProjectFilesContextValue",
+      "ProjectOptions",
+      "ProjectPicker",
+      "ProjectPickerButton",
+      "ProjectsContextValue",
+      "ProjectsScreen",
+      "useProjectCheckouts",
+      "useWorkspaceProjects",
+      "WorktreeCatalog"
+    ],
+    "features/settings/index.ts": [
+      "SettingsScreen"
+    ],
+    "features/terminal/index.ts": [
+      "TerminalContextValue",
+      "TerminalRuntime",
+      "TerminalScreen",
+      "TerminalStatus"
+    ],
+    "features/sharing/index.ts": [
+      "mergeSharedDraft",
+      "redirectSystemPath",
+      "SharedInput",
+      "ShareScreen",
+      "AttachmentStrip"
+    ],
+    "features/onboarding/index.ts": [
+      "OnboardingAiScreen",
+      "OnboardingConnectScreen",
+      "OnboardingContextValue",
+      "OnboardingGeneralScreen",
+      "OnboardingPermissionsScreen",
+      "OnboardingProjectScreen",
+      "OnboardingReadyScreen",
+      "OnboardingVoiceScreen"
+    ],
+    "features/cloud-link/index.ts": [
+      "CloudLinkSection",
+      "PairScreen",
+      "ServiceScreen"
+    ],
+    "features/sessions/index.ts": [
+      "ApprovalsContextValue",
+      "ChatLibrary",
+      "CurrentSessionContextValue",
+      "LastSessionByConnection",
+      "NewChatSheet",
+      "PendingInteractionsCard",
+      "PermissionRequestCard",
+      "PermissionsSection",
+      "QuestionFlow",
+      "SessionDeepLinkScreen",
+      "SessionLibraryContextValue",
+      "useConnectionLinkActions",
+      "useQuickActionRoute",
+      "useSessionActions"
+    ],
+    "features/projects/runtime.ts": [
+      "buildOpencodeProjects",
+      "fetchProjectCatalog",
+      "fileStatusOptions",
+      "getVcsDiff",
+      "locationOptions",
+      "parseProjectPathsByConnection",
+      "projectsOptions",
+      "resolveActiveProject",
+      "serializeProjectPathsByConnection",
+      "useFileClipboard",
+      "useProjectCatalogActions",
+      "useProjectFileActions",
+      "useProjectRuntimeState",
+      "useWorktreeState",
+      "vcsInfoOptions"
+    ],
+    "features/notifications/runtime.ts": [
+      "clearPendingTaskFinishedNotification",
+      "listPendingTaskFinishedNotifications",
+      "notifyTaskFinished",
+      "parsePendingNotificationSessions",
+      "pendingNotificationKey",
+      "serializePendingNotificationSessions",
+      "trackPendingTaskFinishedNotification",
+      "useActivityNotifications"
+    ],
+    "features/ai/runtime.ts": [
+      "agentsOptions",
+      "capabilitiesOptions",
+      "clearCapabilitiesSnapshots",
+      "getConfiguredProviderIds",
+      "getConfiguredProviders",
+      "getSelectedModelParts",
+      "getSelectedModelVariant",
+      "hydrateCapabilitiesSnapshot",
+      "migrateCapabilitiesSnapshots",
+      "persistCapabilitiesSnapshot",
+      "useCapabilitiesActions",
+      "usePromptRouting"
+    ],
+    "features/ai/index.ts": [
+      "AiSettingsPanel",
+      "CachedCapabilities",
+      "CapabilitiesContextValue",
+      "getModelVariantLabel",
+      "getSelectedModelVariant",
+      "getVisibleModels",
+      "ModelPicker",
+      "ProviderConfigDialog",
+      "ProviderOAuthStage",
+      "ProviderOption",
+      "useCapabilitiesActions"
+    ],
+    "features/voice/index.ts": [
+      "ConversationConfirmation",
+      "ConversationConfirmationState",
+      "ConversationContextValue",
+      "ConversationInputPhase",
+      "ConversationPhase",
+      "ConversationReadbackPhase",
+      "ConversationWave",
+      "useConversationState",
+      "useSpeechVoices",
+      "useTtsSetup",
+      "useVoiceSetup",
+      "useVoiceSetupTest",
+      "VoiceSection",
+      "WORKING_SOUND_OPTIONS"
+    ],
+    "features/connections/index.ts": [
+      "ConnectionContextValue",
+      "ConnectionLifecycle",
+      "ConnectionSection",
+      "ConnectionSetupForm",
+      "ConnectionStatusBanner",
+      "DiagnosticsContextValue",
+      "DiagnosticsSection",
+      "useLastJsError"
+    ],
+    "features/connections/runtime.ts": [
+      "connectionTransition",
+      "useConnectionProfiles",
+      "useConnectionRetry"
+    ],
+    "features/sessions/runtime.ts": [
+      "collectDescendantSessionIds",
+      "getActiveSessions",
+      "getCurrentPendingRequests",
+      "getSessionPreviewById",
+      "hydrateSessionCache",
+      "librarySessions",
+      "MAX_ACTIVE_SESSIONS",
+      "mergeSessionStatuses",
+      "migrateConnectionSessionCaches",
+      "parseFavoriteSessions",
+      "parseLastSessionByConnection",
+      "serializeFavoriteSessions",
+      "serializeLastSessionByConnection",
+      "useActiveSessions",
+      "useConnectionLinkActions",
+      "useNativeSurfaces",
+      "usePermissionRulesState",
+      "useSessionActions",
+      "useSessionRefresh",
+      "useSessionState"
+    ],
+    "features/chat/runtime.ts": [
+      "isPromptErrorVisible",
+      "migrateTranscriptCaches",
+      "pruneProviderTranscripts",
+      "useChatRefresh",
+      "useChatRuntimeState",
+      "usePromptInbox",
+      "usePromptLifecycle",
+      "useTranscriptReadErrors",
+      "useTranscriptState"
+    ],
+    "features/notifications/index.ts": [
+      "NotificationsSection",
+      "useNotificationRoute",
+      "useNotificationSetup"
+    ],
+    "features/extensions/runtime.ts": [
+      "useExtensionPromptState",
+      "useExtensionsState",
+      "useMcpState"
+    ],
+    "features/extensions/index.ts": [
+      "ExtensionsContextValue",
+      "ExtensionsSection",
+      "McpContextValue",
+      "McpSection"
+    ],
+    "features/sharing/runtime.ts": [
+      "emptySharedInput",
+      "useShareState"
+    ],
+    "features/onboarding/runtime.ts": [
+      "CURRENT_ONBOARDING_VERSION",
+      "isOnboardingComplete",
+      "loadOnboardingStatus",
+      "serializeOnboardingVersion"
+    ],
+    "features/voice/runtime.ts": [
+      "useConversationState",
+      "useVoiceSetupTest",
+      "VoiceSetupTestContext"
+    ],
+    "features/terminal/runtime.ts": [
+      "useTerminalState"
+    ],
+    "features/widgets/runtime.ts": [
+      "useWidgetState"
+    ],
+    "features/updates/runtime.ts": [
+      "useAppUpdates"
+    ],
+    "features/cloud-link/runtime.ts": [
+      "useConnectState",
+      "useServicesState"
+    ]
+  }
+}

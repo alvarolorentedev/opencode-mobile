@@ -11,16 +11,16 @@ requires explicit human validation under `AGENTS.md`.
 
 Closed on 2026-10-18. The coupling hotspot was split without changing behavior:
 
-- `providers/opencode-provider.tsx` is now a thin wrapper (~33 lines). The
+- `runtime/composition/opencode-provider.tsx` is now a thin wrapper (~33 lines). The
   domain hooks and their input spreads moved to
-  `providers/use-opencode-provider-composition.ts` (~410 lines), and the
-  context-provider tree moved to `providers/opencode-provider-tree.tsx`.
+  `runtime/composition/use-opencode-provider-composition.ts` (~410 lines), and the
+  context-provider tree moved to `runtime/workspace/domain-provider-tree.tsx`.
 - The provider line ratchet in `tests/vitest/architecture.test.ts` dropped from
   500 to 60 in the same change, so the entrypoint cannot regrow into a god
   object. The repo-wide 500-line ceiling still covers both new files.
-- `components/chat/chat-view.tsx` renders `TranscriptList`, `ChangesOverlay`,
+- `features/chat/ui/chat-view.tsx` renders `TranscriptList`, `ChangesOverlay`,
   and `PendingInteractions` directly; the `ChatContent` pass-through
-  (`components/chat/chat-content.tsx` and its barrel) is gone.
+  (`features/chat/ui/chat-view.tsx` and its barrel) is gone.
 - `useChatViewController` returns `header` / `content` / `composer` / `overlay`
   / `actions` namespaces instead of ~85 flat members, and `ChatView` consumes
   those namespaces directly.
@@ -85,7 +85,7 @@ the stale/empty-transcript behavior and is harder to validate:
 
 - `mergeSessionMessageWindow` / `prependSessionMessageHistory` keep record object
   references and use `JSON.stringify` equality so unchanged records skip the
-  tokenization pass (`lib/opencode/format/window.ts`).
+  tokenization pass (`shared/presentation/format/window.ts`).
 - `toTranscriptEntry` caches entries in a `WeakMap` keyed by record reference.
 - `TranscriptList` re-asserts the FlashList tail across several frames
   (`TAIL_SETTLE_FRAMES`) and restores offset on focus/foreground.
@@ -109,7 +109,7 @@ are sent on probes, REST, SSE, terminal connect-token requests and native
 terminal WebSocket upgrades, and values live in SecureStore. Two direct paths
 remain outside that guarantee by design:
 
-- **Attachment previews.** `lib/attachment-preview.ts` fetches attachment `uri`
+- **Attachment previews.** `shared/platform/attachments.ts` fetches attachment `uri`
   values directly, and those URLs may be arbitrary hosts. Attaching a
   connection's gateway headers there could leak service-token secrets to a third
   party, so previews stay header-free until the app can restrict them to the
@@ -130,10 +130,10 @@ contract change, not app-side plumbing.
 V1 is maintained only for the feature intersection with V2. V1-only surfaces
 (sharing, archive/restore, title summarization, general config writes, persistent
 MCP enablement, worktree reset, and LSP/formatter diagnostics) are intentionally
-unsupported. Compatibility code stays behind `lib/opencode/compat/v1/` and the
+unsupported. Compatibility code stays behind `shared/protocol/opencode/compat/v1/` and the
 provider service boundary; do not add new UI branches on `contract === 'v1'`.
 
-Realtime timing and reconciliation helpers live under `providers/realtime/`.
+Realtime timing and reconciliation helpers live under `runtime/realtime/`.
 Keep the dual SSE/polling model and preserve its timing contract when editing
 them.
 
@@ -162,7 +162,7 @@ dedicated wake-word engine. Consequences:
 Two render-timing couplings remain in the workspace shell. They are not library
 gaps; they are internal coordination issues worth fixing before the flows grow.
 
-- **Workspace readiness polls React state.** `providers/use-workspace-connections.ts`
+- **Workspace readiness polls React state.** `runtime/workspace/use-workspace-connections.ts`
   uses `tick()` (a 25 ms `setTimeout`) inside `ensure()`, `connectedWorkspace()`,
   and `navigate()` to wait for a retained `WorkspaceRuntime` to publish its first
   snapshot. The wait is bounded at 20 seconds, but it couples navigation to render
@@ -171,7 +171,7 @@ gaps; they are internal coordination issues worth fixing before the flows grow.
   that resolves when the runtime publishes or the workspace is removed. Do not
   add another shared store; the registry should remain the owner.
 - **Connect pairing changes step during render.**
-  `components/settings/connect-pairing.tsx` derives `step` from provider state,
+  `features/cloud-link/ui/connect-pairing.tsx` derives `step` from provider state,
   then calls `setStep(4)` or `setStep(3)` directly in the render body (the
   guided pairing transitions). This can produce React warnings and an extra
   render pass, and it makes the transition harder to test. Derive the visible
@@ -304,7 +304,7 @@ How it is applied:
   native build.
 - The changed files are native source, so a JS reload or OTA update is not
   enough. Rebuild Android/iOS after changing the patch.
-- `tests/vitest/tts-native-abi.test.ts` asserts the installed Kotlin declares
+- `shared/platform/voice/__tests__/tts-native-abi.test.ts` asserts the installed Kotlin declares
   the fields in the expected order and that the patch entry still carries them.
 
 Exit plan:

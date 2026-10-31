@@ -10,22 +10,22 @@ Back to the [engineering index](README.md) · [documentation hub](../README.md).
 
 **When:** you add or change a user-facing string.
 
-**Read only:** [design system § Accessibility, localization and feature acceptance](../design/design-system.md#accessibility-localization-and-feature-acceptance) and `lib/i18n/languages.ts`.
+**Read only:** [design system § Accessibility, localization and feature acceptance](../design/design-system.md#accessibility-localization-and-feature-acceptance) and `shared/i18n/languages.ts`.
 
 **Edit:**
 
-1. Add the key to `lib/i18n/locales/en/<namespace>.json`.
-2. Add the same key to every locale folder in `lib/i18n/locales/<code>/<namespace>.json`.
+1. Add the key to `shared/i18n/locales/en/<namespace>.json`.
+2. Add the same key to every locale folder in `shared/i18n/locales/<code>/<namespace>.json`.
    Preserve `{{interpolation}}` names and the plural suffixes the locale requires.
-3. Add a new language to `SUPPORTED_LANGUAGES` in `lib/i18n/languages.ts` and to
+3. Add a new language to `SUPPORTED_LANGUAGES` in `shared/i18n/languages.ts` and to
    `supportedLocales` in `app.config.ts`.
-4. Run `npm run gen:i18n` to regenerate `lib/i18n/resources.ts`.
+4. Run `npm run gen:i18n` to regenerate `shared/i18n/resources.ts`.
 
 **Validate:**
 
 ```bash
 npm run gen:i18n
-npx vitest run tests/vitest/i18n.test.ts
+npx vitest run shared/i18n/__tests__/i18n.test.ts
 ```
 
 Use `npm run test:i18n:loose` only while iterating. Strict parity is required
@@ -45,13 +45,13 @@ and editing `resources.ts` by hand.
 
 **Edit:**
 
-1. Add or extend the section in `components/settings/sections/`.
-2. Register it in `components/settings/settings-section-registry.tsx`; add
+1. Add or extend the section in `features/settings/ui/sections/`.
+2. Register it in `features/settings/ui/settings-section-registry.tsx`; add
    search keywords/targets through the registry or `settings-search.ts`.
-3. Reuse `components/settings/sections/setting-rows.tsx`; use `usePalette()` and
+3. Reuse `shared/ui/settings/setting-rows.tsx`; use `usePalette()` and
    design tokens, never literal colors.
-4. Persist a preference through `providers/opencode-preferences.ts` or
-   `providers/persisted-preferences.ts`; do not keep domain state in the component.
+4. Persist a preference through `shared/preferences/opencode-preferences.ts` or
+   `shared/storage/persisted-preferences.ts`; do not keep domain state in the component.
 5. Add the strings to every locale (see [Translations](#translations)).
 6. Add a Storybook story for a reusable control.
 7. Extend `tests/e2e/settings.spec.mjs` when the flow changes.
@@ -120,14 +120,14 @@ endpoint consumed by the app.
 
 **Edit in this order:**
 
-1. Public type: `providers/opencode-provider-types.ts`.
-2. Value assembly: `providers/opencode-provider-values.ts`.
-3. Domain wiring: `providers/use-opencode-provider-composition.ts` and the
+1. Public type: `shared/contracts/domain.ts`.
+2. Value assembly: `runtime/composition/opencode-provider-values.ts`.
+3. Domain wiring: `runtime/composition/use-opencode-provider-composition.ts` and the
    owning domain hook.
-4. Persistence: `providers/use-opencode-persistence.ts` and
-   `providers/persistence-hydration.ts` only if the field survives relaunch.
-5. Context exposure: `providers/opencode-contexts.ts` and the domain context type.
-6. Derived data: `providers/opencode-provider-selectors.ts`; never duplicate
+4. Persistence: `runtime/persistence/use-opencode-persistence.ts` and
+   `shared/storage/persistence-hydration.ts` only if the field survives relaunch.
+5. Context exposure: `features/chat/context.ts` and the domain context type.
+6. Derived data: `features/sessions/model/selectors.ts`; never duplicate
    provider-derived state in a component.
 7. Fake server: `tests/fake-opencode/` for the new endpoint or field.
 8. Tests: targeted Vitest, then E2E if the user flow changed.
@@ -135,7 +135,7 @@ endpoint consumed by the app.
 **Validate:**
 
 ```bash
-npx vitest run tests/vitest/provider-runtime.test.ts tests/vitest/persistence-hydration.test.ts
+npx vitest run runtime/__tests__/provider-runtime.test.ts runtime/__tests__/persistence-hydration.test.ts
 npm run test:fake-server:self
 npx playwright test tests/e2e/<domain>.spec.mjs
 ```

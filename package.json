@@ -18,7 +18,7 @@
     "gen:i18n": "node ./scripts/gen-i18n.mjs",
     "test:vitest": "vitest run",
     "test:docs": "vitest run tests/vitest/docs.test.ts",
-    "test:i18n:loose": "I18N_ALLOW_MISSING=1 vitest run tests/vitest/i18n.test.ts",
+    "test:i18n:loose": "I18N_ALLOW_MISSING=1 vitest run shared/i18n/__tests__/i18n.test.ts",
     "test:fake-server": "node ./tests/fake-opencode/server.mjs",
     "test:fake-server:v1": "node ./tests/fake-opencode/server-v1.mjs",
     "test:fake-server:self": "node ./tests/fake-opencode/self-test.mjs",

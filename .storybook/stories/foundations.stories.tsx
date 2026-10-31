@@ -1,12 +1,12 @@
-import { usePalette } from '@/hooks/use-palette';
-import { useColorScheme } from '@/hooks/use-color-scheme';
+import { usePalette } from '@/shared/ui/theme/use-palette';
+import { useColorScheme } from '@/shared/ui/theme/use-color-scheme';
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import type { ReactNode } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
-import { ACCENT_COLORS } from '@/constants/appearance';
-import { ControlSize, Shape, Spacing } from '@/constants/design-tokens';
-import { Fonts, getColors } from '@/constants/theme';
+import { ACCENT_COLORS } from '@/shared/ui/theme/appearance';
+import { ControlSize, Shape, Spacing } from '@/shared/ui/theme/design-tokens';
+import { Fonts, getColors } from '@/shared/ui/theme/theme';
 
 function Section({ children, title }: { children: ReactNode; title: string }) {
   const palette = usePalette();

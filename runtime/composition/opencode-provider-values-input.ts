@@ -1,0 +1,118 @@
+import type { PendingPrompt } from '@/shared/protocol/opencode/prompt-inbox';
+import type { WorktreeCatalog } from '@/features/projects/index';
+import type { Dispatch, SetStateAction } from 'react';
+import type { TerminalRuntime, TerminalStatus } from '@/features/terminal/index';
+
+import type { NetworkStatus } from '@/shared/network/network-status';
+import type { OpencodeConnectionSettings, PendingPermissionRequest, PendingQuestionRequest, SavedPermissionRule, ServerContract } from '@/shared/protocol/opencode/client';
+import type { SessionMessageRecord } from '@/shared/presentation/format';
+import type { ProjectFile } from '@/shared/protocol/opencode/project-file';
+import type { Command, Config, File, FileDiff, McpLocalConfig, McpRemoteConfig, McpStatus, Pty, Session, SessionStatus, Todo, VcsInfo , ProviderAuthMethod } from '@/shared/protocol/opencode/types';
+import type { SessionUsageStep } from '@/shared/presentation/usage';
+import type { AgentOption, ModelOption } from '@/shared/contracts/model-options';
+import type { ChatPreferences } from '@/shared/preferences/opencode-preferences';
+import type { ActiveSessionItem, ConnectionState, DiffScope, FavoriteSession, OpencodeProject } from '@/shared/contracts/domain';
+import type { ConnectionContextValue } from '@/features/connections/index';
+import type { ExtensionsContextValue } from '@/features/extensions/index';
+import type { ProviderOption , useCapabilitiesActions } from '@/features/ai/index';
+import type { Diagnostics } from '@/shared/protocol/services/diagnostics-service';
+import type { useConnectionLinkActions , useSessionActions } from '@/features/sessions/index';
+import type { useConversationState } from '@/features/voice/index';
+import type { useProjectActions } from '@/runtime/composition/use-project-actions';
+import type { usePromptLifecycle } from '@/features/chat/index';
+import type { SharedInput } from '@/features/sharing/index';
+
+type ActionInputs =
+  ReturnType<typeof useProjectActions> &
+  ReturnType<typeof useSessionActions> &
+  ReturnType<typeof useCapabilitiesActions> &
+  ReturnType<typeof usePromptLifecycle> &
+  ReturnType<typeof useConnectionLinkActions> & Pick<ConnectionContextValue, 'connect' | 'switchConnection' | 'updateSettings' | 'connectSetup' | 'connectionProfiles'> & { servicesValue: ConnectionContextValue['services'] } &
+  ReturnType<typeof useConversationState>;
+
+export type ProviderValuesInput = ActionInputs & {
+  isHydrated: boolean;
+  onboardingCompleted: boolean;
+  onboardingActive: boolean;
+  completeOnboarding: () => Promise<void>;
+  startOnboardingReview: () => void;
+  stopOnboardingReview: () => void;
+  settings: OpencodeConnectionSettings;
+  connection: ConnectionState;
+  eventStreamStatus: 'idle' | 'connecting' | 'connected' | 'error';
+  network: NetworkStatus;
+  reconnect: { attempt: number; maxAttempts: number; retryAt?: number };
+  diagnostics?: Diagnostics;
+  currentConfig?: Config;
+  availableProviders: ProviderOption[];
+  providerAuthMethodsById: Record<string, ProviderAuthMethod[]>;
+  availableModels: ModelOption[];
+  availableAgents: AgentOption[];
+  availableSkills: import('@/shared/protocol/opencode/types').Skill[];
+  availableReferences: import('@/shared/protocol/opencode/types').Reference[];
+  chatPreferences: ChatPreferences;
+  projects: OpencodeProject[];
+  activeProjectPath?: string;
+  activeProject?: OpencodeProject;
+  isRefreshingProjectCatalog: boolean;
+  projectFileStatuses: File[];
+  selectedProjectFile?: ProjectFile;
+  vcsInfo?: VcsInfo;
+  worktrees: WorktreeCatalog;
+  refreshWorktrees: () => Promise<void>;
+  createWorktree: (name?: string) => Promise<import('@/shared/protocol/opencode/project').ProjectWorktree>;
+  removeWorktree: (directory: string) => Promise<void>;
+  sessions: Session[];
+  sessionStatuses: Record<string, SessionStatus>;
+  favoriteSessions: FavoriteSession[];
+  activeSessions: ActiveSessionItem[];
+  refreshActiveSessions: () => Promise<void>;
+  setActiveSessionsVisible: Dispatch<SetStateAction<boolean>>;
+  currentSessionId?: string;
+  pendingPromptsBySession: Record<string, PendingPrompt[]>;
+  cancelPrompt: (sessionId: string, promptId: string) => Promise<void>;
+  messagesBySession: Record<string, SessionMessageRecord[]>;
+  diffScopeBySession: Record<string, DiffScope>;
+  diffsBySession: Record<string, FileDiff[]>;
+  vcsDiffsByScope: Record<'uncommitted' | 'branch', FileDiff[]>;
+  selectedDiffMessageBySession: Record<string, string | undefined>;
+  todosBySession: Record<string, Todo[]>;
+  todoRecordsBySession: Record<string, SessionMessageRecord[]>;
+  usageStepsBySession: Record<string, SessionUsageStep[]>;
+  messageWindows: Record<string, { nextBefore?: string; hasMore: boolean }>;
+  loadingOlderBySession: Record<string, boolean>;
+  hydratingSessionIds: Record<string, boolean>;
+  loadOlderMessages: (sessionId: string) => Promise<void>;
+  pendingPermissionsBySession: Record<string, PendingPermissionRequest[]>;
+  pendingQuestionsBySession: Record<string, PendingQuestionRequest[]>;
+  mcpAuthPrompt?: { mcpName: string; url: string };
+  dismissMcpAuth: () => void;
+  savedPermissions: SavedPermissionRule[];
+  refreshSavedPermissions: () => Promise<void>;
+  removeSavedPermission: (id: string) => Promise<void>;
+  sendingState: { sessionId?: string; active: boolean };
+  isRefreshingMessages: boolean;
+  transcriptReadError?: string;
+  retryTranscript: () => Promise<void>;
+  isRefreshingDiffs: boolean;
+  isBootstrappingChat: boolean;
+  commands: Command[];
+  serverContract: ServerContract;
+  terminals: Pty[];
+  activeTerminalId?: string;
+  terminalRuntime: TerminalRuntime;
+  terminalConnection: TerminalStatus;
+  refreshTerminals: () => Promise<void>;
+  createTerminal: () => Promise<Pty>;
+  openTerminal: (ptyId: string) => Promise<void>;
+  sendTerminalInput: (ptyId: string, input: string, generation: number, scope: number) => void;
+  closeTerminal: (ptyId: string) => Promise<void>;
+  mcpStatuses: Record<string, McpStatus>;
+  refreshMcpServers: () => Promise<void>;
+  addMcpServer: (name: string, config: McpLocalConfig | McpRemoteConfig) => Promise<void>;
+  connectMcpServer: (name: string) => Promise<void>;
+  disconnectMcpServer: (name: string) => Promise<void>;
+  mcpOAuth: import('@/features/extensions/index').McpContextValue['mcpOAuth'];
+  extensions: ExtensionsContextValue['extensions'];
+  sharedInput: SharedInput;
+};

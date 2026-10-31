@@ -1,0 +1,212 @@
+import assert from 'node:assert/strict';
+import { readFile } from 'node:fs/promises';
+import { z } from 'zod';
+import ts from 'typescript';
+import { describe, it } from 'vitest';
+import { loadTs, deferred, hookRuntime } from '../../tests/helpers/runtime.mjs';
+
+// Migrated from the standalone tests/persistence-hydration.test.mjs Node script.
+describe('persistence hydration and write-back', () => {
+  it('hydrates independently, validates fields, orders writes, and recovers from failures', async () => {
+    const source = await readFile(new URL('../../shared/storage/persistence-hydration.ts', import.meta.url), 'utf8');
+    const output = ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.ESNext, target: ts.ScriptTarget.ES2020 } }).outputText;
+    const { loadPersistedValue, createPersistenceWriter } = await import(`data:text/javascript,${encodeURIComponent(output)}`);
+
+    function createStorage(values: Map<string, string>, failedReads = new Set<string>()) {
+      const removed: string[] = [];
+      return {
+        removed,
+        async getItem(key: string) {
+          if (failedReads.has(key)) {
+            throw new Error('read failed');
+          }
+          return values.get(key) ?? null;
+        },
+        async removeItem(key: string) {
+          removed.push(key);
+          values.delete(key);
+        },
+      };
+    }
+
+    const values = new Map([
+      ['settings', '{"serverUrl":"http://localhost"}'],
+      ['preferences', '{"mode":"build"}'],
+      ['sessions', '{"/repo":"session-1"}'],
+    ]);
+    const storage = createStorage(values);
+    const hydrated: Record<string, unknown> = {};
+    await loadPersistedValue(storage, 'settings', JSON.parse, (value: any) => { hydrated.settings = value; });
+    await loadPersistedValue(storage, 'preferences', JSON.parse, (value: any) => { hydrated.preferences = value; });
+    await loadPersistedValue(storage, 'sessions', JSON.parse, (value: any) => { hydrated.sessions = value; });
+    assert.deepEqual(hydrated, {
+      settings: { serverUrl: 'http://localhost' },
+      preferences: { mode: 'build' },
+      sessions: { '/repo': 'session-1' },
+    });
+
+    const isolatedValues = new Map([
+      ['settings', '{'],
+      ['preferences', '{"mode":"build"}'],
+      ['sessions', '{"/repo":"session-1"}'],
+    ]);
+    const isolatedStorage = createStorage(isolatedValues);
+    const isolatedHydrated: Record<string, unknown> = {};
+    await loadPersistedValue(isolatedStorage, 'settings', JSON.parse, () => assert.fail('corrupt value should not apply'));
+    await loadPersistedValue(isolatedStorage, 'preferences', JSON.parse, (value: any) => { isolatedHydrated.preferences = value; });
+    await loadPersistedValue(isolatedStorage, 'sessions', JSON.parse, (value: any) => { isolatedHydrated.sessions = value; });
+    assert.deepEqual(isolatedHydrated, {
+      preferences: { mode: 'build' },
+      sessions: { '/repo': 'session-1' },
+    });
+    assert.deepEqual(isolatedStorage.removed, ['settings']);
+    assert.equal(isolatedValues.has('settings'), false);
+
+    const readFailureStorage = createStorage(new Map([['unreadable', '{']]), new Set(['unreadable']));
+    assert.equal(await loadPersistedValue(readFailureStorage, 'unreadable', JSON.parse, () => assert.fail('read failure should not apply')), false);
+    assert.deepEqual(readFailureStorage.removed, []);
+
+    const applyFailureStorage = createStorage(new Map([['apply-failure', '{"mode":"build"}'], ['after-failure', '{"mode":"plan"}']]));
+    let valueAfterApplyFailure;
+    await loadPersistedValue(applyFailureStorage, 'apply-failure', JSON.parse, () => { throw new Error('state update failed'); });
+    await loadPersistedValue(applyFailureStorage, 'after-failure', JSON.parse, (value: any) => { valueAfterApplyFailure = value; });
+    assert.deepEqual(applyFailureStorage.removed, []);
+    assert.deepEqual(valueAfterApplyFailure, { mode: 'plan' });
+
+    await loadPersistedValue(storage, 'missing', JSON.parse, () => assert.fail('missing value should not apply'));
+
+    const connect = await loadTs('shared/contracts/cloud-link.ts', {
+      'expo/fetch': {}, 'expo-constants': { default: {} }, 'react-native': { Platform: { OS: 'android' } }, 'expo-secure-store': {},
+    });
+    for (const legacyControlPlane of ['https://api.getopencode.app', 'https://apistaging.getopencode.app']) {
+      const storedControlPlane = new Map([['control-plane', legacyControlPlane]]);
+      const controlPlaneStorage = createStorage(storedControlPlane);
+      let controlPlane = connect.CONNECT_PRODUCTION_URL;
+      await loadPersistedValue(controlPlaneStorage, 'control-plane', connect.normalizeTrustedControlPlaneUrl, (value: any) => { controlPlane = value; });
+      assert.equal(controlPlane, 'https://api.opencodecloud.link', 'Discarded legacy preferences retain the new production default.');
+      assert.deepEqual(controlPlaneStorage.removed, ['control-plane']);
+    }
+    const appearance = await loadTs('shared/ui/theme/appearance.ts');
+    const wakePhrase = await loadTs('shared/platform/voice/wake-phrase.ts');
+    const localWakeTypes = await loadTs('shared/platform/voice/local-wake-word/types.ts');
+    const autoModelPreferences = await loadTs('shared/preferences/auto-model.ts');
+    const preferences = await loadTs('shared/preferences/opencode-preferences.ts', {
+    '@/shared/ui/theme/appearance': appearance,
+    '@/shared/preferences/auto-model': autoModelPreferences,
+    '@/shared/platform/voice/wake-phrase': wakePhrase,
+    '@/shared/platform/voice/local-wake-word/types': localWakeTypes
+  });
+    const profileUrls = await loadTs('shared/contracts/server-url.ts', {
+    "@/shared/protocol/opencode/client/types": { defaultConnectionSettings: { serverUrl: 'http://localhost' } }
+  });
+    const { parseConnectionSettings, parseChatPreferences } = await loadTs('shared/storage/persisted-preferences.ts', {
+    '@/shared/ui/theme/appearance': appearance,
+    '@/shared/preferences/auto-model': autoModelPreferences,
+    "@/shared/contracts/cloud-link": connect,
+    "@/shared/storage/cloud-link": connect,
+    '@/shared/platform/voice/wake-phrase': wakePhrase,
+    '@/shared/platform/voice/local-wake-word/types': localWakeTypes,
+    "@/features/chat/model/system-prompt": preferences,
+    '@/shared/contracts/server-url': profileUrls,
+    zod: { z }
+  });
+    assert.throws(() => parseConnectionSettings('{"serverUrl":123}'), /Invalid/);
+    assert.equal(parseConnectionSettings('{"serverUrl":"https://alice:secret@host.test/proxy","username":"configured"}').serverUrl, 'https://host.test/proxy');
+    assert.throws(() => parseConnectionSettings('{"username":"alice","connect":{}}'), /Invalid/);
+    assert.deepEqual(JSON.parse(JSON.stringify(parseConnectionSettings('{"serverUrl":"http://test","password":"legacy","unknown":true}'))), { serverUrl: 'http://test', password: 'legacy' });
+    const parsed = parseChatPreferences(JSON.stringify({ mode: 'build', enabledModelIds: null, recentModelIds: 42,
+      providerModelSelections: { p: false }, speechRate: 100, workingSoundVolume: -1, transcriptFontSize: 99, timelineDetail: 'reasoning',
+      modelVariantSelections: { 'openai/model': 'max', 'openai/other': null },
+      reasoning: 'invalid', hideSubagentChats: 'yes', language: 'es', unknown: 'ignored' }));
+    assert.deepEqual(JSON.parse(JSON.stringify(parsed)), { mode: 'build', language: 'es', modelVariantSelections: { 'openai/model': 'max', 'openai/other': null }, transcriptFontSize: 24, speechRate: 1.5, workingSoundVolume: 0, timelineDetail: 'reasoning' });
+    assert.equal(parseChatPreferences(JSON.stringify({ timelineDetail: 'chatty' })).timelineDetail, undefined);
+    assert.deepEqual(JSON.parse(JSON.stringify(parseChatPreferences(JSON.stringify({ themeMode: 'dark', accentColor: 'blue' })))), { themeMode: 'dark', accentColor: 'blue' });
+    assert.deepEqual(JSON.parse(JSON.stringify(parseChatPreferences(JSON.stringify({ themeMode: 'sepia', accentColor: 'orange' })))), {});
+    assert.equal(parseChatPreferences(JSON.stringify({ conversationWakePhrase: '  hey    bot ' })).conversationWakePhrase, 'hey bot');
+    assert.equal(parseChatPreferences(JSON.stringify({ conversationWakePhrase: '   ' })).conversationWakePhrase, 'hey code');
+    assert.equal(parseChatPreferences(JSON.stringify({ mode: 'build' })).confirmVoiceCommands, undefined);
+    assert.equal(parseChatPreferences(JSON.stringify({ confirmVoiceCommands: false })).confirmVoiceCommands, false);
+    assert.equal(parseChatPreferences(JSON.stringify({ confirmVoiceCommands: 'yes' })).confirmVoiceCommands, undefined);
+    assert.equal(parseChatPreferences(JSON.stringify({ wakePhraseRequired: false })).wakePhraseRequired, false);
+    assert.equal(parseChatPreferences(JSON.stringify({ wakePhraseRequired: 'no' })).wakePhraseRequired, undefined);
+    assert.deepEqual(
+      JSON.parse(JSON.stringify(parseChatPreferences(JSON.stringify({ ttsEngine: 'local', localTtsPackId: 'piper-es', localTtsSpeakerId: 2.8 })))),
+      { ttsEngine: 'local', localTtsPackId: 'piper-es', localTtsSpeakerId: 2 },
+    );
+    assert.equal(parseChatPreferences(JSON.stringify({ localTtsSpeakerId: -4 })).localTtsSpeakerId, 0);
+    assert.equal(parseChatPreferences(JSON.stringify({ ttsEngine: 'cloud' })).ttsEngine, undefined);
+    const defaults = { ...preferences.defaultChatPreferences, ...parsed };
+    assert.ok(Array.isArray(defaults.enabledModelIds)); assert.ok(Array.isArray(defaults.recentModelIds));
+    assert.deepEqual(JSON.parse(JSON.stringify(parseChatPreferences('{"modelVariantSelections":{"openai/model":"max","openai/default":null}}').modelVariantSelections)), { 'openai/model': 'max', 'openai/default': null });
+    assert.equal(parseChatPreferences('{"modelVariantSelections":{"openai/model":false}}').modelVariantSelections, undefined);
+
+    const write = createPersistenceWriter(), gate = deferred<void>(), writes: string[] = [];
+    const first = write('settings', 'a', async () => { await gate.promise; writes.push('a'); });
+    const second = write('settings', 'b', async () => writes.push('b'));
+    const repeated = write('settings', 'b', async () => writes.push('duplicate'));
+    gate.resolve(); await Promise.all([first, second, repeated]);
+    assert.deepEqual(writes, ['a', 'b'], 'writes are ordered and identical values are suppressed');
+    await assert.rejects(write('settings', 'c', async () => { throw new Error('storage unavailable'); }), /storage unavailable/);
+    await write('settings', 'c', async () => writes.push('retry'));
+    assert.equal(writes.at(-1), 'retry');
+    write.preserveUnread('unreadable');
+    await write('unreadable', 'defaults', async () => assert.fail('defaults must not replace an unread record'));
+    await write('unreadable', 'defaults', async () => assert.fail('unchanged defaults must remain blocked'));
+    await write('unreadable', 'edited', async () => writes.push('explicit edit'));
+    assert.equal(writes.at(-1), 'explicit edit');
+
+    // Actual write-back hook: unread settings and unavailable secure credentials do
+    // not stop independent preferences from hydrating or replace stored defaults.
+    const hydrationRuntime = hookRuntime();
+    let credentialReads = 0;
+    let headerReads = 0;
+    const keys = await loadTs('shared/storage/keys.ts');
+    const stored = new Map([[keys.SETTINGS_STORAGE_KEY, '{"serverUrl":"stored-server"}'],
+      [keys.CHAT_PREFERENCES_STORAGE_KEY, '{"language":"es"}'],
+      [keys.PROJECTS_STORAGE_KEY, '{"scope":["/repo","/other"]}']]);
+    const hook = await loadTs('runtime/persistence/use-opencode-persistence.ts', {
+    react: hydrationRuntime.react,
+    '@react-native-async-storage/async-storage': { __esModule: true, default: {
+        getItem: async (key: string) => { if (key === keys.SETTINGS_STORAGE_KEY) throw new Error('temporarily unreadable'); return stored.get(key) ?? null; },
+        setItem: async (key: string, value: string) => { stored.set(key, value); }, removeItem: async (key: string) => { stored.delete(key); },
+      } },
+    '@/shared/storage/keys': keys,
+    '@/shared/contracts/server-url': profileUrls,
+    "@/shared/contracts/cloud-link": { normalizeTrustedControlPlaneUrl: (raw: string) => raw },
+    "@/shared/storage/connection-password": { getConnectionPassword: async () => { credentialReads++; return 'another-server-secret'; }, saveConnectionPassword: async () => assert.fail('unread credentials must remain untouched'), withoutConnectionSecrets: ({ password: _, headers: __, ...metadata }: any) => metadata },
+    "@/shared/storage/connection-headers": { getConnectionHeaders: async () => { headerReads++; return { 'CF-Access-Client-Secret': 'another-server-header' }; }, saveConnectionHeaders: async () => assert.fail('unread headers must remain untouched') },
+    "@/shared/storage/persisted-preferences": { parseConnectionSettings, parseChatPreferences },
+    "@/shared/storage/persistence-hydration": { loadPersistedValue, createPersistenceWriter },
+    "@/features/sessions/services/favorites-storage": { parseFavoriteSessions: JSON.parse, serializeFavoriteSessions: JSON.stringify },
+    "@/features/projects/services/projects-storage": { parseProjectPathsByConnection: JSON.parse, serializeProjectPathsByConnection: JSON.stringify },
+    "@/features/sessions/services/last-session-storage": { parseLastSessionByConnection: JSON.parse, serializeLastSessionByConnection: JSON.stringify },
+    "@/features/onboarding/model/onboarding-state": { loadOnboardingStatus: async () => ({ version: 1 }), serializeOnboardingVersion: String }
+  }, { console: { warn() {} } });
+    const defaultSettings = { serverUrl: 'default-server', username: '', password: '' };
+    hydrationRuntime.mount(() => {
+      const [settings, setSettings] = hydrationRuntime.react.useState(defaultSettings);
+      const [chatPreferences, setChatPreferences] = hydrationRuntime.react.useState(preferences.defaultChatPreferences);
+      const [activeProjectPath, setActiveProjectPath] = hydrationRuntime.react.useState();
+      const [controlPlaneUrl, setControlPlaneUrl] = hydrationRuntime.react.useState('control');
+      const [favoriteSessions, setFavoriteSessions] = hydrationRuntime.react.useState([]);
+      const [lastSessionByConnection, setLastSessionByConnection] = hydrationRuntime.react.useState({});
+      const [projectPathsByConnection, setProjectPathsByConnection] = hydrationRuntime.react.useState({});
+      const [onboardingVersion, setOnboardingVersion] = hydrationRuntime.react.useState(0);
+      return { ...hook.useOpencodePersistence({ defaultSettings, defaultChatPreferences: preferences.defaultChatPreferences,
+        settings, setSettings, chatPreferences, setChatPreferences, activeProjectPath, setActiveProjectPath,
+        controlPlaneUrl, setControlPlaneUrl, favoriteSessions, setFavoriteSessions,
+        projectPathsByConnection, setProjectPathsByConnection,
+        lastSessionByConnection, setLastSessionByConnection, onboardingVersion, setOnboardingVersion }), chatPreferences, settings, projectPathsByConnection };
+    }, {});
+    await hydrationRuntime.settle();
+    assert.equal(hydrationRuntime.value.isHydrated, true);
+    assert.equal(hydrationRuntime.value.chatPreferences.language, 'es');
+    assert.deepEqual(hydrationRuntime.value.projectPathsByConnection.scope, ['/repo', '/other']);
+    assert.equal(credentialReads, 0, 'Unread server metadata must not lend a stored credential to the default server.');
+    assert.equal(headerReads, 0, 'Unread server metadata must not lend stored gateway headers to the default server.');
+    assert.equal(hydrationRuntime.value.settings.password, '');
+    assert.deepEqual(JSON.parse(JSON.stringify(hydrationRuntime.value.settings.headers)), {});
+    assert.equal(stored.get(keys.SETTINGS_STORAGE_KEY), '{"serverUrl":"stored-server"}');
+    hydrationRuntime.unmount();
+  });
+});

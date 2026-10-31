@@ -16,6 +16,8 @@
   ],
   "exclude": [
     "node_modules",
-    "tests/vitest"
+    "tests/vitest",
+    "**/__tests__/**",
+    "**/._*"
   ]
 }

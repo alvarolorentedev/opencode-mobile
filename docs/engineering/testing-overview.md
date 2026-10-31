@@ -54,9 +54,9 @@ The highest-risk behavior is orchestration across:
 - provider configuration and model availability
 - event-stream updates and polling fallback
 
-Those behaviors live primarily in `providers/use-opencode-provider-composition.ts`,
-`components/chat/chat-view.tsx`, `app/(tabs)/projects.tsx`,
-`app/(tabs)/settings.tsx`, and `lib/opencode/client.ts`.
+Those behaviors live primarily in `runtime/composition/use-opencode-provider-composition.ts`,
+`features/chat/ui/chat-view.tsx`, `features/projects/ui/projects-screen.tsx`,
+`features/settings/ui/settings-screen.tsx`, and `shared/protocol/opencode/client.ts`.
 
 ## Local commands
 

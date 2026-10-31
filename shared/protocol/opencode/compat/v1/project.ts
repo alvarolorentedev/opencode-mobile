@@ -1,0 +1,41 @@
+
+import { projectWorktrees } from '@/shared/protocol/opencode/project';
+import type { OpencodeClient } from '@opencode-ai/sdk/v2/client';
+
+import { requireData } from '@/shared/protocol/opencode/require-data';
+
+export async function findFiles(client: OpencodeClient, query: string, includeDirectories = false) {
+  return requireData((await client.find.files({ query, dirs: includeDirectories ? 'true' : 'false' })).data, 'file search');
+}
+
+export async function readFile(client: OpencodeClient, path: string) {
+  return requireData((await client.file.read({ path })).data, 'file read');
+}
+
+export async function getFileStatus(client: OpencodeClient) {
+  return requireData((await client.file.status()).data, 'file status');
+}
+
+export async function getVcsInfo(client: OpencodeClient) {
+  return requireData((await client.vcs.get()).data, 'VCS request');
+}
+
+export async function getVcsDiff(client: OpencodeClient, mode: 'git' | 'branch', context?: number) {
+  return requireData((await client.vcs.diff({ mode, context })).data, 'VCS diff request');
+}
+
+export async function applyVcsPatch(client: OpencodeClient, patch: string) {
+  return requireData((await client.vcs.apply({ patch })).data, 'VCS apply request');
+}
+
+export async function listWorktrees(client: OpencodeClient) {
+  return projectWorktrees(requireData((await client.worktree.list()).data, 'worktree list request'));
+}
+
+export async function createWorktree(client: OpencodeClient, name?: string) {
+  return requireData((await client.worktree.create({ worktreeCreateInput: { name } })).data, 'worktree create request');
+}
+
+export async function removeWorktree(client: OpencodeClient, directory: string) {
+  return requireData((await client.worktree.remove({ worktreeRemoveInput: { directory } })).data, 'worktree remove request');
+}

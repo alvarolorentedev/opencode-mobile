@@ -42,8 +42,8 @@ scenario before adding a new spec; see [ADR 0010](../../adr/0010-risk-based-vali
 | Dependencies, app config, build/CI config | static + full E2E | full |
 | Release tag | exact-SHA full validation + native builds from the green `Build` run | n/a |
 
-Escalate to the full suite when the change touches `providers/`,
-`lib/opencode/`, `providers/services/`, `tests/fake-opencode/`, `tests/e2e/`,
+Escalate to the full suite when the change touches `runtime/`,
+`shared/protocol/opencode/`, `shared/protocol/services/`, `tests/fake-opencode/`, `tests/e2e/`,
 dependencies, app/build configuration, workflows, a root layout, or more than
 two domains. An unmapped path also means full.
 
@@ -167,17 +167,17 @@ foreground recovery does not overlap or restart activation and rescan retains
 the saved profile. Protocol checks preserve HTML 1033 before SDK parsing and
 keep 401/403 and TLS/certificate failures immediately actionable.
 
-Recovery classification is pinned by `tests/vitest/connection-classification.test.ts`
+Recovery classification is pinned by `features/connections/__tests__/connection-classification.test.ts`
 (tunnel-startup, offline, timeout, auth, entitlement, server-incompatible,
-unknown, and the retry/auth policies). `tests/vitest/provider-runtime.test.ts` covers
+unknown, and the retry/auth policies). `runtime/__tests__/provider-runtime.test.ts` covers
 the liveness watchdog (one re-subscription per staleness window, foreground
 cycle, no traffic while healthy), the queued full reconcile behind an in-flight
 safety poll, auth-failure stream stop with a single provider notification, and
 the terminal reconnect on a rotated credential client.
-`tests/vitest/connect-recovery.test.ts` covers single-flight concurrent connects
+`features/cloud-link/__tests__/connect-recovery.test.ts` covers single-flight concurrent connects
 (one project discovery), same-machine rotation using the soft reset (project
 preserved), and data-plane revocation (state cleared once, Cloud Link recovery
-reused). `tests/vitest/terminal.test.ts` covers jittered bounded reconnect
+reused). `features/terminal/__tests__/terminal.test.ts` covers jittered bounded reconnect
 delays and cursor-preserving reconnect with rotated credentials.
 `tests/e2e/realtime.spec.mjs` adds a silently stalled SSE flow (watchdog
 re-subscribes and the released stall reconciles a missed blocker, both
@@ -231,7 +231,7 @@ camera, secure relaunch/locked-device access, real tunnel upgrades, and
 revocation still require explicit physical-device validation.
 
 `test:connect` covers the low-level Cloud Link API, pairing/trust parsing,
-credential storage and app-config contract. `tests/vitest/connect-recovery.test.ts`
+credential storage and app-config contract. `features/cloud-link/__tests__/connect-recovery.test.ts`
 is complementary: it exercises the actual provider hooks with deterministic
 app-state, time, native store and storage boundaries. It covers healthy reopen,
 background expiry and retry cancellation, cold-launch store readiness, shared

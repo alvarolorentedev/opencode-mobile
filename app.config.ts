@@ -131,7 +131,7 @@ const config: ExpoConfig = {
       // Receiving shares into the app. Android share intents are enabled here;
       // the iOS Share Extension is deferred and tracked in
       // docs/product/parity/ios-share.md. The JS side stages payloads in
-      // providers/use-share-state.ts and previews them in app/share.tsx.
+      // features/sharing/state/use-share-state.ts and previews them in features/sharing/ui/share-screen.tsx.
       'expo-sharing',
       {
         android: {
@@ -145,7 +145,7 @@ const config: ExpoConfig = {
     [
       // Exposes the shipped app languages to the OS so iOS/Android surface the
       // correct per-app language choices. Extend both lists with every language
-      // added under lib/i18n/locales.
+      // added under shared/i18n/locales.
       'expo-localization',
       {
         supportedLocales: {
@@ -189,8 +189,8 @@ const config: ExpoConfig = {
     'expo-status-bar',
     [
       // Android home-screen widget. Widget trees and the headless task handler
-      // live in widgets/; the provider publishes snapshots on confirmed state
-      // changes (providers/use-widget-state.ts). The picker label and
+      // live in features/widgets/; the provider publishes snapshots on confirmed state
+      // changes (features/widgets/state/use-widget-state.ts). The picker label and
       // description are written to strings.xml as non-translatable by the
       // plugin, so they stay English. iOS has no widget surface yet; see
       // docs/product/parity/ios-widget.md. The library is MIT-licensed and pure

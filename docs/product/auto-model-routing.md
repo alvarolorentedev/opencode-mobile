@@ -104,7 +104,7 @@ rewritten during a slow or incomplete capability refresh.
 
 ## Validation
 
-- `tests/vitest/auto-model.test.ts` covers prompt parsing, preferences, catalog
+- `features/ai/__tests__/auto-model.test.ts` covers prompt parsing, preferences, catalog
   suggestions, attachment/context guards, and cache protection.
 - `tests/e2e/auto-model.spec.mjs` covers OpenCode probe success, simple/complex
   routing, and the explicit-model override against the fake V2 server.

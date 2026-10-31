@@ -11,19 +11,19 @@ the docs it references.
 ## Current shipped state
 
 - Quick actions (iOS + Android):
-  - `lib/quick-actions.ts` wraps `expo-quick-actions` (dynamic-only; no config
+  - `shared/platform/quick-actions.ts` wraps `expo-quick-actions` (dynamic-only; no config
     plugin, no static shortcuts).
-  - `providers/quick-action-items.ts` selects up to three recent/running sessions;
-    `providers/use-native-surfaces.ts` publishes a New chat item plus those
+  - `features/sessions/model/quick-action-items.ts` selects up to three recent/running sessions;
+    `features/sessions/state/use-native-surfaces.ts` publishes a New chat item plus those
     sessions, debounced and only while foregrounded (Android throttles dynamic
     shortcut updates in the background).
-  - `hooks/use-quick-action-route.ts` resolves a tap through the existing
-    `app/session/[id].tsx` deep-link resolver, so connection scope, project
+  - `features/sessions/state/use-quick-action-route.ts` resolves a tap through the existing
+    `features/sessions/ui/session-link-screen.tsx` deep-link resolver, so connection scope, project
     switching, and session validation match notifications.
 - Android home widget: `react-native-android-widget` +
-  `widgets/session-widget.tsx` + `widgets/session-widget-task.tsx`, fed by the
-  bounded snapshot in `providers/widget-snapshot.ts` /
-  `providers/widget-snapshot-storage.ts`.
+  `features/widgets/ui/session-widget.tsx` + `features/widgets/background.tsx`, fed by the
+  bounded snapshot in `features/widgets/model/widget-snapshot.ts` /
+  `features/widgets/services/widget-snapshot-storage.ts`.
 - Android now has Latest replies, Awaiting actions and current-chat Plan progress.
   Future iOS home widgets should consume the same bounded, redacted sections.
   Lock Screen widgets must omit reply/request/step text and titles.
@@ -54,13 +54,13 @@ the docs it references.
    The development variant (`app.getopencode.mobile.dev`) needs its own
    extension bundle id and App Group.
 3. **Widget tree** — a `'widget'`-directive component (for example
-   `widgets/ios/session-widget.tsx`) using `createWidget` and
+   a feature-owned iOS renderer) using `createWidget` and
    `@expo/ui/swift-ui`. The widget runtime is isolated: no hooks, no imports, no
    async work; only `@expo/ui/swift-ui` components and props passed by the app.
    Use the `widgetURL` modifier to deep link a tap to a session link (the same
-   `opencodemobile://session/...` shape built by `lib/session-link.ts`).
+   `opencodemobile://session/...` shape built by `shared/contracts/session-link.ts`).
 4. **Feed it** — call `Widget.updateSnapshot(props)` from the provider
-   (`providers/use-native-surfaces.ts`) with the same data as the Android
+   (`features/sessions/state/use-native-surfaces.ts`) with the same data as the Android
    snapshot. iOS throttles timeline reloads; the widget shows last-known state
    with its `updatedAt` timestamp.
 5. **Apple / signing** — create the widget extension App ID and the App Group,

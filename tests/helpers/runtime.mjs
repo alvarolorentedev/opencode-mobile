@@ -1,45 +1,91 @@
-import { readFile } from 'node:fs/promises';
+import { readFileSync, existsSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
 import { runInNewContext } from 'node:vm';
 import ts from 'typescript';
 import path from 'node:path';
 import { queryRuntime } from './query-runtime.mjs';
 
 export async function loadTs(relative, imports = {}, globals = {}) {
-  const source = await readFile(new URL(`../../${relative}`, import.meta.url), 'utf8');
-  /** @type {any} */
-  const exports = {};
-  const output = ts.transpileModule(source, {
-    compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2020, jsx: ts.JsxEmit.ReactJSX },
-  }).outputText;
+  if (Array.isArray(relative)) return Object.assign({}, ...await Promise.all(relative.map((file) => loadTs(file, imports, globals))));
+  const root = fileURLToPath(new URL('../../', import.meta.url));
   const resolved = { ...imports };
   if (imports.react) {
-    resolved['@/providers/capabilities-snapshot'] ??= { clearCapabilitiesSnapshots: async () => {} };
-    resolved['@/providers/services/session-service'] ??= {};
+    resolved['@/features/ai/services/capabilities-snapshot'] ??= { clearCapabilitiesSnapshots: async () => {} };
+    resolved['@/shared/protocol/services/session-service'] ??= {};
     resolved['@tanstack/react-query'] ??= queryRuntime(imports.react);
-    resolved['@/providers/queries/client'] ??= {
+    resolved['@/shared/server-data/client'] ??= {
       useQueryIdentity: () => ({ connectionId: 'test', connectionScope: 'scope', authRevision: 0 }),
       useQueryActivity: () => true, useQueryForeground: () => true,
     };
   }
-  if (resolved['@/lib/opencode/client']) resolved['@/lib/opencode/client'] = { withReadSignal: (client) => client, ...resolved['@/lib/opencode/client'] };
-  for (const match of output.matchAll(/require\("([^"]+)"\)/g)) {
-    const name = match[1];
-    const relativeClient = name.endsWith('/queries/client');
-    if (relativeClient && resolved['@/providers/queries/client']) { resolved[name] = resolved['@/providers/queries/client']; continue; }
-    if (name in resolved) continue;
-    const local = (relative.startsWith('providers/queries/') && name.startsWith('./')) || name.startsWith('./queries/') || name.startsWith('@/providers/queries/') || ['@/providers/workspace-lifecycle', '@/lib/opencode/server-data-events', './lifecycle', './connection-lifecycle'].includes(name);
-    if (local) {
-      const file = name.startsWith('@/') ? name.slice(2) : path.join(path.dirname(relative), name);
-      const dependencies = { '@/lib/opencode/client': { withReadSignal: (client) => client }, '@/providers/services/capabilities-service': {}, '@/providers/services/session-service': {}, '@/providers/services/project-service': {}, '@/lib/opencode/contracts/server-adapter': {}, '@/providers/opencode-model-selection': {}, ...resolved };
-      resolved[name] = await loadTs(`${file}.ts`, dependencies, globals);
-    }
+  if (resolved['@/shared/protocol/opencode/client']) resolved['@/shared/protocol/opencode/client'] = { withReadSignal: (client) => client, ...resolved['@/shared/protocol/opencode/client'] };
+  const cache = new Map();
+  function localFile(name, parent) {
+    const base = name.startsWith('@/') ? name.slice(2) : name.startsWith('.') ? path.posix.normalize(path.posix.join(path.posix.dirname(parent), name)) : undefined;
+    return base && [base, `${base}.ts`, `${base}.tsx`, `${base}/index.ts`].find((file) => existsSync(path.join(root, file)) && /\.tsx?$/.test(file));
   }
-  runInNewContext(output, {
-    exports, console, Headers, URL, AbortController, TextEncoder, TextDecoder, Response, setTimeout, clearTimeout, setInterval, clearInterval,
-    require(name) { if (!(name in resolved)) throw new Error(`Missing test import ${name} in ${relative}`); return resolved[name]; },
-    ...globals,
-  });
-  return exports;
+  // Resolve suite-local stand-ins against the source file they were written for.
+  for (const [name, value] of Object.entries(imports)) {
+    if (!name.startsWith('.')) continue;
+    const file = localFile(name, relative);
+    if (file) resolved[`@/${file.replace(/\.tsx?$/, '')}`] = value;
+  }
+  function dependency(name, parent) {
+    if (/(?:\/queries\/|shared\/server-data\/)/.test(parent) && name === '@/shared/protocol/opencode/client') return { withReadSignal: (client) => client, ...resolved[name] };
+    if (name in resolved) return resolved[name];
+    const file = localFile(name, parent);
+    if (file) {
+      const alias = `@/${file.replace(/\.tsx?$/, '')}`;
+      if (alias in resolved) return resolved[alias];
+      return evaluate(file);
+    }
+    throw new Error(`Missing test import ${name} in ${parent}`);
+  }
+  function evaluate(file) {
+    if (cache.has(file)) return cache.get(file);
+    const source = readFileSync(path.join(root, file), 'utf8');
+    const ast = ts.createSourceFile(file, source, ts.ScriptTarget.Latest, true);
+    // Public facades contain only exports. Resolve the requested symbol so a
+    // focused hook test does not initialize unrelated native feature modules.
+    if (ast.statements.length && ast.statements.every((node) => ts.isExportDeclaration(node) || ts.isImportDeclaration(node) && node.importClause?.isTypeOnly)) {
+      const facade = new Proxy({}, {
+        ownKeys() {
+          return ast.statements.flatMap((node) => ts.isExportDeclaration(node) && !node.isTypeOnly
+            ? node.exportClause && ts.isNamedExports(node.exportClause)
+              ? node.exportClause.elements.filter((entry) => !entry.isTypeOnly).map((entry) => entry.name.text)
+              : node.moduleSpecifier ? Object.keys(dependency(node.moduleSpecifier.text, file)) : []
+            : []);
+        },
+        getOwnPropertyDescriptor: () => ({ enumerable: true, configurable: true }),
+        get(_target, property) {
+        if (property === 'then') return undefined;
+        if (property === '__esModule') return true;
+        for (const node of ast.statements) {
+          if (!ts.isExportDeclaration(node) || !node.moduleSpecifier || node.exportClause && !ts.isNamedExports(node.exportClause)) continue;
+          if (!node.exportClause) {
+            const value = dependency(node.moduleSpecifier.text, file)[property];
+            if (value !== undefined) return value;
+            continue;
+          }
+          const entry = node.exportClause.elements.find((item) => item.name.text === property);
+          if (entry) return dependency(node.moduleSpecifier.text, file)[(entry.propertyName ?? entry.name).text];
+        }
+      } });
+      cache.set(file, facade);
+      return facade;
+    }
+    const exports = {};
+    cache.set(file, exports);
+    runInNewContext(ts.transpileModule(source, {
+      compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2020, jsx: ts.JsxEmit.ReactJSX },
+    }).outputText, {
+      exports, console, Headers, URL, AbortController, TextEncoder, TextDecoder, Response, setTimeout, clearTimeout, setInterval, clearInterval,
+      require: (name) => dependency(name, file),
+      ...globals,
+    });
+    return exports;
+  }
+  return evaluate(relative);
 }
 
 // Small deterministic hook driver: exercises provider orchestration with real

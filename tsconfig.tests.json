@@ -1,21 +1,23 @@
 {
-  // Type-checks the Vitest suites that are clean today. The suites listed under
-  // `exclude` drive the dynamic `loadTs` / `hookRuntime` harness in
-  // tests/helpers/runtime.mjs and would need a typed harness before they can be
-  // added. Shrink this list as suites are cleaned up; never add to it without a
-  // note in docs/engineering/known-gaps.md.
   "extends": "./tsconfig.json",
   "compilerOptions": {
     "noEmit": true,
-    "types": ["node"]
+    "types": [
+      "node"
+    ],
+    "allowImportingTsExtensions": true
   },
   "include": [
     "tests/vitest/**/*.ts",
     "base-64.d.ts",
     "expo-env.d.ts",
-    ".expo/types/**/*.ts"
+    ".expo/types/**/*.ts",
+    "features/**/__tests__/**/*.ts",
+    "shared/**/__tests__/**/*.ts",
+    "runtime/**/__tests__/**/*.ts"
   ],
   "exclude": [
-    "node_modules"
+    "node_modules",
+    "**/._*"
   ]
 }

@@ -161,8 +161,8 @@ rest of `/__control/reset` and is reported by `/__control/network` and
 - an offline prompt is shown as queued, then admitted exactly once after
   connectivity returns; the fake server asserts only one user record exists
 - protocol-level request policy, network normalization, and the transcript
-  cache are covered in `tests/vitest/network-resilience.test.ts`
-- the offline/uncertain prompt queue is covered in `tests/vitest/feed.test.ts`
+  cache are covered in `runtime/__tests__/network-resilience.test.ts`
+- the offline/uncertain prompt queue is covered in `features/chat/__tests__/feed.test.ts`
 
 the Vitest `session-reads` suite exercises 4,300-record histories in both protocols,
 newest-page (20-record) retrieval, backward cursor paging, shared message/diff
@@ -211,9 +211,9 @@ covers multiple projects, descendants, blockers, retry/queue states, failed
 reads, foreground permission changes, background polling, completion cleanup,
 dismissal cycle keys, and stale reads after connection changes. V2 status tests
 reject network failures and missing active-session responses instead of idle.
-`tests/vitest/session-settlement.test.ts` pins the pure settlement decision table
+`features/sessions/__tests__/session-settlement.test.ts` pins the pure settlement decision table
 (running, retrying, blocked, finished, failed, aborted) and
-`tests/vitest/notification-route.test.ts` pins the non-secret route payload.
+`features/notifications/__tests__/notification-route.test.ts` pins the non-secret route payload.
 Provider-runtime also covers connection-scoped notification links.
 
 Native acceptance remains required for activity notifications: start work, leave
@@ -295,7 +295,7 @@ playback test against a stale saved voice.
 
 The `test:voice-errors` static suite pins the pure recovery classification
 (retry vs open-settings vs no action) and the on-device fallback policy; it does
-not exercise the native recognizer. `tests/vitest/speech-text.test.ts` covers
+not exercise the native recognizer. `shared/platform/voice/__tests__/speech-text.test.ts` covers
 markdown/prose normalization, chunk limits, and pronunciation rules;
 `system-tts.test.ts` covers enhanced-voice selection and missing-voice fallback;
 `tts-catalog.test.ts` pins the one-pack-per-language catalog; and

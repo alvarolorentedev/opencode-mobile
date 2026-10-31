@@ -18,10 +18,10 @@ upstream to provide a build flavour without them. The FOSS variant:
 
 - excludes `expo-iap`, `expo-camera`, and `expo-store-review` from autolinking,
   keeps the proprietary plugins out of the FOSS config, and redirects their JS
-  imports to stubs in `lib/foss/` via `metro.config.js`
+  imports to stubs in `shared/platform/foss/` via `metro.config.js`
 - disables the Cloud Link paid-subscription and QR-pairing surfaces by returning
   `false` from `isConnectEnabled()` when `extra.foss` is set; the Settings
-  section also requires the store-install check in `lib/connect-install.ts`,
+  section also requires the store-install check in `shared/platform/install-identity.ts`,
   which FOSS can never pass
 - keeps local task-completion notifications by compiling `expo-notifications`
   against F-Droid's free `firebase-stubs` classes instead of `firebase-messaging`
@@ -113,7 +113,7 @@ from source for that flavor.
 When changing dependencies or native config:
 
 - `npm run test:ci:static` and `npm run typecheck` must stay green
-- `npm run test:vitest` guards the layering via `tests/vitest/architecture.test.ts`; FOSS stubs live in `lib/foss/`
+- `npm run test:vitest` guards the layering via `tests/vitest/architecture.test.ts`; FOSS stubs live in `shared/platform/foss/`
 - update the Firebase stub revision in `scripts/build-android-release.mjs`
   and the recipe's `firebase-stub` srclib together if `expo-notifications`
   needs a newer stub API

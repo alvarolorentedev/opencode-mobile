@@ -23,20 +23,20 @@ checking whether a platform-specific gap is intentional.
 
 | Area | Primary implementation |
 | --- | --- |
-| Chat, sessions, prompts, approvals | `providers/` + `components/chat/` |
-| Projects, worktrees, files | `providers/` + `components/project/` + `app/(tabs)/projects.tsx` |
-| Settings, providers, extensions, voice | `providers/` + `components/settings/` |
-| Terminal | `providers/use-terminal-state.ts` + `components/terminal/` |
-| Cloud Link | `providers/connect/` + `components/settings/` |
-| Notifications, widgets, quick actions | `lib/` + `providers/` |
-| Inbound sharing | `providers/use-share-state.ts` + `lib/share/` + `app/share.tsx` |
+| Chat, sessions, prompts, approvals | `runtime/` + `features/chat/ui/` |
+| Projects, worktrees, files | `runtime/` + `features/projects/ui/` + `features/projects/ui/projects-screen.tsx` |
+| Settings, providers, extensions, voice | `runtime/` + `features/settings/ui/` |
+| Terminal | `features/terminal/state/use-terminal-state.ts` + `features/terminal/ui/` |
+| Cloud Link | `features/cloud-link/state/connect/` + `features/settings/ui/` |
+| Notifications, widgets, quick actions | `shared/` + `runtime/` |
+| Inbound sharing | `features/sharing/state/use-share-state.ts` + `features/sharing/model/` + `features/sharing/ui/share-screen.tsx` |
 
 ## Rules
 
 - Behavior changes update [functional-spec.md](functional-spec.md) in the same
   change.
 - Every new or changed user-facing string must exist in every supported locale.
-  See the [design system](../design/design-system.md) and `lib/i18n/`.
+  See the [design system](../design/design-system.md) and `shared/i18n/`.
 - A platform gap is intentional only when it is documented in this section or
   in [known gaps](../engineering/known-gaps.md).
 - Product decisions that constrain architecture or protocol belong in an

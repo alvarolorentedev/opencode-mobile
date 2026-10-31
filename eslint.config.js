@@ -5,11 +5,11 @@ const expoConfig = require('eslint-config-expo/flat');
 module.exports = defineConfig([
   expoConfig,
   {
-    ignores: ['dist/*', 'dist-e2e/*', 'output/**', '.expo/*', 'test-results/**', 'playwright-report/**', 'storybook-static/**', '.eslintcache'],
+    ignores: ['**/._*', 'dist/*', 'dist-e2e/*', 'output/**', '.expo/*', 'test-results/**', 'playwright-report/**', 'storybook-static/**', '.eslintcache'],
   },
   {
     // These provider-owned state machines reconcile external events into state.
-    files: ['providers/use-conversation-state.ts', 'providers/use-opencode-realtime.ts'],
+    files: ['features/voice/state/use-conversation-state.ts', 'runtime/realtime/use-opencode-realtime.ts'],
     rules: { 'react-hooks/set-state-in-effect': 'off' },
   },
 ]);

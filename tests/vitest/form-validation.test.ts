@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { providerAuthSchema, initialAuthValues } from '@/components/settings/forms/provider-auth-schema';
-import { commandSchema, mcpSchema } from '@/components/settings/forms/extension-schemas';
-import type { ProviderAuthPrompt } from '@/lib/opencode/types';
+import { providerAuthSchema, initialAuthValues } from '@/features/ai/model/provider-auth-schema';
+import { commandSchema, mcpSchema } from '@/features/extensions/model/extension-schemas';
+import type { ProviderAuthPrompt } from '@/shared/protocol/opencode/types';
 
 describe('form validation boundaries', () => {
   it('validates only visible authentication prompts and preserves secret bytes', () => {

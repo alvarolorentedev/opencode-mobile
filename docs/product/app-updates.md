@@ -1,7 +1,7 @@
 # App updates
 
 `OpencodeProvider` owns `useAppUpdates`; `useUpdates()` exposes the update notice,
-store actions and blocker registration. `lib/app-updates.ts` is the platform
+store actions and blocker registration. `shared/platform/app-updates.ts` is the platform
 boundary. The tab shell renders a compact nonmodal banner above the tabs
 on Chat, Project, Settings and Terminal; onboarding, pairing and session routes do
 not offer updates. The banner uses source-owned controls, the light/dark theme, including

@@ -1,5 +1,7 @@
 # State And Data Model
 
+Implementation locations follow [feature boundaries](feature-boundaries.md) and [ADR 0015](../adr/0015-feature-oriented-implementation.md). `runtime/` owns cross-feature state and lifecycle composition; Settings and Onboarding compose public feature UI.
+
 Related ADRs: [0002 provider-centric orchestration](../adr/0002-provider-centric-orchestration.md), [0014 scoped server data and lifecycles](../adr/0014-server-data-and-explicit-lifecycles.md)
 
 ## Read by task
@@ -30,7 +32,7 @@ State is split into seven practical domains:
 
 ## Routine server reads
 
-`providers/queries/` defines the canonical Query options. Do not mirror these
+`shared/server-data/` defines the canonical Query options. Do not mirror these
 responses into React state or add another cache in a service:
 
 | Data | Query resource / owner |
@@ -136,13 +138,13 @@ Primary fields:
 
 These are keyed by session ID and held in memory.
 
-`diffsBySession` holds normalized `FileDiff` entries. Both contracts pass through `lib/opencode/diff.ts` before they are stored, so a v1 `before`/`after` pair arrives with a rebuilt unified `patch` and the viewer renders the same line preview for either contract.
+`diffsBySession` holds normalized `FileDiff` entries. Both contracts pass through `shared/protocol/opencode/diff.ts` before they are stored, so a v1 `before`/`after` pair arrives with a rebuilt unified `patch` and the viewer renders the same line preview for either contract.
 
 Diff scope state:
 
 - `diffScopeBySession` records the selected Files Changed scope (`turn`, `uncommitted`, `branch`) per session; it defaults to `turn`
 - `selectedDiffMessageBySession` records which user turn the `turn` scope is pinned to; it is cleared when a new prompt is sent
-- `selectedDiffMessageId` and the diff request both resolve through `resolveDiffTurn(messages, pinnedTurnId)` in `lib/opencode/transcript.ts`: a still-valid pin wins, then the newest turn that recorded a change, then the newest user message for a turn still running before its first snapshot. Display and fetch therefore never drift onto different turns.
+- `selectedDiffMessageId` and the diff request both resolve through `resolveDiffTurn(messages, pinnedTurnId)` in `shared/presentation/transcript.ts`: a still-valid pin wins, then the newest turn that recorded a change, then the newest user message for a turn still running before its first snapshot. Display and fetch therefore never drift onto different turns.
 - `vcsDiffsByScope` caches the project-scoped `uncommitted`/`branch` diffs, which are not keyed by session
 - `currentDiffs` resolves to the active scope's diff; VCS scopes have no SSE event, so they refresh on a scope change or a project file save while active
 
@@ -245,7 +247,7 @@ Current fields:
 - `includeNextActions`
 - `hideSubagentChats`
 
-`themeMode` and `accentColor` are app-global appearance settings stored with the chat preferences shell. They are deliberately excluded from `serverPreferences`, so switching connections never changes the theme. `providers/appearance-context.tsx` combines them with the OS scheme for `hooks/use-color-scheme.ts` and `hooks/use-palette.ts`.
+`themeMode` and `accentColor` are app-global appearance settings stored with the chat preferences shell. They are deliberately excluded from `serverPreferences`, so switching connections never changes the theme. `shared/ui/theme/appearance-context.tsx` combines them with the OS scheme for `shared/ui/theme/use-color-scheme.ts` and `shared/ui/theme/use-palette.ts`.
 
 The TTS engine, pack, and speaker are device-local and also excluded from `serverPreferences`. Downloaded voice models live under `opencode-tts/<packId>/` in the document directory and are not represented in preferences; Settings derives their status from the filesystem. Removing a pack deletes that directory, releases the native TTS model, and switches to the system engine when it was active. Temporary synthesis WAVs live in the cache directory and are deleted after playback, on cancel, and on the next Settings visit.
 
@@ -330,7 +332,7 @@ Supporting refs and timers hold important transient control state for:
 - final-result settle timeout
 - listening-restart timeout
 
-Chat dictation and conversation mode share `lib/voice/transcript-accumulate.ts`.
+Chat dictation and conversation mode share `shared/platform/voice/transcript-accumulate.ts`.
 Interims replace only the current segment; finals commit it. A recognition `end`
 checkpoints any unfinished interim before a native, network-fallback, or provider
 restart. New segments append verbatim: Unicode letters, combining marks, numbers,
@@ -401,7 +403,7 @@ favorite that is absent from every loaded runtime catalog triggers one catalog
 refresh to report the missing chat; rows rendered from a catalog or project list
 never wait on a list read. External entry points (notifications, widgets, quick
 actions, and OS links) keep using `openDeepLinkSession()` from
-`app/session/[id].tsx`, which resolves the connection and validates the target
+`features/sessions/ui/session-link-screen.tsx`, which resolves the connection and validates the target
 before switching.
 
 A session created or forked locally is retained for a short grace period if a
@@ -422,7 +424,7 @@ retry state.
 
 ## Persisted Data
 
-AsyncStorage keys are defined in `lib/storage-keys.ts`. Secrets use platform
+AsyncStorage keys are defined in `shared/storage/keys.ts`. Secrets use platform
 secure storage, never AsyncStorage (see below).
 
 The storage rule for multi-server support is:
@@ -438,13 +440,13 @@ server-derived persisted state
     -> connection scope + project scope
 ```
 
-One local file sits outside AsyncStorage and secure storage: `lib/error-reporting.ts`
+One local file sits outside AsyncStorage and secure storage: `shared/platform/error-reporting.ts`
 records the last JS error to `LAST_JS_ERROR_FILENAME` in the app's documents
 directory, and `readLastJsError()` parses it for Settings → Diagnostics. It never
 leaves the device; there is no remote reporter.
 
 The connection scope is the canonical, password-free identity from
-`lib/connection-scope.ts`: normalized server URL (case-insensitive
+`shared/contracts/connection-scope.ts`: normalized server URL (case-insensitive
 scheme/host, case-preserving path and query) plus username. It is the only
 supported key for anything that belongs to one server. `getConnectionScope()`
 is deterministic and encoded so it can be concatenated into storage keys; do
@@ -464,13 +466,13 @@ Persisted values:
 - `opencode-mobile.widget-snapshot` (bounded Android replies, awaiting-action and plan snapshot: connection scope, language/privacy preference, per-surface observation times, three rows/steps, counts, validated links and optional 160-character previews; no authentication credentials, raw request metadata or tool output)
 - `opencode-mobile.sessions.<connectionScope>.<projectPath>` / `opencode-mobile.session-statuses.<connectionScope>.<projectPath>` (per connection + project cache)
 - `opencode-mobile.transcript.<connectionScope>.<projectPath>.<sessionId>` (bounded newest transcript tail: 24 records, 200k-character cap, 7-day TTL)
-- `opencode-mobile.capabilities.<connectionScope>.<projectPath>` (last-known config/providers/models/agents/auth methods, 300k-character cap, 7-day TTL)
+- `opencode-mobile.capabilities.<connectionScope>.<projectPath>` (last-known config/runtime/models/agents/auth methods, 300k-character cap, 7-day TTL)
 - `opencode-mobile.favorite-sessions` (cross-project favorites, each carrying its connection scope)
 
 ### Session cache DTO
 
 The per connection + project session cache never stores raw SDK `Session` objects. It writes
-an explicit, validated DTO (`CachedSession` in `providers/session-cache.ts`) with
+an explicit, validated DTO (`CachedSession` in `features/sessions/services/session-cache.ts`) with
 only `id`, `title`, `createdAt`, `updatedAt`, and optional `parentID`. A field
 added upstream is not persisted unless the DTO mapping is updated. Sensitive or
 large fields such as share URLs, metadata, model choice, tokens, and revert
@@ -489,12 +491,12 @@ under the scoped key.
 ### Favorites DTO
 
 Favorites use the explicit `FavoriteSession` model
-(`providers/opencode-provider-types.ts`): `sessionId`, `connectionScope`,
+(`shared/contracts/domain.ts`): `sessionId`, `connectionScope`,
 `projectPath`, optional `title`, and `favoritedAt`. The connection scope makes
 identical session IDs or project paths on two servers independent, and opening
 a favorite switches to the connection that owns it before running the
 deep-link flow. The project label is derived from `projectPath` at render time
-and is not persisted. Hydration (`providers/favorites-storage.ts`) validates
+and is not persisted. Hydration (`features/sessions/services/favorites-storage.ts`) validates
 every field, drops malformed entries individually, drops entries written before
 connection scopes existed (they cannot be safely attributed to a server), and
 enforces `FAVORITE_SESSIONS_MAX` so a corrupt value cannot hydrate an unbounded
@@ -540,8 +542,8 @@ Credentials:
   paid-through timestamp, not its bearer token or a renewal prediction.
   `manageSubscription()` uses the existing operation lock and refuses to open
   store management during initialization or a pending purchase. Platform store
-  handoff belongs to `lib/connect-store.ts`; Settings owns only presentation.
-- `connectSetup.storeInstall` resolves through `lib/connect-install.ts` before
+  handoff belongs to `shared/platform/billing/connect-store.ts`; Settings owns only presentation.
+- `connectSetup.storeInstall` resolves through `shared/platform/install-identity.ts` before
   Settings may offer the section: the iOS App Store release type, or a Play
   Install Referrer response on Android. Directly installed APKs, F-Droid/FOSS
   and non-store iOS builds resolve false. It is a visibility flag only;
@@ -570,10 +572,10 @@ Credentials:
   Provider-owned profile state refreshes when the Cloud Link profile snapshot
   changes, including renewal of inactive saved machines.
 
-- the active connection password is stored in Keychain/Keystore-backed secure storage via `lib/connection-password.ts`; legacy plaintext `settings.password` is migrated to secure storage and stripped from AsyncStorage on hydration
+- the active connection password is stored in Keychain/Keystore-backed secure storage via `shared/storage/connection-password.ts`; legacy plaintext `settings.password` is migrated to secure storage and stripped from AsyncStorage on hydration
 - credentials hydrate only when stored server metadata supplies a valid identity; unread metadata never lends an old password or stored gateway headers to the default server. Invalid background connection references do not resolve credentials
-- each saved profile's password is stored under its own SecureStore key in `lib/connection-profiles.ts`; profile metadata in AsyncStorage never contains it
-- custom HTTP headers for gateways (Cloudflare Access service tokens, Authelia, oauth2-proxy) are a manual-connection credential. `lib/connection-headers.ts` stores the active connection's map and each profile's map in SecureStore (`opencode-mobile.connection-headers`, `opencode-mobile.connection-profile-headers.<profileId>`); names and values are validated (RFC 7230 token names, no CR/LF, 10 rows) and never written to AsyncStorage or workspace metadata. Cloud Link profiles carry no custom headers. Resolution returns the headers with the password so background notifications and widget reads use the owning connection's gateway credentials. `lib/opencode/client/fetch.ts` merges them into every request; the app-generated Basic `Authorization` always wins and transport/framing headers are rejected in the editor
+- each saved profile's password is stored under its own SecureStore key in `shared/storage/connection-profiles.ts`; profile metadata in AsyncStorage never contains it
+- custom HTTP headers for gateways (Cloudflare Access service tokens, Authelia, oauth2-proxy) are a manual-connection credential. `shared/storage/connection-headers.ts` stores the active connection's map and each profile's map in SecureStore (`opencode-mobile.connection-headers`, `opencode-mobile.connection-profile-headers.<profileId>`); names and values are validated (RFC 7230 token names, no CR/LF, 10 rows) and never written to AsyncStorage or workspace metadata. Cloud Link profiles carry no custom headers. Resolution returns the headers with the password so background notifications and widget reads use the owning connection's gateway credentials. `shared/protocol/opencode/client/fetch.ts` merges them into every request; the app-generated Basic `Authorization` always wins and transport/framing headers are rejected in the editor
 - all profile read/modify/write operations share the storage module's transaction queue, including credential rollback and read-time sanitation. A transient storage read failure never becomes a destructive empty-list write
 - new server URLs containing userinfo are rejected before probing or saving. Legacy profile/settings/notification URLs are scrubbed without importing unused URL credentials; IDs and separately configured username/password fields remain intact
 - Basic authentication preserves password whitespace and encodes username/password as UTF-8
@@ -641,14 +643,14 @@ Derived from message history using `getHistoryPreview()`.
 
 ### Active Sessions Across Projects
 
-`providers/use-active-sessions.ts` keeps a connection-scoped snapshot of every
+`features/sessions/state/use-active-sessions.ts` keeps a connection-scoped snapshot of every
 session on the connected server (sessions + statuses) fetched through the
 unscoped catalog client. One runtime per connection owns the read and publishes
 the snapshot through `WorkspaceProvider`; other retained projects consume it
 instead of issuing their own list read. The snapshot is tagged with its
 connection scope; a scope change therefore hides it immediately without a reset
 pass.
-`getActiveSessions()` (`providers/active-sessions.ts`) derives the Chat Library
+`getActiveSessions()` (`features/sessions/model/active-sessions.ts`) derives the Chat Library
 group from it:
 
 - the group is connection-wide, not filtered by the active project, so it is
@@ -793,7 +795,7 @@ The app transforms them into transcript entries with:
 
 ### Supported Part Mappings
 
-Current part handling in `lib/opencode/format.ts` includes:
+Current part handling in `shared/presentation/format.ts` includes:
 
 - `text` -> transcript text
 - `reasoning` -> detail kind `reasoning`
@@ -940,7 +942,7 @@ Current implementation assumes these invariants:
   V1 submissions retain their existing behavior.
 - File transcript details preserve URI, MIME type and filename, including V2
   returned file bytes. File-only assistant messages remain displayable.
-- `SessionMessageRecord` objects stored in `messagesBySession` are never mutated in place; `mergeSessionMessageRecords` in `lib/opencode/format.ts` adopts a new record object when content changes and preserves record and array references when nothing changed, keeping the WeakMap caches in `toTranscriptEntry` and `getSessionPreviewById` correct
+- `SessionMessageRecord` objects stored in `messagesBySession` are never mutated in place; `mergeSessionMessageRecords` in `shared/presentation/format.ts` adopts a new record object when content changes and preserves record and array references when nothing changed, keeping the WeakMap caches in `toTranscriptEntry` and `getSessionPreviewById` correct
 
 ## Non-Persisted But Behavioral State
 

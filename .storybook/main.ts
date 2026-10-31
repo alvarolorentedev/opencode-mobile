@@ -10,7 +10,8 @@ const root = path.dirname(fileURLToPath(import.meta.url));
 
 const config: StorybookConfig = {
   stories: [
-    '../components/**/*.stories.@(ts|tsx)',
+    '../features/**/*.stories.@(ts|tsx)',
+    '../shared/**/*.stories.@(ts|tsx)',
     './stories/**/*.stories.@(ts|tsx)',
   ],
   addons: ['@storybook/addon-a11y'],

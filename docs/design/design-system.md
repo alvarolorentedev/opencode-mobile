@@ -11,11 +11,11 @@ Related: [Design section](README.md) · [Component inventory](component-inventor
 
 | Concern | Source |
 | --- | --- |
-| Authoritative palettes, fonts, typography and dimensions | `constants/ui-tokens.json` |
-| Typed imperative projections | `constants/theme.ts` and `constants/design-tokens.ts` |
-| Theme modes and six color presets | `constants/appearance.ts` |
-| Generated Tailwind aliases and initial themes | `constants/ui-tokens.generated.css` |
-| Spacing, shape and minimum sizes | `constants/design-tokens.ts` |
+| Authoritative palettes, fonts, typography and dimensions | `shared/ui/theme/ui-tokens.json` |
+| Typed imperative projections | `shared/ui/theme/theme.ts` and `shared/ui/theme/design-tokens.ts` |
+| Theme modes and six color presets | `shared/ui/theme/appearance.ts` |
+| Generated Tailwind aliases and initial themes | `shared/ui/theme/ui-tokens.generated.css` |
+| Spacing, shape and minimum sizes | `shared/ui/theme/design-tokens.ts` |
 | Effective appearance | `usePalette()` and `useColorScheme()` |
 | Settings navigation and availability | `buildSettingsSections()` |
 | Searchable controls | `settingsTargets()` |
@@ -161,7 +161,7 @@ controls are omitted; setup-dependent controls retain their disabled explanation
 ## Storybook catalog
 
 Reusable presentation components have co-located stories under
-`components/**/*.stories.tsx` and run in the web Storybook. The catalog is for
+`features/**/*.stories.tsx` and run in the web Storybook. The catalog is for
 shared primitives and controls, not provider orchestration or full screens.
 
 - Run `npm run storybook` for the local catalog.
@@ -226,7 +226,7 @@ the visible surface. Native/system capabilities retain their platform gates.
 
 ## Source-owned components and styling
 
-Reusables source in `components/ui/` comes from founded-labs/react-native-reusables
+Reusables source in `shared/ui/` comes from founded-labs/react-native-reusables
 commit `385834c2196f8a303cbc9057d1ac768f3bde0a3b`, Uniwind registry, MIT.
 Local adaptations preserve MaterialCommunityIcons, product typography, wrapping,
 48-point targets, workspace context and modal-local portals. The component

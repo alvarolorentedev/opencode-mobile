@@ -4,8 +4,8 @@ Reusable controls, provider/utility modules with UI contracts, and cross-cutting
 
 ## Shared UI Components
 
-The source-owned foundation is `components/ui/`; provenance and platform
-adaptations are in `components/ui/UPSTREAM.md`. Install only components with a
+The source-owned foundation is `shared/ui/`; provenance and platform
+adaptations are in `shared/ui/UPSTREAM.md`. Install only components with a
 production consumer. Reuse the following before creating a control:
 
 | Concern | Production source |
@@ -15,17 +15,17 @@ production consumer. Reuse the following before creating a control:
 | Selection and disclosure | `checkbox.tsx`, `switch.tsx`, `radio-group.tsx`, `toggle-group.tsx`, `tabs.tsx`, `collapsible.tsx` |
 | Cards, status, loading | `card.tsx`, `badge.tsx`, `separator.tsx`, `progress.tsx`, `spinner.tsx`, `skeleton.tsx` |
 | Overlays and feedback | `overlay-sheet.tsx`, `catalog-select.tsx`, `alert-dialog.tsx`, `use-confirmation.tsx`, `feedback.tsx`, `portal.tsx` |
-| App composition | `screen-header.tsx`, `list-row.tsx`, `components/settings/sections/setting-rows.tsx` |
+| App composition | `screen-header.tsx`, `list-row.tsx`, `shared/ui/settings/setting-rows.tsx` |
 
-All paths in the table are relative to `components/ui/` except the explicitly
+All paths in the table are relative to `shared/ui/` except the explicitly
 named settings composition. Complex form schemas live in
-`components/settings/forms/`; API orchestration and persistence retain their
+their owning feature model directories; API orchestration and persistence retain their
 existing owners. Raw text editors and the chat composer retain their measured
 input behavior. NumericSlider and terminal DOM controls retain native drag,
 keyboard and focus handling.
 
 
-### `components/ui/catalog-select.tsx`
+### `shared/ui/catalog-select.tsx`
 
 #### Responsibility
 
@@ -58,7 +58,7 @@ type CatalogSelectProps<T extends string> = {
 }
 ```
 
-### `components/ui/provider-icon.tsx`
+### `features/ai/ui/provider-icon.tsx`
 
 #### Responsibility
 
@@ -83,7 +83,7 @@ Fallback:
 - `gitlab` icon
 - generic `cube-outline`
 
-### `components/ui/icon-symbol.tsx`
+### `shared/ui/icon-symbol.tsx`
 
 #### Responsibility
 
@@ -91,7 +91,7 @@ Fallback:
 
 Used primarily by tab icons.
 
-### `components/haptic-tab.tsx`
+### `runtime/shell/haptic-tab.tsx`
 
 #### Responsibility
 
@@ -99,19 +99,19 @@ Used primarily by tab icons.
 
 ## Provider And Utility Modules With UI Contracts
 
-### `providers/opencode-provider.tsx`
+### `runtime/composition/opencode-provider.tsx`
 
 #### Responsibility
 
 - thin entrypoint that mounts the provider tree with the composition unit's values
 
-Orchestration lives in `providers/use-opencode-provider-composition.ts` and the
-context wiring in `providers/opencode-provider-tree.tsx`; the entrypoint is held
+Orchestration lives in `runtime/composition/use-opencode-provider-composition.ts` and the
+context wiring in `runtime/workspace/domain-provider-tree.tsx`; the entrypoint is held
 to 60 lines by the architecture ratchet and only re-exports the public types.
 
-The public UI contract is exposed through domain hooks from `providers/opencode-contexts.ts` (`useOnboarding`, `useConnection`, `useDiagnostics`, `useCapabilities`, `usePreferences`, `useProjects`, `useProjectFiles`, `useCurrentSession`, `useSessionLibrary`, `useChat`, `useApprovals`, `useConversation`, `useTerminal`, `useMcp`), each typed by its matching `*ContextValue`. There is no combined runtime context value.
+The public UI contract is exposed through domain hooks from `features/chat/context.ts` (`useOnboarding`, `useConnection`, `useDiagnostics`, `useCapabilities`, `usePreferences`, `useProjects`, `useProjectFiles`, `useCurrentSession`, `useSessionLibrary`, `useChat`, `useApprovals`, `useConversation`, `useTerminal`, `useMcp`), each typed by its matching `*ContextValue`. There is no combined runtime context value.
 
-### `providers/opencode-provider-types.ts`
+### `shared/contracts/domain.ts`
 
 #### Responsibility
 
@@ -128,75 +128,75 @@ Most important exported contracts:
 
 The domain values cover session lifecycle, commands, project editing/worktrees, MCP management, PTY terminal state/actions, diagnostics, global stream status, and OAuth callback completion in addition to chat state.
 
-### `providers/opencode-provider-selectors.ts`
+### `features/sessions/model/selectors.ts`
 
 #### Responsibility
 
 - derive current session-scoped interactions, configured providers, transcript activity label, conversation status label, and session previews
 
-### `providers/opencode-preferences.ts`
+### `shared/preferences/opencode-preferences.ts`
 
 #### Responsibility
 
 - define the chat preference shape and defaults
 - build the reasoning/response-style system prompt
 
-### `providers/opencode-capabilities.ts`
+### `shared/protocol/opencode/capabilities.ts`
 
 #### Responsibility
 
 - map the resolved contract to server capability flags
 - read and merge the auto-approve permission config
 
-### `providers/opencode-model-selection.ts`
+### `features/ai/model/opencode-model-selection.ts`
 
 #### Responsibility
 
 - define model/agent catalog shapes
 - map agents and validate stored/configured provider and model choices
 
-### `providers/opencode-provider-utils.ts`
+### `features/sessions/model/session-utils.ts`
 
 #### Responsibility
 
 - derive project labels
 - group pending interactions by session
 
-### `providers/services/session-service.ts`
+### `shared/protocol/services/session-service.ts`
 
 #### Responsibility
 
 - aggregate project/session API fetches in small helpers
 - expose delete, rename, fork, share/unshare, revert/unrevert, command-list, and command-execution calls
 
-### `providers/services/capabilities-service.ts`
+### `features/ai/services/capabilities-service.ts`
 
 #### Responsibility
 
 - aggregate capability discovery and normalize provider/model/agent lists
 - normalize current nested model attachment/input/tool-call/reasoning/status/limit capabilities
 
-### `providers/services/project-service.ts`
+### `features/projects/services/project-service.ts`
 
 #### Responsibility
 
 - expose file find/list/read/status, VCS read/apply, and experimental worktree operations
 
-### `providers/services/mcp-service.ts`
+### `shared/protocol/services/mcp-service.ts`
 
 #### Responsibility
 
 - expose MCP status/add/connect/disconnect/OAuth operations
 - use config updates for enable/disable and removal
 
-### `providers/services/terminal-service.ts`
+### `features/terminal/services/terminal-service.ts`
 
 #### Responsibility
 
 - expose PTY list/create/update/remove/connect-token operations
 - build the ticket-authenticated, project-scoped PTY WebSocket URL
 
-### `providers/services/diagnostics-service.ts`
+### `shared/protocol/services/diagnostics-service.ts`
 
 #### Responsibility
 
@@ -206,13 +206,13 @@ The domain values cover session lifecycle, commands, project editing/worktrees, 
 
 - `ChatView` creates the shared task-progress FAB and owns progress-overlay visibility. It renders the FAB beside the changes chip when visible; `PendingInteractions` renders it floating at the bottom-right otherwise and retains the detailed progress overlay. The detailed progress overlay remains available. Patch summary chips open the Files changed overlay and select their parent user turn when that message is present in the current session; otherwise the existing changes scope is retained. `TranscriptMessage` memoization includes the review callback to keep the session mapping current.
 - The chat library's connection-wide group is Running & recent, with an explicit Running indicator. Deduplicated chats do not create an empty Chats section. Search-empty copy is distinct from a truly empty library.
-- `components/project/files-panel.tsx` owns one FlashList for browser entries and changed-file rows, with search, breadcrumbs, status and title content in its header; the active branch is shown once in the Projects workspace header. It renders provider-owned changed-file statuses immediately. Added/modified files use the existing reader; deleted rows explain unavailable content. Button and keyboard search share one guarded handler. Query, submitted query, loading, and failure presentation are local and reset with the connection/project key; results remain provider-owned.
+- `features/projects/ui/files-panel.tsx` owns one FlashList for browser entries and changed-file rows, with search, breadcrumbs, status and title content in its header; the active branch is shown once in the Projects workspace header. It renders provider-owned changed-file statuses immediately. Added/modified files use the existing reader; deleted rows explain unavailable content. Button and keyboard search share one guarded handler. Query, submitted query, loading, and failure presentation are local and reset with the connection/project key; results remain provider-owned.
 - Setup has one guarded Connect & continue action through `switchConnection`. Input survives failures; connection controls and Skip are disabled while submitting. The shared Cloud Link/Manual chooser precedes the manual form.
 - Approval cards separate the current resources from server-provided future `always` patterns and explain that the server controls rule duration. Missing patterns explicitly have unspecified scope. Question descriptions appear before selection, while existing custom/multiple/conditional answer handling remains intact.
 - Starter examples fill the draft; the bug example appends a symptoms prompt. Terminal's empty state calls the existing creation handler and describes line-at-a-time commands.
 - Icon actions and provider-credential removal expose translated action names. All supported locales carry matching keys and plural forms.
-- `app/(tabs)/index.tsx` branches the pre-chat state instead of showing one passive panel: `connecting` and hydration use a spinner, a disconnected server offers `Reconnect` (error) or `Open settings` (idle) plus `Connection settings`, and a connected server without a project opens the shared `ProjectPicker` directly. The workspace manager fails chat focus over to the last healthy connected server before this panel can mistake one failed server for the whole app.
-- `providers/use-transcript-read-errors.ts` owns cold transcript read failures independently of the transcript window. Non-silent failures are tagged with the current client, cleared by a successful read, and hidden after a reconnect or server switch. `TranscriptList` renders a retry card for a cold failure with no held records and never falls through to starter prompts. The retry action reuses the inbox-backed transcript read.
+- `features/chat/ui/chat-screen.tsx` branches the pre-chat state instead of showing one passive panel: `connecting` and hydration use a spinner, a disconnected server offers `Reconnect` (error) or `Open settings` (idle) plus `Connection settings`, and a connected server without a project opens the shared `ProjectPicker` directly. The workspace manager fails chat focus over to the last healthy connected server before this panel can mistake one failed server for the whole app.
+- `features/chat/state/use-transcript-read-errors.ts` owns cold transcript read failures independently of the transcript window. Non-silent failures are tagged with the current client, cleared by a successful read, and hidden after a reconnect or server switch. `TranscriptList` renders a retry card for a cold failure with no held records and never falls through to starter prompts. The retry action reuses the inbox-backed transcript read.
 - `TranscriptList` exposes `Jump to latest` whenever the list is detached from the tail. New rows switch the label to `New messages`; tapping restores follow mode and saves the restored position. The control floats above the transcript without adding a list row.
 - Onboarding permission cards show `Checking…` until status resolves. When the OS will no longer prompt, the enable action becomes `Open settings` via the shared notification/voice setting helpers instead of repeatedly requesting a blocked permission.
 - The Connection sheet’s labeled Reconnect action surfaces the returned `ConnectionState` in a snackbar and keeps a two-line connection summary. The reconnect button only indicates an in-flight request while it runs.
@@ -222,7 +222,7 @@ The domain values cover session lifecycle, commands, project editing/worktrees, 
 
 Compact control labels scale up to 1.5× (tab-bar labels 1.3×) to keep fixed chrome readable at accessibility text sizes. At font scales above 1.3, the model/reasoning summary moves above the icon toolbar to preserve room for both values. The summary opens the existing model picker and thinking slider; its accessible name includes provider and reasoning. The approval icon toggles directly, the adjacent mode icon opens the agent selector, the left plus always attaches, the microphone always dictates, and the right action starts/stops conversation mode for an empty draft or sends/stops the task. Transcript text continues to use its existing scaling. Full action/model names remain exposed to accessibility.
 
-### `components/ui/numeric-slider.tsx`
+### `shared/ui/numeric-slider.tsx`
 
 The Settings numeric slider is shared with the model picker and is backed by
 `@react-native-community/slider` (Expo SDK 57 bundled version). Callers own the
