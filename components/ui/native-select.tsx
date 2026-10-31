@@ -17,6 +17,7 @@ import Animated from 'react-native-reanimated';
 import { useUpdateBlocker } from '@/hooks/use-update-blocker';
 import { Fonts } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
+import { useDismissKeyboardOnOpen } from '@/hooks/use-dismiss-keyboard-on-open';
 import { useKeyboardHeight } from '@/hooks/use-keyboard-height';
 import { usePalette } from '@/hooks/use-palette';
 import { TextInput } from '@/components/ui/text-input';
@@ -59,6 +60,8 @@ export function NativeSelect<T extends string>({
   const [visible, setVisible] = useState(false);
   const [query, setQuery] = useState('');
   useUpdateBlocker(visible);
+  // The trigger often sits in a form or composer whose keyboard is still open.
+  useDismissKeyboardOnOpen(visible);
   const keyboardHeight = useKeyboardHeight(visible && searchable);
 
   const selectedOption = useMemo(

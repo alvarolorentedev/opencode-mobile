@@ -19,6 +19,7 @@ const paper = {
   useTheme: () => ({ colors: { primary: '#00f' }, fonts: { bodyLarge: typography } }),
 };
 const jsx = { jsx: element, jsxs: element };
+const dismissKeyboardCalls: unknown[][] = [];
 
 function find(root: Element, testID: string): Element | undefined {
   if (root?.props?.testID === testID) return root;
@@ -63,6 +64,7 @@ const { OverlaySheet } = await loadTs('components/ui/overlay-sheet.tsx', {
   'react-native-safe-area-context': { useSafeAreaInsets: () => ({ top: 62, bottom: 34 }) },
   '@/constants/theme': { Colors: { dark: {} } },
   '@/hooks/use-update-blocker': { useUpdateBlocker: () => {} },
+  '@/hooks/use-dismiss-keyboard-on-open': { useDismissKeyboardOnOpen: (...args: unknown[]) => { dismissKeyboardCalls.push(args); } },
   '@/hooks/use-palette': { usePalette: () => ({}) },
   '@/hooks/use-color-scheme': { useColorScheme: () => 'dark' },
   '@/hooks/use-dismiss-on-back': { useDismissOnBack: () => {} },
@@ -70,6 +72,10 @@ const { OverlaySheet } = await loadTs('components/ui/overlay-sheet.tsx', {
 });
 
 describe('keyboard sheet layout', () => {
+  beforeEach(() => {
+    dismissKeyboardCalls.length = 0;
+  });
+
   it.each([true, false])('constrains the scroll area inside a stable avoidance frame (fitContent=%s)', (fitContent) => {
     const root = OverlaySheet({ visible: true, title: 'Voice', testID: 'voice', fitContent, children: 'Content' });
     const frame = root.props.children;
@@ -81,6 +87,13 @@ describe('keyboard sheet layout', () => {
     expect(flatten(sheet.props.style)).toMatchObject({ flexShrink: 1 });
     expect(flatten(sheet.props.style).position).toBeUndefined();
     expect(flatten(sheet.props.style).flex).toBe(fitContent ? undefined : 1);
+  });
+
+  it('dismisses the keyboard on open unless the sheet opts out', () => {
+    OverlaySheet({ visible: true, title: 'Voice', onClose: () => {}, children: 'Content' });
+    expect(dismissKeyboardCalls[dismissKeyboardCalls.length - 1]).toEqual([true, true]);
+    OverlaySheet({ visible: true, title: 'Rename', onClose: () => {}, dismissKeyboard: false, children: 'Content' });
+    expect(dismissKeyboardCalls[dismissKeyboardCalls.length - 1]).toEqual([true, false]);
   });
 });
 

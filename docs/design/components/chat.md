@@ -267,6 +267,7 @@ the provider then creates and opens the session in that workspace.
 - shared overlay presentation for Chats, project selection, progress, diff source selection, session usage, terminal selection, and Settings categories; short overlays fit their content
 - `scrollable={false}` lets embedded virtualized lists own scrolling without a nested ScrollView
 - a full-screen `KeyboardAvoidingView` with `behavior="padding"` contains the sheet; the sheet and its scroll area shrink within the visible space so focused inputs (including the speech locale) stay reachable above the keyboard
+- dismisses the keyboard when it opens through the shared `useDismissKeyboardOnOpen` hook, so a focused composer or search field cannot keep the keyboard covering the sheet; sheets whose content auto-focuses a field when it mounts (project rename) opt out with `dismissKeyboard={false}`
 - dismisses on a downward header drag through the shared `useSwipeDismiss` helper, which owns the Pan gesture, threshold set, sheet-height measurement, and backdrop fade; the transparent `Modal` bottom sheets (model picker, select) reuse the same helper
 
 ### `components/ui/workspace-breadcrumb.tsx`

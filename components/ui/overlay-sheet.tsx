@@ -8,11 +8,12 @@ import Animated from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { useUpdateBlocker } from '@/hooks/use-update-blocker';
+import { useDismissKeyboardOnOpen } from '@/hooks/use-dismiss-keyboard-on-open';
 import { useDismissOnBack } from '@/hooks/use-dismiss-on-back';
 import { usePalette } from '@/hooks/use-palette';
 import { useSwipeDismiss } from './use-swipe-dismiss';
 
-export function OverlaySheet({ visible, title, onClose, children, headerAction, testID, fitContent = false, scrollable = true, compact = false, blockUpdates = true, dismissible = true }: {
+export function OverlaySheet({ visible, title, onClose, children, headerAction, testID, fitContent = false, scrollable = true, compact = false, blockUpdates = true, dismissible = true, dismissKeyboard = true }: {
   visible: boolean;
   title: string;
   onClose: () => void;
@@ -24,6 +25,7 @@ export function OverlaySheet({ visible, title, onClose, children, headerAction, 
   compact?: boolean;
   blockUpdates?: boolean;
   dismissible?: boolean;
+  dismissKeyboard?: boolean;
 }) {
   const workspace = useContext(WorkspaceScopeContext);
   const insets = useSafeAreaInsets();
@@ -33,6 +35,8 @@ export function OverlaySheet({ visible, title, onClose, children, headerAction, 
   const palette = usePalette();
   // Android back dismisses the open sheet instead of navigating the screen behind it.
   useDismissOnBack(visible && dismissible, onClose);
+  // A keyboard raised by the screen behind the sheet would cover it.
+  useDismissKeyboardOnOpen(visible, dismissKeyboard);
   const { pan, sheetStyle, backdropStyle, handleSheetLayout } = useSwipeDismiss({
     visible,
     enabled: dismissible,

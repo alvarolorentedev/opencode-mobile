@@ -98,7 +98,7 @@ beside a complete label are decorative. Never substitute letter glyphs for icons
 | Edit a settings form | `SettingTextInput` | Shared outline/radius; retain validation, secure entry and keyboard options |
 | Adjust a numeric preference | `SettingSlider` / `NumericSlider` | Label, readable value, existing range, adjustable semantics and web arrow keys |
 | Advanced settings | `SettingsDisclosure` | Labeled button with expanded state; search and attention states reveal its content |
-| Category content | `OverlaySheet` + `SettingsPanel` | Stable title/Close header, keyboard-safe scrolling, safe-area padding, Android Back and header-drag dismissal |
+| Category content | `OverlaySheet` + `SettingsPanel` | Stable title/Close header, keyboard-safe scrolling, safe-area padding, keyboard dismissal on open, Android Back and header-drag dismissal |
 | Locate a searched setting | `SettingTarget` | Reveal, scroll, highlight and announce the matching label without changing its value |
 | Short confirmation or choice | Existing dialog / `NativeSelect` | Keep existing modal, auth and confirmation contracts |
 

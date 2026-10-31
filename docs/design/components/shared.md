@@ -14,6 +14,9 @@ Behavior:
 
 - iOS uses `ActionSheetIOS`
 - Android/web use a custom modal sheet
+- opening a select dismisses a keyboard raised by the trigger's screen through
+  the shared `useDismissKeyboardOnOpen` hook; the searchable sheet's filter
+  input is focused by the user afterwards
 - `searchable` forces the modal sheet on every platform and adds a text
   filter over the option labels (used by the Add provider pickers)
 - the searchable modal sheet lifts its options above the soft keyboard via

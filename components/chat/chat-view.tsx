@@ -4,7 +4,7 @@ import { withAlpha } from '@/lib/color';
 import * as Clipboard from 'expo-clipboard';
 import { useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Keyboard, KeyboardAvoidingView, Linking, Pressable, View } from 'react-native';
+import { KeyboardAvoidingView, Linking, Pressable, View } from 'react-native';
 import { Button, Card, FAB, Snackbar, Text } from 'react-native-paper';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -212,7 +212,7 @@ export function ChatView() {
                 accessibilityLabel={`${t('chat:cards.reviewChanges')}. ${content.currentDiffs.length > 0
                   ? t('chat:diff.filesChangedCompact', { files: content.diffCount, count: content.diffCount, additions: content.diffAdditions, deletions: content.diffDeletions })
                   : t('chat:diff.filesChangedSimple', { files: content.diffCount, count: content.diffCount })}`}
-                onPress={() => { Keyboard.dismiss(); actions.setChangesVisible(true); }}
+                onPress={() => { actions.setChangesVisible(true); }}
                 style={({ pressed }) => [styles.changesChip, { backgroundColor: palette.surfaceAlt, opacity: pressed ? 0.75 : 1 }]}>
                 <Text variant="labelLarge" style={{ color: palette.text }}>{t('chat:diff.filesChangedSimple', { files: content.diffCount, count: content.diffCount })}</Text>
                 {content.currentDiffs.length > 0 ? <>
