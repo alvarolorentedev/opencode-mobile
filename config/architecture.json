@@ -311,5 +311,37 @@
       "useConnectState",
       "useServicesState"
     ]
+  },
+  "native": {
+    "imports": {
+      "llama.rn": [
+        "features/ai/model/auto-model/runtime.native.ts"
+      ],
+      "@siteed/sherpa-onnx.rn": [
+        "shared/platform/voice/local-wake-word/sherpa.native.ts"
+      ],
+      "expo-in-app-updates": [
+        "shared/platform/android-app-updates.ts"
+      ]
+    },
+    "modules": [
+      "opencode-activity"
+    ],
+    "patches": [
+      "@siteed+sherpa-onnx.rn+1.3.1.patch",
+      "expo-sharing+58.0.21.patch",
+      "expo-in-app-updates+0.13.0.patch"
+    ],
+    "retiredDependencies": [
+      "react-native-paper",
+      "redux",
+      "@reduxjs/toolkit",
+      "zustand",
+      "xstate",
+      "@xstate/react",
+      "nativewind",
+      "tamagui",
+      "styled-components"
+    ]
   }
 }

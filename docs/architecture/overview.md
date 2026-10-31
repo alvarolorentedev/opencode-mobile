@@ -655,13 +655,13 @@ permission and Chat Library visibility do not gate widget reads.
 The Android `expo-sharing` receive plugin accepts single/multiple files (`*/*`).
 `features/sharing/model/native-intent.ts` routes shares to the preview with a receipt key so a
 new intent refreshes an already-visible screen. The iOS extension remains
-[deferred](../product/parity/ios-share.md). A version-checked prebuild patch in
-`scripts/prepare-android-sharing.cjs` fixes Expo Sharing 57.0.22 stream handling,
-accompanying text, unique cache copies and bounded reads; review it on upgrade.
+[deferred](../product/parity/ios-share.md). The pinned install-time patch in
+`patches/expo-sharing+58.0.21.patch` fixes stream handling, accompanying text,
+unique cache copies and bounded reads; review it on upgrade.
 Android autolinking builds only `expo-sharing` from source so the patched Kotlin
 is compiled instead of silently using Expo's bundled precompiled AAR. FOSS
 preparation preserves that setting.
-The prebuild helper also keeps `share_into_scheme` from optimized Android
+The config plugin also keeps `share_into_scheme` from optimized Android
 resource shrinking: Expo loads this string dynamically to create the share link.
 The redirect matches the exact share host directly, because React Native's
 `URL.hostname` does not parse custom app schemes. Other deep links pass through.
@@ -1051,13 +1051,10 @@ This is one of the densest parts of the architecture and would need careful pari
   insets are applied at the screen/header level.
 - Bottom overlays follow the same `padding` rule: `OverlaySheet` uses a stable
   full-screen `KeyboardAvoidingView` around a shrinking sheet and scroll area,
-  while transparent `Modal` sheets (`native-select`,
-  model picker) cannot use `KeyboardAvoidingView` and instead consume
-  `shared/ui/hooks/use-keyboard-height.ts` and apply the inset as padding. Neither uses
-  `behavior="height"`. All bottom-sheet overlays dismiss on a downward header
-  drag through `shared/ui/use-swipe-dismiss.ts`; the `Modal` sheets wrap
-  their content in `GestureHandlerRootView` so the gesture is recognized inside
-  the native `Modal` window.
+  while the native primitive modal hosts preserve their own window and scope.
+  Shared overlays retain swipe dismissal through `shared/ui/use-swipe-dismiss.ts`.
+  The unused keyboard-height hook has been removed; do not add a parallel keyboard
+  controller without a demonstrated device failure and cross-platform acceptance.
 - The app uses custom theme tokens from `shared/ui/theme/theme.ts` and projects the authoritative JSON tokens into Uniwind CSS and imperative renderer props. `shared/ui/theme/appearance.ts` defines the app-wide theme mode (`system`, `light`, `dark`) and color themes (`green` default plus blue, red, purple, pink, and gray). `shared/ui/theme/appearance-context.tsx` publishes the effective scheme, color theme, and memoized palette; `shared/ui/theme/use-color-scheme.ts` and `shared/ui/theme/use-palette.ts` are the only read paths, and only `AppearanceHost` subscribes to the system scheme. Each theme supplies a full light/dark palette: backgrounds, surfaces, cards, borders, secondary text, tab chrome, chat bubbles, accents, and code surfaces. Text and semantic colors stay shared. The appearance preferences persist globally with `chatPreferences` but are excluded from `serverPreferences` so connections cannot overwrite them.
 - Markdown rendering is intentionally narrow and custom, not library-based.
 - Diff rendering is custom and optimized for readable in-app inspection, not full git-style fidelity.

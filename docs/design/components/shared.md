@@ -225,7 +225,7 @@ Compact control labels scale up to 1.5× (tab-bar labels 1.3×) to keep fixed ch
 ### `shared/ui/numeric-slider.tsx`
 
 The Settings numeric slider is shared with the model picker and is backed by
-`@react-native-community/slider` (Expo SDK 57 bundled version). Callers own the
+`@react-native-community/slider` (Expo SDK 58 bundled version). Callers own the
 value and updates; the component owns the label/value header and maps the app
 palette to the native track and thumb colors. The package supplies the native
 interaction and adjustable accessibility semantics. Because its web build does

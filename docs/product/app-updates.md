@@ -12,24 +12,25 @@ eligibility, the handoff gate and failure snackbar.
 
 ## Android
 
-The local Expo module `modules/opencode-updates` uses Google's official
-`com.google.android.play:app-update:2.1.0`, with Expo SDK 57's Gradle plugin and a
-namespace. Only non-debuggable apps installed by Google Play are eligible. Play
-still enforces app ownership, signing and a higher available version code.
-The module declares `defaultConfig.versionName = '1.0.0'`, which Expo's Gradle
-publication setup requires separately from the app's release version.
+`shared/platform/android-app-updates.ts` wraps `expo-in-app-updates` 0.13.0.
+Only production Play installations are admitted through Expo Application's install
+referrer service; Play also enforces ownership, signing and a higher version code.
+The adapter calls `startUpdate(true)` explicitly. It never uses the helper that
+can fall back to flexible mode, and suppresses candidates where immediate updates
+are not allowed. Play owns blocking consent, download and installation; there is
+no background-download or Restart & install banner. A pinned native patch disables
+the package's flexible listener and eager Play manager initialization. Such a
+download can finish only through the existing safety-gated handoff; importing the
+module or a late download event cannot restart the app over unsaved work.
 
-An available update opens native Play consent directly at the first safe moment,
-without a preceding themed offer. The adapter's `nativeConsent` flag identifies
-that flow; iOS never opens its store automatically. Consent starts a flexible
-background download. Download completion only raises an "Update ready" banner.
-Its separate "Restart & install" action calls `completeUpdate()`; the description
-warns that the app will restart. No listener, foreground event or cold launch
-installs an update automatically. A transparent, accessible, non-dismissible
-interaction gate blocks new edits and Back during handoff; Play owns the visible
-consent and installation UI, so no themed progress sheet is stacked underneath it.
-Cancellation and failures dismiss the same candidate; failures show a short error
-without automatically opening the Play Store. Listeners are removed on teardown.
+An available update opens Play consent at the first safe moment, without a themed
+offer. Existing unsaved-work, route, foreground and operation blockers remain.
+An accessible gate protects the asynchronous handoff; Play's native activity then
+owns interaction blocking. Safety is rechecked after asynchronous reads and before
+launch. Cancellation dismisses the attempted version for seven days. The native
+package may open Play Store on native errors, so dismissal is recorded before
+handoff; returning never repeatedly launches the same candidate. JS failures show
+the existing short feedback. Listeners are removed on teardown.
 
 The provider checks after hydration and onboarding, and on foreground entry.
 Settings → Advanced → Update checks owns the feature: an enable toggle and a check
@@ -37,12 +38,11 @@ period of When available (default), Daily, or Weekly. These preferences control
 app checks and reminders, not the store's automatic-update setting. "When available" checks on
 every foreground entry so a new version surfaces immediately; Daily and Weekly
 throttle discovery to that interval, including failed attempts. Android queries
-native download/install state on foreground entry even inside a throttled interval
-so a pending download can recover after process death; that recovery query does not
-rediscover an available update inside the interval. Later suppresses a version and
-stage for seven days; a new version or downloaded stage resets it. Preferences use
+interrupted immediate-update state on foreground entry even inside a throttled interval
+so the native immediate flow can resume after process death; that recovery query does not
+rediscover an available update inside the interval. Cancellation/Later suppresses a version for seven days; a new version resets it. Preferences use
 `opencode-mobile.app-updates`. Unreadable storage suppresses offers for that run;
-malformed persisted values are cleared through the existing helper.
+malformed persisted values are cleared through the existing helper. Legacy downloaded-stage dismissals are discarded without resetting other preferences.
 
 Update actions recheck foreground, route and safety after the async native read.
 Active/sending/queued tasks, conversation mode, pending permissions/questions,
@@ -52,7 +52,7 @@ offers. Components retain their local drafts, attachments and form contents;
 previews, connection/provider forms, voice input/playback and native attachment
 selection also suppress offers.
 
-The FOSS preparation script excludes `opencode-updates` from autolinking, removing
+The FOSS preparation script excludes `expo-in-app-updates` from autolinking, removing
 its Play dependency from that build. JS also rejects FOSS, Expo Go, development,
 E2E and ordinary web runs. The web test fixture is available only when both the
 explicit E2E mode and development test configuration are enabled.
@@ -67,11 +67,12 @@ Android works independently of these settings. No ID is guessed.
 The iOS release workflow reads the corresponding GitHub repository variables;
 leaving the ID unset keeps the feature disabled in that pipeline.
 
-Without a valid ID, iOS does no native or network lookup. The small Swift helper
-requires a verified production `AppTransaction` matching the running bundle;
-TestFlight/sandbox, debug, simulator and unverifiable installations return no
-candidate. It uses `AppTransaction.shared`, never refreshes receipts or initializes
-purchases. TypeScript validates the lookup's ID, bundle ID and numeric release
+Without a valid ID, iOS does no native or network lookup. Expo Application's
+`getAppleStoreEnvironmentAsync()` uses a verified StoreKit AppTransaction and must
+return `production`; TestFlight/sandbox, development and unverifiable installs
+are ineligible. Native bundle ID/version must match the configured app. No receipt
+refresh, purchase initialization or StoreKit product sheet is introduced.
+TypeScript validates the lookup's ID, bundle ID and numeric release
 version. The banner's explicit "Open App Store" action opens a constructed
 official App Store URL; iOS does not install
 or restart through this feature. Timeout, unavailable listings and store failures
@@ -79,17 +80,22 @@ never delay boot or produce an unsolicited prompt.
 
 ## Acceptance
 
-Run static CI, fake-server self-tests, web E2E and FOSS preparation checks. Native
-builds must autolink this module for store variants and exclude it for FOSS.
+Run the [existing gate and native matrix](../engineering/validation/strategy.md).
+Store variants autolink the maintained updater; FOSS excludes it and its Play Core
+dependencies. The former custom update module is removed on both platforms.
 
-On two signed Play internal-track releases of the same package, with the older
-version installed through Play and the account owning it, check direct native consent/cancel,
-background download, process death, recovery, Later and failure. Verify a downloaded
-update never restarts while composing, editing a file, opening a modal or using
-voice, and installs only after the explicit ready action on a safe screen. Check
-that the interaction gate prevents starting new unsaved work during handoff,
-and no duplicate themed offer or progress sheet appears. Verify the nonmodal ready
-banner remains above the tabs at narrow widths and large text sizes.
+On two signed Play internal-track releases, with the older app installed through
+Play and the account owning it, check immediate consent/cancel, blocking download
+and install, process death/resume, offline/error/store fallback and cooldowns.
+Verify no native handoff occurs while composing, editing a file, opening a modal,
+running a task, using voice or purchasing Cloud Link. Preserve those contents when
+the offer is suppressed. Verify only immediate requests are made, including low
+Play priority, and that returning from Play's error fallback never loops.
+
+The content-capture ANR mitigation remains directly after the generated
+MainActivity superclass call. Inspect the minified release and exercise large
+transcripts/catalogs with content capture enabled on the device; do not remove
+this mitigation based solely on a development build or a lifecycle callback.
 
 On a public App Store installation, verify the configured ID and storefront,
 matching/newer/equal versions and explicit store navigation. Verify TestFlight,

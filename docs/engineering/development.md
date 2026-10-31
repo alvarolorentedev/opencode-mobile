@@ -4,7 +4,7 @@ OpenCode Mobile is built with Expo and React Native.
 
 ### Requirements
 
-- Node.js 22.12+ (the range in `package.json` `engines` is authoritative; `.nvmrc` pins 22)
+- Node.js 22.13+ (the range in `package.json` `engines` is authoritative; `.nvmrc` pins 22)
 - npm
 - Android Studio / Xcode for native builds
 
@@ -42,10 +42,31 @@ The unit suite runs under Vitest 5, which requires Node `^22.12.0 || ^24.0.0 || 
 ### Optional local agent tooling
 
 Expo publishes official AI agent skills for generic Expo and React Native work
-(`npx skills add expo/skills`, or the Claude Code / Codex plugin). They
+(`npx skills add expo/skills`, or the official Expo plugin for Claude Code / Codex). They
 complement this repository's `AGENTS.md`, design system, and fake-server
 contract; when generic advice conflicts with the repo docs, the repo wins. Do
 not vendor the skills or add them as project dependencies.
+
+For native work, use Expo's `expo-overview`, `expo-upgrade`, `expo-module` and
+`expo-dev-client` skills as applicable. Discover libraries in the versioned SDK
+58 documentation and Expo's bundled dependency mapping. Install native packages
+with `npx expo install`, review their config plugins and FOSS impact, then use
+`npx expo install --check` and `npx expo-doctor`. Do not upgrade unrelated SDKs or
+tools, force peer resolution, or edit generated native projects as the solution.
+
+The optional Expo MCP endpoint is `https://mcp.expo.dev/mcp` (OAuth). The official
+Expo plugin registers it; otherwise follow the [official MCP setup](https://docs.expo.dev/mcp/).
+The development-only `expo-mcp` package remains disabled unless the developer
+starts Expo with `EXPO_UNSTABLE_MCP_SERVER=1`. Normal development and CI commands
+do not set that flag. Local capabilities send inspected data through Expo's remote
+service: use synthetic accounts/data and keep credentials out of captures.
+
+Direct tools remain the fallback: use the existing Android/iOS build commands,
+the first failing Gradle task with `--stacktrace`, dependency inspection,
+`adb logcat`, and Xcode's build log/signing diagnostics. Rebuild the development
+client after native changes. Simulator/MCP evidence cannot replace physical-device
+voice/keyboard acceptance, signed store-update tests or release/FOSS builds. See
+the [validation matrix](validation/strategy.md) and [native ownership](../../modules/AGENTS.md).
 
 ### Common Commands
 
@@ -146,7 +167,7 @@ Local configuration files (`.env`, `config.json`) are gitignored for security.
 
 ### Store update configuration
 
-Android Play updates use the local Expo module and require a signed Play-installed
-production app for runtime validation. FOSS excludes the module. iOS is disabled
+Android Play updates use immediate-only `expo-in-app-updates` and require a signed Play-installed
+production app for runtime validation. FOSS excludes the package. iOS is disabled
 until the verified public listing ID is supplied as `EXPO_IOS_APP_STORE_ID`;
 `EXPO_IOS_APP_STORE_COUNTRY` is optional. See [app updates](../product/app-updates.md).

@@ -59,6 +59,11 @@ credential-generation guards, retained workspace state and stable presentation m
 Do not mirror Query responses into another state store. Preserve SSE plus polling,
 foreground/demand gates and the separation between inspection, terminal and chat focus.
 
+Native changes also follow [native module guidance](modules/AGENTS.md) and
+[ADR 0016](docs/adr/0016-supported-expo-native-integrations.md). Keep Expo MCP
+optional and out of normal CI; do not vendor generic skills or update unrelated
+dependencies during SDK migrations.
+
 ## Ratchets and UI foundation
 
 - The provider entrypoint stays at most 60 lines; production source files at most 500.

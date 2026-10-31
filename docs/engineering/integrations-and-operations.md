@@ -56,6 +56,39 @@ The implementation favors user-facing recovery over deep error taxonomy.
 
 ## Expo / Native Integrations
 
+Expo SDK 58 and [ADR 0016](../adr/0016-supported-expo-native-integrations.md) define
+the supported dependency baseline. Prefer existing platform interfaces, official
+Expo APIs, then maintained packages; retain a local module only for a documented
+missing capability. Native SDK calls stay out of generic UI. See the
+[agent setup and diagnostics](development.md#optional-local-agent-tooling).
+
+### Native maintenance decisions
+
+| Area | Decision | Ownership and reason |
+| --- | --- | --- |
+| Expo / RN and SDK-managed packages | Update together to SDK 58's supported mapping | `package.json` / lockfile; unrelated OpenCode SDKs, tests and app libraries retain their locked versions |
+| Local store-update module | Replace / remove | `shared/platform/android-app-updates.ts` / `shared/platform/app-updates.ts`; maintained Play bridge with strict immediate policy; official Expo Application replaces custom iOS eligibility code |
+| Update completion UI | Remove | `features/updates/`; Play owns immediate download/install; iOS retains intentional external listing navigation |
+| Native updater listener | Patch / keep temporarily | Disable flexible auto-install and eager Play manager; remove patch when upstream supports this policy; [update contract](../product/app-updates.md) |
+| Foreground activity service | Keep | `modules/opencode-activity/`; ongoing notification and Headless JS cannot be replaced by opportunistic Expo background tasks |
+| Speech recognition | Keep / SDK upgrade | `expo-speech-recognition` 58; existing permissions, recovery, vendor/on-device fallback and microphone owner |
+| Offline wake word and TTS | Keep | Sherpa 1.3.1 and its ABI/iOS aliases patch; shared voice lifecycle, explicit model downloads and idle cleanup |
+| Local classifier | Keep / lazy load | `llama.rn` 0.12.9; AI owns routing, native binding loads only when a downloaded model is requested |
+| Sharing | Keep / standardize patch delivery | Official Expo Sharing; replace the bespoke source-rewriting script with a pinned patch; retain bounded copies, text and URI safety |
+| Deep links / quick actions | Keep | Expo Router, Expo Linking and existing quick-action package; preserve route trust validation and non-secret payloads |
+| Android widgets | Keep | Existing widget package and receiver/task identities; replacing the renderer has no established behavior parity |
+| Notifications | Keep / SDK upgrade | Official Expo notification/background/task modules; retain FOSS transformations and permission behavior |
+| Keyboard / gestures | Keep / remove unused hook | React Native KeyboardAvoidingView, native modal hosts and current gesture stack; remove `use-keyboard-height.ts` with no callers |
+| Build properties / scene defaults | Replace / remove | Official build-properties options and SDK template defaults replace cleartext, optimized R8, old AGP opt-in and iOS scene glue |
+| Android content capture | Keep exact timing | `config/plugins/android.cjs` changes MainActivity immediately after `super.onCreate(null)`; Activity listener timing differs |
+| Remaining config plugins | Keep narrowly scoped | Android memory, Material pin, ML Kit orientation and Sharing resource keep asset; iOS Personal Team push-entitlement opt-out has no equivalent app configuration |
+| File writes and crash recording | Use current API contracts | Await normal async writes/digests; only the synchronous fatal crash recorder uses `writeSync()` |
+| Agent tooling | Optional developer integration | Official external skills and dev-only MCP; existing local diagnostics remain authoritative and CI stays unchanged |
+
+Patch versions, required behavior and upstream removal conditions live in the
+[patch inventory](library-extraction.md#remaining-dependency-patches). Native
+acceptance is defined by the [production matrix](validation/strategy.md#coordinated-native-dependency-acceptance).
+
 ### Expo Router
 
 Used for app navigation and typed route structure.
@@ -184,10 +217,11 @@ Current behavior:
 ### Share Receive (Inbound)
 
 Android accepts single/multiple generic files (`*/*`) using `expo-sharing`.
-The prebuild config calls `scripts/prepare-android-sharing.cjs`, an idempotent,
-version-checked patch for 57.0.22: text/plain streams and accompanying text are
-preserved, copies use unique cache names, and unknown-size files are bounded
-while reading. Upgrading Expo Sharing requires reviewing this patch. Native
+`patches/expo-sharing+58.0.21.patch` preserves text/plain streams and accompanying
+text, unique cache filenames and bounded unknown-size reads. The package is pinned
+and built from source so the install-time patch reaches release artifacts. The
+config plugin copies its owned resource-retention XML. Review every patch hunk
+before upgrading Sharing. Native
 resolution failures produce skipped items instead of fabricated readable files.
 JS normalizes `file:/` to `file:///`, preserves encoding and applies the existing
 URI allow-list, ten-item and 10 MB per-file limits.
@@ -283,16 +317,14 @@ keeping it off its command line too.
 Production Android prebuilds use `expo-build-properties` to enable release
 minification and resource shrinking. The plugin is omitted for the development
 app variant; Android debug builds keep their normal unminified configuration.
-The production config plugin also selects Android's optimized default R8 rules;
-the React Native template's legacy `proguard-android.txt` disables code
-optimization even when minification is enabled. The generated `android/`
+The SDK 58 template already selects the optimized default R8 rules. The generated `android/`
 directory is ignored, so `app.config.ts` remains the source of truth.
 
-Play's R8 optimization check also wants optimized resource shrinking. AGP 8.12
-(RN 0.86.3's pinned version) only enables it via the
-`android.r8.optimizedResourceShrinking` Gradle property, which `app.config.ts`
-sets alongside the JVM args. AGP 9+ enables it by default; forcing AGP 9 is not
-compatible with this RN/Expo SDK and waits on the next SDK bump.
+SDK 58/RN 0.88 uses AGP 9 and the optimized ProGuard preset. The old preset
+rewrite and optimized-resource-shrinking opt-in are removed. Minification and
+resource shrinking remain explicit through expo-build-properties, as do known
+reflection/JNI/WorkManager keep rules. Cleartext self-hosted HTTP access uses the
+supported usesCleartextTraffic option in every Android variant.
 
 Two more Play findings are handled in `app.config.ts`:
 
@@ -309,8 +341,8 @@ Two more Play findings are handled in `app.config.ts`:
 
 Production config adds custom keep rules for Expo's Pika record introspection
 runtime and classes loaded reflectively, including `RNHeadlessAppLoader`. These
-rules retain Expo record converters and add about 33 KB to the arm64 release
-APK. No keep rules target the app's own namespace. The generated React Native
+rules retain Expo record converters, targeting SDK 58's `io.github.expo.pika`
+namespace. No keep rules target the app's own namespace. The generated React Native
 template includes its Reanimated rules; native dependencies also contribute
 consumer rules for Expo task/notification modules, React Native, Worklets, and
 Glide image loading.

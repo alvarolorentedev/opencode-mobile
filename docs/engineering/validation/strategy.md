@@ -147,6 +147,34 @@ release-preparation job creates the GitHub Release once before both uploads.
 archive. Release artifacts expire; the permanent copy is the GitHub Release
 asset or store upload.
 
+## Coordinated native dependency acceptance
+
+For SDK or native dependency changes, use the existing gate above and record
+acceptance evidence against the exact commit. A successful development build is
+insufficient to mark the migration ready for release. No additional mandatory CI
+workflow or native E2E framework is required.
+
+| Target | Existing automated/build checks | Required native/store acceptance |
+| --- | --- | --- |
+| Web development/E2E | Static, fake-server self-test, browser budget, Storybook, full web E2E; SDK dependency check and clean lockfile install | Human review of changed browser contracts; onboarding, links and update blockers retain work |
+| Android Google Play | Development build; production release APK/AAB with R8 and shipping ABIs; inspect manifest, packaged libraries and signing | Play-installed older signed build to newer internal-track build: immediate-only consent/cancel/cooldown, interrupted recovery and native error/Store fallback; no handoff during unsaved work |
+| Android F-Droid | Existing FOSS preparation test and release entrypoint; inspect autolinking, Gradle dependencies and packaged APK | No Play Billing, Play updates, install-referrer, ML Kit or Firebase client; manual connection, notifications, widgets, sharing and offline models still work; retain licensing/reproducibility review |
+| iOS App Store | Existing iOS prebuild/archive entrypoint, distribution signing, entitlements and packaging; compile all retained modules | Public verified listing/environment and explicit App Store navigation; TestFlight/dev/offline suppressed; Cloud Link purchase/restore and links; no StoreKit update sheet |
+| Permissions and voice | Existing voice/runtime tests and [voice device checklist](../voice-validation.md) | Permission grant/deny/revoke, interruption/background/teardown, microphone exclusivity, optional model install/remove and failed init recovery; no model load at ordinary boot |
+| Notifications and widgets | Existing notification/widget tests; release manifest/service/task/receiver inspection | Foreground service start/stop, denied permission, background/process death, notification taps and installed widget refresh/deep links |
+| Sharing, keyboard and gestures | Existing owning unit/browser coverage, patched Sharing source checks and minified release build | Multi-item/text/content-URI shares and cleanup; composer/forms/terminal/modals, Back, hardware keyboard, text scaling and screen readers on both platforms |
+| Android content capture | Config-plugin exact-order/idempotence test; inspect generated and minified release MainActivity | On supported Android with content capture enabled, exercise large transcripts/catalogs; mitigation stays immediately after superclass creation |
+| Cloud Link and secrets | Existing purchase/pairing/recovery tests and full E2E; FOSS exclusion test | Real sandbox/test purchase, restore, cancellation and environment transitions; SecureStore persistence, relaunch and no credentials in captures/logs |
+
+See [native decisions and rollback](../../adr/0016-supported-expo-native-integrations.md),
+[build/signing operations](../integrations-and-operations.md),
+[store-update acceptance](../../product/app-updates.md) and
+[F-Droid requirements](../fdroid.md). If the signed builds, eligible store accounts
+or physical devices are unavailable, report those checks as outstanding; mocked
+or simulator evidence cannot satisfy them. Roll back by reverting the coordinated
+commits and lockfile, then regenerate native projects. Published versions require
+a higher-numbered forward release.
+
 ## What automated checks do not prove
 
 Web checks do not establish native frame rate, launch latency, battery use,

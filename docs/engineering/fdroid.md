@@ -131,6 +131,7 @@ recipe to fdroiddata. A local or uncommitted asset is not available to F-Droid.
 See [`fdroid/checklist.md`](../../fdroid/checklist.md) for the submission review and
 the remaining publication conditions.
 
-The shared FOSS preparation also excludes the local `opencode-updates` Expo module
-from autolinking, so Google Play In-App Updates is absent from the FOSS artifact.
-The JS boundary disables store update prompts for this flavor.
+The shared FOSS preparation excludes `expo-in-app-updates` from autolinking, so Google Play In-App Updates is absent from the FOSS artifact.
+The Metro stub and JS boundary disable store update prompts for this flavor. Modified
+Expo Application and Notifications build from source so proprietary precompiled
+artifacts cannot bypass the flavor-specific dependency removal.

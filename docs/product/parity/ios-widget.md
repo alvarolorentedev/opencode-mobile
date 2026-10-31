@@ -33,11 +33,11 @@ the docs it references.
 ## Missing for iOS widgets
 
 1. **Dependency** — add `expo-widgets` plus its `@expo/ui` peer (both bundled in
-   Expo SDK 57) with `npx expo install expo-widgets @expo/ui`. `expo-widgets`
+   Expo SDK 58) with `npx expo install expo-widgets @expo/ui`. `expo-widgets`
    57.x supports iOS home screen families (`systemSmall`/`systemMedium`/
    `systemLarge`/`systemExtraLarge`) and Lock Screen accessory families
    (`accessoryCircular`/`accessoryRectangular`/`accessoryInline`), plus Live
-   Activities. Its Android side is an empty stub in SDK 57; do not use it for
+   Activities. SDK 58 also has an opt-in Android renderer; retain the current package for
    Android.
 2. **Config plugin entry** in `app.config.ts`, gated on an opt-in build flag
    (for example `EXPO_IOS_WIDGETS=1`) until Apple-side provisioning exists:

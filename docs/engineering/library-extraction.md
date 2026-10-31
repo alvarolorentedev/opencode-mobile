@@ -7,7 +7,7 @@ and it defines the extraction candidates that could become standalone packages.
 ## Implemented
 
 - **Slider**: `shared/ui/numeric-slider.tsx` now uses
-  `@react-native-community/slider` (Expo SDK 57 bundled version). The component
+  `@react-native-community/slider` (Expo SDK 58 bundled version). The component
   keeps its label/value header and palette props; the package owns gestures,
   accessibility, and native controls. Its web build does not expose range
   semantics or arrow keys, so the wrapper forwards `aria-valuemin/max/now/text`
@@ -28,7 +28,7 @@ and it defines the extraction candidates that could become standalone packages.
   Basic authentication, pairing payloads, attachment data URLs, and the
   generated working sound. This removes an untyped, unmaintained direct
   dependency and makes byte handling explicit.
-- **File API**: `shared/protocol/opencode/attachment.ts` now uses the Expo SDK 57 `File`
+- **File API**: `shared/protocol/opencode/attachment.ts` now uses the Expo SDK 58 `File`
   API instead of the `expo-file-system/legacy` module.
 
 Two persistence boundaries remain intentionally manual:
@@ -45,35 +45,37 @@ Two persistence boundaries remain intentionally manual:
 These were considered during the review but were not landed. Each requires
 native or UI validation that the web/static suites cannot provide.
 
-### Keyboard handling: `react-native-keyboard-controller`
+### Keyboard handling
 
-Expo SDK 57 bundles `react-native-keyboard-controller` 1.21.9. It could replace
-`shared/ui/hooks/use-keyboard-height.ts` and several `KeyboardAvoidingView` workarounds,
-and it may help the Android keyboard-flicker path described for issue #62.
+Keep RN keyboard avoidance, native modal hosts and the existing gesture stack.
+The unused keyboard-height hook has been removed. A new controller needs a concrete
+regression and physical-device acceptance across composer, Settings, terminal,
+modals and hardware keyboards; SDK compatibility alone is not a reason to migrate.
 
-Deferred because it has no obvious web implementation, the app's web E2E suite
-must keep working, and a native iOS/Android device pass is required for the
-composer, Settings voice form, terminal accessory, overlays, and hardware
-keyboards. A future change should add a platform-gated wrapper and migrate one
-surface first, not replace every `KeyboardAvoidingView` at once.
+### App updates (implemented)
 
-### App updates: `expo-in-app-updates`
+SDK 58 enables `expo-in-app-updates` 0.13.0. Android explicitly requests immediate
+updates, retaining safety blockers, cancellation cooldown and interrupted recovery.
+Its native error fallback can open Play Store; the attempted candidate is suppressed
+before handoff. iOS keeps its existing listing validation and intentional external
+navigation, using Expo Application's verified production-environment API. The custom
+update module is removed. See [app updates](../product/app-updates.md).
 
-`expo-in-app-updates` already wraps Google Play Core and the App Store, which
-overlaps with `modules/opencode-updates` and `shared/platform/app-updates.ts`.
+### Remaining dependency patches
 
-Deferred because:
+| Owner | Version | Required behavior | Removal condition |
+| --- | --- | --- | --- |
+| Sharing | 58.0.21 | Text streams/accompanying text, unique bounded copies, unreadable items | Stable SDK-compatible upstream contains every fix; release/device sharing passes |
+| Play updates | 0.13.0 | Disable the flexible listener: no auto-install or eager Play manager at boot | Upstream supports immediate-only lazy observation; migration/device checks pass |
+| Sherpa | 1.3.1 | Android Kotlin/JNI config ABI and iOS TTS key aliases | Stable wrapper contains both fixes; Android/iOS local TTS passes |
 
-- 0.12.x targets Expo SDK 56 and 0.13.x targets SDK 58; SDK 57 compatibility is
-  not established.
-- The current module supports explicit flexible-download completion and
-  process-death recovery, which are central to the existing banner contract.
-- Replacing the native module needs a signed Play internal-track test and a
-  public App Store test.
-
-If the package covers those behaviors, delete the local module and most of
-`shared/platform/app-updates.ts`; otherwise upstream the missing behavior instead of
-publishing a competing module.
+These patches apply through patch-package. Sharing and Play updates must remain built from source.
+Upstream Sherpa's beta fixes Android ABI but not the iOS alias handling; do not adopt
+a prerelease only to delete part of a patch. Native source references:
+[Expo Sharing](https://github.com/expo/expo/tree/main/packages/expo-sharing),
+[Sherpa wrapper](https://github.com/deeeed/audiolab/tree/main/packages/sherpa-onnx.rn).
+FOSS-only Firebase/install-referrer transformations stay in the existing flavor
+preparation script and must be revalidated against each SDK's actual source.
 
 ### Bottom sheets: `@gorhom/bottom-sheet`
 
@@ -153,7 +155,7 @@ client test harness.
 
 ## Upstream Instead Of Publishing
 
-- `scripts/prepare-android-sharing.cjs` → `expo-sharing`. Upstreaming stream
+- `patches/expo-sharing+58.0.21.patch` → `expo-sharing`. Upstreaming stream
   handling, accompanying text, unique bounded cache copies, and the resource
   keep rule would remove a version-pinned patch and the `buildFromSource`
   autolinking workaround.
@@ -164,8 +166,8 @@ client test harness.
   plugin or an Expo feature request.
 - Personal Team push-entitlement removal in `config/plugins/ios.cjs` → an
   `expo-notifications` or `expo-build-properties` option.
-- App-update behavior → `expo-in-app-updates` if it can cover flexible-download
-  recovery.
+- App updates now use the maintained immediate flow; do not restore flexible-download
+  glue or the removed custom module.
 - Fake server → the OpenCode repository if it wants a supported test harness.
 
 ## Keep In-App

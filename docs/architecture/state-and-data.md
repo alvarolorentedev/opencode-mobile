@@ -1081,10 +1081,10 @@ services and protocol modules own requests and response normalization.
 check period) and interaction gates in the provider. Only discovery time, the
 update-check preference and the version/stage dismissal are persisted under
 `opencode-mobile.app-updates`. Drafts and form contents remain local; blocker
-tokens report presence only. Downloaded state is recovered from Play and never
-triggers installation automatically. Safe available candidates on Play open native
-consent directly; only downloaded candidates render an Android banner. iOS
-candidates retain an explicit App Store action. See [app updates](../product/app-updates.md).
+tokens report presence only. Safe available candidates and interrupted immediate
+updates on Play open native consent directly, subject to cancellation cooldowns.
+There is no flexible download/install stage. iOS candidates retain an explicit
+App Store action. See [app updates](../product/app-updates.md).
 
 ## Inbound share and widget state
 

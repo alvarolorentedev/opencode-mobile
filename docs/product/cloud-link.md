@@ -216,7 +216,9 @@ persisted. App updates are blocked while pairing is focused.
 Incoming deep links already supply a QR payload and preserve their direct
 subscription/automatic-pairing continuation without the assistant or camera gate.
 The route clears secret query parameters with `setParams` so it retains that
-origin while the provider keeps the exact pending QR through purchase/Restore.
+origin. It retains the incoming payload locally until store recovery is ready and
+idle, then passes it once to the provider, which keeps the exact pending QR
+through purchase/Restore.
 Store/session initialization remains explicit (`loading`, `ready`, `error`).
 Scanning never pairs without provider-verified entitlement.
 

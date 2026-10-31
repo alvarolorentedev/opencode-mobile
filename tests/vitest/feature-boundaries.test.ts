@@ -71,6 +71,8 @@ describe('feature boundaries', () => {
       ];
       for (const [mount, allowed] of owners) if (mount.test(mod.source) && !allowed.includes(mod.file)) problems.push(`${mod.file}: duplicate shared runtime owner`);
       for (const edge of mod.imports) {
+        const nativeOwners = policy.native.imports[edge.target as keyof typeof policy.native.imports];
+        if (nativeOwners && !(nativeOwners as readonly string[]).includes(mod.file)) problems.push(`${mod.file}: native SDK ${edge.target} belongs to its platform owner`);
         const target = resolveImport(mod.file, edge.target, files);
         const local = edge.target.startsWith('@/') ? edge.target.slice(2) : edge.target.startsWith('.') ? path.posix.normalize(path.posix.join(path.posix.dirname(mod.file), edge.target)) : edge.target;
         if (isUi(mod.file) && !edge.typeOnly && local.startsWith('modules/')) problems.push(`${mod.file}: presentation cannot import native modules directly`);
@@ -96,6 +98,18 @@ describe('feature boundaries', () => {
     const uiReachable = [...reachable(graph, 'runtime/ui.ts')];
     assert.deepEqual(uiReachable.filter((file) => file.startsWith('runtime/shell/') || file.startsWith('runtime/composition/') || /workspace-provider|workspace-runtime|connection-runtime/.test(file) || /^features\/[^/]+\/ui\//.test(file)), [], 'The scope API must not reach root composition or feature presentation.');
     assert.deepEqual(modules.find((mod) => mod.file === 'runtime/ui.ts')!.imports.flatMap((edge) => edge.symbols).sort(), ['WorkspaceScope', 'WorkspaceScopeContext', 'useUpdateBlocker'].sort());
+  });
+
+  it('keeps native inventory and retired frameworks deliberate', () => {
+    const pkg = JSON.parse(fs.readFileSync(path.join(root, 'package.json'), 'utf8'));
+    for (const name of policy.native.retiredDependencies) assert.ok(!pkg.dependencies[name] && !pkg.devDependencies[name], `${name}: reuse the established UI/state foundation`);
+    const directories = fs.readdirSync(path.join(root, 'modules'), { withFileTypes: true }).filter((entry) => entry.isDirectory()).map((entry) => entry.name).sort();
+    assert.deepEqual(directories, policy.native.modules);
+    const patches = fs.readdirSync(path.join(root, 'patches')).filter((name) => name.endsWith('.patch')).sort();
+    assert.deepEqual(patches, [...policy.native.patches].sort());
+    assert.equal(pkg.dependencies['expo-in-app-updates'], '0.13.0');
+    assert.ok(!pkg.dependencies['expo-mcp'] && pkg.devDependencies['expo-mcp']);
+    assert.ok(!fs.existsSync(path.join(root, 'scripts/prepare-android-sharing.cjs')));
   });
 
   it('keeps feature export lists bounded and old implementation roots retired', () => {

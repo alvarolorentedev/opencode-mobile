@@ -66,6 +66,8 @@ coverage, and documentation links.
 
 | [0015](0015-feature-oriented-implementation.md) | Feature ownership with shared runtime composition | Accepted |
 
+| [0016](0016-supported-expo-native-integrations.md) | Supported Expo native integrations and agent tooling | Accepted |
+
 ## Template
 
 Use [template.md](template.md). Keep the front matter fields (`Status`, `Date`,

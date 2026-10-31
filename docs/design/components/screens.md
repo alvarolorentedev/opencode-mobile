@@ -164,8 +164,8 @@ selection action. Terminal follows that directory.
   provider-owned connection/diagnostics state.
 - `runtime/presentation/use-update-blocker.ts`: registers open/busy local surfaces with the
   existing provider without sharing their content.
-- `modules/opencode-updates`: local Expo Android Play update module and iOS
-  verified-installation helper. See [app updates](../../product/app-updates.md).
+- `shared/platform/app-updates.ts`: maintained immediate-only Android updates and
+  Expo-verified iOS eligibility with explicit App Store navigation. See [app updates](../../product/app-updates.md).
 
 ## Multi-server V2 surfaces
 
