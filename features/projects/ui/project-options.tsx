@@ -16,12 +16,14 @@ export function ProjectOptions({
   activePath,
   onSelect,
   onRemove,
+  canRemove,
   disabled = false,
 }: {
   projects: OpencodeProject[];
   activePath?: string;
   onSelect: (path: string) => void;
   onRemove?: (path: string) => void;
+  canRemove?: (path: string) => boolean;
   disabled?: boolean;
 }) {
   const { t } = useTranslation();
@@ -53,7 +55,7 @@ export function ProjectOptions({
               <NativeText numberOfLines={1} className={cn("text-muted-foreground")}>{project.path}</NativeText>
             </View>
           </Pressable>
-          {onRemove ? (
+          {onRemove && (canRemove?.(project.path) ?? true) ? (
             <Pressable
               accessibilityRole="button"
               accessibilityLabel={t('project:picker.removeLabel', { name: project.label })}

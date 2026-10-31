@@ -79,7 +79,8 @@ export function ProjectPicker({ visible, onClose, activePath, onSelected, testID
       <ProjectOptions projects={group.projects.filter((project) => `${project.label} ${project.path}`.toLowerCase().includes(query.trim().toLowerCase()))}
         activePath={registry.focus?.connectionId === group.id ? group.projects.find((project) => project.checkouts.some((checkout) => checkout.directory === activePath))?.path : undefined}
         onSelect={(path) => { void activate({ connectionId: group.id, projectPath: path }).catch((reason) => setError(String(reason))); }}
-        onRemove={(path) => { void remove({ connectionId: group.id, projectPath: path }).catch((reason) => setError(String(reason))); }} />
+        onRemove={(path) => { void remove({ connectionId: group.id, projectPath: path }).catch((reason) => setError(String(reason))); }}
+        canRemove={(path) => Boolean(group.projects.find((project) => project.path === path)?.opened)} />
     </View>)}
     {error ? <Text className={cn("text-destructive")}>{error}</Text> : null}
     <Button testID="project-add-button" disabled={!groups.length} onPress={() => { setAddServer(server || focusConnectionId); setAdding(true); }} variant="ghost"><Icon name={"plus"} size={20} /><Text>{t('project:picker.add')}</Text></Button>

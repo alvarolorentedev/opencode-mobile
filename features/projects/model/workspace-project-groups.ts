@@ -8,6 +8,7 @@ import type { WorkspaceSnapshot } from '@/runtime/workspace';
 export type WorkspaceProject = OpencodeProject & {
   checkouts: ProjectCheckout[];
   loadingWorktrees: boolean;
+  opened: boolean;
   worktreesError?: string;
 };
 
@@ -72,6 +73,7 @@ export function buildWorkspaceProjectGroups(
           path: project.path,
           checkouts: projectCheckouts(project.path, []),
           loadingWorktrees: false,
+          opened: false,
         });
       }
       const active = values.projectsValue.activeProject;
@@ -87,7 +89,9 @@ export function buildWorkspaceProjectGroups(
         path: root,
         checkouts: [],
         loadingWorktrees: false,
+        opened: true,
       };
+      project.opened = true;
       const checkouts = projectCheckouts(root, catalog.entries, activePath, values.projectFilesValue.vcsInfo?.branch);
       for (const checkout of checkouts) {
         const previous = project.checkouts.find((item) => item.directory === checkout.directory);

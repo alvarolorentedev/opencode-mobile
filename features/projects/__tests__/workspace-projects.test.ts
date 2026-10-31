@@ -66,6 +66,8 @@ describe('workspace project groups', () => {
       }),
     });
     expect(groups[0].projects.map((project) => project.path)).toEqual(['/another', '/repo']);
+    expect(groups[0].projects.find((project) => project.path === '/repo')?.opened).toBe(true);
+    expect(groups[0].projects.find((project) => project.path === '/another')?.opened).toBe(false);
     expect(groups[0].projects.find((project) => project.path === '/another')?.checkouts).toEqual([
       { directory: '/another', name: 'Local', branch: undefined, isMain: true },
     ]);
