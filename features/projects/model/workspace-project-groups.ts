@@ -61,9 +61,11 @@ export function buildWorkspaceProjectGroups(
       const values = runtime.values as unknown as ProjectSnapshotValues;
       // The server catalog is connection-wide while a snapshot is per opened
       // project. Every runtime carries the same catalog, so seed every known
-      // project first and let the active runtime below enrich its own row.
+      // server project first and let the active runtime below enrich its own
+      // row. Opened worktree paths have no server project id and stay in their
+      // owning project's checkout list instead of becoming project rows.
       for (const project of values.projectsValue.projects ?? []) {
-        if (byRoot.has(project.path)) continue;
+        if (!project.id || byRoot.has(project.path)) continue;
         byRoot.set(project.path, {
           ...(project.id ? { id: project.id } : {}),
           label: project.label,
