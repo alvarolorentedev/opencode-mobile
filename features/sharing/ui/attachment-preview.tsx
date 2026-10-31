@@ -5,7 +5,7 @@ import { Button } from '@/shared/ui/button';
 import { Icon } from '@/shared/ui/icon';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { AppState, View } from 'react-native';
+import { AppState, StyleSheet, View } from 'react-native';
 import { Image } from 'expo-image';
 
 import { OverlaySheet } from '@/shared/ui/overlay-sheet';
@@ -48,7 +48,7 @@ export function AttachmentPreview({ attachment, onClose }: { attachment: PromptA
   return (
     <OverlaySheet visible title={attachment.filename || t('chat:composer.attachment')} onClose={onClose} testID="attachment-preview" scrollable={kind !== 'image' && kind !== 'video'}>
       {failed ? <Text accessibilityRole="alert" className={cn("text-destructive")}>{t('chat:attachments.previewFailed')}</Text>
-        : kind === 'image' ? mediaUri ? <Image testID="attachment-image-preview" source={{ uri: mediaUri }} contentFit="contain" className={cn(stylesClasses.image)} onError={() => setFailed(true)} /> : <Spinner />
+        : kind === 'image' ? mediaUri ? <Image testID="attachment-image-preview" source={{ uri: mediaUri }} contentFit="contain" style={styles.image} onError={() => setFailed(true)} /> : <Spinner />
           : kind === 'text' ? text === undefined ? <Spinner /> : <Text testID="attachment-text-preview" selectable className={cn("text-foreground")}>{text}</Text>
             : kind === 'audio' ? mediaUri ? <AudioPreview uri={mediaUri} onError={fail} /> : <Spinner />
               : kind === 'video' ? mediaUri ? <VideoPreview uri={mediaUri} onError={fail} /> : <Spinner />
@@ -64,7 +64,10 @@ export function AttachmentPreview({ attachment, onClose }: { attachment: PromptA
   );
 }
 
+const styles = StyleSheet.create({
+  image: { flex: 1, minHeight: 0, width: '100%' }
+});
+
 const stylesClasses = {
-  "image": "flex-1 w-full min-h-0",
   "audio": "items-center gap-4 py-6"
 } as const;

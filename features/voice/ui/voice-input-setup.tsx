@@ -87,7 +87,7 @@ export function VoiceInputSetup({ chatPreferences: prefs, initialStep = 1, local
   </>}>
     <View className={cn("h-1")}><Progress className={cn("rounded-[4px]")} value={(step / 4) * 100}></Progress></View>
     <Text className={cn("text-muted-foreground text-center")} variant="description">{t('settings:voice.setup.step', { step, total: 4 })}</Text>
-    <Image accessible={false} source={art[step - 1]} resizeMode="contain" className={cn(stylesClasses.art)} style={[{ tintColor: palette.tint }]} />
+    <Image accessible={false} source={art[step - 1]} resizeMode="contain" style={{ width: '100%', height: 160, tintColor: palette.tint }} />
     <Text accessibilityRole="header" className={cn("text-foreground font-bold")} variant="display">{t(`settings:voice.setup.${titles[step - 1]}.title`, { phrase })}</Text>
     <Text className={cn("text-muted-foreground")} variant="body">{t(`settings:voice.setup.${titles[step - 1]}.description`, { phrase })}</Text>
     {conversationBusy ? <FieldDescription  invalid={false}>{t('settings:voice.setup.busy')}</FieldDescription> : null}
@@ -145,7 +145,6 @@ export function VoiceInputSetup({ chatPreferences: prefs, initialStep = 1, local
 }
 
 const stylesClasses = {
-  "art": "w-full h-40",
   "card": "border rounded-[18px] p-4 gap-2",
   "sequence": "flex-row items-center justify-around py-3",
   "permission": "flex-row items-center gap-3"

@@ -37,8 +37,8 @@ export function ConnectOnboarding({ step, setup, onNext, onScan, onOptions }: {
   const pending = setup.busy || ['purchasing', 'pending'].includes(setup.phase);
   const heading = <View className={cn(stylesClasses.heading)}>
     <View testID="connect-illustration" className={cn(stylesClasses.illustration)} style={[{ height: illustrationHeight }]} accessible={false} accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
-      <Image key={desktop ? 'desktop' : 'devices'} source={desktop ? require('@/assets/images/cloud-link-desktop.png') : require('@/assets/images/cloud-link-devices.png')} className={cn(stylesClasses.image)} contentFit="contain" />
-      {step === 4 ? <Image source={require('@/assets/images/cloud-link-scan-frame.png')} tintColor={palette.tint} className={cn(stylesClasses.scanFrame)} style={[{ width: illustrationHeight * 1.22, height: illustrationHeight * 0.82, top: illustrationHeight * 0.025 }]} contentFit="contain" /> : null}
+      <Image key={desktop ? 'desktop' : 'devices'} source={desktop ? require('@/assets/images/cloud-link-desktop.png') : require('@/assets/images/cloud-link-devices.png')} style={{ width: '100%', height: '100%' }} contentFit="contain" />
+      {step === 4 ? <Image source={require('@/assets/images/cloud-link-scan-frame.png')} tintColor={palette.tint} style={[{ position: 'absolute', alignSelf: 'center', width: illustrationHeight * 1.22, height: illustrationHeight * 0.82, top: illustrationHeight * 0.025 }]} contentFit="contain" /> : null}
     </View>
     <Text testID="connect-step-heading" accessibilityRole="header" className={cn("text-foreground")} style={[styles.title]}>{t(`settings:connect.onboarding.step${step}.title`)}</Text>
     <Text testID="connect-step-subheading" className={cn(stylesClasses.subtitle, "text-foreground")}>{t(`settings:connect.onboarding.step${step}.subtitle`)}</Text>
@@ -87,8 +87,6 @@ const styles = StyleSheet.create({
 const stylesClasses = {
   "heading": "gap-3",
   "illustration": "h-40 mb-3 items-center justify-center",
-  "image": "w-full h-full",
-  "scanFrame": "absolute self-center",
   "subtitle": "text-[16px] leading-[22px] min-h-11",
   "screen": "flex-1 w-full max-w-120 self-center",
   "progress": "items-center gap-3 pt-1 pb-4",
