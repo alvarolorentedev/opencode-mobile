@@ -26,9 +26,9 @@ type AiDefaultsSectionProps = {
   configuredProviders: ProviderOption[];
   contract: ServerContract;
   enabledModelIds: Set<string>;
-  expandedProviderId?: string;
+  expandedProviderIds: ReadonlySet<string>;
   onActivateProviderAccount: (credentialId: string) => void;
-  onExpandedProviderChange: (providerId?: string) => void;
+  onToggleProvider: (providerId: string) => void;
   onModelToggle: (modelId: string, checked: boolean) => void;
   onRemoveProvider: (providerId: string) => void;
   onRemoveProviderAccount: (credentialId: string) => void;
@@ -43,9 +43,9 @@ export function AiDefaultsSection({
   configuredProviders,
   contract,
   enabledModelIds,
-  expandedProviderId,
+  expandedProviderIds,
   onActivateProviderAccount,
-  onExpandedProviderChange,
+  onToggleProvider,
   onModelToggle,
   onRemoveProvider,
   onRemoveProviderAccount,
@@ -130,9 +130,10 @@ export function AiDefaultsSection({
         <View className={cn(stylesClasses.modelListSection)}>
             {configuredProviderModels.map(({ provider, models }) => {
               const selectedCount = models.filter((model) => enabledModelIds.has(model.id)).length;
+              const expanded = expandedProviderIds.has(provider.id);
 
               return (
-                <Collapsible key={provider.id} open={expandedProviderId === provider.id}><ListRow
+                <Collapsible key={provider.id} open={expanded}><ListRow
                   title={getProviderCopy(provider.id, provider.label, t).label}
                   description={t('settings:providers.selectedCount', { selected: selectedCount, total: models.length })}
                   left={() => (
@@ -140,9 +141,10 @@ export function AiDefaultsSection({
                       {renderProviderIcon(provider.id, 20, palette.tint)}
                     </View>
                   )}
+                  right={() => <Icon name={expanded ? 'chevron-up' : 'chevron-down'} size={20} color={palette.muted} />}
                   className={cn(stylesClasses.providerAccordion, "bg-background border-border")}
                   titleStyle={{ color: palette.text }}
-                  descriptionStyle={{ color: palette.muted }} accessibilityState={{ expanded: expandedProviderId === provider.id }} onPress={() => onExpandedProviderChange(expandedProviderId === provider.id ? undefined : provider.id)} /><CollapsibleContent>
+                  descriptionStyle={{ color: palette.muted }} accessibilityState={{ expanded }} onPress={() => onToggleProvider(provider.id)} /><CollapsibleContent>
                   {models.map((model) => {
                     const checked = enabledModelIds.has(model.id);
 

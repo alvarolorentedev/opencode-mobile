@@ -26,8 +26,17 @@ export function AiSettingsPanel() {
   const { serverCapabilities, settings, connectionProfiles } = useConnection();
   const { chatPreferences, updateChatPreferences } = usePreferences();
   const providerConfig = useProviderConfiguration();
-  const [expandedProviderId, setExpandedProviderId] = useState<string>();
+  const [expandedProviderIds, setExpandedProviderIds] = useState<Set<string>>(() => new Set());
   const enabledModelIds = useMemo(() => new Set(chatPreferences.enabledModelIds), [chatPreferences.enabledModelIds]);
+
+  function toggleProvider(providerId: string) {
+    setExpandedProviderIds((current) => {
+      const next = new Set(current);
+      if (next.has(providerId)) next.delete(providerId);
+      else next.add(providerId);
+      return next;
+    });
+  }
 
   function handleModelToggle(modelId: string, checked: boolean) {
     const nextEnabledModelIds = checked
@@ -55,9 +64,9 @@ export function AiSettingsPanel() {
         configuredProviders={configuredProviders}
         contract={serverCapabilities.contract}
         enabledModelIds={enabledModelIds}
-        expandedProviderId={expandedProviderId}
+        expandedProviderIds={expandedProviderIds}
         onActivateProviderAccount={(credentialId) => void providerAccounts.activate(credentialId)}
-        onExpandedProviderChange={setExpandedProviderId}
+        onToggleProvider={toggleProvider}
         onModelToggle={handleModelToggle}
         onRemoveProvider={handleRemoveProvider}
         onRemoveProviderAccount={(credentialId) => void providerAccounts.remove(credentialId)}
