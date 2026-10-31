@@ -12,8 +12,8 @@ import { Keyboard, Platform, useWindowDimensions, View } from 'react-native';
 
 import { Colors } from '@/shared/ui/theme/theme';
 
-import { CatalogSelect } from '@/shared/ui/catalog-select';
 import { AttachmentStrip } from '@/features/sharing/index';
+import { AgentPicker } from '@/features/chat/ui/agent-picker';
 import { ComposerSuggestions } from '@/features/chat/ui/composer-suggestions';
 import type { ComposerSuggestion, ComposerSuggestionGroup } from '@/features/chat/ui/composer-suggestion-types';
 import { ModelPicker , getModelVariantLabel } from '@/features/ai/index';
@@ -134,6 +134,7 @@ export function ChatComposer({
   // multiline input grow and scroll at the cap instead of measuring a hidden
   // copy, which lagged a layout pass behind the text on device.
   const [inputHeight, setInputHeight] = useState(minInputHeight);
+  const [agentPickerVisible, setAgentPickerVisible] = useState(false);
   const displayedInputHeight = draft ? Math.min(maxInputHeight, Math.max(minInputHeight, inputHeight)) : minInputHeight;
   const inputTextStyle = [styles.composerTextArea, slim && { fontSize: 15 }];
   function updateInputHeight(height: number) {
@@ -169,7 +170,7 @@ export function ChatComposer({
   );
 
   return (
-    <View className={cn(stylesClasses.composer, slim && slimStylesClasses.composer, "bg-background border-t-[0px]")}>{conversation.active ? (
+    <View className={cn(stylesClasses.composer, slim && slimStylesClasses.composer, "bg-background")}>{conversation.active ? (
         <View className={cn(stylesClasses.conversationBanner)} style={[{ backgroundColor: withAlpha(palette.tint, 0x10 / 255), borderColor: withAlpha(palette.tint, 0x28 / 255) }]}>
           <View className={cn(stylesClasses.conversationBannerHeader)}>
             <Text className={cn("text-foreground")} variant="description">{t('chat:composer.conversationMode')}</Text>
@@ -214,29 +215,30 @@ export function ChatComposer({
               // Let the platform size the multiline input and scroll at the cap.
               ? { minHeight: minInputHeight, maxHeight: maxInputHeight, color: palette.text }
               : { height: displayedInputHeight, color: palette.text },
-          ], Platform.OS === 'ios' ? [styles.inputContentCompact, { minHeight: minInputHeight, maxHeight: maxInputHeight }] : styles.inputContentCompact]} className="border-0 bg-transparent min-h-0 px-0 py-0"></Input>
+          ], Platform.OS === 'ios' ? [styles.inputContentCompact, { minHeight: minInputHeight, maxHeight: maxInputHeight }] : styles.inputContentCompact]} className="border-0 shadow-none bg-transparent dark:bg-transparent min-h-0 px-0 py-0"></Input>
         {fontScale > 1.3 ? <View>{modelPicker}</View> : null}
         <View className={cn(stylesClasses.composerToolbar)}>
           <Button testID="chat-attach-button" accessibilityLabel={t('chat:composer.attachFiles')} onPress={onAttach} variant="ghost" size="icon" className={cn(stylesClasses.composerActionButton, "bg-transparent")} ><Icon name={"plus"} size={24} color={palette.text} /></Button>
           {autoApproveAvailable ? (
             <Button testID="chat-approve-button" accessibilityLabel={`${t('chat:composer.approvals')}: ${chatPreferences.autoApprove ? t('chat:composer.autoApproveEnabled') : t('chat:composer.askPermission')}`} accessibilityState={{ checked: chatPreferences.autoApprove }} disabled={isUpdatingAutoApprove} onPress={() => { void onToggleAutoApprove(); }} variant="ghost" size="icon" className={cn(stylesClasses.composerActionButton, "bg-transparent")} >{isUpdatingAutoApprove ? <Spinner size="small" /> : null}<Icon name={getAutoApproveIcon(chatPreferences.autoApprove)} size={22} color={chatPreferences.autoApprove ? palette.warning : palette.text} /></Button>
           ) : null}
-          <CatalogSelect
-            disabled={availableAgents.length === 0}
-            options={availableAgents.map((agent) => ({ value: agent.id, label: agent.label }))}
-            selectedValue={chatPreferences.mode}
-            onValueChange={(mode) => updateChatPreferences({ mode })}
-            title={t('chat:composer.chooseAssistantMode')}
-            renderTrigger={({ disabled, open }) => (
-              <Button testID="chat-agent-button" accessibilityLabel={`${t('chat:composer.agent')}: ${selectedAgentLabel}`} disabled={disabled} onPress={() => { Keyboard.dismiss(); open(); }} variant="ghost" size="icon" className={cn(stylesClasses.composerActionButton, "bg-transparent")} ><Icon name={chatPreferences.mode === 'build' ? 'hammer-wrench' : chatPreferences.mode === 'plan' ? 'clipboard-text-outline' : 'robot-outline'} size={22} color={palette.text} /></Button>
-            )}
-          />
+          <Button testID="chat-agent-button" accessibilityLabel={`${t('chat:composer.agent')}: ${selectedAgentLabel}`} disabled={availableAgents.length === 0} onPress={() => { Keyboard.dismiss(); setAgentPickerVisible(true); }} variant="ghost" size="icon" className={cn(stylesClasses.composerActionButton, "bg-transparent")} ><Icon name={chatPreferences.mode === 'build' ? 'hammer-wrench' : chatPreferences.mode === 'plan' ? 'clipboard-text-outline' : 'robot-outline'} size={22} color={palette.text} /></Button>
           <View className={cn(stylesClasses.composerModelSummary)}>
             {fontScale <= 1.3 ? modelPicker : null}
           </View>
           <Button testID="chat-secondary-button" accessibilityLabel={t(isSpeechInputListening ? 'chat:composer.stopDictation' : 'chat:composer.startDictation')} disabled={conversation.active || connectionStatus !== 'connected' || (!isSpeechInputListening && !isSpeechInputAvailable)} onPress={onToggleRecording} variant="ghost" size="icon" className={cn(stylesClasses.composerActionButton, "bg-transparent")} ><Icon name={isSpeechInputListening ? 'microphone-off' : 'microphone-outline'} size={24} color={palette.muted} /></Button>
           <Button testID="chat-primary-button" accessibilityLabel={t(primaryAction === 'voice' ? (conversation.active ? 'chat:header.stopConversationMode' : 'chat:header.startConversationMode') : primaryAction === 'send' ? (shellMode ? 'chat:composer.runShell' : 'chat:composer.sendTask') : 'chat:composer.stopTask')} disabled={primaryDisabled} onPress={primaryAction === 'voice' ? onToggleConversationMode : onSend} variant="default" size="icon" className={cn(stylesClasses.composerPrimaryButton, "bg-foreground")} >{primaryAction === 'stop' && isStoppingSession ? <Spinner size="small" /> : null}<Icon name={primaryAction === 'voice' ? 'waveform' : primaryAction === 'send' ? (shellMode ? 'console-line' : 'arrow-up') : 'stop'} size={22} color={palette.surfaceAlt} /></Button>
         </View>
-      </View></View>
+      </View>
+      <AgentPicker
+        agents={availableAgents}
+        onClose={() => setAgentPickerVisible(false)}
+        onSelect={(mode) => {
+          setAgentPickerVisible(false);
+          updateChatPreferences({ mode });
+        }}
+        selectedValue={chatPreferences.mode}
+        visible={agentPickerVisible}
+      /></View>
   );
 }

@@ -23,7 +23,7 @@ export const styles = StyleSheet.create({
   promptStack: { gap: 10 },
   promptCard: { borderWidth: 1, borderRadius: 18 },
   promptCardInner: { flexDirection: 'row', gap: 12, alignItems: 'center', padding: 14 },
-  composerTextArea: { backgroundColor: 'transparent', fontSize: 17, marginHorizontal: 8, paddingVertical: 0 },
+  composerTextArea: { backgroundColor: 'transparent', borderWidth: 0, fontSize: 17, marginHorizontal: 8, paddingVertical: 0 },
   inputContentCompact: { paddingHorizontal: 0, paddingTop: 0, paddingBottom: 0, fontFamily: Fonts.sans },
   changesList: { paddingBottom: 12 },
   todoOverlay: { position: 'absolute', left: 12, right: 12, bottom: 12, zIndex: 2, borderRadius: 16, borderWidth: 1, overflow: 'hidden' }
@@ -38,7 +38,7 @@ export const slimStyles = StyleSheet.create({
 });
 
 export const stylesClasses = {
-  "composer": "px-2 pt-1.5 pb-1.5 gap-1.5 border-t",
+  "composer": "px-2 pt-1.5 pb-1.5 gap-1.5",
   "conversationBanner": "border rounded-[18px] px-3.5 py-3 gap-2",
   "conversationBannerHeader": "flex-row justify-between gap-3 items-center",
   "attachmentRow": "flex-row flex-wrap gap-2 px-0.5",

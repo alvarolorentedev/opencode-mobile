@@ -204,7 +204,7 @@ export function ModelPicker({ disabled = false, models, onSelect, recentModelIds
                   placeholder={t('chat:modelPicker.searchPlaceholder')} accessibilityLabel={t('chat:modelPicker.searchPlaceholder')}
                   placeholderTextColor={palette.muted}
                   selectionColor={palette.tint}
-                  className="border-0 bg-transparent px-0 py-0" style={styles.searchInput}
+                  className="border-0 shadow-none bg-transparent dark:bg-transparent px-0 py-0" style={styles.searchInput}
                   testID="chat-model-picker-search"
                   value={query}
                   onChangeText={setQuery}
@@ -248,7 +248,7 @@ const styles = StyleSheet.create({
   autoRoutingRow: { alignItems: 'center', borderRadius: 14, borderWidth: 1, flexDirection: 'row', gap: 12, marginHorizontal: 12, marginTop: 12, paddingHorizontal: 14, paddingVertical: 10 },
   autoRoutingTitle: { fontFamily: Fonts.sans, fontSize: 15, fontWeight: '700' },
   autoRoutingDescription: { fontFamily: Fonts.sans, fontSize: 12 },
-  searchInput: { flex: 1, fontFamily: Fonts.sans, fontSize: 16, minHeight: 46, paddingVertical: 0 },
+  searchInput: { backgroundColor: 'transparent', borderWidth: 0, flex: 1, fontFamily: Fonts.sans, fontSize: 16, minHeight: 46, paddingVertical: 0 },
   list: { padding: 12, paddingBottom: 28 },
   sectionTitle: { fontFamily: Fonts.sans, fontSize: 12, fontWeight: '700', letterSpacing: 0.8, paddingHorizontal: 2, paddingVertical: 8, textTransform: 'uppercase' },
   groupTitle: { fontFamily: Fonts.sans, fontSize: 16, fontWeight: '700' },

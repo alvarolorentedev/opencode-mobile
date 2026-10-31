@@ -152,6 +152,7 @@ describe('native input regressions', () => {
     '@/features/chat/ui/chat-view-styles': viewStyles,
     "@/shared/ui/input": { Input },
     "@/shared/ui/catalog-select": { CatalogSelect: 'CatalogSelect' },
+    "@/features/chat/ui/agent-picker": { AgentPicker: 'AgentPicker' },
     "@/features/ai/ui/model-picker": { ModelPicker: 'ModelPicker' },
     "@/features/chat/ui/composer-suggestions": { ComposerSuggestions: 'ComposerSuggestions' },
     "@/features/sharing/ui/attachment-strip": { AttachmentStrip: 'AttachmentStrip' },

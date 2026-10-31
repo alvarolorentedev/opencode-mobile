@@ -336,7 +336,10 @@ test('composer exposes agent selection without losing drafts', async ({ page, re
   await expect(model).toHaveAccessibleName('GPT-4.1 mini · OpenAI');
   await expect(prompt).toHaveValue('Keep this draft');
   await agent.click();
-  await page.getByText('General', { exact: true }).click();
+  const agentPicker = page.getByTestId('chat-agent-picker');
+  await expect(agentPicker).toBeVisible();
+  await agentPicker.getByRole('radio', { name: 'General', exact: true }).click();
+  await expect(agentPicker).toHaveCount(0);
   await expect(agent).toHaveAccessibleName('Agent: General');
   await expect(prompt).toHaveValue('Keep this draft');
   await expect(prompt).toHaveValue('Keep this draft');
