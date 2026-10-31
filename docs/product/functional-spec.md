@@ -51,7 +51,7 @@ Chat shows the active project and worktree as read-only context under the sessio
 
 Behavior:
 
-- the picker lists the projects opened on this device + connection, most recent first; the server's `project.list()` only enriches id/name and never adds an entry by itself
+- the picker lists the projects opened on this device + connection first, then every other project returned by the server, so a fresh device can select a server project without typing its path; `project.list()` supplies labels and IDs
 - opening a project (selecting, adding, or following a link) records it for the connection; closing it removes the local entry without touching the server
 - the current server project may be labeled `Current`; the selected app project may be labeled `Active`
 - selecting a project clears the current session selection
@@ -295,7 +295,7 @@ Server-owned tasks appear in a compact floating progress view. Tapping it opens 
 
 The composer includes:
 
-- agent picker
+- agent picker (a mode bottom sheet with agent descriptions and the current selection)
 - model picker
 - reasoning picker
 - auto-approve toggle
@@ -490,7 +490,7 @@ Behavior:
 - providers that expose a key/OAuth login method (or a V1 generic API-key fallback) appear in a searchable `Add provider` selector; providers with no interactive method are omitted. Already-configured providers stay listed (marked "add another account") so another account can be added for any provider
 - configured providers display as chips, and OpenCode 2 providers with stored credentials show their labeled accounts with the active one marked; tapping an inactive account switches to it and the close action removes it
 - configured providers display as chips
-- models are grouped by provider in accordions
+- models are grouped by provider in independent accordions; several providers can stay expanded at once, and each header shows the selected count plus an expand/collapse chevron
 - each model can be toggled on/off from the enabled list
 - if all stored enabled models disappear, all currently available configured models become enabled by default
 

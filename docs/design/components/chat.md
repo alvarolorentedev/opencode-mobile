@@ -116,7 +116,8 @@ declared once, at the leaves.
 
 - render a rounded text area with a bottom toolbar: attachment, direct approval toggle and agent-mode icon, model/reasoning summary, dictation, and voice/send/stop
 - expose supported Approvals only through a direct toolbar toggle (shield when asking, warning when auto-approving); hide it for unsupported V2 servers
-- open the existing agent selector from a mode icon beside Approvals
+- open the agent-mode bottom sheet from a mode icon beside Approvals; rows show the
+  agent description and the selected mode, and the draft stays in the composer
 - open the model picker from the selected model/reasoning summary, with a reasoning slider above model search
 - when a classifier is available, the picker exposes the Auto-routing switch;
   the trigger reads `Auto-routing` while it is enabled, and explicit model
@@ -178,6 +179,13 @@ type ChatComposerProps = {
 - there is no dedicated composer palette button; the text triggers are the only entry point
 - model selection uses a searchable sheet grouped by provider; its reasoning slider shows server variants for the selected OpenCode 2 model, including a synthetic Default, and stays hidden when that model has none
 - the composer trigger includes the selected variant in its accessible name when the model provides variants
+
+### `features/chat/ui/agent-picker.tsx`
+
+- renders the agent-mode overlay sheet opened from the composer mode icon
+- lists server-provided agents with descriptions, the current selection, and a check mark
+- selecting a mode persists it through updateChatPreferences({ mode }) and closes the sheet without clearing the draft
+- Back/Escape, backdrop, header swipe and Close all dismiss the sheet through the shared OverlaySheet
 
 ### `features/chat/ui/composer-suggestions.tsx` and `use-composer-suggestions.ts`
 
@@ -281,7 +289,7 @@ the provider then creates and opens the session in that workspace.
 ### `features/projects/ui/project-picker.tsx`
 
 - shared Chat project button and project picker overlay also used by Project's existing dropdown
-- renders the connection's opened projects; a row's close control removes it locally, and adding lets the user enter a directory on the OpenCode server that the provider resolves and selects
+- renders the connection's opened projects first, then the remaining server catalog projects; a row's close control removes an opened project locally, and adding lets the user enter a directory on the OpenCode server that the provider resolves and selects
 - owns no domain state or persistence
 
 ### `features/chat/ui/chat-cards.tsx`

@@ -168,7 +168,7 @@ Responsibility:
 - allow adding unconfigured providers
 - allow removing configured provider credentials
 - on OpenCode 2, list a provider's labeled accounts, mark the active account, switch accounts, remove an account, or add another account
-- show models grouped by provider
+- show models grouped by provider in independent accordions; each header shows the selected count and a chevron, and several providers can stay expanded together
 - allow toggling enabled model IDs
 
 #### `AutoModelSection`

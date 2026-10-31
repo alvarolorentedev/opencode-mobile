@@ -17,7 +17,7 @@ Route-level controllers and platform-specific presentation surfaces. Back to the
 
 - keeps the one-line workspace breadcrumb in the header: project selection is separate from the conditional worktree selector, with a larger project title and read-at-a-glance branch context
 - the branch is shown once, in the header; the Files content title does not repeat it
-- the shared picker lists the connection's opened projects, can close them locally, and can add a server directory as a project
+- the shared picker lists the connection's opened projects first and then the remaining server catalog projects, can close opened projects locally, and can add a server directory as a project
 - provides one project refresh action
 - shows files directly with breadcrumbs and scoped search; worktree creation lives in New chat, not Projects
 - opens file viewing and editing in a focused full-screen surface

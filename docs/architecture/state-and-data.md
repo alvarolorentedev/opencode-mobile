@@ -599,7 +599,10 @@ Several important UI-facing values are derived instead of stored directly.
 
 ### Projects
 
-Derived from the connection-scoped opened project paths and enriched by `serverProjects` (the server's `project.list()`). A remote project the user never opened is not rendered; a path is opened when selected, added, or followed from a link.
+Derived from the connection-scoped opened project paths, followed by every other
+project in `serverProjects` (the server's `project.list()`), all enriched with
+server labels and IDs. Opening records the path locally; the server catalog is
+never persisted as device state.
 
 Closing the last opened project clears focus while retaining its runtime
 snapshot. `projectClosedValues()` removes that project and its session scoped
