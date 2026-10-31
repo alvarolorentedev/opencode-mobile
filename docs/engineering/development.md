@@ -42,7 +42,7 @@ The unit suite runs under Vitest 5, which requires Node `^22.12.0 || ^24.0.0 || 
 ### Optional local agent tooling
 
 Expo publishes official AI agent skills for generic Expo and React Native work
-(`npx skills add expo/skills`, or the official Expo plugin for Claude Code / Codex). They
+(`npx skills add expo/skills --global --agent codex`, or the official Expo plugin for Claude Code / Codex). They
 complement this repository's `AGENTS.md`, design system, and fake-server
 contract; when generic advice conflicts with the repo docs, the repo wins. Do
 not vendor the skills or add them as project dependencies.
@@ -57,7 +57,8 @@ tools, force peer resolution, or edit generated native projects as the solution.
 The optional Expo MCP endpoint is `https://mcp.expo.dev/mcp` (OAuth). The official
 Expo plugin registers it; otherwise follow the [official MCP setup](https://docs.expo.dev/mcp/).
 The development-only `expo-mcp` package remains disabled unless the developer
-starts Expo with `EXPO_UNSTABLE_MCP_SERVER=1`. Normal development and CI commands
+starts Expo with `EXPO_UNSTABLE_MCP_SERVER=1`. Local capabilities require Expo CLI
+and MCP to authenticate with the same Expo account. Normal development and CI commands
 do not set that flag. Local capabilities send inspected data through Expo's remote
 service: use synthetic accounts/data and keep credentials out of captures.
 

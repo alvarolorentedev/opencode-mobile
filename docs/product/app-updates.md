@@ -13,15 +13,17 @@ eligibility, the handoff gate and failure snackbar.
 ## Android
 
 `shared/platform/android-app-updates.ts` wraps `expo-in-app-updates` 0.13.0.
-Only production Play installations are admitted through Expo Application's install
-referrer service; Play also enforces ownership, signing and a higher version code.
+Production builds require Expo Application's Play install-referrer service to be
+available; Play Core enforces account ownership, matching signing and a higher
+version code. Signed Play-installed acceptance remains required.
 The adapter calls `startUpdate(true)` explicitly. It never uses the helper that
 can fall back to flexible mode, and suppresses candidates where immediate updates
 are not allowed. Play owns blocking consent, download and installation; there is
-no background-download or Restart & install banner. A pinned native patch disables
-the package's flexible listener and eager Play manager initialization. Such a
-download can finish only through the existing safety-gated handoff; importing the
-module or a late download event cannot restart the app over unsaved work.
+no background-download or Restart & install banner. The library is unpatched:
+its native lifecycle, download-completion listener and Play Store error fallback
+retain upstream behavior. App-side gates protect launch, while Play and the native
+library own the active flow. JS does not intercept native completion; upgrade from
+the previous flexible implementation is a required signed store/device check.
 
 An available update opens Play consent at the first safe moment, without a themed
 offer. Existing unsaved-work, route, foreground and operation blockers remain.
@@ -29,7 +31,11 @@ An accessible gate protects the asynchronous handoff; Play's native activity the
 owns interaction blocking. Safety is rechecked after asynchronous reads and before
 launch. Cancellation dismisses the attempted version for seven days. The native
 package may open Play Store on native errors, so dismissal is recorded before
-handoff; returning never repeatedly launches the same candidate. JS failures show
+handoff; returning never repeatedly launches the same candidate. Attempted handoffs
+are distinguished from confirmed cancellations: cold recovery can resume again
+after another process death, while cancellation retains its cooldown even when
+Play omits the in-progress version. A running provider hands off an in-progress
+flow at most once. JS failures show
 the existing short feedback. Listeners are removed on teardown.
 
 The provider checks after hydration and onboarding, and on foreground entry.
@@ -42,7 +48,7 @@ interrupted immediate-update state on foreground entry even inside a throttled i
 so the native immediate flow can resume after process death; that recovery query does not
 rediscover an available update inside the interval. Cancellation/Later suppresses a version for seven days; a new version resets it. Preferences use
 `opencode-mobile.app-updates`. Unreadable storage suppresses offers for that run;
-malformed persisted values are cleared through the existing helper. Legacy downloaded-stage dismissals are discarded without resetting other preferences.
+malformed persisted values are cleared through the existing helper. Legacy downloaded-stage dismissals keep their version and cooldown, mapped to the remaining available stage.
 
 Update actions recheck foreground, route and safety after the async native read.
 Active/sending/queued tasks, conversation mode, pending permissions/questions,

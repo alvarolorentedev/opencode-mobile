@@ -61,21 +61,45 @@ before handoff. iOS keeps its existing listing validation and intentional extern
 navigation, using Expo Application's verified production-environment API. The custom
 update module is removed. See [app updates](../product/app-updates.md).
 
+### Local classifier compatibility
+
+`llama.rn` is pinned exactly to 0.12.9 with its matching upstream Android engine
+binaries and iOS XCFramework. The 0.13 candidates checked through rc.9 force
+Android engine source builds; their presence of binary files is insufficient.
+Never enable `rnllamaBuildFromSource` or `RNLLAMA_BUILD_FROM_SOURCE`, override that
+prerelease restriction to use stale binaries, or compile llama.cpp as a fallback.
+The normal React Native JNI/Objective-C binding compilation remains necessary.
+
+Stable 0.12.9 needs the small upstream iOS bridge backport because current React
+Native headers removed `RCTCxxBridge`. The patch changes the binding's type access,
+not the engine or model ABI. Remove it only when a compatible upstream release
+also supplies matching prebuilts. See [upstream fix](https://github.com/mybigday/llama.rn/issues/384).
+Retain lazy loading, the downloaded GGUF pack and completion API; physical-device
+classifier acceptance remains required before release.
+
 ### Remaining dependency patches
 
 | Owner | Version | Required behavior | Removal condition |
 | --- | --- | --- | --- |
 | Sharing | 58.0.21 | Text streams/accompanying text, unique bounded copies, unreadable items | Stable SDK-compatible upstream contains every fix; release/device sharing passes |
-| Play updates | 0.13.0 | Disable the flexible listener: no auto-install or eager Play manager at boot | Upstream supports immediate-only lazy observation; migration/device checks pass |
+| Llama binding | 0.12.9 | Upstream iOS bridge type access for current RN headers; retain prebuilt engines | Compatible upstream release supplies this fix and matching engine prebuilts; device classifier checks pass |
 | Sherpa | 1.3.1 | Android Kotlin/JNI config ABI and iOS TTS key aliases | Stable wrapper contains both fixes; Android/iOS local TTS passes |
 
-These patches apply through patch-package. Sharing and Play updates must remain built from source.
+These patches apply through patch-package. Sharing must remain built from source. The updater uses its unmodified upstream implementation.
 Upstream Sherpa's beta fixes Android ABI but not the iOS alias handling; do not adopt
 a prerelease only to delete part of a patch. Native source references:
 [Expo Sharing](https://github.com/expo/expo/tree/main/packages/expo-sharing),
 [Sherpa wrapper](https://github.com/deeeed/audiolab/tree/main/packages/sherpa-onnx.rn).
 FOSS-only Firebase/install-referrer transformations stay in the existing flavor
 preparation script and must be revalidated against each SDK's actual source.
+
+Sherpa also carries `adm-zip` in its Node installer/validation scripts, where npm
+reports unresolved archive-handling advisories, including
+[unbounded allocation](https://github.com/advisories/GHSA-7q85-xj36-vmfc) and
+[symlink extraction](https://github.com/advisories/GHSA-vwc7-r8mq-g2x9).
+This is build tooling, not the mobile model-extraction path. Restrict installer
+archives to the reviewed upstream release inputs and track the upstream fix;
+SDK compatibility and a reproducible lockfile do not establish a clean audit.
 
 ### Bottom sheets: `@gorhom/bottom-sheet`
 

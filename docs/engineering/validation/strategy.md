@@ -166,7 +166,7 @@ workflow or native E2E framework is required.
 | Android content capture | Config-plugin exact-order/idempotence test; inspect generated and minified release MainActivity | On supported Android with content capture enabled, exercise large transcripts/catalogs; mitigation stays immediately after superclass creation |
 | Cloud Link and secrets | Existing purchase/pairing/recovery tests and full E2E; FOSS exclusion test | Real sandbox/test purchase, restore, cancellation and environment transitions; SecureStore persistence, relaunch and no credentials in captures/logs |
 
-See [native decisions and rollback](../../adr/0016-supported-expo-native-integrations.md),
+See [native decisions and rollback](../../adr/0017-native-defaults-and-prebuilt-engines.md),
 [build/signing operations](../integrations-and-operations.md),
 [store-update acceptance](../../product/app-updates.md) and
 [F-Droid requirements](../fdroid.md). If the signed builds, eligible store accounts

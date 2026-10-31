@@ -1,0 +1,27 @@
+diff --git a/node_modules/llama.rn/ios/RNLlama.mm b/node_modules/llama.rn/ios/RNLlama.mm
+--- a/node_modules/llama.rn/ios/RNLlama.mm
++++ b/node_modules/llama.rn/ios/RNLlama.mm
+@@ -73,6 +73,11 @@
+ }
+ } // namespace rnllama_jsi
+ 
++@protocol RNLlamaBridgeRuntimeAccess <NSObject>
++@property (nonatomic, readonly) void *runtime;
++@property (nonatomic, readonly) std::shared_ptr<facebook::react::CallInvoker> jsCallInvoker;
++@end
++
+ @implementation RNLlama {
+     __unsafe_unretained RCTBridge *_bridge;
+ }
+@@ -96,9 +101,9 @@
+         return;
+     }
+ 
+-    RCTCxxBridge *cxxBridge = (RCTCxxBridge *)bridge.batchedBridge;
++    id<RNLlamaBridgeRuntimeAccess> cxxBridge = (id<RNLlamaBridgeRuntimeAccess>)bridge.batchedBridge;
+     if (!cxxBridge) {
+-        cxxBridge = (RCTCxxBridge *)bridge;
++        cxxBridge = (id<RNLlamaBridgeRuntimeAccess>)bridge;
+     }
+     auto callInvoker = cxxBridge.jsCallInvoker ?: bridge.jsCallInvoker;
+     if (!cxxBridge.runtime) {

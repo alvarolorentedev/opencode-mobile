@@ -56,7 +56,7 @@ The implementation favors user-facing recovery over deep error taxonomy.
 
 ## Expo / Native Integrations
 
-Expo SDK 58 and [ADR 0016](../adr/0016-supported-expo-native-integrations.md) define
+Expo SDK 58 and [ADR 0017](../adr/0017-native-defaults-and-prebuilt-engines.md) define
 the supported dependency baseline. Prefer existing platform interfaces, official
 Expo APIs, then maintained packages; retain a local module only for a documented
 missing capability. Native SDK calls stay out of generic UI. See the
@@ -69,11 +69,10 @@ missing capability. Native SDK calls stay out of generic UI. See the
 | Expo / RN and SDK-managed packages | Update together to SDK 58's supported mapping | `package.json` / lockfile; unrelated OpenCode SDKs, tests and app libraries retain their locked versions |
 | Local store-update module | Replace / remove | `shared/platform/android-app-updates.ts` / `shared/platform/app-updates.ts`; maintained Play bridge with strict immediate policy; official Expo Application replaces custom iOS eligibility code |
 | Update completion UI | Remove | `features/updates/`; Play owns immediate download/install; iOS retains intentional external listing navigation |
-| Native updater listener | Patch / keep temporarily | Disable flexible auto-install and eager Play manager; remove patch when upstream supports this policy; [update contract](../product/app-updates.md) |
 | Foreground activity service | Keep | `modules/opencode-activity/`; ongoing notification and Headless JS cannot be replaced by opportunistic Expo background tasks |
 | Speech recognition | Keep / SDK upgrade | `expo-speech-recognition` 58; existing permissions, recovery, vendor/on-device fallback and microphone owner |
 | Offline wake word and TTS | Keep | Sherpa 1.3.1 and its ABI/iOS aliases patch; shared voice lifecycle, explicit model downloads and idle cleanup |
-| Local classifier | Keep / lazy load | `llama.rn` 0.12.9; AI owns routing, native binding loads only when a downloaded model is requested |
+| Local classifier | Keep / lazy load | `llama.rn` exactly 0.12.9 with matching engine prebuilts and a small upstream iOS binding backport; no engine source build; AI loads only a requested downloaded model |
 | Sharing | Keep / standardize patch delivery | Official Expo Sharing; replace the bespoke source-rewriting script with a pinned patch; retain bounded copies, text and URI safety |
 | Deep links / quick actions | Keep | Expo Router, Expo Linking and existing quick-action package; preserve route trust validation and non-secret payloads |
 | Android widgets | Keep | Existing widget package and receiver/task identities; replacing the renderer has no established behavior parity |
@@ -81,7 +80,7 @@ missing capability. Native SDK calls stay out of generic UI. See the
 | Keyboard / gestures | Keep / remove unused hook | React Native KeyboardAvoidingView, native modal hosts and current gesture stack; remove `use-keyboard-height.ts` with no callers |
 | Build properties / scene defaults | Replace / remove | Official build-properties options and SDK template defaults replace cleartext, optimized R8, old AGP opt-in and iOS scene glue |
 | Android content capture | Keep exact timing | `config/plugins/android.cjs` changes MainActivity immediately after `super.onCreate(null)`; Activity listener timing differs |
-| Remaining config plugins | Keep narrowly scoped | Android memory, Material pin, ML Kit orientation and Sharing resource keep asset; iOS Personal Team push-entitlement opt-out has no equivalent app configuration |
+| Remaining config plugins | Keep narrowly scoped | Android memory and Llama prebuilt mode, Material pin, ML Kit orientation and Sharing resource keep asset; iOS Personal Team push-entitlement opt-out has no equivalent app configuration |
 | File writes and crash recording | Use current API contracts | Await normal async writes/digests; only the synchronous fatal crash recorder uses `writeSync()` |
 | Agent tooling | Optional developer integration | Official external skills and dev-only MCP; existing local diagnostics remain authoritative and CI stays unchanged |
 

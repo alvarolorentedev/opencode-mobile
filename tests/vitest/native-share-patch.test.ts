@@ -5,7 +5,7 @@ describe('Android sharing install-time patch', () => {
   it('pins and builds the reviewed receiver from source', () => {
     const pkg = JSON.parse(readFileSync('package.json', 'utf8'));
     expect(pkg.dependencies['expo-sharing']).toBe('58.0.21');
-    expect(pkg.expo.autolinking.android.buildFromSource).toEqual(['expo-sharing', 'expo-in-app-updates']);
+    expect(pkg.expo.autolinking.android.buildFromSource).toEqual(['expo-sharing']);
     expect(readFileSync('patches/expo-sharing+58.0.21.patch', 'utf8')).toContain('ResolvingShareIntentDataParser.kt');
     expect(readFileSync('config/plugins/android-sharing-keep.xml', 'utf8')).toContain('tools:keep="@string/share_into_scheme"');
   });

@@ -1,6 +1,6 @@
 # ADR 0016: Supported Expo native integrations
 
-- Status: Accepted
+- Status: Superseded by ADR 0017
 - Date: 2026-10-31
 - Deciders: maintainers
 - Supersedes: —

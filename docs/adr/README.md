@@ -66,7 +66,8 @@ coverage, and documentation links.
 
 | [0015](0015-feature-oriented-implementation.md) | Feature ownership with shared runtime composition | Accepted |
 
-| [0016](0016-supported-expo-native-integrations.md) | Supported Expo native integrations and agent tooling | Accepted |
+| [0016](0016-supported-expo-native-integrations.md) | Supported Expo native integrations and agent tooling | Superseded by ADR 0017 |
+| [0017](0017-native-defaults-and-prebuilt-engines.md) | Upstream update defaults and pinned prebuilt engines | Accepted |
 
 ## Template
 

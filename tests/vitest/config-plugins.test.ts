@@ -23,12 +23,14 @@ describe('Expo config plugins', () => {
   it('replaces Gradle memory properties without touching unrelated items', () => {
     const items = [
       { type: 'property', key: 'org.gradle.jvmargs', value: 'old' },
+      { type: 'property', key: 'rnllamaBuildFromSource', value: 'true' },
       { type: 'property', key: 'keep.me', value: 'yes' },
       { type: 'comment', value: 'keep' },
     ];
     expect(applyGradleProperties(items)).toEqual([
       { type: 'property', key: 'keep.me', value: 'yes' },
       { type: 'comment', value: 'keep' },
+      { type: 'property', key: 'rnllamaBuildFromSource', value: 'false' },
       { type: 'property', key: 'org.gradle.jvmargs', value: '-Xmx4096m -XX:MaxMetaspaceSize=1024m -Dfile.encoding=UTF-8' },
     ]);
   });

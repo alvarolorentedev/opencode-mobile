@@ -102,10 +102,14 @@ describe('feature boundaries', () => {
 
   it('keeps native inventory and retired frameworks deliberate', () => {
     const pkg = JSON.parse(fs.readFileSync(path.join(root, 'package.json'), 'utf8'));
+    assert.match(pkg.dependencies['llama.rn'], /^\d+\.\d+\.\d+(?:-[\w.-]+)?$/, 'pin the reviewed prebuilt llama.rn release exactly');
+    const llama = JSON.parse(fs.readFileSync(path.join(root, 'node_modules/llama.rn/package.json'), 'utf8'));
+    assert.equal(llama.version, pkg.dependencies['llama.rn']);
+    assert.doesNotMatch(fs.readFileSync(path.join(root, 'node_modules/llama.rn/android/gradle.properties'), 'utf8'), /^rnllamaBuildFromSource\s*=\s*true/m, 'use matching upstream engine binaries, never force an incompatible source-only release');
     for (const name of policy.native.retiredDependencies) assert.ok(!pkg.dependencies[name] && !pkg.devDependencies[name], `${name}: reuse the established UI/state foundation`);
     const directories = fs.readdirSync(path.join(root, 'modules'), { withFileTypes: true }).filter((entry) => entry.isDirectory()).map((entry) => entry.name).sort();
     assert.deepEqual(directories, policy.native.modules);
-    const patches = fs.readdirSync(path.join(root, 'patches')).filter((name) => name.endsWith('.patch')).sort();
+    const patches = fs.readdirSync(path.join(root, 'patches')).filter((name) => !name.startsWith('._') && name.endsWith('.patch')).sort();
     assert.deepEqual(patches, [...policy.native.patches].sort());
     assert.equal(pkg.dependencies['expo-in-app-updates'], '0.13.0');
     assert.ok(!pkg.dependencies['expo-mcp'] && pkg.devDependencies['expo-mcp']);
