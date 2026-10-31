@@ -17,6 +17,8 @@ export const workspaceKey = ({ connectionId, projectPath }: WorkspaceTarget) => 
 export const sessionKey = (target: SessionTarget) => JSON.stringify([target.connectionId, target.projectPath, target.sessionId]);
 export type ConnectionRecord = {
   id: string;
+  revision?: number;
+  authRevision?: number;
   name: string;
   settings: OpencodeConnectionSettings;
   enabled: boolean;

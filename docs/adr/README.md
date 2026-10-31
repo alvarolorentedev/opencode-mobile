@@ -61,6 +61,7 @@ coverage, and documentation links.
 | [0010](0010-risk-based-validation-and-selective-pr-e2e.md) | Risk-based validation and selective PR E2E | Superseded by ADR 0011 |
 | [0011](0011-release-from-green-main-builds.md) | Release from green main builds, not tag pushes | Accepted |
 | [0012](0012-shell-mediated-project-file-actions.md) | Shell-mediated project file actions | Accepted |
+| [0014](0014-server-data-and-explicit-lifecycles.md) | Scoped server data and explicit application lifecycles | Proposed |
 | [0013](0013-source-owned-ui-and-complex-forms.md) | Source-owned Reusables, Uniwind tokens and complex forms | Accepted |
 
 ## Template

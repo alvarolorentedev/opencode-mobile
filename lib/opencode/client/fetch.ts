@@ -120,7 +120,7 @@ function measureResponseBytes(response: Response) {
   }
 }
 
-export function createScopedFetch(baseUrl: string, pathPrefix: string, directory?: string, settings?: OpencodeConnectionSettings) {
+export function createScopedFetch(baseUrl: string, pathPrefix: string, directory?: string, settings?: OpencodeConnectionSettings, readSignal?: AbortSignal) {
   return async (input: RequestInfo | URL, init?: RequestInit) => {
     const currentUrl =
       typeof input === 'string'
@@ -138,7 +138,7 @@ export function createScopedFetch(baseUrl: string, pathPrefix: string, directory
     }
 
     if (typeof input === 'string' || input instanceof URL) {
-      return fetchConnection(parsed.toString(), init, settings);
+      return fetchConnection(parsed.toString(), readSignal ? { ...init, signal: readSignal } : init, settings);
     }
 
     return fetchConnection(parsed.toString(), {
@@ -148,11 +148,12 @@ export function createScopedFetch(baseUrl: string, pathPrefix: string, directory
       method: input.method,
       signal: input.signal,
       ...init,
+      ...(readSignal ? { signal: readSignal } : {}),
     }, settings);
   };
 }
 
-export function createPrefixFetch(origin: string, pathPrefix: string, settings?: OpencodeConnectionSettings) {
+export function createPrefixFetch(origin: string, pathPrefix: string, settings?: OpencodeConnectionSettings, readSignal?: AbortSignal) {
   return async (input: RequestInfo | URL, init?: RequestInit) => {
     const currentUrl =
       typeof input === 'string'
@@ -167,7 +168,7 @@ export function createPrefixFetch(origin: string, pathPrefix: string, settings?:
     }
 
     if (typeof input === 'string' || input instanceof URL) {
-      return fetchConnection(parsed.toString(), init, settings);
+      return fetchConnection(parsed.toString(), readSignal ? { ...init, signal: readSignal } : init, settings);
     }
 
     return fetchConnection(parsed.toString(), {
@@ -177,6 +178,7 @@ export function createPrefixFetch(origin: string, pathPrefix: string, settings?:
       method: input.method,
       signal: input.signal,
       ...init,
+      ...(readSignal ? { signal: readSignal } : {}),
     }, settings);
   };
 }
