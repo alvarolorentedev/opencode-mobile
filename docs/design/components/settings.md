@@ -105,9 +105,7 @@ The component owns only local state (expanded row, dialog, switching row); profi
   as a normalized map; the section is never shown for Cloud Link profiles
 - hide Username for confirmed V2, show it for V1, and offer a collapsed custom
   username when credentials are needed to identify the server
-- The shared TextInput clears Paper's implicit text alignment for single-line
-  iOS fields to prevent wrapping. Explicit caller alignment takes precedence;
-  password masking and credential values remain native and unchanged.
+- Shared native inputs preserve explicit alignment, password masking and credential bytes with ordinary input padding and alignment.
 - validate the URL, surface probe/pair/save errors inline, and disable duplicate
   operations while busy; names default in the provider's save action
 - own its form state for the lifetime of one dialog instance (mounted only while open)

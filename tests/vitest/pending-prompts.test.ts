@@ -1,3 +1,4 @@
+import { uiImports } from '../helpers/ui.mjs';
 import { describe, expect, it, vi } from 'vitest';
 import { hookRuntime, loadTs } from '../helpers/runtime.mjs';
 
@@ -35,11 +36,12 @@ async function mountPendingPrompts(props: {
   const runtime = hookRuntime();
   const element = (type: unknown, props: unknown) => ({ type, props });
   const { PendingPrompts } = await loadTs('components/chat/pending-prompts.tsx', {
+    ...uiImports,
     react: runtime.react,
     'react/jsx-runtime': { jsx: element, jsxs: element, Fragment: 'Fragment' },
     'react-i18next': { useTranslation: () => ({ t: (key: string) => key }) },
     'react-native': { ScrollView: 'ScrollView', StyleSheet: { create: (styles: unknown) => styles }, View: 'View' },
-    'react-native-paper': { ActivityIndicator: 'ActivityIndicator', IconButton: 'IconButton', Text: 'Text' },
+
     '@/components/chat/attachment-strip': { AttachmentStrip: 'AttachmentStrip' },
     '@/constants/theme': { Colors: { light: {} } },
     '@/hooks/use-color-scheme': { useColorScheme: () => 'light' },

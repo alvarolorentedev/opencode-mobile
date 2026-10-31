@@ -1,7 +1,13 @@
+import { cn } from '@/lib/utils';
+import { Button } from '@/components/ui/button';
+import { Icon } from '@/components/ui/icon';
+import { HeaderTitle, ScreenHeader } from '@/components/ui/screen-header';
+import { FieldDescription } from '@/components/ui/text-field';
+import { Text } from '@/components/ui/text';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { KeyboardAvoidingView, ScrollView, StyleSheet, View } from 'react-native';
-import { Appbar, HelperText, Text } from 'react-native-paper';
+
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { ServiceEditor } from '@/components/settings/service-editor';
@@ -23,17 +29,14 @@ export default function ServiceScreen() {
   const missing = Boolean(params.id) && !editing;
 
   return (
-    <View style={[styles.screen, { backgroundColor: palette.background, paddingTop: insets.top }]}>
-      <Appbar.Header style={{ backgroundColor: palette.surface }} statusBarHeight={0} elevated>
-        <Appbar.BackAction accessibilityLabel={t('common:actions.back')} onPress={() => router.back()} color={palette.text} />
-        <Appbar.Content titleMaxFontSizeMultiplier={1.5} titleStyle={{ color: palette.text }} title={editing ? t('settings:services.editTitle') : t('settings:services.addTitle')} />
-      </Appbar.Header>
-      <KeyboardAvoidingView style={styles.flex} behavior="padding">
+    <View className={cn(stylesClasses.screen)} style={[{ backgroundColor: palette.background, paddingTop: insets.top }]}>
+      <ScreenHeader className={cn("bg-surface")} safeArea={false}><Button accessibilityLabel={t('common:actions.back')} onPress={() => router.back()} variant="ghost" size="icon"><Icon name={"arrow-left"} size={24} color={palette.text} /></Button><HeaderTitle title={editing ? t('settings:services.editTitle') : t('settings:services.addTitle')} textStyle={{ color: palette.text }} maxFontSizeMultiplier={1.5}></HeaderTitle></ScreenHeader>
+      <KeyboardAvoidingView className={cn(stylesClasses.flex)} behavior="padding">
         <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={[styles.content, { paddingBottom: Math.max(insets.bottom, 24) }]}>
           {missing ? (
-            <View style={styles.missing}>
-              <HelperText testID="service-missing" type="info">{t('settings:services.unavailableService')}</HelperText>
-              <Text style={{ color: palette.muted }}>{t('settings:services.unavailableServiceHint')}</Text>
+            <View className={cn(stylesClasses.missing)}>
+              <FieldDescription testID="service-missing" invalid={false}>{t('settings:services.unavailableService')}</FieldDescription>
+              <Text className={cn("text-muted-foreground")}>{t('settings:services.unavailableServiceHint')}</Text>
             </View>
           ) : (
             <ServiceEditor api={services} editing={editing} palette={palette} onDone={() => router.back()} />
@@ -45,8 +48,11 @@ export default function ServiceScreen() {
 }
 
 const styles = StyleSheet.create({
-  screen: { flex: 1 },
-  flex: { flex: 1 },
-  content: { gap: 4, padding: 16, width: '100%', maxWidth: 800, alignSelf: 'center' },
-  missing: { gap: 8 },
+  content: { gap: 4, padding: 16, width: '100%', maxWidth: 800, alignSelf: 'center' }
 });
+
+const stylesClasses = {
+  "screen": "flex-1",
+  "flex": "flex-1",
+  "missing": "gap-2"
+} as const;

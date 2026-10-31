@@ -1,8 +1,11 @@
+import { cn } from '@/lib/utils';
+import { Icon } from '@/components/ui/icon';
+import { Button } from '@/components/ui/button';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Pressable, StyleSheet, View } from 'react-native';
 import { Image } from 'expo-image';
-import { Icon, IconButton } from 'react-native-paper';
+
 
 import { AttachmentPreview } from '@/components/chat/attachment-preview';
 import { attachmentKind } from '@/lib/attachment-preview';
@@ -16,9 +19,9 @@ function AttachmentTile({ attachment, onPress }: { attachment: PromptAttachment;
   const kind = attachmentKind(attachment);
   return (
     <Pressable testID="attachment-tile" accessibilityRole="button" accessibilityLabel={t('chat:attachments.preview', { name: attachment.filename || t('chat:composer.attachment') })}
-      onPress={onPress} style={[styles.tile, { backgroundColor: palette.surfaceAlt, borderColor: palette.border }]}>
+      onPress={onPress} className={cn(stylesClasses.tile, "bg-surface-alt border-border")}>
       {kind === 'image' && !failed ? <Image source={{ uri: attachment.uri }} contentFit="contain" style={StyleSheet.absoluteFill} onError={() => setFailed(true)} />
-        : <Icon source={kind === 'audio' ? 'file-music-outline' : kind === 'video' ? 'video-outline' : kind === 'image' ? 'image-off-outline' : 'file-document-outline'} size={26} color={palette.text} />}
+        : <Icon size={26} color={palette.text} name={kind === 'audio' ? 'file-music-outline' : kind === 'video' ? 'video-outline' : kind === 'image' ? 'image-off-outline' : 'file-document-outline'}></Icon>}
     </Pressable>
   );
 }
@@ -27,12 +30,11 @@ export function AttachmentStrip({ attachments, onRemove }: { attachments: Prompt
   const { t } = useTranslation();
   const [selected, setSelected] = useState<PromptAttachment>();
   return (
-    <View style={styles.row}>
+    <View className={cn(stylesClasses.row)}>
       {attachments.map((attachment, index) => (
-        <View key={`${attachment.uri}-${index}`} style={styles.item}>
+        <View key={`${attachment.uri}-${index}`} className={cn(stylesClasses.item)}>
           <AttachmentTile attachment={attachment} onPress={() => setSelected(attachment)} />
-          {onRemove ? <IconButton testID="attachment-remove" icon="close" size={16} style={styles.remove}
-            accessibilityLabel={t('chat:composer.removeAttachment', { name: attachment.filename || t('chat:composer.attachment') })} onPress={() => onRemove(index)} /> : null}
+          {onRemove ? <Button testID="attachment-remove" accessibilityLabel={t('chat:composer.removeAttachment', { name: attachment.filename || t('chat:composer.attachment') })} onPress={() => onRemove(index)} variant="ghost" size="icon" className={cn(stylesClasses.remove)} ><Icon name={"close"} size={16} /></Button> : null}
         </View>
       ))}
       {selected ? <AttachmentPreview key={selected.uri} attachment={selected} onClose={() => setSelected(undefined)} /> : null}
@@ -40,9 +42,11 @@ export function AttachmentStrip({ attachments, onRemove }: { attachments: Prompt
   );
 }
 
-const styles = StyleSheet.create({
-  row: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  item: { flexDirection: 'row', alignItems: 'center' },
-  tile: { width: 56, height: 56, borderWidth: 1, borderRadius: 8, overflow: 'hidden', alignItems: 'center', justifyContent: 'center' },
-  remove: { width: 44, height: 44, margin: 0 },
-});
+
+
+const stylesClasses = {
+  "tile": "w-14 h-14 border rounded-[8px] overflow-hidden items-center justify-center",
+  "row": "flex-row flex-wrap gap-2",
+  "item": "flex-row items-center",
+  "remove": "w-11 h-11 m-0"
+} as const;

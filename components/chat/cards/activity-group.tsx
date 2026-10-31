@@ -1,9 +1,12 @@
+import { cn } from '@/lib/utils';
+import { Text } from '@/components/ui/text';
+import { Spinner } from '@/components/ui/spinner';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useRecyclingState } from '@shopify/flash-list';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Pressable, StyleSheet, View } from 'react-native';
-import { ActivityIndicator, Text } from 'react-native-paper';
+
 
 import { ActivityItemRow, ActivityReadGroupRow } from '@/components/chat/cards/activity-item';
 import { Colors } from '@/constants/theme';
@@ -56,22 +59,22 @@ export function ActivityGroupRow({ flat = false, fontSize, group, palette, sessi
   const actionLabel = t(expanded ? 'chat:activity.collapseActivity' : 'chat:activity.expandActivity');
   const header = (
     <>
-      <Text variant="bodyMedium" numberOfLines={2} style={[styles.label, { color: palette.muted }]}>{label}</Text>
-      <View style={styles.spacer} />
+      <Text numberOfLines={2} className={cn(stylesClasses.label, "text-muted-foreground")} variant="description">{label}</Text>
+      <View className={cn(stylesClasses.spacer)} />
       {group.status === 'error' ? <MaterialCommunityIcons name="alert-circle-outline" size={15} color={palette.danger} /> : null}
-      {showProgress ? <ActivityIndicator size={12} color={palette.tint} /> : null}
+      {showProgress ? <Spinner size={12} color={palette.tint} /> : null}
       {statusOnly ? null : <MaterialCommunityIcons name={expanded ? 'chevron-down' : 'chevron-right'} size={16} color={palette.muted} />}
     </>
   );
 
   return (
-    <View style={[styles.container, !flat && styles.containerAssistant]}>
+    <View className={cn(stylesClasses.container, !flat && stylesClasses.containerAssistant)}>
       {statusOnly ? (
         <View
           accessible
           accessibilityLabel={label}
           accessibilityLiveRegion="polite"
-          style={styles.header}
+          className={cn(stylesClasses.header)}
           testID={`transcript-activity-${group.key}`}>
           {header}
         </View>
@@ -87,7 +90,7 @@ export function ActivityGroupRow({ flat = false, fontSize, group, palette, sessi
         </Pressable>
       )}
       {!statusOnly && expanded ? (
-        <View style={styles.items}>
+        <View className={cn(stylesClasses.items)}>
           {childRows.map((row) => (
             row.kind === 'read'
               ? <ActivityReadGroupRow key={row.key} palette={palette} reads={row.reads} />
@@ -100,10 +103,14 @@ export function ActivityGroupRow({ flat = false, fontSize, group, palette, sessi
 }
 
 const styles = StyleSheet.create({
-  container: { alignSelf: 'stretch' },
-  containerAssistant: { marginLeft: 8, marginRight: '8%' },
-  header: { alignItems: 'center', borderRadius: 8, flexDirection: 'row', gap: 8, minHeight: 34, paddingHorizontal: 2, paddingVertical: 3 },
-  label: { flexShrink: 1 },
-  spacer: { flex: 1, minWidth: 0 },
-  items: { paddingTop: 1 },
+  header: { alignItems: 'center', borderRadius: 8, flexDirection: 'row', gap: 8, minHeight: 34, paddingHorizontal: 2, paddingVertical: 3 }
 });
+
+const stylesClasses = {
+  "label": "shrink",
+  "spacer": "flex-1 min-w-0",
+  "container": "self-stretch",
+  "containerAssistant": "ml-2 mr-[8%]",
+  "header": "items-center rounded-[8px] flex-row gap-2 min-h-8.5 px-0.5 py-0.75",
+  "items": "pt-0.25"
+} as const;

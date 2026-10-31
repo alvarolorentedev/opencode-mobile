@@ -1,6 +1,6 @@
 # ADR 0007: Storybook for reusable components
 
-- Status: Accepted
+- Status: Superseded by ADR 0013
 - Date: 2026-10-29
 - Deciders: maintainers
 - Supersedes: —

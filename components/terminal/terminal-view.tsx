@@ -1,19 +1,20 @@
+import { useConfirmation } from '@/components/ui/use-confirmation';
 import { withAlpha } from '@/lib/color';
 import { useCallback, useEffect, useMemo, useRef } from 'react';
-import { Alert, Platform } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import * as Clipboard from 'expo-clipboard';
-
+import type { Palette } from '@/constants/theme';
 import { useTerminal } from '@/providers/opencode-contexts';
 import TerminalDOM, { type TerminalDOMRef } from './terminal-dom';
 import { pasteNeedsConfirmation } from './terminal-keys';
 
 export function TerminalView({ visible, slim, palette, onCopied, onError }: {
   visible: boolean; slim: boolean;
-  palette: { background: string; text: string; tint: string; surface: string };
+  palette: Palette;
   onCopied?: () => void;
   onError: (message: string) => void;
 }) {
+  const { confirmAction, confirmation } = useConfirmation();
   const { t } = useTranslation();
   const { terminalRuntime, activeTerminalId, sendTerminalInput } = useTerminal();
   const bridge = useRef<TerminalDOMRef>(null);
@@ -61,13 +62,9 @@ export function TerminalView({ visible, slim, palette, onCopied, onError }: {
       if (!text) return;
       const paste = () => { if (runtime.current.instances.some((entry) => entry.id === id && entry.status === 'connected')) bridge.current?.paste(id, text); };
       if (!pasteNeedsConfirmation(text)) { paste(); return; }
-      if (Platform.OS === 'web') { if (globalThis.confirm(t('terminal:console.pasteMessage'))) paste(); }
-      else Alert.alert(t('terminal:console.pasteTitle'), t('terminal:console.pasteMessage'), [
-        { text: t('common:actions.cancel'), style: 'cancel' },
-        { text: t('terminal:accessory.paste'), onPress: paste },
-      ]);
+      confirmAction(t('terminal:console.pasteTitle'), t('terminal:console.pasteMessage'), t('terminal:accessory.paste'), t('common:actions.cancel'), paste);
     } catch (error) { onError(String(error)); }
-  }, [onError, t]);
+  }, [confirmAction, onError, t]);
 
   useEffect(() => {
     const ids = new Set(terminalRuntime.instances.map((entry) => entry.id));
@@ -84,7 +81,7 @@ export function TerminalView({ visible, slim, palette, onCopied, onError }: {
     armed: t('terminal:accessory.armed'), locked: t('terminal:accessory.locked'), off: t('terminal:accessory.off'),
   }), [t]);
 
-  return <TerminalDOM ref={bridge} instances={terminalRuntime.instances} activeId={activeTerminalId} visible={visible} slim={slim} theme={theme} accent={palette.tint} onAccent={palette.background} labels={labels}
+  return <>{confirmation}{<TerminalDOM ref={bridge} instances={terminalRuntime.instances} activeId={activeTerminalId} visible={visible} slim={slim} theme={theme} accent={palette.tint} onAccent={palette.onTint} labels={labels}
     dom={{ style: { flex: 1 }, scrollEnabled: false, keyboardDisplayRequiresUserAction: true, automaticallyAdjustContentInsets: false }}
-    onReady={onReady} onWritten={onWritten} onInput={onInput} onResize={onResize} onPaste={onPaste} onCopy={onCopy} onError={reportError} />;
+    onReady={onReady} onWritten={onWritten} onInput={onInput} onResize={onResize} onPaste={onPaste} onCopy={onCopy} onError={reportError} />}</>;
 }

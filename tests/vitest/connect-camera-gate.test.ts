@@ -1,3 +1,4 @@
+import { uiImports } from '../helpers/ui.mjs';
 import { describe, expect, it, vi } from 'vitest';
 
 import { hookRuntime, loadTs } from '../helpers/runtime.mjs';
@@ -22,13 +23,14 @@ describe('Cloud Link camera permission gate', () => {
     });
     const onCancel = vi.fn();
     const { ConnectCameraGate } = await loadTs('components/settings/connect-camera-gate.tsx', {
+    ...uiImports,
       react: runtime.react,
-      './sections/setting-rows': { SettingButton: 'Button' },
+      './sections/setting-rows': { Button: 'Button' },
     'react/jsx-runtime': { jsx: (type: unknown, props: Record<string, unknown>) => ({ type, props }), Fragment: 'Fragment' },
       'expo-camera': { useCameraPermissions },
       'react-i18next': { useTranslation: () => ({ t: (key: string) => key }) },
       'react-native': { Platform: { OS: 'android' }, StyleSheet: { create: (styles: unknown) => styles }, View: 'View' },
-      'react-native-paper': { ActivityIndicator: 'ActivityIndicator' },
+
     });
 
     runtime.mount(ConnectCameraGate, { onCancel, children: 'pairing-and-subscription' });
@@ -44,13 +46,14 @@ describe('Cloud Link camera permission gate', () => {
     const runtime = hookRuntime();
     const useCameraPermissions = vi.fn(() => [null, vi.fn()]);
     const { ConnectCameraGate } = await loadTs('components/settings/connect-camera-gate.tsx', {
+    ...uiImports,
       react: runtime.react,
-      './sections/setting-rows': { SettingButton: 'Button' },
+      './sections/setting-rows': { Button: 'Button' },
     'react/jsx-runtime': { jsx: (type: unknown, props: Record<string, unknown>) => ({ type, props }), Fragment: 'Fragment' },
       'expo-camera': { useCameraPermissions },
       'react-i18next': { useTranslation: () => ({ t: (key: string) => key }) },
       'react-native': { Platform: { OS: 'web' }, StyleSheet: { create: (styles: unknown) => styles }, View: 'View' },
-      'react-native-paper': { ActivityIndicator: 'ActivityIndicator' },
+
     });
 
     runtime.mount(ConnectCameraGate, { onCancel: vi.fn(), children: 'pairing-and-subscription' });

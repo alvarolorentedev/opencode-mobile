@@ -1,13 +1,13 @@
+import { cn } from '@/lib/utils';
+import { Text } from '@/components/ui/text';
+import { ScreenHeader } from '@/components/ui/screen-header';
+import { Feedback } from '@/components/ui/feedback';
 import { useCallback, useMemo, useRef, useState } from 'react';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { Platform, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import {
-  Appbar,
-  Snackbar,
-  Text,
-} from 'react-native-paper';
+
 
 import { Fonts } from '@/constants/theme';
 import { WorkspaceScope, useWorkspaces } from '@/providers/workspace-context';
@@ -176,14 +176,9 @@ function SettingsContent() {
 
   return (
     <>
-      <Appbar.Header
-        style={[styles.header, { backgroundColor: palette.surface, paddingTop: insets.top, height: 64 + insets.top }]}
-        statusBarHeight={0}
-        elevated>
-        <View style={styles.headerMain}>
-          <Text maxFontSizeMultiplier={1.5} variant="titleMedium" style={[styles.headerTitle, { color: palette.text }]}>{t('common:tabs.settings')}</Text>
-        </View>
-      </Appbar.Header>
+      <ScreenHeader style={[styles.header, { backgroundColor: palette.surface, paddingTop: insets.top, height: 64 + insets.top }]} safeArea={false}><View className={cn(stylesClasses.headerMain)}>
+          <Text maxFontSizeMultiplier={1.5} className={cn("text-foreground")} style={[styles.headerTitle]} variant="title">{t('common:tabs.settings')}</Text>
+        </View></ScreenHeader>
       <SettingsHome sections={sections} onOpen={(section, target) => { setSearchTarget(target); section.onPress(); }} />
 
       <OverlaySheet visible={Boolean(activeSection)} fitContent scrollable={false} testID="settings-section-overlay" title={activeSection?.title ?? t('common:tabs.settings')} onClose={() => { setOpenSection(undefined); setSearchTarget(undefined); }}>
@@ -193,30 +188,18 @@ function SettingsContent() {
         </SettingsPanel>
       </OverlaySheet>
 
-      <Snackbar
-        visible={Boolean(notifications.feedback)}
-        onDismiss={notifications.clearFeedback}
-        duration={4000}>
-        {notifications.feedback}
-      </Snackbar>
-      <Snackbar
-        visible={Boolean(voiceSetup.feedback)}
-        onDismiss={voiceSetup.clearFeedback}
-        duration={4000}>
-        {voiceSetup.feedback}
-      </Snackbar>
-      <Snackbar
-        visible={Boolean(reconnectFeedback)}
-        onDismiss={() => setReconnectFeedback(undefined)}
-        duration={4000}>
-        {reconnectFeedback}
-      </Snackbar>
+      <Feedback duration={4000} open={Boolean(notifications.feedback)} onOpenChange={() => (notifications.clearFeedback)()}>{notifications.feedback}</Feedback>
+      <Feedback duration={4000} open={Boolean(voiceSetup.feedback)} onOpenChange={() => (voiceSetup.clearFeedback)()}>{voiceSetup.feedback}</Feedback>
+      <Feedback duration={4000} open={Boolean(reconnectFeedback)} onOpenChange={() => (() => setReconnectFeedback(undefined))()}>{reconnectFeedback}</Feedback>
     </>
   );
 }
 
 const styles = StyleSheet.create({
   header: { elevation: 0 },
-  headerMain: { alignSelf: 'stretch', flex: 1, justifyContent: 'center', minWidth: 0 },
-  headerTitle: { fontFamily: Fonts.display, fontWeight: '700' },
+  headerTitle: { fontFamily: Fonts.display, fontWeight: '700' }
 });
+
+const stylesClasses = {
+  "headerMain": "self-stretch flex-1 justify-center min-w-0"
+} as const;

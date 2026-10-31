@@ -1,8 +1,11 @@
+import { Text } from '@/components/ui/text';
+import { Button } from '@/components/ui/button';
+import { Icon } from '@/components/ui/icon';
 import { useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { AppState, StyleSheet, View } from 'react-native';
 import { VideoView, useVideoPlayer } from 'expo-video';
-import { Button, Text } from 'react-native-paper';
+
 
 import { playAttachmentAudio, useAudioPlayer, useAudioPlayerStatus } from '@/lib/voice/attachment-audio';
 
@@ -18,10 +21,7 @@ export function AudioPreview({ uri, onError }: { uri: string; onError: () => voi
   return (
     <View style={styles.audio}>
       <Text>{`${Math.floor(status.currentTime)} / ${Math.floor(status.duration)} s`}</Text>
-      <Button testID="attachment-audio-play" icon={status.playing ? 'pause' : 'play'} mode="contained" disabled={!status.isLoaded}
-        onPress={() => { if (status.playing) player.pause(); else void playAttachmentAudio(player).catch(onError); }}>
-        {t(status.playing ? 'chat:attachments.pause' : 'chat:attachments.play')}
-      </Button>
+      <Button testID="attachment-audio-play" disabled={!status.isLoaded} onPress={() => { if (status.playing) player.pause(); else void playAttachmentAudio(player).catch(onError); }} variant="default"><Icon name={status.playing ? 'pause' : 'play'} size={20} /><Text>{t(status.playing ? 'chat:attachments.pause' : 'chat:attachments.play')}</Text></Button>
     </View>
   );
 }
@@ -38,5 +38,5 @@ export function VideoPreview({ uri, onError }: { uri: string; onError: () => voi
 
 const styles = StyleSheet.create({
   audio: { alignItems: 'center', gap: 16, paddingVertical: 24 },
-  video: { flex: 1, width: '100%', minHeight: 0 },
+  video: { flex: 1, width: '100%', minHeight: 0 }
 });

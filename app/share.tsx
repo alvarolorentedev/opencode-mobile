@@ -1,14 +1,21 @@
+import { cn } from '@/lib/utils';
+import { Text } from '@/components/ui/text';
+import { Button } from '@/components/ui/button';
+import { HeaderTitle, ScreenHeader } from '@/components/ui/screen-header';
+import { Icon } from '@/components/ui/icon';
+import { Spinner } from '@/components/ui/spinner';
+import { TextField } from '@/components/ui/text-field';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ScrollView, StyleSheet, Text as NativeText, View } from 'react-native';
-import { ActivityIndicator, Appbar, Button, Surface, Text } from 'react-native-paper';
+
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { AttachmentStrip } from '@/components/chat/attachment-strip';
 import { ProjectPicker } from '@/components/ui/project-picker';
 import { OverlaySheet } from '@/components/ui/overlay-sheet';
-import { TextInput } from '@/components/ui/text-input';
+
 import { Fonts } from '@/constants/theme';
 import { usePalette } from '@/hooks/use-palette';
 import { getConnectionScope } from '@/lib/connection-scope';
@@ -52,87 +59,69 @@ export default function ShareScreen() {
 
   const expired = sharedInput.emptyReason === 'expired';
   const done = (
-    <View style={[styles.center, { backgroundColor: palette.background }]}>
-      <Surface style={[styles.panel, { backgroundColor: palette.surface }]} elevation={1}>
-        <Text variant="titleMedium" style={{ color: palette.text }}>{expired ? t('share:expired') : t('share:empty')}</Text>
-        {expired ? <Text variant="bodyMedium" style={[styles.centerCopy, { color: palette.muted }]}>{t('share:expiredDescription')}</Text> : null}
-        <Button mode="contained" onPress={discard} style={styles.panelAction}>{t('share:backToChat')}</Button>
-      </Surface>
+    <View className={cn(stylesClasses.center, "bg-background")}>
+      <View className={cn(stylesClasses.panel, "bg-surface")}><Text className={cn("text-foreground")} variant="title">{expired ? t('share:expired') : t('share:empty')}</Text>{expired ? <Text className={cn(stylesClasses.centerCopy, "text-muted-foreground")} variant="description">{t('share:expiredDescription')}</Text> : null}<Button onPress={discard} variant="default" className={cn(stylesClasses.panelAction)} ><Text>{t('share:backToChat')}</Text></Button></View>
     </View>
   );
 
   return (
-    <View style={[styles.screen, { backgroundColor: palette.background }]}>
-      <Appbar.Header statusBarHeight={insets.top} style={{ backgroundColor: palette.surface }} elevated>
-        <Appbar.Content titleMaxFontSizeMultiplier={1.5} title={t('share:title')} titleStyle={{ fontFamily: Fonts.display, fontWeight: '700' }} />
-        <Appbar.Action icon="close" accessibilityLabel={t('common:actions.close')} onPress={() => router.dismissTo('/(tabs)')} />
-      </Appbar.Header>
+    <View className={cn(stylesClasses.screen, "bg-background")}>
+      <ScreenHeader className={cn("bg-surface")} safeArea={insets.top !== 0}><HeaderTitle title={t('share:title')} textStyle={{ fontFamily: Fonts.display, fontWeight: '700' }} maxFontSizeMultiplier={1.5}></HeaderTitle><Button accessibilityLabel={t('common:actions.close')} onPress={() => router.dismissTo('/(tabs)')} variant="ghost" size="icon"><Icon name={"close"} size={24} /></Button></ScreenHeader>
 
       {!isHydrated || sharedInput.resolving ? (
-        <View style={styles.center}><ActivityIndicator size="large" color={palette.tint} /></View>
+        <View className={cn(stylesClasses.center)}><Spinner size="large" color={palette.tint} /></View>
       ) : !onboardingCompleted ? (
-        <View style={styles.center}>
-          <Text variant="bodyLarge" style={[styles.centerCopy, { color: palette.muted }]}>{t('share:finishSetup')}</Text>
-          <Button mode="contained" onPress={() => router.replace('/onboarding')}>{t('share:continueSetup')}</Button>
+        <View className={cn(stylesClasses.center)}>
+          <Text className={cn(stylesClasses.centerCopy, "text-muted-foreground")} variant="body">{t('share:finishSetup')}</Text>
+          <Button onPress={() => router.replace('/onboarding')} variant="default"><Text>{t('share:continueSetup')}</Text></Button>
         </View>
       ) : !pending ? (
-        <View style={{ flex: 1 }}>{sharedInput.error ? <Text style={{ color: palette.danger, padding: 20 }}>{sharedInput.error}</Text> : null}{done}</View>
+        <View className={cn("flex-1")}>{sharedInput.error ? <Text className={cn("text-destructive p-5")}>{sharedInput.error}</Text> : null}{done}</View>
       ) : (
         <ScrollView contentContainerStyle={styles.content}>
-          <Text variant="bodyMedium" style={{ color: palette.muted }}>{t('share:subtitle')}</Text>
+          <Text className={cn("text-muted-foreground")} variant="description">{t('share:subtitle')}</Text>
 
-          {!activeProject?.path ? <><Text variant="titleSmall" style={{ color: palette.text }}>{t('share:project')}</Text>
-          <View style={styles.projectRow}>
-            <NativeText numberOfLines={1} style={[styles.projectName, { color: palette.text }]}>
+          {!activeProject?.path ? <><Text className={cn("text-foreground")} variant="description">{t('share:project')}</Text>
+          <View className={cn(stylesClasses.projectRow)}>
+            <NativeText numberOfLines={1} className={cn(stylesClasses.projectName, "text-foreground")}>
               {activeProject?.label || t('share:noProject')}
             </NativeText>
-            <Button compact mode="outlined" icon="folder-swap-outline" onPress={() => setPickerVisible(true)}>
-              {t('share:chooseProject')}
-            </Button>
+            <Button onPress={() => setPickerVisible(true)} variant="outline"><Icon name={"folder-swap-outline"} size={20} /><Text>{t('share:chooseProject')}</Text></Button>
           </View></> : null}
-          <NativeText numberOfLines={1} style={{ color: palette.muted }}>{settings.serverUrl}</NativeText>
-          <Text variant="titleSmall">{t('share:conversation')}</Text>
-          <View style={styles.projectRow}>
-            <NativeText numberOfLines={1} style={[styles.projectName, { color: palette.text }]}>{targetTitle}</NativeText>
-            <Button disabled={sharedInput.busy} mode="outlined" onPress={() => setChatPickerVisible(true)}>{t('share:change')}</Button>
+          <NativeText numberOfLines={1} className={cn("text-muted-foreground")}>{settings.serverUrl}</NativeText>
+          <Text  variant="description">{t('share:conversation')}</Text>
+          <View className={cn(stylesClasses.projectRow)}>
+            <NativeText numberOfLines={1} className={cn(stylesClasses.projectName, "text-foreground")}>{targetTitle}</NativeText>
+            <Button disabled={sharedInput.busy} onPress={() => setChatPickerVisible(true)} variant="outline"><Text>{t('share:change')}</Text></Button>
           </View>
-          {target?.projectPath ? <Text variant="bodySmall">{target.projectPath}</Text> : null}
+          {target?.projectPath ? <Text  variant="label">{target.projectPath}</Text> : null}
           {connection.status !== 'connected' ? (
-            <Text variant="bodySmall" style={{ color: palette.warning }}>{t('share:notConnected')}</Text>
+            <Text className={cn("text-warning")} variant="label">{t('share:notConnected')}</Text>
           ) : null}
 
           {pending.text ? (
-            <Surface style={[styles.block, { backgroundColor: palette.surface, borderColor: palette.border }]}>
-              <Text selectable style={{ color: palette.text }}>{pending.text}</Text>
-            </Surface>
+            <View className={cn(stylesClasses.block, "bg-surface border-border")}><Text selectable className={cn("text-foreground")}>{pending.text}</Text></View>
           ) : null}
 
           {pending.url ? (
-            <Surface style={[styles.block, { backgroundColor: palette.surface, borderColor: palette.border }]}>
-              <Text variant="labelSmall" style={{ color: palette.muted }}>{t('share:link')}</Text>
-              <Text selectable style={{ color: palette.tint }}>{pending.url}</Text>
-            </Surface>
+            <View className={cn(stylesClasses.block, "bg-surface border-border")}><Text className={cn("text-muted-foreground")} variant="label">{t('share:link')}</Text><Text selectable className={cn("text-primary")}>{pending.url}</Text></View>
           ) : null}
 
           {pending.attachments.length > 0 ? (
-            <View style={styles.attachments}>
-              <Text variant="titleSmall" style={{ color: palette.text }}>{t('share:attachments')}</Text>
+            <View className={cn(stylesClasses.attachments)}>
+              <Text className={cn("text-foreground")} variant="description">{t('share:attachments')}</Text>
               <AttachmentStrip attachments={pending.attachments} />
             </View>
           ) : null}
 
           {pending.skipped.length > 0 ? (
-            <Text variant="bodySmall" style={{ color: palette.warning }}>
-              {t('share:skipped', { items: pending.skipped.join(', ') })}
-            </Text>
+            <Text className={cn("text-warning")} variant="label">{t('share:skipped', { items: pending.skipped.join(', ') })}</Text>
           ) : null}
-          {sharedInput.error ? <Text style={{ color: palette.danger }}>{sharedInput.error}</Text> : null}
+          {sharedInput.error ? <Text className={cn("text-destructive")}>{sharedInput.error}</Text> : null}
 
-          <View style={styles.footer}>
-            <Button mode="outlined" onPress={discard}>{t('share:discard')}</Button>
-            <Button mode="contained" icon="plus" loading={sharedInput.busy}
-              disabled={sharedInput.busy || !target || (!pending.text && !pending.url && !pending.attachments.length)}
-              onPress={() => void addToChat()}>{t('share:addToChat')}</Button>
+          <View className={cn(stylesClasses.footer)}>
+            <Button onPress={discard} variant="outline"><Text>{t('share:discard')}</Text></Button>
+            <Button disabled={sharedInput.busy || !target || (!pending.text && !pending.url && !pending.attachments.length)} onPress={() => void addToChat()} variant="default">{sharedInput.busy ? <Spinner size="small" /> : null}<Icon name={"plus"} size={20} /><Text>{t('share:addToChat')}</Text></Button>
           </View>
         </ScrollView>
       )}
@@ -144,35 +133,33 @@ export default function ShareScreen() {
         testID="share-project-picker"
       />
       <OverlaySheet visible={chatPickerVisible} title={t('share:chooseConversation')} onClose={() => setChatPickerVisible(false)} testID="share-chat-picker">
-        <TextInput mode="outlined" value={search} onChangeText={setSearch} placeholder={t('chat:library.searchPlaceholder')} />
-        {activeProject?.path ? <Button icon="plus" onPress={() => {
+        <TextField value={search} onChangeText={setSearch} placeholder={t('chat:library.searchPlaceholder')}></TextField>
+        {activeProject?.path ? <Button onPress={() => {
           sharedInput.selectTarget({ connectionScope, projectPath: activeProject.path });
           setChatPickerVisible(false);
-        }}>{t('chat:library.newChat')}</Button> : null}
-        {sharedInput.targetsLoading && sharedInput.targets.length === 0 ? <ActivityIndicator color={palette.tint} /> : null}
+        }} variant="ghost"><Icon name={"plus"} size={20} /><Text>{t('chat:library.newChat')}</Text></Button> : null}
+        {sharedInput.targetsLoading && sharedInput.targets.length === 0 ? <Spinner color={palette.tint} /> : null}
         {sharedInput.targetsError ? (
-          <View style={styles.targetState}>
-            <Text accessibilityRole="alert" style={{ color: palette.danger }}>{sharedInput.targetsError}</Text>
-            <Button compact onPress={() => void sharedInput.refreshTargets()}>{t('common:actions.retry')}</Button>
+          <View className={cn(stylesClasses.targetState)}>
+            <Text accessibilityRole="alert" className={cn("text-destructive")}>{sharedInput.targetsError}</Text>
+            <Button onPress={() => void sharedInput.refreshTargets()} variant="ghost"><Text>{t('common:actions.retry')}</Text></Button>
           </View>
         ) : null}
         {!sharedInput.targetsLoading && !sharedInput.targetsError && sharedInput.targets.length === 0 ? (
-          <Text style={{ color: palette.muted }}>{t('share:noConversations')}</Text>
+          <Text className={cn("text-muted-foreground")}>{t('share:noConversations')}</Text>
         ) : null}
         {sharedInput.targets.filter((item) => `${item.title || ''} ${item.projectPath}`.toLocaleLowerCase().includes(search.toLocaleLowerCase())).map((item) => {
           const isSelected = Boolean(target && item.connectionScope === target.connectionScope
             && item.projectPath === target.projectPath && item.sessionId === target.sessionId);
           const label = `${item.title || t('chat:library.untitledChat')} · ${item.projectPath.split('/').filter(Boolean).pop()}`;
           return (
-            <Button key={JSON.stringify([item.connectionScope, item.projectPath, item.sessionId])} icon={isSelected ? 'check' : undefined}
-              accessibilityLabel={isSelected ? `${label}, ${t('chat:modelPicker.selected')}` : label}
-              style={{ minHeight: 44 }} onPress={() => {
+            <Button key={JSON.stringify([item.connectionScope, item.projectPath, item.sessionId])} accessibilityLabel={isSelected ? `${label}, ${t('chat:modelPicker.selected')}` : label} onPress={() => {
                 sharedInput.selectTarget(item); setChatPickerVisible(false);
-              }}>{label}</Button>
+              }} variant="ghost" className={cn("min-h-11")} ><Icon name={isSelected ? 'check' : undefined} size={20} /><Text>{label}</Text></Button>
           );
         })}
         {search.trim() && sharedInput.targets.length > 0 && !sharedInput.targets.some((item) => `${item.title || ''} ${item.projectPath}`.toLocaleLowerCase().includes(search.toLocaleLowerCase())) ? (
-          <Text style={{ color: palette.muted }}>{t('chat:library.noMatchingChats')}</Text>
+          <Text className={cn("text-muted-foreground")}>{t('chat:library.noMatchingChats')}</Text>
         ) : null}
       </OverlaySheet>
     </View>
@@ -180,16 +167,19 @@ export default function ShareScreen() {
 }
 
 const styles = StyleSheet.create({
-  screen: { flex: 1 },
-  center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 24, gap: 16 },
-  centerCopy: { textAlign: 'center' },
-  panel: { width: '100%', maxWidth: 480, padding: 24, gap: 12, borderRadius: 16, alignItems: 'center' },
-  panelAction: { marginTop: 8 },
-  content: { padding: 20, gap: 12 },
-  projectRow: { flexDirection: 'row', alignItems: 'center', gap: 12, flexWrap: 'wrap' },
-  projectName: { flex: 1, minWidth: 120, fontWeight: '600' },
-  block: { borderWidth: 1, borderRadius: 12, padding: 12, gap: 4 },
-  attachments: { gap: 8 },
-  footer: { flexDirection: 'row', justifyContent: 'flex-end', flexWrap: 'wrap', gap: 10, marginTop: 8 },
-  targetState: { alignItems: 'flex-start', gap: 6 },
+  content: { padding: 20, gap: 12 }
 });
+
+const stylesClasses = {
+  "center": "flex-1 items-center justify-center p-6 gap-4",
+  "panel": "w-full max-w-120 p-6 gap-3 rounded-[16px] items-center",
+  "centerCopy": "text-center",
+  "panelAction": "mt-2",
+  "screen": "flex-1",
+  "projectRow": "flex-row items-center gap-3 flex-wrap",
+  "projectName": "flex-1 min-w-30 font-semibold",
+  "block": "border rounded-[12px] p-3 gap-1",
+  "attachments": "gap-2",
+  "footer": "flex-row justify-end flex-wrap gap-2.5 mt-2",
+  "targetState": "items-start gap-1.5"
+} as const;

@@ -157,8 +157,9 @@ export async function ensureConnectionSection(page) {
   const addButton = page.getByTestId('connection-add-button');
   // Wait for the screen itself; tapping a header before it mounts is what lets
   // a click land on the neighbouring accordion.
+  if (await addButton.isVisible().catch(() => false)) return;
+  await closeSettingsOverlay(page);
   await connectionHeader.waitFor({ state: 'visible', timeout: 15_000 });
-  if (!await addButton.isVisible().catch(() => false)) await closeSettingsOverlay(page);
 
   for (let attempt = 0; attempt < 4; attempt += 1) {
     if (await addButton.isVisible().catch(() => false)) {
@@ -270,7 +271,7 @@ export async function connectToSavedConnection(page, name) {
   await goToTab(page, 'Projects');
   await workspaceProjectButton(page).click();
   await page.getByRole('button', { name: /^All servers: / }).click();
-  await page.getByRole('button', { name, exact: true }).last().click();
+  await page.getByRole('radio', { name, exact: true }).click();
   await page.getByRole('button', { name: /^Select / }).first().click();
   await goToTab(page, 'Settings');
 }
@@ -280,8 +281,9 @@ export async function connectToSavedConnection(page, name) {
 export async function ensureAiSection(page) {
   const aiHeader = page.getByRole('button', { name: /^AI & providers/ });
   const addProvider = page.getByTestId('settings-add-provider-button');
+  if (await addProvider.isVisible().catch(() => false)) return;
+  await closeSettingsOverlay(page);
   await aiHeader.waitFor({ state: 'visible', timeout: 15_000 });
-  if (!await addProvider.isVisible().catch(() => false)) await closeSettingsOverlay(page);
 
   for (let attempt = 0; attempt < 4; attempt += 1) {
     if (await addProvider.isVisible().catch(() => false)) {
@@ -392,12 +394,14 @@ export async function exerciseInteractiveTerminal(page, request, origin, command
     const clipboardData = new DataTransfer(); clipboardData.setData('text/plain', text);
     element.dispatchEvent(new ClipboardEvent('paste', { clipboardData, bubbles: true, cancelable: true }));
   }, pasteText);
-  page.once('dialog', (dialog) => dialog.dismiss()); await dispatchPaste();
+  await dispatchPaste();
+  await respondToConfirmation(page, false);
   const beforeCancel = (await snapshot())[0].input.length;
   await input.press('Control+c');
   await expect.poll(async () => (await snapshot())[0].input.length).toBeGreaterThan(beforeCancel);
   expect((await snapshot())[0].input.join('')).not.toContain('echo paste');
-  page.once('dialog', (dialog) => dialog.accept()); await dispatchPaste();
+  await dispatchPaste();
+  await respondToConfirmation(page, true);
   await expect.poll(async () => (await snapshot())[0].input.join('')).toContain('\x1b[200~echo paste\recho second\x1b[201~');
   await input.press('Control+c');
   await page.getByRole('button', { name: 'Ctrl, off', exact: true }).click();
@@ -418,4 +422,12 @@ export async function seedOnboarding(page) {
   await page.addInitScript(() => {
     globalThis.localStorage.setItem('opencode-mobile.onboarding-version', JSON.stringify({ version: 1 }));
   });
+}
+
+// App confirmations are accessible AlertDialogs; exercise their actual actions.
+export async function respondToConfirmation(page, accept = true) {
+  const dialog = page.getByRole('alertdialog');
+  await expect(dialog).toBeVisible();
+  await dialog.getByRole('button').nth(accept ? 1 : 0).click();
+  await expect(dialog).not.toBeVisible();
 }

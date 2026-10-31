@@ -1,5 +1,8 @@
+import { cn } from '@/lib/utils';
+import { Button } from '@/components/ui/button';
+import { Text } from '@/components/ui/text';
 import { useTranslation } from 'react-i18next';
-import { Button } from 'react-native-paper';
+
 
 import { OnboardingStep } from '@/components/onboarding/onboarding-step';
 import { useOnboardingNavigation } from '@/components/onboarding/use-onboarding-navigation';
@@ -11,8 +14,8 @@ export default function OnboardingGeneralScreen() {
   return (
     <OnboardingStep step="general" title={t('onboarding:general.title')} subtitle={t('onboarding:general.subtitle')} testID="onboarding-general" footer={
       <>
-        <Button style={{ marginRight: 'auto' }} testID="onboarding-general-skip" onPress={navigation.next}>{t('onboarding:permissions.skip')}</Button>
-        <Button mode="contained" testID="onboarding-general-continue" onPress={navigation.next}>{t('onboarding:permissions.continue')}</Button>
+        <Button testID="onboarding-general-skip" onPress={navigation.next} variant={"ghost"} className={cn("mr-auto")} style={[undefined, undefined]}><Text>{t('onboarding:permissions.skip')}</Text></Button>
+        <Button testID="onboarding-general-continue" onPress={navigation.next} variant={"default"}><Text>{t('onboarding:permissions.continue')}</Text></Button>
       </>
     }>
       <OnboardingGeneralSettings />

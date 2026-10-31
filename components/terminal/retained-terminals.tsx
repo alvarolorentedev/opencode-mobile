@@ -1,7 +1,8 @@
+import type { Palette } from '@/constants/theme';
 import { View, StyleSheet } from 'react-native';
 import { WorkspaceScope, useWorkspaces } from '@/providers/workspace-context';
 import { TerminalView } from '@/components/terminal/terminal-view';
-export function RetainedTerminals({ visible, slim, palette, onCopied, onError }: { visible: boolean; slim: boolean; palette: { background: string; text: string; tint: string; surface: string }; onCopied?: () => void; onError: (message: string) => void }) {
+export function RetainedTerminals({ visible, slim, palette, onCopied, onError }: { visible: boolean; slim: boolean; palette: Palette; onCopied?: () => void; onError: (message: string) => void }) {
   const registry = useWorkspaces();
   const selected = registry.terminalTarget ?? registry.focus;
   const selectedKey = selected && registry.resolveKey(selected);

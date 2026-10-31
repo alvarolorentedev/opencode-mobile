@@ -25,9 +25,10 @@ rule here should map to a token, component, or test in the repository.
 
 ## Design workflow
 
-1. **Start from the system.** Use `constants/theme.ts`,
-   `constants/appearance.ts`, `constants/paper-theme.ts`, and
-   `constants/design-tokens.ts`. Do not introduce literal colors or spacing.
+1. **Start from the system.** Author shared values in `constants/ui-tokens.json`.
+   Use the generated CSS and TypeScript projections in `constants/theme.ts`
+   and `constants/design-tokens.ts`; appearance preferences remain in
+   `constants/appearance.ts`. Do not duplicate tokens in components.
 2. **Reuse before adding.** Check the [component inventory](component-inventory.md)
    and the matching area file before creating a new control.
 3. **Build the component in its correct layer.** Presentation and local UI

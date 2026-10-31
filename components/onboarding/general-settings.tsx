@@ -1,5 +1,6 @@
+import { FieldDescription } from '@/components/ui/text-field';
 import { useTranslation } from 'react-i18next';
-import { HelperText } from 'react-native-paper';
+
 
 import { PromptDeliveryField } from '@/components/settings/sections/chat-preference-fields';
 import { LanguageSection } from '@/components/settings/sections/language-section';
@@ -36,7 +37,7 @@ export function OnboardingGeneralSettings() {
           }}
           palette={palette}
         />
-        {models.length === 0 ? <HelperText type="info">{t('settings:providers.noModels')}</HelperText> : null}
+        {models.length === 0 ? <FieldDescription  invalid={false}>{t('settings:providers.noModels')}</FieldDescription> : null}
         {serverCapabilities.promptDeliveryAvailable ? <PromptDeliveryField chatPreferences={chatPreferences} palette={palette} updateChatPreferences={updateChatPreferences} /> : null}
       </> : null}
     </>

@@ -246,7 +246,7 @@ describe('documentation contract', () => {
     assert.ok(existsSync(path.join(root, '.storybook', 'preview.tsx')), '.storybook/preview.tsx is missing.');
 
     const stories = [
-      path.join(root, 'components', 'ui', 'text-input.stories.tsx'),
+      path.join(root, 'components', 'ui', 'text-field.stories.tsx'),
       path.join(root, 'components', 'ui', 'update-notice.stories.tsx'),
       path.join(root, 'components', 'settings', 'sections', 'setting-rows.stories.tsx'),
       path.join(root, '.storybook', 'stories', 'foundations.stories.tsx'),
@@ -272,6 +272,7 @@ describe('documentation contract', () => {
 
     for (const file of files) {
       const source = readFileSync(file, 'utf8');
+      if (relative(file).startsWith('docs/adr/') && /^- Status: Superseded by ADR /m.test(source)) continue;
       for (const match of source.matchAll(/`([^`\n]+)`/g)) {
         const raw = match[1].trim();
         if (!isInlinePath(raw)) continue;

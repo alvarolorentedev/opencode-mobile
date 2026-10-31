@@ -78,11 +78,11 @@ publishing a competing module.
 ### Bottom sheets: `@gorhom/bottom-sheet`
 
 `@gorhom/bottom-sheet` supports Reanimated 4 and web, and could replace
-`OverlaySheet`, `NativeSelect`'s modal sheet, and the model picker's sheet.
+`OverlaySheet`, `CatalogSelect`'s modal sheet, and the model picker's sheet.
 
 Deferred because the current sheet behavior is already factored through
 `OverlaySheet` + `useSwipeDismiss`, is covered by flow tests, and integrates
-directly with Paper's portal and the workspace-scope context. Adopt it only if
+directly with the primitive portal and the workspace-scope context. Adopt it only if
 snap points, keyboard behavior, or gesture edge cases become a real problem.
 
 ### Diff rendering: `parse-diff` / `react-native-diffs`
@@ -110,7 +110,7 @@ publish only when there is a second consumer or clear ecosystem demand.
 | Resilient event stream | `providers/realtime/*`, the transport half of `use-opencode-realtime.ts`, `shared-event-stream.ts` | Medium-high: RN SSE libraries handle transport, not liveness, AppState, NetInfo, polling fallback, and backoff | 1–2 weeks | Later, with a second consumer |
 | Expo speech input | `lib/voice/use-speech-input.ts`, errors, transcript accumulation, wake phrase, permissions, capabilities | Medium-high: owner coordination, on-device→network fallback, and wake-phrase gating sit above `expo-speech-recognition` | 2–3 weeks | Later |
 | Ongoing activity service | `modules/opencode-activity` and the generic activity notification helpers | Medium: Android `dataSync` foreground service, promoted ongoing notification, and headless keepalive are common needs | 2–3 weeks | Check Notifee and existing foreground-service modules first |
-| Paper UI kit | `NativeSelect`, `OverlaySheet`, `NumericSlider`, `SwipeRow` | Medium: searchable select and swipe-dismiss sheets are missing RN primitives | 1 week | Internal package only unless a design-system release is intended |
+| Source-owned UI | `CatalogSelect`, `OverlaySheet`, `NumericSlider`, `SwipeRow` | Medium: searchable select and swipe-dismiss sheets are missing RN primitives | 1 week | Internal package only unless a design-system release is intended |
 
 ### Terminal kit boundary
 

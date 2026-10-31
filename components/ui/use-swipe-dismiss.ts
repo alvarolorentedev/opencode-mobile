@@ -74,10 +74,10 @@ export function useSwipeDismiss({ visible, enabled, onDismiss }: {
       }
     });
 
-  const sheetStyle = useAnimatedStyle(() => ({ transform: [{ translateY: translateY.value }] }));
+  const sheetStyle = useAnimatedStyle(() => ({ transform: [{ translateY: translateY.value }] }), [translateY]);
   const backdropStyle = useAnimatedStyle(() => ({
     opacity: sheetHeight > 0 ? Math.max(0.4, 1 - (translateY.value / (sheetHeight + 1)) * 0.6) : 1,
-  }));
+  }), [sheetHeight, translateY]);
 
   return { pan, sheetStyle, backdropStyle, handleSheetLayout };
 }

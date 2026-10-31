@@ -1,3 +1,5 @@
+import { usePalette } from '@/hooks/use-palette';
+import { useColorScheme } from '@/hooks/use-color-scheme';
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import type { ReactNode } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
@@ -7,20 +9,22 @@ import { ControlSize, Shape, Spacing } from '@/constants/design-tokens';
 import { Fonts, getColors } from '@/constants/theme';
 
 function Section({ children, title }: { children: ReactNode; title: string }) {
+  const palette = usePalette();
   return (
     <View style={styles.section}>
-      <Text style={[styles.heading, { color: getColors('light', 'green').text }]}>{title}</Text>
+      <Text style={[styles.heading, { color: palette.text }]}>{title}</Text>
       {children}
     </View>
   );
 }
 
 function Foundations() {
-  const palette = getColors('light', 'green');
+  const palette = usePalette();
+  const scheme = useColorScheme();
   const roles = ['background', 'surface', 'surfaceAlt', 'text', 'muted', 'border', 'tint', 'accent', 'success', 'warning', 'danger'] as const;
   return (
     <View style={styles.page}>
-      <Section title="Semantic colors (green / light)">
+      <Section title="Semantic colors (active appearance)">
         <View style={styles.swatches}>
           {roles.map((role) => (
             <View key={role} style={styles.swatch}>
@@ -34,7 +38,7 @@ function Foundations() {
       <Section title="Accent presets">
         <View style={styles.swatches}>
           {ACCENT_COLORS.map((accent) => {
-            const accentPalette = getColors('light', accent);
+            const accentPalette = getColors(scheme, accent);
             return (
               <View key={accent} style={styles.swatch}>
                 <View style={[styles.chip, { backgroundColor: accentPalette.tint, borderColor: accentPalette.border }]} />

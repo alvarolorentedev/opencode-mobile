@@ -1,7 +1,9 @@
-import { createContext, useContext, type PropsWithChildren } from 'react';
+import { createContext, useContext, useLayoutEffect, type PropsWithChildren } from 'react';
+
+import { Uniwind } from 'uniwind';
 
 import { DEFAULT_ACCENT_COLOR, type AccentColor, type ColorScheme } from '@/constants/appearance';
-import { getColors, type Palette } from '@/constants/theme';
+import { getColors, getUiVariables, type Palette } from '@/constants/theme';
 
 export type Appearance = {
   scheme: ColorScheme;
@@ -21,6 +23,11 @@ const FALLBACK_APPEARANCE: Appearance = {
 const AppearanceContext = createContext<Appearance | undefined>(undefined);
 
 export function AppearanceProvider({ children, value }: PropsWithChildren<{ value: Appearance }>) {
+  useLayoutEffect(() => {
+    Uniwind.updateCSSVariables('light', getUiVariables('light', value.accent));
+    Uniwind.updateCSSVariables('dark', getUiVariables('dark', value.accent));
+    Uniwind.setTheme(value.scheme);
+  }, [value.scheme, value.accent]);
   return <AppearanceContext.Provider value={value}>{children}</AppearanceContext.Provider>;
 }
 

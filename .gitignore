@@ -77,3 +77,4 @@ service-account*.json
 apple-ci/
 output/
 .playwright-cli/
+/node_modules

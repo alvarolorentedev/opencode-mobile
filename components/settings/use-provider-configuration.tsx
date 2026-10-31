@@ -14,21 +14,7 @@ import { usePalette } from '@/hooks/use-palette';
 
 type ProviderFeedback = { type: 'success' | 'info' | 'error'; message: string };
 
-export function initialAuthValues(method?: ProviderAuthMethod): ProviderAuthValues {
-  const values: ProviderAuthValues = {};
-  method?.prompts?.forEach((prompt) => {
-    if (prompt.type === 'select' && prompt.options?.length) {
-      values[prompt.key] = typeof prompt.defaultValue === 'string' ? prompt.defaultValue : prompt.options[0].value;
-    } else if (prompt.type === 'multiselect') {
-      values[prompt.key] = Array.isArray(prompt.defaultValue) ? prompt.defaultValue : [];
-    } else if (prompt.type === 'boolean') {
-      values[prompt.key] = prompt.defaultValue === true;
-    } else if (prompt.defaultValue !== undefined) {
-      values[prompt.key] = prompt.defaultValue;
-    }
-  });
-  return values;
-}
+export { initialAuthValues } from './forms/provider-auth-schema';
 
 // Ensure API-key methods always expose a credential field, then prepend it to
 // any method-specific form fields.
@@ -77,7 +63,6 @@ export function useProviderConfiguration() {
   const [selectedProviderId, setSelectedProviderId] = useState<string>();
   const [step, setStep] = useState<ProviderSetupStep>('method');
   const [selectedMethodIndex, setSelectedMethodIndex] = useState(0);
-  const [authValues, setAuthValues] = useState<ProviderAuthValues>({});
   const [isConfiguringProvider, setIsConfiguringProvider] = useState(false);
   const [providerDialogError, setProviderDialogError] = useState<string>();
   const [oauthStage, setOAuthStage] = useState<ProviderOAuthStage>('idle');
@@ -102,22 +87,11 @@ export function useProviderConfiguration() {
     [providerAuthMethodsById, selectedProviderId, serverCapabilities.contract, t],
   );
   const selectedMethod = effectiveAuthMethods[selectedMethodIndex];
-  const visiblePrompts = useMemo(
-    () =>
-      (selectedMethod?.prompts || []).filter((prompt) =>
-        (prompt.when ?? []).every((condition) =>
-          condition.op === 'eq' ? authValues[condition.key] === condition.value : authValues[condition.key] !== condition.value,
-        ),
-      ),
-    [authValues, selectedMethod],
-  );
-
   const resetProviderDialog = useCallback(() => {
     flowRef.current += 1;
     setSelectedProviderId(undefined);
     setStep('method');
     setSelectedMethodIndex(0);
-    setAuthValues({});
     setProviderDialogError(undefined);
     setIsConfiguringProvider(false);
     setOAuthStage('idle');
@@ -139,18 +113,16 @@ export function useProviderConfiguration() {
     setOAuthError(undefined);
     setSelectedProviderId(providerId);
     setSelectedMethodIndex(0);
-    setAuthValues(initialAuthValues(methods[0]));
     setStep(methods.length > 1 ? 'method' : 'configure');
   }, [providerAuthMethodsById, serverCapabilities.contract, t]);
 
   const selectMethod = useCallback((index: number) => {
     setSelectedMethodIndex(index);
-    setAuthValues(initialAuthValues(effectiveAuthMethods[index]));
     setOAuthStage('idle');
     setOAuthUrl(undefined);
     setOAuthError(undefined);
     setStep('configure');
-  }, [effectiveAuthMethods]);
+  }, []);
 
   const goBack = useCallback(() => {
     if (selectedProviderId) void providerOAuth.cancel(selectedProviderId);
@@ -183,7 +155,7 @@ export function useProviderConfiguration() {
     }
   }, [oauthCode, providerOAuth, resetProviderDialog, selectedMethodIndex, selectedProviderCopy?.label, selectedProviderId, t]);
 
-  const submitProviderConfiguration = useCallback(async () => {
+  const submitProviderConfiguration = useCallback(async (authValues: ProviderAuthValues) => {
     if (!selectedProviderId || !selectedMethod) return;
 
     const providerId = selectedProviderId;
@@ -250,7 +222,6 @@ export function useProviderConfiguration() {
       if (flowId === flowRef.current) setIsConfiguringProvider(false);
     }
   }, [
-    authValues,
     completeOAuthCode,
     connect,
     providerAccounts,
@@ -270,13 +241,8 @@ export function useProviderConfiguration() {
     resetProviderDialog();
   }, [providerOAuth, resetProviderDialog, selectedProviderId]);
 
-  const handleAuthValueChange = useCallback((key: string, value: string | number | boolean | string[]) => {
-    setAuthValues((current) => ({ ...current, [key]: value }));
-  }, []);
-
   const dialog = selectedProvider ? (
-    <ProviderConfigDialog
-      authValues={authValues}
+    <ProviderConfigDialog key={`${selectedProviderId}:${selectedMethodIndex}`}
       error={providerDialogError}
       isConfiguringProvider={isConfiguringProvider}
       methods={effectiveAuthMethods}
@@ -285,21 +251,19 @@ export function useProviderConfiguration() {
       oauthInstructions={oauthInstructions}
       oauthStage={oauthStage}
       oauthUrl={oauthUrl}
-      onAuthValueChange={handleAuthValueChange}
       onBack={goBack}
       onCancelOAuth={closeProviderDialog}
       onCompleteOAuth={() => void completeOAuthCode()}
       onDismiss={closeProviderDialog}
       onOAuthCodeChange={setOAuthCode}
       onSelectMethod={selectMethod}
-      onSubmit={() => void submitProviderConfiguration()}
+      onSubmit={(values) => void submitProviderConfiguration(values)}
       palette={palette}
       providerDescription={selectedProviderCopy?.description}
       providerLabel={selectedProviderCopy?.label || selectedProvider.id}
       selectedMethod={selectedMethod}
       selectedMethodIndex={selectedMethodIndex}
       step={step}
-      visiblePrompts={visiblePrompts}
     />
   ) : null;
 

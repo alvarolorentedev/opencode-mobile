@@ -54,13 +54,14 @@ coverage, and documentation links.
 | [0003](0003-v2-first-protocol-boundary.md) | V2-first protocol boundary with isolated V1 compatibility | Accepted |
 | [0004](0004-sse-with-polling-fallback.md) | SSE primary with polling fallback | Accepted |
 | [0005](0005-thin-routes-and-presentational-components.md) | Thin routes and presentational components | Accepted |
-| [0006](0006-semantic-design-tokens-and-paper.md) | Semantic design tokens with React Native Paper | Accepted |
-| [0007](0007-storybook-component-catalog.md) | Storybook for reusable components | Accepted |
+| [0006](0006-semantic-design-tokens-and-paper.md) | Semantic design tokens with React Native Paper | Superseded by ADR 0013 |
+| [0007](0007-storybook-component-catalog.md) | Storybook for reusable components | Superseded by ADR 0013 |
 | [0008](0008-documentation-information-architecture.md) | Documentation information architecture and checks | Accepted |
 | [0009](0009-agent-first-documentation-routing.md) | Agent-first documentation routing and drift checks | Accepted |
 | [0010](0010-risk-based-validation-and-selective-pr-e2e.md) | Risk-based validation and selective PR E2E | Superseded by ADR 0011 |
 | [0011](0011-release-from-green-main-builds.md) | Release from green main builds, not tag pushes | Accepted |
 | [0012](0012-shell-mediated-project-file-actions.md) | Shell-mediated project file actions | Accepted |
+| [0013](0013-source-owned-ui-and-complex-forms.md) | Source-owned Reusables, Uniwind tokens and complex forms | Accepted |
 
 ## Template
 

@@ -1,3 +1,4 @@
+import { uiImports } from '../helpers/ui.mjs';
 import { describe, expect, it } from 'vitest';
 
 import * as chatDiff from '@/components/chat/chat-diff';
@@ -23,6 +24,7 @@ async function mountDiff(diff: typeof baseDiff) {
   const runtime = hookRuntime();
   const element = (type: unknown, props: unknown) => ({ type, props });
   const { ActivityDiffCard } = await loadTs('components/chat/cards/activity-diff.tsx', {
+    ...uiImports,
     react: runtime.react,
     'react/jsx-runtime': { jsx: element, jsxs: element, Fragment: 'Fragment' },
     '@shopify/flash-list': { useRecyclingState: recyclingState(runtime) },
@@ -32,7 +34,7 @@ async function mountDiff(diff: typeof baseDiff) {
       StyleSheet: { create: (value: unknown) => value },
       View: 'View',
     },
-    'react-native-paper': { Text: 'Text' },
+
     '@expo/vector-icons': { MaterialCommunityIcons: 'Icon' },
     '@/components/chat/chat-diff': chatDiff,
     '@/constants/theme': { Colors: { light: {} } },

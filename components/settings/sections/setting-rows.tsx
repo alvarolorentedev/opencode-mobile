@@ -1,95 +1,51 @@
-import { useState, type ComponentProps } from 'react';
-import { Platform, Pressable, StyleSheet, Switch as NativeSwitch, View } from 'react-native';
-import { Button as PaperButton, Icon, Text } from 'react-native-paper';
-
-import { NativeSelect, type NativeSelectOption } from '@/components/ui/native-select';
+import type { ComponentProps } from 'react';
+import { Pressable, View } from 'react-native';
+import { CatalogSelect, type CatalogOption } from '@/components/ui/catalog-select';
 import { NumericSlider } from '@/components/ui/numeric-slider';
-import { TextInput } from '@/components/ui/text-input';
-import { ControlSize, Shape, Spacing } from '@/constants/design-tokens';
-import { Colors } from '@/constants/theme';
-import { withAlpha } from '@/lib/color';
+import { TextField } from '@/components/ui/text-field';
+import { Switch } from '@/components/ui/switch';
+import { Text } from '@/components/ui/text';
+import { Icon } from '@/components/ui/icon';
+import type { Palette } from '@/constants/theme';
+import { cn } from '@/lib/utils';
 import { SettingTarget } from '../settings-panel';
+export type { Palette } from '@/constants/theme';
 
-export type Palette = typeof Colors.light;
-
-export function SettingSwitchRow({ description, disabled = false, onValueChange, palette, title, value }: {
-  description: string;
-  disabled?: boolean;
-  onValueChange: (value: boolean) => void;
-  palette: Palette;
-  title: string;
-  value: boolean;
+export function SettingSwitchRow({ description, disabled = false, onValueChange, title, value }: {
+  description: string; disabled?: boolean; onValueChange: (value: boolean) => void; palette: Palette; title: string; value: boolean;
 }) {
-  const [focused, setFocused] = useState(false);
   return <SettingTarget label={title}>
     <Pressable accessibilityRole="switch" accessibilityLabel={title} accessibilityHint={description}
-      accessibilityState={{ checked: value, disabled }} aria-checked={value} aria-disabled={disabled} disabled={disabled} onPress={() => onValueChange(!value)}
-      onFocus={() => setFocused(true)} onBlur={() => setFocused(false)}
-      style={({ pressed }) => [styles.switchRow, { borderColor: focused ? palette.tint : 'transparent', backgroundColor: pressed ? palette.surfaceAlt : 'transparent', opacity: disabled ? 0.55 : 1 }]}>
-      <View style={styles.textWrap}>
-        <Text variant="bodyLarge" style={{ color: palette.text }}>{title}</Text>
-        {description ? <Text variant="bodyMedium" style={{ color: palette.muted }}>{description}</Text> : null}
-      </View>
+      accessibilityState={{ checked: value, disabled }} aria-checked={value} disabled={disabled} onPress={() => onValueChange(!value)}
+      className={cn('min-h-row flex-row items-center gap-4 rounded-control py-3 px-1 active:bg-accent web:focus-visible:outline-2 web:focus-visible:outline-ring', disabled && 'opacity-55')}>
+      <View className="flex-1 min-w-0 gap-1"><Text>{title}</Text>{description ? <Text variant="description" className="text-muted-foreground">{description}</Text> : null}</View>
       <View pointerEvents="none" aria-hidden accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
-        <NativeSwitch accessible={false} disabled={disabled} ios_backgroundColor={palette.border}
-          thumbColor={Platform.OS === 'android' ? (value ? palette.tint : palette.surface) : undefined}
-          trackColor={{ false: palette.border, true: withAlpha(palette.tint, 0x66 / 255) }} value={value} />
+        <Switch onCheckedChange={() => {}} accessible={false} disabled={disabled} checked={value} />
       </View>
     </Pressable>
   </SettingTarget>;
 }
 
-export function SettingSelectField<T extends string>({ compact = false, disabled = false, label, onValueChange, options, palette, searchable = false, selectedValue, testID, valueLabel }: {
-  compact?: boolean;
-  disabled?: boolean;
-  label: string;
-  onValueChange: (value: T) => void;
-  options: NativeSelectOption<T>[];
-  palette: Palette;
-  searchable?: boolean;
-  selectedValue?: T;
-  testID?: string;
-  valueLabel: string;
+export function SettingSelectField<T extends string>({ compact = false, disabled = false, label, onValueChange, options, searchable = false, selectedValue, testID, valueLabel }: {
+  compact?: boolean; disabled?: boolean; label: string; onValueChange: (value: T) => void; options: CatalogOption<T>[]; palette: Palette;
+  searchable?: boolean; selectedValue?: T; testID?: string; valueLabel: string;
 }) {
-  const [focused, setFocused] = useState(false);
   return <SettingTarget label={label}>
-    <NativeSelect disabled={disabled} onValueChange={onValueChange} options={options} searchable={searchable}
-      selectedValue={selectedValue} title={label}
-      renderTrigger={({ disabled: triggerDisabled, open, openState }) => (
-        <Pressable accessibilityRole="button" accessibilityLabel={`${label}. ${valueLabel}`}
-          accessibilityState={{ disabled: triggerDisabled, expanded: openState }} aria-disabled={triggerDisabled} aria-expanded={openState} disabled={triggerDisabled} onPress={open} testID={testID}
-          onFocus={() => setFocused(true)} onBlur={() => setFocused(false)}
-          style={({ pressed }) => [styles.selectField, { backgroundColor: palette.background, borderColor: openState || focused ? palette.tint : palette.border, opacity: triggerDisabled ? 0.55 : pressed ? 0.82 : 1 }]}>
-          <View style={[styles.textWrap, compact && styles.compactSelect]}>
-            <Text variant="labelMedium" style={[{ color: palette.muted }, compact && styles.compactLabel]}>{label}</Text>
-            <Text variant="bodyLarge" style={[styles.value, compact && styles.compactValue, { color: palette.text }]}>{valueLabel}</Text>
-          </View>
-          <Icon source="chevron-down" size={24} color={palette.muted} />
-        </Pressable>
-      )} />
+    <CatalogSelect disabled={disabled} onValueChange={onValueChange} options={options} searchable={searchable} selectedValue={selectedValue} title={label}
+      renderTrigger={({ disabled: blocked, open, openState }) => <Pressable accessibilityRole="button" accessibilityLabel={`${label}. ${valueLabel}`}
+        accessibilityState={{ disabled: blocked, expanded: openState }} disabled={blocked} onPress={open} testID={testID}
+        className={cn('min-h-field flex-row items-center gap-3 rounded-control border border-input bg-background p-3 active:bg-accent web:focus-visible:outline-2 web:focus-visible:outline-ring', blocked && 'opacity-55')}>
+        <View className={cn('flex-1 min-w-0 gap-1', compact && 'flex-row items-center justify-between gap-3')}>
+          <Text variant="label" className={cn('text-muted-foreground', compact && 'shrink max-w-[40%]')}>{label}</Text>
+          <Text className={cn('font-semibold', compact && 'flex-1 text-right')}>{valueLabel}</Text>
+        </View><Icon name="chevron-down" size={24} />
+      </Pressable>} />
   </SettingTarget>;
 }
 
-export function SettingButton({ style, contentStyle, ...props }: ComponentProps<typeof PaperButton>) {
-  return <PaperButton {...props} style={[{ borderRadius: Shape.control }, style]} contentStyle={[{ minHeight: ControlSize.target }, contentStyle]} />;
+export function SettingField(props: ComponentProps<typeof TextField>) {
+  return <SettingTarget label={props.label}><TextField {...props} /></SettingTarget>;
 }
-
-export function SettingTextInput(props: ComponentProps<typeof TextInput>) {
-  return <SettingTarget label={typeof props.label === 'string' ? props.label : undefined}>
-    <TextInput {...props} outlineStyle={[{ borderRadius: Shape.control }, props.outlineStyle]} />
-  </SettingTarget>;
-}
-
 export function SettingSlider(props: ComponentProps<typeof NumericSlider>) {
   return <SettingTarget label={props.label}><NumericSlider {...props} /></SettingTarget>;
 }
-
-const styles = StyleSheet.create({
-  switchRow: { minHeight: ControlSize.row, borderRadius: Shape.control, borderWidth: 1, paddingVertical: Spacing.md, paddingHorizontal: Spacing.xs, flexDirection: 'row', alignItems: 'center', gap: Spacing.lg },
-  selectField: { minHeight: ControlSize.field, borderRadius: Shape.control, borderWidth: 1, padding: Spacing.md, flexDirection: 'row', alignItems: 'center', gap: Spacing.md },
-  textWrap: { flex: 1, minWidth: 0, gap: Spacing.xs },
-  value: { fontWeight: '600' },
-  compactSelect: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: Spacing.md },
-  compactLabel: { flexShrink: 1, maxWidth: '40%' },
-  compactValue: { flex: 1, textAlign: 'right' },
-});

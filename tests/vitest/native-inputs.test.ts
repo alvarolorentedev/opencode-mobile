@@ -1,22 +1,19 @@
+import { uiImports } from '../helpers/ui.mjs';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { hookRuntime, loadTs } from '../helpers/runtime.mjs';
+import { Spacing } from '../../constants/design-tokens';
 
 type Element = { type: unknown; props: Record<string, any> };
 const element = (type: unknown, props: Element['props']) => ({ type, props });
 const flatten = (style: any): Record<string, any> => Array.isArray(style)
   ? Object.assign({}, ...style.map(flatten)) : style || {};
-const platform = { OS: 'ios' };
-const typography = { fontFamily: 'System', fontSize: 16, lineHeight: 24, letterSpacing: 0.5, fontWeight: '400' };
+const platform = { OS: 'ios', select: (choices: Record<string, unknown>) => choices[platform.OS] ?? choices.native ?? choices.default };
 const native = {
   Platform: platform, StyleSheet: { create: (styles: unknown) => styles, flatten, absoluteFill: { position: 'absolute', top: 0, bottom: 0, left: 0, right: 0 } },
-  Keyboard: { dismiss: vi.fn() }, Text: 'NativeText', View: 'View',
+  Keyboard: { dismiss: vi.fn() }, Text: 'NativeText', TextInput: 'NativeTextInput', View: 'View',
   KeyboardAvoidingView: 'KeyboardAvoidingView', Pressable: 'Pressable', ScrollView: 'ScrollView',
   useWindowDimensions: () => ({ fontScale: 1, height: 844 }),
-};
-const paper = {
-  TextInput: 'PaperTextInput', Chip: 'Chip', IconButton: 'IconButton', Surface: 'Surface', Text: 'Text',
-  useTheme: () => ({ colors: { primary: '#00f' }, fonts: { bodyLarge: typography } }),
 };
 const jsx = { jsx: element, jsxs: element };
 const dismissKeyboardCalls: unknown[][] = [];
@@ -32,13 +29,38 @@ function find(root: Element, testID: string): Element | undefined {
   }
 }
 
-const { styles } = await loadTs('components/chat/chat-view-styles.ts', {
+const viewStyles = await loadTs('components/chat/chat-view-styles.ts', {
+    ...uiImports,
   'react-native': native, '@/constants/theme': { Fonts: { sans: 'Avenir Next', display: 'Avenir Next' } },
 });
-const { TextInput } = await loadTs('components/ui/text-input.tsx', {
-  'react/jsx-runtime': jsx, 'react-native': native, 'react-native-paper': paper,
+const { Input } = await loadTs('components/ui/input.tsx', {
+    ...uiImports,
+  'react/jsx-runtime': jsx, 'react-native': native, '@/hooks/use-palette': { usePalette: () => ({ tint: '#00f' }) },
+});
+const selectDimensions = { width: 390, height: 844 };
+const selectTrigger = { width: 360 };
+const { SelectContent } = await loadTs('components/ui/select.tsx', {
+  ...uiImports,
+  react: { useContext: () => undefined },
+  'react/jsx-runtime': jsx,
+  'react-native': { ...native, useWindowDimensions: () => selectDimensions },
+  '@/constants/design-tokens': { Spacing },
+  'react-native-safe-area-context': { useSafeAreaInsets: () => ({ top: 62, bottom: 34, left: 0, right: 0 }) },
+  '@/components/ui/text': { Text: 'Text', TextClassContext: { Provider: 'TextProvider' } },
+  '@/components/ui/native-only-animated-view': { NativeOnlyAnimatedView: 'AnimatedView' },
+  './select-frame': { SelectFrame: 'SelectContent' },
+  '@/providers/workspace-context': { WorkspaceScopeContext: {} },
+  'react-native-screens': { FullWindowOverlay: 'FullWindowOverlay' },
+  'react-native-reanimated': { FadeIn: { reduceMotion: () => ({}) }, FadeOut: { reduceMotion: () => ({}) }, ReduceMotion: { System: 'system' } },
+  '@rn-primitives/select': {
+    Portal: 'Portal', Overlay: 'Overlay', useRootContext: () => ({ open: true, onOpenChange: () => {}, triggerPosition: selectTrigger }),
+  },
 });
 const { OverlaySheet } = await loadTs('components/ui/overlay-sheet.tsx', {
+    ...uiImports,
+  './dialog-frame': { DialogFrame: 'DialogContent' },
+  './portal': uiImports['@/components/ui/portal'],
+  '@rn-primitives/dialog': { Root: 'Dialog', Portal: 'Portal', Content: 'DialogContent', Title: 'DialogTitle' },
   '@/providers/workspace-context': { WorkspaceScope: 'WorkspaceScope', WorkspaceScopeContext: {} },
   react: {
     useContext: () => undefined,
@@ -46,7 +68,7 @@ const { OverlaySheet } = await loadTs('components/ui/overlay-sheet.tsx', {
     useEffect: () => {},
   },
   'react/jsx-runtime': jsx, 'react-native': native,
-  'react-native-paper': { ...paper, Portal: 'Portal', Icon: 'Icon' },
+
   'react-native-gesture-handler': {
     Gesture: { Pan: () => ({ enabled() { return this; }, activeOffsetY() { return this; }, onUpdate() { return this; }, onEnd() { return this; } }) },
     GestureDetector: 'GestureDetector',
@@ -78,11 +100,12 @@ describe('keyboard sheet layout', () => {
 
   it.each([true, false])('constrains the scroll area inside a stable avoidance frame (fitContent=%s)', (fitContent) => {
     const root = OverlaySheet({ visible: true, title: 'Voice', testID: 'voice', fitContent, children: 'Content' });
-    const frame = root.props.children;
+    const frame = find(root, 'voice')!;
     expect(frame.type).toBe('KeyboardAvoidingView');
     expect(frame.props.behavior).toBe('padding');
-    expect(flatten(frame.props.style)).toMatchObject({ top: 0, bottom: 0, paddingTop: 126 });
-    const sheet = frame.props.children[1];
+    expect(frame.props.className).toContain('inset-0');
+    expect(flatten(frame.props.style)).toMatchObject({ paddingTop: 126 });
+    const sheet = frame.props.children[1].props.children;
     expect(sheet.type).toBe('View');
     expect(flatten(sheet.props.style)).toMatchObject({ flexShrink: 1 });
     expect(flatten(sheet.props.style).position).toBeUndefined();
@@ -97,6 +120,19 @@ describe('keyboard sheet layout', () => {
   });
 });
 
+describe('native select layout', () => {
+  it.each([360, 600])('keeps long options scrollable within the screen (trigger width %s)', (width) => {
+    platform.OS = 'android';
+    selectTrigger.width = width;
+    const content = find(SelectContent({ testID: 'native-select', children: 'Long translated options' }), 'native-select')!;
+    expect(content.props.style.width).toBe(Math.min(width, 374));
+    const viewport = content.props.children[1];
+    expect(viewport.type).toBe('ScrollView');
+    expect(viewport.props.style.maxHeight).toBeLessThan(844 - 62 - 34);
+    expect(viewport.props.keyboardShouldPersistTaps).toBe('handled');
+  });
+});
+
 describe('native input regressions', () => {
   let runtime: ReturnType<typeof hookRuntime>;
   let input: () => Element;
@@ -105,14 +141,15 @@ describe('native input regressions', () => {
     platform.OS = 'ios';
     runtime = hookRuntime();
     const { ChatComposer } = await loadTs('components/chat/chat-composer.tsx', {
-      react: runtime.react, 'react/jsx-runtime': jsx, 'react-native': native, 'react-native-paper': paper,
+    ...uiImports,
+      react: runtime.react, 'react/jsx-runtime': jsx, 'react-native': native,
       'react-i18next': { useTranslation: () => ({ t: (key: string) => key }) },
-      '@/components/ui/text-input': { TextInput },
-      '@/components/ui/native-select': { NativeSelect: 'NativeSelect' },
+      '@/components/ui/input': { Input },
+      '@/components/ui/catalog-select': { CatalogSelect: 'CatalogSelect' },
       '@/components/chat/model-picker': { ModelPicker: 'ModelPicker' },
       '@/components/chat/composer-suggestions': { ComposerSuggestions: 'ComposerSuggestions' },
       '@/components/chat/attachment-strip': { AttachmentStrip: 'AttachmentStrip' },
-      '@/components/chat/chat-view-styles': { styles, slimStyles: {} },
+      '@/components/chat/chat-view-styles': viewStyles,
       '@/components/chat/chat-view-utils': { getAutoApproveIcon: () => 'shield' },
       '@/lib/color': { withAlpha: (color: string) => color },
     });
@@ -131,7 +168,6 @@ describe('native input regressions', () => {
     const style = flatten(input().props.style);
     expect(style.height).toBeUndefined();
     expect(style).toMatchObject({ minHeight: min, maxHeight: max, fontSize: slim ? 15 : 17 });
-    expect(flatten(input().props.contentStyle)).toMatchObject({ minHeight: min, maxHeight: max });
     expect(input().props.value).toBe('hello');
   });
 
@@ -148,23 +184,22 @@ describe('native input regressions', () => {
     expect(input().props.scrollEnabled).toBe(true);
   });
 
-  it('clears only the implicit single-line iOS alignment and preserves credentials', () => {
+  it('preserves credential bytes and explicit single-line alignment', () => {
     const value = 'a long server password with spaces '.repeat(5);
     const onChangeText = vi.fn();
-    const rendered = TextInput({ secureTextEntry: true, value, onChangeText });
-    expect(flatten(rendered.props.contentStyle)).toHaveProperty('textAlign', undefined);
+    const rendered = Input({ secureTextEntry: true, value, onChangeText });
     expect(rendered.props.secureTextEntry).toBe(true);
     expect(rendered.props.value).toBe(value);
     expect(rendered.props.onChangeText).toBe(onChangeText);
     expect(rendered.props.selectionColor).toBe('#00f');
-    expect(flatten(TextInput({ style: [{ textAlign: 'right' }] }).props.contentStyle)).not.toHaveProperty('textAlign');
-    expect(flatten(TextInput({ contentStyle: [{ textAlign: 'center' }] }).props.contentStyle).textAlign).toBe('center');
+    expect(flatten(Input({ style: { textAlign: 'right' } }).props.style).textAlign).toBe('right');
+    expect(flatten(rendered.props.style)).not.toHaveProperty('textAlign');
   });
 
   it.each(['ios', 'android', 'web'])('preserves multiline and caller styling on %s', (os) => {
     platform.OS = os;
-    const contentStyle = { fontSize: 20 };
-    expect(TextInput({ multiline: true, contentStyle }).props.contentStyle).toBe(contentStyle);
-    if (os !== 'ios') expect(TextInput({ contentStyle }).props.contentStyle).toBe(contentStyle);
+    const style = { fontSize: 20 };
+    expect(Input({ multiline: true, style }).props.style).toBe(style);
+    expect(Input({ cursorColor: '#f00' }).props.cursorColor).toBe('#f00');
   });
 });

@@ -1,10 +1,15 @@
+import { cn } from '@/lib/utils';
+import { Text } from '@/components/ui/text';
+import { Button } from '@/components/ui/button';
+import { Spinner } from '@/components/ui/spinner';
+import { CardContent, Card } from '@/components/ui/card';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { StyleSheet, View } from 'react-native';
-import { Button, Card, Text } from 'react-native-paper';
+import { View } from 'react-native';
+
 
 import type { PendingPermissionRequest } from '@/lib/opencode/client';
-import { usePalette } from '@/hooks/use-palette';
+
 
 function getPermissionTitle(request: PendingPermissionRequest) {
   return request.permission
@@ -26,7 +31,7 @@ export function PermissionRequestCard({
   sourceTitle?: string;
 }) {
   const { t } = useTranslation();
-  const palette = usePalette();
+
   const [submitting, setSubmitting] = useState<'once' | 'always' | 'reject' | undefined>(undefined);
 
   const handleReply = (reply: 'once' | 'always' | 'reject') => {
@@ -38,32 +43,23 @@ export function PermissionRequestCard({
   };
 
   return (
-    <Card mode="contained" style={[styles.requestCard, compact && styles.requestCardCompact, { backgroundColor: palette.background }]}> 
-      <Card.Content style={styles.requestCardContent}>
-        <Text variant="labelLarge" style={{ color: palette.warning }}>{t('chat:cards.permissionRequest')}</Text>
-        {sourceTitle ? (
-          <Text variant="bodySmall" style={{ color: palette.muted }}>{t('chat:cards.requestedBy', { name: sourceTitle })}</Text>
-        ) : null}
-        <Text variant="titleMedium" style={{ color: palette.text }}>{getPermissionTitle(request)}</Text>
-        {request.patterns.length > 0 ? (
-          <Text variant="bodySmall" style={{ color: palette.muted }}>{request.patterns.join('\n')}</Text>
-        ) : null}
-        <Text variant="labelMedium" style={{ color: palette.text }}>{t('chat:cards.futureApprovalScope')}</Text>
-        <Text variant="bodySmall" style={{ color: palette.muted }}>{request.always.length ? request.always.join('\n') : t('chat:cards.unspecifiedScope')}</Text>
-        <Text variant="bodySmall" style={{ color: palette.muted }}>{t('chat:cards.serverRuleDuration')}</Text>
-        <View style={styles.requestActionsRow}>
-          <Button mode="contained" compact disabled={Boolean(submitting)} loading={submitting === 'once'} onPress={() => handleReply('once')}>{t('chat:cards.allowOnce')}</Button>
-          <Button mode="contained-tonal" compact disabled={Boolean(submitting)} loading={submitting === 'always'} onPress={() => handleReply('always')}>{t('chat:cards.alwaysAllow')}</Button>
-          <Button mode="text" compact textColor={palette.danger} disabled={Boolean(submitting)} loading={submitting === 'reject'} onPress={() => handleReply('reject')}>{t('chat:cards.deny')}</Button>
-        </View>
-      </Card.Content>
-    </Card>
+    <Card className={cn(stylesClasses.requestCard, compact && stylesClasses.requestCardCompact, "bg-background")}><CardContent className={cn(stylesClasses.requestCardContent)}><Text className={cn("text-warning")} variant="description">{t('chat:cards.permissionRequest')}</Text>{sourceTitle ? (
+          <Text className={cn("text-muted-foreground")} variant="label">{t('chat:cards.requestedBy', { name: sourceTitle })}</Text>
+        ) : null}<Text className={cn("text-foreground")} variant="title">{getPermissionTitle(request)}</Text>{request.patterns.length > 0 ? (
+          <Text className={cn("text-muted-foreground")} variant="label">{request.patterns.join('\n')}</Text>
+        ) : null}<Text className={cn("text-foreground")} variant="label">{t('chat:cards.futureApprovalScope')}</Text><Text className={cn("text-muted-foreground")} variant="label">{request.always.length ? request.always.join('\n') : t('chat:cards.unspecifiedScope')}</Text><Text className={cn("text-muted-foreground")} variant="label">{t('chat:cards.serverRuleDuration')}</Text><View className={cn(stylesClasses.requestActionsRow)}>
+          <Button disabled={Boolean(submitting)} onPress={() => handleReply('once')} variant="default">{submitting === 'once' ? <Spinner size="small" /> : null}<Text>{t('chat:cards.allowOnce')}</Text></Button>
+          <Button disabled={Boolean(submitting)} onPress={() => handleReply('always')} variant="secondary">{submitting === 'always' ? <Spinner size="small" /> : null}<Text>{t('chat:cards.alwaysAllow')}</Text></Button>
+          <Button disabled={Boolean(submitting)} onPress={() => handleReply('reject')} variant="ghost">{submitting === 'reject' ? <Spinner size="small" /> : null}<Text className={cn("text-destructive")} >{t('chat:cards.deny')}</Text></Button>
+        </View></CardContent></Card>
   );
 }
 
-const styles = StyleSheet.create({
-  requestCard: { borderRadius: 18 },
-  requestCardCompact: { borderRadius: 14 },
-  requestCardContent: { gap: 10 },
-  requestActionsRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
-});
+
+
+const stylesClasses = {
+  "requestCard": "rounded-[18px]",
+  "requestCardCompact": "rounded-[14px]",
+  "requestCardContent": "gap-2.5",
+  "requestActionsRow": "flex-row flex-wrap gap-2.5"
+} as const;

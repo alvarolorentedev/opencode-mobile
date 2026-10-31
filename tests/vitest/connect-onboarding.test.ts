@@ -1,3 +1,4 @@
+import { uiImports } from '../helpers/ui.mjs';
 import { describe, expect, it, vi } from 'vitest';
 import { hookRuntime, loadTs } from '../helpers/runtime.mjs';
 
@@ -14,13 +15,14 @@ async function pairing(guided = true, entitled = false) {
   const onConnected = vi.fn();
   const setup = { initialization: 'ready', phase: 'idle', busy: false, entitled, cancelPairing: vi.fn(async () => true), pairLink: vi.fn(), dismissError: vi.fn() };
   const { ConnectPairing } = await loadTs('components/settings/connect-pairing.tsx', {
+    ...uiImports,
     react: runtime.react,
-    './sections/setting-rows': { SettingButton: 'Button' },
+    './sections/setting-rows': { Button: 'Button' },
     'react/jsx-runtime': { jsx: (type: unknown, props: object) => ({ type, props }), jsxs: (type: unknown, props: object) => ({ type, props }) },
     'expo-router': { useIsFocused: () => true },
     'react-i18next': { useTranslation: () => ({ t: (key: string) => key }) },
     'react-native': { AppState: { currentState: 'active', addEventListener: () => ({ remove() {} }) }, Platform: { OS: 'android' }, StyleSheet: { create: (styles: object) => styles }, View: 'View', KeyboardAvoidingView: 'View' },
-    'react-native-paper': { ActivityIndicator: 'Spinner', Appbar: { Header: 'Header', BackAction: 'Back', Content: 'Title', Action: 'Action' }, Button: 'Button', HelperText: 'HelperText', Text: 'Text' },
+
     'react-native-safe-area-context': { useSafeAreaInsets: () => ({ top: 0, bottom: 0 }) },
     '@/constants/theme': { Colors: { light: {} } },
     '@/hooks/use-color-scheme': { useColorScheme: () => 'light' },
@@ -34,7 +36,6 @@ async function pairing(guided = true, entitled = false) {
     '@/components/settings/connect-onboarding': { ConnectOnboarding: 'Onboarding' },
     '@/components/settings/connection-setup-form': {},
     '@/components/ui/overlay-sheet': { OverlaySheet: 'Overlay' },
-    '@/components/ui/text-input': {},
   });
   runtime.mount(ConnectPairing, { setup, guided, onConnected, onClose: vi.fn(), onManage: vi.fn() });
   const step = () => find(runtime.value, 'Onboarding')?.props.step;

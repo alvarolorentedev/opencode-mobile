@@ -1,10 +1,22 @@
-import { SettingButton as Button, SettingTextInput as TextInput } from './sections/setting-rows';
+import { cn } from '@/lib/utils';
+import { useForm, useController } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { mcpSchema, type McpDraft } from './forms/extension-schemas';
+import { SettingField } from '@/components/settings/sections/setting-rows';
+import { Text } from '@/components/ui/text';
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
+import { FieldDescription } from '@/components/ui/text-field';
+import { Button } from '@/components/ui/button';
+import { Spinner } from '@/components/ui/spinner';
+import { ListRow } from '@/components/ui/list-row';
+import { Badge } from '@/components/ui/badge';
+
 import { useMcpAuthentication } from './use-mcp-authentication';
 import type { McpContextValue } from '@/providers/opencode-provider-types';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { StyleSheet, View } from 'react-native';
-import { Chip, HelperText, List, SegmentedButtons, Text } from 'react-native-paper';
+import { View } from 'react-native';
+
 
 
 
@@ -38,9 +50,10 @@ export function McpSection({
   palette: Palette;
 }) {
   const { t } = useTranslation();
-  const [addType, setAddType] = useState<'local' | 'remote'>('local');
-  const [name, setName] = useState('');
-  const [target, setTarget] = useState('');
+  const form = useForm<McpDraft>({ resolver: zodResolver(mcpSchema), defaultValues: { name: '', target: '', type: 'local' } });
+  const { field: { value: addType, onChange: setAddType } } = useController({ control: form.control, name: 'type' });
+  const { field: { value: name, onChange: setName, ref: nameRef, onBlur: nameBlur } } = useController({ control: form.control, name: 'name' });
+  const { field: { value: target, onChange: setTarget, ref: targetRef, onBlur: targetBlur } } = useController({ control: form.control, name: 'target' });
   const [busy, setBusy] = useState<string>();
   const [error, setError] = useState<string>();
   const authentication = useMcpAuthentication(mcpOAuth, palette);
@@ -77,40 +90,20 @@ export function McpSection({
   }
 
   return (
-    <View style={styles.section}>
-        <Text variant="titleLarge" style={[styles.title, { color: palette.text }]}>{t('settings:mcp.title')}</Text>
-        <SegmentedButtons
-          value={addType}
-          onValueChange={(value) => { setAddType(value as 'local' | 'remote'); setTarget(''); }}
-          buttons={[{ value: 'local', label: t('settings:mcp.local') }, { value: 'remote', label: t('settings:mcp.remote') }]}
-        />
-        <TextInput testID="settings-mcp-name" mode="outlined" label={t('settings:mcp.serverName')} value={name} onChangeText={setName} autoCapitalize="none" autoCorrect={false} />
-        <TextInput
-          testID="settings-mcp-target"
-          mode="outlined"
-          label={addType === 'local' ? t('settings:mcp.commandArguments') : t('settings:mcp.url')}
-          placeholder={addType === 'local' ? '["npx","@modelcontextprotocol/server"]' : 'https://example.com/mcp'}
-          value={target}
-          onChangeText={setTarget}
-          autoCapitalize="none"
-          autoCorrect={false}
-        />
-        <Button
-          testID="settings-mcp-add"
-          mode="contained"
-          disabled={!trimmedName || !trimmedTarget || Boolean(busy)}
-          loading={busy === 'add'}
-          onPress={() => void run('add', async () => {
+    <View className={cn(stylesClasses.section)}>
+        <Text className={cn(stylesClasses.title, "text-foreground")} variant="heading">{t('settings:mcp.title')}</Text>
+        <ToggleGroup type="single" value={addType} onValueChange={(value) => { if (!value) return; setAddType(value as 'local' | 'remote'); setTarget(''); }} className="flex-row flex-wrap">{([{ value: 'local', label: t('settings:mcp.local') }, { value: 'remote', label: t('settings:mcp.remote') }]).map((option) => <ToggleGroupItem key={option.value} value={option.value} disabled={'disabled' in option && option.disabled === true}><Text>{option.label}</Text></ToggleGroupItem>)}</ToggleGroup>
+        <SettingField testID="settings-mcp-name" label={t('settings:mcp.serverName')} ref={nameRef} onBlur={nameBlur} value={name} onChangeText={setName} autoCapitalize="none" autoCorrect={false}></SettingField>
+        <SettingField testID="settings-mcp-target" label={addType === 'local' ? t('settings:mcp.commandArguments') : t('settings:mcp.url')} placeholder={addType === 'local' ? '["npx","@modelcontextprotocol/server"]' : 'https://example.com/mcp'} ref={targetRef} onBlur={targetBlur} value={target} onChangeText={setTarget} autoCapitalize="none" autoCorrect={false}></SettingField>
+        <Button testID="settings-mcp-add" disabled={!trimmedName || !trimmedTarget || Boolean(busy)} onPress={() => void run('add', async () => { if (!await form.trigger()) return;
             await onAdd(trimmedName, addType === 'local'
               ? { type: 'local', command: localCommand() }
               : { type: 'remote', url: trimmedTarget });
             setName('');
             setTarget('');
-          })}>
-          {addType === 'local' ? t('settings:mcp.addLocalServer') : t('settings:mcp.addRemoteServer')}
-        </Button>
+          })} variant="default">{busy === 'add' ? <Spinner size="small" /> : null}<Text>{addType === 'local' ? t('settings:mcp.addLocalServer') : t('settings:mcp.addRemoteServer')}</Text></Button>
 
-        {names.length === 0 ? <HelperText type="info">{t('settings:mcp.noServers')}</HelperText> : null}
+        {names.length === 0 ? <FieldDescription  invalid={false}>{t('settings:mcp.noServers')}</FieldDescription> : null}
         {names.map((serverName) => {
           const config = configs?.[serverName];
           const status = mcpStatuses[serverName];
@@ -119,27 +112,15 @@ export function McpSection({
           const actionKey = `action:${serverName}`;
 
           return (
-            <View key={serverName} style={[styles.server, { backgroundColor: palette.background, borderColor: palette.border }]}>
-              <List.Item
-                title={serverName}
-                description={describeConfig(config)}
-                titleStyle={{ color: palette.text }}
-                descriptionStyle={{ color: palette.muted }}
-                right={() => <Chip compact>{status?.status || (enabled ? t('settings:mcp.statusConfigured') : t('settings:mcp.statusDisabled'))}</Chip>}
-              />
+            <View key={serverName} className={cn(stylesClasses.server, "bg-background border-border")}>
+              <ListRow title={serverName} description={describeConfig(config)} titleStyle={{ color: palette.text }} descriptionStyle={{ color: palette.muted }} right={() => <Badge  variant="secondary"><Text>{status?.status || (enabled ? t('settings:mcp.statusConfigured') : t('settings:mcp.statusDisabled'))}</Text></Badge>}></ListRow>
               {status?.status === 'failed' || status?.status === 'needs_client_registration' ? (
-                <HelperText type="error">{status.error}</HelperText>
+                <FieldDescription  invalid={true}>{status.error}</FieldDescription>
               ) : null}
-              <View style={styles.actions}>
-                <Button
-                  compact
-                  disabled={!enabled || Boolean(busy)}
-                  loading={busy === actionKey}
-                  onPress={() => void run(actionKey, () => status?.status === 'connected' ? onDisconnect(serverName) : onConnect(serverName))}>
-                  {status?.status === 'connected' ? t('common:actions.disconnect') : t('common:actions.connect')}
-                </Button>
+              <View className={cn(stylesClasses.actions)}>
+                <Button disabled={!enabled || Boolean(busy)} onPress={() => void run(actionKey, () => status?.status === 'connected' ? onDisconnect(serverName) : onConnect(serverName))} variant="ghost">{busy === actionKey ? <Spinner size="small" /> : null}<Text>{status?.status === 'connected' ? t('common:actions.disconnect') : t('common:actions.connect')}</Text></Button>
                 {oauthAvailable && (requiresIntegrationId ? Boolean((status as { integrationID?: string } | undefined)?.integrationID) : isRemote) && status?.status === 'needs_auth' ? (
-                  <Button compact disabled={Boolean(busy)} onPress={() => void run(actionKey, () => authentication.open(serverName))}>{t('settings:mcp.oauth')}</Button>
+                  <Button disabled={Boolean(busy)} onPress={() => void run(actionKey, () => authentication.open(serverName))} variant="ghost"><Text>{t('settings:mcp.oauth')}</Text></Button>
                 ) : null}
               </View>
 
@@ -147,14 +128,17 @@ export function McpSection({
           );
         })}
         {authentication.dialog}
-        {error ? <HelperText type="error">{error}</HelperText> : null}
+        {Object.values(form.formState.errors).map((error, index) => error?.message ? <FieldDescription key={index} invalid>{t(error.message)}</FieldDescription> : null)}
+      {error ? <FieldDescription  invalid={true}>{error}</FieldDescription> : null}
     </View>
   );
 }
 
-const styles = StyleSheet.create({
-  section: { gap: 14, paddingHorizontal: 16, paddingBottom: 16 },
-  title: { fontWeight: '600' },
-  server: { borderRadius: 14, borderWidth: 1, padding: 8 },
-  actions: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'flex-end', gap: 4 },
-});
+
+
+const stylesClasses = {
+  "section": "gap-3.5 px-4 pb-4",
+  "title": "font-semibold",
+  "server": "rounded-[14px] border p-2",
+  "actions": "flex-row flex-wrap items-center justify-end gap-1"
+} as const;

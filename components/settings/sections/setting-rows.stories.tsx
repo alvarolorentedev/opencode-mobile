@@ -1,9 +1,11 @@
+import { Button } from '@/components/ui/button';
+import { Text } from '@/components/ui/text';
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { useState } from 'react';
 import { View } from 'react-native';
 
 import { usePalette } from '@/hooks/use-palette';
-import { SettingButton, SettingSlider, SettingSwitchRow, SettingTextInput } from './setting-rows';
+import { SettingSlider, SettingSwitchRow, SettingField } from './setting-rows';
 
 function SettingsControls() {
   const palette = usePalette();
@@ -37,17 +39,16 @@ function SettingsControls() {
         value={temperature}
         valueLabel={temperature.toFixed(1)}
       />
-      <SettingTextInput
+      <SettingField
         label="Connection name"
-        mode="outlined"
         onChangeText={setName}
         value={name}
       />
       <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
-        <SettingButton mode="contained" onPress={() => undefined}>Save</SettingButton>
-        <SettingButton mode="outlined" onPress={() => undefined}>Cancel</SettingButton>
-        <SettingButton mode="text" onPress={() => undefined}>Learn more</SettingButton>
-        <SettingButton disabled mode="contained" onPress={() => undefined}>Unavailable</SettingButton>
+        <Button variant="default" onPress={() => undefined}><Text>Save</Text></Button>
+        <Button variant="outline" onPress={() => undefined}><Text>Cancel</Text></Button>
+        <Button variant="ghost" onPress={() => undefined}><Text>Learn more</Text></Button>
+        <Button disabled variant="default" onPress={() => undefined}><Text>Unavailable</Text></Button>
       </View>
     </View>
   );

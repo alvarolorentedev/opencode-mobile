@@ -2,7 +2,7 @@ import { setTimeout as sleep } from 'node:timers/promises';
 
 import { expect, test } from './helpers/fixtures.mjs';
 
-import { addConnection, backendOrigin, chatAction, connectToSavedConnection, connectToServer, ensureAiSection, expectConnectedTo, fakeV2Origin, getFreePort, goToTab, openChatLibrary, openReadyChat, resetScenario, seedOnboarding, sendPrompt, spawnV1Server, waitForServer } from './helpers/flows.mjs';
+import { respondToConfirmation, addConnection, backendOrigin, chatAction, connectToSavedConnection, connectToServer, ensureAiSection, expectConnectedTo, fakeV2Origin, getFreePort, goToTab, openChatLibrary, openReadyChat, resetScenario, seedOnboarding, sendPrompt, spawnV1Server, waitForServer } from './helpers/flows.mjs';
 
 test.beforeEach(async ({ page }, info) => {
   await seedOnboarding(page, info);
@@ -22,8 +22,8 @@ test('sessions can be renamed and require confirmation before deletion', async (
 
   await page.reload({ waitUntil: 'domcontentloaded' });
   await openChatLibrary(page);
-  page.once('dialog', (dialog) => void dialog.accept());
   await chatAction(page, 'Renamed from Playwright', 'Delete');
+  await respondToConfirmation(page, true);
   await expect(page.getByText('Renamed from Playwright', { exact: true }).nth(1)).not.toBeVisible();
 });
 
@@ -277,7 +277,7 @@ test('saved connections keep sessions, caches, and model preferences separate', 
 
   await ensureAiSection(page);
   await page.getByTestId('settings-add-provider-button').click();
-  await page.getByRole('button', { name: 'OpenRouter', exact: true }).click();
+  await page.getByRole('radio', { name: 'OpenRouter', exact: true }).or(page.getByRole('button', { name: 'OpenRouter', exact: true })).click();
   await page.getByPlaceholder('Paste your API key').fill('sk-test-openrouter');
   await page.getByTestId('settings-provider-save-button').click();
   await expect(page.getByText('Configure OpenRouter')).not.toBeVisible({ timeout: 15_000 });

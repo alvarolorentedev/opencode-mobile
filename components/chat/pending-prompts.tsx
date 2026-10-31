@@ -1,6 +1,11 @@
+import { cn } from '@/lib/utils';
+import { Text } from '@/components/ui/text';
+import { Spinner } from '@/components/ui/spinner';
+import { Button } from '@/components/ui/button';
+import { Icon } from '@/components/ui/icon';
 import { useTranslation } from 'react-i18next';
 import { ScrollView, StyleSheet, View } from 'react-native';
-import { ActivityIndicator, IconButton, Text } from 'react-native-paper';
+
 
 import { AttachmentStrip } from '@/components/chat/attachment-strip';
 import type { PendingPrompt } from '@/lib/opencode/prompt-inbox';
@@ -17,7 +22,7 @@ export function PendingPrompts({ cancelingId, onCancel, prompts }: PendingPrompt
   const palette = usePalette();
   if (!prompts.length) return null;
   return (
-    <ScrollView testID="pending-prompts" style={styles.stack} keyboardShouldPersistTaps="handled" contentContainerStyle={styles.content}>
+    <ScrollView testID="pending-prompts" className={cn(stylesClasses.stack)} keyboardShouldPersistTaps="handled" contentContainerStyle={styles.content}>
       {prompts.map((prompt) => {
         const sending = prompt.state === 'sending';
         const canceling = cancelingId === prompt.id;
@@ -27,28 +32,16 @@ export function PendingPrompts({ cancelingId, onCancel, prompts }: PendingPrompt
             ? t('chat:pendingPrompts.uncertain')
             : t(sending ? 'chat:pendingPrompts.sending' : 'chat:pendingPrompts.waiting');
         return (
-          <View key={prompt.id} testID="pending-prompt" style={[styles.prompt, { backgroundColor: palette.surfaceAlt, borderColor: palette.border }]}>
-            <View style={styles.promptBody}>
-              <Text variant="labelSmall" style={{ color: palette.muted }}>
-                {stateLabel}{' · '}
-                {t(prompt.delivery === 'queue' ? 'settings:providers.promptDelivery.queue.label' : 'settings:providers.promptDelivery.steer.label')}
-              </Text>
+          <View key={prompt.id} testID="pending-prompt" className={cn(stylesClasses.prompt, "bg-surface-alt border-border")}>
+            <View className={cn(stylesClasses.promptBody)}>
+              <Text className={cn("text-muted-foreground")} variant="label">{stateLabel}{' · '}{t(prompt.delivery === 'queue' ? 'settings:providers.promptDelivery.queue.label' : 'settings:providers.promptDelivery.steer.label')}</Text>
               {prompt.attachments.length ? <AttachmentStrip attachments={prompt.attachments} /> : null}
-              {prompt.text ? <Text style={{ color: palette.text }}>{prompt.text}</Text> : null}
+              {prompt.text ? <Text className={cn("text-foreground")}>{prompt.text}</Text> : null}
             </View>
             {canceling ? (
-              <ActivityIndicator size={16} color={palette.muted} style={styles.close} />
+              <Spinner size={16} color={palette.muted} className={cn(stylesClasses.close)} />
             ) : (
-              <IconButton
-                testID={`pending-prompt-cancel-${prompt.id}`}
-                accessibilityLabel={t('chat:pendingPrompts.cancel')}
-                icon="close"
-                size={18}
-                iconColor={palette.muted}
-                disabled={sending}
-                onPress={() => onCancel(prompt)}
-                style={styles.close}
-              />
+              <Button testID={`pending-prompt-cancel-${prompt.id}`} accessibilityLabel={t('chat:pendingPrompts.cancel')} disabled={sending} onPress={() => onCancel(prompt)} variant="ghost" size="icon" className={cn(stylesClasses.close)} ><Icon name={"close"} size={18} color={palette.muted} /></Button>
             )}
           </View>
         );
@@ -58,9 +51,12 @@ export function PendingPrompts({ cancelingId, onCancel, prompts }: PendingPrompt
 }
 
 const styles = StyleSheet.create({
-  stack: { maxHeight: '25%', flexGrow: 0, flexShrink: 1 },
-  content: { gap: 6, paddingHorizontal: 8, paddingVertical: 6 },
-  prompt: { flexDirection: 'row', alignItems: 'flex-start', borderWidth: 1, borderRadius: 10, padding: 8, gap: 6 },
-  promptBody: { flex: 1, gap: 6 },
-  close: { margin: 0 },
+  content: { gap: 6, paddingHorizontal: 8, paddingVertical: 6 }
 });
+
+const stylesClasses = {
+  "stack": "max-h-[25%] grow-0 shrink",
+  "prompt": "flex-row items-start border rounded-[10px] p-2 gap-1.5",
+  "promptBody": "flex-1 gap-1.5",
+  "close": "m-0"
+} as const;

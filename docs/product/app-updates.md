@@ -4,7 +4,7 @@
 store actions and blocker registration. `lib/app-updates.ts` is the platform
 boundary. The tab shell renders a compact nonmodal banner above the tabs
 on Chat, Project, Settings and Terminal; onboarding, pairing and session routes do
-not offer updates. The banner uses Paper controls, the light/dark theme, including
+not offer updates. The banner uses source-owned controls, the light/dark theme, including
 its fixed accent, and all nine locales. It wraps its actions on narrow screens
 and retains access to the tabs. It occupies layout space above the default tab
 bar, keeping both the composer and navigation visible. The root shell owns route

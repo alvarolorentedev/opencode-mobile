@@ -1,8 +1,9 @@
+import { FieldDescription } from '@/components/ui/text-field';
 import { useTranslation } from 'react-i18next';
 import { StyleSheet, View } from 'react-native';
-import { HelperText } from 'react-native-paper';
 
-import type { NativeSelectOption } from '@/components/ui/native-select';
+
+import type { CatalogOption } from '@/components/ui/catalog-select';
 import { LANGUAGE_OPTIONS } from '@/components/settings/settings-utils';
 import type { ChatPreferences } from '@/providers/opencode-provider';
 import { SettingSelectField, type Palette } from './setting-rows';
@@ -19,7 +20,7 @@ export function LanguageSection({
   showDescription?: boolean;
 }) {
   const { t } = useTranslation();
-  const languageOptions: NativeSelectOption<string>[] = [
+  const languageOptions: CatalogOption<string>[] = [
     { label: t('common:labels.systemDefault'), value: 'system' },
     ...LANGUAGE_OPTIONS.map((option) => ({ label: option.label, value: option.value })),
   ];
@@ -38,11 +39,11 @@ export function LanguageSection({
         selectedValue={selectedValue}
         valueLabel={valueLabel}
       />
-      {showDescription ? <HelperText type="info">{t('settings:language.description')}</HelperText> : null}
+      {showDescription ? <FieldDescription  invalid={false}>{t('settings:language.description')}</FieldDescription> : null}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  section: { gap: 14, paddingBottom: 8 },
+  section: { gap: 14, paddingBottom: 8 }
 });

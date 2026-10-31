@@ -1,12 +1,16 @@
-import { SettingButton as Button } from './setting-rows';
+import { cn } from '@/lib/utils';
+import { Text } from '@/components/ui/text';
+import { ListRow } from '@/components/ui/list-row';
+import { Button } from '@/components/ui/button';
+
 import { useTranslation } from 'react-i18next';
-import { StyleSheet, View } from 'react-native';
-import { List, Text } from 'react-native-paper';
+import { View } from 'react-native';
+
 
 import { SettingTarget } from '../settings-panel';
-import { confirmAction } from '@/lib/confirm-action';
+import { useConfirmation } from '@/components/ui/use-confirmation';
 import type { SavedPermissionRule } from '@/lib/opencode/client';
-import type { Palette } from './setting-rows';
+import { Palette } from './setting-rows';
 
 // V2-only view of server-persisted "always allow" grants. The list is
 // provider-owned; this surface only confirms and forwards removal.
@@ -21,6 +25,7 @@ export function PermissionsSection({
   palette: Palette;
   rules: SavedPermissionRule[];
 }) {
+  const { confirmAction, confirmation } = useConfirmation();
   const { t } = useTranslation();
 
   const confirmRemove = (rule: SavedPermissionRule) => {
@@ -29,27 +34,22 @@ export function PermissionsSection({
       t('common:actions.remove'), t('common:actions.cancel'), () => onRemove(rule.id));
   };
 
-  return (
-    <SettingTarget label={t('settings:permissions.title')}><View style={styles.section}>
-      <Text variant="titleLarge" style={[styles.title, { color: palette.text }]}>{t('settings:permissions.title')}</Text>
-      <Text variant="bodySmall" style={{ color: palette.muted }}>{t('settings:permissions.description')}</Text>
+  return <>{confirmation}{(
+    <SettingTarget label={t('settings:permissions.title')}><View className={cn(stylesClasses.section)}>
+      <Text className={cn(stylesClasses.title, "text-foreground")} variant="heading">{t('settings:permissions.title')}</Text>
+      <Text className={cn("text-muted-foreground")} variant="label">{t('settings:permissions.description')}</Text>
       {rules.length === 0 ? (
-        <List.Item title={t('settings:permissions.empty')} titleStyle={{ color: palette.muted }} />
+        <ListRow title={t('settings:permissions.empty')} titleStyle={{ color: palette.muted }}></ListRow>
       ) : rules.map((rule) => (
-        <List.Item
-          key={rule.id}
-          title={rule.resource}
-          description={rule.action}
-          titleStyle={{ color: palette.text }}
-          descriptionStyle={{ color: palette.muted }}
-          right={() => <Button compact onPress={() => confirmRemove(rule)}>{t('settings:permissions.remove')}</Button>}
-        />
+        <ListRow key={rule.id} title={rule.resource} description={rule.action} titleStyle={{ color: palette.text }} descriptionStyle={{ color: palette.muted }} right={() => <Button onPress={() => confirmRemove(rule)} variant="ghost"><Text>{t('settings:permissions.remove')}</Text></Button>}></ListRow>
       ))}
     </View></SettingTarget>
-  );
+  )}</>;
 }
 
-const styles = StyleSheet.create({
-  section: { gap: 12, paddingHorizontal: 16, paddingBottom: 16 },
-  title: { fontWeight: '600' },
-});
+
+
+const stylesClasses = {
+  "section": "gap-3 px-4 pb-4",
+  "title": "font-semibold"
+} as const;

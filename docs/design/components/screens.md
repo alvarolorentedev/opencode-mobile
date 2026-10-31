@@ -54,8 +54,8 @@ Route-level controllers and platform-specific presentation surfaces. Back to the
   title/Close header. Full-screen service editing restores Cloud Link on return.
 - `SettingTarget` reveals/highlights a matching localized label without changing
   its value. `SettingsDisclosure` expands for a search group or attention state.
-- `SettingSwitchRow`, `SettingSelectField`, `SettingTextInput`, `SettingSlider`
-  and `SettingButton` share wrapping copy, theme colors and accessible targets;
+- `SettingSwitchRow`, `SettingSelectField`, `SettingField`, `SettingSlider`
+  and `Button` share wrapping copy, theme colors and accessible targets;
   the same components are reused by setup. Technical setup uses disclosures.
 - Search metadata is gated with the same platform/capability state as controls,
   and never includes credentials/current values. Server/project inspection
@@ -175,6 +175,6 @@ selection action. Terminal follows that directory.
 - `new-terminal-sheet.tsx`: confirms server, project and resolved cwd before PTY creation. `retained-terminals.tsx` holds the renderer hosts; the terminal picker lists all retained owners.
 - `server-context-picker.tsx`: independent Settings server/project inspection. Server selection lives on Settings home; server category sheets keep its read-only context caption and only retain the project picker for MCP/diagnostics. AI & Providers, MCP, diagnostics and approvals receive that context; app preferences remain global.
 - `server-approvals.tsx`: pending requests/questions, saved grants and per-server auto-approve, reusing chat permission cards and existing server actions.
-- `workspace-select.tsx`: the house NativeSelect with an outlined button trigger. `OverlaySheet` bridges workspace context through the Paper portal host.
+- `workspace-select.tsx`: the house CatalogSelect with an outlined button trigger. `OverlaySheet` bridges workspace context through the RN Primitives portal host.
 
 Terminal selection uses one continuous list with a server chip on each row, without empty workspace headings. With one connected workspace connection, server filters, selectors, chips and redundant scope labels are hidden across Chat, Projects, Terminal and Settings; both Settings section headings, project context and connection management remain available. Servers that are disconnected, connecting or unavailable are omitted from server and project selectors; cached chat rows keep their ownership visible, and Connection management still lists saved profiles for Connect and Reconnect. Multi-server controls return automatically when a second connection is connected.

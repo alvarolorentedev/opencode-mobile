@@ -1,8 +1,13 @@
+import { cn } from '@/lib/utils';
+import { Spinner } from '@/components/ui/spinner';
+import { Text } from '@/components/ui/text';
+import { Button } from '@/components/ui/button';
+import { Icon } from '@/components/ui/icon';
 import { useEffect, useState } from 'react';
 import { useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';
-import { StyleSheet, View } from 'react-native';
-import { ActivityIndicator, Button, Surface, Text } from 'react-native-paper';
+import { View } from 'react-native';
+
 
 import { ChatView } from '@/components/chat/chat-view';
 import { ProjectPicker } from '@/components/ui/project-picker';
@@ -40,12 +45,8 @@ export default function ChatLandingScreen() {
 
   if (!isHydrated) {
     return (
-      <View style={[styles.center, { backgroundColor: palette.background }]}>
-        <Surface style={[styles.panel, { backgroundColor: palette.surface }]} elevation={1}>
-          <ActivityIndicator size="large" color={palette.tint} />
-          <Text variant="headlineSmall" style={[styles.title, { color: palette.text }]}>{t('chat:session.opening')}</Text>
-          <Text variant="bodyMedium" style={[styles.copy, { color: palette.muted }]}>{t('chat:session.loading')}</Text>
-        </Surface>
+      <View className={cn(stylesClasses.center, "bg-background")}>
+        <View className={cn(stylesClasses.panel, "bg-surface")}><Spinner size="large" color={palette.tint} /><Text className={cn(stylesClasses.title, "text-foreground")} variant="display">{t('chat:session.opening')}</Text><Text className={cn(stylesClasses.copy, "text-muted-foreground")} variant="description">{t('chat:session.loading')}</Text></View>
       </View>
     );
   }
@@ -56,75 +57,40 @@ export default function ChatLandingScreen() {
 
   if (connection.status === 'connecting') {
     return (
-      <View style={[styles.center, { backgroundColor: palette.background }]}>
-        <Surface style={[styles.panel, { backgroundColor: palette.surface }]} elevation={1}>
-          <ActivityIndicator size="large" color={palette.tint} />
-          <Text variant="headlineSmall" style={[styles.title, { color: palette.text }]}>{t('chat:session.opening')}</Text>
-          <Text variant="bodyMedium" style={[styles.copy, { color: palette.muted }]}>{t('chat:connectionStatus.connecting')}</Text>
-        </Surface>
+      <View className={cn(stylesClasses.center, "bg-background")}>
+        <View className={cn(stylesClasses.panel, "bg-surface")}><Spinner size="large" color={palette.tint} /><Text className={cn(stylesClasses.title, "text-foreground")} variant="display">{t('chat:session.opening')}</Text><Text className={cn(stylesClasses.copy, "text-muted-foreground")} variant="description">{t('chat:connectionStatus.connecting')}</Text></View>
       </View>
     );
   }
 
   if (connection.status !== 'connected') {
     return (
-      <View style={[styles.center, { backgroundColor: palette.background }]}>
-        <Surface style={[styles.panel, { backgroundColor: palette.surface }]} elevation={1}>
-          <Text variant="headlineSmall" style={[styles.title, { color: palette.text }]}>{t('chat:session.connectTitle')}</Text>
-          <Text variant="bodyMedium" style={[styles.copy, { color: palette.muted }]}>{connection.message}</Text>
-          <Button
-            mode="contained"
-            loading={isReconnecting}
-            disabled={isReconnecting}
-            onPress={() => {
+      <View className={cn(stylesClasses.center, "bg-background")}>
+        <View className={cn(stylesClasses.panel, "bg-surface")}><Text className={cn(stylesClasses.title, "text-foreground")} variant="display">{t('chat:session.connectTitle')}</Text><Text className={cn(stylesClasses.copy, "text-muted-foreground")} variant="description">{connection.message}</Text><Button disabled={isReconnecting} onPress={() => {
               if (connection.status === 'error') void reconnect();
               else router.push('/(tabs)/settings');
-            }}>
-            {connection.status === 'error' ? t('common:actions.reconnect') : t('common:actions.openSettings')}
-          </Button>
-          {connection.status === 'error' ? (
-            <Button onPress={() => router.push('/(tabs)/settings')}>{t('chat:session.connectionSettings')}</Button>
-          ) : null}
-        </Surface>
+            }} variant="default">{isReconnecting ? <Spinner size="small" /> : null}<Text>{connection.status === 'error' ? t('common:actions.reconnect') : t('common:actions.openSettings')}</Text></Button>{connection.status === 'error' ? (
+            <Button onPress={() => router.push('/(tabs)/settings')} variant="ghost"><Text>{t('chat:session.connectionSettings')}</Text></Button>
+          ) : null}</View>
       </View>
     );
   }
 
   return (
     <>
-      <View style={[styles.center, { backgroundColor: palette.background }]}>
-        <Surface style={[styles.panel, { backgroundColor: palette.surface }]} elevation={1}>
-          <Text variant="headlineSmall" style={[styles.title, { color: palette.text }]}>{t('chat:session.chooseProject')}</Text>
-          <Text variant="bodyMedium" style={[styles.copy, { color: palette.muted }]}>{t('chat:session.selectProject')}</Text>
-          <Button mode="contained" icon="folder-open-outline" onPress={() => setPickerVisible(true)}>
-            {t('chat:session.openProject')}
-          </Button>
-        </Surface>
+      <View className={cn(stylesClasses.center, "bg-background")}>
+        <View className={cn(stylesClasses.panel, "bg-surface")}><Text className={cn(stylesClasses.title, "text-foreground")} variant="display">{t('chat:session.chooseProject')}</Text><Text className={cn(stylesClasses.copy, "text-muted-foreground")} variant="description">{t('chat:session.selectProject')}</Text><Button onPress={() => setPickerVisible(true)} variant="default"><Icon name={"folder-open-outline"} size={20} /><Text>{t('chat:session.openProject')}</Text></Button></View>
       </View>
       <ProjectPicker visible={pickerVisible} onClose={() => setPickerVisible(false)} testID="chat-landing-project-picker" />
     </>
   );
 }
 
-const styles = StyleSheet.create({
-  center: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: 24,
-  },
-  panel: {
-    width: '100%',
-    padding: 24,
-    gap: 12,
-    borderRadius: 16,
-  },
-  title: {
-    textAlign: 'center',
-    fontWeight: '600',
-  },
-  copy: {
-    textAlign: 'center',
-    lineHeight: 22,
-  },
-});
+
+
+const stylesClasses = {
+  "center": "flex-1 items-center justify-center p-6",
+  "panel": "w-full p-6 gap-3 rounded-[16px]",
+  "title": "text-center font-semibold",
+  "copy": "text-center leading-[22px]"
+} as const;

@@ -1,8 +1,10 @@
+import { cn } from '@/lib/utils';
+import { Spinner } from '@/components/ui/spinner';
 import { useCameraPermissions } from 'expo-camera';
 import { useEffect, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Platform, StyleSheet, View } from 'react-native';
-import { ActivityIndicator } from 'react-native-paper';
+import { Platform, View } from 'react-native';
+
 
 /**
  * Resolves camera permission before a requested scanner renders. Denial returns
@@ -16,7 +18,11 @@ export function ConnectCameraGate({ onCancel, children }: { onCancel: () => void
     if (native && permission && !permission.granted) onCancel();
   }, [native, onCancel, permission]);
   if (!native || permission?.granted) return <>{children}</>;
-  return <View style={styles.screen}><ActivityIndicator accessibilityLabel={t('settings:connect.cameraLoading')} /></View>;
+  return <View className={cn(stylesClasses.screen)}><Spinner accessibilityLabel={t('settings:connect.cameraLoading')} /></View>;
 }
 
-const styles = StyleSheet.create({ screen: { flex: 1, alignItems: 'center', justifyContent: 'center' } });
+
+
+const stylesClasses = {
+  "screen": "flex-1 items-center justify-center"
+} as const;

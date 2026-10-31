@@ -1,3 +1,4 @@
+import { uiImports } from '../helpers/ui.mjs';
 import { describe, expect, it } from 'vitest';
 
 import * as transcript from '@/lib/opencode/transcript';
@@ -74,6 +75,7 @@ async function mountGroup(value: transcript.ActivityGroup, sessionRunning = fals
   const runtime = hookRuntime();
   const element = (type: unknown, props: unknown) => ({ type, props });
   const { ActivityGroupRow } = await loadTs('components/chat/cards/activity-group.tsx', {
+    ...uiImports,
     react: runtime.react,
     'react/jsx-runtime': { jsx: element, jsxs: element, Fragment: 'Fragment' },
     '@shopify/flash-list': { useRecyclingState: recyclingState(runtime) },
@@ -83,7 +85,7 @@ async function mountGroup(value: transcript.ActivityGroup, sessionRunning = fals
       StyleSheet: { create: (value: unknown) => value },
       View: 'View',
     },
-    'react-native-paper': { ActivityIndicator: 'ActivityIndicator', Text: 'Text' },
+
     '@expo/vector-icons': { MaterialCommunityIcons: 'Icon' },
     '@/components/chat/cards/activity-item': { ActivityItemRow: 'ActivityItemRow', ActivityReadGroupRow: 'ActivityReadGroupRow' },
     '@/constants/theme': { Colors: { light: {} } },
@@ -99,6 +101,7 @@ async function mountRead(reads: transcript.ToolDetail[]) {
   const runtime = hookRuntime();
   const element = (type: unknown, props: unknown) => ({ type, props });
   const { ActivityReadGroupRow } = await loadTs('components/chat/cards/activity-item.tsx', {
+    ...uiImports,
     react: runtime.react,
     'react/jsx-runtime': { jsx: element, jsxs: element, Fragment: 'Fragment' },
     '@shopify/flash-list': { useRecyclingState: recyclingState(runtime) },
@@ -109,7 +112,7 @@ async function mountRead(reads: transcript.ToolDetail[]) {
       StyleSheet: { create: (value: unknown) => value },
       View: 'View',
     },
-    'react-native-paper': { ActivityIndicator: 'ActivityIndicator', Text: 'Text' },
+
     '@expo/vector-icons': { MaterialCommunityIcons: 'Icon' },
     'expo-clipboard': { setStringAsync: async () => undefined },
     '@/components/chat/cards/activity-diff': { ActivityDiffCard: 'ActivityDiffCard' },
@@ -134,6 +137,7 @@ async function mountItem(item: transcript.ActivityItem) {
   const runtime = hookRuntime();
   const element = (type: unknown, props: unknown) => ({ type, props });
   const { ActivityItemRow } = await loadTs('components/chat/cards/activity-item.tsx', {
+    ...uiImports,
     react: runtime.react,
     'react/jsx-runtime': { jsx: element, jsxs: element, Fragment: 'Fragment' },
     '@shopify/flash-list': { useRecyclingState: recyclingState(runtime) },
@@ -144,7 +148,7 @@ async function mountItem(item: transcript.ActivityItem) {
       StyleSheet: { create: (value: unknown) => value },
       View: 'View',
     },
-    'react-native-paper': { ActivityIndicator: 'ActivityIndicator', Text: 'Text' },
+
     '@expo/vector-icons': { MaterialCommunityIcons: 'Icon' },
     'expo-clipboard': { setStringAsync: async () => undefined },
     '@/components/chat/cards/activity-diff': { ActivityDiffCard: 'ActivityDiffCard' },

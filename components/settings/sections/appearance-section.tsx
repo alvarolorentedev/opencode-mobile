@@ -1,6 +1,9 @@
+import { cn } from '@/lib/utils';
+import { FieldDescription } from '@/components/ui/text-field';
+import { Text } from '@/components/ui/text';
 import { useTranslation } from 'react-i18next';
 import { Pressable, StyleSheet, View } from 'react-native';
-import { HelperText, Text } from 'react-native-paper';
+
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 
 import {
@@ -45,7 +48,7 @@ export function AppearanceSection({
   ];
 
   return (
-    <View testID="settings-appearance-section" style={styles.section}>
+    <View testID="settings-appearance-section" className={cn(stylesClasses.section)}>
       <SettingSelectField<ThemeMode>
         testID="settings-theme-mode"
         label={t('settings:appearance.theme.label')}
@@ -55,13 +58,11 @@ export function AppearanceSection({
         selectedValue={themeMode}
         valueLabel={themeOptions.find((option) => option.value === themeMode)?.label ?? themeOptions[0].label}
       />
-      <HelperText type="info">{t('settings:appearance.theme.description')}</HelperText>
+      <FieldDescription  invalid={false}>{t('settings:appearance.theme.description')}</FieldDescription>
 
       <SettingTarget label={t('settings:appearance.accent.label')}>
-      <Text variant="titleSmall" style={[styles.accentTitle, { color: palette.text }]}>
-        {t('settings:appearance.accent.label')}
-      </Text>
-      <View style={styles.swatches}>
+      <Text className={cn(stylesClasses.accentTitle, "text-foreground")} variant="description">{t('settings:appearance.accent.label')}</Text>
+      <View className={cn(stylesClasses.swatches)}>
         {ACCENT_COLORS.map((accent) => {
           const selected = accent === accentColor;
           const label = t(ACCENT_LABEL_KEYS[accent]);
@@ -83,28 +84,25 @@ export function AppearanceSection({
                   opacity: pressed ? 0.82 : 1,
                 },
               ]}>
-              <View style={[styles.swatch, { backgroundColor: preview.background, borderColor: preview.border }]}>
-                <View style={[styles.swatchSurface, { backgroundColor: preview.surface, borderColor: preview.border }]}>
-                  <View style={[styles.swatchAccent, { backgroundColor: preview.tint }]}>
+              <View className={cn(stylesClasses.swatch)} style={[{ backgroundColor: preview.background, borderColor: preview.border }]}>
+                <View className={cn(stylesClasses.swatchSurface)} style={[{ backgroundColor: preview.surface, borderColor: preview.border }]}>
+                  <View className={cn(stylesClasses.swatchAccent)} style={[{ backgroundColor: preview.tint }]}>
                     {selected ? <MaterialCommunityIcons name="check" size={12} color={preview.background} /> : null}
                   </View>
                 </View>
               </View>
-              <Text variant="labelMedium" style={{ color: selected ? palette.text : palette.muted }}>{label}</Text>
+              <Text style={{ color: selected ? palette.text : palette.muted }} variant="label">{label}</Text>
             </Pressable>
           );
         })}
       </View>
-      <HelperText type="info">{t('settings:appearance.accent.description')}</HelperText>
+      <FieldDescription  invalid={false}>{t('settings:appearance.accent.description')}</FieldDescription>
       </SettingTarget>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  section: { gap: 10, paddingBottom: 8 },
-  accentTitle: { fontWeight: '600' },
-  swatches: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   swatchButton: {
     alignItems: 'center',
     borderRadius: 14,
@@ -114,8 +112,14 @@ const styles = StyleSheet.create({
     minHeight: 48,
     paddingHorizontal: 10,
     paddingVertical: 8,
-  },
-  swatch: { alignItems: 'center', borderRadius: 8, borderWidth: 1, height: 24, justifyContent: 'center', width: 28 },
-  swatchSurface: { alignItems: 'center', borderRadius: 4, borderWidth: 1, height: 16, justifyContent: 'center', width: 20 },
-  swatchAccent: { alignItems: 'center', borderRadius: 2, height: 9, justifyContent: 'center', width: 11 },
+  }
 });
+
+const stylesClasses = {
+  "section": "gap-2.5 pb-2",
+  "accentTitle": "font-semibold",
+  "swatches": "flex-row flex-wrap gap-2",
+  "swatch": "items-center rounded-[8px] border h-6 justify-center w-7",
+  "swatchSurface": "items-center rounded-[4px] border h-4 justify-center w-5",
+  "swatchAccent": "items-center rounded-[2px] h-2.25 justify-center w-2.75"
+} as const;

@@ -1,10 +1,18 @@
+import { cn } from '@/lib/utils';
+import { Text } from '@/components/ui/text';
+import { ListRow } from '@/components/ui/list-row';
+import { Icon } from '@/components/ui/icon';
+import { Separator } from '@/components/ui/separator';
+import { TextField } from '@/components/ui/text-field';
+import { Button } from '@/components/ui/button';
+import { Spinner } from '@/components/ui/spinner';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { View } from 'react-native';
-import { Button, Divider, List, Text } from 'react-native-paper';
+
 
 import { OverlaySheet } from '@/components/ui/overlay-sheet';
-import { TextInput } from '@/components/ui/text-input';
+
 import { WorkspaceSelect } from '@/components/ui/workspace-select';
 import { usePalette } from '@/hooks/use-palette';
 import type { ProjectCheckout, ProjectWorktree } from '@/lib/opencode/project';
@@ -148,72 +156,42 @@ export function NewChatSheet({ target: initial, onClose }: { target?: WorkspaceT
         options={server?.projects.map((entry) => ({ value: entry.path, label: entry.label, description: entry.path })) ?? []}
         onChange={selectProject} />
 
-      <Text variant="labelMedium" style={{ marginTop: 6 }}>{t('chat:newChat.runIn')}</Text>
+      <Text className={cn("mt-1.5")} variant="label">{t('chat:newChat.runIn')}</Text>
       {checkouts.length ? checkouts.map((checkout) => {
         const selected = !createMode && checkout.directory === effectiveCheckoutPath;
         const label = checkout.isMain ? t('project:worktrees.local') : checkout.name;
         return (
           <View key={checkout.directory}>
-            <List.Item
-              testID={`new-chat-checkout-${checkout.directory}`}
-              accessibilityRole="button"
-              accessibilityState={{ selected, disabled: Boolean(busy) }}
-              accessibilityLabel={t('project:picker.selectLabel', { name: label })}
-              title={label}
-              titleNumberOfLines={2}
-              description={checkout.isMain ? t('project:worktrees.localHint') : [checkout.branch, checkout.directory].filter(Boolean).join(' · ')}
-              descriptionNumberOfLines={2}
-              left={(props) => <List.Icon {...props} color={selected ? palette.tint : palette.muted} icon={checkout.isMain ? 'home-outline' : 'source-branch'} />}
-              right={(props) => <List.Icon {...props} color={selected ? palette.tint : palette.muted} icon={selected ? 'check-circle' : 'circle-outline'} />}
-              disabled={Boolean(busy)}
-              onPress={() => {
+            <ListRow testID={`new-chat-checkout-${checkout.directory}`} accessibilityRole="button" accessibilityState={{ selected, disabled: Boolean(busy) }} accessibilityLabel={t('project:picker.selectLabel', { name: label })} title={label} description={checkout.isMain ? t('project:worktrees.localHint') : [checkout.branch, checkout.directory].filter(Boolean).join(' · ')} left={(props) => <Icon {...props} color={selected ? palette.tint : palette.muted} name={checkout.isMain ? 'home-outline' : 'source-branch'}></Icon>} right={(props) => <Icon {...props} color={selected ? palette.tint : palette.muted} name={selected ? 'check-circle' : 'circle-outline'}></Icon>} disabled={Boolean(busy)} onPress={() => {
                 setCheckoutPath(checkout.directory);
                 setCreateMode(false);
                 setError(undefined);
                 setNotice(undefined);
-              }} />
-            <Divider />
+              }}></ListRow>
+            <Separator></Separator>
           </View>
         );
-      }) : <Text style={{ color: palette.muted }}>{t('chat:newChat.noCheckouts')}</Text>}
+      }) : <Text className={cn("text-muted-foreground")}>{t('chat:newChat.noCheckouts')}</Text>}
 
-      <List.Item
-        testID="new-chat-new-worktree"
-        accessibilityRole="button"
-        accessibilityState={{ selected: createMode, disabled: Boolean(busy) }}
-        title={t('chat:newChat.newWorktree')}
-        left={(props) => <List.Icon {...props} color={createMode ? palette.tint : palette.muted} icon="plus" />}
-        right={(props) => <List.Icon {...props} color={createMode ? palette.tint : palette.muted} icon={createMode ? 'check-circle' : 'circle-outline'} />}
-        disabled={Boolean(busy)}
-        onPress={() => {
+      <ListRow testID="new-chat-new-worktree" accessibilityRole="button" accessibilityState={{ selected: createMode, disabled: Boolean(busy) }} title={t('chat:newChat.newWorktree')} left={(props) => <Icon {...props} color={createMode ? palette.tint : palette.muted} name={"plus"}></Icon>} right={(props) => <Icon {...props} color={createMode ? palette.tint : palette.muted} name={createMode ? 'check-circle' : 'circle-outline'}></Icon>} disabled={Boolean(busy)} onPress={() => {
           setCreateMode(true);
           setError(undefined);
           setNotice(undefined);
-        }} />
+        }}></ListRow>
       {createMode ? (
         <>
-          <TextInput
-            testID="new-chat-worktree-name"
-            mode="outlined"
-            label={t('chat:newChat.worktreeName')}
-            value={name}
-            onChangeText={setName}
-            autoCapitalize="none"
-            autoCorrect={false}
-            editable={!busy} />
-          <Text variant="bodySmall" style={{ color: palette.muted }}>{t('chat:newChat.worktreeHint')}</Text>
+          <TextField testID="new-chat-worktree-name" label={t('chat:newChat.worktreeName')} value={name} onChangeText={setName} autoCapitalize="none" autoCorrect={false} editable={!busy}></TextField>
+          <Text className={cn("text-muted-foreground")} variant="label">{t('chat:newChat.worktreeHint')}</Text>
         </>
       ) : null}
 
-      <Text variant="labelMedium">{t('common:servers.workingDirectory')}</Text>
+      <Text  variant="label">{t('common:servers.workingDirectory')}</Text>
       <Text style={{ fontFamily: 'monospace' }}>{createMode ? t('chat:newChat.newWorktree') : effectiveCheckoutPath || '—'}</Text>
-      {notice ? <Text accessibilityLiveRegion="polite" style={{ color: palette.warning }}>{notice}</Text> : null}
-      {error ? <Text accessibilityRole="alert" style={{ color: palette.danger }}>{error}</Text> : null}
-      <View style={{ flexDirection: 'row', justifyContent: 'flex-end', gap: 8 }}>
-        <Button disabled={Boolean(busy)} onPress={onClose}>{t('common:actions.cancel')}</Button>
-        <Button testID="new-chat-confirm" mode="contained" loading={Boolean(busy)} disabled={!canSubmit} onPress={() => void submit()}>
-          {primaryLabel}
-        </Button>
+      {notice ? <Text accessibilityLiveRegion="polite" className={cn("text-warning")}>{notice}</Text> : null}
+      {error ? <Text accessibilityRole="alert" className={cn("text-destructive")}>{error}</Text> : null}
+      <View className={cn("flex-row justify-end gap-2")}>
+        <Button disabled={Boolean(busy)} onPress={onClose} variant={"ghost"}><Text>{t('common:actions.cancel')}</Text></Button>
+        <Button testID="new-chat-confirm" disabled={!canSubmit} onPress={() => void submit()} variant={"default"}>{Boolean(busy) ? <Spinner size="small" /> : null}<Text>{primaryLabel}</Text></Button>
       </View>
     </OverlaySheet>
   );

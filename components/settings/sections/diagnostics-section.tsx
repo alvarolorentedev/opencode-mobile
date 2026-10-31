@@ -1,8 +1,13 @@
-import { SettingButton as Button } from './setting-rows';
+import { cn } from '@/lib/utils';
+import { Text } from '@/components/ui/text';
+import { ListRow } from '@/components/ui/list-row';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+
 import { useEffect, useLayoutEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
-import { StyleSheet, View } from 'react-native';
-import { Chip, List, Text } from 'react-native-paper';
+import { View } from 'react-native';
+
 
 import { SettingTarget } from '../settings-panel';
 import { formatDataUsage, resetDataUsage, useDataUsage } from '@/lib/opencode/data-usage';
@@ -10,7 +15,7 @@ import { useRequestStats } from '@/lib/opencode/request-stats';
 import type { RecordedJsError } from '@/lib/error-reporting';
 import type { NetworkStatus } from '@/lib/network-status';
 import type { Diagnostics } from '@/providers/services/diagnostics-service';
-import type { Palette } from './setting-rows';
+import { Palette } from './setting-rows';
 
 export function DiagnosticsSection({
   diagnostics,
@@ -43,59 +48,44 @@ export function DiagnosticsSection({
   const notAvailable = t('settings:diagnostics.notAvailable');
   const subsystemParts = [t('settings:diagnostics.subsystemsMcp', { value: mcpCount ?? notAvailable })];
   return (
-    <View style={styles.section}>
-        <Text variant="titleLarge" style={[styles.title, { color: palette.text }]}>{t('settings:diagnostics.title')}</Text>
-        <SettingTarget label={t('settings:diagnostics.server')}><List.Item title={t('settings:diagnostics.server')} description={health ? t('settings:diagnostics.openCodeVersion', { version: health.version }) : t('settings:diagnostics.healthUnavailable')} right={() => <Chip compact>{health?.healthy ? t('settings:diagnostics.healthy') : t('common:labels.unknown')}</Chip>} /></SettingTarget>
-        <SettingTarget label={t('settings:diagnostics.realtimeUpdates')}><List.Item title={t('settings:diagnostics.realtimeUpdates')} description={eventStreamStatus === 'connected' ? t('settings:diagnostics.eventStreamConnected') : t('settings:diagnostics.pollingFallback')} right={() => <Chip compact>{eventStreamStatus}</Chip>} /></SettingTarget>
-        <SettingTarget label={t('settings:diagnostics.network')}><List.Item
-          title={t('settings:diagnostics.network')}
-          description={t('settings:diagnostics.networkValue', {
+    <View className={cn(stylesClasses.section)}>
+        <Text className={cn(stylesClasses.title, "text-foreground")} variant="heading">{t('settings:diagnostics.title')}</Text>
+        <SettingTarget label={t('settings:diagnostics.server')}><ListRow title={t('settings:diagnostics.server')} description={health ? t('settings:diagnostics.openCodeVersion', { version: health.version }) : t('settings:diagnostics.healthUnavailable')} right={() => <Badge  variant="secondary"><Text>{health?.healthy ? t('settings:diagnostics.healthy') : t('common:labels.unknown')}</Text></Badge>}></ListRow></SettingTarget>
+        <SettingTarget label={t('settings:diagnostics.realtimeUpdates')}><ListRow title={t('settings:diagnostics.realtimeUpdates')} description={eventStreamStatus === 'connected' ? t('settings:diagnostics.eventStreamConnected') : t('settings:diagnostics.pollingFallback')} right={() => <Badge  variant="secondary"><Text>{eventStreamStatus}</Text></Badge>}></ListRow></SettingTarget>
+        <SettingTarget label={t('settings:diagnostics.network')}><ListRow title={t('settings:diagnostics.network')} description={t('settings:diagnostics.networkValue', {
             type: transport.network.type,
             state: transport.network.online ? t('settings:diagnostics.networkOnline') : t('settings:diagnostics.networkOffline'),
             generation: transport.network.generation ? ` · ${transport.network.generation}` : '',
-          })}
-          right={() => <Chip compact>{transport.network.constrained ? t('settings:diagnostics.networkConstrained') : t('settings:diagnostics.networkNormal')}</Chip>}
-        /></SettingTarget>
+          })} right={() => <Badge  variant="secondary"><Text>{transport.network.constrained ? t('settings:diagnostics.networkConstrained') : t('settings:diagnostics.networkNormal')}</Text></Badge>}></ListRow></SettingTarget>
         {transport.reconnect.retryAt ? (
-          <List.Item
-            title={t('settings:diagnostics.reconnect')}
-            description={t('settings:diagnostics.reconnectValue', { attempt: transport.reconnect.attempt, max: transport.reconnect.maxAttempts })}
-          />
+          <ListRow title={t('settings:diagnostics.reconnect')} description={t('settings:diagnostics.reconnectValue', { attempt: transport.reconnect.attempt, max: transport.reconnect.maxAttempts })}></ListRow>
         ) : null}
-        <SettingTarget label={t('settings:diagnostics.requestLatency')}><List.Item
-          title={t('settings:diagnostics.requestLatency')}
-          description={t('settings:diagnostics.requestLatencyValue', {
+        <SettingTarget label={t('settings:diagnostics.requestLatency')}><ListRow title={t('settings:diagnostics.requestLatency')} description={t('settings:diagnostics.requestLatencyValue', {
             p50: requestStats.p50Ms,
             p95: requestStats.p95Ms,
             failed: requestStats.failed,
             retries: requestStats.retries,
-          })}
-        /></SettingTarget>
-        <List.Item title={t('settings:diagnostics.subsystems')} description={subsystemParts.join(' • ')} />
-        <Text variant="titleMedium">{t('common:servers.appDiagnostics')}</Text>
-        <SettingTarget label={t('settings:diagnostics.networkUsage')}><List.Item
-          title={t('settings:diagnostics.networkUsage')}
-          description={t('settings:diagnostics.networkUsageValue', { requests: dataUsage.requests, size: formatDataUsage(dataUsage.bytes) })}
-        /></SettingTarget>
-        <SettingTarget label={t('settings:diagnostics.lastError')}><List.Item
-          title={t('settings:diagnostics.lastError')}
-          description={lastJsError
+          })}></ListRow></SettingTarget>
+        <ListRow title={t('settings:diagnostics.subsystems')} description={subsystemParts.join(' • ')}></ListRow>
+        <Text  variant="title">{t('common:servers.appDiagnostics')}</Text>
+        <SettingTarget label={t('settings:diagnostics.networkUsage')}><ListRow title={t('settings:diagnostics.networkUsage')} description={t('settings:diagnostics.networkUsageValue', { requests: dataUsage.requests, size: formatDataUsage(dataUsage.bytes) })}></ListRow></SettingTarget>
+        <SettingTarget label={t('settings:diagnostics.lastError')}><ListRow title={t('settings:diagnostics.lastError')} description={lastJsError
             ? t('settings:diagnostics.lastErrorValue', { message: lastJsError.message, time: new Date(lastJsError.at).toLocaleString() })
-            : t('settings:diagnostics.lastErrorNone')}
-          right={lastJsError
-            ? () => <Chip compact>{lastJsError.isFatal ? t('settings:diagnostics.lastErrorFatal') : t('settings:diagnostics.lastErrorHandled')}</Chip>
-            : undefined}
-        /></SettingTarget>
-        <View style={styles.diagnosticsActions}>
-          <Button mode="outlined" onPress={onRefresh}>{t('settings:diagnostics.refresh')}</Button>
-          <Button mode="text" onPress={resetDataUsage}>{t('settings:diagnostics.networkUsageReset')}</Button>
+            : t('settings:diagnostics.lastErrorNone')} right={lastJsError
+            ? () => <Badge  variant="secondary"><Text>{lastJsError.isFatal ? t('settings:diagnostics.lastErrorFatal') : t('settings:diagnostics.lastErrorHandled')}</Text></Badge>
+            : undefined}></ListRow></SettingTarget>
+        <View className={cn(stylesClasses.diagnosticsActions)}>
+          <Button onPress={onRefresh} variant="outline"><Text>{t('settings:diagnostics.refresh')}</Text></Button>
+          <Button onPress={resetDataUsage} variant="ghost"><Text>{t('settings:diagnostics.networkUsageReset')}</Text></Button>
         </View>
     </View>
   );
 }
 
-const styles = StyleSheet.create({
-  section: { gap: 14, paddingBottom: 8 },
-  diagnosticsActions: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  title: { fontWeight: '600' },
-});
+
+
+const stylesClasses = {
+  "section": "gap-3.5 pb-2",
+  "title": "font-semibold",
+  "diagnosticsActions": "flex-row items-center gap-2"
+} as const;

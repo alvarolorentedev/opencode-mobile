@@ -231,6 +231,7 @@ export function useChatViewController() {
     handleSpeakEntry,
     handleAttach,
     handleAbort,
+    confirmation,
     handleConfirmStopConversation,
   } = useChatViewActions({
     t,
@@ -405,7 +406,7 @@ export function useChatViewController() {
     actions: {
       buildSendErrorDetails, clearConversationFeedback, clearPromptError, dismissFailedInput,
       forkSession, handleAbort, handleAttach, handleCancelPendingPrompt, handleCancelRevert,
-      handleConfirmStopConversation, handleCopyMessage,
+      confirmation, handleConfirmStopConversation, handleCopyMessage,
       handleDraftChange, handleRevertMessage, handleSelectionChange: setSelection, handleSendPrompt,
       handleSuggestionSelect, handleSpeakEntry, handleToggleRecording,
       handleVoiceRecovery, recoverFailedInput, refreshDiffs, rejectQuestion, replyToPermission,

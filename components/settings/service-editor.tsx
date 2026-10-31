@@ -1,8 +1,17 @@
-import { SettingButton as Button, SettingTextInput as TextInput, SettingSelectField, SettingSwitchRow, type Palette } from './sections/setting-rows';
-import { useState } from 'react';
+import { cn } from '@/lib/utils';
+import { useWatch, useForm, useController } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { serviceSchema } from './forms/service-schema';
+import { SettingField } from '@/components/settings/sections/setting-rows';
+import { FieldDescription } from '@/components/ui/text-field';
+import { Button } from '@/components/ui/button';
+import { Text } from '@/components/ui/text';
+import { Spinner } from '@/components/ui/spinner';
+import { SettingSelectField, SettingSwitchRow, type Palette } from './sections/setting-rows';
+import { useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { StyleSheet, View } from 'react-native';
-import { HelperText } from 'react-native-paper';
+import { View } from 'react-native';
+
 
 
 import {
@@ -34,10 +43,15 @@ export function ServiceEditor({ api, editing, palette, onDone }: {
   onDone: () => void;
 }) {
   const { t } = useTranslation();
-  const [draft, setDraft] = useState<ServiceDraft>(() => draftFor(editing));
-  const [errors, setErrors] = useState<ServiceDraftErrors>({});
+  const form = useForm<ServiceDraft>({ defaultValues: draftFor(editing), resolver: zodResolver(serviceSchema({ api: api.version?.api, servicePorts: api.version?.servicePorts, services: api.services })), mode: 'onSubmit', reValidateMode: 'onChange' });
+  const draft = useWatch({ control: form.control, compute: (values) => values });
+  const { field: { value: idValue, onChange: idChange, onBlur: idBlur, ref: idRef } } = useController({ control: form.control, name: 'id' });
+  const { field: { value: nameValue, onChange: nameChange, onBlur: nameBlur, ref: nameRef } } = useController({ control: form.control, name: 'name' });
+  const { field: { value: pathValue, onChange: pathChange, onBlur: pathBlur, ref: pathRef } } = useController({ control: form.control, name: 'path' });
+  const { field: { value: targetValue, onChange: targetChange, onBlur: targetBlur, ref: targetRef } } = useController({ control: form.control, name: 'target' });
   const [feedback, setFeedback] = useState<string>();
   const [isSaving, setIsSaving] = useState(false);
+  const submitting = useRef(false);
 
   // Management revision 2 exposes dedicated ports and root services; older
   // (or pre-version) connectors stay on the legacy path-only surface.
@@ -59,43 +73,44 @@ export function ServiceEditor({ api, editing, palette, onDone }: {
   }
 
   function fieldError(field: keyof ServiceDraftErrors) {
-    const code = errors[field];
-    return code ? t(`settings:services.errors.${code}`) : undefined;
+    const code = form.formState.errors[field]?.message;
+    return code ? t(code) : undefined;
   }
 
   async function submitDraft() {
-    const prepared = prepareServiceDraft({ ...draft, port: selectedPort }, {
+    if (submitting.current) return;
+    submitting.current = true;
+    try {
+    form.setValue('port', selectedPort);
+    if (!await form.trigger(undefined, { shouldFocus: true })) return;
+    const prepared = prepareServiceDraft({ ...form.getValues(), port: selectedPort }, {
       api: version?.api,
       servicePorts: version?.servicePorts,
       services: api.services,
     });
-    setErrors(prepared.errors);
+
     if (!prepared.input) return;
     setIsSaving(true);
     setFeedback(undefined);
-    try {
       await api.save(editing?.id ?? draft.id.trim(), prepared.input);
       onDone();
     } catch (error) {
       setFeedback(error instanceof Error ? error.message : t('settings:services.saveFailed'));
     } finally {
+      submitting.current = false;
       setIsSaving(false);
     }
   }
 
   return (
-    <View testID="service-editor" style={styles.form}>
+    <View testID="service-editor" className={cn(stylesClasses.form)}>
       {version && version.api < 2 ? (
-        <HelperText testID="services-connector-hint" type="info">
-          {version.known ? t('settings:services.legacyConnector') : t('settings:services.unknownConnector')}
-        </HelperText>
+        <FieldDescription testID="services-connector-hint" invalid={false}>{version.known ? t('settings:services.legacyConnector') : t('settings:services.unknownConnector')}</FieldDescription>
       ) : null}
-      <TextInput testID="service-id-input" mode="outlined" disabled={Boolean(editing)} label={t('settings:services.fields.id')} value={draft.id}
-        onChangeText={(value) => setDraft({ ...draft, id: value })} autoCapitalize="none" autoCorrect={false} />
-      {fieldError('id') ? <HelperText type="error">{fieldError('id')}</HelperText> : null}
-      <TextInput testID="service-name-input" mode="outlined" label={t('settings:services.fields.name')} value={draft.name}
-        onChangeText={(value) => setDraft({ ...draft, name: value })} />
-      {fieldError('name') ? <HelperText type="error">{fieldError('name')}</HelperText> : null}
+      <SettingField testID="service-id-input" invalid={Boolean(fieldError('id'))} aria-describedby={fieldError('id') ? 'service-id-error' : undefined} disabled={Boolean(editing)} label={t('settings:services.fields.id')} ref={idRef} onBlur={idBlur} value={idValue} onChangeText={idChange} autoCapitalize="none" autoCorrect={false}></SettingField>
+      {fieldError('id') ? <FieldDescription nativeID="service-id-error" invalid={true}>{fieldError('id')}</FieldDescription> : null}
+      <SettingField testID="service-name-input" invalid={Boolean(fieldError('name'))} aria-describedby={fieldError('name') ? 'service-name-error' : undefined} label={t('settings:services.fields.name')} ref={nameRef} onBlur={nameBlur} value={nameValue} onChangeText={nameChange}></SettingField>
+      {fieldError('name') ? <FieldDescription nativeID="service-name-error" invalid={true}>{fieldError('name')}</FieldDescription> : null}
       {apiTwo ? (
         <>
           <SettingSelectField
@@ -103,40 +118,40 @@ export function ServiceEditor({ api, editing, palette, onDone }: {
             label={t('settings:services.fields.port')}
             valueLabel={selectedPort !== undefined ? String(selectedPort) : t('common:labels.none')}
             selectedValue={selectedPort !== undefined ? String(selectedPort) : undefined}
-            onValueChange={(value) => setDraft({ ...draft, port: Number(value) })}
+            onValueChange={(value) => form.setValue('port', Number(value), { shouldDirty: true })}
             options={portOptions.map((option) => ({ value: String(option.port), label: portOptionLabel(option) }))}
             palette={palette}
           />
-          {fieldError('port') ? <HelperText type="error">{fieldError('port')}</HelperText> : null}
+          {fieldError('port') ? <FieldDescription  invalid={true}>{fieldError('port')}</FieldDescription> : null}
         </>
       ) : null}
-      <TextInput testID="service-path-input" mode="outlined" label={t('settings:services.fields.path')} placeholder="/test/api" value={draft.path}
-        onChangeText={(value) => setDraft({ ...draft, path: value })} autoCapitalize="none" autoCorrect={false} />
-      {fieldError('path') ? <HelperText type="error">{fieldError('path')}</HelperText>
-        : isRoot && apiTwo ? <HelperText type="info">{t('settings:services.rootPathHint')}</HelperText> : null}
-      <TextInput testID="service-target-input" mode="outlined" label={t('settings:services.fields.target')} placeholder="127.0.0.1:3000" value={draft.target}
-        onChangeText={(value) => setDraft({ ...draft, target: value })} autoCapitalize="none" autoCorrect={false} />
-      {fieldError('target') ? <HelperText type="error">{fieldError('target')}</HelperText> : null}
+      <SettingField testID="service-path-input" invalid={Boolean(fieldError('path'))} aria-describedby={fieldError('path') ? 'service-path-error' : undefined} label={t('settings:services.fields.path')} placeholder="/test/api" ref={pathRef} onBlur={pathBlur} value={pathValue} onChangeText={pathChange} autoCapitalize="none" autoCorrect={false}></SettingField>
+      {fieldError('path') ? <FieldDescription nativeID="service-path-error" invalid={true}>{fieldError('path')}</FieldDescription>
+        : isRoot && apiTwo ? <FieldDescription  invalid={false}>{t('settings:services.rootPathHint')}</FieldDescription> : null}
+      <SettingField testID="service-target-input" invalid={Boolean(fieldError('target'))} aria-describedby={fieldError('target') ? 'service-target-error' : undefined} label={t('settings:services.fields.target')} placeholder="127.0.0.1:3000" ref={targetRef} onBlur={targetBlur} value={targetValue} onChangeText={targetChange} autoCapitalize="none" autoCorrect={false}></SettingField>
+      {fieldError('target') ? <FieldDescription nativeID="service-target-error" invalid={true}>{fieldError('target')}</FieldDescription> : null}
       <SettingSelectField
         label={t('settings:services.fields.access')}
         valueLabel={t(`settings:services.access.${draft.access}`)}
         selectedValue={draft.access}
-        onValueChange={(value) => setDraft({ ...draft, access: value })}
+        onValueChange={(value) => form.setValue('access', value, { shouldDirty: true })}
         options={[{ value: 'private', label: t('settings:services.access.private') }, { value: 'public', label: t('settings:services.access.public') }]}
         palette={palette}
       />
-      <SettingSwitchRow title={t('settings:services.fields.enabled')} description={t('settings:services.enabledHint')} value={draft.enabled} onValueChange={(value) => setDraft({ ...draft, enabled: value })} palette={palette} />
-      {!isRoot ? <SettingSwitchRow title={t('settings:services.fields.stripPrefix')} description={t('settings:services.stripPrefixHint')} value={draft.stripPrefix} onValueChange={(value) => setDraft({ ...draft, stripPrefix: value })} palette={palette} /> : null}
-      {feedback ? <HelperText testID="service-editor-error" type="error">{feedback}</HelperText> : null}
-      <View style={styles.actions}>
-        <Button testID="service-cancel" mode="text" disabled={isSaving} onPress={onDone}>{t('common:actions.cancel')}</Button>
-        <Button testID="service-save" mode="contained" loading={isSaving} disabled={isSaving || !api.available} onPress={() => void submitDraft()}>{t('common:actions.save')}</Button>
+      <SettingSwitchRow title={t('settings:services.fields.enabled')} description={t('settings:services.enabledHint')} value={draft.enabled} onValueChange={(value) => form.setValue('enabled', value, { shouldDirty: true })} palette={palette} />
+      {!isRoot ? <SettingSwitchRow title={t('settings:services.fields.stripPrefix')} description={t('settings:services.stripPrefixHint')} value={draft.stripPrefix} onValueChange={(value) => form.setValue('stripPrefix', value, { shouldDirty: true })} palette={palette} /> : null}
+      {feedback ? <FieldDescription testID="service-editor-error" invalid={true}>{feedback}</FieldDescription> : null}
+      <View className={cn(stylesClasses.actions)}>
+        <Button testID="service-cancel" disabled={isSaving} onPress={onDone} variant="ghost"><Text>{t('common:actions.cancel')}</Text></Button>
+        <Button testID="service-save" disabled={isSaving || !api.available} onPress={() => void submitDraft()} variant="default">{isSaving ? <Spinner size="small" /> : null}<Text>{t('common:actions.save')}</Text></Button>
       </View>
     </View>
   );
 }
 
-const styles = StyleSheet.create({
-  form: { gap: 4 },
-  actions: { flexDirection: 'row', justifyContent: 'flex-end', gap: 8, marginTop: 12 },
-});
+
+
+const stylesClasses = {
+  "form": "gap-1",
+  "actions": "flex-row justify-end gap-2 mt-3"
+} as const;

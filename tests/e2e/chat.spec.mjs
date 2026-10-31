@@ -142,8 +142,8 @@ test('happy path keeps the main chat flow stable @smoke', async ({ page, request
 
   await expect(page.getByText(/Finished:/).first()).toBeVisible({ timeout: 20_000 });
   await expect(page.getByText(/Flow stayed stable against the fake OpenCode server/).first()).toBeVisible();
-  await page.getByTestId('chat-changes-chip').click();
   await expect(page.getByTestId('chat-changes-chip')).toHaveAccessibleName('Review changes. 1 file changed, +6 / -1');
+  await page.getByTestId('chat-changes-chip').click();
   await page.getByText('app/(tabs)/index.tsx', { exact: true }).click();
   await expect(page.getByText(/export default function ChatLandingScreen/)).toBeVisible();
   await goToTab(page, 'Projects');
@@ -261,7 +261,7 @@ test('changes chip preserves the composer and hides for an empty scope', async (
   const overlay = page.getByTestId('changes-overlay');
   await expect(overlay).toBeVisible();
   await expect(overlay.getByText('1 file changed', { exact: true })).toBeVisible();
-  const sheet = overlay.getByLabel('1 file changed', { exact: true });
+  const sheet = page.getByTestId('changes-overlay-sheet');
   const sheetBounds = await sheet.boundingBox();
   expect(sheetBounds.width).toBe(390);
   expect(sheetBounds.y).toBeGreaterThan(300);
@@ -293,7 +293,7 @@ test('overlay sheets dismiss on a downward header swipe', async ({ page, request
   await expect(library).toBeVisible();
   // The sheet carries the title as its accessible name and renders its header
   // (the drag zone) at the top of the panel.
-  const sheet = page.getByLabel('Chats', { exact: true });
+  const sheet = page.getByTestId('chat-library-sheet');
   await expect(sheet).toBeVisible();
   await swipeSheetHeaderDown(page, sheet);
   await expect(library).toBeHidden();

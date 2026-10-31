@@ -127,7 +127,7 @@ declared once, at the leaves.
 - render attachments, voice status, prompt input, and action buttons
 - On iOS the native multiline input grows itself between 44 and 110 px (40 to
   90 px in slim mode) and scrolls at the cap, so height never lags a layout pass
-  behind the text. Paper's dense container floors the slim input at 40 px.
+  behind the text. The native slim input retains its 40-point minimum.
   Android and web retain content-size events and the explicit measured height.
 
 #### Prop contract

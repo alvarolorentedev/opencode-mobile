@@ -71,7 +71,7 @@ for (const providerName of ['OpenCode Go', 'OpenRouter']) {
       await goToTab(page, 'Settings');
       await ensureAiSection(page);
       await page.getByTestId('settings-add-provider-button').click();
-      await page.getByRole('button', { name: new RegExp(`${providerName}$`) }).click();
+      await page.getByRole('radio', { name: new RegExp(`${providerName}$`) }).or(page.getByRole('button', { name: new RegExp(`${providerName}$`) })).click();
       await expect(page.getByText(`Configure ${providerName}`)).toBeVisible();
       await page.getByPlaceholder('Paste your API key').fill('sk-test-provider');
       await page.getByTestId('settings-provider-save-button').click();
@@ -88,7 +88,7 @@ for (const providerName of ['OpenCode Go', 'OpenRouter']) {
       await expect(page.getByText('Auto', { exact: true })).toBeVisible();
       // Existing connections can also replace a key without removing the
       // provider first (including providers connected through environment).
-      await page.getByRole('button', { name: new RegExp(`${providerName}$`) }).click();
+      await page.getByRole('radio', { name: new RegExp(`${providerName}$`) }).or(page.getByRole('button', { name: new RegExp(`${providerName}$`) })).click();
       await expect(page.getByText(`Configure ${providerName}`)).toBeVisible();
       await page.getByPlaceholder('Paste your API key').fill('sk-test-replacement');
       await page.getByTestId('settings-provider-save-button').click();

@@ -1,9 +1,13 @@
+import { cn } from '@/lib/utils';
+import { Text } from '@/components/ui/text';
+import { TextField } from '@/components/ui/text-field';
+import { Button } from '@/components/ui/button';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ActivityIndicator, StyleSheet, View } from 'react-native';
-import { Button, Text } from 'react-native-paper';
+import { ActivityIndicator, View } from 'react-native';
 
-import { TextInput } from '@/components/ui/text-input';
+
+
 import type { Palette } from '@/constants/theme';
 import type { ConversationConfirmationState } from '@/providers/opencode-provider-types';
 
@@ -31,70 +35,46 @@ export function ConversationConfirmation({
   return (
     <View
       accessibilityLiveRegion="polite"
-      style={[styles.card, { backgroundColor: palette.surface, borderColor: palette.border }]}
+      className={cn(stylesClasses.card, "bg-surface border-border")}
       testID="conversation-confirmation"
     >
-      <View style={styles.header}>
-        <View style={styles.headerText}>
-          <Text variant="titleMedium" style={{ color: palette.text }}>{t('chat:confirmation.title')}</Text>
-          <Text variant="bodySmall" style={{ color: palette.muted }}>{status}</Text>
+      <View className={cn(stylesClasses.header)}>
+        <View className={cn(stylesClasses.headerText)}>
+          <Text className={cn("text-foreground")} variant="title">{t('chat:confirmation.title')}</Text>
+          <Text className={cn("text-muted-foreground")} variant="label">{status}</Text>
         </View>
         {confirmation.speaking ? <ActivityIndicator size="small" color={palette.tint} /> : null}
       </View>
 
       {editing ? (
-        <TextInput
-          autoFocus
-          accessibilityLabel={t('chat:confirmation.editLabel')}
-          mode="outlined"
-          multiline
-          testID="conversation-confirm-edit"
-          value={draft}
-          onChangeText={setDraft}
-        />
+        <TextField autoFocus accessibilityLabel={t('chat:confirmation.editLabel')} multiline testID="conversation-confirm-edit" value={draft} onChangeText={setDraft}></TextField>
       ) : (
-        <Text selectable variant="titleMedium" style={[styles.command, { color: palette.text }]}>
-          {confirmation.text}
-        </Text>
+        <Text selectable className={cn(stylesClasses.command, "text-foreground")} variant="title">{confirmation.text}</Text>
       )}
 
       {confirmation.heard && confirmation.heard !== confirmation.text ? (
-        <Text variant="bodySmall" style={{ color: palette.muted }}>
-          {t('chat:confirmation.heard', { text: confirmation.heard })}
-        </Text>
+        <Text className={cn("text-muted-foreground")} variant="label">{t('chat:confirmation.heard', { text: confirmation.heard })}</Text>
       ) : null}
       {confirmation.error ? (
-        <Text accessibilityLiveRegion="assertive" variant="bodySmall" style={{ color: palette.warning }}>
-          {confirmation.error}
-        </Text>
+        <Text accessibilityLiveRegion="assertive" className={cn("text-warning")} variant="label">{confirmation.error}</Text>
       ) : null}
 
-      <View style={styles.actions}>
-        <Button
-          mode="contained"
-          testID="conversation-confirm-send"
-          onPress={() => confirmation.actions.confirm(editing ? draft : undefined)}
-        >
-          {t('chat:confirmation.send')}
-        </Button>
-        <Button mode="outlined" testID="conversation-confirm-retry" onPress={confirmation.actions.retry}>
-          {t('common:actions.retry')}
-        </Button>
-        <Button mode="outlined" testID="conversation-confirm-edit-action" onPress={confirmation.actions.edit}>
-          {t('common:actions.edit')}
-        </Button>
-        <Button mode="text" testID="conversation-confirm-cancel" onPress={confirmation.actions.cancel}>
-          {t('common:actions.cancel')}
-        </Button>
+      <View className={cn(stylesClasses.actions)}>
+        <Button testID="conversation-confirm-send" onPress={() => confirmation.actions.confirm(editing ? draft : undefined)} variant="default"><Text>{t('chat:confirmation.send')}</Text></Button>
+        <Button testID="conversation-confirm-retry" onPress={confirmation.actions.retry} variant="outline"><Text>{t('common:actions.retry')}</Text></Button>
+        <Button testID="conversation-confirm-edit-action" onPress={confirmation.actions.edit} variant="outline"><Text>{t('common:actions.edit')}</Text></Button>
+        <Button testID="conversation-confirm-cancel" onPress={confirmation.actions.cancel} variant="ghost"><Text>{t('common:actions.cancel')}</Text></Button>
       </View>
     </View>
   );
 }
 
-const styles = StyleSheet.create({
-  actions: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  card: { borderRadius: 18, borderWidth: 1, gap: 12, padding: 16 },
-  command: { lineHeight: 26 },
-  header: { alignItems: 'center', flexDirection: 'row', gap: 12, justifyContent: 'space-between' },
-  headerText: { flex: 1, gap: 4 },
-});
+
+
+const stylesClasses = {
+  "card": "rounded-[18px] border gap-3 p-4",
+  "header": "items-center flex-row gap-3 justify-between",
+  "headerText": "flex-1 gap-1",
+  "command": "leading-[26px]",
+  "actions": "flex-row flex-wrap gap-2"
+} as const;

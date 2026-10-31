@@ -1,10 +1,13 @@
+import { cn } from '@/lib/utils';
+import { Text } from '@/components/ui/text';
+import { Spinner } from '@/components/ui/spinner';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useRecyclingState } from '@shopify/flash-list';
 import * as Clipboard from 'expo-clipboard';
 import { useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Platform, Pressable, StyleSheet, View } from 'react-native';
-import { ActivityIndicator, Text } from 'react-native-paper';
+
 
 import { ActivityDiffCard } from '@/components/chat/cards/activity-diff';
 import { MarkdownText } from '@/components/chat/chat-markdown';
@@ -31,12 +34,12 @@ export function ActivityReadGroupRow({ palette, reads }: { palette: Palette; rea
     .filter((name) => name && name.toLowerCase() !== 'read'))];
 
   return (
-    <View style={styles.row} testID={`transcript-activity-read-${reads[0].id}`}>
-      <Text variant="bodySmall" numberOfLines={1} style={[styles.label, { color: palette.muted }]}>{label}</Text>
+    <View className={cn(stylesClasses.row)} testID={`transcript-activity-read-${reads[0].id}`}>
+      <Text numberOfLines={1} className={cn(stylesClasses.label, "text-muted-foreground")} variant="label">{label}</Text>
       {names.length > 0 ? (
-        <Text variant="bodySmall" numberOfLines={1} style={[styles.command, { color: palette.muted }]}>{names.join(', ')}</Text>
-      ) : <View style={styles.spacer} />}
-      {active ? <ActivityIndicator size={12} color={palette.tint} /> : null}
+        <Text numberOfLines={1} className={cn(stylesClasses.command, "text-muted-foreground")} variant="label">{names.join(', ')}</Text>
+      ) : <View className={cn(stylesClasses.spacer)} />}
+      {active ? <Spinner size={12} color={palette.tint} /> : null}
     </View>
   );
 }
@@ -128,27 +131,27 @@ export function ActivityItemRow({ fontSize, item, palette }: { fontSize: number;
         style={({ pressed }) => [styles.row, pressed && expandable ? { backgroundColor: palette.surfaceAlt } : null]}
         testID={`transcript-activity-item-${item.id}`}>
         {toolStatus === 'running' || toolStatus === 'pending' ? (
-          <ActivityIndicator size={12} color={palette.tint} />
+          <Spinner size={12} color={palette.tint} />
         ) : toolStatus === 'error' ? (
           <MaterialCommunityIcons name="alert-circle-outline" size={14} color={palette.danger} />
         ) : null}
-        <Text variant="bodySmall" numberOfLines={1} style={[styles.label, { color: palette.muted }]}>{label}</Text>
+        <Text numberOfLines={1} className={cn(stylesClasses.label, "text-muted-foreground")} variant="label">{label}</Text>
         {secondary ? (
-          <Text variant="bodySmall" numberOfLines={1} style={[styles.command, { color: palette.muted }]}>{secondary}</Text>
+          <Text numberOfLines={1} className={cn(stylesClasses.command, "text-muted-foreground")} variant="label">{secondary}</Text>
         ) : null}
-        {meta ? <Text variant="labelSmall" style={[styles.meta, { color: palette.muted }]}>{meta}</Text> : null}
-        {!secondary && !meta ? <View style={styles.spacer} /> : null}
+        {meta ? <Text className={cn(stylesClasses.meta, "text-muted-foreground")} variant="label">{meta}</Text> : null}
+        {!secondary && !meta ? <View className={cn(stylesClasses.spacer)} /> : null}
         {expandable ? <MaterialCommunityIcons name={expanded ? 'chevron-down' : 'chevron-right'} size={15} color={palette.muted} /> : null}
       </Pressable>
       {expanded ? (
         item.kind === 'patch' ? (
-          <View style={styles.fileList}>
+          <View className={cn(stylesClasses.fileList)}>
             {files.map((file) => (
-              <Text key={file} selectable variant="bodySmall" style={[styles.file, { color: palette.muted }]}>{file}</Text>
+              <Text key={file} selectable className={cn("text-muted-foreground")} style={[styles.file]} variant="label">{file}</Text>
             ))}
           </View>
         ) : item.kind === 'tool' && isShellTool(item.tool) ? (
-          <View style={[styles.shellBlock, { backgroundColor: palette.background, borderColor: palette.border }]}>
+          <View className={cn(stylesClasses.shellBlock, "bg-background border-border")}>
             <Pressable
               accessibilityLabel={t(copied ? 'chat:cards.copied' : 'common:actions.copy')}
               accessibilityRole="button"
@@ -157,12 +160,10 @@ export function ActivityItemRow({ fontSize, item, palette }: { fontSize: number;
               style={styles.shellCopy}>
               <MaterialCommunityIcons name={copied ? 'check' : 'content-copy'} size={15} color={palette.muted} />
             </Pressable>
-            <Text selectable style={[styles.shellText, { color: palette.muted, fontSize: Math.max(12, fontSize - 1) }]}>
-              {body}
-            </Text>
+            <Text selectable style={[styles.shellText, { color: palette.muted, fontSize: Math.max(12, fontSize - 1) }]}>{body}</Text>
           </View>
         ) : (
-          <View style={styles.markdownBody}>
+          <View className={cn(stylesClasses.markdownBody)}>
             <MarkdownText
               codePalette={palette.code}
               color={palette.muted}
@@ -187,18 +188,22 @@ const styles = StyleSheet.create({
     paddingHorizontal: 2,
     paddingVertical: 5,
   },
-  label: { flexShrink: 0, fontWeight: '600' },
-  meta: { flexShrink: 0 },
-  command: { flex: 1, minWidth: 0 },
-  spacer: { flex: 1, minWidth: 0 },
-  markdownBody: { paddingBottom: 6, paddingHorizontal: 2, paddingTop: 2 },
-  shellBlock: { borderRadius: 8, borderWidth: 1, marginBottom: 8, marginTop: 2, padding: 10, paddingTop: 12 },
   shellCopy: { position: 'absolute', right: 4, top: 4, zIndex: 1 },
   shellText: {
     fontFamily: Platform.select({ ios: 'Menlo', android: 'monospace', default: 'monospace' }),
     lineHeight: 18,
     paddingRight: 20,
   },
-  fileList: { gap: 4, marginBottom: 8, marginTop: 2, paddingHorizontal: 2, paddingVertical: 4 },
-  file: { fontFamily: Platform.select({ ios: 'Menlo', android: 'monospace', default: 'monospace' }), fontSize: 12, lineHeight: 18 },
+  file: { fontFamily: Platform.select({ ios: 'Menlo', android: 'monospace', default: 'monospace' }), fontSize: 12, lineHeight: 18 }
 });
+
+const stylesClasses = {
+  "row": "items-center rounded-[8px] flex-row gap-2 min-h-8.5 px-0.5 py-1.25",
+  "label": "shrink-0 font-semibold",
+  "command": "flex-1 min-w-0",
+  "spacer": "flex-1 min-w-0",
+  "meta": "shrink-0",
+  "fileList": "gap-1 mb-2 mt-0.5 px-0.5 py-1",
+  "shellBlock": "rounded-[8px] border mb-2 mt-0.5 p-2.5 pt-3",
+  "markdownBody": "pb-1.5 px-0.5 pt-0.5"
+} as const;

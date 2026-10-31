@@ -1,7 +1,10 @@
+import { cn } from '@/lib/utils';
+import { Text } from '@/components/ui/text';
+import { CardContent, Card } from '@/components/ui/card';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
-import { StyleSheet, View } from 'react-native';
-import { Card, Text } from 'react-native-paper';
+import { View } from 'react-native';
+
 
 import type { PendingPermission } from '@/lib/opencode/client';
 import { PermissionRequestCard } from './permission-request-card';
@@ -18,30 +21,24 @@ export function PendingInteractionsCard({
   const palette = usePalette();
 
   return (
-    <Card mode="contained" style={[styles.sectionCard, { backgroundColor: palette.surface }]}> 
-      <Card.Content style={styles.pendingInteractionsContent}>
-        <View style={styles.waitingNoticeHeader}>
+    <Card className={cn(stylesClasses.sectionCard, "bg-surface")}><CardContent className={cn(stylesClasses.pendingInteractionsContent)}><View className={cn(stylesClasses.waitingNoticeHeader)}>
           <MaterialCommunityIcons name="message-alert-outline" size={18} color={palette.warning} />
-          <Text variant="titleMedium" style={{ color: palette.text }}>{t('chat:cards.respondToContinue')}</Text>
-        </View>
-        <Text variant="bodySmall" style={{ color: palette.muted }}>
-          {t('chat:cards.waitingForAnswer')}
-        </Text>
-        {permissions.map((request) => (
+          <Text className={cn("text-foreground")} variant="title">{t('chat:cards.respondToContinue')}</Text>
+        </View><Text className={cn("text-muted-foreground")} variant="label">{t('chat:cards.waitingForAnswer')}</Text>{permissions.map((request) => (
           <PermissionRequestCard
             key={request.id}
             request={request}
             sourceTitle={request.sourceTitle}
             onReply={(reply) => onPermissionReply(request.id, reply)}
           />
-        ))}
-      </Card.Content>
-    </Card>
+        ))}</CardContent></Card>
   );
 }
 
-const styles = StyleSheet.create({
-  sectionCard: { borderRadius: 20 },
-  pendingInteractionsContent: { gap: 12 },
-  waitingNoticeHeader: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-});
+
+
+const stylesClasses = {
+  "sectionCard": "rounded-[20px]",
+  "pendingInteractionsContent": "gap-3",
+  "waitingNoticeHeader": "flex-row items-center gap-2.5"
+} as const;

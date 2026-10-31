@@ -49,11 +49,12 @@ if (fs.existsSync(iosDir)) {
 
 // 1. Generate native iOS project
 console.log('Running Expo prebuild for iOS...');
-run('npx', ['expo', 'prebuild', '--platform', 'ios', '--non-interactive'], {
+run('npx', ['expo', 'prebuild', '--platform', 'ios'], {
   cwd: repoRoot,
   env: {
     ...process.env,
     EXPO_APP_VARIANT: process.env.EXPO_APP_VARIANT || 'production',
+    CI: '1',
   },
 });
 
@@ -65,11 +66,12 @@ const projectPath = path.join(iosDir, projects[0]);
 let scheme = process.env.IOS_SCHEME;
 if (!scheme) {
   const listOutput = execSync(
-    `xcodebuild -project "${projectPath}" -list -json`,
+    `xcodebuild -workspace "${projectPath}" -list -json`,
     { encoding: 'utf8', stdio: ['pipe', 'pipe', 'pipe'] },
   );
   const parsed = JSON.parse(listOutput);
-  scheme = parsed.project?.schemes?.[0];
+  const appScheme = path.basename(projectPath, '.xcworkspace');
+  scheme = parsed.workspace?.schemes?.includes(appScheme) ? appScheme : undefined;
   if (!scheme) fail('Could not detect Xcode scheme. Set IOS_SCHEME.');
 }
 console.log(`Using scheme: ${scheme}`);
@@ -83,7 +85,7 @@ const archivePath = path.join(os.tmpdir(), 'build.xcarchive');
 const exportMethod = process.env.IOS_EXPORT_METHOD || 'app-store';
 
 run('xcodebuild', [
-  '-project', projectPath,
+  '-workspace', projectPath,
   '-scheme', scheme,
   '-configuration', 'Release',
   '-archivePath', archivePath,
@@ -93,7 +95,7 @@ run('xcodebuild', [
   `CURRENT_PROJECT_VERSION=${buildNumber}`,
   'COMPILER_INDEX_STORE_ENABLE=NO',
   'archive',
-], { cwd: path.join(iosDir, scheme) });
+], { cwd: iosDir });
 
 if (!fs.existsSync(archivePath)) fail('Archive not found at expected path.');
 

@@ -1,9 +1,11 @@
+import { cn } from '@/lib/utils';
+import { Text } from '@/components/ui/text';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useRecyclingState } from '@shopify/flash-list';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Pressable, StyleSheet, View } from 'react-native';
-import { Text } from 'react-native-paper';
+
 
 import { buildCollapsedDiffBlocks, buildPatchDiff, getDiffPalette } from '@/components/chat/chat-diff';
 import { Colors } from '@/constants/theme';
@@ -32,32 +34,30 @@ export function ActivityDiffCard({ diff, fontSize, palette }: { diff: Transcript
   const emptyPreviewKey = diff.patch ? 'chat:cards.noLineChanges' : 'chat:cards.previewUnavailable';
 
   return (
-    <View style={[styles.card, { borderColor: palette.border, backgroundColor: palette.surface }]}>
+    <View className={cn(stylesClasses.card, "border-border bg-surface")}>
       <Pressable
         accessibilityRole="button"
         accessibilityState={{ expanded }}
         onPress={() => setExpanded((value) => !value)}
-        style={styles.header}
+        className={cn(stylesClasses.header)}
         testID={`transcript-activity-diff-${diff.file}`}>
-        <View style={[styles.badge, { backgroundColor: badge.background }]}>
+        <View className={cn(stylesClasses.badge)} style={[{ backgroundColor: badge.background }]}>
           <Text style={styles.badgeText}>{badge.label}</Text>
         </View>
-        <Text variant="bodySmall" numberOfLines={1} ellipsizeMode="middle" style={[styles.file, { color: palette.muted }]}>{diff.file}</Text>
-        <Text variant="labelMedium" style={{ color: palette.success }}>+{diff.additions}</Text>
-        <Text variant="labelMedium" style={{ color: palette.danger }}>−{diff.deletions}</Text>
+        <Text numberOfLines={1} ellipsizeMode="middle" className={cn(stylesClasses.file, "text-muted-foreground")} variant="label">{diff.file}</Text>
+        <Text className={cn("text-success")} variant="label">+{diff.additions}</Text>
+        <Text className={cn("text-destructive")} variant="label">−{diff.deletions}</Text>
         <MaterialCommunityIcons name={expanded ? 'chevron-down' : 'chevron-right'} size={15} color={palette.muted} />
       </Pressable>
       {expanded ? (
-        <View style={[styles.body, { borderTopColor: palette.border }]}>
+        <View className={cn(stylesClasses.body)} style={[{ borderTopColor: palette.border }]}>
           {blocks.length === 0 ? (
-            <Text variant="bodySmall" style={[styles.empty, { color: palette.muted }]}>{t(emptyPreviewKey)}</Text>
+            <Text className={cn(stylesClasses.empty, "text-muted-foreground")} variant="label">{t(emptyPreviewKey)}</Text>
           ) : blocks.map((block, blockIndex) => {
             if (block.type === 'collapsed') {
               return (
-                <View key={`${diff.file}-collapsed-${blockIndex}`} style={[styles.collapsedRow, { backgroundColor: palette.background, borderColor: palette.border }]}>
-                  <Text variant="bodySmall" style={[styles.code, { color: palette.muted }]}>
-                    {t('chat:cards.hiddenLines', { count: block.hiddenCount })}
-                  </Text>
+                <View key={`${diff.file}-collapsed-${blockIndex}`} className={cn(stylesClasses.collapsedRow, "bg-background border-border")}>
+                  <Text className={cn("text-muted-foreground")} style={[styles.code]} variant="label">{t('chat:cards.hiddenLines', { count: block.hiddenCount })}</Text>
                 </View>
               );
             }
@@ -68,15 +68,9 @@ export function ActivityDiffCard({ diff, fontSize, palette }: { diff: Transcript
                 <View
                   key={`${diff.file}-${blockIndex}-${index}-${line.leftNumber ?? 'x'}-${line.rightNumber ?? 'x'}`}
                   style={[styles.lineRow, { backgroundColor: tone.backgroundColor, borderLeftColor: tone.accentColor }]}>
-                  <Text variant="labelSmall" style={[styles.lineNumber, { color: palette.muted }]}>
-                    {line.rightNumber ?? line.leftNumber ?? ''}
-                  </Text>
-                  <Text style={[styles.marker, { color: tone.accentColor || palette.muted }]}>
-                    {line.kind === 'added' ? '+' : line.kind === 'removed' ? '-' : ' '}
-                  </Text>
-                  <Text selectable style={[styles.code, styles.lineText, { color: palette.muted, fontSize: Math.max(11, fontSize - 2) }]}>
-                    {line.text || ' '}
-                  </Text>
+                  <Text className={cn(stylesClasses.lineNumber, "text-muted-foreground")} variant="label">{line.rightNumber ?? line.leftNumber ?? ''}</Text>
+                  <Text style={[styles.marker, { color: tone.accentColor || palette.muted }]}>{line.kind === 'added' ? '+' : line.kind === 'removed' ? '-' : ' '}</Text>
+                  <Text selectable className={cn(stylesClasses.lineText)} style={[styles.code, { color: palette.muted, fontSize: Math.max(11, fontSize - 2) }]}>{line.text || ' '}</Text>
                 </View>
               );
             });
@@ -88,17 +82,20 @@ export function ActivityDiffCard({ diff, fontSize, palette }: { diff: Transcript
 }
 
 const styles = StyleSheet.create({
-  card: { borderRadius: 10, borderWidth: 1, marginVertical: 5, overflow: 'hidden' },
-  header: { alignItems: 'center', flexDirection: 'row', gap: 8, minHeight: 42, paddingHorizontal: 10, paddingVertical: 7 },
-  badge: { alignItems: 'center', borderRadius: 4, height: 19, justifyContent: 'center', width: 21 },
   badgeText: { color: '#ffffff', fontSize: 8, fontWeight: '700', letterSpacing: -0.2 },
-  file: { flex: 1, minWidth: 0 },
-  body: { borderTopWidth: 1, paddingVertical: 5 },
-  empty: { paddingHorizontal: 10, paddingVertical: 6 },
-  collapsedRow: { borderRadius: 8, marginHorizontal: 8, marginVertical: 4, paddingHorizontal: 10, paddingVertical: 6 },
   lineRow: { alignItems: 'flex-start', borderLeftWidth: 3, flexDirection: 'row', gap: 6, paddingHorizontal: 8, paddingVertical: 2 },
-  lineNumber: { textAlign: 'right', width: 28 },
   marker: { fontFamily: 'monospace', textAlign: 'center', width: 12 },
-  lineText: { flex: 1, minWidth: 0 },
-  code: { fontFamily: 'monospace', fontSize: 11, lineHeight: 17 },
+  code: { fontFamily: 'monospace', fontSize: 11, lineHeight: 17 }
 });
+
+const stylesClasses = {
+  "card": "rounded-[10px] border my-1.25 overflow-hidden",
+  "header": "items-center flex-row gap-2 min-h-10.5 px-2.5 py-1.75",
+  "badge": "items-center rounded-[4px] h-4.75 justify-center w-5.25",
+  "file": "flex-1 min-w-0",
+  "body": "border-t py-1.25",
+  "empty": "px-2.5 py-1.5",
+  "collapsedRow": "rounded-[8px] mx-2 my-1 px-2.5 py-1.5",
+  "lineNumber": "text-right w-7",
+  "lineText": "flex-1 min-w-0"
+} as const;

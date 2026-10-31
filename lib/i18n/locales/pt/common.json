@@ -79,5 +79,9 @@
     },
     "appSettingsSummary": "Editor, configurações gerais e atualizações",
     "serverToolsSummary": "Servidores MCP e diagnóstico"
+  },
+  "validation": {
+    "required": "Este campo é obrigatório.",
+    "invalid": "Insira um valor válido."
   }
 }

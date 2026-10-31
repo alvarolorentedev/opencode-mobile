@@ -1,14 +1,27 @@
-import { SettingButton as Button, SettingTextInput as TextInput } from './sections/setting-rows';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
+import { cn } from '@/lib/utils';
+import { useForm, useController } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { mcpSchema, skillSchema, commandSchema, type McpDraft, type SkillDraft, type CommandDraft } from './forms/extension-schemas';
+import { SettingField } from '@/components/settings/sections/setting-rows';
+import { Text } from '@/components/ui/text';
+import { Button } from '@/components/ui/button';
+import { FieldDescription } from '@/components/ui/text-field';
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
+import { Spinner } from '@/components/ui/spinner';
+import { ListRow } from '@/components/ui/list-row';
+import { Badge } from '@/components/ui/badge';
+
 import { useEffect, useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
-import { StyleSheet, View } from 'react-native';
-import { ActivityIndicator, Chip, HelperText, List, SegmentedButtons, Text } from 'react-native-paper';
+import { View } from 'react-native';
+
 
 
 import { useMcpAuthentication } from '@/components/settings/use-mcp-authentication';
 import { SettingTarget, useSettingsTarget } from './settings-panel';
 import { usePalette } from '@/hooks/use-palette';
-import { confirmAction } from '@/lib/confirm-action';
+import { useConfirmation } from '@/components/ui/use-confirmation';
 import { getErrorMessage } from '@/lib/error-message';
 import { slugifySkillId } from '@/lib/opencode/extensions/skills';
 import { visibleSharedRows } from '@/lib/opencode/extensions/snapshot';
@@ -21,32 +34,31 @@ function SafetyCard({ data, scope, onRestore, busy }: { data: ExtensionSnapshot[
   const { t } = useTranslation();
   const palette = usePalette();
   return (
-    <View style={[styles.card, { backgroundColor: palette.surfaceAlt, borderColor: palette.border }]}>
-      <Text variant="titleSmall" style={{ color: palette.text }}>{t(`settings:extensions.scope.${scope}`)}</Text>
-      <Text variant="bodySmall" style={{ color: data.safety.writable ? palette.tint : palette.muted }}>
-        {data.safety.writable ? t('settings:extensions.safety.writable') : `${t('settings:extensions.safety.readOnly')}: ${data.safety.reason}`}
-      </Text>
-      {data.target ? <Text selectable variant="bodySmall" style={{ color: palette.muted }}>{t('settings:extensions.safety.target', { path: data.target.path })}</Text> : null}
-      {data.safety.backupPath ? <Text selectable variant="bodySmall" style={{ color: palette.muted }}>{t('settings:extensions.safety.backup', { path: data.safety.backupPath })}</Text> : null}
-      {data.safety.backupPath ? <Button compact disabled={busy} onPress={onRestore}>{t('settings:extensions.safety.restore')}</Button> : null}
+    <View className={cn(stylesClasses.card, "bg-surface-alt border-border")}>
+      <Text className={cn("text-foreground")} variant="description">{t(`settings:extensions.scope.${scope}`)}</Text>
+      <Text style={{ color: data.safety.writable ? palette.tint : palette.muted }} variant="label">{data.safety.writable ? t('settings:extensions.safety.writable') : `${t('settings:extensions.safety.readOnly')}: ${data.safety.reason}`}</Text>
+      {data.target ? <Text selectable className={cn("text-muted-foreground")} variant="label">{t('settings:extensions.safety.target', { path: data.target.path })}</Text> : null}
+      {data.safety.backupPath ? <Text selectable className={cn("text-muted-foreground")} variant="label">{t('settings:extensions.safety.backup', { path: data.safety.backupPath })}</Text> : null}
+      {data.safety.backupPath ? <Button disabled={busy} onPress={onRestore} variant="ghost"><Text>{t('settings:extensions.safety.restore')}</Text></Button> : null}
     </View>
   );
 }
 
 function ReadOnlyRows<T extends { key: string }>({ title, rows, render }: { title: string; rows: T[]; render: (row: T) => ReactNode }) {
   const { t } = useTranslation();
-  const palette = usePalette();
+
   if (rows.length === 0) return null;
   return (
-    <View style={styles.shared}>
-      <Text variant="labelLarge" style={{ color: palette.muted }}>{title}</Text>
-      {rows.map((row) => <View key={row.key} style={[styles.row, { borderColor: palette.border }]}>{render(row)}</View>)}
-      <HelperText type="info">{t('settings:extensions.sharedHint')}</HelperText>
+    <View className={cn(stylesClasses.shared)}>
+      <Text className={cn("text-muted-foreground")} variant="description">{title}</Text>
+      {rows.map((row) => <View key={row.key} className={cn(stylesClasses.row, "border-border")}>{render(row)}</View>)}
+      <FieldDescription  invalid={false}>{t('settings:extensions.sharedHint')}</FieldDescription>
     </View>
   );
 }
 
 export function ExtensionsSection() {
+  const { confirmAction, confirmation } = useConfirmation();
   const { t } = useTranslation();
   const palette = usePalette();
   const mcp = useMcp();
@@ -55,23 +67,26 @@ export function ExtensionsSection() {
   const [scope, setScope] = useState<ExtensionScope>(activeProjectPath ? 'project' : 'general');
   const target = useSettingsTarget();
   const [tab, setTab] = useState<Tab>(() => (['plugins', 'skills', 'commands'] as const).find((entry) => target?.group?.startsWith(`extensions-${entry}`)) ?? 'mcp');
+  const mcpForm = useForm<McpDraft>({ resolver: zodResolver(mcpSchema), defaultValues: { name: '', target: '', type: target?.group === 'extensions-mcp-remote' ? 'remote' : 'local' }, mode: 'onSubmit', reValidateMode: 'onChange' });
+  const skillForm = useForm<SkillDraft>({ resolver: zodResolver(skillSchema), defaultValues: { id: '', name: '', description: '', instructions: '', autoinvoke: true }, mode: 'onSubmit', reValidateMode: 'onChange' });
+  const commandForm = useForm<CommandDraft>({ resolver: zodResolver(commandSchema), defaultValues: { name: '', description: '', template: '' }, mode: 'onSubmit', reValidateMode: 'onChange' });
   const [generalConfirmed, setGeneralConfirmed] = useState(false);
   const [mcpBusy, setMcpBusy] = useState<string>();
   const [actionError, setActionError] = useState<string>();
-  const [mcpName, setMcpName] = useState('');
-  const [mcpType, setMcpType] = useState<'local' | 'remote'>(target?.group === 'extensions-mcp-remote' ? 'remote' : 'local');
-  const [mcpTarget, setMcpTarget] = useState('');
+  const { field: { value: mcpName, onChange: setMcpName, ref: mcpNameRef, onBlur: mcpNameBlur } } = useController({ control: mcpForm.control, name: 'name' });
+  const { field: { value: mcpType, onChange: setMcpType } } = useController({ control: mcpForm.control, name: 'type' });
+  const { field: { value: mcpTarget, onChange: setMcpTarget, ref: mcpTargetRef, onBlur: mcpTargetBlur } } = useController({ control: mcpForm.control, name: 'target' });
   const [pluginTarget, setPluginTarget] = useState('');
-  const [skillId, setSkillId] = useState('');
-  const [skillName, setSkillName] = useState('');
-  const [skillDescription, setSkillDescription] = useState('');
-  const [skillInstructions, setSkillInstructions] = useState('');
-  const [skillAutoinvoke, setSkillAutoinvoke] = useState(true);
+  const { field: { value: skillId, onChange: setSkillId, ref: skillIdRef, onBlur: skillIdBlur } } = useController({ control: skillForm.control, name: 'id' });
+  const { field: { value: skillName, onChange: setSkillName, ref: skillNameRef, onBlur: skillNameBlur } } = useController({ control: skillForm.control, name: 'name' });
+  const { field: { value: skillDescription, onChange: setSkillDescription, ref: skillDescriptionRef, onBlur: skillDescriptionBlur } } = useController({ control: skillForm.control, name: 'description' });
+  const { field: { value: skillInstructions, onChange: setSkillInstructions, ref: skillInstructionsRef, onBlur: skillInstructionsBlur } } = useController({ control: skillForm.control, name: 'instructions' });
+  const { field: { value: skillAutoinvoke, onChange: setSkillAutoinvoke } } = useController({ control: skillForm.control, name: 'autoinvoke' });
   const [editingSkill, setEditingSkill] = useState<ExtensionSkillRow>();
   const [skillContent, setSkillContent] = useState('');
-  const [commandName, setCommandName] = useState('');
-  const [commandDescription, setCommandDescription] = useState('');
-  const [commandTemplate, setCommandTemplate] = useState('');
+  const { field: { value: commandName, onChange: setCommandName, ref: commandNameRef, onBlur: commandNameBlur } } = useController({ control: commandForm.control, name: 'name' });
+  const { field: { value: commandDescription, onChange: setCommandDescription, ref: commandDescriptionRef, onBlur: commandDescriptionBlur } } = useController({ control: commandForm.control, name: 'description' });
+  const { field: { value: commandTemplate, onChange: setCommandTemplate, ref: commandTemplateRef, onBlur: commandTemplateBlur } } = useController({ control: commandForm.control, name: 'template' });
   const [editingCommand, setEditingCommand] = useState<string>();
   const authentication = useMcpAuthentication(mcp.mcpOAuth, palette);
   const effectiveScope: ExtensionScope = scope === 'project' && !activeProjectPath ? 'general' : scope;
@@ -82,6 +97,7 @@ export function ExtensionsSection() {
   useEffect(() => { void refreshExtensions().catch(() => undefined); }, [refreshExtensions]);
 
   function clearForms() {
+    mcpForm.clearErrors(); skillForm.clearErrors(); commandForm.clearErrors();
     setActionError(undefined);
     setMcpName(''); setMcpTarget(''); setPluginTarget('');
     setSkillId(''); setSkillName(''); setSkillDescription(''); setSkillInstructions(''); setEditingSkill(undefined); setSkillContent('');
@@ -114,7 +130,8 @@ export function ExtensionsSection() {
     );
   }
 
-  function submitMcp() {
+  async function submitMcp() {
+    if (!await mcpForm.trigger()) return;
     if (!mcpName.trim() || !mcpTarget.trim()) return;
     try {
       const config = mcpType === 'local'
@@ -133,7 +150,8 @@ export function ExtensionsSection() {
     confirmScope(() => { void extensions.addPlugin(effectiveScope, pluginTarget.trim()).then(() => setPluginTarget('')).catch(() => undefined); });
   }
 
-  function submitSkill() {
+  async function submitSkill() {
+    if (!editingSkill && !await skillForm.trigger()) return;
     if (editingSkill) {
       confirmScope(() => { void extensions.updateSkill(effectiveScope, editingSkill, skillContent).then(() => { setEditingSkill(undefined); setSkillContent(''); }).catch(() => undefined); });
       return;
@@ -148,7 +166,8 @@ export function ExtensionsSection() {
     }).then(() => { setSkillId(''); setSkillName(''); setSkillDescription(''); setSkillInstructions(''); }).catch(() => undefined); });
   }
 
-  function submitCommand() {
+  async function submitCommand() {
+    if (!await commandForm.trigger()) return;
     if (!commandName.trim() || !commandTemplate.trim()) return;
     confirmScope(() => { void extensions.saveCommand(effectiveScope, {
       name: commandName.trim(),
@@ -168,125 +187,122 @@ export function ExtensionsSection() {
     { key: 'commands', label: t('settings:extensions.tabs.commands') },
   ];
 
-  return (
-    <View style={styles.content}>
+  return <>{confirmation}{(
+    <Tabs value={tab} onValueChange={(value) => { setTab(value as Tab); clearForms(); }} className={cn(stylesClasses.content)}>
       <SettingTarget label={t(`settings:extensions.tabs.${tab}`)}>
-      <Text variant="titleLarge" style={[styles.title, { color: palette.text }]}>{t('settings:extensions.title')}</Text>
-      <Text variant="bodyMedium" style={{ color: palette.muted }}>{t('settings:extensions.description')}</Text>
-      <SegmentedButtons
-        value={effectiveScope}
-        onValueChange={changeScope}
-        buttons={[
+      <Text className={cn(stylesClasses.title, "text-foreground")} variant="heading">{t('settings:extensions.title')}</Text>
+      <Text className={cn("text-muted-foreground")} variant="description">{t('settings:extensions.description')}</Text>
+      <ToggleGroup type="single" value={effectiveScope} onValueChange={(value) => { if (value) changeScope(value); }} className="flex-row flex-wrap">{([
           { value: 'project', label: t('settings:extensions.scope.project'), disabled: !activeProjectPath },
           { value: 'general', label: t('settings:extensions.scope.general') },
-        ]}
-      />
-      {extensions.error ? <HelperText testID="extensions-error" type="error">{extensions.error}</HelperText> : null}
-      {actionError ? <HelperText testID="extensions-action-error" type="error">{actionError}</HelperText> : null}
-      {data ? <SafetyCard data={data} scope={effectiveScope} busy={busy} onRestore={() => remove(t('settings:extensions.safety.restore'), t('settings:extensions.safety.restoreMessage'), () => { void extensions.restoreBackup(effectiveScope).catch(() => undefined); })} /> : <ActivityIndicator style={styles.loading} />}
-      <View style={styles.tabs}>
-        {tabs.map((item) => <Chip key={item.key} selected={tab === item.key} onPress={() => { setTab(item.key); clearForms(); }}>{item.label}</Chip>)}
-      </View>
-      {data ? <Text variant="bodySmall" style={{ color: palette.muted }}>{t(`settings:extensions.scopeDescription.${effectiveScope}`, { project: activeProjectPath || '' })}</Text> : null}
+        ]).map((option) => <ToggleGroupItem key={option.value} value={option.value} disabled={'disabled' in option && option.disabled === true}><Text>{option.label}</Text></ToggleGroupItem>)}</ToggleGroup>
+      {extensions.error ? <FieldDescription testID="extensions-error" invalid={true}>{extensions.error}</FieldDescription> : null}
+      {[mcpForm, skillForm, commandForm].flatMap((form) => Object.values(form.formState.errors)).map((error, index) => error?.message ? <FieldDescription key={index} invalid>{t(String(error.message))}</FieldDescription> : null)}
+      {actionError ? <FieldDescription testID="extensions-action-error" invalid={true}>{actionError}</FieldDescription> : null}
+      {data ? <SafetyCard data={data} scope={effectiveScope} busy={busy} onRestore={() => remove(t('settings:extensions.safety.restore'), t('settings:extensions.safety.restoreMessage'), () => { void extensions.restoreBackup(effectiveScope).catch(() => undefined); })} /> : <Spinner className={cn(stylesClasses.loading)} />}
+      <TabsList className={cn(stylesClasses.tabs)}>{tabs.map((item) => <TabsTrigger key={item.key} value={item.key}><Text>{item.label}</Text></TabsTrigger>)}</TabsList>
+      <TabsContent value={tab} className="gap-3">
+      {data ? <Text className={cn("text-muted-foreground")} variant="label">{t(`settings:extensions.scopeDescription.${effectiveScope}`, { project: activeProjectPath || '' })}</Text> : null}
 
       {tab === 'mcp' ? (
-        <View style={styles.section}>
-          <Text variant="titleMedium">{t('settings:extensions.mcp.addTitle')}</Text>
-          <TextInput testID="settings-extension-mcp-name" mode="outlined" label={t('settings:mcp.serverName')} value={mcpName} onChangeText={setMcpName} autoCapitalize="none" autoCorrect={false} />
-          <SegmentedButtons value={mcpType} onValueChange={(value) => { setMcpType(value as 'local' | 'remote'); setMcpTarget(''); }} buttons={[{ value: 'local', label: t('settings:mcp.local') }, { value: 'remote', label: t('settings:mcp.remote') }]} />
-          <TextInput testID="settings-extension-mcp-target" mode="outlined" label={mcpType === 'local' ? t('settings:mcp.commandArguments') : t('settings:mcp.url')} placeholder={mcpType === 'local' ? '["npx","@modelcontextprotocol/server"]' : 'https://example.com/mcp'} value={mcpTarget} onChangeText={setMcpTarget} autoCapitalize="none" autoCorrect={false} />
-          <Button testID="settings-extension-mcp-add" mode="contained" disabled={busy || !data?.safety.writable} onPress={submitMcp}>{t('settings:extensions.mcp.add')}</Button>
-          {data?.items.mcp.length === 0 ? <HelperText type="info">{t('settings:extensions.mcp.empty')}</HelperText> : null}
+        <View className={cn(stylesClasses.section)}>
+          <Text  variant="title">{t('settings:extensions.mcp.addTitle')}</Text>
+          <SettingField testID="settings-extension-mcp-name" label={t('settings:mcp.serverName')} ref={mcpNameRef} onBlur={mcpNameBlur} value={mcpName} onChangeText={setMcpName} autoCapitalize="none" autoCorrect={false}></SettingField>
+          <ToggleGroup type="single" value={mcpType} onValueChange={(value) => { if (!value) return; setMcpType(value as 'local' | 'remote'); setMcpTarget(''); }} className="flex-row flex-wrap">{([{ value: 'local', label: t('settings:mcp.local') }, { value: 'remote', label: t('settings:mcp.remote') }]).map((option) => <ToggleGroupItem key={option.value} value={option.value} disabled={'disabled' in option && option.disabled === true}><Text>{option.label}</Text></ToggleGroupItem>)}</ToggleGroup>
+          <SettingField testID="settings-extension-mcp-target" label={mcpType === 'local' ? t('settings:mcp.commandArguments') : t('settings:mcp.url')} placeholder={mcpType === 'local' ? '["npx","@modelcontextprotocol/server"]' : 'https://example.com/mcp'} ref={mcpTargetRef} onBlur={mcpTargetBlur} value={mcpTarget} onChangeText={setMcpTarget} autoCapitalize="none" autoCorrect={false}></SettingField>
+          <Button testID="settings-extension-mcp-add" disabled={busy || !data?.safety.writable} onPress={submitMcp} variant="default"><Text>{t('settings:extensions.mcp.add')}</Text></Button>
+          {data?.items.mcp.length === 0 ? <FieldDescription  invalid={false}>{t('settings:extensions.mcp.empty')}</FieldDescription> : null}
           {data?.items.mcp.map((row) => {
             const status = row.status?.status;
             const integrationID = row.status && 'integrationID' in row.status ? row.status.integrationID : undefined;
             return (
-              <View key={row.key} style={[styles.row, { borderColor: palette.border }]}>
-                <List.Item title={row.name} description={row.config ? describeMcp(row.config) : t('settings:extensions.mcp.runtime')} titleStyle={{ color: palette.text }} descriptionStyle={{ color: palette.muted }} right={() => <Chip compact>{status || t('settings:extensions.mcp.configured')}</Chip>} />
-                <View style={styles.actions}>
-                  <Button compact disabled={busy} onPress={() => void runMcp(row.name, () => status === 'connected' ? mcp.disconnectMcpServer(row.name) : mcp.connectMcpServer(row.name))}>{status === 'connected' ? t('common:actions.disconnect') : t('common:actions.connect')}</Button>
-                  {status === 'needs_auth' && integrationID ? <Button compact disabled={busy} onPress={() => void authentication.open(row.name).catch(() => undefined)}>{t('settings:mcp.oauth')}</Button> : null}
-                  {row.removeMode !== 'none' ? <Button testID={`settings-extension-mcp-remove-${row.name.replace(/[^a-z0-9]+/gi, '-')}`} compact textColor={palette.danger} disabled={busy || (row.removeMode === 'config' && !row.editable)} onPress={() => remove(t('settings:extensions.removeTitle'), t('settings:extensions.mcp.removeMessage', { name: row.name }), () => { void extensions.removeMcp(effectiveScope, row.name).catch(() => undefined); })}>{t('common:actions.remove')}</Button> : null}
+              <View key={row.key} className={cn(stylesClasses.row, "border-border")}>
+                <ListRow title={row.name} description={row.config ? describeMcp(row.config) : t('settings:extensions.mcp.runtime')} titleStyle={{ color: palette.text }} descriptionStyle={{ color: palette.muted }} right={() => <Badge  variant="secondary"><Text>{status || t('settings:extensions.mcp.configured')}</Text></Badge>}></ListRow>
+                <View className={cn(stylesClasses.actions)}>
+                  <Button disabled={busy} onPress={() => void runMcp(row.name, () => status === 'connected' ? mcp.disconnectMcpServer(row.name) : mcp.connectMcpServer(row.name))} variant="ghost"><Text>{status === 'connected' ? t('common:actions.disconnect') : t('common:actions.connect')}</Text></Button>
+                  {status === 'needs_auth' && integrationID ? <Button disabled={busy} onPress={() => void authentication.open(row.name).catch(() => undefined)} variant="ghost"><Text>{t('settings:mcp.oauth')}</Text></Button> : null}
+                  {row.removeMode !== 'none' ? <Button testID={`settings-extension-mcp-remove-${row.name.replace(/[^a-z0-9]+/gi, '-')}`} disabled={busy || (row.removeMode === 'config' && !row.editable)} onPress={() => remove(t('settings:extensions.removeTitle'), t('settings:extensions.mcp.removeMessage', { name: row.name }), () => { void extensions.removeMcp(effectiveScope, row.name).catch(() => undefined); })} variant="ghost"><Text className={cn("text-destructive")} >{t('common:actions.remove')}</Text></Button> : null}
                 </View>
               </View>
             );
           })}
-          {data ? <ReadOnlyRows title={t('settings:extensions.shared')} rows={data.shared.mcp} render={(row) => <List.Item title={row.name} description={row.status?.status || t('settings:extensions.shared')} right={() => <Chip compact>{row.source}</Chip>} />} /> : null}
+          {data ? <ReadOnlyRows title={t('settings:extensions.shared')} rows={data.shared.mcp} render={(row) => <ListRow title={row.name} description={row.status?.status || t('settings:extensions.shared')} right={() => <Badge  variant="secondary"><Text>{row.source}</Text></Badge>}></ListRow>} /> : null}
         </View>
       ) : null}
 
       {tab === 'plugins' ? (
-        <View style={styles.section}>
-          <Text variant="titleMedium">{t('settings:extensions.plugins.addTitle')}</Text>
-          <TextInput testID="settings-extension-plugin-target" mode="outlined" label={t('settings:extensions.plugins.package')} value={pluginTarget} onChangeText={setPluginTarget} autoCapitalize="none" autoCorrect={false} />
-          <HelperText type="info">{t('settings:extensions.plugins.warning')}</HelperText>
-          <Button testID="settings-extension-plugin-add" mode="contained" disabled={busy || !data?.safety.writable} onPress={submitPlugin}>{t('settings:extensions.plugins.add')}</Button>
-          {data?.items.plugins.length === 0 ? <HelperText type="info">{t('settings:extensions.plugins.empty')}</HelperText> : null}
+        <View className={cn(stylesClasses.section)}>
+          <Text  variant="title">{t('settings:extensions.plugins.addTitle')}</Text>
+          <SettingField testID="settings-extension-plugin-target" label={t('settings:extensions.plugins.package')} value={pluginTarget} onChangeText={setPluginTarget} autoCapitalize="none" autoCorrect={false}></SettingField>
+          <FieldDescription  invalid={false}>{t('settings:extensions.plugins.warning')}</FieldDescription>
+          <Button testID="settings-extension-plugin-add" disabled={busy || !data?.safety.writable} onPress={submitPlugin} variant="default"><Text>{t('settings:extensions.plugins.add')}</Text></Button>
+          {data?.items.plugins.length === 0 ? <FieldDescription  invalid={false}>{t('settings:extensions.plugins.empty')}</FieldDescription> : null}
           {data?.items.plugins.map((row) => (
-            <View key={row.key} style={[styles.row, { borderColor: palette.border }]}>
-              <List.Item title={row.label} description={[row.version, row.status, row.outdated ? t('settings:extensions.plugins.outdated') : undefined].filter(Boolean).join(' · ')} right={() => <Chip compact>{row.source}</Chip>} />
-              {row.target ? <View style={styles.actions}><Button testID={`settings-extension-plugin-remove-${row.label.replace(/[^a-z0-9]+/gi, '-')}`} compact textColor={palette.danger} disabled={busy || !row.editable} onPress={() => remove(t('settings:extensions.removeTitle'), t('settings:extensions.plugins.removeMessage', { name: row.label }), () => { void extensions.removePlugin(effectiveScope, row.target!).catch(() => undefined); })}>{t('common:actions.remove')}</Button></View> : null}
+            <View key={row.key} className={cn(stylesClasses.row, "border-border")}>
+              <ListRow title={row.label} description={[row.version, row.status, row.outdated ? t('settings:extensions.plugins.outdated') : undefined].filter(Boolean).join(' · ')} right={() => <Badge  variant="secondary"><Text>{row.source}</Text></Badge>}></ListRow>
+              {row.target ? <View className={cn(stylesClasses.actions)}><Button testID={`settings-extension-plugin-remove-${row.label.replace(/[^a-z0-9]+/gi, '-')}`} disabled={busy || !row.editable} onPress={() => remove(t('settings:extensions.removeTitle'), t('settings:extensions.plugins.removeMessage', { name: row.label }), () => { void extensions.removePlugin(effectiveScope, row.target!).catch(() => undefined); })} variant="ghost"><Text className={cn("text-destructive")} >{t('common:actions.remove')}</Text></Button></View> : null}
             </View>
           ))}
-          {data ? <ReadOnlyRows title={t('settings:extensions.shared')} rows={visibleSharedRows(data.shared.plugins)} render={(row) => <List.Item title={row.label} description={row.source} />} /> : null}
+          {data ? <ReadOnlyRows title={t('settings:extensions.shared')} rows={visibleSharedRows(data.shared.plugins)} render={(row) => <ListRow title={row.label} description={row.source}></ListRow>} /> : null}
         </View>
       ) : null}
 
       {tab === 'skills' ? (
-        <View style={styles.section}>
+        <View className={cn(stylesClasses.section)}>
           {editingSkill ? <>
-            <Text variant="titleMedium">{t('settings:extensions.skills.editTitle', { name: editingSkill.name })}</Text>
-            <TextInput mode="outlined" multiline numberOfLines={10} label={t('settings:extensions.skills.fileContent')} value={skillContent} onChangeText={setSkillContent} autoCapitalize="none" autoCorrect={false} />
-            <View style={styles.actions}><Button mode="contained" disabled={busy || !data?.safety.writable} onPress={submitSkill}>{t('common:actions.save')}</Button><Button disabled={busy} onPress={() => { setEditingSkill(undefined); setSkillContent(''); }}>{t('common:actions.cancel')}</Button></View>
+            <Text  variant="title">{t('settings:extensions.skills.editTitle', { name: editingSkill.name })}</Text>
+            <SettingField multiline numberOfLines={10} label={t('settings:extensions.skills.fileContent')} value={skillContent} onChangeText={setSkillContent} autoCapitalize="none" autoCorrect={false}></SettingField>
+            <View className={cn(stylesClasses.actions)}><Button disabled={busy || !data?.safety.writable} onPress={submitSkill} variant="default"><Text>{t('common:actions.save')}</Text></Button><Button disabled={busy} onPress={() => { setEditingSkill(undefined); setSkillContent(''); }} variant="ghost"><Text>{t('common:actions.cancel')}</Text></Button></View>
           </> : <>
-            <Text variant="titleMedium">{t('settings:extensions.skills.addTitle')}</Text>
-            <TextInput testID="settings-extension-skill-id" mode="outlined" label={t('settings:extensions.skills.id')} value={skillId} onChangeText={setSkillId} autoCapitalize="none" autoCorrect={false} placeholder={slugifySkillId(skillName) || 'my-skill'} />
-            <TextInput testID="settings-extension-skill-name" mode="outlined" label={t('settings:extensions.skills.name')} value={skillName} onChangeText={setSkillName} />
-            <TextInput testID="settings-extension-skill-description" mode="outlined" label={t('settings:extensions.skills.descriptionLabel')} value={skillDescription} onChangeText={setSkillDescription} />
-            <TextInput testID="settings-extension-skill-instructions" mode="outlined" multiline numberOfLines={6} label={t('settings:extensions.skills.instructions')} value={skillInstructions} onChangeText={setSkillInstructions} />
-            <Button mode="outlined" onPress={() => setSkillAutoinvoke((value) => !value)}>{skillAutoinvoke ? t('settings:extensions.skills.autoinvokeOn') : t('settings:extensions.skills.autoinvokeOff')}</Button>
-            <Button testID="settings-extension-skill-add" mode="contained" disabled={busy || !data?.safety.writable} onPress={submitSkill}>{t('settings:extensions.skills.add')}</Button>
+            <Text  variant="title">{t('settings:extensions.skills.addTitle')}</Text>
+            <SettingField testID="settings-extension-skill-id" label={t('settings:extensions.skills.id')} ref={skillIdRef} onBlur={skillIdBlur} value={skillId} onChangeText={setSkillId} autoCapitalize="none" autoCorrect={false} placeholder={slugifySkillId(skillName) || 'my-skill'}></SettingField>
+            <SettingField testID="settings-extension-skill-name" label={t('settings:extensions.skills.name')} ref={skillNameRef} onBlur={skillNameBlur} value={skillName} onChangeText={setSkillName}></SettingField>
+            <SettingField testID="settings-extension-skill-description" label={t('settings:extensions.skills.descriptionLabel')} ref={skillDescriptionRef} onBlur={skillDescriptionBlur} value={skillDescription} onChangeText={setSkillDescription}></SettingField>
+            <SettingField testID="settings-extension-skill-instructions" multiline numberOfLines={6} label={t('settings:extensions.skills.instructions')} ref={skillInstructionsRef} onBlur={skillInstructionsBlur} value={skillInstructions} onChangeText={setSkillInstructions}></SettingField>
+            <Button onPress={() => setSkillAutoinvoke(!skillAutoinvoke)} variant="outline"><Text>{skillAutoinvoke ? t('settings:extensions.skills.autoinvokeOn') : t('settings:extensions.skills.autoinvokeOff')}</Text></Button>
+            <Button testID="settings-extension-skill-add" disabled={busy || !data?.safety.writable} onPress={submitSkill} variant="default"><Text>{t('settings:extensions.skills.add')}</Text></Button>
           </>}
-          {data?.items.skills.length === 0 ? <HelperText type="info">{t('settings:extensions.skills.empty')}</HelperText> : null}
+          {data?.items.skills.length === 0 ? <FieldDescription  invalid={false}>{t('settings:extensions.skills.empty')}</FieldDescription> : null}
           {data?.items.skills.map((row) => (
-            <View key={row.key} style={[styles.row, { borderColor: palette.border }]}>
-              <List.Item title={row.name || row.id} description={row.description || row.path} right={() => <Chip compact>{row.id}</Chip>} />
-              <View style={styles.actions}>
-                {row.editable ? <Button compact disabled={busy} onPress={() => { setEditingSkill(row); setSkillContent(row.content || ''); }}>{t('common:actions.edit')}</Button> : null}
-                {row.removable ? <Button testID={`settings-extension-skill-remove-${row.id.replace(/[^a-z0-9]+/gi, '-')}`} compact textColor={palette.danger} disabled={busy} onPress={() => remove(t('settings:extensions.removeTitle'), t('settings:extensions.skills.removeMessage', { name: row.name }), () => { void extensions.removeSkill(effectiveScope, row).catch(() => undefined); })}>{t('common:actions.remove')}</Button> : null}
+            <View key={row.key} className={cn(stylesClasses.row, "border-border")}>
+              <ListRow title={row.name || row.id} description={row.description || row.path} right={() => <Badge  variant="secondary"><Text>{row.id}</Text></Badge>}></ListRow>
+              <View className={cn(stylesClasses.actions)}>
+                {row.editable ? <Button disabled={busy} onPress={() => { setEditingSkill(row); setSkillContent(row.content || ''); }} variant="ghost"><Text>{t('common:actions.edit')}</Text></Button> : null}
+                {row.removable ? <Button testID={`settings-extension-skill-remove-${row.id.replace(/[^a-z0-9]+/gi, '-')}`} disabled={busy} onPress={() => remove(t('settings:extensions.removeTitle'), t('settings:extensions.skills.removeMessage', { name: row.name }), () => { void extensions.removeSkill(effectiveScope, row).catch(() => undefined); })} variant="ghost"><Text className={cn("text-destructive")} >{t('common:actions.remove')}</Text></Button> : null}
               </View>
             </View>
           ))}
-          {data ? <ReadOnlyRows title={t('settings:extensions.shared')} rows={visibleSharedRows(data.shared.skills)} render={(row) => <List.Item title={row.name} description={row.description || row.path} />} /> : null}
+          {data ? <ReadOnlyRows title={t('settings:extensions.shared')} rows={visibleSharedRows(data.shared.skills)} render={(row) => <ListRow title={row.name} description={row.description || row.path}></ListRow>} /> : null}
         </View>
       ) : null}
 
       {tab === 'commands' ? (
-        <View style={styles.section}>
-          <Text variant="titleMedium">{editingCommand ? t('settings:extensions.commands.editTitle', { name: editingCommand }) : t('settings:extensions.commands.addTitle')}</Text>
-          <TextInput testID="settings-extension-command-name" mode="outlined" label={t('settings:extensions.commands.name')} value={commandName} onChangeText={setCommandName} autoCapitalize="none" autoCorrect={false} />
-          <TextInput testID="settings-extension-command-description" mode="outlined" label={t('settings:extensions.commands.descriptionLabel')} value={commandDescription} onChangeText={setCommandDescription} />
-          <TextInput testID="settings-extension-command-template" mode="outlined" multiline numberOfLines={5} label={t('settings:extensions.commands.template')} value={commandTemplate} onChangeText={setCommandTemplate} />
-          <HelperText type="info">{t('settings:extensions.commands.templateHint')}</HelperText>
-          <View style={styles.actions}><Button testID="settings-extension-command-save" mode="contained" disabled={busy || !data?.safety.writable} onPress={submitCommand}>{t('common:actions.save')}</Button>{editingCommand ? <Button disabled={busy} onPress={() => { setEditingCommand(undefined); setCommandName(''); setCommandDescription(''); setCommandTemplate(''); }}>{t('common:actions.cancel')}</Button> : null}</View>
-          {data?.items.commands.length === 0 ? <HelperText type="info">{t('settings:extensions.commands.empty')}</HelperText> : null}
+        <View className={cn(stylesClasses.section)}>
+          <Text  variant="title">{editingCommand ? t('settings:extensions.commands.editTitle', { name: editingCommand }) : t('settings:extensions.commands.addTitle')}</Text>
+          <SettingField testID="settings-extension-command-name" label={t('settings:extensions.commands.name')} ref={commandNameRef} onBlur={commandNameBlur} value={commandName} onChangeText={setCommandName} autoCapitalize="none" autoCorrect={false}></SettingField>
+          <SettingField testID="settings-extension-command-description" label={t('settings:extensions.commands.descriptionLabel')} ref={commandDescriptionRef} onBlur={commandDescriptionBlur} value={commandDescription} onChangeText={setCommandDescription}></SettingField>
+          <SettingField testID="settings-extension-command-template" multiline numberOfLines={5} label={t('settings:extensions.commands.template')} ref={commandTemplateRef} onBlur={commandTemplateBlur} value={commandTemplate} onChangeText={setCommandTemplate}></SettingField>
+          <FieldDescription  invalid={false}>{t('settings:extensions.commands.templateHint')}</FieldDescription>
+          <View className={cn(stylesClasses.actions)}><Button testID="settings-extension-command-save" disabled={busy || !data?.safety.writable} onPress={submitCommand} variant="default"><Text>{t('common:actions.save')}</Text></Button>{editingCommand ? <Button disabled={busy} onPress={() => { setEditingCommand(undefined); setCommandName(''); setCommandDescription(''); setCommandTemplate(''); }} variant="ghost"><Text>{t('common:actions.cancel')}</Text></Button> : null}</View>
+          {data?.items.commands.length === 0 ? <FieldDescription  invalid={false}>{t('settings:extensions.commands.empty')}</FieldDescription> : null}
           {data?.items.commands.map((row) => (
-            <View key={row.key} style={[styles.row, { borderColor: palette.border }]}>
-              <List.Item title={`/${row.name}`} description={row.description || row.template} />
-              <View style={styles.actions}>
-                {row.editable ? <Button compact disabled={busy} onPress={() => { setEditingCommand(row.name); setCommandName(row.name); setCommandDescription(row.description || ''); setCommandTemplate(row.template || ''); }}>{t('common:actions.edit')}</Button> : null}
-                {row.editable ? <Button testID={`settings-extension-command-remove-${row.name.replace(/[^a-z0-9]+/gi, '-')}`} compact textColor={palette.danger} disabled={busy} onPress={() => remove(t('settings:extensions.removeTitle'), t('settings:extensions.commands.removeMessage', { name: row.name }), () => { void extensions.removeCommand(effectiveScope, row.name).catch(() => undefined); })}>{t('common:actions.remove')}</Button> : null}
+            <View key={row.key} className={cn(stylesClasses.row, "border-border")}>
+              <ListRow title={`/${row.name}`} description={row.description || row.template}></ListRow>
+              <View className={cn(stylesClasses.actions)}>
+                {row.editable ? <Button disabled={busy} onPress={() => { setEditingCommand(row.name); setCommandName(row.name); setCommandDescription(row.description || ''); setCommandTemplate(row.template || ''); }} variant="ghost"><Text>{t('common:actions.edit')}</Text></Button> : null}
+                {row.editable ? <Button testID={`settings-extension-command-remove-${row.name.replace(/[^a-z0-9]+/gi, '-')}`} disabled={busy} onPress={() => remove(t('settings:extensions.removeTitle'), t('settings:extensions.commands.removeMessage', { name: row.name }), () => { void extensions.removeCommand(effectiveScope, row.name).catch(() => undefined); })} variant="ghost"><Text className={cn("text-destructive")} >{t('common:actions.remove')}</Text></Button> : null}
               </View>
             </View>
           ))}
-          {data ? <ReadOnlyRows title={t('settings:extensions.shared')} rows={visibleSharedRows(data.shared.commands)} render={(row) => <List.Item title={`/${row.name}`} description={row.description || t('settings:extensions.shared')} />} /> : null}
+          {data ? <ReadOnlyRows title={t('settings:extensions.shared')} rows={visibleSharedRows(data.shared.commands)} render={(row) => <ListRow title={`/${row.name}`} description={row.description || t('settings:extensions.shared')}></ListRow>} /> : null}
         </View>
       ) : null}
+      </TabsContent>
       {authentication.dialog}
-      {extensions.busy ? <HelperText type="info">{t('settings:extensions.saving')}</HelperText> : null}
-      {!data && !extensions.isRefreshing ? <HelperText type="info">{t('settings:extensions.unavailable')}</HelperText> : null}
-    </SettingTarget></View>
-  );
+      {extensions.busy ? <FieldDescription  invalid={false}>{t('settings:extensions.saving')}</FieldDescription> : null}
+      {!data && !extensions.isRefreshing ? <FieldDescription  invalid={false}>{t('settings:extensions.unavailable')}</FieldDescription> : null}
+    </SettingTarget></Tabs>
+  )}</>;
 }
 
 function describeMcp(config: Record<string, unknown>) {
@@ -294,14 +310,16 @@ function describeMcp(config: Record<string, unknown>) {
   return Array.isArray(config.command) ? config.command.join(' ') : '';
 }
 
-const styles = StyleSheet.create({
-  content: { gap: 12, paddingHorizontal: 16, paddingBottom: 32 },
-  title: { fontWeight: '600' },
-  card: { borderRadius: 14, borderWidth: 1, gap: 4, padding: 12 },
-  loading: { marginVertical: 24 },
-  tabs: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
-  section: { gap: 10 },
-  row: { borderRadius: 12, borderWidth: 1, overflow: 'hidden' },
-  actions: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'flex-end', gap: 4, paddingHorizontal: 4, paddingBottom: 6 },
-  shared: { gap: 6, marginTop: 8 },
-});
+
+
+const stylesClasses = {
+  "card": "rounded-[14px] border gap-1 p-3",
+  "shared": "gap-1.5 mt-2",
+  "row": "rounded-[12px] border overflow-hidden",
+  "content": "gap-3 px-4 pb-8",
+  "title": "font-semibold",
+  "loading": "my-6",
+  "tabs": "flex-row flex-wrap gap-1.5",
+  "section": "gap-2.5",
+  "actions": "flex-row flex-wrap justify-end gap-1 px-1 pb-1.5"
+} as const;

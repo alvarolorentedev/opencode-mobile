@@ -79,5 +79,9 @@
     },
     "appSettingsSummary": "एडिटर, सामान्य सेटिंग और अपडेट",
     "serverToolsSummary": "MCP सर्वर और डायग्नोस्टिक्स"
+  },
+  "validation": {
+    "required": "यह फ़ील्ड आवश्यक है।",
+    "invalid": "मान्य मान दर्ज करें।"
   }
 }

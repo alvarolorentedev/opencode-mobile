@@ -1,7 +1,12 @@
+import { cn } from '@/lib/utils';
+import { Text } from '@/components/ui/text';
+import { FieldDescription } from '@/components/ui/text-field';
+import { Button } from '@/components/ui/button';
+import { Spinner } from '@/components/ui/spinner';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Platform, StyleSheet, View } from 'react-native';
-import { Button, HelperText, Text } from 'react-native-paper';
+import { Platform, View } from 'react-native';
+
 
 import { useOnboardingNavigation } from '@/components/onboarding/use-onboarding-navigation';
 import { OnboardingStep } from '@/components/onboarding/onboarding-step';
@@ -51,103 +56,61 @@ export default function OnboardingPermissionsScreen() {
       testID="onboarding-permissions"
       footer={
         <>
-          <Button
-            mode="text"
-            style={{ marginRight: 'auto' }}
-            testID="onboarding-permissions-skip"
-            onPress={navigation.next}>
-            {t('onboarding:permissions.skip')}
-          </Button>
-          <Button
-            mode="contained"
-            testID="onboarding-permissions-continue"
-            onPress={navigation.next}>
-            {t('onboarding:permissions.continue')}
-          </Button>
+          <Button testID="onboarding-permissions-skip" onPress={navigation.next} variant="ghost" className={cn("mr-auto")} ><Text>{t('onboarding:permissions.skip')}</Text></Button>
+          <Button testID="onboarding-permissions-continue" onPress={navigation.next} variant="default"><Text>{t('onboarding:permissions.continue')}</Text></Button>
         </>
       }>
-      <View style={[styles.card, { backgroundColor: palette.surface, borderColor: palette.border }]}>
-        <View style={styles.cardHeader}>
-          <Text variant="titleSmall" style={{ color: palette.text }}>{t('onboarding:permissions.notifications.title')}</Text>
-          <Text variant="labelSmall" style={{ color: notificationsGranted ? palette.success : palette.muted }}>
-            {!notifications.status
+      <View className={cn(stylesClasses.card, "bg-surface border-border")}>
+        <View className={cn(stylesClasses.cardHeader)}>
+          <Text className={cn("text-foreground")} variant="description">{t('onboarding:permissions.notifications.title')}</Text>
+          <Text style={{ color: notificationsGranted ? palette.success : palette.muted }} variant="label">{!notifications.status
               ? t('onboarding:permissions.checking')
               : notificationsGranted
                 ? t('common:labels.enabled')
-                : t('common:labels.off')}
-          </Text>
+                : t('common:labels.off')}</Text>
         </View>
-        <Text variant="bodySmall" style={{ color: palette.muted }}>{t('onboarding:permissions.notifications.body')}</Text>
+        <Text className={cn("text-muted-foreground")} variant="label">{t('onboarding:permissions.notifications.body')}</Text>
         {notificationsUnsupported ? (
-          <HelperText type="info">{t('onboarding:permissions.notifications.unsupported')}</HelperText>
+          <FieldDescription  invalid={false}>{t('onboarding:permissions.notifications.unsupported')}</FieldDescription>
         ) : notificationsBlocked ? (
-          <Button
-            mode="contained-tonal"
-            testID="onboarding-open-notification-settings"
-            onPress={() => void notifications.openNotificationSettings()}>
-            {t('common:actions.openSettings')}
-          </Button>
+          <Button testID="onboarding-open-notification-settings" onPress={() => void notifications.openNotificationSettings()} variant="secondary"><Text>{t('common:actions.openSettings')}</Text></Button>
         ) : (
-          <Button
-            mode="contained-tonal"
-            testID="onboarding-enable-notifications"
-            disabled={notificationsGranted}
-            loading={notifications.isRefreshing}
-            onPress={() => void notifications.enable()}>
-            {t('onboarding:permissions.notifications.enable')}
-          </Button>
+          <Button testID="onboarding-enable-notifications" disabled={notificationsGranted} onPress={() => void notifications.enable()} variant="secondary">{notifications.isRefreshing ? <Spinner size="small" /> : null}<Text>{t('onboarding:permissions.notifications.enable')}</Text></Button>
         )}
-        {notifications.feedback ? <HelperText type="info">{notifications.feedback}</HelperText> : null}
+        {notifications.feedback ? <FieldDescription  invalid={false}>{notifications.feedback}</FieldDescription> : null}
         {Platform.OS === 'android' && notificationsGranted ? (
-          <Button
-            mode="text"
-            testID="onboarding-review-battery"
-            onPress={() => void notifications.openBatterySettings()}>
-            {t('onboarding:permissions.notifications.battery')}
-          </Button>
+          <Button testID="onboarding-review-battery" onPress={() => void notifications.openBatterySettings()} variant="ghost"><Text>{t('onboarding:permissions.notifications.battery')}</Text></Button>
         ) : null}
       </View>
 
-      <View style={[styles.card, { backgroundColor: palette.surface, borderColor: palette.border }]}>
-        <View style={styles.cardHeader}>
-          <Text variant="titleSmall" style={{ color: palette.text }}>{t('onboarding:permissions.voice.title')}</Text>
-          <Text variant="labelSmall" style={{ color: voicePermission?.granted ? palette.success : palette.muted }}>
-            {!voice
+      <View className={cn(stylesClasses.card, "bg-surface border-border")}>
+        <View className={cn(stylesClasses.cardHeader)}>
+          <Text className={cn("text-foreground")} variant="description">{t('onboarding:permissions.voice.title')}</Text>
+          <Text style={{ color: voicePermission?.granted ? palette.success : palette.muted }} variant="label">{!voice
               ? t('onboarding:permissions.checking')
               : voicePermission?.granted
                 ? t('common:labels.enabled')
-                : t('common:labels.off')}
-          </Text>
+                : t('common:labels.off')}</Text>
         </View>
-        <Text variant="bodySmall" style={{ color: palette.muted }}>{t('onboarding:permissions.voice.body')}</Text>
+        <Text className={cn("text-muted-foreground")} variant="label">{t('onboarding:permissions.voice.body')}</Text>
         {voiceUnsupported ? (
-          <HelperText type="info">{t('onboarding:permissions.voice.unsupported')}</HelperText>
+          <FieldDescription  invalid={false}>{t('onboarding:permissions.voice.unsupported')}</FieldDescription>
         ) : voiceBlocked ? (
-          <Button
-            mode="contained-tonal"
-            testID="onboarding-open-voice-settings"
-            onPress={() => void openVoiceSettingsAsync()}>
-            {t('common:actions.openSettings')}
-          </Button>
+          <Button testID="onboarding-open-voice-settings" onPress={() => void openVoiceSettingsAsync()} variant="secondary"><Text>{t('common:actions.openSettings')}</Text></Button>
         ) : (
-          <Button
-            mode="contained-tonal"
-            testID="onboarding-enable-voice"
-            disabled={Boolean(voicePermission?.granted)}
-            loading={isEnablingVoice}
-            onPress={() => void enableVoice()}>
-            {t('onboarding:permissions.voice.enable')}
-          </Button>
+          <Button testID="onboarding-enable-voice" disabled={Boolean(voicePermission?.granted)} onPress={() => void enableVoice()} variant="secondary">{isEnablingVoice ? <Spinner size="small" /> : null}<Text>{t('onboarding:permissions.voice.enable')}</Text></Button>
         )}
         {voicePermission && voicePermission.available && !voicePermission.granted && voicePermission.canAskAgain ? (
-          <HelperText type="info">{t('onboarding:permissions.voice.deniedHint')}</HelperText>
+          <FieldDescription  invalid={false}>{t('onboarding:permissions.voice.deniedHint')}</FieldDescription>
         ) : null}
       </View>
     </OnboardingStep>
   );
 }
 
-const styles = StyleSheet.create({
-  card: { borderRadius: 16, borderWidth: 1, gap: 10, padding: 16 },
-  cardHeader: { alignItems: 'center', flexDirection: 'row', justifyContent: 'space-between' },
-});
+
+
+const stylesClasses = {
+  "card": "rounded-[16px] border gap-2.5 p-4",
+  "cardHeader": "items-center flex-row justify-between"
+} as const;

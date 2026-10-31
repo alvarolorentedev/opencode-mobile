@@ -1,10 +1,15 @@
+import { cn } from '@/lib/utils';
+import { Text } from '@/components/ui/text';
+import { Button } from '@/components/ui/button';
+import { CardContent, Card } from '@/components/ui/card';
+import { Icon } from '@/components/ui/icon';
 import { type ReactNode, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ScrollView, View } from 'react-native';
-import { Button, Card, IconButton, Text } from 'react-native-paper';
+
 
 import { PendingInteractionsCard, QuestionFlow } from '@/components/chat/chat-cards';
-import { styles } from '@/components/chat/chat-view-styles';
+import { styles , stylesClasses} from '@/components/chat/chat-view-styles';
 import { OverlaySheet } from '@/components/ui/overlay-sheet';
 import { Colors } from '@/constants/theme';
 import type { PendingPermission, PendingQuestion, PendingQuestionAnswer } from '@/lib/opencode/client';
@@ -60,26 +65,21 @@ export function PendingInteractions({
       ) : null}
 
       {currentPendingPermissions.length > 0 && !currentQuestion ? (
-        <ScrollView keyboardShouldPersistTaps="handled" style={[styles.todoOverlay, { maxHeight: '75%' }]}>
+        <ScrollView keyboardShouldPersistTaps="handled" className={cn("max-h-[75%]")} style={[styles.todoOverlay]}>
           <PendingInteractionsCard permissions={currentPendingPermissions} onPermissionReply={onReplyToPermission} />
         </ScrollView>
       ) : null}
       {currentQuestion && dismissedQuestionId === currentQuestion.id ? (
-        <Card mode="elevated" style={[styles.todoOverlay, { backgroundColor: palette.surface, borderColor: palette.border }]}>
-          <Card.Content style={styles.todoHeader}>
-            <View style={styles.todoSummary}>
-              <Text variant="labelLarge" style={{ color: palette.text }}>{t('chat:content.answerNeeded')}</Text>
-              <Text variant="bodySmall" style={{ color: palette.muted }}>{currentQuestion.title || t('chat:content.waitingForAnswer')}</Text>
-            </View>
-            <Button onPress={() => setDismissedQuestionId(undefined)}>{t('common:actions.open')}</Button>
-          </Card.Content>
-        </Card>
+        <Card className={cn("bg-surface border-border")} style={[styles.todoOverlay]}><CardContent className={cn(stylesClasses.todoHeader)}><View className={cn(stylesClasses.todoSummary)}>
+              <Text className={cn("text-foreground")} variant="description">{t('chat:content.answerNeeded')}</Text>
+              <Text className={cn("text-muted-foreground")} variant="label">{currentQuestion.title || t('chat:content.waitingForAnswer')}</Text>
+            </View><Button onPress={() => setDismissedQuestionId(undefined)} variant="ghost"><Text>{t('common:actions.open')}</Text></Button></CardContent></Card>
       ) : null}
       {diffCount === 0 ? progressAction : null}
       <OverlaySheet visible={!changesVisible && !currentQuestion && currentPendingPermissions.length === 0 && progressVisible} testID="progress-overlay" title={t('chat:content.progress')} fitContent onClose={onCloseProgress}>
-        {currentTodos.map((todo, index) => <View key={`${todo.content}-${index}`} style={styles.todoItemRow}>
-          <IconButton icon={todo.status === 'completed' ? 'check-circle' : todo.status === 'in_progress' ? 'progress-clock' : 'circle-outline'} size={20} disabled style={styles.todoStatusIcon} />
-          <View style={styles.todoTextWrap}><Text variant="bodyMedium" style={{ color: palette.text }}>{todo.content || t('chat:content.untitledTask')}</Text>{todo.priority ? <Text variant="bodySmall" style={{ color: palette.muted }}>{todo.priority}</Text> : null}</View>
+        {currentTodos.map((todo, index) => <View key={`${todo.content}-${index}`} className={cn(stylesClasses.todoItemRow)}>
+          <Button disabled variant="ghost" size="icon" className={cn(stylesClasses.todoStatusIcon)} ><Icon name={todo.status === 'completed' ? 'check-circle' : todo.status === 'in_progress' ? 'progress-clock' : 'circle-outline'} size={20} /></Button>
+          <View className={cn(stylesClasses.todoTextWrap)}><Text className={cn("text-foreground")} variant="description">{todo.content || t('chat:content.untitledTask')}</Text>{todo.priority ? <Text className={cn("text-muted-foreground")} variant="label">{todo.priority}</Text> : null}</View>
         </View>)}
       </OverlaySheet>
     </>

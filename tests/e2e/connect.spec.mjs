@@ -1,7 +1,7 @@
 import { expect, test } from './helpers/fixtures.mjs';
 import { Buffer } from 'node:buffer';
 
-import { fakeV2Origin, pauseClockBefore } from './helpers/flows.mjs';
+import { respondToConfirmation, fakeV2Origin, pauseClockBefore } from './helpers/flows.mjs';
 
 // Native APIs/SecureStore are substituted only in the development E2E build.
 const CONTROL_PLANE = 'https://api.opencodecloud.link';
@@ -913,7 +913,6 @@ test('a paired device adds, edits and removes an exposed service', async ({ page
     await request.post(`${SERVER}/__control/device`, { data: { device_id: id, device_secret: 'device-test-secret' } });
   }
   await page.addInitScript(() => localStorage.setItem('opencode-mobile.onboarding-version', JSON.stringify({ version: 1 })));
-  page.on('dialog', (dialog) => void dialog.accept());
   await page.goto(`/pair?${pairingLink().searchParams}`);
   await expect(page).toHaveURL(/\/projects$/, { timeout: 30_000 });
 
@@ -947,7 +946,7 @@ test('a paired device adds, edits and removes an exposed service', async ({ page
   await page.getByTestId('service-id-input').fill('site');
   await page.getByTestId('service-target-input').fill('127.0.0.1:4000');
   await page.getByTestId('service-port-select').click();
-  await page.getByRole('button', { name: '2053', exact: true }).click();
+  await page.getByRole('option', { name: '2053', exact: true }).click();
   await page.getByTestId('service-save').click();
   await expect(page.getByTestId('service-site')).toContainText(':2053/', { timeout: 15_000 });
   await expect(page.getByTestId('service-site')).toContainText(':2053 → 127.0.0.1:4000');
@@ -957,17 +956,20 @@ test('a paired device adds, edits and removes an exposed service', async ({ page
   await page.getByTestId('service-id-input').fill('site2');
   await page.getByTestId('service-target-input').fill('127.0.0.1:4001');
   await page.getByTestId('service-port-select').click();
-  await expect(page.getByRole('button', { name: '2053 (in use)' })).toBeVisible();
-  await page.getByRole('button', { name: '2083', exact: true }).click();
+  await expect(page.getByRole('option', { name: '2053 (in use)' })).toBeVisible();
+  await page.getByRole('option', { name: '2083', exact: true }).click();
   await page.getByTestId('service-save').click();
   await expect(page.getByTestId('service-site2')).toContainText(':2083/', { timeout: 15_000 });
 
   await page.getByTestId('service-site2').getByRole('button', { name: 'Remove' }).click();
+  await respondToConfirmation(page);
   await expect(page.getByTestId('service-site2')).toHaveCount(0);
   await page.getByTestId('service-site').getByRole('button', { name: 'Remove' }).click();
+  await respondToConfirmation(page);
   await expect(page.getByTestId('service-site')).toHaveCount(0);
 
   await page.getByTestId('service-api').getByRole('button', { name: 'Remove' }).click();
+  await respondToConfirmation(page);
   await expect(page.getByTestId('service-api')).toHaveCount(0);
   await expect(page.getByTestId('services-feedback')).toContainText('Removed');
 });
@@ -979,7 +981,6 @@ test('exposed services stay available while a different connection is active', a
     await request.post(`${SERVER}/__control/device`, { data: { device_id: id, device_secret: 'device-test-secret' } });
   }
   await page.addInitScript(() => localStorage.setItem('opencode-mobile.onboarding-version', JSON.stringify({ version: 1 })));
-  page.on('dialog', (dialog) => void dialog.accept());
   await page.goto(`/pair?${pairingLink().searchParams}`);
   await expect(page).toHaveURL(/\/projects$/, { timeout: 30_000 });
 
@@ -1011,4 +1012,3 @@ test('exposed services stay available while a different connection is active', a
   await expect(page.getByTestId('service-api')).toHaveCount(1, { timeout: 15_000 });
   await expect(page.getByTestId('service-use-machine')).toBeVisible();
 });
-

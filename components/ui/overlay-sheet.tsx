@@ -1,15 +1,20 @@
+import { cn } from '@/lib/utils';
+import * as DialogPrimitive from '@rn-primitives/dialog';
+import { DialogFrame } from './dialog-frame';
+import { PortalScope, usePortalHost, useOverlayDismiss } from './portal';
+import { Icon } from '@/components/ui/icon';
+import { Text } from '@/components/ui/text';
 import { useContext, type ReactNode } from 'react';
-import { WorkspaceScope, WorkspaceScopeContext } from '@/providers/workspace-context';
+import { WorkspaceScopeContext } from '@/providers/workspace-context';
 import { useTranslation } from 'react-i18next';
 import { KeyboardAvoidingView, Pressable, ScrollView, StyleSheet, useWindowDimensions, View } from 'react-native';
 import { GestureDetector } from 'react-native-gesture-handler';
-import { Icon, Portal, Text } from 'react-native-paper';
+
 import Animated from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { useUpdateBlocker } from '@/hooks/use-update-blocker';
 import { useDismissKeyboardOnOpen } from '@/hooks/use-dismiss-keyboard-on-open';
-import { useDismissOnBack } from '@/hooks/use-dismiss-on-back';
 import { usePalette } from '@/hooks/use-palette';
 import { useSwipeDismiss } from './use-swipe-dismiss';
 
@@ -28,13 +33,14 @@ export function OverlaySheet({ visible, title, onClose, children, headerAction, 
   dismissKeyboard?: boolean;
 }) {
   const workspace = useContext(WorkspaceScopeContext);
+  const portalHost = usePortalHost();
   const insets = useSafeAreaInsets();
   useUpdateBlocker(visible && blockUpdates);
   const { height } = useWindowDimensions();
   const { t } = useTranslation();
   const palette = usePalette();
   // Android back dismisses the open sheet instead of navigating the screen behind it.
-  useDismissOnBack(visible && dismissible, onClose);
+  useOverlayDismiss(visible && dismissible, onClose);
   // A keyboard raised by the screen behind the sheet would cover it.
   useDismissKeyboardOnOpen(visible, dismissKeyboard);
   const { pan, sheetStyle, backdropStyle, handleSheetLayout } = useSwipeDismiss({
@@ -48,35 +54,35 @@ export function OverlaySheet({ visible, title, onClose, children, headerAction, 
   }
 
   const content = (
-      <KeyboardAvoidingView behavior="padding" style={[styles.overlay, { paddingTop: compact ? Math.max(64 + insets.top, height * 0.45) : 64 + insets.top }]} testID={testID}>
+      <KeyboardAvoidingView behavior="padding" className={cn(stylesClasses.overlay)} style={[{ paddingTop: compact ? Math.max(64 + insets.top, height * 0.45) : 64 + insets.top }]} testID={testID}>
         {dismissible ? <Pressable accessibilityLabel={t('common:actions.closeWithName', { title })} onPress={onClose} style={StyleSheet.absoluteFill}>
-          <Animated.View style={[styles.backdrop, backdropStyle]} />
+          <Animated.View style={[styles.backdrop, { backgroundColor: palette.backdrop }, backdropStyle]} />
         </Pressable> : null}
-        <Animated.View
-          testID={fitContent ? `${testID}-sheet` : undefined}
+        <DialogFrame asChild aria-describedby={undefined}><Animated.View
+          testID={testID ? `${testID}-sheet` : undefined}
           accessibilityLabel={title}
           accessibilityViewIsModal
           onLayout={handleSheetLayout}
           style={[styles.sheet, !fitContent && { flex: 1 }, { backgroundColor: palette.surface, borderColor: palette.border }, sheetStyle]}>
           <GestureDetector gesture={pan}>
             <Animated.View style={styles.dragZone}>
-              {compact ? <View style={styles.grabberWrap}><View style={[styles.grabber, { backgroundColor: palette.muted }]} /></View> : null}
-              <View style={[styles.header, compact && styles.compactHeader, { borderBottomColor: palette.border }]}>
+              {compact ? <View className={cn(stylesClasses.grabberWrap)}><View className={cn(stylesClasses.grabber, "bg-muted-foreground")} /></View> : null}
+              <View className={cn(compact && stylesClasses.compactHeader)} style={[styles.header, { borderBottomColor: palette.border }]}>
                 {compact ? (
                   <>
-                    {dismissible ? <Pressable accessibilityRole="button" accessibilityLabel={t('common:actions.close')} onPress={onClose} style={styles.compactAction}>
-                      <Icon source="close" size={22} color={palette.muted} />
-                    </Pressable> : <View style={styles.compactAction} />}
-                    <Text variant="titleMedium" style={[styles.compactTitle, { color: palette.text }]}>{title}</Text>
-                    <View style={styles.compactAction}>{headerAction}</View>
+                    {dismissible ? <Pressable accessibilityRole="button" accessibilityLabel={t('common:actions.close')} onPress={onClose} className={cn(stylesClasses.compactAction)}>
+                      <Icon size={22} color={palette.muted} name={"close"}></Icon>
+                    </Pressable> : <View className={cn(stylesClasses.compactAction)} />}
+                    <DialogPrimitive.Title asChild><Text className={cn(stylesClasses.compactTitle, "text-foreground")} variant="title">{title}</Text></DialogPrimitive.Title>
+                    <View className={cn(stylesClasses.compactAction)}>{headerAction}</View>
                   </>
                 ) : (
                   <>
-                    <Text variant="titleMedium" style={{ color: palette.text }}>{title}</Text>
-                    <View style={styles.headerActions}>
+                    <DialogPrimitive.Title asChild><Text className={cn("text-foreground")} variant="title">{title}</Text></DialogPrimitive.Title>
+                    <View className={cn(stylesClasses.headerActions)}>
                       {headerAction}
-                      {dismissible ? <Pressable accessibilityRole="button" onPress={onClose} style={styles.closeButton}>
-                        <Text style={{ color: palette.tint }}>{t('common:actions.close')}</Text>
+                      {dismissible ? <Pressable accessibilityRole="button" onPress={onClose} className={cn(stylesClasses.closeButton)}>
+                        <Text className={cn("text-primary")}>{t('common:actions.close')}</Text>
                       </Pressable> : null}
                     </View>
                   </>
@@ -86,28 +92,34 @@ export function OverlaySheet({ visible, title, onClose, children, headerAction, 
           </GestureDetector>
           {scrollable ? <ScrollView keyboardShouldPersistTaps="handled" style={fitContent ? styles.fitContentScroll : undefined} contentContainerStyle={[styles.content, compact && styles.compactContent, { paddingBottom: Math.max(insets.bottom, 24) }]}>
             {children}
-          </ScrollView> : <View style={[styles.content, compact && styles.compactContent, { ...(fitContent ? { flexShrink: 1 } : { flex: 1 }), minHeight: 0, paddingBottom: Math.max(insets.bottom, 24) }]}>{children}</View>}
-        </Animated.View>
+          </ScrollView> : <View className={cn(stylesClasses.content, compact && stylesClasses.compactContent)} style={[{ ...(fitContent ? { flexShrink: 1 } : { flex: 1 }), minHeight: 0, paddingBottom: Math.max(insets.bottom, 24) }]}>{children}</View>}
+        </Animated.View></DialogFrame>
       </KeyboardAvoidingView>
   );
-  // Paper portals render under the app host; restore the caller's server context there.
-  return <Portal>{workspace ? <WorkspaceScope target={workspace}>{content}</WorkspaceScope> : content}</Portal>;
+  return <DialogPrimitive.Root open={visible} onOpenChange={(open) => { if (!open && dismissible) onClose(); }}><DialogPrimitive.Portal hostName={portalHost}>
+    <PortalScope target={workspace}>{content}</PortalScope>
+  </DialogPrimitive.Portal></DialogPrimitive.Root>;
 }
 
 const styles = StyleSheet.create({
-  overlay: { ...StyleSheet.absoluteFill, justifyContent: 'flex-end' },
-  backdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.28)' },
+  backdrop: { flex: 1 },
   sheet: { flexShrink: 1, borderTopLeftRadius: 24, borderTopRightRadius: 24, borderWidth: 1, overflow: 'hidden' },
   dragZone: { flexShrink: 0 },
   header: { minHeight: 56, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 8, paddingHorizontal: 16, borderBottomWidth: 1 },
-  grabberWrap: { height: 24, alignItems: 'center', justifyContent: 'center' },
-  grabber: { width: 36, height: 4, borderRadius: 2 },
-  compactHeader: { minHeight: 56, paddingHorizontal: 8 },
-  compactTitle: { flex: 1, textAlign: 'center', fontWeight: '700' },
-  compactAction: { width: 44, minHeight: 48, alignItems: 'center', justifyContent: 'center' },
   compactContent: { padding: 0, gap: 0 },
-  headerActions: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  closeButton: { minHeight: 48, justifyContent: 'center', paddingHorizontal: 8 },
   fitContentScroll: { flexGrow: 0, flexShrink: 1 },
-  content: { padding: 12, gap: 8 },
+  content: { padding: 12, gap: 8 }
 });
+
+const stylesClasses = {
+  "overlay": "absolute inset-0 justify-end",
+  "grabberWrap": "h-6 items-center justify-center",
+  "grabber": "w-9 h-1 rounded-[2px]",
+  "compactHeader": "min-h-field px-2",
+  "compactAction": "w-11 min-h-target items-center justify-center",
+  "compactTitle": "flex-1 text-center font-bold",
+  "headerActions": "flex-row items-center gap-1.5",
+  "closeButton": "min-h-target justify-center px-2",
+  "content": "p-3 gap-2",
+  "compactContent": "p-0 gap-0"
+} as const;

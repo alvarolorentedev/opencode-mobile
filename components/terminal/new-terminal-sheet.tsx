@@ -1,6 +1,10 @@
+import { cn } from '@/lib/utils';
+import { Text } from '@/components/ui/text';
+import { Button } from '@/components/ui/button';
+import { Spinner } from '@/components/ui/spinner';
 import { useState } from 'react';
 import { View } from 'react-native';
-import { Button, Text } from 'react-native-paper';
+
 import { useTranslation } from 'react-i18next';
 import { OverlaySheet } from '@/components/ui/overlay-sheet';
 import { WorkspaceSelect } from '@/components/ui/workspace-select';
@@ -26,13 +30,13 @@ export function NewTerminalSheet({ target: initial, onClose, onCreate }: { targe
     <WorkspaceSelect title={t('common:servers.projectContext')} value={target?.projectPath} testID="terminal-project-picker" disabled={busy || !server}
       options={server?.projects.map((entry) => ({ value: entry.path, label: entry.label, description: entry.path })) ?? []}
       onChange={(projectPath) => { if (target) setTarget({ ...target, projectPath }); }} />
-    <Text variant="labelMedium">{t('common:servers.workingDirectory')}</Text><Text style={{ fontFamily: 'monospace' }}>{target?.projectPath || '—'}</Text>
-    <Text variant="bodySmall">{t('common:servers.chatUnchanged', { name: `${multipleServers ? `${chatServer} / ` : ''}${chat?.projectsValue.activeProject?.label ?? ''}` })}</Text>
+    <Text  variant="label">{t('common:servers.workingDirectory')}</Text><Text style={{ fontFamily: 'monospace' }}>{target?.projectPath || '—'}</Text>
+    <Text  variant="label">{t('common:servers.chatUnchanged', { name: `${multipleServers ? `${chatServer} / ` : ''}${chat?.projectsValue.activeProject?.label ?? ''}` })}</Text>
     {error ? <Text accessibilityRole="alert">{error}</Text> : null}
-    <View style={{ flexDirection: 'row', justifyContent: 'flex-end', gap: 8 }}><Button disabled={busy} onPress={onClose}>{t('common:actions.cancel')}</Button>
-      <Button testID="terminal-create-confirm" mode="contained" loading={busy} disabled={busy || !target?.projectPath || server?.status !== 'connected'} onPress={() => {
+    <View className={cn("flex-row justify-end gap-2")}><Button disabled={busy} onPress={onClose} variant={"ghost"}><Text>{t('common:actions.cancel')}</Text></Button>
+      <Button testID="terminal-create-confirm" disabled={busy || !target?.projectPath || server?.status !== 'connected'} onPress={() => {
         if (!target) return; setBusy(true); setError(undefined);
         void onCreate(target).then(onClose).catch((reason) => setError(String(reason))).finally(() => setBusy(false));
-      }}>{t('terminal:console.create')}</Button></View>
+      }} variant={"default"}>{busy ? <Spinner size="small" /> : null}<Text>{t('terminal:console.create')}</Text></Button></View>
   </OverlaySheet>;
 }

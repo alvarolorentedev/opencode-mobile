@@ -1,4 +1,5 @@
-import { Alert, Platform } from 'react-native';
+import { useConfirmation } from '@/components/ui/use-confirmation';
+import { Platform } from 'react-native';
 import type { Dispatch, SetStateAction } from 'react';
 
 import { useUpdates } from '@/providers/opencode-contexts';
@@ -39,6 +40,7 @@ export function useChatViewActions({
   setSpeakingMessageId,
   setVoiceFeedback,
 }: ChatViewActionsInput) {
+  const { confirmAction, confirmation } = useConfirmation();
   const { block } = useUpdates();
   async function handleSpeakEntry(entry: TranscriptEntry) {
     if (speakingMessageId === entry.id) {
@@ -127,19 +129,10 @@ export function useChatViewActions({
   }
 
   function handleConfirmStopConversation() {
-    Alert.alert(t('chat:view.stopConversationTitle'), t('chat:view.stopConversationMessage'), [
-      { style: 'cancel', text: t('chat:view.keepGoing') },
-      {
-        style: 'destructive',
-        text: t('common:actions.stop'),
-        onPress: () => {
-          void toggleConversationMode();
-        },
-      },
-    ]);
+    confirmAction(t('chat:view.stopConversationTitle'), t('chat:view.stopConversationMessage'), t('common:actions.stop'), t('chat:view.keepGoing'), () => { void toggleConversationMode(); });
   }
 
-  return {
+  return { confirmation,
     handleSpeakEntry,
     handleAttach,
     handleAbort,

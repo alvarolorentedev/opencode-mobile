@@ -1,3 +1,4 @@
+import { uiImports } from '../helpers/ui.mjs';
 import { describe, expect, it, vi } from 'vitest';
 
 import { getCurrentTurnActivityKey } from '@/components/chat/chat-view-utils';
@@ -36,6 +37,7 @@ async function mountTranscriptList(overrides: Overrides = {}) {
   const runtime = hookRuntime();
   const element = (type: unknown, props: unknown) => ({ type, props });
   const { TranscriptList } = await loadTs('components/chat/content/transcript-list.tsx', {
+    ...uiImports,
     react: runtime.react,
     'react/jsx-runtime': { jsx: element, jsxs: element, Fragment: 'Fragment' },
     '@shopify/flash-list': { FlashList: 'FlashList' },
@@ -43,10 +45,10 @@ async function mountTranscriptList(overrides: Overrides = {}) {
     'expo-router': { useIsFocused: () => true },
     'react-i18next': { useTranslation: () => ({ t: (key: string) => key }) },
     'react-native': { AppState: { addEventListener: () => ({ remove: () => undefined }) }, View: 'View' },
-    'react-native-paper': { ActivityIndicator: 'ActivityIndicator', Button: 'Button', Card: 'Card', Text: 'Text', TouchableRipple: 'TouchableRipple' },
+
     '@/components/chat/chat-cards': { TranscriptMessage: 'TranscriptMessage' },
     '@/components/chat/cards/activity-group': { ActivityGroupRow: 'ActivityGroupRow' },
-    '@/components/chat/chat-view-styles': { styles: {}, slimStyles: {} },
+    '@/components/chat/chat-view-styles': { styles: {}, slimStyles: {}, stylesClasses: {}, slimStylesClasses: {} },
     '@/components/chat/chat-view-utils': { getCurrentTurnActivityKey, STARTER_PROMPT_KEYS: [] },
     '@/components/chat/content/transcript-skeleton': { TranscriptSkeleton: 'TranscriptSkeleton' },
     '@/constants/theme': { Colors: { light: {} } },

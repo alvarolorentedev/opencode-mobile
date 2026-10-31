@@ -1,3 +1,7 @@
+import { zodResolver } from '@hookform/resolvers/zod';
+import { z } from 'zod';
+
+import { uiImports, formImports } from '../helpers/ui.mjs';
 import { describe, expect, it, vi } from 'vitest';
 import { deferred, hookRuntime, loadTs } from '../helpers/runtime.mjs';
 
@@ -12,18 +16,27 @@ async function form(onSubmit = vi.fn()) {
   const runtime = hookRuntime();
   const probe = vi.fn(async () => ({ status: 'detected', contract: 'v2' }));
   const connectionHeaders = await loadTs('lib/connection-headers.ts', {
+    ...uiImports,
+    'react-hook-form': formImports(runtime.react),
+    '@hookform/resolvers/zod': { zodResolver },
     'expo-secure-store': { getItemAsync: async () => null, setItemAsync: async () => {}, deleteItemAsync: async () => {} },
     'react-native': { Platform: { OS: 'web' } },
     '@/lib/connect': { getConnectTestSecret: () => '', setConnectTestSecret: () => {} },
   });
+  const { isValidServerUrl } = await loadTs('lib/opencode/client/url.ts', { './types': { defaultConnectionSettings: { serverUrl: 'http://localhost:4096' } } });
+  const { connectionSchema } = await loadTs('components/settings/forms/connection-schema.ts', { zod: { z }, '@/lib/connection-headers': connectionHeaders, '@/lib/opencode/client/url': { isValidServerUrl } });
   const { ConnectionProfileDialog } = await loadTs('components/settings/connection-profile-dialog.tsx', {
+    ...uiImports,
+    'react-hook-form': formImports(runtime.react),
+    '@hookform/resolvers/zod': { zodResolver },
+    './forms/connection-schema': { connectionSchema },
     react: runtime.react,
     'react/jsx-runtime': { jsx: (type: unknown, props: Record<string, unknown>) => ({ type, props }), jsxs: (type: unknown, props: Record<string, unknown>) => ({ type, props }), Fragment: 'Fragment' },
     'react-i18next': { useTranslation: () => ({ t: (key: string) => key }) },
     'react-native': { Keyboard: { dismiss: () => {} }, StyleSheet: { create: (styles: unknown) => styles }, View: 'View', Modal: 'Modal', KeyboardAvoidingView: 'KeyboardAvoidingView', ScrollView: 'ScrollView' },
-    'react-native-paper': { Appbar: { Header: 'Header', BackAction: 'BackAction', Content: 'Content' }, Button: 'Button', HelperText: 'HelperText', IconButton: 'IconButton', Text: 'Text', TextInput: { Icon: 'Icon' } },
+
     'react-native-safe-area-context': { useSafeAreaInsets: () => ({ top: 0, bottom: 0 }) },
-    './sections/setting-rows': { SettingButton: 'Button', SettingTextInput: 'Input' },
+    '@/components/settings/sections/setting-rows': { SettingField: 'Input' },
     '@/constants/theme': { Colors: { light: {} } },
     '@/hooks/use-update-blocker': { useUpdateBlocker: () => {} },
     '@/hooks/use-color-scheme': { useColorScheme: () => 'light' },
@@ -112,10 +125,10 @@ describe('manual connection form', () => {
     view.change('connection-profile-url-input', 'http://example.test');
     view.element('connection-profile-continue').props.onPress();
     view.element('connection-profile-continue').props.onPress();
-    view.runtime.flush();
+    await view.runtime.settle();
     expect(view.probe).toHaveBeenCalledOnce();
     expect(view.onBusyChange).toHaveBeenLastCalledWith(true);
-    await view.press('BackAction');
+    await view.press('Button');
     expect(view.onDismiss).toHaveBeenCalledOnce();
     expect(view.onBusyChange).toHaveBeenLastCalledWith(false);
     gate.resolve({ status: 'detected', contract: 'v2' });

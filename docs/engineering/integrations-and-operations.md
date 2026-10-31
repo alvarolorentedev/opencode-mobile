@@ -60,7 +60,7 @@ The implementation favors user-facing recovery over deep error taxonomy.
 
 Used for app navigation and typed route structure.
 
-### React Native Paper
+### Source-owned UI
 
 Used for most UI components and themed surfaces.
 
@@ -439,3 +439,5 @@ The app includes device and voice support, but continuous background microphone 
 On OpenCode 1, `reasoning`, `responseScope`, and `includeNextActions` are implemented by generating system prompt instructions rather than by changing UI logic. On OpenCode 2, the Reasoning selector chooses one of the selected model's server-reported variants and sends it through the session model switch; `responseScope` and `includeNextActions` remain prompt instructions.
 
 That distinction is important when validating parity.
+
+The UI foundation and complex-form conventions are defined in [ADR 0013](../adr/0013-source-owned-ui-and-complex-forms.md) and the [design system](../design/design-system.md). Native renderers, Expo dependencies and FOSS module exclusions keep their existing contracts.

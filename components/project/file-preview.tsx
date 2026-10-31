@@ -1,19 +1,27 @@
+import { cn } from '@/lib/utils';
+import { ModalSurface } from '@/components/ui/portal';
+import { Button } from '@/components/ui/button';
+import { Spinner } from '@/components/ui/spinner';
+import { Icon } from '@/components/ui/icon';
+import { Text } from '@/components/ui/text';
+import { HeaderTitle, ScreenHeader } from '@/components/ui/screen-header';
+import { TextField } from '@/components/ui/text-field';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ActivityIndicator, AppState, KeyboardAvoidingView, Modal, Platform, ScrollView, View, useWindowDimensions } from 'react-native';
+import { ActivityIndicator, AppState, KeyboardAvoidingView, Platform, ScrollView, View, useWindowDimensions } from 'react-native';
 import { Image } from 'expo-image';
-import { Appbar, Button, Text } from 'react-native-paper';
+
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { TextInput } from '@/components/ui/text-input';
+
 import { AudioPreview, VideoPreview } from '@/components/ui/media-preview';
 import { useRetainedState } from '@/components/ui/use-retained-state';
 import { useUpdateBlocker } from '@/hooks/use-update-blocker';
 import { usePalette } from '@/hooks/use-palette';
 import { useConnection } from '@/providers/opencode-contexts';
 import { getConnectionUiScope } from '@/lib/connection-scope';
-import { confirmAction } from '@/lib/confirm-action';
+import { useConfirmation } from '@/components/ui/use-confirmation';
 import { prepareAttachmentBytes } from '@/lib/attachment-preview';
 import { formatDataUsage } from '@/lib/opencode/data-usage';
 import { MAX_PROJECT_PREVIEW_BYTES, type ProjectFile } from '@/lib/opencode/project-file';
@@ -28,6 +36,7 @@ export function FilePreview({ file, projectPath, branch, canSave, slim, onClose,
   onSave: (path: string, original: string, value: string) => Promise<void>;
   onDownload: (path: string, signal?: AbortSignal) => Promise<void>;
 }) {
+  const { confirmAction, confirmation } = useConfirmation();
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   const { height } = useWindowDimensions();
@@ -95,34 +104,30 @@ export function FilePreview({ file, projectPath, branch, canSave, slim, onClose,
   }
 
   const downloadAction = file.canDownload ? (
-    <Button mode="contained" icon="download" loading={downloading} disabled={downloading} testID="project-file-download" onPress={download}>
-      {t(Platform.OS === 'web' ? 'project:files.download' : 'project:files.saveOrOpen')}
-    </Button>
+    <Button disabled={downloading} testID="project-file-download" onPress={download} variant={"default"}>{downloading ? <Spinner size="small" /> : null}<Icon name={"download"} size={20} /><Text>{t(Platform.OS === 'web' ? 'project:files.download' : 'project:files.saveOrOpen')}</Text></Button>
   ) : null;
 
   function renderBinary() {
     if (file.kind === 'document') {
-      return <View style={{ alignItems: 'center', gap: 12, paddingVertical: 32 }}>
+      return <View className={cn("items-center gap-3 py-8")}>
         <MaterialCommunityIcons name="file-document-outline" size={56} color={palette.muted} />
-        <Text variant="titleMedium" selectable style={{ color: palette.text }}>{filename}</Text>
-        <Text style={{ color: palette.muted }}>{file.mime}{file.size !== undefined ? ` · ${formatDataUsage(file.size)}` : ''}</Text>
-        <Text style={{ color: palette.muted, textAlign: 'center' }} testID="project-file-document-preview">{t('project:files.documentPreview')}</Text>
-        {downloadAction || <Text testID="project-file-binary-unavailable" style={{ color: palette.muted }}>{t('project:files.binaryUnavailable')}</Text>}
+        <Text selectable className={cn("text-foreground")} variant="title">{filename}</Text>
+        <Text className={cn("text-muted-foreground")}>{file.mime}{file.size !== undefined ? ` · ${formatDataUsage(file.size)}` : ''}</Text>
+        <Text className={cn("text-muted-foreground text-center")} testID="project-file-document-preview">{t('project:files.documentPreview')}</Text>
+        {downloadAction || <Text testID="project-file-binary-unavailable" className={cn("text-muted-foreground")}>{t('project:files.binaryUnavailable')}</Text>}
       </View>;
     }
     if (!file.bytes) {
-      return <View style={{ alignItems: 'center', gap: 12, paddingVertical: 32 }}>
+      return <View className={cn("items-center gap-3 py-8")}>
         <MaterialCommunityIcons name="file-lock-outline" size={56} color={palette.muted} />
-        <Text style={{ color: palette.muted, textAlign: 'center' }} testID={tooLarge ? 'project-file-preview-too-large' : 'project-file-binary-unavailable'}>
-          {tooLarge ? t('project:files.previewTooLarge') : t('project:files.binaryUnavailable')}
-        </Text>
+        <Text className={cn("text-muted-foreground text-center")} testID={tooLarge ? 'project-file-preview-too-large' : 'project-file-binary-unavailable'}>{tooLarge ? t('project:files.previewTooLarge') : t('project:files.binaryUnavailable')}</Text>
         {downloadAction}
       </View>;
     }
     if (mediaFailed) {
-      return <View style={{ alignItems: 'center', gap: 12, paddingVertical: 32 }}>
+      return <View className={cn("items-center gap-3 py-8")}>
         <MaterialCommunityIcons name="file-alert-outline" size={56} color={palette.muted} />
-        <Text style={{ color: palette.muted }}>{t('project:files.previewFailed')}</Text>
+        <Text className={cn("text-muted-foreground")}>{t('project:files.previewFailed')}</Text>
         {downloadAction}
       </View>;
     }
@@ -142,38 +147,32 @@ export function FilePreview({ file, projectPath, branch, canSave, slim, onClose,
     return null;
   }
 
-  return <Modal visible animationType="slide" presentationStyle="fullScreen" onRequestClose={close}>
-    <KeyboardAvoidingView style={{ flex: 1, backgroundColor: palette.background }} behavior="padding">
-      <Appbar.Header statusBarHeight={0} style={{ backgroundColor: palette.surface, paddingTop: insets.top, height: (slim ? 52 : 64) + insets.top }}>
-        <Appbar.BackAction disabled={saving} accessibilityLabel={t('project:files.close')} onPress={close} />
-        <Appbar.Content titleMaxFontSizeMultiplier={1.5} title={filename} subtitle={file.path} />
-        {isText && file.canDownload ? <Appbar.Action icon="download" disabled={downloading} accessibilityLabel={t('project:files.download')} onPress={download} /> : null}
-        {isText && canSave && !draft ? <Button onPress={() => setDraft({ original: file.content.content, value: file.content.content })}>{t('common:actions.edit')}</Button> : null}
-      </Appbar.Header>
+  return <ModalSurface accessibilityLabel={filename} visible animationType="slide" presentationStyle="fullScreen" onRequestClose={close}>
+    <KeyboardAvoidingView className={cn("flex-1 bg-background")} behavior="padding">
+      <ScreenHeader style={{ backgroundColor: palette.surface, paddingTop: insets.top, height: (slim ? 52 : 64) + insets.top }} safeArea={0 !== 0}><Button disabled={saving} accessibilityLabel={t('project:files.close')} onPress={close} variant={"ghost"} size="icon"><Icon name={"arrow-left"} size={24} /></Button><HeaderTitle title={filename} subtitle={file.path} maxFontSizeMultiplier={1.5}></HeaderTitle>{isText && file.canDownload ? <Button disabled={downloading} accessibilityLabel={t('project:files.download')} onPress={download} variant={"ghost"} size="icon"><Icon name={"download"} size={24} /></Button> : null}{isText && canSave && !draft ? <Button onPress={() => setDraft({ original: file.content.content, value: file.content.content })} variant={"ghost"}><Text>{t('common:actions.edit')}</Text></Button> : null}</ScreenHeader>
       <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={{ padding: slim ? 10 : 16, gap: 16, paddingBottom: Math.max(insets.bottom, 16), flexGrow: 1 }}>
-        <View style={{ gap: 6 }}>
-          <Text style={{ color: palette.muted }}>{projectPath}</Text>
-          {branch ? <Text style={{ color: palette.muted }}>{t('project:files.branch', { branch })}</Text> : null}
-          {!isText && file.size !== undefined ? <Text style={{ color: palette.muted }}>{t('project:files.size', { size: formatDataUsage(file.size) })}</Text> : null}
+        <View className={cn("gap-1.5")}>
+          <Text className={cn("text-muted-foreground")}>{projectPath}</Text>
+          {branch ? <Text className={cn("text-muted-foreground")}>{t('project:files.branch', { branch })}</Text> : null}
+          {!isText && file.size !== undefined ? <Text className={cn("text-muted-foreground")}>{t('project:files.size', { size: formatDataUsage(file.size) })}</Text> : null}
         </View>
-        {error || downloadError ? <Text accessibilityLiveRegion="polite" style={{ color: palette.danger }}>{error || downloadError}</Text> : null}
+        {error || downloadError ? <Text accessibilityLiveRegion="polite" className={cn("text-destructive")}>{error || downloadError}</Text> : null}
         {isText ? <>
           {draft ? <>
-            <Text style={{ color: palette.warning }}>{t('project:files.savingNotice')}</Text>
-            <TextInput testID="project-file-editor" mode="outlined" multiline editable={!saving} value={draft.value}
-              onChangeText={(value) => setDraft({ ...draft, value })} style={{ minHeight: 240, fontFamily: 'monospace', fontSize: 13 }} />
-            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
-              <Button testID="project-file-save-button" mode="contained" loading={saving} disabled={saving || !dirty} onPress={() => {
+            <Text className={cn("text-warning")}>{t('project:files.savingNotice')}</Text>
+            <TextField testID="project-file-editor" multiline editable={!saving} value={draft.value} onChangeText={(value) => setDraft({ ...draft, value })} style={[{ minHeight: 240, fontFamily: 'monospace', fontSize: 13 }, undefined]}></TextField>
+            <View className={cn("flex-row flex-wrap gap-2")}>
+              <Button testID="project-file-save-button" disabled={saving || !dirty} onPress={() => {
                 setSaving(true); setError(undefined);
                 void onSave(file.path, draft.original, draft.value).then(() => setDraft(undefined))
                   .catch((reason) => setError(reason instanceof Error ? reason.message : t('project:errors.saveFile'))).finally(() => setSaving(false));
-              }}>{t('project:files.savePatch')}</Button>
-              <Button disabled={saving} onPress={() => leave(() => { setDraft(undefined); setError(undefined); })}>{t('common:actions.cancel')}</Button>
+              }} variant={"default"}>{saving ? <Spinner size="small" /> : null}<Text>{t('project:files.savePatch')}</Text></Button>
+              <Button disabled={saving} onPress={() => leave(() => { setDraft(undefined); setError(undefined); })} variant={"ghost"}><Text>{t('common:actions.cancel')}</Text></Button>
             </View>
           </> : <>
-            <Text variant="labelLarge" style={{ color: palette.muted }}>{t('project:files.preview')}</Text>
+            <Text className={cn("text-muted-foreground")} variant="description">{t('project:files.preview')}</Text>
             <Text selectable style={{ fontFamily: 'monospace', fontSize: 13, lineHeight: 22, color: palette.text }}>{file.content.content}</Text>
-            {!canSave ? <Text style={{ color: palette.muted }}>{t('project:files.editingUnavailable')}</Text> : null}
+            {!canSave ? <Text className={cn("text-muted-foreground")}>{t('project:files.editingUnavailable')}</Text> : null}
           </>}
         </> : <>
           {renderBinary()}
@@ -181,5 +180,6 @@ export function FilePreview({ file, projectPath, branch, canSave, slim, onClose,
         </>}
       </ScrollView>
     </KeyboardAvoidingView>
-  </Modal>;
+    {confirmation}
+  </ModalSurface>;
 }

@@ -1,6 +1,8 @@
+import { cn } from '@/lib/utils';
+import { Text } from '@/components/ui/text';
 import Slider from '@react-native-community/slider';
 import { Platform, StyleSheet, View } from 'react-native';
-import { Text } from 'react-native-paper';
+
 
 import { ControlSize } from '@/constants/design-tokens';
 import { Colors } from '@/constants/theme';
@@ -52,10 +54,10 @@ export function NumericSlider({
     : {};
 
   return (
-    <View style={styles.numericSlider}>
-      <View style={styles.numericSliderHeader}>
-        <Text style={{ color: palette.text, flex: 1 }}>{label}</Text>
-        <Text style={{ color: palette.muted }}>{valueLabel}</Text>
+    <View className={cn(stylesClasses.numericSlider)}>
+      <View className={cn(stylesClasses.numericSliderHeader)}>
+        <Text className={cn("text-foreground flex-1")}>{label}</Text>
+        <Text className={cn("text-muted-foreground")}>{valueLabel}</Text>
       </View>
       <Slider
         {...webProps}
@@ -77,7 +79,10 @@ export function NumericSlider({
 }
 
 const styles = StyleSheet.create({
-  numericSlider: { gap: 4 },
-  numericSliderHeader: { flexDirection: 'row', justifyContent: 'space-between', gap: 8 },
-  slider: { height: ControlSize.target, marginHorizontal: 4 },
+  slider: { height: ControlSize.target, marginHorizontal: 4 }
 });
+
+const stylesClasses = {
+  "numericSlider": "gap-1",
+  "numericSliderHeader": "flex-row justify-between gap-2"
+} as const;

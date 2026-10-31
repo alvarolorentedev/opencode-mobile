@@ -1,8 +1,10 @@
+import { cn } from '@/lib/utils';
+import { FieldDescription } from '@/components/ui/text-field';
 import { useTranslation } from 'react-i18next';
-import { StyleSheet, View } from 'react-native';
-import { HelperText } from 'react-native-paper';
+import { View } from 'react-native';
 
-import { type NativeSelectOption } from '@/components/ui/native-select';
+
+import { type CatalogOption } from '@/components/ui/catalog-select';
 import { RESPONSE_SCOPE_OPTIONS } from '@/components/settings/settings-utils';
 import type { ResponseScope } from '@/providers/opencode-provider';
 import { SettingSelectField, SettingSwitchRow, type Palette } from './setting-rows';
@@ -24,14 +26,14 @@ export function ResponsesSection({
   updateChatPreferences,
 }: ResponsesSectionProps) {
   const { t } = useTranslation();
-  const responseScopeOptions: NativeSelectOption<ResponseScope>[] = RESPONSE_SCOPE_OPTIONS.map((option) => ({
+  const responseScopeOptions: CatalogOption<ResponseScope>[] = RESPONSE_SCOPE_OPTIONS.map((option) => ({
     description: t(`settings:voice.responseScope.${option.value}.description`),
     label: t(`settings:voice.responseScope.${option.value}.label`),
     value: option.value,
   }));
 
   return (
-    <View style={styles.section}>
+    <View className={cn(stylesClasses.section)}>
       <SettingSelectField
         label={t('settings:voice.responseScope.label')}
         onValueChange={(value) => updateChatPreferences({ responseScope: value })}
@@ -40,7 +42,7 @@ export function ResponsesSection({
         selectedValue={selectedResponseScope.value}
         valueLabel={t(`settings:voice.responseScope.${selectedResponseScope.value}.label`)}
       />
-      <HelperText type="info">{t(`settings:voice.responseScope.${selectedResponseScope.value}.description`)}</HelperText>
+      <FieldDescription  invalid={false}>{t(`settings:voice.responseScope.${selectedResponseScope.value}.description`)}</FieldDescription>
       <SettingSwitchRow
         description={t('settings:voice.nextActions.description')}
         onValueChange={(value) => updateChatPreferences({ includeNextActions: value })}
@@ -52,6 +54,8 @@ export function ResponsesSection({
   );
 }
 
-const styles = StyleSheet.create({
-  section: { gap: 10, paddingBottom: 8 },
-});
+
+
+const stylesClasses = {
+  "section": "gap-2.5 pb-2"
+} as const;

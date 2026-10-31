@@ -1,6 +1,7 @@
+import { Text } from '@/components/ui/text';
 import { useTranslation } from 'react-i18next';
 import { StyleSheet, View } from 'react-native';
-import { Text } from 'react-native-paper';
+
 
 import { useConnection, useDiagnostics } from '@/providers/opencode-contexts';
 import { usePalette } from '@/hooks/use-palette';
@@ -38,15 +39,13 @@ export function ConnectionStatusBanner() {
   return (
     <View testID="connection-status-banner" accessible accessibilityLiveRegion="polite" style={[styles.banner, { backgroundColor: palette.surfaceAlt, borderColor: palette.border }]}>
       <View style={[styles.dot, { backgroundColor: tone }]} />
-      <Text variant="labelMedium" style={{ color: palette.text }}>{message}</Text>
-      <Text variant="labelSmall" style={{ color: palette.muted }}>
-        {transport.network.type}{transport.network.generation ? ` · ${transport.network.generation}` : ''}
-      </Text>
+      <Text style={{ color: palette.text }} variant="label">{message}</Text>
+      <Text style={{ color: palette.muted }} variant="label">{transport.network.type}{transport.network.generation ? ` · ${transport.network.generation}` : ''}</Text>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   banner: { flexDirection: 'row', alignItems: 'center', gap: 8, borderBottomWidth: StyleSheet.hairlineWidth, paddingHorizontal: 12, paddingVertical: 6 },
-  dot: { width: 8, height: 8, borderRadius: 4 },
+  dot: { width: 8, height: 8, borderRadius: 4 }
 });

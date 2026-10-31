@@ -1,11 +1,15 @@
+import { cn } from '@/lib/utils';
+import { Text } from '@/components/ui/text';
+import { Button } from '@/components/ui/button';
+import { Icon } from '@/components/ui/icon';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Pressable, ScrollView, View } from 'react-native';
-import { IconButton, Text } from 'react-native-paper';
+
 
 import { ChangedFilesCard, SessionDiffCard } from '@/components/chat/chat-cards';
-import { styles } from '@/components/chat/chat-view-styles';
+import { styles , stylesClasses} from '@/components/chat/chat-view-styles';
 import { OverlaySheet } from '@/components/ui/overlay-sheet';
 import { Colors } from '@/constants/theme';
 import type { TranscriptEntry } from '@/lib/opencode/format';
@@ -98,25 +102,20 @@ export function ChangesOverlay({
         onClose={onCloseChanges}
         compact
         scrollable={false}
-        headerAction={<IconButton
-          icon="dots-vertical"
-          accessibilityLabel={`${t('chat:diff.changeSourceLabel', { source: scopeLabel })}. ${scopeTitle}${isTurnScope ? ` · ${selectedTurnLabel}` : ''}`}
-          onPress={() => setDiffSourcesVisible(true)}
-          iconColor={palette.text}
-        />}>
+        headerAction={<Button accessibilityLabel={`${t('chat:diff.changeSourceLabel', { source: scopeLabel })}. ${scopeTitle}${isTurnScope ? ` · ${selectedTurnLabel}` : ''}`} onPress={() => setDiffSourcesVisible(true)} variant="ghost" size="icon"><Icon name={"dots-vertical"} size={24} color={palette.text} /></Button>}>
         <ScrollView
-          style={[styles.scroll, { backgroundColor: palette.background }]}
+          className={cn(stylesClasses.scroll, "bg-background")}
           contentContainerStyle={styles.changesList}
           keyboardDismissMode="on-drag"
           keyboardShouldPersistTaps="handled">
           {connection.status === 'error' ? (
-            <View style={styles.changesNotice}>
-              <Text variant="titleMedium" style={{ color: palette.text }}>{t('chat:content.connectionIssue')}</Text>
-              <Text variant="bodyMedium" style={{ color: palette.muted }}>{connection.message}</Text>
+            <View className={cn(stylesClasses.changesNotice)}>
+              <Text className={cn("text-foreground")} variant="title">{t('chat:content.connectionIssue')}</Text>
+              <Text className={cn("text-muted-foreground")} variant="description">{connection.message}</Text>
             </View>
           ) : null}
           {currentDiffs.length === 0 && !(showDiffDetails && changedFiles.length > 0) ? (
-            <Text variant="bodyMedium" style={[styles.changesNotice, { color: palette.muted }]}>{scopeEmptyMessage}</Text>
+            <Text className={cn(stylesClasses.changesNotice, "text-muted-foreground")} variant="description">{scopeEmptyMessage}</Text>
           ) : null}
           {currentDiffs.map((diff) => {
             const accordionId = `diff:${currentDiffScope}:${diff.file}`;
@@ -127,15 +126,15 @@ export function ChangesOverlay({
       </OverlaySheet>
 
       <OverlaySheet visible={changesVisible && diffSourcesVisible} testID="diff-source-overlay" title={t('chat:diff.sourceTitle')} fitContent onClose={() => setDiffSourcesVisible(false)}>
-        {DIFF_SCOPE_OPTIONS.map((option) => <Pressable key={option.value} accessibilityRole="button" onPress={() => { onSelectDiffScope(option.value); if (option.value !== 'turn' || diffTurns.length <= 1) setDiffSourcesVisible(false); }} style={[styles.sessionPickerItemRow, { borderWidth: 1, borderRadius: 16, borderColor: currentDiffScope === option.value ? palette.tint : palette.border }]}>
+        {DIFF_SCOPE_OPTIONS.map((option) => <Pressable key={option.value} accessibilityRole="button" onPress={() => { onSelectDiffScope(option.value); if (option.value !== 'turn' || diffTurns.length <= 1) setDiffSourcesVisible(false); }} className={cn(stylesClasses.sessionPickerItemRow)} style={[{ borderWidth: 1, borderRadius: 16, borderColor: currentDiffScope === option.value ? palette.tint : palette.border }]}>
           <MaterialCommunityIcons name={currentDiffScope === option.value ? 'check-circle' : 'circle-outline'} size={20} color={currentDiffScope === option.value ? palette.tint : palette.muted} />
-          <Text style={{ color: palette.text }}>{t(option.labelKey)}</Text>
+          <Text className={cn("text-foreground")}>{t(option.labelKey)}</Text>
         </Pressable>)}
         {currentDiffScope === 'turn' && diffTurns.length > 1 ? <>
-          <Text variant="labelLarge" style={{ color: palette.muted }}>{t('chat:diff.turn')}</Text>
-          {diffTurns.map((turn) => <Pressable key={turn.id} accessibilityRole="button" onPress={() => { onSelectDiffMessage(turn.id); setDiffSourcesVisible(false); }} style={[styles.sessionPickerItemRow, { borderWidth: 1, borderRadius: 16, borderColor: selectedDiffMessageId === turn.id ? palette.tint : palette.border }]}>
+          <Text className={cn("text-muted-foreground")} variant="description">{t('chat:diff.turn')}</Text>
+          {diffTurns.map((turn) => <Pressable key={turn.id} accessibilityRole="button" onPress={() => { onSelectDiffMessage(turn.id); setDiffSourcesVisible(false); }} className={cn(stylesClasses.sessionPickerItemRow)} style={[{ borderWidth: 1, borderRadius: 16, borderColor: selectedDiffMessageId === turn.id ? palette.tint : palette.border }]}>
             <MaterialCommunityIcons name={selectedDiffMessageId === turn.id ? 'check-circle' : 'circle-outline'} size={20} color={selectedDiffMessageId === turn.id ? palette.tint : palette.muted} />
-            <Text style={{ color: palette.text }}>{t('chat:diff.turnNumber', { number: turn.number })}</Text>
+            <Text className={cn("text-foreground")}>{t('chat:diff.turnNumber', { number: turn.number })}</Text>
           </Pressable>)}
         </> : null}
       </OverlaySheet>

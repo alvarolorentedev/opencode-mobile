@@ -1,8 +1,12 @@
+import { cn } from '@/lib/utils';
+import { Spinner } from '@/components/ui/spinner';
+import { Text } from '@/components/ui/text';
+import { Button } from '@/components/ui/button';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { StyleSheet, View } from 'react-native';
-import { ActivityIndicator, Button, Surface, Text } from 'react-native-paper';
+import { View } from 'react-native';
+
 
 import { useCurrentSession, useOnboarding } from '@/providers/opencode-contexts';
 import { usePalette } from '@/hooks/use-palette';
@@ -62,43 +66,20 @@ export default function SessionDeepLinkScreen() {
     : t('chat:deepLink.loading');
 
   return (
-    <View style={[styles.center, { backgroundColor: palette.background }]}>
-      <Surface style={[styles.panel, { backgroundColor: palette.surface }]} elevation={1}>
-        {!displayError && <ActivityIndicator size="large" color={palette.tint} />}
-        <Text variant="headlineSmall" style={[styles.title, { color: palette.text }]}>{title}</Text>
-        <Text variant="bodyMedium" style={[styles.copy, { color: palette.muted }]}>{copy}</Text>
-        {displayError && (
-          <Button mode="contained" onPress={() => router.replace('/(tabs)')} style={styles.button}>
-            {t('chat:deepLink.backToChat')}
-          </Button>
-        )}
-      </Surface>
+    <View className={cn(stylesClasses.center, "bg-background")}>
+      <View className={cn(stylesClasses.panel, "bg-surface")}>{!displayError && <Spinner size="large" color={palette.tint} />}<Text className={cn(stylesClasses.title, "text-foreground")} variant="display">{title}</Text><Text className={cn(stylesClasses.copy, "text-muted-foreground")} variant="description">{copy}</Text>{displayError && (
+          <Button onPress={() => router.replace('/(tabs)')} variant="default" className={cn(stylesClasses.button)} ><Text>{t('chat:deepLink.backToChat')}</Text></Button>
+        )}</View>
     </View>
   );
 }
 
-const styles = StyleSheet.create({
-  center: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: 24,
-  },
-  panel: {
-    width: '100%',
-    padding: 24,
-    gap: 12,
-    borderRadius: 16,
-  },
-  title: {
-    textAlign: 'center',
-    fontWeight: '600',
-  },
-  copy: {
-    textAlign: 'center',
-    lineHeight: 22,
-  },
-  button: {
-    marginTop: 8,
-  },
-});
+
+
+const stylesClasses = {
+  "center": "flex-1 items-center justify-center p-6",
+  "panel": "w-full p-6 gap-3 rounded-[16px]",
+  "title": "text-center font-semibold",
+  "copy": "text-center leading-[22px]",
+  "button": "mt-2"
+} as const;

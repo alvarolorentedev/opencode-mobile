@@ -2,7 +2,9 @@ import type { Preview } from '@storybook/react-vite';
 import i18n from 'i18next';
 import { initReactI18next } from 'react-i18next';
 import { View } from 'react-native';
-import { PaperProvider } from 'react-native-paper';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import { PortalHost } from '@/components/ui/portal';
+import '@/global.css';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import {
@@ -11,9 +13,10 @@ import {
   type AccentColor,
   type ColorScheme,
 } from '@/constants/appearance';
-import { getPaperTheme } from '@/constants/paper-theme';
 import { getColors } from '@/constants/theme';
 import { resources, TRANSLATION_NAMESPACES } from '@/lib/i18n/resources';
+import { UpdatesContext } from '@/providers/opencode-contexts';
+import type { UpdatesContextValue } from '@/providers/opencode-provider-types';
 import { AppearanceProvider } from '@/providers/appearance-context';
 
 if (!i18n.isInitialized) {
@@ -29,6 +32,15 @@ if (!i18n.isInitialized) {
     initAsync: false,
   });
 }
+
+// UI-only fixture: previews exercise interaction blocking without running updates.
+const noop = () => {};
+const previewUpdates: UpdatesContextValue = {
+  notice: undefined, busy: false, installing: false, error: false,
+  supported: false, enabled: false, checkPeriod: 'available',
+  update: async () => {}, later: noop, clearError: noop,
+  block: () => noop, setSurfaceActive: noop, setEnabled: noop, setCheckPeriod: noop,
+};
 
 const preview: Preview = {
   parameters: {
@@ -70,13 +82,18 @@ const preview: Preview = {
       const palette = getColors(scheme, accent);
       return (
         <SafeAreaProvider>
+          <GestureHandlerRootView style={{ flex: 1 }}>
           <AppearanceProvider value={{ scheme, accent, palette }}>
-            <PaperProvider theme={getPaperTheme(scheme, accent)}>
+            <UpdatesContext.Provider value={previewUpdates}>
+
               <View style={{ flex: 1, width: '100%', padding: 24, backgroundColor: palette.background }}>
                 <Story />
+                <PortalHost />
               </View>
-            </PaperProvider>
+
+                      </UpdatesContext.Provider>
           </AppearanceProvider>
+                  </GestureHandlerRootView>
         </SafeAreaProvider>
       );
     },

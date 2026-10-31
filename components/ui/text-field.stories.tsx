@@ -3,28 +3,27 @@ import type { Meta, StoryObj } from '@storybook/react-vite';
 import { useState } from 'react';
 import { View } from 'react-native';
 
-import { TextInput } from './text-input';
+import { TextField } from './text-field';
 
-function Field(args: ComponentProps<typeof TextInput>) {
+function Field(args: ComponentProps<typeof TextField>) {
   const [value, setValue] = useState(args.value ?? '');
   return (
     <View style={{ width: 360 }}>
-      <TextInput {...args} value={value} onChangeText={setValue} />
+      <TextField {...args} value={value} onChangeText={setValue} />
     </View>
   );
 }
 
 const meta = {
   title: 'Controls/Text input',
-  component: TextInput,
+  component: TextField,
   parameters: { layout: 'centered' },
   args: {
     label: 'Server URL',
-    mode: 'outlined',
     placeholder: 'https://opencode.example.com',
   },
   render: (args) => <Field {...args} />,
-} satisfies Meta<typeof TextInput>;
+} satisfies Meta<typeof TextField>;
 
 export default meta;
 type Story = StoryObj<typeof meta>;
@@ -41,7 +40,7 @@ export const WithHelperText: Story = {
 export const Error: Story = {
   args: {
     label: 'Password',
-    error: true,
+    invalid: true,
     value: 'incorrect',
   },
 };

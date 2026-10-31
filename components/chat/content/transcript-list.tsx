@@ -1,14 +1,21 @@
+import { cn } from '@/lib/utils';
+import { Spinner } from '@/components/ui/spinner';
+import { Text } from '@/components/ui/text';
+import { CardContent, Card } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Icon } from '@/components/ui/icon';
+import { Pressable } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { FlashList, type FlashListRef } from '@shopify/flash-list';
 import { useIsFocused } from 'expo-router';
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { AppState, View, type NativeScrollEvent, type NativeSyntheticEvent } from 'react-native';
-import { ActivityIndicator, Button, Card, Text, TouchableRipple } from 'react-native-paper';
+
 
 import { TranscriptMessage } from '@/components/chat/chat-cards';
 import { ActivityGroupRow } from '@/components/chat/cards/activity-group';
-import { styles, slimStyles } from '@/components/chat/chat-view-styles';
+import { styles, slimStyles , stylesClasses} from '@/components/chat/chat-view-styles';
 import { getCurrentTurnActivityKey, STARTER_PROMPT_KEYS } from '@/components/chat/chat-view-utils';
 import { TranscriptSkeleton } from '@/components/chat/content/transcript-skeleton';
 import { Colors } from '@/constants/theme';
@@ -231,7 +238,7 @@ export function TranscriptList({
   const extraData = useMemo(() => ({ activityStatusLabel, copiedMessageId, speakingMessageId, activityRunning, lastActivityKey }), [activityStatusLabel, copiedMessageId, speakingMessageId, activityRunning, lastActivityKey]);
 
   return (
-    <View style={styles.transcriptContainer}>
+    <View className={cn(stylesClasses.transcriptContainer)}>
       <FlashList
       key={identity}
       ref={transcriptRef}
@@ -316,16 +323,11 @@ export function TranscriptList({
         <View>
           {isLoadingOlderMessages ? (
             <View style={{ alignItems: 'center', paddingVertical: 12 }}>
-              <ActivityIndicator color={palette.tint} />
+              <Spinner color={palette.tint} />
             </View>
           ) : null}
           {connection.status === 'error' ? (
-            <Card mode="contained" style={[styles.noticeCard, styles.transcriptItem, { backgroundColor: palette.surface }]}>
-              <Card.Content>
-                <Text variant="titleMedium" style={{ color: palette.text }}>{t('chat:content.connectionIssue')}</Text>
-                <Text variant="bodyMedium" style={{ color: palette.muted }}>{connection.message}</Text>
-              </Card.Content>
-            </Card>
+            <Card style={[styles.noticeCard, styles.transcriptItem, { backgroundColor: palette.surface }]}><CardContent><Text style={{ color: palette.text }} variant="title">{t('chat:content.connectionIssue')}</Text><Text style={{ color: palette.muted }} variant="description">{connection.message}</Text></CardContent></Card>
           ) : null}
         </View>
       )}
@@ -333,61 +335,24 @@ export function TranscriptList({
         (isBootstrappingChat || (currentSessionId && isRefreshingMessages)) && !hasMessages ? (
           <TranscriptSkeleton palette={palette} />
         ) : currentSessionId && transcriptReadError !== undefined && !hasMessages ? (
-          <Card mode="contained" style={[styles.emptyCard, { backgroundColor: palette.surface }]}>
-            <Card.Content style={styles.emptyContent}>
-              <Text variant="titleMedium" style={{ color: palette.text }}>{t('chat:content.transcriptErrorTitle')}</Text>
-              <Text variant="bodyMedium" style={{ color: palette.muted }}>{t('chat:content.transcriptErrorDescription')}</Text>
-              {transcriptReadError.trim() ? <Text selectable variant="bodySmall" style={{ color: palette.muted }}>{transcriptReadError}</Text> : null}
-              <Button mode="outlined" onPress={onRetryTranscript}>{t('chat:content.retryTranscript')}</Button>
-            </Card.Content>
-          </Card>
+          <Card style={[styles.emptyCard, { backgroundColor: palette.surface }]}><CardContent style={styles.emptyContent}><Text style={{ color: palette.text }} variant="title">{t('chat:content.transcriptErrorTitle')}</Text><Text style={{ color: palette.muted }} variant="description">{t('chat:content.transcriptErrorDescription')}</Text>{transcriptReadError.trim() ? <Text selectable style={{ color: palette.muted }} variant="label">{transcriptReadError}</Text> : null}<Button onPress={onRetryTranscript} variant="outline"><Text>{t('chat:content.retryTranscript')}</Text></Button></CardContent></Card>
         ) : currentSessionId && hasOlderMessages ? (
-          <Card mode="contained" style={[styles.emptyCard, { backgroundColor: palette.surface }]}>
-            <Card.Content style={styles.emptyContent}>
-              <Text variant="titleMedium" style={{ color: palette.text }}>{t('chat:content.loadEarlier')}</Text>
-              <Text variant="bodyMedium" style={{ color: palette.muted }}>{t('chat:content.loadEarlierDescription')}</Text>
-              <Button mode="outlined" onPress={onLoadOlderMessages} loading={isLoadingOlderMessages} disabled={isLoadingOlderMessages}>
-                {t('chat:content.loadEarlierAction')}
-              </Button>
-            </Card.Content>
-          </Card>
+          <Card style={[styles.emptyCard, { backgroundColor: palette.surface }]}><CardContent style={styles.emptyContent}><Text style={{ color: palette.text }} variant="title">{t('chat:content.loadEarlier')}</Text><Text style={{ color: palette.muted }} variant="description">{t('chat:content.loadEarlierDescription')}</Text><Button onPress={onLoadOlderMessages} disabled={isLoadingOlderMessages} variant="outline">{isLoadingOlderMessages ? <Spinner size="small" /> : null}<Text>{t('chat:content.loadEarlierAction')}</Text></Button></CardContent></Card>
         ) : currentSessionId && hasMessages ? null : (
-          <Card mode="contained" style={[styles.emptyCard, { backgroundColor: palette.surface }]}>
-            <Card.Content style={styles.emptyContent}>
-              <Text variant="headlineSmall" style={[styles.emptyTitle, { color: palette.text }]}>{t('chat:starter.title')}</Text>
-              <Text variant="bodyMedium" style={{ color: palette.muted }}>
-                {t('chat:starter.description')}
-              </Text>
-              <View style={styles.promptStack}>
+          <Card style={[styles.emptyCard, { backgroundColor: palette.surface }]}><CardContent style={styles.emptyContent}><Text style={[styles.emptyTitle, { color: palette.text }]} variant="display">{t('chat:starter.title')}</Text><Text style={{ color: palette.muted }} variant="description">{t('chat:starter.description')}</Text><View style={styles.promptStack}>
                 {STARTER_PROMPT_KEYS.map((key) => (
-                  <TouchableRipple
-                    accessibilityRole="button"
-                    accessibilityLabel={t(key)}
-                    key={key}
-                    style={[styles.promptCard, { borderColor: palette.border, backgroundColor: palette.background }]}
-                    onPress={() => onSelectStarterPrompt(key === 'chat:starter.prompts.implement' ? `${t(key)}\n${t('chat:starter.bugSymptoms')}` : t(key))}>
-                    <View style={styles.promptCardInner}>
+                  <Pressable accessibilityRole="button" accessibilityLabel={t(key)} key={key} style={[styles.promptCard, { borderColor: palette.border, backgroundColor: palette.background }]} onPress={() => onSelectStarterPrompt(key === 'chat:starter.prompts.implement' ? `${t(key)}\n${t('chat:starter.bugSymptoms')}` : t(key))}><View style={styles.promptCardInner}>
                       <MaterialCommunityIcons name="lightning-bolt" size={18} color={palette.tint} />
-                      <Text variant="bodyMedium" style={{ color: palette.text }}>{t(key)}</Text>
-                    </View>
-                  </TouchableRipple>
+                      <Text style={{ color: palette.text }} variant="description">{t(key)}</Text>
+                    </View></Pressable>
                 ))}
-              </View>
-            </Card.Content>
-          </Card>
+              </View></CardContent></Card>
         )
       }
       />
       {detached && rows.length > 0 ? (
         <View pointerEvents="box-none" style={styles.jumpToLatestWrap}>
-          <Button
-            testID="chat-jump-to-latest"
-            compact
-            mode="contained"
-            icon="arrow-down"
-            onPress={jumpToLatest}>
-            {unseen ? t('chat:content.newMessages') : t('chat:content.jumpToLatest')}
-          </Button>
+          <Button testID="chat-jump-to-latest" onPress={jumpToLatest} variant="default"><Icon name={"arrow-down"} size={20} /><Text>{unseen ? t('chat:content.newMessages') : t('chat:content.jumpToLatest')}</Text></Button>
         </View>
       ) : null}
     </View>

@@ -1,11 +1,15 @@
-// Chat screen controller. See docs/design/components/chat.md#chat-components
-// and docs/product/functional-spec.md#chat-screen-detailed-behavior.
+import { cn } from '@/lib/utils';
+import { Button } from '@/components/ui/button';
+import { Icon } from '@/components/ui/icon';
+import { Text } from '@/components/ui/text';
+import { CardContent, Card } from '@/components/ui/card';
+import { Feedback } from '@/components/ui/feedback';
 import { withAlpha } from '@/lib/color';
 import * as Clipboard from 'expo-clipboard';
 import { useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { KeyboardAvoidingView, Linking, Pressable, View } from 'react-native';
-import { Button, Card, FAB, Snackbar, Text } from 'react-native-paper';
+
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { ChatComposer } from '@/components/chat/chat-composer';
@@ -14,7 +18,7 @@ import { RevertNotice } from '@/components/chat/revert-notice';
 import { ChatHeader } from '@/components/chat/chat-header';
 import { ChatLibrary } from '@/components/chat/chat-library';
 import { NewChatSheet } from '@/components/chat/new-chat-sheet';
-import { styles } from '@/components/chat/chat-view-styles';
+import { styles , stylesClasses} from '@/components/chat/chat-view-styles';
 import { ChangesOverlay } from '@/components/chat/content/changes-overlay';
 import { PendingInteractions } from '@/components/chat/content/pending-interactions';
 import { TranscriptList } from '@/components/chat/content/transcript-list';
@@ -64,21 +68,13 @@ export function ChatView() {
   }, [handleSpeakEntry]);
 
   const progressAction = !content.awaitingUserInput && content.currentTodos.length > 0 ? (
-    <FAB
-      testID="chat-progress-button"
-      size="small"
-      icon={content.progressIcon}
-      accessibilityLabel={t('chat:content.openProgressLabel', { completed: content.completedTodoCount, total: content.currentTodos.length })}
-      onPress={() => actions.setProgressVisible(true)}
-      style={[styles.progressFab, content.diffCount > 0 && styles.progressFabInline, { backgroundColor: palette.surfaceAlt }]}
-      color={palette.tint}
-    />
+    <Button testID="chat-progress-button" accessibilityLabel={t('chat:content.openProgressLabel', { completed: content.completedTodoCount, total: content.currentTodos.length })} onPress={() => actions.setProgressVisible(true)} variant="ghost" size="icon" className={cn("absolute right-3 bottom-2 z-2 rounded-3xl w-12 h-12 items-center justify-center bg-surface-alt", content.diffCount > 0 && stylesClasses.progressFabInline)}><Icon name={content.progressIcon} size={24} color={palette.tint} /></Button>
   ) : null;
 
   return (
-    <>
+    <>{actions.confirmation}
       <KeyboardAvoidingView
-        style={[styles.screen, { backgroundColor: palette.background }]}
+        className={cn(stylesClasses.screen, "bg-background")}
         behavior="padding">
         <ChatHeader
           connectionStatus={header.connection.status}
@@ -98,7 +94,7 @@ export function ChatView() {
 
         <ConnectionStatusBanner />
 
-        <View style={styles.chatArea}>
+        <View className={cn(stylesClasses.chatArea)}>
           <TranscriptList
             positions={presentation}
             positionKey={`scroll:${JSON.stringify([content.workspaceId, content.currentSessionId])}`}
@@ -165,47 +161,35 @@ export function ChatView() {
         </View>
 
         {overlay.sendErrorMessage ? (
-          <Card mode="contained" style={[styles.sendErrorCard, { backgroundColor: withAlpha(palette.danger, 0x14 / 255) }]}>
-            <Card.Content style={styles.sendErrorContent}>
-              <Text variant="titleSmall" style={{ color: palette.danger }}>{t('chat:view.actionFailed')}</Text>
-              <Text selectable variant="bodySmall" style={{ color: palette.text }}>{overlay.sendErrorMessage}</Text>
-              <View style={styles.sendErrorActions}>
-                {overlay.hasFailedInput ? <Button compact onPress={actions.recoverFailedInput}>{t('chat:view.restoreFailedInput')}</Button> : null}
-                <Button compact onPress={() => {
+          <Card className={cn(stylesClasses.sendErrorCard)} style={[{ backgroundColor: withAlpha(palette.danger, 0x14 / 255) }]}><CardContent className={cn(stylesClasses.sendErrorContent)}><Text className={cn("text-destructive")} variant="description">{t('chat:view.actionFailed')}</Text><Text selectable className={cn("text-foreground")} variant="label">{overlay.sendErrorMessage}</Text><View className={cn(stylesClasses.sendErrorActions)}>
+                {overlay.hasFailedInput ? <Button onPress={actions.recoverFailedInput} variant="ghost"><Text>{t('chat:view.restoreFailedInput')}</Text></Button> : null}
+                <Button onPress={() => {
                   void Clipboard.setStringAsync(actions.buildSendErrorDetails()).then(() => actions.setCopiedMessageId('__send-error__'));
-                }}>{t('chat:view.copyDetails')}</Button>
-                <Button compact onPress={() => {
+                }} variant="ghost"><Text>{t('chat:view.copyDetails')}</Text></Button>
+                <Button onPress={() => {
                   actions.setSendFeedback(undefined);
                   actions.dismissFailedInput();
                   actions.clearPromptError();
-                }}>{t('common:actions.dismiss')}</Button>
-              </View>
-            </Card.Content>
-          </Card>
+                }} variant="ghost"><Text>{t('common:actions.dismiss')}</Text></Button>
+              </View></CardContent></Card>
         ) : null}
 
         {overlay.approvals.mcpAuth ? (
-          <Card mode="contained" style={[styles.sendErrorCard, { backgroundColor: withAlpha(palette.warning, 0x14 / 255) }]}>
-            <Card.Content style={styles.sendErrorContent}>
-              <Text variant="titleSmall" style={{ color: palette.warning }}>{t('chat:approvals.mcpAuthTitle')}</Text>
-              <Text selectable variant="bodySmall" style={{ color: palette.text }}>{t('chat:approvals.mcpAuthNeeded', { name: overlay.approvals.mcpAuth.mcpName })}</Text>
-              <View style={styles.sendErrorActions}>
-                <Button compact icon="open-in-new" onPress={() => {
+          <Card className={cn(stylesClasses.sendErrorCard)} style={[{ backgroundColor: withAlpha(palette.warning, 0x14 / 255) }]}><CardContent className={cn(stylesClasses.sendErrorContent)}><Text className={cn("text-warning")} variant="description">{t('chat:approvals.mcpAuthTitle')}</Text><Text selectable className={cn("text-foreground")} variant="label">{t('chat:approvals.mcpAuthNeeded', { name: overlay.approvals.mcpAuth.mcpName })}</Text><View className={cn(stylesClasses.sendErrorActions)}>
+                <Button onPress={() => {
                   const url = overlay.approvals.mcpAuth?.url;
                   if (url) {
                     void Linking.openURL(url).catch(() => undefined);
                   }
-                }}>{t('chat:approvals.openAuthLink')}</Button>
-                <Button compact onPress={overlay.approvals.dismissMcpAuth}>{t('common:actions.dismiss')}</Button>
-              </View>
-            </Card.Content>
-          </Card>
+                }} variant="ghost"><Icon name={"open-in-new"} size={20} /><Text>{t('chat:approvals.openAuthLink')}</Text></Button>
+                <Button onPress={overlay.approvals.dismissMcpAuth} variant="ghost"><Text>{t('common:actions.dismiss')}</Text></Button>
+              </View></CardContent></Card>
         ) : null}
 
         {content.diffCount > 0 ? (
-          <View style={styles.changesChipRow}>
-            {progressAction ? <View style={styles.progressSpacer} /> : null}
-            <View style={styles.changesChipCenter}>
+          <View className={cn(stylesClasses.changesChipRow)}>
+            {progressAction ? <View className={cn(stylesClasses.progressSpacer)} /> : null}
+            <View className={cn(stylesClasses.changesChipCenter)}>
               <Pressable
                 testID="chat-changes-chip"
                 accessibilityRole="button"
@@ -214,10 +198,10 @@ export function ChatView() {
                   : t('chat:diff.filesChangedSimple', { files: content.diffCount, count: content.diffCount })}`}
                 onPress={() => { actions.setChangesVisible(true); }}
                 style={({ pressed }) => [styles.changesChip, { backgroundColor: palette.surfaceAlt, opacity: pressed ? 0.75 : 1 }]}>
-                <Text variant="labelLarge" style={{ color: palette.text }}>{t('chat:diff.filesChangedSimple', { files: content.diffCount, count: content.diffCount })}</Text>
+                <Text className={cn("text-foreground")} variant="description">{t('chat:diff.filesChangedSimple', { files: content.diffCount, count: content.diffCount })}</Text>
                 {content.currentDiffs.length > 0 ? <>
-                  <Text variant="labelLarge" style={{ color: palette.success }}>+{content.diffAdditions}</Text>
-                  <Text variant="labelLarge" style={{ color: palette.danger }}>−{content.diffDeletions}</Text>
+                  <Text className={cn("text-success")} variant="description">+{content.diffAdditions}</Text>
+                  <Text className={cn("text-destructive")} variant="description">−{content.diffDeletions}</Text>
                 </> : null}
               </Pressable>
             </View>
@@ -324,23 +308,15 @@ export function ChatView() {
         />
       ) : null}
 
-      <Snackbar visible={Boolean(content.copiedMessageId)} onDismiss={() => actions.setCopiedMessageId(undefined)} duration={1800}>
-        {content.copiedMessageId === '__send-error__' ? t('chat:view.errorDetailsCopied') : t('chat:view.messageCopied')}
-      </Snackbar>
-      <Snackbar
-        visible={Boolean(header.conversation.feedback || overlay.voiceFeedback)}
-        onDismiss={() => {
+      <Feedback duration={1800} open={Boolean(content.copiedMessageId)} onOpenChange={() => (() => actions.setCopiedMessageId(undefined))()}>{content.copiedMessageId === '__send-error__' ? t('chat:view.errorDetailsCopied') : t('chat:view.messageCopied')}</Feedback>
+      <Feedback duration={overlay.voiceRecoveryAction === 'none' ? 3200 : 6000} action={overlay.voiceRecoveryAction === 'none' ? undefined : {
+          label: overlay.voiceRecoveryAction === 'open-settings' ? t('common:actions.openSettings') : t('common:actions.retry'),
+          onPress: actions.handleVoiceRecovery,
+        }} open={Boolean(header.conversation.feedback || overlay.voiceFeedback)} onOpenChange={() => (() => {
           actions.setSendFeedback(undefined);
           actions.setVoiceFeedback(undefined);
           actions.clearConversationFeedback();
-        }}
-        duration={overlay.voiceRecoveryAction === 'none' ? 3200 : 6000}
-        action={overlay.voiceRecoveryAction === 'none' ? undefined : {
-          label: overlay.voiceRecoveryAction === 'open-settings' ? t('common:actions.openSettings') : t('common:actions.retry'),
-          onPress: actions.handleVoiceRecovery,
-        }}>
-        {header.conversation.feedback || overlay.voiceFeedback}
-      </Snackbar>
+        })()}>{header.conversation.feedback || overlay.voiceFeedback}</Feedback>
     </>
   );
 }

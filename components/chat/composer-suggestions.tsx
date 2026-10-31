@@ -1,6 +1,9 @@
+import { cn } from '@/lib/utils';
+import { Text } from '@/components/ui/text';
+import { Icon } from '@/components/ui/icon';
 import { useTranslation } from 'react-i18next';
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
-import { Icon, Text } from 'react-native-paper';
+
 
 import { usePalette } from '@/hooks/use-palette';
 import type { ComposerSuggestion, ComposerSuggestionGroup, ComposerSuggestionKind } from './composer-suggestion-types';
@@ -49,11 +52,11 @@ export function ComposerSuggestions({
   const empty = groups.length === 0 && !searching && !error;
 
   return (
-    <View testID="chat-composer-suggestions" style={[styles.panel, { backgroundColor: palette.surface, borderColor: palette.border }]}>
-      <ScrollView keyboardShouldPersistTaps="handled" nestedScrollEnabled style={styles.scroll} contentContainerStyle={styles.content}>
+    <View testID="chat-composer-suggestions" className={cn(stylesClasses.panel, "bg-surface border-border")}>
+      <ScrollView keyboardShouldPersistTaps="handled" nestedScrollEnabled className={cn(stylesClasses.scroll)} contentContainerStyle={styles.content}>
         {groups.map((group) => (
-          <View key={group.kind} style={styles.group}>
-            <Text variant="labelSmall" style={[styles.groupTitle, { color: palette.muted }]}>{t(TITLES[group.kind])}</Text>
+          <View key={group.kind} className={cn(stylesClasses.group)}>
+            <Text className={cn("text-muted-foreground")} style={[styles.groupTitle]} variant="label">{t(TITLES[group.kind])}</Text>
             {group.items.map((suggestion) => (
               <Pressable
                 key={suggestion.key}
@@ -62,39 +65,30 @@ export function ComposerSuggestions({
                 testID={suggestionTestID(suggestion)}
                 onPress={() => onSelect(suggestion)}
                 style={({ pressed }) => [styles.row, pressed && { backgroundColor: palette.surfaceAlt }]}>
-                <View style={[styles.iconWrap, { backgroundColor: palette.surfaceAlt }]}>
-                  <Icon source={ICONS[suggestion.kind]} size={18} color={palette.muted} />
+                <View className={cn(stylesClasses.iconWrap, "bg-surface-alt")}>
+                  <Icon size={18} color={palette.muted} name={ICONS[suggestion.kind]}></Icon>
                 </View>
-                <View style={styles.copy}>
-                  <Text numberOfLines={1} style={[styles.label, { color: palette.text }]}>{suggestion.label}</Text>
+                <View className={cn(stylesClasses.copy)}>
+                  <Text numberOfLines={1} className={cn("text-foreground")} style={[styles.label]}>{suggestion.label}</Text>
                   {suggestion.description ? (
-                    <Text numberOfLines={2} style={[styles.description, { color: palette.muted }]}>{suggestion.description}</Text>
+                    <Text numberOfLines={2} className={cn(stylesClasses.description, "text-muted-foreground")}>{suggestion.description}</Text>
                   ) : null}
                 </View>
-                <Text style={[styles.keycap, { color: palette.muted, borderColor: palette.border }]}>{KEYCAPS[suggestion.kind]}</Text>
+                <Text className={cn(stylesClasses.keycap, "text-muted-foreground border-border")}>{KEYCAPS[suggestion.kind]}</Text>
               </Pressable>
             ))}
           </View>
         ))}
-        {searching ? <Text style={[styles.status, { color: palette.muted }]}>{t('chat:composer.suggestions.searching')}</Text> : null}
-        {error ? <Text accessibilityRole="alert" style={[styles.status, { color: palette.danger }]}>{error}</Text> : null}
-        {empty ? <Text style={[styles.status, { color: palette.muted }]}>{t('chat:composer.suggestions.empty')}</Text> : null}
+        {searching ? <Text className={cn(stylesClasses.status, "text-muted-foreground")}>{t('chat:composer.suggestions.searching')}</Text> : null}
+        {error ? <Text accessibilityRole="alert" className={cn(stylesClasses.status, "text-destructive")}>{error}</Text> : null}
+        {empty ? <Text className={cn(stylesClasses.status, "text-muted-foreground")}>{t('chat:composer.suggestions.empty')}</Text> : null}
       </ScrollView>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  panel: {
-    borderWidth: 1,
-    borderRadius: 14,
-    marginBottom: 8,
-    maxHeight: 288,
-    overflow: 'hidden',
-  },
-  scroll: { flexGrow: 0 },
   content: { paddingVertical: 6 },
-  group: { paddingVertical: 2 },
   groupTitle: {
     fontWeight: '700',
     letterSpacing: 0.4,
@@ -112,25 +106,16 @@ const styles = StyleSheet.create({
     paddingHorizontal: 6,
     paddingVertical: 6,
   },
-  iconWrap: {
-    alignItems: 'center',
-    borderRadius: 8,
-    height: 30,
-    justifyContent: 'center',
-    width: 30,
-  },
-  copy: { flex: 1, minWidth: 0 },
-  label: { fontFamily: 'monospace', fontSize: 14, fontWeight: '600' },
-  description: { fontSize: 12, marginTop: 1 },
-  keycap: {
-    borderRadius: 6,
-    borderWidth: 1,
-    fontSize: 11,
-    fontWeight: '700',
-    minWidth: 22,
-    paddingHorizontal: 5,
-    paddingVertical: 2,
-    textAlign: 'center',
-  },
-  status: { fontSize: 12, paddingHorizontal: 12, paddingVertical: 10 },
+  label: { fontFamily: 'monospace', fontSize: 14, fontWeight: '600' }
 });
+
+const stylesClasses = {
+  "panel": "border rounded-[14px] mb-2 max-h-72 overflow-hidden",
+  "scroll": "grow-0",
+  "group": "py-0.5",
+  "iconWrap": "items-center rounded-[8px] h-7.5 justify-center w-7.5",
+  "copy": "flex-1 min-w-0",
+  "description": "text-[12px] mt-0.25",
+  "keycap": "rounded-[6px] border text-[11px] font-bold min-w-5.5 px-1.25 py-0.5 text-center",
+  "status": "text-[12px] px-3 py-2.5"
+} as const;

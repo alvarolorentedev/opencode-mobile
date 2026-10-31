@@ -1,8 +1,15 @@
+import { cn } from '@/lib/utils';
+import { Text } from '@/components/ui/text';
+import { Button } from '@/components/ui/button';
+import { Icon } from '@/components/ui/icon';
+import { ScreenHeader } from '@/components/ui/screen-header';
+import { Portal } from '@/components/ui/portal';
+import { Progress } from '@/components/ui/progress';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Pressable, View } from 'react-native';
-import { Appbar, Portal, ProgressBar, Text } from 'react-native-paper';
+
 
 import { useDismissOnBack } from '@/hooks/use-dismiss-on-back';
 import { Colors } from '@/constants/theme';
@@ -13,7 +20,7 @@ import { formatEstimatedCost, formatTokenCount, type SessionUsage } from '@/lib/
 import { ConversationOverlay } from '@/components/chat/chat-overlay';
 import { ChatWorkspaceContext } from '@/components/chat/chat-workspace-context';
 import { OverlaySheet } from '@/components/ui/overlay-sheet';
-import { styles } from '@/components/chat/chat-view-styles';
+import { styles , stylesClasses} from '@/components/chat/chat-view-styles';
 import type { ConversationConfirmationState, ConversationInputPhase, ConversationPhase, ConversationReadbackPhase } from '@/providers/opencode-provider';
 
 type Palette = typeof Colors.light;
@@ -77,33 +84,24 @@ export function ChatHeader({
           : 'circle-slice-4';
   return (
     <>
-      <Appbar.Header
-        style={[styles.header, { backgroundColor: palette.surface, paddingTop: insetsTop, height: (slim ? 52 : 64) + insetsTop }]}
-        statusBarHeight={0}
-        elevated>
-        <View style={styles.headerMain}>
-          <View style={styles.headerSessionTextWrap}>
+      <ScreenHeader style={[styles.header, { backgroundColor: palette.surface, paddingTop: insetsTop, height: (slim ? 52 : 64) + insetsTop }]} safeArea={false}><View className={cn(stylesClasses.headerMain)}>
+          <View className={cn(stylesClasses.headerSessionTextWrap)}>
             <Pressable
               accessibilityRole="button"
               accessibilityLabel={t('chat:header.openChats', { title: selectedSession?.title || t('chat:header.untitledChat') })}
               hitSlop={{ top: 6, left: 6, right: 6 }}
               onPress={onOpenSessionMenu}
               style={({ pressed }) => [styles.headerSessionAnchor, pressed && styles.headerSessionAnchorPressed]}>
-              <Text maxFontSizeMultiplier={1.5} numberOfLines={1} variant="titleMedium" style={[styles.headerTitle, { color: palette.text }]}>
-                {selectedSession?.title || t('chat:header.untitledChat')}
-              </Text>
+              <Text maxFontSizeMultiplier={1.5} numberOfLines={1} className={cn("text-foreground")} style={[styles.headerTitle]} variant="title">{selectedSession?.title || t('chat:header.untitledChat')}</Text>
               <MaterialCommunityIcons name="chevron-down" size={20} color={palette.muted} />
             </Pressable>
             <ChatWorkspaceContext compact={slim} />
           </View>
-        </View>
-        <View style={styles.headerActions}>
-          <Appbar.Action icon="plus" accessibilityLabel={t('chat:header.newChat')} onPress={onCreateSession} />
-          <Appbar.Action icon={usageIcon} onPress={() => setUsageVisible(true)} accessibilityLabel={t('chat:header.showUsage')} />
-        </View>
-      </Appbar.Header>
-      <Portal>
-        {conversation.active ? (
+        </View><View className={cn(stylesClasses.headerActions)}>
+          <Button accessibilityLabel={t('chat:header.newChat')} onPress={onCreateSession} variant="ghost" size="icon"><Icon name={"plus"} size={24} /></Button>
+          <Button onPress={() => setUsageVisible(true)} accessibilityLabel={t('chat:header.showUsage')} variant="ghost" size="icon"><Icon name={usageIcon} size={24} /></Button>
+        </View></ScreenHeader>
+      <Portal>{conversation.active ? (
           <ConversationOverlay
             confirmation={conversation.confirmation}
             connectionStatus={connectionStatus}
@@ -118,27 +116,24 @@ export function ChatHeader({
             sessionTitle={selectedSession?.title || t('chat:header.untitledChat')}
             wakePhrase={conversation.wakePhrase}
           />
-        ) : null}
-      </Portal>
+        ) : null}</Portal>
       <OverlaySheet visible={usageVisible} title={t('chat:header.sessionUsage')} testID="session-usage-overlay" fitContent onClose={() => setUsageVisible(false)}>
-        <Text accessibilityLabel={usageLabel} variant="bodySmall" style={{ color: palette.muted }}>{usageLabel}</Text>
-        {usage.completeness && (!usage.completeness.cost || !usage.completeness.tokens) ? <Text variant="bodySmall" style={{ color: palette.muted }}>{t('chat:header.partialTotals')}</Text> : null}
-        {latestAssistantTurnUsage ? <Text variant="bodySmall" style={{ color: palette.muted }}>{latestAssistantTurnUsage.costStatus === 'pricing-unavailable' ? t('chat:header.lastResponsePricing') : t('chat:header.lastResponseCost', { cost: formatCost(latestAssistantTurnUsage.cost) })}</Text> : null}
-        <View style={[styles.usageProvider, { borderColor: palette.border }]}>
-          <View style={styles.usageRow}><Text variant="titleSmall" style={{ color: palette.text }}>{t('chat:header.contextUtilization')}</Text><Text accessibilityLabel={contextProgress === undefined ? t('chat:header.contextUnavailable') : t('chat:header.contextPercent', { percent: Math.round(contextProgress * 100) })} variant="titleSmall" style={{ color: palette.text }}>{contextProgress === undefined ? t('common:labels.unavailable') : `${Math.round(contextProgress * 100)}%`}</Text></View>
-          {contextProgress === undefined ? <Text variant="bodySmall" style={{ color: palette.muted }}>{t('chat:header.noContextLimit')}</Text> : <><View style={{ height: 8, overflow: 'hidden' }}><ProgressBar progress={contextProgress} color={palette.tint} style={styles.contextProgress} /></View><Text variant="bodySmall" style={{ color: palette.muted }}>{t('chat:header.inputTokens', { used: formatTokenCount(contextTokens || 0), limit: formatTokenCount(contextLimit || 0) })}</Text></>}
+        <Text accessibilityLabel={usageLabel} className={cn("text-muted-foreground")} variant="label">{usageLabel}</Text>
+        {usage.completeness && (!usage.completeness.cost || !usage.completeness.tokens) ? <Text className={cn("text-muted-foreground")} variant="label">{t('chat:header.partialTotals')}</Text> : null}
+        {latestAssistantTurnUsage ? <Text className={cn("text-muted-foreground")} variant="label">{latestAssistantTurnUsage.costStatus === 'pricing-unavailable' ? t('chat:header.lastResponsePricing') : t('chat:header.lastResponseCost', { cost: formatCost(latestAssistantTurnUsage.cost) })}</Text> : null}
+        <View className={cn(stylesClasses.usageProvider, "border-border")}>
+          <View className={cn(stylesClasses.usageRow)}><Text className={cn("text-foreground")} variant="description">{t('chat:header.contextUtilization')}</Text><Text accessibilityLabel={contextProgress === undefined ? t('chat:header.contextUnavailable') : t('chat:header.contextPercent', { percent: Math.round(contextProgress * 100) })} className={cn("text-foreground")} variant="description">{contextProgress === undefined ? t('common:labels.unavailable') : `${Math.round(contextProgress * 100)}%`}</Text></View>
+          {contextProgress === undefined ? <Text className={cn("text-muted-foreground")} variant="label">{t('chat:header.noContextLimit')}</Text> : <><View className={cn("h-2 overflow-hidden")}><Progress className={cn(stylesClasses.contextProgress)} value={(contextProgress) * 100}></Progress></View><Text className={cn("text-muted-foreground")} variant="label">{t('chat:header.inputTokens', { used: formatTokenCount(contextTokens || 0), limit: formatTokenCount(contextLimit || 0) })}</Text></>}
         </View>
-        {usage.completeness?.breakdown === false ? <Text variant="bodySmall" style={{ color: palette.muted }}>{t('chat:header.partialBreakdown')}</Text> : null}
-        {usage.completedSteps === 0 ? <Text variant="bodyMedium" style={{ color: palette.muted }}>{t('chat:header.noSteps')}</Text> : null}
+        {usage.completeness?.breakdown === false ? <Text className={cn("text-muted-foreground")} variant="label">{t('chat:header.partialBreakdown')}</Text> : null}
+        {usage.completedSteps === 0 ? <Text className={cn("text-muted-foreground")} variant="description">{t('chat:header.noSteps')}</Text> : null}
         {usage.providers.map((provider) => (
-          <View key={provider.providerId} style={[styles.usageProvider, { borderColor: palette.border }]}>
-            <View style={styles.usageRow}><Text variant="titleSmall" style={{ color: palette.text }}>{provider.providerId}</Text><Text variant="titleSmall" style={{ color: palette.text }}>{provider.models.some((model) => model.costStatus === 'pricing-unavailable') ? t('chat:header.pricingUnavailable') : formatCost(provider.cost)}</Text></View>
+          <View key={provider.providerId} className={cn(stylesClasses.usageProvider, "border-border")}>
+            <View className={cn(stylesClasses.usageRow)}><Text className={cn("text-foreground")} variant="description">{provider.providerId}</Text><Text className={cn("text-foreground")} variant="description">{provider.models.some((model) => model.costStatus === 'pricing-unavailable') ? t('chat:header.pricingUnavailable') : formatCost(provider.cost)}</Text></View>
             {provider.models.map((model) => (
-              <View key={model.modelId} style={styles.usageModel}>
-                <View style={styles.usageRow}><Text variant="bodyMedium" style={{ color: palette.text }}>{model.modelId}</Text><Text accessibilityLabel={t('chat:header.modelCostLabel', { model: model.modelId, cost: model.costStatus === 'pricing-unavailable' ? t('chat:header.pricingUnavailableLower') : formatCost(model.cost) })} variant="bodyMedium" style={{ color: palette.text }}>{model.costStatus === 'pricing-unavailable' ? t('chat:header.includedOrUnpriced') : formatCost(model.cost)}</Text></View>
-                <Text accessibilityLabel={t('chat:header.modelTokensLabel', { input: formatTokenCount(model.inputTokens), output: formatTokenCount(model.outputTokens), reasoning: formatTokenCount(model.reasoningTokens), cacheRead: formatTokenCount(model.cacheReadTokens), cacheWrite: formatTokenCount(model.cacheWriteTokens), steps: model.completedSteps })} variant="bodySmall" style={{ color: palette.muted }}>
-                  {t('chat:header.modelTokens', { input: formatTokenCount(model.inputTokens), output: formatTokenCount(model.outputTokens), reasoning: formatTokenCount(model.reasoningTokens), cacheRead: formatTokenCount(model.cacheReadTokens), cacheWrite: formatTokenCount(model.cacheWriteTokens), steps: model.completedSteps })}
-                </Text>
+              <View key={model.modelId} className={cn(stylesClasses.usageModel)}>
+                <View className={cn(stylesClasses.usageRow)}><Text className={cn("text-foreground")} variant="description">{model.modelId}</Text><Text accessibilityLabel={t('chat:header.modelCostLabel', { model: model.modelId, cost: model.costStatus === 'pricing-unavailable' ? t('chat:header.pricingUnavailableLower') : formatCost(model.cost) })} className={cn("text-foreground")} variant="description">{model.costStatus === 'pricing-unavailable' ? t('chat:header.includedOrUnpriced') : formatCost(model.cost)}</Text></View>
+                <Text accessibilityLabel={t('chat:header.modelTokensLabel', { input: formatTokenCount(model.inputTokens), output: formatTokenCount(model.outputTokens), reasoning: formatTokenCount(model.reasoningTokens), cacheRead: formatTokenCount(model.cacheReadTokens), cacheWrite: formatTokenCount(model.cacheWriteTokens), steps: model.completedSteps })} className={cn("text-muted-foreground")} variant="label">{t('chat:header.modelTokens', { input: formatTokenCount(model.inputTokens), output: formatTokenCount(model.outputTokens), reasoning: formatTokenCount(model.reasoningTokens), cacheRead: formatTokenCount(model.cacheReadTokens), cacheWrite: formatTokenCount(model.cacheWriteTokens), steps: model.completedSteps })}</Text>
               </View>
             ))}
           </View>

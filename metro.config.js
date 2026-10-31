@@ -1,6 +1,7 @@
 const path = require('node:path');
 const { getDefaultConfig } = require('expo/metro-config');
 const pkg = require('./package.json');
+const { withUniwindConfig } = require('uniwind/metro');
 
 const config = getDefaultConfig(__dirname);
 
@@ -28,4 +29,4 @@ if (isFossBuild) {
   };
 }
 
-module.exports = config;
+module.exports = withUniwindConfig(config, { cssEntryFile: './global.css', dtsFile: './uniwind-types.d.ts' });

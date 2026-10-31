@@ -1,3 +1,4 @@
+import { uiImports, textContent } from '../helpers/ui.mjs';
 import { describe, expect, it, vi } from 'vitest';
 import { hookRuntime, loadTs } from '../helpers/runtime.mjs';
 
@@ -17,14 +18,15 @@ async function setup({ ready = false, profile = false, initialStep = 1 } = {}) {
   const done = vi.fn();
   const close = vi.fn();
   const { VoiceInputSetup } = await loadTs('components/settings/voice-input-setup.tsx', {
+    ...uiImports,
     react: runtime.react, 'react/jsx-runtime': { jsx: (type: unknown, props: object) => ({ type, props }), jsxs: (type: unknown, props: object) => ({ type, props }) },
     'react-i18next': { useTranslation: () => ({ t: (key: string) => key, i18n: { language: 'en' } }) },
     'react-native': { AppState: { addEventListener: () => ({ remove: vi.fn() }) }, Image: 'Image', View: 'View', StyleSheet: { create: (value: object) => value } },
-    'react-native-paper': { HelperText: 'Help', Text: 'Text' },
+
     '@/lib/voice/local-wake-word/model-constants': { LOCAL_COMMAND_MODELS: models, LOCAL_VOICE_BASE_DOWNLOAD_BYTES: 45_000_000 },
     '@/lib/voice/local-wake-word/types': { LOCAL_WAKE_PHRASES: { 'hey-code': { id: 'hey-code', label: 'Hey code' } } },
     './settings-panel': { SettingsDisclosure: 'Disclosure', SettingTarget: 'Target' },
-    './sections/setting-rows': { SettingButton: 'Button', SettingSelectField: 'Select', SettingSwitchRow: 'Switch' },
+    './sections/setting-rows': { Button: 'Button', SettingSelectField: 'Select', SettingSwitchRow: 'Switch' },
     './voice-language': { voiceLanguageOptions: () => [{ value: '', label: 'System' }, { value: 'en', label: 'English' }] },
     './voice-flow-screen': { VoiceFlowScreen: 'Flow' },
     ...Object.fromEntries(['intro', 'download', 'profile', 'test'].map((name) => [`@/assets/images/voice-input-${name}.png`, name])),
@@ -32,7 +34,7 @@ async function setup({ ready = false, profile = false, initialStep = 1 } = {}) {
   const localVoice = { status: ready ? 'ready' : 'missing', baseStatus: 'missing', commandStatus: 'missing', microphone: { granted: ready }, install, refresh: vi.fn(), refreshMicrophone: vi.fn(), enrollment: { cancel, hasProfile: profile, status: 'idle', enroll: vi.fn() } };
   const test = { status: 'idle', stop, start: vi.fn() };
   runtime.mount(VoiceInputSetup, { initialStep, chatPreferences: { localCommandModel: 'moonshine-tiny-en', localWakePhrase: 'hey-code', localSpeakerVerification: true }, localVoice, test, palette: {}, updateChatPreferences: update, onDone: done, onClose: close });
-  const button = (key: string) => all(runtime.value, 'Button').find((item) => item.props.children === key)!;
+  const button = (key: string) => all(runtime.value, 'Button').find((item) => textContent(item) === key)!;
   return { runtime, localVoice, test, cancel, stop, install, update, done, close, button };
 }
 

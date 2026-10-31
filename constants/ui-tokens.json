@@ -1,0 +1,360 @@
+{
+  "colors": {
+    "light": {
+      "text": "#172126",
+      "success": "#0E775E",
+      "warning": "#965B00",
+      "danger": "#B44343",
+      "onBubbleAssistant": "#182320",
+      "code": {
+        "syntax": {
+          "keyword": "#CF222E",
+          "string": "#0A3069",
+          "number": "#0550AE",
+          "constant": "#0550AE",
+          "comment": "#6E7781",
+          "function": "#8250DF",
+          "type": "#953800",
+          "property": "#0550AE",
+          "tag": "#116329",
+          "attribute": "#0550AE"
+        }
+      },
+      "onDanger": "#FFFFFF",
+      "backdrop": "#00000047"
+    },
+    "dark": {
+      "text": "#EAF3EF",
+      "success": "#63D9B1",
+      "warning": "#E6B35A",
+      "danger": "#F08A8A",
+      "onBubbleAssistant": "#EAF3EF",
+      "code": {
+        "syntax": {
+          "keyword": "#FF7B72",
+          "string": "#A5D6FF",
+          "number": "#79C0FF",
+          "constant": "#79C0FF",
+          "comment": "#8B949E",
+          "function": "#D2A8FF",
+          "type": "#FFA657",
+          "property": "#79C0FF",
+          "tag": "#7EE787",
+          "attribute": "#79C0FF"
+        }
+      },
+      "onDanger": "#08110F",
+      "backdrop": "#00000047"
+    }
+  },
+  "presets": {
+    "green": {
+      "light": {
+        "tint": "#007A5C",
+        "accent": "#125F53",
+        "background": "#F4F7F4",
+        "surface": "#FCFDFC",
+        "surfaceAlt": "#E7EFEA",
+        "card": "#FFFFFF",
+        "muted": "#5E6E6B",
+        "border": "#D6E1DC",
+        "icon": "#8B989B",
+        "bubbleUser": "#135C4E",
+        "onBubbleUser": "#F5FFFB",
+        "bubbleAssistant": "#EEF4F1",
+        "tabBackground": "#F9FBFA",
+        "tabIconDefault": "#8B989B",
+        "onTint": "#FFFFFF"
+      },
+      "dark": {
+        "tint": "#7AE7C0",
+        "accent": "#58D4AB",
+        "background": "#0F1614",
+        "surface": "#16201D",
+        "surfaceAlt": "#20302C",
+        "card": "#16201D",
+        "muted": "#9AADA8",
+        "border": "#2B3C38",
+        "icon": "#839793",
+        "bubbleUser": "#1C6B5C",
+        "onBubbleUser": "#F3FFFB",
+        "bubbleAssistant": "#182320",
+        "tabBackground": "#121A18",
+        "tabIconDefault": "#839793",
+        "onTint": "#08110F"
+      }
+    },
+    "blue": {
+      "light": {
+        "tint": "#1E6EB1",
+        "accent": "#164E7C",
+        "background": "#F1F5F9",
+        "surface": "#FBFCFE",
+        "surfaceAlt": "#E5EDF5",
+        "card": "#FFFFFF",
+        "muted": "#5D6C79",
+        "border": "#D2DDE9",
+        "icon": "#8794A2",
+        "bubbleUser": "#14486B",
+        "onBubbleUser": "#F4FAFF",
+        "bubbleAssistant": "#EBF1F8",
+        "tabBackground": "#F7FAFC",
+        "tabIconDefault": "#8794A2",
+        "onTint": "#FFFFFF"
+      },
+      "dark": {
+        "tint": "#7CC4FF",
+        "accent": "#58A6E0",
+        "background": "#0D1217",
+        "surface": "#151C23",
+        "surfaceAlt": "#1E2934",
+        "card": "#151C23",
+        "muted": "#96A6B5",
+        "border": "#293542",
+        "icon": "#81909F",
+        "bubbleUser": "#1B5B82",
+        "onBubbleUser": "#F2FAFF",
+        "bubbleAssistant": "#171F27",
+        "tabBackground": "#10161C",
+        "tabIconDefault": "#81909F",
+        "onTint": "#08110F"
+      }
+    },
+    "red": {
+      "light": {
+        "tint": "#B03A48",
+        "accent": "#7E2733",
+        "background": "#FAF4F4",
+        "surface": "#FEFBFB",
+        "surfaceAlt": "#F5E7E8",
+        "card": "#FFFFFF",
+        "muted": "#786468",
+        "border": "#E8D5D7",
+        "icon": "#9B868A",
+        "bubbleUser": "#6E222C",
+        "onBubbleUser": "#FFF5F6",
+        "bubbleAssistant": "#F8EEEF",
+        "tabBackground": "#FCF8F8",
+        "tabIconDefault": "#9B868A",
+        "onTint": "#FFFFFF"
+      },
+      "dark": {
+        "tint": "#FF9A9A",
+        "accent": "#E07A7A",
+        "background": "#171010",
+        "surface": "#221819",
+        "surfaceAlt": "#2F2122",
+        "card": "#221819",
+        "muted": "#AF9A9D",
+        "border": "#3D2C2E",
+        "icon": "#998588",
+        "bubbleUser": "#7A2E35",
+        "onBubbleUser": "#FFF5F6",
+        "bubbleAssistant": "#21181A",
+        "tabBackground": "#1A1213",
+        "tabIconDefault": "#998588",
+        "onTint": "#08110F"
+      }
+    },
+    "purple": {
+      "light": {
+        "tint": "#7A4BC4",
+        "accent": "#5A3396",
+        "background": "#F7F4FB",
+        "surface": "#FDFBFE",
+        "surfaceAlt": "#EDE6F6",
+        "card": "#FFFFFF",
+        "muted": "#6C6579",
+        "border": "#DBD2EA",
+        "icon": "#8F879C",
+        "bubbleUser": "#4A2A78",
+        "onBubbleUser": "#F8F4FF",
+        "bubbleAssistant": "#F1ECF9",
+        "tabBackground": "#FAF7FD",
+        "tabIconDefault": "#8F879C",
+        "onTint": "#FFFFFF"
+      },
+      "dark": {
+        "tint": "#C9A8FF",
+        "accent": "#A985E8",
+        "background": "#120F17",
+        "surface": "#1B1622",
+        "surfaceAlt": "#271F33",
+        "card": "#1B1622",
+        "muted": "#A99FB8",
+        "border": "#342A43",
+        "icon": "#958BA3",
+        "bubbleUser": "#553A85",
+        "onBubbleUser": "#F8F4FF",
+        "bubbleAssistant": "#1A1521",
+        "tabBackground": "#15111B",
+        "tabIconDefault": "#958BA3",
+        "onTint": "#08110F"
+      }
+    },
+    "pink": {
+      "light": {
+        "tint": "#B63B75",
+        "accent": "#8C2C59",
+        "background": "#FBF4F7",
+        "surface": "#FEFBFC",
+        "surfaceAlt": "#F6E7EE",
+        "card": "#FFFFFF",
+        "muted": "#7A646E",
+        "border": "#E8D5DE",
+        "icon": "#9C8791",
+        "bubbleUser": "#75264B",
+        "onBubbleUser": "#FFF4F9",
+        "bubbleAssistant": "#F9EEF3",
+        "tabBackground": "#FCF8FA",
+        "tabIconDefault": "#9C8791",
+        "onTint": "#FFFFFF"
+      },
+      "dark": {
+        "tint": "#FFA6CF",
+        "accent": "#E080B3",
+        "background": "#171013",
+        "surface": "#22171B",
+        "surfaceAlt": "#302027",
+        "card": "#22171B",
+        "muted": "#AF9AA3",
+        "border": "#3E2B33",
+        "icon": "#99858E",
+        "bubbleUser": "#7E3560",
+        "onBubbleUser": "#FFF4F9",
+        "bubbleAssistant": "#21171B",
+        "tabBackground": "#1A1215",
+        "tabIconDefault": "#99858E",
+        "onTint": "#08110F"
+      }
+    },
+    "gray": {
+      "light": {
+        "tint": "#5B6664",
+        "accent": "#434C4A",
+        "background": "#F4F5F5",
+        "surface": "#FBFBFB",
+        "surfaceAlt": "#E8EAEA",
+        "card": "#FFFFFF",
+        "muted": "#626868",
+        "border": "#D6D9D9",
+        "icon": "#8C9291",
+        "bubbleUser": "#3B4442",
+        "onBubbleUser": "#F7FAF9",
+        "bubbleAssistant": "#EFF1F1",
+        "tabBackground": "#F8F9F9",
+        "tabIconDefault": "#8C9291",
+        "onTint": "#FFFFFF"
+      },
+      "dark": {
+        "tint": "#C3CECB",
+        "accent": "#9FADA9",
+        "background": "#101212",
+        "surface": "#181B1B",
+        "surfaceAlt": "#222626",
+        "card": "#181B1B",
+        "muted": "#A0A6A5",
+        "border": "#2D3232",
+        "icon": "#8B9190",
+        "bubbleUser": "#49524F",
+        "onBubbleUser": "#F7FAF9",
+        "bubbleAssistant": "#191C1C",
+        "tabBackground": "#131616",
+        "tabIconDefault": "#8B9190",
+        "onTint": "#08110F"
+      }
+    }
+  },
+  "fonts": {
+    "ios": {
+      "sans": "Avenir Next",
+      "mono": "ui-monospace",
+      "display": "Avenir Next"
+    },
+    "default": {
+      "sans": "normal",
+      "mono": "monospace",
+      "display": "normal"
+    },
+    "web": {
+      "sans": "'Avenir Next', 'Segoe UI', 'Trebuchet MS', sans-serif",
+      "mono": "SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace",
+      "display": "'Avenir Next', 'Segoe UI', 'Trebuchet MS', sans-serif"
+    }
+  },
+  "spacing": {
+    "xs": 4,
+    "sm": 8,
+    "md": 12,
+    "lg": 16,
+    "xl": 24,
+    "xxl": 32
+  },
+  "shape": {
+    "control": 14,
+    "group": 18,
+    "sheet": 24
+  },
+  "controls": {
+    "target": 48,
+    "field": 56,
+    "row": 76,
+    "contentWidth": 800
+  },
+  "typography": {
+    "body": {
+      "fontSize": 16,
+      "lineHeight": 24
+    },
+    "description": {
+      "fontSize": 14,
+      "lineHeight": 20
+    },
+    "label": {
+      "fontSize": 12,
+      "lineHeight": 16
+    },
+    "title": {
+      "fontSize": 16,
+      "lineHeight": 24
+    },
+    "heading": {
+      "fontSize": 20,
+      "lineHeight": 28
+    },
+    "display": {
+      "fontSize": 24,
+      "lineHeight": 32
+    }
+  },
+  "aliases": {
+    "background": "background",
+    "foreground": "text",
+    "card": "card",
+    "card-foreground": "text",
+    "popover": "surface",
+    "popover-foreground": "text",
+    "primary": "tint",
+    "primary-foreground": "onTint",
+    "secondary": "surfaceAlt",
+    "secondary-foreground": "text",
+    "muted": "surfaceAlt",
+    "muted-foreground": "muted",
+    "accent": "surfaceAlt",
+    "accent-foreground": "text",
+    "app-accent": "accent",
+    "destructive": "danger",
+    "destructive-foreground": "onDanger",
+    "border": "border",
+    "input": "border",
+    "ring": "tint",
+    "surface": "surface",
+    "surface-alt": "surfaceAlt",
+    "success": "success",
+    "warning": "warning",
+    "bubble-user": "bubbleUser",
+    "on-bubble-user": "onBubbleUser",
+    "bubble-assistant": "bubbleAssistant",
+    "on-bubble-assistant": "onBubbleAssistant"
+  }
+}

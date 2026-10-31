@@ -1,3 +1,4 @@
+import { uiImports, textContent } from '../helpers/ui.mjs';
 import { beforeEach, expect, it, vi } from 'vitest';
 import { createRequire } from 'node:module';
 import { deferred, hookRuntime, loadTs } from '../helpers/runtime.mjs';
@@ -11,22 +12,23 @@ const find = (root: Element, test: (node: Element) => boolean): Element | undefi
     const result = find(child, test); if (result) return result;
   }
 };
-const label = (node: Element) => [node.props?.children].flat(Infinity).filter((value) => typeof value === 'string').join('');
+const label = textContent;
 let runtime: ReturnType<typeof hookRuntime>;
 let shared: any;
 let receipt: string;
 let dismissTo: ReturnType<typeof vi.fn>;
 async function mount() {
   const { default: Screen } = await loadTs('app/share.tsx', {
+    ...uiImports,
     react: runtime.react, 'react/jsx-runtime': { jsx: element, jsxs: element, Fragment: 'Fragment' },
     'expo-router': { useRouter: () => ({ dismissTo }), useLocalSearchParams: () => ({ receipt }) },
     'react-i18next': { useTranslation: () => ({ t: (key: string) => key }) },
     'react-native': { StyleSheet: { create: (value: unknown) => value }, ScrollView: 'ScrollView', Text: 'NativeText', View: 'View' },
-    'react-native-paper': { ActivityIndicator: 'Spinner', Appbar: { Header: 'Header', Content: 'Content', Action: 'Action' }, Button: 'Button', Surface: 'Surface', Text: 'Text' },
+
     'react-native-safe-area-context': { useSafeAreaInsets: () => ({ top: 0 }) },
     '@/components/chat/attachment-strip': { AttachmentStrip: 'Attachments' },
     '@/components/ui/project-picker': { ProjectPicker: 'ProjectPicker' },
-    '@/components/ui/overlay-sheet': { OverlaySheet: 'Sheet' }, '@/components/ui/text-input': { TextInput: 'Input' },
+    '@/components/ui/overlay-sheet': { OverlaySheet: 'Sheet' },
     '@/constants/theme': { Colors: { light: { background: '#fff', surface: '#fff', text: '#111', muted: '#666', tint: '#080', warning: '#a60', danger: '#f00' } }, Fonts: {} },
     '@/hooks/use-color-scheme': { useColorScheme: () => 'light' },
     '@/hooks/use-palette': { usePalette: () => ({ background: '#fff', surface: '#fff', text: '#111', muted: '#666', tint: '#080', warning: '#a60', danger: '#f00' }) },

@@ -1,11 +1,8 @@
 # Design system
 
-Related ADR: [0006 semantic design tokens with React Native Paper](../adr/0006-semantic-design-tokens-and-paper.md)
+Related ADR: [0013 source-owned UI and complex forms](../adr/0013-source-owned-ui-and-complex-forms.md)
 
-This is the implementation reference for new features. Settings and its shared
-onboarding controls are the first complete application of these rules. Existing
-Chat, Projects, Terminal and Cloud Link patterns remain valid; adopt the shared
-foundations when touching their presentation, without unrelated restyling.
+This is the implementation reference for new features. All application surfaces share the source-owned UI foundation. Specialized terminal, markdown and virtualized-list behavior stays in its existing owner.
 
 Related: [Design section](README.md) · [Component inventory](component-inventory.md)
 · [Storybook](storybook.md) · [Design QA](qa/README.md)
@@ -14,9 +11,10 @@ Related: [Design section](README.md) · [Component inventory](component-inventor
 
 | Concern | Source |
 | --- | --- |
-| Semantic colors and platform font families | `constants/theme.ts` |
+| Authoritative palettes, fonts, typography and dimensions | `constants/ui-tokens.json` |
+| Typed imperative projections | `constants/theme.ts` and `constants/design-tokens.ts` |
 | Theme modes and six color presets | `constants/appearance.ts` |
-| Paper mapping | `constants/paper-theme.ts` |
+| Generated Tailwind aliases and initial themes | `constants/ui-tokens.generated.css` |
 | Spacing, shape and minimum sizes | `constants/design-tokens.ts` |
 | Effective appearance | `usePalette()` and `useColorScheme()` |
 | Settings navigation and availability | `buildSettingsSections()` |
@@ -42,8 +40,7 @@ Use semantic palette roles rather than literal colors:
   conversation-specific roles; do not repurpose them for settings.
 
 Support system/light/dark and green/blue/red/purple/pink/gray. Resolve colors
-through `usePalette()`, not direct `Colors.light` reads. Use `getPaperTheme()` for
-Paper components. Status always has text or an icon as well as color. Target
+through `usePalette()`, not direct `Colors.light` reads. Use semantic Tailwind classes for shared controls. Status always has text or an icon as well as color. Target
 4.5:1 text contrast and 3:1 essential control/focus contrast; verify the actual
 foreground/background pair, including muted text and every selectable preset.
 Do not communicate disabled state through opacity alone: expose disabled
@@ -52,16 +49,16 @@ semantics and explain an unmet prerequisite near the control.
 ### Typography
 
 Keep platform fonts; do not add a font dependency. App-shell titles use
-`Fonts.display` with weight 700. Body controls use Paper's platform typography;
+`Fonts.display` with weight 700. Body controls use the shared Text typography roles;
 code, commands and paths may use `Fonts.mono`.
 
-| Role | Paper variant | Default size/line height |
+| Role | Text role | Default size/line height |
 | --- | --- | --- |
-| Sheet title and category row | `titleMedium` | 16/24 |
-| Section heading | `titleSmall` | 14/20 |
-| Field value and switch title | `bodyLarge` | 16/24 |
-| Description, status, breadcrumb | `bodyMedium` | 14/20 |
-| Field label | `labelMedium` | 12/16 |
+| Sheet title and category row | `title` | 16/24 |
+| Section heading | `description` | 14/20 |
+| Field value and switch title | `body` | 16/24 |
+| Description, status, breadcrumb | `description` | 14/20 |
+| Field label | `label` | 12/16 |
 
 Use sentence case, concrete labels and short supporting descriptions. Distinguish
 app interface language from speech language. Prefer “Review setup” to “Reset
@@ -93,14 +90,14 @@ beside a complete label are decorative. Never substitute letter glyphs for icons
 | --- | --- | --- |
 | Navigate to a settings category | `SettingsHome` registry row | Icon, title, current summary, chevron; entire row opens its sheet |
 | Boolean preference | `SettingSwitchRow` | One accessible switch target; label press and switch graphic share one action |
-| Choose one value | `SettingSelectField` / `NativeSelect` | Label and wrapping value; `compact` puts label/value on one row; searchable choices for long catalogs |
-| Primary/secondary action | `SettingButton` | Existing Paper modes with a 48-point target and shared control radius |
-| Edit a settings form | `SettingTextInput` | Shared outline/radius; retain validation, secure entry and keyboard options |
+| Choose one value | `SettingSelectField` / `CatalogSelect` | Label and wrapping value; `compact` puts label/value on one row; searchable choices for long catalogs |
+| Primary/secondary action | `Button` | CVA variants with a 48-point target and shared control radius |
+| Edit a settings form | `SettingField` | Shared outline/radius; retain validation, secure entry and keyboard options |
 | Adjust a numeric preference | `SettingSlider` / `NumericSlider` | Label, readable value, existing range, adjustable semantics and web arrow keys |
 | Advanced settings | `SettingsDisclosure` | Labeled button with expanded state; search and attention states reveal its content |
 | Category content | `OverlaySheet` + `SettingsPanel` | Stable title/Close header, keyboard-safe scrolling, safe-area padding, keyboard dismissal on open, Android Back and header-drag dismissal |
 | Locate a searched setting | `SettingTarget` | Reveal, scroll, highlight and announce the matching label without changing its value |
-| Short confirmation or choice | Existing dialog / `NativeSelect` | Keep existing modal, auth and confirmation contracts |
+| Short confirmation or choice | Existing dialog / `CatalogSelect` | Keep existing modal, auth and confirmation contracts |
 
 Use one contained primary action per form/group. Use outlined secondary actions
 and text tertiary actions. A destructive action names its object and preserves
@@ -169,7 +166,7 @@ shared primitives and controls, not provider orchestration or full screens.
 
 - Run `npm run storybook` for the local catalog.
 - Run `npm run build:storybook` to verify the catalog builds.
-- Use the real appearance provider and Paper theme; do not create a parallel
+- Use the real appearance provider and Uniwind theme; do not create a parallel
   visual wrapper.
 - Cover the states that are hard to reach in the app: disabled, error, loading,
   long values, narrow width, light/dark, and accent presets.
@@ -226,3 +223,116 @@ Search destinations `voice-more`, `voice-setup-prepare`, `voice-setup-profile` a
 `voice-tts` reveal their existing control without invoking it. Each full-screen
 flow owns its own `SettingsPanel` so search highlighting/scrolling stays inside
 the visible surface. Native/system capabilities retain their platform gates.
+
+## Source-owned components and styling
+
+Reusables source in `components/ui/` comes from founded-labs/react-native-reusables
+commit `385834c2196f8a303cbc9057d1ac768f3bde0a3b`, Uniwind registry, MIT.
+Local adaptations preserve MaterialCommunityIcons, product typography, wrapping,
+48-point targets, workspace context and modal-local portals. The component
+inventory records ownership; do not regenerate over local adaptations.
+
+Use the pinned registry CLI with an explicit component and styling engine:
+
+```bash
+npx @react-native-reusables/cli@0.7.1 add button --styling-library uniwind
+```
+
+Review upstream source and dependency changes before an upgrade. Never use
+`--all`, `-y` or blind overwrite. Decline automatic dependency installation;
+add only the selected component's required packages, keeping Tailwind v4 and
+the installed Expo/native versions. The pinned CLI still lists older core
+setup defaults. Reuse existing production components before adding
+one. Standard variants use CVA and `cn()`; static presentation uses literal
+Tailwind classes. Measured dimensions, safe-area/keyboard insets, animations,
+and third-party renderer styles remain inline. Do not add a second styling
+engine, font dependency, UI library or generic form/schema renderer.
+
+The token JSON is authoritative. TypeScript projections and generated CSS do
+not own independent values. Run `npm run gen:ui-tokens` after changing it;
+`npm run gen:ui-tokens -- --check` detects stale generated output. Uniwind uses
+light/dark theme names; the appearance provider applies both palette variable
+sets when the accent changes. Preferences and OS appearance remain the only
+appearance state owners. Navigation, system chrome and renderer props use the
+same palette. Muted, primary and semantic text colors meet the contrast contract on all
+base surfaces. Light green, blue and pink primary colors and the semantic
+foregrounds receive small contrast corrections; the six preset hues and product
+identity are preserved.
+
+Complex forms use React Hook Form, Controller/useController and zodResolver.
+Schemas live beside the owning Settings forms and reuse existing domain
+validators. Requests and persistence stay in their existing provider actions.
+Failed submissions retain values; form identity changes reset drafts. Simple
+preferences, searches, pairing-link fields, editor buffers and chat drafts
+keep their existing local/provider ownership. Validation messages are localized.
+
+Generic confirmations use the shared AlertDialog and local useConfirmation
+hook. OS permission and store dialogs remain native integrations. Full-screen
+native modals preserve their window behavior and provide a named local portal
+host; nested overlays dismiss before the containing form. Sheets share the
+existing header-drag gesture and RN Primitives dialog semantics. NumericSlider
+retains Expo's native slider plus its web keyboard adapter because the RN
+Primitives native slider does not implement drag handling. Terminal accessory
+buttons retain their DOM focus, repeat and modifier behavior.
+
+## Validation and rollback
+
+Use the existing validation gate and owning flow specs. New browser specs and
+mandatory CI jobs are unnecessary for a foundation change covered by these
+flows. See the [test-selection matrix](../engineering/validation/strategy.md#test-selection-matrix).
+
+| Change | Minimum validation |
+| --- | --- |
+| Shared tokens or theme mapping | Generation check, appearance contrast/mapping tests, foundations stories |
+| Primitive or shared settings control | Static checks, production Storybook story, owning flow spec |
+| Complex form | Schema/control tests and the existing connection, provider, extension or Cloud Link flow |
+| Dependencies, root providers, Metro or Vite | Full gate below, native exports and platform builds |
+
+```bash
+npm run gen:ui-tokens -- --check
+npm run test:ci:static
+npm run test:fake-server:self
+npm run test:e2e:budget
+npm run build:storybook
+npm run test:e2e:web
+npx expo export --platform android --platform ios --output-dir output/native-export
+npm run build:development:android
+npm run build:foss:android
+npm run prebuild:ios
+npm run build:ios:local
+```
+
+Signed distribution commands require the existing signing environment described
+in [Development](../engineering/development.md). An unsigned Release simulator
+build can check native compilation after iOS prebuild:
+
+```bash
+xcodebuild -workspace ios/OpenCodeMobile.xcworkspace -scheme OpenCodeMobile \
+  -configuration Release -sdk iphonesimulator \
+  -destination 'generic/platform=iOS Simulator' \
+  ARCHS=arm64 ONLY_ACTIVE_ARCH=YES CODE_SIGNING_ALLOWED=NO build
+```
+
+For development prebuilds, use `OpenCodeMobileDev` for the workspace and scheme.
+Review the rendered production stories; a successful Storybook build alone does
+not verify focus, interactions or provider independence.
+
+| Acceptance | Web | Android | iOS |
+| --- | --- | --- | --- |
+| Connection/authentication/extensions | Existing flows; errors retain draft and focus | Keyboard open, submit, Back, repeat submit | Keyboard open, submit, Back, repeat submit |
+| Overlays and selection | Nested modal/select focus, Escape, Tab, restoration, scrolling and header drag | Hardware Back closes top overlay; modal-local portals and gestures | VoiceOver escape, stacked windows, gestures and safe areas |
+| Appearance | Both schemes, six accents, system changes and reload | System appearance changes and navigation chrome | System appearance changes and navigation chrome |
+| Accessibility/localization | Keyboard, 200% zoom, narrow viewport and long translations | TalkBack, maximum font/display size, touch targets | VoiceOver, largest accessibility text, touch targets |
+| Specialized surfaces | Existing chat/diffs/project/terminal flows | Composer/terminal keyboard and native renderers | Composer/terminal keyboard and native renderers |
+| Build/distribution | Expo export and Vite Storybook | Development APK, production/FOSS release and free dependencies | Native Release compilation and signed archive/export |
+
+Device and store acceptance remains a release requirement even when automated
+checks pass. Any edits to existing E2E tests require the explicit human
+validation specified in `AGENTS.md`.
+
+Rollback the migration as one change: revert its commit (or revert its merge
+commit with `git revert -m 1 <merge-commit>`), restore the matching lockfile and
+generated tokens, run `npm ci`, then rebuild web and native artifacts. Publish
+through the existing release process. Persisted settings, credentials, sessions
+and protocol formats are unchanged, so rollback needs no data migration. Keep
+source, configuration and dependency rollback together.

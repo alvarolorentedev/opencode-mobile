@@ -35,7 +35,7 @@ This means the real application architecture is not screen-centric. It is provid
 
 1. `SafeAreaProvider`
 2. `OpencodeProvider`
-3. `PaperProvider`
+3. `AppearanceProvider` with Uniwind theme synchronization and RN Primitives portal hosts
 4. React Navigation `ThemeProvider`
 5. Expo Router stack with `(tabs)` as the only visible route group
 
@@ -1054,7 +1054,7 @@ This is one of the densest parts of the architecture and would need careful pari
   drag through `components/ui/use-swipe-dismiss.ts`; the `Modal` sheets wrap
   their content in `GestureHandlerRootView` so the gesture is recognized inside
   the native `Modal` window.
-- The app uses custom theme tokens from `constants/theme.ts` and maps them into React Native Paper in `constants/paper-theme.ts`. `constants/appearance.ts` defines the app-wide theme mode (`system`, `light`, `dark`) and color themes (`green` default plus blue, red, purple, pink, and gray). `providers/appearance-context.tsx` publishes the effective scheme, color theme, and memoized palette; `hooks/use-color-scheme.ts` and `hooks/use-palette.ts` are the only read paths, and only `AppearanceHost` subscribes to the system scheme. Each theme supplies a full light/dark palette: backgrounds, surfaces, cards, borders, secondary text, tab chrome, chat bubbles, accents, and code surfaces. Text and semantic colors stay shared. The appearance preferences persist globally with `chatPreferences` but are excluded from `serverPreferences` so connections cannot overwrite them.
+- The app uses custom theme tokens from `constants/theme.ts` and projects the authoritative JSON tokens into Uniwind CSS and imperative renderer props. `constants/appearance.ts` defines the app-wide theme mode (`system`, `light`, `dark`) and color themes (`green` default plus blue, red, purple, pink, and gray). `providers/appearance-context.tsx` publishes the effective scheme, color theme, and memoized palette; `hooks/use-color-scheme.ts` and `hooks/use-palette.ts` are the only read paths, and only `AppearanceHost` subscribes to the system scheme. Each theme supplies a full light/dark palette: backgrounds, surfaces, cards, borders, secondary text, tab chrome, chat bubbles, accents, and code surfaces. Text and semantic colors stay shared. The appearance preferences persist globally with `chatPreferences` but are excluded from `serverPreferences` so connections cannot overwrite them.
 - Markdown rendering is intentionally narrow and custom, not library-based.
 - Diff rendering is custom and optimized for readable in-app inspection, not full git-style fidelity.
 - The chat area surfaces server-owned todos in a collapsed overlay with read-only status icons. It does not mutate todo state.
@@ -1152,7 +1152,7 @@ safety gates and FOSS exclusion.
 
 Hydration, compatibility settings writes, device sharing, Cloud Link setup/billing, updates, language, audio and native surfaces have one app-wide owner. Favorites, opened projects and remembered sessions keep their existing connection-scoped persistence. Activity observation has one owner per server, with one app-wide Android notification publisher combining counts and releasing only the disconnected server. Native shortcuts carry each row's connection scope; widget publication remains app-wide.
 
-The chat library combines the unscoped server catalogs with live project state. It keeps current/running/recency order, uses composite keys and labels each row with its server. Project selection changes chat/project focus. Terminal selection and Settings inspection are independent. Paper portals explicitly restore their caller's workspace scope; otherwise their children would inherit the app host's current chat server.
+The chat library combines the unscoped server catalogs with live project state. It keeps current/running/recency order, uses composite keys and labels each row with its server. Project selection changes chat/project focus. Terminal selection and Settings inspection are independent. RN Primitives portals explicitly restore their caller's workspace scope; otherwise their children would inherit the app host's current chat server.
 
 Chat focus fails over automatically. When the focused runtime reports an error, or its connection is disabled or removed, `use-workspace-connections.ts` selects the last healthy connected server, then any other connected server, and persists that focus. The failed server stays registered and enabled so Settings can reconnect it; if no other server is connected, the existing Chat connection panel remains the terminal state.
 

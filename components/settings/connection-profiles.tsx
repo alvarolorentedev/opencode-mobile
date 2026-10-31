@@ -1,10 +1,16 @@
+import { cn } from '@/lib/utils';
+import { useConfirmation } from '@/components/ui/use-confirmation';
+import { Icon } from '@/components/ui/icon';
+import { Text } from '@/components/ui/text';
+import { Button } from '@/components/ui/button';
+import { Spinner } from '@/components/ui/spinner';
 import { SettingTarget } from './settings-panel';
-import { SettingButton as Button } from './sections/setting-rows';
+
 import { useCallback, useRef, useState } from 'react';
 import { useFocusEffect } from 'expo-router';
 import { useTranslation } from 'react-i18next';
-import { Alert, Platform, Pressable, StyleSheet, View } from 'react-native';
-import { List, Text } from 'react-native-paper';
+import { Pressable, View } from 'react-native';
+
 
 import {
   ConnectionProfileDialog,
@@ -39,6 +45,7 @@ function connectionHost(serverUrl: string) {
 }
 
 export function ConnectionProfiles({ palette, onManageConnect, onPair }: { palette: Palette; onManageConnect?: () => void; onPair?: () => void }) {
+  const { confirmAction, confirmation } = useConfirmation();
   const { t } = useTranslation();
   const registry = useWorkspaces();
   const presentation = useWorkspacePresentation();
@@ -89,19 +96,7 @@ export function ConnectionProfiles({ palette, onManageConnect, onPair }: { palet
       void remove(profile.id).catch((reason) => setError(getErrorMessage(reason)));
     };
 
-    // React Native Web has no Alert, so follow the app's existing pattern of a
-    // browser confirm dialog for web.
-    if (Platform.OS === 'web') {
-      if (globalThis.confirm(t('settings:connection.deleteWebConfirm', { message }))) {
-        confirmRemoval();
-      }
-      return;
-    }
-
-    Alert.alert(t('settings:connection.deleteTitle'), message, [
-      { text: t('common:actions.cancel'), style: 'cancel' },
-      { text: t('common:actions.delete'), style: 'destructive', onPress: confirmRemoval },
-    ]);
+    confirmAction(t('settings:connection.deleteTitle'), message, t('common:actions.delete'), t('common:actions.cancel'), confirmRemoval);
   }
 
   async function addAndConnect(values: ConnectionProfileFormValues) {
@@ -165,26 +160,26 @@ export function ConnectionProfiles({ palette, onManageConnect, onPair }: { palet
   }) {
     const expanded = expandedKey === rowKey;
     return (
-      <View key={rowKey} style={[styles.row, { borderColor: palette.border, backgroundColor: palette.background }]}>
+      <View key={rowKey} className={cn(stylesClasses.row, "border-border bg-background")}>
         <Pressable
           testID={`connection-row-${testIDKey}`}
           accessibilityRole="button"
           accessibilityState={{ expanded }}
           onPress={() => setExpandedKey(expanded ? undefined : rowKey)}
-          style={styles.rowHeader}>
-          <List.Icon icon={expanded ? 'chevron-down' : 'chevron-right'} color={palette.muted} />
-          <View style={styles.rowCopy}>
-            <Text numberOfLines={1} variant="titleSmall" style={{ color: palette.text }}>{name}</Text>
-            <Text numberOfLines={1} variant="bodySmall" style={{ color: palette.muted }}>{subtitle}</Text>
+          className={cn(stylesClasses.rowHeader)}>
+          <Icon color={palette.muted} name={expanded ? 'chevron-down' : 'chevron-right'}></Icon>
+          <View className={cn(stylesClasses.rowCopy)}>
+            <Text numberOfLines={1} className={cn("text-foreground")} variant="description">{name}</Text>
+            <Text numberOfLines={1} className={cn("text-muted-foreground")} variant="label">{subtitle}</Text>
           </View>
           {isSwitching || isActive ? (
-            <View style={[styles.status, { backgroundColor: palette.surfaceAlt }]}><Text variant="labelLarge">{t(`common:servers.status.${isSwitching ? 'connecting' : status}`)}</Text></View>
+            <View className={cn(stylesClasses.status, "bg-surface-alt")}><Text  variant="description">{t(`common:servers.status.${isSwitching ? 'connecting' : status}`)}</Text></View>
           ) : null}
         </Pressable>
         {expanded ? (
-          <View style={styles.rowBody}>
+          <View className={cn(stylesClasses.rowBody)}>
             {body}
-            <View style={styles.actions}>{actions}</View>
+            <View className={cn(stylesClasses.actions)}>{actions}</View>
           </View>
         ) : null}
       </View>
@@ -204,24 +199,15 @@ export function ConnectionProfiles({ palette, onManageConnect, onPair }: { palet
       isActive: true,
       actions: (
         <>
-          <Button
-            testID="connection-reconnect"
-            mode="contained"
-            loading={isReconnecting}
-            disabled={isReconnecting || !settings.serverUrl.trim()}
-            onPress={() => void connect()}>
-            {t('common:actions.reconnect')}
-          </Button>
-          <Button testID="connection-edit-current" mode="outlined" onPress={() => setDialog({ mode: 'edit-current' })}>
-            {t('common:actions.edit')}
-          </Button>
+          <Button testID="connection-reconnect" disabled={isReconnecting || !settings.serverUrl.trim()} onPress={() => void connect()} variant="default">{isReconnecting ? <Spinner size="small" /> : null}<Text>{t('common:actions.reconnect')}</Text></Button>
+          <Button testID="connection-edit-current" onPress={() => setDialog({ mode: 'edit-current' })} variant="outline"><Text>{t('common:actions.edit')}</Text></Button>
         </>
       ),
       body: (
         <>
-          <Text variant="bodySmall" style={{ color: palette.muted }}>{t('settings:connection.serverUrlValue', { url: settings.serverUrl.trim() || t('common:labels.notSet') })}</Text>
-          <Text variant="bodySmall" style={{ color: palette.muted }}>{t('settings:connection.usernameValue', { username: settings.username.trim() || t('settings:connection.usernameEmpty') })}</Text>
-          <Text variant="bodySmall" style={{ color: palette.muted }}>{t('settings:connection.notSavedYet')}</Text>
+          <Text className={cn("text-muted-foreground")} variant="label">{t('settings:connection.serverUrlValue', { url: settings.serverUrl.trim() || t('common:labels.notSet') })}</Text>
+          <Text className={cn("text-muted-foreground")} variant="label">{t('settings:connection.usernameValue', { username: settings.username.trim() || t('settings:connection.usernameEmpty') })}</Text>
+          <Text className={cn("text-muted-foreground")} variant="label">{t('settings:connection.notSavedYet')}</Text>
         </>
       ),
     }));
@@ -236,10 +222,8 @@ export function ConnectionProfiles({ palette, onManageConnect, onPair }: { palet
     const status = runtime?.values.connectionValue.connection.status ?? 'idle';
     const isReconnecting = status === 'connecting';
     const manageOrEdit = profile.connect
-      ? onManageConnect ? <Button mode="outlined" onPress={() => manageConnect(profile)}>{t('settings:connect.manage')}</Button> : null
-      : <Button testID={`connection-edit-${profile.id}`} mode="outlined" onPress={() => void handleEditProfile(profile).catch((reason) => setError(getErrorMessage(reason)))}>
-          {t('common:actions.edit')}
-        </Button>;
+      ? onManageConnect ? <Button onPress={() => manageConnect(profile)} variant="outline"><Text>{t('settings:connect.manage')}</Text></Button> : null
+      : <Button testID={`connection-edit-${profile.id}`} onPress={() => void handleEditProfile(profile).catch((reason) => setError(getErrorMessage(reason)))} variant="outline"><Text>{t('common:actions.edit')}</Text></Button>;
     rows.push(renderRow({
       rowKey: profile.id,
       testIDKey: profile.id,
@@ -250,53 +234,33 @@ export function ConnectionProfiles({ palette, onManageConnect, onPair }: { palet
       status,
       actions: isActive ? (
         <>
-          <Button
-            testID="connection-reconnect"
-            mode="contained"
-            loading={isReconnecting}
-            disabled={isReconnecting || isSwitching}
-            onPress={() => void registry.retry(id).catch((reason) => setError(String(reason)))}>
-            {t('common:actions.reconnect')}
-          </Button>
-          <Button testID={`connection-disconnect-${profile.id}`} onPress={() => void registry.disconnect(id).catch((reason) => setError(String(reason)))}>{t('common:actions.disconnect')}</Button>
+          <Button testID="connection-reconnect" disabled={isReconnecting || isSwitching} onPress={() => void registry.retry(id).catch((reason) => setError(String(reason)))} variant="default">{isReconnecting ? <Spinner size="small" /> : null}<Text>{t('common:actions.reconnect')}</Text></Button>
+          <Button testID={`connection-disconnect-${profile.id}`} onPress={() => void registry.disconnect(id).catch((reason) => setError(String(reason)))} variant="ghost"><Text>{t('common:actions.disconnect')}</Text></Button>
           {manageOrEdit}
         </>
       ) : (
         <>
-          <Button
-            testID={`connection-connect-${profile.id}`}
-            mode="contained"
-            loading={isSwitching}
-            disabled={Boolean(switchingProfileId) || isSwitching}
-            onPress={() => void handleConnect(profile)}>
-            {t('common:actions.connect')}
-          </Button>
+          <Button testID={`connection-connect-${profile.id}`} disabled={Boolean(switchingProfileId) || isSwitching} onPress={() => void handleConnect(profile)} variant="default">{isSwitching ? <Spinner size="small" /> : null}<Text>{t('common:actions.connect')}</Text></Button>
           {manageOrEdit}
-          <Button testID={`connection-delete-${profile.id}`} mode="text" textColor={palette.danger} onPress={() => handleDelete(profile)}>
-            {t('common:actions.delete')}
-          </Button>
+          <Button testID={`connection-delete-${profile.id}`} onPress={() => handleDelete(profile)} variant="ghost"><Text className={cn("text-destructive")} >{t('common:actions.delete')}</Text></Button>
         </>
       ),
       body: (
         <>
-          <Text variant="bodySmall" style={{ color: palette.muted }}>{t('settings:connection.serverUrlValue', { url: profile.serverUrl })}</Text>
-          <Text variant="bodySmall" style={{ color: palette.muted }}>{t('settings:connection.usernameValue', { username: profile.username || t('settings:connection.usernameEmpty') })}</Text>
+          <Text className={cn("text-muted-foreground")} variant="label">{t('settings:connection.serverUrlValue', { url: profile.serverUrl })}</Text>
+          <Text className={cn("text-muted-foreground")} variant="label">{t('settings:connection.usernameValue', { username: profile.username || t('settings:connection.usernameEmpty') })}</Text>
         </>
       ),
     }));
   });
 
-  return (
+  return <>{confirmation}{(
     <>
-      <View style={styles.list}>{rows}</View>
-      {error ? <Text style={{ color: palette.danger }}>{error}</Text> : null}
-      <SettingTarget label={t('settings:connection.addConnection')}><Button testID="connection-add-button" mode="outlined" icon="plus" onPress={() => setChoosing(true)}>
-        {t('settings:connection.addConnection')}
-      </Button></SettingTarget>
+      <View className={cn(stylesClasses.list)}>{rows}</View>
+      {error ? <Text className={cn("text-destructive")}>{error}</Text> : null}
+      <SettingTarget label={t('settings:connection.addConnection')}><Button testID="connection-add-button" onPress={() => setChoosing(true)} variant="outline"><Icon name={"plus"} size={20} /><Text>{t('settings:connection.addConnection')}</Text></Button></SettingTarget>
       {profiles.length === 0 ? (
-        <Text variant="bodySmall" style={{ color: palette.muted }}>
-          {t('settings:connection.addDescription')}
-        </Text>
+        <Text className={cn("text-muted-foreground")} variant="label">{t('settings:connection.addDescription')}</Text>
       ) : null}
       <OverlaySheet visible={choosing} title={t('settings:connection.addConnection')} onClose={() => setChoosing(false)} fitContent testID="connection-method-sheet">
         <ConnectionMethodChooser onScan={() => { setChoosing(false); setScanning(true); }} onManual={() => { setChoosing(false); setDialog({ mode: 'add' }); }} onPair={() => { setChoosing(false); onPair?.(); }} />
@@ -329,39 +293,17 @@ export function ConnectionProfiles({ palette, onManageConnect, onPair }: { palet
         />
       ) : null}
     </>
-  );
+  )}</>;
 }
 
-const styles = StyleSheet.create({
-  status: { borderRadius: 12, paddingHorizontal: 10, minHeight: 30, justifyContent: 'center' },
-  list: {
-    gap: 8,
-  },
-  row: {
-    borderWidth: 1,
-    borderRadius: 12,
-    overflow: 'hidden',
-  },
-  rowHeader: {
-    alignItems: 'center',
-    flexDirection: 'row',
-    gap: 4,
-    paddingRight: 12,
-    paddingVertical: 6,
-  },
-  rowCopy: {
-    flex: 1,
-    gap: 2,
-  },
-  rowBody: {
-    gap: 4,
-    paddingBottom: 12,
-    paddingHorizontal: 12,
-  },
-  actions: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-    marginTop: 8,
-  },
-});
+
+
+const stylesClasses = {
+  "row": "border rounded-[12px] overflow-hidden",
+  "rowHeader": "items-center flex-row gap-1 pr-3 py-1.5",
+  "rowCopy": "flex-1 gap-0.5",
+  "status": "rounded-[12px] px-2.5 min-h-7.5 justify-center",
+  "rowBody": "gap-1 pb-3 px-3",
+  "actions": "flex-row flex-wrap gap-2 mt-2",
+  "list": "gap-2"
+} as const;

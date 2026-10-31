@@ -1,9 +1,13 @@
+import { cn } from '@/lib/utils';
+import { Text } from '@/components/ui/text';
+import { Button } from '@/components/ui/button';
+import { Spinner } from '@/components/ui/spinner';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { StyleSheet, View } from 'react-native';
-import { Button, Text } from 'react-native-paper';
+import { View } from 'react-native';
+
 
 import { OnboardingStep } from '@/components/onboarding/onboarding-step';
 import { SetupSummary } from '@/components/onboarding/setup-summary';
@@ -43,24 +47,19 @@ export default function OnboardingReadyScreen() {
       subtitle={t('onboarding:ready.subtitle')}
       testID="onboarding-ready"
       footer={
-        <Button
-          mode="contained"
-          testID="onboarding-ready-start"
-          loading={isFinishing}
-          disabled={isFinishing}
-          onPress={() => void finish()}>
-          {onboardingActive ? t('onboarding:ready.done') : t('onboarding:ready.start')}
-        </Button>
+        <Button testID="onboarding-ready-start" disabled={isFinishing} onPress={() => void finish()} variant="default">{isFinishing ? <Spinner size="small" /> : null}<Text>{onboardingActive ? t('onboarding:ready.done') : t('onboarding:ready.start')}</Text></Button>
       }>
       <SetupSummary />
-      <View style={styles.footerNote}>
+      <View className={cn(stylesClasses.footerNote)}>
         <MaterialCommunityIcons name="check-circle" size={18} color={palette.success} />
-        <Text variant="bodySmall" style={{ color: palette.muted }}>{t('onboarding:ready.footnote')}</Text>
+        <Text className={cn("text-muted-foreground")} variant="label">{t('onboarding:ready.footnote')}</Text>
       </View>
     </OnboardingStep>
   );
 }
 
-const styles = StyleSheet.create({
-  footerNote: { alignItems: 'center', flexDirection: 'row', gap: 8 },
-});
+
+
+const stylesClasses = {
+  "footerNote": "items-center flex-row gap-2"
+} as const;

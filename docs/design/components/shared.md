@@ -4,7 +4,28 @@ Reusable controls, provider/utility modules with UI contracts, and cross-cutting
 
 ## Shared UI Components
 
-### `components/ui/native-select.tsx`
+The source-owned foundation is `components/ui/`; provenance and platform
+adaptations are in `components/ui/UPSTREAM.md`. Install only components with a
+production consumer. Reuse the following before creating a control:
+
+| Concern | Production source |
+| --- | --- |
+| Typography, actions, icons | `text.tsx`, `button.tsx`, `icon.tsx` |
+| Inputs, labels, validation help | `input.tsx`, `text-field.tsx`, `label.tsx` |
+| Selection and disclosure | `checkbox.tsx`, `switch.tsx`, `radio-group.tsx`, `toggle-group.tsx`, `tabs.tsx`, `collapsible.tsx` |
+| Cards, status, loading | `card.tsx`, `badge.tsx`, `separator.tsx`, `progress.tsx`, `spinner.tsx`, `skeleton.tsx` |
+| Overlays and feedback | `overlay-sheet.tsx`, `catalog-select.tsx`, `alert-dialog.tsx`, `use-confirmation.tsx`, `feedback.tsx`, `portal.tsx` |
+| App composition | `screen-header.tsx`, `list-row.tsx`, `components/settings/sections/setting-rows.tsx` |
+
+All paths in the table are relative to `components/ui/` except the explicitly
+named settings composition. Complex form schemas live in
+`components/settings/forms/`; API orchestration and persistence retain their
+existing owners. Raw text editors and the chat composer retain their measured
+input behavior. NumericSlider and terminal DOM controls retain native drag,
+keyboard and focus handling.
+
+
+### `components/ui/catalog-select.tsx`
 
 #### Responsibility
 
@@ -12,32 +33,24 @@ Reusable controls, provider/utility modules with UI contracts, and cross-cutting
 
 Behavior:
 
-- iOS uses `ActionSheetIOS`
-- Android/web use a custom modal sheet
-- opening a select dismisses a keyboard raised by the trigger's screen through
-  the shared `useDismissKeyboardOnOpen` hook; the searchable sheet's filter
-  input is focused by the user afterwards
-- `searchable` forces the modal sheet on every platform and adds a text
-  filter over the option labels (used by the Add provider pickers)
-- the searchable modal sheet lifts its options above the soft keyboard via
-  `useKeyboardHeight` (transparent `Modal`s cannot use `KeyboardAvoidingView`)
-  and shrinks the sheet/list so long filtered lists stay scrollable
-- the modal sheet wraps its content in `GestureHandlerRootView` and dismisses on
-  a downward header drag via the shared `useSwipeDismiss` helper, matching
-  `OverlaySheet`
+- short catalogs use the source-owned RN Primitives Select
+- searchable catalogs use one shared keyboard-safe OverlaySheet with local filtering
+- opening dismisses the previous keyboard; selection, Back and Close clear the filter
+- primitive portals preserve workspace identity and target the nearest native modal host
+- sheet dragging uses the existing shared header-only gesture
 
 #### Prop contract
 
 ```ts
-type NativeSelectProps<T extends string> = {
+type CatalogSelectProps<T extends string> = {
   disabled?: boolean
   onValueChange: (value: T) => void
-  options: NativeSelectOption<T>[]
+  options: CatalogOption<T>[]
   renderTrigger: (props: {
     disabled: boolean
     open: () => void
     openState: boolean
-    selectedOption?: NativeSelectOption<T>
+    selectedOption?: CatalogOption<T>
   }) => ReactNode
   searchable?: boolean
   selectedValue?: T
@@ -225,7 +238,7 @@ The composer microphone starts direct speech-to-text dictation into the draft, p
 
 Composer spacing uses 8px side margins and 6px top/bottom gaps (6px sides and 4px gaps in slim mode), with 8px/4px card top/bottom padding. It does not add another bottom safe-area inset because the visible tab bar owns that inset. Keyboard avoidance and tab visibility remain unchanged.
 
-Task progress is a 48px Paper FAB. When the changes chip is visible, the FAB sits on its right in the same row, vertically centered; symmetric space on the left keeps the chip centered. Without a changes chip, progress floats at the chat area's bottom-right. Its standard circle-slice icon fills in eight stages from the provider-owned completion ratio, becoming a checkmark when all tasks complete. Its translated accessible name contains completed/total counts. Tapping retains the existing detailed overlay. It hides while a permission/question blocks the chat. Only the chip-visible row reserves layout space; the standalone FAB is positioned absolutely on the right and reserves no transcript row or extra padding. Only blocking-card clearance remains.
+Task progress is a 48px shared icon button. When the changes chip is visible, the FAB sits on its right in the same row, vertically centered; symmetric space on the left keeps the chip centered. Without a changes chip, progress floats at the chat area's bottom-right. Its standard circle-slice icon fills in eight stages from the provider-owned completion ratio, becoming a checkmark when all tasks complete. Its translated accessible name contains completed/total counts. Tapping retains the existing detailed overlay. It hides while a permission/question blocks the chat. Only the chip-visible row reserves layout space; the standalone FAB is positioned absolutely on the right and reserves no transcript row or extra padding. Only blocking-card clearance remains.
 
 Changes review dismisses the keyboard without remounting the transcript or composer. Session changes and blocking permission/question requests close review and its source picker. Switching to an empty scope keeps an already open review available; closing it hides the chip until changes exist.
 

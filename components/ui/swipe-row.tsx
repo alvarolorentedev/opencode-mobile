@@ -23,5 +23,5 @@ const styles = StyleSheet.create({
   content: { alignItems: 'stretch' },
   actions: { flexDirection: 'row', alignItems: 'stretch', gap: 4, paddingLeft: 6 },
   action: { width: 76, alignItems: 'center', justifyContent: 'center', gap: 2, borderRadius: 14, borderWidth: 1 },
-  label: { fontSize: 11, fontWeight: '600' },
+  label: { fontSize: 11, fontWeight: '600' }
 });

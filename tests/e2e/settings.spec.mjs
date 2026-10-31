@@ -17,13 +17,13 @@ test('settings can configure an additional provider against the fake server @smo
   await ensureAiSection(page);
   await expect(page.getByText('Configured providers')).toBeVisible();
   await page.getByTestId('settings-add-provider-button').click();
-  await expect(page.getByRole('button', { name: 'OpenRouter', exact: true })).toBeVisible();
-  await page.getByRole('button', { name: 'OpenRouter', exact: true }).click();
+  await expect(page.getByRole('radio', { name: 'OpenRouter', exact: true }).or(page.getByRole('button', { name: 'OpenRouter', exact: true }))).toBeVisible();
+  await page.getByRole('radio', { name: 'OpenRouter', exact: true }).or(page.getByRole('button', { name: 'OpenRouter', exact: true })).click();
   await expect(page.getByText('Configure OpenRouter')).toBeVisible();
   await page.getByPlaceholder('Paste your API key').fill('sk-test-openrouter');
   await page.getByTestId('settings-provider-save-button').click();
   await expect(page.getByText('Configure OpenRouter')).not.toBeVisible({ timeout: 15_000 });
-  await expect(page.getByRole('button', { name: 'OpenRouter', exact: true })).toBeVisible();
+  await expect(page.getByRole('radio', { name: 'OpenRouter', exact: true }).or(page.getByRole('button', { name: 'OpenRouter', exact: true }))).toBeVisible();
 });
 
 test('V1 providers retain API-key login alongside OAuth metadata', async ({ page, request }) => {
@@ -35,12 +35,12 @@ test('V1 providers retain API-key login alongside OAuth metadata', async ({ page
   await goToTab(page, 'Settings');
   await ensureAiSection(page);
   await page.getByTestId('settings-add-provider-button').click();
-  await page.getByRole('button', { name: 'OpenRouter', exact: true }).click();
+  await page.getByRole('radio', { name: 'OpenRouter', exact: true }).or(page.getByRole('button', { name: 'OpenRouter', exact: true })).click();
   await expect(page.getByText('Configure OpenRouter')).toBeVisible();
   // The login-method picker offers both the server OAuth method and the generic API key.
   await page.getByTestId('provider-method-select').click();
-  await expect(page.getByRole('button', { name: 'Sign in with account', exact: true })).toBeVisible();
-  await page.getByRole('button', { name: 'API key', exact: true }).click();
+  await expect(page.getByRole('option', { name: 'Sign in with account', exact: true })).toBeVisible();
+  await page.getByRole('option', { name: 'API key', exact: true }).click();
   await page.getByPlaceholder('Paste your API key').fill('sk-test-manual-key');
   await page.getByTestId('settings-provider-save-button').click();
   await expect(page.getByText('Configure OpenRouter')).not.toBeVisible({ timeout: 15_000 });
@@ -54,7 +54,7 @@ test('chat model picker searches and groups models by provider', async ({ page, 
   await goToTab(page, 'Settings');
   await ensureAiSection(page);
   await page.getByTestId('settings-add-provider-button').click();
-  await page.getByRole('button', { name: 'OpenRouter', exact: true }).click();
+  await page.getByRole('radio', { name: 'OpenRouter', exact: true }).or(page.getByRole('button', { name: 'OpenRouter', exact: true })).click();
   await page.getByPlaceholder('Paste your API key').fill('sk-test-openrouter');
   await page.getByTestId('settings-provider-save-button').click();
   await expect(page.getByText('Configure OpenRouter')).not.toBeVisible({ timeout: 15_000 });
@@ -86,7 +86,7 @@ test('chat model picker searches and groups models by provider', async ({ page, 
   await expect(modelPicker.getByText('Recent', { exact: true })).not.toBeVisible();
   await expect(page.getByText('No matching models', { exact: true })).toBeVisible();
   await expect(page.getByTestId('chat-model-picker-search')).toHaveValue('not-a-model');
-  await page.getByLabel('Close model picker').click();
+  await page.getByTestId('chat-model-picker').getByRole('button', { name: 'Close', exact: true }).click();
 });
 
 test('deep links switch projects and open a specific session', async ({ page, request }) => {
@@ -167,7 +167,7 @@ test('settings explain root-vs-api mismatches and reconnect through a prefixed A
 
     await setActiveServerUrl(page, `http://127.0.0.1:${port}/api`);
     await reconnectActiveConnection(page);
-    await expect(page.getByRole('button', { name: /^Connection\. Connected/ })).toBeVisible({ timeout: 15_000 });
+    await expect(page.getByTestId('settings-section-overlay').getByText(/Connected to /).first()).toBeVisible({ timeout: 15_000 });
     await ensureConnectionSection(page);
     await expect(page.getByText(new RegExp(`Connected to http://127.0.0.1:${port}/api`))).toBeVisible();
   } finally {
@@ -249,7 +249,7 @@ test('appearance changes persist and settings remain usable at narrow widths', a
   await page.getByTestId('settings-category-appearance').click();
   const sheet = page.getByTestId('settings-section-overlay');
   await page.getByTestId('settings-theme-mode').click();
-  await page.getByRole('button', { name: 'Light', exact: true }).click();
+  await page.getByRole('option', { name: 'Light', exact: true }).click();
   await page.getByTestId('settings-accent-purple').click();
   await expect(page.getByTestId('settings-accent-purple')).toHaveAttribute('aria-checked', 'true');
   const slim = sheet.getByRole('switch', { name: 'Slim interface', exact: true });
@@ -271,7 +271,7 @@ test('search follows the interface language and opens the matching category', as
   await goToTab(page, 'Settings');
   await page.getByTestId('settings-category-language').click();
   await page.getByTestId('settings-language').click();
-  await page.getByRole('button', { name: 'Español', exact: true }).click();
+  await page.getByRole('option', { name: 'Español', exact: true }).click();
   await page.getByTestId('settings-section-overlay').getByRole('button', { name: 'Cerrar', exact: true }).click();
   await page.getByTestId('settings-search').fill('tema');
   await page.getByRole('button', { name: 'Modo del tema. Apariencia', exact: true }).click();

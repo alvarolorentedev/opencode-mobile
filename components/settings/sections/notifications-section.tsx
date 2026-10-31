@@ -1,11 +1,15 @@
-import { SettingButton as Button } from './setting-rows';
+import { cn } from '@/lib/utils';
+import { Text } from '@/components/ui/text';
+import { Button } from '@/components/ui/button';
+import { ListRow } from '@/components/ui/list-row';
+
 import { useTranslation } from 'react-i18next';
-import { Platform, StyleSheet, View } from 'react-native';
-import { List, Text } from 'react-native-paper';
+import { Platform, View } from 'react-native';
+
 
 import { SettingTarget } from '../settings-panel';
 import type { NotificationDebugStatus } from '@/lib/notifications';
-import type { Palette } from './setting-rows';
+import { Palette } from './setting-rows';
 
 type NotificationsSectionProps = {
   notificationStatus?: NotificationDebugStatus;
@@ -42,61 +46,37 @@ export function NotificationsSection({
   const notificationSummary = `${t(notificationsEnabled ? 'settings:notifications.summary.enabled' : 'settings:notifications.summary.off')}${backgroundStatusKey === 'checking' ? '' : ` • ${t('settings:notifications.summary.background', { status: backgroundStatusLabel.toLowerCase() })}`}`;
 
   return (
-    <View style={styles.section}>
-        <View style={[styles.connectionStatusCard, { backgroundColor: palette.background, borderColor: palette.border }]}>
-          <View style={styles.connectionStatusHeader}>
-            <View style={styles.connectionStatusRow}>
-              <View style={[styles.connectionStatusDot, { backgroundColor: notificationStatusTone }]} />
-              <Text variant="labelLarge" style={{ color: palette.text }}>{notificationStatusLabel}</Text>
+    <View className={cn(stylesClasses.section)}>
+        <View className={cn(stylesClasses.connectionStatusCard, "bg-background border-border")}>
+          <View className={cn(stylesClasses.connectionStatusHeader)}>
+            <View className={cn(stylesClasses.connectionStatusRow)}>
+              <View className={cn(stylesClasses.connectionStatusDot)} style={[{ backgroundColor: notificationStatusTone }]} />
+              <Text className={cn("text-foreground")} variant="description">{notificationStatusLabel}</Text>
             </View>
-            <Text variant="bodySmall" style={{ color: palette.muted }}>{notificationSummary}</Text>
+            <Text className={cn("text-muted-foreground")} variant="label">{notificationSummary}</Text>
           </View>
         </View>
-        <View style={styles.actionRow}>
-          <SettingTarget label={t('settings:notifications.enable')}><Button mode="contained" disabled={notificationsEnabled} onPress={onEnableNotifications}>
-            {t('settings:notifications.enable')}
-          </Button></SettingTarget>
-          <SettingTarget label={t('settings:notifications.settings')}><Button mode="outlined" onPress={onOpenNotificationSettings}>
-            {t('settings:notifications.settings')}
-          </Button></SettingTarget>
+        <View className={cn(stylesClasses.actionRow)}>
+          <SettingTarget label={t('settings:notifications.enable')}><Button disabled={notificationsEnabled} onPress={onEnableNotifications} variant="default"><Text>{t('settings:notifications.enable')}</Text></Button></SettingTarget>
+          <SettingTarget label={t('settings:notifications.settings')}><Button onPress={onOpenNotificationSettings} variant="outline"><Text>{t('settings:notifications.settings')}</Text></Button></SettingTarget>
         </View>
-        <List.Section style={styles.infoListSection}>
-          <SettingTarget label={t('settings:notifications.appSettings')}><List.Item
-            title={t('settings:notifications.appSettings')}
-            description={t('settings:notifications.appSettingsDescription')}
-            titleStyle={{ color: palette.text }}
-            descriptionStyle={{ color: palette.muted }}
-            right={() => <Button onPress={onOpenAppSettings}>{t('common:actions.open')}</Button>}
-          /></SettingTarget>
-          {Platform.OS === 'android' ? (
-            <SettingTarget label={t('settings:notifications.batteryOptimization')}><List.Item
-              title={t('settings:notifications.batteryOptimization')}
-              description={t('settings:notifications.batteryOptimizationDescription')}
-              titleStyle={{ color: palette.text }}
-              descriptionStyle={{ color: palette.muted }}
-              right={() => <Button disabled={!notificationsEnabled} onPress={onOpenBatterySettings}>{t('common:actions.open')}</Button>}
-            /></SettingTarget>
-          ) : null}
-          {Platform.OS === 'android' ? (
-            <SettingTarget label={t('settings:notifications.batterySaver')}><List.Item
-              title={t('settings:notifications.batterySaver')}
-              description={t('settings:notifications.batterySaverDescription')}
-              titleStyle={{ color: palette.text }}
-              descriptionStyle={{ color: palette.muted }}
-              right={() => <Button disabled={!notificationsEnabled} onPress={onOpenBatterySaverSettings}>{t('common:actions.open')}</Button>}
-            /></SettingTarget>
-          ) : null}
-        </List.Section>
+        <View className={cn(stylesClasses.infoListSection)}><SettingTarget label={t('settings:notifications.appSettings')}><ListRow title={t('settings:notifications.appSettings')} description={t('settings:notifications.appSettingsDescription')} titleStyle={{ color: palette.text }} descriptionStyle={{ color: palette.muted }} right={() => <Button onPress={onOpenAppSettings} variant="ghost"><Text>{t('common:actions.open')}</Text></Button>}></ListRow></SettingTarget>{Platform.OS === 'android' ? (
+            <SettingTarget label={t('settings:notifications.batteryOptimization')}><ListRow title={t('settings:notifications.batteryOptimization')} description={t('settings:notifications.batteryOptimizationDescription')} titleStyle={{ color: palette.text }} descriptionStyle={{ color: palette.muted }} right={() => <Button disabled={!notificationsEnabled} onPress={onOpenBatterySettings} variant="ghost"><Text>{t('common:actions.open')}</Text></Button>}></ListRow></SettingTarget>
+          ) : null}{Platform.OS === 'android' ? (
+            <SettingTarget label={t('settings:notifications.batterySaver')}><ListRow title={t('settings:notifications.batterySaver')} description={t('settings:notifications.batterySaverDescription')} titleStyle={{ color: palette.text }} descriptionStyle={{ color: palette.muted }} right={() => <Button disabled={!notificationsEnabled} onPress={onOpenBatterySaverSettings} variant="ghost"><Text>{t('common:actions.open')}</Text></Button>}></ListRow></SettingTarget>
+          ) : null}</View>
     </View>
   );
 }
 
-const styles = StyleSheet.create({
-  section: { gap: 14, paddingBottom: 8 },
-  connectionStatusCard: { borderRadius: 14, borderWidth: 1, paddingHorizontal: 14, paddingVertical: 12 },
-  connectionStatusHeader: { gap: 6 },
-  connectionStatusRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  connectionStatusDot: { width: 10, height: 10, borderRadius: 999 },
-  actionRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
-  infoListSection: { marginVertical: 0 },
-});
+
+
+const stylesClasses = {
+  "section": "gap-3.5 pb-2",
+  "connectionStatusCard": "rounded-[14px] border px-3.5 py-3",
+  "connectionStatusHeader": "gap-1.5",
+  "connectionStatusRow": "flex-row items-center gap-2.5",
+  "connectionStatusDot": "w-2.5 h-2.5 rounded-full",
+  "actionRow": "flex-row flex-wrap gap-2.5",
+  "infoListSection": "my-0"
+} as const;

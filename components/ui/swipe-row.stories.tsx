@@ -1,9 +1,9 @@
 import type { Meta, StoryObj } from '@storybook/react-vite';
-import { List } from 'react-native-paper';
+import { ListRow } from './list-row';
 import { SwipeRow } from './swipe-row';
 const meta = {
   title: 'UI/Swipe row', component: SwipeRow,
-  args: { title: 'demo.ts', children: <List.Item title="demo.ts" />, actions: [
+  args: { title: 'demo.ts', children: <ListRow title="demo.ts" />, actions: [
     { label: 'Copy path', icon: 'link-variant', onPress: () => {} },
     { label: 'Rename', icon: 'pencil-outline', onPress: () => {} },
     { label: 'More', icon: 'dots-horizontal', onPress: () => {} },

@@ -63,7 +63,7 @@ test('OpenCode classifier routes simple and complex prompts and explicit models 
   await page.getByRole('button', { name: 'Auto model routing', exact: true }).click();
 
   await page.getByTestId('settings-auto-model-classifier').click();
-  await page.getByRole('button', { name: 'OpenCode classifier', exact: true }).click();
+  await page.getByRole('option', { name: 'OpenCode classifier', exact: true }).click();
   await page.getByTestId('settings-auto-model-check').click();
   await expect(page.getByText('Classifier available.', { exact: true })).toBeVisible({ timeout: 15_000 });
   await page.getByRole('switch', { name: 'Enable auto-routing', exact: true }).click();

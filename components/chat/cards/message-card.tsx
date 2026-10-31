@@ -1,9 +1,14 @@
+import { cn } from '@/lib/utils';
+import { Text } from '@/components/ui/text';
+import { Button } from '@/components/ui/button';
+import { Icon } from '@/components/ui/icon';
+import { Badge } from '@/components/ui/badge';
 import { withAlpha } from '@/lib/color';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { memo, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Keyboard, StyleSheet, View } from 'react-native';
-import { Chip, IconButton, Surface, Text } from 'react-native-paper';
+
 
 import { AttachmentStrip } from '@/components/chat/attachment-strip';
 import { MarkdownText } from '@/components/chat/chat-markdown';
@@ -59,59 +64,31 @@ function TranscriptMessageImpl({
   const slimSpacing = slim ? (flat ? { paddingVertical: 2, gap: 4 } : { borderRadius: 14, gap: 6, paddingHorizontal: 10, paddingVertical: 8 }) : null;
 
   return (
-    <View style={[styles.messageRow, flat ? styles.messageRowFlat : isUser && styles.messageRowUser]}>
-      <View onTouchEnd={Keyboard.dismiss} style={styles.messageTouchable}>
-        <Surface
-          testID={`transcript-message-${entry.id}`}
-          style={[
-            styles.messageBubble,
-            flat ? styles.messageFlat : isUser ? styles.messageBubbleUser : styles.messageBubbleAssistant,
-            flat
+    <View className={cn(stylesClasses.messageRow, (flat) ? stylesClasses.messageRowFlat : isUser && stylesClasses.messageRowUser)}>
+      <View onTouchEnd={Keyboard.dismiss} className={cn(stylesClasses.messageTouchable)}>
+        <View testID={`transcript-message-${entry.id}`} className={cn(stylesClasses.messageBubble)} style={[flat ? styles.messageFlat : isUser ? styles.messageBubbleUser : styles.messageBubbleAssistant, flat
               ? null
               : {
                   backgroundColor: isUser ? palette.bubbleUser : palette.bubbleAssistant,
                   borderColor: copied ? palette.tint : isUser ? palette.bubbleUser : palette.border,
-                },
-            slimSpacing,
-            copied && !flat ? styles.messageBubbleCopied : null,
-          ]}
-          elevation={flat ? 0 : 1}>
-          <View style={[styles.messageMeta, slim && { gap: 8 }]}>
-            <Text variant="labelMedium" style={{ color: metaColor }}>{isUser ? t('chat:cards.you') : t('chat:cards.opencode')}</Text>
-            <View style={styles.messageMetaRight}>
-              <IconButton
-                accessibilityLabel={t('common:actions.copy')}
-                icon="content-copy"
-                size={slim ? 14 : 16}
-                style={styles.messageActionButton}
-                iconColor={palette.muted}
-                onPress={() => onCopy(entry)}
-              />
+                }, slimSpacing, copied && !flat ? styles.messageBubbleCopied : null]}><View className={cn(stylesClasses.messageMeta, slim && "gap-2")}>
+            <Text style={{ color: metaColor }} variant="label">{isUser ? t('chat:cards.you') : t('chat:cards.opencode')}</Text>
+            <View className={cn(stylesClasses.messageMetaRight)}>
+              <Button accessibilityLabel={t('common:actions.copy')} onPress={() => onCopy(entry)} variant="ghost" size="icon" className={cn(stylesClasses.messageActionButton)} ><Icon name={"content-copy"} size={slim ? 14 : 16} color={palette.muted} /></Button>
               {copied ? (
-                <View style={[styles.copiedPill, { backgroundColor: flat ? withAlpha(palette.tint, 0x18 / 255) : isUser ? withAlpha(palette.onBubbleUser, 0x20 / 255) : withAlpha(palette.tint, 0x18 / 255) }]}> 
+                <View className={cn(stylesClasses.copiedPill)} style={[{ backgroundColor: flat ? withAlpha(palette.tint, 0x18 / 255) : isUser ? withAlpha(palette.onBubbleUser, 0x20 / 255) : withAlpha(palette.tint, 0x18 / 255) }]}>
                   <MaterialCommunityIcons name="check" size={12} color={accentColor} />
-                  <Text variant="labelSmall" style={{ color: accentColor }}>{t('chat:cards.copied')}</Text>
+                  <Text style={{ color: accentColor }} variant="label">{t('chat:cards.copied')}</Text>
                 </View>
               ) : null}
               {canSpeak ? (
-                <IconButton
-                  accessibilityLabel={t(speaking ? 'chat:cards.stopReadAloud' : 'chat:cards.readAloud')}
-                  icon={speaking ? 'stop' : 'volume-high'}
-                  size={slim ? 14 : 16}
-                  style={styles.messageActionButton}
-                  iconColor={palette.muted}
-                  onPress={() => onToggleSpeak(entry)}
-                />
+                <Button accessibilityLabel={t(speaking ? 'chat:cards.stopReadAloud' : 'chat:cards.readAloud')} onPress={() => onToggleSpeak(entry)} variant="ghost" size="icon" className={cn(stylesClasses.messageActionButton)} ><Icon name={speaking ? 'stop' : 'volume-high'} size={slim ? 14 : 16} color={palette.muted} /></Button>
               ) : null}
-              {onFork ? <IconButton accessibilityLabel={t('chat:cards.fork')} icon="source-fork" size={slim ? 14 : 16} style={styles.messageActionButton} iconColor={palette.muted} onPress={() => onFork(entry)} /> : null}
-              {onRevert ? <IconButton accessibilityLabel={t('chat:cards.revert')} icon="undo-variant" size={slim ? 14 : 16} style={styles.messageActionButton} iconColor={palette.muted} onPress={() => onRevert(entry)} /> : null}
-              <Text variant="labelSmall" style={{ color: metaColor, opacity: isUser && !flat ? 0.82 : 1 }}>
-                {formatTimestamp(entry.createdAt)}
-              </Text>
+              {onFork ? <Button accessibilityLabel={t('chat:cards.fork')} onPress={() => onFork(entry)} variant="ghost" size="icon" className={cn(stylesClasses.messageActionButton)} ><Icon name={"source-fork"} size={slim ? 14 : 16} color={palette.muted} /></Button> : null}
+              {onRevert ? <Button accessibilityLabel={t('chat:cards.revert')} onPress={() => onRevert(entry)} variant="ghost" size="icon" className={cn(stylesClasses.messageActionButton)} ><Icon name={"undo-variant"} size={slim ? 14 : 16} color={palette.muted} /></Button> : null}
+              <Text style={{ color: metaColor, opacity: isUser && !flat ? 0.82 : 1 }} variant="label">{formatTimestamp(entry.createdAt)}</Text>
             </View>
-          </View>
-          {attachments.length > 0 ? <AttachmentStrip attachments={attachments} /> : null}
-          {entry.text ? (
+          </View>{attachments.length > 0 ? <AttachmentStrip attachments={attachments} /> : null}{entry.text ? (
             <MarkdownText
               codePalette={codePalette}
               text={entry.text}
@@ -119,18 +96,13 @@ function TranscriptMessageImpl({
               fontSize={fontSize}
               mutedColor={flat ? palette.muted : isUser ? palette.onBubbleUser : palette.muted}
             />
-          ) : null}
-          {entry.error ? <Text variant="bodyMedium" style={{ color: palette.danger }}>{entry.error}</Text> : null}
-          {!isUser && detailSummary.length > 0 ? (
-            <View style={styles.summaryRow}>
+          ) : null}{entry.error ? <Text className={cn("text-destructive")} variant="description">{entry.error}</Text> : null}{!isUser && detailSummary.length > 0 ? (
+            <View className={cn(stylesClasses.summaryRow)}>
               {detailSummary.map((item) => (
-                <Chip key={item} accessibilityLabel={item} compact mode="flat" style={[styles.summaryChip, { backgroundColor: palette.background }]}>
-                  {item}
-                </Chip>
+                <Badge key={item} accessibilityLabel={item} className={cn(stylesClasses.summaryChip, "bg-background")} variant="secondary"><Text>{item}</Text></Badge>
               ))}
             </View>
-          ) : null}
-        </Surface>
+          ) : null}</View>
       </View>
     </View>
   );
@@ -157,20 +129,6 @@ function areTranscriptMessagePropsEqual(prev: TranscriptMessageProps, next: Tran
 export const TranscriptMessage = memo(TranscriptMessageImpl, areTranscriptMessagePropsEqual);
 
 const styles = StyleSheet.create({
-  messageRow: { alignItems: 'flex-start' },
-  messageRowUser: { alignItems: 'flex-end' },
-  messageRowFlat: { alignItems: 'stretch' },
-  messageTouchable: { alignSelf: 'stretch', borderRadius: 24 },
-  messageBubble: {
-    borderRadius: 24,
-    borderWidth: 1,
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-    gap: 10,
-    alignSelf: 'stretch',
-    minWidth: 0,
-    overflow: 'hidden',
-  },
   messageFlat: {
     borderRadius: 0,
     borderWidth: 0,
@@ -183,11 +141,19 @@ const styles = StyleSheet.create({
   },
   messageBubbleUser: { borderBottomRightRadius: 10, marginLeft: '8%', marginRight: 8 },
   messageBubbleAssistant: { borderBottomLeftRadius: 10, marginRight: '8%', marginLeft: 8 },
-  messageBubbleCopied: { shadowOpacity: 0.12, shadowRadius: 12, shadowOffset: { width: 0, height: 6 } },
-  messageMeta: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 12 },
-  messageMetaRight: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  messageActionButton: { margin: 0 },
-  copiedPill: { flexDirection: 'row', alignItems: 'center', gap: 4, borderRadius: 999, paddingHorizontal: 8, paddingVertical: 4 },
-  summaryRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  summaryChip: { alignSelf: 'flex-start' },
+  messageBubbleCopied: { shadowOpacity: 0.12, shadowRadius: 12, shadowOffset: { width: 0, height: 6 } }
 });
+
+const stylesClasses = {
+  "messageRow": "items-start",
+  "messageRowFlat": "items-stretch",
+  "messageRowUser": "items-end",
+  "messageTouchable": "self-stretch rounded-[24px]",
+  "messageBubble": "rounded-[24px] border px-4 py-3.5 gap-2.5 self-stretch min-w-0 overflow-hidden",
+  "messageMeta": "flex-row justify-between items-center gap-3",
+  "messageMetaRight": "flex-row items-center gap-1.5",
+  "messageActionButton": "m-0",
+  "copiedPill": "flex-row items-center gap-1 rounded-full px-2 py-1",
+  "summaryRow": "flex-row flex-wrap gap-2",
+  "summaryChip": "self-start"
+} as const;

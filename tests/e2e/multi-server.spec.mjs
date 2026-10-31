@@ -39,7 +39,7 @@ async function openChat(page, name) {
 }
 async function choose(page, trigger, name) {
   await page.getByTestId(trigger).click();
-  await page.getByRole('button', { name, exact: true }).last().click();
+  await page.getByRole('radio', { name, exact: true }).or(page.getByRole('option', { name, exact: true })).last().click();
 }
 
 test('V2 mixes colliding chats, filters without navigation, and retains each draft @smoke', async ({ page }) => {

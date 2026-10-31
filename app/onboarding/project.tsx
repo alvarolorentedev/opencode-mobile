@@ -1,19 +1,25 @@
+import { cn } from '@/lib/utils';
+import { Spinner } from '@/components/ui/spinner';
+import { Text } from '@/components/ui/text';
+import { Button } from '@/components/ui/button';
+import { TextField } from '@/components/ui/text-field';
+import { Icon } from '@/components/ui/icon';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { StyleSheet, View } from 'react-native';
-import { ActivityIndicator, Button, Text } from 'react-native-paper';
+import { View } from 'react-native';
+
 
 import { useOnboardingNavigation } from '@/components/onboarding/use-onboarding-navigation';
 import { OnboardingStep } from '@/components/onboarding/onboarding-step';
 import { ProjectOptions } from '@/components/onboarding/project-options';
-import { TextInput } from '@/components/ui/text-input';
+
 import { useProjects } from '@/providers/opencode-contexts';
-import { usePalette } from '@/hooks/use-palette';
+
 
 export default function OnboardingProjectScreen() {
   const { t } = useTranslation();
   const navigation = useOnboardingNavigation('project');
-  const palette = usePalette();
+
   const {
     projects,
     activeProjectPath,
@@ -61,88 +67,49 @@ export default function OnboardingProjectScreen() {
       footerSingleLine
       footer={
         <>
-          <Button
-            mode="text"
-            style={{ marginRight: 'auto' }}
-            testID="onboarding-project-skip"
-            disabled={isRefreshingProjectCatalog || isAdding}
-            onPress={navigation.next}>
-            {t('onboarding:project.skip')}
-          </Button>
+          <Button testID="onboarding-project-skip" disabled={isRefreshingProjectCatalog || isAdding} onPress={navigation.next} variant="ghost" className={cn("mr-auto")} ><Text>{t('onboarding:project.skip')}</Text></Button>
           {activeProject ? (
-            <Button
-              mode="contained"
-              testID="onboarding-project-continue"
-              onPress={() => choose(activeProject.path)}>
-              {t('onboarding:project.continue')}
-            </Button>
+            <Button testID="onboarding-project-continue" onPress={() => choose(activeProject.path)} variant="default"><Text>{t('onboarding:project.continue')}</Text></Button>
           ) : null}
         </>
       }>
       {isRefreshingProjectCatalog && projects.length === 0 ? (
-        <View style={styles.loading}>
-          <ActivityIndicator />
-          <Text style={{ color: palette.muted }}>{t('onboarding:project.loading')}</Text>
+        <View className={cn(stylesClasses.loading)}>
+          <Spinner />
+          <Text className={cn("text-muted-foreground")}>{t('onboarding:project.loading')}</Text>
         </View>
       ) : null}
 
       {!isRefreshingProjectCatalog && projects.length === 0 ? (
         <>
-          <Text style={{ color: palette.muted }}>{t('onboarding:project.empty')}</Text>
-          <Button
-            mode="outlined"
-            testID="onboarding-project-retry"
-            disabled={isAdding}
-            onPress={() => void refreshProjectCatalog()}>
-            {t('common:actions.retry')}
-          </Button>
+          <Text className={cn("text-muted-foreground")}>{t('onboarding:project.empty')}</Text>
+          <Button testID="onboarding-project-retry" disabled={isAdding} onPress={() => void refreshProjectCatalog()} variant="outline"><Text>{t('common:actions.retry')}</Text></Button>
         </>
       ) : null}
 
       <ProjectOptions activePath={activeProjectPath} onSelect={choose} projects={projects} />
 
       {adding ? (
-        <View style={[styles.addForm, { borderColor: palette.border }]}>
-          <Text style={{ color: palette.muted }}>{t('project:picker.enterPath')}</Text>
-          <TextInput
-            mode="outlined"
-            testID="onboarding-project-directory"
-            label={t('project:picker.serverDirectory')}
-            value={directory}
-            onChangeText={setDirectory}
-            autoCapitalize="none"
-            autoCorrect={false}
-          />
-          {addError ? <Text style={{ color: palette.danger }}>{addError}</Text> : null}
-          <View style={styles.addActions}>
-            <Button disabled={isAdding} onPress={() => { setAdding(false); setAddError(undefined); }}>
-              {t('common:actions.cancel')}
-            </Button>
-            <Button
-              mode="contained"
-              testID="onboarding-project-add-submit"
-              loading={isAdding}
-              disabled={isAdding || !directory.trim()}
-              onPress={() => void submitAdd()}>
-              {t('project:picker.add')}
-            </Button>
+        <View className={cn(stylesClasses.addForm, "border-border")}>
+          <Text className={cn("text-muted-foreground")}>{t('project:picker.enterPath')}</Text>
+          <TextField testID="onboarding-project-directory" label={t('project:picker.serverDirectory')} value={directory} onChangeText={setDirectory} autoCapitalize="none" autoCorrect={false}></TextField>
+          {addError ? <Text className={cn("text-destructive")}>{addError}</Text> : null}
+          <View className={cn(stylesClasses.addActions)}>
+            <Button disabled={isAdding} onPress={() => { setAdding(false); setAddError(undefined); }} variant="ghost"><Text>{t('common:actions.cancel')}</Text></Button>
+            <Button testID="onboarding-project-add-submit" disabled={isAdding || !directory.trim()} onPress={() => void submitAdd()} variant="default">{isAdding ? <Spinner size="small" /> : null}<Text>{t('project:picker.add')}</Text></Button>
           </View>
         </View>
       ) : (
-        <Button
-          mode="outlined"
-          icon="plus"
-          testID="onboarding-project-add"
-          onPress={() => setAdding(true)}>
-          {t('project:picker.add')}
-        </Button>
+        <Button testID="onboarding-project-add" onPress={() => setAdding(true)} variant="outline"><Icon name={"plus"} size={20} /><Text>{t('project:picker.add')}</Text></Button>
       )}
     </OnboardingStep>
   );
 }
 
-const styles = StyleSheet.create({
-  loading: { alignItems: 'center', gap: 10, paddingVertical: 24 },
-  addForm: { borderWidth: 1, borderRadius: 16, gap: 10, padding: 14 },
-  addActions: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, justifyContent: 'flex-end' },
-});
+
+
+const stylesClasses = {
+  "loading": "items-center gap-2.5 py-6",
+  "addForm": "border rounded-[16px] gap-2.5 p-3.5",
+  "addActions": "flex-row flex-wrap gap-2 justify-end"
+} as const;

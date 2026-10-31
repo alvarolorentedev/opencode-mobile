@@ -1,6 +1,8 @@
+import { cn } from '@/lib/utils';
+import { FieldDescription } from '@/components/ui/text-field';
 import { useTranslation } from 'react-i18next';
-import { StyleSheet, View } from 'react-native';
-import { HelperText } from 'react-native-paper';
+import { View } from 'react-native';
+
 
 import { PromptDeliveryField, TimelineDetailField } from './chat-preference-fields';
 import { SettingSlider as NumericSlider, SettingSwitchRow, type Palette } from './setting-rows';
@@ -23,7 +25,7 @@ export function EditorSection({
   const fontSize = normalizeTranscriptFontSize(chatPreferences.transcriptFontSize);
 
   return (
-    <View testID="settings-editor-section" style={styles.section}>
+    <View testID="settings-editor-section" className={cn(stylesClasses.section)}>
       <TimelineDetailField chatPreferences={chatPreferences} palette={palette} updateChatPreferences={updateChatPreferences} />
       <NumericSlider
         label={t('settings:appearance.chatTextSize')}
@@ -35,7 +37,7 @@ export function EditorSection({
         onValueChange={(transcriptFontSize) => updateChatPreferences({ transcriptFontSize })}
         palette={palette}
       />
-      <HelperText type="info">{t('settings:appearance.chatTextSizeDescription')}</HelperText>
+      <FieldDescription  invalid={false}>{t('settings:appearance.chatTextSizeDescription')}</FieldDescription>
       {promptDeliveryAvailable ? <PromptDeliveryField chatPreferences={chatPreferences} palette={palette} updateChatPreferences={updateChatPreferences} /> : null}
       <SettingSwitchRow
         title={t('settings:appearance.flatThread.title')}
@@ -48,6 +50,8 @@ export function EditorSection({
   );
 }
 
-const styles = StyleSheet.create({
-  section: { gap: 14, paddingBottom: 8 },
-});
+
+
+const stylesClasses = {
+  "section": "gap-3.5 pb-2"
+} as const;

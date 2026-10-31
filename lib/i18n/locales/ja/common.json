@@ -79,5 +79,9 @@
     },
     "appSettingsSummary": "エディター、一般設定、更新",
     "serverToolsSummary": "MCPサーバーと診断"
+  },
+  "validation": {
+    "required": "この項目は必須です。",
+    "invalid": "有効な値を入力してください。"
   }
 }

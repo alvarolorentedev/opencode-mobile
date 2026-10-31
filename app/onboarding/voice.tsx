@@ -1,6 +1,9 @@
+import { cn } from '@/lib/utils';
+import { Button } from '@/components/ui/button';
+import { Text } from '@/components/ui/text';
 import { useIsFocused } from 'expo-router';
 import { useTranslation } from 'react-i18next';
-import { Button } from 'react-native-paper';
+
 
 import { OnboardingStep } from '@/components/onboarding/onboarding-step';
 import { useOnboardingNavigation } from '@/components/onboarding/use-onboarding-navigation';
@@ -13,8 +16,8 @@ export default function OnboardingVoiceScreen() {
   return (
     <OnboardingStep step="voice" title={t('onboarding:voice.title')} subtitle={t('onboarding:voice.subtitle')} testID="onboarding-voice" footer={
       <>
-        <Button style={{ marginRight: 'auto' }} testID="onboarding-voice-skip" onPress={navigation.next}>{t('onboarding:permissions.skip')}</Button>
-        <Button mode="contained" testID="onboarding-voice-continue" onPress={navigation.next}>{t('onboarding:permissions.continue')}</Button>
+        <Button testID="onboarding-voice-skip" onPress={navigation.next} variant={"ghost"} className={cn("mr-auto")} style={[undefined, undefined]}><Text>{t('onboarding:permissions.skip')}</Text></Button>
+        <Button testID="onboarding-voice-continue" onPress={navigation.next} variant={"default"}><Text>{t('onboarding:permissions.continue')}</Text></Button>
       </>
     }>
       {/* Stack routes stay mounted; release playback and enrollment on blur. */}

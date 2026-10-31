@@ -1,3 +1,4 @@
+import { uiImports, textContent } from '../helpers/ui.mjs';
 import { describe, expect, it, vi } from 'vitest';
 
 import { hookRuntime, loadTs } from '../helpers/runtime.mjs';
@@ -16,6 +17,7 @@ async function loadWave(reducedMotion = false) {
   const withRepeat = vi.fn((value: number) => value);
   const withTiming = vi.fn((value: number) => value);
   const wave = await loadTs('components/chat/conversation-wave.tsx', {
+    ...uiImports,
     react: { ...runtime.react, useId: () => 'wave-test' },
     'react/jsx-runtime': jsx,
     'react-native': { ...native, AccessibilityInfo: { addEventListener: (_event: string, handler: typeof motionChanged) => { motionChanged = handler; return { remove }; } } },
@@ -117,9 +119,10 @@ function descendants(root: any): Element[] {
 async function renderOverlay(patch: Record<string, unknown> = {}, dimensions = { height: 844, fontScale: 1 }) {
   const palette = { background: '#0F1614', text: '#fff', muted: '#9AADA8', warning: '#ff0', tint: '#7AE7C0', accent: '#58D4AB' };
   const { ConversationOverlay } = await loadTs('components/chat/chat-overlay.tsx', {
+    ...uiImports,
     'react/jsx-runtime': jsx,
     'react-native': { ...native, ScrollView: 'ScrollView', useWindowDimensions: () => dimensions },
-    'react-native-paper': { Button: 'Button', Text: 'Text' },
+
     'react-native-safe-area-context': { useSafeAreaInsets: () => ({ top: 44, bottom: 34, left: 0, right: 0 }) },
     'react-i18next': { useTranslation: () => ({ t: (key: string, args?: { phrase: string }) => args ? `${key}:${args.phrase}` : key }) },
     '@/components/chat/conversation-wave': { ConversationWave: 'ConversationWave' },
@@ -142,7 +145,7 @@ describe('conversation overlay', () => {
     expect(nodes.find((node) => node.type === 'ConversationWave')?.props).toMatchObject({ phase: 'listening', level: 7 });
     expect(nodes.some((node) => node.props.children === 'Make the header simpler')).toBe(true);
     const end = nodes.find((node) => node.props.testID === 'conversation-end')!;
-    expect(end.props.children).toBe('chat:overlay.endConversation');
+    expect(textContent(end)).toBe('chat:overlay.endConversation');
     end.props.onPress();
     expect(onStop).toHaveBeenCalledOnce();
   });

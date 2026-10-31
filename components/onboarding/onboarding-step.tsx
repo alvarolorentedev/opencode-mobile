@@ -1,8 +1,13 @@
+import { cn } from '@/lib/utils';
+import { Button } from '@/components/ui/button';
+import { Icon } from '@/components/ui/icon';
+import { HeaderTitle, ScreenHeader } from '@/components/ui/screen-header';
+import { Text } from '@/components/ui/text';
 import { useCallback, type ReactNode } from 'react';
 import { useFocusEffect, useIsFocused, useRouter } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { Platform, ScrollView, StyleSheet, View } from 'react-native';
-import { Appbar, Text } from 'react-native-paper';
+
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { useDismissOnBack } from '@/hooks/use-dismiss-on-back';
@@ -53,35 +58,26 @@ export function OnboardingStep({
   const progress = Math.max(0, Math.min(1, navigation.step / navigation.totalSteps));
 
   return (
-    <View style={[styles.screen, { backgroundColor: palette.background }]} testID={testID}>
-      <Appbar.Header
-        statusBarHeight={0}
-        style={[styles.header, { backgroundColor: palette.surface, paddingTop: insets.top, height: 64 + insets.top }]}
-        elevated>
-        {onBack ? <Appbar.BackAction accessibilityLabel={t('common:actions.back')} onPress={onBack} /> : null}
-        <Appbar.Content
-          title={`${onboardingActive ? `${t('onboarding:reviewSetup')} · ` : ''}${t('onboarding:stepIndicator', { step: navigation.step, totalSteps: navigation.totalSteps })}`}
-          titleStyle={{ color: palette.muted, fontSize: 14 }}
-        />
-      </Appbar.Header>
+    <View className={cn(stylesClasses.screen, "bg-background")} testID={testID}>
+      <ScreenHeader style={[styles.header, { backgroundColor: palette.surface, paddingTop: insets.top, height: 64 + insets.top }]} safeArea={false}>{onBack ? <Button accessibilityLabel={t('common:actions.back')} onPress={onBack} variant="ghost" size="icon"><Icon name={"arrow-left"} size={24} /></Button> : null}<HeaderTitle title={`${onboardingActive ? `${t('onboarding:reviewSetup')} · ` : ''}${t('onboarding:stepIndicator', { step: navigation.step, totalSteps: navigation.totalSteps })}`} textStyle={{ color: palette.muted, fontSize: 14 }}></HeaderTitle></ScreenHeader>
 
-      <View style={[styles.progressTrack, { backgroundColor: palette.border }]}>
-        <View style={[styles.progressValue, { backgroundColor: palette.tint, width: `${progress * 100}%` }]} />
+      <View className={cn(stylesClasses.progressTrack, "bg-border")}>
+        <View className={cn(stylesClasses.progressValue)} style={[{ backgroundColor: palette.tint, width: `${progress * 100}%` }]} />
       </View>
 
       <ScrollView
         keyboardShouldPersistTaps="handled"
         scrollEnabled={scrollEnabled}
-        style={styles.body}
+        className={cn(stylesClasses.body)}
         contentContainerStyle={styles.content}>
-        <View style={styles.heading}>
-          <Text variant="headlineSmall" style={[styles.title, { color: palette.text }]}>{title}</Text>
-          {subtitle ? <Text variant="bodyMedium" style={{ color: palette.muted }}>{subtitle}</Text> : null}
+        <View className={cn(stylesClasses.heading)}>
+          <Text className={cn("text-foreground")} style={[styles.title]} variant="display">{title}</Text>
+          {subtitle ? <Text className={cn("text-muted-foreground")} variant="description">{subtitle}</Text> : null}
         </View>
         {children}
       </ScrollView>
 
-      <View style={[styles.footer, footerSingleLine && styles.footerSingleLine, { backgroundColor: palette.surface, borderTopColor: palette.border, paddingBottom: Math.max(insets.bottom, 12) }]}>
+      <View className={cn(stylesClasses.footer, footerSingleLine && stylesClasses.footerSingleLine)} style={[{ backgroundColor: palette.surface, borderTopColor: palette.border, paddingBottom: Math.max(insets.bottom, 12) }]}>
         {footer}
       </View>
     </View>
@@ -89,14 +85,17 @@ export function OnboardingStep({
 }
 
 const styles = StyleSheet.create({
-  screen: { flex: 1 },
   header: { elevation: 0 },
-  progressTrack: { height: 3, width: '100%' },
-  progressValue: { height: 3 },
-  body: { flex: 1, width: '100%', maxWidth: 800, alignSelf: 'center' },
   content: { gap: 14, paddingHorizontal: 20, paddingTop: 20, paddingBottom: 24 },
-  heading: { gap: 8 },
-  title: { fontFamily: Fonts.display, fontWeight: '700' },
-  footer: { borderTopWidth: 1, flexDirection: 'row', flexWrap: 'wrap', gap: 10, justifyContent: 'flex-end', paddingHorizontal: 20, paddingTop: 12 },
-  footerSingleLine: { flexWrap: 'nowrap' },
+  title: { fontFamily: Fonts.display, fontWeight: '700' }
 });
+
+const stylesClasses = {
+  "screen": "flex-1",
+  "progressTrack": "h-0.75 w-full",
+  "progressValue": "h-0.75",
+  "body": "flex-1 w-full max-w-contentWidth self-center",
+  "heading": "gap-2",
+  "footer": "border-t flex-row flex-wrap gap-2.5 justify-end px-5 pt-3",
+  "footerSingleLine": "flex-nowrap"
+} as const;

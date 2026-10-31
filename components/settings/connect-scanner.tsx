@@ -1,15 +1,20 @@
-import { SettingButton as Button } from './sections/setting-rows';
+import { cn } from '@/lib/utils';
+import { FieldDescription } from '@/components/ui/text-field';
+import { Button } from '@/components/ui/button';
+import { Text } from '@/components/ui/text';
+import { Spinner } from '@/components/ui/spinner';
+
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { AppState, Platform, StyleSheet, View } from 'react-native';
-import { ActivityIndicator, HelperText, Text } from 'react-native-paper';
-import { usePalette } from '@/hooks/use-palette';
+
+
 
 
 export function ConnectScanner({ onScan, enabled, hint }: { onScan: (link: string) => void; enabled: boolean; hint?: string }) {
   const { t } = useTranslation();
-  const palette = usePalette();
+
   const [permission] = useCameraPermissions();
   const [cameraError, setCameraError] = useState(false);
   const [ready, setReady] = useState(false);
@@ -33,9 +38,9 @@ export function ConnectScanner({ onScan, enabled, hint }: { onScan: (link: strin
   // Permission is owned by ConnectCameraGate; this surface only previews once
   // it is already granted.
   if (!permission?.granted) return null;
-  if (cameraError) return <View style={styles.screen}>
-    <HelperText testID="connect-camera-error" type="error">{t('settings:connect.cameraUnavailable')}</HelperText>
-    <Button onPress={() => { setReady(false); setCameraError(false); }}>{t('common:actions.retry')}</Button>
+  if (cameraError) return <View className={cn(stylesClasses.screen)}>
+    <FieldDescription testID="connect-camera-error" invalid={true}>{t('settings:connect.cameraUnavailable')}</FieldDescription>
+    <Button onPress={() => { setReady(false); setCameraError(false); }} variant="ghost"><Text>{t('common:actions.retry')}</Text></Button>
   </View>;
   if (!active) return null;
   return (
@@ -50,24 +55,27 @@ export function ConnectScanner({ onScan, enabled, hint }: { onScan: (link: strin
       }} onMountError={() => setCameraError(true)} onBarcodeScanned={({ data }) => { if (!enabled || scanned.current) return; scanned.current = true; onScan(data); }} />
       <View pointerEvents="none" style={StyleSheet.absoluteFill}>
         <View style={styles.scrim} />
-        <View style={styles.middle}>
+        <View className={cn(stylesClasses.middle)}>
           <View style={styles.scrim} />
-          <View style={[styles.frame, { borderColor: palette.tint }]} />
+          <View className={cn(stylesClasses.frame, "border-primary")} />
           <View style={styles.scrim} />
         </View>
         <View style={styles.scrim} />
         <Text style={styles.hint}>{hint ?? t('settings:connect.scanHint')}</Text>
       </View>
-      {!ready ? <View style={styles.loading} pointerEvents="none"><ActivityIndicator accessibilityLabel={t('settings:connect.cameraLoading')} /></View> : null}
+      {!ready ? <View className={cn(stylesClasses.loading)} pointerEvents="none"><Spinner accessibilityLabel={t('settings:connect.cameraLoading')} /></View> : null}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  screen: { flex: 1, justifyContent: 'center', padding: 24, gap: 12 },
   scrim: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)' },
-  middle: { flexDirection: 'row', height: 260 },
-  frame: { width: 260, height: 260, borderWidth: 2, borderRadius: 24 },
-  hint: { position: 'absolute', left: 24, right: 24, bottom: 48, textAlign: 'center', color: '#FFFFFF' },
-  loading: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, alignItems: 'center', justifyContent: 'center' },
+  hint: { position: 'absolute', left: 24, right: 24, bottom: 48, textAlign: 'center', color: '#FFFFFF' }
 });
+
+const stylesClasses = {
+  "screen": "flex-1 justify-center p-6 gap-3",
+  "middle": "flex-row h-65",
+  "frame": "w-65 h-65 border-[2px] rounded-[24px]",
+  "loading": "absolute top-0 left-0 right-0 bottom-0 items-center justify-center"
+} as const;

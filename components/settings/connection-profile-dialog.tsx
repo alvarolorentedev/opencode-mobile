@@ -1,15 +1,27 @@
-import { SettingButton as Button, SettingTextInput as TextInput } from './sections/setting-rows';
+import { cn } from '@/lib/utils';
+import { useWatch, useForm, useController, useFieldArray } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { connectionSchema, type ConnectionDraft } from './forms/connection-schema';
+import { SettingField } from '@/components/settings/sections/setting-rows';
+import { ModalSurface } from '@/components/ui/portal';
+import { Button } from '@/components/ui/button';
+import { Icon } from '@/components/ui/icon';
+import { HeaderTitle, ScreenHeader } from '@/components/ui/screen-header';
+import { Text } from '@/components/ui/text';
+import { FieldDescription } from '@/components/ui/text-field';
+import { Spinner } from '@/components/ui/spinner';
+
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { KeyboardAvoidingView, Modal, ScrollView, StyleSheet, View } from 'react-native';
-import { Appbar, HelperText, IconButton, Text, TextInput as PaperInput } from 'react-native-paper';
+import { KeyboardAvoidingView, ScrollView, StyleSheet, View } from 'react-native';
+
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { useUpdateBlocker } from '@/hooks/use-update-blocker';
 import { usePalette } from '@/hooks/use-palette';
 
-import { MAX_CONNECTION_HEADERS, parseConnectionHeaders, type ConnectionHeaderError } from '@/lib/connection-headers';
-import { isValidServerUrl, type ConnectionProbeResult } from '@/lib/opencode/client';
+import { MAX_CONNECTION_HEADERS, parseConnectionHeaders } from '@/lib/connection-headers';
+import { type ConnectionProbeResult } from '@/lib/opencode/client';
 import { getServerHostname } from '@/lib/opencode/client/url';
 import { useConnection } from '@/providers/opencode-contexts';
 
@@ -21,19 +33,7 @@ export type ConnectionProfileFormValues = {
   headers: Record<string, string>;
 };
 
-type HeaderRow = { id: number; name: string; value: string };
 
-const HEADER_ERROR_KEYS: Record<ConnectionHeaderError, string> = {
-  name: 'settings:connection.errors.headerName',
-  value: 'settings:connection.errors.headerValue',
-  duplicate: 'settings:connection.errors.headerDuplicate',
-  reserved: 'settings:connection.errors.headerReserved',
-  limit: 'settings:connection.errors.headerLimit',
-};
-
-function initialRows(headers: Record<string, string> | undefined): HeaderRow[] {
-  return Object.entries(headers ?? {}).map(([name, value], id) => ({ id, name, value }));
-}
 
 // The form owns presentation; probing and profile persistence stay in the
 // provider. Local QR setup lives in its own flow (`connection-scan-flow.tsx`)
@@ -52,11 +52,16 @@ export function ConnectionProfileDialog({ title, submitLabel, showName = true, i
   const { t } = useTranslation();
   const { connectionProfiles } = useConnection();
   const palette = usePalette();
-  const [name, setName] = useState(initial?.name ?? '');
-  const [serverUrl, setServerUrl] = useState(initial?.serverUrl ?? '');
-  const [username, setUsername] = useState(initial?.username ?? '');
-  const [password, setPassword] = useState(initial?.password ?? '');
-  const [headers, setHeaders] = useState<HeaderRow[]>(() => initialRows(initial?.headers));
+  const form = useForm<ConnectionDraft>({ resolver: zodResolver(connectionSchema), shouldUnregister: false,
+    defaultValues: { name: initial?.name ?? '', serverUrl: initial?.serverUrl ?? '', username: initial?.username ?? '', password: initial?.password ?? '', headers: Object.entries(initial?.headers ?? {}).map(([name, value]) => ({ name, value })) },
+    mode: 'onSubmit', reValidateMode: 'onChange',
+  });
+  const { field: { value: name, onChange: setName, onBlur: nameBlur, ref: nameRef } } = useController({ control: form.control, name: 'name' });
+  const { field: { value: serverUrl, onChange: setServerUrl, onBlur: urlBlur, ref: urlRef } } = useController({ control: form.control, name: 'serverUrl' });
+  const { field: { value: username, onChange: setUsername, onBlur: usernameBlur, ref: usernameRef } } = useController({ control: form.control, name: 'username' });
+  const { field: { value: password, onChange: setPassword, onBlur: passwordBlur, ref: passwordRef } } = useController({ control: form.control, name: 'password' });
+  const { fields: headers, append, remove } = useFieldArray({ control: form.control, name: 'headers' });
+  const headerValues = useWatch({ control: form.control, name: 'headers' });
   const [headersOpen, setHeadersOpen] = useState(headers.length > 0);
   const [showHeaderValues, setShowHeaderValues] = useState(false);
   const [step, setStep] = useState<'address' | 'details'>('address');
@@ -85,40 +90,30 @@ export function ConnectionProfileDialog({ title, submitLabel, showName = true, i
     else onDismiss();
   }
 
-  function updateHeader(id: number, patch: Partial<Pick<HeaderRow, 'name' | 'value'>>) {
-    setHeaders((current) => current.map((row) => row.id === id ? { ...row, ...patch } : row));
+  function updateHeader(index: number, patch: Partial<{ name: string; value: string }>) {
+    if (patch.name !== undefined) form.setValue(`headers.${index}.name`, patch.name, { shouldDirty: true });
+    if (patch.value !== undefined) form.setValue(`headers.${index}.value`, patch.value, { shouldDirty: true });
     setError(undefined);
   }
-
   function addHeader() {
-    setHeaders((current) => {
-      if (current.length >= MAX_CONNECTION_HEADERS) return current;
-      // Derive the next id from the latest rows so rapid taps inside one batch
-      // cannot collide on a React key.
-      const id = current.reduce((highest, row) => Math.max(highest, row.id), -1) + 1;
-      return [...current, { id, name: '', value: '' }];
-    });
+    if (form.getValues('headers').length >= MAX_CONNECTION_HEADERS) return;
+    append({ name: '', value: '' }, { shouldFocus: false });
     setHeadersOpen(true);
     setError(undefined);
   }
-
-  function removeHeader(id: number) {
-    setHeaders((current) => current.filter((row) => row.id !== id));
-    setError(undefined);
-  }
+  function removeHeader(index: number) { remove(index); setError(undefined); }
 
   async function perform(operation: 'probe' | 'save') {
     if (working.current) return;
-    if (!serverUrl.trim() || !isValidServerUrl(serverUrl)) {
-      setError(t(serverUrl.trim() ? 'settings:connection.errors.invalidUrl' : 'settings:connection.errors.serverUrl'));
+    working.current = true;
+    const validationRequest = ++request.current;
+    if (!await form.trigger(undefined, { shouldFocus: true }) || validationRequest !== request.current) {
+      if (validationRequest === request.current) working.current = false;
+      if (form.getFieldState('headers').invalid) setHeadersOpen(true);
       return;
     }
-    const parsedHeaders = parseConnectionHeaders(headers);
-    if (parsedHeaders.error) {
-      setHeadersOpen(true);
-      setError(t(HEADER_ERROR_KEYS[parsedHeaders.error]));
-      return;
-    }
+    const parsedHeaders = parseConnectionHeaders(form.getValues('headers'));
+    if (parsedHeaders.error) return;
     working.current = true;
     setBusy(operation);
     setError(undefined);
@@ -142,86 +137,70 @@ export function ConnectionProfileDialog({ title, submitLabel, showName = true, i
   }
 
   return (
-    <Modal visible animationType="slide" presentationStyle="fullScreen" onRequestClose={locked ? undefined : back}>
-      <KeyboardAvoidingView style={[styles.screen, { backgroundColor: palette.background }]} behavior="padding">
-        <Appbar.Header statusBarHeight={0} style={{ backgroundColor: palette.surface, paddingTop: insets.top, height: 64 + insets.top }}>
-          <Appbar.BackAction accessibilityLabel={t('common:actions.back')} disabled={locked} onPress={back} />
-          <Appbar.Content titleMaxFontSizeMultiplier={1.5} title={title} />
-        </Appbar.Header>
+    <ModalSurface accessibilityLabel={title} visible animationType="slide" presentationStyle="fullScreen" onRequestClose={locked ? undefined : back}>
+      <KeyboardAvoidingView className={cn(stylesClasses.screen, "bg-background")} behavior="padding">
+        <ScreenHeader style={{ backgroundColor: palette.surface, paddingTop: insets.top, height: 64 + insets.top }} safeArea={false}><Button accessibilityLabel={t('common:actions.back')} disabled={locked} onPress={back} variant="ghost" size="icon"><Icon name={"arrow-left"} size={24} /></Button><HeaderTitle title={title} maxFontSizeMultiplier={1.5}></HeaderTitle></ScreenHeader>
         <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={styles.content}>
-          <Text style={{ color: palette.muted }}>{t('settings:connection.setup.step', { step: step === 'address' ? 1 : 2 })}</Text>
-          <Text variant="headlineSmall">{t(step === 'address' ? 'settings:connection.setup.addressTitle' : 'settings:connection.setup.detailsTitle')}</Text>
+          <Text className={cn("text-muted-foreground")}>{t('settings:connection.setup.step', { step: step === 'address' ? 1 : 2 })}</Text>
+          <Text  variant="display">{t(step === 'address' ? 'settings:connection.setup.addressTitle' : 'settings:connection.setup.detailsTitle')}</Text>
           {step === 'address' ? <>
-            <Text style={{ color: palette.muted }}>{t('settings:connection.setup.addressHint')}</Text>
-            <TextInput mode="outlined" label={t('settings:connection.fields.serverUrl')} testID="connection-profile-url-input" value={serverUrl}
-              onChangeText={(value) => { setServerUrl(value); setProbe(undefined); setError(undefined); }} disabled={Boolean(busy)} autoFocus
-              autoCapitalize="none" autoCorrect={false} keyboardType="url" placeholder="http://192.168.1.10:49374" />
+            <Text className={cn("text-muted-foreground")}>{t('settings:connection.setup.addressHint')}</Text>
+            <SettingField label={t('settings:connection.fields.serverUrl')} testID="connection-profile-url-input" invalid={Boolean(form.formState.errors.serverUrl)} aria-describedby={form.formState.errors.serverUrl ? "connection-profile-validation" : undefined} ref={urlRef} onBlur={urlBlur} value={serverUrl} onChangeText={(value) => { setServerUrl(value); setProbe(undefined); setError(undefined); }} disabled={Boolean(busy)} autoFocus autoCapitalize="none" autoCorrect={false} keyboardType="url" placeholder="http://192.168.1.10:49374"></SettingField>
           </> : <>
-            <View style={styles.addressRow}>
-              <Text style={styles.address} numberOfLines={2}>{serverUrl}</Text>
-              <Button testID="connection-profile-change" disabled={Boolean(busy)} onPress={back}>{t('settings:connection.setup.change')}</Button>
+            <View className={cn(stylesClasses.addressRow)}>
+              <Text className={cn(stylesClasses.address)} numberOfLines={2}>{serverUrl}</Text>
+              <Button testID="connection-profile-change" disabled={Boolean(busy)} onPress={back} variant="ghost"><Text>{t('settings:connection.setup.change')}</Text></Button>
             </View>
-            <Text testID="connection-profile-detection" accessibilityLiveRegion="polite" style={{ color: v1 || v2 ? palette.tint : palette.muted }}>
-              {v1 || v2 ? t('settings:connection.setup.detected', { version: v2 ? '2' : '1' }) : t('settings:connection.setup.identify')}
-            </Text>
-            {!v2 && !v1 ? <Button testID="connection-profile-custom-username" style={styles.left} disabled={Boolean(busy)} onPress={() => setCustomUsername((value) => !value)}>{t('settings:connection.setup.customUsername')}</Button> : null}
-            {!v2 && (v1 || customUsername) ? <TextInput mode="outlined" label={t('settings:connection.fields.username')} testID="connection-profile-username-input"
-              value={username} onChangeText={setUsername} disabled={Boolean(busy)} autoCapitalize="none" autoCorrect={false} placeholder="opencode" /> : null}
-            <TextInput mode="outlined" label={t('settings:connection.fields.password')} testID="connection-profile-password-input" value={password}
-              onChangeText={setPassword} secureTextEntry={!showPassword} disabled={Boolean(busy)} autoCapitalize="none" autoCorrect={false}
-              right={<PaperInput.Icon icon={showPassword ? 'eye-off' : 'eye'} onPress={() => setShowPassword((value) => !value)} accessibilityLabel={t(showPassword ? 'settings:connection.setup.hidePassword' : 'settings:connection.setup.showPassword')} />} />
-            <Text style={{ color: palette.muted }}>{t('settings:connection.setup.passwordHint')}</Text>
-            <Button testID="connection-profile-headers-toggle" mode="text" style={styles.left} disabled={Boolean(busy)} icon={headersOpen ? 'chevron-up' : 'chevron-down'}
-              onPress={() => setHeadersOpen((value) => !value)}>{t('settings:connection.headers.title')}</Button>
+            <Text testID="connection-profile-detection" accessibilityLiveRegion="polite" style={{ color: v1 || v2 ? palette.tint : palette.muted }}>{v1 || v2 ? t('settings:connection.setup.detected', { version: v2 ? '2' : '1' }) : t('settings:connection.setup.identify')}</Text>
+            {!v2 && !v1 ? <Button testID="connection-profile-custom-username" disabled={Boolean(busy)} onPress={() => setCustomUsername((value) => !value)} variant="ghost" className={cn(stylesClasses.left)} ><Text>{t('settings:connection.setup.customUsername')}</Text></Button> : null}
+            {!v2 && (v1 || customUsername) ? <SettingField label={t('settings:connection.fields.username')} testID="connection-profile-username-input" ref={usernameRef} onBlur={usernameBlur} value={username} onChangeText={setUsername} disabled={Boolean(busy)} autoCapitalize="none" autoCorrect={false} placeholder="opencode"></SettingField> : null}
+            <SettingField label={t('settings:connection.fields.password')} testID="connection-profile-password-input" ref={passwordRef} onBlur={passwordBlur} value={password} onChangeText={setPassword} secureTextEntry={!showPassword} disabled={Boolean(busy)} autoCapitalize="none" autoCorrect={false} endAdornment={<Button onPress={() => setShowPassword((value) => !value)} accessibilityLabel={t(showPassword ? 'settings:connection.setup.hidePassword' : 'settings:connection.setup.showPassword')} variant="ghost" size="icon"><Icon name={showPassword ? 'eye-off' : 'eye'} size={24} /></Button>}></SettingField>
+            <Text className={cn("text-muted-foreground")}>{t('settings:connection.setup.passwordHint')}</Text>
+            <Button testID="connection-profile-headers-toggle" disabled={Boolean(busy)} onPress={() => setHeadersOpen((value) => !value)} variant="ghost" className={cn(stylesClasses.left)} ><Icon name={headersOpen ? 'chevron-up' : 'chevron-down'} size={20} /><Text>{t('settings:connection.headers.title')}</Text></Button>
             {headersOpen ? <>
-              <Text style={{ color: palette.muted }}>{t('settings:connection.headers.hint')}</Text>
+              <Text className={cn("text-muted-foreground")}>{t('settings:connection.headers.hint')}</Text>
               {headers.map((row, index) => (
-                <View key={row.id} style={styles.headerBlock}>
-                  <View style={styles.headerRow}>
-                    <TextInput mode="outlined" style={styles.headerName} label={t('settings:connection.headers.name')} testID={`connection-profile-header-name-${index}`}
-                      value={row.name} onChangeText={(value) => updateHeader(row.id, { name: value })} disabled={Boolean(busy)} autoCapitalize="none" autoCorrect={false} />
-                    <IconButton testID={`connection-profile-header-remove-${index}`} icon="close" accessibilityLabel={t('settings:connection.headers.remove')}
-                      disabled={Boolean(busy)} onPress={() => removeHeader(row.id)} />
+                <View key={row.id} className={cn(stylesClasses.headerBlock)}>
+                  <View className={cn(stylesClasses.headerRow)}>
+                    <SettingField label={t('settings:connection.headers.name')} testID={`connection-profile-header-name-${index}`} value={headerValues[index]?.name ?? ''} onChangeText={(value) => updateHeader(index, { name: value })} disabled={Boolean(busy)} autoCapitalize="none" autoCorrect={false} className={cn(stylesClasses.headerName)} ></SettingField>
+                    <Button testID={`connection-profile-header-remove-${index}`} accessibilityLabel={t('settings:connection.headers.remove')} disabled={Boolean(busy)} onPress={() => removeHeader(index)} variant="ghost" size="icon"><Icon name={"close"} size={24} /></Button>
                   </View>
-                  <TextInput mode="outlined" label={t('settings:connection.headers.value')} testID={`connection-profile-header-value-${index}`}
-                    value={row.value} onChangeText={(value) => updateHeader(row.id, { value })} secureTextEntry={!showHeaderValues}
-                    disabled={Boolean(busy)} autoCapitalize="none" autoCorrect={false} />
+                  <SettingField label={t('settings:connection.headers.value')} testID={`connection-profile-header-value-${index}`} value={headerValues[index]?.value ?? ''} onChangeText={(value) => updateHeader(index, { value })} secureTextEntry={!showHeaderValues} disabled={Boolean(busy)} autoCapitalize="none" autoCorrect={false}></SettingField>
                 </View>
               ))}
-              <View style={styles.headerActions}>
-                <Button testID="connection-profile-header-add" mode="outlined" icon="plus" disabled={Boolean(busy) || headers.length >= MAX_CONNECTION_HEADERS}
-                  onPress={addHeader}>{t('settings:connection.headers.add')}</Button>
-                {headers.some((row) => row.value) ? <Button testID="connection-profile-header-visibility" disabled={Boolean(busy)}
-                  onPress={() => setShowHeaderValues((value) => !value)}>{t(showHeaderValues ? 'settings:connection.headers.hideValues' : 'settings:connection.headers.showValues')}</Button> : null}
+              <View className={cn(stylesClasses.headerActions)}>
+                <Button testID="connection-profile-header-add" disabled={Boolean(busy) || headers.length >= MAX_CONNECTION_HEADERS} onPress={addHeader} variant="outline"><Icon name={"plus"} size={20} /><Text>{t('settings:connection.headers.add')}</Text></Button>
+                {headerValues.some((row) => row.value) ? <Button testID="connection-profile-header-visibility" disabled={Boolean(busy)} onPress={() => setShowHeaderValues((value) => !value)} variant="ghost"><Text>{t(showHeaderValues ? 'settings:connection.headers.hideValues' : 'settings:connection.headers.showValues')}</Text></Button> : null}
               </View>
             </> : null}
             {showName ? <>
-              <TextInput mode="outlined" label={t('settings:connection.setup.optionalName')} testID="connection-profile-name-input" value={name} onChangeText={setName}
-                disabled={Boolean(busy)} placeholder={getServerHostname(serverUrl)} />
-              <Text style={{ color: palette.muted }}>{t('settings:connection.setup.nameHint')}</Text>
+              <SettingField label={t('settings:connection.setup.optionalName')} testID="connection-profile-name-input" ref={nameRef} onBlur={nameBlur} value={name} onChangeText={setName} disabled={Boolean(busy)} placeholder={getServerHostname(serverUrl)}></SettingField>
+              <Text className={cn("text-muted-foreground")}>{t('settings:connection.setup.nameHint')}</Text>
             </> : null}
           </>}
-          <HelperText testID="connection-profile-error" type="error" visible={Boolean(error)} accessibilityLiveRegion="polite">{error}</HelperText>
+          <FieldDescription testID="connection-profile-error" nativeID="connection-profile-validation" accessibilityLiveRegion="polite" invalid={true} hidden={!Boolean(error || form.formState.errors.serverUrl || form.formState.errors.headers)}>{error ?? (form.formState.errors.serverUrl?.message ? t(form.formState.errors.serverUrl.message) : form.formState.errors.headers?.message ? t(form.formState.errors.headers.message) : undefined)}</FieldDescription>
         </ScrollView>
-        <View style={[styles.actions, { backgroundColor: palette.surface, borderTopColor: palette.border, paddingBottom: Math.max(insets.bottom, 12) }]}>
-          <Button testID="connection-profile-save-cancel" disabled={locked} onPress={back}>{t(step === 'details' ? 'common:actions.back' : 'common:actions.cancel')}</Button>
-          <Button mode="contained" testID={step === 'address' ? 'connection-profile-continue' : 'connection-profile-save-confirm'} loading={Boolean(busy)} disabled={Boolean(busy)}
-            onPress={() => void perform(step === 'address' ? 'probe' : 'save')}>{step === 'address' ? t('settings:connection.setup.continue') : submitLabel}</Button>
+        <View className={cn(stylesClasses.actions)} style={[{ backgroundColor: palette.surface, borderTopColor: palette.border, paddingBottom: Math.max(insets.bottom, 12) }]}>
+          <Button testID="connection-profile-save-cancel" disabled={locked} onPress={back} variant="ghost"><Text>{t(step === 'details' ? 'common:actions.back' : 'common:actions.cancel')}</Text></Button>
+          <Button testID={step === 'address' ? 'connection-profile-continue' : 'connection-profile-save-confirm'} disabled={Boolean(busy)} onPress={() => void perform(step === 'address' ? 'probe' : 'save')} variant="default">{Boolean(busy) ? <Spinner size="small" /> : null}<Text>{step === 'address' ? t('settings:connection.setup.continue') : submitLabel}</Text></Button>
         </View>
       </KeyboardAvoidingView>
-    </Modal>
+    </ModalSurface>
   );
 }
 
 const styles = StyleSheet.create({
-  screen: { flex: 1 },
-  content: { padding: 24, gap: 16 },
-  addressRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  address: { flex: 1 },
-  left: { alignSelf: 'flex-start' },
-  headerBlock: { gap: 8 },
-  headerRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  headerName: { flex: 1 },
-  headerActions: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  actions: { borderTopWidth: 1, flexDirection: 'row', justifyContent: 'flex-end', gap: 8, paddingHorizontal: 24, paddingTop: 16 },
+  content: { padding: 24, gap: 16 }
 });
+
+const stylesClasses = {
+  "screen": "flex-1",
+  "addressRow": "flex-row items-center gap-2",
+  "address": "flex-1",
+  "left": "self-start",
+  "headerBlock": "gap-2",
+  "headerRow": "flex-row items-center gap-2",
+  "headerName": "flex-1",
+  "headerActions": "flex-row flex-wrap gap-2",
+  "actions": "border-t flex-row justify-end gap-2 px-6 pt-4"
+} as const;

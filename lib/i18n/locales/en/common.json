@@ -79,5 +79,9 @@
     },
     "appSettingsSummary": "Editor, general and updates",
     "serverToolsSummary": "MCP servers and diagnostics"
+  },
+  "validation": {
+    "required": "This field is required.",
+    "invalid": "Enter a valid value."
   }
 }

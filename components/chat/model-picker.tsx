@@ -1,16 +1,16 @@
+import { Button } from '@/components/ui/button';
+import { Text as UiText } from '@/components/ui/text';
+import { cn } from '@/lib/utils';
+import { OverlaySheet } from '@/components/ui/overlay-sheet';
 import { withAlpha } from '@/lib/color';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { useEffect, useMemo, useState, type ReactNode } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Keyboard, Modal, Pressable, SectionList, StyleSheet, Text, TextInput, View } from 'react-native';
-import { GestureDetector, GestureHandlerRootView } from 'react-native-gesture-handler';
-import Animated from 'react-native-reanimated';
+import { Input } from '@/components/ui/input';
+import { Keyboard, Pressable, SectionList, StyleSheet, Text, View } from 'react-native';
 
 import { useUpdateBlocker } from '@/hooks/use-update-blocker';
 import { NumericSlider } from '@/components/ui/numeric-slider';
-import { useSwipeDismiss } from '@/components/ui/use-swipe-dismiss';
-import { useDismissOnBack } from '@/hooks/use-dismiss-on-back';
-import { useKeyboardHeight } from '@/hooks/use-keyboard-height';
 import { getModelVariantLabel } from '@/components/chat/chat-view-utils';
 import { renderProviderIcon } from '@/components/ui/provider-icon';
 import { Fonts } from '@/constants/theme';
@@ -38,65 +38,12 @@ function getSelectedModelLabel(models: ModelOption[], selectedModelId: string | 
   return selected ? `${selected.label} · ${selected.providerLabel}` : fallback;
 }
 
-function ControlButton({
-  active = false,
-  children,
-  disabled = false,
-  grow = false,
-  icon,
-  onPress,
-  slim = false,
-  testID,
-}: {
-  active?: boolean;
-  children: string;
-  disabled?: boolean;
-  grow?: boolean;
-  icon?: (props: { size: number; color: string }) => ReactNode;
-  onPress: () => void;
-  slim?: boolean;
-  testID?: string;
-}) {
-  const palette = usePalette();
-  const textColor = active ? palette.tint : palette.text;
-  const borderColor = active ? 'transparent' : palette.border;
-  const backgroundColor = active ? withAlpha(palette.tint, 0x18 / 255) : palette.surface;
-  const iconSize = slim ? 14 : 16;
-  const controlSize = slim ? 32 : 40;
-  const innerHeight = slim ? 30 : 38;
-
-  return (
-    <Pressable
-      accessibilityRole="button"
-      accessibilityLabel={children}
-      accessibilityState={{ disabled }}
-      disabled={disabled}
-      onPress={onPress}
-      testID={testID}
-      style={({ pressed }) => [
-        styles.controlButton,
-        grow ? styles.controlButtonGrow : null,
-        styles.controlButtonText,
-        slim && { minHeight: controlSize, paddingHorizontal: 8 },
-        { borderColor, backgroundColor, opacity: disabled ? 0.45 : pressed ? 0.82 : 1 },
-      ]}>
-      <View style={[styles.controlButtonInner, slim && { minHeight: innerHeight, gap: 6 }]}>
-        {icon ? icon({ size: iconSize, color: textColor }) : null}
-        <Text maxFontSizeMultiplier={1.5} numberOfLines={1} ellipsizeMode="tail" style={[styles.controlButtonLabel, slim && { fontSize: 13 }, { color: textColor }]}>
-          {children}
-        </Text>
-      </View>
-    </Pressable>
-  );
-}
-
 export function ModelPicker({ disabled = false, models, onSelect, recentModelIds, selectedModelId, slim = false, compact = false, reasoningLabel, selectedVariant, onVariantChange, autoRoutingEnabled = false, autoRoutingAvailable = false, onAutoRoutingChange }: ModelPickerProps) {
   const { t } = useTranslation();
   const palette = usePalette();
   const [visible, setVisible] = useState(false);
   const [query, setQuery] = useState('');
   useUpdateBlocker(visible);
-  const keyboardHeight = useKeyboardHeight(visible);
   const normalizedQuery = query.trim().toLocaleLowerCase();
   const matchingModels = useMemo(
     () => models.filter((model) => {
@@ -132,12 +79,6 @@ export function ModelPicker({ disabled = false, models, onSelect, recentModelIds
   }, [visible]);
 
   const close = () => setVisible(false);
-  useDismissOnBack(visible, close);
-  const { pan, sheetStyle, backdropStyle, handleSheetLayout } = useSwipeDismiss({
-    visible,
-    enabled: true,
-    onDismiss: close,
-  });
   const select = (model: ModelOption) => {
     close();
     onSelect(model);
@@ -172,9 +113,9 @@ export function ModelPicker({ disabled = false, models, onSelect, recentModelIds
           { backgroundColor: isSelected ? palette.background : palette.surface, borderColor: isSelected ? palette.tint : palette.border },
           pressed && styles.pressed,
         ]}>
-        <View style={styles.optionText}>
-          <Text style={[styles.optionLabel, { color: palette.text }]}>{model.label}</Text>
-          <Text style={[styles.optionDescription, { color: palette.muted }]}>
+        <View className={cn(stylesClasses.optionText)}>
+          <Text className={cn("text-foreground")} style={[styles.optionLabel]}>{model.label}</Text>
+          <Text className={cn("text-muted-foreground")} style={[styles.optionDescription]}>
             {showProvider ? `${model.providerLabel} · ${model.modelID}` : model.modelID}
             {model.supportsReasoning ? t('chat:modelPicker.reasoningSupported') : t('chat:modelPicker.standardModel')}
           </Text>
@@ -195,35 +136,18 @@ export function ModelPicker({ disabled = false, models, onSelect, recentModelIds
           disabled={disabled || models.length === 0}
           onPress={() => { Keyboard.dismiss(); setVisible(true); }}
           style={({ pressed }) => [styles.summary, { opacity: disabled ? 0.45 : pressed ? 0.7 : 1 }]}>
-          <Text maxFontSizeMultiplier={1.5} numberOfLines={1} style={[styles.summaryModel, { color: palette.text }]}>{selectedTriggerLabel}</Text>
-          {reasoningLabel ? <Text maxFontSizeMultiplier={1.5} numberOfLines={1} style={[styles.summaryReasoning, { color: palette.text }]}>{reasoningLabel}</Text> : null}
+          <Text maxFontSizeMultiplier={1.5} numberOfLines={1} className={cn("text-foreground")} style={[styles.summaryModel]}>{selectedTriggerLabel}</Text>
+          {reasoningLabel ? <Text maxFontSizeMultiplier={1.5} numberOfLines={1} className={cn("text-foreground")} style={[styles.summaryReasoning]}>{reasoningLabel}</Text> : null}
         </Pressable>
       ) : (
-        <ControlButton
-          active={visible}
-          disabled={disabled || models.length === 0}
-          grow
-          icon={(props) => renderProviderIcon(selected?.providerID, props.size, props.color)}
-          onPress={() => setVisible(true)}
-          slim={slim}
-          testID="chat-model-picker-trigger">
-          {selectedModelLabel}
-        </ControlButton>
+        <Button variant={visible ? 'secondary' : 'outline'} disabled={disabled || models.length === 0}
+          onPress={() => setVisible(true)} className={cn('flex-1 min-w-0', slim && 'px-2')}
+          testID="chat-model-picker-trigger" accessibilityLabel={selectedModelLabel}>
+          {renderProviderIcon(selected?.providerID, slim ? 14 : 16, palette.tint)}
+          <UiText numberOfLines={1} maxFontSizeMultiplier={1.5}>{selectedModelLabel}</UiText>
+        </Button>
       )}
-      <Modal animationType="slide" transparent visible={visible} onRequestClose={close}>
-        <GestureHandlerRootView style={[styles.overlay, { paddingBottom: keyboardHeight }]}>
-          <Pressable accessible={false} style={StyleSheet.absoluteFill} onPress={close}>
-            <Animated.View style={[styles.backdrop, backdropStyle]} />
-          </Pressable>
-          <Animated.View testID="chat-model-picker" onLayout={handleSheetLayout} style={[styles.sheet, { backgroundColor: palette.surface, borderColor: palette.border }, sheetStyle]}>
-              <GestureDetector gesture={pan}>
-                <View style={[styles.header, { borderBottomColor: palette.border }]}>
-                  <Text style={[styles.title, { color: palette.text }]}>{t('chat:modelPicker.chooseModel')}</Text>
-                  <Pressable accessibilityRole="button" accessibilityLabel={t('chat:modelPicker.closePicker')} onPress={close} style={({ pressed }) => [styles.closeButton, pressed && styles.pressed]}>
-                    <Text style={[styles.closeLabel, { color: palette.tint }]}>{t('common:actions.close')}</Text>
-                  </Pressable>
-                </View>
-              </GestureDetector>
+      <OverlaySheet visible={visible} title={t('chat:modelPicker.chooseModel')} onClose={close} testID="chat-model-picker" scrollable={false}>
               {onAutoRoutingChange ? (
                 <Pressable
                   accessibilityRole="switch"
@@ -243,9 +167,9 @@ export function ModelPicker({ disabled = false, models, onSelect, recentModelIds
                       opacity: autoRoutingAvailable ? (pressed ? 0.82 : 1) : 0.5,
                     },
                   ]}>
-                  <View style={styles.autoRoutingText}>
-                    <Text style={[styles.autoRoutingTitle, { color: palette.text }]}>{t('chat:modelPicker.autoRouting')}</Text>
-                    <Text style={[styles.autoRoutingDescription, { color: palette.muted }]}>
+                  <View className={cn(stylesClasses.autoRoutingText)}>
+                    <Text className={cn("text-foreground")} style={[styles.autoRoutingTitle]}>{t('chat:modelPicker.autoRouting')}</Text>
+                    <Text className={cn("text-muted-foreground")} style={[styles.autoRoutingDescription]}>
                       {autoRoutingAvailable ? t('chat:modelPicker.autoRoutingDescription') : t('chat:modelPicker.autoRoutingUnavailable')}
                     </Text>
                   </View>
@@ -257,7 +181,7 @@ export function ModelPicker({ disabled = false, models, onSelect, recentModelIds
                 </Pressable>
               ) : null}
               {showVariantPicker ? (
-                <View style={{ paddingHorizontal: 16, paddingTop: 12 }}>
+                <View className={cn("px-4 pt-3")}>
                   <NumericSlider
                     label={t('chat:composer.reasoning')}
                     minimum={0}
@@ -270,17 +194,17 @@ export function ModelPicker({ disabled = false, models, onSelect, recentModelIds
                   />
                 </View>
               ) : null}
-              <View style={[styles.searchShell, { backgroundColor: palette.background, borderColor: palette.border }]}>
+              <View className={cn(stylesClasses.searchShell, "bg-background border-border")}>
                 <MaterialCommunityIcons name="magnify" size={20} color={palette.muted} />
-                <TextInput
+                <Input
                   autoCapitalize="none"
                   autoCorrect={false}
                   clearButtonMode="while-editing"
                   cursorColor={palette.tint}
-                  placeholder={t('chat:modelPicker.searchPlaceholder')}
+                  placeholder={t('chat:modelPicker.searchPlaceholder')} accessibilityLabel={t('chat:modelPicker.searchPlaceholder')}
                   placeholderTextColor={palette.muted}
                   selectionColor={palette.tint}
-                  style={[styles.searchInput, { color: palette.text }]}
+                  className="border-0 bg-transparent px-0 py-0" style={styles.searchInput}
                   testID="chat-model-picker-search"
                   value={query}
                   onChangeText={setQuery}
@@ -289,7 +213,7 @@ export function ModelPicker({ disabled = false, models, onSelect, recentModelIds
               <SectionList
                 contentContainerStyle={styles.list}
                 keyboardShouldPersistTaps="always"
-                style={styles.results}
+                className={cn(stylesClasses.results)}
                 sections={sections}
                 keyExtractor={(model) => model.id}
                 initialNumToRender={12}
@@ -298,83 +222,50 @@ export function ModelPicker({ disabled = false, models, onSelect, recentModelIds
                 stickySectionHeadersEnabled={false}
                 renderItem={({ item, section }) => renderModelRow(item, !section.providerID)}
                 renderSectionHeader={({ section }) => section.providerID ? (
-                    <View style={styles.groupHeader}>
-                      <View style={[styles.groupIcon, { backgroundColor: withAlpha(palette.tint, 0x14 / 255) }]}>
+                    <View className={cn(stylesClasses.groupHeader)}>
+                      <View className={cn(stylesClasses.groupIcon)} style={[{ backgroundColor: withAlpha(palette.tint, 0x14 / 255) }]}>
                         {renderProviderIcon(section.providerID, 18, palette.tint)}
                       </View>
-                      <Text style={[styles.groupTitle, { color: palette.text }]}>{section.title}</Text>
+                      <Text className={cn("text-foreground")} style={[styles.groupTitle]}>{section.title}</Text>
                     </View>
-                ) : <Text style={[styles.sectionTitle, { color: palette.muted }]}>{section.title}</Text>}
+                ) : <Text className={cn("text-muted-foreground")} style={[styles.sectionTitle]}>{section.title}</Text>}
                 ListEmptyComponent={(
-                  <View style={styles.empty}>
-                    <Text style={[styles.emptyTitle, { color: palette.text }]}>{t('chat:modelPicker.noMatchingModels')}</Text>
-                    <Text style={[styles.emptyBody, { color: palette.muted }]}>{t('chat:modelPicker.emptyHint')}</Text>
+                  <View className={cn(stylesClasses.empty)}>
+                    <Text className={cn("text-foreground")} style={[styles.emptyTitle]}>{t('chat:modelPicker.noMatchingModels')}</Text>
+                    <Text className={cn("text-muted-foreground")} style={[styles.emptyBody]}>{t('chat:modelPicker.emptyHint')}</Text>
                   </View>
                 )}
               />
-          </Animated.View>
-        </GestureHandlerRootView>
-      </Modal>
+      </OverlaySheet>
     </>
   );
 }
 
 const styles = StyleSheet.create({
-  controlButton: {
-    borderRadius: 999,
-    borderWidth: 1,
-  },
-  controlButtonGrow: {
-    flexGrow: 1,
-    flexBasis: 0,
-    minWidth: 0,
-  },
-  controlButtonText: {
-    flex: 1,
-    minHeight: 40,
-    paddingHorizontal: 12,
-  },
-  controlButtonInner: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    minHeight: 38,
-  },
-  controlButtonLabel: {
-    flexShrink: 1,
-    fontFamily: Fonts.sans,
-    fontSize: 14,
-    fontWeight: '600',
-  },
   summary: { justifyContent: 'center', alignItems: 'flex-end', minHeight: 44, gap: 0, paddingHorizontal: 4 },
   summaryModel: { maxWidth: '100%', fontFamily: Fonts.sans, fontSize: 13, fontWeight: '600' },
   summaryReasoning: { fontFamily: Fonts.sans, fontSize: 11, fontWeight: '600' },
-  overlay: { flex: 1, justifyContent: 'flex-end' },
-  backdrop: { flex: 1, backgroundColor: 'rgba(0, 0, 0, 0.28)', zIndex: 0 },
-  sheet: { borderTopLeftRadius: 24, borderTopRightRadius: 24, borderWidth: 1, elevation: 1, height: '82%', overflow: 'hidden', zIndex: 1 },
-  header: { alignItems: 'center', borderBottomWidth: 1, flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: 16, paddingVertical: 12 },
-  title: { fontFamily: Fonts.display, fontSize: 18, fontWeight: '700' },
   autoRoutingRow: { alignItems: 'center', borderRadius: 14, borderWidth: 1, flexDirection: 'row', gap: 12, marginHorizontal: 12, marginTop: 12, paddingHorizontal: 14, paddingVertical: 10 },
-  autoRoutingText: { flex: 1, gap: 2 },
   autoRoutingTitle: { fontFamily: Fonts.sans, fontSize: 15, fontWeight: '700' },
   autoRoutingDescription: { fontFamily: Fonts.sans, fontSize: 12 },
-  closeButton: { borderRadius: 999, minHeight: 36, justifyContent: 'center', paddingHorizontal: 10 },
-  closeLabel: { fontFamily: Fonts.sans, fontSize: 15, fontWeight: '600' },
-  searchShell: { alignItems: 'center', borderRadius: 14, borderWidth: 1, flexDirection: 'row', gap: 8, margin: 12, paddingHorizontal: 12 },
   searchInput: { flex: 1, fontFamily: Fonts.sans, fontSize: 16, minHeight: 46, paddingVertical: 0 },
-  results: { flex: 1 },
   list: { padding: 12, paddingBottom: 28 },
   sectionTitle: { fontFamily: Fonts.sans, fontSize: 12, fontWeight: '700', letterSpacing: 0.8, paddingHorizontal: 2, paddingVertical: 8, textTransform: 'uppercase' },
-  groupHeader: { alignItems: 'center', flexDirection: 'row', gap: 8, paddingHorizontal: 2, paddingVertical: 8 },
-  groupIcon: { alignItems: 'center', borderRadius: 999, height: 30, justifyContent: 'center', width: 30 },
   groupTitle: { fontFamily: Fonts.sans, fontSize: 16, fontWeight: '700' },
   option: { alignItems: 'center', borderRadius: 16, borderWidth: 1, flexDirection: 'row', gap: 12, marginBottom: 8, minHeight: 62, paddingHorizontal: 14, paddingVertical: 12 },
-  optionText: { flex: 1, gap: 3, minWidth: 0 },
   optionLabel: { fontFamily: Fonts.sans, fontSize: 16, fontWeight: '600' },
   optionDescription: { fontFamily: Fonts.sans, fontSize: 13 },
-  empty: { alignItems: 'center', gap: 4, paddingVertical: 32 },
   emptyTitle: { fontFamily: Fonts.sans, fontSize: 16, fontWeight: '700' },
   emptyBody: { fontFamily: Fonts.sans, fontSize: 14 },
-  pressed: { opacity: 0.82 },
+  pressed: { opacity: 0.82 }
 });
+
+const stylesClasses = {
+  "optionText": "flex-1 gap-0.75 min-w-0",
+  "autoRoutingText": "flex-1 gap-0.5",
+  "searchShell": "items-center rounded-[14px] border flex-row gap-2 m-3 px-3",
+  "results": "flex-1",
+  "groupHeader": "items-center flex-row gap-2 px-0.5 py-2",
+  "groupIcon": "items-center rounded-full h-7.5 justify-center w-7.5",
+  "empty": "items-center gap-1 py-8"
+} as const;

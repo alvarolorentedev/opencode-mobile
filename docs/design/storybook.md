@@ -2,7 +2,8 @@
 
 Storybook is the review catalog for reusable presentation components. It runs on
 the web through `react-native-web` and renders the production components with
-the real appearance provider and Paper theme.
+the real appearance provider and Uniwind theme. The decorator supplies a static
+UpdatesContext fixture for interaction blockers; it runs no update orchestration.
 
 It is a development tool. It is not part of the app bundle, the E2E export, or
 the release artifacts.
@@ -23,16 +24,15 @@ runs the same build in the static validate job.
 | File | Purpose |
 | --- | --- |
 | `.storybook/main.ts` | Story globs, addons, `react-native` → `react-native-web` aliasing, web extension resolution |
-| `.storybook/preview.tsx` | Appearance provider, Paper theme, i18n, light/dark and accent toolbar controls |
-| `.storybook/stubs/react-native.ts` | Web shim for `react-native`; adds the missing `ActionSheetIOS` no-op |
+| `.storybook/preview.tsx` | Appearance provider, Uniwind theme, i18n, light/dark and accent toolbar controls |
 | `.storybook/stubs/vector-icons.tsx` | Placeholder icon component because Expo icon fonts are not loaded on web |
 | `.storybook/stories/` | Cross-cutting stories such as design foundations |
 
 Stories are co-located with components:
 
 ```text
-components/ui/text-input.tsx
-components/ui/text-input.stories.tsx
+components/ui/text-field.tsx
+components/ui/text-field.stories.tsx
 components/settings/sections/setting-rows.tsx
 components/settings/sections/setting-rows.stories.tsx
 ```
@@ -51,7 +51,7 @@ A story should:
 - import the production component, never a copy
 - render meaningful props and states: default, disabled, error, loading, long
   values, narrow width, and destructive where relevant
-- use the preview decorators for theme and Paper; do not wrap it in a parallel
+- use the preview decorators for theme and shared UI; do not wrap it in a parallel
   visual system
 - use localized strings or stable story-only labels; do not hard-code product
   copy that must be translated
@@ -84,19 +84,19 @@ Example:
 
 ```tsx
 import type { Meta, StoryObj } from '@storybook/react-vite';
-import { TextInput } from './text-input';
+import { TextField } from './text-field';
 
 const meta = {
   title: 'Controls/Text input',
-  component: TextInput,
-  args: { label: 'Server URL', mode: 'outlined' },
-} satisfies Meta<typeof TextInput>;
+  component: TextField,
+  args: { label: 'Server URL' },
+} satisfies Meta<typeof TextField>;
 
 export default meta;
 type Story = StoryObj<typeof meta>;
 
 export const Default: Story = {};
-export const Error: Story = { args: { error: true, value: 'invalid' } };
+export const Error: Story = { args: { invalid: true, value: 'invalid' } };
 ```
 
 ## Review checklist
@@ -117,10 +117,7 @@ export const Error: Story = { args: { error: true, value: 'invalid' } };
   Storybook-only shim; production icons are unchanged.
 - A component that cannot be isolated without a large provider mock should stay
   in E2E coverage rather than gaining a fragile story.
-- Components that render `NativeSelect`, `OverlaySheet`, or another
-  gesture/reanimated sheet are currently covered by E2E flows; their closed
-  trigger can be reviewed in the app, but the web catalog does not run the
-  gesture stack.
+- Overlay and selection stories run the production web primitives, appearance, safe areas and portal host. Native gestures and window behavior still require device validation.
 
 ## Related
 
@@ -128,3 +125,9 @@ export const Error: Story = { args: { error: true, value: 'invalid' } };
 - [Component inventory](component-inventory.md)
 - [Design QA](qa/README.md)
 - [ADR 0007](../adr/0007-storybook-component-catalog.md)
+
+The Vite config applies Tailwind and Uniwind and transforms the JSX published in RN Primitives JavaScript modules. Registry defaults are adapted in source; stories use the same files as the application.
+
+Vite resolves `.web.mjs` before `.web.js` so RN Primitives and its underlying
+Radix content frames share the ESM context instance. Keep this order when
+upgrading the registry or Vite.

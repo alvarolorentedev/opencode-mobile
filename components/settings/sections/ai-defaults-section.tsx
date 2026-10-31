@@ -1,15 +1,23 @@
+import { cn } from '@/lib/utils';
+import { Collapsible, CollapsibleContent } from '@/components/ui/collapsible';
+import { Text } from '@/components/ui/text';
+import { Button } from '@/components/ui/button';
+import { Icon } from '@/components/ui/icon';
+import { FieldDescription } from '@/components/ui/text-field';
+import { ListRow } from '@/components/ui/list-row';
+import { Checkbox } from '@/components/ui/checkbox';
 import { useTranslation } from 'react-i18next';
 import { Pressable, StyleSheet, Text as NativeText, View } from 'react-native';
-import { Checkbox, Chip, HelperText, List, Text } from 'react-native-paper';
 
-import { NativeSelect } from '@/components/ui/native-select';
+
+import { CatalogSelect } from '@/components/ui/catalog-select';
 import { renderProviderIcon } from '@/components/ui/provider-icon';
 import { SettingTarget } from '../settings-panel';
 import { Fonts } from '@/constants/theme';
 import { getAddableProviders, getProviderCopy } from '@/components/settings/settings-utils';
 import type { ServerContract } from '@/lib/opencode/client';
 import type { ModelOption, ProviderAuthMethod, ProviderOption } from '@/providers/opencode-provider';
-import type { Palette } from './setting-rows';
+import { Palette } from './setting-rows';
 
 type AiDefaultsSectionProps = {
   availableModels: ModelOption[];
@@ -55,14 +63,12 @@ export function AiDefaultsSection({
   const addableProviders = getAddableProviders(availableProviders, providerAuthMethodsById, contract);
 
   return (
-    <View style={styles.section}>
-        <Text variant="bodyMedium" style={{ color: palette.muted }}>
-          {t('settings:providers.chooseModels')}
-        </Text>
-        <SettingTarget label={t('settings:providers.configuredProviders')}><View style={styles.providerHeader}>
-          <Text variant="labelLarge" style={{ color: palette.text }}>{t('settings:providers.configuredProviders')}</Text>
+    <View className={cn(stylesClasses.section)}>
+        <Text className={cn("text-muted-foreground")} variant="description">{t('settings:providers.chooseModels')}</Text>
+        <SettingTarget label={t('settings:providers.configuredProviders')}><View className={cn(stylesClasses.providerHeader)}>
+          <Text className={cn("text-foreground")} variant="description">{t('settings:providers.configuredProviders')}</Text>
           {addableProviders.length > 0 ? (
-            <NativeSelect
+            <CatalogSelect
               searchable
               onValueChange={onStartProviderConfiguration}
               options={addableProviders.map((provider) => ({
@@ -86,7 +92,7 @@ export function AiDefaultsSection({
                       opacity: disabled ? 0.45 : pressed ? 0.82 : 1,
                     },
                   ]}>
-                  <NativeText style={[styles.inlineSelectButtonLabel, { color: palette.text }]}>{t('settings:providers.addProvider')}</NativeText>
+                  <NativeText className={cn("text-foreground")} style={[styles.inlineSelectButtonLabel]}>{t('settings:providers.addProvider')}</NativeText>
                 </Pressable>
               )}
             />
@@ -94,106 +100,77 @@ export function AiDefaultsSection({
         </View>
 
         </SettingTarget>
-        <View style={styles.chipWrap}>
+        <View className={cn(stylesClasses.chipWrap)}>
           {configuredProviders.map((provider) => (
-            <Chip key={provider.id} icon={({ size, color }) => renderProviderIcon(provider.id, size, color)} compact onPress={() => onStartProviderConfiguration(provider.id)} closeIconAccessibilityLabel={t('settings:providers.removeCredentials', { provider: getProviderCopy(provider.id, provider.label, t).label })} onClose={() => onRemoveProvider(provider.id)}>
-              {getProviderCopy(provider.id, provider.label, t).label}
-            </Chip>
+            <View key={provider.id} className="flex-row items-center"><Button onPress={() => onStartProviderConfiguration(provider.id)} variant="secondary" size="sm">{(({ size, color }) => renderProviderIcon(provider.id, size, color))({ size: 18, color: palette.tint })}<Text>{getProviderCopy(provider.id, provider.label, t).label}</Text></Button><Button variant="ghost" size="icon" accessibilityLabel={t('settings:providers.removeCredentials', { provider: getProviderCopy(provider.id, provider.label, t).label })} onPress={() => onRemoveProvider(provider.id)}><Icon name="close" /></Button></View>
           ))}
         </View>
         {configuredProviders.some((provider) => provider.accounts && provider.accounts.length > 0) ? (
-          <View style={styles.accountsGroup}>
-            <Text variant="labelLarge" style={{ color: palette.text }}>{t('settings:providers.accounts')}</Text>
+          <View className={cn(stylesClasses.accountsGroup)}>
+            <Text className={cn("text-foreground")} variant="description">{t('settings:providers.accounts')}</Text>
             {configuredProviders.filter((provider) => provider.accounts && provider.accounts.length > 0).map((provider) => (
-              <View key={provider.id} style={styles.accountProviderGroup}>
-                <Text variant="bodySmall" style={{ color: palette.muted }}>{getProviderCopy(provider.id, provider.label, t).label}</Text>
-                <View style={styles.chipWrap}>
+              <View key={provider.id} className={cn(stylesClasses.accountProviderGroup)}>
+                <Text className={cn("text-muted-foreground")} variant="label">{getProviderCopy(provider.id, provider.label, t).label}</Text>
+                <View className={cn(stylesClasses.chipWrap)}>
                   {(provider.accounts || []).map((account) => (
-                    <Chip
-                      key={account.id}
-                      icon={account.active ? 'check' : account.method === 'oauth' ? 'account-key' : 'key-variant'}
-                      selected={account.active}
-                      onPress={() => {
+                    <View key={account.id} className="flex-row items-center"><Button onPress={() => {
                         if (!account.active) onActivateProviderAccount(account.id);
-                      }}
-                      closeIconAccessibilityLabel={t('settings:providers.removeAccount')}
-                      onClose={() => onRemoveProviderAccount(account.id)}>
-                      {account.label}
-                    </Chip>
+                      }} variant="secondary" size="sm" accessibilityState={{ selected: account.active }}><Icon name={account.active ? 'check' : account.method === 'oauth' ? 'account-key' : 'key-variant'} size={18} /><Text>{account.label}</Text></Button><Button variant="ghost" size="icon" accessibilityLabel={t('settings:providers.removeAccount')} onPress={() => onRemoveProviderAccount(account.id)}><Icon name="close" /></Button></View>
                   ))}
                 </View>
               </View>
             ))}
           </View>
         ) : null}
-        {availableProviders.length === 0 ? <HelperText type="info">{t('settings:providers.connectFirst')}</HelperText> : null}
+        {availableProviders.length === 0 ? <FieldDescription  invalid={false}>{t('settings:providers.connectFirst')}</FieldDescription> : null}
         {availableProviders.length > 0 && configuredProviders.length === 0 ? (
-          <HelperText type="info">{t('settings:providers.configureAtLeastOne')}</HelperText>
+          <FieldDescription  invalid={false}>{t('settings:providers.configureAtLeastOne')}</FieldDescription>
         ) : null}
-        <List.Section style={styles.modelListSection}>
-          <List.AccordionGroup expandedId={expandedProviderId} onAccordionPress={(id) => onExpandedProviderChange(expandedProviderId === String(id) ? undefined : String(id))}>
+        <View className={cn(stylesClasses.modelListSection)}>
             {configuredProviderModels.map(({ provider, models }) => {
               const selectedCount = models.filter((model) => enabledModelIds.has(model.id)).length;
 
               return (
-                <List.Accordion
-                  key={provider.id}
-                  id={provider.id}
+                <Collapsible key={provider.id} open={expandedProviderId === provider.id}><ListRow
                   title={getProviderCopy(provider.id, provider.label, t).label}
                   description={t('settings:providers.selectedCount', { selected: selectedCount, total: models.length })}
                   left={() => (
-                    <View style={[styles.providerAccordionIconWrap, { backgroundColor: palette.surfaceAlt, borderColor: palette.border }]}>
+                    <View className={cn(stylesClasses.providerAccordionIconWrap, "bg-surface-alt border-border")}>
                       {renderProviderIcon(provider.id, 20, palette.tint)}
                     </View>
                   )}
-                  style={[styles.providerAccordion, { backgroundColor: palette.background, borderColor: palette.border }]}
+                  className={cn(stylesClasses.providerAccordion, "bg-background border-border")}
                   titleStyle={{ color: palette.text }}
-                  descriptionStyle={{ color: palette.muted }}>
+                  descriptionStyle={{ color: palette.muted }} accessibilityState={{ expanded: expandedProviderId === provider.id }} onPress={() => onExpandedProviderChange(expandedProviderId === provider.id ? undefined : provider.id)} /><CollapsibleContent>
                   {models.map((model) => {
                     const checked = enabledModelIds.has(model.id);
 
                     return (
-                      <List.Item
-                        key={model.id}
-                        title={model.label}
-                        description={model.supportsReasoning ? t('settings:providers.reasoningSupported') : t('settings:providers.standardModel')}
-                        titleStyle={{ color: palette.text }}
-                        descriptionStyle={{ color: palette.muted }}
-                        onPress={() => onModelToggle(model.id, checked)}
-                        left={() => <Checkbox status={checked ? 'checked' : 'unchecked'} />}
-                        style={styles.modelListItem}
-                      />
+                      <ListRow key={model.id} title={model.label} description={model.supportsReasoning ? t('settings:providers.reasoningSupported') : t('settings:providers.standardModel')} titleStyle={{ color: palette.text }} descriptionStyle={{ color: palette.muted }} onPress={() => onModelToggle(model.id, checked)} left={() => <View pointerEvents="none" aria-hidden accessibilityElementsHidden importantForAccessibility="no-hide-descendants"><Checkbox onCheckedChange={() => {}} accessible={false} checked={checked} /></View>} className={cn(stylesClasses.modelListItem)}></ListRow>
                     );
                   })}
-                </List.Accordion>
+                </CollapsibleContent></Collapsible>
               );
             })}
-          </List.AccordionGroup>
-        </List.Section>
-        {configuredModels.length === 0 ? <HelperText type="info">{t('settings:providers.noModels')}</HelperText> : null}
+          </View>
+        {configuredModels.length === 0 ? <FieldDescription  invalid={false}>{t('settings:providers.noModels')}</FieldDescription> : null}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  section: { gap: 14, paddingBottom: 8 },
-  providerHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 },
   inlineSelectButton: { minHeight: 36, borderWidth: 1, borderRadius: 999, justifyContent: 'center', paddingHorizontal: 12 },
-  inlineSelectButtonLabel: { fontFamily: Fonts.sans, fontSize: 14, fontWeight: '600' },
-  chipWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  accountsGroup: { gap: 10 },
-  accountProviderGroup: { gap: 6 },
-  modelListSection: { gap: 10 },
-  providerAccordion: { borderRadius: 14, borderWidth: 1, overflow: 'hidden', marginBottom: 10 },
-  providerAccordionIconWrap: {
-    width: 38,
-    height: 38,
-    borderRadius: 12,
-    borderWidth: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginLeft: 4,
-    marginRight: 8,
-  },
-  modelListItem: { paddingLeft: 16, paddingRight: 8 },
+  inlineSelectButtonLabel: { fontFamily: Fonts.sans, fontSize: 14, fontWeight: '600' }
 });
+
+const stylesClasses = {
+  "section": "gap-3.5 pb-2",
+  "providerHeader": "flex-row items-center justify-between gap-3",
+  "chipWrap": "flex-row flex-wrap gap-2",
+  "accountsGroup": "gap-2.5",
+  "accountProviderGroup": "gap-1.5",
+  "modelListSection": "gap-2.5",
+  "providerAccordion": "rounded-[14px] border overflow-hidden mb-2.5",
+  "providerAccordionIconWrap": "w-9.5 h-9.5 rounded-[12px] border items-center justify-center ml-1 mr-2",
+  "modelListItem": "pl-4 pr-2"
+} as const;

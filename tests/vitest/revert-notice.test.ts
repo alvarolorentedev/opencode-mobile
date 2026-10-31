@@ -1,3 +1,4 @@
+import { uiImports } from '../helpers/ui.mjs';
 import { describe, expect, it, vi } from 'vitest';
 import { hookRuntime, loadTs } from '../helpers/runtime.mjs';
 
@@ -21,11 +22,12 @@ async function mountRevertNotice(props: { busy?: boolean; onCancel: () => void }
   const runtime = hookRuntime();
   const element = (type: unknown, props: unknown) => ({ type, props });
   const { RevertNotice } = await loadTs('components/chat/revert-notice.tsx', {
+    ...uiImports,
     react: runtime.react,
     'react/jsx-runtime': { jsx: element, jsxs: element, Fragment: 'Fragment' },
     'react-i18next': { useTranslation: () => ({ t: (key: string) => key }) },
     'react-native': { StyleSheet: { create: (styles: unknown) => styles }, View: 'View' },
-    'react-native-paper': { IconButton: 'IconButton', Text: 'Text' },
+
     '@/constants/theme': { Colors: { light: {} } },
     '@/hooks/use-color-scheme': { useColorScheme: () => 'light' },
     '@/hooks/use-palette': { usePalette: () => ({}) },

@@ -1,10 +1,14 @@
 import { describe, expect, it, vi } from 'vitest';
+import { execFileSync } from 'node:child_process';
+import tokens from '@/constants/ui-tokens.json';
+import { cn } from '@/lib/utils';
 
 import {
   ACCENT_COLORS,
   ACCENT_PALETTES,
   Colors,
   getColors,
+  getUiVariables,
 } from '@/constants/theme';
 
 vi.mock('react-native', () => ({
@@ -23,11 +27,17 @@ function contrast(foreground: string, background: string) {
 }
 
 describe('theme palette presets', () => {
+  it('merges typography independently from semantic text colors', () => {
+    expect(cn('text-body text-foreground', 'text-title text-primary')).toBe('text-title text-primary');
+  });
+  it('keeps generated CSS in sync with the authoritative tokens', () => {
+    expect(() => execFileSync(process.execPath, ['scripts/gen-ui-tokens.mjs', '--check'])).not.toThrow();
+  });
   it('exposes the six expected themes in a stable order', () => {
     expect(ACCENT_COLORS).toEqual(['green', 'blue', 'red', 'purple', 'pink', 'gray']);
   });
 
-  it('keeps green identical to the original palette', () => {
+  it('projects the default green tokens without a second palette', () => {
     expect(getColors('light', 'green')).toEqual(Colors.light);
     expect(getColors('dark', 'green')).toEqual(Colors.dark);
   });
@@ -69,6 +79,12 @@ describe('theme palette presets', () => {
       expect(contrast(palette.text, palette.surface)).toBeGreaterThanOrEqual(4.5);
       expect(contrast(palette.text, palette.surfaceAlt)).toBeGreaterThanOrEqual(4.5);
       expect(contrast(palette.onBubbleUser, palette.bubbleUser)).toBeGreaterThanOrEqual(4.5);
+      expect(contrast(palette.onTint, palette.tint)).toBeGreaterThanOrEqual(4.5);
+      expect(contrast(palette.onDanger, palette.danger)).toBeGreaterThanOrEqual(4.5);
+      for (const surface of [palette.background, palette.surface, palette.surfaceAlt]) {
+        for (const foreground of [palette.muted, palette.tint, palette.success, palette.warning, palette.danger]) expect(contrast(foreground, surface)).toBeGreaterThanOrEqual(4.5);
+      }
+      expect(getUiVariables(scheme, accent)).toEqual(Object.fromEntries(Object.entries(tokens.aliases).map(([alias, role]) => ['--color-' + alias, palette[role as keyof typeof palette]])));
     }
   });
 });

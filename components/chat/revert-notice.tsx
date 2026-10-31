@@ -1,6 +1,10 @@
+import { cn } from '@/lib/utils';
+import { Text } from '@/components/ui/text';
+import { Button } from '@/components/ui/button';
+import { Icon } from '@/components/ui/icon';
 import { useTranslation } from 'react-i18next';
-import { StyleSheet, View } from 'react-native';
-import { IconButton, Text } from 'react-native-paper';
+import { View } from 'react-native';
+
 import { usePalette } from '@/hooks/use-palette';
 
 
@@ -13,30 +17,23 @@ export function RevertNotice({ busy = false, onCancel }: RevertNoticeProps) {
   const { t } = useTranslation();
   const palette = usePalette();
   return (
-    <View style={styles.stack}>
-      <View testID="chat-revert-notice" style={[styles.notice, { backgroundColor: palette.surfaceAlt, borderColor: palette.border }]}>
-        <View style={styles.copy}>
-          <Text variant="labelSmall" style={{ color: palette.muted }}>{t('chat:revertNotice.title')}</Text>
-          <Text variant="bodySmall" style={{ color: palette.muted }}>{t('chat:revertNotice.hint')}</Text>
+    <View className={cn(stylesClasses.stack)}>
+      <View testID="chat-revert-notice" className={cn(stylesClasses.notice, "bg-surface-alt border-border")}>
+        <View className={cn(stylesClasses.copy)}>
+          <Text className={cn("text-muted-foreground")} variant="label">{t('chat:revertNotice.title')}</Text>
+          <Text className={cn("text-muted-foreground")} variant="label">{t('chat:revertNotice.hint')}</Text>
         </View>
-        <IconButton
-          testID="chat-revert-cancel"
-          accessibilityLabel={t('chat:revertNotice.cancel')}
-          icon="close"
-          size={18}
-          iconColor={palette.muted}
-          disabled={busy}
-          onPress={onCancel}
-          style={styles.close}
-        />
+        <Button testID="chat-revert-cancel" accessibilityLabel={t('chat:revertNotice.cancel')} disabled={busy} onPress={onCancel} variant="ghost" size="icon" className={cn(stylesClasses.close)} ><Icon name={"close"} size={18} color={palette.muted} /></Button>
       </View>
     </View>
   );
 }
 
-const styles = StyleSheet.create({
-  stack: { paddingHorizontal: 8, paddingTop: 6 },
-  notice: { flexDirection: 'row', alignItems: 'center', gap: 8, borderWidth: 1, borderRadius: 10, paddingLeft: 10, paddingVertical: 6, paddingRight: 2 },
-  copy: { flex: 1, gap: 2 },
-  close: { margin: 0 },
-});
+
+
+const stylesClasses = {
+  "stack": "px-2 pt-1.5",
+  "notice": "flex-row items-center gap-2 border rounded-[10px] pl-2.5 py-1.5 pr-0.5",
+  "copy": "flex-1 gap-0.5",
+  "close": "m-0"
+} as const;

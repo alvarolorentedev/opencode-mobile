@@ -1,10 +1,12 @@
+import { Feedback } from '@/components/ui/feedback';
+import { Portal } from '@/components/ui/portal';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useIsFocused } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Portal, Snackbar } from 'react-native-paper';
 
-import { confirmAction } from '@/lib/confirm-action';
+
+import { useConfirmation } from '@/components/ui/use-confirmation';
 import { findMatchingProfile } from '@/lib/connection-profiles';
 import { AiDefaultsSection } from './sections/ai-defaults-section';
 import { AutoModelSection } from './sections/auto-model-section';
@@ -14,6 +16,7 @@ import { useCapabilities, useConnection, usePreferences } from '@/providers/open
 import { usePalette } from '@/hooks/use-palette';
 
 export function AiSettingsPanel() {
+  const { confirmAction, confirmation } = useConfirmation();
   const { t } = useTranslation();
   const focused = useIsFocused();
   const insets = useSafeAreaInsets();
@@ -43,7 +46,7 @@ export function AiSettingsPanel() {
       t('common:actions.remove'), t('common:actions.cancel'), remove);
   }
 
-  return (
+  return <>{confirmation}{(
     <>
       <AiDefaultsSection
         availableModels={availableModels}
@@ -71,15 +74,7 @@ export function AiSettingsPanel() {
         updateChatPreferences={updateChatPreferences}
       />
       {providerConfig.dialog}
-      <Portal>
-        <Snackbar
-          visible={focused && Boolean(providerConfig.feedback)}
-          wrapperStyle={{ bottom: 64 + insets.bottom }}
-          onDismiss={providerConfig.clearFeedback}
-          duration={4000}>
-          {providerConfig.feedback?.message}
-        </Snackbar>
-      </Portal>
+      <Portal><Feedback duration={4000} open={focused && Boolean(providerConfig.feedback)} onOpenChange={() => (providerConfig.clearFeedback)()} style={{ bottom: 64 + insets.bottom }}>{providerConfig.feedback?.message}</Feedback></Portal>
     </>
-  );
+  )}</>;
 }

@@ -1,16 +1,17 @@
+import { cn } from '@/lib/utils';
 import Constants from 'expo-constants';
 import { DarkTheme, DefaultTheme, Stack, ThemeProvider, usePathname } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import * as SystemUI from 'expo-system-ui';
 import { useEffect, useLayoutEffect, useMemo } from 'react';
-import { ActivityIndicator, Platform, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, Platform, View } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
-import { PaperProvider } from 'react-native-paper';
+import { PortalHost } from '@/components/ui/portal';
+import '@/global.css';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { DEFAULT_ACCENT_COLOR } from '@/constants/appearance';
-import { getPaperTheme } from '@/constants/paper-theme';
 import { getColors } from '@/constants/theme';
 import { usePalette } from '@/hooks/use-palette';
 import { useNotificationRoute } from '@/hooks/use-notification-route';
@@ -58,7 +59,7 @@ export default function RootLayout() {
   }, [isE2EMode]);
 
   return (
-    <GestureHandlerRootView style={styles.root}>
+    <GestureHandlerRootView className={cn(stylesClasses.root)}>
       <SafeAreaProvider>
         <OpencodeProvider>
           <AppearanceHost />
@@ -79,7 +80,10 @@ function AppearanceHost() {
     : systemScheme;
   const accent = chatPreferences.accentColor ?? DEFAULT_ACCENT_COLOR;
   const palette = useMemo(() => getColors(scheme, accent), [accent, scheme]);
-  const paperTheme = useMemo(() => getPaperTheme(scheme, accent), [accent, scheme]);
+  const navigationTheme = useMemo(() => {
+    const base = scheme === 'dark' ? DarkTheme : DefaultTheme;
+    return { ...base, colors: { ...base.colors, background: palette.background, card: palette.surface, text: palette.text, border: palette.border, primary: palette.tint, notification: palette.danger } };
+  }, [palette, scheme]);
   const appearance = useMemo(() => ({ scheme, accent, palette }), [accent, palette, scheme]);
 
   // Keep window-level chrome (web overscroll, native root view) on the themed
@@ -95,13 +99,14 @@ function AppearanceHost() {
 
   return (
     <AppearanceProvider value={appearance}>
-      <PaperProvider theme={paperTheme}>
-        <ThemeProvider value={scheme === 'dark' ? DarkTheme : DefaultTheme}>
+
+        <ThemeProvider value={navigationTheme}>
           <RootNavigator />
           <UpdateHost />
           <StatusBar style={scheme === 'dark' ? 'light' : 'dark'} />
+          <PortalHost />
         </ThemeProvider>
-      </PaperProvider>
+
     </AppearanceProvider>
   );
 }
@@ -135,7 +140,7 @@ function RootNavigator() {
 
   if (!isHydrated) {
     return (
-      <View style={[styles.hydration, { backgroundColor: palette.background }]}>
+      <View className={cn(stylesClasses.hydration, "bg-background")}>
         <ActivityIndicator size="large" color={palette.tint} />
       </View>
     );
@@ -161,7 +166,9 @@ function RootNavigator() {
   );
 }
 
-const styles = StyleSheet.create({
-  root: { flex: 1 },
-  hydration: { alignItems: 'center', flex: 1, justifyContent: 'center' },
-});
+
+
+const stylesClasses = {
+  "root": "flex-1",
+  "hydration": "items-center flex-1 justify-center"
+} as const;

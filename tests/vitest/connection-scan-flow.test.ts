@@ -1,3 +1,4 @@
+import { uiImports } from '../helpers/ui.mjs';
 import { describe, expect, it, vi } from 'vitest';
 import { hookRuntime, loadTs } from '../helpers/runtime.mjs';
 
@@ -17,13 +18,14 @@ async function flow(platform = 'android', foss = false, onSubmit = vi.fn()) {
   const runtime = hookRuntime();
   const pair = vi.fn(async () => ({ serverUrl: 'http://192.168.1.10:49374', username: '', password: 'session-token', directory: '' }));
   const { ConnectionScanFlow } = await loadTs('components/settings/connection-scan-flow.tsx', {
+    ...uiImports,
     react: runtime.react,
     'expo-constants': { expoConfig: { extra: { foss } } },
-    './sections/setting-rows': { SettingButton: 'Button' },
+    './sections/setting-rows': { Button: 'Button' },
     'react/jsx-runtime': { jsx: (type: unknown, props: Record<string, unknown>) => ({ type, props }), jsxs: (type: unknown, props: Record<string, unknown>) => ({ type, props }), Fragment: 'Fragment' },
     'react-i18next': { useTranslation: () => ({ t: (key: string) => key }) },
     'react-native': { Platform: { OS: platform }, StyleSheet: { create: (styles: unknown) => styles }, View: 'View', Modal: 'Modal', ScrollView: 'ScrollView' },
-    'react-native-paper': { Appbar: { Header: 'Header', BackAction: 'BackAction', Content: 'Content' }, Button: 'Button', HelperText: 'HelperText', Text: 'Text', ActivityIndicator: 'ActivityIndicator' },
+
     'react-native-safe-area-context': { useSafeAreaInsets: () => ({ top: 0, bottom: 0 }) },
     '@/components/settings/connect-camera-gate': { ConnectCameraGate: 'Gate' },
     '@/components/settings/connect-scanner': { ConnectScanner: 'Scanner' },
@@ -77,7 +79,7 @@ describe('local QR scan flow', () => {
 
   it('returns to the chooser on Back without exposing the manual address form', async () => {
     const view = await flow();
-    await view.press('BackAction');
+    await view.press('Button');
     expect(view.onDismiss).toHaveBeenCalledOnce();
     expect(find(view.runtime.value, 'connection-profile-url-input')).toBeUndefined();
   });

@@ -1,6 +1,6 @@
 import { expect, test } from './helpers/fixtures.mjs';
 
-import { resetScenario, fakeV1Origin, fakeV2Origin } from './helpers/flows.mjs';
+import { respondToConfirmation, resetScenario, fakeV1Origin, fakeV2Origin } from './helpers/flows.mjs';
 
 // First-run setup coverage. Unlike the flow specs, these tests intentionally do
 // NOT seed `opencode-mobile.onboarding-version`, so the assistant is exercised.
@@ -279,14 +279,14 @@ async function enterGeneralStep(page) {
 
 async function selectPreference(page, testId, option) {
   await page.getByTestId(testId).click();
-  const choice = page.getByRole('button', { name: option, exact: true });
+  const choice = page.getByRole('option', { name: option, exact: true }).or(page.getByRole('radio', { name: option, exact: true }));
   await choice.click();
   await expect(choice).toBeHidden();
 }
 
 async function addOpenRouter(page) {
   await page.getByTestId('settings-add-provider-button').click();
-  await page.getByRole('button', { name: 'OpenRouter', exact: true }).click();
+  await page.getByRole('radio', { name: 'OpenRouter', exact: true }).or(page.getByRole('button', { name: 'OpenRouter', exact: true })).click();
   await page.getByPlaceholder('Paste your API key').fill('sk-test-onboarding');
   await page.getByTestId('settings-provider-save-button').click();
   await expect(page.getByText('Configure OpenRouter')).toHaveCount(0);
@@ -302,7 +302,7 @@ test('onboarding embeds provider setup and persists the reviewed preferences and
   await page.getByTestId('onboarding-default-model').click();
   await page.getByPlaceholder('Default model').fill('openrouter');
   await expect(page.getByRole('button', { name: 'GPT-4.1 mini · OpenAI', exact: true })).toHaveCount(0);
-  await page.getByRole('button', { name: 'Auto · OpenRouter', exact: true }).click();
+  await page.getByRole('radio', { name: 'Auto · OpenRouter', exact: true }).click();
   await selectPreference(page, 'settings-prompt-delivery', 'Append');
   await page.getByTestId('onboarding-general-continue').click();
   await expect(page.getByTestId('onboarding-voice')).toBeVisible();
@@ -400,8 +400,8 @@ test('provider removal reconciles the remembered model before review', async ({ 
   await selectPreference(page, 'onboarding-default-model', 'Auto · OpenRouter');
   await page.getByRole('button', { name: 'Back', exact: true }).click();
   await page.getByRole('button', { name: 'Back', exact: true }).click();
-  page.once('dialog', (dialog) => dialog.accept());
   await page.getByRole('button', { name: 'Remove OpenRouter credentials', exact: true }).click();
+  await respondToConfirmation(page, true);
   await expect(page.getByRole('button', { name: 'Remove OpenRouter credentials', exact: true })).toHaveCount(0);
   await enterGeneralStep(page);
   await expect(page.getByTestId('onboarding-default-model')).not.toContainText('Auto');
@@ -456,7 +456,7 @@ test('offline voice and response choices persist through Back, Skip, and reload'
   await expect(page.getByText('Step 5 of 6', { exact: true })).toBeVisible();
   await voice.getByRole('switch', { name: 'Read replies aloud', exact: true }).click();
   await voice.getByRole('button', { name: 'Response scope. Brief', exact: true }).click();
-  await page.getByRole('button', { name: 'Detailed', exact: true }).click();
+  await page.getByRole('option', { name: 'Detailed', exact: true }).click();
   await voice.getByRole('switch', { name: 'Simple next actions', exact: true }).click();
   await page.getByTestId('onboarding-voice-continue').click();
   await expect(page.getByTestId('onboarding-summary-voice-input')).toContainText('System');

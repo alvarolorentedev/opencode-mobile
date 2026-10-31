@@ -1,8 +1,13 @@
-import { SettingButton as Button, SettingSelectField, SettingSwitchRow, type Palette } from './setting-rows';
+import { cn } from '@/lib/utils';
+import { Text } from '@/components/ui/text';
+import { Button } from '@/components/ui/button';
+import { Spinner } from '@/components/ui/spinner';
+import { FieldDescription } from '@/components/ui/text-field';
+import { SettingSelectField, SettingSwitchRow, type Palette } from './setting-rows';
 import { useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Platform, StyleSheet, View } from 'react-native';
-import { HelperText, Text } from 'react-native-paper';
+import { Platform, View } from 'react-native';
+
 
 import { getAutoModelSuggestions } from '@/providers/opencode-auto-model';
 import { getVisibleModels } from '@/providers/opencode-model-selection';
@@ -144,8 +149,8 @@ export function AutoModelSection({
   return (
     <SettingsDisclosure id="auto-model" title={t('settings:modelRouting.title')}
       attention={autoModel.enabled || Boolean(setup.error) || setup.status === 'installing' || serverStatus === 'auth' || serverStatus === 'unavailable'}>
-    <View testID="settings-auto-model-section" style={styles.section}>
-      <Text variant="bodyMedium" style={{ color: palette.muted }}>{t('settings:modelRouting.description')}</Text>
+    <View testID="settings-auto-model-section" className={cn(stylesClasses.section)}>
+      <Text className={cn("text-muted-foreground")} variant="description">{t('settings:modelRouting.description')}</Text>
 
       <SettingSwitchRow
         description={canEnable ? t('settings:modelRouting.enable.description') : t('settings:modelRouting.enable.unavailable')}
@@ -172,38 +177,23 @@ export function AutoModelSection({
       />
 
       {autoModel.classifier === 'local' ? (
-        <View style={[styles.panel, { backgroundColor: palette.surface, borderColor: palette.border }]}>
-          <Text variant="bodySmall" style={{ color: palette.muted }}>
-            {t('settings:modelRouting.local.statusLabel')}: {t(`settings:modelRouting.local.status.${setup.status}`)}
-          </Text>
+        <View className={cn(stylesClasses.panel, "bg-surface border-border")}>
+          <Text className={cn("text-muted-foreground")} variant="label">{t('settings:modelRouting.local.statusLabel')}: {t(`settings:modelRouting.local.status.${setup.status}`)}</Text>
           {setup.status === 'ready' ? (
             <>
-              <Text variant="bodySmall" style={{ color: palette.muted }}>
-                {t('settings:modelRouting.local.installed', { size: formatBytes(setup.bytes) })}
-              </Text>
-              <Button compact mode="outlined" onPress={() => { void setup.remove(); }} testID="settings-auto-model-remove">
-                {t('settings:modelRouting.local.remove')}
-              </Button>
+              <Text className={cn("text-muted-foreground")} variant="label">{t('settings:modelRouting.local.installed', { size: formatBytes(setup.bytes) })}</Text>
+              <Button onPress={() => { void setup.remove(); }} testID="settings-auto-model-remove" variant="outline"><Text>{t('settings:modelRouting.local.remove')}</Text></Button>
             </>
           ) : (
             <>
-              <Button
-                disabled={setup.status === 'installing' || !localSupported}
-                loading={setup.status === 'installing'}
-                mode="contained-tonal"
-                onPress={() => { void setup.install(); }}
-                testID="settings-auto-model-download">
-                {t('settings:modelRouting.local.download', { size: formatBytes(AUTO_MODEL_PACK.bytes) })}
-              </Button>
-              {setup.error ? <HelperText type="error">{setup.error}</HelperText> : null}
+              <Button disabled={setup.status === 'installing' || !localSupported} onPress={() => { void setup.install(); }} testID="settings-auto-model-download" variant="secondary">{setup.status === 'installing' ? <Spinner size="small" /> : null}<Text>{t('settings:modelRouting.local.download', { size: formatBytes(AUTO_MODEL_PACK.bytes) })}</Text></Button>
+              {setup.error ? <FieldDescription  invalid={true}>{setup.error}</FieldDescription> : null}
             </>
           )}
-          <HelperText type="info">
-            {t('settings:modelRouting.local.license', { model: AUTO_MODEL_PACK.label, license: AUTO_MODEL_PACK.license })}
-          </HelperText>
+          <FieldDescription  invalid={false}>{t('settings:modelRouting.local.license', { model: AUTO_MODEL_PACK.label, license: AUTO_MODEL_PACK.license })}</FieldDescription>
         </View>
       ) : (
-        <View style={[styles.panel, { backgroundColor: palette.surface, borderColor: palette.border }]}>
+        <View className={cn(stylesClasses.panel, "bg-surface border-border")}>
           <SettingSelectField
             label={t('settings:modelRouting.server.modelLabel')}
             onValueChange={(value) => {
@@ -220,16 +210,8 @@ export function AutoModelSection({
             testID="settings-auto-model-classifier-model"
             valueLabel={classifierLabel}
           />
-          <Button
-            compact
-            disabled={serverStatus === 'checking'}
-            loading={serverStatus === 'checking'}
-            mode="outlined"
-            onPress={() => { void modelRouting.checkServerClassifier(classifierModel?.id); }}
-            testID="settings-auto-model-check">
-            {t('settings:modelRouting.server.check')}
-          </Button>
-          <HelperText type={serverStatusType}>{serverStatusLabel}</HelperText>
+          <Button disabled={serverStatus === 'checking'} onPress={() => { void modelRouting.checkServerClassifier(classifierModel?.id); }} testID="settings-auto-model-check" variant="outline">{serverStatus === 'checking' ? <Spinner size="small" /> : null}<Text>{t('settings:modelRouting.server.check')}</Text></Button>
+          <FieldDescription  invalid={serverStatusType === 'error'}>{serverStatusLabel}</FieldDescription>
         </View>
       )}
 
@@ -259,7 +241,9 @@ export function AutoModelSection({
   );
 }
 
-const styles = StyleSheet.create({
-  section: { gap: 12, paddingTop: 8, paddingBottom: 8 },
-  panel: { borderRadius: 14, borderWidth: 1, gap: 8, padding: 12 },
-});
+
+
+const stylesClasses = {
+  "section": "gap-3 pt-2 pb-2",
+  "panel": "rounded-[14px] border gap-2 p-3"
+} as const;

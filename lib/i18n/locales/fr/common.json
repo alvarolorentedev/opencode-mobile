@@ -79,5 +79,9 @@
     },
     "appSettingsSummary": "Éditeur, paramètres généraux et mises à jour",
     "serverToolsSummary": "Serveurs MCP et diagnostic"
+  },
+  "validation": {
+    "required": "Ce champ est obligatoire.",
+    "invalid": "Saisissez une valeur valide."
   }
 }

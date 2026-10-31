@@ -1,10 +1,19 @@
+import { cn } from '@/lib/utils';
+import { ModalSurface } from '@/components/ui/portal';
+import { Button } from '@/components/ui/button';
+import { Icon } from '@/components/ui/icon';
+import { HeaderTitle, ScreenHeader } from '@/components/ui/screen-header';
+import { Text } from '@/components/ui/text';
+import { Switch } from '@/components/ui/switch';
+import { TextField } from '@/components/ui/text-field';
+import { Spinner } from '@/components/ui/spinner';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { KeyboardAvoidingView, Linking, Modal, ScrollView, StyleSheet, View } from 'react-native';
-import { Appbar, Button, Switch, Text } from 'react-native-paper';
+import { KeyboardAvoidingView, Linking, ScrollView, View } from 'react-native';
+
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { TextInput } from '@/components/ui/text-input';
+
 import type { PendingQuestionAnswer, PendingQuestionPrompt, PendingQuestionRequest } from '@/lib/opencode/client';
 import { usePalette } from '@/hooks/use-palette';
 
@@ -108,17 +117,14 @@ export function QuestionFlow({
   };
 
   return (
-    <Modal visible={visible} animationType="slide" presentationStyle="fullScreen" onRequestClose={onDismiss}>
-      <KeyboardAvoidingView style={{ flex: 1, backgroundColor: palette.background }} behavior="padding">
-        <Appbar.Header statusBarHeight={0} style={{ backgroundColor: palette.surface, paddingTop: insets.top, height: 64 + insets.top }}>
-          <Appbar.BackAction accessibilityLabel={t('chat:cards.returnToChat')} onPress={onDismiss} />
-          <Appbar.Content titleMaxFontSizeMultiplier={1.5} title={t('chat:cards.assistantQuestion')} subtitle={t('chat:cards.stepOfTotal', { current: currentStep + 1, total: visibleIndexes.length })} />
-        </Appbar.Header>
+    <ModalSurface accessibilityLabel={t('chat:cards.assistantQuestion')} visible={visible} animationType="slide" presentationStyle="fullScreen" onRequestClose={onDismiss}>
+      <KeyboardAvoidingView className={cn("flex-1 bg-background")} behavior="padding">
+        <ScreenHeader style={{ backgroundColor: palette.surface, paddingTop: insets.top, height: 64 + insets.top }} safeArea={false}><Button accessibilityLabel={t('chat:cards.returnToChat')} onPress={onDismiss} variant="ghost" size="icon"><Icon name={"arrow-left"} size={24} /></Button><HeaderTitle title={t('chat:cards.assistantQuestion')} subtitle={t('chat:cards.stepOfTotal', { current: currentStep + 1, total: visibleIndexes.length })} maxFontSizeMultiplier={1.5}></HeaderTitle></ScreenHeader>
         <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={{ padding: 20, gap: 18 }}>
-        <Text variant="labelLarge" style={{ color: palette.warning }}>{t('chat:cards.waitingForAnswerBanner')}</Text>
-        <Text variant="bodySmall" style={{ color: palette.muted }}>{t('chat:cards.questionOfTotal', { current: currentStep + 1, total: visibleIndexes.length })}</Text>
-        {sourceTitle ? <Text variant="bodySmall" style={{ color: palette.muted }}>{t('chat:cards.requestedBy', { name: sourceTitle })}</Text> : null}
-        {request.title ? <Text variant="bodySmall" style={{ color: palette.muted }}>{request.title}</Text> : null}
+        <Text className={cn("text-warning")} variant="description">{t('chat:cards.waitingForAnswerBanner')}</Text>
+        <Text className={cn("text-muted-foreground")} variant="label">{t('chat:cards.questionOfTotal', { current: currentStep + 1, total: visibleIndexes.length })}</Text>
+        {sourceTitle ? <Text className={cn("text-muted-foreground")} variant="label">{t('chat:cards.requestedBy', { name: sourceTitle })}</Text> : null}
+        {request.title ? <Text className={cn("text-muted-foreground")} variant="label">{request.title}</Text> : null}
         {request.questions.map((prompt, questionIndex) => {
           if (questionIndex !== currentIndex) {
             return null;
@@ -129,45 +135,32 @@ export function QuestionFlow({
           const showCustom = prompt.custom !== false && prompt.type !== 'boolean' && prompt.type !== 'external';
 
           return (
-            <View key={`${request.id}-${questionIndex}`} style={styles.questionBlock}>
-              <Text variant="titleMedium" style={{ color: palette.text }}>{prompt.header}</Text>
+            <View key={`${request.id}-${questionIndex}`} className={cn(stylesClasses.questionBlock)}>
+              <Text className={cn("text-foreground")} variant="title">{prompt.header}</Text>
               {prompt.question && prompt.question !== prompt.header ? (
-                <Text variant="bodyMedium" style={{ color: palette.text }}>{prompt.question}</Text>
+                <Text className={cn("text-foreground")} variant="description">{prompt.question}</Text>
               ) : null}
 
               {prompt.type === 'boolean' ? (
-                <View style={styles.questionBooleanRow}>
-                  <Text variant="bodyMedium" style={{ color: palette.text }}>{selected.includes('true') ? t('chat:cards.yes') : t('chat:cards.no')}</Text>
-                  <Switch
-                    accessibilityLabel={prompt.header}
-                    value={selected.includes('true')}
-                    onValueChange={(value) => {
+                <View className={cn(stylesClasses.questionBooleanRow)}>
+                  <Text className={cn("text-foreground")} variant="description">{selected.includes('true') ? t('chat:cards.yes') : t('chat:cards.no')}</Text>
+                  <Switch accessibilityLabel={prompt.header} checked={selected.includes('true')} onCheckedChange={(value) => {
                       setAnswers((current) => current.map((answer, index) => index === questionIndex ? [value ? 'true' : 'false'] : answer));
-                    }}
-                  />
+                    }}></Switch>
                 </View>
               ) : null}
 
               {prompt.type === 'external' && prompt.url ? (
-                <Button mode="outlined" icon="open-in-new" onPress={() => { void Linking.openURL(prompt.url as string).catch(() => undefined); }}>
-                  {t('chat:cards.openLink')}
-                </Button>
+                <Button onPress={() => { void Linking.openURL(prompt.url as string).catch(() => undefined); }} variant="outline"><Icon name={"open-in-new"} size={20} /><Text>{t('chat:cards.openLink')}</Text></Button>
               ) : null}
 
               {showOptions ? (
-                <View style={styles.questionOptions}>
+                <View className={cn(stylesClasses.questionOptions)}>
                   {prompt.options.map((option) => {
                     const isSelected = selected.includes(option.label);
                     return (
-                      <View key={option.label} style={{ width: '100%', gap: 4 }}>
-                      <Button
-                        accessibilityLabel={[option.label, option.description].filter(Boolean).join('. ')}
-                        accessibilityState={{ selected: isSelected }}
-                        style={{ width: '100%' }}
-                        contentStyle={{ justifyContent: 'flex-start' }}
-                        labelStyle={{ flexShrink: 1 }}
-                        mode={isSelected ? 'contained-tonal' : 'outlined'}
-                        onPress={() => {
+                      <View key={option.label} className={cn("w-full gap-1")}>
+                      <Button accessibilityLabel={[option.label, option.description].filter(Boolean).join('. ')} accessibilityState={{ selected: isSelected }} onPress={() => {
                           setAnswers((current) => current.map((answer, index) => {
                             if (index !== questionIndex) return answer;
                             if (!prompt.multiple) return [option.label];
@@ -176,10 +169,8 @@ export function QuestionFlow({
                           if (!prompt.multiple) {
                             setCustomAnswers((current) => current.map((answer, index) => index === questionIndex ? '' : answer));
                           }
-                        }}>
-                        {option.label}
-                      </Button>
-                      {option.description ? <Text variant="bodySmall" style={{ color: palette.muted, paddingHorizontal: 12 }}>{option.description}</Text> : null}
+                        }} variant={isSelected ? 'secondary' : 'outline'} className={cn("w-full", "justify-start")} ><Text className={cn("shrink")} >{option.label}</Text></Button>
+                      {option.description ? <Text className={cn("text-muted-foreground px-3")} variant="label">{option.description}</Text> : null}
                       </View>
                     );
                   })}
@@ -188,44 +179,33 @@ export function QuestionFlow({
 
 
               {showCustom ? (
-                <TextInput
-                  dense
-                  mode="outlined"
-                  label={prompt.placeholder || t('chat:cards.customAnswer')}
-                  keyboardType={prompt.type === 'number' || prompt.type === 'integer' ? 'numeric' : 'default'}
-                  value={customAnswers[questionIndex]}
-                  onChangeText={(value) => {
+                <TextField label={prompt.placeholder || t('chat:cards.customAnswer')} keyboardType={prompt.type === 'number' || prompt.type === 'integer' ? 'numeric' : 'default'} value={customAnswers[questionIndex]} onChangeText={(value) => {
                     setCustomAnswers((current) => current.map((answer, index) => index === questionIndex ? value : answer));
                     if (!prompt.multiple && value) {
                       setAnswers((current) => current.map((answer, index) => index === questionIndex ? [] : answer));
                     }
-                  }}
-                />
+                  }}></TextField>
               ) : null}
             </View>
           );
         })}
-        {error ? <Text style={{ color: palette.danger }}>{error}</Text> : null}
+        {error ? <Text className={cn("text-destructive")}>{error}</Text> : null}
         </ScrollView>
-        <View style={[styles.questionFooter, { backgroundColor: palette.surface, borderTopColor: palette.border, paddingBottom: Math.max(insets.bottom, 12) }]}>
-          <Button mode="outlined" disabled={currentStep === 0 || Boolean(submitting)} onPress={() => setStep((value) => Math.max(0, value - 1))}>{t('common:actions.back')}</Button>
-          {currentStep < visibleIndexes.length - 1 ? <Button mode="contained" disabled={!canAdvance || Boolean(submitting)} onPress={() => setStep((value) => value + 1)}>{t('common:actions.next')}</Button> : <Button
-            mode="contained"
-            disabled={!canSubmit || Boolean(submitting)}
-            loading={submitting === 'reply'}
-            onPress={handleReply}>
-            {t('chat:cards.submitAnswer')}
-          </Button>}
-          <Button mode="text" textColor={palette.danger} disabled={Boolean(submitting)} loading={submitting === 'reject'} onPress={handleReject}>{t('chat:cards.reject')}</Button>
+        <View className={cn(stylesClasses.questionFooter)} style={[{ backgroundColor: palette.surface, borderTopColor: palette.border, paddingBottom: Math.max(insets.bottom, 12) }]}>
+          <Button disabled={currentStep === 0 || Boolean(submitting)} onPress={() => setStep((value) => Math.max(0, value - 1))} variant="outline"><Text>{t('common:actions.back')}</Text></Button>
+          {currentStep < visibleIndexes.length - 1 ? <Button disabled={!canAdvance || Boolean(submitting)} onPress={() => setStep((value) => value + 1)} variant="default"><Text>{t('common:actions.next')}</Text></Button> : <Button disabled={!canSubmit || Boolean(submitting)} onPress={handleReply} variant="default">{submitting === 'reply' ? <Spinner size="small" /> : null}<Text>{t('chat:cards.submitAnswer')}</Text></Button>}
+          <Button disabled={Boolean(submitting)} onPress={handleReject} variant="ghost">{submitting === 'reject' ? <Spinner size="small" /> : null}<Text className={cn("text-destructive")} >{t('chat:cards.reject')}</Text></Button>
         </View>
       </KeyboardAvoidingView>
-    </Modal>
+    </ModalSurface>
   );
 }
 
-const styles = StyleSheet.create({
-  questionFooter: { borderTopWidth: 1, flexDirection: 'row', flexWrap: 'wrap', gap: 8, justifyContent: 'flex-end', paddingHorizontal: 16, paddingTop: 12 },
-  questionBlock: { gap: 8 },
-  questionBooleanRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 },
-  questionOptions: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-});
+
+
+const stylesClasses = {
+  "questionBlock": "gap-2",
+  "questionBooleanRow": "flex-row items-center justify-between gap-3",
+  "questionOptions": "flex-row flex-wrap gap-2",
+  "questionFooter": "border-t flex-row flex-wrap gap-2 justify-end px-4 pt-3"
+} as const;

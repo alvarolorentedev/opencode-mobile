@@ -1,5 +1,6 @@
+import { FieldDescription } from '@/components/ui/text-field';
 import { useTranslation } from 'react-i18next';
-import { HelperText } from 'react-native-paper';
+
 
 import { TIMELINE_DETAIL_ORDER, type TimelineDetail } from '@/lib/opencode/transcript';
 import type { ChatPreferences } from '@/providers/opencode-provider';
@@ -33,7 +34,7 @@ export function TimelineDetailField({ chatPreferences, palette, updateChatPrefer
         }}
         palette={palette}
       />
-      <HelperText type="info">{t(`settings:appearance.timelineDetail.${timelineDetail}.description`)}</HelperText>
+      <FieldDescription  invalid={false}>{t(`settings:appearance.timelineDetail.${timelineDetail}.description`)}</FieldDescription>
     </>
   );
 }

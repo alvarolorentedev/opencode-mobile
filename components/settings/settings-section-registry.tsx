@@ -1,9 +1,12 @@
-import { SettingButton as Button, SettingSwitchRow } from './sections/setting-rows';
+import { cn } from '@/lib/utils';
+import { Button } from '@/components/ui/button';
+import { Text } from '@/components/ui/text';
+import { SettingSwitchRow } from './sections/setting-rows';
 import type { ComponentProps, ReactNode } from 'react';
 import type { TFunction } from 'i18next';
 import { useRouter } from 'expo-router';
 import { Platform, View } from 'react-native';
-import {} from 'react-native-paper';
+
 import type { MaterialCommunityIcons } from '@expo/vector-icons';
 
 import { ServerApprovals } from '@/components/settings/server-approvals';
@@ -224,7 +227,7 @@ export function buildSettingsSections({
         <>
           {serverCapabilities.contract === 'v2'
             ? null
-            : <View style={{ flexDirection: 'row', gap: 8 }}><Button mode={advancedTab === 'mcp' ? 'contained-tonal' : 'text'} onPress={() => setAdvancedTab('mcp')}>MCP</Button><Button mode={advancedTab === 'diagnostics' ? 'contained-tonal' : 'text'} onPress={() => setAdvancedTab('diagnostics')}>{t('settings:diagnostics.title')}</Button></View>}
+            : <View className={cn("flex-row gap-2")}><Button onPress={() => setAdvancedTab('mcp')} variant={advancedTab === 'mcp' ? 'secondary' : 'ghost'}><Text>MCP</Text></Button><Button onPress={() => setAdvancedTab('diagnostics')} variant={advancedTab === 'diagnostics' ? 'secondary' : 'ghost'}><Text>{t('settings:diagnostics.title')}</Text></Button></View>}
           {serverCapabilities.contract !== 'v2' && advancedTab === 'mcp' ? <>
           <McpSection configs={currentConfig?.mcp} mcpStatuses={mcp.mcpStatuses} onAdd={mcp.addMcpServer} onConnect={mcp.connectMcpServer} onDisconnect={mcp.disconnectMcpServer} onRefresh={mcp.refreshMcpServers} mcpOAuth={mcp.mcpOAuth} requiresIntegrationId={serverCapabilities.mcpIntegrationId} oauthAvailable={serverCapabilities.mcpOAuth} palette={palette} />
           </> : <>
@@ -275,4 +278,3 @@ export function buildSettingsSections({
     }),
   }));
 }
-

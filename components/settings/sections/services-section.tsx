@@ -1,9 +1,18 @@
-import { SettingButton as Button, SettingSelectField, type Palette } from './setting-rows';
+import { cn } from '@/lib/utils';
+import { useConfirmation } from '@/components/ui/use-confirmation';
+import { Text } from '@/components/ui/text';
+import { FieldDescription } from '@/components/ui/text-field';
+import { Button } from '@/components/ui/button';
+import { Spinner } from '@/components/ui/spinner';
+import { Icon } from '@/components/ui/icon';
+import { ListRow } from '@/components/ui/list-row';
+import { Badge } from '@/components/ui/badge';
+import { SettingSelectField, type Palette } from './setting-rows';
 import * as Clipboard from 'expo-clipboard';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Alert, Platform, StyleSheet, View } from 'react-native';
-import { Chip, HelperText, List, Text } from 'react-native-paper';
+import { View } from 'react-native';
+
 
 import {
   MAX_MANAGED_SERVICES,
@@ -24,6 +33,7 @@ export function ServicesSection({ api, palette, onAddService, onEditService }: {
   onAddService: () => void;
   onEditService: (service: ManagedService) => void;
 }) {
+  const { confirmAction, confirmation } = useConfirmation();
   const { t } = useTranslation();
   const [feedback, setFeedback] = useState<{ type: 'error' | 'info'; message: string }>();
   const [busyId, setBusyId] = useState<string>();
@@ -59,14 +69,7 @@ export function ServicesSection({ api, palette, onAddService, onEditService }: {
         setBusyId(undefined);
       }
     };
-    if (Platform.OS === 'web') {
-      if (globalThis.confirm(t('settings:services.removeConfirm', { name: label }))) await remove();
-      return;
-    }
-    Alert.alert(t('settings:services.removeTitle', { name: label }), t('settings:services.removeMessage'), [
-      { text: t('common:actions.cancel'), style: 'cancel' },
-      { text: t('common:actions.remove'), style: 'destructive', onPress: () => void remove() },
-    ]);
+    confirmAction(t('settings:services.removeTitle', { name: label }), t('settings:services.removeMessage'), t('common:actions.remove'), t('common:actions.cancel'), () => void remove());
   }
 
   function shareUrl(service: ManagedService) {
@@ -92,15 +95,15 @@ export function ServicesSection({ api, palette, onAddService, onEditService }: {
     }
   }
 
-  return (
-    <View testID="services-section" style={styles.section}>
-      <Text variant="titleLarge" style={[styles.title, { color: palette.text }]}>{t('settings:services.title')}</Text>
-      <Text variant="bodyMedium" style={{ color: palette.muted }}>{t('settings:services.description')}</Text>
+  return <>{confirmation}{(
+    <View testID="services-section" className={cn(stylesClasses.section)}>
+      <Text className={cn(stylesClasses.title, "text-foreground")} variant="heading">{t('settings:services.title')}</Text>
+      <Text className={cn("text-muted-foreground")} variant="description">{t('settings:services.description')}</Text>
 
       {api.loadFailed ? (
-        <View style={styles.loadFailure}>
-          <HelperText type="error">{t('settings:services.loadFailed')}</HelperText>
-          <Button compact mode="outlined" onPress={() => void api.refresh()}>{t('common:actions.retry')}</Button>
+        <View className={cn(stylesClasses.loadFailure)}>
+          <FieldDescription  invalid={true}>{t('settings:services.loadFailed')}</FieldDescription>
+          <Button onPress={() => void api.refresh()} variant="outline"><Text>{t('common:actions.retry')}</Text></Button>
         </View>
       ) : null}
 
@@ -117,79 +120,63 @@ export function ServicesSection({ api, palette, onAddService, onEditService }: {
       ) : null}
 
       {api.target && !api.target.isActiveConnection ? (
-        <View style={[styles.target, { borderColor: palette.border, backgroundColor: palette.background }]}>
-          <Text variant="bodyMedium" style={{ color: palette.text }}>
-            {t('settings:services.notActive', { name: api.target.machineName || api.target.serverUrl })}
-          </Text>
-          <Button testID="service-use-machine" compact mode="contained-tonal" loading={isActivating} disabled={isActivating}
-            onPress={() => void activateTarget()}>
-            {t('settings:services.useMachine')}
-          </Button>
+        <View className={cn(stylesClasses.target, "border-border bg-background")}>
+          <Text className={cn("text-foreground")} variant="description">{t('settings:services.notActive', { name: api.target.machineName || api.target.serverUrl })}</Text>
+          <Button testID="service-use-machine" disabled={isActivating} onPress={() => void activateTarget()} variant="secondary">{isActivating ? <Spinner size="small" /> : null}<Text>{t('settings:services.useMachine')}</Text></Button>
         </View>
       ) : null}
 
       {version && version.api < 2 ? (
-        <HelperText testID="services-connector-hint" type="info">
-          {version.known ? t('settings:services.legacyConnector') : t('settings:services.unknownConnector')}
-        </HelperText>
+        <FieldDescription testID="services-connector-hint" invalid={false}>{version.known ? t('settings:services.legacyConnector') : t('settings:services.unknownConnector')}</FieldDescription>
       ) : null}
 
       {!api.available && api.unavailableReason === 'no-cloud-link-machine' ? (
-        <HelperText testID="services-no-machine" type="info">{t('settings:services.noMachine')}</HelperText>
+        <FieldDescription testID="services-no-machine" invalid={false}>{t('settings:services.noMachine')}</FieldDescription>
       ) : null}
       {!api.available && api.unavailableReason === 'credentials-expired' ? (
-        <View style={styles.expired}>
-          <HelperText testID="services-credentials-expired" type="error">{t('settings:services.credentialsExpired')}</HelperText>
-          <Button testID="service-reconnect" compact mode="outlined" loading={isActivating} disabled={isActivating}
-            onPress={() => void activateTarget()}>
-            {t('common:actions.reconnect')}
-          </Button>
+        <View className={cn(stylesClasses.expired)}>
+          <FieldDescription testID="services-credentials-expired" invalid={true}>{t('settings:services.credentialsExpired')}</FieldDescription>
+          <Button testID="service-reconnect" disabled={isActivating} onPress={() => void activateTarget()} variant="outline">{isActivating ? <Spinner size="small" /> : null}<Text>{t('common:actions.reconnect')}</Text></Button>
         </View>
       ) : null}
 
-      <Button testID="service-add" mode="contained-tonal" icon="plus" disabled={atCapacity || api.isSaving || !api.available} onPress={onAddService}>
-        {t('settings:services.add')}
-      </Button>
-      {atCapacity ? <HelperText type="info">{t('settings:services.capacity', { max: MAX_MANAGED_SERVICES })}</HelperText> : null}
+      <Button testID="service-add" disabled={atCapacity || api.isSaving || !api.available} onPress={onAddService} variant="secondary"><Icon name={"plus"} size={20} /><Text>{t('settings:services.add')}</Text></Button>
+      {atCapacity ? <FieldDescription  invalid={false}>{t('settings:services.capacity', { max: MAX_MANAGED_SERVICES })}</FieldDescription> : null}
 
       {api.available && api.services.length === 0
-        ? <HelperText type="info">{t('settings:services.empty')}</HelperText>
+        ? <FieldDescription  invalid={false}>{t('settings:services.empty')}</FieldDescription>
         : api.services.map((service) => {
           const url = shareUrl(service);
           return (
-            <View key={service.id} testID={`service-${service.id}`} style={[styles.service, { backgroundColor: palette.background, borderColor: palette.border }]}>
-              <List.Item
-                title={service.name || service.id}
-                description={<View style={styles.serviceDescription}>
-                  {url ? <Text variant="bodySmall" numberOfLines={1} style={{ color: palette.muted }}>{url}</Text> : null}
-                  <Text variant="bodySmall" numberOfLines={1} style={{ color: palette.muted }}>{formatServiceAddress(service)} → {service.target}</Text>
-                </View>}
-                titleStyle={{ color: palette.text }}
-                descriptionStyle={{ color: palette.muted }}
-                right={() => <View style={styles.chips}><Chip compact>{t(`settings:services.access.${service.access}`)}</Chip><Chip compact>{service.enabled ? t('common:labels.enabled') : t('common:labels.off')}</Chip></View>}
-              />
-              <View style={styles.actions}>
-                <Button compact disabled={api.isSaving} onPress={() => onEditService(service)}>{t('common:actions.edit')}</Button>
-                <Button compact disabled={api.isSaving} onPress={() => void copyLink(service)}>{t('settings:services.copyLink')}</Button>
-                <Button compact disabled={api.isSaving} loading={busyId === service.id} onPress={() => void confirmRemove(service)}>{t('common:actions.remove')}</Button>
+            <View key={service.id} testID={`service-${service.id}`} className={cn(stylesClasses.service, "bg-background border-border")}>
+              <ListRow title={service.name || service.id} description={<View className={cn(stylesClasses.serviceDescription)}>
+                  {url ? <Text numberOfLines={1} className={cn("text-muted-foreground")} variant="label">{url}</Text> : null}
+                  <Text numberOfLines={1} className={cn("text-muted-foreground")} variant="label">{formatServiceAddress(service)}{' → '}{service.target}</Text>
+                </View>} titleStyle={{ color: palette.text }} descriptionStyle={{ color: palette.muted }} right={() => <View className={cn(stylesClasses.chips)}><Badge  variant="secondary"><Text>{t(`settings:services.access.${service.access}`)}</Text></Badge><Badge  variant="secondary"><Text>{service.enabled ? t('common:labels.enabled') : t('common:labels.off')}</Text></Badge></View>}></ListRow>
+              <View className={cn(stylesClasses.actions)}>
+                <Button disabled={api.isSaving} onPress={() => onEditService(service)} variant="ghost"><Text>{t('common:actions.edit')}</Text></Button>
+                <Button disabled={api.isSaving} onPress={() => void copyLink(service)} variant="ghost"><Text>{t('settings:services.copyLink')}</Text></Button>
+                <Button disabled={api.isSaving} onPress={() => void confirmRemove(service)} variant="ghost">{busyId === service.id ? <Spinner size="small" /> : null}<Text>{t('common:actions.remove')}</Text></Button>
               </View>
             </View>
           );
         })}
 
-      {feedback ? <HelperText testID="services-feedback" type={feedback.type}>{feedback.message}</HelperText> : null}
+      {feedback ? <FieldDescription testID="services-feedback" invalid={feedback.type === 'error'}>{feedback.message}</FieldDescription> : null}
     </View>
-  );
+  )}</>;
 }
 
-const styles = StyleSheet.create({
-  section: { gap: 14, paddingBottom: 8 },
-  title: { fontWeight: '600' },
-  loadFailure: { alignItems: 'flex-start', gap: 4 },
-  target: { borderRadius: 14, borderWidth: 1, gap: 10, padding: 12 },
-  expired: { alignItems: 'flex-start', gap: 4 },
-  service: { borderRadius: 14, borderWidth: 1, padding: 8 },
-  serviceDescription: { gap: 2 },
-  chips: { flexDirection: 'row', alignItems: 'center', gap: 4 },
-  actions: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'flex-end', gap: 4 },
-});
+
+
+const stylesClasses = {
+  "section": "gap-3.5 pb-2",
+  "title": "font-semibold",
+  "loadFailure": "items-start gap-1",
+  "target": "rounded-[14px] border gap-2.5 p-3",
+  "expired": "items-start gap-1",
+  "service": "rounded-[14px] border p-2",
+  "serviceDescription": "gap-0.5",
+  "chips": "flex-row items-center gap-1",
+  "actions": "flex-row flex-wrap items-center justify-end gap-1"
+} as const;

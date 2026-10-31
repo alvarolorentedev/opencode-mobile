@@ -1,9 +1,17 @@
-import { SettingButton as Button } from './sections/setting-rows';
+import { cn } from '@/lib/utils';
+import { ModalSurface } from '@/components/ui/portal';
+import { Button } from '@/components/ui/button';
+import { Icon } from '@/components/ui/icon';
+import { HeaderTitle, ScreenHeader } from '@/components/ui/screen-header';
+import { Text } from '@/components/ui/text';
+import { Spinner } from '@/components/ui/spinner';
+import { FieldDescription } from '@/components/ui/text-field';
+
 import Constants from 'expo-constants';
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Modal, Platform, StyleSheet, View } from 'react-native';
-import { ActivityIndicator, Appbar, HelperText, Text } from 'react-native-paper';
+import { Platform, StyleSheet, View } from 'react-native';
+
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { ConnectCameraGate } from '@/components/settings/connect-camera-gate';
@@ -102,49 +110,48 @@ export function ConnectionScanFlow({ onSubmit, onDismiss, onBusyChange }: {
   if (!native) return null;
 
   return (
-    <Modal visible animationType="slide" presentationStyle="fullScreen" onRequestClose={locked ? undefined : dismiss}>
-      <View style={[styles.screen, { backgroundColor: palette.background }]}>
+    <ModalSurface accessibilityLabel={t('settings:connection.setup.scan')} visible animationType="slide" presentationStyle="fullScreen" onRequestClose={locked ? undefined : dismiss}>
+      <View className={cn(stylesClasses.screen, "bg-background")}>
         <View style={StyleSheet.absoluteFill}>
           <ConnectCameraGate onCancel={dismiss}>
             <ConnectScanner key={attempt} enabled={!busy && !message} hint={t('settings:connection.setup.scanAutomatic')} onScan={(code) => void pair(code)} />
           </ConnectCameraGate>
         </View>
-        <Appbar.Header statusBarHeight={0} style={{ backgroundColor: palette.surface, paddingTop: insets.top, height: headerHeight }}>
-          <Appbar.BackAction color={palette.text} accessibilityLabel={t('common:actions.back')} disabled={Boolean(busy)} onPress={dismiss} />
-          <Appbar.Content titleMaxFontSizeMultiplier={1.5} titleStyle={{ color: palette.text }} title={t('settings:connection.setup.scan')} />
-        </Appbar.Header>
-        <View pointerEvents="none" style={[styles.instructions, { top: headerHeight + 12 }]}>
-          <View style={[styles.card, { backgroundColor: palette.surface, borderColor: palette.border }]}>
-            <Text variant="bodyLarge" style={{ color: palette.text }}>{t('settings:connection.setup.pairCommand')}</Text>
-            <Text style={{ color: palette.muted }}>{t('settings:connection.setup.sameNetwork')}</Text>
+        <ScreenHeader style={{ backgroundColor: palette.surface, paddingTop: insets.top, height: headerHeight }} safeArea={false}><Button accessibilityLabel={t('common:actions.back')} disabled={Boolean(busy)} onPress={dismiss} variant="ghost" size="icon"><Icon name={"arrow-left"} size={24} color={palette.text} /></Button><HeaderTitle title={t('settings:connection.setup.scan')} textStyle={{ color: palette.text }} maxFontSizeMultiplier={1.5}></HeaderTitle></ScreenHeader>
+        <View pointerEvents="none" className={cn(stylesClasses.instructions)} style={[{ top: headerHeight + 12 }]}>
+          <View className={cn(stylesClasses.card, "bg-surface border-border")}>
+            <Text className={cn("text-foreground")} variant="body">{t('settings:connection.setup.pairCommand')}</Text>
+            <Text className={cn("text-muted-foreground")}>{t('settings:connection.setup.sameNetwork')}</Text>
           </View>
         </View>
-        {busy ? <View style={styles.center} pointerEvents="none">
-          <View style={[styles.card, styles.progress, { backgroundColor: palette.surface, borderColor: palette.border }]}>
-            <ActivityIndicator />
-            <Text style={{ color: palette.text }} testID="connection-scan-progress">{t(`settings:connect.progress.${busy === 'pair' ? 'claiming' : 'saving'}`)}</Text>
+        {busy ? <View className={cn(stylesClasses.center)} pointerEvents="none">
+          <View className={cn(stylesClasses.card, stylesClasses.progress, "bg-surface border-border")}>
+            <Spinner />
+            <Text className={cn("text-foreground")} testID="connection-scan-progress">{t(`settings:connect.progress.${busy === 'pair' ? 'claiming' : 'saving'}`)}</Text>
           </View>
         </View> : null}
-        {message ? <View style={[styles.recovery, { bottom: Math.max(insets.bottom, 96) }]}>
-          <View style={[styles.card, { backgroundColor: palette.surface, borderColor: palette.border }]}>
-            <HelperText testID="connection-scan-error" type="error" visible>{message}</HelperText>
-            <View style={styles.actions}>
-              {redeemed ? <Button testID="connection-scan-retry" mode="contained" disabled={Boolean(busy)} onPress={() => void submit(redeemed)}>{t('common:actions.retry')}</Button> : null}
-              <Button testID="connection-scan-again" disabled={Boolean(busy)} onPress={rescan}>{t('settings:connection.setup.scanAgain')}</Button>
+        {message ? <View className={cn(stylesClasses.recovery)} style={[{ bottom: Math.max(insets.bottom, 96) }]}>
+          <View className={cn(stylesClasses.card, "bg-surface border-border")}>
+            <FieldDescription testID="connection-scan-error" invalid={true} hidden={!(true)}>{message}</FieldDescription>
+            <View className={cn(stylesClasses.actions)}>
+              {redeemed ? <Button testID="connection-scan-retry" disabled={Boolean(busy)} onPress={() => void submit(redeemed)} variant="default"><Text>{t('common:actions.retry')}</Text></Button> : null}
+              <Button testID="connection-scan-again" disabled={Boolean(busy)} onPress={rescan} variant="ghost"><Text>{t('settings:connection.setup.scanAgain')}</Text></Button>
             </View>
           </View>
         </View> : null}
       </View>
-    </Modal>
+    </ModalSurface>
   );
 }
 
-const styles = StyleSheet.create({
-  screen: { flex: 1 },
-  instructions: { position: 'absolute', left: 24, right: 24 },
-  recovery: { position: 'absolute', left: 24, right: 24 },
-  center: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, alignItems: 'center', justifyContent: 'center' },
-  card: { borderRadius: 16, borderWidth: 1, padding: 16, gap: 6 },
-  progress: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  actions: { flexDirection: 'row', justifyContent: 'flex-end', gap: 8 },
-});
+
+
+const stylesClasses = {
+  "screen": "flex-1",
+  "instructions": "absolute left-6 right-6",
+  "card": "rounded-[16px] border p-4 gap-1.5",
+  "center": "absolute top-0 left-0 right-0 bottom-0 items-center justify-center",
+  "progress": "flex-row items-center gap-3",
+  "recovery": "absolute left-6 right-6",
+  "actions": "flex-row justify-end gap-2"
+} as const;

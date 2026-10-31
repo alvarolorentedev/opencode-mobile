@@ -1,6 +1,8 @@
+import { cn } from '@/lib/utils';
+import { ListRow } from '@/components/ui/list-row';
 import { useTranslation } from 'react-i18next';
 import { StyleSheet, View } from 'react-native';
-import { List } from 'react-native-paper';
+
 
 import { LANGUAGE_OPTIONS } from '@/components/settings/settings-utils';
 import { useSpeechVoices } from '@/components/settings/use-speech-voices';
@@ -53,24 +55,16 @@ export function SetupSummary() {
   ];
 
   return (
-    <View style={[styles.card, { backgroundColor: palette.surface, borderColor: palette.border }]}>
+    <View className={cn(stylesClasses.card, "bg-surface border-border")}>
       {rows.map((row, index) => (
-        <List.Item
-          key={row.id}
-          testID={`onboarding-summary-${row.id}`}
-          title={row.label}
-          description={row.value}
-          titleNumberOfLines={0}
-          descriptionNumberOfLines={0}
-          titleStyle={{ color: palette.muted, fontSize: 13 }}
-          descriptionStyle={{ color: palette.text }}
-          style={index > 0 ? { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: palette.border } : undefined}
-        />
+        <ListRow key={row.id} testID={`onboarding-summary-${row.id}`} title={row.label} description={row.value} titleStyle={{ color: palette.muted, fontSize: 13 }} descriptionStyle={{ color: palette.text }} style={index > 0 ? { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: palette.border } : undefined}></ListRow>
       ))}
     </View>
   );
 }
 
-const styles = StyleSheet.create({
-  card: { borderRadius: 16, borderWidth: 1, overflow: 'hidden' },
-});
+
+
+const stylesClasses = {
+  "card": "rounded-[16px] border overflow-hidden"
+} as const;

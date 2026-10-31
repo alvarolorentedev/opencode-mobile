@@ -1,7 +1,10 @@
+import { cn } from '@/lib/utils';
+import { FieldDescription } from '@/components/ui/text-field';
+import { Text } from '@/components/ui/text';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { StyleSheet, View } from 'react-native';
-import { HelperText, Text } from 'react-native-paper';
+
 
 import { ResponsesSection } from '@/components/settings/sections/responses-section';
 import { VoiceSection } from '@/components/settings/sections/voice-section';
@@ -48,15 +51,15 @@ export function OnboardingVoiceSettings() {
         updateChatPreferences={updateChatPreferences}
         voiceCapabilities={voiceSetup.capabilities}
       />
-      {voiceSetup.feedback ? <HelperText type="info">{voiceSetup.feedback}</HelperText> : null}
-      <View style={[styles.divider, { backgroundColor: palette.border }]} />
-      <Text variant="titleMedium" style={{ color: palette.text }}>{t('onboarding:voice.responses')}</Text>
+      {voiceSetup.feedback ? <FieldDescription  invalid={false}>{voiceSetup.feedback}</FieldDescription> : null}
+      <View className={cn("bg-border")} style={[styles.divider]} />
+      <Text className={cn("text-foreground")} variant="title">{t('onboarding:voice.responses')}</Text>
       <ResponsesSection chatPreferences={chatPreferences} palette={palette} selectedResponseScope={{ value: chatPreferences.responseScope }} updateChatPreferences={updateChatPreferences} />
-      <Text variant="bodySmall" style={{ color: palette.muted }}>{t('onboarding:ready.footnote')}</Text>
+      <Text className={cn("text-muted-foreground")} variant="label">{t('onboarding:ready.footnote')}</Text>
     </>
   );
 }
 
 const styles = StyleSheet.create({
-  divider: { height: StyleSheet.hairlineWidth, marginVertical: 4 },
+  divider: { height: StyleSheet.hairlineWidth, marginVertical: 4 }
 });

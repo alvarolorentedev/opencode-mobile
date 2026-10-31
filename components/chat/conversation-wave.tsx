@@ -1,5 +1,6 @@
+import { cn } from '@/lib/utils';
 import { useEffect, useId, useState } from 'react';
-import { AccessibilityInfo, StyleSheet, View } from 'react-native';
+import { AccessibilityInfo, View } from 'react-native';
 import Animated, { cancelAnimation, Easing, useAnimatedProps, useReducedMotion, useSharedValue, withRepeat, withTiming, type SharedValue } from 'react-native-reanimated';
 import Svg, { Defs, LinearGradient, Path, Stop } from 'react-native-svg';
 
@@ -82,7 +83,7 @@ export function ConversationWave({ phase, level, tint, accent, height }: {
   }, [phase, progress, reducedMotion]);
 
   return (
-    <View testID="conversation-wave" accessibilityElementsHidden importantForAccessibility="no-hide-descendants" style={[styles.wave, { height }]}>
+    <View testID="conversation-wave" accessibilityElementsHidden importantForAccessibility="no-hide-descendants" className={cn(stylesClasses.wave)} style={[{ height }]}>
       <Svg width="100%" height="100%" viewBox="0 0 360 140" accessible={false}>
         <Defs>
           <LinearGradient id={gradientId} x1="0%" y1="0%" x2="100%" y2="0%">
@@ -101,6 +102,8 @@ export function ConversationWave({ phase, level, tint, accent, height }: {
   );
 }
 
-const styles = StyleSheet.create({
-  wave: { width: '100%', flexShrink: 1 },
-});
+
+
+const stylesClasses = {
+  "wave": "w-full shrink"
+} as const;

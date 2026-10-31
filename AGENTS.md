@@ -253,7 +253,7 @@ Changes here require explicit human validation.
 
 ### Design system and Storybook
 
-- tokens, palettes, theme mapping: `constants/theme.ts`, `constants/appearance.ts`, `constants/paper-theme.ts`, `constants/design-tokens.ts`
+- tokens, palettes, theme mapping: `constants/theme.ts`, `constants/appearance.ts`, `constants/ui-tokens.generated.css`, `constants/design-tokens.ts`
 - shared settings controls: `components/settings/sections/setting-rows.tsx`
 - component responsibilities: `docs/design/component-inventory.md`
 - design rules and acceptance: `docs/design/design-system.md`
@@ -262,7 +262,7 @@ Changes here require explicit human validation.
 
 Add a story when introducing or changing a reusable primitive or shared
 control. Stories render the production component with the real appearance and
-Paper providers. Do not add provider-orchestration or full-screen stories to
+appearance and portal providers. Do not add provider-orchestration or full-screen stories to
 Storybook; cover those with E2E flows. Run `npm run build:storybook` when
 changing stories or Storybook config. See `docs/design/storybook.md`.
 
@@ -457,3 +457,17 @@ A change is done when:
 - the pre-push CI-equivalent checks pass (`test:ci:static`, `test:fake-server:self`, `test:e2e:budget`, `build:storybook`, `test:e2e:web`)
 - validation matches the risk of the change
 - the final summary states what changed, what was verified, and any remaining risk
+
+## Source-owned UI and complex forms
+
+Read [the design system](docs/design/design-system.md) and
+[ADR 0013](docs/adr/0013-source-owned-ui-and-complex-forms.md) before changing the UI foundation.
+Use the Uniwind Reusables source in `components/ui/`; use CVA and `cn()` for
+variants and semantic classes for static presentation. Tokens are authored only
+in `constants/ui-tokens.json`; run `npm run gen:ui-tokens` and its check mode.
+Do not introduce another UI/styling engine, Paper-shaped wrappers, duplicate
+controls, or a generic form framework. Complex forms use React Hook Form and
+Zod with existing domain validators. Simple preferences remain immediate.
+Registry upgrades are reviewed source diffs with provenance, never blind
+regeneration. Preserve native modal hosts, workspace scope, keyboard/Back,
+localization, text scaling and existing renderer/virtualization behavior.

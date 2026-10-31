@@ -1,7 +1,12 @@
+import { cn } from '@/lib/utils';
+import { Text } from '@/components/ui/text';
+import { ListRow } from '@/components/ui/list-row';
+import { Icon } from '@/components/ui/icon';
+import { Button } from '@/components/ui/button';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useTranslation } from 'react-i18next';
-import { StyleSheet, View } from 'react-native';
-import { Button, List, Text } from 'react-native-paper';
+import { View } from 'react-native';
+
 
 import { useOnboardingNavigation } from '@/components/onboarding/use-onboarding-navigation';
 import { OnboardingStep } from '@/components/onboarding/onboarding-step';
@@ -19,44 +24,19 @@ export default function OnboardingWelcomeScreen() {
       subtitle={t('onboarding:welcome.subtitle')}
       testID="onboarding-welcome"
       footer={
-        <Button
-          mode="contained"
-          testID="onboarding-welcome-start"
-          onPress={navigation.next}>
-          {t('onboarding:welcome.start')}
-        </Button>
+        <Button testID="onboarding-welcome-start" onPress={navigation.next} variant="default"><Text>{t('onboarding:welcome.start')}</Text></Button>
       }>
-      <View style={[styles.card, { backgroundColor: palette.surface, borderColor: palette.border }]}>
+      <View className={cn(stylesClasses.card, "bg-surface border-border")}>
         <MaterialCommunityIcons name="server-network" size={28} color={palette.tint} />
-        <Text variant="bodyMedium" style={{ color: palette.text }}>{t('onboarding:welcome.body')}</Text>
+        <Text className={cn("text-foreground")} variant="description">{t('onboarding:welcome.body')}</Text>
       </View>
-      <List.Section>
-        <List.Item
-          title={t('onboarding:welcome.points.server.title')}
-          description={t('onboarding:welcome.points.server.description')}
-          titleStyle={{ color: palette.text }}
-          descriptionStyle={{ color: palette.muted }}
-          left={(props) => <List.Icon {...props} icon="server" color={palette.tint} />}
-        />
-        <List.Item
-          title={t('onboarding:welcome.points.project.title')}
-          description={t('onboarding:welcome.points.project.description')}
-          titleStyle={{ color: palette.text }}
-          descriptionStyle={{ color: palette.muted }}
-          left={(props) => <List.Icon {...props} icon="folder-outline" color={palette.tint} />}
-        />
-        <List.Item
-          title={t('onboarding:welcome.points.optional.title')}
-          description={t('onboarding:welcome.points.optional.description')}
-          titleStyle={{ color: palette.text }}
-          descriptionStyle={{ color: palette.muted }}
-          left={(props) => <List.Icon {...props} icon="microphone-outline" color={palette.tint} />}
-        />
-      </List.Section>
+      <View><ListRow title={t('onboarding:welcome.points.server.title')} description={t('onboarding:welcome.points.server.description')} titleStyle={{ color: palette.text }} descriptionStyle={{ color: palette.muted }} left={(props) => <Icon {...props} color={palette.tint} name={"server"}></Icon>}></ListRow><ListRow title={t('onboarding:welcome.points.project.title')} description={t('onboarding:welcome.points.project.description')} titleStyle={{ color: palette.text }} descriptionStyle={{ color: palette.muted }} left={(props) => <Icon {...props} color={palette.tint} name={"folder-outline"}></Icon>}></ListRow><ListRow title={t('onboarding:welcome.points.optional.title')} description={t('onboarding:welcome.points.optional.description')} titleStyle={{ color: palette.text }} descriptionStyle={{ color: palette.muted }} left={(props) => <Icon {...props} color={palette.tint} name={"microphone-outline"}></Icon>}></ListRow></View>
     </OnboardingStep>
   );
 }
 
-const styles = StyleSheet.create({
-  card: { alignItems: 'center', borderRadius: 16, borderWidth: 1, gap: 12, padding: 18 },
-});
+
+
+const stylesClasses = {
+  "card": "items-center rounded-[16px] border gap-3 p-4.5"
+} as const;
