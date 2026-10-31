@@ -14,20 +14,33 @@ export function getProjectLabel(path: string) {
   return segments.at(-1) || normalized || 'Project';
 }
 
-// The picker mirrors the desktop Home list: it renders the projects the user
-// opened on this connection and enriches them with the server's project
-// metadata (id and display name). A remote project that was never opened is not
-// rendered.
+// The picker seeds the connection's opened projects first, then fills in every
+// other project the server knows about so a fresh device can pick a server
+// project without typing its path. Metadata comes from the server catalog.
 export function buildOpencodeProjects(openedPaths: string[], serverProjects: Project[]): OpencodeProject[] {
   const remoteByPath = new Map(serverProjects.map((project) => [project.worktree, project]));
-  return openedPaths.map((path) => {
+  const projects: OpencodeProject[] = [];
+  const seen = new Set<string>();
+  for (const path of openedPaths) {
+    if (seen.has(path)) continue;
+    seen.add(path);
     const remote = remoteByPath.get(path);
-    return {
+    projects.push({
       ...(remote ? { id: remote.id } : {}),
       label: remote?.name || getProjectLabel(path),
       path,
-    };
-  });
+    });
+  }
+  for (const remote of serverProjects) {
+    if (seen.has(remote.worktree)) continue;
+    seen.add(remote.worktree);
+    projects.push({
+      id: remote.id,
+      label: remote.name || getProjectLabel(remote.worktree),
+      path: remote.worktree,
+    });
+  }
+  return projects;
 }
 
 // The active location can be a worktree: a server-known directory that belongs

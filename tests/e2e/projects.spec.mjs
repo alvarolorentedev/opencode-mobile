@@ -98,8 +98,8 @@ test('Chat and Project use the same project picker @smoke', async ({ page, reque
   await expect(page.getByTestId('project-refresh-button')).toBeVisible();
   await projectDropdown.click();
   await expect(page.getByTestId('project-picker')).toBeVisible();
-  // A server project that was never opened on this connection is not listed.
-  await expect(page.getByTestId('project-picker').getByRole('button', { name: 'Select secondary-project' })).toHaveCount(0);
+  // Server projects are listed before the user opens them on this connection.
+  await expect(page.getByTestId('project-picker').getByRole('button', { name: 'Select secondary-project' })).toBeVisible();
   await page.getByTestId('project-add-button').click();
   await page.getByTestId('project-add-path').fill('/workspace/secondary-project');
   await page.getByTestId('project-add-submit').click();
@@ -330,9 +330,8 @@ for (const contract of ['v1', 'v2']) {
       }
       await workspaceProjectButton(page).click();
       const picker = page.getByTestId('project-picker');
-      // The connection starts with the server's current project only; open the
-      // secondary project before switching to it.
-      await expect(picker.getByRole('button', { name: 'Select secondary-project' })).toHaveCount(0);
+      // Server projects are visible before they are opened on this connection.
+      await expect(picker.getByRole('button', { name: 'Select secondary-project' })).toBeVisible();
       await picker.getByTestId('project-add-button').click();
       await picker.getByTestId('project-add-path').fill('/workspace/secondary-project');
       await picker.getByTestId('project-add-submit').click();

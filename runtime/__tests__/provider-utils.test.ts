@@ -55,15 +55,16 @@ describe('provider model selection utilities', () => {
 
     const now = 1_000_000;
 
-    // The picker renders only the projects opened on this connection and
-    // enriches them with the server's project metadata.
-    const remoteProjects = [{ id: 'p1', worktree: '/repo', name: 'Repo display', time: { created: 1, updated: 5 } }];
+    // The picker starts with the opened projects and then fills in every server
+    // project so a fresh device can select one without typing its path.
+    const remoteProjects = [{ id: 'p1', worktree: '/repo', name: 'Repo display', time: { created: 1, updated: 5 } }, { id: 'p2', worktree: '/remote', name: 'Remote display', time: { created: 1, updated: 4 } }];
     const listedProjects = buildOpencodeProjects(['/repo', '/unlisted'], remoteProjects);
     assert.deepEqual(listedProjects.map((project) => ({ path: project.path, label: project.label, id: project.id })), [
       { path: '/repo', label: 'Repo display', id: 'p1' },
       { path: '/unlisted', label: 'unlisted', id: undefined },
+      { path: '/remote', label: 'Remote display', id: 'p2' },
     ]);
-    assert.deepEqual(buildOpencodeProjects([], remoteProjects), []);
+    assert.deepEqual(buildOpencodeProjects([], remoteProjects).map((project) => project.path), ['/repo', '/remote']);
     // A worktree is labeled by its owning project and only while the worktree
     // catalog resolves it.
     const worktreeCatalog = { entries: [{ directory: '/worktrees/task', name: 'task' }], project: { id: 'p1', root: '/repo', label: 'Repo display' }, loading: false };

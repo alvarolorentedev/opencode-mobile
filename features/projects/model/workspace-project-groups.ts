@@ -23,6 +23,7 @@ type ProjectSnapshotValues = {
   projectsValue: {
     activeProjectPath?: string;
     activeProject?: OpencodeProject;
+    projects?: OpencodeProject[];
   };
   projectFilesValue: {
     worktrees: {
@@ -58,6 +59,19 @@ export function buildWorkspaceProjectGroups(
     const byRoot = new Map<string, WorkspaceProject>();
     for (const runtime of runtimes) {
       const values = runtime.values as unknown as ProjectSnapshotValues;
+      // The server catalog is connection-wide while a snapshot is per opened
+      // project. Every runtime carries the same catalog, so seed every known
+      // project first and let the active runtime below enrich its own row.
+      for (const project of values.projectsValue.projects ?? []) {
+        if (byRoot.has(project.path)) continue;
+        byRoot.set(project.path, {
+          ...(project.id ? { id: project.id } : {}),
+          label: project.label,
+          path: project.path,
+          checkouts: projectCheckouts(project.path, []),
+          loadingWorktrees: false,
+        });
+      }
       const active = values.projectsValue.activeProject;
       const activePath = values.projectsValue.activeProjectPath ?? active?.path;
       const catalog = values.projectFilesValue.worktrees;

@@ -2,17 +2,18 @@ import { describe, expect, it } from 'vitest';
 
 import { buildWorkspaceProjectGroups } from '@/features/projects/model/workspace-project-groups';
 
-function snapshot({ path, root = '/repo', entries = [], branch = 'main', activePath = path, status = 'connected' }: {
+function snapshot({ path, root = '/repo', entries = [], branch = 'main', activePath = path, status = 'connected', projects = [] }: {
   path: string;
   root?: string;
   entries?: { directory: string; name: string; branch?: string }[];
   branch?: string;
   activePath?: string;
   status?: string;
+  projects?: { id?: string; label: string; path: string }[];
 }) {
   return {
     values: {
-      projectsValue: { activeProjectPath: activePath, activeProject: { id: 'project-1', label: 'repo', path } },
+      projectsValue: { activeProjectPath: activePath, activeProject: { id: 'project-1', label: 'repo', path }, projects },
       projectFilesValue: {
         worktrees: { entries, project: { id: 'project-1', root, label: 'repo' }, loading: false },
         vcsInfo: { branch },
@@ -52,6 +53,22 @@ describe('workspace project groups', () => {
     expect(groups[0].projects).toHaveLength(1);
     expect(groups[0].projects[0].path).toBe('/repo');
     expect(groups[0].projects[0].checkouts.map((checkout) => checkout.directory)).toEqual(['/repo', '/repo/wt']);
+  });
+
+  it('lists every server project alongside the opened runtime', () => {
+    const groups = buildWorkspaceProjectGroups([{ id: 'server-1', name: 'Server', enabled: true } as never], {
+      '["server-1","/repo"]': snapshot({
+        path: '/repo',
+        projects: [
+          { id: 'project-1', label: 'repo', path: '/repo' },
+          { id: 'project-2', label: 'another', path: '/another' },
+        ],
+      }),
+    });
+    expect(groups[0].projects.map((project) => project.path)).toEqual(['/another', '/repo']);
+    expect(groups[0].projects.find((project) => project.path === '/another')?.checkouts).toEqual([
+      { directory: '/another', name: 'Local', branch: undefined, isMain: true },
+    ]);
   });
 
   it('omits disabled and non-connected connections', () => {
