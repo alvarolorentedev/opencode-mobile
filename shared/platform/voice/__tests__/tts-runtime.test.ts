@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'vitest';
 
-import { loadTs } from '../../../../tests/helpers/runtime.mjs';
+import { deferred, loadTs } from '../../../../tests/helpers/runtime.mjs';
 
 describe('on-device voice runtime config', () => {
   it('sends both native config key aliases and plain filesystem paths', async () => {
@@ -80,4 +80,28 @@ describe('on-device voice runtime config', () => {
     assert.equal(chinese.dataDir, undefined);
     assert.equal(chinese.lang, 'zh');
   });
+  it('releases a model whose initialization finishes after teardown', async () => {
+    const waiting = deferred<{ success: boolean; sampleRate: number; numSpeakers: number }>();
+    let releases = 0;
+    const native = {
+      initTts: () => waiting.promise,
+      stopTts: async () => {},
+      releaseTts: async () => { releases++; },
+    };
+    const runtime = await loadTs('shared/platform/voice/tts/runtime.ts', {
+      'react-native': { TurboModuleRegistry: { get: () => native } },
+      '@/shared/platform/voice/tts/models': { getLocalTtsPackPaths: () => ({ modelDir: '/models', modelFile: 'model.onnx', tokensFile: 'tokens.txt' }) },
+    });
+    const pending = runtime.ensureLocalTtsRuntime('kokoro-en');
+    await Promise.resolve();
+    const released = runtime.releaseLocalTtsRuntime();
+    waiting.resolve({ success: true, sampleRate: 24000, numSpeakers: 1 });
+    await assert.rejects(pending, /released while loading/);
+    await released;
+    assert.equal(releases, 1);
+    await runtime.ensureLocalTtsRuntime('kokoro-en');
+    await runtime.releaseLocalTtsRuntime();
+    assert.equal(releases, 2);
+  });
+
 });

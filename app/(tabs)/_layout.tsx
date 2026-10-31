@@ -17,7 +17,7 @@ export default function TabLayout() {
   const updates = useUpdates();
   const palette = usePalette();
   const selected = (route: string) => route === '/' ? pathname === '/' || pathname.startsWith('/session/') : pathname.startsWith(route);
-  const iconColor = (route: string, color: ColorValue) => Platform.OS === 'web' ? selected(route) ? palette.tint : palette.tabIconDefault : color;
+  const iconColor = (route: string, color: ColorValue) => Platform.OS === 'web' || typeof color !== 'string' ? selected(route) ? palette.tint : palette.tabIconDefault : color;
   const label = (route: string, value: string) => function TabLabel({ color }: { color: ColorValue }) {
     return <Text maxFontSizeMultiplier={1.3} style={{ color: Platform.OS === 'web' ? selected(route) ? palette.tint : palette.tabIconDefault : color, fontSize: 12, fontWeight: '600' }}>{value}</Text>;
   };

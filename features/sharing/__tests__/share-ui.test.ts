@@ -79,10 +79,10 @@ it('keeps the original tabs route when dismissing instead of creating another ch
   const { StackRouter, StackActions } = createRequire(import.meta.url)('../../../node_modules/expo-router/build/react-navigation/routers/StackRouter.js');
   const router = StackRouter({ initialRouteName: '(tabs)' });
   const options = { routeNames: ['(tabs)', 'share'], routeParamList: {}, routeGetIdList: {} };
-  const initial = router.getInitialState(options);
-  const shared = router.getStateForAction(initial, StackActions.push('share'), options);
-  const dismissed = router.getStateForAction(shared, StackActions.popTo('(tabs)'), options);
+  const initial = { key: 'root', type: 'stack', stale: false, routeNames: options.routeNames, index: 0, routeKeySeq: 1, routes: [{ key: 'tabs-0', name: '(tabs)' }] };
+  const shared = router.getStateForAction(initial, StackActions.push('share'), options).state;
+  const dismissed = router.getStateForAction(shared, StackActions.popTo('(tabs)'), options).state;
   expect(dismissed.routes).toEqual(initial.routes);
-  const replaced = router.getStateForAction(shared, StackActions.replace('(tabs)'), options);
+  const replaced = router.getStateForAction(shared, StackActions.replace('(tabs)'), options).state;
   expect(replaced.routes.at(-1).key).not.toBe(initial.routes[0].key);
 });

@@ -16,6 +16,7 @@ const isFossBuild = process.env.EXPO_PUBLIC_FOSS === '1' || fossExcludes.include
 
 if (isFossBuild) {
   const stubs = {
+    'expo-in-app-updates': path.resolve(__dirname, 'shared/platform/foss/expo-in-app-updates-stub.ts'),
     'expo-iap': path.resolve(__dirname, 'shared/platform/foss/expo-iap-stub.ts'),
     'expo-camera': path.resolve(__dirname, 'shared/platform/foss/expo-camera-stub.tsx'),
     'expo-store-review': path.resolve(__dirname, 'shared/platform/foss/expo-store-review-stub.ts'),

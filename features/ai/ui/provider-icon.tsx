@@ -1,9 +1,8 @@
 import { Image } from 'expo-image';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import type { ReactNode } from 'react';
-import type { ImageSourcePropType } from 'react-native';
+import type { ComponentProps, ReactNode } from 'react';
 
-const PROVIDER_ICON_SOURCES: Record<string, ImageSourcePropType> = {
+const PROVIDER_ICON_SOURCES: Record<string, ComponentProps<typeof Image>['source']> = {
   openai: require('../../../assets/provider-icons/openai.png'),
   anthropic: require('../../../assets/provider-icons/anthropic.png'),
   google: require('../../../assets/provider-icons/google.png'),

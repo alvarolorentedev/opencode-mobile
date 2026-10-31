@@ -3,6 +3,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as BackgroundTask from 'expo-background-task';
 import Constants from 'expo-constants';
 import * as Notifications from 'expo-notifications';
+import { AndroidImportance } from 'expo-notifications';
 import * as TaskManager from 'expo-task-manager';
 import { Platform } from 'react-native';
 
@@ -159,7 +160,7 @@ async function configureAttentionChannelAsync() {
 
   await Notifications.setNotificationChannelAsync(TASK_ATTENTION_CHANNEL_ID, {
     name: i18n.t('notifications:attention.channel'),
-    importance: Notifications.AndroidImportance.DEFAULT,
+    importance: AndroidImportance.DEFAULT,
   });
 }
 
@@ -264,7 +265,7 @@ async function configureNotificationChannelAsync() {
 
   await Notifications.setNotificationChannelAsync(TASK_FINISHED_CHANNEL_ID, {
     name: 'Task finished',
-    importance: Notifications.AndroidImportance.LOW,
+    importance: AndroidImportance.LOW,
     sound: null,
     enableVibrate: false,
   });

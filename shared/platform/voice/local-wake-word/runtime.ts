@@ -80,7 +80,7 @@ async function ensureKws(runtime: LoadedRuntime, phrase: LocalWakePhraseId) {
   if (missing.length > 0) {
     throw new Error(`The wake phrase tokens are not in the installed model: ${missing.join(', ')}.`);
   }
-  writeLocalVoiceKeywords(phrase);
+  await writeLocalVoiceKeywords(phrase);
   if (kwsPhrase === phrase) {
     return;
   }

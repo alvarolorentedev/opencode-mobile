@@ -43,14 +43,10 @@
   },
   "updates": {
     "available": "Actualización disponible",
-    "ready": "Actualización lista",
     "later": "Más tarde",
     "failed": "No se pudo actualizar. Inténtalo más tarde.",
     "opening": "Abriendo la actualización…",
-    "installing": "Instalando actualización…",
-    "readyDescription": "Reinicia la app para instalarla.",
     "availableDescription": "Instala la última versión desde el App Store.",
-    "restart": "Reiniciar e instalar",
     "openStore": "Abrir App Store"
   },
   "servers": {

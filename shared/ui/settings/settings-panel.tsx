@@ -1,7 +1,7 @@
 import { cn } from '@/shared/ui/cn';
 import { Text } from '@/shared/ui/text';
 import { Icon } from '@/shared/ui/icon';
-import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from 'react';
+import { createContext, useCallback, useContext, useEffect, useRef, useState, type ComponentRef, type ReactNode } from 'react';
 import { AccessibilityInfo, Platform, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 
 import { ControlSize, Spacing } from '@/shared/ui/theme/design-tokens';
@@ -10,7 +10,7 @@ import type { SettingsTarget } from '@/shared/ui/settings/target';
 
 const TargetContext = createContext<{
   target?: SettingsTarget;
-  reveal?: (node: View) => void;
+  reveal?: (node: ComponentRef<typeof View>) => void;
 }>({});
 
 export function useSettingsTarget() {
@@ -18,9 +18,9 @@ export function useSettingsTarget() {
 }
 
 export function SettingsPanel({ children, target }: { children: ReactNode; target?: SettingsTarget }) {
-  const scroll = useRef<ScrollView>(null);
-  const content = useRef<View>(null);
-  const reveal = useCallback((node: View) => {
+  const scroll = useRef<ComponentRef<typeof ScrollView>>(null);
+  const content = useRef<ComponentRef<typeof View>>(null);
+  const reveal = useCallback((node: ComponentRef<typeof View>) => {
     if (!content.current) return;
     node.measureLayout(content.current, (_x, y) => {
       scroll.current?.scrollTo({ y: Math.max(0, y - Spacing.md), animated: false });
@@ -40,7 +40,7 @@ export function SettingsPanel({ children, target }: { children: ReactNode; targe
 export function SettingTarget({ children, label }: { children: ReactNode; label?: string }) {
   const { target, reveal } = useContext(TargetContext);
 
-  const ref = useRef<View>(null);
+  const ref = useRef<ComponentRef<typeof View>>(null);
   const selected = Boolean(label && target?.label === label);
   const show = useCallback(() => {
     if (selected && ref.current) reveal?.(ref.current);

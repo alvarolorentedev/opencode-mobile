@@ -26,7 +26,6 @@ export function useAppUpdates({ initialized, blocked }: { initialized: boolean; 
   const [foreground, setForeground] = useState(AppState.currentState === 'active');
   const [blockerCount, setBlockerCount] = useState(0);
   const [busy, setBusy] = useState(false);
-  const [installing, setInstalling] = useState(false);
   const [error, setError] = useState(false);
   const [suppressed, setSuppressed] = useState(false);
   const [now, setNow] = useState(Date.now);
@@ -37,9 +36,9 @@ export function useAppUpdates({ initialized, blocked }: { initialized: boolean; 
   const checking = useRef(false);
   const eventRevision = useRef(0);
   const suppressSession = useRef(false);
-  const latest = useRef({ initialized, blocked, surfaceActive, foreground, preferences, snapshot, ready, installing });
+  const latest = useRef({ initialized, blocked, surfaceActive, foreground, preferences, snapshot, ready });
   const [write] = useState(createPersistenceWriter);
-  useLayoutEffect(() => { latest.current = { initialized, blocked, surfaceActive, foreground, preferences, snapshot, ready, installing }; });
+  useLayoutEffect(() => { latest.current = { initialized, blocked, surfaceActive, foreground, preferences, snapshot, ready }; });
 
   const block = useCallback(() => {
     const token = Symbol();
@@ -52,8 +51,8 @@ export function useAppUpdates({ initialized, blocked }: { initialized: boolean; 
   }, []);
 
   const dismiss = useCallback((value: UpdateSnapshot) => {
-    if (value.phase !== 'available' && value.phase !== 'downloaded') return;
-    const dismissal = { version: value.version ?? 'downloaded', phase: value.phase, until: Date.now() + UPDATE_DISMISS_INTERVAL };
+    if (value.phase !== 'available' && value.phase !== 'inProgress') return;
+    const dismissal = { version: value.version ?? 'immediate', phase: 'available' as const, until: Date.now() + UPDATE_DISMISS_INTERVAL };
     const next = { ...latest.current.preferences, dismissal };
     latest.current.preferences = next;
     setPreferences(next);
@@ -62,7 +61,7 @@ export function useAppUpdates({ initialized, blocked }: { initialized: boolean; 
   const check = useCallback(async () => {
     const current = latest.current;
     if (!api.current || !current.initialized || !current.ready || !current.foreground || suppressSession.current || checking.current || actionLock.current) return;
-    if (!current.preferences.enabled) return;
+    if (!current.preferences.enabled || !current.surfaceActive || current.blocked || blockers.current.size) return;
     const due = updateCheckDue(current.preferences.lastCheckAt, Date.now(), UPDATE_CHECK_INTERVALS[current.preferences.checkPeriod]);
     if (!due && !api.current.supportsRecovery) return;
     checking.current = true;
@@ -76,10 +75,9 @@ export function useAppUpdates({ initialized, blocked }: { initialized: boolean; 
       const result = await readUpdate(api.current);
       if (mounted.current && revision === eventRevision.current) {
         if (!due && result.phase === 'available') return;
-        const next = { ...result, version: result.version ?? (result.phase === 'downloaded' ? current.snapshot.version ?? 'downloaded' : undefined) };
+        const next = result;
         latest.current.snapshot = next;
         setSnapshot(next);
-        setInstalling(result.phase === 'installing');
       }
     } catch { /* Store checks never block startup or produce unsolicited errors. */ }
     finally { checking.current = false; }
@@ -95,8 +93,6 @@ export function useAppUpdates({ initialized, blocked }: { initialized: boolean; 
       setNow(Date.now());
       eventRevision.current++;
       if (event.phase === 'cancelled' || event.phase === 'failed') {
-        latest.current.installing = false;
-        setInstalling(false);
         dismiss({ ...latest.current.snapshot, phase: 'available' });
         setError(event.phase === 'failed');
         const next: UpdateSnapshot = { ...latest.current.snapshot, phase: 'none' };
@@ -107,8 +103,6 @@ export function useAppUpdates({ initialized, blocked }: { initialized: boolean; 
       const next = { ...latest.current.snapshot, phase: event.phase };
       latest.current.snapshot = next;
       setSnapshot(next);
-      latest.current.installing = event.phase === 'installing';
-      setInstalling(event.phase === 'installing');
     });
     if (api.current) void loadPersistedValue(AsyncStorage, APP_UPDATES_STORAGE_KEY, parseUpdatePreferences, (value) => {
       if (mounted.current) { latest.current.preferences = value; setPreferences(value); }
@@ -139,11 +133,11 @@ export function useAppUpdates({ initialized, blocked }: { initialized: boolean; 
     return () => clearTimeout(timer);
   }, [preferences.dismissal]);
 
-  useEffect(() => { if (initialized && ready) void check(); }, [check, initialized, ready]);
+  useEffect(() => { if (initialized && ready && surfaceActive && !blocked && !blockerCount) void check(); }, [check, initialized, ready, surfaceActive, blocked, blockerCount]);
 
   const safe = useCallback(() => {
     const current = latest.current;
-    return current.initialized && current.ready && current.preferences.enabled && current.surfaceActive && current.foreground && !current.blocked && !current.installing &&
+    return current.initialized && current.ready && current.preferences.enabled && current.surfaceActive && current.foreground && !current.blocked &&
       !suppressSession.current && blockers.current.size === 0;
   }, []);
 
@@ -161,23 +155,18 @@ export function useAppUpdates({ initialized, blocked }: { initialized: boolean; 
       const fresh = { ...result, version: result.version ?? offered.version };
       if (!mounted.current || !safe()) return;
       attempted = fresh;
-      if (fresh.phase === 'downloaded') {
-        if (offered.phase !== 'downloaded') { setSnapshot(fresh); latest.current.snapshot = fresh; return; }
-        latest.current.installing = true;
-        setInstalling(true);
-        await adapter.complete();
-        // Keep the interaction gate up until Play restarts the app or reports failure.
-      } else if (fresh.phase === 'available') {
+      if (fresh.phase === 'available' || fresh.phase === 'inProgress') {
         latest.current.snapshot = fresh;
         setSnapshot(fresh);
-        await adapter.start();
+        // Suppress before native handoff: native error fallback can open Play without an event.
         dismiss(fresh);
-      } else { latest.current.snapshot = fresh; setSnapshot(fresh); setInstalling(fresh.phase === 'installing'); }
+        await adapter.start(() => mounted.current && safe());
+      } else { latest.current.snapshot = fresh; setSnapshot(fresh); }
     } catch {
-      if (mounted.current) { latest.current.installing = false; setInstalling(false); setError(true); dismiss(attempted); }
+      if (mounted.current) { setError(true); dismiss(attempted); }
     } finally {
       actionLock.current = false;
-      if (mounted.current) { setBusy(false); if (!latest.current.installing) void check(); }
+      if (mounted.current) { setBusy(false); void check(); }
     }
   }, [check, dismiss, safe]);
 
@@ -194,14 +183,14 @@ export function useAppUpdates({ initialized, blocked }: { initialized: boolean; 
     if (checkPeriod === 'available') void check();
   }, [check]);
   const candidate = initialized && ready && foreground && surfaceActive && !blocked && !blockerCount &&
-    !busy && !installing && !suppressed && preferences.enabled ? updateNotice(snapshot, preferences, now) : undefined;
+    !busy && !suppressed && preferences.enabled ? updateNotice(snapshot, preferences, now) : undefined;
   useEffect(() => {
-    if (candidate?.phase === 'available' && nativeConsent) void update();
+    if (candidate && nativeConsent) void update();
   }, [candidate, nativeConsent, update]);
-  const notice = candidate?.phase === 'available' && nativeConsent ? undefined : candidate;
+  const notice = nativeConsent ? undefined : candidate;
   const later = useCallback(() => dismiss(latest.current.snapshot), [dismiss]);
   const clearError = useCallback(() => setError(false), []);
-  return useMemo(() => ({ notice, busy, installing, error: error && foreground && surfaceActive && !blocked && !blockerCount,
+  return useMemo(() => ({ notice, busy, error: error && foreground && surfaceActive && !blocked && !blockerCount,
     update, later, clearError, block, setSurfaceActive, supported, enabled: preferences.enabled, checkPeriod: preferences.checkPeriod, setEnabled, setCheckPeriod }),
-  [notice, busy, installing, error, foreground, surfaceActive, blocked, blockerCount, update, later, clearError, block, supported, preferences.enabled, preferences.checkPeriod, setEnabled, setCheckPeriod]);
+  [notice, busy, error, foreground, surfaceActive, blocked, blockerCount, update, later, clearError, block, supported, preferences.enabled, preferences.checkPeriod, setEnabled, setCheckPeriod]);
 }

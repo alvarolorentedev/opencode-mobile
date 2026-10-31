@@ -1,25 +1,17 @@
-import { requireOptionalNativeModule } from 'expo';
+import * as Application from 'expo-application';
+import { createAndroidAppUpdates } from '@/shared/platform/android-app-updates';
 import Constants from 'expo-constants';
 import { Linking, Platform } from 'react-native';
 
-export type UpdatePhase = 'none' | 'available' | 'downloading' | 'downloaded' | 'installing';
+export type UpdatePhase = 'none' | 'available' | 'inProgress';
 export type UpdateSnapshot = { phase: UpdatePhase; version?: string };
-export type UpdateEvent = { phase: UpdatePhase | 'cancelled' | 'failed' };
+export type UpdateEvent = { phase: UpdatePhase | 'cancelled' | 'failed'; version?: string };
 export type AppUpdateApi = {
   nativeConsent?: boolean;
   supportsRecovery?: boolean;
   check: () => Promise<UpdateSnapshot>;
-  start: () => Promise<boolean>;
-  complete: () => Promise<void>;
+  start: (isSafe: () => boolean) => Promise<boolean>;
   subscribe: (listener: (event: UpdateEvent) => void) => () => void;
-};
-
-type NativeUpdates = {
-  check: AppUpdateApi['check'];
-  startFlexibleUpdate: AppUpdateApi['start'];
-  completeUpdate: AppUpdateApi['complete'];
-  getAppStoreInstallation: () => Promise<{ eligible: boolean; bundleId?: string; installedVersion?: string }>;
-  addListener: (event: 'status', callback: (event: UpdateEvent) => void) => { remove: () => void };
 };
 
 // Apple release versions are numeric components, not general semver or Android version codes.
@@ -45,7 +37,7 @@ export function appStoreCandidate(data: unknown, appId: string, bundleId: string
 
 type UpdateTest = {
   snapshot: UpdateSnapshot; checks: number; events: string[];
-  nativeConsent?: boolean; startResult?: boolean; startError?: boolean; completeError?: boolean;
+  nativeConsent?: boolean; startResult?: boolean; startError?: boolean;
   emit?: (event: UpdateEvent) => void;
 };
 
@@ -61,21 +53,16 @@ export function loadAppUpdates(): AppUpdateApi | null {
       nativeConsent: test.nativeConsent !== false,
       supportsRecovery: true,
       check: async () => { test.checks++; return { ...test.snapshot }; },
-      start: async () => {
+      start: async (isSafe) => {
+        if (!isSafe()) return false;
         test.events.push('start');
         if (test.startError) throw new Error('Store unavailable');
         if (test.startResult === false) return false;
-        test.snapshot = { ...test.snapshot, phase: 'downloading' };
-        test.emit?.({ phase: 'downloading' });
         return true;
-      },
-      complete: async () => {
-        test.events.push('complete');
-        if (test.completeError) throw new Error('Installation failed');
       },
       subscribe: (listener) => {
         test.emit = (event) => {
-          if (event.phase !== 'failed' && event.phase !== 'cancelled') test.snapshot = { ...test.snapshot, phase: event.phase };
+          if (event.phase !== 'failed' && event.phase !== 'cancelled') test.snapshot = { phase: event.phase, version: event.version ?? test.snapshot.version };
           listener(event);
         };
         return () => { delete test.emit; };
@@ -87,14 +74,7 @@ export function loadAppUpdates(): AppUpdateApi | null {
   if (Platform.OS !== 'android' && Platform.OS !== 'ios') return null;
   const appId = options.appStoreId;
   if (Platform.OS === 'ios' && (typeof appId !== 'string' || !/^[1-9]\d*$/.test(appId))) return null;
-  const native = requireOptionalNativeModule<NativeUpdates>('OpencodeUpdates');
-  if (!native) return null;
-  if (Platform.OS === 'android') return {
-    nativeConsent: true,
-    supportsRecovery: true,
-    check: () => native.check(), start: () => native.startFlexibleUpdate(), complete: () => native.completeUpdate(),
-    subscribe: (callback) => { const subscription = native.addListener('status', callback); return () => subscription.remove(); },
-  };
+  if (Platform.OS === 'android') return createAndroidAppUpdates();
 
   const country = options.appStoreCountry;
   const lookup = `https://itunes.apple.com/lookup?id=${appId}${typeof country === 'string' && /^[a-z]{2}$/i.test(country) ? `&country=${country}` : ''}`;
@@ -103,23 +83,21 @@ export function loadAppUpdates(): AppUpdateApi | null {
     check: async () => {
       // Tolerate native rejections (e.g. StoreKit failures): an update check must
       // never surface an error or an unhandled rejection, only "no update".
-      let installation: { eligible: boolean; bundleId?: string; installedVersion?: string };
       try {
-        installation = await native.getAppStoreInstallation();
-      } catch {
-        return { phase: 'none' } as const;
-      }
-      if (!installation.eligible || typeof installation.bundleId !== 'string' || installation.bundleId !== config?.ios?.bundleIdentifier || !installation.installedVersion) return { phase: 'none' };
+        if (await Application.getAppleStoreEnvironmentAsync() !== 'production') return { phase: 'none' };
+      } catch { return { phase: 'none' }; }
+      const bundleId = Application.applicationId;
+      const installedVersion = Application.nativeApplicationVersion;
+      if (!bundleId || bundleId !== config?.ios?.bundleIdentifier || !installedVersion) return { phase: 'none' };
       const controller = new AbortController();
       const timeout = setTimeout(() => controller.abort(), 10000);
       try {
         const response = await fetch(lookup, { signal: controller.signal });
         if (!response.ok) throw new Error('App Store lookup failed');
-        return appStoreCandidate(await response.json(), appId, installation.bundleId, installation.installedVersion);
+        return appStoreCandidate(await response.json(), appId, bundleId, installedVersion);
       } finally { clearTimeout(timeout); }
     },
-    start: async () => { await Linking.openURL(destination); return true; },
-    complete: async () => {},
+    start: async (isSafe) => { if (!isSafe()) return false; await Linking.openURL(destination); return true; },
     subscribe: () => () => {},
   };
 }

@@ -1,0 +1,18 @@
+diff --git a/node_modules/expo-in-app-updates/android/src/main/java/expo/modules/inappupdates/ExpoInAppUpdatesModule.kt b/node_modules/expo-in-app-updates/android/src/main/java/expo/modules/inappupdates/ExpoInAppUpdatesModule.kt
+--- a/node_modules/expo-in-app-updates/android/src/main/java/expo/modules/inappupdates/ExpoInAppUpdatesModule.kt
++++ b/node_modules/expo-in-app-updates/android/src/main/java/expo/modules/inappupdates/ExpoInAppUpdatesModule.kt
+@@ -59,14 +59,6 @@
+     Name("ExpoInAppUpdates")
+ 
+     Events(EVENT_UPDATE_START, EVENT_UPDATE_DOWNLOADED, EVENT_UPDATE_CANCELLED, EVENT_UPDATE_COMPLETED)
+-
+-    OnCreate {
+-      appUpdateManager.registerListener(installStateListener)
+-    }
+-
+-    OnDestroy {
+-      appUpdateManager.unregisterListener(installStateListener)
+-    }
+ 
+     AsyncFunction("checkForUpdate") Coroutine { ->
+       val info = requestUpdateInfo(::CheckForUpdateException)

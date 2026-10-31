@@ -40,16 +40,15 @@ const developmentAndroidPackage = env('EXPO_ANDROID_PACKAGE_DEV') ?? `${releaseA
 const androidPackage = isDevelopmentVariant ? developmentAndroidPackage : releaseAndroidPackage;
 const buildPropertiesPlugin: [string, {
   android?: {
-    enableMinifyInReleaseBuilds: boolean;
-    enableShrinkResourcesInReleaseBuilds: boolean;
-    extraProguardRules: string;
+    usesCleartextTraffic: boolean;
+    enableMinifyInReleaseBuilds?: boolean;
+    enableShrinkResourcesInReleaseBuilds?: boolean;
+    extraProguardRules?: string;
   };
-  ios: { enableSceneSupport: boolean };
 }] = [
   'expo-build-properties',
   {
-    ios: { enableSceneSupport: true },
-    ...(!isDevelopmentVariant ? { android: {
+    android: { usesCleartextTraffic: true, ...(!isDevelopmentVariant ? {
       enableMinifyInReleaseBuilds: true,
       enableShrinkResourcesInReleaseBuilds: true,
       // Expo modules convert JS objects into native records through the Pika
@@ -57,20 +56,20 @@ const buildPropertiesPlugin: [string, {
       // headless app loader by class name. R8 sees no direct references and strips
       // them, which crashed nested records (speech recognition's
       // volumeChangeEventOptions -> NullPointerException) and the headless loader
-      // (ClassNotFoundException) in release builds. Costs ~33 KB of APK size.
+      // (ClassNotFoundException) in release builds.
       // WorkManager also constructs the widget library's headless worker
       // reflectively, so keep it and its base class for the same reason.
       extraProguardRules: [
         '-keep class **$__Pika { *; }',
-        '-keep class io.github.lukmccall.pika.** { *; }',
-        '-keep class * implements io.github.lukmccall.pika.Introspectable { *; }',
+        '-keep class io.github.expo.pika.** { *; }',
+        '-keep class * implements io.github.expo.pika.Introspectable { *; }',
         '-keep class expo.modules.kotlin.records.** { *; }',
         '-keep class expo.modules.adapters.react.apploader.** { *; }',
         '-keep class com.reactnativeandroidwidget.RNWidgetBackgroundTaskWorker { *; }',
         '-keep class com.reactnativeandroidwidget.oss.HeadlessJsTaskWorker { *; }',
         '-keep class com.rnllama.** { *; }',
       ].join('\n'),
-    } } : {}),
+    } : {}) },
   },
 ];
 

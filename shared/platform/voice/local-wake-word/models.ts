@@ -198,7 +198,7 @@ export function getLocalVoiceModelStatus(modelId: LocalCommandModelId): LocalVoi
   return getLocalCommandModelStatus(modelId);
 }
 
-export function writeLocalVoiceKeywords(phrase: LocalWakePhraseId): boolean {
+export async function writeLocalVoiceKeywords(phrase: LocalWakePhraseId): Promise<boolean> {
   const paths = getLocalVoiceBasePaths();
   if (!paths) {
     return false;
@@ -207,7 +207,7 @@ export function writeLocalVoiceKeywords(phrase: LocalWakePhraseId): boolean {
   if (!file.exists) {
     file.create({ intermediates: true, overwrite: true });
   }
-  file.write(localVoiceKeywords(phrase));
+  await file.write(localVoiceKeywords(phrase));
   return true;
 }
 
@@ -230,7 +230,7 @@ export async function validateLocalVoiceKeywords(phrase: LocalWakePhraseId): Pro
 
 async function installBaseModels(phrase: LocalWakePhraseId, runtime: NonNullable<ReturnType<typeof loadSherpaRuntime>>) {
   if (getLocalVoiceBaseStatus() === 'ready') {
-    writeLocalVoiceKeywords(phrase);
+    await writeLocalVoiceKeywords(phrase);
     return;
   }
 
@@ -271,7 +271,7 @@ async function installBaseModels(phrase: LocalWakePhraseId, runtime: NonNullable
   if (!findKwsModelDirectory()) {
     throw new Error('The wake-word model archive did not contain a model directory.');
   }
-  writeLocalVoiceKeywords(phrase);
+  await writeLocalVoiceKeywords(phrase);
 
   const speakerModel = new File(speakerDir, LOCAL_VOICE_SPEAKER_MODEL_FILE);
   await downloadVerified(

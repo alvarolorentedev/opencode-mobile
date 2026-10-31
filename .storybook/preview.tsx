@@ -31,7 +31,7 @@ if (!i18n.isInitialized) {
 // UI-only fixture: previews exercise interaction blocking without running updates.
 const noop = () => {};
 const previewUpdates: UpdatesContextValue = {
-  notice: undefined, busy: false, installing: false, error: false,
+  notice: undefined, busy: false, error: false,
   supported: false, enabled: false, checkPeriod: 'available',
   update: async () => {}, later: noop, clearError: noop,
   block: () => noop, setSurfaceActive: noop, setEnabled: noop, setCheckPeriod: noop,

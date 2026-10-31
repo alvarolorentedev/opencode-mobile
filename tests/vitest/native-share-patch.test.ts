@@ -1,45 +1,24 @@
-import { readFileSync, mkdtempSync, cpSync, writeFileSync, rmSync } from 'node:fs';
-import { tmpdir } from 'node:os';
-import path from 'node:path';
-import { createRequire } from 'node:module';
+import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
-const { patchSharingSource, prepareAndroidSharing } = createRequire(import.meta.url)('../../scripts/prepare-android-sharing.cjs');
-const root = path.resolve('node_modules/expo-sharing');
 
-describe('Android sharing build patch', () => {
-  it('builds the patched Android receiver from source instead of the bundled AAR', () => {
+describe('Android sharing install-time patch', () => {
+  it('pins and builds the reviewed receiver from source', () => {
     const pkg = JSON.parse(readFileSync('package.json', 'utf8'));
-    expect(pkg.expo.autolinking.android.buildFromSource).toEqual(['expo-sharing']);
+    expect(pkg.dependencies['expo-sharing']).toBe('58.0.21');
+    expect(pkg.expo.autolinking.android.buildFromSource).toEqual(['expo-sharing', 'expo-in-app-updates']);
+    expect(readFileSync('patches/expo-sharing+58.0.21.patch', 'utf8')).toContain('ResolvingShareIntentDataParser.kt');
+    expect(readFileSync('config/plugins/android-sharing-keep.xml', 'utf8')).toContain('tools:keep="@string/share_into_scheme"');
   });
-  it.each([['SimpleShareIntentDataParser.kt', false], ['ResolvingShareIntentDataParser.kt', true]])('patches %s completely and is idempotent', (name, resolved) => {
-    const source = readFileSync(path.join(root, 'android/src/main/java/expo/modules/sharing/dataParsers', String(name)), 'utf8');
-    const patched = patchSharingSource(source, resolved);
-    expect(patchSharingSource(patched, resolved)).toBe(patched);
-    expect(patched).toContain('extractTextPayload(intent) + listOfNotNull(uri?.let');
-    expect(patched).toContain('uris?.take(10)?.map');
-    expect(patched).not.toContain('return if (type == "text/plain")');
-    if (resolved) {
-      expect(patched).toContain('File.createTempFile("opencode-share-"');
-      expect(patched).toContain('total > 10L * 1024 * 1024');
-      expect(patched).toContain('else "unavailable:"');
-      expect(patched).not.toContain('File(context.cacheDir, fileName)');
+  it.each(['SimpleShareIntentDataParser.kt', 'ResolvingShareIntentDataParser.kt'])('preserves the installed safety fixes in %s', (name) => {
+    const source = readFileSync(`node_modules/expo-sharing/android/src/main/java/expo/modules/sharing/dataParsers/${name}`, 'utf8');
+    expect(source).toContain('extractTextPayload(intent) + listOfNotNull(uri?.let');
+    expect(source).toContain('uris?.take(10)?.map');
+    expect(source).not.toContain('return if (type == "text/plain")');
+    if (name.startsWith('Resolving')) {
+      expect(source).toContain('File.createTempFile("opencode-share-"');
+      expect(source).toContain('total > 10L * 1024 * 1024');
+      expect(source).toContain('else "unavailable:"');
+      expect(source).not.toContain('File(context.cacheDir, fileName)');
     }
-  });
-  it('rejects a changed upstream receiver without silently accepting an incomplete patch', () => {
-    expect(() => patchSharingSource('class Unknown {}', false)).toThrow('Unrecognized');
-  });
-  it('applies on clean installs and rejects unsupported versions before writing', () => {
-    const temporary = mkdtempSync(path.join(tmpdir(), 'sharing-patch-'));
-    try {
-      const target = path.join(temporary, 'node_modules/expo-sharing');
-      cpSync(root, target, { recursive: true });
-      prepareAndroidSharing(temporary); prepareAndroidSharing(temporary);
-      const keep = readFileSync(path.join(temporary, 'android/app/src/main/res/raw/opencode_sharing_keep.xml'), 'utf8');
-      expect(keep).toContain('tools:keep="@string/share_into_scheme"');
-      const before = readFileSync(path.join(target, 'android/src/main/java/expo/modules/sharing/dataParsers/SimpleShareIntentDataParser.kt'), 'utf8');
-      writeFileSync(path.join(target, 'package.json'), JSON.stringify({ version: '58.0.0' }));
-      expect(() => prepareAndroidSharing(temporary)).toThrow('expected 57.0.22');
-      expect(readFileSync(path.join(target, 'android/src/main/java/expo/modules/sharing/dataParsers/SimpleShareIntentDataParser.kt'), 'utf8')).toBe(before);
-    } finally { rmSync(temporary, { recursive: true, force: true }); }
   });
 });

@@ -1,0 +1,132 @@
+diff --git a/node_modules/expo-sharing/android/src/main/java/expo/modules/sharing/dataParsers/SimpleShareIntentDataParser.kt b/node_modules/expo-sharing/android/src/main/java/expo/modules/sharing/dataParsers/SimpleShareIntentDataParser.kt
+--- a/node_modules/expo-sharing/android/src/main/java/expo/modules/sharing/dataParsers/SimpleShareIntentDataParser.kt
++++ b/node_modules/expo-sharing/android/src/main/java/expo/modules/sharing/dataParsers/SimpleShareIntentDataParser.kt
+@@ -1,3 +1,4 @@
++// opencode-share-receive-fix
+ package expo.modules.sharing
+ 
+ import android.content.Context
+@@ -17,31 +18,25 @@
+     }
+ 
+     private fun handleSendAction(context: Context, intent: Intent, type: String): List<SharePayload> {
+-      return if (type == "text/plain") {
+-        val text = intent.getStringExtra(Intent.EXTRA_TEXT) ?: return emptyList()
+-        val isUrl = android.util.Patterns.WEB_URL.matcher(text).matches()
+-
+-        listOf(
+-          SharePayload().apply {
+-            value = text
+-            shareType = if (isUrl) {
+-              ShareType.Url
+-            } else {
+-              ShareType.Text
+-            }
+-            mimeType = "text/plain"
+-          }
+-        )
+-      } else {
+-        val uri = intent.getParcelableExtraCompat<Uri>(Intent.EXTRA_STREAM)
+-        listOfNotNull(uri?.let { createUriPayload(context, it, type) })
+-      }
++      val uri = intent.getParcelableExtraCompat<Uri>(Intent.EXTRA_STREAM)
++      return extractTextPayload(intent) + listOfNotNull(uri?.let { createUriPayload(context, it, type) })
+     }
+ 
+     private fun handleSendMultipleAction(context: Context, intent: Intent, type: String): List<SharePayload> {
+       val uris = intent.getParcelableArrayListExtraCompat<Uri>(Intent.EXTRA_STREAM)
+-      return uris?.map { createUriPayload(context, it, type) } ?: emptyList()
++      return extractTextPayload(intent) + (uris?.take(10)?.map { createUriPayload(context, it, type) } ?: emptyList())
+     }
++
++    private fun extractTextPayload(intent: Intent): List<SharePayload> {
++      val text = intent.getStringExtra(Intent.EXTRA_TEXT) ?: return emptyList()
++      return listOf(SharePayload().apply {
++        value = text
++        shareType = if (android.util.Patterns.WEB_URL.matcher(text).matches()) ShareType.Url else ShareType.Text
++        mimeType = "text/plain"
++      })
++    }
++
++
+ 
+     private fun createUriPayload(context: Context, uri: Uri, defaultType: String): SharePayload {
+       val specificType = context.contentResolver.getType(uri) ?: defaultType
+diff --git a/node_modules/expo-sharing/android/src/main/java/expo/modules/sharing/dataParsers/ResolvingShareIntentDataParser.kt b/node_modules/expo-sharing/android/src/main/java/expo/modules/sharing/dataParsers/ResolvingShareIntentDataParser.kt
+--- a/node_modules/expo-sharing/android/src/main/java/expo/modules/sharing/dataParsers/ResolvingShareIntentDataParser.kt
++++ b/node_modules/expo-sharing/android/src/main/java/expo/modules/sharing/dataParsers/ResolvingShareIntentDataParser.kt
+@@ -1,3 +1,4 @@
++// opencode-share-receive-fix
+ package expo.modules.sharing
+ 
+ import android.content.ContentResolver
+@@ -25,18 +26,16 @@
+     }
+ 
+     private fun handleSendAction(context: Context, intent: Intent, type: String): List<ResolvedSharePayload> {
+-      return if (type == "text/plain") {
+-        extractTextPayload(intent)
+-      } else {
+-        val uri = intent.getParcelableExtraCompat<Uri>(Intent.EXTRA_STREAM)
+-        listOfNotNull(uri?.let { resolveUri(context, it, type) })
+-      }
++      val uri = intent.getParcelableExtraCompat<Uri>(Intent.EXTRA_STREAM)
++      return extractTextPayload(intent) + listOfNotNull(uri?.let { resolveUri(context, it, type) })
+     }
+ 
+     private fun handleSendMultipleAction(context: Context, intent: Intent, type: String): List<ResolvedSharePayload> {
+       val uris = intent.getParcelableArrayListExtraCompat<Uri>(Intent.EXTRA_STREAM)
+-      return uris?.map { resolveUri(context, it, type) } ?: emptyList()
++      return extractTextPayload(intent) + (uris?.take(10)?.map { resolveUri(context, it, type) } ?: emptyList())
+     }
++
++
+ 
+     private fun extractTextPayload(intent: Intent): List<ResolvedSharePayload> {
+       val text = intent.getStringExtra(Intent.EXTRA_TEXT) ?: return emptyList()
+@@ -61,25 +60,37 @@
+       val specificMimeType = contentResolver.getType(uri) ?: mimeType
+       val type = ShareType.fromMimeType(specificMimeType)
+ 
+-      // Copy to cache dir to ensure access
+-      val file = File(context.cacheDir, fileName)
++      val suffix = fileName.substringAfterLast('.', "bin").replace(Regex("[^A-Za-z0-9]"), "").take(16)
++      val file = File.createTempFile("opencode-share-", ".$suffix", context.cacheDir)
++      var readable = false
+       try {
+-        contentResolver.openInputStream(uri)?.use { input ->
++        if (fileSize != null && fileSize > 10L * 1024 * 1024) throw IllegalArgumentException("Share too large")
++        val input = contentResolver.openInputStream(uri) ?: throw IllegalArgumentException("Share unavailable")
++        input.use {
+           FileOutputStream(file).use { output ->
+-            input.copyTo(output)
++            val buffer = ByteArray(8192)
++            var total = 0L
++            while (true) {
++              val count = input.read(buffer)
++              if (count < 0) break
++              total += count
++              if (total > 10L * 1024 * 1024) throw IllegalArgumentException("Share too large")
++              output.write(buffer, 0, count)
++            }
+           }
+         }
+-      } catch (e: Exception) {
+-        e.printStackTrace()
++        readable = true
++      } catch (_: Exception) {
++        file.delete()
+       }
+ 
+       return ResolvedSharePayload().apply {
+         value = uri.toString()
+         shareType = type
+         this.mimeType = specificMimeType
+-        contentUri = file.toURI().toString()
++        contentUri = if (readable) file.toURI().toString() else "unavailable:"
+         contentType = ContentType.fromMimeType(specificMimeType)
+-        contentSize = fileSize
++        contentSize = if (readable) file.length() else fileSize
+         contentMimeType = specificMimeType
+         originalName = fileName
+       }

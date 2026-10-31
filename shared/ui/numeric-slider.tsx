@@ -38,7 +38,8 @@ export function NumericSlider({
         'aria-valuemin': minimum,
         'aria-valuenow': value,
         'aria-valuetext': valueLabel,
-        onKeyDown: (event: { key: string; preventDefault: () => void }) => {
+        onKeyDown: (event: { preventDefault: () => void }) => {
+          if (!('key' in event) || typeof event.key !== 'string') return;
           let next: number | undefined;
           if (event.key === 'Home') next = minimum;
           else if (event.key === 'End') next = maximum;

@@ -43,14 +43,10 @@
   },
   "updates": {
     "available": "अपडेट उपलब्ध है",
-    "ready": "अपडेट तैयार है",
     "later": "बाद में",
     "failed": "अपडेट नहीं हो सका। कृपया बाद में फिर से कोशिश करें।",
     "opening": "अपडेट खुल रहा है…",
-    "installing": "अपडेट इंस्टॉल हो रहा है…",
-    "readyDescription": "इंस्टॉल करने के लिए ऐप फिर से शुरू करें।",
     "availableDescription": "App Store से नया संस्करण इंस्टॉल करें।",
-    "restart": "रीस्टार्ट और इंस्टॉल करें",
     "openStore": "App Store खोलें"
   },
   "servers": {

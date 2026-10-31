@@ -30,8 +30,10 @@ function patchAutolinking(repoRoot) {
   pkg.expo = { ...(pkg.expo ?? {}) };
   pkg.expo.autolinking = { ...(pkg.expo.autolinking ?? {}) };
   pkg.expo.autolinking.exclude = [
-    ...new Set([...(pkg.expo.autolinking.exclude ?? []), 'expo-iap', 'expo-camera', 'expo-store-review', 'opencode-updates']),
+    ...new Set([...(pkg.expo.autolinking.exclude ?? []), 'expo-iap', 'expo-camera', 'expo-store-review', 'expo-in-app-updates']),
   ];
+  pkg.expo.autolinking.android = { ...(pkg.expo.autolinking.android ?? {}) };
+  pkg.expo.autolinking.android.buildFromSource = [...new Set([...(pkg.expo.autolinking.android.buildFromSource ?? []), 'expo-application', 'expo-notifications'])];
   fs.writeFileSync(packageJsonPath, `${JSON.stringify(pkg, null, 2)}\n`);
 }
 
@@ -60,29 +62,6 @@ function patchExpoNotifications(repoRoot) {
   run('cp', ['-a', `${stubSrcDir}/.`, `${path.join(androidDir, 'src')}/`]);
 }
 
-// Replace an `AsyncFunction("name") { ... }` block with `replacement`, matching
-// balanced braces so nested lambdas/objects do not confuse the boundaries.
-function replaceAsyncFunction(source, name, replacement) {
-  const marker = `AsyncFunction("${name}")`;
-  const start = source.indexOf(marker);
-  if (start === -1) return source;
-  const open = source.indexOf('{', start);
-  let depth = 0;
-  let end = open;
-  for (let i = open; i < source.length; i += 1) {
-    if (source[i] === '{') depth += 1;
-    else if (source[i] === '}') {
-      depth -= 1;
-      if (depth === 0) {
-        end = i + 1;
-        break;
-      }
-    }
-  }
-  const lineStart = source.lastIndexOf('\n', start) + 1;
-  return source.slice(0, lineStart) + replacement + source.slice(end);
-}
-
 function patchExpoApplication(repoRoot) {
   const androidDir = path.join(repoRoot, 'node_modules', 'expo-application', 'android');
   const gradlePath = path.join(androidDir, 'build.gradle');
@@ -101,15 +80,22 @@ function patchExpoApplication(repoRoot) {
   const source = fs.readFileSync(modulePath, 'utf8');
   if (!source.includes('com.android.installreferrer')) return;
 
-  const patched = replaceAsyncFunction(
-    source
-      .split('\n')
-      .filter((line) => !line.includes('com.android.installreferrer'))
-      .filter((line) => line.trim() !== 'import android.os.RemoteException')
-      .join('\n'),
-    'getInstallReferrerAsync',
-    '    AsyncFunction("getInstallReferrerAsync") { promise: Promise ->\n      promise.resolve("")\n    }',
-  );
+  const cleaned = source
+    .split('\n')
+    .filter((line) => !line.includes('com.android.installreferrer'))
+    .filter((line) => line.trim() !== 'import android.os.RemoteException')
+    .join('\n');
+  const start = cleaned.indexOf('  suspend fun getInstallReferrerAsync(): String =');
+  if (start < 0) throw new Error('Review expo-application FOSS install-referrer removal for this SDK.');
+  const open = cleaned.indexOf('{', start);
+  let depth = 1;
+  let end = open + 1;
+  for (; end < cleaned.length && depth; end++) {
+    if (cleaned[end] === '{') depth++;
+    else if (cleaned[end] === '}') depth--;
+  }
+  if (open < 0 || depth) throw new Error('Unrecognized install-referrer function.');
+  const patched = cleaned.slice(0, start) + '  suspend fun getInstallReferrerAsync(): String = ""' + cleaned.slice(end);
   fs.writeFileSync(modulePath, patched);
 }
 

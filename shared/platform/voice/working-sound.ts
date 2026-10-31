@@ -98,7 +98,7 @@ async function ensureWorkingSoundFileAsync(variant: WorkingSoundVariant) {
   const file = new File(Paths.cache, `working-sound-${variant}.wav`);
   if (!file.exists) {
     file.create();
-    file.write(createWorkingSoundBase64(variant), { encoding: 'base64' });
+    await file.write(createWorkingSoundBase64(variant), { encoding: 'base64' });
   }
 
   return file.uri;

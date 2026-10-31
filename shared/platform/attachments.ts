@@ -127,7 +127,7 @@ export async function prepareAttachmentBytes(bytes: Uint8Array, mime: string, fi
   try {
     if (signal?.aborted) throw new Error('Attachment read canceled.');
     file.create();
-    file.write(bytes);
+    await file.write(bytes);
     return { uri: file.uri, release: () => { if (file.exists) file.delete(); } };
   } catch (error) {
     if (file.exists) file.delete();
@@ -157,7 +157,7 @@ export async function prepareAttachmentFile(attachment: PromptAttachment, signal
     const bytes = attachment.uri.startsWith('data:') ? dataUrlBytes(attachment.uri) : await readRemoteBytes(attachment.uri, signal);
     if (signal?.aborted) throw new Error('Attachment read canceled.');
     file.create();
-    file.write(bytes);
+    await file.write(bytes);
     if (file.size > MAX_ATTACHMENT_BYTES) throw new Error('File exceeds the 10 MB attachment limit.');
     return { uri: file.uri, release: () => { if (file.exists) file.delete(); } };
   } catch (error) {

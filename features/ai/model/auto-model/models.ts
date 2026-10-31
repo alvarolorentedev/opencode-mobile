@@ -91,7 +91,7 @@ export async function installLocalAutoModel(): Promise<void> {
     const stagingFile = packFile(staging);
 
     try {
-      await downloadFileWithRetry(AUTO_MODEL_PACK.url, stagingFile, 'classifier model', (file) => {
+      await downloadFileWithRetry(AUTO_MODEL_PACK.url, stagingFile, 'classifier model', async (file) => {
         if (file.size !== AUTO_MODEL_PACK.bytes) {
           throw new ModelDownloadError(
             'incomplete',
@@ -99,7 +99,7 @@ export async function installLocalAutoModel(): Promise<void> {
             true,
           );
         }
-        if (file.md5?.toLowerCase() !== AUTO_MODEL_PACK.md5) {
+        if ((await file.digest('MD5')).toLowerCase() !== AUTO_MODEL_PACK.md5) {
           throw new ModelDownloadError(
             'integrity',
             'The classifier model failed integrity verification.',

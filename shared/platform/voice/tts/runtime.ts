@@ -46,6 +46,8 @@ type LoadedTts = {
 };
 
 let loaded: LoadedTts | undefined;
+let runtimeGeneration = 0;
+let releasePromise: Promise<void> | undefined;
 let initPromise: { packId: LocalTtsPackId; promise: Promise<LoadedTts> } | undefined;
 let generationQueue = Promise.resolve();
 let releaseTimer: ReturnType<typeof setTimeout> | undefined;
@@ -86,7 +88,7 @@ function scheduleRelease() {
   }, IDLE_RELEASE_MS);
 }
 
-async function initialize(packId: LocalTtsPackId): Promise<LoadedTts> {
+async function initialize(packId: LocalTtsPackId, generation: number): Promise<LoadedTts> {
   const native = getNativeTtsModule();
   if (!native) {
     throw new LocalTtsUnavailableError('unsupported');
@@ -124,6 +126,12 @@ async function initialize(packId: LocalTtsPackId): Promise<LoadedTts> {
     provider: 'cpu',
   });
 
+  if (generation !== runtimeGeneration) {
+    await native.stopTts().catch(() => undefined);
+    await native.releaseTts().catch(() => undefined);
+    throw new LocalTtsUnavailableError('init-failed', 'The on-device voice was released while loading.');
+  }
+
   if (!initialized.success) {
     throw new LocalTtsUnavailableError('init-failed', initialized.error || 'Could not load the on-device voice.');
   }
@@ -139,6 +147,7 @@ async function initialize(packId: LocalTtsPackId): Promise<LoadedTts> {
 }
 
 export async function ensureLocalTtsRuntime(packId: LocalTtsPackId) {
+  await releasePromise;
   clearReleaseTimer();
   if (loaded?.packId === packId) {
     return loaded;
@@ -150,7 +159,7 @@ export async function ensureLocalTtsRuntime(packId: LocalTtsPackId) {
     await initPromise.promise.catch(() => undefined);
   }
 
-  const promise = initialize(packId).catch((error) => {
+  const promise = initialize(packId, runtimeGeneration).catch((error) => {
     initPromise = undefined;
     throw error;
   });
@@ -199,14 +208,21 @@ export async function stopLocalTtsGeneration() {
 }
 
 export async function releaseLocalTtsRuntime() {
+  if (releasePromise) return releasePromise;
   clearReleaseTimer();
+  runtimeGeneration += 1;
   const current = loaded;
   loaded = undefined;
-  initPromise = undefined;
-  if (current) {
-    await current.native.stopTts().catch(() => undefined);
-    await current.native.releaseTts().catch(() => undefined);
-  }
+  const pending = (async () => {
+    await initPromise?.promise.catch(() => undefined);
+    if (current) {
+      await current.native.stopTts().catch(() => undefined);
+      await current.native.releaseTts().catch(() => undefined);
+    }
+  })();
+  releasePromise = pending;
+  try { await pending; }
+  finally { if (releasePromise === pending) releasePromise = undefined; }
 }
 
 export function prewarmLocalTts(packId: string) {

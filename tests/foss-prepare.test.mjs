@@ -29,11 +29,11 @@ try {
   assert.doesNotMatch(read(`${applicationDir}/build.gradle`), /installreferrer/);
   const application = read(`${applicationDir}/src/main/java/expo/modules/application/ApplicationModule.kt`);
   assert.doesNotMatch(application, /com\.android\.installreferrer|import android\.os\.RemoteException/);
-  assert.match(application, /getInstallReferrerAsync[\s\S]*promise\.resolve\(""\)/);
+  assert.match(application, /getInstallReferrerAsync\(\): String = ""/);
   assert.deepEqual(JSON.parse(read('package.json')).expo.autolinking.exclude,
-    ['existing-module', 'expo-iap', 'expo-camera', 'expo-store-review', 'opencode-updates']);
+    ['existing-module', 'expo-iap', 'expo-camera', 'expo-store-review', 'expo-in-app-updates']);
   assert.deepEqual(JSON.parse(read('package.json')).expo.autolinking.android.buildFromSource,
-    ['expo-sharing'], 'FOSS preparation must keep the patched sharing receiver built from source');
+    ['expo-sharing', 'expo-application', 'expo-notifications'], 'FOSS preparation must keep the patched sharing receiver built from source');
 
   const files = ['package.json', `${notificationDir}/build.gradle`,
     `${applicationDir}/build.gradle`, `${applicationDir}/src/main/java/expo/modules/application/ApplicationModule.kt`];

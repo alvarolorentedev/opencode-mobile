@@ -20,10 +20,9 @@ function androidConfig() {
 }
 
 describe('Expo config plugins', () => {
-  it('replaces Gradle memory and R8 properties without touching unrelated items', () => {
+  it('replaces Gradle memory properties without touching unrelated items', () => {
     const items = [
       { type: 'property', key: 'org.gradle.jvmargs', value: 'old' },
-      { type: 'property', key: 'android.r8.optimizedResourceShrinking', value: 'false' },
       { type: 'property', key: 'keep.me', value: 'yes' },
       { type: 'comment', value: 'keep' },
     ];
@@ -31,7 +30,6 @@ describe('Expo config plugins', () => {
       { type: 'property', key: 'keep.me', value: 'yes' },
       { type: 'comment', value: 'keep' },
       { type: 'property', key: 'org.gradle.jvmargs', value: '-Xmx4096m -XX:MaxMetaspaceSize=1024m -Dfile.encoding=UTF-8' },
-      { type: 'property', key: 'android.r8.optimizedResourceShrinking', value: 'true' },
     ]);
   });
 
@@ -40,7 +38,6 @@ describe('Expo config plugins', () => {
     const manifest = { manifest: { application: [{ $: {} }] } };
     const result = await production.mods.android.manifest({ ...production, modResults: manifest });
     const application = result.modResults.manifest.application[0];
-    expect(application.$['android:usesCleartextTraffic']).toBe('true');
     expect(application.activity).toContainEqual({
       $: {
         'android:name': 'com.google.mlkit.vision.codescanner.internal.GmsBarcodeScanningDelegateActivity',

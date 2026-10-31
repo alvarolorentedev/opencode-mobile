@@ -62,7 +62,7 @@ export async function saveOrShareProjectFile(source: ProjectFileDownloadSource) 
     } else if (source.bytes) {
       if (source.signal?.aborted) throw new Error('Download canceled.');
       destination.create();
-      destination.write(source.bytes);
+      await destination.write(source.bytes);
     } else {
       throw new Error('The file could not be downloaded.');
     }

@@ -1,5 +1,5 @@
 import { AppState } from 'react-native';
-import { initLlama, type LlamaContext } from 'llama.rn';
+import type { LlamaContext } from 'llama.rn';
 
 import { AUTO_MODEL_CLASSIFIER_GRAMMAR, AUTO_MODEL_MAX_PROMPT_CHARS, AUTO_MODEL_OUTPUT_TOKENS, buildAutoModelClassifierInput, parseAutoModelTier, type AutoModelClassifierInput } from '@/features/ai/model/auto-model/classifier-prompt';
 import { getLocalAutoModelPath } from '@/features/ai/model/auto-model/models';
@@ -84,14 +84,14 @@ async function loadContext(): Promise<LlamaContext> {
 
   subscribeAppState();
   const generation = runtimeGeneration;
-  loadPromise = initLlama({
+  loadPromise = import('llama.rn').then(({ initLlama }) => initLlama({
     model: modelPath,
     n_ctx: 2_048,
     n_batch: 256,
     n_threads: 4,
     n_gpu_layers: 0,
     use_mlock: false,
-  }).then((loaded) => {
+  })).then((loaded) => {
     if (generation !== runtimeGeneration) {
       void loaded.release().catch(() => undefined);
       throw new Error('The on-device classifier was released while loading.');

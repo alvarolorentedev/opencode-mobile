@@ -6,7 +6,7 @@ import { usePalette } from '@/shared/ui/theme/use-palette';
 function Input({
   className,
   ...props
-}: React.ComponentProps<typeof TextInput> & React.RefAttributes<TextInput>) {
+}: React.ComponentProps<typeof TextInput>) {
   const palette = usePalette();
   return (
     <TextInput

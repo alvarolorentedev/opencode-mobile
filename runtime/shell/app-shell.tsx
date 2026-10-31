@@ -51,10 +51,6 @@ export default function RootLayout() {
       .then(({ initializeNotifications }) => initializeNotifications())
       .catch(() => undefined);
 
-    void import('@/shared/platform/voice/speech-output')
-      .then(({ initializeVoiceAudioAsync }) => initializeVoiceAudioAsync())
-      .catch(() => undefined);
-
     void import('@/shared/platform/voice/tts/player')
       .then(({ cleanupLocalTtsAudioCache }) => cleanupLocalTtsAudioCache())
       .catch(() => undefined);
@@ -152,7 +148,7 @@ function RootNavigator() {
 
   return (
     <Stack>
-      <Stack.Protected guard={onboardingCompleted}>
+      <Stack.Protected guard={onboardingCompleted} redirectTo="/onboarding">
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
         <Stack.Screen name="session/[id]" options={{ headerShown: false }} />
       </Stack.Protected>

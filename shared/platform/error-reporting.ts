@@ -27,7 +27,8 @@ function recordJsError(error: unknown, isFatal?: boolean) {
     if (!file.exists) {
       file.create();
     }
-    file.write(JSON.stringify({ ...details, isFatal: Boolean(isFatal), at: Date.now() }));
+    // Fatal handlers must finish recording before delegating to the original handler.
+    file.writeSync(JSON.stringify({ ...details, isFatal: Boolean(isFatal), at: Date.now() }));
   } catch {
     // Best effort: diagnostics must never mask the original crash.
   }

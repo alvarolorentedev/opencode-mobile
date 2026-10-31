@@ -27,7 +27,7 @@ const UpdatePreferencesSchema = z.object({
   lastCheckAt: z.number().finite().nonnegative(),
   enabled: z.boolean().default(true),
   checkPeriod: z.enum(UPDATE_CHECK_PERIODS).default(DEFAULT_UPDATE_CHECK_PERIOD),
-  dismissal: UpdateDismissalSchema.nullish().transform((value) => value ?? undefined),
+  dismissal: UpdateDismissalSchema.nullish().transform((value) => value?.phase === 'downloaded' ? undefined : value ?? undefined),
 });
 
 export function parseUpdatePreferences(raw: string): UpdatePreferences {
@@ -39,8 +39,8 @@ export function updateCheckDue(lastCheckAt: number, now: number, interval: numbe
 }
 
 export function updateNotice(snapshot: UpdateSnapshot, preferences: UpdatePreferences, now: number) {
-  if (snapshot.phase !== 'available' && snapshot.phase !== 'downloaded') return undefined;
+  if (snapshot.phase !== 'available' && snapshot.phase !== 'inProgress') return undefined;
   const dismissal = preferences.dismissal;
-  if (dismissal && dismissal.version === (snapshot.version ?? 'downloaded') && dismissal.phase === snapshot.phase && now < dismissal.until) return undefined;
+  if (dismissal && dismissal.version === (snapshot.version ?? 'immediate') && dismissal.phase === 'available' && now < dismissal.until) return undefined;
   return snapshot;
 }

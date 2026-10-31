@@ -43,14 +43,10 @@
   },
   "updates": {
     "available": "アップデートがあります",
-    "ready": "アップデートの準備完了",
     "later": "後で",
     "failed": "更新できませんでした。後でもう一度お試しください。",
     "opening": "アップデートを開いています…",
-    "installing": "アップデートをインストールしています…",
-    "readyDescription": "アプリを再起動してインストールします。",
     "availableDescription": "App Storeから最新バージョンをインストールしてください。",
-    "restart": "再起動してインストール",
     "openStore": "App Storeを開く"
   },
   "servers": {
