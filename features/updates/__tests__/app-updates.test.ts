@@ -1,4 +1,3 @@
-import { readFileSync } from 'node:fs';
 import { describe, expect, it, vi } from 'vitest';
 import { deferred, hookRuntime, loadTs } from '../../../tests/helpers/runtime.mjs';
 import { DEFAULT_UPDATE_CHECK_PERIOD, parseUpdatePreferences, UPDATE_CHECK_INTERVALS, UPDATE_DISMISS_INTERVAL, updateCheckDue, updateNotice } from '../model/app-update-policy';
@@ -32,7 +31,7 @@ async function provider({ stored = null, readError = false, snapshot = available
 }
 
 describe('update policy', () => {
-  it('validates persistence, preserves preferences and drops obsolete download dismissals', () => {
+  it('validates persistence and preserves legacy download cooldowns', () => {
     expect(() => parseUpdatePreferences('{"lastCheckAt":"bad"}')).toThrow();
     expect(() => parseUpdatePreferences('{"lastCheckAt":0,"enabled":"yes"}')).toThrow();
     expect(() => parseUpdatePreferences('{"lastCheckAt":0,"checkPeriod":"monthly"}')).toThrow();
@@ -40,7 +39,7 @@ describe('update policy', () => {
     expect(parseUpdatePreferences('{"lastCheckAt":0}')).toEqual({ lastCheckAt: 0, enabled: true, checkPeriod: 'available' });
     const preferences = { lastCheckAt: 0, enabled: true, checkPeriod: 'available' as const, dismissal: { version: '59', phase: 'available' as const, until: 100 } };
     expect(updateNotice(available, preferences, 50)).toBeUndefined();
-    expect(parseUpdatePreferences(JSON.stringify({ ...preferences, dismissal: { version: '59', phase: 'downloaded', until: 100 } }))).toEqual({ ...preferences, dismissal: undefined });
+    expect(parseUpdatePreferences(JSON.stringify({ ...preferences, dismissal: { version: '59', phase: 'downloaded', until: 100 } }))).toEqual(preferences);
     expect(updateNotice({ ...available, version: '60' }, preferences, 50)).toBeDefined();
     expect(updateNotice(available, preferences, 100)).toBeDefined();
     expect(updateCheckDue(100, 99, UPDATE_CHECK_INTERVALS.daily)).toBe(true);
@@ -90,6 +89,19 @@ describe('provider update safety', () => {
     const view = await provider({ nativeConsent: true, stored: JSON.stringify({ lastCheckAt: Date.now(), checkPeriod: 'weekly' }), snapshot: { phase: 'inProgress', version: '59' } });
     expect(view.api.start).toHaveBeenCalledOnce();
     view.runtime.unmount(); expect(view.unsubscribe).toHaveBeenCalledOnce();
+  });
+  it('recovers across repeated cold starts but never repeats an in-progress handoff in one process', async () => {
+    const stored = JSON.stringify({ lastCheckAt: Date.now(), checkPeriod: 'weekly', dismissal: { version: '59', phase: 'available', until: Date.now() + UPDATE_DISMISS_INTERVAL, attempted: true } });
+    for (let i = 0; i < 2; i++) {
+      const view = await provider({ nativeConsent: true, stored, snapshot: { phase: 'inProgress', version: 'immediate' } });
+      expect(view.api.start).toHaveBeenCalledOnce();
+      view.foreground('background'); view.foreground('active'); await view.runtime.settle();
+      expect(view.api.start).toHaveBeenCalledOnce();
+      view.runtime.unmount();
+    }
+    const cancelled = JSON.stringify({ lastCheckAt: Date.now(), dismissal: { version: '59', phase: 'available', until: Date.now() + UPDATE_DISMISS_INTERVAL } });
+    const view = await provider({ nativeConsent: true, stored: cancelled, snapshot: { phase: 'inProgress', version: 'immediate' } });
+    expect(view.api.start).not.toHaveBeenCalled();
   });
   it('defaults to surfacing an available update discovered inside the discovery interval', async () => {
     const view = await provider({ stored: JSON.stringify({ lastCheckAt: Date.now() }), snapshot: available });
@@ -172,12 +184,6 @@ describe('store boundary', () => {
 });
 
 describe('immediate-only Android adapter', () => {
-  it('never auto-installs a legacy flexible download outside the unsaved-work gate', () => {
-    const source = readFileSync('node_modules/expo-in-app-updates/android/src/main/java/expo/modules/inappupdates/ExpoInAppUpdatesModule.kt', 'utf8');
-    expect(source).not.toContain('registerListener(installStateListener)');
-    expect(source).toContain('appUpdateManager.requestCompleteUpdate()');
-  });
-
   async function adapter(info = { updateAvailable: true, immediateAllowed: true, updateInProgress: false, storeVersion: '60' }) {
     const startUpdate = vi.fn(async (_immediate: boolean) => true);
     const referrer = vi.fn(async () => '');

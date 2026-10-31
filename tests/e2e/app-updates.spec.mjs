@@ -45,8 +45,12 @@ test('interrupted immediate recovery bypasses discovery cadence and respects can
   await page.addInitScript(() => {
     if (!localStorage.getItem('opencode-mobile.app-updates')) localStorage.setItem('opencode-mobile.app-updates', JSON.stringify({ lastCheckAt: Date.now(), checkPeriod: 'weekly' }));
   });
-  await boot(page, request, { phase: 'inProgress', version: '59' }, false);
-  await expect.poll(() => page.evaluate(() => JSON.parse(localStorage.getItem('opencode-mobile.app-updates') || '{}').dismissal?.phase)).toBe('available');
+  await boot(page, request, { phase: 'inProgress' });
+  await expect.poll(() => page.evaluate(() => JSON.parse(localStorage.getItem('opencode-mobile.app-updates') || '{}').dismissal?.attempted)).toBe(true);
+  await page.reload();
+  await expect.poll(() => page.evaluate(() => globalThis.__appUpdateTest.events)).toEqual(['start']);
+  await page.evaluate(() => globalThis.__appUpdateTest.emit({ phase: 'cancelled' }));
+  await expect.poll(() => page.evaluate(() => JSON.parse(localStorage.getItem('opencode-mobile.app-updates') || '{}').dismissal?.attempted ?? false)).toBe(false);
   await page.reload();
   await expect(page.getByPlaceholder('Ask anything...')).toBeVisible();
   await expect.poll(() => page.evaluate(() => globalThis.__appUpdateTest.checks)).toBeGreaterThan(0);

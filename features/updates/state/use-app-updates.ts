@@ -26,6 +26,7 @@ export function useAppUpdates({ initialized, blocked }: { initialized: boolean; 
   const [foreground, setForeground] = useState(AppState.currentState === 'active');
   const [blockerCount, setBlockerCount] = useState(0);
   const [busy, setBusy] = useState(false);
+  const [startedNativeUpdate, setStartedNativeUpdate] = useState(false);
   const [error, setError] = useState(false);
   const [suppressed, setSuppressed] = useState(false);
   const [now, setNow] = useState(Date.now);
@@ -50,9 +51,9 @@ export function useAppUpdates({ initialized, blocked }: { initialized: boolean; 
     };
   }, []);
 
-  const dismiss = useCallback((value: UpdateSnapshot) => {
+  const dismiss = useCallback((value: UpdateSnapshot, attempted = false) => {
     if (value.phase !== 'available' && value.phase !== 'inProgress') return;
-    const dismissal = { version: value.version ?? 'immediate', phase: 'available' as const, until: Date.now() + UPDATE_DISMISS_INTERVAL };
+    const dismissal = { version: value.version ?? 'immediate', phase: 'available' as const, until: Date.now() + UPDATE_DISMISS_INTERVAL, ...(attempted ? { attempted: true } : {}) };
     const next = { ...latest.current.preferences, dismissal };
     latest.current.preferences = next;
     setPreferences(next);
@@ -100,7 +101,7 @@ export function useAppUpdates({ initialized, blocked }: { initialized: boolean; 
         setSnapshot(next);
         return;
       }
-      const next = { ...latest.current.snapshot, phase: event.phase };
+      const next = { ...latest.current.snapshot, phase: event.phase, version: event.version ?? latest.current.snapshot.version };
       latest.current.snapshot = next;
       setSnapshot(next);
     });
@@ -158,9 +159,11 @@ export function useAppUpdates({ initialized, blocked }: { initialized: boolean; 
       if (fresh.phase === 'available' || fresh.phase === 'inProgress') {
         latest.current.snapshot = fresh;
         setSnapshot(fresh);
-        // Suppress before native handoff: native error fallback can open Play without an event.
-        dismiss(fresh);
-        await adapter.start(() => mounted.current && safe());
+        if (adapter.nativeConsent && fresh.phase === 'inProgress' && startedNativeUpdate) return;
+        // Native error fallback has no event; suppress repeat handoffs, but permit cold recovery.
+        dismiss(fresh, adapter.nativeConsent === true);
+        if (adapter.nativeConsent) setStartedNativeUpdate(true);
+        if (!await adapter.start(() => mounted.current && safe())) dismiss(fresh);
       } else { latest.current.snapshot = fresh; setSnapshot(fresh); }
     } catch {
       if (mounted.current) { setError(true); dismiss(attempted); }
@@ -168,7 +171,7 @@ export function useAppUpdates({ initialized, blocked }: { initialized: boolean; 
       actionLock.current = false;
       if (mounted.current) { setBusy(false); void check(); }
     }
-  }, [check, dismiss, safe]);
+  }, [check, dismiss, safe, startedNativeUpdate]);
 
   const setEnabled = useCallback((enabled: boolean) => {
     const next = { ...latest.current.preferences, enabled };
@@ -183,7 +186,8 @@ export function useAppUpdates({ initialized, blocked }: { initialized: boolean; 
     if (checkPeriod === 'available') void check();
   }, [check]);
   const candidate = initialized && ready && foreground && surfaceActive && !blocked && !blockerCount &&
-    !busy && !suppressed && preferences.enabled ? updateNotice(snapshot, preferences, now) : undefined;
+    !busy && !suppressed && preferences.enabled && !(nativeConsent && snapshot.phase === 'inProgress' && startedNativeUpdate)
+    ? updateNotice(snapshot, preferences, now) : undefined;
   useEffect(() => {
     if (candidate && nativeConsent) void update();
   }, [candidate, nativeConsent, update]);

@@ -34,10 +34,15 @@ export default function PairScreen() {
     incomingLink.current = undefined;
     void pairLink(link);
   }, [initialization, busy, pairLink, params]);
+  async function cancelPairing() {
+    const cancelled = await connectSetup.cancelPairing();
+    if (cancelled) incomingLink.current = undefined;
+    return cancelled;
+  }
   if (!connectSetup.enabled) return null;
   const onConnected = () => router.replace(!onboardingCompleted || onboardingActive ? '/onboarding/ai' : '/(tabs)/projects');
   const onClose = () => router.replace(!onboardingCompleted || onboardingActive ? '/onboarding/connect' : '/(tabs)/settings');
-  if (params.mode !== 'manage') return <ConnectEntry setup={connectSetup} onConnected={onConnected} onClose={onClose} onManage={() => router.push('/pair?mode=manage')} deepLink={deepLink} />;
+  if (params.mode !== 'manage') return <ConnectEntry setup={{ ...connectSetup, cancelPairing }} onConnected={onConnected} onClose={onClose} onManage={() => router.push('/pair?mode=manage')} deepLink={deepLink} />;
   return <SafeAreaView className={cn("flex-1 bg-background")}>
     <KeyboardAvoidingView className={cn("flex-1")} behavior="padding">
       <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={{ padding: 20 }}>

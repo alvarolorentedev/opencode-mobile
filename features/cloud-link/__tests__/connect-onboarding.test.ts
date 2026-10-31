@@ -96,7 +96,7 @@ it('strips an incoming QR immediately and pairs once after store recovery become
   let params: Record<string, string | undefined> = { v: '1', cp: 'https://api.opencodecloud.link', id: 'pending', t: 'temporary-proof' };
   const incoming = { ...params };
   const pairLink = vi.fn(async () => true);
-  const setup = { enabled: true, initialization: 'loading', busy: true, pairLink };
+  const setup = { enabled: true, initialization: 'loading', busy: true, pairLink, cancelPairing: vi.fn(async () => true) };
   const setParams = vi.fn((next: typeof params) => { params = { ...params, ...next }; });
   const router = { setParams, replace: vi.fn(), push: vi.fn() };
   const { default: PairScreen } = await loadTs('features/cloud-link/ui/pair-screen.tsx', {
@@ -120,6 +120,12 @@ it('strips an incoming QR immediately and pairs once after store recovery become
   expect(pairLink).not.toHaveBeenCalled();
   setup.busy = false; runtime.update({}); await runtime.settle();
   expect(pairLink).toHaveBeenCalledExactlyOnceWith(incoming);
+  runtime.update({}); await runtime.settle();
+  expect(pairLink).toHaveBeenCalledOnce();
+  setup.initialization = 'loading'; setup.busy = true;
+  params = { ...incoming, id: 'cancelled' }; runtime.update({}); await runtime.settle();
+  await runtime.value.props.setup.cancelPairing();
+  setup.initialization = 'ready'; setup.busy = false;
   runtime.update({}); await runtime.settle();
   expect(pairLink).toHaveBeenCalledOnce();
   runtime.unmount();
