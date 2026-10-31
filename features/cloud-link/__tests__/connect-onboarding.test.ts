@@ -89,3 +89,38 @@ describe('Cloud Link guided setup', () => {
     expect(linked.onConnected).toHaveBeenCalledOnce();
   });
 });
+
+
+it('strips an incoming QR immediately and pairs once after store recovery becomes ready', async () => {
+  const runtime = hookRuntime();
+  let params: Record<string, string | undefined> = { v: '1', cp: 'https://api.opencodecloud.link', id: 'pending', t: 'temporary-proof' };
+  const incoming = { ...params };
+  const pairLink = vi.fn(async () => true);
+  const setup = { enabled: true, initialization: 'loading', busy: true, pairLink };
+  const setParams = vi.fn((next: typeof params) => { params = { ...params, ...next }; });
+  const router = { setParams, replace: vi.fn(), push: vi.fn() };
+  const { default: PairScreen } = await loadTs('features/cloud-link/ui/pair-screen.tsx', {
+    ...uiImports,
+    react: runtime.react,
+    'react/jsx-runtime': { jsx: (type: unknown, props: object) => ({ type, props }), jsxs: (type: unknown, props: object) => ({ type, props }) },
+    'expo-router': { useLocalSearchParams: () => params, useRouter: () => router },
+    'react-native': { KeyboardAvoidingView: 'View', ScrollView: 'View' },
+    'react-native-safe-area-context': { SafeAreaView: 'View' },
+    '@/features/cloud-link/ui/connect-panel': { ConnectManagementPanel: 'Management' },
+    '@/features/cloud-link/ui/connect-pairing': { ConnectEntry: 'Entry' },
+    '@/features/connections/context': { useConnection: () => ({ connectSetup: setup }) },
+    '@/runtime/workspace': { useBootState: () => ({ isHydrated: true, onboardingCompleted: true, onboardingActive: false }) },
+  });
+  runtime.mount(PairScreen, {});
+  await runtime.settle();
+  expect(setParams).toHaveBeenCalledOnce();
+  expect(params.t).toBeUndefined();
+  expect(pairLink).not.toHaveBeenCalled();
+  setup.initialization = 'ready'; runtime.update({}); await runtime.settle();
+  expect(pairLink).not.toHaveBeenCalled();
+  setup.busy = false; runtime.update({}); await runtime.settle();
+  expect(pairLink).toHaveBeenCalledExactlyOnceWith(incoming);
+  runtime.update({}); await runtime.settle();
+  expect(pairLink).toHaveBeenCalledOnce();
+  runtime.unmount();
+});

@@ -467,6 +467,7 @@ test('offline voice and response choices persist through Back, Skip, and reload'
   await expect(voice.getByRole('switch', { name: 'Read replies aloud', exact: true })).toBeChecked();
   await expect(voice.getByRole('button', { name: 'Response scope. Detailed', exact: true })).toBeVisible();
   await page.getByTestId('onboarding-voice-skip').click();
+  await expect(page.getByTestId('onboarding-ready')).toBeVisible();
   await page.reload({ waitUntil: 'domcontentloaded' });
   await expect(page.getByTestId('onboarding-summary-response-style')).toContainText('Detailed');
   await expect.poll(async () => JSON.parse(await page.evaluate(() => localStorage.getItem('opencode-mobile.chat-preferences')))).toMatchObject({

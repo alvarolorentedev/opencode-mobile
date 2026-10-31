@@ -94,7 +94,11 @@ export async function goToTab(page, name) {
   await closeSettingsOverlay(page);
   const changes = page.getByTestId('changes-overlay');
   if (await changes.isVisible().catch(() => false)) await changes.getByRole('button', { name: 'Close', exact: true }).click();
-  await page.getByRole('tab', { name }).click();
+  const tab = page.getByRole('tab', { name });
+  await tab.click();
+  await expect(tab).toHaveAttribute('aria-selected', 'true');
+  const pathname = { Chat: '/', Terminal: '/terminal', Projects: '/projects', Settings: '/settings' }[name];
+  await expect(page).toHaveURL((url) => url.pathname === pathname);
 }
 
 export async function chatAction(page, title, action) {

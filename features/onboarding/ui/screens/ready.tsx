@@ -27,7 +27,7 @@ export default function OnboardingReadyScreen() {
         // Review mode: configuration was already persisted by the steps that
         // changed it. Just close the assistant and return to Settings.
         stopOnboardingReview();
-        router.replace('/(tabs)/settings');
+        router.dismissTo('/(tabs)/settings');
         return;
       }
 

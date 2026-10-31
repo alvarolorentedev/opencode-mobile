@@ -1,6 +1,6 @@
 import { cn } from '@/shared/ui/cn';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { KeyboardAvoidingView, ScrollView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -15,17 +15,25 @@ export default function PairScreen() {
   const { connectSetup } = useConnection();
   const { isHydrated, onboardingCompleted, onboardingActive } = useOnboarding();
 
-  const { pairLink } = connectSetup;
+  const { pairLink, initialization, busy } = connectSetup;
+  const incomingLink = useRef<typeof params | undefined>(undefined);
   // Captured before the incoming link params are stripped from the route.
   const [deepLink, setDeepLink] = useState(() => Boolean(params.v || params.cp || params.id || params.t || params.n));
   // Router params can arrive after mount; retain their origin before stripping them.
   if (!deepLink && (params.v || params.cp || params.id || params.t || params.n)) setDeepLink(true);
   useEffect(() => {
     if (isHydrated && (params.v || params.cp || params.id || params.t || params.n)) {
-      void pairLink(params);
+      incomingLink.current = { ...params };
       router.setParams({ v: undefined, cp: undefined, id: undefined, t: undefined, n: undefined });
     }
-  }, [pairLink, isHydrated, params, router]);
+  }, [isHydrated, params, router]);
+  useEffect(() => {
+    // Store recovery may reject new links while its purchase is being saved.
+    if (!incomingLink.current || initialization !== 'ready' || busy) return;
+    const link = incomingLink.current;
+    incomingLink.current = undefined;
+    void pairLink(link);
+  }, [initialization, busy, pairLink, params]);
   if (!connectSetup.enabled) return null;
   const onConnected = () => router.replace(!onboardingCompleted || onboardingActive ? '/onboarding/ai' : '/(tabs)/projects');
   const onClose = () => router.replace(!onboardingCompleted || onboardingActive ? '/onboarding/connect' : '/(tabs)/settings');
