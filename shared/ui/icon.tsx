@@ -10,7 +10,9 @@ const StyledIcon = withUniwind(MaterialCommunityIcons, {
   size: { fromClassName: 'className', styleProperty: 'width' },
 });
 
-export function Icon({ className, name, ...props }: Omit<ComponentProps<typeof MaterialCommunityIcons>, 'name'> & { name?: string; className?: string }) {
+export function Icon({ className, name, size, ...props }: Omit<ComponentProps<typeof MaterialCommunityIcons>, 'name'> & { name?: string; className?: string }) {
   const textClass = useContext(TextClassContext);
-  return <StyledIcon name={name && name in MaterialCommunityIcons.glyphMap ? name as ComponentProps<typeof MaterialCommunityIcons>['name'] : 'help-circle-outline'} accessible={false} aria-hidden accessibilityElementsHidden importantForAccessibility="no-hide-descendants" className={cn('text-foreground size-5', textClass, className)} {...props} />;
+  // A caller-provided size already sets the glyph font size. Do not also impose
+  // the default 20 px box, or the wider glyph is clipped on the right.
+  return <StyledIcon name={name && name in MaterialCommunityIcons.glyphMap ? name as ComponentProps<typeof MaterialCommunityIcons>['name'] : 'help-circle-outline'} accessible={false} aria-hidden accessibilityElementsHidden importantForAccessibility="no-hide-descendants" className={cn('text-foreground', size === undefined && 'size-5', textClass, className)} size={size} {...props} />;
 }
