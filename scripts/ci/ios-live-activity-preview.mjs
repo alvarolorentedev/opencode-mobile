@@ -4,6 +4,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { spawn, spawnSync } from 'node:child_process';
+import { Buffer } from 'node:buffer';
 import { createRequire } from 'node:module';
 import { pathToFileURL } from 'node:url';
 
@@ -198,10 +199,24 @@ function launchConsole(args) {
   return spawn('xcrun', args, { stdio: ['ignore', 'pipe', 'pipe'] });
 }
 
+export function copyRenderedCapture(source, destination) {
+  if (!fs.existsSync(source)) throw new Error(`Missing UIKit-rendered preview PNG: ${source}`);
+  const png = fs.readFileSync(source);
+  // Check the PNG envelope and nonempty dimensions, not visual/layout acceptance.
+  if (png.length < 57 || !png.subarray(0, 8).equals(Buffer.from('89504e470d0a1a0a', 'hex'))
+    || png.readUInt32BE(8) !== 13 || png.toString('ascii', 12, 16) !== 'IHDR'
+    || png.readUInt32BE(16) === 0 || png.readUInt32BE(20) === 0
+    || !png.subarray(-12).equals(Buffer.from('0000000049454e44ae426082', 'hex'))) {
+    throw new Error(`Invalid UIKit-rendered preview PNG: ${source}`);
+  }
+  fs.copyFileSync(source, destination);
+}
+
 export async function runPreview({ root = process.cwd(), exec = execute, launch = launchConsole, platform = process.platform } = {}) {
   if (platform !== 'darwin') throw new Error('Native preview requires macOS with Xcode and an installed iPhone Simulator; Linux tests do not compile Apple SDKs.');
   const output = path.join(root, 'ios-build/preview');
   fs.mkdirSync(path.join(output, 'logs'), { recursive: true });
+  for (const name of ['evidence.json', 'README.txt']) fs.rmSync(path.join(output, name), { force: true });
   const sdk = exec('xcrun', ['--sdk', 'iphonesimulator', '--show-sdk-path']).trim();
   const arch = exec('uname', ['-m']).trim();
   const sources = generatedSources(root);
@@ -236,9 +251,18 @@ export async function runPreview({ root = process.cwd(), exec = execute, launch 
     if (device.state !== 'Booted') exec('xcrun', ['simctl', 'boot', device.udid]);
     exec('xcrun', ['simctl', 'bootstatus', device.udid, '-b'], { timeout: 240_000 });
     exec('xcrun', ['simctl', 'install', device.udid, app]);
+    const container = exec('xcrun', ['simctl', 'get_app_container', device.udid, previewBundleIdentifier, 'data']).trim();
+    if (!path.isAbsolute(container) || !fs.existsSync(container) || !fs.statSync(container).isDirectory()) {
+      throw new Error('Simulator did not return an existing absolute harness data-container path');
+    }
+    const capture = path.join(container, 'Documents/preview.png');
     for (const mode of previewModes) {
       for (const fixture of fixtures) {
         const id = `${fixture.id}-${mode.id}`;
+        const screenshot = path.join(output, `${id}.png`);
+        // A readiness marker must never allow a prior launch's PNG to count.
+        fs.rmSync(capture, { force: true });
+        fs.rmSync(screenshot, { force: true });
         const args = ['simctl', 'launch', '--console', '--terminate-running-process', device.udid, previewBundleIdentifier,
           '--scenario', fixture.id, '--appearance', mode.appearance, '--text-size', mode.textSize];
         const child = launch(args);
@@ -246,8 +270,8 @@ export async function runPreview({ root = process.cwd(), exec = execute, launch 
         try {
           await waitForReady(child, `OPENCODE_PREVIEW_READY ${fixture.id} ${mode.appearance} ${mode.textSize}`, path.join(output, 'logs', `${id}.log`));
           if (child.exitCode !== null) throw new Error(`Harness exited before screenshot: ${id}`);
-          exec('xcrun', ['simctl', 'io', device.udid, 'screenshot', path.join(output, `${id}.png`)]);
-          // Let pending console-exit events run after the synchronous screenshot.
+          copyRenderedCapture(capture, screenshot);
+          // Let pending console-exit events run after the synchronous copy.
           await new Promise((resolve) => setImmediate(resolve));
           if (child.exitCode !== null) throw new Error(`Harness exited during screenshot: ${id}`);
           screenshots.push(`${id}.png`);
@@ -264,9 +288,10 @@ export async function runPreview({ root = process.cwd(), exec = execute, launch 
         }
       }
     }
-    const scope = 'Standalone SwiftUI harness using production ActivityDashboard. Not a React Native app startup test, real Lock Screen/Dynamic Island hosting, or iPhone acceptance.';
-    fs.writeFileSync(path.join(output, 'evidence.json'), JSON.stringify({ scope, screenshots, fixtures, modes: previewModes }, null, 2));
-    fs.writeFileSync(path.join(output, 'README.txt'), `${scope}\n\nApple Simulator SDK typecheck includes the production WidgetKit entrypoint.\nHarness app compilation excludes that entrypoint and uses PreviewApp.swift.\n${fixtures.length} scenarios x ${previewModes.length} modes = ${screenshots.length} screenshots: light, dark and accessibility text.\nNormal cases use production English notification strings. French long-text and Hebrew RTL cases are synthetic stress fixtures, not claims of shipped translations.\n`);
+    const scope = 'Standalone SwiftUI harness using production ActivityDashboard, captured from its UIKit-rendered window in an actual Simulator. Not a React Native app startup test, real Lock Screen/Dynamic Island hosting, or iPhone acceptance.';
+    const captureMethod = { renderer: 'UIWindow.drawHierarchy(afterScreenUpdates: true)', source: 'Documents/preview.png', atomicWriteBeforeReady: true, systemFramebuffer: false };
+    fs.writeFileSync(path.join(output, 'evidence.json'), JSON.stringify({ scope, captureMethod, screenshots, fixtures, modes: previewModes }, null, 2));
+    fs.writeFileSync(path.join(output, 'README.txt'), `${scope}\n\nApple Simulator SDK typecheck includes the production WidgetKit entrypoint.\nHarness app compilation excludes that entrypoint and uses PreviewApp.swift.\nCaptures are UIKit-rendered window PNGs, not system framebuffer screenshots. The app atomically writes Documents/preview.png before its readiness marker; the host copies that image from the Simulator app data container after checking its PNG envelope and dimensions. This avoids system launch-transition captures; it does not certify visual/layout acceptance.\n${fixtures.length} scenarios x ${previewModes.length} modes = ${screenshots.length} screenshots: light, dark and accessibility text.\nNormal cases use production English notification strings. French long-text and Hebrew RTL cases are synthetic stress fixtures, not claims of shipped translations.\n`);
     console.log(`PASS: SDK typecheck and ${screenshots.length} rendered SwiftUI harness screenshots. ${scope}`);
   } catch (error) {
     runError = error;

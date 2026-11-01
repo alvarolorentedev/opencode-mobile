@@ -8,7 +8,7 @@ import { PassThrough } from 'node:stream';
 import plist from '@expo/plist';
 import { afterEach, describe, it } from 'vitest';
 import {
-  generatedSources, previewBundleIdentifier, previewFixtures, previewModes,
+  copyRenderedCapture, generatedSources, previewBundleIdentifier, previewFixtures, previewModes,
   runPreview, selectSimulator, swiftArguments, validateFixtures, waitForReady,
 } from '../../scripts/ci/ios-live-activity-preview.mjs';
 
@@ -19,6 +19,8 @@ const runtimes = { runtimes: [{ identifier: runtime, version: '26.5', isAvailabl
 const devices = { devices: { [runtime]: [device] } };
 const nativeFiles = ['OpencodeActivityAttributes.swift', 'ActivityDashboard.swift', 'OpencodeActivityTheme.swift', 'OpencodeLiveActivity.swift'];
 const activityCopy = JSON.parse(fs.readFileSync(new URL('../../shared/i18n/locales/en/notifications.json', import.meta.url), 'utf8')).activity as Record<string, string>;
+// A tiny transfer/validation fixture, never evidence of native rendering on Linux.
+const fixturePng = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+a/gAAAABJRU5ErkJggg==', 'base64');
 
 function temporaryRoot() {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'opencode-native-preview-'));
@@ -40,8 +42,13 @@ class ConsoleProcess extends EventEmitter {
   }
 }
 
-function mockedNativeRun() {
+function mockedNativeRun({ capture = (source: string) => fs.writeFileSync(source, fixturePng) }: {
+  capture?: (source: string, index: number) => void;
+} = {}) {
   const root = temporaryRoot();
+  const container = path.join(root, 'Simulator App Data');
+  const capturePath = path.join(container, 'Documents/preview.png');
+  fs.mkdirSync(path.dirname(capturePath), { recursive: true });
   const generated = path.join(root, 'ios/OpencodeLiveActivity');
   fs.mkdirSync(generated, { recursive: true });
   for (const file of nativeFiles) fs.writeFileSync(path.join(generated, file), '// Synthetic command-planning fixture, not compiled by Linux tests.\n');
@@ -53,7 +60,7 @@ function mockedNativeRun() {
     if (args.includes('--show-sdk-path')) return '/Applications/Xcode_26.6.app/SDKs/iPhoneSimulator26.5.sdk\n';
     if (args.includes('runtimes')) return JSON.stringify(runtimes);
     if (args.includes('devices')) return JSON.stringify(devices);
-    if (args.includes('screenshot')) fs.writeFileSync(args.at(-1)!, 'mock screenshot, not native rendering evidence');
+    if (args.includes('get_app_container')) return `${container}\n`;
     return '';
   };
   const launch = (args: string[]) => {
@@ -61,10 +68,14 @@ function mockedNativeRun() {
     const child = new ConsoleProcess();
     consoles.push(child);
     const arg = (name: string) => args[args.indexOf(name) + 1];
-    setImmediate(() => child.stdout.write(`OPENCODE_PREVIEW_READY ${arg('--scenario')} ${arg('--appearance')} ${arg('--text-size')}\n`));
+    const index = consoles.length - 1;
+    setImmediate(() => {
+      capture(capturePath, index);
+      child.stdout.write(`OPENCODE_PREVIEW_READY ${arg('--scenario')} ${arg('--appearance')} ${arg('--text-size')}\n`);
+    });
     return child as unknown as ChildProcessByStdio<null, PassThrough, PassThrough>;
   };
-  return { root, calls, consoles, exec, launch };
+  return { root, calls, consoles, exec, launch, capturePath };
 }
 
 afterEach(() => {
@@ -235,6 +246,28 @@ describe('native Live Activity preview planning (no Apple SDK compilation on Lin
     failed.emit('close', 1);
   });
 
+  it('copies the saved window PNG bytes and rejects missing, malformed or truncated captures', () => {
+    const root = temporaryRoot();
+    const source = path.join(root, 'preview.png');
+    const destination = path.join(root, 'reading-dark.png');
+    assert.throws(() => copyRenderedCapture(source, destination), /Missing UIKit-rendered preview PNG/);
+    const zeroWidth = Buffer.from(fixturePng);
+    zeroWidth.writeUInt32BE(0, 16);
+    const zeroHeight = Buffer.from(fixturePng);
+    zeroHeight.writeUInt32BE(0, 20);
+    const invalidHeader = Buffer.from(fixturePng);
+    invalidHeader.write('NOPE', 12);
+    for (const invalid of [Buffer.alloc(0), Buffer.from('not a PNG'), fixturePng.subarray(0, 8),
+      fixturePng.subarray(0, -1), zeroWidth, zeroHeight, invalidHeader]) {
+      fs.writeFileSync(source, invalid);
+      assert.throws(() => copyRenderedCapture(source, destination), /Invalid UIKit-rendered preview PNG/);
+      assert.equal(fs.existsSync(destination), false);
+    }
+    fs.writeFileSync(source, fixturePng);
+    copyRenderedCapture(source, destination);
+    assert.deepEqual(fs.readFileSync(destination), fixturePng);
+  });
+
   it('plans actual SDK compilation, boot/install/launch/render capture, then cleans up the harness', async () => {
     const run = mockedNativeRun();
     await runPreview({ ...run, platform: 'darwin' });
@@ -247,6 +280,8 @@ describe('native Live Activity preview planning (no Apple SDK compilation on Lin
     assert.ok(compiler[1].args.at(-1)!.endsWith('.app/OpencodeActivityPreview'));
     assert.ok(run.calls.some((call) => call.args.join(' ') === `simctl bootstatus ${device.udid} -b`));
     assert.ok(run.calls.some((call) => call.args[1] === 'install'));
+    assert.ok(run.calls.some((call) => call.args.join(' ') === `simctl get_app_container ${device.udid} ${previewBundleIdentifier} data`));
+    assert.equal(run.calls.some((call) => call.args.includes('screenshot')), false, 'Do not capture the launch-transition framebuffer');
     const launches = run.calls.filter((call) => call.command === 'xcrun-console');
     assert.equal(launches.length, previewFixtures().length * previewModes.length);
     for (const call of launches) {
@@ -263,23 +298,71 @@ describe('native Live Activity preview planning (no Apple SDK compilation on Lin
     assert.equal(evidence.screenshots.length, launches.length);
     assert.equal(evidence.fixtures.length, 15);
     assert.equal(evidence.screenshots.length, 45);
+    for (const screenshot of evidence.screenshots) {
+      assert.deepEqual(fs.readFileSync(path.join(run.root, 'ios-build/preview', screenshot)), fixturePng);
+    }
     assert.match(evidence.scope, /Not a React Native app startup test/);
+    assert.match(evidence.scope, /UIKit-rendered window in an actual Simulator/);
+    assert.deepEqual(evidence.captureMethod, {
+      renderer: 'UIWindow.drawHierarchy(afterScreenUpdates: true)', source: 'Documents/preview.png',
+      atomicWriteBeforeReady: true, systemFramebuffer: false,
+    });
     const readme = fs.readFileSync(path.join(run.root, 'ios-build/preview/README.txt'), 'utf8');
     assert.match(readme, /Not a React Native/);
     assert.match(readme, /15 scenarios x 3 modes = 45 screenshots/);
+    assert.match(readme, /UIKit-rendered window PNGs, not system framebuffer screenshots/);
+    assert.match(readme, /does not certify visual\/layout acceptance/);
     assert.match(readme, /Hebrew RTL cases are synthetic stress fixtures, not claims of shipped translations/);
     assert.equal(run.calls.some((call) => call.command === 'pod' || call.args.includes('archive')), false);
   });
 
   it('never captures success evidence after the launched harness dies', async () => {
     const run = mockedNativeRun();
-    const exec = (command: string, args: string[]) => {
-      if (args.includes('screenshot')) run.consoles.at(-1)!.exitCode = 1;
-      return run.exec(command, args);
+    const launch = (args: string[]) => {
+      const child = run.launch(args);
+      setImmediate(() => { run.consoles.at(-1)!.exitCode = 1; });
+      return child;
     };
-    await assert.rejects(runPreview({ ...run, exec, platform: 'darwin' }), /exited during screenshot/);
+    await assert.rejects(runPreview({ ...run, launch, platform: 'darwin' }), /exited during screenshot/);
     assert.equal(fs.existsSync(path.join(run.root, 'ios-build/preview/evidence.json')), false);
     assert.equal(run.consoles[0].killed, true);
+    assert.equal(run.calls.at(-1)!.args[1], 'shutdown');
+  });
+
+  it('removes stale captures before each launch and fails when readiness has no new PNG', async () => {
+    const run = mockedNativeRun({ capture: (source, index) => {
+      assert.equal(fs.existsSync(source), false, 'A prior capture must be removed before launch');
+      if (index === 0) fs.writeFileSync(source, fixturePng);
+    } });
+    fs.writeFileSync(run.capturePath, fixturePng);
+    await assert.rejects(runPreview({ ...run, platform: 'darwin' }), /Missing UIKit-rendered preview PNG/);
+    assert.equal(fs.existsSync(path.join(run.root, 'ios-build/preview/thinking-light.png')), true);
+    assert.equal(fs.existsSync(path.join(run.root, 'ios-build/preview/reading-light.png')), false);
+    assert.equal(fs.existsSync(path.join(run.root, 'ios-build/preview/evidence.json')), false);
+    assert.equal(run.consoles.every((child) => child.killed), true);
+    assert.equal(run.calls.at(-1)!.args[1], 'shutdown');
+  });
+
+  it('rejects malformed captures even after an exact readiness marker', async () => {
+    const run = mockedNativeRun({ capture: (source) => fs.writeFileSync(source, 'not a PNG') });
+    const output = path.join(run.root, 'ios-build/preview');
+    fs.mkdirSync(output, { recursive: true });
+    fs.writeFileSync(path.join(output, 'thinking-light.png'), fixturePng);
+    fs.writeFileSync(path.join(output, 'evidence.json'), '{"stale": true}');
+    fs.writeFileSync(path.join(output, 'README.txt'), 'Previous run succeeded');
+    await assert.rejects(runPreview({ ...run, platform: 'darwin' }), /Invalid UIKit-rendered preview PNG/);
+    for (const name of ['thinking-light.png', 'evidence.json', 'README.txt']) {
+      assert.equal(fs.existsSync(path.join(output, name)), false, `Do not retain stale success artifact: ${name}`);
+    }
+    assert.equal(run.consoles[0].killed, true);
+  });
+
+  it.each(['', 'relative/container', '/missing/preview-container'])('rejects an invalid Simulator container path: %j', async (container) => {
+    const run = mockedNativeRun();
+    const exec = (command: string, args: string[]) => args.includes('get_app_container') ? container : run.exec(command, args);
+    await assert.rejects(runPreview({ ...run, exec, platform: 'darwin' }), /existing absolute harness data-container path/);
+    assert.equal(run.consoles.length, 0);
+    assert.equal(fs.existsSync(path.join(run.root, 'ios-build/preview/evidence.json')), false);
     assert.equal(run.calls.at(-1)!.args[1], 'shutdown');
   });
 
@@ -296,7 +379,13 @@ describe('native Live Activity preview planning (no Apple SDK compilation on Lin
     assert.equal((swift.match(/\.padding\(\)/g) || []).length, 1, 'Keep the outer page gutter at its default 16pt');
     assert.match(swift, /JSONDecoder\(\)/);
     assert.match(swift, /window\.drawHierarchy\(in: window\.bounds, afterScreenUpdates: true\)/);
-    assert.ok(swift.indexOf('if rendered {') < swift.indexOf('FileHandle.standardOutput.write'));
+    assert.match(swift, /let image = UIGraphicsImageRenderer/);
+    assert.match(swift, /guard let png = image\.pngData\(\)/);
+    assert.match(swift, /appendingPathComponent\("preview\.png"\)/);
+    assert.match(swift, /removeItem\(at: previewCaptureURL\)/);
+    const write = swift.indexOf('try png.write(to: previewCaptureURL, options: .atomic)');
+    assert.ok(swift.indexOf('if rendered {') < write);
+    assert.ok(write < swift.indexOf('FileHandle.standardOutput.write'));
     assert.doesNotMatch(swift, /Activity\.request|import ExpoModulesCore|struct ActivityDashboard/);
   });
 });

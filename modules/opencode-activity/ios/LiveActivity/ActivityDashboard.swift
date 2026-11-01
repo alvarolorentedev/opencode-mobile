@@ -15,16 +15,27 @@ struct ActivityDashboard: View {
 
   var body: some View {
     // ActivityKit allows 160pt. Reserve 12pt per edge for the surface host.
-    // Fixed intrinsic candidate heights prevent a compressed full layout from
-    // winning while its phase/freshness labels are silently truncated.
-    ViewThatFits(in: .vertical) {
-      if !dynamicTypeSize.isAccessibilitySize {
-        full.fixedSize(horizontal: false, vertical: true)
+    ActivityDashboardSizing {
+      ViewThatFits(in: .vertical) {
+        if !dynamicTypeSize.isAccessibilitySize {
+          full.fixedSize(horizontal: false, vertical: true)
+        }
+        compact.fixedSize(horizontal: false, vertical: true)
+        essential(lineLimit: nil).fixedSize(horizontal: false, vertical: true)
+        essential(lineLimit: 2).fixedSize(horizontal: false, vertical: true)
+        essential(lineLimit: 1).fixedSize(horizontal: false, vertical: true)
       }
-      compact.fixedSize(horizontal: false, vertical: true)
-      essential.fixedSize(horizontal: false, vertical: true)
+      // Measurement-only copies let the surface adopt the selected candidate's
+      // intrinsic height rather than expanding to the entire 136pt offer.
+      if !dynamicTypeSize.isAccessibilitySize {
+        full.fixedSize(horizontal: false, vertical: true).hidden().accessibilityHidden(true)
+      }
+      compact.fixedSize(horizontal: false, vertical: true).hidden().accessibilityHidden(true)
+      essential(lineLimit: nil).fixedSize(horizontal: false, vertical: true).hidden().accessibilityHidden(true)
+      essential(lineLimit: 2).fixedSize(horizontal: false, vertical: true).hidden().accessibilityHidden(true)
+      essential(lineLimit: 1).fixedSize(horizontal: false, vertical: true).hidden().accessibilityHidden(true)
     }
-    .frame(maxWidth: .infinity, maxHeight: 136, alignment: .topLeading)
+    .frame(maxWidth: .infinity, alignment: .topLeading)
     .foregroundStyle(theme.text)
     // No pulses, spinning symbols, inferred progress, or fit animations.
     .transaction { $0.animation = nil }
@@ -76,18 +87,24 @@ struct ActivityDashboard: View {
     }
   }
 
-  private var essential: some View {
+  private func essential(lineLimit: Int?) -> some View {
     VStack(alignment: .leading, spacing: 4) {
       // No brand, tile, chip, timer, plan or metrics compete for this space.
-      // Keep the same scalable phase typography, with the full available width.
+      // Try the complete scalable phase first, then two lines before one line.
+      // Bounded fallbacks truncate visually, but VoiceOver gets the full phase.
       Text(verbatim: state.body)
-        .font(.headline).fixedSize(horizontal: false, vertical: true)
+        .font(.headline).lineLimit(lineLimit).truncationMode(.tail)
+        .fixedSize(horizontal: false, vertical: true)
+        .accessibilityLabel(Text(verbatim: state.body))
       if paused {
         HStack(spacing: 4) {
           Image(systemName: "pause.circle")
             .foregroundStyle(theme.warning).accessibilityHidden(true)
+          Text(verbatim: state.pausedLabel)
+            .foregroundStyle(theme.warning).lineLimit(1)
           Text(state.updatedAt, style: .time)
             .foregroundStyle(theme.muted)
+            .lineLimit(1).fixedSize(horizontal: true, vertical: false)
         }
         .font(.caption2)
         .accessibilityElement(children: .ignore)
@@ -189,6 +206,34 @@ struct ActivityDashboard: View {
       .background(theme.surfaceAlt, in: RoundedRectangle(cornerRadius: 8))
       .accessibilityElement(children: .combine)
     }
+  }
+}
+
+// ViewThatFits may consume its proposed height even when a smaller candidate
+// wins. Measure the hidden candidates without compression, then offer exactly
+// the first fitting height to the single visible ViewThatFits child. No geometry
+// state, clipping, font shrinking, or duplicate accessibility elements are used.
+private struct ActivityDashboardSizing: Layout {
+  func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
+    let width = proposal.width.flatMap { $0.isFinite ? $0 : nil }
+    let budget = min(136, proposal.height ?? 136)
+    let measurement = ProposedViewSize(width: width, height: nil)
+    var fallback = CGSize.zero
+    for candidate in subviews.dropFirst() {
+      let size = candidate.sizeThatFits(measurement)
+      fallback = size
+      if size.height <= budget {
+        return CGSize(width: width ?? size.width, height: size.height)
+      }
+    }
+    // The final candidate has at most one phase line and one freshness line,
+    // retaining scaled text and the observation time even for long translations.
+    return CGSize(width: width ?? fallback.width, height: fallback.height)
+  }
+
+  func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {
+    subviews.first?.place(at: bounds.origin, anchor: .topLeading,
+      proposal: ProposedViewSize(width: bounds.width, height: bounds.height))
   }
 }
 

@@ -138,28 +138,59 @@ describe('native activity lifecycle metadata boundary', () => {
     expect(compact).not.toMatch(/percent|ProgressView\(\)/);
   });
 
-  it('fits the 160pt ActivityKit surface by dropping secondary content before phase and freshness', () => {
+  it('measures intrinsic candidate heights instead of reserving the entire ActivityKit height budget', () => {
     const dashboard = native('LiveActivity/ActivityDashboard.swift');
     const widget = native('LiveActivity/OpencodeLiveActivity.swift');
     const body = dashboard.slice(dashboard.indexOf('var body: some View'), dashboard.indexOf('private var full:'));
+    expect(body).toContain('ActivityDashboardSizing {');
     expect(body).toContain('ViewThatFits(in: .vertical)');
     expect(body).toContain('if !dynamicTypeSize.isAccessibilitySize');
-    expect(body).toMatch(/full\.fixedSize\(horizontal: false, vertical: true\)[\s\S]*compact\.fixedSize\(horizontal: false, vertical: true\)[\s\S]*essential\.fixedSize\(horizontal: false, vertical: true\)/);
-    expect(body).toContain('.frame(maxWidth: .infinity, maxHeight: 136, alignment: .topLeading)');
-    const compact = dashboard.slice(dashboard.indexOf('private var compact:'), dashboard.indexOf('private var essential:'));
+    const visible = body.slice(body.indexOf('ViewThatFits(in: .vertical)'), body.indexOf('// Measurement-only copies'));
+    expect(visible).toMatch(/full\.fixedSize\(horizontal: false, vertical: true\)[\s\S]*compact\.fixedSize\(horizontal: false, vertical: true\)[\s\S]*essential\(lineLimit: nil\)[\s\S]*essential\(lineLimit: 2\)[\s\S]*essential\(lineLimit: 1\)/);
+    expect(body).toContain('.frame(maxWidth: .infinity, alignment: .topLeading)');
+    expect(body).not.toContain('maxHeight: 136');
+    const measurements = body.slice(body.indexOf('// Measurement-only copies'));
+    expect(measurements.match(/\.hidden\(\)\.accessibilityHidden\(true\)/g)).toHaveLength(5);
+    const candidates = (source: string) => [...source.matchAll(/(full|compact|essential\(lineLimit: (?:nil|2|1)\))\.fixedSize/g)].map((match) => match[1]);
+    expect(candidates(measurements)).toEqual(candidates(visible));
+    const sizing = dashboard.slice(dashboard.indexOf('private struct ActivityDashboardSizing:'), dashboard.indexOf('struct ActivityPhaseIcon'));
+    expect(sizing).toContain('let budget = min(136, proposal.height ?? 136)');
+    expect(sizing).toContain('ProposedViewSize(width: width, height: nil)');
+    expect(sizing).toContain('for candidate in subviews.dropFirst()');
+    expect(sizing).toContain('if size.height <= budget');
+    expect(sizing).toContain('return CGSize(width: width ?? size.width, height: size.height)');
+    expect(sizing).toContain('subviews.first?.place(at: bounds.origin, anchor: .topLeading,');
+    expect(sizing).toContain('ProposedViewSize(width: bounds.width, height: bounds.height)');
+    expect(dashboard).not.toMatch(/GeometryReader|@State|minimumScaleFactor|\.clipped\(|\.frame\(height:/);
+    expect(widget).toContain('.padding(12)');
+    expect(widget).toContain('.padding(.vertical, 12)');
+  });
+
+  it('bounds only the essential phase fallbacks visually while retaining full phase and freshness semantics', () => {
+    // Source contracts catch policy regressions; Apple Simulator captures must
+    // still confirm actual bounds, candidate selection and scaled glyph layout.
+    const dashboard = native('LiveActivity/ActivityDashboard.swift');
+    const compact = dashboard.slice(dashboard.indexOf('private var compact:'), dashboard.indexOf('private func essential('));
     expect(compact).toContain('phaseHeading');
     expect(compact).toContain('freshness');
     expect(compact).not.toMatch(/metrics|elapsed|state.chip|OpenCode/);
-    const essential = dashboard.slice(dashboard.indexOf('private var essential:'), dashboard.indexOf('@ViewBuilder private var planProgress:'));
+    const essential = dashboard.slice(dashboard.indexOf('private func essential('), dashboard.indexOf('@ViewBuilder private var planProgress:'));
     expect(essential).toContain('Text(verbatim: state.body)');
-    expect(essential).toContain('.font(.headline).fixedSize(horizontal: false, vertical: true)');
+    expect(essential).toContain('.font(.headline).lineLimit(lineLimit).truncationMode(.tail)');
+    expect(essential).toContain('.accessibilityLabel(Text(verbatim: state.body))');
     expect(essential).toContain('if paused');
     expect(essential).toContain('Image(systemName: "pause.circle")');
+    expect(essential).toContain('Text(verbatim: state.pausedLabel)');
+    expect(essential).toContain('.foregroundStyle(theme.warning).lineLimit(1)');
     expect(essential).toContain('Text(state.updatedAt, style: .time)');
+    expect(essential).toContain('.lineLimit(1).fixedSize(horizontal: true, vertical: false)');
+    expect(essential).toContain('.accessibilityElement(children: .ignore)');
     expect(essential).toContain('.accessibilityLabel(Text(verbatim: state.pausedLabel))');
+    expect(essential).toContain('.accessibilityValue(Text(state.updatedAt, style: .time))');
     expect(essential).not.toMatch(/\bmetrics\s*\}|\belapsed\s*\}|\bplanProgress\s*\n|state.chip|Text\(verbatim: "OpenCode"\)/);
-    expect(dashboard).not.toMatch(/minimumScaleFactor|lineLimit|\.clipped\(|\.frame\(height:/);
-    expect(widget).toContain('.padding(12)');
-    expect(widget).toContain('.padding(.vertical, 12)');
+    const full = dashboard.slice(dashboard.indexOf('private var full:'), dashboard.indexOf('private func essential('));
+    const phase = dashboard.slice(dashboard.indexOf('private var phaseHeading:'), dashboard.indexOf('@ViewBuilder private var elapsed:'));
+    expect(full).not.toContain('lineLimit');
+    expect(phase).not.toContain('lineLimit');
   });
 });

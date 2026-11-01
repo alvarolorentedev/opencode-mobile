@@ -95,6 +95,10 @@ provide completed/total progress; unknown progress never becomes an invented
 percentage. Bounded current-run observations can also provide active-agent and
 running-tool counters. Missing or incomplete observations are not treated as
 zero, and unknown plans are not summed into a misleading aggregate percentage.
+Height-aware layouts drop secondary details before phase and freshness. At
+extreme text sizes or with long copy, the final fallback may visually truncate
+the phase or paused label; VoiceOver retains their complete localized labels
+and the observation time. Fonts remain scalable rather than shrinking to fit.
 Session titles, tool/request/reply text, credentials, and server
 URLs are not sent to the extension. Taps use the existing scoped session link;
 permissions, questions, and all mutations stay inside the app. Notification-alert

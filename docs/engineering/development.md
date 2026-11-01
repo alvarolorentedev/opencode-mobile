@@ -164,7 +164,11 @@ under GitHub's workflow-dispatch rules; a branch push does not require changing
 the repository's default branch.
 
 The harness checks native rendering, including stale/terminal states and larger
-text. It is not a full React Native cold-launch test, actual system Lock Screen
+text. Captures come from the Simulator app's successfully drawn UIKit window,
+saved before its readiness marker and copied from its data container. They are
+not system framebuffer screenshots, which can still show launch transitions.
+PNG integrity checks do not replace visual layout review.
+It is not a full React Native cold-launch test, actual system Lock Screen
 or Dynamic Island hosting, signing acceptance, or APNs delivery. Those remain
 separate device/integration checks. Compiler and CocoaPods download caches may
 reduce repeated work; a cache hit never skips validation or guarantees a short

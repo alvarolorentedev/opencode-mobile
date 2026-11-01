@@ -2,6 +2,9 @@ import Foundation
 import SwiftUI
 import UIKit
 
+private let previewCaptureURL = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
+  .appendingPathComponent("preview.png")
+
 // Standalone production-view harness. This does not launch OpenCode's RN app or
 // ask the system to host a Live Activity on the Lock Screen / Dynamic Island.
 private struct PreviewFixture: Decodable {
@@ -54,8 +57,13 @@ struct OpencodeActivityPreviewApp: App {
   private let selection: PreviewSelection
 
   init() {
-    do { selection = try PreviewSelection.load() }
-    catch { fatalError("Could not decode production ContentState preview fixtures: \(error)") }
+    do {
+      if FileManager.default.fileExists(atPath: previewCaptureURL.path) {
+        try FileManager.default.removeItem(at: previewCaptureURL)
+      }
+      selection = try PreviewSelection.load()
+    }
+    catch { fatalError("Could not initialize production ContentState preview fixtures: \(error)") }
   }
 
   var body: some Scene {
@@ -90,7 +98,8 @@ struct OpencodeActivityPreviewApp: App {
 }
 
 // onAppear alone is not rendered-window evidence. Wait for an active visible
-// window and a successful UIKit hierarchy draw before acknowledging readiness.
+// window and save the successful UIKit hierarchy draw before acknowledging readiness.
+// The external Simulator framebuffer can still show the system launch transition.
 private struct RenderedWindowProbe: UIViewRepresentable {
   let marker: String
 
@@ -123,10 +132,13 @@ private struct RenderedWindowProbe: UIViewRepresentable {
           !window.bounds.isEmpty, UIApplication.shared.applicationState == .active {
           window.layoutIfNeeded()
           var rendered = false
-          _ = UIGraphicsImageRenderer(bounds: window.bounds).image { _ in
+          let image = UIGraphicsImageRenderer(bounds: window.bounds).image { _ in
             rendered = window.drawHierarchy(in: window.bounds, afterScreenUpdates: true)
           }
           if rendered {
+            guard let png = image.pngData() else { fatalError("Could not encode rendered preview PNG") }
+            do { try png.write(to: previewCaptureURL, options: .atomic) }
+            catch { fatalError("Could not save rendered preview PNG: \(error)") }
             FileHandle.standardOutput.write(Data("\(self.marker)\n".utf8))
             return
           }
