@@ -16,9 +16,17 @@ test('attachment tiles preview images, text and documents above the related mess
   const tile = page.getByTestId('attachment-tile');
   await expect(tile).toHaveCount(1);
   expect((await tile.boundingBox()).width).toBe(56);
-  await expect(tile).toHaveText('');
+  await expect(tile).not.toContainText('pixel.png');
+  await expect(tile.getByTestId('attachment-expand')).toBeVisible();
   await tile.click();
+  await expect(page.getByTestId('attachment-preview')).toBeVisible();
   await expect(page.getByTestId('attachment-image-preview')).toBeVisible();
+  const preview = await page.getByTestId('attachment-image-preview').boundingBox();
+  expect(preview?.width).toBeGreaterThan(300);
+  expect(preview?.height).toBeGreaterThan(600);
+  const imageDownload = page.waitForEvent('download');
+  await page.getByTestId('attachment-save').click();
+  expect((await imageDownload).suggestedFilename()).toBe('pixel.png');
   await page.getByTestId('attachment-preview').getByRole('button', { name: 'Close', exact: true }).first().click();
   const wave = Buffer.alloc(44 + 16000);
   wave.write('RIFF'); wave.writeUInt32LE(wave.length - 8, 4); wave.write('WAVEfmt ', 8);

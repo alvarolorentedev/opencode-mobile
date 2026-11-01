@@ -316,6 +316,9 @@
     "play": "Reproduzir",
     "pause": "Pausar",
     "openExternally": "Abrir em outro aplicativo",
+    "saveOrShare": "Salvar ou compartilhar",
+    "download": "Baixar",
+    "saveFailed": "Não foi possível salvar o arquivo.",
     "previewFailed": "Não foi possível visualizar ou abrir este arquivo. Ele pode estar indisponível ou não ser compatível."
   },
   "pendingPrompts": {

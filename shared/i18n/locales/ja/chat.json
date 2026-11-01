@@ -316,6 +316,9 @@
     "play": "再生",
     "pause": "一時停止",
     "openExternally": "別のアプリで開く",
+    "saveOrShare": "保存または共有",
+    "download": "ダウンロード",
+    "saveFailed": "ファイルを保存できませんでした。",
     "previewFailed": "このファイルをプレビューまたは開くことができませんでした。利用できないか、対応していない可能性があります。"
   },
   "pendingPrompts": {

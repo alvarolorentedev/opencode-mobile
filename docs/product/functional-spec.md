@@ -287,6 +287,8 @@ Overlay sheets also dismiss on a downward drag of their header (the grabber/titl
 - automatic scroll-to-end happens for new content unless the view is currently paginating older items
 - when the user is away from the tail, a floating `Jump to latest` control appears and changes to `New messages` when rows arrive; tapping it restores tail-follow mode
 - long-pressing a message copies its text/error content
+- image attachments open a full-screen viewer with pinch zoom, panning, double-tap
+  zoom toggle, and a save/share action; other attachments keep the inline preview sheet
 - assistant messages can be played with TTS if they contain readable text
 
 ## Composer Behavior

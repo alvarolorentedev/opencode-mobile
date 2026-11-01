@@ -316,6 +316,9 @@
     "play": "Abspielen",
     "pause": "Pause",
     "openExternally": "In anderer App öffnen",
+    "saveOrShare": "Speichern oder teilen",
+    "download": "Herunterladen",
+    "saveFailed": "Die Datei konnte nicht gespeichert werden.",
     "previewFailed": "Diese Datei konnte nicht angezeigt oder geöffnet werden. Sie ist möglicherweise nicht verfügbar oder wird nicht unterstützt."
   },
   "pendingPrompts": {

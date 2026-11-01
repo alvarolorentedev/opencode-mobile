@@ -316,6 +316,9 @@
     "play": "Lire",
     "pause": "Pause",
     "openExternally": "Ouvrir dans une autre application",
+    "saveOrShare": "Enregistrer ou partager",
+    "download": "Télécharger",
+    "saveFailed": "Impossible d’enregistrer le fichier.",
     "previewFailed": "Impossible de prévisualiser ou d’ouvrir ce fichier. Il est peut-être indisponible ou non pris en charge."
   },
   "pendingPrompts": {

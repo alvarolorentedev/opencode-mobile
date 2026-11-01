@@ -9,14 +9,22 @@ pending stack and message cards, above each message's text. Images fill the tile
 audio and documents use icons. Filename labels remain available to assistive
 technology. Composer removal is a separate 44 px action.
 
-`attachment-preview.tsx` uses the existing overlay sheet for images, selectable
-text, explicit audio playback, and inline video playback. Closing/backgrounding
-stops media; temporary native files are released. PDF/Office documents use the
-system share/viewer on native and browser download/open on web. Preview loading
-and URI/file handling live in `shared/platform/attachments.ts`, with the existing
-10 MB limit. Declared oversize and encoded data are rejected before allocation; unknown-size downloads stop at the streamed limit. Closing/backgrounding aborts pending reads, and local originals are never deleted. Image tiles and the full image preview use contain fit; the preview
-fills the sheet's available height. The audio and video players live in
-`shared/ui/media-preview.tsx` and are shared with project file previews.
+`attachment-preview.tsx` uses the existing overlay sheet for text, audio, video,
+and documents. Images open a dedicated full-screen viewer instead:
+`attachment-image-viewer.tsx` provides pinch zoom (1–4×), panning while zoomed,
+double-tap zoom toggle, explicit Android sizing, a close action, and a save/share action.
+Text, audio, and video sheet previews expose the same save/share action in the
+header. Save uses the system share sheet on native and browser download/open on
+web. Closing or backgrounding stops media and aborts pending reads; temporary
+native files are released. PDF/Office documents use the system share/viewer on native and browser
+download/open on web. Preview loading and URI/file handling live in
+`shared/platform/attachments.ts`, with the existing 10 MB limit. Declared oversize
+and encoded data are rejected before allocation; unknown-size downloads stop at the
+streamed limit. Closing/backgrounding aborts pending reads, and local originals are
+never deleted. Image tiles and the full image viewer use contain fit; the viewer
+fills the screen. The audio and video players live in
+`shared/ui/media-preview.tsx` and are shared with project file previews. Image
+tiles carry an expand affordance and dismiss the keyboard before opening.
 
 `pending-prompts.tsx` renders provider-derived OpenCode 2 sending/waiting entries
 in a bounded, scrollable stack directly above the composer. It does not own

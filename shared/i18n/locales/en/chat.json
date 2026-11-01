@@ -316,6 +316,9 @@
     "play": "Play",
     "pause": "Pause",
     "openExternally": "Open in another app",
+    "saveOrShare": "Save or share",
+    "download": "Download",
+    "saveFailed": "Could not save the file.",
     "previewFailed": "This file could not be previewed or opened. It may be unavailable or unsupported."
   },
   "pendingPrompts": {
