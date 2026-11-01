@@ -4,11 +4,11 @@ import Security
 final class TlsProbeDelegate: NSObject, URLSessionTaskDelegate {
   private let origin: String
   private let certificates: [SecCertificate]
-  private let completion: ([String: Any]) -> Void
+  private let completion: @Sendable ([String: Any]) -> Void
   private var finished = false
   var session: URLSession?
 
-  init(origin: String, certificates: [SecCertificate], completion: @escaping ([String: Any]) -> Void) {
+  init(origin: String, certificates: [SecCertificate], completion: @escaping @Sendable ([String: Any]) -> Void) {
     self.origin = origin
     self.certificates = certificates
     self.completion = completion
@@ -67,7 +67,7 @@ final class TlsProbeDelegate: NSObject, URLSessionTaskDelegate {
 }
 
 enum TlsProbe {
-  static func probe(origin: String, pem: String?, completion: @escaping ([String: Any]) -> Void) {
+  static func probe(origin: String, pem: String?, completion: @escaping @Sendable ([String: Any]) -> Void) {
     let certificates: [SecCertificate]
     do {
       certificates = try pem.map { try CertificateParser.parsePem($0) } ?? []
