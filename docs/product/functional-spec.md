@@ -297,7 +297,7 @@ Server-owned tasks appear in a compact floating progress view. Tapping it opens 
 
 The composer includes:
 
-- agent picker (a mode bottom sheet with agent descriptions and the current selection)
+- agent picker (a mode bottom sheet ordered Build, Plan, General, Explore, custom agents, Summary, Title, Compaction; built-in modes use short app-local descriptions capped at two lines, and the current selection is marked)
 - model picker
 - reasoning picker
 - auto-approve toggle
@@ -491,9 +491,9 @@ Purpose:
 Behavior:
 
 - providers that expose a key/OAuth login method (or a V1 generic API-key fallback) appear in a searchable `Add provider` selector; providers with no interactive method are omitted. Already-configured providers stay listed (marked "add another account") so another account can be added for any provider
-- configured providers display as chips, and OpenCode 2 providers with stored credentials show their labeled accounts with the active one marked; tapping an inactive account switches to it and the close action removes it
-- configured providers display as chips
-- models are grouped by provider in independent accordions; several providers can stay expanded at once, and each header shows the selected count plus an expand/collapse chevron
+- configured providers are listed once as expandable rows; each header shows the selected model count, an expand/collapse chevron, and a remove action
+- expanding a provider reveals its OpenCode 2 labeled accounts (the active one is marked; tapping an inactive account switches to it and the close action removes it) and its models
+- models are grouped by provider in independent accordions; several providers can stay expanded at once
 - each model can be toggled on/off from the enabled list
 - if all stored enabled models disappear, all currently available configured models become enabled by default
 
@@ -517,7 +517,7 @@ Behavior:
 - if API auth is selected, auth values are normalized and sent to `client.auth.set` (V1) or the V2 credential endpoint
 - after successful auth, the provider is enabled in server config and capabilities are refreshed
 - configured providers can be removed, deleting stored credentials and disabling the provider in config
-- on OpenCode 2 a provider's stored credentials are listed as labeled accounts; one is active, and the user can switch the active account or remove an account. A provider's accounts are those credentials whose integration serves one of the provider's login methods
+- on OpenCode 2 a provider's stored credentials are listed as labeled accounts inside the provider's expanded settings row; one is active, and the user can switch the active account or remove an account. A provider's accounts are those credentials whose integration serves one of the provider's login methods
 - the Add provider picker lists every provider with an interactive login method, including already-configured providers (with an "add another account" hint), so a second account can be added for any provider
 
 ### Notifications Section

@@ -1,0 +1,3 @@
+- Settings providers now use one expandable row per provider with model count, inline accounts and models, and remove with confirmation.
+- Agent picker orders Build/Plan/General/Explore first with two-line descriptions; session chevron sits next to the chat title.
+- Steadier chat, projects and voice: independent accordions, worktree filtering, recognizer recovery, and Expo SDK 58 stability fixes.

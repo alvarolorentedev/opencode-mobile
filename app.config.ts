@@ -92,7 +92,7 @@ const iapPlugin: PluginList = ['expo-iap'];
 const config: ExpoConfig = {
   name: isDevelopmentVariant ? 'OpenCode Mobile Dev' : 'OpenCode Mobile',
   slug: 'opencode-mobile',
-  version: '1.0.119',
+  version: '1.0.121',
   orientation: 'default',
   icon: './assets/images/icon.png',
   // Give test Live Activity taps an unambiguous route when the official app is
@@ -101,7 +101,7 @@ const config: ExpoConfig = {
   userInterfaceStyle: 'automatic',
   android: {
     package: androidPackage,
-    versionCode: 119,
+    versionCode: 121,
     adaptiveIcon: {
       foregroundImage: './assets/images/adaptive-icon.png',
       backgroundColor: "#202020"
@@ -115,7 +115,7 @@ const config: ExpoConfig = {
   },
   ios: {
     bundleIdentifier: iosBundleIdentifierOverride ?? (isDevelopmentVariant ? 'app.getopencode.mobile.dev' : 'app.getopencode.mobile'),
-    buildNumber: '119',
+    buildNumber: '121',
     infoPlist: {
       ITSAppUsesNonExemptEncryption: false,
       NSPhotoLibraryUsageDescription: 'Allow OpenCode Mobile to access photos you choose to attach to chat messages.',

@@ -122,6 +122,15 @@
   },
   "composer": {
     "chooseAssistantMode": "アシスタントモードを選択",
+    "agentDescriptions": {
+      "build": "ファイルを編集してツールを実行する既定のエージェント。",
+      "plan": "調査と計画のための読み取り専用エージェント。",
+      "general": "調査や複数ステップのタスク向けの汎用エージェント。",
+      "explore": "コードベースを高速に読み取り専用で探索します。",
+      "summary": "会話を要約するメンテナンス用エージェント。",
+      "title": "チャットのタイトルを生成するメンテナンス用エージェント。",
+      "compaction": "長いコンテキストを圧縮するメンテナンス用エージェント。"
+    },
     "autoApproveEnabled": "自動承認",
     "askPermission": "操作の前に確認",
     "conversationMode": "会話モード",

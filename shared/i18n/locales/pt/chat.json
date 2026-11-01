@@ -122,6 +122,15 @@
   },
   "composer": {
     "chooseAssistantMode": "Escolha o modo do assistente",
+    "agentDescriptions": {
+      "build": "Agente padrão que edita arquivos e executa ferramentas.",
+      "plan": "Agente somente leitura para explorar e planejar.",
+      "general": "Agente geral para pesquisa e tarefas de várias etapas.",
+      "explore": "Exploração rápida e somente leitura do código.",
+      "summary": "Agente de manutenção que resume conversas.",
+      "title": "Agente de manutenção que gera títulos de chat.",
+      "compaction": "Agente de manutenção que compacta contexto longo."
+    },
     "autoApproveEnabled": "Aprovar automaticamente",
     "askPermission": "Perguntar antes de agir",
     "conversationMode": "Modo conversa",
