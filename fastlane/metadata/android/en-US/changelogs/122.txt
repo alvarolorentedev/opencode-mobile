@@ -1,0 +1,3 @@
+- Extensions now use focused editors per type with searchable model selection and clearer permission fields.
+- Assistant bubbles show the model used for each reply, including auto-routed replies.
+- Auto-model routing choices persist across restarts without being reset by catalog or probe state.
