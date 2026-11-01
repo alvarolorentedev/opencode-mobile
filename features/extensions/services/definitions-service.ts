@@ -120,7 +120,7 @@ export async function saveCommand(client: ScopedOpencodeClient, snapshot: Extens
   const markdown = commandRoot(snapshot, scope);
   const root = markdown.root;
   const name = draft.name.trim();
-  const path = previous && previous.path && previous.name === name ? previous.path : markdownFile(root, scope, 'commands', name);
+  const path = previous && previous.path && previous.name === name ? previous.path : markdownFile(markdown.scopeRoot, scope, 'commands', name);
   const validate = (content: string) => {
     const parsed = parseCommandMarkdown(content);
     if (parsed.error) throw new Error(parsed.error);
@@ -210,7 +210,7 @@ export async function saveAgent(client: ScopedOpencodeClient, snapshot: Extensio
   const markdown = agentRoot(snapshot, scope);
   const root = markdown.root;
   const id = draft.id.trim();
-  const path = previous && previous.path && previous.id === id ? previous.path : markdownFile(root, scope, 'agents', id);
+  const path = previous && previous.path && previous.id === id ? previous.path : markdownFile(markdown.scopeRoot, scope, 'agents', id);
   const validate = (content: string) => {
     const parsed = parseAgentMarkdown(content);
     if (parsed.error) throw new Error(parsed.error);

@@ -215,6 +215,12 @@ function advancedFor(parsed: ParsedMarkdown, managed: string[], preserveModel: b
   }
 }
 
+function deleteKey(doc: ReturnType<typeof parseDocument>, key: string) {
+  // Deleting from an empty document throws in the yaml library; a missing key
+  // on an empty document is already the desired end state.
+  if (doc.contents !== null) doc.delete(key);
+}
+
 function documentFor(frontmatter: string | undefined) {
   if (!frontmatter?.trim()) return parseDocument('', { schema: 'core' });
   const attempt = (value: string) => {
@@ -231,7 +237,9 @@ function documentFor(frontmatter: string | undefined) {
 }
 
 function render(doc: ReturnType<typeof parseDocument>, body: string, lineEnding: string) {
-  const frontmatter = doc.toString({ lineWidth: 0 }).trimEnd();
+  // An empty document stringifies to "null"; it must not produce a
+  // frontmatter block, or the file fails validation on the next read.
+  const frontmatter = doc.contents === null ? '' : doc.toString({ lineWidth: 0 }).trimEnd();
   const content = body.trim();
   const parts = frontmatter ? ['---', frontmatter, '---', '', content] : [content];
   return `${parts.join(lineEnding)}${lineEnding}`;
@@ -272,17 +280,17 @@ export function updateAgentMarkdown(text: string | undefined, draft: ExtensionAg
   const sourceFrontmatter = unchangedAdvanced ? source?.frontmatter : undefined;
   const doc = sourceFrontmatter ? documentFor(sourceFrontmatter) : documentFor(advanced || undefined);
   if (draft.description?.trim()) doc.set('description', draft.description.trim());
-  else doc.delete('description');
+  else deleteKey(doc, 'description');
   doc.set('mode', draft.mode);
   if (model) doc.set('model', model);
-  else if (!source?.modelComplex) doc.delete('model');
+  else if (!source?.modelComplex) deleteKey(doc, 'model');
   const permissionsText = draft.permissions?.trim() ?? '';
   if (/^---(?:\r?\n|$)/m.test(permissionsText)) throw new Error('Permissions must not contain document delimiters.');
   const permissionsUnchanged = Boolean(sourceFrontmatter) && normalizeBlock(permissionsText) === normalizeBlock(source?.permissionsText ?? '');
   if (!permissionsUnchanged) {
     const key = source?.permissionsKey === 'permission' ? 'permission' : 'permissions';
-    doc.delete('permission');
-    doc.delete('permissions');
+    deleteKey(doc, 'permission');
+    deleteKey(doc, 'permissions');
     if (permissionsText) {
       const permissionDoc = parseDocument(permissionsText, { schema: 'core', uniqueKeys: true });
       if (permissionDoc.errors.length > 0) throw new Error(permissionDoc.errors[0]?.message || 'Invalid permissions YAML.');
@@ -315,7 +323,7 @@ export function updateCommandMarkdown(text: string | undefined, draft: Extension
   assertMarkdownName(draft.name, 'commands');
   const doc = source?.frontmatter ? documentFor(source.frontmatter) : parseDocument('', { schema: 'core' });
   if (draft.description?.trim()) doc.set('description', draft.description.trim());
-  else doc.delete('description');
+  else deleteKey(doc, 'description');
   const validation = commandDefinitionSchema.safeParse({ ...(doc.toJS({ maxAliasCount: 0 }) ?? {}), template });
   if (!validation.success) throw new Error(validation.error.issues[0]?.message || 'Invalid command definition.');
   return render(doc, template, source?.lineEnding ?? '\n');

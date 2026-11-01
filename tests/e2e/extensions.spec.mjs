@@ -109,6 +109,7 @@ test('project extensions can be removed and leave no active entries', async ({ p
     return project?.info.agents?.['legacy-agent']?.description;
   }).toBe('Legacy agent updated');
 
+  await page.getByRole('tab', { name: 'MCPs', exact: true }).click();
   await page.getByText('Remote', { exact: true }).click();
   await page.getByTestId('settings-extension-mcp-name').fill('removable');
   await page.getByTestId('settings-extension-mcp-target').fill('https://example.test/removable');
@@ -186,7 +187,8 @@ test('general extensions are shared with the project and can be restored from ba
   await page.getByTestId('settings-extension-agent-description').fill('Global review agent');
   await page.getByTestId('settings-extension-agent-instructions').fill('Review every project.');
   await page.getByTestId('settings-extension-agent-save').click();
-  await respondToConfirmation(page, true);
+  // General-scope writes confirm once per scope visit: the plugin add above
+  // already confirmed, so the agent save proceeds without another dialog.
   await expect(page.getByText('global-reviewer', { exact: true })).toBeVisible();
 
   const entries = await configFor(page, request, '/workspace/demo-project');
