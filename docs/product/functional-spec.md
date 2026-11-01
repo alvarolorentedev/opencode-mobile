@@ -569,7 +569,7 @@ Behavior:
 - creates slash commands as `.opencode/commands/*.md` by default; discovers and edits existing Markdown commands in canonical and legacy directories; keeps JSONC commands editable in place
 - offers an explicit JSONC storage choice for new definitions and never migrates existing JSONC entries silently
 - marks a JSONC definition that is overridden by a same-name Markdown file, keeps it removable, and prevents duplicate name creation across formats and scopes
-- lists legacy `mode/`/`modes/` agents and inherited definitions read-only
+- lists legacy `mode`/`modes` agents and inherited definitions read-only
 - shows General entries as shared/read-only in Project scope
 - omits OpenCode built-in plugins, embedded skills, built-in commands, and built-in agents because they cannot be changed from the app
 - refreshes capabilities, commands, agents, MCP status, and the extension snapshot after a successful change

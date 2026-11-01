@@ -255,10 +255,22 @@ export function updateAgentMarkdown(text: string | undefined, draft: ExtensionAg
   }
   const advanced = draft.advancedFrontmatter?.trim() ?? '';
   if (/^---(?:\r?\n|$)/m.test(advanced)) throw new Error('Advanced frontmatter must not contain document delimiters.');
-  const unchangedAdvanced = source && advanced === (source.advancedFrontmatter ?? '').trim();
-  const doc = unchangedAdvanced && source?.frontmatter
-    ? documentFor(source.frontmatter)
-    : documentFor(advanced || undefined);
+  // Compare normalized YAML so equivalent formatting (quotes, flow style)
+  // does not count as an edit that would drop the stored blocks below.
+  const normalizeBlock = (value: string) => {
+    try {
+      return documentFor(value).toString({ lineWidth: 0 }).trim();
+    } catch {
+      return value.trim();
+    }
+  };
+  const unchangedAdvanced = source && normalizeBlock(advanced) === normalizeBlock(source.advancedFrontmatter ?? '');
+  // Rewriting permissions can be skipped only when the document below was
+  // built from the original frontmatter (which already carries them).
+  // When the doc is rebuilt from the advanced block alone, the draft
+  // permissions must be written even if their text did not change.
+  const sourceFrontmatter = unchangedAdvanced ? source?.frontmatter : undefined;
+  const doc = sourceFrontmatter ? documentFor(sourceFrontmatter) : documentFor(advanced || undefined);
   if (draft.description?.trim()) doc.set('description', draft.description.trim());
   else doc.delete('description');
   doc.set('mode', draft.mode);
@@ -266,7 +278,7 @@ export function updateAgentMarkdown(text: string | undefined, draft: ExtensionAg
   else if (!source?.modelComplex) doc.delete('model');
   const permissionsText = draft.permissions?.trim() ?? '';
   if (/^---(?:\r?\n|$)/m.test(permissionsText)) throw new Error('Permissions must not contain document delimiters.');
-  const permissionsUnchanged = source && permissionsText === (source.permissionsText ?? '').trim();
+  const permissionsUnchanged = Boolean(sourceFrontmatter) && normalizeBlock(permissionsText) === normalizeBlock(source?.permissionsText ?? '');
   if (!permissionsUnchanged) {
     const key = source?.permissionsKey === 'permission' ? 'permission' : 'permissions';
     doc.delete('permission');

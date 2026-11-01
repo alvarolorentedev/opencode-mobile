@@ -31,8 +31,8 @@ New agent and command definitions default to Markdown in the selected scope:
 - project: `.opencode/agents/*.md` and `.opencode/commands/*.md`
 - general: `<global config>/agents/*.md` and `<global config>/commands/*.md`
 
-The app also discovers the official aliases `agent/`, `command/`, and the
-legacy `mode/`/`modes/` agent directories. Markdown files are edited in place
+The app also discovers the official `agent` and `command` aliases, and the
+legacy `mode`/`modes` agent directories. Markdown files are edited in place
 until the user explicitly renames them. Legacy mode directories remain
 read-only because the server forces those agents to `primary`.
 
