@@ -8,6 +8,7 @@ import * as TaskManager from 'expo-task-manager';
 import { Platform } from 'react-native';
 
 import { resolveConnectionCredentials } from '@/shared/storage/connection-profiles';
+import { telemetry } from '@/shared/observability/client';
 import { isActivityCompletionManaged } from '@/shared/platform/activity-notifications';
 import { i18n } from '@/shared/i18n/index';
 import { buildClient, detectServerContract, type OpencodeConnectionSettings } from '@/shared/protocol/opencode/client';
@@ -132,12 +133,19 @@ async function scheduleLocalNotification(title: string, body: string, data?: Rec
     return null;
   }
 
-  await configureNotificationChannelAsync();
-
-  return Notifications.scheduleNotificationAsync({
-    content: { ...buildTaskFinishedContent(title, body), ...(data ? { data } : {}) },
-    trigger: Platform.OS === 'android' ? { channelId: TASK_FINISHED_CHANNEL_ID } : null,
-  });
+  try {
+    await configureNotificationChannelAsync();
+    const id = await Notifications.scheduleNotificationAsync({
+      content: { ...buildTaskFinishedContent(title, body), ...(data ? { data } : {}) },
+      trigger: Platform.OS === 'android' ? { channelId: TASK_FINISHED_CHANNEL_ID } : null,
+    });
+    telemetry.counter('notification.schedule', 1, { kind: 'completion', outcome: 'success' });
+    return id;
+  } catch (error) {
+    telemetry.counter('notification.schedule', 1, { kind: 'completion', outcome: 'failure' });
+    telemetry.warn('notification.schedule.failed', { kind: 'completion' });
+    throw error;
+  }
 }
 
 async function scheduleTaskFinishedNotification(input: {
@@ -169,17 +177,24 @@ async function scheduleAttentionNotification(pending: PendingNotificationSession
     return;
   }
 
-  await configureAttentionChannelAsync();
+  try {
+    await configureAttentionChannelAsync();
 
-  await Notifications.scheduleNotificationAsync({
-    content: {
-      title: pending.sessionTitle?.trim() || i18n.t('notifications:activity.untitled'),
-      body: i18n.t('notifications:activity.needsInput'),
-      sound: Platform.OS !== 'android',
-      data: routeData({ sessionId: pending.sessionId, projectPath: pending.projectPath, connectionScope: pending.connectionScope }),
-    },
-    trigger: Platform.OS === 'android' ? { channelId: TASK_ATTENTION_CHANNEL_ID } : null,
-  });
+    await Notifications.scheduleNotificationAsync({
+      content: {
+        title: pending.sessionTitle?.trim() || i18n.t('notifications:activity.untitled'),
+        body: i18n.t('notifications:activity.needsInput'),
+        sound: Platform.OS !== 'android',
+        data: routeData({ sessionId: pending.sessionId, projectPath: pending.projectPath, connectionScope: pending.connectionScope }),
+      },
+      trigger: Platform.OS === 'android' ? { channelId: TASK_ATTENTION_CHANNEL_ID } : null,
+    });
+    telemetry.counter('notification.schedule', 1, { kind: 'attention', outcome: 'success' });
+  } catch (error) {
+    telemetry.counter('notification.schedule', 1, { kind: 'attention', outcome: 'failure' });
+    telemetry.warn('notification.schedule.failed', { kind: 'attention' });
+    throw error;
+  }
 }
 
 if (Platform.OS !== 'web' && !TaskManager.isTaskDefined(CHAT_COMPLETION_TASK_NAME)) {
@@ -253,6 +268,7 @@ if (Platform.OS !== 'web' && !TaskManager.isTaskDefined(CHAT_COMPLETION_TASK_NAM
 
       return BackgroundTask.BackgroundTaskResult.Success;
     } catch {
+      telemetry.counter('notification.monitor', 1, { outcome: 'failure' });
       return BackgroundTask.BackgroundTaskResult.Failed;
     }
   });
@@ -278,12 +294,12 @@ export async function ensureNotificationPermissionsAsync() {
 
   await configureNotificationChannelAsync();
 
-  const permissions = await Notifications.getPermissionsAsync();
-  if (permissions.granted || !permissions.canAskAgain) {
-    return permissions;
-  }
-
-  return Notifications.requestPermissionsAsync();
+  const current = await Notifications.getPermissionsAsync();
+  const permissions = current.granted || !current.canAskAgain
+    ? current
+    : await Notifications.requestPermissionsAsync();
+  telemetry.counter('notification.permission', 1, { permissionStatus: permissions.granted ? 'granted' : 'denied' });
+  return permissions;
 }
 
 export async function getNotificationDebugStatusAsync(): Promise<NotificationDebugStatus> {

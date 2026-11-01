@@ -73,6 +73,10 @@ jobs:
           APPSTORE_API_KEY_ID: ${{ secrets.APPSTORE_API_KEY_ID }}
           APPSTORE_API_ISSUER_ID: ${{ secrets.APPSTORE_API_ISSUER_ID }}
           APPSTORE_API_PRIVATE_KEY: ${{ secrets.APPSTORE_API_PRIVATE_KEY }}
+          GRAFANA_OTLP_ENDPOINT: ${{ vars.GRAFANA_OTLP_ENDPOINT }}
+          GRAFANA_OTLP_INSTANCE_ID: ${{ vars.GRAFANA_OTLP_INSTANCE_ID }}
+          GRAFANA_OTLP_TOKEN: ${{ secrets.GRAFANA_OTLP_TOKEN }}
+          OBSERVABILITY_ENVIRONMENT: ${{ vars.OBSERVABILITY_ENVIRONMENT || 'production' }}
         run: |
           set -euo pipefail
 
@@ -137,6 +141,13 @@ jobs:
           : "${APPLE_CERTIFICATE_PASSWORD:?Missing secret: APPLE_CERTIFICATE_PASSWORD}"
           : "${APPLE_PROVISIONING_PROFILE_BASE64:?Missing secret: APPLE_PROVISIONING_PROFILE_BASE64}"
           : "${APPLE_TEAM_ID:?Missing secret: APPLE_TEAM_ID}"
+          : "${GRAFANA_OTLP_ENDPOINT:?Missing repository variable: GRAFANA_OTLP_ENDPOINT}"
+          : "${GRAFANA_OTLP_INSTANCE_ID:?Missing repository variable: GRAFANA_OTLP_INSTANCE_ID}"
+          : "${GRAFANA_OTLP_TOKEN:?Missing secret: GRAFANA_OTLP_TOKEN}"
+          if ! printf '%s' "$GRAFANA_OTLP_ENDPOINT" | grep -Eq '^https://'; then
+            echo "::error::GRAFANA_OTLP_ENDPOINT must use HTTPS."
+            exit 1
+          fi
 
           TESTFLIGHT_CONFIGURED=false
           if [ -n "${APPSTORE_API_KEY_ID:-}" ] && [ -n "${APPSTORE_API_ISSUER_ID:-}" ] && [ -n "${APPSTORE_API_PRIVATE_KEY:-}" ]; then
@@ -223,6 +234,10 @@ jobs:
           ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
           ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
           ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+          EXPO_PUBLIC_GRAFANA_OTLP_ENDPOINT: ${{ vars.GRAFANA_OTLP_ENDPOINT }}
+          EXPO_PUBLIC_GRAFANA_OTLP_INSTANCE_ID: ${{ vars.GRAFANA_OTLP_INSTANCE_ID }}
+          EXPO_PUBLIC_GRAFANA_OTLP_TOKEN: ${{ secrets.GRAFANA_OTLP_TOKEN }}
+          EXPO_PUBLIC_OBSERVABILITY_ENVIRONMENT: ${{ vars.OBSERVABILITY_ENVIRONMENT || 'production' }}
         run: npm run build:android
 
       - name: Check release startup constructor
@@ -406,6 +421,10 @@ jobs:
       - name: Build signed archive
         env:
           APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          EXPO_PUBLIC_GRAFANA_OTLP_ENDPOINT: ${{ vars.GRAFANA_OTLP_ENDPOINT }}
+          EXPO_PUBLIC_GRAFANA_OTLP_INSTANCE_ID: ${{ vars.GRAFANA_OTLP_INSTANCE_ID }}
+          EXPO_PUBLIC_GRAFANA_OTLP_TOKEN: ${{ secrets.GRAFANA_OTLP_TOKEN }}
+          EXPO_PUBLIC_OBSERVABILITY_ENVIRONMENT: ${{ vars.OBSERVABILITY_ENVIRONMENT || 'production' }}
         run: |
           set -euo pipefail
           xcodebuild -workspace "${{ steps.workspace.outputs.path }}" \

@@ -15,6 +15,7 @@ import type { RecordedJsError } from '@/shared/platform/error-reporting';
 import type { NetworkStatus } from '@/shared/network/network-status';
 import type { Diagnostics } from '@/shared/protocol/services/diagnostics-service';
 import { Palette } from '@/shared/ui/settings/setting-rows';
+import { AppDiagnosticsSection } from '@/features/connections/ui/settings/app-diagnostics-section';
 
 export function DiagnosticsSection({
   diagnostics,
@@ -77,6 +78,7 @@ export function DiagnosticsSection({
           <Button onPress={onRefresh} variant="outline"><Text>{t('settings:diagnostics.refresh')}</Text></Button>
           <Button onPress={resetDataUsage} variant="ghost"><Text>{t('settings:diagnostics.networkUsageReset')}</Text></Button>
         </View>
+        <AppDiagnosticsSection />
     </View>
   );
 }

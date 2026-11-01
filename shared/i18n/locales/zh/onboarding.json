@@ -72,7 +72,11 @@
   "general": {
     "title": "通用设置",
     "subtitle": "按你的偏好设置 OpenCode Mobile。",
-    "defaultModel": "默认模型"
+    "defaultModel": "默认模型",
+    "remoteTelemetry": {
+      "title": "共享匿名遥测",
+      "description": "发送经过清理的崩溃和性能数据以帮助改进应用。绝不会发送提示词、代码、终端输出或凭据。你可以稍后在设置中更改。"
+    }
   },
   "voice": {
     "title": "语音与回复",

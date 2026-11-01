@@ -1,5 +1,6 @@
 import { getConnectCredentialError } from '@/shared/contracts/cloud-link';
 import { getConnectionScope } from '@/shared/contracts/connection-scope';
+import { telemetry } from '@/shared/observability/client';
 import { buildClient, classifyConnectionFailure, detectServerContract, getConnectionError, isContractMismatchError, isRetryableCloudLinkStartupError, type ConnectionFailureKind, type OpencodeConnectionSettings, type ServerContract } from '@/shared/protocol/opencode/client';
 import { getNormalizedServerUrl, isValidServerUrl } from '@/shared/contracts/server-url';
 import { isServerConnectedEvent, serverDataResources } from '@/shared/protocol/opencode/server-data-events';
@@ -42,6 +43,9 @@ export function useConnectionLifecycle(entry: ConnectionRecord, setup: ConnectSe
     const attempt = new AbortController(); controller.current = attempt;
     const id = ++operation.current;
     const current = () => operation.current === id && !attempt.signal.aborted;
+    const connectionKind = entry.settings.connect ? 'cloud-link' : 'direct';
+    const startedAt = Date.now();
+    telemetry.counter('connection.attempt', 1, { kind: connectionKind });
     dispatch({ type: 'start', operation: id, message: `Connecting to ${getNormalizedServerUrl(entry.settings.serverUrl)}...` });
     const promise = (async (): Promise<ConnectionState> => {
       let settings = entry.settings;
@@ -66,6 +70,10 @@ export function useConnectionLifecycle(entry: ConnectionRecord, setup: ConnectSe
             await fetchProjectCatalog(cache, { ...identity, connectionScope: getConnectionScope(settings), authRevision: identity.authRevision + (settings.password !== entry.settings.password || settings.username !== entry.settings.username ? 1 : 0) }, client, true);
             if (!current()) return latest.current.state.connection;
             const connection: ConnectionState = { status: 'connected', message: `Connected to ${getNormalizedServerUrl(settings.serverUrl)} (OpenCode ${contract === 'v2' ? '2.x' : '1.x'})`, checkedAt: Date.now() };
+            telemetry.histogram('connection.duration', Math.max(0, Date.now() - startedAt), 'ms', { kind: connectionKind });
+            telemetry.counter('connection.result', 1, { kind: connectionKind, outcome: 'success' });
+            telemetry.info('connection.connected', { kind: connectionKind, connected: true });
+            telemetry.markStartup('connection-ready', { kind: connectionKind });
             dispatch({ type: 'settle', operation: id, connection, contract });
             return connection;
           } catch (error) { failure = error; if (!isContractMismatchError(error)) break; }
@@ -74,6 +82,9 @@ export function useConnectionLifecycle(entry: ConnectionRecord, setup: ConnectSe
       } catch (error) {
         if (!current()) return latest.current.state.connection;
         const connection: ConnectionState = { status: 'error', kind: classifyConnectionFailure(error), message: getConnectionError(settings.serverUrl, error, t), checkedAt: Date.now(), retryableStartup: Boolean(settings.connect) && isRetryableCloudLinkStartupError(error) };
+        telemetry.histogram('connection.duration', Math.max(0, Date.now() - startedAt), 'ms', { kind: connectionKind });
+        telemetry.counter('connection.result', 1, { kind: connectionKind, outcome: 'failure', failureKind: connection.kind });
+        telemetry.warn('connection.failed', { kind: connectionKind, failureKind: connection.kind, retryable: connection.retryableStartup });
         if (connection.kind === 'auth' || connection.kind === 'entitlement') invalidateWorkflows();
         dispatch({ type: 'settle', operation: id, connection });
         return connection;
@@ -150,6 +161,7 @@ export function useConnectionLifecycle(entry: ConnectionRecord, setup: ConnectSe
   const handleStreamAuthFailure = useCallback((kind: ConnectionFailureKind) => {
     const { entry, state } = latest.current;
     if (state.connection.status === 'error' && state.connection.kind === kind) return;
+    telemetry.warn('connection.auth-failed', { failureKind: kind });
     void cache.cancelQueries({ queryKey: ['opencode', entry.id] });
     cache.removeQueries({ queryKey: ['opencode', entry.id] });
     if (entry.settings.connect) { void connect(); return; }

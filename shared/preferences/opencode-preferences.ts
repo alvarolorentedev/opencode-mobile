@@ -28,6 +28,13 @@ export type ChatPreferences = {
   // not overwrite the user's theme.
   themeMode: ThemeMode;
   accentColor: AccentColor;
+  // Local-first observability preferences. Remote consents are deliberately
+  // false by default and never implied by local recording.
+  diagnosticsEnabled: boolean;
+  diagnosticsLevel: 'normal' | 'verbose';
+  remoteTelemetryEnabled: boolean;
+  remoteCrashReports: boolean;
+  remotePerformance: boolean;
   promptDelivery: 'steer' | 'queue';
   transcriptFontSize: number;
   // How much non-bubble activity appears in the feed. `messages` keeps only
@@ -92,6 +99,11 @@ export const defaultChatPreferences: ChatPreferences = {
   mode: 'build',
   themeMode: DEFAULT_THEME_MODE,
   accentColor: DEFAULT_ACCENT_COLOR,
+  diagnosticsEnabled: true,
+  diagnosticsLevel: 'normal',
+  remoteTelemetryEnabled: true,
+  remoteCrashReports: true,
+  remotePerformance: true,
   promptDelivery: 'steer',
   transcriptFontSize: DEFAULT_TRANSCRIPT_FONT_SIZE,
   timelineDetail: 'everything',

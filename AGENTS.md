@@ -28,6 +28,7 @@ public APIs and the strictly limited shared UI/runtime exception.
 | Domain state/session/persistence | [State and data](docs/architecture/state-and-data.md#state-ownership-overview), [runtime guidance](runtime/AGENTS.md) | Owning Vitest and full E2E |
 | Protocol/endpoints/events | [API contract](docs/architecture/api-contract.md), [ADR 0003](docs/adr/0003-v2-first-protocol-boundary.md), [fake server](docs/engineering/validation/fake-server.md) | Contract Vitest, fake-server self-test and full E2E |
 | SSE/polling/offline | [Network resilience](docs/architecture/network-resilience.md) | Runtime Vitest and realtime/network E2E |
+| Logs/traces/metrics/diagnostics/remote telemetry | [Observability](docs/architecture/observability.md), [ADR 0020](docs/adr/0020-local-first-observability-and-otlp.md) | `shared/observability` Vitest, settings/realtime network E2E, FOSS self-test |
 | Native/platform/config | [Development](docs/engineering/development.md), [integrations](docs/engineering/integrations-and-operations.md) | CI release build; local native checks when the environment supports them |
 | Tests/fake server | [Validation index](docs/engineering/testing-and-validation.md), [strategy](docs/engineering/validation/strategy.md) | Cheapest sufficient level; full E2E runs on the release tag |
 | Docs/ADR | [Docs router](docs/README.md), [ADR process](docs/adr/README.md) | `npm run test:docs` and static |

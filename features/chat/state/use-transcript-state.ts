@@ -8,6 +8,7 @@ import { pruneByKeepIds } from '@/shared/utilities/prune';
 import { hydrateTranscriptCache, persistTranscriptCache } from '@/features/chat/services/transcript-cache';
 import { recordSessionUsageAndTodos } from '@/features/chat/model/session-ledger';
 import { getSessionMessages as svcGetSessionMessages, MAX_MESSAGE_PAGE_LIMIT, TRANSCRIPT_PAGE_LIMIT } from '@/shared/protocol/services/session-service';
+import { telemetry } from '@/shared/observability/client';
 
 // One newest-window read when a session opens (or history is rewritten).
 // Older history is fetched in full batches of the same size, one per explicit
@@ -141,6 +142,8 @@ export function useTranscriptState({
       if (!silent) {
         setIsRefreshingMessages(true);
       }
+      const loadStartedAt = Date.now();
+      let loadFailed = false;
       try {
         // Default to a cold load when nothing is held, otherwise merge the
         // newest page into what we have. A requested mode overrides the default.
@@ -218,6 +221,10 @@ export function useTranscriptState({
           return page.records;
         }
 
+        // The read-state object is mutable bookkeeping held by a ref; keeping
+        // the same object is what lets an older in-flight refresh observe the
+        // newer window instead of replacing it.
+        // eslint-disable-next-line react-hooks/immutability
         readState.tailApplied = Math.max(readState.tailApplied, tailRequest);
         const knownIds = new Set(currentHeld.map((record) => record.info.id));
         if (!page.records.some((record) => knownIds.has(record.info.id))) {
@@ -256,7 +263,12 @@ export function useTranscriptState({
         recordUsageAndTodos(sessionId, page.records);
         persist(sessionId, merged);
         return page.records;
+      } catch (error) {
+        loadFailed = true;
+        throw error;
       } finally {
+        telemetry.histogram('transcript.load.duration', Math.max(0, Date.now() - loadStartedAt), 'ms', { kind: silent ? 'refresh' : 'open' });
+        telemetry.counter('transcript.load', 1, { kind: silent ? 'refresh' : 'open', outcome: loadFailed ? 'failure' : 'success' });
         if (!silent) {
           setIsRefreshingMessages(false);
         }

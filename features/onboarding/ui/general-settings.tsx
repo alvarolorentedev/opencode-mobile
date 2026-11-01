@@ -3,7 +3,8 @@ import { useTranslation } from 'react-i18next';
 
 import { PromptDeliveryField } from '@/features/chat/index';
 import { LanguageSection } from '@/shared/i18n/language-section';
-import { SettingSelectField } from '@/shared/ui/settings/setting-rows';
+import { remoteAvailable } from '@/shared/observability/config';
+import { SettingSelectField, SettingSwitchRow } from '@/shared/ui/settings/setting-rows';
 import { useCapabilities } from '@/features/ai/context';
 import { useConnection } from '@/features/connections/context';
 import { usePreferences } from '@/shared/preferences/context';
@@ -23,6 +24,17 @@ export function OnboardingGeneralSettings() {
   return (
     <>
       <LanguageSection showDescription={false} chatPreferences={chatPreferences} palette={palette} updateChatPreferences={updateChatPreferences} />
+      {remoteAvailable() ? <SettingSwitchRow
+        title={t('onboarding:general.remoteTelemetry.title')}
+        description={t('onboarding:general.remoteTelemetry.description')}
+        value={chatPreferences.remoteTelemetryEnabled !== false}
+        palette={palette}
+        onValueChange={(remoteTelemetryEnabled) => updateChatPreferences({
+          remoteTelemetryEnabled,
+          remoteCrashReports: remoteTelemetryEnabled,
+          remotePerformance: remoteTelemetryEnabled,
+        })}
+      /> : null}
       {connected ? <>
         <SettingSelectField
           searchable

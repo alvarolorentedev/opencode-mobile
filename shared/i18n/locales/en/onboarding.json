@@ -72,7 +72,11 @@
   "general": {
     "title": "General Settings",
     "subtitle": "Make OpenCode Mobile feel right for you.",
-    "defaultModel": "Default model"
+    "defaultModel": "Default model",
+    "remoteTelemetry": {
+      "title": "Share anonymous telemetry",
+      "description": "Send sanitized crash and performance data to help improve the app. Prompts, code, terminal output and credentials are never sent. You can change this later in Settings."
+    }
   },
   "voice": {
     "title": "Voice & Responses",

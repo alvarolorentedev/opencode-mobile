@@ -54,6 +54,46 @@ Before each connect attempt the app probes the server contract. A V2 server is s
 
 The implementation favors user-facing recovery over deep error taxonomy.
 
+## Optional Observability Backend
+
+Local diagnostics need no external service. Remote telemetry is configured at
+build time through the Grafana Cloud OTLP gateway or any OTLP-compatible
+endpoint:
+
+- `EXPO_PUBLIC_GRAFANA_OTLP_ENDPOINT` (for example
+  `https://otlp-gateway-<region>.grafana.net/otlp`)
+- `EXPO_PUBLIC_GRAFANA_OTLP_INSTANCE_ID`
+- `EXPO_PUBLIC_GRAFANA_OTLP_TOKEN` (write-only, least-privilege)
+- `EXPO_PUBLIC_OBSERVABILITY_ENVIRONMENT`
+
+These `EXPO_PUBLIC_*` values are bundled and extractable. Use a write-only token
+scoped to traces/logs/metrics writes, rotate it, and never put a read token or a
+personal Grafana credential in the app. A build without all three OTLP values
+constructs no exporter and hides remote controls. FOSS builds always disable
+remote export. See [observability](../architecture/observability.md).
+
+GitHub Actions supplies these values at release build time:
+
+| GitHub setting | Kind | Purpose |
+| --- | --- | --- |
+| `GRAFANA_OTLP_ENDPOINT` | repository variable | OTLP gateway base URL |
+| `GRAFANA_OTLP_INSTANCE_ID` | repository variable | Grafana Cloud instance ID |
+| `OBSERVABILITY_ENVIRONMENT` | repository variable | environment/resource label; defaults to `production` |
+| `GRAFANA_OTLP_TOKEN` | repository secret | write-only OTLP access token |
+
+`release.yml` fails the release verification when any required value is missing.
+The Android and iOS build steps map them to the `EXPO_PUBLIC_GRAFANA_OTLP_*`
+names consumed by the app. The FOSS job and CI/E2E jobs deliberately do not
+receive the token: FOSS disables remote export, and E2E must never contact
+Grafana. Keep the token write-only, rotate it, and never add read scopes. It is
+bundled into the non-FOSS app and is therefore extractable, which is why it must
+be treated as a limited-purpose public client credential rather than a server
+secret.
+
+The release pipeline does not upload Hermes/JavaScript source maps to Grafana;
+remote stacks may be minified. Local diagnostic exports retain sanitized stacks
+for issue attachments. No Sentry DSN, sponsorship or backend server is required.
+
 ## Expo / Native Integrations
 
 Expo SDK 58 and [ADR 0017](../adr/0017-native-defaults-and-prebuilt-engines.md) define

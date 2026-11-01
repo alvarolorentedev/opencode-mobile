@@ -539,6 +539,10 @@ Behavior:
 - reports normalized network type, online/offline, constrained/metered state, automatic reconnect attempts, and local p50/p95 request latency with failure/retry counts
 - reports MCP counts when the endpoint is available
 - reports the last JS error recorded on this device (message, time, and a fatal/handled chip) or a neutral empty state
+- records structured logs, spans and metrics locally by default, bounded to about 7 days or 10 MB; normal/verbose levels are selectable
+- shows local storage usage, retention, recent events filtered by severity, key metric summaries and the most recent failure
+- exposes a master remote-telemetry switch plus separate crash-report and performance categories when an OTLP backend is configured; defaults are enabled, but FOSS and unconfigured builds hide remote controls
+- exports a sanitized ZIP report on explicit action and clears local history after confirmation; neither action uploads anything
 - each diagnostic request fails independently and can be refreshed manually; Refresh also re-reads the recorded error
 
 ### MCP Servers Section

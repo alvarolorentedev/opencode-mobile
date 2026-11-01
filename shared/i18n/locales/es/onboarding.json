@@ -72,7 +72,11 @@
   "general": {
     "title": "Ajustes generales",
     "subtitle": "Adapta OpenCode Mobile a tus preferencias.",
-    "defaultModel": "Modelo predeterminado"
+    "defaultModel": "Modelo predeterminado",
+    "remoteTelemetry": {
+      "title": "Compartir telemetría anónima",
+      "description": "Envía datos saneados de fallos y rendimiento para ayudar a mejorar la app. Nunca se envían prompts, código, salida de terminal ni credenciales. Puedes cambiarlo más tarde en Ajustes."
+    }
   },
   "voice": {
     "title": "Voz y respuestas",

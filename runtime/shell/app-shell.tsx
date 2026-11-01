@@ -17,7 +17,9 @@ import { usePalette } from '@/shared/ui/theme/use-palette';
 import { useNotificationRoute } from '@/features/notifications/index';
 import { useQuickActionRoute } from '@/features/sessions/index';
 import { useSystemColorScheme } from '@/shared/ui/theme/use-system-color-scheme';
-import { installGlobalErrorHandler } from '@/shared/platform/error-reporting';
+import { ingestRecordedJsError, installGlobalErrorHandler } from '@/shared/platform/error-reporting';
+import { initializeObservability, observability, preferencesFromChatPreferences } from '@/shared/observability';
+import { installObservabilityLifecycle } from '@/shared/observability/lifecycle';
 import '@/shared/i18n/index';
 import { isConnectEnabled } from '@/shared/contracts/cloud-link';
 import { AppearanceProvider } from '@/shared/ui/theme/appearance-context';
@@ -39,6 +41,16 @@ void SplashScreen.preventAutoHideAsync().catch(() => undefined);
 
 export default function RootLayout() {
   const isE2EMode = Boolean(Constants.expoConfig?.extra?.e2eMode);
+
+  useEffect(() => {
+    observability.markStartup('root-render');
+    void initializeObservability()
+      .then(() => {
+        installObservabilityLifecycle(observability);
+        return ingestRecordedJsError();
+      })
+      .catch(() => undefined);
+  }, []);
 
   useEffect(() => {
     if (Platform.OS === 'web' || isE2EMode) {
@@ -72,6 +84,7 @@ export default function RootLayout() {
 // and usePalette for every screen and component below.
 function AppearanceHost() {
   const { chatPreferences } = usePreferences();
+  const { isHydrated } = useOnboarding();
   const systemScheme = useSystemColorScheme();
   const scheme = chatPreferences.themeMode === 'light' || chatPreferences.themeMode === 'dark'
     ? chatPreferences.themeMode
@@ -83,6 +96,22 @@ function AppearanceHost() {
     return { ...base, colors: { ...base.colors, background: palette.background, card: palette.surface, text: palette.text, border: palette.border, primary: palette.tint, notification: palette.danger } };
   }, [palette, scheme]);
   const appearance = useMemo(() => ({ scheme, accent, palette }), [accent, palette, scheme]);
+
+  // Observability preferences live with the existing global preferences. Wait
+  // for hydration so a user who disabled local recording is never briefly
+  // recorded under the defaults.
+  useEffect(() => {
+    if (!isHydrated) return;
+    observability.configure(preferencesFromChatPreferences(chatPreferences));
+  }, [
+    isHydrated,
+    chatPreferences,
+    chatPreferences.diagnosticsEnabled,
+    chatPreferences.diagnosticsLevel,
+    chatPreferences.remoteTelemetryEnabled,
+    chatPreferences.remoteCrashReports,
+    chatPreferences.remotePerformance,
+  ]);
 
   // Keep window-level chrome (web overscroll, native root view) on the themed
   // surface so navigation and safe-area edges never flash the OS color.
@@ -132,7 +161,10 @@ function RootNavigator() {
 
   useEffect(() => {
     if (isHydrated) {
-      void SplashScreen.hideAsync().catch(() => undefined);
+      observability.markStartup('workspace-ready');
+      void SplashScreen.hideAsync()
+        .then(() => observability.markStartup('interactive'))
+        .catch(() => undefined);
     }
   }, [isHydrated]);
 

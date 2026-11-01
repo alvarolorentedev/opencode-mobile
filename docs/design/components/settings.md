@@ -286,6 +286,12 @@ Responsibility:
 - show OpenCode health/version when available
 - show global event stream state and whether polling fallback is active
 - show MCP counts
+- render the app-diagnostics controls: local recording, normal/verbose level,
+  storage/retention usage, remote master/crash/performance switches when a
+  backend is configured, recent-event severity filter, metrics, recent failure,
+  ZIP export and clear-history confirmation
+- keep local history and remote consent independent; remote controls are hidden
+  in FOSS and builds without an OTLP backend
 - refresh diagnostics when the section opens and on demand; chat bootstrap no longer pays for diagnostics reads
 
 #### `PermissionsSection`

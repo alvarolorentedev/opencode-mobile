@@ -3,7 +3,10 @@ import { fetch as expoFetch } from 'expo/fetch';
 
 import { recordBytes, recordRequest } from '@/shared/network/data-usage';
 import { recordRequestStart } from '@/shared/network/request-stats';
+import { telemetry } from '@/shared/observability/client';
 import { getConnectCredentialError } from '@/shared/contracts/cloud-link';
+import { classifyConnectionFailure } from '@/shared/protocol/opencode/client/errors';
+import { classifyHttpOperation } from '@/shared/protocol/opencode/client/operation';
 import { joinUrlPath } from '@/shared/contracts/server-url';
 import type { OpencodeConnectionSettings } from '@/shared/protocol/opencode/client/types';
 import { fetchWithReadDeadline } from '@/shared/protocol/opencode/client/read-deadline';
@@ -69,6 +72,39 @@ async function performFetch(
 }
 
 export async function fetchConnection(input: RequestInfo | URL, init?: RequestInit, settings?: OpencodeConnectionSettings, lifetimeSignal?: AbortSignal) {
+  const url = typeof input === 'string' ? input : input instanceof URL ? input.toString() : input.url;
+  const method = init?.method ?? (typeof input === 'object' && 'method' in input ? input.method : 'GET');
+  const operation = classifyHttpOperation(url, method);
+  const activeSpan = telemetry.startSpan('http.request', { operation, method });
+  const startedAt = Date.now();
+  try {
+    const response = await fetchConnectionInner(input, init, settings, lifetimeSignal);
+    const durationMs = Math.max(0, Date.now() - startedAt);
+    telemetry.histogram('http.request.duration', durationMs, 'ms', { operation });
+    telemetry.counter('http.request.count', 1, { operation, outcome: 'success' });
+    activeSpan.end('ok');
+    return response;
+  } catch (error) {
+    const durationMs = Math.max(0, Date.now() - startedAt);
+    const cancelled = /cancel/i.test(error instanceof Error ? error.message : String(error));
+    const outcome = cancelled ? 'cancelled' : 'failure';
+    telemetry.histogram('http.request.duration', durationMs, 'ms', { operation });
+    telemetry.counter('http.request.count', 1, { operation, outcome });
+    if (!cancelled) {
+      telemetry.logWithSpan(activeSpan, 'warn', 'http.request.failed', {
+        operation,
+        failureKind: classifyConnectionFailure(error),
+      });
+    }
+    activeSpan.end(cancelled ? 'cancelled' : 'error');
+    throw error;
+  }
+}
+
+async function fetchConnectionInner(input: RequestInfo | URL, init?: RequestInit, settings?: OpencodeConnectionSettings, lifetimeSignal?: AbortSignal) {
+  const retryUrl = typeof input === 'string' ? input : input instanceof URL ? input.toString() : input.url;
+  const retryMethod = init?.method ?? (typeof input === 'object' && 'method' in input ? input.method : 'GET');
+  const operation = classifyHttpOperation(retryUrl, retryMethod);
   if (settings?.connect) {
     const error = getConnectCredentialError(settings.connect, settings.password);
     if (error) throw new Error(error);
@@ -90,6 +126,7 @@ export async function fetchConnection(input: RequestInfo | URL, init?: RequestIn
     try {
       const response = await performFetch(transport, input, init, settings, timeoutMs, lifetimeSignal);
       if (shouldRetryRead({ method, url, attempt, elapsedMs: Date.now() - startedAt, status: response.status })) {
+        telemetry.counter('http.retry', 1, { operation });
         finishStats({ status: response.status, retried: true });
         // Drain tiny retryable gateway errors so the connection can be reused,
         // but never consume a successful body.
@@ -102,6 +139,7 @@ export async function fetchConnection(input: RequestInfo | URL, init?: RequestIn
     } catch (error) {
       finishStats({ error });
       if (!shouldRetryRead({ method, url, attempt, elapsedMs: Date.now() - startedAt, error })) throw error;
+      telemetry.counter('http.retry', 1, { operation });
       await abortableDelay(250 + Math.round(Math.random() * 250), signal);
     }
   }

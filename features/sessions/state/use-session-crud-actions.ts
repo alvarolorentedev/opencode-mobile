@@ -2,6 +2,7 @@ import { createSession as svcCreateSession, deleteSession as svcDeleteSession, e
 import { useCallback } from 'react';
 
 import type { Session, SessionStatus } from '@/shared/protocol/opencode/types';
+import { telemetry } from '@/shared/observability/client';
 import { getSelectedModelParts, getSelectedModelVariant } from '@/features/ai/runtime';
 import { persistSessionCache } from '@/features/sessions/services/session-cache';
 import type { SessionCrudInput } from '@/features/sessions/model/action-inputs';
@@ -91,8 +92,17 @@ export function useSessionCrudActions({
   const createSession = useCallback(
     async (title?: string) => {
       const trimmedTitle = title?.trim();
-      const created = await svcCreateSession(client, trimmedTitle);
-
+      const startedAt = Date.now();
+      let created: Session | undefined;
+      try {
+        created = await svcCreateSession(client, trimmedTitle);
+      } catch (error) {
+        telemetry.histogram('session.create.duration', Math.max(0, Date.now() - startedAt), 'ms');
+        telemetry.counter('session.create', 1, { outcome: 'failure' });
+        throw error;
+      }
+      telemetry.histogram('session.create.duration', Math.max(0, Date.now() - startedAt), 'ms');
+      telemetry.counter('session.create', 1, { outcome: created ? 'success' : 'failure' });
       if (!created) {
         throw new Error('OpenCode did not return the created session.');
       }

@@ -9,6 +9,31 @@ test.beforeEach(async ({ page }, info) => {
   await seedOnboarding(page, info);
 });
 
+test('app diagnostics preserve local recording and severity controls', async ({ page }) => {
+  await page.goto('/', { waitUntil: 'domcontentloaded' });
+  await goToTab(page, 'Settings');
+  await page.getByTestId('settings-category-advanced').click();
+  const sheet = page.getByTestId('settings-section-overlay');
+  await expect(sheet.getByTestId('app-diagnostics-section')).toBeVisible();
+
+  await expect(sheet.getByText('Share anonymous telemetry', { exact: true })).toHaveCount(0);
+  await expect(sheet.getByText('Remote telemetry', { exact: true })).toHaveCount(0);
+
+  const local = sheet.getByRole('switch', { name: 'Record diagnostics on this device', exact: true });
+  await expect(local).toHaveAttribute('aria-checked', 'true');
+  await local.click();
+  await expect(local).toHaveAttribute('aria-checked', 'false');
+  await local.click();
+  await expect(local).toHaveAttribute('aria-checked', 'true');
+
+  await sheet.getByTestId('settings-diagnostics-level').click();
+  await page.getByRole('option', { name: 'Verbose', exact: true }).click();
+  await expect(sheet.getByTestId('settings-diagnostics-level')).toContainText('Verbose');
+  await sheet.getByTestId('settings-diagnostics-filter').click();
+  await page.getByRole('option', { name: 'Errors', exact: true }).click();
+  await expect(sheet.getByTestId('settings-diagnostics-filter')).toContainText('Errors');
+});
+
 test('settings can configure an additional provider against the fake server @smoke', async ({ page, request }) => {
   await resetScenario(request, 'happy-path');
   await openReadyChat(page);

@@ -4,6 +4,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import type { Purchase } from 'expo-iap';
 import { useCallback, useEffect, useLayoutEffect, useMemo, useReducer, useRef, useState, type Dispatch, type SetStateAction } from 'react';
 import { AppState } from 'react-native';
+import { telemetry } from '@/shared/observability/client';
 import { connectTransition, initialConnectLifecycle } from '@/features/cloud-link/state/connect/lifecycle';
 
 import { getConnectSession, getPendingConnectPairing, savePendingConnectPairing } from '@/shared/storage/cloud-link';
@@ -112,10 +113,19 @@ export function useConnectState({ controlPlaneUrl, setControlPlaneUrl, switchCon
     if (!enabled || lock.current) return false;
     lock.current = true;
     transition({ type: 'started', preserveError });
+    const startedAt = Date.now();
     const generation = scopeGeneration.current;
     let nextControlPlane: string | undefined;
-    try { return (await action()) !== false; }
+    try {
+      const result = await action();
+      telemetry.histogram('cloud-link.action.duration', Math.max(0, Date.now() - startedAt), 'ms');
+      telemetry.counter('cloud-link.action', 1, { outcome: 'success' });
+      return result !== false;
+    }
     catch (reason) {
+      telemetry.histogram('cloud-link.action.duration', Math.max(0, Date.now() - startedAt), 'ms');
+      telemetry.counter('cloud-link.action', 1, { outcome: 'failure' });
+      telemetry.warn('cloud-link.failed', { reason: reason instanceof ConnectPurchaseEnvironmentChange ? 'environment-change' : 'action' });
       if (generation !== scopeGeneration.current) return false;
       if (reason instanceof ConnectPurchaseEnvironmentChange) nextControlPlane = reason.controlPlaneUrl;
       else { entitlementRecovery.current = false; transition({ type: 'failed', message: reason instanceof Error ? reason.message : 'Cloud Link setup failed. Try again.' }); }
@@ -278,7 +288,11 @@ export function useConnectState({ controlPlaneUrl, setControlPlaneUrl, switchCon
   }; }, [availablePurchases, finishPurchase, readCatalog, store]);
   useEffect(() => {
     if (!enabled) return;
-    const listener = AppState.addEventListener('change', (state) => { if (state === 'active' && initialization === 'ready' && !activation.current) void perform(() => refreshRef.current()); });
+    const listener = AppState.addEventListener('change', (state) => {
+      if (state !== 'active' || initialization !== 'ready' || activation.current) return;
+      telemetry.counter('cloud-link.foreground-refresh', 1);
+      void perform(() => refreshRef.current());
+    });
     return () => listener.remove();
   }, [enabled, initialization, perform]);
 
@@ -334,6 +348,7 @@ export function useConnectState({ controlPlaneUrl, setControlPlaneUrl, switchCon
   }, [initialization, perform, phase]);
 
   const retry = useCallback(() => {
+    telemetry.counter('cloud-link.retry', 1);
     if (lock.current) return Promise.resolve(false);
     if (!apiRef.current || (initialization === 'error' && !pendingPurchase.current)) {
       setError(undefined); setStoreReady(false); setInitialization('loading');

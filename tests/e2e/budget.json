@@ -1,4 +1,5 @@
 {
-  "tests": 174,
-  "specs": 19
+  "tests": 175,
+  "specs": 19,
+  "justification": "Added one existing-settings-spec scenario for the new app diagnostics controls and accessibility states."
 }

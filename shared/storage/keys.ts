@@ -30,6 +30,9 @@ export const DATA_USAGE_STORAGE_KEY = 'opencode-mobile.data-usage';
 // Diagnostic file written synchronously by the global JS error handler; it
 // cannot use AsyncStorage because the process may die before a write flushes.
 export const LAST_JS_ERROR_FILENAME = 'opencode-mobile.last-js-error.json';
+// Marks the last crash already copied into the bounded local diagnostics
+// stream. It prevents re-ingesting the same last-error file on every launch.
+export const LAST_JS_ERROR_INGESTED_STORAGE_KEY = 'opencode-mobile.last-js-error-ingested';
 
 // Server-derived persisted state is always scoped by connection AND project.
 // The connection scope is the password-free identity from

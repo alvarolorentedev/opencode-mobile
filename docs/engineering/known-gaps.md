@@ -64,10 +64,21 @@ There is no emulator, self-hosted device runner or paid device farm in CI.
 
 ## 3. Remote crash reporting
 
-Deferred. An opt-in reporter (for example Sentry) would need a dependency, a
-consent toggle behind the existing diagnostics surface, and scrubbing that never
-sends the server URL or credentials. Only worth doing if a remote pipeline is
-explicitly funded.
+Implemented for sanitized JavaScript errors and performance data through the
+optional OTLP exporter in [observability](../architecture/observability.md).
+Local recording, inspection and export work without an account. Remote telemetry
+is unavailable without build credentials and in FOSS builds.
+
+Remaining gaps:
+
+- native hard crashes and ANRs are not captured because no native telemetry SDK
+  is included; only the next-launch JS crash record is ingested
+- remote Hermes/JavaScript stacks are not symbolicated by the OTLP path; use a
+  local diagnostic export when detailed stacks are needed
+- the bundled OTLP token must be write-only, least-privilege and rotated; any
+  bundled credential can be extracted
+- sending previously recorded local events after consent is deliberately
+  impossible, so enabling remote reporting only affects new events
 
 ## 3b. Offline outbox and native 4G validation
 

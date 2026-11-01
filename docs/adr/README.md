@@ -70,6 +70,7 @@ coverage, and documentation links.
 | [0017](0017-native-defaults-and-prebuilt-engines.md) | Upstream update defaults and pinned prebuilt engines | Accepted |
 | [0018](0018-tag-driven-release-pipeline.md) | Tag-driven release pipeline with static artifact verification | Accepted |
 | [0019](0019-arm64-only-android-releases.md) | ARM64-only Android release artifacts | Accepted |
+| [0020](0020-local-first-observability-and-otlp.md) | Local-first observability with opt-in OTLP export | Accepted |
 
 ## Template
 

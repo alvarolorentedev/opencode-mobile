@@ -11,7 +11,7 @@ Responsibility:
 - eight connected steps: app presentation, permissions, add connection, AI & Providers, project, General Settings, Voice & Responses, ready; disconnected navigation skips AI and project
 - presentation only describes the app, with Continue navigation; AI and General are optional and reuse Settings controls
 - permissions, connect, AI, project, General and Voice & Responses are skippable; Skip advances without additional writes or undoing earlier choices
-- General edits language, the remembered Chat model (connected only), and Steer/Append delivery (connected V2 only)
+- General edits language, the remembered Chat model (connected only), Steer/Append delivery (connected V2 only), and the master remote-telemetry preference when an OTLP backend is configured; local diagnostics are on by default and remote telemetry defaults to enabled
 - ready summarizes connection/project plus the applicable providers, enabled models and preferences, then completes first-run setup or closes review mode
 - thin controllers only; connection/project persistence and permission requests are delegated to the provider and existing helpers
 - seeded from current provider state so re-running from Settings reviews rather than resets
@@ -28,7 +28,7 @@ Responsibility:
 ## Shared onboarding settings
 
 - `features/ai/ui/ai-settings-panel.tsx` composes the existing AI section, auth dialog, model/account callbacks, removal confirmation and feedback for Settings and onboarding
-- `general-settings.tsx` reuses language and chat preference fields, with a searchable model select using the same `getVisibleModels` filter as Chat and Review
+- `general-settings.tsx` reuses language and chat preference fields, with a searchable model select using the same `getVisibleModels` filter as Chat and Review; it also exposes the remote-telemetry master switch only when the build has an OTLP backend
 - `voice-settings.tsx` reuses `VoiceSection` in its onboarding view and `ResponsesSection`, with the existing voice/TTS setup hooks; on-device model downloads, enrollment and preview are explicit actions. The route unmounts the panel on blur to release audio.
 - `features/voice/ui/use-speech-voices.ts` shares read-only OS voice enumeration between Settings, onboarding and Ready.
 - `setup-summary.tsx` includes input mode/model, playback engine/voice, automatic readback and response style, and renders current provider values with wrapping rows and omits connection-dependent additions offline

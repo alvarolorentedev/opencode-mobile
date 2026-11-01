@@ -137,3 +137,10 @@ The shared FOSS preparation excludes `expo-in-app-updates` from autolinking, so 
 The Metro stub and JS boundary disable store update prompts for this flavor. Modified
 Expo Application and Notifications build from source so proprietary precompiled
 artifacts cannot bypass the flavor-specific dependency removal.
+
+Local diagnostics, recent-event inspection, clearing and ZIP export remain
+available in FOSS. Remote OTLP telemetry is intentionally unavailable: the
+config gate returns no endpoint in FOSS builds and the Settings toggles stay
+hidden. The observability dependencies (OpenTelemetry JS packages and `fflate`)
+are pure JavaScript, so this does not add a native observability library or a
+hosted account requirement. See [observability](../architecture/observability.md).

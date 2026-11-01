@@ -72,7 +72,11 @@
   "general": {
     "title": "一般設定",
     "subtitle": "OpenCode Mobileを使いやすく設定しましょう。",
-    "defaultModel": "デフォルトモデル"
+    "defaultModel": "デフォルトモデル",
+    "remoteTelemetry": {
+      "title": "匿名テレメトリーを共有",
+      "description": "アプリ改善のため、匿名化したクラッシュとパフォーマンスのデータを送信します。プロンプト、コード、ターミナル出力、認証情報は送信しません。後で設定から変更できます。"
+    }
   },
   "voice": {
     "title": "音声と応答",

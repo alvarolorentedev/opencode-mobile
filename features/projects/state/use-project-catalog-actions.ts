@@ -6,6 +6,7 @@ import type { ProjectCatalogInput } from '@/features/projects/model/action-input
 import type { ProjectCatalog } from '@/shared/contracts/domain';
 import { PROJECTS_MAX } from '@/features/projects/services/projects-storage';
 import { fetchProjectCatalog } from '@/features/projects/services/queries/catalog';
+import { telemetry } from '@/shared/observability/client';
 import { useQueryActivity, useQueryIdentity } from '@/shared/server-data/client';
 import { isKnownProjectLocation as svcIsKnownProjectLocation, resolveProjectLocation as svcResolveProjectLocation } from '@/shared/protocol/services/session-service';
 import { useQueryClient } from '@tanstack/react-query';
@@ -72,7 +73,18 @@ export function useProjectCatalogActions({
 
   const loadProjectCatalog = useCallback(
     async (silent = false, targetClient: ScopedOpencodeClient = catalogClient): Promise<ProjectCatalog> => {
-      const result = await fetchProjectCatalog(cache, identity, targetClient, !silent);
+      const startedAt = Date.now();
+      let result: ProjectCatalog;
+      try {
+        result = await fetchProjectCatalog(cache, identity, targetClient, !silent);
+        telemetry.histogram('workspace.load.duration', Math.max(0, Date.now() - startedAt), 'ms', { kind: silent ? 'refresh' : 'open' });
+        telemetry.counter('workspace.load', 1, { kind: silent ? 'refresh' : 'open', outcome: 'success' });
+        telemetry.markStartup('workspace-loaded', { kind: silent ? 'refresh' : 'open' });
+      } catch (error) {
+        telemetry.histogram('workspace.load.duration', Math.max(0, Date.now() - startedAt), 'ms', { kind: silent ? 'refresh' : 'open' });
+        telemetry.counter('workspace.load', 1, { kind: silent ? 'refresh' : 'open', outcome: 'failure' });
+        throw error;
+      }
         if (!isCurrent(targetClient)) {
           return result;
         }

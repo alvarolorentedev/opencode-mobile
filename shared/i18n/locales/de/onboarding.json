@@ -72,7 +72,11 @@
   "general": {
     "title": "Allgemeine Einstellungen",
     "subtitle": "Passe OpenCode Mobile an deine Wünsche an.",
-    "defaultModel": "Standardmodell"
+    "defaultModel": "Standardmodell",
+    "remoteTelemetry": {
+      "title": "Anonyme Telemetrie teilen",
+      "description": "Sende bereinigte Absturz- und Leistungsdaten, um die App zu verbessern. Prompts, Code, Terminalausgaben und Zugangsdaten werden nie gesendet. Du kannst dies später in den Einstellungen ändern."
+    }
   },
   "voice": {
     "title": "Stimme und Antworten",
