@@ -1,5 +1,5 @@
 #import "OpencodeTlsSecurityPolicy.h"
-#import <OpencodeTls/OpencodeTls-Swift.h>
+#import "OpencodeTlsTrust.h"
 
 @implementation OpencodeTlsSecurityPolicy {
   NSString *_origin;
@@ -24,7 +24,7 @@
 }
 
 - (BOOL)evaluateServerTrust:(SecTrustRef)serverTrust forDomain:(NSString *)domain {
-  return [OpencodeTlsTrustBridge evaluateTrust:serverTrust host:domain certificates:_certificates];
+  return [OpencodeTlsTrust evaluateTrust:serverTrust host:domain certificates:_certificates];
 }
 
 @end

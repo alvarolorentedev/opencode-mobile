@@ -34,6 +34,9 @@ public final class OpencodeTlsModule: Module {
     AsyncFunction("setTrustAnchors") { (origin: String, pems: [String], promise: Promise) in
       do {
         try TrustStore.set(origin: origin, pems: pems)
+        // The WebSocket path keeps its own Objective-C store (see
+        // OpencodeTlsTrust.h); update it alongside the Swift store.
+        OpencodeTlsTrust.setAnchors(TrustStore.certificates(for: origin) as [Any], forOrigin: origin)
         promise.resolve(nil)
       } catch {
         promise.reject("ERR_CERTIFICATE", error.localizedDescription)
@@ -42,6 +45,7 @@ public final class OpencodeTlsModule: Module {
 
     AsyncFunction("clearTrustAnchors") { (origin: String) in
       TrustStore.clear(origin: origin)
+      OpencodeTlsTrust.clearAnchors(forOrigin: origin)
     }
 
     AsyncFunction("probe") { (origin: String, pem: String?, promise: Promise) in

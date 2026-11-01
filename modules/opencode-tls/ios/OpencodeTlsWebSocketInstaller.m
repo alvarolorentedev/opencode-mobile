@@ -1,6 +1,6 @@
 #import "OpencodeTlsWebSocketInstaller.h"
 #import "OpencodeTlsSecurityPolicy.h"
-#import <OpencodeTls/OpencodeTls-Swift.h>
+#import "OpencodeTlsTrust.h"
 #import <SocketRocket/SRWebSocket.h>
 #import <dlfcn.h>
 
@@ -21,8 +21,8 @@
     }
     NSNumber *portNumber = url.port;
     NSInteger port = portNumber ? portNumber.integerValue : 443;
-    NSString *origin = [OpencodeTlsTrustBridge originKeyForHost:host port:port];
-    NSArray *certificates = [OpencodeTlsTrustBridge certificatesForOrigin:origin];
+    NSString *origin = [OpencodeTlsTrust originKeyForHost:host port:port];
+    NSArray *certificates = [OpencodeTlsTrust certificatesForOrigin:origin];
     if (certificates.count == 0) {
       return nil;
     }
