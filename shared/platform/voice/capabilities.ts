@@ -1,6 +1,5 @@
-import { ExpoSpeechRecognitionModule } from 'expo-speech-recognition';
-
 import { getVoiceInputPermissionAsync, type VoiceInputPermission } from '@/shared/platform/voice/permissions';
+import { readVoiceCapabilityFlags } from '@/shared/platform/voice/voice-capability-read';
 
 export type VoiceCapabilities = {
   permission: VoiceInputPermission;
@@ -14,21 +13,5 @@ export type VoiceCapabilities = {
  */
 export async function getVoiceCapabilitiesAsync(): Promise<VoiceCapabilities> {
   const permission = await getVoiceInputPermissionAsync();
-
-  let recognitionAvailable = false;
-  let onDeviceSupported = false;
-
-  try {
-    recognitionAvailable = ExpoSpeechRecognitionModule.isRecognitionAvailable();
-  } catch {
-    recognitionAvailable = false;
-  }
-
-  try {
-    onDeviceSupported = ExpoSpeechRecognitionModule.supportsOnDeviceRecognition();
-  } catch {
-    onDeviceSupported = false;
-  }
-
-  return { permission, recognitionAvailable, onDeviceSupported };
+  return { permission, ...readVoiceCapabilityFlags() };
 }

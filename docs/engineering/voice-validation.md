@@ -18,6 +18,9 @@ The tag release runs the full browser suite and native release verification.
 Relevant Vitest suites:
 
 - `confirmation.test.ts`: localized strict grammar, ambiguity, readback policy.
+- `speech-input.test.ts`: start watchdog, end-before-start, Android compatibility and
+  Google-recognizer recovery, and the retryable total-failure path.
+- `recognition-service.test.ts`: recognizer package availability and recovery order.
 - `conversation-confirmation.test.ts`: TTS/echo guard, confirm/retry/edit/cancel,
   timeout, duplicate confirmation, disabled mode.
 - `provider-runtime.test.ts`: integrated system/local, wake/no-wake, and
@@ -77,6 +80,18 @@ Bluetooth and speakerphone routes.
 - [ ] TTS readback pauses input, resumes after the echo guard, and does not
       capture its own voice.
 - [ ] Disabling the wake phrase does not enable background listening.
+
+### Android recognizer compatibility
+
+- [ ] A device whose default recognizer is an OEM service (for example Samsung
+      Bixby on One UI) starts dictation and conversation mode, or falls back to
+      the compatibility/Google attempts.
+- [ ] A recognizer that never emits a native start shows the retryable
+      “voice input could not start” message instead of silently doing nothing.
+- [ ] Continuous capture, punctuation, and on-device formatter failures do not
+      leave conversation mode flashing its overlay.
+- [ ] A Google recognizer is only selected when it is visible to the app; FOSS
+      or AOSP devices without it keep the system default.
 
 ### Settings and migration
 

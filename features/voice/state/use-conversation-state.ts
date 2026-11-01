@@ -206,6 +206,7 @@ export function useConversationState({ connection, chatPreferences, currentSessi
     isStarting: isConversationListeningStarting,
     level: conversationListeningLevel,
     start: startSpeechInput,
+    startFailed: speechInputStartFailed,
   } = speechInput;
   useLayoutEffect(() => {
     abortSpeechInputRef.current = abortSpeechInput;
@@ -397,7 +398,6 @@ export function useConversationState({ connection, chatPreferences, currentSessi
   }, [conversationPhase]);
 
   useConversationKeepAwake(conversationPhase, CONVERSATION_KEEP_AWAKE_TAG);
-
   useConversationListeningEffects({
     conversationPhase,
     isConversationListening,
@@ -414,6 +414,7 @@ export function useConversationState({ connection, chatPreferences, currentSessi
     speechInputError,
     speechInputErrorAction,
     speechInputErrorCode,
+    speechInputStartFailed,
     stopConversationMode,
     setConversationFeedback,
     setConversationFeedbackAction,

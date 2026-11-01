@@ -285,6 +285,22 @@ Known limits:
   capability proxy. They do not benchmark model quality or prompt-cache behavior;
   the long-chat guard is a fixed conservative threshold, not measured savings.
 
+## 11b. Android OEM speech recognition
+
+Android recognizes the system default `RecognitionService`, which on some OEM
+devices is not Google's service. The app now detects a session that never
+reports `start`, retries without continuous capture/punctuation, and then tries
+a visible Google recognizer before surfacing a retryable error. Limits remain:
+
+- an OEM service may still accept the request and never return a result even in
+  compatibility mode; the app shows the start failure instead of looping
+- the Google fallback is only available when `com.google.android.tts` or
+  `com.google.android.googlequicksearchbox` is installed and visible, so FOSS
+  and AOSP devices keep the system default
+- physical-device coverage is still required for Samsung One UI, Xiaomi and
+  other OEM recognizers; the browser suite cannot exercise native speech
+  services
+
 ## 12. Vendored sherpa-onnx patch
 
 `@siteed/sherpa-onnx.rn` is pinned to `1.3.1` and patched through

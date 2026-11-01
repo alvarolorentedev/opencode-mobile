@@ -189,3 +189,163 @@ it('allows an iOS permission alert to become inactive and still start after perm
   assert.equal(starts, 1);
   runtime.unmount(); onEnd();
 });
+
+async function loadAndroidWatchdogHarness({
+  services = ['com.samsung.android.bixby.agent', 'com.google.android.tts'],
+}: {
+  services?: string[];
+} = {}) {
+  const runtime = hookRuntime();
+  type Listener = (payload: unknown) => void;
+  const listeners = new Map<string, Set<Listener>>();
+  const starts: ExpoSpeechRecognitionOptions[] = [];
+  const appState = {
+    currentState: 'active',
+    addEventListener: () => ({ remove() {} }),
+  };
+  let aborts = 0;
+  const native = {
+    addListener: (event: string, listener: Listener) => {
+      if (!listeners.has(event)) listeners.set(event, new Set());
+      listeners.get(event)!.add(listener);
+      return { remove: () => listeners.get(event)!.delete(listener) };
+    },
+    supportsOnDeviceRecognition: () => true,
+    isRecognitionAvailable: () => true,
+    requestPermissionsAsync: async () => ({ granted: true }),
+    getSpeechRecognitionServices: () => services,
+    getDefaultRecognitionService: () => ({ packageName: 'com.samsung.android.bixby.agent' }),
+    start: (options: ExpoSpeechRecognitionOptions) => {
+      starts.push(options);
+      if (starts.length === 3) emit('start');
+    },
+    stop: () => {},
+    abort: () => {
+      aborts++;
+      emit('error', { error: 'aborted' });
+      emit('end');
+    },
+  };
+  function emit(event: string, payload: Parameters<Listener>[0] = null) {
+    for (const listener of [...(listeners.get(event) ?? [])]) listener(payload);
+  }
+  const speech = await loadTs('shared/platform/voice/use-speech-input.ts', {
+    react: { ...runtime.react, useId: () => 'watchdog-owner' },
+    'react-native': { Platform: { OS: 'android', Version: 34 }, AppState: appState },
+    'expo-speech-recognition': {
+      ExpoSpeechRecognitionModule: native,
+      useSpeechRecognitionEvent: (event: string, listener: Listener) => runtime.react.useEffect(() => {
+        if (!listeners.has(event)) listeners.set(event, new Set());
+        listeners.get(event)!.add(listener);
+        return () => listeners.get(event)!.delete(listener);
+      }, [event, listener]),
+    },
+    '@/shared/platform/voice/speech-errors': await loadTs('shared/platform/voice/speech-errors.ts'),
+  }, runtime.globals);
+  runtime.mount(speech.useSpeechInput, { preferOnDevice: true, onResult: () => {} });
+  return { runtime, starts, emit, get aborts() { return aborts; } };
+}
+
+it('recovers a recognizer that never emits start with compatibility and Google service attempts', async () => {
+  const { runtime, starts } = await loadAndroidWatchdogHarness();
+  assert.equal(await runtime.value.start(), true);
+  await runtime.settle();
+  assert.equal(starts.length, 1);
+  assert.equal(starts[0].continuous, true);
+  assert.equal(starts[0].addsPunctuation, true);
+  assert.equal(starts[0].requiresOnDeviceRecognition, true);
+  assert.equal(runtime.value.isStarting, true, 'a start without a native start event stays pending');
+
+  runtime.fire(3000); await runtime.settle();
+  assert.equal(starts.length, 1, 'the watchdog does not start a second session before the retry delay');
+  assert.equal(runtime.value.isStarting, true);
+  assert.equal(runtime.countTimers(250), 1);
+
+  runtime.fire(250); await runtime.settle();
+  assert.equal(starts.length, 2);
+  assert.equal(starts[1].continuous, false, 'compatibility mode bypasses the custom audio recorder');
+  assert.equal(starts[1].addsPunctuation, false);
+  assert.equal(starts[1].requiresOnDeviceRecognition, false);
+  assert.equal(starts[1].androidRecognitionServicePackage, undefined);
+
+  runtime.fire(3000); await runtime.settle();
+  assert.equal(runtime.countTimers(250), 1);
+  runtime.fire(250); await runtime.settle();
+  assert.equal(starts.length, 3);
+  assert.equal(starts[2].androidRecognitionServicePackage, 'com.google.android.tts');
+  assert.equal(runtime.value.isListening, true);
+  assert.equal(runtime.value.isStarting, false);
+  assert.equal(runtime.value.startFailed, false);
+  assert.equal(runtime.countTimers(3000), 0);
+  assert.equal(runtime.countTimers(250), 0);
+});
+
+it('surfaces a retryable start failure when no Android recovery is available', async () => {
+  const { runtime, starts } = await loadAndroidWatchdogHarness({ services: [] });
+  await runtime.value.start();
+  await runtime.settle();
+  runtime.fire(3000); await runtime.settle();
+  runtime.fire(250); await runtime.settle();
+  assert.equal(starts.length, 2);
+  runtime.fire(3000); await runtime.settle();
+  assert.equal(starts.length, 2);
+  assert.equal(runtime.value.isStarting, false);
+  assert.equal(runtime.value.isListening, false);
+  assert.equal(runtime.value.startFailed, true);
+  assert.match(runtime.value.error, /did not respond/);
+  assert.equal(runtime.value.errorAction, 'retry');
+  assert.equal(runtime.countTimers(3000), 0);
+  assert.equal(runtime.countTimers(250), 0);
+});
+
+it('recovers when the recognizer ends before emitting start', async () => {
+  const runtime = hookRuntime();
+  type Listener = (payload: unknown) => void;
+  const listeners = new Map<string, Set<Listener>>();
+  const starts: ExpoSpeechRecognitionOptions[] = [];
+  const native = {
+    addListener: (event: string, listener: Listener) => {
+      if (!listeners.has(event)) listeners.set(event, new Set());
+      listeners.get(event)!.add(listener);
+      return { remove: () => listeners.get(event)!.delete(listener) };
+    },
+    supportsOnDeviceRecognition: () => false,
+    isRecognitionAvailable: () => true,
+    requestPermissionsAsync: async () => ({ granted: true }),
+    getSpeechRecognitionServices: () => [],
+    getDefaultRecognitionService: () => ({ packageName: 'com.google.android.tts' }),
+    start: (options: ExpoSpeechRecognitionOptions) => {
+      starts.push(options);
+      if (starts.length === 1) emit('end');
+      else emit('start');
+    },
+    stop: () => {},
+    abort: () => {},
+  };
+  function emit(event: string, payload: Parameters<Listener>[0] = null) {
+    for (const listener of [...(listeners.get(event) ?? [])]) listener(payload);
+  }
+  const speech = await loadTs('shared/platform/voice/use-speech-input.ts', {
+    react: { ...runtime.react, useId: () => 'ended-owner' },
+    'react-native': { Platform: { OS: 'android', Version: 33 }, AppState: { currentState: 'active', addEventListener: () => ({ remove() {} }) } },
+    'expo-speech-recognition': {
+      ExpoSpeechRecognitionModule: native,
+      useSpeechRecognitionEvent: (event: string, listener: Listener) => runtime.react.useEffect(() => {
+        if (!listeners.has(event)) listeners.set(event, new Set());
+        listeners.get(event)!.add(listener);
+        return () => listeners.get(event)!.delete(listener);
+      }, [event, listener]),
+    },
+    '@/shared/platform/voice/speech-errors': await loadTs('shared/platform/voice/speech-errors.ts'),
+  }, runtime.globals);
+  runtime.mount(speech.useSpeechInput, { preferOnDevice: false, onResult: () => {} });
+  assert.equal(await runtime.value.start(), true);
+  await runtime.settle();
+  assert.equal(starts.length, 1);
+  assert.equal(runtime.countTimers(250), 1, 'an end before start schedules a compatibility retry');
+  runtime.fire(250); await runtime.settle();
+  assert.equal(starts.length, 2);
+  assert.equal(starts[1].continuous, false);
+  assert.equal(runtime.value.isListening, true);
+  assert.equal(runtime.value.startFailed, false);
+});

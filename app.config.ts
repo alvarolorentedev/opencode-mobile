@@ -161,7 +161,7 @@ const config: ExpoConfig = {
       {
         microphonePermission: 'Allow $(PRODUCT_NAME) to access the microphone for voice input.',
         speechRecognitionPermission: 'Allow $(PRODUCT_NAME) to convert speech to text on your device.',
-        androidSpeechServicePackages: ['com.google.android.googlequicksearchbox', 'com.google.android.as'],
+        androidSpeechServicePackages: ['com.google.android.googlequicksearchbox', 'com.google.android.as', 'com.google.android.tts'],
       },
     ],
     // Optional on-device wake word and speaker models (sherpa-onnx). The

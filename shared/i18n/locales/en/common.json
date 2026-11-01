@@ -76,6 +76,9 @@
     "appSettingsSummary": "Editor, general and updates",
     "serverToolsSummary": "MCP servers and diagnostics"
   },
+  "voice": {
+    "startFailed": "Voice input could not start. The device speech recognizer did not respond. Try again."
+  },
   "validation": {
     "required": "This field is required.",
     "invalid": "Enter a valid value."

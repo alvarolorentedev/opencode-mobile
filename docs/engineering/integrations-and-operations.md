@@ -179,7 +179,8 @@ Behavioral details:
 - on-device recognition can be required by preference
 - interim results are enabled
 - continuous listening is used for conversation mode except where platform behavior differs
-- user-friendly error messages are mapped from native error codes
+- a start watchdog retries Android sessions that never report a native start with compatibility options (no custom audio source, punctuation, or on-device formatter) and then an available Google recognizer before surfacing the error
+- user-friendly error messages are mapped from native error codes; a recognizer that never starts has a dedicated localized retry message
 
 ### Working Sound
 

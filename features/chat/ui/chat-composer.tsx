@@ -36,6 +36,7 @@ type ChatComposerProps = {
   draft: string;
   isSpeechInputAvailable: boolean;
   isSpeechInputListening: boolean;
+  isSpeechInputStarting: boolean;
   isStoppingSession: boolean;
   isUpdatingAutoApprove: boolean;
   autoApproveAvailable?: boolean;
@@ -80,6 +81,7 @@ export function ChatComposer({
   draft,
   isSpeechInputAvailable,
   isSpeechInputListening,
+  isSpeechInputStarting,
   isStoppingSession,
   isUpdatingAutoApprove,
   autoApproveAvailable = true,
@@ -226,7 +228,7 @@ export function ChatComposer({
           <View className={cn(stylesClasses.composerModelSummary)}>
             {fontScale <= 1.3 ? modelPicker : null}
           </View>
-          <Button testID="chat-secondary-button" accessibilityLabel={t(isSpeechInputListening ? 'chat:composer.stopDictation' : 'chat:composer.startDictation')} disabled={conversation.active || connectionStatus !== 'connected' || (!isSpeechInputListening && !isSpeechInputAvailable)} onPress={onToggleRecording} variant="ghost" size="icon" className={cn(stylesClasses.composerActionButton, "bg-transparent")} ><Icon name={isSpeechInputListening ? 'microphone-off' : 'microphone-outline'} size={24} color={palette.muted} /></Button>
+          <Button testID="chat-secondary-button" accessibilityLabel={t(isSpeechInputListening ? 'chat:composer.stopDictation' : 'chat:composer.startDictation')} accessibilityState={{ busy: isSpeechInputStarting }} disabled={conversation.active || isSpeechInputStarting || connectionStatus !== 'connected' || (!isSpeechInputListening && !isSpeechInputAvailable)} onPress={onToggleRecording} variant="ghost" size="icon" className={cn(stylesClasses.composerActionButton, "bg-transparent")} >{isSpeechInputStarting ? <Spinner size="small" /> : <Icon name={isSpeechInputListening ? 'microphone-off' : 'microphone-outline'} size={24} color={palette.muted} />}</Button>
           <Button testID="chat-primary-button" accessibilityLabel={t(primaryAction === 'voice' ? (conversation.active ? 'chat:header.stopConversationMode' : 'chat:header.startConversationMode') : primaryAction === 'send' ? (shellMode ? 'chat:composer.runShell' : 'chat:composer.sendTask') : 'chat:composer.stopTask')} disabled={primaryDisabled} onPress={primaryAction === 'voice' ? onToggleConversationMode : onSend} variant="default" size="icon" className={cn(stylesClasses.composerPrimaryButton, "bg-foreground")} >{primaryAction === 'stop' && isStoppingSession ? <Spinner size="small" /> : null}<Icon name={primaryAction === 'voice' ? 'waveform' : primaryAction === 'send' ? (shellMode ? 'console-line' : 'arrow-up') : 'stop'} size={22} color={palette.surfaceAlt} /></Button>
         </View>
       </View>

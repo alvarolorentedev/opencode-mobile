@@ -1,6 +1,6 @@
 import * as Haptics from '@/shared/platform/haptics';
 import type { TFunction } from 'i18next';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import type { TranscriptEntry } from '@/shared/presentation/format';
 import { openVoiceSettingsAsync } from '@/shared/platform/voice/permissions';
@@ -65,9 +65,17 @@ export function useChatViewVoice({
     errorAction: speechInputErrorAction,
     isAvailable: isSpeechInputAvailable,
     isListening: isSpeechInputListening,
+    isStarting: isSpeechInputStarting,
     start: startSpeechInput,
+    startFailed: speechInputStartFailed,
     stop: stopSpeechInput,
   } = speechInput;
+  // Native voice failures are English fallbacks; the start watchdog has a
+  // dedicated translated message because it is a first-class recovery path.
+  const speechInputMessage = useMemo(
+    () => (speechInputStartFailed ? t('common:voice.startFailed') : speechInputError),
+    [speechInputError, speechInputStartFailed, t],
+  );
 
   useEffect(() => {
     conversationActiveRef.current = conversationActive;
@@ -79,15 +87,15 @@ export function useChatViewVoice({
   }, [activeProjectPath, connectionScope, stopSpeechInput]);
 
   useEffect(() => {
-    if (!speechInputError) return;
+    if (!speechInputMessage) return;
     voiceRecoveryContextRef.current = conversationActiveRef.current ? 'conversation' : 'dictation';
     // While conversation mode is active the provider owns the listening
     // session, including its own retry/fallback and feedback. Surfacing this
     // hook's error too would flash a false failure during the automatic
     // on-device -> network retry.
     if (conversationActiveRef.current) return;
-    setVoiceFeedback(speechInputError);
-  }, [speechInputError]);
+    setVoiceFeedback(speechInputMessage);
+  }, [speechInputMessage]);
 
   useEffect(
     () => () => {
@@ -137,7 +145,7 @@ export function useChatViewVoice({
   }, [chatPreferences.autoPlayAssistantReplies, chatPreferences.localTtsPackId, chatPreferences.localTtsSpeakerId, chatPreferences.speechLocale, chatPreferences.speechRate, chatPreferences.speechVoiceId, chatPreferences.ttsEngine, conversationActive, latestAssistantEntry, running, t]);
 
   const handleToggleRecording = useCallback(async () => {
-    if (conversationActiveRef.current) return;
+    if (conversationActiveRef.current || isSpeechInputStarting) return;
     if (isSpeechInputListening) {
       stopSpeechInput();
       return;
@@ -155,11 +163,11 @@ export function useChatViewVoice({
     }
     if (!started) return;
     void Haptics.selectionAsync().catch(() => undefined);
-  }, [block, draft, isSpeechInputListening, startSpeechInput, stopSpeechInput]);
+  }, [block, draft, isSpeechInputListening, isSpeechInputStarting, startSpeechInput, stopSpeechInput]);
 
   // Dictation failures live in this hook; conversation failures carry their
   // action from the provider so the two always match.
-  const dictationVoiceFailure = Boolean(voiceFeedback && voiceFeedback === speechInputError);
+  const dictationVoiceFailure = Boolean(voiceFeedback && voiceFeedback === speechInputMessage);
   const voiceRecoveryAction = dictationVoiceFailure
     ? speechInputErrorAction
     : conversation.conversation.feedback
@@ -189,6 +197,7 @@ export function useChatViewVoice({
     handleVoiceRecovery,
     isSpeechInputAvailable,
     isSpeechInputListening,
+    isSpeechInputStarting,
     setSpeakingMessageId,
     setVoiceFeedback,
     speakingMessageId,

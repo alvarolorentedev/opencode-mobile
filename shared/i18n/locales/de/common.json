@@ -76,6 +76,9 @@
     "appSettingsSummary": "Editor, allgemeine Einstellungen und Updates",
     "serverToolsSummary": "MCP-Server und Diagnose"
   },
+  "voice": {
+    "startFailed": "Die Spracheingabe konnte nicht gestartet werden. Die Spracherkennung des Geräts hat nicht reagiert. Versuche es erneut."
+  },
   "validation": {
     "required": "Dieses Feld ist erforderlich.",
     "invalid": "Gib einen gültigen Wert ein."

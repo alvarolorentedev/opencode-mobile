@@ -76,6 +76,9 @@
     "appSettingsSummary": "Éditeur, paramètres généraux et mises à jour",
     "serverToolsSummary": "Serveurs MCP et diagnostic"
   },
+  "voice": {
+    "startFailed": "La saisie vocale n'a pas pu démarrer. La reconnaissance vocale de l'appareil n'a pas répondu. Réessayez."
+  },
   "validation": {
     "required": "Ce champ est obligatoire.",
     "invalid": "Saisissez une valeur valide."

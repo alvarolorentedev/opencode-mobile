@@ -1,4 +1,5 @@
 import { useEffect, type Dispatch, type SetStateAction } from 'react';
+import { useTranslation } from 'react-i18next';
 import { AppState } from 'react-native';
 
 import type { VoiceRecoveryAction } from '@/shared/platform/voice/speech-errors';
@@ -21,6 +22,7 @@ export function useConversationListeningEffects({
   speechInputError,
   speechInputErrorAction,
   speechInputErrorCode,
+  speechInputStartFailed,
   stopConversationMode,
   setConversationFeedback,
   setConversationFeedbackAction,
@@ -40,10 +42,12 @@ export function useConversationListeningEffects({
   speechInputError?: string;
   speechInputErrorAction: VoiceRecoveryAction;
   speechInputErrorCode?: string;
+  speechInputStartFailed: boolean;
   stopConversationMode: () => Promise<void>;
   setConversationFeedback: Dispatch<SetStateAction<string | undefined>>;
   setConversationFeedbackAction: Dispatch<SetStateAction<VoiceRecoveryAction>>;
 }) {
+  const { t } = useTranslation();
   useEffect(() => {
     const subscription = AppState.addEventListener('change', (state) => {
       if (state === 'background') {
@@ -110,11 +114,12 @@ export function useConversationListeningEffects({
   }, [conversationCancelRequestedRef, conversationListeningRestartTimeoutRef, conversationPhase, conversationPhaseRef, conversationSubmittingRef, isConversationListening, isConversationListeningStarting, localWakeModeRef, readbackPhase, shouldRestartConversation, startConversationListening]);
 
   useEffect(() => {
-    if (!speechInputError) {
+    if (!speechInputError && !speechInputStartFailed) {
       return;
     }
 
     if (
+      !speechInputStartFailed &&
       (conversationPhaseRef.current === 'listening' || conversationPhaseRef.current === 'armed') &&
       (speechInputErrorCode === 'client' || speechInputErrorCode === 'no-speech' || speechInputErrorCode === 'speech-timeout')
     ) {
@@ -124,11 +129,11 @@ export function useConversationListeningEffects({
     applyConversationFeedback(
       setConversationFeedback,
       setConversationFeedbackAction,
-      speechInputError,
+      speechInputStartFailed ? t('common:voice.startFailed') : speechInputError,
       speechInputErrorAction,
     );
     if (conversationPhaseRef.current !== 'off') {
       void stopConversationMode();
     }
-  }, [conversationPhaseRef, setConversationFeedback, setConversationFeedbackAction, speechInputError, speechInputErrorAction, speechInputErrorCode, stopConversationMode]);
+  }, [conversationPhaseRef, setConversationFeedback, setConversationFeedbackAction, speechInputError, speechInputErrorAction, speechInputErrorCode, speechInputStartFailed, stopConversationMode, t]);
 }

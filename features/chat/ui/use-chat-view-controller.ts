@@ -206,6 +206,7 @@ export function useChatViewController() {
     handleVoiceRecovery,
     isSpeechInputAvailable,
     isSpeechInputListening,
+    isSpeechInputStarting,
     setSpeakingMessageId,
     speakingMessageId,
     voiceFeedback,
@@ -383,7 +384,7 @@ export function useChatViewController() {
     },
     composer: {
       attachments, availableAgents, chatPreferences, commands, draft,
-      isSpeechInputAvailable, isSpeechInputListening,
+      isSpeechInputAvailable, isSpeechInputListening, isSpeechInputStarting,
       isStoppingSession, isUpdatingAutoApprove, selectedAgentLabel, serverCapabilities,
       selectedVariant: selectedModelVariant,
       autoRoutingEnabled: chatPreferences.autoModel.enabled,

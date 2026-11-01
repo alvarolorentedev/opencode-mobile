@@ -76,6 +76,9 @@
     "appSettingsSummary": "エディター、一般設定、更新",
     "serverToolsSummary": "MCPサーバーと診断"
   },
+  "voice": {
+    "startFailed": "音声入力を開始できませんでした。デバイスの音声認識が応答しませんでした。もう一度お試しください。"
+  },
   "validation": {
     "required": "この項目は必須です。",
     "invalid": "有効な値を入力してください。"

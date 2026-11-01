@@ -76,6 +76,9 @@
     "appSettingsSummary": "Editor, ajustes generales y actualizaciones",
     "serverToolsSummary": "Servidores MCP y diagnóstico"
   },
+  "voice": {
+    "startFailed": "No se pudo iniciar la entrada de voz. El reconocimiento de voz del dispositivo no respondió. Inténtalo de nuevo."
+  },
   "validation": {
     "required": "Este campo es obligatorio.",
     "invalid": "Introduce un valor válido."

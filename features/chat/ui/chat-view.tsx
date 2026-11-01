@@ -239,6 +239,7 @@ export function ChatView() {
           draft={composer.draft}
           isSpeechInputAvailable={composer.isSpeechInputAvailable}
           isSpeechInputListening={composer.isSpeechInputListening}
+          isSpeechInputStarting={composer.isSpeechInputStarting}
           isStoppingSession={composer.isStoppingSession}
           isUpdatingAutoApprove={composer.isUpdatingAutoApprove}
           onToggleConversationMode={() => void actions.toggleConversationMode()}

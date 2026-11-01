@@ -453,6 +453,7 @@ const selectors = await loadTs(["features/sessions/model/selectors.ts","features
 const speechConfig = await loadTs('shared/platform/voice/speech-config.ts', {}, voiceRuntime.globals);
 const conversationImports = {
     react: voiceRuntime.react,
+    'react-i18next': { useTranslation: () => ({ t: (key: string) => key }) },
     'react-native': { AppState: { addEventListener: (_event: any, callback: any) => { onConversationAppStateChange = callback; return { remove() {} }; } } },
     '@/shared/platform/voice/speech-config': speechConfig,
     '@/shared/platform/voice/confirmation': await loadTs('shared/platform/voice/confirmation.ts', {}, voiceRuntime.globals),
@@ -466,7 +467,7 @@ const conversationImports = {
     "@/shared/presentation/format/transcript": { toTranscriptEntry: (record: any) => record },
     "@/shared/presentation/transcript": { isTranscriptDisplayMessage: (entry: any) => Boolean(entry.text) },
     "@/shared/platform/voice/speech-output": { stopSpeaking: async () => {}, speakText: async (options: any) => { speechCallbacks = options; options.onStart(); return true; } },
-    "@/shared/platform/voice/use-speech-input": { useSpeechInput: (options: any) => { recognitionOptions = options; return { abort: abortSpeech, start: startSpeech, isListening: listening, isStarting: false, level: 0 }; } },
+    "@/shared/platform/voice/use-speech-input": { useSpeechInput: (options: any) => { recognitionOptions = options; return { abort: abortSpeech, start: startSpeech, isListening: listening, isStarting: false, level: 0, startFailed: false }; } },
     "@/shared/platform/voice/use-local-wake-word": { useLocalWakeWord: (options: any) => {
       localWakeOptions = options;
       return {
